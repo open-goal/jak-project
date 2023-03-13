@@ -92,117 +92,72 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   m_bucket_categories.resize((int)BucketId::MAX_BUCKETS, BucketCategory::OTHER);
 
   // 0
-  init_bucket_renderer<VisDataHandler>("vis", BucketCategory::OTHER, BucketId::SPECIAL_BUCKET_2);
+  init_bucket_renderer<VisDataHandler>("vis", BucketCategory::OTHER, BucketId::BUCKET_2);
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-sky-pre", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_SKY_PRE);
   init_bucket_renderer<DirectRenderer>("sky-draw", BucketCategory::OTHER, BucketId::SKY_DRAW, 1024);
   init_bucket_renderer<OceanMidAndFar>("ocean-mid-far", BucketCategory::OCEAN,
                                        BucketId::OCEAN_MID_FAR);
-  init_bucket_renderer<TextureUploadHandler>("tex-l0-tfrag", BucketCategory::TEX,
-                                             BucketId::TEX_L0_TFRAG);
-  init_bucket_renderer<TFragment>("tfrag-l0-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L0_TFRAG,
-                                  std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 0);
-  init_bucket_renderer<Tie3>("tie-l0-tfrag", BucketCategory::TIE, BucketId::TIE_L0_TFRAG, 0);
-  // 10
-  init_bucket_renderer<Merc2>("merc-l0-tfrag", BucketCategory::MERC, BucketId::MERC_L0_TFRAG);
-  init_bucket_renderer<TextureUploadHandler>("tex-l1-tfrag", BucketCategory::TEX,
-                                             BucketId::TEX_L1_TFRAG);
-  init_bucket_renderer<TFragment>("tfrag-l1-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L1_TFRAG,
-                                  std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 1);
-  // 20
-  init_bucket_renderer<Tie3>("tie-l1-tfrag", BucketCategory::TIE, BucketId::TIE_L1_TFRAG, 1);
-  init_bucket_renderer<Merc2>("merc-l1-tfrag", BucketCategory::MERC, BucketId::MERC_L1_TFRAG);
-  init_bucket_renderer<TextureUploadHandler>("tex-l2-tfrag", BucketCategory::TEX,
-                                             BucketId::TEX_L2_TFRAG);
-  // 30
-  init_bucket_renderer<TFragment>("tfrag-l2-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L2_TFRAG,
-                                  std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 2);
-  init_bucket_renderer<Tie3>("tie-l2-tfrag", BucketCategory::TIE, BucketId::TIE_L2_TFRAG, 2);
-  init_bucket_renderer<Merc2>("merc-l2-tfrag", BucketCategory::MERC, BucketId::MERC_L2_TFRAG);
-  // 40
-  init_bucket_renderer<TextureUploadHandler>("tex-l3-tfrag", BucketCategory::TEX,
-                                             BucketId::TEX_L3_TFRAG);
-  init_bucket_renderer<TFragment>("tfrag-l3-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L3_TFRAG,
-                                  std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 3);
-  init_bucket_renderer<Tie3>("tie-l3-tfrag", BucketCategory::TIE, BucketId::TIE_L3_TFRAG, 3);
-  init_bucket_renderer<Merc2>("merc-l3-tfrag", BucketCategory::MERC, BucketId::MERC_L3_TFRAG);
-  // 50
-  init_bucket_renderer<TextureUploadHandler>("tex-l4-tfrag", BucketCategory::TEX,
-                                             BucketId::TEX_L4_TFRAG);
-  init_bucket_renderer<TFragment>("tfrag-l4-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L4_TFRAG,
-                                  std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 4);
-  init_bucket_renderer<Tie3>("tie-l4-tfrag", BucketCategory::TIE, BucketId::TIE_L4_TFRAG, 4);
-  init_bucket_renderer<Merc2>("merc-l4-tfrag", BucketCategory::MERC, BucketId::MERC_L4_TFRAG);
-  // 60
-  init_bucket_renderer<TextureUploadHandler>("tex-l5-tfrag", BucketCategory::TEX,
-                                             BucketId::TEX_L5_TFRAG);
-  init_bucket_renderer<TFragment>("tfrag-l5-tfrag", BucketCategory::TFRAG, BucketId::TFRAG_L5_TFRAG,
-                                  std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 5);
-  init_bucket_renderer<Tie3>("tie-l5-tfrag", BucketCategory::TIE, BucketId::TIE_L5_TFRAG, 5);
-  init_bucket_renderer<Merc2>("merc-l5-tfrag", BucketCategory::MERC, BucketId::MERC_L5_TFRAG);
-  // 70
-  init_bucket_renderer<TextureUploadHandler>("tex-l0-shrub", BucketCategory::TEX,
-                                             BucketId::TEX_L0_SHRUB);
-  init_bucket_renderer<Shrub>("shrub-l0-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L0_SHRUB);
-  init_bucket_renderer<Merc2>("merc-l0-shrub", BucketCategory::MERC, BucketId::MERC_L0_SHRUB);
-  // 80
-  init_bucket_renderer<TextureUploadHandler>("tex-l1-shrub", BucketCategory::TEX,
-                                             BucketId::TEX_L1_SHRUB);
-  init_bucket_renderer<Shrub>("shrub-l1-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L1_SHRUB);
-  // 90
-  init_bucket_renderer<TextureUploadHandler>("tex-l2-shrub", BucketCategory::TEX,
-                                             BucketId::TEX_L2_SHRUB);
-  init_bucket_renderer<Merc2>("merc-l2-shrub", BucketCategory::MERC, BucketId::MERC_L2_SHRUB);
-  init_bucket_renderer<Shrub>("shrub-l2-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L2_SHRUB);
-  // 100
-  init_bucket_renderer<TextureUploadHandler>("tex-l3-shrub", BucketCategory::TEX,
-                                             BucketId::TEX_L3_SHRUB);
-  init_bucket_renderer<Shrub>("shrub-l3-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L3_SHRUB);
-  init_bucket_renderer<Merc2>("merc-l3-shrub", BucketCategory::MERC, BucketId::MERC_L3_SHRUB);
-  init_bucket_renderer<TextureUploadHandler>("tex-l4-shrub", BucketCategory::TEX,
-                                             BucketId::TEX_L4_SHRUB);
-  // 110
-  init_bucket_renderer<Shrub>("shrub-l4-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L4_SHRUB);
-  init_bucket_renderer<TextureUploadHandler>("tex-l5-shrub", BucketCategory::TEX,
-                                             BucketId::TEX_L5_SHRUB);
-  init_bucket_renderer<Shrub>("shrub-l5-shrub", BucketCategory::SHRUB, BucketId::SHRUB_L5_SHRUB);
-  // 120
-  init_bucket_renderer<TextureUploadHandler>("tex-l0-alpha", BucketCategory::TEX,
-                                             BucketId::TEX_L0_ALPHA);
-  init_bucket_renderer<TFragment>("tfrag-t-l0-alpha", BucketCategory::TFRAG,
-                                  BucketId::TFRAG_T_L0_ALPHA,
-                                  std::vector{tfrag3::TFragmentTreeKind::TRANS}, false, 0);
-  // 130
-  init_bucket_renderer<TextureUploadHandler>("tex-l1-alpha", BucketCategory::TEX,
-                                             BucketId::TEX_L1_ALPHA);
-  init_bucket_renderer<Merc2>("merc-l0-alpha", BucketCategory::MERC, BucketId::MERC_L0_ALPHA);
-  init_bucket_renderer<TFragment>("tfrag-t-l1-alpha", BucketCategory::TFRAG,
-                                  BucketId::TFRAG_T_L1_ALPHA,
-                                  std::vector{tfrag3::TFragmentTreeKind::TRANS}, false, 1);
-  // 140
-  init_bucket_renderer<Merc2>("merc-l1-alpha", BucketCategory::MERC, BucketId::MERC_L1_ALPHA);
-  init_bucket_renderer<TextureUploadHandler>("tex-l2-alpha", BucketCategory::TEX,
-                                             BucketId::TEX_L2_ALPHA);
-  init_bucket_renderer<TFragment>("tfrag-t-l2-alpha", BucketCategory::TFRAG,
-                                  BucketId::TFRAG_T_L2_ALPHA,
-                                  std::vector{tfrag3::TFragmentTreeKind::TRANS}, false, 2);
-  // 150
-  init_bucket_renderer<Merc2>("merc-l2-alpha", BucketCategory::MERC, BucketId::MERC_L2_ALPHA);
-  init_bucket_renderer<TextureUploadHandler>("tex-l3-alpha", BucketCategory::TEX,
-                                             BucketId::TEX_L3_ALPHA);
-  init_bucket_renderer<TFragment>("tfrag-t-l3-alpha", BucketCategory::TFRAG,
-                                  BucketId::TFRAG_T_L3_ALPHA,
-                                  std::vector{tfrag3::TFragmentTreeKind::TRANS}, false, 3);
-  // 160
-  init_bucket_renderer<Merc2>("merc-l3-alpha", BucketCategory::MERC, BucketId::MERC_L3_ALPHA);
-  init_bucket_renderer<TextureUploadHandler>("tex-l4-alpha", BucketCategory::TEX,
-                                             BucketId::TEX_L4_ALPHA);
-  init_bucket_renderer<TFragment>("tfrag-t-l4-alpha", BucketCategory::TFRAG,
-                                  BucketId::TFRAG_T_L4_ALPHA,
-                                  std::vector{tfrag3::TFragmentTreeKind::TRANS}, false, 4);
-  // 170
-  init_bucket_renderer<TextureUploadHandler>("tex-l5-alpha", BucketCategory::TEX,
-                                             BucketId::TEX_L5_ALPHA);
+  for (int i = 0; i < 6; ++i) {
+#define GET_BUCKET_ID_FOR_LIST(bkt1, bkt2, idx) ((int)bkt1 + ((int)bkt2 - (int)bkt1) * idx)
+    init_bucket_renderer<TextureUploadHandler>(
+        fmt::format("tex-l{}-tfrag", i), BucketCategory::TEX,
+        GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_TFRAG, BucketId::TEX_L1_TFRAG, i));
+    init_bucket_renderer<TFragment>(
+        fmt::format("tfrag-l{}-tfrag", i), BucketCategory::TFRAG,
+        GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_L0_TFRAG, BucketId::TFRAG_L1_TFRAG, i),
+        std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, i);
+    init_bucket_renderer<Tie3>(
+        fmt::format("tie-l{}-tfrag", i), BucketCategory::TIE,
+        GET_BUCKET_ID_FOR_LIST(BucketId::TIE_L0_TFRAG, BucketId::TIE_L1_TFRAG, i), i);
+    init_bucket_renderer<Merc2>(
+        fmt::format("merc-l{}-tfrag", i), BucketCategory::MERC,
+        GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_TFRAG, BucketId::MERC_L1_TFRAG, i));
+
+    init_bucket_renderer<TextureUploadHandler>(
+        fmt::format("tex-l{}-shrub", i), BucketCategory::TEX,
+        GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_SHRUB, BucketId::TEX_L1_SHRUB, i));
+    init_bucket_renderer<Shrub>(
+        fmt::format("shrub-l{}-shrub", i), BucketCategory::SHRUB,
+        GET_BUCKET_ID_FOR_LIST(BucketId::SHRUB_L0_SHRUB, BucketId::SHRUB_L1_SHRUB, i));
+    init_bucket_renderer<Merc2>(
+        fmt::format("merc-l{}-shrub", i), BucketCategory::MERC,
+        GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_SHRUB, BucketId::MERC_L1_SHRUB, i));
+
+    init_bucket_renderer<TextureUploadHandler>(
+        fmt::format("tex-l{}-alpha", i), BucketCategory::TEX,
+        GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_ALPHA, BucketId::TEX_L1_ALPHA, i));
+    init_bucket_renderer<TFragment>(
+        fmt::format("tfrag-t-l{}-alpha", i), BucketCategory::TFRAG,
+        GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_T_L0_ALPHA, BucketId::TFRAG_T_L1_ALPHA, i),
+        std::vector{tfrag3::TFragmentTreeKind::TRANS}, false, i);
+
+    init_bucket_renderer<TextureUploadHandler>(
+        fmt::format("tex-l{}-pris", i), BucketCategory::TEX,
+        GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_PRIS, BucketId::TEX_L1_PRIS, i));
+    init_bucket_renderer<Merc2>(
+        fmt::format("merc-l{}-pris", i), BucketCategory::MERC,
+        GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_PRIS, BucketId::MERC_L1_PRIS, i));
+
+    init_bucket_renderer<TextureUploadHandler>(
+        fmt::format("tex-l{}-pris2", i), BucketCategory::TEX,
+        GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_PRIS2, BucketId::TEX_L1_PRIS2, i));
+    init_bucket_renderer<Merc2>(
+        fmt::format("merc-l{}-pris2", i), BucketCategory::MERC,
+        GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_PRIS2, BucketId::MERC_L1_PRIS2, i));
+
+    init_bucket_renderer<TextureUploadHandler>(
+        fmt::format("tex-l{}-water", i), BucketCategory::TEX,
+        GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_WATER, BucketId::TEX_L1_WATER, i));
+    init_bucket_renderer<Merc2>(
+        fmt::format("merc-l{}-water", i), BucketCategory::MERC,
+        GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_WATER, BucketId::MERC_L1_WATER, i));
+    init_bucket_renderer<TFragment>(
+        fmt::format("tfrag-w-l{}-alpha", i), BucketCategory::TFRAG,
+        GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_W_L0_WATER, BucketId::TFRAG_W_L1_WATER, i),
+        std::vector{tfrag3::TFragmentTreeKind::WATER}, false, i);
+#undef GET_BUCKET_ID_FOR_LIST
+  }
   // 180
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-tfrag", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_TFRAG);
@@ -211,89 +166,10 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-shrub", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_SHRUB);
   init_bucket_renderer<Merc2>("merc-lcom-shrub", BucketCategory::MERC, BucketId::MERC_LCOM_SHRUB);
-  init_bucket_renderer<TextureUploadHandler>("tex-l0-pris", BucketCategory::TEX,
-                                             BucketId::TEX_L0_PRIS);
-  init_bucket_renderer<Merc2>("merc-l0-pris", BucketCategory::MERC, BucketId::MERC_L0_PRIS);
-  // 200
-  init_bucket_renderer<TextureUploadHandler>("tex-l1-pris", BucketCategory::TEX,
-                                             BucketId::TEX_L1_PRIS);
-  init_bucket_renderer<Merc2>("merc-l1-pris", BucketCategory::MERC, BucketId::MERC_L1_PRIS);
-  init_bucket_renderer<TextureUploadHandler>("tex-l2-pris", BucketCategory::TEX,
-                                             BucketId::TEX_L2_PRIS);
-  init_bucket_renderer<Merc2>("merc-l2-pris", BucketCategory::MERC, BucketId::MERC_L2_PRIS);
-  init_bucket_renderer<TextureUploadHandler>("tex-l3-pris", BucketCategory::TEX,
-                                             BucketId::TEX_L3_PRIS);
-  init_bucket_renderer<Merc2>("merc-l3-pris", BucketCategory::MERC, BucketId::MERC_L3_PRIS);
-  // 210
-  init_bucket_renderer<TextureUploadHandler>("tex-l4-pris", BucketCategory::TEX,
-                                             BucketId::TEX_L4_PRIS);
-  init_bucket_renderer<Merc2>("merc-l4-pris", BucketCategory::MERC, BucketId::MERC_L4_PRIS);
-  init_bucket_renderer<TextureUploadHandler>("tex-l5-pris", BucketCategory::TEX,
-                                             BucketId::TEX_L5_PRIS);
-  init_bucket_renderer<Merc2>("merc-l5-pris", BucketCategory::MERC, BucketId::MERC_L5_PRIS);
   // 220
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-pris", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_PRIS);
   init_bucket_renderer<Merc2>("merc-lcom-pris", BucketCategory::MERC, BucketId::MERC_LCOM_PRIS);
-  init_bucket_renderer<TextureUploadHandler>("tex-l0-pris2", BucketCategory::TEX,
-                                             BucketId::TEX_L0_PRIS2);
-  init_bucket_renderer<Merc2>("merc-l0-pris2", BucketCategory::MERC, BucketId::MERC_L0_PRIS2);
-  init_bucket_renderer<TextureUploadHandler>("tex-l1-pris2", BucketCategory::TEX,
-                                             BucketId::TEX_L1_PRIS2);
-  init_bucket_renderer<Merc2>("merc-l1-pris2", BucketCategory::MERC, BucketId::MERC_L1_PRIS2);
-  // 230
-  init_bucket_renderer<TextureUploadHandler>("tex-l2-pris2", BucketCategory::TEX,
-                                             BucketId::TEX_L2_PRIS2);
-  init_bucket_renderer<Merc2>("merc-l2-pris2", BucketCategory::MERC, BucketId::MERC_L2_PRIS2);
-  init_bucket_renderer<TextureUploadHandler>("tex-l3-pris2", BucketCategory::TEX,
-                                             BucketId::TEX_L3_PRIS2);
-  init_bucket_renderer<Merc2>("merc-l3-pris2", BucketCategory::MERC, BucketId::MERC_L3_PRIS2);
-  // 240
-  init_bucket_renderer<TextureUploadHandler>("tex-l4-pris2", BucketCategory::TEX,
-                                             BucketId::TEX_L4_PRIS2);
-  init_bucket_renderer<Merc2>("merc-l4-pris2", BucketCategory::MERC, BucketId::MERC_L4_PRIS2);
-  init_bucket_renderer<TextureUploadHandler>("tex-l5-pris2", BucketCategory::TEX,
-                                             BucketId::TEX_L5_PRIS2);
-  init_bucket_renderer<Merc2>("merc-l5-pris2", BucketCategory::MERC, BucketId::MERC_L5_PRIS2);
-  // 250
-  init_bucket_renderer<TextureUploadHandler>("tex-l0-water", BucketCategory::TEX,
-                                             BucketId::TEX_L0_WATER);
-  init_bucket_renderer<Merc2>("merc-l0-water", BucketCategory::MERC, BucketId::MERC_L0_WATER);
-  init_bucket_renderer<TFragment>("tfrag-w-l0-alpha", BucketCategory::TFRAG,
-                                  BucketId::TFRAG_W_L0_WATER,
-                                  std::vector{tfrag3::TFragmentTreeKind::WATER}, false, 0);
-  // 260
-  init_bucket_renderer<TextureUploadHandler>("tex-l1-water", BucketCategory::TEX,
-                                             BucketId::TEX_L1_WATER);
-  init_bucket_renderer<Merc2>("merc-l1-water", BucketCategory::MERC, BucketId::MERC_L1_WATER);
-  init_bucket_renderer<TFragment>("tfrag-w-l1-alpha", BucketCategory::TFRAG,
-                                  BucketId::TFRAG_W_L1_WATER,
-                                  std::vector{tfrag3::TFragmentTreeKind::WATER}, false, 1);
-
-  // 270
-  init_bucket_renderer<TextureUploadHandler>("tex-l2-water", BucketCategory::TEX,
-                                             BucketId::TEX_L2_WATER);
-  init_bucket_renderer<Merc2>("merc-l2-water", BucketCategory::MERC, BucketId::MERC_L2_WATER);
-  init_bucket_renderer<TFragment>("tfrag-w-l2-alpha", BucketCategory::TFRAG,
-                                  BucketId::TFRAG_W_L2_WATER,
-                                  std::vector{tfrag3::TFragmentTreeKind::WATER}, false, 2);
-  init_bucket_renderer<TextureUploadHandler>("tex-l3-water", BucketCategory::TEX,
-                                             BucketId::TEX_L3_WATER);
-  // 280
-  init_bucket_renderer<Merc2>("merc-l3-water", BucketCategory::MERC, BucketId::MERC_L3_WATER);
-  init_bucket_renderer<TFragment>("tfrag-w-l3-water", BucketCategory::TFRAG,
-                                  BucketId::TFRAG_W_L3_WATER,
-                                  std::vector{tfrag3::TFragmentTreeKind::WATER}, false, 3);
-  init_bucket_renderer<TextureUploadHandler>("tex-l4-water", BucketCategory::TEX,
-                                             BucketId::TEX_L4_WATER);
-  init_bucket_renderer<Merc2>("merc-l4-water", BucketCategory::MERC, BucketId::MERC_L4_WATER);
-  // 290
-  init_bucket_renderer<TextureUploadHandler>("tex-l5-water", BucketCategory::TEX,
-                                             BucketId::TEX_L5_WATER);
-  // 300
-  init_bucket_renderer<TFragment>("tfrag-w-l5-water", BucketCategory::TFRAG,
-                                  BucketId::TFRAG_W_L5_WATER,
-                                  std::vector{tfrag3::TFragmentTreeKind::WATER}, false, 5);
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-water", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_WATER);
   init_bucket_renderer<Merc2>("merc-lcom-water", BucketCategory::MERC, BucketId::MERC_LCOM_WATER);
@@ -304,7 +180,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-all-sprite", BucketCategory::TEX,
                                              BucketId::TEX_ALL_SPRITE);
   init_bucket_renderer<Sprite3>("particles", BucketCategory::SPRITE, BucketId::PARTICLES);
-  init_bucket_renderer<LightningRenderer>("lightning", BucketCategory::OTHER, BucketId::LIGHTNING);
+  init_bucket_renderer<LightningRenderer>("lightning", BucketCategory::OTHER, BucketId::EFFECTS);
   init_bucket_renderer<TextureUploadHandler>("tex-all-warp", BucketCategory::TEX,
                                              BucketId::TEX_ALL_WARP);
   init_bucket_renderer<DirectRenderer>("debug-no-zbuf1", BucketCategory::OTHER,
@@ -1002,7 +878,7 @@ void OpenGLRenderer::dispatch_buckets_jak2(DmaFollower dma,
 
   m_render_state.buckets_base = dma.current_tag_offset();  // starts at 0 in jak 2
   m_render_state.next_bucket = m_render_state.buckets_base + 16;
-  m_render_state.bucket_for_vis_copy = (int)jak2::BucketId::SPECIAL_BUCKET_2;
+  m_render_state.bucket_for_vis_copy = (int)jak2::BucketId::BUCKET_2;
   m_render_state.num_vis_to_copy = 6;
 
   for (size_t bucket_id = 0; bucket_id < m_bucket_renderers.size(); bucket_id++) {
