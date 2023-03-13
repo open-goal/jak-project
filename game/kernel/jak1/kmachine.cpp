@@ -640,9 +640,9 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-prof", (void*)prof_event);
 
   // HTTP server stuff
-  make_function_symbol_from_c("pc-http-register", (void*)pc_http_register);
-  make_function_symbol_from_c("pc-http-update-position", (void*)pc_http_update_position);
-  make_function_symbol_from_c("pc-http-get-positions", (void*)pc_http_get_positions);
+  make_function_symbol_from_c("pc-http-register", (void*)http_register);
+  make_function_symbol_from_c("pc-http-update-position", (void*)http_update_position);
+  make_function_symbol_from_c("pc-http-get-positions", (void*)http_get_positions);
 
   // debugging tools
   make_function_symbol_from_c("pc-filter-debug-string?", (void*)pc_filter_debug_string);

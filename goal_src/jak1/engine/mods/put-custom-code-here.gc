@@ -21,7 +21,7 @@ an orb |#
 ;; Begin function defintions.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define *remote-players* (new 'static 'remote-player-list))
+(define *multiplayer-info* (new 'static 'multiplayer-info :player_num -1))
 (define *registered-with-server?* #f)
 (define *last-position-sync-time* (the-as time-frame #f))
 (defun runs-every-frame ()
@@ -29,22 +29,38 @@ an orb |#
   
   ;; register with server if we haven't yet
   (when (not *registered-with-server?*)
-    ;; (if (pc-http-register)
-    ;;   (set! *registered-with-server?* #t)
-    ;;   )
+    (format 0 "mpinfo: ~P~%" *multiplayer-info*)
+    (inspect *multiplayer-info*)
+    (pc-http-register *multiplayer-info*)
+    (set! *registered-with-server?* #t)
+    ;; for us to wait 0.25s to ensure registration before syncing position
+    (set! *last-position-sync-time* (-> *display* base-frame-counter))
     )
 
-  (when *registered-with-server?*
+  (when #f ;; *registered-with-server?*
     ;; if never synced positions, or its been 1s, request updated positions
     (when (or (not *last-position-sync-time*)
-              (>= (- (-> *display* base-frame-counter) *last-position-sync-time*) (seconds 1.0)))
-      ;; (pc-update-other-positions *remote-players*) ;; request updated positions from server (async)
+              (>= (- (-> *display* base-frame-counter) *last-position-sync-time*) (seconds 0.25)))
+      ;; update this player's position and send to server
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) trans_x) (-> *target* root trans x))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) trans_y) (-> *target* root trans y))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) trans_z) (-> *target* root trans z))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_x)  (-> *target* root quat x))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_y)  (-> *target* root quat y))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_z)  (-> *target* root quat z))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_w)  (-> *target* root quat w))
+      (pc-http-update-position)
+
+      ;; request to get positions of other players from server (async)
+      (pc-http-get-positions) 
+
+      ;; update last sync time
       (set! *last-position-sync-time* (-> *display* base-frame-counter))
       )
 
-    ;; try to update targets based on remote positions
-    
-
+    ;; other players positions updated async, so try to move them regardless of last sync time
+    ;; (inspect (-> *multiplayer-info* players 0))
+    ;; (inspect (-> *multiplayer-info* players 1))
     )
   (none)
   )

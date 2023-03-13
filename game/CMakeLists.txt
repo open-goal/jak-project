@@ -8,6 +8,7 @@ set_source_files_properties(kernel/asm_funcs.asm PROPERTIES COMPILE_FLAGS "-g")
 set(RUNTIME_SOURCE
         runtime.cpp
         discord.cpp
+        multiplayer.cpp
         system/SystemThread.cpp
         system/IOP_Kernel.cpp
         system/iop_thread.cpp
