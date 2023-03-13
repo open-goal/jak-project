@@ -26,7 +26,7 @@ size_t curl_write_callbacka(char* ptr, size_t size, size_t nmemb, void* userdata
 void http_register(u64 mpInfo) {
   gMultiplayerInfo = Ptr<MultiplayerInfo>(mpInfo).c();
   // spawn new thread to handle parsing curl response
-  std::thread t2([]() {
+  std::thread([]() {
     // Initialize curl
     curl_global_cleanup();
     curl_global_init(CURL_GLOBAL_ALL);
@@ -55,13 +55,12 @@ void http_register(u64 mpInfo) {
       int player_num = response_json["player_num"];
       gMultiplayerInfo->player_num = player_num;
     }
-  });
-  t2.detach();
+  }).detach();
 }
 
 void http_update_position() {
   // spawn new thread to handle parsing curl response
-  std::thread t2([]() {
+  std::thread([]() {
     // Initialize curl
     curl_global_cleanup();
     curl_global_init(CURL_GLOBAL_ALL);
@@ -80,9 +79,10 @@ void http_update_position() {
       {"quat_w", rpInfo.quat_w}
     };
     std::string payload_str = payload.dump();
+    std::string url = "http://localhost:8080/update?player_num=" + std::to_string(gMultiplayerInfo->player_num);
 
     // Set curl options
-    curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:8080/update?player_num=" + gMultiplayerInfo->player_num);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload_str.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_callbacka);
     std::string response_data;
@@ -97,27 +97,23 @@ void http_update_position() {
 
     // Check if the request was successful
     if (res == CURLE_OK) {
-      // Parse JSON response
-      nlohmann::json response_json = nlohmann::json::parse(response_data);
-
-      // Extract values from JSON response
-      int player_num = response_json["player_num"];
-      gMultiplayerInfo->player_num = player_num;
+      // no action needed after posting position
     }
-  });
-  t2.detach();
+  }).detach();
 }
 
 void http_get_positions() {
   // spawn new thread to handle parsing curl response
-  std::thread t2([]() {
+  std::thread([]() {
     // Initialize curl
     curl_global_cleanup();
     curl_global_init(CURL_GLOBAL_ALL);
     CURL* curl = curl_easy_init();
+    std::string url =
+        "http://localhost:8080/get?player_num=" + std::to_string(gMultiplayerInfo->player_num);
 
     // Set curl options
-    curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:8080/get?player_num=" + gMultiplayerInfo->player_num);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_callbacka);
     std::string response_data;
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
@@ -147,6 +143,5 @@ void http_get_positions() {
         }
       }
     }
-  });
-  t2.detach();
+  }).detach();
 }

@@ -85,7 +85,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         # fill out empty keys
         PLAYERS.append({})
         for k in EXPECTED_KEYS:
-          PLAYERS[player_num][k] = None
+          PLAYERS[player_num][k] = 0.0
 
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
