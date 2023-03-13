@@ -1,4 +1,4 @@
-version: "3.13"
+version: 3
 
 includes:
   build: ./scripts/tasks/Taskfile_{{OS}}.yml
@@ -38,28 +38,28 @@ tasks:
       - sh: test -f {{.DECOMP_BIN_RELEASE_DIR}}/decompiler{{.EXE_FILE_EXTENSION}}
         msg: "Couldn't locate decompiler executable in '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler'"
     cmds:
-      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --config-override '{\"decompile_code\": false, \"levels_extract\": true, \"allowed_objects\": []}'"
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --version \"{{.DECOMP_CONFIG_VERSION}}\" --config-override '{\"decompile_code\": false, \"levels_extract\": true, \"allowed_objects\": []}'"
   boot-game:
     desc: "Boots the game, it will fail if it's not already compiled!"
     preconditions:
       - sh: test -f {{.GK_BIN_RELEASE_DIR}}/gk{{.EXE_FILE_EXTENSION}}
         msg: "Couldn't locate runtime executable in '{{.GK_BIN_RELEASE_DIR}}/gk'"
     cmds:
-      - "{{.GK_BIN_RELEASE_DIR}}/gk -boot -fakeiso -debug -v"
+      - "{{.GK_BIN_RELEASE_DIR}}/gk -v --game {{.GAME}} -- -boot -fakeiso -debug"
   boot-game-retail:
     desc: "Boots the game without debug mode, it will fail if it's not already compiled!"
     preconditions:
       - sh: test -f {{.GK_BIN_RELEASE_DIR}}/gk{{.EXE_FILE_EXTENSION}}
         msg: "Couldn't locate runtime executable in '{{.GK_BIN_RELEASE_DIR}}/gk'"
     cmds:
-      - "{{.GK_BIN_RELEASE_DIR}}/gk -boot -fakeiso -v"
+      - "{{.GK_BIN_RELEASE_DIR}}/gk -v --game {{.GAME}} -- -boot -fakeiso"
   run-game:
     desc: "Start the game's runtime, to start the game itself the REPL is required"
     preconditions:
       - sh: test -f {{.GK_BIN_RELEASE_DIR}}/gk{{.EXE_FILE_EXTENSION}}
         msg: "Couldn't locate runtime executable in '{{.GK_BIN_RELEASE_DIR}}/gk'"
     cmds:
-      - "{{.GK_BIN_RELEASE_DIR}}/gk -fakeiso -debug -{{.GAME}} -v"
+      - "{{.GK_BIN_RELEASE_DIR}}/gk -v --game {{.GAME}} -- -fakeiso -debug"
   # DEVELOPMENT
   repl:
     desc: "Start the REPL"
@@ -73,20 +73,17 @@ tasks:
     cmds:
       - cmd: python ./third-party/run-clang-format/run-clang-format.py -r common decompiler game goalc test tools lsp -i
       # npm install -g prettier
-      - cmd: npx prettier --write ./decompiler/config/jak1_ntsc_black_label/*.jsonc
+      - cmd: npx prettier --write ./decompiler/config/jak1/**/*.jsonc
         ignore_error: true
-      - cmd: npx prettier --write ./decompiler/config/jak2/*.jsonc
+      - cmd: npx prettier --write ./decompiler/config/jak2/**/*.jsonc
         ignore_error: true
-  run-game-headless:
-    cmds:
-      - "{{.GK_BIN_RELEASE_DIR}}/gk -fakeiso -debug -nodisplay"
   # DECOMPILING
   decomp:
     cmds:
-      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --config-override '{\"levels_extract\": false}'"
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --version \"{{.DECOMP_CONFIG_VERSION}}\" --config-override '{\"decompile_code\": true, \"levels_extract\": false}'"
   decomp-file:
     cmds:
-      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --config-override '{\"levels_extract\": false, \"allowed_objects\": [\"{{.FILE}}\"]}'"
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --version \"{{.DECOMP_CONFIG_VERSION}}\" --config-override '{\"decompile_code\": true, \"levels_extract\": false, \"allowed_objects\": [\"{{.FILE}}\"]}'"
   decomp-clean:
     cmds:
       - python ./scripts/tasks/clean-decomp.py --game "{{.GAME}}"
@@ -95,10 +92,10 @@ tasks:
       - python ./scripts/gsrc/lint-gsrc-file.py --game {{.GAME}} --file {{.FILE}}
   update-gsrc:
     cmds:
-      - python ./scripts/gsrc/update-gsrc-via-refs.py --game "{{.GAME}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler" --decompiler_config {{.DECOMP_CONFIG}}
+      - python ./scripts/gsrc/update-gsrc-via-refs.py --game "{{.GAME}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler" --decompiler_config {{.DECOMP_CONFIG}} --version {{.DECOMP_CONFIG_VERSION}}
   update-gsrc-glob:
     cmds:
-      - python ./scripts/gsrc/update-gsrc-via-refs.py --game "{{.GAME}}" --file_pattern "{{.GLOB}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler" --decompiler_config {{.DECOMP_CONFIG}}
+      - python ./scripts/gsrc/update-gsrc-via-refs.py --game "{{.GAME}}" --file_pattern "{{.GLOB}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler" --decompiler_config {{.DECOMP_CONFIG}} --version {{.DECOMP_CONFIG_VERSION}}
   update-gsrc-file:
     cmds:
       - task: decomp-file

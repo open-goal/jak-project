@@ -3299,55 +3299,57 @@ void FunctionCallElement::update_from_stack(const Env& env,
           // lg::print("GOT: {}\n", pop->to_string(env));
           arg_forms.at(0) = pop;
           auto head = mr.maps.forms.at(1);
+          auto head_obj = head->to_form(env);
 
           // rewrite get-art-by-name-method calls to get-art-by-name, which is a macro that
           // will apply the appropriate cast.
           if (tp_type.kind == TP_Type::Kind::GET_ART_BY_NAME_METHOD) {
-            ASSERT(head->to_string(env) == "get-art-by-name-method");
+            ASSERT(head_obj.is_symbol("get-art-by-name-method"));
             head = pool.form<ConstantTokenElement>("get-art-by-name");
-          }
-
-          auto head_obj = head->to_form(env);
-          if (head_obj.is_symbol() && tp_type.method_from_type().base_type() == "setting-control" &&
-              arg_forms.at(0)->to_form(env).is_symbol("*setting-control*") &&
-              arg_forms.size() > 1) {
-            auto arg1_reg = get_form_reg_acc(arg_forms.at(1));
-            if (arg1_reg && arg1_reg->reg().is_s6()) {
-              std::string new_head;
-              if (head_obj.is_symbol("add-setting")) {
-                new_head = "add-setting!";
-              } else if (head_obj.is_symbol("set-setting")) {
-                new_head = "set-setting!";
-              } else if (head_obj.is_symbol("remove-setting")) {
-                new_head = "remove-setting!";
-              }
-              if (!new_head.empty()) {
-                auto oldp = head->parent_element;
-                head = pool.form<ConstantTokenElement>(new_head);
-                head->parent_element = oldp;
-                arg_forms.erase(arg_forms.begin());
-                arg_forms.erase(arg_forms.begin());
-                if (arg_forms.size() > 3) {
-                  auto argi = arg_forms.at(3);
-                  auto argi_o = argi->to_form(env);
-                  if (argi_o.is_int()) {
-                    auto argset = arg_forms.at(0)->to_string(env);
-                    if (argset == "'process-mask") {
-                      auto en = env.dts->ts.try_enum_lookup("process-mask");
-                      if (en) {
-                        arg_forms.at(3) =
-                            cast_to_bitfield_enum(env.dts->ts.try_enum_lookup("process-mask"), pool,
-                                                  env, argi_o.as_int());
-                      }
-                    } else if (argset == "'sound-flava") {
-                      auto en = env.dts->ts.try_enum_lookup("music-flava");
-                      if (en) {
-                        arg_forms.at(3) = cast_to_int_enum(
-                            env.dts->ts.try_enum_lookup("music-flava"), pool, env, argi_o.as_int());
+          } else {
+            if (head_obj.is_symbol() &&
+                tp_type.method_from_type().base_type() == "setting-control" &&
+                arg_forms.at(0)->to_form(env).is_symbol("*setting-control*") &&
+                arg_forms.size() > 1) {
+              auto arg1_reg = get_form_reg_acc(arg_forms.at(1));
+              if (arg1_reg && arg1_reg->reg().is_s6()) {
+                std::string new_head;
+                if (head_obj.is_symbol("add-setting")) {
+                  new_head = "add-setting!";
+                } else if (head_obj.is_symbol("set-setting")) {
+                  new_head = "set-setting!";
+                } else if (head_obj.is_symbol("remove-setting")) {
+                  new_head = "remove-setting!";
+                }
+                if (!new_head.empty()) {
+                  auto oldp = head->parent_element;
+                  head = pool.form<ConstantTokenElement>(new_head);
+                  head->parent_element = oldp;
+                  arg_forms.erase(arg_forms.begin());
+                  arg_forms.erase(arg_forms.begin());
+                  if (arg_forms.size() > 3) {
+                    auto argi = arg_forms.at(3);
+                    auto argi_o = argi->to_form(env);
+                    if (argi_o.is_int()) {
+                      auto argset = arg_forms.at(0)->to_string(env);
+                      if (argset == "'process-mask") {
+                        auto en = env.dts->ts.try_enum_lookup("process-mask");
+                        if (en) {
+                          arg_forms.at(3) =
+                              cast_to_bitfield_enum(env.dts->ts.try_enum_lookup("process-mask"),
+                                                    pool, env, argi_o.as_int());
+                        }
+                      } else if (argset == "'sound-flava") {
+                        auto en = env.dts->ts.try_enum_lookup("music-flava");
+                        if (en) {
+                          arg_forms.at(3) =
+                              cast_to_int_enum(env.dts->ts.try_enum_lookup("music-flava"), pool,
+                                               env, argi_o.as_int());
+                        }
                       }
                     }
+                    arg_forms.at(3)->parent_element = argi->parent_element;
                   }
-                  arg_forms.at(3)->parent_element = argi->parent_element;
                 }
               }
             }
@@ -3507,8 +3509,8 @@ void FunctionCallElement::update_from_stack(const Env& env,
     auto temp_form = pool.alloc_single_form(nullptr, new_form);
     auto match_result = match(matcher, temp_form);
     if (match_result.matched) {
-      auto type_1 = match_result.maps.strings.at(type_for_method);
-      auto& name = match_result.maps.strings.at(method_name);
+      const auto type_1 = match_result.maps.strings.at(type_for_method);
+      const auto& name = match_result.maps.strings.at(method_name);
 
       if (name == "new" && type_1 == "object") {
         // calling the new method of object. This is a special case that turns into an (object-new
@@ -3608,7 +3610,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
     auto temp_form = pool.alloc_single_form(nullptr, new_form);
     auto match_result = match(matcher, temp_form);
     if (match_result.matched) {
-      auto name = match_result.maps.strings.at(method_name);
+      const auto name = match_result.maps.strings.at(method_name);
       if (name != "new") {
         // only do these checks on non-new methods.  New methods are treated as functions because
         // they are never virtual and are never called like a method.
@@ -3621,35 +3623,95 @@ void FunctionCallElement::update_from_stack(const Env& env,
       }
 
       auto type_source_form = match_result.maps.forms.at(type_source);
+      auto type_source_obj = type_source_form->to_form(env);
 
-      if (name == "get-property-value-float" && type_source_form->to_string(env) == "res-lump") {
+      bool is_res_lump = type_source_obj.is_symbol("res-lump");
+      if (name == "get-property-value-float" && is_res_lump) {
         auto as_macro = handle_get_property_value_float(arg_forms, pool, env);
         if (as_macro) {
           result->push_back(as_macro);
           return;
         }
-      } else if (name == "get-property-data" && type_source_form->to_string(env) == "res-lump") {
+      } else if (name == "get-property-data" && is_res_lump) {
         auto as_macro = handle_get_property_data(arg_forms, pool, env);
         if (as_macro) {
           result->push_back(as_macro);
           return;
         }
-      } else if (name == "get-property-struct" && type_source_form->to_string(env) == "res-lump") {
+      } else if (name == "get-property-struct" && is_res_lump) {
         auto as_macro = handle_get_property_struct(arg_forms, pool, env);
         if (as_macro) {
           result->push_back(as_macro);
           return;
         }
-      } else if (name == "get-property-value" && type_source_form->to_string(env) == "res-lump") {
+      } else if (name == "get-property-value" && is_res_lump) {
         auto as_macro = handle_get_property_value(arg_forms, pool, env);
         if (as_macro) {
           result->push_back(as_macro);
           return;
         }
+      } else if (name == "eval!" && arg_forms.size() == 2 &&
+                 type_source_obj.is_symbol("script-context")) {
+        // jak 2 macro for eval'ing a "script"
+        auto arg_context = arg_forms.at(0);  // the script context
+        auto arg_script = arg_forms.at(1);   // the script itself
+        auto mr_new_script_context =
+            match(Matcher::op_fixed(FixedOperatorKind::NEW,
+                                    {Matcher::constant_token("'stack"),
+                                     Matcher::constant_token("'script-context"), Matcher::any(0),
+                                     Matcher::any(1), Matcher::any(2)}),
+                  arg_context);
+        if (mr_new_script_context.matched) {
+          // grab the arguments passed to the context alloc. nullptr = dont put in macro (uses
+          // defaults)
+          auto ctx_key = mr_new_script_context.maps.forms.at(0);  // a key given to the context
+          auto ctx_proc =
+              mr_new_script_context.maps.forms.at(1);  // the process the context's bound to
+          auto ctx_vector = mr_new_script_context.maps.forms.at(2);  // some vector for positioning
+
+          // default for arg is (process->ppointer self) [weird]
+          auto mr_ctx_key = match(
+              Matcher::op_fixed(FixedOperatorKind::PROCESS_TO_PPOINTER, {Matcher::s6()}), ctx_key);
+          if (mr_ctx_key.matched) {
+            ctx_key = nullptr;
+          }
+          // default for process arg is just self
+          auto mr_ctx_proc = match(Matcher::s6(), ctx_proc);
+          if (mr_ctx_proc.matched) {
+            ctx_proc = nullptr;
+          }
+          // default for vector is just #f
+          auto mr_ctx_vector = match(Matcher::cast("vector", Matcher::symbol("#f")), ctx_vector);
+          if (mr_ctx_vector.matched) {
+            ctx_vector = nullptr;
+          }
+
+          // build the macro!
+          std::vector<Form*> macro_args;
+
+          macro_args.push_back(arg_script);
+          if (ctx_key) {
+            macro_args.push_back(pool.form<ConstantTokenElement>(":key"));
+            macro_args.push_back(ctx_key);
+          }
+          if (ctx_proc) {
+            macro_args.push_back(pool.form<ConstantTokenElement>(":proc"));
+            macro_args.push_back(ctx_proc);
+          }
+          if (ctx_vector) {
+            macro_args.push_back(pool.form<ConstantTokenElement>(":vector"));
+            macro_args.push_back(ctx_vector);
+          }
+
+          result->push_back(pool.alloc_element<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>("script-eval")),
+              macro_args));
+          return;
+        }
       }
 
       // if the type is the exact type of the argument, we want to build it into a method call
-      if (type_source_form->to_string(env) == first_arg_type.base_type() && name != "new") {
+      if (type_source_obj.is_symbol(first_arg_type.base_type()) && name != "new") {
         if (env.dts->ts.should_use_virtual_methods(tp_type.method_from_type(),
                                                    tp_type.method_id())) {
           throw std::runtime_error(fmt::format(

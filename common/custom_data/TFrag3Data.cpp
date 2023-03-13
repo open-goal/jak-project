@@ -254,6 +254,7 @@ void CollisionMesh::serialize(Serializer& ser) {
 void MercDraw::serialize(Serializer& ser) {
   ser.from_ptr(&mode);
   ser.from_ptr(&tree_tex_id);
+  ser.from_ptr(&eye_id);
   ser.from_ptr(&first_index);
   ser.from_ptr(&index_count);
   ser.from_ptr(&num_triangles);
@@ -315,6 +316,7 @@ void MercModel::serialize(Serializer& ser) {
   ser.from_ptr(&max_bones);
   ser.from_ptr(&st_vif_add);
   ser.from_ptr(&xyz_scale);
+  ser.from_ptr(&st_magic);
 }
 
 void MercModelGroup::serialize(Serializer& ser) {
