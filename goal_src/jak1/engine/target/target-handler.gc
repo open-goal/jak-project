@@ -317,7 +317,7 @@
     (set! (-> s5-0 shove-back) arg0)
     (set! (-> s5-0 shove-up) arg1)
     (set! (-> s5-0 angle)
-          (if (zero? (logand (logior (-> self control status) (-> self control old-status)) (cshape-moving-flags onsurf)))
+          (if (not (logtest? (logior (-> self control status) (-> self control old-status)) (cshape-moving-flags onsurf)))
               'air
               'shove
               )
@@ -381,7 +381,7 @@
       )
     (set! (-> self attack-info-rec prev-state) (-> self state))
     (logior! (-> self attack-info-rec mask) (attack-mask atki13))
-    (when (zero? (logand (-> self attack-info-rec mask) (attack-mask attacker)))
+    (when (not (logtest? (-> self attack-info-rec mask) (attack-mask attacker)))
       (set! (-> self attack-info-rec attacker) (process->handle arg2))
       (logior! (-> self attack-info-rec mask) (attack-mask attacker))
       )
@@ -727,7 +727,7 @@
   )
 
 (defbehavior target-apply-tongue target ((arg0 vector))
-  (when (zero? (logand (-> self state-flags) (state-flags being-attacked)))
+  (when (not (logtest? (-> self state-flags) (state-flags being-attacked)))
     (logior! (-> self state-flags) (state-flags prevent-attack prevent-duck remove-prevents))
     (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> self control trans))))
       (set! (-> self control unknown-float41) (lerp-scale
@@ -765,7 +765,7 @@
     (('shove)
      (when (!= (-> self next-state name) 'target-hit)
        (mem-copy! (the-as pointer (-> self attack-info-rec)) (the-as pointer (-> arg3 param 1)) 104)
-       (when (zero? (logand (-> self attack-info-rec mask) (attack-mask attacker)))
+       (when (not (logtest? (-> self attack-info-rec mask) (attack-mask attacker)))
          (set! (-> self attack-info-rec attacker) (process->handle arg0))
          (logior! (-> self attack-info-rec mask) (attack-mask attacker))
          )
@@ -786,7 +786,7 @@
      )
     (('loading)
      (if (not (or (and (logtest? (-> self control unknown-surface00 flags) (surface-flags jump))
-                       (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
+                       (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
                        )
                   (or (logtest? (-> self water flags) (water-flags wt09))
                       (logtest? (-> self state-flags) (state-flags dangerous sf02 being-attacked grabbed first-person-mode dying))
@@ -823,7 +823,7 @@
         )
        (('tube)
         (if (and (logtest? (-> self control status) (cshape-moving-flags onsurf))
-                 (zero? (logand (-> self water flags) (water-flags wt09)))
+                 (not (logtest? (-> self water flags) (water-flags wt09)))
                  )
             (go target-tube-start (process->handle (the-as process (-> arg3 param 1))))
             )
@@ -855,7 +855,7 @@
      (go target-edge-grab)
      )
     (('pole-grab)
-     (if (zero? (logand (-> self control root-prim prim-core action) (collide-action ca-8)))
+     (if (not (logtest? (-> self control root-prim prim-core action) (collide-action ca-8)))
          (go target-pole-cycle (process->handle (the-as process (-> arg3 param 0))))
          )
      )
@@ -973,7 +973,7 @@
                         (-> self control unknown-dword50)
                         (-> self control unknown-dword51)
                         )
-                      (zero? (logand (-> self state-flags) (state-flags being-attacked dying)))
+                      (not (logtest? (-> self state-flags) (state-flags being-attacked dying)))
                       )
              (set! (-> self control unknown-vector52 quad) (-> self control trans quad))
              (target-timed-invulnerable (seconds 0.1) self)
@@ -1075,7 +1075,3 @@ target-standard-event-handler
   0
   (none)
   )
-
-
-
-
