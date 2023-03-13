@@ -4737,16 +4737,19 @@ FormElement* ConditionElement::make_zero_check_generic(const Env& env,
   if (as_logtest) {
     auto logtest_form = pool.alloc_single_form(nullptr, as_logtest);
     auto as_cpad_macro = try_make_logtest_cpad_macro(logtest_form, pool);
-    auto focus_test_macro = try_make_focus_test_macro(logtest_form, pool);
     if (as_cpad_macro) {
       logtest_form = pool.alloc_single_form(nullptr, as_cpad_macro);
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_compare(IR2_Condition::Kind::FALSE), logtest_form);
     }
+    auto focus_test_macro = try_make_focus_test_macro(logtest_form, pool);
     if (focus_test_macro) {
       logtest_form = pool.alloc_single_form(nullptr, focus_test_macro);
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_compare(IR2_Condition::Kind::FALSE), logtest_form);
     }
-    auto not_form = pool.alloc_element<GenericElement>(
+    return pool.alloc_element<GenericElement>(
         GenericOperator::make_compare(IR2_Condition::Kind::FALSE), logtest_form);
-    return not_form;
   }
 
   return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
@@ -4784,10 +4787,10 @@ FormElement* ConditionElement::make_nonzero_check_generic(const Env& env,
   if (as_logtest) {
     auto logtest_form = pool.alloc_single_form(nullptr, as_logtest);
     auto as_cpad_macro = try_make_logtest_cpad_macro(logtest_form, pool);
-    auto focus_test_macro = try_make_focus_test_macro(logtest_form, pool);
     if (as_cpad_macro) {
       return as_cpad_macro;
     }
+    auto focus_test_macro = try_make_focus_test_macro(logtest_form, pool);
     if (focus_test_macro) {
       return focus_test_macro;
     }
@@ -5958,13 +5961,16 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
     if (as_logtest) {
       auto logtest_form = pool.alloc_single_form(nullptr, as_logtest);
       auto as_cpad_macro = try_make_logtest_cpad_macro(logtest_form, pool);
-      auto focus_test_macro = try_make_focus_test_macro(logtest_form, pool);
       if (as_cpad_macro) {
         val = pool.alloc_single_form(nullptr, as_cpad_macro);
-      } else if (focus_test_macro) {
-        val = pool.alloc_single_form(nullptr, focus_test_macro);
-      } else {
-        val = pool.alloc_single_form(nullptr, as_logtest);
+      }
+      if (!val) {
+        auto focus_test_macro = try_make_focus_test_macro(logtest_form, pool);
+        if (focus_test_macro) {
+          val = pool.alloc_single_form(nullptr, focus_test_macro);
+        } else {
+          val = pool.alloc_single_form(nullptr, as_logtest);
+        }
       }
     }
   } else {
@@ -5974,13 +5980,16 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
       auto not_form = pool.form<GenericElement>(
           GenericOperator::make_compare(IR2_Condition::Kind::FALSE), logtest_form);
       auto as_cpad_macro = try_make_logtest_cpad_macro(not_form, pool);
-      auto focus_test_macro = try_make_focus_test_macro(not_form, pool);
       if (as_cpad_macro) {
         val = pool.alloc_single_form(nullptr, as_cpad_macro);
-      } else if (focus_test_macro) {
-        val = pool.alloc_single_form(nullptr, focus_test_macro);
-      } else {
-        val = not_form;
+      }
+      if (!val) {
+        auto focus_test_macro = try_make_focus_test_macro(not_form, pool);
+        if (focus_test_macro) {
+          val = pool.alloc_single_form(nullptr, focus_test_macro);
+        } else {
+          val = not_form;
+        }
       }
     }
   }
