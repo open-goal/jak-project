@@ -630,7 +630,9 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch none vs object.
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 10]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 25]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 30]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 45]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 151]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 216]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 272]
@@ -876,7 +878,7 @@
        (when (and (>= (the-as int (-> self focus aware)) (the-as int (-> self charge-aware)))
                   *target*
                   (and (>= 122880.0 (vector-vector-distance (-> self root-override2 trans) (-> *target* control trans)))
-                       (zero? (logand (focus-status teleporting) (-> *target* focus-status)))
+                       (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
                        )
                   )
          (process-entity-status! self (entity-perm-status subtask-complete) #t)
@@ -1055,13 +1057,12 @@
          )
     (when (and s5-0 v1-0)
       (cond
-        ((and (logtest? (-> obj focus-status) (focus-status dangerous))
-              ((method-of-type touching-shapes-entry prims-touching-action?)
-               (the-as touching-shapes-entry s5-0)
-               (-> obj root-override2)
-               (collide-action deadly)
-               (collide-action)
-               )
+        ((and (focus-test? obj dangerous) ((method-of-type touching-shapes-entry prims-touching-action?)
+                                           (the-as touching-shapes-entry s5-0)
+                                           (-> obj root-override2)
+                                           (collide-action deadly)
+                                           (collide-action)
+                                           )
               )
          (let ((a3-2 (if ((method-of-type touching-shapes-entry prims-touching-action?)
                           (the-as touching-shapes-entry s5-0)
@@ -1245,7 +1246,7 @@
                        (vector-vector-xz-distance (get-trans (the-as process-focusable gp-0) 0) (-> self root-override2 trans))
                        )
                     (and gp-0
-                         (zero? (logand (-> (the-as process-focusable gp-0) focus-status) (focus-status disable dead ignore grabbed)))
+                         (not (logtest? (-> (the-as process-focusable gp-0) focus-status) (focus-status disable dead ignore grabbed)))
                          )
                     )
                 (goto cfg-25)

@@ -86,7 +86,7 @@
          (let ((v1-5 (-> arg3 param 0)))
            (cond
              ((= v1-5 'grab)
-              (when (not (logtest? (-> self focus-status) (focus-status dead)))
+              (when (not (focus-test? self dead))
                 (if (not (-> arg3 param 1))
                     #t
                     (go target-grab 'stance)
@@ -103,7 +103,7 @@
            )
          )
         (('trip)
-         (if (not (or (logtest? (-> self focus-status) (focus-status dead hit grabbed))
+         (if (not (or (focus-test? self dead hit grabbed)
                       (and (-> self next-state) (= (-> self next-state name) 'target-indax-trip))
                       )
                   )
@@ -315,7 +315,7 @@
     (set! (-> self draw art-group) (-> self indax art-group-backup))
     (logclear! (-> self draw status) (draw-control-status no-draw-bounds2))
     (send-event (ppointer->process (-> self sidekick)) 'matrix #f)
-    (if (not (logtest? (-> self focus-status) (focus-status dead)))
+    (if (not (focus-test? self dead))
         (set! (-> self fact-override health) (-> self fact-override health-max))
         )
     (target-exit)
@@ -851,7 +851,7 @@
              (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 12288.0)
              (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                   (not (logtest? (water-flags touch-water) (-> self water flags)))
-                  (zero? (logand (state-flags prevent-jump prevent-double-jump) (-> self state-flags)))
+                  (not (logtest? (state-flags prevent-jump prevent-double-jump) (-> self state-flags)))
                   )
              )
         (go

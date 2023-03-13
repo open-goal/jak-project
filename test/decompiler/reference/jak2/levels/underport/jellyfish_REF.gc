@@ -736,10 +736,7 @@
     (set! *jellyfish-mech-reserved* #t)
     (set! (-> self attach-lerp) 0.0)
     (let ((gp-0 *target*))
-      (if (and gp-0
-               (logtest? (focus-status mech) (-> gp-0 focus-status))
-               (zero? (logand (-> gp-0 focus-status) (focus-status dead ignore)))
-               )
+      (if (and gp-0 (focus-test? gp-0 mech) (not (logtest? (-> gp-0 focus-status) (focus-status dead ignore))))
           (set! (-> self grab-front)
                 (< (vector-dot
                      (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root-override2 quat))
@@ -847,10 +844,7 @@
                     :frame-num 0.0
                     )
         (until (ja-done? 0)
-          (when (and gp-3
-                     (logtest? (focus-status mech) (-> gp-3 focus-status))
-                     (zero? (logand (-> gp-3 focus-status) (focus-status dead ignore)))
-                     )
+          (when (and gp-3 (focus-test? gp-3 mech) (not (logtest? (-> gp-3 focus-status) (focus-status dead ignore))))
             (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
               (set! (-> a1-13 from) (process->ppointer self))
               (set! (-> a1-13 num-params) 2)
@@ -1045,14 +1039,14 @@
                     arg0
                     (handle->process (-> obj focus handle))
                     )
-                (logtest? (focus-status mech) (-> (the-as process-focusable (if arg0
-                                                                                arg0
-                                                                                (handle->process (-> obj focus handle))
-                                                                                )
-                                                          )
-                                                  focus-status
-                                                  )
+                (focus-test?
+                  (the-as process-focusable (if arg0
+                                                arg0
+                                                (handle->process (-> obj focus handle))
+                                                )
                           )
+                  mech
+                  )
                 (begin
                   (let ((v1-13 #t))
                     (set! arg0 (cond
@@ -1092,14 +1086,14 @@
                     arg0
                     (handle->process (-> obj focus handle))
                     )
-                (logtest? (focus-status mech) (-> (the-as process-focusable (if arg0
-                                                                                arg0
-                                                                                (handle->process (-> obj focus handle))
-                                                                                )
-                                                          )
-                                                  focus-status
-                                                  )
+                (focus-test?
+                  (the-as process-focusable (if arg0
+                                                arg0
+                                                (handle->process (-> obj focus handle))
+                                                )
                           )
+                  mech
+                  )
                 (begin
                   (let ((v1-11 #t))
                     (set! arg0 (cond
@@ -1268,8 +1262,8 @@
       )
     (let ((a0-10 (handle->process (-> obj focus handle))))
       (when (and a0-10
-                 (logtest? (focus-status mech) (-> (the-as process-focusable a0-10) focus-status))
-                 (zero? (logand (-> (the-as process-focusable a0-10) focus-status) (focus-status dead ignore)))
+                 (focus-test? (the-as process-focusable a0-10) mech)
+                 (not (logtest? (-> (the-as process-focusable a0-10) focus-status) (focus-status dead ignore)))
                  )
         (set! (-> obj focus-pos quad) (-> (get-trans (the-as process-focusable a0-10) 0) quad))
         (set! (-> obj path-player-u) (get-furthest-point-on-path (-> obj path) (-> obj focus-pos)))
@@ -1565,7 +1559,3 @@
     (none)
     )
   )
-
-
-
-

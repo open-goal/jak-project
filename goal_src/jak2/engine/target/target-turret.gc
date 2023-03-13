@@ -958,12 +958,12 @@
       (until #f
         (when (and (and *target*
                         (and (>= f30-0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-                             (zero? (logand (focus-status teleporting) (-> *target* focus-status)))
+                             (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
                              )
                         )
                    (and (not (task-node-closed? (game-task-node drill-ship-resolution)))
                         (can-display-query? self (the-as string #f) -99.0)
-                        (not (logtest? (focus-status in-head board mech dark) (-> *target* focus-status)))
+                        (not (focus-test? *target* in-head board mech dark))
                         (let ((f28-0 24576.0)
                               (s4-0 (-> self root-override))
                               (s5-0 (target-pos 0))
@@ -1694,7 +1694,7 @@
                 (when (and s2-1
                            (logtest? (process-mask enemy) (-> s2-1 mask))
                            (logtest? (process-mask collectable) (-> s2-1 mask))
-                           (not (logtest? (-> (the-as process-focusable s2-1) focus-status) (focus-status disable dead ignore inactive)))
+                           (not (focus-test? (the-as process-focusable s2-1) disable dead ignore inactive))
                            (!= s2-1 obj)
                            (!= s2-1 *target*)
                            (base-turret-method-46 obj s2-1)
@@ -2220,7 +2220,7 @@ This commonly includes things such as:
       (('change-mode)
        (case (-> event param 0)
          (('grab)
-          (when (not (logtest? (-> self focus-status) (focus-status dead)))
+          (when (not (focus-test? self dead))
             (if (-> event param 1)
                 (set! (-> self turret grabbed?) #t)
                 )
