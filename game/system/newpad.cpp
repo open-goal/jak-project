@@ -58,18 +58,48 @@ GameController::GameController(int sdl_device_id, int dead_zone)
 }
 
 void GameController::process_event(const SDL_Event& event, std::shared_ptr<Pad::PadData> data) {
-  if (event.type == SDL_CONTROLLERAXISMOTION) {
+  if (event.type == SDL_CONTROLLERAXISMOTION && event.caxis.which == m_sdl_instance_id) {
     // https://wiki.libsdl.org/SDL2/SDL_GameControllerAxis
-    // TODO - triggers? or are those also mapped to the buttons, dunno yet!
-    if (event.caxis.which != m_sdl_instance_id || event.caxis.axis <= SDL_CONTROLLER_AXIS_INVALID ||
-        event.caxis.axis >= SDL_CONTROLLER_AXIS_TRIGGERLEFT) {
+    if (event.caxis.axis <= SDL_CONTROLLER_AXIS_INVALID ||
+        event.caxis.axis >= SDL_CONTROLLER_AXIS_MAX) {
       return;
     }
-    // Adjust the value range to 0-255 (127 being neutral)
-    // Values come out of SDL as -32,768 + 32,767
-    int axis_val = event.caxis.value;
-    int adjusted_val = ((axis_val + 32768) * 256) / 65536;
-    data->analog_data.at(event.caxis.axis) = adjusted_val;
+    // Analog sticks
+    if (event.caxis.axis >= SDL_CONTROLLER_AXIS_LEFTX && event.caxis.axis <= SDL_CONTROLLER_AXIS_RIGHTY) {
+      // Adjust the value range to 0-255 (127 being neutral)
+      // Values come out of SDL as -32,768 + 32,767
+      // TODO - deadzone stuff
+      int axis_val = event.caxis.value;
+      int adjusted_val = ((axis_val + 32768) * 256) / 65536;
+      data->analog_data.at(event.caxis.axis) = adjusted_val;
+    } else {
+      // L2 / R2 are mapped to triggers by SDL
+      // NOTE / TODO - possible to support pressure here easily
+      const auto sdl_axis = event.caxis.axis;
+      const auto sdl_val = event.caxis.value;
+      if (m_axis_binds.count(sdl_axis) != 0) {
+        for (const auto ps2_bind : m_axis_binds.at(sdl_axis)) {
+          // TODO - probably want some kind of a deadzone here too so the slightest touch doesn't trigger it
+          // (though how does that work for controllers with buttons instead!)
+          data->button_data.at(ps2_bind) = event.caxis.value > 0;
+        }
+      }
+    }
+  } else if ((event.type == SDL_CONTROLLERBUTTONDOWN || event.type == SDL_CONTROLLERBUTTONUP) &&
+             event.cbutton.which == m_sdl_instance_id) {
+    // https://wiki.libsdl.org/SDL2/SDL_GameControllerButton
+    // TODO - support all buttons
+    if (event.cbutton.button == SDL_CONTROLLER_BUTTON_INVALID ||
+        event.cbutton.button >= SDL_CONTROLLER_BUTTON_MISC1) {
+      return;
+    }
+
+    const auto sdl_button = event.cbutton.button;
+    if (m_button_binds.count(sdl_button) != 0) {
+      for (const auto ps2_bind : m_button_binds.at(sdl_button)) {
+        data->button_data.at(ps2_bind) = event.type == SDL_CONTROLLERBUTTONDOWN;
+      }
+    }
   }
 }
 

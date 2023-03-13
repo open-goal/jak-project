@@ -20,6 +20,25 @@ namespace Pad {
 
 static const u8 ANALOG_NEUTRAL = 127;
 
+enum PadButtonIndex {
+  SELECT = 0,
+  L3,
+  R3,
+  START,
+  DPAD_UP,
+  DPAD_RIGHT,
+  DPAD_DOWN,
+  DPAD_LEFT,
+  L2,
+  R2,
+  L1,
+  R1,
+  TRIANGLE,
+  CIRCLE,
+  CROSS,
+  SQUARE = 15
+};
+
 struct PadData {
   // Analog Values
   std::array<u8, 4> analog_data = {ANALOG_NEUTRAL, ANALOG_NEUTRAL, ANALOG_NEUTRAL, ANALOG_NEUTRAL};
@@ -27,38 +46,58 @@ struct PadData {
   std::pair<u8, u8> analog_left() const { return {analog_data.at(0), analog_data.at(1)}; }
   std::pair<u8, u8> analog_right() const { return {analog_data.at(2), analog_data.at(3)}; }
 
+  // NOTE - pressure is always 255 (max) at this time
+  std::array<bool, 16> button_data = {};
+
   // Normal Buttons
-  bool select;
-  bool l3;
-  bool r3;
-  bool start;
+  bool select() const { return button_data.at(PadButtonIndex::SELECT); };
+  bool l3() const { return button_data.at(PadButtonIndex::L3); };
+  bool r3() const { return button_data.at(PadButtonIndex::R3); };
+  bool start() const { return button_data.at(PadButtonIndex::START); };
 
   // Pressure Buttons
-  std::pair<bool, u8> dpad_up;
-  std::pair<bool, u8> dpad_right;
-  std::pair<bool, u8> dpad_down;
-  std::pair<bool, u8> dpad_left;
+  std::pair<bool, u8> dpad_up() const { return {button_data.at(PadButtonIndex::DPAD_UP), 255}; };
+  std::pair<bool, u8> dpad_right() const {
+    return {button_data.at(PadButtonIndex::DPAD_RIGHT), 255};
+  };
+  std::pair<bool, u8> dpad_down() const {
+    return {button_data.at(PadButtonIndex::DPAD_DOWN), 255};
+  };
+  std::pair<bool, u8> dpad_left() const {
+    return {button_data.at(PadButtonIndex::DPAD_LEFT), 255};
+  };
 
-  std::pair<bool, u8> l2;
-  std::pair<bool, u8> r2;
-  std::pair<bool, u8> l1;
-  std::pair<bool, u8> r1;
+  std::pair<bool, u8> l2() const { return {button_data.at(PadButtonIndex::L2), 255}; };
+  std::pair<bool, u8> r2() const { return {button_data.at(PadButtonIndex::R2), 255}; };
+  std::pair<bool, u8> l1() const { return {button_data.at(PadButtonIndex::L1), 255}; };
+  std::pair<bool, u8> r1() const { return {button_data.at(PadButtonIndex::R1), 255}; };
 
-  std::pair<bool, u8> triangle;
-  std::pair<bool, u8> circle;
-  std::pair<bool, u8> cross;
-  std::pair<bool, u8> square;
+  std::pair<bool, u8> triangle() const { return {button_data.at(PadButtonIndex::TRIANGLE), 255}; };
+  std::pair<bool, u8> circle() const { return {button_data.at(PadButtonIndex::CIRCLE), 255}; };
+  std::pair<bool, u8> cross() const { return {button_data.at(PadButtonIndex::CROSS), 255}; };
+  std::pair<bool, u8> square() const { return {button_data.at(PadButtonIndex::SQUARE), 255}; };
 };
 
-// Each binding has a combination of SDL identifiers / modifiers
-// and maps to a combination on the original PS2
-//
-// In most cases, this would be a 1-1 combination, but you could imagine
-// binding 1 key to 2 PS2 buttons or some-such.
-struct InputBinding {
-  std::vector<int> m_sdl_bind;
-  std::vector<int> m_ps2_bind;
-};
+static const std::unordered_map<u8, std::vector<PadButtonIndex>> s_default_controller_button_binds =
+    {{SDL_CONTROLLER_BUTTON_A, {PadButtonIndex::CROSS}},
+     {SDL_CONTROLLER_BUTTON_B, {PadButtonIndex::CIRCLE}},
+     {SDL_CONTROLLER_BUTTON_X, {PadButtonIndex::SQUARE}},
+     {SDL_CONTROLLER_BUTTON_Y, {PadButtonIndex::TRIANGLE}},
+     {SDL_CONTROLLER_BUTTON_X, {PadButtonIndex::SQUARE}},
+     {SDL_CONTROLLER_BUTTON_LEFTSTICK, {PadButtonIndex::L3}},
+     {SDL_CONTROLLER_BUTTON_RIGHTSTICK, {PadButtonIndex::R3}},
+     {SDL_CONTROLLER_BUTTON_BACK, {PadButtonIndex::SELECT}},
+     {SDL_CONTROLLER_BUTTON_START, {PadButtonIndex::START}},
+     {SDL_CONTROLLER_BUTTON_LEFTSHOULDER, {PadButtonIndex::L1}},
+     {SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, {PadButtonIndex::R1}},
+     {SDL_CONTROLLER_BUTTON_DPAD_UP, {PadButtonIndex::DPAD_UP}},
+     {SDL_CONTROLLER_BUTTON_DPAD_DOWN, {PadButtonIndex::DPAD_DOWN}},
+     {SDL_CONTROLLER_BUTTON_DPAD_LEFT, {PadButtonIndex::DPAD_LEFT}},
+     {SDL_CONTROLLER_BUTTON_DPAD_RIGHT, {PadButtonIndex::DPAD_RIGHT}}};
+
+static const std::unordered_map<u8, std::vector<PadButtonIndex>> s_default_controller_axis_binds = {
+    {SDL_CONTROLLER_AXIS_TRIGGERLEFT, {PadButtonIndex::L2}},
+    {SDL_CONTROLLER_AXIS_TRIGGERRIGHT, {PadButtonIndex::R2}}};
 
 // A distinct input device.  Only those devices that are "active" should be read
 class InputDevice {
@@ -66,12 +105,19 @@ class InputDevice {
   bool m_loaded = false;
   std::string m_device_name;
 
-  // TODO - !
-  std::vector<InputBinding> m_binds;
+  // TODO - ports!
+
+  // Each binding is a mapping from an SDL input to one or more
+  // PS2 inputs
+  //
+  // TODO - support modifiers (keyboards), not sure how SDL represents those yet
+  std::unordered_map<u8, std::vector<PadButtonIndex>> m_button_binds = s_default_controller_button_binds;
+  std::unordered_map<u8, std::vector<PadButtonIndex>> m_axis_binds = s_default_controller_axis_binds;
   // TODO - mouse? (sensitivities)
   // TODO - positive/negative keys
   // TODO - digital vs analog
-  // bool m_buffer_inputs;  // TODO - not entirely sure what this means, test with old code
+  // bool m_buffer_inputs;  // TODO - not entirely sure what this means, test with old code (hold
+  // onto inputs for a frame before firing?)
 
  public:
   virtual ~InputDevice(){};
