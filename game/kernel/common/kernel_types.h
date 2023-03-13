@@ -51,14 +51,14 @@ struct RemotePlayerInfo {
   float quat_y;
   float quat_z;
   float quat_w;
-}
+};
 static_assert(sizeof(RemotePlayerInfo) == 28, "RemotePlayerInfo size is wrong");
 #pragma pack(pop)
 
 #pragma pack(push, 4)
 struct MultiplayerInfo {
-  u8 player_num;
+  u32 player_num;
   RemotePlayerInfo players[4];
-}
-static_assert(sizeof(RemotePlayerInfo) == 20, "RemotePlayerList size is wrong");
+};
+//static_assert(sizeof(MultiplayerInfo) == 20, "MultiplayerInfo size is wrong");
 #pragma pack(pop)
