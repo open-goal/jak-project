@@ -2413,7 +2413,7 @@
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 356]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 363]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 122]
-(defbehavior birth-pickup-at-point process ((arg0 vector) (arg1 pickup-type) (arg2 float) (arg3 symbol) (arg4 process-tree) (arg5 fact-info))
+(defbehavior birth-pickup-at-point-inner process ((arg0 vector) (arg1 pickup-type) (arg2 float) (arg3 symbol) (arg4 process-tree) (arg5 fact-info) (should-bob? symbol))
   (local-vars
     (v1-2 basic)
     (v1-28 symbol)
@@ -2569,7 +2569,10 @@
                              (let ((t9-20 (method-of-type money activate)))
                                (t9-20 (the-as money sv-144) arg4 'money (the-as pointer #x70004000))
                                )
-                             (run-now-in-process sv-144 money-init-by-other arg0 s1-0 s0-0 (-> self entity))
+                             (if should-bob?
+                               (run-now-in-process sv-144 money-init-by-other arg0 s1-0 s0-0 (-> self entity))
+                               (run-now-in-process sv-144 money-init-by-other-no-bob arg0 *null-vector* s0-0 1.0 (-> self entity))
+                               )
                              (set! sv-192 (-> sv-144 ppointer))
                              v1-58
                              )
@@ -2619,6 +2622,10 @@
       )
     )
   sv-192
+  )
+
+(defbehavior birth-pickup-at-point process ((arg0 vector) (arg1 pickup-type) (arg2 float) (arg3 symbol) (arg4 process-tree) (arg5 fact-info))
+  (birth-pickup-at-point-inner arg0 arg1 arg2 arg3 arg4 arg5 #t)
   )
 
 (defmethod drop-pickup fact-info ((obj fact-info) (arg0 symbol) (arg1 process-tree) (arg2 fact-info) (arg3 int))

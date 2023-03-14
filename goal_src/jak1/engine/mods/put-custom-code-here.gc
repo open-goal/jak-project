@@ -83,6 +83,29 @@ an orb |#
     )
   )
 
+(defun position-actor ((obj process-drawable) (t_x float) (t_y float) (t_z float) (q_x float) (q_y float) (q_z float) (q_w float))
+  (set! (-> obj root trans x) t_x)
+  (set! (-> obj root trans y) t_y)
+  (set! (-> obj root trans z) t_z)
+  (set! (-> obj root quat x)  q_x)
+  (set! (-> obj root quat y)  q_y)
+  (set! (-> obj root quat z)  q_z)
+  (set! (-> obj root quat w)  q_w)
+  (case (-> obj type)
+    ((target)
+      (let ((t (the target obj)))
+        (quaternion-copy! (-> t control dir-targ) (-> t root quat))
+        )
+      )
+    ((money)
+      (let ((m (the money obj)))
+        (vector-copy! (-> m base) (-> m root trans))
+        (vector-copy! (-> m root-override root-prim world-sphere) (-> m root trans))
+        )
+      )
+    )
+  )
+
 (define *multiplayer-mode* 'jaks)
 ;; (define *multiplayer-mode* 'orbs)
 (defun runs-every-frame ()
@@ -118,7 +141,9 @@ an orb |#
 
     (dotimes (idx 12)
       (when (!= (-> *multiplayer-info* player_num) idx)
-        (when (zero? (-> *remote-targets* idx))
+        ;; see if we need to respawn remote targets
+        (when (or (zero? (-> *remote-targets* idx))
+                  (not (handle->process (-> *remote-targets* idx))))
           (case *multiplayer-mode*
             (('jaks)
               (set! (-> *remote-targets* idx) (start-extra-target))
@@ -128,40 +153,38 @@ an orb |#
                 (set! (-> vec x) 0.0)
                 (set! (-> vec y) -80920.0)  ;; spawn orbs 20m under 0,0,0 so nobody can get them
                 (set! (-> vec z) 0.0)
-                (set! (-> *remote-targets* idx) (ppointer->handle (birth-pickup-at-point
+                (set! (-> *remote-targets* idx) (ppointer->handle (birth-pickup-at-point-inner
                                                     vec
                                                     (pickup-type money)
                                                     (the-as float 1.0)
                                                     #t
                                                     *target*
                                                     (the-as fact-info #f)
+                                                    #f  ;; no-bob
                                                   )))
                 )
               )
             )
           )
         
-        (let ((p (the process-drawable (handle->process (-> *remote-targets* idx)))))
-          (when p
-            (set! (-> p root trans x) (-> *multiplayer-info* players idx trans_x))
-            (set! (-> p root trans y) (-> *multiplayer-info* players idx trans_y))
-            (set! (-> p root trans z) (-> *multiplayer-info* players idx trans_z))
-            (set! (-> p root quat x)  (-> *multiplayer-info* players idx quat_x))
-            (set! (-> p root quat y)  (-> *multiplayer-info* players idx quat_y))
-            (set! (-> p root quat z)  (-> *multiplayer-info* players idx quat_z))
-            (set! (-> p root quat w)  (-> *multiplayer-info* players idx quat_w))
-            (when (type-type? (-> p type) target)
-              (let ((t (the target p)))
-                (quaternion-copy! (-> t control dir-targ) (-> t root quat))
-                )
-              )
-
+        ;; position/color remote targets
+        (let ((p (-> *multiplayer-info* players idx))
+              (obj (the process-drawable (handle->process (-> *remote-targets* idx)))))
+          (when obj
+            (position-actor obj 
+              (-> p trans_x)
+              (-> p trans_y)
+              (-> p trans_z)
+              (-> p quat_x)
+              (-> p quat_y)
+              (-> p quat_z)
+              (-> p quat_w))
             (case idx
-              ((0) (color-target p 'green))
-              ((1) (color-target p 'blue))
-              ((2) (color-target p 'red))
-              ((3) (color-target p 'yellow))
-              (else (color-target p 'surprise-me))
+              ((0) (color-target  obj 'green))
+              ((1) (color-target  obj 'blue))
+              ((2) (color-target  obj 'red))
+              ((3) (color-target  obj 'yellow))
+              (else (color-target obj 'surprise-me))
               )
             )
           )
