@@ -52,7 +52,8 @@ if the result of rand-vu-int-range is 1, then DANCE! if it is not 1, then Don't 
   (quat_z     float)
   (quat_w     float)
   )
-  :size-assert 28
+  ;; :allow-misaligned
+  :pack-me
   (:methods
     (new (symbol type) _type_ 0)
     )
@@ -73,9 +74,8 @@ if the result of rand-vu-int-range is 1, then DANCE! if it is not 1, then Don't 
 
 (deftype multiplayer-info (structure)
  ((player_num int32)
-  (players    remote-player-info 4)
+  (players    remote-player-info 4 :inline)
   )
-  ;; :size-assert 20
   (:methods
     (new (symbol type) _type_ 0)
     )
@@ -84,10 +84,6 @@ if the result of rand-vu-int-range is 1, then DANCE! if it is not 1, then Don't 
 (defmethod new multiplayer-info ((allocation symbol) (type-to-make type))
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> obj player_num) -1)
-    (set! (-> obj players 0) (new 'global 'remote-player-info))
-    (set! (-> obj players 1) (new 'global 'remote-player-info))
-    (set! (-> obj players 2) (new 'global 'remote-player-info))
-    (set! (-> obj players 3) (new 'global 'remote-player-info))
     obj
     )
   )

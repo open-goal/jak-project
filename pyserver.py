@@ -4,20 +4,20 @@ from urllib.parse import urlparse, parse_qs
 
 server_address = ('127.0.0.1', 8080)
 
-# Initialize the dictionary from the file
-PLAYERS = []
-EXPECTED_KEYS = {
-  "trans_x",
-  "trans_y",
-  "trans_z",
-  "quat_x",
-  "quat_y",
-  "quat_z",
-  "quat_w"
-}
-
 class RequestHandler(BaseHTTPRequestHandler):
-   
+
+  # Initialize the dictionary from the file
+  PLAYERS = []
+  EXPECTED_KEYS = {
+    "trans_x",
+    "trans_y",
+    "trans_z",
+    "quat_x",
+    "quat_y",
+    "quat_z",
+    "quat_w"
+  }
+
   def send_response_bad_request_400(self):
     self.send_response(400)
     self.send_header('Content-type', 'application/json')
@@ -44,16 +44,16 @@ class RequestHandler(BaseHTTPRequestHandler):
         query = parse_qs(url.query)
         player_num = query.get('player_num', [])
 
-        if len(player_num) == 0 or (not player_num[0].isnumeric()) or int(player_num[0]) >= len(PLAYERS):
+        if len(player_num) == 0 or (not player_num[0].isnumeric()) or int(player_num[0]) >= len(self.PLAYERS):
           self.send_response_bad_request_400()
         else:
           player_num = int(player_num[0])
           response_data = {}
-          for i in range(len(PLAYERS)):
+          for i in range(len(self.PLAYERS)):
             if i == int(player_num):
               # skip player's own data
               continue
-            response_data[i] = PLAYERS[i]
+            response_data[i] = self.PLAYERS[i]
 
           # Return JSON response
           self.send_response(200)
@@ -78,14 +78,22 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     # routing
     match url.path:
-      
+      # clear
+      case "/clear":
+        self.PLAYERS.clear()
+        # Send response status code
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.wfile.flush()
+
       # register
       case "/register":
-        player_num = len(PLAYERS)
+        player_num = len(self.PLAYERS)
         # fill out empty keys
-        PLAYERS.append({})
-        for k in EXPECTED_KEYS:
-          PLAYERS[player_num][k] = 0.0
+        self.PLAYERS.append({})
+        for k in self.EXPECTED_KEYS:
+          self.PLAYERS[player_num][k] = 0.0
 
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
@@ -106,7 +114,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         query = parse_qs(url.query)
         player_num = query.get('player_num', [])
 
-        if len(player_num) == 0 or (not player_num[0].isnumeric()) or int(player_num[0]) >= len(PLAYERS):
+        if len(player_num) == 0 or (not player_num[0].isnumeric()) or int(player_num[0]) >= len(self.PLAYERS):
           self.send_response_bad_request_400()
         else:
           player_num = int(player_num[0])
@@ -115,11 +123,11 @@ class RequestHandler(BaseHTTPRequestHandler):
           # Parse JSON data into dictionary
           data = json.loads(raw_data.decode('utf-8'))
         
-          for k in EXPECTED_KEYS:
+          for k in self.EXPECTED_KEYS:
             if k not in data:
               self.send_response_bad_request_400()
             else:
-              PLAYERS[player_num][k] = data[k]
+              self.PLAYERS[player_num][k] = data[k]
       
           # Send response status code
           self.send_response(200)

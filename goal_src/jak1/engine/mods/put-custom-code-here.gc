@@ -24,23 +24,39 @@ an orb |#
 (define *multiplayer-info* (new 'global 'multiplayer-info))
 (define *registered-with-server?* #f)
 (define *last-position-sync-time* (the-as time-frame #f))
+
+(defun move-actor-str ((ename string) (player-info remote-player-info))
+  (let ((p (the process-drawable (process-by-ename ename))))
+    (when p
+      (set! (-> p root trans x) (-> player-info trans_x))
+      (set! (-> p root trans y) (-> player-info trans_y))
+      (set! (-> p root trans z) (-> player-info trans_z))
+      (set! (-> p root quat x)  (-> player-info quat_x))
+      (set! (-> p root quat y)  (-> player-info quat_y))
+      (set! (-> p root quat z)  (-> player-info quat_z))
+      (set! (-> p root quat w)  (-> player-info quat_w))
+      )
+    )
+  )
+
 (defun runs-every-frame ()
   ;;(increase-power-cell-by-one) This is a call to increase-power-cell-by-one defined in define-custom-functions-here.gc
   
   ;; register with server if we haven't yet
   (when (and *target* (not *registered-with-server?*))
-    (format 0 "mpinfo: ~P~%" *multiplayer-info*)
-    (inspect *multiplayer-info*)
     (pc-http-register *multiplayer-info*)
     (set! *registered-with-server?* #t)
     ;; for us to wait 0.25s to ensure registration before syncing position
     (set! *last-position-sync-time* (-> *display* base-frame-counter))
     )
 
-  (when (and *target* *registered-with-server?*)
+  (when (and *target* (>= (-> *multiplayer-info* player_num) 0) (< (-> *multiplayer-info* player_num) 4))
     ;; if never synced positions, or its been 1s, request updated positions
     (when (or (not *last-position-sync-time*)
-              (>= (- (-> *display* base-frame-counter) *last-position-sync-time*) (seconds 0.25)))
+              (>= (- (-> *display* base-frame-counter) *last-position-sync-time*) (seconds 1)))
+      ;; update last sync time
+      (set! *last-position-sync-time* (-> *display* base-frame-counter))
+
       ;; update this player's position and send to server
       (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) trans_x) (-> *target* root trans x))
       (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) trans_y) (-> *target* root trans y))
@@ -52,41 +68,20 @@ an orb |#
       (pc-http-update-position)
 
       ;; request to get positions of other players from server (async)
-      (pc-http-get-positions) 
-
-      ;; update last sync time
-      (set! *last-position-sync-time* (-> *display* base-frame-counter))
+      (pc-http-get-positions)
       )
 
-    (case (-> *multiplayer-info* player_num)
-      ((0)
-        ;; we are player 0, spawn p1
-        (let ((p (the process-drawable (process-by-ename "assistant-11")))
-              (r (-> *multiplayer-info* players 1)))
-          (when p
-            (set! (-> p root trans x) (-> r trans_x))
-            (set! (-> p root trans y) (-> r trans_y))
-            (set! (-> p root trans z) (-> r trans_z))
-            (set! (-> p root quat x) (-> r quat_x))
-            (set! (-> p root quat y) (-> r quat_y))
-            (set! (-> p root quat z) (-> r quat_z))
-            (set! (-> p root quat w) (-> r quat_w))
+    (dotimes (idx 4)
+      (when (!= (-> *multiplayer-info* player_num) idx)
+        (move-actor-str 
+          (case idx
+            ((0) "assistant-11")
+            ((1) "sage-23")
+            ((2) "mayor-5")
+            ((3) "explorer-4")
+            (else "birdlady-1")
             )
-          )
-        )
-      ((1)
-        ;; we are player 1, spawn p0
-        (let ((p (the process-drawable (process-by-ename "assistant-11")))
-              (r (-> *multiplayer-info* players 0)))
-          (when p
-            (set! (-> p root trans x) (-> r trans_x))
-            (set! (-> p root trans y) (-> r trans_y))
-            (set! (-> p root trans z) (-> r trans_z))
-            (set! (-> p root quat x) (-> r quat_x))
-            (set! (-> p root quat y) (-> r quat_y))
-            (set! (-> p root quat z) (-> r quat_z))
-            (set! (-> p root quat w) (-> r quat_w))
-            )
+          (-> *multiplayer-info* players idx)
           )
         )
       )

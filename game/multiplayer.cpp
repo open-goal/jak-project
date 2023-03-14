@@ -11,10 +11,7 @@
 #include "common/util/unicode_util.h"
 #include <iostream>
 
-
 #include "game/runtime.h"
-
-MultiplayerInfo* gMultiplayerInfo;
 
 size_t curl_write_callbacka(char* ptr, size_t size, size_t nmemb, void* userdata) {
   size_t len = size * nmemb;
@@ -22,6 +19,8 @@ size_t curl_write_callbacka(char* ptr, size_t size, size_t nmemb, void* userdata
   response_data->append(ptr, len);
   return len;
 }
+
+MultiplayerInfo* gMultiplayerInfo;
 
 void http_register(u64 mpInfo) {
   gMultiplayerInfo = Ptr<MultiplayerInfo>(mpInfo).c();
@@ -33,7 +32,7 @@ void http_register(u64 mpInfo) {
     CURL* curl = curl_easy_init();
 
     // Set curl options
-    curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:8080/register");
+    curl_easy_setopt(curl, CURLOPT_URL, "http://78.108.218.126:25560/register");
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "foobar");
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_callbacka);
     std::string response_data;
@@ -66,20 +65,20 @@ void http_update_position() {
     curl_global_init(CURL_GLOBAL_ALL);
     CURL* curl = curl_easy_init();
 
-    RemotePlayerInfo& rpInfo = gMultiplayerInfo->players[gMultiplayerInfo->player_num];
+    RemotePlayerInfo* rpInfo = &(gMultiplayerInfo->players[gMultiplayerInfo->player_num]);
 
     // Construct JSON payload
     nlohmann::json payload = {
-      {"trans_x", rpInfo.trans_x},
-      {"trans_y", rpInfo.trans_y},
-      {"trans_z", rpInfo.trans_z},
-      {"quat_x", rpInfo.quat_x},
-      {"quat_y", rpInfo.quat_y},
-      {"quat_z", rpInfo.quat_z},
-      {"quat_w", rpInfo.quat_w}
+      {"trans_x", rpInfo->trans_x},
+      {"trans_y", rpInfo->trans_y},
+      {"trans_z", rpInfo->trans_z},
+      {"quat_x", rpInfo->quat_x},
+      {"quat_y", rpInfo->quat_y},
+      {"quat_z", rpInfo->quat_z},
+      {"quat_w", rpInfo->quat_w}
     };
     std::string payload_str = payload.dump();
-    std::string url = "http://localhost:8080/update?player_num=" + std::to_string(gMultiplayerInfo->player_num);
+    std::string url = "http://78.108.218.126:25560/update?player_num=" + std::to_string(gMultiplayerInfo->player_num);
 
     // Set curl options
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -110,7 +109,7 @@ void http_get_positions() {
     curl_global_init(CURL_GLOBAL_ALL);
     CURL* curl = curl_easy_init();
     std::string url =
-        "http://localhost:8080/get?player_num=" + std::to_string(gMultiplayerInfo->player_num);
+        "http://78.108.218.126:25560/get?player_num=" + std::to_string(gMultiplayerInfo->player_num);
 
     // Set curl options
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -132,14 +131,25 @@ void http_get_positions() {
       for (const auto& item : response_json.items()) {
         int pNum = stoi(item.key());
         if (pNum < 4) {
-          RemotePlayerInfo& rpInfo = gMultiplayerInfo->players[pNum];
-          rpInfo.trans_x = item.value()["trans_x"];
-          rpInfo.trans_y = item.value()["trans_y"];
-          rpInfo.trans_z = item.value()["trans_z"];
-          rpInfo.quat_x = item.value()["quat_x"];
-          rpInfo.quat_y = item.value()["quat_y"];
-          rpInfo.quat_z = item.value()["quat_z"];
-          rpInfo.quat_w = item.value()["quat_w"];
+          RemotePlayerInfo* rpInfo = &(gMultiplayerInfo->players[pNum]);
+
+          for (const auto& field : item.value().items()) {
+            if (field.key().compare("trans_x") == 0) {
+              rpInfo->trans_x = field.value();
+            } else if (field.key().compare("trans_y") == 0) {
+              rpInfo->trans_y = field.value();
+            } else if (field.key().compare("trans_z") == 0) {
+              rpInfo->trans_z = field.value();
+            } else if (field.key().compare("quat_x") == 0) {
+              rpInfo->quat_x = field.value();
+            } else if (field.key().compare("quat_y") == 0) {
+              rpInfo->quat_y = field.value();
+            } else if (field.key().compare("quat_z") == 0) {
+              rpInfo->quat_z = field.value();
+            } else if (field.key().compare("quat_w") == 0) {
+              rpInfo->quat_w = field.value();
+            }
+          }
         }
       }
     }
