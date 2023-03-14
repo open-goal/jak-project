@@ -105,6 +105,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   Tie3* tie_l0 =
       init_bucket_renderer<Tie3>("tie-l0-tfrag", BucketCategory::TIE, BucketId::TIE_L0_TFRAG, 0);
   // 10
+  init_bucket_renderer<Tie3AnotherCategory>("etie-l0-tfrag", BucketCategory::TIE,
+                                            BucketId::ETIE_L0_TFRAG, tie_l0,
+                                            tfrag3::TieCategory::NORMAL_ENVMAP);
   init_bucket_renderer<Merc2>("merc-l0-tfrag", BucketCategory::MERC, BucketId::MERC_L0_TFRAG);
   init_bucket_renderer<TextureUploadHandler>("tex-l1-tfrag", BucketCategory::TEX,
                                              BucketId::TEX_L1_TFRAG);
@@ -113,6 +116,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   // 20
   Tie3* tie_l1 =
       init_bucket_renderer<Tie3>("tie-l1-tfrag", BucketCategory::TIE, BucketId::TIE_L1_TFRAG, 1);
+  init_bucket_renderer<Tie3AnotherCategory>("etie-l1-tfrag", BucketCategory::TIE,
+                                            BucketId::ETIE_L1_TFRAG, tie_l1,
+                                            tfrag3::TieCategory::NORMAL_ENVMAP);
   init_bucket_renderer<Merc2>("merc-l1-tfrag", BucketCategory::MERC, BucketId::MERC_L1_TFRAG);
   init_bucket_renderer<TextureUploadHandler>("tex-l2-tfrag", BucketCategory::TEX,
                                              BucketId::TEX_L2_TFRAG);
@@ -121,6 +127,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                   std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 2);
   Tie3* tie_l2 =
       init_bucket_renderer<Tie3>("tie-l2-tfrag", BucketCategory::TIE, BucketId::TIE_L2_TFRAG, 2);
+  init_bucket_renderer<Tie3AnotherCategory>("etie-l2-tfrag", BucketCategory::TIE,
+                                            BucketId::ETIE_L2_TFRAG, tie_l2,
+                                            tfrag3::TieCategory::NORMAL_ENVMAP);
   init_bucket_renderer<Merc2>("merc-l2-tfrag", BucketCategory::MERC, BucketId::MERC_L2_TFRAG);
   // 40
   init_bucket_renderer<TextureUploadHandler>("tex-l3-tfrag", BucketCategory::TEX,
@@ -129,6 +138,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                   std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 3);
   Tie3* tie_l3 =
       init_bucket_renderer<Tie3>("tie-l3-tfrag", BucketCategory::TIE, BucketId::TIE_L3_TFRAG, 3);
+  init_bucket_renderer<Tie3AnotherCategory>("etie-l3-tfrag", BucketCategory::TIE,
+                                            BucketId::ETIE_L3_TFRAG, tie_l3,
+                                            tfrag3::TieCategory::NORMAL_ENVMAP);
   init_bucket_renderer<Merc2>("merc-l3-tfrag", BucketCategory::MERC, BucketId::MERC_L3_TFRAG);
   // 50
   init_bucket_renderer<TextureUploadHandler>("tex-l4-tfrag", BucketCategory::TEX,
@@ -137,6 +149,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                   std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 4);
   Tie3* tie_l4 =
       init_bucket_renderer<Tie3>("tie-l4-tfrag", BucketCategory::TIE, BucketId::TIE_L4_TFRAG, 4);
+  init_bucket_renderer<Tie3AnotherCategory>("etie-l4-tfrag", BucketCategory::TIE,
+                                            BucketId::ETIE_L4_TFRAG, tie_l4,
+                                            tfrag3::TieCategory::NORMAL_ENVMAP);
   init_bucket_renderer<Merc2>("merc-l4-tfrag", BucketCategory::MERC, BucketId::MERC_L4_TFRAG);
   // 60
   init_bucket_renderer<TextureUploadHandler>("tex-l5-tfrag", BucketCategory::TEX,
@@ -145,6 +160,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                   std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, 5);
   Tie3* tie_l5 =
       init_bucket_renderer<Tie3>("tie-l5-tfrag", BucketCategory::TIE, BucketId::TIE_L5_TFRAG, 5);
+  init_bucket_renderer<Tie3AnotherCategory>("etie-l5-tfrag", BucketCategory::TIE,
+                                            BucketId::ETIE_L5_TFRAG, tie_l5,
+                                            tfrag3::TieCategory::NORMAL_ENVMAP);
   init_bucket_renderer<Merc2>("merc-l5-tfrag", BucketCategory::MERC, BucketId::MERC_L5_TFRAG);
   // 70
   init_bucket_renderer<TextureUploadHandler>("tex-l0-shrub", BucketCategory::TEX,
@@ -182,6 +200,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                             BucketId::TIE_T_L0_ALPHA, tie_l0,
                                             tfrag3::TieCategory::TRANS);
   // 130
+  init_bucket_renderer<Tie3AnotherCategory>("etie-t-l0-alpha", BucketCategory::TIE,
+                                            BucketId::ETIE_T_L0_ALPHA, tie_l0,
+                                            tfrag3::TieCategory::TRANS_ENVMAP);
   init_bucket_renderer<TextureUploadHandler>("tex-l1-alpha", BucketCategory::TEX,
                                              BucketId::TEX_L1_ALPHA);
   init_bucket_renderer<Merc2>("merc-l0-alpha", BucketCategory::MERC, BucketId::MERC_L0_ALPHA);
@@ -192,6 +213,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                             BucketId::TIE_T_L1_ALPHA, tie_l1,
                                             tfrag3::TieCategory::TRANS);
   // 140
+  init_bucket_renderer<Tie3AnotherCategory>("etie-t-l1-alpha", BucketCategory::TIE,
+                                            BucketId::ETIE_T_L1_ALPHA, tie_l1,
+                                            tfrag3::TieCategory::TRANS_ENVMAP);
   init_bucket_renderer<Merc2>("merc-l1-alpha", BucketCategory::MERC, BucketId::MERC_L1_ALPHA);
   init_bucket_renderer<TextureUploadHandler>("tex-l2-alpha", BucketCategory::TEX,
                                              BucketId::TEX_L2_ALPHA);
@@ -202,6 +226,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                             BucketId::TIE_T_L2_ALPHA, tie_l2,
                                             tfrag3::TieCategory::TRANS);
   // 150
+  init_bucket_renderer<Tie3AnotherCategory>("etie-t-l2-alpha", BucketCategory::TIE,
+                                            BucketId::ETIE_T_L2_ALPHA, tie_l2,
+                                            tfrag3::TieCategory::TRANS_ENVMAP);
   init_bucket_renderer<Merc2>("merc-l2-alpha", BucketCategory::MERC, BucketId::MERC_L2_ALPHA);
   init_bucket_renderer<TextureUploadHandler>("tex-l3-alpha", BucketCategory::TEX,
                                              BucketId::TEX_L3_ALPHA);
@@ -212,6 +239,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                             BucketId::TIE_T_L3_ALPHA, tie_l3,
                                             tfrag3::TieCategory::TRANS);
   // 160
+  init_bucket_renderer<Tie3AnotherCategory>("etie-t-l3-alpha", BucketCategory::TIE,
+                                            BucketId::ETIE_T_L3_ALPHA, tie_l3,
+                                            tfrag3::TieCategory::TRANS_ENVMAP);
   init_bucket_renderer<Merc2>("merc-l3-alpha", BucketCategory::MERC, BucketId::MERC_L3_ALPHA);
   init_bucket_renderer<TextureUploadHandler>("tex-l4-alpha", BucketCategory::TEX,
                                              BucketId::TEX_L4_ALPHA);
@@ -222,12 +252,18 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                             BucketId::TIE_T_L4_ALPHA, tie_l4,
                                             tfrag3::TieCategory::TRANS);
   // 170
+  init_bucket_renderer<Tie3AnotherCategory>("etie-t-l4-alpha", BucketCategory::TIE,
+                                            BucketId::ETIE_T_L4_ALPHA, tie_l4,
+                                            tfrag3::TieCategory::TRANS_ENVMAP);
   init_bucket_renderer<TextureUploadHandler>("tex-l5-alpha", BucketCategory::TEX,
                                              BucketId::TEX_L5_ALPHA);
   init_bucket_renderer<Tie3AnotherCategory>("tie-t-l5-alpha", BucketCategory::TIE,
                                             BucketId::TIE_T_L5_ALPHA, tie_l5,
                                             tfrag3::TieCategory::TRANS);
   // 180
+  init_bucket_renderer<Tie3AnotherCategory>("etie-t-l5-alpha", BucketCategory::TIE,
+                                            BucketId::ETIE_T_L5_ALPHA, tie_l5,
+                                            tfrag3::TieCategory::TRANS_ENVMAP);
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-tfrag", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_TFRAG);
   init_bucket_renderer<Merc2>("merc-lcom-tfrag", BucketCategory::MERC, BucketId::MERC_LCOM_TFRAG);
@@ -289,6 +325,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<Tie3AnotherCategory>("tie-t-l0-water", BucketCategory::TIE,
                                             BucketId::TIE_W_L0_WATER, tie_l0,
                                             tfrag3::TieCategory::WATER);
+  init_bucket_renderer<Tie3AnotherCategory>("etie-w-l0-water", BucketCategory::TIE,
+                                            BucketId::ETIE_W_L0_WATER, tie_l0,
+                                            tfrag3::TieCategory::WATER_ENVMAP);
   // 260
   init_bucket_renderer<TextureUploadHandler>("tex-l1-water", BucketCategory::TEX,
                                              BucketId::TEX_L1_WATER);
@@ -299,6 +338,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<Tie3AnotherCategory>("tie-t-l1-water", BucketCategory::TIE,
                                             BucketId::TIE_W_L1_WATER, tie_l1,
                                             tfrag3::TieCategory::WATER);
+  init_bucket_renderer<Tie3AnotherCategory>("etie-w-l1-water", BucketCategory::TIE,
+                                            BucketId::ETIE_W_L1_WATER, tie_l1,
+                                            tfrag3::TieCategory::WATER_ENVMAP);
 
   // 270
   init_bucket_renderer<TextureUploadHandler>("tex-l2-water", BucketCategory::TEX,
@@ -310,6 +352,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<Tie3AnotherCategory>("tie-t-l2-water", BucketCategory::TIE,
                                             BucketId::TIE_W_L2_WATER, tie_l2,
                                             tfrag3::TieCategory::WATER);
+  init_bucket_renderer<Tie3AnotherCategory>("etie-w-l2-water", BucketCategory::TIE,
+                                            BucketId::ETIE_W_L2_WATER, tie_l2,
+                                            tfrag3::TieCategory::WATER_ENVMAP);
   init_bucket_renderer<TextureUploadHandler>("tex-l3-water", BucketCategory::TEX,
                                              BucketId::TEX_L3_WATER);
   // 280
@@ -320,6 +365,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<Tie3AnotherCategory>("tie-t-l3-water", BucketCategory::TIE,
                                             BucketId::TIE_W_L3_WATER, tie_l3,
                                             tfrag3::TieCategory::WATER);
+  init_bucket_renderer<Tie3AnotherCategory>("etie-w-l3-water", BucketCategory::TIE,
+                                            BucketId::ETIE_W_L3_WATER, tie_l3,
+                                            tfrag3::TieCategory::WATER_ENVMAP);
   init_bucket_renderer<TextureUploadHandler>("tex-l4-water", BucketCategory::TEX,
                                              BucketId::TEX_L4_WATER);
   init_bucket_renderer<Merc2>("merc-l4-water", BucketCategory::MERC, BucketId::MERC_L4_WATER);
@@ -327,6 +375,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<Tie3AnotherCategory>("tie-t-l4-water", BucketCategory::TIE,
                                             BucketId::TIE_W_L4_WATER, tie_l4,
                                             tfrag3::TieCategory::WATER);
+  init_bucket_renderer<Tie3AnotherCategory>("etie-w-l4-water", BucketCategory::TIE,
+                                            BucketId::ETIE_W_L4_WATER, tie_l4,
+                                            tfrag3::TieCategory::WATER_ENVMAP);
   init_bucket_renderer<TextureUploadHandler>("tex-l5-water", BucketCategory::TEX,
                                              BucketId::TEX_L5_WATER);
   // 300
@@ -336,6 +387,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<Tie3AnotherCategory>("tie-t-l5-water", BucketCategory::TIE,
                                             BucketId::TIE_W_L5_WATER, tie_l5,
                                             tfrag3::TieCategory::WATER);
+  init_bucket_renderer<Tie3AnotherCategory>("etie-w-l5-water", BucketCategory::TIE,
+                                            BucketId::ETIE_W_L5_WATER, tie_l5,
+                                            tfrag3::TieCategory::WATER_ENVMAP);
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-water", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_WATER);
   init_bucket_renderer<Merc2>("merc-lcom-water", BucketCategory::MERC, BucketId::MERC_LCOM_WATER);

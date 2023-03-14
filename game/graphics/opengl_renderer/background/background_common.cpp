@@ -159,6 +159,8 @@ void first_tfrag_draw_setup(const TfragRenderSettings& settings,
   sh.activate();
   auto id = sh.id();
   glUniform1i(glGetUniformLocation(id, "gfx_hack_no_tex"), Gfx::g_global_settings.hack_no_tex);
+  glUniform1i(glGetUniformLocation(id, "debug_hack"), false);
+
   glUniform1i(glGetUniformLocation(id, "tex_T0"), 0);
   glUniformMatrix4fv(glGetUniformLocation(id, "camera"), 1, GL_FALSE, settings.math_camera.data());
   glUniform4f(glGetUniformLocation(id, "hvdf_offset"), settings.hvdf_offset[0],

@@ -317,8 +317,22 @@ enum class TieCategory {
   NORMAL,
   TRANS,  // also called alpha
   WATER,
+  NORMAL_ENVMAP,
+  TRANS_ENVMAP,
+  WATER_ENVMAP
 };
-constexpr int kNumTieCategories = 3;
+constexpr int kNumTieCategories = 6;
+
+constexpr bool is_envmap_category(tfrag3::TieCategory category) {
+  switch (category) {
+    case tfrag3::TieCategory::NORMAL_ENVMAP:
+    case tfrag3::TieCategory::WATER_ENVMAP:
+    case tfrag3::TieCategory::TRANS_ENVMAP:
+      return true;
+    default:
+      return false;
+  }
+}
 
 // A tie model
 struct TieTree {
@@ -326,6 +340,10 @@ struct TieTree {
   std::vector<StripDraw> static_draws;
   // Category n uses draws: static_draws[cdi[n]] to static_draws[cdi[n + 1]]
   std::array<u32, kNumTieCategories + 1> category_draw_indices;
+  std::vector<StripDraw> envmap_draws;
+  std::array<u32, kNumTieCategories + 1> category_envmap_draw_indices;
+
+
 
   PackedTieVertices packed_vertices;
   std::vector<TimeOfDayColor> colors;  // vertex colors (pre-interpolation)

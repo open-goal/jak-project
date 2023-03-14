@@ -111,8 +111,7 @@ TEST(VuDisasm, etie_Jak2) {
   auto data = get_test_data("jak2/etie-vu1");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
   auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
-  fmt::print("{}\n", disasm.to_string(prog));
-  //EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/tie"));
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/etie-vu1"));
 }
 
 TEST(VuDisasm, SpriteDistort) {

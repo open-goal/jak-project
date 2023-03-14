@@ -780,7 +780,7 @@ This is kind of nice because we don't have to actually generate DMA for the non-
 
 I plan to extend this for the envmap buckets, with something like `draw_matching_envmap_draws`.
 
-# Getting the envmap shader data into the FR3
+## Getting the envmap shader data into the FR3
 I am blind and missed that there's an `envmap-shader` reference in `prototype-bucket-tie`. It's just a reference to an adgif shader stored somewhere else.
 
 ```
@@ -843,6 +843,94 @@ ASSERT(using_envmap == proto.envmap_adgif.has_value()); // set from envmap-shade
 ```
 and it passed! So it seems like all protos using envmap provide their own shader.
 
+Looking quickly at `draw-inline-array-prototype-tie-asm` shows that it always uploads the `envmap-shader`, so I guess the default one isn't used?
+
+Progress up to this point took about 1 weekend day (8 hours).
+
+## Looking for a shortcut: I really don't want to figure out the whole program
+
+Figure out all of etie looks absolutely awful (3k lines of EE assembly, 1.5k lines of VU1 assembly), so let's make some guesses.
+
+First, add some new categories for envmap:
+```
+enum class TieCategory {
+  NORMAL,
+  TRANS,  // also called alpha
+  WATER,
+  NORMAL_ENVMAP,
+  TRANS_ENVMAP,
+  WATER_ENVMAP
+};
+```
+
+I refactored things so I could write this:
+
+```cpp
+handle_draw_for_strip(tree, static_draws_by_tex,
+                      draws_by_category.at((int)info.category), packed_vert_indices,
+                      mode, idx_in_lev_data, strip, inst, ifrag, proto_idx, frag_idx,
+                      strip_idx, matrix_idx);
+
+// also add the envmap draw: note useing envmap_drawmode and envmap_category this time
+if (info.uses_envmap) {
+  handle_draw_for_strip(tree, static_draws_by_tex,
+                        draws_by_category.at((int)info.envmap_category),
+                        packed_vert_indices, envmap_drawmode, idx_in_lev_data, strip,
+                        inst, ifrag, proto_idx, frag_idx, strip_idx, matrix_idx);
+}
+```
+But that doesn't make sense...
+This code does:
+- always add normal draw to normal category
+- if we envmap, add a draw to envmap category
+
+What we really want is:
+- if we envmap, add normal draw to envmap category
+- add a second draw, also in the envmap category, somehow flagged to behave differently.
+
+Environment mapped stuff is drawn in two passes: a base pass that's very similar to normal TIE, and a second pass to draw on the shiny stuff.
+
+We merge and reorder draws (within a category) to reduce the number of texture switches. The number of switches for the first and second pass may be different (eg: two objects may use the same base texture, but different envmap texture), and in these cases we want to merge their second-pass draws but not their first. So it makes sense to have an entirely separate draw list for envmap drawing.
+
+```cpp
+if (info.uses_envmap) {
+  // first pass: normal draw mode, envmap bucket, normal draw list
+  handle_draw_for_strip(tree, static_draws_by_tex,
+                        draws_by_category.at((int)info.envmap_category),
+                        packed_vert_indices, mode, idx_in_lev_data, strip, inst, ifrag,
+                        proto_idx, frag_idx, strip_idx, matrix_idx);
+  // second pass envmap draw mode, in envmap bucket, envmap-specific draw list
+  handle_draw_for_strip(tree, envmap_draws_by_tex,
+                        envmap_draws_by_category.at((int)info.envmap_category),
+                        packed_vert_indices, envmap_drawmode, idx_in_lev_data, strip,
+                        inst, ifrag, proto_idx, frag_idx, strip_idx, matrix_idx);
+} else {
+  // totally normal stuff
+  handle_draw_for_strip(tree, static_draws_by_tex,
+                        draws_by_category.at((int)info.category), packed_vert_indices,
+                        mode, idx_in_lev_data, strip, inst, ifrag, proto_idx, frag_idx,
+                        strip_idx, matrix_idx);
+}
+```
+At this point, I did a round of actually implementing all the bits and pieces to make this load. I just skipped doing anything with the envmap draws, and only drew the normal ones.
+
+And this worked! I saw the "first pass" draw for stuff like mountain temple:
+(TODO picture)
+So it appears, but isn't shiny.
+
+I realized two problems:
+- this is a bad idea, because we no longer have a single flat list of draws.
+- there are still bad settings (end of pipe at pumping station is messed up)
+
+For the first problem, I think I should still have a single draw list for the entire TIE tree, but just add more categories. For example `NORMAL_ENVMAP` should be split into `NORMAL_ENVMAP_FIRST_PASS` and `NORMAL_ENVMAP_SECOND_PASS`. The `Tie3AnotherCategory` renderer assigned to first pass will be responsible for also handling the second pass.
+
+For the second problem, I think I can guess what's happening. Usually the alpha channel is used for "alpha test", which is a discrete "draw/don't draw" decision. This is useful for some textures that have totally see-through parts (eg: leafy things). For envmapped stuff, I think they turn off alpha test, and this ends up getting used as an "envmap multiplier".
+
+This reminds me of a third problem, which is that the trans/alpha/water TIE buckets may have different renderer settings that are not properly reflected anywhere.
+
+This reminds me of a 4th problem, which is that the tfx/tcc settings don't seem to work right for TIE. There are places where they switch this mode to DECAL for lights, and getting this wrong makes lights look dim. I don't really know why they do this, but it was a common pattern for jak 1 lights (and eyes).
+
+With all these problems, I am out of time. (spent about 4 hours over an evening)
 
 ```
   b L14                      |  nop
