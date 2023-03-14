@@ -45,7 +45,7 @@ struct SharedRenderState {
 
   void reset();
   bool has_pc_data = false;
-  LevelVis occlusion_vis[6];
+  LevelVis occlusion_vis[10];
 
   math::Vector4f camera_planes[4];
   math::Vector4f camera_matrix[4];
