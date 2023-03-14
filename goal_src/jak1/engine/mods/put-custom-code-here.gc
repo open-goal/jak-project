@@ -25,35 +25,80 @@ an orb |#
 (define *registered-with-server?* #f)
 (define *last-position-sync-time* (the-as time-frame #f))
 
-(defun move-actor-str ((ename string) (player-info remote-player-info))
-  (let ((p (the process-drawable (process-by-ename ename))))
-    (when p
-      (set! (-> p root trans x) (-> player-info trans_x))
-      (set! (-> p root trans y) (-> player-info trans_y))
-      (set! (-> p root trans z) (-> player-info trans_z))
-      (set! (-> p root quat x)  (-> player-info quat_x))
-      (set! (-> p root quat y)  (-> player-info quat_y))
-      (set! (-> p root quat z)  (-> player-info quat_z))
-      (set! (-> p root quat w)  (-> player-info quat_w))
+(define *remote-targets* (new 'global 'boxed-array handle 4))
+
+(defun start-extra-target ()
+  (ppointer->handle (process-spawn
+                target
+                :init init-target
+                  (-> *game-info* current-continue)
+                :from *target-dead-pool*
+                :to *target-pool*
+                :stack *kernel-dram-stack*
+                ))
+  )
+
+(defun color-target-rgb ((tgt process-drawable) (r float) (g float) (b float))
+  (set! (-> tgt draw color-mult r) r)
+  (set! (-> tgt draw color-mult g) g)
+  (set! (-> tgt draw color-mult b) b)
+  (none)
+  )
+
+(defun color-target ((tgt process-drawable) (color symbol))
+  (case color
+    (('normal)
+      (color-target-rgb tgt 1.0 1.0 1.0)
+      )
+    (('white)
+      (color-target-rgb tgt 10.0 10.0 10.0)
+      )
+    (('black)
+      (color-target-rgb tgt 0.0 0.0 0.0)
+      )
+    (('red)
+      (color-target-rgb tgt 5.0 0.0 0.0)
+      )
+    (('green)
+      (color-target-rgb tgt 0.0 5.0 0.0)
+      )
+    (('blue)
+      (color-target-rgb tgt 0.0 0.0 5.0)
+      )
+    (('yellow)
+      (color-target-rgb tgt 5.0 5.0 0.0)
+      )
+    (('pink)
+      (color-target-rgb tgt 5.0 0.0 5.0)
+      )
+    (('light-blue)
+      (color-target-rgb tgt 0.0 5.0 5.0)
+      )
+    (else ;; random
+      (color-target-rgb tgt 
+        (rand-vu-float-range 0.0 5.0)
+        (rand-vu-float-range 0.0 5.0)
+        (rand-vu-float-range 0.0 5.0))
       )
     )
   )
 
+;; (define *multiplayer-mode* 'jaks)
+(define *multiplayer-mode* 'orbs)
 (defun runs-every-frame ()
-  ;;(increase-power-cell-by-one) This is a call to increase-power-cell-by-one defined in define-custom-functions-here.gc
   
   ;; register with server if we haven't yet
   (when (and *target* (not *registered-with-server?*))
     (pc-http-register *multiplayer-info*)
     (set! *registered-with-server?* #t)
-    ;; for us to wait 0.25s to ensure registration before syncing position
-    (set! *last-position-sync-time* (-> *display* base-frame-counter))
+    ;; wait a bit to ensure registration before syncing position
+    (set! *last-position-sync-time* (+ (-> *display* base-frame-counter) (seconds 1.0)))
     )
 
   (when (and *target* (>= (-> *multiplayer-info* player_num) 0) (< (-> *multiplayer-info* player_num) 4))
     ;; if never synced positions, or its been 1s, request updated positions
     (when (or (not *last-position-sync-time*)
-              (>= (- (-> *display* base-frame-counter) *last-position-sync-time*) (seconds 0.03)))
+              (>= (- (-> *display* base-frame-counter) *last-position-sync-time*) (seconds 0.1)))
       ;; update last sync time
       (set! *last-position-sync-time* (-> *display* base-frame-counter))
 
@@ -69,21 +114,59 @@ an orb |#
 
       ;; request to get positions of other players from server (async)
       (pc-http-get-positions)
-      )
 
-    (dotimes (idx 4)
-      (when (!= (-> *multiplayer-info* player_num) idx)
-        (move-actor-str 
-          (case idx
-            ((0) "bird-lady-4")
-            ((1) "sage-23")
-            ((2) "mayor-5")
-            ((3) "explorer-4")
-            (else "explorer-4")
+      (dotimes (idx 4)
+        (when (!= (-> *multiplayer-info* player_num) idx)
+          (when (zero? (-> *remote-targets* idx))
+            (case *multiplayer-mode*
+              (('jaks)
+                (set! (-> *remote-targets* idx) (start-extra-target))
+                )
+              (('orbs)
+                (let ((vec (new 'stack-no-clear 'vector)))
+                  (set! (-> vec x) 0.0)
+                  (set! (-> vec y) -80920.0)
+                  (set! (-> vec z) 0.0)
+                  (set! (-> *remote-targets* idx) (ppointer->handle (birth-pickup-at-point
+                                                      vec
+                                                      (pickup-type money)
+                                                      (the-as float 1.0)
+                                                      #t
+                                                      *target*
+                                                      (the-as fact-info #f)
+                                                    )))
+                  )
+                )
+              )
             )
-          (-> *multiplayer-info* players idx)
+          
+          (let ((p (the process-drawable (handle->process (-> *remote-targets* idx)))))
+            (when (and p (!= (-> p status) 'waiting-to-run))
+              (set! (-> p root trans x) (-> *multiplayer-info* players idx trans_x))
+              (set! (-> p root trans y) (-> *multiplayer-info* players idx trans_y))
+              (set! (-> p root trans z) (-> *multiplayer-info* players idx trans_z))
+              (set! (-> p root quat x)  (-> *multiplayer-info* players idx quat_x))
+              (set! (-> p root quat y)  (-> *multiplayer-info* players idx quat_y))
+              (set! (-> p root quat z)  (-> *multiplayer-info* players idx quat_z))
+              (set! (-> p root quat w)  (-> *multiplayer-info* players idx quat_w))
+
+              (case idx
+                ((0) (color-target p 'green))
+                ((1) (color-target p 'blue))
+                ((2) (color-target p 'red))
+                ((3) (color-target p 'yellow))
+                )
+              )
+            )
           )
         )
+      )
+
+    (case (-> *multiplayer-info* player_num)
+      ((0) (color-target *target* 'green))
+      ((1) (color-target *target* 'blue))
+      ((2) (color-target *target* 'red))
+      ((3) (color-target *target* 'yellow))
       )
     )
   (none)

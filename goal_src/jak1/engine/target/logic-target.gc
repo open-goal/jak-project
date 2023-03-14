@@ -1997,7 +1997,8 @@
   (set! (-> self game) *game-info*)
   (move-to-point! (-> self control) (-> arg0 trans))
   (set! (-> (&-> (-> self control) unknown-qword00) 0) (-> arg0 trans quad))
-  (set! (-> self control unknown-cpad-info00) (-> *cpad-list* cpads 0))
+  ;; only set controller for original target
+  (set! (-> self control unknown-cpad-info00) (-> *cpad-list* cpads (if (or (not *target*) (= *target* self)) 0 1)))
   (set! (-> self control unknown-surface01) (new 'process 'surface))
   (set! (-> self control unknown-surface01 name) 'current)
   (set! (-> self control unknown-surface01 active-hook) nothing)
@@ -2026,7 +2027,9 @@
   (if *debug-segment*
       (add-connection *debug-engine* self target-print-stats self *stdcon0* #f)
       )
-  (activate-hud self)
+  (when (or (not *target*) (= *target* self)) 
+    (activate-hud self)
+    )
   (set! (-> self fp-hud) (the-as handle #f))
   ;; PAL patch here
   (set! (-> self burn-proc) (the-as handle #f))
@@ -2040,8 +2043,10 @@
   (set! (-> self manipy) (the-as (pointer manipy) #f))
   (set! (-> self event-hook) target-generic-event-handler)
   (set! (-> self current-level) #f)
-  (level-setup)
-  (go target-continue arg0)
+  (when (or (not *target*) (= *target* self)) 
+    (level-setup) (go target-continue arg0)
+    )
+  (go target-stance)
   (none)
   )
 
