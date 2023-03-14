@@ -25,7 +25,7 @@ an orb |#
 (define *registered-with-server?* #f)
 (define *last-position-sync-time* (the-as time-frame #f))
 
-(define *remote-targets* (new 'global 'boxed-array handle 4))
+(define *remote-targets* (new 'global 'boxed-array handle 12))
 
 (defun start-extra-target ()
   (ppointer->handle (process-spawn
@@ -83,8 +83,8 @@ an orb |#
     )
   )
 
-;; (define *multiplayer-mode* 'jaks)
-(define *multiplayer-mode* 'orbs)
+(define *multiplayer-mode* 'jaks)
+;; (define *multiplayer-mode* 'orbs)
 (defun runs-every-frame ()
   
   ;; register with server if we haven't yet
@@ -95,10 +95,10 @@ an orb |#
     (set! *last-position-sync-time* (+ (-> *display* base-frame-counter) (seconds 1.0)))
     )
 
-  (when (and *target* (>= (-> *multiplayer-info* player_num) 0) (< (-> *multiplayer-info* player_num) 4))
+  (when (and *target* (>= (-> *multiplayer-info* player_num) 0) (< (-> *multiplayer-info* player_num) 12))
     ;; if never synced positions, or its been 1s, request updated positions
     (when (or (not *last-position-sync-time*)
-              (>= (- (-> *display* base-frame-counter) *last-position-sync-time*) (seconds 0.1)))
+              (>= (- (-> *display* base-frame-counter) *last-position-sync-time*) (seconds 0.03)))
       ;; update last sync time
       (set! *last-position-sync-time* (-> *display* base-frame-counter))
 
@@ -114,48 +114,54 @@ an orb |#
 
       ;; request to get positions of other players from server (async)
       (pc-http-get-positions)
+      )
 
-      (dotimes (idx 4)
-        (when (!= (-> *multiplayer-info* player_num) idx)
-          (when (zero? (-> *remote-targets* idx))
-            (case *multiplayer-mode*
-              (('jaks)
-                (set! (-> *remote-targets* idx) (start-extra-target))
-                )
-              (('orbs)
-                (let ((vec (new 'stack-no-clear 'vector)))
-                  (set! (-> vec x) 0.0)
-                  (set! (-> vec y) -80920.0)
-                  (set! (-> vec z) 0.0)
-                  (set! (-> *remote-targets* idx) (ppointer->handle (birth-pickup-at-point
-                                                      vec
-                                                      (pickup-type money)
-                                                      (the-as float 1.0)
-                                                      #t
-                                                      *target*
-                                                      (the-as fact-info #f)
-                                                    )))
-                  )
+    (dotimes (idx 12)
+      (when (!= (-> *multiplayer-info* player_num) idx)
+        (when (zero? (-> *remote-targets* idx))
+          (case *multiplayer-mode*
+            (('jaks)
+              (set! (-> *remote-targets* idx) (start-extra-target))
+              )
+            (('orbs)
+              (let ((vec (new 'stack-no-clear 'vector)))
+                (set! (-> vec x) 0.0)
+                (set! (-> vec y) -80920.0)  ;; spawn orbs 20m under 0,0,0 so nobody can get them
+                (set! (-> vec z) 0.0)
+                (set! (-> *remote-targets* idx) (ppointer->handle (birth-pickup-at-point
+                                                    vec
+                                                    (pickup-type money)
+                                                    (the-as float 1.0)
+                                                    #t
+                                                    *target*
+                                                    (the-as fact-info #f)
+                                                  )))
                 )
               )
             )
-          
-          (let ((p (the process-drawable (handle->process (-> *remote-targets* idx)))))
-            (when (and p (!= (-> p status) 'waiting-to-run))
-              (set! (-> p root trans x) (-> *multiplayer-info* players idx trans_x))
-              (set! (-> p root trans y) (-> *multiplayer-info* players idx trans_y))
-              (set! (-> p root trans z) (-> *multiplayer-info* players idx trans_z))
-              (set! (-> p root quat x)  (-> *multiplayer-info* players idx quat_x))
-              (set! (-> p root quat y)  (-> *multiplayer-info* players idx quat_y))
-              (set! (-> p root quat z)  (-> *multiplayer-info* players idx quat_z))
-              (set! (-> p root quat w)  (-> *multiplayer-info* players idx quat_w))
-
-              (case idx
-                ((0) (color-target p 'green))
-                ((1) (color-target p 'blue))
-                ((2) (color-target p 'red))
-                ((3) (color-target p 'yellow))
+          )
+        
+        (let ((p (the process-drawable (handle->process (-> *remote-targets* idx)))))
+          (when p
+            (set! (-> p root trans x) (-> *multiplayer-info* players idx trans_x))
+            (set! (-> p root trans y) (-> *multiplayer-info* players idx trans_y))
+            (set! (-> p root trans z) (-> *multiplayer-info* players idx trans_z))
+            (set! (-> p root quat x)  (-> *multiplayer-info* players idx quat_x))
+            (set! (-> p root quat y)  (-> *multiplayer-info* players idx quat_y))
+            (set! (-> p root quat z)  (-> *multiplayer-info* players idx quat_z))
+            (set! (-> p root quat w)  (-> *multiplayer-info* players idx quat_w))
+            (when (type-type? (-> p type) target)
+              (let ((t (the target p)))
+                (quaternion-copy! (-> t control dir-targ) (-> t root quat))
                 )
+              )
+
+            (case idx
+              ((0) (color-target p 'green))
+              ((1) (color-target p 'blue))
+              ((2) (color-target p 'red))
+              ((3) (color-target p 'yellow))
+              (else (color-target p 'surprise-me))
               )
             )
           )
@@ -167,6 +173,7 @@ an orb |#
       ((1) (color-target *target* 'blue))
       ((2) (color-target *target* 'red))
       ((3) (color-target *target* 'yellow))
+      (else (color-target *target* 'surprise-me))
       )
     )
   (none)

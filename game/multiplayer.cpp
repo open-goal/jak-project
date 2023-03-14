@@ -130,7 +130,7 @@ void http_get_positions() {
       nlohmann::json response_json = nlohmann::json::parse(response_data);
       for (const auto& item : response_json.items()) {
         int pNum = stoi(item.key());
-        if (pNum < 4) {
+        if (pNum < 12) {
           RemotePlayerInfo* rpInfo = &(gMultiplayerInfo->players[pNum]);
 
           for (const auto& field : item.value().items()) {

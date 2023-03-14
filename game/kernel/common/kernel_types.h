@@ -58,7 +58,7 @@ static_assert(sizeof(RemotePlayerInfo) == 28, "RemotePlayerInfo size is wrong");
 //#pragma pack(push, 4)
 struct MultiplayerInfo {
   s32 player_num;
-  RemotePlayerInfo players[4];
+  RemotePlayerInfo players[12];
 };
 //static_assert(sizeof(MultiplayerInfo) == 20, "MultiplayerInfo size is wrong");
 //#pragma pack(pop)
