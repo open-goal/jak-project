@@ -382,14 +382,21 @@
             )
           )
       (set! (-> self control reaction) target-collision-reaction)
-      (fill-cache-integrate-and-collide!
-        (-> self control)
-        (-> self control transv)
-        (-> self control root-prim collide-with)
-        )
-      (if (logtest? (-> self control root-prim prim-core action) (collide-action ca-6))
-          (find-edge-grabs! *target* *collide-cache*)
+
+      (dotimes (tgt-idx MAX_MULTIPLAYER_COUNT)
+        (when (and (get-target tgt-idx) (= self (get-target tgt-idx)))
+          (fill-cache-integrate-and-collide!
+            (-> self control)
+            (-> self control transv)
+            (-> self control root-prim collide-with)
+            (-> *edge-collide-cache-list* tgt-idx)
+            (-> *edge-collide-work-list* tgt-idx)
+            )
+          (if (logtest? (-> self control root-prim prim-core action) (collide-action ca-6))
+            (find-edge-grabs! self (-> *edge-collide-cache-list* tgt-idx) tgt-idx)
+            )
           )
+        )
       (if *debug-segment*
           (add-frame
             (-> *display* frames (-> *display* on-screen) frame profile-bar 0)

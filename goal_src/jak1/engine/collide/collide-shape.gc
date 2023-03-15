@@ -723,6 +723,7 @@
         (-> target-ctrl root-prim collide-with)
         (-> target-ctrl process)
         (new 'static 'pat-surface :noentity #x1)
+        *collide-work*
         )
       )
 
@@ -1614,7 +1615,7 @@
       (+! (-> s4-0 y) arg0)
       0.0
       ;; find the ground
-      (let ((f0-4 (fill-and-probe-using-y-probe *collide-cache* s4-0 f30-0 arg3 (-> obj process) s3-0 (new 'static 'pat-surface :noentity #x1))))
+      (let ((f0-4 (fill-and-probe-using-y-probe *collide-cache* s4-0 f30-0 arg3 (-> obj process) s3-0 (new 'static 'pat-surface :noentity #x1) *collide-work*)))
         (when (< f0-4 0.0)
           (if arg2
               (format 0 "WARNING: move-to-ground: (~f ~f) failed to locate ground [~S type ~S]~%"
@@ -1667,7 +1668,7 @@
   arg0
   )
 
-(defmethod fill-cache-integrate-and-collide! collide-shape ((obj collide-shape) (arg0 vector) (arg1 collide-kind))
+(defmethod fill-cache-integrate-and-collide! collide-shape ((obj collide-shape) (arg0 vector) (arg1 collide-kind) (cache collide-cache) (coll-work collide-work))
   "Fill the collide cache for the object, integrate, and handle collisions!"
   (local-vars (at-0 int))
   (rlet ((vf0 :class vf)
@@ -1699,7 +1700,7 @@
                       )
                 )
             ;; and now fill the cache with all things we could hit
-            (fill-cache-for-shape! obj f0-2 arg1)
+            (fill-cache-for-shape! obj f0-2 arg1 cache coll-work)
             )
           )
         ;; do the integration, colliding with stuff in the cache.
@@ -1708,23 +1709,23 @@
         )
   )
 
-(defmethod fill-cache-for-shape! collide-shape ((obj collide-shape) (arg0 float) (arg1 collide-kind))
+(defmethod fill-cache-for-shape! collide-shape ((obj collide-shape) (arg0 float) (arg1 collide-kind) (cache collide-cache) (coll-work collide-work))
   "Fill cache for a box."
   (let ((s5-0 (new 'stack-no-clear 'bounding-box)))
     (cond
       ((build-bounding-box-for-shape obj s5-0 arg0 arg1) ;; <- this generates the box
        ;; fill with the gox
-       (fill-using-bounding-box *collide-cache* s5-0 arg1 (-> obj process) (-> obj pat-ignore-mask))
+       (fill-using-bounding-box cache s5-0 arg1 (-> obj process) (-> obj pat-ignore-mask) coll-work)
        ;; only draw collide cache, if we're the target
        (when (and *display-collide-cache* (= (-> obj process type) target))
-           (debug-draw *collide-cache*)
+           (debug-draw cache)
            ;; NOTE: added
            (add-debug-box #t (bucket-id debug) (-> s5-0 min) (-> s5-0 max) (new 'static 'rgba :a #x80 :b #x70 :g #x70))
            )
        )
       (else
         ;; no need. the cache can be empty.
-        (initialize *collide-cache*)
+        (initialize cache)
         )
       )
     )
@@ -2517,7 +2518,7 @@
                     (let ((s2-0 (new 'stack-no-clear 'collide-overlap-result)))
                       (when (and (should-push-away obj s3-0 s2-0) (>= -81.92 (-> s2-0 best-dist))) ;; we collide!
                         ;; fill the collide cache.
-                        (fill-cache-for-shape! s3-0 8192.0 (-> s3-0 root-prim collide-with))
+                        (fill-cache-for-shape! s3-0 8192.0 (-> s3-0 root-prim collide-with) *collide-cache* *collide-work*)
                         ;; 3 iterations to solve it.
                         (let ((s5-1 3))
                           (until (or (<= s5-1 0) (not (should-push-away obj s3-0 s2-0))) ;; run until we're out.
@@ -2602,7 +2603,7 @@
                     (when (!= (-> obj process) (-> s3-1 process))
                       (let ((s2-1 (new 'stack-no-clear 'collide-overlap-result)))
                         (when (and (should-push-away obj s3-1 s2-1) (>= -81.92 (-> s2-1 best-dist)))
-                          (fill-cache-for-shape! s3-1 8192.0 (-> s3-1 root-prim collide-with))
+                          (fill-cache-for-shape! s3-1 8192.0 (-> s3-1 root-prim collide-with) *collide-cache* *collide-work*)
                           (let ((s5-2 3))
                             (until (or (<= s5-2 0) (not (should-push-away obj s3-1 s2-1)))
                               (let ((s1-1 (new 'stack-no-clear 'vector)))
@@ -2679,7 +2680,7 @@
                     (when (!= (-> obj process) (-> s3-2 process))
                       (let ((s2-2 (new 'stack-no-clear 'collide-overlap-result)))
                         (when (and (should-push-away obj s3-2 s2-2) (>= -81.92 (-> s2-2 best-dist)))
-                          (fill-cache-for-shape! s3-2 8192.0 (-> s3-2 root-prim collide-with))
+                          (fill-cache-for-shape! s3-2 8192.0 (-> s3-2 root-prim collide-with) *collide-cache* *collide-work*)
                           (let ((s5-3 3))
                             (until (or (<= s5-3 0) (not (should-push-away obj s3-2 s2-2)))
                               (let ((s1-2 (new 'stack-no-clear 'vector)))
@@ -2754,7 +2755,7 @@
                     (when (!= (-> obj process) (-> s3-3 process))
                       (let ((s2-3 (new 'stack-no-clear 'collide-overlap-result)))
                         (when (and (should-push-away obj s3-3 s2-3) (>= -81.92 (-> s2-3 best-dist)))
-                          (fill-cache-for-shape! s3-3 8192.0 (-> s3-3 root-prim collide-with))
+                          (fill-cache-for-shape! s3-3 8192.0 (-> s3-3 root-prim collide-with) *collide-cache* *collide-work*)
                           (let ((s5-4 3))
                             (until (or (<= s5-4 0) (not (should-push-away obj s3-3 s2-3)))
                               (let ((s1-3 (new 'stack-no-clear 'vector)))

@@ -25,7 +25,7 @@ an orb |#
 (define *registered-with-server?* #f)
 (define *last-position-sync-time* (the-as time-frame #f))
 
-(define *remote-targets* (new 'global 'boxed-array handle 12))
+(define *remote-targets* (new 'global 'boxed-array handle MAX_MULTIPLAYER_COUNT))
 
 (defun start-extra-target ()
   (ppointer->handle (process-spawn
@@ -36,6 +36,13 @@ an orb |#
                 :to *target-pool*
                 :stack *kernel-dram-stack*
                 ))
+  )
+
+(defun get-target ((idx int))
+  (if (or (= (-> *multiplayer-info* player_num) -1) (= (-> *multiplayer-info* player_num) idx))
+    *target*
+    (the target (handle->process (-> *remote-targets* idx)))
+    )
   )
 
 (defun color-target-rgb ((tgt process-drawable) (r float) (g float) (b float))
@@ -113,14 +120,14 @@ an orb |#
   
   ;; register with server if we haven't yet
   (when (and *target* (not *registered-with-server?*))
-    (pc-http-register *multiplayer-info*)
+    ;; (pc-http-register *multiplayer-info*)
     (set! *registered-with-server?* #t)
     ;; wait a bit to ensure registration before syncing position
     (set! *last-position-sync-time* (+ (-> *display* base-frame-counter) (seconds 1.0)))
     )
 
-  (when (and *target* (>= (-> *multiplayer-info* player_num) 0) (< (-> *multiplayer-info* player_num) 12))
-    ;; if never synced positions, or its been 1s, request updated positions
+  (when (and *target* (>= (-> *multiplayer-info* player_num) 0) (< (-> *multiplayer-info* player_num) MAX_MULTIPLAYER_COUNT))
+    ;; if never synced positions, or its been X ms, request updated positions
     (when (or (not *last-position-sync-time*)
               (>= (- (-> *display* base-frame-counter) *last-position-sync-time*) (seconds 0.05)))
       ;; update last sync time
@@ -140,7 +147,7 @@ an orb |#
       (pc-http-get-positions)
       )
 
-    (dotimes (idx 12)
+    (dotimes (idx MAX_MULTIPLAYER_COUNT)
       (when (!= (-> *multiplayer-info* player_num) idx)
         ;; see if we need to respawn remote targets
         (when (or (zero? (-> *remote-targets* idx))

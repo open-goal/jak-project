@@ -26,7 +26,7 @@
 
 ;; This is mostly stolen from collide-cache.gc. It builds the bounding box we'll use for later tests.
 ;; The bounding box is stored in *collide-work*.
-(defun setup-collide-for-line-sphere ((origin vector) (line vector) (radius float))
+(defun setup-collide-for-line-sphere ((origin vector) (line vector) (radius float) (coll-work collide-work))
   (local-vars (a0-2 uint128) (a0-3 uint128) (a0-7 float) (t0-1 uint128) (t0-2 uint128) (zero uint128))
   (rlet ((acc :class vf) (Q :class vf) (vf0 :class vf) (vf1 :class vf) (vf10 :class vf) (vf11 :class vf) (vf12 :class vf)
          (vf13 :class vf) (vf14 :class vf) (vf15 :class vf) (vf16 :class vf) (vf17 :class vf) (vf18 :class vf) (vf19 :class vf)
@@ -41,7 +41,7 @@
         (.ftoi.vf vf21 vf3)            ;; vf21 is the line
         (.lvf vf1 (&-> origin quad))   ;; vf1 is the origin
         (.mul.vf vf8 vf3 vf3)          ;; 
-        (let ((v1-1 *collide-work*))
+        (let ((v1-1 coll-work))
           (.add.vf vf2 vf1 vf3)        ;; vf2 is the endpoint
           ;;(set! (-> obj ignore-mask) pat-ignore)
           (.mov t0-1 vf21)             ;; t0-1 is the line
@@ -321,7 +321,7 @@
       
       (let ((result (new 'stack-no-clear 'collide-tri-result)))
         
-        (let ((u (fill-and-probe-using-y-probe *collide-cache* (-> bbox min) (meters 20.0) (collide-kind background) (the process-drawable #f) result (the uint 0))))
+        (let ((u (fill-and-probe-using-y-probe *collide-cache* (-> bbox min) (meters 20.0) (collide-kind background) (the process-drawable #f) result (the uint 0) *collide-work*)))
           (-! (-> bbox min y) (* u (meters 20.0)))
           ;; (format *stdcon* "u = ~f : ~`vector`P ~%" u (-> result vertex 0))
           (add-debug-sphere

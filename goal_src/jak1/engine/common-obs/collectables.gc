@@ -1620,7 +1620,7 @@
       (spool-push *art-control* (-> self victory-anim name) 0 self (the-as float -99.0))
       (suspend)
       )
-    (while (not (send-event *target* 'clone-anim self))
+    (while (not (send-event (the target (handle->process arg1)) 'clone-anim self))
       (spool-push *art-control* (-> self victory-anim name) 0 self (the-as float -99.0))
       (format #t "WARNING: fuel-cell stall on not cloning.~%")
       (suspend)
@@ -1653,8 +1653,8 @@
           (set-yaw-angle-clear-roll-pitch! (-> self root-override) (-> gp-1 w))
           )
         (else
-          (move-to-point! (-> self root-override) (-> *target* control trans))
-          (set-yaw-angle-clear-roll-pitch! (-> self root-override) (y-angle (-> *target* control)))
+          (move-to-point! (-> self root-override) (-> (the target (handle->process arg1)) control trans))
+          (set-yaw-angle-clear-roll-pitch! (-> self root-override) (y-angle (-> (the target (handle->process arg1)) control)))
           (move-to-ground
             (-> self root-override)
             (the-as float 40960.0)
@@ -1669,11 +1669,13 @@
     (send-event *target* 'get-pickup (-> self fact pickup-type) (-> self fact pickup-amount))
     (set! (-> self draw bounds w) 32768.0)
     (logior! (-> self skel status) (janim-status inited))
-    (send-event *target* 'blend-shape #t)
-    (add-setting! 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
-    (add-setting! 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
-    (add-setting! 'ambient-volume 'rel (-> *setting-control* current ambient-volume-movie) 0)
-    (process-spawn othercam self 10 #f #t :to self)
+    (when (= *target* (handle->process arg1))
+      (send-event *target* 'blend-shape #t)
+      (add-setting! 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
+      (add-setting! 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
+      (add-setting! 'ambient-volume 'rel (-> *setting-control* current ambient-volume-movie) 0)
+      (process-spawn othercam self 10 #f #t :to self)
+      )
     (auto-save-command 'auto-save 0 0 *default-pool*)
     (ja-play-spooled-anim
       (-> self victory-anim)
@@ -2681,6 +2683,7 @@
                   (the-as process-drawable #f)
                   s1-1
                   (new 'static 'pat-surface :noentity #x1)
+                  *collide-work*
                   )
                 0.0
                 )
