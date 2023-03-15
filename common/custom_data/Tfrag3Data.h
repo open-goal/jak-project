@@ -319,11 +319,15 @@ enum class TieCategory {
   WATER,
   NORMAL_ENVMAP,
   TRANS_ENVMAP,
-  WATER_ENVMAP
-};
-constexpr int kNumTieCategories = 6;
+  WATER_ENVMAP,
 
-constexpr bool is_envmap_category(tfrag3::TieCategory category) {
+  NORMAL_ENVMAP_SECOND_DRAW,
+  TRANS_ENVMAP_SECOND_DRAW,
+  WATER_ENVMAP_SECOND_DRAW,
+};
+constexpr int kNumTieCategories = 9;
+
+constexpr bool is_envmap_first_draw_category(tfrag3::TieCategory category) {
   switch (category) {
     case tfrag3::TieCategory::NORMAL_ENVMAP:
     case tfrag3::TieCategory::WATER_ENVMAP:
@@ -334,16 +338,25 @@ constexpr bool is_envmap_category(tfrag3::TieCategory category) {
   }
 }
 
+constexpr TieCategory get_second_draw_category(tfrag3::TieCategory category) {
+  switch (category) {
+    case TieCategory::NORMAL_ENVMAP:
+      return TieCategory::NORMAL_ENVMAP_SECOND_DRAW;
+    case TieCategory::TRANS_ENVMAP:
+      return TieCategory::TRANS_ENVMAP_SECOND_DRAW;
+    case TieCategory::WATER_ENVMAP:
+      return TieCategory::WATER_ENVMAP_SECOND_DRAW;
+    default:
+      return TieCategory::NORMAL_ENVMAP;
+  }
+}
+
 // A tie model
 struct TieTree {
   BVH bvh;
   std::vector<StripDraw> static_draws;
   // Category n uses draws: static_draws[cdi[n]] to static_draws[cdi[n + 1]]
   std::array<u32, kNumTieCategories + 1> category_draw_indices;
-  std::vector<StripDraw> envmap_draws;
-  std::array<u32, kNumTieCategories + 1> category_envmap_draw_indices;
-
-
 
   PackedTieVertices packed_vertices;
   std::vector<TimeOfDayColor> colors;  // vertex colors (pre-interpolation)

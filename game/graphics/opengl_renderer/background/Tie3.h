@@ -29,6 +29,7 @@ class Tie3 : public BucketRenderer {
        tfrag3::TieCategory category = tfrag3::TieCategory::NORMAL);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
+  void init_shaders(ShaderLibrary& shaders) override;
   ~Tie3();
 
   bool set_up_common_data_from_dma(DmaFollower& dma, SharedRenderState* render_state);
@@ -147,6 +148,10 @@ class Tie3 : public BucketRenderer {
   int m_level_id;
 
   tfrag3::TieCategory m_default_category;
+
+  struct {
+    GLuint decal;
+  } m_uniforms;
 
   static_assert(sizeof(WindWork) == 84 * 16);
 };

@@ -14,6 +14,7 @@ uniform vec4 fog_color;
 uniform int gfx_hack_no_tex;
 uniform int debug_hack;
 
+
 void main() {
     if (gfx_hack_no_tex == 0) {
       //vec4 T0 = texture(tex_T0, tex_coord);

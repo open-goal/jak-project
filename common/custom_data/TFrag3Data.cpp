@@ -188,17 +188,7 @@ void TieTree::serialize(Serializer& ser) {
     draw.serialize(ser);
   }
 
-  if (ser.is_saving()) {
-    ser.save<size_t>(envmap_draws.size());
-  } else {
-    envmap_draws.resize(ser.load<size_t>());
-  }
-  for (auto& draw : envmap_draws) {
-    draw.serialize(ser);
-  }
-
   ser.from_ptr(&category_draw_indices);
-  ser.from_ptr(&category_envmap_draw_indices);
 
 
   if (ser.is_saving()) {

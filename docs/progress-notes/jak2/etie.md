@@ -924,7 +924,7 @@ I realized two problems:
 
 For the first problem, I think I should still have a single draw list for the entire TIE tree, but just add more categories. For example `NORMAL_ENVMAP` should be split into `NORMAL_ENVMAP_FIRST_PASS` and `NORMAL_ENVMAP_SECOND_PASS`. The `Tie3AnotherCategory` renderer assigned to first pass will be responsible for also handling the second pass.
 
-For the second problem, I think I can guess what's happening. Usually the alpha channel is used for "alpha test", which is a discrete "draw/don't draw" decision. This is useful for some textures that have totally see-through parts (eg: leafy things). For envmapped stuff, I think they turn off alpha test, and this ends up getting used as an "envmap multiplier".
+For the second problem, I think I can guess what's happening. Usually the alpha channel is used for "alpha test", which is a discrete "draw/don't draw" decision per pixel. This is useful for some textures that have totally see-through parts (eg: leafy things). For envmapped stuff, I think they turn off alpha test, and this ends up getting used as an "envmap multiplier".
 
 This reminds me of a third problem, which is that the trans/alpha/water TIE buckets may have different renderer settings that are not properly reflected anywhere.
 
@@ -932,7 +932,579 @@ This reminds me of a 4th problem, which is that the tfx/tcc settings don't seem 
 
 With all these problems, I am out of time. (spent about 4 hours over an evening)
 
+### Looking at problem 4
+DECAL doesn't seem to work. From what I remember, decal should be set during adgif-shader login.
+Sure enough, I have this in `extract_tie.cpp`
 ```
+  // the value is overwritten by the login function. We don't care about this value, it's
+  // specific to the PS2's texture system.
+  ASSERT(ra_tex0_val == 0 || ra_tex0_val == 0x800000000);  // note: decal
+  // the original value is a flag. this means to use decal texture mode (todo)
+  if (uses_magic_tex0_bit) {
+    *uses_magic_tex0_bit = ra_tex0_val == 0x800000000;
+  }
+```
+and it gets set on tons of lights:
+```
+magic bit: sewer-light-base-rectangular.mb
+magic bit: skatea-interior-wall-light.mb
+magic bit: city-slum-lamp-01.mb
+```
+but nothing actually uses this info.
+
+Easy fix for the fragment shader:
+```
+    if (decal == 1) {
+        // output color is only from the texture.
+        // likely more efficient to have this branch in the vertex shader.
+        fragment_color = vec4(1.0, 1.0, 1.0, 1.0);
+    } else {
+        // time of day lookup
+        fragment_color = texelFetch(tex_T1, time_of_day_index, 0);
+        // color adjustment
+        fragment_color *= 2;
+        fragment_color.a *= 2;
+    }
+```
+
+set up the uniform:
+```cpp
+void Tie3::init_shaders(ShaderLibrary& shaders) {
+  m_uniforms.decal = glGetUniformLocation(shaders[ShaderId::TFRAG3].id(), "decal");
+}
+```
+then in the drawing loop:
+```cpp
+    glUniform1i(m_uniforms.decal, draw.mode.get_decal() ? 1 : 0);
+```
+and it fixes the lights!
+
+I checked on jak 1, and found that we missed some blue things in citadel, near the robot.
+
+### Looking at problem 2, then getting distracted and working on problem 3
+This problem is that alpha test is removing pixels that shouldn't be removed on the first draw of envmap.
+
+My guess is that alpha-test should be entirely disabled for the envmap base draw. This is how it worked in jak 1.
+
+The alpha test is controlled by the `gs-test` register, typically set by A+D data. There's some asserts in `process_adgif`that prove that it's not being set through `adgif-shaders`. In the original TIE renderer, there was some magic to toggle on and off alpha testing (which we handle). In the EE code, they generate template data:
+```
+  (set! (-> arg0 atestgif tag) (new 'static 'gif-tag64 :nloop #x2 :eop #x1 :nreg #x1))
+  (set! (-> arg0 atestgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+  (set! (-> arg0 alpha data) (the-as uint arg1))
+  (set! (-> arg0 alpha cmds) (gs-reg64 alpha-1))
+  (set! (-> arg0 atest-tra cmds) (gs-reg64 test-1))
+  (set! (-> arg0 atest-tra data) (the-as uint arg2))
+  (set! (-> arg0 atest-def cmds) (gs-reg64 test-1))
+  (set! (-> arg0 atest-def data) (the-as uint arg3))
+```
+The "tra" and "def" test modes can be controlled by the VU program.
+
+In Jak 1 we detected this with the `misc_x` flag
+```cpp
+// determine the draw mode
+DrawMode mode = process_draw_mode(strip.adgif, frag.prog_info.misc_x == 0, frag.has_magic_tex0_bit);
+```
+which gets set from the lower bit of some mysterious VU program register (ugh I hope we don't have to find more crap like this ever again).
+
+```
+frag.prog_info.misc_x = vi01;
+
+u16 vi01 = vf04_z;
+
+u16 vf04_z = frag.other_gif_data.at(10);
+
+// each frag also has "other" data. This is some index data that the VU program uses.
+// it comes in gif_data, after tex_qwc (determined from EE program)
+int tex_qwc = proto.geometry[geo].tie_fragments.at(frag_idx).tex_count;
+int other_qwc = proto.geometry[geo].tie_fragments.at(frag_idx).gif_count;
+frag_info.other_gif_data.resize(16 * other_qwc);
+memcpy(frag_info.other_gif_data.data(),
+       proto.geometry[geo].tie_fragments[frag_idx].gif_data.data() + (16 * tex_qwc),
+       16 * other_qwc);
+```
+
+Depending on the category, the `tra` and `def` are different.
+
+Normal:
+```
+(tie-init-buf
+  (-> s2-0 tie-bucket)
+  (the-as gs-alpha gp-0)
+  (new 'static 'gs-test
+    :ate #x1
+    :atst (gs-atest greater-equal)
+    :aref #x26
+    :zte #x1
+    :ztst (gs-ztest greater-equal)
+    )
+  (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+  )
+```
+
+Trans: (same as normal for `gs-test`)
+```
+(tie-init-buf
+  (-> s2-0 tie-trans-bucket)
+  (the-as gs-alpha s4-0)
+  (new 'static 'gs-test
+    :ate #x1
+    :atst (gs-atest greater-equal)
+    :aref #x26
+    :zte #x1
+    :ztst (gs-ztest greater-equal)
+    )
+  (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+  )
+```
+
+Water:
+```
+(tie-init-buf
+  (-> s2-0 tie-water-bucket)
+  (the-as gs-alpha s4-0)
+  (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal))
+  (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal))
+  )
+```
+(note that this weird alpha test setting is effectively used to mask z-buffer writes).
+
+This was a good point to notice that they turned on alpha blending for TIE in jak 2.
+
+From here, we can modify `extract_tie` to apply the correct `gs-test` settings based on the category.
+
+## Going back to problem 2
+
+We need to look at the code that sets up ETIE to understand the settings.
+Unlike normal TIE, there doesn't seem to be a feature to toggle between `tra` and `def` mode.  Here is `etie-init-engine`, which sets up DMA to set `gs-test` prior to any ETIE stuff running. (this is different from TIE, which puts the `gs-test` stuff in the constants block so the VU program can manipulate gs-test at runtime)
+```
+(defun etie-init-engine ((arg0 dma-buffer) (arg1 gs-alpha) (arg2 gs-test))
+  ;; set up DMA for 1 register
+  (let* ((v1-0 arg0)
+         (a0-1 (the-as dma-packet (-> v1-0 base)))
+         )
+    (set! (-> a0-1 dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+    (set! (-> a0-1 vif0) (new 'static 'vif-tag))
+    (set! (-> a0-1 vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
+    (set! (-> v1-0 base) (the-as pointer (&+ a0-1 16)))
+    )
+  (let* ((v1-1 arg0)
+         (a0-3 (the-as gs-gif-tag (-> v1-1 base)))
+         )
+    (set! (-> a0-3 tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
+    (set! (-> a0-3 regs) GIF_REGS_ALL_AD)
+    (set! (-> v1-1 base) (the-as pointer (&+ a0-3 16)))
+    )
+  (let* ((v1-2 arg0)
+         (a0-5 (-> v1-2 base))
+         )
+    (set! (-> (the-as (pointer uint64) a0-5)) arg2) ;; this is where gs-test is set
+    (set! (-> (the-as (pointer gs-reg64) a0-5) 1) (gs-reg64 test-1))
+    (set! (-> v1-2 base) (&+ a0-5 16))
+    )
+  ;; set up DMA to load ETIE program
+  (dma-buffer-add-vu-function arg0 etie-vu1-block 1)
+
+  ;; set up DMA to load ETIE constants
+  (let ((s4-0 12))
+    (let* ((v1-3 arg0)
+           (a0-8 (the-as dma-packet (-> v1-3 base)))
+           )
+      (set! (-> a0-8 dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc s4-0))
+      (set! (-> a0-8 vif0) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
+      (set! (-> a0-8 vif1) (new 'static 'vif-tag :imm #x382 :cmd (vif-cmd unpack-v4-32) :num s4-0))
+      (set! (-> v1-3 base) (the-as pointer (&+ a0-8 16)))
+      )
+    (etie-init-consts (the-as etie-consts (-> arg0 base)) arg1)
+    (&+! (-> arg0 base) (* s4-0 16))
+    )
+
+  ;; DMA to run program at address 8 (likely some init thing), then flusha.
+  (let* ((v1-6 arg0)
+         (a0-12 (the-as dma-packet (-> v1-6 base)))
+         )
+    (set! (-> a0-12 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+    (set! (-> a0-12 vif0) (new 'static 'vif-tag :imm #x8 :cmd (vif-cmd mscalf) :msk #x1))
+    (set! (-> a0-12 vif1) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+    (set! (-> v1-6 base) (the-as pointer (&+ a0-12 16)))
+    )
+
+  ;; dma to set the ROW register
+  (let* ((v1-7 arg0)
+         (a0-14 (the-as dma-packet (-> v1-7 base)))
+         )
+    (set! (-> a0-14 dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+    (set! (-> a0-14 vif0) (new 'static 'vif-tag))
+    (set! (-> a0-14 vif1) (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
+    (set! (-> v1-7 base) (the-as pointer (&+ a0-14 16)))
+    )
+  (let* ((v1-8 arg0)
+         (a0-16 (-> v1-8 base))
+         )
+    ;; common values used for their "use ROW add to convert ints to floats" trick
+    (set! (-> (the-as (pointer uint32) a0-16) 0) (the-as uint #x4b000000))
+    (set! (-> (the-as (pointer uint32) a0-16) 1) (the-as uint #x4b000000))
+    (set! (-> (the-as (pointer uint32) a0-16) 2) (the-as uint #x4b000000))
+    (set! (-> (the-as (pointer uint32) a0-16) 3) (the-as uint #x4b000000))
+
+    ;; set up base/offset for xtop-based double-buffering
+    (set! (-> (the-as (pointer vif-tag) a0-16) 4) (new 'static 'vif-tag :imm #xb8 :cmd (vif-cmd base)))
+    (set! (-> (the-as (pointer vif-tag) a0-16) 5) (new 'static 'vif-tag :imm #x20 :cmd (vif-cmd offset)))
+
+    ;; setup default uploading mode for ETIE, I guess.
+    (set! (-> (the-as (pointer vif-tag) a0-16) 6) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
+    (set! (-> (the-as (pointer vif-tag) a0-16) 7) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set! (-> v1-8 base) (&+ a0-16 32))
+    )
+  (none)
+  )
+  ```
+There's still some mysterious stuff going on with alpha (why does that need to be sent at all? adgif shaders should be setting alpha!), but let's ignore it for now. We ignored it for Jak 1's TIE and it was ok. (I kinda suspect it's for vanish or something like that?).
+
+Just like TIE, this can be traced back to figure out the per-bucket settings:
+```cpp
+
+/*!
+ * Get the draw mode settings that are pre-set for the entire bucket and not controlled by adgif
+ * shaders
+ */
+DrawMode get_base_draw_mode_jak2(bool use_tra, tfrag3::TieCategory category) {
+  DrawMode mode;
+  mode.enable_ab();
+  switch (category) {
+    case tfrag3::TieCategory::NORMAL:
+    case tfrag3::TieCategory::TRANS:
+      mode.enable_zt();
+      mode.set_depth_test(GsTest::ZTest::GEQUAL);
+      if (use_tra) {
+        mode.enable_at();
+        mode.set_aref(0x26);
+        mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+        mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
+      } else {
+        mode.disable_at();
+      }
+      break;
+      mode.enable_zt();
+      mode.set_depth_test(GsTest::ZTest::GEQUAL);
+      if (use_tra) {
+        mode.enable_at();
+        mode.set_aref(0x26);
+        mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+        mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
+      } else {
+        mode.disable_at();
+      }
+      break;
+    case tfrag3::TieCategory::WATER:
+    case tfrag3::TieCategory::WATER_ENVMAP:
+    case tfrag3::TieCategory::WATER_ENVMAP_SECOND_DRAW:
+      // (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal))
+      mode.enable_zt();
+      mode.set_depth_test(GsTest::ZTest::GEQUAL);
+      mode.enable_at();
+      mode.set_aref(0);
+      mode.set_alpha_fail(GsTest::AlphaFail::FB_ONLY);
+      mode.set_alpha_test(DrawMode::AlphaTest::NEVER);
+      break;
+
+    case tfrag3::TieCategory::NORMAL_ENVMAP:
+    case tfrag3::TieCategory::TRANS_ENVMAP:
+    case tfrag3::TieCategory::NORMAL_ENVMAP_SECOND_DRAW:
+    case tfrag3::TieCategory::TRANS_ENVMAP_SECOND_DRAW:
+      mode.enable_zt();
+      mode.set_depth_test(GsTest::ZTest::GEQUAL);
+      mode.disable_at();
+      break;
+
+    default:
+      ASSERT(false);
+  }
+  return mode;
+}
+```
+So we can take these settings, then apply alpha/tex0/clamp from the adgif shader, then we'll get our final draw mode. Notice that I'm assuming that the second draw uses the same settings. I think this actually makes sense for `gs-test`, but I'm less sure about alpha (not that we're setting it yet...).
+
+Also, refactored the categories again to have separate "second draw" categories.
+```cpp
+TieCategoryInfo get_jak2_tie_category(u32 flags) {
+  constexpr int kJak2ProtoDisable = 1;
+  constexpr int kJak2ProtoEnvmap = 2;
+  constexpr int kJak2ProtoTpageAlpha = 4;
+  constexpr int kJak2ProtoVanish = 8;
+  constexpr int kJak2ProtoBitFour = 16;
+  constexpr int kJak2ProtoVisible = 32;
+  constexpr int kJak2ProtoNoCollide = 64;
+  constexpr int kJak2ProtoTpageWater = 128;
+  TieCategoryInfo result;
+  result.uses_envmap = flags & kJak2ProtoEnvmap;
+
+  if (flags & kJak2ProtoTpageAlpha) {
+    if (result.uses_envmap) {
+      result.category = tfrag3::TieCategory::TRANS_ENVMAP;
+      result.envmap_second_draw_category = tfrag3::TieCategory::TRANS_ENVMAP_SECOND_DRAW;
+    } else {
+      result.category = tfrag3::TieCategory::TRANS;
+    }
+    ASSERT((flags & kJak2ProtoTpageWater) == 0);
+  } else if (flags & kJak2ProtoTpageWater) {
+    if (result.uses_envmap) {
+      result.category = tfrag3::TieCategory::WATER_ENVMAP;
+      result.envmap_second_draw_category = tfrag3::TieCategory::WATER_ENVMAP_SECOND_DRAW;
+    } else {
+      result.category = tfrag3::TieCategory::WATER;
+    }
+    ASSERT((flags & kJak2ProtoTpageAlpha) == 0);
+  } else {
+    if (result.uses_envmap) {
+      result.category = tfrag3::TieCategory::NORMAL_ENVMAP;
+      result.envmap_second_draw_category = tfrag3::TieCategory::NORMAL_ENVMAP_SECOND_DRAW;
+    } else {
+      result.category = tfrag3::TieCategory::NORMAL;
+    }
+  }
+  return result;
+}
+```
+The "category" now means the category for the base draw. If there is a second pass draw, it goes in `envmap_second_draw_category`. This removes the envmap-specific draw list.
+
+Some more refactoring later, it looks awful. Turning on alpha blending has caused the envmap base draw to make stuff partially transparent:
+
+PICTURE
+
+Some ideas:
+- the alpha blend mode used is wrong
+- the VU program clears the alpha blend enable bit
+- the VU program overwrites alpha somehow
+
+Looking into the first idea first. All the adgifs go through this, so I think that all adgifs do set alpha:
+```cpp
+  // alpha settings. we care about these, but no hidden value
+  u8 ra_alpha = gif_data.at(16 * (tex_idx * 5 + 4) + 8);
+  ASSERT(ra_alpha == (u8)GsRegisterAddress::ALPHA_1); // make sure it's setting alpha
+  u64 alpha;
+  memcpy(&alpha, &gif_data.at(16 * (tex_idx * 5 + 4)), 8);
+  adgif.alpha_val = alpha;
+  return adgif;
+```
+unsupported alphas are also an error, so I don't think it's ignoring a weird alpha mode. Interestingly, almost all TIE adgifs in jak 2 have SRC_DST_SRC_DST ("normal transparency"). The only exception is some `vil1-outdoor-light` copied from jak 1. This is different from jak 1, which sometimes set other modes (despite having alpha blend turned off, causing them to do nothing).
+
+To investiage the others, we'll have to figure out the address of the alpha cmd, and the `abe` bit
+```
+   (alpah   gs-adcmd     :inline :offset-assert  32)
+   (strgif  gs-gif-tag   :inline :offset-assert  48)
+```
+in constants.
+The unpack is at
+```
+      (set! (-> a0-8 vif1) (new 'static 'vif-tag :imm #x382 :cmd (vif-cmd unpack-v4-32) :num s4-0))
+```
+So the address is `0x384` for the alpha and `0x385` for the "strgif" (containing `:abe 1` bit).
+
+The `0x384` is 900. It's used here:
+
+```
+  lq.xyzw vf17, 903(vi00)    |  nop  ;; load, from constants, the envmap shader
+  lq.xyzw vf18, 904(vi00)    |  nop  ;; (5x A+D format data)
+  lq.xyzw vf19, 905(vi00)    |  nop
+  lq.xyzw vf20, 906(vi00)    |  nop
+  lq.xyzw vf21, 907(vi00)    |  nop
+  iaddi vi04, vi00, 0x0      |  nop  ;; vi04 = 0
+  lq.xyz vf11, 899(vi00)     |  nop  ;; vf11 = adgif, the template giftag for sending an adgif shader
+  ilwr.w vi05, vi04          |  nop  ;; loading... something...
+  ilw.w vi07, 1(vi04)        |  nop  ;; loading more things
+  ilw.w vi13, 2(vi04)        |  nop  ;; more things
+  lq.xyzw vf24, 900(vi00)    |  nop  ;; load the alpha a+d data
+  lqi.xyzw vf12, vi04        |  nop  ;; load 5 qw in a row. Very likely to be an adgif shader
+  lqi.xyzw vf13, vi04        |  nop
+  lqi.xyzw vf14, vi04        |  nop
+  lqi.xyzw vf15, vi04        |  nop
+  lqi.xyzw vf16, vi04        |  subw.w vf11, vf11, vf11 ;; this clears the upper 32-bits of the giftag
+  iadd vi05, vi05, vi12      |  nop                     ;; they like to stash random crap here.
+  iadd vi06, vi05, vi13      |  nop
+  iaddi vi01, vi00, 0x6      |  nop
+  sq.xyzw vf11, -1(vi05)     |  nop  ;; stores the giftag, the data after vi05 should be adgif format.
+  isw.x vi01, -1(vi05)       |  nop  ;; _modifies_ giftag to include 6 a+d's instead of usual 5
+  sqi.xyzw vf12, vi05        |  nop  ;; store the 5 a+d's like normal
+  sqi.xyzw vf13, vi05        |  nop
+  sqi.xyzw vf14, vi05        |  nop
+  sqi.xyzw vf15, vi05        |  nop
+  sqi.xyzw vf16, vi05        |  nop
+  b L6                       |  nop
+  sqi.xyzw vf24, vi05        |  nop  ;; (branch delay slot), store the 6th thing, the alpha
+
+;; now we have some sort of loop to store more adgifs.
+;; strangely, vf16 isn't reloaded, so they always store the same one
+;; (which will be alpha... but not the adjusted alpha.)
+  L5:
+  iadd vi05, vi05, vi12      |  nop
+  iadd vi06, vi05, vi13      |  nop
+  sqi.xyzw vf11, vi05        |  nop ;; store adgif giftag
+  sqi.xyzw vf12, vi05        |  nop ;; store adgif data (5 qw)
+  sqi.xyzw vf13, vi05        |  nop
+  sqi.xyzw vf14, vi05        |  nop
+  sqi.xyzw vf15, vi05        |  nop
+  sqi.xyzw vf16, vi05        |  nop ;; they don't reload vf16 ever?
+L6:
+  sqi.xyzw vf11, vi06        |  nop ;; store adgif giftag
+  sqi.xyzw vf17, vi06        |  nop ;; store the envmap shader's a+d
+  sqi.xyzw vf18, vi06        |  nop
+  sqi.xyzw vf19, vi06        |  nop
+  sqi.xyzw vf20, vi06        |  nop
+  sqi.xyzw vf21, vi06        |  nop
+  iaddi vi07, vi07, -0x1     |  nop
+  ilwr.w vi05, vi04          |  nop
+  lqi.xyzw vf12, vi04        |  nop
+  lqi.xyzw vf13, vi04        |  nop
+  lqi.xyzw vf14, vi04        |  nop
+  lqi.xyzw vf15, vi04        |  nop
+  ibgtz vi07, L5             |  nop
+  ;; edit: OOPS the load of vf16 was here...
+```
+which brings up a few mysteries:
+- it looks like they do the second envmap draw with the shader supplied in the constants block (always set to default-envmap-shader on VU program load). Then why did we think they were giving a per-proto envmap shader earlier?
+- they "extend" the first adgif to use the alpha provided in the constants block. But then future adgifs don't get to use this.
+- Future adgifs inherit the alpha from the first alpha. (or whatever a+d that had. I'm pretty sure it's always alpha, but who knows if other games are being played).
+
+The first mystery is solved by looking at `tie-work.gc`
+```
+:envmap-shader (new 'static 'dma-packet
+ :dma (new 'static 'dma-tag :qwc #x5 :id (dma-tag-id ref))
+ :vif0 (new 'static 'vif-tag :cmd (vif-cmd stmod))
+ :vif1 (new 'static 'vif-tag :imm #x387 :num #x5 :cmd (vif-cmd unpack-v4-32))
+ )
+```
+this is a DMA template to load an adgif shader to address `0x387` - 5 qw into the constants block, which is where the `envmap` adgif-shader is located. So they basically upload the envmap adgif-shader on top of the default one. Good news. It means that our extraction of the envmap-specific adgif-shader was right.
+
+
+The other two mysteries are unknown. We'll have to wait to see trans/water in use first.
+
+Back to the alpha-blend-enable mystery. Searching for the use of the "strgif" tag (enables alpha blending, which seems wrong):
+```
+  iaddi vi04, vi04, -0x2     |  subw.w vf22, vf00, vf00
+  ilwr.x vi08, vi04          |  subw.w vf23, vf00, vf00 ;; clear w of vf22.
+  ilwr.y vi09, vi04          |  nop
+  ilwr.z vi05, vi04          |  nop
+  iaddi vi07, vi07, -0x1     |  nop
+  iaddi vi04, vi04, 0x1      |  nop
+  lq.xyz vf22, 901(vi09)     |  nop  ;; load only xyz part of strgif (w stays 0)
+  ibeq vi00, vi07, L8        |  nop
+  lq.xyz vf23, 902(vi09)     |  nop
+L7:
+  iadd vi05, vi05, vi12      |  nop
+  iadd vi06, vi05, vi13      |  nop
+  iaddi vi07, vi07, -0x1     |  nop
+  sq.xyzw vf22, 0(vi05)      |  nop ;; store the strgif somewhere
+  iswr.x vi08, vi05          |  nop
+  sq.xyzw vf23, 0(vi06)      |  nop
+  iswr.x vi08, vi06          |  nop
+  ilwr.x vi08, vi04          |  nop
+  ilwr.y vi09, vi04          |  nop
+  ilwr.z vi05, vi04          |  nop
+  iaddi vi04, vi04, 0x1      |  nop
+  ibne vi00, vi07, L7        |  nop
+  lq.xyz vf22, 901(vi09)     |  nop
+```
+zeoring out the upper 32-bits doesn't clear `:abe` (it's likely because they hid stuff in those bits, and they need to be 0 for the GS). So no answer there...
+
+Looking through envmapped things _most_ of them have only 1 adgif. A few have more. What if this is actually the right behavior?
+```cpp
+  if (use_crazy_jak2_etie_alpha_thing) {
+    if (tex_idx == 0) {
+      first_adgif_alpha = adgif.alpha_val;
+      adgif.alpha_val =
+          alpha_value_for_etie_alpha_override(get_jak2_tie_category(proto.flags).category);
+    } else {
+      adgif.alpha_val = first_adgif_alpha;
+    }
+  }
+```
+it kinda seems promising. The alpha mode of 0 (the override mode for normal tie) corresponds to `(cs - cs) * as + cs`, which is just like having blending off.
+
+So I tried this... and it still wasn't right. Setting the override is doing the right thing and making things not-transparent, but for the second/third adgifs, it is definitely wrong.
+
+At this point, my guess is that the final a+d _doesn't set alpha at all_. So it looks like this:
+```
+first shader, special
+a+d
+a+d
+a+d
+a+d
+a+d
+bonus a+d: sets alpha to override
+
+seonc shader:
+a+d
+a+d
+a+d
+a+d
+a+d, but not actually alpha.
+
+we still have the override alpha.
+```
+
+I scrolled through the entire VU1 program and didn't see any obvious place where alpha would be modified.
+
+So I traced back. All ADGIF shaders are "logged in", which updates the `TEX0` data to point to the right VRAM address (and also sets stuff like tcc). This is a bit complicated because there's a bunch of packed flags, and the formats are terrible (in the file, it's some packed mess read by `adgif-shader-login-remap`, which outputs a GS format tag, with a bunch of ND specific stuff packed in the unused bits - some stuff is inserted by the `login` function - like a linked list pointer - and other magic bits are just passed through and have renderer-specific meaning).
+
+This showed that some tie logins would actually change the register address in A+D format data:
+```
+      (let ((pre (-> s5-0 reg-4))
+            (v1-1 (adgif-shader-login-no-remap s5-0)))
+        (format 0 "TIE LOGIN: ~D, ~D -> ~D~%" (-> s5-0 alpha) pre (-> s5-0 reg-4))
+        ...
+
+;; this printed
+TIE LOGIN: 34981577296, 66 -> 54
+```
+which is an alpha -> `miptbp2-1` register change. That would make perfect sense!
+
+The actual `adgif-shader-login-no-remap` is an asm mess, but I see:
+```
+  (when (< (the-as uint 4) (-> arg1 num-mips))
+    (set! (-> arg0 alpha-as-miptb2) (new 'static 'gs-miptbp
+                                      :tbp1 (-> arg1 dest 4)
+                                      :tbw1 (-> arg1 width 4)
+                                      :tbp2 (-> arg1 dest 5)
+                                      :tbw2 (-> arg1 width 5)
+                                      :tbp3 (-> arg1 dest 6)
+                                      :tbw3 (-> arg1 width 6)
+                                      )
+          )
+    (set! (-> (&-> arg0 reg-4-u32) 0) (gs-reg32 miptbp2-1))
+    )
+```
+which is replacing alpha with `miptbp2-1` if num_mips is more than 4. This is in `adgif-shader<-texture!` which I think is similar to the mip2sc version. The asm version has
+```
+daddiu t0, a3, -5
+bltz t0, L44
+```
+which is a "branch if more than 5"...
+
+Ignoring the 4 vs. 5 thing:
+```cpp
+  if (version == GameVersion::Jak2 && tfrag3::is_envmap_first_draw_category(category)) {
+    if (num_mips > 5) {
+      update_mode_from_alpha1(alpha_value_for_etie_alpha_override(category), mode);
+    } else {
+      // do ther normal stuff...
+    }
+  }
+```
+but I hit two problems:
+- there were cases where it seemed like an alpha would "sneak through" where it shouldn't.
+- I've also broken normal the doors in the stadium (jetboard). Might be normal TIE that's broken here.
+
+So the plan for next time is:
+- do my best guess at what ETIE should do, based on literal reading of the VU program.
+- Identify a place where I think an alpha "sneaks through"
+- Check it in game and compare to PCSX2.
+
+There's also the fact that enabling alpha blend for normal TIE seems to do the wrong thing sometimes (stadium doors transparent, the TIE ones).
+
+The good news is that some transparent TIEs look right now. So there was some benefit to all this.
+
+And this is all the time I have for today (spent about 4.5 hours)
+
   b L14                      |  nop
   nop                        |  nop
   b L2                       |  nop

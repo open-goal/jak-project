@@ -4,6 +4,7 @@
 
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
+#include "common/util/string_util.h"
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
@@ -227,6 +228,7 @@ struct AdgifInfo {
   u32 combo_tex;  // PC texture ID
   u64 alpha_val;  // alpha blend settings
   u64 clamp_val;  // texture clamp settings
+  u32 num_mips = -1;
 };
 
 // When the prototype is uploaded, it places a bunch of strgif tags in VU memory.
@@ -253,6 +255,7 @@ struct TieProtoVertex {
 // the vertices make up a triangle strip
 struct TieStrip {
   AdgifInfo adgif;
+  int adgif_idx = -1;
   std::vector<TieProtoVertex> verts;
 };
 
@@ -549,6 +552,63 @@ AdgifInfo process_adgif(const std::vector<u8>& gif_data,
   return adgif;
 }
 
+struct TieCategoryInfo {
+  tfrag3::TieCategory category = tfrag3::TieCategory::NORMAL;
+  tfrag3::TieCategory envmap_second_draw_category = tfrag3::TieCategory::NORMAL_ENVMAP;
+  bool uses_envmap = false;
+};
+
+TieCategoryInfo get_jak2_tie_category(u32 flags) {
+  constexpr int kJak2ProtoDisable = 1;
+  constexpr int kJak2ProtoEnvmap = 2;
+  constexpr int kJak2ProtoTpageAlpha = 4;
+  constexpr int kJak2ProtoVanish = 8;
+  constexpr int kJak2ProtoBitFour = 16;
+  constexpr int kJak2ProtoVisible = 32;
+  constexpr int kJak2ProtoNoCollide = 64;
+  constexpr int kJak2ProtoTpageWater = 128;
+  TieCategoryInfo result;
+  result.uses_envmap = flags & kJak2ProtoEnvmap;
+
+  if (flags & kJak2ProtoTpageAlpha) {
+    if (result.uses_envmap) {
+      result.category = tfrag3::TieCategory::TRANS_ENVMAP;
+      result.envmap_second_draw_category = tfrag3::TieCategory::TRANS_ENVMAP_SECOND_DRAW;
+    } else {
+      result.category = tfrag3::TieCategory::TRANS;
+    }
+    ASSERT((flags & kJak2ProtoTpageWater) == 0);
+  } else if (flags & kJak2ProtoTpageWater) {
+    if (result.uses_envmap) {
+      result.category = tfrag3::TieCategory::WATER_ENVMAP;
+      result.envmap_second_draw_category = tfrag3::TieCategory::WATER_ENVMAP_SECOND_DRAW;
+    } else {
+      result.category = tfrag3::TieCategory::WATER;
+    }
+    ASSERT((flags & kJak2ProtoTpageAlpha) == 0);
+  } else {
+    if (result.uses_envmap) {
+      result.category = tfrag3::TieCategory::NORMAL_ENVMAP;
+      result.envmap_second_draw_category = tfrag3::TieCategory::NORMAL_ENVMAP_SECOND_DRAW;
+    } else {
+      result.category = tfrag3::TieCategory::NORMAL;
+    }
+  }
+  return result;
+}
+
+u64 alpha_value_for_etie_alpha_override(tfrag3::TieCategory category) {
+  switch (category) {
+    case tfrag3::TieCategory::NORMAL_ENVMAP:
+      return 0;
+    case tfrag3::TieCategory::TRANS_ENVMAP:
+    case tfrag3::TieCategory::WATER_ENVMAP:
+      return 68;
+    default:
+      ASSERT_NOT_REACHED();
+  }
+}
+
 /*!
  * Update per-proto information.
  */
@@ -573,6 +633,9 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
       info.envmap_adgif = process_adgif(adgif, 0, map, nullptr);
       info.tint_color = proto.tint_color;
     }
+
+    // bool use_crazy_jak2_etie_alpha_thing = proto.has_envmap_shader;
+
     // the actual colors (rgba) used by time of day interpolation
     // there are "height" colors. Each color is actually 8 colors that are interpolated.
     info.time_of_day_colors.resize(proto.time_of_day.height);
@@ -583,6 +646,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
     }
 
     // loop over fragments in the proto. This is the actual mesh data data and drawing settings
+    u64 first_adgif_alpha = -1;
     for (int frag_idx = 0; frag_idx < proto.frag_count[geo]; frag_idx++) {
       TieFrag frag_info;
 
@@ -598,6 +662,16 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         auto& gif_data = proto.geometry[geo].tie_fragments[frag_idx].gif_data;
 
         auto adgif = process_adgif(gif_data, tex_idx, map, &frag_info.has_magic_tex0_bit);
+
+        //        if (use_crazy_jak2_etie_alpha_thing) {
+        //          if (tex_idx == 0) {
+        //            first_adgif_alpha = adgif.alpha_val;
+        //            adgif.alpha_val =
+        //                alpha_value_for_etie_alpha_override(get_jak2_tie_category(proto.flags).category);
+        //          } else {
+        //            adgif.alpha_val = first_adgif_alpha;
+        //          }
+        //        }
 
         frag_info.adgifs.push_back(adgif);
       }
@@ -630,6 +704,12 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
 
       info.frags.push_back(std::move(frag_info));
     }
+
+    //    if (proto.has_envmap_shader) {
+    //      for (auto& frag : info.frags) {
+    //        fmt::print("{} uses {} adgifs\n", proto.name, frag.adgifs.size());
+    //      }
+    //    }
   }
 }
 
@@ -1711,6 +1791,7 @@ void emulate_kicks(std::vector<TieProtoInfo>& protos) {
       ASSERT(frag.prog_info.adgif_offset_in_gif_buf_qw.size() == frag.adgifs.size());
 
       const AdgifInfo* adgif_info = nullptr;
+      int adgif_info_idx = -1;
       int expected_next_tag = 0;
 
       // loop over strgifs
@@ -1720,6 +1801,7 @@ void emulate_kicks(std::vector<TieProtoInfo>& protos) {
           // yep
           int idx = adgif_it - frag.prog_info.adgif_offset_in_gif_buf_qw.begin();
           adgif_info = &frag.adgifs.at(idx);
+          adgif_info_idx = idx;
           // the next strgif should come 6 qw's after
           expected_next_tag += 6;
           adgif_it++;
@@ -1749,6 +1831,7 @@ void emulate_kicks(std::vector<TieProtoInfo>& protos) {
         frag.strips.emplace_back();
         auto& strip = frag.strips.back();
         strip.adgif = *adgif_info;
+        strip.adgif_idx = adgif_info_idx;
         // loop over all the vertices the strgif says we'll have
         for (int vtx = 0; vtx < str_it->nloop; vtx++) {
           // compute the address of this vertex (stored after the strgif)
@@ -1987,6 +2070,11 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
              reg.b_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
              reg.c_mode() == GsAlpha::BlendMode::DEST && reg.d_mode() == GsAlpha::BlendMode::DEST) {
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
+  } else if (reg.a_mode() == GsAlpha::BlendMode::SOURCE &&
+             reg.b_mode() == GsAlpha::BlendMode::SOURCE &&
+             reg.c_mode() == GsAlpha::BlendMode::SOURCE &&
+             reg.d_mode() == GsAlpha::BlendMode::SOURCE) {
+    mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_SRC_SRC_SRC);
   }
 
   else {
@@ -1998,34 +2086,124 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
 }
 
 /*!
+ * Get the draw mode settings that are pre-set for the entire bucket and not controlled by adgif
+ * shaders
+ */
+DrawMode get_base_draw_mode_jak2(bool use_tra, tfrag3::TieCategory category) {
+  DrawMode mode;
+  mode.enable_ab();
+  switch (category) {
+    case tfrag3::TieCategory::NORMAL:
+    case tfrag3::TieCategory::TRANS:
+      mode.enable_zt();
+      mode.set_depth_test(GsTest::ZTest::GEQUAL);
+      if (use_tra) {
+        mode.enable_at();
+        mode.set_aref(0x26);
+        mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+        mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
+      } else {
+        mode.disable_at();
+      }
+      break;
+      mode.enable_zt();
+      mode.set_depth_test(GsTest::ZTest::GEQUAL);
+      if (use_tra) {
+        mode.enable_at();
+        mode.set_aref(0x26);
+        mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+        mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
+      } else {
+        mode.disable_at();
+      }
+      break;
+    case tfrag3::TieCategory::WATER:
+    case tfrag3::TieCategory::WATER_ENVMAP:
+    case tfrag3::TieCategory::WATER_ENVMAP_SECOND_DRAW:
+      // (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal))
+      mode.enable_zt();
+      mode.set_depth_test(GsTest::ZTest::GEQUAL);
+      mode.enable_at();
+      mode.set_aref(0);
+      mode.set_alpha_fail(GsTest::AlphaFail::FB_ONLY);
+      mode.set_alpha_test(DrawMode::AlphaTest::NEVER);
+      break;
+
+    case tfrag3::TieCategory::NORMAL_ENVMAP:
+    case tfrag3::TieCategory::TRANS_ENVMAP:
+    case tfrag3::TieCategory::NORMAL_ENVMAP_SECOND_DRAW:
+    case tfrag3::TieCategory::TRANS_ENVMAP_SECOND_DRAW:
+      mode.enable_zt();
+      mode.set_depth_test(GsTest::ZTest::GEQUAL);
+      mode.disable_at();
+      break;
+
+    default:
+      ASSERT(false);
+  }
+  return mode;
+}
+
+/*!
  * Convert adgif info into a C++ renderer DrawMode.
  */
-DrawMode process_draw_mode(const AdgifInfo& info, bool use_atest, bool use_decal) {
+DrawMode process_draw_mode(const AdgifInfo& info,
+                           bool use_tra,
+                           bool use_decal,
+                           GameVersion version,
+                           tfrag3::TieCategory category,
+                           u32 num_mips,
+                           bool require_alpha_to_mip_conversion,
+                           const std::string& debug) {
   DrawMode mode;
-  // some of these are set up once as part of tie initialization
-  mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
-
-  // the atest giftag is set up at the end of the VU program.
-  if (use_atest) {
-    mode.enable_at();
-    mode.set_aref(0x26);
-    mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+  if (version == GameVersion::Jak1) {
+    // some of these are set up once as part of tie initialization
     mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
+
+    // the atest giftag is set up at the end of the VU program.
+    if (use_tra) {
+      mode.enable_at();
+      mode.set_aref(0x26);
+      mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+      mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
+    } else {
+      mode.disable_at();
+    }
+    // set up once.
+    mode.enable_depth_write();
+    mode.enable_zt();                            // :zte #x1
+    mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
+    mode.disable_ab();
+    mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
   } else {
-    mode.disable_at();
+    mode = get_base_draw_mode_jak2(use_tra, category);
   }
+
   if (use_decal) {
     mode.enable_decal();
   }
-  // set up once.
-  mode.enable_depth_write();
-  mode.enable_zt();                            // :zte #x1
-  mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
-  mode.disable_ab();
-  mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
 
   // the alpha matters
   update_mode_from_alpha1(info.alpha_val, mode);
+
+  // jak 2 etie
+  if (version == GameVersion::Jak2 && tfrag3::is_envmap_first_draw_category(category)) {
+    if (require_alpha_to_mip_conversion) {
+      // the first adgif's alpha-slot will be inherited by everybody else.
+      // it should get converted
+      if (num_mips > 4) {
+        update_mode_from_alpha1(alpha_value_for_etie_alpha_override(category), mode);
+      } else {
+        fmt::print("bad: {}\n", num_mips);
+        fmt::print("texture is {}\n", debug);
+        fmt::print("alpha is: {}, cat {}\n", (int)mode.get_alpha_blend(), (int)category);
+        // ASSERT(false);
+      }
+
+    } else {
+      update_mode_from_alpha1(alpha_value_for_etie_alpha_override(category), mode);
+    }
+  }
 
   // the clamp matters
   if (!(info.clamp_val == 0b101 || info.clamp_val == 0 || info.clamp_val == 1 ||
@@ -2039,49 +2217,20 @@ DrawMode process_draw_mode(const AdgifInfo& info, bool use_atest, bool use_decal
   return mode;
 }
 
-DrawMode process_envmap_draw_mode(const AdgifInfo& info) {
+DrawMode process_envmap_draw_mode(const AdgifInfo& info,
+                                  GameVersion version,
+                                  tfrag3::TieCategory category) {
+  // this is overwritten at log-in time.
   // (set! (-> envmap-shader tex1) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
   // (set! (-> envmap-shader clamp) (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt
   // (gs-tex-wrap-mode clamp))) (set! (-> envmap-shader alpha) (new 'static 'gs-alpha :b #x2 :c #x1
   // :d #x1))
-  auto mode = process_draw_mode(info, false, false);
+  auto mode = process_draw_mode(info, false, false, version, category, 0, false, "");
   mode.set_filt_enable(true);
   mode.set_clamp_s_enable(true);
   mode.set_clamp_t_enable(true);
   mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
   return mode;
-}
-
-struct TieCategoryInfo {
-  tfrag3::TieCategory category = tfrag3::TieCategory::NORMAL;
-  tfrag3::TieCategory envmap_category = tfrag3::TieCategory::NORMAL_ENVMAP;  // only if uses_envmap
-  bool uses_envmap = false;
-};
-
-TieCategoryInfo get_jak2_tie_category(u32 flags) {
-  constexpr int kJak2ProtoDisable = 1;
-  constexpr int kJak2ProtoEnvmap = 2;
-  constexpr int kJak2ProtoTpageAlpha = 4;
-  constexpr int kJak2ProtoVanish = 8;
-  constexpr int kJak2ProtoBitFour = 16;
-  constexpr int kJak2ProtoVisible = 32;
-  constexpr int kJak2ProtoNoCollide = 64;
-  constexpr int kJak2ProtoTpageWater = 128;
-  TieCategoryInfo result;
-  if (flags & kJak2ProtoTpageAlpha) {
-    result.category = tfrag3::TieCategory::TRANS;
-    result.envmap_category = tfrag3::TieCategory::TRANS_ENVMAP;
-    ASSERT((flags & kJak2ProtoTpageWater) == 0);
-  } else if (flags & kJak2ProtoTpageWater) {
-    result.category = tfrag3::TieCategory::WATER;
-    result.envmap_category = tfrag3::TieCategory::WATER_ENVMAP;
-    ASSERT((flags & kJak2ProtoTpageAlpha) == 0);
-  } else {
-    result.category = tfrag3::TieCategory::NORMAL;
-    result.envmap_category = tfrag3::TieCategory::NORMAL_ENVMAP;
-  }
-  result.uses_envmap = flags & kJak2ProtoEnvmap;
-  return result;
 }
 
 TieCategoryInfo get_jak1_tie_category(u32 flags) {
@@ -2299,9 +2448,6 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
 
   std::array<std::vector<tfrag3::StripDraw>, tfrag3::kNumTieCategories> draws_by_category;
 
-  std::unordered_map<u32, std::vector<u32>> envmap_draws_by_tex;
-  std::array<std::vector<tfrag3::StripDraw>, tfrag3::kNumTieCategories> envmap_draws_by_category;
-
   if (version > GameVersion::Jak1) {
     tree.has_per_proto_visibility_toggle = true;
   }
@@ -2337,7 +2483,8 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
     ASSERT(using_envmap == proto.envmap_adgif.has_value());
     DrawMode envmap_drawmode;
     if (using_envmap) {
-      envmap_drawmode = process_envmap_draw_mode(proto.envmap_adgif.value());
+      envmap_drawmode = process_envmap_draw_mode(proto.envmap_adgif.value(), version,
+                                                 info.envmap_second_draw_category);
     }
 
     // create the model first
@@ -2378,6 +2525,7 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
       }
 
       // loop over fragments of the prototype
+      bool printed = false;
       for (size_t frag_idx = 0; frag_idx < proto.frags.size(); frag_idx++) {
         auto& frag = proto.frags[frag_idx];     // shared info for all instances of this frag
         auto& ifrag = inst.frags.at(frag_idx);  // color info for this instance of the frag
@@ -2386,9 +2534,24 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
           auto& strip = frag.strips[strip_idx];
 
           u32 idx_in_lev_data = get_or_add_texture(strip.adgif.combo_tex, lev, tdb);
+          u32 mips = -1;
+          std::string tex_name = "badbadbadbeef";
+          auto it = tdb.textures.find(strip.adgif.combo_tex);
+          if (it != tdb.textures.end()) {
+            mips = it->second.num_mips;
+            tex_name = it->second.name + fmt::format("{}/{}", strip.adgif_idx, frag.adgifs.size());
+          }
           // determine the draw mode
+          bool require_conversion_of_alpha = strip.adgif_idx > 0 && frag.adgifs.size() > 1;
           DrawMode mode =
-              process_draw_mode(strip.adgif, frag.prog_info.misc_x == 0, frag.has_magic_tex0_bit);
+              process_draw_mode(strip.adgif, frag.prog_info.misc_x == 0, frag.has_magic_tex0_bit,
+                                version, info.category, mips, require_conversion_of_alpha, tex_name);
+          if (!printed) {
+            printed = true;
+            // if (str_util::contains(proto.name, "prec")) {
+            //  fmt::print("{}: {}\n", proto.name, (int)mode.get_alpha_blend());
+            //}
+          }
 
           if (using_wind) {
             handle_wind_draw_for_strip(tree, wind_draws_by_tex, packed_vert_indices,
@@ -2399,12 +2562,12 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
             if (info.uses_envmap) {
               // first pass: normal draw mode, envmap bucket, normal draw list
               handle_draw_for_strip(tree, static_draws_by_tex,
-                                    draws_by_category.at((int)info.envmap_category),
-                                    packed_vert_indices, mode, idx_in_lev_data, strip, inst, ifrag,
-                                    proto_idx, frag_idx, strip_idx, matrix_idx);
+                                    draws_by_category.at((int)info.category), packed_vert_indices,
+                                    mode, idx_in_lev_data, strip, inst, ifrag, proto_idx, frag_idx,
+                                    strip_idx, matrix_idx);
               // second pass envmap draw mode, in envmap bucket, envmap-specific draw list
-              handle_draw_for_strip(tree, envmap_draws_by_tex,
-                                    envmap_draws_by_category.at((int)info.envmap_category),
+              handle_draw_for_strip(tree, static_draws_by_tex,
+                                    draws_by_category.at((int)info.envmap_second_draw_category),
                                     packed_vert_indices, envmap_drawmode, idx_in_lev_data, strip,
                                     inst, ifrag, proto_idx, frag_idx, strip_idx, matrix_idx);
             } else {
@@ -2434,20 +2597,6 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
     tree.static_draws.insert(tree.static_draws.end(), draws_by_category[i].begin(),
                              draws_by_category[i].end());
     tree.category_draw_indices[i + 1] = tree.static_draws.size();
-  }
-
-  for (auto& draws : envmap_draws_by_category) {
-    std::stable_sort(draws.begin(), draws.end(),
-                     [](const tfrag3::StripDraw& a, const tfrag3::StripDraw& b) {
-                       return a.tree_tex_id < b.tree_tex_id;
-                     });
-  }
-  ASSERT(tree.envmap_draws.empty());
-  tree.category_envmap_draw_indices[0] = 0;
-  for (int i = 0; i < tfrag3::kNumTieCategories; i++) {
-    tree.envmap_draws.insert(tree.envmap_draws.end(), envmap_draws_by_category[i].begin(),
-                             envmap_draws_by_category[i].end());
-    tree.category_envmap_draw_indices[i + 1] = tree.envmap_draws.size();
   }
 }
 

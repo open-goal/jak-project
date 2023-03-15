@@ -29,6 +29,10 @@ Tie3::~Tie3() {
   discard_tree_cache();
 }
 
+void Tie3::init_shaders(ShaderLibrary& shaders) {
+  m_uniforms.decal = glGetUniformLocation(shaders[ShaderId::TFRAG3].id(), "decal");
+}
+
 /*!
  * Load a TIE tree from FR3 data.
  * This often causes stutters, so as much as possible, we move stuff to the loader,
@@ -344,7 +348,7 @@ void Tie3::draw_matching_draws_for_all_trees(int geom,
                                              ScopedProfilerNode& prof,
                                              tfrag3::TieCategory category) {
   for (u32 i = 0; i < m_trees[geom].size(); i++) {
-    if (tfrag3::is_envmap_category(category)) {
+    if (tfrag3::is_envmap_first_draw_category(category)) {
       draw_matching_draws_for_tree(i, geom, settings, render_state, prof, category);
     } else {
       draw_matching_draws_for_tree(i, geom, settings, render_state, prof, category);
@@ -451,7 +455,7 @@ void Tie3::draw_matching_draws_for_tree(int idx,
                                         SharedRenderState* render_state,
                                         ScopedProfilerNode& prof,
                                         tfrag3::TieCategory category) {
-  bool use_envmap = tfrag3::is_envmap_category(category);
+  bool use_envmap = tfrag3::is_envmap_first_draw_category(category);
   auto& tree = m_trees.at(geom).at(idx);
 
   // don't render if we haven't loaded
@@ -462,8 +466,8 @@ void Tie3::draw_matching_draws_for_tree(int idx,
   // setup OpenGL shader
   first_tfrag_draw_setup(settings, render_state, ShaderId::TFRAG3);
 
-  glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "debug_hack"),
-              use_envmap);
+//  glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "debug_hack"),
+//              use_envmap);
 
   glBindVertexArray(tree.vao);
   glBindBuffer(GL_ARRAY_BUFFER, tree.vertex_buffer);
@@ -502,6 +506,8 @@ void Tie3::draw_matching_draws_for_tree(int idx,
     }
 
     auto double_draw = setup_tfrag_shader(render_state, draw.mode, ShaderId::TFRAG3);
+
+    glUniform1i(m_uniforms.decal, draw.mode.get_decal() ? 1 : 0);
 
     prof.add_draw_call();
     prof.add_tri(draw.num_triangles);

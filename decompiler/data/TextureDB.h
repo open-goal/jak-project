@@ -15,6 +15,7 @@ struct TextureDB {
     std::string name;
     u32 page;
     std::vector<u32> rgba_bytes;
+    u32 num_mips = -1;
   };
 
   std::unordered_map<u32, TextureData> textures;
@@ -28,7 +29,8 @@ struct TextureDB {
                    u16 h,
                    const std::string& tex_name,
                    const std::string& tpage_name,
-                   const std::vector<std::string>& level_names);
+                   const std::vector<std::string>& level_names,
+                   u32 num_mips);
 
   void replace_textures(const fs::path& path);
 };

@@ -36,9 +36,14 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
 
   DoubleDraw double_draw;
 
+  bool should_enable_blend = false;
   if (mode.get_ab_enable() && mode.get_alpha_blend() != DrawMode::AlphaBlend::DISABLED) {
-    glEnable(GL_BLEND);
+    should_enable_blend = true;
     switch (mode.get_alpha_blend()) {
+      case DrawMode::AlphaBlend::SRC_SRC_SRC_SRC:
+        should_enable_blend = false;
+        // (SRC - SRC) * alpha + SRC = SRC, no blend.
+        break;
       case DrawMode::AlphaBlend::SRC_DST_SRC_DST:
         glBlendEquation(GL_FUNC_ADD);
         glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
@@ -71,6 +76,12 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
       default:
         ASSERT(false);
     }
+  } else {
+    should_enable_blend = false;
+  }
+
+  if (should_enable_blend) {
+    glEnable(GL_BLEND);
   } else {
     glDisable(GL_BLEND);
   }
@@ -160,6 +171,7 @@ void first_tfrag_draw_setup(const TfragRenderSettings& settings,
   auto id = sh.id();
   glUniform1i(glGetUniformLocation(id, "gfx_hack_no_tex"), Gfx::g_global_settings.hack_no_tex);
   glUniform1i(glGetUniformLocation(id, "debug_hack"), false);
+  glUniform1i(glGetUniformLocation(id, "decal"), false);
 
   glUniform1i(glGetUniformLocation(id, "tex_T0"), 0);
   glUniformMatrix4fv(glGetUniformLocation(id, "camera"), 1, GL_FALSE, settings.math_camera.data());
