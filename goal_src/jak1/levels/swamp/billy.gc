@@ -90,8 +90,8 @@
   )
 
 (defstate billy-snack-idle (billy-snack)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('eat)
        (go billy-snack-eat)
        )
@@ -474,23 +474,23 @@
   )
 
 (defstate billy-done (billy)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'billy-rat-needs-destination)
-                       (let* ((gp-0 arg0)
-                              (v1-2 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) billy-rat))
-                                        gp-0
-                                        )
-                                    )
-                              )
-                         (when v1-2
-                           (set! (-> (the-as billy-rat v1-2) dest-type) (the-as uint 1))
-                           (get-random-point (-> self path-waypts) (-> (the-as billy-rat v1-2) destination))
-                           )
-                         )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('billy-rat-needs-destination)
+                      (let* ((gp-0 proc)
+                             (v1-2 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) billy-rat))
+                                       gp-0
+                                       )
+                                   )
+                             )
+                        (when v1-2
+                          (set! (-> (the-as billy-rat v1-2) dest-type) (the-as uint 1))
+                          (get-random-point (-> self path-waypts) (-> (the-as billy-rat v1-2) destination))
+                          )
+                        )
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (init!
@@ -761,8 +761,8 @@
   )
 
 (defstate billy-playing (billy)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('billy-rat-die)
        (+! (-> self num-rats) -1)
        (let* ((f0-2 (rand-float-gen))
@@ -794,7 +794,7 @@
          )
        )
       (('billy-rat-needs-destination)
-       (let* ((s5-0 arg0)
+       (let* ((s5-0 proc)
               (gp-0 (if (and (nonzero? s5-0) (type-type? (-> s5-0 type) billy-rat))
                         (the-as billy-rat s5-0)
                         )
@@ -869,10 +869,7 @@
                      (+! (-> (the-as billy-snack s5-1) num-rats) 1)
                      (set! (-> gp-0 dest-type) (the-as uint 2))
                      (set! (-> gp-0 destination quad) (-> (the-as billy-snack s5-1) root trans quad))
-                     (let ((f0-8 (+ 6799.36 (-> gp-0 destination x))))
-                       (set! (-> gp-0 destination x) f0-8)
-                       f0-8
-                       )
+                     (set! (-> gp-0 destination x) (+ 6799.36 (-> gp-0 destination x)))
                      )
                    )
                  )
@@ -1095,7 +1092,7 @@
 (defmethod target-above-threshold? billy ((obj billy))
   (the-as
     symbol
-    (and *target* (zero? (logand (-> *target* control root-prim prim-core action) (collide-action ca-14))))
+    (and *target* (not (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-14))))
     )
   )
 
@@ -1117,7 +1114,3 @@
   (dummy-42 obj)
   (none)
   )
-
-
-
-

@@ -216,19 +216,19 @@
               )
 
 (defstate grottopole-idle (grottopole)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (when (= (-> arg0 type) target)
-      (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (when (= (-> proc type) target)
+      (case event-type
         (('attack)
-         (let ((v1-2 (-> arg3 param 2)))
+         (let ((v1-2 (-> event param 2)))
            (when (!= v1-2 (-> self incomming-attack-id))
              (set! (-> self incomming-attack-id) v1-2)
-             (case (-> arg3 param 1)
+             (case (-> event param 1)
                (('uppercut)
                 (when (and (< (-> *target* control trans y) (+ -40960.0 (-> self root-override trans y)))
                            (< (-> self position) (-> self max-position))
                            ((method-of-type touching-shapes-entry prims-touching?)
-                            (the-as touching-shapes-entry (-> arg3 param 0))
+                            (the-as touching-shapes-entry (-> event param 0))
                             (the-as collide-shape-moving (-> self root-override))
                             (the-as uint 2)
                             )
@@ -243,7 +243,7 @@
                 (when (and (< (+ -40960.0 (-> self root-override trans y)) (-> *target* control trans y))
                            (> (-> self position) 0)
                            ((method-of-type touching-shapes-entry prims-touching?)
-                            (the-as touching-shapes-entry (-> arg3 param 0))
+                            (the-as touching-shapes-entry (-> event param 0))
                             (the-as collide-shape-moving (-> self root-override))
                             (the-as uint 1)
                             )
@@ -413,7 +413,7 @@
 
 (defpartgroup group-beach-harvester-rock-explosion
   :id 156
-  :duration 600
+  :duration (seconds 2)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
   :parts ((sp-item 543 :period 1500 :length 5)
@@ -545,8 +545,8 @@
   )
 
 (defstate ecoventrock-idle (ecoventrock)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack)
        (sound-play "cannon-shot")
        (increment-success-for-hint (game-text-id sidekick-hint-ecorocks))
@@ -998,7 +998,7 @@
     )
   )
 
-;; WARN: Expression building failed: Function (method 20 flutflutegg) has a return type of none, but the expression builder found a return statement.
+;; WARN: Function (method 20 flutflutegg) has a return type of none, but the expression builder found a return statement.
 (defmethod dummy-20 flutflutegg ((obj flutflutegg) (arg0 float) (arg1 float) (arg2 float))
   (if (< (- (-> *display* base-frame-counter) (the-as time-frame (-> obj last-impulse-time))) (seconds 0.5))
       (return 0)
@@ -1015,12 +1015,12 @@
   (cond
     ((not (task-closed? (game-task beach-flutflut) (task-status need-introduction)))
      )
-    ((zero? (logand (-> self ambients-played) 8))
+    ((not (logtest? (-> self ambients-played) 8))
      (if (play-ambient (-> self ambient) "BIR-AM04" #f (the-as vector #f))
          (logior! (-> self ambients-played) 8)
          )
      )
-    ((zero? (logand (-> self ambients-played) 512))
+    ((not (logtest? (-> self ambients-played) 512))
      (if (play-ambient (-> self ambient) "BIR-AM10" #f (the-as vector #f))
          (logior! (-> self ambients-played) 512)
          )
@@ -1030,15 +1030,15 @@
   )
 
 (defstate flutflutegg-idle (flutflutegg)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (when (and (= arg2 'attack)
-               (or (= (-> arg3 param 1) 'punch) (= (-> arg3 param 1) 'spin) (= (-> arg3 param 1) 'spin-air))
-               (!= (-> self incomming-attack-id) (-> arg3 param 2))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (when (and (= event-type 'attack)
+               (or (= (-> event param 1) 'punch) (= (-> event param 1) 'spin) (= (-> event param 1) 'spin-air))
+               (!= (-> self incomming-attack-id) (-> event param 2))
                )
-      (set! (-> self incomming-attack-id) (-> arg3 param 2))
+      (set! (-> self incomming-attack-id) (-> event param 2))
       (flutflutegg-hit-sounds)
       (let ((s5-1
-              (vector-! (new-stack-vector0) (-> (the-as process-drawable arg0) root trans) (-> self root-override trans))
+              (vector-! (new-stack-vector0) (-> (the-as process-drawable proc) root trans) (-> self root-override trans))
               )
             )
         (set! (-> s5-1 y) 0.0)
@@ -1070,22 +1070,22 @@
          (set! (-> self ambients-played) 0)
          0
          )
-        ((and (zero? (logand (-> self ambients-played) 1)) (< (vector-length gp-0) 327680.0) (< -61440.0 (-> gp-0 y)))
+        ((and (not (logtest? (-> self ambients-played) 1)) (< (vector-length gp-0) 327680.0) (< -61440.0 (-> gp-0 y)))
          (if (play-ambient (-> self ambient) "BIR-AM01" #f (the-as vector #f))
              (logior! (-> self ambients-played) 1)
              )
          )
-        ((and (zero? (logand (-> self ambients-played) 2)) (< (vector-length gp-0) 163840.0) (< -40960.0 (-> gp-0 y)))
+        ((and (not (logtest? (-> self ambients-played) 2)) (< (vector-length gp-0) 163840.0) (< -40960.0 (-> gp-0 y)))
          (if (play-ambient (-> self ambient) "BIR-AM02" #f (the-as vector #f))
              (logior! (-> self ambients-played) 2)
              )
          )
-        ((and (zero? (logand (-> self ambients-played) 16)) (< (vector-length gp-0) 81920.0) (< -24576.0 (-> gp-0 y)))
+        ((and (not (logtest? (-> self ambients-played) 16)) (< (vector-length gp-0) 81920.0) (< -24576.0 (-> gp-0 y)))
          (if (play-ambient (-> self ambient) "BIR-AM05" #f (the-as vector #f))
              (logior! (-> self ambients-played) 16)
              )
          )
-        ((and (zero? (logand (-> self ambients-played) 4)) (< (vector-length gp-0) 40960.0) (< -24576.0 (-> gp-0 y)))
+        ((and (not (logtest? (-> self ambients-played) 4)) (< (vector-length gp-0) 40960.0) (< -24576.0 (-> gp-0 y)))
          (if (play-ambient (-> self ambient) "BIR-AM03" #f (the-as vector #f))
              (logior! (-> self ambients-played) 4)
              )
@@ -1123,18 +1123,18 @@
   )
 
 (defstate flutflutegg-physics (flutflutegg)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (the-as
       object
       (when (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
-                 (= arg2 'attack)
-                 (or (= (-> arg3 param 1) 'punch) (= (-> arg3 param 1) 'spin) (= (-> arg3 param 1) 'spin-air))
-                 (!= (-> self incomming-attack-id) (-> arg3 param 2))
+                 (= event-type 'attack)
+                 (or (= (-> event param 1) 'punch) (= (-> event param 1) 'spin) (= (-> event param 1) 'spin-air))
+                 (!= (-> self incomming-attack-id) (-> event param 2))
                  )
-        (set! (-> self incomming-attack-id) (-> arg3 param 2))
+        (set! (-> self incomming-attack-id) (-> event param 2))
         (flutflutegg-hit-sounds)
         (let ((s5-1
-                (vector-! (new-stack-vector0) (-> (the-as process-drawable arg0) root trans) (-> self root-override trans))
+                (vector-! (new-stack-vector0) (-> (the-as process-drawable proc) root trans) (-> self root-override trans))
                 )
               )
           (set! (-> s5-1 y) 0.0)
@@ -1264,7 +1264,7 @@
       )
     (ja :group! (-> self draw art-group data 5) :num! max)
     (while (and (not (task-closed? (game-task beach-flutflut) (task-status need-reward-speech)))
-                (zero? (logand (-> self ambients-played) 1024))
+                (not (logtest? (-> self ambients-played) 1024))
                 )
       (if (play-ambient (-> self ambient) "BIR-AM11" #f (the-as vector #f))
           (logior! (-> self ambients-played) 1024)
@@ -1377,8 +1377,8 @@
               )
 
 (defstate harvester-idle (harvester)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('update)
        (if (and (-> self alt-actor) (logtest? (-> self alt-actor extra perm status) (entity-perm-status complete)))
            (go harvester-inflate #f)
@@ -1534,7 +1534,3 @@
     (none)
     )
   )
-
-
-
-

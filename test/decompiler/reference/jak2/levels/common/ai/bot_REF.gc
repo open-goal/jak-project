@@ -157,7 +157,7 @@
              )
            )
          )
-        ((and (logtest? #x10000 v1-0) (zero? (logand #x20000 v1-0)))
+        ((and (logtest? #x10000 v1-0) (not (logtest? #x20000 v1-0)))
          (set! gp-0 #t)
          )
         )
@@ -370,7 +370,7 @@
          (set! v0-0 (-> obj hit-points))
          )
         (else
-          (if (and (logtest? (-> obj bot-flags) (bot-flags bf04)) (zero? (logand (-> obj bot-flags) (bot-flags attacked))))
+          (if (and (logtest? (-> obj bot-flags) (bot-flags bf04)) (not (logtest? (-> obj bot-flags) (bot-flags attacked))))
               (set! v0-0 0)
               )
           )
@@ -423,7 +423,7 @@
   "Were we attacked by the player?"
   (the-as
     symbol
-    (and (and fproc (zero? (logand (-> fproc focus-status) (focus-status disable dead ignore grabbed))))
+    (and (and fproc (not (logtest? (-> fproc focus-status) (focus-status disable dead ignore grabbed))))
          (or (logtest? (process-mask enemy) (-> fproc mask))
              (and (logtest? (-> fproc mask) (process-mask target)) (logtest? (-> obj bot-flags) (bot-flags attacked)))
              )
@@ -697,7 +697,7 @@
                        )
                   (if (and enemy
                            enemy
-                           (zero? (logand (-> (the-as process-focusable enemy) focus-status) (focus-status disable dead)))
+                           (not (logtest? (-> (the-as process-focusable enemy) focus-status) (focus-status disable dead)))
                            )
                       (set-next-focus! obj (the-as enemy enemy) focus)
                       )
@@ -729,10 +729,7 @@
 
 ;; definition for method 183 of type bot
 (defmethod alive? bot ((obj bot))
-  (and (not (logtest? (-> obj focus-status) (focus-status dead grabbed)))
-       (nonzero? (-> obj hit-points))
-       (zero? (-> obj fated-time))
-       )
+  (and (not (focus-test? obj dead grabbed)) (nonzero? (-> obj hit-points)) (zero? (-> obj fated-time)))
   )
 
 ;; definition for method 74 of type bot
@@ -823,7 +820,7 @@
                   ((>= (the-as int a0-19) 0)
                    (let ((v1-29 (the-as object (-> arg3 param 1))))
                      (cond
-                       ((logtest? (focus-status pilot) (-> obj focus-status))
+                       ((focus-test? obj pilot)
                         (if (= (-> obj vehicle-seat-index) a0-19)
                             (= (the-as uint v1-29) (handle->process (-> obj vehicle-handle)))
                             )
@@ -838,7 +835,7 @@
                      )
                    )
                   (else
-                    (when (not (logtest? (focus-status pilot) (-> obj focus-status)))
+                    (when (not (focus-test? obj pilot))
                       (set! (-> obj vehicle-seat-index) -1)
                       (set! (-> obj vehicle-handle) (the-as handle #f))
                       (logclear! (-> obj bot-flags) (bot-flags bf15))
@@ -849,7 +846,7 @@
                 )
               )
              (('exit-vehicle)
-              (when (logtest? (focus-status pilot) (-> obj focus-status))
+              (when (focus-test? obj pilot)
                 (let ((v1-43 (-> arg3 param 1))
                       (s5-1 (-> arg3 param 2))
                       )
@@ -930,7 +927,7 @@
              )
            )
           ((= v1-0 'end-mode)
-           (when (logtest? (-> obj focus-status) (focus-status grabbed))
+           (when (focus-test? obj grabbed)
              (logclear! (-> obj focus-status) (focus-status grabbed))
              #t
              )
@@ -972,7 +969,7 @@
 ;; definition for method 104 of type bot
 (defmethod enemy-method-104 bot ((obj bot) (arg0 process) (arg1 uint) (arg2 uint))
   (cond
-    ((and (= (-> arg0 type) target) (zero? (logand (-> obj bot-flags) (bot-flags attacked))))
+    ((and (= (-> arg0 type) target) (not (logtest? (-> obj bot-flags) (bot-flags attacked))))
      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
        (set! (-> a1-1 from) (process->ppointer self))
        (set! (-> a1-1 num-params) 2)
@@ -1040,10 +1037,10 @@
                        )
                  )
             (cond
-              ((and (logtest? (-> obj focus-status) (focus-status dangerous))
+              ((and (focus-test? obj dangerous)
                     (logtest? (process-mask enemy) (-> arg0 mask))
                     (and v1-6
-                         (zero? (logand (-> (the-as process-focusable v1-6) focus-status) (focus-status disable dead ignore grabbed)))
+                         (not (logtest? (-> (the-as process-focusable v1-6) focus-status) (focus-status disable dead ignore grabbed)))
                          )
                     ((method-of-type touching-shapes-entry prims-touching-action?)
                      (the-as touching-shapes-entry s3-0)
@@ -1128,7 +1125,7 @@ If the player is too far, play a warning speech."
           ((> too-far-check 0)
            (set! (-> obj delay-too-far-check) (+ too-far-check -1))
            )
-          ((and (zero? too-far-check) *target* (zero? (logand (-> obj focus-status) (focus-status grabbed))))
+          ((and (zero? too-far-check) *target* (not (logtest? (-> obj focus-status) (focus-status grabbed))))
            (let ((check-too-far-func (the-as object (-> obj waypoint check-too-far))))
              (if (not (the-as symbol check-too-far-func))
                  (set! check-too-far-func (-> obj course default-check-too-far))
@@ -1236,7 +1233,7 @@ If the player is too far, play a warning speech."
           )
       )
     )
-  (if (and (bot-check-too-far obj) (zero? (logand (-> obj bot-flags) (bot-flags bf09))))
+  (if (and (bot-check-too-far obj) (not (logtest? (-> obj bot-flags) (bot-flags bf09))))
       (go (method-of-object obj failed))
       )
   (if (not (logtest? (-> obj bot-flags) (bot-flags bf09)))
@@ -1400,7 +1397,7 @@ If the player is too far, play a warning speech."
             (countdown (s4-0 (-> v1-0 course speech-count))
               (let ((s3-0 (-> s5-0 s4-0)))
                 (if (string= (-> s3-0 name) (-> arg0 name))
-                    (return (zero? (logand (-> s3-0 flags) (speech-flags sf01))))
+                    (return (not (logtest? (-> s3-0 flags) (speech-flags sf01))))
                     )
                 )
               )
@@ -1585,7 +1582,7 @@ If the player is too far, play a warning speech."
                      (and fproc
                           (= (-> obj focus aware) (enemy-aware enemy-aware-3))
                           (attacked-by-player? obj (the-as process-focusable fproc))
-                          (zero? (logand (-> obj focus-status) (focus-status grabbed)))
+                          (not (logtest? (-> obj focus-status) (focus-status grabbed)))
                           )
                      )
                    )
@@ -1932,7 +1929,7 @@ If the player is too far, play a warning speech."
   (vector<-cspace+vector! arg0 (-> obj node-list data 2) arg0)
   (the-as
     meters
-    (if (logtest? (-> obj focus-status) (focus-status under-water))
+    (if (focus-test? obj under-water)
         (set! (-> arg0 y) (+ (get-water-height obj) (-> *setting-control* cam-current target-height)))
         )
     )
@@ -1981,7 +1978,7 @@ If the player is too far, play a warning speech."
                        )
                 )
           )
-      (if (logtest? (-> obj focus-status) (focus-status ignore))
+      (if (focus-test? obj ignore)
           (set! v1-0
                 (cond
                   ((>= (- (-> pp clock frame-counter) a1-0) (the-as time-frame (-> obj hit-invuln-ignore-me-delay)))
@@ -1994,7 +1991,7 @@ If the player is too far, play a warning speech."
                   )
                 )
           )
-      (if (logtest? (-> obj focus-status) (focus-status disable))
+      (if (focus-test? obj disable)
           (set! v1-0
                 (cond
                   ((>= (- (-> pp clock frame-counter) a1-0) (the-as time-frame (-> obj hit-invuln-focus-disable-delay)))

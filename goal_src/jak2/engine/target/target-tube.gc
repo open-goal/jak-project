@@ -499,7 +499,7 @@
           (('change-mode)
            (case (-> event param 0)
              (('grab)
-              (when (not (logtest? (-> self focus-status) (focus-status dead)))
+              (when (not (focus-test? self dead))
                 (if (-> event param 1)
                     (logior! (-> self focus-status) (focus-status grabbed))
                     )
@@ -510,7 +510,7 @@
            )
           (('end-mode)
            (cond
-             ((logtest? (-> self focus-status) (focus-status grabbed))
+             ((focus-test? self grabbed)
               (logclear! (-> self focus-status) (focus-status grabbed))
               #t
               )
@@ -851,7 +851,7 @@
         )
       (when (and (logtest? (-> arg1 mask) (attack-info-mask mode))
                  (= (-> arg1 mode) 'darkeco)
-                 (zero? (logand (-> arg1 mask) (attack-info-mask shove-up)))
+                 (not (logtest? (-> arg1 mask) (attack-info-mask shove-up)))
                  )
         (set! (-> arg1 shove-up) 12288.0)
         (logior! (-> arg1 mask) (attack-info-mask shove-up))
@@ -1043,7 +1043,7 @@
   :trans (behavior ()
     (if (and (and *target*
                   (and (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
-                       (zero? (logand (focus-status teleporting) (-> *target* focus-status)))
+                       (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
                        )
                   )
              (< 0.0
@@ -1052,7 +1052,7 @@
                   (-> self rot)
                   )
                 )
-             (and (not (logtest? (-> *target* focus-status) (focus-status in-air)))
+             (and (not (focus-test? *target* in-air))
                   (< (-> *target* control trans y) (+ 12288.0 (-> self root trans y)))
                   (send-event *target* 'change-mode 'tube self)
                   )

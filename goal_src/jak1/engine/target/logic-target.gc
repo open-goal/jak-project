@@ -109,7 +109,7 @@
             (meters 0.000024414063)
             (the-as rgba (+ #x408040 (shl s4-0 24)))
             )
-          (when (zero? (logand (-> s2-0 status) (cshape-moving-flags csmf08)))
+          (when (not (logtest? (-> s2-0 status) (cshape-moving-flags csmf08)))
             (add-debug-line
               (logtest? s5-0 1)
               (bucket-id debug-no-zbuf)
@@ -128,7 +128,7 @@
                 (bucket-id debug-no-zbuf)
                 (-> s2-0 intersect)
                 (-> s2-0 surface-normal)
-                (meters 1.0)
+                (meters 1)
                 (the-as rgba (+ s1-1 (shl s4-0 24)))
                 )
               (add-debug-vector
@@ -136,7 +136,7 @@
                 (bucket-id debug-no-zbuf)
                 (-> s2-0 intersect)
                 (-> s2-0 local-normal)
-                (meters 1.0)
+                (meters 1)
                 (the-as rgba (+ s1-1 (shl s4-0 24)))
                 )
               )
@@ -176,11 +176,11 @@
         (format
           #t
           "~C~C~C~C~C~C"
-          (if (zero? (logand s3-0 (cshape-reaction-flags csrf00)))
+          (if (not (logtest? s3-0 (cshape-reaction-flags csrf00)))
               103
               87
               )
-          (if (zero? (logand s3-0 (cshape-reaction-flags csrf01)))
+          (if (not (logtest? s3-0 (cshape-reaction-flags csrf01)))
               103
               87
               )
@@ -188,7 +188,7 @@
             ((logtest? s3-0 (cshape-reaction-flags csrf11))
              71
              )
-            ((zero? (logand s3-0 (cshape-reaction-flags csrf02)))
+            ((not (logtest? s3-0 (cshape-reaction-flags csrf02)))
              103
              )
             (else
@@ -206,11 +206,11 @@
               99
               )
             )
-          (if (zero? (logand s3-0 (cshape-reaction-flags csrf04)))
+          (if (not (logtest? s3-0 (cshape-reaction-flags csrf04)))
               110
               66
               )
-          (if (zero? (logand s3-0 (cshape-reaction-flags csrf05)))
+          (if (not (logtest? s3-0 (cshape-reaction-flags csrf05)))
               103
               65
               )
@@ -751,7 +751,7 @@
                   )
               (vector-matrix*! s2-3 s3-3 (-> self control unknown-matrix01))
               (let ((f28-2 (vector-vector-xz-distance s3-3 s4-0)))
-                (when (and (zero? (logand (-> self control status) (cshape-moving-flags tsurf)))
+                (when (and (not (logtest? (-> self control status) (cshape-moving-flags tsurf)))
                            (< (vector-xz-length gp-0) (vector-xz-length s3-3))
                            )
                   (let ((f0-50 (lerp-scale 163840.0 0.0 f28-2 0.0 20480.0)))
@@ -763,7 +763,7 @@
                   )
                 )
               )
-            (if (and (zero? (logand (-> self control status) (cshape-moving-flags twall)))
+            (if (and (not (logtest? (-> self control status) (cshape-moving-flags twall)))
                      (logtest? (-> self control old-status) (cshape-moving-flags twall))
                      (logtest? (-> self control unknown-surface00 flags) (surface-flags jump))
                      (< 0.0 (-> gp-0 y))
@@ -782,7 +782,7 @@
             (if (< (- (-> *display* base-frame-counter) (-> self control unknown-dword70)) (seconds 0.2))
                 (set! f30-4 (+ 204800.0 f30-4))
                 )
-            (if (and (zero? (logand (-> self control status) (cshape-moving-flags twall)))
+            (if (and (not (logtest? (-> self control status) (cshape-moving-flags twall)))
                      (and (logtest? (-> self control old-status) (cshape-moving-flags twall))
                           (logtest? (-> self control unknown-surface00 flags) (surface-flags jump))
                           (< 0.0 (-> gp-0 y))
@@ -901,8 +901,8 @@
 (defbehavior do-rotations2 target ()
   (let ((gp-0 (vector-z-quaternion! (new-stack-vector0) (-> self control dir-targ)))
         (s5-0
-          (if (and (or (zero? (logand (logior (-> self control status) (-> self control old-status)) (cshape-moving-flags onsurf tsurf))
-                              )
+          (if (and (or (not (logtest? (logior (-> self control status) (-> self control old-status)) (cshape-moving-flags onsurf tsurf))
+                            )
                        (< (- (-> *display* base-frame-counter) (-> self control unknown-dword20)) (seconds 0.5))
                        (!= (-> self next-state name) 'target-walk)
                        (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
@@ -910,7 +910,7 @@
                        (logtest? (-> self control unknown-surface01 flags) (surface-flags no-rotate-toward-transv))
                        (!= (-> self control unknown-float41) 0.0)
                        )
-                   (zero? (logand (-> self control unknown-surface01 flags) (surface-flags always-rotate-toward-transv)))
+                   (not (logtest? (-> self control unknown-surface01 flags) (surface-flags always-rotate-toward-transv)))
                    )
               (-> self control unknown-vector20)
               (-> self control transv)
@@ -941,7 +941,7 @@
       (bucket-id debug-no-zbuf)
       (-> self control trans)
       gp-0
-      (meters 2.0)
+      (meters 2)
       (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
       )
     (add-debug-vector
@@ -949,7 +949,7 @@
       (bucket-id debug-no-zbuf)
       (-> self control trans)
       s5-0
-      (meters 2.0)
+      (meters 2)
       (new 'static 'rgba :r #xff :a #x80)
       )
     )
@@ -958,7 +958,7 @@
     (bucket-id debug-no-zbuf)
     (-> self control trans)
     (-> self control unknown-matrix01 vector 2)
-    (meters 2.0)
+    (meters 2)
     (new 'static 'rgba :r #xff :b #xff :a #x80)
     )
   (rotate-toward-orientation!
@@ -1001,7 +1001,7 @@
      (set! (-> self control unknown-dword11) (-> *display* base-frame-counter))
      (set! (-> self control unknown-vector52 quad) (-> self control trans quad))
      (if (and (>= (-> self control coverage) 1.0)
-              (zero? (logand (-> self control status) (cshape-moving-flags t-act on-water)))
+              (not (logtest? (-> self control status) (cshape-moving-flags t-act on-water)))
               (logtest? (-> self control status) (cshape-moving-flags onground))
               )
          (set! (-> self control last-known-safe-ground quad) (-> self control trans quad))
@@ -1029,12 +1029,12 @@
     )
   (when (and (cpad-pressed? (-> self control unknown-cpad-info00 number) triangle)
              (zero? (-> self control unknown-int40))
-             (zero? (logand (-> *kernel-context* prevent-from-run) (process-mask movie)))
+             (not (logtest? (-> *kernel-context* prevent-from-run) (process-mask movie)))
              )
     (if (and (= (-> self cam-user-mode) 'normal)
              (logtest? (-> self control unknown-surface00 flags) (surface-flags allow-look-around))
-             (zero? (logand (-> self control root-prim prim-core action) (collide-action ca-7 ca-8 ca-9 ca-12 ca-13 ca-14))
-                    )
+             (not (logtest? (-> self control root-prim prim-core action) (collide-action ca-7 ca-8 ca-9 ca-12 ca-13 ca-14))
+                  )
              (-> *setting-control* current allow-look-around)
              (>= (- (-> *display* base-frame-counter) (-> self no-look-around-wait)) (seconds 0.05))
              (not (and (= (-> self control ground-pat material) (pat-material ice))
@@ -1048,7 +1048,7 @@
   (when (and (= *cheat-mode* 'debug)
              (cpad-hold? (-> self control unknown-cpad-info00 number) r2)
              (not *pause-lock*)
-             (zero? (logand (-> self state-flags) (state-flags grabbed first-person-mode)))
+             (not (logtest? (-> self state-flags) (state-flags grabbed first-person-mode)))
              )
     (if (!= (-> self next-state name) 'target-falling)
         (send-event self 'change-mode 'falling)
@@ -1095,7 +1095,7 @@
   (let ((f0-17 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
     (if (and (or (logtest? (-> self control unknown-surface01 flags) (surface-flags allow-edge-grab))
                  (and (= (-> self next-state name) 'target-walk)
-                      (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
+                      (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
                       )
                  )
              (< f0-17 0.0)
@@ -1108,7 +1108,7 @@
                         )
                       9420.8
                       )
-                  (zero? (logand (-> self control root-prim prim-core action) (collide-action ca-9 ca-14)))
+                  (not (logtest? (-> self control root-prim prim-core action) (collide-action ca-9 ca-14)))
                   #t
                   )
              )
@@ -1157,7 +1157,7 @@
         )
   (let ((f0-2
           (if (and (logtest? (-> self control status) (cshape-moving-flags twall))
-                   (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
+                   (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
                    )
               0.0
               (-> self control unknown-float81)
@@ -1198,7 +1198,7 @@
     (bucket-id debug-no-zbuf)
     (-> self control trans)
     (-> self control ground-poly-normal)
-    (meters 2.0)
+    (meters 2)
     (new 'static 'rgba :b #xff :a #x80)
     )
   (add-debug-vector
@@ -1206,7 +1206,7 @@
     (bucket-id debug-no-zbuf)
     (-> self control trans)
     (-> self control local-normal)
-    (meters 2.0)
+    (meters 2)
     (new 'static 'rgba :b #xff :a #x80)
     )
   (add-debug-vector
@@ -1222,7 +1222,7 @@
     (bucket-id debug-no-zbuf)
     (-> self control trans)
     (-> self control dynam gravity-normal)
-    (meters 3.0)
+    (meters 3)
     (new 'static 'rgba :r #xff :b #xff :a #x80)
     )
   )
@@ -1346,7 +1346,7 @@
             (bucket-id debug-no-zbuf)
             (-> (the-as swingpole s4-0) root trans)
             (the-as vector (&-> s4-0 stack 16))
-            (meters 3.0)
+            (meters 3)
             (new 'static 'rgba :r #xff :b #xff :a #x80)
             )
           (add-debug-sphere
@@ -1403,7 +1403,7 @@
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (cond
       ((and (= (-> self next-state name) 'target-clone-anim)
-            (zero? (logand (-> self draw status) (draw-status hidden)))
+            (not (logtest? (-> self draw status) (draw-status hidden)))
             (begin
               (vector<-cspace! gp-0 (-> self node-list data 3))
               (set! (-> gp-0 y) (+ -5896.192 (-> gp-0 y)))
@@ -1421,7 +1421,7 @@
                (the-as cspace (-> self node-list data))
                )
              (if (not (and (logtest? (-> self water flags) (water-flags wt12))
-                           (zero? (logand (-> self water flags) (water-flags wt04)))
+                           (not (logtest? (-> self water flags) (water-flags wt04)))
                            )
                       )
                  (set! (-> self control unknown-float30) (- (-> self water base-height) (-> self water swim-height)))
@@ -2081,9 +2081,3 @@
     )
   *target*
   )
-
-0
-
-
-
-

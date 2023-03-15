@@ -4574,6 +4574,63 @@ FormElement* try_make_nonzero_logtest(Form* in, FormPool& pool) {
   return nullptr;
 }
 
+FormElement* try_make_focus_test_macro(Form* in, FormPool& pool) {
+  /*
+(defmacro focus-test? (pfoc &rest status)
+`(logtest? (-> (the process-focusable ,pfoc) focus-status) (focus-status ,@status)))
+
+pfoc first:
+(logtest? (-> self focus-status) (focus-status dead hit grabbed))
+
+enum first:
+(logtest? (focus-status mech) (-> a1-2 focus-status))
+  */
+  auto logtest_focus_matcher_pfoc = Matcher::op(
+      GenericOpMatcher::fixed(FixedOperatorKind::LOGTEST),
+      {Matcher::deref(Matcher::any(0), false, {DerefTokenMatcher::string("focus-status")}),
+       Matcher::op_with_rest(GenericOpMatcher::func(Matcher::constant_token("focus-status")), {})});
+  auto logtest_focus_matcher_enum = Matcher::op(
+      GenericOpMatcher::fixed(FixedOperatorKind::LOGTEST),
+      {
+          Matcher::op_with_rest(GenericOpMatcher::func(Matcher::constant_token("focus-status")),
+                                {}),
+          Matcher::deref(Matcher::any(0), false, {DerefTokenMatcher::string("focus-status")}),
+      });
+  auto mr_logtest_pfoc = match(logtest_focus_matcher_pfoc, in);
+  auto mr_logtest_enum = match(logtest_focus_matcher_enum, in);
+  if (mr_logtest_pfoc.matched) {
+    auto logtest_elt = dynamic_cast<GenericElement*>(in->at(0));
+    if (logtest_elt != nullptr) {
+      auto focus_form = logtest_elt->elts().at(1);
+      std::vector<Form*> macro;
+      macro.push_back(mr_logtest_pfoc.maps.forms.at(0));
+      auto* focus = dynamic_cast<GenericElement*>(focus_form->at(0));
+      if (focus) {
+        macro.insert(macro.end(), focus->elts().begin(), focus->elts().end());
+      }
+
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::FOCUS_TEST), macro);
+    }
+  }
+  if (mr_logtest_enum.matched) {
+    auto logtest_elt = dynamic_cast<GenericElement*>(in->at(0));
+    if (logtest_elt != nullptr) {
+      auto focus_form = logtest_elt->elts().at(0);
+      std::vector<Form*> macro;
+      macro.push_back(mr_logtest_enum.maps.forms.at(0));
+      auto* focus = dynamic_cast<GenericElement*>(focus_form->at(0));
+      if (focus) {
+        macro.insert(macro.end(), focus->elts().begin(), focus->elts().end());
+      }
+
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::FOCUS_TEST), macro);
+    }
+  }
+  return nullptr;
+}
+
 FormElement* try_make_logtest_cpad_macro(Form* in, FormPool& pool) {
   /*
 (defmacro cpad-pressed (pad-idx)
@@ -4682,10 +4739,17 @@ FormElement* ConditionElement::make_zero_check_generic(const Env& env,
     auto as_cpad_macro = try_make_logtest_cpad_macro(logtest_form, pool);
     if (as_cpad_macro) {
       logtest_form = pool.alloc_single_form(nullptr, as_cpad_macro);
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_compare(IR2_Condition::Kind::FALSE), logtest_form);
     }
-    auto not_form = pool.alloc_element<GenericElement>(
+    auto focus_test_macro = try_make_focus_test_macro(logtest_form, pool);
+    if (focus_test_macro) {
+      logtest_form = pool.alloc_single_form(nullptr, focus_test_macro);
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_compare(IR2_Condition::Kind::FALSE), logtest_form);
+    }
+    return pool.alloc_element<GenericElement>(
         GenericOperator::make_compare(IR2_Condition::Kind::FALSE), logtest_form);
-    return not_form;
   }
 
   return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
@@ -4725,6 +4789,10 @@ FormElement* ConditionElement::make_nonzero_check_generic(const Env& env,
     auto as_cpad_macro = try_make_logtest_cpad_macro(logtest_form, pool);
     if (as_cpad_macro) {
       return as_cpad_macro;
+    }
+    auto focus_test_macro = try_make_focus_test_macro(logtest_form, pool);
+    if (focus_test_macro) {
+      return focus_test_macro;
     }
     return as_logtest;
   }
@@ -5895,8 +5963,33 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
       auto as_cpad_macro = try_make_logtest_cpad_macro(logtest_form, pool);
       if (as_cpad_macro) {
         val = pool.alloc_single_form(nullptr, as_cpad_macro);
-      } else {
-        val = pool.alloc_single_form(nullptr, as_logtest);
+      }
+      if (!val) {
+        auto focus_test_macro = try_make_focus_test_macro(logtest_form, pool);
+        if (focus_test_macro) {
+          val = pool.alloc_single_form(nullptr, focus_test_macro);
+        } else {
+          val = pool.alloc_single_form(nullptr, as_logtest);
+        }
+      }
+    }
+  } else {
+    auto as_logtest = try_make_nonzero_logtest(popped.at(1), pool);
+    if (as_logtest) {
+      auto logtest_form = pool.alloc_single_form(nullptr, as_logtest);
+      auto not_form = pool.form<GenericElement>(
+          GenericOperator::make_compare(IR2_Condition::Kind::FALSE), logtest_form);
+      auto as_cpad_macro = try_make_logtest_cpad_macro(not_form, pool);
+      if (as_cpad_macro) {
+        val = pool.alloc_single_form(nullptr, as_cpad_macro);
+      }
+      if (!val) {
+        auto focus_test_macro = try_make_focus_test_macro(not_form, pool);
+        if (focus_test_macro) {
+          val = pool.alloc_single_form(nullptr, focus_test_macro);
+        } else {
+          val = not_form;
+        }
       }
     }
   }
