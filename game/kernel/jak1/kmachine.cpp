@@ -14,7 +14,7 @@
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
 
-#include "game/discord.h"
+#include "game/external/discord.h"
 #include "game/graphics/gfx.h"
 #include "game/graphics/sceGraphicsInterface.h"
 #include "game/kernel/common/fileio.h"
@@ -558,24 +558,25 @@ void update_discord_rpc(u32 discord_info) {
 }
 
 u32 get_fullscreen() {
-  switch (Gfx::get_fullscreen()) {
+  switch (Gfx::get_window_display_mode()) {
     default:
-    case GfxDisplayMode::Windowed:
+    case WindowDisplayMode::Windowed:
       return intern_from_c("windowed").offset;
-    case GfxDisplayMode::Borderless:
+    case WindowDisplayMode::Borderless:
       return intern_from_c("borderless").offset;
-    case GfxDisplayMode::Fullscreen:
+    case WindowDisplayMode::Fullscreen:
       return intern_from_c("fullscreen").offset;
   }
 }
 
+// TODO - remove screen
 void set_fullscreen(u32 symptr, s64 screen) {
   if (symptr == intern_from_c("windowed").offset || symptr == s7.offset) {
-    Gfx::set_fullscreen(GfxDisplayMode::Windowed, screen);
+    Gfx::set_window_display_mode(WindowDisplayMode::Windowed);
   } else if (symptr == intern_from_c("borderless").offset) {
-    Gfx::set_fullscreen(GfxDisplayMode::Borderless, screen);
+    Gfx::set_window_display_mode(WindowDisplayMode::Borderless);
   } else if (symptr == intern_from_c("fullscreen").offset) {
-    Gfx::set_fullscreen(GfxDisplayMode::Fullscreen, screen);
+    Gfx::set_window_display_mode(WindowDisplayMode::Fullscreen);
   }
 }
 

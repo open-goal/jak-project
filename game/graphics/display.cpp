@@ -41,27 +41,19 @@ void set_main_display(std::shared_ptr<GfxDisplay> display) {
 ********************************
 */
 
-void GfxDisplay::set_title(const char* title) {
-  if (!is_active()) {
-    lg::error("No window to set title `{}`.", title);
-    return;
-  }
-
-  // TODO set title?
-  m_title = title;
-}
-
+// TODO - are these needed?
 int GfxDisplay::width() {
   int w;
-  get_size(&w, NULL);
+  Gfx::get_active_display_size(&w, NULL);
   return w;
 }
 
 int GfxDisplay::height() {
   int h;
-  get_size(NULL, &h);
+  Gfx::get_active_display_size(NULL, &h);
 #ifdef _WIN32
-  if (last_fullscreen_mode() == GfxDisplayMode::Borderless) {
+  // TODO - hack still needed?
+  if (last_fullscreen_mode() == WindowDisplayMode::Borderless) {
     // windows borderless hack
     h--;
   }
@@ -69,6 +61,7 @@ int GfxDisplay::height() {
   return h;
 }
 
+// TODO - move
 void GfxDisplay::save_display_settings() {
   nlohmann::json json;
   json["window_xpos"] = m_last_windowed_xpos;
@@ -112,7 +105,7 @@ std::vector<std::shared_ptr<GfxDisplay>> g_displays;
 std::shared_ptr<GfxDisplay> GetMainDisplay() {
   if (g_displays.size() == 0)
     return NULL;
-  return g_displays.front()->is_active() ? g_displays.front() : NULL;
+  return g_displays.front()->get_display_monitor()->is_window_active() ? g_displays.front() : NULL;
 }
 
 int InitMainDisplay(int width,
@@ -143,7 +136,7 @@ void KillMainDisplay() {
 
 void KillDisplay(std::shared_ptr<GfxDisplay> display) {
   // lg::debug("kill display #x{:x}", (uintptr_t)display);
-  if (!display->is_active()) {
+  if (!display->get_display_monitor()->is_window_active()) {
     lg::warn("display #x{:x} cant be killed because it is not active");
     return;
   }

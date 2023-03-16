@@ -409,28 +409,29 @@ void get_screen_size(s64 vmode_idx, u32 w_ptr, u32 h_ptr) {
   if (h_ptr) {
     h_out = Ptr<s32>(h_ptr).c();
   }
-  Gfx::get_screen_size(vmode_idx, w_out, h_out);
+  // TODO - remove vmode-idx
+  Gfx::get_active_display_size(w_out, h_out);
 }
 
 /*!
- * Returns refresh rate of the monitor.
+ * Returns the current refresh rate of the currently selected monitor.
  */
-s64 get_screen_rate(s64 vmode_idx) {
-  return Gfx::get_screen_rate(vmode_idx);
+s64 get_screen_rate(s64 vmode_idx) {  // TODO - remove vmodeidx
+  return Gfx::get_active_display_refresh_rate();
 }
 
 /*!
  * Returns amount of video modes of the monitor.
  */
 s64 get_screen_vmode_count() {
-  return Gfx::get_screen_vmode_count();
+  return Gfx::get_active_display_mode_count();
 }
 
 /*!
  * Returns the number of available monitors.
  */
 int get_monitor_count() {
-  return Gfx::get_monitor_count();
+  return Gfx::get_connected_display_count();
 }
 
 int get_unix_timestamp() {
@@ -463,7 +464,7 @@ void set_vsync(u32 symptr) {
 }
 
 void set_window_lock(u32 symptr) {
-  Gfx::set_window_lock(symptr == s7.offset);
+  Gfx::set_window_resizable(symptr == s7.offset);
 }
 
 void set_collision(u32 symptr) {
