@@ -98,8 +98,8 @@
 
 (defstate water-vol-idle (helix-dark-eco)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (let ((a0-1 (-> self sound)))
          (set! (-> a0-1 spec pitch-mod) 2057)
@@ -107,7 +107,7 @@
          )
        )
       (else
-        ((-> (method-of-type water-anim water-vol-idle) event) arg0 arg1 arg2 arg3)
+        ((-> (method-of-type water-anim water-vol-idle) event) proc arg1 event-type event)
         )
       )
     )
@@ -144,8 +144,8 @@
   )
 
 (defstate helix-slide-door-idle-open (helix-slide-door)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (go helix-slide-door-close)
        )
@@ -246,8 +246,8 @@
   )
 
 (defstate helix-button-idle-up (helix-button)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch)
        (when *target*
          (when (logtest? (-> *target* control status) (cshape-moving-flags onsurf))
@@ -285,7 +285,7 @@
         (send-event a0-1 'pickup)
         (until v1-7
           (suspend)
-          (set! v1-7 (or (not *target*) (zero? (logand (-> *target* state-flags) (state-flags grabbed)))))
+          (set! v1-7 (or (not *target*) (not (logtest? (-> *target* state-flags) (state-flags grabbed)))))
           )
         )
       )
@@ -611,18 +611,16 @@
   )
 
 (defstate helix-water-idle (helix-water)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (cond
-                       ((= v1-0 'trigger)
-                        (go helix-water-activated)
-                        )
-                       ((= v1-0 'music)
-                        (set-setting! 'music 'danger 0.0 0)
-                        )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('trigger)
+                      (go helix-water-activated)
+                      )
+                     (('music)
+                      (set-setting! 'music 'danger 0.0 0)
+                      )
+                     )
+            )
     )
   :code (behavior ()
     (set! (-> self root trans y) (-> self start-y))
@@ -640,10 +638,10 @@
   )
 
 (defstate helix-water-activated (helix-water)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('notify)
-       (when (= (-> arg0 type) launcherdoor)
+       (when (= (-> proc type) launcherdoor)
          (remove-setting! 'music)
          (go helix-water-idle)
          )
@@ -654,7 +652,7 @@
     (seek! (-> self root scale y) 0.8 (* 0.667 (-> *display* seconds-per-frame)))
     (when *target*
       (let ((f0-4 (-> (target-pos 0) y)))
-        (when (zero? (logand (-> *target* state-flags) (state-flags grabbed)))
+        (when (not (logtest? (-> *target* state-flags) (state-flags grabbed)))
           (let* ((f0-5 (- f0-4 (-> self root trans y)))
                  (f0-6 (+ -40960.0 f0-5))
                  (f0-7 (* 0.000024414063 f0-6))
@@ -710,7 +708,7 @@
   (set! (-> obj end-y) (+ 851968.0 (-> obj start-y)))
   (set-vector! (-> obj root scale) 1.0 0.8 1.0 1.0)
   (let ((s4-0 (entity-actor-count arg0 'alt-actor)))
-    (set! (-> obj alt-actors) (the-as (array entity-actor) (new 'process 'boxed-array entity-actor s4-0)))
+    (set! (-> obj alt-actors) (new 'process 'boxed-array entity-actor s4-0))
     (dotimes (s3-0 s4-0)
       (set! (-> obj alt-actors s3-0) (entity-actor-lookup arg0 'alt-actor s3-0))
       )
@@ -721,7 +719,3 @@
   (go helix-water-idle)
   (none)
   )
-
-
-
-

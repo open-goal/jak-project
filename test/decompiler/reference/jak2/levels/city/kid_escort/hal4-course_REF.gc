@@ -174,7 +174,7 @@
           ((>= (- (-> pp clock frame-counter) (-> obj arrestor-time)) (seconds 4))
            (set! (-> obj arrestor-handle) (the-as handle #f))
            )
-          ((logtest? (-> (the-as process-focusable v1-3) focus-status) (focus-status hit))
+          ((focus-test? (the-as process-focusable v1-3) hit)
            (when (and (>= (- (-> pp clock frame-counter) (-> obj played-defend-time)) (seconds 6))
                       (not (channel-active? obj (the-as uint 0)))
                       )
@@ -219,7 +219,7 @@
 (defmethod hal-escort-method-227 hal-escort ((obj hal-escort))
   (with-pp
     (let ((s5-0 *target*))
-      (when (logtest? (focus-status pilot-riding pilot) (-> s5-0 focus-status))
+      (when (focus-test? s5-0 pilot-riding pilot)
         (let* ((a0-2 (-> obj actor-group 0 data 1 actor))
                (v1-5 (when a0-2
                        (let ((s4-0 (-> a0-2 extra process)))
@@ -230,7 +230,7 @@
                        )
                      )
                )
-          (when (logtest? (focus-status pilot-riding pilot) (-> (the-as process-focusable v1-5) focus-status))
+          (when (focus-test? (the-as process-focusable v1-5) pilot-riding pilot)
             (let* ((v1-12 (-> obj actor-group 0 data 2 actor))
                    (a0-5 (when v1-12
                            (let ((s4-1 (-> v1-12 extra process)))
@@ -241,7 +241,7 @@
                            )
                          )
                    )
-              (when (not (logtest? (focus-status pilot-riding pilot) (-> (the-as process-focusable a0-5) focus-status)))
+              (when (not (focus-test? (the-as process-focusable a0-5) pilot-riding pilot))
                 (let ((f0-0 245760.0))
                   (and (< (* f0-0 f0-0)
                           (vector-vector-xz-distance-squared (get-trans (the-as process-focusable a0-5) 0) (get-trans s5-0 0))
@@ -422,8 +422,8 @@
           ((not (-> *setting-control* user-current pilot-exit))
            (when (and s5-0
                       v1-8
-                      (not (logtest? (-> (the-as process-focusable s5-0) focus-status) (focus-status pilot-riding)))
-                      (not (logtest? (-> (the-as process-focusable v1-8) focus-status) (focus-status pilot-riding)))
+                      (not (focus-test? (the-as process-focusable s5-0) pilot-riding))
+                      (not (focus-test? (the-as process-focusable v1-8) pilot-riding))
                       (>= (- (-> pp clock frame-counter) (-> obj locked-player-time)) (seconds 10))
                       )
              (remove-setting! 'pilot-exit)
@@ -431,11 +431,11 @@
              (apply-settings *setting-control*)
              )
            )
-          ((logtest? (-> target focus-status) (focus-status pilot-riding))
+          ((focus-test? target pilot-riding)
            (when (and (nonzero? (-> target pilot))
                       (and (= (handle->process (-> target pilot vehicle)) (handle->process (-> obj vehicle-handle)))
-                           (or (and s5-0 (logtest? (focus-status pilot) (-> (the-as process-focusable s5-0) focus-status)))
-                               (and v1-8 (logtest? (focus-status pilot) (-> (the-as process-focusable v1-8) focus-status)))
+                           (or (and s5-0 (focus-test? (the-as process-focusable s5-0) pilot))
+                               (and v1-8 (focus-test? (the-as process-focusable v1-8) pilot))
                                )
                            )
                       )
@@ -1329,14 +1329,14 @@
                                   )
                                 )
                               )
-                            (if (logtest? (focus-status pilot) (-> (the-as process-focusable s5-0) focus-status))
+                            (if (focus-test? (the-as process-focusable s5-0) pilot)
                                 (send-event s5-0 'request 'exit-vehicle s3-1 1)
                                 )
-                            (if (logtest? (focus-status pilot) (-> (the-as process-focusable s5-0) focus-status))
+                            (if (focus-test? (the-as process-focusable s5-0) pilot)
                                 (send-event s4-1 'request 'exit-vehicle s3-1 1)
                                 )
                             (if (and (not (speech-playing? arg1 7))
-                                     (not (logtest? (-> (the-as process-focusable s4-1) focus-status) (focus-status pilot-riding)))
+                                     (not (focus-test? (the-as process-focusable s4-1) pilot-riding))
                                      (not (logtest? (bot-flags bf17) (-> (the-as bot s4-1) bot-flags)))
                                      s3-1
                                      (not (channel-active? arg1 (the-as uint 0)))
@@ -1344,10 +1344,10 @@
                                 (play-speech arg1 7)
                                 )
                             )
-                          (when (and (not (logtest? (focus-status pilot) (-> (the-as process-focusable s4-1) focus-status)))
+                          (when (and (not (focus-test? (the-as process-focusable s4-1) pilot))
                                      (not (logtest? (bot-flags bf17) (-> (the-as bot s4-1) bot-flags)))
-                                     (not (logtest? (focus-status pilot) (-> (the-as process-focusable s5-0) focus-status)))
-                                     (zero? (logand (bot-flags bf17) (-> (the-as bot s5-0) bot-flags)))
+                                     (not (focus-test? (the-as process-focusable s5-0) pilot))
+                                     (not (logtest? (bot-flags bf17) (-> (the-as bot s5-0) bot-flags)))
                                      )
                             (send-event *target* 'end-mode)
                             (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
@@ -1637,7 +1637,7 @@
                           ((and s5-0
                                 (>= (-> s3-0 center w) (vector-vector-xz-distance s4-0 (-> s3-0 center)))
                                 (and (>= (- (-> s4-0 y) (-> s3-0 center y)) -10240.0)
-                                     (zero? (logand (-> s5-0 focus-status) (focus-status edge-grab)))
+                                     (not (logtest? (-> s5-0 focus-status) (focus-status edge-grab)))
                                      )
                                 )
                            (when (not (logtest? (-> arg1 bot-task-bits) 1))
@@ -2089,7 +2089,3 @@
 
 ;; failed to figure out what this is:
 (set! (-> *bot-course-table* course 10) *hal4-course*)
-
-
-
-

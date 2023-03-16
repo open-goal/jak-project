@@ -299,7 +299,7 @@
     )
   :trans (behavior ()
     (if (or (not (handle->process (-> *camera* settings pov-handle)))
-            (zero? (logand (-> *camera* master-options) (cam-master-options-u32 HAVE_TARGET)))
+            (not (logtest? (-> *camera* master-options) (cam-master-options-u32 HAVE_TARGET)))
             )
         (cam-slave-go cam-free-floating)
         )
@@ -527,7 +527,7 @@
   :exit (behavior ()
     (if (and *target*
              (logtest? (-> *camera* master-options) (cam-master-options-u32 HAVE_TARGET))
-             (logtest? (-> *target* focus-status) (focus-status in-head))
+             (focus-test? *target* in-head)
              )
         (send-event *target* 'end-mode)
         )
