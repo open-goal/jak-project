@@ -4,7 +4,7 @@
  * Actual input detection is done through window events and is gfx pipeline-dependent.
  */
 
-#include "newpad.h"
+#include "input_monitor.h"
 
 #include <atomic>
 #include <cmath>
@@ -16,8 +16,6 @@
 #include "game/graphics/pipelines/opengl.h"
 
 #include "third-party/imgui/imgui.h"
-
-namespace Pad {
 
 bool is_any_sdl_event_type(Uint32 event_type, std::vector<Uint32> allowed_types) {
   for (const auto& allowed_type : allowed_types) {
@@ -57,7 +55,7 @@ GameController::GameController(int sdl_device_id, int dead_zone)
   m_loaded = true;
 }
 
-void GameController::process_event(const SDL_Event& event, std::shared_ptr<Pad::PadData> data) {
+void GameController::process_event(const SDL_Event& event, std::shared_ptr<PadData> data) {
   if (event.type == SDL_CONTROLLERAXISMOTION && event.caxis.which == m_sdl_instance_id) {
     // https://wiki.libsdl.org/SDL2/SDL_GameControllerAxis
     if (event.caxis.axis <= SDL_CONTROLLER_AXIS_INVALID ||
@@ -65,7 +63,8 @@ void GameController::process_event(const SDL_Event& event, std::shared_ptr<Pad::
       return;
     }
     // Analog sticks
-    if (event.caxis.axis >= SDL_CONTROLLER_AXIS_LEFTX && event.caxis.axis <= SDL_CONTROLLER_AXIS_RIGHTY) {
+    if (event.caxis.axis >= SDL_CONTROLLER_AXIS_LEFTX &&
+        event.caxis.axis <= SDL_CONTROLLER_AXIS_RIGHTY) {
       // Adjust the value range to 0-255 (127 being neutral)
       // Values come out of SDL as -32,768 + 32,767
       // TODO - deadzone stuff
@@ -79,8 +78,8 @@ void GameController::process_event(const SDL_Event& event, std::shared_ptr<Pad::
       const auto sdl_val = event.caxis.value;
       if (m_axis_binds.count(sdl_axis) != 0) {
         for (const auto ps2_bind : m_axis_binds.at(sdl_axis)) {
-          // TODO - probably want some kind of a deadzone here too so the slightest touch doesn't trigger it
-          // (though how does that work for controllers with buttons instead!)
+          // TODO - probably want some kind of a deadzone here too so the slightest touch doesn't
+          // trigger it (though how does that work for controllers with buttons instead!)
           data->button_data.at(ps2_bind) = event.caxis.value > 0;
         }
       }
@@ -118,7 +117,7 @@ InputMonitor::InputMonitor() {
   } else {
     lg::error("Could not find SDL Controller DB at path `{}`", mapping_path);
   }
-  m_data = std::make_shared<Pad::PadData>();
+  m_data = std::make_shared<PadData>();
   refresh_device_list();
 }
 
@@ -164,7 +163,7 @@ void InputMonitor::process_sdl_event(const SDL_Event& event) {
   }
 }
 
-std::shared_ptr<Pad::PadData> InputMonitor::get_current_data() const {
+std::shared_ptr<PadData> InputMonitor::get_current_data() const {
   return m_data;
 }
 
@@ -715,5 +714,3 @@ std::shared_ptr<Pad::PadData> InputMonitor::get_current_data() const {
 // float* GetControllerAnalogInputBuffer(int pad) {
 //   return g_gamepad_analogs[pad];
 // }
-
-};  // namespace Pad

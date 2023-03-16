@@ -56,11 +56,13 @@ int scePadInfoMode(int /*port*/, int /*slot*/, int term, int offs) {
 }
 
 // order of pressure sensitive buttons in memory (not the same as their bit order...).
-static const Pad::PadButtonIndex libpad_PadPressureButtons[] = {
-    Pad::PadButtonIndex::DPAD_RIGHT, Pad::PadButtonIndex::DPAD_LEFT, Pad::PadButtonIndex::DPAD_UP,
-    Pad::PadButtonIndex::DPAD_DOWN,  Pad::PadButtonIndex::TRIANGLE,  Pad::PadButtonIndex::CIRCLE,
-    Pad::PadButtonIndex::CROSS,      Pad::PadButtonIndex::SQUARE,    Pad::PadButtonIndex::L1,
-    Pad::PadButtonIndex::R1,         Pad::PadButtonIndex::L2,        Pad::PadButtonIndex::R2};
+static const PadData::ButtonIndex libpad_PadPressureButtons[] = {
+    PadData::ButtonIndex::DPAD_RIGHT, PadData::ButtonIndex::DPAD_LEFT,
+    PadData::ButtonIndex::DPAD_UP,    PadData::ButtonIndex::DPAD_DOWN,
+    PadData::ButtonIndex::TRIANGLE,   PadData::ButtonIndex::CIRCLE,
+    PadData::ButtonIndex::CROSS,      PadData::ButtonIndex::SQUARE,
+    PadData::ButtonIndex::L1,         PadData::ButtonIndex::R1,
+    PadData::ButtonIndex::L2,         PadData::ButtonIndex::R2};
 // reads controller data and writes it to a buffer in rdata (must be at least 32 bytes large).
 // returns buffer size (32) or 0 on error.
 int scePadRead(int port, int /*slot*/, u8* rdata) {

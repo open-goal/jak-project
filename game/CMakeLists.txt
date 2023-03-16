@@ -7,12 +7,15 @@ set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> <INCLUDES> -f ${CMA
 set_source_files_properties(kernel/asm_funcs.asm PROPERTIES COMPILE_FLAGS "-g")
 set(RUNTIME_SOURCE
         runtime.cpp
-        discord.cpp
+        external/discord.cpp
+        settings/settings.cpp
         system/SystemThread.cpp
         system/IOP_Kernel.cpp
         system/iop_thread.cpp
         system/Deci2Server.cpp
-        system/newpad.cpp
+        system/hid/input_monitor.cpp
+        system/hid/display_monitor.cpp
+        system/hid/sdl_util.cpp
         sce/libcdvd_ee.cpp
         sce/libscf.cpp
         sce/libdma.cpp
