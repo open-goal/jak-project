@@ -15,6 +15,16 @@
 ;; In many cases, "draw" simply adds data to a buffer that must later be converted to dma in finish-background
 ;; or similar.  Or just does nothing.
 
+(deftype collide-work (structure)
+  ((collide-sphere-neg-r sphere         :inline :offset-assert   0)
+   (collide-box4w        bounding-box4w :inline :offset-assert  16)
+   (inv-mat              matrix         :inline :offset-assert  48)
+   )
+  :method-count-assert 9
+  :size-assert         #x70
+  :flag-assert         #x900000070
+  )
+
 (declare-type drawable-error drawable)
 (deftype drawable (basic)
   ((id      int16          :offset-assert 4)  ;; ID number for visibility (not always used)
@@ -32,13 +42,13 @@
     ;; add collision meshes to the given collide list if they intersect the bounding box in *collide-work*
     ;; the integer argument can be used to call this method on an inline-array of drawables (only some support this)
     ;; this avoids the dynamic dispatch on each element of the array.
-    (collide-with-box (_type_ int collide-list) none 11)
+    (collide-with-box (_type_ int collide-list collide-work) none 11)
 
     ;; similar to above, but only add if the collision mesh intersects with a "y probe"
-    (collide-y-probe (_type_ int collide-list) none 12)
+    (collide-y-probe (_type_ int collide-list collide-work) none 12)
 
     ;; similar to above, but only add if the collision mesh intersects a ray of spheres.
-    (collide-ray (_type_ int collide-list) none 13)
+    (collide-ray (_type_ int collide-list collide-work) none 13)
 
     ;; different for different types, but generally collects debug statistics like numbers of triangles
     (collect-stats (_type_) none 14)

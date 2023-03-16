@@ -8,6 +8,7 @@ set_source_files_properties(kernel/asm_funcs.asm PROPERTIES COMPILE_FLAGS "-g")
 set(RUNTIME_SOURCE
         runtime.cpp
         discord.cpp
+        multiplayer.cpp
         system/SystemThread.cpp
         system/IOP_Kernel.cpp
         system/iop_thread.cpp
@@ -214,7 +215,7 @@ add_subdirectory(sound)
 # we build the runtime as a static library.
 add_library(runtime STATIC ${RUNTIME_SOURCE} "../third-party/glad/src/glad.c")
 
-target_link_libraries(runtime common fmt glfw imgui discord-rpc sound stb_image libco SQLiteCpp)
+target_link_libraries(runtime common fmt glfw imgui discord-rpc sound stb_image libco SQLiteCpp libcurl)
 if(WIN32)
     target_link_libraries(runtime mman)
 else()

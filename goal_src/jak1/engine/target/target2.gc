@@ -557,7 +557,7 @@
                             )
                       (t2-0 #f)
                       )
-                  ((the-as (function object object object object object object object none) s3-0)
+                  ((the-as (function object object object object object object object object none) s3-0)
                    s2-0
                    s1-0
                    s0-0
@@ -565,6 +565,7 @@
                    gp-1
                    t1-0
                    t2-0
+                   self
                    )
                   )
                 )
@@ -713,7 +714,7 @@
                             )
                       (t2-0 #f)
                       )
-                  ((the-as (function object object object object object object object none) s3-0)
+                  ((the-as (function object object object object object object object object none) s3-0)
                    s2-0
                    s1-0
                    s0-0
@@ -721,6 +722,7 @@
                    gp-1
                    t1-0
                    t2-0
+                   self
                    )
                   )
                 )
@@ -1171,21 +1173,25 @@
              (= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
              )
          (let ((a1-2 (new 'stack-no-clear 'collide-using-spheres-params)))
-           (set! (-> a1-2 spheres) (-> *collide-edge-work* world-player-leap-up-spheres))
-           (set! (-> a1-2 num-spheres) (the-as uint 6))
-           (set! (-> a1-2 collide-with) (-> self control root-prim collide-with))
-           (set! (-> a1-2 proc) #f)
-           (set! (-> a1-2 ignore-pat) (new 'static 'pat-surface :noentity #x1))
-           (set! (-> a1-2 solid-only) #t)
-           (when (not (fill-and-probe-using-spheres *collide-cache* a1-2))
-             (remove-exit)
-             (go
-               target-edge-grab-jump
-               (-> *TARGET-bank* edge-grab-jump-height-min)
-               (-> *TARGET-bank* edge-grab-jump-height-max)
-               )
-             )
-           )
+          (dotimes (tgt-idx MAX_MULTIPLAYER_COUNT)
+            (when (and (get-target tgt-idx) (= self (get-target tgt-idx)))
+              (set! (-> a1-2 spheres) (-> *collide-edge-work-list* tgt-idx world-player-leap-up-spheres))
+              (set! (-> a1-2 num-spheres) (the-as uint 6))
+              (set! (-> a1-2 collide-with) (-> self control root-prim collide-with))
+              (set! (-> a1-2 proc) #f)
+              (set! (-> a1-2 ignore-pat) (new 'static 'pat-surface :noentity #x1))
+              (set! (-> a1-2 solid-only) #t)
+              (when (not (fill-and-probe-using-spheres (-> *edge-collide-cache-list* tgt-idx) a1-2 (-> *edge-collide-work-list* tgt-idx)))
+                (remove-exit)
+                (go
+                  target-edge-grab-jump
+                  (-> *TARGET-bank* edge-grab-jump-height-min)
+                  (-> *TARGET-bank* edge-grab-jump-height-max)
+                  )
+                )
+              )
+            )
+          )
          )
         (else
           (remove-exit)
@@ -1416,6 +1422,7 @@
                                  9
                                  )
                              #f
+                             self
                              )
                            (-> gp-1 ppointer)
                            )
@@ -1542,6 +1549,7 @@
           0
           )
       #f
+      self
       :to self
       )
     (set! (-> self control unknown-dword82) (-> *display* base-frame-counter))

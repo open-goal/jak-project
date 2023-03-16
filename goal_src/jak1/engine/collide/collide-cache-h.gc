@@ -5,9 +5,10 @@
 ;; name in dgo: collide-cache-h
 ;; dgos: GAME, ENGINE
 
-(define-extern collide-cache-using-line-sphere-test (function vector symbol))
-(define-extern collide-cache-using-y-probe-test (function vector symbol))
-(define-extern collide-cache-using-box-test (function vector symbol))
+(declare-type collide-work structure)
+(define-extern collide-cache-using-line-sphere-test (function vector collide-work symbol))
+(define-extern collide-cache-using-y-probe-test (function vector collide-work symbol))
+(define-extern collide-cache-using-box-test (function vector collide-work symbol))
 
 
 
@@ -132,19 +133,19 @@
   (:methods
     (debug-draw (_type_) none 9)
     (fill-and-probe-using-line-sphere (_type_ vector vector float collide-kind process collide-tri-result pat-surface) float 10)
-    (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) symbol 11)
-    (fill-and-probe-using-y-probe (_type_ vector float collide-kind process-drawable collide-tri-result pat-surface) float 12)
-    (fill-using-bounding-box (_type_ bounding-box collide-kind process-drawable pat-surface) none 13)
-    (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable pat-surface) none 14)
-    (fill-using-spheres (_type_ collide-using-spheres-params) none 15)
-    (fill-using-y-probe (_type_ vector float collide-kind process-drawable pat-surface) none 16)
+    (fill-and-probe-using-spheres (_type_ collide-using-spheres-params collide-work) symbol 11)
+    (fill-and-probe-using-y-probe (_type_ vector float collide-kind process-drawable collide-tri-result pat-surface collide-work) float 12)
+    (fill-using-bounding-box (_type_ bounding-box collide-kind process-drawable pat-surface collide-work) none 13)
+    (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable pat-surface collide-work) none 14)
+    (fill-using-spheres (_type_ collide-using-spheres-params collide-work) none 15)
+    (fill-using-y-probe (_type_ vector float collide-kind process-drawable pat-surface collide-work) none 16)
     (initialize (_type_) none 17)
     (probe-using-line-sphere (_type_ vector vector float collide-kind collide-tri-result pat-surface) float 18)
     (probe-using-spheres (_type_ collide-using-spheres-params) symbol 19)
     (probe-using-y-probe (_type_ vector float collide-kind collide-tri-result pat-surface) float 20)
-    (fill-from-background (_type_ (function bsp-header int collide-list none) (function collide-cache object none)) none 21) ;; second functiom is method 28
+    (fill-from-background (_type_ (function bsp-header int collide-list collide-work none) (function collide-cache object none) (collide-work)) none 21) ;; second functiom is method 28
     (fill-from-foreground-using-box (_type_) none 22)
-    (fill-from-foreground-using-line-sphere (_type_) none 23)
+    (fill-from-foreground-using-line-sphere (_type_ collide-work) none 23)
     (fill-from-foreground-using-y-probe (_type_) none 24)
     (fill-from-water (_type_ water-control) none 25) ;; or whatever is from 152 in the process passed to 16
     (load-mesh-from-spad-in-box (_type_ collide-frag-mesh) none 26)
@@ -177,22 +178,21 @@
   :flag-assert         #x900001010
   )
 
-
-(deftype collide-work (structure)
-  ((collide-sphere-neg-r sphere         :inline :offset-assert   0)
-   (collide-box4w        bounding-box4w :inline :offset-assert  16)
-   (inv-mat              matrix         :inline :offset-assert  48)
-   )
-  :method-count-assert 9
-  :size-assert         #x70
-  :flag-assert         #x900000070
-  )
-
-
 (define-perm *collide-work* collide-work (new 'global 'collide-work))
 
-(defglobalconstant BIG_COLLIDE_CACHE_SIZE 5000)
+(define-perm *collide-work* collide-work (new 'global 'collide-work))
+(define *edge-collide-work-list* (new 'global 'boxed-array collide-work MAX_MULTIPLAYER_COUNT))
+(dotimes (idx (-> *edge-collide-work-list* length))
+  (set! (-> *edge-collide-work-list* idx) (new 'global 'collide-work))
+  )
+
+(defglobalconstant BIG_COLLIDE_CACHE_SIZE 10000)
 (define-perm *collide-cache* collide-cache (new 'global 'collide-cache))
+
+(define *edge-collide-cache-list* (new 'global 'boxed-array collide-cache MAX_MULTIPLAYER_COUNT))
+(dotimes (idx (-> *edge-collide-cache-list* length))
+  (set! (-> *edge-collide-cache-list* idx) (new 'global 'collide-cache))
+  )
 
 (#when PC_PORT
   ;; disgusting hack to let us overflow the collide cache up to 5k triangles
@@ -208,7 +208,6 @@
 
 
 
-(define-perm *collide-list* collide-list (new 'global 'collide-list))
 
 
 

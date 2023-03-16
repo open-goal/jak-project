@@ -1,0 +1,315 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: put-custom-code-here.gc
+;; name in dgo: put-custom-code-here
+;; dgos: TODO
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; What is this file for.
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#| This file contains function defenitions that are pre placed in the mod base,
+so if you place custom code inside of these functions, it will exectue based on
+the name of the function, for example, if you place (set! (-> *game-info* fuel) (+ (-> *game-info* fuel) 1))
+to the function named runs-on-orb-pickup, then jaks powercell count will increase each time you collect
+an orb |#
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Begin function defintions.
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define *multiplayer-info* (new 'global 'multiplayer-info))
+(define *registered-with-server?* #f)
+(define *last-position-sync-time* (the-as time-frame #f))
+
+(define *remote-targets* (new 'global 'boxed-array handle MAX_MULTIPLAYER_COUNT))
+
+(defun start-extra-target ()
+  (ppointer->handle (process-spawn
+                target
+                :init init-target
+                  (-> *game-info* current-continue)
+                :from *target-dead-pool*
+                :to *target-pool*
+                :stack *kernel-dram-stack*
+                ))
+  )
+
+(defun get-target ((idx int))
+  (if (or (= (-> *multiplayer-info* player_num) -1) (= (-> *multiplayer-info* player_num) idx))
+    *target*
+    (the target (handle->process (-> *remote-targets* idx)))
+    )
+  )
+
+(defun color-target-rgb ((tgt process-drawable) (r float) (g float) (b float))
+  (set! (-> tgt draw color-mult r) r)
+  (set! (-> tgt draw color-mult g) g)
+  (set! (-> tgt draw color-mult b) b)
+  (none)
+  )
+
+(defun color-target ((tgt process-drawable) (color symbol))
+  (case color
+    (('normal)
+      (color-target-rgb tgt 1.0 1.0 1.0)
+      )
+    (('white)
+      (color-target-rgb tgt 10.0 10.0 10.0)
+      )
+    (('black)
+      (color-target-rgb tgt 0.0 0.0 0.0)
+      )
+    (('red)
+      (color-target-rgb tgt 5.0 0.0 0.0)
+      )
+    (('green)
+      (color-target-rgb tgt 0.0 5.0 0.0)
+      )
+    (('blue)
+      (color-target-rgb tgt 0.0 0.0 5.0)
+      )
+    (('yellow)
+      (color-target-rgb tgt 5.0 5.0 0.0)
+      )
+    (('pink)
+      (color-target-rgb tgt 5.0 0.0 5.0)
+      )
+    (('light-blue)
+      (color-target-rgb tgt 0.0 5.0 5.0)
+      )
+    (else ;; random
+      (color-target-rgb tgt 
+        (rand-vu-float-range 0.0 5.0)
+        (rand-vu-float-range 0.0 5.0)
+        (rand-vu-float-range 0.0 5.0))
+      )
+    )
+  )
+
+(defun position-actor ((obj process-drawable) (t_x float) (t_y float) (t_z float) (q_x float) (q_y float) (q_z float) (q_w float))
+  (set! (-> obj root trans x) t_x)
+  (set! (-> obj root trans y) t_y)
+  (set! (-> obj root trans z) t_z)
+  (set! (-> obj root quat x)  q_x)
+  (set! (-> obj root quat y)  q_y)
+  (set! (-> obj root quat z)  q_z)
+  (set! (-> obj root quat w)  q_w)
+  (case (-> obj type)
+    ((target)
+      (let ((t (the target obj)))
+        (logior! (-> t state-flags) (state-flags invulnerable))
+        (quaternion-copy! (-> t control dir-targ) (-> t root quat))
+        )
+      )
+    ((money)
+      (let ((m (the money obj)))
+        (vector-copy! (-> m base) (-> m root trans))
+        (vector-copy! (-> m root-override root-prim world-sphere) (-> m root trans))
+        )
+      )
+    )
+  )
+
+(define *multiplayer-mode* 'jaks)
+;; (define *multiplayer-mode* 'orbs)
+(defun runs-every-frame ()
+  
+  ;; register with server if we haven't yet
+  (when (and *target* (not *registered-with-server?*))
+    ;; (pc-http-register *multiplayer-info*)
+    (set! *registered-with-server?* #t)
+    ;; wait a bit to ensure registration before syncing position
+    (set! *last-position-sync-time* (+ (-> *display* base-frame-counter) (seconds 1.0)))
+    )
+
+  (when (and *target* (>= (-> *multiplayer-info* player_num) 0) (< (-> *multiplayer-info* player_num) MAX_MULTIPLAYER_COUNT))
+    ;; if never synced positions, or its been X ms, request updated positions
+    (when (or (not *last-position-sync-time*)
+              (>= (- (-> *display* base-frame-counter) *last-position-sync-time*) (seconds 0.05)))
+      ;; update last sync time
+      (set! *last-position-sync-time* (-> *display* base-frame-counter))
+
+      ;; update this player's position and send to server
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) trans_x) (-> *target* root trans x))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) trans_y) (-> *target* root trans y))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) trans_z) (-> *target* root trans z))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_x)  (-> *target* root quat x))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_y)  (-> *target* root quat y))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_z)  (-> *target* root quat z))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_w)  (-> *target* root quat w))
+      (pc-http-update-position)
+
+      ;; request to get positions of other players from server (async)
+      (pc-http-get-positions)
+      )
+
+    (dotimes (idx MAX_MULTIPLAYER_COUNT)
+      (when (!= (-> *multiplayer-info* player_num) idx)
+        ;; see if we need to respawn remote targets
+        (when (or (zero? (-> *remote-targets* idx))
+                  (not (handle->process (-> *remote-targets* idx))))
+          (case *multiplayer-mode*
+            (('jaks)
+              (set! (-> *remote-targets* idx) (start-extra-target))
+              )
+            (('orbs)
+              (let ((vec (new 'stack-no-clear 'vector)))
+                (set! (-> vec x) 0.0)
+                (set! (-> vec y) -80920.0)  ;; spawn orbs 20m under 0,0,0 so nobody can get them
+                (set! (-> vec z) 0.0)
+                (set! (-> *remote-targets* idx) (ppointer->handle (birth-pickup-at-point-inner
+                                                    vec
+                                                    (pickup-type money)
+                                                    (the-as float 1.0)
+                                                    #t
+                                                    *target*
+                                                    (the-as fact-info #f)
+                                                    #f  ;; no-bob
+                                                  )))
+                )
+              )
+            )
+          )
+        
+        ;; position/color remote targets
+        (let ((p (-> *multiplayer-info* players idx))
+              (obj (the process-drawable (handle->process (-> *remote-targets* idx)))))
+          (when obj
+            (position-actor obj 
+              (-> p trans_x)
+              (-> p trans_y)
+              (-> p trans_z)
+              (-> p quat_x)
+              (-> p quat_y)
+              (-> p quat_z)
+              (-> p quat_w))
+            (case idx
+              ((0) (color-target  obj 'green))
+              ((1) (color-target  obj 'blue))
+              ((2) (color-target  obj 'red))
+              ((3) (color-target  obj 'yellow))
+              (else (color-target obj 'surprise-me))
+              )
+            )
+          )
+        )
+      )
+
+    (case (-> *multiplayer-info* player_num)
+      ((0) (color-target *target* 'green))
+      ((1) (color-target *target* 'blue))
+      ((2) (color-target *target* 'red))
+      ((3) (color-target *target* 'yellow))
+      (else (color-target *target* 'surprise-me))
+      )
+    )
+  (none)
+  )
+
+(defun runs-on-orb-pickup ((parent process-tree))
+  (let* ((from-cache? (and parent (type-type? (-> parent type) orb-cache-top))))
+    ;; Code here runs on ANY orb pickup
+
+
+    (when from-cache?
+      ;; Code here runs only if the orb was from an orb cache
+
+      )
+
+    (when (not from-cache?)
+      ;; Code here runs only if the orb was NOT from an orb cache
+
+      )
+    )
+  (none)
+  )
+
+(defun runs-on-fly-pickup ()
+  ;; Code here runs on any scout fly pickup
+
+  (none)
+  )
+
+(defun runs-on-cell-pickup ((cell-event symbol))
+  (case cell-event
+    (('pickup)      
+      ;; Code here runs as soon as you pickup a powercell
+
+      )
+    (('cutscene-end)      
+      ;; Code here runs at the end of any powercell cutscene
+
+      )
+    )
+
+  (none)
+  )
+
+(defun runs-on-eco-pickup ((eco-type pickup-type) (parent process-tree))
+  (let* ((from-vent? (and parent (type-type? (-> parent type) vent))))
+    ;; Code here runs as soon as you pickup ANY eco
+
+    (case eco-type
+      (((pickup-type eco-yellow))      
+        ;; Code here runs as soon as you pickup yellow eco
+
+        )
+      (((pickup-type eco-red))      
+        ;; Code here runs as soon as you pickup red eco
+
+        )
+      (((pickup-type eco-blue))      
+        ;; Code here runs as soon as you pickup blue eco
+
+        )
+      (((pickup-type eco-pill))      
+        ;; Code here runs as soon as you pickup small green eco
+
+        )
+      (((pickup-type eco-green))      
+        ;; Code here runs as soon as you pickup big green eco 
+
+        )
+      )
+    
+    (when from-vent?
+      ;; Code here runs only if the eco was picked up from a vent
+
+      )
+    )
+
+  (none)
+  )
+
+(defun runs-on-jak-spawn ()
+  ;; Code here runs every time jak spawns (loading a file new game or death)   
+
+  (none)
+  )
+
+(defun runs-on-jak-death ((death-event symbol))
+  (case death-event
+    (('dying)
+      ;; Code here runs immediately every time jak dies, before any death animation or death cutscene
+      
+      )
+    (('blackout)
+      ;; Code here runs after jak dies (and any death cutscene finishes), during the blackout before he spawns
+
+      )
+    )
+  
+  (none)
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; deprecated function defintions.
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#| these are no longer recommended/supported however we include them anyways to not break anyones mods.
+|#

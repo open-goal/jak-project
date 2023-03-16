@@ -30,6 +30,7 @@
 #include "common/versions.h"
 
 #include "game/discord.h"
+#include "game/multiplayer.h"
 #include "game/graphics/gfx.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kdgo.h"

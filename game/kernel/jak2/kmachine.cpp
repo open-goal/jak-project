@@ -9,6 +9,7 @@
 #include "common/util/FileUtil.h"
 
 #include "game/discord.h"
+#include "game/multiplayer.h"
 #include "game/kernel/common/Symbol4.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kboot.h"
@@ -672,6 +673,11 @@ void InitMachine_PCPort() {
 
   // profiler
   make_function_symbol_from_c("pc-prof", (void*)prof_event);
+
+  // HTTP server stuff
+  make_function_symbol_from_c("pc-http-register", (void*)http_register);
+  make_function_symbol_from_c("pc-http-update-position", (void*)http_update_position);
+  make_function_symbol_from_c("pc-http-get-positions", (void*)http_get_positions);
 
   // debugging tools
   make_function_symbol_from_c("pc-filter-debug-string?", (void*)pc_filter_debug_string);

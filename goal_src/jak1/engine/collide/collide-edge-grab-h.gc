@@ -31,7 +31,7 @@
   :size-assert         #x144
   :flag-assert         #xb00000144
   (:methods
-    (dummy-9 (_type_) symbol 9)
+    (dummy-9 (_type_ int) symbol 9)
     (debug-draw (_type_) symbol 10)
     )
   )
@@ -135,34 +135,43 @@
     )
   )
 
-(define *collide-edge-work* (new 'static 'collide-edge-work
-                                :max-dist-sqrd-to-outward-pt 37748736.0
-                                :max-dir-cosa-delta 0.6
-                                :split-dists (new 'static 'array float 2 1024.0 1433.6)
-                                :outward-offset (new 'static 'vector :x 708.608 :y 13312.0 :w 1.0)
-                                :local-cache-fill-box (new 'static 'bounding-box
-                                    :min (new 'static 'vector :x -8192.0 :y -11059.2 :z -8192.0 :w 1.0)
-                                    :max (new 'static 'vector :x 8192.0 :y 24576.0 :z 8192.0 :w 1.0)
-                                    )
-                                :local-within-reach-box (new 'static 'bounding-box
-                                    :min (new 'static 'vector :x -6144.0 :y 5324.8 :z -6144.0 :w 1.0)
-                                    :max (new 'static 'vector :x 6144.0 :y 11059.2 :z 6144.0 :w 1.0)
-                                    )
-                                :local-player-spheres (new 'static 'inline-array sphere 12
-                                    (new 'static 'sphere :x 1720.32 :y -819.2 :w 1433.6)
-                                    (new 'static 'sphere :x 2293.76 :y -3276.8 :w 1884.16)
-                                    (new 'static 'sphere :x 1966.08 :y -6144.0 :w 1556.48)
-                                    (new 'static 'sphere :x 1966.08 :y -8601.6 :w 1556.48)
-                                    (new 'static 'sphere :x 1761.28 :y -11059.2 :w 1351.68)
-                                    (new 'static 'sphere :x 1679.36 :y -13312.0 :w 1269.76)
-                                    (new 'static 'sphere :x -737.28 :y 4096.0 :w 3072.0)
-                                    (new 'static 'sphere :x -737.28 :y 6553.6 :w 3072.0)
-                                    (new 'static 'sphere :x -737.28 :y 9420.8 :w 3072.0)
-                                    (new 'static 'sphere :x 1720.32 :y 3686.4 :w 2949.12)
-                                    (new 'static 'sphere :x 1720.32 :y 5734.4 :w 2949.12)
-                                    (new 'static 'sphere :x 1720.32 :y 8601.6 :w 2949.12)
-                                    )
-                                )
+(define *collide-edge-work-list* (new 'global 'boxed-array collide-edge-work 4))
+(dotimes (idx (-> *collide-edge-work-list* length))
+  (let ((tmp (new 'global 'collide-edge-work)))
+    (set! (-> tmp max-dist-sqrd-to-outward-pt) 37748736.0)
+    (set! (-> tmp max-dir-cosa-delta) 0.6)
+
+    (set! (-> tmp split-dists 0) 1024.0)
+    (set! (-> tmp split-dists 1) 1433.6)
+
+    (set! (-> tmp outward-offset x) 708.608)
+    (set! (-> tmp outward-offset y) 13312.0)
+    (set! (-> tmp outward-offset w) 1.0)
+
+    (vector-copy! (-> tmp local-cache-fill-box min) (new 'static 'vector :x -8192.0 :y -11059.2 :z -8192.0 :w 1.0))
+    (vector-copy! (-> tmp local-cache-fill-box max) (new 'static 'vector :x 8192.0 :y 24576.0 :z 8192.0 :w 1.0))
+
+    (vector-copy! (-> tmp local-within-reach-box min) (new 'static 'vector :x -6144.0 :y 5324.8 :z -6144.0 :w 1.0))
+    (vector-copy! (-> tmp local-within-reach-box max) (new 'static 'vector :x 6144.0 :y 11059.2 :z 6144.0 :w 1.0))
+
+    (vector-copy! (-> tmp local-player-spheres  0) (new 'static 'sphere :x 1720.32 :y -819.2 :w 1433.6))
+    (vector-copy! (-> tmp local-player-spheres  1) (new 'static 'sphere :x 2293.76 :y -3276.8 :w 1884.16))
+    (vector-copy! (-> tmp local-player-spheres  2) (new 'static 'sphere :x 1966.08 :y -6144.0 :w 1556.48))
+    (vector-copy! (-> tmp local-player-spheres  3) (new 'static 'sphere :x 1966.08 :y -8601.6 :w 1556.48))
+    (vector-copy! (-> tmp local-player-spheres  4) (new 'static 'sphere :x 1761.28 :y -11059.2 :w 1351.68))
+    (vector-copy! (-> tmp local-player-spheres  5) (new 'static 'sphere :x 1679.36 :y -13312.0 :w 1269.76))
+    (vector-copy! (-> tmp local-player-spheres  6) (new 'static 'sphere :x -737.28 :y 4096.0 :w 3072.0))
+    (vector-copy! (-> tmp local-player-spheres  7) (new 'static 'sphere :x -737.28 :y 6553.6 :w 3072.0))
+    (vector-copy! (-> tmp local-player-spheres  8) (new 'static 'sphere :x -737.28 :y 9420.8 :w 3072.0))
+    (vector-copy! (-> tmp local-player-spheres  9) (new 'static 'sphere :x 1720.32 :y 3686.4 :w 2949.12))
+    (vector-copy! (-> tmp local-player-spheres 10) (new 'static 'sphere :x 1720.32 :y 5734.4 :w 2949.12))
+    (vector-copy! (-> tmp local-player-spheres 11) (new 'static 'sphere :x 1720.32 :y 8601.6 :w 2949.12))
+
+    (set! (-> *collide-edge-work-list* idx) tmp)
+    )
   )
 
-(define-perm *edge-grab-info* edge-grab-info (new 'global 'edge-grab-info))
+(define *edge-grab-info-list* (new 'global 'boxed-array edge-grab-info 4))
+(dotimes (idx (-> *edge-grab-info-list* length))
+  (set! (-> *edge-grab-info-list* idx) (new 'global 'edge-grab-info))
+  )
