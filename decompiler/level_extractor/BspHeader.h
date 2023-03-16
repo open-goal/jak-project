@@ -407,6 +407,8 @@ struct TieFragment : public Drawable {
 
   std::string debug_label_name;
 
+  std::vector<s8> normals;
+
   // todo, lots more
 };
 

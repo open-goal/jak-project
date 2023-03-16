@@ -243,9 +243,9 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
     }
 
     v.q_unused = 0;
-    v.pad[0] = 0;
-    v.pad[1] = 0;
-    v.pad[2] = 0;
+    v.nx = 0;
+    v.ny = 0;
+    v.nz = 0;
   }
   // TODO: other properties
   return {result, vtx_colors, normals};

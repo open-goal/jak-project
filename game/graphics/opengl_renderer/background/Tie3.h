@@ -19,6 +19,10 @@ struct TieProtoVisibility {
   bool all_visible = true;
 };
 
+struct EtieUniforms {
+  GLuint persp0, persp1, cam_no_persp;
+};
+
 class Tie3 : public BucketRenderer {
  public:
   // by default, only render the specified category on the call to render.
@@ -38,14 +42,16 @@ class Tie3 : public BucketRenderer {
                        const TfragRenderSettings& settings,
                        const u8* proto_vis_data,
                        size_t proto_vis_data_size,
-                       bool use_multidraw);
+                       bool use_multidraw,
+                       ScopedProfilerNode& prof);
 
   void setup_tree(int idx,
                   int geom,
                   const TfragRenderSettings& settings,
                   const u8* proto_vis_data,
                   size_t proto_vis_data_size,
-                  bool use_multidraw);
+                  bool use_multidraw,
+                  ScopedProfilerNode& prof);
 
   void draw_matching_draws_for_all_trees(int geom,
                                          const TfragRenderSettings& settings,
@@ -59,6 +65,7 @@ class Tie3 : public BucketRenderer {
                                     SharedRenderState* render_state,
                                     ScopedProfilerNode& prof,
                                     tfrag3::TieCategory category);
+
   bool try_loading_level(const std::string& str, SharedRenderState* render_state);
 
   void render_from_another(SharedRenderState* render_state,
@@ -123,6 +130,12 @@ class Tie3 : public BucketRenderer {
     std::vector<void*> multidraw_index_offset_buffer;
   };
 
+  void envmap_second_pass_draw(const Tree& tree,
+                               const TfragRenderSettings& settings,
+                               SharedRenderState* render_state,
+                               ScopedProfilerNode& prof,
+                               tfrag3::TieCategory category);
+
   std::array<std::vector<Tree>, 4> m_trees;  // includes 4 lods!
   std::string m_level_name;
   const std::vector<GLuint>* m_textures;
@@ -134,7 +147,6 @@ class Tie3 : public BucketRenderer {
 
   bool m_has_level = false;
   bool m_use_fast_time_of_day = true;
-  bool m_debug_wireframe = false;
   bool m_debug_all_visible = false;
   bool m_hide_wind = false;
   Filtered<float> m_all_tree_time;
@@ -152,6 +164,8 @@ class Tie3 : public BucketRenderer {
   struct {
     GLuint decal;
   } m_uniforms;
+
+  EtieUniforms m_etie_uniforms, m_etie_base_uniforms;
 
   static_assert(sizeof(WindWork) == 84 * 16);
 };

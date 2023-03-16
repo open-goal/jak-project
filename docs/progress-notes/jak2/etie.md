@@ -1505,6 +1505,976 @@ The good news is that some transparent TIEs look right now. So there was some be
 
 And this is all the time I have for today (spent about 4.5 hours)
 
+## Next. Looking into normal tie
+
+the drawing kicks for normal tie. The first kick is (I think) initializing alpha, then the second draws stuff
+```
+  ilw.x vi01, 971(vi00)      |  nop
+  ilw.y vi12, 971(vi00)      |  nop
+  ilw.z vi02, 971(vi00)      |  nop
+  lq.xyzw vf05, 972(vi00)    |  nop
+  lq.xyzw vf06, 973(vi00)    |  nop
+  lq.xyzw vf07, 974(vi00)    |  nop
+  lq.xyzw vf08, 975(vi00)    |  nop
+  sq.xyzw vf05, 976(vi00)    |  nop
+  sq.xyzw vf06, 977(vi00)    |  nop
+  isw.y vi02, 977(vi00)      |  nop
+  ibeq vi00, vi01, L41       |  nop
+  sq.xyzw vf07, 978(vi00)    |  nop
+  sq.xyzw vf08, 978(vi00)    |  nop
+L41:
+  iaddiu vi02, vi00, 0x3d0   |  nop ;; vi02 = 976
+  isw.y vi01, 971(vi00)      |  nop
+  nop                        |  nop
+  xgkick vi02                |  nop
+```
+
+This places the following giftag at 976:
+```
+(-> consts atestgif)
+alpha a+d
+test a+d
+```
+which sets alpha/test.
+
+However, my current understanding of VU code is that alpha can "sneak through" if:
+- less than 4 (or 5?) mips on any adgif in normal tie
+- less than 4 (or 5?) mips on any adgif after the first one in etie
+
+Using this "sneak through" logic does obviously wrong things for normal tie (pipe in atoll, the one you cross on the first mission).
+
+Doing the sensible thing, and somehow assuming that the alpha from the category always "wins":
+
+```cpp
+  if (version == GameVersion::Jak1) {
+    // use alpha from adgif shader, that's what we did in the past (could be wrong?)
+    update_mode_from_alpha1(info.alpha_val, mode);
+  } else {
+    if (tfrag3::is_envmap_second_draw_category(category)) {
+      // envmap shader gets to control its own alpha
+      update_mode_from_alpha1(info.alpha_val, mode);
+    } else {
+      // non-envmap always get overriden (both the first draw of etie, and normal tie)
+      update_mode_from_alpha1(alpha_value_for_jak2_tie_or_etie_alpha_override(category), mode);
+    }
+  }
+```
+this seems to work everywhere I looked (included stuff that should be transparent, or drawn wrong earlier). Though it's very confusing how this actually happens. I've wasted enough time here.
+
+
+## Vertex normals
+One of the challenges of environment mapping is that the VU1 program needs a normal for each vertex. Note that these aren't "face normals" - these would cause obvious discontinuities in the environment map texture coordinates. This means that each vertex needs a normal.
+
+The challenge here is finding the surface normals from inside the TIE mess.
+
+Remembering back to TIE
+- BP1, drawing vertices without interpolation that appear once
+- BP2, drawing vertices without interpolation that appear twice
+- IP1, drawing vertices with interpolation that appear one
+- IP2, guess what it does
+
+Very strangely, they didn't have a case for "draw IPs, but don't do interpolation". (TFRAG had this, but it also had a totally different interpolation scheme).
+
+They had an absolutely wild scheme to jump between the piplined loops, but we can look at the main loop bodies for simplicity.
+
+ETIE seems to have the same 4 loops (L16, L24, L34, L37).
+
+We can look at BP1 as it's the simplest loop. Hopefully we can derive most stuff from here.
+```
+L16:
+  mtir vi01, vf11.x          |  addw.xy vf20, vf20, vf03
+  mfp.x vf30, P              |  add.xy vf21, vf21, vf14
+  mtir vi04, vf16.w          |  mulaw.zw ACC, vf10, vf00
+  esum.xyzw P, vf13          |  mulz.xyz vf14, vf16, vf22
+  lqi.xyz vf12, vi08         |  mul.xyz vf19, vf18, Q
+  sqi.xyzw vf20, vi11        |  mul.xyz vf28, vf24, Q
+  rsqrt Q, vf02.w, vf30.x    |  mul.xyz vf20, vf20, Q
+  lqi.xyzw vf17, vi09        |  maddz.xyzw vf18, vf09, vf17
+  lq.xyz vf30, 770(vi01)     |  mulax.xyzw ACC, vf02, vf12
+  lqi.xy vf27, vi09          |  madday.xyzw ACC, vf03, vf12
+  iadd vi02, vi02, vi12      |  maddz.xyzw vf23, vf04, vf12
+  iadd vi06, vi02, vi13      |  mulaw.xyzw ACC, vf08, vf00
+  sq.xyzw vf30, 1(vi02)      |  maddax.xyzw ACC, vf05, vf17
+  esadd.xyz P, vf14          |  madday.xyzw ACC, vf06, vf17
+  mfp.x vf13, P              |  ftoi4.xyz vf19, vf19
+  sq.xyzw vf28, 0(vi02)      |  subw.z vf23, vf23, vf00
+  sq.xyzw vf20, 0(vi06)      |  maddz.xyz vf17, vf07, vf17
+  sq.xyzw vf01, 1(vi06)      |  addw.z vf21, vf00, vf00
+  sq.xyzw vf19, 2(vi02)      |  mulx.xy vf22, vf22, vf13
+  div Q, vf00.w, vf18.w      |  mul.xy vf21, vf21, Q
+  ibeq vi14, vi02, L18       |  mula.xy ACC, vf10, vf16
+  sq.xyzw vf19, 2(vi06)      |  mul.xyz vf13, vf17, vf23
+  mtir vi01, vf11.y          |  addw.xy vf21, vf21, vf03
+  mfp.x vf30, P              |  add.xy vf22, vf22, vf14
+  mtir vi05, vf17.w          |  mulaw.zw ACC, vf10, vf00
+  esum.xyzw P, vf13          |  mulz.xyz vf14, vf17, vf23
+  lqi.xyz vf12, vi08         |  mul.xyz vf19, vf18, Q
+  sqi.xyzw vf21, vi11        |  mul.xyz vf28, vf25, Q
+  rsqrt Q, vf02.w, vf30.x    |  mul.xyz vf21, vf21, Q
+  lq.xyz vf30, 770(vi01)     |  maddz.xyzw vf18, vf09, vf16
+  lqi.xyzw vf16, vi09        |  mulax.xyzw ACC, vf02, vf12
+  lqi.xy vf24, vi09          |  madday.xyzw ACC, vf03, vf12
+  iadd vi03, vi03, vi12      |  maddz.xyzw vf20, vf04, vf12
+  iadd vi06, vi03, vi13      |  mulaw.xyzw ACC, vf08, vf00
+  sq.xyzw vf30, 1(vi03)      |  maddax.xyzw ACC, vf05, vf16
+  esadd.xyz P, vf14          |  madday.xyzw ACC, vf06, vf16
+  mfp.x vf13, P              |  ftoi4.xyz vf19, vf19
+  sq.xyzw vf28, 0(vi03)      |  subw.z vf20, vf20, vf00
+  sq.xyzw vf21, 0(vi06)      |  maddz.xyz vf16, vf07, vf16
+  sq.xyzw vf01, 1(vi06)      |  addw.z vf22, vf00, vf00
+  sq.xyzw vf19, 2(vi03)      |  mulx.xy vf23, vf23, vf13
+  div Q, vf00.w, vf18.w      |  mul.xy vf22, vf22, Q
+  ibeq vi14, vi03, L20       |  mula.xy ACC, vf10, vf17
+  sq.xyzw vf19, 2(vi06)      |  mul.xyz vf13, vf16, vf20
+  mtir vi01, vf11.z          |  addw.xy vf22, vf22, vf03
+  mfp.x vf30, P              |  add.xy vf23, vf23, vf14
+  mtir vi02, vf16.w          |  mulaw.zw ACC, vf10, vf00
+  esum.xyzw P, vf13          |  mulz.xyz vf14, vf16, vf20
+  lqi.xyz vf12, vi08         |  mul.xyz vf19, vf18, Q
+  sqi.xyzw vf22, vi11        |  mul.xyz vf28, vf26, Q
+  rsqrt Q, vf02.w, vf30.x    |  mul.xyz vf22, vf22, Q
+  lq.xyz vf30, 770(vi01)     |  maddz.xyzw vf18, vf09, vf17
+  lqi.xyzw vf17, vi09        |  mulax.xyzw ACC, vf02, vf12
+  lqi.xy vf25, vi09          |  madday.xyzw ACC, vf03, vf12
+  iadd vi04, vi04, vi12      |  maddz.xyzw vf21, vf04, vf12
+  iadd vi06, vi04, vi13      |  mulaw.xyzw ACC, vf08, vf00
+  sq.xyzw vf30, 1(vi04)      |  maddax.xyzw ACC, vf05, vf17
+  esadd.xyz P, vf14          |  madday.xyzw ACC, vf06, vf17
+  mfp.x vf13, P              |  ftoi4.xyz vf19, vf19
+  sq.xyzw vf28, 0(vi04)      |  subw.z vf21, vf21, vf00
+  sq.xyzw vf22, 0(vi06)      |  maddz.xyz vf17, vf07, vf17
+  sq.xyzw vf01, 1(vi06)      |  addw.z vf23, vf00, vf00
+  sq.xyzw vf19, 2(vi04)      |  mulx.xy vf20, vf20, vf13
+  div Q, vf00.w, vf18.w      |  mul.xy vf23, vf23, Q
+  ibeq vi14, vi04, L22       |  mula.xy ACC, vf10, vf16
+  sq.xyzw vf19, 2(vi06)      |  mul.xyz vf13, vf17, vf21
+  mtir vi01, vf11.w          |  addw.xy vf23, vf23, vf03
+  mfp.x vf30, P              |  add.xy vf20, vf20, vf14
+  mtir vi03, vf17.w          |  mulaw.zw ACC, vf10, vf00
+  esum.xyzw P, vf13          |  mulz.xyz vf14, vf17, vf21
+  lqi.xyz vf12, vi08         |  mul.xyz vf19, vf18, Q
+  sqi.xyzw vf23, vi11        |  mul.xyz vf28, vf27, Q
+  rsqrt Q, vf02.w, vf30.x    |  mul.xyz vf23, vf23, Q
+  lqi.xyzw vf16, vi09        |  maddz.xyzw vf18, vf09, vf16
+  lq.xyz vf30, 770(vi01)     |  mulax.xyzw ACC, vf02, vf12
+  lqi.xy vf26, vi09          |  madday.xyzw ACC, vf03, vf12
+  iadd vi05, vi05, vi12      |  maddz.xyzw vf22, vf04, vf12
+  iadd vi06, vi05, vi13      |  mulaw.xyzw ACC, vf08, vf00
+  sq.xyzw vf30, 1(vi05)      |  maddax.xyzw ACC, vf05, vf16
+  esadd.xyz P, vf14          |  madday.xyzw ACC, vf06, vf16
+  mfp.x vf13, P              |  ftoi4.xyz vf19, vf19
+  sq.xyzw vf28, 0(vi05)      |  subw.z vf22, vf22, vf00
+  sq.xyzw vf23, 0(vi06)      |  maddz.xyz vf16, vf07, vf16
+  sq.xyzw vf01, 1(vi06)      |  addw.z vf20, vf00, vf00
+  sq.xyzw vf19, 2(vi05)      |  mulx.xy vf21, vf21, vf13
+  lqi.xyzw vf11, vi10        |  nop
+  div Q, vf00.w, vf18.w      |  mul.xy vf20, vf20, Q
+  ibne vi14, vi05, L16       |  mula.xy ACC, vf10, vf17
+  sq.xyzw vf19, 2(vi06)      |  mul.xyz vf13, vf16, vf22
+```
+Dealing with a chunk of VU1 code like this is hard, especially without much context.
+
+The best strategy I have is to start with the store at the end, and work backward. Here's what I did to figure out the envmap math.
+Note that I removed instructions related to memory addressing.
+```
+;; inputs
+
+;; vi08 normal data
+;; vi09 point/tex data
+
+;; - vf02, vf03, vf04        rotation
+;; - vf05, vf06, vf07, vf08  affine transform
+;; - vf09, vf10              perspective
+
+L16:
+  mtir vi01, vf11.x          |  addw.xy vf20, vf20, vf03
+  mfp.x vf30, P              |  add.xy vf21, vf21, vf14
+  mtir vi04, vf16.w          |  mulaw.zw ACC, vf10, vf00
+  esum.xyzw P, vf13          |  mulz.xyz vf14, vf16, vf22
+
+  lqi.xyz vf12, vi08         |  ;; LOAD normal
+                             |
+                             |
+  lqi.xyzw vf17, vi09        |  ;; LOAD point
+                             |  mulax.xyzw ACC, vf02, vf12    ;; rotate normal
+  lqi.xy vf27, vi09          |  madday.xyzw ACC, vf03, vf12   ;; rotate normal
+                             |  maddz.xyzw vf23, vf04, vf12   ;; vf23 = rotated normal
+                             |  mulaw.xyzw ACC, vf08, vf00    ;; transform point
+                             |  maddax.xyzw ACC, vf05, vf17   ;; transform point
+                             |  madday.xyzw ACC, vf06, vf17   ;; transform point
+                             |
+                             |  subw.z vf23, vf23, vf00       ;; nrm.z -= 1.0
+                             |  maddz.xyz vf17, vf07, vf17    ;; vf17 = transformed point
+                             |
+                             |
+                             |
+                             |
+                             |  mul.xyz vf13, vf17, vf23     ;; vf13 = nrm .* ptx
+                             |
+                             |
+                             |
+  esum.xyzw P, vf13          |  mulz.xyz vf14, vf17, vf23
+                             |
+                             |
+                             |
+                             |
+                             |
+                             |
+                             |
+                             |
+                             |
+  esadd.xyz P, vf14          |
+  mfp.x vf13, P              |
+                             |
+                             |
+                             |  addw.z vf22, vf00, vf00
+                             |  mulx.xy vf23, vf23, vf13
+                             |
+                             |  mula.xy ACC, vf10, vf17  ;; acc build 1
+                             |  -- 13 BAD
+                             |  addw.xy vf22, vf22, vf03
+  mfp.x vf30, P              |  add.xy vf23, vf23, vf14
+                             |  mulaw.zw ACC, vf10, vf00 ;; acc build 2
+                             |  -- 14 BAD
+                             |
+                             |
+  rsqrt Q, vf02.w, vf30.x    |
+                             |  maddz.xyzw vf18, vf09, vf17 ;; acc star
+                             |
+                             |
+                             |
+                             |
+                             |
+                             |
+                             |
+                             |  subw.z vf21, vf21, vf00
+                             |
+                             |  addw.z vf23, vf00, vf00
+                             |
+  div Q, vf00.w, vf18.w      |  mul.xy vf23, vf23, Q
+                             |
+                             |
+                             |  addw.xy vf23, vf23, vf03
+                             |  add.xy vf20, vf20, vf14
+                             |
+                             |
+                             |  mul.xyz vf19, vf18, Q
+  sqi.xyzw vf23, vi11        |  mul.xyz vf28, vf27, Q
+                             |  mul.xyz vf23, vf23, Q
+                             |
+                             |
+                             |
+                             |
+                             |
+  sq.xyzw vf30, 1(vi05)      |
+  esadd.xyz P, vf14          |
+  mfp.x vf13, P              |  ftoi4.xyz vf19, vf19
+  sq.xyzw vf28, 0(vi05)      |
+  sq.xyzw vf23, 0(vi06)      |
+  sq.xyzw vf01, 1(vi06)      |
+  sq.xyzw vf19, 2(vi05)      |
+                             |
+                             |
+                             |
+  sq.xyzw vf19, 2(vi06)      |
+```
+
+These are the stores. Each vertex has 3 QW (texture coords, rgba, xyz)
+```
+;; STORES
+sq.xyzw vf28, 0(vi05)
+sq.xyzw vf23, 0(vi06)
+
+sq.xyzw vf30, 1(vi05)
+sq.xyzw vf01, 1(vi06)
+
+;; xyz of first and second draw are the same, nice
+sq.xyzw vf19, 2(vi05)
+sq.xyzw vf19, 2(vi06)
+```
+
+### Trace back `vf19` first (the vertex position):
+```
+;; load the vertex position in world space
+lqi.xyzw vf17, vi09
+
+;; apply affine transform stored in matrix vf05, vf06, vf07, vf08
+;; (likely transforms from world to camera space, no projection)
+mulaw.xyzw ACC, vf08, vf00
+maddax.xyzw ACC, vf05, vf17
+madday.xyzw ACC, vf06, vf17
+maddz.xyz vf17, vf07, vf17
+
+;; at this point vf17 contains the point relative to the camera.
+
+;; apply perspective (using vf09/vf10 as the perspective coefficients)
+mula.xy ACC, vf10, vf17
+mulaw.zw ACC, vf10, vf00
+maddz.xyzw vf18, vf09, vf17
+
+;; perspective divide
+div Q, vf00.w, vf18.w
+mul.xyz vf19, vf18, Q
+
+;; convert to int for the GS format
+ftoi4.xyz vf19, vf19
+
+;; store
+sq.xyzw vf19, 2(vi05)
+sq.xyzw vf19, 2(vi06)
+```
+This is relatively uninteresting - the only difference is that `hvdf-offset` is not applied in the usual way. But, in `etie-vu1`, we see that `hvdf-off` is invovled in computing the perspective coefficients (likely vf08, vf09), so it still enters in. This is different from normal, but it makes some sense - there's an intermediate result of `vf17` being the point relative to the camera, which will be useful to compute the reflection direction for environment mapping.
+
+### Trace back `vf01` (the color, I think of the envmap):
+```
+;; this comes from outside the loop. It's a constant!
+;; note that vi10 comes from the result of xtop, so it's the input from the EE asm function.
+;; (which we don't have a type for, darn)
+lq.xyzw vf01, 7(vi10)
+```
+leave this for now, we'll have to dig through the EE asm later
+
+### Trace back `vf30` (the color of the base draw):
+```
+;; load from input (it's the address of interpolated color)
+lqi.xyzw vf11, vi10
+;; load interpolated color
+mtir vi01, vf11.w
+;; store interpolated color
+lq.xyz vf30, 770(vi01)
+```
+This is basically the same as normal TIE (there's some additional logic because the 4 vertices use the x, y, z, w components of the `vf11`, which is only reloaded once per 4). The existing `extract_tie` has the color_index_index nonsense.
+
+The difference is that alpha is set from earlier, and constant:
+```
+;; outside loop
+lq.w vf30, 6(vi10)
+```
+This is held constant for an entire fragment and computed on the EE. It's likely an envmap intensity scale used to fade it out.
+
+
+
+### Trace back vf28, texture coords of first draw
+
+```
+lqi.xy vf27, vi09
+mul.xyz vf28, vf27, Q ;; Q is the perspective divisor
+```
+Kind of as expected, this just loads and multiplies (required for GS perspective-correct tex).
+
+### Trace back `vf23`: the second draws texture coordinates
+I'd expect this to compute:
+- place a plane with normal parallel to the vertex normal, intersecting the vertex
+- place a vector from the camera to the vertex
+- reflect this vertex
+- somehow map this direction onto the envmap texture
+
+
+```
+;; reg names:
+;; vf13 dot
+;; vf14 rfl
+;; vf17 pos
+;; vf23 nrm
+
+
+;; load the normal and point.
+lqi.xyz vf12, vi08
+lqi.xyzw vf17, vi09
+
+;; rotate the normal
+mulax.xyzw ACC, vf02, vf12    ;; rotate normal
+madday.xyzw ACC, vf03, vf12   ;; rotate normal
+maddz.xyzw vf23, vf04, vf12   ;; vf23 = rotated normal
+
+;; transform the point
+mulaw.xyzw ACC, vf08, vf00    ;; transform point
+maddax.xyzw ACC, vf05, vf17   ;; transform point
+madday.xyzw ACC, vf06, vf17   ;; transform point
+maddz.xyz vf17, vf07, vf17    ;; vf17 = transformed point
+
+;; nrm.z -= 1
+subw.z vf23, vf23, vf00
+
+;; dot = nrm.xyz * pt.xyz
+mul.xyz vf13, vf17, vf23
+esum.xyzw P, vf13
+mfp.x vf13, P
+
+;; rfl = pt.xzy * nrm.z
+mulz.xyz vf14, vf17, vf23
+;; Q_envmap = vf02.w / norm(rfl.xyz)
+esadd.xyz P, vf14
+mfp.x vf30, P
+rsqrt Q, vf02.w, vf30.x
+
+;; nrm.xy *= dot.x
+mulx.xy vf23, vf23, vf13
+
+;; perspective transform
+mula.xy ACC, vf10, vf17  ;; acc build 1
+mulaw.zw ACC, vf10, vf00 ;; acc build 2
+maddz.xyzw vf18, vf09, vf17 ;; acc star
+
+;; nrm.xy += rfl.xy
+add.xy vf23, vf23, vf14
+
+;; nrm.z = 1.0
+addw.z vf23, vf00, vf00
+
+;; nrm.xy *= Q_envmap
+mul.xy vf23, vf23, Q
+
+;; perspective divide
+div Q, vf00.w, vf18.w
+
+;; nrm.xy += vf03.w
+addw.xy vf23, vf23, vf03
+
+;; that's the non-persp_Q multiplied envmap value.
+```
+
+### Mysterious `sqi.xyzw vf23, vi11`
+Highly observant readers will have noticed this instruction, which stashes the texture coordinates (before perspective divide) to some address. These are picked up later on in the IP drawing routines.
+
+### Summary
+
+Main results:
+- transformation is like normal, but computes point in camera space (no perspect) first.
+- perspective transformation is expressed differently, but same math in the end
+- second draw rgba computed on EE (constant per frag)
+- first draw alpha computed on EE (constant per frag)
+- first draw tex coord is usual.
+- we got the math for envmapping! (at least for BP1 drawing)
+- the normals are uploaded to VU (at least for BP1 drawing)
+
+And that all for today (about 4.5 hours)
+
+## Where do those stupid normals come from?
+
+The `vi08` is the pointer to the normals, initialized to `0x85 = 133`
+```
+iaddiu vi08, vi00, 0x85 ;; normals start at 0x85
+```
+the fixed address here is a super awesome clue.
+
+Looking in `tie-work`
+```
+;; in *prototype-tie-work*
+;; (upload-envmap-3            dma-packet   :inline :offset-assert 256)
+:upload-envmap-3 (new 'static 'dma-packet
+  :dma (new 'static 'dma-tag :id (dma-tag-id ref))
+  :vif1 (new 'static 'vif-tag :imm #x84 :cmd (vif-cmd unpack-v4-8))
+  )
+```
+which is uploading some data to an offset of `0x84`, from int8's. The `int8` is promising because 8-bits seems reasonable for normals on a ps2 game.
+
+There's also:
+```
+(deftype generic-tie-normal (structure)
+  ((x     int8  :offset-assert 0)
+   (y     int8  :offset-assert 1)
+   (z     int8  :offset-assert 2)
+   (dummy int8  :offset-assert 3)
+   )
+  )
+```
+which is vaguely promising that TIE envmap has 8-bit normals.
+
+Uploading normals is done per-model, so likely in `draw-inline-array-prototype-tie-asm`.
+
+We're looking for a place where they use the `upload-envmap-3` DMA template. They will modify this template, then store it in a scratchpad buffer (later DMA'd to the DMA buffer, which is later DMA'd to VIF1 for unpack)
+```
+(deftype dma-tag (uint64)
+  ((qwc uint16    :offset 0)           ;; quadword count
+   (pce uint8     :offset 26 :size 2)  ;; priority (source mode)
+   (id dma-tag-id :offset 28 :size 3)  ;; ID (what the tag means)
+   (irq uint8     :offset 31 :size 1)  ;; interrupt at the end?
+   (addr uint32   :offset 32 :size 31) ;; address (31 bits)
+   (spr uint8     :offset 63 :size 1)  ;; spr or not flag.
+   )
+  )
+
+(deftype vif-unpack-imm (uint16)
+  ((addr  uint16 :offset 0  :size 10)
+   (usn   uint8  :offset 14 :size 1)
+   (flg   uint8  :offset 15 :size 1)
+   )
+  )
+
+(deftype vif-tag (uint32)
+  ((imm uint16  :offset 0 :size 16)
+   (num uint8   :offset 16 :size 8)
+   (cmd vif-cmd :offset 24 :size 7)
+   (irq uint8   :offset 31 :size 1)
+   (msk uint8   :offset 28 :size 1)
+   )
+  )
+```
+
+Here is this part (found that `s0` is the `prototype-work-structure`, searched for 256 offset). Many unrelated instructions removed:
+```
+    ;; store some qwc value into the dma-tag's qwc (number of qw read from EE)
+    sh ra, 256(s0)
+    ;; multiply qwc by 4 (to get the number of qw written on VU)
+    dsll ra, ra, 2
+    ;; store some source pointer in the addr field of the dma tag
+    sw a2, 260(s0)
+    ;; store the unpack num
+    sb ra, 270(s0)
+    ;; load the entire template
+    lq s5, 256(s0)
+    ;; store the entire template
+    sq s5, 48(a3)
+```
+
+Tracing back:
+```
+lhu ra, 50(t6)
+lw a2, 52(t6)
+```
+which I'm guessing is:
+```
+(deftype tie-fragment (drawable)
+  ((gif-ref       (inline-array adgif-shader)  :offset 4)
+   (point-ref     uint32                       :offset 8)
+   ...
+   (normal-count  uint16                       :offset 54)
+   (normal-ref    uint32                       :offset 56) ;; <- NORMALS!
+```
+so `normal-count` looks like QW of normals on the EE.
+
+Let's try grabbing this data in the extraction tool:
+```cpp
+  if (version > GameVersion::Jak1) {
+    u16 normals_qwc = read_plain_data_field<u16>(ref, "normal-count", dts);
+    if (normals_qwc) {
+      normals.resize(16 * normals_qwc);
+      auto normals_data_ref = deref_label(get_field_ref(ref, "normal-ref", dts));
+      memcpy_plain_data((u8*)normals.data(), normals_data_ref, normals_qwc * 16);
+      // print them for debug
+```
+
+This looks very reasonable!
+```
+Normals:
+-41 102 62 0
+-47 102 58 0
+-41 102 62 0
+-47 102 58 0
+-53 102 53 0
+-53 102 53 0
+...
+```
+Some promising patterns:
+- `w` component is 0. I don't see it used in the VU code, and generic tie calls it "dummy".
+- Normals in a fragment are similar-ish
+- The length of a few normals I spot-checked is about 128
+- There's some fragments where the Y normals are all 0 (vertical surfaces), which seems like a common thing.
+
+Now the challenge is matching up these normals with the points in the mesh. Some observations:
+- The 0x84/0x85 offset mismatch doesn't matter - 0x84 is the right number. There's a `lq.xyz vf12, 132(vi00)` (0x84) for the first point.
+- I don't see any magic flags at the end of the normals. I was half expecting some confusing table of indices at the end, but it doesn't look like it.
+
+Passing this through the `extract_tie.cpp` maze:
+```cpp
+// normals
+const auto& normal_data = proto.geometry[geo].tie_fragments[frag_idx].normals;
+frag_info.normal_data_packed.resize(normal_data.size() / 4);
+for (size_t ni = 0; ni < normal_data.size() / 4; ni++) {
+  for (int j = 0; j < 4; j++) {
+    frag_info.normal_data_packed[ni][j] = normal_data[ni * 4 + j];
+  }
+}
+```
+
+Doing some debug, we find something amazing: They just stored one normal for each unique vertex! This will be super easy to extract.
+
+I thought this wasn't the case because they were stashing some texture coordinates related to envmap and reusing them later. But I now realize this might be just needed for interpolating from a base point. (you want to the interp before applying perspective correct texturing multiply).
+
+So now I will try to get the normals into the FR3 mesh, and see if we can draw them.
+
+The basic idea is:
+
+when processing vertices (per proto), add a line like this (this goes in draw order)
+```cpp
+vertex_info.nrm = frag.get_normal_if_present(normal_table_offset++);
+```
+
+Expand the on-disk FR3 format to store a normal per tie proto vertex, and populate this from vertex info above when converting formats.
+```cpp
+struct PackedTieVertices {
+  struct Vertex {
+    float x, y, z;
+    float s, t;
+    s8 nx, ny, nz; // added
+  };
+```
+
+When the TIE mesh is loaded, it is de-instanced, so we need to rotate the normals (and convert to opengl format). The speed of this operation isn't important because it happens at load time (in the loader thread too):
+```cpp
+math::Vector<s16, 3> unpack_tie_normal(const std::array<math::Vector4f, 4>& mat,
+                                       s8 nx,
+                                       s8 ny,
+                                       s8 nz) {
+  // rotate the normal
+  math::Vector3f nrm = math::Vector3f::zero();
+  nrm += mat[0].xyz() * nx;
+  nrm += mat[1].xyz() * ny;
+  nrm += mat[2].xyz() * nz;
+  // convert to s16 for OpenGL renderer
+  nrm.normalize(INT16_MAX - 2);
+  return nrm.cast<s16>();
+}
+```
+
+### Drawing envmap
+Next I refactored TIE3 to do a second draw pass when doing an envmap category, with a separate shader.
+
+I passed the normals through, and used them as RGB. I'd expect to see horizontal surface (+y normal) be green, and the usual "smooth rainbow on curves" effect. Which I did! It worked on the first try.
+
+PICTURE
+
+### Envmap Math Start
+The envmap math computes both the vertex location and the reflection. We can start with the vertex location because that's super easy to verify.
+
+I needed to add two new matrices to `add-pc-tfrag3-data` so the GOAL code sends the renderer the required information.
+
+These are used to compute `persp0`/`persp1`, which can then be used for perspective projection of the vertex position
+```cpp
+  math::Vector4f perspective[2];
+  float inv_fog = 1.f / render_state->camera_fog[0];
+  auto& hvdf_off = render_state->camera_hvdf_off;
+  float pxx = render_state->camera_persp[0].x();
+  float pyy = render_state->camera_persp[1].y();
+  float pzz = render_state->camera_persp[2].z();
+  float pzw = render_state->camera_persp[2].w();
+  float pwz = render_state->camera_persp[3].z();
+  float scale = pzw * inv_fog;
+  perspective[0].x() = scale * hvdf_off.x();
+  perspective[0].y() = scale * hvdf_off.y();
+  perspective[0].z() = scale * hvdf_off.z() + pzz;
+  perspective[0].w() = scale;
+
+  perspective[1].x() = pxx;
+  perspective[1].y() = pyy;
+  perspective[1].z() = pwz;
+  perspective[1].w() = 0;
+
+  set_uniform(m_etie_uniforms.persp0, perspective[0]);
+  set_uniform(m_etie_uniforms.persp1, perspective[1]);
+```
+
+I wrote a shader for just vertex position (no reflection) to test this:
+```cpp
+vec4 vf17 = cam_no_persp[3];
+vf17 += cam_no_persp[0] * position_in.x;
+vf17 += cam_no_persp[1] * position_in.y;
+vf17 += cam_no_persp[2] * position_in.z;
+
+//;; perspective transform
+//mula.xy ACC, vf10, vf17  ;; acc build 1
+//mulaw.zw ACC, vf10, vf00 ;; acc build 2
+vec4 p_proj = vec4(persp1.x * vf17.x, persp1.y * vf17.y, persp1.z, persp1.w);
+//maddz.xyzw vf18, vf09, vf17 ;; acc star
+p_proj += persp0 * vf17.z;
+
+//;; perspective divide
+//div Q, vf00.w, vf18.w
+float pQ = 1.f / p_proj.w;
+
+vec4 transformed = p_proj * pQ;
+
+// usual rest of the stuff
+```
+and it worked, but brought up a really annoying problem - the math is different by a tiny amount (floating point rounding, an impossible to see difference), so sometimes the depth test fails when drawing over something.
+
+So, we have to refactor TIE to use the similar projection math.
+
+After that, things aren't a flickerly/fighting mess.
+
+In theory, we could see fighting in between ETIE and TIE geometry, but I don't see that yet.
+
+### Envmap Math 2
+
+I tried implementing the envmap math, and it seems slightly wrong.
+
+```cpp
+    // nrm.z -= 1
+    //subw.z vf23, vf23, vf00
+    nrm_vf23.z -= 1.f;
+
+    // dot = nrm.xyz * pt.xyz
+    //mul.xyz vf13, vf17, vf23
+    //esum.xyzw P, vf13
+    //mfp.x vf13, P
+    float nrm_dot = dot(vf17.xyz, nrm_vf23);
+
+    // rfl = pt.xzy * nrm.z
+    //mulz.xyz vf14, vf17, vf23
+    vec3 rfl_vf14 = vf17.xyz * nrm_vf23.z;
+
+    //;; Q_envmap = vf02.w / norm(rfl.xyz)
+    //esadd.xyz P, vf14
+    //mfp.x vf30, P
+    //rsqrt Q, vf02.w, vf30.x
+    float Q_envmap = -0.5 / length(rfl_vf14);
+
+    //
+    //;; nrm.xy *= dot.x
+    //mulx.xy vf23, vf23, vf13
+    nrm_vf23.xy *= nrm_dot;
+    //;; perspective transform
+    //mula.xy ACC, vf10, vf17  ;; acc build 1
+    //mulaw.zw ACC, vf10, vf00 ;; acc build 2
+    vec4 p_proj = vec4(persp1.x * vf17.x, persp1.y * vf17.y, persp1.z, persp1.w);
+    //maddz.xyzw vf18, vf09, vf17 ;; acc star
+    p_proj += persp0 * vf17.z;
+
+    //
+    //;; nrm.xy += rfl.xy
+    //add.xy vf23, vf23, vf14
+    nrm_vf23.xy += rfl_vf14.xy;
+    //
+    //;; nrm.z = 1.0
+    //addw.z vf23, vf00, vf00
+    nrm_vf23.z = 1.0;
+    //
+    //;; nrm.xy *= Q_envmap
+    //mul.xy vf23, vf23, Q
+    nrm_vf23.xy *= Q_envmap;
+    //
+    //;; perspective divide
+    //div Q, vf00.w, vf18.w
+    float pQ = 1.f / p_proj.w;
+    //
+    //;; nrm.xy += vf03.w
+    //addw.xy vf23, vf23, vf03
+    nrm_vf23.xy += 0.5;
+    tex_coord = nrm_vf23;
+```
+
+after staring at it for a while, I didn't see any bugs, so I became suspicious of my rotation matrix:
+- I assume this matrix is just `cam_R_world`
+- In the game, they upload separate "rotate normal" and "transform point" matrices. I know I have transform point right. I assumed that "rotate normal" is just the upper 3x3 of "transform point"... but why would they upload separate matrices if that was the case?
+
+Now we have to track down how this matrix is built.
+
+This is the VU program that uses the matrix to rotate the normal:
+```
+mulax.xyzw ACC, vf02, vf12
+madday.xyzw ACC, vf03, vf12
+maddz.xyzw vf23, vf04, vf12
+```
+
+This is where the matrix is loaded:
+```
+lq.xyzw vf02, 4(vi10)
+lq.xyzw vf03, 5(vi10)
+lq.xyzw vf04, 6(vi10)
+```
+where `vi10` is the register set from `xtop` (the per-instance data). At offsets 0, 1, 2, 3 are the tranformation matrix.
+
+Blindly guessing didn't make much progress... time to dive into `draw-inline-array-instance-tie`'s envmap path.
+
+At entry:
+- `t0` is `instance-tie-work`
+- `t8` is matrix
+- `t9` is bucket
+
+Let's go block by block:
+```
+L299:
+    beq s4, r0, L288
+    lw s3, 532(t0) ;; (-> itw use-etie)
+```
+Not sure what the branch checks. Jumps back to where we came from.
+
+```
+B57:
+    vcallms 29
+```
+Run VU0 microprogram. I think the `background-vu` block is loaded, so:
+```
+  lq.xyzw vf24, 4(vi00)      |  nop
+  lq.xyzw vf25, 5(vi00)      |  nop
+  lq.xyzw vf26, 6(vi00)      |  nop :e
+  lq.xyzw vf27, 7(vi00)      |  nop
+```
+these registers are, I think, set from `set-background-regs!`:
+```
+          (.lvf vf24 (&-> v1-0 camera-rot quad 0))
+          (.lvf vf25 (&-> v1-0 camera-rot quad 1))
+          (.lvf vf26 (&-> v1-0 camera-rot quad 2))
+          (.lvf vf27 (&-> v1-0 camera-rot trans quad))
+```
+
+
+Back to the EE program:
+```
+    sw s5, 512(t0)    ;; set flags, who care
+    beq s3, s7, L308  ;; branch somewhere if use-etie if #f, who cares
+    lw gp, 108(t0)    ;; dist-test.w, who knows?
+
+    lw s5, 84(t8)     ;; see note below
+    sll r0, r0, 0
+    sqc2 vf5, 448(t0) ;; set fog temp, no idea.
+    bne s5, r0, L302  ;; if we have envmap-mid's go to L302
+    lw s5, 104(t0)    ;; another dist-test.z
+```
+I think earlier code stashed a `guard-flag` at `84(t8)` (maybe). Either way not super important because whether we take this branch doesn't change much in the end...
+
+
+(reordered, removed nops)
+```
+L300:
+    ;; increment count in the bucket for envmap-mid-count
+    lh gp, 120(t9)
+    daddiu gp, gp, 1
+    sh gp, 120(t9)
+
+    ;; something to set up the dma chain
+    lw s5, 84(t9)                  ;; envmap-mid-next
+    addiu ra, ra, 128
+    sw ra, 84(t9)
+
+    ;; morph temp
+    sqc2 vf29, 432(t0)
+
+    ;; matrix multiplies... looks like camera rot being used to rotate.
+    vmulax.xyzw acc, vf24, vf10
+    vmadday.xyzw acc, vf25, vf10
+    vmaddz.xyzw vf16, vf26, vf10
+
+    vmulax.xyzw acc, vf24, vf11
+    vmadday.xyzw acc, vf25, vf11
+    vmaddz.xyzw vf17, vf26, vf11
+
+    ;; count stuff
+    lbu s3, 134(t9)
+    lhu gp, 144(t9)
+    lbu s4, 138(t9)
+
+    beq r0, r0, L303
+    sll r0, r0, 0
+```
+so we're mid way through rotating a matrix vf10, vf11, vf12, vf13.
+
+```
+    ;; rest of the mult...
+    vmulax.xyzw acc, vf24, vf12
+    vmadday.xyzw acc, vf25, vf12
+    vmaddz.xyzw vf18, vf26, vf12
+
+    ;; this one's different
+    vmulax.xyzw acc, vf24, vf13
+    vmadday.xyzw acc, vf25, vf13
+    vmaddaz.xyzw acc, vf26, vf13
+    vmaddw.xyzw vf19, vf27, vf0
+```
+weird. no idea what the `vmaddw` is adding, but I am 99% sure it won't be part of the rotation matrix, so ignore for now!
+
+```
+    lq s2, 224(t0) ;; upload-color-2 tmpl
+    lq ra, 240(t0) ;; upload-color-ret tmpl
+```
+These DMA templates I don't care about.
+
+```
+    dsll gp, gp, 4
+    daddu s4, s4, t9
+    mfc1 s1, f15
+    addiu t4, t4, 8
+    qmtc2.i vf14, s1
+```
+no idea, doesn't look important.
+
+I think, at `t8`, we're now building:
+```
+(deftype etie-matrix (structure)
+  ((rmtx  matrix  :inline :offset-assert 0)
+   (nmtx  matrix3 :inline :offset-assert 64)
+   (morph float           :offset 76)
+   (fog   float           :offset 92)
+   (fade  uint32          :offset 108)
+   (tint  qword   :inline :offset-assert 112)
+   )
+  :method-count-assert 9
+  :size-assert         #x80
+  :flag-assert         #x900000080
+  )
+```
+Whwere `rmtx` is the camera matrix not including perspective, and `nmtx` is the thing I need to figure out. The multiplies above seemed to compute `rmtx` in vf16, 20.
+
+
+```
+    sqc2 vf16, 0(t8) ;; first matrix store?
+    sqc2 vf17, 16(t8)
+    sqc2 vf18, 32(t8)
+    sqc2 vf19, 48(t8)
+```
+and, as expected, they do!
+
+(regs at this point, it's getting confusing):
+```
+vf16, vf17, vf18, vf19: rmtx (includes translation, but no perspective)
+vf10, vf11, vf13, vf14: tie instance matrix
+```
+
+Here is the extracted part of this math.
+```
+    vmulx.xyz vf16, vf10, vf14
+
+    vopmula.xyz acc, vf11, vf16
+
+    vopmsub.xyz vf17, vf16, vf11
+
+    vopmula.xyz acc, vf16, vf17
+
+    vopmsub.xyz vf17, vf17, vf16
+
+    vmul.xyz vf14, vf17, vf17
+
+    vmulax.w acc, vf0, vf14
+    vmadday.w acc, vf0, vf14
+    vmaddz.w vf14, vf0, vf14
+    vrsqrt Q, vf0.w, vf14.w
+
+    vmulax.xyzw acc, vf24, vf16
+    vmadday.xyzw acc, vf25, vf16
+    vmaddz.xyzw vf10, vf26, vf16
+
+    vwaitq
+    vmulq.xyz vf17, vf17, Q
+
+    vopmula.xyz acc, vf16, vf17
+    vopmsub.xyz vf18, vf17, vf16
+
+    vmulax.xyzw acc, vf24, vf17
+    vmadday.xyzw acc, vf25, vf17
+    vmaddz.xyzw vf11, vf26, vf17
+
+    vmulax.xyzw acc, vf24, vf18
+    vmadday.xyzw acc, vf25, vf18
+    vmaddz.xyzw vf12, vf26, vf18
+
+    sqc2 vf10, -112(t8)
+    sqc2 vf11, -96(t8)
+    sqc2 vf12, -80(t8)
+```
+
+which just ended up computing the inverse transpose. I tried my own implementation, and their implementation, and same problems.
+
+## Frustration
+After poking around for a bit, I convinced myself that the math might be right. I'm not clear on how the normal length stuff works, and there's some EE asm that seems to scale the entire matrix.
+
+That said, if I use emerc's envmapping code (normalizes normals on the VU anyway), it seems to work.
+
+There were some issues with selecting the right texture.
+
+
+
+
   b L14                      |  nop
   nop                        |  nop
   b L2                       |  nop

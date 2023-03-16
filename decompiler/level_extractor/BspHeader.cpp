@@ -445,6 +445,15 @@ std::string TFragment::print(const PrintSettings& settings, int indent) const {
   return result;
 }
 
+void memcpy_plain_data(u8* dst, const Ref& ref, size_t size_bytes) {
+  const auto& words = ref.data->words_by_seg.at(ref.seg);
+  for (size_t i = 0; i < size_bytes; i++) {
+    size_t byte_offset = ref.byte_offset + i;
+    u8 byte = words.at(byte_offset / 4).get_byte(byte_offset % 4);
+    memcpy(dst + i, &byte, sizeof(u8));
+  }
+}
+
 void TieFragment::read_from_file(TypedRef ref,
                                  const decompiler::DecompilerTypeSystem& dts,
                                  DrawStats* stats,
@@ -492,6 +501,15 @@ void TieFragment::read_from_file(TypedRef ref,
   }
 
   stats->total_tie_prototype_tris += num_tris;
+
+  if (version > GameVersion::Jak1) {
+    u16 normals_qwc = read_plain_data_field<u16>(ref, "normal-count", dts);
+    if (normals_qwc) {
+      normals.resize(16 * normals_qwc);
+      auto normals_data_ref = deref_label(get_field_ref(ref, "normal-ref", dts));
+      memcpy_plain_data((u8*)normals.data(), normals_data_ref, normals_qwc * 16);
+    }
+  }
 }
 
 std::string TieFragment::print(const PrintSettings& /*settings*/, int indent) const {

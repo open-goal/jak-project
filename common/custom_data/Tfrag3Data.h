@@ -73,7 +73,7 @@ struct MemoryUsageTracker {
   void add(MemoryUsageCategory category, u32 size_bytes) { data[category] += size_bytes; }
 };
 
-constexpr int TFRAG3_VERSION = 28;
+constexpr int TFRAG3_VERSION = 29;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -83,7 +83,9 @@ struct PreloadedVertex {
   float s, t, q_unused;
   // color table index
   u16 color_index;
-  u16 pad[3];
+
+  // not used in == or hash!!
+  s16 nx, ny, nz;
 
   struct hash {
     std::size_t operator()(const PreloadedVertex& x) const;
@@ -100,6 +102,7 @@ struct PackedTieVertices {
   struct Vertex {
     float x, y, z;
     float s, t;
+    s8 nx, ny, nz;
   };
 
   struct MatrixGroup {
@@ -332,6 +335,17 @@ constexpr bool is_envmap_first_draw_category(tfrag3::TieCategory category) {
     case tfrag3::TieCategory::NORMAL_ENVMAP:
     case tfrag3::TieCategory::WATER_ENVMAP:
     case tfrag3::TieCategory::TRANS_ENVMAP:
+      return true;
+    default:
+      return false;
+  }
+}
+
+constexpr bool is_envmap_second_draw_category(tfrag3::TieCategory category) {
+  switch (category) {
+    case tfrag3::TieCategory::NORMAL_ENVMAP_SECOND_DRAW:
+    case tfrag3::TieCategory::WATER_ENVMAP_SECOND_DRAW:
+    case tfrag3::TieCategory::TRANS_ENVMAP_SECOND_DRAW:
       return true;
     default:
       return false;

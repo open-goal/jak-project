@@ -244,6 +244,7 @@ struct StrGifInfo {
 struct TieProtoVertex {
   math::Vector<float, 3> pos;  // position
   math::Vector<float, 3> tex;  // texture coordinate
+  math::Vector<s8, 3> nrm;     // normal
 
   // NOTE: this is a double lookup.
   // first you look up the index in the _instance_ color table
@@ -268,6 +269,8 @@ struct TieFrag {
 
   std::vector<u8> other_gif_data;  // data sent from EE asm code, sizes/offsets/metadata
   std::vector<u8> points_data;     // data sent from EE asm code, actual vertex data
+  std::vector<math::Vector4<s8>>
+      normal_data_packed;  // jak2 etie only, not unpacked like the others
 
   // number of "dverts" expected from game's metadata. we check our extraction from this.
   u32 expected_dverts = 0;
@@ -287,6 +290,17 @@ struct TieFrag {
     math::Vector<float, 4> result;
     memcpy(result.data(), points_data.data() + (qw * 16), 16);
     return result;
+  }
+
+  math::Vector<s8, 3> get_normal_if_present(u32 nrm_idx) const {
+    if (normal_data_packed.empty()) {
+      // no normals on this model
+      return math::Vector<s8, 3>::zero();
+    } else {
+      ASSERT(nrm_idx < normal_data_packed.size());
+      ASSERT(normal_data_packed.at(nrm_idx).w() == 0);
+      return normal_data_packed.at(nrm_idx).xyz();
+    }
   }
 
   // simulate a load from points, but don't die if we load past the end
@@ -597,10 +611,13 @@ TieCategoryInfo get_jak2_tie_category(u32 flags) {
   return result;
 }
 
-u64 alpha_value_for_etie_alpha_override(tfrag3::TieCategory category) {
+u64 alpha_value_for_jak2_tie_or_etie_alpha_override(tfrag3::TieCategory category) {
   switch (category) {
+    case tfrag3::TieCategory::NORMAL:
     case tfrag3::TieCategory::NORMAL_ENVMAP:
       return 0;
+    case tfrag3::TieCategory::TRANS:
+    case tfrag3::TieCategory::WATER:
     case tfrag3::TieCategory::TRANS_ENVMAP:
     case tfrag3::TieCategory::WATER_ENVMAP:
       return 68;
@@ -699,6 +716,15 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         s32* out_ptr = (s32*)frag_info.points_data.data();
         for (int ii = 0; ii < out_qw * 4; ii++) {
           out_ptr[ii] = in_ptr[ii];
+        }
+      }
+
+      // normals
+      const auto& normal_data = proto.geometry[geo].tie_fragments[frag_idx].normals;
+      frag_info.normal_data_packed.resize(normal_data.size() / 4);
+      for (size_t ni = 0; ni < normal_data.size() / 4; ni++) {
+        for (int j = 0; j < 4; j++) {
+          frag_info.normal_data_packed[ni][j] = normal_data[ni * 4 + j];
         }
       }
 
@@ -964,6 +990,19 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       // again, we do it in two parts. The extra gif data gives us offsets,
       // The extra gif stuff is unpacked immediately after adgifs. Unpacked with v8 4.
       // the above adgif loop will run off the end and vf02 will have the first byte in it's w.
+      /*
+        ((skip-bp2    uint8  :offset-assert 0)
+         (skip-ips    uint8  :offset-assert 1)
+         (gifbuf-skip uint8  :offset-assert 2)
+         (strips      uint8  :offset-assert 3)
+         (target-bp1  uint8  :offset-assert 4)
+         (target-bp2  uint8  :offset-assert 5)
+         (target-ip1  uint8  :offset-assert 6)
+         (target-ip2  uint8  :offset-assert 7)
+         (target-bps  uint8  :offset-assert 8)
+         (target-ips  uint8  :offset-assert 9)
+         (is-generic  uint8  :offset-assert 10)
+       */
       ASSERT(frag.other_gif_data.size() > 1);
       //    mtir vi_ind, vf02.w          |  nop
       // vi_ind will contain the number of drawing packets for this fragment.
@@ -1391,6 +1430,13 @@ int get_fancy_base(int draw1, int draw2) {
   return total;
 }
 
+struct NrmDebug {
+  int bp1 = 0;
+  int bp2 = 0;
+  int ip1 = 0;
+  int ip2 = 0;
+};
+
 void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
   for (auto& proto : protos) {
     //    bool first_instance = true;
@@ -1401,6 +1447,10 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
       int draw_1_count = 0;
       int draw_2_count = 0;
       int ip_1_count = 0;
+
+      int normal_table_offset = 0;
+
+      NrmDebug nd;
 
       /////////////////////////////////////
       // SETUP
@@ -1549,9 +1599,11 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
           vertex_info.tex.z() = tex_coord.z();
+          vertex_info.nrm = frag.get_normal_if_present(normal_table_offset++);
 
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
           ASSERT(inserted);
+          nd.bp1++;
 
           if (reached_target) {
             past_target++;
@@ -1590,6 +1642,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
           vertex_info.tex.z() = tex_coord.z();
+          vertex_info.nrm = frag.get_normal_if_present(normal_table_offset++);
 
           // lg::print("double draw: {} {}\n", dest_ptr, dest2_ptr);
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
@@ -1607,6 +1660,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           }
 
           draw_2_count++;
+          nd.bp2++;
         }
 
         // setup
@@ -1711,10 +1765,11 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
           vertex_info.tex.z() = tex_coord.z();
+          vertex_info.nrm = frag.get_normal_if_present(normal_table_offset++);
 
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
           ASSERT(inserted);
-
+          nd.ip1++;
           ip_1_count++;
         }
 
@@ -1743,6 +1798,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
           vertex_info.tex.z() = tex_coord.z();
+          vertex_info.nrm = frag.get_normal_if_present(normal_table_offset++);
 
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
           ASSERT(inserted);
@@ -1754,6 +1810,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           if (!first_iter) {
             ASSERT(inserted2);
           }
+          nd.ip2++;
           first_iter = false;
           ip_1_count++;
         }
@@ -1763,6 +1820,13 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
       ASSERT(frag.vertex_by_dest_addr.size() == frag.expected_dverts);
 
     program_end:;
+      if (!frag.normal_data_packed.empty()) {
+        // check that we have a normal per point, if we have normals
+        size_t rounded_up_dvert = (nd.bp1 + nd.bp2 + nd.ip1 + nd.ip2) + 3;
+        rounded_up_dvert /= 4;
+        rounded_up_dvert *= 4;
+        ASSERT(rounded_up_dvert == frag.normal_data_packed.size());
+      }
       //      ASSERT(false);
     }
 
@@ -2152,9 +2216,7 @@ DrawMode process_draw_mode(const AdgifInfo& info,
                            bool use_decal,
                            GameVersion version,
                            tfrag3::TieCategory category,
-                           u32 num_mips,
-                           bool require_alpha_to_mip_conversion,
-                           const std::string& debug) {
+                           int num_mips) {
   DrawMode mode;
   if (version == GameVersion::Jak1) {
     // some of these are set up once as part of tie initialization
@@ -2183,25 +2245,16 @@ DrawMode process_draw_mode(const AdgifInfo& info,
     mode.enable_decal();
   }
 
-  // the alpha matters
-  update_mode_from_alpha1(info.alpha_val, mode);
-
-  // jak 2 etie
-  if (version == GameVersion::Jak2 && tfrag3::is_envmap_first_draw_category(category)) {
-    if (require_alpha_to_mip_conversion) {
-      // the first adgif's alpha-slot will be inherited by everybody else.
-      // it should get converted
-      if (num_mips > 4) {
-        update_mode_from_alpha1(alpha_value_for_etie_alpha_override(category), mode);
-      } else {
-        fmt::print("bad: {}\n", num_mips);
-        fmt::print("texture is {}\n", debug);
-        fmt::print("alpha is: {}, cat {}\n", (int)mode.get_alpha_blend(), (int)category);
-        // ASSERT(false);
-      }
-
+  if (version == GameVersion::Jak1) {
+    // use alpha from adgif shader, that's what we did in the past (could be wrong?)
+    update_mode_from_alpha1(info.alpha_val, mode);
+  } else {
+    if (tfrag3::is_envmap_second_draw_category(category)) {
+      // envmap shader gets to control its own alpha
+      update_mode_from_alpha1(info.alpha_val, mode);
     } else {
-      update_mode_from_alpha1(alpha_value_for_etie_alpha_override(category), mode);
+      // non-envmap always get overriden (both the first draw of etie, and normal tie)
+      update_mode_from_alpha1(alpha_value_for_jak2_tie_or_etie_alpha_override(category), mode);
     }
   }
 
@@ -2225,7 +2278,7 @@ DrawMode process_envmap_draw_mode(const AdgifInfo& info,
   // (set! (-> envmap-shader clamp) (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt
   // (gs-tex-wrap-mode clamp))) (set! (-> envmap-shader alpha) (new 'static 'gs-alpha :b #x2 :c #x1
   // :d #x1))
-  auto mode = process_draw_mode(info, false, false, version, category, 0, false, "");
+  auto mode = process_draw_mode(info, false, false, version, category, 0);
   mode.set_filt_enable(true);
   mode.set_clamp_s_enable(true);
   mode.set_clamp_t_enable(true);
@@ -2496,8 +2549,9 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
       for (auto& strip : frag.strips) {
         int start = tree.packed_vertices.vertices.size();
         for (auto& vert : strip.verts) {
-          tree.packed_vertices.vertices.push_back(
-              {vert.pos.x(), vert.pos.y(), vert.pos.z(), vert.tex.x(), vert.tex.y()});
+          tree.packed_vertices.vertices.push_back({vert.pos.x(), vert.pos.y(), vert.pos.z(),
+                                                   vert.tex.x(), vert.tex.y(), vert.nrm.x(),
+                                                   vert.nrm.y(), vert.nrm.z()});
           // TODO: check if this means anything.
           // ASSERT(vert.tex.z() == 1.);
         }
@@ -2535,17 +2589,17 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
 
           u32 idx_in_lev_data = get_or_add_texture(strip.adgif.combo_tex, lev, tdb);
           u32 mips = -1;
-          std::string tex_name = "badbadbadbeef";
+          //          std::string tex_name = "badbadbadbeef";
           auto it = tdb.textures.find(strip.adgif.combo_tex);
           if (it != tdb.textures.end()) {
             mips = it->second.num_mips;
-            tex_name = it->second.name + fmt::format("{}/{}", strip.adgif_idx, frag.adgifs.size());
+            //            tex_name = it->second.name + fmt::format("{}/{}", strip.adgif_idx,
+            //            frag.adgifs.size());
           }
           // determine the draw mode
           bool require_conversion_of_alpha = strip.adgif_idx > 0 && frag.adgifs.size() > 1;
-          DrawMode mode =
-              process_draw_mode(strip.adgif, frag.prog_info.misc_x == 0, frag.has_magic_tex0_bit,
-                                version, info.category, mips, require_conversion_of_alpha, tex_name);
+          DrawMode mode = process_draw_mode(strip.adgif, frag.prog_info.misc_x == 0,
+                                            frag.has_magic_tex0_bit, version, info.category, mips);
           if (!printed) {
             printed = true;
             // if (str_util::contains(proto.name, "prec")) {
@@ -2565,10 +2619,13 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
                                     draws_by_category.at((int)info.category), packed_vert_indices,
                                     mode, idx_in_lev_data, strip, inst, ifrag, proto_idx, frag_idx,
                                     strip_idx, matrix_idx);
+              u32 envmap_tex_idx =
+                  get_or_add_texture(proto.envmap_adgif.value().combo_tex, lev, tdb);
+
               // second pass envmap draw mode, in envmap bucket, envmap-specific draw list
               handle_draw_for_strip(tree, static_draws_by_tex,
                                     draws_by_category.at((int)info.envmap_second_draw_category),
-                                    packed_vert_indices, envmap_drawmode, idx_in_lev_data, strip,
+                                    packed_vert_indices, envmap_drawmode, envmap_tex_idx, strip,
                                     inst, ifrag, proto_idx, frag_idx, strip_idx, matrix_idx);
             } else {
               handle_draw_for_strip(tree, static_draws_by_tex,

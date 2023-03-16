@@ -49,6 +49,8 @@ struct SharedRenderState {
 
   math::Vector4f camera_planes[4];
   math::Vector4f camera_matrix[4];
+  math::Vector4f camera_no_persp[4];
+  math::Vector4f camera_persp[4];
   math::Vector4f camera_hvdf_off;
   math::Vector4f camera_fog;
   math::Vector4f camera_pos;
