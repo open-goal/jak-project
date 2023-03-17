@@ -735,11 +735,14 @@
   )
 
 (defbehavior can-jump? target ((arg0 symbol))
+  (format 0 "can-jump? ~A ~A ~A ~A ~A ~%"
+      arg0 
+      (logtest? (-> self control status) (cshape-moving-flags onsurf))
+      (< (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (-> *TARGET-bank* ground-timeout))
+      (zero? (logand (-> self control unknown-surface01 flags) (surface-flags prevent-jump)))
+      (zero? (logand (-> self state-flags) (state-flags prevent-jump))))
   (and (or (logtest? (-> self control status) (cshape-moving-flags onsurf))
            (< (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (-> *TARGET-bank* ground-timeout))
-           (and (logtest? (-> self control status) (cshape-moving-flags onsurf))
-                (< 0.866 (-> self control surface-angle))
-                )
            )
        (and (zero? (logand (-> self control unknown-surface01 flags) (surface-flags prevent-jump)))
             (zero? (logand (-> self state-flags) (state-flags prevent-jump)))
