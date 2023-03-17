@@ -50,8 +50,9 @@ struct RemotePlayerInfo {
   float quat_y;
   float quat_z;
   float quat_w;
+  s32 tgt_state;
 };
-static_assert(sizeof(RemotePlayerInfo) == 28, "RemotePlayerInfo size is wrong");
+static_assert(sizeof(RemotePlayerInfo) == 32, "RemotePlayerInfo size is wrong");
 
 struct MultiplayerInfo {
   s32 player_num;
