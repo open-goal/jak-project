@@ -20,7 +20,7 @@ struct TieProtoVisibility {
 };
 
 struct EtieUniforms {
-  GLuint persp0, persp1, cam_no_persp;
+  GLuint persp0, persp1, cam_no_persp, envmap_tod_tint, decal;
 };
 
 class Tie3 : public BucketRenderer {
@@ -99,6 +99,7 @@ class Tie3 : public BucketRenderer {
     TfragRenderSettings settings;
     const u8* proto_vis_data = nullptr;
     u32 proto_vis_data_size = 0;
+    math::Vector4f envmap_color;
     u64 frame_idx = -1;
   } m_common_data;
 

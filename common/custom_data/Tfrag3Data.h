@@ -78,14 +78,15 @@ constexpr int TFRAG3_VERSION = 29;
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
   // the vertex position
-  float x, y, z;
+  float x = 0, y = 0, z = 0;
   // texture coordinates
-  float s, t, q_unused;
+  float s = 0, t = 0;
+  u8 r = 0, g = 0, b = 0, a = 0;
   // color table index
-  u16 color_index;
+  u16 color_index = 0;
 
   // not used in == or hash!!
-  s16 nx, ny, nz;
+  s16 nx = 0, ny = 0, nz = 0;
 
   struct hash {
     std::size_t operator()(const PreloadedVertex& x) const;
@@ -103,6 +104,7 @@ struct PackedTieVertices {
     float x, y, z;
     float s, t;
     s8 nx, ny, nz;
+    u8 r, g, b, a;
   };
 
   struct MatrixGroup {

@@ -2466,14 +2466,49 @@ Here is the extracted part of this math.
 which just ended up computing the inverse transpose. I tried my own implementation, and their implementation, and same problems.
 
 ## Frustration
-After poking around for a bit, I convinced myself that the math might be right. I'm not clear on how the normal length stuff works, and there's some EE asm that seems to scale the entire matrix.
+At this point, I didn't take good notes for a few hours. The summary is:
+- I thought things were still wrong
+- I implemented emerc's math in the etie shader
+- Realized we were using the wrong envmap textures.
+- With the right textures, things looked better
+- still some uncertainty with the length of normals.
+- A few possible options:
+  - using emerc, which doesn't care about normal length
+  - use etie, normalize normals
+  - use etie, don't normalize, assume magic number in TIE EE asm was 1.0
 
-That said, if I use emerc's envmapping code (normalizes normals on the VU anyway), it seems to work.
+For now I'm using `emerc`, but it's easy to switch. I think once I get everything else working properly, it will be easier to compare them.
 
-There were some issues with selecting the right texture.
+## Tint
+The envmap has some color applied. Right now, I put some constant white, but it's clearly not right. In the VU program, it just copies the color from the input. I found a block of code that looks promising for the color:
 
+```
+lw t9, 168(t9)             ;; tint color from bucket (4x u8's)
+pextlb t9, t9, r0          ;; unpack tint from bucket to u16's
+dsll s2, s2, 5             ;; ?? maybe fade or something
+pextlh t9, r0, t9          ;; unpack tint from bucket to u32's
+qmtc2.i vf9, s2            ;; ??
+psraw t9, t9, 3            ;; shift bucket tint
+sll r0, r0, 0
+qmtc2.i vf14, t9           ;; bucket tint
+sll r0, r0, 0
+lqc2 vf15, 416(t0)         ;; envmap-tod from instance-tie-work
+vitof12.xyzw vf9, vf9      ;; bucket to float
+sll r0, r0, 0
+vitof12.xyzw vf14, vf14    ;; ?? to float
+sll r0, r0, 0
+vmul.xyzw vf15, vf15, vf14  ;; multiply by envmap
+sll r0, r0, 0
+vmulx.xyzw vf15, vf15, vf9 ;; scale by ??
+```
+I'm assuming the `??` bit is to fade it out (would also explain why this is done per-instance). But we need `envmap-tod`...
 
+Which is set in normal GOAL code for once:
+```
+(set! (-> *instance-tie-work* tod-env-color quad) (-> *time-of-day-context* current-env-color quad))
+```
 
+The first step is getting the tint from the bucket into the C++ rendering world. This varies per-prototype.
 
   b L14                      |  nop
   nop                        |  nop

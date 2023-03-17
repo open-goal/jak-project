@@ -12,7 +12,6 @@ uniform float alpha_max;
 uniform vec4 fog_color;
 
 uniform int gfx_hack_no_tex;
-uniform int debug_hack;
 
 
 void main() {
@@ -30,7 +29,4 @@ void main() {
 
     color.rgb = mix(color.rgb, fog_color.rgb, clamp(fogginess * fog_color.a, 0, 1));
 
-    if (debug_hack == 1) {
-      color.r = 1.0;
-    }
 }

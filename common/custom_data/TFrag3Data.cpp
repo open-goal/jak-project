@@ -105,7 +105,7 @@ std::array<math::Vector3f, 3> tie_normal_transform_v2(const std::array<math::Vec
   std::array<math::Vector3f, 3> result;
   auto& vf10 = m[0];
   auto& vf11 = m[1];
-  auto& vf12 = m[2];
+  // auto& vf12 = m[2];
 
   // vmulx.xyz vf16, vf10, vf14
   math::Vector3f vf16 = vf10.xyz() * 0.25;  // TODO VF14
@@ -202,12 +202,15 @@ void TieTree::unpack() {
         vtx.x = proto_vtx.x;
         vtx.y = proto_vtx.y;
         vtx.z = proto_vtx.z;
-        vtx.q_unused = 1.f;
         vtx.s = proto_vtx.s;
         vtx.t = proto_vtx.t;
         vtx.nx = proto_vtx.nx << 8;
         vtx.ny = proto_vtx.ny << 8;
         vtx.nz = proto_vtx.nz << 8;
+        vtx.r = proto_vtx.r;
+        vtx.g = proto_vtx.g;
+        vtx.b = proto_vtx.b;
+        vtx.a = proto_vtx.a;
         i++;
       }
     } else {
@@ -223,13 +226,16 @@ void TieTree::unpack() {
         vtx.x = temp.x();
         vtx.y = temp.y();
         vtx.z = temp.z();
-        vtx.q_unused = 1.f;
         vtx.s = proto_vtx.s;
         vtx.t = proto_vtx.t;
         auto nrm = unpack_tie_normal(nmat, proto_vtx.nx, proto_vtx.ny, proto_vtx.nz);
         vtx.nx = nrm.x();
         vtx.ny = nrm.y();
         vtx.nz = nrm.z();
+        vtx.r = proto_vtx.r;
+        vtx.g = proto_vtx.g;
+        vtx.b = proto_vtx.b;
+        vtx.a = proto_vtx.a;
         i++;
       }
     }
@@ -287,7 +293,6 @@ void TfragTree::unpack() {
     o.z = cz + in.zoff * rescale;
     o.s = in.s / (1024.f);
     o.t = in.t / (1024.f);
-    o.q_unused = 1.f;
     o.color_index = in.color_index;
   }
 

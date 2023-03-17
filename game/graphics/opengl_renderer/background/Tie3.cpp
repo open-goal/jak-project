@@ -31,9 +31,14 @@ Tie3::~Tie3() {
 
 void Tie3::init_shaders(ShaderLibrary& shaders) {
   m_uniforms.decal = glGetUniformLocation(shaders[ShaderId::TFRAG3].id(), "decal");
+
   m_etie_uniforms.persp0 = glGetUniformLocation(shaders[ShaderId::ETIE].id(), "persp0");
   m_etie_uniforms.persp1 = glGetUniformLocation(shaders[ShaderId::ETIE].id(), "persp1");
   m_etie_uniforms.cam_no_persp = glGetUniformLocation(shaders[ShaderId::ETIE].id(), "cam_no_persp");
+  m_etie_uniforms.envmap_tod_tint =
+      glGetUniformLocation(shaders[ShaderId::ETIE].id(), "envmap_tod_tint");
+
+  m_etie_base_uniforms.decal = glGetUniformLocation(shaders[ShaderId::ETIE_BASE].id(), "decal");
   m_etie_base_uniforms.persp0 = glGetUniformLocation(shaders[ShaderId::ETIE_BASE].id(), "persp0");
   m_etie_base_uniforms.persp1 = glGetUniformLocation(shaders[ShaderId::ETIE_BASE].id(), "persp1");
   m_etie_base_uniforms.cam_no_persp =
@@ -112,6 +117,7 @@ void Tie3::load_from_fr3_data(const LevelData* loader_data) {
       glEnableVertexAttribArray(1);
       glEnableVertexAttribArray(2);
       glEnableVertexAttribArray(3);
+      glEnableVertexAttribArray(4);
 
       glVertexAttribPointer(0,                                           // location 0 in the shader
                             3,                                           // 3 values per vert
@@ -142,6 +148,14 @@ void Tie3::load_from_fr3_data(const LevelData* loader_data) {
                             GL_TRUE,                          // normalized
                             sizeof(tfrag3::PreloadedVertex),  // stride
                             (void*)offsetof(tfrag3::PreloadedVertex, nx)  // offset (0)
+      );
+
+      glVertexAttribPointer(4,                                           // location 1 in the shader
+                            4,                                           // 3 values per vert
+                            GL_UNSIGNED_BYTE,                            // floats
+                            GL_TRUE,                                     // normalized
+                            sizeof(tfrag3::PreloadedVertex),             // stride
+                            (void*)offsetof(tfrag3::PreloadedVertex, r)  // offset (0)
       );
 
       // allocate dynamic index buffer for the fallback "not multidraw" mode.
@@ -298,9 +312,15 @@ bool Tie3::set_up_common_data_from_dma(DmaFollower& dma, SharedRenderState* rend
   }
 
   if (render_state->version == GameVersion::Jak2) {
+    // jak 2 proto visibility
     auto proto_mask_data = dma.read_and_advance();
     m_common_data.proto_vis_data = proto_mask_data.data;
     m_common_data.proto_vis_data_size = proto_mask_data.size_bytes;
+    // jak 2 envmap color
+    auto envmap_color = dma.read_and_advance();
+    ASSERT(envmap_color.size_bytes == 16);
+    memcpy(m_common_data.envmap_color.data(), envmap_color.data, 16);
+    m_common_data.envmap_color /= 128.f;
   }
   m_common_data.frame_idx = render_state->frame_idx;
 
@@ -522,6 +542,7 @@ void Tie3::draw_matching_draws_for_tree(int idx,
   first_tfrag_draw_setup(settings, render_state, shader_id);
 
   if (use_envmap) {
+    // if we use envmap, use the envmap-style math for the base draw to avoid rounding issue.
     init_etie_cam_uniforms(m_etie_base_uniforms, render_state);
   }
 
@@ -561,7 +582,8 @@ void Tie3::draw_matching_draws_for_tree(int idx,
 
     auto double_draw = setup_tfrag_shader(render_state, draw.mode, ShaderId::TFRAG3);
 
-    glUniform1i(m_uniforms.decal, draw.mode.get_decal() ? 1 : 0);
+    glUniform1i(use_envmap ? m_etie_base_uniforms.decal : m_uniforms.decal,
+                draw.mode.get_decal() ? 1 : 0);
 
     prof.add_draw_call();
 
@@ -625,6 +647,7 @@ void Tie3::envmap_second_pass_draw(const Tree& tree,
                render_state->no_multidraw ? tree.single_draw_index_buffer : tree.index_buffer);
 
   init_etie_cam_uniforms(m_etie_uniforms, render_state);
+  set_uniform(m_etie_uniforms.envmap_tod_tint, m_common_data.envmap_color);
 
   int last_texture = -1;
   for (size_t draw_idx = tree.category_draw_indices[(int)category];

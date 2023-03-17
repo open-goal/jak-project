@@ -250,6 +250,7 @@ struct TieProtoVertex {
   // first you look up the index in the _instance_ color table
   // then you look up the color in the _proto_'s interpolated color palette.
   u32 color_index_index;
+  math::Vector<u8, 4> envmap_tint_color;
 };
 
 // a tie fragment is made up of strips. Each strip has a single adgif info, and vertices
@@ -362,7 +363,7 @@ struct TieProtoInfo {
   u32 proto_flag;
   float stiffness = 0;  // wind
   std::optional<AdgifInfo> envmap_adgif;
-  math::Vector<u8, 4> tint_color;
+  math::Vector<u8, 4> tint_color = math::Vector<u8, 4>::zero();
   std::vector<tfrag3::TimeOfDayColor> time_of_day_colors;  // c++ type for time of day data
   std::vector<TieFrag> frags;                              // the fragments of the prototype
 };
@@ -680,16 +681,6 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
 
         auto adgif = process_adgif(gif_data, tex_idx, map, &frag_info.has_magic_tex0_bit);
 
-        //        if (use_crazy_jak2_etie_alpha_thing) {
-        //          if (tex_idx == 0) {
-        //            first_adgif_alpha = adgif.alpha_val;
-        //            adgif.alpha_val =
-        //                alpha_value_for_etie_alpha_override(get_jak2_tie_category(proto.flags).category);
-        //          } else {
-        //            adgif.alpha_val = first_adgif_alpha;
-        //          }
-        //        }
-
         frag_info.adgifs.push_back(adgif);
       }
 
@@ -730,12 +721,6 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
 
       info.frags.push_back(std::move(frag_info));
     }
-
-    //    if (proto.has_envmap_shader) {
-    //      for (auto& frag : info.frags) {
-    //        fmt::print("{} uses {} adgifs\n", proto.name, frag.adgifs.size());
-    //      }
-    //    }
   }
 }
 
@@ -1599,6 +1584,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
           vertex_info.tex.z() = tex_coord.z();
+          vertex_info.envmap_tint_color = proto.tint_color;
           vertex_info.nrm = frag.get_normal_if_present(normal_table_offset++);
 
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
@@ -1642,6 +1628,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
           vertex_info.tex.z() = tex_coord.z();
+          vertex_info.envmap_tint_color = proto.tint_color;
           vertex_info.nrm = frag.get_normal_if_present(normal_table_offset++);
 
           // lg::print("double draw: {} {}\n", dest_ptr, dest2_ptr);
@@ -1765,6 +1752,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
           vertex_info.tex.z() = tex_coord.z();
+          vertex_info.envmap_tint_color = proto.tint_color;
           vertex_info.nrm = frag.get_normal_if_present(normal_table_offset++);
 
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
@@ -1798,6 +1786,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
           vertex_info.tex.z() = tex_coord.z();
+          vertex_info.envmap_tint_color = proto.tint_color;
           vertex_info.nrm = frag.get_normal_if_present(normal_table_offset++);
 
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
@@ -2549,9 +2538,10 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
       for (auto& strip : frag.strips) {
         int start = tree.packed_vertices.vertices.size();
         for (auto& vert : strip.verts) {
-          tree.packed_vertices.vertices.push_back({vert.pos.x(), vert.pos.y(), vert.pos.z(),
-                                                   vert.tex.x(), vert.tex.y(), vert.nrm.x(),
-                                                   vert.nrm.y(), vert.nrm.z()});
+          tree.packed_vertices.vertices.push_back(
+              {vert.pos.x(), vert.pos.y(), vert.pos.z(), vert.tex.x(), vert.tex.y(), vert.nrm.x(),
+               vert.nrm.y(), vert.nrm.z(), vert.envmap_tint_color.x(), vert.envmap_tint_color.y(),
+               vert.envmap_tint_color.z(), vert.envmap_tint_color.w()});
           // TODO: check if this means anything.
           // ASSERT(vert.tex.z() == 1.);
         }

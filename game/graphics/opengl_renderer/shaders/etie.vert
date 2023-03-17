@@ -4,12 +4,14 @@ layout (location = 0) in vec3 position_in;
 layout (location = 1) in vec3 tex_coord_in;
 layout (location = 2) in int time_of_day_index;
 layout (location = 3) in vec3 normal;
+layout (location = 4) in vec4 proto_tint;
 
 uniform vec4 hvdf_offset;
 uniform mat4 camera;
 uniform float fog_constant;
 uniform float fog_min;
 uniform float fog_max;
+uniform vec4 envmap_tod_tint;
 layout (binding = 10) uniform sampler1D tex_T1; // note, sampled in the vertex shader on purpose.
 uniform int decal;
 
@@ -167,6 +169,6 @@ void main() {
         fogginess = 0;
     }
 
-    fragment_color = vec4(0.5, 0.5, 0.5, 0.5); // hack
+    fragment_color = proto_tint * envmap_tod_tint;
     
 }

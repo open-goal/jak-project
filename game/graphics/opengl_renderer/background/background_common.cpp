@@ -170,7 +170,6 @@ void first_tfrag_draw_setup(const TfragRenderSettings& settings,
   sh.activate();
   auto id = sh.id();
   glUniform1i(glGetUniformLocation(id, "gfx_hack_no_tex"), Gfx::g_global_settings.hack_no_tex);
-  glUniform1i(glGetUniformLocation(id, "debug_hack"), false);
   glUniform1i(glGetUniformLocation(id, "decal"), false);
 
   glUniform1i(glGetUniformLocation(id, "tex_T0"), 0);
