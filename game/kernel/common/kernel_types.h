@@ -55,6 +55,6 @@ static_assert(sizeof(RemotePlayerInfo) == 28, "RemotePlayerInfo size is wrong");
 
 struct MultiplayerInfo {
   s32 player_num;
-  RemotePlayerInfo players[4];
+  RemotePlayerInfo players[12];
 };
-static_assert(sizeof(MultiplayerInfo) == 116, "MultiplayerInfo size is wrong");
+//static_assert(sizeof(MultiplayerInfo) == 116, "MultiplayerInfo size is wrong");

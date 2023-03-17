@@ -39,9 +39,18 @@ an orb |#
   )
 
 (defun get-target ((idx int))
-  (if (or (= (-> *multiplayer-info* player_num) -1) (= (-> *multiplayer-info* player_num) idx))
-    *target*
-    (the target (handle->process (-> *remote-targets* idx)))
+  (if (= (-> *multiplayer-info* player_num) -1)
+    (if (= idx 0)
+      *target*
+      (the-as target #f)
+      )
+    (if (= (-> *multiplayer-info* player_num) idx)
+      *target*
+      (if (and (-> *remote-targets* idx) (nonzero? (-> *remote-targets* idx)) (handle->process (-> *remote-targets* idx)))
+        (the target (handle->process (-> *remote-targets* idx)))
+        (the-as target #f)
+        )
+      )
     )
   )
 
@@ -120,7 +129,7 @@ an orb |#
   
   ;; register with server if we haven't yet
   (when (and *target* (not *registered-with-server?*))
-    ;; (pc-http-register *multiplayer-info*)
+    (pc-http-register *multiplayer-info*)
     (set! *registered-with-server?* #t)
     ;; wait a bit to ensure registration before syncing position
     (set! *last-position-sync-time* (+ (-> *display* base-frame-counter) (seconds 1.0)))
