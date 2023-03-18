@@ -4,6 +4,7 @@
 
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
+#include "common/util/string_util.h"
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
@@ -227,6 +228,7 @@ struct AdgifInfo {
   u32 combo_tex;  // PC texture ID
   u64 alpha_val;  // alpha blend settings
   u64 clamp_val;  // texture clamp settings
+  u32 num_mips = -1;
 };
 
 // When the prototype is uploaded, it places a bunch of strgif tags in VU memory.
@@ -242,17 +244,20 @@ struct StrGifInfo {
 struct TieProtoVertex {
   math::Vector<float, 3> pos;  // position
   math::Vector<float, 3> tex;  // texture coordinate
+  math::Vector<s8, 3> nrm;     // normal
 
   // NOTE: this is a double lookup.
   // first you look up the index in the _instance_ color table
   // then you look up the color in the _proto_'s interpolated color palette.
   u32 color_index_index;
+  math::Vector<u8, 4> envmap_tint_color;
 };
 
 // a tie fragment is made up of strips. Each strip has a single adgif info, and vertices
 // the vertices make up a triangle strip
 struct TieStrip {
   AdgifInfo adgif;
+  int adgif_idx = -1;
   std::vector<TieProtoVertex> verts;
 };
 
@@ -265,6 +270,8 @@ struct TieFrag {
 
   std::vector<u8> other_gif_data;  // data sent from EE asm code, sizes/offsets/metadata
   std::vector<u8> points_data;     // data sent from EE asm code, actual vertex data
+  std::vector<math::Vector4<s8>>
+      normal_data_packed;  // jak2 etie only, not unpacked like the others
 
   // number of "dverts" expected from game's metadata. we check our extraction from this.
   u32 expected_dverts = 0;
@@ -284,6 +291,17 @@ struct TieFrag {
     math::Vector<float, 4> result;
     memcpy(result.data(), points_data.data() + (qw * 16), 16);
     return result;
+  }
+
+  math::Vector<s8, 3> get_normal_if_present(u32 nrm_idx) const {
+    if (normal_data_packed.empty()) {
+      // no normals on this model
+      return math::Vector<s8, 3>::zero();
+    } else {
+      ASSERT(nrm_idx < normal_data_packed.size());
+      ASSERT(normal_data_packed.at(nrm_idx).w() == 0);
+      return normal_data_packed.at(nrm_idx).xyz();
+    }
   }
 
   // simulate a load from points, but don't die if we load past the end
@@ -342,10 +360,10 @@ struct TieFrag {
 struct TieProtoInfo {
   std::string name;
   std::vector<TieInstanceInfo> instances;
-  bool uses_generic = false;
   u32 proto_flag;
   float stiffness = 0;  // wind
-  u32 generic_flag;
+  std::optional<AdgifInfo> envmap_adgif;
+  math::Vector<u8, 4> tint_color = math::Vector<u8, 4>::zero();
   std::vector<tfrag3::TimeOfDayColor> time_of_day_colors;  // c++ type for time of day data
   std::vector<TieFrag> frags;                              // the fragments of the prototype
 };
@@ -476,6 +494,134 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
   return original;
 }
 
+AdgifInfo process_adgif(const std::vector<u8>& gif_data,
+                        int tex_idx,
+                        const std::vector<level_tools::TextureRemap>& map,
+                        bool* uses_magic_tex0_bit) {
+  AdgifInfo adgif;
+  // address for the first adgif shader qw.
+  u8 ra_tex0 = gif_data.at(16 * (tex_idx * 5 + 0) + 8);
+  // data for the first adgif shader qw.
+  u64 ra_tex0_val;
+  memcpy(&ra_tex0_val, &gif_data.at(16 * (tex_idx * 5 + 0)), 8);
+
+  // always expecting TEX0_1
+  ASSERT(ra_tex0 == (u8)GsRegisterAddress::TEX0_1);
+
+  // the value is overwritten by the login function. We don't care about this value, it's
+  // specific to the PS2's texture system.
+  ASSERT(ra_tex0_val == 0 || ra_tex0_val == 0x800000000);  // note: decal
+  // the original value is a flag. this means to use decal texture mode (todo)
+  if (uses_magic_tex0_bit) {
+    *uses_magic_tex0_bit = ra_tex0_val == 0x800000000;
+  }
+  // there's also a hidden value in the unused bits of the a+d data. it'll be used by the
+  // VU program.
+  memcpy(&adgif.first_w, &gif_data.at(16 * (tex_idx * 5 + 0) + 12), 4);
+
+  // Second adgif. Similar to the first, except the original data value is a texture ID.
+  u8 ra_tex1 = gif_data.at(16 * (tex_idx * 5 + 1) + 8);
+  u64 ra_tex1_val;
+  memcpy(&ra_tex1_val, &gif_data.at(16 * (tex_idx * 5 + 1)), 8);
+  ASSERT(ra_tex1 == (u8)GsRegisterAddress::TEX1_1);
+  ASSERT(ra_tex1_val == 0x120);  // some flag
+  u32 original_tex;
+  memcpy(&original_tex, &gif_data.at(16 * (tex_idx * 5 + 1) + 8), 4);
+  // try remapping it
+  u32 new_tex = remap_texture(original_tex, map);
+  if (original_tex != new_tex) {
+    lg::info("map from 0x{:x} to 0x{:x}", original_tex, new_tex);
+  }
+  // texture the texture page/texture index, and convert to a PC port texture ID
+  u32 tpage = new_tex >> 20;
+  u32 tidx = (new_tex >> 8) & 0b1111'1111'1111;
+  u32 tex_combo = (((u32)tpage) << 16) | tidx;
+  // remember the texture id (may be invalid, will be checked later)
+  adgif.combo_tex = tex_combo;
+  // and the hidden value in the unused a+d
+  memcpy(&adgif.second_w, &gif_data.at(16 * (tex_idx * 5 + 1) + 12), 4);
+  // todo: figure out if this matters. maybe this is decal?
+  if (ra_tex0_val == 0x800000000) {
+    // lg::print("texture {} in {} has weird tex setting\n", tex->second.name, proto.name);
+  }
+
+  // mipmap settings. we ignore, but get the hidden value
+  u8 ra_mip = gif_data.at(16 * (tex_idx * 5 + 2) + 8);
+  ASSERT(ra_mip == (u8)GsRegisterAddress::MIPTBP1_1);
+  memcpy(&adgif.third_w, &gif_data.at(16 * (tex_idx * 5 + 2) + 12), 4);
+  // who cares about the value
+
+  // clamp settings. we care about these. no hidden value.
+  u8 ra_clamp = gif_data.at(16 * (tex_idx * 5 + 3) + 8);
+  ASSERT(ra_clamp == (u8)GsRegisterAddress::CLAMP_1);
+  u64 clamp;
+  memcpy(&clamp, &gif_data.at(16 * (tex_idx * 5 + 3)), 8);
+  adgif.clamp_val = clamp;
+
+  // alpha settings. we care about these, but no hidden value
+  u8 ra_alpha = gif_data.at(16 * (tex_idx * 5 + 4) + 8);
+  ASSERT(ra_alpha == (u8)GsRegisterAddress::ALPHA_1);
+  u64 alpha;
+  memcpy(&alpha, &gif_data.at(16 * (tex_idx * 5 + 4)), 8);
+  adgif.alpha_val = alpha;
+  return adgif;
+}
+
+struct TieCategoryInfo {
+  tfrag3::TieCategory category = tfrag3::TieCategory::NORMAL;
+  tfrag3::TieCategory envmap_second_draw_category = tfrag3::TieCategory::NORMAL_ENVMAP;
+  bool uses_envmap = false;
+};
+
+TieCategoryInfo get_jak2_tie_category(u32 flags) {
+  constexpr int kJak2ProtoEnvmap = 2;
+  constexpr int kJak2ProtoTpageAlpha = 4;
+  constexpr int kJak2ProtoTpageWater = 128;
+  TieCategoryInfo result;
+  result.uses_envmap = flags & kJak2ProtoEnvmap;
+
+  if (flags & kJak2ProtoTpageAlpha) {
+    if (result.uses_envmap) {
+      result.category = tfrag3::TieCategory::TRANS_ENVMAP;
+      result.envmap_second_draw_category = tfrag3::TieCategory::TRANS_ENVMAP_SECOND_DRAW;
+    } else {
+      result.category = tfrag3::TieCategory::TRANS;
+    }
+    ASSERT((flags & kJak2ProtoTpageWater) == 0);
+  } else if (flags & kJak2ProtoTpageWater) {
+    if (result.uses_envmap) {
+      result.category = tfrag3::TieCategory::WATER_ENVMAP;
+      result.envmap_second_draw_category = tfrag3::TieCategory::WATER_ENVMAP_SECOND_DRAW;
+    } else {
+      result.category = tfrag3::TieCategory::WATER;
+    }
+    ASSERT((flags & kJak2ProtoTpageAlpha) == 0);
+  } else {
+    if (result.uses_envmap) {
+      result.category = tfrag3::TieCategory::NORMAL_ENVMAP;
+      result.envmap_second_draw_category = tfrag3::TieCategory::NORMAL_ENVMAP_SECOND_DRAW;
+    } else {
+      result.category = tfrag3::TieCategory::NORMAL;
+    }
+  }
+  return result;
+}
+
+u64 alpha_value_for_jak2_tie_or_etie_alpha_override(tfrag3::TieCategory category) {
+  switch (category) {
+    case tfrag3::TieCategory::NORMAL:
+    case tfrag3::TieCategory::NORMAL_ENVMAP:
+      return 0;
+    case tfrag3::TieCategory::TRANS:
+    case tfrag3::TieCategory::WATER:
+    case tfrag3::TieCategory::TRANS_ENVMAP:
+    case tfrag3::TieCategory::WATER_ENVMAP:
+      return 68;
+    default:
+      ASSERT_NOT_REACHED();
+  }
+}
+
 /*!
  * Update per-proto information.
  */
@@ -488,14 +634,21 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
     const auto& proto = protos[i];
     auto& info = out->at(i);
     info.proto_flag = proto.flags;
-    // flag of 2 means it should use the generic renderer (determined from EE asm)
-    // for now, we ignore this and use TIE on everything.
-    info.uses_generic = (proto.flags == 2);  // possibly different in jak 2
     // for debug, remember the name
     info.name = proto.name;
     // wind "stiffness" nonzero value means it has the wind effect
     info.stiffness = proto.stiffness;
-    info.generic_flag = proto.flags & 2;
+    if (proto.has_envmap_shader) {
+      std::vector<u8> adgif;
+      for (auto x : proto.envmap_shader) {
+        adgif.push_back(x);
+      }
+      info.envmap_adgif = process_adgif(adgif, 0, map, nullptr);
+      info.tint_color = proto.tint_color;
+    }
+
+    // bool use_crazy_jak2_etie_alpha_thing = proto.has_envmap_shader;
+
     // the actual colors (rgba) used by time of day interpolation
     // there are "height" colors. Each color is actually 8 colors that are interpolated.
     info.time_of_day_colors.resize(proto.time_of_day.height);
@@ -516,74 +669,12 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         // all TIE things have pretty normal adgif shaders
 
         // all the useful adgif data will be saved into this AdgifInfo
-        AdgifInfo adgif;
 
         // pointer to the level data
         auto& gif_data = proto.geometry[geo].tie_fragments[frag_idx].gif_data;
 
-        // address for the first adgif shader qw.
-        u8 ra_tex0 = gif_data.at(16 * (tex_idx * 5 + 0) + 8);
-        // data for the first adgif shader qw.
-        u64 ra_tex0_val;
-        memcpy(&ra_tex0_val, &gif_data.at(16 * (tex_idx * 5 + 0)), 8);
+        auto adgif = process_adgif(gif_data, tex_idx, map, &frag_info.has_magic_tex0_bit);
 
-        // always expecting TEX0_1
-        ASSERT(ra_tex0 == (u8)GsRegisterAddress::TEX0_1);
-
-        // the value is overwritten by the login function. We don't care about this value, it's
-        // specific to the PS2's texture system.
-        ASSERT(ra_tex0_val == 0 || ra_tex0_val == 0x800000000);  // note: decal
-        // the original value is a flag. this means to use decal texture mode (todo)
-        frag_info.has_magic_tex0_bit = ra_tex0_val == 0x800000000;
-        // there's also a hidden value in the unused bits of the a+d data. it'll be used by the
-        // VU program.
-        memcpy(&adgif.first_w, &gif_data.at(16 * (tex_idx * 5 + 0) + 12), 4);
-
-        // Second adgif. Similar to the first, except the original data value is a texture ID.
-        u8 ra_tex1 = gif_data.at(16 * (tex_idx * 5 + 1) + 8);
-        u64 ra_tex1_val;
-        memcpy(&ra_tex1_val, &gif_data.at(16 * (tex_idx * 5 + 1)), 8);
-        ASSERT(ra_tex1 == (u8)GsRegisterAddress::TEX1_1);
-        ASSERT(ra_tex1_val == 0x120);  // some flag
-        u32 original_tex;
-        memcpy(&original_tex, &gif_data.at(16 * (tex_idx * 5 + 1) + 8), 4);
-        // try remapping it
-        u32 new_tex = remap_texture(original_tex, map);
-        if (original_tex != new_tex) {
-          lg::info("map from 0x{:x} to 0x{:x}", original_tex, new_tex);
-        }
-        // texture the texture page/texture index, and convert to a PC port texture ID
-        u32 tpage = new_tex >> 20;
-        u32 tidx = (new_tex >> 8) & 0b1111'1111'1111;
-        u32 tex_combo = (((u32)tpage) << 16) | tidx;
-        // remember the texture id (may be invalid, will be checked later)
-        adgif.combo_tex = tex_combo;
-        // and the hidden value in the unused a+d
-        memcpy(&adgif.second_w, &gif_data.at(16 * (tex_idx * 5 + 1) + 12), 4);
-        // todo: figure out if this matters. maybe this is decal?
-        if (ra_tex0_val == 0x800000000) {
-          // lg::print("texture {} in {} has weird tex setting\n", tex->second.name, proto.name);
-        }
-
-        // mipmap settings. we ignore, but get the hidden value
-        u8 ra_mip = gif_data.at(16 * (tex_idx * 5 + 2) + 8);
-        ASSERT(ra_mip == (u8)GsRegisterAddress::MIPTBP1_1);
-        memcpy(&adgif.third_w, &gif_data.at(16 * (tex_idx * 5 + 2) + 12), 4);
-        // who cares about the value
-
-        // clamp settings. we care about these. no hidden value.
-        u8 ra_clamp = gif_data.at(16 * (tex_idx * 5 + 3) + 8);
-        ASSERT(ra_clamp == (u8)GsRegisterAddress::CLAMP_1);
-        u64 clamp;
-        memcpy(&clamp, &gif_data.at(16 * (tex_idx * 5 + 3)), 8);
-        adgif.clamp_val = clamp;
-
-        // alpha settings. we care about these, but no hidden value
-        u8 ra_alpha = gif_data.at(16 * (tex_idx * 5 + 4) + 8);
-        ASSERT(ra_alpha == (u8)GsRegisterAddress::ALPHA_1);
-        u64 alpha;
-        memcpy(&alpha, &gif_data.at(16 * (tex_idx * 5 + 4)), 8);
-        adgif.alpha_val = alpha;
         frag_info.adgifs.push_back(adgif);
       }
 
@@ -610,6 +701,15 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         s32* out_ptr = (s32*)frag_info.points_data.data();
         for (int ii = 0; ii < out_qw * 4; ii++) {
           out_ptr[ii] = in_ptr[ii];
+        }
+      }
+
+      // normals
+      const auto& normal_data = proto.geometry[geo].tie_fragments[frag_idx].normals;
+      frag_info.normal_data_packed.resize(normal_data.size() / 4);
+      for (size_t ni = 0; ni < normal_data.size() / 4; ni++) {
+        for (int j = 0; j < 4; j++) {
+          frag_info.normal_data_packed[ni][j] = normal_data[ni * 4 + j];
         }
       }
 
@@ -869,6 +969,19 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       // again, we do it in two parts. The extra gif data gives us offsets,
       // The extra gif stuff is unpacked immediately after adgifs. Unpacked with v8 4.
       // the above adgif loop will run off the end and vf02 will have the first byte in it's w.
+      /*
+        ((skip-bp2    uint8  :offset-assert 0)
+         (skip-ips    uint8  :offset-assert 1)
+         (gifbuf-skip uint8  :offset-assert 2)
+         (strips      uint8  :offset-assert 3)
+         (target-bp1  uint8  :offset-assert 4)
+         (target-bp2  uint8  :offset-assert 5)
+         (target-ip1  uint8  :offset-assert 6)
+         (target-ip2  uint8  :offset-assert 7)
+         (target-bps  uint8  :offset-assert 8)
+         (target-ips  uint8  :offset-assert 9)
+         (is-generic  uint8  :offset-assert 10)
+       */
       ASSERT(frag.other_gif_data.size() > 1);
       //    mtir vi_ind, vf02.w          |  nop
       // vi_ind will contain the number of drawing packets for this fragment.
@@ -1276,7 +1389,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
 void debug_print_info(const std::vector<TieProtoInfo>& out) {
   for (auto& proto : out) {
     lg::debug("[{:40}]", proto.name);
-    lg::debug("  generic: {}", proto.uses_generic);
+    lg::debug("  flag: {}", proto.proto_flag);
     lg::debug("  use count: {}", proto.instances.size());
     lg::debug("  stiffness: {}", proto.stiffness);
   }
@@ -1296,6 +1409,13 @@ int get_fancy_base(int draw1, int draw2) {
   return total;
 }
 
+struct NrmDebug {
+  int bp1 = 0;
+  int bp2 = 0;
+  int ip1 = 0;
+  int ip2 = 0;
+};
+
 void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
   for (auto& proto : protos) {
     //    bool first_instance = true;
@@ -1306,6 +1426,10 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
       int draw_1_count = 0;
       int draw_2_count = 0;
       int ip_1_count = 0;
+
+      int normal_table_offset = 0;
+
+      NrmDebug nd;
 
       /////////////////////////////////////
       // SETUP
@@ -1454,9 +1578,12 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
           vertex_info.tex.z() = tex_coord.z();
+          vertex_info.envmap_tint_color = proto.tint_color;
+          vertex_info.nrm = frag.get_normal_if_present(normal_table_offset++);
 
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
           ASSERT(inserted);
+          nd.bp1++;
 
           if (reached_target) {
             past_target++;
@@ -1495,6 +1622,8 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
           vertex_info.tex.z() = tex_coord.z();
+          vertex_info.envmap_tint_color = proto.tint_color;
+          vertex_info.nrm = frag.get_normal_if_present(normal_table_offset++);
 
           // lg::print("double draw: {} {}\n", dest_ptr, dest2_ptr);
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
@@ -1512,6 +1641,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           }
 
           draw_2_count++;
+          nd.bp2++;
         }
 
         // setup
@@ -1616,10 +1746,12 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
           vertex_info.tex.z() = tex_coord.z();
+          vertex_info.envmap_tint_color = proto.tint_color;
+          vertex_info.nrm = frag.get_normal_if_present(normal_table_offset++);
 
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
           ASSERT(inserted);
-
+          nd.ip1++;
           ip_1_count++;
         }
 
@@ -1648,6 +1780,8 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
           vertex_info.tex.z() = tex_coord.z();
+          vertex_info.envmap_tint_color = proto.tint_color;
+          vertex_info.nrm = frag.get_normal_if_present(normal_table_offset++);
 
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
           ASSERT(inserted);
@@ -1659,6 +1793,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           if (!first_iter) {
             ASSERT(inserted2);
           }
+          nd.ip2++;
           first_iter = false;
           ip_1_count++;
         }
@@ -1668,6 +1803,13 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
       ASSERT(frag.vertex_by_dest_addr.size() == frag.expected_dverts);
 
     program_end:;
+      if (!frag.normal_data_packed.empty()) {
+        // check that we have a normal per point, if we have normals
+        size_t rounded_up_dvert = (nd.bp1 + nd.bp2 + nd.ip1 + nd.ip2) + 3;
+        rounded_up_dvert /= 4;
+        rounded_up_dvert *= 4;
+        ASSERT(rounded_up_dvert == frag.normal_data_packed.size());
+      }
       //      ASSERT(false);
     }
 
@@ -1696,6 +1838,7 @@ void emulate_kicks(std::vector<TieProtoInfo>& protos) {
       ASSERT(frag.prog_info.adgif_offset_in_gif_buf_qw.size() == frag.adgifs.size());
 
       const AdgifInfo* adgif_info = nullptr;
+      int adgif_info_idx = -1;
       int expected_next_tag = 0;
 
       // loop over strgifs
@@ -1705,6 +1848,7 @@ void emulate_kicks(std::vector<TieProtoInfo>& protos) {
           // yep
           int idx = adgif_it - frag.prog_info.adgif_offset_in_gif_buf_qw.begin();
           adgif_info = &frag.adgifs.at(idx);
+          adgif_info_idx = idx;
           // the next strgif should come 6 qw's after
           expected_next_tag += 6;
           adgif_it++;
@@ -1734,6 +1878,7 @@ void emulate_kicks(std::vector<TieProtoInfo>& protos) {
         frag.strips.emplace_back();
         auto& strip = frag.strips.back();
         strip.adgif = *adgif_info;
+        strip.adgif_idx = adgif_info_idx;
         // loop over all the vertices the strgif says we'll have
         for (int vtx = 0; vtx < str_it->nloop; vtx++) {
           // compute the address of this vertex (stored after the strgif)
@@ -1968,6 +2113,15 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
     // Cv = (Cs - Cd) * FIX + Cd
     ASSERT(reg.fix() == 64);
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_FIX_DST);
+  } else if (reg.a_mode() == GsAlpha::BlendMode::SOURCE &&
+             reg.b_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+             reg.c_mode() == GsAlpha::BlendMode::DEST && reg.d_mode() == GsAlpha::BlendMode::DEST) {
+    mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
+  } else if (reg.a_mode() == GsAlpha::BlendMode::SOURCE &&
+             reg.b_mode() == GsAlpha::BlendMode::SOURCE &&
+             reg.c_mode() == GsAlpha::BlendMode::SOURCE &&
+             reg.d_mode() == GsAlpha::BlendMode::SOURCE) {
+    mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_SRC_SRC_SRC);
   }
 
   else {
@@ -1979,34 +2133,101 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
 }
 
 /*!
+ * Get the draw mode settings that are pre-set for the entire bucket and not controlled by adgif
+ * shaders
+ */
+DrawMode get_base_draw_test_mode_jak2(bool use_tra, tfrag3::TieCategory category) {
+  DrawMode mode;
+  mode.enable_ab();
+  switch (category) {
+    case tfrag3::TieCategory::NORMAL:
+    case tfrag3::TieCategory::TRANS:
+      mode.enable_zt();
+      mode.set_depth_test(GsTest::ZTest::GEQUAL);
+      if (use_tra) {
+        mode.enable_at();
+        mode.set_aref(0x26);
+        mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+        mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
+      } else {
+        mode.disable_at();
+      }
+      break;
+    case tfrag3::TieCategory::WATER:
+    case tfrag3::TieCategory::WATER_ENVMAP:
+    case tfrag3::TieCategory::WATER_ENVMAP_SECOND_DRAW:
+      // (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal))
+      mode.enable_zt();
+      mode.set_depth_test(GsTest::ZTest::GEQUAL);
+      mode.enable_at();
+      mode.set_aref(0);
+      mode.set_alpha_fail(GsTest::AlphaFail::FB_ONLY);
+      mode.set_alpha_test(DrawMode::AlphaTest::NEVER);
+      break;
+
+    case tfrag3::TieCategory::NORMAL_ENVMAP:
+    case tfrag3::TieCategory::TRANS_ENVMAP:
+    case tfrag3::TieCategory::NORMAL_ENVMAP_SECOND_DRAW:
+    case tfrag3::TieCategory::TRANS_ENVMAP_SECOND_DRAW:
+      mode.enable_zt();
+      mode.set_depth_test(GsTest::ZTest::GEQUAL);
+      mode.disable_at();
+      break;
+
+    default:
+      ASSERT(false);
+  }
+  return mode;
+}
+
+/*!
  * Convert adgif info into a C++ renderer DrawMode.
  */
-DrawMode process_draw_mode(const AdgifInfo& info, bool use_atest, bool use_decal) {
+DrawMode process_draw_mode(const AdgifInfo& info,
+                           bool use_tra,
+                           bool use_decal,
+                           GameVersion version,
+                           tfrag3::TieCategory category) {
   DrawMode mode;
-  // some of these are set up once as part of tie initialization
-  mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
-
-  // the atest giftag is set up at the end of the VU program.
-  if (use_atest) {
-    mode.enable_at();
-    mode.set_aref(0x26);
-    mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+  if (version == GameVersion::Jak1) {
+    // some of these are set up once as part of tie initialization
     mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
+
+    // the atest giftag is set up at the end of the VU program.
+    if (use_tra) {
+      mode.enable_at();
+      mode.set_aref(0x26);
+      mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+      mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
+    } else {
+      mode.disable_at();
+    }
+    // set up once.
+    mode.enable_depth_write();
+    mode.enable_zt();                            // :zte #x1
+    mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
+    mode.disable_ab();
+    mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
   } else {
-    mode.disable_at();
+    mode = get_base_draw_test_mode_jak2(use_tra, category);
   }
+
   if (use_decal) {
     mode.enable_decal();
   }
-  // set up once.
-  mode.enable_depth_write();
-  mode.enable_zt();                            // :zte #x1
-  mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
-  mode.disable_ab();
-  mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
 
-  // the alpha matters
-  update_mode_from_alpha1(info.alpha_val, mode);
+  if (version == GameVersion::Jak1) {
+    // use alpha from adgif shader, that's what we did in the past (could be wrong?)
+    update_mode_from_alpha1(info.alpha_val, mode);
+  } else {
+    if (tfrag3::is_envmap_second_draw_category(category)) {
+      // envmap shader gets to control its own alpha
+      update_mode_from_alpha1(info.alpha_val, mode);
+    } else {
+      // non-envmap always get overriden (both the first draw of etie, and normal tie)
+      update_mode_from_alpha1(alpha_value_for_jak2_tie_or_etie_alpha_override(category), mode);
+    }
+  }
 
   // the clamp matters
   if (!(info.clamp_val == 0b101 || info.clamp_val == 0 || info.clamp_val == 1 ||
@@ -2018,6 +2239,222 @@ DrawMode process_draw_mode(const AdgifInfo& info, bool use_atest, bool use_decal
   mode.set_clamp_t_enable(info.clamp_val & 0b100);
 
   return mode;
+}
+
+DrawMode process_envmap_draw_mode(const AdgifInfo& info,
+                                  GameVersion version,
+                                  tfrag3::TieCategory category) {
+  // this is overwritten at log-in time.
+  // (set! (-> envmap-shader tex1) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+  // (set! (-> envmap-shader clamp) (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt
+  // (gs-tex-wrap-mode clamp))) (set! (-> envmap-shader alpha) (new 'static 'gs-alpha :b #x2 :c #x1
+  // :d #x1))
+  auto mode = process_draw_mode(info, false, false, version, category);
+  mode.set_filt_enable(true);
+  mode.set_clamp_s_enable(true);
+  mode.set_clamp_t_enable(true);
+  mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
+  return mode;
+}
+
+TieCategoryInfo get_jak1_tie_category(u32 flags) {
+  TieCategoryInfo result;
+  result.category = tfrag3::TieCategory::NORMAL;
+  result.uses_envmap = flags & 2;
+  return result;
+}
+
+u32 get_or_add_texture(u32 combo_tex, tfrag3::Level& lev, const TextureDB& tdb) {
+  // try looking it up in the existing textures that we have in the C++ renderer data.
+  // (this is shared with tfrag)
+  u32 idx_in_lev_data = UINT32_MAX;
+  for (u32 i = 0; i < lev.textures.size(); i++) {
+    if (lev.textures[i].combo_id == combo_tex) {
+      idx_in_lev_data = i;
+      break;
+    }
+  }
+
+  if (idx_in_lev_data == UINT32_MAX) {
+    if (combo_tex == 0) {
+      //              lg::warn("unhandled texture 0 case in extract_tie for {} {}",
+      //              lev.level_name,
+      //                       proto.name);
+      idx_in_lev_data = 0;
+    } else {
+      // didn't find it, have to add a new one texture.
+      auto tex_it = tdb.textures.find(combo_tex);
+      if (tex_it == tdb.textures.end()) {
+        bool ok_to_miss = false;  // for TIE, there's no missing textures.
+        if (ok_to_miss) {
+          // we're missing a texture, just use the first one.
+          tex_it = tdb.textures.begin();
+        } else {
+          ASSERT_MSG(
+              false,
+              fmt::format("texture {} wasn't found. make sure it is loaded somehow. You may need "
+                          "to "
+                          "include ART.DGO or GAME.DGO in addition to the level DGOs for shared "
+                          "textures. tpage is {}. id is {} (0x{:x})",
+                          combo_tex, combo_tex >> 16, combo_tex & 0xffff, combo_tex & 0xffff));
+        }
+      }
+      // add a new texture to the level data
+      idx_in_lev_data = lev.textures.size();
+      lev.textures.emplace_back();
+      auto& new_tex = lev.textures.back();
+      new_tex.combo_id = combo_tex;
+      new_tex.w = tex_it->second.w;
+      new_tex.h = tex_it->second.h;
+      new_tex.debug_name = tex_it->second.name;
+      new_tex.debug_tpage_name = tdb.tpage_names.at(tex_it->second.page);
+      new_tex.data = tex_it->second.rgba_bytes;
+    }
+  }
+  return idx_in_lev_data;
+}
+
+void handle_wind_draw_for_strip(
+    tfrag3::TieTree& tree,
+    std::unordered_map<u32, std::vector<u32>>& wind_draws_by_tex,
+    const std::vector<std::vector<std::pair<int, int>>>& packed_vert_indices,
+    u32 idx_in_lev_data,
+    DrawMode mode,
+    const TieStrip& strip,
+    const TieInstanceInfo& inst,
+    const TieInstanceFragInfo& ifrag,
+    u32 wind_instance_idx,
+    u32 frag_idx,
+    u32 strip_idx) {
+  // okay, we now have a texture and draw mode, let's see if we can add to an existing...
+  auto existing_draws_in_tex = wind_draws_by_tex.find(idx_in_lev_data);
+  tfrag3::InstancedStripDraw* draw_to_add_to = nullptr;
+  if (existing_draws_in_tex != wind_draws_by_tex.end()) {
+    for (auto idx : existing_draws_in_tex->second) {
+      if (tree.instanced_wind_draws.at(idx).mode == mode) {
+        draw_to_add_to = &tree.instanced_wind_draws[idx];
+      }
+    }
+  }
+
+  if (!draw_to_add_to) {
+    // nope no existing draw for these settings, need to create a new draw
+    tree.instanced_wind_draws.emplace_back();
+    wind_draws_by_tex[idx_in_lev_data].push_back(tree.instanced_wind_draws.size() - 1);
+    draw_to_add_to = &tree.instanced_wind_draws.back();
+    draw_to_add_to->mode = mode;
+    draw_to_add_to->tree_tex_id = idx_in_lev_data;
+  }
+
+  // now we have a draw, time to add vertices. We make a vertex "group" which is a group
+  // of vertices that the renderer can decide to not draw based on visibility data.
+  tfrag3::InstancedStripDraw::InstanceGroup igroup;
+  // needs to be associated with this instance.
+  igroup.vis_idx = inst.vis_id;  // associate with the instance for culling
+  // number of vertices. The +1 is for the primitive restart index, which tells opengl
+  // that the triangle strip is done.
+  igroup.num = strip.verts.size() + 1;
+  // groups for instances also need the instance idx to grab the appropriate wind/matrix
+  // data.
+  igroup.instance_idx = wind_instance_idx;
+  draw_to_add_to->num_triangles += strip.verts.size() - 2;
+  // note: this is a bit wasteful to duplicate the xyz/stq.
+  tfrag3::PackedTieVertices::MatrixGroup grp;
+  grp.matrix_idx = -1;
+  grp.start_vert = packed_vert_indices.at(frag_idx).at(strip_idx).first;
+  grp.end_vert = packed_vert_indices.at(frag_idx).at(strip_idx).second;
+  tree.packed_vertices.matrix_groups.push_back(grp);
+  for (auto& vert : strip.verts) {
+    u16 color_index = 0;
+    if (vert.color_index_index == UINT32_MAX) {
+      color_index = 0;
+    } else {
+      color_index = ifrag.color_indices.at(vert.color_index_index);
+      ASSERT(vert.color_index_index < ifrag.color_indices.size());
+      color_index += ifrag.color_index_offset_in_big_palette;
+    }
+
+    size_t vert_idx = tree.packed_vertices.color_indices.size();
+    tree.packed_vertices.color_indices.push_back(color_index);
+    draw_to_add_to->vertex_index_stream.push_back(vert_idx);
+  }
+
+  // the primitive restart index
+  draw_to_add_to->vertex_index_stream.push_back(UINT32_MAX);
+  draw_to_add_to->instance_groups.push_back(igroup);
+}
+
+void handle_draw_for_strip(tfrag3::TieTree& tree,
+                           std::unordered_map<u32, std::vector<u32>>& static_draws_by_tex,
+                           std::vector<tfrag3::StripDraw>& category_draws,
+                           const std::vector<std::vector<std::pair<int, int>>>& packed_vert_indices,
+                           DrawMode mode,
+                           u32 idx_in_lev_data,
+                           const TieStrip& strip,
+                           const TieInstanceInfo& inst,
+                           const TieInstanceFragInfo& ifrag,
+                           u32 proto_idx,
+                           u32 frag_idx,
+                           u32 strip_idx,
+                           u32 matrix_idx) {
+  // okay, we now have a texture and draw mode, let's see if we can add to an existing...
+  auto existing_draws_in_tex = static_draws_by_tex.find(idx_in_lev_data);
+  tfrag3::StripDraw* draw_to_add_to = nullptr;
+  if (existing_draws_in_tex != static_draws_by_tex.end()) {
+    for (auto idx : existing_draws_in_tex->second) {
+      if (idx < category_draws.size() && category_draws.at(idx).mode == mode &&
+          category_draws.at(idx).tree_tex_id == idx_in_lev_data) {
+        draw_to_add_to = &category_draws[idx];
+      }
+    }
+  }
+
+  if (!draw_to_add_to) {
+    // nope, need to create a new draw
+    category_draws.emplace_back();
+    static_draws_by_tex[idx_in_lev_data].push_back(category_draws.size() - 1);
+    draw_to_add_to = &category_draws.back();
+    draw_to_add_to->mode = mode;
+    draw_to_add_to->tree_tex_id = idx_in_lev_data;
+  }
+
+  // now we have a draw, time to add vertices
+  tfrag3::StripDraw::VisGroup vgroup;
+  ASSERT(inst.vis_id < UINT16_MAX);
+  vgroup.vis_idx_in_pc_bvh = inst.vis_id;  // associate with the instance for culling
+
+  // only bother with tie proto idx if we use it
+  if (tree.has_per_proto_visibility_toggle) {
+    ASSERT(proto_idx < UINT16_MAX);
+    vgroup.tie_proto_idx = proto_idx;
+  }
+
+  vgroup.num_inds = strip.verts.size() + 1;  // one for the primitive restart!
+  vgroup.num_tris = strip.verts.size() - 2;
+  draw_to_add_to->num_triangles += strip.verts.size() - 2;
+  tfrag3::PackedTieVertices::MatrixGroup grp;
+  grp.matrix_idx = matrix_idx;
+  grp.start_vert = packed_vert_indices.at(frag_idx).at(strip_idx).first;
+  grp.end_vert = packed_vert_indices.at(frag_idx).at(strip_idx).second;
+
+  tree.packed_vertices.matrix_groups.push_back(grp);
+  tfrag3::StripDraw::VertexRun run;
+  run.vertex0 = tree.packed_vertices.color_indices.size();
+  run.length = strip.verts.size();
+  for (auto& vert : strip.verts) {
+    u16 color_index = 0;
+    if (vert.color_index_index == UINT32_MAX) {
+      color_index = 0;
+    } else {
+      color_index = ifrag.color_indices.at(vert.color_index_index);
+      ASSERT(vert.color_index_index < ifrag.color_indices.size());
+      color_index += ifrag.color_index_offset_in_big_palette;
+    }
+
+    tree.packed_vertices.color_indices.push_back(color_index);
+  }
+  draw_to_add_to->runs.push_back(run);
+  draw_to_add_to->vis_groups.push_back(vgroup);
 }
 
 /*!
@@ -2033,6 +2470,8 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
   std::unordered_map<u32, std::vector<u32>> static_draws_by_tex;
   std::unordered_map<u32, std::vector<u32>> wind_draws_by_tex;
 
+  std::array<std::vector<tfrag3::StripDraw>, tfrag3::kNumTieCategories> draws_by_category;
+
   if (version > GameVersion::Jak1) {
     tree.has_per_proto_visibility_toggle = true;
   }
@@ -2044,12 +2483,33 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
       tree.proto_names.push_back(proto.name);
     }
 
-    if (proto.uses_generic) {
-      // generic ties go through generic
+    TieCategoryInfo info;
+    switch (version) {
+      case GameVersion::Jak1:
+        info = get_jak1_tie_category(proto.proto_flag);
+        break;
+      case GameVersion::Jak2:
+        info = get_jak2_tie_category(proto.proto_flag);
+        break;
+      default:
+        ASSERT_NOT_REACHED();
+    }
+
+    if (info.uses_envmap && version == GameVersion::Jak1) {
+      // envmap ties go through generic (for now...)
       continue;
     }
+
     //    bool using_wind = true;  // hack, for testing
     bool using_wind = proto.stiffness != 0.f;
+
+    bool using_envmap = info.uses_envmap;
+    ASSERT(using_envmap == proto.envmap_adgif.has_value());
+    DrawMode envmap_drawmode;
+    if (using_envmap) {
+      envmap_drawmode = process_envmap_draw_mode(proto.envmap_adgif.value(), version,
+                                                 info.envmap_second_draw_category);
+    }
 
     // create the model first
     std::vector<std::vector<std::pair<int, int>>> packed_vert_indices;
@@ -2061,7 +2521,9 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
         int start = tree.packed_vertices.vertices.size();
         for (auto& vert : strip.verts) {
           tree.packed_vertices.vertices.push_back(
-              {vert.pos.x(), vert.pos.y(), vert.pos.z(), vert.tex.x(), vert.tex.y()});
+              {vert.pos.x(), vert.pos.y(), vert.pos.z(), vert.tex.x(), vert.tex.y(), vert.nrm.x(),
+               vert.nrm.y(), vert.nrm.z(), vert.envmap_tint_color.x(), vert.envmap_tint_color.y(),
+               vert.envmap_tint_color.z(), vert.envmap_tint_color.w()});
           // TODO: check if this means anything.
           // ASSERT(vert.tex.z() == 1.);
         }
@@ -2095,177 +2557,38 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
         // loop over triangle strips within the fragment
         for (size_t strip_idx = 0; strip_idx < frag.strips.size(); strip_idx++) {
           auto& strip = frag.strips[strip_idx];
-          // what texture are we using?
-          u32 combo_tex = strip.adgif.combo_tex;
 
-          // try looking it up in the existing textures that we have in the C++ renderer data.
-          // (this is shared with tfrag)
-          u32 idx_in_lev_data = UINT32_MAX;
-          for (u32 i = 0; i < lev.textures.size(); i++) {
-            if (lev.textures[i].combo_id == combo_tex) {
-              idx_in_lev_data = i;
-              break;
-            }
-          }
-
-          if (idx_in_lev_data == UINT32_MAX) {
-            if (combo_tex == 0) {
-              lg::warn("unhandled texture 0 case in extract_tie for {} {}", lev.level_name,
-                       proto.name);
-              idx_in_lev_data = 0;
-            } else {
-              // didn't find it, have to add a new one texture.
-              auto tex_it = tdb.textures.find(combo_tex);
-              if (tex_it == tdb.textures.end()) {
-                bool ok_to_miss = false;  // for TIE, there's no missing textures.
-                if (ok_to_miss) {
-                  // we're missing a texture, just use the first one.
-                  tex_it = tdb.textures.begin();
-                } else {
-                  ASSERT_MSG(
-                      false,
-                      fmt::format(
-                          "texture {} wasn't found. make sure it is loaded somehow. You may need "
-                          "to "
-                          "include ART.DGO or GAME.DGO in addition to the level DGOs for shared "
-                          "textures. tpage is {}. id is {} (0x{:x})",
-                          combo_tex, combo_tex >> 16, combo_tex & 0xffff, combo_tex & 0xffff));
-                }
-              }
-              // add a new texture to the level data
-              idx_in_lev_data = lev.textures.size();
-              lev.textures.emplace_back();
-              auto& new_tex = lev.textures.back();
-              new_tex.combo_id = combo_tex;
-              new_tex.w = tex_it->second.w;
-              new_tex.h = tex_it->second.h;
-              new_tex.debug_name = tex_it->second.name;
-              new_tex.debug_tpage_name = tdb.tpage_names.at(tex_it->second.page);
-              new_tex.data = tex_it->second.rgba_bytes;
-            }
-          }
-
+          u32 idx_in_lev_data = get_or_add_texture(strip.adgif.combo_tex, lev, tdb);
           // determine the draw mode
-          DrawMode mode =
-              process_draw_mode(strip.adgif, frag.prog_info.misc_x == 0, frag.has_magic_tex0_bit);
+          DrawMode mode = process_draw_mode(strip.adgif, frag.prog_info.misc_x == 0,
+                                            frag.has_magic_tex0_bit, version, info.category);
 
           if (using_wind) {
-            // okay, we now have a texture and draw mode, let's see if we can add to an existing...
-            auto existing_draws_in_tex = wind_draws_by_tex.find(idx_in_lev_data);
-            tfrag3::InstancedStripDraw* draw_to_add_to = nullptr;
-            if (existing_draws_in_tex != wind_draws_by_tex.end()) {
-              for (auto idx : existing_draws_in_tex->second) {
-                if (tree.instanced_wind_draws.at(idx).mode == mode) {
-                  draw_to_add_to = &tree.instanced_wind_draws[idx];
-                }
-              }
-            }
-
-            if (!draw_to_add_to) {
-              // nope no existing draw for these settings, need to create a new draw
-              tree.instanced_wind_draws.emplace_back();
-              wind_draws_by_tex[idx_in_lev_data].push_back(tree.instanced_wind_draws.size() - 1);
-              draw_to_add_to = &tree.instanced_wind_draws.back();
-              draw_to_add_to->mode = mode;
-              draw_to_add_to->tree_tex_id = idx_in_lev_data;
-            }
-
-            // now we have a draw, time to add vertices. We make a vertex "group" which is a group
-            // of vertices that the renderer can decide to not draw based on visibility data.
-            tfrag3::InstancedStripDraw::InstanceGroup igroup;
-            // needs to be associated with this instance.
-            igroup.vis_idx = inst.vis_id;  // associate with the instance for culling
-            // number of vertices. The +1 is for the primitive restart index, which tells opengl
-            // that the triangle strip is done.
-            igroup.num = strip.verts.size() + 1;
-            // groups for instances also need the instance idx to grab the appropriate wind/matrix
-            // data.
-            igroup.instance_idx = wind_instance_idx;
-            draw_to_add_to->num_triangles += strip.verts.size() - 2;
-            // note: this is a bit wasteful to duplicate the xyz/stq.
-            tfrag3::PackedTieVertices::MatrixGroup grp;
-            grp.matrix_idx = -1;
-            grp.start_vert = packed_vert_indices.at(frag_idx).at(strip_idx).first;
-            grp.end_vert = packed_vert_indices.at(frag_idx).at(strip_idx).second;
-            tree.packed_vertices.matrix_groups.push_back(grp);
-            for (auto& vert : strip.verts) {
-              u16 color_index = 0;
-              if (vert.color_index_index == UINT32_MAX) {
-                color_index = 0;
-              } else {
-                color_index = ifrag.color_indices.at(vert.color_index_index);
-                ASSERT(vert.color_index_index < ifrag.color_indices.size());
-                color_index += ifrag.color_index_offset_in_big_palette;
-              }
-
-              size_t vert_idx = tree.packed_vertices.color_indices.size();
-              tree.packed_vertices.color_indices.push_back(color_index);
-              draw_to_add_to->vertex_index_stream.push_back(vert_idx);
-            }
-
-            // the primitive restart index
-            draw_to_add_to->vertex_index_stream.push_back(UINT32_MAX);
-            draw_to_add_to->instance_groups.push_back(igroup);
-
+            handle_wind_draw_for_strip(tree, wind_draws_by_tex, packed_vert_indices,
+                                       idx_in_lev_data, mode, strip, inst, ifrag, wind_instance_idx,
+                                       frag_idx, strip_idx);
           } else {
-            // okay, we now have a texture and draw mode, let's see if we can add to an existing...
-            auto existing_draws_in_tex = static_draws_by_tex.find(idx_in_lev_data);
-            tfrag3::StripDraw* draw_to_add_to = nullptr;
-            if (existing_draws_in_tex != static_draws_by_tex.end()) {
-              for (auto idx : existing_draws_in_tex->second) {
-                if (tree.static_draws.at(idx).mode == mode) {
-                  draw_to_add_to = &tree.static_draws[idx];
-                }
-              }
+            // also add the envmap draw
+            if (info.uses_envmap) {
+              // first pass: normal draw mode, envmap bucket, normal draw list
+              handle_draw_for_strip(tree, static_draws_by_tex,
+                                    draws_by_category.at((int)info.category), packed_vert_indices,
+                                    mode, idx_in_lev_data, strip, inst, ifrag, proto_idx, frag_idx,
+                                    strip_idx, matrix_idx);
+              u32 envmap_tex_idx =
+                  get_or_add_texture(proto.envmap_adgif.value().combo_tex, lev, tdb);
+
+              // second pass envmap draw mode, in envmap bucket, envmap-specific draw list
+              handle_draw_for_strip(tree, static_draws_by_tex,
+                                    draws_by_category.at((int)info.envmap_second_draw_category),
+                                    packed_vert_indices, envmap_drawmode, envmap_tex_idx, strip,
+                                    inst, ifrag, proto_idx, frag_idx, strip_idx, matrix_idx);
+            } else {
+              handle_draw_for_strip(tree, static_draws_by_tex,
+                                    draws_by_category.at((int)info.category), packed_vert_indices,
+                                    mode, idx_in_lev_data, strip, inst, ifrag, proto_idx, frag_idx,
+                                    strip_idx, matrix_idx);
             }
-
-            if (!draw_to_add_to) {
-              // nope, need to create a new draw
-              tree.static_draws.emplace_back();
-              static_draws_by_tex[idx_in_lev_data].push_back(tree.static_draws.size() - 1);
-              draw_to_add_to = &tree.static_draws.back();
-              draw_to_add_to->mode = mode;
-              draw_to_add_to->tree_tex_id = idx_in_lev_data;
-            }
-
-            // now we have a draw, time to add vertices
-            tfrag3::StripDraw::VisGroup vgroup;
-            ASSERT(inst.vis_id < UINT16_MAX);
-            vgroup.vis_idx_in_pc_bvh = inst.vis_id;  // associate with the instance for culling
-
-            // only bother with tie proto idx if we use it
-            if (tree.has_per_proto_visibility_toggle) {
-              ASSERT(proto_idx < UINT16_MAX);
-              vgroup.tie_proto_idx = proto_idx;
-            }
-
-            vgroup.num_inds = strip.verts.size() + 1;  // one for the primitive restart!
-            vgroup.num_tris = strip.verts.size() - 2;
-            draw_to_add_to->num_triangles += strip.verts.size() - 2;
-            tfrag3::PackedTieVertices::MatrixGroup grp;
-            grp.matrix_idx = matrix_idx;
-            grp.start_vert = packed_vert_indices.at(frag_idx).at(strip_idx).first;
-            grp.end_vert = packed_vert_indices.at(frag_idx).at(strip_idx).second;
-            tree.packed_vertices.matrix_groups.push_back(grp);
-            tfrag3::StripDraw::VertexRun run;
-            run.vertex0 = tree.packed_vertices.color_indices.size();
-            run.length = strip.verts.size();
-            for (auto& vert : strip.verts) {
-              u16 color_index = 0;
-              if (vert.color_index_index == UINT32_MAX) {
-                color_index = 0;
-              } else {
-                color_index = ifrag.color_indices.at(vert.color_index_index);
-                ASSERT(vert.color_index_index < ifrag.color_indices.size());
-                color_index += ifrag.color_index_offset_in_big_palette;
-              }
-
-              tree.packed_vertices.color_indices.push_back(color_index);
-              // draw_to_add_to->vertex_index_stream.push_back(vert_idx);
-            }
-            draw_to_add_to->runs.push_back(run);
-            // draw_to_add_to->vertex_index_stream.push_back(UINT32_MAX);
-            draw_to_add_to->vis_groups.push_back(vgroup);
           }
         }
       }
@@ -2274,10 +2597,20 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
 
   // sort draws by texture. no idea if this really matters, but will reduce the number of
   // times the renderer changes textures. it at least makes the rendererdoc debugging easier.
-  std::stable_sort(tree.static_draws.begin(), tree.static_draws.end(),
-                   [](const tfrag3::StripDraw& a, const tfrag3::StripDraw& b) {
-                     return a.tree_tex_id < b.tree_tex_id;
-                   });
+  for (auto& draws : draws_by_category) {
+    std::stable_sort(draws.begin(), draws.end(),
+                     [](const tfrag3::StripDraw& a, const tfrag3::StripDraw& b) {
+                       return a.tree_tex_id < b.tree_tex_id;
+                     });
+  }
+
+  ASSERT(tree.static_draws.empty());
+  tree.category_draw_indices[0] = 0;
+  for (int i = 0; i < tfrag3::kNumTieCategories; i++) {
+    tree.static_draws.insert(tree.static_draws.end(), draws_by_category[i].begin(),
+                             draws_by_category[i].end());
+    tree.category_draw_indices[i + 1] = tree.static_draws.size();
+  }
 }
 
 /*!

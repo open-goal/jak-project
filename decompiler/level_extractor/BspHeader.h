@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "common/common_types.h"
+#include "common/math/Vector.h"
 #include "common/versions.h"
 
 #include "decompiler/level_extractor/common_formats.h"
@@ -406,6 +407,8 @@ struct TieFragment : public Drawable {
 
   std::string debug_label_name;
 
+  std::vector<s8> normals;
+
   // todo, lots more
 };
 
@@ -479,7 +482,9 @@ struct PrototypeBucketTie {
 
   TimeOfDayPalette time_of_day;
 
-  // todo envmap shader
+  bool has_envmap_shader = false;
+  u8 envmap_shader[5 * 16];  // jak 2 only
+  math::Vector<u8, 4> tint_color;
   // todo collide-frag
   DrawableInlineArrayCollideFragment collide_frag;
   // todo tie-colors

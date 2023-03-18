@@ -225,6 +225,8 @@ VuDisassembler::VuDisassembler(VuKind kind) : m_kind(kind) {
   add_op(VuInstrK::SQRT, "sqrt").fsf_zero().ftf_0().vis_zero().dst_q().src_vft();
   add_op(VuInstrK::SQD, "sqd").dst_mask().src_vfs().src_vit();
   add_op(VuInstrK::ERLENG, "erleng").dst_mask().vft_zero().src_vfs().dst_p();
+  add_op(VuInstrK::ESUM, "esum").dst_mask().vft_zero().src_vfs().dst_p();
+  add_op(VuInstrK::ESADD, "esadd").dst_mask().vft_zero().src_vfs().dst_p();
   add_op(VuInstrK::ELENG, "eleng").dst_mask().vft_zero().src_vfs().dst_p();
   add_op(VuInstrK::MFP, "mfp").dst_mask().dst_vft().src_p();
 }
@@ -294,10 +296,14 @@ VuInstrK VuDisassembler::lower_kind(u32 in) {
         return VuInstrK::XTOP;
       case 0b11011'1111'00:
         return VuInstrK::XGKICK;
+      case 0b11100'1111'00:
+        return VuInstrK::ESADD;
       case 0b11100'1111'10:
         return VuInstrK::ELENG;
       case 0b11100'1111'11:
         return VuInstrK::ERLENG;
+      case 0b11101'1111'10:
+        return VuInstrK::ESUM;
       case 0b11110'1111'11:
         return VuInstrK::WAITP;
     }

@@ -111,7 +111,7 @@ void runtime_no_kernel_jak1() {
   const char* argv[argc] = {"", "-fakeiso", "-debug", "-nokernel", "-nosound"};
   GameLaunchOptions game_options;
   game_options.disable_display = true;
-  exec_runtime(game_options, argc, const_cast<char**>(argv));
+  exec_runtime(game_options, argc, argv);
 }
 
 void runtime_no_kernel_jak2() {
@@ -120,7 +120,7 @@ void runtime_no_kernel_jak2() {
   GameLaunchOptions game_options;
   game_options.disable_display = true;
   game_options.game_version = GameVersion::Jak2;
-  exec_runtime(game_options, argc, const_cast<char**>(argv));
+  exec_runtime(game_options, argc, argv);
 }
 
 void runtime_with_kernel_jak1() {
@@ -128,7 +128,7 @@ void runtime_with_kernel_jak1() {
   const char* argv[argc] = {"", "-fakeiso", "-debug", "-nosound"};
   GameLaunchOptions game_options;
   game_options.disable_display = true;
-  exec_runtime(game_options, argc, const_cast<char**>(argv));
+  exec_runtime(game_options, argc, argv);
 }
 
 void runtime_with_kernel_jak2() {
@@ -137,7 +137,7 @@ void runtime_with_kernel_jak2() {
   GameLaunchOptions game_options;
   game_options.disable_display = true;
   game_options.game_version = GameVersion::Jak2;
-  exec_runtime(game_options, argc, const_cast<char**>(argv));
+  exec_runtime(game_options, argc, argv);
 }
 
 void runtime_with_kernel_no_debug_segment() {
@@ -145,7 +145,7 @@ void runtime_with_kernel_no_debug_segment() {
   const char* argv[argc] = {"", "-fakeiso", "-debug-mem", "-nosound"};
   GameLaunchOptions game_options;
   game_options.disable_display = true;
-  exec_runtime(game_options, argc, const_cast<char**>(argv));
+  exec_runtime(game_options, argc, argv);
 }
 
 void createDirIfAbsent(const std::string& path) {

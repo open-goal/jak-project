@@ -91,8 +91,8 @@ int main(int argc, char** argv) {
   //
   // Only handling args the launcher provides, all others can be changed
   // in this repo at the time of merge.
-  std::vector<char*> adjusted_argv_vals;
-  std::vector<char*> adjusted_argv_vals_passthru;
+  std::vector<const char*> adjusted_argv_vals;
+  std::vector<const char*> adjusted_argv_vals_passthru;
   for (int i = 0; i < argc; i++) {
     const auto& val = std::string(argv[i]);
     // Handle all args that aren't passed through
@@ -117,7 +117,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  std::vector<char*> new_argv;
+  std::vector<const char*> new_argv;
   if (!adjusted_argv_vals.empty() || !adjusted_argv_vals_passthru.empty()) {
     new_argv.push_back(argv[0]);
     for (const auto& arg : adjusted_argv_vals) {
@@ -129,7 +129,7 @@ int main(int argc, char** argv) {
         new_argv.push_back(arg);
       }
     }
-    argv = new_argv.data();
+    argv = (char**)new_argv.data();
     argc = new_argv.size();
   }
   // --- END temporary shim
@@ -209,7 +209,7 @@ int main(int argc, char** argv) {
 
   bool force_debug_next_time = false;
   // always start with an empty arg, as internally kmachine starts at `1` not `0`
-  std::vector<char*> arg_ptrs = {""};
+  std::vector<const char*> arg_ptrs = {""};
   for (auto& str : game_args) {
     arg_ptrs.push_back(str.data());
   }
