@@ -489,12 +489,16 @@
       )
   )
 
-(defmacro add-monitor-option (text-id monitor)
+(defmacro add-monitor-option (text-id display-id)
   "add a display button to *temp-options* with specified size"
-  `(let ((option (-> *temp-options* (length *temp-options*))))
+  `(let ((option (-> *temp-options* (length *temp-options*)))
+         (name (pc-get-display-name ,display-id)))
       (set! (-> option option-type) (game-option-type monitor))
-      (set! (-> option name) ,text-id)
-      (set! (-> option param1) (the float ,monitor))
+      ;; Use the name of the display if it's available
+      (if name
+        (set! (-> option name-override) name)
+        (set! (-> option name) ,text-id))
+      (set! (-> option param1) (the float ,display-id))
       (set! (-> option scale) #t)
 
       (1+! (-> *temp-options* length))
@@ -517,7 +521,7 @@
   (set! (-> *temp-options* length) 0)
 
   (let* ((done? #f) (mult (find-highest-resolution)) (sx 0) (sy 0)
-        (display-mode (pc-get-fullscreen))
+        (display-mode (pc-get-display-mode))
         ;; hack - do not use screen resolution in windowed mode, taskbar etc. messes it up and makes it useless!
         (skip? (= 'windowed display-mode))
         ;; shortcut
@@ -591,7 +595,7 @@
 (defun build-monitor-options ()
   (set! (-> *temp-options* length) 0)
 
-  (dotimes (i (pc-get-monitor-count))
+  (dotimes (i (pc-get-display-count))
     (add-monitor-option (game-text-id display-fmt) i)
     )
 
@@ -1482,7 +1486,7 @@
                   )
                  (((game-option-type display-mode))
                   ;; display-mode just reuses language stuff
-                  (case (pc-get-fullscreen)
+                  (case (pc-get-display-mode)
                     (('windowed #f) (set! (-> *progress-carousell* int-backup) 0))
                     (('fullscreen #t) (set! (-> *progress-carousell* int-backup) 1))
                     (('borderless) (set! (-> *progress-carousell* int-backup) 2))
@@ -2012,11 +2016,14 @@
              )
             (((game-option-type monitor))
               ;; monitor list
-             (set! option-str
-                   (string-format (lookup-text! *common-text* (-> options index name) #f)
-                                  (+ 1 (the int (-> options index param1)))
-                                  )
-                   )
+             (if (nonzero? (-> options index name-override))
+                 (set! option-str
+                       (string-format "~S (~D)"
+                                      (-> options index name-override)
+                                      (+ 1 (the int (-> options index param1)))))
+                 (set! option-str
+                       (string-format (lookup-text! *common-text* (-> options index name) #f)
+                                      (+ 1 (the int (-> options index param1))))))
              )
             (else
              (cond

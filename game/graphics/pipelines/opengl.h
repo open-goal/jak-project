@@ -23,10 +23,7 @@ class GLDisplay : public GfxDisplay {
   std::shared_ptr<DisplayMonitor> get_display_monitor() const override { return m_display_monitor; }
   std::shared_ptr<InputMonitor> get_input_monitor() const override { return m_input_monitor; }
 
-  void update_fullscreen(WindowDisplayMode mode, int screen) override {};
   void render() override;
-  bool fullscreen_pending() override { return false;  };
-  void fullscreen_flush() override { GfxDisplay::fullscreen_flush(); };
 
  private:
   SDL_Window* m_window;
@@ -43,6 +40,7 @@ class GLDisplay : public GfxDisplay {
   double last_cursor_x_position = 0;
   double last_cursor_y_position = 0;
 
+  // TODO - all duplication....and likely not needed, more into display manager
   struct DisplayState {
     // move it a bit away from the top by default
     s32 window_pos_x = 50;

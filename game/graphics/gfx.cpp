@@ -283,6 +283,13 @@ int get_connected_display_count() {
   return 0;
 }
 
+std::string get_connected_display_name(int id) {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_display_monitor()->get_connected_display_name(id);
+  }
+  return "";
+}
+
 int get_active_display_mode_count() {
   if (Display::GetMainDisplay()) {
     return Display::GetMainDisplay()->get_display_monitor()->get_active_display_mode_count();

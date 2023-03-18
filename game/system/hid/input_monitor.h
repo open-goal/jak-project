@@ -16,14 +16,15 @@
 
 #include "third-party/SDL/include/SDL.h"
 
-// Controller:
-//- Ports
-// - connecting controller live
-//- Register function handlers like for screenshots/hiding debug bar
-//   - controller or keyboard+mouse should be able to use this
-//   - screenshot key
-// - controller selecton
-//- Custom binds (read/write to JSON)
+/*
+TODO:
+  - Ports
+  - Hotswapping
+  - Register functions (ie. screenshots / hiding imgui)
+  - Controller Selection
+  - Custom Binds from JSON
+  - PS4/PS5 color customizing
+*/
 
 struct PadData {
   enum AnalogIndex { LEFT_X = 0, LEFT_Y, RIGHT_X, RIGHT_Y = 3 };

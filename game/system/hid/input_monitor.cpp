@@ -277,6 +277,7 @@ void InputMonitor::process_sdl_event(const SDL_Event& event) {
   // TODO - do we care about remap events?
   if (sdl_util::is_any_event_type(event.type,
                                   {SDL_CONTROLLERDEVICEADDED, SDL_CONTROLLERDEVICEREMOVED})) {
+    lg::info("Controller added or removed. refreshing controller device list");
     refresh_device_list();
   }
 

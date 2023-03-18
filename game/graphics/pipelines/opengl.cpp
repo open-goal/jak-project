@@ -478,9 +478,10 @@ void GLDisplay::render() {
   SDL_GL_GetDrawableSize(m_window, &fbuf_w, &fbuf_h);
   bool windows_borderless_hacks = false;
 #ifdef _WIN32
-  if (last_fullscreen_mode() == WindowDisplayMode::Borderless) {
+  // TODO - needed?
+  /*if (last_fullscreen_mode() == WindowDisplayMode::Borderless) {
     windows_borderless_hacks = true;
-  }
+  }*/
 #endif
 
   // render game!
@@ -514,11 +515,12 @@ void GLDisplay::render() {
   // update fullscreen mode, if requested
   {
     auto p = scoped_prof("fullscreen-update");
-    update_last_fullscreen_mode();
+    // TODO - needed...?
+    /*update_last_fullscreen_mode();
 
     if (fullscreen_pending() && !m_display_monitor->is_minimized()) {
       fullscreen_flush();
-    }
+    }*/
   }
 
   // actual vsync

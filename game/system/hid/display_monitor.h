@@ -1,22 +1,26 @@
 #pragma once
 
 #include <optional>
+#include <string>
 #include <unordered_map>
 
 #include "third-party/SDL/include/SDL.h"
 
-/*Video:
-- Show/Hide cursor based on if mouse controls are enabled
-- Window position
-  - Set it on startup properly
-- Monitor stuff
-- fullscreen/borderless/windowed
-- scale
-- lock resizable window
+/*
+TODO:
+  - Show/Hide cursor based on if mouse controls are enabled
+  - Window position
+    - Set it on startup properly
+  - Monitor stuff
+  - fullscreen/borderless/windowed
+  - scale
+  - lock resizable window
+  - hiDPI support
+    - see https://wiki.libsdl.org/SDL2/SDL_GetRendererOutputSize
 */
 
 // TODO - is force update stil needed?
-enum WindowDisplayMode { ForceUpdate = -1, Windowed = 0, Fullscreen = 1, Borderless = 2 };
+enum WindowDisplayMode { Windowed = 0, Fullscreen = 1, Borderless = 2 };
 
 /// https://wiki.libsdl.org/SDL2/SDL_DisplayMode
 struct DisplayMode {
@@ -47,6 +51,7 @@ class DisplayMonitor {
   float get_window_scale_x() { return m_window_scale_x; }
   float get_window_scale_y() { return m_window_scale_y; }
   int num_connected_displays() { return m_display_modes.size(); }
+  std::string get_connected_display_name(int id);
   int get_active_display_mode_count() {
     if (m_display_modes.find(m_active_display_id) != m_display_modes.end()) {
       return m_display_modes.at(m_active_display_id).size();
@@ -81,13 +86,8 @@ class DisplayMonitor {
       SDL_SetWindowResizable(m_window, resizable ? SDL_TRUE : SDL_FALSE);
     }
   }
-  void set_window_size(int width, int height) {
-    // TODO update via SDL and let the event update the params?
-  }
-  void set_window_display_mode(WindowDisplayMode mode) {
-    m_window_display_mode = mode;
-    // TODO - do something to update the screen?
-  }
+  void set_window_size(int width, int height);
+  void set_window_display_mode(WindowDisplayMode mode);
 
  private:
   SDL_Window* m_window;

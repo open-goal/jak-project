@@ -557,7 +557,7 @@ void update_discord_rpc(u32 discord_info) {
   }
 }
 
-u32 get_fullscreen() {
+u32 get_display_mode() {
   switch (Gfx::get_window_display_mode()) {
     default:
     case WindowDisplayMode::Windowed:
@@ -569,8 +569,8 @@ u32 get_fullscreen() {
   }
 }
 
-// TODO - remove screen
-void set_fullscreen(u32 symptr, s64 screen) {
+// TODO - add a function for setting the screen
+void set_display_mode(u32 symptr) {
   if (symptr == intern_from_c("windowed").offset || symptr == s7.offset) {
     Gfx::set_window_display_mode(WindowDisplayMode::Windowed);
   } else if (symptr == intern_from_c("borderless").offset) {
@@ -580,15 +580,37 @@ void set_fullscreen(u32 symptr, s64 screen) {
   }
 }
 
+// TODO - I've checked these
+
+/// Returns the name of the display with the given id
+/// or #f if not found / empty
+u64 get_display_name(u32 id) {
+  const auto name = Gfx::get_connected_display_name(id);
+  if (name.empty()) {
+    return s7.offset;
+  }
+  return make_string_from_c(name.c_str());
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
+  // init_common_pc_port_functions(make_function_symbol_from_c);
 
+  // TODO - duplication that could be removed with the above, fix later
   make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
   make_function_symbol_from_c("__mem-move", (void*)c_memmove);
   make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
   make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
   make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
   make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
+
+  make_function_symbol_from_c("pc-get-display-count", (void*)get_display_count);
+  make_function_symbol_from_c("pc-get-display-mode", (void*)get_display_mode);
+
+  make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
+  make_function_symbol_from_c("pc-set-display-mode", (void*)set_display_mode);
+
+  // Game specific functions
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
 
   // pad stuff
@@ -600,17 +622,20 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-pad-input-key-get", (void*)Pad::input_mode_get_key);
   make_function_symbol_from_c("pc-pad-input-index-get", (void*)Pad::input_mode_get_index);*/
 
+  // NOTE: stuff I've checked
+  
+  
+  make_function_symbol_from_c("pc-get-display-name", (void*)get_display_name);
+
   // os stuff
   make_function_symbol_from_c("pc-get-os", (void*)get_os);
   make_function_symbol_from_c("pc-get-window-size", (void*)get_window_size);
   make_function_symbol_from_c("pc-get-window-scale", (void*)get_window_scale);
-  make_function_symbol_from_c("pc-get-fullscreen", (void*)get_fullscreen);
+  
   make_function_symbol_from_c("pc-get-screen-size", (void*)get_screen_size);
   make_function_symbol_from_c("pc-get-screen-rate", (void*)get_screen_rate);
   make_function_symbol_from_c("pc-get-screen-vmode-count", (void*)get_screen_vmode_count);
-  make_function_symbol_from_c("pc-get-monitor-count", (void*)get_monitor_count);
-  make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
-  make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
+  
   make_function_symbol_from_c("pc-set-frame-rate", (void*)set_frame_rate);
   make_function_symbol_from_c("pc-set-vsync", (void*)set_vsync);
   make_function_symbol_from_c("pc-set-window-lock", (void*)set_window_lock);

@@ -882,6 +882,7 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   m_render_state.draw_offset_y =
       (settings.window_framebuffer_height - m_render_state.draw_region_h) / 2;
 
+  // TODO - is this still needed?
   if (settings.borderless_windows_hacks) {
     // pretend the framebuffer is 1 pixel shorter on borderless. fullscreen issues!
     // add one pixel of vertical letterbox on borderless to make up for extra line

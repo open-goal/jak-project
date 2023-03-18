@@ -154,8 +154,8 @@ u64 get_window_width();
 u64 get_window_height();
 void set_window_size(u64 width, u64 hheight);
 void get_window_scale(float* x, float* y);
-// TODO - get display names as well
 int get_connected_display_count();
+std::string get_connected_display_name(int id);
 int get_active_display_mode_count();
 // TODO - this was always called via GOAL with -1 which meant "give me the current rate for the
 // current display mode"
@@ -164,8 +164,6 @@ int get_active_display_refresh_rate();
 void get_active_display_size(s32* w, s32* h);
 void set_window_resizable(bool resizable);
 WindowDisplayMode get_window_display_mode();
-// TODO - this used to call with the screen id, seems redundant since those options would never be
-// changed at the same time
 void set_window_display_mode(WindowDisplayMode mode);
 
 // Global Settings Related

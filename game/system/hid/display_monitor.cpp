@@ -3,6 +3,7 @@
 #include "sdl_util.h"
 
 #include "third-party/fmt/core.h"
+#include "third-party/fmt/format.h"
 
 DisplayMonitor::DisplayMonitor(SDL_Window* window) : m_window(window) {
   update_curr_display_info();
@@ -46,6 +47,42 @@ void DisplayMonitor::process_sdl_event(const SDL_Event& event) {
         // TODO - do i have to invert width/height?
         break;
     }
+  }
+}
+
+void DisplayMonitor::set_window_size(int width, int height) {
+  m_window_width = width;
+  m_window_height = height;
+  SDL_SetWindowSize(m_window, width, height);
+}
+
+void DisplayMonitor::set_window_display_mode(WindowDisplayMode mode) {
+  // TODO - tempoary no-op until GOAL stops spamming functions needlessly
+  if (mode == m_window_display_mode) {
+    return;
+  }
+  // TODO - move it to the right monitor for fullscreen/borderless
+  // requires a OG change as well
+  m_window_display_mode = mode;
+  // https://wiki.libsdl.org/SDL2/SDL_SetWindowFullscreen
+  int result = 0;
+  switch (mode) {
+    case WindowDisplayMode::Windowed:
+      result = SDL_SetWindowFullscreen(m_window, 0);
+      if (result == 0) {
+        SDL_SetWindowSize(m_window, m_window_width, m_window_height);
+      }
+      break;
+    case WindowDisplayMode::Fullscreen:
+      result = SDL_SetWindowFullscreen(m_window, SDL_WINDOW_FULLSCREEN);
+      break;
+    case WindowDisplayMode::Borderless:
+      result = SDL_SetWindowFullscreen(m_window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+      break;
+  }
+  if (result != 0) {
+    sdl_util::log_error(
+        fmt::format("unable to change window display mode to {}", fmt::underlying(mode)));
   }
 }
 
@@ -110,4 +147,13 @@ void DisplayMonitor::update_video_modes() {
       m_display_modes.at(display_id).push_back(new_mode);
     }
   }
+}
+
+std::string DisplayMonitor::get_connected_display_name(int id) {
+  const auto name = SDL_GetDisplayName(id);
+  if (name == NULL) {
+    sdl_util::log_error(fmt::format("couldn't retrieve display name with id {}", id));
+    return "";
+  }
+  return std::string(name);
 }

@@ -348,23 +348,83 @@ void DecodeTime(u32 ptr) {
   sceCdReadClock(clock.c());
 }
 
-/*!
- * PC PORT FUNCTIONS BEGIN
- */
-/*!
- * Get a 300MHz timer value.
- * Called from EE thread
- */
+/// PC PORT FUNCTIONS BEGIN
+
+/// <summary>
+/// Get a 300MHz timer value. Called from EE thread
+/// </summary>
 u64 read_ee_timer() {
   u64 ns = ee_clock_timer.getNs();
   return (ns * 3) / 10;
 }
 
-/*!
- * Do a fast memory copy.
- */
+/// <summary>
+/// Do a fast memory copy.
+/// </summary>
+/// <param name="dst"></param>
+/// <param name="src"></param>
+/// <param name="size"></param>
 void c_memmove(u32 dst, u32 src, u32 size) {
   memmove(Ptr<u8>(dst).c(), Ptr<u8>(src).c(), size);
+}
+
+/// <summary>
+/// Called from game thread to submit rendering DMA chain.
+/// </summary>
+/// <param name=""></param>
+/// <param name="chain"></param>
+void send_gfx_dma_chain(u32 /*bank*/, u32 chain) {
+  Gfx::send_chain(g_ee_main_mem, chain);
+}
+
+/// <summary>
+/// Called from game thread to upload a texture outside of the main DMA chain.
+/// </summary>
+/// <param name="page"></param>
+/// <param name="mode"></param>
+void pc_texture_upload_now(u32 page, u32 mode) {
+  Gfx::texture_upload_now(Ptr<u8>(page).c(), mode, s7.offset);
+}
+
+void pc_texture_relocate(u32 dst, u32 src, u32 format) {
+  Gfx::texture_relocate(dst, src, format);
+}
+
+/// <summary>
+/// Called from the game thread at initialization. The game thread is the only one to touch the
+/// mips2c function table (through the linker and ugh this function), so no locking is needed.
+/// </summary>
+/// <param name="name"></param>
+/// <returns></returns>
+u64 pc_get_mips2c(u32 name) {
+  const char* n = Ptr<String>(name).c()->data();
+  return Mips2C::gLinkedFunctionTable.get(n);
+}
+
+/// <summary>
+/// Returns the number of currently connected displays (aka monitors)
+/// </summary>
+int get_display_count() {
+  return Gfx::get_connected_display_count();
+}
+
+/// <summary>
+/// Initializes all functions that are common across all game versions
+/// These functions have the same implementation and do not use any game specific functions (other
+/// than the one to create a function in the first place)
+/// </summary>
+/// <param name="make_func_symbol_func">The game specific function that is used to create a function
+/// symbol</param>
+void init_common_pc_port_functions(std::function<Ptr<Function>(const char*, void*)> make_func_symbol_func) {
+  make_func_symbol_func("__read-ee-timer", (void*)read_ee_timer);
+  make_func_symbol_func("__mem-move", (void*)c_memmove);
+  make_func_symbol_func("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
+  make_func_symbol_func("__pc-texture-upload-now", (void*)pc_texture_upload_now);
+  make_func_symbol_func("__pc-texture-relocate", (void*)pc_texture_relocate);
+  make_func_symbol_func("__pc-get-mips2c", (void*)pc_get_mips2c);
+
+  // display related
+  make_func_symbol_func("pc-get-monitor-count", (void*)get_display_count);
 }
 
 void set_game_resolution(s64 w, s64 h) {
@@ -425,13 +485,6 @@ s64 get_screen_rate(s64 vmode_idx) {  // TODO - remove vmodeidx
  */
 s64 get_screen_vmode_count() {
   return Gfx::get_active_display_mode_count();
-}
-
-/*!
- * Returns the number of available monitors.
- */
-int get_monitor_count() {
-  return Gfx::get_connected_display_count();
 }
 
 int get_unix_timestamp() {
@@ -512,34 +565,6 @@ void vif_interrupt_callback(int bucket_id) {
  */
 u32 offset_of_s7() {
   return s7.offset;
-}
-
-/*!
- * Called from the game thread at initialization.
- * The game thread is the only one to touch the mips2c function table (through the linker and
- * through this function), so no locking is needed.
- */
-u64 pc_get_mips2c(u32 name) {
-  const char* n = Ptr<String>(name).c()->data();
-  return Mips2C::gLinkedFunctionTable.get(n);
-}
-
-/*!
- * Called from game thread to submit rendering DMA chain.
- */
-void send_gfx_dma_chain(u32 /*bank*/, u32 chain) {
-  Gfx::send_chain(g_ee_main_mem, chain);
-}
-
-/*!
- * Called from game thread to upload a texture outside of the main DMA chain.
- */
-void pc_texture_upload_now(u32 page, u32 mode) {
-  Gfx::texture_upload_now(Ptr<u8>(page).c(), mode, s7.offset);
-}
-
-void pc_texture_relocate(u32 dst, u32 src, u32 format) {
-  Gfx::texture_relocate(dst, src, format);
 }
 
 u64 pc_filter_debug_string(u32 str_ptr, u32 dist_ptr) {
