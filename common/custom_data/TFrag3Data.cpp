@@ -72,6 +72,104 @@ void TfragTree::serialize(Serializer& ser) {
   ser.from_ptr(&use_strips);
 }
 
+math::Vector3f vopmula(math::Vector3f a, math::Vector3f b) {
+  return math::Vector3f(a.y() * b.z(), a.z() * b.x(), a.x() * b.y());
+}
+
+math::Vector3f vopmsub(math::Vector3f acc, math::Vector3f a, math::Vector3f b) {
+  return acc - vopmula(a, b);
+}
+
+/*!
+ * Compute the normal transformation for a TIE from the TIE matrix.
+ * Note that this isn't identical to the original game - we're missing the vf14 scaling factor
+ * For now, I just set this to 1, then normalize in the shader. Though I think we could avoid
+ * this by figuring out the value of vf14 here (I am just too lazy right now).
+ */
+std::array<math::Vector3f, 3> tie_normal_transform_v2(const std::array<math::Vector4f, 4>& m) {
+  // let:
+  // vf10, vf11, vf12, vf13 be the input matrix m
+  std::array<math::Vector3f, 3> result;
+  auto& vf10 = m[0];
+  auto& vf11 = m[1];
+  // auto& vf12 = m[2];
+
+  // vmulx.xyz vf16, vf10, vf14
+  math::Vector3f vf16 = vf10.xyz() * 1.0;  // TODO VF14
+
+  // vopmula.xyz acc, vf11, vf16
+  math::Vector3f acc = vopmula(vf11.xyz(), vf16);
+
+  // vopmsub.xyz vf17, vf16, vf11
+  math::Vector3f vf17 = vopmsub(acc, vf16, vf11.xyz());
+
+  // vopmula.xyz acc, vf16, vf17
+  acc = vopmula(vf16, vf17);
+
+  // vopmsub.xyz vf17, vf17, vf16
+  vf17 = vopmsub(acc, vf17, vf16);
+
+  // vmul.xyz vf14, vf17, vf17
+  math::Vector3f vf14 = vf17.elementwise_multiply(vf17);
+
+  // vmulax.w acc, vf0, vf14
+  // vmadday.w acc, vf0, vf14
+  // vmaddz.w vf14, vf0, vf14
+  float sum = vf14.x() + vf14.y() + vf14.z();
+
+  // vrsqrt Q, vf0.w, vf14.w
+  float Q = 1.f / std::sqrt(sum);
+
+  // vmulax.xyzw acc, vf24, vf16
+  // vmadday.xyzw acc, vf25, vf16
+  // vmaddz.xyzw vf10, vf26, vf16
+  // vf10 = vf16; // assume cam is identity here.
+  result[0] = vf16;
+
+  // vwaitq
+  // vmulq.xyz vf17, vf17, Q
+  vf17 *= Q;
+
+  // vopmula.xyz acc, vf16, vf17
+  acc = vopmula(vf16, vf17);
+  // vopmsub.xyz vf18, vf17, vf16
+  math::Vector3f vf18 = vopmsub(acc, vf17, vf16);
+
+  // vmulax.xyzw acc, vf24, vf17
+  // vmadday.xyzw acc, vf25, vf17
+  // vmaddz.xyzw vf11, vf26, vf17
+  result[1] = vf17;
+
+  // vmulax.xyzw acc, vf24, vf18
+  // vmadday.xyzw acc, vf25, vf18
+  // vmaddz.xyzw vf12, vf26, vf18
+  result[2] = vf18;
+  return result;
+  //
+  // sqc2 vf10, -112(t8)
+  // sqc2 vf11, -96(t8)
+  // sqc2 vf12, -80(t8)
+}
+
+/*!
+ * Unpack tie normal by transforming and converting to s16 for OpenGL.
+ */
+math::Vector<s16, 3> unpack_tie_normal(const std::array<math::Vector3f, 3>& mat,
+                                       s8 nx,
+                                       s8 ny,
+                                       s8 nz) {
+  // rotate the normal
+  math::Vector3f nrm = math::Vector3f::zero();
+  nrm += mat[0] * nx;
+  nrm += mat[1] * ny;
+  nrm += mat[2] * nz;
+  // convert to s16 for OpenGL renderer
+  nrm *= 0.0078125;      // number from EE asm
+  nrm *= 256.f * 128.f;  // for normalize s16 -> float conversion by OpenGL.
+
+  return nrm.cast<s16>();
+}
+
 void TieTree::unpack() {
   unpacked.vertices.resize(packed_vertices.color_indices.size());
   size_t i = 0;
@@ -84,13 +182,21 @@ void TieTree::unpack() {
         vtx.x = proto_vtx.x;
         vtx.y = proto_vtx.y;
         vtx.z = proto_vtx.z;
-        vtx.q_unused = 1.f;
         vtx.s = proto_vtx.s;
         vtx.t = proto_vtx.t;
+        vtx.nx = proto_vtx.nx << 8;
+        vtx.ny = proto_vtx.ny << 8;
+        vtx.nz = proto_vtx.nz << 8;
+        vtx.r = proto_vtx.r;
+        vtx.g = proto_vtx.g;
+        vtx.b = proto_vtx.b;
+        vtx.a = proto_vtx.a;
         i++;
       }
     } else {
       const auto& mat = packed_vertices.matrices[grp.matrix_idx];
+      auto nmat = tie_normal_transform_v2(mat);
+
       for (u32 src_idx = grp.start_vert; src_idx < grp.end_vert; src_idx++) {
         auto& vtx = unpacked.vertices[i];
         vtx.color_index = packed_vertices.color_indices[i];
@@ -99,9 +205,16 @@ void TieTree::unpack() {
         vtx.x = temp.x();
         vtx.y = temp.y();
         vtx.z = temp.z();
-        vtx.q_unused = 1.f;
         vtx.s = proto_vtx.s;
         vtx.t = proto_vtx.t;
+        auto nrm = unpack_tie_normal(nmat, proto_vtx.nx, proto_vtx.ny, proto_vtx.nz);
+        vtx.nx = nrm.x();
+        vtx.ny = nrm.y();
+        vtx.nz = nrm.z();
+        vtx.r = proto_vtx.r;
+        vtx.g = proto_vtx.g;
+        vtx.b = proto_vtx.b;
+        vtx.a = proto_vtx.a;
         i++;
       }
     }
@@ -159,7 +272,6 @@ void TfragTree::unpack() {
     o.z = cz + in.zoff * rescale;
     o.s = in.s / (1024.f);
     o.t = in.t / (1024.f);
-    o.q_unused = 1.f;
     o.color_index = in.color_index;
   }
 
@@ -187,6 +299,8 @@ void TieTree::serialize(Serializer& ser) {
   for (auto& draw : static_draws) {
     draw.serialize(ser);
   }
+
+  ser.from_ptr(&category_draw_indices);
 
   if (ser.is_saving()) {
     ser.save<size_t>(instanced_wind_draws.size());

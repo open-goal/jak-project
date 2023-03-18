@@ -512,7 +512,7 @@
 (defbehavior crate-standard-event-handler crate ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('track)
-     (zero? (logand (actor-option no-track) (-> self fact options)))
+     (not (logtest? (actor-option no-track) (-> self fact options)))
      )
     (('attack)
      (let* ((v1-3 (the-as attack-info (-> arg3 param 1)))
@@ -525,7 +525,7 @@
             (('flop 'uppercut 'explode 'eco-yellow 'racer 'board 'tube 'flut-bonk 'flut-attack 'darkjak 'mech-punch)
              (if (and (logtest? (-> self fact options) (actor-option racer-only))
                       (= (-> arg0 type) target)
-                      (zero? (logand (focus-status pilot) (-> (the-as target arg0) focus-status)))
+                      (not (logtest? (focus-status pilot) (-> (the-as target arg0) focus-status)))
                       )
                  (return #f)
                  )
@@ -696,7 +696,7 @@
                     )
                (and *target*
                     (and (>= 40960.0 (vector-vector-distance (-> self root-override2 trans) (-> *target* control trans)))
-                         (zero? (logand (focus-status teleporting) (-> *target* focus-status)))
+                         (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
                          )
                     )
                )
@@ -978,10 +978,7 @@
         (stop! (-> self sound))
         )
     (let ((v1-10 (handle->process (-> self target))))
-      (if (and (and v1-10
-                    (= (-> v1-10 type) target)
-                    (logtest? (focus-status flut tube board pilot) (-> (the-as process-focusable v1-10) focus-status))
-                    )
+      (if (and (and v1-10 (= (-> v1-10 type) target) (focus-test? (the-as process-focusable v1-10) flut tube board pilot))
                (and (!= (-> self fact pickup-type) 10) (not arg0))
                )
           (logior! (-> self fact options) (actor-option suck-in))

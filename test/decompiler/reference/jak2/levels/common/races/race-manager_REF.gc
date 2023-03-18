@@ -227,7 +227,7 @@
         (let ((v1-2 (handle->process (-> obj racer))))
           (cond
             (v1-2
-              (if (logtest? (-> (the-as process-focusable v1-2) focus-status) (focus-status dead inactive))
+              (if (focus-test? (the-as process-focusable v1-2) dead inactive)
                   (logior! (-> obj flags) 4)
                   )
               (set! (-> s5-0 vector 0 quad) (-> (the-as process-focusable v1-2) root-override trans quad))
@@ -613,7 +613,7 @@
                  )
                )
              )
-           (when (and v1-3 (zero? (logand (-> obj info flags) 1)))
+           (when (and v1-3 (not (logtest? (-> obj info flags) 1)))
              (race-state-method-15 obj)
              (set! v1-3 (handle->process (-> obj race-signal)))
              )
@@ -1421,18 +1421,14 @@
               )
             )
           )
-        (while (not (and *target* (or (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
-                                      (logtest? (focus-status pilot) (-> *target* focus-status))
-                                      )
-                         )
-                    )
+        (while (not (and *target* (or (not (focus-test? *target* teleporting)) (focus-test? *target* pilot))))
           (suspend)
           )
         (race-manager-method-23 self)
         (initialize-state self)
         (suspend)
         (let ((gp-1 (-> self race-state info)))
-          (when (and (-> gp-1 countdown-scene) (zero? (logand (-> self race-state flags) 2)))
+          (when (and (-> gp-1 countdown-scene) (not (logtest? (-> self race-state flags) 2)))
             (dotimes (s5-2 (-> gp-1 racer-count))
               (let ((v1-42 (-> self race-state racer-array s5-2)))
                 (if (and (logtest? (-> gp-1 racer-array s5-2 flags) 1) (!= s5-2 (-> self race-state i-player)))
@@ -1519,7 +1515,7 @@
             )
           )
         )
-      (if (or (logtest? (-> gp-0 flags) 4) (not *target*) (logtest? (-> *target* focus-status) (focus-status dead)))
+      (if (or (logtest? (-> gp-0 flags) 4) (not *target*) (focus-test? *target* dead))
           (go-virtual fail)
           )
       (when (logtest? (-> gp-0 flags) 2)
@@ -1805,7 +1801,3 @@
   (set! *race-vehicle-entity* #f)
   (none)
   )
-
-
-
-

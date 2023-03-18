@@ -643,7 +643,7 @@ This commonly includes things such as:
           )
       )
     (when (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 4))
-      (if (and *target* (logtest? (-> *target* focus-status) (focus-status grabbed)))
+      (if (and *target* (focus-test? *target* grabbed))
           (process-release? *target*)
           )
       (if (and *target*
@@ -1238,7 +1238,7 @@ This commonly includes things such as:
   (when (!= (-> self basetrans y) (-> self base-height))
     (seek! (-> self basetrans y) (-> self base-height) (* (-> self move-rate) (-> self clock seconds-per-frame)))
     (when (and (< (- (-> self base-height) (-> self basetrans y)) 21504.0)
-               (zero? (logand (-> self flags) (simon-block-flags sbf5)))
+               (not (logtest? (-> self flags) (simon-block-flags sbf5)))
                )
       (sound-play "simon-up")
       (logior! (-> self flags) (simon-block-flags sbf5))
@@ -1383,7 +1383,7 @@ This commonly includes things such as:
                (set! (-> a2-4 vector quad) (-> v1-10 quad))
                (set! (-> a2-4 shove-back) 0.0)
                (set! (-> a2-4 shove-up) 12288.0)
-               (set! (-> a2-4 control) (if (logtest? (focus-status board) (-> a0-10 focus-status))
+               (set! (-> a2-4 control) (if (focus-test? a0-10 board)
                                            1.0
                                            0.0
                                            )

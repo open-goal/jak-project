@@ -559,7 +559,7 @@ For example for an elevator pre-compute the distance between the first and last 
     (when (logtest? (-> self elevator-status) (elevator-status waiting-to-descend))
       (let ((v1-9 *target*))
         (when v1-9
-          (if (not (logtest? (focus-status mech) (-> v1-9 focus-status)))
+          (if (not (focus-test? v1-9 mech))
               (set-setting! 'pilot #f 0 0)
               )
           (set-setting! 'pilot-exit #f 0 0)
@@ -586,10 +586,7 @@ For example for an elevator pre-compute the distance between the first and last 
                      )
                  )
            )
-      (when (and a0-2
-                 (logtest? (focus-status mech) (-> a0-2 focus-status))
-                 (zero? (logand (-> a0-2 focus-status) (focus-status dead ignore)))
-                 )
+      (when (and a0-2 (focus-test? a0-2 mech) (not (logtest? (-> a0-2 focus-status) (focus-status dead ignore))))
         (let* ((v1-5 (get-trans a0-2 0))
                (s5-2 (vector-! (new 'stack-no-clear 'vector) v1-5 (-> obj root-override trans)))
                )
@@ -608,10 +605,10 @@ do so.
   (local-vars (sv-16 float))
   (let ((a0-1 *target*))
     (when (and a0-1
-               (zero? (logand (focus-status dead inactive in-air grabbed edge-grab pole pilot-riding pilot teleporting)
+               (not (logtest? (focus-status dead inactive in-air grabbed edge-grab pole pilot-riding pilot teleporting)
                               (-> a0-1 focus-status)
                               )
-                      )
+                    )
                )
       (set! sv-16 (the-as float 0.0))
       (when (and (find-closest-point-in-path! obj (get-trans a0-1 0) (& sv-16) #t #t)
@@ -691,7 +688,7 @@ For example for an elevator pre-compute the distance between the first and last 
                       )
                 )
            (when gp-0
-             (when (or (logtest? (focus-status mech) (-> (the-as process-focusable gp-0) focus-status))
+             (when (or (focus-test? (the-as process-focusable gp-0) mech)
                        (>= (- (-> self clock frame-counter) (-> self no-collision-timer))
                            (the-as time-frame (-> *TARGET-bank* hit-invulnerable-timeout))
                            )
@@ -728,11 +725,10 @@ For example for an elevator pre-compute the distance between the first and last 
                              (set! (-> v1-32 vector quad) (-> s4-2 quad))
                              (set! (-> v1-32 shove-back) 409.6)
                              (set! (-> v1-32 shove-up) 12288.0)
-                             (set! (-> v1-32 control)
-                                   (if (logtest? (focus-status board) (-> (the-as process-focusable gp-0) focus-status))
-                                       1.0
-                                       0.0
-                                       )
+                             (set! (-> v1-32 control) (if (focus-test? (the-as process-focusable gp-0) board)
+                                                          1.0
+                                                          0.0
+                                                          )
                                    )
                              (set! (-> a1-10 param 1) (the-as uint v1-32))
                              )
@@ -1079,7 +1075,7 @@ This commonly includes things such as:
 (defmethod set-switch-color drill-switch ((obj drill-switch) (arg0 symbol))
   "Set the switch color based on its state."
   (with-pp
-    (when (or arg0 (zero? (logand (-> pp clock frame-counter) 64)))
+    (when (or arg0 (not (logtest? (-> pp clock frame-counter) 64)))
       (let ((s4-0 (new 'stack-no-clear 'vector)))
         (vector<-cspace+vector! s4-0 (-> obj node-list data 4) (new 'static 'vector :y 6963.2 :w 1.0))
         (spawn

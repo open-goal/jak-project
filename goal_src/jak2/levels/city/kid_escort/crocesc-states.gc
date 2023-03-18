@@ -35,7 +35,7 @@
     (if (and (-> self focus-info fproc) (>= (fabs (-> self focus-info ry-diff)) 9102.223))
         (go-waiting-turn self)
         )
-    (when (not (logtest? (-> self focus-status) (focus-status grabbed)))
+    (when (not (focus-test? self grabbed))
       (cond
         ((logtest? (-> self bot-flags) (bot-flags bf15))
          (go-virtual move-to-vehicle)
@@ -192,9 +192,9 @@
     )
   :trans (behavior ()
     (bot-method-223 self #f)
-    (when (not (logtest? (-> self focus-status) (focus-status grabbed)))
+    (when (not (focus-test? self grabbed))
       (if (and (not (outside-spot-radius? self (the-as bot-spot #f) (the-as vector #f) #f))
-               (zero? (logand (-> self bot-flags) (bot-flags bf15)))
+               (not (logtest? (-> self bot-flags) (bot-flags bf15)))
                )
           (go-virtual traveling)
           )
@@ -611,7 +611,7 @@
   :trans (behavior ()
     (check-vehicle-exit self)
     0.0
-    (when (logtest? (-> self focus-status) (focus-status pilot-riding))
+    (when (focus-test? self pilot-riding)
       (let ((s5-0 (handle->process (-> self vehicle-handle)))
             (gp-0 (new 'stack-no-clear 'vector))
             )
@@ -699,7 +699,7 @@
     )
   :trans (behavior ()
     (check-vehicle-exit self)
-    (when (logtest? (-> self focus-status) (focus-status pilot-riding))
+    (when (focus-test? self pilot-riding)
       (let ((gp-0 (handle->process (-> self vehicle-handle))))
         (quaternion-copy! (-> self root-override2 quat) (-> (the-as vehicle gp-0) root-override-2 quat))
         (vector-matrix*!

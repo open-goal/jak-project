@@ -110,7 +110,7 @@ This commonly includes things such as:
 (defbehavior sound-update cas-conveyor ()
   (when (and *target*
              (and (>= 327680.0 (vector-vector-distance (-> self collide-bounds) (-> *target* control trans)))
-                  (zero? (logand (focus-status teleporting) (-> *target* focus-status)))
+                  (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
                   )
              )
     (let ((f0-2 (* 0.000032552085 (+ -30720.0 (fabs (-> self speed))))))
@@ -697,7 +697,7 @@ This commonly includes things such as:
           )
         )
       (let ((gp-2 *target*))
-        (when (and gp-2 (zero? (logand (-> gp-2 focus-status) (focus-status disable dead ignore inactive))))
+        (when (and gp-2 (not (logtest? (-> gp-2 focus-status) (focus-status disable dead ignore inactive))))
           (let ((s4-3 (get-trans gp-2 0)))
             (when (< (vector-vector-distance s4-3 (-> self root-override trans)) 24576.0)
               (let ((s5-3 (new 'stack-no-clear 'event-message-block)))
@@ -717,7 +717,7 @@ This commonly includes things such as:
                         )
                   (set! (-> s3-3 shove-back) 24576.0)
                   (set! (-> s3-3 shove-up) 12288.0)
-                  (set! (-> s3-3 control) (if (logtest? (focus-status board) (-> gp-2 focus-status))
+                  (set! (-> s3-3 control) (if (focus-test? gp-2 board)
                                               1.0
                                               0.0
                                               )
@@ -2562,7 +2562,7 @@ This commonly includes things such as:
     (when (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.6))
       (let ((a0-1 *target*))
         (if (and a0-1
-                 (not (logtest? (-> a0-1 focus-status) (focus-status disable dead)))
+                 (not (focus-test? a0-1 disable dead))
                  (< (vector-vector-distance (get-trans a0-1 0) (-> self root trans)) (-> self notice-dist))
                  )
             (go-virtual spawning)
@@ -2599,7 +2599,7 @@ This commonly includes things such as:
   :trans (behavior ()
     (when (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.6))
       (let ((a0-1 *target*))
-        (if (and a0-1 (zero? (logand (-> a0-1 focus-status) (focus-status disable dead))))
+        (if (and a0-1 (not (logtest? (-> a0-1 focus-status) (focus-status disable dead))))
             (set! (-> self player-dist) (vector-vector-distance (get-trans a0-1 0) (-> self root trans)))
             )
         )

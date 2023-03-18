@@ -179,9 +179,7 @@
         (the-as uint (add-process *gui-control* obj (gui-channel background) (gui-action queue) "pmkrxplo" -99.0 0))
         )
   (set-falloff! *gui-control* (the-as sound-id (-> obj explode-sound)) #t 50 150 11)
-  (set! (-> obj start-pilot?)
-        (the-as basic (and *target* (logtest? (focus-status pilot) (-> *target* focus-status))))
-        )
+  (set! (-> obj start-pilot?) (the-as basic (and *target* (focus-test? *target* pilot))))
   ((method-of-type projectile init-proj-settings!) obj)
   0
   (none)
@@ -192,7 +190,7 @@
   "Spawns associated particles with the projectile if applicable"
   (cond
     ((and (and (-> obj next-state) (= (-> obj next-state name) 'startup))
-          (and *target* (logtest? (-> *target* focus-status) (focus-status in-head)))
+          (and *target* (focus-test? *target* in-head))
           )
      (kill-and-free-particles (-> obj part))
      )
@@ -241,12 +239,10 @@
     (until #f
       (cond
         ((or (and *target*
-                  (logtest? (focus-status dead grabbed under-water pole flut board mech dark carry indax teleporting)
-                            (-> *target* focus-status)
-                            )
+                  (focus-test? *target* dead grabbed under-water pole flut board mech dark carry indax teleporting)
                   )
-             (and *target* (zero? (logand (focus-status in-head gun) (-> *target* focus-status))))
-             (and *target* (not (-> self start-pilot?)) (logtest? (focus-status pilot) (-> *target* focus-status)))
+             (and *target* (not (logtest? (focus-status in-head gun) (-> *target* focus-status))))
+             (and *target* (not (-> self start-pilot?)) (focus-test? *target* pilot))
              )
          (go-virtual dissipate)
          )
@@ -320,7 +316,7 @@
                                )
             )
       )
-    (when (and *target* (logtest? (-> *target* focus-status) (focus-status in-head)))
+    (when (and *target* (focus-test? *target* in-head))
       (set! (-> self core-position quad) (-> (camera-pos) quad))
       (set! (-> self core-velocity quad) (-> (camera-matrix) vector 2 quad))
       )
