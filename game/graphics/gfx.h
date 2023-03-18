@@ -144,7 +144,7 @@ void set_levels(const std::vector<std::string>& levels);
 // InputMonitor usages
 std::shared_ptr<PadData> get_current_frames_pad_data();
 int update_rumble(int port, u8 low_intensity, u8 high_intensity);
-std::tuple<double, double> get_mouse_pos();
+std::pair<s32, s32> get_mouse_pos();
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);

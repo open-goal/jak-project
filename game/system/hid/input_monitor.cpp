@@ -61,8 +61,8 @@
 //   }
 // }
 
-GameController::GameController(int sdl_device_id, int dead_zone)
-    : m_sdl_instance_id(sdl_device_id), m_analog_dead_zone(dead_zone) {
+GameController::GameController(int sdl_device_id, float analog_dead_zone)
+    : m_sdl_instance_id(sdl_device_id), m_analog_dead_zone(analog_dead_zone) {
   // TODO - load user binds
   m_binds = s_default_controller_binds;
   m_loaded = false;
@@ -107,9 +107,11 @@ void GameController::process_event(const SDL_Event& event, std::shared_ptr<PadDa
       for (const auto& bind : m_binds.analog_axii.at(event.caxis.axis)) {
         // Adjust the value range to 0-255 (127 being neutral)
         // Values come out of SDL as -32,768 + 32,767
-        // TODO - deadzone stuff
+        // TODO - store the deadzone in C++, right now it's in GOAL code
         int axis_val = ((event.caxis.value + 32768) * 256) / 65536;
-        data->analog_data.at(bind.pad_data_index) = axis_val;
+        if (axis_val > (255.0 * m_analog_dead_zone)) {
+          data->analog_data.at(bind.pad_data_index) = axis_val;
+        }
       }
     } else if (event.caxis.axis >= SDL_CONTROLLER_AXIS_TRIGGERLEFT &&
                event.caxis.axis <= SDL_CONTROLLER_AXIS_TRIGGERRIGHT &&
@@ -152,9 +154,9 @@ int GameController::update_rumble(const int port, const u8 low_rumble, const u8 
   }
   if (m_device_handle) {
     // https://wiki.libsdl.org/SDL2/SDL_GameControllerRumble
-    // TODO - not sure about duration here, i assume the next frame will cut it off if needed so
-    // overshooting the duration is fine and the better way to go
-    if (SDL_GameControllerRumble(m_device_handle, low_rumble * 257, high_rumble * 257, 1000) == 0) {
+    // Arbitrary duration, since it's called every frame anyway
+    // SDL expects in the range of 0-0xFFFF, so the `257` is just normalizing the 0-255 we get
+    if (SDL_GameControllerRumble(m_device_handle, low_rumble * 257, high_rumble * 257, 100) == 0) {
       return 1;
     }
   }
@@ -185,13 +187,13 @@ void KeyboardDevice::process_event(const SDL_Event& event, std::shared_ptr<PadDa
           analog_val = 0;
         }
         data->analog_data.at(bind.pad_data_index) = analog_val;
+        lg::info("{}:{}", key_event.keysym.sym, analog_val);
       }
     }
   }
 }
 
 void MouseDevice::process_event(const SDL_Event& event, std::shared_ptr<PadData> data) {
-  // TODO - position
   // Mouse Button Events
   // https://wiki.libsdl.org/SDL2/SDL_MouseButtonEvent
   if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
@@ -219,6 +221,11 @@ void MouseDevice::process_event(const SDL_Event& event, std::shared_ptr<PadData>
         data->analog_data.at(bind.pad_data_index) = analog_val;
       }
     }
+  } else if (event.type == SDL_MOUSEMOTION) {
+    // https://wiki.libsdl.org/SDL2/SDL_MouseMotionEvent
+    // TODO - https://wiki.libsdl.org/SDL2/SDL_SetRelativeMouseMode
+    m_xcoord = event.motion.x;
+    m_ycoord = event.motion.y;
   }
 }
 
@@ -259,7 +266,6 @@ void InputMonitor::refresh_device_list() {
       }
     }
   }
-  // TODO - mouse one as well (if available?)
   if (!m_active_device) {
     lg::warn(
         "No active input device could be found or loaded successfully - inputs will not work!");

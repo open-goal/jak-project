@@ -435,7 +435,7 @@ u32 MouseGetData(u32 _mouse) {
   mouse->status = 1;
   mouse->button0 = 0;
 
-  auto [xpos, ypos] = Gfx::get_mouse_pos();
+  const auto [xpos, ypos] = Gfx::get_mouse_pos();
 
   // NOTE - ignoring speed and setting position directly
   // the game assumes resolutions, so this makes it a lot easier to make it actually
@@ -454,8 +454,8 @@ u32 MouseGetData(u32 _mouse) {
   // - [-208.0, 208.0] for height
   // (then 208 or 256 is always added to them to get the final screen coordinate)
   // So just normalize the actual window's values to this range
-  double width_per = xpos / win_width;
-  double height_per = ypos / win_height;
+  double width_per = xpos / double(win_width);
+  double height_per = ypos / double(win_height);
   mouse->posx = (512.0 * width_per) - 256.0;
   mouse->posy = (416.0 * height_per) - 208.0;
   // fmt::print("Mouse - X:{}({}), Y:{}({})\n", xpos, mouse->posx, ypos, mouse->posy);

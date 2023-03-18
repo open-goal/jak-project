@@ -196,8 +196,10 @@ int update_rumble(int port, u8 low_intensity, u8 high_intensity) {
   return 0;
 }
 
-std::tuple<double, double> get_mouse_pos() {
-  // TODO
+std::pair<s32, s32> get_mouse_pos() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_input_monitor()->get_mouse_pos();
+  }
   return {0, 0};
 }
 

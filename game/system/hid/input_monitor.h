@@ -19,10 +19,10 @@
 // Controller:
 //- Ports
 // - connecting controller live
-// done zones
 //- Register function handlers like for screenshots/hiding debug bar
 //   - controller or keyboard+mouse should be able to use this
 //   - screenshot key
+// - controller selecton
 //- Custom binds (read/write to JSON)
 
 struct PadData {
@@ -48,6 +48,7 @@ struct PadData {
   };
 
   static const u8 ANALOG_NEUTRAL = 127;
+
   // Analog Values
   std::array<u8, 4> analog_data = {ANALOG_NEUTRAL, ANALOG_NEUTRAL, ANALOG_NEUTRAL, ANALOG_NEUTRAL};
 
@@ -58,7 +59,7 @@ struct PadData {
     return {analog_data.at(AnalogIndex::RIGHT_X), analog_data.at(AnalogIndex::RIGHT_Y)};
   }
 
-  // NOTE - pressure is always 255 (max) at this time
+  // NOTE - pressure is always 255 (max)
   std::array<bool, 16> button_data = {};
 
   // Normal Buttons
@@ -95,13 +96,13 @@ struct InputBinding {
   /// Corresponds to PadData::AnalogIndex or PadData::ButtonIndex
   int pad_data_index;
   // Keyboard Stipulations
-  /// If considered pressed, it will inverse the value (ie, left/right on an analog stick)
-  bool inverse_val;
+  /// If considered pressed, it will invert the value (ie, left/right on an analog stick)
+  bool inverse_val = false;
   // https://wiki.libsdl.org/SDL2/SDL_Keymod
-  bool need_shift;
-  bool need_ctrl;
-  bool need_meta;  // aka GUI / windows key
-  bool need_alt;
+  bool need_shift = false;
+  bool need_ctrl = false;
+  bool need_meta = false;  // aka GUI / windows key
+  bool need_alt = false;
 };
 
 struct InputBindingGroups {
@@ -166,7 +167,7 @@ static const InputBindingGroups s_default_controller_binds = {
 // https://wiki.libsdl.org/SDL2/CategoryGameController
 class GameController : public InputDevice {
  public:
-  GameController(int sdl_device_id, int dead_zone = 0);
+  GameController(int sdl_device_id, float analog_dead_zone = 0.3);
   ~GameController() { close_device(); }
 
   void process_event(const SDL_Event& event, std::shared_ptr<PadData> data) override;
@@ -176,7 +177,7 @@ class GameController : public InputDevice {
  private:
   int m_sdl_instance_id = -1;
   SDL_GameController* m_device_handle;
-  int m_analog_dead_zone = 0;
+  float m_analog_dead_zone;
 };
 
 // TODO - move to it's own header file to keep this clean?
@@ -218,13 +219,12 @@ class KeyboardDevice : public InputDevice {
   void close_device() override{
       // there is nothing to close
   };
-  int update_rumble(const int port, const u8 low_rumble, const u8 high_rumble) override{ return 0;};
+  int update_rumble(const int port, const u8 low_rumble, const u8 high_rumble) override {
+    return 0;
+  };
 };
 
-static const InputBindingGroups s_default_mouse_binds = {
-    {},
-    {},
-    {{SDL_BUTTON_LEFT, {InputBinding(PadData::ButtonIndex::CROSS)}}}};
+static const InputBindingGroups s_default_mouse_binds = {{}, {}, {}};
 
 class MouseDevice : public InputDevice {
  public:
@@ -236,10 +236,16 @@ class MouseDevice : public InputDevice {
   void close_device() override{
       // there is nothing to close
   };
-  int update_rumble(const int port, const u8 low_rumble, const u8 high_rumble) override{ return 0;};
-};
+  int update_rumble(const int port, const u8 low_rumble, const u8 high_rumble) override {
+    return 0;
+  };
 
-// TODO - Mouse (mouse doesn't process events though!)
+  std::pair<int, int> get_mouse_pos() { return {m_xcoord, m_ycoord}; }
+
+ private:
+  int m_xcoord = 0;
+  int m_ycoord = 0;
+};
 
 // Central class that:
 // - keeps track of available input devices
@@ -259,6 +265,7 @@ class InputMonitor {
   std::shared_ptr<PadData> get_current_data() const;
   int update_rumble(int port, u8 low_intensity, u8 high_intensity);
   void change_active_device(int device_id);
+  std::pair<int, int> get_mouse_pos() { return m_mouse.get_mouse_pos(); }
 
  private:
   // TODO - actually need to be shared_ptrs? references should be fine right?
