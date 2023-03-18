@@ -7,17 +7,8 @@ server_address = ('127.0.0.1', 8080)
 class RequestHandler(BaseHTTPRequestHandler):
 
   # Initialize the dictionary from the file
-  PLAYERS = []
-  EXPECTED_KEYS = {
-    "trans_x",
-    "trans_y",
-    "trans_z",
-    "quat_x",
-    "quat_y",
-    "quat_z",
-    "quat_w",
-    "tgt_state"
-  }
+  PLAYER_IDX_LOOKUP = {}
+  PLAYER_LIST = []
 
   def send_response_bad_request_400(self):
     self.send_response(400)
@@ -36,36 +27,39 @@ class RequestHandler(BaseHTTPRequestHandler):
   def do_GET(self):
     url = urlparse(self.path)
 
+    # Extract parameters from the query string
+    query = parse_qs(url.query)
+
     # routing
     match url.path:
 
       # get 
       case "/get":
-        # Extract parameters from the query string
-        query = parse_qs(url.query)
-        player_num = query.get('player_num', [])
+        username = query.get('username', [])
 
-        if len(player_num) == 0 or (not player_num[0].isnumeric()) or int(player_num[0]) >= len(self.PLAYERS):
-          self.send_response_bad_request_400()
+        if len(username) > 0 and username[0] in self.PLAYER_IDX_LOOKUP:
+          # existing user, we won't return their info
+          player_num = self.PLAYER_IDX_LOOKUP[username[0]]
         else:
-          player_num = int(player_num[0])
-          response_data = {}
-          for i in range(len(self.PLAYERS)):
-            if i == int(player_num):
-              # skip player's own data
-              continue
-            response_data[i] = self.PLAYERS[i]
+          player_num = -1
 
-          # Return JSON response
-          self.send_response(200)
-          self.send_header('Content-type', 'application/json')
-          self.end_headers()
+        response_data = {}
+        for i in range(len(self.PLAYER_LIST)):
+          if i == int(player_num):
+            # skip player's own data
+            continue
+          response_data[i] = self.PLAYER_LIST[i]
 
-          # Convert the dictionary to JSON format
-          json_data = json.dumps(response_data)
-          # Write JSON data to the response body
-          self.wfile.write(json_data.encode())
-          self.wfile.flush()
+        # Return JSON response
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+
+        # Convert the dictionary to JSON format
+        json_data = json.dumps(response_data)
+        # Write JSON data to the response body
+        self.wfile.write(json_data.encode())
+        self.wfile.flush()
 
       # else unknown path
       case _: 
@@ -77,11 +71,14 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     url = urlparse(self.path)
 
+    # Extract parameters from the query string
+    query = parse_qs(url.query)
+
     # routing
     match url.path:
       # clear
       case "/clear":
-        self.PLAYERS.clear()
+        self.PLAYER_LIST.clear()
         # Send response status code
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
@@ -90,11 +87,19 @@ class RequestHandler(BaseHTTPRequestHandler):
 
       # register
       case "/register":
-        player_num = len(self.PLAYERS)
-        # fill out empty keys
-        self.PLAYERS.append({})
-        for k in self.EXPECTED_KEYS:
-          self.PLAYERS[player_num][k] = 0.0
+        username = query.get('username', [])
+
+        if len(username) == 0 or len(username[0]) == 0:
+          self.send_response_bad_request_400()
+        elif username[0] in self.PLAYER_IDX_LOOKUP:
+          # existing user, treat as rejoin
+          player_num = self.PLAYER_IDX_LOOKUP[username[0]]
+        else:
+          # new user
+          player_num = len(self.PLAYER_LIST)
+          self.PLAYER_IDX_LOOKUP[username[0]] = player_num
+          # fill out empty keys
+          self.PLAYER_LIST.append({})
 
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
@@ -111,24 +116,20 @@ class RequestHandler(BaseHTTPRequestHandler):
 
       # update
       case "/update":
-        # Extract parameters from the query string
-        query = parse_qs(url.query)
-        player_num = query.get('player_num', [])
+        username = query.get('username', [])
 
-        if len(player_num) == 0 or (not player_num[0].isnumeric()) or int(player_num[0]) >= len(self.PLAYERS):
+        if len(username) == 0 or len(username[0]) == 0 or not username[0] in self.PLAYER_IDX_LOOKUP:
+          # unknown player
           self.send_response_bad_request_400()
         else:
-          player_num = int(player_num[0])
+          player_num = self.PLAYER_IDX_LOOKUP[username[0]]
           # Get raw body data
           raw_data = self.rfile.read(content_length)
           # Parse JSON data into dictionary
           data = json.loads(raw_data.decode('utf-8'))
         
-          for k in self.EXPECTED_KEYS:
-            if k not in data:
-              self.send_response_bad_request_400()
-            else:
-              self.PLAYERS[player_num][k] = data[k]
+          for k in data:
+            self.PLAYER_LIST[player_num][k] = data[k]
       
           # Send response status code
           self.send_response(200)

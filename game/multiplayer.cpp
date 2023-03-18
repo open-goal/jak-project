@@ -11,7 +11,12 @@
 #include "common/util/unicode_util.h"
 #include <iostream>
 
+#include "game/kernel/jak1/kscheme.h"
 #include "game/runtime.h"
+
+std::string ipAddressOrHostname = "localhost:8080";
+// std::string ipAddressOrHostname = "78.108.218.126:25560";
+std::stringstream urlStream;
 
 size_t curl_write_callbacka(char* ptr, size_t size, size_t nmemb, void* userdata) {
   size_t len = size * nmemb;
@@ -21,9 +26,14 @@ size_t curl_write_callbacka(char* ptr, size_t size, size_t nmemb, void* userdata
 }
 
 MultiplayerInfo* gMultiplayerInfo;
+RemotePlayerInfo* gSelfPlayerInfo;
+String* uname;
 
-void http_register(u64 mpInfo) {
+void http_register(u64 mpInfo, u64 selfPlayerInfo) {
   gMultiplayerInfo = Ptr<MultiplayerInfo>(mpInfo).c();
+  gSelfPlayerInfo = Ptr<RemotePlayerInfo>(selfPlayerInfo).c();
+  uname = Ptr<String>(gSelfPlayerInfo->username).c();
+
   // spawn new thread to handle parsing curl response
   std::thread([]() {
     // Initialize curl
@@ -32,7 +42,9 @@ void http_register(u64 mpInfo) {
     CURL* curl = curl_easy_init();
 
     // Set curl options
-    curl_easy_setopt(curl, CURLOPT_URL, "http://78.108.218.126:25560/register");
+    std::string username = Ptr<String>(gSelfPlayerInfo->username).c()->data();
+    std::string url = "http://" + ipAddressOrHostname + "/register?username=" + username;
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "foobar");
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_callbacka);
     std::string response_data;
@@ -57,32 +69,18 @@ void http_register(u64 mpInfo) {
   }).detach();
 }
 
-void http_update_position() {
+void http_update_generic(const std::string& endpoint, const nlohmann::json& payload) {
   // spawn new thread to handle parsing curl response
-  std::thread([]() {
+  std::thread([endpoint, payload]() {
     // Initialize curl
     curl_global_cleanup();
     curl_global_init(CURL_GLOBAL_ALL);
     CURL* curl = curl_easy_init();
 
-    RemotePlayerInfo* rpInfo = &(gMultiplayerInfo->players[gMultiplayerInfo->player_num]);
-
-    // Construct JSON payload
-    nlohmann::json payload = {
-      {"trans_x", rpInfo->trans_x},
-      {"trans_y", rpInfo->trans_y},
-      {"trans_z", rpInfo->trans_z},
-      {"quat_x", rpInfo->quat_x},
-      {"quat_y", rpInfo->quat_y},
-      {"quat_z", rpInfo->quat_z},
-      {"quat_w", rpInfo->quat_w},
-      {"tgt_state", rpInfo->tgt_state}
-    };
     std::string payload_str = payload.dump();
-    std::string url = "http://78.108.218.126:25560/update?player_num=" + std::to_string(gMultiplayerInfo->player_num);
 
     // Set curl options
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_URL, endpoint.c_str());
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload_str.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_callbacka);
     std::string response_data;
@@ -97,9 +95,41 @@ void http_update_position() {
 
     // Check if the request was successful
     if (res == CURLE_OK) {
-      // no action needed after posting position
+      // assume no action needed after update
     }
   }).detach();
+}
+
+void http_update_servergamesettingsinfo() {
+  nlohmann::json payload = {
+      // {"tgt_Username", val1},
+      // {"tgt_Color", val2}
+  };
+  std::string url = "http://" + ipAddressOrHostname + "/updategame";
+  http_update_generic(url, payload);
+}
+
+void http_update_position() {
+  RemotePlayerInfo* rpInfo = &(gMultiplayerInfo->players[gMultiplayerInfo->player_num]);
+
+  std::string username = Ptr<String>(gSelfPlayerInfo->username).c()->data();
+  std::string url = "http://" + ipAddressOrHostname + "/update?username=" + username;
+
+  // Construct JSON payload
+  nlohmann::json payload = {
+      {"username", username},
+      {"trans_x", rpInfo->trans_x},
+      {"trans_y", rpInfo->trans_y},
+      {"trans_z", rpInfo->trans_z},
+      {"quat_x", rpInfo->quat_x},
+      {"quat_y", rpInfo->quat_y},
+      {"quat_z", rpInfo->quat_z},
+      {"quat_w", rpInfo->quat_w},
+      {"tgt_state", rpInfo->tgt_state},
+      {"mp_state", rpInfo->mp_state}
+  };
+
+  http_update_generic(url, payload);
 }
 
 void http_get_positions() {
@@ -109,8 +139,9 @@ void http_get_positions() {
     curl_global_cleanup();
     curl_global_init(CURL_GLOBAL_ALL);
     CURL* curl = curl_easy_init();
-    std::string url =
-        "http://78.108.218.126:25560/get?player_num=" + std::to_string(gMultiplayerInfo->player_num);
+
+    std::string username = Ptr<String>(gSelfPlayerInfo->username).c()->data();
+    std::string url = "http://" + ipAddressOrHostname + "/get?username=" + username;
 
     // Set curl options
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -131,11 +162,15 @@ void http_get_positions() {
       nlohmann::json response_json = nlohmann::json::parse(response_data);
       for (const auto& item : response_json.items()) {
         int pNum = stoi(item.key());
-        if (pNum < 12) {
+        if (pNum < MAX_MULTIPLAYER_COUNT) {
           RemotePlayerInfo* rpInfo = &(gMultiplayerInfo->players[pNum]);
 
           for (const auto& field : item.value().items()) {
-            if (field.key().compare("trans_x") == 0) {
+            if (field.key().compare("username") == 0) {
+              // copy username into struct
+              std::string uname = field.value();
+              strncpy(Ptr<String>(rpInfo->username).c()->data(), uname.c_str(), MAX_USERNAME_LEN);
+            } else if (field.key().compare("trans_x") == 0) {
               rpInfo->trans_x = field.value();
             } else if (field.key().compare("trans_y") == 0) {
               rpInfo->trans_y = field.value();
@@ -151,6 +186,8 @@ void http_get_positions() {
               rpInfo->quat_w = field.value();
             } else if (field.key().compare("tgt_state") == 0) {
               rpInfo->tgt_state = field.value();
+            } else if (field.key().compare("mp_state") == 0) {
+              rpInfo->mp_state = field.value();
             }
           }
         }

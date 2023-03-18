@@ -42,7 +42,9 @@ struct FileStream {
   s32 file;  // int32
 };
 
+const int MAX_USERNAME_LEN = 16;
 struct RemotePlayerInfo {
+  u32 username; // string (basic)
   float trans_x;
   float trans_y;
   float trans_z;
@@ -51,11 +53,14 @@ struct RemotePlayerInfo {
   float quat_z;
   float quat_w;
   s32 tgt_state;
+  u32 mp_state;
 };
-static_assert(sizeof(RemotePlayerInfo) == 32, "RemotePlayerInfo size is wrong");
+// static_assert(sizeof(RemotePlayerInfo) == 32, "RemotePlayerInfo size is wrong");
+
+const int MAX_MULTIPLAYER_COUNT = 12;
 
 struct MultiplayerInfo {
   s32 player_num;
-  RemotePlayerInfo players[12];
+  RemotePlayerInfo players[MAX_MULTIPLAYER_COUNT];
 };
 //static_assert(sizeof(MultiplayerInfo) == 116, "MultiplayerInfo size is wrong");

@@ -231,13 +231,19 @@ an orb |#
     (none)
   )
 
+(define *self-player-info* (the-as remote-player-info #f))
 (define *multiplayer-mode* 'jaks)
 ;; (define *multiplayer-mode* 'orbs)
 (defun runs-every-frame ()
-  
+  ;; setup our own remote-player-info if we haven't yet
+  (when (not *self-player-info*)
+    (set! *self-player-info* (new 'global 'remote-player-info))
+    (set! (-> *self-player-info* username) "barg034") ;; TODO - pull this from settings I guess?
+    )
+
   ;; register with server if we haven't yet
   (when (and *target* (not *registered-with-server?*))
-    (pc-http-register *multiplayer-info*)
+    (pc-http-register *multiplayer-info* *self-player-info*)
     (set! *registered-with-server?* #t)
     ;; wait a bit to ensure registration before syncing position
     (set! *last-position-sync-time* (+ (-> *display* base-frame-counter) (seconds 1.0)))
@@ -251,6 +257,7 @@ an orb |#
       (set! *last-position-sync-time* (-> *display* base-frame-counter))
 
       ;; update this player's position and send to server
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) username) (-> *self-player-info* username))
       (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) trans_x) (-> *target* root trans x))
       (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) trans_y) (-> *target* root trans y))
       (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) trans_z) (-> *target* root trans z))
@@ -258,7 +265,8 @@ an orb |#
       (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_y)  (-> *target* root quat y))
       (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_z)  (-> *target* root quat z))
       (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_w)  (-> *target* root quat w))
-      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) tgt_state)  (-> *target* state name))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) tgt_state) (-> *target* state name))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state)  (mp-tgt-state mp-tgt-lobby)) ;; TODO - choose correct mp state
       (pc-http-update-position)
 
       ;; request to get positions of other players from server (async)
