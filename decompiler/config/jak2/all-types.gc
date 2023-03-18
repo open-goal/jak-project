@@ -24991,13 +24991,14 @@
 ;; etie-vu1                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype etie-consts (structure)
   ((gifbufs qword        :inline :offset-assert 0)
-   (adgif   qword        :inline :offset-assert 16)
-   (alpha   qword        :inline :offset-assert 32)
-   (strgif  qword        :inline :offset-assert 48)
-   (envgif  qword        :inline :offset-assert 64)
+   ;(adgif   qword        :inline :offset-assert 16)
+   (adgif gs-gif-tag     :inline :offset-assert 16)
+   ;;(alpha   qword        :inline :offset-assert 32)
+   (alpah   gs-adcmd     :inline)
+   (strgif  gs-gif-tag        :inline :offset-assert 48)
+   (envgif  gs-gif-tag        :inline :offset-assert 64)
    (envmap  adgif-shader :inline :offset-assert 80)
    (pers0   vector       :inline :offset-assert 160)
    (pers1   vector       :inline :offset-assert 176)
@@ -25006,27 +25007,24 @@
   :size-assert         #xc0
   :flag-assert         #x9000000c0
   )
-|#
 
-#|
 (deftype etie-matrix (structure)
   ((rmtx  matrix  :inline :offset-assert 0)
    (nmtx  matrix3 :inline :offset-assert 64)
-   (morph float           :offset-assert 76)
-   (fog   float           :offset-assert 92)
-   (fade  uint32          :offset-assert 108)
+   (morph float           :offset 76)
+   (fog   float           :offset 92)
+   (fade  uint32          :offset 108)
    (tint  qword   :inline :offset-assert 112)
    )
   :method-count-assert 9
   :size-assert         #x80
   :flag-assert         #x900000080
   )
-|#
 
-;; (define-extern etie-vu1-block object)
-;; (define-extern etie-magic function)
-;; (define-extern etie-init-consts function)
-(define-extern etie-init-engine (function dma-buffer none))
+(define-extern etie-vu1-block vu-function)
+(define-extern etie-magic (function int int))
+(define-extern etie-init-consts (function etie-consts gs-alpha none))
+(define-extern etie-init-engine (function dma-buffer gs-alpha gs-test none))
 (define-extern etie-end-buffer (function dma-buffer none))
 ;; (define-extern etie-float-reg-bp function)
 ;; (define-extern etie-float-reg function)
@@ -25201,7 +25199,7 @@
 (define-extern draw-drawable-tree-instance-tie (function drawable-tree-instance-tie level none))
 (define-extern tie-init-scissor-buf (function bucket-id gs-alpha gs-test gs-test none))
 (define-extern tie-init-buf (function bucket-id gs-alpha gs-test gs-test none))
-(define-extern tie-init-envmap-buf (function bucket-id gs-alpha int int none))
+(define-extern tie-init-envmap-buf (function bucket-id gs-alpha gs-test none))
 (define-extern tie-init-envmap-scissor-buf (function bucket-id gs-alpha int int none))
 (define-extern *tie-init-table* (inline-array tie-init-data))
 (define-extern tie-vu1-init-buffers (function none))

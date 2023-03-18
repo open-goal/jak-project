@@ -16,39 +16,25 @@ out vec4 fragment_color;
 out vec3 tex_coord;
 out float fogginess;
 
+// etie stuff
+uniform vec4 persp0;
+uniform vec4 persp1;
+uniform mat4 cam_no_persp;
+
 void main() {
+    float fog1 = camera[3].w + camera[0].w * position_in.x + camera[1].w * position_in.y + camera[2].w * position_in.z;
+    fogginess = 255 - clamp(fog1 + hvdf_offset.w, fog_min, fog_max);
+    vec4 vf17 = cam_no_persp[3];
+    vf17 += cam_no_persp[0] * position_in.x;
+    vf17 += cam_no_persp[1] * position_in.y;
+    vf17 += cam_no_persp[2] * position_in.z;
+    vec4 p_proj = vec4(persp1.x * vf17.x, persp1.y * vf17.y, persp1.z, persp1.w);
+    p_proj += persp0 * vf17.z;
 
+    float pQ = 1.f / p_proj.w;
+    vec4 transformed = p_proj * pQ;
+    transformed.w = p_proj.w;
 
-    // old system:
-    // - load vf12
-    // - itof0 vf12
-    // - multiply with camera matrix (add trans)
-    // - let Q = fogx / vf12.w
-    // - xyz *= Q
-    // - xyzw += hvdf_offset
-    // - clip w.
-    // - ftoi4 vf12
-    // use in gs.
-    // gs is 12.4 fixed point, set up with 2048.0 as the center.
-
-    // the itof0 is done in the preprocessing step.  now we have floats.
-
-    // Step 3, the camera transform
-    vec4 transformed = -camera[3];
-    transformed -= camera[0] * position_in.x;
-    transformed -= camera[1] * position_in.y;
-    transformed -= camera[2] * position_in.z;
-
-    // compute Q
-    float Q = fog_constant / transformed.w;
-
-    // do fog!
-    fogginess = 255 - clamp(-transformed.w + hvdf_offset.w, fog_min, fog_max);
-
-    // perspective divide!
-    transformed.xyz *= Q;
-    // offset
-    transformed.xyz += hvdf_offset.xyz;
     // correct xy offset
     transformed.xy -= (2048.);
     // correct z scale
@@ -62,6 +48,8 @@ void main() {
     // scissoring area adjust
     transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
     gl_Position = transformed;
+
+
 
     if (decal == 1) {
         fragment_color = vec4(1.0, 1.0, 1.0, 1.0);
@@ -77,6 +65,6 @@ void main() {
     if (fragment_color.r < 0.005 && fragment_color.g < 0.005 && fragment_color.b < 0.005) {
         fogginess = 0;
     }
-    
+
     tex_coord = tex_coord_in;
 }

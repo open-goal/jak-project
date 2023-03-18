@@ -28,4 +28,5 @@ void main() {
     }
 
     color.rgb = mix(color.rgb, fog_color.rgb, clamp(fogginess * fog_color.a, 0, 1));
+
 }

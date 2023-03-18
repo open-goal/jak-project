@@ -99,7 +99,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<OceanMidAndFar>("ocean-mid-far", BucketCategory::OCEAN,
                                        BucketId::OCEAN_MID_FAR);
   for (int i = 0; i < 6; ++i) {
-#define GET_BUCKET_ID_FOR_LIST(bkt1, bkt2, idx) ((int)bkt1 + ((int)bkt2 - (int)bkt1) * idx)
+#define GET_BUCKET_ID_FOR_LIST(bkt1, bkt2, idx) ((int)(bkt1) + ((int)(bkt2) - (int)(bkt1)) * (idx))
     init_bucket_renderer<TextureUploadHandler>(
         fmt::format("tex-l{}-tfrag", i), BucketCategory::TEX,
         GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_TFRAG, BucketId::TEX_L1_TFRAG, i));
@@ -107,9 +107,13 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
         fmt::format("tfrag-l{}-tfrag", i), BucketCategory::TFRAG,
         GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_L0_TFRAG, BucketId::TFRAG_L1_TFRAG, i),
         std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, i);
-    init_bucket_renderer<Tie3>(
+    Tie3* tie = init_bucket_renderer<Tie3>(
         fmt::format("tie-l{}-tfrag", i), BucketCategory::TIE,
         GET_BUCKET_ID_FOR_LIST(BucketId::TIE_L0_TFRAG, BucketId::TIE_L1_TFRAG, i), i);
+    init_bucket_renderer<Tie3AnotherCategory>(
+        fmt::format("etie-l{}-tfrag", i), BucketCategory::TIE,
+        GET_BUCKET_ID_FOR_LIST(BucketId::ETIE_L0_TFRAG, BucketId::ETIE_L1_TFRAG, i), tie,
+        tfrag3::TieCategory::NORMAL_ENVMAP);
     init_bucket_renderer<Merc2>(
         fmt::format("merc-l{}-tfrag", i), BucketCategory::MERC,
         GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_TFRAG, BucketId::MERC_L1_TFRAG, i));
@@ -131,6 +135,14 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
         fmt::format("tfrag-t-l{}-alpha", i), BucketCategory::TFRAG,
         GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_T_L0_ALPHA, BucketId::TFRAG_T_L1_ALPHA, i),
         std::vector{tfrag3::TFragmentTreeKind::TRANS}, false, i);
+    init_bucket_renderer<Tie3AnotherCategory>(
+        fmt::format("tie-t-l{}-alpha", i), BucketCategory::TIE,
+        GET_BUCKET_ID_FOR_LIST(BucketId::TIE_T_L0_ALPHA, BucketId::TIE_T_L1_ALPHA, i), tie,
+        tfrag3::TieCategory::TRANS);
+    init_bucket_renderer<Tie3AnotherCategory>(
+        fmt::format("etie-t-l{}-alpha", i), BucketCategory::TIE,
+        GET_BUCKET_ID_FOR_LIST(BucketId::ETIE_T_L0_ALPHA, BucketId::ETIE_T_L1_ALPHA, i), tie,
+        tfrag3::TieCategory::TRANS_ENVMAP);
 
     init_bucket_renderer<TextureUploadHandler>(
         fmt::format("tex-l{}-pris", i), BucketCategory::TEX,
@@ -156,6 +168,14 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
         fmt::format("tfrag-w-l{}-alpha", i), BucketCategory::TFRAG,
         GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_W_L0_WATER, BucketId::TFRAG_W_L1_WATER, i),
         std::vector{tfrag3::TFragmentTreeKind::WATER}, false, i);
+    init_bucket_renderer<Tie3AnotherCategory>(
+        fmt::format("tie-w-l{}-water", i), BucketCategory::TIE,
+        GET_BUCKET_ID_FOR_LIST(BucketId::TIE_W_L0_WATER, BucketId::TIE_W_L1_WATER, i), tie,
+        tfrag3::TieCategory::WATER);
+    init_bucket_renderer<Tie3AnotherCategory>(
+        fmt::format("etie-w-l{}-water", i), BucketCategory::TIE,
+        GET_BUCKET_ID_FOR_LIST(BucketId::ETIE_W_L0_WATER, BucketId::ETIE_W_L1_WATER, i), tie,
+        tfrag3::TieCategory::WATER_ENVMAP);
 #undef GET_BUCKET_ID_FOR_LIST
   }
   // 180
@@ -911,6 +931,7 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma,
                                       ScopedProfilerNode& prof,
                                       bool sync_after_buckets) {
   m_render_state.version = m_version;
+  m_render_state.frame_idx++;
   switch (m_version) {
     case GameVersion::Jak1:
       dispatch_buckets_jak1(dma, prof, sync_after_buckets);
