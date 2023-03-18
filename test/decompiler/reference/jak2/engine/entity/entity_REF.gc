@@ -71,7 +71,6 @@
   )
 
 ;; definition for method 3 of type actor-group
-;; INFO: this function exists in multiple non-identical object files
 (defmethod inspect actor-group ((obj actor-group))
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tlength: ~D~%" (-> obj length))
@@ -531,7 +530,6 @@
   )
 
 ;; definition for method 2 of type process
-;; INFO: this function exists in multiple non-identical object files
 (defmethod print process ((obj process))
   (cond
     ((and (-> obj top-thread) (!= (-> obj status) 'dead))
@@ -865,7 +863,7 @@
 ;; definition for function update-actor-vis-box
 ;; WARN: Return type mismatch int vs none.
 (defun update-actor-vis-box ((arg0 process-drawable) (arg1 vector) (arg2 vector))
-  (when (and arg0 (nonzero? (-> arg0 draw)) (zero? (logand (-> arg0 draw status) (draw-control-status no-draw))))
+  (when (and arg0 (nonzero? (-> arg0 draw)) (not (logtest? (-> arg0 draw status) (draw-control-status no-draw))))
     (let ((v1-5 (-> arg0 draw origin))
           (f0-0 (-> arg0 draw bounds w))
           )
@@ -2376,7 +2374,7 @@
                  (dotimes (s2-0 s3-1)
                    (let ((v1-54 (-> s4-2 data s2-0)))
                      (cond
-                       ((and (logtest? (-> v1-54 kill-mask) (task-mask special)) (zero? (logand (-> v1-54 kill-mask) sv-32)))
+                       ((and (logtest? (-> v1-54 kill-mask) (task-mask special)) (not (logtest? (-> v1-54 kill-mask) sv-32)))
                         (when (not (or (-> v1-54 process) (logtest? (-> v1-54 perm status) (entity-perm-status bit-0 dead))))
                           (birth! (-> v1-54 entity))
                           (set! sv-24 (+ sv-24 1))
@@ -2388,7 +2386,7 @@
                        (else
                          (if (and (-> v1-54 process)
                                   (not (logtest? (-> v1-54 perm status) (entity-perm-status no-kill)))
-                                  (zero? (logand (-> v1-54 process mask) (process-mask no-kill)))
+                                  (not (logtest? (-> v1-54 process mask) (process-mask no-kill)))
                                   )
                              (kill! (-> v1-54 entity))
                              )
@@ -2417,7 +2415,7 @@
                        (else
                          (if (and (-> v1-67 process)
                                   (not (logtest? (-> v1-67 perm status) (entity-perm-status no-kill)))
-                                  (zero? (logand (-> v1-67 process mask) (process-mask no-kill)))
+                                  (not (logtest? (-> v1-67 process mask) (process-mask no-kill)))
                                   )
                              (kill! (-> v1-67 entity))
                              )
@@ -2436,7 +2434,7 @@
                      (cond
                        ((and (< (vector-vector-distance (-> s1-0 trans) sv-16) (-> *ACTOR-bank* birth-dist))
                              (not (logtest? (-> s1-0 perm status) (entity-perm-status bit-9 bit-10)))
-                             (zero? (logand (-> s1-0 kill-mask) sv-32))
+                             (not (logtest? (-> s1-0 kill-mask) sv-32))
                              )
                         (when (not (or (-> s1-0 process) (logtest? (-> s1-0 perm status) (entity-perm-status bit-0 dead))))
                           (birth! (-> s1-0 entity))
@@ -2449,7 +2447,7 @@
                        (else
                          (if (and (-> s1-0 process)
                                   (not (logtest? (-> s1-0 perm status) (entity-perm-status no-kill)))
-                                  (zero? (logand (-> s1-0 process mask) (process-mask no-kill)))
+                                  (not (logtest? (-> s1-0 process mask) (process-mask no-kill)))
                                   )
                              (kill! (-> s1-0 entity))
                              )
@@ -2494,7 +2492,7 @@
                         (else
                           (when (and (-> sv-48 process)
                                      (not (logtest? (-> sv-48 perm status) (entity-perm-status no-kill)))
-                                     (zero? (logand (-> sv-48 process mask) (process-mask no-kill)))
+                                     (not (logtest? (-> sv-48 process mask) (process-mask no-kill)))
                                      )
                             (kill! (-> sv-48 entity))
                             (set! sv-24 (+ sv-24 1))

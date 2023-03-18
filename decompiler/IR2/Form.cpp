@@ -1877,6 +1877,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "vector-length";
     case FixedOperatorKind::VECTOR_PLUS_FLOAT_TIMES:
       return "vector+float*!";
+    case FixedOperatorKind::FOCUS_TEST:
+      return "focus-test?";
     default:
       ASSERT(false);
       return "";

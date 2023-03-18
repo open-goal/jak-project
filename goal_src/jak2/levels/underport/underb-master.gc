@@ -203,7 +203,7 @@
            (cond
              ((-> *setting-control* user-current pilot-exit)
               (let ((a1-2 *target*))
-                (when (and a1-2 (logtest? (focus-status mech) (-> a1-2 focus-status)))
+                (when (and a1-2 (focus-test? a1-2 mech))
                   (set-setting! 'pilot-exit #f 0 0)
                   (apply-settings *setting-control*)
                   #t
@@ -377,7 +377,7 @@
             )
         )
       )
-    (if (or (not gp-0) (zero? (logand (-> gp-0 water flags) (water-flags under-water))))
+    (if (or (not gp-0) (not (logtest? (-> gp-0 water flags) (water-flags under-water))))
         (set! (-> self air-charge-up?) #t)
         (set! (-> self underwater-time) (-> self clock frame-counter))
         )
@@ -430,7 +430,7 @@
       )
     )
   (set! (-> *game-info* air-supply) (fmin 1.0 (-> self air-supply)))
-  (if (or (and *target* (zero? (logand (focus-status mech) (-> *target* focus-status))))
+  (if (or (and *target* (not (logtest? (focus-status mech) (-> *target* focus-status))))
           (and (>= (-> self air-supply) 1.0)
                (>= (- (-> self clock frame-counter) (-> self underwater-time)) (seconds 3))
                )
@@ -722,7 +722,7 @@
              )
            (let ((a1-6 *target*))
              (cond
-               ((and a1-6 (logtest? (focus-status mech) (-> a1-6 focus-status)))
+               ((and a1-6 (focus-test? a1-6 mech))
                 (set! (-> self mode) (the-as uint 3))
                 (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
                   (set! (-> a1-8 from) (process->ppointer self))
@@ -785,7 +785,7 @@
            ((-> event param 0)
             (when (or (zero? v1-1) (= v1-1 5))
               (let ((a0-4 *target*))
-                (and a0-4 (zero? (logand (focus-status mech) (-> a0-4 focus-status))))
+                (and a0-4 (not (logtest? (focus-status mech) (-> a0-4 focus-status))))
                 )
               )
             )
@@ -806,7 +806,7 @@
                )
            (when (and v1-1 a0-1)
              (if (and (-> a0-1 0 data 0 actor)
-                      (logtest? (focus-status mech) (-> v1-1 focus-status))
+                      (focus-test? v1-1 mech)
                       (send-event (ppointer->process *underb-master*) 'request 'mech #t)
                       )
                  (set! (-> self mode) (the-as uint 1))
@@ -849,7 +849,7 @@
          )
         ((= v1-0 5)
          (let ((a1-4 *target*))
-           (when (or (not a1-4) (zero? (logand (focus-status mech) (-> a1-4 focus-status))))
+           (when (or (not a1-4) (not (logtest? (focus-status mech) (-> a1-4 focus-status))))
              (set! (-> self mode) (the-as uint 0))
              0
              )
@@ -895,7 +895,7 @@
     )
   :trans (behavior ()
     (when (and (zero? (-> self state-time))
-               ;; TODO this always returns false?
+               ;; TODO remove when gui-control works
                ;; (= (get-status *gui-control* (the-as sound-id (-> self spooled-sound-id))) (gui-status ready))
                )
       (set! (-> self state-time) (-> self clock frame-counter))
@@ -924,7 +924,7 @@
                    )
              )
         (when gp-0
-          (let ((f0-0 (-> (the-as process-drawable gp-0) root trans y)))
+          (let ((f0-0 (-> (the-as water-anim gp-0) root trans y)))
             (when (!= f0-0 (-> self up-y))
               (let ((f0-4 (seek f0-0 (-> self up-y) (* 12288.0 (-> self clock seconds-per-frame)))))
                 (send-event gp-0 'move-to-y f0-4)
@@ -951,7 +951,7 @@
                    )
              )
         (when gp-0
-          (if (< (- (-> (camera-pos) y) (-> (the-as process-drawable gp-0) root trans y)) 22528.0)
+          (if (< (- (-> (camera-pos) y) (-> (the-as water-anim gp-0) root trans y)) 22528.0)
               (goto cfg-11)
               )
           )
@@ -973,7 +973,7 @@
                     )
              )
         (when v1-19
-          (when (= (-> (the-as process-drawable v1-19) root trans y) (-> self up-y))
+          (when (= (-> (the-as water-anim v1-19) root trans y) (-> self up-y))
             (persist-with-delay *setting-control* 'interp-time (seconds 0.05) 'interp-time 'abs 0.0 0)
             (remove-setting! 'entity-name)
             (send-event (ppointer->process *underb-master*) 'request 'under-warp #t)
@@ -1026,7 +1026,7 @@
                    )
              )
         (when gp-0
-          (let ((f0-0 (-> (the-as process-drawable gp-0) root trans y)))
+          (let ((f0-0 (-> (the-as water-anim gp-0) root trans y)))
             (when (!= f0-0 (-> self down-y))
               (let ((f0-4 (seek f0-0 (-> self down-y) (* 12288.0 (-> self clock seconds-per-frame)))))
                 (send-event gp-0 'move-to-y f0-4)
@@ -1059,7 +1059,7 @@
                     )
              )
         (when v1-15
-          (if (< (-> (the-as process-drawable v1-15) root trans y) (+ 10240.0 (-> (target-pos 0) y)))
+          (if (< (-> (the-as water-anim v1-15) root trans y) (+ 10240.0 (-> (target-pos 0) y)))
               (goto cfg-17)
               )
           )
@@ -1077,7 +1077,7 @@
                     )
              )
         (when v1-26
-          (when (= (-> (the-as process-drawable v1-26) root trans y) (-> self down-y))
+          (when (= (-> (the-as water-anim v1-26) root trans y) (-> self down-y))
             (set! (-> self mode) (the-as uint 5))
             (send-event (ppointer->process *underb-master*) 'request 'mech #f)
             (set! (-> self which-reminder?) #f)

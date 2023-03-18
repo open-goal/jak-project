@@ -44,7 +44,7 @@
       (set! (-> a1-0 tlist) *touching-list*)
       (find-overlapping-shapes (-> obj root-override2) a1-0)
       )
-    (when (and (not (logtest? (-> obj focus-status) (focus-status disable dead ignore inactive)))
+    (when (and (not (focus-test? obj disable dead ignore inactive))
                (< (-> obj next-update-target) (-> pp clock frame-counter))
                (not (logtest? (enemy-flag actor-pause-backup) (-> obj enemy-flags)))
                (-> obj next-state)
@@ -81,10 +81,10 @@
                        )
                  )
             (cond
-              ((and (logtest? (-> obj focus-status) (focus-status dangerous))
+              ((and (focus-test? obj dangerous)
                     (logtest? (process-mask guard civilian) (-> arg0 mask))
                     (and v1-6
-                         (zero? (logand (-> (the-as process-focusable v1-6) focus-status) (focus-status disable dead ignore grabbed)))
+                         (not (logtest? (-> (the-as process-focusable v1-6) focus-status) (focus-status disable dead ignore grabbed)))
                          )
                     ((method-of-type touching-shapes-entry prims-touching-action?)
                      (the-as touching-shapes-entry s3-0)
@@ -206,13 +206,13 @@
                        )
                   (when (and s1-1
                              (!= obj s1-1)
-                             (not (logtest? (-> (the-as process-focusable s1-1) focus-status) (focus-status inactive)))
-                             (not (logtest? (-> (the-as process-focusable s1-1) focus-status) (focus-status disable)))
+                             (not (focus-test? (the-as process-focusable s1-1) inactive))
+                             (not (focus-test? (the-as process-focusable s1-1) disable))
                              (not (logtest? (process-mask enemy) (-> s1-1 mask)))
                              (not (logtest? (process-mask crate) (-> s1-1 mask)))
                              (not (logtest? (process-mask vehicle) (-> s1-1 mask)))
                              s1-1
-                             (zero? (logand (-> (the-as process-focusable s1-1) focus-status) (focus-status disable dead ignore grabbed)))
+                             (not (logtest? (-> (the-as process-focusable s1-1) focus-status) (focus-status disable dead ignore grabbed)))
                              )
                     (let ((f0-1 (vector-vector-xz-distance (-> obj root-override2 trans) (-> s1-1 root trans))))
                       (when (or (not s4-0) (< f0-1 f30-0))
@@ -351,7 +351,3 @@
   (go (method-of-object obj active))
   (none)
   )
-
-
-
-
