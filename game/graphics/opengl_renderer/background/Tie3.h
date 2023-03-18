@@ -195,6 +195,7 @@ class Tie3WithEnvmapJak1 : public Tie3 {
   Tie3WithEnvmapJak1(const std::string& name, int my_id, int level_id);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
+
  private:
   bool m_enable_envmap = true;
 };
