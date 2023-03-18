@@ -157,9 +157,13 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
 
 DoubleDraw setup_tfrag_shader(SharedRenderState* render_state, DrawMode mode, ShaderId shader) {
   auto draw_settings = setup_opengl_from_draw_mode(mode, GL_TEXTURE0, true);
-  glUniform1f(glGetUniformLocation(render_state->shaders[shader].id(), "alpha_min"),
-              draw_settings.aref_first);
-  glUniform1f(glGetUniformLocation(render_state->shaders[shader].id(), "alpha_max"), 10.f);
+  auto sh_id = render_state->shaders[shader].id();
+  if (auto u_id = glGetUniformLocation(sh_id, "alpha_min"); u_id != -1) {
+    glUniform1f(u_id, draw_settings.aref_first);
+  }
+  if (auto u_id = glGetUniformLocation(sh_id, "alpha_max"); u_id != -1) {
+    glUniform1f(u_id, 10.f);
+  }
   return draw_settings;
 }
 

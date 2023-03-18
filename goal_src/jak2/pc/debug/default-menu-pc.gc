@@ -601,16 +601,33 @@
 (defun dm-region-pick-func ((r drawable-region-prim) (msg debug-menu-msg))
   (when (= msg (debug-menu-msg press))
     (if (= *region-debug-inspect* r)
-      (set! *region-debug-inspect* (the drawable-region-prim #f))
+      (set! *region-debug-inspect* #f)
       (set! *region-debug-inspect* r))
     )
   (= *region-debug-inspect* r)
   )
 
-(defun build-regions-list ()
+(defun debug-menu-node-region<? ((arg0 debug-menu-item) (arg1 debug-menu-item))
+  (<= (-> (the-as drawable-region-prim (-> arg0 id)) region id) (-> (the-as drawable-region-prim (-> arg1 id)) region id))
+  )
+
+(defun array-uint32-value? ((arr (array uint32)) (val uint))
+  (dotimes (i (-> arr length))
+    (if (= val (-> arr i)) (return #t)))
+  #f)
+(define *region-debug-id-list* (new 'static 'boxed-array :type uint32 :length 0 :allocated-length 2000))
+
+(defun build-regions-list ((merge-prims? symbol))
   "Fill the region pick menu"
+
   ;; clear old list
   (debug-menu-remove-all-items *region-pick-menu*)
+  (set! *region-debug-inspect* #f)
+  (set! *merge-region-prims* merge-prims?)
+  (dotimes (i (-> *region-debug-id-list* allocated-length))
+    (set! (-> *region-debug-id-list* i) -1))
+  (set! (-> *region-debug-id-list* length) 0)
+
   ;; go through active levels
   (dotimes (lev-i (-> *level* length))
     (let ((lev (-> *level* level lev-i)))
@@ -627,12 +644,18 @@
                         (region (-> (the-as drawable-inline-array-region-prim (-> region-tree data2 (+ (-> region-tree length) -1))) data i))
                         )
                   (while (< i s0-4)
-                    (debug-menu-append-item *region-pick-menu* (new-dm-flag (new 'debug 'string 0 (string-format "region-~D" (-> region region id))) region dm-region-pick-func))
-                    (set! i (+ i 1))
+                    (when (or (not merge-prims?) (not (array-uint32-value? *region-debug-id-list* (-> region region id))))
+                      (debug-menu-append-item *region-pick-menu* (new-dm-flag (new 'debug 'string 0 (string-format "region-~D" (-> region region id))) region dm-region-pick-func))
+                      (when merge-prims?
+                        (set! (-> *region-debug-id-list* (-> *region-debug-id-list* length)) (-> region region id))
+                        (1+! (-> *region-debug-id-list* length))
+                        )
+                      )
+                    (1+! i)
                     (set! region (-> (the-as drawable-inline-array-region-prim (-> region-tree data2 (+ (-> region-tree length) -1))) data i))
                     )
                   )
-                (+! tree-i 1)
+                (1+! tree-i)
                 (set! region-tree (-> region-trees tree-i))
                 )
               )
@@ -641,7 +664,8 @@
         )
       )
     )
-  (set! (-> *region-pick-menu* items) (sort (-> *region-pick-menu* items) debug-menu-node<?))
+
+  (set! (-> *region-pick-menu* items) (sort (-> *region-pick-menu* items) debug-menu-node-region<?))
   )
 
 (defun dm-print-region-pick-func ((kind symbol))
@@ -660,6 +684,7 @@
         (debug-menu-append-item regions-menu (new-dm-submenu "Pick Region" pick-menu))
         )
       (debug-menu-append-item regions-menu (new-dm-func "Refresh" #f build-regions-list))
+      (debug-menu-append-item regions-menu (new-dm-func "Refresh (merge prims)" #t build-regions-list))
       (debug-menu-append-item regions-menu (new-dm-func "Go to region" #f
                                               (lambda ()
                                                 (unless *region-debug-inspect* (return #f))
@@ -673,6 +698,7 @@
       (debug-menu-append-item regions-menu (new-dm-func "Print on-inside" 'on-inside dm-print-region-pick-func))
       (debug-menu-append-item regions-menu (new-dm-func "Print on-exit" 'on-exit dm-print-region-pick-func))
       (debug-menu-append-item regions-menu (new-dm-bool "Display region inside" *display-region-inside* dm-boolean-toggle-pick-func))
+      (debug-menu-append-item regions-menu (new-dm-bool "Region Marks" *display-region-marks* dm-boolean-toggle-pick-func))
 
       (new-dm-submenu "Regions" regions-menu)
       )
@@ -863,6 +889,7 @@
           ;;    )
           (flag "Joint names" *display-joint-names* dm-boolean-toggle-pick-func)
           (flag "Bone lines" *display-bones* dm-boolean-toggle-pick-func)
+          (flag "Entity Lights" *display-lights* dm-boolean-toggle-pick-func)
           )
       )
     )
