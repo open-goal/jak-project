@@ -744,7 +744,7 @@ into 7 sections, which might explain the weird sizes in the center.
        ;; borrowing is a two-way thing. the host level has to have our name.
 
        (let ((slot-in-borrow-from-lev -1)) ;; the slot in the host
-         (dotimes (borrow-from-lev-idx (-> *level* length))  ;; loop over all levels
+         (dotimes (borrow-from-lev-idx LEVEL_MAX)  ;; loop over all levels
            (let ((maybe-borrow-from-lev (-> *level* level borrow-from-lev-idx)))
              ;; only can borrow from loaded level
              (when (and (or (= (-> maybe-borrow-from-lev status) 'active) (= (-> maybe-borrow-from-lev status) 'loaded))
@@ -821,7 +821,7 @@ into 7 sections, which might explain the weird sizes in the center.
        )
       (else
         (start-debug "load-begin, no borrow~%")
-        (dotimes (i (1+ (-> *level* length)))
+        (dotimes (i LEVEL_TOTAL)
           (start-debug "lev ~8S bits #b~b~%"
                       (-> *level* level i name)
                       (-> *level* level i memory-mask))
@@ -846,7 +846,7 @@ into 7 sections, which might explain the weird sizes in the center.
 
         ;; helper function to check to see if a certain group of bits is unused.
         (let* ((memory-unused? (lambda ((arg0 level-group) (arg1 int))
-                                 (dotimes (v1-0 (1+ (-> *level* length)))
+                                 (dotimes (v1-0 LEVEL_TOTAL)
                                    (if (logtest? (-> arg0 level v1-0 memory-mask) arg1)
                                        (return #f)
                                        )
@@ -946,7 +946,7 @@ into 7 sections, which might explain the weird sizes in the center.
             ((zero? bits-to-use)
              ;; darn, couldn't find a spot.
              (format 0 "ERROR: level ~A could not find free ~S bank in the level-group heap~%" (-> obj name) (enum->string load-buffer-mode mem-mode))
-             (dotimes (s5-1 (1+ (-> *level* length)))
+             (dotimes (s5-1 LEVEL_TOTAL)
                (if (!= (-> *level* level s5-1 status) 'inactive)
                    (format
                      0
@@ -1555,6 +1555,7 @@ into 7 sections, which might explain the weird sizes in the center.
 
      ;; copy data from entities to permanent storage
      (copy-perms-from-level! *game-info* obj)
+
      ;; tell target
      (send-event *target* 'level-deactivate (-> obj name))
 
@@ -1984,7 +1985,7 @@ into 7 sections, which might explain the weird sizes in the center.
 
 (defmethod art-group-get-by-name level-group ((obj level-group) (arg0 string) (arg1 (pointer uint32)))
   "Search all levels for an art-group. Return the art group, or #f. Optionally return the level index."
-  (countdown (s4-0 (1+ (-> *level* length)))
+  (countdown (s4-0 LEVEL_TOTAL)
     (let ((s3-0 (-> *level* level s4-0)))
       (when (or (= (-> s3-0 status) 'active) (= (-> s3-0 status) 'reserved))
         (countdown (s2-0 (-> s3-0 art-group art-group-array length))
@@ -2440,18 +2441,18 @@ into 7 sections, which might explain the weird sizes in the center.
       -1
 
       ;; unload up to 6 levels, so try 6 times
-      (countdown (unload-attempt (-> *level* length))
+      (countdown (unload-attempt LEVEL_MAX)
         (let ((unload-idx -1)) ;; which is best to unload
 
           ;; try all six, to find the best to unload
-          (countdown (unload-candidate-idx (-> *level* length))
+          (countdown (unload-candidate-idx LEVEL_MAX)
             (let ((unload-candidate-lev (-> *level* level unload-candidate-idx)))
               (when (and (!= (-> unload-candidate-lev status) 'inactive) ;; in use
                          (>= (the-as uint (-> unload-candidate-lev load-order)) (the-as uint most-recent-load-order)) ;; newer than best
                          )
                 ;; check if still wanted
                 (let ((still-wanted #f))
-                  (dotimes (t0-2 (-> *level* length))
+                  (dotimes (t0-2 LEVEL_MAX)
                     (if (= (-> unload-candidate-lev name) (-> obj want t0-2 name))
                         (set! still-wanted #t)
                         )
@@ -2481,7 +2482,7 @@ into 7 sections, which might explain the weird sizes in the center.
     (let ((no-levels-at-all #f))
 
       ;; see if all levels inactive
-      (countdown (a0-9 (-> *level* length))
+      (countdown (a0-9 LEVEL_MAX)
         (when (!= (-> *level* level a0-9 status) 'inactive)
           (set! all-levels-inactive #f)
           (goto cfg-23)
@@ -2498,15 +2499,15 @@ into 7 sections, which might explain the weird sizes in the center.
           )
 
       ;; build array of desired levels that we might want to load
-      (let ((desired-levels (new 'static 'boxed-array :type symbol :length 0 :allocated-length 8)))
-        (countdown (a0-14 (-> *level* length))
+      (let ((desired-levels (new 'static 'boxed-array :type symbol :length 0 :allocated-length LEVEL_MAX)))
+        (countdown (a0-14 LEVEL_MAX)
           (set! (-> desired-levels a0-14) #f)
           )
-        (dotimes (want-lev-idx (-> *level* length)) ;; loop over wants
+        (dotimes (want-lev-idx LEVEL_MAX) ;; loop over wants
           (when (-> obj want want-lev-idx name)
             (set! (-> desired-levels want-lev-idx) (-> obj want want-lev-idx name))
             ;; check if this wanted level is already present, in any state.
-            (dotimes (a1-17 (-> *level* length))
+            (dotimes (a1-17 LEVEL_MAX)
               (let ((a2-13 (-> *level* level a1-17)))
                 (if (and (!= (-> a2-13 status) 'inactive) (= (-> a2-13 name) (-> obj want want-lev-idx name)))
                     (set! (-> desired-levels want-lev-idx) #f) ;; it's already there, not candidate for load start
@@ -2518,7 +2519,7 @@ into 7 sections, which might explain the weird sizes in the center.
 
         ;; find the first level in the possible load array that's not #f (nothing, or already assigned to a level)
         (let ((want-lev-idx-to-load -1))
-          (dotimes (a0-20 (-> *level* length))
+          (dotimes (a0-20 LEVEL_MAX)
             (when (-> desired-levels a0-20)
               (set! want-lev-idx-to-load a0-20)
               (goto cfg-51)
@@ -2552,10 +2553,10 @@ into 7 sections, which might explain the weird sizes in the center.
 
   ;; process other changes in want.
   ;; loop over all wanted levels
-  (dotimes (want-lev-i (-> *level* length))
+  (dotimes (want-lev-i LEVEL_MAX)
     (when (-> obj want want-lev-i name)
       ;; and find the associated level
-      (dotimes (lev-i (1+ (-> *level* length)))
+      (dotimes (lev-i LEVEL_TOTAL)
         (let ((lev (-> *level* level lev-i)))
           (when (!= (-> lev status) 'inactive)
             (when (= (-> lev name) (-> obj want want-lev-i name))
@@ -2659,7 +2660,7 @@ into 7 sections, which might explain the weird sizes in the center.
   "Sort the levels by draw priority."
   (local-vars (t0-3 symbol))
   (set! (-> obj draw-level-count) 0)
-  (dotimes (v1-0 (1+ (-> *level* length)))
+  (dotimes (v1-0 LEVEL_TOTAL)
     (let ((f0-0 100000.0)
           (a1-1 (the-as level #f))
           )
@@ -2692,13 +2693,13 @@ into 7 sections, which might explain the weird sizes in the center.
         )
       )
     )
-  (while (< (-> obj draw-level-count) (1+ (-> *level* length)))
+  (while (< (-> obj draw-level-count) LEVEL_TOTAL)
     (set! (-> obj draw-level (-> obj draw-level-count)) #f)
     (+! (-> obj draw-level-count) 1)
     )
-  (set! (-> obj draw-level (-> *level* length)) (-> obj default-level))
-  (set! (-> (&-> obj default-level draw-index) 0) (-> *level* length))
-  (dotimes (v1-12 (1+ (-> *level* length)))
+  (set! (-> obj draw-level LEVEL_MAX) (-> obj default-level))
+  (set! (-> (&-> obj default-level draw-index) 0) LEVEL_MAX)
+  (dotimes (v1-12 LEVEL_TOTAL)
     (let ((a2-9 (-> obj level v1-12)))
       (if a2-9
           (set! (-> obj draw-index-map v1-12) (the-as uint (-> a2-9 draw-index)))
@@ -2713,12 +2714,12 @@ into 7 sections, which might explain the weird sizes in the center.
 
   (local-vars (v1-101 symbol))
   (camera-pos)
-  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 8)
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length LEVEL_MAX)
   (update *setting-control*)
   (update *gui-control* #t)
   (update *art-control* #t)
   (clear-rec *art-control*)
-  (dotimes (s5-0 (-> *level* length))
+  (dotimes (s5-0 LEVEL_MAX)
     (load-continue (-> obj level s5-0))
     )
   (dotimes (s5-1 (-> obj length))
@@ -2816,7 +2817,7 @@ into 7 sections, which might explain the weird sizes in the center.
         )
       )
     )
-  (countdown (v1-100 (-> *level* length))
+  (countdown (v1-100 LEVEL_MAX)
     (when (-> obj level v1-100 inside-boxes)
       (set! v1-101 #f)
       (goto cfg-90)
@@ -2905,7 +2906,7 @@ into 7 sections, which might explain the weird sizes in the center.
           )
         )
       )
-    (dotimes (s5-5 (1+ (-> *level* length)))
+    (dotimes (s5-5 LEVEL_TOTAL)
       (let ((s4-4 (-> obj level s5-5)))
         (when (or (= (-> s4-4 status) 'active) (= (-> s4-4 status) 'reserved))
           (let ((t9-19 format)
@@ -2988,8 +2989,8 @@ into 7 sections, which might explain the weird sizes in the center.
     )
 
   ;; pc port added
-  (let ((lev-names (new 'stack-no-clear 'array 'string 8)))
-    (dotimes (i (-> *level* length))
+  (let ((lev-names (new 'stack-no-clear 'array 'string LEVEL_MAX)))
+    (dotimes (i LEVEL_MAX)
       (cond
         ((= (-> obj level i status) 'inactive)
          (set! (-> lev-names i) "none")
@@ -3024,7 +3025,7 @@ into 7 sections, which might explain the weird sizes in the center.
   (kmemopen global "level")
   (let ((gp-0 *level*))
     (set! (-> gp-0 loading-level) (-> gp-0 default-level))
-    (dotimes (s5-0 (-> *level* length))
+    (dotimes (s5-0 LEVEL_MAX)
       (let ((s4-0 (-> gp-0 level s5-0)))
         (set! (-> s4-0 art-group) (new 'global 'load-dir-art-group 100 s4-0))
         (set! (-> s4-0 vis-bits) (malloc 'global 2048))
@@ -3041,7 +3042,7 @@ into 7 sections, which might explain the weird sizes in the center.
         )
       )
     (set! (-> gp-0 default-level art-group) (new 'global 'load-dir-art-group 512 (-> gp-0 default-level)))
-    (dotimes (v1-31 (1+ (-> *level* length)))
+    (dotimes (v1-31 LEVEL_TOTAL)
       (let ((a0-53 (-> gp-0 level v1-31)))
         (dotimes (a1-48 10)
           (set! (-> a0-53 texture-anim-array a1-48) #f)

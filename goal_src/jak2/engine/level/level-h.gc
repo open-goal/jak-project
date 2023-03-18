@@ -6,6 +6,11 @@
 ;; dgos: ENGINE, GAME
 ;; todo docs, methods
 
+;; max amount of levels in level heap
+(defconstant LEVEL_MAX 8)
+;; total amount of levels, including ones outside level heap (default-level)
+(defconstant LEVEL_TOTAL 9)
+
 (declare-type bsp-header basic)
 (declare-type drawable basic)
 (declare-type entity-links structure)
@@ -380,11 +385,11 @@
    (load-time             float                           :offset-assert 156)
    (load-login-time       float                           :offset-assert 160)
    (draw-level-count      int32                           :offset-assert 164)
-   (draw-level            level                 9         :offset-assert 168)
-   (draw-index-map        uint8                 9         :offset-assert 204)
+   (draw-level            level                 LEVEL_TOTAL :offset-assert 168)
+   (draw-index-map        uint8                 LEVEL_TOTAL :offset-assert 204)
    (load-order            uint64                          :offset-assert 216)
    (pad                   uint8                 30        :offset 216)
-   (level                 level                 9 :inline :offset-assert 256)
+   (level                 level                 LEVEL_TOTAL :inline :offset-assert 256)
    (level0                level                 :inline   :offset        256)
    (level1                level                 :inline   :offset        5488)
    (level2                level                 :inline   :offset        10720)
@@ -428,7 +433,7 @@
 
 (when (zero? *level*)
   (set! *level* (new 'static 'level-group
-                  :length 8
+                  :length LEVEL_MAX
                   :log-in-level-bsp #f
                   :loading-level #f
                   :entity-link #f
