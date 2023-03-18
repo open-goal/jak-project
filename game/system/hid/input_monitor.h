@@ -18,14 +18,16 @@
 
 // Controller:
 //- Ports
-//- Mouse
-//- Keyboard
+// - connecting controller live
+// done zones
 //- Register function handlers like for screenshots/hiding debug bar
 //   - controller or keyboard+mouse should be able to use this
 //   - screenshot key
 //- Custom binds (read/write to JSON)
 
 struct PadData {
+  enum AnalogIndex { LEFT_X = 0, LEFT_Y, RIGHT_X, RIGHT_Y = 3 };
+
   enum ButtonIndex {
     SELECT = 0,
     L3,
@@ -49,8 +51,12 @@ struct PadData {
   // Analog Values
   std::array<u8, 4> analog_data = {ANALOG_NEUTRAL, ANALOG_NEUTRAL, ANALOG_NEUTRAL, ANALOG_NEUTRAL};
 
-  std::pair<u8, u8> analog_left() const { return {analog_data.at(0), analog_data.at(1)}; }
-  std::pair<u8, u8> analog_right() const { return {analog_data.at(2), analog_data.at(3)}; }
+  std::pair<u8, u8> analog_left() const {
+    return {analog_data.at(AnalogIndex::LEFT_X), analog_data.at(AnalogIndex::LEFT_Y)};
+  }
+  std::pair<u8, u8> analog_right() const {
+    return {analog_data.at(AnalogIndex::RIGHT_X), analog_data.at(AnalogIndex::RIGHT_Y)};
+  }
 
   // NOTE - pressure is always 255 (max) at this time
   std::array<bool, 16> button_data = {};
@@ -78,28 +84,31 @@ struct PadData {
   std::pair<bool, u8> square() const { return {button_data.at(ButtonIndex::SQUARE), 255}; };
 };
 
-static const std::unordered_map<u8, std::vector<PadData::ButtonIndex>>
-    s_default_controller_button_binds = {
-        {SDL_CONTROLLER_BUTTON_A, {PadData::ButtonIndex::CROSS}},
-        {SDL_CONTROLLER_BUTTON_B, {PadData::ButtonIndex::CIRCLE}},
-        {SDL_CONTROLLER_BUTTON_X, {PadData::ButtonIndex::SQUARE}},
-        {SDL_CONTROLLER_BUTTON_Y, {PadData::ButtonIndex::TRIANGLE}},
-        {SDL_CONTROLLER_BUTTON_X, {PadData::ButtonIndex::SQUARE}},
-        {SDL_CONTROLLER_BUTTON_LEFTSTICK, {PadData::ButtonIndex::L3}},
-        {SDL_CONTROLLER_BUTTON_RIGHTSTICK, {PadData::ButtonIndex::R3}},
-        {SDL_CONTROLLER_BUTTON_BACK, {PadData::ButtonIndex::SELECT}},
-        {SDL_CONTROLLER_BUTTON_START, {PadData::ButtonIndex::START}},
-        {SDL_CONTROLLER_BUTTON_LEFTSHOULDER, {PadData::ButtonIndex::L1}},
-        {SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, {PadData::ButtonIndex::R1}},
-        {SDL_CONTROLLER_BUTTON_DPAD_UP, {PadData::ButtonIndex::DPAD_UP}},
-        {SDL_CONTROLLER_BUTTON_DPAD_DOWN, {PadData::ButtonIndex::DPAD_DOWN}},
-        {SDL_CONTROLLER_BUTTON_DPAD_LEFT, {PadData::ButtonIndex::DPAD_LEFT}},
-        {SDL_CONTROLLER_BUTTON_DPAD_RIGHT, {PadData::ButtonIndex::DPAD_RIGHT}}};
+/// Contains all information needed when processing a host input
+/// For example -- for a keyboard binding it informs us what modifiers need to be hit, etc
+///
+/// All bindings _must_ provide the PS2 button/analog index they map to
+struct InputBinding {
+  InputBinding(int index) : pad_data_index(index){};
+  InputBinding(int index, bool _inverse_val) : pad_data_index(index), inverse_val(_inverse_val){};
 
-static const std::unordered_map<u8, std::vector<PadData::ButtonIndex>>
-    s_default_controller_axis_binds = {
-        {SDL_CONTROLLER_AXIS_TRIGGERLEFT, {PadData::ButtonIndex::L2}},
-        {SDL_CONTROLLER_AXIS_TRIGGERRIGHT, {PadData::ButtonIndex::R2}}};
+  /// Corresponds to PadData::AnalogIndex or PadData::ButtonIndex
+  int pad_data_index;
+  // Keyboard Stipulations
+  /// If considered pressed, it will inverse the value (ie, left/right on an analog stick)
+  bool inverse_val;
+  // https://wiki.libsdl.org/SDL2/SDL_Keymod
+  bool need_shift;
+  bool need_ctrl;
+  bool need_meta;  // aka GUI / windows key
+  bool need_alt;
+};
+
+struct InputBindingGroups {
+  std::unordered_map<uint8_t, std::vector<InputBinding>> analog_axii;
+  std::unordered_map<uint8_t, std::vector<InputBinding>> button_axii;
+  std::unordered_map<uint8_t, std::vector<InputBinding>> buttons;
+};
 
 // A distinct input device.  Only those devices that are "active" should be read
 class InputDevice {
@@ -109,14 +118,9 @@ class InputDevice {
 
   // TODO - ports!
 
-  // Each binding is a mapping from an SDL input to one or more
-  // PS2 inputs
-  //
-  // TODO - support modifiers (keyboards), not sure how SDL represents those yet
-  std::unordered_map<u8, std::vector<PadData::ButtonIndex>> m_button_binds =
-      s_default_controller_button_binds;
-  std::unordered_map<u8, std::vector<PadData::ButtonIndex>> m_axis_binds =
-      s_default_controller_axis_binds;
+  // Each binding is a mapping from an SDL input to one or more InputBindings
+  InputBindingGroups m_binds;
+
   // TODO - mouse? (sensitivities)
   // TODO - positive/negative keys
   // TODO - digital vs analog
@@ -128,9 +132,36 @@ class InputDevice {
 
   virtual void process_event(const SDL_Event& event, std::shared_ptr<PadData> data) = 0;
   virtual void close_device() = 0;
+  virtual int update_rumble(const int port, const u8 low_rumble, const u8 high_rumble) = 0;
 
   bool is_loaded() const { return m_loaded; };
 };
+
+// TODO - move to it's own header file to keep this clean?
+/// https://wiki.libsdl.org/SDL2/SDL_GameControllerButton
+static const InputBindingGroups s_default_controller_binds = {
+    {{SDL_CONTROLLER_AXIS_LEFTX, {InputBinding(PadData::AnalogIndex::LEFT_X)}},
+     {SDL_CONTROLLER_AXIS_LEFTY, {InputBinding(PadData::AnalogIndex::LEFT_Y)}},
+     {SDL_CONTROLLER_AXIS_RIGHTX, {InputBinding(PadData::AnalogIndex::RIGHT_X)}},
+     {SDL_CONTROLLER_AXIS_RIGHTY, {InputBinding(PadData::AnalogIndex::RIGHT_Y)}}},
+    {
+        {SDL_CONTROLLER_AXIS_TRIGGERLEFT, {InputBinding(PadData::ButtonIndex::L2)}},
+        {SDL_CONTROLLER_AXIS_TRIGGERRIGHT, {InputBinding(PadData::ButtonIndex::R2)}},
+    },
+    {{SDL_CONTROLLER_BUTTON_A, {InputBinding(PadData::ButtonIndex::CROSS)}},
+     {SDL_CONTROLLER_BUTTON_B, {InputBinding(PadData::ButtonIndex::CIRCLE)}},
+     {SDL_CONTROLLER_BUTTON_X, {InputBinding(PadData::ButtonIndex::SQUARE)}},
+     {SDL_CONTROLLER_BUTTON_Y, {InputBinding(PadData::ButtonIndex::TRIANGLE)}},
+     {SDL_CONTROLLER_BUTTON_LEFTSTICK, {InputBinding(PadData::ButtonIndex::L3)}},
+     {SDL_CONTROLLER_BUTTON_RIGHTSTICK, {InputBinding(PadData::ButtonIndex::R3)}},
+     {SDL_CONTROLLER_BUTTON_BACK, {InputBinding(PadData::ButtonIndex::SELECT)}},
+     {SDL_CONTROLLER_BUTTON_START, {InputBinding(PadData::ButtonIndex::START)}},
+     {SDL_CONTROLLER_BUTTON_LEFTSHOULDER, {InputBinding(PadData::ButtonIndex::L1)}},
+     {SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, {InputBinding(PadData::ButtonIndex::R1)}},
+     {SDL_CONTROLLER_BUTTON_DPAD_UP, {InputBinding(PadData::ButtonIndex::DPAD_UP)}},
+     {SDL_CONTROLLER_BUTTON_DPAD_DOWN, {InputBinding(PadData::ButtonIndex::DPAD_DOWN)}},
+     {SDL_CONTROLLER_BUTTON_DPAD_LEFT, {InputBinding(PadData::ButtonIndex::DPAD_LEFT)}},
+     {SDL_CONTROLLER_BUTTON_DPAD_RIGHT, {InputBinding(PadData::ButtonIndex::DPAD_RIGHT)}}}};
 
 // https://wiki.libsdl.org/SDL2/CategoryGameController
 class GameController : public InputDevice {
@@ -140,6 +171,7 @@ class GameController : public InputDevice {
 
   void process_event(const SDL_Event& event, std::shared_ptr<PadData> data) override;
   void close_device() override;
+  int update_rumble(const int port, const u8 low_rumble, const u8 high_rumble) override;
 
  private:
   int m_sdl_instance_id = -1;
@@ -147,7 +179,67 @@ class GameController : public InputDevice {
   int m_analog_dead_zone = 0;
 };
 
-// TODO - Keyboard and Mouse (mouse doesn't process events though!)
+// TODO - move to it's own header file to keep this clean?
+/// https://wiki.libsdl.org/SDL2/SDL_Keycode
+static const InputBindingGroups s_default_keyboard_binds = {
+    {{SDLK_a, {InputBinding(PadData::AnalogIndex::LEFT_X, true)}},
+     {SDLK_d, {InputBinding(PadData::AnalogIndex::LEFT_X)}},
+     {SDLK_s, {InputBinding(PadData::AnalogIndex::LEFT_Y)}},
+     {SDLK_w, {InputBinding(PadData::AnalogIndex::LEFT_Y, true)}},
+     {SDLK_l, {InputBinding(PadData::AnalogIndex::RIGHT_X, true)}},
+     {SDLK_j, {InputBinding(PadData::AnalogIndex::RIGHT_X)}},
+     {SDLK_k, {InputBinding(PadData::AnalogIndex::RIGHT_Y)}},
+     {SDLK_i, {InputBinding(PadData::AnalogIndex::RIGHT_Y, true)}}},
+    {},
+    {{SDLK_SPACE, {InputBinding(PadData::ButtonIndex::CROSS)}},
+     {SDLK_f, {InputBinding(PadData::ButtonIndex::CIRCLE)}},
+     {SDLK_e, {InputBinding(PadData::ButtonIndex::SQUARE)}},
+     {SDLK_r, {InputBinding(PadData::ButtonIndex::TRIANGLE)}},
+     {SDLK_COMMA, {InputBinding(PadData::ButtonIndex::L3)}},
+     {SDLK_PERIOD, {InputBinding(PadData::ButtonIndex::R3)}},
+     {SDLK_QUOTE, {InputBinding(PadData::ButtonIndex::SELECT)}},
+     {SDLK_RETURN, {InputBinding(PadData::ButtonIndex::START)}},
+     {SDLK_o, {InputBinding(PadData::ButtonIndex::L1)}},
+     {SDLK_q, {InputBinding(PadData::ButtonIndex::R1)}},
+     {SDLK_1, {InputBinding(PadData::ButtonIndex::L2)}},
+     {SDLK_p, {InputBinding(PadData::ButtonIndex::R2)}},
+     {SDLK_UP, {InputBinding(PadData::ButtonIndex::DPAD_UP)}},
+     {SDLK_DOWN, {InputBinding(PadData::ButtonIndex::DPAD_DOWN)}},
+     {SDLK_LEFT, {InputBinding(PadData::ButtonIndex::DPAD_LEFT)}},
+     {SDLK_RIGHT, {InputBinding(PadData::ButtonIndex::DPAD_RIGHT)}}}};
+
+class KeyboardDevice : public InputDevice {
+ public:
+  // TODO - load user binds
+  KeyboardDevice() { m_binds = s_default_keyboard_binds; };
+  ~KeyboardDevice() {}
+
+  void process_event(const SDL_Event& event, std::shared_ptr<PadData> data) override;
+  void close_device() override{
+      // there is nothing to close
+  };
+  int update_rumble(const int port, const u8 low_rumble, const u8 high_rumble) override{ return 0;};
+};
+
+static const InputBindingGroups s_default_mouse_binds = {
+    {},
+    {},
+    {{SDL_BUTTON_LEFT, {InputBinding(PadData::ButtonIndex::CROSS)}}}};
+
+class MouseDevice : public InputDevice {
+ public:
+  // TODO - load user binds
+  MouseDevice() { m_binds = s_default_mouse_binds; };
+  ~MouseDevice() {}
+
+  void process_event(const SDL_Event& event, std::shared_ptr<PadData> data) override;
+  void close_device() override{
+      // there is nothing to close
+  };
+  int update_rumble(const int port, const u8 low_rumble, const u8 high_rumble) override{ return 0;};
+};
+
+// TODO - Mouse (mouse doesn't process events though!)
 
 // Central class that:
 // - keeps track of available input devices
@@ -165,48 +257,14 @@ class InputMonitor {
   // Polls the current active input device for it's data and update `m_data`
 
   std::shared_ptr<PadData> get_current_data() const;
+  int update_rumble(int port, u8 low_intensity, u8 high_intensity);
   void change_active_device(int device_id);
-  // TODO - remapping support
 
  private:
+  // TODO - actually need to be shared_ptrs? references should be fine right?
   std::vector<std::shared_ptr<InputDevice>> m_available_devices;
   std::shared_ptr<InputDevice> m_active_device;
+  KeyboardDevice m_keyboard;
+  MouseDevice m_mouse;
   std::shared_ptr<PadData> m_data;
 };
-
-// void OnKeyPress(int key);
-// void OnKeyRelease(int key);
-// void ClearKey(int key);
-// void ForceClearKeys();
-// void ClearKeys();
-//
-// void DefaultMapping(MappingInfo& mapping);
-// int IsPressed(MappingInfo& mapping, Button button, int pad);
-// int GetAnalogValue(MappingInfo& mapping, Analog analog, int pad);
-// void MapButton(MappingInfo& mapping, Button button, int pad, int key);
-// void MapAnalog(MappingInfo& mapping, Analog button, int pad, AnalogMappingInfo& analogMapping);
-// void SetAnalogAxisValue(MappingInfo& mapping, int axis, double value);
-// void ClearAnalogAxisValue(MappingInfo& mapping, int axis);
-//
-// extern MappingInfo g_input_mode_mapping;
-// void EnterInputMode();
-// void ExitInputMode(bool);
-// u64 input_mode_get();
-// u64 input_mode_get_key();
-// u64 input_mode_get_index();
-// void input_mode_pad_set(s64);
-//
-// void initialize();
-// void update_gamepads(MappingInfo& mapping_info);
-// int rumble(int pad, float slow_motor, float fast_motor);
-// int GetGamepadState(int pad);
-// void ForceClearAnalogValue();
-// void clear_pad(int pad);
-//
-// void UpdateAxisValue(MappingInfo& mapping_info);
-// void SetGamepadState(int pad, int pad_index);
-// bool* GetKeyboardInputBuffer();
-// bool* GetKeyboardBufferedInputBuffer();
-// float* GetKeyboardInputAnalogBuffer(int pad);
-// bool* GetControllerInputBuffer(int pad);
-// float* GetControllerAnalogInputBuffer(int pad);

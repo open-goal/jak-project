@@ -188,6 +188,14 @@ std::shared_ptr<PadData> get_current_frames_pad_data() {
   return std::make_shared<PadData>();
 }
 
+int update_rumble(int port, u8 low_intensity, u8 high_intensity) {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_input_monitor()->update_rumble(port, low_intensity,
+                                                                         high_intensity);
+  }
+  return 0;
+}
+
 std::tuple<double, double> get_mouse_pos() {
   // TODO
   return {0, 0};

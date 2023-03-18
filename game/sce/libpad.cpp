@@ -95,8 +95,7 @@ int scePadSetActDirect(int port, int /*slot*/, const u8* data) {
   // offsets are set by scePadSetActAlign, but we already know the game uses 0 for big motor and 1
   // for small motor
   // also, the "slow" motor corresponds to the "large" motor on the PS2
-  // return Pad::rumble(port, ((float)data[1]) / 255, ((float)data[0]));
-  return 0;
+  return Gfx::update_rumble(port, data[1], data[0]);
 }
 
 int scePadSetActAlign(int /*port*/, int /*slot*/, const u8* /*data*/) {
