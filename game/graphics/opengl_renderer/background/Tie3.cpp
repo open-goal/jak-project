@@ -580,7 +580,8 @@ void Tie3::draw_matching_draws_for_tree(int idx,
       last_texture = draw.tree_tex_id;
     }
 
-    auto double_draw = setup_tfrag_shader(render_state, draw.mode, ShaderId::TFRAG3);
+    auto double_draw = setup_tfrag_shader(render_state, draw.mode,
+                                          use_envmap ? ShaderId::ETIE_BASE : ShaderId::TFRAG3);
 
     glUniform1i(use_envmap ? m_etie_base_uniforms.decal : m_uniforms.decal,
                 draw.mode.get_decal() ? 1 : 0);
