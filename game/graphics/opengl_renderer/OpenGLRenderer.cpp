@@ -98,6 +98,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<DirectRenderer>("sky-draw", BucketCategory::OTHER, BucketId::SKY_DRAW, 1024);
   init_bucket_renderer<OceanMidAndFar>("ocean-mid-far", BucketCategory::OCEAN,
                                        BucketId::OCEAN_MID_FAR);
+  // hardcoded level number!!!
   for (int i = 0; i < 6; ++i) {
 #define GET_BUCKET_ID_FOR_LIST(bkt1, bkt2, idx) ((int)(bkt1) + ((int)(bkt2) - (int)(bkt1)) * (idx))
     init_bucket_renderer<TextureUploadHandler>(
@@ -143,6 +144,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
         fmt::format("etie-t-l{}-alpha", i), BucketCategory::TIE,
         GET_BUCKET_ID_FOR_LIST(BucketId::ETIE_T_L0_ALPHA, BucketId::ETIE_T_L1_ALPHA, i), tie,
         tfrag3::TieCategory::TRANS_ENVMAP);
+    init_bucket_renderer<Merc2>(
+        fmt::format("merc-l{}-alpha", i), BucketCategory::MERC,
+        GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_ALPHA, BucketId::MERC_L1_ALPHA, i));
 
     init_bucket_renderer<TextureUploadHandler>(
         fmt::format("tex-l{}-pris", i), BucketCategory::TEX,
