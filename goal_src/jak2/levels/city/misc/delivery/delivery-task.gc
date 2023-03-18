@@ -60,7 +60,7 @@
     (let ((gp-0 (handle->process (-> self attach-object))))
       (cond
         (gp-0
-          (when (logtest? (-> (the-as process-focusable gp-0) focus-status) (focus-status dead))
+          (when (focus-test? (the-as process-focusable gp-0) dead)
             (seek! (-> self scale) 0.0 (* 0.5 (-> self clock seconds-per-frame)))
             (if (= (-> self scale) 0.0)
                 (go-virtual die)
@@ -359,7 +359,7 @@ This commonly includes things such as:
         (init-vf0-vector)
         (let ((gp-0 (handle->process (-> self slave 0))))
           (cond
-            ((and gp-0 (zero? (logand (-> (the-as process-focusable gp-0) focus-status) (focus-status dead))))
+            ((and gp-0 (not (logtest? (-> (the-as process-focusable gp-0) focus-status) (focus-status dead))))
              (cond
                ((zero? (-> self data-int8 0))
                 (when (= (level-status *level* 'ctyindb) 'active)
@@ -392,7 +392,7 @@ This commonly includes things such as:
                    (f1-0 12288.0)
                    )
                (cond
-                 ((and (< f0-0 (* f1-0 f1-0)) *target* (logtest? (focus-status pilot) (-> *target* focus-status)))
+                 ((and (< f0-0 (* f1-0 f1-0)) *target* (focus-test? *target* pilot))
                   (when (nonzero? (-> self sub-state))
                     (send-event (handle->process (-> self arrow)) 'set-position (-> self end-pos))
                     (send-event (handle->process (-> self arrow)) 'modify-flags 1 0)
@@ -529,7 +529,7 @@ This commonly includes things such as:
                               ()
                               (send-event *traffic-manager* 'decrease-alert-level 0)
                               (send-event *traffic-manager* 'set-alert-duration 9000)
-                              (if (and *target* (logtest? (focus-status pilot) (-> *target* focus-status)))
+                              (if (and *target* (focus-test? *target* pilot))
                                   (send-event *target* 'change-mode 'normal)
                                   )
                               (set-setting! 'pilot #f 0 0)

@@ -1,10 +1,15 @@
+;;-*-Lisp-*-
 (in-package goal)
 
+;; definition for function set-letterbox-frames
+;; INFO: Return type mismatch time-frame vs none.
 (defun set-letterbox-frames ((arg0 time-frame))
   (set! (-> *game-info* letterbox-time) (+ (-> *display* base-frame-counter) arg0))
   (none)
   )
 
+;; definition for function letterbox
+;; INFO: Return type mismatch pointer vs none.
 (defun letterbox ()
   (let* ((dma-buf (-> *display* frames (-> *display* on-screen) frame global-buf))
          (gp-0 (-> dma-buf base))
@@ -29,6 +34,8 @@
   (none)
   )
 
+;; definition for function set-blackout-frames
+;; INFO: Return type mismatch time-frame vs none.
 (defun set-blackout-frames ((arg0 time-frame))
   (if (zero? arg0)
       (set! (-> *game-info* blackout-time) (-> *display* base-frame-counter))
@@ -39,6 +46,8 @@
   (none)
   )
 
+;; definition for function blackout
+;; INFO: Return type mismatch pointer vs none.
 (defun blackout ()
   (let* ((dma-buf (-> *display* frames (-> *display* on-screen) frame global-buf))
          (sprite-dma-data (-> dma-buf base))
@@ -62,6 +71,8 @@
   (none)
   )
 
+;; definition for function paused?
+;; INFO: Return type mismatch object vs symbol.
 (defun paused? ()
   (the-as
     symbol
@@ -71,10 +82,13 @@
     )
   )
 
+;; definition for function movie?
 (defun movie? ()
   (logtest? (-> *kernel-context* prevent-from-run) (process-mask movie))
   )
 
+;; definition for function set-master-mode
+;; INFO: Return type mismatch int vs none.
 (defun set-master-mode ((new-mode symbol))
   (set! *master-mode* new-mode)
   (if *debug-segment*
@@ -116,8 +130,10 @@
   (none)
   )
 
+;; definition for symbol *last-master-mode*, type symbol
 (define *last-master-mode* 'game)
 
+;; definition for function toggle-pause
 (defun toggle-pause ()
   (case *master-mode*
     (('game)
@@ -139,7 +155,7 @@
          ((and (or (cpad-hold? 0 select) (cpad-hold? 0 r2)) *debug-segment*)
           'pause
           )
-         ((and (not *debug-segment*) (zero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons start))))
+         ((and (not *debug-segment*) (not (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons start))))
           *master-mode*
           )
          ((not (progress-allowed?))
@@ -228,10 +244,13 @@
   0
   )
 
+;; definition for symbol *screen-filter*, type screen-filter
 (define *screen-filter*
   (new 'static 'screen-filter :draw? #f :color (new 'static 'rgba :g #x20 :b #x40 :a #x50))
   )
 
+;; definition for method 9 of type screen-filter
+;; INFO: Return type mismatch pointer vs none.
 (defmethod draw screen-filter ((obj screen-filter))
   (let* ((buf (-> *display* frames (-> *display* on-screen) frame global-buf))
          (gp-0 (-> buf base))
@@ -255,12 +274,16 @@
   (none)
   )
 
+;; definition for symbol *cheat-temp*, type (pointer int32)
 (define *cheat-temp* (the-as (pointer int32) (malloc 'global 16)))
 
+;; definition for symbol *master-exit*, type symbol
 (define *master-exit* #f)
 
+;; definition for symbol *progress-cheat*, type symbol
 (define *progress-cheat* #f)
 
+;; definition for function main-cheats
 (defun main-cheats ()
   (when (and (cpad-hold? 0 l3) (or *cheat-mode* (= *kernel-boot-message* 'play)))
     (when (nonzero? (-> *cpad-list* cpads 0 button0-rel 0))
@@ -910,6 +933,8 @@
   0
   )
 
+;; definition for function display-loop
+;; ERROR: Failed store: (s.w! (+ v1-28 16) 0) at op 124
 (defbehavior display-loop process ()
   (local-vars (a0-54 int) (a0-56 int) (a0-73 int) (a0-75 int))
   (stack-size-set! (-> self main-thread) 512)
@@ -1307,6 +1332,7 @@
   0
   )
 
+;; definition for function on
 (defun on ((arg0 symbol))
   (when (not *dproc*)
     (when (not arg0)
@@ -1351,6 +1377,7 @@
     )
   )
 
+;; definition for function off
 (defun off ()
   (stop 'debug)
   (dotimes (gp-0 (-> *level* length))

@@ -134,22 +134,22 @@
               )
 
 (defstate cavecrusher-idle (cavecrusher)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (or (= v1-0 'touch) (= v1-0 'attack))
-                       (when (= (-> arg0 type) target)
-                         (if ((method-of-type touching-shapes-entry prims-touching-action?)
-                              (the-as touching-shapes-entry (-> arg3 param 0))
-                              (-> *target* control)
-                              (collide-action solid)
-                              (collide-action)
-                              )
-                             (target-attack-up *target* 'attack-or-shove 'deadlyup)
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('touch 'attack)
+                      (when (= (-> proc type) target)
+                        (if ((method-of-type touching-shapes-entry prims-touching-action?)
+                             (the-as touching-shapes-entry (-> event param 0))
+                             (-> *target* control)
+                             (collide-action solid)
+                             (collide-action)
                              )
-                         )
-                       )
-              )
-      )
+                            (target-attack-up *target* 'attack-or-shove 'deadlyup)
+                            )
+                        )
+                      )
+                     )
+            )
     )
   :code (behavior ()
     (loop
@@ -223,12 +223,12 @@
 
 (defstate idle (cavetrapdoor)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch)
-       (when (= (-> arg0 type) target)
+       (when (= (-> proc type) target)
          (when (>= (- (-> (target-pos 0) y) (-> self root-override trans y)) 409.6)
-           (send-event arg0 'no-look-around (seconds 1.5))
+           (send-event proc 'no-look-around (seconds 1.5))
            (go-virtual trigger)
            )
          )
@@ -277,10 +277,10 @@
                    (< 28672.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
                    )
                (and (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
-                              (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                              (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                               )
                          )
-                    (zero? (logand (-> *target* control root-prim prim-core action) (collide-action ca-7)))
+                    (not (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-7)))
                     )
                )
       (ja-no-eval :group! (-> self draw art-group data 7) :num! (seek!) :frame-num 0.0)
@@ -294,7 +294,7 @@
     (until (ja-done? 0)
       (when (and (and *target* (>= 28672.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
                  (or (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
-                          (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                          (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                           )
                      (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-7))
                      )
@@ -434,12 +434,12 @@
   )
 
 (defstate caveflamepots-active (caveflamepots)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch 'attack)
-       (when (= (-> arg0 type) target)
+       (when (= (-> proc type) target)
          (when ((method-of-type touching-shapes-entry prims-touching-action?)
-                (the-as touching-shapes-entry (-> arg3 param 0))
+                (the-as touching-shapes-entry (-> event param 0))
                 (-> *target* control)
                 (collide-action solid)
                 (collide-action)
@@ -451,15 +451,15 @@
                      (< 0.75 (-> *target* control poly-normal y))
                      )
                  (send-event
-                   arg0
+                   proc
                    'attack-or-shove
-                   (-> arg3 param 0)
+                   (-> event param 0)
                    (static-attack-info ((mode 'burn) (vector (-> s4-0 vector)) (shove-up (-> s4-0 shove-up))))
                    )
                  (send-event
-                   arg0
+                   proc
                    'attack-or-shove
-                   (-> arg3 param 0)
+                   (-> event param 0)
                    (static-attack-info ((mode 'burn)
                                         (shove-up (meters 0))
                                         (shove-back (meters 2))
@@ -931,21 +931,18 @@
         )
     (vector<-cspace! s5-0 (-> obj node-list data 3))
     (vector-! gp-0 s5-0 (-> obj root-override trans))
-    (let ((f0-0 17408.0))
-      (set! (-> gp-0 w) f0-0)
-      f0-0
-      )
+    (set! (-> gp-0 w) 17408.0)
     )
   )
 
 (defstate caveelevator-cycle-active (caveelevator)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (if (= v1-0 'bonk)
-                         (activate! (-> self smush) -1.0 60 150 1.0 1.0)
-                         )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('bonk)
+                      (activate! (-> self smush) -1.0 60 150 1.0 1.0)
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
@@ -981,14 +978,14 @@
   )
 
 (defstate caveelevator-one-way-idle-start (caveelevator)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('bonk)
        (activate! (-> self smush) -1.0 60 150 1.0 1.0)
        (go caveelevator-one-way-travel-to-end)
        )
       (('attack 'touch)
-       (if (and (= (-> arg0 type) target)
+       (if (and (= (-> proc type) target)
                 (>= 8192.0 (vector-vector-xz-distance (target-pos 0) (-> self root-override trans)))
                 )
            (go caveelevator-one-way-travel-to-end)
@@ -1020,13 +1017,13 @@
   )
 
 (defstate caveelevator-one-way-travel-to-end (caveelevator)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (if (= v1-0 'bonk)
-                         (activate! (-> self smush) -1.0 60 150 1.0 1.0)
-                         )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('bonk)
+                      (activate! (-> self smush) -1.0 60 150 1.0 1.0)
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
@@ -1059,13 +1056,13 @@
   )
 
 (defstate caveelevator-one-way-idle-end (caveelevator)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (if (= v1-0 'bonk)
-                         (activate! (-> self smush) -1.0 60 150 1.0 1.0)
-                         )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('bonk)
+                      (activate! (-> self smush) -1.0 60 150 1.0 1.0)
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -1101,13 +1098,13 @@
   )
 
 (defstate caveelevator-one-way-travel-to-start (caveelevator)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (if (= v1-0 'bonk)
-                         (activate! (-> self smush) -1.0 60 150 1.0 1.0)
-                         )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('bonk)
+                      (activate! (-> self smush) -1.0 60 150 1.0 1.0)
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
@@ -1275,7 +1272,3 @@
     )
   (none)
   )
-
-
-
-

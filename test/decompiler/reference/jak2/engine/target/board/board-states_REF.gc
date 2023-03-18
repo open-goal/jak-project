@@ -181,7 +181,7 @@
              target-board-flip
              (-> *TARGET_BOARD-bank* jump-height-min)
              (-> *TARGET_BOARD-bank* jump-height-max)
-             (if (logtest? (focus-status halfpipe) (-> self focus-status))
+             (if (focus-test? self halfpipe)
                  'halfpipe
                  )
              )
@@ -229,7 +229,7 @@
             target-board-hold
             (-> *TARGET_BOARD-bank* tricky-jump-height-min)
             (-> *TARGET_BOARD-bank* tricky-jump-height-max)
-            (if (logtest? (focus-status halfpipe) (-> self focus-status))
+            (if (focus-test? self halfpipe)
                 'halfpipe
                 )
             )
@@ -252,7 +252,7 @@
             target-board-trickx
             (-> *TARGET_BOARD-bank* trickx-jump-height-min)
             (-> *TARGET_BOARD-bank* trickx-jump-height-max)
-            (if (logtest? (focus-status halfpipe) (-> self focus-status))
+            (if (focus-test? self halfpipe)
                 'halfpipe
                 )
             )
@@ -266,7 +266,7 @@
 ;; definition for function target-board-halfpipe-trans
 ;; WARN: Return type mismatch int vs none.
 (defbehavior target-board-halfpipe-trans target ()
-  (when (and (logtest? (focus-status halfpipe) (-> self focus-status)) *camera*)
+  (when (and (focus-test? self halfpipe) *camera*)
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (let ((s5-0 (camera-master-method-15 *camera* (new 'stack-no-clear 'vector))))
         (vector-flatten! gp-0 (-> self control edge-grab-across-edge-dir) (-> *camera* local-down))
@@ -1364,7 +1364,7 @@
   :exit (-> target-board-halfpipe exit)
   :trans (behavior ()
     (target-board-jump-trans)
-    (if (logtest? (focus-status halfpipe) (-> self focus-status))
+    (if (focus-test? self halfpipe)
         (target-board-halfpipe-trans)
         )
     (when (and (= *cheat-mode* 'debug) (and (cpad-hold? (-> self control cpad number) r2) (not *pause-lock*)))
@@ -1411,7 +1411,7 @@
         )
       )
     (cond
-      ((logtest? (focus-status halfpipe) (-> self focus-status))
+      ((focus-test? self halfpipe)
        (ja :group! (-> self draw art-group data 152) :num! (identity (ja-aframe 0.0 0)))
        (loop
          (suspend)
@@ -2054,7 +2054,7 @@
       (go target-board-jump (-> *TARGET_BOARD-bank* jump-height-min) (-> *TARGET_BOARD-bank* jump-height-max) #f)
       )
     (if (and (cpad-hold? (-> self control cpad number) l1)
-             (zero? (logand (-> self state-flags) (state-flags prevent-duck)))
+             (not (logtest? (-> self state-flags) (state-flags prevent-duck)))
              )
         (go target-board-duck-stance)
         )
@@ -3109,7 +3109,7 @@
       (logclear! (-> self focus-status) (focus-status dead hit))
       (logclear! (-> self state-flags) (state-flags disable-attacks))
       )
-    (let ((gp-1 (logtest? (-> self focus-status) (focus-status hit))))
+    (let ((gp-1 (focus-test? self hit)))
       (target-exit)
       (if gp-1
           (logior! (-> self focus-status) (focus-status hit))

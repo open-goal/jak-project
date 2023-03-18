@@ -1552,14 +1552,14 @@
                      )
                 (when (and s1-1
                            (!= obj s1-1)
-                           (not (logtest? (-> obj focus-status) (focus-status inactive)))
-                           (not (logtest? (-> obj focus-status) (focus-status disable)))
-                           (not (logtest? (-> obj focus-status) (focus-status dead)))
+                           (not (focus-test? obj inactive))
+                           (not (focus-test? obj disable))
+                           (not (focus-test? obj dead))
                            (not (logtest? (process-mask guard) (-> s1-1 mask)))
                            (not (logtest? (process-mask crate) (-> s1-1 mask)))
                            (logtest? (process-mask vehicle) (-> s1-1 mask))
                            s1-1
-                           (zero? (logand (-> (the-as process-focusable s1-1) focus-status) (focus-status disable dead ignore grabbed)))
+                           (not (logtest? (-> (the-as process-focusable s1-1) focus-status) (focus-status disable dead ignore grabbed)))
                            )
                   (let ((f0-0 (vector-vector-xz-distance (-> obj root-override2 trans) (-> s1-1 root trans))))
                     (when (or (not gp-0) (< f0-0 f30-0))
@@ -1934,7 +1934,7 @@
                   )
                 (when (and s2-0
                            s2-0
-                           (zero? (logand (-> (the-as process-focusable s2-0) focus-status) (focus-status disable dead ignore grabbed)))
+                           (not (logtest? (-> (the-as process-focusable s2-0) focus-status) (focus-status disable dead ignore grabbed)))
                            )
                   (let ((s2-1 (new 'stack-no-clear 'projectile-init-by-other-params)))
                     (set! (-> s2-1 ent) (-> obj entity))
@@ -3404,7 +3404,7 @@
     (lambda :behavior task-manager
       ()
       (when (and *target*
-                 (not (logtest? (-> *target* focus-status) (focus-status dead)))
+                 (not (focus-test? *target* dead))
                  (zero? (-> self data-int32 1))
                  (nonzero? (-> self data-int32 0))
                  )

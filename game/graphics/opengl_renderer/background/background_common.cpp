@@ -36,9 +36,14 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
 
   DoubleDraw double_draw;
 
+  bool should_enable_blend = false;
   if (mode.get_ab_enable() && mode.get_alpha_blend() != DrawMode::AlphaBlend::DISABLED) {
-    glEnable(GL_BLEND);
+    should_enable_blend = true;
     switch (mode.get_alpha_blend()) {
+      case DrawMode::AlphaBlend::SRC_SRC_SRC_SRC:
+        should_enable_blend = false;
+        // (SRC - SRC) * alpha + SRC = SRC, no blend.
+        break;
       case DrawMode::AlphaBlend::SRC_DST_SRC_DST:
         glBlendEquation(GL_FUNC_ADD);
         glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
@@ -71,6 +76,12 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
       default:
         ASSERT(false);
     }
+  } else {
+    should_enable_blend = false;
+  }
+
+  if (should_enable_blend) {
+    glEnable(GL_BLEND);
   } else {
     glDisable(GL_BLEND);
   }
@@ -146,9 +157,13 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
 
 DoubleDraw setup_tfrag_shader(SharedRenderState* render_state, DrawMode mode, ShaderId shader) {
   auto draw_settings = setup_opengl_from_draw_mode(mode, GL_TEXTURE0, true);
-  glUniform1f(glGetUniformLocation(render_state->shaders[shader].id(), "alpha_min"),
-              draw_settings.aref_first);
-  glUniform1f(glGetUniformLocation(render_state->shaders[shader].id(), "alpha_max"), 10.f);
+  auto sh_id = render_state->shaders[shader].id();
+  if (auto u_id = glGetUniformLocation(sh_id, "alpha_min"); u_id != -1) {
+    glUniform1f(u_id, draw_settings.aref_first);
+  }
+  if (auto u_id = glGetUniformLocation(sh_id, "alpha_max"); u_id != -1) {
+    glUniform1f(u_id, 10.f);
+  }
   return draw_settings;
 }
 
@@ -159,6 +174,8 @@ void first_tfrag_draw_setup(const TfragRenderSettings& settings,
   sh.activate();
   auto id = sh.id();
   glUniform1i(glGetUniformLocation(id, "gfx_hack_no_tex"), Gfx::g_global_settings.hack_no_tex);
+  glUniform1i(glGetUniformLocation(id, "decal"), false);
+
   glUniform1i(glGetUniformLocation(id, "tex_T0"), 0);
   glUniformMatrix4fv(glGetUniformLocation(id, "camera"), 1, GL_FALSE, settings.math_camera.data());
   glUniform4f(glGetUniformLocation(id, "hvdf_offset"), settings.hvdf_offset[0],
@@ -752,6 +769,8 @@ void update_render_state_from_pc_settings(SharedRenderState* state, const TfragP
     for (int i = 0; i < 4; i++) {
       state->camera_planes[i] = data.planes[i];
       state->camera_matrix[i] = data.camera[i];
+      state->camera_no_persp[i] = data.camera_rot[i];
+      state->camera_persp[i] = data.camera_perspective[i];
     }
     state->camera_pos = data.cam_trans;
     state->camera_hvdf_off = data.hvdf_off;

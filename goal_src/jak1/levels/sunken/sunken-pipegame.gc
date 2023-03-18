@@ -514,11 +514,11 @@
   )
 
 (defstate sunken-pipegame-idle (sunken-pipegame)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
-       (when (= (-> arg0 type) sunken-pipegame-button)
-         (set! (-> self challenge) (-> (the-as sunken-pipegame-button arg0) button-id))
+       (when (= (-> proc type) sunken-pipegame-button)
+         (set! (-> self challenge) (-> (the-as sunken-pipegame-button proc) button-id))
          (go sunken-pipegame-begin-play)
          )
        )
@@ -533,10 +533,10 @@
   )
 
 (defstate sunken-pipegame-begin-play (sunken-pipegame)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('notify)
-       (case (-> arg0 type)
+       (case (-> proc type)
          ((fuel-cell buzzer)
           (go sunken-pipegame-beat-challenge)
           )
@@ -549,7 +549,7 @@
     (set! (-> self abort-audio-if-beaten?) #f)
     (dotimes (gp-0 3)
       (let ((v1-4 (-> self button gp-0)))
-        (if (and (!= gp-0 (-> self challenge)) (zero? (logand (ash 1 gp-0) (-> self challenges-mask))))
+        (if (and (!= gp-0 (-> self challenge)) (not (logtest? (ash 1 gp-0) (-> self challenges-mask))))
             (send-event (ppointer->process v1-4) 'trigger)
             )
         )
@@ -679,7 +679,7 @@
         )
     (until v1-112
       (suspend)
-      (set! v1-112 (or (not *target*) (zero? (logand (-> *target* state-flags) (state-flags grabbed)))))
+      (set! v1-112 (or (not *target*) (not (logtest? (-> *target* state-flags) (state-flags grabbed)))))
       )
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (sleep (-> self ticker) (-> self prize (-> self challenge) puzzle-delay))
@@ -830,7 +830,7 @@
     (set! (-> self abort-audio-if-beaten?) #f)
     (until v1-3
       (suspend)
-      (set! v1-3 (or (not *target*) (zero? (logand (-> *target* state-flags) (state-flags grabbed)))))
+      (set! v1-3 (or (not *target*) (not (logtest? (-> *target* state-flags) (state-flags grabbed)))))
       )
     (if (not (handle->process (-> self prize (-> self challenge) actor-handle)))
         (logior! (-> self challenges-mask) (ash 1 (-> self challenge)))
@@ -838,7 +838,7 @@
     (set! (-> self challenge) -1)
     (dotimes (gp-0 3)
       (let ((v1-18 (-> self button gp-0)))
-        (if (zero? (logand (ash 1 gp-0) (-> self challenges-mask)))
+        (if (not (logtest? (ash 1 gp-0) (-> self challenges-mask)))
             (send-event (ppointer->process v1-18) 'untrigger)
             )
         )
@@ -1045,7 +1045,3 @@
   (go sunken-pipegame-start-up)
   (none)
   )
-
-
-
-

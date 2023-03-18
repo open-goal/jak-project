@@ -95,8 +95,8 @@
 
 (defstate idle (warp-gate)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('hide)
        (go-virtual hidden)
        )
@@ -110,8 +110,8 @@
                  (and (>= (-> self level-slot) 0)
                       (not (movie?))
                       (not (level-hint-displayed?))
-                      (zero? (logand (-> *target* control root-prim prim-core action) (collide-action ca-7 ca-8 ca-9 ca-12 ca-13 ca-14))
-                             )
+                      (not (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-7 ca-8 ca-9 ca-12 ca-13 ca-14))
+                           )
                       (let* ((v1-16 (-> self root))
                              (a1-2 (-> *target* control trans))
                              (f0-1 (vector-y-angle (vector-! (new 'stack-no-clear 'vector) a1-2 (-> v1-16 trans))))
@@ -635,8 +635,8 @@
 
 (defstate basebutton-up-idle (warp-gate-switch)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch 'attack)
        (when (pressable? self)
          (TODO-RENAME-29 self (-> self event-going-down) (-> self notify-actor))
@@ -644,10 +644,10 @@
          )
        )
       (('hide)
-       (send-event (handle->process (-> self warp)) arg2)
+       (send-event (handle->process (-> self warp)) event-type)
        )
       (else
-        ((-> (method-of-type basebutton basebutton-up-idle) event) arg0 arg1 arg2 arg3)
+        ((-> (method-of-type basebutton basebutton-up-idle) event) proc arg1 event-type event)
         )
       )
     )
@@ -754,13 +754,13 @@
 
 (defstate basebutton-down-idle (warp-gate-switch)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('hide)
-       (send-event (handle->process (-> self warp)) arg2)
+       (send-event (handle->process (-> self warp)) event-type)
        )
       (else
-        ((-> (method-of-type basebutton basebutton-down-idle) event) arg0 arg1 arg2 arg3)
+        ((-> (method-of-type basebutton basebutton-down-idle) event) proc arg1 event-type event)
         )
       )
     )
@@ -953,7 +953,7 @@
             )
           (while (and *target*
                       (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
-                      (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                      (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                       )
             (suspend)
             )
@@ -1149,7 +1149,3 @@
   (go (method-of-object obj idle))
   (none)
   )
-
-
-
-

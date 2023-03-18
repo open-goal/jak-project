@@ -373,7 +373,7 @@
                  )
                (+! (-> self touch-count) 1)
                (if (and (logtest? (-> proc mask) (process-mask target))
-                        (zero? (logand (process-mask projectile) (-> proc mask)))
+                        (not (logtest? (process-mask projectile) (-> proc mask)))
                         )
                    (the-as int (security-wall-method-23 self))
                    )
@@ -1503,7 +1503,7 @@ This commonly includes things such as:
            (go-virtual hostile)
            )
           (else
-            (if (and (logtest? (focus-status pilot) (-> (the-as process-focusable gp-2) focus-status))
+            (if (and (focus-test? (the-as process-focusable gp-2) pilot)
                      (>= (the-as uint (get-alert-level *traffic-engine*)) (the-as uint 1))
                      )
                 (go-virtual hostile)
@@ -1972,7 +1972,7 @@ This commonly includes things such as:
                           (set! (-> s4-1 x) (deg- (-> s2-0 x) (-> s0-1 x)))
                           (set! (-> s4-1 y) (deg- (-> s2-0 y) (-> s0-1 y)))
                           (cond
-                            ((logtest? (focus-status pilot) (-> (the-as process-focusable s5-0) focus-status))
+                            ((focus-test? (the-as process-focusable s5-0) pilot)
                              (set! (-> obj angle-turret)
                                    (deg-seek (-> obj angle-turret) (-> s4-1 y) (* 36408.89 (-> pp clock seconds-per-frame)))
                                    )
@@ -2075,7 +2075,7 @@ This commonly includes things such as:
              ((and (>= (-> self id) 0) (task-node-open? (game-task-node city-power-resolution)))
               )
              (else
-               (if (and (not (logtest? (focus-status pilot) (-> (the-as process-focusable gp-0) focus-status)))
+               (if (and (not (focus-test? (the-as process-focusable gp-0) pilot))
                         *traffic-engine*
                         (zero? (get-alert-level *traffic-engine*))
                         )
@@ -2348,7 +2348,7 @@ This commonly includes things such as:
     (cond
       (s5-0
         (cond
-          ((or (logtest? (-> (the-as vehicle s5-0) focus-status) (focus-status dead inactive))
+          ((or (focus-test? (the-as vehicle s5-0) dead inactive)
                (not (logtest? (-> (the-as vehicle s5-0) flags) (rigid-body-object-flag waiting-for-player)))
                (let ((f0-0 (-> obj test-sphere r)))
                  (< (* f0-0 f0-0)
@@ -2872,12 +2872,12 @@ This commonly includes things such as:
                    )
               (when (and s1-1
                          (!= obj s1-1)
-                         (not (logtest? (-> s1-1 focus-status) (focus-status inactive)))
-                         (not (logtest? (-> s1-1 focus-status) (focus-status disable)))
-                         (not (logtest? (-> s1-1 focus-status) (focus-status dead)))
+                         (not (focus-test? s1-1 inactive))
+                         (not (focus-test? s1-1 disable))
+                         (not (focus-test? s1-1 dead))
                          (not (logtest? (process-mask guard) (-> s1-1 mask)))
                          (not (logtest? (process-mask crate) (-> s1-1 mask)))
-                         (zero? (logand (process-mask vehicle) (-> s1-1 mask)))
+                         (not (logtest? (process-mask vehicle) (-> s1-1 mask)))
                          )
                 (let ((f0-0 (vector-vector-xz-distance (-> obj root-override trans) (-> s1-1 root-override trans))))
                   (when (or (not s5-0) (< f0-0 f30-0))
@@ -3870,7 +3870,7 @@ This commonly includes things such as:
          (f0-2 (vector-dot (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root-override quat)) gp-1))
          )
     (and *target*
-         (not (logtest? (focus-status pilot) (-> *target* focus-status)))
+         (not (focus-test? *target* pilot))
          (< (fabs f30-0) 10240.0)
          (< 0.0 f0-2)
          (< (fabs f0-2) 20480.0)
