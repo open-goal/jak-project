@@ -73,17 +73,22 @@ struct MemoryUsageTracker {
   void add(MemoryUsageCategory category, u32 size_bytes) { data[category] += size_bytes; }
 };
 
-constexpr int TFRAG3_VERSION = 27;
+constexpr int TFRAG3_VERSION = 28;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
   // the vertex position
-  float x, y, z;
+  float x = 0, y = 0, z = 0;
   // texture coordinates
-  float s, t, q_unused;
+  float s = 0, t = 0;
+
+  u8 r = 0, g = 0, b = 0, a = 0;  // envmap tint color, not used in == or hash.
+
   // color table index
-  u16 color_index;
-  u16 pad[3];
+  u16 color_index = 0;
+
+  // not used in == or hash!!
+  s16 nx = 0, ny = 0, nz = 0;
 
   struct hash {
     std::size_t operator()(const PreloadedVertex& x) const;
@@ -100,6 +105,8 @@ struct PackedTieVertices {
   struct Vertex {
     float x, y, z;
     float s, t;
+    s8 nx, ny, nz;
+    u8 r, g, b, a;
   };
 
   struct MatrixGroup {
@@ -313,10 +320,66 @@ struct TieWindInstance {
   void serialize(Serializer& ser);
 };
 
+// Tie draws are split into categories.
+enum class TieCategory {
+  // normal tie buckets
+  NORMAL,
+  TRANS,  // also called alpha
+  WATER,
+
+  // first draw (normal base draw) for envmapped stuff
+  NORMAL_ENVMAP,
+  TRANS_ENVMAP,
+  WATER_ENVMAP,
+
+  // second draw (shiny) for envmapped ties.
+  NORMAL_ENVMAP_SECOND_DRAW,
+  TRANS_ENVMAP_SECOND_DRAW,
+  WATER_ENVMAP_SECOND_DRAW,
+};
+constexpr int kNumTieCategories = 9;
+
+constexpr bool is_envmap_first_draw_category(tfrag3::TieCategory category) {
+  switch (category) {
+    case tfrag3::TieCategory::NORMAL_ENVMAP:
+    case tfrag3::TieCategory::WATER_ENVMAP:
+    case tfrag3::TieCategory::TRANS_ENVMAP:
+      return true;
+    default:
+      return false;
+  }
+}
+
+constexpr bool is_envmap_second_draw_category(tfrag3::TieCategory category) {
+  switch (category) {
+    case tfrag3::TieCategory::NORMAL_ENVMAP_SECOND_DRAW:
+    case tfrag3::TieCategory::WATER_ENVMAP_SECOND_DRAW:
+    case tfrag3::TieCategory::TRANS_ENVMAP_SECOND_DRAW:
+      return true;
+    default:
+      return false;
+  }
+}
+
+constexpr TieCategory get_second_draw_category(tfrag3::TieCategory category) {
+  switch (category) {
+    case TieCategory::NORMAL_ENVMAP:
+      return TieCategory::NORMAL_ENVMAP_SECOND_DRAW;
+    case TieCategory::TRANS_ENVMAP:
+      return TieCategory::TRANS_ENVMAP_SECOND_DRAW;
+    case TieCategory::WATER_ENVMAP:
+      return TieCategory::WATER_ENVMAP_SECOND_DRAW;
+    default:
+      return TieCategory::NORMAL_ENVMAP;
+  }
+}
+
 // A tie model
 struct TieTree {
   BVH bvh;
-  std::vector<StripDraw> static_draws;  // the actual topology and settings
+  std::vector<StripDraw> static_draws;
+  // Category n uses draws: static_draws[cdi[n]] to static_draws[cdi[n + 1]]
+  std::array<u32, kNumTieCategories + 1> category_draw_indices;
 
   PackedTieVertices packed_vertices;
   std::vector<TimeOfDayColor> colors;  // vertex colors (pre-interpolation)

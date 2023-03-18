@@ -54,6 +54,8 @@ enum class ShaderId {
   GLOW_PROBE_READ_DEBUG = 27,
   GLOW_PROBE_DOWNSAMPLE = 28,
   GLOW_DRAW = 29,
+  ETIE_BASE = 30,
+  ETIE = 31,
   MAX_SHADERS
 };
 

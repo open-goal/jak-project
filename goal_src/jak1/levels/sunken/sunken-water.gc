@@ -8,20 +8,20 @@
 ;; DECOMP BEGINS
 
 (deftype sunken-water (water-anim)
-  ((use-sync?             symbol            :offset-assert 220)
-   (playing-deadly-sound? symbol            :offset-assert 224)
-   (deadly-time           float             :offset-assert 228)
-   (deadly-fade           float             :offset-assert 232)
-   (sync                  sync-info :inline :offset-assert 236)
-   (safe-color-mult       vector    :inline :offset-assert 256)
-   (safe-color-emissive   vector    :inline :offset-assert 272)
-   (deadly-color-mult     vector    :inline :offset-assert 288)
-   (deadly-color-emissive vector    :inline :offset-assert 304)
+  ((use-sync?             symbol            :offset-assert 212)
+   (playing-deadly-sound? symbol            :offset-assert 216)
+   (deadly-time           float             :offset-assert 220)
+   (deadly-fade           float             :offset-assert 224)
+   (sync                  sync-info :inline :offset-assert 228)
+   (safe-color-mult       vector    :inline :offset-assert 240)
+   (safe-color-emissive   vector    :inline :offset-assert 256)
+   (deadly-color-mult     vector    :inline :offset-assert 272)
+   (deadly-color-emissive vector    :inline :offset-assert 288)
    )
   :heap-base #xd0
   :method-count-assert 31
-  :size-assert         #x140
-  :flag-assert         #x1f00d00140
+  ;; :size-assert         #x140
+  ;; :flag-assert         #x1f00d00140
   (:methods
     (draw-ripple (_type_) symbol 30)
     )
@@ -122,7 +122,9 @@
                 )
               (set! (-> self draw color-mult w) 0.5)
               (if (= f30-0 1.0)
-                  (set! (-> self flags) (logior (water-flags wt19) (-> self flags)))
+                (dotimes (tgt-idx MAX_MULTIPLAYER_COUNT)
+                  (logior! (-> self flags tgt-idx) (water-flags wt19))
+                  )
                   )
               )
             )
@@ -134,7 +136,9 @@
           (update! (-> self sound))
           )
          (else
-           (logclear! (-> self flags) (water-flags wt19))
+           (dotimes (tgt-idx MAX_MULTIPLAYER_COUNT)
+             (logclear! (-> self flags tgt-idx) (water-flags wt19))
+            )
            (when (!= (-> self deadly-fade) 0.0)
              (seek! (-> self deadly-fade) 0.0 (* 8.0 (-> *display* seconds-per-frame)))
              (let ((f30-1 (-> self deadly-fade)))
@@ -147,8 +151,10 @@
                  )
                (set! (-> self draw color-mult w) 0.5)
                (if (= f30-1 0.0)
-                   (logclear! (-> self flags) (water-flags wt19))
-                   )
+                 (dotimes (tgt-idx MAX_MULTIPLAYER_COUNT)
+                  (logclear! (-> self flags tgt-idx) (water-flags wt19))
+                  )
+                  )
                )
              )
            (when (-> self playing-deadly-sound?)
@@ -167,7 +173,7 @@
          )
        )
       (else
-        (when (logtest? (water-flags wt19) (-> self flags))
+        (when (logtest? (water-flags wt19) (-> self flags 0)) ;; should maybe be main target idx, not necessarily 0?
           (draw-ripple self)
           (update! (-> self sound))
           (set! (-> self playing-deadly-sound?) #t)
@@ -189,36 +195,38 @@
   (set-vector! (-> obj deadly-color-mult) 0.125 0.225 0.22 0.5)
   (set-vector! (-> obj deadly-color-emissive) 0.33 0.6 0.0 1.0)
   (let ((s5-0 (load-params! (-> obj sync) obj (the-as uint 1500) 0.0 0.15 0.15)))
-    (let ((f0-16 (res-lump-float (-> obj entity) 'percent :default -1.0)))
-      (if (or (< f0-16 0.0) (< 1.0 f0-16))
-          (set! f0-16 (cond
-                        (s5-0
-                          0.5
+    (dotimes (tgt-idx MAX_MULTIPLAYER_COUNT)
+      (let ((f0-16 (res-lump-float (-> obj entity) 'percent :default -1.0)))
+        (if (or (< f0-16 0.0) (< 1.0 f0-16))
+            (set! f0-16 (cond
+                          (s5-0
+                            0.5
+                            )
+                          ((logtest? (water-flags wt19) (-> obj flags tgt-idx))
+                          1.0
                           )
-                        ((logtest? (water-flags wt19) (-> obj flags))
-                         1.0
-                         )
-                        (else
-                          0.0
+                          (else
+                            0.0
+                            )
                           )
-                        )
-                )
-          )
-      (when (and s5-0 (or (= f0-16 0.0) (= f0-16 1.0)))
-        (set! s5-0 #f)
-        (if (= f0-16 0.0)
-            (set! (-> obj flags) (logior (water-flags wt19) (-> obj flags)))
-            (logclear! (-> obj flags) (water-flags wt19))
+                  )
             )
-        )
-      (set! (-> obj use-sync?) s5-0)
-      (set! (-> obj deadly-time) f0-16)
-      )
-    (when s5-0
-      (if (< (get-current-phase (-> obj sync)) (-> obj deadly-time))
-          (set! (-> obj flags) (the-as water-flags (logior (water-flags wt19) (-> obj flags))))
-          (set! (-> obj flags) (the-as water-flags (logclear (-> obj flags) (water-flags wt19))))
+        (when (and s5-0 (or (= f0-16 0.0) (= f0-16 1.0)))
+          (set! s5-0 #f)
+          (if (= f0-16 0.0)
+              (logior! (-> obj flags tgt-idx) (water-flags wt19))
+              (logclear! (-> obj flags tgt-idx) (water-flags wt19))
+              )
           )
+        (set! (-> obj use-sync?) s5-0)
+        (set! (-> obj deadly-time) f0-16)
+        )
+      (when s5-0
+        (if (< (get-current-phase (-> obj sync)) (-> obj deadly-time))
+          (logior! (-> obj flags tgt-idx) (water-flags wt19))
+          (logclear! (-> obj flags tgt-idx) (water-flags wt19))
+          )
+        )
       )
     )
   (none)
@@ -230,7 +238,7 @@
     )
   (set! (-> obj play-ambient-sound?) #f)
   (cond
-    ((logtest? (water-flags wt19) (-> obj flags))
+    ((logtest? (water-flags wt19) (-> obj flags 0)) ;; should maybe be main target index, not necessarily 0?
      (set! (-> obj draw color-mult quad) (-> obj deadly-color-mult quad))
      (set! (-> obj draw color-emissive quad) (-> obj deadly-color-emissive quad))
      (set! (-> obj deadly-fade) 1.0)

@@ -15,7 +15,8 @@ class RequestHandler(BaseHTTPRequestHandler):
     "quat_x",
     "quat_y",
     "quat_z",
-    "quat_w"
+    "quat_w",
+    "tgt_state"
   }
 
   def send_response_bad_request_400(self):

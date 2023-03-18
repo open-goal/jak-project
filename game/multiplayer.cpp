@@ -75,7 +75,8 @@ void http_update_position() {
       {"quat_x", rpInfo->quat_x},
       {"quat_y", rpInfo->quat_y},
       {"quat_z", rpInfo->quat_z},
-      {"quat_w", rpInfo->quat_w}
+      {"quat_w", rpInfo->quat_w},
+      {"tgt_state", rpInfo->tgt_state}
     };
     std::string payload_str = payload.dump();
     std::string url = "http://78.108.218.126:25560/update?player_num=" + std::to_string(gMultiplayerInfo->player_num);
@@ -148,6 +149,8 @@ void http_get_positions() {
               rpInfo->quat_z = field.value();
             } else if (field.key().compare("quat_w") == 0) {
               rpInfo->quat_w = field.value();
+            } else if (field.key().compare("tgt_state") == 0) {
+              rpInfo->tgt_state = field.value();
             }
           }
         }

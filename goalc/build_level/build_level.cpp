@@ -77,6 +77,7 @@ bool run_build_level(const std::string& input_file,
   add_ambients_from_json(level_json.at("ambients"), ambients, level_json.value("base_id", 12345));
   file.ambients = std::move(ambients);
   auto& ambient_drawable_tree = file.drawable_trees.ambients.emplace_back();
+  (void)ambient_drawable_tree;
   // cameras
   // nodes
   // boxes

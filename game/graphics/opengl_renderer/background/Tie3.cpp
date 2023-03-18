@@ -6,8 +6,8 @@
 
 #include "third-party/imgui/imgui.h"
 
-Tie3::Tie3(const std::string& name, int my_id, int level_id)
-    : BucketRenderer(name, my_id), m_level_id(level_id) {
+Tie3::Tie3(const std::string& name, int my_id, int level_id, tfrag3::TieCategory category)
+    : BucketRenderer(name, my_id), m_level_id(level_id), m_default_category(category) {
   // regardless of how many we use some fixed max
   // we won't actually interp or upload to gpu the unused ones, but we need a fixed maximum so
   // indexing works properly.
@@ -29,59 +29,95 @@ Tie3::~Tie3() {
   discard_tree_cache();
 }
 
-void Tie3::update_load(const LevelData* loader_data) {
+void Tie3::init_shaders(ShaderLibrary& shaders) {
+  m_uniforms.decal = glGetUniformLocation(shaders[ShaderId::TFRAG3].id(), "decal");
+
+  m_etie_uniforms.persp0 = glGetUniformLocation(shaders[ShaderId::ETIE].id(), "persp0");
+  m_etie_uniforms.persp1 = glGetUniformLocation(shaders[ShaderId::ETIE].id(), "persp1");
+  m_etie_uniforms.cam_no_persp = glGetUniformLocation(shaders[ShaderId::ETIE].id(), "cam_no_persp");
+  m_etie_uniforms.envmap_tod_tint =
+      glGetUniformLocation(shaders[ShaderId::ETIE].id(), "envmap_tod_tint");
+
+  m_etie_base_uniforms.decal = glGetUniformLocation(shaders[ShaderId::ETIE_BASE].id(), "decal");
+  m_etie_base_uniforms.persp0 = glGetUniformLocation(shaders[ShaderId::ETIE_BASE].id(), "persp0");
+  m_etie_base_uniforms.persp1 = glGetUniformLocation(shaders[ShaderId::ETIE_BASE].id(), "persp1");
+  m_etie_base_uniforms.cam_no_persp =
+      glGetUniformLocation(shaders[ShaderId::ETIE_BASE].id(), "cam_no_persp");
+}
+
+/*!
+ * Load a TIE tree from FR3 data.
+ * This often causes stutters, so as much as possible, we move stuff to the loader,
+ * and this function just updates things to reference loader data.
+ */
+void Tie3::load_from_fr3_data(const LevelData* loader_data) {
   auto ul = scoped_prof("update-load");
   const tfrag3::Level* lev_data = loader_data->level.get();
   m_wind_vectors.clear();
-  // We changed level!
+
+  // We changed level! free opengl resources allocated for the previous
   discard_tree_cache();
+
+  // resize for the number of trees in this level.
   for (int geo = 0; geo < 4; ++geo) {
     m_trees[geo].resize(lev_data->tie_trees[geo].size());
   }
 
-  size_t vis_temp_len = 0;
-  size_t max_draws = 0;
-  size_t max_num_grps = 0;
   u16 max_wind_idx = 0;
-  size_t time_of_day_count = 0;
-  size_t max_inds = 0;
+  // loop over all "geos" (level of details)
   for (u32 l_geo = 0; l_geo < tfrag3::TIE_GEOS; l_geo++) {
+    // loop over all trees
     for (u32 l_tree = 0; l_tree < lev_data->tie_trees[l_geo].size(); l_tree++) {
       auto ul = scoped_prof("load-tree");
       size_t wind_idx_buffer_len = 0;
       size_t num_grps = 0;
       const auto& tree = lev_data->tie_trees[l_geo][l_tree];
-      max_draws = std::max(tree.static_draws.size(), max_draws);
+
+      // compute maximum number of vis groups (leaf in the bvh)
       for (auto& draw : tree.static_draws) {
         num_grps += draw.vis_groups.size();
       }
-      max_num_grps = std::max(max_num_grps, num_grps);
+
+      // compute wind buffer sizes
       for (auto& draw : tree.instanced_wind_draws) {
         wind_idx_buffer_len += draw.vertex_index_stream.size();
       }
       for (auto& inst : tree.wind_instance_info) {
         max_wind_idx = std::max(max_wind_idx, inst.wind_idx);
       }
-      time_of_day_count = std::max(tree.colors.size(), time_of_day_count);
-      max_inds = std::max(tree.unpacked.indices.size(), max_inds);
-      u32 verts = tree.packed_vertices.color_indices.size();
+
+      // vertex buffer max
       auto& lod_tree = m_trees.at(l_geo);
+
+      // set up resources: create a VAO
       glGenVertexArrays(1, &lod_tree[l_tree].vao);
       glBindVertexArray(lod_tree[l_tree].vao);
+      // openGL vertex buffer from loader
       lod_tree[l_tree].vertex_buffer = loader_data->tie_data[l_geo][l_tree].vertex_buffer;
-      lod_tree[l_tree].vert_count = verts;
+      // draw array from FR3 data
       lod_tree[l_tree].draws = &tree.static_draws;
+      // base TOD colors from FR3
       lod_tree[l_tree].colors = &tree.colors;
+      // visibility BVH from FR3
       lod_tree[l_tree].vis = &tree.bvh;
+      // indices from FR3 (needed on CPU for culling)
       lod_tree[l_tree].index_data = tree.unpacked.indices.data();
+      // wind metadata
       lod_tree[l_tree].instance_info = &tree.wind_instance_info;
       lod_tree[l_tree].wind_draws = &tree.instanced_wind_draws;
-      vis_temp_len = std::max(vis_temp_len, tree.bvh.vis_nodes.size());
+      // preprocess colors for faster interpolation (TODO: move to loader)
       lod_tree[l_tree].tod_cache = swizzle_time_of_day(tree.colors);
+      // OpenGL index buffer (fixed index buffer for multidraw system)
+      lod_tree[l_tree].index_buffer = loader_data->tie_data[l_geo][l_tree].index_buffer;
+      lod_tree[l_tree].category_draw_indices = tree.category_draw_indices;
+
+      // set up vertex attributes
       glBindBuffer(GL_ARRAY_BUFFER, lod_tree[l_tree].vertex_buffer);
       glEnableVertexAttribArray(0);
       glEnableVertexAttribArray(1);
       glEnableVertexAttribArray(2);
+      glEnableVertexAttribArray(3);
+      glEnableVertexAttribArray(4);
 
       glVertexAttribPointer(0,                                           // location 0 in the shader
                             3,                                           // 3 values per vert
@@ -106,12 +142,28 @@ void Tie3::update_load(const LevelData* loader_data) {
                              (void*)offsetof(tfrag3::PreloadedVertex, color_index)  // offset (0)
       );
 
-      glGenBuffers(1, &lod_tree[l_tree].single_draw_index_buffer);
-      lod_tree[l_tree].index_buffer = loader_data->tie_data[l_geo][l_tree].index_buffer;
+      glVertexAttribPointer(3,                                // location 1 in the shader
+                            3,                                // 3 values per vert
+                            GL_SHORT,                         // floats
+                            GL_TRUE,                          // normalized
+                            sizeof(tfrag3::PreloadedVertex),  // stride
+                            (void*)offsetof(tfrag3::PreloadedVertex, nx)  // offset (0)
+      );
 
+      glVertexAttribPointer(4,                                           // location 1 in the shader
+                            4,                                           // 3 values per vert
+                            GL_UNSIGNED_BYTE,                            // floats
+                            GL_TRUE,                                     // normalized
+                            sizeof(tfrag3::PreloadedVertex),             // stride
+                            (void*)offsetof(tfrag3::PreloadedVertex, r)  // offset (0)
+      );
+
+      // allocate dynamic index buffer for the fallback "not multidraw" mode.
+      glGenBuffers(1, &lod_tree[l_tree].single_draw_index_buffer);
+
+      // set up wind
       if (wind_idx_buffer_len > 0) {
         lod_tree[l_tree].wind_matrix_cache.resize(tree.wind_instance_info.size());
-        lod_tree[l_tree].has_wind = true;
         lod_tree[l_tree].wind_vertex_index_buffer =
             loader_data->tie_data[l_geo][l_tree].wind_indices;
         u32 off = 0;
@@ -121,11 +173,13 @@ void Tie3::update_load(const LevelData* loader_data) {
         }
       }
 
+      // set up per-proto visibility. Jak 2 needs to enable/disable individual protos.
       lod_tree[l_tree].has_proto_visibility = tree.has_per_proto_visibility_toggle;
       if (tree.has_per_proto_visibility_toggle) {
         lod_tree[l_tree].proto_visibility.init(tree.proto_names);
       }
 
+      // set up time of day texture.
       glActiveTexture(GL_TEXTURE10);
       glGenTextures(1, &lod_tree[l_tree].time_of_day_texture);
       glBindTexture(GL_TEXTURE_1D, lod_tree[l_tree].time_of_day_texture);
@@ -135,40 +189,49 @@ void Tie3::update_load(const LevelData* loader_data) {
       glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
       glBindVertexArray(0);
+
+      lod_tree[l_tree].vis_temp.resize(tree.bvh.vis_nodes.size());
+
+      lod_tree[l_tree].draw_idx_temp.resize(tree.static_draws.size());
+      lod_tree[l_tree].index_temp.resize(tree.unpacked.indices.size());
+      lod_tree[l_tree].multidraw_offset_per_stripdraw.resize(tree.static_draws.size());
+      lod_tree[l_tree].multidraw_count_buffer.resize(num_grps);
+      lod_tree[l_tree].multidraw_index_offset_buffer.resize(num_grps);
     }
   }
 
-  m_cache.vis_temp.resize(vis_temp_len);
-  m_cache.multidraw_offset_per_stripdraw.resize(max_draws);
-  m_cache.multidraw_count_buffer.resize(max_num_grps);
-  m_cache.multidraw_index_offset_buffer.resize(max_num_grps);
-  m_wind_vectors.resize(4 * max_wind_idx + 4);  // 4x u32's per wind.
-  m_cache.draw_idx_temp.resize(max_draws);
-  m_cache.index_temp.resize(max_inds);
+  // set up temporary caches. These are just temporary, so they don't need per-tree versions.
 
-  ASSERT(time_of_day_count <= TIME_OF_DAY_COLOR_COUNT);
+  m_wind_vectors.resize(4 * max_wind_idx + 4);  // 4x u32's per wind.
+
+  // ASSERT(time_of_day_count <= TIME_OF_DAY_COLOR_COUNT);
 }
 
 /*!
- * Set up all OpenGL and temporary buffers for a given level name.
- * The level name should be the 3 character short name.
+ * Try loading a level. Hopefully it has been preloaded and this is fast.
  */
-bool Tie3::setup_for_level(const std::string& level, SharedRenderState* render_state) {
+bool Tie3::try_loading_level(const std::string& level, SharedRenderState* render_state) {
   // make sure we have the level data.
   Timer tfrag3_setup_timer;
   auto lev_data = render_state->loader->get_tfrag3_level(level);
+
   if (!lev_data || (m_has_level && lev_data->load_id != m_load_id)) {
+    // loader failed, or we have an old copy of a level. either way, we have nothing to draw.
     m_has_level = false;
     m_textures = nullptr;
     m_level_name = "";
     discard_tree_cache();
     return false;
   }
+
+  // loading was successful. Link textures/load ID.
   m_textures = &lev_data->textures;
   m_load_id = lev_data->load_id;
 
+  // see if this is the first time we've gotten the level
   if (m_level_name != level) {
-    update_load(lev_data);
+    // it is! do the one time load.
+    load_from_fr3_data(lev_data);
     m_has_level = true;
     m_level_name = level;
   } else {
@@ -180,6 +243,516 @@ bool Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
   }
 
   return m_has_level;
+}
+
+void Tie3::discard_tree_cache() {
+  for (int geo = 0; geo < 4; ++geo) {
+    for (auto& tree : m_trees[geo]) {
+      glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
+      glDeleteTextures(1, &tree.time_of_day_texture);
+      // glDeleteBuffers(1, &tree.index_buffer);
+      glDeleteBuffers(1, &tree.single_draw_index_buffer);
+      glDeleteVertexArrays(1, &tree.vao);
+    }
+
+    m_trees[geo].clear();
+  }
+}
+
+bool Tie3::set_up_common_data_from_dma(DmaFollower& dma, SharedRenderState* render_state) {
+  auto data0 = dma.read_and_advance();
+  ASSERT(data0.vif1() == 0 || data0.vifcode1().kind == VifCode::Kind::NOP);
+  ASSERT(data0.vif0() == 0 || data0.vifcode0().kind == VifCode::Kind::NOP ||
+         data0.vifcode0().kind == VifCode::Kind::MARK);
+  ASSERT(data0.size_bytes == 0);
+
+  if (dma.current_tag().kind == DmaTag::Kind::CALL) {
+    // renderer didn't run, let's just get out of here.
+    for (int i = 0; i < 4; i++) {
+      dma.read_and_advance();
+    }
+    ASSERT(dma.current_tag_offset() == render_state->next_bucket);
+    return false;
+  }
+
+  if (dma.current_tag_offset() == render_state->next_bucket) {
+    return false;
+  }
+
+  auto gs_test = dma.read_and_advance();
+  if (gs_test.size_bytes == 160) {
+  } else {
+    ASSERT(gs_test.size_bytes == 32);
+
+    auto tie_consts = dma.read_and_advance();
+    ASSERT(tie_consts.size_bytes == 9 * 16);
+  }
+
+  auto mscalf = dma.read_and_advance();
+  ASSERT(mscalf.size_bytes == 0);
+
+  auto row = dma.read_and_advance();
+  ASSERT(row.size_bytes == 32);
+
+  auto next = dma.read_and_advance();
+  if (next.size_bytes == 32) {
+    next = dma.read_and_advance();
+  }
+  ASSERT(next.size_bytes == 0);
+
+  auto pc_port_data = dma.read_and_advance();
+  ASSERT(pc_port_data.size_bytes == sizeof(TfragPcPortData));
+  memcpy(&m_pc_port_data, pc_port_data.data, sizeof(TfragPcPortData));
+  m_pc_port_data.level_name[11] = '\0';
+
+  if (render_state->version == GameVersion::Jak1) {
+    auto wind_data = dma.read_and_advance();
+    ASSERT(wind_data.size_bytes == sizeof(WindWork));
+    memcpy(&m_wind_data, wind_data.data, sizeof(WindWork));
+  }
+
+  if (render_state->version == GameVersion::Jak2) {
+    // jak 2 proto visibility
+    auto proto_mask_data = dma.read_and_advance();
+    m_common_data.proto_vis_data = proto_mask_data.data;
+    m_common_data.proto_vis_data_size = proto_mask_data.size_bytes;
+    // jak 2 envmap color
+    auto envmap_color = dma.read_and_advance();
+    ASSERT(envmap_color.size_bytes == 16);
+    memcpy(m_common_data.envmap_color.data(), envmap_color.data, 16);
+    m_common_data.envmap_color /= 128.f;
+  }
+  m_common_data.frame_idx = render_state->frame_idx;
+
+  while (dma.current_tag_offset() != render_state->next_bucket) {
+    dma.read_and_advance();
+  }
+
+  m_common_data.settings.hvdf_offset = m_pc_port_data.hvdf_off;
+  m_common_data.settings.fog = m_pc_port_data.fog;
+
+  memcpy(m_common_data.settings.math_camera.data(), m_pc_port_data.camera[0].data(), 64);
+  m_common_data.settings.tree_idx = 0;
+
+  if (render_state->occlusion_vis[m_level_id].valid) {
+    m_common_data.settings.occlusion_culling = render_state->occlusion_vis[m_level_id].data;
+  } else {
+    m_common_data.settings.occlusion_culling = 0;
+  }
+
+  update_render_state_from_pc_settings(render_state, m_pc_port_data);
+
+  for (int i = 0; i < 4; i++) {
+    m_common_data.settings.planes[i] = m_pc_port_data.planes[i];
+    m_common_data.settings.itimes[i] = m_pc_port_data.itimes[i];
+  }
+
+  m_has_level = try_loading_level(m_pc_port_data.level_name, render_state);
+  return true;
+}
+/*!
+ * Render method called from bucket render system.
+ * Does common setup for all category, but only renderers default_category.
+ */
+void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  if (!m_enabled) {
+    while (dma.current_tag_offset() != render_state->next_bucket) {
+      dma.read_and_advance();
+    }
+    return;
+  }
+
+  if (set_up_common_data_from_dma(dma, render_state)) {
+    setup_all_trees(lod(), m_common_data.settings, m_common_data.proto_vis_data,
+                    m_common_data.proto_vis_data_size, !render_state->no_multidraw, prof);
+
+    draw_matching_draws_for_all_trees(lod(), m_common_data.settings, render_state, prof,
+                                      m_default_category);
+  }
+}
+
+void Tie3::render_from_another(SharedRenderState* render_state,
+                               ScopedProfilerNode& prof,
+                               tfrag3::TieCategory category) {
+  if (render_state->frame_idx != m_common_data.frame_idx) {
+    return;
+  }
+  draw_matching_draws_for_all_trees(lod(), m_common_data.settings, render_state, prof, category);
+}
+
+void Tie3::draw_matching_draws_for_all_trees(int geom,
+                                             const TfragRenderSettings& settings,
+                                             SharedRenderState* render_state,
+                                             ScopedProfilerNode& prof,
+                                             tfrag3::TieCategory category) {
+  for (u32 i = 0; i < m_trees[geom].size(); i++) {
+    if (tfrag3::is_envmap_first_draw_category(category)) {
+      draw_matching_draws_for_tree(i, geom, settings, render_state, prof, category);
+    } else {
+      draw_matching_draws_for_tree(i, geom, settings, render_state, prof, category);
+    }
+  }
+}
+
+void Tie3::setup_all_trees(int geom,
+                           const TfragRenderSettings& settings,
+                           const u8* proto_vis_data,
+                           size_t proto_vis_data_size,
+                           bool use_multidraw,
+                           ScopedProfilerNode& prof) {
+  for (u32 i = 0; i < m_trees[geom].size(); i++) {
+    setup_tree(i, geom, settings, proto_vis_data, proto_vis_data_size, use_multidraw, prof);
+  }
+}
+
+void Tie3::setup_tree(int idx,
+                      int geom,
+                      const TfragRenderSettings& settings,
+                      const u8* proto_vis_data,
+                      size_t proto_vis_data_size,
+                      bool use_multidraw,
+                      ScopedProfilerNode& prof) {
+  // reset perf
+  auto& tree = m_trees.at(geom).at(idx);
+  // don't render if we haven't loaded
+  if (!m_has_level) {
+    return;
+  }
+
+  // update time of day
+  if (m_color_result.size() < tree.colors->size()) {
+    m_color_result.resize(tree.colors->size());
+  }
+
+  if (m_use_fast_time_of_day) {
+    interp_time_of_day_fast(settings.itimes, tree.tod_cache, m_color_result.data());
+  } else {
+    interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
+  }
+
+  glActiveTexture(GL_TEXTURE10);
+  glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
+  glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->size(), GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
+                  m_color_result.data());
+
+  // update proto vis mask
+  if (proto_vis_data) {
+    tree.proto_visibility.update(proto_vis_data, proto_vis_data_size);
+  }
+
+  if (!m_debug_all_visible) {
+    // need culling data
+    cull_check_all_slow(settings.planes, tree.vis->vis_nodes, settings.occlusion_culling,
+                        tree.vis_temp.data());
+  }
+
+  u32 num_tris = 0;
+  if (use_multidraw) {
+    if (m_debug_all_visible) {
+      num_tris = make_all_visible_multidraws(
+          tree.multidraw_offset_per_stripdraw.data(), tree.multidraw_count_buffer.data(),
+          tree.multidraw_index_offset_buffer.data(), *tree.draws);
+    } else {
+      Timer index_timer;
+      if (tree.has_proto_visibility) {
+        num_tris = make_multidraws_from_vis_and_proto_string(
+            tree.multidraw_offset_per_stripdraw.data(), tree.multidraw_count_buffer.data(),
+            tree.multidraw_index_offset_buffer.data(), *tree.draws, tree.vis_temp,
+            tree.proto_visibility.vis_flags);
+      } else {
+        num_tris = make_multidraws_from_vis_string(
+            tree.multidraw_offset_per_stripdraw.data(), tree.multidraw_count_buffer.data(),
+            tree.multidraw_index_offset_buffer.data(), *tree.draws, tree.vis_temp);
+      }
+    }
+  } else {
+    u32 idx_buffer_size;
+    if (m_debug_all_visible) {
+      idx_buffer_size =
+          make_all_visible_index_list(tree.draw_idx_temp.data(), tree.index_temp.data(),
+                                      *tree.draws, tree.index_data, &num_tris);
+    } else {
+      if (tree.has_proto_visibility) {
+        idx_buffer_size = make_index_list_from_vis_and_proto_string(
+            tree.draw_idx_temp.data(), tree.index_temp.data(), *tree.draws, tree.vis_temp,
+            tree.proto_visibility.vis_flags, tree.index_data, &num_tris);
+      } else {
+        idx_buffer_size =
+            make_index_list_from_vis_string(tree.draw_idx_temp.data(), tree.index_temp.data(),
+                                            *tree.draws, tree.vis_temp, tree.index_data, &num_tris);
+      }
+    }
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, tree.single_draw_index_buffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_buffer_size * sizeof(u32), tree.index_temp.data(),
+                 GL_STREAM_DRAW);
+  }
+
+  prof.add_tri(num_tris);
+}
+
+namespace {
+void set_uniform(GLuint uniform, const math::Vector4f& val) {
+  glUniform4f(uniform, val.x(), val.y(), val.z(), val.w());
+}
+}  // namespace
+
+void init_etie_cam_uniforms(const EtieUniforms& uniforms, const SharedRenderState* render_state) {
+  glUniformMatrix4fv(uniforms.cam_no_persp, 1, GL_FALSE, render_state->camera_no_persp[0].data());
+
+  math::Vector4f perspective[2];
+  float inv_fog = 1.f / render_state->camera_fog[0];
+  auto& hvdf_off = render_state->camera_hvdf_off;
+  float pxx = render_state->camera_persp[0].x();
+  float pyy = render_state->camera_persp[1].y();
+  float pzz = render_state->camera_persp[2].z();
+  float pzw = render_state->camera_persp[2].w();
+  float pwz = render_state->camera_persp[3].z();
+  float scale = pzw * inv_fog;
+  perspective[0].x() = scale * hvdf_off.x();
+  perspective[0].y() = scale * hvdf_off.y();
+  perspective[0].z() = scale * hvdf_off.z() + pzz;
+  perspective[0].w() = scale;
+
+  perspective[1].x() = pxx;
+  perspective[1].y() = pyy;
+  perspective[1].z() = pwz;
+  perspective[1].w() = 0;
+
+  set_uniform(uniforms.persp0, perspective[0]);
+  set_uniform(uniforms.persp1, perspective[1]);
+}
+
+void Tie3::draw_matching_draws_for_tree(int idx,
+                                        int geom,
+                                        const TfragRenderSettings& settings,
+                                        SharedRenderState* render_state,
+                                        ScopedProfilerNode& prof,
+                                        tfrag3::TieCategory category) {
+  auto& tree = m_trees.at(geom).at(idx);
+
+  // don't render if we haven't loaded
+  if (!m_has_level) {
+    return;
+  }
+  bool use_envmap = tfrag3::is_envmap_first_draw_category(category);
+  auto shader_id = use_envmap ? ShaderId::ETIE_BASE : ShaderId::TFRAG3;
+
+  // setup OpenGL shader
+  first_tfrag_draw_setup(settings, render_state, shader_id);
+
+  if (use_envmap) {
+    // if we use envmap, use the envmap-style math for the base draw to avoid rounding issue.
+    init_etie_cam_uniforms(m_etie_base_uniforms, render_state);
+  }
+
+  glBindVertexArray(tree.vao);
+  glBindBuffer(GL_ARRAY_BUFFER, tree.vertex_buffer);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
+               render_state->no_multidraw ? tree.single_draw_index_buffer : tree.index_buffer);
+
+  glActiveTexture(GL_TEXTURE10);
+  glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
+
+  glActiveTexture(GL_TEXTURE0);
+  glEnable(GL_PRIMITIVE_RESTART);
+  glPrimitiveRestartIndex(UINT32_MAX);
+
+  int last_texture = -1;
+  for (size_t draw_idx = tree.category_draw_indices[(int)category];
+       draw_idx < tree.category_draw_indices[(int)category + 1]; draw_idx++) {
+    const auto& draw = tree.draws->operator[](draw_idx);
+    const auto& multidraw_indices = tree.multidraw_offset_per_stripdraw[draw_idx];
+    const auto& singledraw_indices = tree.draw_idx_temp[draw_idx];
+
+    if (render_state->no_multidraw) {
+      if (singledraw_indices.second == 0) {
+        continue;
+      }
+    } else {
+      if (multidraw_indices.second == 0) {
+        continue;
+      }
+    }
+
+    if ((int)draw.tree_tex_id != last_texture) {
+      glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
+      last_texture = draw.tree_tex_id;
+    }
+
+    auto double_draw = setup_tfrag_shader(render_state, draw.mode,
+                                          use_envmap ? ShaderId::ETIE_BASE : ShaderId::TFRAG3);
+
+    glUniform1i(use_envmap ? m_etie_base_uniforms.decal : m_uniforms.decal,
+                draw.mode.get_decal() ? 1 : 0);
+
+    prof.add_draw_call();
+
+    if (render_state->no_multidraw) {
+      glDrawElements(GL_TRIANGLE_STRIP, singledraw_indices.second, GL_UNSIGNED_INT,
+                     (void*)(singledraw_indices.first * sizeof(u32)));
+    } else {
+      glMultiDrawElements(
+          GL_TRIANGLE_STRIP, &tree.multidraw_count_buffer[multidraw_indices.first], GL_UNSIGNED_INT,
+          &tree.multidraw_index_offset_buffer[multidraw_indices.first], multidraw_indices.second);
+    }
+
+    switch (double_draw.kind) {
+      case DoubleDrawKind::NONE:
+        break;
+      case DoubleDrawKind::AFAIL_NO_DEPTH_WRITE:
+        ASSERT(false);
+        prof.add_draw_call();
+        glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_min"),
+                    -10.f);
+        glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
+                    double_draw.aref_second);
+        glDepthMask(GL_FALSE);
+        if (render_state->no_multidraw) {
+          glDrawElements(GL_TRIANGLE_STRIP, singledraw_indices.second, GL_UNSIGNED_INT,
+                         (void*)(singledraw_indices.first * sizeof(u32)));
+        } else {
+          glMultiDrawElements(
+              GL_TRIANGLE_STRIP, &tree.multidraw_count_buffer[multidraw_indices.first],
+              GL_UNSIGNED_INT, &tree.multidraw_index_offset_buffer[multidraw_indices.first],
+              multidraw_indices.second);
+        }
+        break;
+      default:
+        ASSERT(false);
+    }
+  }
+
+  if (!m_hide_wind && category == tfrag3::TieCategory::NORMAL) {
+    auto wind_prof = prof.make_scoped_child("wind");
+    render_tree_wind(idx, geom, settings, render_state, wind_prof);
+  }
+
+  glBindVertexArray(0);
+
+  if (use_envmap) {
+    envmap_second_pass_draw(tree, settings, render_state, prof,
+                            tfrag3::get_second_draw_category(category));
+  }
+}
+
+void Tie3::envmap_second_pass_draw(const Tree& tree,
+                                   const TfragRenderSettings& settings,
+                                   SharedRenderState* render_state,
+                                   ScopedProfilerNode& prof,
+                                   tfrag3::TieCategory category) {
+  first_tfrag_draw_setup(settings, render_state, ShaderId::ETIE);
+  glBindVertexArray(tree.vao);
+  glBindBuffer(GL_ARRAY_BUFFER, tree.vertex_buffer);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
+               render_state->no_multidraw ? tree.single_draw_index_buffer : tree.index_buffer);
+
+  init_etie_cam_uniforms(m_etie_uniforms, render_state);
+  set_uniform(m_etie_uniforms.envmap_tod_tint, m_common_data.envmap_color);
+
+  int last_texture = -1;
+  for (size_t draw_idx = tree.category_draw_indices[(int)category];
+       draw_idx < tree.category_draw_indices[(int)category + 1]; draw_idx++) {
+    const auto& draw = tree.draws->operator[](draw_idx);
+    const auto& multidraw_indices = tree.multidraw_offset_per_stripdraw[draw_idx];
+    const auto& singledraw_indices = tree.draw_idx_temp[draw_idx];
+
+    if (render_state->no_multidraw) {
+      if (singledraw_indices.second == 0) {
+        continue;
+      }
+    } else {
+      if (multidraw_indices.second == 0) {
+        continue;
+      }
+    }
+
+    if ((int)draw.tree_tex_id != last_texture) {
+      glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
+      last_texture = draw.tree_tex_id;
+    }
+
+    auto double_draw = setup_tfrag_shader(render_state, draw.mode, ShaderId::ETIE);
+
+    prof.add_draw_call();
+
+    if (render_state->no_multidraw) {
+      glDrawElements(GL_TRIANGLE_STRIP, singledraw_indices.second, GL_UNSIGNED_INT,
+                     (void*)(singledraw_indices.first * sizeof(u32)));
+    } else {
+      glMultiDrawElements(
+          GL_TRIANGLE_STRIP, &tree.multidraw_count_buffer[multidraw_indices.first], GL_UNSIGNED_INT,
+          &tree.multidraw_index_offset_buffer[multidraw_indices.first], multidraw_indices.second);
+    }
+
+    switch (double_draw.kind) {
+      case DoubleDrawKind::NONE:
+        break;
+      default:
+        ASSERT(false);
+    }
+  }
+}
+
+void Tie3::draw_debug_window() {
+  ImGui::Checkbox("Fast ToD", &m_use_fast_time_of_day);
+  ImGui::SameLine();
+  ImGui::Checkbox("All Visible", &m_debug_all_visible);
+  ImGui::Checkbox("Hide Wind", &m_hide_wind);
+  ImGui::SliderFloat("Wind Multiplier", &m_wind_multiplier, 0., 40.f);
+  ImGui::Separator();
+}
+
+void TieProtoVisibility::init(const std::vector<std::string>& names) {
+  vis_flags.resize(names.size());
+  for (auto& x : vis_flags) {
+    x = 1;
+  }
+  all_visible = true;
+  name_to_idx.clear();
+  size_t i = 0;
+  for (auto& name : names) {
+    name_to_idx[name].push_back(i++);
+  }
+}
+
+void TieProtoVisibility::update(const u8* data, size_t size) {
+  char name_buffer[256];  // ??
+
+  if (!all_visible) {
+    for (auto& x : vis_flags) {
+      x = 1;
+    }
+    all_visible = true;
+  }
+
+  const u8* end = data + size;
+
+  while (true) {
+    int name_idx = 0;
+    while (*data) {
+      name_buffer[name_idx++] = *data;
+      data++;
+    }
+    if (name_idx) {
+      ASSERT(name_idx < 254);
+      name_buffer[name_idx] = '\0';
+      const auto& it = name_to_idx.find(name_buffer);
+      if (it != name_to_idx.end()) {
+        all_visible = false;
+        for (auto x : name_to_idx.at(name_buffer)) {
+          vis_flags[x] = 0;
+        }
+      }
+    }
+
+    while (*data == 0) {
+      if (data >= end) {
+        return;
+      }
+      data++;
+    }
+  }
 }
 
 void vector_min_in_place(math::Vector4f& v, float val) {
@@ -292,138 +865,6 @@ void do_wind_math(u16 wind_idx,
   // sd s2, 0(s5)
 }
 
-void Tie3::discard_tree_cache() {
-  for (int geo = 0; geo < 4; ++geo) {
-    for (auto& tree : m_trees[geo]) {
-      glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
-      glDeleteTextures(1, &tree.time_of_day_texture);
-      // glDeleteBuffers(1, &tree.index_buffer);
-      glDeleteBuffers(1, &tree.single_draw_index_buffer);
-      glDeleteVertexArrays(1, &tree.vao);
-    }
-
-    m_trees[geo].clear();
-  }
-}
-
-void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  if (!m_enabled) {
-    while (dma.current_tag_offset() != render_state->next_bucket) {
-      dma.read_and_advance();
-    }
-    return;
-  }
-
-  if (m_override_level && m_pending_user_level) {
-    m_has_level = setup_for_level(*m_pending_user_level, render_state);
-    m_pending_user_level = {};
-  }
-
-  auto data0 = dma.read_and_advance();
-  ASSERT(data0.vif1() == 0 || data0.vifcode1().kind == VifCode::Kind::NOP);
-  ASSERT(data0.vif0() == 0 || data0.vifcode0().kind == VifCode::Kind::NOP ||
-         data0.vifcode0().kind == VifCode::Kind::MARK);
-  ASSERT(data0.size_bytes == 0);
-
-  if (dma.current_tag().kind == DmaTag::Kind::CALL) {
-    // renderer didn't run, let's just get out of here.
-    for (int i = 0; i < 4; i++) {
-      dma.read_and_advance();
-    }
-    ASSERT(dma.current_tag_offset() == render_state->next_bucket);
-    return;
-  }
-
-  if (dma.current_tag_offset() == render_state->next_bucket) {
-    return;
-  }
-
-  auto gs_test = dma.read_and_advance();
-  if (gs_test.size_bytes == 160) {
-  } else {
-    ASSERT(gs_test.size_bytes == 32);
-
-    auto tie_consts = dma.read_and_advance();
-    ASSERT(tie_consts.size_bytes == 9 * 16);
-  }
-
-  auto mscalf = dma.read_and_advance();
-  ASSERT(mscalf.size_bytes == 0);
-
-  auto row = dma.read_and_advance();
-  ASSERT(row.size_bytes == 32);
-
-  auto next = dma.read_and_advance();
-  if (next.size_bytes == 32) {
-    next = dma.read_and_advance();
-  }
-  ASSERT(next.size_bytes == 0);
-
-  auto pc_port_data = dma.read_and_advance();
-  ASSERT(pc_port_data.size_bytes == sizeof(TfragPcPortData));
-  memcpy(&m_pc_port_data, pc_port_data.data, sizeof(TfragPcPortData));
-  m_pc_port_data.level_name[11] = '\0';
-
-  if (render_state->version == GameVersion::Jak1) {
-    auto wind_data = dma.read_and_advance();
-    ASSERT(wind_data.size_bytes == sizeof(WindWork));
-    memcpy(&m_wind_data, wind_data.data, sizeof(WindWork));
-  }
-
-  const u8* proto_vis_data = nullptr;
-  size_t proto_vis_data_size = 0;
-  if (render_state->version == GameVersion::Jak2) {
-    auto proto_mask_data = dma.read_and_advance();
-    proto_vis_data = proto_mask_data.data;
-    proto_vis_data_size = proto_mask_data.size_bytes;
-  }
-
-  while (dma.current_tag_offset() != render_state->next_bucket) {
-    dma.read_and_advance();
-  }
-
-  TfragRenderSettings settings;
-  settings.hvdf_offset = m_pc_port_data.hvdf_off;
-  settings.fog = m_pc_port_data.fog;
-
-  memcpy(settings.math_camera.data(), m_pc_port_data.camera[0].data(), 64);
-  settings.tree_idx = 0;
-
-  if (render_state->occlusion_vis[m_level_id].valid) {
-    settings.occlusion_culling = render_state->occlusion_vis[m_level_id].data;
-  }
-
-  update_render_state_from_pc_settings(render_state, m_pc_port_data);
-
-  for (int i = 0; i < 4; i++) {
-    settings.planes[i] = m_pc_port_data.planes[i];
-    settings.itimes[i] = m_pc_port_data.itimes[i];
-  }
-
-  if (!m_override_level) {
-    m_has_level = setup_for_level(m_pc_port_data.level_name, render_state);
-  }
-
-  render_all_trees(lod(), settings, render_state, prof, proto_vis_data, proto_vis_data_size);
-}
-
-void Tie3::render_all_trees(int geom,
-                            const TfragRenderSettings& settings,
-                            SharedRenderState* render_state,
-                            ScopedProfilerNode& prof,
-                            const u8* proto_vis_data,
-                            size_t proto_vis_data_size) {
-  Timer all_tree_timer;
-  if (m_override_level && m_pending_user_level) {
-    m_has_level = setup_for_level(*m_pending_user_level, render_state);
-    m_pending_user_level = {};
-  }
-  for (u32 i = 0; i < m_trees[geom].size(); i++) {
-    render_tree(i, geom, settings, render_state, prof, proto_vis_data, proto_vis_data_size);
-  }
-  m_all_tree_time.add(all_tree_timer.getSeconds());
-}
-
 void Tie3::render_tree_wind(int idx,
                             int geom,
                             const TfragRenderSettings& settings,
@@ -491,7 +932,7 @@ void Tie3::render_tree_wind(int idx,
 
     int off = 0;
     for (auto& grp : draw.instance_groups) {
-      if (!m_debug_all_visible && !m_cache.vis_temp.at(grp.vis_idx)) {
+      if (!m_debug_all_visible && !tree.vis_temp.at(grp.vis_idx)) {
         off += grp.num;
         continue;  // invisible, skip.
       }
@@ -503,9 +944,6 @@ void Tie3::render_tree_wind(int idx,
       prof.add_draw_call();
       prof.add_tri(grp.num);
 
-      tree.perf.draws++;
-      tree.perf.wind_draws++;
-
       glDrawElements(GL_TRIANGLE_STRIP, grp.num, GL_UNSIGNED_INT,
                      (void*)((off + tree.wind_vertex_index_offsets.at(draw_idx)) * sizeof(u32)));
       off += grp.num;
@@ -514,8 +952,6 @@ void Tie3::render_tree_wind(int idx,
         case DoubleDrawKind::NONE:
           break;
         case DoubleDrawKind::AFAIL_NO_DEPTH_WRITE:
-          tree.perf.draws++;
-          tree.perf.wind_draws++;
           prof.add_draw_call();
           prof.add_tri(grp.num);
           glUniform1f(
@@ -535,297 +971,25 @@ void Tie3::render_tree_wind(int idx,
   }
 }
 
-void Tie3::render_tree(int idx,
-                       int geom,
-                       const TfragRenderSettings& settings,
-                       SharedRenderState* render_state,
-                       ScopedProfilerNode& prof,
-                       const u8* proto_vis_data,
-                       size_t proto_vis_data_size) {
-  // reset perf
-  Timer tree_timer;
-  auto& tree = m_trees.at(geom).at(idx);
-  tree.perf.draws = 0;
-  tree.perf.wind_draws = 0;
+Tie3AnotherCategory::Tie3AnotherCategory(const std::string& name,
+                                         int my_id,
+                                         Tie3* parent,
+                                         tfrag3::TieCategory category)
+    : BucketRenderer(name, my_id), m_parent(parent), m_category(category) {}
 
-  // don't render if we haven't loaded
-  if (!m_has_level) {
-    return;
-  }
-
-  // update time of day
-  if (m_color_result.size() < tree.colors->size()) {
-    m_color_result.resize(tree.colors->size());
-  }
-
-  // update proto vis mask
-  if (proto_vis_data) {
-    tree.proto_visibility.update(proto_vis_data, proto_vis_data_size);
-  }
-
-  Timer interp_timer;
-  if (m_use_fast_time_of_day) {
-    interp_time_of_day_fast(settings.itimes, tree.tod_cache, m_color_result.data());
-  } else {
-    interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
-  }
-  tree.perf.tod_time.add(interp_timer.getSeconds());
-
-  Timer setup_timer;
-  glActiveTexture(GL_TEXTURE10);
-  glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
-  glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->size(), GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
-                  m_color_result.data());
-
-  // setup OpenGL shader
-  first_tfrag_draw_setup(settings, render_state, ShaderId::TFRAG3);
-
-  glBindVertexArray(tree.vao);
-  glBindBuffer(GL_ARRAY_BUFFER, tree.vertex_buffer);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
-               render_state->no_multidraw ? tree.single_draw_index_buffer : tree.index_buffer);
-  glActiveTexture(GL_TEXTURE0);
-  glEnable(GL_PRIMITIVE_RESTART);
-  glPrimitiveRestartIndex(UINT32_MAX);
-  tree.perf.tod_time.add(setup_timer.getSeconds());
-
-  int last_texture = -1;
-
-  if (!m_debug_all_visible) {
-    // need culling data
-    Timer cull_timer;
-    cull_check_all_slow(settings.planes, tree.vis->vis_nodes, settings.occlusion_culling,
-                        m_cache.vis_temp.data());
-    tree.perf.cull_time.add(cull_timer.getSeconds());
-  } else {
-    // no culling.
-    tree.perf.cull_time.add(0);
-  }
-
-  u32 num_tris;
-  if (render_state->no_multidraw) {
-    Timer index_timer;
-    u32 idx_buffer_size;
-    if (m_debug_all_visible) {
-      idx_buffer_size =
-          make_all_visible_index_list(m_cache.draw_idx_temp.data(), m_cache.index_temp.data(),
-                                      *tree.draws, tree.index_data, &num_tris);
-    } else {
-      if (tree.has_proto_visibility) {
-        idx_buffer_size = make_index_list_from_vis_and_proto_string(
-            m_cache.draw_idx_temp.data(), m_cache.index_temp.data(), *tree.draws, m_cache.vis_temp,
-            tree.proto_visibility.vis_flags, tree.index_data, &num_tris);
-      } else {
-        idx_buffer_size = make_index_list_from_vis_string(
-            m_cache.draw_idx_temp.data(), m_cache.index_temp.data(), *tree.draws, m_cache.vis_temp,
-            tree.index_data, &num_tris);
-      }
-    }
-
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_buffer_size * sizeof(u32), m_cache.index_temp.data(),
-                 GL_STREAM_DRAW);
-    tree.perf.index_time.add(index_timer.getSeconds());
-
-  } else {
-    if (m_debug_all_visible) {
-      Timer index_timer;
-      num_tris = make_all_visible_multidraws(
-          m_cache.multidraw_offset_per_stripdraw.data(), m_cache.multidraw_count_buffer.data(),
-          m_cache.multidraw_index_offset_buffer.data(), *tree.draws);
-      tree.perf.index_time.add(index_timer.getSeconds());
-    } else {
-      Timer index_timer;
-      if (tree.has_proto_visibility) {
-        num_tris = make_multidraws_from_vis_and_proto_string(
-            m_cache.multidraw_offset_per_stripdraw.data(), m_cache.multidraw_count_buffer.data(),
-            m_cache.multidraw_index_offset_buffer.data(), *tree.draws, m_cache.vis_temp,
-            tree.proto_visibility.vis_flags);
-      } else {
-        num_tris = make_multidraws_from_vis_string(
-            m_cache.multidraw_offset_per_stripdraw.data(), m_cache.multidraw_count_buffer.data(),
-            m_cache.multidraw_index_offset_buffer.data(), *tree.draws, m_cache.vis_temp);
-      }
-
-      tree.perf.index_time.add(index_timer.getSeconds());
-    }
-  }
-
-  Timer draw_timer;
-  prof.add_tri(num_tris);
-
-  for (size_t draw_idx = 0; draw_idx < tree.draws->size(); draw_idx++) {
-    const auto& draw = tree.draws->operator[](draw_idx);
-    const auto& multidraw_indices = m_cache.multidraw_offset_per_stripdraw[draw_idx];
-    const auto& singledraw_indices = m_cache.draw_idx_temp[draw_idx];
-
-    if (render_state->no_multidraw) {
-      if (singledraw_indices.second == 0) {
-        continue;
-      }
-    } else {
-      if (multidraw_indices.second == 0) {
-        continue;
-      }
-    }
-
-    if ((int)draw.tree_tex_id != last_texture) {
-      glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
-      last_texture = draw.tree_tex_id;
-    }
-
-    auto double_draw = setup_tfrag_shader(render_state, draw.mode, ShaderId::TFRAG3);
-
-    prof.add_draw_call();
-
-    tree.perf.draws++;
-
-    if (render_state->no_multidraw) {
-      glDrawElements(GL_TRIANGLE_STRIP, singledraw_indices.second, GL_UNSIGNED_INT,
-                     (void*)(singledraw_indices.first * sizeof(u32)));
-    } else {
-      glMultiDrawElements(GL_TRIANGLE_STRIP,
-                          &m_cache.multidraw_count_buffer[multidraw_indices.first], GL_UNSIGNED_INT,
-                          &m_cache.multidraw_index_offset_buffer[multidraw_indices.first],
-                          multidraw_indices.second);
-    }
-
-    switch (double_draw.kind) {
-      case DoubleDrawKind::NONE:
-        break;
-      case DoubleDrawKind::AFAIL_NO_DEPTH_WRITE:
-        tree.perf.draws++;
-        prof.add_draw_call();
-        glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_min"),
-                    -10.f);
-        glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
-                    double_draw.aref_second);
-        glDepthMask(GL_FALSE);
-        if (render_state->no_multidraw) {
-          glDrawElements(GL_TRIANGLE_STRIP, singledraw_indices.second, GL_UNSIGNED_INT,
-                         (void*)(singledraw_indices.first * sizeof(u32)));
-        } else {
-          glMultiDrawElements(
-              GL_TRIANGLE_STRIP, &m_cache.multidraw_count_buffer[multidraw_indices.first],
-              GL_UNSIGNED_INT, &m_cache.multidraw_index_offset_buffer[multidraw_indices.first],
-              multidraw_indices.second);
-        }
-        break;
-      default:
-        ASSERT(false);
-    }
-
-    if (m_debug_wireframe && !render_state->no_multidraw) {
-      render_state->shaders[ShaderId::TFRAG3_NO_TEX].activate();
-      glUniformMatrix4fv(
-          glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3_NO_TEX].id(), "camera"), 1,
-          GL_FALSE, settings.math_camera.data());
-      glUniform4f(
-          glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3_NO_TEX].id(), "hvdf_offset"),
-          settings.hvdf_offset[0], settings.hvdf_offset[1], settings.hvdf_offset[2],
-          settings.hvdf_offset[3]);
-      glUniform1f(
-          glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3_NO_TEX].id(), "fog_constant"),
-          settings.fog.x());
-      glDisable(GL_BLEND);
-      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-      glMultiDrawElements(GL_TRIANGLE_STRIP,
-                          &m_cache.multidraw_count_buffer[multidraw_indices.first], GL_UNSIGNED_INT,
-                          &m_cache.multidraw_index_offset_buffer[multidraw_indices.first],
-                          multidraw_indices.second);
-      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-      prof.add_draw_call();
-      render_state->shaders[ShaderId::TFRAG3].activate();
-    }
-  }
-
-  if (!m_hide_wind) {
-    auto wind_prof = prof.make_scoped_child("wind");
-    render_tree_wind(idx, geom, settings, render_state, wind_prof);
-  }
-
-  glBindVertexArray(0);
-  tree.perf.draw_time.add(draw_timer.getSeconds());
-  tree.perf.tree_time.add(tree_timer.getSeconds());
+void Tie3AnotherCategory::draw_debug_window() {
+  ImGui::Text("Child of this renderer:");
+  m_parent->draw_debug_window();
 }
 
-void Tie3::draw_debug_window() {
-  ImGui::InputText("Custom Level", m_user_level, sizeof(m_user_level));
-  if (ImGui::Button("Go!")) {
-    m_pending_user_level = m_user_level;
+void Tie3AnotherCategory::render(DmaFollower& dma,
+                                 SharedRenderState* render_state,
+                                 ScopedProfilerNode& prof) {
+  auto first_tag = dma.current_tag();
+  dma.read_and_advance();
+  if (first_tag.kind != DmaTag::Kind::CNT || first_tag.qwc != 0) {
+    fmt::print("Bucket renderer {} ({}) was supposed to be empty, but wasn't\n", m_my_id, m_name);
+    ASSERT(false);
   }
-  ImGui::Checkbox("Override level", &m_override_level);
-  ImGui::Checkbox("Fast ToD", &m_use_fast_time_of_day);
-  ImGui::Checkbox("Wireframe", &m_debug_wireframe);
-  ImGui::SameLine();
-  ImGui::Checkbox("All Visible", &m_debug_all_visible);
-  ImGui::Checkbox("Hide Wind", &m_hide_wind);
-  ImGui::SliderFloat("Wind Multiplier", &m_wind_multiplier, 0., 40.f);
-  ImGui::Separator();
-  for (u32 i = 0; i < m_trees[lod()].size(); i++) {
-    auto& perf = m_trees[lod()][i].perf;
-    ImGui::Text("Tree: %d", i);
-    ImGui::Text("time of days: %d", (int)m_trees[lod()][i].colors->size());
-    ImGui::Text("draw: %d", perf.draws);
-    ImGui::Text("wind draw: %d", perf.wind_draws);
-    ImGui::Text("total: %.2f", perf.tree_time.get());
-    ImGui::Text("proto vis: %.2f", perf.proto_vis_time.get() * 1000.f);
-    ImGui::Text("cull: %.2f index: %.2f tod: %.2f setup: %.2f draw: %.2f",
-                perf.cull_time.get() * 1000.f, perf.index_time.get() * 1000.f,
-                perf.tod_time.get() * 1000.f, perf.setup_time.get() * 1000.f,
-                perf.draw_time.get() * 1000.f);
-    ImGui::Separator();
-  }
-  ImGui::Text("All trees: %.2f", 1000.f * m_all_tree_time.get());
-}
-
-void TieProtoVisibility::init(const std::vector<std::string>& names) {
-  vis_flags.resize(names.size());
-  for (auto& x : vis_flags) {
-    x = 1;
-  }
-  all_visible = true;
-  name_to_idx.clear();
-  size_t i = 0;
-  for (auto& name : names) {
-    name_to_idx[name].push_back(i++);
-  }
-}
-
-void TieProtoVisibility::update(const u8* data, size_t size) {
-  char name_buffer[256];  // ??
-
-  if (!all_visible) {
-    for (auto& x : vis_flags) {
-      x = 1;
-    }
-    all_visible = true;
-  }
-
-  const u8* end = data + size;
-
-  while (true) {
-    int name_idx = 0;
-    while (*data) {
-      name_buffer[name_idx++] = *data;
-      data++;
-    }
-    if (name_idx) {
-      ASSERT(name_idx < 254);
-      name_buffer[name_idx] = '\0';
-      const auto& it = name_to_idx.find(name_buffer);
-      if (it != name_to_idx.end()) {
-        all_visible = false;
-        for (auto x : name_to_idx.at(name_buffer)) {
-          vis_flags[x] = 0;
-        }
-      }
-    }
-
-    while (*data == 0) {
-      if (data >= end) {
-        return;
-      }
-      data++;
-    }
-  }
+  m_parent->render_from_another(render_state, prof, m_category);
 }
