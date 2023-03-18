@@ -903,7 +903,7 @@ void OpenGLRenderer::dispatch_buckets_jak2(DmaFollower dma,
   m_render_state.buckets_base = dma.current_tag_offset();  // starts at 0 in jak 2
   m_render_state.next_bucket = m_render_state.buckets_base + 16;
   m_render_state.bucket_for_vis_copy = (int)jak2::BucketId::BUCKET_2;
-  m_render_state.num_vis_to_copy = 6;
+  m_render_state.num_vis_to_copy = 8;
 
   for (size_t bucket_id = 0; bucket_id < m_bucket_renderers.size(); bucket_id++) {
     auto& renderer = m_bucket_renderers[bucket_id];
