@@ -57,7 +57,7 @@ constexpr int SYM_TO_STRING_OFFSET = 0xff37;
 constexpr int SYM_TO_HASH_OFFSET = 0x1fe6f;
 
 // amount of levels in level heap
-constexpr int LEVEL_MAX = 8;  // 6
+constexpr int LEVEL_MAX = 6;
 // total amount of levels, including ones outside level heap (default-level)
 constexpr int LEVEL_TOTAL = LEVEL_MAX + 1;
 }  // namespace jak2
