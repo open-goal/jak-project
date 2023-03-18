@@ -209,7 +209,7 @@ int main(int argc, char** argv) {
 
   bool force_debug_next_time = false;
   // always start with an empty arg, as internally kmachine starts at `1` not `0`
-  std::vector<char*> arg_ptrs = {""};
+  std::vector<const char*> arg_ptrs = {""};
   for (auto& str : game_args) {
     arg_ptrs.push_back(str.data());
   }

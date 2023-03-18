@@ -73,7 +73,7 @@ struct MemoryUsageTracker {
   void add(MemoryUsageCategory category, u32 size_bytes) { data[category] += size_bytes; }
 };
 
-constexpr int TFRAG3_VERSION = 29;
+constexpr int TFRAG3_VERSION = 28;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -81,7 +81,9 @@ struct PreloadedVertex {
   float x = 0, y = 0, z = 0;
   // texture coordinates
   float s = 0, t = 0;
-  u8 r = 0, g = 0, b = 0, a = 0;
+
+  u8 r = 0, g = 0, b = 0, a = 0;  // envmap tint color, not used in == or hash.
+
   // color table index
   u16 color_index = 0;
 
@@ -318,14 +320,19 @@ struct TieWindInstance {
   void serialize(Serializer& ser);
 };
 
+// Tie draws are split into categories.
 enum class TieCategory {
+  // normal tie buckets
   NORMAL,
   TRANS,  // also called alpha
   WATER,
+
+  // first draw (normal base draw) for envmapped stuff
   NORMAL_ENVMAP,
   TRANS_ENVMAP,
   WATER_ENVMAP,
 
+  // second draw (shiny) for envmapped ties.
   NORMAL_ENVMAP_SECOND_DRAW,
   TRANS_ENVMAP_SECOND_DRAW,
   WATER_ENVMAP_SECOND_DRAW,

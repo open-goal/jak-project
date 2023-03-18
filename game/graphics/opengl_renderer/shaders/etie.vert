@@ -26,7 +26,7 @@ uniform mat4 cam_no_persp;
 
 void main() {
 
-
+    // maybe we could do fog faster using intermediate results from below, but it doesn't seem significant.
     float fog1 = camera[3].w + camera[0].w * position_in.x + camera[1].w * position_in.y + camera[2].w * position_in.z;
     fogginess = 255 - clamp(fog1 + hvdf_offset.w, fog_min, fog_max);
 
@@ -42,53 +42,61 @@ void main() {
     vf17 += cam_no_persp[1] * position_in.y;
     vf17 += cam_no_persp[2] * position_in.z;
 
-    {
-//        nrm_vf23 = normalize(nrm_vf23); (not here in VU, not sure how this scale factor was computed)
-//        // nrm.z -= 1
-//        //subw.z vf23, vf23, vf00
-//        nrm_vf23.z -= 1.f;
-//
-//        // dot = nrm.xyz * pt.xyz
-//        //mul.xyz vf13, vf17, vf23
-//        //esum.xyzw P, vf13
-//        //mfp.x vf13, P
-//        float nrm_dot = dot(vf17.xyz, nrm_vf23);
-//
-//        // rfl = pt.xzy * nrm.z
-//        //mulz.xyz vf14, vf17, vf23
-//        vec3 rfl_vf14 = vf17.xyz * nrm_vf23.z;
-//
-//        //;; Q_envmap = vf02.w / norm(rfl.xyz)
-//        //esadd.xyz P, vf14
-//        //mfp.x vf30, P
-//        //rsqrt Q, vf02.w, vf30.x
-//        float Q_envmap = -0.5 / length(rfl_vf14);
-//
-//        //
-//        //;; nrm.xy *= dot.x
-//        //mulx.xy vf23, vf23, vf13
-//        nrm_vf23.xy *= nrm_dot;
-//
-//        //
-//        //;; nrm.xy += rfl.xy
-//        //add.xy vf23, vf23, vf14
-//        nrm_vf23.xy += rfl_vf14.xy;
-//        //
-//        //;; nrm.z = 1.0
-//        //addw.z vf23, vf00, vf00
-//        nrm_vf23.z = 1.0;
-//        //
-//        //;; nrm.xy *= Q_envmap
-//        //mul.xy vf23, vf23, Q
-//        nrm_vf23.xy *= Q_envmap;
-//        //
-//
-//        //
-//        //;; nrm.xy += vf03.w
-//        //addw.xy vf23, vf23, vf03
-//        nrm_vf23.xy += 0.5;
-//        tex_coord = nrm_vf23;
-    }
+    /*
+    // This is the ETIE math.
+    // It seems right only if the nrm_vf23 is normalized first
+    // (and in this case it's identical the emerc math below)
+    // There is no reason to prefer the emerc version over etie - they are identical.
+    // likely on PS2, their normal transformation matrix was scaled correctly.
+    // ours isn't. (yes, the camera matrix is a pure rotation and that doesn't matter, but the
+    // instance matrix used to de-instance the mesh needs the correction, and we don't have it)
+    if (use_emerc_math == 0) {
+        nrm_vf23 = nrm_vf23;
+        // nrm.z -= 1
+        //subw.z vf23, vf23, vf00
+        nrm_vf23.z -= 1.f;
+
+        // dot = nrm.xyz * pt.xyz
+        //mul.xyz vf13, vf17, vf23
+        //esum.xyzw P, vf13
+        //mfp.x vf13, P
+        float nrm_dot = dot(vf17.xyz, nrm_vf23);
+
+        // rfl = pt.xzy * nrm.z
+        //mulz.xyz vf14, vf17, vf23
+        vec3 rfl_vf14 = vf17.xyz * nrm_vf23.z;
+
+        //;; Q_envmap = vf02.w / norm(rfl.xyz)
+        //esadd.xyz P, vf14
+        //mfp.x vf30, P
+        //rsqrt Q, vf02.w, vf30.x
+        float Q_envmap = -0.5 / length(rfl_vf14);
+
+        //
+        //;; nrm.xy *= dot.x
+        //mulx.xy vf23, vf23, vf13
+        nrm_vf23.xy *= nrm_dot;
+
+        //
+        //;; nrm.xy += rfl.xy
+        //add.xy vf23, vf23, vf14
+        nrm_vf23.xy += rfl_vf14.xy;
+        //
+        //;; nrm.z = 1.0
+        //addw.z vf23, vf00, vf00
+        nrm_vf23.z = 1.0;
+        //
+        //;; nrm.xy *= Q_envmap
+        //mul.xy vf23, vf23, Q
+        nrm_vf23.xy *= Q_envmap;
+        //
+
+        //
+        //;; nrm.xy += vf03.w
+        //addw.xy vf23, vf23, vf03
+        nrm_vf23.xy += 0.5;
+        tex_coord = nrm_vf23;
+    }*/
 
     //;; perspective transform
     //mula.xy ACC, vf10, vf17  ;; acc build 1
@@ -102,6 +110,7 @@ void main() {
     //div Q, vf00.w, vf18.w
     float pQ = 1.f / p_proj.w;
 
+    // EMERC version of the math
     {
         // emerc hack
         vec3 vf10 = normalize(r_nrm);
@@ -133,8 +142,6 @@ void main() {
     }
 
 
-    //;; that's the non-persp_Q multiplied envmap value.
-
     vec4 transformed = p_proj * pQ;
     transformed.w = p_proj.w;
 
@@ -152,22 +159,6 @@ void main() {
     transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
     gl_Position = transformed;
 
-
-
-    if (decal == 1) {
-        fragment_color = vec4(1.0, 1.0, 1.0, 1.0);
-    } else {
-        // time of day lookup
-        fragment_color = texelFetch(tex_T1, time_of_day_index, 0);
-        // color adjustment
-        fragment_color *= 2;
-        fragment_color.a *= 2;
-    }
-
-    // fog hack
-    if (fragment_color.r < 0.005 && fragment_color.g < 0.005 && fragment_color.b < 0.005) {
-        fogginess = 0;
-    }
 
     fragment_color = proto_tint * envmap_tod_tint;
     

@@ -72,25 +72,6 @@ void TfragTree::serialize(Serializer& ser) {
   ser.from_ptr(&use_strips);
 }
 
-std::array<math::Vector3f, 3> tie_normal_transformation_matrix(
-    const std::array<math::Vector4f, 4>& m) {
-  float d = m[0][0] * (m[1][1] * m[2][2] - m[2][1] * m[1][2]) -
-            m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
-            m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
-  std::array<math::Vector3f, 3> o;
-
-  o[0][0] = (m[1][1] * m[2][2] - m[2][1] * m[1][2]) / d;
-  o[0][0] = (m[0][2] * m[2][1] - m[0][1] * m[2][2]) / d;
-  o[0][0] = (m[0][1] * m[1][2] - m[0][2] * m[1][1]) / d;
-  o[1][1] = (m[1][2] * m[2][0] - m[1][0] * m[2][2]) / d;
-  o[1][1] = (m[0][0] * m[2][2] - m[0][2] * m[2][0]) / d;
-  o[1][1] = (m[1][0] * m[0][2] - m[0][0] * m[1][2]) / d;
-  o[2][2] = (m[1][0] * m[2][1] - m[2][0] * m[1][1]) / d;
-  o[2][2] = (m[2][0] * m[0][1] - m[0][0] * m[2][1]) / d;
-  o[2][2] = (m[0][0] * m[1][1] - m[1][0] * m[0][1]) / d;
-  return o;
-}
-
 math::Vector3f vopmula(math::Vector3f a, math::Vector3f b) {
   return math::Vector3f(a.y() * b.z(), a.z() * b.x(), a.x() * b.y());
 }
@@ -99,6 +80,12 @@ math::Vector3f vopmsub(math::Vector3f acc, math::Vector3f a, math::Vector3f b) {
   return acc - vopmula(a, b);
 }
 
+/*!
+ * Compute the normal transformation for a TIE from the TIE matrix.
+ * Note that this isn't identical to the original game - we're missing the vf14 scaling factor
+ * For now, I just set this to 1, then normalize in the shader. Though I think we could avoid
+ * this by figuring out the value of vf14 here (I am just too lazy right now).
+ */
 std::array<math::Vector3f, 3> tie_normal_transform_v2(const std::array<math::Vector4f, 4>& m) {
   // let:
   // vf10, vf11, vf12, vf13 be the input matrix m
@@ -108,7 +95,7 @@ std::array<math::Vector3f, 3> tie_normal_transform_v2(const std::array<math::Vec
   // auto& vf12 = m[2];
 
   // vmulx.xyz vf16, vf10, vf14
-  math::Vector3f vf16 = vf10.xyz() * 0.25;  // TODO VF14
+  math::Vector3f vf16 = vf10.xyz() * 1.0;  // TODO VF14
 
   // vopmula.xyz acc, vf11, vf16
   math::Vector3f acc = vopmula(vf11.xyz(), vf16);
@@ -164,16 +151,9 @@ std::array<math::Vector3f, 3> tie_normal_transform_v2(const std::array<math::Vec
   // sqc2 vf12, -80(t8)
 }
 
-std::array<math::Vector3f, 3> transpose(std::array<math::Vector3f, 3> in) {
-  std::array<math::Vector3f, 3> out;
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      out[i][j] = in[j][i];
-    }
-  }
-  return out;
-}
-
+/*!
+ * Unpack tie normal by transforming and converting to s16 for OpenGL.
+ */
 math::Vector<s16, 3> unpack_tie_normal(const std::array<math::Vector3f, 3>& mat,
                                        s8 nx,
                                        s8 ny,
@@ -184,8 +164,8 @@ math::Vector<s16, 3> unpack_tie_normal(const std::array<math::Vector3f, 3>& mat,
   nrm += mat[1] * ny;
   nrm += mat[2] * nz;
   // convert to s16 for OpenGL renderer
-  nrm *= 0.0078125;
-  nrm *= 256.f * 128.f;
+  nrm *= 0.0078125;      // number from EE asm
+  nrm *= 256.f * 128.f;  // for normalize s16 -> float conversion by OpenGL.
 
   return nrm.cast<s16>();
 }
@@ -216,7 +196,6 @@ void TieTree::unpack() {
     } else {
       const auto& mat = packed_vertices.matrices[grp.matrix_idx];
       auto nmat = tie_normal_transform_v2(mat);
-      auto nmat_it = tie_normal_transformation_matrix(mat);
 
       for (u32 src_idx = grp.start_vert; src_idx < grp.end_vert; src_idx++) {
         auto& vtx = unpacked.vertices[i];

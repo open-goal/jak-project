@@ -700,21 +700,6 @@ void Tie3::draw_debug_window() {
   ImGui::Checkbox("Hide Wind", &m_hide_wind);
   ImGui::SliderFloat("Wind Multiplier", &m_wind_multiplier, 0., 40.f);
   ImGui::Separator();
-  //  for (u32 i = 0; i < m_trees[lod()].size(); i++) {
-  //    auto& perf = m_trees[lod()][i].perf;
-  //    ImGui::Text("Tree: %d", i);
-  //    ImGui::Text("time of days: %d", (int)m_trees[lod()][i].colors->size());
-  //    ImGui::Text("draw: %d", perf.draws);
-  //    ImGui::Text("wind draw: %d", perf.wind_draws);
-  //    ImGui::Text("total: %.2f", perf.tree_time.get());
-  //    ImGui::Text("proto vis: %.2f", perf.proto_vis_time.get() * 1000.f);
-  //    ImGui::Text("cull: %.2f index: %.2f tod: %.2f setup: %.2f draw: %.2f",
-  //                perf.cull_time.get() * 1000.f, perf.index_time.get() * 1000.f,
-  //                perf.tod_time.get() * 1000.f, perf.setup_time.get() * 1000.f,
-  //                perf.draw_time.get() * 1000.f);
-  //    ImGui::Separator();
-  //  }
-  ImGui::Text("All trees: %.2f", 1000.f * m_all_tree_time.get());
 }
 
 void TieProtoVisibility::init(const std::vector<std::string>& names) {

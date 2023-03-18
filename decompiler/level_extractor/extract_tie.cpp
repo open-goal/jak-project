@@ -574,13 +574,8 @@ struct TieCategoryInfo {
 };
 
 TieCategoryInfo get_jak2_tie_category(u32 flags) {
-  constexpr int kJak2ProtoDisable = 1;
   constexpr int kJak2ProtoEnvmap = 2;
   constexpr int kJak2ProtoTpageAlpha = 4;
-  constexpr int kJak2ProtoVanish = 8;
-  constexpr int kJak2ProtoBitFour = 16;
-  constexpr int kJak2ProtoVisible = 32;
-  constexpr int kJak2ProtoNoCollide = 64;
   constexpr int kJak2ProtoTpageWater = 128;
   TieCategoryInfo result;
   result.uses_envmap = flags & kJak2ProtoEnvmap;
@@ -664,7 +659,6 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
     }
 
     // loop over fragments in the proto. This is the actual mesh data data and drawing settings
-    u64 first_adgif_alpha = -1;
     for (int frag_idx = 0; frag_idx < proto.frag_count[geo]; frag_idx++) {
       TieFrag frag_info;
 
@@ -2142,23 +2136,12 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
  * Get the draw mode settings that are pre-set for the entire bucket and not controlled by adgif
  * shaders
  */
-DrawMode get_base_draw_mode_jak2(bool use_tra, tfrag3::TieCategory category) {
+DrawMode get_base_draw_test_mode_jak2(bool use_tra, tfrag3::TieCategory category) {
   DrawMode mode;
   mode.enable_ab();
   switch (category) {
     case tfrag3::TieCategory::NORMAL:
     case tfrag3::TieCategory::TRANS:
-      mode.enable_zt();
-      mode.set_depth_test(GsTest::ZTest::GEQUAL);
-      if (use_tra) {
-        mode.enable_at();
-        mode.set_aref(0x26);
-        mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
-        mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
-      } else {
-        mode.disable_at();
-      }
-      break;
       mode.enable_zt();
       mode.set_depth_test(GsTest::ZTest::GEQUAL);
       if (use_tra) {
@@ -2204,8 +2187,7 @@ DrawMode process_draw_mode(const AdgifInfo& info,
                            bool use_tra,
                            bool use_decal,
                            GameVersion version,
-                           tfrag3::TieCategory category,
-                           int num_mips) {
+                           tfrag3::TieCategory category) {
   DrawMode mode;
   if (version == GameVersion::Jak1) {
     // some of these are set up once as part of tie initialization
@@ -2227,7 +2209,7 @@ DrawMode process_draw_mode(const AdgifInfo& info,
     mode.disable_ab();
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
   } else {
-    mode = get_base_draw_mode_jak2(use_tra, category);
+    mode = get_base_draw_test_mode_jak2(use_tra, category);
   }
 
   if (use_decal) {
@@ -2267,7 +2249,7 @@ DrawMode process_envmap_draw_mode(const AdgifInfo& info,
   // (set! (-> envmap-shader clamp) (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt
   // (gs-tex-wrap-mode clamp))) (set! (-> envmap-shader alpha) (new 'static 'gs-alpha :b #x2 :c #x1
   // :d #x1))
-  auto mode = process_draw_mode(info, false, false, version, category, 0);
+  auto mode = process_draw_mode(info, false, false, version, category);
   mode.set_filt_enable(true);
   mode.set_clamp_s_enable(true);
   mode.set_clamp_t_enable(true);
@@ -2569,7 +2551,6 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
       }
 
       // loop over fragments of the prototype
-      bool printed = false;
       for (size_t frag_idx = 0; frag_idx < proto.frags.size(); frag_idx++) {
         auto& frag = proto.frags[frag_idx];     // shared info for all instances of this frag
         auto& ifrag = inst.frags.at(frag_idx);  // color info for this instance of the frag
@@ -2578,24 +2559,9 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
           auto& strip = frag.strips[strip_idx];
 
           u32 idx_in_lev_data = get_or_add_texture(strip.adgif.combo_tex, lev, tdb);
-          u32 mips = -1;
-          //          std::string tex_name = "badbadbadbeef";
-          auto it = tdb.textures.find(strip.adgif.combo_tex);
-          if (it != tdb.textures.end()) {
-            mips = it->second.num_mips;
-            //            tex_name = it->second.name + fmt::format("{}/{}", strip.adgif_idx,
-            //            frag.adgifs.size());
-          }
           // determine the draw mode
-          bool require_conversion_of_alpha = strip.adgif_idx > 0 && frag.adgifs.size() > 1;
           DrawMode mode = process_draw_mode(strip.adgif, frag.prog_info.misc_x == 0,
-                                            frag.has_magic_tex0_bit, version, info.category, mips);
-          if (!printed) {
-            printed = true;
-            // if (str_util::contains(proto.name, "prec")) {
-            //  fmt::print("{}: {}\n", proto.name, (int)mode.get_alpha_blend());
-            //}
-          }
+                                            frag.has_magic_tex0_bit, version, info.category);
 
           if (using_wind) {
             handle_wind_draw_for_strip(tree, wind_draws_by_tex, packed_vert_indices,
