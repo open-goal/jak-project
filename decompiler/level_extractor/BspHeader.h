@@ -407,7 +407,9 @@ struct TieFragment : public Drawable {
 
   std::string debug_label_name;
 
-  std::vector<s8> normals;
+  std::vector<s8> normals;  // jak 2
+
+  std::vector<u8> generic_data;  // jak 1
 
   // todo, lots more
 };
@@ -483,8 +485,8 @@ struct PrototypeBucketTie {
   TimeOfDayPalette time_of_day;
 
   bool has_envmap_shader = false;
-  u8 envmap_shader[5 * 16];  // jak 2 only
-  math::Vector<u8, 4> tint_color;
+  u8 envmap_shader[5 * 16];
+  math::Vector<u8, 4> jak2_tint_color;  // jak 2 only
   // todo collide-frag
   DrawableInlineArrayCollideFragment collide_frag;
   // todo tie-colors
