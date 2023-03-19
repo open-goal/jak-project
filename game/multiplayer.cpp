@@ -118,6 +118,7 @@ void http_update_position() {
   // Construct JSON payload
   nlohmann::json payload = {
       {"username", username},
+      {"color", rpInfo->color},
       {"trans_x", rpInfo->trans_x},
       {"trans_y", rpInfo->trans_y},
       {"trans_z", rpInfo->trans_z},
@@ -170,6 +171,8 @@ void http_get_positions() {
               // copy username into struct
               std::string uname = field.value();
               strncpy(Ptr<String>(rpInfo->username).c()->data(), uname.c_str(), MAX_USERNAME_LEN);
+            } else if (field.key().compare("color") == 0) {
+              rpInfo->color = field.value();
             } else if (field.key().compare("trans_x") == 0) {
               rpInfo->trans_x = field.value();
             } else if (field.key().compare("trans_y") == 0) {

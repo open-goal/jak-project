@@ -45,6 +45,7 @@ struct FileStream {
 const int MAX_USERNAME_LEN = 16;
 struct RemotePlayerInfo {
   u32 username; // string (basic)
+  u32 color;  // tgt-color enum
   float trans_x;
   float trans_y;
   float trans_z;
@@ -53,7 +54,7 @@ struct RemotePlayerInfo {
   float quat_z;
   float quat_w;
   s32 tgt_state;
-  u32 mp_state;
+  u32 mp_state; // mp-tgt-state enum
 };
 // static_assert(sizeof(RemotePlayerInfo) == 32, "RemotePlayerInfo size is wrong");
 

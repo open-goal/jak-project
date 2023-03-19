@@ -60,8 +60,30 @@ if the result of rand-vu-int-range is 1, then DANCE! if it is not 1, then Don't 
   (mp-tgt-seeker-play)
   )
 
+(defun is-seeker? ((mp_state mp-tgt-state))
+  (or (= mp_state (mp-tgt-state mp-tgt-seeker-wait))
+      (= mp_state (mp-tgt-state mp-tgt-seeker-play))
+      )
+  )
+
+(defenum tgt-color
+  :type uint32
+  (normal)
+  (green)
+  (blue)
+  (red)
+  (yellow)
+  (white)
+  (black)
+  (purple)
+  (pink)
+  (light-blue)
+  (holo)
+  )
+
 (deftype remote-player-info (structure)
  ((username   string)
+  (color      tgt-color)
   (trans_x    float)
   (trans_y    float)
   (trans_z    float)
@@ -91,6 +113,7 @@ if the result of rand-vu-int-range is 1, then DANCE! if it is not 1, then Don't 
     (set! (-> obj quat_z) 0.0)
     (set! (-> obj quat_w) 0.0)
     (set! (-> obj tgt_state) 'invalid)
+    (set! (-> obj mp_state) (mp-tgt-state mp-tgt-invalid))
     obj
     )
   )
@@ -109,6 +132,7 @@ if the result of rand-vu-int-range is 1, then DANCE! if it is not 1, then Don't 
     (set! (-> obj player_num) -1)
     (dotimes (idx MAX_MULTIPLAYER_COUNT)
       (set! (-> obj players idx username) (new 'global 'string MAX_USERNAME_LEN ""))
+      (set! (-> obj players idx mp_state) (mp-tgt-state mp-tgt-invalid))
       )
     obj
     )
