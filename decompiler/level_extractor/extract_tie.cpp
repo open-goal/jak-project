@@ -2264,6 +2264,12 @@ DrawMode process_draw_mode(const AdgifInfo& info,
     if (tfrag3::is_envmap_second_draw_category(category)) {
       mode.enable_ab();
     }
+
+    if (tfrag3::is_envmap_first_draw_category(category)) {
+      // decal seems to be somewhat rarely enbaled on envmapped stuff where it's clearly wrong (edge
+      // the fj temple before the room with the blue eco switch)
+      mode.disable_decal();
+    }
   } else {
     if (tfrag3::is_envmap_second_draw_category(category)) {
       // envmap shader gets to control its own alpha
