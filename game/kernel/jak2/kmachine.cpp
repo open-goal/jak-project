@@ -676,8 +676,8 @@ void InitMachine_PCPort() {
 
   // HTTP server stuff
   make_function_symbol_from_c("pc-http-register", (void*)http_register);
-  make_function_symbol_from_c("pc-http-update-position", (void*)http_update_position);
-  make_function_symbol_from_c("pc-http-get-positions", (void*)http_get_positions);
+  make_function_symbol_from_c("pc-http-update", (void*)http_update);
+  make_function_symbol_from_c("pc-http-get", (void*)http_get);
 
   // debugging tools
   make_function_symbol_from_c("pc-filter-debug-string?", (void*)pc_filter_debug_string);
