@@ -69,8 +69,8 @@ an orb |#
   (case (-> obj type)
     ((target)
       (let* ((t (the target obj))
-             (local-seeker? (is-seeker? (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state)))
-             (remote-seeker? (is-seeker? (-> p mp_state)))
+             (local-seeker? (= (-> *multiplayer-info* players (-> *multiplayer-info* player_num) role) (mp-game-role seeker)))
+             (remote-seeker? (= (-> p role) (mp-game-role seeker)))
              )
         ;; draw usernames if both players are seekers/hiders
         (when (= local-seeker? remote-seeker?)
@@ -105,14 +105,16 @@ an orb |#
   )
 
 (define *self-player-info* (the-as remote-player-info #f))
+(define *game-state-change-time* (the-as time-frame #f))
+
 (define *multiplayer-mode* 'jaks)
 ;; (define *multiplayer-mode* 'orbs)
 (defun runs-every-frame ()
   ;; setup our own remote-player-info if we haven't yet
   (when (not *self-player-info*)
     (set! *self-player-info* (new 'global 'remote-player-info))
-    (set! (-> *self-player-info* username) "zed") ;; TODO - pull this from settings I guess?
-    (set! (-> *self-player-info* color) (tgt-color red)) ;; TODO - pull this from settings I guess?
+    (set! (-> *self-player-info* username) "barg") ;; TODO - pull this from settings I guess?
+    (set! (-> *self-player-info* color) (tgt-color purple)) ;; TODO - pull this from settings I guess?
     )
 
   ;; register with server if we haven't yet
@@ -141,7 +143,6 @@ an orb |#
             )
           ;; TODO: show players and waiting/ready state
           ;; TODO: show press O to ready up text
-          ;; TODO: if ready and either first player or 50% of players are ready, press ? to start game
           (when (cpad-pressed? 0 r2)
             (case (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state)
               (((mp-tgt-state mp-tgt-lobby))
@@ -180,24 +181,74 @@ an orb |#
               ;; TODO: allow for freecam
               )
             (((mp-tgt-state mp-tgt-ready) (mp-tgt-state mp-tgt-start))
-              ;; shouldnt happen? on game start server should assign hider/seeker states
+              (case (-> *multiplayer-info* players (-> *multiplayer-info* player_num) role)
+                (((mp-game-role hider))
+                  (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state) (mp-tgt-state mp-tgt-hider-start))
+                  )
+                (((mp-game-role seeker))
+                  (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state) (mp-tgt-state mp-tgt-seeker-wait))
+                  )
+                )
               )
             (((mp-tgt-state mp-tgt-hider-start))
               ;; TODO: spawn at ? checkpoint (based on toggle), show text and timer to controls, switch to hider-play
+              (start 'play (get-continue-by-name *game-info* "jungle-start"))
+              (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state) (mp-tgt-state mp-tgt-hider-play))
               )
             (((mp-tgt-state mp-tgt-hider-play))
-              ;; TODO: spawn at ? checkpoint (based on toggle), show text and timer to controls, switch to hider-play
+              ;; TODO: timer and give controls
               )
             (((mp-tgt-state mp-tgt-seeker-wait))
               ;; TODO blackout with timer
+              (set-blackout-frames (seconds 30))
               )
             )
           )
         (((mp-game-state mp-game-play-seek))
-          ;; TODO: if seeker, spawn at ? checkpoint (based on toggle), show text, check for "collision" with remote targets
-            ;; option to give up
-          ;; TODO: if hider, show text, optionally freeze
           ;; TODO: show alerts when hiders collected (server should set most recent case and then clear every 5s or so?)
+          (case (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state)
+            (((mp-tgt-state mp-tgt-lobby))
+              ;; TODO: allow for freecam
+              )
+            (((mp-tgt-state mp-tgt-ready) (mp-tgt-state mp-tgt-start))
+              ;; shouldn't happen?
+              )
+            (((mp-tgt-state mp-tgt-hider-start))
+              ;; shouldn't happen?
+              )
+            (((mp-tgt-state mp-tgt-hider-play))
+              ;; TODO: show text
+              ;; TODO: optionally freeze
+              (case (-> *multiplayer-info* players (-> *multiplayer-info* player_num) role)
+                (((mp-game-role found))
+                  (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state) (mp-tgt-state mp-tgt-hider-found))
+                  )
+                )
+              )
+            (((mp-tgt-state mp-tgt-hider-found))
+              ;; TODO: freeze inputs, timer then return to lobby 
+              )
+            (((mp-tgt-state mp-tgt-seeker-wait))
+              ;; TODO: show text and timer to controls
+              (start 'play (get-continue-by-name *game-info* "beach-start"))
+              (set-blackout-frames 0)
+              (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state) (mp-tgt-state mp-tgt-seeker-play))
+              )
+            (((mp-tgt-state mp-tgt-seeker-play))
+              ;; TODO: option to give up
+              ;; check for finding other players
+              (dotimes (idx MAX_MULTIPLAYER_COUNT)
+                (when (and (!= (-> *multiplayer-info* player_num) idx)
+                           (!= (-> *multiplayer-info* players idx mp_state) (mp-tgt-state mp-tgt-invalid))
+                           (!= (-> *multiplayer-info* players idx mp_state) (mp-tgt-state mp-tgt-hider-found))
+                           (!= (-> *multiplayer-info* players idx mp_state) (mp-tgt-state mp-tgt-lobby))
+                           (< (vector-vector-distance (-> *target* root trans) (-> (get-target idx) root trans)) (meters 2.0))
+                           )
+                  (pc-http-mark-found idx)
+                  )
+                )
+              )
+            )
           )
         (((mp-game-state mp-game-end))
           ;; TODO: show text about who won, stats, idfk
@@ -207,7 +258,7 @@ an orb |#
 
     ;; if never synced positions, or its been X ms, request updated positions
     (when (or (not *last-position-sync-time*)
-              (>= (- (-> *display* base-frame-counter) *last-position-sync-time*) (seconds 0.05)))
+              (>= (- (-> *display* base-frame-counter) *last-position-sync-time*) (seconds 0.5)))
       ;; update last sync time
       (set! *last-position-sync-time* (-> *display* base-frame-counter))
 
@@ -270,7 +321,7 @@ an orb |#
                 (obj (the process-drawable (handle->process (-> *remote-targets* idx)))))
             (when obj
               (position-actor obj p)
-              (if (is-seeker? (-> p mp_state))
+              (if (= (-> p role) (mp-game-role seeker))
                 (color-target obj (tgt-color holo)) ;; seekers are holo
                 (color-target obj (-> p color)) ;; otherwise use player's choice
                 )
@@ -281,7 +332,7 @@ an orb |#
       )
 
     ;; color ourselves
-    (if (is-seeker? (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state))
+    (if (= (-> *multiplayer-info* players (-> *multiplayer-info* player_num) role) (mp-game-role seeker))
       (color-target *target* (tgt-color holo)) ;; seekers are holo
       (color-target *target* (-> *self-player-info* color)) ;; otherwise use player's choice
       )

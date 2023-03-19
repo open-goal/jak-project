@@ -54,6 +54,7 @@ struct RemotePlayerInfo {
   float quat_z;
   float quat_w;
   s32 tgt_state;
+  u32 role;  // mp-game-role enum
   u32 mp_state; // mp-tgt-state enum
 };
 // static_assert(sizeof(RemotePlayerInfo) == 32, "RemotePlayerInfo size is wrong");
