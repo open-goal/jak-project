@@ -62,6 +62,7 @@ const int MAX_MULTIPLAYER_COUNT = 12;
 
 struct MultiplayerInfo {
   s32 player_num;
+  u32 state; // mp-game-state enum
   RemotePlayerInfo players[MAX_MULTIPLAYER_COUNT];
 };
 //static_assert(sizeof(MultiplayerInfo) == 116, "MultiplayerInfo size is wrong");

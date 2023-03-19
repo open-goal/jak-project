@@ -1,12 +1,22 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
+from enum import Enum
 from urllib.parse import urlparse, parse_qs
 
 server_address = ('127.0.0.1', 8080)
 
-class RequestHandler(BaseHTTPRequestHandler):
+class MpGameState(Enum):
+  INVALID = 0
+  LOBBY = 1
+  STARTING_SOON = 2
+  PLAY_HIDERS_ONLY = 3
+  PLAY_ALL = 4
+  END = 5
 
-  # Initialize the dictionary from the file
+class RequestHandler(BaseHTTPRequestHandler):
+  MP_INFO = {
+    "state": MpGameState.INVALID
+  }
   PLAYER_IDX_LOOKUP = {}
   PLAYER_LIST = []
 
@@ -89,6 +99,10 @@ class RequestHandler(BaseHTTPRequestHandler):
       case "/register":
         username = query.get('username', [])
 
+        if len(self.PLAYER_LIST) == 0:
+          # first player, setup lobby
+          self.MP_INFO["state"] = MpGameState.LOBBY
+
         if len(username) == 0 or len(username[0]) == 0:
           self.send_response_bad_request_400()
         elif username[0] in self.PLAYER_IDX_LOOKUP:
@@ -96,7 +110,7 @@ class RequestHandler(BaseHTTPRequestHandler):
           player_num = self.PLAYER_IDX_LOOKUP[username[0]]
         else:
           # new user
-          player_num = len(self.PLAYER_LIST)
+          player_num = len(self.PLAYER_LIST)  # TODO: loop to find next open slot (after dropping players)
           self.PLAYER_IDX_LOOKUP[username[0]] = player_num
           # fill out empty keys
           self.PLAYER_LIST.append({})
@@ -106,7 +120,8 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         
         response_data = {
-          "player_num": player_num
+          "player_num": player_num,
+          "game_state": self.MP_INFO["state"].value
         }
 
         json_data = json.dumps(response_data)

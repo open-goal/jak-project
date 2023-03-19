@@ -43,7 +43,10 @@ if the result of rand-vu-int-range is 1, then DANCE! if it is not 1, then Don't 
 ;; Define Custom Settings Variables to use in mods
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defenum mp-game-state
+  :type uint32
+  (mp-game-invalid)
   (mp-game-lobby)
+  (mp-game-starting-soon)
   (mp-game-play-hiders-only)
   (mp-game-play-all)
   (mp-game-end)
@@ -120,6 +123,7 @@ if the result of rand-vu-int-range is 1, then DANCE! if it is not 1, then Don't 
 
 (deftype multiplayer-info (structure)
  ((player_num int32)
+  (state      mp-game-state)
   (players    remote-player-info MAX_MULTIPLAYER_COUNT :inline)
   )
   (:methods
@@ -130,6 +134,7 @@ if the result of rand-vu-int-range is 1, then DANCE! if it is not 1, then Don't 
 (defmethod new multiplayer-info ((allocation symbol) (type-to-make type))
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> obj player_num) -1)
+    (set! (-> obj state) (mp-game-state mp-game-invalid))
     (dotimes (idx MAX_MULTIPLAYER_COUNT)
       (set! (-> obj players idx username) (new 'global 'string MAX_USERNAME_LEN ""))
       (set! (-> obj players idx mp_state) (mp-tgt-state mp-tgt-invalid))

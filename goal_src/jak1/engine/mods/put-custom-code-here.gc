@@ -264,7 +264,7 @@ an orb |#
   ;; setup our own remote-player-info if we haven't yet
   (when (not *self-player-info*)
     (set! *self-player-info* (new 'global 'remote-player-info))
-    (set! (-> *self-player-info* username) "barg034") ;; TODO - pull this from settings I guess?
+    (set! (-> *self-player-info* username) "barg") ;; TODO - pull this from settings I guess?
     (set! (-> *self-player-info* color) (tgt-color purple)) ;; TODO - pull this from settings I guess?
     )
 
@@ -282,6 +282,39 @@ an orb |#
               (>= (- (-> *display* base-frame-counter) *last-position-sync-time*) (seconds 0.05)))
       ;; update last sync time
       (set! *last-position-sync-time* (-> *display* base-frame-counter))
+
+      (case (-> *multiplayer-info* state)
+        (((mp-game-state mp-game-lobby))
+          ;; jump to lobby if game is in lobby state and we're not already there
+          (when (not (string= (-> *game-info* current-continue name) "test-zone-start"))
+            (start 'play (get-continue-by-name *game-info* "test-zone-start"))
+            )
+          ;; TODO: show players and waiting/ready state
+          ;; TODO: show press O to ready up text
+          ;; TODO: if ready and either first player or 50% of players are ready, press ? to start game
+          )
+        (((mp-game-state mp-game-starting-soon))
+          ;; jump to lobby if game is in lobby state and we're not already there
+          (when (not (string= (-> *game-info* current-continue name) "test-zone-start"))
+            (start 'play (get-continue-by-name *game-info* "test-zone-start"))
+            )
+          ;; TODO: same as lobby, but also show timer
+          )
+        (((mp-game-state mp-game-play-hiders-only))
+          ;; TODO: show text for who's who (toggle?)
+          ;; TODO: if seeker, blackout with timer
+          ;; TODO: if hider, spawn at ? checkpoint (based on toggle), show text and timer
+          )
+        (((mp-game-state mp-game-play-all))
+          ;; TODO: if seeker, spawn at ? checkpoint (based on toggle), show text, check for "collision" with remote targets
+            ;; option to give up
+          ;; TODO: if hider, show text, optionally freeze
+          ;; TODO: show alerts when hiders collected (server should set most recent case and then clear every 5s or so?)
+          )
+        (((mp-game-state mp-game-end))
+          ;; TODO: show text about who won, stats, idfk
+          )
+        )
 
       ;; update this player's position and send to server
       (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) username)   (-> *self-player-info* username))

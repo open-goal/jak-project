@@ -65,6 +65,8 @@ void http_register(u64 mpInfo, u64 selfPlayerInfo) {
       // Extract values from JSON response
       int player_num = response_json["player_num"];
       gMultiplayerInfo->player_num = player_num;
+      int game_state = response_json["game_state"];
+      gMultiplayerInfo->state = game_state;
     }
   }).detach();
 }
