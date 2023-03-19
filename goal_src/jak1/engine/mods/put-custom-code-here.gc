@@ -61,36 +61,39 @@ an orb |#
   (none)
   )
 
-(defun color-target ((tgt process-drawable) (color symbol))
+(defun color-target ((tgt process-drawable) (color tgt-color))
   (case color
-    (('normal)
+    (((tgt-color normal))
       (color-target-rgb tgt 1.0 1.0 1.0)
       )
-    (('white)
+    (((tgt-color white))
       (color-target-rgb tgt 10.0 10.0 10.0)
       )
-    (('black)
+    (((tgt-color black))
       (color-target-rgb tgt 0.0 0.0 0.0)
       )
-    (('red)
+    (((tgt-color red))
       (color-target-rgb tgt 5.0 0.0 0.0)
       )
-    (('green)
+    (((tgt-color green))
       (color-target-rgb tgt 0.0 5.0 0.0)
       )
-    (('blue)
+    (((tgt-color blue))
       (color-target-rgb tgt 0.0 0.0 5.0)
       )
-    (('yellow)
+    (((tgt-color yellow))
       (color-target-rgb tgt 5.0 5.0 0.0)
       )
-    (('pink)
+    (((tgt-color purple))
+      (color-target-rgb tgt 0.7 0.2 2.0)
+      )
+    (((tgt-color pink))
       (color-target-rgb tgt 5.0 0.0 5.0)
       )
-    (('light-blue)
+    (((tgt-color light-blue))
       (color-target-rgb tgt 0.0 5.0 5.0)
       )
-    (else ;; random
+    (((tgt-color holo))
       (color-target-rgb tgt 
         (rand-vu-float-range 0.0 5.0)
         (rand-vu-float-range 0.0 5.0)
@@ -100,127 +103,150 @@ an orb |#
   )
 
 (defun position-actor ((obj process-drawable) (p remote-player-info))
+  ;; position
   (set! (-> obj root trans x) (-> p trans_x))
   (set! (-> obj root trans y) (-> p trans_y))
   (set! (-> obj root trans z) (-> p trans_z))
+  ;; rotation
   (set! (-> obj root quat x)  (-> p quat_x))
   (set! (-> obj root quat y)  (-> p quat_y))
   (set! (-> obj root quat z)  (-> p quat_z))
   (set! (-> obj root quat w)  (-> p quat_w))
+
+  ;; additional steps for rotation, state, etc
   (case (-> obj type)
     ((target)
-      (let ((t (the target obj)))
+      (let* ((t (the target obj))
+             (local-seeker? (is-seeker? (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state)))
+             (remote-seeker? (is-seeker? (-> p mp_state)))
+             )
+        ;; draw usernames if both players are seekers/hiders
+        (when (= local-seeker? remote-seeker?)
+          (add-debug-text-3d
+                       #t
+                       (bucket-id debug-no-zbuf)
+                       (-> p username)
+                       (-> t root trans)
+                       (font-color white)
+                       (new 'static 'vector2h :y 16)
+                       )
+          )
+
+        ;; make invulnerable so they dont die
         (logior! (-> t state-flags) (state-flags invulnerable))
+
+        ;; finalize rotation
         (quaternion-copy! (-> t control dir-targ) (-> t root quat))
-          (case (-> p tgt_state)
-            ;; (('target-attack))
-            ;; (('target-attack-air))
-            ;; (('target-attack-uppercut))
-            ;; (('target-attack-uppercut-jump))
-            ;; (('target-billy-game))
-            ;; (('target-clone-anim))
-            ;; (('target-continue))
-            ;; (('target-death))
-            ;; (('target-demo))
-            ;; (('target-double-jump))
-            ;; (('target-duck-high-jump))
-            ;; (('target-duck-high-jump-jump))
-            ;; (('target-duck-stance))
-            ;; (('target-duck-walk))
-            ;; (('target-eco-powerup) (send-event t 'powerup))
-            ;; (('target-edge-grab 'target-edge-grab-jump 'target-edge-grab-off)
-            ;;   (send-event t 'edge-grab)
-            ;;   )
-            (('target-falling) (send-event t 'change-mode 'falling))
-            ;; (('target-final-door))
-            ;; (('target-fishing) (send-event t 'change-mode 'fishing #f))
-            ;; (('target-flop))
-            ;; (('target-flop-hit-ground))
-            (('target-flut-air-attack 'target-flut-air-attack-hit-ground 'target-flut-clone-anim 'target-flut-death 
-              'target-flut-double-jump 'target-flut-falling 'target-flut-get-off 'target-flut-get-off-hit-ground 
-              'target-flut-get-off-jump 'target-flut-get-on 'target-flut-grab 'target-flut-hit 'target-flut-hit-ground 
-              'target-flut-jump 'target-flut-running-attack 'target-flut-stance 'target-flut-start 'target-flut-walk)
-              (case (-> t state name)
-                (('target-flut-air-attack 'target-flut-air-attack-hit-ground 'target-flut-clone-anim 'target-flut-death 
-                  'target-flut-double-jump 'target-flut-falling 'target-flut-get-off 'target-flut-get-off-hit-ground 
-                  'target-flut-get-off-jump 'target-flut-get-on 'target-flut-grab 'target-flut-hit 'target-flut-hit-ground 
-                  'target-flut-jump 'target-flut-running-attack 'target-flut-stance 'target-flut-start 'target-flut-walk)
-                  ;; do nothing
-                  )
-                (else
-                  (send-event t 'change-mode 'flut #f)
-                  )
+          
+        (case (-> p tgt_state)
+          ;; (('target-attack))
+          ;; (('target-attack-air))
+          ;; (('target-attack-uppercut))
+          ;; (('target-attack-uppercut-jump))
+          ;; (('target-billy-game))
+          ;; (('target-clone-anim))
+          ;; (('target-continue))
+          ;; (('target-death))
+          ;; (('target-demo))
+          ;; (('target-double-jump))
+          ;; (('target-duck-high-jump))
+          ;; (('target-duck-high-jump-jump))
+          ;; (('target-duck-stance))
+          ;; (('target-duck-walk))
+          ;; (('target-eco-powerup) (send-event t 'powerup))
+          ;; (('target-edge-grab 'target-edge-grab-jump 'target-edge-grab-off)
+          ;;   (send-event t 'edge-grab)
+          ;;   )
+          (('target-falling) (send-event t 'change-mode 'falling))
+          ;; (('target-final-door))
+          ;; (('target-fishing) (send-event t 'change-mode 'fishing #f))
+          ;; (('target-flop))
+          ;; (('target-flop-hit-ground))
+          (('target-flut-air-attack 'target-flut-air-attack-hit-ground 'target-flut-clone-anim 'target-flut-death 
+            'target-flut-double-jump 'target-flut-falling 'target-flut-get-off 'target-flut-get-off-hit-ground 
+            'target-flut-get-off-jump 'target-flut-get-on 'target-flut-grab 'target-flut-hit 'target-flut-hit-ground 
+            'target-flut-jump 'target-flut-running-attack 'target-flut-stance 'target-flut-start 'target-flut-walk)
+            (case (-> t state name)
+              (('target-flut-air-attack 'target-flut-air-attack-hit-ground 'target-flut-clone-anim 'target-flut-death 
+                'target-flut-double-jump 'target-flut-falling 'target-flut-get-off 'target-flut-get-off-hit-ground 
+                'target-flut-get-off-jump 'target-flut-get-on 'target-flut-grab 'target-flut-hit 'target-flut-hit-ground 
+                'target-flut-jump 'target-flut-running-attack 'target-flut-stance 'target-flut-start 'target-flut-walk)
+                ;; do nothing
+                )
+              (else
+                (send-event t 'change-mode 'flut #f)
                 )
               )
-            ;; (('target-grab))
-            ;; (('target-high-jump ))
-            ;; (('target-hit ))
-            ;; (('target-hit-ground ))
-            ;; (('target-hit-ground-hard))
-            ;; (('target-ice-stance))
-            ;; (('target-ice-walk))
-            ;; (('target-jump ))
-            ;; (('target-jump-forward ))
-            ;; (('target-launch))
-            ;; (('target-load-wait))
-            ;; (('target-look-around))
-            ;; (('target-periscope))
-            ;; (('target-play-anim ))
-            ;; (('target-pole-cycle) (send-event t 'pole-grab))
-            ;; (('target-pole-flip-forward))
-            ;; (('target-pole-flip-forward-jump))
-            ;; (('target-pole-flip-up))
-            ;; (('target-pole-flip-up-jump))
-            (('target-racing 'target-racing-bounce 'target-racing-clone-anim 'target-racing-death 'target-racing-falling 
-              'target-racing-get-off 'target-racing-get-off-hit-ground 'target-racing-get-off-jump 'target-racing-get-on 
-              'target-racing-grab 'target-racing-hit 'target-racing-jump  'target-racing-smack 'target-racing-start)
-              (send-event t 'change-mode 'racing #f)
-              )
-            ;; (('target-running-attack))
-            ;; (('target-slide-down))
-            ;; (('target-snowball))
-            ;; (('target-snowball-start))
-            ;; (('target-stance))
-            ;; (('target-stance-ambient))
-            ;; (('target-stance-look-around))
-            ;; (('target-startup))
-            (('target-swim-down 'target-swim-jump 'target-swim-jump-jump 'target-swim-stance 'target-swim-up 'target-swim-walk)
-              (case (-> t state name)
-                (('target-swim-down 'target-swim-jump 'target-swim-jump-jump 'target-swim-stance 'target-swim-up 'target-swim-walk)
-                  ;; do nothing
-                  )
-                (else
-                  (send-event t 'swim)
-                  )
-                )
-              )
-            ;; (('target-title))
-            ;; (('target-title-play))
-            ;; (('target-title-wait))
-            (('target-tube 'target-tube-death 'target-tube-hit 'target-tube-jump 'target-tube-start)
-              (case (-> t state name)
-                (('target-tube 'target-tube-death 'target-tube-hit 'target-tube-jump 'target-tube-start)
-                  ;; do nothing
-                  )
-                (else
-                  (send-event t 'change-mode 'tube #f)
-                  )
-                )
-              )
-            ;; (('target-turn-around))
-            (('target-wade-stance 'target-wade-walk)
-              (send-event t 'wade)
-              )
-            ;; (('target-walk))
-            ;; (('target-warp-in))
-            ;; (('target-warp-out))
-            ;; (('target-wheel))
-            ;; (('target-wheel-flip))
-            ;; (('target-yellow-blast))
-            ;; (('target-yellow-jump-blast))
             )
+          ;; (('target-grab))
+          ;; (('target-high-jump ))
+          ;; (('target-hit ))
+          ;; (('target-hit-ground ))
+          ;; (('target-hit-ground-hard))
+          ;; (('target-ice-stance))
+          ;; (('target-ice-walk))
+          ;; (('target-jump ))
+          ;; (('target-jump-forward ))
+          ;; (('target-launch))
+          ;; (('target-load-wait))
+          ;; (('target-look-around))
+          ;; (('target-periscope))
+          ;; (('target-play-anim ))
+          ;; (('target-pole-cycle) (send-event t 'pole-grab))
+          ;; (('target-pole-flip-forward))
+          ;; (('target-pole-flip-forward-jump))
+          ;; (('target-pole-flip-up))
+          ;; (('target-pole-flip-up-jump))
+          (('target-racing 'target-racing-bounce 'target-racing-clone-anim 'target-racing-death 'target-racing-falling 
+            'target-racing-get-off 'target-racing-get-off-hit-ground 'target-racing-get-off-jump 'target-racing-get-on 
+            'target-racing-grab 'target-racing-hit 'target-racing-jump  'target-racing-smack 'target-racing-start)
+            (send-event t 'change-mode 'racing #f)
+            )
+          ;; (('target-running-attack))
+          ;; (('target-slide-down))
+          ;; (('target-snowball))
+          ;; (('target-snowball-start))
+          ;; (('target-stance))
+          ;; (('target-stance-ambient))
+          ;; (('target-stance-look-around))
+          ;; (('target-startup))
+          (('target-swim-down 'target-swim-jump 'target-swim-jump-jump 'target-swim-stance 'target-swim-up 'target-swim-walk)
+            (case (-> t state name)
+              (('target-swim-down 'target-swim-jump 'target-swim-jump-jump 'target-swim-stance 'target-swim-up 'target-swim-walk)
+                ;; do nothing
+                )
+              (else
+                (send-event t 'swim)
+                )
+              )
+            )
+          ;; (('target-title))
+          ;; (('target-title-play))
+          ;; (('target-title-wait))
+          (('target-tube 'target-tube-death 'target-tube-hit 'target-tube-jump 'target-tube-start)
+            (case (-> t state name)
+              (('target-tube 'target-tube-death 'target-tube-hit 'target-tube-jump 'target-tube-start)
+                ;; do nothing
+                )
+              (else
+                (send-event t 'change-mode 'tube #f)
+                )
+              )
+            )
+          ;; (('target-turn-around))
+          (('target-wade-stance 'target-wade-walk)
+            (send-event t 'wade)
+            )
+          ;; (('target-walk))
+          ;; (('target-warp-in))
+          ;; (('target-warp-out))
+          ;; (('target-wheel))
+          ;; (('target-wheel-flip))
+          ;; (('target-yellow-blast))
+          ;; (('target-yellow-jump-blast))
           )
         )
+      )
     ((money)
       (let ((m (the money obj)))
         (vector-copy! (-> m base) (-> m root trans))
@@ -231,13 +257,20 @@ an orb |#
     (none)
   )
 
+(define *self-player-info* (the-as remote-player-info #f))
 (define *multiplayer-mode* 'jaks)
 ;; (define *multiplayer-mode* 'orbs)
 (defun runs-every-frame ()
-  
+  ;; setup our own remote-player-info if we haven't yet
+  (when (not *self-player-info*)
+    (set! *self-player-info* (new 'global 'remote-player-info))
+    (set! (-> *self-player-info* username) "barg") ;; TODO - pull this from settings I guess?
+    (set! (-> *self-player-info* color) (tgt-color purple)) ;; TODO - pull this from settings I guess?
+    )
+
   ;; register with server if we haven't yet
   (when (and *target* (not *registered-with-server?*))
-    (pc-http-register *multiplayer-info*)
+    (pc-http-register *multiplayer-info* *self-player-info*)
     (set! *registered-with-server?* #t)
     ;; wait a bit to ensure registration before syncing position
     (set! *last-position-sync-time* (+ (-> *display* base-frame-counter) (seconds 1.0)))
@@ -250,15 +283,57 @@ an orb |#
       ;; update last sync time
       (set! *last-position-sync-time* (-> *display* base-frame-counter))
 
+      (case (-> *multiplayer-info* state)
+        (((mp-game-state mp-game-lobby))
+          ;; jump to lobby if game is in lobby state and we're not already there
+          (when (not (string= (-> *game-info* current-continue name) "test-zone-start"))
+            (start 'play (get-continue-by-name *game-info* "test-zone-start"))
+            )
+          ;; TODO: show players and waiting/ready state
+          ;; TODO: show press O to ready up text
+          ;; TODO: if ready and either first player or 50% of players are ready, press ? to start game
+          )
+        (((mp-game-state mp-game-starting-soon))
+          ;; jump to lobby if game is in lobby state and we're not already there
+          (when (not (string= (-> *game-info* current-continue name) "test-zone-start"))
+            (start 'play (get-continue-by-name *game-info* "test-zone-start"))
+            )
+          ;; TODO: same as lobby, but also show timer
+          )
+        (((mp-game-state mp-game-play-hiders-only))
+          ;; TODO: show text for who's who (toggle?)
+          ;; TODO: if seeker, blackout with timer
+          ;; TODO: if hider, spawn at ? checkpoint (based on toggle), show text and timer
+          )
+        (((mp-game-state mp-game-play-all))
+          ;; TODO: if seeker, spawn at ? checkpoint (based on toggle), show text, check for "collision" with remote targets
+            ;; option to give up
+          ;; TODO: if hider, show text, optionally freeze
+          ;; TODO: show alerts when hiders collected (server should set most recent case and then clear every 5s or so?)
+          )
+        (((mp-game-state mp-game-end))
+          ;; TODO: show text about who won, stats, idfk
+          )
+        )
+
       ;; update this player's position and send to server
-      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) trans_x) (-> *target* root trans x))
-      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) trans_y) (-> *target* root trans y))
-      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) trans_z) (-> *target* root trans z))
-      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_x)  (-> *target* root quat x))
-      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_y)  (-> *target* root quat y))
-      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_z)  (-> *target* root quat z))
-      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_w)  (-> *target* root quat w))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) username)   (-> *self-player-info* username))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) color)      (-> *self-player-info* color))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) trans_x)    (-> *target* root trans x))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) trans_y)    (-> *target* root trans y))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) trans_z)    (-> *target* root trans z))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_x)     (-> *target* root quat x))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_y)     (-> *target* root quat y))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_z)     (-> *target* root quat z))
+      (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) quat_w)     (-> *target* root quat w))
       (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) tgt_state)  (-> *target* state name))
+
+      ;; if first time, we need to change our state from invalid to lobby
+      (if (= (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state) (mp-tgt-state mp-tgt-invalid))
+        (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state) (mp-tgt-state mp-tgt-lobby)) ;; TODO - choose correct mp state
+        )
+      
+      ;; send updated player info to server
       (pc-http-update-position)
 
       ;; request to get positions of other players from server (async)
@@ -267,55 +342,52 @@ an orb |#
 
     (dotimes (idx MAX_MULTIPLAYER_COUNT)
       (when (!= (-> *multiplayer-info* player_num) idx)
-        ;; see if we need to respawn remote targets
-        (when (or (zero? (-> *remote-targets* idx))
-                  (not (handle->process (-> *remote-targets* idx))))
-          (case *multiplayer-mode*
-            (('jaks)
-              (set! (-> *remote-targets* idx) (start-extra-target))
-              )
-            (('orbs)
-              (let ((vec (new 'stack-no-clear 'vector)))
-                (set! (-> vec x) 0.0)
-                (set! (-> vec y) -80920.0)  ;; spawn orbs 20m under 0,0,0 so nobody can get them
-                (set! (-> vec z) 0.0)
-                (set! (-> *remote-targets* idx) (ppointer->handle (birth-pickup-at-point-inner
-                                                    vec
-                                                    (pickup-type money)
-                                                    (the-as float 1.0)
-                                                    #t
-                                                    *target*
-                                                    (the-as fact-info #f)
-                                                    #f  ;; no-bob
-                                                  )))
+        (when (!= (-> *multiplayer-info* players idx mp_state) (mp-tgt-state mp-tgt-invalid))
+          ;; see if we need to spawn any remote targets
+          (when (or (zero? (-> *remote-targets* idx)) (not (handle->process (-> *remote-targets* idx))))
+            (case *multiplayer-mode*
+              (('jaks)
+                (set! (-> *remote-targets* idx) (start-extra-target))
+                )
+              (('orbs)
+                (let ((vec (new 'stack-no-clear 'vector)))
+                  (set! (-> vec x) 0.0)
+                  (set! (-> vec y) -80920.0)  ;; spawn orbs 20m under 0,0,0 so nobody can collect them (nice try zed)
+                  (set! (-> vec z) 0.0)
+                  (set! (-> *remote-targets* idx) (ppointer->handle (birth-pickup-at-point-inner
+                                                      vec
+                                                      (pickup-type money)
+                                                      (the-as float 1.0)
+                                                      #t
+                                                      *target*
+                                                      (the-as fact-info #f)
+                                                      #f  ;; no-bob
+                                                    )))
+                  )
                 )
               )
             )
-          )
-        
-        ;; position/color remote targets
-        (let ((p (-> *multiplayer-info* players idx))
-              (obj (the process-drawable (handle->process (-> *remote-targets* idx)))))
-          (when obj
-            (position-actor obj p)
-            (case idx
-              ((0) (color-target  obj 'green))
-              ((1) (color-target  obj 'blue))
-              ((2) (color-target  obj 'red))
-              ((3) (color-target  obj 'yellow))
-              (else (color-target obj 'surprise-me))
+          ;; assume target spawned at this point 
+
+          ;; position/color remote targets
+          (let ((p (-> *multiplayer-info* players idx))
+                (obj (the process-drawable (handle->process (-> *remote-targets* idx)))))
+            (when obj
+              (position-actor obj p)
+              (if (is-seeker? (-> p mp_state))
+                (color-target obj (tgt-color holo)) ;; seekers are holo
+                (color-target obj (-> p color)) ;; otherwise use player's choice
+                )
               )
             )
           )
         )
       )
 
-    (case (-> *multiplayer-info* player_num)
-      ((0) (color-target *target* 'green))
-      ((1) (color-target *target* 'blue))
-      ((2) (color-target *target* 'red))
-      ((3) (color-target *target* 'yellow))
-      (else (color-target *target* 'surprise-me))
+    ;; color ourselves
+    (if (is-seeker? (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state))
+      (color-target *target* (tgt-color holo)) ;; seekers are holo
+      (color-target *target* (-> *self-player-info* color)) ;; otherwise use player's choice
       )
     )
   (none)

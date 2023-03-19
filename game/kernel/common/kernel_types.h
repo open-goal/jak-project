@@ -42,7 +42,10 @@ struct FileStream {
   s32 file;  // int32
 };
 
+const int MAX_USERNAME_LEN = 16;
 struct RemotePlayerInfo {
+  u32 username; // string (basic)
+  u32 color;  // tgt-color enum
   float trans_x;
   float trans_y;
   float trans_z;
@@ -51,11 +54,15 @@ struct RemotePlayerInfo {
   float quat_z;
   float quat_w;
   s32 tgt_state;
+  u32 mp_state; // mp-tgt-state enum
 };
-static_assert(sizeof(RemotePlayerInfo) == 32, "RemotePlayerInfo size is wrong");
+// static_assert(sizeof(RemotePlayerInfo) == 32, "RemotePlayerInfo size is wrong");
+
+const int MAX_MULTIPLAYER_COUNT = 12;
 
 struct MultiplayerInfo {
   s32 player_num;
-  RemotePlayerInfo players[12];
+  u32 state; // mp-game-state enum
+  RemotePlayerInfo players[MAX_MULTIPLAYER_COUNT];
 };
 //static_assert(sizeof(MultiplayerInfo) == 116, "MultiplayerInfo size is wrong");

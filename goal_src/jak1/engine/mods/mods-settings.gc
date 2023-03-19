@@ -42,9 +42,52 @@ if the result of rand-vu-int-range is 1, then DANCE! if it is not 1, then Don't 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Define Custom Settings Variables to use in mods
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defenum mp-game-state
+  :type uint32
+  (mp-game-invalid)
+  (mp-game-lobby)
+  (mp-game-starting-soon)
+  (mp-game-play-hiders-only)
+  (mp-game-play-all)
+  (mp-game-end)
+  )
+
+(defenum mp-tgt-state
+  :type uint32
+  (mp-tgt-invalid)
+  (mp-tgt-lobby)
+  (mp-tgt-ready)
+  (mp-tgt-hider-play)
+  (mp-tgt-hider-found)
+  (mp-tgt-seeker-wait)
+  (mp-tgt-seeker-play)
+  )
+
+(defun is-seeker? ((mp_state mp-tgt-state))
+  (or (= mp_state (mp-tgt-state mp-tgt-seeker-wait))
+      (= mp_state (mp-tgt-state mp-tgt-seeker-play))
+      )
+  )
+
+(defenum tgt-color
+  :type uint32
+  (normal)
+  (green)
+  (blue)
+  (red)
+  (yellow)
+  (white)
+  (black)
+  (purple)
+  (pink)
+  (light-blue)
+  (holo)
+  )
 
 (deftype remote-player-info (structure)
- ((trans_x    float)
+ ((username   string)
+  (color      tgt-color)
+  (trans_x    float)
   (trans_y    float)
   (trans_z    float)
   (quat_x     float)
@@ -52,6 +95,7 @@ if the result of rand-vu-int-range is 1, then DANCE! if it is not 1, then Don't 
   (quat_z     float)
   (quat_w     float)
   (tgt_state  symbol)
+  (mp_state   mp-tgt-state)
   )
   :pack-me
   (:methods
@@ -59,8 +103,11 @@ if the result of rand-vu-int-range is 1, then DANCE! if it is not 1, then Don't 
     )
   )
 
+(defconstant MAX_USERNAME_LEN 16)
+
 (defmethod new remote-player-info ((allocation symbol) (type-to-make type))
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> obj username) (new 'global 'string MAX_USERNAME_LEN (the-as string #f)))
     (set! (-> obj trans_x) 0.0)
     (set! (-> obj trans_y) 0.0)
     (set! (-> obj trans_z) 0.0)
@@ -69,12 +116,14 @@ if the result of rand-vu-int-range is 1, then DANCE! if it is not 1, then Don't 
     (set! (-> obj quat_z) 0.0)
     (set! (-> obj quat_w) 0.0)
     (set! (-> obj tgt_state) 'invalid)
+    (set! (-> obj mp_state) (mp-tgt-state mp-tgt-invalid))
     obj
     )
   )
 
 (deftype multiplayer-info (structure)
  ((player_num int32)
+  (state      mp-game-state)
   (players    remote-player-info MAX_MULTIPLAYER_COUNT :inline)
   )
   (:methods
@@ -85,6 +134,11 @@ if the result of rand-vu-int-range is 1, then DANCE! if it is not 1, then Don't 
 (defmethod new multiplayer-info ((allocation symbol) (type-to-make type))
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> obj player_num) -1)
+    (set! (-> obj state) (mp-game-state mp-game-invalid))
+    (dotimes (idx MAX_MULTIPLAYER_COUNT)
+      (set! (-> obj players idx username) (new 'global 'string MAX_USERNAME_LEN ""))
+      (set! (-> obj players idx mp_state) (mp-tgt-state mp-tgt-invalid))
+      )
     obj
     )
   )
