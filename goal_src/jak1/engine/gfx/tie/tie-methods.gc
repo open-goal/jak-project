@@ -390,7 +390,9 @@
               ;; note: this is a bit wasteful because we only care about generic ties.
               ;; non-generics are drawn fully in C++, but we're computing unused stuff here.
               ;; This ends up being so fast it's probably not worth worrying about yet.
-              (with-profiler "tie-instance" (draw-inline-array-instance-tie s0-0 s1-0 sv-16 s3-1))
+              (when (not *use-etie*)
+                (with-profiler "tie-instance" (draw-inline-array-instance-tie s0-0 s1-0 sv-16 s3-1))
+                )
               ;; finish perf stats
               (read! (-> *perf-stats* data 9))
               (update-wait-stats (-> *perf-stats* data 9) (the-as uint 0)
@@ -418,7 +420,9 @@
               )
 
             ;; Generic TIE prototype drawing
-            (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
+            (when (and (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
+                       (not *use-etie*)
+                       )
               (when (logtest? (-> *instance-tie-work* flags) 2)
                 (let ((s2-1 (-> *display* frames (-> *display* on-screen) frame global-buf base)))
                   (set! (-> *prototype-tie-work* generic-wait-to-spr) (the-as uint 0))

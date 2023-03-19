@@ -96,7 +96,6 @@ std::array<math::Vector3f, 3> tie_normal_transform_v2(const std::array<math::Vec
 
   //  lui t6, 16256
   //  mtc1 f1, t6 ;; 1.0
-  float f1 = 1.0;
   //
   //  qmfc2.i s1, vf10
   //  mtc1 f12, s1
