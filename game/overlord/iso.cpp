@@ -114,7 +114,6 @@ void iso_init_globals() {
  */
 static MsgPacket not_on_stack_sync;
 void InitDriver(u8* buffer) {
-
   if (!isofs->init(buffer)) {
     // succesful init!
     iso_init_flag = 0;
