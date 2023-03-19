@@ -62,6 +62,15 @@
 (cgo-file "kernel.gd" ())
 
 ;;;;;;;;;;;;;;;;;;;;;
+;; misc files
+;;;;;;;;;;;;;;;;;;;;;
+
+;; the VAGDIR file
+(defstep :in "$ISO/VAG/VAGDIR.AYB"
+  :tool 'copy
+  :out '("$OUT/iso/VAGDIR.AYB"))
+
+;;;;;;;;;;;;;;;;;;;;;
 ;; DGOs
 ;;;;;;;;;;;;;;;;;;;;;
 
@@ -324,6 +333,8 @@
 
 (group-list "iso"
  `("$OUT/iso/0COMMON.TXT"
+   "$OUT/iso/TWEAKVAL.MUS"
+   "$OUT/iso/VAGDIR.AYB"
    ,@(reverse *all-vis*)
    ,@(reverse *all-str*)
    ,@(reverse *all-sbk*)
