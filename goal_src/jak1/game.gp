@@ -2075,6 +2075,7 @@
  "mods/mods-settings.gc"
  "mods/define-custom-functions-here.gc"
  "mods/put-custom-code-here.gc"
+ "mods/hide-and-seek-multi-devonly.gc"
 )
 
 (group-list "all-code"

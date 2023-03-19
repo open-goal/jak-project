@@ -346,9 +346,9 @@
   "ticky.o"
   "hud-classes-pc.o" ;; added
   "mods-settings.o" ;; added
-  "put-custom-code-here.o" ;; added
   "define-custom-functions-here.o" ;; added
   "put-custom-code-here.o" ;; added
+  "hide-and-seek-multi-devonly.o"
   ;; keep zoomer stuff loaded
   "target-racer-h.o"
   "racer-part.o"
