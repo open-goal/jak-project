@@ -102,16 +102,7 @@ void http_update_generic(const std::string& endpoint, const nlohmann::json& payl
   }).detach();
 }
 
-void http_update_servergamesettingsinfo() {
-  nlohmann::json payload = {
-      // {"tgt_Username", val1},
-      // {"tgt_Color", val2}
-  };
-  std::string url = "http://" + ipAddressOrHostname + "/updategame";
-  http_update_generic(url, payload);
-}
-
-void http_update_position() {
+void http_update() {
   RemotePlayerInfo* rpInfo = &(gMultiplayerInfo->players[gMultiplayerInfo->player_num]);
 
   std::string username = Ptr<String>(gSelfPlayerInfo->username).c()->data();
@@ -135,7 +126,7 @@ void http_update_position() {
   http_update_generic(url, payload);
 }
 
-void http_get_positions() {
+void http_get() {
   // spawn new thread to handle parsing curl response
   std::thread([]() {
     // Initialize curl
@@ -143,8 +134,7 @@ void http_get_positions() {
     curl_global_init(CURL_GLOBAL_ALL);
     CURL* curl = curl_easy_init();
 
-    std::string username = Ptr<String>(gSelfPlayerInfo->username).c()->data();
-    std::string url = "http://" + ipAddressOrHostname + "/get?username=" + username;
+    std::string url = "http://" + ipAddressOrHostname + "/get";
 
     // Set curl options
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -163,14 +153,20 @@ void http_get_positions() {
     if (res == CURLE_OK) {
       // Parse JSON response
       nlohmann::json response_json = nlohmann::json::parse(response_data);
-      for (const auto& item : response_json.items()) {
+
+      // game state
+      int game_state = response_json["game_state"];
+      gMultiplayerInfo->state = game_state;
+
+      // players
+      for (const auto& item : response_json["players"].items()) {
         int pNum = stoi(item.key());
         if (pNum < MAX_MULTIPLAYER_COUNT) {
           RemotePlayerInfo* rpInfo = &(gMultiplayerInfo->players[pNum]);
 
           for (const auto& field : item.value().items()) {
             if (field.key().compare("username") == 0) {
-              // copy username into struct
+              // str copy username into struct
               std::string uname = field.value();
               strncpy(Ptr<String>(rpInfo->username).c()->data(), uname.c_str(), MAX_USERNAME_LEN);
             } else if (field.key().compare("color") == 0) {

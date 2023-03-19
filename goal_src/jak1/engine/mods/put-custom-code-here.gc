@@ -298,14 +298,18 @@ an orb |#
           (when (not (string= (-> *game-info* current-continue name) "test-zone-start"))
             (start 'play (get-continue-by-name *game-info* "test-zone-start"))
             )
+          ;; if we were ready and game was started, move us to start
+          (when (= (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state) (mp-tgt-state mp-tgt-ready))
+            (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state) (mp-tgt-state mp-tgt-start))
+            )
           ;; TODO: same as lobby, but also show timer
           )
-        (((mp-game-state mp-game-play-hiders-only))
+        (((mp-game-state mp-game-play-hide))
           ;; TODO: show text for who's who (toggle?)
           ;; TODO: if seeker, blackout with timer
           ;; TODO: if hider, spawn at ? checkpoint (based on toggle), show text and timer
           )
-        (((mp-game-state mp-game-play-all))
+        (((mp-game-state mp-game-play-seek))
           ;; TODO: if seeker, spawn at ? checkpoint (based on toggle), show text, check for "collision" with remote targets
             ;; option to give up
           ;; TODO: if hider, show text, optionally freeze
@@ -329,15 +333,16 @@ an orb |#
       (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) tgt_state)  (-> *target* state name))
 
       ;; if first time, we need to change our state from invalid to lobby
+      ;; this is also sort of like an "ack" back to the server to count you as fully joined
       (if (= (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state) (mp-tgt-state mp-tgt-invalid))
-        (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state) (mp-tgt-state mp-tgt-lobby)) ;; TODO - choose correct mp state
+        (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state) (mp-tgt-state mp-tgt-lobby))
         )
       
       ;; send updated player info to server
-      (pc-http-update-position)
+      (pc-http-update)
 
       ;; request to get positions of other players from server (async)
-      (pc-http-get-positions)
+      (pc-http-get)
       )
 
     (dotimes (idx MAX_MULTIPLAYER_COUNT)
