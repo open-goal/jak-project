@@ -412,6 +412,11 @@
     max-val)
   )
 
+(defgmacro enum-max (enum)
+  (enum-max enum))
+(defgmacro enum-length (enum)
+  (enum-length enum))
+
 
 ;; shortcut to quit GOOS
 (defsmacro e ()

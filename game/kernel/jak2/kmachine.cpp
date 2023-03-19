@@ -509,7 +509,7 @@ u64 get_os() {
 
 void pc_set_levels(u32 lev_list) {
   std::vector<std::string> levels;
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < LEVEL_MAX; i++) {
     u32 lev = *Ptr<u32>(lev_list + i * 4);
     std::string ls = Ptr<String>(lev).c()->data();
     if (ls != "none" && ls != "#f" && ls != "") {
