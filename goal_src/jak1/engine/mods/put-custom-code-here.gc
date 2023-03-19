@@ -24,6 +24,7 @@ an orb |#
 (define *multiplayer-info* (new 'global 'multiplayer-info))
 (define *registered-with-server?* #f)
 (define *last-position-sync-time* (the-as time-frame #f))
+(define *lobby-continue-point* "village1-hut")
 
 (define *remote-targets* (new 'global 'boxed-array handle MAX_MULTIPLAYER_COUNT))
 
@@ -133,16 +134,16 @@ an orb |#
     (when (!= (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state) (mp-tgt-state mp-tgt-invalid))
       ;; jump to lobby if we're in lobby state and not already there (e.g. joined in middle of game)
       (when (and (= (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state) (mp-tgt-state mp-tgt-lobby))
-                  (not (string= (-> *game-info* current-continue name) "test-zone-start"))
+                  (not (string= (-> *game-info* current-continue name) "*lobby-continue-point*"))
                   )
-        (start 'play (get-continue-by-name *game-info* "test-zone-start"))
+        (start 'play (get-continue-by-name *game-info* "*lobby-continue-point*"))
         )
 
       (case (-> *multiplayer-info* state)
         (((mp-game-state mp-game-lobby))
           ;; jump to lobby if game is in lobby state and we're not already there
-          #|(when (not (string= (-> *game-info* current-continue name) "test-zone-start"))
-            (start 'play (get-continue-by-name *game-info* "test-zone-start"))
+          (when (not (string= (-> *game-info* current-continue name) "*lobby-continue-point*"))
+            (start 'play (get-continue-by-name *game-info* "*lobby-continue-point*"))
             (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state) (mp-tgt-state mp-tgt-lobby))
             )
           ;; TODO: show players and waiting/ready state
@@ -161,8 +162,8 @@ an orb |#
           )
         (((mp-game-state mp-game-starting-soon))
           ;; jump to lobby if game is in starting-soon state and we're not already there
-          (when (not (string= (-> *game-info* current-continue name) "test-zone-start"))
-            (start 'play (get-continue-by-name *game-info* "test-zone-start"))
+          (when (not (string= (-> *game-info* current-continue name) "*lobby-continue-point*"))
+            (start 'play (get-continue-by-name *game-info* "*lobby-continue-point*"))
             (set! (-> *multiplayer-info* players (-> *multiplayer-info* player_num) mp_state) (mp-tgt-state mp-tgt-lobby))
             )
           (when (cpad-pressed? 0 r2)
