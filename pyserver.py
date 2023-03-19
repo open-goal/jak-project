@@ -20,10 +20,12 @@ class MpTargetState(Enum):
   LOBBY = 1
   READY = 2
   START = 3
-  HIDER_PLAY = 4
-  HIDER_FOUND = 5
-  SEEKER_WAIT = 6
-  SEEKER_PLAY = 7
+  HIDER_START = 4
+  HIDER_PLAY = 5
+  HIDER_FOUND = 6
+  SEEKER_WAIT = 7
+  SEEKER_START = 8
+  SEEKER_PLAY = 9
 
 MP_INFO = {
   "state": MpGameState.INVALID
@@ -161,8 +163,94 @@ class RequestHandler(BaseHTTPRequestHandler):
       case _:
         self.send_response_not_found_404()
        
+def game_loop():
+  last_state_change_time = time.time()  # seconds
+  while True:
+    # collect some info
+    first_player_start = False
+    total_players = 0
+    player_counts = {
+      MpTargetState.LOBBY: 0,
+      MpTargetState.READY: 0,
+      MpTargetState.START: 0,
+      MpTargetState.HIDER_START: 0,
+      MpTargetState.HIDER_PLAY: 0,
+      MpTargetState.HIDER_FOUND: 0,
+      MpTargetState.SEEKER_WAIT: 0,
+      MpTargetState.SEEKER_START: 0,
+      MpTargetState.SEEKER_PLAY: 0
+    }
+
+    for i in range(len(PLAYER_LIST)):
+      if PLAYER_LIST[i] is None or PLAYER_LIST[i] == {} or MpTargetState(PLAYER_LIST[i]["mp_state"]) == MpTargetState.INVALID:
+        # dont count this player as joined
+        continue
+
+      total_players += 1
+      state = MpTargetState(PLAYER_LIST[i]["mp_state"])
+      if state not in player_counts:
+        player_counts[state] = 0
+      player_counts[state] += 1
+
+      match state:
+        case MpTargetState.START:
+          if total_players == 1:
+            first_player_start = True
+
+    # print(MP_INFO["state"], total_players, player_counts)
+
+    # update state conditionally
+    match MP_INFO["state"]:
+      case MpGameState.LOBBY:
+        # go to STARTING_SOON if either:
+        # - first player wants to start
+        # - 50% are ready/start and anyone wants to start
+        if first_player_start or (player_counts[MpTargetState.START] > 0 and (player_counts[MpTargetState.READY] + player_counts[MpTargetState.START]) * 2 >= total_players):
+          MP_INFO["state"] = MpGameState.STARTING_SOON
+          last_state_change_time = time.time()
+      case MpGameState.STARTING_SOON:
+        # see if 10s timer is up and we should begin hiding
+        if time.time() - last_state_change_time >= 10:
+          # assign hiders/seekers
+          # TODO: make this random
+          for i in range(len(PLAYER_LIST)):
+            # skip players who weren't in start state
+            if PLAYER_LIST[i] is None or PLAYER_LIST[i] == {} or PLAYER_LIST[i]["mp_state"] != MpTargetState.START:
+              continue
+            if i == 1:
+              PLAYER_LIST[i]["mp_state"] = MpTargetState.SEEKER_WAIT
+            else:
+              PLAYER_LIST[i]["mp_state"] = MpTargetState.HIDER_START
+
+          MP_INFO["state"] = MpGameState.PLAY_HIDE
+          last_state_change_time = time.time()
+      case MpGameState.PLAY_HIDE:
+        # see if 30s timer is up and we should begin seeking
+        if time.time() - last_state_change_time >= 30:
+          MP_INFO["state"] = MpGameState.PLAY_SEEK
+          last_state_change_time = time.time()
+      case MpGameState.PLAY_SEEK:
+        # see if 300s timer is up and we should end game
+        if time.time() - last_state_change_time >= 300:
+          MP_INFO["state"] = MpGameState.END
+          last_state_change_time = time.time()
+        # see if all hiders found, then we should end game
+        if player_counts[MpTargetState.HIDER_PLAY] == 0:
+          MP_INFO["state"] = MpGameState.END
+          last_state_change_time = time.time()
+      case MpGameState.END:
+        # see if 10s timer is up and we should go back to lobby 
+        if time.time() - last_state_change_time >= 10:
+          MP_INFO["state"] = MpGameState.LOBBY
+          last_state_change_time = time.time()
+
+      # any clients should then update their own player states accordingly after seeing a game state change here
+
 def run():
     print('Starting server...')
+
+    game_thread = threading.Thread(target=game_loop)
+    game_thread.start()
 
     # Server settings
     with HTTPServer(server_address, RequestHandler) as httpd:
@@ -170,65 +258,6 @@ def run():
       server_thread = threading.Thread(target=httpd.serve_forever())
       server_thread.daemon = True
       server_thread.start()
-
-      last_state_change_time = time.time()  # seconds
-      while True:
-        # collect some info
-        first_player_start = False
-        total_players = 0
-        player_counts = {}
-
-        for i in range(len(PLAYER_LIST)):
-          if PLAYER_LIST[i] is None or PLAYER_LIST[i] == {} or PLAYER_LIST[i]["mp_state"] == MpTargetState.INVALID:
-            # dont count this player as joined
-            continue
-
-          total_players += 1
-          state = PLAYER_LIST[i]["mp_state"]
-          if state not in player_counts:
-            player_counts[state] = 0
-          player_counts[state] += 1
-
-          match state:
-            case MpTargetState.START:
-              if total_players == 1:
-                first_player_start = True
-
-        # update state conditionally
-        match MP_INFO["state"]:
-          case MpGameState.LOBBY:
-            # go to STARTING_SOON if either:
-            # - first player wants to start
-            # - 50% are ready/start and anyone wants to start
-            if first_player_start or (player_counts[MpTargetState.START] > 0 and (player_counts[MpTargetState.READY] + player_counts[MpTargetState.START]) * 2 >= total_players):
-              MP_INFO["state"] = MpGameState.STARTING_SOON
-              last_state_change_time = time.time()
-          case MpGameState.STARTING_SOON:
-            # see if 10s timer is up and we should begin hiding
-            if time.time() - last_state_change_time >= 10:
-              MP_INFO["state"] = MpGameState.PLAY_HIDE
-              last_state_change_time = time.time()
-          case MpGameState.PLAY_HIDE:
-            # see if 30s timer is up and we should begin seeking
-            if time.time() - last_state_change_time >= 30:
-              MP_INFO["state"] = MpGameState.PLAY_SEEK
-              last_state_change_time = time.time()
-          case MpGameState.PLAY_SEEK:
-            # see if 300s timer is up and we should end game
-            if time.time() - last_state_change_time >= 300:
-              MP_INFO["state"] = MpGameState.END
-              last_state_change_time = time.time()
-            # see if all hiders found, then we should end game
-            if MpTargetState.HIDER_PLAY not in player_counts or player_counts[MpTargetState.HIDER_PLAY] == 0:
-              MP_INFO["state"] = MpGameState.END
-              last_state_change_time = time.time()
-
-
-          case MpGameState.END:
-
-
-          # any clients should then update their own player states accordingly after seeing a game state change here
-
 
 if __name__ == '__main__':
     run()
