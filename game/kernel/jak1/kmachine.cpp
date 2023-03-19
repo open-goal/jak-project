@@ -609,6 +609,10 @@ void InitMachine_PCPort() {
 
   make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
   make_function_symbol_from_c("pc-set-display-mode", (void*)set_display_mode);
+  make_function_symbol_from_c("pc-set-vsync", (void*)set_vsync);
+  // TODO - has some issues when set to OFF
+  make_function_symbol_from_c("pc-set-msaa", (void*)set_msaa);
+  make_function_symbol_from_c("pc-set-frame-rate", (void*)set_frame_rate);
 
   // Game specific functions
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
@@ -636,11 +640,10 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-get-screen-rate", (void*)get_screen_rate);
   make_function_symbol_from_c("pc-get-screen-vmode-count", (void*)get_screen_vmode_count);
   
-  make_function_symbol_from_c("pc-set-frame-rate", (void*)set_frame_rate);
-  make_function_symbol_from_c("pc-set-vsync", (void*)set_vsync);
-  make_function_symbol_from_c("pc-set-window-lock", (void*)set_window_lock);
+  
+  
   make_function_symbol_from_c("pc-set-game-resolution", (void*)set_game_resolution);
-  make_function_symbol_from_c("pc-set-msaa", (void*)set_msaa);
+  
   make_function_symbol_from_c("pc-get-unix-timestamp", (void*)get_unix_timestamp);
 
   // graphics things

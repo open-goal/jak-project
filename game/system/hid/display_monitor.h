@@ -8,13 +8,15 @@
 
 /*
 TODO:
+  - Fix MSAA OFF, something to do with `make_fbo`
+    - Also hide options beyond the user's MSAA setting (ie. my GPU only supports up to x8, but the menu has x16)
   - Show/Hide cursor based on if mouse controls are enabled
   - Window position
     - Set it on startup properly
   - Monitor stuff
-  - fullscreen/borderless/windowed
   - scale
   - lock resizable window
+
   - hiDPI support
     - see https://wiki.libsdl.org/SDL2/SDL_GetRendererOutputSize
 */

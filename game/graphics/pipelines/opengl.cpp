@@ -478,10 +478,10 @@ void GLDisplay::render() {
   SDL_GL_GetDrawableSize(m_window, &fbuf_w, &fbuf_h);
   bool windows_borderless_hacks = false;
 #ifdef _WIN32
-  // TODO - needed?
-  /*if (last_fullscreen_mode() == WindowDisplayMode::Borderless) {
+  // TODO - is this still needed?
+  if (m_display_monitor->get_window_display_mode() == WindowDisplayMode::Borderless) {
     windows_borderless_hacks = true;
-  }*/
+  }
 #endif
 
   // render game!
@@ -512,17 +512,6 @@ void GLDisplay::render() {
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
   }
 
-  // update fullscreen mode, if requested
-  {
-    auto p = scoped_prof("fullscreen-update");
-    // TODO - needed...?
-    /*update_last_fullscreen_mode();
-
-    if (fullscreen_pending() && !m_display_monitor->is_minimized()) {
-      fullscreen_flush();
-    }*/
-  }
-
   // actual vsync
   g_gfx_data->debug_gui.finish_frame();
   if (Gfx::g_global_settings.framelimiter) {
@@ -545,6 +534,8 @@ void GLDisplay::render() {
   // switch vsync modes, if requested
   if (Gfx::g_global_settings.vsync != Gfx::g_global_settings.old_vsync) {
     Gfx::g_global_settings.old_vsync = Gfx::g_global_settings.vsync;
+    // TODO - -1 can be used for adaptive vsync, maybe useful for Jak 2+?
+    // https://wiki.libsdl.org/SDL2/SDL_GL_SetSwapInterval
     SDL_GL_SetSwapInterval(Gfx::g_global_settings.vsync);
   }
 

@@ -91,11 +91,6 @@
   (set! (-> obj aspect-ratio-reciprocal) (/ ASPECT_4X3 aspect))
   (none))
 
-(defmethod set-window-lock! pc-settings ((obj pc-settings) (lock symbol))
-  "set the aspect ratio used for rendering."
-  (pc-set-window-lock lock)
-  (set! (-> obj window-lock?) lock))
-
 (defmethod set-frame-rate! pc-settings ((obj pc-settings) (rate int))
   "set the target framerate."
   (pc-set-frame-rate rate)
@@ -202,15 +197,12 @@
   ;; once on startup and when things are changed
   (pc-set-display-mode (-> obj display-mode))
 
-  ;; set window size and fps automatically if the window lock is enabled.
-  (when (-> obj window-lock?)
-    (pc-set-vsync (-> obj vsync?))
+  (pc-set-vsync (-> obj vsync?))
+  (when (!= 'fullscreen (-> obj display-mode))
+      (if (< (pc-get-screen-rate -1) (-> obj target-fps))
+          (pc-set-vsync #f))
+      (pc-set-frame-rate (-> obj target-fps)))
 
-    (when (!= 'fullscreen (-> obj display-mode))
-        (if (< (pc-get-screen-rate -1) (-> obj target-fps))
-            (pc-set-vsync #f))
-        (pc-set-frame-rate (-> obj target-fps)))
-    )
   ;; do game resolution
   (if (= (-> obj display-mode) 'windowed)
       (pc-set-game-resolution (-> obj real-width) (-> obj real-height))

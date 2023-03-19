@@ -791,7 +791,7 @@ Fbo make_fbo(int w, int h, int msaa, bool make_zbuf_and_stencil) {
  * Pre-render frame setup.
  */
 void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
-  // glfw controls the window framebuffer, so we just update the size:
+  // SDL controls the window framebuffer, so we just update the size:
   auto& window_fb = m_fbo_state.resources.window;
 
   bool window_resized = window_fb.width != settings.window_framebuffer_width ||

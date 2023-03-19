@@ -650,7 +650,6 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
   make_function_symbol_from_c("pc-set-frame-rate", (void*)set_frame_rate);
   make_function_symbol_from_c("pc-set-vsync", (void*)set_vsync);
-  make_function_symbol_from_c("pc-set-window-lock", (void*)set_window_lock);
   make_function_symbol_from_c("pc-set-game-resolution", (void*)set_game_resolution);
   make_function_symbol_from_c("pc-set-msaa", (void*)set_msaa);
   make_function_symbol_from_c("pc-get-unix-timestamp", (void*)get_unix_timestamp);

@@ -516,10 +516,6 @@ void set_vsync(u32 symptr) {
   Gfx::set_vsync(symptr != s7.offset);
 }
 
-void set_window_lock(u32 symptr) {
-  Gfx::set_window_resizable(symptr == s7.offset);
-}
-
 void set_collision(u32 symptr) {
   Gfx::g_global_settings.collision_enable = symptr != s7.offset;
 }

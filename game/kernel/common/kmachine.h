@@ -85,7 +85,6 @@ u64 filepath_exists(u32 filepath);
 void prof_event(u32 name, u32 kind);
 void set_frame_rate(s64 rate);
 void set_vsync(u32 symptr);
-void set_window_lock(u32 symptr);
 void set_collision(u32 symptr);
 void set_collision_wireframe(u32 symptr);
 void set_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask, u32 symptr);
