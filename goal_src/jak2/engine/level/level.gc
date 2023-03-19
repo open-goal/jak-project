@@ -414,7 +414,7 @@ into 7 sections, which might explain the weird sizes in the center.
    the level object.
    This function is the way to transition from loaded to alive/active."
 
-  (start-debug "level-status-update trying to do ~A to ~A~%" (-> obj status) arg0)
+  (start-debug "level-status-update trying to do ~A to ~A for ~A~%" (-> obj status) arg0 (-> obj name))
   (case arg0
     (('inactive)
      ;; any request to go inactive should unload.
@@ -634,7 +634,6 @@ into 7 sections, which might explain the weird sizes in the center.
      (set! sv-16 (the-as symbol #f))
      (let ((s5-0 (dgo-load-get-next (& sv-16))))
        (when s5-0
-         (start-debug "dgo-load-get-next: #x~X~%" s5-0)
          ;; we got something! remember where and update stats
          (set! (-> obj load-buffer-last) (the-as uint s5-0))
          (+! (-> *level* load-size) (-> (the-as (pointer uint32) s5-0)))
@@ -1039,6 +1038,7 @@ into 7 sections, which might explain the weird sizes in the center.
      ;; - we can't allocate during login. Or if we allocate more than our link data, then bad things happen.
      (set! (-> obj load-buffer-mode) (load-buffer-mode borrow))
      (let ((a3-19 (logand -64 (&+ (-> obj heap current) 63))))
+       (start-debug "DGO-LOAD-BEGIN FOR BORROW: #x~x~%" a3-19)
        ;; start dgo loader!
        (dgo-load-begin *temp-string* a3-19 a3-19 a3-19)
        )
@@ -2457,7 +2457,12 @@ into 7 sections, which might explain the weird sizes in the center.
               )
             )
 
-          (when (>= unload-idx 0) ;; did we find one to unload?
+          ;; did we find one to unload?
+          ;; PC NOTE : added an extra check for DGO time. If you start a load and discard it on the next frame,
+          ;; you may attempt to start a new load right away before the ISO thread can properly stop the previous load
+          ;; which will just crash the game. Sadly this means loads may sometimes be delayed by one frame. The horror.
+          (when ;(>= unload-idx 0)
+                (and (>= unload-idx 0) (< 1 (- (-> *display* real-clock integral-frame-counter) *dgo-time*)))
             (let ((lev-to-unload (-> *level* level unload-idx)))
               (format 0 "Discarding level ~A~%" (-> lev-to-unload name))
               (level-status-update! lev-to-unload 'inactive) ;; kill it.
