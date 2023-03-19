@@ -662,7 +662,7 @@ additionally, some texture pages have a chunk system that allows more specific c
   ;; this assumes that the common-segment starts at 0.
   (let ((vram-loc 0))
     ;; loop over all active levels
-    (countdown (level-idx 7)
+    (countdown (level-idx LEVEL_TOTAL)
       (let ((lev (-> *level* level level-idx)))
         (when (or (= (-> lev status) 'active)
                   (= (-> lev status) 'alive)
@@ -700,7 +700,7 @@ additionally, some texture pages have a chunk system that allows more specific c
   "Lay out hud/map textures from all levels so all can fit into
    VRAM at the same time."
   (let ((level-idx 0))
-    (countdown (vram-loc 7)
+    (countdown (vram-loc LEVEL_TOTAL)
       (let ((lev (-> *level* level vram-loc)))
         (when (or (= (-> lev status) 'active)
                   (= (-> lev status) 'alive)
@@ -743,7 +743,7 @@ additionally, some texture pages have a chunk system that allows more specific c
   ;; again, assume that common-segment starts at 0
   (let ((vram-loc 0))
     ;; iterate over active levels
-    (countdown (level-idx 7)
+    (countdown (level-idx LEVEL_TOTAL)
       (let ((lev (-> *level* level level-idx)))
         (when (or (= (-> lev status) 'active)
                   (= (-> lev status) 'alive)
@@ -1644,7 +1644,7 @@ additionally, some texture pages have a chunk system that allows more specific c
           (((tpage-category alpha))
            ;; alpha has some special cases
            (cond
-             ((= (-> lev index) 6) ;; default level
+             ((= (-> lev index) LEVEL_MAX) ;; default level
               ;; if the auto-save-icon-flag is set, upload the alpha texture and clear flag.
               (if (not (-> *bigmap* auto-save-icon-flag))
                   (set! (-> lev upload-size 8)
@@ -1711,7 +1711,7 @@ additionally, some texture pages have a chunk system that allows more specific c
            )
           (((tpage-category sprite))
            ;; sprite skips uploads if the level isn't drawing, but otherwise uploads the whole thing.
-           (when (or (= (-> lev display?) 'display) (= (-> lev display?) 'actor) (= (-> lev index) 6))
+           (when (or (= (-> lev display?) 'display) (= (-> lev display?) 'actor) (= (-> lev index) LEVEL_MAX))
                  (set! (-> lev upload-size 7)
                        (upload-vram-pages pool (-> pool segment-common) tpage (tex-upload-mode seg0-1-2) bucket)
                        )
@@ -1720,7 +1720,7 @@ additionally, some texture pages have a chunk system that allows more specific c
           (((tpage-category map))
            ;; map doesn't use masks for the default level.
            (cond
-             ((= (-> lev index) 6)
+             ((= (-> lev index) LEVEL_MAX)
               (set! (-> lev upload-size 8)
                     (upload-vram-pages pool (-> pool segment-common) tpage (tex-upload-mode seg0-1-2) bucket)
                     )
@@ -1747,8 +1747,8 @@ additionally, some texture pages have a chunk system that allows more specific c
           (cond
             ((= cat (tpage-category warp))
              ;; warps put all their update-texture-anim's with the default level:
-             (when (= (-> lev index) 6)
-               (dotimes (s2-1 7)
+             (when (= (-> lev index) LEVEL_MAX)
+               (dotimes (s2-1 LEVEL_TOTAL)
                  (let ((v1-54 (-> *level* level s2-1)))
                    (when (or (= (-> v1-54 status) 'active) (= (-> v1-54 status) 'reserved))
                      (if (-> v1-54 texture-anim-array 5)
@@ -1844,7 +1844,7 @@ additionally, some texture pages have a chunk system that allows more specific c
     )
 
   ;; clear upload-size
-  (dotimes (lev-idx 7)
+  (dotimes (lev-idx LEVEL_TOTAL)
     (let ((lev (-> *level* level lev-idx)))
       (when (or (= (-> lev status) 'active) (= (-> lev status) 'reserved))
         (dotimes (a1-6 18)
@@ -1866,7 +1866,7 @@ additionally, some texture pages have a chunk system that allows more specific c
         )
       (when (and src-level (logtest? (-> *texture-pool* texture-enable-user) (-> tpage-info texture-user)))
         (cond
-          ((= (-> tpage-info level-index) 6)
+          ((= (-> tpage-info level-index) LEVEL_MAX)
            ;; always upload default-level textures
            (add-level-tpage-dma
              arg0
@@ -1892,7 +1892,7 @@ additionally, some texture pages have a chunk system that allows more specific c
     )
 
   ;; reset masks and closest array for the next frame!
-  (dotimes (v1-16 7)
+  (dotimes (v1-16 LEVEL_TOTAL)
     (let ((a0-30 (-> *level* level v1-16)))
       (when (or (= (-> a0-30 status) 'active) (= (-> a0-30 status) 'reserved))
         (dotimes (a1-15 18)

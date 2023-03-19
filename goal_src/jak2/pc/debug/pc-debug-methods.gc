@@ -17,27 +17,24 @@
 
 (defconstant MEM_BAR_HEIGHT 14) ;; total height of the bar
 (defconstant MEM_BAR_BOTTOM 416) ;; x coord for the bottom side of the bar list
-(defconstant MEM_BAR_NUM 11) ;; amount of memory usage bars (override later if wanted)
+(defconstant MEM_BAR_NUM (+ LEVEL_MAX 5)) ;; amount of memory usage bars (override later if wanted)
 (defmethod draw-memory pc-settings-jak2 ((obj pc-settings-jak2) (buf dma-buffer))
 	"draw the memory heap status in the bottom right corner"
 
 	(when (-> obj display-heap-status)
 		(let ((idx 0)
-					(level-heap-colors (new 'static 'array rgba 6 (static-rgba 32 255 255 64)
-																												(static-rgba 255 32 255 64)
-																												(static-rgba 255 255 32 64)
-																												(static-rgba 32 255 255 64)
+					(level-heap-colors (new 'static 'array rgba 3 (static-rgba 32 255 255 64)
 																												(static-rgba 255 32 255 64)
 																												(static-rgba 255 255 32 64)
 																												)))
 			(draw-memory-bar-kheap buf global :idx idx :color (static-rgba 32 32 255 64))
 			(draw-memory-bar-kheap buf debug :idx (1+! idx) :color (static-rgba 255 32 32 64))
-			(dotimes (i (-> *level* length))
+			(dotimes (i LEVEL_MAX)
 				(draw-memory-bar-kheap buf (-> *level* level i heap)
 								:name (aif (-> *level* level i borrow-from-level)
 													(string-format "(~A)l~D<-l~D" (-> *level* level i name) i (-> it index))
 													(string-format "(~A)l~D" (-> *level* level i name) i))
-								:idx (1+! idx) :color (-> level-heap-colors i))
+								:idx (1+! idx) :color (-> level-heap-colors (mod i 3)))
 				)
 			(draw-memory-bar-dead-pool-heap buf *nk-dead-pool* :name "actor" :idx (1+! idx) :color (static-rgba 32 255 32 64))
 			(draw-memory-bar-generic buf

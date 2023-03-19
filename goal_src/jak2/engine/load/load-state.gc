@@ -24,7 +24,7 @@
   )
 
 (defmethod reset! load-state ((obj load-state))
-  (dotimes (v1-0 6)
+  (dotimes (v1-0 (-> *level* length))
     (set! (-> obj want v1-0 name) #f)
     (set! (-> obj want v1-0 display?) #f)
     (set! (-> obj want v1-0 force-vis?) #f)
@@ -42,7 +42,7 @@
   )
 
 (defmethod want-levels load-state ((obj load-state) (arg0 (pointer symbol)))
-  (dotimes (v1-0 6)
+  (dotimes (v1-0 LEVEL_MAX)
     (dotimes (a2-0 6)
       (when (= (-> obj want v1-0 name) (-> arg0 a2-0))
         (set! (-> arg0 a2-0) #f)
@@ -54,7 +54,7 @@
     )
   (dotimes (v1-3 6)
     (when (-> arg0 v1-3)
-      (dotimes (a2-13 6)
+      (dotimes (a2-13 LEVEL_MAX)
         (when (not (-> obj want a2-13 name))
           (set! (-> obj want a2-13 name) (-> arg0 v1-3))
           (set! (-> obj want a2-13 display?) #f)
@@ -97,7 +97,7 @@
   )
 
 (defmethod want-display-level load-state ((obj load-state) (arg0 symbol) (arg1 symbol))
-  (dotimes (v1-0 6)
+  (dotimes (v1-0 LEVEL_MAX)
     (when (= (-> obj want v1-0 name) arg0)
       (set! (-> obj want v1-0 display?) arg1)
       (add-borrow-levels obj)
@@ -122,7 +122,7 @@
   )
 
 (defmethod want-force-vis load-state ((obj load-state) (arg0 symbol) (arg1 symbol))
-  (dotimes (v1-0 6)
+  (dotimes (v1-0 LEVEL_MAX)
     (when (= (-> obj want v1-0 name) arg0)
       (set! (-> obj want v1-0 force-vis?) arg1)
       (return 0)
@@ -134,7 +134,7 @@
 
 ;; WARN: Function (method 16 load-state) has a return type of none, but the expression builder found a return statement.
 (defmethod want-force-inside load-state ((obj load-state) (arg0 symbol) (arg1 symbol))
-  (dotimes (v1-0 6)
+  (dotimes (v1-0 LEVEL_MAX)
     (when (= (-> obj want v1-0 name) arg0)
       (set! (-> obj want v1-0 force-inside?) arg1)
       (return 0)
@@ -150,7 +150,7 @@
    This will also remove borrow levels that are no longer needed."
 
   ;; remove borrow levels
-  (dotimes (s5-0 6)
+  (dotimes (s5-0 LEVEL_MAX)
     (let ((a0-1 (-> obj want s5-0 name)))
       (when a0-1
         (let ((a0-2 (lookup-level-info a0-1)))
@@ -170,7 +170,7 @@
   (let  ((symbol-array (new 'stack-no-clear 'array 'symbol 24))
          (used-slots 0))
     ; (set! (-> s5-1 length) 0)
-    (dotimes (s4-0 6)
+    (dotimes (s4-0 LEVEL_MAX)
       (let ((a0-5 (-> obj want s4-0 name)))
         ;; add level from the want state
         (when a0-5
@@ -198,7 +198,7 @@
         )
       )
     ;; copy back to actual load-state.
-    (dotimes (v1-39 6)
+    (dotimes (v1-39 LEVEL_MAX)
       (cond
         ((< (* v1-39 4) used-slots)
          (set! (-> obj want v1-39 name) (-> symbol-array (* v1-39 4)))
@@ -228,7 +228,7 @@
       (set! (-> obj object-name s4-0) #f)
       )
     )
-  (mem-copy! (&-> *backup-load-state* type) (&-> obj type) 2168)
+  (mem-copy! (&-> *backup-load-state* type) (&-> obj type) (psize-of load-state))
   (set! (-> *backup-load-state* command-list) '())
   (set! (-> obj command-list) arg0)
   0
@@ -248,16 +248,16 @@
         (set! (-> obj object-name s5-0) #f)
         )
       )
-    (let ((s5-1 (new 'stack-no-clear 'inline-array 'level-buffer-state 6)))
-      (dotimes (s4-0 6)
+    (let ((s5-1 (new 'stack-no-clear 'inline-array 'level-buffer-state LEVEL_MAX)))
+      (dotimes (s4-0 LEVEL_MAX)
         ((method-of-type level-buffer-state new) (the-as symbol (-> s5-1 s4-0)) level-buffer-state)
         )
-      (dotimes (s4-1 6)
+      (dotimes (s4-1 LEVEL_MAX)
         (mem-copy! (the-as pointer (-> s5-1 s4-1)) (the-as pointer (-> *load-state* want s4-1)) 16)
         )
-      (mem-copy! (&-> obj type) (&-> *backup-load-state* type) 2168)
+      (mem-copy! (&-> obj type) (&-> *backup-load-state* type) (psize-of load-state))
       (when (!= (-> pp type) scene-player)
-        (dotimes (gp-1 6)
+        (dotimes (gp-1 LEVEL_MAX)
           (mem-copy! (the-as pointer (-> *load-state* want gp-1)) (the-as pointer (-> s5-1 gp-1)) 16)
           )
         )
@@ -273,7 +273,7 @@
         (set! (-> obj object-name v1-0) #f)
         )
     )
-  (mem-copy! (&-> obj type) (&-> *backup-load-state* type) 2168)
+  (mem-copy! (&-> obj type) (&-> *backup-load-state* type) (psize-of load-state))
   0
   )
 

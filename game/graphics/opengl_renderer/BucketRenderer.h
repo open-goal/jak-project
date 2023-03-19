@@ -45,7 +45,9 @@ struct SharedRenderState {
 
   void reset();
   bool has_pc_data = false;
-  LevelVis occlusion_vis[6];
+
+  // limit is arbitrary so let's go ham in case we want more levels in the future
+  LevelVis occlusion_vis[32];
 
   math::Vector4f camera_planes[4];
 
