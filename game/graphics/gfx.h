@@ -160,7 +160,6 @@ int get_active_display_mode_count();
 // TODO - this was always called via GOAL with -1 which meant "give me the current rate for the
 // current display mode"
 int get_active_display_refresh_rate();
-// TODO - was also always called with -1, which means just get the current display mode width/height
 void get_active_display_size(s32* w, s32* h);
 void set_window_resizable(bool resizable);
 WindowDisplayMode get_window_display_mode();

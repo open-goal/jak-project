@@ -58,42 +58,11 @@ u64 DecodeTerritory();
 u64 DecodeTimeout();
 u64 DecodeInactiveTimeout();
 void DecodeTime(u32 ptr);
-u64 read_ee_timer();
-void c_memmove(u32 dst, u32 src, u32 size);
-void set_game_resolution(s64 w, s64 h);
-void set_msaa(s64 samples);
-void get_window_size(u32 w_ptr, u32 h_ptr);
-void get_window_scale(u32 x_ptr, u32 y_ptr);
-void get_screen_size(s64 vmode_idx, u32 w_ptr, u32 h_ptr);
-s64 get_screen_rate(s64 vmode_idx);
-s64 get_screen_vmode_count();
 
-// TODO - ive checked these
+u32 offset_of_s7();
+void vif_interrupt_callback(int bucket_id);
+
 /// Initializes all common PC Port functions for all Jak games
 void init_common_pc_port_functions(std::function<Ptr<Function>(const char*, void*)> make_func_symbol_func);
 
-int get_display_count();
-
-
-
-
-
-
-int get_unix_timestamp();
-void mkdir_path(u32 filepath);
-u64 filepath_exists(u32 filepath);
-void prof_event(u32 name, u32 kind);
-void set_frame_rate(s64 rate);
-void set_vsync(u32 symptr);
-void set_collision(u32 symptr);
-void set_collision_wireframe(u32 symptr);
-void set_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask, u32 symptr);
-u32 get_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask);
-void set_gfx_hack(u64 which, u32 symptr);
-u32 offset_of_s7();
-void vif_interrupt_callback(int bucket_id);
-u64 pc_get_mips2c(u32 name);
-void send_gfx_dma_chain(u32 /*bank*/, u32 chain);
-void pc_texture_upload_now(u32 page, u32 mode);
-void pc_texture_relocate(u32 dst, u32 src, u32 format);
-u64 pc_filter_debug_string(u32 str_ptr, u32 distance);
+void get_window_scale(u32 x_ptr, u32 y_ptr);

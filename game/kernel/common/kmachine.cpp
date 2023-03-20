@@ -350,6 +350,20 @@ void DecodeTime(u32 ptr) {
   sceCdReadClock(clock.c());
 }
 
+void vif_interrupt_callback(int bucket_id) {
+  // added for the PC port for faking VIF interrupts from the graphics system.
+  if (vif1_interrupt_handler && MasterExit == RuntimeExitStatus::RUNNING) {
+    call_goal(Ptr<Function>(vif1_interrupt_handler), bucket_id, 0, 0, s7.offset, g_ee_main_mem);
+  }
+}
+
+/*!
+ * Added in PC port.
+ */
+u32 offset_of_s7() {
+  return s7.offset;
+}
+
 /// PC PORT FUNCTIONS BEGIN
 
 /// <summary>
@@ -411,80 +425,22 @@ int get_display_count() {
 }
 
 /// <summary>
-/// Initializes all functions that are common across all game versions
-/// These functions have the same implementation and do not use any game specific functions (other
-/// than the one to create a function in the first place)
+/// Returns resolution of the monitor's current display mode
 /// </summary>
-/// <param name="make_func_symbol_func">The game specific function that is used to create a function
-/// symbol</param>
-void init_common_pc_port_functions(
-    std::function<Ptr<Function>(const char*, void*)> make_func_symbol_func) {
-  make_func_symbol_func("__read-ee-timer", (void*)read_ee_timer);
-  make_func_symbol_func("__mem-move", (void*)c_memmove);
-  make_func_symbol_func("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
-  make_func_symbol_func("__pc-texture-upload-now", (void*)pc_texture_upload_now);
-  make_func_symbol_func("__pc-texture-relocate", (void*)pc_texture_relocate);
-  make_func_symbol_func("__pc-get-mips2c", (void*)pc_get_mips2c);
-
-  // display related
-  make_func_symbol_func("pc-get-display-count", (void*)get_display_count);
-
-  make_func_symbol_func("pc-get-window-size", (void*)get_window_size);
-  make_func_symbol_func("pc-get-window-scale", (void*)get_window_scale);
-
-  make_func_symbol_func("pc-set-window-size", (void*)Gfx::set_window_size);
-  make_func_symbol_func("pc-set-vsync", (void*)set_vsync);
-  // TODO - has some issues when set to OFF
-  make_func_symbol_func("pc-set-msaa", (void*)set_msaa);
-  make_func_symbol_func("pc-set-frame-rate", (void*)set_frame_rate);
-  make_func_symbol_func("pc-set-game-resolution", (void*)Gfx::set_game_resolution);
-
-  // pad stuff
-  // TODO - redo these
-  make_func_symbol_func("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
-  make_func_symbol_func("pc-pad-input-map-save!", (void*)Gfx::input_mode_save);
-  make_func_symbol_func("pc-pad-input-mode-set", (void*)Gfx::input_mode_set);
-  /*make_function_symbol_from_c("pc-pad-input-pad-set", (void*)Pad::input_mode_pad_set);
-  make_function_symbol_from_c("pc-pad-input-mode-get", (void*)Pad::input_mode_get);
-  make_function_symbol_from_c("pc-pad-input-key-get", (void*)Pad::input_mode_get_key);
-  make_function_symbol_from_c("pc-pad-input-index-get", (void*)Pad::input_mode_get_index);*/
-
-  // TODO - check these
-  make_func_symbol_func("pc-get-screen-size", (void*)get_screen_size);
-  make_func_symbol_func("pc-get-screen-rate", (void*)get_screen_rate);
-  make_func_symbol_func("pc-get-screen-vmode-count", (void*)get_screen_vmode_count);
-
-  // graphics things
-  make_func_symbol_func("pc-set-letterbox", (void*)Gfx::set_letterbox);
-  make_func_symbol_func("pc-renderer-tree-set-lod", (void*)Gfx::SetLod);
-  make_func_symbol_func("pc-set-collision-mode", (void*)Gfx::CollisionRendererSetMode);
-  make_func_symbol_func("pc-set-collision-mask", (void*)set_collision_mask);
-  make_func_symbol_func("pc-get-collision-mask", (void*)get_collision_mask);
-  make_func_symbol_func("pc-set-collision-wireframe", (void*)set_collision_wireframe);
-  make_func_symbol_func("pc-set-collision", (void*)set_collision);
-  make_func_symbol_func("pc-set-gfx-hack", (void*)set_gfx_hack);
-
-  make_func_symbol_func("pc-get-unix-timestamp", (void*)get_unix_timestamp);
-
-  // file related functions
-  make_func_symbol_func("pc-filepath-exists?", (void*)filepath_exists);
-  make_func_symbol_func("pc-mkdir-file-path", (void*)mkdir_path);
-
-  // discord rich presence
-  make_func_symbol_func("pc-discord-rpc-set", (void*)set_discord_rpc);
-
-  // profiler
-  make_func_symbol_func("pc-prof", (void*)prof_event);
-
-  // debugging tools
-  make_func_symbol_func("pc-filter-debug-string?", (void*)pc_filter_debug_string);
-
-  // init ps2 VM
-  if (VM::use) {
-    make_func_symbol_func("vm-ptr", (void*)VM::get_vm_ptr);
-    VM::vm_init();
+/// <param name="w_ptr"></param>
+/// <param name="h_ptr"></param>
+void get_active_display_size(u32 w_ptr, u32 h_ptr) {
+  s32 *w_out = 0, *h_out = 0;
+  if (w_ptr) {
+    w_out = Ptr<s32>(w_ptr).c();
   }
+  if (h_ptr) {
+    h_out = Ptr<s32>(h_ptr).c();
+  }
+  Gfx::get_active_display_size(w_out, h_out);
 }
+
+// TODO - cleanup ordering / docstrings
 
 void set_game_resolution(s64 w, s64 h) {
   Gfx::set_game_resolution(w, h);
@@ -518,32 +474,10 @@ void get_window_scale(u32 x_ptr, u32 y_ptr) {
 }
 
 /*!
- * Returns resolution of the monitor.
+ * Returns the current refresh rate of the currently selected monitor's display mode.
  */
-void get_screen_size(s64 vmode_idx, u32 w_ptr, u32 h_ptr) {
-  s32 *w_out = 0, *h_out = 0;
-  if (w_ptr) {
-    w_out = Ptr<s32>(w_ptr).c();
-  }
-  if (h_ptr) {
-    h_out = Ptr<s32>(h_ptr).c();
-  }
-  // TODO - remove vmode-idx
-  Gfx::get_active_display_size(w_out, h_out);
-}
-
-/*!
- * Returns the current refresh rate of the currently selected monitor.
- */
-s64 get_screen_rate(s64 vmode_idx) {  // TODO - remove vmodeidx
+s64 get_active_display_refresh_rate() {
   return Gfx::get_active_display_refresh_rate();
-}
-
-/*!
- * Returns amount of video modes of the monitor.
- */
-s64 get_screen_vmode_count() {
-  return Gfx::get_active_display_mode_count();
 }
 
 int get_unix_timestamp() {
@@ -604,24 +538,6 @@ void set_gfx_hack(u64 which, u32 symptr) {
   }
 }
 
-/*!
- * PC PORT FUNCTIONS END
- */
-
-void vif_interrupt_callback(int bucket_id) {
-  // added for the PC port for faking VIF interrupts from the graphics system.
-  if (vif1_interrupt_handler && MasterExit == RuntimeExitStatus::RUNNING) {
-    call_goal(Ptr<Function>(vif1_interrupt_handler), bucket_id, 0, 0, s7.offset, g_ee_main_mem);
-  }
-}
-
-/*!
- * Added in PC port.
- */
-u32 offset_of_s7() {
-  return s7.offset;
-}
-
 u64 pc_filter_debug_string(u32 str_ptr, u32 dist_ptr) {
   auto str = std::string(Ptr<String>(str_ptr).c()->data());
   float dist;
@@ -659,4 +575,79 @@ u64 pc_filter_debug_string(u32 str_ptr, u32 dist_ptr) {
     }
   }
   return s7.offset;
+}
+
+/// <summary>
+/// Initializes all functions that are common across all game versions
+/// These functions have the same implementation and do not use any game specific functions (other
+/// than the one to create a function in the first place)
+/// </summary>
+/// <param name="make_func_symbol_func">The game specific function that is used to create a function
+/// symbol</param>
+void init_common_pc_port_functions(
+    std::function<Ptr<Function>(const char*, void*)> make_func_symbol_func) {
+  make_func_symbol_func("__read-ee-timer", (void*)read_ee_timer);
+  make_func_symbol_func("__mem-move", (void*)c_memmove);
+  make_func_symbol_func("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
+  make_func_symbol_func("__pc-texture-upload-now", (void*)pc_texture_upload_now);
+  make_func_symbol_func("__pc-texture-relocate", (void*)pc_texture_relocate);
+  make_func_symbol_func("__pc-get-mips2c", (void*)pc_get_mips2c);
+
+  // display related
+  make_func_symbol_func("pc-get-display-count", (void*)get_display_count);
+  make_func_symbol_func("pc-get-active-display-size", (void*)get_active_display_size);
+  make_func_symbol_func("pc-get-active-display-refresh-rate", (void*)get_active_display_refresh_rate);
+  make_func_symbol_func("pc-get-window-size", (void*)get_window_size);
+  make_func_symbol_func("pc-get-window-scale", (void*)get_window_scale);
+
+  // TODO - set display
+  make_func_symbol_func("pc-set-window-size", (void*)Gfx::set_window_size);
+  make_func_symbol_func("pc-set-vsync", (void*)set_vsync);
+  // TODO - has some issues when set to OFF
+  make_func_symbol_func("pc-set-msaa", (void*)set_msaa);
+  make_func_symbol_func("pc-set-frame-rate", (void*)set_frame_rate);
+  make_func_symbol_func("pc-set-game-resolution", (void*)Gfx::set_game_resolution);
+
+  // pad stuff
+  // TODO - get controller name
+  // TODO - get controller count
+  // TODO - redo these
+  make_func_symbol_func("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
+  make_func_symbol_func("pc-pad-input-map-save!", (void*)Gfx::input_mode_save);
+  make_func_symbol_func("pc-pad-input-mode-set", (void*)Gfx::input_mode_set);
+  /*make_function_symbol_from_c("pc-pad-input-pad-set", (void*)Pad::input_mode_pad_set);
+  make_function_symbol_from_c("pc-pad-input-mode-get", (void*)Pad::input_mode_get);
+  make_function_symbol_from_c("pc-pad-input-key-get", (void*)Pad::input_mode_get_key);
+  make_function_symbol_from_c("pc-pad-input-index-get", (void*)Pad::input_mode_get_index);*/
+
+  // graphics things
+  make_func_symbol_func("pc-set-letterbox", (void*)Gfx::set_letterbox);
+  make_func_symbol_func("pc-renderer-tree-set-lod", (void*)Gfx::SetLod);
+  make_func_symbol_func("pc-set-collision-mode", (void*)Gfx::CollisionRendererSetMode);
+  make_func_symbol_func("pc-set-collision-mask", (void*)set_collision_mask);
+  make_func_symbol_func("pc-get-collision-mask", (void*)get_collision_mask);
+  make_func_symbol_func("pc-set-collision-wireframe", (void*)set_collision_wireframe);
+  make_func_symbol_func("pc-set-collision", (void*)set_collision);
+  make_func_symbol_func("pc-set-gfx-hack", (void*)set_gfx_hack);
+
+  make_func_symbol_func("pc-get-unix-timestamp", (void*)get_unix_timestamp);
+
+  // file related functions
+  make_func_symbol_func("pc-filepath-exists?", (void*)filepath_exists);
+  make_func_symbol_func("pc-mkdir-file-path", (void*)mkdir_path);
+
+  // discord rich presence
+  make_func_symbol_func("pc-discord-rpc-set", (void*)set_discord_rpc);
+
+  // profiler
+  make_func_symbol_func("pc-prof", (void*)prof_event);
+
+  // debugging tools
+  make_func_symbol_func("pc-filter-debug-string?", (void*)pc_filter_debug_string);
+
+  // init ps2 VM
+  if (VM::use) {
+    make_func_symbol_func("vm-ptr", (void*)VM::get_vm_ptr);
+    VM::vm_init();
+  }
 }
