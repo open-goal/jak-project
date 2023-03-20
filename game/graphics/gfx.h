@@ -142,8 +142,8 @@ void poll_events();
 void set_levels(const std::vector<std::string>& levels);
 
 // InputMonitor usages
-std::shared_ptr<PadData> get_current_frames_pad_data();
-int update_rumble(int port, u8 low_intensity, u8 high_intensity);
+std::optional<std::shared_ptr<PadData>> get_current_frames_pad_data(const int port);
+int update_rumble(const int port, const u8 low_intensity, const u8 high_intensity);
 std::pair<s32, s32> get_mouse_pos();
 void input_mode_set(u32 enable);
 void input_mode_save();

@@ -230,6 +230,15 @@ GLDisplay::GLDisplay(SDL_Window* window, SDL_GLContext gl_context, bool is_main)
   m_main = is_main;
   m_input_monitor = std::make_shared<InputMonitor>();
   m_display_monitor = std::make_shared<DisplayMonitor>(m_window);
+
+  // Register commands
+  // TODO - ignore this if the setting is set
+  m_input_monitor->register_command(
+      CommandBinding::Source::KEYBOARD,
+      CommandBinding(SDLK_LALT, [&]() { set_imgui_visible(!is_imgui_visible()); }));
+  m_input_monitor->register_command(
+      CommandBinding::Source::KEYBOARD,
+      CommandBinding(SDLK_F2, [&]() { m_take_screenshot_next_frame = true; }));
 }
 
 GLDisplay::~GLDisplay() {
@@ -249,27 +258,6 @@ GLDisplay::~GLDisplay() {
   }
 }
 
-// TODO - move this
-std::string make_full_screenshot_output_file_path(const std::string& file_name) {
-  file_util::create_dir_if_needed(file_util::get_file_path({"screenshots"}));
-  return file_util::get_file_path({"screenshots", file_name});
-}
-
-// TODO - move this
-static std::string get_current_timestamp() {
-  auto current_time = std::time(0);
-  auto local_current_time = *std::localtime(&current_time);
-  // Remember to increase size of result if the date format is changed
-  char result[20];
-  std::strftime(result, sizeof(result), "%Y_%m_%d_%H_%M_%S", &local_current_time);
-  return std::string(result);
-}
-
-// TODO - move
-static std::string make_hotkey_screenshot_file_name() {
-  return version_to_game_name(g_game_version) + "_" + get_current_timestamp() + ".png";
-}
-
 void render_game_frame(int game_width,
                        int game_height,
                        int window_fb_width,
@@ -277,7 +265,8 @@ void render_game_frame(int game_width,
                        int draw_region_width,
                        int draw_region_height,
                        int msaa_samples,
-                       bool windows_borderless_hack) {
+                       bool windows_borderless_hack,
+                       bool take_screenshot) {
   // wait for a copied chain.
   bool got_chain = false;
   {
@@ -308,12 +297,10 @@ void render_game_frame(int game_width,
     options.gpu_sync = g_gfx_data->debug_gui.should_gl_finish();
     options.borderless_windows_hacks = windows_borderless_hack;
 
-    // TODO
-    /*if (want_hotkey_screenshot && g_gfx_data->debug_gui.screenshot_hotkey_enabled) {
+    if (take_screenshot) {
       options.save_screenshot = true;
-      std::string screenshot_file_name = make_hotkey_screenshot_file_name();
-      options.screenshot_path = make_full_screenshot_output_file_path(screenshot_file_name);
-    }*/
+      options.screenshot_path = file_util::make_screenshot_filepath(g_game_version);
+    }
     if (g_gfx_data->debug_gui.get_screenshot_flag()) {
       options.save_screenshot = true;
       options.game_res_w = g_gfx_data->debug_gui.screenshot_width;
@@ -321,11 +308,8 @@ void render_game_frame(int game_width,
       options.draw_region_width = options.game_res_w;
       options.draw_region_height = options.game_res_h;
       options.msaa_samples = g_gfx_data->debug_gui.screenshot_samples;
-      std::string screenshot_file_name = g_gfx_data->debug_gui.screenshot_name();
-      if (!str_util::ends_with(screenshot_file_name, ".png")) {
-        screenshot_file_name += ".png";
-      }
-      options.screenshot_path = make_full_screenshot_output_file_path(screenshot_file_name);
+      options.screenshot_path = file_util::make_screenshot_filepath(
+          g_game_version, g_gfx_data->debug_gui.screenshot_name());
     }
 
     options.draw_small_profiler_window =
@@ -444,14 +428,6 @@ void GLDisplay::process_sdl_events() {
       m_input_monitor->process_sdl_event(evt);
     }
 
-    // TODO - move this to input monitor
-    // register and bind lambdas to key / controller events
-    if (evt.type == SDL_KEYUP) {
-      if (evt.key.keysym.sym == SDLK_LALT) {
-        set_imgui_visible(!is_imgui_visible());
-      }
-    }
-
     if (!m_should_quit) {
       ImGui_ImplSDL2_ProcessEvent(&evt);
     }
@@ -496,9 +472,15 @@ void GLDisplay::render() {
       game_res_w = 640;
       game_res_h = 480;
     }
-    render_game_frame(game_res_w, game_res_h, fbuf_w, fbuf_h, Gfx::g_global_settings.lbox_w,
-                      Gfx::g_global_settings.lbox_h, Gfx::g_global_settings.msaa_samples,
-                      windows_borderless_hacks);
+    render_game_frame(
+        game_res_w, game_res_h, fbuf_w, fbuf_h, Gfx::g_global_settings.lbox_w,
+        Gfx::g_global_settings.lbox_h, Gfx::g_global_settings.msaa_samples,
+        windows_borderless_hacks,
+        m_take_screenshot_next_frame && g_gfx_data->debug_gui.screenshot_hotkey_enabled);
+    // If we took a screenshot, stop taking them now!
+    if (m_take_screenshot_next_frame) {
+      m_take_screenshot_next_frame = false;
+    }
   }
 
   // render debug

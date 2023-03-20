@@ -61,10 +61,9 @@
 //   }
 // }
 
-GameController::GameController(int sdl_device_id, float analog_dead_zone)
-    : m_sdl_instance_id(sdl_device_id), m_analog_dead_zone(analog_dead_zone) {
+GameController::GameController(int sdl_device_id) : m_sdl_instance_id(sdl_device_id) {
   // TODO - load user binds
-  m_binds = s_default_controller_binds;
+  m_binds = DEFAULT_CONTROLLER_BINDS;
   m_loaded = false;
   m_device_handle = SDL_GameControllerOpen(sdl_device_id);
   if (!m_device_handle) {
@@ -92,7 +91,9 @@ GameController::GameController(int sdl_device_id, float analog_dead_zone)
   m_loaded = true;
 }
 
-void GameController::process_event(const SDL_Event& event, std::shared_ptr<PadData> data) {
+void GameController::process_event(const SDL_Event& event,
+                                   const CommandBindingGroups& commands,
+                                   std::shared_ptr<PadData> data) {
   if (event.type == SDL_CONTROLLERAXISMOTION && event.caxis.which == m_sdl_instance_id) {
     // https://wiki.libsdl.org/SDL2/SDL_GameControllerAxis
     if (event.caxis.axis <= SDL_CONTROLLER_AXIS_INVALID ||
@@ -107,11 +108,8 @@ void GameController::process_event(const SDL_Event& event, std::shared_ptr<PadDa
       for (const auto& bind : m_binds.analog_axii.at(event.caxis.axis)) {
         // Adjust the value range to 0-255 (127 being neutral)
         // Values come out of SDL as -32,768 + 32,767
-        // TODO - store the deadzone in C++, right now it's in GOAL code
         int axis_val = ((event.caxis.value + 32768) * 256) / 65536;
-        if (axis_val > (255.0 * m_analog_dead_zone)) {
-          data->analog_data.at(bind.pad_data_index) = axis_val;
-        }
+        data->analog_data.at(bind.pad_data_index) = axis_val;
       }
     } else if (event.caxis.axis >= SDL_CONTROLLER_AXIS_TRIGGERLEFT &&
                event.caxis.axis <= SDL_CONTROLLER_AXIS_TRIGGERRIGHT &&
@@ -138,6 +136,15 @@ void GameController::process_event(const SDL_Event& event, std::shared_ptr<PadDa
     for (const auto& bind : m_binds.buttons.at(event.cbutton.button)) {
       data->button_data.at(bind.pad_data_index) = event.type == SDL_CONTROLLERBUTTONDOWN;
     }
+
+    // Check for commands
+    if (event.type == SDL_CONTROLLERBUTTONDOWN &&
+        commands.controller_binds.find(event.cbutton.button) != commands.controller_binds.end()) {
+      for (const auto& command : commands.controller_binds.at(event.cbutton.button)) {
+        // TODO - check for modifiers
+        command.command();
+      }
+    }
   }
 }
 
@@ -147,15 +154,12 @@ void GameController::close_device() {
   }
 }
 
-int GameController::update_rumble(const int port, const u8 low_rumble, const u8 high_rumble) {
-  // TODO - port!
-  if (port != 0) {
-    return 0;
-  }
+int GameController::update_rumble(const u8 low_rumble, const u8 high_rumble) {
   if (m_device_handle) {
     // https://wiki.libsdl.org/SDL2/SDL_GameControllerRumble
-    // Arbitrary duration, since it's called every frame anyway
-    // SDL expects in the range of 0-0xFFFF, so the `257` is just normalizing the 0-255 we get
+    // Arbitrary duration, since it's called every frame anyway, just so the vibration doesn't last
+    // forever SDL expects in the range of 0-0xFFFF, so the `257` is just normalizing the 0-255 we
+    // get
     if (SDL_GameControllerRumble(m_device_handle, low_rumble * 257, high_rumble * 257, 100) == 0) {
       return 1;
     }
@@ -163,7 +167,9 @@ int GameController::update_rumble(const int port, const u8 low_rumble, const u8 
   return 0;
 }
 
-void KeyboardDevice::process_event(const SDL_Event& event, std::shared_ptr<PadData> data) {
+void KeyboardDevice::process_event(const SDL_Event& event,
+                                   const CommandBindingGroups& commands,
+                                   std::shared_ptr<PadData> data) {
   if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
     const auto key_event = event.key;
     // TODO - handle modifiers
@@ -186,14 +192,25 @@ void KeyboardDevice::process_event(const SDL_Event& event, std::shared_ptr<PadDa
         if (event.type == SDL_KEYDOWN && bind.inverse_val) {
           analog_val = 0;
         }
+        // TODO - fix these!
         data->analog_data.at(bind.pad_data_index) = analog_val;
-        lg::info("{}:{}", key_event.keysym.sym, analog_val);
+      }
+    }
+
+    // Check for commands
+    if (event.type == SDL_KEYDOWN &&
+        commands.keyboard_binds.find(key_event.keysym.sym) != commands.keyboard_binds.end()) {
+      for (const auto& command : commands.keyboard_binds.at(key_event.keysym.sym)) {
+        // TODO - check for modifiers
+        command.command();
       }
     }
   }
 }
 
-void MouseDevice::process_event(const SDL_Event& event, std::shared_ptr<PadData> data) {
+void MouseDevice::process_event(const SDL_Event& event,
+                                const CommandBindingGroups& commands,
+                                std::shared_ptr<PadData> data) {
   // Mouse Button Events
   // https://wiki.libsdl.org/SDL2/SDL_MouseButtonEvent
   if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
@@ -221,6 +238,15 @@ void MouseDevice::process_event(const SDL_Event& event, std::shared_ptr<PadData>
         data->analog_data.at(bind.pad_data_index) = analog_val;
       }
     }
+
+    // Check for commands
+    if (event.type == SDL_MOUSEBUTTONDOWN &&
+        commands.mouse_binds.find(button_event.button) != commands.mouse_binds.end()) {
+      for (const auto& command : commands.mouse_binds.at(button_event.button)) {
+        // TODO - check for modifiers
+        command.command();
+      }
+    }
   } else if (event.type == SDL_MOUSEMOTION) {
     // https://wiki.libsdl.org/SDL2/SDL_MouseMotionEvent
     // TODO - https://wiki.libsdl.org/SDL2/SDL_SetRelativeMouseMode
@@ -231,6 +257,7 @@ void MouseDevice::process_event(const SDL_Event& event, std::shared_ptr<PadData>
 
 InputMonitor::InputMonitor() {
   // Update to latest controller DB file
+  // TODO - load users controller settings
   std::string mapping_path =
       (file_util::get_jak_project_dir() / "game" / "assets" / "sdl_controller_db.txt").string();
   if (file_util::file_exists(mapping_path)) {
@@ -238,37 +265,49 @@ InputMonitor::InputMonitor() {
   } else {
     lg::error("Could not find SDL Controller DB at path `{}`", mapping_path);
   }
-  m_data = std::make_shared<PadData>();
+  // Initialize atleast 2 ports, because that's normal for Jak
+  // more will be allocated if more controllers are found
+  m_data[0] = std::make_shared<PadData>();
+  m_data[1] = std::make_shared<PadData>();
   m_keyboard = KeyboardDevice();
   m_mouse = MouseDevice();
+  if (m_data.find(m_keyboard_and_mouse_port) == m_data.end()) {
+    m_data[m_keyboard_and_mouse_port] = std::make_shared<PadData>();
+  }
+  m_command_binds = CommandBindingGroups();
   refresh_device_list();
 }
 
 InputMonitor::~InputMonitor() {
-  for (auto& device : m_available_devices) {
+  for (auto& device : m_available_controllers) {
     device->close_device();
   }
 }
 
 void InputMonitor::refresh_device_list() {
-  m_available_devices.clear();
+  m_available_controllers.clear();
   // Enumerate devices
-  if (SDL_NumJoysticks() > 0) {
-    for (int i = 0; i < SDL_NumJoysticks(); i++) {
+  const auto num_joysticks = SDL_NumJoysticks();
+  if (num_joysticks > 0) {
+    for (int i = 0; i < num_joysticks; i++) {
       if (!SDL_IsGameController(i)) {
         lg::error("Controller with device id {} is not avaiable via the GameController API", i);
         continue;
       }
-      m_available_devices.push_back(std::make_shared<GameController>(i, 0));
-      // By default, make the first controller we load the active one
-      if (!m_active_device && m_available_devices.at(i)->is_loaded()) {
-        m_active_device = m_available_devices.at(i);
+      m_available_controllers.push_back(std::make_shared<GameController>(i));
+      // By default, controller port mapping is on a first-come-first-served scenario
+      // TODO - change this to use the saved JSON settings to remember what port should prefer a
+      // controller
+      m_controller_port_mapping[i] = i;
+      // Allocate a PadData if this is a new port
+      if (m_data.find(i) == m_data.end()) {
+        m_data[i] = std::make_shared<PadData>();
       }
     }
   }
-  if (!m_active_device) {
+  if (!m_available_controllers.empty()) {
     lg::warn(
-        "No active input device could be found or loaded successfully - inputs will not work!");
+        "No active game controllers could be found or loaded successfully - inputs will not work!");
   }
 }
 
@@ -281,24 +320,58 @@ void InputMonitor::process_sdl_event(const SDL_Event& event) {
     refresh_device_list();
   }
 
-  m_keyboard.process_event(event, m_data);
-  m_mouse.process_event(event, m_data);
+  if (m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
+    m_keyboard.process_event(event, m_command_binds, m_data.at(m_keyboard_and_mouse_port));
+    m_mouse.process_event(event, m_command_binds, m_data.at(m_keyboard_and_mouse_port));
+  }
 
   // Send event to active controller device
   // This goes last so it takes precedence
-  if (m_active_device) {
-    m_active_device->process_event(event, m_data);
+  for (const auto& [port, controller_idx] : m_controller_port_mapping) {
+    if (m_data.find(port) != m_data.end()) {
+      m_available_controllers.at(controller_idx)
+          ->process_event(event, m_command_binds, m_data.at(port));
+    }
   }
 }
 
-std::shared_ptr<PadData> InputMonitor::get_current_data() const {
-  return m_data;
+std::optional<std::shared_ptr<PadData>> InputMonitor::get_current_data(const int port) const {
+  if (m_data.find(port) == m_data.end()) {
+    return {};
+  }
+  return m_data.at(port);
 }
 
 int InputMonitor::update_rumble(int port, u8 low_intensity, u8 high_intensity) {
-  // TODO - port
-  if (m_active_device) {
-    return m_active_device->update_rumble(port, low_intensity, high_intensity);
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return 0;
   }
-  return 0;
+  return m_available_controllers.at(m_controller_port_mapping.at(port))
+      ->update_rumble(low_intensity, high_intensity);
+}
+
+void InputMonitor::register_command(const CommandBinding::Source source,
+                                    const CommandBinding bind) {
+  switch (source) {
+    case CommandBinding::Source::CONTROLLER:
+      if (m_command_binds.controller_binds.find(bind.host_key) ==
+          m_command_binds.controller_binds.end()) {
+        m_command_binds.controller_binds[bind.host_key] = {};
+      }
+      m_command_binds.controller_binds[bind.host_key].push_back(bind);
+      break;
+    case CommandBinding::Source::KEYBOARD:
+      if (m_command_binds.keyboard_binds.find(bind.host_key) ==
+          m_command_binds.keyboard_binds.end()) {
+        m_command_binds.keyboard_binds[bind.host_key] = {};
+      }
+      m_command_binds.keyboard_binds[bind.host_key].push_back(bind);
+      break;
+    case CommandBinding::Source::MOUSE:
+      if (m_command_binds.mouse_binds.find(bind.host_key) == m_command_binds.mouse_binds.end()) {
+        m_command_binds.mouse_binds[bind.host_key] = {};
+      }
+      m_command_binds.mouse_binds[bind.host_key].push_back(bind);
+      break;
+  }
 }

@@ -214,7 +214,7 @@ write_svnrev_h()
 add_subdirectory(sound)
 
 # we build the runtime as a static library.
-add_library(runtime STATIC ${RUNTIME_SOURCE} "../third-party/glad/src/glad.c")
+add_library(runtime STATIC ${RUNTIME_SOURCE} "../third-party/glad/src/glad.c" "system/hid/input_bindings.cpp")
 
 target_link_libraries(runtime common fmt SDL2::SDL2 imgui discord-rpc sound stb_image libco SQLiteCpp)
 if(WIN32)
@@ -223,5 +223,5 @@ else()
     target_link_libraries(runtime pthread dl)
 endif()
 
-add_executable(gk main.cpp)
+add_executable(gk main.cpp "system/hid/input_bindings.cpp")
 target_link_libraries(gk runtime)

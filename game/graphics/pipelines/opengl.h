@@ -33,12 +33,8 @@ class GLDisplay : public GfxDisplay {
   std::shared_ptr<InputMonitor> m_input_monitor;
 
   bool m_should_quit = false;
+  bool m_take_screenshot_next_frame = false;
   void process_sdl_events();
-
-  // TODO remove
-  bool is_cursor_position_valid = false;
-  double last_cursor_x_position = 0;
-  double last_cursor_y_position = 0;
 
   // TODO - all duplication....and likely not needed, more into display manager
   struct DisplayState {

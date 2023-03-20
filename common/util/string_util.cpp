@@ -1,6 +1,8 @@
 #include "string_util.h"
 
+#include <iomanip>
 #include <regex>
+#include <sstream>
 
 #include "common/util/diff.h"
 
@@ -92,5 +94,32 @@ std::vector<std::string> regex_get_capture_groups(const std::string& str,
     }
   }
   return groups;
+}
+
+std::string current_local_timestamp() {
+  std::time_t now = std::time(nullptr);
+  std::tm local_time = *std::localtime(&now);
+  const std::string format = "%Y-%m-%dT%H:%M:%S";
+  std::ostringstream oss;
+  oss << std::put_time(&local_time, format.c_str());
+  return oss.str();
+}
+
+std::string current_local_timestamp_no_colons() {
+  std::time_t now = std::time(nullptr);
+  std::tm local_time = *std::localtime(&now);
+  const std::string format = "%Y-%m-%dT%H-%M-%S";
+  std::ostringstream oss;
+  oss << std::put_time(&local_time, format.c_str());
+  return oss.str();
+}
+
+std::string current_isotimestamp() {
+  std::time_t now = std::time(nullptr);
+  std::tm utc_time = *std::gmtime(&now);
+  const std::string format = "%Y-%m-%dT%H:%M:%SZ";
+  std::ostringstream oss;
+  oss << std::put_time(&utc_time, format.c_str());
+  return oss.str();
 }
 }  // namespace str_util

@@ -569,7 +569,7 @@ u32 get_display_mode() {
   }
 }
 
-// TODO - add a function for setting the screen
+// TODO - add a function for setting the display
 void set_display_mode(u32 symptr) {
   if (symptr == intern_from_c("windowed").offset || symptr == s7.offset) {
     Gfx::set_window_display_mode(WindowDisplayMode::Windowed);
@@ -579,8 +579,6 @@ void set_display_mode(u32 symptr) {
     Gfx::set_window_display_mode(WindowDisplayMode::Fullscreen);
   }
 }
-
-// TODO - I've checked these
 
 /// Returns the name of the display with the given id
 /// or #f if not found / empty
@@ -594,87 +592,18 @@ u64 get_display_name(u32 id) {
 
 void InitMachine_PCPort() {
   // PC Port added functions
-  // init_common_pc_port_functions(make_function_symbol_from_c);
-
-  // TODO - duplication that could be removed with the above, fix later
-  make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
-  make_function_symbol_from_c("__mem-move", (void*)c_memmove);
-  make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
-  make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
-  make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
-  make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
-
-  make_function_symbol_from_c("pc-get-display-count", (void*)get_display_count);
-  make_function_symbol_from_c("pc-get-display-mode", (void*)get_display_mode);
-
-  make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
-  make_function_symbol_from_c("pc-set-display-mode", (void*)set_display_mode);
-  make_function_symbol_from_c("pc-set-vsync", (void*)set_vsync);
-  // TODO - has some issues when set to OFF
-  make_function_symbol_from_c("pc-set-msaa", (void*)set_msaa);
-  make_function_symbol_from_c("pc-set-frame-rate", (void*)set_frame_rate);
+  init_common_pc_port_functions(make_function_symbol_from_c);
 
   // Game specific functions
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
 
-  // pad stuff
-  make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
-  make_function_symbol_from_c("pc-pad-input-map-save!", (void*)Gfx::input_mode_save);
-  make_function_symbol_from_c("pc-pad-input-mode-set", (void*)Gfx::input_mode_set);
-  /*make_function_symbol_from_c("pc-pad-input-pad-set", (void*)Pad::input_mode_pad_set);
-  make_function_symbol_from_c("pc-pad-input-mode-get", (void*)Pad::input_mode_get);
-  make_function_symbol_from_c("pc-pad-input-key-get", (void*)Pad::input_mode_get_key);
-  make_function_symbol_from_c("pc-pad-input-index-get", (void*)Pad::input_mode_get_index);*/
-
-  // NOTE: stuff I've checked
-  
-  
   make_function_symbol_from_c("pc-get-display-name", (void*)get_display_name);
-
-  // os stuff
+  make_function_symbol_from_c("pc-get-display-mode", (void*)get_display_mode);
   make_function_symbol_from_c("pc-get-os", (void*)get_os);
-  make_function_symbol_from_c("pc-get-window-size", (void*)get_window_size);
-  make_function_symbol_from_c("pc-get-window-scale", (void*)get_window_scale);
-  
-  make_function_symbol_from_c("pc-get-screen-size", (void*)get_screen_size);
-  make_function_symbol_from_c("pc-get-screen-rate", (void*)get_screen_rate);
-  make_function_symbol_from_c("pc-get-screen-vmode-count", (void*)get_screen_vmode_count);
-  
-  
-  
-  make_function_symbol_from_c("pc-set-game-resolution", (void*)set_game_resolution);
-  
-  make_function_symbol_from_c("pc-get-unix-timestamp", (void*)get_unix_timestamp);
 
-  // graphics things
-  make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
-  make_function_symbol_from_c("pc-renderer-tree-set-lod", (void*)Gfx::SetLod);
-  make_function_symbol_from_c("pc-set-collision-mode", (void*)Gfx::CollisionRendererSetMode);
-  make_function_symbol_from_c("pc-set-collision-mask", (void*)set_collision_mask);
-  make_function_symbol_from_c("pc-get-collision-mask", (void*)get_collision_mask);
-  make_function_symbol_from_c("pc-set-collision-wireframe", (void*)set_collision_wireframe);
-  make_function_symbol_from_c("pc-set-collision", (void*)set_collision);
-  make_function_symbol_from_c("pc-set-gfx-hack", (void*)set_gfx_hack);
+  make_function_symbol_from_c("pc-set-display-mode", (void*)set_display_mode);
 
-  // file related functions
-  make_function_symbol_from_c("pc-filepath-exists?", (void*)filepath_exists);
-  make_function_symbol_from_c("pc-mkdir-file-path", (void*)mkdir_path);
-
-  // discord rich presence
-  make_function_symbol_from_c("pc-discord-rpc-set", (void*)set_discord_rpc);
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
-
-  // profiler
-  make_function_symbol_from_c("pc-prof", (void*)prof_event);
-
-  // debugging tools
-  make_function_symbol_from_c("pc-filter-debug-string?", (void*)pc_filter_debug_string);
-
-  // init ps2 VM
-  if (VM::use) {
-    make_function_symbol_from_c("vm-ptr", (void*)VM::get_vm_ptr);
-    VM::vm_init();
-  }
 
   // setup string constants
   auto user_dir_path = file_util::get_user_config_dir();

@@ -368,9 +368,9 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
     try {
       Gfx::Loop([]() { return MasterExit == RuntimeExitStatus::RUNNING; });
     } catch (std::exception& e) {
-      fmt::print("Exception thrown from graphics loop: {}\n", e.what());
-      fmt::print("Everything will crash now. good luck\n");
-      throw;
+      lg::error("Exception thrown from graphics loop: {}\n", e.what());
+      lg::error("Everything will crash now. good luck\n");
+      throw e;
     }
   }
 

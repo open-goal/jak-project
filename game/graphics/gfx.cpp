@@ -179,16 +179,14 @@ void poll_events() {
   }
 }
 
-std::shared_ptr<PadData> get_current_frames_pad_data() {
+std::optional<std::shared_ptr<PadData>> get_current_frames_pad_data(const int port) {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_input_monitor()->get_current_data();
+    return Display::GetMainDisplay()->get_input_monitor()->get_current_data(port);
   }
-  // TODO - should this be the return, or should i return an optional?
-  // probably an optional
-  return std::make_shared<PadData>();
+  return {};
 }
 
-int update_rumble(int port, u8 low_intensity, u8 high_intensity) {
+int update_rumble(const int port, const u8 low_intensity, const u8 high_intensity) {
   if (Display::GetMainDisplay()) {
     return Display::GetMainDisplay()->get_input_monitor()->update_rumble(port, low_intensity,
                                                                          high_intensity);

@@ -11,17 +11,15 @@ TODO:
   - Fix MSAA OFF, something to do with `make_fbo`
     - Also hide options beyond the user's MSAA setting (ie. my GPU only supports up to x8, but the menu has x16)
   - Show/Hide cursor based on if mouse controls are enabled
-  - Window position
-    - Set it on startup properly
-  - Monitor stuff
-  - scale
-  - lock resizable window
+  - Window position and set it on startup properly
+  handle edge case of window going outside bounds 
+  - scale testing
+  - selecting monitor
 
   - hiDPI support
     - see https://wiki.libsdl.org/SDL2/SDL_GetRendererOutputSize
 */
 
-// TODO - is force update stil needed?
 enum WindowDisplayMode { Windowed = 0, Fullscreen = 1, Borderless = 2 };
 
 /// https://wiki.libsdl.org/SDL2/SDL_DisplayMode
@@ -97,7 +95,6 @@ class DisplayMonitor {
   std::optional<DisplayMode> m_active_display_mode;
   WindowDisplayMode m_window_display_mode = Windowed;
 
-  // TODO - do i actually need a last/curr?
   int m_curr_window_xpos;
   int m_curr_window_ypos;
   int m_window_width;

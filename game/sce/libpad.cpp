@@ -4,6 +4,7 @@
 
 #include "game/graphics/gfx.h"
 #include "game/kernel/common/kernel_types.h"
+#include "game/system/hid/input_bindings.h"
 
 /*!
  * @file libpad.cpp
@@ -55,37 +56,30 @@ int scePadInfoMode(int /*port*/, int /*slot*/, int term, int offs) {
   return 0;
 }
 
-// order of pressure sensitive buttons in memory (not the same as their bit order...).
-static const PadData::ButtonIndex libpad_PadPressureButtons[] = {
-    PadData::ButtonIndex::DPAD_RIGHT, PadData::ButtonIndex::DPAD_LEFT,
-    PadData::ButtonIndex::DPAD_UP,    PadData::ButtonIndex::DPAD_DOWN,
-    PadData::ButtonIndex::TRIANGLE,   PadData::ButtonIndex::CIRCLE,
-    PadData::ButtonIndex::CROSS,      PadData::ButtonIndex::SQUARE,
-    PadData::ButtonIndex::L1,         PadData::ButtonIndex::R1,
-    PadData::ButtonIndex::L2,         PadData::ButtonIndex::R2};
 // reads controller data and writes it to a buffer in rdata (must be at least 32 bytes large).
 // returns buffer size (32) or 0 on error.
 int scePadRead(int port, int /*slot*/, u8* rdata) {
   auto cpad = (CPadInfo*)(rdata);
-  // Gfx::poll_events();
 
   cpad->valid = 0;  // success
 
   cpad->status = 0x70 /* (dualshock2) */ | (20 / 2); /* (dualshock2 data size) */
 
-  // TODO - port!
-  const auto& pad_data = Gfx::get_current_frames_pad_data();
-  std::tie(cpad->rightx, cpad->righty) = pad_data->analog_right();
-  std::tie(cpad->leftx, cpad->lefty) = pad_data->analog_left();
+  const auto& pad_data = Gfx::get_current_frames_pad_data(port);
+  if (pad_data) {
+    std::tie(cpad->rightx, cpad->righty) = pad_data.value()->analog_right();
+    std::tie(cpad->leftx, cpad->lefty) = pad_data.value()->analog_left();
 
-  // pressure sensitivity. ignore for now.
-  for (int i = 0; i < 12; ++i) {
-    cpad->abutton[1] = pad_data->button_data.at(libpad_PadPressureButtons[i]) * 255;
-  }
+    // pressure sensitivity. ignore for now.
+    for (int i = 0; i < 12; ++i) {
+      cpad->abutton[1] =
+          pad_data.value()->button_data.at(PAD_DATA_PRESSURE_INDEX_ORDER.at(i)) * 255;
+    }
 
-  cpad->button0 = 0;
-  for (int i = 0; i < 16; ++i) {
-    cpad->button0 |= pad_data->button_data.at(i) << i;
+    cpad->button0 = 0;
+    for (int i = 0; i < 16; ++i) {
+      cpad->button0 |= pad_data.value()->button_data.at(i) << i;
+    }
   }
 
   return 32;

@@ -63,4 +63,5 @@ std::vector<u8> decompress_dgo(const std::vector<u8>& data_in);
 FILE* open_file(const fs::path& path, const std::string& mode);
 std::vector<fs::path> find_files_recursively(const fs::path& base_dir, const std::regex& pattern);
 std::vector<fs::path> find_directories_in_dir(const fs::path& base_dir);
+std::string make_screenshot_filepath(const GameVersion game_version, const std::string& name = "");
 }  // namespace file_util
