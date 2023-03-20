@@ -94,8 +94,30 @@ std::array<math::Vector3f, 3> tie_normal_transform_v2(const std::array<math::Vec
   auto& vf11 = m[1];
   // auto& vf12 = m[2];
 
+  //  lui t6, 16256
+  //  mtc1 f1, t6 ;; 1.0
+  //
+  //  qmfc2.i s1, vf10
+  //  mtc1 f12, s1
+  float f12 = vf10.x();
+  //  dsra32 s2, s1, 0
+  //  mtc1 f13, s2
+  float f13 = vf10.y();
+  //  pextuw s2, r0, s2
+  //  mtc1 f14, s2
+  float f14 = vf10.z();
+  //  mula.s f12, f12
+  //  madda.s f13, f13
+  //  madd.s f15, f14, f14
+  float f15 = f12 * f12 + f13 * f13 + f14 * f14;
+  float scale = 1.f / sqrtf(f15);
+  //  rsqrt.s f15, f1, f15
+  //  mfc1 s1, f15
+  //  qmtc2.i vf14, s1
+  //  vmulx.xyz vf16, vf10, vf14
+
   // vmulx.xyz vf16, vf10, vf14
-  math::Vector3f vf16 = vf10.xyz() * 1.0;  // TODO VF14
+  math::Vector3f vf16 = vf10.xyz() * scale;
 
   // vopmula.xyz acc, vf11, vf16
   math::Vector3f acc = vopmula(vf11.xyz(), vf16);

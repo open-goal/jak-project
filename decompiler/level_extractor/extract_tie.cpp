@@ -257,7 +257,6 @@ struct TieProtoVertex {
 // the vertices make up a triangle strip
 struct TieStrip {
   AdgifInfo adgif;
-  int adgif_idx = -1;
   std::vector<TieProtoVertex> verts;
 };
 
@@ -282,6 +281,8 @@ struct TieFrag {
   // this contains vertices, key is the address of the actual xyzf/st/rgbaq data in VU1 memory
   // after the prototype program runs
   std::unordered_map<u32, TieProtoVertex> vertex_by_dest_addr;
+
+  math::Vector<u8, 4> envmap_tint_color = math::Vector<u8, 4>::zero();
 
   // simulate a load in the points data (using vu mem addr)
   math::Vector<float, 4> lq_points(u32 qw) const {
@@ -363,7 +364,6 @@ struct TieProtoInfo {
   u32 proto_flag;
   float stiffness = 0;  // wind
   std::optional<AdgifInfo> envmap_adgif;
-  math::Vector<u8, 4> tint_color = math::Vector<u8, 4>::zero();
   std::vector<tfrag3::TimeOfDayColor> time_of_day_colors;  // c++ type for time of day data
   std::vector<TieFrag> frags;                              // the fragments of the prototype
 };
@@ -628,7 +628,8 @@ u64 alpha_value_for_jak2_tie_or_etie_alpha_override(tfrag3::TieCategory category
 void update_proto_info(std::vector<TieProtoInfo>* out,
                        const std::vector<level_tools::TextureRemap>& map,
                        const std::vector<level_tools::PrototypeBucketTie>& protos,
-                       int geo) {
+                       int geo,
+                       GameVersion version) {
   out->resize(std::max(out->size(), protos.size()));
   for (size_t i = 0; i < protos.size(); i++) {
     const auto& proto = protos[i];
@@ -638,13 +639,17 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
     info.name = proto.name;
     // wind "stiffness" nonzero value means it has the wind effect
     info.stiffness = proto.stiffness;
+    math::Vector<u8, 4> jak2_tint_color;
     if (proto.has_envmap_shader) {
       std::vector<u8> adgif;
       for (auto x : proto.envmap_shader) {
         adgif.push_back(x);
       }
       info.envmap_adgif = process_adgif(adgif, 0, map, nullptr);
-      info.tint_color = proto.tint_color;
+
+      if (version > GameVersion::Jak1) {
+        jak2_tint_color = proto.jak2_tint_color;
+      }
     }
 
     // bool use_crazy_jak2_etie_alpha_thing = proto.has_envmap_shader;
@@ -704,12 +709,47 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         }
       }
 
-      // normals
+      // normals (jak 2)
       const auto& normal_data = proto.geometry[geo].tie_fragments[frag_idx].normals;
       frag_info.normal_data_packed.resize(normal_data.size() / 4);
       for (size_t ni = 0; ni < normal_data.size() / 4; ni++) {
         for (int j = 0; j < 4; j++) {
           frag_info.normal_data_packed[ni][j] = normal_data[ni * 4 + j];
+        }
+      }
+
+      if (version > GameVersion::Jak1) {
+        frag_info.envmap_tint_color = jak2_tint_color;
+      }
+
+      // normals (jak 1)
+      auto& generic = proto.geometry[geo].tie_fragments[frag_idx].generic_data;
+      if (!generic.empty()) {
+        // fmt::print("Generic for frag {} of {}\n", frag_idx, proto.name);
+
+        struct GenericTieHeader {
+          u8 effect;
+          u8 interp_table_size;
+          u8 num_bps;
+          u8 num_ips;
+          math::Vector<u8, 4> tint_color;
+          u16 index_table_offset;
+          u16 kick_table_offset;
+          u16 normal_table_offset;
+          u16 interp_table_offset;
+        };
+        static_assert(sizeof(GenericTieHeader) == 16);
+        ASSERT(generic.size() >= sizeof(GenericTieHeader));
+        GenericTieHeader header;
+        memcpy(&header, generic.data(), sizeof(GenericTieHeader));
+        frag_info.envmap_tint_color = header.tint_color;
+        int normal_count = header.num_bps + header.num_ips;
+        frag_info.normal_data_packed.resize(normal_count);
+        for (int ni = 0; ni < normal_count; ni++) {
+          for (int j = 0; j < 4; j++) {
+            frag_info.normal_data_packed[ni][j] =
+                generic.at(header.normal_table_offset + ni * 4 + j);
+          }
         }
       }
 
@@ -1578,7 +1618,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
           vertex_info.tex.z() = tex_coord.z();
-          vertex_info.envmap_tint_color = proto.tint_color;
+          vertex_info.envmap_tint_color = frag.envmap_tint_color;
           vertex_info.nrm = frag.get_normal_if_present(normal_table_offset++);
 
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
@@ -1622,7 +1662,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
           vertex_info.tex.z() = tex_coord.z();
-          vertex_info.envmap_tint_color = proto.tint_color;
+          vertex_info.envmap_tint_color = frag.envmap_tint_color;
           vertex_info.nrm = frag.get_normal_if_present(normal_table_offset++);
 
           // lg::print("double draw: {} {}\n", dest_ptr, dest2_ptr);
@@ -1746,7 +1786,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
           vertex_info.tex.z() = tex_coord.z();
-          vertex_info.envmap_tint_color = proto.tint_color;
+          vertex_info.envmap_tint_color = frag.envmap_tint_color;
           vertex_info.nrm = frag.get_normal_if_present(normal_table_offset++);
 
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
@@ -1780,7 +1820,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.tex.x() = tex_coord.x();
           vertex_info.tex.y() = tex_coord.y();
           vertex_info.tex.z() = tex_coord.z();
-          vertex_info.envmap_tint_color = proto.tint_color;
+          vertex_info.envmap_tint_color = frag.envmap_tint_color;
           vertex_info.nrm = frag.get_normal_if_present(normal_table_offset++);
 
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
@@ -1805,10 +1845,15 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
     program_end:;
       if (!frag.normal_data_packed.empty()) {
         // check that we have a normal per point, if we have normals
-        size_t rounded_up_dvert = (nd.bp1 + nd.bp2 + nd.ip1 + nd.ip2) + 3;
+        // in ETIE, the normal count must be a multiple of 4 due to VIF upload
+        // in Jak 1, generic processes normals on the EE, so there is no multiple of 4 requirement.
+        // so we allow either a round-up-to-nearest-four or exact match to pass here.
+        size_t total_dvert = nd.bp1 + nd.bp2 + nd.ip1 + nd.ip2;
+        size_t rounded_up_dvert = total_dvert + 3;
         rounded_up_dvert /= 4;
         rounded_up_dvert *= 4;
-        ASSERT(rounded_up_dvert == frag.normal_data_packed.size());
+        ASSERT(rounded_up_dvert == frag.normal_data_packed.size() ||
+               total_dvert == frag.normal_data_packed.size());
       }
       //      ASSERT(false);
     }
@@ -1838,7 +1883,6 @@ void emulate_kicks(std::vector<TieProtoInfo>& protos) {
       ASSERT(frag.prog_info.adgif_offset_in_gif_buf_qw.size() == frag.adgifs.size());
 
       const AdgifInfo* adgif_info = nullptr;
-      int adgif_info_idx = -1;
       int expected_next_tag = 0;
 
       // loop over strgifs
@@ -1848,7 +1892,6 @@ void emulate_kicks(std::vector<TieProtoInfo>& protos) {
           // yep
           int idx = adgif_it - frag.prog_info.adgif_offset_in_gif_buf_qw.begin();
           adgif_info = &frag.adgifs.at(idx);
-          adgif_info_idx = idx;
           // the next strgif should come 6 qw's after
           expected_next_tag += 6;
           adgif_it++;
@@ -1878,7 +1921,6 @@ void emulate_kicks(std::vector<TieProtoInfo>& protos) {
         frag.strips.emplace_back();
         auto& strip = frag.strips.back();
         strip.adgif = *adgif_info;
-        strip.adgif_idx = adgif_info_idx;
         // loop over all the vertices the strgif says we'll have
         for (int vtx = 0; vtx < str_it->nloop; vtx++) {
           // compute the address of this vertex (stored after the strgif)
@@ -2219,6 +2261,15 @@ DrawMode process_draw_mode(const AdgifInfo& info,
   if (version == GameVersion::Jak1) {
     // use alpha from adgif shader, that's what we did in the past (could be wrong?)
     update_mode_from_alpha1(info.alpha_val, mode);
+    if (tfrag3::is_envmap_second_draw_category(category)) {
+      mode.enable_ab();
+    }
+
+    if (tfrag3::is_envmap_first_draw_category(category)) {
+      // decal seems to be somewhat rarely enbaled on envmapped stuff where it's clearly wrong (edge
+      // the fj temple before the room with the blue eco switch)
+      mode.disable_decal();
+    }
   } else {
     if (tfrag3::is_envmap_second_draw_category(category)) {
       // envmap shader gets to control its own alpha
@@ -2259,8 +2310,10 @@ DrawMode process_envmap_draw_mode(const AdgifInfo& info,
 
 TieCategoryInfo get_jak1_tie_category(u32 flags) {
   TieCategoryInfo result;
-  result.category = tfrag3::TieCategory::NORMAL;
   result.uses_envmap = flags & 2;
+  result.category =
+      result.uses_envmap ? tfrag3::TieCategory::NORMAL_ENVMAP : tfrag3::TieCategory::NORMAL;
+  result.envmap_second_draw_category = tfrag3::TieCategory::NORMAL_ENVMAP_SECOND_DRAW;
   return result;
 }
 
@@ -2495,11 +2548,6 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
         ASSERT_NOT_REACHED();
     }
 
-    if (info.uses_envmap && version == GameVersion::Jak1) {
-      // envmap ties go through generic (for now...)
-      continue;
-    }
-
     //    bool using_wind = true;  // hack, for testing
     bool using_wind = proto.stiffness != 0.f;
 
@@ -2692,7 +2740,7 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
     // convert level format data to a nicer format
     auto info =
         collect_instance_info(as_instance_array, &tree->prototypes.prototype_array_tie.data, geo);
-    update_proto_info(&info, tex_map, tree->prototypes.prototype_array_tie.data, geo);
+    update_proto_info(&info, tex_map, tree->prototypes.prototype_array_tie.data, geo, version);
     if (version != GameVersion::Jak2) {
       check_wind_vectors_zero(info, tree->prototypes.wind_vectors);
     }
