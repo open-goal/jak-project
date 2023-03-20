@@ -206,7 +206,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<fs::path>& _dgos,
 
   lg::info("-Loading {} streaming object files...", str_files.size());
   for (auto& obj : str_files) {
-    StrFileReader reader(obj);
+    StrFileReader reader(obj, version());
     // name from the file name
     std::string base_name = obj_filename_to_name(obj.string());
     // name from inside the file (this does a lot of sanity checking)
