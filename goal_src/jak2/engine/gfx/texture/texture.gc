@@ -2346,6 +2346,20 @@ additionally, some texture pages have a chunk system that allows more specific c
       ;; set up dests (no idea why the tpage doesn't come with this set properly)
       (set! (-> obj segment 1 dest) (-> obj segment 0 size))
       (set! (-> obj segment 2 dest) (+ (-> obj segment 0 size) (-> obj segment 1 size)))
+
+      ;; PC port: added texture remap
+      (dotimes (texture-idx (-> obj length))
+        (let ((tex (-> obj data texture-idx)))
+          (when (and tex (nonzero? tex))
+            (let ((offset (__pc-get-tex-remap (the int (-> obj id)) texture-idx)))
+              (when (nonzero? offset)
+                )
+              (+! (-> tex dest 0) offset)
+              )
+            )
+          )
+        )
+
       (let* ((tpage-id (-> obj id))
              (dir-entry (-> *texture-page-dir* entries tpage-id))
              )

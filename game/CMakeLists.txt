@@ -120,6 +120,7 @@ set(RUNTIME_SOURCE
         overlord/ssound.cpp
         overlord/stream.cpp
         graphics/gfx.cpp
+        graphics/jak2_texture_remap.cpp
         graphics/display.cpp
         graphics/sceGraphicsInterface.cpp
         graphics/opengl_renderer/background/background_common.cpp
