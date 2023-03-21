@@ -285,23 +285,28 @@ std::string write_game_text(
   )
 */
 void unpack_comp_rle(s8* dst, s8* src) {
-  int var1, var2;
   while (true) {
+    int amt;
     while (true) {
-      var1 = *(src++);
-      if (var1 <= 0)
+      // how many bytes to duplicate?
+      amt = *(src++);
+      // no more data or copy from src
+      if (amt <= 0)
         break;
-      int var3 = *(src++);
+      // the byte to duplicate
+      int dup = *(src++);
       do {
-        *(dst++) = var3;
-      } while (--var1 > 0);
+        *(dst++) = dup;
+      } while (amt-- > 0);
     }
-    var2 = -var1;
-    if (var1 == 0)
+    // no more data
+    if (amt == 0)
       return;
+    // how many bytes to simply copy?
+    int copy = -amt;
     do {
       *(dst++) = *(src++);
-    } while (--var2 > 0);
+    } while (--copy > 0);
   }
 }
 
@@ -386,8 +391,7 @@ std::vector<SpoolSubtitleRange> process_spool_subtitles(ObjectFileData& data,
                     auto wh = get_word<u32>(words.at(m_ofs));
                     msg.w = wh;
                     msg.h = (wh >> 16) + 1;
-                    msg.w /= 2;
-                    msg.h *= 2;
+                    msg.h--;  // correct height
                     for (int p = 0; p < 16; ++p) {
                       msg.palette[p] = get_word<u32>(words.at(m_ofs + 3 + p));
                     }
@@ -464,9 +468,12 @@ std::string write_spool_subtitles(
             if (dump_images) {
               std::vector<u32> rgba_out;
               rgba_out.resize(msg.w * msg.h);
-              for (int x = 0; x < rgba_out.size(); ++x) {
-                int idx = x & 1 ? msg.data[x / 2] >> 4 : msg.data[x / 2] & 0xf;
-                rgba_out.at(x) = msg.palette[idx];
+              for (int x = 0; x < msg.w; ++x) {
+                for (int y = 0; y < msg.h; ++y) {
+                  int addr = x + y * msg.w;
+                  int idx = x & 1 ? msg.data[addr / 2] >> 4 : msg.data[addr / 2] & 0xf;
+                  rgba_out.at(x + y * msg.w) = msg.palette[idx];
+                }
               }
               file_util::write_rgba_png(image_out / img_name, rgba_out.data(), msg.w, msg.h);
             }
