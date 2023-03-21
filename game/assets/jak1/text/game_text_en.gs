@@ -436,6 +436,12 @@
         "HUB 3 100%")
 (#x1524 "ALL CUTSCENES"
         "ALL CUTSCENES")
+(#x1525 "MULTIPLAYER OPTIONS"
+        "MULTIPLAYER OPTIONS")
+(#x1526 "ADMIN OPTIONS"
+        "ADMIN OPTIONS")
+(#x1527 "PLAYER OPTIONS"
+        "PLAYER OPTIONS")
 
 ;; -----------------
 ;; test (DO NOT TRANSLATE)
