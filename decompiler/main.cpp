@@ -251,6 +251,8 @@ int main(int argc, char** argv) {
     auto result = db.process_tpages(tex_db, textures_out);
     if (!result.empty() && config.process_tpages) {
       file_util::write_text_file(textures_out / "tpage-dir.txt", result);
+      file_util::write_text_file(textures_out / "tex-remap.txt",
+                                 tex_db.generate_texture_dest_adjustment_table());
     }
   }
 

@@ -537,7 +537,7 @@ TPageResultStats process_tpage(ObjectFileData& data,
       file_util::write_rgba_png(texture_dump_dir / fmt::format("{}.png", tex.name), out.data(),
                                 tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
-                             texture_page.name, level_names, tex.num_mips);
+                             texture_page.name, level_names, tex.num_mips, tex.dest[0]);
       stats.successful_textures++;
     } else if (tex.psm == int(PSM::PSMT8) && tex.clutpsm == int(CPSM::PSMCT16)) {
       // will store output pixels, rgba (8888)
@@ -580,7 +580,7 @@ TPageResultStats process_tpage(ObjectFileData& data,
       file_util::write_rgba_png(texture_dump_dir / fmt::format("{}.png", tex.name), out.data(),
                                 tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
-                             texture_page.name, level_names, tex.num_mips);
+                             texture_page.name, level_names, tex.num_mips, tex.dest[0]);
       stats.successful_textures++;
     } else if (tex.psm == int(PSM::PSMCT16) && tex.clutpsm == 0) {
       // not a clut.
@@ -605,7 +605,7 @@ TPageResultStats process_tpage(ObjectFileData& data,
       file_util::write_rgba_png(texture_dump_dir / fmt::format("{}.png", tex.name), out.data(),
                                 tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
-                             texture_page.name, level_names, tex.num_mips);
+                             texture_page.name, level_names, tex.num_mips, tex.dest[0]);
       stats.successful_textures++;
     } else if (tex.psm == int(PSM::PSMT4) && tex.clutpsm == int(CPSM::PSMCT16)) {
       // will store output pixels, rgba (8888)
@@ -646,7 +646,7 @@ TPageResultStats process_tpage(ObjectFileData& data,
       file_util::write_rgba_png(texture_dump_dir / fmt::format("{}.png", tex.name), out.data(),
                                 tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
-                             texture_page.name, level_names, tex.num_mips);
+                             texture_page.name, level_names, tex.num_mips, tex.dest[0]);
       stats.successful_textures++;
     } else if (tex.psm == int(PSM::PSMT4) && tex.clutpsm == int(CPSM::PSMCT32)) {
       // will store output pixels, rgba (8888)
@@ -687,7 +687,7 @@ TPageResultStats process_tpage(ObjectFileData& data,
       file_util::write_rgba_png(texture_dump_dir / fmt::format("{}.png", tex.name), out.data(),
                                 tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
-                             texture_page.name, level_names, tex.num_mips);
+                             texture_page.name, level_names, tex.num_mips, tex.dest[0]);
       stats.successful_textures++;
     } else if (tex.psm == int(PSM::PSMCT32) && tex.clutpsm == 0) {
       // not a clut.
@@ -712,7 +712,7 @@ TPageResultStats process_tpage(ObjectFileData& data,
       file_util::write_rgba_png(texture_dump_dir / fmt::format("{}.png", tex.name), out.data(),
                                 tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
-                             texture_page.name, level_names, tex.num_mips);
+                             texture_page.name, level_names, tex.num_mips, tex.dest[0]);
       stats.successful_textures++;
     }
 
