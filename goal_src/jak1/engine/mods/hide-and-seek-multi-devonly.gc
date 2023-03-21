@@ -1,0 +1,139 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: hide-and-seek-multi-devonly.gc
+;; name in dgo: hide-and-seek-multi-devonly
+;; dgos: TODO
+
+(define *NUMBERDEBUGPAGES* 0)
+(define *CURRENTPAGE* 0)
+
+;;;;;
+;Variables
+;;;;;
+
+;You can change these
+
+(define ball-color *color-red*)
+
+(define ball-text "") 
+
+(define y-coord 140)
+
+(define ball-size (meters 0.75))
+
+(define max-time (seconds 300.0))
+
+(define interval (seconds 0.1))
+
+(define y-adj (meters 1.25))
+
+(define col-int 8) ;int for menu's font color
+
+
+;;;;;
+;ideally not these
+
+(define start-tick (-> *display* base-frame-counter))
+(define max-tick (-> *display* base-frame-counter)) ;tick used to check max time
+(define ghost-on? #f)
+(define vec-ret (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 0.0))
+
+(define page 0) ;menu's page index
+        
+(define page-size 5) ;number of pages used to mod
+
+;;;;;
+;Menu
+;;;;;
+
+(defun gmenu-1 ()
+            
+                (when (cpad-pressed? 0 right)
+                    (set! page (mod (+ page 1) page-size))
+                )
+                (when (cpad-pressed? 0 left)
+                    (set! page (mod (+ (- page 1) page-size) page-size))
+                )
+            
+            ;Start a bucket thing block
+            (with-dma-buffer-add-bucket ((testbuf (-> (current-frame) debug-buf)) (bucket-id debug-no-zbuf))
+              ;(draw-string-xy (string-format "menu l/r ~d, menu u/d ~d" page col-int) testbuf 10 50 (font-color green) (font-flags shadow kerning))
+              (when (= page 2)
+
+(draw-string-xy (string-format "OpenGOAL HTTP Hide and seek Dev menu
+Server Settings
+"
+
+)
+
+                      testbuf 10 y-coord (the font-color col-int) (font-flags shadow kerning))
+                ;;Can do things when certain pages are selected
+                #|(when (cpad-pressed? 0 up)
+                  (format *stdcon* "up")
+                )
+                (when (cpad-pressed? 0 down)
+                  (format *stdcon* "down")
+                )|#
+              )
+
+              (when (= page 4)
+                (draw-string-xy (string-format "Unused Page") testbuf 10 y-coord (the font-color col-int) (font-flags shadow kerning))
+                (if ghost-on? (draw-string-xy (string-format "Playing") testbuf 10 (+ y-coord 10) (the font-color col-int) (font-flags shadow kerning)))
+                (when (cpad-pressed? 0 up)
+                  (none)
+                )
+                (when (cpad-pressed? 0 down)
+                  (none)
+                )
+              )
+
+              (when (= page 3)
+                (clear *temp-string*)
+                (format *temp-string* "OpenGOAL HTTP Hide and seek Dev menu
+Current Player Settings
+Username ~S
+Player slot: ~F 
+Player Position: ~F ~F ~F "
+
+(-> *self-player-info* username)
+(-> *multiplayer-info* player_num)
+(-> *target* root trans x)(-> *target* root trans y)(-> *target* root trans z))
+
+(format *temp-string* "~%Target State ~A
+Target Color: ~S" 
+(-> *target* state name)
+(tgt-color->string (-> *self-player-info* color))
+)
+
+                (draw-string-xy *temp-string*
+                testbuf 10 y-coord (the font-color col-int) (font-flags shadow kerning))
+                (clear *temp-string*)
+              )
+
+              (when (= page 1)
+                (draw-string-xy (string-format "Change font color with dpad up/down") testbuf 10 y-coord (the font-color col-int) (font-flags shadow kerning))
+                (when (cpad-pressed? 0 up)
+                  (+! col-int 1)
+                )
+                (when (cpad-pressed? 0 down)
+                  (-! col-int 1)
+                )
+              )
+
+              (when (= page 0)
+                (draw-string-xy (string-format "Use Dpad to move text up/down~%Use left/right dpad to change windows") testbuf 10 y-coord (the font-color col-int) (font-flags shadow kerning))
+                (when (cpad-pressed? 0 up)
+                  (-! y-coord 5)
+                )
+                (when (cpad-pressed? 0 down)
+                  (+! y-coord 5)
+                )
+              )
+            )
+            ;;Processes should suspend themselves, the loop will resume next frame
+         (none)
+          
+)
+
+

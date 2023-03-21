@@ -18,6 +18,8 @@
 
 (defconstant GAME_MIN_RES_MULT 0.5)
 
+(define-extern toggle-multi-ready-state (function none))
+
 
 (deftype progress-scroll (structure)
   ((transition float)
@@ -96,6 +98,7 @@
 (def-progress-carousell *carousell-speaker* (speaker-always speaker-never speaker-auto))
 (def-progress-carousell *carousell-frame-rate-150fps* (60fps 100fps 150fps))
 (def-progress-carousell *carousell-frame-rate-100fps* (60fps 100fps))
+(def-progress-carousell *carousell-multiplayer-gamemode* (hide-and-seek infected))
 (define *carousell-frame-rate* *carousell-frame-rate-150fps*)
 
 
@@ -106,6 +109,7 @@
 
 
 (define *main-options-pc* (new 'static 'boxed-array :type game-option
+    (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id multiplayer-options) :scale #t :param3 (game-option-menu multiplayer-options))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id game-options) :scale #t :param3 (game-option-menu game-settings))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id graphic-options) :scale #t :param3 (game-option-menu graphic-settings))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id sound-options) :scale #t :param3 (game-option-menu sound-settings))
@@ -118,6 +122,7 @@
   )
 
 (define *main-options-secrets* (new 'static 'boxed-array :type game-option
+    (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id multiplayer-options) :scale #t :param3 (game-option-menu multiplayer-options))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id game-options) :scale #t :param3 (game-option-menu game-settings))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id graphic-options) :scale #t :param3 (game-option-menu graphic-settings))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id sound-options) :scale #t :param3 (game-option-menu sound-settings))
@@ -142,6 +147,7 @@
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id camera-options) :scale #t :param3 (game-option-menu camera-options))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id misc-options) :scale #t :param3 (game-option-menu misc-options))
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type multiplayer-gamemode) :name (game-text-id subtitles-speaker) :scale #t)
     )
   )
 
@@ -184,6 +190,24 @@
     (new 'static 'game-option :option-type (game-option-type normal-inverted) :name (game-text-id camera-controls-third-horz) :scale #t)
     (new 'static 'game-option :option-type (game-option-type normal-inverted) :name (game-text-id camera-controls-third-vert) :scale #t)
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id restore-defaults) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
+    )
+  )
+
+(define *multiplayer-options* (new 'static 'boxed-array :type game-option
+    (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id admin-multiplayer-options) :scale #t :param3 (game-option-menu admin-multiplayer-options))
+    (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id multiplayer-player-options) :scale #t :param3 (game-option-menu multiplayer-player-options))
+    (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
+    )
+  )
+
+(define *admin-multiplayer-options* (new 'static 'boxed-array :type game-option
+    (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
+    )
+  )
+
+(define *multiplayer-player-options* (new 'static 'boxed-array :type game-option
+    (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id ready?) :scale #t)
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
   )
@@ -780,6 +804,9 @@
   ;; our screens!
   (set! (-> *options-remap* (progress-screen aspect-msg))                 *yes-no-options*)
   (set! (-> *options-remap* (progress-screen camera-options))             *camera-options*)
+  (set! (-> *options-remap* (progress-screen multiplayer-options))        *multiplayer-options*)
+  (set! (-> *options-remap* (progress-screen admin-multiplayer-options))        *admin-multiplayer-options*)
+  (set! (-> *options-remap* (progress-screen multiplayer-player-options))        *multiplayer-player-options*)
   (set! (-> *options-remap* (progress-screen misc-options))               *misc-options*)
   (set! (-> *options-remap* (progress-screen accessibility-options))      *accessibility-options*)
   (set! (-> *options-remap* (progress-screen gfx-ps2-options))            *gfx-ps2-options*)
@@ -998,6 +1025,7 @@
                     (game-option-type lod-bg)
                     (game-option-type lod-fg)
                     (game-option-type speaker)
+                    (game-option-type multiplayer-gamemode)
                     (game-option-type frame-rate)
                     (game-option-type language-subtitles)
                     (game-option-type language-text)
@@ -1102,6 +1130,7 @@
                     (game-option-type lod-fg)
                     (game-option-type speaker)
                     (game-option-type frame-rate)
+                    (game-option-type multiplayer-gamemode)
                     (game-option-type language-subtitles)
                     (game-option-type language-text)
                     )
@@ -1260,6 +1289,11 @@
                  (((game-text-id restore-defaults))
                   ;; restore default camera controls
                   (reset-original-camera *pc-settings*)
+                  (sound-play "cursor-options")
+                  )
+                (((game-text-id ready?))
+                  ;; toggle ready state for multiplayer
+                  (toggle-multi-ready-state)
                   (sound-play "cursor-options")
                   )
                  ;; LEVEL SELECT
@@ -1553,6 +1587,13 @@
                     ((150) (set! (-> *progress-carousell* int-backup) 2))
                     )
                   )
+                (((game-option-type multiplayer-gamemode))
+                  (case (-> *pc-settings* target-fps)
+                    ((60) (set! (-> *progress-carousell* int-backup) 0))
+                    ((100) (set! (-> *progress-carousell* int-backup) 1))
+                    ((150) (set! (-> *progress-carousell* int-backup) 2))
+                    )
+                  )
                  (((game-option-type language-subtitles))
                   (let ((cur-lang (get-language-name (-> *pc-settings* subtitle-language))))
                       (dotimes (i (-> *subtitle-languages* length))
@@ -1590,6 +1631,7 @@
                      (((game-option-type lod-bg)) (set! (-> *progress-carousell* current-carousell) *carousell-lod-bg*))
                      (((game-option-type lod-fg)) (set! (-> *progress-carousell* current-carousell) *carousell-lod-bg*))
                      (((game-option-type speaker)) (set! (-> *progress-carousell* current-carousell) *carousell-speaker*))
+                     (((game-option-type multiplayer-gamemode)) (set! (-> *progress-carousell* current-carousell) *carousell-multiplayer-gamemode*))
                      (((game-option-type frame-rate)) (set! (-> *progress-carousell* current-carousell) *carousell-frame-rate*))
                      (((game-option-type language-subtitles)) (set! (-> *progress-carousell* current-carousell) *subtitle-languages*))
                      (((game-option-type language-text)) (set! (-> *progress-carousell* current-carousell) *text-languages*))
@@ -1668,6 +1710,14 @@
                     (load-level-text-files (-> obj display-level-index)))
                 )
                (((game-option-type speaker))
+                ;; same thing.
+                (case (-> *progress-carousell* int-backup)
+                  ((0) (set! (-> *pc-settings* subtitle-speaker?) #t))
+                  ((1) (set! (-> *pc-settings* subtitle-speaker?) #f))
+                  ((2) (set! (-> *pc-settings* subtitle-speaker?) 'auto))
+                  )
+                )
+                (((game-option-type multiplayer-gamemode))
                 ;; same thing.
                 (case (-> *progress-carousell* int-backup)
                   ((0) (set! (-> *pc-settings* subtitle-speaker?) #t))
@@ -2106,6 +2156,7 @@
                    (game-option-type lod-bg)
                    (game-option-type lod-fg)
                    (game-option-type speaker)
+                   (game-option-type multiplayer-gamemode)
                    (game-option-type frame-rate)
                    (game-option-type language-subtitles)
                    (game-option-type language-text)
@@ -2198,6 +2249,7 @@
                     (game-option-type lod-bg)
                     (game-option-type lod-fg)
                     (game-option-type speaker)
+                    (game-option-type multiplayer-gamemode)
                     (game-option-type frame-rate)
                     (game-option-type normal-inverted)
                     )
@@ -2526,7 +2578,7 @@
          (draw-notice-screen self)
          (draw-options self 155 25 0.65)
           )
-        (((progress-screen camera-options) (progress-screen checkpoint-select) (progress-screen speedrun-il-options) (progress-screen speedrun-cat-ext-options))
+        (((progress-screen camera-options) (progress-screen multiplayer-options) (progress-screen admin-multiplayer-options) (progress-screen multiplayer-player-options)(progress-screen checkpoint-select) (progress-screen speedrun-il-options) (progress-screen speedrun-cat-ext-options))
          ;; camera options lines are a bit too big
          (hide-progress-icons)
          (draw-options self 115 25 0.65)
