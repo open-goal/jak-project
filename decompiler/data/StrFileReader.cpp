@@ -13,6 +13,8 @@
 #include "game/common/overlord_common.h"
 #include "game/common/str_rpc_types.h"
 
+#include "third-party/fmt/format.h"
+
 namespace decompiler {
 StrFileReader::StrFileReader(const fs::path& file_path, GameVersion version) : m_version(version) {
   switch (version) {
@@ -206,7 +208,7 @@ std::string StrFileReader::get_full_name(const std::string& short_name) const {
     if (find_string_in_data(chunk.data(), int(chunk.size()), file_info_string, &offset)) {
       offset += file_info_string.length();
     } else {
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("did not find string '{}'", file_info_string));
     }
 
     // extract the name info as a "name" + "chunk id" + "-ag.go" format.

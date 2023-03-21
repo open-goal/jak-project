@@ -87,6 +87,9 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  // these options imply read_spools
+  config.read_spools |= config.process_subtitle_text || config.process_subtitle_images;
+
   // Check if any banned objects are also in the allowed objects list
   // if so, throw an error as this can be a confusing situation
   auto intersection = set_util::intersection(config.allowed_objects, config.banned_objects);
@@ -251,6 +254,16 @@ int main(int argc, char** argv) {
 
   mem_log("After text: {} MB", get_peak_rss() / (1024 * 1024));
 
+  if (config.process_subtitle_text || config.process_subtitle_images) {
+    auto result = db.process_all_spool_subtitles(
+        config, config.process_subtitle_images ? out_folder / "assets" / "subtitle-images" : "");
+    if (!result.empty()) {
+      file_util::write_text_file(out_folder / "assets" / "game_subs.txt", result);
+    }
+  }
+
+  mem_log("After spool handling: {} MB", get_peak_rss() / (1024 * 1024));
+
   decompiler::TextureDB tex_db;
   if (config.process_tpages || config.levels_extract) {
     auto textures_out = out_folder / "textures";
@@ -262,6 +275,7 @@ int main(int argc, char** argv) {
   }
 
   mem_log("After textures: {} MB", get_peak_rss() / (1024 * 1024));
+
   auto replacements_path = file_util::get_jak_project_dir() / "texture_replacements";
   if (fs::exists(replacements_path)) {
     tex_db.replace_textures(replacements_path);
