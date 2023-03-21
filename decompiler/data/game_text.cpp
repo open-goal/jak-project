@@ -463,7 +463,7 @@ std::string write_spool_subtitles(
         } else {
           result += "(";
           if (msg.kind == SpoolSubtitleMessage::Kind::IMAGE) {
-            auto img_name = fmt::format("{}-{}.png", spool_name, image_count++);
+            auto img_name = fmt::format("{}-{}-{}.png", spool_name, i, image_count++);
             result += "image " + img_name;
             if (dump_images) {
               std::vector<u32> rgba_out;
