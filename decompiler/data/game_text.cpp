@@ -468,12 +468,9 @@ std::string write_spool_subtitles(
             if (dump_images) {
               std::vector<u32> rgba_out;
               rgba_out.resize(msg.w * msg.h);
-              for (int x = 0; x < msg.w; ++x) {
-                for (int y = 0; y < msg.h; ++y) {
-                  int addr = x + y * msg.w;
-                  int idx = x & 1 ? msg.data[addr / 2] >> 4 : msg.data[addr / 2] & 0xf;
-                  rgba_out.at(x + y * msg.w) = msg.palette[idx];
-                }
+              for (int px = 0; px < rgba_out.size(); ++px) {
+                int idx = px & 1 ? msg.data[px / 2] >> 4 : msg.data[px / 2] & 0xf;
+                rgba_out.at(px) = msg.palette[idx];
               }
               file_util::write_rgba_png(image_out / img_name, rgba_out.data(), msg.w, msg.h);
             }
