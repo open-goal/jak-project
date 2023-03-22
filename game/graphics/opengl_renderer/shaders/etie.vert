@@ -25,10 +25,7 @@ uniform vec4 persp1;
 uniform mat4 cam_no_persp;
 
 void main() {
-
-    // maybe we could do fog faster using intermediate results from below, but it doesn't seem significant.
-    float fog1 = camera[3].w + camera[0].w * position_in.x + camera[1].w * position_in.y + camera[2].w * position_in.z;
-    fogginess = 255 - clamp(fog1 + hvdf_offset.w, fog_min, fog_max);
+    fogginess = 0;
 
     // rotate the normal
     vec3 nrm_vf23 = cam_no_persp[0].xyz * normal.x
@@ -42,7 +39,7 @@ void main() {
     vf17 += cam_no_persp[1] * position_in.y;
     vf17 += cam_no_persp[2] * position_in.z;
 
-    /*
+
     // This is the ETIE math.
     // It seems right only if the nrm_vf23 is normalized first
     // (and in this case it's identical the emerc math below)
@@ -50,7 +47,7 @@ void main() {
     // likely on PS2, their normal transformation matrix was scaled correctly.
     // ours isn't. (yes, the camera matrix is a pure rotation and that doesn't matter, but the
     // instance matrix used to de-instance the mesh needs the correction, and we don't have it)
-    if (use_emerc_math == 0) {
+    {
         nrm_vf23 = nrm_vf23;
         // nrm.z -= 1
         //subw.z vf23, vf23, vf00
@@ -96,7 +93,7 @@ void main() {
         //addw.xy vf23, vf23, vf03
         nrm_vf23.xy += 0.5;
         tex_coord = nrm_vf23;
-    }*/
+    }
 
     //;; perspective transform
     //mula.xy ACC, vf10, vf17  ;; acc build 1
@@ -111,35 +108,35 @@ void main() {
     float pQ = 1.f / p_proj.w;
 
     // EMERC version of the math
-    {
-        // emerc hack
-        vec3 vf10 = normalize(r_nrm);
-        //subw.z vf10, vf10, vf00 ;; subtract 1 from z
-        vf10.z -= 1;
-        //addw.z vf09, vf00, vf09 ;; xyww the unperspected thing
-        vec4 vf09 = vf17;
-        //mul.xyz vf15, vf09, vf10 ;;
-        vec3 vf15 = vf09.xyz * vf10.xyz;
-        //adday.xyzw vf15, vf15
-        //maddz.x vf15, vf21, vf15
-        float vf15_x = vf15.x + vf15.y + vf15.z;
-        //div Q, vf15.x, vf10.z
-        float qq = vf15_x / vf10.z;
-        //mulaw.xyzw ACC, vf09, vf00
-        vec3 ACC = vf09.xyz;
-        //madd.xyzw vf10, vf10, Q
-        vf10 = ACC + vf10 * qq;
-        //eleng.xyz P, vf10
-        float P = length(vf10.xyz);
-        //mfp.w vf10, P
-        //div Q, vf23.z, vf10.w
-        float qqq = 0.5 / P;
-        //addaz.xyzw vf00, vf23
-        ACC = vec3(0.5, 0.5, 0.5);
-        //madd.xyzw vf10, vf10, Q
-        vf10 = ACC + vf10 * qqq;
-        tex_coord = vf10.xyz;
-    }
+//    {
+//        // emerc hack
+//        vec3 vf10 = normalize(r_nrm);
+//        //subw.z vf10, vf10, vf00 ;; subtract 1 from z
+//        vf10.z -= 1;
+//        //addw.z vf09, vf00, vf09 ;; xyww the unperspected thing
+//        vec4 vf09 = vf17;
+//        //mul.xyz vf15, vf09, vf10 ;;
+//        vec3 vf15 = vf09.xyz * vf10.xyz;
+//        //adday.xyzw vf15, vf15
+//        //maddz.x vf15, vf21, vf15
+//        float vf15_x = vf15.x + vf15.y + vf15.z;
+//        //div Q, vf15.x, vf10.z
+//        float qq = vf15_x / vf10.z;
+//        //mulaw.xyzw ACC, vf09, vf00
+//        vec3 ACC = vf09.xyz;
+//        //madd.xyzw vf10, vf10, Q
+//        vf10 = ACC + vf10 * qq;
+//        //eleng.xyz P, vf10
+//        float P = length(vf10.xyz);
+//        //mfp.w vf10, P
+//        //div Q, vf23.z, vf10.w
+//        float qqq = 0.5 / P;
+//        //addaz.xyzw vf00, vf23
+//        ACC = vec3(0.5, 0.5, 0.5);
+//        //madd.xyzw vf10, vf10, Q
+//        vf10 = ACC + vf10 * qqq;
+//        tex_coord = vf10.xyz;
+//    }
 
 
     vec4 transformed = p_proj * pQ;
@@ -161,5 +158,4 @@ void main() {
 
 
     fragment_color = proto_tint * envmap_tod_tint;
-    
 }

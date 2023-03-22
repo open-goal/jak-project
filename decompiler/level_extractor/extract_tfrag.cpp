@@ -1825,7 +1825,8 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
 
 void process_draw_mode(std::vector<TFragDraw>& all_draws,
                        const std::vector<level_tools::TextureRemap>& map,
-                       tfrag3::TFragmentTreeKind tree_kind) {
+                       tfrag3::TFragmentTreeKind tree_kind,
+                       bool disable_atest_for_normal_tfrag) {
   // set up the draw mode based on the code in background.gc and tfrag-methods.gc
   DrawMode mode;
   mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
@@ -1838,13 +1839,24 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
   switch (tree_kind) {
     case tfrag3::TFragmentTreeKind::NORMAL:
     case tfrag3::TFragmentTreeKind::LOWRES:
-      mode.enable_at();                                  // :ate #x1
-      mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);  // :atst (gs-atest greater-equal)
-      mode.set_aref(0x26);                               // :aref #x26
-      mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
-      mode.enable_zt();                            // :zte #x1
-      mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
-      mode.disable_ab();
+      if (disable_atest_for_normal_tfrag) {
+        mode.enable_at();                                  // :ate #x1
+        mode.set_alpha_test(DrawMode::AlphaTest::ALWAYS);  // :atst (gs-atest greater-equal)
+        mode.set_aref(0x0);                                // :aref #x26
+        mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+        mode.enable_zt();                            // :zte #x1
+        mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
+        mode.disable_ab();
+      } else {
+        mode.enable_at();                                  // :ate #x1
+        mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);  // :atst (gs-atest greater-equal)
+        mode.set_aref(0x26);                               // :aref #x26
+        mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+        mode.enable_zt();                            // :zte #x1
+        mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
+        mode.disable_ab();
+      }
+
       break;
     case tfrag3::TFragmentTreeKind::TRANS:
     case tfrag3::TFragmentTreeKind::LOWRES_TRANS:
@@ -2097,7 +2109,8 @@ void emulate_tfrags(int geom,
                     const TextureDB& tdb,
                     const std::vector<std::pair<int, int>>& expected_missing_textures,
                     bool dump_level,
-                    const std::string& level_name) {
+                    const std::string& level_name,
+                    bool disable_alpha_test_in_normal) {
   TFragExtractStats stats;
 
   std::vector<u8> vu_mem;
@@ -2113,7 +2126,7 @@ void emulate_tfrags(int geom,
     all_draws.insert(all_draws.end(), draws.begin(), draws.end());
   }
 
-  process_draw_mode(all_draws, map, tree_out.kind);
+  process_draw_mode(all_draws, map, tree_out.kind, disable_alpha_test_in_normal);
   auto groups = make_draw_groups(all_draws);
 
   make_tfrag3_data(groups, tree_out, vertices, level_out.textures, tdb, expected_missing_textures,
@@ -2160,7 +2173,8 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
                    const std::vector<std::pair<int, int>>& expected_missing_textures,
                    tfrag3::Level& out,
                    bool dump_level,
-                   const std::string& level_name) {
+                   const std::string& level_name,
+                   bool disable_atest_in_normal) {
   // go through 3 lods(?)
   for (int geom = 0; geom < GEOM_MAX; ++geom) {
     tfrag3::TfragTree this_tree;
@@ -2223,7 +2237,8 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
 
     std::vector<tfrag3::PreloadedVertex> vertices;
     emulate_tfrags(geom, as_tfrag_array->tfragments, debug_name, map, out, this_tree, vertices,
-                   tex_db, expected_missing_textures, dump_level, level_name);
+                   tex_db, expected_missing_textures, dump_level, level_name,
+                   disable_atest_in_normal);
     pack_tfrag_vertices(&this_tree.packed_vertices, vertices);
     extract_time_of_day(tree, this_tree);
 

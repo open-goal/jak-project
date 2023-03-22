@@ -509,6 +509,13 @@ void TieFragment::read_from_file(TypedRef ref,
       auto normals_data_ref = deref_label(get_field_ref(ref, "normal-ref", dts));
       memcpy_plain_data((u8*)normals.data(), normals_data_ref, normals_qwc * 16);
     }
+  } else {
+    u16 generic_qwc = read_plain_data_field<u32>(ref, "generic-count", dts);
+    if (generic_qwc) {
+      generic_data.resize(16 * generic_qwc);
+      auto generic_data_ref = deref_label(get_field_ref(ref, "generic-ref", dts));
+      memcpy_plain_data((u8*)generic_data.data(), generic_data_ref, generic_qwc * 16);
+    }
   }
 }
 
@@ -1056,22 +1063,23 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
     time_of_day.colors.push_back(deref_u32(palette, 3 + i));
   }
 
-  if (version > GameVersion::Jak1) {
-    auto fr = get_field_ref(ref, "envmap-shader", dts);
-    const auto& word = fr.data->words_by_seg.at(fr.seg).at(fr.byte_offset / 4);
-    if (word.kind() == decompiler::LinkedWord::PTR) {
-      has_envmap_shader = true;
-      Ref envmap_shader_ref(deref_label(fr));
-      for (int i = 0; i < 5 * 16; i++) {
-        int byte = envmap_shader_ref.byte_offset + i;
-        u8 val =
-            ref.ref.data->words_by_seg.at(envmap_shader_ref.seg).at(byte / 4).get_byte(byte % 4);
-        envmap_shader[i] = val;
-      }
+  auto fr = get_field_ref(ref, "envmap-shader", dts);
+  const auto& word = fr.data->words_by_seg.at(fr.seg).at(fr.byte_offset / 4);
+  if (word.kind() == decompiler::LinkedWord::PTR) {
+    has_envmap_shader = true;
+    Ref envmap_shader_ref(deref_label(fr));
+    for (int i = 0; i < 5 * 16; i++) {
+      int byte = envmap_shader_ref.byte_offset + i;
+      u8 val = ref.ref.data->words_by_seg.at(envmap_shader_ref.seg).at(byte / 4).get_byte(byte % 4);
+      envmap_shader[i] = val;
     }
+  }
 
+  if (version > GameVersion::Jak1) {
     u32 tint = read_plain_data_field<u32>(ref, "tint-color", dts);
-    memcpy(tint_color.data(), &tint, 4);
+    memcpy(jak2_tint_color.data(), &tint, 4);
+  } else {
+    jak2_tint_color.fill(0xff);
   }
 }
 
@@ -1933,6 +1941,11 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
       remap.new_texid = high;
       texture_remap_table.push_back(remap);
     }
+  }
+
+  if (version > GameVersion::Jak1) {
+    auto ff = get_field_ref(ref, "texture-flags", dts);
+    memcpy_plain_data((u8*)texture_flags, ff, sizeof(u16) * kNumTextureFlags);
   }
 }
 

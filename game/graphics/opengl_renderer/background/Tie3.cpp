@@ -316,12 +316,18 @@ bool Tie3::set_up_common_data_from_dma(DmaFollower& dma, SharedRenderState* rend
     auto proto_mask_data = dma.read_and_advance();
     m_common_data.proto_vis_data = proto_mask_data.data;
     m_common_data.proto_vis_data_size = proto_mask_data.size_bytes;
-    // jak 2 envmap color
-    auto envmap_color = dma.read_and_advance();
-    ASSERT(envmap_color.size_bytes == 16);
-    memcpy(m_common_data.envmap_color.data(), envmap_color.data, 16);
-    m_common_data.envmap_color /= 128.f;
   }
+
+  // envmap color
+  auto envmap_color = dma.read_and_advance();
+  ASSERT(envmap_color.size_bytes == 16);
+  memcpy(m_common_data.envmap_color.data(), envmap_color.data, 16);
+  m_common_data.envmap_color /= 128.f;
+  if (render_state->version == GameVersion::Jak1) {
+    m_common_data.envmap_color *= 2;
+  }
+  m_common_data.envmap_color *= m_envmap_strength;
+
   m_common_data.frame_idx = render_state->frame_idx;
 
   while (dma.current_tag_offset() != render_state->next_bucket) {
@@ -386,11 +392,7 @@ void Tie3::draw_matching_draws_for_all_trees(int geom,
                                              ScopedProfilerNode& prof,
                                              tfrag3::TieCategory category) {
   for (u32 i = 0; i < m_trees[geom].size(); i++) {
-    if (tfrag3::is_envmap_first_draw_category(category)) {
-      draw_matching_draws_for_tree(i, geom, settings, render_state, prof, category);
-    } else {
-      draw_matching_draws_for_tree(i, geom, settings, render_state, prof, category);
-    }
+    draw_matching_draws_for_tree(i, geom, settings, render_state, prof, category);
   }
 }
 
@@ -630,7 +632,7 @@ void Tie3::draw_matching_draws_for_tree(int idx,
 
   glBindVertexArray(0);
 
-  if (use_envmap) {
+  if (use_envmap && m_draw_envmap_second_draw) {
     envmap_second_pass_draw(tree, settings, render_state, prof,
                             tfrag3::get_second_draw_category(category));
   }
@@ -695,6 +697,8 @@ void Tie3::envmap_second_pass_draw(const Tree& tree,
 }
 
 void Tie3::draw_debug_window() {
+  ImGui::Checkbox("envmap 2nd draw", &m_draw_envmap_second_draw);
+  ImGui::SliderFloat("envmap str", &m_envmap_strength, 0, 2);
   ImGui::Checkbox("Fast ToD", &m_use_fast_time_of_day);
   ImGui::SameLine();
   ImGui::Checkbox("All Visible", &m_debug_all_visible);
@@ -992,4 +996,21 @@ void Tie3AnotherCategory::render(DmaFollower& dma,
     ASSERT(false);
   }
   m_parent->render_from_another(render_state, prof, m_category);
+}
+
+Tie3WithEnvmapJak1::Tie3WithEnvmapJak1(const std::string& name, int my_id, int level_id)
+    : Tie3(name, my_id, level_id, tfrag3::TieCategory::NORMAL) {}
+
+void Tie3WithEnvmapJak1::render(DmaFollower& dma,
+                                SharedRenderState* render_state,
+                                ScopedProfilerNode& prof) {
+  Tie3::render(dma, render_state, prof);
+  if (m_enable_envmap) {
+    render_from_another(render_state, prof, tfrag3::TieCategory::NORMAL_ENVMAP);
+  }
+}
+
+void Tie3WithEnvmapJak1::draw_debug_window() {
+  ImGui::Checkbox("envmap", &m_enable_envmap);
+  Tie3::draw_debug_window();
 }

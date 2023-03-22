@@ -99,9 +99,11 @@ class Tie3 : public BucketRenderer {
     TfragRenderSettings settings;
     const u8* proto_vis_data = nullptr;
     u32 proto_vis_data_size = 0;
-    math::Vector4f envmap_color;
+    math::Vector4f envmap_color = math::Vector4f{2.f, 2.f, 2.f, 2.f};
     u64 frame_idx = -1;
   } m_common_data;
+
+  float m_envmap_strength = 1.f;
 
   struct Tree {
     GLuint vertex_buffer;
@@ -150,6 +152,7 @@ class Tie3 : public BucketRenderer {
   bool m_use_fast_time_of_day = true;
   bool m_debug_all_visible = false;
   bool m_hide_wind = false;
+  bool m_draw_envmap_second_draw = true;
 
   TfragPcPortData m_pc_port_data;
 
@@ -182,4 +185,17 @@ class Tie3AnotherCategory : public BucketRenderer {
  private:
   Tie3* m_parent;
   tfrag3::TieCategory m_category;
+};
+
+/*!
+ * Jak 1 - specific renderer that does TIE and TIE envmap in one.
+ */
+class Tie3WithEnvmapJak1 : public Tie3 {
+ public:
+  Tie3WithEnvmapJak1(const std::string& name, int my_id, int level_id);
+  void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
+  void draw_debug_window() override;
+
+ private:
+  bool m_enable_envmap = true;
 };

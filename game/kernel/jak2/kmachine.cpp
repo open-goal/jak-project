@@ -9,6 +9,7 @@
 #include "common/util/FileUtil.h"
 
 #include "game/discord.h"
+#include "game/graphics/jak2_texture_remap.h"
 #include "game/kernel/common/Symbol4.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kboot.h"
@@ -625,6 +626,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
   make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
+  make_function_symbol_from_c("__pc-get-tex-remap", (void*)lookup_jak2_texture_dest_offset);
 
   // pad stuff
   make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
