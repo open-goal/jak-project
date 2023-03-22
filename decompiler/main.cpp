@@ -24,7 +24,7 @@
 template <typename... Args>
 static void mem_log(const std::string& format, Args&&... args) {
 #ifndef _WIN32
-  lg::info(lg::level::info, "[Mem] " + format, std::forward<Args>(args)...);
+  lg::info("[Mem] " + format, std::forward<Args>(args)...);
 #endif
 }
 
