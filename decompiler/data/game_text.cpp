@@ -5,9 +5,12 @@
 #include <map>
 #include <vector>
 
+#include "game_subs.h"
+
 #include "common/goos/Reader.h"
 #include "common/util/BitUtils.h"
 #include "common/util/FontUtils.h"
+#include "common/util/print_float.h"
 
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 
@@ -33,6 +36,9 @@ static const std::unordered_map<GameTextVersion, std::pair<int, int>> sTextCredi
     {GameTextVersion::JAK1_V1, {0xb00, 0xf00}},
     {GameTextVersion::JAK1_V2, {0xb00, 0xf00}}};
 
+bool word_is_type(const LinkedWord& word, const std::string& type_name) {
+  return word.kind() == LinkedWord::TYPE_PTR && word.symbol_name() == type_name;
+}
 }  // namespace
 
 /*
@@ -237,6 +243,247 @@ std::string write_game_text(
       result += fmt::format("\"{}\"\n  ", y);
     }
     result += ")\n\n";
+  }
+
+  return result;
+}
+
+/*
+(defun unpack-comp-rle ((arg0 (pointer int8)) (arg1 (pointer int8)))
+  (local-vars (v1-2 int) (v1-3 uint))
+  (nop!)
+  (loop
+    (loop
+      (set! v1-2 (-> arg1 0))
+      (set! arg1 (&-> arg1 1))
+      (b! (<= v1-2 0) cfg-5 :delay (nop!))
+      (let ((a2-0 (-> arg1 0)))
+        (set! arg1 (&-> arg1 1))
+        (label cfg-3)
+        (nop!)
+        (nop!)
+        (nop!)
+        (nop!)
+        (set! (-> arg0 0) a2-0)
+        )
+      (set! arg0 (&-> arg0 1))
+      (b! (> v1-2 0) cfg-3 :delay (set! v1-2 (+ v1-2 -1)))
+      )
+    (label cfg-5)
+    (b! (zero? v1-2) cfg-8 :delay (set! v1-3 (the-as uint (- v1-2))))
+    (label cfg-6)
+    (let ((a2-1 (-> arg1 0)))
+      (set! arg1 (&-> arg1 1))
+      (nop!)
+      (nop!)
+      (set! (-> arg0 0) a2-1)
+      )
+    (+! v1-3 -1)
+    (b! (> (the-as int v1-3) 0) cfg-6 :delay (set! arg0 (&-> arg0 1)))
+    )
+  (label cfg-8)
+  (none)
+  )
+*/
+void unpack_comp_rle(s8* dst, s8* src) {
+  while (true) {
+    int amt;
+    while (true) {
+      // how many bytes to duplicate?
+      amt = *(src++);
+      // no more data or copy from src
+      if (amt <= 0)
+        break;
+      // the byte to duplicate
+      int dup = *(src++);
+      do {
+        *(dst++) = dup;
+      } while (amt-- > 0);
+    }
+    // no more data
+    if (amt == 0)
+      return;
+    // how many bytes to simply copy?
+    int copy = -amt;
+    do {
+      *(dst++) = *(src++);
+    } while (--copy > 0);
+  }
+}
+
+/*
+(deftype subtitle-range (basic)
+  ((start-frame float :offset-assert 4)
+   (end-frame   float :offset-assert 8)
+   (message    basic 8 :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  ;; Failed to read fields.
+  )
+ */
+
+std::vector<SpoolSubtitleRange> process_spool_subtitles(ObjectFileData& data,
+                                                        GameTextVersion version) {
+  std::vector<SpoolSubtitleRange> result;
+  auto& words = data.linked_data.words_by_seg.at(0);
+
+  // type tag for art-group and get art count
+  ASSERT(word_is_type(words.at(0), "art-group"));
+  auto elt_count = get_word<s32>(words.at(3));
+
+  for (int i = 0; i < elt_count; ++i) {
+    auto art_label = get_label(data, words.at(8 + i));
+    auto art_word_ofs = art_label.offset / 4;
+    if (word_is_type(words.at(art_word_ofs - 1), "art-joint-anim")) {
+      auto lump_for_art_word = words.at(art_word_ofs + 3);
+      if (lump_for_art_word.kind() == LinkedWord::PTR) {
+        // got lump
+        auto lump_word_ofs = get_label(data, lump_for_art_word).offset / 4;
+        ASSERT(word_is_type(words.at(lump_word_ofs - 1), "res-lump"));
+        auto tag_amt = get_word<s32>(words.at(lump_word_ofs));
+        auto data_base = get_label(data, words.at(lump_word_ofs + 2)).offset / 4;
+        auto tag_ofs = get_label(data, words.at(lump_word_ofs + 6)).offset / 4;
+
+        for (int t = 0; t < tag_amt; ++t) {
+          // check for a specific kind of res-tag (name, frame, type and length)
+          if (words.at(tag_ofs).symbol_name() == "subtitle-range" &&
+              get_word<float>(words.at(tag_ofs + 1)) == -1000000000.0f &&
+              word_is_type(words.at(tag_ofs + 2), "array") &&
+              (get_word<u32>(words.at(tag_ofs + 3)) >> 16) == 0x1) {
+            auto data_ofs = get_word<u32>(words.at(tag_ofs + 3)) & 0xffff;
+            data_ofs = data_base + align4(data_ofs) / 4;
+            // the res will be a (array subtitle-range)
+            auto subtitle_array_ofs = get_label(data, words.at(data_ofs)).offset / 4;
+            ASSERT(word_is_type(words.at(subtitle_array_ofs + 2), "subtitle-range"));
+            auto subtitle_amount = get_word<s32>(words.at(subtitle_array_ofs));
+
+            for (int s = 0; s < subtitle_amount; ++s) {
+              auto subtitle_lbl = get_label(data, words.at(subtitle_array_ofs + 3 + s));
+              auto subtitle_ofs = subtitle_lbl.offset / 4;
+              // add our new subtitle range
+              auto& subtitles = result.emplace_back();
+              subtitles.start_frame = get_word<float>(words.at(subtitle_ofs));
+              subtitles.end_frame = get_word<float>(words.at(subtitle_ofs + 1));
+
+              for (int m = 0; m < 8; ++m) {
+                // process the message for each language
+                auto& msg = subtitles.message[m];
+                const auto& msg_ptr = words.at(subtitle_ofs + 2 + m);
+                if (msg_ptr.kind() == LinkedWord::Kind::SYM_PTR && msg_ptr.symbol_name() == "#f") {
+                  msg.kind = SpoolSubtitleMessage::Kind::NIL;
+                } else {
+                  auto m_lbl = get_label(data, msg_ptr);
+                  auto m_ofs = m_lbl.offset / 4;
+                  auto m_type_w = words.at(m_ofs - 1);
+                  ASSERT(m_type_w.kind() == LinkedWord::TYPE_PTR);
+                  if (m_type_w.symbol_name() == "string") {
+                    msg.kind = SpoolSubtitleMessage::Kind::STRING;
+                    auto text = data.linked_data.get_goal_string_by_label(m_lbl);
+                    // escape characters
+                    if (font_bank_exists(version)) {
+                      msg.text = get_font_bank(version)->convert_game_to_utf8(text.c_str());
+                    } else {
+                      msg.text = goos::get_readable_string(text.c_str());  // HACK!
+                    }
+                  } else if (m_type_w.symbol_name() == "subtitle-image") {
+                    msg.kind = SpoolSubtitleMessage::Kind::IMAGE;
+                    auto wh = get_word<u32>(words.at(m_ofs));
+                    msg.w = wh;
+                    msg.h = (wh >> 16) + 1;
+                    msg.h--;  // correct height
+                    for (int p = 0; p < 16; ++p) {
+                      msg.palette[p] = get_word<u32>(words.at(m_ofs + 3 + p));
+                    }
+
+                    // unpack the image data. we have no idea what the input size is,
+                    // so we just copy all of the plain data after this.
+                    auto img_data_ofs = m_ofs + 3 + 16;
+                    int img_data_top = words.size();
+                    for (int check = img_data_ofs; check < img_data_top; ++check) {
+                      if (words.at(check).kind() != LinkedWord::Kind::PLAIN_DATA) {
+                        img_data_top = check;
+                        break;
+                      }
+                    }
+                    // it's a 4-bit image, meaning 2 pixels per byte, so we round up.
+                    msg.data.resize(align2(msg.w * msg.h / 2));
+                    std::vector<u8> input_data;
+                    input_data.resize((img_data_top - img_data_ofs) * 4);
+                    for (int copy = 0; copy < (img_data_top - img_data_ofs); ++copy) {
+                      *((u32*)(input_data.data() + copy * 4)) =
+                          get_word<u32>(words.at(img_data_ofs + copy));
+                    }
+                    // unpack now! hopefully there was enough input data...
+                    unpack_comp_rle((s8*)msg.data.data(), (s8*)input_data.data());
+                  } else {
+                    ASSERT_MSG(false, fmt::format("unknown subtitle message type {}",
+                                                  m_type_w.symbol_name()));
+                  }
+                }
+              }
+            }
+          }
+          tag_ofs += 4;
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+std::string write_spool_subtitles(
+    GameTextVersion version,
+    const fs::path& image_out,
+    const std::unordered_map<std::string, std::vector<SpoolSubtitleRange>>& data) {
+  // write!
+  std::string result;  // = "\xEF\xBB\xBF";  // UTF-8 encode (don't need this anymore)
+
+  bool dump_images = !image_out.empty();
+  if (dump_images) {
+    file_util::create_dir_if_needed(image_out);
+  }
+
+  for (auto& [spool_name, subs] : data) {
+    int image_count = 0;
+    result += "(\"" + spool_name + "\"\n";
+    for (auto& sub : subs) {
+      std::string temp_for_indent = fmt::format("  (({} {}) (", float_to_string(sub.start_frame),
+                                                float_to_string(sub.end_frame));
+      auto indent = temp_for_indent.length();
+      result += temp_for_indent;
+      for (int i = 0; i < 8; ++i) {
+        const auto& msg = sub.message[i];
+        if (i > 0) {
+          result += "\n" + std::string(indent, ' ');
+        }
+        if (msg.kind == SpoolSubtitleMessage::Kind::NIL) {
+          result += "#f";
+        } else {
+          result += "(";
+          if (msg.kind == SpoolSubtitleMessage::Kind::IMAGE) {
+            auto img_name = fmt::format("{}-{}-{}.png", spool_name, i, image_count++);
+            result += "image " + img_name;
+            if (dump_images) {
+              std::vector<u32> rgba_out;
+              rgba_out.resize(msg.w * msg.h);
+              for (int px = 0; px < rgba_out.size(); ++px) {
+                int idx = px & 1 ? msg.data[px / 2] >> 4 : msg.data[px / 2] & 0xf;
+                rgba_out.at(px) = msg.palette[idx];
+              }
+              file_util::write_rgba_png(image_out / img_name, rgba_out.data(), msg.w, msg.h);
+            }
+          } else if (msg.kind == SpoolSubtitleMessage::Kind::STRING) {
+            result += "\"" + msg.text + "\"";
+          }
+          result += ")";
+        }
+      }
+      result += ")\n   )\n";
+    }
+    result += "  )\n\n";
   }
 
   return result;

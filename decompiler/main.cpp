@@ -21,6 +21,13 @@
 #include "third-party/CLI11.hpp"
 #include "third-party/json.hpp"
 
+template <typename... Args>
+static void mem_log(const std::string& format, Args&&... args) {
+#ifndef _WIN32
+  lg::info("[Mem] " + format, std::forward<Args>(args)...);
+#endif
+}
+
 int main(int argc, char** argv) {
   ArgumentGuard u8_guard(argc, argv);
 
@@ -80,6 +87,9 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  // these options imply read_spools
+  config.read_spools |= config.process_subtitle_text || config.process_subtitle_images;
+
   // Check if any banned objects are also in the allowed objects list
   // if so, throw an error as this can be a confusing situation
   auto intersection = set_util::intersection(config.allowed_objects, config.banned_objects);
@@ -112,11 +122,11 @@ int main(int argc, char** argv) {
 
   Timer decomp_timer;
 
-  lg::info("[Mem] Top of main: {} MB\n", get_peak_rss() / (1024 * 1024));
+  mem_log("Top of main: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   init_opcode_info();
 
-  lg::info("[Mem] After init: {} MB\n", get_peak_rss() / (1024 * 1024));
+  mem_log("After init: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   std::vector<fs::path> dgos, objs, strs;
   for (const auto& dgo_name : config.dgo_names) {
@@ -131,7 +141,7 @@ int main(int argc, char** argv) {
     strs.push_back(in_folder / str_name);
   }
 
-  lg::info("[Mem] After config read: {} MB", get_peak_rss() / (1024 * 1024));
+  mem_log("After config read: {} MB", get_peak_rss() / (1024 * 1024));
 
   // build file database
   lg::info("Setting up object file DB...");
@@ -152,7 +162,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  lg::info("[Mem] After DB setup: {} MB", get_peak_rss() / (1024 * 1024));
+  mem_log("After DB setup: {} MB", get_peak_rss() / (1024 * 1024));
 
   // write out DGO file info
   file_util::write_text_file(out_folder / "dgo.txt", db.generate_dgo_listing());
@@ -169,10 +179,10 @@ int main(int argc, char** argv) {
 
   // process files (required for all analysis)
   db.process_link_data(config);
-  lg::info("[Mem] After link data: {} MB", get_peak_rss() / (1024 * 1024));
+  mem_log("After link data: {} MB", get_peak_rss() / (1024 * 1024));
   db.find_code(config);
   db.process_labels();
-  lg::info("[Mem] After code: {} MB", get_peak_rss() / (1024 * 1024));
+  mem_log("After code: {} MB", get_peak_rss() / (1024 * 1024));
 
   // top level decompile (do this before printing asm so we get function names)
   if (config.find_functions) {
@@ -216,7 +226,7 @@ int main(int argc, char** argv) {
                              config.hacks.types_with_bad_inspect_methods);
   }
 
-  lg::info("[Mem] After decomp: {} MB", get_peak_rss() / (1024 * 1024));
+  mem_log("After decomp: {} MB", get_peak_rss() / (1024 * 1024));
 
   // write out all symbols
   file_util::write_text_file(out_folder / "all-syms.gc", db.dts.dump_symbol_types());
@@ -242,7 +252,17 @@ int main(int argc, char** argv) {
     }
   }
 
-  lg::info("[Mem] After text: {} MB", get_peak_rss() / (1024 * 1024));
+  mem_log("After text: {} MB", get_peak_rss() / (1024 * 1024));
+
+  if (config.process_subtitle_text || config.process_subtitle_images) {
+    auto result = db.process_all_spool_subtitles(
+        config, config.process_subtitle_images ? out_folder / "assets" / "subtitle-images" : "");
+    if (!result.empty()) {
+      file_util::write_text_file(out_folder / "assets" / "game_subs.txt", result);
+    }
+  }
+
+  mem_log("After spool handling: {} MB", get_peak_rss() / (1024 * 1024));
 
   decompiler::TextureDB tex_db;
   if (config.process_tpages || config.levels_extract) {
@@ -256,7 +276,8 @@ int main(int argc, char** argv) {
     }
   }
 
-  lg::info("[Mem] After textures: {} MB", get_peak_rss() / (1024 * 1024));
+  mem_log("After textures: {} MB", get_peak_rss() / (1024 * 1024));
+
   auto replacements_path = file_util::get_jak_project_dir() / "texture_replacements";
   if (fs::exists(replacements_path)) {
     tex_db.replace_textures(replacements_path);
@@ -277,7 +298,7 @@ int main(int argc, char** argv) {
                        config.rip_levels, config.extract_collision, level_out_path);
   }
 
-  lg::info("[Mem] After extraction: {} MB", get_peak_rss() / (1024 * 1024));
+  mem_log("After extraction: {} MB", get_peak_rss() / (1024 * 1024));
 
   if (!config.audio_dir_file_name.empty()) {
     auto streaming_audio_in = in_folder / "VAG";

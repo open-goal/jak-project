@@ -112,10 +112,13 @@ struct Config {
   bool process_game_text = false;
   bool process_game_count = false;
   bool process_art_groups = false;
+  bool process_subtitle_text = false;
+  bool process_subtitle_images = false;
   bool dump_art_group_info = false;
   bool rip_levels = false;
   bool extract_collision = false;
   bool find_functions = false;
+  bool read_spools = false;
 
   bool write_hex_near_instructions = false;
   bool hexdump_code = false;

@@ -62,6 +62,12 @@ Config make_config_via_json(nlohmann::json& json) {
   config.process_game_text = json.at("process_game_text").get<bool>();
   config.process_game_count = json.at("process_game_count").get<bool>();
   config.process_art_groups = json.at("process_art_groups").get<bool>();
+  if (json.contains("process_subtitle_text")) {
+    config.process_subtitle_text = json.at("process_subtitle_text").get<bool>();
+  }
+  if (json.contains("process_subtitle_images")) {
+    config.process_subtitle_images = json.at("process_subtitle_images").get<bool>();
+  }
   config.dump_art_group_info = json.at("dump_art_group_info").get<bool>();
   config.hexdump_code = json.at("hexdump_code").get<bool>();
   config.hexdump_data = json.at("hexdump_data").get<bool>();
@@ -73,6 +79,9 @@ Config make_config_via_json(nlohmann::json& json) {
   config.rip_levels = json.at("rip_levels").get<bool>();
   config.extract_collision = json.at("extract_collision").get<bool>();
   config.generate_all_types = json.at("generate_all_types").get<bool>();
+  if (json.contains("read_spools")) {
+    config.read_spools = json.at("read_spools").get<bool>();
+  }
   if (json.contains("old_all_types_file")) {
     config.old_all_types_file = json.at("old_all_types_file").get<std::string>();
   }
@@ -304,9 +313,11 @@ Config read_config_file(const fs::path& path_to_config_file,
   }
 
   // Then, update any config overrides
-  lg::info("Config Overide: '{}'", override_json);
-  auto cfg_override = parse_commented_json(override_json, "");
-  json.update(cfg_override);
+  if (override_json != "{}" && !override_json.empty()) {
+    lg::info("Config Overide: '{}'", override_json);
+    auto cfg_override = parse_commented_json(override_json, "");
+    json.update(cfg_override);
+  }
 
   // debugging, dump the JSON config to a file
   // fs::path debug_path = path_to_config_file.parent_path() / "config-debug.jsonc";
