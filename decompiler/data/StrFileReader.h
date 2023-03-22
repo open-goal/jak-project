@@ -13,7 +13,6 @@
 #include "common/util/FileUtil.h"
 #include "common/versions.h"
 
-
 namespace decompiler {
 class StrFileReader {
  public:

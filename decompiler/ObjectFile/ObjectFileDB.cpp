@@ -35,7 +35,6 @@
 
 #include "third-party/xdelta3/xdelta3.h"
 
-
 namespace decompiler {
 namespace {
 std::string strip_dgo_extension(const std::string& x) {

@@ -16,7 +16,6 @@
 
 #include "third-party/fmt/core.h"
 
-
 namespace decompiler {
 namespace {
 template <typename T>
