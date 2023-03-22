@@ -178,9 +178,15 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
       if (it != hacks.missing_textures_by_level.end()) {
         expected_missing_textures = it->second;
       }
+      bool atest_disable_flag = false;
+      if (db.version() == GameVersion::Jak2) {
+        if (bsp_header.texture_flags[0] & 1) {
+          atest_disable_flag = true;
+        }
+      }
       extract_tfrag(as_tfrag_tree, fmt::format("{}-{}", dgo_name, i++),
                     bsp_header.texture_remap_table, tex_db, expected_missing_textures, level_data,
-                    false, level_name);
+                    false, level_name, atest_disable_flag);
     } else if (draw_tree->my_type() == "drawable-tree-instance-tie") {
       auto as_tie_tree = dynamic_cast<level_tools::DrawableTreeInstanceTie*>(draw_tree.get());
       ASSERT(as_tie_tree);

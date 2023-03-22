@@ -1942,6 +1942,11 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
       texture_remap_table.push_back(remap);
     }
   }
+
+  if (version > GameVersion::Jak1) {
+    auto ff = get_field_ref(ref, "texture-flags", dts);
+    memcpy_plain_data((u8*)texture_flags, ff, sizeof(u16) * kNumTextureFlags);
+  }
 }
 
 std::string BspHeader::print(const PrintSettings& settings) const {
