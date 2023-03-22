@@ -286,10 +286,12 @@ class ObjectFileDB {
   template <typename Func>
   void for_each_obj_in_dgo(const std::string& dgo_name, Func f) {
     ASSERT(obj_files_by_name.size() == obj_file_order.size());
-    const auto& dgo_objs = obj_files_by_dgo.at(dgo_name);
-    for (const auto& rec : dgo_objs) {
-      for (auto& obj : obj_files_by_name.at(rec.name)) {
-        f(obj);
+    if (obj_files_by_dgo.count(dgo_name) > 0) {
+      const auto& dgo_objs = obj_files_by_dgo.at(dgo_name);
+      for (const auto& rec : dgo_objs) {
+        for (auto& obj : obj_files_by_name.at(rec.name)) {
+          f(obj);
+        }
       }
     }
   }
