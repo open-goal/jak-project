@@ -29,11 +29,12 @@
 #include "decompiler/data/StrFileReader.h"
 #include "decompiler/data/dir_tpages.h"
 #include "decompiler/data/game_count.h"
-#include "decompiler/data/game_text.h"
 #include "decompiler/data/game_subs.h"
+#include "decompiler/data/game_text.h"
 #include "decompiler/data/tpage.h"
 
 #include "third-party/xdelta3/xdelta3.h"
+
 
 namespace decompiler {
 namespace {

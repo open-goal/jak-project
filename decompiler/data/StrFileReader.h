@@ -9,9 +9,10 @@
 #include <vector>
 
 #include "common/common_types.h"
-#include "common/versions.h"
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
+#include "common/versions.h"
+
 
 namespace decompiler {
 class StrFileReader {

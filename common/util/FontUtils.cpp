@@ -1053,7 +1053,7 @@ static std::vector<EncodeInfo> s_encode_info_jak2 = {
     {"¿", {0x18}},      // inverted question mark
     {"ç", {0x1d}},      // c-cedilla
     {"Ç", {0x1e}},      // c-cedilla
-    {"ß", {0x1f}},  // eszett
+    {"ß", {0x1f}},      // eszett
 
     {"œ", {0x5e}},  // ligature o+e
     // Re-purposed japanese/korean symbols that are used as part of drawing icons/flags/pad buttons
