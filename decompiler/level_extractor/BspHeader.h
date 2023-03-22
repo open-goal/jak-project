@@ -827,6 +827,9 @@ struct BspHeader {
   //      (texture-remap-table (pointer uint64) :offset-assert 52)
   //  (texture-remap-table-len int32 :offset-assert 56)
   std::vector<TextureRemap> texture_remap_table;
+
+  static constexpr int kNumTextureFlags = 10;
+  u16 texture_flags[kNumTextureFlags];  // jak 2 only
   //
   //  (texture-ids (pointer texture-id) :offset-assert 60)
   //  (texture-page-count int32 :offset-assert 64)
