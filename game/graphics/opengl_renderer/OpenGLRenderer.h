@@ -22,7 +22,7 @@ struct RenderOptions {
   bool draw_filters_window = false;
 
   // internal rendering settings - The OpenGLRenderer will internally use this resolution/format.
-  int msaa_samples = 4;
+  int msaa_samples = 2;
   int game_res_w = 640;
   int game_res_h = 480;
 
@@ -36,9 +36,6 @@ struct RenderOptions {
   // logic inside of the game - it needs to know the desired aspect ratio.
   int draw_region_height = 0;
   int draw_region_width = 0;
-
-  // windows-specific tweaks to the size of the drawing area in borderless.
-  bool borderless_windows_hacks = false;
 
   bool save_screenshot = false;
   std::string screenshot_path;

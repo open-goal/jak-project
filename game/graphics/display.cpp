@@ -51,13 +51,6 @@ int GfxDisplay::width() {
 int GfxDisplay::height() {
   int h;
   Gfx::get_active_display_size(NULL, &h);
-#ifdef _WIN32
-  // TODO - hack still needed?
-  // if (last_fullscreen_mode() == WindowDisplayMode::Borderless) {
-  //  // windows borderless hack
-  //  h--;
-  //}
-#endif
   return h;
 }
 

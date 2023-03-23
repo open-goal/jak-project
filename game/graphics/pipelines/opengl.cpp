@@ -270,7 +270,6 @@ void render_game_frame(int game_width,
                        int draw_region_width,
                        int draw_region_height,
                        int msaa_samples,
-                       bool windows_borderless_hack,
                        bool take_screenshot) {
   // wait for a copied chain.
   bool got_chain = false;
@@ -300,7 +299,6 @@ void render_game_frame(int game_width,
     options.draw_filters_window = g_gfx_data->debug_gui.should_draw_filters_menu();
     options.save_screenshot = false;
     options.gpu_sync = g_gfx_data->debug_gui.should_gl_finish();
-    options.borderless_windows_hacks = windows_borderless_hack;
 
     if (take_screenshot) {
       options.save_screenshot = true;
@@ -462,13 +460,6 @@ void GLDisplay::render() {
   // framebuffer size
   int fbuf_w, fbuf_h;
   SDL_GL_GetDrawableSize(m_window, &fbuf_w, &fbuf_h);
-  bool windows_borderless_hacks = false;
-#ifdef _WIN32
-  // TODO - is this still needed?
-  if (m_display_manager->get_window_display_mode() == WindowDisplayMode::Borderless) {
-    windows_borderless_hacks = true;
-  }
-#endif
 
   // render game!
   g_gfx_data->debug_gui.master_enable = is_imgui_visible();
@@ -485,7 +476,6 @@ void GLDisplay::render() {
     render_game_frame(
         game_res_w, game_res_h, fbuf_w, fbuf_h, Gfx::g_global_settings.lbox_w,
         Gfx::g_global_settings.lbox_h, Gfx::g_global_settings.msaa_samples,
-        windows_borderless_hacks,
         m_take_screenshot_next_frame && g_gfx_data->debug_gui.screenshot_hotkey_enabled);
     // If we took a screenshot, stop taking them now!
     if (m_take_screenshot_next_frame) {
