@@ -108,9 +108,9 @@
                                )
                        (pad-buttons x)
                        )
-             (zero? (logand (-> self water flags) (water-flags wt09)))
+             (not (logtest? (-> self water flags) (water-flags wt09)))
              (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
-             (zero? (logand (-> self state-flags) (state-flags prevent-jump)))
+             (not (logtest? (-> self state-flags) (state-flags prevent-jump)))
              )
         (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))
         )
@@ -1004,7 +1004,7 @@
     (if (can-hands? #t)
         (go target-running-attack)
         )
-    (if (and (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
+    (if (and (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
              (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (seconds 0.08))
              )
         (go target-falling #f)
@@ -1226,8 +1226,7 @@
     )
   :trans (behavior ()
     ((-> self state-hook))
-    (if (and (or (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1 r1))
-                        )
+    (if (and (or (not (cpad-hold? (-> self control unknown-cpad-info00 number) l1 r1))
                  (logtest? (-> self state-flags) (state-flags prevent-duck))
                  )
              (let ((v1-13 (ja-group)))
@@ -1312,8 +1311,7 @@
   :exit (-> target-duck-stance exit)
   :trans (behavior ()
     ((-> self state-hook))
-    (if (and (or (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1 r1))
-                        )
+    (if (and (or (not (cpad-hold? (-> self control unknown-cpad-info00 number) l1 r1))
                  (logtest? (-> self state-flags) (state-flags prevent-duck))
                  (and (logtest? (-> self water flags) (water-flags wt10))
                       (>= (- (- (-> self control trans y) (- (-> self water base-height) (-> self water wade-height)))) 2457.6)
@@ -1466,8 +1464,8 @@
     (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) x)
              (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 12288.0)
              (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
-                  (zero? (logand (-> self water flags) (water-flags wt09)))
-                  (zero? (logand (-> self state-flags) (state-flags prevent-jump)))
+                  (not (logtest? (-> self water flags) (water-flags wt09)))
+                  (not (logtest? (-> self state-flags) (state-flags prevent-jump)))
                   )
              )
         (go target-double-jump (-> *TARGET-bank* double-jump-height-min) (-> *TARGET-bank* double-jump-height-max))
@@ -1478,9 +1476,9 @@
                   (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
                       (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                       )
-                  (zero? (logand (-> self state-flags) (state-flags prevent-attack)))
-                  (zero? (logand (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump surf08))
-                         )
+                  (not (logtest? (-> self state-flags) (state-flags prevent-attack)))
+                  (not (logtest? (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump surf08))
+                       )
                   )
              )
         (go
@@ -1599,9 +1597,9 @@
                   (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
                       (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                       )
-                  (zero? (logand (-> self state-flags) (state-flags prevent-attack)))
-                  (zero? (logand (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump surf08))
-                         )
+                  (not (logtest? (-> self state-flags) (state-flags prevent-attack)))
+                  (not (logtest? (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump surf08))
+                       )
                   )
              )
         (go
@@ -1699,9 +1697,9 @@
                   (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
                       (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                       )
-                  (zero? (logand (-> self state-flags) (state-flags prevent-attack)))
-                  (zero? (logand (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump surf08))
-                         )
+                  (not (logtest? (-> self state-flags) (state-flags prevent-attack)))
+                  (not (logtest? (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump surf08))
+                       )
                   )
              )
         (go
@@ -1930,7 +1928,7 @@
                     )
               )
           (if (and (< (-> *TARGET-bank* fall-far) f0-1)
-                   (zero? (logand (-> self control status) (cshape-moving-flags on-water)))
+                   (not (logtest? (-> self control status) (cshape-moving-flags on-water)))
                    )
               (go target-hit-ground-hard f0-1)
               )
@@ -2066,19 +2064,19 @@
   )
 
 (defstate target-running-attack (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touched)
        (cond
          (((method-of-type touching-shapes-entry prims-touching?)
-           (the-as touching-shapes-entry (-> arg3 param 0))
+           (the-as touching-shapes-entry (-> event param 0))
            (-> self control)
            (the-as uint 224)
            )
           (let ((gp-1 (target-send-attack
-                        arg0
+                        proc
                         (the-as uint (-> self control unknown-symbol30))
-                        (the-as touching-shapes-entry (-> arg3 param 0))
+                        (the-as touching-shapes-entry (-> event param 0))
                         (-> self control unknown-dword50)
                         (-> self control unknown-dword51)
                         )
@@ -2086,8 +2084,8 @@
                 )
             (when gp-1
               (set! (-> self control unknown-uint20) (the-as uint (-> *display* base-frame-counter)))
-              (let ((v1-9 (if (and (nonzero? arg0) (type-type? (-> arg0 type) process-drawable))
-                              arg0
+              (let ((v1-9 (if (and (nonzero? proc) (type-type? (-> proc type) process-drawable))
+                              proc
                               )
                           )
                     )
@@ -2117,12 +2115,12 @@
             )
           )
          (else
-           (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+           (target-dangerous-event-handler proc arg1 event-type event)
            )
          )
        )
       (else
-        (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+        (target-dangerous-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -2161,7 +2159,7 @@
     (when (!= (-> self state-time) (-> *display* base-frame-counter))
       (if (and (or (smack-surface? #t)
                    (and (>= (-> self control unknown-float63) 0.7)
-                        (zero? (logand (-> self control status) (cshape-moving-flags t-act)))
+                        (not (logtest? (-> self control status) (cshape-moving-flags t-act)))
                         )
                    )
                (begin
@@ -2202,13 +2200,13 @@
       (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) x)
                (and (< 4096.0 (-> self control unknown-float01))
                     (or (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
-                        (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
+                        (not (logtest? (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
                                        (pad-buttons square)
                                        )
-                               )
+                             )
                         )
-                    (zero? (logand (-> self state-flags) (state-flags prevent-jump prevent-attack)))
-                    (zero? (logand (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump)))
+                    (not (logtest? (-> self state-flags) (state-flags prevent-jump prevent-attack)))
+                    (not (logtest? (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump)))
                     )
                )
           (go
@@ -2261,7 +2259,7 @@
         (when (not (ja-min? 0))
           (cond
             ((and (>= (ja-aframe-num 0) 20.0)
-                  (and (and (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
+                  (and (and (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
                             (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (-> *TARGET-bank* ground-timeout))
                             (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                             (let ((v1-39 (ja-group)))
@@ -2288,10 +2286,7 @@
                   )
              (set-forward-vel (the-as float 0.0))
              )
-            ((and (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0)
-                                 (pad-buttons square)
-                                 )
-                         )
+            ((and (not (cpad-hold? (-> self control unknown-cpad-info00 number) square))
                   (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.05))
                   )
              (if (= (-> self control ground-pat material) (pat-material ice))
@@ -2326,7 +2321,7 @@
         (+! gp-2 1)
         )
       )
-    (if (and (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
+    (if (and (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
              (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (-> *TARGET-bank* ground-timeout))
              (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
              (let ((v1-121 (ja-group)))
@@ -2348,15 +2343,15 @@
   )
 
 (defstate target-attack-air (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v0-0 (target-bonk-event-handler arg0 arg1 arg2 arg3)))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((v0-0 (target-bonk-event-handler proc arg1 event-type event)))
       (cond
         (v0-0
           (empty)
           v0-0
           )
         (else
-          (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+          (target-dangerous-event-handler proc arg1 event-type event)
           )
         )
       )
@@ -2596,9 +2591,9 @@
                     (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
                         (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                         )
-                    (zero? (logand (-> self state-flags) (state-flags prevent-attack)))
-                    (zero? (logand (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump surf08))
-                           )
+                    (not (logtest? (-> self state-flags) (state-flags prevent-attack)))
+                    (not (logtest? (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump surf08))
+                         )
                     )
                )
       (set-quaternion! (-> self control) (-> self control dir-targ))
@@ -2668,14 +2663,14 @@
   )
 
 (defstate target-flop (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v0-0 (target-bonk-event-handler arg0 arg1 arg2 arg3)))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((v0-0 (target-bonk-event-handler proc arg1 event-type event)))
       (cond
         (v0-0
           (empty)
           v0-0
           )
-        ((let ((v1-0 arg2))
+        ((let ((v1-0 event-type))
            (= v1-0 'swim)
            )
          (cond
@@ -2697,7 +2692,7 @@
            )
          )
         (else
-          (target-dangerous-event-handler arg0 arg1 arg2 arg3)
+          (target-dangerous-event-handler proc arg1 event-type event)
           )
         )
       )
@@ -2916,13 +2911,13 @@
   )
 
 (defstate target-flop-hit-ground (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('swim)
        #f
        )
       (else
-        (target-standard-event-handler arg0 arg1 arg2 arg3)
+        (target-standard-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -2989,11 +2984,11 @@
   )
 
 (defstate target-wheel (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (= arg2 'touched)
-        (send-event arg0 'roll)
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (= event-type 'touched)
+        (send-event proc 'roll)
         )
-    (target-standard-event-handler arg0 arg1 arg2 arg3)
+    (target-standard-event-handler proc arg1 event-type event)
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -3178,7 +3173,7 @@
         )
       )
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
+    (while (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
       (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.01))
         (when (not (ja-group? eichar-jump-loop-ja))
           (ja-channel-push! 1 (seconds 0.1))
@@ -3241,7 +3236,3 @@
     )
   :post target-post
   )
-
-
-
-

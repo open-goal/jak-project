@@ -107,10 +107,10 @@
     )
   )
 
-(defskelgroup skel-ginsu ginsu 0 5
-              ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+(defskelgroup skel-ginsu ginsu ginsu-lod0-jg ginsu-idle-ja
+              ((ginsu-lod0-mg (meters 20)) (ginsu-lod1-mg (meters 40)) (ginsu-lod2-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 2.5)
-              :shadow 4
+              :shadow ginsu-shadow-mg
               :origin-joint-index 8
               )
 
@@ -205,7 +205,35 @@
     :default-hit-points 1
     :gnd-collide-with (collide-spec backgnd)
     :overlaps-others-collide-with-filter (collide-spec jak bot enemy hit-by-others-list player-list)
-    :penetrate-knocked #x11fffdffa
+    :penetrate-knocked (penetrate
+      generic-attack
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-giant
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      knocked
+      )
     :movement-gravity (meters -100)
     :friction 0.8
     :attack-shove-back (meters 3)
@@ -520,7 +548,7 @@
        )
       (('touch 'bonk 'attack)
        (cond
-         ((or (!= arg0 *target*) (logtest? (focus-status dark) (-> *target* focus-status)))
+         ((or (!= arg0 *target*) (focus-test? *target* dark))
           ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
           )
          (else
@@ -669,7 +697,7 @@
     0
     (set! (-> self state-time) (-> self clock frame-counter))
     (ja-channel-push! 1 (seconds 0.2))
-    (ja :group! (-> self draw art-group data 5) :num! min)
+    (ja :group! ginsu-idle-ja :num! min)
     (none)
     )
   :exit (behavior ()
@@ -682,10 +710,10 @@
     )
   :trans (behavior ()
     (if (not (and (handle->process (-> self focus handle))
-                  (zero? (logand (-> (the-as process-focusable (handle->process (-> self focus handle))) focus-status)
+                  (not (logtest? (-> (the-as process-focusable (handle->process (-> self focus handle))) focus-status)
                                  (focus-status disable dead ignore grabbed)
                                  )
-                         )
+                       )
                   )
              )
         (go-virtual circling)
@@ -742,7 +770,7 @@
       )
     0
     (set! (-> self state-time) (-> self clock frame-counter))
-    (ja :group! (-> self draw art-group data 15) :num! min)
+    (ja :group! ginsu-attack-ja :num! min)
     (none)
     )
   :exit (behavior ()
@@ -757,10 +785,10 @@
   :trans (behavior ()
     (enemy-method-49 self)
     (if (not (and (handle->process (-> self focus handle))
-                  (zero? (logand (-> (the-as process-focusable (handle->process (-> self focus handle))) focus-status)
+                  (not (logtest? (-> (the-as process-focusable (handle->process (-> self focus handle))) focus-status)
                                  (focus-status disable dead ignore grabbed)
                                  )
-                         )
+                       )
                   )
              )
         (go-virtual circling)
@@ -808,7 +836,7 @@
     (when (-> self ambush-started)
       (when (zero? (-> self skel active-channels))
         (ja-channel-push! 1 0)
-        (ja :group! (-> self draw art-group data 5) :num! min)
+        (ja :group! ginsu-idle-ja :num! min)
         )
       (vector-seek! (-> self root-override2 scale) (new 'static 'vector :x 1.0 :y 1.0 :z 1.0) 0.02)
       (+! (-> self path-pos) (/ 2048.0 (total-distance (-> self ambush-path))))

@@ -500,7 +500,7 @@
   (let ((t9-0 (method-of-type nav-enemy in-aggro-range?)))
     (and (t9-0 obj arg0 arg1)
          (or (not (logtest? (-> obj fact-info-override enemy-options) (enemy-option user8)))
-             (and (not (logtest? (-> arg0 focus-status) (focus-status in-air)))
+             (and (not (focus-test? arg0 in-air))
                   (>= 4096.0 (fabs (- (-> (get-trans arg0 0) y) (-> obj root-override2 trans y))))
                   )
              )
@@ -655,10 +655,7 @@
       (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
       (let ((gp-0 (-> self on-notice)))
         (if gp-0
-            (eval!
-              (new 'stack 'script-context (the-as basic (process->ppointer self)) self (-> self root-override2 trans))
-              (the-as pair gp-0)
-              )
+            (script-eval (the-as pair gp-0) :vector (-> self root-override2 trans))
             )
         )
       )
@@ -795,7 +792,7 @@
           ((and (< f0-3 20480.0)
                 (and (< (fabs (- (-> s5-0 y) (-> self root-override2 trans y))) 6144.0)
                      gp-0
-                     (zero? (logand (-> (the-as process-focusable gp-0) focus-status) (focus-status disable dead ignore grabbed)))
+                     (not (logtest? (-> (the-as process-focusable gp-0) focus-status) (focus-status disable dead ignore grabbed)))
                      )
                 )
            (go-virtual spin-attack)
@@ -1258,7 +1255,7 @@
           (if (and (< f30-0 20480.0)
                    (and (< (fabs (- (-> s5-0 y) (-> self root-override2 trans y))) 6144.0)
                         gp-0
-                        (zero? (logand (-> (the-as process-focusable gp-0) focus-status) (focus-status disable dead ignore grabbed)))
+                        (not (logtest? (-> (the-as process-focusable gp-0) focus-status) (focus-status disable dead ignore grabbed)))
                         )
                    )
               (go-virtual spin-attack)

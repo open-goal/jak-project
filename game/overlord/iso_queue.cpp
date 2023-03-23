@@ -163,7 +163,8 @@ void FreeBuffer(IsoBufferHeader* buffer) {
 void DisplayQueue() {
   for (int pri = 0; pri < N_PRIORITIES; pri++) {
     for (int cmd = 0; cmd < (int)gPriStack[pri].n; cmd++) {
-      lg::debug("  PRI {} elt {} {}", pri, cmd, gPriStack[pri].names[cmd]);
+      lg::debug("  PRI {} elt {} {} @ #x{:X}", pri, cmd, gPriStack[pri].names[cmd],
+                (u64)gPriStack[pri].cmds[cmd]);
     }
   }
 }
@@ -180,7 +181,7 @@ u32 QueueMessage(IsoMessage* cmd, int32_t priority, const char* name) {
     gPriStack[priority].names[gPriStack[priority].n] = name;
     gPriStack[priority].n++;
     lg::debug("[OVERLORD] Queue {} ({}/{}), {}", priority, gPriStack[priority].n, PRI_STACK_LENGTH,
-              gPriStack[priority].names[gPriStack[priority].n - 1].c_str());
+              name);
     DisplayQueue();
   } else {
     lg::warn("[OVERLORD ISO QUEUE] Failed to queue!");
@@ -200,24 +201,25 @@ void UnqueueMessage(IsoMessage* cmd) {
 
   // loop over priorities
   for (pri = 0; pri < N_PRIORITIES; pri++) {
-    pse = gPriStack + pri;
+    pse = &gPriStack[pri];
 
     // loop over entries
-    for (idx = 0; idx < gPriStack[pri].n; idx++) {
+    for (idx = 0; idx < pse->n; idx++) {
       if (pse->cmds[idx] == cmd) {
         goto found;
       }
     }
   }
   lg::warn("[OVERLORD ISO QUEUE] Failed to unqueue!");
+  return;
 
 found:
-  ASSERT(gPriStack[pri].cmds[idx] == cmd);
+  ASSERT(pse->cmds[idx] == cmd);
 
   // pop
-  gPriStack[pri].n--;
+  pse->n--;
   // and move other entries up.
-  while (idx < gPriStack[pri].n) {
+  while (idx < pse->n) {
     pse->cmds[idx] = pse->cmds[idx + 1];
     idx++;
   }
@@ -233,8 +235,8 @@ found:
 IsoMessage* GetMessage() {
   // loop over all priorities
   for (int pri = (N_PRIORITIES - 1); pri >= 0; pri--) {
-    auto pse = gPriStack + pri;
-    int idx = gPriStack[pri].n;
+    auto pse = &gPriStack[pri];
+    int idx = pse->n;
     for (idx = idx - 1; idx >= 0; idx--) {
       if (pse->cmds[idx]->fd && pse->cmds[idx]->status == CMD_STATUS_IN_PROGRESS &&
           pse->cmds[idx]->ready_for_data) {

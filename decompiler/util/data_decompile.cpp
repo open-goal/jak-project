@@ -945,6 +945,16 @@ const std::unordered_map<
                {"speeches", ArrayFieldDecompMeta(TypeSpec("bot-speech-info"), 16)},
                {"dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
                {"speech-tunings", ArrayFieldDecompMeta(TypeSpec("bot-speech-tuning"), 16)}}},
+             {"hal2-course",
+              {{"spots", ArrayFieldDecompMeta(TypeSpec("bot-spot"), 32)},
+               {"speeches", ArrayFieldDecompMeta(TypeSpec("bot-speech-info"), 16)},
+               {"dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+               {"speech-tunings", ArrayFieldDecompMeta(TypeSpec("bot-speech-tuning"), 16)}}},
+             {"ruffian-course",
+              {{"spots", ArrayFieldDecompMeta(TypeSpec("bot-spot"), 32)},
+               {"speeches", ArrayFieldDecompMeta(TypeSpec("bot-speech-info"), 16)},
+               {"dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+               {"speech-tunings", ArrayFieldDecompMeta(TypeSpec("bot-speech-tuning"), 16)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,
@@ -1049,7 +1059,9 @@ goos::Object decompile_structure(const TypeSpec& type,
   enum ByteStatus : u8 { ZERO_UNREAD, HAS_DATA_UNREAD, ZERO_READ, HAS_DATA_READ };
   std::vector<int> field_status_per_byte;
   for (int i = 0; i < byte_count; i++) {
-    auto& w = obj_words.at(i / 4);
+    // auto& w = obj_words.at(i / 4);
+    int b = (offset_location + i);
+    auto& w = words.at(label.target_segment).at(b / 4);
     switch (w.kind()) {
       case LinkedWord::TYPE_PTR:
       case LinkedWord::PTR:
@@ -1058,7 +1070,7 @@ goos::Object decompile_structure(const TypeSpec& type,
         field_status_per_byte.push_back(HAS_DATA_UNREAD);
         break;
       case LinkedWord::PLAIN_DATA: {
-        field_status_per_byte.push_back(w.get_byte(i % 4) ? HAS_DATA_UNREAD : ZERO_UNREAD);
+        field_status_per_byte.push_back(w.get_byte(b % 4) ? HAS_DATA_UNREAD : ZERO_UNREAD);
       } break;
       default:
         throw std::runtime_error("Unsupported word in static data");
@@ -1199,7 +1211,11 @@ goos::Object decompile_structure(const TypeSpec& type,
             }
             std::vector<u8> bytes_out;
             for (int byte_idx = field_start; byte_idx < field_end; byte_idx++) {
-              bytes_out.push_back(obj_words.at(byte_idx / 4).get_byte(byte_idx % 4));
+              int byte_idx_in_seg = byte_idx + label.offset - type_info->get_offset();
+              bytes_out.push_back(words.at(label.target_segment)
+                                      .at(byte_idx_in_seg / 4)
+                                      .get_byte(byte_idx_in_seg % 4));
+              // bytes_out.push_back(obj_words.at(byte_idx / 4).get_byte(byte_idx % 4));
             }
 
             // use more specific types for gif tags.

@@ -9,6 +9,7 @@
 #include "common/util/FileUtil.h"
 
 #include "game/external/discord.h"
+#include "game/graphics/jak2_texture_remap.h"
 #include "game/kernel/common/Symbol4.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kboot.h"
@@ -152,17 +153,17 @@ void InitParms(int argc, const char* const* argv) {
     // new for jak 2
     if (arg == "-user") {
       i++;
-      std::string levelName = argv[i];
-      Msg(6, "dkernel: user %s\n", levelName.c_str());
-      kstrcpy(DebugBootUser, levelName.c_str());
+      std::string userName = argv[i];
+      Msg(6, "dkernel: user %s\n", userName.c_str());
+      kstrcpy(DebugBootUser, userName.c_str());
     }
 
     // new for jak 2
     if (arg == "-art") {
       i++;
-      std::string levelName = argv[i];
-      Msg(6, "dkernel: art-group %s\n", levelName.c_str());
-      kstrcpy(DebugBootArtGroup, levelName.c_str());
+      std::string artGroupName = argv[i];
+      Msg(6, "dkernel: art-group %s\n", artGroupName.c_str());
+      kstrcpy(DebugBootArtGroup, artGroupName.c_str());
       kstrcpy(DebugBootMessage, "art-group");
     }
 
@@ -509,7 +510,7 @@ u64 get_os() {
 
 void pc_set_levels(u32 lev_list) {
   std::vector<std::string> levels;
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < LEVEL_MAX; i++) {
     u32 lev = *Ptr<u32>(lev_list + i * 4);
     std::string ls = Ptr<String>(lev).c()->data();
     if (ls != "none" && ls != "#f" && ls != "") {
@@ -621,6 +622,7 @@ void InitMachine_PCPort() {
   init_common_pc_port_functions(make_function_symbol_from_c);
 
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
+  make_function_symbol_from_c("__pc-get-tex-remap", (void*)lookup_jak2_texture_dest_offset);
 
   // os stuff
   make_function_symbol_from_c("pc-get-os", (void*)get_os);

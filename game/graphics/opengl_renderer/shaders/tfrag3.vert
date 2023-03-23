@@ -10,12 +10,11 @@ uniform float fog_constant;
 uniform float fog_min;
 uniform float fog_max;
 layout (binding = 10) uniform sampler1D tex_T1; // note, sampled in the vertex shader on purpose.
+uniform int decal;
 
 out vec4 fragment_color;
 out vec3 tex_coord;
 out float fogginess;
-
-const float SCISSOR_ADJUST = HEIGHT_SCALE * 512.0/448.0;
 
 void main() {
 
@@ -61,15 +60,18 @@ void main() {
     // hack
     transformed.xyz *= transformed.w;
     // scissoring area adjust
-    transformed.y *= SCISSOR_ADJUST;
+    transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
     gl_Position = transformed;
 
-    // time of day lookup
-    fragment_color = texelFetch(tex_T1, time_of_day_index, 0);
-
-    // color adjustment
-    fragment_color *= 2;
-    fragment_color.a *= 2;
+    if (decal == 1) {
+        fragment_color = vec4(1.0, 1.0, 1.0, 1.0);
+    } else {
+        // time of day lookup
+        fragment_color = texelFetch(tex_T1, time_of_day_index, 0);
+        // color adjustment
+        fragment_color *= 2;
+        fragment_color.a *= 2;
+    }
 
     // fog hack
     if (fragment_color.r < 0.005 && fragment_color.g < 0.005 && fragment_color.b < 0.005) {

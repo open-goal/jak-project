@@ -87,14 +87,14 @@
                  (-> *setting-control* current play-hints)
                  (and (< 0.0 (-> *setting-control* current dialog-volume))
                       (let ((a0-3 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
-                        (or (not a0-3) (zero? (logand (-> a0-3 extra perm status) (entity-perm-status dead))))
+                        (or (not a0-3) (not (logtest? (-> a0-3 extra perm status) (entity-perm-status dead))))
                         )
                       )
                  )
         (when (!= (-> self index) 6)
           (while (and *target*
                       (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
-                      (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                      (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                       )
             (suspend)
             )
@@ -140,13 +140,7 @@
           (let ((v1-61 (-> self index)))
             (cond
               ((zero? v1-61)
-               (level-hint-spawn
-                 (game-text-id training-money)
-                 "asstvb41"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
+               (level-hint-spawn (game-text-id training-money) "asstvb41" (the-as entity #f) *entity-pool* (game-task none))
                (process-spawn pov-camera (-> self entity extra trans) *training-cam-sg* "orbcam" 0 #f '() :to self)
                )
               ((= v1-61 1)
@@ -420,7 +414,7 @@
 
 (defpartgroup group-scarecrow-explode
   :id 143
-  :duration 15
+  :duration (seconds 0.05)
   :bounds (static-bspherem 0 0 0 1)
   :parts ((sp-item 2912) (sp-item 2913) (sp-item 2914) (sp-item 2915) (sp-item 2916))
   )
@@ -568,14 +562,14 @@
 
 (defpartgroup group-scarecrow-joint-explode
   :id 144
-  :duration 15
+  :duration (seconds 0.05)
   :bounds (static-bspherem 0 0 0 1)
   :parts ((sp-item 2912))
   )
 
 (defpartgroup group-scarecrow-hit
   :id 145
-  :duration 15
+  :duration (seconds 0.05)
   :bounds (static-bspherem 0 0 0 1)
   :parts ((sp-item 2913))
   )
@@ -624,98 +618,96 @@
 
 (defstate idle (scarecrow-a)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as
-        object
-        (cond
-          ((= v1-0 'attack)
-           (let* ((s3-0 (-> arg3 param 2))
-                  (s4-0 (get-task-control (game-task training-gimmie)))
-                  (v1-2 (get-reminder s4-0 0))
-                  )
-             (when (!= s3-0 (-> self incomming-attack-id))
-               (set! (-> self incomming-attack-id) s3-0)
-               (cond
-                 ((= (-> self type) scarecrow-b)
-                  )
-                 ((and (= (-> arg3 param 1) 'spin) (zero? v1-2))
-                  (save-reminder s4-0 1 0)
-                  1
-                  )
-                 ((and (= (-> arg3 param 1) 'punch) (= v1-2 1))
-                  (save-reminder s4-0 2 0)
-                  2
-                  )
-                 ((zero? v1-2)
-                  )
-                 ((= v1-2 1)
-                  )
-                 )
-               (let* ((s4-1 arg0)
-                      (v1-14 (if (and (nonzero? s4-1) (type-type? (-> s4-1 type) process-drawable))
-                                 s4-1
-                                 )
-                             )
-                      (f30-0
-                        (cond
-                          (v1-14
-                            (let ((s4-2 (-> self root-override))
-                                  (s2-0 (-> (the-as process-drawable v1-14) root trans))
-                                  )
-                              (deg-diff (y-angle s4-2) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s2-0 (-> s4-2 trans))))
-                              )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('attack)
+         (let* ((s3-0 (-> event param 2))
+                (s4-0 (get-task-control (game-task training-gimmie)))
+                (v1-2 (get-reminder s4-0 0))
+                )
+           (when (!= s3-0 (-> self incomming-attack-id))
+             (set! (-> self incomming-attack-id) s3-0)
+             (cond
+               ((= (-> self type) scarecrow-b)
+                )
+               ((and (= (-> event param 1) 'spin) (zero? v1-2))
+                (save-reminder s4-0 1 0)
+                1
+                )
+               ((and (= (-> event param 1) 'punch) (= v1-2 1))
+                (save-reminder s4-0 2 0)
+                2
+                )
+               ((zero? v1-2)
+                )
+               ((= v1-2 1)
+                )
+               )
+             (let* ((s4-1 proc)
+                    (v1-14 (if (and (nonzero? s4-1) (type-type? (-> s4-1 type) process-drawable))
+                               s4-1
+                               )
+                           )
+                    (f30-0
+                      (cond
+                        (v1-14
+                          (let ((s4-2 (-> self root-override))
+                                (s2-0 (-> (the-as process-drawable v1-14) root trans))
+                                )
+                            (deg-diff (y-angle s4-2) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s2-0 (-> s4-2 trans))))
                             )
-                          (else
-                            0.0
-                            )
+                          )
+                        (else
+                          0.0
                           )
                         )
-                      (a0-24 ((method-of-type touching-shapes-entry prims-touching?)
-                              (the-as touching-shapes-entry (-> arg3 param 0))
-                              (the-as collide-shape-moving (-> self root-override))
-                              (the-as uint -1)
-                              )
-                             )
                       )
-                 (go-virtual
-                   hit
-                   f30-0
-                   (if a0-24
-                       (get-middle-of-bsphere-overlap a0-24 (-> self intersection))
-                       (target-pos 0)
-                       )
-                   (the-as
-                     symbol
-                     (and ((method-of-type touching-shapes-entry prims-touching?)
-                           (the-as touching-shapes-entry (-> arg3 param 0))
-                           (the-as collide-shape-moving (-> self root-override))
-                           (the-as uint 2)
+                    (a0-24 ((method-of-type touching-shapes-entry prims-touching?)
+                            (the-as touching-shapes-entry (-> event param 0))
+                            (the-as collide-shape-moving (-> self root-override))
+                            (the-as uint -1)
+                            )
                            )
-                          (or (= (-> self type) scarecrow-a)
-                              (and (= (-> arg0 type) target)
-                                   (logtest? (-> (the-as target arg0) control unknown-surface00 flags) (surface-flags jump))
-                                   (zero? (logand (-> (the-as target arg0) control status) (cshape-moving-flags onsurf)))
-                                   )
-                              )
-                          )
+                    )
+               (go-virtual
+                 hit
+                 f30-0
+                 (if a0-24
+                     (get-middle-of-bsphere-overlap a0-24 (-> self intersection))
+                     (target-pos 0)
                      )
+                 (the-as
+                   symbol
+                   (and ((method-of-type touching-shapes-entry prims-touching?)
+                         (the-as touching-shapes-entry (-> event param 0))
+                         (the-as collide-shape-moving (-> self root-override))
+                         (the-as uint 2)
+                         )
+                        (or (= (-> self type) scarecrow-a)
+                            (and (= (-> proc type) target)
+                                 (logtest? (-> (the-as target proc) control unknown-surface00 flags) (surface-flags jump))
+                                 (not (logtest? (-> (the-as target proc) control status) (cshape-moving-flags onsurf)))
+                                 )
+                            )
+                        )
                    )
                  )
                )
              )
            )
-          ((= v1-0 'touch)
-           (send-shove-back
-             (-> self root-override)
-             arg0
-             (the-as touching-shapes-entry (-> arg3 param 0))
-             0.7
-             6144.0
-             16384.0
-             )
+         )
+        (('touch)
+         (send-shove-back
+           (-> self root-override)
+           proc
+           (the-as touching-shapes-entry (-> event param 0))
+           0.7
+           6144.0
+           16384.0
            )
-          )
+         )
         )
       )
     )
@@ -998,7 +990,3 @@
   (go (method-of-object obj idle))
   (none)
   )
-
-
-
-

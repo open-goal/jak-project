@@ -41,6 +41,11 @@ constexpr int bits_for_sym() {
   return b + 1;
 }
 static_assert(bits_for_sym() != -1, "symbol table invalid length");
+
+// amount of levels in level heap
+constexpr int LEVEL_MAX = 2;
+// total amount of levels, including ones outside level heap (default-level)
+constexpr int LEVEL_TOTAL = LEVEL_MAX + 1;
 }  // namespace jak1
 
 namespace jak2 {
@@ -50,6 +55,11 @@ constexpr s32 SYM_TABLE_MEM_SIZE = 0x30000;
 // from the "off-by-one" symbol pointer
 constexpr int SYM_TO_STRING_OFFSET = 0xff37;
 constexpr int SYM_TO_HASH_OFFSET = 0x1fe6f;
+
+// amount of levels in level heap
+constexpr int LEVEL_MAX = 6;
+// total amount of levels, including ones outside level heap (default-level)
+constexpr int LEVEL_TOTAL = LEVEL_MAX + 1;
 }  // namespace jak2
 
 constexpr s32 max_symbols(GameVersion version) {

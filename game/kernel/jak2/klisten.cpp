@@ -49,7 +49,7 @@ void InitListener() {
   kernel_dispatcher = intern_from_c("kernel-dispatcher");
   sync_dispatcher = intern_from_c("sync-dispatcher");
   kernel_packages = intern_from_c("*kernel-packages*");
-  print_column = intern_from_c("*print-column*").cast<u32>();
+  print_column = intern_from_c("*print-column*").cast<u32>();  // this is wrong
   ListenerLinkBlock->value() = s7.offset;
   ListenerFunction->value() = s7.offset;
   KernelFunction->value() = s7.offset;

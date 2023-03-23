@@ -5,56 +5,59 @@
 ;; name in dgo: texture
 ;; dgos: ENGINE, GAME
 
-;; Jak 2 texture system:
-;; At a high level, the responsibility of the texture system is to make sure that each renderer
-;; can use the textures it needs: the texture should be in VRAM at the right point in time, and
-;; the renderer must know where the texture is in VRAM.
+#|@file
+Jak 2 texture system:
+At a high level, the responsibility of the texture system is to make sure that each renderer
+can use the textures it needs: the texture should be in VRAM at the right point in time, and
+the renderer must know where the texture is in VRAM.
 
-;; An oversimplified explanation is that each "bucket" in the rendering system needs a single
-;; "texture page" (tpage) loaded into VRAM. Each level has a tpage for each category, where the
-;; categories are:
+An oversimplified explanation is that each "bucket" in the rendering system needs a single
+"texture page" (tpage) loaded into VRAM. Each level has a tpage for each category, where the
+categories are:
 
-;; tfrag (background tie/tfrag)
-;; pris  (foreground)
-;; shrub (background shrub)
-;; alpha
-;; water
-;; warp
-;; pris2
-;; sprite
-;; map
-;; sky
+tfrag (background tie/tfrag)
+pris  (foreground)
+shrub (background shrub)
+alpha
+water
+warp
+pris2
+sprite
+map
+sky
 
-;; From the point of view of the rendering code, this oversimplification is basically true.
-;; Renderers use textures by sending "adgif shaders" to the GS. These tell the GS how to use
-;; the texture (mipmapping, size, format) and the location of the texture in VRAM (tbp).
-;; When levels load, they must "log in" their adgif shaders with the texture system, and the texture
-;; system will modify these in place so that things work.
+From the point of view of the rendering code, this oversimplification is basically true.
+Renderers use textures by sending "adgif shaders" to the GS. These tell the GS how to use
+the texture (mipmapping, size, format) and the location of the texture in VRAM (tbp).
+When levels load, they must "log in" their adgif shaders with the texture system, and the texture
+system will modify these in place so that things work.
 
-;; However, behind the scenes, there are many tricks.
+However, behind the scenes, there are many tricks.
 
-;; Texture data falls into two categories:
-;; - boot
-;; - common
+Texture data falls into two categories:
+- boot
+- common
 
-;; "boot"   textures are ones that are loaded on boot, transferred to VRAM, and live there forever.
-;; "common" textures are ones that are loaded as they are needed. There's an area in VRAM
-;;          called the "common segment" that holds these.
+"boot"   textures are ones that are loaded on boot, transferred to VRAM, and live there forever.
+"common" textures are ones that are loaded as they are needed. There's an area in VRAM
+         called the "common segment" that holds these.
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; basic texture page methods
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+basic texture page methods
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; each "texture page" is a group of textures that are (from the point of view of renderers)
-;; loaded all at once to vram, and contain all the textures needed for one category in one level.
+each "texture page" is a group of textures that are (from the point of view of renderers)
+loaded all at once to vram, and contain all the textures needed for one category in one level.
 
-;; however, the texture system does some tricks:
-;; texture pages are divided into three "segments". The smaller number segments contain high
-;; resolution mipmaps of textures (needed for close up), and the high number segments contain lower ones.
-;; by looking at the distance to the closest object, we can figure out if the near textures
-;; are needed or not, and skip segments if needed.
+however, the texture system does some tricks:
+texture pages are divided into three "segments". The smaller number segments contain high
+resolution mipmaps of textures (needed for close up), and the high number segments contain lower ones.
+by looking at the distance to the closest object, we can figure out if the near textures
+are needed or not, and skip segments if needed.
 
-;; additionally, some texture pages have a chunk system that allows more specific control.
+additionally, some texture pages have a chunk system that allows more specific control.
+|#
+
 
 (defmethod print texture-page ((obj texture-page))
   "Print a texture page with name and size."
@@ -659,7 +662,7 @@
   ;; this assumes that the common-segment starts at 0.
   (let ((vram-loc 0))
     ;; loop over all active levels
-    (countdown (level-idx 7)
+    (countdown (level-idx LEVEL_TOTAL)
       (let ((lev (-> *level* level level-idx)))
         (when (or (= (-> lev status) 'active)
                   (= (-> lev status) 'alive)
@@ -697,7 +700,7 @@
   "Lay out hud/map textures from all levels so all can fit into
    VRAM at the same time."
   (let ((level-idx 0))
-    (countdown (vram-loc 7)
+    (countdown (vram-loc LEVEL_TOTAL)
       (let ((lev (-> *level* level vram-loc)))
         (when (or (= (-> lev status) 'active)
                   (= (-> lev status) 'alive)
@@ -740,7 +743,7 @@
   ;; again, assume that common-segment starts at 0
   (let ((vram-loc 0))
     ;; iterate over active levels
-    (countdown (level-idx 7)
+    (countdown (level-idx LEVEL_TOTAL)
       (let ((lev (-> *level* level level-idx)))
         (when (or (= (-> lev status) 'active)
                   (= (-> lev status) 'alive)
@@ -1222,9 +1225,9 @@
       )
 
     ;; not used at all. we don't set merc masks on PC, so this should happen most of the time.
-    (when (not any-uploads)
-      (return 0)
-      )
+    ; (when (not any-uploads)
+    ;   (return 0)
+    ;   )
 
     ;; but non-merc users of this function (like map/hud) will get here
 
@@ -1641,7 +1644,7 @@
           (((tpage-category alpha))
            ;; alpha has some special cases
            (cond
-             ((= (-> lev index) 6) ;; default level
+             ((= (-> lev index) LEVEL_MAX) ;; default level
               ;; if the auto-save-icon-flag is set, upload the alpha texture and clear flag.
               (if (not (-> *bigmap* auto-save-icon-flag))
                   (set! (-> lev upload-size 8)
@@ -1667,7 +1670,7 @@
            )
           (((tpage-category pris))
            ;; pris work like normal, but only 1 tpage.
-           (set! (-> lev upload-size 1) (upload-vram-pages-pris
+           (set! (-> lev upload-size 1) (upload-vram-pages-pris-pc
                                           pool
                                           (-> pool segment-common)
                                           tpage
@@ -1697,7 +1700,7 @@
            )
           (((tpage-category pris2))
            ;; pris2 is normal, 1 tpage.
-           (set! (-> lev upload-size 6) (upload-vram-pages-pris
+           (set! (-> lev upload-size 6) (upload-vram-pages-pris-pc
                                           pool
                                           (-> pool segment-common)
                                           tpage
@@ -1708,7 +1711,7 @@
            )
           (((tpage-category sprite))
            ;; sprite skips uploads if the level isn't drawing, but otherwise uploads the whole thing.
-           (when (or (= (-> lev display?) 'display) (= (-> lev display?) 'actor) (= (-> lev index) 6))
+           (when (or (= (-> lev display?) 'display) (= (-> lev display?) 'actor) (= (-> lev index) LEVEL_MAX))
                  (set! (-> lev upload-size 7)
                        (upload-vram-pages pool (-> pool segment-common) tpage (tex-upload-mode seg0-1-2) bucket)
                        )
@@ -1717,7 +1720,7 @@
           (((tpage-category map))
            ;; map doesn't use masks for the default level.
            (cond
-             ((= (-> lev index) 6)
+             ((= (-> lev index) LEVEL_MAX)
               (set! (-> lev upload-size 8)
                     (upload-vram-pages pool (-> pool segment-common) tpage (tex-upload-mode seg0-1-2) bucket)
                     )
@@ -1744,8 +1747,8 @@
           (cond
             ((= cat (tpage-category warp))
              ;; warps put all their update-texture-anim's with the default level:
-             (when (= (-> lev index) 6)
-               (dotimes (s2-1 7)
+             (when (= (-> lev index) LEVEL_MAX)
+               (dotimes (s2-1 LEVEL_TOTAL)
                  (let ((v1-54 (-> *level* level s2-1)))
                    (when (or (= (-> v1-54 status) 'active) (= (-> v1-54 status) 'reserved))
                      (if (-> v1-54 texture-anim-array 5)
@@ -1841,7 +1844,7 @@
     )
 
   ;; clear upload-size
-  (dotimes (lev-idx 7)
+  (dotimes (lev-idx LEVEL_TOTAL)
     (let ((lev (-> *level* level lev-idx)))
       (when (or (= (-> lev status) 'active) (= (-> lev status) 'reserved))
         (dotimes (a1-6 18)
@@ -1863,7 +1866,7 @@
         )
       (when (and src-level (logtest? (-> *texture-pool* texture-enable-user) (-> tpage-info texture-user)))
         (cond
-          ((= (-> tpage-info level-index) 6)
+          ((= (-> tpage-info level-index) LEVEL_MAX)
            ;; always upload default-level textures
            (add-level-tpage-dma
              arg0
@@ -1889,7 +1892,7 @@
     )
 
   ;; reset masks and closest array for the next frame!
-  (dotimes (v1-16 7)
+  (dotimes (v1-16 LEVEL_TOTAL)
     (let ((a0-30 (-> *level* level v1-16)))
       (when (or (= (-> a0-30 status) 'active) (= (-> a0-30 status) 'reserved))
         (dotimes (a1-15 18)
@@ -2343,6 +2346,20 @@
       ;; set up dests (no idea why the tpage doesn't come with this set properly)
       (set! (-> obj segment 1 dest) (-> obj segment 0 size))
       (set! (-> obj segment 2 dest) (+ (-> obj segment 0 size) (-> obj segment 1 size)))
+
+      ;; PC port: added texture remap
+      (dotimes (texture-idx (-> obj length))
+        (let ((tex (-> obj data texture-idx)))
+          (when (and tex (nonzero? tex))
+            (let ((offset (__pc-get-tex-remap (the int (-> obj id)) texture-idx)))
+              (when (nonzero? offset)
+                )
+              (+! (-> tex dest 0) offset)
+              )
+            )
+          )
+        )
+
       (let* ((tpage-id (-> obj id))
              (dir-entry (-> *texture-page-dir* entries tpage-id))
              )
