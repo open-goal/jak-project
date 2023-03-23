@@ -8,8 +8,8 @@
 
 /*
 TODO:
-  - is scaling fine? I have it set to 1.0 all the time and I notice nothing wrong with the game at different scaling
-    just fuzzy imgui text
+  - is scaling fine? I have it set to 1.0 all the time and I notice nothing wrong with the game at
+different scaling just fuzzy imgui text
 
   - hiDPI support
     - see https://wiki.libsdl.org/SDL2/SDL_GetRendererOutputSize

@@ -569,7 +569,6 @@ u32 get_display_mode() {
   }
 }
 
-// TODO - add a function for setting the display
 void set_display_mode(u32 symptr) {
   if (symptr == intern_from_c("windowed").offset || symptr == s7.offset) {
     Gfx::set_window_display_mode(WindowDisplayMode::Windowed);

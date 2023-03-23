@@ -6,26 +6,63 @@ set(CMAKE_ASM_NASM_SOURCE_FILE_EXTENSIONS ${CMAKE_ASM_NASM_SOURCE_FILE_EXTENSION
 set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> <INCLUDES> -f ${CMAKE_ASM_NASM_OBJECT_FORMAT} -o <OBJECT> <SOURCE>")
 set_source_files_properties(kernel/asm_funcs.asm PROPERTIES COMPILE_FLAGS "-g")
 set(RUNTIME_SOURCE
-        runtime.cpp
         external/discord.cpp
-        settings/settings.cpp
-        system/SystemThread.cpp
-        system/IOP_Kernel.cpp
-        system/iop_thread.cpp
-        system/Deci2Server.cpp
-        "system/hid/input_manager.cpp"
-        "system/hid/display_manager.cpp"
-        system/hid/sdl_util.cpp
-        sce/libcdvd_ee.cpp
-        sce/libscf.cpp
-        sce/libdma.cpp
-        sce/libpad.cpp
-        sce/libgraph.cpp
-        sce/deci2.cpp
-        sce/sif_ee.cpp
-        sce/sif_ee_memcard.cpp
-        sce/iop.cpp
-        sce/stubs.cpp
+        graphics/display.cpp
+        graphics/gfx.cpp
+        graphics/jak2_texture_remap.cpp
+        graphics/opengl_renderer/background/background_common.cpp
+        graphics/opengl_renderer/background/Shrub.cpp
+        graphics/opengl_renderer/background/Tfrag3.cpp
+        graphics/opengl_renderer/background/TFragment.cpp
+        graphics/opengl_renderer/background/Tie3.cpp
+        graphics/opengl_renderer/BucketRenderer.cpp
+        graphics/opengl_renderer/CollideMeshRenderer.cpp
+        graphics/opengl_renderer/debug_gui.cpp
+        graphics/opengl_renderer/DepthCue.cpp
+        graphics/opengl_renderer/DirectRenderer.cpp
+        graphics/opengl_renderer/DirectRenderer2.cpp
+        graphics/opengl_renderer/dma_helpers.cpp
+        graphics/opengl_renderer/EyeRenderer.cpp
+        graphics/opengl_renderer/foreground/Generic2_Build.cpp
+        graphics/opengl_renderer/foreground/Generic2_DMA.cpp
+        graphics/opengl_renderer/foreground/Generic2_OpenGL.cpp
+        graphics/opengl_renderer/foreground/Generic2.cpp
+        graphics/opengl_renderer/foreground/Merc2.cpp
+        graphics/opengl_renderer/LightningRenderer.cpp
+        graphics/opengl_renderer/loader/Loader.cpp
+        graphics/opengl_renderer/loader/LoaderStages.cpp
+        graphics/opengl_renderer/ocean/CommonOceanRenderer.cpp
+        graphics/opengl_renderer/ocean/OceanMid_PS2.cpp
+        graphics/opengl_renderer/ocean/OceanMid.cpp
+        graphics/opengl_renderer/ocean/OceanMidAndFar.cpp
+        graphics/opengl_renderer/ocean/OceanNear_PS2.cpp
+        graphics/opengl_renderer/ocean/OceanNear.cpp
+        graphics/opengl_renderer/ocean/OceanTexture_PC.cpp
+        graphics/opengl_renderer/ocean/OceanTexture.cpp
+        graphics/opengl_renderer/opengl_utils.cpp
+        graphics/opengl_renderer/OpenGLRenderer.cpp
+        graphics/opengl_renderer/Profiler.cpp
+        graphics/opengl_renderer/ProgressRenderer.cpp
+        graphics/opengl_renderer/Shader.cpp
+        graphics/opengl_renderer/Shadow_PS2.cpp
+        graphics/opengl_renderer/ShadowRenderer.cpp
+        graphics/opengl_renderer/SkyBlendCPU.cpp
+        graphics/opengl_renderer/SkyBlendGPU.cpp
+        graphics/opengl_renderer/SkyRenderer.cpp
+        graphics/opengl_renderer/sprite/GlowRenderer.cpp
+        graphics/opengl_renderer/sprite/Sprite3_Distort.cpp
+        graphics/opengl_renderer/sprite/Sprite3_Glow.cpp
+        graphics/opengl_renderer/sprite/Sprite3.cpp
+        graphics/opengl_renderer/sprite/SpriteRenderer.cpp
+        graphics/opengl_renderer/TextureUploadHandler.cpp
+        graphics/opengl_renderer/VisDataHandler.cpp
+        graphics/pipelines/opengl.cpp
+        graphics/sceGraphicsInterface.cpp
+        graphics/texture/jak1_tpage_dir.cpp
+        graphics/texture/jak2_tpage_dir.cpp
+        graphics/texture/TextureConverter.cpp
+        graphics/texture/TexturePool.cpp
+        kernel/asm_funcs.asm
         kernel/common/fileio.cpp
         kernel/common/kboot.cpp
         kernel/common/kdgo.cpp
@@ -58,8 +95,6 @@ set(RUNTIME_SOURCE
         kernel/jak2/kprint.cpp
         kernel/jak2/kscheme.cpp
         kernel/jak2/ksound.cpp
-        kernel/asm_funcs.asm
-        mips2c/mips2c_table.cpp
         mips2c/jak1_functions/bones.cpp
         mips2c/jak1_functions/collide_cache.cpp
         mips2c/jak1_functions/collide_edge_grab.cpp
@@ -73,13 +108,13 @@ set(RUNTIME_SOURCE
         mips2c/jak1_functions/generic_tie.cpp
         mips2c/jak1_functions/joint.cpp
         mips2c/jak1_functions/merc_blend_shape.cpp
-        mips2c/jak1_functions/ocean.cpp
         mips2c/jak1_functions/ocean_vu0.cpp
+        mips2c/jak1_functions/ocean.cpp
         mips2c/jak1_functions/ripple.cpp
         mips2c/jak1_functions/shadow.cpp
         mips2c/jak1_functions/sky_tng.cpp
-        mips2c/jak1_functions/sparticle.cpp
         mips2c/jak1_functions/sparticle_launcher.cpp
+        mips2c/jak1_functions/sparticle.cpp
         mips2c/jak1_functions/test_func.cpp
         mips2c/jak1_functions/texture.cpp
         mips2c/jak1_functions/tfrag.cpp
@@ -96,24 +131,25 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/foreground.cpp
         mips2c/jak2_functions/joint.cpp
         mips2c/jak2_functions/lights.cpp
+        mips2c/jak2_functions/merc_blend_shape.cpp
         mips2c/jak2_functions/nav_control.cpp
         mips2c/jak2_functions/nav_mesh.cpp
-        mips2c/jak2_functions/sky.cpp
-        mips2c/jak2_functions/sparticle.cpp
-        mips2c/jak2_functions/sparticle_launcher.cpp
-        mips2c/jak2_functions/spatial_hash.cpp
-        mips2c/jak2_functions/texture.cpp
-        mips2c/jak2_functions/ocean.cpp
         mips2c/jak2_functions/ocean_vu0.cpp
-        mips2c/jak2_functions/merc_blend_shape.cpp
+        mips2c/jak2_functions/ocean.cpp
         mips2c/jak2_functions/ripple.cpp
+        mips2c/jak2_functions/sky.cpp
+        mips2c/jak2_functions/sparticle_launcher.cpp
+        mips2c/jak2_functions/sparticle.cpp
+        mips2c/jak2_functions/spatial_hash.cpp
         mips2c/jak2_functions/squid.cpp
+        mips2c/jak2_functions/texture.cpp
+        mips2c/mips2c_table.cpp
         overlord/dma.cpp
         overlord/fake_iso.cpp
-        overlord/iso.cpp
         overlord/iso_api.cpp
         overlord/iso_cd.cpp
         overlord/iso_queue.cpp
+        overlord/iso.cpp
         overlord/isocommon.cpp
         overlord/overlord.cpp
         overlord/ramdisk.cpp
@@ -122,65 +158,30 @@ set(RUNTIME_SOURCE
         overlord/srpc.cpp
         overlord/ssound.cpp
         overlord/stream.cpp
-        graphics/gfx.cpp
-        graphics/jak2_texture_remap.cpp
-        graphics/display.cpp
-        graphics/sceGraphicsInterface.cpp
-        graphics/opengl_renderer/background/background_common.cpp
-        graphics/opengl_renderer/background/Shrub.cpp
-        graphics/opengl_renderer/background/Tfrag3.cpp
-        graphics/opengl_renderer/background/TFragment.cpp
-        graphics/opengl_renderer/background/Tie3.cpp
-        graphics/opengl_renderer/foreground/Merc2.cpp
-        graphics/opengl_renderer/foreground/Generic2.cpp
-        graphics/opengl_renderer/foreground/Generic2_DMA.cpp
-        graphics/opengl_renderer/foreground/Generic2_Build.cpp
-        graphics/opengl_renderer/foreground/Generic2_OpenGL.cpp
-        graphics/opengl_renderer/sprite/GlowRenderer.cpp
-        graphics/opengl_renderer/sprite/Sprite3.cpp
-        graphics/opengl_renderer/sprite/Sprite3_Distort.cpp
-        graphics/opengl_renderer/sprite/Sprite3_Glow.cpp
-        graphics/opengl_renderer/sprite/SpriteRenderer.cpp
-        graphics/opengl_renderer/ocean/CommonOceanRenderer.cpp
-        graphics/opengl_renderer/ocean/OceanMid.cpp
-        graphics/opengl_renderer/ocean/OceanMid_PS2.cpp
-        graphics/opengl_renderer/ocean/OceanMidAndFar.cpp
-        graphics/opengl_renderer/ocean/OceanNear.cpp
-        graphics/opengl_renderer/ocean/OceanNear_PS2.cpp
-        graphics/opengl_renderer/ocean/OceanTexture.cpp
-        graphics/opengl_renderer/ocean/OceanTexture_PC.cpp
-        graphics/opengl_renderer/loader/Loader.cpp
-        graphics/opengl_renderer/loader/LoaderStages.cpp
-        graphics/opengl_renderer/BucketRenderer.cpp
-        graphics/opengl_renderer/CollideMeshRenderer.cpp
-        graphics/opengl_renderer/debug_gui.cpp
-        graphics/opengl_renderer/DirectRenderer.cpp
-        graphics/opengl_renderer/DirectRenderer2.cpp
-        graphics/opengl_renderer/EyeRenderer.cpp
-        graphics/opengl_renderer/LightningRenderer.cpp
-        graphics/opengl_renderer/dma_helpers.cpp
-        graphics/opengl_renderer/opengl_utils.cpp
-        graphics/opengl_renderer/OpenGLRenderer.cpp
-        graphics/opengl_renderer/Profiler.cpp
-        graphics/opengl_renderer/ProgressRenderer.cpp
-        graphics/opengl_renderer/Shader.cpp
-        graphics/opengl_renderer/Shadow_PS2.cpp
-        graphics/opengl_renderer/ShadowRenderer.cpp
-        graphics/opengl_renderer/SkyBlendCPU.cpp
-        graphics/opengl_renderer/SkyBlendGPU.cpp
-        graphics/opengl_renderer/SkyRenderer.cpp
-        graphics/opengl_renderer/TextureUploadHandler.cpp
-        graphics/opengl_renderer/VisDataHandler.cpp
-        graphics/opengl_renderer/DepthCue.cpp
-        graphics/texture/jak1_tpage_dir.cpp
-        graphics/texture/jak2_tpage_dir.cpp
-        graphics/texture/TextureConverter.cpp
-        graphics/texture/TexturePool.cpp
-        graphics/pipelines/opengl.cpp
+        runtime.cpp
+        sce/deci2.cpp
+        sce/iop.cpp
+        sce/libcdvd_ee.cpp
+        sce/libdma.cpp
+        sce/libgraph.cpp
+        sce/libpad.cpp
+        sce/libscf.cpp
+        sce/sif_ee_memcard.cpp
+        sce/sif_ee.cpp
+        sce/stubs.cpp
+        settings/settings.cpp
+        system/Deci2Server.cpp
+        system/hid/display_manager.cpp
+        system/hid/input_bindings.cpp
+        system/hid/input_manager.cpp
+        system/hid/sdl_util.cpp
+        system/IOP_Kernel.cpp
+        system/iop_thread.cpp
+        system/SystemThread.cpp
         system/vm/dmac.cpp
         system/vm/vm.cpp
-        tools/subtitles/subtitle_editor.cpp
-        tools/filter_menu/filter_menu.cpp)
+        tools/filter_menu/filter_menu.cpp
+        tools/subtitles/subtitle_editor.cpp)
 
 find_package(Git)
 
@@ -216,7 +217,7 @@ write_svnrev_h()
 add_subdirectory(sound)
 
 # we build the runtime as a static library.
-add_library(runtime STATIC ${RUNTIME_SOURCE} "../third-party/glad/src/glad.c" "system/hid/input_bindings.cpp")
+add_library(runtime STATIC ${RUNTIME_SOURCE} "../third-party/glad/src/glad.c")
 
 target_link_libraries(runtime common fmt SDL2::SDL2 imgui discord-rpc sound stb_image libco SQLiteCpp)
 if(WIN32)
@@ -225,5 +226,5 @@ else()
     target_link_libraries(runtime pthread dl)
 endif()
 
-add_executable(gk main.cpp "system/hid/input_bindings.cpp")
+add_executable(gk main.cpp)
 target_link_libraries(gk runtime)

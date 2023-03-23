@@ -12,7 +12,7 @@
 
 #include "common/util/Assert.h"
 
-#include <game/system/hid/display_manager.h>
+#include "game/system/hid/display_manager.h"
 
 // a GfxDisplay class is equivalent to a window that displays stuff. This holds an actual internal
 // window pointer used by whichever renderer. It also contains functions for setting and

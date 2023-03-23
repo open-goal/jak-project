@@ -1,9 +1,3 @@
-/*!
- * @file newpad.cpp
- * PC-port specific cpad implementation on the C kernel. Monitors button inputs.
- * Actual input detection is done through window events and is gfx pipeline-dependent.
- */
-
 #include "input_manager.h"
 
 #include <atomic>
@@ -340,7 +334,6 @@ void InputManager::refresh_device_list() {
 
 void InputManager::process_sdl_event(const SDL_Event& event, const bool ignore_kb_mouse) {
   // Detect controller connections and disconnects
-  // TODO - do we care about remap events?
   if (sdl_util::is_any_event_type(event.type,
                                   {SDL_CONTROLLERDEVICEADDED, SDL_CONTROLLERDEVICEREMOVED})) {
     lg::info("Controller added or removed. refreshing controller device list");

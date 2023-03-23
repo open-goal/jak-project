@@ -40,7 +40,7 @@ struct PadData {
 
   static const int ANALOG_NEUTRAL = 127;
 
-  // NOTE - store analog values as larger signed integers and then clamp them to their value 0-255
+  // NOTE - store analog values as larger signed integers and then clamp them to their 0-255
   // u8 range. This is to make it easier to properly handle multiple non-analog sources attempting
   // to simulate analog sticks
   //
@@ -50,7 +50,7 @@ struct PadData {
   // There are a lot of strategies to handle this:
   // - you can delay applying the input by one frame, so you have a wholistic viewpoint.  But this
   // delay is undesirable and doesn't work elegantly with multiple input sources
-  // - you can have a bunch of complicated state maintaining overseeing it all
+  // - you can have a bunch of complicated state overseeing it all
   // - or (with this approach) you can process the events asynchronously, adding and subtracting
   // from the aggregate amount and organically end up with the correct value
   //
@@ -161,15 +161,12 @@ struct InputBindingGroups {
     }
   };
 
-  // These are caches for reverse-lookups (from the mapped bnid instead of the host bind)
+  // These are caches for reverse-lookups (from the mapped bind instead of the host bind)
   // for reading inputs we keep things fast -- we start with an SDL host value and map it to the
   // required binds
   //
   // However there are some situations where we want to the reverse -- find out what binds
-  // correspond with the PS2 value.  Examples would include:
-  // - remapping controller inputs (so you can unbind overlapping keys)
-  // - doing a lookup to see if another input is currently pressed (ie. for handling analog inputs
-  // correctly).
+  // correspond with the PS2 value. Such as when remapping a key so you can unbind overlapping binds
   std::unordered_map<BindCacheKey, std::vector<std::pair<u8, InputBinding>>, hash_name>
       m_analog_lookup;
   std::unordered_map<BindCacheKey, std::vector<std::pair<u8, InputBinding>>, hash_name>

@@ -2,8 +2,8 @@
 
 #include "common/common_types.h"
 
-#include "game/kernel/common/kscheme.h"
 #include "game/graphics/gfx.h"
+#include "game/kernel/common/kscheme.h"
 
 /*!
  * Where does OVERLORD load its data from?
@@ -63,6 +63,7 @@ u32 offset_of_s7();
 void vif_interrupt_callback(int bucket_id);
 
 /// Initializes all common PC Port functions for all Jak games
-void init_common_pc_port_functions(std::function<Ptr<Function>(const char*, void*)> make_func_symbol_func);
+void init_common_pc_port_functions(
+    std::function<Ptr<Function>(const char*, void*)> make_func_symbol_func);
 
 void get_window_scale(u32 x_ptr, u32 y_ptr);

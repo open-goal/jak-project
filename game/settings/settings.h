@@ -6,7 +6,7 @@
 
 struct DebugSettings {
   // TODO - configurable debug text font size
-  bool show_imgui = true; // TODO - temporary
+  bool show_imgui = true;  // TODO - temporary
   bool ignore_imgui_hide_keybind = false;
   std::vector<DebugTextFilter> debug_text_filters = {};
   bool debug_text_check_range = false;

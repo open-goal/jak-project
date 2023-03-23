@@ -606,8 +606,7 @@ u32 get_fullscreen() {
   }
 }
 
-// TODO - get rid of screen
-void set_fullscreen(u32 symptr, s64 screen) {
+void set_fullscreen(u32 symptr) {
   if (symptr == intern_from_c("windowed").offset || symptr == s7.offset) {
     Gfx::set_window_display_mode(WindowDisplayMode::Windowed);
   } else if (symptr == intern_from_c("borderless").offset) {
@@ -627,7 +626,7 @@ void InitMachine_PCPort() {
   // os stuff
   make_function_symbol_from_c("pc-get-os", (void*)get_os);
   make_function_symbol_from_c("pc-get-fullscreen", (void*)get_fullscreen);
-  
+
   make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
 
   // discord rich presence

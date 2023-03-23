@@ -35,8 +35,8 @@ void DisplayManager::process_sdl_event(const SDL_Event& event) {
         m_window_height = event.window.data2;
         break;
       case SDL_WINDOWEVENT_DISPLAY_CHANGED:
-        // NOTE - if the user changes the window to a display that doesn't support the same framerate
-        // we don't handle that
+        // NOTE - if the user changes the window to a display that doesn't support the same
+        // framerate we don't handle that
         update_curr_display_info();
         break;
     }
@@ -50,6 +50,7 @@ void DisplayManager::process_sdl_event(const SDL_Event& event) {
         break;
       case SDL_DISPLAYEVENT_ORIENTATION:
         // TODO - do i have to invert width/height?
+        // TODO - set a flag so the runtime can show portrait/landscape tailored resolutions
         break;
     }
   }
@@ -68,8 +69,7 @@ int DisplayManager::get_screen_width() {
       m_current_display_modes.find(m_active_display_id) != m_current_display_modes.end()) {
     return m_current_display_modes.at(m_active_display_id).screen_width;
   }
-  // TODO - good idea to return 0?
-  return 0;
+  return 640;
 }
 
 int DisplayManager::get_screen_height() {
@@ -77,8 +77,7 @@ int DisplayManager::get_screen_height() {
       m_current_display_modes.find(m_active_display_id) != m_current_display_modes.end()) {
     return m_current_display_modes.at(m_active_display_id).screen_height;
   }
-  // TODO - good idea to return 0?
-  return 0;
+  return 480;
 }
 
 void DisplayManager::set_window_resizable(bool resizable) {

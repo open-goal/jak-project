@@ -18,7 +18,7 @@
 #include "game/sce/libpad.h"
 #include "game/sce/libscf.h"
 #include "game/sce/sif_ee.h"
-#include <game/system/vm/vm.h>
+#include "game/system/vm/vm.h"
 
 /*!
  * Where does OVERLORD load its data from?
@@ -596,14 +596,14 @@ void init_common_pc_port_functions(
   // display related
   make_func_symbol_func("pc-get-display-count", (void*)get_display_count);
   make_func_symbol_func("pc-get-active-display-size", (void*)get_active_display_size);
-  make_func_symbol_func("pc-get-active-display-refresh-rate", (void*)get_active_display_refresh_rate);
+  make_func_symbol_func("pc-get-active-display-refresh-rate",
+                        (void*)get_active_display_refresh_rate);
   make_func_symbol_func("pc-get-window-size", (void*)get_window_size);
   make_func_symbol_func("pc-get-window-scale", (void*)get_window_scale);
 
   make_func_symbol_func("pc-set-fullscreen-display", (void*)Gfx::set_fullscreen_display);
   make_func_symbol_func("pc-set-window-size", (void*)Gfx::set_window_size);
   make_func_symbol_func("pc-set-vsync", (void*)set_vsync);
-  // TODO - has some issues when set to OFF
   make_func_symbol_func("pc-set-msaa", (void*)set_msaa);
   make_func_symbol_func("pc-set-frame-rate", (void*)set_frame_rate);
   make_func_symbol_func("pc-set-game-resolution", (void*)Gfx::set_game_resolution);

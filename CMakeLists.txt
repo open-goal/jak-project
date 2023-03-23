@@ -38,7 +38,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -Wall \
         -Wno-c++11-narrowing \
         -Wno-c++98-compat \
-        -O3 -stdlib=libc++")
+        -O3")
 
     # Increase stack size for windows, who's default is too low
     if(WIN32)

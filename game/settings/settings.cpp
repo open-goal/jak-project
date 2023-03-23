@@ -2,7 +2,7 @@
 
 #include "common/util/json_util.h"
 
-#include <game/runtime.h>
+#include "game/runtime.h"
 
 void DebugSettings::load_settings(const ghc::filesystem::path& filepath) {
   auto file_txt = file_util::read_text_file(filepath);

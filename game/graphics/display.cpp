@@ -53,7 +53,7 @@ int GfxDisplay::height() {
   Gfx::get_active_display_size(NULL, &h);
 #ifdef _WIN32
   // TODO - hack still needed?
-  //if (last_fullscreen_mode() == WindowDisplayMode::Borderless) {
+  // if (last_fullscreen_mode() == WindowDisplayMode::Borderless) {
   //  // windows borderless hack
   //  h--;
   //}
@@ -73,7 +73,7 @@ void GfxDisplay::save_display_settings() {
 }
 
 void GfxDisplay::restore_display_settings() {
-  //try {
+  // try {
   //  std::string file_path =
   //      (file_util::get_user_settings_dir(g_game_version) / "display-settings.json").string();
   //  if (!file_util::file_exists(file_path)) {

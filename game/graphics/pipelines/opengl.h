@@ -36,21 +36,18 @@ class GLDisplay : public GfxDisplay {
   bool m_take_screenshot_next_frame = false;
   void process_sdl_events();
 
-  // TODO - all duplication....and likely not needed, more into display manager
   struct DisplayState {
     // move it a bit away from the top by default
     s32 window_pos_x = 50;
     s32 window_pos_y = 50;
-    int window_size_width = 640, window_size_height = 480;
-    float window_scale_x = 1.f, window_scale_y = 1.f;
+    int window_size_width = 640;
+    int window_size_height = 480;
+    float window_scale_x = 1.f;
+    float window_scale_y = 1.f;
 
     bool pending_size_change = false;
     s32 requested_size_width = 0;
     s32 requested_size_height = 0;
-
-    int num_vmodes = 0;
-    int largest_vmode_width = 640, largest_vmode_height = 480;
-    int largest_vmode_refresh_rate = 60;
   } m_display_state, m_display_state_copy;
   std::mutex m_lock;
 

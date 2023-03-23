@@ -14,9 +14,9 @@
 #include "common/versions.h"
 
 #include "game/kernel/common/kboot.h"
-#include <game/settings/settings.h>
-#include <game/system/hid/display_manager.h>
-#include <game/system/hid/input_manager.h>
+#include "game/settings/settings.h"
+#include "game/system/hid/display_manager.h"
+#include "game/system/hid/input_manager.h"
 
 // forward declarations
 struct GfxSettings;
@@ -157,8 +157,6 @@ void set_window_size(u64 width, u64 hheight);
 void get_window_scale(float* x, float* y);
 int get_connected_display_count();
 std::string get_connected_display_name(int id);
-// TODO - this was always called via GOAL with -1 which meant "give me the current rate for the
-// current display mode"
 int get_active_display_refresh_rate();
 void get_active_display_size(s32* w, s32* h);
 void set_window_resizable(bool resizable);

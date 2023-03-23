@@ -1,11 +1,5 @@
 #pragma once
 
-/*!
- * @file newpad.h
- * PC-port specific cpad implementation on the C kernel. Monitors button inputs.
- * Actual input detection is done through window events and is gfx pipeline-dependent.
- */
-
 #include <array>
 #include <memory>
 #include <optional>
@@ -22,8 +16,6 @@
 TODO:
   - Custom Binds from JSON
   - Controller Selection (and names like with monitors)
-
-  - Unrelated but confirm -- cleanup SDL2 cmake edits, and make sure it statically links
 
   - PS4/PS5 color customizing
 */
