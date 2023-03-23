@@ -123,7 +123,7 @@ s32 format_impl_jak2(uint64_t* args) {
       }
 
       // read arguments
-      while ((u8)(format_ptr[1] - '0') < 10 ||  // number 0 to 10
+      while ((u8)(format_ptr[1] - '0') < 10 ||  // number 0 to 9
              format_ptr[1] == ',' ||            // comma
              format_ptr[1] == '\'' ||           // quote
              format_ptr[1] == '`' ||            // backtick
@@ -538,10 +538,12 @@ s32 format_impl_jak2(uint64_t* args) {
     // change for Jak 2: if we are disk-booting and do a (format #t, immediately flush to stdout.
     // we'd get these eventually in ClearPending, but for some reason they flush these here.
     // This is nicer because we may crash in between here and flushing the print buffer.
-    // It's actually really annoying though so we disable it when in debug mode
-    if (DiskBoot && !MasterDebug) {
-      printf("%s", PrintPendingLocal3);
-      fflush(stdout);
+    if (DiskBoot) {
+      // It's actually really annoying when debugging though so we disable it then
+      if (!MasterDebug) {
+        printf("%s", PrintPendingLocal3);
+        fflush(stdout);
+      }
       PrintPending = make_ptr(PrintPendingLocal2).cast<u8>();
     }
 
