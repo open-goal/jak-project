@@ -17,6 +17,7 @@
 #include "common/util/json_util.h"
 
 #include "game/common/file_paths.h"
+#include "game/kernel/common/kmachine.h"
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/svnrev.h"
 #include "game/runtime.h"
@@ -37,8 +38,6 @@ void InitSettings(GfxSettings& settings) {
 
   // debug for now
   settings.debug = true;
-
-  // use buffered input mode
   // settings.pad_mapping_info.buffer_mode = true;
   //// debug input settings
   // settings.pad_mapping_info.debug = true;

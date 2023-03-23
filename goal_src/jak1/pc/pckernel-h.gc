@@ -188,24 +188,6 @@
   )
 
 
-;; generic device information: name and some ID
-(deftype pc-device-info (structure)
-  ((id int)
-   (name pc-cstring-64 :inline)
-   )
-  )
-
-
-;; input device information. comes with button mappings!
-(deftype pc-pad-info (structure)
-  ((device-info pc-device-info :inline)
-   (buffered? symbol)
-   (valid? symbol)
-   (mapping int 16)
-   )
-  )
-
-
 ;; All of the configuration for the PC port in GOAL. Access things from here!
 ;; Includes some methods to change parameters.
 (deftype pc-settings (basic)
@@ -256,11 +238,6 @@
    (movie? symbol)
 
    ;; device settings
-   ;(device-audio pc-device-info :inline) ;; used audio device
-   ;(device-screen pc-device-info :inline) ;; used display device
-   ;(device-gpu pc-device-info :inline) ;; used graphics device
-   ;(device-pad pc-pad-info 4 :inline) ;; used input devices, like controllers.
-   ;(device-keyboard pc-pad-info :inline) ;; keyboard input information. if nothing else, this must be usable.
    (stick-deadzone float) ;; analog stick deadzone. 0-1
 
    ;; audio settings
@@ -333,7 +310,7 @@
     (update-video-hacks (_type_) object)
     (reset (_type_) none)
     (reset-audio (_type_) none)
-    (reset-input (_type_) none)
+    (reset-input (_type_ symbol) none)
     (reset-gfx (_type_) none)
     (reset-ps2 (_type_) none)
     (reset-misc (_type_) none)
@@ -449,7 +426,7 @@
 
   (reset-gfx obj)
   (reset-audio obj)
-  (reset-input obj)
+  (reset-input obj 'all)
   (reset-ps2 obj)
   (reset-misc obj)
   (reset-extra obj)
@@ -490,9 +467,9 @@
 
   (none))
 
-(defmethod reset-input pc-settings ((obj pc-settings))
+(defmethod reset-input pc-settings ((obj pc-settings) (device symbol))
   "Set the default input settings"
-
+  
   (set! (-> obj stick-deadzone) 0.3)
   (none))
 

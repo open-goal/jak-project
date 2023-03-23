@@ -98,7 +98,9 @@
 (def-progress-carousell *carousell-frame-rate-100fps* (60fps 100fps))
 (define *carousell-frame-rate* *carousell-frame-rate-150fps*)
 
-
+;; pad remap stuff
+(define *progress-pad-timeout* (the-as time-frame 0)) ;; timeout for remap buttons
+(define *progress-pad-name* (new 'global 'string 72 (the string #f))) ;; device name
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  MENU OPTIONS
@@ -140,6 +142,7 @@
     (new 'static 'game-option :option-type (game-option-type language-text) :name (game-text-id text-language) :scale #t)
     (new 'static 'game-option :option-type (game-option-type speaker) :name (game-text-id subtitles-speaker) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id camera-options) :scale #t :param3 (game-option-menu camera-options))
+    (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id pad-remap) :scale #t :param3 (game-option-menu pad-remap))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id misc-options) :scale #t :param3 (game-option-menu misc-options))
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
@@ -365,6 +368,34 @@
     )
   )
 
+(define *pad-remap-options* (new 'static 'boxed-array :type game-option
+    (new 'static 'game-option :option-type (game-option-type pad-selection) :name (game-text-id pad-remap-input) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-select) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-l3) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-r3) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-start) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-dpad-up) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-dpad-right) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-dpad-down) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-dpad-left) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-l2) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-r2) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-l1) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-r1) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-triangle) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-o) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-x) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-square) :scale #t)
+    ;; TODO add analog mapping
+    ;(new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-l-analog-x) :scale #t)
+    ;(new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-l-analog-y) :scale #t)
+    ;(new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-r-analog-x) :scale #t)
+    ;(new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-r-analog-y) :scale #t)
+    ;(new 'static 'game-option :option-type (game-option-type pad-remap-disable) :name (game-text-id pad-remap-kb-disable) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-reset) :name (game-text-id restore-defaults) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
+    )
+  )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -802,6 +833,7 @@
   (set! (-> *options-remap* (progress-screen speedrun-options))           *speedrun-options*)
   (set! (-> *options-remap* (progress-screen speedrun-il-options))        *speedrun-il-options*)
   (set! (-> *options-remap* (progress-screen speedrun-cat-ext-options))        *speedrun-cat-ext-options*)
+  (set! (-> *options-remap* (progress-screen pad-remap))                  *pad-remap-options*)
 
 
   ;; set default params
@@ -873,7 +905,9 @@
   (set! (-> *progress-carousell* aspect-native-choice) (-> *pc-settings* use-vis?))
 
   ;; scroll stuff!
-  (progress-scroll-reset)
+  (when (!= (-> obj display-state) (progress-screen pad-remap))
+    (progress-scroll-reset)
+    )
 
   (none)
   )
@@ -915,6 +949,137 @@
     (when (and options (not (or (progress-scrolling?) (-> obj in-transition))))
       ;; only respond to inputs when transition is done (and also there's options at all)
       (cond
+        ;; pad remap menu (don't look too closely)
+        ((and (= (-> obj display-state) (progress-screen pad-remap))
+              (-> obj selected-option)
+              (= (-> options (-> obj option-index) option-type) (game-option-type pad-remap))
+              )
+          ;; (format 0 "Entering remap mode: ~S~%" (if (-> *pc-settings* pad?) "Controller" "Keyboard"))
+          ;;(pc-pad-input-joy-set -1)
+          ;;(pc-pad-input-key-set -1)
+          ;; (cond
+          ;;   ;; controller remapping
+          ;;   ((-> *pc-settings* pad?)
+          ;;     (pc-pad-kb-enable #f)
+          ;;     (pc-pad-input-mode-set 4)
+          ;;     (pc-pad-input-pad-set 0)
+          ;;     ;; (pc-pad-input-joy-set -1)
+          ;;     (when (< (- (-> *display* real-frame-counter) *progress-pad-timeout*) (seconds 4))
+          ;;       ;;(pc-pad-input-mode-set 4)
+          ;;       ;;(pc-pad-input-pad-set 0)
+          ;;       (let ((btn-code (pc-pad-input-joy-get))
+          ;;             (button (1- (-> obj option-index)))
+          ;;             )
+          ;;         (format 0 "Pressed button ~D~%" btn-code)
+          ;;         ;; map button
+          ;;         (when (and (= (pc-pad-input-mode-get) (pc-pad-input-status progress-joy)) (!= btn-code -1))
+          ;;           ;; swap binds if pressed button is already bound
+          ;;           (if (pc-pad-joy-has-mapped-button 0 btn-code)
+          ;;             (dotimes (i 16)
+          ;;               (when (= (pc-pad-joy-get-mapped-button 0 i) btn-code)
+          ;;                 (let ((cur-button-code (pc-pad-joy-get-mapped-button 0 button)) ;; selected button's current code
+          ;;                       (other-button-code (pc-pad-joy-get-mapped-button 0 i)) ;; code of button with same binding
+          ;;                       (other-button-code-ptr (the-as (pointer int) (-> options (+ 1 i) value-to-modify))) ;; option value of button with same binding
+          ;;                       )
+          ;;                     (format 0 "Current button code: ~D~%" cur-button-code)
+          ;;                     (format 0 "Other button code: ~D~%" other-button-code)
+          ;;                     (set! (-> other-button-code-ptr) cur-button-code)
+          ;;                     (set! (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify))) other-button-code)
+          ;;                     (sound-play "cursor-options")
+          ;;                     (set! (-> obj selected-option) #f)
+          ;;                     (set! *progress-pad-timeout* (the-as time-frame 0))
+          ;;                     (pc-pad-input-mode-set 0)
+          ;;                     (pc-pad-input-joy-set -1)
+          ;;                     (pc-pad-joy-map-set 0 button other-button-code) ;; executed last so we don't press the button right after binding it
+          ;;                     (pc-pad-joy-map-set 0 i cur-button-code)
+          ;;                   )
+          ;;                 )
+          ;;               )
+          ;;             ;; otherwise just map button
+          ;;             (begin
+          ;;               (set! (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify))) btn-code)
+          ;;               (sound-play "cursor-options")
+          ;;               (set! (-> obj selected-option) #f)
+          ;;               (set! *progress-pad-timeout* (the-as time-frame 0))
+          ;;               (pc-pad-input-mode-set 0)
+          ;;               (pc-pad-input-joy-set -1)
+          ;;               (pc-pad-joy-map-set 0 button btn-code)
+          ;;               )
+          ;;             )
+          ;;           )
+          ;;         )
+          ;;       )
+          ;;     )
+          ;;   ;; keyboard remapping
+          ;;   (else
+          ;;     (pc-pad-joy-enable #f)
+          ;;     (pc-pad-input-mode-set 3)
+          ;;     (pc-pad-input-pad-set 0)
+          ;;     (when (and (< (seconds 0.4) (- (-> *display* real-frame-counter) *progress-pad-timeout*)) (< (- (-> *display* real-frame-counter) *progress-pad-timeout*) (seconds 4)))
+          ;;       (let ((keycode (pc-pad-input-key-get))
+          ;;             (button (1- (-> obj option-index)))
+          ;;             )
+          ;;         (format 0 "Pressed key ~D~%" keycode)
+          ;;         ;; escape key cancels mapping
+          ;;         (when (and (= (pc-pad-input-mode-get) (pc-pad-input-status progress-kb)) (= keycode 256))
+          ;;           (sound-play "cursor-options")
+          ;;           (set! (-> obj selected-option) #f)
+          ;;           (set! *progress-pad-timeout* (the-as time-frame 0))
+          ;;           (pc-pad-input-mode-set 2)
+          ;;           (pc-pad-input-key-set -1)
+          ;;           (pc-pad-joy-enable #t)
+          ;;           )
+          ;;         ;; map key
+          ;;         (when (and (= (pc-pad-input-mode-get) (pc-pad-input-status progress-kb)) (!= keycode -1) (!= keycode 256))
+          ;;           (if (pc-pad-kb-has-mapped-button 0 keycode)
+          ;;             ;; swap binds if pressed key is already bound
+          ;;             (dotimes (i 16)
+          ;;               (when (= (pc-pad-kb-get-mapped-button 0 i) keycode)
+          ;;                 (let ((cur-btn-code (pc-pad-kb-get-mapped-button 0 button)) ;; selected button's current keycode
+          ;;                       (other-btn-code (pc-pad-kb-get-mapped-button 0 i)) ;; keycode of button with same binding
+          ;;                       (other-btn-code-ptr (the-as (pointer int) (-> options (+ 1 i) value-to-modify))) ;; option value of button with same binding
+          ;;                       )
+          ;;                     (set! (-> other-btn-code-ptr) cur-btn-code)
+          ;;                     (set! (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify))) other-btn-code)
+          ;;                     (sound-play "cursor-options")
+          ;;                     (set! (-> obj selected-option) #f)
+          ;;                     (set! *progress-pad-timeout* (the-as time-frame 0))
+          ;;                     (pc-pad-input-mode-set 0)
+          ;;                     (pc-pad-input-key-set -1)
+          ;;                     (pc-pad-joy-enable #t)
+          ;;                     (pc-pad-kb-map-set cur-btn-code i)
+          ;;                     (pc-pad-kb-map-set other-btn-code button) ;; executed last so we don't press the button right after binding it
+          ;;                   )
+          ;;                 )
+          ;;               )
+          ;;             ;; otherwise just map key
+          ;;             (begin
+          ;;               (set! (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify))) keycode)
+          ;;               (sound-play "cursor-options")
+          ;;               (set! (-> obj selected-option) #f)
+          ;;               (set! *progress-pad-timeout* (the-as time-frame 0))
+          ;;               (pc-pad-input-mode-set 0)
+          ;;               (pc-pad-input-key-set -1)
+          ;;               (pc-pad-joy-enable #t)
+          ;;               (pc-pad-kb-map-set keycode button)
+          ;;               )
+          ;;             )
+          ;;           )
+          ;;         )
+          ;;       )
+          ;;     )
+          ;;   )
+            ;; timeout cancels pad mapping
+            ;; (when (and (or (= (pc-pad-input-mode-get) (pc-pad-input-status progress-kb)) (= (pc-pad-input-mode-get) (pc-pad-input-status progress-joy))) (< (seconds 4) (- (-> *display* real-frame-counter) *progress-pad-timeout*)))
+            ;;   (sound-play "cursor-options")
+            ;;   (set! (-> obj selected-option) #f)
+            ;;   (pc-pad-input-mode-set 2)
+            ;;   (pc-pad-input-key-set -1)
+            ;;   (pc-pad-input-joy-set -1)
+            ;;   (pc-pad-joy-enable #t)
+            ;;   (pc-pad-kb-enable #t)
+            ;; )
+         )
         ((cpad-pressed? 0 up)
         ;; pressed up
         ;; original code checked hold and then press, because hold can be used during center screen option. which we don't use.
@@ -982,6 +1147,13 @@
                      )
                    ;; it's on 'on' or 'yes' now
                    (set! (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))) #t)
+                   )
+                  (((game-option-type pad-selection))
+                   (when (not (-> (the-as (pointer uint32) (-> options (-> obj option-index) value-to-modify))))
+                     (set! sound? #t)
+                     )
+                   (set! (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))) #t)
+                   ;;(init-game-options obj)
                    )
                   (((game-option-type aspect-ratio))
                    (set! sound? (= (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))) 'aspect16x9))
@@ -1079,12 +1251,18 @@
                   (((game-option-type on-off)
                     (game-option-type yes-no)
                     (game-option-type normal-inverted)
+                    (game-option-type pad-selection)
                     (game-option-type aspect-native)
                     (game-option-type cheat-toggle))
                    ;; play sound if it was on 'yes' because we're going to 'no' now
                    (set! sound? (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))))
                    ;; set to no
                    (set! (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))) #f)
+                   )
+                  (((game-option-type pad-selection))
+                   (set! sound? (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))))
+                   (set! (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))) #f)
+                   ;;(init-game-options obj)
                    )
                   (((game-option-type aspect-ratio))
                    ;; same shit different toilet
@@ -1181,14 +1359,17 @@
                (set! (-> (the-as (pointer language-enum) (-> options (-> obj option-index) value-to-modify)))
                      (-> *progress-state* language-backup))
                )
-              (((game-option-type on-off) (game-option-type normal-inverted))
+              (((game-option-type on-off) (game-option-type normal-inverted) (game-option-type pad-selection))
                (set! (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify)))
                      (-> *progress-state* on-off-backup))
                )
               )
-            ;; ding
-            (sound-play "cursor-options")
-            (set! (-> obj selected-option) #f)
+            ;; don't unselect if this is a pad remap button.
+            (when (not (= (-> options (-> obj option-index) option-type) (game-option-type pad-remap)))
+              ;; ding
+              (sound-play "cursor-options")
+              (set! (-> obj selected-option) #f)
+             )
             )
            ((or (can-go-back? obj)
                 (= (-> obj display-state) (progress-screen load-game))
@@ -1457,6 +1638,25 @@
                (set! (-> obj next-display-state) (progress-screen invalid))
                (commit-to-file *pc-settings*)
                )
+              ((= (-> options (-> obj option-index) option-type) (game-option-type pad-reset))
+              ;; reset default pad mapping
+               (cpad-clear! 0 x)
+               (cpad-clear! 0 circle)
+               (sound-play "cursor-options")
+               ;; TODO
+               ;; (reset-input *pc-settings* (-> *pc-settings* pad?))
+              ;;  (cond
+              ;;    ((-> *pc-settings* pad?)
+              ;;      ;; reset controller binds
+              ;;      (pc-pad-map-reset! #t)
+              ;;      )
+              ;;    (else
+              ;;      ;; reset keyboard binds
+              ;;      (pc-pad-map-reset! #f)
+              ;;      )
+              ;;    )
+               (commit-to-file *pc-settings*)
+               )
               ((= (-> options (-> obj option-index) option-type) (game-option-type aspect-new))
                ;; aspect ratio button.
                (let ((newx (the int (-> options (-> obj option-index) param1)))
@@ -1506,7 +1706,7 @@
                   (set! (-> *progress-state* language-backup)
                         (-> (the-as (pointer language-enum) (-> options (-> obj option-index) value-to-modify))))
                   )
-                 (((game-option-type on-off) (game-option-type normal-inverted))
+                 (((game-option-type on-off) (game-option-type normal-inverted) (game-option-type pad-selection))
                   (set! (-> *progress-state* on-off-backup)
                         (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))))
                   )
@@ -1571,6 +1771,14 @@
                         (if (= (-> *text-languages* i) cur-lang)
                             (set! (-> *progress-carousell* int-backup) i))
                         ))
+                  )
+                 (((game-option-type pad-selection))
+                  (set! (-> *progress-state* on-off-backup)
+                        (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))))
+                  )
+                 ;; set timeout for pad remapping
+                 (((game-option-type pad-remap))
+                  (set! *progress-pad-timeout* (-> *display* real-frame-counter))
                   )
                  )
                (sound-play "select-option")
@@ -1687,6 +1895,11 @@
                   ((2) (set-frame-rate! *pc-settings* 150))
                   )
                 (set-video-mode (-> *setting-control* default video-mode))
+                )
+               (((game-option-type pad-selection))
+                ;; enable/disable keyboard controls
+                ;; TODO
+                ;; (pc-pad-kb-enable (not (-> (the (pointer symbol) (-> options (-> obj option-index) value-to-modify)))))
                 )
                )
               (commit-to-file *pc-settings*)
@@ -1989,6 +2202,16 @@
             (set-scale! font (* 0.6 (-> obj transition-percentage-invert)))
             (print-game-text (lookup-text! *common-text* (game-text-id select-flava) #f) font #f (the int (* 128.0 (-> obj transition-percentage-invert))) 22)
             )
+          (((progress-screen pad-remap))
+           (set-color! font (font-color default))
+           (set-origin! font (- 17 (-> obj left-x-offset)) 14)
+           (set-scale! font (* 0.6 (-> obj transition-percentage-invert)))
+           ;; TODO
+          ;;  (if (not (string= *progress-pad-name* "NO PAD CONNECTED"))
+          ;;    (print-game-text-scaled (string-format "PAD ~D: ~S" 0 (set-pad-name!)) (* 0.7 (-> obj transition-percentage-invert)) font (the int (* 128.0 (-> obj transition-percentage-invert))))
+          ;;    (print-game-text-scaled "NO PAD CONNECTED" (* 1.0 (-> obj transition-percentage-invert)) font (the int (* 128.0 (-> obj transition-percentage-invert))))
+          ;;    )
+           )
           )
         (dotimes (index (length options))
         (let ((option-str (the string #f)) ;; the option text
@@ -2060,12 +2283,20 @@
               ((and (-> obj selected-option) (= (-> obj option-index) index))
                ;; this option is SELECTED!
                (set-color! font (font-color default))
-               (set! (-> font origin x) (the float (- option-x (-> obj left-x-offset))))
-               (set! (-> font origin y) (the float (+ y-off -8)))
-               (set-scale! font 0.6)
-               (print-game-text (lookup-text! *common-text* (-> options index name) #f) font #f 128 22)
-               (set! option-y (+ y-off 7))
+               ;; don't modify the text for remap buttons
+               (when (not (= (-> options index option-type) (game-option-type pad-remap)))
+                 (set! (-> font origin x) (the float (- option-x (-> obj left-x-offset))))
+                 (set! (-> font origin y) (the float (+ y-off -8)))
+                 (set-scale! font 0.6)
+                 (print-game-text (lookup-text! *common-text* (-> options index name) #f) font #f 128 22)
+                 (set! option-y (+ y-off 7))
+                )
                (case (-> options index option-type)
+                 (((game-option-type pad-remap))
+                  (set! option-str (string-format (lookup-text! *common-text* (game-text-id pad-remap-assign) #f) (lookup-text! *common-text* (-> options index name) #f)
+                  ;; display timeout in seconds
+                  (the int (+ 4.0 (* (/ 1.0 TICKS_PER_SECOND) (* -1.0 (- (-> *display* real-frame-counter) *progress-pad-timeout*)))))))
+                  )
                  (((game-option-type slider))
                   ;; draw a slider and its text.
                   ;; this ugliness is just decompiler stuff. all it does is fade the alpha according to value.
@@ -2081,7 +2312,8 @@
                   )
                  (((game-option-type on-off)
                    (game-option-type normal-inverted)
-                   (game-option-type aspect-native))
+                   (game-option-type aspect-native)
+                   (game-option-type pad-selection))
                   ;; on-off option or some other toggle. same logic as yes-no. changed to cut down code duping.
                   (let (
                         (on-str (case (-> options index option-type)
@@ -2089,12 +2321,16 @@
                                     (lookup-text! *common-text* (game-text-id on) #f))
                                   (((game-option-type normal-inverted))
                                     (lookup-text! *common-text* (game-text-id inverted) #f))
+                                  (((game-option-type pad-selection))
+                                    (lookup-text! *common-text* (game-text-id pad-joy) #f))
                                   ))
                        (off-str (case (-> options index option-type)
                                   (((game-option-type on-off) (game-option-type aspect-native))
                                     (lookup-text! *common-text* (game-text-id off) #f))
                                   (((game-option-type normal-inverted))
                                     (lookup-text! *common-text* (game-text-id normal) #f))
+                                  (((game-option-type pad-selection))
+                                    (lookup-text! *common-text* (game-text-id pad-kb) #f))
                                   ))
                         )
                     (if (-> (the-as (pointer symbol) (-> options index value-to-modify)))
@@ -2270,6 +2506,31 @@
                   (((game-option-type language-text))
                    (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
                                                             (lookup-text! *common-text* (get-language-name (-> *pc-settings* text-language)) #f)))
+                   )
+                  (((game-option-type pad-selection))
+                   ;; input device
+                   (if (-> (the-as (pointer symbol) (-> options index value-to-modify)))
+                       (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f) (lookup-text! *common-text* (game-text-id pad-joy) #f)))
+                       (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f) (lookup-text! *common-text* (game-text-id pad-kb) #f)))
+                    )
+                   ;; reload menu when device is changed
+                   (init-game-options obj)
+                   )
+                  (((game-option-type pad-remap))
+                   ;; input remap button. we want to display the key this button is currently mapped to.
+                   ;; TODO
+                  ;;  (cond
+                  ;;    ((-> *pc-settings* pad?)
+                  ;;      (set! option-str (string-format "~S: BUTTON ~D" (lookup-text! *common-text* (-> options index name) #f) (-> (the-as (pointer int) (-> options index value-to-modify)))))
+                  ;;      )
+                  ;;    (else
+                  ;;      (pc-pad-keycode-to-str *temp-string2* (-> (the-as (pointer int) (-> options index value-to-modify))))
+                  ;;      (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f) *temp-string2*))
+                  ;;      )
+                  ;;    )
+                   )
+                  (((game-option-type pad-reset))
+                   (set! option-str (lookup-text! *common-text* (game-text-id restore-defaults) #f))
                    )
                   )
                 )
@@ -2816,7 +3077,3 @@
     (none)
     )
   )
-
-
-
-
