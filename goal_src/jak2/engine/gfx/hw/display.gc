@@ -5,6 +5,11 @@
 ;; name in dgo: display
 ;; dgos: ENGINE, GAME
 
+;(defconstant DMA_BUFFER_GLOBAL_SIZE (* 1280 1024)) ;; 1280K
+(defconstant DMA_BUFFER_GLOBAL_SIZE (* 1280 1024 PROCESS_HEAP_MULT)) ;; expand based on actor heap expansion
+;(defconstant DMA_BUFFER_DEBUG_SIZE (* 8 1024 1024)) ;; 8M
+(defconstant DMA_BUFFER_DEBUG_SIZE (* 12 1024 1024)) ;; expand to 12M because we can
+
 ;; DECOMP BEGINS
 
 (defun get-current-time ()
@@ -69,11 +74,11 @@
   (when (zero? (-> arg0 frames 0 calc-buf))
     (set! (-> arg0 frames 0 calc-buf) (new 'global 'dma-buffer 10000))
     (set! (-> arg0 frames 1 calc-buf) (new 'global 'dma-buffer 10000))
-    (set! (-> arg0 frames 0 global-buf) (new 'global 'dma-buffer #x140000))
-    (set! (-> arg0 frames 1 global-buf) (new 'global 'dma-buffer #x140000))
+    (set! (-> arg0 frames 0 global-buf) (new 'global 'dma-buffer DMA_BUFFER_GLOBAL_SIZE))
+    (set! (-> arg0 frames 1 global-buf) (new 'global 'dma-buffer DMA_BUFFER_GLOBAL_SIZE))
     (when *debug-segment*
-      (set! (-> arg0 frames 0 debug-buf) (new 'debug 'dma-buffer #x800000))
-      (set! (-> arg0 frames 1 debug-buf) (new 'debug 'dma-buffer #x800000))
+      (set! (-> arg0 frames 0 debug-buf) (new 'debug 'dma-buffer DMA_BUFFER_DEBUG_SIZE))
+      (set! (-> arg0 frames 1 debug-buf) (new 'debug 'dma-buffer DMA_BUFFER_DEBUG_SIZE))
       )
     )
   arg0
