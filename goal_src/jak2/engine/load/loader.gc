@@ -793,23 +793,22 @@
 (#cond
   (STREAM_PLAY_HACK
     (define *hack-pos-buffer-id* (new 'static 'array int 4)) ;; 4 channels?
-    (define *hack-pos-buffer-pos* (new 'static 'array int 4)) ;; 4 channels?
+    (define *hack-pos-buffer-pos* (new 'static 'array float 4)) ;; 4 channels?
     (define *hack-pos-next-idx* 0) ;; new channel, if none is found.
-    (define *hack-pos-speed* 5)
+    (define *hack-pos-speed* 8.5)
     (defun get-current-str-pos ((obj sound-id))
       (dotimes (i 4)
         (when (= (-> *hack-pos-buffer-id* i) obj)
-          (+! (-> *hack-pos-buffer-pos* i) *hack-pos-speed*)
-          (return (-> *hack-pos-buffer-pos* i))
+          (return (the int (+! (-> *hack-pos-buffer-pos* i) *hack-pos-speed*)))
           )
         )
       (set! (-> *hack-pos-buffer-id* *hack-pos-next-idx*) (the-as int obj))
-      (set! (-> *hack-pos-buffer-pos* *hack-pos-next-idx*) 0)
+      (set! (-> *hack-pos-buffer-pos* *hack-pos-next-idx*) 0.0)
       (+! *hack-pos-next-idx* 1)
       (if (= *hack-pos-next-idx* 4)
           (set! *hack-pos-next-idx* 0)
           )
-      *hack-pos-speed*
+      (the int *hack-pos-speed*)
       )
     (defun get-str-id-is-playing? ((obj int))
       #t
@@ -824,7 +823,6 @@
 
 (defbehavior ja-play-spooled-anim process-drawable ((arg0 spool-anim) (arg1 art-joint-anim) (arg2 art-joint-anim) (arg3 (function process-drawable symbol)))
   (local-vars (v0-59 int) (sv-176 int))
-  (define *hack-pos* 12)
   (let ((s2-0 arg2)
         (s1-0 arg3)
         (gp-0 (new 'stack 'spooler-block arg2 arg3))
