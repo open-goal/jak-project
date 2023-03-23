@@ -1,0 +1,182 @@
+#include "display_manager.h"
+
+#include "sdl_util.h"
+
+#include "third-party/fmt/core.h"
+#include "third-party/fmt/format.h"
+
+DisplayManager::DisplayManager(SDL_Window* window) : m_window(window) {
+  update_curr_display_info();
+  update_video_modes();
+}
+
+void DisplayManager::process_sdl_event(const SDL_Event& event) {
+  const auto event_type = event.type;
+  if (event_type == SDL_WINDOWEVENT) {
+    // https://wiki.libsdl.org/SDL2/SDL_WindowEvent
+    // https://wiki.libsdl.org/SDL2/SDL_WindowEventID
+    switch (event.window.event) {
+      case SDL_WINDOWEVENT_MINIMIZED:
+        m_window_state = WindowState::Minimized;
+        break;
+      case SDL_WINDOWEVENT_MAXIMIZED:
+        m_window_state = WindowState::Maximized;
+        break;
+      case SDL_WINDOWEVENT_RESTORED:
+        m_window_state = WindowState::Restored;
+        break;
+      case SDL_WINDOWEVENT_MOVED:
+        m_window_xpos = event.window.data1;
+        m_window_ypos = event.window.data2;
+        break;
+      case SDL_WINDOWEVENT_RESIZED:
+      case SDL_WINDOWEVENT_SIZE_CHANGED:
+        m_window_width = event.window.data1;
+        m_window_height = event.window.data2;
+        break;
+      case SDL_WINDOWEVENT_DISPLAY_CHANGED:
+        // NOTE - if the user changes the window to a display that doesn't support the same framerate
+        // we don't handle that
+        update_curr_display_info();
+        break;
+    }
+  } else if (event_type == SDL_DISPLAYEVENT) {
+    // https://wiki.libsdl.org/SDL2/SDL_DisplayEventID
+    switch (event.display.event) {
+      case SDL_DISPLAYEVENT_CONNECTED:
+      case SDL_DISPLAYEVENT_DISCONNECTED:
+        update_curr_display_info();
+        update_video_modes();
+        break;
+      case SDL_DISPLAYEVENT_ORIENTATION:
+        // TODO - do i have to invert width/height?
+        break;
+    }
+  }
+}
+
+int DisplayManager::get_active_display_refresh_rate() {
+  if (m_active_display_id >= 0 &&
+      m_current_display_modes.find(m_active_display_id) != m_current_display_modes.end()) {
+    return m_current_display_modes.at(m_active_display_id).refresh_rate;
+  }
+  return 0;
+}
+
+int DisplayManager::get_screen_width() {
+  if (m_active_display_id >= 0 &&
+      m_current_display_modes.find(m_active_display_id) != m_current_display_modes.end()) {
+    return m_current_display_modes.at(m_active_display_id).screen_width;
+  }
+  // TODO - good idea to return 0?
+  return 0;
+}
+
+int DisplayManager::get_screen_height() {
+  if (m_active_display_id >= 0 &&
+      m_current_display_modes.find(m_active_display_id) != m_current_display_modes.end()) {
+    return m_current_display_modes.at(m_active_display_id).screen_height;
+  }
+  // TODO - good idea to return 0?
+  return 0;
+}
+
+void DisplayManager::set_window_resizable(bool resizable) {
+  if (m_window) {
+    SDL_SetWindowResizable(m_window, resizable ? SDL_TRUE : SDL_FALSE);
+  }
+}
+
+void DisplayManager::set_window_size(int width, int height) {
+  m_window_width = width;
+  m_window_height = height;
+  SDL_SetWindowSize(m_window, width, height);
+}
+
+void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
+  // https://wiki.libsdl.org/SDL2/SDL_SetWindowFullscreen
+  int result = 0;
+  switch (mode) {
+    case WindowDisplayMode::Windowed:
+      result = SDL_SetWindowFullscreen(m_window, 0);
+      if (result == 0) {
+        SDL_SetWindowSize(m_window, m_window_width, m_window_height);
+      }
+      break;
+    case WindowDisplayMode::Fullscreen:
+    case WindowDisplayMode::Borderless:
+      // 1. exit fullscreen
+      result = SDL_SetWindowFullscreen(m_window, 0);
+      if (result == 0) {
+        SDL_Rect rect;
+        SDL_GetDisplayBounds(m_selected_fullscreen_display_id, &rect);
+        // 2. move it to the right monitor (a bit away from the edge)
+        SDL_SetWindowPosition(m_window, rect.x + 50, rect.y + 50);
+        // 3. fullscreen it!
+        if (result == 0) {
+          result = SDL_SetWindowFullscreen(m_window, mode == WindowDisplayMode::Fullscreen
+                                                         ? SDL_WINDOW_FULLSCREEN
+                                                         : SDL_WINDOW_FULLSCREEN_DESKTOP);
+        }
+      }
+      break;
+  }
+  if (result != 0) {
+    sdl_util::log_error(
+        fmt::format("unable to change window display mode to {}", fmt::underlying(mode)));
+  } else {
+    // Set the mode, now that we've been successful
+    m_window_display_mode = mode;
+  }
+}
+
+void DisplayManager::set_fullscreen_display_id(int display_id) {
+  if (display_id >= m_current_display_modes.size()) {
+    display_id = 0;
+  }
+  bool update_fullscreen = m_window_display_mode != WindowDisplayMode::Windowed &&
+                           m_selected_fullscreen_display_id != display_id;
+  m_selected_fullscreen_display_id = display_id;
+  if (update_fullscreen) {
+    set_window_display_mode(m_window_display_mode);
+  }
+}
+
+void DisplayManager::update_curr_display_info() {
+  m_active_display_id = SDL_GetWindowDisplayIndex(m_window);
+  if (m_active_display_id < 0) {
+    sdl_util::log_error("could not retrieve current window's display index");
+  }
+  SDL_GL_GetDrawableSize(m_window, &m_window_width, &m_window_height);
+  // Update the scale of the display as well
+  // TODO - figure out how to do this on SDL
+  // https://github.com/libsdl-org/SDL/commit/ab81a559f43abc0858c96788f8e00bbb352287e8
+  m_window_scale_x = 1.0;
+  m_window_scale_y = 1.0;
+}
+
+void DisplayManager::update_video_modes() {
+  const auto num_displays = SDL_GetNumVideoDisplays();
+  if (num_displays < 0) {
+    sdl_util::log_error("could not retrieve number of displays");
+    return;
+  }
+
+  m_current_display_modes.clear();
+
+  for (int display_id = 0; display_id < num_displays; display_id++) {
+    SDL_DisplayMode curr_mode;
+    const auto num_display_modes = SDL_GetCurrentDisplayMode(display_id, &curr_mode);
+    DisplayMode new_mode = {curr_mode.format, curr_mode.w, curr_mode.h, curr_mode.refresh_rate};
+    m_current_display_modes[display_id] = new_mode;
+  }
+}
+
+std::string DisplayManager::get_connected_display_name(int id) {
+  const auto name = SDL_GetDisplayName(id);
+  if (name == NULL) {
+    sdl_util::log_error(fmt::format("couldn't retrieve display name with id {}", id));
+    return "";
+  }
+  return std::string(name);
+}

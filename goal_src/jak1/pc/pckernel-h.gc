@@ -324,6 +324,7 @@
 
   (:methods
     (new (symbol type) _type_)
+    (set-defaults! (_type_) none)
     (update (_type_) none)
     (update-from-os (_type_) none)
     (update-to-os (_type_) none)
@@ -374,11 +375,57 @@
 ;;;; resets
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defmethod set-defaults! pc-settings ((obj pc-settings))
+  "Set default settings for the object that aren't handled by the file reading,
+   this is intended to be called upon object creation or when resetting the settings.
+
+   This is to avoid propagating events to the runtime informing it needs to make changes on startup
+   when there really is no changes to be made.  ie. changing the window size multiple times when ultimately
+   the true value is within the file that we are about to read.
+
+   TODO - it would probably be a lot cleaner to have one struct for the file, and another for settings that
+   are manipulated at runtime so there is a clear separation of responsibilities"
+  ;; top level settings
+  (set! (-> obj user) #f)
+  (set! (-> obj debug?) #f)
+  (set! (-> obj new-lb?) #f)
+  (set! (-> obj display-actor-bank) #f)
+  (set! (-> obj debug-pad-display) #f)
+  (set! (-> obj display-bug-report) #f)
+  (set! (-> obj display-heap-status) #f)
+  (set! (-> obj display-actor-counts) #f)
+  (set! (-> obj display-text-box) #f)
+  (set! (-> obj display-sha) *debug-segment*)
+  (set! (-> obj mood-override?) #f)
+  (set! (-> obj movie?) #f)
+  (set! (-> obj aspect-custom-x) 4)
+  (set! (-> obj aspect-custom-y) 3)
+  ;; graphics
+  (set! (-> obj aspect-ratio-auto?) #t)
+  ;; audio
+  ;; input
+  ;; ps2
+  ;; misc
+  ;; extra
+  (dotimes (i PC_SPOOL_LOG_LENGTH) (set! (-> obj scenes-seen i) 0))
+  (set! (-> obj secrets art) (pc-jak1-concept-art))
+  (set! (-> obj secrets hard-fish-hiscore) 0)
+  (set! (-> obj secrets hard-rats-hiscore) 0)
+  (set! (-> obj secrets hard-rats-hiwave) 0)
+  (set! (-> obj secrets hard-rats?) #f)
+  (set! (-> obj secrets hero-mode?) #f)
+  (set! (-> obj secrets hud-map?) #t)
+  (set! (-> obj secrets hud-counters?) #t)
+  (set! (-> obj secrets hud-watch?) #f)
+  (set! (-> obj secrets watch-12hr?) #f)
+  (none)
+)
+
 
 (defmethod reset pc-settings ((obj pc-settings))
-  "Set the default settings"
+  "Reset back to default settings"
 
-  ;(format #t "pc settings reset~%")
+  (format 0 "pc settings reset~%")
 
   (set! (-> obj version) PC_KERNEL_VERSION)
 
@@ -423,6 +470,7 @@
   (set! (-> obj vsync?) #t)
   (set! (-> obj letterbox?) #t)
 
+  ;; TODO - why do we change the windowed mode twice
   (pc-get-active-display-size (&-> obj width) (&-> obj height))
   (set-display-mode! obj 'borderless)
   (set! (-> obj gfx-msaa) 2) ;; 2x msaa

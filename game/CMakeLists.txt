@@ -13,8 +13,8 @@ set(RUNTIME_SOURCE
         system/IOP_Kernel.cpp
         system/iop_thread.cpp
         system/Deci2Server.cpp
-        system/hid/input_monitor.cpp
-        system/hid/display_monitor.cpp
+        "system/hid/input_manager.cpp"
+        "system/hid/display_manager.cpp"
         system/hid/sdl_util.cpp
         sce/libcdvd_ee.cpp
         sce/libscf.cpp

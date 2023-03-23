@@ -17,4 +17,7 @@ bool is_any_event_type(uint32_t event_type, std::vector<uint32_t> allowed_types)
   }
   return false;
 }
+SDL_bool sdl_bool(const bool val) {
+  return val ? SDL_TRUE : SDL_FALSE;
+}
 }  // namespace sdl_util

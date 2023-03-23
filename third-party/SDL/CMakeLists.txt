@@ -253,8 +253,6 @@ else()
   set(HIDAPI_ONLY_LIBUSB FALSE)
 endif()
 
-message(WARNING "WTF ${CMAKE_C_COMPILER_ID}")
-
 # Compiler info
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
   message(STATUS "AHHHHH CLANG!")
@@ -539,7 +537,6 @@ if(SDL_WERROR)
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /WX")
     endif()
   elseif(USE_GCC OR USE_CLANG)
-    message(STATUS "using clang!")
     cmake_push_check_state(RESET)
     check_c_compiler_flag(-Werror HAVE_WERROR)
     if(HAVE_WERROR)
@@ -621,7 +618,6 @@ if(USE_GCC OR USE_CLANG)
   # Check for -Wall first, so later things can override pieces of it.
   # Note: clang-cl treats -Wall as -Weverything (which is very loud),
   #       /W3 as -Wall, and /W4 as -Wall -Wextra.  So: /W3 is enough.
-  message(STATUS "usinig clang 2 - clang-cl? ${MSVC_CLANG}")
   check_c_compiler_flag(-Wall HAVE_GCC_WALL)
   if(MSVC_CLANG)
     list(APPEND EXTRA_CFLAGS "/W3")
@@ -3068,9 +3064,6 @@ endif()
 if(SDL_STATIC AND SDL_SHARED AND NOT sdl_static_libname STREQUAL "SDL2")
   message(STATUS "\"pkg-config --static --libs sdl2\" will return invalid information")
 endif()
-
-# MESSAGE(STATUS "SDL_LIBS: ${SDL_LIBS}")
-# MESSAGE(STATUS "SDL_STATIC_LIBS: ${SDL_STATIC_LIBS}")
 
 configure_file("${SDL2_SOURCE_DIR}/sdl2.pc.in"
   "${SDL2_BINARY_DIR}/sdl2.pc" @ONLY)

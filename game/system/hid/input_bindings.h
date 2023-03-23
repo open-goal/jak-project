@@ -4,6 +4,8 @@
 #include <functional>
 #include <unordered_map>
 #include <utility>
+// TODO - move this to .cpp file
+#include <algorithm>
 
 #include <common/common_types.h>
 
@@ -36,16 +38,41 @@ struct PadData {
     SQUARE = 15
   };
 
-  static const u8 ANALOG_NEUTRAL = 127;
+  static const int ANALOG_NEUTRAL = 127;
 
-  // Analog Values
-  std::array<u8, 4> analog_data = {ANALOG_NEUTRAL, ANALOG_NEUTRAL, ANALOG_NEUTRAL, ANALOG_NEUTRAL};
+  // NOTE - store analog values as larger signed integers and then clamp them to their value 0-255
+  // u8 range. This is to make it easier to properly handle multiple non-analog sources attempting
+  // to simulate analog sticks
+  //
+  // Imagine you have 100 keys bound to moving forward and back, and all those key up / key down
+  // events are encountered asynchrously, only when their state changes
+  //
+  // There are a lot of strategies to handle this:
+  // - you can delay applying the input by one frame, so you have a wholistic viewpoint.  But this
+  // delay is undesirable and doesn't work elegantly with multiple input sources
+  // - you can have a bunch of complicated state maintaining overseeing it all
+  // - or (with this approach) you can process the events asynchronously, adding and subtracting
+  // from the aggregate amount and organically end up with the correct value
+  //
+  // For a tangible example, imagine you have `W` bound to move forward, as well as left click
+  // - subtract `127` when `W` is pressed = 0 (127 is neutral)
+  // - subtract `127` when `Mouse1` is pressed = -127 (clamp to 0 for the game)
+  // - add `127` when `W` is released = 0
+  // - add `127` when `Mouse1` is released = 127 (back to neutral)
+  //
+  // Because keys that are pressed, must eventually be released -- this has a fairly strong
+  // guarantee.  About the only hole is if you decided to unplug your keyboard while holding a key,
+  // which is something we can distinctly detect and handle with a decent compromise (reset the
+  // inputs)
+  std::array<int, 4> analog_data = {ANALOG_NEUTRAL, ANALOG_NEUTRAL, ANALOG_NEUTRAL, ANALOG_NEUTRAL};
 
   std::pair<u8, u8> analog_left() const {
-    return {analog_data.at(AnalogIndex::LEFT_X), analog_data.at(AnalogIndex::LEFT_Y)};
+    return {std::clamp(analog_data.at(AnalogIndex::LEFT_X), 0, 255),
+            std::clamp(analog_data.at(AnalogIndex::LEFT_Y), 0, 255)};
   }
   std::pair<u8, u8> analog_right() const {
-    return {analog_data.at(AnalogIndex::RIGHT_X), analog_data.at(AnalogIndex::RIGHT_Y)};
+    return {std::clamp(analog_data.at(AnalogIndex::RIGHT_X), 0, 255),
+            std::clamp(analog_data.at(AnalogIndex::RIGHT_Y), 0, 255)};
   }
 
   std::array<bool, 16> button_data = {};
@@ -81,13 +108,12 @@ extern const std::vector<PadData::ButtonIndex> PAD_DATA_PRESSURE_INDEX_ORDER;
 /// For example -- for a keyboard binding it informs us what modifiers need to be hit at the same
 /// time, etc <para> All bindings _must_ provide the PS2 button/analog index they map to
 /// </para>
+///
 /// <para>
 /// There is also a special case for binary inputs mapping to the analog sticks.  In such a
 /// situation both keys will be modifying the same underlying value, but one will mutate the value
 /// to the minimum of the range and the other to the maximum.  The key intended to map to the
-/// minimum should specify `true` for `inverse_val`. Additionally, in order to handle the scenario
-/// where both binds are triggered at the same time you must also provide the opposing bind -- it
-/// will be simultaneously tested for and handled accordingly.
+/// minimum should specify `true` for `minimum_in_range`.
 ///
 /// For example, pressing both W and S should result in Jak not moving. And then letting go of W
 /// should make him move towards the camera.
@@ -95,13 +121,14 @@ extern const std::vector<PadData::ButtonIndex> PAD_DATA_PRESSURE_INDEX_ORDER;
 /// </summary>
 struct InputBinding {
   InputBinding(int index) : pad_data_index(index){};
-  InputBinding(int index, bool _inverse_val) : pad_data_index(index), inverse_val(_inverse_val){};
+  InputBinding(int index, bool _minimum_in_range)
+      : pad_data_index(index), minimum_in_range(_minimum_in_range){};
 
   /// Corresponds to PadData::AnalogIndex or PadData::ButtonIndex
   int pad_data_index;
 
   /// If considered pressed, it will invert the value (ie, left/right on an analog stick)
-  bool inverse_val = false;
+  bool minimum_in_range = false;
   // https://wiki.libsdl.org/SDL2/SDL_Keymod
   bool need_shift = false;
   bool need_ctrl = false;
@@ -110,9 +137,43 @@ struct InputBinding {
 };
 
 struct InputBindingGroups {
+  InputBindingGroups() = default;
+  InputBindingGroups(std::unordered_map<u8, std::vector<InputBinding>> _analog_axii,
+                     std::unordered_map<u8, std::vector<InputBinding>> _button_axii,
+                     std::unordered_map<u8, std::vector<InputBinding>> _buttons)
+      : analog_axii(_analog_axii), button_axii(_button_axii), buttons(_buttons){};
+
+  // TODO - eventually make these private (when implementing re-mapping)
   std::unordered_map<u8, std::vector<InputBinding>> analog_axii;
   std::unordered_map<u8, std::vector<InputBinding>> button_axii;
   std::unordered_map<u8, std::vector<InputBinding>> buttons;
+
+  std::vector<std::pair<u8, InputBinding>> lookup_analog_binds(PadData::AnalogIndex idx,
+                                                               bool only_minimum_binds = false);
+  std::vector<std::pair<u8, InputBinding>> lookup_button_binds(PadData::ButtonIndex idx);
+
+ private:
+  typedef std::pair<int, bool> BindCacheKey;
+
+  struct hash_name {
+    size_t operator()(const BindCacheKey& key) const {
+      return std::hash<int>()(key.first) ^ std::hash<bool>()(key.second);
+    }
+  };
+
+  // These are caches for reverse-lookups (from the mapped bnid instead of the host bind)
+  // for reading inputs we keep things fast -- we start with an SDL host value and map it to the
+  // required binds
+  //
+  // However there are some situations where we want to the reverse -- find out what binds
+  // correspond with the PS2 value.  Examples would include:
+  // - remapping controller inputs (so you can unbind overlapping keys)
+  // - doing a lookup to see if another input is currently pressed (ie. for handling analog inputs
+  // correctly).
+  std::unordered_map<BindCacheKey, std::vector<std::pair<u8, InputBinding>>, hash_name>
+      m_analog_lookup;
+  std::unordered_map<BindCacheKey, std::vector<std::pair<u8, InputBinding>>, hash_name>
+      m_button_lookup;
 };
 
 /// https://wiki.libsdl.org/SDL2/SDL_GameControllerButton
@@ -138,6 +199,7 @@ struct CommandBinding {
       : host_key(_host_key), command(_command){};
   u8 host_key;
   std::function<void()> command;
+  // https://wiki.libsdl.org/SDL2/SDL_Keymod
   bool need_shift = false;
   bool need_ctrl = false;
   bool need_meta = false;  // aka GUI / windows key

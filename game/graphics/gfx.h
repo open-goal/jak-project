@@ -15,8 +15,8 @@
 
 #include "game/kernel/common/kboot.h"
 #include <game/settings/settings.h>
-#include <game/system/hid/display_monitor.h>
-#include <game/system/hid/input_monitor.h>
+#include <game/system/hid/display_manager.h>
+#include <game/system/hid/input_manager.h>
 
 // forward declarations
 struct GfxSettings;
@@ -82,7 +82,7 @@ struct GfxGlobalSettings {
   int game_res_h = 480;
 
   // multi-sampled anti-aliasing sample count. 1 = disabled.
-  int msaa_samples = 4;
+  int msaa_samples = 2;
 
   // current renderer
   const GfxRendererModule* renderer;
@@ -152,11 +152,11 @@ s64 get_mapped_button(s64 pad, s64 button);
 // VideoMonitor usages
 u64 get_window_width();
 u64 get_window_height();
+void set_fullscreen_display(u64 display_id);
 void set_window_size(u64 width, u64 hheight);
 void get_window_scale(float* x, float* y);
 int get_connected_display_count();
 std::string get_connected_display_name(int id);
-int get_active_display_mode_count();
 // TODO - this was always called via GOAL with -1 which meant "give me the current rate for the
 // current display mode"
 int get_active_display_refresh_rate();

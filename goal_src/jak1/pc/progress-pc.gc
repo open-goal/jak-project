@@ -148,7 +148,8 @@
 (define *graphic-options-pc* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id game-resolution) :scale #t :param3 (game-option-menu resolution))
     (new 'static 'game-option :option-type (game-option-type display-mode) :name (game-text-id display-mode) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id display) :scale #t :param3 (game-option-menu monitor))
+    (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id display) :scale #t :param3 (game-option-menu monitor)
+      :option-disabled-func (lambda () (= (-> *pc-settings* display-mode) 'windowed)))
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id vsync) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id aspect-ratio) :scale #t :param3 (game-option-menu aspect-ratio))
     (new 'static 'game-option :option-type (game-option-type msaa) :name (game-text-id msaa) :scale #t)
@@ -729,8 +730,9 @@
                                                             *main-options-pc*))
   (set! (-> *options-remap* (progress-screen game-settings)) *game-options-pc*)
   (let ((max-refresh-rate (pc-get-active-display-refresh-rate)))
+    (format 0 "progress - initialize refresh rate ~D~%" max-refresh-rate)
     (cond
-      ((or *debug-segment* (> max-refresh-rate 100))
+      ((> max-refresh-rate 100)
         (set! (-> *options-remap* (progress-screen graphic-settings)) *graphic-options-pc*)
         (set! *carousell-frame-rate* *carousell-frame-rate-150fps*)
         )

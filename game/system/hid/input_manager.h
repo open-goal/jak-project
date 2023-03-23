@@ -20,12 +20,10 @@
 
 /*
 TODO:
-  - Hotswapping (crash when connecting sometimes, out of bounds somewhere)
-  - Fix keyboard for analog keys
-  - check for modifiers
-  - mouse movement for analog sticks
-  - Controller Selection (and names like with monitors)
   - Custom Binds from JSON
+  - Controller Selection (and names like with monitors)
+
+  - Unrelated but confirm -- cleanup SDL2 cmake edits, and make sure it statically links
 
   - PS4/PS5 color customizing
 */
@@ -84,7 +82,7 @@ class KeyboardDevice : public InputDevice {
 class MouseDevice : public InputDevice {
  public:
   // TODO - load user binds
-  MouseDevice() { m_binds = DEFAULT_MOUSE_BINDS; };
+  MouseDevice();
   ~MouseDevice() {}
 
   void process_event(const SDL_Event& event,
@@ -94,30 +92,34 @@ class MouseDevice : public InputDevice {
       // there is nothing to close
   };
 
-  std::pair<int, int> get_mouse_pos() const { return {m_xcoord, m_ycoord}; }
+  void enable_mouse_motion_controls(bool enable) { m_enable_mouse_motion_controls = enable; }
 
-  // TODO - mouse sensitivity
+  std::pair<int, int> get_mouse_pos() const { return {m_xcoord, m_ycoord}; }
 
  private:
   int m_xcoord = 0;
   int m_ycoord = 0;
+
+  bool m_enable_mouse_motion_controls = false;
+  bool m_was_moving_with_mouse = false;
+  float m_ysens = 10.0;
+  float m_xsens = -15.0;
 };
 
 // Central class that:
 // - keeps track of available input devices
 // - polls data from the input devices considered active
 // - fetches said data to be sent to the game
-class InputMonitor {
+class InputManager {
  public:
-  InputMonitor();
-  ~InputMonitor();
+  InputManager();
+  ~InputManager();
 
   // Propagate and handle the SDL event, ignored it if it's not relevant
-  void process_sdl_event(const SDL_Event& event);
+  void process_sdl_event(const SDL_Event& event, const bool ignore_kb_mouse);
   void refresh_device_list();
   std::optional<std::shared_ptr<PadData>> get_current_data(const int port) const;
   int update_rumble(const int port, const u8 low_intensity, const u8 high_intensity);
-  void change_active_controller(const int controller_id);
   std::pair<int, int> get_mouse_pos() const { return m_mouse.get_mouse_pos(); }
   void register_command(const CommandBinding::Source source, const CommandBinding bind);
 

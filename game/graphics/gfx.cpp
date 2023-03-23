@@ -181,14 +181,14 @@ void poll_events() {
 
 std::optional<std::shared_ptr<PadData>> get_current_frames_pad_data(const int port) {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_input_monitor()->get_current_data(port);
+    return Display::GetMainDisplay()->get_input_manager()->get_current_data(port);
   }
   return {};
 }
 
 int update_rumble(const int port, const u8 low_intensity, const u8 high_intensity) {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_input_monitor()->update_rumble(port, low_intensity,
+    return Display::GetMainDisplay()->get_input_manager()->update_rumble(port, low_intensity,
                                                                          high_intensity);
   }
   return 0;
@@ -196,11 +196,12 @@ int update_rumble(const int port, const u8 low_intensity, const u8 high_intensit
 
 std::pair<s32, s32> get_mouse_pos() {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_input_monitor()->get_mouse_pos();
+    return Display::GetMainDisplay()->get_input_manager()->get_mouse_pos();
   }
   return {0, 0};
 }
 
+// TODO - rewrite
 void input_mode_set(u32 enable) {
   // if (enable == s7.offset + jak1_symbols::FIX_SYM_TRUE) {  // #t
   //   Pad::g_input_mode_mapping = g_settings.pad_mapping_info;
@@ -243,7 +244,7 @@ s64 get_mapped_button(s64 pad, s64 button) {
 
 u64 get_window_width() {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_display_monitor()->get_window_width();
+    return Display::GetMainDisplay()->get_display_manager()->get_window_width();
   } else {
     return 0;
   }
@@ -251,53 +252,52 @@ u64 get_window_width() {
 
 u64 get_window_height() {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_display_monitor()->get_window_height();
+    return Display::GetMainDisplay()->get_display_manager()->get_window_height();
   } else {
     return 0;
   }
 }
 
+void set_fullscreen_display(u64 display_id) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_display_manager()->set_fullscreen_display_id(display_id);
+  }
+}
+
 void set_window_size(u64 width, u64 height) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_display_monitor()->set_window_size(width, height);
+    Display::GetMainDisplay()->get_display_manager()->set_window_size(width, height);
   }
 }
 
 void get_window_scale(float* x, float* y) {
   if (Display::GetMainDisplay()) {
     if (x) {
-      *x = Display::GetMainDisplay()->get_display_monitor()->get_window_scale_x();
+      *x = Display::GetMainDisplay()->get_display_manager()->get_window_scale_x();
     }
     if (y) {
-      *y = Display::GetMainDisplay()->get_display_monitor()->get_window_scale_y();
+      *y = Display::GetMainDisplay()->get_display_manager()->get_window_scale_y();
     }
   }
 }
 
 int get_connected_display_count() {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_display_monitor()->num_connected_displays();
+    return Display::GetMainDisplay()->get_display_manager()->num_connected_displays();
   }
   return 0;
 }
 
 std::string get_connected_display_name(int id) {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_display_monitor()->get_connected_display_name(id);
+    return Display::GetMainDisplay()->get_display_manager()->get_connected_display_name(id);
   }
   return "";
 }
 
-int get_active_display_mode_count() {
-  if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_display_monitor()->get_active_display_mode_count();
-  }
-  return 0;
-}
-
 int get_active_display_refresh_rate() {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_display_monitor()->get_active_display_refresh_rate();
+    return Display::GetMainDisplay()->get_display_manager()->get_active_display_refresh_rate();
   }
   return 0;
 }
@@ -305,17 +305,17 @@ int get_active_display_refresh_rate() {
 void get_active_display_size(s32* width, s32* height) {
   if (Display::GetMainDisplay()) {
     if (width) {
-      *width = Display::GetMainDisplay()->get_display_monitor()->get_screen_width();
+      *width = Display::GetMainDisplay()->get_display_manager()->get_screen_width();
     }
     if (height) {
-      *height = Display::GetMainDisplay()->get_display_monitor()->get_screen_height();
+      *height = Display::GetMainDisplay()->get_display_manager()->get_screen_height();
     }
   }
 }
 
 WindowDisplayMode get_window_display_mode() {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_display_monitor()->get_window_display_mode();
+    return Display::GetMainDisplay()->get_display_manager()->get_window_display_mode();
   } else {
     return WindowDisplayMode::Windowed;
   }
@@ -323,7 +323,7 @@ WindowDisplayMode get_window_display_mode() {
 
 void set_window_display_mode(WindowDisplayMode mode) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_display_monitor()->set_window_display_mode(mode);
+    Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(mode);
   }
 }
 
@@ -334,7 +334,7 @@ void set_game_resolution(int w, int h) {
 
 void set_window_resizable(bool resizable) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_display_monitor()->set_window_resizable(resizable);
+    Display::GetMainDisplay()->get_display_manager()->set_window_resizable(resizable);
   }
 }
 

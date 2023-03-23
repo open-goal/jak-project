@@ -600,7 +600,7 @@ void init_common_pc_port_functions(
   make_func_symbol_func("pc-get-window-size", (void*)get_window_size);
   make_func_symbol_func("pc-get-window-scale", (void*)get_window_scale);
 
-  // TODO - set display
+  make_func_symbol_func("pc-set-fullscreen-display", (void*)Gfx::set_fullscreen_display);
   make_func_symbol_func("pc-set-window-size", (void*)Gfx::set_window_size);
   make_func_symbol_func("pc-set-vsync", (void*)set_vsync);
   // TODO - has some issues when set to OFF

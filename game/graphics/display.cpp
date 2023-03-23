@@ -105,7 +105,7 @@ std::vector<std::shared_ptr<GfxDisplay>> g_displays;
 std::shared_ptr<GfxDisplay> GetMainDisplay() {
   if (g_displays.size() == 0)
     return NULL;
-  return g_displays.front()->get_display_monitor()->is_window_active() ? g_displays.front() : NULL;
+  return g_displays.front()->get_display_manager()->is_window_active() ? g_displays.front() : NULL;
 }
 
 int InitMainDisplay(int width,
@@ -136,7 +136,7 @@ void KillMainDisplay() {
 
 void KillDisplay(std::shared_ptr<GfxDisplay> display) {
   // lg::debug("kill display #x{:x}", (uintptr_t)display);
-  if (!display->get_display_monitor()->is_window_active()) {
+  if (!display->get_display_manager()->is_window_active()) {
     lg::warn("display #x{:x} cant be killed because it is not active");
     return;
   }

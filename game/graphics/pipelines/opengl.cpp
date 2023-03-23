@@ -25,7 +25,7 @@
 #include "game/graphics/texture/TexturePool.h"
 #include "game/runtime.h"
 #include "game/sce/libscf.h"
-#include "game/system/hid/input_monitor.h"
+#include "game/system/hid/input_manager.h"
 
 #include "third-party/SDL/include/SDL.h"
 #include "third-party/fmt/core.h"
@@ -110,6 +110,7 @@ static int gl_init(GfxSettings& settings) {
   }
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+  SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 32);
 
   return 0;
 }
@@ -163,7 +164,11 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
                                                    GameVersion game_version,
                                                    bool is_main) {
   // Setup the window
-  // TODO - dont center unless edge-case
+  // TODO - SDL2 doesn't seem to support HDR
+  //   Related -
+  //   https://answers.microsoft.com/en-us/windows/forum/all/hdr-monitor-low-brightness-after-exiting-full/999f7ee9-7ba3-4f9c-b812-bbeb9ff8dcc1
+  // TODO - Window position and set it on startup properly handle edge case of window going outside
+  // bounds
   SDL_Window* window =
       SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height,
                        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
@@ -228,15 +233,15 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
 GLDisplay::GLDisplay(SDL_Window* window, SDL_GLContext gl_context, bool is_main)
     : m_window(window), m_gl_context(gl_context) {
   m_main = is_main;
-  m_input_monitor = std::make_shared<InputMonitor>();
-  m_display_monitor = std::make_shared<DisplayMonitor>(m_window);
+  m_input_manager = std::make_shared<InputManager>();
+  m_display_manager = std::make_shared<DisplayManager>(m_window);
 
   // Register commands
   // TODO - ignore this if the setting is set
-  m_input_monitor->register_command(
+  m_input_manager->register_command(
       CommandBinding::Source::KEYBOARD,
       CommandBinding(SDLK_LALT, [&]() { set_imgui_visible(!is_imgui_visible()); }));
-  m_input_monitor->register_command(
+  m_input_manager->register_command(
       CommandBinding::Source::KEYBOARD,
       CommandBinding(SDLK_F2, [&]() { m_take_screenshot_next_frame = true; }));
 }
@@ -419,18 +424,23 @@ void GLDisplay::process_sdl_events() {
     }
 
     {
-      auto p = scoped_prof("sdl-video-monitor");
-      m_display_monitor->process_sdl_event(evt);
-    }
-
-    {
-      auto p = scoped_prof("sdl-input-monitor");
-      m_input_monitor->process_sdl_event(evt);
+      auto p = scoped_prof("video-manager-sdl");
+      m_display_manager->process_sdl_event(evt);
     }
 
     if (!m_should_quit) {
-      ImGui_ImplSDL2_ProcessEvent(&evt);
+      {
+        auto p = scoped_prof("imgui-sdl-process");
+        ImGui_ImplSDL2_ProcessEvent(&evt);
+      }
     }
+
+    ImGuiIO& io = ImGui::GetIO();
+    {
+      auto p = scoped_prof("sdl-input-monitor");
+      m_input_manager->process_sdl_event(evt, !io.WantCaptureMouse && !io.WantCaptureKeyboard);
+    }
+    // TODO - if we ignore kb/mouse -- reset and poll the GameController
   }
 }
 
@@ -443,7 +453,7 @@ void GLDisplay::render() {
 
   // imgui start of frame
   {
-    auto p = scoped_prof("imgui-init");
+    auto p = scoped_prof("imgui-new-frame");
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
@@ -455,7 +465,7 @@ void GLDisplay::render() {
   bool windows_borderless_hacks = false;
 #ifdef _WIN32
   // TODO - is this still needed?
-  if (m_display_monitor->get_window_display_mode() == WindowDisplayMode::Borderless) {
+  if (m_display_manager->get_window_display_mode() == WindowDisplayMode::Borderless) {
     windows_borderless_hacks = true;
   }
 #endif
@@ -516,7 +526,7 @@ void GLDisplay::render() {
   // switch vsync modes, if requested
   if (Gfx::g_global_settings.vsync != Gfx::g_global_settings.old_vsync) {
     Gfx::g_global_settings.old_vsync = Gfx::g_global_settings.vsync;
-    // TODO - -1 can be used for adaptive vsync, maybe useful for Jak 2+?
+    // NOTE - -1 can be used for adaptive vsync, maybe useful for Jak 2+?
     // https://wiki.libsdl.org/SDL2/SDL_GL_SetSwapInterval
     SDL_GL_SetSwapInterval(Gfx::g_global_settings.vsync);
   }

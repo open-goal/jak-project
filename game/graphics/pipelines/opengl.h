@@ -20,8 +20,8 @@ class GLDisplay : public GfxDisplay {
   virtual ~GLDisplay();
 
   // Overrides
-  std::shared_ptr<DisplayMonitor> get_display_monitor() const override { return m_display_monitor; }
-  std::shared_ptr<InputMonitor> get_input_monitor() const override { return m_input_monitor; }
+  std::shared_ptr<DisplayManager> get_display_manager() const override { return m_display_manager; }
+  std::shared_ptr<InputManager> get_input_manager() const override { return m_input_manager; }
 
   void render() override;
 
@@ -29,8 +29,8 @@ class GLDisplay : public GfxDisplay {
   SDL_Window* m_window;
   SDL_GLContext m_gl_context;
 
-  std::shared_ptr<DisplayMonitor> m_display_monitor;
-  std::shared_ptr<InputMonitor> m_input_monitor;
+  std::shared_ptr<DisplayManager> m_display_manager;
+  std::shared_ptr<InputManager> m_input_manager;
 
   bool m_should_quit = false;
   bool m_take_screenshot_next_frame = false;

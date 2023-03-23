@@ -4,7 +4,7 @@
  * Actual input detection is done through window events and is gfx pipeline-dependent.
  */
 
-#include "input_monitor.h"
+#include "input_manager.h"
 
 #include <atomic>
 #include <cmath>
@@ -18,48 +18,6 @@
 #include "game/graphics/pipelines/opengl.h"
 
 #include "third-party/imgui/imgui.h"
-
-// void SetAnalogAxisValue(MappingInfo& mapping_info, int axis, double value) {
-//   const double sensitivity_numerator = Gfx::g_global_settings.target_fps;
-//   const double minimum_sensitivity = 1e-4;
-//
-//   for (int pad = 0; pad < CONTROLLER_COUNT; ++pad) {
-//     for (int analog = 0; analog < (int)Analog::Max; ++analog) {
-//       if (mapping_info.keyboard_analog_mapping[pad][analog].axis_id == axis) {
-//         double newValue = value;
-//         if (axis == GlfwKeyCustomAxis::CURSOR_X_AXIS) {
-//           if (mapping_info.mouse_x_axis_sensitivities[pad] < minimum_sensitivity) {
-//             mapping_info.mouse_x_axis_sensitivities[pad] = minimum_sensitivity;
-//           }
-//           newValue /= (sensitivity_numerator / mapping_info.mouse_x_axis_sensitivities[pad]);
-//         } else if (axis == GlfwKeyCustomAxis::CURSOR_Y_AXIS) {
-//           if (mapping_info.mouse_y_axis_sensitivities[pad] < minimum_sensitivity) {
-//             mapping_info.mouse_y_axis_sensitivities[pad] = minimum_sensitivity;
-//           }
-//           newValue /= (sensitivity_numerator / mapping_info.mouse_y_axis_sensitivities[pad]);
-//         }
-//
-//         if (newValue > 1.0) {
-//           g_key_analogs[pad][analog] = 1.0;
-//         } else if (newValue < -1.0) {
-//           g_key_analogs[pad][analog] = -1.0;
-//         } else if (std::isnan(newValue)) {
-//           g_key_analogs[pad][analog] = 0.0;
-//         } else {
-//           g_key_analogs[pad][analog] = newValue;
-//         }
-//
-//         // Invert logic used here. Left Y axis movement is based on towards the camera.
-//         // In game forward is treated as going away from the camera and backwards is headed
-//         towards
-//         // the camera.
-//         if (axis == GlfwKeyCustomAxis::CURSOR_Y_AXIS) {
-//           g_key_analogs[pad][analog] *= -1;
-//         }
-//       }
-//     }
-//   }
-// }
 
 GameController::GameController(int sdl_device_id) : m_sdl_instance_id(sdl_device_id) {
   // TODO - load user binds
@@ -141,7 +99,6 @@ void GameController::process_event(const SDL_Event& event,
     if (event.type == SDL_CONTROLLERBUTTONDOWN &&
         commands.controller_binds.find(event.cbutton.button) != commands.controller_binds.end()) {
       for (const auto& command : commands.controller_binds.at(event.cbutton.button)) {
-        // TODO - check for modifiers
         command.command();
       }
     }
@@ -167,33 +124,71 @@ int GameController::update_rumble(const u8 low_rumble, const u8 high_rumble) {
   return 0;
 }
 
+bool has_necessary_modifiers(const bool need_alt,
+                             const bool need_ctrl,
+                             const bool need_meta,
+                             const bool need_shift,
+                             const u16 key_modifiers) {
+  // https://wiki.libsdl.org/SDL2/SDL_Keymod
+  if (need_alt && ((key_modifiers & KMOD_ALT) == 0)) {
+    return false;
+  }
+  if (need_ctrl && ((key_modifiers & KMOD_CTRL) == 0)) {
+    return false;
+  }
+  if (need_meta && ((key_modifiers & KMOD_GUI) == 0)) {
+    return false;
+  }
+  if (need_shift && ((key_modifiers & KMOD_SHIFT) == 0)) {
+    return false;
+  }
+  return true;
+}
+
+bool has_necessary_modifiers(const CommandBinding& bind, const u16 key_modifiers) {
+  return has_necessary_modifiers(bind.need_alt, bind.need_ctrl, bind.need_meta, bind.need_shift,
+                                 key_modifiers);
+}
+
+bool has_necessary_modifiers(const InputBinding& bind, const u16 key_modifiers) {
+  return has_necessary_modifiers(bind.need_alt, bind.need_ctrl, bind.need_meta, bind.need_shift,
+                                 key_modifiers);
+}
+
 void KeyboardDevice::process_event(const SDL_Event& event,
                                    const CommandBindingGroups& commands,
                                    std::shared_ptr<PadData> data) {
   if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
     const auto key_event = event.key;
-    // TODO - handle modifiers
+    if (key_event.repeat != 0) {
+      return;
+    }
     // Normal Buttons
     if (m_binds.buttons.find(key_event.keysym.sym) != m_binds.buttons.end()) {
       for (const auto& bind : m_binds.buttons.at(key_event.keysym.sym)) {
-        data->button_data.at(bind.pad_data_index) = event.type == SDL_KEYDOWN;
+        if (has_necessary_modifiers(bind, key_event.keysym.mod)) {
+          data->button_data.at(bind.pad_data_index) = event.type == SDL_KEYDOWN;
+        }
       }
     }
     // Analog Buttons (useless for keyboards)
     if (m_binds.button_axii.find(key_event.keysym.sym) != m_binds.button_axii.end()) {
       for (const auto& bind : m_binds.button_axii.at(key_event.keysym.sym)) {
-        data->button_data.at(bind.pad_data_index) = event.type == SDL_KEYDOWN;
+        if (has_necessary_modifiers(bind, key_event.keysym.mod)) {
+          data->button_data.at(bind.pad_data_index) = event.type == SDL_KEYDOWN;
+        }
       }
     }
     // Analog Sticks simulating
     if (m_binds.analog_axii.find(key_event.keysym.sym) != m_binds.analog_axii.end()) {
       for (const auto& bind : m_binds.analog_axii.at(key_event.keysym.sym)) {
-        int analog_val = event.type == SDL_KEYDOWN ? 255 : 127;
-        if (event.type == SDL_KEYDOWN && bind.inverse_val) {
-          analog_val = 0;
+        if (has_necessary_modifiers(bind, key_event.keysym.mod)) {
+          int analog_val = bind.minimum_in_range ? 127 : -127;
+          if (event.type == SDL_KEYDOWN) {
+            analog_val = bind.minimum_in_range ? -127 : 127;
+          }
+          data->analog_data.at(bind.pad_data_index) += analog_val;
         }
-        // TODO - fix these!
-        data->analog_data.at(bind.pad_data_index) = analog_val;
       }
     }
 
@@ -201,11 +196,19 @@ void KeyboardDevice::process_event(const SDL_Event& event,
     if (event.type == SDL_KEYDOWN &&
         commands.keyboard_binds.find(key_event.keysym.sym) != commands.keyboard_binds.end()) {
       for (const auto& command : commands.keyboard_binds.at(key_event.keysym.sym)) {
-        // TODO - check for modifiers
-        command.command();
+        if (has_necessary_modifiers(command, key_event.keysym.mod)) {
+          command.command();
+        }
       }
     }
   }
+}
+
+MouseDevice::MouseDevice() {
+  m_binds = DEFAULT_MOUSE_BINDS;
+  // https://wiki.libsdl.org/SDL2/SDL_SetRelativeMouseMode
+  // TODO - get it from from settings
+  SDL_SetRelativeMouseMode(sdl_util::sdl_bool(m_enable_mouse_motion_controls));
 }
 
 void MouseDevice::process_event(const SDL_Event& event,
@@ -215,11 +218,12 @@ void MouseDevice::process_event(const SDL_Event& event,
   // https://wiki.libsdl.org/SDL2/SDL_MouseButtonEvent
   if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
     const auto button_event = event.button;
-    // TODO - handle modifiers
     // Normal Buttons
     if (m_binds.buttons.find(button_event.button) != m_binds.buttons.end()) {
       for (const auto& bind : m_binds.buttons.at(button_event.button)) {
-        data->button_data.at(bind.pad_data_index) = event.type == SDL_MOUSEBUTTONDOWN;
+        if (has_necessary_modifiers(bind, SDL_GetModState())) {
+          data->button_data.at(bind.pad_data_index) = event.type == SDL_MOUSEBUTTONDOWN;
+        }
       }
     }
     // Analog Buttons (useless for keyboards)
@@ -231,11 +235,26 @@ void MouseDevice::process_event(const SDL_Event& event,
     // Analog Sticks simulating
     if (m_binds.analog_axii.find(button_event.button) != m_binds.analog_axii.end()) {
       for (const auto& bind : m_binds.analog_axii.at(button_event.button)) {
-        int analog_val = event.type == SDL_MOUSEBUTTONDOWN ? 255 : 127;
-        if (event.type == SDL_MOUSEBUTTONDOWN && bind.inverse_val) {
-          analog_val = 0;
+        if (has_necessary_modifiers(bind, SDL_GetModState())) {
+          int analog_val = event.type == SDL_MOUSEBUTTONDOWN ? 255 : 127;
+          if (event.type == SDL_MOUSEBUTTONDOWN && bind.minimum_in_range) {
+            analog_val = 0;
+          }
+          data->analog_data.at(bind.pad_data_index) = analog_val;
         }
-        data->analog_data.at(bind.pad_data_index) = analog_val;
+      }
+    }
+
+    if (m_enable_mouse_motion_controls) {
+      // WoW style mouse movement, if you have both buttons held down, you will move forward
+      const auto mouse_state = SDL_GetMouseState(NULL, NULL);
+      if (event.type == SDL_MOUSEBUTTONDOWN &&
+          (mouse_state & SDL_BUTTON_LMASK && mouse_state & SDL_BUTTON_RMASK)) {
+        data->analog_data.at(1) += -127;
+        m_was_moving_with_mouse = true;
+      } else if (m_was_moving_with_mouse) {
+        data->analog_data.at(1) += 127;
+        m_was_moving_with_mouse = false;
       }
     }
 
@@ -243,19 +262,25 @@ void MouseDevice::process_event(const SDL_Event& event,
     if (event.type == SDL_MOUSEBUTTONDOWN &&
         commands.mouse_binds.find(button_event.button) != commands.mouse_binds.end()) {
       for (const auto& command : commands.mouse_binds.at(button_event.button)) {
-        // TODO - check for modifiers
-        command.command();
+        if (has_necessary_modifiers(command, SDL_GetModState())) {
+          command.command();
+        }
       }
     }
   } else if (event.type == SDL_MOUSEMOTION) {
     // https://wiki.libsdl.org/SDL2/SDL_MouseMotionEvent
-    // TODO - https://wiki.libsdl.org/SDL2/SDL_SetRelativeMouseMode
     m_xcoord = event.motion.x;
     m_ycoord = event.motion.y;
+    if (m_enable_mouse_motion_controls) {
+      const auto xadjust = std::clamp(127 + int(float(event.motion.xrel) * m_xsens), 0, 255);
+      const auto yadjust = std::clamp(127 + int(float(event.motion.yrel) * m_ysens), 0, 255);
+      data->analog_data.at(2) = xadjust;
+      data->analog_data.at(3) = yadjust;
+    }
   }
 }
 
-InputMonitor::InputMonitor() {
+InputManager::InputManager() {
   // Update to latest controller DB file
   // TODO - load users controller settings
   std::string mapping_path =
@@ -271,6 +296,7 @@ InputMonitor::InputMonitor() {
   m_data[1] = std::make_shared<PadData>();
   m_keyboard = KeyboardDevice();
   m_mouse = MouseDevice();
+
   if (m_data.find(m_keyboard_and_mouse_port) == m_data.end()) {
     m_data[m_keyboard_and_mouse_port] = std::make_shared<PadData>();
   }
@@ -278,14 +304,15 @@ InputMonitor::InputMonitor() {
   refresh_device_list();
 }
 
-InputMonitor::~InputMonitor() {
+InputManager::~InputManager() {
   for (auto& device : m_available_controllers) {
     device->close_device();
   }
 }
 
-void InputMonitor::refresh_device_list() {
+void InputManager::refresh_device_list() {
   m_available_controllers.clear();
+  m_controller_port_mapping.clear();
   // Enumerate devices
   const auto num_joysticks = SDL_NumJoysticks();
   if (num_joysticks > 0) {
@@ -311,7 +338,7 @@ void InputMonitor::refresh_device_list() {
   }
 }
 
-void InputMonitor::process_sdl_event(const SDL_Event& event) {
+void InputManager::process_sdl_event(const SDL_Event& event, const bool ignore_kb_mouse) {
   // Detect controller connections and disconnects
   // TODO - do we care about remap events?
   if (sdl_util::is_any_event_type(event.type,
@@ -320,7 +347,7 @@ void InputMonitor::process_sdl_event(const SDL_Event& event) {
     refresh_device_list();
   }
 
-  if (m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
+  if (ignore_kb_mouse && m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
     m_keyboard.process_event(event, m_command_binds, m_data.at(m_keyboard_and_mouse_port));
     m_mouse.process_event(event, m_command_binds, m_data.at(m_keyboard_and_mouse_port));
   }
@@ -328,21 +355,21 @@ void InputMonitor::process_sdl_event(const SDL_Event& event) {
   // Send event to active controller device
   // This goes last so it takes precedence
   for (const auto& [port, controller_idx] : m_controller_port_mapping) {
-    if (m_data.find(port) != m_data.end()) {
+    if (m_data.find(port) != m_data.end() && m_available_controllers.size() > controller_idx) {
       m_available_controllers.at(controller_idx)
           ->process_event(event, m_command_binds, m_data.at(port));
     }
   }
 }
 
-std::optional<std::shared_ptr<PadData>> InputMonitor::get_current_data(const int port) const {
+std::optional<std::shared_ptr<PadData>> InputManager::get_current_data(const int port) const {
   if (m_data.find(port) == m_data.end()) {
     return {};
   }
   return m_data.at(port);
 }
 
-int InputMonitor::update_rumble(int port, u8 low_intensity, u8 high_intensity) {
+int InputManager::update_rumble(int port, u8 low_intensity, u8 high_intensity) {
   if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
     return 0;
   }
@@ -350,7 +377,7 @@ int InputMonitor::update_rumble(int port, u8 low_intensity, u8 high_intensity) {
       ->update_rumble(low_intensity, high_intensity);
 }
 
-void InputMonitor::register_command(const CommandBinding::Source source,
+void InputManager::register_command(const CommandBinding::Source source,
                                     const CommandBinding bind) {
   switch (source) {
     case CommandBinding::Source::CONTROLLER:

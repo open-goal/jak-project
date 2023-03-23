@@ -12,7 +12,7 @@
 
 #include "common/util/Assert.h"
 
-#include <game/system/hid/display_monitor.h>
+#include <game/system/hid/display_manager.h>
 
 // a GfxDisplay class is equivalent to a window that displays stuff. This holds an actual internal
 // window pointer used by whichever renderer. It also contains functions for setting and
@@ -27,12 +27,10 @@ class GfxDisplay {
  public:
   virtual ~GfxDisplay() {}
 
-  virtual std::shared_ptr<DisplayMonitor> get_display_monitor() const = 0;
-  virtual std::shared_ptr<InputMonitor> get_input_monitor() const = 0;
+  virtual std::shared_ptr<DisplayManager> get_display_manager() const = 0;
+  virtual std::shared_ptr<InputManager> get_input_manager() const = 0;
 
   virtual void render() = 0;
-  // TODO - when "flushing the fullscreen" there was this hack
-  // Gfx::g_global_settings.old_vsync = !Gfx::g_global_settings.vsync;
 
   void set_imgui_visible(bool visible) {
     m_imgui_visible = visible;
