@@ -9,7 +9,7 @@
   "crocadog-highres-ag.go"
   "sig-highres-ag.go"
   "metalkor-chopped-ag.go"
-  "gold-key-ag.go"
+  "sew-gold-key-ag.go"
   "kid-medallion-ag.go"
   "hip-bottle-c-ag.go"
   "hip-mug-ag.go"
