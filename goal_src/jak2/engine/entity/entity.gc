@@ -2241,6 +2241,14 @@
                               (not (logtest? (-> sv-48 perm status) (entity-perm-status bit-9 bit-10)))
                               (not (logtest? (-> sv-48 kill-mask) sv-32))
                               (or (-> s4-1 vis-info 0) (< (vector-vector-distance (-> sv-48 trans) sv-16) (-> sv-48 vis-dist)))
+                              ;; PC port note : added this extra check to fix level types being used after deloaded because of bad entity placement
+                              (#if PC_PORT
+                                  (or (not (type-type? (-> sv-48 entity type) entity-actor)) (and (valid? (-> (the-as entity-actor (-> sv-48 entity)) etype) type 'entity-type-check1 #f 0)
+                                                                                                  (valid? (-> (the-as entity-actor (-> sv-48 entity)) etype symbol) symbol 'entity-type-check2 #f 0)
+                                                                                                  (valid? (-> (the-as entity-actor (-> sv-48 entity)) etype symbol value) type 'entity-type-check3 #f 0)
+                                                                                                  (= (-> (the-as entity-actor (-> sv-48 entity)) etype) (-> (the-as entity-actor (-> sv-48 entity)) etype symbol value))
+                                                                                                  ))
+                                  #f)
                               )
                          (when (not (or (-> sv-48 process) (logtest? (-> sv-48 perm status) (entity-perm-status bit-0 dead)) s0-0))
                            (birth! (-> sv-48 entity))
