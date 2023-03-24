@@ -418,13 +418,6 @@ u64 pc_get_mips2c(u32 name) {
 }
 
 /// <summary>
-/// Returns the number of currently connected displays (aka monitors)
-/// </summary>
-int get_display_count() {
-  return Gfx::get_connected_display_count();
-}
-
-/// <summary>
 /// Returns resolution of the monitor's current display mode
 /// </summary>
 /// <param name="w_ptr"></param>
@@ -577,6 +570,18 @@ u64 pc_filter_debug_string(u32 str_ptr, u32 dist_ptr) {
   return s7.offset;
 }
 
+inline bool symbol_to_bool(const u32 symptr) {
+  return symptr != s7.offset;
+}
+
+void set_keyboard_enabled(u32 symptr) {
+  Gfx::set_keyboard_enabled(symbol_to_bool(symptr));
+}
+
+void set_mouse_enabled(u32 symptr) {
+  Gfx::set_mouse_enabled(symbol_to_bool(symptr));
+}
+
 /// <summary>
 /// Initializes all functions that are common across all game versions
 /// These functions have the same implementation and do not use any game specific functions (other
@@ -594,7 +599,7 @@ void init_common_pc_port_functions(
   make_func_symbol_func("__pc-get-mips2c", (void*)pc_get_mips2c);
 
   // display related
-  make_func_symbol_func("pc-get-display-count", (void*)get_display_count);
+  make_func_symbol_func("pc-get-display-count", (void*)Gfx::get_connected_display_count);
   make_func_symbol_func("pc-get-active-display-size", (void*)get_active_display_size);
   make_func_symbol_func("pc-get-active-display-refresh-rate",
                         (void*)get_active_display_refresh_rate);
@@ -609,8 +614,10 @@ void init_common_pc_port_functions(
   make_func_symbol_func("pc-set-game-resolution", (void*)Gfx::set_game_resolution);
 
   // pad stuff
-  // TODO - get controller name
-  // TODO - get controller count
+  make_func_symbol_func("pc-get-controller-count", (void*)Gfx::get_controller_count);
+  make_func_symbol_func("pc-set-controller!", (void*)Gfx::set_controller_id_for_port);
+  make_func_symbol_func("pc-set-keyboard-enabled!", (void*)set_keyboard_enabled);
+  make_func_symbol_func("pc-set-mouse-enabled!", (void*)set_keyboard_enabled);
   // TODO - redo these
   make_func_symbol_func("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
   make_func_symbol_func("pc-pad-input-map-save!", (void*)Gfx::input_mode_save);

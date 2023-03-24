@@ -13,6 +13,7 @@
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
+#include "common/util/string_util.h"
 
 #include "game/external/discord.h"
 #include "game/graphics/gfx.h"
@@ -586,7 +587,17 @@ u64 get_display_name(u32 id) {
   if (name.empty()) {
     return s7.offset;
   }
-  return make_string_from_c(name.c_str());
+  return make_string_from_c(str_util::to_upper(name).c_str());
+}
+
+/// Returns the name of the display with the given id
+/// or #f if not found / empty
+u64 get_controller_name(u32 id) {
+  const auto name = Gfx::get_controller_name(id);
+  if (name.empty()) {
+    return s7.offset;
+  }
+  return make_string_from_c(str_util::to_upper(name).c_str());
 }
 
 void InitMachine_PCPort() {
@@ -594,8 +605,10 @@ void InitMachine_PCPort() {
   init_common_pc_port_functions(make_function_symbol_from_c);
 
   // Game specific functions
+  // TODO - more of these can be removed from here if we pass more function pointers
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
 
+  make_function_symbol_from_c("pc-get-controller-name", (void*)get_controller_name);
   make_function_symbol_from_c("pc-get-display-name", (void*)get_display_name);
   make_function_symbol_from_c("pc-get-display-mode", (void*)get_display_mode);
   make_function_symbol_from_c("pc-get-os", (void*)get_os);

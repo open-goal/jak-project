@@ -145,6 +145,12 @@ void set_levels(const std::vector<std::string>& levels);
 std::optional<std::shared_ptr<PadData>> get_current_frames_pad_data(const int port);
 int update_rumble(const int port, const u8 low_intensity, const u8 high_intensity);
 std::pair<s32, s32> get_mouse_pos();
+int get_controller_count();
+std::string get_controller_name(const int id);
+void set_controller_id_for_port(const int id, const int port);
+void set_keyboard_enabled(const bool enabled);
+void set_mouse_enabled(const bool enabled);
+
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);

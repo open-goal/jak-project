@@ -35,8 +35,8 @@ GameController::GameController(int sdl_device_id) : m_sdl_instance_id(sdl_device
   }
   auto name = SDL_GameControllerName(m_device_handle);
   if (!name) {
-    lg::error("Could not get device name: {}", SDL_GetError());
-    m_device_name = fmt::format("Unknown Device {}", sdl_device_id);
+    sdl_util::log_error(fmt::format("Could not get device name with id: {}", sdl_device_id));
+    m_device_name = "";
   } else {
     m_device_name = name;
   }
@@ -296,6 +296,7 @@ InputManager::InputManager() {
   }
   m_command_binds = CommandBindingGroups();
   refresh_device_list();
+  ignore_background_controller_events(false);
 }
 
 InputManager::~InputManager() {
@@ -332,6 +333,13 @@ void InputManager::refresh_device_list() {
   }
 }
 
+void InputManager::ignore_background_controller_events(const bool ignore) {
+  m_ignore_background_controller_events = ignore;
+  // TODO - ignoring return value
+  SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, ignore ? "0" : "1");
+  // TODO - set and persist settings if changed
+}
+
 void InputManager::process_sdl_event(const SDL_Event& event, const bool ignore_kb_mouse) {
   // Detect controller connections and disconnects
   if (sdl_util::is_any_event_type(event.type,
@@ -341,8 +349,12 @@ void InputManager::process_sdl_event(const SDL_Event& event, const bool ignore_k
   }
 
   if (ignore_kb_mouse && m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
-    m_keyboard.process_event(event, m_command_binds, m_data.at(m_keyboard_and_mouse_port));
-    m_mouse.process_event(event, m_command_binds, m_data.at(m_keyboard_and_mouse_port));
+    if (m_keyboard_enabled) {
+      m_keyboard.process_event(event, m_command_binds, m_data.at(m_keyboard_and_mouse_port));
+    }
+    if (m_mouse_enabled) {
+      m_mouse.process_event(event, m_command_binds, m_data.at(m_keyboard_and_mouse_port));
+    }
   }
 
   // Send event to active controller device
@@ -394,4 +406,28 @@ void InputManager::register_command(const CommandBinding::Source source,
       m_command_binds.mouse_binds[bind.host_key].push_back(bind);
       break;
   }
+}
+
+std::string InputManager::get_controller_name(const int controller_id) {
+  if (controller_id >= m_available_controllers.size()) {
+    return "";
+  }
+  return m_available_controllers.at(controller_id)->get_name();
+}
+
+void InputManager::set_controller_for_port(const int controller_id, const int port) {
+  // TODO - if changing, probably need to reset inputs
+  // TODO - persist settings
+}
+
+void InputManager::enable_keyboard(const bool enabled) {
+  // TODO - if disabling, probably need to reset inputs
+  m_keyboard_enabled = enabled;
+  // TODO - persist settings
+}
+
+void InputManager::enable_mouse(const bool enabled) {
+  // TODO - if disabling, probably need to reset inputs
+  m_mouse_enabled = enabled;
+  // TODO - persist settings
 }

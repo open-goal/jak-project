@@ -122,4 +122,16 @@ std::string current_isotimestamp() {
   oss << std::put_time(&utc_time, format.c_str());
   return oss.str();
 }
+
+std::string to_upper(const std::string& str) {
+  std::string new_str;
+  std::transform(str.begin(), str.end(), new_str.begin(), ::toupper);
+  return new_str;
+}
+
+std::string to_lower(const std::string& str) {
+  std::string new_str;
+  std::transform(str.begin(), str.end(), new_str.begin(), ::tolower);
+  return new_str;
+}
 }  // namespace str_util

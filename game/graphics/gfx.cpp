@@ -200,6 +200,38 @@ std::pair<s32, s32> get_mouse_pos() {
   return {0, 0};
 }
 
+int get_controller_count() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_input_manager()->get_num_controllers();
+  }
+  return 0;
+}
+
+std::string get_controller_name(const int id) {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_input_manager()->get_controller_name(id);
+  }
+  return "";
+}
+
+void set_controller_id_for_port(const int id, const int port) {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_input_manager()->set_controller_for_port(id, port);
+  }
+}
+
+void set_keyboard_enabled(const bool enabled) {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_input_manager()->enable_keyboard(enabled);
+  }
+}
+
+void set_mouse_enabled(const bool enabled) {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_input_manager()->enable_mouse(enabled);
+  }
+}
+
 // TODO - rewrite
 void input_mode_set(u32 enable) {
   // if (enable == s7.offset + jak1_symbols::FIX_SYM_TRUE) {  // #t

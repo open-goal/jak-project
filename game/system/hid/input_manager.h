@@ -15,8 +15,6 @@
 /*
 TODO:
   - Custom Binds from JSON
-  - Controller Selection (and names like with monitors)
-
   - PS4/PS5 color customizing
 */
 
@@ -24,7 +22,6 @@ TODO:
 class InputDevice {
  protected:
   bool m_loaded = false;
-  std::string m_device_name;
 
   // Each binding is a mapping from an SDL input to one or more InputBindings
   InputBindingGroups m_binds;
@@ -51,10 +48,12 @@ class GameController : public InputDevice {
                      std::shared_ptr<PadData> data) override;
   void close_device() override;
   int update_rumble(const u8 low_rumble, const u8 high_rumble);
+  std::string get_name() const { return m_device_name; }
 
  private:
   int m_sdl_instance_id = -1;
   SDL_GameController* m_device_handle;
+  std::string m_device_name = "";
 };
 
 class KeyboardDevice : public InputDevice {
@@ -110,10 +109,19 @@ class InputManager {
   // Propagate and handle the SDL event, ignored it if it's not relevant
   void process_sdl_event(const SDL_Event& event, const bool ignore_kb_mouse);
   void refresh_device_list();
+  void ignore_background_controller_events(const bool ignore);
+
   std::optional<std::shared_ptr<PadData>> get_current_data(const int port) const;
   int update_rumble(const int port, const u8 low_intensity, const u8 high_intensity);
   std::pair<int, int> get_mouse_pos() const { return m_mouse.get_mouse_pos(); }
+
   void register_command(const CommandBinding::Source source, const CommandBinding bind);
+
+  int get_num_controllers() const { return m_available_controllers.size(); }
+  std::string get_controller_name(const int controller_id);
+  void set_controller_for_port(const int controller_id, const int port);
+  void enable_keyboard(const bool enabled);
+  void enable_mouse(const bool enabled);
 
  private:
   /// <summary>
@@ -152,4 +160,9 @@ class InputManager {
   /// Collection of arbitrary commands to run on user actions
   /// </summary>
   CommandBindingGroups m_command_binds;
+
+  bool m_keyboard_enabled = true;
+  bool m_mouse_enabled = false;
+
+  bool m_ignore_background_controller_events = false;
 };
