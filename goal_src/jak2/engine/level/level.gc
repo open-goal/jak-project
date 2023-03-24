@@ -1598,7 +1598,7 @@ into 7 sections, which might explain the weird sizes in the center.
         (set! (-> obj borrow-level s5-0) #f)
         )
       )
-    ;; if we borrow from soembody, remove ourselves from them
+    ;; if we borrow from somebody, remove ourselves from them
     (when (-> obj borrow-from-level)
       (dotimes (v1-19 2)
         (if (= obj (-> obj borrow-from-level borrow-level v1-19))
@@ -1713,13 +1713,15 @@ into 7 sections, which might explain the weird sizes in the center.
       )
     (let ((v1-103 0)
           (a0-60 0)
-          (a1-23 (the-as basic (-> obj level-type)))
+          (a1-23 (-> obj level-type))
           )
       (while a1-23
         (+! a0-60 1)
-        (+! v1-103 (-> (the-as type a1-23) psize))
-        (set! (-> (the-as type a1-23) symbol value) (the-as object 0))
-        (set! a1-23 (-> (the-as type a1-23) method-table 8))
+        (+! v1-103 (-> a1-23 psize))
+        ;; PC port note : added this call to kill entities using level types that are being unloaded because of bad entity placement
+        (kill-by-type a1-23 *active-pool*)
+        (set! (-> a1-23 symbol value) (the-as object 0))
+        (set! a1-23 (the-as type (-> a1-23 method-table 8)))
         )
       )
     (let* ((s5-6 (-> obj info packages))

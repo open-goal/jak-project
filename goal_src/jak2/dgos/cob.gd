@@ -9,7 +9,7 @@
   "kor-break-ag.go"
   "metalkor-highres-ag.go"
   "com-airlock-inner-ag.go"
-  "door-ctyinda-ag.go"
+  "vin-door-ctyinda-ag.go"
   "kor-break-ray-ag.go"
   "consiteb-vis.go"
  ))
