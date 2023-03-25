@@ -63,7 +63,7 @@ const InputBindingGroups DEFAULT_KEYBOARD_BINDS =
 
 const InputBindingGroups DEFAULT_MOUSE_BINDS = InputBindingGroups({}, {}, {});
 
-std::vector<std::pair<u8, InputBinding>> InputBindingGroups::lookup_analog_binds(
+std::vector<std::pair<u32, InputBinding>> InputBindingGroups::lookup_analog_binds(
     PadData::AnalogIndex idx,
     bool only_minimum_binds) {
   // First see if it's in the cache, if it is return it
@@ -72,7 +72,7 @@ std::vector<std::pair<u8, InputBinding>> InputBindingGroups::lookup_analog_binds
   }
 
   // Didn't find it, let's construct the cache entry
-  std::vector<std::pair<u8, InputBinding>> entry = {};
+  std::vector<std::pair<u32, InputBinding>> entry = {};
   for (const auto& [sdl_code, binds] : analog_axii) {
     for (const auto& bind : binds) {
       if (bind.pad_data_index != idx || only_minimum_binds && !bind.minimum_in_range) {
@@ -85,7 +85,7 @@ std::vector<std::pair<u8, InputBinding>> InputBindingGroups::lookup_analog_binds
   return entry;
 }
 
-std::vector<std::pair<u8, InputBinding>> InputBindingGroups::lookup_button_binds(
+std::vector<std::pair<u32, InputBinding>> InputBindingGroups::lookup_button_binds(
     PadData::ButtonIndex idx) {
   // First see if it's in the cache, if it is return it
   if (m_button_lookup.find({idx, true}) != m_button_lookup.end()) {
@@ -93,7 +93,7 @@ std::vector<std::pair<u8, InputBinding>> InputBindingGroups::lookup_button_binds
   }
 
   // Didn't find it, let's construct the cache entry
-  std::vector<std::pair<u8, InputBinding>> entry = {};
+  std::vector<std::pair<u32, InputBinding>> entry = {};
   for (const auto& [sdl_code, binds] : analog_axii) {
     for (const auto& bind : binds) {
       if (bind.pad_data_index != idx) {

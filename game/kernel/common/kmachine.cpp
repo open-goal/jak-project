@@ -537,14 +537,14 @@ u64 pc_filter_debug_string(u32 str_ptr, u32 dist_ptr) {
   memcpy(&dist, &dist_ptr, 4);
 
   // Check distance first
-  if (Gfx::g_debug_settings.debug_text_check_range) {
-    if (dist / 4096.F > Gfx::g_debug_settings.debug_text_max_range) {
+  if (Gfx::g_debug_settings.text_check_range) {
+    if (dist / 4096.F > Gfx::g_debug_settings.text_max_range) {
       return s7.offset + true_symbol_offset(g_game_version);
     }
   }
 
   // Get the current filters
-  const auto& filters = Gfx::g_debug_settings.debug_text_filters;
+  const auto& filters = Gfx::g_debug_settings.text_filters;
   if (filters.empty()) {
     // there are no filters, exit early
     return s7.offset;
@@ -580,6 +580,10 @@ void set_keyboard_enabled(u32 symptr) {
 
 void set_mouse_enabled(u32 symptr) {
   Gfx::set_mouse_enabled(symbol_to_bool(symptr));
+}
+
+void ignore_background_controller_events(u32 symptr) {
+  Gfx::ignore_background_controller_events(symbol_to_bool(symptr));
 }
 
 /// <summary>
@@ -618,14 +622,9 @@ void init_common_pc_port_functions(
   make_func_symbol_func("pc-set-controller!", (void*)Gfx::set_controller_id_for_port);
   make_func_symbol_func("pc-set-keyboard-enabled!", (void*)set_keyboard_enabled);
   make_func_symbol_func("pc-set-mouse-enabled!", (void*)set_keyboard_enabled);
-  // TODO - redo these
-  make_func_symbol_func("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
-  make_func_symbol_func("pc-pad-input-map-save!", (void*)Gfx::input_mode_save);
-  make_func_symbol_func("pc-pad-input-mode-set", (void*)Gfx::input_mode_set);
-  /*make_function_symbol_from_c("pc-pad-input-pad-set", (void*)Pad::input_mode_pad_set);
-  make_function_symbol_from_c("pc-pad-input-mode-get", (void*)Pad::input_mode_get);
-  make_function_symbol_from_c("pc-pad-input-key-get", (void*)Pad::input_mode_get_key);
-  make_function_symbol_from_c("pc-pad-input-index-get", (void*)Pad::input_mode_get_index);*/
+  make_func_symbol_func("pc-ignore-background-controller-events!",
+                        (void*)ignore_background_controller_events);
+  make_func_symbol_func("pc-set-controller-led!", (void*)Gfx::set_controller_led);
 
   // graphics things
   make_func_symbol_func("pc-set-letterbox", (void*)Gfx::set_letterbox);

@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cmath>
 
+#include "input_manager.h"
 #include "sdl_util.h"
 
 #include "common/log/log.h"
@@ -116,6 +117,16 @@ int GameController::update_rumble(const u8 low_rumble, const u8 high_rumble) {
     }
   }
   return 0;
+}
+
+bool GameController::has_led() {
+  // TODO
+  return false;
+}
+
+void GameController::set_led(const u8 red, const u8 green, const u8 blue) {
+  // TODO - handle return
+  SDL_GameControllerSetLED(m_device_handle, red, green, blue);
 }
 
 bool has_necessary_modifiers(const bool need_alt,
@@ -418,6 +429,17 @@ std::string InputManager::get_controller_name(const int controller_id) {
 void InputManager::set_controller_for_port(const int controller_id, const int port) {
   // TODO - if changing, probably need to reset inputs
   // TODO - persist settings
+}
+
+void InputManager::set_controller_led(const int port, const u8 red, const u8 green, const u8 blue) {
+  if (m_controller_port_mapping.find(0) == m_controller_port_mapping.end()) {
+    return;
+  }
+  const auto id = m_controller_port_mapping.at(port);
+  if (id >= m_available_controllers.size()) {
+    return;
+  }
+  m_available_controllers.at(id)->set_led(red, green, blue);
 }
 
 void InputManager::enable_keyboard(const bool enabled) {

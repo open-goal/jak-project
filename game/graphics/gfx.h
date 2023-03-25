@@ -19,7 +19,7 @@
 #include "game/system/hid/input_manager.h"
 
 // forward declarations
-struct GfxSettings;
+struct GfxGlobalSettings;
 class GfxDisplay;
 
 // enum for rendering pipeline
@@ -27,11 +27,11 @@ enum class GfxPipeline { Invalid = 0, OpenGL };
 
 // module for the different rendering pipelines
 struct GfxRendererModule {
-  std::function<int(GfxSettings&)> init;
+  std::function<int(GfxGlobalSettings&)> init;
   std::function<std::shared_ptr<GfxDisplay>(int width,
                                             int height,
                                             const char* title,
-                                            GfxSettings& settings,
+                                            GfxGlobalSettings& settings,
                                             GameVersion version,
                                             bool is_main)>
       make_display;
@@ -50,28 +50,13 @@ struct GfxRendererModule {
   const char* name;
 };
 
-// store settings related to the gfx systems
-// TODO merge with globalsettings
-struct GfxSettings {
-  // current version of the settings. this should be set up so that newer versions are always higher
-  // than older versions
-  // increment this whenever you change this struct.
-  // there's probably a smarter way to do this (automatically deduce size etc.)
-  static constexpr u64 CURRENT_VERSION = 0x0000'0000'0005'0000;
-
-  u64 version;  // the version of this settings struct. MUST ALWAYS BE THE FIRST THING!
-
-  int vsync;   // (temp) number of screen update per frame
-  bool debug;  // graphics debugging
-
-  GfxPipeline renderer = GfxPipeline::Invalid;  // which rendering pipeline to use.
-};
-
 // runtime settings
 static constexpr int PAT_MOD_COUNT = 3;
 static constexpr int PAT_EVT_COUNT = 7;
 static constexpr int PAT_MAT_COUNT = 23;
 struct GfxGlobalSettings {
+  bool debug = true;  // graphics debugging
+
   // note: this is actually the size of the display that ISN'T letterboxed
   // the excess space is what will be letterboxed away.
   int lbox_w = 640;
@@ -121,8 +106,7 @@ struct GfxGlobalSettings {
 namespace Gfx {
 
 extern GfxGlobalSettings g_global_settings;
-extern GfxSettings g_settings;
-extern DebugSettings g_debug_settings;
+extern GameSettings::DebugSettings g_debug_settings;
 
 const GfxRendererModule* GetCurrentRenderer();
 
@@ -150,10 +134,8 @@ std::string get_controller_name(const int id);
 void set_controller_id_for_port(const int id, const int port);
 void set_keyboard_enabled(const bool enabled);
 void set_mouse_enabled(const bool enabled);
-
-void input_mode_set(u32 enable);
-void input_mode_save();
-s64 get_mapped_button(s64 pad, s64 button);
+void ignore_background_controller_events(const bool ignore);
+void set_controller_led(const int port, const u8 red, const u8 green, const u8 blue);
 
 // VideoMonitor usages
 u64 get_window_width();

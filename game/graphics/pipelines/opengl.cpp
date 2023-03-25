@@ -356,63 +356,6 @@ void update_global_profiler() {
   prof().set_enable(g_gfx_data->debug_gui.record_events);
 }
 
-// TODO - rewrite / remove!
-// void GLDisplay::update_glfw() {
-//   auto p = scoped_prof("update_glfw");
-//
-//   glfwPollEvents();
-//   glfwMakeContextCurrent(m_window);
-//   auto& mapping_info = Gfx::get_button_mapping();
-//   Pad::update_gamepads(mapping_info);
-//
-//   glfwGetFramebufferSize(m_window, &m_display_state_copy.window_size_width,
-//                          &m_display_state_copy.window_size_height);
-//
-//   glfwGetWindowContentScale(m_window, &m_display_state_copy.window_scale_x,
-//                             &m_display_state_copy.window_scale_y);
-//
-//   glfwGetWindowPos(m_window, &m_display_state_copy.window_pos_x,
-//                    &m_display_state_copy.window_pos_y);
-//
-//   GLFWmonitor* monitor = get_monitor(fullscreen_screen());
-//   auto current_vmode = glfwGetVideoMode(monitor);
-//   if (current_vmode) {
-//     m_display_state_copy.current_vmode.set(current_vmode);
-//   }
-//
-//   int count = 0;
-//   auto vmodes = glfwGetVideoModes(monitor, &count);
-//
-//   if (count > MAX_VMODES) {
-//     fmt::print("got too many vmodes: {}\n", count);
-//     count = MAX_VMODES;
-//   }
-//
-//   m_display_state_copy.num_vmodes = count;
-//
-//   m_display_state_copy.largest_vmode_width = 1;
-//   m_display_state_copy.largest_vmode_refresh_rate = 1;
-//   for (int i = 0; i < count; i++) {
-//     if (vmodes[i].width > m_display_state_copy.largest_vmode_width) {
-//       m_display_state_copy.largest_vmode_height = vmodes[i].height;
-//       m_display_state_copy.largest_vmode_width = vmodes[i].width;
-//     }
-//
-//     if (vmodes[i].refreshRate > m_display_state_copy.largest_vmode_refresh_rate) {
-//       m_display_state_copy.largest_vmode_refresh_rate = vmodes[i].refreshRate;
-//     }
-//     m_display_state_copy.vmodes[i].set(&vmodes[i]);
-//   }
-//
-//   if (m_pending_size.pending) {
-//     glfwSetWindowSize(m_window, m_pending_size.width, m_pending_size.height);
-//     m_pending_size.pending = false;
-//   }
-//
-//   std::lock_guard<std::mutex> lk(m_lock);
-//   m_display_state = m_display_state_copy;
-// }
-
 void GLDisplay::process_sdl_events() {
   SDL_Event evt;
   while (SDL_PollEvent(&evt) != 0) {

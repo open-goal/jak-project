@@ -49,6 +49,8 @@ class GameController : public InputDevice {
   void close_device() override;
   int update_rumble(const u8 low_rumble, const u8 high_rumble);
   std::string get_name() const { return m_device_name; }
+  bool has_led();
+  void set_led(const u8 red, const u8 green, const u8 blue);
 
  private:
   int m_sdl_instance_id = -1;
@@ -120,6 +122,7 @@ class InputManager {
   int get_num_controllers() const { return m_available_controllers.size(); }
   std::string get_controller_name(const int controller_id);
   void set_controller_for_port(const int controller_id, const int port);
+  void set_controller_led(const int port, const u8 red, const u8 green, const u8 blue);
   void enable_keyboard(const bool enabled);
   void enable_mouse(const bool enabled);
 

@@ -138,19 +138,19 @@ struct InputBinding {
 
 struct InputBindingGroups {
   InputBindingGroups() = default;
-  InputBindingGroups(std::unordered_map<u8, std::vector<InputBinding>> _analog_axii,
-                     std::unordered_map<u8, std::vector<InputBinding>> _button_axii,
-                     std::unordered_map<u8, std::vector<InputBinding>> _buttons)
+  InputBindingGroups(std::unordered_map<u32, std::vector<InputBinding>> _analog_axii,
+                     std::unordered_map<u32, std::vector<InputBinding>> _button_axii,
+                     std::unordered_map<u32, std::vector<InputBinding>> _buttons)
       : analog_axii(_analog_axii), button_axii(_button_axii), buttons(_buttons){};
 
   // TODO - eventually make these private (when implementing re-mapping)
-  std::unordered_map<u8, std::vector<InputBinding>> analog_axii;
-  std::unordered_map<u8, std::vector<InputBinding>> button_axii;
-  std::unordered_map<u8, std::vector<InputBinding>> buttons;
+  std::unordered_map<u32, std::vector<InputBinding>> analog_axii;
+  std::unordered_map<u32, std::vector<InputBinding>> button_axii;
+  std::unordered_map<u32, std::vector<InputBinding>> buttons;
 
-  std::vector<std::pair<u8, InputBinding>> lookup_analog_binds(PadData::AnalogIndex idx,
-                                                               bool only_minimum_binds = false);
-  std::vector<std::pair<u8, InputBinding>> lookup_button_binds(PadData::ButtonIndex idx);
+  std::vector<std::pair<u32, InputBinding>> lookup_analog_binds(PadData::AnalogIndex idx,
+                                                                bool only_minimum_binds = false);
+  std::vector<std::pair<u32, InputBinding>> lookup_button_binds(PadData::ButtonIndex idx);
 
  private:
   typedef std::pair<int, bool> BindCacheKey;
@@ -167,9 +167,9 @@ struct InputBindingGroups {
   //
   // However there are some situations where we want to the reverse -- find out what binds
   // correspond with the PS2 value. Such as when remapping a key so you can unbind overlapping binds
-  std::unordered_map<BindCacheKey, std::vector<std::pair<u8, InputBinding>>, hash_name>
+  std::unordered_map<BindCacheKey, std::vector<std::pair<u32, InputBinding>>, hash_name>
       m_analog_lookup;
-  std::unordered_map<BindCacheKey, std::vector<std::pair<u8, InputBinding>>, hash_name>
+  std::unordered_map<BindCacheKey, std::vector<std::pair<u32, InputBinding>>, hash_name>
       m_button_lookup;
 };
 
@@ -192,9 +192,9 @@ extern const InputBindingGroups DEFAULT_MOUSE_BINDS;
 struct CommandBinding {
   enum Source { CONTROLLER, KEYBOARD, MOUSE };
 
-  CommandBinding(const u8 _host_key, std::function<void()> _command)
+  CommandBinding(const u32 _host_key, std::function<void()> _command)
       : host_key(_host_key), command(_command){};
-  u8 host_key;
+  u32 host_key;
   std::function<void()> command;
   // https://wiki.libsdl.org/SDL2/SDL_Keymod
   bool need_shift = false;
@@ -204,7 +204,7 @@ struct CommandBinding {
 };
 
 struct CommandBindingGroups {
-  std::unordered_map<u8, std::vector<CommandBinding>> controller_binds;
-  std::unordered_map<u8, std::vector<CommandBinding>> keyboard_binds;
-  std::unordered_map<u8, std::vector<CommandBinding>> mouse_binds;
+  std::unordered_map<u32, std::vector<CommandBinding>> controller_binds;
+  std::unordered_map<u32, std::vector<CommandBinding>> keyboard_binds;
+  std::unordered_map<u32, std::vector<CommandBinding>> mouse_binds;
 };

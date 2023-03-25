@@ -35,20 +35,8 @@ class GfxDisplay {
   void set_imgui_visible(bool visible) {
     m_imgui_visible = visible;
     Gfx::g_debug_settings.show_imgui = visible;
-    Gfx::g_debug_settings.save_settings();
   }
   bool is_imgui_visible() const { return m_imgui_visible; }
-
-  int width();
-  int height();
-
-  struct DisplaySettings {
-    int window_xpos;
-    int window_ypos;
-  };
-
-  void save_display_settings();
-  void restore_display_settings();
 };
 
 namespace Display {
@@ -60,7 +48,7 @@ extern std::vector<std::shared_ptr<GfxDisplay>> g_displays;
 int InitMainDisplay(int width,
                     int height,
                     const char* title,
-                    GfxSettings& settings,
+                    GfxGlobalSettings& settings,
                     GameVersion version);
 void KillDisplay(std::shared_ptr<GfxDisplay> display);
 void KillMainDisplay();

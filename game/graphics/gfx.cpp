@@ -23,36 +23,11 @@
 #include "game/runtime.h"
 #include "pipelines/opengl.h"
 
-namespace {
-// initializes a gfx settings.
-// TODO save and load from file
-void InitSettings(GfxSettings& settings) {
-  // set the current settings version
-  settings.version = GfxSettings::CURRENT_VERSION;
-
-  // use opengl by default for now
-  settings.renderer = GfxPipeline::OpenGL;  // Gfx::renderers[0];
-
-  // 1 screen update per frame
-  settings.vsync = 1;
-
-  // debug for now
-  settings.debug = true;
-  // settings.pad_mapping_info.buffer_mode = true;
-  //// debug input settings
-  // settings.pad_mapping_info.debug = true;
-
-  // Pad::DefaultMapping(Gfx::g_settings.pad_mapping_info);
-}
-
-}  // namespace
-
 namespace Gfx {
 
 std::function<void()> vsync_callback;
 GfxGlobalSettings g_global_settings;
-GfxSettings g_settings;
-DebugSettings g_debug_settings;
+GameSettings::DebugSettings g_debug_settings;
 
 const GfxRendererModule* GetRenderer(GfxPipeline pipeline) {
   switch (pipeline) {
@@ -69,7 +44,6 @@ const GfxRendererModule* GetRenderer(GfxPipeline pipeline) {
 
 void SetRenderer(GfxPipeline pipeline) {
   g_global_settings.renderer = GetRenderer(pipeline);
-  g_settings.renderer = pipeline;
 }
 
 const GfxRendererModule* GetCurrentRenderer() {
@@ -78,18 +52,11 @@ const GfxRendererModule* GetCurrentRenderer() {
 
 u32 Init(GameVersion version) {
   lg::info("GFX Init");
-  // initialize settings
-  InitSettings(g_settings);
-  // guarantee we have no keys detected by pad
-  // TODO - probably can be removed -- you can't clear keys because
-  // we don't poll them every frame anymore!
-  // Pad::ForceClearKeys();
 
-  // TODO - rewrite
-  // LoadSettings();
-  SetRenderer(g_settings.renderer);
+  g_debug_settings.load_settings();
+  g_global_settings.renderer = GetRenderer(GfxPipeline::OpenGL);
 
-  if (GetCurrentRenderer()->init(g_settings)) {
+  if (GetCurrentRenderer()->init(g_global_settings)) {
     lg::error("Gfx::Init error");
     return 1;
   }
@@ -97,9 +64,10 @@ u32 Init(GameVersion version) {
   if (g_main_thread_id != std::this_thread::get_id()) {
     lg::error("Ran Gfx::Init outside main thread. Init display elsewhere?");
   } else {
+    // TODO - i thought i made the tital not always be hardcoded with `work in progress`?
     Display::InitMainDisplay(640, 480,
                              fmt::format("OpenGOAL - Work in Progress - {}", GIT_VERSION).c_str(),
-                             g_settings, version);
+                             g_global_settings, version);
   }
 
   return 0;
@@ -120,6 +88,7 @@ u32 Exit() {
   lg::info("GFX Exit");
   Display::KillMainDisplay();
   GetCurrentRenderer()->exit();
+  g_debug_settings.save_settings();
   return 0;
 }
 
@@ -232,46 +201,19 @@ void set_mouse_enabled(const bool enabled) {
   }
 }
 
-// TODO - rewrite
-void input_mode_set(u32 enable) {
-  // if (enable == s7.offset + jak1_symbols::FIX_SYM_TRUE) {  // #t
-  //   Pad::g_input_mode_mapping = g_settings.pad_mapping_info;
-  //   Pad::EnterInputMode();
-  // } else {
-  //   Pad::ExitInputMode(enable != s7.offset);  // use #f for graceful exit, or 'canceled for
-  //   abrupt
-  // }
-}
-
-void input_mode_save() {
-  // if (Pad::input_mode_get() == (u64)Pad::InputModeStatus::Enabled) {
-  //   lg::error("Can't save controller mapping while mapping controller.");
-  // } else if (Pad::input_mode_get() == (u64)Pad::InputModeStatus::Disabled) {
-  //   g_settings.pad_mapping_info_backup = g_settings.pad_mapping_info;  // copy to backup
-  //   g_settings.pad_mapping_info = Pad::g_input_mode_mapping;           // set current mapping
-
-  //  SavePeripheralSettings();
-  //}
-}
-
-s64 get_mapped_button(s64 pad, s64 button) {
-  /*if (pad < 0 || pad > Pad::CONTROLLER_COUNT || button < 0 || button > 16) {
-    lg::error("Invalid parameters to get_mapped_button({}, {})", pad, button);
-    return -1;
+void Gfx::ignore_background_controller_events(const bool ignore) {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_input_manager()->ignore_background_controller_events(
+        ignore);
   }
-
-  return (Pad::GetGamepadState(pad) > -1)
-             ? (s64)g_settings.pad_mapping_info.controller_button_mapping[pad][button]
-             : (s64)g_settings.pad_mapping_info.keyboard_button_mapping[pad][button];*/
 }
 
-// int PadIsPressed(Pad::Button button, int port) {
-//   return Pad::IsPressed(g_settings.pad_mapping_info, button, port);
-// }
-//
-// int PadGetAnalogValue(Pad::Analog analog, int port) {
-//   return Pad::GetAnalogValue(g_settings.pad_mapping_info, analog, port);
-// }
+void set_controller_led(const int port, const u8 red, const u8 green, const u8 blue) {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_input_manager()->set_controller_led(port, red, green,
+                                                                              blue);
+  }
+}
 
 u64 get_window_width() {
   if (Display::GetMainDisplay()) {
