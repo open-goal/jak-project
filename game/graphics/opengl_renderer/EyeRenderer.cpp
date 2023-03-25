@@ -23,7 +23,8 @@ void EyeRenderer::init_textures(TexturePool& texture_pool, GameVersion version) 
           tbp += EYE_BASE_BLOCK_JAK1;
           break;
         case GameVersion::Jak2:
-          tbp += EYE_BASE_BLOCK_JAK2;
+          // NOTE: using jak 1's address because jak 2's breaks some ocean stuff.
+          tbp += EYE_BASE_BLOCK_JAK1;
           break;
         default:
           ASSERT_NOT_REACHED();
