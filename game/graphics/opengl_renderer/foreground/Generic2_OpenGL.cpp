@@ -228,7 +228,8 @@ void Generic2::setup_opengl_tex(u16 unit,
       lg::warn("Failed to find texture at {}, using random (eye zone)", tbp_to_lookup);
       tex = render_state->texture_pool->get_placeholder_texture();
     } else {
-      lg::warn("Failed to find texture at {}, using random", tbp_to_lookup);
+      lg::warn("Failed to find texture at {}, using random (generic2: {})", tbp_to_lookup,
+               name_and_id());
       tex = render_state->texture_pool->get_placeholder_texture();
     }
   }
