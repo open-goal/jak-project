@@ -188,7 +188,7 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
   return stats;
 }
 
-void SkyBlendCPU::init_textures(TexturePool& tex_pool) {
+void SkyBlendCPU::init_textures(TexturePool& tex_pool, GameVersion version) {
   for (int i = 0; i < 2; i++) {
     // update it
     glBindTexture(GL_TEXTURE_2D, m_textures[i].gl);
@@ -200,7 +200,7 @@ void SkyBlendCPU::init_textures(TexturePool& tex_pool) {
     in.w = m_sizes[i];
     in.h = m_sizes[i];
     in.debug_name = fmt::format("PC-SKY-CPU-{}", i);
-    in.id = tex_pool.allocate_pc_port_texture();
+    in.id = tex_pool.allocate_pc_port_texture(version);
     u32 tbp = SKY_TEXTURE_VRAM_ADDRS[i];
     m_textures[i].tex = tex_pool.give_texture_and_load_to_vram(in, tbp);
     m_textures[i].tbp = tbp;

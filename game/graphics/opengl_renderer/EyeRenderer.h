@@ -6,7 +6,8 @@
 #include "game/graphics/opengl_renderer/opengl_utils.h"
 #include "game/graphics/pipelines/opengl.h"
 
-constexpr int EYE_BASE_BLOCK = 8160;
+constexpr int EYE_BASE_BLOCK_JAK1 = 8160;
+constexpr int EYE_BASE_BLOCK_JAK2 = 3968;
 constexpr int NUM_EYE_PAIRS = 20;
 constexpr int SINGLE_EYE_SIZE = 32;
 
