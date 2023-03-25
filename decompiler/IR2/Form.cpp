@@ -3210,8 +3210,8 @@ goos::Object DefpartgroupElement::to_form_internal(const Env& env) const {
     if (m_static_info.rot != 0) {
       forms.push_back(pretty_print::to_symbol(fmt::format(
           ":rotate ((degrees {}) (degrees {}) (degrees {}))",
-          meters_to_string(m_static_info.rot.x()), meters_to_string(m_static_info.rot.y()),
-          meters_to_string(m_static_info.rot.z()))));
+          degrees_to_string(m_static_info.rot.x()), degrees_to_string(m_static_info.rot.y()),
+          degrees_to_string(m_static_info.rot.z()))));
     }
     if (m_static_info.scale != 1) {
       forms.push_back(pretty_print::to_symbol(fmt::format(
