@@ -5,11 +5,13 @@
  * Write raw data like a stream.
  */
 
-#include <stdexcept>
-#include <vector>
 #include <cstdint>
 #include <cstring>
+#include <stdexcept>
+#include <vector>
+
 #include "common/util/Assert.h"
+#include "common/util/FileUtil.h"
 
 struct BinaryWriterRef {
   size_t offset;
@@ -62,12 +64,12 @@ class BinaryWriter {
 
   void* get_data() { return data.data(); }
 
-  void write_to_file(const std::string& filename) {
-    auto fp = fopen(filename.c_str(), "wb");
+  void write_to_file(const fs::path& filename) {
+    auto fp = file_util::open_file(filename.string().c_str(), "wb");
     if (!fp)
-      throw std::runtime_error("failed to open " + filename);
+      throw std::runtime_error("failed to open " + filename.string());
     if (fwrite(get_data(), get_size(), 1, fp) != 1)
-      throw std::runtime_error("failed to write " + filename);
+      throw std::runtime_error("failed to write " + filename.string());
     fclose(fp);
   }
 

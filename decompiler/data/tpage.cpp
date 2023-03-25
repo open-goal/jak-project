@@ -14,12 +14,15 @@
  * check duplicate names
  */
 
-#include "common/util/FileUtil.h"
 #include "tpage.h"
-#include "common/versions.h"
-#include "decompiler/ObjectFile/ObjectFileDB.h"
-#include "third-party/fmt/core.h"
+
 #include "common/texture/texture_conversion.h"
+#include "common/util/FileUtil.h"
+#include "common/versions.h"
+
+#include "decompiler/ObjectFile/ObjectFileDB.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 namespace {
@@ -72,7 +75,10 @@ namespace {
  */
 
 // texture format names.
-std::unordered_map<u8, std::string> psms = {{0x02, "PSMCT16"}, {0x13, "PSMT8"}, {0x14, "PSMT4"}};
+const std::unordered_map<u8, std::string> psms = {{0x00, "PSM32"},
+                                                  {0x02, "PSMCT16"},
+                                                  {0x13, "PSMT8"},
+                                                  {0x14, "PSMT4"}};
 
 /*!
  * GOAL texture type. Stores info about a single texture in a texture page.
@@ -338,7 +344,16 @@ TexturePage read_texture_page(ObjectFileData& data,
   tpage.info_label = get_label(data, words.at(offset));
   tpage.info = read_file_info(data, words, label_to_word_offset(tpage.info_label, true));
   ASSERT(tpage.info.file_type == "texture-page");
-  ASSERT(tpage.info.major_version == versions::jak1::TX_PAGE_VERSION);
+  switch (data.linked_data.version) {
+    case GameVersion::Jak1:
+      ASSERT(tpage.info.major_version == versions::jak1::TX_PAGE_VERSION);
+      break;
+    case GameVersion::Jak2:
+      ASSERT(tpage.info.major_version == versions::jak2::TX_PAGE_VERSION);
+      break;
+    default:
+      ASSERT(false);
+  }
   ASSERT(tpage.info.minor_version == 0);
   ASSERT(tpage.info.maya_file_name == "Unknown");
   ASSERT(tpage.info.mdb_file_name == 0);
@@ -414,7 +429,9 @@ TexturePage read_texture_page(ObjectFileData& data,
  * Process a texture page.
  * TODO - document
  */
-TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
+TPageResultStats process_tpage(ObjectFileData& data,
+                               TextureDB& texture_db,
+                               const fs::path& output_path) {
   TPageResultStats stats;
   auto& words = data.linked_data.words_by_seg.at(0);
   const auto& level_names = data.dgo_names;
@@ -434,6 +451,8 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
 
   // Read the texture_page struct
   TexturePage texture_page = read_texture_page(data, words, 0, end_of_texture_page);
+  auto texture_dump_dir = output_path / texture_page.name;
+  file_util::create_dir_if_needed(texture_dump_dir);
 
   // Get raw data for textures.
   std::vector<u32> tex_data;
@@ -515,14 +534,10 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       }
 
       // write texture to a PNG.
-      file_util::create_dir_if_needed(
-          file_util::get_file_path({"assets", "textures", texture_page.name}));
-      file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
-                      tex.name),
-          out.data(), tex.w, tex.h);
+      file_util::write_rgba_png(texture_dump_dir / fmt::format("{}.png", tex.name), out.data(),
+                                tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
-                             texture_page.name, level_names);
+                             texture_page.name, level_names, tex.num_mips, tex.dest[0]);
       stats.successful_textures++;
     } else if (tex.psm == int(PSM::PSMT8) && tex.clutpsm == int(CPSM::PSMCT16)) {
       // will store output pixels, rgba (8888)
@@ -562,14 +577,10 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       }
 
       // write texture to a PNG.
-      file_util::create_dir_if_needed(
-          file_util::get_file_path({"assets", "textures", texture_page.name}));
-      file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
-                      tex.name),
-          out.data(), tex.w, tex.h);
+      file_util::write_rgba_png(texture_dump_dir / fmt::format("{}.png", tex.name), out.data(),
+                                tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
-                             texture_page.name, level_names);
+                             texture_page.name, level_names, tex.num_mips, tex.dest[0]);
       stats.successful_textures++;
     } else if (tex.psm == int(PSM::PSMCT16) && tex.clutpsm == 0) {
       // not a clut.
@@ -591,14 +602,10 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       }
 
       // write texture to a PNG.
-      file_util::create_dir_if_needed(
-          file_util::get_file_path({"assets", "textures", texture_page.name}));
-      file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
-                      tex.name),
-          out.data(), tex.w, tex.h);
+      file_util::write_rgba_png(texture_dump_dir / fmt::format("{}.png", tex.name), out.data(),
+                                tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
-                             texture_page.name, level_names);
+                             texture_page.name, level_names, tex.num_mips, tex.dest[0]);
       stats.successful_textures++;
     } else if (tex.psm == int(PSM::PSMT4) && tex.clutpsm == int(CPSM::PSMCT16)) {
       // will store output pixels, rgba (8888)
@@ -636,14 +643,10 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       }
 
       // write texture to a PNG.
-      file_util::create_dir_if_needed(
-          file_util::get_file_path({"assets", "textures", texture_page.name}));
-      file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
-                      tex.name),
-          out.data(), tex.w, tex.h);
+      file_util::write_rgba_png(texture_dump_dir / fmt::format("{}.png", tex.name), out.data(),
+                                tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
-                             texture_page.name, level_names);
+                             texture_page.name, level_names, tex.num_mips, tex.dest[0]);
       stats.successful_textures++;
     } else if (tex.psm == int(PSM::PSMT4) && tex.clutpsm == int(CPSM::PSMCT32)) {
       // will store output pixels, rgba (8888)
@@ -681,14 +684,35 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       }
 
       // write texture to a PNG.
-      file_util::create_dir_if_needed(
-          file_util::get_file_path({"assets", "textures", texture_page.name}));
-      file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
-                      tex.name),
-          out.data(), tex.w, tex.h);
+      file_util::write_rgba_png(texture_dump_dir / fmt::format("{}.png", tex.name), out.data(),
+                                tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
-                             texture_page.name, level_names);
+                             texture_page.name, level_names, tex.num_mips, tex.dest[0]);
+      stats.successful_textures++;
+    } else if (tex.psm == int(PSM::PSMCT32) && tex.clutpsm == 0) {
+      // not a clut.
+      // will store output pixels, rgba (8888)
+      std::vector<u32> out;
+
+      // width is like the TEX0 register, in 64 texel units.
+      // not sure what the other widths are yet.
+      int read_width = 64 * tex.width[0];
+
+      // loop over pixels in output texture image
+      for (int y = 0; y < tex.h; y++) {
+        for (int x = 0; x < tex.w; x++) {
+          // read as the PSMT32 type. The dest field tells us a block offset.
+          auto addr32 = psmct32_addr(x, y, read_width) + tex.dest[0] * 256;
+          u32 value = *(u32*)(vram.data() + addr32);
+          out.push_back(value);
+        }
+      }
+
+      // write texture to a PNG.
+      file_util::write_rgba_png(texture_dump_dir / fmt::format("{}.png", tex.name), out.data(),
+                                tex.w, tex.h);
+      texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
+                             texture_page.name, level_names, tex.num_mips, tex.dest[0]);
       stats.successful_textures++;
     }
 

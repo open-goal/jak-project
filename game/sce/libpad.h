@@ -36,6 +36,8 @@
 #define InfoActSize 3
 #define InfoActCurr 4
 
+struct CPadInfo;
+
 namespace ee {
 
 // controller modes (not in the lib)

@@ -1,0 +1,115 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: pipe-grunt.gc
+;; name in dgo: pipe-grunt
+;; dgos: UNB
+
+;; DECOMP BEGINS
+
+(deftype pipe-grunt (grunt)
+  ((pipe-front vector :inline :offset-assert 704)
+   (pipe-dir   vector :inline :offset-assert 720)
+   )
+  :heap-base #x260
+  :method-count-assert 187
+  :size-assert         #x2e0
+  :flag-assert         #xbb026002e0
+  (:methods
+    (pipe-grunt-method-186 (_type_) vector 186)
+    )
+  )
+
+
+;; WARN: Return type mismatch object vs none.
+(defmethod go-ambush pipe-grunt ((obj pipe-grunt))
+  (go (method-of-object obj ambush))
+  (none)
+  )
+
+(defmethod pipe-grunt-method-186 pipe-grunt ((obj pipe-grunt))
+  (let ((gp-0 (new 'static 'vector :x -1187061.8 :y -278487.03 :z 8090870.0 :w 1.0)))
+    (let ((v1-0 (new 'static 'vector :x -1148026.9 :y -278487.03 :z 8112414.5 :w 1.0))
+          (s3-0 (new 'stack-no-clear 'vector))
+          (s4-0 (new 'stack-no-clear 'vector))
+          )
+      (vector-! s3-0 v1-0 gp-0)
+      (let ((f30-0 (vector-length s3-0)))
+        (vector-normalize! s3-0 1.0)
+        (vector-rotate90-around-y! s4-0 s3-0)
+        (vector-normalize-copy! (-> obj event-param-point) s3-0 (get-rand-float-range obj 0.0 f30-0))
+        )
+      (vector-normalize! s4-0 (get-rand-float-range obj -16384.0 16384.0))
+      (vector+! (-> obj event-param-point) (-> obj event-param-point) s4-0)
+      )
+    (vector+! (-> obj event-param-point) (-> obj event-param-point) gp-0)
+    )
+  )
+
+(defstate ambush (pipe-grunt)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior pipe-grunt) enemy-event-handler)
+  :enter (behavior ()
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (logior! (-> self enemy-flags) (enemy-flag chase-startup))
+    (logclear! (-> self enemy-flags) (enemy-flag enable-on-notice alert victory))
+    (let ((v1-7 (-> self root-override2 root-prim)))
+      (set! (-> v1-7 prim-core collide-as) (-> self root-override2 backup-collide-as))
+      (set! (-> v1-7 prim-core collide-with) (-> self root-override2 backup-collide-with))
+      )
+    (logclear! (-> self draw status) (draw-control-status no-draw))
+    (let ((v1-10 self))
+      (set! (-> v1-10 enemy-flags) (the-as enemy-flag (logclear (-> v1-10 enemy-flags) (enemy-flag enemy-flag36))))
+      (set! (-> v1-10 nav callback-info) *nav-enemy-null-callback-info*)
+      )
+    0
+    (set-vector! (-> self pipe-front) -1198776.4 -224337.92 8087470.0 1.0)
+    (vector-! (-> self pipe-dir) (-> self pipe-front) (-> self root-override2 trans))
+    (vector-normalize! (-> self pipe-dir) 1.0)
+    (quaternion-look-at! (-> self root-override2 quat) (-> self pipe-dir) *up-vector*)
+    (set! (-> self charge-anim) (-> *grunt-global-info* charge-anim (get-rand-int self 3)))
+    (vector-normalize-copy! (-> self root-override2 transv) (-> self pipe-dir) (-> self charge-anim travel-speed))
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (vector-rotate90-around-y! gp-0 (-> self pipe-dir))
+      (vector-normalize! gp-0 (get-rand-float-range self -4096.0 4096.0))
+      (move-by-vector! (-> self root-override2) gp-0)
+      )
+    (none)
+    )
+  :trans (behavior ()
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-0 quad) (-> self root-override2 trans quad))
+      (vector-v++! gp-0 (-> self root-override2 transv))
+      (move-to-point! (-> self root-override2) gp-0)
+      (let ((v1-4 (new 'stack-no-clear 'vector)))
+        (vector-! v1-4 (-> self pipe-front) gp-0)
+        (when (< (vector-dot v1-4 (-> self pipe-dir)) 0.0)
+          (pipe-grunt-method-186 self)
+          (set! (-> self enemy-flags) (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag vulnerable))))
+          (send-event self 'jump 0 (-> self event-param-point))
+          )
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+      (ja-channel-push! 1 0)
+      (until #f
+        (let ((a1-2 (-> self draw art-group data (-> self charge-anim anim-index))))
+          (ja-no-eval :group! a1-2
+                      :num! (seek! (the float (+ (-> (the-as art-joint-anim a1-2) frames num-frames) -1)) f30-0)
+                      :frame-num 0.0
+                      )
+          )
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max f30-0))
+          )
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior pipe-grunt) nav-enemy-simple-post)
+  )

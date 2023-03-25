@@ -9,19 +9,31 @@
  * should work.
  */
 
-#include <cstring>
-#include <filesystem>
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#elif defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 #include "fake_iso.h"
-#include "game/overlord/sbank.h"
-#include "game/sound/sndshim.h"
-#include "game/overlord/soundcommon.h"
-#include "game/overlord/srpc.h"
-#include "game/sce/iop.h"
+
+#include <cstring>
+
 #include "isocommon.h"
 #include "overlord.h"
-#include "common/util/FileUtil.h"
+
 #include "common/log/log.h"
 #include "common/util/Assert.h"
+#include "common/util/FileUtil.h"
+
+#include "game/overlord/sbank.h"
+#include "game/overlord/soundcommon.h"
+#include "game/overlord/srpc.h"
+#include "game/runtime.h"
+#include "game/sce/iop.h"
+#include "game/sound/sndshim.h"
 
 using namespace iop;
 
@@ -52,6 +64,10 @@ static uint32_t FS_BeginRead(LoadStackEntry* fd, void* buffer, int32_t len);
 static uint32_t FS_SyncRead();
 static uint32_t FS_LoadSoundBank(char*, void*);
 static uint32_t FS_LoadMusic(char*, void*);
+
+static uint32_t FS_LoadSoundBank2(char*, void*);
+static uint32_t FS_LoadMusic2(char*, void*);
+
 static void FS_PollDrive();
 static void LoadMusicTweaks();
 
@@ -72,9 +88,15 @@ void fake_iso_init_globals() {
   fake_iso.close = FS_Close;
   fake_iso.begin_read = FS_BeginRead;
   fake_iso.sync_read = FS_SyncRead;
-  fake_iso.load_sound_bank = FS_LoadSoundBank;
-  fake_iso.load_music = FS_LoadMusic;
   fake_iso.poll_drive = FS_PollDrive;
+
+  if (g_game_version == GameVersion::Jak1) {
+    fake_iso.load_sound_bank = FS_LoadSoundBank;
+    fake_iso.load_music = FS_LoadMusic;
+  } else {
+    fake_iso.load_sound_bank = FS_LoadSoundBank2;
+    fake_iso.load_music = FS_LoadMusic2;
+  }
 
   sReadInfo = nullptr;
 }
@@ -85,14 +107,16 @@ void fake_iso_init_globals() {
 int FS_Init(u8* buffer) {
   (void)buffer;
 
-  for (const auto& f : std::filesystem::directory_iterator(file_util::get_file_path({"out/iso"}))) {
+  for (const auto& f : fs::directory_iterator(file_util::get_jak_project_dir() / "out" /
+                                              game_version_names[g_game_version] / "iso")) {
     if (f.is_regular_file()) {
       ASSERT(fake_iso_entry_count < MAX_ISO_FILES);
       FakeIsoEntry* e = &fake_iso_entries[fake_iso_entry_count];
       std::string file_name = f.path().filename().string();
       ASSERT(file_name.length() < 16);  // should be 8.3.
       strcpy(e->iso_name, file_name.c_str());
-      strcpy(e->file_path, fmt::format("out/iso/{}", file_name).c_str());
+      strcpy(e->file_path,
+             fmt::format("out/{}/iso/{}", game_version_names[g_game_version], file_name).c_str());
       fake_iso_entry_count++;
     }
   }
@@ -160,7 +184,7 @@ static const char* get_file_path(FileRecord* fr) {
 uint32_t FS_GetLength(FileRecord* fr) {
   const char* path = get_file_path(fr);
   file_util::assert_file_exists(path, "fake_iso FS_GetLength");
-  FILE* fp = fopen(path, "rb");
+  FILE* fp = file_util::open_file(path, "rb");
   ASSERT(fp);
   fseek(fp, 0, SEEK_END);
   uint32_t len = ftell(fp);
@@ -220,7 +244,7 @@ LoadStackEntry* FS_OpenWad(FileRecord* fr, int32_t offset) {
  * This is an ISO FS API Function
  */
 void FS_Close(LoadStackEntry* fd) {
-  lg::debug("[OVERLORD] FS_Close {}", fd->fr->name);
+  lg::debug("[OVERLORD] FS_Close {} @ {}/{}", fd->fr->name, fd->fr->location, fd->location);
 
   // close the FD
   fd->fr = nullptr;
@@ -250,7 +274,7 @@ uint32_t FS_BeginRead(LoadStackEntry* fd, void* buffer, int32_t len) {
   u32 offset_into_file = SECTOR_SIZE * fd->location;
 
   const char* path = get_file_path(fd->fr);
-  FILE* fp = fopen(path, "rb");
+  FILE* fp = file_util::open_file(path, "rb");
   if (!fp) {
     lg::error("[OVERLORD] fake iso could not open the file \"{}\"", path);
   }
@@ -339,7 +363,7 @@ uint32_t FS_LoadSoundBank(char* name, void* buffer) {
       return 0;
   }
 
-  auto fp = fopen(get_file_path(file), "rb");
+  auto fp = file_util::open_file(get_file_path(file), "rb");
   fread(buffer, offset, 1, fp);
   fclose(fp);
 
@@ -347,6 +371,56 @@ uint32_t FS_LoadSoundBank(char* name, void* buffer) {
   snd_ResolveBankXREFS();
   PrintBankInfo(bank);
   bank->bank_handle = handle;
+
+  return 0;
+}
+
+uint32_t FS_LoadMusic2(char* name, void* buffer) {
+  FileRecord* file = nullptr;
+  u32* bank_handle = (u32*)buffer;
+  char namebuf[16];
+  char isoname[16];
+  u32 handle;
+
+  strncpy(namebuf, name, 12);
+  namebuf[8] = 0;
+  strcat(namebuf, ".mus");
+
+  MakeISOName(isoname, namebuf);
+
+  file = FS_FindIN(isoname);
+  if (!file) {
+    return 6;
+  }
+
+  handle = snd_BankLoadEx(get_file_path(file), 0, 0xcfcc0, 0x61a80);
+  snd_ResolveBankXREFS();
+  *bank_handle = handle;
+
+  return 0;
+}
+
+uint32_t FS_LoadSoundBank2(char* name, void* buffer) {
+  SoundBank* bank = (SoundBank*)buffer;
+  FileRecord* file = nullptr;
+  char namebuf[16];
+  char isoname[16];
+  u32 handle;
+
+  strncpy(namebuf, name, 12);
+  namebuf[8] = 0;
+  strcat(namebuf, ".sbk");
+
+  MakeISOName(isoname, namebuf);
+  file = FS_FindIN(isoname);
+  if (!file) {
+    return 6;
+  }
+
+  handle = snd_BankLoadEx(get_file_path(file), 0, bank->spu_loc, bank->spu_size);
+  snd_ResolveBankXREFS();
+  bank->bank_handle = handle;
+
   return 0;
 }
 
@@ -355,10 +429,16 @@ void LoadMusicTweaks() {
   MakeISOName(tweakname, "TWEAKVAL.MUS");
   auto file = FS_FindIN(tweakname);
   if (file) {
-    auto fp = fopen(get_file_path(file), "rb");
+    auto fp = file_util::open_file(get_file_path(file), "rb");
     fread(&gMusicTweakInfo, sizeof(gMusicTweakInfo), 1, fp);
     fclose(fp);
   } else {
     gMusicTweakInfo.TweakCount = 0;
   }
 }
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#elif defined(__clang__)
+#pragma clang diagnostic pop
+#endif

@@ -1,0 +1,4000 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; this file is debug only
+(declare-file (debug))
+
+;; definition for symbol *debug-menu-context*, type debug-menu-context
+(define *debug-menu-context* (new 'debug 'debug-menu-context))
+
+;; definition for symbol *dm-cam-mode-interpolation*, type int
+(define *dm-cam-mode-interpolation* 0)
+
+;; definition for function dm-cam-mode-func
+(defun dm-cam-mode-func ((arg0 (state camera-slave)) (arg1 debug-menu-msg))
+  (if (and (= arg1 (debug-menu-msg press)) arg0)
+      (send-event *camera* 'change-state arg0 *dm-cam-mode-interpolation*)
+      )
+  (if *camera*
+      (send-event *camera* 'query-state arg0)
+      (not arg0)
+      )
+  )
+
+;; definition for function dm-cam-settings-func
+(defun dm-cam-settings-func ((arg0 int) (arg1 debug-menu-msg))
+  (when (and (= arg1 (debug-menu-msg press)) *camera*)
+    (cond
+      ((zero? arg0)
+       (send-event *camera* 'toggle-slave-option 1)
+       )
+      ((= arg0 13)
+       (send-event *camera* 'toggle-slave-option 8192)
+       )
+      ((= arg0 1)
+       (send-event *camera* 'toggle-slave-option 2)
+       )
+      ((= arg0 2)
+       (send-event *camera* 'toggle-slave-option 4)
+       )
+      ((= arg0 3)
+       (send-event *camera* 'toggle-slave-option 128)
+       )
+      ((= arg0 4)
+       (send-event *camera* 'toggle-slave-option 8)
+       )
+      ((= arg0 7)
+       (send-event *camera* 'toggle-slave-option 16)
+       )
+      ((= arg0 8)
+       (send-event *camera* 'toggle-slave-option 64)
+       )
+      ((= arg0 6)
+       (send-event *camera* 'reset-root)
+       )
+      ((= arg0 9)
+       (logxor! (-> *camera* master-options) 1)
+       )
+      ((= arg0 10)
+       (logxor! (-> *camera* master-options) 4)
+       )
+      ((= arg0 11)
+       (send-event *camera* 'toggle-slave-option 32)
+       )
+      ((= arg0 12)
+       (send-event *camera* 'toggle-slave-option 512)
+       )
+      ((= arg0 14)
+       (send-event *camera* 'toggle-slave-option #x8000)
+       )
+      ((= arg0 15)
+       (send-event *camera* 'toggle-slave-option #x10000)
+       )
+      )
+    )
+  (cond
+    (*camera*
+      (cond
+        ((zero? arg0)
+         (logtest? (-> *camera* slave-options) 1)
+         )
+        ((= arg0 13)
+         (logtest? (-> *camera* slave-options) 8192)
+         )
+        ((= arg0 1)
+         (logtest? (-> *camera* slave-options) 2)
+         )
+        ((= arg0 2)
+         (logtest? (-> *camera* slave-options) 4)
+         )
+        ((= arg0 3)
+         (logtest? (-> *camera* slave-options) 128)
+         )
+        ((= arg0 4)
+         (logtest? (-> *camera* slave-options) 8)
+         )
+        ((= arg0 7)
+         (logtest? (-> *camera* slave-options) 16)
+         )
+        ((= arg0 8)
+         (logtest? (-> *camera* slave-options) 64)
+         )
+        ((= arg0 11)
+         (logtest? (-> *camera* slave-options) 32)
+         )
+        ((= arg0 12)
+         (logtest? (-> *camera* slave-options) 512)
+         )
+        ((= arg0 14)
+         (logtest? (-> *camera* slave-options) #x8000)
+         )
+        ((= arg0 15)
+         (logtest? #x10000 (-> *camera* slave-options))
+         )
+        ((= arg0 9)
+         (logtest? (-> *camera* master-options) 1)
+         )
+        ((= arg0 10)
+         (logtest? (-> *camera* master-options) 4)
+         )
+        (else
+          #f
+          )
+        )
+      )
+    (else
+      #f
+      )
+    )
+  )
+
+;; definition for function dm-cam-settings-func-int
+(defun dm-cam-settings-func-int ((arg0 int) (arg1 debug-menu-msg) (arg2 int) (arg3 int))
+  (when (and (= arg1 (debug-menu-msg press)) *camera*)
+    (if (= (/ arg0 8) 5)
+        (set! *dm-cam-mode-interpolation* arg2)
+        )
+    )
+  (cond
+    (*camera*
+      (if (= (/ arg0 8) 5)
+          *dm-cam-mode-interpolation*
+          arg3
+          )
+      )
+    (else
+      arg3
+      )
+    )
+  )
+
+;; definition for function dm-cam-externalize
+(defun dm-cam-externalize ((arg0 symbol) (arg1 debug-menu-msg))
+  (when (= arg1 (debug-menu-msg press))
+    (cond
+      ((= arg0 'reset)
+       (if (!= *external-cam-mode* 'locked)
+           (external-cam-reset!)
+           )
+       )
+      ((= arg0 'allow-z)
+       (set! *external-cam-options* (logxor *external-cam-options* (external-cam-option allow-z)))
+       )
+      ((= *external-cam-mode* arg0)
+       (set! *external-cam-mode* #f)
+       )
+      (else
+        (if (not *external-cam-mode*)
+            (external-cam-reset!)
+            )
+        (set! *external-cam-mode* arg0)
+        )
+      )
+    )
+  (if (= arg0 'allow-z)
+      (logtest? *external-cam-options* (external-cam-option allow-z))
+      (= *external-cam-mode* arg0)
+      )
+  )
+
+;; definition for function dm-cam-render-float
+(defun dm-cam-render-float ((arg0 int) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
+  (when (= arg1 (debug-menu-msg press))
+    (cond
+      ((zero? (/ arg0 8))
+       (when *math-camera*
+         (set! (-> *math-camera* fov) (* 182.04445 arg2))
+         (update-math-camera
+           *math-camera*
+           (-> *setting-control* current video-mode)
+           (-> *setting-control* current aspect-ratio)
+           )
+         )
+       )
+      ((= (/ arg0 8) 1)
+       (if *camera*
+           (send-event *camera* 'set-fov (* 182.04445 arg2))
+           )
+       )
+      )
+    )
+  (cond
+    ((zero? (/ arg0 8))
+     (cond
+       (*math-camera*
+         (* 0.005493164 (-> *math-camera* fov))
+         )
+       (else
+         (empty)
+         arg3
+         )
+       )
+     )
+    ((= (/ arg0 8) 1)
+     (cond
+       (*camera*
+         (let ((f30-0 0.005493164))
+           (* f30-0 (the-as float (send-event *camera* 'query-fov)))
+           )
+         )
+       (else
+         (empty)
+         arg3
+         )
+       )
+     )
+    (else
+      (empty)
+      arg3
+      )
+    )
+  )
+
+;; definition for function dm-subdiv-float
+(defun dm-subdiv-float ((arg0 symbol) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
+  (when (= arg1 (debug-menu-msg press))
+    (case arg0
+      (('close)
+       (if (and *math-camera* *subdivide-settings*)
+           (set! (-> *subdivide-settings* close 3) (* 4096.0 arg2))
+           )
+       )
+      (('far)
+       (if (and *math-camera* *subdivide-settings*)
+           (set! (-> *subdivide-settings* far 3) (* 4096.0 arg2))
+           )
+       )
+      )
+    )
+  (case arg0
+    (('close)
+     (if (and *math-camera* *subdivide-settings*)
+         (* 0.00024414062 (-> *subdivide-settings* close 3))
+         arg3
+         )
+     )
+    (('far)
+     (if (and *math-camera* *subdivide-settings*)
+         (* 0.00024414062 (-> *subdivide-settings* far 3))
+         arg3
+         )
+     )
+    (else
+      arg3
+      )
+    )
+  )
+
+;; definition for function dm-subdiv-int
+(defun dm-subdiv-int ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 int))
+  (when (= arg1 (debug-menu-msg press))
+    (case arg0
+      (('anim-speed)
+       (if *anim-tester*
+           (set! (-> *anim-tester* 0 speed) arg2)
+           )
+       )
+      )
+    )
+  (case arg0
+    (('anim-speed)
+     (if *anim-tester*
+         (-> *anim-tester* 0 speed)
+         arg3
+         )
+     )
+    (else
+      arg3
+      )
+    )
+  )
+
+;; definition for function dm-setting-language
+(defun dm-setting-language ((arg0 int) (arg1 debug-menu-msg))
+  (if (= arg1 (debug-menu-msg press))
+      (set! (-> *setting-control* default language) (the-as language-enum (/ arg0 8)))
+      )
+  (= (-> *setting-control* default language) (/ arg0 8))
+  )
+
+;; definition for function dm-current-continue
+(defun dm-current-continue ((arg0 string) (arg1 debug-menu-msg))
+  (if (= arg1 (debug-menu-msg press))
+      (start 'play (get-continue-by-name *game-info* arg0))
+      )
+  (string= (-> (get-or-create-continue! *game-info*) name) arg0)
+  )
+
+;; definition for function dm-subdiv-draw-func
+(defun dm-subdiv-draw-func ((arg0 int) (arg1 debug-menu-msg))
+  (if (= arg1 (debug-menu-msg press))
+      (set! *subdivide-draw-mode* (/ arg0 8))
+      )
+  (= (/ arg0 8) *subdivide-draw-mode*)
+  )
+
+;; definition for function dm-ocean-subdiv-draw-func
+(defun dm-ocean-subdiv-draw-func ((arg0 int) (arg1 debug-menu-msg))
+  (if (= arg1 (debug-menu-msg press))
+      (set! *ocean-subdivide-draw-mode* (/ arg0 8))
+      )
+  (= (/ arg0 8) *ocean-subdivide-draw-mode*)
+  )
+
+;; definition for function dm-time-of-day-func
+(defun dm-time-of-day-func ((arg0 int) (arg1 debug-menu-msg))
+  (when (= arg1 (debug-menu-msg press))
+    (set! *time-of-day-mode* (/ arg0 8))
+    (set! (-> *time-of-day-proc* 0 minute) 0)
+    (cond
+      ((zero? (/ arg0 8))
+       (set! (-> *time-of-day-proc* 0 time-ratio) 0.0)
+       (set! (-> *time-of-day-proc* 0 hour) 7)
+       )
+      ((= (/ arg0 8) 1)
+       (set! (-> *time-of-day-proc* 0 time-ratio) 0.0)
+       (set! (-> *time-of-day-proc* 0 hour) 9)
+       )
+      ((= (/ arg0 8) 2)
+       (set! (-> *time-of-day-proc* 0 time-ratio) 0.0)
+       (set! (-> *time-of-day-proc* 0 hour) 12)
+       )
+      ((= (/ arg0 8) 3)
+       (set! (-> *time-of-day-proc* 0 time-ratio) 0.0)
+       (set! (-> *time-of-day-proc* 0 hour) 15)
+       )
+      ((= (/ arg0 8) 4)
+       (set! (-> *time-of-day-proc* 0 time-ratio) 0.0)
+       (set! (-> *time-of-day-proc* 0 hour) 18)
+       )
+      ((= (/ arg0 8) 5)
+       (set! (-> *time-of-day-proc* 0 time-ratio) 0.0)
+       (set! (-> *time-of-day-proc* 0 hour) 19)
+       )
+      ((= (/ arg0 8) 6)
+       (set! (-> *time-of-day-proc* 0 time-ratio) 0.0)
+       (set! (-> *time-of-day-proc* 0 hour) 23)
+       )
+      ((= (/ arg0 8) 7)
+       (set! (-> *time-of-day-proc* 0 time-ratio) 0.0)
+       (set! (-> *time-of-day-proc* 0 hour) 4)
+       )
+      ((= (/ arg0 8) 8)
+       (if *time-of-day-fast*
+           (set! (-> *time-of-day-proc* 0 time-ratio) 18000.0)
+           (set! (-> *time-of-day-proc* 0 time-ratio) 300.0)
+           )
+       )
+      )
+    )
+  (= (/ arg0 8) *time-of-day-mode*)
+  )
+
+;; definition for function dm-time-of-day-func2
+(defun dm-time-of-day-func2 ((arg0 (pointer symbol)) (arg1 debug-menu-msg))
+  (when (= arg1 (debug-menu-msg press))
+    (set! (-> arg0 0) (not (-> arg0 0)))
+    (when (!= (-> *time-of-day-proc* 0 time-ratio) 0.0)
+      (if *time-of-day-fast*
+          (set! (-> *time-of-day-proc* 0 time-ratio) 18000.0)
+          (set! (-> *time-of-day-proc* 0 time-ratio) 300.0)
+          )
+      )
+    )
+  (-> arg0 0)
+  )
+
+;; definition for function dm-boolean-toggle-pick-func
+(defun dm-boolean-toggle-pick-func ((arg0 (pointer symbol)) (arg1 debug-menu-msg))
+  (if (= arg1 (debug-menu-msg press))
+      (set! (-> arg0 0) (not (-> arg0 0)))
+      )
+  (-> arg0 0)
+  )
+
+;; definition for function dm-time-of-day-pick-func
+;; INFO: Return type mismatch symbol vs none.
+(defun dm-time-of-day-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
+  (time-of-day-setup (= arg1 (debug-menu-msg press)))
+  (none)
+  )
+
+;; definition for function dm-actor-marks-pick-func
+(defun dm-actor-marks-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
+  (if (= arg1 (debug-menu-msg press))
+      (set! *display-actor-marks* arg0)
+      )
+  (= *display-actor-marks* arg0)
+  )
+
+;; definition for function dm-compact-actor-pick-func
+(defun dm-compact-actor-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
+  (if (= arg1 (debug-menu-msg press))
+      (set! *compact-actors* arg0)
+      )
+  (= *compact-actors* arg0)
+  )
+
+;; definition for function dm-actor-vis-pick-func
+(defun dm-actor-vis-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
+  (if (= arg1 (debug-menu-msg press))
+      (set! *display-actor-vis* arg0)
+      )
+  (= *display-actor-vis* arg0)
+  )
+
+;; definition for function dm-game-mode-pick-func
+(defun dm-game-mode-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
+  (if (= arg1 (debug-menu-msg press))
+      (set! (-> *game-info* mode) arg0)
+      )
+  (= (-> *game-info* mode) arg0)
+  )
+
+;; definition for function dm-vu1-user-toggle-pick-func
+(defun dm-vu1-user-toggle-pick-func ((arg0 vu1-renderer-mask) (arg1 debug-menu-msg))
+  (if (= arg1 (debug-menu-msg press))
+      (set! *vu1-enable-user-menu* (logxor *vu1-enable-user-menu* (the-as uint arg0)))
+      )
+  (logtest? *vu1-enable-user-menu* arg0)
+  )
+
+;; definition for function dm-vu1-user-set-pick-func
+(defun dm-vu1-user-set-pick-func ((arg0 vu1-renderer-mask) (arg1 debug-menu-msg))
+  (if (= arg1 (debug-menu-msg press))
+      (set! *vu1-enable-user-menu* arg0)
+      )
+  (= *vu1-enable-user-menu* arg0)
+  )
+
+;; definition for function dm-texture-user-toggle-pick-func
+(defun dm-texture-user-toggle-pick-func ((arg0 int) (arg1 debug-menu-msg))
+  (if (= arg1 (debug-menu-msg press))
+      (set! *texture-enable-user-menu* (logxor *texture-enable-user-menu* arg0))
+      )
+  (logtest? *texture-enable-user-menu* arg0)
+  )
+
+;; definition for function dm-texture-user-set-pick-func
+(defun dm-texture-user-set-pick-func ((arg0 int) (arg1 debug-menu-msg))
+  (if (= arg1 (debug-menu-msg press))
+      (set! *texture-enable-user-menu* arg0)
+      )
+  (= *texture-enable-user-menu* arg0)
+  )
+
+;; definition for function dm-strip-lines-toggle-pick-func
+(defun dm-strip-lines-toggle-pick-func ((arg0 int) (arg1 debug-menu-msg))
+  (if (= arg1 (debug-menu-msg press))
+      (set! *display-strip-lines* (logxor *display-strip-lines* (/ arg0 8)))
+      )
+  (logtest? *display-strip-lines* (/ arg0 8))
+  )
+
+;; definition for function dm-strip-lines-set-pick-func
+(defun dm-strip-lines-set-pick-func ((arg0 int) (arg1 debug-menu-msg))
+  (if (= arg1 (debug-menu-msg press))
+      (set! *display-strip-lines* (/ arg0 8))
+      )
+  (= *display-strip-lines* (/ arg0 8))
+  )
+
+;; definition for function dm-edit-instance-toggle-pick-func
+(defun dm-edit-instance-toggle-pick-func ((arg0 int) (arg1 debug-menu-msg))
+  (let ((v1-0 (find-instance-by-name *edit-instance*)))
+    (when v1-0
+      (if (= arg1 (debug-menu-msg press))
+          (logxor! (-> v1-0 flags) (the-as uint arg0))
+          )
+      (logtest? (-> v1-0 flags) arg0)
+      )
+    )
+  )
+
+;; definition for function all-texture-tweak-adjust
+;; INFO: Return type mismatch int vs none.
+(defun all-texture-tweak-adjust ((arg0 texture-page-dir) (arg1 float))
+  (dotimes (s4-0 (-> arg0 length))
+    (let ((s3-0 (-> arg0 entries s4-0 page)))
+      (dotimes (s2-0 (min (-> s3-0 length) (-> arg0 entries s4-0 length)))
+        (when (-> arg0 entries s4-0 link)
+          (let ((v1-12 (+ (the-as uint (-> arg0 entries s4-0 link)) (* s2-0 4)))
+                (s1-0 (-> arg0 entries s4-0 page data s2-0))
+                )
+            (+! (-> s1-0 uv-dist) arg1)
+            (+ v1-12 0)
+            (let ((s0-0 (the-as object (* (-> (dynamic-array-field-access v1-12 next PLACEHOLDER) shader) 16))))
+              (while (nonzero? (the-as uint s0-0))
+                (adgif-shader-update! (the-as adgif-shader s0-0) s1-0)
+                (+ (the-as uint s0-0) 40)
+                (set! s0-0 (* (-> (the-as adgif-shader s0-0) next shader) 16))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function debug-menu-node<?
+(defun debug-menu-node<? ((arg0 debug-menu-node) (arg1 debug-menu-node))
+  (string<=? (-> arg0 name) (-> arg1 name))
+  )
+
+;; definition for function dm-shader-pick-func
+(defun dm-shader-pick-func ((arg0 texture-id) (arg1 debug-menu-msg))
+  (if (and (= arg1 (debug-menu-msg press))
+           *texture-page-dir*
+           (-> *texture-page-dir* entries (-> arg0 page) page)
+           (-> *texture-page-dir* entries (-> arg0 page) link)
+           (nonzero? (-> *texture-page-dir* entries (-> arg0 page) link next (-> arg0 index)))
+           )
+      (set! *edit-shader* arg0)
+      )
+  (and (nonzero? *edit-shader*) (= arg0 *edit-shader*))
+  )
+
+;; definition for symbol *shader-pick-menu*, type debug-menu
+(define *shader-pick-menu* (the-as debug-menu #f))
+
+;; definition for function build-shader-list
+;; INFO: Return type mismatch pair vs none.
+(defun build-shader-list ()
+  (debug-menu-remove-all-items *shader-pick-menu*)
+  (when *texture-page-dir*
+    (dotimes (gp-0 (-> *texture-page-dir* length))
+      (let ((s5-0 (-> *texture-page-dir* entries gp-0 page))
+            (s4-0 (-> *texture-page-dir* entries gp-0 link))
+            )
+        (when (and s5-0 s4-0)
+          (dotimes (s3-0 (-> s5-0 length))
+            (when (and (-> s5-0 data s3-0) (nonzero? (-> s4-0 next s3-0)))
+              (let ((a1-1 (new
+                            'debug
+                            'debug-menu-item-flag
+                            (-> s5-0 data s3-0 name)
+                            (logior (shr (shl s3-0 52) 44) (shr (shl gp-0 52) 32))
+                            dm-shader-pick-func
+                            )
+                          )
+                    )
+                (debug-menu-append-item *shader-pick-menu* a1-1)
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (set! (-> *shader-pick-menu* items) (sort (-> *shader-pick-menu* items) debug-menu-node<?))
+  (none)
+  )
+
+;; definition for function dm-instance-pick-func
+(defun dm-instance-pick-func ((arg0 string) (arg1 debug-menu-msg))
+  (when (= arg1 (debug-menu-msg press))
+    (if (find-instance-by-name arg0)
+        (set! *edit-instance* arg0)
+        (set! *edit-instance* #f)
+        )
+    )
+  (and *edit-instance* (string= arg0 *edit-instance*))
+  )
+
+;; definition for function dm-enable-instance-func
+(defun dm-enable-instance-func ((arg0 string) (arg1 debug-menu-msg))
+  (let ((v1-0 (find-instance-by-name arg0)))
+    (cond
+      (v1-0
+        (if (= arg1 (debug-menu-msg press))
+            (logxor! (-> v1-0 flags) 1)
+            )
+        (not (logtest? (-> v1-0 flags) 1))
+        )
+      (else
+        #f
+        )
+      )
+    )
+  )
+
+;; definition for symbol *instance-shrub-menu*, type debug-menu
+(define *instance-shrub-menu* (the-as debug-menu #f))
+
+;; definition for symbol *instance-tie-menu*, type debug-menu
+(define *instance-tie-menu* (the-as debug-menu #f))
+
+;; definition for symbol *enable-instance-tie-menu*, type debug-menu
+(define *enable-instance-tie-menu* (the-as debug-menu #f))
+
+;; definition for function build-instance-list
+;; INFO: Return type mismatch int vs none.
+(defun build-instance-list ((arg0 object))
+  (debug-menu-remove-all-items *instance-shrub-menu*)
+  (debug-menu-remove-all-items *instance-tie-menu*)
+  (debug-menu-remove-all-items *enable-instance-tie-menu*)
+  (set! *display-instance-info* #f)
+  (dotimes (gp-0 (-> *level* length))
+    (let ((v1-3 (-> *level* level gp-0)))
+      (when (= (-> v1-3 status) 'active)
+        (let ((s5-0 (-> v1-3 bsp drawable-trees)))
+          (dotimes (s4-0 (-> s5-0 length))
+            (let ((v1-7 (-> s5-0 trees s4-0)))
+              (case (-> v1-7 type)
+                ((drawable-tree-instance-shrub)
+                 (let ((s3-0 (-> (the-as drawable-tree-instance-shrub v1-7) info prototype-inline-array-shrub)))
+                   (dotimes (s2-0 (-> s3-0 length))
+                     (let ((a1-4
+                             (new 'global 'debug-menu-item-flag (-> s3-0 data s2-0 name) (-> s3-0 data s2-0 name) dm-instance-pick-func)
+                             )
+                           )
+                       (debug-menu-append-item *instance-shrub-menu* a1-4)
+                       )
+                     )
+                   )
+                 )
+                ((drawable-tree-instance-tie)
+                 (let ((s3-1 (-> (the-as drawable-tree-instance-tie v1-7) prototypes prototype-array-tie)))
+                   (dotimes (s2-1 (-> s3-1 length))
+                     (let ((a1-7
+                             (new
+                               'debug
+                               'debug-menu-item-flag
+                               (-> s3-1 array-data s2-1 name)
+                               (-> s3-1 array-data s2-1 name)
+                               dm-instance-pick-func
+                               )
+                             )
+                           )
+                       (debug-menu-append-item *instance-tie-menu* a1-7)
+                       )
+                     (let ((a1-9
+                             (new
+                               'debug
+                               'debug-menu-item-flag
+                               (-> s3-1 array-data s2-1 name)
+                               (-> s3-1 array-data s2-1 name)
+                               dm-enable-instance-func
+                               )
+                             )
+                           )
+                       (set! (-> a1-9 is-on) #t)
+                       (debug-menu-append-item *enable-instance-tie-menu* a1-9)
+                       )
+                     )
+                   )
+                 )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (set! (-> *instance-shrub-menu* items)
+        (sort
+          (-> *instance-shrub-menu* items)
+          (lambda ((arg0 debug-menu) (arg1 debug-menu)) (string<=? (-> arg0 name) (-> arg1 name)))
+          )
+        )
+  (set! (-> *instance-tie-menu* items)
+        (sort
+          (-> *instance-tie-menu* items)
+          (lambda ((arg0 debug-menu) (arg1 debug-menu)) (string<=? (-> arg0 name) (-> arg1 name)))
+          )
+        )
+  (set! (-> *enable-instance-tie-menu* items)
+        (sort
+          (-> *enable-instance-tie-menu* items)
+          (lambda ((arg0 debug-menu) (arg1 debug-menu)) (string<=? (-> arg0 name) (-> arg1 name)))
+          )
+        )
+  0
+  (none)
+  )
+
+;; definition for function debug-create-cam-restore
+;; INFO: Return type mismatch object vs none.
+(defun debug-create-cam-restore ()
+  (cond
+    (*math-camera*
+      (format #t "(defun-debug cam-restore ()~%")
+      (format #t " ;;this function is a hack, don't use it as an example~%")
+      (format #t " (let ((pos (new 'stack 'vector))~%")
+      (format #t "       (rot (new 'stack 'matrix)))~%")
+      (format #t "  (set! (-> pos x) ~12F)~%" (-> *math-camera* trans x))
+      (format #t "  (set! (-> pos y) ~12F)~%" (-> *math-camera* trans y))
+      (format #t "  (set! (-> pos z) ~12F)~%" (-> *math-camera* trans z))
+      (format #t "  (set! (-> pos w) 1.0)~%")
+      (format #t "  (set! (-> rot data  0) ~12F)~%" (-> *math-camera* inv-camera-rot vector 0 x))
+      (format #t "  (set! (-> rot data  1) ~12F)~%" (-> *math-camera* inv-camera-rot vector 0 y))
+      (format #t "  (set! (-> rot data  2) ~12F)~%" (-> *math-camera* inv-camera-rot vector 0 z))
+      (format #t "  (set! (-> rot data  3) ~12F)~%" (-> *math-camera* inv-camera-rot vector 0 w))
+      (format #t "  (set! (-> rot data  4) ~12F)~%" (-> *math-camera* inv-camera-rot vector 1 x))
+      (format #t "  (set! (-> rot data  5) ~12F)~%" (-> *math-camera* inv-camera-rot vector 1 y))
+      (format #t "  (set! (-> rot data  6) ~12F)~%" (-> *math-camera* inv-camera-rot vector 1 z))
+      (format #t "  (set! (-> rot data  7) ~12F)~%" (-> *math-camera* inv-camera-rot vector 1 w))
+      (format #t "  (set! (-> rot data  8) ~12F)~%" (-> *math-camera* inv-camera-rot vector 2 x))
+      (format #t "  (set! (-> rot data  9) ~12F)~%" (-> *math-camera* inv-camera-rot vector 2 y))
+      (format #t "  (set! (-> rot data 10) ~12F)~%" (-> *math-camera* inv-camera-rot vector 2 z))
+      (format #t "  (set! (-> rot data 11) ~12F)~%" (-> *math-camera* inv-camera-rot vector 2 w))
+      (format #t "  (set! (-> rot data 12) ~12F)~%" 0.0)
+      (format #t "  (set! (-> rot data 13) ~12F)~%" 0.0)
+      (format #t "  (set! (-> rot data 14) ~12F)~%" 0.0)
+      (format #t "  (set! (-> rot data 15) ~12F)~%" 1.0)
+      (let ((gp-0 (new 'stack-no-clear 'euler-angles)))
+        (matrix->eul gp-0 (-> *math-camera* inv-camera-rot) 21)
+        (format #t "  ;; euler angles (xyz order degrees) x ~R y ~R z ~R~%" (-> gp-0 x) (-> gp-0 y) (-> gp-0 z))
+        (format
+          #t
+          "  ;; MAYA euler angles (xyz order degrees) x ~R y ~R z ~R~%"
+          (-> gp-0 x)
+          (- 32768.0 (-> gp-0 y))
+          (-> gp-0 z)
+          )
+        )
+      (format #t "  (debug-set-camera-pos-rot! pos rot)~%")
+      (format #t "  (send-event *camera* 'set-fov (deg ~f))~%" (* 0.005493164 (-> *math-camera* fov)))
+      (format #t "  (clear *camera-old-level*)~%")
+      (format #t "  (format *camera-old-level* \"~A\")~%" (-> *level* level0 name))
+      (let ((t9-31 format)
+            (a0-31 #t)
+            (a1-31 "  (set! *camera-old-cpu* ~D)~%")
+            (v1-29 (-> *display* frames (-> *display* last-screen) frame profile-bar 0))
+            )
+        (t9-31 a0-31 a1-31 (-> v1-29 data (+ (-> v1-29 profile-frame-count) -2) time-stamp))
+        )
+      (let ((t9-32 format)
+            (a0-32 #t)
+            (a1-32 "  (set! *camera-old-vu*  ~D)~%")
+            (v1-34 (-> *display* frames (-> *display* last-screen) frame profile-bar 1))
+            )
+        (t9-32 a0-32 a1-32 (-> v1-34 data (+ (-> v1-34 profile-frame-count) -2) time-stamp))
+        )
+      (compute-memory-usage (-> *level* level0) #f)
+      (format #t "   (set! *camera-old-tfrag-bytes* ~D)~%" (+ (-> *level* level0 mem-usage-block data 1 total)
+                                                              (-> *level* level0 mem-usage-block data 2 total)
+                                                              (-> *level* level0 mem-usage-block data 3 total)
+                                                              (-> *level* level0 mem-usage-block data 4 total)
+                                                              (-> *level* level0 mem-usage-block data 5 total)
+                                                              (-> *level* level0 mem-usage-block data 6 total)
+                                                              (-> *level* level0 mem-usage-block data 7 total)
+                                                              (-> *level* level0 mem-usage-block data 8 total)
+                                                              )
+              )
+      (format #t "   (clear *camera-old-stat-string-tfrag*)~%")
+      (format #t "   (clear *camera-old-stat-string-tfrag-near*)~%")
+      (format #t "   (clear *camera-old-stat-string-total*)~%")
+      (when *stats-poly*
+        (format #t "   (format *camera-old-stat-string-tfrag*      \"~S\")~%" *stat-string-tfrag*)
+        (format #t "   (format *camera-old-stat-string-tfrag-near* \"~S\")~%" *stat-string-tfrag-near*)
+        (format #t "   (format *camera-old-stat-string-total*      \"~S\")~%" *stat-string-total*)
+        )
+      (format #t "   (set! *display-camera-old-stats* #t)~%")
+      (format #t "  )~%")
+      (format #t " )~%")
+      )
+    (else
+      (format #t "camera save failed~%")
+      )
+    )
+  (none)
+  )
+
+;; definition for function debug-menu-make-camera-mode-menu
+;; INFO: Return type mismatch debug-menu-node vs none.
+(defun debug-menu-make-camera-mode-menu ((arg0 debug-menu) (arg1 debug-menu))
+  (new 'debug 'debug-menu-item-submenu "Camera" arg0)
+  (let ((a1-3 (new 'debug 'debug-menu-item-submenu "Mode" arg1)))
+    (debug-menu-append-item arg0 a1-3)
+    )
+  (let ((a1-5 (new 'debug 'debug-menu-item-flag "Off" #f dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-5)
+    )
+  (let ((a1-7 (new 'debug 'debug-menu-item-flag "Free-floating" cam-free-floating dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-7)
+    )
+  (let ((a1-9 (new 'debug 'debug-menu-item-flag "Fixed" cam-fixed dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-9)
+    )
+  (let ((a1-11 (new 'debug 'debug-menu-item-flag "Pov" cam-pov dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-11)
+    )
+  (let ((a1-13 (new 'debug 'debug-menu-item-flag "Pov180" cam-pov180 dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-13)
+    )
+  (let ((a1-15 (new 'debug 'debug-menu-item-flag "Billy" cam-billy dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-15)
+    )
+  (let ((a1-17 (new 'debug 'debug-menu-item-flag "Pov-track" cam-pov-track dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-17)
+    )
+  (let ((a1-19 (new 'debug 'debug-menu-item-flag "Decel" cam-decel dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-19)
+    )
+  (let ((a1-21 (new 'debug 'debug-menu-item-flag "Endless fall" cam-endlessfall dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-21)
+    )
+  (let ((a1-23 (new 'debug 'debug-menu-item-flag "Eye" cam-eye dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-23)
+    )
+  (let ((a1-25 (new 'debug 'debug-menu-item-flag "Stick" cam-stick dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-25)
+    )
+  (let ((a1-27 (new 'debug 'debug-menu-item-flag "String" cam-string dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-27)
+    )
+  (let ((a1-29 (new 'debug 'debug-menu-item-flag "Standoff" cam-standoff dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-29)
+    )
+  (let ((a1-31 (new 'debug 'debug-menu-item-flag "Circular" cam-circular dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-31)
+    )
+  (let ((a1-33 (new 'debug 'debug-menu-item-flag "Look At" cam-lookat dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-33)
+    )
+  (let ((a1-35 (new 'debug 'debug-menu-item-flag "Center of world" cam-point-watch dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-35)
+    )
+  (let ((a1-37 (new 'debug 'debug-menu-item-flag "Spline" cam-spline dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-37)
+    )
+  (let ((a1-39 (new 'debug 'debug-menu-item-flag "Bike" cam-bike dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-39)
+    )
+  (let ((a1-41 (new 'debug 'debug-menu-item-flag "Robotboss" cam-robotboss dm-cam-mode-func)))
+    (debug-menu-append-item arg1 a1-41)
+    )
+  (let ((a1-43
+          (new 'debug 'debug-menu-item-function "Reset Free" 6 (the-as (function object object) dm-cam-settings-func))
+          )
+        )
+    (debug-menu-append-item arg1 a1-43)
+    )
+  (none)
+  )
+
+;; definition for function debug-menu-make-camera-menu
+(defun debug-menu-make-camera-menu ((arg0 debug-menu-context))
+  (let* ((gp-0 (new 'debug 'debug-menu arg0 "Camera menu"))
+         (s5-0 (new 'debug 'debug-menu-item-submenu "Camera" gp-0))
+         )
+    (let ((a1-3 (new 'debug 'debug-menu arg0 "Camera mode menu")))
+      (debug-menu-make-camera-mode-menu gp-0 a1-3)
+      )
+    (let ((s3-0 (new 'debug 'debug-menu arg0 "Camera externalize menu")))
+      (let ((a1-6 (new 'debug 'debug-menu-item-submenu "External" s3-0)))
+        (debug-menu-append-item gp-0 a1-6)
+        )
+      (let ((a1-8 (new 'debug 'debug-menu-item-flag "CPad 0" 'pad-0 dm-cam-externalize)))
+        (debug-menu-append-item s3-0 a1-8)
+        )
+      (let ((a1-10 (new 'debug 'debug-menu-item-flag "CPad 1" 'pad-1 dm-cam-externalize)))
+        (debug-menu-append-item s3-0 a1-10)
+        )
+      (let ((a1-12 (new 'debug 'debug-menu-item-flag "Lock" 'locked dm-cam-externalize)))
+        (debug-menu-append-item s3-0 a1-12)
+        )
+      (let ((a1-14 (new 'debug 'debug-menu-item-flag "Reset" 'reset dm-cam-externalize)))
+        (debug-menu-append-item s3-0 a1-14)
+        )
+      (let ((a1-16 (new 'debug 'debug-menu-item-flag "Allow z rot" 'allow-z dm-cam-externalize)))
+        (debug-menu-append-item s3-0 a1-16)
+        )
+      (let ((s2-0 (new 'debug 'debug-menu-item-var "Fov" 0 80)))
+        (debug-menu-item-var-make-float
+          s2-0
+          dm-cam-render-float
+          (the-as float 1.0)
+          #t
+          (the-as float 15.0)
+          (the-as float 180.0)
+          1
+          )
+        (debug-menu-append-item s3-0 s2-0)
+        )
+      )
+    (let ((s3-1 (new 'debug 'debug-menu arg0 "Camera collision menu")))
+      (let ((a1-22 (new 'debug 'debug-menu-item-submenu "Collision" s3-1)))
+        (debug-menu-append-item gp-0 a1-22)
+        )
+      (let ((a1-24 (new 'debug 'debug-menu-item-flag "Record" '*record-cam-collide-history* dm-boolean-toggle-pick-func))
+            )
+        (debug-menu-append-item s3-1 a1-24)
+        )
+      (let ((a1-26
+              (new 'debug 'debug-menu-item-flag "Display" '*display-cam-collide-history* dm-boolean-toggle-pick-func)
+              )
+            )
+        (debug-menu-append-item s3-1 a1-26)
+        )
+      )
+    (let ((s4-1 (new 'debug 'debug-menu arg0 "Camera settings menu")))
+      (let ((a1-29 (new 'debug 'debug-menu-item-submenu "Settings" s4-1)))
+        (debug-menu-append-item gp-0 a1-29)
+        )
+      (let ((a1-31 (new 'debug 'debug-menu-item-flag "Butt cam" 0 dm-cam-settings-func)))
+        (debug-menu-append-item s4-1 a1-31)
+        )
+      (let ((a1-33 (new 'debug 'debug-menu-item-flag "Block shift buttons" 13 dm-cam-settings-func)))
+        (debug-menu-append-item s4-1 a1-33)
+        )
+      (let ((a1-35 (new 'debug 'debug-menu-item-flag "Same side" 1 dm-cam-settings-func)))
+        (debug-menu-append-item s4-1 a1-35)
+        )
+      (let ((a1-37 (new 'debug 'debug-menu-item-flag "Move spherical" 2 dm-cam-settings-func)))
+        (debug-menu-append-item s4-1 a1-37)
+        )
+      (let ((a1-39 (new 'debug 'debug-menu-item-flag "Drag" 3 dm-cam-settings-func)))
+        (debug-menu-append-item s4-1 a1-39)
+        )
+      (let ((a1-41 (new 'debug 'debug-menu-item-flag "Allow Z rot" 4 dm-cam-settings-func)))
+        (debug-menu-append-item s4-1 a1-41)
+        )
+      (let ((a1-43 (new 'debug 'debug-menu-item-flag "Pitch for jump" 7 dm-cam-settings-func)))
+        (debug-menu-append-item s4-1 a1-43)
+        )
+      (let ((a1-45 (new 'debug 'debug-menu-item-flag "Find hidden target" 8 dm-cam-settings-func)))
+        (debug-menu-append-item s4-1 a1-45)
+        )
+      (let ((a1-47
+              (new 'debug 'debug-menu-item-flag "Move along camera Z" '*cam-free-move-along-z* dm-boolean-toggle-pick-func)
+              )
+            )
+        (debug-menu-append-item s4-1 a1-47)
+        )
+      (let ((a1-49 (new 'debug 'debug-menu-item-flag "Ignore regions" 9 dm-cam-settings-func)))
+        (debug-menu-append-item s4-1 a1-49)
+        )
+      (let ((a1-51 (new 'debug 'debug-menu-item-flag "Switch only on ground" 10 dm-cam-settings-func)))
+        (debug-menu-append-item s4-1 a1-51)
+        )
+      (let ((a1-53 (new 'debug 'debug-menu-item-flag "Collide" 11 dm-cam-settings-func)))
+        (debug-menu-append-item s4-1 a1-53)
+        )
+      (let ((a1-55 (new 'debug 'debug-menu-item-flag "Line of Sight" 12 dm-cam-settings-func)))
+        (debug-menu-append-item s4-1 a1-55)
+        )
+      (let ((a1-57 (new 'debug 'debug-menu-item-flag "No Rotate" 14 dm-cam-settings-func)))
+        (debug-menu-append-item s4-1 a1-57)
+        )
+      (let ((a1-59 (new 'debug 'debug-menu-item-flag "Sticky Angle" 15 dm-cam-settings-func)))
+        (debug-menu-append-item s4-1 a1-59)
+        )
+      (let ((s3-2 (new 'debug 'debug-menu-item-var "Interp Frms" 40 80)))
+        (debug-menu-item-var-make-int s3-2 dm-cam-settings-func-int 1 #f 0 0 #f)
+        (debug-menu-append-item s4-1 s3-2)
+        )
+      (let ((s3-3 (new 'debug 'debug-menu-item-var "Fov" 8 80)))
+        (debug-menu-item-var-make-float
+          s3-3
+          dm-cam-render-float
+          (the-as float 1.0)
+          #t
+          (the-as float 15.0)
+          (the-as float 180.0)
+          1
+          )
+        (debug-menu-append-item s4-1 s3-3)
+        )
+      (let ((a1-67 (new
+                     'debug
+                     'debug-menu-item-flag
+                     "no mip/lod correction"
+                     '*camera-no-mip-correction*
+                     dm-boolean-toggle-pick-func
+                     )
+                   )
+            )
+        (debug-menu-append-item s4-1 a1-67)
+        )
+      (let ((a1-69
+              (new 'debug 'debug-menu-item-flag "last attacker" '*display-camera-last-attacker* dm-boolean-toggle-pick-func)
+              )
+            )
+        (debug-menu-append-item s4-1 a1-69)
+        )
+      (let ((a1-71 (new 'debug 'debug-menu-item-flag "old stats" '*display-camera-old-stats* dm-boolean-toggle-pick-func))
+            )
+        (debug-menu-append-item s4-1 a1-71)
+        )
+      (let ((a1-73 (new 'debug 'debug-menu-item-flag "xyz axes" '*display-xyz-axes* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item s4-1 a1-73)
+        )
+      (let ((a1-75
+              (new 'debug 'debug-menu-item-flag "Master Marks" '*display-cam-master-marks* dm-boolean-toggle-pick-func)
+              )
+            )
+        (debug-menu-append-item s4-1 a1-75)
+        )
+      (let ((a1-77 (new 'debug 'debug-menu-item-flag "Other Marks" '*display-cam-other* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item s4-1 a1-77)
+        )
+      (let ((a1-79 (new 'debug 'debug-menu-item-flag "los debug" '*display-cam-los-debug* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item s4-1 a1-79)
+        )
+      (let ((a1-81 (new 'debug 'debug-menu-item-flag "los info" '*display-cam-los-info* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item s4-1 a1-81)
+        )
+      (let ((a1-83 (new 'debug 'debug-menu-item-flag "los Marks" '*display-cam-los-marks* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item s4-1 a1-83)
+        )
+      (let ((a1-85 (new 'debug 'debug-menu-item-flag "coll Marks" '*display-cam-coll-marks* dm-boolean-toggle-pick-func))
+            )
+        (debug-menu-append-item s4-1 a1-85)
+        )
+      (let ((a1-87 (new 'debug 'debug-menu-item-flag "Camera Marks" '*display-camera-marks* dm-boolean-toggle-pick-func))
+            )
+        (debug-menu-append-item s4-1 a1-87)
+        )
+      )
+    (let ((a1-89 (new
+                   'debug
+                   'debug-menu-item-flag
+                   "Edit"
+                   '*cam-layout*
+                   (the-as (function object debug-menu-msg object) (lambda ((arg0 symbol) (arg1 debug-menu-msg))
+                                                                     (when (= arg1 (debug-menu-msg press))
+                                                                       (if (-> arg0 value)
+                                                                           (cam-layout-stop)
+                                                                           (cam-layout-start)
+                                                                           )
+                                                                       )
+                                                                     (-> arg0 value)
+                                                                     (none)
+                                                                     )
+                           )
+                   )
+                 )
+          )
+      (debug-menu-append-item gp-0 a1-89)
+      )
+    (let ((a1-91 (new
+                   'debug
+                   'debug-menu-item-function
+                   "Save Pos"
+                   #f
+                   (the-as (function object object) debug-create-cam-restore)
+                   )
+                 )
+          )
+      (debug-menu-append-item gp-0 a1-91)
+      )
+    s5-0
+    )
+  )
+
+;; definition for function debug-menu-make-shader-menu
+(defun debug-menu-make-shader-menu ((arg0 debug-menu-context))
+  (let* ((gp-0 (new 'debug 'debug-menu arg0 "Shader menu"))
+         (s5-0 (new 'debug 'debug-menu-item-submenu "Shader" gp-0))
+         )
+    (let ((a3-3 (new 'debug 'debug-menu arg0 "Shader pick menu")))
+      (set! *shader-pick-menu* a3-3)
+      (let ((a1-4 (new 'debug 'debug-menu-item-submenu "Pick Shader" a3-3)))
+        (debug-menu-append-item gp-0 a1-4)
+        )
+      )
+    (let ((a1-6 (new 'debug 'debug-menu-item-function "Refresh" #f (the-as (function object object) build-shader-list)))
+          )
+      (debug-menu-append-item gp-0 a1-6)
+      )
+    (let ((s4-1 (new 'debug 'debug-menu-item-var "tweak" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-float
+        s4-1
+        (the-as
+          (function int debug-menu-msg float float float)
+          (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
+            (set! arg3 (cond
+                         (*texture-page-dir*
+                           (let* ((s4-0 (the-as texture-id (-> arg0 value)))
+                                  (gp-0 (lookup-texture-by-id (the-as texture-id s4-0)))
+                                  (v1-3 (-> *texture-page-dir* entries (-> s4-0 page) link))
+                                  )
+                             (cond
+                               ((and gp-0 v1-3)
+                                (when (= arg1 (debug-menu-msg press))
+                                  (set! (-> gp-0 uv-dist) arg2)
+                                  (let ((s5-1 (the-as object (* (-> v1-3 next (-> s4-0 index) shader) 16))))
+                                    (while (nonzero? (the-as uint s5-1))
+                                      (adgif-shader-update! (the-as adgif-shader s5-1) gp-0)
+                                      (set! s5-1 (* (-> (the-as adgif-shader s5-1) next shader) 16))
+                                      )
+                                    )
+                                  )
+                                (-> gp-0 uv-dist)
+                                )
+                               (else
+                                 (empty)
+                                 arg3
+                                 )
+                               )
+                             )
+                           )
+                         (else
+                           (empty)
+                           arg3
+                           )
+                         )
+                  )
+            (none)
+            )
+          )
+        (the-as float 0.1)
+        #t
+        (the-as float 0.1)
+        (the-as float 30.0)
+        1
+        )
+      (debug-menu-append-item gp-0 s4-1)
+      )
+    (let ((a1-11 (new
+                   'debug
+                   'debug-menu-item-function
+                   "all tweak+"
+                   #f
+                   (the-as
+                     (function object object)
+                     (lambda () (the-as object (all-texture-tweak-adjust *texture-page-dir* (the-as float 0.1))))
+                     )
+                   )
+                 )
+          )
+      (debug-menu-append-item gp-0 a1-11)
+      )
+    (let ((a1-13 (new
+                   'debug
+                   'debug-menu-item-function
+                   "all tweak-"
+                   #f
+                   (the-as
+                     (function object object)
+                     (lambda () (the-as object (all-texture-tweak-adjust *texture-page-dir* (the-as float -0.1))))
+                     )
+                   )
+                 )
+          )
+      (debug-menu-append-item gp-0 a1-13)
+      )
+    (let ((s4-2 (new 'debug 'debug-menu-item-var "l" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int
+        s4-2
+        (the-as
+          (function int debug-menu-msg int int int)
+          (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+            (cond
+              (*texture-page-dir*
+                (let* ((v1-1 (the-as texture-id (-> arg0 value)))
+                       (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link))
+                       )
+                  (cond
+                    (a0-3
+                      (when (= arg1 (debug-menu-msg press))
+                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                          (while (nonzero? (the-as uint a1-8))
+                            (set! (-> (the-as adgif-shader a1-8) tex1 l) arg2)
+                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16))
+                            )
+                          )
+                        )
+                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                        (if (nonzero? (the-as uint v1-8))
+                            (-> (the-as adgif-shader v1-8) tex1 l)
+                            arg3
+                            )
+                        )
+                      )
+                    (else
+                      arg3
+                      )
+                    )
+                  )
+                )
+              (else
+                arg3
+                )
+              )
+            )
+          )
+        1
+        #t
+        0
+        3
+        #f
+        )
+      (debug-menu-append-item gp-0 s4-2)
+      )
+    (let ((s4-3 (new 'debug 'debug-menu-item-var "k" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int
+        s4-3
+        (the-as
+          (function int debug-menu-msg int int int)
+          (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+            (cond
+              (*texture-page-dir*
+                (let* ((v1-1 (the-as texture-id (-> arg0 value)))
+                       (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link))
+                       )
+                  (cond
+                    (a0-3
+                      (when (= arg1 (debug-menu-msg press))
+                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                          (while (nonzero? (the-as uint a1-8))
+                            (set! (-> (the-as adgif-shader a1-8) tex1 k) arg2)
+                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16))
+                            )
+                          )
+                        )
+                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                        (if (nonzero? (the-as uint v1-8))
+                            (-> (the-as adgif-shader v1-8) tex1 k)
+                            arg3
+                            )
+                        )
+                      )
+                    (else
+                      arg3
+                      )
+                    )
+                  )
+                )
+              (else
+                arg3
+                )
+              )
+            )
+          )
+        1
+        #t
+        -2048
+        2047
+        #f
+        )
+      (debug-menu-append-item gp-0 s4-3)
+      )
+    (let ((s4-4 (new 'debug 'debug-menu-item-var "mmin" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int
+        s4-4
+        (the-as
+          (function int debug-menu-msg int int int)
+          (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+            (cond
+              (*texture-page-dir*
+                (let* ((v1-1 (the-as texture-id (-> arg0 value)))
+                       (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link))
+                       )
+                  (cond
+                    (a0-3
+                      (when (= arg1 (debug-menu-msg press))
+                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                          (while (nonzero? (the-as uint a1-8))
+                            (set! (-> (the-as adgif-shader a1-8) tex1 mmin) arg2)
+                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16))
+                            )
+                          )
+                        )
+                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                        (if (nonzero? (the-as uint v1-8))
+                            (-> (the-as adgif-shader v1-8) tex1 mmin)
+                            arg3
+                            )
+                        )
+                      )
+                    (else
+                      arg3
+                      )
+                    )
+                  )
+                )
+              (else
+                arg3
+                )
+              )
+            )
+          )
+        1
+        #t
+        0
+        5
+        #t
+        )
+      (debug-menu-append-item gp-0 s4-4)
+      )
+    (let ((s4-5 (new 'debug 'debug-menu-item-var "mmag" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int
+        s4-5
+        (the-as
+          (function int debug-menu-msg int int int)
+          (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+            (cond
+              (*texture-page-dir*
+                (let* ((v1-1 (the-as texture-id (-> arg0 value)))
+                       (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link))
+                       )
+                  (cond
+                    (a0-3
+                      (when (= arg1 (debug-menu-msg press))
+                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                          (while (nonzero? (the-as uint a1-8))
+                            (set! (-> (the-as adgif-shader a1-8) tex1 mmag) arg2)
+                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16))
+                            )
+                          )
+                        )
+                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                        (if (nonzero? (the-as uint v1-8))
+                            (-> (the-as adgif-shader v1-8) tex1 mmag)
+                            arg3
+                            )
+                        )
+                      )
+                    (else
+                      arg3
+                      )
+                    )
+                  )
+                )
+              (else
+                arg3
+                )
+              )
+            )
+          )
+        1
+        #t
+        0
+        1
+        #t
+        )
+      (debug-menu-append-item gp-0 s4-5)
+      )
+    (let ((s4-6 (new 'debug 'debug-menu-item-var "lcm" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int
+        s4-6
+        (the-as
+          (function int debug-menu-msg int int int)
+          (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+            (cond
+              (*texture-page-dir*
+                (let* ((v1-1 (the-as texture-id (-> arg0 value)))
+                       (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link))
+                       )
+                  (cond
+                    (a0-3
+                      (when (= arg1 (debug-menu-msg press))
+                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                          (while (nonzero? (the-as uint a1-8))
+                            (set! (-> (the-as adgif-shader a1-8) tex1 lcm) arg2)
+                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16))
+                            )
+                          )
+                        )
+                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                        (if (nonzero? (the-as uint v1-8))
+                            (-> (the-as adgif-shader v1-8) tex1 lcm)
+                            arg3
+                            )
+                        )
+                      )
+                    (else
+                      arg3
+                      )
+                    )
+                  )
+                )
+              (else
+                arg3
+                )
+              )
+            )
+          )
+        1
+        #t
+        0
+        1
+        #t
+        )
+      (debug-menu-append-item gp-0 s4-6)
+      )
+    (let ((s4-7 (new 'debug 'debug-menu-item-var "tfx" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int
+        s4-7
+        (the-as
+          (function int debug-menu-msg int int int)
+          (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+            (cond
+              (*texture-page-dir*
+                (let* ((v1-1 (the-as texture-id (-> arg0 value)))
+                       (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link))
+                       )
+                  (cond
+                    (a0-3
+                      (when (= arg1 (debug-menu-msg press))
+                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                          (while (nonzero? (the-as uint a1-8))
+                            (set! (-> (the-as adgif-shader a1-8) tex0 tfx) arg2)
+                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16))
+                            )
+                          )
+                        )
+                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                        (if (nonzero? (the-as uint v1-8))
+                            (-> (the-as adgif-shader v1-8) tex0 tfx)
+                            arg3
+                            )
+                        )
+                      )
+                    (else
+                      arg3
+                      )
+                    )
+                  )
+                )
+              (else
+                arg3
+                )
+              )
+            )
+          )
+        1
+        #t
+        0
+        3
+        #t
+        )
+      (debug-menu-append-item gp-0 s4-7)
+      )
+    (let ((s4-8 (new 'debug 'debug-menu-item-var "tbp" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int
+        s4-8
+        (the-as
+          (function int debug-menu-msg int int int)
+          (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+            (cond
+              (*texture-page-dir*
+                (let* ((v1-1 (the-as texture-id (-> arg0 value)))
+                       (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link))
+                       )
+                  (cond
+                    (a0-3
+                      (when (= arg1 (debug-menu-msg press))
+                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                          (while (nonzero? (the-as uint a1-8))
+                            (set! (-> (the-as adgif-shader a1-8) tex0 tbp0) arg2)
+                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16))
+                            )
+                          )
+                        )
+                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                        (if (nonzero? (the-as uint v1-8))
+                            (-> (the-as adgif-shader v1-8) tex0 tbp0)
+                            arg3
+                            )
+                        )
+                      )
+                    (else
+                      arg3
+                      )
+                    )
+                  )
+                )
+              (else
+                arg3
+                )
+              )
+            )
+          )
+        1
+        #t
+        0
+        #x4000
+        #t
+        )
+      (debug-menu-append-item gp-0 s4-8)
+      )
+    (let ((s4-9 (new 'debug 'debug-menu-item-var "tbw" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int
+        s4-9
+        (the-as
+          (function int debug-menu-msg int int int)
+          (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+            (cond
+              (*texture-page-dir*
+                (let* ((v1-1 (the-as texture-id (-> arg0 value)))
+                       (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link))
+                       )
+                  (cond
+                    (a0-3
+                      (when (= arg1 (debug-menu-msg press))
+                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                          (while (nonzero? (the-as uint a1-8))
+                            (set! (-> (the-as adgif-shader a1-8) tex0 tbw) arg2)
+                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16))
+                            )
+                          )
+                        )
+                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                        (if (nonzero? (the-as uint v1-8))
+                            (-> (the-as adgif-shader v1-8) tex0 tbw)
+                            arg3
+                            )
+                        )
+                      )
+                    (else
+                      arg3
+                      )
+                    )
+                  )
+                )
+              (else
+                arg3
+                )
+              )
+            )
+          )
+        1
+        #t
+        0
+        15
+        #t
+        )
+      (debug-menu-append-item gp-0 s4-9)
+      )
+    (let ((s4-10 (new 'debug 'debug-menu-item-var "tw" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int
+        s4-10
+        (the-as
+          (function int debug-menu-msg int int int)
+          (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+            (cond
+              (*texture-page-dir*
+                (let* ((v1-1 (the-as texture-id (-> arg0 value)))
+                       (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link))
+                       )
+                  (cond
+                    (a0-3
+                      (when (= arg1 (debug-menu-msg press))
+                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                          (while (nonzero? (the-as uint a1-8))
+                            (set! (-> (the-as adgif-shader a1-8) tex0 tw) arg2)
+                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16))
+                            )
+                          )
+                        )
+                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                        (if (nonzero? (the-as uint v1-8))
+                            (-> (the-as adgif-shader v1-8) tex0 tw)
+                            arg3
+                            )
+                        )
+                      )
+                    (else
+                      arg3
+                      )
+                    )
+                  )
+                )
+              (else
+                arg3
+                )
+              )
+            )
+          )
+        1
+        #t
+        0
+        10
+        #t
+        )
+      (debug-menu-append-item gp-0 s4-10)
+      )
+    (let ((s4-11 (new 'debug 'debug-menu-item-var "th" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int
+        s4-11
+        (the-as
+          (function int debug-menu-msg int int int)
+          (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+            (cond
+              (*texture-page-dir*
+                (let* ((v1-1 (the-as texture-id (-> arg0 value)))
+                       (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link))
+                       )
+                  (cond
+                    (a0-3
+                      (when (= arg1 (debug-menu-msg press))
+                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                          (while (nonzero? (the-as uint a1-8))
+                            (set! (-> (the-as adgif-shader a1-8) tex0 th) arg2)
+                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16))
+                            )
+                          )
+                        )
+                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                        (if (nonzero? (the-as uint v1-8))
+                            (-> (the-as adgif-shader v1-8) tex0 th)
+                            arg3
+                            )
+                        )
+                      )
+                    (else
+                      arg3
+                      )
+                    )
+                  )
+                )
+              (else
+                arg3
+                )
+              )
+            )
+          )
+        1
+        #t
+        0
+        10
+        #t
+        )
+      (debug-menu-append-item gp-0 s4-11)
+      )
+    (let ((s4-12 (new 'debug 'debug-menu-item-var "mxl" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int
+        s4-12
+        (the-as
+          (function int debug-menu-msg int int int)
+          (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+            (cond
+              (*texture-page-dir*
+                (let* ((v1-1 (the-as texture-id (-> arg0 value)))
+                       (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link))
+                       )
+                  (cond
+                    (a0-3
+                      (when (= arg1 (debug-menu-msg press))
+                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                          (while (nonzero? (the-as uint a1-8))
+                            (set! (-> (the-as adgif-shader a1-8) tex1 mxl) arg2)
+                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16))
+                            )
+                          )
+                        )
+                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                        (if (nonzero? (the-as uint v1-8))
+                            (-> (the-as adgif-shader v1-8) tex1 mxl)
+                            arg3
+                            )
+                        )
+                      )
+                    (else
+                      arg3
+                      )
+                    )
+                  )
+                )
+              (else
+                arg3
+                )
+              )
+            )
+          )
+        1
+        #t
+        0
+        6
+        #t
+        )
+      (debug-menu-append-item gp-0 s4-12)
+      )
+    (let ((s4-13 (new 'debug 'debug-menu-item-var "wms" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int
+        s4-13
+        (the-as
+          (function int debug-menu-msg int int int)
+          (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+            (cond
+              (*texture-page-dir*
+                (let* ((v1-1 (the-as texture-id (-> arg0 value)))
+                       (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link))
+                       )
+                  (cond
+                    (a0-3
+                      (when (= arg1 (debug-menu-msg press))
+                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                          (while (nonzero? (the-as uint a1-8))
+                            (set! (-> (the-as adgif-shader a1-8) clamp wms) arg2)
+                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16))
+                            )
+                          )
+                        )
+                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                        (if (nonzero? (the-as uint v1-8))
+                            (-> (the-as adgif-shader v1-8) clamp wms)
+                            arg3
+                            )
+                        )
+                      )
+                    (else
+                      arg3
+                      )
+                    )
+                  )
+                )
+              (else
+                arg3
+                )
+              )
+            )
+          )
+        1
+        #t
+        0
+        3
+        #t
+        )
+      (debug-menu-append-item gp-0 s4-13)
+      )
+    (let ((s4-14 (new 'debug 'debug-menu-item-var "wmt" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int
+        s4-14
+        (the-as
+          (function int debug-menu-msg int int int)
+          (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+            (cond
+              (*texture-page-dir*
+                (let* ((v1-1 (the-as texture-id (-> arg0 value)))
+                       (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link))
+                       )
+                  (cond
+                    (a0-3
+                      (when (= arg1 (debug-menu-msg press))
+                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                          (while (nonzero? (the-as uint a1-8))
+                            (set! (-> (the-as adgif-shader a1-8) clamp wmt) arg2)
+                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16))
+                            )
+                          )
+                        )
+                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                        (if (nonzero? (the-as uint v1-8))
+                            (-> (the-as adgif-shader v1-8) clamp wmt)
+                            arg3
+                            )
+                        )
+                      )
+                    (else
+                      arg3
+                      )
+                    )
+                  )
+                )
+              (else
+                arg3
+                )
+              )
+            )
+          )
+        1
+        #t
+        0
+        3
+        #t
+        )
+      (debug-menu-append-item gp-0 s4-14)
+      )
+    (let ((s4-15 (new 'debug 'debug-menu-item-var "minu" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int
+        s4-15
+        (the-as
+          (function int debug-menu-msg int int int)
+          (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+            (cond
+              (*texture-page-dir*
+                (let* ((v1-1 (the-as texture-id (-> arg0 value)))
+                       (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link))
+                       )
+                  (cond
+                    (a0-3
+                      (when (= arg1 (debug-menu-msg press))
+                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                          (while (nonzero? (the-as uint a1-8))
+                            (set! (-> (the-as adgif-shader a1-8) clamp minu) arg2)
+                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16))
+                            )
+                          )
+                        )
+                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                        (if (nonzero? (the-as uint v1-8))
+                            (-> (the-as adgif-shader v1-8) clamp minu)
+                            arg3
+                            )
+                        )
+                      )
+                    (else
+                      arg3
+                      )
+                    )
+                  )
+                )
+              (else
+                arg3
+                )
+              )
+            )
+          )
+        1
+        #t
+        0
+        511
+        #t
+        )
+      (debug-menu-append-item gp-0 s4-15)
+      )
+    (let ((s4-16 (new 'debug 'debug-menu-item-var "maxu" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int
+        s4-16
+        (the-as
+          (function int debug-menu-msg int int int)
+          (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+            (cond
+              (*texture-page-dir*
+                (let* ((v1-1 (the-as texture-id (-> arg0 value)))
+                       (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link))
+                       )
+                  (cond
+                    (a0-3
+                      (when (= arg1 (debug-menu-msg press))
+                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                          (while (nonzero? (the-as uint a1-8))
+                            (set! (-> (the-as adgif-shader a1-8) clamp maxu) arg2)
+                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16))
+                            )
+                          )
+                        )
+                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                        (if (nonzero? (the-as uint v1-8))
+                            (-> (the-as adgif-shader v1-8) clamp maxu)
+                            arg3
+                            )
+                        )
+                      )
+                    (else
+                      arg3
+                      )
+                    )
+                  )
+                )
+              (else
+                arg3
+                )
+              )
+            )
+          )
+        1
+        #t
+        0
+        511
+        #t
+        )
+      (debug-menu-append-item gp-0 s4-16)
+      )
+    (let ((s4-17 (new 'debug 'debug-menu-item-var "minv" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int
+        s4-17
+        (the-as
+          (function int debug-menu-msg int int int)
+          (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+            (cond
+              (*texture-page-dir*
+                (let* ((v1-1 (the-as texture-id (-> arg0 value)))
+                       (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link))
+                       )
+                  (cond
+                    (a0-3
+                      (when (= arg1 (debug-menu-msg press))
+                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                          (while (nonzero? (the-as uint a1-8))
+                            (set! (-> (the-as adgif-shader a1-8) clamp minv) arg2)
+                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16))
+                            )
+                          )
+                        )
+                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                        (if (nonzero? (the-as uint v1-8))
+                            (-> (the-as adgif-shader v1-8) clamp minv)
+                            arg3
+                            )
+                        )
+                      )
+                    (else
+                      arg3
+                      )
+                    )
+                  )
+                )
+              (else
+                arg3
+                )
+              )
+            )
+          )
+        1
+        #t
+        0
+        511
+        #t
+        )
+      (debug-menu-append-item gp-0 s4-17)
+      )
+    (let ((s4-18 (new 'debug 'debug-menu-item-var "maxv" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int
+        s4-18
+        (the-as
+          (function int debug-menu-msg int int int)
+          (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+            (cond
+              (*texture-page-dir*
+                (let* ((v1-1 (the-as texture-id (-> arg0 value)))
+                       (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link))
+                       )
+                  (cond
+                    (a0-3
+                      (when (= arg1 (debug-menu-msg press))
+                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                          (while (nonzero? (the-as uint a1-8))
+                            (set! (-> (the-as adgif-shader a1-8) clamp maxv) arg2)
+                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16))
+                            )
+                          )
+                        )
+                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
+                        (if (nonzero? (the-as uint v1-8))
+                            (-> (the-as adgif-shader v1-8) clamp maxv)
+                            arg3
+                            )
+                        )
+                      )
+                    (else
+                      arg3
+                      )
+                    )
+                  )
+                )
+              (else
+                arg3
+                )
+              )
+            )
+          )
+        1
+        #t
+        0
+        511
+        #t
+        )
+      (debug-menu-append-item gp-0 s4-18)
+      )
+    s5-0
+    )
+  )
+
+;; definition for function debug-menu-make-instance-menu
+(defun debug-menu-make-instance-menu ((arg0 debug-menu-context))
+  (let* ((gp-0 (new 'debug 'debug-menu arg0 "Instance menu"))
+         (s5-0 (new 'debug 'debug-menu-item-submenu "Instance" gp-0))
+         )
+    (let ((a3-3 (new 'debug 'debug-menu arg0 "Instance shrub menu")))
+      (set! *instance-shrub-menu* a3-3)
+      (let ((a1-4 (new 'debug 'debug-menu-item-submenu "Pick Shrub" a3-3)))
+        (debug-menu-append-item gp-0 a1-4)
+        )
+      )
+    (let ((a3-5 (new 'debug 'debug-menu arg0 "Instance tie menu")))
+      (set! *instance-tie-menu* a3-5)
+      (let ((a1-7 (new 'debug 'debug-menu-item-submenu "Pick Tie" a3-5)))
+        (debug-menu-append-item gp-0 a1-7)
+        )
+      )
+    (let ((a1-9
+            (new 'debug 'debug-menu-item-function "Refresh" #f (the-as (function object object) build-instance-list))
+            )
+          )
+      (debug-menu-append-item gp-0 a1-9)
+      )
+    (let ((s3-0 (new 'debug 'debug-menu-item-var "near" (the-as int '*edit-instance*) 80)))
+      (debug-menu-item-var-make-float
+        s3-0
+        (the-as
+          (function int debug-menu-msg float float float)
+          (lambda ((arg0 debug-menu) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
+            (let ((gp-0 (find-instance-by-name (-> arg0 name))))
+              (the-as object (cond
+                               (gp-0
+                                 (when (= arg1 (debug-menu-msg press))
+                                   (set! (-> gp-0 dists x) (* 4096.0 arg2))
+                                   (prototype-bucket-recalc-fields gp-0)
+                                   )
+                                 (* 0.00024414062 (-> gp-0 dists x))
+                                 )
+                               (else
+                                 (empty)
+                                 arg3
+                                 )
+                               )
+                      )
+              )
+            )
+          )
+        (the-as float 1.0)
+        #t
+        (the-as float 10.0)
+        (the-as float 250.0)
+        1
+        )
+      (debug-menu-append-item gp-0 s3-0)
+      )
+    (let ((s3-1 (new 'debug 'debug-menu-item-var "far" (the-as int '*edit-instance*) 80)))
+      (debug-menu-item-var-make-float
+        s3-1
+        (the-as
+          (function int debug-menu-msg float float float)
+          (lambda ((arg0 debug-menu) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
+            (let ((gp-0 (find-instance-by-name (-> arg0 name))))
+              (the-as object (cond
+                               (gp-0
+                                 (when (= arg1 (debug-menu-msg press))
+                                   (set! (-> gp-0 dists w) (* 4096.0 arg2))
+                                   (prototype-bucket-recalc-fields gp-0)
+                                   )
+                                 (* 0.00024414062 (-> gp-0 dists w))
+                                 )
+                               (else
+                                 (empty)
+                                 arg3
+                                 )
+                               )
+                      )
+              )
+            )
+          )
+        (the-as float 1.0)
+        #t
+        (the-as float 10.0)
+        (the-as float 250.0)
+        1
+        )
+      (debug-menu-append-item gp-0 s3-1)
+      )
+    (let ((a1-17 (new 'debug 'debug-menu-item-flag "invisible" 1 dm-edit-instance-toggle-pick-func)))
+      (debug-menu-append-item gp-0 a1-17)
+      )
+    (let ((a3-13 (new 'debug 'debug-menu arg0 "Enable Instance Tie Menu")))
+      (set! *enable-instance-tie-menu* a3-13)
+      (let ((a1-20 (new 'debug 'debug-menu-item-submenu "Enable Tie" a3-13)))
+        (debug-menu-append-item gp-0 a1-20)
+        )
+      )
+    (let ((a1-22
+            (new 'debug 'debug-menu-item-flag "Instance Info" '*display-instance-info* dm-boolean-toggle-pick-func)
+            )
+          )
+      (debug-menu-append-item gp-0 a1-22)
+      )
+    s5-0
+    )
+  )
+
+;; definition for function dm-task-unknown
+(defun dm-task-unknown ((arg0 int) (arg1 debug-menu-msg))
+  (let ((gp-0 (/ arg0 8)))
+    (if (not (task-exists? (the-as game-task gp-0) (task-status unknown)))
+        (return 'invalid)
+        )
+    (if (= arg1 (debug-menu-msg press))
+        (close-specific-task! (the-as game-task gp-0) (task-status unknown))
+        )
+    (task-closed? (the-as game-task gp-0) (task-status unknown))
+    )
+  )
+
+;; definition for function dm-task-hint
+(defun dm-task-hint ((arg0 int) (arg1 debug-menu-msg))
+  (let ((gp-0 (/ arg0 8)))
+    (if (not (task-exists? (the-as game-task gp-0) (task-status need-hint)))
+        (return 'invalid)
+        )
+    (if (= arg1 (debug-menu-msg press))
+        (close-specific-task! (the-as game-task gp-0) (task-status need-hint))
+        )
+    (task-closed? (the-as game-task gp-0) (task-status need-hint))
+    )
+  )
+
+;; definition for function dm-task-introduction
+(defun dm-task-introduction ((arg0 int) (arg1 debug-menu-msg))
+  (let ((gp-0 (/ arg0 8)))
+    (if (not (task-exists? (the-as game-task gp-0) (task-status need-introduction)))
+        (return 'invalid)
+        )
+    (if (= arg1 (debug-menu-msg press))
+        (close-specific-task! (the-as game-task gp-0) (task-status need-introduction))
+        )
+    (task-closed? (the-as game-task gp-0) (task-status need-introduction))
+    )
+  )
+
+;; definition for function dm-task-reminder-a
+(defun dm-task-reminder-a ((arg0 int) (arg1 debug-menu-msg))
+  (let ((gp-0 (/ arg0 8)))
+    (if (not (task-exists? (the-as game-task gp-0) (task-status need-reminder-a)))
+        (return 'invalid)
+        )
+    (if (= arg1 (debug-menu-msg press))
+        (close-specific-task! (the-as game-task gp-0) (task-status need-reminder-a))
+        )
+    (task-closed? (the-as game-task gp-0) (task-status need-reminder-a))
+    )
+  )
+
+;; definition for function dm-task-reminder
+(defun dm-task-reminder ((arg0 int) (arg1 debug-menu-msg))
+  (let ((gp-0 (/ arg0 8)))
+    (if (not (task-exists? (the-as game-task gp-0) (task-status need-reminder)))
+        (return 'invalid)
+        )
+    (if (= arg1 (debug-menu-msg press))
+        (close-specific-task! (the-as game-task gp-0) (task-status need-reminder))
+        )
+    (task-closed? (the-as game-task gp-0) (task-status need-reminder))
+    )
+  )
+
+;; definition for function dm-task-reward-speech
+(defun dm-task-reward-speech ((arg0 int) (arg1 debug-menu-msg))
+  (let ((gp-0 (/ arg0 8)))
+    (if (not (task-exists? (the-as game-task gp-0) (task-status need-reward-speech)))
+        (return 'invalid)
+        )
+    (if (= arg1 (debug-menu-msg press))
+        (close-specific-task! (the-as game-task gp-0) (task-status need-reward-speech))
+        )
+    (task-closed? (the-as game-task gp-0) (task-status need-reward-speech))
+    )
+  )
+
+;; definition for function dm-task-resolution
+(defun dm-task-resolution ((arg0 int) (arg1 debug-menu-msg))
+  (let ((gp-0 (/ arg0 8)))
+    (if (not (task-exists? (the-as game-task gp-0) (task-status need-resolution)))
+        (return 'invalid)
+        )
+    (when (= arg1 (debug-menu-msg press))
+      (send-event *target* 'get-pickup 6 (the float gp-0))
+      (close-specific-task! (the-as game-task gp-0) (task-status need-resolution))
+      )
+    (task-closed? (the-as game-task gp-0) (task-status need-resolution))
+    )
+  )
+
+;; definition for function debug-menu-make-task-unknown-menu
+;; INFO: Return type mismatch debug-menu-node vs none.
+(defun debug-menu-make-task-unknown-menu ((arg0 debug-menu) (arg1 debug-menu-context))
+  (debug-menu-append-item
+    arg0
+    (debug-menu-make-from-template arg1 '(menu
+                                           "unknown"
+                                           #f
+                                           #f
+                                           (flag "jungle-eggtop" 2 dm-task-unknown)
+                                           (flag "jungle-lurkerm" 3 dm-task-unknown)
+                                           (flag "jungle-tower" 4 dm-task-unknown)
+                                           (flag "jungle-fishgame" 5 dm-task-unknown)
+                                           (flag "jungle-plant" 6 dm-task-unknown)
+                                           (flag "jungle-buzzer" 7 dm-task-unknown)
+                                           (flag "jungle-canyon-end" 8 dm-task-unknown)
+                                           (flag "jungle-temple-door" 9 dm-task-unknown)
+                                           (flag "village1-yakow" 10 dm-task-unknown)
+                                           (flag "village1-mayor-money" 11 dm-task-unknown)
+                                           (flag "village1-uncle-money" 12 dm-task-unknown)
+                                           (flag "village1-oracle-money1" 13 dm-task-unknown)
+                                           (flag "village1-oracle-money2" 14 dm-task-unknown)
+                                           (flag "beach-ecorocks" 15 dm-task-unknown)
+                                           (flag "beach-pelican" 16 dm-task-unknown)
+                                           (flag "beach-flutflut" 17 dm-task-unknown)
+                                           (flag "beach-seagull" 18 dm-task-unknown)
+                                           (flag "beach-cannon" 19 dm-task-unknown)
+                                           (flag "beach-buzzer" 20 dm-task-unknown)
+                                           (flag "beach-gimmie" 21 dm-task-unknown)
+                                           (flag "beach-sentinel" 22 dm-task-unknown)
+                                           (flag "misty-muse" 23 dm-task-unknown)
+                                           (flag "misty-boat" 24 dm-task-unknown)
+                                           (flag "misty-warehouse" 25 dm-task-unknown)
+                                           (flag "misty-cannon" 26 dm-task-unknown)
+                                           (flag "misty-bike" 27 dm-task-unknown)
+                                           (flag "misty-buzzer" 28 dm-task-unknown)
+                                           (flag "misty-bike-jump" 29 dm-task-unknown)
+                                           (flag "misty-eco-challenge" 30 dm-task-unknown)
+                                           (flag "village2-gambler-money" 31 dm-task-unknown)
+                                           (flag "village2-geologist-money" 32 dm-task-unknown)
+                                           (flag "village2-warrior-money" 33 dm-task-unknown)
+                                           (flag "village2-oracle-money1" 34 dm-task-unknown)
+                                           (flag "village2-oracle-money2" 35 dm-task-unknown)
+                                           (flag "swamp-billy" 36 dm-task-unknown)
+                                           (flag "swamp-flutflut" 37 dm-task-unknown)
+                                           (flag "swamp-battle" 38 dm-task-unknown)
+                                           (flag "swamp-tether-1" 39 dm-task-unknown)
+                                           (flag "swamp-tether-2" 40 dm-task-unknown)
+                                           (flag "swamp-tether-3" 41 dm-task-unknown)
+                                           (flag "swamp-tether-4" 42 dm-task-unknown)
+                                           (flag "swamp-buzzer" 43 dm-task-unknown)
+                                           (flag "sunken-platforms" 44 dm-task-unknown)
+                                           (flag "sunken-pipe" 45 dm-task-unknown)
+                                           (flag "sunken-slide" 46 dm-task-unknown)
+                                           (flag "sunken-room" 47 dm-task-unknown)
+                                           (flag "sunken-sharks" 48 dm-task-unknown)
+                                           (flag "sunken-buzzer" 49 dm-task-unknown)
+                                           (flag "sunken-top-of-helix" 50 dm-task-unknown)
+                                           (flag "sunken-spinning-room" 51 dm-task-unknown)
+                                           (flag "rolling-race" 52 dm-task-unknown)
+                                           (flag "rolling-robbers" 53 dm-task-unknown)
+                                           (flag "rolling-moles" 54 dm-task-unknown)
+                                           (flag "rolling-plants" 55 dm-task-unknown)
+                                           (flag "rolling-lake" 56 dm-task-unknown)
+                                           (flag "rolling-buzzer" 57 dm-task-unknown)
+                                           (flag "rolling-ring-chase-1" 58 dm-task-unknown)
+                                           (flag "rolling-ring-chase-2" 59 dm-task-unknown)
+                                           (flag "snow-eggtop" 60 dm-task-unknown)
+                                           (flag "snow-ram" 61 dm-task-unknown)
+                                           (flag "snow-fort" 62 dm-task-unknown)
+                                           (flag "snow-ball" 63 dm-task-unknown)
+                                           (flag "snow-bunnies" 64 dm-task-unknown)
+                                           (flag "snow-buzzer" 65 dm-task-unknown)
+                                           (flag "snow-bumpers" 66 dm-task-unknown)
+                                           (flag "snow-cage" 67 dm-task-unknown)
+                                           (flag "firecanyon-buzzer" 68 dm-task-unknown)
+                                           (flag "firecanyon-end" 69 dm-task-unknown)
+                                           (flag "citadel-sage-green" 70 dm-task-unknown)
+                                           (flag "citadel-sage-blue" 71 dm-task-unknown)
+                                           (flag "citadel-sage-red" 72 dm-task-unknown)
+                                           (flag "citadel-sage-yellow" 73 dm-task-unknown)
+                                           (flag "village3-extra1" 74 dm-task-unknown)
+                                           (flag "village1-buzzer" 75 dm-task-unknown)
+                                           (flag "village2-buzzer" 76 dm-task-unknown)
+                                           (flag "village3-buzzer" 77 dm-task-unknown)
+                                           (flag "cave-gnawers" 78 dm-task-unknown)
+                                           (flag "cave-dark-crystals" 79 dm-task-unknown)
+                                           (flag "cave-dark-climb" 80 dm-task-unknown)
+                                           (flag "cave-robot-climb" 81 dm-task-unknown)
+                                           (flag "cave-swing-poles" 82 dm-task-unknown)
+                                           (flag "cave-spider-tunnel" 83 dm-task-unknown)
+                                           (flag "cave-platforms" 84 dm-task-unknown)
+                                           (flag "cave-buzzer" 85 dm-task-unknown)
+                                           (flag "ogre-boss" 86 dm-task-unknown)
+                                           (flag "ogre-end" 87 dm-task-unknown)
+                                           (flag "ogre-buzzer" 88 dm-task-unknown)
+                                           (flag "lavatube-end" 89 dm-task-unknown)
+                                           (flag "lavatube-buzzer" 90 dm-task-unknown)
+                                           (flag "citadel-buzzer" 91 dm-task-unknown)
+                                           (flag "training-gimmie" 92 dm-task-unknown)
+                                           (flag "training-door" 93 dm-task-unknown)
+                                           (flag "training-climb" 94 dm-task-unknown)
+                                           (flag "training-buzzer" 95 dm-task-unknown)
+                                           (flag "village3-miner-money1" 96 dm-task-unknown)
+                                           (flag "village3-miner-money2" 97 dm-task-unknown)
+                                           (flag "village3-miner-money3" 98 dm-task-unknown)
+                                           (flag "village3-miner-money4" 99 dm-task-unknown)
+                                           (flag "village3-oracle-money1" 100 dm-task-unknown)
+                                           (flag "village3-oracle-money2" 101 dm-task-unknown)
+                                           (flag "firecanyon-assistant" 102 dm-task-unknown)
+                                           (flag "village2-levitator" 103 dm-task-unknown)
+                                           (flag "swamp-arm" 104 dm-task-unknown)
+                                           (flag "village3-button" 105 dm-task-unknown)
+                                           (flag "red-eggtop" 106 dm-task-unknown)
+                                           (flag "lavatube-balls" 107 dm-task-unknown)
+                                           (flag "lavatube-start" 108 dm-task-unknown)
+                                           (flag "intro" 109 dm-task-unknown)
+                                           (flag "ogre-secret" 110 dm-task-unknown)
+                                           (flag "village4-button" 111 dm-task-unknown)
+                                           (flag "finalboss-movies" 112 dm-task-unknown)
+                                           (flag "plunger-lurker-hit" 113 dm-task-unknown)
+                                           (flag "leaving-misty" 114 dm-task-unknown)
+                                           (flag "assistant-village3" 115 dm-task-unknown)
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           )
+                                   )
+    )
+  (none)
+  )
+
+;; definition for function debug-menu-make-task-need-hint-menu
+;; INFO: Return type mismatch debug-menu-node vs none.
+(defun debug-menu-make-task-need-hint-menu ((arg0 debug-menu) (arg1 debug-menu-context))
+  (debug-menu-append-item
+    arg0
+    (debug-menu-make-from-template arg1 '(menu
+                                           "need-hint"
+                                           #f
+                                           #f
+                                           (flag "jungle-eggtop" 2 dm-task-hint)
+                                           (flag "jungle-lurkerm" 3 dm-task-hint)
+                                           (flag "jungle-tower" 4 dm-task-hint)
+                                           (flag "jungle-fishgame" 5 dm-task-hint)
+                                           (flag "jungle-plant" 6 dm-task-hint)
+                                           (flag "jungle-buzzer" 7 dm-task-hint)
+                                           (flag "jungle-canyon-end" 8 dm-task-hint)
+                                           (flag "jungle-temple-door" 9 dm-task-hint)
+                                           (flag "village1-yakow" 10 dm-task-hint)
+                                           (flag "village1-mayor-money" 11 dm-task-hint)
+                                           (flag "village1-uncle-money" 12 dm-task-hint)
+                                           (flag "village1-oracle-money1" 13 dm-task-hint)
+                                           (flag "village1-oracle-money2" 14 dm-task-hint)
+                                           (flag "beach-ecorocks" 15 dm-task-hint)
+                                           (flag "beach-pelican" 16 dm-task-hint)
+                                           (flag "beach-flutflut" 17 dm-task-hint)
+                                           (flag "beach-seagull" 18 dm-task-hint)
+                                           (flag "beach-cannon" 19 dm-task-hint)
+                                           (flag "beach-buzzer" 20 dm-task-hint)
+                                           (flag "beach-gimmie" 21 dm-task-hint)
+                                           (flag "beach-sentinel" 22 dm-task-hint)
+                                           (flag "misty-muse" 23 dm-task-hint)
+                                           (flag "misty-boat" 24 dm-task-hint)
+                                           (flag "misty-warehouse" 25 dm-task-hint)
+                                           (flag "misty-cannon" 26 dm-task-hint)
+                                           (flag "misty-bike" 27 dm-task-hint)
+                                           (flag "misty-buzzer" 28 dm-task-hint)
+                                           (flag "misty-bike-jump" 29 dm-task-hint)
+                                           (flag "misty-eco-challenge" 30 dm-task-hint)
+                                           (flag "village2-gambler-money" 31 dm-task-hint)
+                                           (flag "village2-geologist-money" 32 dm-task-hint)
+                                           (flag "village2-warrior-money" 33 dm-task-hint)
+                                           (flag "village2-oracle-money1" 34 dm-task-hint)
+                                           (flag "village2-oracle-money2" 35 dm-task-hint)
+                                           (flag "swamp-billy" 36 dm-task-hint)
+                                           (flag "swamp-flutflut" 37 dm-task-hint)
+                                           (flag "swamp-battle" 38 dm-task-hint)
+                                           (flag "swamp-tether-1" 39 dm-task-hint)
+                                           (flag "swamp-tether-2" 40 dm-task-hint)
+                                           (flag "swamp-tether-3" 41 dm-task-hint)
+                                           (flag "swamp-tether-4" 42 dm-task-hint)
+                                           (flag "swamp-buzzer" 43 dm-task-hint)
+                                           (flag "sunken-platforms" 44 dm-task-hint)
+                                           (flag "sunken-pipe" 45 dm-task-hint)
+                                           (flag "sunken-slide" 46 dm-task-hint)
+                                           (flag "sunken-room" 47 dm-task-hint)
+                                           (flag "sunken-sharks" 48 dm-task-hint)
+                                           (flag "sunken-buzzer" 49 dm-task-hint)
+                                           (flag "sunken-top-of-helix" 50 dm-task-hint)
+                                           (flag "sunken-spinning-room" 51 dm-task-hint)
+                                           (flag "rolling-race" 52 dm-task-hint)
+                                           (flag "rolling-robbers" 53 dm-task-hint)
+                                           (flag "rolling-moles" 54 dm-task-hint)
+                                           (flag "rolling-plants" 55 dm-task-hint)
+                                           (flag "rolling-lake" 56 dm-task-hint)
+                                           (flag "rolling-buzzer" 57 dm-task-hint)
+                                           (flag "rolling-ring-chase-1" 58 dm-task-hint)
+                                           (flag "rolling-ring-chase-2" 59 dm-task-hint)
+                                           (flag "snow-eggtop" 60 dm-task-hint)
+                                           (flag "snow-ram" 61 dm-task-hint)
+                                           (flag "snow-fort" 62 dm-task-hint)
+                                           (flag "snow-ball" 63 dm-task-hint)
+                                           (flag "snow-bunnies" 64 dm-task-hint)
+                                           (flag "snow-buzzer" 65 dm-task-hint)
+                                           (flag "snow-bumpers" 66 dm-task-hint)
+                                           (flag "snow-cage" 67 dm-task-hint)
+                                           (flag "firecanyon-buzzer" 68 dm-task-hint)
+                                           (flag "firecanyon-end" 69 dm-task-hint)
+                                           (flag "citadel-sage-green" 70 dm-task-hint)
+                                           (flag "citadel-sage-blue" 71 dm-task-hint)
+                                           (flag "citadel-sage-red" 72 dm-task-hint)
+                                           (flag "citadel-sage-yellow" 73 dm-task-hint)
+                                           (flag "village3-extra1" 74 dm-task-hint)
+                                           (flag "village1-buzzer" 75 dm-task-hint)
+                                           (flag "village2-buzzer" 76 dm-task-hint)
+                                           (flag "village3-buzzer" 77 dm-task-hint)
+                                           (flag "cave-gnawers" 78 dm-task-hint)
+                                           (flag "cave-dark-crystals" 79 dm-task-hint)
+                                           (flag "cave-dark-climb" 80 dm-task-hint)
+                                           (flag "cave-robot-climb" 81 dm-task-hint)
+                                           (flag "cave-swing-poles" 82 dm-task-hint)
+                                           (flag "cave-spider-tunnel" 83 dm-task-hint)
+                                           (flag "cave-platforms" 84 dm-task-hint)
+                                           (flag "cave-buzzer" 85 dm-task-hint)
+                                           (flag "ogre-boss" 86 dm-task-hint)
+                                           (flag "ogre-end" 87 dm-task-hint)
+                                           (flag "ogre-buzzer" 88 dm-task-hint)
+                                           (flag "lavatube-end" 89 dm-task-hint)
+                                           (flag "lavatube-buzzer" 90 dm-task-hint)
+                                           (flag "citadel-buzzer" 91 dm-task-hint)
+                                           (flag "training-gimmie" 92 dm-task-hint)
+                                           (flag "training-door" 93 dm-task-hint)
+                                           (flag "training-climb" 94 dm-task-hint)
+                                           (flag "training-buzzer" 95 dm-task-hint)
+                                           (flag "village3-miner-money1" 96 dm-task-hint)
+                                           (flag "village3-miner-money2" 97 dm-task-hint)
+                                           (flag "village3-miner-money3" 98 dm-task-hint)
+                                           (flag "village3-miner-money4" 99 dm-task-hint)
+                                           (flag "village3-oracle-money1" 100 dm-task-hint)
+                                           (flag "village3-oracle-money2" 101 dm-task-hint)
+                                           (flag "firecanyon-assistant" 102 dm-task-hint)
+                                           (flag "village2-levitator" 103 dm-task-hint)
+                                           (flag "swamp-arm" 104 dm-task-hint)
+                                           (flag "village3-button" 105 dm-task-hint)
+                                           (flag "red-eggtop" 106 dm-task-hint)
+                                           (flag "lavatube-balls" 107 dm-task-hint)
+                                           (flag "lavatube-start" 108 dm-task-hint)
+                                           (flag "intro" 109 dm-task-hint)
+                                           (flag "ogre-secret" 110 dm-task-hint)
+                                           (flag "village4-button" 111 dm-task-hint)
+                                           (flag "finalboss-movies" 112 dm-task-hint)
+                                           (flag "plunger-lurker-hit" 113 dm-task-hint)
+                                           (flag "leaving-misty" 114 dm-task-hint)
+                                           (flag "assistant-village3" 115 dm-task-hint)
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           )
+                                   )
+    )
+  (none)
+  )
+
+;; definition for function debug-menu-make-task-need-introduction-menu
+;; INFO: Return type mismatch debug-menu-node vs none.
+(defun debug-menu-make-task-need-introduction-menu ((arg0 debug-menu) (arg1 debug-menu-context))
+  (debug-menu-append-item
+    arg0
+    (debug-menu-make-from-template arg1 '(menu
+                                           "need-introduction"
+                                           #f
+                                           #f
+                                           (flag "jungle-eggtop" 2 dm-task-introduction)
+                                           (flag "jungle-lurkerm" 3 dm-task-introduction)
+                                           (flag "jungle-tower" 4 dm-task-introduction)
+                                           (flag "jungle-fishgame" 5 dm-task-introduction)
+                                           (flag "jungle-plant" 6 dm-task-introduction)
+                                           (flag "jungle-buzzer" 7 dm-task-introduction)
+                                           (flag "jungle-canyon-end" 8 dm-task-introduction)
+                                           (flag "jungle-temple-door" 9 dm-task-introduction)
+                                           (flag "village1-yakow" 10 dm-task-introduction)
+                                           (flag "village1-mayor-money" 11 dm-task-introduction)
+                                           (flag "village1-uncle-money" 12 dm-task-introduction)
+                                           (flag "village1-oracle-money1" 13 dm-task-introduction)
+                                           (flag "village1-oracle-money2" 14 dm-task-introduction)
+                                           (flag "beach-ecorocks" 15 dm-task-introduction)
+                                           (flag "beach-pelican" 16 dm-task-introduction)
+                                           (flag "beach-flutflut" 17 dm-task-introduction)
+                                           (flag "beach-seagull" 18 dm-task-introduction)
+                                           (flag "beach-cannon" 19 dm-task-introduction)
+                                           (flag "beach-buzzer" 20 dm-task-introduction)
+                                           (flag "beach-gimmie" 21 dm-task-introduction)
+                                           (flag "beach-sentinel" 22 dm-task-introduction)
+                                           (flag "misty-muse" 23 dm-task-introduction)
+                                           (flag "misty-boat" 24 dm-task-introduction)
+                                           (flag "misty-warehouse" 25 dm-task-introduction)
+                                           (flag "misty-cannon" 26 dm-task-introduction)
+                                           (flag "misty-bike" 27 dm-task-introduction)
+                                           (flag "misty-buzzer" 28 dm-task-introduction)
+                                           (flag "misty-bike-jump" 29 dm-task-introduction)
+                                           (flag "misty-eco-challenge" 30 dm-task-introduction)
+                                           (flag "village2-gambler-money" 31 dm-task-introduction)
+                                           (flag "village2-geologist-money" 32 dm-task-introduction)
+                                           (flag "village2-warrior-money" 33 dm-task-introduction)
+                                           (flag "village2-oracle-money1" 34 dm-task-introduction)
+                                           (flag "village2-oracle-money2" 35 dm-task-introduction)
+                                           (flag "swamp-billy" 36 dm-task-introduction)
+                                           (flag "swamp-flutflut" 37 dm-task-introduction)
+                                           (flag "swamp-battle" 38 dm-task-introduction)
+                                           (flag "swamp-tether-1" 39 dm-task-introduction)
+                                           (flag "swamp-tether-2" 40 dm-task-introduction)
+                                           (flag "swamp-tether-3" 41 dm-task-introduction)
+                                           (flag "swamp-tether-4" 42 dm-task-introduction)
+                                           (flag "swamp-buzzer" 43 dm-task-introduction)
+                                           (flag "sunken-platforms" 44 dm-task-introduction)
+                                           (flag "sunken-pipe" 45 dm-task-introduction)
+                                           (flag "sunken-slide" 46 dm-task-introduction)
+                                           (flag "sunken-room" 47 dm-task-introduction)
+                                           (flag "sunken-sharks" 48 dm-task-introduction)
+                                           (flag "sunken-buzzer" 49 dm-task-introduction)
+                                           (flag "sunken-top-of-helix" 50 dm-task-introduction)
+                                           (flag "sunken-spinning-room" 51 dm-task-introduction)
+                                           (flag "rolling-race" 52 dm-task-introduction)
+                                           (flag "rolling-robbers" 53 dm-task-introduction)
+                                           (flag "rolling-moles" 54 dm-task-introduction)
+                                           (flag "rolling-plants" 55 dm-task-introduction)
+                                           (flag "rolling-lake" 56 dm-task-introduction)
+                                           (flag "rolling-buzzer" 57 dm-task-introduction)
+                                           (flag "rolling-ring-chase-1" 58 dm-task-introduction)
+                                           (flag "rolling-ring-chase-2" 59 dm-task-introduction)
+                                           (flag "snow-eggtop" 60 dm-task-introduction)
+                                           (flag "snow-ram" 61 dm-task-introduction)
+                                           (flag "snow-fort" 62 dm-task-introduction)
+                                           (flag "snow-ball" 63 dm-task-introduction)
+                                           (flag "snow-bunnies" 64 dm-task-introduction)
+                                           (flag "snow-buzzer" 65 dm-task-introduction)
+                                           (flag "snow-bumpers" 66 dm-task-introduction)
+                                           (flag "snow-cage" 67 dm-task-introduction)
+                                           (flag "firecanyon-buzzer" 68 dm-task-introduction)
+                                           (flag "firecanyon-end" 69 dm-task-introduction)
+                                           (flag "citadel-sage-green" 70 dm-task-introduction)
+                                           (flag "citadel-sage-blue" 71 dm-task-introduction)
+                                           (flag "citadel-sage-red" 72 dm-task-introduction)
+                                           (flag "citadel-sage-yellow" 73 dm-task-introduction)
+                                           (flag "village3-extra1" 74 dm-task-introduction)
+                                           (flag "village1-buzzer" 75 dm-task-introduction)
+                                           (flag "village2-buzzer" 76 dm-task-introduction)
+                                           (flag "village3-buzzer" 77 dm-task-introduction)
+                                           (flag "cave-gnawers" 78 dm-task-introduction)
+                                           (flag "cave-dark-crystals" 79 dm-task-introduction)
+                                           (flag "cave-dark-climb" 80 dm-task-introduction)
+                                           (flag "cave-robot-climb" 81 dm-task-introduction)
+                                           (flag "cave-swing-poles" 82 dm-task-introduction)
+                                           (flag "cave-spider-tunnel" 83 dm-task-introduction)
+                                           (flag "cave-platforms" 84 dm-task-introduction)
+                                           (flag "cave-buzzer" 85 dm-task-introduction)
+                                           (flag "ogre-boss" 86 dm-task-introduction)
+                                           (flag "ogre-end" 87 dm-task-introduction)
+                                           (flag "ogre-buzzer" 88 dm-task-introduction)
+                                           (flag "lavatube-end" 89 dm-task-introduction)
+                                           (flag "lavatube-buzzer" 90 dm-task-introduction)
+                                           (flag "citadel-buzzer" 91 dm-task-introduction)
+                                           (flag "training-gimmie" 92 dm-task-introduction)
+                                           (flag "training-door" 93 dm-task-introduction)
+                                           (flag "training-climb" 94 dm-task-introduction)
+                                           (flag "training-buzzer" 95 dm-task-introduction)
+                                           (flag "village3-miner-money1" 96 dm-task-introduction)
+                                           (flag "village3-miner-money2" 97 dm-task-introduction)
+                                           (flag "village3-miner-money3" 98 dm-task-introduction)
+                                           (flag "village3-miner-money4" 99 dm-task-introduction)
+                                           (flag "village3-oracle-money1" 100 dm-task-introduction)
+                                           (flag "village3-oracle-money2" 101 dm-task-introduction)
+                                           (flag "firecanyon-assistant" 102 dm-task-introduction)
+                                           (flag "village2-levitator" 103 dm-task-introduction)
+                                           (flag "swamp-arm" 104 dm-task-introduction)
+                                           (flag "village3-button" 105 dm-task-introduction)
+                                           (flag "red-eggtop" 106 dm-task-introduction)
+                                           (flag "lavatube-balls" 107 dm-task-introduction)
+                                           (flag "lavatube-start" 108 dm-task-introduction)
+                                           (flag "intro" 109 dm-task-introduction)
+                                           (flag "ogre-secret" 110 dm-task-introduction)
+                                           (flag "village4-button" 111 dm-task-introduction)
+                                           (flag "finalboss-movies" 112 dm-task-introduction)
+                                           (flag "plunger-lurker-hit" 113 dm-task-introduction)
+                                           (flag "leaving-misty" 114 dm-task-introduction)
+                                           (flag "assistant-village3" 115 dm-task-introduction)
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           )
+                                   )
+    )
+  (none)
+  )
+
+;; definition for function debug-menu-make-task-need-reminder-a-menu
+;; INFO: Return type mismatch debug-menu-node vs none.
+(defun debug-menu-make-task-need-reminder-a-menu ((arg0 debug-menu) (arg1 debug-menu-context))
+  (debug-menu-append-item
+    arg0
+    (debug-menu-make-from-template arg1 '(menu
+                                           "need-reminder-a"
+                                           #f
+                                           #f
+                                           (flag "jungle-eggtop" 2 dm-task-reminder-a)
+                                           (flag "jungle-lurkerm" 3 dm-task-reminder-a)
+                                           (flag "jungle-tower" 4 dm-task-reminder-a)
+                                           (flag "jungle-fishgame" 5 dm-task-reminder-a)
+                                           (flag "jungle-plant" 6 dm-task-reminder-a)
+                                           (flag "jungle-buzzer" 7 dm-task-reminder-a)
+                                           (flag "jungle-canyon-end" 8 dm-task-reminder-a)
+                                           (flag "jungle-temple-door" 9 dm-task-reminder-a)
+                                           (flag "village1-yakow" 10 dm-task-reminder-a)
+                                           (flag "village1-mayor-money" 11 dm-task-reminder-a)
+                                           (flag "village1-uncle-money" 12 dm-task-reminder-a)
+                                           (flag "village1-oracle-money1" 13 dm-task-reminder-a)
+                                           (flag "village1-oracle-money2" 14 dm-task-reminder-a)
+                                           (flag "beach-ecorocks" 15 dm-task-reminder-a)
+                                           (flag "beach-pelican" 16 dm-task-reminder-a)
+                                           (flag "beach-flutflut" 17 dm-task-reminder-a)
+                                           (flag "beach-seagull" 18 dm-task-reminder-a)
+                                           (flag "beach-cannon" 19 dm-task-reminder-a)
+                                           (flag "beach-buzzer" 20 dm-task-reminder-a)
+                                           (flag "beach-gimmie" 21 dm-task-reminder-a)
+                                           (flag "beach-sentinel" 22 dm-task-reminder-a)
+                                           (flag "misty-muse" 23 dm-task-reminder-a)
+                                           (flag "misty-boat" 24 dm-task-reminder-a)
+                                           (flag "misty-warehouse" 25 dm-task-reminder-a)
+                                           (flag "misty-cannon" 26 dm-task-reminder-a)
+                                           (flag "misty-bike" 27 dm-task-reminder-a)
+                                           (flag "misty-buzzer" 28 dm-task-reminder-a)
+                                           (flag "misty-bike-jump" 29 dm-task-reminder-a)
+                                           (flag "misty-eco-challenge" 30 dm-task-reminder-a)
+                                           (flag "village2-gambler-money" 31 dm-task-reminder-a)
+                                           (flag "village2-geologist-money" 32 dm-task-reminder-a)
+                                           (flag "village2-warrior-money" 33 dm-task-reminder-a)
+                                           (flag "village2-oracle-money1" 34 dm-task-reminder-a)
+                                           (flag "village2-oracle-money2" 35 dm-task-reminder-a)
+                                           (flag "swamp-billy" 36 dm-task-reminder-a)
+                                           (flag "swamp-flutflut" 37 dm-task-reminder-a)
+                                           (flag "swamp-battle" 38 dm-task-reminder-a)
+                                           (flag "swamp-tether-1" 39 dm-task-reminder-a)
+                                           (flag "swamp-tether-2" 40 dm-task-reminder-a)
+                                           (flag "swamp-tether-3" 41 dm-task-reminder-a)
+                                           (flag "swamp-tether-4" 42 dm-task-reminder-a)
+                                           (flag "swamp-buzzer" 43 dm-task-reminder-a)
+                                           (flag "sunken-platforms" 44 dm-task-reminder-a)
+                                           (flag "sunken-pipe" 45 dm-task-reminder-a)
+                                           (flag "sunken-slide" 46 dm-task-reminder-a)
+                                           (flag "sunken-room" 47 dm-task-reminder-a)
+                                           (flag "sunken-sharks" 48 dm-task-reminder-a)
+                                           (flag "sunken-buzzer" 49 dm-task-reminder-a)
+                                           (flag "sunken-top-of-helix" 50 dm-task-reminder-a)
+                                           (flag "sunken-spinning-room" 51 dm-task-reminder-a)
+                                           (flag "rolling-race" 52 dm-task-reminder-a)
+                                           (flag "rolling-robbers" 53 dm-task-reminder-a)
+                                           (flag "rolling-moles" 54 dm-task-reminder-a)
+                                           (flag "rolling-plants" 55 dm-task-reminder-a)
+                                           (flag "rolling-lake" 56 dm-task-reminder-a)
+                                           (flag "rolling-buzzer" 57 dm-task-reminder-a)
+                                           (flag "rolling-ring-chase-1" 58 dm-task-reminder-a)
+                                           (flag "rolling-ring-chase-2" 59 dm-task-reminder-a)
+                                           (flag "snow-eggtop" 60 dm-task-reminder-a)
+                                           (flag "snow-ram" 61 dm-task-reminder-a)
+                                           (flag "snow-fort" 62 dm-task-reminder-a)
+                                           (flag "snow-ball" 63 dm-task-reminder-a)
+                                           (flag "snow-bunnies" 64 dm-task-reminder-a)
+                                           (flag "snow-buzzer" 65 dm-task-reminder-a)
+                                           (flag "snow-bumpers" 66 dm-task-reminder-a)
+                                           (flag "snow-cage" 67 dm-task-reminder-a)
+                                           (flag "firecanyon-buzzer" 68 dm-task-reminder-a)
+                                           (flag "firecanyon-end" 69 dm-task-reminder-a)
+                                           (flag "citadel-sage-green" 70 dm-task-reminder-a)
+                                           (flag "citadel-sage-blue" 71 dm-task-reminder-a)
+                                           (flag "citadel-sage-red" 72 dm-task-reminder-a)
+                                           (flag "citadel-sage-yellow" 73 dm-task-reminder-a)
+                                           (flag "village3-extra1" 74 dm-task-reminder-a)
+                                           (flag "village1-buzzer" 75 dm-task-reminder-a)
+                                           (flag "village2-buzzer" 76 dm-task-reminder-a)
+                                           (flag "village3-buzzer" 77 dm-task-reminder-a)
+                                           (flag "cave-gnawers" 78 dm-task-reminder-a)
+                                           (flag "cave-dark-crystals" 79 dm-task-reminder-a)
+                                           (flag "cave-dark-climb" 80 dm-task-reminder-a)
+                                           (flag "cave-robot-climb" 81 dm-task-reminder-a)
+                                           (flag "cave-swing-poles" 82 dm-task-reminder-a)
+                                           (flag "cave-spider-tunnel" 83 dm-task-reminder-a)
+                                           (flag "cave-platforms" 84 dm-task-reminder-a)
+                                           (flag "cave-buzzer" 85 dm-task-reminder-a)
+                                           (flag "ogre-boss" 86 dm-task-reminder-a)
+                                           (flag "ogre-end" 87 dm-task-reminder-a)
+                                           (flag "ogre-buzzer" 88 dm-task-reminder-a)
+                                           (flag "lavatube-end" 89 dm-task-reminder-a)
+                                           (flag "lavatube-buzzer" 90 dm-task-reminder-a)
+                                           (flag "citadel-buzzer" 91 dm-task-reminder-a)
+                                           (flag "training-gimmie" 92 dm-task-reminder-a)
+                                           (flag "training-door" 93 dm-task-reminder-a)
+                                           (flag "training-climb" 94 dm-task-reminder-a)
+                                           (flag "training-buzzer" 95 dm-task-reminder-a)
+                                           (flag "village3-miner-money1" 96 dm-task-reminder-a)
+                                           (flag "village3-miner-money2" 97 dm-task-reminder-a)
+                                           (flag "village3-miner-money3" 98 dm-task-reminder-a)
+                                           (flag "village3-miner-money4" 99 dm-task-reminder-a)
+                                           (flag "village3-oracle-money1" 100 dm-task-reminder-a)
+                                           (flag "village3-oracle-money2" 101 dm-task-reminder-a)
+                                           (flag "firecanyon-assistant" 102 dm-task-reminder-a)
+                                           (flag "village2-levitator" 103 dm-task-reminder-a)
+                                           (flag "swamp-arm" 104 dm-task-reminder-a)
+                                           (flag "village3-button" 105 dm-task-reminder-a)
+                                           (flag "red-eggtop" 106 dm-task-reminder-a)
+                                           (flag "lavatube-balls" 107 dm-task-reminder-a)
+                                           (flag "lavatube-start" 108 dm-task-reminder-a)
+                                           (flag "intro" 109 dm-task-reminder-a)
+                                           (flag "ogre-secret" 110 dm-task-reminder-a)
+                                           (flag "village4-button" 111 dm-task-reminder-a)
+                                           (flag "finalboss-movies" 112 dm-task-reminder-a)
+                                           (flag "plunger-lurker-hit" 113 dm-task-reminder-a)
+                                           (flag "leaving-misty" 114 dm-task-reminder-a)
+                                           (flag "assistant-village3" 115 dm-task-reminder-a)
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           )
+                                   )
+    )
+  (none)
+  )
+
+;; definition for function debug-menu-make-task-need-reminder-menu
+;; INFO: Return type mismatch debug-menu-node vs none.
+(defun debug-menu-make-task-need-reminder-menu ((arg0 debug-menu) (arg1 debug-menu-context))
+  (debug-menu-append-item
+    arg0
+    (debug-menu-make-from-template arg1 '(menu
+                                           "need-reminder"
+                                           #f
+                                           #f
+                                           (flag "jungle-eggtop" 2 dm-task-reminder)
+                                           (flag "jungle-lurkerm" 3 dm-task-reminder)
+                                           (flag "jungle-tower" 4 dm-task-reminder)
+                                           (flag "jungle-fishgame" 5 dm-task-reminder)
+                                           (flag "jungle-plant" 6 dm-task-reminder)
+                                           (flag "jungle-buzzer" 7 dm-task-reminder)
+                                           (flag "jungle-canyon-end" 8 dm-task-reminder)
+                                           (flag "jungle-temple-door" 9 dm-task-reminder)
+                                           (flag "village1-yakow" 10 dm-task-reminder)
+                                           (flag "village1-mayor-money" 11 dm-task-reminder)
+                                           (flag "village1-uncle-money" 12 dm-task-reminder)
+                                           (flag "village1-oracle-money1" 13 dm-task-reminder)
+                                           (flag "village1-oracle-money2" 14 dm-task-reminder)
+                                           (flag "beach-ecorocks" 15 dm-task-reminder)
+                                           (flag "beach-pelican" 16 dm-task-reminder)
+                                           (flag "beach-flutflut" 17 dm-task-reminder)
+                                           (flag "beach-seagull" 18 dm-task-reminder)
+                                           (flag "beach-cannon" 19 dm-task-reminder)
+                                           (flag "beach-buzzer" 20 dm-task-reminder)
+                                           (flag "beach-gimmie" 21 dm-task-reminder)
+                                           (flag "beach-sentinel" 22 dm-task-reminder)
+                                           (flag "misty-muse" 23 dm-task-reminder)
+                                           (flag "misty-boat" 24 dm-task-reminder)
+                                           (flag "misty-warehouse" 25 dm-task-reminder)
+                                           (flag "misty-cannon" 26 dm-task-reminder)
+                                           (flag "misty-bike" 27 dm-task-reminder)
+                                           (flag "misty-buzzer" 28 dm-task-reminder)
+                                           (flag "misty-bike-jump" 29 dm-task-reminder)
+                                           (flag "misty-eco-challenge" 30 dm-task-reminder)
+                                           (flag "village2-gambler-money" 31 dm-task-reminder)
+                                           (flag "village2-geologist-money" 32 dm-task-reminder)
+                                           (flag "village2-warrior-money" 33 dm-task-reminder)
+                                           (flag "village2-oracle-money1" 34 dm-task-reminder)
+                                           (flag "village2-oracle-money2" 35 dm-task-reminder)
+                                           (flag "swamp-billy" 36 dm-task-reminder)
+                                           (flag "swamp-flutflut" 37 dm-task-reminder)
+                                           (flag "swamp-battle" 38 dm-task-reminder)
+                                           (flag "swamp-tether-1" 39 dm-task-reminder)
+                                           (flag "swamp-tether-2" 40 dm-task-reminder)
+                                           (flag "swamp-tether-3" 41 dm-task-reminder)
+                                           (flag "swamp-tether-4" 42 dm-task-reminder)
+                                           (flag "swamp-buzzer" 43 dm-task-reminder)
+                                           (flag "sunken-platforms" 44 dm-task-reminder)
+                                           (flag "sunken-pipe" 45 dm-task-reminder)
+                                           (flag "sunken-slide" 46 dm-task-reminder)
+                                           (flag "sunken-room" 47 dm-task-reminder)
+                                           (flag "sunken-sharks" 48 dm-task-reminder)
+                                           (flag "sunken-buzzer" 49 dm-task-reminder)
+                                           (flag "sunken-top-of-helix" 50 dm-task-reminder)
+                                           (flag "sunken-spinning-room" 51 dm-task-reminder)
+                                           (flag "rolling-race" 52 dm-task-reminder)
+                                           (flag "rolling-robbers" 53 dm-task-reminder)
+                                           (flag "rolling-moles" 54 dm-task-reminder)
+                                           (flag "rolling-plants" 55 dm-task-reminder)
+                                           (flag "rolling-lake" 56 dm-task-reminder)
+                                           (flag "rolling-buzzer" 57 dm-task-reminder)
+                                           (flag "rolling-ring-chase-1" 58 dm-task-reminder)
+                                           (flag "rolling-ring-chase-2" 59 dm-task-reminder)
+                                           (flag "snow-eggtop" 60 dm-task-reminder)
+                                           (flag "snow-ram" 61 dm-task-reminder)
+                                           (flag "snow-fort" 62 dm-task-reminder)
+                                           (flag "snow-ball" 63 dm-task-reminder)
+                                           (flag "snow-bunnies" 64 dm-task-reminder)
+                                           (flag "snow-buzzer" 65 dm-task-reminder)
+                                           (flag "snow-bumpers" 66 dm-task-reminder)
+                                           (flag "snow-cage" 67 dm-task-reminder)
+                                           (flag "firecanyon-buzzer" 68 dm-task-reminder)
+                                           (flag "firecanyon-end" 69 dm-task-reminder)
+                                           (flag "citadel-sage-green" 70 dm-task-reminder)
+                                           (flag "citadel-sage-blue" 71 dm-task-reminder)
+                                           (flag "citadel-sage-red" 72 dm-task-reminder)
+                                           (flag "citadel-sage-yellow" 73 dm-task-reminder)
+                                           (flag "village3-extra1" 74 dm-task-reminder)
+                                           (flag "village1-buzzer" 75 dm-task-reminder)
+                                           (flag "village2-buzzer" 76 dm-task-reminder)
+                                           (flag "village3-buzzer" 77 dm-task-reminder)
+                                           (flag "cave-gnawers" 78 dm-task-reminder)
+                                           (flag "cave-dark-crystals" 79 dm-task-reminder)
+                                           (flag "cave-dark-climb" 80 dm-task-reminder)
+                                           (flag "cave-robot-climb" 81 dm-task-reminder)
+                                           (flag "cave-swing-poles" 82 dm-task-reminder)
+                                           (flag "cave-spider-tunnel" 83 dm-task-reminder)
+                                           (flag "cave-platforms" 84 dm-task-reminder)
+                                           (flag "cave-buzzer" 85 dm-task-reminder)
+                                           (flag "ogre-boss" 86 dm-task-reminder)
+                                           (flag "ogre-end" 87 dm-task-reminder)
+                                           (flag "ogre-buzzer" 88 dm-task-reminder)
+                                           (flag "lavatube-end" 89 dm-task-reminder)
+                                           (flag "lavatube-buzzer" 90 dm-task-reminder)
+                                           (flag "citadel-buzzer" 91 dm-task-reminder)
+                                           (flag "training-gimmie" 92 dm-task-reminder)
+                                           (flag "training-door" 93 dm-task-reminder)
+                                           (flag "training-climb" 94 dm-task-reminder)
+                                           (flag "training-buzzer" 95 dm-task-reminder)
+                                           (flag "village3-miner-money1" 96 dm-task-reminder)
+                                           (flag "village3-miner-money2" 97 dm-task-reminder)
+                                           (flag "village3-miner-money3" 98 dm-task-reminder)
+                                           (flag "village3-miner-money4" 99 dm-task-reminder)
+                                           (flag "village3-oracle-money1" 100 dm-task-reminder)
+                                           (flag "village3-oracle-money2" 101 dm-task-reminder)
+                                           (flag "firecanyon-assistant" 102 dm-task-reminder)
+                                           (flag "village2-levitator" 103 dm-task-reminder)
+                                           (flag "swamp-arm" 104 dm-task-reminder)
+                                           (flag "village3-button" 105 dm-task-reminder)
+                                           (flag "red-eggtop" 106 dm-task-reminder)
+                                           (flag "lavatube-balls" 107 dm-task-reminder)
+                                           (flag "lavatube-start" 108 dm-task-reminder)
+                                           (flag "intro" 109 dm-task-reminder)
+                                           (flag "ogre-secret" 110 dm-task-reminder)
+                                           (flag "village4-button" 111 dm-task-reminder)
+                                           (flag "finalboss-movies" 112 dm-task-reminder)
+                                           (flag "plunger-lurker-hit" 113 dm-task-reminder)
+                                           (flag "leaving-misty" 114 dm-task-reminder)
+                                           (flag "assistant-village3" 115 dm-task-reminder)
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           )
+                                   )
+    )
+  (none)
+  )
+
+;; definition for function debug-menu-make-task-need-reward-speech-menu
+;; INFO: Return type mismatch debug-menu-node vs none.
+(defun debug-menu-make-task-need-reward-speech-menu ((arg0 debug-menu) (arg1 debug-menu-context))
+  (debug-menu-append-item
+    arg0
+    (debug-menu-make-from-template arg1 '(menu
+                                           "need-reward-speech"
+                                           #f
+                                           #f
+                                           (flag "jungle-eggtop" 2 dm-task-reward-speech)
+                                           (flag "jungle-lurkerm" 3 dm-task-reward-speech)
+                                           (flag "jungle-tower" 4 dm-task-reward-speech)
+                                           (flag "jungle-fishgame" 5 dm-task-reward-speech)
+                                           (flag "jungle-plant" 6 dm-task-reward-speech)
+                                           (flag "jungle-buzzer" 7 dm-task-reward-speech)
+                                           (flag "jungle-canyon-end" 8 dm-task-reward-speech)
+                                           (flag "jungle-temple-door" 9 dm-task-reward-speech)
+                                           (flag "village1-yakow" 10 dm-task-reward-speech)
+                                           (flag "village1-mayor-money" 11 dm-task-reward-speech)
+                                           (flag "village1-uncle-money" 12 dm-task-reward-speech)
+                                           (flag "village1-oracle-money1" 13 dm-task-reward-speech)
+                                           (flag "village1-oracle-money2" 14 dm-task-reward-speech)
+                                           (flag "beach-ecorocks" 15 dm-task-reward-speech)
+                                           (flag "beach-pelican" 16 dm-task-reward-speech)
+                                           (flag "beach-flutflut" 17 dm-task-reward-speech)
+                                           (flag "beach-seagull" 18 dm-task-reward-speech)
+                                           (flag "beach-cannon" 19 dm-task-reward-speech)
+                                           (flag "beach-buzzer" 20 dm-task-reward-speech)
+                                           (flag "beach-gimmie" 21 dm-task-reward-speech)
+                                           (flag "beach-sentinel" 22 dm-task-reward-speech)
+                                           (flag "misty-muse" 23 dm-task-reward-speech)
+                                           (flag "misty-boat" 24 dm-task-reward-speech)
+                                           (flag "misty-warehouse" 25 dm-task-reward-speech)
+                                           (flag "misty-cannon" 26 dm-task-reward-speech)
+                                           (flag "misty-bike" 27 dm-task-reward-speech)
+                                           (flag "misty-buzzer" 28 dm-task-reward-speech)
+                                           (flag "misty-bike-jump" 29 dm-task-reward-speech)
+                                           (flag "misty-eco-challenge" 30 dm-task-reward-speech)
+                                           (flag "village2-gambler-money" 31 dm-task-reward-speech)
+                                           (flag "village2-geologist-money" 32 dm-task-reward-speech)
+                                           (flag "village2-warrior-money" 33 dm-task-reward-speech)
+                                           (flag "village2-oracle-money1" 34 dm-task-reward-speech)
+                                           (flag "village2-oracle-money2" 35 dm-task-reward-speech)
+                                           (flag "swamp-billy" 36 dm-task-reward-speech)
+                                           (flag "swamp-flutflut" 37 dm-task-reward-speech)
+                                           (flag "swamp-battle" 38 dm-task-reward-speech)
+                                           (flag "swamp-tether-1" 39 dm-task-reward-speech)
+                                           (flag "swamp-tether-2" 40 dm-task-reward-speech)
+                                           (flag "swamp-tether-3" 41 dm-task-reward-speech)
+                                           (flag "swamp-tether-4" 42 dm-task-reward-speech)
+                                           (flag "swamp-buzzer" 43 dm-task-reward-speech)
+                                           (flag "sunken-platforms" 44 dm-task-reward-speech)
+                                           (flag "sunken-pipe" 45 dm-task-reward-speech)
+                                           (flag "sunken-slide" 46 dm-task-reward-speech)
+                                           (flag "sunken-room" 47 dm-task-reward-speech)
+                                           (flag "sunken-sharks" 48 dm-task-reward-speech)
+                                           (flag "sunken-buzzer" 49 dm-task-reward-speech)
+                                           (flag "sunken-top-of-helix" 50 dm-task-reward-speech)
+                                           (flag "sunken-spinning-room" 51 dm-task-reward-speech)
+                                           (flag "rolling-race" 52 dm-task-reward-speech)
+                                           (flag "rolling-robbers" 53 dm-task-reward-speech)
+                                           (flag "rolling-moles" 54 dm-task-reward-speech)
+                                           (flag "rolling-plants" 55 dm-task-reward-speech)
+                                           (flag "rolling-lake" 56 dm-task-reward-speech)
+                                           (flag "rolling-buzzer" 57 dm-task-reward-speech)
+                                           (flag "rolling-ring-chase-1" 58 dm-task-reward-speech)
+                                           (flag "rolling-ring-chase-2" 59 dm-task-reward-speech)
+                                           (flag "snow-eggtop" 60 dm-task-reward-speech)
+                                           (flag "snow-ram" 61 dm-task-reward-speech)
+                                           (flag "snow-fort" 62 dm-task-reward-speech)
+                                           (flag "snow-ball" 63 dm-task-reward-speech)
+                                           (flag "snow-bunnies" 64 dm-task-reward-speech)
+                                           (flag "snow-buzzer" 65 dm-task-reward-speech)
+                                           (flag "snow-bumpers" 66 dm-task-reward-speech)
+                                           (flag "snow-cage" 67 dm-task-reward-speech)
+                                           (flag "firecanyon-buzzer" 68 dm-task-reward-speech)
+                                           (flag "firecanyon-end" 69 dm-task-reward-speech)
+                                           (flag "citadel-sage-green" 70 dm-task-reward-speech)
+                                           (flag "citadel-sage-blue" 71 dm-task-reward-speech)
+                                           (flag "citadel-sage-red" 72 dm-task-reward-speech)
+                                           (flag "citadel-sage-yellow" 73 dm-task-reward-speech)
+                                           (flag "village3-extra1" 74 dm-task-reward-speech)
+                                           (flag "village1-buzzer" 75 dm-task-reward-speech)
+                                           (flag "village2-buzzer" 76 dm-task-reward-speech)
+                                           (flag "village3-buzzer" 77 dm-task-reward-speech)
+                                           (flag "cave-gnawers" 78 dm-task-reward-speech)
+                                           (flag "cave-dark-crystals" 79 dm-task-reward-speech)
+                                           (flag "cave-dark-climb" 80 dm-task-reward-speech)
+                                           (flag "cave-robot-climb" 81 dm-task-reward-speech)
+                                           (flag "cave-swing-poles" 82 dm-task-reward-speech)
+                                           (flag "cave-spider-tunnel" 83 dm-task-reward-speech)
+                                           (flag "cave-platforms" 84 dm-task-reward-speech)
+                                           (flag "cave-buzzer" 85 dm-task-reward-speech)
+                                           (flag "ogre-boss" 86 dm-task-reward-speech)
+                                           (flag "ogre-end" 87 dm-task-reward-speech)
+                                           (flag "ogre-buzzer" 88 dm-task-reward-speech)
+                                           (flag "lavatube-end" 89 dm-task-reward-speech)
+                                           (flag "lavatube-buzzer" 90 dm-task-reward-speech)
+                                           (flag "citadel-buzzer" 91 dm-task-reward-speech)
+                                           (flag "training-gimmie" 92 dm-task-reward-speech)
+                                           (flag "training-door" 93 dm-task-reward-speech)
+                                           (flag "training-climb" 94 dm-task-reward-speech)
+                                           (flag "training-buzzer" 95 dm-task-reward-speech)
+                                           (flag "village3-miner-money1" 96 dm-task-reward-speech)
+                                           (flag "village3-miner-money2" 97 dm-task-reward-speech)
+                                           (flag "village3-miner-money3" 98 dm-task-reward-speech)
+                                           (flag "village3-miner-money4" 99 dm-task-reward-speech)
+                                           (flag "village3-oracle-money1" 100 dm-task-reward-speech)
+                                           (flag "village3-oracle-money2" 101 dm-task-reward-speech)
+                                           (flag "firecanyon-assistant" 102 dm-task-reward-speech)
+                                           (flag "village2-levitator" 103 dm-task-reward-speech)
+                                           (flag "swamp-arm" 104 dm-task-reward-speech)
+                                           (flag "village3-button" 105 dm-task-reward-speech)
+                                           (flag "red-eggtop" 106 dm-task-reward-speech)
+                                           (flag "lavatube-balls" 107 dm-task-reward-speech)
+                                           (flag "lavatube-start" 108 dm-task-reward-speech)
+                                           (flag "intro" 109 dm-task-reward-speech)
+                                           (flag "ogre-secret" 110 dm-task-reward-speech)
+                                           (flag "village4-button" 111 dm-task-reward-speech)
+                                           (flag "finalboss-movies" 112 dm-task-reward-speech)
+                                           (flag "plunger-lurker-hit" 113 dm-task-reward-speech)
+                                           (flag "leaving-misty" 114 dm-task-reward-speech)
+                                           (flag "assistant-village3" 115 dm-task-reward-speech)
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           )
+                                   )
+    )
+  (none)
+  )
+
+;; definition for function debug-menu-make-task-need-resolution-menu
+;; INFO: Return type mismatch debug-menu-node vs none.
+(defun debug-menu-make-task-need-resolution-menu ((arg0 debug-menu) (arg1 debug-menu-context))
+  (debug-menu-append-item
+    arg0
+    (debug-menu-make-from-template arg1 '(menu
+                                           "need-resolution"
+                                           #f
+                                           #f
+                                           (flag "jungle-eggtop" 2 dm-task-resolution)
+                                           (flag "jungle-lurkerm" 3 dm-task-resolution)
+                                           (flag "jungle-tower" 4 dm-task-resolution)
+                                           (flag "jungle-fishgame" 5 dm-task-resolution)
+                                           (flag "jungle-plant" 6 dm-task-resolution)
+                                           (flag "jungle-buzzer" 7 dm-task-resolution)
+                                           (flag "jungle-canyon-end" 8 dm-task-resolution)
+                                           (flag "jungle-temple-door" 9 dm-task-resolution)
+                                           (flag "village1-yakow" 10 dm-task-resolution)
+                                           (flag "village1-mayor-money" 11 dm-task-resolution)
+                                           (flag "village1-uncle-money" 12 dm-task-resolution)
+                                           (flag "village1-oracle-money1" 13 dm-task-resolution)
+                                           (flag "village1-oracle-money2" 14 dm-task-resolution)
+                                           (flag "beach-ecorocks" 15 dm-task-resolution)
+                                           (flag "beach-pelican" 16 dm-task-resolution)
+                                           (flag "beach-flutflut" 17 dm-task-resolution)
+                                           (flag "beach-seagull" 18 dm-task-resolution)
+                                           (flag "beach-cannon" 19 dm-task-resolution)
+                                           (flag "beach-buzzer" 20 dm-task-resolution)
+                                           (flag "beach-gimmie" 21 dm-task-resolution)
+                                           (flag "beach-sentinel" 22 dm-task-resolution)
+                                           (flag "misty-muse" 23 dm-task-resolution)
+                                           (flag "misty-boat" 24 dm-task-resolution)
+                                           (flag "misty-warehouse" 25 dm-task-resolution)
+                                           (flag "misty-cannon" 26 dm-task-resolution)
+                                           (flag "misty-bike" 27 dm-task-resolution)
+                                           (flag "misty-buzzer" 28 dm-task-resolution)
+                                           (flag "misty-bike-jump" 29 dm-task-resolution)
+                                           (flag "misty-eco-challenge" 30 dm-task-resolution)
+                                           (flag "village2-gambler-money" 31 dm-task-resolution)
+                                           (flag "village2-geologist-money" 32 dm-task-resolution)
+                                           (flag "village2-warrior-money" 33 dm-task-resolution)
+                                           (flag "village2-oracle-money1" 34 dm-task-resolution)
+                                           (flag "village2-oracle-money2" 35 dm-task-resolution)
+                                           (flag "swamp-billy" 36 dm-task-resolution)
+                                           (flag "swamp-flutflut" 37 dm-task-resolution)
+                                           (flag "swamp-battle" 38 dm-task-resolution)
+                                           (flag "swamp-tether-1" 39 dm-task-resolution)
+                                           (flag "swamp-tether-2" 40 dm-task-resolution)
+                                           (flag "swamp-tether-3" 41 dm-task-resolution)
+                                           (flag "swamp-tether-4" 42 dm-task-resolution)
+                                           (flag "swamp-buzzer" 43 dm-task-resolution)
+                                           (flag "sunken-platforms" 44 dm-task-resolution)
+                                           (flag "sunken-pipe" 45 dm-task-resolution)
+                                           (flag "sunken-slide" 46 dm-task-resolution)
+                                           (flag "sunken-room" 47 dm-task-resolution)
+                                           (flag "sunken-sharks" 48 dm-task-resolution)
+                                           (flag "sunken-buzzer" 49 dm-task-resolution)
+                                           (flag "sunken-top-of-helix" 50 dm-task-resolution)
+                                           (flag "sunken-spinning-room" 51 dm-task-resolution)
+                                           (flag "rolling-race" 52 dm-task-resolution)
+                                           (flag "rolling-robbers" 53 dm-task-resolution)
+                                           (flag "rolling-moles" 54 dm-task-resolution)
+                                           (flag "rolling-plants" 55 dm-task-resolution)
+                                           (flag "rolling-lake" 56 dm-task-resolution)
+                                           (flag "rolling-buzzer" 57 dm-task-resolution)
+                                           (flag "rolling-ring-chase-1" 58 dm-task-resolution)
+                                           (flag "rolling-ring-chase-2" 59 dm-task-resolution)
+                                           (flag "snow-eggtop" 60 dm-task-resolution)
+                                           (flag "snow-ram" 61 dm-task-resolution)
+                                           (flag "snow-fort" 62 dm-task-resolution)
+                                           (flag "snow-ball" 63 dm-task-resolution)
+                                           (flag "snow-bunnies" 64 dm-task-resolution)
+                                           (flag "snow-buzzer" 65 dm-task-resolution)
+                                           (flag "snow-bumpers" 66 dm-task-resolution)
+                                           (flag "snow-cage" 67 dm-task-resolution)
+                                           (flag "firecanyon-buzzer" 68 dm-task-resolution)
+                                           (flag "firecanyon-end" 69 dm-task-resolution)
+                                           (flag "citadel-sage-green" 70 dm-task-resolution)
+                                           (flag "citadel-sage-blue" 71 dm-task-resolution)
+                                           (flag "citadel-sage-red" 72 dm-task-resolution)
+                                           (flag "citadel-sage-yellow" 73 dm-task-resolution)
+                                           (flag "village3-extra1" 74 dm-task-resolution)
+                                           (flag "village1-buzzer" 75 dm-task-resolution)
+                                           (flag "village2-buzzer" 76 dm-task-resolution)
+                                           (flag "village3-buzzer" 77 dm-task-resolution)
+                                           (flag "cave-gnawers" 78 dm-task-resolution)
+                                           (flag "cave-dark-crystals" 79 dm-task-resolution)
+                                           (flag "cave-dark-climb" 80 dm-task-resolution)
+                                           (flag "cave-robot-climb" 81 dm-task-resolution)
+                                           (flag "cave-swing-poles" 82 dm-task-resolution)
+                                           (flag "cave-spider-tunnel" 83 dm-task-resolution)
+                                           (flag "cave-platforms" 84 dm-task-resolution)
+                                           (flag "cave-buzzer" 85 dm-task-resolution)
+                                           (flag "ogre-boss" 86 dm-task-resolution)
+                                           (flag "ogre-end" 87 dm-task-resolution)
+                                           (flag "ogre-buzzer" 88 dm-task-resolution)
+                                           (flag "lavatube-end" 89 dm-task-resolution)
+                                           (flag "lavatube-buzzer" 90 dm-task-resolution)
+                                           (flag "citadel-buzzer" 91 dm-task-resolution)
+                                           (flag "training-gimmie" 92 dm-task-resolution)
+                                           (flag "training-door" 93 dm-task-resolution)
+                                           (flag "training-climb" 94 dm-task-resolution)
+                                           (flag "training-buzzer" 95 dm-task-resolution)
+                                           (flag "village3-miner-money1" 96 dm-task-resolution)
+                                           (flag "village3-miner-money2" 97 dm-task-resolution)
+                                           (flag "village3-miner-money3" 98 dm-task-resolution)
+                                           (flag "village3-miner-money4" 99 dm-task-resolution)
+                                           (flag "village3-oracle-money1" 100 dm-task-resolution)
+                                           (flag "village3-oracle-money2" 101 dm-task-resolution)
+                                           (flag "firecanyon-assistant" 102 dm-task-resolution)
+                                           (flag "village2-levitator" 103 dm-task-resolution)
+                                           (flag "swamp-arm" 104 dm-task-resolution)
+                                           (flag "village3-button" 105 dm-task-resolution)
+                                           (flag "red-eggtop" 106 dm-task-resolution)
+                                           (flag "lavatube-balls" 107 dm-task-resolution)
+                                           (flag "lavatube-start" 108 dm-task-resolution)
+                                           (flag "intro" 109 dm-task-resolution)
+                                           (flag "ogre-secret" 110 dm-task-resolution)
+                                           (flag "village4-button" 111 dm-task-resolution)
+                                           (flag "finalboss-movies" 112 dm-task-resolution)
+                                           (flag "plunger-lurker-hit" 113 dm-task-resolution)
+                                           (flag "leaving-misty" 114 dm-task-resolution)
+                                           (flag "assistant-village3" 115 dm-task-resolution)
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           #f
+                                           )
+                                   )
+    )
+  (none)
+  )
+
+;; definition for function dm-task-get-money
+(defun dm-task-get-money ((arg0 int) (arg1 debug-menu-msg))
+  (if (= arg1 (debug-menu-msg press))
+      (send-event *target* 'get-pickup 5 (-> *GAME-bank* money-task-inc))
+      )
+  (>= (the-as float (send-event *target* 'query 'pickup (pickup-type money))) (-> *GAME-bank* money-task-inc))
+  )
+
+;; definition for function dm-give-all-cells
+(defun dm-give-all-cells ((arg0 int) (arg1 debug-menu-msg))
+  (when (= arg1 (debug-menu-msg press))
+    (dotimes (gp-0 100)
+      (send-event *target* 'get-pickup 6 (the float (+ gp-0 2)))
+      (close-specific-task! (the-as game-task (+ gp-0 2)) (task-status need-resolution))
+      )
+    )
+  (dotimes (gp-1 100)
+    (if (not (task-closed? (the-as game-task (+ gp-1 2)) (task-status need-resolution)))
+        (return #f)
+        )
+    )
+  #t
+  )
+
+;; definition for function dm-give-cell
+;; INFO: Return type mismatch game-task vs none.
+(defun dm-give-cell ((arg0 game-task))
+  (send-event *target* 'get-pickup 6 (the float arg0))
+  (close-specific-task! arg0 (task-status need-resolution))
+  (none)
+  )
+
+;; definition for function dm-levitator-ready
+(defun dm-levitator-ready ((arg0 int) (arg1 debug-menu-msg))
+  (when (= arg1 (debug-menu-msg press))
+    (close-specific-task! (game-task village2-levitator) (task-status need-introduction))
+    (close-specific-task! (game-task village2-levitator) (task-status need-reminder-a))
+    (dm-give-cell (game-task jungle-eggtop))
+    (dm-give-cell (game-task jungle-lurkerm))
+    (dm-give-cell (game-task jungle-tower))
+    (dm-give-cell (game-task jungle-fishgame))
+    (dm-give-cell (game-task jungle-plant))
+    (dm-give-cell (game-task jungle-buzzer))
+    (dm-give-cell (game-task jungle-canyon-end))
+    (dm-give-cell (game-task jungle-temple-door))
+    (dm-give-cell (game-task village1-yakow))
+    (dm-give-cell (game-task village1-mayor-money))
+    (dm-give-cell (game-task village1-uncle-money))
+    (dm-give-cell (game-task village1-oracle-money1))
+    (dm-give-cell (game-task village1-oracle-money2))
+    (dm-give-cell (game-task beach-ecorocks))
+    (dm-give-cell (game-task beach-pelican))
+    (dm-give-cell (game-task beach-flutflut))
+    (dm-give-cell (game-task beach-seagull))
+    (dm-give-cell (game-task beach-cannon))
+    (dm-give-cell (game-task beach-buzzer))
+    (dm-give-cell (game-task beach-gimmie))
+    (dm-give-cell (game-task beach-sentinel))
+    (dm-give-cell (game-task misty-muse))
+    (dm-give-cell (game-task misty-boat))
+    (dm-give-cell (game-task misty-warehouse))
+    (dm-give-cell (game-task misty-cannon))
+    (dm-give-cell (game-task misty-bike))
+    (dm-give-cell (game-task misty-buzzer))
+    (dm-give-cell (game-task misty-bike-jump))
+    (dm-give-cell (game-task misty-eco-challenge))
+    (dm-give-cell (game-task village2-gambler-money))
+    (dm-give-cell (game-task village2-geologist-money))
+    (dm-give-cell (game-task village2-oracle-money1))
+    (dm-give-cell (game-task village2-oracle-money2))
+    (dm-give-cell (game-task swamp-billy))
+    (dm-give-cell (game-task swamp-flutflut))
+    (dm-give-cell (game-task swamp-battle))
+    (dm-give-cell (game-task swamp-tether-1))
+    (dm-give-cell (game-task swamp-tether-2))
+    (dm-give-cell (game-task swamp-tether-3))
+    (dm-give-cell (game-task swamp-tether-4))
+    (dm-give-cell (game-task swamp-buzzer))
+    (dm-give-cell (game-task sunken-platforms))
+    (dm-give-cell (game-task sunken-pipe))
+    (dm-give-cell (game-task sunken-slide))
+    (dm-give-cell (game-task sunken-room))
+    (dm-give-cell (game-task sunken-sharks))
+    )
+  (= (get-task-status (game-task village2-levitator)) (task-status need-reward-speech))
+  )
+
+;; definition for function dm-lavabike-ready
+(defun dm-lavabike-ready ((arg0 int) (arg1 debug-menu-msg))
+  (when (= arg1 (debug-menu-msg press))
+    (dm-give-cell (game-task jungle-eggtop))
+    (dm-give-cell (game-task jungle-lurkerm))
+    (dm-give-cell (game-task jungle-tower))
+    (dm-give-cell (game-task jungle-fishgame))
+    (dm-give-cell (game-task jungle-plant))
+    (dm-give-cell (game-task jungle-buzzer))
+    (dm-give-cell (game-task jungle-canyon-end))
+    (dm-give-cell (game-task jungle-temple-door))
+    (dm-give-cell (game-task village1-yakow))
+    (dm-give-cell (game-task village1-mayor-money))
+    (dm-give-cell (game-task village1-uncle-money))
+    (dm-give-cell (game-task village1-oracle-money1))
+    (dm-give-cell (game-task village1-oracle-money2))
+    (dm-give-cell (game-task beach-ecorocks))
+    (dm-give-cell (game-task beach-pelican))
+    (dm-give-cell (game-task beach-flutflut))
+    (dm-give-cell (game-task beach-seagull))
+    (dm-give-cell (game-task beach-cannon))
+    (dm-give-cell (game-task beach-buzzer))
+    (dm-give-cell (game-task beach-gimmie))
+    (dm-give-cell (game-task beach-sentinel))
+    (dm-give-cell (game-task misty-muse))
+    (dm-give-cell (game-task misty-boat))
+    (dm-give-cell (game-task misty-warehouse))
+    (dm-give-cell (game-task misty-cannon))
+    (dm-give-cell (game-task misty-bike))
+    (dm-give-cell (game-task misty-buzzer))
+    (dm-give-cell (game-task misty-bike-jump))
+    (dm-give-cell (game-task misty-eco-challenge))
+    (dm-give-cell (game-task village2-gambler-money))
+    (dm-give-cell (game-task village2-geologist-money))
+    (dm-give-cell (game-task village2-warrior-money))
+    (dm-give-cell (game-task village2-oracle-money1))
+    (dm-give-cell (game-task village2-oracle-money2))
+    (dm-give-cell (game-task swamp-billy))
+    (dm-give-cell (game-task swamp-flutflut))
+    (dm-give-cell (game-task swamp-battle))
+    (dm-give-cell (game-task swamp-tether-1))
+    (dm-give-cell (game-task swamp-tether-2))
+    (dm-give-cell (game-task swamp-tether-3))
+    (dm-give-cell (game-task swamp-tether-4))
+    (dm-give-cell (game-task swamp-buzzer))
+    (dm-give-cell (game-task sunken-platforms))
+    (dm-give-cell (game-task sunken-pipe))
+    (dm-give-cell (game-task sunken-slide))
+    (dm-give-cell (game-task sunken-room))
+    (dm-give-cell (game-task sunken-sharks))
+    (dm-give-cell (game-task sunken-buzzer))
+    (dm-give-cell (game-task sunken-top-of-helix))
+    (dm-give-cell (game-task sunken-spinning-room))
+    (dm-give-cell (game-task rolling-race))
+    (dm-give-cell (game-task rolling-robbers))
+    (dm-give-cell (game-task rolling-moles))
+    (dm-give-cell (game-task rolling-plants))
+    (dm-give-cell (game-task rolling-lake))
+    (dm-give-cell (game-task rolling-buzzer))
+    (dm-give-cell (game-task rolling-ring-chase-1))
+    (dm-give-cell (game-task rolling-ring-chase-2))
+    (dm-give-cell (game-task snow-eggtop))
+    (dm-give-cell (game-task snow-ram))
+    (dm-give-cell (game-task snow-fort))
+    (dm-give-cell (game-task snow-ball))
+    (dm-give-cell (game-task snow-bunnies))
+    (dm-give-cell (game-task snow-buzzer))
+    (dm-give-cell (game-task snow-bumpers))
+    (dm-give-cell (game-task snow-cage))
+    (dm-give-cell (game-task firecanyon-buzzer))
+    (dm-give-cell (game-task firecanyon-end))
+    (dm-give-cell (game-task citadel-sage-green))
+    (dm-give-cell (game-task citadel-sage-blue))
+    (dm-give-cell (game-task citadel-sage-red))
+    (dm-give-cell (game-task citadel-sage-yellow))
+    (dm-give-cell (game-task village3-extra1))
+    (dm-give-cell (game-task village1-buzzer))
+    (dm-give-cell (game-task village2-buzzer))
+    )
+  (= (get-task-status (game-task lavatube-start)) (task-status need-reward-speech))
+  )
+
+;; definition for function debug-menu-make-task-menu
+(defun debug-menu-make-task-menu ((arg0 debug-menu-context))
+  (let* ((s5-0 (new 'debug 'debug-menu arg0 "Task menu"))
+         (s4-0 (new 'debug 'debug-menu-item-submenu "Task" s5-0))
+         )
+    (debug-menu-append-item s5-0 (new 'debug 'debug-menu-item-flag "enough money" #f dm-task-get-money))
+    (debug-menu-append-item s5-0 (new 'debug 'debug-menu-item-flag "levitator ready" #f dm-levitator-ready))
+    (debug-menu-append-item s5-0 (new 'debug 'debug-menu-item-flag "lavabike ready" #f dm-lavabike-ready))
+    (debug-menu-append-item s5-0 (new 'debug 'debug-menu-item-flag "all cells" #f dm-give-all-cells))
+    (debug-menu-make-task-unknown-menu s5-0 arg0)
+    (debug-menu-make-task-need-hint-menu s5-0 arg0)
+    (debug-menu-make-task-need-introduction-menu s5-0 arg0)
+    (debug-menu-make-task-need-reminder-a-menu s5-0 arg0)
+    (debug-menu-make-task-need-reminder-menu s5-0 arg0)
+    (debug-menu-make-task-need-reward-speech-menu s5-0 arg0)
+    (debug-menu-make-task-need-resolution-menu s5-0 arg0)
+    s4-0
+    )
+  )
+
+;; definition for function dm-anim-tester-flag-func
+(defun dm-anim-tester-flag-func ((arg0 int) (arg1 debug-menu-msg))
+  (when *anim-tester*
+    (case arg0
+      (('at-apply-align)
+       (if (= arg1 (debug-menu-msg press))
+           (logxor! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt5))
+           )
+       (return (logtest? (-> *anim-tester* 0 flags) (anim-tester-flags fanimt5)))
+       )
+      (('at-show-joint-info)
+       (if (= arg1 (debug-menu-msg press))
+           (logxor! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt4))
+           )
+       (return (logtest? (-> *anim-tester* 0 flags) (anim-tester-flags fanimt4)))
+       )
+      )
+    )
+  #f
+  )
+
+;; definition for function dm-anim-tester-func
+;; INFO: Return type mismatch object vs none.
+(defun dm-anim-tester-func ((arg0 int) (arg1 debug-menu-msg))
+  (if (not *anim-tester*)
+      (anim-tester-start)
+      )
+  (when *anim-tester*
+    (cond
+      ((= arg0 'at-pick-object)
+       (send-event (ppointer->process *anim-tester*) 'pick-object)
+       (set! (-> *debug-menu-context* is-hidden) #t)
+       )
+      ((= arg0 'at-pick-joint-anim)
+       (send-event (ppointer->process *anim-tester*) 'pick-joint-anim)
+       (set! (-> *debug-menu-context* is-hidden) #t)
+       )
+      ((= arg0 'at-pick-sequence)
+       (send-event (ppointer->process *anim-tester*) 'pick-sequence)
+       (set! (-> *debug-menu-context* is-hidden) #t)
+       )
+      ((= arg0 'at-save-sequences)
+       (send-event (ppointer->process *anim-tester*) 'save-sequences)
+       )
+      ((= arg0 'at-cam-stick)
+       (set! *camera-orbit-target* *anim-tester*)
+       (send-event *camera* 'change-state cam-orbit 0)
+       )
+      ((= arg0 'at-cam-free-floating)
+       (send-event *camera* 'change-state cam-free-floating 0)
+       )
+      )
+    )
+  (none)
+  )
+
+;; definition for function build-continue-menu
+;; INFO: Return type mismatch debug-menu vs debug-menu-context.
+(defun build-continue-menu ((arg0 debug-menu) (arg1 game-info))
+  (let ((s5-0 *level-load-list*))
+    (while (not (null? s5-0))
+      (let ((s4-0 (-> (the-as level-load-info (-> (the-as symbol (car s5-0)) value)) continues)))
+        (while (not (null? s4-0))
+          (let* ((v1-2 (the-as level-load-info (car s4-0)))
+                 (a1-2 (new 'debug 'debug-menu-item-flag (the-as string (-> v1-2 name)) (-> v1-2 name) dm-current-continue))
+                 )
+            (debug-menu-append-item arg0 a1-2)
+            )
+          (set! s4-0 (cdr s4-0))
+          )
+        )
+      (set! s5-0 (cdr s5-0))
+      )
+    )
+  (the-as debug-menu-context arg0)
+  )
+
+;; definition for function debug-menu-context-make-default-menus
+(defun debug-menu-context-make-default-menus ((arg0 debug-menu-context))
+  (let ((s5-0 (new 'debug 'debug-menu arg0 "Main menu")))
+    (debug-menu-context-set-root-menu arg0 s5-0)
+    (debug-menu-append-item
+      s5-0
+      (debug-menu-make-from-template
+        arg0
+        '(menu
+           "Artist"
+           (flag "Poly Stats" *stats-poly* dm-boolean-toggle-pick-func)
+           (flag "Memory Stats" *stats-memory* dm-boolean-toggle-pick-func)
+           (flag "Memory Stats Short" *stats-memory-short* dm-boolean-toggle-pick-func)
+           (flag "Ground Stats" *display-ground-stats* dm-boolean-toggle-pick-func)
+           (flag "All Visible" *artist-all-visible* dm-boolean-toggle-pick-func)
+           (flag "Flip Visible" *artist-flip-visible* dm-boolean-toggle-pick-func)
+           (flag "Fix Visible" *artist-fix-visible* dm-boolean-toggle-pick-func)
+           (flag "Fix Frustum" *artist-fix-frustum* dm-boolean-toggle-pick-func)
+           (flag "Error Spheres" *artist-error-spheres* dm-boolean-toggle-pick-func)
+           (flag "Use menu subdiv" *artist-use-menu-subdiv* dm-boolean-toggle-pick-func)
+           (float-var "Subdiv Close" close dm-subdiv-float 10 1 #t 1 200 1)
+           (float-var "Subdiv Far" far dm-subdiv-float 10 1 #t 1 200 1)
+           (function "Target Start" #f ,(lambda () (start 'debug (get-or-create-continue! *game-info*))))
+           (function "Target Stop" #f ,(lambda () (stop 'debug)))
+           (menu
+             "Anim Tester"
+             (int-var "Speed" anim-speed dm-subdiv-int 10 10 #t -300 1000)
+             (flag "Apply Align" at-apply-align dm-anim-tester-flag-func)
+             (flag "Show Joint Inf" at-show-joint-info dm-anim-tester-flag-func)
+             (function "Camera Face" at-cam-stick dm-anim-tester-func)
+             (function "Camera Free" at-cam-free-floating dm-anim-tester-func)
+             (function "Pick Object" at-pick-object dm-anim-tester-func)
+             (function "Pick Joint Anim" at-pick-joint-anim dm-anim-tester-func)
+             (function "Pick Sequence" at-pick-sequence dm-anim-tester-func)
+             (function "Save Sequences" at-save-sequences dm-anim-tester-func)
+             )
+           (flag "Show Entity Errors" *display-entity-errors* dm-boolean-toggle-pick-func)
+           (flag "Sprite Info" *display-sprite-info* dm-boolean-toggle-pick-func)
+           (flag "Time of Day" #f dm-time-of-day-pick-func)
+           (flag "Preload Anims" *preload-spool-anims* dm-boolean-toggle-pick-func)
+           )
+        )
+      )
+    (debug-menu-append-item
+      s5-0
+      (debug-menu-make-from-template
+        arg0
+        '(menu
+           "Game"
+           (function
+             "New Game"
+             #f
+             ,(lambda () (initialize! *game-info* 'game (the-as game-save #f) (the-as string #f)) (none))
+             )
+           (function
+             "New Life"
+             #f
+             ,(lambda () (initialize! *game-info* 'die (the-as game-save #f) (the-as string #f)) (none))
+             )
+           (function
+             "Reset Game"
+             #f
+             ,(lambda ()
+                (set! (-> *game-info* mode) 'debug)
+                (initialize! *game-info* 'game (the-as game-save #f) (the-as string #f))
+                (none)
+                )
+             )
+           (function "Reset Actors" #f ,(lambda () (reset-actors 'debug) (none)))
+           (function "Save Game" #f ,(lambda () (auto-save-command 'save 0 0 *default-pool*) (none)))
+           (function "Load Game" #f ,(lambda () (auto-save-command 'restore 0 0 *default-pool*) (none)))
+           (flag "Target" #f ,(lambda ((arg0 int) (arg1 debug-menu-msg))
+                                (when (= arg1 (debug-menu-msg press))
+                                  (if *target*
+                                      (stop 'debug)
+                                      (start 'debug (get-or-create-continue! *game-info*))
+                                      )
+                                  )
+                                *target*
+                                )
+                 )
+           (flag "Game Mode" play dm-game-mode-pick-func)
+           (flag "Debug Mode" debug dm-game-mode-pick-func)
+           (menu "Continue")
+           (menu
+             "Settings"
+             (float-var
+               "sfx-volume"
+               #f
+               ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
+                  (if (= arg1 (debug-menu-msg press))
+                      (set! (-> *setting-control* default sfx-volume) arg2)
+                      (-> *setting-control* default sfx-volume)
+                      )
+                  )
+               2
+               1
+               #t
+               0
+               100
+               0
+               )
+             (float-var
+               "music-volume"
+               #f
+               ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
+                  (if (= arg1 (debug-menu-msg press))
+                      (set! (-> *setting-control* default music-volume) arg2)
+                      (-> *setting-control* default music-volume)
+                      )
+                  )
+               2
+               1
+               #t
+               0
+               100
+               0
+               )
+             (float-var
+               "dialog-volume"
+               #f
+               ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
+                  (if (= arg1 (debug-menu-msg press))
+                      (set! (-> *setting-control* default dialog-volume) arg2)
+                      (-> *setting-control* default dialog-volume)
+                      )
+                  )
+               2
+               1
+               #t
+               0
+               100
+               0
+               )
+             (menu
+               "Language"
+               (flag "english" 0 dm-setting-language)
+               (flag "japanese" 5 dm-setting-language)
+               (flag "french" 1 dm-setting-language)
+               (flag "german" 2 dm-setting-language)
+               (flag "spanish" 3 dm-setting-language)
+               (flag "italian" 4 dm-setting-language)
+               (flag "uk-english" 6 dm-setting-language)
+               )
+             (flag
+               "play-hints "
+               #f
+               ,(lambda ((arg0 int) (arg1 debug-menu-msg))
+                  (if (= arg1 (debug-menu-msg press))
+                      (set! (-> *setting-control* default play-hints) (not (-> *setting-control* default play-hints)))
+                      )
+                  (-> *setting-control* default play-hints)
+                  )
+               )
+             (flag
+               "vibration"
+               #f
+               ,(lambda ((arg0 int) (arg1 debug-menu-msg))
+                  (if (= arg1 (debug-menu-msg press))
+                      (set! (-> *setting-control* default vibration) (not (-> *setting-control* default vibration)))
+                      )
+                  (-> *setting-control* default vibration)
+                  )
+               )
+             (flag
+               "border-mode"
+               #f
+               ,(lambda ((arg0 int) (arg1 debug-menu-msg))
+                  (if (= arg1 (debug-menu-msg press))
+                      (set! (-> *setting-control* default border-mode) (not (-> *setting-control* default border-mode)))
+                      )
+                  (-> *setting-control* default border-mode)
+                  )
+               )
+             )
+           )
+        )
+      )
+    (let ((a0-8 (debug-menu-find-from-template arg0 '("Game" "Continue"))))
+      (build-continue-menu a0-8 *game-info*)
+      )
+    (debug-menu-append-item
+      s5-0
+      (debug-menu-make-from-template
+        arg0
+        '(menu
+           "Stats"
+           (flag "Poly" *stats-poly* dm-boolean-toggle-pick-func)
+           (flag "Collide" *stats-collide* dm-boolean-toggle-pick-func)
+           (flag "Bsp" *stats-bsp* dm-boolean-toggle-pick-func)
+           (flag "Buffer" *stats-buffer* dm-boolean-toggle-pick-func)
+           (flag "Target" *stats-target* dm-boolean-toggle-pick-func)
+           (flag "Dma test" *stats-dma-test* dm-boolean-toggle-pick-func)
+           (flag "Blerc" *stats-blerc* dm-boolean-toggle-pick-func)
+           (flag "Perf" *display-perf-stats* dm-boolean-toggle-pick-func)
+           )
+        )
+      )
+    (debug-menu-append-item
+      s5-0
+      (debug-menu-make-from-template
+        arg0
+        '(menu
+           "Render"
+           (flag "sky" 1 dm-vu1-user-toggle-pick-func)
+           (flag "ocean" 2 dm-vu1-user-toggle-pick-func)
+           (flag "ocean-wave" 4 dm-vu1-user-toggle-pick-func)
+           (flag "TFRAG TIE TEXTURES" #x1 dm-texture-user-toggle-pick-func)
+           (flag "tfrag" 8 dm-vu1-user-toggle-pick-func)
+           (flag "tie-near" 16 dm-vu1-user-toggle-pick-func)
+           (flag "tie" 32 dm-vu1-user-toggle-pick-func)
+           (flag "generic" 64 dm-vu1-user-toggle-pick-func)
+           (flag "generic-tie" *generic-tie* dm-boolean-toggle-pick-func)
+           (flag "PRIS TEXTURES" #x2 dm-texture-user-toggle-pick-func)
+           (flag "merc" 128 dm-vu1-user-toggle-pick-func)
+           (flag "SHRUB TEXTURES" #x4 dm-texture-user-toggle-pick-func)
+           (flag "shrub-near" 512 dm-vu1-user-toggle-pick-func)
+           (flag "shrubbery" 256 dm-vu1-user-toggle-pick-func)
+           (flag "billboard" 1024 dm-vu1-user-toggle-pick-func)
+           (flag "trans-shrubbery" 2048 dm-vu1-user-toggle-pick-func)
+           (flag "ALPHA TEXTURES" 1 dm-texture-user-toggle-pick-func)
+           (flag "trans-tfrag" 4096 dm-vu1-user-toggle-pick-func)
+           (flag "sprite" 8192 dm-vu1-user-toggle-pick-func)
+           (flag "shadow" 16384 dm-vu1-user-toggle-pick-func)
+           (flag "shadow-debug" *shadow-debug* dm-boolean-toggle-pick-func)
+           (flag "WATER TEXTURES" 2 dm-texture-user-toggle-pick-func)
+           (flag "depth-cue" 32768 dm-vu1-user-toggle-pick-func)
+           (flag "all on" 262143 dm-vu1-user-set-pick-func)
+           (flag "all off" 196608 dm-vu1-user-set-pick-func)
+           (flag "all textures on" #x1f dm-texture-user-set-pick-func)
+           (flag "all textures off" 0 dm-texture-user-set-pick-func)
+           )
+        )
+      )
+    (debug-menu-append-item
+      s5-0
+      (debug-menu-make-from-template
+        arg0
+        '(menu
+           "Collision"
+           (flag "Collide Stats" *stats-collide* dm-boolean-toggle-pick-func)
+           (flag "Collision Marks" *display-collision-marks* dm-boolean-toggle-pick-func)
+           (flag "Collision Cache" *display-collide-cache* dm-boolean-toggle-pick-func)
+           (flag "Render Collision" *display-render-collision* dm-boolean-toggle-pick-func)
+           (flag "Hipri Collision Marks" *display-hipri-collision-marks* dm-boolean-toggle-pick-func)
+           (flag "Edge Collision Marks" *display-edge-collision-marks* dm-boolean-toggle-pick-func)
+           )
+        )
+      )
+    (debug-menu-append-item
+      s5-0
+      (debug-menu-make-from-template
+        arg0
+        '(menu
+           "Display"
+           (flag "Profile" *display-profile* dm-boolean-toggle-pick-func)
+           (flag "Ticks" *profile-ticks* dm-boolean-toggle-pick-func)
+           (flag "File Info" *display-file-info* dm-boolean-toggle-pick-func)
+           (flag "Level Spheres" *display-level-spheres* dm-boolean-toggle-pick-func)
+           (flag "Collision Marks" *display-collision-marks* dm-boolean-toggle-pick-func)
+           (flag "Collision Cache" *display-collide-cache* dm-boolean-toggle-pick-func)
+           (flag "Hipri Collision Marks" *display-hipri-collision-marks* dm-boolean-toggle-pick-func)
+           (flag "Edge Collision Marks" *display-edge-collision-marks* dm-boolean-toggle-pick-func)
+           (flag "Target Marks" *display-target-marks* dm-boolean-toggle-pick-func)
+           (flag "Target Stats" *stats-target* dm-boolean-toggle-pick-func)
+           (flag "Entity Lights" *display-lights* dm-boolean-toggle-pick-func)
+           (flag "Camera Marks" *display-camera-marks* dm-boolean-toggle-pick-func)
+           (flag "Camera Info" *display-camera-info* dm-boolean-toggle-pick-func)
+           (flag "Geometry Marks" *display-geo-marks* dm-boolean-toggle-pick-func)
+           (flag "Nav Marks" *display-nav-marks* dm-boolean-toggle-pick-func)
+           (flag "Path Marks" *display-path-marks* dm-boolean-toggle-pick-func)
+           (flag "Vol Marks" *display-vol-marks* dm-boolean-toggle-pick-func)
+           (menu
+             "Ambient Marks"
+             (flag "Ambient Hint Marks" *display-ambient-hint-marks* dm-boolean-toggle-pick-func)
+             (flag "Ambient Sound Marks" *display-ambient-sound-marks* dm-boolean-toggle-pick-func)
+             (flag "Ambient Poi Marks" *display-ambient-poi-marks* dm-boolean-toggle-pick-func)
+             (flag "Ambient Light Marks" *display-ambient-light-marks* dm-boolean-toggle-pick-func)
+             (flag "Ambient Dark Marks" *display-ambient-dark-marks* dm-boolean-toggle-pick-func)
+             (flag "Ambient Weather Off Marks" *display-ambient-weather-off-marks* dm-boolean-toggle-pick-func)
+             (flag "Ambient Ocean Off Marks" *display-ambient-ocean-off-marks* dm-boolean-toggle-pick-func)
+             (flag "Ambient Ocean Near Off Marks" *display-ambient-ocean-near-off-marks* dm-boolean-toggle-pick-func)
+             (flag "Ambient Music" *display-ambient-music-marks* dm-boolean-toggle-pick-func)
+             )
+           (menu
+             "Actor Marks"
+             (flag "off" #f dm-actor-marks-pick-func)
+             (flag "on" #t dm-actor-marks-pick-func)
+             (flag "full" full dm-actor-marks-pick-func)
+             (flag "process" process dm-actor-marks-pick-func)
+             )
+           (menu
+             "Actor Vis"
+             (flag "off" #f dm-actor-vis-pick-func)
+             (flag "box" box dm-actor-vis-pick-func)
+             (flag "sphere" sphere dm-actor-vis-pick-func)
+             (flag "all" #t dm-actor-vis-pick-func)
+             )
+           (flag "Art Control" *display-art-control* dm-boolean-toggle-pick-func)
+           (flag "Instance Info" *display-instance-info* dm-boolean-toggle-pick-func)
+           (menu
+             "strip lines"
+             (flag "strippable" 1 dm-strip-lines-toggle-pick-func)
+             (flag "convertible" 2 dm-strip-lines-toggle-pick-func)
+             (flag "edgeable" 4 dm-strip-lines-toggle-pick-func)
+             (flag "ordinary" 8 dm-strip-lines-toggle-pick-func)
+             (flag "color mismatch" 16 dm-strip-lines-toggle-pick-func)
+             (flag "shader mismatch" 32 dm-strip-lines-toggle-pick-func)
+             (flag "uv mismatch" 64 dm-strip-lines-toggle-pick-func)
+             (flag "too big" 128 dm-strip-lines-toggle-pick-func)
+             (flag "good" 3 dm-strip-lines-set-pick-func)
+             (flag "bad" 240 dm-strip-lines-set-pick-func)
+             (flag "all edges" 255 dm-strip-lines-set-pick-func)
+             (flag "strips" 256 dm-strip-lines-set-pick-func)
+             (flag "frags" 512 dm-strip-lines-set-pick-func)
+             (flag "none" 0 dm-strip-lines-set-pick-func)
+             )
+           (menu
+             "collision mesh"
+             (flag "wall" 1024 dm-strip-lines-toggle-pick-func)
+             (flag "ground" 2048 dm-strip-lines-toggle-pick-func)
+             (flag "all" 3072 dm-strip-lines-set-pick-func)
+             (flag "none" 0 dm-strip-lines-set-pick-func)
+             )
+           (flag "Texture Download" *display-texture-download* dm-boolean-toggle-pick-func)
+           (flag "Level Border" *display-level-border* dm-boolean-toggle-pick-func)
+           (flag "Split Boxes" *display-split-boxes* dm-boolean-toggle-pick-func)
+           (flag "Split Box Info" *display-split-box-info* dm-boolean-toggle-pick-func)
+           (flag "Load boundaries" *display-load-boundaries* dm-boolean-toggle-pick-func)
+           (flag "Memcard Info" *display-memcard-info* dm-boolean-toggle-pick-func)
+           )
+        )
+      )
+    (debug-menu-append-item
+      s5-0
+      (debug-menu-make-from-template
+        arg0
+        '(menu
+           "Actor"
+           (flag "Spawn Actors" *spawn-actors* dm-boolean-toggle-pick-func)
+           (function "Reset Actors" #f ,(lambda () (reset-actors 'debug) (none)))
+           (menu
+             "Actor Compaction"
+             (flag "off" #f dm-compact-actor-pick-func)
+             (flag "on" #t dm-compact-actor-pick-func)
+             (flag "debug" debug dm-compact-actor-pick-func)
+             )
+           (flag "Ambients" *execute-ambients* dm-boolean-toggle-pick-func)
+           (flag "Ambient Hint Marks" *display-ambient-hint-marks* dm-boolean-toggle-pick-func)
+           (flag "Ambient Sound Marks" *display-ambient-sound-marks* dm-boolean-toggle-pick-func)
+           (flag "Ambient Poi Marks" *display-ambient-poi-marks* dm-boolean-toggle-pick-func)
+           (flag "Ambient Light Marks" *display-ambient-light-marks* dm-boolean-toggle-pick-func)
+           (flag "Ambient Dark Marks" *display-ambient-dark-marks* dm-boolean-toggle-pick-func)
+           (flag "Ambient Weather Off Marks" *display-ambient-weather-off-marks* dm-boolean-toggle-pick-func)
+           (flag "Ambient Ocean Off Marks" *display-ambient-ocean-off-marks* dm-boolean-toggle-pick-func)
+           (flag "Ambient Ocean Near Off Marks" *display-ambient-ocean-near-off-marks* dm-boolean-toggle-pick-func)
+           (flag "Ambient Music" *display-ambient-music-marks* dm-boolean-toggle-pick-func)
+           (menu
+             "Actor Marks"
+             (flag "off" #f dm-actor-marks-pick-func)
+             (flag "on" #t dm-actor-marks-pick-func)
+             (flag "full" full dm-actor-marks-pick-func)
+             (flag "process" process dm-actor-marks-pick-func)
+             )
+           (menu
+             "Actor Vis"
+             (flag "off" #f dm-actor-vis-pick-func)
+             (flag "box" box dm-actor-vis-pick-func)
+             (flag "sphere" sphere dm-actor-vis-pick-func)
+             (flag "all" #t dm-actor-vis-pick-func)
+             )
+           (flag "Actor Vis" *vis-actors* dm-boolean-toggle-pick-func)
+           )
+        )
+      )
+    (debug-menu-append-item
+      s5-0
+      (debug-menu-make-from-template
+        arg0
+        '(menu
+           "Target"
+           (flag "Target Stats" *stats-target* dm-boolean-toggle-pick-func)
+           (function "Play" #f ,(lambda () (play #t #t)))
+           (function "Start" #f ,(lambda () (the-as int (start 'debug (get-or-create-continue! *game-info*)))))
+           (function "Stop" #f ,(lambda () (stop 'debug)))
+           (flag
+             "Invulnerable"
+             #f
+             ,(lambda ((arg0 int) (arg1 debug-menu-msg))
+                (when (= arg1 (debug-menu-msg press))
+                  (if *target*
+                      (logxor! (-> *target* state-flags) (state-flags invulnerable))
+                      )
+                  )
+                (the-as symbol (and *target* (logtest? (-> *target* state-flags) (state-flags invulnerable))))
+                )
+             )
+           (function
+             "Reset Trans"
+             #f
+             ,(lambda () (when *target*
+                           (position-in-front-of-camera! (target-pos 0) (the-as float 40960.0) (the-as float 4096.0))
+                           (set! (-> *target* control transv quad) (the-as uint128 0))
+                           (quaternion-identity! (-> *target* control quat))
+                           (quaternion-identity! (-> *target* control unknown-quaternion00))
+                           (quaternion-identity! (-> *target* control dir-targ))
+                           )
+                      )
+             )
+           (function "Zero Trans" #f ,(lambda () (when *target*
+                                                   (set-vector! (-> *target* control trans) 0.0 163840.0 0.0 1.0)
+                                                   (set! (-> *target* control transv quad) (the-as uint128 0))
+                                                   (quaternion-identity! (-> *target* control quat))
+                                                   (quaternion-identity! (-> *target* control unknown-quaternion00))
+                                                   (quaternion-identity! (-> *target* control dir-targ))
+                                                   )
+                                              )
+                     )
+           (menu
+             "Mode"
+             (function "normal" #f ,(lambda () (send-event *target* 'end-mode)))
+             (function "racing" #f ,(lambda () (send-event *target* 'change-mode 'racing #f)))
+             (function "snowball" #f ,(lambda () (send-event *target* 'change-mode 'snowball #f)))
+             )
+           (flag "Slow Frame Rate" *slow-frame-rate* dm-boolean-toggle-pick-func)
+           (function "Print Pos" #f ,(lambda ()
+                                       (let ((v1-0 (target-pos 0)))
+                                         (format #t "~6,,2m ~6,,2m ~6,,2m~%" (-> v1-0 x) (-> v1-0 y) (-> v1-0 z))
+                                         )
+                                       0
+                                       (none)
+                                       )
+                     )
+           (function "Save Continue" #f ,(lambda ()
+                                           (if *target*
+                                               (trsq->continue-point (-> *target* control))
+                                               )
+                                           (none)
+                                           )
+                     )
+           )
+        )
+      )
+    (debug-menu-append-item s5-0 (debug-menu-make-camera-menu arg0))
+    (debug-menu-append-item
+      s5-0
+      (debug-menu-make-from-template
+        arg0
+        '(menu
+           "Subdiv"
+           (flag "Textured" 0 dm-subdiv-draw-func)
+           (flag "Outline" 1 dm-subdiv-draw-func)
+           (flag "Gouraud" 2 dm-subdiv-draw-func)
+           (flag "Hack" 3 dm-subdiv-draw-func)
+           )
+        )
+      )
+    (debug-menu-append-item
+      s5-0
+      (debug-menu-make-from-template
+        arg0
+        '(menu
+           "Ocean Subdiv"
+           (flag "Textured" 0 dm-ocean-subdiv-draw-func)
+           (flag "Outline" 1 dm-ocean-subdiv-draw-func)
+           (flag "Gouraud" 2 dm-ocean-subdiv-draw-func)
+           )
+        )
+      )
+    (debug-menu-append-item
+      s5-0
+      (debug-menu-make-from-template
+        arg0
+        '(menu
+           "Time of day"
+           (flag "7am  sunrise" 0 dm-time-of-day-func)
+           (flag "9am  morning" 1 dm-time-of-day-func)
+           (flag "12pm noon" 2 dm-time-of-day-func)
+           (flag "3pm  afternoon" 3 dm-time-of-day-func)
+           (flag "6pm  sunset" 4 dm-time-of-day-func)
+           (flag "7pm  twilight" 5 dm-time-of-day-func)
+           (flag "11pm evening" 6 dm-time-of-day-func)
+           (flag "4am  green sun" 7 dm-time-of-day-func)
+           (flag "on" 8 dm-time-of-day-func)
+           (flag "Effects" *time-of-day-effects* dm-boolean-toggle-pick-func)
+           (flag "Fast" *time-of-day-fast* dm-time-of-day-func2)
+           )
+        )
+      )
+    (debug-menu-append-item
+      s5-0
+      (debug-menu-make-from-template
+        arg0
+        '(menu
+           "Sound"
+           (flag "Effect Debug" *debug-effect-control* dm-boolean-toggle-pick-func)
+           (flag "Amb Snd Marks" *display-ambient-sound-marks* dm-boolean-toggle-pick-func)
+           (flag "Amb Snd Class" *ambient-sound-class* dm-boolean-toggle-pick-func)
+           (flag "Amb Spheres" *execute-ambients* dm-boolean-toggle-pick-func)
+           (flag "Sound channels" *display-iop-info* dm-boolean-toggle-pick-func)
+           (function "List Sounds" #f ,(lambda () (list-sounds)))
+           )
+        )
+      )
+    (debug-menu-append-item s5-0 (debug-menu-make-shader-menu arg0))
+    (debug-menu-append-item s5-0 (debug-menu-make-instance-menu arg0))
+    (debug-menu-append-item s5-0 (debug-menu-make-task-menu arg0))
+    )
+  arg0
+  )
+
+;; definition for symbol *popup-menu-context*, type debug-menu-context
+(define *popup-menu-context* (new 'debug 'debug-menu-context))
+
+;; definition for function popup-menu-context-make-default-menus
+(defun popup-menu-context-make-default-menus ((arg0 debug-menu-context))
+  (debug-menu-make-from-template
+    arg0
+    '(main-menu
+       "Popup"
+       (flag "Cam 1" pad-1 dm-cam-externalize)
+       (flag "Target" #f ,(lambda ((arg0 int) (arg1 debug-menu-msg))
+                            (when (= arg1 (debug-menu-msg press))
+                              (if *target*
+                                  (stop 'debug)
+                                  (start 'debug (get-or-create-continue! *game-info*))
+                                  )
+                              )
+                            *target*
+                            )
+             )
+       (flag "Game" #f ,(lambda ((arg0 int) (arg1 debug-menu-msg))
+                          (when (= arg1 (debug-menu-msg press))
+                            (let ((v1-3 (-> *game-info* mode)))
+                              (set! (-> *game-info* mode) (cond
+                                                            ((= v1-3 'play)
+                                                             'debug
+                                                             )
+                                                            ((= v1-3 'debug)
+                                                             'play
+                                                             )
+                                                            (else
+                                                              (-> *game-info* mode)
+                                                              )
+                                                            )
+                                    )
+                              )
+                            )
+                          (= (-> *game-info* mode) 'play)
+                          )
+             )
+       (function "Clean" #f ,(lambda ((arg0 int) (arg1 debug-menu-msg))
+                               (if (time-of-day-setup #f)
+                                   (time-of-day-setup #t)
+                                   )
+                               (set! *display-entity-errors* #f)
+                               (set! *display-profile* #f)
+                               (set! *display-actor-marks* #f)
+                               #f
+                               )
+                 )
+       (flag "Stats" *stats-target* dm-boolean-toggle-pick-func)
+       (function "Reset" #f ,(lambda () (reset-actors 'debug) (none)))
+       )
+    )
+  arg0
+  )
+
+;; failed to figure out what this is:
+(debug-menu-context-make-default-menus *debug-menu-context*)
+
+;; failed to figure out what this is:
+(popup-menu-context-make-default-menus *popup-menu-context*)
+
+;; definition for function menu-respond-to-pause
+(defun menu-respond-to-pause ()
+  (case *master-mode*
+    (('menu)
+     (if (cpad-hold? 0 l3)
+         (debug-menu-context-send-msg *popup-menu-context* (debug-menu-msg activate) (debug-menu-dest activation))
+         (debug-menu-context-send-msg *debug-menu-context* (debug-menu-msg activate) (debug-menu-dest activation))
+         )
+     )
+    (else
+      (debug-menu-context-send-msg *debug-menu-context* (debug-menu-msg deactivate) (debug-menu-dest activation))
+      (debug-menu-context-send-msg *popup-menu-context* (debug-menu-msg deactivate) (debug-menu-dest activation))
+      )
+    )
+  #f
+  )
+
+;; definition for function *menu-hook*
+(defun *menu-hook* ()
+  (debug-menus-handler *debug-menu-context*)
+  (debug-menus-handler *popup-menu-context*)
+  )

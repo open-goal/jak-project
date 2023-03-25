@@ -1,3 +1,5 @@
+#include "common/log/log.h"
+
 #include "Generic2.h"
 
 void Generic2::opengl_setup() {
@@ -63,17 +65,21 @@ void Generic2::opengl_cleanup() {
 }
 
 void Generic2::init_shaders(ShaderLibrary& shaders) {
-  shaders[ShaderId::GENERIC].activate();
-  m_ogl.alpha_reject = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "alpha_reject");
-  m_ogl.color_mult = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "color_mult");
-  m_ogl.fog_color = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "fog_color");
+  const auto& shader = shaders[ShaderId::GENERIC];
+  auto id = shader.id();
 
-  m_ogl.scale = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "scale");
-  m_ogl.mat_23 = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "mat_23");
-  m_ogl.mat_32 = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "mat_32");
-  m_ogl.mat_33 = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "mat_33");
-  m_ogl.fog_consts = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "fog_constants");
-  m_ogl.hvdf_offset = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "hvdf_offset");
+  shader.activate();
+  m_ogl.alpha_reject = glGetUniformLocation(id, "alpha_reject");
+  m_ogl.color_mult = glGetUniformLocation(id, "color_mult");
+  m_ogl.fog_color = glGetUniformLocation(id, "fog_color");
+
+  m_ogl.scale = glGetUniformLocation(id, "scale");
+  m_ogl.mat_23 = glGetUniformLocation(id, "mat_23");
+  m_ogl.mat_32 = glGetUniformLocation(id, "mat_32");
+  m_ogl.mat_33 = glGetUniformLocation(id, "mat_33");
+  m_ogl.fog_consts = glGetUniformLocation(id, "fog_constants");
+  m_ogl.hvdf_offset = glGetUniformLocation(id, "hvdf_offset");
+  m_ogl.gfx_hack_no_tex = glGetUniformLocation(id, "gfx_hack_no_tex");
 }
 
 void Generic2::opengl_bind_and_setup_proj(SharedRenderState* render_state) {
@@ -90,6 +96,7 @@ void Generic2::opengl_bind_and_setup_proj(SharedRenderState* render_state) {
               m_drawing_config.fog_max);
   glUniform4f(m_ogl.hvdf_offset, m_drawing_config.hvdf_offset[0], m_drawing_config.hvdf_offset[1],
               m_drawing_config.hvdf_offset[2], m_drawing_config.hvdf_offset[3]);
+  glUniform1i(m_ogl.gfx_hack_no_tex, Gfx::g_global_settings.hack_no_tex);
 }
 
 void Generic2::setup_opengl_for_draw_mode(const DrawMode& draw_mode,
@@ -122,13 +129,13 @@ void Generic2::setup_opengl_for_draw_mode(const DrawMode& draw_mode,
       // (Cs - Cd) * As + Cd
       // Cs * As  + (1 - As) * Cd
       // s, d
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
     } else if (draw_mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_0_SRC_DST) {
       // (Cs - 0) * As + Cd
       // Cs * As + (1) * Cd
       // s, d
-      ASSERT(fix == 0);
+      // fix is ignored. it's usually 0, except for lightning, which sets it to 0x80.
       glBlendFunc(GL_SRC_ALPHA, GL_ONE);
       glBlendEquation(GL_FUNC_ADD);
     } else if (draw_mode.get_alpha_blend() == DrawMode::AlphaBlend::ZERO_SRC_SRC_DST) {
@@ -152,7 +159,7 @@ void Generic2::setup_opengl_for_draw_mode(const DrawMode& draw_mode,
       // (Cs - 0) * Ad + Cd
       glBlendFunc(GL_DST_ALPHA, GL_ONE);
       glBlendEquation(GL_FUNC_ADD);
-      color_mult = 0.5f;
+      color_mult = 1.0f;
     } else if (draw_mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_0_FIX_DST) {
       glBlendEquation(GL_FUNC_ADD);
       glBlendFuncSeparate(GL_ONE, GL_ONE, GL_ONE, GL_ZERO);
@@ -218,11 +225,10 @@ void Generic2::setup_opengl_tex(u16 unit,
   if (!tex) {
     // TODO Add back
     if (tbp_to_lookup >= 8160 && tbp_to_lookup <= 8600) {
-      fmt::print("Failed to find texture at {}, using random (eye zone)\n", tbp_to_lookup);
-
+      lg::warn("Failed to find texture at {}, using random (eye zone)", tbp_to_lookup);
       tex = render_state->texture_pool->get_placeholder_texture();
     } else {
-      fmt::print("Failed to find texture at {}, using random\n", tbp_to_lookup);
+      lg::warn("Failed to find texture at {}, using random", tbp_to_lookup);
       tex = render_state->texture_pool->get_placeholder_texture();
     }
   }
@@ -262,6 +268,9 @@ void Generic2::do_draws_for_alpha(SharedRenderState* render_state,
       setup_opengl_for_draw_mode(first.mode, first.fix, render_state);
       setup_opengl_tex(0, first.tbp, first.mode.get_filt_enable(), first.mode.get_clamp_s_enable(),
                        first.mode.get_clamp_t_enable(), render_state);
+      // if (alpha == DrawMode::AlphaBlend::SRC_0_DST_DST) {
+      //  glBindTexture(GL_TEXTURE_2D, render_state->texture_pool->get_placeholder_texture());
+      // }
       glDrawElements(GL_TRIANGLE_STRIP, bucket.idx_count, GL_UNSIGNED_INT,
                      (void*)(sizeof(u32) * bucket.idx_idx));
       prof.add_draw_call();
@@ -317,6 +326,7 @@ void Generic2::do_draws(SharedRenderState* render_state, ScopedProfilerNode& pro
     glUniform1f(m_ogl.mat_23, m_drawing_config.hud_mat_23);
     glUniform1f(m_ogl.mat_32, m_drawing_config.hud_mat_32);
     glUniform1f(m_ogl.mat_33, m_drawing_config.hud_mat_33);
+    glUniform1i(m_ogl.gfx_hack_no_tex, false);
 
     do_hud_draws(render_state, prof);
   }

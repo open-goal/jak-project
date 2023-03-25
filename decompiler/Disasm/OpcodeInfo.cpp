@@ -4,6 +4,7 @@
  */
 
 #include "OpcodeInfo.h"
+
 #include "common/util/Assert.h"
 
 namespace decompiler {

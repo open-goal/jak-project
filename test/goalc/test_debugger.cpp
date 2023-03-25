@@ -1,18 +1,18 @@
-#include "gtest/gtest.h"
-#include "goalc/compiler/Compiler.h"
-#include "test/goalc/framework/test_runner.h"
 #include "common/log/log.h"
-#include "common/util/Timer.h"
+
+#include "goalc/compiler/Compiler.h"
+#include "gtest/gtest.h"
+#include "test/goalc/framework/test_runner.h"
 
 #ifdef __linux
 
 namespace {
 void connect_compiler_and_debugger(Compiler& compiler, bool do_break) {
-  lg::info("connect_compiler_and_debugger:\n");
+  lg::info("connect_compiler_and_debugger:");
   bool connect_status = compiler.connect_to_target();
-  lg::info("connected: {}\n", connect_status);
+  lg::info("connected: {}", connect_status);
   ASSERT_TRUE(connect_status);
-  lg::info("poking...\n");
+  lg::info("poking...");
   compiler.poke_target();
   for (int i = 0; i < 100; i++) {
     if (compiler.get_debugger().is_valid()) {
@@ -25,19 +25,19 @@ void connect_compiler_and_debugger(Compiler& compiler, bool do_break) {
   ASSERT_TRUE(compiler.get_debugger().is_valid());
 
   if (do_break) {
-    lg::info("break...\n");
+    lg::info("break...");
     compiler.run_test_from_string("(dbg)");
-    lg::info("OK! {} {} {}\n", compiler.get_debugger().is_valid(),
+    lg::info("OK! {} {} {}", compiler.get_debugger().is_valid(),
              compiler.get_debugger().is_attached(), compiler.get_debugger().is_halted());
   }
 }
 }  // namespace
-TEST(Debugger, DebuggerBasicConnect) {
-  Compiler compiler;
+TEST(Jak1Debugger, DebuggerBasicConnect) {
+  Compiler compiler(GameVersion::Jak1);
   // evidently you can't ptrace threads in your own process, so we need to run the runtime in a
   // separate process.
   if (!fork()) {
-    GoalTest::runtime_no_kernel();
+    GoalTest::runtime_no_kernel_jak1();
     exit(0);
   } else {
     connect_compiler_and_debugger(compiler, true);
@@ -49,12 +49,12 @@ TEST(Debugger, DebuggerBasicConnect) {
   }
 }
 
-TEST(Debugger, DebuggerBreakAndContinue) {
-  Compiler compiler;
+TEST(Jak1Debugger, DebuggerBreakAndContinue) {
+  Compiler compiler(GameVersion::Jak1);
   // evidently you can't ptrace threads in your own process, so we need to run the runtime in a
   // separate process.
   if (!fork()) {
-    GoalTest::runtime_no_kernel();
+    GoalTest::runtime_no_kernel_jak1();
     exit(0);
   } else {
     connect_compiler_and_debugger(compiler, true);
@@ -71,12 +71,12 @@ TEST(Debugger, DebuggerBreakAndContinue) {
   }
 }
 
-TEST(Debugger, DebuggerReadMemory) {
-  Compiler compiler;
+TEST(Jak1Debugger, DebuggerReadMemory) {
+  Compiler compiler(GameVersion::Jak1);
   // evidently you can't ptrace threads in your own process, so we need to run the runtime in a
   // separate process.
   if (!fork()) {
-    GoalTest::runtime_no_kernel();
+    GoalTest::runtime_no_kernel_jak1();
     exit(0);
   } else {
     connect_compiler_and_debugger(compiler, true);
@@ -95,12 +95,12 @@ TEST(Debugger, DebuggerReadMemory) {
   }
 }
 
-TEST(Debugger, DebuggerWriteMemory) {
-  Compiler compiler;
+TEST(Jak1Debugger, DebuggerWriteMemory) {
+  Compiler compiler(GameVersion::Jak1);
   // evidently you can't ptrace threads in your own process, so we need to run the runtime in a
   // separate process.
   if (!fork()) {
-    GoalTest::runtime_no_kernel();
+    GoalTest::runtime_no_kernel_jak1();
     exit(0);
   } else {
     connect_compiler_and_debugger(compiler, true);
@@ -126,12 +126,12 @@ TEST(Debugger, DebuggerWriteMemory) {
   }
 }
 
-TEST(Debugger, Symbol) {
-  Compiler compiler;
+TEST(Jak1Debugger, Symbol) {
+  Compiler compiler(GameVersion::Jak1);
   // evidently you can't ptrace threads in your own process, so we need to run the runtime in a
   // separate process.
   if (!fork()) {
-    GoalTest::runtime_no_kernel();
+    GoalTest::runtime_no_kernel_jak1();
     exit(0);
   } else {
     connect_compiler_and_debugger(compiler, true);
@@ -157,11 +157,11 @@ TEST(Debugger, Symbol) {
   }
 }
 
-TEST(Debugger, SimpleBreakpoint) {
-  Compiler compiler;
+TEST(Jak1Debugger, SimpleBreakpoint) {
+  Compiler compiler(GameVersion::Jak1);
 
   if (!fork()) {
-    GoalTest::runtime_no_kernel();
+    GoalTest::runtime_no_kernel_jak1();
     exit(0);
   } else {
     connect_compiler_and_debugger(compiler, false);
@@ -182,7 +182,7 @@ TEST(Debugger, SimpleBreakpoint) {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    compiler.get_debugger().update_break_info();
+    compiler.get_debugger().update_break_info({});
     auto expected_instr_before_rip = compiler.get_debugger().get_x86_base_addr() + func_addr;
     auto rip = compiler.get_debugger().get_regs().rip;
     // instructions can be at most 15 bytes long.

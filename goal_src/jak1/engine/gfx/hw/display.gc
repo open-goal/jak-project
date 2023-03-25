@@ -1,0 +1,654 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: display.gc
+;; name in dgo: display
+;; dgos: GAME, ENGINE
+
+
+(defconstant DMA_BUFFER_GLOBAL_SIZE (#if (not PC_PORT)
+                                         (* 1712 1024) ;; 1712K
+                                         (* PROCESS_HEAP_MULT 2664 1024))) ;; 2600K x actor heap increase (usually 3x)
+(defconstant DMA_BUFFER_DEBUG_SIZE (#if (not PC_PORT)
+                                        (* 8 1024 1024) ;; 8M
+                                        (* 16 1024 1024))) ;; 16M
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TIME
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; for some reason, the display also tracks some timing stuff.
+
+(defun get-current-time ()
+  "Get the in game time.  This advances when the game is unpaused.
+   This increases at the same rate for PAL/NTSC and if the game is lagging."
+  (-> *display* base-frame-counter)
+  )
+
+(defun get-integral-current-time ()
+  "Get the game time as a number of frames. This advances at different rates for PAL/NTSC.
+   This counts the number of actual vsyncs done by the PS2, including ones that are missed due to lag.
+   "
+  (-> *display* integral-frame-counter)
+  )
+
+
+(defmethod set-time-ratios display ((obj display) (slowdown float))
+  "Set the time ratios for the current game speed. For example, set slowdown = 1.0 if the game
+   is running at full speed or slowdown = 2.0 if the game is running at half speed."
+
+  ;; don't allow slowdowns of more than 4x. This prevents the dt's in the physics
+  ;; calculations from getting huge.
+  (let ((ratio (fmin 4.0 slowdown)))
+    (set! (-> obj time-ratio) ratio)
+    (case (get-video-mode)
+      (('pal)
+       (set! (-> obj time-adjust-ratio) (* 1.2 ratio))
+       (set! (-> obj seconds-per-frame) (* 0.02 ratio))
+       (set! (-> obj frames-per-second) (* 50.0 (/ 1.0 ratio)))
+       ;; 6 "ticks" per frame * 50 fps = 300 ticks per second.
+       (set! (-> obj time-factor) 6.0)
+       )
+      (('ntsc)
+       (set! (-> obj time-adjust-ratio) ratio)
+       (set! (-> obj seconds-per-frame) (* 0.016666668 ratio))
+       (set! (-> obj frames-per-second) (* 60.0 (/ 1.0 ratio)))
+       ;; 5 "ticks" per frame * 60 fps = 300 ticks per second.
+       (set! (-> obj time-factor) 5.0)
+       )
+      (('custom)
+       (set! (-> obj time-adjust-ratio) (* (/ 60.0 (-> *pc-settings* target-fps)) ratio))
+       (set! (-> obj seconds-per-frame) (/ ratio (-> *pc-settings* target-fps)))
+       (set! (-> obj frames-per-second) (* (the float (-> *pc-settings* target-fps)) (/ 1.0 ratio)))
+       ;; x "ticks" per frame * y fps = 300 ticks per second.
+       (set! (-> obj time-factor) (/ 300.0 (-> *pc-settings* target-fps)))
+       )
+      (else
+       (format #t "Warning: Tried to set unsupported video-mode")
+       )
+      )
+    )
+  (-> obj time-ratio)
+  )
+
+;; new constant for use in high FPS scenarios
+(defconstant DISPLAY_FPS_RATIO (/ (-> *display* time-factor) 5.0))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; DISPLAY ENV and DRAW ENV
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; the "display env" controls what is on screen.
+;; it is controlled by writing to GS registers mapped to EE memory and is independent of drawing.
+
+;; the "draw env" controls settings for rendering triangles
+;; unlike the display env, these GS registers are set through DMA.
+;; the draw env structure is actually A+D format data that can be sent directly!
+
+(defun set-display-env ((env display-env) (psm int) (width int) (height int) (dx int) (dy int) (fbp int))
+  "Set the commonly used parameters of a display env.
+   psm: texture format
+   width/height: dimensions of the framebuffer
+   dx/dy: location on the TV screen
+   fpb: the framebuffer."
+
+  ;; these will eventually be consumed by a sony function. I think it just sets GS registers.
+
+  ;; set these to the mode that makes the GS actually work. Basically every game uses exactly this.
+  (set! (-> env pmode)
+        (new 'static 'gs-pmode :en1 #x1 :mmod #x1 :slbg #x1 :alp #xff)
+        )
+  (set! (-> env smode2) (new 'static 'gs-smode2 :int #x1 :ffmd #x1))
+
+  ;; set up the framebuffer.
+  (set! (-> env dspfb)
+        (new 'static 'gs-display-fb :psm psm :fbw (sar width 6) :fbp fbp)
+        )
+
+  ;; set up the display area (obscure PS2 video output junk)
+  (set! (-> env display)
+        (new 'static 'gs-display
+             :dw #x9ff
+             :dy (+ dy 50)
+             :dx (+ (* dx (/ 2560 width)) 652)
+             :dh (+ (shl height 1) -1)
+             :magh (+ (/ (+ width 2559) width) -1)
+             )
+        )
+
+  ;; I think bgcolor = 0 is required.
+  (set! (-> env bgcolor) (new 'static 'gs-bgcolor))
+  env
+  )
+
+(defun set-draw-env ((env draw-env) (psm int) (width int) (height int) (ztest int) (zpsm int) (fbp int))
+  "Set parameters of the draw env"
+
+  ;; each register needs address + data set.
+
+  ;; frame buffer:
+  (set! (-> env frame1addr) (gs-reg64 frame-1))
+  (set! (-> env frame1)
+        (new 'static 'gs-frame :fbw (sar width 6) :psm (logand psm 15) :fbp fbp)
+        )
+
+  ;; dithering is enabled/disabled based on the texture format.
+  ;; it's not allowed in psmct32 and psmct24 so I assume it's always off.
+  (set! (-> env dtheaddr) (gs-reg64 dthe))
+  (cond
+    ((zero? (logand psm 2))
+     (set! (-> env dthe) (new 'static 'gs-dthe))
+     )
+    (else
+     (set! (-> env dthe) (new 'static 'gs-dthe :dthe #x1))
+     )
+    )
+
+  ;; z buffer:
+  (set! (-> env zbuf1addr) (gs-reg64 zbuf-1))
+  (set! (-> env zbuf1)
+        (new 'static 'gs-zbuf
+             :zbp #x1c0
+             :psm (logand zpsm 15)
+             :zmsk (if (zero? ztest) 1 0)
+             )
+        )
+
+  ;; pixel test. you only get to pick the ztst field.
+  (set! (-> env test1addr) (gs-reg64 test-1))
+  (cond
+    ((zero? ztest)
+     (set! (-> env test1) (new 'static 'gs-test))
+     )
+    (else
+     (set! (-> env test1) (new 'static 'gs-test :zte #x1 :ztst ztest))
+     )
+    )
+
+  ;; offset to window coordinate system (WCS)
+  (set! (-> env xyoffset1addr) (gs-reg64 xyoffset-1))
+  (set! (-> env xyoffset1)
+   (new 'static 'gs-xy-offset
+        :ofx #x7000 ;; = 1792 px = 2048 - 256, this will make 2048 the center of the screen.
+        :ofy (shl (-> *video-parms* screen-miny) 4) ;; 12.4 fixed point.
+        )
+   )
+
+  ;; scissor to the given width/height (in WCS pixels)
+  (set! (-> env scissor1addr) (gs-reg64 scissor-1))
+  ;; the lower bound is set to 0: the origin of the WCS which is the xyoffset
+  (set! (-> env scissor1)
+   (new 'static 'gs-scissor :scax1 (+ width -1) :scay1 (+ height -1))
+   )
+
+  ;; use the prim register for primitive settings, not prmode.
+  (set! (-> env prmodecontaddr) (gs-reg64 prmodecont))
+  (set! (-> env prmodecont) (new 'static 'gs-prmode-cont :ac #x1))
+
+  ;; clamp colors (don't wrap)
+  (set! (-> env colclampaddr) (gs-reg64 colclamp))
+  (set! (-> env colclamp) (new 'static 'gs-color-clamp :clamp #x1))
+  env
+  )
+
+(defun set-draw-env-offset ((env draw-env) (x int) (y int) (arg3 int))
+  "Set the drawing offset (origin of the WCS).
+   The input x and y should be in pixels to the _center_ of the scissoring area
+   The width/height of the window are taken from the scissoring settings.
+   It is assumed that scax0 and scay0 are set to 0.
+   To center things in the usual way, call with 2048, 2048, even/odd
+   "
+  (set! (-> env xyoffset1)
+        (new 'static 'gs-xy-offset
+             :ofx (shl (- x
+                          (shr (+ (-> env scissor1 scax1) 1) 1) ;; half the width.
+                          )
+                       4) ;; 12.4
+             :ofy (+ (shl (- y
+                             (shr (+ (-> env scissor1 scay1) 1) 1)) ;; half the height.
+                          4) ;; convert to 12.4
+                     (if (zero? arg3) 0 8) ;; and add a half-pixel offset.
+                     )
+             )
+        )
+  env
+  )
+
+(defun put-display-alpha-env ((arg0 display-env))
+  "Set display1 and dspfb1 directly, right now.
+   This is unused."
+  (let ((v1-0 (the-as gs-bank #x12000000)))
+    (set! (-> v1-0 dspfb1) (-> arg0 dspfb))
+    (set! (-> v1-0 display1) (-> arg0 display))
+    )
+  (none)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; DISPLAY
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; the display structure manages all of the display and draw envs, as well as frame timing related stuff.
+
+(defun set-display ((disp display) (psm int) (w int) (h int) (ztest int) (zpsm int))
+  "Set up the entire display structure, both draw and display envs"
+
+  ;; set up gif-tag for the gif-packet to tset the draw env
+  (let ((v1-0 (-> disp gif-tag0)))
+    ;; 8x registers, data in a+d format.
+    (set! (-> v1-0 tag) (new 'static 'gif-tag64 :nloop #x8 :eop #x1 :nreg #x1))
+    (set! (-> v1-0 regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+    )
+
+  ;; copy to the other envs.
+  (set! (-> disp gif-tag1 qword) (-> disp gif-tag0 qword))
+  (set! (-> disp gif-tag2 qword) (-> disp gif-tag0 qword))
+
+  ;; set the display envs.
+  (set-display-env (-> disp display-env0) psm w h (-> *video-parms* display-dx) (-> *video-parms* display-dy) 320)
+  (set-display-env (-> disp display-env1) psm w h (-> *video-parms* display-dx) (-> *video-parms* display-dy) 384)
+
+  ;; set the draw envs (note the framebuffers are swapped - draw 0 will draw to the fb for disp 1)
+  (set-draw-env (-> disp draw0) psm w h ztest zpsm 384)
+  (set-draw-env (-> disp draw1) psm w h ztest zpsm 320)
+
+  ;; initialize a bunch of counters
+  (set! (-> disp base-frame-counter) (seconds 1000))
+  (set! (-> disp game-frame-counter) (seconds 1000))
+  (set! (-> disp real-frame-counter) (seconds 1000))
+  (set! (-> disp part-frame-counter) (seconds 1000))
+  (set! (-> disp integral-frame-counter) (seconds 1000))
+  (set! (-> disp real-integral-frame-counter) (seconds 1000))
+
+  ;; and fake the "old" versions.  These are normally set to the value on the previous frame
+  ;; (which may jump due to saving/loading or lag)
+  (set! (-> disp old-base-frame-counter) (+ (-> disp base-frame-counter) -1))
+  (set! (-> disp old-game-frame-counter) (+ (-> disp game-frame-counter) -1))
+  (set! (-> disp old-real-frame-counter) (+ (-> disp real-frame-counter) -1))
+  (set! (-> disp old-integral-frame-counter) (+ (-> disp integral-frame-counter) -1))
+  (set! (-> disp old-real-integral-frame-counter) (+ (-> disp real-integral-frame-counter) -1))
+  (set! (-> disp old-part-frame-counter) (+ (-> disp part-frame-counter) -1))
+  (set! (-> disp old-actual-frame-counter) (+ (-> disp actual-frame-counter) -1))
+  (set! (-> disp old-real-actual-frame-counter) (+ (-> disp real-actual-frame-counter) -1))
+  disp
+  )
+
+(defun set-display2 ((disp display) (psm int) (w int) (h int) (ztest int) (zpsm int))
+  "Set the display and draw envs only. This assumes you have already done a set-display and you just need to update the video mode."
+  (set-display-env (-> disp display-env0) psm w h (-> *video-parms* display-dx) (-> *video-parms* display-dy) 320)
+  (set-display-env (-> disp display-env1) psm w h (-> *video-parms* display-dx) (-> *video-parms* display-dy) 384)
+  (set-draw-env (-> disp draw0) psm w h ztest zpsm 384)
+  (set-draw-env (-> disp draw1) psm w h ztest zpsm 320)
+  disp
+  )
+
+
+(defun allocate-dma-buffers ((arg0 display))
+  "Allocate the main DMA buffers!"
+  (when (zero? (-> arg0 frames 0 frame calc-buf))
+    ;; allocate a small calc-buf for each frame.
+    ;; these smaller buffers are used by the engine to patch buckets and get sent directly to VU1.
+    (set! (-> arg0 frames 0 frame calc-buf) (new 'global 'dma-buffer 10000))
+    (set! (-> arg0 frames 1 frame calc-buf) (new 'global 'dma-buffer 10000))
+
+    ;; the main DMA buffers for each frame's drawing. The buckets in the calc buf will reference data in here.
+    ;; the individual renderers use these buffers.
+    ;; the reason for separate calc/global buf is unknown.
+    (set! (-> arg0 frames 0 frame global-buf) (new 'global 'dma-buffer DMA_BUFFER_GLOBAL_SIZE))
+    (set! (-> arg0 frames 1 frame global-buf) (new 'global 'dma-buffer DMA_BUFFER_GLOBAL_SIZE))
+
+    ;; there are separate debug buffers in debug mode that live in the debug heap.
+    ;; these are used to draw all of the debug stuff.
+    (when *debug-segment*
+      (set! (-> arg0 frames 0 frame debug-buf) (new 'debug 'dma-buffer DMA_BUFFER_DEBUG_SIZE))
+      (set! (-> arg0 frames 1 frame debug-buf) (new 'debug 'dma-buffer DMA_BUFFER_DEBUG_SIZE))
+      )
+    )
+  arg0
+  )
+
+;; set up the main font contexts.
+;; used for debug prints
+(define *font-context* (new 'global 'font-context *font-default-matrix* 0 24 0.0 (font-color default) (font-flags shadow kerning)))
+
+;; not used, but looks like it would work for the "PAUSE" text.
+(define *pause-context* (new 'global 'font-context *font-default-matrix* 256 170 0.0 (font-color orange-red) (font-flags shadow kerning)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; PROFILE BAR
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmethod add-frame profile-bar ((obj profile-bar) (name symbol) (color rgba))
+  "Add a block to the profile bar. Looks at the timer to determine the current time."
+  (if *debug-segment*
+      (let ((new-frame (-> obj data (-> obj profile-frame-count))))
+        (set! (-> obj profile-frame-count) (+ (-> obj profile-frame-count) 1))
+        (set! (-> new-frame name) name)
+        (set! (-> new-frame time-stamp) (timer-count (the-as timer-bank #x10000800)))
+        (set! (-> new-frame color) color)
+        new-frame
+        )
+      )
+  )
+
+(defmethod reset profile-bar ((obj profile-bar))
+  "Clear all blocks from the profile bar. Adds the start block"
+  (set! (-> obj profile-frame-count) 0)
+  (add-frame obj 'start (new 'static 'rgba :r #x40 :b #x40 :a #x80))
+  obj
+  )
+
+(defmethod add-end-frame profile-bar ((obj profile-bar) (name symbol) (color rgba))
+  "Finish the frame."
+  (let ((new-frame (-> obj data (-> obj profile-frame-count))))
+   (set! (-> obj profile-frame-count) (+ (-> obj profile-frame-count) 1))
+   (set! (-> new-frame name) name)
+   (set! (-> new-frame time-stamp) (the-as uint *ticks-per-frame*))
+   (set! (-> new-frame color) color)
+   new-frame
+   )
+  )
+
+;; location and size
+(define *profile-x* 1808)
+(define *profile-y* (+ (-> *video-parms* screen-miny) 8))
+(define *profile-w* 416)
+(define *profile-h* 8)
+
+;; ticks or percent?
+(define *profile-ticks* #f)
+
+(defmethod draw profile-bar ((obj profile-bar) (buf dma-buffer) (bar-pos int))
+  "Draw the bar! The bar pos shouldn't be changed."
+
+  ;; recompute y stuff based on the current relative-y-scale.
+  (let ((height (the int (* 8.0 (-> *video-parms* relative-y-scale)))))
+    (set! *profile-y* (+ (-> *video-parms* screen-miny) height)) ;; px
+    (set! *profile-h* height) ;; px
+    )
+  (let ((block-idx 1) ;; block to draw (0 is 'start)
+        (block-count (-> obj profile-frame-count)) ;; total number of blocks
+        (left (shl *profile-x* 4)) ;; x (12.4) of the current block. initialized to start of bar.
+        (end-time 0)               ;; end of last block
+        ;; if there's a single really slow frame, we want its time to appear for
+        ;; a little while so you can actually notice. This caches the worst time
+        ;; over the last quarter second. It's a static array so it won't get reset
+        ;; between runs.
+        (worst-time-cache (new 'static 'array uint32 2 #x0 #x0))
+        )
+    ;; the position for this particular bar in y.
+    (let ((screen-y (the int (* (the float bar-pos) (-> *video-parms* relative-y-scale)))))
+
+      ;; set up dma/vif tags       ;; 2 qwords for each block except last one + giftag
+      (dma-buffer-add-cnt-vif2 buf (+ (* block-count 2) -1) (new 'static 'vif-tag :cmd (vif-cmd nop))
+                                                            (new 'static 'vif-tag :cmd (vif-cmd direct)
+                                                                                  :imm (+ (* block-count 2) -1)))
+
+      ;; set up gif tag
+      (dma-buffer-add-gif-tag buf (new 'static 'gif-tag64 :eop 1 :flg (gif-flag reg-list) :nreg 4 :nloop (+ block-count -1))
+                                  (gs-reg-list prim rgbaq xyzf2 xyzf2)
+                                  )
+
+      ;; loop through blocks to draw.
+      (while (< block-idx block-count)
+        (let ((block (-> obj data block-idx)))
+          ;; add first three regs (prim, color, one vertex)
+          (dma-buffer-add-uint64 buf (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe 1)
+                                     (-> block color)
+                                     (new 'static 'gs-xyzf :x left :y (* (+ *profile-y* screen-y) 16) :z #x3fffff)
+                                     )
+
+          ;; update end-time, when the work for the frame is done.
+          ;; don't include end-draw.
+          (if (!= (-> block name) 'end-draw)
+              (set! end-time (the-as int (-> block time-stamp)))
+              )
+
+          ;; compute left, the end of this bar.
+          (set! left
+                (* (+ *profile-x* ;; bar start
+                        (/ (* (-> block time-stamp) (the-as uint *profile-w*)) ;; fraction of ticks per frame
+                           (the-as uint *ticks-per-frame*)
+                           )
+                        )
+                     16 ;; convert to 12.4
+                     )
+                )
+          )
+
+        ;; add other vertex to end the bar.
+        (dma-buffer-add-uint64 buf (new 'static 'gs-xyzf :x left :y (* (+ *profile-y* screen-y *profile-h*) 16) :z #x3fffff))
+
+        ;; next block!
+        (+! block-idx 1)
+        )
+      ;; end loop over blocks.
+      )
+
+    ;; update the worst time cache if its more than 0.25 seconds old, or we did worse
+    ;; than the cached value.
+    ;; we use bar-pos/10 as the index into the cache, which is kind of sketchy.
+    (when (or (< (seconds 0.25) (- (-> *display* real-frame-counter) (-> obj cache-time)))
+              (>= end-time (the-as int (-> worst-time-cache (/ bar-pos 10))))
+              )
+      (set! (-> worst-time-cache (/ bar-pos 10)) (the-as uint end-time))
+      (set! (-> obj cache-time) (-> *display* real-frame-counter))
+      )
+
+    ;; draw the time, either in ticks or percent.
+    (cond
+      (*profile-ticks*
+       (draw-string-xy (string-format "~5D" (-> worst-time-cache (/ bar-pos 10)))
+                      buf 488 (+ bar-pos 8) (font-color default) (font-flags shadow right))
+       (the float (-> worst-time-cache (/ bar-pos 10)))
+       )
+      (else
+       ;; for some reason, they use 104% here. This means that when you see
+       ;; 100%, it actually means ~96% of ticks-per-frame.
+       ;; this is possibly because there's some time in between reaching here
+       ;; and when the next one starts (in drawable.gc)
+       (let ((f30-0 (/ (* 104.0 (the float (-> worst-time-cache (/ bar-pos 10))))
+                       (the float *ticks-per-frame*)
+                       )))
+         (draw-string-xy (string-format "~5,,2f" f30-0) buf 488 (+ bar-pos 8)
+               (if (>= f30-0 100.0) (font-color orange-red) (font-color default)) ;; turn red if over 100.
+               (font-flags shadow right)
+               )
+         f30-0
+         )
+       )
+      )
+    )
+  )
+
+;; get rid of these methods when not debugging.
+(when (not *debug-segment*)
+  (set! (-> profile-bar method-table 11) nothing) ;; add
+  (set! (-> profile-bar method-table 12) nothing) ;; end
+  (set! (-> profile-bar method-table 10) nothing) ;; reset
+  (set! (-> profile-bar method-table 13) nothing) ;; draw
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; DRAWING HELPERS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun draw-sprite2d-xy ((buf dma-buffer) (x int) (y int) (w int) (h int) (color rgba))
+  "Draw a sprite primitive with the given color and dimensions."
+
+  ;; create context and clip dimensions.
+  (let* ((context (new 'stack 'draw-context x y w h color))
+         (draw-x (max 1792 (min 2304 (+ (-> context orgx) 1792))))
+         (draw-y (max (min (+ (-> context orgy) (-> *video-parms* screen-miny))
+                           (-> *video-parms* screen-maxy)
+                           )
+                      (-> *video-parms* screen-miny)
+                      )
+                 )
+         (draw-w (-> context width))
+         (draw-h (-> context height))
+         ;; remember the address of the first dma-tag
+         )
+    (with-cnt-vif-block (buf)
+
+      (dma-buffer-add-gif-tag buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :flg (gif-flag reg-list) :nreg 4)
+                              (gs-reg-list prim rgbaq xyzf2 xyzf2)
+                              )
+      (dma-buffer-add-uint64 buf (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe 1)
+                             (-> context color 0)
+                             (new 'static 'gs-xyzf :x (* draw-x 16) :y (* draw-y 16) :z #x3fffff)
+                             (new 'static 'gs-xyzf :x (* (minmax (+ draw-x draw-w) 1792 2304) 16)
+                                  :y (* (minmax (+ draw-y draw-h) (-> *video-parms* screen-miny) (-> *video-parms* screen-maxy)) 16) :z #x3fffff)
+                             )
+      )
+    )
+  (none)
+  )
+
+(defun draw-quad2d ((buf dma-buffer) (context draw-context))
+  "Draw a quad that fills the entire context"
+  (let ((draw-x (max 1792 (min 2304 (+ (-> context orgx) 1792))))
+        (draw-y (max (min (+ (-> context orgy) (-> *video-parms* screen-miny))
+                          (-> *video-parms* screen-maxy)
+                          )
+                     (-> *video-parms* screen-miny))
+          )
+        (draw-w (-> context width))
+        (draw-h (-> context height))
+        )
+
+    (with-cnt-vif-block (buf)
+      (dma-buffer-add-gif-tag buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :flg (gif-flag reg-list) :nreg 9)
+                                  (gs-reg-list prim rgbaq xyzf2 rgbaq xyzf2 rgbaq xyzf2 rgbaq xyzf2)
+                                  )
+
+      (dma-buffer-add-uint64 buf (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip 1 :abe 1)
+                                 (-> context color 0)
+                                 (new 'static 'gs-xyzf :x (* draw-x 16) :y (* draw-y 16))
+                                 (-> context color 1)
+                                 (new 'static 'gs-xyzf :x (* (minmax (+ draw-x draw-w) 1792 2304) 16) :y (* draw-y 16))
+                                 (-> context color 2)
+                                 (new 'static 'gs-xyzf :x (* draw-x 16) :y (* (minmax (+ draw-y draw-h) (-> *video-parms* screen-miny) (-> *video-parms* screen-maxy)) 16))
+                                 (-> context color 3)
+                                 (new 'static 'gs-xyzf :x (* (minmax (+ draw-x draw-w) 1792 2304) 16) :y (* (minmax (+ draw-y draw-h) (-> *video-parms* screen-miny) (-> *video-parms* screen-maxy)) 16))
+                                 0 ;; pad
+                                 )
+      )
+    )
+  (none)
+  )
+
+(defun screen-gradient ((arg0 dma-buffer) (arg1 rgba) (arg2 rgba) (arg3 rgba) (arg4 rgba))
+  "Fill the screen with a sprite with the given colors."
+  (let ((a1-2 (new 'stack 'draw-context 0 0 512 224 (the-as rgba 0))))
+   (set! (-> a1-2 color 0) arg1)
+   (set! (-> a1-2 color 1) arg2)
+   (set! (-> a1-2 color 2) arg3)
+   (set! (-> a1-2 color 3) arg4)
+   (draw-quad2d arg0 a1-2)
+   )
+  (none)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  INTERRUPT HANDLERS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; In debug mode, there was a vif handler that called (add-band (-> *display* profile-bar))
+;; in non-debug, there was a vif interrupt handler that did nothing.
+
+;; There was also a vblank hanlder that incremented *vblank-counter*, but it is disabled.
+
+(defun-debug vif1-handler-debug ()
+  "Add a profile bar to the VU1 profiler. This will be called from the graphics thread, which will grab it
+   directly from the symbol table, no need to register this handler."
+  (let ((c0 (/ (* 128 (-> *display* frames (-> *display* on-screen) frame profile-bar 1 profile-frame-count)) 69))
+        (c1 (* 64 (logand (-> *display* frames (-> *display* on-screen) frame profile-bar 1 profile-frame-count) 3)))
+        )
+    (add-frame
+     (-> *display* frames (-> *display* on-screen) frame profile-bar 1)
+     'end-calc
+     (new 'static 'rgba
+          :r c0
+          :b (- 128 c0)
+          :g c1
+          :a #x80)))
+   (none)
+  )
+
+(if *debug-segment*
+    (install-handler 5 vif1-handler-debug)
+    )
+
+(define *oddeven* 0)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  More GS State Helpers
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun set-display-gs-state ((dma-buf dma-buffer) (fbp int) (scx int) (scy int) (fb-msk int) (psm int))
+  "Set various gs state registers"
+  (let ((fbw (sar (+ scx 63) 6))) ;; fbw is in 2^6 units.
+    (dma-buffer-add-gs-set-flusha dma-buf
+        (scissor-1 (new 'static 'gs-scissor :scax1 (+ scx -1) :scay1 (+ scy -1)))
+        (xyoffset-1 (new 'static 'gs-xy-offset :ofx 0 :ofy 0))
+        (frame-1 (new 'static 'gs-frame :fbp fbp :fbw fbw :psm psm :fbmsk fb-msk))
+        (test-1 (new 'static 'gs-test :zte 1 :ztst (gs-ztest always)))
+        (texa (new 'static 'gs-texa :ta0 #x80 :ta1 #x80))
+        (zbuf-1 (new 'static 'gs-zbuf :zbp #x1c0 :psm 1 :zmsk 1))
+        (texflush 0)
+        )
+    )
+  dma-buf
+  )
+
+(defun set-display-gs-state-offset ((dma-buf dma-buffer) (fbp int) (width int) (height int) (fb-msk int) (psm int) (off-x int) (off-y int))
+  "Set various gs state registers"
+  (let ((fbw (sar (+ width 63) 6)))
+    (dma-buffer-add-gs-set-flusha dma-buf
+        (scissor-1 (new 'static 'gs-scissor :scax1 (+ width -1) :scay1 (+ height -1)))
+        (xyoffset-1 (new 'static 'gs-xy-offset :ofx (shl off-x 4) :ofy (shl off-y 4)))
+        (frame-1 (new 'static 'gs-frame :fbp fbp :fbw fbw :psm psm :fbmsk fb-msk))
+        (test-1 (new 'static 'gs-test :zte 1 :ztst (gs-ztest always)))
+        (texa (new 'static 'gs-texa :ta0 #x80 :ta1 #x80))
+        (zbuf-1 (new 'static 'gs-zbuf :zbp #x1c0 :psm 1 :zmsk 1))
+        (texflush 0)
+        )
+    )
+  dma-buf
+  )
+
+(defun reset-display-gs-state ((disp display) (dma-buf dma-buffer) (oddeven int))
+  "Set the gs state back to something reasonable"
+  (let* ((onscreen (-> disp on-screen))
+         (hoff (* oddeven 8)) ;; half pixel offset.
+         (fbp (-> disp frames onscreen draw frame1 fbp))
+         )
+    (dma-buffer-add-gs-set-flusha dma-buf
+        (scissor-1 (new 'static 'gs-scissor :scax1 #x1ff :scay1 (-> *video-parms* screen-masky)))
+        (xyoffset-1 (new 'static 'gs-xy-offset :ofx #x7000 :ofy (+ (* (-> *video-parms* screen-miny) 16) hoff)))
+        (frame-1 (new 'static 'gs-frame :fbw 8 :fbp (the-as int fbp) :psm (gs-psm ct32)))
+        (test-1 (new 'static 'gs-test :atst (gs-atest not-equal) :zte 1 :ztst (gs-ztest greater-equal)))
+        (texa (new 'static 'gs-texa :ta0 #x00 :ta1 #x80))
+        (zbuf-1 (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24)))
+        (texflush 0)
+        )
+   )
+  disp
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  Display Setup
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; separate dma list for VU0
+(define *vu0-dma-list* (new 'global 'dma-buffer 4096))
+
+;; main display structure
+(define *display* (new 'global 'display 0 512 256 2 49))
+
+;; main dma
+(allocate-dma-buffers *display*)

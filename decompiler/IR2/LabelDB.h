@@ -1,13 +1,15 @@
 #pragma once
 
 #include <optional>
-#include <vector>
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
+#include <vector>
+
 #include "common/link_types.h"
 #include "common/type_system/TypeSpec.h"
-#include "decompiler/config.h"
+
 #include "decompiler/Disasm/DecompilerLabel.h"
+#include "decompiler/config.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 
 namespace decompiler {
@@ -33,6 +35,7 @@ class LabelDB {
   int get_index_by_offset(int seg, int offset) const;
   std::optional<int> try_get_index_by_offset(int seg, int offset) const;
   int get_index_by_name(const std::string& name) const;
+  bool label_exists_by_name(const std::string& name) const;
 
   LabelInfo set_and_get_previous(int idx,
                                  const TypeSpec& type,

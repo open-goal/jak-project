@@ -4,11 +4,16 @@
  * This is used both in the compiler and in the decompiler for the type definition file.
  */
 
-#include "common/goos/ParseHelpers.h"
 #include "defenum.h"
+
 #include "deftype.h"
-#include "third-party/fmt/core.h"
+
+#include "common/goos/ParseHelpers.h"
+#include "common/log/log.h"
 #include "common/util/BitUtils.h"
+#include "common/util/string_util.h"
+
+#include "third-party/fmt/core.h"
 
 namespace {
 const goos::Object& car(const goos::Object* x) {
@@ -40,7 +45,9 @@ std::string symbol_string(const goos::Object& obj) {
 
 }  // namespace
 
-EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts) {
+EnumType* parse_defenum(const goos::Object& defenum,
+                        TypeSystem* ts,
+                        DefinitionMetadata* symbol_metadata) {
   // default enum type will be int32.
   TypeSpec base_type = ts->make_typespec("int32");
   bool is_bitfield = false;
@@ -50,6 +57,14 @@ EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts) {
 
   auto& enum_name_obj = car(iter);
   iter = cdr(iter);
+  // check for docstring
+  if (iter->is_pair() && car(iter).is_string()) {
+    // TODO - docstring - store and use docstring if coming from the compiler
+    if (symbol_metadata) {
+      symbol_metadata->docstring = str_util::trim_newline_indents(car(iter).as_string()->data);
+    }
+    iter = cdr(iter);
+  }
 
   if (!enum_name_obj.is_symbol()) {
     throw std::runtime_error("defenum must be given a symbol as its name");
@@ -71,8 +86,8 @@ EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts) {
       } else if (symbol_string(option_value) == "#f") {
         is_bitfield = false;
       } else {
-        fmt::print("Invalid option {} to :bitfield option.\n", option_value.print());
-        throw std::runtime_error("invalid bitfield option");
+        throw std::runtime_error(
+            fmt::format("Invalid option {} to :bitfield option.\n", option_value.print()));
       }
     } else if (option_name == ":copy-entries") {
       auto other_info = ts->try_enum_lookup(parse_typespec(ts, option_value));
@@ -87,8 +102,7 @@ EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts) {
         entries[e.first] = e.second;
       }
     } else {
-      fmt::print("Unknown option {} for defenum.\n", option_name);
-      throw std::runtime_error("unknown option for defenum");
+      throw std::runtime_error(fmt::format("Unknown option {} for defenum.\n", option_name));
     }
 
     if (iter->is_pair()) {
@@ -112,12 +126,13 @@ EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts) {
     if (!rest->is_empty_list()) {
       auto& value = car(rest);
       if (!value.is_int()) {
-        fmt::print("Expected integer for enum value, got {}\n", value.print());
+        throw std::runtime_error(
+            fmt::format("Expected integer for enum value, got {}\n", value.print()));
       }
 
       auto entry_val = value.integer_obj.value;
       if (!integer_fits(entry_val, type->get_load_size(), type->get_load_signed())) {
-        fmt::print("Integer {} does not fit inside a {}\n", entry_val, type->get_name());
+        lg::warn("Integer {} does not fit inside a {}", entry_val, type->get_name());
       }
 
       if (!entries.size()) {
@@ -127,7 +142,8 @@ EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts) {
 
       rest = cdr(rest);
       if (!rest->is_empty_list()) {
-        fmt::print("Got too many items in defenum {} entry {}\n", name, entry_name);
+        throw std::runtime_error(
+            fmt::format("Got too many items in defenum {} entry {}\n", name, entry_name));
       }
 
       entries[entry_name] = entry_val;

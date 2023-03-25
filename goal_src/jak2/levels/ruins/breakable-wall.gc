@@ -1,0 +1,662 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: breakable-wall.gc
+;; name in dgo: breakable-wall
+;; dgos: RUI
+
+;; DECOMP BEGINS
+
+(defskelgroup skel-ruins-breakable-wall-1 ruins-breakable-wall ruins-breakable-wall-1-lod0-jg ruins-breakable-wall-1-idle-ja
+              ((ruins-breakable-wall-1-lod1-mg (meters 20))
+               (ruins-breakable-wall-1-lod2-mg (meters 40))
+               (ruins-breakable-wall-1-lod0-mg (meters 999999))
+               )
+              :bounds (static-spherem 0.3 5 0 8.8)
+              )
+
+(defskelgroup skel-ruins-breakable-wall-2 ruins-breakable-wall ruins-breakable-wall-2-lod0-jg ruins-breakable-wall-2-idle-ja
+              ((ruins-breakable-wall-2-lod1-mg (meters 20))
+               (ruins-breakable-wall-2-lod2-mg (meters 40))
+               (ruins-breakable-wall-2-lod0-mg (meters 999999))
+               )
+              :bounds (static-spherem 0.3 5 0 8.8)
+              )
+
+(defskelgroup skel-ruins-breakable-wall-3 ruins-breakable-wall ruins-breakable-wall-3-lod0-jg ruins-breakable-wall-3-idle-ja
+              ((ruins-breakable-wall-3-lod1-mg (meters 20))
+               (ruins-breakable-wall-3-lod2-mg (meters 40))
+               (ruins-breakable-wall-3-lod0-mg (meters 999999))
+               )
+              :bounds (static-spherem 0.3 5 0 8.8)
+              )
+
+(defskelgroup skel-ruins-breakable-wall-4 ruins-breakable-wall ruins-breakable-wall-4-lod0-jg ruins-breakable-wall-4-idle-ja
+              ((ruins-breakable-wall-4-lod0-mg (meters 20))
+               (ruins-breakable-wall-4-lod0-mg (meters 40))
+               (ruins-breakable-wall-4-lod0-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 6 0 10)
+              )
+
+(defskelgroup skel-ruins-breakable-wall-5 ruins-breakable-wall ruins-breakable-wall-5-lod0-jg ruins-breakable-wall-5-idle-ja
+              ((ruins-breakable-wall-5-lod0-mg (meters 20))
+               (ruins-breakable-wall-5-lod0-mg (meters 40))
+               (ruins-breakable-wall-5-lod0-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 5 0 9.5)
+              )
+
+(defskelgroup skel-ruins-breakable-wall-6 ruins-breakable-wall ruins-breakable-wall-6-lod0-jg ruins-breakable-wall-6-idle-ja
+              ((ruins-breakable-wall-6-lod0-mg (meters 20))
+               (ruins-breakable-wall-6-lod0-mg (meters 40))
+               (ruins-breakable-wall-6-lod0-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 6 0 9.5)
+              )
+
+(deftype rbw-side (basic)
+  ((break-anim             string         :offset-assert   4)
+   (end-anim               string         :offset-assert   8)
+   (break-prim-mask        uint8          :offset-assert  12)
+   (break-root-prim-joint  int16          :offset-assert  14)
+   (break-bounds-joint     int16          :offset-assert  16)
+   (break-root-prim-sphere sphere :inline :offset-assert  32)
+   (break-bounds-sphere    sphere :inline :offset-assert  48)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+
+(deftype rbw-info (basic)
+  ((skel-group string            :offset-assert   4)
+   (anim       spool-anim        :offset-assert   8)
+   (sides      (array rbw-side)  :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(define *rbw-infos*
+  (new 'static 'boxed-array :type rbw-info
+    (new 'static 'rbw-info
+      :skel-group "ruins-breakable-wall-1"
+      :anim (new 'static 'spool-anim :name "ruins-breakable-wall-1" :anim-name "1-break-front" :parts 2 :command-list '())
+      :sides (new 'static 'boxed-array :type rbw-side
+        (new 'static 'rbw-side
+          :break-anim "ruins-breakable-wall-1-break-front"
+          :end-anim "ruins-breakable-wall-1-end-front"
+          :break-prim-mask #xa
+          :break-root-prim-joint -1
+          :break-bounds-joint -1
+          :break-root-prim-sphere (new 'static 'sphere :y -17612.8 :z 49152.0 :r 106496.0)
+          :break-bounds-sphere (new 'static 'sphere :x 53248.0 :y -65536.0 :z 126976.0 :r 241664.0)
+          )
+        (new 'static 'rbw-side
+          :break-anim "ruins-breakable-wall-1-break-rear"
+          :end-anim "ruins-breakable-wall-1-end-rear"
+          :break-prim-mask #x6
+          :break-root-prim-joint -1
+          :break-bounds-joint -1
+          :break-root-prim-sphere (new 'static 'sphere :x 16384.0 :y -17612.8 :z -40960.0 :r 90112.0)
+          :break-bounds-sphere (new 'static 'sphere :x -24576.0 :y -16384.0 :z -98304.0 :r 163840.0)
+          )
+        )
+      )
+    (new 'static 'rbw-info
+      :skel-group "ruins-breakable-wall-2"
+      :anim (new 'static 'spool-anim :name "ruins-breakable-wall-2" :anim-name "2-break-front" :parts 2 :command-list '())
+      :sides (new 'static 'boxed-array :type rbw-side
+        (new 'static 'rbw-side
+          :break-anim "ruins-breakable-wall-2-break-front"
+          :end-anim "ruins-breakable-wall-2-end-front"
+          :break-prim-mask #x2
+          :break-root-prim-joint 3
+          :break-bounds-joint -1
+          :break-root-prim-sphere (new 'static 'sphere :x -18432.0 :r 40960.0)
+          :break-bounds-sphere (new 'static 'sphere :z 36864.0 :r 98304.0)
+          )
+        (new 'static 'rbw-side
+          :break-anim "ruins-breakable-wall-2-break-rear"
+          :end-anim "ruins-breakable-wall-2-end-rear"
+          :break-prim-mask #x6
+          :break-root-prim-joint 3
+          :break-bounds-joint 3
+          :break-root-prim-sphere (new 'static 'sphere :x -40960.0 :z -73728.0 :r 122880.0)
+          :break-bounds-sphere (new 'static 'sphere :x -40960.0 :y -16384.0 :z -61440.0 :r 114688.0)
+          )
+        )
+      )
+    (new 'static 'rbw-info
+      :skel-group "ruins-breakable-wall-3"
+      :anim (new 'static 'spool-anim :name "ruins-breakable-wall-3" :anim-name "3-break-front" :parts 2 :command-list '())
+      :sides (new 'static 'boxed-array :type rbw-side
+        (new 'static 'rbw-side
+          :break-anim "ruins-breakable-wall-3-break-front"
+          :end-anim "ruins-breakable-wall-3-end-front"
+          :break-prim-mask #x2
+          :break-root-prim-joint -1
+          :break-bounds-joint -1
+          :break-root-prim-sphere (new 'static 'sphere :r 36864.0)
+          :break-bounds-sphere (new 'static 'sphere :z 32768.0 :r 110592.0)
+          )
+        (new 'static 'rbw-side
+          :break-anim "ruins-breakable-wall-3-break-rear"
+          :end-anim "ruins-breakable-wall-3-end-rear"
+          :break-prim-mask #x6
+          :break-root-prim-joint -1
+          :break-bounds-joint -1
+          :break-root-prim-sphere (new 'static 'sphere :x 16384.0 :y -18432.0 :z -65536.0 :r 126976.0)
+          :break-bounds-sphere (new 'static 'sphere :y -34816.0 :z -122880.0 :r 184320.0)
+          )
+        )
+      )
+    (new 'static 'rbw-info
+      :skel-group "ruins-breakable-wall-4"
+      :anim (new 'static 'spool-anim :name "ruins-breakable-wall-4" :anim-name "4-break-front" :parts 2 :command-list '())
+      :sides (new 'static 'boxed-array :type rbw-side
+        (new 'static 'rbw-side
+          :break-anim "ruins-breakable-wall-4-break-front"
+          :end-anim "ruins-breakable-wall-4-end-front"
+          :break-prim-mask #x2
+          :break-root-prim-joint 74
+          :break-bounds-joint -1
+          :break-root-prim-sphere (new 'static 'sphere :r 40960.0)
+          :break-bounds-sphere (new 'static 'sphere :x 20480.0 :z -61440.0 :r 102400.0)
+          )
+        )
+      )
+    (new 'static 'rbw-info
+      :skel-group "ruins-breakable-wall-5"
+      :anim (new 'static 'spool-anim :name "ruins-breakable-wall-5" :anim-name "5-break-front" :parts 2 :command-list '())
+      :sides (new 'static 'boxed-array :type rbw-side
+        (new 'static 'rbw-side
+          :break-anim "ruins-breakable-wall-5-break-front"
+          :end-anim "ruins-breakable-wall-5-end-front"
+          :break-prim-mask #x6
+          :break-root-prim-joint -1
+          :break-bounds-joint -1
+          :break-root-prim-sphere (new 'static 'sphere :z -73728.0 :r 126976.0)
+          :break-bounds-sphere (new 'static 'sphere :x -10240.0 :z -73728.0 :r 126976.0)
+          )
+        )
+      )
+    (new 'static 'rbw-info
+      :skel-group "ruins-breakable-wall-6"
+      :anim (new 'static 'spool-anim :name "ruins-breakable-wall-6" :anim-name "6-break-front" :parts 3 :command-list '())
+      :sides (new 'static 'boxed-array :type rbw-side (new 'static 'rbw-side
+                                                 :break-anim "ruins-breakable-wall-6-break-front"
+                                                 :end-anim "ruins-breakable-wall-6-end-front"
+                                                 :break-prim-mask #x2
+                                                 :break-root-prim-joint -1
+                                                 :break-bounds-joint -1
+                                                 :break-root-prim-sphere (new 'static 'sphere :r 40960.0)
+                                                 :break-bounds-sphere (new 'static 'sphere :x -32768.0 :z -81920.0 :r 180224.0)
+                                                 )
+                                               )
+      )
+    )
+  )
+
+(deftype ruins-breakable-wall (process-focusable)
+  ((info     rbw-info  :offset-assert 204)
+   (side     rbw-side  :offset-assert 208)
+   (nav-mesh nav-mesh  :offset-assert 212)
+   )
+  :heap-base #x60
+  :method-count-assert 31
+  :size-assert         #xd8
+  :flag-assert         #x1f006000d8
+  (:methods
+    (unbroken () _type_ :state 27)
+    (hit () _type_ :state 28)
+    (broken () _type_ :state 29)
+    (ruins-breakable-wall-method-30 (_type_ symbol) none 30)
+    )
+  )
+
+
+;; WARN: Return type mismatch float vs none.
+(defmethod ruins-breakable-wall-method-30 ruins-breakable-wall ((obj ruins-breakable-wall) (arg0 symbol))
+  (case arg0
+    (('hit)
+     (-> obj draw bounds w)
+     (set! (-> obj draw lod-set max-lod) 2)
+     (set! (-> obj draw force-lod) 2)
+     (set! (-> obj draw bounds w) 573440.0)
+     )
+    (('broken)
+     (-> obj draw bounds w)
+     (set! (-> obj draw lod-set max-lod) 2)
+     (set! (-> obj draw force-lod) 2)
+     (set! (-> obj draw bounds quad) (-> obj side break-bounds-sphere quad))
+     (let ((v1-12 (-> obj side break-bounds-joint)))
+       (if (>= v1-12 0)
+           (set! (-> obj draw origin-joint-index) (the-as uint v1-12))
+           )
+       )
+     (let ((v1-14 (-> obj root-override root-prim))
+           (a1-15 (-> obj side break-prim-mask))
+           )
+       (set! (-> v1-14 local-sphere quad) (-> obj side break-root-prim-sphere quad))
+       (let ((a0-2 (-> obj side break-root-prim-joint)))
+         (if (>= a0-2 0)
+             (set! (-> v1-14 transform-index) a0-2)
+             )
+         )
+       (dotimes (a0-3 (the-as int (-> v1-14 specific 0)))
+         (let ((a2-4 (-> (the-as collide-shape-prim-group v1-14) child a0-3)))
+           (cond
+             ((logtest? a1-15 1)
+              (set! (-> a2-4 prim-core collide-as) (collide-spec obstacle))
+              )
+             (else
+               (set! (-> a2-4 prim-core collide-as) (collide-spec))
+               0
+               )
+             )
+           )
+         (set! a1-15 (shr a1-15 1))
+         )
+       )
+     )
+    )
+  (none)
+  )
+
+(defstate unbroken (ruins-breakable-wall)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('attack)
+       (when (task-node-closed? (game-task-node ruins-mech-introduction))
+         (let ((s4-0 (the-as object (-> event param 1))))
+           (case (-> (the-as attack-info s4-0) mode)
+             (('mech-punch 'crush)
+              (let ((s3-0
+                      (the-as object (mem-copy! (the-as pointer (new 'stack-no-clear 'attack-info)) (the-as pointer s4-0) 160))
+                      )
+                    )
+                ((method-of-type attack-info compute-intersect-info)
+                 (the-as attack-info s3-0)
+                 (the-as uint s4-0)
+                 self
+                 (if (type? proc process-drawable)
+                     proc
+                     )
+                 (the-as touching-shapes-entry (-> event param 0))
+                 )
+                (if (logtest? (-> (the-as attack-info s3-0) mask) (attack-info-mask intersection))
+                    (go-virtual hit)
+                    )
+                )
+              )
+             )
+           )
+         )
+       )
+      (('combo)
+       #t
+       )
+      )
+    )
+  :enter (behavior ()
+    (let ((gp-0 (matrix<-transformq! (new 'stack-no-clear 'matrix) (the-as transformq (-> self root-override trans)))))
+      (mech-target-spawn
+        (vector-matrix*! (new 'stack-no-clear 'vector) (new 'static 'vector :y 20480.0 :z 4096.0 :w 1.0) gp-0)
+        self
+        (-> self root-override quat)
+        (-> self entity)
+        )
+      (mech-target-spawn
+        (vector-matrix*! (new 'stack-no-clear 'vector) (new 'static 'vector :y 20480.0 :z -4096.0 :w 1.0) gp-0)
+        self
+        (-> self root-override quat)
+        (-> self entity)
+        )
+      )
+    (set! (-> self nav-mesh) (nav-mesh-from-res-tag (-> self entity) 'nav-mesh-actor 0))
+    (if (and (-> self nav-mesh) (not (nav-mesh-connect-from-ent self)))
+        (set! (-> self nav-mesh) #f)
+        )
+    (none)
+    )
+  :exit (behavior ()
+    (while (-> self child)
+      (deactivate (-> self child 0))
+      )
+    (none)
+    )
+  :code (behavior ()
+    (if (task-node-closed? (game-task-node ruins-mech-introduction))
+        (add-process *gui-control* self (gui-channel art-load) (gui-action queue) (-> self info anim name) -99.0 0)
+        )
+    (until #f
+      (transform-post)
+      (logior! (-> self mask) (process-mask sleep))
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate hit (ruins-breakable-wall)
+  :virtual #t
+  :enter (behavior ()
+    (let ((v1-1 (-> self root-override root-prim)))
+      (set! (-> v1-1 prim-core collide-as) (collide-spec))
+      (set! (-> v1-1 prim-core collide-with) (collide-spec))
+      )
+    0
+    (if (-> self nav-mesh)
+        (logclear! (-> self root-override nav-flags) (nav-flags has-root-sphere))
+        )
+    (let ((s4-0 (new 'stack-no-clear 'vector))
+          (s5-0 (new 'stack-no-clear 'vector))
+          )
+      (vector-z-quaternion! s4-0 (-> self root-override quat))
+      (set! (-> s4-0 y) 0.0)
+      (vector-! s5-0 (target-pos 0) (-> self root-override trans))
+      (set! (-> s5-0 y) 0.0)
+      (let ((gp-2 0))
+        (when (>= (vector-dot s4-0 s5-0) 0.0)
+          (if (>= (-> self info sides length) 2)
+              (set! gp-2 1)
+              )
+          )
+        (set! (-> self side) (-> self info sides gp-2))
+        (process-entity-status! self (entity-perm-status subtask-complete) #t)
+        (let ((v1-21 (-> self entity extra perm)))
+          (logior! (-> v1-21 status) (entity-perm-status bit-5))
+          (set! (-> v1-21 user-int8 0) (+ gp-2 1))
+          )
+        )
+      )
+    (ruins-breakable-wall-method-30 self 'hit)
+    (none)
+    )
+  :exit (behavior ()
+    (let ((v1-1 (-> self root-override root-prim)))
+      (set! (-> v1-1 prim-core collide-as) (-> self root-override backup-collide-as))
+      (set! (-> v1-1 prim-core collide-with) (-> self root-override backup-collide-with))
+      )
+    (none)
+    )
+  :code (behavior ()
+    (let ((a2-1 (get-art-by-name (-> self draw art-group) (-> self side end-anim) art-joint-anim)))
+      (set! (-> self info anim anim-name) (-> self side break-anim))
+      (ja-play-spooled-anim
+        (-> self info anim)
+        (ja-group)
+        a2-1
+        (the-as (function process-drawable symbol) false-func)
+        )
+      )
+    (go-virtual broken)
+    (none)
+    )
+  :post (the-as (function none :behavior ruins-breakable-wall) ja-post)
+  )
+
+(defstate broken (ruins-breakable-wall)
+  :virtual #t
+  :code (behavior ()
+    (ruins-breakable-wall-method-30 self 'broken)
+    (let ((gp-0 (get-art-by-name (-> self draw art-group) (-> self side end-anim) art-joint-anim)))
+      (ja-channel-set! 1)
+      (set! (-> self skel root-channel 0 frame-group) gp-0)
+      )
+    (logior! (-> self skel status) (joint-control-status sync-math))
+    (transform-post)
+    (logclear! (-> self skel status) (joint-control-status sync-math))
+    (suspend)
+    (transform-post)
+    (sleep-code)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! ruins-breakable-wall ((obj ruins-breakable-wall) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (stack-size-set! (-> obj main-thread) 512)
+  (set! (-> obj mask) (logior (process-mask collectable) (-> obj mask)))
+  (set! (-> obj side) #f)
+  (set! (-> obj nav-mesh) #f)
+  (let ((v1-5 (res-lump-value (-> obj entity) 'extra-id uint128 :time -1000000000.0)))
+    (set! (-> obj info) (-> *rbw-infos* v1-5))
+    (cond
+      ((zero? v1-5)
+       (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+         (set! (-> s4-0 penetrated-by) (penetrate))
+         (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 4) 0)))
+           (set! (-> s4-0 total-prims) (the-as uint 5))
+           (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
+           (set! (-> s3-0 prim-core action) (collide-action solid))
+           (set! (-> s3-0 transform-index) 3)
+           (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 36864.0)
+           (set! (-> s4-0 root-prim) s3-0)
+           )
+         (let ((v1-14 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint -1))))
+           (set! (-> v1-14 prim-core collide-as) (collide-spec obstacle))
+           (set! (-> v1-14 prim-core action) (collide-action solid))
+           (set! (-> v1-14 transform-index) 3)
+           (set-vector! (-> v1-14 local-sphere) 0.0 0.0 0.0 36864.0)
+           )
+         (let ((v1-16 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+           (set! (-> v1-16 prim-core action) (collide-action solid))
+           (set! (-> v1-16 transform-index) 3)
+           (set-vector! (-> v1-16 local-sphere) 0.0 0.0 0.0 36864.0)
+           )
+         (let ((v1-18 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
+           (set! (-> v1-18 prim-core action) (collide-action solid))
+           (set! (-> v1-18 transform-index) 3)
+           (set-vector! (-> v1-18 local-sphere) 21504.0 -24576.0 -49152.0 69632.0)
+           )
+         (let ((v1-20 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 3) (the-as uint 0))))
+           (set! (-> v1-20 prim-core action) (collide-action solid))
+           (set! (-> v1-20 transform-index) 3)
+           (set-vector! (-> v1-20 local-sphere) 0.0 -17612.8 65536.0 81920.0)
+           )
+         (set! (-> s4-0 nav-radius) 20480.0)
+         (let ((v1-22 (-> s4-0 root-prim)))
+           (set! (-> s4-0 backup-collide-as) (-> v1-22 prim-core collide-as))
+           (set! (-> s4-0 backup-collide-with) (-> v1-22 prim-core collide-with))
+           )
+         (set! (-> obj root-override) s4-0)
+         )
+       )
+      ((= (the-as uint v1-5) 1)
+       (let ((s4-1 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+         (set! (-> s4-1 penetrated-by) (penetrate))
+         (let ((s3-1 (new 'process 'collide-shape-prim-group s4-1 (the-as uint 3) 0)))
+           (set! (-> s4-1 total-prims) (the-as uint 4))
+           (set! (-> s3-1 prim-core collide-as) (collide-spec obstacle))
+           (set! (-> s3-1 prim-core action) (collide-action solid))
+           (set! (-> s3-1 transform-index) 4)
+           (set-vector! (-> s3-1 local-sphere) 0.0 0.0 0.0 36864.0)
+           (set! (-> s4-1 root-prim) s3-1)
+           )
+         (let ((v1-32 (new 'process 'collide-shape-prim-mesh s4-1 (the-as uint 0) (the-as uint -1))))
+           (set! (-> v1-32 prim-core collide-as) (collide-spec obstacle))
+           (set! (-> v1-32 prim-core action) (collide-action solid))
+           (set! (-> v1-32 transform-index) 4)
+           (set-vector! (-> v1-32 local-sphere) 0.0 0.0 0.0 36864.0)
+           )
+         (let ((v1-34 (new 'process 'collide-shape-prim-mesh s4-1 (the-as uint 1) (the-as uint 0))))
+           (set! (-> v1-34 prim-core action) (collide-action solid))
+           (set! (-> v1-34 transform-index) 3)
+           (set-vector! (-> v1-34 local-sphere) -18432.0 0.0 0.0 40960.0)
+           )
+         (let ((v1-36 (new 'process 'collide-shape-prim-mesh s4-1 (the-as uint 2) (the-as uint 0))))
+           (set! (-> v1-36 prim-core action) (collide-action solid))
+           (set! (-> v1-36 transform-index) 3)
+           (set-vector! (-> v1-36 local-sphere) -40960.0 -20480.0 -98304.0 90112.0)
+           )
+         (set! (-> s4-1 nav-radius) 20480.0)
+         (let ((v1-38 (-> s4-1 root-prim)))
+           (set! (-> s4-1 backup-collide-as) (-> v1-38 prim-core collide-as))
+           (set! (-> s4-1 backup-collide-with) (-> v1-38 prim-core collide-with))
+           )
+         (set! (-> obj root-override) s4-1)
+         )
+       )
+      ((= (the-as uint v1-5) 2)
+       (let ((s4-2 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+         (set! (-> s4-2 penetrated-by) (penetrate))
+         (let ((s3-2 (new 'process 'collide-shape-prim-group s4-2 (the-as uint 3) 0)))
+           (set! (-> s4-2 total-prims) (the-as uint 4))
+           (set! (-> s3-2 prim-core collide-as) (collide-spec obstacle))
+           (set! (-> s3-2 prim-core action) (collide-action solid))
+           (set! (-> s3-2 transform-index) 3)
+           (set-vector! (-> s3-2 local-sphere) 0.0 0.0 0.0 36864.0)
+           (set! (-> s4-2 root-prim) s3-2)
+           )
+         (let ((v1-48 (new 'process 'collide-shape-prim-mesh s4-2 (the-as uint 0) (the-as uint -1))))
+           (set! (-> v1-48 prim-core collide-as) (collide-spec obstacle))
+           (set! (-> v1-48 prim-core action) (collide-action solid))
+           (set! (-> v1-48 transform-index) 3)
+           (set-vector! (-> v1-48 local-sphere) 0.0 0.0 0.0 36864.0)
+           )
+         (let ((v1-50 (new 'process 'collide-shape-prim-mesh s4-2 (the-as uint 1) (the-as uint 0))))
+           (set! (-> v1-50 prim-core action) (collide-action solid))
+           (set! (-> v1-50 transform-index) 3)
+           (set-vector! (-> v1-50 local-sphere) -12288.0 0.0 0.0 49152.0)
+           )
+         (let ((v1-52 (new 'process 'collide-shape-prim-mesh s4-2 (the-as uint 2) (the-as uint 0))))
+           (set! (-> v1-52 prim-core action) (collide-action solid))
+           (set! (-> v1-52 transform-index) 3)
+           (set-vector! (-> v1-52 local-sphere) 45056.0 -14336.0 -114688.0 40960.0)
+           )
+         (set! (-> s4-2 nav-radius) 20480.0)
+         (let ((v1-54 (-> s4-2 root-prim)))
+           (set! (-> s4-2 backup-collide-as) (-> v1-54 prim-core collide-as))
+           (set! (-> s4-2 backup-collide-with) (-> v1-54 prim-core collide-with))
+           )
+         (set! (-> obj root-override) s4-2)
+         )
+       )
+      ((= (the-as uint v1-5) 3)
+       (let ((s4-3 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+         (set! (-> s4-3 penetrated-by) (penetrate))
+         (let ((s3-3 (new 'process 'collide-shape-prim-group s4-3 (the-as uint 2) 0)))
+           (set! (-> s4-3 total-prims) (the-as uint 3))
+           (set! (-> s3-3 prim-core collide-as) (collide-spec obstacle))
+           (set! (-> s3-3 prim-core action) (collide-action solid))
+           (set! (-> s3-3 transform-index) 73)
+           (set-vector! (-> s3-3 local-sphere) 0.0 -24576.0 0.0 45056.0)
+           (set! (-> s4-3 root-prim) s3-3)
+           )
+         (let ((v1-64 (new 'process 'collide-shape-prim-mesh s4-3 (the-as uint 0) (the-as uint -1))))
+           (set! (-> v1-64 prim-core collide-as) (collide-spec obstacle))
+           (set! (-> v1-64 prim-core action) (collide-action solid))
+           (set! (-> v1-64 transform-index) 73)
+           (set-vector! (-> v1-64 local-sphere) 0.0 -24576.0 0.0 45056.0)
+           )
+         (let ((v1-66 (new 'process 'collide-shape-prim-mesh s4-3 (the-as uint 1) (the-as uint 0))))
+           (set! (-> v1-66 prim-core action) (collide-action solid))
+           (set! (-> v1-66 transform-index) 74)
+           (set-vector! (-> v1-66 local-sphere) 0.0 0.0 0.0 40960.0)
+           )
+         (set! (-> s4-3 nav-radius) 20480.0)
+         (let ((v1-68 (-> s4-3 root-prim)))
+           (set! (-> s4-3 backup-collide-as) (-> v1-68 prim-core collide-as))
+           (set! (-> s4-3 backup-collide-with) (-> v1-68 prim-core collide-with))
+           )
+         (set! (-> obj root-override) s4-3)
+         )
+       )
+      ((= (the-as uint v1-5) 4)
+       (let ((s4-4 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+         (set! (-> s4-4 penetrated-by) (penetrate))
+         (let ((s3-4 (new 'process 'collide-shape-prim-group s4-4 (the-as uint 3) 0)))
+           (set! (-> s4-4 total-prims) (the-as uint 4))
+           (set! (-> s3-4 prim-core collide-as) (collide-spec obstacle))
+           (set! (-> s3-4 prim-core action) (collide-action solid))
+           (set! (-> s3-4 transform-index) 78)
+           (set-vector! (-> s3-4 local-sphere) 0.0 0.0 0.0 36864.0)
+           (set! (-> s4-4 root-prim) s3-4)
+           )
+         (let ((v1-78 (new 'process 'collide-shape-prim-mesh s4-4 (the-as uint 0) (the-as uint -1))))
+           (set! (-> v1-78 prim-core collide-as) (collide-spec obstacle))
+           (set! (-> v1-78 prim-core action) (collide-action solid))
+           (set! (-> v1-78 transform-index) 78)
+           (set-vector! (-> v1-78 local-sphere) 0.0 0.0 0.0 36864.0)
+           )
+         (let ((v1-80 (new 'process 'collide-shape-prim-mesh s4-4 (the-as uint 1) (the-as uint 0))))
+           (set! (-> v1-80 prim-core action) (collide-action solid))
+           (set! (-> v1-80 transform-index) 78)
+           (set-vector! (-> v1-80 local-sphere) 0.0 0.0 0.0 36864.0)
+           )
+         (let ((v1-82 (new 'process 'collide-shape-prim-mesh s4-4 (the-as uint 2) (the-as uint 0))))
+           (set! (-> v1-82 prim-core action) (collide-action solid))
+           (set! (-> v1-82 transform-index) 78)
+           (set-vector! (-> v1-82 local-sphere) 12288.0 -24576.0 -122880.0 69632.0)
+           )
+         (set! (-> s4-4 nav-radius) 20480.0)
+         (let ((v1-84 (-> s4-4 root-prim)))
+           (set! (-> s4-4 backup-collide-as) (-> v1-84 prim-core collide-as))
+           (set! (-> s4-4 backup-collide-with) (-> v1-84 prim-core collide-with))
+           )
+         (set! (-> obj root-override) s4-4)
+         )
+       )
+      (else
+        (let ((s4-5 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+          (set! (-> s4-5 penetrated-by) (penetrate))
+          (let ((s3-5 (new 'process 'collide-shape-prim-group s4-5 (the-as uint 2) 0)))
+            (set! (-> s4-5 total-prims) (the-as uint 3))
+            (set! (-> s3-5 prim-core collide-as) (collide-spec obstacle))
+            (set! (-> s3-5 prim-core action) (collide-action solid))
+            (set! (-> s3-5 transform-index) 74)
+            (set-vector! (-> s3-5 local-sphere) 0.0 0.0 0.0 40960.0)
+            (set! (-> s4-5 root-prim) s3-5)
+            )
+          (let ((v1-94 (new 'process 'collide-shape-prim-mesh s4-5 (the-as uint 0) (the-as uint -1))))
+            (set! (-> v1-94 prim-core collide-as) (collide-spec obstacle))
+            (set! (-> v1-94 prim-core action) (collide-action solid))
+            (set! (-> v1-94 transform-index) 74)
+            (set-vector! (-> v1-94 local-sphere) 0.0 0.0 0.0 40960.0)
+            )
+          (let ((v1-96 (new 'process 'collide-shape-prim-mesh s4-5 (the-as uint 1) (the-as uint 0))))
+            (set! (-> v1-96 prim-core action) (collide-action solid))
+            (set! (-> v1-96 transform-index) 74)
+            (set-vector! (-> v1-96 local-sphere) 0.0 0.0 0.0 40960.0)
+            )
+          (set! (-> s4-5 nav-radius) 20480.0)
+          (let ((v1-98 (-> s4-5 root-prim)))
+            (set! (-> s4-5 backup-collide-as) (-> v1-98 prim-core collide-as))
+            (set! (-> s4-5 backup-collide-with) (-> v1-98 prim-core collide-with))
+            )
+          (set! (-> obj root-override) s4-5)
+          )
+        )
+      )
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton-by-name obj (-> obj info skel-group))
+  (case (-> obj entity extra perm user-uint8 0)
+    ((1)
+     (set! (-> obj side) (-> obj info sides 0))
+     (go (method-of-object obj broken))
+     )
+    ((2)
+     (set! (-> obj side) (-> obj info sides 1))
+     (go (method-of-object obj broken))
+     )
+    (else
+      (go (method-of-object obj unbroken))
+      )
+    )
+  (none)
+  )

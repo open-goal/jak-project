@@ -1,13 +1,14 @@
 #include "audio_formats.h"
+
+#include "common/log/log.h"
 #include "common/util/BinaryWriter.h"
+
 #include "third-party/fmt/core.h"
 
 /*!
  * Write a wave file from a vector of samples.
  */
-void write_wave_file_mono(const std::vector<s16>& samples,
-                          s32 sample_rate,
-                          const std::string& name) {
+void write_wave_file_mono(const std::vector<s16>& samples, s32 sample_rate, const fs::path& name) {
   WaveFileHeader header;
   memcpy(header.chunk_id, "RIFF", 4);
   header.chunk_size = 36 + samples.size() * sizeof(s16);
@@ -254,7 +255,7 @@ void test_encode_adpcm(const std::vector<s16>& samples,
       }
 
       if (debug) {
-        fmt::print("Range: {}\n", max_sample - min_sample);
+        lg::debug("Range: {}", max_sample - min_sample);
       }
 
       // see how many bits we need and pick shift.
@@ -283,11 +284,11 @@ void test_encode_adpcm(const std::vector<s16>& samples,
 
     if (filter_errors[best_filter] || best_filter != filter_debug[block_idx] ||
         best_shift != shift_debug[block_idx]) {
-      fmt::print("Block {} me {}, {}  : answer {} {}: ERR {}\n", block_idx, best_filter, best_shift,
-                 filter_debug[block_idx], shift_debug[block_idx], filter_errors[best_filter]);
-      fmt::print("filter errors:\n");
+      lg::error("Block {} me {}, {}  : answer {} {}: ERR {}", block_idx, best_filter, best_shift,
+                filter_debug[block_idx], shift_debug[block_idx], filter_errors[best_filter]);
+      lg::error("filter errors:");
       for (int i = 0; i < 5; i++) {
-        fmt::print(" [{}] {} {}\n", i, filter_errors[i], filter_shifts[i]);
+        lg::error(" [{}] {} {}", i, filter_errors[i], filter_shifts[i]);
       }
       ASSERT_MSG(false, fmt::format("prev: {} {}", prev_block_samples[0], prev_block_samples[1]));
     }

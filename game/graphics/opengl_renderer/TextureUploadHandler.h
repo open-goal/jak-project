@@ -10,7 +10,7 @@
  */
 class TextureUploadHandler : public BucketRenderer {
  public:
-  TextureUploadHandler(const std::string& name, BucketId my_id);
+  TextureUploadHandler(const std::string& name, int my_id);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
 
@@ -21,4 +21,5 @@ class TextureUploadHandler : public BucketRenderer {
   };
   void flush_uploads(std::vector<TextureUpload>& uploads, SharedRenderState* render_state);
   bool m_fake_uploads = false;
+  int m_upload_count = 0;
 };

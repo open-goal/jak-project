@@ -53,3 +53,7 @@ struct LinkHeaderV4 {
   uint32_t version;    // always 4
   uint32_t code_size;  // length of object data before link data starts
 };
+
+// when a u32/s32 symbol link contains this value, (s7 + <val>) should be a 4-byte aligned address,
+// not including the 1 byte symbol offset. (no effect in jak 1).
+constexpr u32 LINK_SYM_NO_OFFSET_FLAG = 0xbadbeef;

@@ -1,0 +1,307 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type fact-bank
+(deftype fact-bank (basic)
+  ((eco-level-max        float    :offset-assert   4)
+   (eco-single-inc       float    :offset-assert   8)
+   (eco-full-inc         float    :offset-assert  12)
+   (eco-single-timeout   seconds  :offset-assert  16)
+   (eco-full-timeout     seconds  :offset-assert  24)
+   (dummy                seconds  :offset-assert  32)
+   (health-max-default   float    :offset-assert  40)
+   (health-single-inc    float    :offset-assert  44)
+   (eco-pill-max-default float    :offset-assert  48)
+   (health-small-inc     float    :offset-assert  52)
+   (buzzer-max-default   float    :offset-assert  56)
+   (buzzer-single-inc    float    :offset-assert  60)
+   (suck-bounce-dist     meters   :offset-assert  64)
+   (suck-suck-dist       meters   :offset-assert  68)
+   (default-pill-inc     float    :offset-assert  72)
+   )
+  :method-count-assert 9
+  :size-assert         #x4c
+  :flag-assert         #x90000004c
+  )
+
+;; definition for method 3 of type fact-bank
+(defmethod inspect fact-bank ((obj fact-bank))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Teco-level-max: ~f~%" (-> obj eco-level-max))
+  (format #t "~Teco-single-inc: ~f~%" (-> obj eco-single-inc))
+  (format #t "~Teco-full-inc: ~f~%" (-> obj eco-full-inc))
+  (format #t "~Teco-single-timeout: (seconds ~e)~%" (-> obj eco-single-timeout))
+  (format #t "~Teco-full-timeout: (seconds ~e)~%" (-> obj eco-full-timeout))
+  (format #t "~Tdummy: (seconds ~e)~%" (-> obj dummy))
+  (format #t "~Thealth-max-default: ~f~%" (-> obj health-max-default))
+  (format #t "~Thealth-single-inc: ~f~%" (-> obj health-single-inc))
+  (format #t "~Teco-pill-max-default: ~f~%" (-> obj eco-pill-max-default))
+  (format #t "~Thealth-small-inc: ~f~%" (-> obj health-small-inc))
+  (format #t "~Tbuzzer-max-default: ~f~%" (-> obj buzzer-max-default))
+  (format #t "~Tbuzzer-single-inc: ~f~%" (-> obj buzzer-single-inc))
+  (format #t "~Tsuck-bounce-dist: (meters ~m)~%" (-> obj suck-bounce-dist))
+  (format #t "~Tsuck-suck-dist: (meters ~m)~%" (-> obj suck-suck-dist))
+  (format #t "~Tdefault-pill-inc: ~f~%" (-> obj default-pill-inc))
+  obj
+  )
+
+;; definition for symbol *FACT-bank*, type fact-bank
+(define *FACT-bank* (new 'static 'fact-bank
+                      :eco-level-max 2.0
+                      :eco-single-inc 1.0
+                      :eco-full-inc 5.0
+                      :eco-single-timeout (seconds 5)
+                      :eco-full-timeout (seconds 20)
+                      :dummy (seconds 15)
+                      :health-max-default 3.0
+                      :health-single-inc 1.0
+                      :eco-pill-max-default 50.0
+                      :health-small-inc 1.0
+                      :buzzer-max-default 7.0
+                      :buzzer-single-inc 1.0
+                      :suck-bounce-dist (meters 18)
+                      :suck-suck-dist (meters 7.5)
+                      )
+        )
+
+;; definition for function pickup-type->string
+(defun pickup-type->string ((arg0 pickup-type))
+  (case arg0
+    (((pickup-type eco-pill-random))
+     "eco-pill-random"
+     )
+    (((pickup-type buzzer))
+     "buzzer"
+     )
+    (((pickup-type eco-pill))
+     "eco-pill"
+     )
+    (((pickup-type fuel-cell))
+     "fuel-cell"
+     )
+    (((pickup-type money))
+     "money"
+     )
+    (((pickup-type eco-green))
+     "eco-green"
+     )
+    (((pickup-type eco-blue))
+     "eco-blue"
+     )
+    (((pickup-type eco-red))
+     "eco-red"
+     )
+    (((pickup-type eco-yellow))
+     "eco-yellow"
+     )
+    (((pickup-type none))
+     "none"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+;; definition of type fact-info
+(deftype fact-info (basic)
+  ((process             process-drawable  :offset-assert   4)
+   (pickup-type         pickup-type       :offset-assert   8)
+   (pickup-amount       float             :offset-assert  12)
+   (pickup-spawn-amount float             :offset-assert  16)
+   (options             fact-options      :offset-assert  24)
+   (fade-time           time-frame        :offset-assert  32)
+   )
+  :method-count-assert 12
+  :size-assert         #x28
+  :flag-assert         #xc00000028
+  (:methods
+    (new (symbol type process-drawable pickup-type float) _type_ 0)
+    (drop-pickup (_type_ symbol process-tree fact-info int) (pointer process) 9)
+    (reset! (_type_ symbol) none 10)
+    (pickup-collectable! (_type_ pickup-type float handle) float 11)
+    )
+  )
+
+;; definition for method 3 of type fact-info
+(defmethod inspect fact-info ((obj fact-info))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tprocess: ~A~%" (-> obj process))
+  (format #t "~Tpickup-type: ~D~%" (-> obj pickup-type))
+  (format #t "~Tpickup-amount: ~f~%" (-> obj pickup-amount))
+  (format #t "~Tpickup-spawn-amount: ~f~%" (-> obj pickup-spawn-amount))
+  (format #t "~Toptions: ~D~%" (-> obj options))
+  (format #t "~Tfade-time: ~D~%" (-> obj fade-time))
+  obj
+  )
+
+;; definition of type fact-info-target
+(deftype fact-info-target (fact-info)
+  ((eco-type              pickup-type  :offset-assert  40)
+   (eco-level             float        :offset-assert  44)
+   (eco-pickup-time       time-frame   :offset-assert  48)
+   (eco-timeout           seconds      :offset-assert  56)
+   (health                float        :offset-assert  64)
+   (health-max            float        :offset-assert  68)
+   (buzzer                float        :offset-assert  72)
+   (buzzer-max            float        :offset-assert  76)
+   (eco-pill              float        :offset-assert  80)
+   (eco-pill-max          float        :offset-assert  84)
+   (health-pickup-time    time-frame   :offset-assert  88)
+   (eco-source            handle       :offset-assert  96)
+   (eco-source-time       time-frame   :offset-assert 104)
+   (money-pickup-time     time-frame   :offset-assert 112)
+   (buzzer-pickup-time    time-frame   :offset-assert 120)
+   (fuel-cell-pickup-time time-frame   :offset-assert 128)
+   (eco-pill-pickup-time  time-frame   :offset-assert 136)
+   )
+  :method-count-assert 12
+  :size-assert         #x90
+  :flag-assert         #xc00000090
+  (:methods
+    (new (symbol type process-drawable pickup-type float) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type fact-info-target
+(defmethod inspect fact-info-target ((obj fact-info-target))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tprocess: ~A~%" (-> obj process))
+  (format #t "~Tpickup-type: ~D~%" (-> obj pickup-type))
+  (format #t "~Tpickup-amount: ~f~%" (-> obj pickup-amount))
+  (format #t "~Tpickup-spawn-amount: ~f~%" (-> obj pickup-spawn-amount))
+  (format #t "~Toptions: ~D~%" (-> obj options))
+  (format #t "~Tfade-time: ~D~%" (-> obj fade-time))
+  (format #t "~Teco-type: ~D~%" (-> obj eco-type))
+  (format #t "~Teco-level: ~f~%" (-> obj eco-level))
+  (format #t "~Teco-pickup-time: ~D~%" (-> obj eco-pickup-time))
+  (format #t "~Teco-timeout: (seconds ~e)~%" (-> obj eco-timeout))
+  (format #t "~Thealth: ~f~%" (-> obj health))
+  (format #t "~Thealth-max: ~f~%" (-> obj health-max))
+  (format #t "~Tbuzzer: ~f~%" (-> obj buzzer))
+  (format #t "~Tbuzzer-max: ~f~%" (-> obj buzzer-max))
+  (format #t "~Teco-pill: ~f~%" (-> obj eco-pill))
+  (format #t "~Teco-pill-max: ~f~%" (-> obj eco-pill-max))
+  (format #t "~Thealth-pickup-time: ~D~%" (-> obj health-pickup-time))
+  (format #t "~Teco-source: ~D~%" (-> obj eco-source))
+  (format #t "~Teco-source-time: ~D~%" (-> obj eco-source-time))
+  (format #t "~Tmoney-pickup-time: ~D~%" (-> obj money-pickup-time))
+  (format #t "~Tbuzzer-pickup-time: ~D~%" (-> obj buzzer-pickup-time))
+  (format #t "~Tfuel-cell-pickup-time: ~D~%" (-> obj fuel-cell-pickup-time))
+  (format #t "~Teco-pill-pickup-time: ~D~%" (-> obj eco-pill-pickup-time))
+  obj
+  )
+
+;; definition of type fact-info-enemy
+(deftype fact-info-enemy (fact-info)
+  ((speed           float   :offset-assert  40)
+   (idle-distance   meters  :offset-assert  44)
+   (notice-top      meters  :offset-assert  48)
+   (notice-bottom   meters  :offset-assert  52)
+   (cam-horz        meters  :offset-assert  56)
+   (cam-vert        meters  :offset-assert  60)
+   (cam-notice-dist meters  :offset-assert  64)
+   )
+  :method-count-assert 12
+  :size-assert         #x44
+  :flag-assert         #xc00000044
+  (:methods
+    (new (symbol type process-drawable pickup-type float) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type fact-info-enemy
+(defmethod inspect fact-info-enemy ((obj fact-info-enemy))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tprocess: ~A~%" (-> obj process))
+  (format #t "~Tpickup-type: ~D~%" (-> obj pickup-type))
+  (format #t "~Tpickup-amount: ~f~%" (-> obj pickup-amount))
+  (format #t "~Tpickup-spawn-amount: ~f~%" (-> obj pickup-spawn-amount))
+  (format #t "~Toptions: ~D~%" (-> obj options))
+  (format #t "~Tfade-time: ~D~%" (-> obj fade-time))
+  (format #t "~Tspeed: ~f~%" (-> obj speed))
+  (format #t "~Tidle-distance: (meters ~m)~%" (-> obj idle-distance))
+  (format #t "~Tnotice-top: (meters ~m)~%" (-> obj notice-top))
+  (format #t "~Tnotice-bottom: (meters ~m)~%" (-> obj notice-bottom))
+  (format #t "~Tcam-horz: (meters ~m)~%" (-> obj cam-horz))
+  (format #t "~Tcam-vert: (meters ~m)~%" (-> obj cam-vert))
+  (format #t "~Tcam-notice-dist: (meters ~m)~%" (-> obj cam-notice-dist))
+  obj
+  )
+
+;; definition for method 0 of type fact-info
+;; INFO: Used lq/sq
+(defmethod new fact-info ((allocation symbol) (type-to-make type) (proc process-drawable) (pkup-type pickup-type) (pkup-amount float))
+  (local-vars (tag res-tag))
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (let ((ent (-> proc entity)))
+      (when (zero? obj)
+        (go process-drawable-art-error "memory")
+        (set! obj (the-as fact-info 0))
+        (goto cfg-10)
+        )
+      (set! (-> obj process) proc)
+      (set! tag (new 'static 'res-tag))
+      (let ((v1-6 (res-lump-data ent 'eco-info (pointer int32) :tag-ptr (& tag) :time 0.0)))
+        (cond
+          (v1-6
+            (let ((a0-6 (-> tag elt-count)))
+              (set! (-> obj pickup-type) (the-as pickup-type (-> v1-6 0)))
+              (set! pkup-amount (cond
+                                  ((< (the-as uint 1) a0-6)
+                                   (the float (-> v1-6 1))
+                                   )
+                                  (else
+                                    (empty)
+                                    pkup-amount
+                                    )
+                                  )
+                    )
+              )
+            (set! (-> obj pickup-amount) pkup-amount)
+            )
+          (else
+            (set! (-> obj pickup-type) pkup-type)
+            (set! (-> obj pickup-amount) pkup-amount)
+            )
+          )
+        )
+      (set! (-> obj options) (res-lump-value ent 'options fact-options))
+      (if (logtest? (fact-options fade respawn) (-> obj options))
+          (set! (-> obj fade-time) (the-as time-frame (the int (* 300.0 (res-lump-float ent 'timeout)))))
+          )
+      )
+    (label cfg-10)
+    obj
+    )
+  )
+
+;; definition for method 11 of type fact-info
+(defmethod pickup-collectable! fact-info ((obj fact-info) (arg0 pickup-type) (arg1 float) (arg2 handle))
+  0.0
+  )
+
+;; definition for method 0 of type fact-info-enemy
+(defmethod new fact-info-enemy ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 pickup-type) (arg2 float))
+  (let ((obj (the-as fact-info-enemy ((method-of-type fact-info new) allocation type-to-make arg0 arg1 arg2))))
+    (let ((entity (-> obj process entity)))
+      (set! (-> obj speed) (res-lump-float entity 'speed :default 1.0))
+      (set! (-> obj idle-distance) (res-lump-float entity 'idle-distance :default 327680.0))
+      (set! (-> obj notice-top) (res-lump-float entity 'notice-top :default 4096000.0))
+      (set! (-> obj notice-bottom) (res-lump-float entity 'notice-bottom :default 4096000.0))
+      (set! (-> obj cam-horz) (res-lump-float entity 'cam-horz))
+      (set! (-> obj cam-vert) (res-lump-float entity 'cam-vert))
+      (set! (-> obj cam-notice-dist) (res-lump-float entity 'cam-notice-dist :default -4096.0))
+      )
+    obj
+    )
+  )
+
+;; definition for method 0 of type fact-info-target
+(defmethod new fact-info-target ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 pickup-type) (arg2 float))
+  (let ((obj (the-as fact-info-target ((method-of-type fact-info new) allocation type-to-make arg0 arg1 arg2))))
+    (set! (-> obj eco-source) (the-as handle #f))
+    (reset! obj #f)
+    obj
+    )
+  )

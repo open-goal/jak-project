@@ -1,0 +1,264 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: texture-anim-h.gc
+;; name in dgo: texture-anim-h
+;; dgos: ENGINE, GAME
+
+(define-extern update-texture-anim (function bucket-id none))
+
+;; NOTE - for intro-scenes
+(define-extern set-jakb-prison-texture-morph! (function float none))
+
+;; DECOMP BEGINS
+
+(deftype texture-anim-layer (structure)
+  ((extra           vector   :inline :offset 240)
+   (func            symbol           :offset 256)
+   (func-id         basic            :offset 256)
+   (init-func       symbol           :offset 260)
+   (init-func-id    basic            :offset 260)
+   (tex             texture          :offset 264)
+   (start-time      float            :offset 268)
+   (end-time        float            :offset 272)
+   (tex-name        basic            :offset 276)
+   (test            gs-test          :offset 280)
+   (alpha           gs-alpha         :offset 288)
+   (clamp           gs-clamp         :offset 296)
+   (start-color     vector   :inline :offset  80)
+   (start-scale     vector2  :inline :offset  96)
+   (start-offset    vector2  :inline :offset 104)
+   (start-st-scale  vector2  :inline :offset 112)
+   (start-st-offset vector2  :inline :offset 120)
+   (start-qs        vector   :inline :offset 128)
+   (start-rot       degrees          :offset 144)
+   (start-st-rot    degrees          :offset 148)
+   (end-color       vector   :inline :offset 160)
+   (end-scale       vector2  :inline :offset 176)
+   (end-offset      vector2  :inline :offset 184)
+   (end-st-scale    vector2  :inline :offset 192)
+   (end-st-offset   vector2  :inline :offset 200)
+   (end-qs          vector   :inline :offset 208)
+   (end-rot         degrees          :offset 224)
+   (end-st-rot      degrees          :offset 228)
+   )
+  :method-count-assert 11
+  :size-assert         #x130
+  :flag-assert         #xb00000130
+  (:methods
+    (texture-anim-layer-method-9 () none 9)
+    (texture-anim-layer-method-10 () none 10)
+    )
+  )
+
+
+(deftype texture-anim (structure)
+  ((num-layers   uint32                      :offset-assert   0)
+   (func         symbol                      :offset-assert   4)
+   (func-id      basic                       :offset          4)
+   (init-func    symbol                      :offset-assert   8)
+   (init-func-id basic                       :offset          8)
+   (tex          texture                     :offset-assert  12)
+   (tex-name     string                      :offset-assert  16)
+   (extra        vector             :inline  :offset-assert  32)
+   (color        rgba                        :offset-assert  48)
+   (frame-time   float                       :offset-assert  52)
+   (frame-delta  float                       :offset-assert  56)
+   (frame-mod    float                       :offset-assert  60)
+   (test         gs-test                     :offset-assert  64)
+   (alpha        gs-alpha                    :offset-assert  72)
+   (clamp        gs-clamp                    :offset-assert  80)
+   (data         texture-anim-layer :dynamic :offset-assert  88)
+   )
+  :method-count-assert 11
+  :size-assert         #x58
+  :flag-assert         #xb00000058
+  (:methods
+    (texture-anim-method-9 () none 9)
+    (texture-anim-method-10 () none 10)
+    )
+  )
+
+
+(deftype texture-anim-array (array)
+  ((array-data texture-anim :dynamic :offset-assert  16)
+   )
+  :method-count-assert 11
+  :size-assert         #x10
+  :flag-assert         #xb00000010
+  (:methods
+    (texture-anim-array-method-9 (_type_) none 9)
+    (texture-anim-array-method-10 () none 10)
+    )
+  )
+
+
+(deftype texture-anim-work (structure)
+  ((erase-tmpl   dma-gif-packet :inline   :offset-assert   0)
+   (draw-tmpl    dma-gif-packet :inline   :offset-assert  32)
+   (draw2-tmpl   dma-gif-packet :inline   :offset-assert  64)
+   (fill-tmpl    dma-gif-packet :inline   :offset-assert  96)
+   (adgif-tmpl   dma-gif-packet :inline   :offset-assert 128)
+   (corner0      vector         :inline   :offset-assert 160)
+   (corner1      vector         :inline   :offset-assert 176)
+   (corner2      vector         :inline   :offset-assert 192)
+   (corner3      vector         :inline   :offset-assert 208)
+   (const        vector         :inline   :offset-assert 224)
+   (random       vector         8 :inline :offset-assert 240)
+   (random-index uint8                    :offset-assert 368)
+   )
+  :method-count-assert 9
+  :size-assert         #x171
+  :flag-assert         #x900000171
+  )
+
+
+(deftype clut16x16 (structure)
+  ((clut rgba 256 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x400
+  :flag-assert         #x900000400
+  )
+
+
+(deftype noise8x8 (structure)
+  ((image uint8 64 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+
+(deftype noise16x16 (structure)
+  ((image uint8 256 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x100
+  :flag-assert         #x900000100
+  )
+
+
+(deftype noise32x32 (structure)
+  ((image uint8 1024 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x400
+  :flag-assert         #x900000400
+  )
+
+
+(deftype noise64x64 (structure)
+  ((image uint8 4096 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x1000
+  :flag-assert         #x900001000
+  )
+
+
+(deftype noise128x128 (structure)
+  ((image uint8 16384 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4000
+  :flag-assert         #x900004000
+  )
+
+
+(deftype fog8x256 (structure)
+  ((image uint8 256 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x100
+  :flag-assert         #x900000100
+  )
+
+
+(deftype fog-texture-work (structure)
+  ((corner      vector 4 :inline :offset-assert   0)
+   (const       vector :inline   :offset-assert  64)
+   (min-corner  vector :inline   :offset-assert  80)
+   (max-corner  vector :inline   :offset-assert  96)
+   (fog-near    float            :offset-assert 112)
+   (fog-far     float            :offset-assert 116)
+   (fog-delta   float            :offset-assert 120)
+   (alpha-near  float            :offset-assert 124)
+   (alpha-far   float            :offset-assert 128)
+   (alpha-delta float            :offset-assert 132)
+   (color       uint32           :offset-assert 136)
+   )
+  :method-count-assert 9
+  :size-assert         #x8c
+  :flag-assert         #x90000008c
+  )
+
+
+(define *clut-translate* (new 'static 'array uint32 64
+                           #x3020100
+                           #x7060504
+                           #x13121110
+                           #x17161514
+                           #xb0a0908
+                           #xf0e0d0c
+                           #x1b1a1918
+                           #x1f1e1d1c
+                           #x23222120
+                           #x27262524
+                           #x33323130
+                           #x37363534
+                           #x2b2a2928
+                           #x2f2e2d2c
+                           #x3b3a3938
+                           #x3f3e3d3c
+                           #x43424140
+                           #x47464544
+                           #x53525150
+                           #x57565554
+                           #x4b4a4948
+                           #x4f4e4d4c
+                           #x5b5a5958
+                           #x5f5e5d5c
+                           #x63626160
+                           #x67666564
+                           #x73727170
+                           #x77767574
+                           #x6b6a6968
+                           #x6f6e6d6c
+                           #x7b7a7978
+                           #x7f7e7d7c
+                           #x83828180
+                           #x87868584
+                           #x93929190
+                           #x97969594
+                           #x8b8a8988
+                           #x8f8e8d8c
+                           #x9b9a9998
+                           #x9f9e9d9c
+                           #xa3a2a1a0
+                           #xa7a6a5a4
+                           #xb3b2b1b0
+                           #xb7b6b5b4
+                           #xabaaa9a8
+                           #xafaeadac
+                           #xbbbab9b8
+                           #xbfbebdbc
+                           #xc3c2c1c0
+                           #xc7c6c5c4
+                           #xd3d2d1d0
+                           #xd7d6d5d4
+                           #xcbcac9c8
+                           #xcfcecdcc
+                           #xdbdad9d8
+                           #xdfdedddc
+                           #xe3e2e1e0
+                           #xe7e6e5e4
+                           #xf3f2f1f0
+                           #xf7f6f5f4
+                           #xebeae9e8
+                           #xefeeedec
+                           #xfbfaf9f8
+                           #xfffefdfc
+                           )
+        )

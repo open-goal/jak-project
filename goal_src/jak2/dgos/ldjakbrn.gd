@@ -1,0 +1,10 @@
+("LDJAKBRN.DGO"
+ ("tpage-2662.go"
+  "tpage-2657.go"
+  "tpage-3094.go"
+  "jak-highres-prison-ag.go"
+  "baron-highres-ag.go"
+  "prsn-daxter-plat-ag.go"
+  "jak-clothes-ag.go"
+  "ldjakbrn.go"
+ ))

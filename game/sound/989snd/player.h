@@ -1,21 +1,25 @@
 // Copyright: 2021 - 2022, Ziemas
 // SPDX-License-Identifier: ISC
 #pragma once
-#include "ame_handler.h"
-#include "game/sound/989snd/vagvoice.h"
-#include "third-party/cubeb/cubeb/include/cubeb/cubeb.h"
-#include "midi_handler.h"
-#include "sound_handler.h"
-#include "loader.h"
-#include "../common/synth.h"
-#include "common/common_types.h"
-#include "handle_allocator.h"
-#include <filesystem>
-#include <unordered_map>
+
 #include <memory>
 #include <mutex>
 #include <unordered_map>
 #include <vector>
+
+#include "ame_handler.h"
+#include "handle_allocator.h"
+#include "loader.h"
+#include "midi_handler.h"
+#include "sound_handler.h"
+
+#include "common/common_types.h"
+#include "common/util/FileUtil.h"
+
+#include "../common/synth.h"
+#include "game/sound/989snd/vagvoice.h"
+
+#include "third-party/cubeb/cubeb/include/cubeb/cubeb.h"
 
 namespace snd {
 
@@ -29,10 +33,18 @@ class player {
   // player(player&& other) noexcept = default;
   // player& operator=(player&& other) noexcept = default;
 
-  u32 load_bank(std::filesystem::path& path, size_t offset);
+  u32 load_bank(fs::path& path, size_t offset);
 
   u32 play_sound(u32 bank, u32 sound, s32 vol, s32 pan, s32 pm, s32 pb);
-  void set_midi_reg(u32 sound_id, u8 reg, u8 value);
+  u32 play_sound_by_name(u32 bank,
+                         char* bank_name,
+                         char* sound_name,
+                         s32 vol,
+                         s32 pan,
+                         s32 pm,
+                         s32 pb);
+  void set_sound_reg(u32 sound_id, u8 reg, u8 value);
+  void set_global_excite(u8 value) { GlobalExcite = value; };
   bool sound_still_active(u32 sound_id);
   void set_master_volume(u32 group, s32 volume);
   void unload_bank(u32 bank_handle);
@@ -49,6 +61,12 @@ class player {
   void init_cubeb();
   void destroy_cubeb();
   s32 get_tick() { return m_tick; };
+  void stop_all_sounds();
+  s32 get_sound_user_data(s32 block_handle,
+                          char* block_name,
+                          s32 sound_id,
+                          char* sound_name,
+                          SFXUserData* dst);
 
  private:
   std::recursive_mutex m_ticklock;  // TODO does not need to recursive with some light restructuring

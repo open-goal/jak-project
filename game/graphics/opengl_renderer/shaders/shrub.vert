@@ -16,8 +16,6 @@ out vec4 fragment_color;
 out vec3 tex_coord;
 out float fogginess;
 
-const float SCISSOR_ADJUST = 512.0/448.0;
-
 void main() {
 
 
@@ -62,7 +60,7 @@ void main() {
     // hack
     transformed.xyz *= transformed.w;
     // scissoring area adjust
-    transformed.y *= SCISSOR_ADJUST;
+    transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
     gl_Position = transformed;
 
     // time of day lookup
@@ -75,4 +73,5 @@ void main() {
     fragment_color.a *= 2;
 
     tex_coord = tex_coord_in;
+    tex_coord.xy /= 4096;
 }

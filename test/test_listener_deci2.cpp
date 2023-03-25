@@ -1,6 +1,6 @@
-#include "gtest/gtest.h"
-#include "goalc/listener/Listener.h"
 #include "game/system/Deci2Server.h"
+#include "goalc/listener/Listener.h"
+#include "gtest/gtest.h"
 
 using namespace listener;
 

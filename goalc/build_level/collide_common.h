@@ -3,7 +3,7 @@
 #include "common/math/Vector.h"
 
 struct PatSurface {
-  enum class Mode { GROUND = 0, WALL = 1, OBSTACLE = 2 };
+  enum class Mode { GROUND = 0, WALL = 1, OBSTACLE = 2, MAX_MODE = 3 };
   enum class Material {
     STONE = 0,
     ICE = 1,
@@ -28,6 +28,7 @@ struct PatSurface {
     STOPPROJ = 20,
     ROTATE = 21,
     NEUTRAL = 22,
+    MAX_MATERIAL = 23
   };
 
   enum class Event {
@@ -38,6 +39,7 @@ struct PatSurface {
     DEADLYUP = 4,
     BURNUP = 5,
     MELT = 6,
+    MAX_EVENT = 7,
   };
 
   void set_noentity(bool x) {
@@ -90,7 +92,7 @@ struct PatSurface {
 
   void set_event(Event ev) {
     val &= ~(0b111111 << 14);
-    val |= ((u32)ev << 6);
+    val |= ((u32)ev << 14);
   }
   Event get_event() const { return (Event)(0b111111 & (val >> 14)); }
 

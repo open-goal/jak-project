@@ -1,0 +1,215 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: collide-cache-h.gc
+;; name in dgo: collide-cache-h
+;; dgos: GAME, ENGINE
+
+(define-extern collide-cache-using-line-sphere-test (function vector symbol))
+(define-extern collide-cache-using-y-probe-test (function vector symbol))
+(define-extern collide-cache-using-box-test (function vector symbol))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;; Collide Helpers
+;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype collide-using-spheres-params (structure)
+  ((spheres      (inline-array sphere)   :offset-assert   0)
+   (num-spheres  uint32             :offset-assert   4)
+   (collide-with collide-kind       :offset-assert   8)
+   (proc         process-drawable   :offset-assert  16)
+   (ignore-pat   pat-surface        :offset-assert  20)
+   (solid-only   basic              :offset-assert  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+;; primitive using sphere-sphere
+(deftype collide-puss-sphere (structure)
+  ((bsphere sphere         :inline :offset-assert   0)
+   (bbox4w  bounding-box4w :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+
+(deftype collide-puss-work (structure)
+  ((closest-pt     vector              :inline    :offset-assert   0)
+   (tri-normal     vector              :inline    :offset-assert  16)
+   (tri-bbox4w     bounding-box4w      :inline    :offset-assert  32)
+   (spheres-bbox4w bounding-box4w      :inline    :offset-assert  64)
+   (spheres        collide-puss-sphere 64 :inline :offset-assert  96)
+   )
+  :method-count-assert 11
+  :size-assert         #xc60
+  :flag-assert         #xb00000c60
+  (:methods
+    (dummy-9 (_type_ object object) symbol 9)
+    (dummy-10 (_type_ object object) symbol 10)
+    )
+  )
+
+;; primitive using y probe
+(deftype collide-puyp-work (structure)
+  ((best-u     float                      :offset-assert   0)
+   (ignore-pat pat-surface                :offset-assert   4)
+   (tri-out    collide-tri-result         :offset-assert   8)
+   (start-pos  vector             :inline :offset-assert  16)
+   (move-dist  vector             :inline :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;; Main Cache Types
+;;;;;;;;;;;;;;;;;;;;;;;
+
+;; The triangles stored in the cache.
+;; This is a common return type of collision queries.
+(deftype collide-cache-tri (structure)
+  ((vertex     vector 3 :inline :offset-assert   0) ;; actual locations
+   (extra-quad uint128          :offset 48)
+   (pat        pat-surface      :offset  48) ;; metadata about the surface of this tri
+   (prim-index uint16           :offset  52) ;; in the collide-cache-prim list
+   (user16     uint16           :offset  54)
+   (user32     uint32 2         :offset  56)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+;; The primitives stored in the cache.
+;; The "core" is extracted from the normal collide-shape-prim and placed inline here.
+(deftype collide-cache-prim (structure)
+  ((prim-core    collide-prim-core :inline :offset-assert 0)
+   (extra-quad   uint128                   :offset-assert 32)
+   (ccache       collide-cache             :offset 32)
+   (prim         collide-shape-prim        :offset 36)
+   (first-tri    uint16                    :offset 40)
+   (num-tris     uint16                    :offset 42)
+   (unused       uint8           4       :offset 44)
+   (world-sphere vector            :inline :offset 0)
+   (collide-as   collide-kind   :offset 16)
+   (action       collide-action    :offset 24)
+   (offense      collide-offense   :offset 28)
+   (prim-type    int8              :offset 29)
+   )
+  :method-count-assert 11
+  :size-assert         #x30
+  :flag-assert         #xb00000030
+  (:methods
+    (resolve-moving-sphere-tri (_type_ collide-tri-result collide-prim-core vector float collide-action) float 9)
+    (resolve-moving-sphere-sphere (_type_ collide-tri-result collide-prim-core vector float collide-action) float 10)
+    )
+  )
+
+;; The actual cache!
+(deftype collide-cache (basic)
+  ((num-tris      int32                  :offset-assert 4)
+   ;;(num-tris-u    uint32                 :offset 4) ;; added
+   (num-prims     int32                  :offset-assert 8)
+   (num-prims-u   uint32                 :offset 8 );; added
+   (ignore-mask   pat-surface            :offset-assert 12)
+   (proc          process-drawable                  :offset-assert 16) ;; types: target
+   (collide-box   bounding-box   :inline :offset-assert 32)
+   (collide-box4w bounding-box4w :inline :offset-assert 64)
+   (collide-with  collide-kind      :offset-assert 96)
+   (prims         collide-cache-prim    100 :inline    :offset-assert 112)
+   (tris          collide-cache-tri  461 :inline    :offset-assert 4912)
+   )
+  :method-count-assert 33
+  :size-assert         #x8670
+  :flag-assert         #x2100008670
+  (:methods
+    (debug-draw (_type_) none 9)
+    (fill-and-probe-using-line-sphere (_type_ vector vector float collide-kind process collide-tri-result pat-surface) float 10)
+    (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) symbol 11)
+    (fill-and-probe-using-y-probe (_type_ vector float collide-kind process-drawable collide-tri-result pat-surface) float 12)
+    (fill-using-bounding-box (_type_ bounding-box collide-kind process-drawable pat-surface) none 13)
+    (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable pat-surface) none 14)
+    (fill-using-spheres (_type_ collide-using-spheres-params) none 15)
+    (fill-using-y-probe (_type_ vector float collide-kind process-drawable pat-surface) none 16)
+    (initialize (_type_) none 17)
+    (probe-using-line-sphere (_type_ vector vector float collide-kind collide-tri-result pat-surface) float 18)
+    (probe-using-spheres (_type_ collide-using-spheres-params) symbol 19)
+    (probe-using-y-probe (_type_ vector float collide-kind collide-tri-result pat-surface) float 20)
+    (fill-from-background (_type_ (function bsp-header int collide-list none) (function collide-cache object none)) none 21) ;; second functiom is method 28
+    (fill-from-foreground-using-box (_type_) none 22)
+    (fill-from-foreground-using-line-sphere (_type_) none 23)
+    (fill-from-foreground-using-y-probe (_type_) none 24)
+    (fill-from-water (_type_ water-control) none 25) ;; or whatever is from 152 in the process passed to 16
+    (load-mesh-from-spad-in-box (_type_ collide-frag-mesh) none 26)
+    (dummy-27 (_type_) none 27)
+    (dummy-28 (_type_) none 28)
+    (dummy-29 (_type_ collide-frag-mesh) none 29)
+    (puyp-mesh (_type_ collide-puyp-work collide-cache-prim) none 30)
+    (puyp-sphere (_type_ collide-puyp-work collide-cache-prim) vector 31)
+    (unpack-background-collide-mesh (_type_ object object object) none 32) ;; helper for fill from background.
+    )
+  )
+
+
+(deftype collide-list-item (structure)
+  ((mesh collide-frag-mesh  :offset-assert 0)
+   (inst basic  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+
+(deftype collide-list (structure)
+  ((num-items int32                         :offset-assert   0)
+   (items     collide-list-item 256 :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x1010
+  :flag-assert         #x900001010
+  )
+
+
+(deftype collide-work (structure)
+  ((collide-sphere-neg-r sphere         :inline :offset-assert   0)
+   (collide-box4w        bounding-box4w :inline :offset-assert  16)
+   (inv-mat              matrix         :inline :offset-assert  48)
+   )
+  :method-count-assert 9
+  :size-assert         #x70
+  :flag-assert         #x900000070
+  )
+
+
+(define-perm *collide-work* collide-work (new 'global 'collide-work))
+
+(defglobalconstant BIG_COLLIDE_CACHE_SIZE 5000)
+(define-perm *collide-cache* collide-cache (new 'global 'collide-cache))
+
+(#when PC_PORT
+  ;; disgusting hack to let us overflow the collide cache up to 5k triangles
+  (malloc 'global (* (size-of collide-cache-tri) BIG_COLLIDE_CACHE_SIZE))
+  ;; but start it at the default.
+  (define *collide-cache-max-tris* 460)
+(defmacro activate-big-collide-cache! ()
+  `(set! *collide-cache-max-tris* BIG_COLLIDE_CACHE_SIZE)
+  )
+
+  )
+
+
+
+
+(define-perm *collide-list* collide-list (new 'global 'collide-list))
+
+
+
+

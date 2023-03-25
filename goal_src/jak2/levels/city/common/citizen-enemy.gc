@@ -1,0 +1,328 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: citizen-enemy.gc
+;; name in dgo: citizen-enemy
+;; dgos: CWI
+
+;; DECOMP BEGINS
+
+(deftype citizen-enemy (citizen)
+  ((next-update-target time-frame          :offset-assert 968)
+   (minimap            connection-minimap  :offset-assert 976)
+   )
+  :heap-base #x360
+  :method-count-assert 203
+  :size-assert         #x3d4
+  :flag-assert         #xcb036003d4
+  (:methods
+    (traffic-danger-init! (_type_) none 201)
+    (citizen-enemy-method-202 (_type_) none 202)
+    )
+  )
+
+
+(defmethod track-target! citizen-enemy ((obj citizen-enemy))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
+  (with-pp
+    (let ((a1-0 (new 'stack-no-clear 'overlaps-others-params)))
+      (set! (-> a1-0 options) (overlaps-others-options))
+      (set! (-> a1-0 collide-with-filter) (-> obj enemy-info-override overlaps-others-collide-with-filter))
+      (set! (-> a1-0 tlist) *touching-list*)
+      (find-overlapping-shapes (-> obj root-override2) a1-0)
+      )
+    (when (and (not (focus-test? obj disable dead ignore inactive))
+               (< (-> obj next-update-target) (-> pp clock frame-counter))
+               (not (logtest? (enemy-flag actor-pause-backup) (-> obj enemy-flags)))
+               (-> obj next-state)
+               (= (-> obj next-state name) 'active)
+               )
+      (citizen-enemy-method-202 obj)
+      (set! (-> obj next-update-target) (+ (-> pp clock frame-counter) (seconds 0.2)))
+      (traffic-danger-init! obj)
+      )
+    ((method-of-type citizen track-target!) obj)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs symbol.
+(defmethod enemy-method-76 citizen-enemy ((obj citizen-enemy) (arg0 process) (arg1 event-message-block))
+  (the-as
+    symbol
+    (cond
+      ((and (-> obj next-state) (let ((v1-3 (-> obj next-state name)))
+                                  (or (= v1-3 'knocked) (= v1-3 'jump))
+                                  )
+            )
+       ((method-of-type citizen enemy-method-76) obj arg0 arg1)
+       )
+      (else
+        (when (!= (-> arg0 type) target)
+          (let* ((s3-0 (-> arg1 param 0))
+                 (s2-0 arg0)
+                 (v1-6 (if (type? s2-0 process-focusable)
+                           s2-0
+                           )
+                       )
+                 )
+            (cond
+              ((and (focus-test? obj dangerous)
+                    (logtest? (process-mask guard civilian) (-> arg0 mask))
+                    (and v1-6
+                         (not (logtest? (-> (the-as process-focusable v1-6) focus-status) (focus-status disable dead ignore grabbed)))
+                         )
+                    ((method-of-type touching-shapes-entry prims-touching-action?)
+                     (the-as touching-shapes-entry s3-0)
+                     (-> obj root-override2)
+                     (collide-action deadly)
+                     (collide-action)
+                     )
+                    )
+               (let ((a3-2 (if ((method-of-type touching-shapes-entry prims-touching-action?)
+                                (the-as touching-shapes-entry s3-0)
+                                (-> obj root-override2)
+                                (collide-action persistent-attack)
+                                (collide-action)
+                                )
+                               (-> obj persistent-attack-id)
+                               (-> obj attack-id)
+                               )
+                           )
+                     )
+                 (enemy-method-104 obj arg0 s3-0 a3-2)
+                 )
+               )
+              (else
+                (send-event arg0 'touch (-> arg1 param 0))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+(defmethod general-event-handler citizen-enemy ((obj citizen-enemy) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+  (case arg2
+    (('event-death)
+     #f
+     )
+    (('effect-control)
+     (case (-> arg3 param 0)
+       (('death-default)
+        (cond
+          ((> (-> obj hit-points) 0)
+           #t
+           )
+          (else
+            (let ((v1-4 (-> obj root-override2 root-prim)))
+              (set! (-> v1-4 prim-core collide-as) (collide-spec))
+              (set! (-> v1-4 prim-core collide-with) (collide-spec))
+              )
+            0
+            #f
+            )
+          )
+        )
+       (else
+         #f
+         )
+       )
+     )
+    (('end-task)
+     (let ((v0-0 (the-as object (logclear (-> obj flags) (citizen-flag persistent)))))
+       (set! (-> obj flags) (the-as citizen-flag v0-0))
+       v0-0
+       )
+     )
+    (else
+      ((method-of-type citizen general-event-handler) obj arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defmethod traffic-danger-init! citizen-enemy ((obj citizen-enemy))
+  (let ((a1-0 (new 'stack-no-clear 'traffic-danger-info)))
+    (set! (-> a1-0 sphere quad) (-> obj root-override2 trans quad))
+    (set! (-> a1-0 sphere r) 40960.0)
+    (set! (-> a1-0 velocity quad) (-> obj root-override2 transv quad))
+    (set! (-> a1-0 notify-radius) 122880.0)
+    (set! (-> a1-0 danger-level) 1.0)
+    (set! (-> a1-0 decay-rate) 0.0)
+    (set! (-> a1-0 flags) (traffic-danger-flags tdf0))
+    (set! (-> a1-0 danger-type) (traffic-danger-type tdt7))
+    (set! (-> a1-0 handle) (process->handle obj))
+    (add-danger (-> obj controller traffic) a1-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod citizen-enemy-method-202 citizen-enemy ((obj citizen-enemy))
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (set! (-> s5-0 quad) (-> obj root-override2 trans quad))
+    (set! (-> s5-0 w) 122880.0)
+    (let ((s4-0 (the-as process-drawable #f)))
+      (let ((f30-0 122880.0))
+        (let ((s3-0 (new 'stack-no-clear 'array 'collide-shape 64)))
+          (countdown (s2-0 (fill-actor-list-for-sphere *actor-hash* (the-as sphere s5-0) s3-0 64))
+            (let* ((s1-0 (-> s3-0 s2-0))
+                   (a0-6 (if (type? s1-0 collide-shape)
+                             s1-0
+                             )
+                         )
+                   )
+              (when a0-6
+                (let* ((s0-0 (-> a0-6 process))
+                       (s1-1 (if (type? s0-0 process-focusable)
+                                 s0-0
+                                 )
+                             )
+                       )
+                  (when (and s1-1
+                             (!= obj s1-1)
+                             (not (focus-test? (the-as process-focusable s1-1) inactive))
+                             (not (focus-test? (the-as process-focusable s1-1) disable))
+                             (not (logtest? (process-mask enemy) (-> s1-1 mask)))
+                             (not (logtest? (process-mask crate) (-> s1-1 mask)))
+                             (not (logtest? (process-mask vehicle) (-> s1-1 mask)))
+                             s1-1
+                             (not (logtest? (-> (the-as process-focusable s1-1) focus-status) (focus-status disable dead ignore grabbed)))
+                             )
+                    (let ((f0-1 (vector-vector-xz-distance (-> obj root-override2 trans) (-> s1-1 root trans))))
+                      (when (or (not s4-0) (< f0-1 f30-0))
+                        (set! s4-0 s1-1)
+                        (set! f30-0 f0-1)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        (if (and *target* (< (vector-vector-distance (target-pos 0) s5-0) f30-0))
+            (set! s4-0 *target*)
+            )
+        )
+      (when s4-0
+        (try-update-focus (-> obj focus) (the-as process-focusable s4-0) obj)
+        (go-hostile obj)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defstate active (citizen-enemy)
+  :virtual #t
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.075))
+    (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
+      (until #f
+        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override walk-anim))
+                    :num! (seek!
+                      (the float
+                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override walk-anim)))
+                                  frames
+                                  num-frames
+                                  )
+                              -1
+                              )
+                           )
+                      f30-0
+                      )
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max f30-0))
+          )
+        )
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate inactive (citizen-enemy)
+  :virtual #t
+  :enter (behavior ()
+    (when (-> self minimap)
+      (logior! (-> self minimap flags) (minimap-flag fade-out))
+      (set! (-> self minimap) #f)
+      )
+    (let ((t9-0 (-> (method-of-type citizen inactive) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (none)
+    )
+  )
+
+(defmethod citizen-init! citizen-enemy ((obj citizen-enemy))
+  "Initialize [[citizen]] defaults."
+  (let ((t9-0 (method-of-type citizen citizen-init!)))
+    (t9-0 obj)
+    )
+  (if (-> obj skel effect)
+      (logior! (-> obj skel effect flags) (effect-control-flag ecf0))
+      )
+  (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
+  (reset-to-collide-spec (-> obj focus) (collide-spec jak civilian player-list bot-targetable jak-vehicle))
+  (let ((v1-12 (-> obj nav)))
+    (set! (-> v1-12 sphere-mask) (the-as uint #x800e8))
+    )
+  0
+  (set! (-> obj anim-shuffle) (-> obj enemy-info-override walk-anim))
+  (set! (-> obj anim-walk) (-> obj enemy-info-override walk-anim))
+  (set! (-> obj speed-walk) (-> obj enemy-info-override walk-travel-speed))
+  (set! (-> obj dist-walk-anim) (-> obj enemy-info-override walk-travel-speed))
+  (set! (-> obj anim-run) (-> obj enemy-info-override run-anim))
+  (set! (-> obj dist-run-anim) (-> obj enemy-info-override run-travel-speed))
+  (set! (-> obj speed-run) (-> obj enemy-info-override walk-travel-speed))
+  (set! (-> obj fated-time) 0)
+  (logior! (-> obj enemy-flags) (enemy-flag enable-on-active checking-water))
+  (logior! (-> obj focus-status) (focus-status dangerous))
+  (logior! (-> obj enemy-flags) (enemy-flag check-water))
+  (set! (-> obj enemy-flags)
+        (logior (enemy-flag check-water-backup no-initial-move-to-ground) (-> obj enemy-flags))
+        )
+  (logclear! (-> obj focus-status) (focus-status dead))
+  (set! (-> obj mask) (logior (process-mask collectable) (-> obj mask)))
+  (logior! (-> obj enemy-flags) (enemy-flag look-at-move-dest))
+  (if (not (-> obj minimap))
+      (set! (-> obj minimap) (add-icon! *minimap* obj (the-as uint 70) (the-as int #f) (the-as vector #t) 0))
+      )
+  (ja-channel-set! 0)
+  0
+  (none)
+  )
+
+(defmethod kill-prefer-falling citizen-enemy ((obj citizen-enemy))
+  "If available in `enemy-info`, [[go]] to the [[die-falling]] state, if not, [[die]]"
+  ((method-of-type nav-enemy kill-prefer-falling) obj)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod go-hostile citizen-enemy ((obj citizen-enemy))
+  (if (not (and (-> obj next-state) (= (-> obj next-state name) 'hostile)))
+      (go (method-of-object obj hostile))
+      )
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod go-stare citizen-enemy ((obj citizen-enemy))
+  (go (method-of-object obj active))
+  (none)
+  )

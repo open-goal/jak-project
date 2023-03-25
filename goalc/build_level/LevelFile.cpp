@@ -1,7 +1,11 @@
 #include "LevelFile.h"
+
 #include "goalc/data_compiler/DataObjectGenerator.h"
 
-size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {
+// TODO find better way to pass the ambient array
+size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen,
+                                             size_t ambient_count,
+                                             size_t ambient_arr_slot) const {
   /*
    (deftype drawable-tree-array (drawable-group)
     ((trees drawable-tree 1 :offset 32 :score 100))
@@ -23,6 +27,7 @@ size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {
   int num_trees = 0;
   num_trees += tfrags.size();
   num_trees += collides.size();
+  num_trees += ambients.size();
   gen.add_word(num_trees << 16);
   gen.add_word(0);
   gen.add_word(0);
@@ -50,8 +55,22 @@ size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {
     for (auto& collide : collides) {
       gen.link_word_to_byte(tree_word++, collide.add_to_object_file(gen));
     }
+
+    for (auto& ambients : ambients) {
+      gen.link_word_to_byte(tree_word++,
+                            ambients.add_to_object_file(gen, ambient_count, ambient_arr_slot));
+    }
   }
 
+  return result;
+}
+
+size_t generate_u32_array(const std::vector<u32>& array, DataObjectGenerator& gen) {
+  gen.align(4);
+  size_t result = gen.current_offset_bytes();
+  for (auto& entry : array) {
+    gen.add_word(entry);
+  }
   return result;
 }
 
@@ -68,11 +87,14 @@ std::vector<u8> LevelFile::save_object_file() const {
   auto file_info_slot = info.add_to_object_file(gen);
   gen.link_word_to_byte(1, file_info_slot);
 
+  auto ambient_arr_slot = generate_inline_array_ambients(gen, ambients);
+
   //(bsphere                vector :inline                   :offset-assert  16)
   //(all-visible-list       (pointer uint16)                 :offset-assert  32)
   //(visible-list-length    int32                            :offset-assert  36)
   //(drawable-trees         drawable-tree-array              :offset-assert  40)
-  gen.link_word_to_byte(40 / 4, drawable_trees.add_to_object_file(gen));
+  gen.link_word_to_byte(40 / 4,
+                        drawable_trees.add_to_object_file(gen, ambients.size(), ambient_arr_slot));
   //(pat                    pointer                          :offset-assert  44)
   //(pat-length             int32                            :offset-assert  48)
   //(texture-remap-table    (pointer uint64)                 :offset-assert  52)
@@ -86,6 +108,7 @@ std::vector<u8> LevelFile::save_object_file() const {
   gen.link_word_to_symbol(nickname, 76 / 4);
   //(vis-info               level-vis-info                8  :offset-assert  80)
   //(actors                 drawable-inline-array-actor      :offset-assert 112)
+  gen.link_word_to_byte(112 / 4, generate_inline_array_actors(gen, actors));
   //(cameras                (array entity-camera)            :offset-assert 116)
   //(nodes                  (inline-array bsp-node)          :offset-assert 120)
   //(level                  level                            :offset-assert 124)
@@ -94,10 +117,12 @@ std::vector<u8> LevelFile::save_object_file() const {
   //(boxes                  box8s-array                      :offset-assert 148)
   //(current-bsp-back-flags uint32                           :offset-assert 152)
   //(ambients               drawable-inline-array-ambient    :offset-assert 156)
+  gen.link_word_to_byte(156 / 4, ambient_arr_slot);
   //(unk-data-4             float                            :offset-assert 160)
   //(unk-data-5             float                            :offset-assert 164)
   //(adgifs                 adgif-shader-array               :offset-assert 168)
   //(actor-birth-order      (pointer uint32)                 :offset-assert 172)
+  gen.link_word_to_byte(172 / 4, generate_u32_array(actor_birth_order, gen));
   //(split-box-indices      (pointer uint16)                 :offset-assert 176)
   //(unk-data-8             uint32                        55 :offset-assert 180)
 

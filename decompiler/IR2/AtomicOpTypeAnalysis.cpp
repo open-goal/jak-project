@@ -1,13 +1,16 @@
-#include "third-party/fmt/core.h"
-#include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include "common/log/log.h"
 #include "AtomicOp.h"
-#include "decompiler/util/TP_Type.h"
-#include "decompiler/util/DecompilerTypeSystem.h"
-#include "decompiler/IR2/bitfields.h"
+
+#include "common/log/log.h"
 #include "common/type_system/state.h"
 #include "common/util/BitUtils.h"
-#include "decompiler/util/goal_constants.h"
+
+#include "decompiler/IR2/bitfields.h"
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/util/TP_Type.h"
+#include "decompiler/util/type_utils.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 
@@ -73,7 +76,7 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
       if (m_string == "#f") {
         return TP_Type::make_false();
       } else {
-        return TP_Type::make_from_ts("symbol");
+        return TP_Type::make_symbol(m_string);
       }
     case Kind::SYMBOL_VAL: {
       if (m_string == "#f") {
@@ -185,6 +188,11 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
         // GOAL is smart enough to use binary 0b0 as floating point 0.
         return TP_Type::make_from_ts("float");
       }
+      // new for jak 2:
+      if (env.version == GameVersion::Jak2 && in_type.is_integer_constant() &&
+          (s64)((s32)in_type.get_integer_constant()) == (s64)in_type.get_integer_constant()) {
+        return TP_Type::make_from_ts("float");
+      }
       return in_type;
     }
     case Kind::FPR_TO_GPR:
@@ -235,6 +243,7 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
       return TP_Type::make_from_ts("int");
     case Kind::VECTOR_3_DOT:
     case Kind::VECTOR_4_DOT:
+    case Kind::VECTOR_LENGTH:
       return TP_Type::make_from_ts("float");
     default:
       throw std::runtime_error("Simple expression cannot get_type: " +
@@ -305,7 +314,7 @@ TP_Type get_stack_type_at_constant_offset(int offset,
     auto rd = dts.ts.reverse_field_lookup(rd_in);
     if (rd.success) {
       auto result = TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
-      fmt::print("Matched a stack variable! {}\n", result.print());
+      lg::print("Matched a stack variable! {}\n", result.print());
       return result;
     }
      */
@@ -395,6 +404,9 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       }
 
       if (m_kind == Kind::RIGHT_SHIFT_ARITH) {
+        if (env.version == GameVersion::Jak2 && arg0_type.typespec().base_type() == "float") {
+          return TP_Type::make_from_ts(TypeSpec("float"));
+        }
         return TP_Type::make_from_ts(TypeSpec("int"));
       }
     } break;
@@ -452,8 +464,18 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       }
 
       if (arg1_type.is_integer_constant() && is_int_or_uint(dts, arg0_type)) {
+        TypeSpec sum_type = arg0_type.typespec();
+        FieldReverseLookupInput rd_in;
+        rd_in.offset = arg1_type.get_integer_constant();
+        rd_in.stride = 0;
+        rd_in.base_type = arg0_type.typespec();
+        auto out = env.dts->ts.reverse_field_lookup(rd_in);
+        if (out.success) {
+          sum_type = coerce_to_reg_type(out.result_type);
+        }
+
         return TP_Type::make_from_integer_constant_plus_var(arg1_type.get_integer_constant(),
-                                                            arg0_type.typespec());
+                                                            arg0_type.typespec(), sum_type);
       }
 
       break;
@@ -638,10 +660,21 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     }
   }
 
+  if (env.version == GameVersion::Jak2 && tc(dts, TypeSpec("symbol"), arg1_type) &&
+      !m_args[0].is_int() && is_int_or_uint(dts, arg0_type)) {
+    if (arg0_type.is_integer_constant(jak2::SYM_TO_STRING_OFFSET)) {
+      // symbol -> GOAL String
+      // NOTE - the offset doesn't fit in a s16, so it's loaded into a register first.
+      // so we expect the arg to be a variable, and the type propagation will figure out the
+      // integer constant.
+      return TP_Type::make_from_ts(dts.ts.make_pointer_typespec("string"));
+    }
+  }
+
   if (tc(dts, TypeSpec("structure"), arg1_type) && !m_args[0].is_int() &&
       is_int_or_uint(dts, arg0_type)) {
-    if (arg1_type.typespec() == TypeSpec("symbol") &&
-        arg0_type.is_integer_constant(DECOMP_SYM_INFO_OFFSET + POINTER_SIZE)) {
+    if (allowable_base_type_for_symbol_to_string(arg1_type.typespec()) &&
+        arg0_type.is_integer_constant(SYMBOL_TO_STRING_MEM_OFFSET_DECOMP[env.version])) {
       // symbol -> GOAL String
       // NOTE - the offset doesn't fit in a s16, so it's loaded into a register first.
       // so we expect the arg to be a variable, and the type propagation will figure out the
@@ -651,7 +684,22 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       // byte access of offset array field trick.
       // arg1 holds a structure.
       // arg0 is an integer in a register.
-      return TP_Type::make_object_plus_product(arg1_type.typespec(), 1, true);
+      // return TP_Type::make_object_plus_product(arg1_type.typespec(), 1, true);
+      if (arg0_type.is_integer_constant()) {
+        TypeSpec sum_type = arg1_type.typespec();
+        FieldReverseLookupInput rd_in;
+        rd_in.offset = arg0_type.get_integer_constant();
+        rd_in.stride = 0;
+        rd_in.base_type = arg1_type.typespec();
+        auto out = env.dts->ts.reverse_field_lookup(rd_in);
+        if (out.success) {
+          sum_type = coerce_to_reg_type(out.result_type);
+        }
+        return TP_Type::make_from_integer_constant_plus_var(arg0_type.get_integer_constant(),
+                                                            arg1_type.typespec(), sum_type);
+      } else {
+        return TP_Type::make_object_plus_product(arg1_type.typespec(), 1, true);
+      }
     }
   }
 
@@ -681,7 +729,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
 
   if (m_kind == Kind::OR && arg0_type.typespec() == TypeSpec("float") &&
       arg1_type.typespec() == TypeSpec("float")) {
-    env.func->warnings.general_warning("Using logior on floats");
+    env.func->warnings.warning("Using logior on floats");
     // returning int instead of uint because they like to use the float sign bit as an integer sign
     // bit.
     return TP_Type::make_from_ts(TypeSpec("float"));
@@ -954,7 +1002,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
         return TP_Type::make_object_new(method_type);
       }
       if (method_id == GOAL_NEW_METHOD) {
-        return TP_Type::make_from_ts(method_type);
+        return TP_Type::make_non_object_new(method_type, TypeSpec(type_name));
       } else if (input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
         return TP_Type::make_non_virtual_method(method_type, TypeSpec(type_name), method_id);
       } else {
@@ -1119,6 +1167,40 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
           return TP_Type::make_from_ts(TypeSpec("float"));
         default:
           ASSERT(false);
+      }
+    }
+
+    if (input_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR &&
+        input_type.get_integer_constant() == 0) {
+      FieldReverseLookupInput rd_in;
+      DerefKind dk;
+      dk.is_store = false;
+      dk.reg_kind = get_reg_kind(ro.reg);
+      dk.sign_extend = m_kind == LoadVarOp::Kind::SIGNED;
+      dk.size = m_size;
+      rd_in.deref = dk;
+      rd_in.base_type = input_type.get_objects_typespec();
+      rd_in.offset = ro.offset;
+      auto rd = dts.ts.reverse_field_lookup(rd_in);
+      if (rd.success) {
+        return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+      }
+    }
+
+    if (input_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR && ro.offset == 0) {
+      FieldReverseLookupInput rd_in;
+      DerefKind dk;
+      dk.is_store = false;
+      dk.reg_kind = get_reg_kind(ro.reg);
+      dk.sign_extend = kind() == LoadVarOp::Kind::SIGNED;
+      dk.size = size();
+      rd_in.deref = dk;
+      rd_in.base_type = input_type.get_objects_typespec();
+      rd_in.stride = 0;
+      rd_in.offset = input_type.get_integer_constant();
+      auto rd = dts.ts.reverse_field_lookup(rd_in);
+      if (rd.success) {
+        return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
       }
     }
 
@@ -1342,6 +1424,19 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
 
   end_types.get(Register(Reg::GPR, Reg::V0)) = TP_Type::make_from_ts(in_type.last_arg());
 
+  if (in_tp.kind == TP_Type::Kind::NON_OBJECT_NEW_METHOD &&
+      in_type.last_arg() == TypeSpec("array")) {
+    // array new:
+    auto& a2 = input.get(Register(Reg::GPR, arg_regs[2]));  // elt type
+    auto& a0 = input.get(Register(Reg::GPR, arg_regs[0]));  // allocation
+
+    if (a2.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL &&
+        in_tp.method_from_type() == TypeSpec("array") && a0.is_symbol()) {
+      end_types.get(Register(Reg::GPR, Reg::V0)) =
+          TP_Type::make_from_ts(TypeSpec("array", {a2.get_type_objects_typespec()}));
+    }
+  }
+
   // we can also update register usage here.
   m_read_regs.clear();
   m_arg_vars.clear();
@@ -1411,13 +1506,12 @@ TypeState StackSpillLoadOp::propagate_types_internal(const TypeState& input,
   // stack slot load
   auto& info = env.stack_spills().lookup(m_offset);
   if (info.size != m_size) {
-    env.func->warnings.general_warning(
-        "Stack slot load at {} mismatch: defined as size {}, got size {}", m_offset, info.size,
-        m_size);
+    env.func->warnings.warning("Stack slot load at {} mismatch: defined as size {}, got size {}",
+                               m_offset, info.size, m_size);
   }
 
   if (info.is_signed != m_is_signed) {
-    env.func->warnings.general_warning("Stack slot offset {} signed mismatch", m_offset);
+    env.func->warnings.warning("Stack slot offset {} signed mismatch", m_offset);
   }
 
   auto& loaded_type = input.get_slot(m_offset);
@@ -1431,8 +1525,8 @@ TypeState StackSpillStoreOp::propagate_types_internal(const TypeState& input,
                                                       DecompilerTypeSystem& dts) {
   auto& info = env.stack_spills().lookup(m_offset);
   if (info.size != m_size) {
-    env.func->warnings.general_warning(
-        "Stack slot store mismatch: defined as size {}, got size {}\n", info.size, m_size);
+    env.func->warnings.error("Stack slot store mismatch: defined as size {}, got size {}\n",
+                             info.size, m_size);
   }
 
   auto stored_type = m_value.get_type(input, env, dts);

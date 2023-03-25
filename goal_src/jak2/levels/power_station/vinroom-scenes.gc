@@ -1,0 +1,1469 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: vinroom-scenes.gc
+;; name in dgo: vinroom-scenes
+;; dgos: VIN
+
+;; DECOMP BEGINS
+
+(deftype vin-npc (process-taskable)
+  ()
+  :heap-base #xa0
+  :method-count-assert 38
+  :size-assert         #x120
+  :flag-assert         #x2600a00120
+  )
+
+
+(defskelgroup skel-vin vin vin-lod0-jg vin-idle-ja
+              ((vin-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :shadow vin-shadow-mg
+              :origin-joint-index 3
+              )
+
+;; WARN: Return type mismatch draw-control vs none.
+(defmethod init-art! vin-npc ((obj vin-npc))
+  "@see [[initialize-skeleton]]"
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-vin" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (none)
+  )
+
+(defpartgroup group-dog-piss-puddle
+  :id 276
+  :duration (seconds 0.017)
+  :linger-duration (seconds 6.5)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 1227 :flags (is-3d)))
+  )
+
+(defpart 1227
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x2c :page #x3d3))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-x (meters -0.25))
+    (sp-flt spt-y (meters -0.339))
+    (sp-flt spt-z (meters -0.5))
+    (sp-flt spt-scale-x (meters 0.8))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 255.0)
+    (sp-flt spt-b 255.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-scalevel-x (meters 0.00083333335))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-int spt-timer 4800)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-14)
+    (sp-int spt-next-time 750)
+    (sp-launcher-by-id spt-next-launcher 1228)
+    )
+  )
+
+(defpart 1228
+  :init-specs ((sp-flt spt-scalevel-x (meters 0.00066666666))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-int spt-next-time 40)
+    (sp-launcher-by-id spt-next-launcher 1229)
+    )
+  )
+
+(defpart 1229
+  :init-specs ((sp-flt spt-scalevel-x (meters 0.0005))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-int spt-next-time 30)
+    (sp-launcher-by-id spt-next-launcher 1230)
+    )
+  )
+
+(defpart 1230
+  :init-specs ((sp-flt spt-scalevel-x (meters 0.00033333333))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-int spt-next-time 20)
+    (sp-launcher-by-id spt-next-launcher 1231)
+    )
+  )
+
+(defpart 1231
+  :init-specs ((sp-flt spt-scalevel-x (meters 0.00016666666))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-int spt-next-time 15)
+    (sp-launcher-by-id spt-next-launcher 1232)
+    )
+  )
+
+(defpart 1232
+  :init-specs ((sp-flt spt-scalevel-x (meters 0)) (sp-copy-from-other spt-scalevel-y -4))
+  )
+
+(defpartgroup group-dog-piss
+  :id 277
+  :duration (seconds 0.017)
+  :linger-duration (seconds 1.5)
+  :flags (unk-4 unk-6)
+  :bounds (static-bspherem 0 0 0 8)
+  :rotate ((degrees -2.6666667) (degrees 0) (degrees 0))
+  :parts ((sp-item 1233 :flags (bit7)))
+  )
+
+(defun check-drop-level-vinroom-piss-drop-userdata ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
+  (when (< (-> arg2 vector 0 y) (-> arg1 user-float))
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (sp-kill-particle arg0 arg1)
+      (set-vector! gp-0 (-> arg2 vector 0 x) (-> arg1 user-float) (-> arg2 vector 0 z) 1.0)
+      (let ((t9-1 sp-launch-particles-var)
+            (a0-2 *sp-particle-system-2d*)
+            (a1-2 (-> *part-id-table* 1234))
+            (a2-1 *launch-matrix*)
+            )
+        (set! (-> a2-1 trans quad) (-> gp-0 quad))
+        (t9-1 a0-2 a1-2 a2-1 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+        )
+      (let ((t9-2 sp-launch-particles-var)
+            (a0-3 *sp-particle-system-3d*)
+            (a1-3 (-> *part-id-table* 1235))
+            (a2-2 *launch-matrix*)
+            )
+        (set! (-> a2-2 trans quad) (-> gp-0 quad))
+        (t9-2 a0-3 a1-3 a2-2 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+        )
+      )
+    )
+  (none)
+  )
+
+(defpart 1234
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x21 :page #xc))
+    (sp-flt spt-num 0.25)
+    (sp-rnd-flt spt-scale-x (meters 0.02) (meters 0.02) 1.0)
+    (sp-int spt-rot-x 4)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-rnd-flt spt-g 128.0 128.0 1.0)
+    (sp-flt spt-b 0.0)
+    (sp-rnd-flt spt-a 64.0 32.0 1.0)
+    (sp-flt spt-omega 1.6384)
+    (sp-rnd-flt spt-vel-y (meters 0.0033333334) (meters 0.006666667) 1.0)
+    (sp-flt spt-fade-a -0.10666667)
+    (sp-rnd-flt spt-accel-y -0.68266666 -0.68266666 1.0)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 600)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3)
+    (sp-int-plain-rnd spt-next-time 0 224 1)
+    (sp-launcher-by-id spt-next-launcher 1236)
+    (sp-rnd-flt spt-conerot-x (degrees 45.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-rotate-y (degrees 180.0))
+    )
+  )
+
+(defpart 1236
+  :init-specs ((sp-flt spt-r 255.0)
+    (sp-flt spt-g 255.0)
+    (sp-flt spt-b 255.0)
+    (sp-int spt-next-time 5)
+    (sp-launcher-by-id spt-next-launcher 1237)
+    )
+  )
+
+(defpart 1237
+  :init-specs ((sp-flt spt-r 255.0)
+    (sp-rnd-flt spt-g 128.0 128.0 1.0)
+    (sp-flt spt-b 0.0)
+    (sp-int-plain-rnd spt-next-time 0 449 1)
+    (sp-launcher-by-id spt-next-launcher 1236)
+    )
+  )
+
+(defpart 1235
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xc9 :page #xc))
+    (sp-rnd-flt spt-num 0.0 0.4 1.0)
+    (sp-rnd-flt spt-x (meters 0) (meters 0.1) 1.0)
+    (sp-flt spt-y (meters 0))
+    (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.1) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-rnd-flt spt-g 128.0 128.0 1.0)
+    (sp-flt spt-b 0.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-flt spt-omega 0.0)
+    (sp-rnd-flt spt-scalevel-x (meters 0.006666667) (meters 0.006666667) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.4)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14)
+    (new 'static 'sp-field-init-spec
+      :field (sp-field-id spt-userdata)
+      :flags (sp-flag plain-v2)
+      :object (new 'static 'boxed-array :type int32 10 0 0 #xc0c900 #xc02600 #xc03300 #xc02c00)
+      )
+    (sp-func spt-func 'sparticle-texture-animate)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 3600.0) 1.0)
+    )
+  )
+
+(defpart 1233
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x21 :page #xc))
+    (sp-flt spt-num 5.0)
+    (sp-rnd-flt spt-x (meters -0.005) (meters 0.01) 1.0)
+    (sp-rnd-flt spt-y (meters 0.03) (meters -0.03) 1.0)
+    (sp-rnd-flt spt-z (meters -0.005) (meters 0.01) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.03) (meters 0.01) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-rnd-flt spt-g 128.0 128.0 1.0)
+    (sp-flt spt-b 0.0)
+    (sp-rnd-flt spt-a 64.0 32.0 1.0)
+    (sp-flt spt-omega 0.9216)
+    (sp-flt spt-vel-y (meters -0.011666667))
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-rnd-flt spt-friction 0.93 0.02 1.0)
+    (sp-int spt-timer 900)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-12 use-global-acc)
+    (sp-flt spt-userdata 104448.0)
+    (sp-func spt-func 'check-drop-level-vinroom-piss-drop-userdata)
+    (sp-int-plain-rnd spt-next-time 0 224 1)
+    (sp-launcher-by-id spt-next-launcher 1236)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpartgroup group-pow-mov-plat-propulsion
+  :id 278
+  :duration (seconds 0.017)
+  :linger-duration (seconds 1.5)
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 1238) (sp-item 1239) (sp-item 1240))
+  )
+
+(defpart 1238
+  :init-specs ((sp-rnd-flt spt-num 3.0 3.0 1.0)
+    (sp-flt spt-y (meters -0.25))
+    (sp-int spt-rot-x 7)
+    (sp-flt spt-r 2048.0)
+    (sp-flt spt-g 1638.4)
+    (sp-flt spt-b 1843.2)
+    (sp-flt spt-fade-b -0.08533333)
+    (sp-int spt-timer 40)
+    (sp-cpuinfo-flags distort)
+    (sp-rnd-flt spt-conerot-x (degrees 90.0) (degrees 15.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-conerot-radius (meters 0) (meters 0.5) 1.0)
+    )
+  )
+
+(defpart 1239
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xc9 :page #xc))
+    (sp-flt spt-num 8.0)
+    (sp-rnd-flt spt-x (meters 0) (meters 3) 1.0)
+    (sp-flt spt-y (meters -0.25))
+    (sp-rnd-flt spt-scale-x (meters 2) (meters 1) 1.0)
+    (sp-flt spt-rot-x 0.0)
+    (sp-flt spt-rot-y (degrees 0.0))
+    (sp-flt spt-rot-z (degrees 0.0))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 64.0 128.0 1.0)
+    (sp-copy-from-other spt-g -1)
+    (sp-flt spt-b 255.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters -0.026666667) (meters -0.013333334) 1.0)
+    (sp-rnd-flt spt-scalevel-x (meters -0.02) (meters -0.006666667) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.8)
+    (sp-flt spt-friction 0.97)
+    (sp-int spt-timer 40)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 1240
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x92 :page #xc))
+    (sp-rnd-flt spt-num 2.0 3.0 1.0)
+    (sp-flt spt-y (meters -0.25))
+    (sp-flt spt-scale-x (meters 2.5))
+    (sp-int spt-rot-x 4)
+    (sp-flt spt-scale-y (meters 0.04))
+    (sp-rnd-flt spt-r 128.0 64.0 1.0)
+    (sp-copy-from-other spt-g -1)
+    (sp-flt spt-b 255.0)
+    (sp-rnd-flt spt-a 64.0 32.0 1.0)
+    (sp-flt spt-omega 8.192)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.02) 1.0)
+    (sp-flt spt-fade-r -3.0)
+    (sp-flt spt-fade-g -3.0)
+    (sp-rnd-flt spt-fade-a -0.21333334 -0.21333334 1.0)
+    (sp-rnd-flt spt-accel-y -1.3653333 -1.3653333 1.0)
+    (sp-flt spt-friction 0.95)
+    (sp-int-plain-rnd spt-timer 50 149 1)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-12)
+    (sp-func spt-func 'sparticle-motion-blur)
+    (sp-rnd-flt spt-conerot-x (degrees 90.0) (degrees 10.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-conerot-radius (meters 0) (meters 2) 1.0)
+    )
+  )
+
+(defpartgroup group-plasmitebomb-armed
+  :id 279
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 1241 :flags (bit6) :period 100 :length 50))
+  )
+
+(defpart 1241
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xbb :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-y (meters 0.07))
+    (sp-flt spt-scale-x (meters 0.5))
+    (sp-flt spt-rot-x 163.84)
+    (sp-flt spt-scale-y (meters 1))
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 0.0)
+    (sp-flt spt-b 0.0)
+    (sp-rnd-flt spt-a 48.0 16.0 1.0)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags glow)
+    (sp-flt spt-userdata 737.28)
+    )
+  )
+
+(defskelgroup skel-pow-mov-plat pow-mov-plat pow-mov-plat-lod0-jg pow-mov-plat-idle-ja
+              ((pow-mov-plat-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-plasmitebox plasmitebox plasmitebox-lod0-jg plasmitebox-idle-ja
+              ((plasmitebox-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :origin-joint-index 3
+              )
+
+(scene-method-16 (new 'static 'scene
+                   :name "crane-intro"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1282000
+                   :entity "scene-stage-42"
+                   :art-group "scenecamera"
+                   :anim "crane-intro"
+                   :parts 11
+                   :command-list '((0 (kill "vin-3"))
+                     (242 (send-event "vin" 'shadow #f))
+                     (1272 (fadeout (seconds (new 'static 'bfloat :data 0.166))))
+                     (10000 (task-close! "strip-drop-introduction"))
+                     )
+                   :cut-list '(56 110 242 325 380 476 545 710 778 855 1141)
+                   :wait-ground-time (seconds 1)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sidekick-highres"
+                       :level 'vinroom
+                       :art-group "skel-sidekick-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "jak-highres"
+                       :level 'vinroom
+                       :art-group "skel-jak-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "pow-mov-plat"
+                       :level 'vinroom
+                       :art-group "skel-pow-mov-plat"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '((min max))
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "vin"
+                       :level 'vinroom
+                       :art-group "skel-vin"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj "vinroom-start"
+                   :end-point-obj "vinroom-face-warp"
+                   :borrow '()
+                   :sfx-volume -1.0
+                   :ambient-volume -1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   )
+                 )
+
+(scene-method-16 (new 'static 'scene
+                   :name "crane-intro-demo"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1282000
+                   :entity "scene-stage-42"
+                   :art-group "scenecamera"
+                   :anim "crane-intro"
+                   :parts 11
+                   :command-list '((0 (kill "vin-3"))
+                     (10000 (task-close! "strip-drop-introduction"))
+                     (1272 (fadeout (seconds (new 'static 'bfloat :data 0.166))))
+                     )
+                   :cut-list '(56 110 242 325 380 476 545 710 778 855 1141)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sidekick-highres"
+                       :level 'vinroom
+                       :art-group "skel-sidekick-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "jak-highres"
+                       :level 'vinroom
+                       :art-group "skel-jak-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "pow-mov-plat"
+                       :level 'vinroom
+                       :art-group "skel-pow-mov-plat"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '((min max))
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "vin"
+                       :level 'vinroom
+                       :art-group "skel-vin"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj "vinroom-demo"
+                   :end-point-obj "vinroom-demo-end"
+                   :borrow '()
+                   :sfx-volume 1.0
+                   :ambient-volume 1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   )
+                 )
+
+(scene-method-16
+  (new 'static 'scene
+    :name "ecowells-intro"
+    :extra #f
+    :info #f
+    :mask-to-clear #x1282000
+    :entity "scene-stage-42"
+    :art-group "scenecamera"
+    :anim "ecowells-intro"
+    :parts 20
+    :command-list '((0 (kill "vin-3") (send-event "vin" 'shadow #f))
+      (100 (send-event "vin" 'shadow #t))
+      (1379 (part-tracker
+              "group-plasmitebomb-armed"
+              entity
+              "plasmitebox"
+              joint
+              "plasmite7"
+              track
+              #t
+              duration
+              (frame-range 1379 2298)
+              )
+            )
+      (1771 (part-tracker
+              "group-plasmitebomb-armed"
+              entity
+              "plasmitebox"
+              joint
+              "plasmite6"
+              track
+              #t
+              duration
+              (frame-range 1771 2250)
+              )
+            )
+      (1772 (part-tracker
+              "group-plasmitebomb-armed"
+              entity
+              "plasmitebox"
+              joint
+              "plasmite5"
+              track
+              #t
+              duration
+              (frame-range 1772 2250)
+              )
+            )
+      (1775 (part-tracker
+              "group-plasmitebomb-armed"
+              entity
+              "plasmitebox"
+              joint
+              "plasmite4"
+              track
+              #t
+              duration
+              (frame-range 1775 2250)
+              )
+            )
+      (1776 (part-tracker
+              "group-plasmitebomb-armed"
+              entity
+              "plasmitebox"
+              joint
+              "plasmite3"
+              track
+              #t
+              duration
+              (frame-range 1776 2250)
+              )
+            )
+      (1776 (part-tracker
+              "group-plasmitebomb-armed"
+              entity
+              "plasmitebox"
+              joint
+              "plasmite2"
+              track
+              #t
+              duration
+              (frame-range 1776 2250)
+              )
+            )
+      (2304 (send-event "warp-gate-21" 'effect) (sound-play "warpgate-mov"))
+      (2311 (send-event "warp-gate-21" 'effect) (sound-play "warpgate-mov"))
+      (10000 (task-close! "strip-grenade-introduction"))
+      )
+    :cut-list '(228 351 394 656 799 880 978 1059 1136 1379 1411 1476 1560 1607 1720 1785 1819 1883 1953 1989 2032 2122)
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #t
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'vinroom
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min 2311))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "jak-highres"
+        :level 'vinroom
+        :art-group "skel-jak-highres"
+        :prefix ""
+        :draw-frames '((min 2304))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "plasmitebox"
+        :level 'vinroom
+        :art-group "skel-plasmitebox"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '((min max))
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "pow-mov-plat"
+        :level 'vinroom
+        :art-group "skel-pow-mov-plat"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '((min max))
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "vin"
+        :level 'vinroom
+        :art-group "skel-vin"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj "vinroom-start"
+    :end-point-obj "strip-warp"
+    :borrow '()
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :blackout-end #t
+    :peaceful #t
+    :save #t
+    )
+  )
+
+(defpart 1242
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x46 :page #xc))
+    (sp-func spt-birth-func 'birth-func-set-quat)
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 0.5))
+    (sp-flt spt-scale-y (meters 16))
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-fade-a -3.6571429)
+    (sp-int spt-timer 35)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14 left-multiply-quat)
+    )
+  )
+
+(defpartgroup vin-shot
+  :id 280
+  :duration (seconds 0.167)
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 1243) (sp-item 1244))
+  )
+
+(defpart 1243
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x47 :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 255.0)
+    (sp-flt spt-b 255.0)
+    (sp-flt spt-a 48.0)
+    (sp-flt spt-rotvel-z (degrees 0.3))
+    (sp-flt spt-fade-r 0.0)
+    (sp-flt spt-fade-g -3.2)
+    (sp-flt spt-fade-b -12.75)
+    (sp-flt spt-fade-a -2.4)
+    (sp-int spt-timer 20)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3)
+    )
+  )
+
+(defpart 1244
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xc9 :page #xc))
+    (sp-rnd-flt spt-num 1.0 2.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.05) (meters 0.025) 1.0)
+    (sp-int spt-rot-x 4)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-rnd-flt spt-g 128.0 128.0 1.0)
+    (sp-rnd-flt spt-b 32.0 8.0 1.0)
+    (sp-rnd-flt spt-a 64.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.026666667) (meters 0.013333334) 1.0)
+    (sp-flt spt-scalevel-x (meters -0.00016666666))
+    (sp-rnd-int-flt spt-rotvel-z (degrees -2.4) 1 873.81335)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-g -0.64)
+    (sp-flt spt-fade-b -0.10666667)
+    (sp-rnd-flt spt-fade-a -0.48 -0.96 1.0)
+    (sp-rnd-flt spt-accel-y -1.3653333 -5.4613333 1.0)
+    (sp-flt spt-friction 0.8)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-0 sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defbehavior vin-rescue-yellow-shot scene-player ((arg0 object) (arg1 vector) (arg2 sparticle-launch-state))
+  (when (not (-> self aborted?))
+    (let ((s4-0 (get-process *default-dead-pool* part-tracker #x4000)))
+      (when s4-0
+        (let ((t9-1 (method-of-type part-tracker activate)))
+          (t9-1
+            (the-as part-tracker s4-0)
+            (the-as process-tree arg0)
+            (symbol->string (-> part-tracker symbol))
+            (the-as pointer #x70004000)
+            )
+          )
+        (let ((t9-2 run-function-in-process)
+              (a0-3 s4-0)
+              (a1-5 part-tracker-init)
+              (a2-3 (-> *part-group-id-table* 280))
+              (a3-1 0)
+              (t0-0 #f)
+              (t1-0 #f)
+              (t2-0 #f)
+              (t3-0 *launch-matrix*)
+              )
+          (set! (-> t3-0 trans quad) (-> arg1 quad))
+          ((the-as (function object object object object object object object object none) t9-2)
+           a0-3
+           a1-5
+           a2-3
+           a3-1
+           t0-0
+           t1-0
+           t2-0
+           t3-0
+           )
+          )
+        (-> s4-0 ppointer)
+        )
+      )
+    (draw-beam (-> *part-id-table* 1242) arg1 (-> arg2 sprite rot-syvel) #f #f)
+    )
+  0
+  (none)
+  )
+
+(scene-method-16
+  (new 'static 'scene
+    :name "vin-rescue"
+    :extra #f
+    :info #f
+    :mask-to-clear #x1282000
+    :entity "scene-stage-4"
+    :art-group "scenecamera"
+    :anim "vin-rescue"
+    :parts 12
+    :command-list '((0 (setting-set task-mask mode 'abs mask 65536) (alive "vinroom-part-2") (fadein (frame-time-30 5)))
+      (100 (want-load 'strip 'vinroom))
+      (166 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (187 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (198 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (209 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (220 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (225 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (236 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (242 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (249 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (251 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (263 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (271 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (284 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (290 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (310 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (321 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (333 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (341 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (353 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (360 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (370 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (381 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (398 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (409 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (420 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (427 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (440 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (473 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (495 (joint-eval vin-rescue-yellow-shot entity "vin" joint "blast"))
+      (1160 (send-event "vin" 'light-index 30))
+      (1252 (send-event "warp-gate-2" 'effect) (sound-play "warpgate-mov"))
+      (1265 (send-event "warp-gate-2" 'effect) (sound-play "warpgate-mov"))
+      (1340 (send-event "warp-gate-2" 'effect) (sound-play "warpgate-mov"))
+      (1363 (fadeout (frame-time-30 2)))
+      (10000 (task-close! "strip-rescue-resolution"))
+      )
+    :cut-list '(63 111 147 221 301 329 428 724 784 912 1165 1231)
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #t
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'vinroom
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min 1252))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "jak-highres"
+        :level 'vinroom
+        :art-group "skel-jak-highres"
+        :prefix ""
+        :draw-frames '((min 1265))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "cntrlrm-door"
+        :level 'strip
+        :art-group "skel-cntrlrm-door"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "cntrlrm-button"
+        :level 'strip
+        :art-group "skel-cntrlrm-button"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "vin"
+        :level 'vinroom
+        :art-group "skel-vin"
+        :prefix ""
+        :draw-frames '((min 1340))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "strip-game-crate"
+        :level 'strip
+        :art-group "skel-strip-game-crate"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj "strip-warp-2"
+    :end-point-obj "vinroom-warp"
+    :borrow '()
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :blackout-end #t
+    :peaceful #t
+    :music-delay 1500.0
+    :save #t
+    )
+  )
+
+(scene-method-16 (new 'static 'scene
+                   :name "drill-kill-metal-heads-intro"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1282000
+                   :entity "scene-stage-42"
+                   :art-group "scenecamera"
+                   :anim "drill-kill-metal-heads-intro"
+                   :parts 16
+                   :command-list '((0 (kill "vin-3"))
+                     (941 (send-event "vin" 'shadow #f))
+                     (1061 (send-event "vin" 'shadow #t))
+                     (10000 (task-close! "drill-eggs-introduction"))
+                     )
+                   :cut-list '(129 167 260 366 500 518 645 731 811 941 1061 1151 1371 1583 1640 1731)
+                   :wait-ground-time (seconds 1)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sidekick-highres"
+                       :level 'vinroom
+                       :art-group "skel-sidekick-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "jak-highres"
+                       :level 'vinroom
+                       :art-group "skel-jak-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "vin"
+                       :level 'vinroom
+                       :art-group "skel-vin"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xa
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj "vinroom-movie"
+                   :end-point-obj "vinroom-face-warp"
+                   :borrow '()
+                   :sfx-volume -1.0
+                   :ambient-volume -1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   )
+                 )
+
+(scene-method-16
+  (new 'static 'scene
+    :name "city-switch-on-power-intro"
+    :extra #f
+    :info #f
+    :mask-to-clear #x1282000
+    :entity "scene-stage-42"
+    :art-group "scenecamera"
+    :anim "city-switch-on-power-intro"
+    :parts 20
+    :command-list '((0 (fadein (seconds (new 'static 'bfloat :data 1.333))))
+      (981 (send-event "vin" 'shadow #f))
+      (1756 (send-event "vin" 'shadow #t))
+      (2340 (fadeout (seconds (new 'static 'bfloat :data 0.333))))
+      (10000 (task-close! "city-power-vinroom"))
+      )
+    :cut-list '(241 340 751 811 856 936 981 1081 1141 1185 1233 1281 1325 1401 1506 1666 1756 1861 2013 2089 2251)
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #t
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'vinroom
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "jak-highres"
+        :level 'vinroom
+        :art-group "skel-jak-highres"
+        :prefix ""
+        :draw-frames '((min 1666) (1756 max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "pow-mov-plat"
+        :level 'vinroom
+        :art-group "skel-pow-mov-plat"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '((min max))
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "vin"
+        :level 'vinroom
+        :art-group "skel-vin"
+        :prefix ""
+        :draw-frames '((min 241) (340 1325) (1401 max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj "vinroom-movie"
+    :end-point-obj "vinroom-face-door"
+    :borrow '()
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :blackout-end #t
+    :peaceful #t
+    :music-delay 1500.0
+    :save #t
+    )
+  )
+
+(scene-method-16
+  (new 'static 'scene
+    :name "dig-knock-down-scaffolding-intro"
+    :extra #f
+    :info #f
+    :mask-to-clear #x1282000
+    :entity "scene-stage-42"
+    :art-group "scenecamera"
+    :anim "dig-knock-down-scaffolding-intro"
+    :parts 23
+    :command-list '((0
+        (task-close! "city-escort-kid-resolution")
+        (send-event *target* 'change-mode 'normal)
+        (fadein (seconds (new 'static 'bfloat :data 1.333)))
+        )
+      (1300 (part-tracker
+              "group-dog-piss"
+              entity
+              "particleman"
+              joint
+              "particleA"
+              track
+              #t
+              duration
+              (frame-range (new 'static 'bfloat :data 1300.0) (new 'static 'bfloat :data 1400.0))
+              )
+            )
+      (1330 (part-tracker
+              "group-dog-piss-puddle"
+              entity
+              "particleman"
+              joint
+              "particleA"
+              track
+              #t
+              duration
+              (frame-range (new 'static 'bfloat :data 1330.0) (new 'static 'bfloat :data 1330.0))
+              )
+            )
+      (1846 (send-event "jak-highres" 'shadow #f))
+      (1985 (fadeout (frame-time-30 15)))
+      (9000 (send-event "jak-highres" 'shadow #t))
+      (10000 (task-close! "dig-knock-down-introduction"))
+      )
+    :cut-list '(51 91 131 249 277 320 408 542 615 652 841 910 1045 1164 1333 1479 1592 1713 1846)
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #t
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "particleman"
+        :level 'vinroom
+        :art-group "skel-particleman"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'vinroom
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "jak-highres"
+        :level 'vinroom
+        :art-group "skel-jak-highres"
+        :prefix ""
+        :draw-frames '((min 841) (910 max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "kor-highres"
+        :level 'vinroom
+        :art-group "skel-kor-highres"
+        :prefix ""
+        :draw-frames '((min 320) (408 max))
+        :scissor-frames '((1713 1740))
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "kid-highres"
+        :level 'vinroom
+        :art-group "skel-kid-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "crocadog-highres"
+        :level 'vinroom
+        :art-group "skel-crocadog-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "palmpilot"
+        :level 'vinroom
+        :art-group "skel-palmpilot"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj "vinroom-start"
+    :end-point-obj "vinroom-face-door"
+    :borrow '()
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :blackout-end #t
+    :peaceful #t
+    :music-delay 1500.0
+    :save #t
+    )
+  )
+
+(scene-method-16
+  (new 'static 'scene
+    :name "drill-destroy-ship-intro"
+    :extra #f
+    :info #f
+    :mask-to-clear #x1282000
+    :entity "scene-stage-42"
+    :art-group "scenecamera"
+    :anim "drill-destroy-ship-intro"
+    :parts 18
+    :command-list '((0 (fadein (seconds (new 'static 'bfloat :data 1.333)))) (10000 (task-close! "drill-ship-introduction")))
+    :cut-list '(61 139 360 419 717 966 1286 2014)
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #t
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'vinroom
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min 1286) (2014 max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "jak-highres"
+        :level 'vinroom
+        :art-group "skel-jak-highres"
+        :prefix ""
+        :draw-frames '((min 1286) (2014 max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "kor-highres"
+        :level 'vinroom
+        :art-group "skel-kor-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "vin"
+        :level 'vinroom
+        :art-group "skel-vin"
+        :prefix ""
+        :draw-frames '((min 1286) (2014 max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj "vinroom-movie"
+    :end-point-obj "vinroom-face-warp"
+    :borrow '()
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :blackout-end #t
+    :peaceful #t
+    :music-delay 1500.0
+    :save #t
+    )
+  )
+
+(scene-method-16 (new 'static 'scene
+                   :name "drill-destroy-control-tower-intro"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1282000
+                   :entity "scene-stage-42"
+                   :art-group "scenecamera"
+                   :anim "drill-destroy-control-tower-intro"
+                   :parts 18
+                   :command-list '((10000 (task-close! "drill-mech-introduction")))
+                   :cut-list '(127 415 501 581 666 826 936 1104 1670 1709)
+                   :wait-ground-time (seconds 1)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sidekick-highres"
+                       :level 'vinroom
+                       :art-group "skel-sidekick-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "jak-highres"
+                       :level 'vinroom
+                       :art-group "skel-jak-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '((826 936))
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "kor-highres"
+                       :level 'vinroom
+                       :art-group "skel-kor-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "crocadog-highres"
+                       :level 'vinroom
+                       :art-group "skel-crocadog-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj "vinroom-movie"
+                   :end-point-obj "vinroom-face-warp"
+                   :borrow '()
+                   :sfx-volume -1.0
+                   :ambient-volume -1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   )
+                 )

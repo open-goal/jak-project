@@ -1,0 +1,34 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: cam-update-h.gc
+;; name in dgo: cam-update-h
+;; dgos: ENGINE, GAME
+
+(defenum external-cam-option
+  :bitfield #t
+  (allow-z 0)
+  )
+
+;; NOTE - for cam-update
+(define-extern update-visible (function math-camera symbol))
+
+;; DECOMP BEGINS
+
+(define *external-cam-options* (the-as external-cam-option 0))
+
+(define *external-cam-mode* #f)
+
+(define-extern *camera-look-through-other*  int)
+(when (or (not *camera-look-through-other*) (zero? *camera-look-through-other*))
+  (set! *camera-look-through-other* 0)
+  0
+  )
+
+(define-perm *camera-other-fov* bfloat (new 'static 'bfloat :data 11650.845))
+(define-perm *camera-other-trans* vector (vector-reset! (new 'global 'vector)))
+(define-perm *camera-other-matrix* matrix (matrix-identity! (new 'global 'matrix)))
+(define-perm *camera-smush-control* smush-control (set-zero! (new 'global 'smush-control)))
+(define-perm *camera-other-root* vector (vector-reset! (new 'global 'vector)))
+(define *fix-visible-level-mask* 6)
+(define *manual-sample-point* #f)

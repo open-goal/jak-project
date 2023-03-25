@@ -1,0 +1,131 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: region-h.gc
+;; name in dgo: region-h
+;; dgos: ENGINE, GAME
+
+(declare-type region-prim-area structure)
+
+;; DECOMP BEGINS
+
+(deftype region (structure)
+  ((id        uint32  :offset-assert   0)
+   (on-enter  pair    :offset-assert   4)
+   (on-inside pair    :offset-assert   8)
+   (on-exit   pair    :offset-assert  12)
+   )
+  :method-count-assert 10
+  :size-assert         #x10
+  :flag-assert         #xa00000010
+  (:methods
+    (region-method-9 (_type_ vector) symbol 9)
+    )
+  )
+
+
+(deftype region-array (inline-array-class)
+  ((data region :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(set! (-> region-array heap-base) (the-as uint 16))
+
+(deftype drawable-region-prim (drawable)
+  ((region region  :offset   8)
+   )
+  :method-count-assert 20
+  :size-assert         #x20
+  :flag-assert         #x1400000020
+  (:methods
+    (debug-draw-region (_type_ int) none 17)
+    (track-region (_type_ region-prim-area) symbol 18)
+    (within-area? (_type_ region-prim-area) symbol 19)
+    )
+  )
+
+
+(deftype drawable-tree-region-prim (drawable-tree)
+  ((name  basic                          :offset   8)
+   (data2 drawable-inline-array :dynamic :offset  32)
+   )
+  :method-count-assert 19
+  :size-assert         #x20
+  :flag-assert         #x1300000020
+  (:methods
+    (drawable-tree-region-prim-method-17 (_type_ vector) symbol 17)
+    (debug-print (_type_ vector object) none 18)
+    )
+  )
+
+
+(deftype drawable-inline-array-region-prim (drawable-inline-array)
+  ((data drawable-region-prim 1 :inline :offset-assert  32)
+   (pad  uint8                4         :offset-assert  64)
+   )
+  :method-count-assert 17
+  :size-assert         #x44
+  :flag-assert         #x1100000044
+  )
+
+(deftype drawable-region-sphere (drawable-region-prim)
+  ()
+  :method-count-assert 20
+  :size-assert         #x20
+  :flag-assert         #x1400000020
+  )
+
+
+(deftype region-face-data (structure)
+  ((normal        vector :inline          :offset-assert   0)
+   (normal-offset float                   :offset         12)
+   (num-points    uint32                  :offset-assert  16)
+   (points        vector :inline :dynamic :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+
+(deftype drawable-region-face (drawable-region-prim)
+  ((data region-face-data  :offset  12)
+   )
+  :method-count-assert 20
+  :size-assert         #x20
+  :flag-assert         #x1400000020
+  )
+
+
+(deftype region-face-array (inline-array-class)
+  ((data region-face-data :dynamic :offset  20)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+
+(set! (-> region-face-array heap-base) (the-as uint 32))
+
+(deftype drawable-region-volume (drawable-region-prim)
+  ((faces region-face-array  :offset  12)
+   )
+  :method-count-assert 20
+  :size-assert         #x20
+  :flag-assert         #x1400000020
+  )
+
+
+(deftype region-prim-list (structure)
+  ((num-items int32                    :offset-assert   0)
+   (items     drawable-region-prim 320 :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x504
+  :flag-assert         #x900000504
+  )

@@ -10,11 +10,13 @@ add_library(compiler
         build_level/collide_drawable.cpp
         build_level/collide_pack.cpp
         build_level/color_quantization.cpp
+        build_level/Entity.cpp
         build_level/FileInfo.cpp
         build_level/gltf_mesh_extract.cpp
         build_level/LevelFile.cpp
         build_level/ResLump.cpp
         build_level/Tfrag.cpp
+        build_level/drawable_ambient.cpp
         compiler/Compiler.cpp
         compiler/Env.cpp
         compiler/Val.cpp
@@ -52,7 +54,7 @@ add_library(compiler
         regalloc/Allocator.cpp
         regalloc/allocator_interface.cpp
         regalloc/Allocator_v2.cpp
-        )
+        compiler/docs/DocTypes.cpp)
 
 target_link_libraries(compiler common Zydis tiny_gltf)
 
@@ -61,5 +63,8 @@ if (WIN32)
 endif ()
 
 add_executable(goalc main.cpp)
-target_link_libraries(goalc common Zydis compiler)
+add_executable(goalc-simple simple_main.cpp)
+
+target_link_libraries(goalc common Zydis compiler sqlite3 SQLiteCpp)
+target_link_libraries(goalc-simple common Zydis compiler sqlite3 SQLiteCpp)
 

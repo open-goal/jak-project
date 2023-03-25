@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+
 #include "soundbank.h"
 
 namespace snd {
@@ -56,19 +57,30 @@ struct MIDISound {
   /*  18 */ /*void**/ u32 MIDIBlock;
 };
 
+// Annoyingly enough we need some data out of this struct
+struct MIDISoundHandler {
+  u32 OwnerID;
+};
+
 struct Prog;
 class MusicBank : public SoundBank {
  public:
-  MusicBank(locator& loc) : m_locator(loc) {}
-  std::unique_ptr<sound_handler> make_handler(voice_manager& vm,
-                                              u32 sound_id,
-                                              s32 vol,
-                                              s32 pan,
-                                              s32 pm,
-                                              s32 pb) override;
+  MusicBank(locator& loc, u32 id, BankTag* tag);
+  std::optional<std::unique_ptr<sound_handler>> make_handler(voice_manager& vm,
+                                                             u32 sound_id,
+                                                             s32 vol,
+                                                             s32 pan,
+                                                             s32 pm,
+                                                             s32 pb) override;
 
-  std::vector<Prog> programs;
-  std::vector<MIDISound> sounds;
+  std::optional<std::unique_ptr<sound_handler>> make_handler(voice_manager& vm,
+                                                             u32 sound_id,
+                                                             s32 vol,
+                                                             s32 pan,
+                                                             SndPlayParams& params) override;
+
+  std::vector<Prog> m_programs;
+  std::vector<MIDISound> m_sounds;
 
  private:
   locator& m_locator;

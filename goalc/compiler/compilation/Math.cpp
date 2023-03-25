@@ -1,6 +1,8 @@
-#include "goalc/compiler/Compiler.h"
-#include "common/util/BitUtils.h"
 #include <cfloat>
+
+#include "common/util/BitUtils.h"
+
+#include "goalc/compiler/Compiler.h"
 
 MathMode Compiler::get_math_mode(const TypeSpec& ts) {
   if (m_ts.tc(m_ts.make_typespec("binteger"), ts)) {
@@ -319,15 +321,12 @@ Val* Compiler::compile_sub(const goos::Object& form, const goos::Object& rest, E
         auto result = compile_integer(0, env)->to_gpr(form, env);
         env->emit_ir<IR_IntegerMath>(
             form, IntegerMathKind::SUB_64, result,
-            to_math_type(form, compile_error_guard(args.unnamed.at(0), env), math_type, env)
-                ->to_gpr(form, env));
+            to_math_type(form, first_val, math_type, env)->to_gpr(form, env));
         return result;
       } else {
         auto result = env->make_gpr(first_type);
-        env->emit_ir<IR_RegSet>(
-            form, result,
-            to_math_type(form, compile_error_guard(args.unnamed.at(0), env), math_type, env)
-                ->to_gpr(form, env));
+        env->emit_ir<IR_RegSet>(form, result,
+                                to_math_type(form, first_val, math_type, env)->to_gpr(form, env));
 
         for (size_t i = 1; i < args.unnamed.size(); i++) {
           env->emit_ir<IR_IntegerMath>(
@@ -343,15 +342,12 @@ Val* Compiler::compile_sub(const goos::Object& form, const goos::Object& rest, E
         auto result = compile_float(0, env, env->function_env()->segment)->to_fpr(form, env);
         env->emit_ir<IR_FloatMath>(
             form, FloatMathKind::SUB_SS, result,
-            to_math_type(form, compile_error_guard(args.unnamed.at(0), env), math_type, env)
-                ->to_fpr(form, env));
+            to_math_type(form, first_val, math_type, env)->to_fpr(form, env));
         return result;
       } else {
         auto result = env->make_fpr(first_type);
-        env->emit_ir<IR_RegSet>(
-            form, result,
-            to_math_type(form, compile_error_guard(args.unnamed.at(0), env), math_type, env)
-                ->to_fpr(form, env));
+        env->emit_ir<IR_RegSet>(form, result,
+                                to_math_type(form, first_val, math_type, env)->to_fpr(form, env));
 
         for (size_t i = 1; i < args.unnamed.size(); i++) {
           env->emit_ir<IR_FloatMath>(

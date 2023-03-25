@@ -1,0 +1,154 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type lbvtx
+(deftype lbvtx (structure)
+  ((x    float           :offset-assert   0)
+   (y    float           :offset-assert   4)
+   (z    float           :offset-assert   8)
+   (v0   uint8           :offset-assert  12)
+   (v1   uint8           :offset-assert  13)
+   (v2   uint8           :offset-assert  14)
+   (ix   uint8           :offset-assert  15)
+   (quad uint128         :offset          0)
+   (v    vector  :inline :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type lbvtx
+;; INFO: Used lq/sq
+(defmethod inspect lbvtx ((obj lbvtx))
+  (format #t "[~8x] ~A~%" obj 'lbvtx)
+  (format #t "~Tx: ~f~%" (-> obj x))
+  (format #t "~Ty: ~f~%" (-> obj y))
+  (format #t "~Tz: ~f~%" (-> obj z))
+  (format #t "~Tv0: ~D~%" (-> obj v0))
+  (format #t "~Tv1: ~D~%" (-> obj v1))
+  (format #t "~Tv2: ~D~%" (-> obj v2))
+  (format #t "~Tix: ~D~%" (-> obj ix))
+  (format #t "~Tquad: ~D~%" (-> obj quad))
+  (format #t "~Tv: #<vector @ #x~X>~%" (&-> obj x))
+  obj
+  )
+
+;; definition of type load-boundary-crossing-command
+(deftype load-boundary-crossing-command (structure)
+  ((cmd        load-boundary-cmd   :offset-assert   0)
+   (bparm      uint8             3 :offset-assert   1)
+   (parm       uint32            2 :offset-assert   4)
+   (lev0       basic               :offset          4)
+   (lev1       basic               :offset          8)
+   (displev    basic               :offset          4)
+   (dispcmd    basic               :offset          8)
+   (nick       basic               :offset          4)
+   (forcelev   basic               :offset          4)
+   (forceonoff basic               :offset          8)
+   (checkname  basic               :offset          4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type load-boundary-crossing-command
+(defmethod inspect load-boundary-crossing-command ((obj load-boundary-crossing-command))
+  (format #t "[~8x] ~A~%" obj 'load-boundary-crossing-command)
+  (format #t "~Tcmd: ~D~%" (-> obj cmd))
+  (format #t "~Tbparm[3] @ #x~X~%" (-> obj bparm))
+  (format #t "~Tparm[2] @ #x~X~%" (-> obj parm))
+  (format #t "~Tlev0: ~A~%" (-> obj lev0))
+  (format #t "~Tlev1: ~A~%" (-> obj lev1))
+  (format #t "~Tdisplev: ~A~%" (-> obj lev0))
+  (format #t "~Tdispcmd: ~A~%" (-> obj lev1))
+  (format #t "~Tnick: ~A~%" (-> obj lev0))
+  (format #t "~Tforcelev: ~A~%" (-> obj lev0))
+  (format #t "~Tforceonoff: ~A~%" (-> obj lev1))
+  (format #t "~Tcheckname: ~A~%" (-> obj lev0))
+  obj
+  )
+
+;; definition of type load-boundary
+(deftype load-boundary (basic)
+  ((num-points uint16                                          :offset-assert   4)
+   (flags      load-boundary-flags                             :offset-assert   6)
+   (top-plane  float                                           :offset-assert   8)
+   (bot-plane  float                                           :offset-assert  12)
+   (tri-cnt    int32                                           :offset-assert  16)
+   (next       load-boundary                                   :offset-assert  20)
+   (cmd-fwd    load-boundary-crossing-command :inline          :offset-assert  24)
+   (cmd-bwd    load-boundary-crossing-command :inline          :offset-assert  36)
+   (rejector   vector                         :inline          :offset-assert  48)
+   (data       lbvtx                          1 :inline        :offset-assert  64)
+   (data2      lbvtx                          :inline :dynamic :offset         64)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  (:methods
+    (new (symbol type int symbol symbol) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type load-boundary
+(defmethod inspect load-boundary ((obj load-boundary))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tnum-points: ~D~%" (-> obj num-points))
+  (format #t "~Tflags: ~D~%" (-> obj flags))
+  (format #t "~Ttop-plane: ~f~%" (-> obj top-plane))
+  (format #t "~Tbot-plane: ~f~%" (-> obj bot-plane))
+  (format #t "~Ttri-cnt: ~D~%" (-> obj tri-cnt))
+  (format #t "~Tnext: ~A~%" (-> obj next))
+  (format #t "~Tcmd-fwd: #<load-boundary-crossing-command @ #x~X>~%" (-> obj cmd-fwd))
+  (format #t "~Tcmd-bwd: #<load-boundary-crossing-command @ #x~X>~%" (-> obj cmd-bwd))
+  (format #t "~Trejector: #<vector @ #x~X>~%" (-> obj rejector))
+  (format #t "~Tdata[1] @ #x~X~%" (-> obj data))
+  obj
+  )
+
+;; definition for symbol *load-boundary-list*, type load-boundary
+(define *load-boundary-list* (the-as load-boundary #f))
+
+;; definition for symbol *load-boundary-target*, type (inline-array lbvtx)
+(define *load-boundary-target* (the-as (inline-array lbvtx) (malloc 'global 64)))
+
+;; definition for method 0 of type load-boundary
+;; INFO: Used lq/sq
+(defmethod new load-boundary ((allocation symbol) (type-to-make type) (arg0 int) (arg1 symbol) (arg2 symbol))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* (+ arg0 -1) 16))))))
+    (set! (-> v0-0 num-points) (the-as uint arg0))
+    (cond
+      (arg1
+        (set! (-> v0-0 flags) (load-boundary-flags closed))
+        )
+      (else
+        (set! (-> v0-0 flags) (load-boundary-flags))
+        0
+        )
+      )
+    (set! (-> v0-0 top-plane) 524288.0)
+    (set! (-> v0-0 bot-plane) -524288.0)
+    (dotimes (v1-4 arg0)
+      (set! (-> v0-0 data v1-4 quad) (the-as uint128 0))
+      (set! (-> v0-0 data v1-4 ix) (the-as uint v1-4))
+      )
+    (set! (-> v0-0 tri-cnt) 0)
+    (set-vector! (-> v0-0 rejector) 0.0 0.0 0.0 268435460.0)
+    (set! (-> v0-0 cmd-fwd cmd) (load-boundary-cmd invalid))
+    (set! (-> v0-0 cmd-bwd cmd) (load-boundary-cmd invalid))
+    (when arg2
+      (set! (-> v0-0 next) *load-boundary-list*)
+      (set! *load-boundary-list* v0-0)
+      )
+    (if (not arg2)
+        (set! (-> v0-0 next) #f)
+        )
+    v0-0
+    )
+  )
+
+;; failed to figure out what this is:
+0

@@ -1,13 +1,5 @@
 ;;-*-Lisp-*-
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; OTHER STUFF
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; tell compiler about stuff defined/implemented in the runtime.
-(asm-file "goal_src/kernel-defs.gc")
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; BUILD SYSTEM
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -37,10 +29,6 @@
 (desfun run-frontend-command (file)
   `(asm-file ,file :no-code)
   )
-
-
-(defmacro load-art-import (name)
-  `(asm-file ,(string-append "goal_src/import/" (symbol->string name) "-ag.gc") :no-code :no-throw))
 
 (defmacro load-imports ()
   `(begin
@@ -75,7 +63,7 @@
 
 (defmacro tc ()
   "Typecheck against the all-types file"
-  `(m "decompiler/config/all-types.gc")
+  `(m "decompiler/config/jak1/all-types.gc")
   )
 
 (defmacro e ()
@@ -220,6 +208,7 @@
 ;;;;;;;;;;;;;;;;;;;
 ;; GOAL Syntax
 ;;;;;;;;;;;;;;;;;;;
+
 ;; Bind vars in body
 (defmacro let (bindings &rest body)
   `((lambda :inline-only #t ,(apply first bindings) ,@body)
@@ -249,15 +238,11 @@
 
 ;; Define a new function
 (defmacro defun (name bindings &rest body)
-  (if (and (> (length body) 1)      ;; more than one thing in function
-           (string? (first body))   ;; first thing is a string
-           )
-    ;; then it's a docstring and we ignore it.
-    `(define ,name (lambda :name ,name ,bindings ,@(cdr body)))
-    ;; otherwise don't ignore it.
-    `(define ,name (lambda :name ,name ,bindings ,@body))
-    )
-  )
+  (let ((docstring ""))
+    (when (and (> (length body) 1) (string? (first body)))
+      (set! docstring (first body))
+      (set! body (cdr body)))
+    `(define ,name ,docstring (lambda :name ,name ,bindings ,@body))))
 
 ;; the compiler can't figure out types of a recursive function without
 ;; first knowing the return type, so we use this form to forward declare
@@ -299,15 +284,22 @@
        )
   )
 
+(defmacro define-once (name value)
+  "define once. Does not set the symbol if it already has a value. It must have been at least forward-declared first!"
+  `(begin
+    (if (or (not ,name) (zero? ,name))
+        (set! ,name ,value)
+        )
+    )
+  )
+
 (defmacro define-perm (name type value)
   "Define 'permanent', meaning the original definition will not be blown away by a file reload.
    If the value of the symbol is unset (zero) or set to false, it will be defined.
    Otherwise, no effect, other than to inform the type system of the symbol type."
   `(begin
     (define-extern ,name ,type)
-    (if (or (not ,name) (zero? ,name))
-        (set! ,name ,value)
-        )
+    (define-once ,name ,value)
     )
   )
 
@@ -507,6 +499,16 @@
   `(case ,switch ,@cases :comp string=)
   )
 
+(defmacro dolist (bindings &rest body)
+  `(let ((,(car bindings) ,(cadr bindings)))
+      (while (not (null? ,(car bindings)))
+        ,@body
+        
+        (set! ,(car bindings) (cdr ,(car bindings)))
+        )
+      )
+  )
+
 ;;;;;;;;;;;;;;;;;;;
 ;; Math Macros
 ;;;;;;;;;;;;;;;;;;;
@@ -647,6 +649,10 @@
   `(&-> (the-as (pointer ,t) ,addr) ,@fields)
   )
 
+(defmacro sext32 (in)
+  `(sar (shl ,in 32) 32)
+  )
+
 (defmacro shift-arith-right-32 (result in sa)
   `(set! ,result (sext32 (sar (logand #xffffffff (the-as int ,in)) ,sa)))
   )
@@ -701,36 +707,6 @@
           (error "bitfield size cannot be negative"))
       )
   `(,(if signed 'sar 'shr) (shl ,val (- 64 (+ ,size ,base))) (- 64 ,size))
-  )
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; TYPE STUFF
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defmacro basic? (obj)
-  ;; todo, make this more efficient
-  `(= 4 (logand (the integer ,obj) #b111))
-  )
-
-(defmacro pair? (obj)
-  ;; todo, make this more efficient
-  ;`(= 2 (logand (the integer ,obj) #b111))
-  `(< (shl (the-as int ,obj) 62) 0)
-  )
-
-(defmacro not-pair? (obj)
-  `(>= (shl (the-as int ,obj) 62) 0)
-  )
-
-(defmacro binteger? (obj)
-  `(zero? (logand (the integer ,obj) #b111))
-  )
-
-(defmacro rtype-of (obj)
-  `(cond ((binteger? ,obj) binteger)
-         ((pair? ,obj) pair)
-         (else (-> (the basic ,obj) type))
-         )
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -878,7 +854,7 @@
 (defmacro makeo (object-name &rest flags)
   "Make the given object. Can use a string, or not."
   `(make ,(string-append
-           "out/obj/"
+           "$OUT/"
            (if (string? object-name) object-name (symbol->string object-name))
            ".o"
            )
@@ -886,11 +862,11 @@
   )
 
 (defmacro make-cgo (file)
-  `(make ,(string-append "out/iso/" file ".CGO"))
+  `(make ,(string-append "$OUT/iso/" file ".CGO"))
   )
 
 (defmacro make-dgo (file)
-  `(make ,(string-append "out/iso/" file ".DGO"))
+  `(make ,(string-append "$OUT/iso/" file ".DGO"))
   )
 
 (defmacro make-group (name &key (verbose #f) &key (force #f))
@@ -908,6 +884,11 @@
 (defmacro mi ()
   "Make ISO"
   `(make-group "iso")
+  )
+
+(defmacro mkr ()
+  "Make kernel"
+  `(make-group "kernel")
   )
 
 (defmacro mng ()
@@ -987,16 +968,23 @@
   `(sqrtf-no-fabs (fabs ,x))
   )
 
+(defmacro basically-zero? (val)
+  "Checks if the value is within 0.000000000000000001 of zero (to solve float comparison bugs)"
+  `(<= (fabs (- ,val 0.0))
+       0.000000000000000001))
+
+(defmacro basically-not-zero? (val)
+  "Checks if the value is NOT within 0.000000000000000001 of zero (to solve float comparison bugs)"
+  `(> (fabs (- ,val 0.0))
+       0.000000000000000001))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; user stuf
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmacro __get-user ()
+(defmacro get-user ()
   `(quote ,*user*)
   )
-
-(defconstant *user* (__get-user))
 
 (defmacro user? (&rest users)
   (cond
@@ -1008,7 +996,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; art stuf
+;;;; art stuff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro def-art-elt (group name idx)
@@ -1044,7 +1032,17 @@
   `(defconstant ,name (-> self draw art-group data ,idx))
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Load Project
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-;; load the default project
-(load-project "goal_src/game.gp")
+(#cond
+  ((eq? GAME_VERSION 'jak1)
+   (asm-file "goal_src/jak1/compiler-setup.gc")
+   (seval (fmt #t "Jak 1 Mode\n"))
+   )
+  ((eq? GAME_VERSION 'jak2)
+   (asm-file "goal_src/jak2/compiler-setup.gc")
+   (seval (fmt #t "Jak 2 Mode\n"))
+   )
+  )

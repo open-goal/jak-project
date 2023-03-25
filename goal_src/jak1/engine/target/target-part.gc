@@ -1,0 +1,2275 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: target-part.gc
+;; name in dgo: target-part
+;; dgos: GAME, ENGINE
+
+;; DECOMP BEGINS
+
+(defun birth-func-copy-target-y-rot ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+  (let ((v1-0 *target*))
+    (when v1-0
+      (let ((s5-0 (new-stack-matrix0)))
+        (let ((f0-1 (+ -16384.0 (y-angle (-> v1-0 control)))))
+          (matrix-rotate-y! s5-0 f0-1)
+          )
+        (vector3s-rotate*! (the-as vector3s (-> arg1 vel-sxvel)) (the-as vector3s (-> arg1 vel-sxvel)) s5-0)
+        (vector3s-rotate*! (the-as vector3s (-> arg1 acc)) (the-as vector3s (-> arg1 acc)) s5-0)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defun birth-func-ground-orient ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+  (local-vars (v1-11 float) (v1-12 float))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((a1-1 (new 'stack-no-clear 'vector)))
+      (set! (-> a1-1 quad) (-> arg2 launchrot quad))
+      (let ((s3-0 (new 'stack-no-clear 'collide-tri-result))
+            (s5-0 *target*)
+            )
+        (set! (-> a1-1 y) (+ 4096.0 (-> a1-1 y)))
+        ;; NOTE : added *target* check here.
+        (when (and s5-0 (>= (fill-and-probe-using-y-probe
+                              *collide-cache*
+                              a1-1
+                              (the-as float 20480.0)
+                              (collide-kind background cak-1 cak-2 cak-3 water powerup crate enemy wall-object ground-object mother-spider)
+                              s5-0
+                              s3-0
+                              (new 'static 'pat-surface :noentity #x1)
+                              )
+                            0.0
+                            ))
+          (let ((s2-0 (new 'stack-no-clear 'vector))
+                (s4-1 (new 'stack-no-clear 'quaternion))
+                )
+            (set! (-> s2-0 x) (-> s3-0 normal z))
+            (set! (-> s2-0 y) 0.0)
+            (set! (-> s2-0 z) (- (-> s3-0 normal x)))
+            (vector-normalize! s2-0 (the-as float 1.0))
+            (quaternion-vector-angle! s4-1 s2-0 (acos (-> s3-0 normal y)))
+            (let ((s3-1 (new 'stack-no-clear 'quaternion)))
+              (quaternion-vector-angle! s3-1 *up-vector* (+ 32768.0 (y-angle (-> s5-0 control))))
+              (quaternion-normalize! (quaternion*! s4-1 s3-1 s4-1))
+              )
+            (cond
+              ((< (-> s4-1 w) 0.0)
+               (.lvf vf1 (&-> arg2 conerot quad))
+               (.lvf vf2 (&-> s4-1 vec quad))
+               (.sub.vf vf1 vf0 vf2 :mask #b111)
+               (.svf (&-> arg2 conerot quad) vf1)
+               (.mov v1-11 vf1)
+               )
+              (else
+                (.lvf vf1 (&-> arg2 conerot quad))
+                (.lvf vf2 (&-> s4-1 vec quad))
+                (.add.vf vf1 vf0 vf2 :mask #b111)
+                (.svf (&-> arg2 conerot quad) vf1)
+                (.mov v1-12 vf1)
+                )
+              )
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+(defun birth-func-target-orient ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+  (local-vars (v1-10 float) (v1-11 float) (sv-16 target))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (set! sv-16 *target*)
+    ;; NOTE : added check here
+    (if (not sv-16) (return #f))
+    (let ((s3-0 (new 'stack-no-clear 'vector)))
+      (new 'stack-no-clear 'vector)
+      (let ((s5-0 (new 'stack-no-clear 'quaternion)))
+        (let ((s2-0 (-> sv-16 control local-normal)))
+          (set! (-> s3-0 x) (-> s2-0 z))
+          (set! (-> s3-0 y) 0.0)
+          (set! (-> s3-0 z) (- (-> s2-0 x)))
+          (vector-normalize! s3-0 (the-as float 1.0))
+          (quaternion-vector-angle! s5-0 s3-0 (acos (-> s2-0 y)))
+          )
+        (let ((s3-1 (new 'stack-no-clear 'quaternion)))
+          (quaternion-vector-angle! s3-1 *up-vector* (+ 32768.0 (-> arg1 user-float) (y-angle (-> sv-16 control))))
+          (quaternion-normalize! (quaternion*! s5-0 s5-0 s3-1))
+          )
+        (cond
+          ((< (-> s5-0 w) 0.0)
+           (.lvf vf1 (&-> arg2 conerot quad))
+           (.lvf vf2 (&-> s5-0 vec quad))
+           (.sub.vf vf1 vf0 vf2 :mask #b111)
+           (.svf (&-> arg2 conerot quad) vf1)
+           (.mov v1-10 vf1)
+           )
+          (else
+            (.lvf vf1 (&-> arg2 conerot quad))
+            (.lvf vf2 (&-> s5-0 vec quad))
+            (.add.vf vf1 vf0 vf2 :mask #b111)
+            (.svf (&-> arg2 conerot quad) vf1)
+            (.mov v1-11 vf1)
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+(defun birth-func-vector-orient ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+  (local-vars (v1-4 float) (v1-5 float))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    *target*
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (new 'stack-no-clear 'vector)
+      (let ((s5-0 (new 'stack-no-clear 'quaternion))
+            (s3-0 (the-as object (-> arg1 user-float)))
+            )
+        (when (nonzero? (the-as float s3-0))
+          (set! (-> s4-0 x) (-> (the-as sprite-vec-data-2d s3-0) z))
+          (set! (-> s4-0 y) 0.0)
+          (set! (-> s4-0 z) (- (-> (the-as sprite-vec-data-2d s3-0) x)))
+          (vector-normalize! s4-0 (the-as float 1.0))
+          (quaternion-vector-angle! s5-0 s4-0 (acos (-> (the-as sprite-vec-data-2d s3-0) y)))
+          (cond
+            ((< (-> s5-0 w) 0.0)
+             (.lvf vf1 (&-> arg2 conerot quad))
+             (.lvf vf2 (&-> s5-0 vec quad))
+             (.sub.vf vf1 vf0 vf2 :mask #b111)
+             (.svf (&-> arg2 conerot quad) vf1)
+             (.mov v1-4 vf1)
+             )
+            (else
+              (.lvf vf1 (&-> arg2 conerot quad))
+              (.lvf vf2 (&-> s5-0 vec quad))
+              (.add.vf vf1 vf0 vf2 :mask #b111)
+              (.svf (&-> arg2 conerot quad) vf1)
+              (.mov v1-5 vf1)
+              )
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+(defun part-tracker-track-target-joint ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+  ;; NOTE : added this check
+  (if (not *target*) (return #f))
+  (let* ((v1-0 *target*)
+         (v1-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> v1-0 node-list data (the int (-> arg1 user-float)))))
+         )
+    (set! (-> arg2 launchrot x) (-> v1-2 x))
+    (set! (-> arg2 launchrot y) (-> v1-2 y))
+    (set! (-> arg2 launchrot z) (-> v1-2 z))
+    )
+  0
+  (none)
+  )
+
+(defpartgroup group-target-hit
+  :id 1
+  :duration 5
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 12)
+  :parts ((sp-item 56) (sp-item 57))
+  )
+
+(defpart 56
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+    (sp-flt spt-num 32.0)
+    (sp-rnd-flt spt-scale-x (meters 3) (meters 1) 1.0)
+    (sp-int spt-rot-x 4)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-scale-y (meters 0.06))
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 0.0)
+    (sp-flt spt-scalevel-x (meters 0.16))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.15) (degrees 0.3) 1.0)
+    (sp-flt spt-fade-a 6.4)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-int spt-next-time 10)
+    (sp-launcher-by-id spt-next-launcher 58)
+    )
+  )
+
+(defpart 58
+  :init-specs ((sp-flt spt-fade-a -0.64))
+  )
+
+(defpart 57
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 12))
+    (sp-flt spt-rot-z (degrees 0.0))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 64.0)
+    (sp-flt spt-rotvel-z (degrees -0.4))
+    (sp-flt spt-fade-a -1.4222221)
+    (sp-int spt-timer 42)
+    (sp-cpuinfo-flags bit2 bit3)
+    )
+  )
+
+(defpartgroup group-red-eco-strike-ground
+  :id 2
+  :duration 10
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 59) (sp-item 60))
+  )
+
+(defpart 59
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 24.0)
+    (sp-flt spt-y (meters 1))
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 32.0)
+    (sp-rnd-flt spt-a 8.0 56.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.13333334) (meters 0.16666667) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.013333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.4) (degrees 0.8) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-g -1.4222223)
+    (sp-flt spt-fade-a -0.35555556)
+    (sp-flt spt-accel-y 0.34133333)
+    (sp-flt spt-friction 0.7)
+    (sp-int spt-timer 180)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-int spt-next-time 90)
+    (sp-launcher-by-id spt-next-launcher 61)
+    (sp-flt spt-conerot-x (degrees 90.0))
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 60
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 32.0)
+    (sp-flt spt-y (meters 1))
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 0.5) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-rnd-flt spt-a 64.0 8.0 1.0)
+    (sp-flt spt-vel-y (meters 0.3))
+    (sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-g -2.8444445)
+    (sp-flt spt-fade-a -0.82222223)
+    (sp-flt spt-friction 0.7)
+    (sp-int spt-timer 90)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-int spt-next-time 45)
+    (sp-launcher-by-id spt-next-launcher 61)
+    (sp-flt spt-conerot-x (degrees 90.0))
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpartgroup group-red-eco-spinkick
+  :id 3
+  :duration 10
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 62) (sp-item 63) (sp-item 64))
+  )
+
+(defpart 62
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1.5) (meters 1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 32.0)
+    (sp-rnd-flt spt-a 8.0 56.0 1.0)
+    (sp-flt spt-scalevel-x (meters 0.013333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.4) (degrees 0.8) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-g -1.4222223)
+    (sp-flt spt-fade-a -0.35555556)
+    (sp-flt spt-accel-y 0.34133333)
+    (sp-int spt-timer 180)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-int spt-next-time 90)
+    (sp-launcher-by-id spt-next-launcher 61)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 180.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-conerot-radius (meters 0) (meters 0.5) 1.0)
+    )
+  )
+
+(defpart 61
+  :init-specs ((sp-flt spt-fade-r -0.7111111) (sp-flt spt-fade-g 0.7111111) (sp-flt spt-fade-b 0.35555556))
+  )
+
+(defpart 63
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 0.66)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 0.5) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-rnd-flt spt-a 64.0 8.0 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-g -2.8444445)
+    (sp-flt spt-fade-a -0.82222223)
+    (sp-int spt-timer 90)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-int spt-next-time 45)
+    (sp-launcher-by-id spt-next-launcher 61)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 180.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-conerot-radius (meters 0) (meters 0.1) 1.0)
+    )
+  )
+
+(defpart 64
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-scale-x (meters 4) (meters 2) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 96.0)
+    (sp-flt spt-a 64.0)
+    (sp-flt spt-fade-a -4.0)
+    (sp-flt spt-accel-y 0.34133333)
+    (sp-int spt-timer 10)
+    (sp-cpuinfo-flags bit2 bit3)
+    )
+  )
+
+(defpartgroup group-spin-hit
+  :id 4
+  :duration 10
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 65) (sp-item 66))
+  )
+
+(defpartgroup group-punch-hit
+  :id 5
+  :duration 10
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 65) (sp-item 66))
+  )
+
+(defpart 65
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x2 :page #x2))
+    (sp-flt spt-num 4.0)
+    (sp-flt spt-y (meters 0.75))
+    (sp-flt spt-scale-x (meters 3))
+    (sp-int spt-rot-x 4)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-scale-y (meters 0.15) (meters 0.5) 1.0)
+    (sp-flt spt-r 192.0)
+    (sp-flt spt-g 192.0)
+    (sp-rnd-flt spt-b 64.0 128.0 1.0)
+    (sp-flt spt-a 0.0)
+    (sp-flt spt-scalevel-x (meters 0.009765625))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.15) (degrees 0.3) 1.0)
+    (sp-flt spt-scalevel-y (meters 0.009765625))
+    (sp-flt spt-fade-a 2.1333334)
+    (sp-int spt-timer 30)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-int spt-next-time 15)
+    (sp-launcher-by-id spt-next-launcher 67)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 67
+  :init-specs ((sp-flt spt-fade-a -2.1333334))
+  )
+
+(defpart 66
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-y (meters 1))
+    (sp-flt spt-scale-x (meters 3))
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 196.0)
+    (sp-flt spt-g 196.0)
+    (sp-flt spt-b 196.0)
+    (sp-flt spt-a 28.0)
+    (sp-int spt-timer 10)
+    (sp-cpuinfo-flags bit2 bit3)
+    )
+  )
+
+(defpartgroup group-smack-surface
+  :id 6
+  :duration 10
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 68)
+    (sp-item 69)
+    (sp-item 72 :binding 71)
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    (sp-item 71 :flags (start-dead launch-asap))
+    )
+  )
+
+(defpart 68
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-func spt-birth-func 'birth-func-copy-target-y-rot)
+    (sp-flt spt-num 16.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 0.5) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 96.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 96.0 32.0 1.0)
+    (sp-rnd-flt spt-a 32.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.04) (meters 0.02) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.85333335)
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 69
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-func spt-birth-func 'birth-func-copy-target-y-rot)
+    (sp-flt spt-num 8.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.25) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 96.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 96.0 32.0 1.0)
+    (sp-rnd-flt spt-a 32.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.08) (meters 0.02) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.85333335)
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 72
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-rnd-flt spt-num 12.0 8.0 1.0)
+    (sp-flt spt-scale-x (meters 1))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-a 0.0)
+    (sp-int spt-timer 604)
+    (sp-cpuinfo-flags bit3)
+    (sp-flt spt-userdata 8.0)
+    (sp-func spt-func 'part-tracker-track-target-joint)
+    )
+  )
+
+(defpart 71
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-x (meters 0))
+    (sp-rnd-flt spt-y (meters -1.3333334) (meters 2.6666667) 1.0)
+    (sp-rnd-flt spt-z (meters 0.5) (meters 0.5) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.05) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 32.0 92.0 1.0)
+    (sp-rnd-flt spt-g 128.0 128.0 1.0)
+    (sp-flt spt-b 0.0)
+    (sp-rnd-flt spt-a 32.0 96.0 1.0)
+    (sp-rnd-flt spt-omega 0.0 65536.0 1.0)
+    (sp-rnd-int-flt spt-vel-x (meters -0.053333335) 1 436.90668)
+    (sp-flt spt-vel-y (meters 0))
+    (sp-flt spt-vel-z (meters 0.0033333334))
+    (sp-flt spt-fade-a -0.30476192)
+    (sp-int spt-timer 604)
+    (sp-cpuinfo-flags bit2 bit3 bit7)
+    )
+  )
+
+(defpartgroup group-land-poof-sand
+  :id 8
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 73) (sp-item 74) (sp-item 75))
+  )
+
+(defpart 73
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 16.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.16)
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 74
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 12.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.25) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.053333335) (meters 0.02) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0016666667))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.21333334)
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 75
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+    (sp-flt spt-num 32.0)
+    (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1124073472 2 32.0)
+    (sp-rnd-int spt-g 1115684864 1 64.0)
+    (sp-rnd-int spt-b 1107296256 1 32.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.015) (meters 0.006666667) 1.0)
+    (sp-flt spt-fade-a -0.42666668)
+    (sp-rnd-flt spt-accel-y -5.4613333 2.7306666 1.0)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 30.0) (degrees 50.000004) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 0.5))
+    )
+  )
+
+(defpartgroup group-land-poof-dirt
+  :id 575
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 2371) (sp-item 2372) (sp-item 2370))
+  )
+
+(defpart 2371
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 16.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.16)
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 2372
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 12.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.25) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.053333335) (meters 0.02) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0016666667))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.21333334)
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 2370
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+    (sp-flt spt-num 32.0)
+    (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1124073472 2 32.0)
+    (sp-rnd-int spt-g 1115684864 1 64.0)
+    (sp-rnd-int spt-b 1107296256 1 32.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.015) (meters 0.006666667) 1.0)
+    (sp-flt spt-fade-a -0.42666668)
+    (sp-rnd-flt spt-accel-y -5.4613333 2.7306666 1.0)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 30.0) (degrees 50.000004) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 0.5))
+    )
+  )
+
+(defpartgroup group-land-poof-snow
+  :id 9
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 76) (sp-item 77) (sp-item 78))
+  )
+
+(defpart 76
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 16.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 196.0 64.0 1.0)
+    (sp-rnd-flt spt-g 196.0 64.0 1.0)
+    (sp-rnd-flt spt-b 196.0 64.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.16)
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 77
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 12.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.25) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 196.0 64.0 1.0)
+    (sp-rnd-flt spt-g 196.0 64.0 1.0)
+    (sp-rnd-flt spt-b 196.0 64.0 1.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.053333335) (meters 0.02) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0016666667))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.21333334)
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 78
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+    (sp-flt spt-num 32.0)
+    (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1128529920 1 64.0)
+    (sp-rnd-int spt-g 1128529920 1 64.0)
+    (sp-rnd-int spt-b 1128529920 1 64.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.015) (meters 0.006666667) 1.0)
+    (sp-flt spt-fade-a -0.42666668)
+    (sp-rnd-flt spt-accel-y -5.4613333 2.7306666 1.0)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 30.0) (degrees 50.000004) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 0.5))
+    )
+  )
+
+(defpartgroup group-land-poof-ice
+  :id 580
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 76) (sp-item 77) (sp-item 78))
+  )
+
+(defpartgroup group-land-poof-grass
+  :id 10
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 79) (sp-item 80) (sp-item 81))
+  )
+
+(defpart 79
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 16.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 64.0 32.0 1.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 0.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.16)
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 80
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 12.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.25) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 64.0 32.0 1.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 0.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.053333335) (meters 0.02) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0016666667))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.21333334)
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 81
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x17 :page #x2))
+    (sp-flt spt-num 32.0)
+    (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.15) (meters 0.35) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-scale-y (meters 0.15))
+    (sp-rnd-flt spt-r 0.0 2.0 64.0)
+    (sp-rnd-int spt-g 1115684864 2 64.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.015) (meters 0.006666667) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -2.4) (degrees 4.8) 1.0)
+    (sp-flt spt-fade-a -0.42666668)
+    (sp-rnd-flt spt-accel-y -5.4613333 3.4133334 1.0)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 30.0) (degrees 50.000004) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 0.5))
+    )
+  )
+
+(defpartgroup group-land-poof-wood
+  :id 11
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 82) (sp-item 83))
+  )
+
+(defpart 82
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 16.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 96.0 32.0 1.0)
+    (sp-flt spt-g 64.0)
+    (sp-rnd-flt spt-b 0.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.16)
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 83
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 12.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.25) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 96.0 32.0 1.0)
+    (sp-flt spt-g 64.0)
+    (sp-rnd-flt spt-b 0.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.053333335) (meters 0.02) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0016666667))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.21333334)
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpartgroup group-land-poof-crwood
+  :id 12
+  :duration 5
+  :linger-duration 750
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 82) (sp-item 83) (sp-item 84) (sp-item 84))
+  )
+
+(defpartgroup group-land-poof-stone
+  :id 13
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 85) (sp-item 86))
+  )
+
+(defpart 85
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 16.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 96.0 32.0 1.0)
+    (sp-flt spt-g 96.0)
+    (sp-flt spt-b 96.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.16)
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 86
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 12.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.25) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 96.0 32.0 1.0)
+    (sp-flt spt-g 96.0)
+    (sp-flt spt-b 96.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.053333335) (meters 0.02) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0016666667))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.21333334)
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpartgroup group-land-poof-pcmetal
+  :id 581
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 2373) (sp-item 2374))
+  )
+
+(defpart 2373
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 16.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 128.0 64.0 1.0)
+    (sp-rnd-flt spt-g 70.0 32.0 1.0)
+    (sp-rnd-flt spt-b 40.0 20.0 1.0)
+    (sp-rnd-flt spt-a 24.0 24.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-flt spt-fade-a -0.16)
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 2374
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 12.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.25) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 128.0 64.0 1.0)
+    (sp-rnd-flt spt-g 70.0 32.0 1.0)
+    (sp-rnd-flt spt-b 40.0 20.0 1.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.053333335) (meters 0.02) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0016666667))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.21333334)
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit12)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpartgroup group-run-poof-stone
+  :id 14
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 87))
+  )
+
+(defpartgroup group-just-poof-stone
+  :id 15
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 87))
+  )
+
+(defpart 87
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-rnd-flt spt-num 8.0 16.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.5) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 96.0 32.0 1.0)
+    (sp-flt spt-g 96.0)
+    (sp-flt spt-b 96.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-fade-a -0.45714286)
+    (sp-flt spt-friction 0.965)
+    (sp-int spt-timer 105)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpartgroup group-run-poof-snow
+  :id 582
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 2375) (sp-item 2376 :flags (is-3d)))
+  )
+
+(defpartgroup group-just-poof-snow
+  :id 583
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 2375))
+  )
+
+(defpartgroup group-just-footprint-snow
+  :id 584
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 2376 :flags (is-3d)))
+  )
+
+(defpart 2376
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xe :page #x2))
+    (sp-func spt-birth-func 'birth-func-target-orient)
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-x (meters -0.25))
+    (sp-flt spt-scale-x (meters 0.6))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 32.0)
+    (sp-flt spt-g 32.0)
+    (sp-flt spt-b 16.0)
+    (sp-flt spt-a 64.0)
+    (sp-flt spt-fade-a -0.07111111)
+    (sp-int spt-timer 1050)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    )
+  )
+
+(defpart 2375
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-rnd-flt spt-num 8.0 16.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.5) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 196.0 64.0 1.0)
+    (sp-rnd-flt spt-g 196.0 64.0 1.0)
+    (sp-rnd-flt spt-b 196.0 64.0 1.0)
+    (sp-rnd-flt spt-a 24.0 24.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-fade-a -0.45714286)
+    (sp-flt spt-friction 0.965)
+    (sp-int spt-timer 105)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpartgroup group-run-poof-ice
+  :id 585
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 2375))
+  )
+
+(defpartgroup group-just-poof-ice
+  :id 586
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 2375))
+  )
+
+(defpartgroup group-run-poof-crwood
+  :id 16
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 89) (sp-item 89) (sp-item 84))
+  )
+
+(defpartgroup group-just-poof-crwood
+  :id 17
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 88))
+  )
+
+(defpart 84
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-rnd-flt spt-num 8.0 16.0 1.0)
+    (sp-flt spt-y (meters -1))
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 0.5) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 64.0 32.0 1.0)
+    (sp-flt spt-g 64.0)
+    (sp-rnd-flt spt-b 0.0 32.0 1.0)
+    (sp-flt spt-a 0.0)
+    (sp-rnd-flt spt-vel-y (meters 0) (meters -0.0033333334) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0016666667))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a 0.16)
+    (sp-flt spt-accel-y -0.27306667)
+    (sp-int spt-timer 900)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-int-plain-rnd spt-next-time 75 74 1)
+    (sp-launcher-by-id spt-next-launcher 90)
+    (sp-flt spt-conerot-x (degrees 90.0))
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-conerot-radius (meters 0) (meters 3) 1.0)
+    )
+  )
+
+(defpart 90
+  :init-specs ((sp-flt spt-fade-a 0.0) (sp-int-plain-rnd spt-next-time 150 149 1) (sp-launcher-by-id spt-next-launcher 91))
+  )
+
+(defpart 91
+  :init-specs ((sp-flt spt-fade-a -0.08))
+  )
+
+(defpartgroup group-run-poof-wood
+  :id 18
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 89))
+  )
+
+(defpartgroup group-just-poof-wood
+  :id 19
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 89))
+  )
+
+(defpart 89
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-rnd-flt spt-num 8.0 16.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.5) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 96.0 32.0 1.0)
+    (sp-flt spt-g 64.0)
+    (sp-rnd-flt spt-b 0.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-fade-a -0.45714286)
+    (sp-flt spt-friction 0.965)
+    (sp-int spt-timer 105)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpartgroup group-run-poof-pcmetal
+  :id 587
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 2377))
+  )
+
+(defpartgroup group-just-poof-pcmetal
+  :id 588
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 2377))
+  )
+
+(defpart 2377
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-rnd-flt spt-num 8.0 16.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.5) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 128.0 64.0 1.0)
+    (sp-rnd-flt spt-g 70.0 32.0 1.0)
+    (sp-rnd-flt spt-b 40.0 20.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-fade-a -0.45714286)
+    (sp-flt spt-friction 0.965)
+    (sp-int spt-timer 105)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpartgroup group-run-poof-grass
+  :id 20
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 92) (sp-item 93 :flags (is-3d)))
+  )
+
+(defpartgroup group-just-poof-grass
+  :id 21
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 92))
+  )
+
+(defpartgroup group-just-footprint-grass
+  :id 22
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 93 :flags (is-3d)))
+  )
+
+(defpart 92
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-rnd-flt spt-num 8.0 16.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.5) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 64.0 32.0 1.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 0.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-fade-a -0.45714286)
+    (sp-flt spt-friction 0.965)
+    (sp-int spt-timer 105)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 93
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xe :page #x2))
+    (sp-func spt-birth-func 'birth-func-target-orient)
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-x (meters -0.25))
+    (sp-flt spt-scale-x (meters 0.6))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 32.0)
+    (sp-flt spt-g 32.0)
+    (sp-flt spt-b 16.0)
+    (sp-flt spt-a 48.0)
+    (sp-flt spt-fade-a -0.053333335)
+    (sp-int spt-timer 1050)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    )
+  )
+
+(defpartgroup group-run-poof-sand
+  :id 23
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 88) (sp-item 94 :flags (is-3d)))
+  )
+
+(defpartgroup group-just-poof-sand
+  :id 24
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 88))
+  )
+
+(defpartgroup group-just-footprint-sand
+  :id 25
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 94 :flags (is-3d)))
+  )
+
+(defpart 88
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-rnd-flt spt-num 8.0 16.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.5) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-fade-a -0.45714286)
+    (sp-flt spt-friction 0.965)
+    (sp-int spt-timer 105)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 94
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xe :page #x2))
+    (sp-func spt-birth-func 'birth-func-target-orient)
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-x (meters -0.25))
+    (sp-flt spt-scale-x (meters 0.6))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 32.0)
+    (sp-flt spt-g 32.0)
+    (sp-flt spt-b 16.0)
+    (sp-flt spt-a 32.0)
+    (sp-flt spt-fade-a -0.035555556)
+    (sp-int spt-timer 1050)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    )
+  )
+
+(defpartgroup group-run-poof-dirt
+  :id 576
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 2378))
+  )
+
+(defpartgroup group-just-poof-dirt
+  :id 577
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 2378))
+  )
+
+(defpartgroup group-just-footprint-dirt
+  :id 578
+  :duration 5
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 2379 :flags (is-3d)))
+  )
+
+(defpart 2378
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-rnd-flt spt-num 8.0 16.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.5) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-fade-a -0.45714286)
+    (sp-flt spt-friction 0.965)
+    (sp-int spt-timer 105)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 2379
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xe :page #x2))
+    (sp-func spt-birth-func 'birth-func-target-orient)
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-x (meters -0.25))
+    (sp-flt spt-scale-x (meters 0.6))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 32.0)
+    (sp-flt spt-g 32.0)
+    (sp-flt spt-b 16.0)
+    (sp-flt spt-a 32.0)
+    (sp-flt spt-fade-a -0.035555556)
+    (sp-int spt-timer 1050)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    )
+  )
+
+(defpart 95
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+    (sp-rnd-flt spt-num 0.0 6.0 1.0)
+    (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1124073472 2 32.0)
+    (sp-rnd-int spt-g 1115684864 1 64.0)
+    (sp-rnd-int spt-b 1107296256 1 32.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-x (meters -0.00083333335) (meters 0.0016666667) 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.005) (meters 0.006666667) 1.0)
+    (sp-rnd-flt spt-vel-z (meters -0.00083333335) (meters 0.0016666667) 1.0)
+    (sp-flt spt-fade-a -0.42666668)
+    (sp-rnd-flt spt-accel-y -2.7306666 1.3653333 1.0)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    )
+  )
+
+(defpart 2253
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+    (sp-rnd-flt spt-num 0.0 6.0 1.0)
+    (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1124073472 2 32.0)
+    (sp-rnd-int spt-g 1115684864 1 64.0)
+    (sp-rnd-int spt-b 1107296256 1 32.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-x (meters -0.00083333335) (meters 0.0016666667) 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.005) (meters 0.006666667) 1.0)
+    (sp-rnd-flt spt-vel-z (meters -0.00083333335) (meters 0.0016666667) 1.0)
+    (sp-flt spt-fade-a -0.42666668)
+    (sp-rnd-flt spt-accel-y -2.7306666 1.3653333 1.0)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    )
+  )
+
+(defpart 96
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x17 :page #x2))
+    (sp-rnd-flt spt-num 0.0 2.0 1.0)
+    (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.2) (meters 0.2) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-scale-y (meters 0.1))
+    (sp-rnd-flt spt-r 0.0 2.0 64.0)
+    (sp-rnd-int spt-g 1115684864 2 64.0)
+    (sp-rnd-flt spt-a 96.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-x (meters -0.00083333335) (meters 0.0016666667) 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.005) (meters 0.006666667) 1.0)
+    (sp-rnd-flt spt-vel-z (meters -0.00083333335) (meters 0.0016666667) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -2.4) (degrees 4.8) 1.0)
+    (sp-flt spt-fade-a -0.42666668)
+    (sp-rnd-flt spt-accel-y -2.7306666 1.3653333 1.0)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    )
+  )
+
+(defpart 2250
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+    (sp-rnd-flt spt-num 0.0 6.0 1.0)
+    (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1128529920 1 64.0)
+    (sp-rnd-int spt-g 1128529920 1 64.0)
+    (sp-rnd-int spt-b 1128529920 1 64.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-x (meters -0.00083333335) (meters 0.0016666667) 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.005) (meters 0.006666667) 1.0)
+    (sp-rnd-flt spt-vel-z (meters -0.00083333335) (meters 0.0016666667) 1.0)
+    (sp-flt spt-fade-a -0.42666668)
+    (sp-rnd-flt spt-accel-y -2.7306666 1.3653333 1.0)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    )
+  )
+
+(defpart 97
+  )
+
+(defpart 98
+  )
+
+(defpart 99
+  )
+
+(defpartgroup group-slide-poof-sand
+  :id 26
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 100) (sp-item 101))
+  )
+
+(defpart 100
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-rnd-flt spt-num 6.0 6.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.6) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.17777778)
+    (sp-flt spt-accel-y -0.27306667)
+    (sp-flt spt-friction 0.94)
+    (sp-int spt-timer 180)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 101
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+    (sp-rnd-flt spt-num 0.0 8.0 1.0)
+    (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1124073472 2 32.0)
+    (sp-rnd-int spt-g 1115684864 1 64.0)
+    (sp-rnd-int spt-b 1107296256 1 32.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.008333334) (meters 0.0033333334) 1.0)
+    (sp-flt spt-fade-a -0.42666668)
+    (sp-rnd-flt spt-accel-y -4.096 2.048 1.0)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 30.0) (degrees 50.000004) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 0.5))
+    )
+  )
+
+(defpartgroup group-slide-poof-dirt
+  :id 579
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 2380) (sp-item 2381))
+  )
+
+(defpart 2380
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-rnd-flt spt-num 6.0 6.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.6) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.17777778)
+    (sp-flt spt-accel-y -0.27306667)
+    (sp-flt spt-friction 0.94)
+    (sp-int spt-timer 180)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 2381
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+    (sp-rnd-flt spt-num 0.0 8.0 1.0)
+    (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1124073472 2 32.0)
+    (sp-rnd-int spt-g 1115684864 1 64.0)
+    (sp-rnd-int spt-b 1107296256 1 32.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.008333334) (meters 0.0033333334) 1.0)
+    (sp-flt spt-fade-a -0.42666668)
+    (sp-rnd-flt spt-accel-y -4.096 2.048 1.0)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 30.0) (degrees 50.000004) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 0.5))
+    )
+  )
+
+(defpartgroup group-slide-poof-grass
+  :id 27
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 102) (sp-item 103))
+  )
+
+(defpart 102
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-rnd-flt spt-num 6.0 6.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.6) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 64.0 32.0 1.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 0.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.17777778)
+    (sp-flt spt-accel-y -0.27306667)
+    (sp-flt spt-friction 0.94)
+    (sp-int spt-timer 180)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 103
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x17 :page #x2))
+    (sp-rnd-flt spt-num 0.0 8.0 1.0)
+    (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.15) (meters 0.35) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-scale-y (meters 0.15))
+    (sp-rnd-flt spt-r 0.0 2.0 64.0)
+    (sp-rnd-int spt-g 1115684864 2 64.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.008333334) (meters 0.0033333334) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -2.4) (degrees 4.8) 1.0)
+    (sp-flt spt-fade-a -0.42666668)
+    (sp-rnd-flt spt-accel-y -4.096 2.048 1.0)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 30.0) (degrees 50.000004) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 0.5))
+    )
+  )
+
+(defpartgroup group-slide-poof-stone
+  :id 28
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 104))
+  )
+
+(defpart 104
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-rnd-flt spt-num 6.0 6.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.6) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 96.0 32.0 1.0)
+    (sp-flt spt-g 96.0)
+    (sp-flt spt-b 96.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.17777778)
+    (sp-flt spt-accel-y -0.27306667)
+    (sp-flt spt-friction 0.94)
+    (sp-int spt-timer 180)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpartgroup group-slide-poof-pcmetal
+  :id 589
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 2382))
+  )
+
+(defpart 2382
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-rnd-flt spt-num 6.0 6.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.6) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 128.0 64.0 1.0)
+    (sp-rnd-flt spt-g 70.0 32.0 1.0)
+    (sp-rnd-flt spt-b 40.0 20.0 1.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.17777778)
+    (sp-flt spt-accel-y -0.27306667)
+    (sp-flt spt-friction 0.94)
+    (sp-int spt-timer 180)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpartgroup group-slide-poof-snow
+  :id 590
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 2383))
+  )
+
+(defpart 2383
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-rnd-flt spt-num 6.0 6.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.6) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1128529920 1 64.0)
+    (sp-rnd-int spt-g 1128529920 1 64.0)
+    (sp-rnd-int spt-b 1128529920 1 64.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.17777778)
+    (sp-flt spt-accel-y -0.27306667)
+    (sp-flt spt-friction 0.94)
+    (sp-int spt-timer 180)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpartgroup group-slide-poof-ice
+  :id 591
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 2383))
+  )
+
+(defpartgroup group-slide-poof-wood
+  :id 29
+  :duration 5
+  :linger-duration 450
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 105))
+  )
+
+(defpart 105
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-rnd-flt spt-num 6.0 6.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.6) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 96.0 32.0 1.0)
+    (sp-flt spt-g 64.0)
+    (sp-rnd-flt spt-b 0.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.02) (meters 0.01) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.17777778)
+    (sp-flt spt-accel-y -0.27306667)
+    (sp-flt spt-friction 0.94)
+    (sp-int spt-timer 180)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 60.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpartgroup group-slide-poof-crwood
+  :id 30
+  :duration 5
+  :linger-duration 750
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 105))
+  )
+
+(defpart 106
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+    (sp-rnd-flt spt-num 0.0 8.0 1.0)
+    (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1124073472 2 32.0)
+    (sp-rnd-int spt-g 1115684864 1 64.0)
+    (sp-rnd-int spt-b 1107296256 1 32.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-flt spt-fade-a -0.42666668)
+    (sp-rnd-flt spt-accel-y -5.4613333 3.4133334 1.0)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    )
+  )
+
+(defpart 2265
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+    (sp-rnd-flt spt-num 0.0 8.0 1.0)
+    (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1124073472 2 32.0)
+    (sp-rnd-int spt-g 1115684864 1 64.0)
+    (sp-rnd-int spt-b 1107296256 1 32.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-flt spt-fade-a -0.42666668)
+    (sp-rnd-flt spt-accel-y -5.4613333 3.4133334 1.0)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    )
+  )
+
+(defpart 2262
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+    (sp-rnd-flt spt-num 0.0 8.0 1.0)
+    (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.07) (meters 0.02) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1128529920 1 64.0)
+    (sp-rnd-int spt-g 1128529920 1 64.0)
+    (sp-rnd-int spt-b 1128529920 1 64.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-flt spt-fade-a -0.42666668)
+    (sp-rnd-flt spt-accel-y -5.4613333 3.4133334 1.0)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    )
+  )
+
+(defpart 107
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x17 :page #x2))
+    (sp-rnd-flt spt-num 0.0 8.0 1.0)
+    (sp-rnd-flt spt-x (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-y (meters -0.1) (meters 0.4) 1.0)
+    (sp-rnd-flt spt-z (meters -0.4) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.15) (meters 0.35) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-scale-y (meters 0.15))
+    (sp-rnd-flt spt-r 0.0 2.0 64.0)
+    (sp-rnd-int spt-g 1115684864 2 64.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -2.4) (degrees 4.8) 1.0)
+    (sp-flt spt-fade-a -0.42666668)
+    (sp-rnd-flt spt-accel-y -5.4613333 3.4133334 1.0)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    )
+  )
+
+(defpartgroup group-dark-eco-death
+  :id 31
+  :duration 600
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 12)
+  :parts ((sp-item 295 :fade-after (meters 100) :period 600 :length 5 :binding 296)
+    (sp-item 296 :flags (start-dead launch-asap) :binding 297)
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 296 :flags (start-dead launch-asap) :binding 297)
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 296 :flags (start-dead launch-asap) :binding 297)
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 296 :flags (start-dead launch-asap) :binding 297)
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 296 :flags (start-dead launch-asap) :binding 297)
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 296 :flags (start-dead launch-asap) :binding 297)
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 296 :flags (start-dead launch-asap) :binding 297)
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 296 :flags (start-dead launch-asap) :binding 297)
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 296 :flags (start-dead launch-asap) :binding 297)
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 296 :flags (start-dead launch-asap) :binding 297)
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 296 :flags (start-dead launch-asap) :binding 297)
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 296 :flags (start-dead launch-asap) :binding 297)
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 296 :flags (start-dead launch-asap) :binding 297)
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 296 :flags (start-dead launch-asap) :binding 297)
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 296 :flags (start-dead launch-asap) :binding 297)
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 296 :flags (start-dead launch-asap) :binding 297)
+    (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 2095 :period 600 :length 5)
+    (sp-item 2096 :fade-after (meters 80) :falloff-to (meters 80) :period 600 :length 40)
+    (sp-item 2097 :period 600 :length 20)
+    )
+  )
+
+(defpartgroup group-lava-death
+  :id 32
+  :duration 75
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 2003) (sp-item 2004) (sp-item 2005) (sp-item 2006))
+  )
+
+(defpartgroup group-burn-death
+  :id 708
+  :duration 150
+  :linger-duration 600
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 2003))
+  )
+
+(defpart 2006
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-rnd-flt spt-num 8.0 16.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.2) (meters 0.5) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 256.0)
+    (sp-rnd-flt spt-g 0.0 128.0 1.0)
+    (sp-rnd-flt spt-a 128.0 128.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.013333334) (meters 0.04) 1.0)
+    (sp-flt spt-scalevel-x (meters -0.0023333333))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-accel-y -5.4613333)
+    (sp-int spt-timer 360)
+    (sp-cpuinfo-flags bit0 bit3 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 60.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 1))
+    )
+  )
+
+(defpart 2003
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 5.0)
+    (sp-rnd-flt spt-x (meters 0) (meters 0.5) 1.0)
+    (sp-rnd-flt spt-y (meters 0) (meters 3) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 2) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-rnd-flt spt-g 0.0 128.0 1.0)
+    (sp-flt spt-b 0.0)
+    (sp-rnd-flt spt-a 32.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.053333335) (meters 0.053333335) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.023529412))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.6) (degrees 1.2) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -1.5058824)
+    (sp-flt spt-friction 0.98)
+    (sp-int spt-timer 81)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 2004
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 32.0)
+    (sp-rnd-flt spt-x (meters 0.5) (meters 2) 1.0)
+    (sp-rnd-flt spt-y (meters 0.5) (meters 0.5) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 2) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-rnd-flt spt-g 0.0 128.0 1.0)
+    (sp-flt spt-b 0.0)
+    (sp-rnd-flt spt-a 32.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0) (meters 0.0016666667) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.04444444))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.6) (degrees 1.2) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -2.8444443)
+    (sp-flt spt-friction 0.98)
+    (sp-int spt-timer 42)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-flt spt-conerot-x (degrees 90.0))
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 2005
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 8.0)
+    (sp-rnd-flt spt-x (meters -1) (meters 2) 1.0)
+    (sp-rnd-flt spt-y (meters 0) (meters 3) 1.0)
+    (sp-rnd-flt spt-z (meters -1) (meters 2) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 2) (meters 3) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 255.0)
+    (sp-flt spt-b 255.0)
+    (sp-flt spt-a 0.0)
+    (sp-rnd-flt spt-vel-y (meters 0.013333334) (meters 0.013333334) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.008888889))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.6) (degrees 1.2) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-r -0.56666666)
+    (sp-flt spt-fade-g -0.56666666)
+    (sp-flt spt-fade-b -0.56666666)
+    (sp-flt spt-fade-a 0.15)
+    (sp-flt spt-friction 0.97)
+    (sp-int spt-timer 450)
+    (sp-cpuinfo-flags bit2 bit14)
+    (sp-int-plain-rnd spt-next-time 81 80 1)
+    (sp-launcher-by-id spt-next-launcher 2007)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 2007
+  :init-specs ((sp-flt spt-fade-a -0.08))
+  )
+
+(defpart 2002
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1.5) (meters 2) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 32.0 32.0 1.0)
+    (sp-rnd-flt spt-g 32.0 32.0 1.0)
+    (sp-rnd-flt spt-b 32.0 32.0 1.0)
+    (sp-flt spt-a 0.0)
+    (sp-rnd-flt spt-vel-y (meters 0.0033333334) (meters 0.006666667) 1.0)
+    (sp-rnd-flt spt-scalevel-x (meters 0.0033333334) (meters 0.0033333334) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a 0.85333335)
+    (sp-flt spt-friction 0.98)
+    (sp-int spt-timer 450)
+    (sp-cpuinfo-flags bit2 bit14)
+    (sp-int-plain-rnd spt-next-time 15 59 1)
+    (sp-launcher-by-id spt-next-launcher 2008)
+    )
+  )
+
+(defpart 2008
+  :init-specs ((sp-flt spt-fade-a -0.28444445))
+  )
+
+(defbehavior process-drawable-burn-effect target ((arg0 time-frame))
+  (sound-play "get-burned")
+  (let ((s5-1 (new 'stack 'rgbaf))
+        (s3-0 (-> *display* base-frame-counter))
+        (s4-1 (-> self parent))
+        )
+    (set! (-> s5-1 quad) (-> (the-as process-drawable (-> s4-1 0)) draw color-mult quad))
+    (let ((s2-1 (vector-float*! (the-as vector (new 'stack 'rgbaf)) (the-as vector s5-1) 0.0)))
+      (while (< (- (-> *display* base-frame-counter) s3-0) arg0)
+        (let ((v1-8 (- (-> *display* base-frame-counter) s3-0)))
+          (if (< v1-8 (/ arg0 2))
+              (vector-lerp!
+                (-> (the-as process-drawable (-> s4-1 0)) draw color-mult)
+                s5-1
+                s2-1
+                (/ (the float v1-8) (the float arg0))
+                )
+              (vector-lerp!
+                (-> (the-as process-drawable (-> s4-1 0)) draw color-mult)
+                s5-1
+                s2-1
+                (- 1.0 (/ (the float v1-8) (the float arg0)))
+                )
+              )
+          )
+        (let ((a2-3
+                (process-drawable-random-point!
+                  (the-as process-drawable (ppointer->process s4-1))
+                  (new 'stack-no-clear 'vector)
+                  )
+                )
+              )
+          (launch-particles (-> *part-id-table* 2002) a2-3)
+          )
+        (suspend)
+        0
+        )
+      )
+    (set! (-> (the-as process-drawable (-> s4-1 0)) draw color-mult quad) (-> s5-1 quad))
+    )
+  (none)
+  )
+
+(defpart 2391
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xa :page #x2))
+    (sp-func spt-birth-func 'birth-func-target-orient)
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-y (meters 0.02))
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.5) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 110.0 32.0 1.0)
+    (sp-rnd-flt spt-g 128.0 32.0 1.0)
+    (sp-rnd-flt spt-b 96.0 32.0 1.0)
+    (sp-rnd-flt spt-a 8.0 40.0 1.0)
+    (sp-rnd-flt spt-scalevel-x (meters 0.0033333334) (meters 0.0033333334) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.2)
+    (sp-int spt-timer 240)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-flt spt-userdata -8192.0)
+    )
+  )
+
+(defpartgroup group-part-first-person-hud-left
+  :id 611
+  :flags (screen-space)
+  :bounds (static-bspherem 0 0 0 1)
+  :parts ((sp-item 2474 :flags (launch-asap)))
+  )
+
+(defpartgroup group-part-first-person-hud-right
+  :id 612
+  :flags (screen-space)
+  :bounds (static-bspherem 0 0 0 1)
+  :parts ((sp-item 2475 :flags (launch-asap)))
+  )
+
+(defpartgroup group-part-first-person-hud-selector
+  :id 613
+  :flags (screen-space)
+  :bounds (static-bspherem 0 0 0 1)
+  :parts ((sp-item 2476 :flags (launch-asap)))
+  )
+
+(defpart 2474
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x408))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 3.5))
+    (sp-flt spt-scale-y (meters 13))
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9 bit13)
+    (sp-func spt-func 'part-first-person-hud-left-func)
+    )
+  )
+
+(defpart 2475
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x408))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 3.5))
+    (sp-flt spt-rot-z (degrees 180.0))
+    (sp-flt spt-scale-y (meters 13))
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9 bit13)
+    (sp-func spt-func 'part-first-person-hud-right-func)
+    )
+  )
+
+(defpart 2476
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x408))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9 bit13)
+    (sp-func spt-func 'part-first-person-hud-selector-func)
+    )
+  )
+
+
+
+

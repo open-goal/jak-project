@@ -1,0 +1,1182 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type bit-array
+(deftype bit-array (basic)
+  ((length           int32          :offset-assert   4)
+   (allocated-length int32          :offset-assert   8)
+   (_pad             uint8          :offset-assert  12)
+   (bytes            uint8 :dynamic :offset         12)
+   )
+  :method-count-assert 13
+  :size-assert         #xd
+  :flag-assert         #xd0000000d
+  (:methods
+    (new (symbol type int) _type_ 0)
+    (get-bit (_type_ int) symbol 9)
+    (clear-bit (_type_ int) int 10)
+    (set-bit (_type_ int) int 11)
+    (clear-all! (_type_) _type_ 12)
+    )
+  )
+
+;; definition for method 3 of type bit-array
+(defmethod inspect bit-array ((obj bit-array))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 0 of type bit-array
+(defmethod new bit-array ((allocation symbol) (type-to-make type) (arg0 int))
+  (let ((v0-0 (object-new allocation type-to-make (+ (/ (logand -8 (+ arg0 7)) 8) -1 (-> type-to-make size)))))
+    (set! (-> v0-0 length) arg0)
+    (set! (-> v0-0 allocated-length) arg0)
+    v0-0
+    )
+  )
+
+;; definition for method 4 of type bit-array
+(defmethod length bit-array ((obj bit-array))
+  (-> obj length)
+  )
+
+;; definition for method 5 of type bit-array
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of bit-array ((obj bit-array))
+  (the-as int (+ (-> obj type size) (/ (logand -8 (+ (-> obj allocated-length) 7)) 8)))
+  )
+
+;; definition for method 9 of type bit-array
+(defmethod get-bit bit-array ((obj bit-array) (arg0 int))
+  (let ((v1-2 (-> obj bytes (/ arg0 8))))
+    (logtest? v1-2 (ash 1 (logand arg0 7)))
+    )
+  )
+
+;; definition for method 10 of type bit-array
+(defmethod clear-bit bit-array ((obj bit-array) (arg0 int))
+  (logclear! (-> obj bytes (/ arg0 8)) (ash 1 (logand arg0 7)))
+  0
+  )
+
+;; definition for method 11 of type bit-array
+(defmethod set-bit bit-array ((obj bit-array) (arg0 int))
+  (logior! (-> obj bytes (/ arg0 8)) (ash 1 (logand arg0 7)))
+  0
+  )
+
+;; definition for method 12 of type bit-array
+(defmethod clear-all! bit-array ((obj bit-array))
+  (countdown (v1-2 (/ (logand -8 (+ (-> obj allocated-length) 7)) 8))
+    (nop!)
+    (nop!)
+    (set! (-> obj bytes v1-2) (the-as uint 0))
+    )
+  obj
+  )
+
+;; definition of type vector16ub
+(deftype vector16ub (structure)
+  ((data uint8   16 :offset-assert   0)
+   (quad uint128    :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type vector16ub
+;; INFO: Used lq/sq
+(defmethod inspect vector16ub ((obj vector16ub))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector16ub)
+  (format #t "~1Tdata[16] @ #x~X~%" (-> obj data))
+  (format #t "~1Tquad: ~D~%" (-> obj quad))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector4ub
+(deftype vector4ub (structure)
+  ((data uint8  4 :offset-assert   0)
+   (x    uint8    :offset          0)
+   (y    uint8    :offset          1)
+   (z    uint8    :offset          2)
+   (w    uint8    :offset          3)
+   (clr  uint32   :offset          0)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; definition for method 3 of type vector4ub
+(defmethod inspect vector4ub ((obj vector4ub))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector4ub)
+  (format #t "~1Tdata[4] @ #x~X~%" (-> obj data))
+  (format #t "~1Tx: ~D~%" (-> obj x))
+  (format #t "~1Ty: ~D~%" (-> obj y))
+  (format #t "~1Tz: ~D~%" (-> obj z))
+  (format #t "~1Tw: ~D~%" (-> obj w))
+  (format #t "~1Tclr: ~D~%" (-> obj clr))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector4b
+(deftype vector4b (structure)
+  ((data int8  4 :offset-assert   0)
+   (x    int8    :offset          0)
+   (y    int8    :offset          1)
+   (z    int8    :offset          2)
+   (w    int8    :offset          3)
+   (clr  int32   :offset          0)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; definition for method 3 of type vector4b
+(defmethod inspect vector4b ((obj vector4b))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector4b)
+  (format #t "~1Tdata[4] @ #x~X~%" (-> obj data))
+  (format #t "~1Tx: ~D~%" (-> obj x))
+  (format #t "~1Ty: ~D~%" (-> obj y))
+  (format #t "~1Tz: ~D~%" (-> obj z))
+  (format #t "~1Tw: ~D~%" (-> obj w))
+  (format #t "~1Tclr: ~D~%" (-> obj clr))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector2ub
+(deftype vector2ub (structure)
+  ((data uint8  2 :offset-assert   0)
+   (x    uint8    :offset          0)
+   (y    uint8    :offset          1)
+   (clr  uint16   :offset          0)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x2
+  :flag-assert         #x900000002
+  )
+
+;; definition for method 3 of type vector2ub
+(defmethod inspect vector2ub ((obj vector2ub))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector2ub)
+  (format #t "~1Tdata[2] @ #x~X~%" (-> obj data))
+  (format #t "~1Tx: ~D~%" (-> obj x))
+  (format #t "~1Ty: ~D~%" (-> obj y))
+  (format #t "~1Tclr: ~D~%" (-> obj clr))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector2b
+(deftype vector2b (structure)
+  ((data int8  2 :offset-assert   0)
+   (x    int8    :offset          0)
+   (y    int8    :offset          1)
+   (clr  int16   :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x2
+  :flag-assert         #x900000002
+  )
+
+;; definition for method 3 of type vector2b
+(defmethod inspect vector2b ((obj vector2b))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector2b)
+  (format #t "~1Tdata[2] @ #x~X~%" (-> obj data))
+  (format #t "~1Tx: ~D~%" (-> obj x))
+  (format #t "~1Ty: ~D~%" (-> obj y))
+  (format #t "~1Tclr: ~D~%" (-> obj clr))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector2h
+(deftype vector2h (structure)
+  ((data int16 2 :offset-assert   0)
+   (x    int16   :offset          0)
+   (y    int16   :offset          2)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; definition for method 3 of type vector2h
+(defmethod inspect vector2h ((obj vector2h))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector2h)
+  (format #t "~1Tdata[2] @ #x~X~%" (-> obj data))
+  (format #t "~1Tx: ~D~%" (-> obj x))
+  (format #t "~1Ty: ~D~%" (-> obj y))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector2uh
+(deftype vector2uh (structure)
+  ((data uint16 2 :offset-assert   0)
+   (x    uint16   :offset          0)
+   (y    uint16   :offset          2)
+   (val  uint32   :offset          0)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; definition for method 3 of type vector2uh
+(defmethod inspect vector2uh ((obj vector2uh))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector2uh)
+  (format #t "~1Tdata[2] @ #x~X~%" (-> obj data))
+  (format #t "~1Tx: ~D~%" (-> obj x))
+  (format #t "~1Ty: ~D~%" (-> obj y))
+  (format #t "~1Tval: ~D~%" (-> obj val))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector3h
+(deftype vector3h (structure)
+  ((data int16 3 :offset-assert   0)
+   (x    int16   :offset          0)
+   (y    int16   :offset          2)
+   (z    int16   :offset          4)
+   )
+  :method-count-assert 9
+  :size-assert         #x6
+  :flag-assert         #x900000006
+  )
+
+;; definition for method 3 of type vector3h
+(defmethod inspect vector3h ((obj vector3h))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector3h)
+  (format #t "~1Tdata[3] @ #x~X~%" (-> obj data))
+  (format #t "~1Tx: ~D~%" (-> obj x))
+  (format #t "~1Ty: ~D~%" (-> obj y))
+  (format #t "~1Tz: ~D~%" (-> obj z))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector3uh
+(deftype vector3uh (structure)
+  ((data uint16 3 :offset-assert   0)
+   (x    uint16   :offset          0)
+   (y    uint16   :offset          2)
+   (z    uint16   :offset          4)
+   )
+  :method-count-assert 9
+  :size-assert         #x6
+  :flag-assert         #x900000006
+  )
+
+;; definition for method 3 of type vector3uh
+(defmethod inspect vector3uh ((obj vector3uh))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector3uh)
+  (format #t "~1Tdata[3] @ #x~X~%" (-> obj data))
+  (format #t "~1Tx: ~D~%" (-> obj x))
+  (format #t "~1Ty: ~D~%" (-> obj y))
+  (format #t "~1Tz: ~D~%" (-> obj z))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector2w
+(deftype vector2w (structure)
+  ((data int32 2 :offset-assert   0)
+   (x    int32   :offset          0)
+   (y    int32   :offset          4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type vector2w
+(defmethod inspect vector2w ((obj vector2w))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector2w)
+  (format #t "~1Tdata[2] @ #x~X~%" (-> obj data))
+  (format #t "~1Tx: ~D~%" (-> obj x))
+  (format #t "~1Ty: ~D~%" (-> obj y))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector3w
+(deftype vector3w (structure)
+  ((data int32 3 :offset-assert   0)
+   (x    int32   :offset          0)
+   (y    int32   :offset          4)
+   (z    int32   :offset          8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type vector3w
+(defmethod inspect vector3w ((obj vector3w))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector3w)
+  (format #t "~1Tdata[3] @ #x~X~%" (-> obj data))
+  (format #t "~1Tx: ~D~%" (-> obj x))
+  (format #t "~1Ty: ~D~%" (-> obj y))
+  (format #t "~1Tz: ~D~%" (-> obj z))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector4w
+(deftype vector4w (structure)
+  ((data  int32   4 :offset-assert   0)
+   (x     int32     :offset          0)
+   (y     int32     :offset          4)
+   (z     int32     :offset          8)
+   (w     int32     :offset         12)
+   (dword uint64  2 :offset          0)
+   (quad  uint128   :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type vector4w
+;; INFO: Used lq/sq
+(defmethod inspect vector4w ((obj vector4w))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector4w)
+  (format #t "~1Tdata[4] @ #x~X~%" (&-> obj x))
+  (format #t "~1Tx: ~D~%" (-> obj x))
+  (format #t "~1Ty: ~D~%" (-> obj y))
+  (format #t "~1Tz: ~D~%" (-> obj z))
+  (format #t "~1Tw: ~D~%" (-> obj w))
+  (format #t "~1Tdword[2] @ #x~X~%" (&-> obj x))
+  (format #t "~1Tquad: ~D~%" (-> obj quad))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector2
+(deftype vector2 (structure)
+  ((data float 2 :offset-assert   0)
+   (x    float   :offset          0)
+   (y    float   :offset          4)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type vector2
+(defmethod inspect vector2 ((obj vector2))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector2)
+  (format #t "~1Tdata[2] @ #x~X~%" (-> obj data))
+  (format #t "~1Tx: ~f~%" (-> obj x))
+  (format #t "~1Ty: ~f~%" (-> obj y))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector3
+(deftype vector3 (structure)
+  ((data float 3 :offset-assert   0)
+   (x    float   :offset          0)
+   (y    float   :offset          4)
+   (z    float   :offset          8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type vector3
+(defmethod inspect vector3 ((obj vector3))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector3)
+  (format #t "~1Tdata[3] @ #x~X~%" (-> obj data))
+  (format #t "~1Tx: ~f~%" (-> obj x))
+  (format #t "~1Ty: ~f~%" (-> obj y))
+  (format #t "~1Tz: ~f~%" (-> obj z))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector4
+(deftype vector4 (structure)
+  ((data  float   4 :offset-assert   0)
+   (x     float     :offset          0)
+   (y     float     :offset          4)
+   (z     float     :offset          8)
+   (w     float     :offset         12)
+   (dword uint64  2 :offset          0)
+   (quad  uint128   :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type vector4
+;; INFO: Used lq/sq
+(defmethod inspect vector4 ((obj vector4))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector4)
+  (format #t "~1Tdata[4] @ #x~X~%" (&-> obj x))
+  (format #t "~1Tx: ~f~%" (-> obj x))
+  (format #t "~1Ty: ~f~%" (-> obj y))
+  (format #t "~1Tz: ~f~%" (-> obj z))
+  (format #t "~1Tw: ~f~%" (-> obj w))
+  (format #t "~1Tdword[2] @ #x~X~%" (&-> obj x))
+  (format #t "~1Tquad: ~D~%" (-> obj quad))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 2 of type vector4w
+(defmethod print vector4w ((obj vector4w))
+  (format #t "#<vector4w ~D ~D ~D ~D @ #x~X>" (-> obj x) (-> obj y) (-> obj z) (-> obj w) obj)
+  obj
+  )
+
+;; definition of type vector4w-2
+(deftype vector4w-2 (structure)
+  ((data   int32    8         :offset-assert   0)
+   (quad   uint128  2         :offset          0)
+   (vector vector4w 2 :inline :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type vector4w-2
+(defmethod inspect vector4w-2 ((obj vector4w-2))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector4w-2)
+  (format #t "~1Tdata[8] @ #x~X~%" (-> obj vector))
+  (format #t "~1Tquad[2] @ #x~X~%" (-> obj vector))
+  (format #t "~1Tvector[2] @ #x~X~%" (-> obj vector))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector4w-3
+(deftype vector4w-3 (structure)
+  ((data   int32    12        :offset-assert   0)
+   (quad   uint128  3         :offset          0)
+   (vector vector4w 3 :inline :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;; definition for method 3 of type vector4w-3
+(defmethod inspect vector4w-3 ((obj vector4w-3))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector4w-3)
+  (format #t "~1Tdata[12] @ #x~X~%" (-> obj vector))
+  (format #t "~1Tquad[3] @ #x~X~%" (-> obj vector))
+  (format #t "~1Tvector[3] @ #x~X~%" (-> obj vector))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector4w-4
+(deftype vector4w-4 (structure)
+  ((data   int32    16        :offset-assert   0)
+   (quad   uint128  4         :offset          0)
+   (vector vector4w 4 :inline :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+;; definition for method 3 of type vector4w-4
+(defmethod inspect vector4w-4 ((obj vector4w-4))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector4w-4)
+  (format #t "~1Tdata[16] @ #x~X~%" (-> obj vector))
+  (format #t "~1Tquad[4] @ #x~X~%" (-> obj vector))
+  (format #t "~1Tvector[4] @ #x~X~%" (-> obj vector))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector4h
+(deftype vector4h (structure)
+  ((data int16  4 :offset-assert   0)
+   (x    int16    :offset          0)
+   (y    int16    :offset          2)
+   (z    int16    :offset          4)
+   (w    int16    :offset          6)
+   (long uint64   :offset          0)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type vector4h
+(defmethod inspect vector4h ((obj vector4h))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector4h)
+  (format #t "~1Tdata[4] @ #x~X~%" (-> obj data))
+  (format #t "~1Tx: ~D~%" (-> obj x))
+  (format #t "~1Ty: ~D~%" (-> obj y))
+  (format #t "~1Tz: ~D~%" (-> obj z))
+  (format #t "~1Tw: ~D~%" (-> obj w))
+  (format #t "~1Tlong: ~D~%" (-> obj long))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector8h
+(deftype vector8h (structure)
+  ((data int16   8 :offset-assert   0)
+   (quad uint128   :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type vector8h
+;; INFO: Used lq/sq
+(defmethod inspect vector8h ((obj vector8h))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector8h)
+  (format #t "~1Tdata[8] @ #x~X~%" (-> obj data))
+  (format #t "~1Tquad: ~D~%" (-> obj quad))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector16b
+(deftype vector16b (structure)
+  ((data int8    16 :offset-assert   0)
+   (quad uint128    :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type vector16b
+;; INFO: Used lq/sq
+(defmethod inspect vector16b ((obj vector16b))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector16b)
+  (format #t "~1Tdata[16] @ #x~X~%" (-> obj data))
+  (format #t "~1Tquad: ~D~%" (-> obj quad))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 3 of type vector
+;; INFO: this function exists in multiple non-identical object files
+(defmethod inspect vector ((obj vector))
+  (format #t "[~8x] vector~%" obj)
+  (format #t "~T[~F] [~F] [~F] [~F]~%" (-> obj x) (-> obj y) (-> obj z) (-> obj w))
+  obj
+  )
+
+;; definition for method 2 of type vector
+(defmethod print vector ((obj vector))
+  (format #t "#<vector ~F ~F ~F ~F @ #x~X>" (-> obj x) (-> obj y) (-> obj z) (-> obj w) obj)
+  obj
+  )
+
+;; definition for symbol *null-vector*, type vector
+(define *null-vector* (new 'static 'vector :w 1.0))
+
+;; definition for symbol *identity-vector*, type vector
+(define *identity-vector* (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+
+;; definition for symbol *x-vector*, type vector
+(define *x-vector* (new 'static 'vector :x 1.0 :w 1.0))
+
+;; definition for symbol *y-vector*, type vector
+(define *y-vector* (new 'static 'vector :y 1.0 :w 1.0))
+
+;; definition for symbol *z-vector*, type vector
+(define *z-vector* (new 'static 'vector :z 1.0 :w 1.0))
+
+;; definition for symbol *up-vector*, type vector
+(define *up-vector* (new 'static 'vector :y 1.0 :w 1.0))
+
+;; definition of type vector4s-3
+(deftype vector4s-3 (structure)
+  ((data   float   12        :offset-assert   0)
+   (quad   uint128 3         :offset          0)
+   (vector vector  3 :inline :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;; definition for method 3 of type vector4s-3
+(defmethod inspect vector4s-3 ((obj vector4s-3))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector4s-3)
+  (format #t "~1Tdata[12] @ #x~X~%" (-> obj data))
+  (format #t "~1Tquad[3] @ #x~X~%" (-> obj data))
+  (format #t "~1Tvector[3] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector-array
+(deftype vector-array (inline-array-class)
+  ((data vector :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type vector-array
+(defmethod inspect vector-array ((obj vector-array))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(set! (-> vector-array heap-base) (the-as uint 16))
+
+;; definition of type rgbaf
+(deftype rgbaf (vector)
+  ((r float  :offset   0)
+   (g float  :offset   4)
+   (b float  :offset   8)
+   (a float  :offset  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type rgbaf
+;; INFO: Used lq/sq
+(defmethod inspect rgbaf ((obj rgbaf))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'rgbaf)
+  (format #t "~1Tdata[4] @ #x~X~%" (&-> obj x))
+  (format #t "~1Tx: ~f~%" (-> obj x))
+  (format #t "~1Ty: ~f~%" (-> obj y))
+  (format #t "~1Tz: ~f~%" (-> obj z))
+  (format #t "~1Tw: ~f~%" (-> obj w))
+  (format #t "~1Tquad: ~D~%" (-> obj quad))
+  (format #t "~1Tr: ~f~%" (-> obj x))
+  (format #t "~1Tg: ~f~%" (-> obj y))
+  (format #t "~1Tb: ~f~%" (-> obj z))
+  (format #t "~1Ta: ~f~%" (-> obj w))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type plane
+(deftype plane (vector)
+  ((a float  :offset   0)
+   (b float  :offset   4)
+   (c float  :offset   8)
+   (d float  :offset  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type plane
+;; INFO: Used lq/sq
+(defmethod inspect plane ((obj plane))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'plane)
+  (format #t "~1Tdata[4] @ #x~X~%" (&-> obj x))
+  (format #t "~1Tx: ~f~%" (-> obj x))
+  (format #t "~1Ty: ~f~%" (-> obj y))
+  (format #t "~1Tz: ~f~%" (-> obj z))
+  (format #t "~1Tw: ~f~%" (-> obj w))
+  (format #t "~1Tquad: ~D~%" (-> obj quad))
+  (format #t "~1Ta: ~f~%" (-> obj x))
+  (format #t "~1Tb: ~f~%" (-> obj y))
+  (format #t "~1Tc: ~f~%" (-> obj z))
+  (format #t "~1Td: ~f~%" (-> obj w))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type sphere
+(deftype sphere (vector)
+  ((r float  :offset  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type sphere
+;; INFO: Used lq/sq
+(defmethod inspect sphere ((obj sphere))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'sphere)
+  (format #t "~1Tdata[4] @ #x~X~%" (&-> obj x))
+  (format #t "~1Tx: ~f~%" (-> obj x))
+  (format #t "~1Ty: ~f~%" (-> obj y))
+  (format #t "~1Tz: ~f~%" (-> obj z))
+  (format #t "~1Tw: ~f~%" (-> obj r))
+  (format #t "~1Tquad: ~D~%" (-> obj quad))
+  (format #t "~1Tr: ~f~%" (-> obj r))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type isphere
+(deftype isphere (vec4s)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition of type box8s
+(deftype box8s (structure)
+  ((data   float   8       :offset-assert   0)
+   (quad   uint128 2       :offset          0)
+   (vector vector  2       :offset          0)
+   (min    vector  :inline :offset          0)
+   (max    vector  :inline :offset         16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type box8s
+(defmethod inspect box8s ((obj box8s))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'box8s)
+  (format #t "~1Tdata[8] @ #x~X~%" (-> obj data))
+  (format #t "~1Tquad[2] @ #x~X~%" (-> obj data))
+  (format #t "~1Tvector[2] @ #x~X~%" (-> obj data))
+  (format #t "~1Tmin: #<vector @ #x~X>~%" (-> obj data))
+  (format #t "~1Tmax: #<vector @ #x~X>~%" (-> obj max))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type box8s-array
+(deftype box8s-array (inline-array-class)
+  ((data box8s :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type box8s-array
+(defmethod inspect box8s-array ((obj box8s-array))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(set! (-> box8s-array heap-base) (the-as uint 32))
+
+;; definition of type cylinder
+(deftype cylinder (structure)
+  ((origin vector :inline :offset-assert   0)
+   (axis   vector :inline :offset-assert  16)
+   (radius float          :offset-assert  32)
+   (length float          :offset-assert  36)
+   )
+  :method-count-assert 11
+  :size-assert         #x28
+  :flag-assert         #xb00000028
+  (:methods
+    (debug-draw (_type_ vector4w) none 9)
+    (ray-capsule-intersect (_type_ vector vector) float 10)
+    )
+  )
+
+;; definition for method 3 of type cylinder
+(defmethod inspect cylinder ((obj cylinder))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'cylinder)
+  (format #t "~1Torigin: #<vector @ #x~X>~%" (-> obj origin))
+  (format #t "~1Taxis: #<vector @ #x~X>~%" (-> obj axis))
+  (format #t "~1Tradius: ~f~%" (-> obj radius))
+  (format #t "~1Tlength: ~f~%" (-> obj length))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type cylinder-flat
+(deftype cylinder-flat (structure)
+  ((origin vector :inline :offset-assert   0)
+   (axis   vector :inline :offset-assert  16)
+   (radius float          :offset-assert  32)
+   (length float          :offset-assert  36)
+   )
+  :method-count-assert 11
+  :size-assert         #x28
+  :flag-assert         #xb00000028
+  (:methods
+    (debug-draw (_type_ vector4w) none 9)
+    (ray-flat-cyl-intersect (_type_ vector vector) float 10)
+    )
+  )
+
+;; definition for method 3 of type cylinder-flat
+(defmethod inspect cylinder-flat ((obj cylinder-flat))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'cylinder-flat)
+  (format #t "~1Torigin: #<vector @ #x~X>~%" (-> obj origin))
+  (format #t "~1Taxis: #<vector @ #x~X>~%" (-> obj axis))
+  (format #t "~1Tradius: ~f~%" (-> obj radius))
+  (format #t "~1Tlength: ~f~%" (-> obj length))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vertical-planes
+(deftype vertical-planes (structure)
+  ((data uint128 4 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+;; definition for method 3 of type vertical-planes
+(defmethod inspect vertical-planes ((obj vertical-planes))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vertical-planes)
+  (format #t "~1Tdata[4] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vertical-planes-array
+(deftype vertical-planes-array (basic)
+  ((length uint32                           :offset-assert   4)
+   (data   vertical-planes :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type vertical-planes-array
+(defmethod inspect vertical-planes-array ((obj vertical-planes-array))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type qword
+(deftype qword (structure)
+  ((data     uint32   4       :offset-assert   0)
+   (byte     uint8    16      :offset          0)
+   (hword    uint16   8       :offset          0)
+   (word     uint32   4       :offset          0)
+   (dword    uint64   2       :offset          0)
+   (quad     uint128          :offset          0)
+   (vector   vector   :inline :offset          0)
+   (vector4w vector4w :inline :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type qword
+;; INFO: Used lq/sq
+(defmethod inspect qword ((obj qword))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'qword)
+  (format #t "~1Tdata[4] @ #x~X~%" (-> obj data))
+  (format #t "~1Tbyte[16] @ #x~X~%" (-> obj data))
+  (format #t "~1Thword[8] @ #x~X~%" (-> obj data))
+  (format #t "~1Tword[4] @ #x~X~%" (-> obj data))
+  (format #t "~1Tdword[2] @ #x~X~%" (-> obj data))
+  (format #t "~1Tquad: ~D~%" (-> obj quad))
+  (format #t "~1Tvector: #<vector @ #x~X>~%" (-> obj data))
+  (format #t "~1Tvector4w: #<vector4w @ #x~X>~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vector3s
+(deftype vector3s (structure)
+  ((data float 3 :offset-assert   0)
+   (x    float   :offset          0)
+   (y    float   :offset          4)
+   (z    float   :offset          8)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type vector3s
+(defmethod inspect vector3s ((obj vector3s))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector3s)
+  (format #t "~1Tdata[3] @ #x~X~%" (-> obj data))
+  (format #t "~1Tx: ~f~%" (-> obj x))
+  (format #t "~1Ty: ~f~%" (-> obj y))
+  (format #t "~1Tz: ~f~%" (-> obj z))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function vector-dot
+(defun vector-dot ((arg0 vector) (arg1 vector))
+  (vector-dot arg0 arg1)
+  )
+
+;; definition for function vector-dot-vu
+(defun vector-dot-vu ((arg0 vector) (arg1 vector))
+  (local-vars (v0-0 float))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (.lvf vf1 (&-> arg0 quad))
+    (.lvf vf2 (&-> arg1 quad))
+    (.mul.vf vf1 vf1 vf2)
+    (.add.y.vf vf1 vf1 vf1 :mask #b1)
+    (.add.z.vf vf1 vf1 vf1 :mask #b1)
+    (.mov v0-0 vf1)
+    v0-0
+    )
+  )
+
+;; definition for function vector4-dot
+(defun vector4-dot ((arg0 vector) (arg1 vector))
+  (vector4-dot arg0 arg1)
+  )
+
+;; definition for function vector4-dot-vu
+(defun vector4-dot-vu ((arg0 vector) (arg1 vector))
+  (local-vars (v0-0 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg0 quad))
+    (.lvf vf2 (&-> arg1 quad))
+    (.mul.vf vf1 vf1 vf2)
+    (.add.w.vf vf3 vf0 vf0 :mask #b1)
+    (.mul.x.vf acc vf3 vf1 :mask #b1)
+    (.add.mul.y.vf acc vf3 vf1 acc :mask #b1)
+    (.add.mul.z.vf acc vf3 vf1 acc :mask #b1)
+    (.add.mul.w.vf vf1 vf3 vf1 acc :mask #b1)
+    (.mov v0-0 vf1)
+    v0-0
+    )
+  )
+
+;; definition for function vector+!
+(defun vector+! ((arg0 vector) (arg1 vector) (arg2 vector))
+  (vector+! arg0 arg1 arg2)
+  )
+
+;; definition for function vector-!
+(defun vector-! ((arg0 vector) (arg1 vector) (arg2 vector))
+  (vector-! arg0 arg1 arg2)
+  )
+
+;; definition for function vector-zero!
+;; INFO: Used lq/sq
+(defun vector-zero! ((arg0 vector))
+  (set! (-> arg0 quad) (the-as uint128 0))
+  arg0
+  )
+
+;; definition for function vector-reset!
+(defun vector-reset! ((arg0 vector))
+  (rlet ((vf0 :class vf))
+    (init-vf0-vector)
+    (.svf (&-> arg0 quad) vf0)
+    arg0
+    )
+  )
+
+;; definition for function vector-copy!
+;; INFO: Used lq/sq
+(defun vector-copy! ((arg0 vector) (arg1 vector))
+  (set! (-> arg0 quad) (-> arg1 quad))
+  arg0
+  )
+
+;; definition for function vector-length<
+(defun vector-length< ((arg0 vector) (arg1 float))
+  (let ((f0-0 (vector-length-squared arg0))
+        (f1-0 arg1)
+        )
+    (< f0-0 (* f1-0 f1-0))
+    )
+  )
+
+;; definition for function vector-length>
+(defun vector-length> ((arg0 vector) (arg1 float))
+  (< (* arg1 arg1) (vector-length-squared arg0))
+  )
+
+;; definition for symbol *zero-vector*, type vector
+(define *zero-vector* (new 'static 'vector))
+
+;; failed to figure out what this is:
+0

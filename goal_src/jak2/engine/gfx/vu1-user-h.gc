@@ -1,0 +1,554 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: vu1-user-h.gc
+;; name in dgo: vu1-user-h
+;; dgos: ENGINE, GAME
+
+#|@file
+this file contains shared enums for the various renderers.
+
+Renderers will output data to "buckets", which are later spliced together into a single
+very large dma chain.
+
+With the exception of a few special case buckets, there's a bucket for
+<renderer>-<special_modes>-<draw-level>-<tpage>
+unlike jak 1, the "draw level index" is separate from the normal level index.
+
+for example: tie-s-l1-tfrag
+ - will be filled by the TIE renderer
+ - special "s" (scissor) variant of TIE
+ - using geometry of level 1
+ - while the tfrag tpage is in VRAM
+|#
+
+;;  <what renderer>-<what level>-<what tpage>
+(defenum bucket-id
+  :type int32
+  :bitfield #f
+
+  ;;;;;;;;;;
+
+  (bucket-0)
+  (bucket-1)
+  (bucket-2)
+  (bucket-3)         ;; blit displays
+  (tex-lcom-sky-pre)     ;; tex
+  (sky-draw)         ;; sky
+  (ocean-mid-far)    ;; ocean
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; All levels with tfrag tpage
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  (tex-l0-tfrag)         ;; level 0 tex
+  (tfrag-l0-tfrag)       ;; tfrag
+  (tie-l0-tfrag)         ;; tie
+  (etie-l0-tfrag)       ;; tie
+  (tfrag-s-l0-tfrag)    ;; tfrag
+  (tie-s-l0-tfrag)      ;; tie
+  (etie-s-l0-tfrag)     ;; tie
+  (merc-l0-tfrag)       ;; merc
+  (emerc-l0-tfrag)      ;; emerc
+  (gmerc-l0-tfrag)      ;; mercneric
+  (tie-v-l0-tfrag)      ;; tie
+
+  (tex-l1-tfrag)        ;; tex
+  (tfrag-l1-tfrag)      ;; tfrag
+  (tie-l1-tfrag)        ;; tie
+  (etie-l1-tfrag)       ;; tie
+  (tfrag-s-l1-tfrag)    ;; tfrag
+  (tie-s-l1-tfrag)      ;; tie
+  (etie-s-l1-tfrag)     ;; tie
+  (merc-l1-tfrag)       ;; merc
+  (emerc-l1-tfrag)      ;; emerc
+  (gmerc-l1-tfrag)      ;; mercneric
+  (tie-v-l1-tfrag)      ;; tie
+
+  (tex-l2-tfrag)        ;; tex
+  (tfrag-l2-tfrag)      ;; tfrag
+  (tie-l2-tfrag)        ;; tie
+  (etie-l2-tfrag)       ;; tie
+  (tfrag-s-l2-tfrag)    ;; tfrag
+  (tie-s-l2-tfrag)      ;; tie
+  (etie-s-l2-tfrag)     ;; tie
+  (merc-l2-tfrag)       ;; merc
+  (emerc-l2-tfrag)      ;; emerc
+  (gmerc-l2-tfrag)      ;; mercneric
+  (tie-v-l2-tfrag)      ;; tie
+
+  (tex-l3-tfrag)        ;; tex
+  (tfrag-l3-tfrag)      ;; tfrag
+  (tie-l3-tfrag)        ;; tie
+  (etie-l3-tfrag)       ;; tie
+  (tfrag-s-l3-tfrag)    ;; tfrag
+  (tie-s-l3-tfrag)      ;; tie
+  (etie-s-l3-tfrag)     ;; tie
+  (merc-l3-tfrag)       ;; merc
+  (emerc-l3-tfrag)      ;; emerc
+  (gmerc-l3-tfrag)      ;; mercneric
+  (tie-v-l3-tfrag)      ;; tie
+
+  (tex-l4-tfrag)        ;; tex
+  (tfrag-l4-tfrag)      ;; tfrag
+  (tie-l4-tfrag)        ;; tie
+  (etie-l4-tfrag)       ;; tie
+  (tfrag-s-l4-tfrag)    ;; tfrag
+  (tie-s-l4-tfrag)      ;; tie
+  (etie-s-l4-tfrag)     ;; tie
+  (merc-l4-tfrag)       ;; merc
+  (emerc-l4-tfrag)      ;; emerc
+  (gmerc-l4-tfrag)      ;; mercneric
+  (tie-v-l4-tfrag)      ;; tie
+
+  (tex-l5-tfrag)        ;; tex
+  (tfrag-l5-tfrag)      ;; tfrag
+  (tie-l5-tfrag)        ;; tie
+  (etie-l5-tfrag)       ;; tie
+  (tfrag-s-l5-tfrag)    ;; tfrag
+  (tie-s-l5-tfrag)      ;; tie
+  (etie-s-l5-tfrag)     ;; tie
+  (merc-l5-tfrag)       ;; merc
+  (emerc-l5-tfrag)      ;; emerc
+  (gmerc-l5-tfrag)      ;; mercneric
+  (tie-v-l5-tfrag)      ;; tie
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; All levels with shrub tpage
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  (tex-l0-shrub)            ;; tex
+  (shrub-l0-shrub)          ;; shrub
+  (shrub-n-l0-shrub)        ;; shrub
+  (billboard-l0-shrub)      ;; shrub
+  (shrub-v-l0-shrub)        ;; shrub
+  (shrub-nt-l0-shrub)       ;; shrub
+  (merc-l0-shrub)           ;; merc
+  (emerc-l0-shrub)          ;; emerc
+  (gmerc-l0-shrub)          ;; mercneric
+
+  (tex-l1-shrub)            ;; tex
+  (shrub-l1-shrub)          ;; shrub
+  (shrub-n-l1-shrub)        ;; shrub
+  (billboard-l1-shrub)      ;; shrub
+  (shrub-v-l1-shrub)        ;; shrub
+  (shrub-nt-l1-shrub)       ;; shrub
+  (merc-l1-shrub)           ;; merc
+  (emerc-l1-shrub)          ;; emerc
+  (gmerc-l1-shrub)          ;; mercneric
+
+  (tex-l2-shrub)            ;; tex
+  (shrub-l2-shrub)          ;; shrub
+  (shrub-n-l2-shrub)        ;; shrub
+  (billboard-l2-shrub)      ;; shrub
+  (shrub-v-l2-shrub)        ;; shrub
+  (shrub-nt-l2-shrub)       ;; shrub
+  (merc-l2-shrub)           ;; merc
+  (emerc-l2-shrub)          ;; emerc
+  (gmerc-l2-shrub)          ;; mercneric
+
+  (tex-l3-shrub)          ;; tex
+  (shrub-l3-shrub)        ;; shrub
+  (shrub-n-l3-shrub)      ;; shrub
+  (billboard-l3-shrub)    ;; shrub
+  (shrub-v-l3-shrub)      ;; shrub
+  (shrub-nt-l3-shrub)     ;; shrub
+  (merc-l3-shrub)         ;; merc
+  (emerc-l3-shrub)        ;; emerc
+  (gmerc-l3-shrub)        ;; mercneric
+
+  (tex-l4-shrub)          ;; tex
+  (shrub-l4-shrub)        ;; shrub
+  (shrub-n-l4-shrub)      ;; shrub
+  (billboard-l4-shrub)    ;; shrub
+  (shrub-v-l4-shrub)      ;; shrub
+  (shrub-nt-l4-shrub)     ;; shrub
+  (merc-l4-shrub)         ;; merc
+  (emerc-l4-shrub)        ;; emerc
+  (gmerc-l4-shrub)        ;; mercneric
+
+  (tex-l5-shrub)          ;; tex
+  (shrub-l5-shrub)        ;; shrub
+  (shrub-n-l5-shrub)      ;; shrub
+  (billboard-l5-shrub)    ;; shrub
+  (shrub-v-l5-shrub)      ;; shrub
+  (shrub-nt-l5-shrub)     ;; shrub
+  (merc-l5-shrub)         ;; merc
+  (emerc-l5-shrub)        ;; emerc
+  (gmerc-l5-shrub)        ;; mercneric
+
+  (tex-l0-alpha)          ;; tex
+  (tfrag-t-l0-alpha)      ;; tfrag
+  (tie-t-l0-alpha)        ;; tie
+  (etie-t-l0-alpha)       ;; tie
+  (merc-l0-alpha)         ;; merc
+  (emerc-l0-alpha)        ;; emerc
+  (gmerc-l0-alpha)        ;; mercneric
+  (tfrag-st-l0-alpha)     ;; tfrag
+  (tie-st-l0-alpha)       ;; tie
+  (etie-st-l0-alpha)      ;; tie
+
+  (tex-l1-alpha)          ;; tex
+  (tfrag-t-l1-alpha)      ;; tfrag
+  (tie-t-l1-alpha)        ;; tie
+  (etie-t-l1-alpha)       ;; tie
+  (merc-l1-alpha)         ;; merc
+  (emerc-l1-alpha)        ;; emerc
+  (gmerc-l1-alpha)        ;; mercneric
+  (tfrag-st-l1-alpha)     ;; tfrag
+  (tie-st-l1-alpha)       ;; tie
+  (etie-st-l1-alpha)      ;; tie
+
+  (tex-l2-alpha)          ;; tex
+  (tfrag-t-l2-alpha)      ;; tfrag
+  (tie-t-l2-alpha)        ;; tie
+  (etie-t-l2-alpha)       ;; tie
+  (merc-l2-alpha)         ;; merc
+  (emerc-l2-alpha)        ;; emerc
+  (gmerc-l2-alpha)        ;; mercneric
+  (tfrag-st-l2-alpha)     ;; tfrag
+  (tie-st-l2-alpha)       ;; tie
+  (etie-st-l2-alpha)      ;; tie
+
+  (tex-l3-alpha)          ;; tex
+  (tfrag-t-l3-alpha)      ;; tfrag
+  (tie-t-l3-alpha)        ;; tie
+  (etie-t-l3-alpha)       ;; tie
+  (merc-l3-alpha)         ;; merc
+  (emerc-l3-alpha)        ;; emerc
+  (gmerc-l3-alpha)        ;; mercneric
+  (tfrag-st-l3-alpha)     ;; tfrag
+  (tie-st-l3-alpha)       ;; tie
+  (etie-st-l3-alpha)      ;; tie
+
+  (tex-l4-alpha)          ;; tex
+  (tfrag-t-l4-alpha)      ;; tfrag
+  (tie-t-l4-alpha)        ;; tie
+  (etie-t-l4-alpha)       ;; tie
+  (merc-l4-alpha)         ;; merc
+  (emerc-l4-alpha)        ;; emerc
+  (gmerc-l4-alpha)        ;; mercneric
+  (tfrag-st-l4-alpha)     ;; tfrag
+  (tie-st-l4-alpha)       ;; tie
+  (etie-st-l4-alpha)      ;; tie
+
+  (tex-l5-alpha)          ;; tex
+  (tfrag-t-l5-alpha)      ;; tfrag
+  (tie-t-l5-alpha)        ;; tie
+  (etie-t-l5-alpha)       ;; tie
+  (merc-l5-alpha)         ;; merc
+  (emerc-l5-alpha)        ;; emerc
+  (gmerc-l5-alpha)        ;; mercneric
+  (tfrag-st-l5-alpha)     ;; tfrag
+  (tie-st-l5-alpha)       ;; tie
+  (etie-st-l5-alpha)      ;; tie
+
+  (tex-lcom-tfrag)        ;; tex
+  (merc-lcom-tfrag)       ;; merc
+  (emerc-lcom-tfrag)      ;; emerc
+  (gmerc-lcom-tfrag)      ;; mercneric
+
+  (tex-lcom-shrub)        ;; tex
+  (merc-lcom-shrub)       ;; merc
+  (emerc-lcom-shrub)      ;; emerc
+  (gmerc-lcom-shrub)      ;; mercneric
+
+  (shadow)                ;; shadow
+
+  (tex-l0-pris)           ;; tex
+  (merc-l0-pris)          ;; merc
+  (emerc-l0-pris)         ;; emerc
+  (gmerc-l0-pris)         ;; mercneric
+
+  (tex-l1-pris)           ;; tex
+  (merc-l1-pris)          ;; merc
+  (emerc-l1-pris)         ;; emerc
+  (gmerc-l1-pris)         ;; mercneric
+
+  (tex-l2-pris)           ;; tex
+  (merc-l2-pris)          ;; merc
+  (emerc-l2-pris)         ;; emerc
+  (gmerc-l2-pris)         ;; mercneric
+
+  (tex-l3-pris)           ;; tex
+  (merc-l3-pris)          ;; merc
+  (emerc-l3-pris)         ;; emerc
+  (gmerc-l3-pris)         ;; mercneric
+
+  (tex-l4-pris)           ;; tex
+  (merc-l4-pris)          ;; merc
+  (emerc-l4-pris)         ;; emerc
+  (gmerc-l4-pris)         ;; mercneric
+
+  (tex-l5-pris)           ;; tex
+  (merc-l5-pris)          ;; merc
+  (emerc-l5-pris)         ;; emerc
+  (gmerc-l5-pris)         ;; mercneric
+
+  (tex-lcom-pris)         ;; tex
+  (merc-lcom-pris)        ;; merc
+  (emerc-lcom-pris)       ;; emerc
+  (gmerc-lcom-pris)       ;; mercneric
+
+  (tex-l0-pris2)          ;; tex
+  (merc-l0-pris2)         ;; merc
+  (emerc-l0-pris2)        ;; emerc
+  (gmerc-l0-pris2)        ;; mercneric
+
+  (tex-l1-pris2)          ;; tex
+  (merc-l1-pris2)         ;; merc
+  (emerc-l1-pris2)        ;; emerc
+  (gmerc-l1-pris2)        ;; mercneric
+
+  (tex-l2-pris2)          ;; tex
+  (merc-l2-pris2)         ;; merc
+  (emerc-l2-pris2)        ;; emerc
+  (gmerc-l2-pris2)        ;; mercneric
+
+  (tex-l3-pris2)          ;; tex
+  (merc-l3-pris2)         ;; merc
+  (emerc-l3-pris2)        ;; emerc
+  (gmerc-l3-pris2)        ;; mercneric
+
+  (tex-l4-pris2)          ;; tex
+  (merc-l4-pris2)         ;; merc
+  (emerc-l4-pris2)        ;; emerc
+  (gmerc-l4-pris2)        ;; mercneric
+
+  (tex-l5-pris2)          ;; tex
+  (merc-l5-pris2)         ;; merc
+  (emerc-l5-pris2)        ;; emerc
+  (gmerc-l5-pris2)        ;; mercneric
+
+  (tex-lcom-pris2)        ;; tex
+  (merc-lcom-pris2)       ;; merc
+  (emerc-lcom-pris2)      ;; emerc
+  (gmerc-lcom-pris2)      ;; mercneric
+
+  (tex-l0-water)          ;; tex
+  (merc-l0-water)         ;; merc
+  (gmerc-l0-water)        ;; mercneric
+  (tfrag-w-l0-water)      ;; tfrag
+  (tie-w-l0-water)
+  (etie-w-l0-water)
+  (tie-sw-l0-water)
+  (tfrag-ws-l0-water)     ;; tfrag
+  (etie-sw-l0-water)
+
+  (tex-l1-water)          ;; tex
+  (merc-l1-water)         ;; merc
+  (gmerc-l1-water)        ;; mercneric
+  (tfrag-w-l1-water)      ;; tfrag
+  (tie-w-l1-water)
+  (etie-w-l1-water)
+  (tie-sw-l1-water)
+  (tfrag-ws-l1-water)     ;; tfrag
+  (etie-sw-l1-water)
+
+  (tex-l2-water)          ;; tex
+  (merc-l2-water)         ;; merc
+  (gmerc-l2-water)        ;; mercneric
+  (tfrag-w-l2-water)      ;; tfrag
+  (tie-w-l2-water)
+  (etie-w-l2-water)
+  (tie-sw-l2-water)
+  (tfrag-ws-l2-water)     ;; tfrag
+  (tie-esw-l2-water)
+
+  (tex-l3-water)          ;; tex
+  (merc-l3-water)         ;; merc
+  (gmerc-l3-water)        ;; mercneric
+  (tfrag-w-l3-water)      ;; tfrag
+  (tie-w-l3-water)
+  (etie-w-l3-water)
+  (tie-sw-l3-water)
+  (tfrag-ws-l3-water)     ;; tfrag
+  (etie-sw-l3-water)
+
+  (tex-l4-water)          ;; tex
+  (merc-l4-water)         ;; merc
+  (gmerc-l4-water)        ;; mercneric
+  (tfrag-w-l4-water)      ;; tfrag
+  (tie-w-l4-water)
+  (etie-w-l4-water)
+  (tie-sw-l4-water)
+  (tfrag-ws-l4-water)     ;; tfrag
+  (etie-sw-l4-water)
+
+  (tex-l5-water)          ;; tex
+  (merc-l5-water)         ;; merc
+  (gmerc-l5-water)        ;; mercneric
+  (tfrag-w-l5-water)      ;; tfrag
+  (tie-w-l5-water)
+  (etie-w-l5-water)
+  (tie-sw-l5-water)
+  (tfrag-ws-l5-water)     ;; tfrag
+  (etie-sw-l5-water)
+
+  (tex-lcom-water)        ;; tex
+  (merc-lcom-water)       ;; merc
+  (gmerc-lcom-water)      ;; mercneric
+
+  (tex-lcom-sky-post)
+
+  (ocean-near)            ;; ocean
+  (depth-cue)             ;; depth-cue
+
+  (tex-all-sprite)
+  (particles)             ;; particles
+  (shadow2)               ;; shadow
+  (effects)               ;; effects
+  (tex-all-warp)          ;; tex
+  (gmerc-warp)            ;; mercneric
+
+  (debug-no-zbuf1)        ;; debug, no zbuf
+  (tex-all-map)           ;; tex
+  (progress)              ;; hud | progress
+  (screen-filter)         ;; hud letterbox, no zbuf
+  (subtitle)            ;; hud
+  (bucket-323)            ;; hud
+  (debug2)                ;; debug
+  (debug-no-zbuf2)        ;; debug
+  (debug3)
+  )
+
+(defenum bucket-id-16
+  :type int16
+  :copy-entries bucket-id
+  )
+;; bit mask to select a renderer
+(defenum vu1-renderer-mask
+  :type uint64
+  :bitfield #t
+  (rn0)
+  (rn1)
+  (rn2)
+  (sky)
+  (ocean)
+  (ocean-wave)
+  (tfrag)
+  (tie)
+  (tie-envmap)
+  (tie-scissor)
+  (tie-envmap-scissor)
+  (tie-vanish)
+  (generic)
+  (merc)
+  (emerc)
+  (shrubbery)
+  (shrub-near)
+  (billboard)
+  (shrubbery-vanish)
+  (tfrag-trans)
+  (tie-scissor-trans)
+  (tie-trans)
+  (tie-envmap-trans)
+  (tie-envmap-scissor-trans)
+  (tfrag-water)
+  (tie-scissor-water)
+  (tie-water)
+  (tie-envmap-water)
+  (tie-envmap-scissor-water)
+  (sprite)
+  (shadow)
+  (rn31)
+  (rn32)
+  (rn33)
+  (depth-cue)
+  )
+
+;; bit mask to select tpages for upload
+(defenum texture-enable-mask
+  :type uint64
+  :bitfield #t
+  (tfrag  0)
+  (pris   1)
+  (shrub  2)
+  (alpha  3)
+  (water  4)
+  (warp   5)
+  (sprite 6)
+  (map    7)
+  (sky    8)
+  (tex9   9)
+  (tex10 10)
+  (tex11 11)
+  (tex12 12)
+  (tex13 13)
+  (tex14 14)
+  (tex15 15)
+  (tex16 16)
+  )
+
+;; also used in u32's sometimes
+(defenum texture-enable-mask-u32
+  :type uint32
+  :bitfield #t
+  :copy-entries texture-enable-mask
+  )
+
+;; texture page kinds for Jak 2. Pris2 is the actual name.
+(defenum tpage-category
+  :type int8
+  (tfrag  0)
+  (pris   1)
+  (shrub  2)
+  (alpha  3)
+  (water  4)
+  (warp   5)
+  (pris2  6)
+  (sprite 7)
+  (map    8)
+  (sky    9)
+  )
+
+(defenum tpage-category-u32
+  :type uint32
+  :copy-entries tpage-category
+  )
+;; DECOMP BEGINS
+
+
+;; foreground renderers will output DMA data to one of these "sinks".
+(deftype dma-foreground-sink (basic)
+   ;; which bucket to output to. determines draw order.
+  ((bucket                   bucket-id      :offset-assert 4)
+   ;; what kind of textures will be uploaded at this time?
+   (foreground-texture-page  tpage-category :offset-assert 8)
+   ;; which level do we belong to?
+   (foreground-texture-level int8           :offset-assert 9)
+   ;; if there are multiple buckets for the above categories, which bucket
+   ;; (for example, jak 1 had separate merc/gmerc buckets in some categories)
+   (foreground-output-bucket int8           :offset-assert 10)
+   )
+  :method-count-assert 9
+  :size-assert         #xb
+  :flag-assert         #x90000000b
+  )
+
+;; the generic renderer is double buffered - while one fragment is uploading, another is rendering.
+;; This double buffering even happens across models. So when preparing DMA for the next model,
+;; the generic renderer must know the output (gifbuf) region of last fragment of the previous model,
+;; and upload to the other buffer.
+;; The generic renderer doesn't track this state internally, so we have some extra information
+;; to add on to generic buckets.
+(deftype generic-bucket-state (structure)
+  ((gifbuf-adr uint32  :offset-assert   0)
+   (inbuf-adr  uint32  :offset-assert   4)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; as described above, the generic renderer needs a bit of extra state to double
+;; buffer between models.
+(deftype generic-dma-foreground-sink (dma-foreground-sink)
+  ((state generic-bucket-state :inline :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+

@@ -1,16 +1,23 @@
 #pragma once
 
-#include <vector>
-#include <string>
-#include <optional>
 #include <memory>
+#include <optional>
+#include <string>
 #include <unordered_map>
+#include <vector>
+
 #include "common/common_types.h"
-#include "goalc/emitter/Instruction.h"
-#include "goalc/debugger/disassemble.h"
 #include "common/util/Assert.h"
 
+#include "goalc/debugger/disassemble.h"
+#include "goalc/emitter/Instruction.h"
+
 class FunctionEnv;
+
+namespace goos {
+class Object;
+class HeapObject;
+}  // namespace goos
 
 /*!
  * FunctionDebugInfo stores per-function debugging information.
@@ -24,8 +31,10 @@ struct FunctionDebugInfo {
   std::string name;
   std::string obj_name;
 
-  std::shared_ptr<FunctionEnv> function;
   std::vector<InstructionInfo> instructions;  // contains mapping to IRs
+
+  std::vector<std::shared_ptr<goos::HeapObject>> code_sources;
+  std::vector<std::string> ir_strings;
 
   // the actual bytes in the object file.
   std::vector<u8> generated_code;

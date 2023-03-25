@@ -1,0 +1,11 @@
+("CTC.DGO"
+ ("ctyslumc-part.o"
+  "tpage-1268.go"
+  "tpage-1303.go"
+  "tpage-1269.go"
+  "tpage-1023.go"
+  "tpage-1648.go"
+  "com-airlock-outer-ag.go"
+  "oracle-door-ag.go"
+  "ctyslumc-vis.go"
+ ))

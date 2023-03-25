@@ -3,11 +3,16 @@
  */
 
 #include "gltf_mesh_extract.h"
-#include "goalc/build_level/color_quantization.h"
-#include "third-party/tiny_gltf/tiny_gltf.h"
+
+#include <optional>
+
 #include "common/log/log.h"
-#include "common/util/Timer.h"
 #include "common/math/geometry.h"
+#include "common/util/Timer.h"
+
+#include "goalc/build_level/color_quantization.h"
+
+#include "third-party/tiny_gltf/tiny_gltf.h"
 
 namespace gltf_mesh_extract {
 
@@ -53,7 +58,7 @@ std::vector<math::Vector2f> extract_vec2f(const u8* data, u32 count, u32 stride)
 }
 
 /*!
- * Convert a GLTF color buffer to u8 colors.
+ * Convert a GLTF color buffer (u16 format) to u8 colors.
  */
 std::vector<math::Vector<u8, 4>> extract_color_from_vec4_u16(const u8* data,
                                                              u32 count,
@@ -106,6 +111,9 @@ struct ExtractedVertices {
   std::vector<math::Vector3f> normals;
 };
 
+/*!
+ * Extract positions, colors, and normals from a mesh.
+ */
 ExtractedVertices gltf_vertices(const tinygltf::Model& model,
                                 const std::map<std::string, int>& attributes,
                                 const math::Matrix4f& w_T_local,
@@ -130,7 +138,7 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
     ASSERT_MSG(attrib_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT,
                "POSITION wasn't float");
     // for (auto& attrib : attributes) {
-    // fmt::print("attrib: {}\n", attrib.first);
+    // lg::print("attrib: {}\n", attrib.first);
     //}
     auto mesh_verts = extract_vec3f(data_ptr, count, byte_stride);
     result.reserve(mesh_verts.size());
@@ -217,6 +225,10 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
       ASSERT_MSG(attrib_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT,
                  "NORMAL wasn't float");
       normals = extract_vec3f(data_ptr, count, byte_stride);
+      for (auto& nrm : normals) {
+        math::Vector4f nrm4(nrm.x(), nrm.y(), nrm.z(), 0.f);
+        nrm = (w_T_local * nrm4).xyz();
+      }
       ASSERT(normals.size() == result.size());
     } else {
       lg::error("No NORMAL attribute for mesh: {}", debug_name);
@@ -229,11 +241,6 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
       v.s = 0;
       v.t = 0;
     }
-
-    v.q_unused = 0;
-    v.pad[0] = 0;
-    v.pad[1] = 0;
-    v.pad[2] = 0;
   }
   // TODO: other properties
   return {result, vtx_colors, normals};
@@ -246,8 +253,8 @@ DrawMode make_default_draw_mode() {
   mode.set_alpha_blend(DrawMode::AlphaBlend::DISABLED);
   mode.set_aref(0);
   mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
-  mode.set_clamp_s_enable(true);
-  mode.set_clamp_t_enable(true);
+  mode.set_clamp_s_enable(false);
+  mode.set_clamp_t_enable(false);
   mode.disable_filt();  // for checkerboard...
   mode.enable_tcc();    // ?
   mode.disable_at();
@@ -289,6 +296,8 @@ int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex) {
   if (existing != pool->textures_by_name.end()) {
     lg::info("Reusing image: {}", tex.name);
     return existing->second;
+  } else {
+    lg::info("adding new texture: {}, size {} kB", tex.name, tex.width * tex.height * 4 / 1024);
   }
 
   ASSERT(tex.bits == 8);
@@ -304,9 +313,9 @@ int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex) {
   tt.debug_tpage_name = "custom-level";
   tt.load_to_pool = false;
   tt.combo_id = 0;  // doesn't matter, not a pool tex
-  tt.data.resize(tt.w * tt.h * 4);
+  tt.data.resize(tt.w * tt.h);
   ASSERT(tex.image.size() >= tt.data.size());
-  memcpy(tt.data.data(), tex.image.data(), tt.data.size());
+  memcpy(tt.data.data(), tex.image.data(), tt.data.size() * 4);
   return idx;
 }
 }  // namespace
@@ -508,14 +517,17 @@ void extract(const Input& in,
 
   for (const auto& n : all_nodes) {
     const auto& node = model.nodes[n.node_idx];
+    if (node.extras.Has("set_invisible") && node.extras.Get("set_invisible").Get<int>()) {
+      continue;
+    }
     if (node.mesh >= 0) {
       const auto& mesh = model.meshes[node.mesh];
-      if (!mesh.extras.Has("tfrag")) {
-        // fmt::print("skip tfrag: {}\n", mesh.name);
-        // continue;
-      }
       mesh_count++;
       for (const auto& prim : mesh.primitives) {
+        if (prim.material >= 0 && model.materials[prim.material].extras.Has("set_invisible") &&
+            model.materials[prim.material].extras.Get("set_invisible").Get<int>()) {
+          continue;
+        }
         prim_count++;
         // extract index buffer
         std::vector<u32> prim_indices = gltf_index_buffer(model, prim.indices, out.vertices.size());
@@ -527,6 +539,7 @@ void extract(const Input& in,
         if (in.get_colors) {
           all_vtx_colors.insert(all_vtx_colors.end(), verts.vtx_colors.begin(),
                                 verts.vtx_colors.end());
+          ASSERT(all_vtx_colors.size() == out.vertices.size());
         }
 
         // TODO: just putting it all in one material
@@ -538,12 +551,12 @@ void extract(const Input& in,
           auto& grp = draw.vis_groups.emplace_back();
           grp.num_inds += prim_indices.size();
           grp.num_tris += draw.num_triangles;
-          grp.vis_idx_in_pc_bvh = UINT32_MAX;
+          grp.vis_idx_in_pc_bvh = UINT16_MAX;
         } else {
           auto& grp = draw.vis_groups.back();
           grp.num_inds += prim_indices.size();
           grp.num_tris += draw.num_triangles;
-          grp.vis_idx_in_pc_bvh = UINT32_MAX;
+          grp.vis_idx_in_pc_bvh = UINT16_MAX;
         }
 
         draw.plain_indices.insert(draw.plain_indices.end(), prim_indices.begin(),
@@ -596,6 +609,120 @@ void extract(const Input& in,
   dedup_vertices(out);
 }
 
+std::optional<std::vector<CollideFace>> subdivide_face_if_needed(CollideFace face_in) {
+  math::Vector3f v_min = face_in.v[0];
+  v_min.min_in_place(face_in.v[1]);
+  v_min.min_in_place(face_in.v[2]);
+  v_min -= 16.f;
+  bool needs_subdiv = false;
+  for (auto& vert : face_in.v) {
+    if ((vert - v_min).squared_length() > 154.f * 154.f * 4096.f * 4096.f) {
+      needs_subdiv = true;
+      break;
+    }
+  }
+
+  if (needs_subdiv) {
+    math::Vector3f a = (face_in.v[0] + face_in.v[1]) * 0.5f;
+    math::Vector3f b = (face_in.v[1] + face_in.v[2]) * 0.5f;
+    math::Vector3f c = (face_in.v[2] + face_in.v[0]) * 0.5f;
+    math::Vector3f v0 = face_in.v[0];
+    math::Vector3f v1 = face_in.v[1];
+    math::Vector3f v2 = face_in.v[2];
+    CollideFace fs[4];
+    fs[0].v[0] = v0;
+    fs[0].v[1] = a;
+    fs[0].v[2] = c;
+    fs[0].bsphere = math::bsphere_of_triangle(face_in.v);
+
+    fs[1].v[0] = a;
+    fs[1].v[1] = v1;
+    fs[1].v[2] = b;
+    fs[1].bsphere = math::bsphere_of_triangle(fs[1].v);
+    fs[1].pat = face_in.pat;
+
+    fs[2].v[0] = a;
+    fs[2].v[1] = b;
+    fs[2].v[2] = c;
+    fs[2].bsphere = math::bsphere_of_triangle(fs[2].v);
+    fs[2].pat = face_in.pat;
+
+    fs[3].v[0] = b;
+    fs[3].v[1] = v2;
+    fs[3].v[2] = c;
+    fs[3].bsphere = math::bsphere_of_triangle(fs[3].v);
+    fs[3].pat = face_in.pat;
+
+    std::vector<CollideFace> result;
+    for (auto f : fs) {
+      auto next_faces = subdivide_face_if_needed(f);
+      if (next_faces) {
+        result.insert(result.end(), next_faces->begin(), next_faces->end());
+      } else {
+        result.push_back(f);
+      }
+    }
+    return result;
+  } else {
+    return std::nullopt;
+  }
+}
+
+struct PatResult {
+  bool set = false;
+  bool ignore = false;
+  PatSurface pat;
+};
+
+PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*debug_name*/) {
+  PatResult result;
+  if (!val.IsObject() || !val.Has("set_collision") || !val.Get("set_collision").Get<int>()) {
+    // unset.
+    result.set = false;
+    return result;
+  }
+
+  result.set = true;
+
+  if (val.Get("ignore").Get<int>()) {
+    result.ignore = true;
+    return result;
+  }
+  result.ignore = false;
+
+  int mat = val.Get("collide_material").Get<int>();
+  ASSERT(mat < (int)PatSurface::Material::MAX_MATERIAL);
+  result.pat.set_material(PatSurface::Material(mat));
+
+  int evt = val.Get("collide_event").Get<int>();
+  ASSERT(evt < (int)PatSurface::Event::MAX_EVENT);
+  result.pat.set_event(PatSurface::Event(evt));
+
+  if (val.Get("nolineofsight").Get<int>()) {
+    result.pat.set_nolineofsight(true);
+  }
+
+  if (val.Get("noedge").Get<int>()) {
+    result.pat.set_noedge(true);
+  }
+
+  if (val.Has("collide_mode")) {
+    int mode = val.Get("collide_mode").Get<int>();
+    ASSERT(mode < (int)PatSurface::Mode::MAX_MODE);
+    result.pat.set_mode(PatSurface::Mode(mode));
+  }
+
+  if (val.Get("nocamera").Get<int>()) {
+    result.pat.set_nocamera(true);
+  }
+
+  if (val.Get("noentity").Get<int>()) {
+    result.pat.set_noentity(true);
+  }
+
+  return result;
+}
+
 void extract(const Input& in,
              CollideOutput& out,
              const tinygltf::Model& model,
@@ -606,15 +733,25 @@ void extract(const Input& in,
 
   for (const auto& n : all_nodes) {
     const auto& node = model.nodes[n.node_idx];
-    fmt::print("node: {} {}\n", node.name, node.mesh);
+    PatResult mesh_default_collide = custom_props_to_pat(node.extras, node.name);
     if (node.mesh >= 0) {
       const auto& mesh = model.meshes[node.mesh];
-      if (!mesh.extras.Has("collide")) {
-        // fmt::print("skip collide: {}\n", mesh.name);
-        // continue;
-      }
       mesh_count++;
       for (const auto& prim : mesh.primitives) {
+        // get material
+        const auto& mat_idx = prim.material;
+        PatResult pat = mesh_default_collide;
+        if (mat_idx != -1) {
+          const auto& mat = model.materials[mat_idx];
+          auto mat_pat = custom_props_to_pat(mat.extras, mat.name);
+          if (mat_pat.set) {
+            pat = mat_pat;
+          }
+        }
+
+        if (pat.set && pat.ignore) {
+          continue;  // skip, no collide here
+        }
         prim_count++;
         // extract index buffer
         std::vector<u32> prim_indices = gltf_index_buffer(model, prim.indices, 0);
@@ -644,29 +781,70 @@ void extract(const Input& in,
 
           if (dots[0] > 1e-3 && dots[1] > 1e-3 && dots[2] > 1e-3) {
             suspicious_faces++;
-            std::swap(face.v[2], face.v[1]);
+            auto temp = face.v[2];
+            face.v[2] = face.v[1];
+            face.v[1] = temp;
           }
 
           face.bsphere = math::bsphere_of_triangle(face.v);
-          face.bsphere.w() += 1e-1;
+          face.bsphere.w() += 1e-1 * 5;
           for (int j = 0; j < 3; j++) {
             float output_dist = face.bsphere.w() - (face.bsphere.xyz() - face.v[j]).length();
             if (output_dist < 0) {
-              fmt::print("{}\n", output_dist);
-              fmt::print("BAD:\n{}\n{}\n{}\n", face.v[0].to_string_aligned(),
-                         face.v[1].to_string_aligned(), face.v[2].to_string_aligned());
-              fmt::print("bsphere: {}\n", face.bsphere.to_string_aligned());
+              lg::print("{}\n", output_dist);
+              lg::print("BAD:\n{}\n{}\n{}\n", face.v[0].to_string_aligned(),
+                        face.v[1].to_string_aligned(), face.v[2].to_string_aligned());
+              lg::print("bsphere: {}\n", face.bsphere.to_string_aligned());
             }
           }
-
+          face.pat = pat.pat;
           out.faces.push_back(face);
         }
       }
     }
   }
 
-  lg::info("{} out of {} faces were suspicious (a small number is ok)", suspicious_faces,
-           out.faces.size());
+  std::vector<CollideFace> fixed_faces;
+  int fix_count = 0;
+  for (auto& face : out.faces) {
+    auto try_fix = subdivide_face_if_needed(face);
+    if (try_fix) {
+      fix_count++;
+      fixed_faces.insert(fixed_faces.end(), try_fix->begin(), try_fix->end());
+    } else {
+      fixed_faces.push_back(face);
+    }
+  }
+
+  if (in.double_sided_collide) {
+    size_t os = fixed_faces.size();
+    for (size_t i = 0; i < os; i++) {
+      auto f0 = fixed_faces.at(i);
+      std::swap(f0.v[0], f0.v[1]);
+      fixed_faces.push_back(f0);
+    }
+  }
+
+  out.faces = std::move(fixed_faces);
+
+  if (in.auto_wall_enable) {
+    lg::info("automatically detecting walls with angle {}", in.auto_wall_angle);
+    int wall_count = 0;
+    float wall_cos = std::cos(in.auto_wall_angle * 2.f * 3.14159 / 360.f);
+    for (auto& face : out.faces) {
+      math::Vector3f face_normal =
+          (face.v[1] - face.v[0]).cross(face.v[2] - face.v[0]).normalized();
+      if (face_normal[1] < wall_cos) {
+        face.pat.set_mode(PatSurface::Mode::WALL);
+        wall_count++;
+      }
+    }
+    lg::info("automatic wall: {}/{} converted to walls", wall_count, out.faces.size());
+  }
+
+  lg::info("{} out of {} faces appeared to have wrong orientation and were flipped",
+           suspicious_faces, out.faces.size());
+  lg::info("{} faces were too big and were subdivided", fix_count);
   // lg::info("Collision extract{} {}", mesh_count, prim_count);
 }
 

@@ -1,0 +1,105 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type collide-frag-vertex
+(deftype collide-frag-vertex (vector)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type collide-frag-vertex
+;; INFO: Used lq/sq
+(defmethod inspect collide-frag-vertex ((obj collide-frag-vertex))
+  (format #t "[~8x] ~A~%" obj 'collide-frag-vertex)
+  (format #t "~Tdata[4] @ #x~X~%" (&-> obj x))
+  (format #t "~Tx: ~f~%" (-> obj x))
+  (format #t "~Ty: ~f~%" (-> obj y))
+  (format #t "~Tz: ~f~%" (-> obj z))
+  (format #t "~Tw: ~f~%" (-> obj w))
+  (format #t "~Tquad: ~D~%" (-> obj quad))
+  obj
+  )
+
+;; definition of type collide-frag-mesh
+(deftype collide-frag-mesh (basic)
+  ((packed-data     uint32         :offset-assert   4)
+   (pat-array       uint32         :offset-assert   8)
+   (strip-data-len  uint16         :offset-assert  12)
+   (poly-count      uint16         :offset-assert  14)
+   (base-trans      vector :inline :offset-assert  16)
+   (vertex-count    uint8          :offset         28)
+   (vertex-data-qwc uint8          :offset         29)
+   (total-qwc       uint8          :offset         30)
+   (unused          uint8          :offset         31)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type collide-frag-mesh
+(defmethod inspect collide-frag-mesh ((obj collide-frag-mesh))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tpacked-data: #x~X~%" (-> obj packed-data))
+  (format #t "~Tpat-array: #x~X~%" (-> obj pat-array))
+  (format #t "~Tstrip-data-len: ~D~%" (-> obj strip-data-len))
+  (format #t "~Tpoly-count: ~D~%" (-> obj poly-count))
+  (format #t "~Tbase-trans: #<vector @ #x~X>~%" (-> obj base-trans))
+  (format #t "~Tvertex-count: ~D~%" (-> obj vertex-count))
+  (format #t "~Tvertex-data-qwc: ~D~%" (-> obj vertex-data-qwc))
+  (format #t "~Ttotal-qwc: ~D~%" (-> obj total-qwc))
+  (format #t "~Tunused: ~D~%" (-> obj unused))
+  obj
+  )
+
+;; definition of type collide-fragment
+(deftype collide-fragment (drawable)
+  ((mesh collide-frag-mesh  :offset   8)
+   )
+  :method-count-assert 18
+  :size-assert         #x20
+  :flag-assert         #x1200000020
+  )
+
+;; definition for method 3 of type collide-fragment
+(defmethod inspect collide-fragment ((obj collide-fragment))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tid: ~D~%" (-> obj id))
+  (format #t "~Tbsphere: ~`vector`P~%" (-> obj bsphere))
+  (format #t "~Tmesh: ~A~%" (-> obj mesh))
+  obj
+  )
+
+;; definition of type drawable-inline-array-collide-fragment
+(deftype drawable-inline-array-collide-fragment (drawable-inline-array)
+  ((data collide-fragment 1 :inline :offset-assert  32)
+   (pad  uint32                     :offset-assert  64)
+   )
+  :method-count-assert 18
+  :size-assert         #x44
+  :flag-assert         #x1200000044
+  )
+
+;; definition for method 3 of type drawable-inline-array-collide-fragment
+(defmethod inspect drawable-inline-array-collide-fragment ((obj drawable-inline-array-collide-fragment))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tid: ~D~%" (-> obj id))
+  (format #t "~Tbsphere: ~`vector`P~%" (-> obj bsphere))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tdata[1] @ #x~X~%" (-> obj data))
+  obj
+  )
+
+;; definition of type drawable-tree-collide-fragment
+(deftype drawable-tree-collide-fragment (drawable-tree)
+  ((data-override drawable-inline-array  :offset  32)
+   )
+  :method-count-assert 18
+  :size-assert         #x24
+  :flag-assert         #x1200000024
+  )
+
+;; failed to figure out what this is:
+0

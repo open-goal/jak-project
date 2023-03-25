@@ -1,0 +1,80 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: matrix-h.gc
+;; name in dgo: matrix-h
+;; dgos: ENGINE, GAME
+
+;; DECOMP BEGINS
+
+;; A 4x4 matrix, stored in row-major order
+;; some, but not all, functions assume that a matrix is an affine transform.
+;; others assume that the rotation has no scale or shear (and that its inverse is its transpose)
+(deftype matrix (structure)
+  ((data   float   16      :offset-assert   0)
+   (vector vector  4       :inline :offset          0)
+   (quad   uint128 4       :offset          0)
+   (trans  vector  :inline :offset         48)
+   )
+  :method-count-assert 10
+  :size-assert         #x40
+  :flag-assert         #xa00000040
+  (:methods
+    (transform-vectors! (_type_ (inline-array vector) (inline-array vector) int) none 9)
+    )
+  )
+
+;; A 3x3 matrix, stored in row-major order.
+;; NOTE: the rows each have an extra 4-bytes of padding
+;;  so this is really a 3x4 matrix.
+;; this type is rarely used
+(deftype matrix3 (structure)
+  ((data   float   12        :offset-assert   0)
+   (vector vector  3 :inline :offset          0)
+   (quad   uint128 3         :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;; a matrix stored using 16-bit integers.
+;; note that these usually have different scaling for the 4th row which
+;; contains the translation in an affine transform.
+;; so you generally should not unpack these to floats without knowing where they came from
+;; and how they were originally packed (for example, in tie/shrub)
+(deftype matrix4h (structure)
+  ((data     int16    16        :offset-assert   0)
+   (vector4h vector4h 4 :inline :offset          0)
+   (long     int64    4         :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(defun matrix-copy! ((arg0 matrix) (arg1 matrix))
+  "Copy arg1 to arg0"
+  (let ((v1-0 (-> arg1 vector 0 quad))
+        (a2-0 (-> arg1 vector 1 quad))
+        (a3-0 (-> arg1 vector 2 quad))
+        (a1-1 (-> arg1 vector 3 quad))
+        )
+    (set! (-> arg0 vector 0 quad) v1-0)
+    (set! (-> arg0 vector 1 quad) a2-0)
+    (set! (-> arg0 vector 2 quad) a3-0)
+    (set! (-> arg0 vector 3 quad) a1-1)
+    )
+  arg0
+  )
+
+(defmacro new-stack-matrix0 ()
+  "Get a new matrix on the stack that's set to zero."
+  `(let ((mat (new 'stack-no-clear 'matrix)))
+     (set! (-> mat quad 0) (the-as uint128 0))
+     (set! (-> mat quad 1) (the-as uint128 0))
+     (set! (-> mat quad 2) (the-as uint128 0))
+     (set! (-> mat quad 3) (the-as uint128 0))
+     mat
+     )
+  )

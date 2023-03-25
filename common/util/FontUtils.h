@@ -9,12 +9,13 @@
  * Always verify the encoding if string detection suddenly goes awry.
  */
 
-#include "common/common_types.h"
-
-#include <string>
-#include <vector>
-#include <unordered_set>
 #include <map>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
+#include "common/common_types.h"
 
 // version of the game text file's text encoding. Not real, but we need to differentiate them
 // somehow, since the encoding changes.
@@ -25,6 +26,10 @@ enum class GameTextVersion {
   JAK3 = 30,     // jak 3
   JAKX = 40      // jak x
 };
+
+extern const std::unordered_map<std::string, GameTextVersion> sTextVerEnumMap;
+
+const std::string& get_text_version_name(GameTextVersion version);
 
 /*!
  * What bytes a set of characters (UTF-8) correspond to. You can convert to and fro.
@@ -68,6 +73,13 @@ class GameTextFontBank {
   const std::vector<ReplaceInfo>* replace_info() const { return m_replace_info; }
   const std::unordered_set<char>* passthrus() const { return m_passthrus; }
 
+  GameTextVersion version() const { return m_version; }
+
+  // TODO - methods would help make this code a lot better for different game versions
+  // hacking it for now
+  bool valid_char_range(const char in) const;
+
+  std::string convert_utf8_to_game_with_escape(const std::string& str) const;
   std::string convert_utf8_to_game(std::string str) const;
   std::string convert_game_to_utf8(const char* in) const;
 };
@@ -75,4 +87,5 @@ class GameTextFontBank {
 extern std::map<GameTextVersion, GameTextFontBank*> g_font_banks;
 
 const GameTextFontBank* get_font_bank(GameTextVersion version);
+const GameTextFontBank* get_font_bank(const std::string& name);
 bool font_bank_exists(GameTextVersion version);

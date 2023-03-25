@@ -1,0 +1,352 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type load-dgo-msg
+(deftype load-dgo-msg (structure)
+  ((rsvd       uint16             :offset-assert   0)
+   (result     load-msg-result    :offset-assert   2)
+   (b1         pointer            :offset-assert   4)
+   (b2         pointer            :offset-assert   8)
+   (bt         pointer            :offset-assert  12)
+   (name       uint128            :offset-assert  16)
+   (name-chars uint8           16 :offset         16)
+   (address    uint32             :offset          4)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type load-dgo-msg
+;; INFO: Used lq/sq
+(defmethod inspect load-dgo-msg ((obj load-dgo-msg))
+  (format #t "[~8x] ~A~%" obj 'load-dgo-msg)
+  (format #t "~Trsvd: ~D~%" (-> obj rsvd))
+  (format #t "~Tresult: ~D~%" (-> obj result))
+  (format #t "~Tb1: #x~X~%" (-> obj b1))
+  (format #t "~Tb2: #x~X~%" (-> obj b2))
+  (format #t "~Tbt: #x~X~%" (-> obj bt))
+  (format #t "~Tname: ~D~%" (-> obj name))
+  (format #t "~Taddress: ~D~%" (-> obj b1))
+  obj
+  )
+
+;; definition of type load-chunk-msg
+(deftype load-chunk-msg (structure)
+  ((rsvd     uint16             :offset-assert   0)
+   (result   load-msg-result    :offset-assert   2)
+   (address  pointer            :offset-assert   4)
+   (section  uint32             :offset-assert   8)
+   (maxlen   uint32             :offset-assert  12)
+   (id       uint32             :offset          4)
+   (basename uint8           48 :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+;; definition for method 3 of type load-chunk-msg
+(defmethod inspect load-chunk-msg ((obj load-chunk-msg))
+  (format #t "[~8x] ~A~%" obj 'load-chunk-msg)
+  (format #t "~Trsvd: ~D~%" (-> obj rsvd))
+  (format #t "~Tresult: ~D~%" (-> obj result))
+  (format #t "~Taddress: ~D~%" (-> obj address))
+  (format #t "~Tsection: ~D~%" (-> obj section))
+  (format #t "~Tmaxlen: ~D~%" (-> obj maxlen))
+  (format #t "~Tid: ~D~%" (-> obj address))
+  (format #t "~Tbasename[48] @ #x~X~%" (-> obj basename))
+  obj
+  )
+
+;; definition of type dgo-header
+(deftype dgo-header (structure)
+  ((length   uint32          :offset-assert   0)
+   (rootname uint8  60       :offset-assert   4)
+   (data     uint8  :dynamic :offset-assert  64)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+;; definition for method 3 of type dgo-header
+(defmethod inspect dgo-header ((obj dgo-header))
+  (format #t "[~8x] ~A~%" obj 'dgo-header)
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Trootname[60] @ #x~X~%" (-> obj rootname))
+  obj
+  )
+
+;; failed to figure out what this is:
+(when (zero? *load-dgo-rpc*)
+  (set! *load-dgo-rpc* (new 'global 'rpc-buffer-pair (the-as uint 32) (the-as uint 1) 3))
+  (set! *load-str-rpc* (new 'global 'rpc-buffer-pair (the-as uint 64) (the-as uint 1) 4))
+  (set! *play-str-rpc* (new 'global 'rpc-buffer-pair (the-as uint 64) (the-as uint 2) 5))
+  (set! *load-str-lock* #f)
+  (set! *que-str-lock* #f)
+  (set! *dgo-name* (new 'global 'string 64 (the-as string #f)))
+  )
+
+;; definition for function str-load
+(defun str-load ((name string) (chunk-id int) (address pointer) (len int))
+  (if (or (check-busy *load-str-rpc*) *load-str-lock*)
+      (return #f)
+      )
+  (let ((cmd (the-as load-chunk-msg (add-element *load-str-rpc*))))
+    (set! (-> cmd result) (load-msg-result invalid))
+    (set! (-> cmd address) address)
+    (set! (-> cmd section) (the-as uint chunk-id))
+    (set! (-> cmd maxlen) (the-as uint len))
+    (charp<-string (-> cmd basename) name)
+    (call *load-str-rpc* (the-as uint 0) (the-as pointer cmd) (the-as uint 32))
+    )
+  (set! *load-str-lock* #t)
+  (set! *que-str-lock* #t)
+  #t
+  )
+
+;; definition for function str-load-status
+(defun str-load-status ((length-out (pointer int32)))
+  (if (check-busy *load-str-rpc*)
+      (return 'busy)
+      )
+  (set! *load-str-lock* #f)
+  (set! *que-str-lock* #t)
+  (let ((response (the-as load-chunk-msg (pop-last-received *load-str-rpc*))))
+    (if (= (-> response result) (load-msg-result error))
+        (return 'error)
+        )
+    (set! (-> length-out 0) (the-as int (-> response maxlen)))
+    )
+  'complete
+  )
+
+;; definition for function str-load-cancel
+;; INFO: Return type mismatch int vs none.
+(defun str-load-cancel ()
+  (set! *load-str-lock* #f)
+  (set! *que-str-lock* #t)
+  0
+  (none)
+  )
+
+;; definition for function str-play-async
+;; INFO: Return type mismatch int vs none.
+(defun str-play-async ((name string) (addr sound-id))
+  (set! *que-str-lock* #t)
+  (let ((cmd (the-as load-chunk-msg (add-element *play-str-rpc*))))
+    (charp<-string (-> cmd basename) name)
+    (set! (-> cmd address) (the-as pointer addr))
+    (set! (-> cmd result) (load-msg-result done))
+    )
+  0
+  0
+  (none)
+  )
+
+;; definition for function str-play-stop
+;; INFO: Return type mismatch int vs none.
+(defun str-play-stop ((name string))
+  (set! *que-str-lock* #t)
+  (let ((cmd (the-as load-chunk-msg (add-element *play-str-rpc*))))
+    (charp<-string (-> cmd basename) name)
+    (set! (-> cmd result) (load-msg-result error))
+    )
+  0
+  (none)
+  )
+
+;; definition for function str-play-queue
+;; INFO: Return type mismatch int vs none.
+(defun str-play-queue ((name string))
+  (when (and (not (check-busy *play-str-rpc*)) (not *load-str-lock*) (not *que-str-lock*))
+    (let ((cmd (the-as load-chunk-msg (add-element *play-str-rpc*))))
+      (charp<-string (-> cmd basename) name)
+      (set! (-> cmd result) (load-msg-result more))
+      )
+    )
+  (set! *que-str-lock* #f)
+  0
+  (none)
+  )
+
+;; definition for function str-ambient-play
+;; INFO: Return type mismatch int vs none.
+(defun str-ambient-play ((name string))
+  (set! *que-str-lock* #t)
+  (let ((cmd (the-as load-chunk-msg (add-element *play-str-rpc*))))
+    (set! (-> cmd basename 0) (the-as uint 36))
+    (charp<-string (&-> cmd basename 1) name)
+    (set! (-> cmd result) (load-msg-result done))
+    )
+  0
+  0
+  (none)
+  )
+
+;; definition for function str-ambient-stop
+;; INFO: Return type mismatch int vs none.
+(defun str-ambient-stop ((name string))
+  (set! *que-str-lock* #t)
+  (let ((cmd (the-as load-chunk-msg (add-element *play-str-rpc*))))
+    (set! (-> cmd basename 0) (the-as uint 36))
+    (charp<-string (&-> cmd basename 1) name)
+    (set! (-> cmd result) (load-msg-result error))
+    )
+  0
+  (none)
+  )
+
+;; definition for function str-play-kick
+;; INFO: Return type mismatch int vs none.
+(defun str-play-kick ()
+  (cond
+    ((check-busy *play-str-rpc*)
+     )
+    (else
+      (call *play-str-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for symbol *dgo-time*, type time-frame
+(define *dgo-time* (the-as time-frame 0))
+
+;; definition for function dgo-load-begin
+;; INFO: Used lq/sq
+(defun dgo-load-begin ((name string) (buffer1 pointer) (buffer2 pointer) (current-heap pointer))
+  (set! *dgo-time* (-> *display* real-integral-frame-counter))
+  (format 0 "Starting level load clock~%")
+  (sync *load-dgo-rpc* #t)
+  (let ((cmd (the-as load-dgo-msg (add-element *load-dgo-rpc*))))
+    (set! (-> cmd result) (load-msg-result invalid))
+    (set! (-> cmd b1) buffer1)
+    (set! (-> cmd b2) buffer2)
+    (set! (-> cmd bt) current-heap)
+    (set! (-> cmd name) (string->sound-name name))
+    (call *load-dgo-rpc* (the-as uint 0) (the-as pointer cmd) (the-as uint 32))
+    cmd
+    )
+  )
+
+;; definition for function dgo-load-get-next
+(defun dgo-load-get-next ((last-object (pointer symbol)))
+  (set! (-> last-object 0) #t)
+  (let ((load-location (the-as pointer #f)))
+    (when (not (check-busy *load-dgo-rpc*))
+      (let ((response (the-as load-dgo-msg (pop-last-received *load-dgo-rpc*))))
+        (when response
+          (if (or (= (-> response result) (load-msg-result done)) (= (-> response result) (load-msg-result more)))
+              (set! load-location (-> response b1))
+              )
+          (if (= (-> response result) (load-msg-result more))
+              (set! (-> last-object 0) #f)
+              )
+          (if (= (-> response result) (load-msg-result done))
+              (format
+                0
+                "Elapsed time for level = ~Fs~%"
+                (* 0.016666668 (the float (- (-> *display* real-integral-frame-counter) *dgo-time*)))
+                )
+              )
+          )
+        )
+      )
+    load-location
+    )
+  )
+
+;; definition for function dgo-load-continue
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch load-dgo-msg vs int.
+(defun dgo-load-continue ((current-heap pointer))
+  (let ((cmd (the-as load-dgo-msg (add-element *load-dgo-rpc*))))
+    (set! (-> cmd result) (load-msg-result invalid))
+    (set! (-> cmd b1) (the-as pointer 0))
+    (set! (-> cmd b2) (the-as pointer 0))
+    (set! (-> cmd bt) current-heap)
+    (set! (-> cmd name) (the-as uint128 0))
+    (call *load-dgo-rpc* (the-as uint 1) (the-as pointer cmd) (the-as uint 32))
+    (the-as int cmd)
+    )
+  )
+
+;; definition for function dgo-load-cancel
+;; INFO: Return type mismatch int vs none.
+(defun dgo-load-cancel ()
+  (sync *load-dgo-rpc* #t)
+  (let ((cmd (add-element *load-dgo-rpc*)))
+    (call *load-dgo-rpc* (the-as uint 2) cmd (the-as uint 32))
+    )
+  0
+  (none)
+  )
+
+;; definition for function find-temp-buffer
+(defun find-temp-buffer ((size int))
+  (let ((qwc (+ (/ size 16) 2)))
+    (cond
+      ((< (the-as uint qwc)
+          (the-as uint (dma-buffer-free (-> *display* frames (-> *display* on-screen) frame global-buf)))
+          )
+       (logand -16 (&+ (-> *display* frames (-> *display* on-screen) frame global-buf base) 15))
+       )
+      ((< (the-as uint qwc)
+          (the-as uint (dma-buffer-free (-> *display* frames (-> *display* on-screen) frame global-buf)))
+          )
+       (logand -16 (&+ (-> *display* frames (-> *display* on-screen) frame global-buf base) 15))
+       )
+      )
+    )
+  )
+
+;; definition for function dgo-load-link
+(defun dgo-load-link ((obj-file dgo-header) (heap kheap) (print-login symbol) (last-object symbol))
+  (let ((obj-data (-> obj-file data)))
+    (if (>= (the-as int (&+ obj-data (-> obj-file length))) (the-as int (-> heap top-base)))
+        (format
+          0
+          "ERROR: -----> dgo file header #x~X has overrun heap #x~X by ~D bytes.  This is very bad!~%"
+          obj-file
+          heap
+          (&- (&+ obj-data (-> obj-file length)) (the-as uint (-> heap top-base)))
+          )
+        )
+    (if last-object
+        (format
+          0
+          "NOTICE: loaded ~g, ~D bytes (~f K) at top ~D~%"
+          (-> obj-file rootname)
+          (-> obj-file length)
+          (* 0.0009765625 (the float (-> obj-file length)))
+          (&- (&+ obj-data (-> obj-file length)) (the-as uint (-> heap base)))
+          )
+        )
+    (string<-charp (clear *dgo-name*) (-> obj-file rootname))
+    (nonzero? (link-begin
+                obj-data
+                (-> *dgo-name* data)
+                (the-as int (-> obj-file length))
+                heap
+                (if print-login
+                    (link-flag output-load-msg output-load-true-msg execute-login print-login fast-link)
+                    (link-flag output-load-msg output-load-true-msg execute-login fast-link)
+                    )
+                )
+              )
+    )
+  )
+
+;; definition for function destroy-mem
+;; INFO: Return type mismatch int vs none.
+(defun destroy-mem ((arg0 (pointer uint32)) (arg1 (pointer uint32)))
+  (while (< (the-as int arg0) (the-as int arg1))
+    (set! (-> arg0 0) (the-as uint #xffffffff))
+    (set! arg0 (&-> arg0 1))
+    )
+  0
+  (none)
+  )

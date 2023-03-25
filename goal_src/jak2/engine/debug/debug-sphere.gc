@@ -1,0 +1,114 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: debug-sphere.gc
+;; name in dgo: debug-sphere
+;; dgos: ENGINE, GAME
+
+#|@file
+Functions for drawing wireframe spheres made up of debug lines.
+Do not call these functions unless *debug-segment* is set.
+|#
+
+;; DECOMP BEGINS
+
+(defun make-debug-sphere-table ((points vector-array) (h-lines float) (v-lines float))
+  "Fills points with positions that make a wireframe sphere made of the given number of horizontal and vertical lines.
+   The points array is expected to have a capacity of at least (h-lines * v-lines * 3).
+   Both h-lines and v-lines should be whole numbers."
+  (local-vars (next-hz vector) (next-vt vector) (h-line int))
+  (let ((offset (new-stack-vector0))
+        (scale 1.0)
+        (num-points 0)
+        )
+    (set-vector! offset 0.0 0.0 0.0 1.0)
+    (dotimes (v-line (the int v-lines))
+      (let ((f28-0 (* scale (sin (* (the float v-line) (/ 32768.0 v-lines)))))
+            (f26-0 (* scale (sin (* (the float (+ v-line 1)) (/ 32768.0 v-lines)))))
+            (current (new-stack-vector0))
+            )
+        (set! next-hz (new 'stack-no-clear 'vector))
+        (set! (-> next-hz quad) (the-as uint128 0))
+        (set! next-vt (new 'stack-no-clear 'vector))
+        (set! (-> next-vt quad) (the-as uint128 0))
+        (set! (-> current y) (+ (-> offset y) (* (cos (* (the float v-line) (/ 32768.0 v-lines))) scale)))
+        (set! (-> next-hz y) (-> current y))
+        (set! (-> next-vt y) (+ (-> offset y) (* (cos (* (the float (+ v-line 1)) (/ 32768.0 v-lines))) scale)))
+        (set! h-line 0)
+        (while (< h-line (the int h-lines))
+          (set! (-> current x) (+ (-> offset x) (* (cos (* (the float h-line) (/ 65536.0 h-lines))) f28-0)))
+          (set! (-> current z) (+ (-> offset z) (* (sin (* (the float h-line) (/ 65536.0 h-lines))) f28-0)))
+          (set! (-> next-hz x) (+ (-> offset x) (* (cos (* (the float (+ h-line 1)) (/ 65536.0 h-lines))) f28-0)))
+          (set! (-> next-hz z) (+ (-> offset z) (* (sin (* (the float (+ h-line 1)) (/ 65536.0 h-lines))) f28-0)))
+          (set! (-> next-vt x) (+ (-> offset x) (* (cos (* (the float h-line) (/ 65536.0 h-lines))) f26-0)))
+          (set! (-> next-vt z) (+ (-> offset z) (* (sin (* (the float h-line) (/ 65536.0 h-lines))) f26-0)))
+          (set! (-> points data num-points quad) (-> current quad))
+          (set! (-> points data (+ num-points 1) quad) (-> next-hz quad))
+          (set! (-> points data (+ num-points 2) quad) (-> next-vt quad))
+          (+! num-points 3)
+          (set! h-line (+ h-line 1))
+          )
+        )
+      )
+    (set! (-> points length) num-points)
+    )
+  points
+  )
+
+(when *debug-segment*
+;; A table of 10 debug spheres whose vertical/horizontal line counts range from 0-9 depending on the index.
+;; For example, the fifth element is a debug sphere whose v-lines and h-lines were set to 4.
+;;
+;; Each element is populated on demand from calling add-debug-sphere-from-table and as such this table
+;; shouldn't be used directly.
+(define *debug-sphere-table* (new 'debug 'boxed-array vector-array 10))
+)
+
+(defun add-debug-sphere-from-table ((bucket bucket-id) (position vector) (radius meters) (color rgba) (table-idx int))
+  "Adds a debug sphere to a bucket.
+   The table-idx specifies the resolution of the sphere and must be >= 0 and <= 9, where 9 would specify
+   the highest resolution available and 0 would draw nothing."
+  (local-vars (sphere-points vector-array) (point-3 vector))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         )
+    (if (zero? (-> *debug-sphere-table* table-idx))
+        (set! (-> *debug-sphere-table* table-idx) (make-debug-sphere-table
+                                                    (new 'debug 'vector-array (* (* 3 table-idx) table-idx))
+                                                    (the float table-idx)
+                                                    (the float table-idx)
+                                                    )
+              )
+        )
+    (set! sphere-points (-> *debug-sphere-table* table-idx))
+    (set! point-3 (the-as vector (new-stack-vector0)))
+    (let ((point-1 (new-stack-vector0))
+          (point-2 (new-stack-vector0))
+          (points (-> sphere-points data))
+          )
+      (.lvf vf1 (&-> position quad))
+      (.mov vf2 radius)
+      (countdown (s4-1 (/ (-> sphere-points length) 3))
+        (.lvf vf3 (&-> points 0 quad))
+        (.lvf vf4 (&-> points 1 quad))
+        (.lvf vf5 (&-> points 2 quad))
+        (set! points (the-as (inline-array vector) (-> points 3)))
+        (.mul.x.vf vf3 vf3 vf2)
+        (.mul.x.vf vf4 vf4 vf2)
+        (.mul.x.vf vf5 vf5 vf2)
+        (.add.vf vf3 vf3 vf1)
+        (.add.vf vf4 vf4 vf1)
+        (.add.vf vf5 vf5 vf1)
+        (.svf (&-> point-1 quad) vf3)
+        (.svf (&-> point-2 quad) vf4)
+        (.svf (&-> point-3 quad) vf5)
+        (add-debug-line #t bucket point-1 point-2 color #f (the-as rgba -1))
+        (add-debug-line #t bucket point-1 point-3 color #f (the-as rgba -1))
+        )
+      )
+    )
+  (none)
+  )

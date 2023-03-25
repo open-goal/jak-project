@@ -4,22 +4,27 @@
  * This is a huge mess
  */
 
-#include "common/log/log.h"
-#include <cstring>
-#include <cstdio>
-#include "game/overlord/srpc.h"
-#include "game/sound/sndshim.h"
 #include "iso.h"
-#include "iso_cd.h"
-#include "iso_queue.h"
-#include "iso_api.h"
-#include "game/sce/iop.h"
-#include "stream.h"
+
+#include <cstdio>
+#include <cstring>
+
 #include "dma.h"
 #include "fake_iso.h"
-#include "game/common/dgo_rpc_types.h"
+#include "iso_api.h"
+#include "iso_cd.h"
+#include "iso_queue.h"
+#include "stream.h"
+
+#include "common/log/log.h"
 #include "common/util/Assert.h"
+
+#include "game/common/dgo_rpc_types.h"
+#include "game/overlord/srpc.h"
+#include "game/runtime.h"
+#include "game/sce/iop.h"
 #include "game/sound/sdshim.h"
+#include "game/sound/sndshim.h"
 
 using namespace iop;
 
@@ -36,7 +41,6 @@ static s32 CheckVAGStreamProgress(VagCommand* vag);
 static void StopVAG(VagCommand* vag);
 static void PauseVAG(VagCommand* vag);
 static void UnpauseVAG(VagCommand* vag);
-static void SetVAGVol();
 static s32 GetPlayPos();
 static void UpdatePlayPos();
 static void VAG_MarkLoopEnd(void* data, u32 size);
@@ -66,10 +70,14 @@ s32 iso_thread;
 s32 dgo_thread;
 s32 str_thread;
 s32 play_thread;
-VagDir gVagDir;
+VagDirJak2 gVagDir;
 u32 gPlayPos;
-static RPC_Dgo_Cmd sRPCBuff[1];  // todo move...
-DgoCommand scmd;
+// todo move...
+static RPC_Dgo_Cmd sRPCBuff[1];
+DgoCommand scmd;  // renamed to sLoadDGO in Jak 2
+// :-)
+#define sLoadDGO scmd
+
 static VagCommand vag_cmd;
 VagCommand* gVAGCMD = nullptr;
 s32 gDialogVolume = 0;
@@ -104,9 +112,8 @@ void iso_init_globals() {
  * Initialize the ISO Driver.
  * Requires a buffer large enough to hold 3 sector (or 4 if you have DUP files)
  */
+static MsgPacket not_on_stack_sync;
 void InitDriver(u8* buffer) {
-  MsgPacket msg_packet;
-
   if (!isofs->init(buffer)) {
     // succesful init!
     iso_init_flag = 0;
@@ -114,7 +121,10 @@ void InitDriver(u8* buffer) {
 
   // you idiots, you're giving the kernel a pointer to a stack variable!
   // (this is fixed in Jak 1 Japan and NTSC Greatest Hits)
-  SendMbx(sync_mbx, &msg_packet);
+  // SendMbx(sync_mbx, &msg_packet);
+
+  // whoever fixed that bug felt similarly about it
+  SendMbx(sync_mbx, &not_on_stack_sync);
 }
 
 /*!
@@ -157,8 +167,10 @@ u32 InitISOFS(const char* fs_mode, const char* loading_screen) {
   // mark us as NOT initialized.
   iso_init_flag = 1;
 
-  while (!DMA_SendToSPUAndSync(&VAG_SilentLoop, 0x30, gTrapSRAM)) {
-    DelayThread(1000);
+  if (g_game_version == GameVersion::Jak1) {
+    while (!DMA_SendToSPUAndSync(&VAG_SilentLoop, 0x30, gTrapSRAM)) {
+      DelayThread(1000);
+    }
   }
 
   // INITIALIZE MESSAGE BOXES
@@ -167,6 +179,9 @@ u32 InitISOFS(const char* fs_mode, const char* loading_screen) {
   mbx_param.option = 0;
   iso_mbx = CreateMbx(&mbx_param);
   if (iso_mbx <= 0) {
+    printf("IOP: ======================================================================\n");
+    printf("IOP : iso InitISOFS : Cannot create ISO mbx\n");
+    printf("IOP: ======================================================================\n");
     return 1;
   }
 
@@ -174,6 +189,9 @@ u32 InitISOFS(const char* fs_mode, const char* loading_screen) {
   mbx_param.option = 0;
   dgo_mbx = CreateMbx(&mbx_param);
   if (dgo_mbx <= 0) {
+    printf("IOP: ======================================================================\n");
+    printf("IOP : iso InitISOFS : Cannot create DGO mbx\n");
+    printf("IOP: ======================================================================\n");
     return 1;
   }
 
@@ -181,6 +199,9 @@ u32 InitISOFS(const char* fs_mode, const char* loading_screen) {
   mbx_param.option = 0;
   sync_mbx = CreateMbx(&mbx_param);
   if (sync_mbx <= 0) {
+    printf("IOP: ======================================================================\n");
+    printf("IOP : iso InitISOFS : Cannot create sync mbx\n");
+    printf("IOP: ======================================================================\n");
     return 1;
   }
 
@@ -194,6 +215,9 @@ u32 InitISOFS(const char* fs_mode, const char* loading_screen) {
   strcpy(thread_param.name, "ISOThread");
   iso_thread = CreateThread(&thread_param);
   if (iso_thread <= 0) {
+    printf("IOP: ======================================================================\n");
+    printf("IOP : iso InitISOFS : Cannot create ISO thread\n");
+    printf("IOP: ======================================================================\n");
     return 1;
   }
 
@@ -205,6 +229,9 @@ u32 InitISOFS(const char* fs_mode, const char* loading_screen) {
   strcpy(thread_param.name, "DGOThread");
   dgo_thread = CreateThread(&thread_param);
   if (dgo_thread <= 0) {
+    printf("IOP: ======================================================================\n");
+    printf("IOP : iso InitISOFS : Cannot create DGO thread\n");
+    printf("IOP: ======================================================================\n");
     return 1;
   }
 
@@ -216,6 +243,9 @@ u32 InitISOFS(const char* fs_mode, const char* loading_screen) {
   strcpy(thread_param.name, "STRThread");
   str_thread = CreateThread(&thread_param);
   if (str_thread <= 0) {
+    printf("IOP: ======================================================================\n");
+    printf("IOP : iso InitISOFS : Cannot create STR thread\n");
+    printf("IOP: ======================================================================\n");
     return 1;
   }
 
@@ -227,6 +257,9 @@ u32 InitISOFS(const char* fs_mode, const char* loading_screen) {
   strcpy(thread_param.name, "PLAYThread");
   play_thread = CreateThread(&thread_param);
   if (play_thread <= 0) {
+    printf("IOP: ======================================================================\n");
+    printf("IOP : iso InitISOFS : Cannot create PLAY thread\n");
+    printf("IOP: ======================================================================\n");
     return 1;
   }
 
@@ -242,7 +275,12 @@ u32 InitISOFS(const char* fs_mode, const char* loading_screen) {
   // LOAD VAGDIR file
   FileRecord* vagdir_file = FindISOFile("VAGDIR.AYB");
   if (vagdir_file) {
-    LoadISOFileToIOP(vagdir_file, &gVagDir, sizeof(gVagDir));
+    LoadISOFileToIOP(vagdir_file, &gVagDir,
+                     g_game_version == GameVersion::Jak1 ? sizeof(VagDir) : sizeof(VagDirJak2));
+  } else {
+    printf("IOP: ======================================================================\n");
+    printf("IOP : iso InitISOFS : cannot load VAG directory\n");
+    printf("IOP: ======================================================================\n");
   }
   FileRecord* loading_screen_file = FindISOFile(loading_screen);
   if (loading_screen_file) {
@@ -377,27 +415,34 @@ u32 ISOThread() {
           }
           // Got a DGO command. There is one LoadDGO command for the entire DGO.
           // queued successfully, open the file.
-          auto* load_single_cmd = (IsoCommandLoadSingle*)msg_from_mbx;
-          load_single_cmd->fd = isofs->open(load_single_cmd->file_record, -1);
-          if (!load_single_cmd->fd) {
+          auto* load_dgo_cmd = (DgoCommand*)msg_from_mbx;
+          load_dgo_cmd->fd = isofs->open(load_dgo_cmd->fr, -1);
+          if (!load_dgo_cmd->fd) {
             // failed to open, return error
-            load_single_cmd->status = CMD_STATUS_FAILED_TO_OPEN;
-            UnqueueMessage(load_single_cmd);
-            ReturnMessage(load_single_cmd);
+            load_dgo_cmd->status = CMD_STATUS_FAILED_TO_OPEN;
+            UnqueueMessage(load_dgo_cmd);
+            if (g_game_version == GameVersion::Jak1) {
+              ReturnMessage(load_dgo_cmd);
+            } else {
+              SendMbx(iso_mbx, &sLoadDGO);
+            }
           } else {
             // init DGO state machine and register as the callback.
-            load_single_cmd->status = CMD_STATUS_IN_PROGRESS;
-            ((DgoCommand*)load_single_cmd)->dgo_state = DgoState::Init;
-            load_single_cmd->callback_function = RunDGOStateMachine;
+            load_dgo_cmd->status = CMD_STATUS_IN_PROGRESS;
+            load_dgo_cmd->dgo_state = DgoState::Init;
+            load_dgo_cmd->callback_function = RunDGOStateMachine;
           }
 
         } break;
         case LOAD_SOUND_BANK: {
+          // NOTE: this check has been removed. there doesn't seem to be any issues with this, and
+          // it fixes some other issues. there doesn't appear to be any extra safety from it either
+
           // if there's an in progress vag command, try again.
-          if (in_progress_vag_command && !in_progress_vag_command->paused) {
-            SendMbx(iso_mbx, msg_from_mbx);
-            break;
-          }
+          // if (in_progress_vag_command && !in_progress_vag_command->paused) {
+          //   SendMbx(iso_mbx, msg_from_mbx);
+          //   break;
+          // }
 
           auto buff = TryAllocateBuffer(BUFFER_PAGE_SIZE);
           if (!buff) {
@@ -591,11 +636,19 @@ u32 ISOThread() {
     // Handle Sound
     ////////////////////////////
 
-    if (in_progress_vag_command && !CheckVAGStreamProgress(in_progress_vag_command)) {
-      gVAGCMD = nullptr;
-      StopVAG(in_progress_vag_command);
-      ReleaseMessage(in_progress_vag_command);
-      in_progress_vag_command = nullptr;
+    if (g_game_version == GameVersion::Jak1) {
+      if (in_progress_vag_command && !CheckVAGStreamProgress(in_progress_vag_command)) {
+        gVAGCMD = nullptr;
+        StopVAG(in_progress_vag_command);
+        ReleaseMessage(in_progress_vag_command);
+        in_progress_vag_command = nullptr;
+        // added. this variable seems to determine whether a vag stream is actually playing, and it
+        // is possible to get into a scenario where (for example) you want to unpause a vag stream
+        // but a different sound command hasn't run yet to correct this value, which makes the game
+        // either play the wrong sound or crash right away if no actual sound is to be played with
+        // the vag stream
+        unk = 0;
+      }
     }
 
     ////////////////////////////
@@ -644,11 +697,6 @@ u32 ISOThread() {
     ProcessMessageData();
 
     if (!read_buffer) {
-      // HACK!! sometimes when we want to exit, some other threads will wait for stuff to be loaded
-      // in such cases, we continue running until we're the last thread alive when it's safe to die
-      if (ThreadWantsExit(GetThreadId()) && OnlyThreadAlive(GetThreadId())) {
-        return 0;
-      }
       // didn't actually start a read, just delay for a bit I guess.
       DelayThread(100);
     } else {
@@ -725,9 +773,6 @@ u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer) {
 
         // if we are done with header
         if (cmd->bytes_processed == sizeof(DgoHeader)) {
-          // printf("[Overlord DGO] Got DGO file header for %s with %d objects\n",
-          // cmd->dgo_header.name,
-          // cmd->dgo_header.object_count);  // added
           lg::info("[Overlord DGO] Got DGO file header for {} with {} objects",
                    cmd->dgo_header.name, cmd->dgo_header.object_count);
           cmd->bytes_processed = 0;
@@ -749,9 +794,23 @@ u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer) {
       case DgoState::Finish_Obj:  // we have reached the end of an object file!
       {
         // EE synchronization occurs here.
+        // we "Return" the command to tell the EE that we've loaded stuff
+        // EE sends us data that we read with LookMbx so we keep loading.
+        // the order is that we wait for the EE to tell us the next location before we return
+        // the most recently loaded object.
+
         // we skip this if we're loading the first object so we can double buffer the
         // linking/loading process and have two in flight at a time (one loading, other linking)
+        // this fills the pipeline.
+
+        // for jak 2, double buffered is disabled for the "borrow" style loads.
+        // this is detected by seeing that buffer1 and buffer2 are the same address.
+        // this function decompiles poorly in ghidra, so this is a best guess.
+        // in this mode, the order is swapped - the overlord returns the message once loading
+        // is done, then waits for the next loaddgo.
+
         if (cmd->finished_first_obj) {
+          // in all cases, need sync after the first object.
           s32 isSync = LookMbx(sync_mbx);  // did we get a "sync" message?
           if (isSync) {
             // if so, this means we got a CancelDGO or NextDGO
@@ -766,20 +825,34 @@ u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer) {
           }
         }
 
-        cmd->finished_first_obj = 1;
-        cmd->status = CMD_STATUS_IN_PROGRESS;
+        if (cmd->buffer1 != cmd->buffer2) {
+          // normal double buffered case.
+          cmd->finished_first_obj = 1;
+          cmd->status = CMD_STATUS_IN_PROGRESS;
 
-        // select a buffer for next time.
-        if (cmd->buffer_toggle == 1) {
-          cmd->selectedBuffer = cmd->buffer1;
+          // select a buffer for next time.
+          if (cmd->buffer_toggle == 1) {
+            cmd->selectedBuffer = cmd->buffer1;
+          } else {
+            cmd->selectedBuffer = cmd->buffer2;
+          }
+
+          // we've processed the command, go wake up the DGO RPC thread.
+          // doesn't terminate the command (ReleaseMessage does this, ReturnMessage just
+          // wakes up the caller while keeping the command alive).
+          ReturnMessage(cmd);
         } else {
-          cmd->selectedBuffer = cmd->buffer2;
+          // single buffer mode. before we can move on, we need to wait for the EE to send us
+          // an update load location. We've already informed the EE where we loaded the most
+          // recent object, and it is busy linking...
+          if (cmd->finished_first_obj == 0) {
+            s32 isSync = LookMbx(sync_mbx);  // did we get a "sync" message?
+            if (!isSync) {
+              goto cleanup_and_return;
+            }
+            cmd->finished_first_obj = 1;
+          }
         }
-
-        // we've processed the command, go wake up the DGO RPC thread.
-        // doesn't terminate the command (ReleaseMessage does this, ReturnMessage just
-        // wakes up the caller while keeping the command alive).
-        ReturnMessage(cmd);
 
         // toggle buffer
         if (cmd->buffer_toggle == 1) {
@@ -791,7 +864,8 @@ u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer) {
         }
 
         // setup for next run
-        if (cmd->objects_loaded + 1 == cmd->dgo_header.object_count) {
+        if (cmd->objects_loaded + 1 == cmd->dgo_header.object_count &&
+            cmd->buffer1 != cmd->buffer2) {
           cmd->dgo_state = DgoState::Read_Last_Obj;
         } else {
           cmd->dgo_state = DgoState::Read_Obj_Header;
@@ -864,7 +938,10 @@ u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer) {
           if (cmd->objects_loaded == cmd->dgo_header.object_count) {
             cmd->dgo_state = DgoState::Finish_Dgo;
           } else {
-            cmd->dgo_state = DgoState::Finish_Obj;
+            // this logic makes jak 2 single buffer loads go to NoDoubleBuffer to return the
+            // command as soon as loading is done.
+            cmd->dgo_state = (cmd->buffer1 == cmd->buffer2) ? DgoState::Finish_Obj_NoDoubleBuffer
+                                                            : DgoState::Finish_Obj;
             cmd->bytes_processed = 0;
           }
         }
@@ -875,6 +952,18 @@ u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer) {
         return_value = CMD_STATUS_DONE;
         goto cleanup_and_return;
       }
+
+      case DgoState::Finish_Obj_NoDoubleBuffer: {
+        // new, added for jak2 - here we return the message once loading finishes.
+        cmd->status = CMD_STATUS_IN_PROGRESS;
+        if (cmd->buffer_toggle == 1) {
+          cmd->selectedBuffer = cmd->buffer1;
+        } else {
+          cmd->selectedBuffer = cmd->buffer2;
+        }
+        ReturnMessage(cmd);
+        cmd->dgo_state = DgoState::Finish_Obj;
+      } break;
 
       default:
         printf("unknown dgoState!\n");
@@ -1204,7 +1293,7 @@ static void UnpauseVAG(VagCommand* vag) {
   }
 }
 
-static void SetVAGVol() {
+void SetVAGVol() {
   if (gVAGCMD && gVAGCMD->started && !gVAGCMD->paused) {
     s32 left = 0, right = 0;
     CalculateVAGVolumes(gVAGCMD->volume, gVAGCMD->positioned, &gVAGCMD->trans, &left, &right);
@@ -1267,7 +1356,7 @@ u32 DGOThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, DGO_RPC_ID, RPC_DGO, sRPCBuff, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, DGO_RPC_ID[g_game_version], RPC_DGO, sRPCBuff, nullptr, nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
@@ -1330,6 +1419,8 @@ void LoadDGO(RPC_Dgo_Cmd* cmd) {
   scmd.buffer_heaptop = (u8*)(u64)(cmd->buffer_heap_top);
   scmd.fr = fr;
 
+  // printf("LOAD DGO -- 0x%x\n", cmd->buffer1);
+
   // send the command to ISO Thread
   SendMbx(iso_mbx, &scmd);
 
@@ -1359,12 +1450,18 @@ void LoadDGO(RPC_Dgo_Cmd* cmd) {
  * This will return when there's another loaded obj.
  */
 void LoadNextDGO(RPC_Dgo_Cmd* cmd) {
+  // printf("LOAD NEXT DGO -- 0x%x\n", cmd->buffer1);
+
   if (scmd.cmd_id == 0) {
     // something went wrong.
     cmd->result = DGO_RPC_RESULT_ERROR;
   } else {
     // update heap location
     scmd.buffer_heaptop = (u8*)(u64)cmd->buffer_heap_top;
+    if (g_game_version != GameVersion::Jak1) {
+      scmd.buffer1 = (u8*)(u64)cmd->buffer1;
+      scmd.buffer2 = (u8*)(u64)cmd->buffer2;
+    }
     // allow DGO state machine to advance
     SendMbx(sync_mbx, nullptr);
     // wait for another load to finish.
@@ -1399,11 +1496,10 @@ void CancelDGO(RPC_Dgo_Cmd* cmd) {
     // this will cause a crash if we cancel because we try to load 2 dgos at the same time.
     // this should succeed if it's an actual cancel because we changed which level we're trying to
     // load.
-    // I don't understand how this works in the real game.
-    // maybe the IOP doesn't crash on writing to 0x0?
+    // This is weird in the original game, the IOP doesn't crash on writing to 0
     // or, we have some other bug.
+    // NOTE : actually got fixed in Jak 2 so who cares
     if (cmd) {
-      printf("null pointer case in CancelDGO hit!\n");
       cmd->result = DGO_RPC_RESULT_ABORTED;
     }
 

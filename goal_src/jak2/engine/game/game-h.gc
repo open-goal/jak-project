@@ -1,0 +1,355 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: game-h.gc
+;; name in dgo: game-h
+;; dgos: ENGINE, GAME
+
+(declare-type nav-control structure)
+(declare-type path-control basic)
+(declare-type vol-control basic)
+(declare-type actor-link-info basic)
+(declare-type water-control basic)
+(declare-type align-control basic)
+(declare-type fact-info basic)
+(declare-type carry-info basic)
+(declare-type touching-shapes-entry structure)
+(declare-type rigid-body-control basic)
+(define-extern eco-blue-glow (function vector none))
+(define-extern process-contact-action (function process none :behavior target))
+
+(define-extern vector<-cspace! (function vector cspace vector))
+
+(defenum state-flags
+  :bitfield #t
+  :type uint32
+  (sf0 0)
+  (sf1 1)
+  (sf2 2)
+  (tinvul1 3)
+  (sf4 4)
+  (sf5 5)
+  (sf6 6)
+  (prevent-jump 7)
+  (prevent-attack 8)
+  (prevent-duck 9)
+  (sf10 10)
+  (sf11 11)
+  (sf12 12)
+  (sf13 13)
+  (sf14 14)
+  (sf15 15)
+  (sf16 16)
+  (prevent-board 17)
+  (prevent-gun 18)
+  (lleg-still 19)
+  (rleg-still 20)
+  (lleg-no-ik 21)
+  (rleg-no-ik 22)
+  (prevent-double-jump 23)
+  (disable-attacks 24)
+  (tinvul2 25)
+  (sf26 26)
+  (sf27 27)
+  (sf28 28)
+  (sf29 29)
+  (sf30 30)
+  (sf31 31)
+  )
+
+(defenum attack-info-mask
+  :bitfield #t
+  :type uint32
+  (trans        0) ;; 1
+  (vector       1) ;; 2
+  (intersection 2) ;; 4
+  (attacker     3) ;; 8
+  (attack-time  4) ;; 16
+  (invinc-time  5) ;; 32
+  (mode         6) ;; 64
+  (shove-back   7) ;; 128
+  (shove-up     8) ;; 256
+  (speed        9) ;; 512
+  (dist        10) ;; 1024
+  (control     11) ;; 2048
+  (angle       12) ;; 4096
+  (rotate-to   13) ;; 8192
+  (prev-state  14) ;; 16384
+  (id          15) ;; 32768
+  (count       16) ;; hi 1
+  (penetrate-using 17) ;; hi 2
+  (attacker-velocity 18);; hi 4
+  (damage      19) ;; hi 8
+  (shield-damage 20) ;; hi16
+  (knock        21) ;; hi 32
+  (test         22) ;; hi 64
+  )
+
+;; DECOMP BEGINS
+
+(deftype process-drawable (process)
+  ((root        trsqv                     :offset-assert 128)
+   (node-list   cspace-array              :offset-assert 132)
+   (draw        draw-control              :offset-assert 136)
+   (skel        joint-control             :offset-assert 140)
+   (nav         nav-control               :offset-assert 144)
+   (align       align-control             :offset-assert 148)
+   (path        path-control              :offset-assert 152)
+   (vol         vol-control               :offset-assert 156)
+   (fact        fact-info                 :offset-assert 160)
+   (link        actor-link-info           :offset-assert 164)
+   (part        sparticle-launch-control  :offset-assert 168)
+   (water       water-control             :offset-assert 172)
+   (sound       ambient-sound             :offset-assert 176)
+   (carry       carry-info                :offset-assert 180)
+   (rbody       rigid-body-control        :offset-assert 184)
+   (state-flags state-flags               :offset-assert 188)
+   (state-time  time-frame                :offset-assert 192)
+   )
+  :heap-base #x50
+  :method-count-assert 20
+  :size-assert         #xc8
+  :flag-assert         #x14005000c8
+  (:methods
+    (initialize-skeleton (_type_ skeleton-group pair) draw-control 14)
+    (initialize-skeleton-by-name (_type_ string) draw-control 15)
+    (apply-alignment (_type_ align-opts transformq vector) trsqv 16)
+    (cleanup-for-death (_type_) none 17)
+    (relocate-nav (_type_ int) none 18)
+    (evaluate-joint-control (_type_) none 19)
+    )
+  (:states
+    (process-drawable-art-error string)
+    process-drawable-idle
+    )
+  )
+
+
+(deftype process-drawable-reserved (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 178
+  :size-assert         #xc8
+  :flag-assert         #xb2005000c8
+  (:methods
+    (process-drawable-reserved-method-20 () none 20)
+    (process-drawable-reserved-method-21 () none 21)
+    (process-drawable-reserved-method-22 () none 22)
+    (process-drawable-reserved-method-23 () none 23)
+    (process-drawable-reserved-method-24 () none 24)
+    (process-drawable-reserved-method-25 () none 25)
+    (process-drawable-reserved-method-26 () none 26)
+    (process-drawable-reserved-method-27 () none 27)
+    (process-drawable-reserved-method-28 () none 28)
+    (process-drawable-reserved-method-29 () none 29)
+    (process-drawable-reserved-method-30 () none 30)
+    (process-drawable-reserved-method-31 () none 31)
+    (process-drawable-reserved-method-32 () none 32)
+    (process-drawable-reserved-method-33 () none 33)
+    (process-drawable-reserved-method-34 () none 34)
+    (process-drawable-reserved-method-35 () none 35)
+    (process-drawable-reserved-method-36 () none 36)
+    (process-drawable-reserved-method-37 () none 37)
+    (process-drawable-reserved-method-38 () none 38)
+    (process-drawable-reserved-method-39 () none 39)
+    (process-drawable-reserved-method-40 () none 40)
+    (process-drawable-reserved-method-41 () none 41)
+    (process-drawable-reserved-method-42 () none 42)
+    (process-drawable-reserved-method-43 () none 43)
+    (process-drawable-reserved-method-44 () none 44)
+    (process-drawable-reserved-method-45 () none 45)
+    (process-drawable-reserved-method-46 () none 46)
+    (process-drawable-reserved-method-47 () none 47)
+    (process-drawable-reserved-method-48 () none 48)
+    (process-drawable-reserved-method-49 () none 49)
+    (process-drawable-reserved-method-50 () none 50)
+    (process-drawable-reserved-method-51 () none 51)
+    (process-drawable-reserved-method-52 () none 52)
+    (process-drawable-reserved-method-53 () none 53)
+    (process-drawable-reserved-method-54 () none 54)
+    (process-drawable-reserved-method-55 () none 55)
+    (process-drawable-reserved-method-56 () none 56)
+    (process-drawable-reserved-method-57 () none 57)
+    (process-drawable-reserved-method-58 () none 58)
+    (process-drawable-reserved-method-59 () none 59)
+    (process-drawable-reserved-method-60 () none 60)
+    (process-drawable-reserved-method-61 () none 61)
+    (process-drawable-reserved-method-62 () none 62)
+    (process-drawable-reserved-method-63 () none 63)
+    (process-drawable-reserved-method-64 () none 64)
+    (process-drawable-reserved-method-65 () none 65)
+    (process-drawable-reserved-method-66 () none 66)
+    (process-drawable-reserved-method-67 () none 67)
+    (process-drawable-reserved-method-68 () none 68)
+    (process-drawable-reserved-method-69 () none 69)
+    (process-drawable-reserved-method-70 () none 70)
+    (process-drawable-reserved-method-71 () none 71)
+    (process-drawable-reserved-method-72 () none 72)
+    (process-drawable-reserved-method-73 () none 73)
+    (process-drawable-reserved-method-74 () none 74)
+    (process-drawable-reserved-method-75 () none 75)
+    (process-drawable-reserved-method-76 () none 76)
+    (process-drawable-reserved-method-77 () none 77)
+    (process-drawable-reserved-method-78 () none 78)
+    (process-drawable-reserved-method-79 () none 79)
+    (process-drawable-reserved-method-80 () none 80)
+    (process-drawable-reserved-method-81 () none 81)
+    (process-drawable-reserved-method-82 () none 82)
+    (process-drawable-reserved-method-83 () none 83)
+    (process-drawable-reserved-method-84 () none 84)
+    (process-drawable-reserved-method-85 () none 85)
+    (process-drawable-reserved-method-86 () none 86)
+    (process-drawable-reserved-method-87 () none 87)
+    (process-drawable-reserved-method-88 () none 88)
+    (process-drawable-reserved-method-89 () none 89)
+    (process-drawable-reserved-method-90 () none 90)
+    (process-drawable-reserved-method-91 () none 91)
+    (process-drawable-reserved-method-92 () none 92)
+    (process-drawable-reserved-method-93 () none 93)
+    (process-drawable-reserved-method-94 () none 94)
+    (process-drawable-reserved-method-95 () none 95)
+    (process-drawable-reserved-method-96 () none 96)
+    (process-drawable-reserved-method-97 () none 97)
+    (process-drawable-reserved-method-98 () none 98)
+    (process-drawable-reserved-method-99 () none 99)
+    (process-drawable-reserved-method-100 () none 100)
+    (process-drawable-reserved-method-101 () none 101)
+    (process-drawable-reserved-method-102 () none 102)
+    (process-drawable-reserved-method-103 () none 103)
+    (process-drawable-reserved-method-104 () none 104)
+    (process-drawable-reserved-method-105 () none 105)
+    (process-drawable-reserved-method-106 () none 106)
+    (process-drawable-reserved-method-107 () none 107)
+    (process-drawable-reserved-method-108 () none 108)
+    (process-drawable-reserved-method-109 () none 109)
+    (process-drawable-reserved-method-110 () none 110)
+    (process-drawable-reserved-method-111 () none 111)
+    (process-drawable-reserved-method-112 () none 112)
+    (process-drawable-reserved-method-113 () none 113)
+    (process-drawable-reserved-method-114 () none 114)
+    (process-drawable-reserved-method-115 () none 115)
+    (process-drawable-reserved-method-116 () none 116)
+    (process-drawable-reserved-method-117 () none 117)
+    (process-drawable-reserved-method-118 () none 118)
+    (process-drawable-reserved-method-119 () none 119)
+    (process-drawable-reserved-method-120 () none 120)
+    (process-drawable-reserved-method-121 () none 121)
+    (process-drawable-reserved-method-122 () none 122)
+    (process-drawable-reserved-method-123 () none 123)
+    (process-drawable-reserved-method-124 () none 124)
+    (process-drawable-reserved-method-125 () none 125)
+    (process-drawable-reserved-method-126 () none 126)
+    (process-drawable-reserved-method-127 () none 127)
+    (process-drawable-reserved-method-128 () none 128)
+    (process-drawable-reserved-method-129 () none 129)
+    (process-drawable-reserved-method-130 () none 130)
+    (process-drawable-reserved-method-131 () none 131)
+    (process-drawable-reserved-method-132 () none 132)
+    (process-drawable-reserved-method-133 () none 133)
+    (process-drawable-reserved-method-134 () none 134)
+    (process-drawable-reserved-method-135 () none 135)
+    (process-drawable-reserved-method-136 () none 136)
+    (process-drawable-reserved-method-137 () none 137)
+    (process-drawable-reserved-method-138 () none 138)
+    (process-drawable-reserved-method-139 () none 139)
+    (process-drawable-reserved-method-140 () none 140)
+    (process-drawable-reserved-method-141 () none 141)
+    (process-drawable-reserved-method-142 () none 142)
+    (process-drawable-reserved-method-143 () none 143)
+    (process-drawable-reserved-method-144 () none 144)
+    (process-drawable-reserved-method-145 () none 145)
+    (process-drawable-reserved-method-146 () none 146)
+    (process-drawable-reserved-method-147 () none 147)
+    (process-drawable-reserved-method-148 () none 148)
+    (process-drawable-reserved-method-149 () none 149)
+    (process-drawable-reserved-method-150 () none 150)
+    (process-drawable-reserved-method-151 () none 151)
+    (process-drawable-reserved-method-152 () none 152)
+    (process-drawable-reserved-method-153 () none 153)
+    (process-drawable-reserved-method-154 () none 154)
+    (process-drawable-reserved-method-155 () none 155)
+    (process-drawable-reserved-method-156 () none 156)
+    (process-drawable-reserved-method-157 () none 157)
+    (process-drawable-reserved-method-158 () none 158)
+    (process-drawable-reserved-method-159 () none 159)
+    (process-drawable-reserved-method-160 () none 160)
+    (process-drawable-reserved-method-161 () none 161)
+    (process-drawable-reserved-method-162 () none 162)
+    (process-drawable-reserved-method-163 () none 163)
+    (process-drawable-reserved-method-164 () none 164)
+    (process-drawable-reserved-method-165 () none 165)
+    (process-drawable-reserved-method-166 () none 166)
+    (process-drawable-reserved-method-167 () none 167)
+    (process-drawable-reserved-method-168 () none 168)
+    (process-drawable-reserved-method-169 () none 169)
+    (process-drawable-reserved-method-170 () none 170)
+    (process-drawable-reserved-method-171 () none 171)
+    (process-drawable-reserved-method-172 () none 172)
+    (process-drawable-reserved-method-173 () none 173)
+    (process-drawable-reserved-method-174 () none 174)
+    (process-drawable-reserved-method-175 () none 175)
+    (process-drawable-reserved-method-176 () none 176)
+    (process-drawable-reserved-method-177 () none 177)
+    )
+  )
+
+
+(deftype attack-dir-info (structure)
+  ((dir               vector :inline :offset-assert   0)
+   (xz-dir            vector :inline :offset-assert  16)
+   (attacker-velocity vector :inline :offset-assert  32)
+   (pos               vector :inline :offset-assert  48)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+
+(deftype attack-info (structure)
+  ((trans             vector           :inline :offset-assert   0)
+   (vector            vector           :inline :offset-assert  16)
+   (attacker-velocity vector           :inline :offset-assert  32)
+   (intersection      vector           :inline :offset-assert  48)
+   (attacker          handle                   :offset-assert  64)
+   (attack-time       time-frame               :offset-assert  72)
+   (invinc-time       time-frame               :offset-assert  80)
+   (mask              attack-info-mask         :offset-assert  88)
+   (mode              symbol                   :offset-assert  92)
+   (shove-back        meters                   :offset-assert  96)
+   (shove-up          meters                   :offset-assert 100)
+   (speed             meters                   :offset-assert 104)
+   (dist              meters                   :offset-assert 108)
+   (control           float                    :offset-assert 112)
+   (angle             symbol                   :offset-assert 116)
+   (rotate-to         degrees                  :offset-assert 120)
+   (prev-state        state                    :offset-assert 124)
+   (id                uint32                   :offset-assert 128)
+   (count             uint32                   :offset-assert 132)
+   (penetrate-using   penetrate                :offset-assert 136)
+   (damage            float                    :offset-assert 144)
+   (shield-damage     float                    :offset-assert 148)
+   (knock             uint8                    :offset-assert 152)
+   (test              symbol                   :offset-assert 156)
+   )
+  :method-count-assert 12
+  :size-assert         #xa0
+  :flag-assert         #xc000000a0
+  (:methods
+    (attack-info-method-9 (_type_ attack-info process-drawable process-drawable) none 9)
+    (compute-intersect-info (_type_ object process-drawable process touching-shapes-entry) attack-info 10)
+    (combine! (_type_ attack-info process-drawable) attack-info 11)
+    )
+  )
+
+
+(deftype ground-tween-info (structure)
+  ((chan  uint8  3 :offset-assert   0)
+   (blend float  3 :offset-assert   4)
+   (group uint32 5 :offset-assert  16)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )

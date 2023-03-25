@@ -1,17 +1,20 @@
 #pragma once
 
+#include "game/common/vu.h"
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/opengl_renderer/opengl_utils.h"
-#include "game/common/vu.h"
 
 class OceanTexture {
  public:
   OceanTexture(bool generate_mipmaps);
-  void handle_ocean_texture(DmaFollower& dma,
-                            SharedRenderState* render_state,
-                            ScopedProfilerNode& prof);
-  void init_textures(TexturePool& pool);
+  void handle_ocean_texture_jak1(DmaFollower& dma,
+                                 SharedRenderState* render_state,
+                                 ScopedProfilerNode& prof);
+  void handle_ocean_texture_jak2(DmaFollower& dma,
+                                 SharedRenderState* render_state,
+                                 ScopedProfilerNode& prof);
+  void init_textures(TexturePool& pool, GameVersion version);
   void draw_debug_window();
   ~OceanTexture();
 
@@ -21,6 +24,10 @@ class OceanTexture {
   void run_L3_PC();
   void run_L5_PC();
   void xgkick_PC(Vf* src);
+
+  void run_L1_PC_jak2();
+  void run_L2_PC_jak2();
+  void run_L3_PC_jak2();
 
   void setup_renderer();
   void flush(SharedRenderState* render_state, ScopedProfilerNode& prof);

@@ -1,8 +1,10 @@
 #include "XSocketClient.h"
 
-#include "common/cross_sockets/XSocket.h"
 #include <string>
 
+#include "common/cross_sockets/XSocket.h"
+
+// clang-format off
 #ifdef _WIN32
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -10,8 +12,10 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
-#include "common/nrepl/ReplServer.h"
+#include "common/repl/nrepl/ReplServer.h"
+
 #include "third-party/fmt/core.h"
+// clang-format on
 
 XSocketClient::XSocketClient(int _tcp_port) {
   tcp_port = _tcp_port;

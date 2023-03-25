@@ -1,8 +1,13 @@
-#include <stdexcept>
-#include "third-party/fmt/core.h"
 #include "Env.h"
+
+#include <stdexcept>
+
 #include "IR.h"
+
 #include "common/goos/Reader.h"
+#include "common/log/log.h"
+
+#include "third-party/fmt/core.h"
 
 ///////////////////
 // Env
@@ -103,6 +108,16 @@ FileEnv* GlobalEnv::add_file(std::string name) {
   return m_files.back().get();
 }
 
+std::vector<std::string> GlobalEnv::list_files_with_prefix(const std::string& prefix) {
+  std::vector<std::string> matches = {};
+  for (const auto& file : m_files) {
+    if (file->name().rfind(prefix) == 0) {
+      matches.push_back(file->name());
+    }
+  }
+  return matches;
+}
+
 ///////////////////
 // BlockEnv
 ///////////////////
@@ -153,7 +168,7 @@ void FileEnv::add_top_level_function(std::unique_ptr<FunctionEnv> fe) {
 void FileEnv::debug_print_tl() {
   if (m_top_level_func) {
     for (auto& code : m_top_level_func->code()) {
-      fmt::print("{}\n", code->print());
+      lg::print("{}\n", code->print());
     }
   } else {
     printf("no top level function.\n");
@@ -164,6 +179,14 @@ bool FileEnv::is_empty() {
   return m_functions.size() == 1 && m_functions.front().get() == m_top_level_func &&
          m_top_level_func->code().empty();
 }
+
+void FileEnv::cleanup_after_codegen() {
+  m_top_level_func = nullptr;
+  m_functions.clear();
+  m_statics.clear();
+  m_vals.clear();
+}
+
 ///////////////////
 // FunctionEnv
 ///////////////////
@@ -290,7 +313,7 @@ StackVarAddrVal* FunctionEnv::allocate_aligned_stack_variable(const TypeSpec& ts
                                                               int size_bytes,
                                                               int align_bytes) {
   if (align_bytes > 16) {
-    fmt::print("\n\n\nBad stack align: {} bytes for {}\n\n\n\n", align_bytes, ts.print());
+    lg::print("\n\n\nBad stack align: {} bytes for {}\n\n\n\n", align_bytes, ts.print());
   }
   auto space = allocate_aligned_stack_space(size_bytes, align_bytes);
   return alloc_val<StackVarAddrVal>(ts, space.start_slot, space.slot_count);

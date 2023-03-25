@@ -1,0 +1,387 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+
+  This file runs the game-specific version of the pckernel.
+	See pckernel-common.gc for the bulk of the pckernel.
+
+ |#
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; methods
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod set-game-setting! pc-settings-jak1 ((obj pc-settings-jak1) (setting symbol) (value symbol))
+  (case setting
+    (('video-mode)
+      (set! (-> *setting-control* current video-mode) #f)
+      (set! (-> *setting-control* default video-mode) value)
+      )
+    (('aspect-ratio)
+      (set! (-> *setting-control* default aspect-ratio) value)
+      )
+    (else
+      (format #t "unknown setting  ~A (~A) to set-game-setting!" setting value))
+    )
+  )
+
+(defmethod get-game-setting! pc-settings-jak1 ((obj pc-settings-jak1) (setting symbol))
+  (case setting
+    (('video-mode)
+      (-> *setting-control* default video-mode)
+      )
+    (('aspect-ratio)
+      (-> *setting-control* default aspect-ratio)
+      )
+    (else
+      (format #t "unknown setting  ~A to get-game-setting!" setting)
+      #f)
+    )
+  )
+
+(defmethod set-game-language! pc-settings-jak1 ((obj pc-settings-jak1) (lang language-enum))
+  (set! (-> *setting-control* default language) lang)
+  )
+
+(defmethod get-game-language! pc-settings-jak1 ((obj pc-settings-jak1))
+  (-> *setting-control* default language)
+  )
+
+(defmethod update-cheats pc-settings-jak1 ((obj pc-settings-jak1))
+  "run cheats."
+
+  ;; first check for cheat inputs.
+  (when (and (cpad-hold? 0 l2) (cpad-hold? 0 l1) (cpad-hold? 0 r2) (cpad-hold? 0 r1))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 0) 0 spirit :extra (x)
+          (logclear! (-> obj cheats) (pc-cheats eco-red eco-yellow eco-green))
+          (pc-cheat-toggle-and-tune (-> obj cheats) eco-blue))
+
+    (pc-check-cheat-code (-> *pc-cheat-temp* 1) 0 spirit :extra (circle)
+          (logclear! (-> obj cheats) (pc-cheats eco-blue eco-yellow eco-green))
+          (pc-cheat-toggle-and-tune (-> obj cheats) eco-red))
+
+    (pc-check-cheat-code (-> *pc-cheat-temp* 2) 0 spirit :extra (triangle)
+          (logclear! (-> obj cheats) (pc-cheats eco-red eco-yellow eco-blue))
+          (pc-cheat-toggle-and-tune (-> obj cheats) eco-green))
+
+    (pc-check-cheat-code (-> *pc-cheat-temp* 3) 0 spirit :extra (square)
+          (logclear! (-> obj cheats) (pc-cheats eco-red eco-blue eco-green))
+          (pc-cheat-toggle-and-tune (-> obj cheats) eco-yellow))
+
+    (pc-check-cheat-code (-> *pc-cheat-temp* 4) 0 undead
+          (logclear! (-> *target* state-flags) 16)
+          (pc-cheat-toggle-and-tune (-> obj cheats) invinc))
+
+    (pc-check-cheat-code (-> *pc-cheat-temp* 5) 0 bluemoon (pc-cheat-toggle-and-tune (-> obj cheats) sidekick-blue))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 6) 0 boombox (pc-cheat-toggle-and-tune (-> obj cheats) tunes))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 7) 0 skies (pc-cheat-toggle-and-tune (-> obj cheats) sky))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 8) 0 speclum (pc-cheat-toggle-and-tune (-> obj cheats) mirror))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 9) 0 brains (pc-cheat-toggle-and-tune (-> obj cheats) big-head))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 10) 0 driedup (pc-cheat-toggle-and-tune (-> obj cheats) small-head))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 11) 0 yourpalm (pc-cheat-toggle-and-tune (-> obj cheats) big-fist))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 12) 0 bakeonly (pc-cheat-toggle-and-tune (-> obj cheats) no-tex))
+    ;(pc-check-cheat-code (-> *pc-cheat-temp* 13) 0 rodent (pc-cheat-toggle-and-tune (-> obj cheats) hard-rats))
+    ;(pc-check-cheat-code (-> *pc-cheat-temp* 14) 0 lunatic (pc-cheat-toggle-and-tune (-> obj cheats) hero-mode))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 15) 0 plzstop (pc-cheat-toggle-and-tune (-> obj cheats) huge-head))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 16) 0 evilbabe (pc-cheat-toggle-and-tune (-> obj cheats) oh-my-goodness))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 17) 0 smart (pc-cheat-toggle-and-tune (-> obj cheats) big-head-npc))
+    )
+
+  ;; run cheats here.
+  ;;;;;;;;;;;;;;;;;;;
+  (when *target*
+      ;; hook custom animation callback
+      (if (nonzero? (-> *target* skel))
+          (set! (-> *target* skel postbind-function) target-joint-callback-pc))
+
+      (with-pp (protect ((-> *target* fact-info-target eco-source) *sound-player-enable*)
+      ;; act as if this isnt a new source of eco to prevent spamming sounds. then restore the old source!
+      (when (< 0 (-> *target* fact-info-target eco-level))
+          (set! (-> *target* fact-info-target eco-source) (process->handle pp))
+          (false! *sound-player-enable*)
+          )
+
+      (cond
+        ;; green eco!
+        ((pc-cheats? (-> obj cheats) eco-green)
+         (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-green))
+                   (<= (-> *target* fact-info-target eco-level) 0.0))
+            (define-extern vent type)
+            (protect ((-> pp type) (-> *target* control root-prim prim-core action))
+            (set! (-> pp type) vent)
+            (logior! (-> *target* control root-prim prim-core action) (collide-action ca-9))
+            (send-event *target* 'get-pickup (pickup-type eco-green) (-> *FACT-bank* eco-full-inc)))
+            )
+         )
+        ;; red eco!
+        ((pc-cheats? (-> obj cheats) eco-red)
+         (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-red))
+                   (<= (-> *target* fact-info-target eco-level) 0.0))
+            (send-event *target* 'get-pickup (pickup-type eco-red) (-> *FACT-bank* eco-full-inc))
+            )
+         )
+        ;; blue eco!
+        ((pc-cheats? (-> obj cheats) eco-blue)
+         (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-blue))
+                   (<= (-> *target* fact-info-target eco-level) 0.0))
+            (protect ((-> *target* event-hook))
+              (set! (-> *target* event-hook) target-generic-event-handler)
+              (send-event *target* 'get-pickup (pickup-type eco-blue) (-> *FACT-bank* eco-full-inc))
+              )
+            (send-event *target* 'boost (-> *FACT-bank* eco-single-inc))
+            )
+         )
+        ;; yellow eco!
+        ((pc-cheats? (-> obj cheats) eco-yellow)
+         (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-yellow))
+                   (<= (-> *target* fact-info-target eco-level) 0.0))
+            (send-event *target* 'get-pickup (pickup-type eco-yellow) (-> *FACT-bank* eco-full-inc))
+            )
+         )
+        )
+      ))
+
+      (when (pc-cheats? (-> obj cheats) invinc)
+        (logior! (-> *target* state-flags) (state-flags invulnerable))
+        )
+
+      )
+
+  (if (pc-cheats? (-> obj cheats) tunes)
+      (set! (-> obj flava-hack) -1)
+      (set! (-> obj flava-hack) 0)
+      )
+
+  (if (pc-cheats? (-> obj cheats) sky)
+      (let ((date (new 'stack-no-clear 'scf-time)))
+          (scf-get-time date)
+          (when (zero? (-> date stat))
+            (set-time-of-day (+ (the float (bcd->dec (-> date hour))) (/ (the float (bcd->dec (-> date minute))) 60))))
+          ))
+  
+  (pc-set-gfx-hack (pc-gfx-hack no-tex) (logtest? (-> obj cheats) (pc-cheats no-tex)))
+
+  (if (pc-cheats? (-> obj cheats) mirror)
+      (sound-set-mirror-mode (sound-mirror-mode mirrored))
+      (sound-set-mirror-mode (sound-mirror-mode normal)))
+
+  ;; run cheats end!!!
+  ;;;;;;;;;;;;;;;;;;;;
+
+  (logior! (-> obj cheats-known) (-> obj cheats))
+  0)
+
+(defmethod update-music-log pc-settings-jak1 ((obj pc-settings-jak1))
+  "update music log settings."
+
+  ;; add whatever is playing to the music log.
+  (add-to-music-log obj (-> *setting-control* current music) (the int (-> *setting-control* current sound-flava)))
+
+  ;; special cases. for example, npc's that despawn and you can't hear their music anymore.
+  (if (task-closed? (game-task village1-buzzer) (task-status need-resolution))
+      (add-to-music-log obj 'village1 (flava-lookup 'village1 (music-flava assistant))))
+  (if (task-closed? (game-task village2-buzzer) (task-status need-resolution))
+      (add-to-music-log obj 'village2 (flava-lookup 'village2 (music-flava assistant))))
+  (if (task-closed? (game-task village3-buzzer) (task-status need-resolution))
+      (add-to-music-log obj 'village3 (flava-lookup 'village3 (music-flava assistant))))
+  (when (task-closed? (game-task beach-ecorocks) (task-status need-introduction))
+      (add-to-music-log obj 'village1 1)
+      (add-to-music-log obj 'village1 (flava-lookup 'village1 (music-flava sage)))
+      )
+  (if (task-closed? (game-task jungle-plant) (task-status need-resolution))
+      (add-to-music-log obj 'jungleb 2))
+  (if (task-closed? (game-task beach-flutflut) (task-status need-resolution))
+      (add-to-music-log obj 'beach (flava-lookup 'beach (music-flava birdlady))))
+  (if (task-closed? (game-task beach-flutflut) (task-status need-resolution))
+      (add-to-music-log obj 'village1 (flava-lookup 'village1 (music-flava birdlady))))
+  (if (task-closed? (game-task misty-warehouse) (task-status need-resolution))
+      (add-to-music-log obj 'misty (flava-lookup 'misty (music-flava misty-battle))))
+  (if (task-closed? (game-task misty-cannon) (task-status need-resolution))
+      (add-to-music-log obj 'misty 4))
+  (if (task-closed? (game-task firecanyon-end) (task-status need-resolution))
+      (add-to-music-log obj 'firecanyon 2))
+  (if (task-closed? (game-task village2-levitator) (task-status need-hint))
+      (add-to-music-log obj 'village2 (flava-lookup 'village2 (music-flava sage))))
+  (if (task-closed? (game-task swamp-billy) (task-status need-resolution))
+      (add-to-music-log obj 'swamp 1))
+  (if (task-closed? (game-task swamp-battle) (task-status need-resolution))
+      (add-to-music-log obj 'swamp (flava-lookup 'swamp (music-flava swamp-battle))))
+  (if (task-closed? (game-task village3-button) (task-status need-hint))
+      (add-to-music-log obj 'village3 (flava-lookup 'village3 (music-flava sage))))
+  (if (task-closed? (game-task snow-bunnies) (task-status need-resolution))
+      (add-to-music-log obj 'snow (flava-lookup 'snow (music-flava snow-battle))))
+  (if (task-closed? (game-task citadel-sage-yellow) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage-yellow))))
+  (if (task-closed? (game-task citadel-sage-red) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage-red))))
+  (if (task-closed? (game-task citadel-sage-blue) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage-blue))))
+  (if (task-closed? (game-task citadel-sage-green) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage))))
+  (if (task-closed? (game-task citadel-buzzer) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava assistant))))
+  (when (task-closed? (game-task finalboss-movies) (task-status unknown))
+      (add-to-music-log obj 'finalboss (flava-lookup 'finalboss (music-flava finalboss-middle)))
+      (add-to-music-log obj 'finalboss (flava-lookup 'finalboss (music-flava finalboss-end)))
+      )
+  (when (and *target* (>= (float->int (send-event *target* 'query 'pickup (pickup-type fuel-cell))) 100))
+      (add-to-music-log obj 'credits 0)
+      (add-to-music-log obj 'credits 1)
+      (add-to-music-log obj 'credits 2)
+      )
+
+  0)
+
+(defmethod update-discord-rpc pc-settings-jak1 ((obj pc-settings-jak1))
+  "update discord rpc module"
+
+  (let ((info (new 'stack 'discord-info)))
+    (set! (-> info fuel) (&-> *game-info* fuel))
+    (set! (-> info money-total) (&-> *game-info* money-total))
+    (set! (-> info buzzer-total) (&-> *game-info* buzzer-total))
+    (set! (-> info deaths) (&-> *game-info* total-deaths))
+    (set! (-> info status) "Playing Jak and Daxter: The Precursor Legacy™")
+    (set! (-> info level) (symbol->string (-> (level-get-target-inside *level*) name))) ;; grab the name of level we're in
+    (set! (-> info cutscene?) (-> obj movie?))
+    (set! (-> info ogreboss?) (aif (process-by-ename "ogreboss-1") (case (-> it next-state name) (
+                                      ('ogreboss-die
+                                       'ogreboss-idle
+                                       'ogreboss-stage1
+                                       'ogreboss-stage2
+                                       'ogreboss-stage3-hit
+                                       'ogreboss-stage3-shuffle
+                                       'ogreboss-stage3-throw
+                                       'ogreboss-wait-for-player) #t))))
+    (set! (-> info plant-boss?) (aif (process-by-ename "plant-boss-3") (case (-> it next-state name) (
+                                      ('plant-boss-idle
+                                       'plant-boss-hit
+                                       'plant-boss-vulnerable
+                                       'plant-boss-spawn
+                                       'plant-boss-reset
+                                       'plant-boss-attack) #t))))
+    (set! (-> info racer?) (aif *target* (case (-> it next-state name) (
+                                      ('target-racing
+                                       'target-racing-bounce
+                                       'target-racing-death
+                                       'target-racing-falling
+                                       'target-racing-grab
+                                       'target-racing-hit
+                                       'target-racing-jump
+                                       'target-racing-smack
+                                       'target-racing-start) #t))))
+    (set! (-> info flutflut?) (aif *target* (case (-> it next-state name) (
+                                      ('target-flut-air-attack
+                                       'target-flut-air-attack-hit-ground
+                                       'target-flut-double-jump
+                                       'target-flut-falling
+                                       'target-flut-grab
+                                       'target-flut-hit
+                                       'target-flut-hit-ground
+                                       'target-flut-jump
+                                       'target-flut-running-attack
+                                       'target-flut-stance
+                                       'target-flut-start
+                                       'target-flut-walk) #t))))
+    (set! (-> info time-of-day) (&-> *time-of-day-context* time))
+
+    (with-profiler "discord-update" (pc-discord-rpc-update info))
+    )
+  0)
+
+(defmethod update-speedrun pc-settings-jak1 ((obj pc-settings-jak1))
+  "update speedrun module"
+
+  (with-profiler "speedrun-update-jak1"
+    (speedrun-mode-update))
+  0)
+
+(defmethod update-video-hacks pc-settings-jak1 ((obj pc-settings-jak1))
+  "update the graphics hacks used for sprites and other things. ugh."
+
+  (set! (-> (get-video-params) relative-x-scale) (-> obj aspect-ratio-reciprocal))
+  (set! (-> (get-video-params) relative-x-scale-reciprical) (-> obj aspect-ratio-scale))
+  (set! (-> *font-default-matrix* vector 0 x) (-> (get-video-params) relative-x-scale))
+
+  (set-hud-aspect-ratio 'aspect4x3 'ntsc) ;; set hud aspect ratios every frame because why not?
+
+  (when *progress-process*
+    ;; adjust sizes for progress.
+    ;; video.gc sets the sizes in the normal game.
+    ;; this is a complete hack and i'm losing it
+    (let ((pr (-> *progress-process*))
+          ;(wide-adjust (* 4.0 (- (/ (-> obj aspect-ratio-scale) ASPECT_16X9_SCALE) (1/ ASPECT_16X9_SCALE))))
+          )
+        (set! (-> pr sides-x-scale) 1.0)
+        (set! (-> pr sides-y-scale) 13.0)
+        ;(set! (-> pr left-x-offset) (+ 59 (the int (* (-> obj aspect-ratio-scale) -59))))
+        ;(set! (-> pr right-x-offset) 26)
+        ;(set! (-> pr button-scale) (+ 1.0 (* wide-adjust 0.1)))
+        )
+    )
+  )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; file I/O
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod handle-input-settings pc-settings-jak1 ((obj pc-settings-jak1) (file file-stream))
+  "handle the text parsing input for the 'settings' group"
+
+	((method-of-type pc-settings handle-input-settings) obj file)
+  (case-str *pc-temp-string*
+    (("money-starburst?") (set! (-> obj money-starburst?) (file-stream-read-symbol file)))
+    (("extra-hud?") (set! (-> obj extra-hud?) (file-stream-read-symbol file)))
+    (("skip-movies?") (set! (-> obj skip-movies?) (file-stream-read-symbol file)))
+    (("subtitles?") (set! (-> obj subtitles?) (file-stream-read-symbol file)))
+    (("subtitle-language") (set! (-> obj subtitle-language) (the-as pc-subtitle-lang (file-stream-read-int file))))
+    )
+  0)
+
+(defmethod handle-output-settings pc-settings-jak1 ((obj pc-settings-jak1) (file file-stream))
+  "handle the text writing output for the 'settings' group"
+  
+	((method-of-type pc-settings handle-output-settings) obj file)
+  (format file "  (money-starburst? ~A)~%" (-> obj money-starburst?))
+  (format file "  (extra-hud? ~A)~%" (-> obj extra-hud?))
+  (format file "  (skip-movies? ~A)~%" (-> obj skip-movies?))
+  (format file "  (subtitles? ~A)~%" (-> obj subtitles?))
+  (format file "  (subtitle-language ~D)~%" (-> obj subtitle-language))
+  0)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; PC settings
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(define-once *pc-settings* (new 'global 'pc-settings-jak1))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; other
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun draw-build-revision ()
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
+                                     (bucket-id debug-no-zbuf))
+          (draw-string-xy *pc-settings-built-sha*
+                          buf
+                          0 (* 10 (-> (get-video-params) relative-y-scale))
+                          (font-color flat-yellow)
+                          (font-flags shadow kerning))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; process pools
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; the actor pool for PC processes! it has space for 4 processes, with 16K of space.
+(define *pc-dead-pool* (new 'global 'dead-pool 4 (* 16 1024) '*pc-dead-pool*))
+

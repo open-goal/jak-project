@@ -1,13 +1,22 @@
 #pragma once
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#elif defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 /*!
  * @file LinkedWord.h
  * A word (4 bytes), possibly with some linking info.
  */
 
 #include <cstdint>
-#include <string>
 #include <cstring>
+#include <string>
+
 #include "common/common_types.h"
 #include "common/util/Assert.h"
 
@@ -15,14 +24,15 @@ namespace decompiler {
 class LinkedWord {
  public:
   enum Kind : u8 {
-    PLAIN_DATA,  // just plain data
-    PTR,         // pointer to a location
-    HI_PTR,      // lower 16-bits of this data are the upper 16 bits of a pointer
-    LO_PTR,      // lower 16-bits of this data are the lower 16 bits of a pointer
-    SYM_PTR,     // this is a pointer to a symbol
-    EMPTY_PTR,   // this is a pointer to the empty list
-    SYM_OFFSET,  // this is an offset of a symbol in the symbol table
-    TYPE_PTR     // this is a pointer to a type
+    PLAIN_DATA,      // just plain data
+    PTR,             // pointer to a location
+    HI_PTR,          // lower 16-bits of this data are the upper 16 bits of a pointer
+    LO_PTR,          // lower 16-bits of this data are the lower 16 bits of a pointer
+    SYM_PTR,         // this is a pointer to a symbol
+    EMPTY_PTR,       // this is a pointer to the empty list
+    SYM_OFFSET,      // this is an offset of a symbol in the symbol table
+    SYM_VAL_OFFSET,  // offset to the value of the symbol (different in jak 2)
+    TYPE_PTR         // this is a pointer to a type
   };
 
  private:
@@ -37,7 +47,8 @@ class LinkedWord {
   explicit LinkedWord(uint32_t _data) : data(_data) {}
 
   bool holds_string() const {
-    return m_kind == SYM_PTR || m_kind == SYM_OFFSET || m_kind == TYPE_PTR;
+    return m_kind == SYM_PTR || m_kind == SYM_OFFSET || m_kind == TYPE_PTR ||
+           m_kind == SYM_VAL_OFFSET;
   }
 
   LinkedWord(const LinkedWord& other) {
@@ -151,3 +162,9 @@ class LinkedWord {
 };
 
 }  // namespace decompiler
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#elif defined(__clang__)
+#pragma clang diagnostic pop
+#endif

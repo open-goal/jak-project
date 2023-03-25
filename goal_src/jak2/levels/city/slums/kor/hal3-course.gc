@@ -1,0 +1,756 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: hal3-course.gc
+;; name in dgo: hal3-course
+;; dgos: CTYKORA
+
+;; DECOMP BEGINS
+
+(deftype hal3-course (bot-course)
+  ((transport handle  :offset-assert  48)
+   )
+  :method-count-assert 9
+  :size-assert         #x38
+  :flag-assert         #x900000038
+  )
+
+
+(deftype hal-help-kid (hal)
+  ((nav-mesh   nav-mesh                             :offset-assert 1024)
+   (alley-bbox bounding-box               :inline   :offset-assert 1040)
+   (suppress   traffic-suppression-params 2 :inline :offset-assert 1072)
+   )
+  :heap-base #x410
+  :method-count-assert 229
+  :size-assert         #x490
+  :flag-assert         #xe504100490
+  (:methods
+    (hal-help-kid-method-227 (_type_) none 227)
+    (hal-help-kid-method-228 (_type_ vector) none 228)
+    )
+  )
+
+
+(defmethod init! hal-help-kid ((obj hal-help-kid))
+  "Set defaults for various fields."
+  (let ((t9-0 (method-of-type hal init!)))
+    (t9-0 obj)
+    )
+  (let ((v1-1 (-> obj suppress)))
+    (set! (-> v1-1 0 duration) (seconds 1))
+    (set! (-> v1-1 0 id) -1)
+    (let ((a0-4 (-> v1-1 0)))
+      (set! (-> a0-4 bbox min x) 2170880.0)
+      (set! (-> a0-4 bbox min y) 20480.0)
+      (set! (-> a0-4 bbox min z) -233472.0)
+      (set! (-> a0-4 bbox min w) 1.0)
+      )
+    (set-vector! (-> v1-1 0 bbox max) 2785280.0 40960.0 20480.0 1.0)
+    )
+  (let ((v1-3 (-> obj suppress 1))
+        (a1-4 (-> obj alley-bbox))
+        )
+    (set-vector! (-> a1-4 min) 2531328.0 20480.0 -675840.0 1.0)
+    (set-vector! (-> a1-4 max) 2785280.0 40960.0 -233472.0 1.0)
+    (set! (-> v1-3 duration) (seconds 1))
+    (set! (-> v1-3 id) -1)
+    (mem-copy! (the-as pointer (-> v1-3 bbox)) (the-as pointer a1-4) 32)
+    )
+  (set! (-> obj channel) (the-as uint 30))
+  (none)
+  )
+
+(defmethod hal-help-kid-method-228 hal-help-kid ((obj hal-help-kid) (arg0 vector))
+  (let ((v1-0 (new 'stack-no-clear 'traffic-danger-info)))
+    (set! (-> v1-0 sphere quad) (-> arg0 quad))
+    (set! (-> v1-0 sphere r) 32768.0)
+    (set! (-> v1-0 velocity quad) (the-as uint128 0))
+    (set! (-> v1-0 notify-radius) 122880.0)
+    (set! (-> v1-0 danger-level) 0.4)
+    (set! (-> v1-0 decay-rate) 0.0)
+    (set! (-> v1-0 flags) (traffic-danger-flags tdf0))
+    (set! (-> v1-0 danger-type) (traffic-danger-type tdt4))
+    (add-danger (-> (the-as traffic-manager *traffic-manager*) traffic-engine) v1-0)
+    )
+  (none)
+  )
+
+(defmethod general-event-handler hal-help-kid ((obj hal-help-kid) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+  (local-vars (v0-0 object))
+  (case arg2
+    (('fail)
+     (set! v0-0 (logior (-> obj bot-task-bits) 1))
+     (set! (-> obj bot-task-bits) (the-as uint v0-0))
+     v0-0
+     )
+    (('request)
+     (case (-> arg3 param 0)
+       (('scene-player)
+        (set! v0-0 (logior (-> obj bot-task-bits) 8))
+        (set! (-> obj bot-task-bits) (the-as uint v0-0))
+        v0-0
+        )
+       (else
+         ((method-of-type hal general-event-handler) obj arg0 arg1 arg2 arg3)
+         )
+       )
+     )
+    (else
+      ((method-of-type hal general-event-handler) obj arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defmethod hal-help-kid-method-227 hal-help-kid ((obj hal-help-kid))
+  (let ((s4-0 (-> obj suppress))
+        (gp-0 (-> obj suppress 1))
+        )
+    ((method-of-type traffic-suppression-params create-or-update-suppression-box)
+     (the-as traffic-suppression-params s4-0)
+     )
+    (let ((s5-0 (new 'stack-no-clear 'vector))
+          (s3-1 (-> obj alley-bbox))
+          )
+      (set! (-> s5-0 quad) (-> (target-pos 0) quad))
+      (mem-copy! (the-as pointer (-> gp-0 bbox)) (the-as pointer s3-1) 32)
+      (if (or ((method-of-type bounding-box inside-xz?) (the-as bounding-box (-> s4-0 0)) s5-0) (inside-xz? s3-1 s5-0))
+          (set! (-> gp-0 bbox min z) (fmax (fmin (-> s5-0 z) (-> gp-0 bbox min z)) (-> gp-0 bbox min z)))
+          )
+      )
+    (create-or-update-suppression-box gp-0)
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch nav-mesh vs none.
+(defmethod init-enemy! hal-help-kid ((obj hal-help-kid))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
+  (let ((t9-0 (method-of-type hal init-enemy!)))
+    (t9-0 obj)
+    )
+  (set! (-> obj nav-mesh) (nav-mesh-from-res-tag (-> obj entity) 'nav-mesh-actor 0))
+  (none)
+  )
+
+(define *hal3-course*
+  (new 'static 'hal3-course
+    :course-id #x6
+    :spot-count #x4
+    :default-check-too-far #f
+    :waypoints (new 'static 'boxed-array :type bot-waypoint
+      (new 'static 'bot-waypoint
+        :waypoint-id 1
+        :skip-to -1
+        :on-set (lambda ((arg0 hal-help-kid))
+          (process-entity-status! arg0 (entity-perm-status no-kill) #t)
+          (clear-speech-flags! arg0)
+          (let ((v1-4 (-> arg0 actor-group 0 data 3 actor)))
+            (if v1-4
+                (logior! (-> v1-4 extra perm status) (entity-perm-status bit-9))
+                )
+            )
+          (let ((v1-7 (get-task-by-type (-> arg0 ai-ctrl) halt-wait-spot arg0)))
+            (set! (-> v1-7 bytes 5) 1)
+            (set! (-> v1-7 bytes 6) 0)
+            (set! (-> v1-7 bytes 4) 0)
+            (set! (-> (the-as halt-wait-spot v1-7) check-done)
+                  (the-as
+                    (function halt-wait-spot hal symbol)
+                    (lambda ((arg0 object) (arg1 hal-help-kid))
+                      (let* ((v1-3 (-> arg1 actor-group 0 data 1 actor))
+                             (s4-0 (if v1-3
+                                       (-> v1-3 extra process)
+                                       )
+                                   )
+                             (v1-8 (-> arg1 actor-group 0 data 2 actor))
+                             (s5-0 (if v1-8
+                                       (-> v1-8 extra process)
+                                       )
+                                   )
+                             (s3-0 *traffic-manager*)
+                             )
+                        (cond
+                          ((not (logtest? (-> arg1 waypoint-bits) 1))
+                           ;; (set! s3-0 (and s4-0 (and s5-0 s3-0)))
+                           (when (and s4-0 (and s5-0 s3-0))
+                             (let* ((v1-15 (-> *game-info* sub-task-list 4))
+                                    (v1-18 (handle->process (if (-> v1-15 info)
+                                                                (-> v1-15 info manager)
+                                                                (the-as handle #f)
+                                                                )
+                                                            )
+                                           )
+                                    )
+                               (when v1-18
+                                 (set! (-> (the-as task-manager v1-18) slave 0) (process->handle arg1))
+                                 (logior! (-> arg1 waypoint-bits) 1)
+                                 (set! (-> arg1 slave-handle 0) (process->handle s4-0))
+                                 (set! (-> arg1 slave-handle 1) (process->handle s5-0))
+                                 )
+                               )
+                             )
+                           #f
+                           )
+                          ((not (logtest? (-> arg1 waypoint-bits) 2))
+                           (logior! (-> arg1 waypoint-bits) 2)
+                           (hal-method-226 arg1)
+                           (send-event s4-0 'request 'waypoint 2)
+                           (send-event s5-0 'request 'waypoint 2)
+                           #f
+                           )
+                          ((not (logtest? (-> arg1 waypoint-bits) 4))
+                           (logior! (-> arg1 waypoint-bits) 4)
+                           (send-event s3-0 'deactivate-by-type 6)
+                           (send-event s3-0 'deactivate-by-type 18)
+                           (send-event s3-0 'deactivate-by-type 19)
+                           (send-event s3-0 'deactivate-by-type 20)
+                           (send-event s3-0 'set-guard-target-level 0)
+                           (send-event s3-0 'set-object-reserve-count 6 14)
+                           #f
+                           )
+                          (else
+                            (let ((a0-34 s4-0))
+                              (when (and (and a0-34 (let ((s4-1 1))
+                                                      (< s4-1 (the-as int (send-event a0-34 'query 'waypoint)))
+                                                      )
+                                              )
+                                         (let ((a0-36 s5-0))
+                                           (and a0-36 (let ((s5-1 1))
+                                                        (< s5-1 (the-as int (send-event a0-36 'query 'waypoint)))
+                                                        )
+                                                )
+                                           )
+                                         )
+                                (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                (go-to-waypoint! arg1 2 #f)
+                                (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                #t
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 2
+        :skip-to -1
+        :on-set (lambda ((arg0 hal-help-kid))
+          (let ((v1-1 (get-current-task-event (-> arg0 task))))
+            (if (= (-> v1-1 action) (game-task-action say))
+                (add-process
+                  *gui-control*
+                  arg0
+                  (gui-channel art-load)
+                  (gui-action queue)
+                  (the-as string (-> v1-1 scene))
+                  -99.0
+                  0
+                  )
+                )
+            )
+          (let ((v1-3 (get-task-by-type (-> arg0 ai-ctrl) halt-wait-spot arg0)))
+            (set! (-> v1-3 bytes 5) 1)
+            (set! (-> v1-3 bytes 6) 0)
+            (set! (-> v1-3 bytes 4) 0)
+            (set! (-> (the-as halt-wait-spot v1-3) check-done)
+                  (the-as
+                    (function halt-wait-spot hal symbol)
+                    (lambda ((arg0 object) (arg1 hal-help-kid))
+                      (when *target*
+                        (let* ((s5-0 (target-pos 0))
+                               (s4-0 (-> arg1 root-override2 trans))
+                               (f30-0 (vector-vector-xz-distance s5-0 s4-0))
+                               (f28-0 (- (-> s5-0 z) (-> s4-0 z)))
+                               (v1-4 (get-current-task-event (-> arg1 task)))
+                               )
+                          (when (and (= (-> v1-4 action) (game-task-action say))
+                                     (and (or (>= 40960.0 f30-0) (>= 30515.2 f28-0)) (scene-play arg1 (the-as string (-> v1-4 scene)) #f))
+                                     )
+                            (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                            (go-to-waypoint! arg1 3 #f)
+                            (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                            (return #t)
+                            )
+                          )
+                        )
+                      #f
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 3
+        :skip-to -1
+        :on-set (lambda ((arg0 hal-help-kid))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) halt-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 0)
+            (set! (-> v1-1 bytes 4) 0)
+            (set! (-> (the-as halt-wait-spot v1-1) check-done)
+                  (the-as
+                    (function halt-wait-spot hal symbol)
+                    (lambda ((arg0 object) (arg1 hal-help-kid)) (when (scene-release? arg1)
+                                                                  (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                                  (go-to-waypoint! arg1 4 #f)
+                                                                  (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                                  #t
+                                                                  )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 4
+        :skip-to -1
+        :on-set (lambda ((arg0 hal-help-kid))
+          (with-pp
+            (set-setting! 'sound-mode #f 0 1)
+            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-1 from) (process->ppointer pp))
+              (set! (-> a1-1 num-params) 2)
+              (set! (-> a1-1 message) 'request)
+              (set! (-> a1-1 param 0) (the-as uint 'waypoint))
+              (set! (-> a1-1 param 1) (the-as uint 6))
+              (let ((t9-1 send-event-function)
+                    (v1-10 (-> arg0 actor-group 0 data 1 actor))
+                    )
+                (t9-1
+                  (if v1-10
+                      (-> v1-10 extra process)
+                      )
+                  a1-1
+                  )
+                )
+              )
+            (let ((s5-0 *traffic-manager*))
+              (send-event s5-0 'set-guard-multi-focus #t)
+              (send-event s5-0 'set-disable-pursuit-control #t)
+              (send-event s5-0 'set-guard-force-visible #t)
+              (send-event s5-0 'set-max-alert-level 1)
+              (send-event s5-0 'set-alert-level 1)
+              (send-event s5-0 'set-alert-duration #xa4cb80)
+              (send-event s5-0 'set-guard-target-level 0)
+              )
+            (dotimes (s5-1 3)
+              (let ((s4-0 (new 'stack 'traffic-object-spawn-params)))
+                (set! (-> s4-0 object-type) (traffic-type crimson-guard-1))
+                (set! (-> s4-0 behavior) (the-as uint 3))
+                (set! (-> s4-0 id) (the-as uint 0))
+                (set! (-> s4-0 nav-mesh) (-> arg0 nav-mesh))
+                (set! (-> s4-0 nav-branch) #f)
+                (set! (-> s4-0 proc) #f)
+                (set! (-> s4-0 handle) (the-as handle #f))
+                (set! (-> s4-0 user-data) (the-as uint 0))
+                (set! (-> s4-0 flags) (traffic-spawn-flags))
+                (set! (-> s4-0 guard-type) (the-as uint 7))
+                (vector-reset! (-> s4-0 velocity))
+                (set! (-> s4-0 position quad) (-> arg0 course spots (+ s5-1 1) center quad))
+                (set! (-> s4-0 position w) 1.0)
+                (quaternion-vector-angle!
+                  (-> s4-0 rotation)
+                  *up-vector*
+                  (* 182.04445 (* 0.00024414062 (-> arg0 course spots (+ s5-1 1) center w)))
+                  )
+                (send-event *traffic-manager* 'activate-object s4-0)
+                )
+              )
+            (add-process *gui-control* arg0 (gui-channel art-load) (gui-action queue) "city-help-kid-resolution" -99.0 0)
+            (let ((v1-70 (get-task-by-type (-> arg0 ai-ctrl) halt-wait-spot arg0)))
+              (set! (-> v1-70 bytes 5) 1)
+              (set! (-> v1-70 bytes 6) 0)
+              (set! (-> v1-70 bytes 4) 0)
+              (set! (-> (the-as halt-wait-spot v1-70) check-done)
+                    (the-as
+                      (function halt-wait-spot hal symbol)
+                      (lambda ((arg0 object) (arg1 hal-help-kid))
+                        (cond
+                          ((and (logtest? (-> arg1 bot-task-bits) 1) (zero? (logand (-> arg1 bot-flags) (bot-flags bf09))))
+                           (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                           (go-to-waypoint! arg1 7 #f)
+                           (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                           #t
+                           )
+                          ((zero? (send-event *traffic-manager* 'get-object-remaining-count 6))
+                           (let ((v1-16 *target*))
+                             (when v1-16
+                               (cond
+                                 ((logtest? (focus-status dark) (-> v1-16 focus-status))
+                                  (if (and (not (logtest? (-> arg1 bot-task-bits) 4)) (send-event *target* 'end-mode))
+                                      (logior! (-> arg1 bot-task-bits) 4)
+                                      )
+                                  #f
+                                  )
+                                 (else
+                                   (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                   (go-to-waypoint! arg1 8 #f)
+                                   (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                   #t
+                                   )
+                                 )
+                               )
+                             )
+                           )
+                          )
+                        )
+                      )
+                    )
+              )
+            (none)
+            )
+          )
+        :on-update (lambda ((arg0 hal-help-kid))
+          (with-pp
+            (gui-control-method-12
+              *gui-control*
+              arg0
+              (gui-channel art-load)
+              (gui-action queue)
+              "city-help-kid-resolution"
+              0
+              -1.0
+              (new 'static 'sound-id)
+              )
+            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-1 from) (process->ppointer pp))
+              (set! (-> a1-1 num-params) 1)
+              (set! (-> a1-1 message) 'get-object-remaining-count)
+              (set! (-> a1-1 param 0) (the-as uint 6))
+              (let ((v1-6 (send-event-function *traffic-manager* a1-1)))
+                (if (and (not (logtest? (-> arg0 bot-task-bits) 2))
+                         (and (>= 12 (the-as int v1-6)) (send-event *target* 'change-mode 'darkjak #f 2))
+                         )
+                    (logior! (-> arg0 bot-task-bits) 2)
+                    )
+                )
+              )
+            (when (and (not (logtest? (-> arg0 waypoint-bits) 2))
+                       (>= (- (-> pp clock frame-counter) (-> arg0 waypoint-time0)) (seconds 3))
+                       )
+              (logior! (-> arg0 waypoint-bits) 2)
+              (let ((s5-0 (new 'stack-no-clear 'transport-params)))
+                (set-vector! (-> s5-0 spawn-pos) 2689966.0 65208.32 -481075.2 1.0)
+                (quaternion-copy! (-> s5-0 quat) *unity-quaternion*)
+                (set! (-> s5-0 nav-mesh) (-> arg0 nav-mesh))
+                (set! (-> s5-0 max-guard) (the-as uint 0))
+                (set! (-> s5-0 turret?) #f)
+                (set! (-> s5-0 speeches?) #f)
+                (set! (-> (the-as hal3-course (-> arg0 course)) transport)
+                      (ppointer->handle (process-spawn transport s5-0 :to arg0))
+                      )
+                )
+              )
+            (hal-help-kid-method-227 arg0)
+            (when (and (not (logtest? (-> arg0 waypoint-bits) 1))
+                       (>= (- (-> pp clock frame-counter) (-> arg0 waypoint-time0)) (seconds 0.2))
+                       )
+              (logior! (-> arg0 waypoint-bits) 1)
+              (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
+                (set! (-> a1-7 from) (process->ppointer pp))
+                (set! (-> a1-7 num-params) 2)
+                (set! (-> a1-7 message) 'request)
+                (set! (-> a1-7 param 0) (the-as uint 'waypoint))
+                (set! (-> a1-7 param 1) (the-as uint 6))
+                (let ((t9-8 send-event-function)
+                      (v1-52 (-> arg0 actor-group 0 data 2 actor))
+                      )
+                  (t9-8
+                    (if v1-52
+                        (-> v1-52 extra process)
+                        )
+                    a1-7
+                    )
+                  )
+                )
+              )
+            )
+          )
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 7
+        :skip-to -1
+        :on-set (lambda ((arg0 hal-help-kid))
+          (remove-setting! 'sound-mode)
+          (remove-setting! 'music)
+          (let* ((a0-3 (-> arg0 actor-group 0 data 2 actor))
+                 (v1-7 (if a0-3
+                           (the-as process-focusable (-> a0-3 extra process))
+                           )
+                       )
+                 )
+            (logior! (-> v1-7 focus-status) (focus-status disable))
+            (logclear! (-> v1-7 focus-status) (focus-status arrestable))
+            )
+          (let ((a0-8 *traffic-manager*))
+            (send-event a0-8 'deactivate-by-type 6)
+            )
+          (set-action!
+            *gui-control*
+            (gui-action stop)
+            (the-as sound-id 1)
+            (gui-channel art-load)
+            (gui-action none)
+            (the-as string #f)
+            (the-as (function gui-connection symbol) #f)
+            (the-as process #f)
+            )
+          (let ((v1-17 (get-task-by-type (-> arg0 ai-ctrl) halt-wait-spot arg0)))
+            (set! (-> v1-17 bytes 5) 1)
+            (set! (-> v1-17 bytes 6) 0)
+            (set! (-> v1-17 bytes 4) 0)
+            (set! (-> (the-as halt-wait-spot v1-17) check-done)
+                  (the-as (function halt-wait-spot hal symbol) (lambda ((arg0 hal-help-kid)) #f))
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 hal-help-kid))
+          (with-pp
+            (when (not (logtest? (-> arg0 waypoint-bits) 1))
+              (let* ((s4-0 (new 'stack 'traffic-object-spawn-params))
+                     (v1-6 (-> arg0 actor-group 0 data 1 actor))
+                     (s5-0 (if v1-6
+                               (-> v1-6 extra process)
+                               )
+                           )
+                     )
+                (set! (-> s4-0 object-type) (traffic-type crimson-guard-1))
+                (set! (-> s4-0 behavior) (the-as uint 5))
+                (set! (-> s4-0 id) (the-as uint 0))
+                (set! (-> s4-0 nav-mesh) (-> arg0 nav-mesh))
+                (set! (-> s4-0 nav-branch) #f)
+                (set! (-> s4-0 proc) #f)
+                (set! (-> s4-0 handle) (process->handle s5-0))
+                (set! (-> s4-0 user-data) (the-as uint 0))
+                (set! (-> s4-0 flags) (traffic-spawn-flags))
+                (set! (-> s4-0 guard-type) (the-as uint 7))
+                (vector-reset! (-> s4-0 velocity))
+                (set! (-> s4-0 position quad) (-> (the-as process-drawable s5-0) root trans quad))
+                (set! (-> s4-0 position x) (+ 13312.0 (-> s4-0 position x)))
+                (set! (-> s4-0 position z) (+ 17408.0 (-> s4-0 position z)))
+                (let ((a1-1 (new 'stack-no-clear 'vector)))
+                  (vector-! a1-1 (-> (the-as process-drawable s5-0) root trans) (-> s4-0 position))
+                  (forward-up->quaternion (-> s4-0 rotation) a1-1 *up-vector*)
+                  )
+                (send-event *traffic-manager* 'activate-object s4-0)
+                (let ((s4-1 (-> s4-0 proc)))
+                  (when s4-1
+                    (logior! (-> arg0 waypoint-bits) 1)
+                    (send-event s5-0 'instant-arrest s4-1)
+                    (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+                      (set! (-> a1-4 from) (process->ppointer pp))
+                      (set! (-> a1-4 num-params) 1)
+                      (set! (-> a1-4 message) 'instant-arrest)
+                      (set! (-> a1-4 param 0) (the-as uint s4-1))
+                      (let ((t9-4 send-event-function)
+                            (v1-38 (-> arg0 actor-group 0 data 2 actor))
+                            )
+                        (t9-4
+                          (if v1-38
+                              (-> v1-38 extra process)
+                              )
+                          a1-4
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            (none)
+            )
+          )
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 8
+        :skip-to -1
+        :on-set (lambda ((arg0 hal-help-kid))
+          (remove-setting! 'sound-mode)
+          (remove-setting! 'music)
+          (send-event (handle->process (-> (the-as hal3-course (-> arg0 course)) transport)) 'leave)
+          (task-node-close! (game-task-node city-help-kid-battle))
+          (send-event *target* 'end-mode)
+          (let ((s5-0 *traffic-manager*))
+            (send-event s5-0 'set-alert-level 0)
+            (send-event s5-0 'restore-default-settings)
+            )
+          (let* ((v1-24 (-> arg0 actor-group 0 data 1 actor))
+                 (a0-15 (if v1-24
+                            (-> v1-24 extra process)
+                            )
+                        )
+                 )
+            (send-event a0-15 'request 'waypoint 8)
+            )
+          (let* ((v1-35 (-> arg0 actor-group 0 data 2 actor))
+                 (a0-16 (if v1-35
+                            (-> v1-35 extra process)
+                            )
+                        )
+                 )
+            (send-event a0-16 'request 'waypoint 8)
+            )
+          (let ((v1-44 (get-task-by-type (-> arg0 ai-ctrl) halt-wait-spot arg0)))
+            (set! (-> v1-44 bytes 5) 1)
+            (set! (-> v1-44 bytes 6) 0)
+            (set! (-> v1-44 bytes 4) 0)
+            (set! (-> (the-as halt-wait-spot v1-44) check-done)
+                  (the-as
+                    (function halt-wait-spot hal symbol)
+                    (lambda ((arg0 object) (arg1 hal-help-kid))
+                      (with-pp
+                        (if (and *target* (zero? (logand (-> arg1 bot-task-bits) 8)))
+                            (set! (-> arg1 waypoint-time0) (-> pp clock frame-counter))
+                            )
+                        (let ((v1-7 (get-current-task-event (-> arg1 task))))
+                          (when (and (= (-> v1-7 action) (game-task-action say)) (scene-play arg1 (the-as string (-> v1-7 scene)) #f))
+                            (bot-method-196 arg1)
+                            (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                            (go-to-waypoint! arg1 9 #f)
+                            (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                            #t
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 9
+        :skip-to -1
+        :on-set (lambda ((arg0 hal-help-kid))
+          (with-pp
+            (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-0 from) (process->ppointer pp))
+              (set! (-> a1-0 num-params) 2)
+              (set! (-> a1-0 message) 'request)
+              (set! (-> a1-0 param 0) (the-as uint 'waypoint))
+              (set! (-> a1-0 param 1) (the-as uint 10))
+              (let ((t9-0 send-event-function)
+                    (v1-8 (-> arg0 actor-group 0 data 1 actor))
+                    )
+                (t9-0
+                  (if v1-8
+                      (-> v1-8 extra process)
+                      )
+                  a1-0
+                  )
+                )
+              )
+            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-1 from) (process->ppointer pp))
+              (set! (-> a1-1 num-params) 2)
+              (set! (-> a1-1 message) 'request)
+              (set! (-> a1-1 param 0) (the-as uint 'waypoint))
+              (set! (-> a1-1 param 1) (the-as uint 10))
+              (let ((t9-1 send-event-function)
+                    (v1-19 (-> arg0 actor-group 0 data 2 actor))
+                    )
+                (t9-1
+                  (if v1-19
+                      (-> v1-19 extra process)
+                      )
+                  a1-1
+                  )
+                )
+              )
+            (let ((v1-23 (get-task-by-type (-> arg0 ai-ctrl) halt-wait-spot arg0)))
+              (set! (-> v1-23 bytes 5) 1)
+              (set! (-> v1-23 bytes 6) 0)
+              (set! (-> v1-23 bytes 4) 0)
+              (set! (-> (the-as halt-wait-spot v1-23) check-done)
+                    (the-as
+                      (function halt-wait-spot hal symbol)
+                      (lambda ((arg0 object) (arg1 hal-help-kid)) (when (scene-release? arg1)
+                                                                    (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                                    (go-to-waypoint! arg1 10 #f)
+                                                                    (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                                    #t
+                                                                    )
+                              )
+                      )
+                    )
+              )
+            (none)
+            )
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 10
+        :skip-to -1
+        :on-set (lambda ((arg0 hal-help-kid))
+          (let ((v1-2 (-> arg0 actor-group 0 data 3 actor)))
+            (if v1-2
+                (logclear! (-> v1-2 extra perm status) (entity-perm-status bit-9))
+                )
+            )
+          (let ((v1-5 (get-task-by-type (-> arg0 ai-ctrl) halt-wait-spot arg0)))
+            (set! (-> v1-5 bytes 5) 1)
+            (set! (-> v1-5 bytes 6) 0)
+            (set! (-> v1-5 bytes 4) 0)
+            (set! (-> (the-as halt-wait-spot v1-5) check-done)
+                  (the-as (function halt-wait-spot hal symbol) (lambda ((arg0 object) (arg1 hal-help-kid))
+                                                                 (when (hal-method-225 arg1)
+                                                                   (process-entity-status! arg1 (entity-perm-status bit-4) #f)
+                                                                   (send-event arg1 'die-fast)
+                                                                   )
+                                                                 #f
+                                                                 )
+                          )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      )
+    :spots (new 'static 'inline-array bot-spot 4
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2618286.0 :y 32768.0 :z -372572.16 :w 4096.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2630023.5 :y 41015.707 :z -478801.5 :w 300843.8))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2623395.8 :y 41011.61 :z -515509.44 :w 321568.78))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2675472.0 :y 47819.98 :z -516537.56 :w 395983.66))
+      )
+    )
+  )
+
+(set! (-> *bot-course-table* course 6) *hal3-course*)

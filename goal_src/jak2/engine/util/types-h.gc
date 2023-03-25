@@ -1,0 +1,81 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: types-h.gc
+;; name in dgo: types-h
+;; dgos: ENGINE, GAME
+
+;; DECOMP BEGINS
+
+;; Appears to be unused. Possibly a particle ID?
+(deftype part-id (uint32)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(defmacro s.w! (location value)
+  "Utility macro to store a 32-bit value at a given address. Performs _no_ type checking."
+  `(set! (-> (the-as (pointer uint32) ,location) 0) (the-as uint32 ,value))
+  )
+
+(defmacro l.wu (location)
+  "Load an unsigned 32-bit value from a given address. Performs _no_ type checking."
+  `(-> (the-as (pointer uint32) ,location) 0)
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Common Units
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; in-game durations, distances, and rotations are stored in special formats.
+;; these macros/constants convert from literals to the correct format.
+;; for example, (meters 4.0) will give you a distance representing 4 in-game meters.
+
+;; meters are stored as (usually) a float, scaled by 4096.
+;; this gives you reasonable accuracy as an integer.
+(defglobalconstant METER_LENGTH 4096.0)
+
+(defmacro meters (x)
+  "Convert number to meters.
+   If the input is a constant float or integer, the result will be a
+   compile time constant float. Otherwise, it will not be constant.
+   Returns float."
+
+  ;; we don't have enough constant propagation for the compiler to figure this out.
+  (cond
+    ((float? x)
+     (* METER_LENGTH x)
+     )
+    ((integer? x)
+     (* METER_LENGTH x)
+     )
+    (#t
+     `(* METER_LENGTH ,x)
+     )
+    )
+  )
+
+;; rotations are stored in 65,536ths of a full rotation.
+;; like with meters, you get a reasonable accuracy as an integer.
+;; additionally, it is a power-of-two, so wrapping rotations can be done
+;; quickly by converting to an int, masking, and back to float
+(defglobalconstant DEGREES_PER_ROT 65536.0)
+
+;; this was deg in GOAL
+(defmacro degrees (x)
+  "Convert number to degrees unit.
+   Will keep a constant float/int constant."
+  (cond
+    ((or (float? x) (integer? x))
+     (* DEGREES_PER_ROT (/ (+ 0.0 x) 360.0))
+     )
+    (#t
+     `(* (/ (the float ,x) 360.0)
+         DEGREES_PER_ROT
+         )
+     )
+    )
+  )

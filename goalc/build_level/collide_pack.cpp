@@ -1,8 +1,10 @@
-#include <functional>
-
 #include "collide_pack.h"
-#include "common/util/Assert.h"
+
+#include <functional>
+#include <unordered_map>
+
 #include "common/log/log.h"
+#include "common/util/Assert.h"
 #include "common/util/Timer.h"
 
 struct PackedU16Verts {
@@ -36,7 +38,9 @@ float u32_to_float(u32 in) {
  */
 PackedU16Verts pack_verts_to_u16(const std::vector<math::Vector3f>& input) {
   PackedU16Verts result;
-  ASSERT(!input.empty());
+  if (input.empty()) {
+    lg::warn("Empty collide fragment");
+  }
 
   // this "magic" offset is a large float where a ulp is 16.f, or 1/256th of a meter.
   // this means that float -> int can be done as a single addition.
@@ -45,7 +49,7 @@ PackedU16Verts pack_verts_to_u16(const std::vector<math::Vector3f>& input) {
   magic_offset.fill(u32_to_float(0x4d000000));
 
   // we'll be treating everything as an offset from this minimum vertex:
-  math::Vector3f min_vtx = input[0];
+  math::Vector3f min_vtx = input.empty() ? math::Vector3f::zero() : input[0];
   for (auto& vtx : input) {
     min_vtx.min_in_place(vtx);
   }
@@ -79,7 +83,7 @@ PackedU16Verts pack_verts_to_u16(const std::vector<math::Vector3f>& input) {
     math::Vector3f vf14_base_trans_float(result.base[0], result.base[1], result.base[2]);
     vf13_combo_offset -= vf14_base_trans_float;
     v -= vf13_combo_offset;
-    fmt::print("error {}\n", (v - input[i]).to_string_aligned());;
+    lg::print("error {}\n", (v - input[i]).to_string_aligned());;
   }
    */
 
@@ -143,8 +147,6 @@ struct Vector3fHash {
 IndexedFaces dedup_frag_mesh(const collide::CollideFrag& frag, PatMap* pat_map) {
   IndexedFaces result;
   std::unordered_map<math::Vector3f, u32, Vector3fHash> vertex_map;
-  // avoid confusion with 0 in strip table. (todo, can probably remove)
-  result.vertices_float.push_back(math::Vector3f::zero());
 
   for (auto& face_in : frag.faces) {
     auto& face_out = result.faces.emplace_back();
@@ -163,7 +165,6 @@ IndexedFaces dedup_frag_mesh(const collide::CollideFrag& frag, PatMap* pat_map) 
       }
     }
   }
-  // fmt::print("{} -> {}\n", frag.faces.size() * 3, result.vertices_float.size());
   result.vertices_u16 = pack_verts_to_u16(result.vertices_float);
   return result;
 }
@@ -200,6 +201,12 @@ CollideFragMeshDataArray pack_collide_frags(const std::vector<collide::CollideFr
     auto indexed = dedup_frag_mesh(frag_in, &pat_map);
     // first part of packed_data is the u16 vertex data:
     frag_out.vertex_count = indexed.vertices_u16.vertex.size();
+    if (frag_out.vertex_count > 128) {
+      lg::print("frag with too many vertices: {} had {} tris\n", frag_out.vertex_count,
+                frag_in.faces.size());
+      lg::error("SHOULD CRASH\n");
+    }
+    // the
     frag_out.packed_data.resize(sizeof(u16) * frag_out.vertex_count * 3);
     memcpy(frag_out.packed_data.data(), indexed.vertices_u16.vertex.data(),
            frag_out.packed_data.size());
@@ -228,12 +235,14 @@ CollideFragMeshDataArray pack_collide_frags(const std::vector<collide::CollideFr
     // gonna guess here:
     frag_out.poly_count = indexed.faces.size();
     frag_out.total_qwc = frag_out.packed_data.size() / 16;
+    ASSERT(frag_out.total_qwc <= 128);
     frag_out.base_trans_xyz_s32 = indexed.vertices_u16.base;
     frag_out.bsphere = frag_in.bsphere;
     total_pack_bytes += frag_out.packed_data.size();
   }
 
   result.pats = pat_map.pats;
+  lg::info("Collide pack used {} unique pats", result.pats.size());
   lg::info("Total packed data size: {} kB, took {:.2f} ms", total_pack_bytes / 1024,
            pack_timer.getMs());
   return result;

@@ -1,0 +1,701 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type char-verts
+(deftype char-verts (structure)
+  ((pos    vector 4 :inline :offset-assert   0)
+   (color  vector 4 :inline :offset-assert  64)
+   (tex-st vector 4 :inline :offset-assert 128)
+   )
+  :method-count-assert 9
+  :size-assert         #xc0
+  :flag-assert         #x9000000c0
+  )
+
+;; definition for method 3 of type char-verts
+(defmethod inspect char-verts ((obj char-verts))
+  (format #t "[~8x] ~A~%" obj 'char-verts)
+  (format #t "~Tpos[4] @ #x~X~%" (-> obj pos))
+  (format #t "~Tcolor[4] @ #x~X~%" (-> obj color))
+  (format #t "~Ttex-st[4] @ #x~X~%" (-> obj tex-st))
+  obj
+  )
+
+;; definition of type char-color
+(deftype char-color (structure)
+  ((color rgba 4 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type char-color
+(defmethod inspect char-color ((obj char-color))
+  (format #t "[~8x] ~A~%" obj 'char-color)
+  (format #t "~Tcolor[4] @ #x~X~%" (-> obj color))
+  obj
+  )
+
+;; definition for symbol *font-default-matrix*, type matrix
+(define *font-default-matrix* (new 'static 'matrix :vector (new 'static 'inline-array vector 4
+                                                             (new 'static 'vector :x 1.0)
+                                                             (new 'static 'vector :y 1.0)
+                                                             (new 'static 'vector :z 1.0)
+                                                             (new 'static 'vector :x -256.0 :w 1.0)
+                                                             )
+                                                   )
+        )
+
+;; definition of type font-context
+(deftype font-context (basic)
+  ((origin       vector     :inline :offset-assert  16)
+   (strip-gif    vector     :inline :offset-assert  32)
+   (width        float              :offset-assert  48)
+   (height       float              :offset-assert  52)
+   (projection   float              :offset-assert  56)
+   (context-vec  vector     :inline :offset         48)
+   (color        font-color         :offset-assert  64)
+   (color-s32    int32              :offset         64)
+   (flags        font-flags         :offset-assert  72)
+   (flags-signed int32              :offset         72)
+   (mat          matrix             :offset-assert  76)
+   (start-line   uint32             :offset-assert  80)
+   (scale        float              :offset-assert  84)
+   )
+  :method-count-assert 20
+  :size-assert         #x58
+  :flag-assert         #x1400000058
+  (:methods
+    (new (symbol type matrix int int float font-color font-flags) _type_ 0)
+    (set-mat! (font-context matrix) font-context 9)
+    (set-origin! (font-context int int) font-context 10)
+    (set-depth! (font-context int) font-context 11)
+    (set-w! (font-context float) font-context 12)
+    (set-width! (font-context int) font-context 13)
+    (set-height! (font-context int) font-context 14)
+    (set-projection! (font-context float) font-context 15)
+    (set-color! (font-context font-color) font-context 16)
+    (set-flags! (font-context font-flags) font-context 17)
+    (set-start-line! (font-context uint) font-context 18)
+    (set-scale! (font-context float) font-context 19)
+    )
+  )
+
+;; definition for method 3 of type font-context
+(defmethod inspect font-context ((obj font-context))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Torigin: #<vector @ #x~X>~%" (-> obj origin))
+  (format #t "~Tstrip-gif: #<vector @ #x~X>~%" (-> obj strip-gif))
+  (format #t "~Twidth: ~f~%" (-> obj width))
+  (format #t "~Theight: ~f~%" (-> obj height))
+  (format #t "~Tprojection: ~f~%" (-> obj projection))
+  (format #t "~Tcolor: ~D~%" (-> obj color))
+  (format #t "~Tflags: ~D~%" (-> obj flags))
+  (format #t "~Tmat: #<matrix @ #x~X>~%" (-> obj mat))
+  (format #t "~Tstart-line: ~D~%" (-> obj start-line))
+  (format #t "~Tscale: ~f~%" (-> obj scale))
+  obj
+  )
+
+;; definition for method 9 of type font-context
+(defmethod set-mat! font-context ((obj font-context) (mat matrix))
+  (set! (-> obj mat) mat)
+  obj
+  )
+
+;; definition for method 10 of type font-context
+(defmethod set-origin! font-context ((obj font-context) (x int) (y int))
+  (set! (-> obj origin x) (the float x))
+  (set! (-> obj origin y) (the float y))
+  obj
+  )
+
+;; definition for method 11 of type font-context
+(defmethod set-depth! font-context ((obj font-context) (z int))
+  (set! (-> obj origin z) (the float z))
+  obj
+  )
+
+;; definition for method 12 of type font-context
+(defmethod set-w! font-context ((obj font-context) (w float))
+  (set! (-> obj origin w) w)
+  obj
+  )
+
+;; definition for method 13 of type font-context
+(defmethod set-width! font-context ((obj font-context) (width int))
+  (set! (-> obj width) (the float width))
+  obj
+  )
+
+;; definition for method 14 of type font-context
+(defmethod set-height! font-context ((obj font-context) (height int))
+  (set! (-> obj height) (the float height))
+  obj
+  )
+
+;; definition for method 15 of type font-context
+(defmethod set-projection! font-context ((obj font-context) (proj float))
+  (set! (-> obj projection) proj)
+  obj
+  )
+
+;; definition for method 16 of type font-context
+(defmethod set-color! font-context ((obj font-context) (color font-color))
+  (set! (-> obj color) color)
+  obj
+  )
+
+;; definition for method 17 of type font-context
+(defmethod set-flags! font-context ((obj font-context) (flags font-flags))
+  (set! (-> obj flags) flags)
+  obj
+  )
+
+;; definition for method 18 of type font-context
+(defmethod set-start-line! font-context ((obj font-context) (start-line uint))
+  (set! (-> obj start-line) start-line)
+  obj
+  )
+
+;; definition for method 19 of type font-context
+(defmethod set-scale! font-context ((obj font-context) (scale float))
+  (set! (-> obj scale) scale)
+  obj
+  )
+
+;; definition for method 0 of type font-context
+(defmethod new font-context ((allocation symbol)
+                           (type-to-make type)
+                           (mat matrix)
+                           (x int)
+                           (y int)
+                           (z float)
+                           (color font-color)
+                           (flags font-flags)
+                           )
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> obj mat) mat)
+    (let ((v1-3 obj))
+      (set! (-> v1-3 origin x) (the float x))
+      (set! (-> v1-3 origin y) (the float y))
+      )
+    (cond
+      ((= z 0.0)
+       (let ((v1-4 obj))
+         (set! (-> v1-4 origin z) (-> *math-camera* isometric vector 3 z))
+         )
+       )
+      (else
+        (let ((v1-5 obj))
+          (set! (-> v1-5 origin z) z)
+          )
+        )
+      )
+    (let ((v1-6 obj))
+      (set! (-> v1-6 origin w) 1.0)
+      )
+    (let ((v1-7 obj))
+      (set! (-> v1-7 width) (the float 512))
+      )
+    (let ((v1-8 obj))
+      (set! (-> v1-8 height) (the float 256))
+      )
+    (let ((v1-9 obj))
+      (set! (-> v1-9 projection) 1.0)
+      )
+    (set! (-> obj color) color)
+    (set! (-> obj flags) flags)
+    (let ((a0-4 obj))
+      (set! (-> a0-4 start-line) (the-as uint 0))
+      )
+    (let ((v1-13 obj))
+      (set! (-> v1-13 scale) 1.0)
+      )
+    obj
+    )
+  )
+
+;; definition of type font-work
+(deftype font-work (structure)
+  ((font-tmpl             dma-gif-packet  :inline    :offset-assert   0)
+   (char-tmpl             dma-gif-packet  :inline    :offset-assert  32)
+   (tex1-tmpl             uint64          2          :offset-assert  64)
+   (small-font-lo-tmpl    uint64          2          :offset-assert  80)
+   (small-font-lo-tmpl-qw uint128                    :offset         80)
+   (small-font-hi-tmpl    uint64          2          :offset-assert  96)
+   (small-font-hi-tmpl-qw uint128                    :offset         96)
+   (large-font-lo-tmpl    uint64          2          :offset-assert 112)
+   (large-font-lo-tmpl-qw uint128                    :offset        112)
+   (large-font-hi-tmpl    uint64          2          :offset-assert 128)
+   (large-font-hi-tmpl-qw uint128                    :offset        128)
+   (size1-small           vector          :inline    :offset-assert 144)
+   (size2-small           vector          :inline    :offset-assert 160)
+   (size3-small           vector          :inline    :offset-assert 176)
+   (size1-large           vector          :inline    :offset-assert 192)
+   (size2-large           vector          :inline    :offset-assert 208)
+   (size3-large           vector          :inline    :offset-assert 224)
+   (size-st1              vector          :inline    :offset-assert 240)
+   (size-st2              vector          :inline    :offset-assert 256)
+   (size-st3              vector          :inline    :offset-assert 272)
+   (save                  vector          :inline    :offset-assert 288)
+   (save-color            vector          4 :inline  :offset-assert 304)
+   (current-verts         char-verts      :inline    :offset-assert 368)
+   (src-verts             char-verts      :inline    :offset-assert 560)
+   (dest-verts            char-verts      :inline    :offset-assert 752)
+   (justify               vector          64 :inline :offset-assert 944)
+   (color-shadow          vector4w        :inline    :offset-assert 1968)
+   (color-table           char-color      64 :inline :offset-assert 1984)
+   (last-color            font-color                 :offset-assert 3008)
+   (last-color-32         int32                      :offset        3008)
+   (save-last-color       font-color                 :offset-assert 3016)
+   (save-last-color-32    int32                      :offset        3016)
+   (buf                   basic                      :offset-assert 3024)
+   (str-ptr               uint32                     :offset-assert 3028)
+   (str-ptr-signed        (pointer uint8)            :offset        3028)
+   (flags                 font-flags                 :offset-assert 3032)
+   (flags-signed          int32                      :offset        3032)
+   (reg-save              uint32          5          :offset-assert 3036)
+   )
+  :method-count-assert 9
+  :size-assert         #xbf0
+  :flag-assert         #x900000bf0
+  )
+
+;; definition for method 3 of type font-work
+(defmethod inspect font-work ((obj font-work))
+  (format #t "[~8x] ~A~%" obj 'font-work)
+  (format #t "~Tfont-tmpl: #<dma-gif-packet @ #x~X>~%" (-> obj font-tmpl))
+  (format #t "~Tchar-tmpl: #<dma-gif-packet @ #x~X>~%" (-> obj char-tmpl))
+  (format #t "~Ttex1-tmpl[2] @ #x~X~%" (-> obj tex1-tmpl))
+  (format #t "~Tsmall-font-lo-tmpl[2] @ #x~X~%" (-> obj small-font-lo-tmpl))
+  (format #t "~Tsmall-font-hi-tmpl[2] @ #x~X~%" (-> obj small-font-hi-tmpl))
+  (format #t "~Tlarge-font-lo-tmpl[2] @ #x~X~%" (-> obj large-font-lo-tmpl))
+  (format #t "~Tlarge-font-hi-tmpl[2] @ #x~X~%" (-> obj large-font-hi-tmpl))
+  (format #t "~Tsize1-small: #<vector @ #x~X>~%" (-> obj size1-small))
+  (format #t "~Tsize2-small: #<vector @ #x~X>~%" (-> obj size2-small))
+  (format #t "~Tsize3-small: #<vector @ #x~X>~%" (-> obj size3-small))
+  (format #t "~Tsize1-large: #<vector @ #x~X>~%" (-> obj size1-large))
+  (format #t "~Tsize2-large: #<vector @ #x~X>~%" (-> obj size2-large))
+  (format #t "~Tsize3-large: #<vector @ #x~X>~%" (-> obj size3-large))
+  (format #t "~Tsize-st1: #<vector @ #x~X>~%" (-> obj size-st1))
+  (format #t "~Tsize-st2: #<vector @ #x~X>~%" (-> obj size-st2))
+  (format #t "~Tsize-st3: #<vector @ #x~X>~%" (-> obj size-st3))
+  (format #t "~Tsave: #<vector @ #x~X>~%" (-> obj save))
+  (format #t "~Tsave-color[4] @ #x~X~%" (-> obj save-color))
+  (format #t "~Tcurrent-verts: #<char-verts @ #x~X>~%" (-> obj current-verts))
+  (format #t "~Tsrc-verts: #<char-verts @ #x~X>~%" (-> obj src-verts))
+  (format #t "~Tdest-verts: #<char-verts @ #x~X>~%" (-> obj dest-verts))
+  (format #t "~Tjustify[64] @ #x~X~%" (-> obj justify))
+  (format #t "~Tcolor-shadow: #<vector4w @ #x~X>~%" (-> obj color-shadow))
+  (format #t "~Tcolor-table[64] @ #x~X~%" (-> obj color-table))
+  (format #t "~Tlast-color: ~D~%" (-> obj last-color))
+  (format #t "~Tsave-last-color: ~D~%" (-> obj save-last-color))
+  (format #t "~Tbuf: ~A~%" (-> obj buf))
+  (format #t "~Tstr-ptr: ~D~%" (-> obj str-ptr))
+  (format #t "~Tflags: ~D~%" (-> obj flags))
+  (format #t "~Treg-save[5] @ #x~X~%" (-> obj reg-save))
+  obj
+  )
+
+;; definition for symbol *font-work*, type font-work
+(define *font-work*
+  (new 'static 'font-work
+    :font-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x1
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :abe #x1)
+        :nreg #x1
+        )
+      :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d))
+      )
+    :char-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #xe :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #xe :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x1
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :abe #x1)
+        :nreg #xd
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id a+d)
+        :regs1 (gif-reg-id st)
+        :regs2 (gif-reg-id rgbaq)
+        :regs3 (gif-reg-id xyzf2)
+        :regs4 (gif-reg-id st)
+        :regs5 (gif-reg-id rgbaq)
+        :regs6 (gif-reg-id xyzf2)
+        :regs7 (gif-reg-id st)
+        :regs8 (gif-reg-id rgbaq)
+        :regs9 (gif-reg-id xyzf2)
+        :regs10 (gif-reg-id st)
+        :regs11 (gif-reg-id rgbaq)
+        :regs12 (gif-reg-id xyzf2)
+        )
+      )
+    :tex1-tmpl (new 'static 'array uint64 2 #x60 #x14)
+    :small-font-lo-tmpl (new 'static 'array uint64 2 #x0 #x6)
+    :small-font-hi-tmpl (new 'static 'array uint64 2 #x0 #x6)
+    :large-font-lo-tmpl (new 'static 'array uint64 2 #x0 #x6)
+    :large-font-hi-tmpl (new 'static 'array uint64 2 #x0 #x6)
+    :size1-small (new 'static 'vector :x 12.0 :w 0.5)
+    :size2-small (new 'static 'vector :y 8.0 :w 8.0)
+    :size3-small (new 'static 'vector :x 12.0 :y 8.0 :w 8.0)
+    :size1-large (new 'static 'vector :x 24.0 :w 1.0)
+    :size2-large (new 'static 'vector :y 16.0 :w 16.0)
+    :size3-large (new 'static 'vector :x 24.0 :y 16.0 :w 16.0)
+    :size-st1 (new 'static 'vector :x 0.08985 :w 0.5)
+    :size-st2 (new 'static 'vector :y 0.06153846 :w 0.5)
+    :size-st3 (new 'static 'vector :x 0.08985 :y 0.06153846 :w 0.5)
+    :current-verts (new 'static 'char-verts
+      :pos (new 'static 'inline-array vector 4
+        (new 'static 'vector :w 1.0)
+        (new 'static 'vector :w 1.0)
+        (new 'static 'vector :w 1.0)
+        (new 'static 'vector :w 1.0)
+        )
+      :tex-st (new 'static 'inline-array vector 4
+        (new 'static 'vector :z 1.0)
+        (new 'static 'vector :z 1.0)
+        (new 'static 'vector :z 1.0)
+        (new 'static 'vector :z 1.0)
+        )
+      )
+    :src-verts (new 'static 'char-verts
+      :pos (new 'static 'inline-array vector 4
+        (new 'static 'vector :w 1.0)
+        (new 'static 'vector :w 1.0)
+        (new 'static 'vector :w 1.0)
+        (new 'static 'vector :w 1.0)
+        )
+      :tex-st (new 'static 'inline-array vector 4
+        (new 'static 'vector :z 1.0)
+        (new 'static 'vector :z 1.0)
+        (new 'static 'vector :z 1.0)
+        (new 'static 'vector :z 1.0)
+        )
+      )
+    :dest-verts (new 'static 'char-verts
+      :pos (new 'static 'inline-array vector 4
+        (new 'static 'vector :w 1.0)
+        (new 'static 'vector :w 1.0)
+        (new 'static 'vector :w 1.0)
+        (new 'static 'vector :w 1.0)
+        )
+      :tex-st (new 'static 'inline-array vector 4
+        (new 'static 'vector :z 1.0)
+        (new 'static 'vector :z 1.0)
+        (new 'static 'vector :z 1.0)
+        (new 'static 'vector :z 1.0)
+        )
+      )
+    :color-shadow (new 'static 'vector4w :w #x80)
+    :color-table (new 'static 'inline-array char-color 64
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x70 :g #x78 :b #x70 :a #x80)
+                                        (new 'static 'rgba :r #x70 :g #x78 :b #x70 :a #x80)
+                                        (new 'static 'rgba :r #x30 :g #x38 :b #x30 :a #x80)
+                                        (new 'static 'rgba :r #x30 :g #x38 :b #x30 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
+                                        (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
+                                        (new 'static 'rgba :r #x60 :g #x60 :b #x60 :a #x80)
+                                        (new 'static 'rgba :r #x60 :g #x60 :b #x60 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x40)
+                                        (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x40)
+                                        (new 'static 'rgba :r #x60 :g #x60 :b #x60 :a #x40)
+                                        (new 'static 'rgba :r #x60 :g #x60 :b #x60 :a #x40)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x80 :g #x60 :b #x20 :a #x80)
+                                        (new 'static 'rgba :r #x80 :g #x60 :b #x20 :a #x80)
+                                        (new 'static 'rgba :r #x60 :a #x80)
+                                        (new 'static 'rgba :r #x60 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x80 :g #x64 :a #x80)
+                                        (new 'static 'rgba :r #x80 :g #x64 :a #x80)
+                                        (new 'static 'rgba :r #x80 :a #x80)
+                                        (new 'static 'rgba :r #x80 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x80 :g #x80 :a #x80)
+                                        (new 'static 'rgba :r #x80 :g #x80 :a #x80)
+                                        (new 'static 'rgba :r #x28 :g #x28 :a #x80)
+                                        (new 'static 'rgba :r #x28 :g #x28 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x20 :g #x80 :b #x20 :a #x80)
+                                        (new 'static 'rgba :r #x20 :g #x80 :b #x20 :a #x80)
+                                        (new 'static 'rgba :g #x30 :a #x80)
+                                        (new 'static 'rgba :g #x30 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x40 :g #x40 :b #x80 :a #x80)
+                                        (new 'static 'rgba :r #x40 :g #x40 :b #x80 :a #x80)
+                                        (new 'static 'rgba :b #x60 :a #x80)
+                                        (new 'static 'rgba :b #x60 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :g #x80 :b #x80 :a #x80)
+                                        (new 'static 'rgba :g #x80 :b #x80 :a #x80)
+                                        (new 'static 'rgba :g #x20 :b #x50 :a #x80)
+                                        (new 'static 'rgba :g #x20 :b #x50 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x80 :g #x40 :b #x80 :a #x80)
+                                        (new 'static 'rgba :r #x80 :g #x40 :b #x80 :a #x80)
+                                        (new 'static 'rgba :r #x30 :b #x30 :a #x80)
+                                        (new 'static 'rgba :r #x30 :b #x30 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x60 :g #x80 :b #x80 :a #x80)
+                                        (new 'static 'rgba :r #x60 :g #x80 :b #x80 :a #x80)
+                                        (new 'static 'rgba :g #x40 :b #x60 :a #x80)
+                                        (new 'static 'rgba :g #x40 :b #x60 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x40 :g #x60 :b #x60 :a #x80)
+                                        (new 'static 'rgba :r #x40 :g #x60 :b #x60 :a #x80)
+                                        (new 'static 'rgba :g #x20 :b #x40 :a #x80)
+                                        (new 'static 'rgba :g #x20 :b #x40 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
+                                        (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
+                                        (new 'static 'rgba :r #x50 :g #x50 :b #x50 :a #x80)
+                                        (new 'static 'rgba :r #x50 :g #x50 :b #x50 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x50 :g #x50 :b #x50 :a #x80)
+                                        (new 'static 'rgba :r #x50 :g #x50 :b #x50 :a #x80)
+                                        (new 'static 'rgba :r #x28 :g #x28 :b #x28 :a #x80)
+                                        (new 'static 'rgba :r #x28 :g #x28 :b #x28 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x80 :g #x54 :a #x80)
+                                        (new 'static 'rgba :r #x80 :g #x54 :a #x80)
+                                        (new 'static 'rgba :r #x60 :a #x80)
+                                        (new 'static 'rgba :r #x60 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x70 :g #x80 :b #x30 :a #x80)
+                                        (new 'static 'rgba :r #x70 :g #x80 :b #x30 :a #x80)
+                                        (new 'static 'rgba :g #x60 :a #x80)
+                                        (new 'static 'rgba :g #x60 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x48 :g #x58 :b #x8 :a #x80)
+                                        (new 'static 'rgba :r #x48 :g #x58 :b #x10 :a #x80)
+                                        (new 'static 'rgba :g #x38 :a #x80)
+                                        (new 'static 'rgba :g #x38 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x58 :g #x60 :b #x58 :a #x80)
+                                        (new 'static 'rgba :r #x58 :g #x60 :b #x58 :a #x80)
+                                        (new 'static 'rgba :r #x30 :g #x40 :b #x30 :a #x80)
+                                        (new 'static 'rgba :r #x30 :g #x40 :b #x30 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x40 :g #x48 :b #x40 :a #x80)
+                                        (new 'static 'rgba :r #x40 :g #x48 :b #x40 :a #x80)
+                                        (new 'static 'rgba :r #x18 :g #x28 :b #x18 :a #x80)
+                                        (new 'static 'rgba :r #x18 :g #x28 :b #x18 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x30 :g #x20 :b #x30 :a #x80)
+                                        (new 'static 'rgba :r #x30 :g #x20 :b #x30 :a #x80)
+                                        (new 'static 'rgba :r #x30 :g #x20 :b #x30 :a #x80)
+                                        (new 'static 'rgba :r #x30 :g #x20 :b #x30 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x80 :g #x79 :b #x48 :a #x80)
+                                        (new 'static 'rgba :r #x80 :g #x79 :b #x48 :a #x80)
+                                        (new 'static 'rgba :r #x80 :g #x79 :b #x48 :a #x80)
+                                        (new 'static 'rgba :r #x80 :g #x79 :b #x48 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x20 :g #x5e :b #x78 :a #x80)
+                                        (new 'static 'rgba :r #x20 :g #x5e :b #x78 :a #x80)
+                                        (new 'static 'rgba :r #x80 :g #x7d :b #x4f :a #x80)
+                                        (new 'static 'rgba :r #x80 :g #x7d :b #x4f :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x1d :g #x1d :b #x1d :a #x80)
+                                        (new 'static 'rgba :r #x1d :g #x1d :b #x1d :a #x80)
+                                        (new 'static 'rgba :r #x1d :g #x1d :b #x1d :a #x80)
+                                        (new 'static 'rgba :r #x1d :g #x1d :b #x1d :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a #x80)
+                                        (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a #x80)
+                                        (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a #x80)
+                                        (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x7a :g #x4d :b #x65 :a #x80)
+                                        (new 'static 'rgba :r #x7a :g #x4d :b #x65 :a #x80)
+                                        (new 'static 'rgba :r #x7a :g #x4d :b #x65 :a #x80)
+                                        (new 'static 'rgba :r #x7a :g #x4d :b #x65 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x7a :g #x34 :b #x34 :a #x80)
+                                        (new 'static 'rgba :r #x7a :g #x34 :b #x34 :a #x80)
+                                        (new 'static 'rgba :r #x7a :g #x34 :b #x34 :a #x80)
+                                        (new 'static 'rgba :r #x7a :g #x34 :b #x34 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x10 :g #x65 :b #x4c :a #x80)
+                                        (new 'static 'rgba :r #x10 :g #x65 :b #x4c :a #x80)
+                                        (new 'static 'rgba :r #x10 :g #x65 :b #x4c :a #x80)
+                                        (new 'static 'rgba :r #x10 :g #x65 :b #x4c :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x46 :g #x4a :b #x78 :a #x80)
+                                        (new 'static 'rgba :r #x46 :g #x4a :b #x78 :a #x80)
+                                        (new 'static 'rgba :r #x46 :g #x4a :b #x78 :a #x80)
+                                        (new 'static 'rgba :r #x46 :g #x4a :b #x78 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x57 :g #x7e :b #x80 :a #x80)
+                                        (new 'static 'rgba :r #x57 :g #x7e :b #x80 :a #x80)
+                                        (new 'static 'rgba :r #x29 :g #x63 :b #x79 :a #x80)
+                                        (new 'static 'rgba :r #x29 :g #x63 :b #x70 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x7f :g #x7b :b #x33 :a #x80)
+                                        (new 'static 'rgba :r #x7f :g #x7b :b #x33 :a #x80)
+                                        (new 'static 'rgba :r #x76 :g #x40 :b #x14 :a #x80)
+                                        (new 'static 'rgba :r #x76 :g #x40 :b #x14 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x79 :g #x79 :b #x2 :a #x80)
+                                        (new 'static 'rgba :r #x79 :g #x79 :b #x2 :a #x80)
+                                        (new 'static 'rgba :r #x1b :g #x51 :b #x20 :a #x80)
+                                        (new 'static 'rgba :r #x1b :g #x51 :b #x20 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x47 :g #x68 :b #x7a :a #x80)
+                                        (new 'static 'rgba :r #x47 :g #x68 :b #x7a :a #x80)
+                                        (new 'static 'rgba :g #x3c :b #x4f :a #x80)
+                                        (new 'static 'rgba :g #x3c :b #x4f :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x70 :g #x78 :b #x70 :a #x80)
+                                        (new 'static 'rgba :r #x70 :g #x78 :b #x70 :a #x80)
+                                        (new 'static 'rgba :r #x30 :g #x38 :b #x30 :a #x80)
+                                        (new 'static 'rgba :r #x30 :g #x38 :b #x30 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x60 :a #x80)
+                                        (new 'static 'rgba :r #x60 :a #x80)
+                                        (new 'static 'rgba :r #x80 :g #x60 :b #x20 :a #x80)
+                                        (new 'static 'rgba :r #x80 :g #x60 :b #x20 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color :color (new 'static 'array rgba 4
+                                        (new 'static 'rgba :r #x80 :g #x60 :b #x20 :a #x80)
+                                        (new 'static 'rgba :r #x80 :g #x60 :b #x20 :a #x80)
+                                        (new 'static 'rgba :r #x60 :a #x80)
+                                        (new 'static 'rgba :r #x60 :a #x80)
+                                        )
+                               )
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      (new 'static 'char-color)
+      )
+    )
+  )
+
+;; definition for function font-set-tex0
+;; INFO: Return type mismatch int vs none.
+(defun font-set-tex0 ((ptr-tex0 (pointer gs-tex0)) (tex texture) (tex-addr uint) (psm uint) (clut-addr uint))
+  (set! (-> ptr-tex0 0) (new 'static 'gs-tex0
+                          :tcc #x1
+                          :cld #x1
+                          :cbp clut-addr
+                          :th (log2 (-> tex h))
+                          :tw (log2 (-> tex w))
+                          :tbw (-> tex width 0)
+                          :tbp0 (/ (the-as int tex-addr) 64)
+                          :psm psm
+                          )
+        )
+  (none)
+  )
+
+;; failed to figure out what this is:
+0

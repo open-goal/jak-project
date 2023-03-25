@@ -1,6 +1,6 @@
-#include "third-party/fmt/core.h"
-
 #include "LabelDB.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 
@@ -113,5 +113,9 @@ std::optional<int> LabelDB::try_get_index_by_offset(int seg, int offset) const {
 
 int LabelDB::get_index_by_name(const std::string& name) const {
   return m_labels_by_name.at(name);
+}
+
+bool LabelDB::label_exists_by_name(const std::string& name) const {
+  return m_labels_by_name.count(name) != 0;
 }
 }  // namespace decompiler

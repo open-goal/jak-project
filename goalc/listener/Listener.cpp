@@ -3,10 +3,12 @@
  * The Listener can connect to a Deci2Server for debugging.
  */
 
+// clang-format off
 #ifdef __linux__
 #include <stdexcept>
-#include <netinet/tcp.h>
+
 #include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <unistd.h>
 #elif _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -18,18 +20,21 @@
 #undef max
 #endif
 
-#include "common/cross_sockets/XSocket.h"
-
-#include <stdexcept>
-#include <cstring>
-#include <chrono>
-#include <thread>
 #include <algorithm>
-#include "Listener.h"
+#include <chrono>
+#include <cstring>
+#include <stdexcept>
+#include <thread>
+
+#include "common/cross_sockets/XSocket.h"
+#include "common/util/Assert.h"
 #include "common/versions.h"
+#include "common/log/log.h"
+
+#include "Listener.h"
 
 #include "third-party/fmt/core.h"
-#include "common/util/Assert.h"
+// clang-format on
 
 using namespace versions;
 constexpr bool debug_listener = false;
@@ -221,7 +226,7 @@ void Listener::receive_func() {
           if (hdr->msg_id == last_sent_id) {
             printf("[Listener] Received ACK for most recent message late.\n");
             if (last_recvd_id != hdr->msg_id - 1) {
-              fmt::print(
+              lg::print(
                   "[Listener] WARNING: message ID jumped from {} to {}. Some messages may have "
                   "been lost. You must wait for an ACK before sending the next message.\n",
                   last_recvd_id, hdr->msg_id);
@@ -248,7 +253,7 @@ void Listener::receive_func() {
           got_ack = true;
           last_recvd_id = hdr->msg_id;
           if (last_recvd_id > last_sent_id) {
-            fmt::print(
+            lg::print(
                 "[Listener] ERROR: Got an ack message with id of {}, but the last message sent "
                 "had an ID of {}.\n",
                 last_recvd_id, last_sent_id);
@@ -546,7 +551,9 @@ void Listener::handle_output_message(const char* msg) {
       }
 
       add_load(name_str.substr(2, name_str.length() - 3), entry);
-      // fmt::print("LOAD:\n{}", entry.print());
+      // lg::print("LOAD:\n{}", entry.print());
+    } else if (kind == "sql-query") {
+      lg::info("SQL Query - '{}'", msg);
     } else {
       // todo unload
       printf("[Listener Warning] unknown output message \"%s\"\n", msg);

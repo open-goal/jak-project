@@ -1,0 +1,105 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type debug-sphere-table
+(deftype debug-sphere-table (basic)
+  ((point vector 300 :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x12d0
+  :flag-assert         #x9000012d0
+  )
+
+;; definition for method 3 of type debug-sphere-table
+(defmethod inspect debug-sphere-table ((obj debug-sphere-table))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tpoint[300] @ #x~X~%" (-> obj point))
+  obj
+  )
+
+;; definition for function make-debug-sphere-table
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
+(defun make-debug-sphere-table ((arg0 debug-sphere-table))
+  (local-vars (sv-80 int))
+  (let ((s5-0 (new-stack-vector0))
+        (f30-0 1.0)
+        (s4-0 0)
+        )
+    (set-vector! s5-0 0.0 0.0 0.0 1.0)
+    (dotimes (s3-0 10)
+      (let ((f28-0 (* f30-0 (sin (* 3276.8 (the float s3-0)))))
+            (f26-0 (* f30-0 (sin (* 3276.8 (the float (+ s3-0 1))))))
+            (s2-0 (new-stack-vector0))
+            (s1-0 (new-stack-vector0))
+            (s0-0 (new-stack-vector0))
+            )
+        (set! (-> s2-0 y) (+ (-> s5-0 y) (* (cos (* 3276.8 (the float s3-0))) f30-0)))
+        (set! (-> s1-0 y) (-> s2-0 y))
+        (set! (-> s0-0 y) (+ (-> s5-0 y) (* (cos (* 3276.8 (the float (+ s3-0 1)))) f30-0)))
+        (set! sv-80 0)
+        (while (< sv-80 10)
+          (set! (-> s2-0 x) (+ (-> s5-0 x) (* (cos (* 6553.6 (the float sv-80))) f28-0)))
+          (set! (-> s2-0 z) (+ (-> s5-0 z) (* (sin (* 6553.6 (the float sv-80))) f28-0)))
+          (set! (-> s1-0 x) (+ (-> s5-0 x) (* (cos (* 6553.6 (the float (+ sv-80 1)))) f28-0)))
+          (set! (-> s1-0 z) (+ (-> s5-0 z) (* (sin (* 6553.6 (the float (+ sv-80 1)))) f28-0)))
+          (set! (-> s0-0 x) (+ (-> s5-0 x) (* (cos (* 6553.6 (the float sv-80))) f26-0)))
+          (set! (-> s0-0 z) (+ (-> s5-0 z) (* (sin (* 6553.6 (the float sv-80))) f26-0)))
+          (set! (-> arg0 point s4-0 quad) (-> s2-0 quad))
+          (set! (-> arg0 point (+ s4-0 1) quad) (-> s1-0 quad))
+          (set! (-> arg0 point (+ s4-0 2) quad) (-> s0-0 quad))
+          (+! s4-0 3)
+          (set! sv-80 (+ sv-80 1))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for symbol *debug-sphere-table*, type debug-sphere-table
+(define *debug-sphere-table* (new 'static 'debug-sphere-table))
+
+;; failed to figure out what this is:
+(make-debug-sphere-table *debug-sphere-table*)
+
+;; definition for function add-debug-sphere-from-table
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
+(defun add-debug-sphere-from-table ((arg0 bucket-id) (arg1 vector) (arg2 float) (arg3 rgba))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         )
+    (let ((s4-0 (new-stack-vector0))
+          (s3-0 (new-stack-vector0))
+          (s2-0 (new-stack-vector0))
+          (points (-> *debug-sphere-table* point))
+          )
+      (.lvf vf1 (&-> arg1 quad))
+      (.mov vf2 arg2)
+      (dotimes (s0-0 100)
+        (.lvf vf3 (&-> points 0 quad))
+        (.lvf vf4 (&-> points 1 quad))
+        (.lvf vf5 (&-> points 2 quad))
+        (set! points (the-as (inline-array vector) (-> points 3)))
+        (.mul.x.vf vf3 vf3 vf2)
+        (.mul.x.vf vf4 vf4 vf2)
+        (.mul.x.vf vf5 vf5 vf2)
+        (.add.vf vf3 vf3 vf1)
+        (.add.vf vf4 vf4 vf1)
+        (.add.vf vf5 vf5 vf1)
+        (.svf (&-> s4-0 quad) vf3)
+        (.svf (&-> s3-0 quad) vf4)
+        (.svf (&-> s2-0 quad) vf5)
+        (add-debug-line #t arg0 s4-0 s3-0 arg3 #f (the-as rgba -1))
+        (add-debug-line #t arg0 s4-0 s2-0 arg3 #f (the-as rgba -1))
+        )
+      )
+    0
+    (none)
+    )
+  )

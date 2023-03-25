@@ -1,0 +1,276 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type grid-hash-word
+(deftype grid-hash-word (uint8)
+  ()
+  :method-count-assert 9
+  :size-assert         #x1
+  :flag-assert         #x900000001
+  )
+
+;; definition of type grid-hash-box
+(deftype grid-hash-box (structure)
+  ((min int8 3 :offset-assert   0)
+   (max int8 3 :offset-assert   3)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x6
+  :flag-assert         #x900000006
+  )
+
+;; definition for method 3 of type grid-hash-box
+(defmethod inspect grid-hash-box ((obj grid-hash-box))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'grid-hash-box)
+  (format #t "~1Tmin[3] @ #x~X~%" (-> obj min))
+  (format #t "~1Tmax[3] @ #x~X~%" (-> obj max))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type grid-hash
+(deftype grid-hash (basic)
+  ((work                grid-hash-work                   :offset-assert   4)
+   (search-box          grid-hash-box            :inline :offset-assert   8)
+   (bucket-size         int16                            :offset-assert  14)
+   (axis-scale          float                    3       :offset-assert  16)
+   (dimension-array     int8                     3       :offset-assert  28)
+   (vertical-cell-count int8                             :offset-assert  31)
+   (bucket-array        (pointer grid-hash-word)         :offset-assert  32)
+   (box-min             float                    3       :offset-assert  36)
+   (box-max             float                    3       :offset-assert  48)
+   (object-count        int16                            :offset-assert  60)
+   (bucket-count        int16                            :offset-assert  62)
+   (min-cell-size       float                            :offset-assert  64)
+   (bucket-memory-size  int32                            :offset-assert  68)
+   (mem-bucket-array    (pointer grid-hash-word)         :offset-assert  72)
+   (spr-bucket-array    (pointer grid-hash-word)         :offset-assert  76)
+   (debug-draw          symbol                           :offset-assert  80)
+   (use-scratch-ram     symbol                           :offset-assert  84)
+   )
+  :method-count-assert 25
+  :size-assert         #x58
+  :flag-assert         #x1900000058
+  (:methods
+    (new (symbol type int) _type_ 0)
+    (update-grid-for-objects-in-box (_type_ int vector vector) none 9)
+    (clear-bucket-array (_type_) none 10)
+    (setup-search-box (_type_ int vector vector vector) none 11)
+    (search-for-point (_type_ vector) (pointer uint8) 12)
+    (search-for-sphere (_type_ vector float) (pointer uint8) 13)
+    (draw (_type_ rgba) none 14)
+    (dump-grid-info (_type_) none 15)
+    (verify-bits-in-bucket (_type_ grid-hash-box grid-hash-box) none 16)
+    (box-of-everything (_type_ object grid-hash-box) none 17)
+    (grid-hash-method-18 (_type_ grid-hash-box int) none 18)
+    (grid-hash-method-19 (_type_ grid-hash-box int) none 19)
+    (do-search! (_type_ grid-hash-box (pointer uint8)) none 20)
+    (set-up-box (_type_ grid-hash-box vector vector) none 21)
+    (sphere-to-grid-box (_type_ grid-hash-box sphere) none 22)
+    (line-sphere-to-grid-box (_type_ grid-hash-box vector vector float) none 23)
+    (update-grid (_type_) none 24)
+    )
+  )
+
+;; definition for method 3 of type grid-hash
+(defmethod inspect grid-hash ((obj grid-hash))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Twork: ~A~%" (-> obj work))
+  (format #t "~1Tsearch-box: #<grid-hash-box @ #x~X>~%" (-> obj search-box))
+  (format #t "~1Tbucket-size: ~D~%" (-> obj bucket-size))
+  (format #t "~1Taxis-scale[3] @ #x~X~%" (-> obj axis-scale))
+  (format #t "~1Tdimension-array[3] @ #x~X~%" (-> obj dimension-array))
+  (format #t "~1Tvertical-cell-count: ~D~%" (-> obj vertical-cell-count))
+  (format #t "~1Tbucket-array: #x~X~%" (-> obj bucket-array))
+  (format #t "~1Tbox-min[3] @ #x~X~%" (-> obj box-min))
+  (format #t "~1Tbox-max[3] @ #x~X~%" (-> obj box-max))
+  (format #t "~1Tobject-count: ~D~%" (-> obj object-count))
+  (format #t "~1Tbucket-count: ~D~%" (-> obj bucket-count))
+  (format #t "~1Tmin-cell-size: ~f~%" (-> obj min-cell-size))
+  (format #t "~1Tbucket-memory-size: ~D~%" (-> obj bucket-memory-size))
+  (format #t "~1Tmem-bucket-array: #x~X~%" (-> obj mem-bucket-array))
+  (format #t "~1Tspr-bucket-array: #x~X~%" (-> obj spr-bucket-array))
+  (format #t "~1Tdebug-draw: ~A~%" (-> obj debug-draw))
+  (format #t "~1Tuse-scratch-ram: ~A~%" (-> obj use-scratch-ram))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type find-nav-sphere-ids-params
+(deftype find-nav-sphere-ids-params (structure)
+  ((bsphere     sphere          :inline :offset-assert   0)
+   (y-threshold float                   :offset-assert  16)
+   (len         int16                   :offset-assert  20)
+   (max-len     int16                   :offset-assert  22)
+   (mask        uint8                   :offset-assert  24)
+   (array       (pointer uint8)         :offset-assert  28)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type find-nav-sphere-ids-params
+(defmethod inspect find-nav-sphere-ids-params ((obj find-nav-sphere-ids-params))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'find-nav-sphere-ids-params)
+  (format #t "~1Tbsphere: #<sphere @ #x~X>~%" (-> obj bsphere))
+  (format #t "~1Ty-threshold: ~f~%" (-> obj y-threshold))
+  (format #t "~1Tlen: ~D~%" (-> obj len))
+  (format #t "~1Tmax-len: ~D~%" (-> obj max-len))
+  (format #t "~1Tmask: ~D~%" (-> obj mask))
+  (format #t "~1Tarray: #x~X~%" (-> obj array))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type sphere-hash
+(deftype sphere-hash (grid-hash)
+  ((sphere-array     (inline-array sphere)  :offset-assert  88)
+   (max-object-count int16                  :offset-assert  92)
+   (pad              int16                  :offset-assert  94)
+   (mem-sphere-array uint32                 :offset-assert  96)
+   (spr-sphere-array uint32                 :offset-assert 100)
+   )
+  :method-count-assert 34
+  :size-assert         #x68
+  :flag-assert         #x2200000068
+  (:methods
+    (new (symbol type int int) _type_ 0)
+    (clear-objects! (_type_) none 25)
+    (add-a-sphere (_type_ vector) int 26)
+    (add-a-sphere-with-flag (_type_ vector int) int 27)
+    (update-from-spheres (_type_) none 28)
+    (sphere-hash-method-29 (_type_ find-nav-sphere-ids-params int int int) none 29)
+    (find-nav-sphere-ids (_type_ find-nav-sphere-ids-params) none 30)
+    (add-sphere-with-mask-and-id (_type_ vector int int) symbol 31)
+    (sphere-hash-method-32 (_type_ vector vector float int) symbol 32)
+    (remove-by-id (_type_ sphere int) none 33)
+    )
+  )
+
+;; definition for method 3 of type sphere-hash
+(defmethod inspect sphere-hash ((obj sphere-hash))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Twork: ~A~%" (-> obj work))
+  (format #t "~1Tsearch-box: #<grid-hash-box @ #x~X>~%" (-> obj search-box))
+  (format #t "~1Tbucket-size: ~D~%" (-> obj bucket-size))
+  (format #t "~1Taxis-scale[3] @ #x~X~%" (-> obj axis-scale))
+  (format #t "~1Tdimension-array[3] @ #x~X~%" (-> obj dimension-array))
+  (format #t "~1Tvertical-cell-count: ~D~%" (-> obj vertical-cell-count))
+  (format #t "~1Tbucket-array: #x~X~%" (-> obj bucket-array))
+  (format #t "~1Tbox-min[3] @ #x~X~%" (-> obj box-min))
+  (format #t "~1Tbox-max[3] @ #x~X~%" (-> obj box-max))
+  (format #t "~1Tobject-count: ~D~%" (-> obj object-count))
+  (format #t "~1Tbucket-count: ~D~%" (-> obj bucket-count))
+  (format #t "~1Tmin-cell-size: ~f~%" (-> obj min-cell-size))
+  (format #t "~1Tbucket-memory-size: ~D~%" (-> obj bucket-memory-size))
+  (format #t "~1Tmem-bucket-array: #x~X~%" (-> obj mem-bucket-array))
+  (format #t "~1Tspr-bucket-array: #x~X~%" (-> obj spr-bucket-array))
+  (format #t "~1Tdebug-draw: ~A~%" (-> obj debug-draw))
+  (format #t "~1Tuse-scratch-ram: ~A~%" (-> obj use-scratch-ram))
+  (format #t "~1Tsphere-array: #x~X~%" (-> obj sphere-array))
+  (format #t "~1Tmax-object-count: ~D~%" (-> obj max-object-count))
+  (format #t "~1Tpad: ~D~%" (-> obj pad))
+  (format #t "~1Tmem-sphere-array: #x~X~%" (-> obj mem-sphere-array))
+  (format #t "~1Tspr-sphere-array: #x~X~%" (-> obj spr-sphere-array))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type hash-object-info
+(deftype hash-object-info (structure)
+  ((object basic  :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; definition for method 3 of type hash-object-info
+(defmethod inspect hash-object-info ((obj hash-object-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'hash-object-info)
+  (format #t "~1Tobject: ~A~%" (-> obj object))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type spatial-hash
+(deftype spatial-hash (sphere-hash)
+  ((object-array     (inline-array hash-object-info)  :offset-assert 104)
+   (mem-object-array (inline-array hash-object-info)  :offset-assert 108)
+   (spr-object-array (inline-array hash-object-info)  :offset-assert 112)
+   )
+  :method-count-assert 41
+  :size-assert         #x74
+  :flag-assert         #x2900000074
+  (:methods
+    (new (symbol type int int) _type_ 0)
+    (add-an-object (_type_ vector hash-object-info) int 34)
+    (fill-actor-list-for-box (_type_ bounding-box (pointer collide-shape) int) int 35)
+    (fill-actor-list-for-sphere (_type_ sphere (pointer collide-shape) int) int 36)
+    (fill-actor-list-for-line-sphere (_type_ vector vector float (pointer collide-shape) int int) int 37)
+    (fill-actor-list-for-vec+r (_type_ vector (pointer collide-shape) int) int 38)
+    (spatial-hash-method-39 (_type_ object hash-object-info) int 39)
+    (validate-objects (_type_) none 40)
+    )
+  )
+
+;; definition for method 3 of type spatial-hash
+(defmethod inspect spatial-hash ((obj spatial-hash))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Twork: ~A~%" (-> obj work))
+  (format #t "~1Tsearch-box: #<grid-hash-box @ #x~X>~%" (-> obj search-box))
+  (format #t "~1Tbucket-size: ~D~%" (-> obj bucket-size))
+  (format #t "~1Taxis-scale[3] @ #x~X~%" (-> obj axis-scale))
+  (format #t "~1Tdimension-array[3] @ #x~X~%" (-> obj dimension-array))
+  (format #t "~1Tvertical-cell-count: ~D~%" (-> obj vertical-cell-count))
+  (format #t "~1Tbucket-array: #x~X~%" (-> obj bucket-array))
+  (format #t "~1Tbox-min[3] @ #x~X~%" (-> obj box-min))
+  (format #t "~1Tbox-max[3] @ #x~X~%" (-> obj box-max))
+  (format #t "~1Tobject-count: ~D~%" (-> obj object-count))
+  (format #t "~1Tbucket-count: ~D~%" (-> obj bucket-count))
+  (format #t "~1Tmin-cell-size: ~f~%" (-> obj min-cell-size))
+  (format #t "~1Tbucket-memory-size: ~D~%" (-> obj bucket-memory-size))
+  (format #t "~1Tmem-bucket-array: #x~X~%" (-> obj mem-bucket-array))
+  (format #t "~1Tspr-bucket-array: #x~X~%" (-> obj spr-bucket-array))
+  (format #t "~1Tdebug-draw: ~A~%" (-> obj debug-draw))
+  (format #t "~1Tuse-scratch-ram: ~A~%" (-> obj use-scratch-ram))
+  (format #t "~1Tsphere-array: #x~X~%" (-> obj sphere-array))
+  (format #t "~1Tmax-object-count: ~D~%" (-> obj max-object-count))
+  (format #t "~1Tpad: ~D~%" (-> obj pad))
+  (format #t "~1Tmem-sphere-array: #x~X~%" (-> obj mem-sphere-array))
+  (format #t "~1Tspr-sphere-array: #x~X~%" (-> obj spr-sphere-array))
+  (format #t "~1Tobject-array: #x~X~%" (-> obj object-array))
+  (format #t "~1Tmem-object-array: #x~X~%" (-> obj mem-object-array))
+  (format #t "~1Tspr-object-array: #x~X~%" (-> obj spr-object-array))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+0

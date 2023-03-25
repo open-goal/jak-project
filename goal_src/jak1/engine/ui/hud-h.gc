@@ -1,0 +1,157 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: hud-h.gc
+;; name in dgo: hud-h
+;; dgos: GAME, ENGINE
+
+(define-extern activate-hud (function process none))
+(define-extern activate-orb-all (function int int))
+(define-extern hide-hud (function none))
+(define-extern hide-hud-quick (function none))
+(define-extern hide-bottom-hud (function none))
+(define-extern hud-hidden? (function symbol))
+(define-extern bottom-hud-hidden? (function symbol))
+(define-extern enable-hud (function none))
+(define-extern disable-hud (function int none))
+
+(declare-type hud process)
+(declare-type hud-pickups hud)
+(declare-type hud-money hud)
+(declare-type hud-fuel-cell hud)
+(declare-type hud-health hud)
+(declare-type hud-buzzers hud)
+(declare-type hud-power hud)
+(declare-type hud-bike-speed hud)
+(declare-type hud-bike-heat hud)
+(declare-type hud-money-all hud)
+
+;; DECOMP BEGINS
+
+(deftype hud-icon (basic)
+  ((icon    (pointer manipy)  :offset-assert   4)
+   (icon-y  int32             :offset-assert   8)
+   (icon-x  int32             :offset-assert  12)
+   (icon-z  int32             :offset-assert  16)
+   (scale-x float             :offset-assert  20)
+   (scale-y float             :offset-assert  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+
+(deftype hud-particle (basic)
+  ((part     sparticle-launch-control         :offset-assert   4)
+   (init-pos vector                   :inline :offset-assert  16)
+   (pos      vector                   :inline :offset-assert  32)
+   (prev-pos vector                   :inline :offset-assert  48)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+
+(deftype hud (process)
+  ((value                  int32          :offset-assert 112)
+   (value2                 int32          :offset-assert 116)
+   (target-value           int32          :offset-assert 120)
+   (last-increment-time    time-frame     :offset-assert 128)
+   (last-target-equal-time time-frame     :offset-assert 136)
+   (offset                 int32          :offset-assert 144)
+   (y-offset               int32          :offset-assert 148)
+   (next-y-offset          int32          :offset-assert 152)
+   (x-sgn                  int32          :offset-assert 156)
+   (y-sgn                  int32          :offset-assert 160)
+   (text-x                 int32          :offset-assert 164)
+   (text-y                 int32          :offset-assert 168)
+   (friend                 int32          :offset-assert 172)
+   (first-init             symbol         :offset-assert 176)
+   (increment-on-event     symbol         :offset-assert 180)
+   (skip-particle          int32          :offset-assert 184)
+   (disable                symbol         :offset-assert 188)
+   (force-on-screen        symbol         :offset-assert 192)
+   (deactivate-when-hidden symbol         :offset-assert 196)
+   (trigger-time           time-frame     :offset-assert 200)
+   (last-hide-time         time-frame     :offset-assert 208)
+   (nb-of-icons            int32          :offset-assert 216)
+   (icons                  hud-icon     6 :offset-assert 220)
+   (max-nb-of-particles    int32          :offset-assert 244)
+   (nb-of-particles        int32          :offset-assert 248)
+   (particles              hud-particle 7 :offset-assert 252)
+   )
+  :heap-base #xb0
+  :method-count-assert 27
+  :size-assert         #x118
+  :flag-assert         #x1b00b00118
+  (:methods
+    (hidden? (_type_) symbol 14)
+    (draw-hud (_type_) none 15)
+    (tally-value (_type_ int int) none 16)
+    (draw-icons (_type_) none 17)
+    (draw-particles (_type_) none 18)
+    (hud-update (_type_) none 19)
+    (init-particles! (_type_ int) none 20)
+    (get-icon-pos-x (_type_) int 21)
+    (get-icon-pos-y (_type_) int 22)
+    (dummy-23 (_type_) none 23) ;; unused
+    (set-pos-and-scale (_type_ symbol symbol) none 24)
+    (get-icon-scale-x (_type_) float 25)
+    (get-icon-scale-y (_type_) float 26)
+    )
+  (:states
+    hud-arriving
+    hud-hidden
+    hud-in
+    (hud-leaving int)
+    )
+  )
+
+
+(deftype hud-parts (structure)
+  ((pickups    (pointer hud-pickups)      :offset-assert   0)
+   (money      (pointer hud-money)        :offset-assert   4)
+   (fuel-cell  (pointer hud-fuel-cell)    :offset-assert   8)
+   (health     (pointer hud-health)       :offset-assert  12)
+   (buzzers    (pointer hud-buzzers)      :offset-assert  16)
+   (power      (pointer hud-power)        :offset-assert  20)
+   (bike-speed (pointer hud-bike-speed)   :offset-assert  24)
+   (bike-heat  (pointer hud-bike-heat)    :offset-assert  28)
+   (money-all  (pointer hud-money-all)    :offset-assert  32)
+   (parts      (pointer hud)            9 :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+
+(define *hud-parts* (new 'static 'hud-parts
+                      :pickups #f
+                      :money #f
+                      :fuel-cell #f
+                      :health #f
+                      :buzzers #f
+                      :power #f
+                      :bike-speed #f
+                      :bike-heat #f
+                      :money-all #f
+                      )
+        )
+
+;; added for pc port
+(defenum hud-collectable-view
+  (original)
+  (game-totals)
+  (level-totals)
+  )
+
+(define *hud-collectable-view* (hud-collectable-view original))
+
+0
+
+
+
+

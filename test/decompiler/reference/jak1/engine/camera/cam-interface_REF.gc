@@ -1,0 +1,69 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function position-in-front-of-camera!
+(defun position-in-front-of-camera! ((arg0 vector) (arg1 float) (arg2 float))
+  (vector-float*! arg0 (-> *math-camera* inv-camera-rot vector 2) arg1)
+  (vector+float*! arg0 arg0 (-> *math-camera* inv-camera-rot vector 1) arg2)
+  (vector+! arg0 arg0 (-> *math-camera* trans))
+  arg0
+  )
+
+;; definition for function matrix-local->world
+(defun matrix-local->world ((arg0 symbol) (arg1 symbol))
+  (if arg0
+      (-> *math-camera* inv-camera-rot-smooth)
+      (-> *math-camera* inv-camera-rot)
+      )
+  )
+
+;; definition for function matrix-world->local
+(defun matrix-world->local ()
+  (-> *math-camera* camera-rot)
+  )
+
+;; definition (perm) for symbol *camera-dummy-vector*, type vector
+(define-perm *camera-dummy-vector* vector (vector-reset! (new 'global 'vector)))
+
+;; definition for function camera-pos
+(defun camera-pos ()
+  (cond
+    (*camera-combiner*
+      (-> *camera-combiner* trans)
+      )
+    (*math-camera*
+      (-> *math-camera* trans)
+      )
+    (else
+      *camera-dummy-vector*
+      )
+    )
+  )
+
+;; definition for function math-camera-pos
+(defun math-camera-pos ()
+  (-> *math-camera* trans)
+  )
+
+;; definition for function camera-angle
+(defun camera-angle ()
+  (let ((f0-0 (-> *math-camera* camera-rot vector 0 x))
+        (f1-0 (-> *math-camera* camera-rot vector 0 z))
+        )
+    (atan f1-0 f0-0)
+    )
+  )
+
+;; definition for function camera-teleport-to-entity
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
+(defbehavior camera-teleport-to-entity process ((arg0 entity-actor))
+  (let ((gp-0 (new 'stack 'transformq)))
+    (set! (-> gp-0 trans quad) (-> (the-as transform (-> arg0 extra)) scale quad))
+    (quaternion-copy! (-> gp-0 quat) (-> arg0 quat))
+    (vector-identity! (-> gp-0 scale))
+    (send-event *camera* 'teleport-to-transformq gp-0)
+    )
+  0
+  (none)
+  )

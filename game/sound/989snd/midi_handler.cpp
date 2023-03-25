@@ -1,8 +1,12 @@
 // Copyright: 2021 - 2022, Ziemas
 // SPDX-License-Identifier: ISC
 #include "midi_handler.h"
+
 #include "ame_handler.h"
 
+#include "common/log/log.h"
+
+#include "game/sound/989snd/util.h"
 #include <third-party/fmt/core.h>
 
 namespace snd {
@@ -23,7 +27,7 @@ midi_handler::midi_handler(MIDIBlockHeader* block,
                            s32 vol,
                            s32 pan,
                            locator& loc,
-                           u32 bank)
+                           SoundBank& bank)
     : m_sound(sound),
       m_locator(loc),
       m_repeats(sound.Repeats),
@@ -54,7 +58,7 @@ midi_handler::midi_handler(MIDIBlockHeader* block,
                            s32 vol,
                            s32 pan,
                            locator& loc,
-                           u32 bank,
+                           SoundBank& bank,
                            std::optional<ame_handler*> parent)
     : m_parent(parent),
       m_sound(sound),
@@ -137,7 +141,21 @@ void midi_handler::set_vol_pan(s32 vol, s32 pan) {
 }
 
 void midi_handler::set_pmod(s32 mod) {
-  // TODO
+  m_cur_pm = mod;
+
+  for (auto& v : m_voices) {
+    auto voice = v.lock();
+    if (voice == nullptr) {
+      continue;
+    }
+
+    voice->current_pm = m_cur_pm;
+    auto note = pitchbend(voice->tone, voice->current_pb, voice->current_pm, voice->start_note,
+                          voice->start_fine);
+    auto pitch =
+        PS1Note2Pitch(voice->tone.CenterNote, voice->tone.CenterFine, note.first, note.second);
+    voice->set_pitch(pitch);
+  }
 }
 
 void midi_handler::mute_channel(u8 channel) {
@@ -169,8 +187,8 @@ void midi_handler::note_on() {
   //            velocity);
 
   // Key on all the applicable tones for the program
-  auto bank = dynamic_cast<MusicBank*>(m_locator.get_bank_by_name(m_header->BankID));
-  auto& program = bank->programs[m_programs[channel]];
+  auto bank = dynamic_cast<MusicBank*>(m_locator.get_bank_by_id(m_header->BankID));
+  auto& program = bank->m_programs[m_programs[channel]];
 
   for (auto& t : program.tones) {
     if (note >= t.MapLow && note <= t.MapHigh) {
@@ -189,12 +207,11 @@ void midi_handler::note_on() {
       voice->start_note = note;
       voice->start_fine = 0;
 
-      // TODO
-      // voice->current_pm = 0;
-      // voice->current_pb = 0;
+      voice->current_pm = m_pitch_bend[channel];
+      voice->current_pb = m_cur_pm;
 
       voice->group = m_sound.VolGroup;
-      m_vm.start_tone(voice);
+      m_vm.start_tone(voice, m_bank.bank_id);
       m_voices.emplace_front(voice);
     }
   }
@@ -257,8 +274,26 @@ void midi_handler::channel_pressure() {
 
 void midi_handler::channel_pitch() {
   u8 channel = m_status & 0xF;
-  u32 pitch = (m_seq_ptr[0] << 7) | m_seq_ptr[1];
-  fmt::print("{}: pitch ch{:01x} {:04x}\n", m_time, channel, pitch);
+  s32 pitch = 0xFFFF * ((m_seq_ptr[0] & 0x7f) | ((m_seq_ptr[1] & 0x7f) << 7)) / 0x3FFF;
+  // lg::debug("{}: pitch ch{:01x} {:04x}", m_time, channel, pitch);
+
+  m_pitch_bend[channel] = pitch + 0x8000;
+  for (auto& v : m_voices) {
+    auto voice = v.lock();
+    if (voice == nullptr) {
+      continue;
+    }
+
+    if (voice->channel == channel) {
+      voice->current_pb = m_pitch_bend[channel];
+      auto note = pitchbend(voice->tone, voice->current_pb, voice->current_pm, voice->start_note,
+                            voice->start_fine);
+      auto pitch =
+          PS1Note2Pitch(voice->tone.CenterNote, voice->tone.CenterFine, note.first, note.second);
+      voice->set_pitch(pitch);
+    }
+  }
+
   m_seq_ptr += 2;
 }
 
@@ -284,9 +319,40 @@ void midi_handler::meta_event() {
 
   if (*m_seq_ptr == 0x51) {
     m_tempo = (m_seq_ptr[2] << 16) | (m_seq_ptr[3] << 8) | (m_seq_ptr[4]);
+    m_ppt = 100 * mics_per_tick / (m_tempo / m_ppq);
   }
 
   m_seq_ptr += len + 2;
+}
+
+static s16 midiTo360Pan(u8 pan) {
+  if (pan >= 64) {
+    return (s16)(90 * (pan - 64) / 63);
+  } else {
+    return (s16)(90 * pan / 64 + 270);
+  }
+}
+
+void midi_handler::controller_change() {
+  u8 channel = m_status & 0xf;
+  u8 controller = m_seq_ptr[0];
+  u8 value = m_seq_ptr[1];
+
+  switch (controller) {
+    // case 0x0: {} break; // TODO bank select
+    case 0x7: {
+      m_chanvol[channel] = static_cast<s8>(value);
+    } break;
+    case 0xa: {
+      m_chanpan[channel] = midiTo360Pan(static_cast<s8>(value));
+    } break;
+    // case 0x40: {} break; // TODO damper
+    default:
+      throw midi_error(fmt::format("invalid midi controller change {}", controller));
+      break;
+  }
+
+  m_seq_ptr += 2;
 }
 
 void midi_handler::system_event() {
@@ -300,7 +366,7 @@ void midi_handler::system_event() {
         m_seq_ptr = ptr;
 
         if (!cont) {
-          // fmt::print("{:x} track stopped by ame\n", (u64)this);
+          // lg::debug("{:x} track stopped by ame", (u64)this);
           m_track_complete = true;
         }
       } else {
@@ -322,8 +388,7 @@ bool midi_handler::tick() {
     step();
   } catch (midi_error& e) {
     m_track_complete = true;
-    fmt::print("MIDI Error: {}\n", e.what());
-
+    lg::error("MIDI Error: {}", e.what());
     fmt::print("Sequence following: ");
     for (int i = 0; i < 10; i++) {
       fmt::print("{:x} ", m_seq_ptr[i]);
@@ -373,6 +438,9 @@ void midi_handler::step() {
         break;
       case 0x9:
         note_on();
+        break;
+      case 0xB:
+        controller_change();
         break;
       case 0xD:
         channel_pressure();

@@ -1,6 +1,8 @@
-#include "third-party/fmt/core.h"
-#include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "dir_tpages.h"
+
+#include "decompiler/ObjectFile/ObjectFileDB.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 std::string DirTpageResult::to_source() const {
@@ -43,6 +45,7 @@ DirTpageResult process_dir_tpages(ObjectFileData& data) {
     word_idx++;
   }
 
+  word_idx = ((word_idx + 3) / 4) * 4;
   ASSERT(word_idx == (int)words.size());
 
   return result;

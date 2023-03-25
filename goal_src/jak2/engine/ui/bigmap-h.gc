@@ -1,0 +1,304 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: bigmap-h.gc
+;; name in dgo: bigmap-h
+;; dgos: ENGINE, GAME
+
+(declare-type bigmap-compressed-layers structure)
+(define-extern *bigmap-compressed-layers* bigmap-compressed-layers)
+
+(declare-type bigmap basic)
+(define-extern *bigmap* bigmap)
+
+;; DECOMP BEGINS
+
+(deftype bigmap-bit-mask (structure)
+  ((data uint8 6656 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x1a00
+  :flag-assert         #x900001a00
+  )
+
+
+(deftype bigmap-layer-mask (structure)
+  ((data uint8 26624 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x6800
+  :flag-assert         #x900006800
+  )
+
+
+(deftype bigmap-image (structure)
+  ((clut-offset  uint32   :offset-assert   0)
+   (image-offset uint32   :offset-assert   4)
+   (pad          uint32 2 :offset-assert   8)
+   (data         uint8  1 :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x11
+  :flag-assert         #x900000011
+  )
+
+
+(deftype bigmap-info (vector)
+  ((scale     float  :offset   8)
+   (inv-scale float  :offset  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(deftype bigmap-info-array (structure)
+  ((data bigmap-info 21 :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x150
+  :flag-assert         #x900000150
+  )
+
+
+(deftype bigmap-compressed-layers (structure)
+  ((data    (pointer uint32) 20  :offset-assert 0)
+   (layer0  (pointer uint32)     :offset 0)
+   (layer1  (pointer uint32)     :offset 4)
+   (layer2  (pointer uint32)     :offset 8)
+   (layer3  (pointer uint32)     :offset 12)
+   (layer4  (pointer uint32)     :offset 16)
+   (layer5  (pointer uint32)     :offset 20)
+   (layer6  (pointer uint32)     :offset 24)
+   (layer7  (pointer uint32)     :offset 28)
+   (layer8  (pointer uint32)     :offset 32)
+   (layer9  (pointer uint32)     :offset 36)
+   (layer10 (pointer uint32)     :offset 40)
+   (layer11 (pointer uint32)     :offset 44)
+   (layer12 (pointer uint32)     :offset 48)
+   (layer13 (pointer uint32)     :offset 52)
+   (layer14 (pointer uint32)     :offset 56)
+   (layer15 (pointer uint32)     :offset 60)
+   (layer16 (pointer uint32)     :offset 64)
+   (layer17 (pointer uint32)     :offset 68)
+   (layer18 (pointer uint32)     :offset 72)
+   (layer19 (pointer uint32)     :offset 76)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+
+(deftype bigmap (basic)
+  ((drawing-flag          symbol                             :offset-assert   4)
+   (loading-flag          symbol                             :offset-assert   8)
+   (recording-flag        symbol                             :offset-assert  12)
+   (fill-flag             symbol                             :offset-assert  16)
+   (bigmap-index          uint32                             :offset-assert  20)
+   (bigmap-image          external-art-buffer                :offset-assert  24)
+   (tpage                 basic                              :offset-assert  28)
+   (progress-minimap      basic                              :offset-assert  32)
+   (mask-index            uint32                             :offset-assert  36)
+   (bit-mask              bigmap-bit-mask                    :offset-assert  40)
+   (compressed-next-index uint32                             :offset-assert  44)
+   (max-next-index        uint32                             :offset-assert  48)
+   (compressed-masks      uint32                   20        :offset-assert  52)
+   (compressed-data       uint32                             :offset-assert 132)
+   (layer-index           uint32                             :offset-assert 136)
+   (layer-mask            bigmap-layer-mask                  :offset-assert 140)
+   (compressed-layers     bigmap-compressed-layers           :offset-assert 144)
+   (layer-mask-enable     uint32                             :offset-assert 148)
+   (load-index            uint32                             :offset-assert 152)
+   (x0                    int32                              :offset-assert 156)
+   (y0                    int32                              :offset-assert 160)
+   (x1                    int32                              :offset-assert 164)
+   (y1                    int32                              :offset-assert 168)
+   (y2                    int32                              :offset-assert 172)
+   (goal-time             float                              :offset-assert 176)
+   (sprite-tmpl           dma-gif-packet           :inline   :offset-assert 192)
+   (draw-tmpl             dma-gif-packet           :inline   :offset-assert 224)
+   (adgif-tmpl            dma-gif-packet           :inline   :offset-assert 256)
+   (offset                vector                   :inline   :offset-assert 288)
+   (size                  float                              :offset        296)
+   (scale                 float                              :offset        300)
+   (draw-offset           vector                   :inline   :offset-assert 304)
+   (draw-size             float                              :offset        312)
+   (draw-scale            float                              :offset        316)
+   (scroll                vector                   :inline   :offset-assert 320)
+   (pos                   vector4w                 :inline   :offset-assert 336)
+   (color                 vector4w                 :inline   :offset-assert 352)
+   (corner                vector4w                 4 :inline :offset-assert 368)
+   (auto-save-icon-flag   basic                              :offset-assert 432)
+   )
+  :method-count-assert 28
+  :size-assert         #x1b4
+  :flag-assert         #x1c000001b4
+  (:methods
+    (new (symbol type) _type_ 0)
+    (initialize (_type_) none 9)
+    (update (_type_) none 10)
+    (bigmap-method-11 (_type_ int int int int) none 11)
+    (bigmap-method-12 () none 12)
+    (bigmap-method-13 () none 13)
+    (bigmap-method-14 (_type_) none 14)
+    (bigmap-method-15 () none 15)
+    (bigmap-method-16 () none 16)
+    (bigmap-method-17 () none 17)
+    (bigmap-method-18 () none 18)
+    (bigmap-method-19 () none 19)
+    (bigmap-method-20 () none 20)
+    (bigmap-method-21 () none 21)
+    (bigmap-method-22 () none 22)
+    (bigmap-method-23 () none 23)
+    (bigmap-method-24 () none 24)
+    (bigmap-method-25 () none 25)
+    (bigmap-method-26 () none 26)
+    (bigmap-method-27 () none 27)
+    )
+  )
+
+
+(defmethod new bigmap ((allocation symbol) (type-to-make type))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 bigmap-image)
+          ((method-of-type external-art-buffer new)
+           allocation
+           external-art-buffer
+           0
+           (lambda ((arg0 external-art-buffer))
+             (let ((a1-3 (logand -64 (&+ (&+ (-> *display* frames 0 global-buf end) -430144) 63)))
+                   (v1-1 (-> arg0 heap))
+                   )
+               (set! (-> v1-1 base) a1-3)
+               (set! (-> v1-1 current) (-> v1-1 base))
+               (set! (-> v1-1 top-base) (&+ (-> v1-1 base) #x69000))
+               (set! (-> v1-1 top) (-> v1-1 top-base))
+               )
+             0
+             (none)
+             )
+           #f
+           )
+          )
+    (set! (-> gp-0 tpage)
+          ((method-of-type external-art-buffer new)
+           allocation
+           external-art-buffer
+           0
+           (lambda ((arg0 external-art-buffer))
+             (let ((a1-3 (logand -64 (&+ (&+ (-> *display* frames 0 global-buf end) -774208) 63)))
+                   (v1-1 (-> arg0 heap))
+                   )
+               (set! (-> v1-1 base) a1-3)
+               (set! (-> v1-1 current) (-> v1-1 base))
+               (set! (-> v1-1 top-base) (&+ (-> v1-1 base) #xbd000))
+               (set! (-> v1-1 top) (-> v1-1 top-base))
+               )
+             0
+             (none)
+             )
+           #f
+           )
+          )
+    (set! (-> gp-0 bit-mask) (new 'global 'bigmap-bit-mask))
+    (set! (-> gp-0 compressed-data) (the-as uint (malloc 'global #x8000)))
+    (set! (-> gp-0 layer-mask) (new 'global 'bigmap-layer-mask))
+    (set! (-> gp-0 compressed-layers) *bigmap-compressed-layers*)
+    (set! (-> gp-0 sprite-tmpl dma-vif dma) (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt)))
+    (set! (-> gp-0 sprite-tmpl dma-vif vif0) (new 'static 'vif-tag))
+    (set! (-> gp-0 sprite-tmpl dma-vif vif1) (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1))
+    (set! (-> gp-0 sprite-tmpl gif0)
+          (the uint64 (new 'static 'gif-tag64
+                           :nloop #x1
+                           :eop #x1
+                           :pre #x1
+                           :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :abe #x1 :fst #x1)
+                           :nreg #x5
+                           )
+               )
+          )
+    (set! (-> gp-0 sprite-tmpl gif1)
+          (the uint64 (new 'static 'gif-tag-regs
+                           :regs0 (gif-reg-id rgbaq)
+                           :regs1 (gif-reg-id uv)
+                           :regs2 (gif-reg-id xyz2)
+                           :regs3 (gif-reg-id uv)
+                           :regs4 (gif-reg-id xyz2)
+                           )
+               )
+          )
+    (set! (-> gp-0 draw-tmpl dma-vif dma) (new 'static 'dma-tag :qwc #xa :id (dma-tag-id cnt)))
+    (set! (-> gp-0 draw-tmpl dma-vif vif0) (new 'static 'vif-tag))
+    (set! (-> gp-0 draw-tmpl dma-vif vif1) (new 'static 'vif-tag :imm #xa :cmd (vif-cmd direct) :msk #x1))
+    (set! (-> gp-0 draw-tmpl gif0)
+          (the uint64 (new 'static 'gif-tag64
+                           :nloop #x1
+                           :eop #x1
+                           :pre #x1
+                           :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :tme #x1 :abe #x1 :fst #x1)
+                           :nreg #x9
+                           )
+               )
+          )
+    (set! (-> gp-0 draw-tmpl gif1) (the uint64 (new 'static 'gif-tag-regs
+                                                    :regs0 (gif-reg-id rgbaq)
+                                                    :regs1 (gif-reg-id uv)
+                                                    :regs2 (gif-reg-id xyz2)
+                                                    :regs3 (gif-reg-id uv)
+                                                    :regs4 (gif-reg-id xyz2)
+                                                    :regs5 (gif-reg-id uv)
+                                                    :regs6 (gif-reg-id xyz2)
+                                                    :regs7 (gif-reg-id uv)
+                                                    :regs8 (gif-reg-id xyz2)
+                                                    )
+                                        )
+          )
+    (set! (-> gp-0 adgif-tmpl dma-vif dma) (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt)))
+    (set! (-> gp-0 adgif-tmpl dma-vif vif0) (new 'static 'vif-tag))
+    (set! (-> gp-0 adgif-tmpl dma-vif vif1) (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1))
+    (set! (-> gp-0 adgif-tmpl gif0) (the uint64 (new 'static 'gif-tag64 :nloop #x5 :eop #x1 :nreg #x1)))
+    (set! (-> gp-0 adgif-tmpl gif1) (the uint64 (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d))))
+    (set-vector! (-> gp-0 offset) 0.0 0.0 0.0 0.0)
+    (set-vector! (-> gp-0 scroll) 0.0 0.0 0.0 0.0)
+    (set-vector! (-> gp-0 pos) 0 0 0 0)
+    (set-vector! (-> gp-0 color) 128 128 128 128)
+    (set! (-> gp-0 drawing-flag) #f)
+    (set! (-> gp-0 loading-flag) #f)
+    (set! (-> gp-0 recording-flag) #f)
+    (set! (-> gp-0 fill-flag) #t)
+    (set! (-> gp-0 progress-minimap) #f)
+    (set! (-> gp-0 auto-save-icon-flag) #f)
+    (initialize gp-0)
+    gp-0
+    )
+  )
+
+(define *bigmap-info-array*
+  (new 'static 'bigmap-info-array
+    :data (new 'static 'inline-array bigmap-info 21
+      (new 'static 'bigmap-info :x -251215.88 :y -6390620.0 :scale 7477.334 :inv-scale 0.00006686875)
+      (new 'static 'bigmap-info :x -68266.805 :y -7629693.0 :scale 4266.668 :inv-scale 0.00011718746)
+      (new 'static 'bigmap-info :x -1612460.0 :y -7806484.5 :scale 3498.668 :inv-scale 0.00014291154)
+      (new 'static 'bigmap-info :x 339968.0 :y -8220672.0 :scale 3200.0 :inv-scale 0.00015625)
+      (new 'static 'bigmap-info :x -602935.3 :y -9531720.0 :scale 6933.332 :inv-scale 0.0000721154)
+      (new 'static 'bigmap-info :x -1565331.5 :y -1109332.0 :scale 5337.4277 :inv-scale 0.000093678085)
+      (new 'static 'bigmap-info :x -3681067.0 :y 2179413.2 :scale 4586.668 :inv-scale 0.0001090116)
+      (new 'static 'bigmap-info :x 1110016.0 :y -20480.0 :scale 4096.0 :inv-scale 0.00012207031)
+      (new 'static 'bigmap-info :x -4358144.0 :y -581632.0 :scale 5469.09 :inv-scale 0.00009142289)
+      (new 'static 'bigmap-info :x -1646719.0 :y -1395200.0 :scale 4000.002 :inv-scale 0.00012499993)
+      (new 'static 'bigmap-info :x -1292161.0 :y -935251.94 :scale 7253.332 :inv-scale 0.000068933834)
+      (new 'static 'bigmap-info :x -87520.055 :y 1879040.0 :scale 2880.0 :inv-scale 0.00017361112)
+      (new 'static 'bigmap-info :x -87520.055 :y 1879040.0 :scale 2880.0 :inv-scale 0.00017361112)
+      (new 'static 'bigmap-info :x 3053472.2 :y -2397868.0 :scale 3946.668 :inv-scale 0.00012668915)
+      (new 'static 'bigmap-info :x 4027306.8 :y 1112746.8 :scale 4693.332 :inv-scale 0.00010653412)
+      (new 'static 'bigmap-info :x 4027306.8 :y 1112746.8 :scale 4693.332 :inv-scale 0.00010653412)
+      (new 'static 'bigmap-info :x 4027306.8 :y 1112746.8 :scale 4693.332 :inv-scale 0.00010653412)
+      (new 'static 'bigmap-info :x 8574157.0 :y -1033420.8 :scale 5430.231 :inv-scale 0.00009207711)
+      (new 'static 'bigmap-info :x -787795.94 :y 4102697.0 :scale 5717.332 :inv-scale 0.00008745338)
+      (new 'static 'bigmap-info :x -1558401.0 :y 6746452.0 :scale 5866.668 :inv-scale 0.00008522726)
+      (new 'static 'bigmap-info)
+      )
+    )
+  )

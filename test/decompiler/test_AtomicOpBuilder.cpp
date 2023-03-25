@@ -1,11 +1,13 @@
 #include <regex>
-#include "gtest/gtest.h"
+
+#include "decompiler/Disasm/InstructionParser.h"
+#include "decompiler/Function/Warnings.h"
 #include "decompiler/IR2/AtomicOp.h"
 #include "decompiler/analysis/atomic_op_builder.h"
-#include "decompiler/Disasm/InstructionParser.h"
+#include "gtest/gtest.h"
+
 #include "third-party/fmt/core.h"
 #include "third-party/fmt/format.h"
-#include "decompiler/Function/Warnings.h"
 
 using namespace decompiler;
 

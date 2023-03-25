@@ -6,14 +6,17 @@
  */
 
 #include <cstdint>
-#include <vector>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
+
 #include "LinkedWord.h"
+
+#include "common/common_types.h"
+
 #include "decompiler/Disasm/DecompilerLabel.h"
 #include "decompiler/Function/Function.h"
-#include "common/common_types.h"
 #include "decompiler/IR2/LabelDB.h"
 
 namespace decompiler {
@@ -22,7 +25,7 @@ namespace decompiler {
  */
 class LinkedObjectFile {
  public:
-  LinkedObjectFile() = default;
+  LinkedObjectFile(GameVersion version) : version(version){};
   void set_segment_count(int n_segs);
   void push_back_word_to_segment(uint32_t word, int segment);
   int get_label_id_for(int seg, int offset);
@@ -38,7 +41,10 @@ class LinkedObjectFile {
                         int source_offset,
                         const char* name,
                         LinkedWord::Kind kind);
-  void symbol_link_offset(int source_segment, int source_offset, const char* name);
+  void symbol_link_offset(int source_segment,
+                          int source_offset,
+                          const char* name,
+                          bool subtract_one);
   Function& get_function_at_label(int label_id);
   Function* try_get_function_at_label(int label_id);
   Function* try_get_function_at_label(const DecompilerLabel& label);
@@ -49,7 +55,7 @@ class LinkedObjectFile {
   uint32_t set_ordered_label_names();
   void find_code();
   std::string print_words();
-  void find_functions();
+  void find_functions(GameVersion version);
   void disassemble_functions();
   void process_fp_relative_links();
   std::string print_scripts();
@@ -133,6 +139,8 @@ class LinkedObjectFile {
   std::vector<DecompilerLabel> labels;
 
   std::unique_ptr<LabelDB> label_db;
+
+  GameVersion version;
 
  private:
   goos::Object to_form_script(int seg, int word_idx, std::vector<bool>& seen);

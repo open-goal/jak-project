@@ -1,0 +1,2801 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: minimap.gc
+;; name in dgo: minimap
+;; dgos: ENGINE, GAME
+
+;; TODO - for gungame-obs
+(define-extern *minimap-class-list* (inline-array minimap-class-node))
+
+;; DECOMP BEGINS
+
+(deftype minimap-texture-name-array (structure)
+  ((data string 35 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x8c
+  :flag-assert         #x90000008c
+  )
+
+
+(deftype minimap-corner-array (structure)
+  ((data vector 35 :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x230
+  :flag-assert         #x900000230
+  )
+
+
+(define *minimap-texture-name-array*
+  (new 'static 'minimap-texture-name-array :data (new 'static 'array string 35
+                                                   #f
+                                                   #f
+                                                   "map-stadium"
+                                                   "map-ctyslumc"
+                                                   #f
+                                                   #f
+                                                   "map-ctygena"
+                                                   "map-ctygenb"
+                                                   "map-ctyslumb"
+                                                   #f
+                                                   #f
+                                                   "map-ctyfarma"
+                                                   "map-ctygenc"
+                                                   #f
+                                                   "map-ctysluma"
+                                                   #f
+                                                   "map-ctymarka"
+                                                   "map-ctypala"
+                                                   "map-ctymarkb"
+                                                   "map-ctyindb"
+                                                   #f
+                                                   "map-ctyfarmb"
+                                                   "map-ctypalb"
+                                                   #f
+                                                   "map-ctyinda"
+                                                   #f
+                                                   "map-ctyporta"
+                                                   "map-ctyportb"
+                                                   "map-ctyportc"
+                                                   #f
+                                                   #f
+                                                   "map-ctyportd"
+                                                   "map-ctyporte"
+                                                   "map-ctyportf"
+                                                   #f
+                                                   )
+                                           )
+  )
+
+(define *minimap-corner-array*
+  (new 'static 'minimap-corner-array :data (new 'static 'inline-array vector 35
+                                             (new 'static 'vector :x -4456448.0 :z -4456448.0 :w 1.0)
+                                             (new 'static 'vector :x -2883584.0 :z -4456448.0 :w 1.0)
+                                             (new 'static 'vector :x -1310720.0 :z -4456448.0 :w 1.0)
+                                             (new 'static 'vector :x 262144.0 :z -4456448.0 :w 1.0)
+                                             (new 'static 'vector :x 1835008.0 :z -4456448.0 :w 1.0)
+                                             (new 'static 'vector :x -4456448.0 :z -2883584.0 :w 1.0)
+                                             (new 'static 'vector :x -2883584.0 :z -2883584.0 :w 1.0)
+                                             (new 'static 'vector :x -1310720.0 :z -2883584.0 :w 1.0)
+                                             (new 'static 'vector :x 262144.0 :z -2883584.0 :w 1.0)
+                                             (new 'static 'vector :x 1835008.0 :z -2883584.0 :w 1.0)
+                                             (new 'static 'vector :x -4456448.0 :z -1310720.0 :w 1.0)
+                                             (new 'static 'vector :x -2883584.0 :z -1310720.0 :w 1.0)
+                                             (new 'static 'vector :x -1310720.0 :z -1310720.0 :w 1.0)
+                                             (new 'static 'vector :x 262144.0 :z -1310720.0 :w 1.0)
+                                             (new 'static 'vector :x 1835008.0 :z -1310720.0 :w 1.0)
+                                             (new 'static 'vector :x -4456448.0 :z 262144.0 :w 1.0)
+                                             (new 'static 'vector :x -2883584.0 :z 262144.0 :w 1.0)
+                                             (new 'static 'vector :x -1310720.0 :z 262144.0 :w 1.0)
+                                             (new 'static 'vector :x 262144.0 :z 262144.0 :w 1.0)
+                                             (new 'static 'vector :x 1835008.0 :z 262144.0 :w 1.0)
+                                             (new 'static 'vector :x -4456448.0 :z 1835008.0 :w 1.0)
+                                             (new 'static 'vector :x -2883584.0 :z 1835008.0 :w 1.0)
+                                             (new 'static 'vector :x -1310720.0 :z 1835008.0 :w 1.0)
+                                             (new 'static 'vector :x 262144.0 :z 1835008.0 :w 1.0)
+                                             (new 'static 'vector :x 1835008.0 :z 1835008.0 :w 1.0)
+                                             (new 'static 'vector :x -4456448.0 :z 3407872.0 :w 1.0)
+                                             (new 'static 'vector :x -2883584.0 :z 3407872.0 :w 1.0)
+                                             (new 'static 'vector :x -1310720.0 :z 3407872.0 :w 1.0)
+                                             (new 'static 'vector :x 262144.0 :z 3407872.0 :w 1.0)
+                                             (new 'static 'vector :x 1835008.0 :z 3407872.0 :w 1.0)
+                                             (new 'static 'vector :x -4456448.0 :z 4980736.0 :w 1.0)
+                                             (new 'static 'vector :x -2883584.0 :z 4980736.0 :w 1.0)
+                                             (new 'static 'vector :x -1310720.0 :z 4980736.0 :w 1.0)
+                                             (new 'static 'vector :x 262144.0 :z 4980736.0 :w 1.0)
+                                             (new 'static 'vector :x 1835008.0 :z 4980736.0 :w 1.0)
+                                             )
+                                     )
+  )
+
+(define *minimap*
+  (new 'static 'minimap
+    :draw-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #xa :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #xa :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x1
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :tme #x1 :fst #x1)
+        :nreg #x9
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id rgbaq)
+        :regs1 (gif-reg-id uv)
+        :regs2 (gif-reg-id xyz2)
+        :regs3 (gif-reg-id uv)
+        :regs4 (gif-reg-id xyz2)
+        :regs5 (gif-reg-id uv)
+        :regs6 (gif-reg-id xyz2)
+        :regs7 (gif-reg-id uv)
+        :regs8 (gif-reg-id xyz2)
+        )
+      )
+    :draw2-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #xa :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #xa :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x1
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :tme #x1)
+        :nreg #x9
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id rgbaq)
+        :regs1 (gif-reg-id st)
+        :regs2 (gif-reg-id xyz2)
+        :regs3 (gif-reg-id st)
+        :regs4 (gif-reg-id xyz2)
+        :regs5 (gif-reg-id st)
+        :regs6 (gif-reg-id xyz2)
+        :regs7 (gif-reg-id st)
+        :regs8 (gif-reg-id xyz2)
+        )
+      )
+    :draw3-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #xa :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #xa :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x1
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :tme #x1 :abe #x1 :fst #x1)
+        :nreg #x9
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id rgbaq)
+        :regs1 (gif-reg-id uv)
+        :regs2 (gif-reg-id xyz2)
+        :regs3 (gif-reg-id uv)
+        :regs4 (gif-reg-id xyz2)
+        :regs5 (gif-reg-id uv)
+        :regs6 (gif-reg-id xyz2)
+        :regs7 (gif-reg-id uv)
+        :regs8 (gif-reg-id xyz2)
+        )
+      )
+    :draw4-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #xa :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #xa :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x1
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :tme #x1 :abe #x1)
+        :nreg #x9
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id rgbaq)
+        :regs1 (gif-reg-id st)
+        :regs2 (gif-reg-id xyz2)
+        :regs3 (gif-reg-id st)
+        :regs4 (gif-reg-id xyz2)
+        :regs5 (gif-reg-id st)
+        :regs6 (gif-reg-id xyz2)
+        :regs7 (gif-reg-id st)
+        :regs8 (gif-reg-id xyz2)
+        )
+      )
+    :sprite-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x1
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :abe #x1 :fst #x1)
+        :nreg #x5
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id rgbaq)
+        :regs1 (gif-reg-id uv)
+        :regs2 (gif-reg-id xyz2)
+        :regs3 (gif-reg-id uv)
+        :regs4 (gif-reg-id xyz2)
+        )
+      )
+    :adgif-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64 :nloop #x5 :eop #x1 :nreg #x1)
+      :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d))
+      )
+    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+    :offset (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
+    :last-name #f
+    :last-tex #f
+    :engine #f
+    :engine-key #x800
+    :race-tex #f
+    :race-scale 16384.0
+    :race-level #f
+    :sprite2-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x1
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :abe #x1)
+        :nreg #x5
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id rgbaq)
+        :regs1 (gif-reg-id st)
+        :regs2 (gif-reg-id xyz2)
+        :regs3 (gif-reg-id st)
+        :regs4 (gif-reg-id xyz2)
+        )
+      )
+    :frustum-alpha 1.0
+    )
+  )
+
+(define *minimap-class-list* (new 'static 'inline-array minimap-class-node 71
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :w 1.0)
+                                 :flags (minimap-flag trail bigmap)
+                                 :name "none"
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 2920448.0 :y 32768.0 :z 3080192.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "onintent"
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 3346432.0 :y 32768.0 :z -1384448.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "ruins"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x1 #x0))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 4505600.0 :z 4505600.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "vinroom"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x0))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x -1761280.0 :z 856064.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "mountain"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x3 #x0))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 4751360.0 :y 32768.0 :z 241664.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "hideout"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x4 #x0))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 4378624.0 :y -34734.08 :z 2097152.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "sewer"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x1 #x1))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 2285568.0 :y 32768.0 :z -3252224.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "atoll"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x1))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x -282624.0 :y 45056.0 :z 5464064.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "hiphog"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x3 #x1))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 3084288.0 :z 929792.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "fortress"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x4 #x1))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 1757184.0 :z 5386240.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "gungame"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x5 #x1))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 1843200.0 :y 34816.0 :z 5275648.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "gun-yellow"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x1 #x2))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :g #x7f :b #x7f :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 442368.0 :z -1843200.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "garage"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x0 #x2))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 835584.0 :z -712704.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "palace-cable"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x4 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :w 1.0)
+                                 :name "guard"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x0 #x1))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #x7f :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :w 1.0)
+                                 :flags (minimap-flag trail bigmap goal)
+                                 :name "goal"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x0 #x4))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :g #x7f :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :w 1.0)
+                                 :flags (minimap-flag clamp bigmap goal)
+                                 :name "goal-no-trail"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x0 #x4))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :g #x7f :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :w 1.0)
+                                 :name "parking-spot"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x0 #x1))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #x7f :g #x7f :b #x7f :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x -1761280.0 :z 856064.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "forest"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x3 #x0))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x -450560.0 :z 1982464.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap)
+                                 :name "kiosk"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x3 #x2))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 1523712.0 :z 7372800.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "dig"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x2))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x -1761280.0 :z 856064.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "canyon"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x3 #x0))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 839680.0 :z 3756032.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "tomb"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x4 #x2))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 1904640.0 :z 1753088.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "tanker"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x5 #x0))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :w 1.0)
+                                 :flags (minimap-flag trail flash bigmap)
+                                 :name "kid"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x0 #x1))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :g #x7f :b #x7f :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 3121152.0 :z 3551232.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "consite"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x5 #x2))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :g #x7f :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 786432.0 :z 3014656.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "palace"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x5 #x0))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 1523712.0 :z 7372800.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "castle"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x2))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 86016.0 :z 7151616.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "underport"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x0 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :g #x7f :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 1126400.0 :z -2863104.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "stadium"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x0 #x2))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 2408448.0 :z 7798784.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap)
+                                 :name "port-turret"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x5 #x1))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 2895872.0 :z -1855488.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "oracle"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x1 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :w 1.0)
+                                 :flags (minimap-flag frustum)
+                                 :name "guard-frustum"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x0 #x1))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #x7f :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "burning-bush"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 1843200.0 :y 34816.0 :z 5275648.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "gun-dark"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x1 #x2))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :g #x7f :b #x7f :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 3137536.0 :y 34324.48 :z -2962923.5 :w 1.0)
+                                 :flags (minimap-flag trail bigmap city-only)
+                                 :name "slumc-seal"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x3 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :w 1.0)
+                                 :flags (minimap-flag racer)
+                                 :name "racer"
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #x7f :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :w 1.0)
+                                 :flags (minimap-flag racer)
+                                 :name "racer-target"
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :w 1.0)
+                                 :flags (minimap-flag racer)
+                                 :name "racer-errol"
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 166871.05 :y 49192.96 :z -2900009.0 :w 1.0)
+                                 :flags (minimap-flag trail bigmap)
+                                 :name "flag"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x5 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x -258048.0 :y 32768.0 :z -96256.0 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-gena"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x -1567539.2 :y 32768.0 :z -805683.2 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-gena-2"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 683663.4 :y 32768.0 :z -1237483.5 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-genb"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 1126400.0 :y 32768.0 :z -270336.0 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-genb-2"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 884736.0 :y 32768.0 :z 9445.376 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-genc"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 159744.0 :y 32768.0 :z 1081344.0 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-genc-2"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 3391774.8 :y 33341.44 :z 984637.44 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-sluma"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 2891899.0 :y 32768.0 :z -306487.28 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-slumb"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 1738997.8 :y 32768.0 :z -280698.88 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-slumb-2"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 2180219.0 :y 32768.0 :z -2407219.2 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-slumc"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 2602066.0 :y 31662.08 :z 6453739.5 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-port-3"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 1839267.9 :y 31662.08 :z 5443010.5 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-port-2"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x -423485.44 :y 31744.0 :z 5558599.5 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-port"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x -224952.31 :y 32768.0 :z 362332.16 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-farma"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x -1280532.5 :y 32768.0 :z 4410286.0 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-farmb"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 3178741.8 :y 32768.0 :z 3331031.0 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-inda"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 3182592.0 :y 32768.0 :z 2916352.0 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-indb"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x -733184.0 :y 32768.0 :z 3481600.0 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-marka"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 2985451.5 :y 34406.4 :z 2185216.0 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-markb"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 2576916.5 :y 34406.4 :z 3131310.0 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-markb-2"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 378306.56 :y 65536.0 :z 1866915.9 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-pal"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 1256243.2 :y 32768.0 :z 3622092.8 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-pal-2"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 1392926.8 :y 32768.0 :z -3109273.5 :w 1.0)
+                                 :flags (minimap-flag bigmap city-only)
+                                 :name "bbush-stadium"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x2 #x3))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 1542847.2 :y 196168.9 :z -4314233.0 :w 1.0)
+                                 :flags (minimap-flag bigmap goal)
+                                 :name "atoll-valve"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x0 #x4))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :g #x7f :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 2277804.5 :y 217672.9 :z -4571725.5 :w 1.0)
+                                 :flags (minimap-flag bigmap goal)
+                                 :name "atoll-ashelin"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x0 #x4))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :g #x7f :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x -3100565.5 :y 547275.56 :z 1190112.5 :w 1.0)
+                                 :flags (minimap-flag bigmap goal)
+                                 :name "mountain-lens"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x0 #x4))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :g #x7f :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x -2833539.0 :y 496445.44 :z 11345.101 :w 1.0)
+                                 :flags (minimap-flag bigmap goal)
+                                 :name "mountain-shard"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x0 #x4))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :g #x7f :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x -3448408.5 :y 567047.8 :z 1029759.4 :w 1.0)
+                                 :flags (minimap-flag bigmap goal)
+                                 :name "mountain-gear"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x0 #x4))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :g #x7f :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x 4357507.5 :y 205120.72 :z -2286701.2 :w 1.0)
+                                 :flags (minimap-flag bigmap goal)
+                                 :name "ruins-hut"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x0 #x4))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :g #x7f :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :x -2575550.8 :y 156067.02 :z 3728844.8 :w 1.0)
+                                 :flags (minimap-flag bigmap goal)
+                                 :name "forest-samos"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x0 #x4))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :g #x7f :a #x80)
+                                 )
+                               (new 'static 'minimap-class-node
+                                 :default-position (new 'static 'vector :w 1.0)
+                                 :name "metalhead"
+                                 :icon-xy (new 'static 'vector2ub :data (new 'static 'array uint8 2 #x0 #x1))
+                                 :scale 1.0
+                                 :color (new 'static 'rgba :r #x7f :b #x7f :a #x80)
+                                 )
+                               )
+        )
+
+(let ((gp-0 *minimap*))
+  (set! (-> gp-0 engine) (new 'global 'engine-minimap '*minimap* 64 connection-minimap))
+  (countdown (v1-7 6)
+    (set! (-> gp-0 trail v1-7 used-by) #f)
+    )
+  )
+
+(defmethod debug-draw minimap ((obj minimap))
+  (with-pp
+    (when *trail-graph*
+      (dotimes (s5-0 6)
+        (let ((s4-0 (-> obj trail s5-0)))
+          (when (and (-> s4-0 used-by)
+                     (>= (-> s4-0 node-count) 0)
+                     (< (- (-> pp clock frame-counter) (the-as int (-> s4-0 last-updated))) (seconds 5))
+                     )
+            (let* ((a3-0 (target-pos 0))
+                   (v1-12 s5-0)
+                   (t1-0 (cond
+                           ((zero? v1-12)
+                            *color-green*
+                            )
+                           ((= v1-12 1)
+                            *color-blue*
+                            )
+                           ((= v1-12 2)
+                            *color-white*
+                            )
+                           ((= v1-12 3)
+                            *color-red*
+                            )
+                           (else
+                             *color-magenta*
+                             )
+                           )
+                         )
+                   )
+              (debug-draw-path
+                *trail-graph*
+                (-> s4-0 node-count)
+                (-> s4-0 node-id)
+                a3-0
+                (-> s4-0 cached-info orig-goal-pos)
+                t1-0
+                (* 1024.0 (the float s5-0))
+                )
+              )
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+(defmethod update-trails minimap ((obj minimap))
+  "Main function to do trail search per-frame"
+  (with-pp
+    (let ((s5-0 *trail-graph*))
+      (when s5-0
+        (.mtc0 Count 0)
+        (let ((v1-1 0))
+          (while (< (the-as uint v1-1) (the-as uint #x605a))
+            (let ((v1-2 (-> s5-0 mode)))
+              (cond
+                ((= v1-2 1)
+                 (run-until-done-or-timeout s5-0 #x605a)
+                 )
+                ((zero? v1-2)
+                 (let ((v1-5 -1))
+                   (let ((a0-5 0))
+                     (countdown (a1-1 6)
+                       (let* ((a2-3 (-> obj trail a1-1))
+                              (a3-0 (-> a2-3 used-by))
+                              )
+                         (when (and a3-0 (and (< 0.0 (-> a3-0 alpha)) (or (< v1-5 0) (< (the-as int (-> a2-3 last-updated)) a0-5))))
+                           (set! v1-5 a1-1)
+                           (set! a0-5 (the-as int (-> a2-3 last-updated)))
+                           )
+                         )
+                       )
+                     (let ((a1-5 (-> pp clock frame-counter)))
+                       (if (or (< v1-5 0) (= a0-5 a1-5))
+                           (goto cfg-68)
+                           )
+                       )
+                     )
+                   (let ((s4-0 (-> obj trail v1-5))
+                         (s3-0 (the-as object #f))
+                         )
+                     (let* ((v1-9 (-> s4-0 used-by))
+                            (s2-0 (-> v1-9 position))
+                            )
+                       (set! s3-0 (cond
+                                    ((= s2-0 #t)
+                                     (let* ((s2-1 (handle->process (-> v1-9 handle)))
+                                            (v1-13 (if (type? s2-1 process-drawable)
+                                                       s2-1
+                                                       )
+                                                   )
+                                            )
+                                       (if v1-13
+                                           (set! s3-0 (-> (the-as process-drawable v1-13) root trans))
+                                           )
+                                       )
+                                     s3-0
+                                     )
+                                    ((and (= (logand (the-as int s2-0) 7) 4) (= (-> (the-as basic s2-0) type) entity-actor))
+                                     (let* ((v1-19 s2-0)
+                                            (s3-1 (if v1-19
+                                                      (-> (the-as entity-actor v1-19) extra process)
+                                                      )
+                                                  )
+                                            (v1-21 (if (type? s3-1 process-drawable)
+                                                       s3-1
+                                                       )
+                                                   )
+                                            )
+                                       (if v1-21
+                                           (set! s3-0 (-> (the-as process-drawable v1-21) root trans))
+                                           (set! s3-0 (-> (the-as entity-actor s2-0) extra trans))
+                                           )
+                                       )
+                                     s3-0
+                                     )
+                                    (else
+                                      s2-0
+                                      )
+                                    )
+                             )
+                       )
+                     (when s3-0
+                       (do-search! s5-0 (target-pos 0) (the-as vector s3-0) (-> s4-0 cached-info))
+                       (set! (-> s4-0 search-id) (-> s5-0 search-id))
+                       )
+                     )
+                   )
+                 )
+                ((or (= v1-2 3) (= v1-2 2))
+                 (countdown (v1-33 6)
+                   (let ((s4-1 (-> obj trail v1-33)))
+                     (when (and (= (-> s4-1 search-id) (-> s5-0 search-id)) (-> s4-1 used-by))
+                       (set! (-> s4-1 node-count)
+                             (get-path-to-root s5-0 (-> s4-1 node-id) 64 (&-> s4-1 goal-node-id) (&-> s4-1 node-path-dist))
+                             )
+                       (set! (-> s4-1 last-updated) (the-as uint (-> pp clock frame-counter)))
+                       (goto cfg-64)
+                       )
+                     )
+                   )
+                 (label cfg-64)
+                 (reset-search-state s5-0)
+                 )
+                )
+              )
+             ;; added in PC port: they timed stuff, we just allow it to run a fixed number of iterations.
+            (+! v1-1 100)
+            (.mfc0 v1-1 Count)
+            )
+          )
+        (label cfg-68)
+        0
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+(defmethod get-trail-for-connection minimap ((obj minimap) (arg0 connection-minimap) (arg1 symbol))
+  "Get a trail for connection. If arg1 is set, allow allocating a new one."
+  (local-vars (gp-0 minimap-trail))
+  (countdown (v1-0 6)
+    (let ((a3-3 (-> obj trail v1-0)))
+      (when (= (-> a3-3 used-by) arg0)
+        (set! gp-0 a3-3)
+        (goto cfg-14)
+        )
+      )
+    )
+  (when arg1
+    (dotimes (v1-4 6)
+      (let ((a3-7 (-> obj trail v1-4)))
+        (when (not (-> a3-7 used-by))
+          (set! (-> a3-7 used-by) arg0)
+          (set! gp-0 a3-7)
+          (goto cfg-14)
+          )
+        )
+      )
+    )
+  (set! gp-0 (the-as minimap-trail #f))
+  (label cfg-14)
+  (if (and gp-0 arg1)
+      (reset gp-0)
+      )
+  gp-0
+  )
+
+;; WARN: Function (method 13 minimap) has a return type of none, but the expression builder found a return statement.
+(defmethod free-trail-by-connection minimap ((obj minimap) (arg0 connection-minimap))
+  "Free the trail associated with this connection."
+  (countdown (v1-0 6)
+    (let ((a2-3 (-> obj trail v1-0)))
+      (when (= (-> a2-3 used-by) arg0)
+        (set! (-> a2-3 used-by) #f)
+        (reset a2-3)
+        (return #f)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod reset minimap-trail ((obj minimap-trail))
+  (set! (-> obj node-count) -1)
+  (set! (-> obj search-id) (the-as uint 0))
+  (set! (-> obj last-updated) (the-as uint 0))
+  (set! (-> obj cached-info goal-conn-id) -1)
+  (none)
+  )
+
+(defmethod get-icon-draw-pos minimap ((obj minimap) (arg0 connection-minimap) (arg1 minimap-trail) (arg2 vector) (arg3 float) (arg4 vector))
+  "Follow the path from the start until it reaches the border of the map, then get this position."
+  (let ((s5-0 (new 'stack-no-clear 'inline-array 'vector 4)))
+    (vector-reset! (-> s5-0 2))
+    (vector-reset! (-> s5-0 1))
+    (let ((s1-0 0))
+      (while (>= (-> arg1 node-count) s1-0)
+        (set! (-> s5-0 0 quad) (-> s5-0 1 quad))
+        (cond
+          ((< s1-0 (-> arg1 node-count))
+           (get-node-location-by-id *trail-graph* (-> arg1 node-id s1-0) (-> s5-0 1))
+           (+! s1-0 1)
+           (vector-! (-> s5-0 1) (-> s5-0 1) arg2)
+           (set! (-> s5-0 1 x) (* (-> s5-0 1 x) arg3))
+           (set! (-> s5-0 1 z) (* (-> s5-0 1 z) arg3))
+           (set! (-> s5-0 1 y) 0.0)
+           (set! (-> s5-0 1 w) 1.0)
+           )
+          (else
+            (vector-negate! (-> s5-0 1) arg4)
+            (+! s1-0 1)
+            )
+          )
+        (let ((v1-12 (-> s5-0 1)))
+          (when (>= (sqrtf (+ (* (-> v1-12 x) (-> v1-12 x)) (* (-> v1-12 z) (-> v1-12 z)))) 50.0)
+            (vector-! (-> s5-0 3) (-> s5-0 0) (-> s5-0 1))
+            (let* ((f1-6 (ray-sphere-intersect (-> s5-0 1) (-> s5-0 3) (-> s5-0 2) 50.0))
+                   (f0-12 (fmax 0.0 (fmin 1.0 f1-6)))
+                   )
+              (vector-float*! arg4 (-> s5-0 3) f0-12)
+              )
+            (vector+! arg4 arg4 (-> s5-0 1))
+            (vector-negate! arg4 arg4)
+            (return #t)
+            )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+(defmethod get-distance-with-path minimap-trail ((obj minimap-trail) (arg0 vector) (arg1 vector))
+  "Assuming we go from a to b, using this path in the middle, how long is it?"
+  0.0
+  (let ((s4-0 *trail-graph*))
+    (cond
+      ((and s4-0 (> (-> obj node-count) 0))
+       (let ((f30-0 (-> obj node-path-dist))
+             (s2-0 (new 'stack-no-clear 'vector))
+             )
+         (get-node-location-by-id s4-0 (-> obj node-id 0) s2-0)
+         (let ((f30-1 (+ f30-0 (vector-vector-xz-distance arg0 s2-0))))
+           (get-node-location-by-id s4-0 (the-as uint (-> obj goal-node-id)) s2-0)
+           (+ f30-1 (vector-vector-xz-distance arg1 s2-0))
+           )
+         )
+       )
+      (else
+        (vector-vector-xz-distance arg0 arg1)
+        )
+      )
+    )
+  )
+
+(defmethod print connection-minimap ((obj connection-minimap))
+  (format
+    #t
+    "#<connection-minimap ~16S #x~4X ~A @ #x~X>"
+    (-> obj class name)
+    (-> obj flags)
+    (handle->process (-> obj handle))
+    obj
+    )
+  obj
+  )
+
+
+(defmethod run-pending-updates! engine-minimap ((obj engine-minimap) (arg0 time-frame))
+  (with-pp
+    (let ((s2-0 (the-as (pointer connection-pers) (&-> obj alive-list-override)))
+          (s3-0 (-> obj alive-list-override))
+          )
+      (while s3-0
+        (let ((s4-0 (-> s3-0 next)))
+          (when (not (paused?))
+            (cond
+              ((logtest? (-> s3-0 flags) (minimap-flag fade-out))
+               (logclear! (-> s3-0 flags) (minimap-flag fade-in))
+               (seek! (-> s3-0 alpha) 0.0 (-> pp clock seconds-per-frame))
+               )
+              ((and (logtest? (-> s3-0 flags) (minimap-flag task-graph))
+                    (not (logtest? (-> *setting-control* user-current minimap) 32))
+                    )
+               (logior! (-> s3-0 flags) (minimap-flag fade-in))
+               (seek! (-> s3-0 alpha) 0.0 (-> pp clock seconds-per-frame))
+               )
+              ((logtest? (-> s3-0 flags) (minimap-flag fade-in))
+               (let ((f30-0 1.0))
+                 (when (logtest? (-> s3-0 class flags) (minimap-flag trail))
+                   (let ((v1-26 (get-trail-for-connection *minimap* s3-0 #f)))
+                     (if (or (not v1-26) (>= (- (-> pp clock frame-counter) (the-as int (-> v1-26 last-updated))) (seconds 5)))
+                         (set! f30-0 0.0001)
+                         )
+                     )
+                   )
+                 (seek! (-> s3-0 alpha) f30-0 (-> pp clock seconds-per-frame))
+                 )
+               (if (= (-> s3-0 alpha) 1.0)
+                   (logclear! (-> s3-0 flags) (minimap-flag fade-in))
+                   )
+               )
+              )
+            )
+          (cond
+            ((and (logtest? (-> s3-0 flags) (minimap-flag fade-out)) (= (-> s3-0 alpha) 0.0))
+             (kill-callback obj s3-0)
+             (set! (-> s2-0 0) (-> s3-0 next))
+             (set! (-> s3-0 next) (-> obj dead-list-override))
+             (set! (-> obj dead-list-override) s3-0)
+             (+! (-> obj length) -1)
+             )
+            ((and (handle->process (-> s3-0 handle))
+                  (not (and (= (logand (the-as int (-> s3-0 position)) 7) 4)
+                            (= (-> (the-as basic (-> s3-0 position)) type) entity-actor)
+                            (logtest? (-> (the-as entity-actor (-> s3-0 position)) extra perm status)
+                                      (entity-perm-status dead subtask-complete bit-12)
+                                      )
+                            )
+                       )
+                  )
+             (update-callback obj)
+             (set! s2-0 (&-> s3-0 next))
+             )
+            (else
+              (logior! (-> s3-0 flags) (minimap-flag fade-out))
+              (update-callback obj)
+              (set! s2-0 (&-> s3-0 next))
+              )
+            )
+          (set! s3-0 (the-as connection-minimap s4-0))
+          )
+        )
+      )
+    (set! (-> obj execute-time) arg0)
+    0
+    (none)
+    )
+  )
+
+(defmethod add-icon! minimap ((obj minimap) (arg0 process) (arg1 uint) (arg2 int) (arg3 vector) (arg4 int))
+  "Add an icon to the map!"
+  (when (not arg2)
+    (let ((v1-3 (+ (-> *minimap* engine-key) 1)))
+      (set! (-> *minimap* engine-key) v1-3)
+      (set! arg2 (the-as int v1-3))
+      )
+    )
+  (let ((s3-0 (the-as connection-minimap (schedule-callback (-> obj engine) arg2 0))))
+    (let ((s2-1 (-> *minimap-class-list* arg1)))
+      (when s3-0
+        (when (not (logtest? (-> s3-0 flags) (minimap-flag active)))
+          (set! (-> s3-0 class) s2-1)
+          (set! (-> s3-0 last-world-pos quad) (-> s2-1 default-position quad))
+          (vector-! (-> s3-0 last-relative-pos) (target-pos 0) (-> s3-0 last-world-pos))
+          (set! (-> s3-0 edge-ry) -131072.0)
+          )
+        (set! (-> s3-0 handle) (process->handle arg0))
+        (set! arg3 (cond
+                     (arg3
+                       (empty)
+                       arg3
+                       )
+                     (else
+                       (-> s2-1 default-position)
+                       )
+                     )
+              )
+        (set! (-> s3-0 position) arg3)
+        (set! (-> s3-0 flags) (minimap-flag active fade-in))
+        (set! (-> s3-0 node) (the-as uint arg4))
+        )
+      )
+    s3-0
+    )
+  )
+
+;; WARN: Function (method 10 engine-minimap) has a return type of none, but the expression builder found a return statement.
+(defmethod kill-callback engine-minimap ((obj engine-minimap) (arg0 connection-pers))
+  (if (not arg0)
+      (return #f)
+      )
+  (if (logtest? (-> (the-as connection-minimap arg0) class flags) (minimap-flag trail))
+      (free-trail-by-connection *minimap* (the-as connection-minimap arg0))
+      )
+  (set! (-> arg0 update-time) (the-as time-frame #f))
+  ((method-of-type engine-pers kill-callback) obj arg0)
+  (none)
+  )
+
+(defun lookup-minimap-texture-by-name ((arg0 string) (arg1 string) (arg2 (pointer texture-page)))
+  (local-vars (sv-16 texture-page))
+  (dotimes (s3-0 LEVEL_TOTAL)
+    (let ((s2-0 (-> *level* level s3-0)))
+      (when (or (= (-> s2-0 status) 'active) (= (-> s2-0 status) 'reserved))
+        (set! sv-16 (-> s2-0 texture-page 8))
+        (when (and sv-16 (or (not arg1) (string= (-> sv-16 name) arg1)))
+          (dotimes (s1-0 (-> sv-16 length))
+            (let ((s0-0 (-> sv-16 data s1-0)))
+              (when (and s0-0 (string= (-> s0-0 name) arg0))
+                (if arg2
+                    (set! (-> arg2 0) sv-16)
+                    )
+                (set! (-> s2-0 texture-mask 8 mask quad) (-> s0-0 masks data 0 mask quad))
+                (return s0-0)
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (the-as texture #f)
+  )
+
+(defmethod update! minimap ((obj minimap))
+  (with-pp
+    (set! (-> obj ctywide) (level-get *level* 'ctywide))
+    (set! (-> obj map-bits) (the-as uint 0))
+    (dotimes (v1-2 (-> *level* length))
+      (let ((a0-5 (-> *level* level v1-2)))
+        (if (= (-> a0-5 status) 'active)
+            (logior! (-> obj map-bits) (-> a0-5 info city-map-bits))
+            )
+        )
+      )
+    (let ((s5-0 (the int (* 0.0000006357829 (+ 3145728.0 (-> (target-pos 0) x)))))
+          (v1-9 (the int (* 0.0000006357829 (+ 3145728.0 (-> (target-pos 0) z)))))
+          )
+      (when (and (< s5-0 5) (< v1-9 7) (logtest? (-> obj map-bits) (ash 1 (+ (* 5 v1-9) s5-0))))
+        (let ((a0-19 (-> *minimap-texture-name-array* data (+ (* 5 v1-9) s5-0))))
+          (when a0-19
+            (set! (-> obj last-name) a0-19)
+            (set! (-> obj minimap-corner quad) (-> *minimap-corner-array* data (+ (* 5 v1-9) s5-0) quad))
+            (dotimes (a0-21 (-> *level* length))
+              (let ((a1-23 (-> *level* level a0-21)))
+                (when (= (-> a1-23 status) 'active)
+                  (if (logtest? (-> a1-23 info city-map-bits) (ash 1 (+ (* 5 v1-9) s5-0)))
+                      (set! (-> obj level) a1-23)
+                      )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    (set! (-> obj last-tex)
+          (lookup-minimap-texture-by-name (-> obj last-name) (the-as string #f) (the-as (pointer texture-page) #f))
+          )
+    (let ((f30-2 (-> pp clock seconds-per-frame)))
+      (let ((v1-12 (-> obj last-tex)))
+        (cond
+          ((or (not (-> obj level)) (zero? (-> obj level)) (!= (-> obj level status) 'active) (not v1-12))
+           (set! (-> obj offset w) 0.0)
+           )
+          ((not (logtest? (-> *setting-control* user-current minimap) 128))
+           (seek! (-> obj offset w) 0.0 f30-2)
+           )
+          ((and *target* (nonzero? (-> obj map-bits)))
+           (set! (-> obj offset w) (fmin 0.5 (+ (-> obj offset w) f30-2)))
+           )
+          (else
+            (set! (-> obj offset w) 0.0)
+            )
+          )
+        )
+      (cond
+        ((and *target* (focus-test? *target* board pilot))
+         (let ((f0-14 0.5)
+               (f1-2 0.000008138021)
+               (f2-0 122880.0)
+               (v1-33 (-> *target* control transv))
+               )
+           (set! (-> obj target-inv-scale)
+                 (fmax f0-14 (* f1-2 (fmin f2-0 (sqrtf (+ (* (-> v1-33 x) (-> v1-33 x)) (* (-> v1-33 z) (-> v1-33 z)))))))
+                 )
+           )
+         )
+        (else
+          (set! (-> obj target-inv-scale) 0.5)
+          )
+        )
+      (seek! (-> obj offset y) (-> obj target-inv-scale) (* 0.5 f30-2))
+      )
+    (run-pending-updates! (-> obj engine) (-> *display* base-clock frame-counter))
+    (when (and (-> obj ctywide) (and (= (-> obj ctywide status) 'active) (!= (-> obj offset w) 0.0)))
+      (update-trails obj)
+      (if *display-trail-graph*
+          (debug-draw obj)
+          )
+      #t
+      )
+    )
+  )
+
+;; WARN: Return type mismatch pointer vs none.
+(defmethod draw-racer-2 minimap ((obj minimap) (arg0 minimap-draw-work) (arg1 connection-minimap))
+  (local-vars
+    (sv-16 process)
+    (sv-20 dma-buffer)
+    (sv-208 pointer)
+    (sv-212 vector)
+    (sv-216 vector)
+    (sv-220 matrix)
+    (sv-224 matrix)
+    (sv-228 matrix)
+    )
+  (let ((s3-0 (handle->process (-> arg1 handle))))
+    (set! sv-16 (if (type? s3-0 process-drawable)
+                    s3-0
+                    )
+          )
+    )
+  (set! sv-20 (-> arg0 buf))
+  (when (and sv-16 (nonzero? (-> (the-as process-drawable sv-16) root)))
+    (set! sv-208 (-> sv-20 base))
+    (set! sv-212 (new 'stack-no-clear 'vector))
+    (set! sv-216 (new 'stack-no-clear 'vector))
+    (set! sv-220 (new 'stack-no-clear 'matrix))
+    (set! sv-224 (new 'stack-no-clear 'matrix))
+    (set! sv-228 (new 'stack-no-clear 'matrix))
+    (set! (-> sv-216 quad) (-> (matrix-world->local #f #f) vector 2 quad))
+    (set! (-> sv-216 y) 0.0)
+    (vector-normalize! sv-216 1.0)
+    (vector-z-quaternion! (the-as vector sv-220) (-> (the-as process-drawable sv-16) root quat))
+    (vector-xz-normalize! (the-as vector sv-220) 1.0)
+    (set! (-> sv-220 vector 0 y) 0.0)
+    (set! (-> sv-220 vector 0 w) 0.0)
+    (vector-! sv-212 (target-pos 0) (-> (the-as process-drawable sv-16) root trans))
+    (let ((f0-4 (/ (-> sv-212 x) (* 16384.0 (-> obj offset y))))
+          (f1-3 (/ (-> sv-212 z) (* 16384.0 (-> obj offset y))))
+          )
+      (set-vector! (-> sv-224 vector 0) (-> sv-216 z) 0.0 (- (-> sv-216 x)) 0.0)
+      (set-vector! (-> sv-224 vector 1) 0.0 1.0 0.0 0.0)
+      (set-vector! (-> sv-224 vector 2) (-> sv-216 x) 0.0 (-> sv-216 z) 0.0)
+      (set-vector! (-> sv-224 trans) 164.0 0.0 164.0 1.0)
+      (set-vector! (-> sv-228 vector 0) (-> sv-220 vector 0 z) 0.0 (- (-> sv-220 vector 0 x)) 0.0)
+      (set-vector! (-> sv-228 vector 1) 0.0 1.0 0.0 0.0)
+      (set-vector! (-> sv-228 vector 2) (-> sv-220 vector 0 x) 0.0 (-> sv-220 vector 0 z) 0.0)
+      (set-vector! (-> sv-228 trans) f0-4 0.0 f1-3 1.0)
+      )
+    (matrix*! sv-228 sv-228 sv-224)
+    (let ((f0-7 7.0))
+      (set-vector! (-> arg0 corner 0) 0.0 0.0 (- f0-7) 1.0)
+      (set-vector! (-> arg0 corner 1) f0-7 0.0 0.0 1.0)
+      (set-vector! (-> arg0 corner 2) (- f0-7) 0.0 0.0 1.0)
+      (set-vector! (-> arg0 corner 3) 0.0 0.0 f0-7 1.0)
+      )
+    (vector-matrix*! (the-as vector (-> arg0 corner)) (the-as vector (-> arg0 corner)) sv-228)
+    (vector-matrix*! (-> arg0 corner 1) (-> arg0 corner 1) sv-228)
+    (vector-matrix*! (-> arg0 corner 2) (-> arg0 corner 2) sv-228)
+    (vector-matrix*! (-> arg0 corner 3) (-> arg0 corner 3) sv-228)
+    (let* ((a0-38 (-> arg1 class color))
+           (a0-45 (copy-and-set-field a0-38 r (shr (* (-> a0-38 r) (the-as uint (-> obj color x))) 7)))
+           (a0-52 (copy-and-set-field a0-45 g (shr (* (-> a0-45 g) (the-as uint (-> obj color y))) 7)))
+           (v1-57
+             (copy-and-set-field
+               (copy-and-set-field a0-52 b (shr (* (-> a0-52 b) (the-as uint (-> obj color z))) 7))
+               a
+               (the int (* 128.0 (-> arg1 alpha)))
+               )
+             )
+           )
+      (let ((a0-64 (-> obj draw4-tmpl dma-vif quad)))
+        (set! (-> (the-as (pointer uint128) sv-208)) a0-64)
+        )
+      (let ((a0-65 (-> obj draw4-tmpl quad 1)))
+        (set! (-> (the-as (pointer uint128) sv-208) 1) a0-65)
+        )
+      (set-vector!
+        (-> (the-as (inline-array vector4w) sv-208) 2)
+        (the-as int (-> v1-57 r))
+        (the-as int (-> v1-57 g))
+        (the-as int (-> v1-57 b))
+        (the-as int (-> v1-57 a))
+        )
+      )
+    (set-vector! (-> (the-as (inline-array vector) sv-208) 3) 0.0 0.0 1.0 0.0)
+    (set-vector!
+      (-> (the-as (inline-array vector4w) sv-208) 4)
+      (the int (* 16.0 (-> arg0 corner 0 x)))
+      (the int (* 16.0 (-> arg0 corner 0 z)))
+      #xffffff
+      0
+      )
+    (set-vector! (-> (the-as (inline-array vector) sv-208) 5) 1.0 0.0 1.0 0.0)
+    (set-vector!
+      (-> (the-as (inline-array vector4w) sv-208) 6)
+      (the int (* 16.0 (-> arg0 corner 1 x)))
+      (the int (* 16.0 (-> arg0 corner 1 z)))
+      #xffffff
+      0
+      )
+    (set-vector! (-> (the-as (inline-array vector) sv-208) 7) 0.0 1.0 1.0 0.0)
+    (set-vector!
+      (-> (the-as (inline-array vector4w) sv-208) 8)
+      (the int (* 16.0 (-> arg0 corner 2 x)))
+      (the int (* 16.0 (-> arg0 corner 2 z)))
+      #xffffff
+      0
+      )
+    (set-vector! (-> (the-as (inline-array vector) sv-208) 9) 1.0 1.0 1.0 0.0)
+    (set-vector!
+      (-> (the-as (inline-array vector4w) sv-208) 10)
+      (the int (* 16.0 (-> arg0 corner 3 x)))
+      (the int (* 16.0 (-> arg0 corner 3 z)))
+      #xffffff
+      0
+      )
+    (&+! (-> sv-20 base) 176)
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch pointer vs none.
+(defmethod draw-racer-1 minimap ((obj minimap) (arg0 minimap-draw-work) (arg1 connection-minimap) (arg2 float) (arg3 float) (arg4 float))
+  (local-vars
+    (sv-16 process)
+    (sv-20 float)
+    (sv-24 dma-buffer)
+    (sv-128 pointer)
+    (sv-132 vector)
+    (sv-136 vector)
+    (sv-140 matrix)
+    )
+  (let ((s0-0 (handle->process (-> arg1 handle))))
+    (set! sv-16 (if (type? s0-0 process-drawable)
+                    s0-0
+                    )
+          )
+    )
+  (set! sv-20 (-> *video-params* relative-x-scale))
+  (set! sv-24 (-> arg0 buf))
+  (when (and sv-16 (nonzero? (-> (the-as process-drawable sv-16) root)))
+    (set! sv-128 (-> sv-24 base))
+    (set! sv-132 (new 'stack-no-clear 'vector))
+    (set! sv-136 (new 'stack-no-clear 'vector))
+    (set! sv-140 (new 'stack-no-clear 'matrix))
+    (vector-z-quaternion! sv-136 (-> (the-as process-drawable sv-16) root quat))
+    (vector-xz-normalize! sv-136 -1.0)
+    (set! (-> sv-136 y) 0.0)
+    (set! (-> sv-136 w) 0.0)
+    (vector-! sv-132 (-> (the-as process-drawable sv-16) root trans) (-> obj race-corner))
+    (cond
+      ((-> *blit-displays-work* horizontal-flip-flag)
+       (let ((f0-4 (+ arg3 (* (- 128.0 (/ (-> sv-132 x) arg2)) sv-20)))
+             (f1-4 (+ arg4 (/ (-> sv-132 z) arg2)))
+             )
+         (set-vector! (-> sv-140 vector 0) (-> sv-136 z) 0.0 (-> sv-136 x) 0.0)
+         (set-vector! (-> sv-140 vector 1) 0.0 1.0 0.0 0.0)
+         (set-vector! (-> sv-140 vector 2) (- (-> sv-136 x)) 0.0 (-> sv-136 z) 0.0)
+         (set-vector! (-> sv-140 trans) f0-4 0.0 f1-4 1.0)
+         )
+       )
+      (else
+        (let ((f0-8 (+ arg3 (* (/ (-> sv-132 x) arg2) sv-20)))
+              (f1-9 (+ arg4 (/ (-> sv-132 z) arg2)))
+              )
+          (set-vector! (-> sv-140 vector 0) (-> sv-136 z) 0.0 (- (-> sv-136 x)) 0.0)
+          (set-vector! (-> sv-140 vector 1) 0.0 1.0 0.0 0.0)
+          (set-vector! (-> sv-140 vector 2) (-> sv-136 x) 0.0 (-> sv-136 z) 0.0)
+          (set-vector! (-> sv-140 trans) f0-8 0.0 f1-9 1.0)
+          )
+        )
+      )
+    (let ((f0-11 7.0))
+      (set-vector! (-> arg0 corner 0) 0.0 0.0 (- f0-11) 1.0)
+      (set-vector! (-> arg0 corner 1) f0-11 0.0 0.0 1.0)
+      (set-vector! (-> arg0 corner 2) (- f0-11) 0.0 0.0 1.0)
+      (set-vector! (-> arg0 corner 3) 0.0 0.0 f0-11 1.0)
+      )
+    (vector-matrix*! (the-as vector (-> arg0 corner)) (the-as vector (-> arg0 corner)) sv-140)
+    (vector-matrix*! (-> arg0 corner 1) (-> arg0 corner 1) sv-140)
+    (vector-matrix*! (-> arg0 corner 2) (-> arg0 corner 2) sv-140)
+    (vector-matrix*! (-> arg0 corner 3) (-> arg0 corner 3) sv-140)
+    (let* ((a0-32 (-> arg1 class color))
+           (a0-39 (copy-and-set-field a0-32 r (shr (* (-> a0-32 r) (the-as uint (-> obj color x))) 7)))
+           (a0-46 (copy-and-set-field a0-39 g (shr (* (-> a0-39 g) (the-as uint (-> obj color y))) 7)))
+           (v1-59
+             (copy-and-set-field
+               (copy-and-set-field a0-46 b (shr (* (-> a0-46 b) (the-as uint (-> obj color z))) 7))
+               a
+               (the int (* 128.0 (-> arg1 alpha)))
+               )
+             )
+           )
+      (let ((a0-58 (-> obj draw4-tmpl dma-vif quad)))
+        (set! (-> (the-as (pointer uint128) sv-128)) a0-58)
+        )
+      (let ((a0-59 (-> obj draw4-tmpl quad 1)))
+        (set! (-> (the-as (pointer uint128) sv-128) 1) a0-59)
+        )
+      (set-vector!
+        (-> (the-as (inline-array vector4w) sv-128) 2)
+        (the-as int (-> v1-59 r))
+        (the-as int (-> v1-59 g))
+        (the-as int (-> v1-59 b))
+        (the-as int (-> v1-59 a))
+        )
+      )
+    (set-vector! (-> (the-as (inline-array vector) sv-128) 3) 0.0 0.0 1.0 0.0)
+    (set-vector!
+      (-> (the-as (inline-array vector4w) sv-128) 4)
+      (the int (* 16.0 (-> arg0 corner 0 x)))
+      (the int (* 16.0 (-> arg0 corner 0 z)))
+      #xffffff
+      0
+      )
+    (set-vector! (-> (the-as (inline-array vector) sv-128) 5) 1.0 0.0 1.0 0.0)
+    (set-vector!
+      (-> (the-as (inline-array vector4w) sv-128) 6)
+      (the int (* 16.0 (-> arg0 corner 1 x)))
+      (the int (* 16.0 (-> arg0 corner 1 z)))
+      #xffffff
+      0
+      )
+    (set-vector! (-> (the-as (inline-array vector) sv-128) 7) 0.0 1.0 1.0 0.0)
+    (set-vector!
+      (-> (the-as (inline-array vector4w) sv-128) 8)
+      (the int (* 16.0 (-> arg0 corner 2 x)))
+      (the int (* 16.0 (-> arg0 corner 2 z)))
+      #xffffff
+      0
+      )
+    (set-vector! (-> (the-as (inline-array vector) sv-128) 9) 1.0 1.0 1.0 0.0)
+    (set-vector!
+      (-> (the-as (inline-array vector4w) sv-128) 10)
+      (the int (* 16.0 (-> arg0 corner 3 x)))
+      (the int (* 16.0 (-> arg0 corner 3 z)))
+      #xffffff
+      0
+      )
+    (&+! (-> sv-24 base) 176)
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch pointer vs none.
+(defmethod draw-frustum-1 minimap ((obj minimap) (arg0 minimap-draw-work) (arg1 connection-minimap))
+  (local-vars
+    (sv-16 process)
+    (sv-20 dma-buffer)
+    (sv-208 pointer)
+    (sv-212 texture)
+    (sv-216 vector)
+    (sv-220 vector)
+    (sv-224 matrix)
+    (sv-228 matrix)
+    (sv-232 matrix)
+    )
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         )
+    (let ((s3-0 (handle->process (-> arg1 handle))))
+      (set! sv-16 (if (type? s3-0 process-drawable)
+                      s3-0
+                      )
+            )
+      )
+    (set! sv-20 (-> arg0 buf))
+    (when (and sv-16 (nonzero? (-> (the-as process-drawable sv-16) root)))
+      (set! sv-208 (-> sv-20 base))
+      (set! sv-212 (lookup-texture-by-id-fast (new 'static 'texture-id :index #x9 :page #x679)))
+      (set! sv-216 (new 'stack-no-clear 'vector))
+      (set! sv-220 (new 'stack-no-clear 'vector))
+      (set! sv-224 (new 'stack-no-clear 'matrix))
+      (set! sv-228 (new 'stack-no-clear 'matrix))
+      (set! sv-232 (new 'stack-no-clear 'matrix))
+      (when sv-212
+        (set! (-> sv-220 quad) (-> (matrix-world->local #f #f) vector 2 quad))
+        (set! (-> sv-220 y) 0.0)
+        (vector-normalize! sv-220 1.0)
+        (vector-z-quaternion! (the-as vector sv-224) (-> (the-as process-drawable sv-16) root quat))
+        (vector-xz-normalize! (the-as vector sv-224) 1.0)
+        (set! (-> sv-224 vector 0 y) 0.0)
+        (set! (-> sv-224 vector 0 w) 0.0)
+        (vector-! sv-216 (target-pos 0) (-> (the-as process-drawable sv-16) root trans))
+        (let ((f0-4 (/ (-> sv-216 x) (* 16384.0 (-> obj offset y))))
+              (f1-3 (/ (-> sv-216 z) (* 16384.0 (-> obj offset y))))
+              )
+          (set-vector! (-> sv-228 vector 0) (-> sv-220 z) 0.0 (- (-> sv-220 x)) 0.0)
+          (set-vector! (-> sv-228 vector 1) 0.0 1.0 0.0 0.0)
+          (set-vector! (-> sv-228 vector 2) (-> sv-220 x) 0.0 (-> sv-220 z) 0.0)
+          (set-vector! (-> sv-228 trans) 164.0 0.0 164.0 1.0)
+          (set-vector! (-> sv-232 vector 0) (-> sv-224 vector 0 z) 0.0 (- (-> sv-224 vector 0 x)) 0.0)
+          (set-vector! (-> sv-232 vector 1) 0.0 1.0 0.0 0.0)
+          (set-vector! (-> sv-232 vector 2) (-> sv-224 vector 0 x) 0.0 (-> sv-224 vector 0 z) 0.0)
+          (set-vector! (-> sv-232 trans) f0-4 0.0 f1-3 1.0)
+          )
+        (matrix*! sv-232 sv-232 sv-228)
+        (let ((f0-8 (/ -10.0 (-> obj offset y))))
+          (set-vector! (-> arg0 corner 0) 0.0 0.0 0.0 1.0)
+          (set-vector! (-> arg0 corner 1) (- f0-8) 0.0 f0-8 1.0)
+          (set-vector! (-> arg0 corner 2) f0-8 0.0 f0-8 1.0)
+          (set-vector! (-> arg0 corner 3) 0.0 0.0 (* 2.0 f0-8) 1.0)
+          )
+        (vector-matrix*! (the-as vector (-> arg0 corner)) (the-as vector (-> arg0 corner)) sv-232)
+        (vector-matrix*! (-> arg0 corner 1) (-> arg0 corner 1) sv-232)
+        (vector-matrix*! (-> arg0 corner 2) (-> arg0 corner 2) sv-232)
+        (vector-matrix*! (-> arg0 corner 3) (-> arg0 corner 3) sv-232)
+        (let ((a0-40 (new 'stack-no-clear 'vector))
+              (v1-49 (new 'stack-no-clear 'vector))
+              )
+          (.lvf vf1 (&-> arg0 corner 0 quad))
+          (.lvf vf2 (&-> arg0 corner 1 quad))
+          (.lvf vf3 (&-> arg0 corner 2 quad))
+          (.lvf vf4 (&-> arg0 corner 3 quad))
+          (.min.vf vf5 vf1 vf2)
+          (.min.vf vf5 vf5 vf3)
+          (.min.vf vf5 vf5 vf4)
+          (.max.vf vf5 vf1 vf2)
+          (.max.vf vf5 vf5 vf3)
+          (.max.vf vf5 vf5 vf4)
+          (.svf (&-> a0-40 quad) vf5)
+          (.svf (&-> v1-49 quad) vf5)
+          (when (and (< (-> a0-40 x) 228.0) (< (-> a0-40 z) 228.0) (< 100.0 (-> v1-49 x)) (< 100.0 (-> v1-49 z)))
+            (let* ((a0-46 (-> arg1 class color))
+                   (a0-53 (copy-and-set-field a0-46 r (shr (* (-> a0-46 r) (the-as uint (-> obj color x))) 7)))
+                   (a0-60 (copy-and-set-field a0-53 g (shr (* (-> a0-53 g) (the-as uint (-> obj color y))) 7)))
+                   (s4-1
+                     (copy-and-set-field
+                       (copy-and-set-field a0-60 b (shr (* (-> a0-60 b) (the-as uint (-> obj color z))) 7))
+                       a
+                       (the int (* 128.0 (-> obj frustum-alpha) (-> arg1 alpha)))
+                       )
+                     )
+                   )
+              (let ((v1-60 (-> obj adgif-tmpl dma-vif quad)))
+                (set! (-> (the-as (pointer uint128) sv-208)) v1-60)
+                )
+              (let ((v1-61 (-> obj adgif-tmpl quad 1)))
+                (set! (-> (the-as (pointer uint128) sv-208) 1) v1-61)
+                )
+              (adgif-shader<-texture-simple! (the-as adgif-shader (&+ sv-208 32)) sv-212)
+              (let ((v1-63 (-> obj draw4-tmpl dma-vif quad)))
+                (set! (-> (the-as (pointer uint128) sv-208) 7) v1-63)
+                )
+              (let ((v1-64 (-> obj draw4-tmpl quad 1)))
+                (set! (-> (the-as (pointer uint128) sv-208) 8) v1-64)
+                )
+              (set-vector!
+                (-> (the-as (inline-array vector4w) sv-208) 9)
+                (the-as int (-> s4-1 r))
+                (the-as int (-> s4-1 g))
+                (the-as int (-> s4-1 b))
+                (the-as int (-> s4-1 a))
+                )
+              )
+            (set-vector! (-> (the-as (inline-array vector) sv-208) 10) 0.0 0.0 1.0 0.0)
+            (set-vector!
+              (-> (the-as (inline-array vector4w) sv-208) 11)
+              (the int (* 16.0 (-> arg0 corner 0 x)))
+              (the int (* 16.0 (-> arg0 corner 0 z)))
+              0
+              0
+              )
+            (set-vector! (-> (the-as (inline-array vector) sv-208) 12) 1.0 0.0 1.0 0.0)
+            (set-vector!
+              (-> (the-as (inline-array vector4w) sv-208) 13)
+              (the int (* 16.0 (-> arg0 corner 1 x)))
+              (the int (* 16.0 (-> arg0 corner 1 z)))
+              0
+              0
+              )
+            (set-vector! (-> (the-as (inline-array vector) sv-208) 14) 0.0 1.0 1.0 0.0)
+            (set-vector!
+              (-> (the-as (inline-array vector4w) sv-208) 15)
+              (the int (* 16.0 (-> arg0 corner 2 x)))
+              (the int (* 16.0 (-> arg0 corner 2 z)))
+              0
+              0
+              )
+            (set-vector! (-> (the-as (inline-array vector) sv-208) 16) 1.0 1.0 1.0 0.0)
+            (set-vector!
+              (-> (the-as (inline-array vector4w) sv-208) 17)
+              (the int (* 16.0 (-> arg0 corner 3 x)))
+              (the int (* 16.0 (-> arg0 corner 3 z)))
+              0
+              0
+              )
+            (&+! (-> sv-20 base) 288)
+            )
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch pointer vs none.
+(defmethod draw-frustum-2 minimap ((obj minimap) (arg0 minimap-draw-work) (arg1 connection-minimap))
+  (local-vars
+    (sv-16 process)
+    (sv-20 dma-buffer)
+    (sv-208 pointer)
+    (sv-212 texture)
+    (sv-216 vector)
+    (sv-220 vector)
+    (sv-224 matrix)
+    (sv-228 matrix)
+    (sv-232 matrix)
+    )
+  (let ((s3-0 (handle->process (-> arg1 handle))))
+    (set! sv-16 (if (type? s3-0 process-drawable)
+                    s3-0
+                    )
+          )
+    )
+  (set! sv-20 (-> arg0 buf))
+  (when (and sv-16 (nonzero? (-> (the-as process-drawable sv-16) root)))
+    (set! sv-208 (-> sv-20 base))
+    (set! sv-212 (lookup-texture-by-id-fast (new 'static 'texture-id :index #x9 :page #x679)))
+    (set! sv-216 (new 'stack-no-clear 'vector))
+    (set! sv-220 (new 'stack-no-clear 'vector))
+    (set! sv-224 (new 'stack-no-clear 'matrix))
+    (set! sv-228 (new 'stack-no-clear 'matrix))
+    (set! sv-232 (new 'stack-no-clear 'matrix))
+    (when sv-212
+      (set! (-> sv-220 quad) (-> (matrix-world->local #f #f) vector 2 quad))
+      (set! (-> sv-220 y) 0.0)
+      (vector-normalize! sv-220 1.0)
+      (vector-z-quaternion! (the-as vector sv-224) (-> (the-as process-drawable sv-16) root quat))
+      (vector-xz-normalize! (the-as vector sv-224) 1.0)
+      (set! (-> sv-224 vector 0 y) 0.0)
+      (set! (-> sv-224 vector 0 w) 0.0)
+      (vector-! sv-216 (target-pos 0) (-> (the-as process-drawable sv-16) root trans))
+      (let ((f0-4 (/ (-> sv-216 x) (* 16384.0 (-> obj offset y))))
+            (f1-3 (/ (-> sv-216 z) (* 16384.0 (-> obj offset y))))
+            )
+        (set-vector! (-> sv-228 vector 0) (-> sv-220 z) 0.0 (- (-> sv-220 x)) 0.0)
+        (set-vector! (-> sv-228 vector 1) 0.0 1.0 0.0 0.0)
+        (set-vector! (-> sv-228 vector 2) (-> sv-220 x) 0.0 (-> sv-220 z) 0.0)
+        (set-vector! (-> sv-228 trans) 164.0 0.0 164.0 1.0)
+        (set-vector! (-> sv-232 vector 0) (-> sv-224 vector 0 z) 0.0 (- (-> sv-224 vector 0 x)) 0.0)
+        (set-vector! (-> sv-232 vector 1) 0.0 1.0 0.0 0.0)
+        (set-vector! (-> sv-232 vector 2) (-> sv-224 vector 0 x) 0.0 (-> sv-224 vector 0 z) 0.0)
+        (set-vector! (-> sv-232 trans) f0-4 0.0 f1-3 1.0)
+        )
+      (matrix*! sv-232 sv-232 sv-228)
+      (let ((f0-7 12.0))
+        (set-vector! (-> arg0 corner 0) (- f0-7) 0.0 0.0 1.0)
+        (set-vector! (-> arg0 corner 1) 0.0 0.0 f0-7 1.0)
+        (set-vector! (-> arg0 corner 2) 0.0 0.0 (- f0-7) 1.0)
+        (set-vector! (-> arg0 corner 3) f0-7 0.0 0.0 1.0)
+        )
+      (vector-matrix*! (the-as vector (-> arg0 corner)) (the-as vector (-> arg0 corner)) sv-232)
+      (vector-matrix*! (-> arg0 corner 1) (-> arg0 corner 1) sv-232)
+      (vector-matrix*! (-> arg0 corner 2) (-> arg0 corner 2) sv-232)
+      (vector-matrix*! (-> arg0 corner 3) (-> arg0 corner 3) sv-232)
+      (let* ((a3-0 (-> arg1 class color))
+             (a2-6 (+ (* (the-as uint 320) (-> arg1 class icon-xy x)) 8))
+             (a1-12 (+ (* (the-as uint 320) (-> arg1 class icon-xy y)) 8))
+             (v1-54 (+ a2-6 304))
+             (a0-43 (+ a1-12 304))
+             )
+        (let* ((t0-2 (copy-and-set-field a3-0 r (shr (* (-> a3-0 r) (the-as uint (-> obj color x))) 7)))
+               (t0-9 (copy-and-set-field t0-2 g (shr (* (-> t0-2 g) (the-as uint (-> obj color y))) 7)))
+               (a3-13
+                 (copy-and-set-field
+                   (copy-and-set-field t0-9 b (shr (* (-> t0-9 b) (the-as uint (-> obj color z))) 7))
+                   a
+                   (the int (* 128.0 (-> arg1 alpha)))
+                   )
+                 )
+               )
+          (let ((t0-21 (-> obj draw3-tmpl dma-vif quad)))
+            (set! (-> (the-as (pointer uint128) sv-208)) t0-21)
+            )
+          (let ((t0-22 (-> obj draw3-tmpl quad 1)))
+            (set! (-> (the-as (pointer uint128) sv-208) 1) t0-22)
+            )
+          (set-vector!
+            (-> (the-as (inline-array vector4w) sv-208) 2)
+            (the-as int (-> a3-13 r))
+            (the-as int (-> a3-13 g))
+            (the-as int (-> a3-13 b))
+            (the-as int (-> a3-13 a))
+            )
+          )
+        (set-vector! (-> (the-as (inline-array vector4w) sv-208) 3) (the-as int a2-6) (the-as int a1-12) 0 0)
+        (set-vector!
+          (-> (the-as (inline-array vector4w) sv-208) 4)
+          (the int (* 16.0 (-> arg0 corner 0 x)))
+          (the int (* 16.0 (-> arg0 corner 0 z)))
+          0
+          0
+          )
+        (set-vector! (-> (the-as (inline-array vector4w) sv-208) 5) (the-as int a2-6) (the-as int a0-43) 0 0)
+        (set-vector!
+          (-> (the-as (inline-array vector4w) sv-208) 6)
+          (the int (* 16.0 (-> arg0 corner 1 x)))
+          (the int (* 16.0 (-> arg0 corner 1 z)))
+          0
+          0
+          )
+        (set-vector! (-> (the-as (inline-array vector4w) sv-208) 7) (the-as int v1-54) (the-as int a1-12) 0 0)
+        (set-vector!
+          (-> (the-as (inline-array vector4w) sv-208) 8)
+          (the int (* 16.0 (-> arg0 corner 2 x)))
+          (the int (* 16.0 (-> arg0 corner 2 z)))
+          0
+          0
+          )
+        (set-vector! (-> (the-as (inline-array vector4w) sv-208) 9) (the-as int v1-54) (the-as int a0-43) 0 0)
+        )
+      (set-vector!
+        (-> (the-as (inline-array vector4w) sv-208) 10)
+        (the int (* 16.0 (-> arg0 corner 3 x)))
+        (the int (* 16.0 (-> arg0 corner 3 z)))
+        0
+        0
+        )
+      (&+! (-> sv-20 base) 176)
+      )
+    )
+  (none)
+  )
+
+(defmethod sub-draw-1-1 minimap ((obj minimap) (arg0 minimap-draw-work))
+  (with-pp
+    (let ((s5-0 (-> arg0 buf)))
+      (set-display-gs-state s5-0 (the-as int (-> *map-texture-base* vram-page)) 128 128 0 0)
+      (let ((s3-0 (-> s5-0 base)))
+        (set! (-> (the-as (pointer uint128) s3-0)) (-> obj adgif-tmpl dma-vif quad))
+        (set! (-> (the-as (pointer uint128) s3-0) 1) (-> obj adgif-tmpl quad 1))
+        (let ((a1-2 (-> obj last-tex)))
+          (if (not a1-2)
+              (set! a1-2 (lookup-texture-by-id-fast (new 'static 'texture-id :index #x9b :page #xb)))
+              )
+          (adgif-shader<-texture-simple! (the-as adgif-shader (&+ s3-0 32)) (the-as texture a1-2))
+          )
+        )
+      (&+! (-> s5-0 base) 112)
+      (let* ((v1-8 s5-0)
+             (a0-4 (the-as dma-packet (-> v1-8 base)))
+             )
+        (set! (-> a0-4 dma) (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt)))
+        (set! (-> a0-4 vif0) (new 'static 'vif-tag))
+        (set! (-> a0-4 vif1) (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1))
+        (set! (-> v1-8 base) (the-as pointer (&+ a0-4 16)))
+        )
+      (let* ((v1-9 s5-0)
+             (a0-6 (the-as gs-gif-tag (-> v1-9 base)))
+             )
+        (set! (-> a0-6 tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x3))
+        (set! (-> a0-6 regs) GIF_REGS_ALL_AD)
+        (set! (-> v1-9 base) (the-as pointer (&+ a0-6 16)))
+        )
+      (let* ((v1-10 s5-0)
+             (a0-8 (-> v1-10 base))
+             )
+        (set! (-> (the-as (pointer gs-clamp) a0-8) 0) (new 'static 'gs-clamp))
+        (set! (-> (the-as (pointer gs-reg64) a0-8) 1) (gs-reg64 clamp-1))
+        (set! (-> (the-as (pointer gs-test) a0-8) 2)
+              (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+              )
+        (set! (-> (the-as (pointer gs-reg64) a0-8) 3) (gs-reg64 test-1))
+        (set! (-> (the-as (pointer gs-texa) a0-8) 4) (new 'static 'gs-texa :ta1 #x80))
+        (set! (-> (the-as (pointer gs-reg64) a0-8) 5) (gs-reg64 texa))
+        (set! (-> v1-10 base) (&+ a0-8 48))
+        )
+      (let ((s3-1 (the-as object (-> s5-0 base))))
+        (let ((f30-0 (-> *video-params* relative-x-scale)))
+          (set! (-> (the-as (pointer uint128) s3-1)) (-> obj draw2-tmpl dma-vif quad))
+          (set! (-> (the-as (pointer uint128) s3-1) 1) (-> obj draw2-tmpl quad 1))
+          (let ((s2-0 (new-stack-vector0)))
+            (let ((s1-0 (new-stack-vector0)))
+              (let ((s0-0 s1-0)
+                    (t9-3 matrix-local->world)
+                    (a0-10 #f)
+                    )
+                (set! (-> s0-0 quad) (-> (t9-3 a0-10) vector 2 quad))
+                )
+              (set! (-> s1-0 y) 0.0)
+              (vector-normalize! s1-0 1.0)
+              (let ((v1-16 (-> arg0 mat)))
+                (set! (-> v1-16 vector 0 x) (* (-> s1-0 z) f30-0))
+                (set! (-> v1-16 vector 0 y) 0.0)
+                (set! (-> v1-16 vector 0 z) (- (-> s1-0 x)))
+                (set! (-> v1-16 vector 0 w) 0.0)
+                )
+              (set-vector! (-> arg0 mat vector 1) 0.0 1.0 0.0 0.0)
+              (set-vector! (-> arg0 mat vector 2) (* (-> s1-0 x) f30-0) 0.0 (-> s1-0 z) 0.0)
+              )
+            (vector-! s2-0 (target-pos 0) (-> obj minimap-corner))
+            (set! (-> s2-0 x) (* 0.00000023841858 (-> s2-0 x)))
+            (set! (-> s2-0 z) (* 0.00000023841858 (-> s2-0 z)))
+            (vector+! (-> arg0 mat trans) s2-0 (-> obj offset))
+            )
+          )
+        (set! (-> arg0 mat trans y) 0.0)
+        (set! (-> arg0 corner 0 x) (* 0.25 (-> obj offset y)))
+        (set! (-> arg0 corner 0 z) (* 0.25 (-> obj offset y)))
+        (set! (-> arg0 corner 0 w) 1.0)
+        (set! (-> arg0 corner 1 x) (* -0.25 (-> obj offset y)))
+        (set! (-> arg0 corner 1 z) (* 0.25 (-> obj offset y)))
+        (set! (-> arg0 corner 1 w) 1.0)
+        (set! (-> arg0 corner 2 x) (* 0.25 (-> obj offset y)))
+        (set! (-> arg0 corner 2 z) (* -0.25 (-> obj offset y)))
+        (set! (-> arg0 corner 2 w) 1.0)
+        (set! (-> arg0 corner 3 x) (* -0.25 (-> obj offset y)))
+        (set! (-> arg0 corner 3 z) (* -0.25 (-> obj offset y)))
+        (set! (-> arg0 corner 3 w) 1.0)
+        (vector-matrix*! (the-as vector (-> arg0 corner)) (the-as vector (-> arg0 corner)) (-> arg0 mat))
+        (vector-matrix*! (-> arg0 corner 1) (-> arg0 corner 1) (-> arg0 mat))
+        (vector-matrix*! (-> arg0 corner 2) (-> arg0 corner 2) (-> arg0 mat))
+        (vector-matrix*! (-> arg0 corner 3) (-> arg0 corner 3) (-> arg0 mat))
+        (set-vector! (-> (the-as (inline-array vector4w) s3-1) 2) 128 128 128 128)
+        (set-vector! (-> (the-as (inline-array vector) s3-1) 3) (-> arg0 corner 0 x) (-> arg0 corner 0 z) 1.0 1.0)
+        (set-vector! (-> (the-as (inline-array vector4w) s3-1) 4) 0 0 #xffffff 0)
+        (set-vector! (-> (the-as (inline-array vector) s3-1) 5) (-> arg0 corner 1 x) (-> arg0 corner 1 z) 1.0 1.0)
+        (set-vector! (-> (the-as (inline-array vector4w) s3-1) 6) 2048 0 #xffffff 0)
+        (set-vector! (-> (the-as (inline-array vector) s3-1) 7) (-> arg0 corner 2 x) (-> arg0 corner 2 z) 1.0 1.0)
+        (set-vector! (-> (the-as (inline-array vector4w) s3-1) 8) 0 2048 #xffffff 0)
+        (set-vector! (-> (the-as (inline-array vector) s3-1) 9) (-> arg0 corner 3 x) (-> arg0 corner 3 z) 1.0 1.0)
+        (set-vector! (-> (the-as (inline-array vector4w) s3-1) 10) 2048 2048 #xffffff 0)
+        )
+      (&+! (-> s5-0 base) 176)
+      (let ((f0-57 1.0))
+        (when *target*
+          (if (focus-test? *target* pilot)
+              (set! f0-57 0.0)
+              )
+          )
+        (seek! (-> obj frustum-alpha) f0-57 (-> pp clock seconds-per-frame))
+        )
+      (let* ((v1-55 s5-0)
+             (a0-44 (the-as dma-packet (-> v1-55 base)))
+             )
+        (set! (-> a0-44 dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+        (set! (-> a0-44 vif0) (new 'static 'vif-tag))
+        (set! (-> a0-44 vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
+        (set! (-> v1-55 base) (the-as pointer (&+ a0-44 16)))
+        )
+      (let* ((v1-56 s5-0)
+             (a0-46 (the-as gs-gif-tag (-> v1-56 base)))
+             )
+        (set! (-> a0-46 tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
+        (set! (-> a0-46 regs) GIF_REGS_ALL_AD)
+        (set! (-> v1-56 base) (the-as pointer (&+ a0-46 16)))
+        )
+      (let* ((v1-57 s5-0)
+             (a0-48 (-> v1-57 base))
+             )
+        (set! (-> (the-as (pointer gs-xy-offset) a0-48) 0) (new 'static 'gs-xy-offset :ofx #x640 :ofy #x640))
+        (set! (-> (the-as (pointer gs-reg64) a0-48) 1) (gs-reg64 xyoffset-1))
+        (set! (-> v1-57 base) (&+ a0-48 16))
+        )
+      (when (!= (-> obj frustum-alpha) 0.0)
+        (let ((s3-2 (the-as connection-pers (-> *minimap* engine alive-list-override))))
+          (while s3-2
+            (let ((a2-6 s3-2))
+              (if (logtest? (-> (the-as connection-minimap a2-6) class flags) (minimap-flag frustum))
+                  (draw-frustum-1 obj arg0 (the-as connection-minimap a2-6))
+                  )
+              )
+            (set! s3-2 (-> s3-2 next))
+            )
+          )
+        )
+      (let ((s2-1 (-> arg0 buf base))
+            (s3-3 (lookup-texture-by-id-fast (new 'static 'texture-id :page #x679)))
+            )
+        (when s3-3
+          (set! (-> (the-as (pointer uint128) s2-1)) (-> obj adgif-tmpl dma-vif quad))
+          (set! (-> (the-as (pointer uint128) s2-1) 1) (-> obj adgif-tmpl quad 1))
+          (adgif-shader<-texture-simple! (the-as adgif-shader (&+ s2-1 32)) s3-3)
+          (&+! (-> arg0 buf base) 112)
+          )
+        (if (not s3-3)
+            (format *stdcon* "minimap: mini-map-icons texture is #f~%")
+            )
+        )
+      (let ((s3-4 (the-as connection-pers (-> *minimap* engine alive-list-override))))
+        (while s3-4
+          (let ((a2-7 s3-4))
+            (if (logtest? (-> (the-as connection-minimap a2-7) class flags) (minimap-flag frustum))
+                (draw-frustum-2 obj arg0 (the-as connection-minimap a2-7))
+                )
+            )
+          (set! s3-4 (-> s3-4 next))
+          )
+        )
+      (let ((s3-5 (-> arg0 buf base))
+            (a1-32 (lookup-texture-by-id-fast (new 'static 'texture-id :index #x42 :page #xb)))
+            )
+        (when a1-32
+          (set! (-> (the-as (pointer uint128) s3-5)) (-> obj adgif-tmpl dma-vif quad))
+          (set! (-> (the-as (pointer uint128) s3-5) 1) (-> obj adgif-tmpl quad 1))
+          (adgif-shader<-texture-simple! (the-as adgif-shader (&+ s3-5 32)) a1-32)
+          (&+! (-> arg0 buf base) 112)
+          )
+        )
+      (let ((s3-6 (the-as connection-pers (-> *minimap* engine alive-list-override))))
+        (while s3-6
+          (let ((a2-8 s3-6))
+            (if (logtest? (-> (the-as connection-minimap a2-8) class flags) (minimap-flag racer))
+                (draw-racer-2 obj arg0 (the-as connection-minimap a2-8))
+                )
+            )
+          (set! s3-6 (-> s3-6 next))
+          )
+        )
+      (let* ((v1-105 s5-0)
+             (a0-60 (the-as dma-packet (-> v1-105 base)))
+             )
+        (set! (-> a0-60 dma) (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt)))
+        (set! (-> a0-60 vif0) (new 'static 'vif-tag))
+        (set! (-> a0-60 vif1) (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1))
+        (set! (-> v1-105 base) (the-as pointer (&+ a0-60 16)))
+        )
+      (let* ((v1-106 s5-0)
+             (a0-62 (the-as gs-gif-tag (-> v1-106 base)))
+             )
+        (set! (-> a0-62 tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x3))
+        (set! (-> a0-62 regs) GIF_REGS_ALL_AD)
+        (set! (-> v1-106 base) (the-as pointer (&+ a0-62 16)))
+        )
+      (let* ((v1-107 s5-0)
+             (a0-64 (-> v1-107 base))
+             )
+        (set! (-> (the-as (pointer gs-frame) a0-64) 0)
+              (new 'static 'gs-frame :fbw #x2 :fbmsk #xffffff :fbp (-> *map-texture-base* vram-page))
+              )
+        (set! (-> (the-as (pointer gs-reg64) a0-64) 1) (gs-reg64 frame-1))
+        (set! (-> (the-as (pointer gs-alpha) a0-64) 2) (new 'static 'gs-alpha :b #x1 :d #x1))
+        (set! (-> (the-as (pointer gs-reg64) a0-64) 3) (gs-reg64 alpha-1))
+        (set! (-> (the-as (pointer gs-xy-offset) a0-64) 4) (new 'static 'gs-xy-offset))
+        (set! (-> (the-as (pointer gs-reg64) a0-64) 5) (gs-reg64 xyoffset-1))
+        (set! (-> v1-107 base) (&+ a0-64 48))
+        )
+      (let ((s3-7 (the-as object (-> s5-0 base))))
+        (set! (-> (the-as (pointer uint128) s3-7)) (-> obj adgif-tmpl dma-vif quad))
+        (set! (-> (the-as (pointer uint128) s3-7) 1) (-> obj adgif-tmpl quad 1))
+        (adgif-shader<-texture-simple!
+          (the-as adgif-shader (&-> (the-as (pointer uint128) s3-7) 2))
+          (lookup-texture-by-id-fast (new 'static 'texture-id :index #x2a :page #x67a))
+          )
+        (set! (-> (the-as (pointer uint128) s3-7) 7) (-> obj sprite-tmpl dma-vif quad))
+        (set! (-> (the-as (pointer uint128) s3-7) 8) (-> obj sprite-tmpl quad 1))
+        (set-vector! (-> (the-as (inline-array vector4w) s3-7) 9) 128 128 128 128)
+        (set-vector! (-> (the-as (inline-array vector4w) s3-7) 10) 0 0 0 0)
+        (set-vector! (-> (the-as (inline-array vector4w) s3-7) 11) 0 0 #xffffff 0)
+        (set-vector! (-> (the-as (inline-array vector4w) s3-7) 12) 1024 1024 0 0)
+        (set-vector! (-> (the-as (inline-array vector4w) s3-7) 13) 2048 2048 #xffffff 0)
+        )
+      (&+! (-> s5-0 base) 224)
+      (set! (-> arg0 buf) s5-0)
+      )
+    0
+    (none)
+    )
+  )
+
+(defmethod sub-draw-1-2 minimap ((obj minimap) (arg0 minimap-draw-work))
+  (local-vars (a3-4 int) (t0-4 int) (sv-48 vector) (sv-52 matrix) (sv-56 vector))
+  (let ((s5-0 (-> arg0 buf)))
+    (reset-display-gs-state *display* s5-0)
+    (let* ((v1-0 s5-0)
+           (a0-2 (the-as dma-packet (-> v1-0 base)))
+           )
+      (set! (-> a0-2 dma) (new 'static 'dma-tag :qwc #x7 :id (dma-tag-id cnt)))
+      (set! (-> a0-2 vif0) (new 'static 'vif-tag))
+      (set! (-> a0-2 vif1) (new 'static 'vif-tag :imm #x7 :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> v1-0 base) (the-as pointer (&+ a0-2 16)))
+      )
+    (let* ((v1-1 s5-0)
+           (a0-4 (the-as gs-gif-tag (-> v1-1 base)))
+           )
+      (set! (-> a0-4 tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x6))
+      (set! (-> a0-4 regs) GIF_REGS_ALL_AD)
+      (set! (-> v1-1 base) (the-as pointer (&+ a0-4 16)))
+      )
+    (let* ((s3-0 s5-0)
+           (s2-0 (-> s3-0 base))
+           )
+      (set! (-> (the-as (pointer gs-test) s2-0) 0) (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal)))
+      (set! (-> (the-as (pointer gs-reg64) s2-0) 1) (gs-reg64 test-1))
+      (set! (-> (the-as (pointer gs-alpha) s2-0) 2) (new 'static 'gs-alpha :b #x1 :d #x1))
+      (set! (-> (the-as (pointer gs-reg64) s2-0) 3) (gs-reg64 alpha-1))
+      (set! (-> (the-as (pointer gs-tex0) s2-0) 4)
+            (new 'static 'gs-tex0
+              :tbw #x2
+              :tcc #x1
+              :th (log2 128)
+              :tw (log2 128)
+              :tbp0 (-> *map-texture-base* vram-block)
+              )
+            )
+      (set! (-> (the-as (pointer gs-reg64) s2-0) 5) (gs-reg64 tex0-1))
+      (set! (-> (the-as (pointer gs-tex1) s2-0) 6) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+      (set! (-> (the-as (pointer gs-reg64) s2-0) 7) (gs-reg64 tex1-1))
+      (set! (-> (the-as (pointer gs-clamp) s2-0) 8)
+            (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp))
+            )
+      (set! (-> (the-as (pointer gs-reg64) s2-0) 9) (gs-reg64 clamp-1))
+      (set! (-> (the-as (pointer uint64) s2-0) 10) (the-as uint 0))
+      (set! (-> (the-as (pointer gs-reg64) s2-0) 11) (gs-reg64 texflush))
+      (set! (-> s3-0 base) (&+ s2-0 96))
+      )
+    (let ((f30-0 (-> *video-params* relative-x-scale)))
+      (let ((v1-20 (the-as object (-> s5-0 base)))
+            (t0-0 (the int (* 112.0 f30-0)))
+            )
+        0
+        0
+        (let ((a2-0 (* (+ (-> arg0 draw-pos y) 1840) 16))
+              (a0-19 (* (+ (-> arg0 draw-pos y) 1952) 16))
+              (a1-7 (-> arg0 draw-pos z))
+              )
+          (cond
+            ((-> arg0 justify-right)
+             (set! a3-4 (* (+ (- 1792 t0-0) (-> arg0 draw-pos x)) 16))
+             (set! t0-4 (* (+ (-> arg0 draw-pos x) 1792) 16))
+             )
+            (else
+              (set! a3-4 (* (+ (-> arg0 draw-pos x) 1792) 16))
+              (set! t0-4 (* (+ t0-0 1792 (-> arg0 draw-pos x)) 16))
+              )
+            )
+          (set! (-> (the-as (pointer uint128) v1-20)) (-> obj sprite-tmpl dma-vif quad))
+          (set! (-> (the-as (pointer uint128) v1-20) 1) (-> obj sprite-tmpl quad 1))
+          (let ((t1-5 (-> obj color quad)))
+            (set! (-> (the-as (pointer uint128) (&+ (the-as pointer v1-20) 32))) t1-5)
+            )
+          (cond
+            ((-> *blit-displays-work* horizontal-flip-flag)
+             (set-vector! (-> (the-as (inline-array vector4w) v1-20) 3) 0 0 0 0)
+             (set-vector! (-> (the-as (inline-array vector4w) v1-20) 4) t0-4 a2-0 a1-7 0)
+             (set-vector! (-> (the-as (inline-array vector4w) v1-20) 5) 2048 2048 0 0)
+             (let ((v1-21 (the-as (inline-array vector4w) (-> (the-as (inline-array vector4w) v1-20) 6))))
+               (set! (-> v1-21 0 x) a3-4)
+               (set! (-> v1-21 0 y) a0-19)
+               (set! (-> v1-21 0 z) a1-7)
+               (set! (-> v1-21 0 w) 0)
+               )
+             )
+            (else
+              (set-vector! (-> (the-as (inline-array vector4w) v1-20) 3) 0 0 0 0)
+              (set-vector! (-> (the-as (inline-array vector4w) v1-20) 4) a3-4 a2-0 a1-7 0)
+              (set-vector! (-> (the-as (inline-array vector4w) v1-20) 5) 2048 2048 0 0)
+              (set-vector! (-> (the-as (inline-array vector4w) v1-20) 6) t0-4 a0-19 a1-7 0)
+              )
+            )
+          )
+        )
+      (&+! (-> s5-0 base) 112)
+      (let* ((v1-25 s5-0)
+             (a0-20 (the-as dma-packet (-> v1-25 base)))
+             )
+        (set! (-> a0-20 dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+        (set! (-> a0-20 vif0) (new 'static 'vif-tag))
+        (set! (-> a0-20 vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
+        (set! (-> v1-25 base) (the-as pointer (&+ a0-20 16)))
+        )
+      (let* ((v1-26 s5-0)
+             (a0-22 (the-as gs-gif-tag (-> v1-26 base)))
+             )
+        (set! (-> a0-22 tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
+        (set! (-> a0-22 regs) GIF_REGS_ALL_AD)
+        (set! (-> v1-26 base) (the-as pointer (&+ a0-22 16)))
+        )
+      (let* ((v1-27 s5-0)
+             (a0-24 (-> v1-27 base))
+             )
+        (set! (-> (the-as (pointer gs-test) a0-24) 0)
+              (new 'static 'gs-test :ate #x1 :atst (gs-atest greater) :zte #x1 :ztst (gs-ztest always))
+              )
+        (set! (-> (the-as (pointer gs-reg64) a0-24) 1) (gs-reg64 test-1))
+        (set! (-> v1-27 base) (&+ a0-24 16))
+        )
+      (set! sv-48 (new-stack-vector0))
+      (let ((v1-29 (new 'stack-no-clear 'matrix)))
+        (set! (-> v1-29 quad 0) (the-as uint128 0))
+        (set! sv-52 v1-29)
+        )
+      (set! sv-56 (target-pos 0))
+      (set! (-> sv-52 quad 0) (-> (matrix-world->local #f #f) vector 2 quad))
+      (set! (-> sv-52 vector 0 y) 0.0)
+      (vector-normalize! (the-as vector sv-52) 1.0)
+      (cond
+        ((-> *blit-displays-work* horizontal-flip-flag)
+         (let ((v1-35 (-> arg0 mat)))
+           (set! (-> v1-35 vector 0 x) (* (-> sv-52 vector 0 z) (- f30-0)))
+           (set! (-> v1-35 vector 0 y) 0.0)
+           (set! (-> v1-35 vector 0 z) (- (-> sv-52 vector 0 x)))
+           (set! (-> v1-35 vector 0 w) 0.0)
+           )
+         (set-vector! (-> arg0 mat vector 1) 0.0 1.0 0.0 0.0)
+         (set-vector! (-> arg0 mat vector 2) (* (-> sv-52 vector 0 x) (- f30-0)) 0.0 (-> sv-52 vector 0 z) 0.0)
+         (set-vector! (-> arg0 mat trans) 0.0 0.0 (the float (+ (-> arg0 draw-pos y) 1896)) 1.0)
+         )
+        (else
+          (let ((v1-39 (-> arg0 mat)))
+            (set! (-> v1-39 vector 0 x) (* (-> sv-52 vector 0 z) f30-0))
+            (set! (-> v1-39 vector 0 y) 0.0)
+            (set! (-> v1-39 vector 0 z) (- (-> sv-52 vector 0 x)))
+            (set! (-> v1-39 vector 0 w) 0.0)
+            )
+          (set-vector! (-> arg0 mat vector 1) 0.0 1.0 0.0 0.0)
+          (set-vector! (-> arg0 mat vector 2) (* (-> sv-52 vector 0 x) f30-0) 0.0 (-> sv-52 vector 0 z) 0.0)
+          (set-vector! (-> arg0 mat trans) 0.0 0.0 (the float (+ (-> arg0 draw-pos y) 1896)) 1.0)
+          )
+        )
+      (let ((v1-44 (the int (* 56.0 f30-0))))
+        (if (-> arg0 justify-right)
+            (set! (-> arg0 mat trans x) (the float (+ (- 1792 v1-44) (-> arg0 draw-pos x))))
+            (set! (-> arg0 mat trans x) (the float (+ v1-44 1792 (-> arg0 draw-pos x))))
+            )
+        )
+      (when *target*
+        (vector-z-quaternion! (the-as vector sv-52) (-> *target* control quat))
+        (vector-xz-normalize! (the-as vector sv-52) 1.0)
+        (set! (-> sv-52 vector 0 y) 0.0)
+        (set! (-> sv-52 vector 0 w) 0.0)
+        (vector-matrix*! (the-as vector sv-52) (the-as vector sv-52) (-> arg0 mat))
+        (let ((s3-2 (the-as object (-> s5-0 base)))
+              (s2-1 (lookup-texture-by-id-fast (new 'static 'texture-id :index #x42 :page #xb)))
+              (s1-2 (new 'stack-no-clear 'matrix))
+              (v1-57 (the int (* 56.0 f30-0)))
+              )
+          (when s2-1
+            (set-vector! (-> s1-2 vector 0) (* (-> sv-52 vector 0 z) f30-0) 0.0 (- (-> sv-52 vector 0 x)) 0.0)
+            (set-vector! (-> s1-2 vector 1) 0.0 1.0 0.0 0.0)
+            (set-vector! (-> s1-2 vector 2) (* (-> sv-52 vector 0 x) f30-0) 0.0 (-> sv-52 vector 0 z) 1.0)
+            (set-vector! (-> s1-2 trans) 0.0 0.0 (the float (+ (-> arg0 draw-pos y) 1896)) 1.0)
+            (if (-> arg0 justify-right)
+                (set! (-> s1-2 trans x) (the float (+ (- 1792 v1-57) (-> arg0 draw-pos x))))
+                (set! (-> s1-2 trans x) (the float (+ v1-57 1792 (-> arg0 draw-pos x))))
+                )
+            (let ((f0-80 7.0))
+              (set-vector! (-> arg0 corner 0) 0.0 0.0 (- f0-80) 1.0)
+              (set-vector! (-> arg0 corner 1) f0-80 0.0 0.0 1.0)
+              (set-vector! (-> arg0 corner 2) (- f0-80) 0.0 0.0 1.0)
+              (set-vector! (-> arg0 corner 3) 0.0 0.0 f0-80 1.0)
+              )
+            (vector-matrix*! (the-as vector (-> arg0 corner)) (the-as vector (-> arg0 corner)) s1-2)
+            (vector-matrix*! (-> arg0 corner 1) (-> arg0 corner 1) s1-2)
+            (vector-matrix*! (-> arg0 corner 2) (-> arg0 corner 2) s1-2)
+            (vector-matrix*! (-> arg0 corner 3) (-> arg0 corner 3) s1-2)
+            (set! (-> (the-as (pointer uint128) s3-2)) (-> obj adgif-tmpl dma-vif quad))
+            (set! (-> (the-as (pointer uint128) s3-2) 1) (-> obj adgif-tmpl quad 1))
+            (adgif-shader<-texture-simple! (the-as adgif-shader (&-> (the-as (pointer uint128) s3-2) 2)) s2-1)
+            (set! (-> (the-as (pointer uint128) s3-2) 7) (-> obj draw-tmpl dma-vif quad))
+            (set! (-> (the-as (pointer uint128) s3-2) 8) (-> obj draw-tmpl quad 1))
+            (set-vector! (-> (the-as (inline-array vector4w) s3-2) 9) 0 255 255 128)
+            (set-vector! (-> (the-as (inline-array vector4w) s3-2) 10) 0 0 #xffffff 0)
+            (set-vector!
+              (-> (the-as (inline-array vector4w) s3-2) 11)
+              (the int (* 16.0 (-> arg0 corner 0 x)))
+              (the int (* 16.0 (-> arg0 corner 0 z)))
+              0
+              0
+              )
+            (set-vector! (-> (the-as (inline-array vector4w) s3-2) 12) 256 0 #xffffff 0)
+            (set-vector!
+              (-> (the-as (inline-array vector4w) s3-2) 13)
+              (the int (* 16.0 (-> arg0 corner 1 x)))
+              (the int (* 16.0 (-> arg0 corner 1 z)))
+              0
+              0
+              )
+            (set-vector! (-> (the-as (inline-array vector4w) s3-2) 14) 0 256 #xffffff 0)
+            (set-vector!
+              (-> (the-as (inline-array vector4w) s3-2) 15)
+              (the int (* 16.0 (-> arg0 corner 2 x)))
+              (the int (* 16.0 (-> arg0 corner 2 z)))
+              0
+              0
+              )
+            (set-vector! (-> (the-as (inline-array vector4w) s3-2) 16) 256 256 #xffffff 0)
+            (set-vector!
+              (-> (the-as (inline-array vector4w) s3-2) 17)
+              (the int (* 16.0 (-> arg0 corner 3 x)))
+              (the int (* 16.0 (-> arg0 corner 3 z)))
+              0
+              0
+              )
+            (&+! (-> s5-0 base) 288)
+            )
+          )
+        )
+      )
+    (set! (-> arg0 buf) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch pointer vs none.
+(defmethod draw-connection minimap ((obj minimap) (arg0 minimap-draw-work) (arg1 connection-minimap))
+  (with-pp
+    (let ((s1-0 (target-pos 0)))
+      (cond
+        ((= (-> arg1 position) #t)
+         (let* ((s3-0 (handle->process (-> arg1 handle)))
+                (v1-4 (if (type? s3-0 process-drawable)
+                          s3-0
+                          )
+                      )
+                )
+           (when (and v1-4 (nonzero? (-> (the-as process-drawable v1-4) root)))
+             (set! (-> arg1 last-world-pos quad) (-> (the-as process-drawable v1-4) root trans quad))
+             (vector-! (-> arg1 last-relative-pos) s1-0 (-> arg1 last-world-pos))
+             )
+           )
+         )
+        ((and (= (logand (the-as int (-> arg1 position)) 7) 4)
+              (= (-> (the-as basic (-> arg1 position)) type) entity-actor)
+              )
+         (let* ((v1-15 (-> arg1 position))
+                (s3-1 (if v1-15
+                          (-> (the-as entity-actor v1-15) extra process)
+                          )
+                      )
+                (a0-16 (if (type? s3-1 process-drawable)
+                           s3-1
+                           )
+                       )
+                )
+           (cond
+             (a0-16
+               (set! (-> arg1 last-world-pos quad) (-> (the-as process-drawable a0-16) root trans quad))
+               (vector-! (-> arg1 last-relative-pos) s1-0 (-> arg1 last-world-pos))
+               )
+             (else
+               (set! (-> arg1 last-world-pos quad) (-> (the-as entity-actor (-> arg1 position)) extra trans quad))
+               (vector-! (-> arg1 last-relative-pos) s1-0 (-> arg1 last-world-pos))
+               )
+             )
+           )
+         )
+        (else
+          (set! (-> arg1 last-world-pos quad) (-> (the-as vector (-> arg1 position)) quad))
+          (vector-! (-> arg1 last-relative-pos) s1-0 (-> arg1 last-world-pos))
+          )
+        )
+      (let ((s3-2 (new 'stack-no-clear 'vector))
+            (s2-0 #f)
+            )
+        (let ((f30-0 (/ 1.0 (* 16384.0 (-> obj offset y)))))
+          0.0
+          (set! (-> s3-2 quad) (-> arg1 last-relative-pos quad))
+          (set! (-> s3-2 x) (* (-> s3-2 x) f30-0))
+          (set! (-> s3-2 z) (* (-> s3-2 z) f30-0))
+          (set! (-> s3-2 y) 0.0)
+          (set! (-> s3-2 w) 1.0)
+          (let* ((v1-29 s3-2)
+                 (f28-0 (sqrtf (+ (* (-> v1-29 x) (-> v1-29 x)) (* (-> v1-29 z) (-> v1-29 z)))))
+                 )
+            (cond
+              ((logtest? (-> arg1 class flags) (minimap-flag trail))
+               (cond
+                 (*trail-graph*
+                   (let ((a2-2 (get-trail-for-connection obj arg1 #f)))
+                     (cond
+                       ((not a2-2)
+                        (when (!= (-> arg1 alpha) 0.0)
+                          (when (not (get-trail-for-connection obj arg1 #t))
+                            (let ((s2-1 (the-as connection-pers (-> *minimap* engine alive-list-override))))
+                              (while s2-1
+                                (let ((a1-12 s2-1))
+                                  (if (and (= (the-as float (-> a1-12 param 1)) 0.0) (logtest? (-> arg1 class flags) (minimap-flag trail)))
+                                      (free-trail-by-connection *minimap* (the-as connection-minimap a1-12))
+                                      )
+                                  )
+                                (set! s2-1 (-> s2-1 next))
+                                )
+                              )
+                            )
+                          )
+                        (set! s2-0 #t)
+                        (set! (-> arg1 edge-ry) -131072.0)
+                        )
+                       ((>= (- (-> pp clock frame-counter) (the-as int (-> a2-2 last-updated))) (seconds 5))
+                        (set! s2-0 #t)
+                        (set! (-> arg1 edge-ry) -131072.0)
+                        )
+                       ((< 50.0 f28-0)
+                        (let ((s0-0 (new 'stack-no-clear 'vector)))
+                          (set! (-> s0-0 quad) (-> s3-2 quad))
+                          (let ((s1-1 (get-icon-draw-pos *minimap* arg1 a2-2 s1-0 f30-0 s3-2)))
+                            (if (not s1-1)
+                                (vector-normalize-copy! s3-2 s0-0 66.0)
+                                )
+                            (let ((f30-1 (atan (-> s3-2 x) (-> s3-2 z))))
+                              (let ((f28-1 (-> arg1 edge-ry)))
+                                (when (!= f28-1 -131072.0)
+                                  (let* ((f0-20 (deg- f30-1 f28-1))
+                                         (f1-7 (fabs f0-20))
+                                         (f2-3 (* 16384.0 (-> pp clock seconds-per-frame)))
+                                         )
+                                    (when (< f2-3 f1-7)
+                                      (set! f30-1 (+ f28-1 (if (>= f0-20 0.0)
+                                                               f2-3
+                                                               (- f2-3)
+                                                               )
+                                                     )
+                                            )
+                                      (set-vector! s3-2 (sin f30-1) 0.0 (cos f30-1) 1.0)
+                                      (vector-normalize! s3-2 (if s1-1
+                                                                  50.0
+                                                                  66.0
+                                                                  )
+                                                         )
+                                      )
+                                    )
+                                  )
+                                )
+                              (set! (-> arg1 edge-ry) f30-1)
+                              )
+                            )
+                          )
+                        )
+                       (else
+                         (set! (-> arg1 edge-ry) (atan (-> s3-2 x) (-> s3-2 z)))
+                         )
+                       )
+                     )
+                   )
+                 (else
+                   (set! s2-0 #t)
+                   (set! (-> arg1 edge-ry) -131072.0)
+                   )
+                 )
+               )
+              ((logtest? (-> arg1 class flags) (minimap-flag clamp))
+               (cond
+                 ((< 50.0 f28-0)
+                  (let ((a1-19 (new 'stack-no-clear 'vector)))
+                    (set! (-> a1-19 quad) (-> s3-2 quad))
+                    (vector-normalize-copy! s3-2 a1-19 54.0)
+                    )
+                  (let ((f30-2 (atan (-> s3-2 x) (-> s3-2 z))))
+                    (let ((f28-2 (-> arg1 edge-ry)))
+                      (when (!= f28-2 -131072.0)
+                        (let* ((f0-35 (deg- f30-2 f28-2))
+                               (f1-9 (fabs f0-35))
+                               (f2-5 (* 16384.0 (-> pp clock seconds-per-frame)))
+                               )
+                          (when (< f2-5 f1-9)
+                            (set! f30-2 (+ f28-2 (if (>= f0-35 0.0)
+                                                     f2-5
+                                                     (- f2-5)
+                                                     )
+                                           )
+                                  )
+                            (set-vector! s3-2 (sin f30-2) 0.0 (cos f30-2) 1.0)
+                            (vector-normalize! s3-2 54.0)
+                            )
+                          )
+                        )
+                      )
+                    (set! (-> arg1 edge-ry) f30-2)
+                    )
+                  )
+                 (else
+                   (set! (-> arg1 edge-ry) (atan (-> s3-2 x) (-> s3-2 z)))
+                   )
+                 )
+               )
+              (else
+                (if (< 50.0 f28-0)
+                    (set! s2-0 #t)
+                    )
+                )
+              )
+            )
+          )
+        (if (or (logtest? (-> arg1 class flags) (minimap-flag frustum))
+                (logtest? (-> arg1 class flags) (minimap-flag racer))
+                (and (logtest? (-> arg1 class flags) (minimap-flag flash))
+                     (< (the-as int (logand (-> *display* base-clock integral-frame-counter) 15)) 8)
+                     )
+                )
+            (set! s2-0 #t)
+            )
+        (if (logtest? (-> arg1 class flags) (minimap-flag goal))
+            (set! (-> arg1 class icon-xy x) (the-as uint (mod (the int (-> obj goal-time)) 6)))
+            )
+        (when (not s2-0)
+          (vector-matrix*! s3-2 s3-2 (-> arg0 mat))
+          (let ((v1-115 (the-as object (-> arg0 buf base))))
+            (let* ((f0-48 (-> arg1 class scale))
+                   (a1-25 (-> arg1 class color))
+                   (a1-32 (copy-and-set-field a1-25 r (shr (* (-> a1-25 r) (the-as uint (-> obj color x))) 7)))
+                   (a1-39 (copy-and-set-field a1-32 g (shr (* (-> a1-32 g) (the-as uint (-> obj color y))) 7)))
+                   (a0-70
+                     (copy-and-set-field
+                       (copy-and-set-field a1-39 b (shr (* (-> a1-39 b) (the-as uint (-> obj color z))) 7))
+                       a
+                       (the int (* 128.0 (-> arg1 alpha)))
+                       )
+                     )
+                   )
+              (let ((f1-16 (* 20.0 (-> *video-params* relative-x-scale) f0-48))
+                    (f0-49 (* 20.0 f0-48))
+                    )
+                (set! (-> arg0 corner 0 x) (the float (the int (- (-> s3-2 x) (* 0.5 f1-16)))))
+                (set! (-> arg0 corner 0 z) (the float (the int (- (-> s3-2 z) (* 0.5 f0-49)))))
+                (set! (-> arg0 corner 1 x) (+ (-> arg0 corner 0 x) f1-16))
+                (set! (-> arg0 corner 1 z) (+ (-> arg0 corner 0 z) f0-49))
+                )
+              (let* ((a3-1 (+ (* (the-as uint 320) (-> arg1 class icon-xy x)) 8))
+                     (t0-1 (+ (* (the-as uint 320) (-> arg1 class icon-xy y)) 8))
+                     (a1-61 (+ a3-1 312))
+                     (a2-14 (+ t0-1 312))
+                     )
+                (set! (-> (the-as (pointer uint128) v1-115)) (-> obj sprite-tmpl dma-vif quad))
+                (set! (-> (the-as (pointer uint128) v1-115) 1) (-> obj sprite-tmpl quad 1))
+                (set-vector!
+                  (-> (the-as (inline-array vector4w) v1-115) 2)
+                  (the-as int (-> a0-70 r))
+                  (the-as int (-> a0-70 g))
+                  (the-as int (-> a0-70 b))
+                  (the-as int (-> a0-70 a))
+                  )
+                (set-vector! (-> (the-as (inline-array vector4w) v1-115) 3) (the-as int a3-1) (the-as int t0-1) 0 0)
+                (set-vector!
+                  (-> (the-as (inline-array vector4w) v1-115) 4)
+                  (the int (* 16.0 (-> arg0 corner 0 x)))
+                  (the int (* 16.0 (-> arg0 corner 0 z)))
+                  #xffffff
+                  0
+                  )
+                (set-vector! (-> (the-as (inline-array vector4w) v1-115) 5) (the-as int a1-61) (the-as int a2-14) 0 0)
+                )
+              )
+            (set-vector!
+              (-> (the-as (inline-array vector4w) v1-115) 6)
+              (the int (* 16.0 (-> arg0 corner 1 x)))
+              (the int (* 16.0 (-> arg0 corner 1 z)))
+              #xffffff
+              0
+              )
+            )
+          (&+! (-> arg0 buf base) 112)
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+(defmethod draw-1 minimap ((obj minimap) (arg0 dma-buffer) (arg1 vector4w) (arg2 symbol))
+  (local-vars (v1-19 uint128))
+  (with-pp
+    (when (= (level-status *level* 'ctywide) 'active)
+      (let ((s5-1 (new 'stack-no-clear 'minimap-draw-work)))
+        (set! (-> s5-1 buf) arg0)
+        (set! (-> s5-1 draw-pos quad) (-> arg1 quad))
+        (set! (-> s5-1 justify-right) arg2)
+        (sub-draw-1-1 obj s5-1)
+        (sub-draw-1-2 obj s5-1)
+        (set! (-> obj ctywide) (level-get *level* 'ctywide))
+        (let ((s2-1 (-> s5-1 buf base))
+              (s4-1 (lookup-texture-by-id-fast (new 'static 'texture-id :page #x679)))
+              )
+          (let ((s3-1 (-> obj ctywide texture-mask 8)))
+            (when s4-1
+              (set! (-> (the-as (pointer uint128) s2-1)) (-> obj adgif-tmpl dma-vif quad))
+              (set! (-> (the-as (pointer uint128) s2-1) 1) (-> obj adgif-tmpl quad 1))
+              (adgif-shader<-texture-simple! (the-as adgif-shader (&+ s2-1 32)) s4-1)
+              (&+! (-> s5-1 buf base) 112)
+              (let ((v1-18 (-> s3-1 mask quad))
+                    (a0-8 (-> s4-1 masks data 0 mask quad))
+                    )
+                (.por v1-19 v1-18 a0-8)
+                )
+              (set! (-> s3-1 mask quad) v1-19)
+              )
+            )
+          (if (not s4-1)
+              (format *stdcon* "minimap: mini-map-icons texture is #f~%")
+              )
+          )
+        (let ((s4-2 (the-as connection-pers (-> *minimap* engine alive-list-override))))
+          (while s4-2
+            (let ((a2-1 s4-2))
+              (draw-connection obj s5-1 (the-as connection-minimap a2-1))
+              )
+            (set! s4-2 (-> s4-2 next))
+            )
+          )
+        (if (not (paused?))
+            (+! (-> obj goal-time) (* 14.0 (-> pp clock seconds-per-frame)))
+            )
+        (reset-display-gs-state *display* (-> s5-1 buf))
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+(defmethod draw-sprite2 minimap ((obj minimap) (arg0 dma-buffer) (arg1 vector4w) (arg2 symbol))
+  (local-vars (v1-24 uint128) (a0-8 uint128) (a3-5 int) (t0-4 int))
+  (when (-> obj race-tex)
+    (let ((s5-0 (new 'stack-no-clear 'minimap-draw-work)))
+      (set! (-> s5-0 buf) arg0)
+      (set! (-> s5-0 draw-pos quad) (-> arg1 quad))
+      (set! (-> s5-0 justify-right) arg2)
+      (let ((v1-4 (-> s5-0 buf base))
+            (s3-0 (-> obj race-tex))
+            (s2-0 (-> obj race-level texture-mask 8))
+            )
+        (when s3-0
+          (set! (-> (the-as (pointer uint128) v1-4)) (-> obj adgif-tmpl dma-vif quad))
+          (set! (-> (the-as (pointer uint128) v1-4) 1) (-> obj adgif-tmpl quad 1))
+          (adgif-shader<-texture-simple! (the-as adgif-shader (&+ v1-4 32)) s3-0)
+          (&+! (-> s5-0 buf base) 112)
+          (let ((v1-8 (-> s2-0 mask quad))
+                (a0-7 (-> s3-0 masks data 0 mask quad))
+                )
+            (.por a0-8 v1-8 a0-7)
+            )
+          (set! (-> s2-0 mask quad) a0-8)
+          )
+        )
+      (let* ((f0-0 (-> *video-params* relative-x-scale))
+             (v1-10 (the-as object (-> arg0 base)))
+             (t0-0 (the int (* 128.0 f0-0)))
+             )
+        0
+        0
+        (let ((a2-1 (* (+ (-> s5-0 draw-pos y) 1840) 16))
+              (a0-16 (* (+ (-> s5-0 draw-pos y) 1968) 16))
+              (a1-2 (-> s5-0 draw-pos z))
+              )
+          (cond
+            ((-> s5-0 justify-right)
+             (set! a3-5 (* (+ (- 1792 t0-0) (-> s5-0 draw-pos x)) 16))
+             (set! t0-4 (* (+ (-> s5-0 draw-pos x) 1792) 16))
+             )
+            (else
+              (set! a3-5 (* (+ (-> s5-0 draw-pos x) 1792) 16))
+              (set! t0-4 (* (+ t0-0 1792 (-> s5-0 draw-pos x)) 16))
+              )
+            )
+          (set! (-> s5-0 draw-pos x) a3-5)
+          (set! (-> s5-0 draw-pos y) a2-1)
+          (set! (-> (the-as (pointer uint128) v1-10)) (-> obj sprite2-tmpl dma-vif quad))
+          (set! (-> (the-as (pointer uint128) v1-10) 1) (-> obj sprite2-tmpl quad 1))
+          (let ((t1-5 (-> obj color quad)))
+            (set! (-> (the-as (pointer uint128) (&+ (the-as pointer v1-10) 32))) t1-5)
+            )
+          (cond
+            ((-> *blit-displays-work* horizontal-flip-flag)
+             (set-vector! (-> (the-as (inline-array vector) v1-10) 3) 0.0 0.0 1.0 0.0)
+             (set-vector! (-> (the-as (inline-array vector4w) v1-10) 4) t0-4 a2-1 a1-2 0)
+             (set-vector! (-> (the-as (inline-array vector) v1-10) 5) 1.0 1.0 1.0 0.0)
+             (set-vector! (-> (the-as (inline-array vector4w) v1-10) 6) a3-5 a0-16 a1-2 0)
+             )
+            (else
+              (set-vector! (-> (the-as (inline-array vector) v1-10) 3) 0.0 0.0 1.0 0.0)
+              (set-vector! (-> (the-as (inline-array vector4w) v1-10) 4) a3-5 a2-1 a1-2 0)
+              (set-vector! (-> (the-as (inline-array vector) v1-10) 5) 1.0 1.0 1.0 0.0)
+              (set-vector! (-> (the-as (inline-array vector4w) v1-10) 6) t0-4 a0-16 a1-2 0)
+              )
+            )
+          )
+        )
+      (&+! (-> arg0 base) 112)
+      (let ((s2-1 (-> s5-0 buf base))
+            (s4-1 (lookup-texture-by-id-fast (new 'static 'texture-id :index #x42 :page #xb)))
+            (s3-1 (-> obj ctywide texture-mask 8))
+            )
+        (when s4-1
+          (set! (-> (the-as (pointer uint128) s2-1)) (-> obj adgif-tmpl dma-vif quad))
+          (set! (-> (the-as (pointer uint128) s2-1) 1) (-> obj adgif-tmpl quad 1))
+          (adgif-shader<-texture-simple! (the-as adgif-shader (&+ s2-1 32)) s4-1)
+          (&+! (-> s5-0 buf base) 112)
+          (let ((v1-23 (-> s3-1 mask quad))
+                (a0-20 (-> s4-1 masks data 0 mask quad))
+                )
+            (.por v1-24 v1-23 a0-20)
+            )
+          (set! (-> s3-1 mask quad) v1-24)
+          )
+        )
+      (let ((f30-0 (the float (/ (-> s5-0 draw-pos x) 16)))
+            (f28-0 (the float (/ (-> s5-0 draw-pos y) 16)))
+            (s4-2 (the-as connection-pers #f))
+            )
+        (let ((s3-2 (the-as connection-pers (-> *minimap* engine alive-list-override))))
+          (while s3-2
+            (let ((s2-2 s3-2))
+              (when (logtest? (-> (the-as connection-minimap s2-2) class flags) (minimap-flag racer))
+                (if (string= (the-as string (-> (the-as connection-minimap s2-2) class name)) "racer-target")
+                    (set! s4-2 s2-2)
+                    (draw-racer-1 obj s5-0 (the-as connection-minimap s2-2) (-> obj race-scale) f30-0 f28-0)
+                    )
+                )
+              )
+            (set! s3-2 (-> s3-2 next))
+            )
+          )
+        (if s4-2
+            (draw-racer-1 obj s5-0 (the-as connection-minimap s4-2) (-> obj race-scale) f30-0 f28-0)
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod set-race-texture minimap ((obj minimap) (arg0 texture) (arg1 float) (arg2 level))
+  (set! (-> obj race-tex) arg0)
+  (set! (-> obj race-scale) arg1)
+  (set! (-> obj race-level) arg2)
+  0
+  (none)
+  )
+
+(defmethod set-race-corner minimap ((obj minimap) (arg0 float) (arg1 float))
+  (set! (-> obj race-corner x) arg0)
+  (set! (-> obj race-corner z) arg1)
+  0
+  (none)
+  )
+
+(defmethod set-color minimap ((obj minimap) (arg0 vector))
+  (set! (-> obj color quad) (-> arg0 quad))
+  0
+  (none)
+  )

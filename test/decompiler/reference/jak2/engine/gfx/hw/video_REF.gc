@@ -1,0 +1,143 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function set-video-mode
+;; WARN: Return type mismatch int vs none.
+(defun set-video-mode ((tv-format symbol))
+  "Set related settings to the video mode in the settings, [[*video-params*]] and the [[*video-mode*]]
+`ntsc` has a [[*video-mode*]] value of `0`, where as `pal` has a value of `1`
+
+Will also set a bunch of common settings related to profiling and the camera to finalize the switch
+
+@param tv-format Recognizes `ntsc` and `pal`"
+  (case tv-format
+    (('ntsc)
+     (set! (-> *setting-control* user-default display-dx) 0)
+     (set! (-> *setting-control* user-default display-dy) 8)
+     (set! (-> *video-params* display-fbp) 164)
+     (set! (-> *video-params* display-sy) 224)
+     (set! *video-mode* 0)
+     (sound-set-fps 60)
+     )
+    (('pal)
+     (set! (-> *setting-control* user-default display-dx) 0)
+     (set! (-> *setting-control* user-default display-dy) 24)
+     (set! (-> *video-params* display-fbp) 144)
+     (set! (-> *video-params* display-sy) 256)
+     (set! *video-mode* 1)
+     (sound-set-fps 50)
+     )
+    )
+  (set-time-ratios *display* (-> *display* dog-ratio))
+  (set! (-> *video-params* reset-video-mode) #t)
+  (set! (-> *math-camera* isometric vector 1 y) 0.5)
+  (set! (-> *math-camera* y-clip) 416.0)
+  (set! (-> *math-camera* y-pix) (* 0.5 (-> *math-camera* y-clip)))
+  (set! *profile-y* 1848)
+  (set! (-> *video-params* set-video-mode) #t)
+  0
+  (none)
+  )
+
+;; definition for function get-video-mode
+(defun get-video-mode ()
+  "@returns the current video mode, for example `ntsc` or `pal`"
+  (-> *setting-control* user-current video-mode)
+  )
+
+;; definition for function set-aspect-ratio
+;; WARN: Return type mismatch int vs none.
+(defun set-aspect-ratio ((aspect symbol))
+  "Set [[*video-params*]] aspect-ratio related settings based on the mode provided.
+@param aspect Recognizes `aspect4x3` and `aspect16x9`"
+  (case aspect
+    (('aspect4x3)
+     (set! (-> *video-params* relative-x-scale) 1.0)
+     (set! (-> *video-params* relative-x-scale-reciprical) 1.0)
+     )
+    (('aspect16x9)
+     (set! (-> *video-params* relative-x-scale) 0.75)
+     (set! (-> *video-params* relative-x-scale-reciprical) 1.3333334)
+     )
+    )
+  0
+  (none)
+  )
+
+;; definition for function get-aspect-ratio
+(defun get-aspect-ratio ()
+  "@returns The current aspect ratio mode setting"
+  (-> *setting-control* user-current aspect-ratio)
+  )
+
+;; definition for function set-progressive-scan
+;; WARN: Return type mismatch int vs none.
+(defun set-progressive-scan ((val symbol))
+  "Flip the progressive scan setting flag depending on the value provided
+@param val The value to set the progressive scan flag to"
+  (set! (-> *setting-control* user-default use-progressive-scan) val)
+  0
+  (none)
+  )
+
+;; definition for function get-progressive-scan
+(defun get-progressive-scan ()
+  "@returns If using progressive scan is currently set in the settings"
+  (-> *setting-control* user-current use-progressive-scan)
+  )
+
+;; definition for symbol *smode2*, type int
+(define *smode2* 0)
+
+;; definition for function set-graphics-mode
+;; WARN: Return type mismatch int vs none.
+(defun set-graphics-mode ()
+  "TODO"
+  (let ((settings *setting-control*)
+        (gs-bank (the-as gs-bank #x12000000))
+        (video-settings *video-params*)
+        )
+    (let ((display *display*))
+      (cond
+        ((-> settings user-current use-progressive-scan)
+         (when (nonzero? *smode2*)
+           (reset-graph 0 0 80 0)
+           (set! *smode2* 0)
+           0
+           )
+         (set! (-> gs-bank display1) (new 'static 'gs-display
+                                       :magh #x1
+                                       :dw #x4ff
+                                       :dy (+ (-> video-settings display-dy) 50)
+                                       :dx (+ (* (-> video-settings display-dx) 2) 326)
+                                       :dh (+ (* (-> video-settings display-sy) 2) -1)
+                                       )
+               )
+         )
+        (else
+          (when (or (!= *smode2* 1) (-> *video-params* set-video-mode))
+            (if (= (-> *setting-control* user-current video-mode) 'ntsc)
+                (reset-graph 0 1 2 0)
+                (reset-graph 0 1 3 0)
+                )
+            (set! *smode2* 1)
+            (set! (-> *video-params* set-video-mode) #f)
+            )
+          (set! (-> gs-bank display1) (new 'static 'gs-display
+                                        :magh #x3
+                                        :dw #x9ff
+                                        :dy (+ (-> video-settings display-dy) 50)
+                                        :dx (+ (* (-> video-settings display-dx) 4) 652)
+                                        :dh (+ (* (-> video-settings display-sy) 2) -1)
+                                        )
+                )
+          )
+        )
+      (set! (-> gs-bank pmode) (-> display pmode))
+      (set! (-> gs-bank bgcolor) (-> display bgcolor))
+      )
+    (set! (-> gs-bank dspfb1) (new 'static 'gs-display-fb :fbw #xa :fbp (-> video-settings display-fbp)))
+    )
+  0
+  (none)
+  )

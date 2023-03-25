@@ -1,0 +1,93 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *generic-foreground-sinks*, type (array generic-dma-foreground-sink)
+(define *generic-foreground-sinks*
+  (new 'static 'boxed-array :type generic-dma-foreground-sink :length 0 :allocated-length 9)
+  )
+
+;; failed to figure out what this is:
+(set! (-> *generic-foreground-sinks* 0) (-> *level* level0 tfrag-tex-foreground-sink-group generic-sink))
+
+;; failed to figure out what this is:
+(set! (-> *generic-foreground-sinks* 1) (-> *level* level0 pris-tex-foreground-sink-group generic-sink))
+
+;; failed to figure out what this is:
+(set! (-> *generic-foreground-sinks* 2) (-> *level* level1 tfrag-tex-foreground-sink-group generic-sink))
+
+;; failed to figure out what this is:
+(set! (-> *generic-foreground-sinks* 3) (-> *level* level1 pris-tex-foreground-sink-group generic-sink))
+
+;; failed to figure out what this is:
+(set! (-> *generic-foreground-sinks* 4)
+      (-> *level* level-default tfrag-tex-foreground-sink-group generic-sink)
+      )
+
+;; failed to figure out what this is:
+(set! (-> *generic-foreground-sinks* 5)
+      (-> *level* level-default pris-tex-foreground-sink-group generic-sink)
+      )
+
+;; failed to figure out what this is:
+(set! (-> *generic-foreground-sinks* 6)
+      (new 'static 'generic-dma-foreground-sink :bucket (bucket-id shrub-generic1))
+      )
+
+;; failed to figure out what this is:
+(set! (-> *generic-foreground-sinks* 7) (-> *level* level0 water-tex-foreground-sink-group generic-sink))
+
+;; failed to figure out what this is:
+(set! (-> *generic-foreground-sinks* 8) (-> *level* level1 water-tex-foreground-sink-group generic-sink))
+
+;; definition for function generic-dma-foreground-sink-init
+;; INFO: Return type mismatch int vs none.
+(defun generic-dma-foreground-sink-init ((arg0 generic-dma-foreground-sink))
+  (set! (-> arg0 state gifbuf-adr) (the-as uint 837))
+  (set! (-> arg0 state inbuf-adr) (the-as uint 9))
+  (none)
+  )
+
+;; definition for function generic-init-buffers
+(defun generic-init-buffers ()
+  (vu-lights-default! *default-lights*)
+  (let ((gp-0 (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24)))
+        (s5-0 (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1))
+        )
+    (dotimes (s4-0 9)
+      (let ((s1-0 (-> *generic-foreground-sinks* s4-0)))
+        (when s1-0
+          (let* ((s3-0 (-> s1-0 bucket))
+                 (s0-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
+                 (s2-0 (-> s0-0 base))
+                 )
+            (if (>= s4-0 7)
+                (generic-init-buf s0-0 1 s5-0)
+                (generic-init-buf s0-0 1 gp-0)
+                )
+            (generic-dma-foreground-sink-init s1-0)
+            (let ((a3-0 (-> s0-0 base)))
+              (let ((packet (the-as dma-packet (-> s0-0 base))))
+                (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+                (set! (-> packet vif0) (new 'static 'vif-tag))
+                (set! (-> packet vif1) (new 'static 'vif-tag))
+                (set! (-> s0-0 base) (&+ (the-as pointer packet) 16))
+                )
+              (dma-bucket-insert-tag
+                (-> *display* frames (-> *display* on-screen) frame bucket-group)
+                s3-0
+                s2-0
+                (the-as (pointer dma-tag) a3-0)
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for function generic-sink
+(defun generic-sink ((arg0 int))
+  (-> *generic-foreground-sinks* arg0)
+  )

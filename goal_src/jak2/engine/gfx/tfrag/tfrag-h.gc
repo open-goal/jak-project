@@ -1,0 +1,257 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: tfrag-h.gc
+;; name in dgo: tfrag-h
+;; dgos: ENGINE, GAME
+
+;; NOTE - for cam-debug
+(declare-type tfrag-work structure)
+(define-extern *tfrag-work* tfrag-work)
+
+(define-extern *pc-tfrag-draw-level* level) ;; added
+
+;; DECOMP BEGINS
+
+(deftype tfragment-stats (structure)
+  ((num-tris   uint16 4 :offset-assert   0)
+   (num-dverts uint16 4 :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype tfragment-debug-data (structure)
+  ((stats       tfragment-stats      :inline :offset-assert   0)
+   (debug-lines (array vector-array)         :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+(deftype generic-tfragment (structure)
+  ((dummy int32  :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype tfragment (drawable)
+  ((color-index         uint16                        :offset   6)
+   (debug-data          tfragment-debug-data          :offset   8)
+   (color-indices       uint32                        :offset  12)
+   (colors              uint32                        :offset  12)
+   (dma-chain           uint32                      3 :offset  32)
+   (dma-common          uint32                        :offset  32)
+   (dma-level-0         uint32                        :offset  32)
+   (dma-base            uint32                        :offset  36)
+   (dma-level-1         uint32                        :offset  40)
+   (dma-qwc             uint8                       4 :offset  44)
+   (dma-u32             uint32                        :offset  44)
+   (shader              (inline-array adgif-shader)   :offset  48)
+   (num-shaders         uint8                         :offset  52)
+   (num-base-colors     uint8                         :offset  53)
+   (num-level0-colors   uint8                         :offset  54)
+   (num-level1-colors   uint8                         :offset  55)
+   (color-offset        uint8                         :offset  56)
+   (color-count         uint8                         :offset  57)
+   (texture-masks-index uint16                        :offset  58)
+   (generic             generic-tfragment             :offset  60)
+   (generic-u32         uint32                        :offset  60)
+   )
+  :method-count-assert 17
+  :size-assert         #x40
+  :flag-assert         #x1100000040
+  )
+
+(deftype drawable-inline-array-tfrag (drawable-inline-array)
+  ((data tfragment 1 :inline :offset-assert  32)
+   (pad  uint32              :offset-assert  96)
+   )
+  :method-count-assert 17
+  :size-assert         #x64
+  :flag-assert         #x1100000064
+  )
+
+(deftype drawable-inline-array-tfrag-trans (drawable-inline-array-tfrag)
+  ((data2 tfragment 1 :inline :offset-assert 112)
+   (pad2  uint32              :offset-assert 176)
+   )
+  :method-count-assert 17
+  :size-assert         #xb4
+  :flag-assert         #x11000000b4
+  )
+
+(deftype drawable-inline-array-tfrag-water (drawable-inline-array-tfrag)
+  ((data2 tfragment 1 :inline :offset-assert 112)
+   (pad2  uint32              :offset-assert 176)
+   )
+  :method-count-assert 17
+  :size-assert         #xb4
+  :flag-assert         #x11000000b4
+  )
+
+(deftype drawable-tree-tfrag (drawable-tree)
+  ((time-of-day-pal time-of-day-palette            :offset  12)
+   (arrays          drawable-inline-array :dynamic :offset  32)
+   )
+  :method-count-assert 17
+  :size-assert         #x20
+  :flag-assert         #x1100000020
+  )
+
+(deftype drawable-tree-tfrag-trans (drawable-tree-tfrag)
+  ()
+  :method-count-assert 17
+  :size-assert         #x20
+  :flag-assert         #x1100000020
+  )
+
+(deftype drawable-tree-tfrag-water (drawable-tree-tfrag-trans)
+  ()
+  :method-count-assert 17
+  :size-assert         #x20
+  :flag-assert         #x1100000020
+  )
+
+(deftype tfrag-dists (structure)
+  ((data   uint32 16        :offset-assert   0)
+   (vector vector 4 :inline :offset          0)
+   (k0s    vector 2 :inline :offset          0)
+   (k1s    vector 2 :inline :offset         32)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+(deftype tfrag-data (structure)
+  ((data        uint32      56         :offset   0)
+   (vector      vector      14 :inline :offset   0)
+   (fog         vector      :inline    :offset   0)
+   (val         vector      :inline    :offset  16)
+   (strgif      gs-gif-tag  :inline    :offset  32)
+   (fangif      gs-gif-tag  :inline    :offset  48)
+   (adgif       gs-gif-tag  :inline    :offset  64)
+   (hvdf-offset vector      :inline    :offset  80)
+   (hmge-scale  vector      :inline    :offset  96)
+   (invh-scale  vector      :inline    :offset 112)
+   (ambient     vector      :inline    :offset 128)
+   (guard       vector      :inline    :offset 144)
+   (dists       tfrag-dists :inline    :offset 160)
+   (k0s         uint128     2          :offset 160)
+   (k1s         uint128     2          :offset 192)
+   )
+  :method-count-assert 9
+  :size-assert         #xe0
+  :flag-assert         #x9000000e0
+  )
+
+(deftype tfrag-control (structure)
+  ((num-base-points           uint32  :offset-assert   0)
+   (num-shared-base-points    uint32  :offset-assert   4)
+   (num-level0-points         uint32  :offset-assert   8)
+   (num-shared-level0-points  uint32  :offset-assert  12)
+   (num-level1-points         uint32  :offset-assert  16)
+   (num-shared-level1-points  uint32  :offset-assert  20)
+   (ptr-vtxdata               uint32  :offset-assert  24)
+   (ptr-base-points           uint32  :offset-assert  28)
+   (ptr-shared-base-points    uint32  :offset-assert  32)
+   (ptr-level0-points         uint32  :offset-assert  36)
+   (ptr-shared-level0-points  uint32  :offset-assert  40)
+   (ptr-level1-points         uint32  :offset-assert  44)
+   (ptr-shared-level1-points  uint32  :offset-assert  48)
+   (ptr-draw-points           uint32  :offset-assert  52)
+   (ptr-interpolated-0        uint32  :offset-assert  56)
+   (ptr-shared-interpolated-0 uint32  :offset-assert  60)
+   (ptr-interpolated1         uint32  :offset-assert  64)
+   (ptr-shared-interpolated1  uint32  :offset-assert  68)
+   (ptr-strip-data            uint32  :offset-assert  72)
+   (ptr-texture-data          uint32  :offset-assert  76)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+(deftype tfrag-stats (structure)
+  ((from         int32  :offset-assert   0)
+   (to           int32  :offset-assert   4)
+   (cnt          int32  :offset-assert   8)
+   (tris         int32  :offset-assert  12)
+   (tfaces       int32  :offset-assert  16)
+   (tfrags       int32  :offset-assert  20)
+   (dtris        int32  :offset-assert  24)
+   (base-verts   int32  :offset-assert  28)
+   (level0-verts int32  :offset-assert  32)
+   (level1-verts int32  :offset-assert  36)
+   (dma-cnt      int32  :offset-assert  40)
+   (dma-dta      int32  :offset-assert  44)
+   (dma-tex      int32  :offset-assert  48)
+   (strips       int32  :offset-assert  52)
+   (drawpoints   int32  :offset-assert  56)
+   (vif          int32  :offset-assert  60)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+(deftype tfrag-packet (structure)
+  ((tag uint128 2 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype tfrag-work (structure)
+  ((base-tmpl                dma-packet :inline :offset-assert   0)
+   (level-0-tmpl             dma-packet :inline :offset-assert  16)
+   (common-tmpl              dma-packet :inline :offset-assert  32)
+   (level-1-tmpl             dma-packet :inline :offset-assert  48)
+   (color-tmpl               dma-packet :inline :offset-assert  64)
+   (frag-dists               vector     :inline :offset-assert  80)
+   (min-dist                 vector     :inline :offset-assert  96)
+   (color-ptr                vector4w   :inline :offset-assert 112)
+   (tr-stat-tfrag            tr-stat            :offset-assert 128)
+   (tr-stat-tfrag-scissor    tr-stat            :offset-assert 132)
+   (vu1-enable-tfrag         int32              :offset-assert 136)
+   (vu1-enable-tfrag-scissor int32              :offset-assert 140)
+   (cur-vis-bits             uint32             :offset-assert 144)
+   (end-vis-bits             uint32             :offset-assert 148)
+   (src-ptr                  uint32             :offset-assert 152)
+   (last-call                uint32             :offset-assert 156)
+   (dma-buffer               basic              :offset-assert 160)
+   (test-id                  uint32             :offset-assert 164)
+   (wait-from-spr            uint32             :offset-assert 168)
+   (wait-to-spr              uint32             :offset-assert 172)
+   (near-wait-from-spr       uint32             :offset-assert 176)
+   (near-wait-to-spr         uint32             :offset-assert 180)
+   (max-fragment             uint16             :offset-assert 184)
+   (min-fragment             uint16             :offset-assert 186)
+   (texture-dists            uint32             :offset-assert 188)
+   )
+  :method-count-assert 9
+  :size-assert         #xc0
+  :flag-assert         #x9000000c0
+  )
+
+(deftype tfrag-dma (structure)
+  ((banka  tfragment 16 :inline :offset-assert   0)
+   (bankb  tfragment 16 :inline :offset-assert 1024)
+   (outa   uint128   128        :offset-assert 2048)
+   (outb   uint128   128        :offset-assert 4096)
+   (colors rgba      2047       :offset-assert 6144)
+   )
+  :method-count-assert 9
+  :size-assert         #x37fc
+  :flag-assert         #x9000037fc
+  )
+
+(define-extern draw-drawable-tree-tfrag (function drawable-tree-tfrag none))
+(define-extern draw-drawable-tree-tfrag-trans (function drawable-tree-tfrag none))
+(define-extern draw-drawable-tree-tfrag-water (function drawable-tree-tfrag none))

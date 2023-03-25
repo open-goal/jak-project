@@ -1,0 +1,160 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: traffic-h.gc
+;; name in dgo: traffic-h
+;; dgos: ENGINE, GAME
+
+;; +++traffic-danger-type
+(defenum traffic-danger-type
+  :type uint8
+  (tdt0 0)
+  (tdt1 1)
+  (tdt2 2)
+  (tdt3 3)
+  (tdt4 4)
+  (tdt5 5)
+  (tdt6 6)
+  (tdt7 7)
+  )
+;; ---traffic-danger-type
+
+;; +++traffic-danger-flags
+(defenum traffic-danger-flags
+  :type uint8
+  :bitfield #t
+  (tdf0 0)
+  )
+;; ---traffic-danger-flags
+
+;; +++traffic-h:traffic-type
+(defenum traffic-type
+  :type uint8
+  (citizen-norm-1 0)
+  (citizen-chick 1)
+  (citizen-fat 2)
+  (citizen-norm-2 3)
+  (crimson-guard-0 4)
+  (tt5 5)
+  (crimson-guard-1 6)
+  (crimson-guard-2 7)
+  (metalhead-grunt 8)
+  (metalhead-flitter 9)
+  (metalhead-predator 10)
+  (bikea 11)
+  (bikeb 12)
+  (bikec 13)
+  (cara 14)
+  (carb 15)
+  (carc 16)
+  (tt17 17)
+  (guard-bike 18)
+  (hellcat 19)
+  (traffic-type-20 20)
+  (traffic-type-21 21)
+  )
+;; ---traffic-h:traffic-type
+
+;; +++traffic-h:traffic-spawn-flags
+(defenum traffic-spawn-flags
+  :type uint32
+  :bitfield #t
+  (trsflags-00)
+  (trsflags-01)
+  (trsflags-02)
+  (dark-guard)
+  (trsflags-04)
+  (trsflags-05)
+  (trsflags-06)
+  (trsflags-07)
+  )
+;; ---traffic-h:traffic-spawn-flags
+
+;; NOTE - for default-menu
+(define-extern traffic-start (function none))
+(define-extern traffic-kill (function none))
+
+;; NOTE - for vehicle-rider
+(define-extern lwide-entity-hack (function none))
+
+(define-extern *traffic-alert-level-force* symbol)
+
+(declare-type nav-mesh basic)
+(declare-type nav-branch structure)
+
+;; DECOMP BEGINS
+
+(define *traffic-manager* (the-as process #f))
+
+(define *ctywide-entity* (the-as entity #f))
+
+(define *lwide-entity* (the-as entity #f))
+
+(define *race-vehicle-entity* (the-as entity-actor #f))
+
+(deftype traffic-danger-info (structure)
+  ((sphere        sphere               :inline :offset-assert   0)
+   (velocity      vector               :inline :offset-assert  16)
+   (handle        handle                       :offset-assert  32)
+   (notify-radius float                        :offset-assert  40)
+   (danger-level  float                        :offset-assert  44)
+   (decay-rate    float                        :offset-assert  48)
+   (flags         traffic-danger-flags         :offset-assert  52)
+   (danger-type   traffic-danger-type          :offset-assert  53)
+   )
+  :method-count-assert 9
+  :size-assert         #x36
+  :flag-assert         #x900000036
+  )
+
+
+(deftype traffic-suppression-params (structure)
+  ((bbox     bounding-box :inline :offset-assert   0)
+   (duration time-frame           :offset-assert  32)
+   (id       int8                 :offset-assert  40)
+   )
+  :method-count-assert 13
+  :size-assert         #x29
+  :flag-assert         #xd00000029
+  (:methods
+    (try-creating-new-suppression-box (_type_) symbol 9)
+    (create-or-update-suppression-box (_type_) symbol 10)
+    (has-valid-id? (_type_) none 11)
+    (kill-suppression-box (_type_) none 12)
+    )
+  )
+
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod has-valid-id? traffic-suppression-params ((obj traffic-suppression-params))
+  (!= (-> obj id) -1)
+  (none)
+  )
+
+(deftype traffic-object-spawn-params (structure)
+  ((object-type traffic-type                :offset-assert   0)
+   (behavior    uint64                      :offset-assert   8)
+   (id          uint32                      :offset-assert  16)
+   (nav-mesh    nav-mesh                    :offset-assert  20)
+   (nav-branch  nav-branch                  :offset-assert  24)
+   (position    vector              :inline :offset-assert  32)
+   (rotation    quaternion          :inline :offset-assert  48)
+   (velocity    vector              :inline :offset-assert  64)
+   (handle      handle                      :offset-assert  80)
+   (guard-type  uint8                       :offset-assert  88)
+   (user-data   uint32                      :offset-assert  92)
+   (flags       traffic-spawn-flags         :offset-assert  96)
+   (proc        process                     :offset-assert 100)
+   )
+  :method-count-assert 9
+  :size-assert         #x68
+  :flag-assert         #x900000068
+  )
+
+(deftype mystery-traffic-object-spawn-params (structure)
+  "TODO - what is this!"
+  ((params traffic-object-spawn-params :inline :offset-assert 0)
+   (vector vector 3 :inline :offset-assert 112)
+  ))
+
+(define-extern traffic-object-spawn (function process traffic-object-spawn-params process-drawable))

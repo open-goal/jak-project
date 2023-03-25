@@ -1,0 +1,188 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *light-hash-work*, type light-hash-work
+(define *light-hash-work* (new 'static 'light-hash-work :ones (new 'static 'vector4w :x 1 :y 1 :z 1)))
+
+;; definition for function light-slerp
+(defun light-slerp ((arg0 light) (arg1 light) (arg2 light) (arg3 float))
+  (let ((s3-0 (fmax 0.0 (fmin 1.0 arg3))))
+    (vector-lerp! (-> arg0 color) (-> arg1 color) (-> arg2 color) s3-0)
+    (vector-deg-slerp (-> arg0 direction) (-> arg1 direction) (-> arg2 direction) s3-0)
+    (let ((f0-2 (-> arg1 extra x))
+          (f1-2 (-> arg2 extra x))
+          )
+      (set! (-> arg0 extra x) (+ f0-2 (* s3-0 (- f1-2 f0-2))))
+      )
+    )
+  arg0
+  )
+
+;; definition for function light-group-slerp
+(defun light-group-slerp ((arg0 light-group) (arg1 light-group) (arg2 light-group) (arg3 float))
+  (dotimes (s2-0 4)
+    (light-slerp (-> arg0 lights s2-0) (-> arg1 lights s2-0) (-> arg2 lights s2-0) arg3)
+    )
+  arg0
+  )
+
+;; definition for function light-group-process!
+(defun light-group-process! ((arg0 vu-lights) (arg1 light-group) (arg2 vector) (arg3 vector))
+  (rotate-y<-vector+vector arg3 arg2)
+  (vu-lights<-light-group! arg0 arg1)
+  (none)
+  )
+
+;; definition for symbol *default-lights*, type vu-lights
+(define *default-lights* (new 'global 'vu-lights))
+
+;; definition for function vu-lights-default!
+(defun vu-lights-default! ((arg0 vu-lights))
+  (set-vector! (-> arg0 ambient) 0.3 0.3 0.3 1.0)
+  (set-vector! (-> arg0 color 0) 1.0 1.0 1.0 1.0)
+  (set-vector! (-> arg0 color 1) 0.2 0.2 0.2 1.0)
+  (set-vector! (-> arg0 color 2) 0.0 0.0 0.0 1.0)
+  (set-vector! (-> arg0 direction 0) 1.0 0.0 0.0 1.0)
+  (set-vector! (-> arg0 direction 1) 0.0 1.0 0.0 1.0)
+  (set-vector! (-> arg0 direction 2) 0.0 0.0 1.0 1.0)
+  arg0
+  )
+
+;; definition (debug) for function init-light-hash
+;; WARN: Return type mismatch pointer vs none.
+(defun-debug init-light-hash ()
+  (when (not *light-hash*)
+    (set! *light-hash* (new 'loading-level 'light-hash))
+    (set! (-> *light-hash* num-lights) (the-as uint 0))
+    (set! (-> *light-hash* num-indices) (the-as uint 0))
+    (set! (-> *light-hash* num-buckets) (the-as uint 0))
+    (set! (-> *light-hash* bucket-array) (the-as (inline-array light-hash-bucket) (malloc 'loading-level 4096)))
+    (set! (-> *light-hash* index-array) (malloc 'loading-level #x10000))
+    (set! (-> *light-hash* light-sphere-array)
+          (the-as (inline-array light-sphere) (malloc 'loading-level #x4000))
+          )
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(init-light-hash)
+
+;; definition (debug) for function light-hash-count-items
+;; INFO: function output is handled by mips2c
+(def-mips2c light-hash-count-items (function light-hash light-sphere none))
+
+;; definition (debug) for function light-hash-add-items
+;; INFO: function output is handled by mips2c
+(def-mips2c light-hash-add-items (function light-hash light-sphere integer object))
+
+;; definition (debug) for function reset-light-hash
+;; WARN: Return type mismatch int vs none.
+(defun-debug reset-light-hash ((arg0 light-hash))
+  (set! (-> *light-hash* num-lights) (the-as uint 0))
+  (set! (-> *light-hash* num-indices) (the-as uint 0))
+  (set! (-> *light-hash* num-buckets) (the-as uint 0))
+  0
+  (none)
+  )
+
+;; definition (debug) for function update-light-hash
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defun-debug update-light-hash ((arg0 light-hash))
+  (let ((v1-0 (new 'stack-no-clear 'bounding-box))
+        (s5-0 (new 'stack-no-clear 'vector))
+        )
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (let ((f0-0 0.0))
+        (set-vector! (-> v1-0 min) 4095996000.0 4095996000.0 4095996000.0 1.0)
+        (set-vector! (-> v1-0 max) -4095996000.0 -4095996000.0 -4095996000.0 1.0)
+        (dotimes (a0-3 (the-as int (-> arg0 num-lights)))
+          (let ((a1-9 (-> arg0 light-sphere-array a0-3)))
+            (set! (-> v1-0 min x) (fmin (-> v1-0 min x) (- (-> a1-9 bsphere x) (-> a1-9 bsphere w))))
+            (set! (-> v1-0 min y) (fmin (-> v1-0 min y) (- (-> a1-9 bsphere y) (-> a1-9 bsphere w))))
+            (set! (-> v1-0 min z) (fmin (-> v1-0 min z) (- (-> a1-9 bsphere z) (-> a1-9 bsphere w))))
+            (set! (-> v1-0 max x) (fmax (-> v1-0 max x) (+ (-> a1-9 bsphere x) (-> a1-9 bsphere w))))
+            (set! (-> v1-0 max y) (fmax (-> v1-0 max y) (+ (-> a1-9 bsphere y) (-> a1-9 bsphere w))))
+            (set! (-> v1-0 max z) (fmax (-> v1-0 max z) (+ (-> a1-9 bsphere z) (-> a1-9 bsphere w))))
+            (+! f0-0 (-> a1-9 bsphere w))
+            )
+          )
+        (set! (-> arg0 base-trans quad) (-> v1-0 min quad))
+        (let ((f0-1 (/ f0-0 (the float (-> arg0 num-lights)))))
+          (dotimes (a0-8 3)
+            (set! (-> s5-0 data a0-8) (- (-> v1-0 max data a0-8) (-> v1-0 min data a0-8)))
+            (set! (-> s4-0 data a0-8) (if (= (-> s5-0 data a0-8) 0.0)
+                                          1.0
+                                          (/ (-> s5-0 data a0-8) (/ f0-1 (the float (-> arg0 num-lights))))
+                                          )
+                  )
+            )
+          )
+        )
+      (let ((f0-5 (cube-root (/ (the float (-> arg0 num-lights)) (* (-> s4-0 x) (-> s4-0 y) (-> s4-0 z))))))
+        (set! (-> arg0 dimension-array x) (max 1 (min 16 (the int (+ 0.5 (* f0-5 (-> s4-0 x)))))))
+        (set! (-> arg0 dimension-array y) (max 1 (min 4 (the int (+ 0.5 (* f0-5 (-> s4-0 y)))))))
+        (set! (-> arg0 dimension-array z) (max 1 (min 16 (the int (+ 0.5 (* f0-5 (-> s4-0 z)))))))
+        )
+      )
+    (set! (-> arg0 bucket-step 0) (the-as uint (* (-> arg0 dimension-array z) (-> arg0 dimension-array x))))
+    (set! (-> arg0 bucket-step 1) (the-as uint (-> arg0 dimension-array x)))
+    (dotimes (v1-13 3)
+      (set! (-> arg0 axis-scale data v1-13)
+            (/ (the float (-> arg0 dimension-array data v1-13)) (-> s5-0 data v1-13))
+            )
+      )
+    )
+  (set! (-> arg0 num-buckets)
+        (the-as uint (* (* (-> arg0 dimension-array x) (-> arg0 dimension-array y)) (-> arg0 dimension-array z)))
+        )
+  (dotimes (v1-19 (the-as int (-> arg0 num-buckets)))
+    (let ((a0-27 (-> arg0 bucket-array v1-19)))
+      (set! (-> a0-27 index) (the-as uint 0))
+      (set! (-> a0-27 count) (the-as uint 0))
+      )
+    0
+    )
+  (dotimes (s5-1 (the-as int (-> arg0 num-lights)))
+    (light-hash-count-items arg0 (-> arg0 light-sphere-array s5-1))
+    )
+  (let ((v1-26 0))
+    (dotimes (a0-31 (the-as int (-> arg0 num-buckets)))
+      (let ((a1-38 (-> arg0 bucket-array a0-31)))
+        (set! (-> a1-38 index) (the-as uint v1-26))
+        (+! v1-26 (-> a1-38 count))
+        (set! (-> a1-38 count) (the-as uint 0))
+        )
+      0
+      )
+    (set! (-> arg0 num-indices) (the-as uint v1-26))
+    )
+  (dotimes (s5-2 (the-as int (-> arg0 num-lights)))
+    (light-hash-add-items arg0 (-> arg0 light-sphere-array s5-2) s5-2)
+    )
+  0
+  (none)
+  )
+
+;; definition for function lookup-light-sphere-by-name
+(defun lookup-light-sphere-by-name ((arg0 string) (arg1 light-hash))
+  (when (and arg1 (nonzero? arg1))
+    (dotimes (s4-0 (the-as int (-> arg1 num-lights)))
+      (let ((s3-0 (-> arg1 light-sphere-array s4-0)))
+        (if (string= arg0 (-> s3-0 name))
+            (return s3-0)
+            )
+        )
+      )
+    )
+  (the-as light-sphere #f)
+  )
+
+;; definition for function light-hash-get-bucket-index
+;; INFO: function output is handled by mips2c
+(def-mips2c light-hash-get-bucket-index (function light-hash vector int))
+
+;; definition for function add-light-sphere-to-light-group
+;; INFO: function output is handled by mips2c
+(def-mips2c add-light-sphere-to-light-group (function object object object object object))

@@ -5,13 +5,24 @@
 class Generic2 : public BucketRenderer {
  public:
   Generic2(const std::string& name,
-           BucketId my_id,
-           u32 num_verts = 1500000,
-           u32 num_frags = 10000,
-           u32 num_adgif = 3000,
+           int my_id,
+           u32 num_verts = 200000,
+           u32 num_frags = 2000,
+           u32 num_adgif = 6000,
            u32 num_buckets = 800);
   ~Generic2();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
+
+  enum class Mode {
+    NORMAL,
+    LIGHTNING,
+  };
+
+  void render_in_mode(DmaFollower& dma,
+                      SharedRenderState* render_state,
+                      ScopedProfilerNode& prof,
+                      Mode mode);
+
   void draw_debug_window() override;
   void init_shaders(ShaderLibrary& shaders) override;
 
@@ -28,14 +39,15 @@ class Generic2 : public BucketRenderer {
   static_assert(sizeof(Vertex) == 32);
 
  private:
-  void determine_draw_modes();
+  void determine_draw_modes(bool enable_at);
   void build_index_buffer();
   void link_adgifs_back_to_frags();
   void draws_to_buckets();
   void reset_buffers();
   void process_matrices();
   void process_dma(DmaFollower& dma, u32 next_bucket);
-  void setup_draws();
+  void process_dma_lightning(DmaFollower& dma, u32 next_bucket);
+  void setup_draws(bool enable_at);
   void do_draws(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void do_draws_for_alpha(SharedRenderState* render_state,
                           ScopedProfilerNode& prof,
@@ -150,18 +162,23 @@ class Generic2 : public BucketRenderer {
 
   u32 m_next_free_frag = 0;
   std::vector<Fragment> m_fragments;
+  u32 m_max_frags_seen = 0;
 
   u32 m_next_free_vert = 0;
   std::vector<Vertex> m_verts;
+  u32 m_max_verts_seen = 0;
 
   u32 m_next_free_adgif = 0;
   std::vector<Adgif> m_adgifs;
+  u32 m_max_adgifs_seen = 0;
 
   u32 m_next_free_bucket = 0;
   std::vector<Bucket> m_buckets;
+  u32 m_max_buckets_seen = 0;
 
   u32 m_next_free_idx = 0;
   std::vector<u32> m_indices;
+  u32 m_max_indices_seen = 0;
 
   Fragment& next_frag() {
     ASSERT(m_next_free_frag < m_fragments.size());
@@ -193,5 +210,6 @@ class Generic2 : public BucketRenderer {
     GLuint index_buffer;
     GLuint alpha_reject, color_mult, fog_color, scale, mat_23, mat_32, mat_33, fog_consts,
         hvdf_offset;
+    GLuint gfx_hack_no_tex;
   } m_ogl;
 };

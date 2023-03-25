@@ -1,0 +1,79 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: script-h.gc
+;; name in dgo: script-h
+;; dgos: ENGINE, GAME
+
+(define-extern *load-state* load-state)
+
+;; NOTE - for editable-player
+(declare-type script-context structure)
+(define-extern *syntax-context* script-context)
+(define-extern *script-context* script-context)
+
+;; NOTE - for menu
+(define-extern command-get-int (function object int int))
+(define-extern command-get-float (function object float float))
+
+(defmacro script-eval (script &key (key (process->ppointer PP)) &key (proc PP) &key (vector (the-as vector #f)))
+  `(eval! (new 'stack 'script-context ,key ,proc ,vector) ,script))
+
+;; DECOMP BEGINS
+
+(deftype script-form (structure)
+  ((name symbol                            :offset-assert   0)
+   (spec pair                              :offset-assert   4)
+   (func (function script-context object)  :offset-assert   8)
+   )
+  :pack-me
+  :method-count-assert 10
+  :size-assert         #xc
+  :flag-assert         #xa0000000c
+  (:methods
+    (script-form-method-9 () none 9)
+    )
+  )
+
+
+(deftype script-context (structure)
+  ((load-state   load-state    :offset-assert   0)
+   (key          object        :offset-assert   4)
+   (process      process       :offset-assert   8)
+   (trans        vector        :offset-assert  12)
+   (side-effect? symbol        :offset-assert  16)
+   (got-error?   symbol        :offset-assert  20)
+   (expr         pair          :offset-assert  24)
+   (param-count  int32         :offset-assert  28)
+   (param        object     16 :offset-assert  32)
+   (param-type   object     16 :offset-assert  96)
+   )
+  :method-count-assert 12
+  :size-assert         #xa0
+  :flag-assert         #xc000000a0
+  (:methods
+    (new (symbol type object process vector) _type_ 0)
+    (eval! (_type_ pair) object 9)
+    (script-context-method-10 (_type_ object pair) object 10)
+    (script-context-method-11 (_type_ pair pair symbol) symbol 11)
+    )
+  )
+
+
+;; WARN: Return type mismatch structure vs script-context.
+(defmethod new script-context ((allocation symbol) (type-to-make type) (arg0 object) (arg1 process) (arg2 vector))
+  (let ((t9-0 (method-of-type structure new))
+        (v1-1 type-to-make)
+        )
+    (-> type-to-make size)
+    (let ((v0-0 (t9-0 allocation v1-1)))
+      (set! (-> (the-as script-context v0-0) key) arg0)
+      (set! (-> (the-as script-context v0-0) process) arg1)
+      (set! (-> (the-as script-context v0-0) load-state) *load-state*)
+      (set! (-> (the-as script-context v0-0) side-effect?) #t)
+      (set! (-> (the-as script-context v0-0) got-error?) #f)
+      (set! (-> (the-as script-context v0-0) trans) arg2)
+      (the-as script-context v0-0)
+      )
+    )
+  )

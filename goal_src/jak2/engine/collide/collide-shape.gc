@@ -1,0 +1,3252 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: collide-shape.gc
+;; name in dgo: collide-shape
+;; dgos: ENGINE, GAME
+
+#|@file
+## Pushers
+
+"pushers" are things that push things out of the way. For example, if a platform hits jak, it pushes him out of the way.
+Nothing can ever push back against a pusher - they move on some fixed path and cannot be disturbed.
+these are done by pairs of collide-shape's, and don't involve the main collide-cache.
+Using the main collide cache wouldn't really make sense because a pusher never interacts with the background
+and there's just one check per pair per frame.
+
+the do-push-aways function is what actually does all the tests for all the objects.
+
+there's a "pusher-pool" to make all pushers run at the end of a frame.
+
+the "should push away test" (SPAT) checks to see if the movement of a pusher should push away another collide shape.
+it returns a triangle and normal direction to push in.
+
+|#
+
+;; DECOMP BEGINS
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; PUSHER
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmethod pusher-init collide-shape ((obj collide-shape))
+  "Initialize a collide-shape as a pusher and move it to the pusher pool."
+  (when (logtest? (collide-spec pusher) (-> obj root-prim prim-core collide-as))
+    (let ((proc (the-as process-tree (-> obj process))))
+      (while (not (logtest? (-> proc mask) (process-mask process-tree)))
+        (set! proc (ppointer->process (-> proc parent)))
+        )
+      ;; "pushers" go in a separate pool so they run after non-pushers.
+      (if (!= proc *pusher-pool*)
+          (change-parent (-> obj process) *pusher-pool*)
+          )
+      )
+    )
+  (none)
+  )
+
+(defmethod should-push-away collide-shape ((obj collide-shape) (other collide-shape) (cquery collide-query))
+  "Should this shape push away the other? Most generic implementation."
+  (local-vars (v1-2 uint) (v1-3 float) (a2-2 uint) (a3-2 uint))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((v1-0 cquery))
+      (set! (-> v1-0 best-dist) 0.0)
+      (set! (-> v1-0 best-my-prim) #f)
+      (set! (-> v1-0 num-spheres) (the-as uint #f))
+      )
+    (let ((a0-1 (-> obj root-prim))
+          (a1-1 (-> other root-prim))
+          )
+      ;; check action
+      (let ((a3-0 (-> a0-1 prim-core collide-with))
+            (t0-0 (-> a1-1 prim-core collide-as))
+            (v1-1 (-> a0-1 prim-core action))
+            )
+        (let ((a2-1 (-> a1-1 prim-core action)))
+          (b! (not (logtest? a3-0 t0-0)) cfg-8 :delay (set! a3-2 (the-as uint (logand a2-1 1))))
+          (b! (zero? a3-2) cfg-8 :delay (set! a2-2 (the-as uint (logand a2-1 16))))
+          )
+        (b! (nonzero? a2-2) cfg-8 :delay (set! v1-2 (the-as uint (logand v1-1 1))))
+        )
+      (b! (zero? v1-2) cfg-8 :delay (nop!))
+      ;; check bsphere
+      (.lvf vf1 (&-> a0-1 prim-core world-sphere quad))
+      (.lvf vf2 (&-> a1-1 prim-core world-sphere quad))
+      (.sub.vf vf3 vf1 vf2)
+      (.add.w.vf vf4 vf1 vf2 :mask #b1000)
+      (.mul.vf vf3 vf3 vf3 :mask #b111)
+      (.mul.w.vf vf4 vf4 vf4 :mask #b1000)
+      (.mul.x.vf acc vf0 vf3 :mask #b1000)
+      (.add.mul.y.vf acc vf0 vf3 acc :mask #b1000)
+      (.add.mul.z.vf vf3 vf0 vf3 acc :mask #b1000)
+      (.sub.w.vf vf5 vf3 vf4 :mask #b1000)
+      (let ((f0-1 0.0))
+        (.add.w.vf vf5 vf0 vf5 :mask #b1)
+        (.mov v1-3 vf5)
+        (b! (<= f0-1 v1-3) cfg-8)
+        )
+      ;; more specific test
+      (should-push-away-test a0-1 a1-1 cquery)
+      )
+    (let ((v0-1 (< (-> cquery best-dist) 0.0)))
+      (b! #t cfg-9 :delay (nop!))
+      (label cfg-8)
+      (set! v0-1 #f)
+      (label cfg-9)
+      v0-1
+      )
+    )
+  )
+
+(defmethod should-push-away-test collide-shape-prim ((obj collide-shape-prim) (arg0 collide-shape-prim) (arg1 collide-query))
+  "Most generic should-push-away-test - child prims are expected to override."
+  (format 0 "ERROR: collide-shape-prim::should-push-away-test was called illegally!~%")
+  (none)
+  )
+
+(defmethod should-push-away-test collide-shape-prim-group ((obj collide-shape-prim-group) (other collide-shape-prim) (cquery collide-query))
+  "Should push away test where the pusher is a group."
+  (local-vars (a0-2 collide-action) (a0-3 float) (f0-0 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (nop!)
+    (let ((s4-0 (the-as collide-shape-prim obj))
+          (s3-0 (the-as uint (-> obj num-children)))
+          )
+      (nop!)
+      (let ((v1-0 (-> other prim-core collide-as)))
+        (nop!)
+        (.lvf vf1 (&-> other prim-core world-sphere quad))
+        (until (> f0-0 a0-3)
+          (until (nonzero? a0-2)
+            (label cfg-1)
+            (b! (zero? s3-0) cfg-6 :delay (set! s4-0 (&+ s4-0 80)))
+            (+! s3-0 -1)
+            (let ((a1-1 (-> s4-0 prim-core collide-with)))
+              (nop!)
+              (let ((a0-1 (-> s4-0 prim-core action))
+                    (a1-2 (logand a1-1 v1-0))
+                    )
+                (set! a0-2 (logand a0-1 (collide-action solid)))
+                (b! (zero? a1-2) cfg-1 :delay (.lvf vf2 (&-> s4-0 prim-core world-sphere quad)))
+                )
+              )
+            )
+          (.sub.vf vf3 vf2 vf1)
+          (.add.w.vf vf4 vf2 vf1 :mask #b1000)
+          (.mul.vf vf3 vf3 vf3 :mask #b111)
+          (.mul.w.vf vf4 vf4 vf4 :mask #b1000)
+          (.mul.x.vf acc vf0 vf3 :mask #b1000)
+          (.add.mul.y.vf acc vf0 vf3 acc :mask #b1000)
+          (.add.mul.z.vf vf3 vf0 vf3 acc :mask #b1000)
+          (.sub.w.vf vf3 vf3 vf4 :mask #b1000)
+          (set! f0-0 0.0)
+          (.add.w.vf vf3 vf0 vf3 :mask #b1)
+          (.mov a0-3 vf3)
+          )
+        (should-push-away-test s4-0 other cquery)
+        (set! v1-0 (-> other prim-core collide-as))
+        )
+      )
+    (b! #t cfg-1 :delay (.lvf vf1 (&-> other prim-core world-sphere quad)))
+    (label cfg-6)
+    0
+    (none)
+    )
+  )
+
+(defmethod should-push-away-a-group-test collide-shape-prim ((obj collide-shape-prim) (other collide-shape-prim-group) (cquery collide-query))
+  "should-push-away-test anything vs. a group."
+  (local-vars (a0-2 collide-action) (a0-3 float) (f0-0 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (nop!)
+    (let ((s4-0 (the-as object other))
+          (s3-0 (the-as uint (-> other num-children)))
+          )
+      (nop!)
+      (let ((v1-0 (-> obj prim-core collide-with)))
+        (nop!)
+        (.lvf vf2 (&-> obj prim-core world-sphere quad))
+        (until (> f0-0 a0-3)
+          (until (nonzero? a0-2)
+            (label cfg-1)
+            (b! (zero? s3-0) cfg-6 :delay (set! s4-0 (&+ (the-as collide-shape-prim s4-0) 80)))
+            (+! s3-0 -1)
+            (let ((a1-1 (-> (the-as collide-shape-prim s4-0) prim-core collide-as)))
+              (nop!)
+              (let ((a0-1 (-> (the-as collide-shape-prim s4-0) prim-core action))
+                    (a1-2 (logand v1-0 a1-1))
+                    )
+                (set! a0-2 (logand a0-1 (collide-action solid)))
+                (b! (zero? a1-2) cfg-1 :delay (.lvf vf1 (&-> (the-as collide-shape-prim s4-0) prim-core world-sphere quad)))
+                )
+              )
+            )
+          (.sub.vf vf3 vf2 vf1)
+          (.add.w.vf vf4 vf2 vf1 :mask #b1000)
+          (.mul.vf vf3 vf3 vf3 :mask #b111)
+          (.mul.w.vf vf4 vf4 vf4 :mask #b1000)
+          (.mul.x.vf acc vf0 vf3 :mask #b1000)
+          (.add.mul.y.vf acc vf0 vf3 acc :mask #b1000)
+          (.add.mul.z.vf vf3 vf0 vf3 acc :mask #b1000)
+          (.sub.w.vf vf3 vf3 vf4 :mask #b1000)
+          (set! f0-0 0.0)
+          (.add.w.vf vf3 vf0 vf3 :mask #b1)
+          (.mov a0-3 vf3)
+          )
+        (should-push-away-test obj (the-as collide-shape-prim s4-0) cquery)
+        (set! v1-0 (-> obj prim-core collide-with))
+        )
+      )
+    (b! #t cfg-1 :delay (.lvf vf2 (&-> obj prim-core world-sphere quad)))
+    (label cfg-6)
+    0
+    (none)
+    )
+  )
+
+(defmethod should-push-away-test collide-shape-prim-mesh ((obj collide-shape-prim-mesh) (other collide-shape-prim) (cquery collide-query))
+  "Check if we should push away another shape (must be sphere or group)"
+  (let ((v1-0 (-> other prim-core prim-type)))
+    (cond
+      ((= v1-0 (prim-type group))
+       ;; iterate over group
+       (should-push-away-a-group-test obj (the-as collide-shape-prim-group other) cquery)
+       )
+      (else
+        (b! (> (the-as int v1-0) 0) cfg-8 :delay (nop!))
+        (let ((s2-0 (-> obj mesh)))
+          (b! (not s2-0) cfg-7 :delay (empty-form))
+          ;; mesh vs. sphere. Set up the collide-mesh-cache
+          (let ((v1-4 (populate-for-prim-mesh *collide-mesh-cache* obj)))
+            (b! (not v1-4) cfg-7 :delay (empty-form))
+            (let ((s5-0 (new 'stack-no-clear 'collide-tri-result)))
+              ;; run the actual mesh/sphere collision
+              (let ((f0-1 (should-push-away-test
+                            s2-0
+                            (the-as collide-mesh-cache-tri (-> v1-4 tris))
+                            s5-0
+                            (the-as vector (-> other prim-core))
+                            (-> cquery best-dist)
+                            )
+                          )
+                    )
+                (b! (>= f0-1 (-> cquery best-dist)) cfg-7 :delay #f)
+                (set! (-> cquery best-dist) f0-1)
+                )
+              (set! (-> cquery best-my-prim) obj)
+              (set! (-> cquery num-spheres) (the-as uint other))
+              (set! (-> cquery best-other-tri vertex 0 quad) (-> s5-0 vertex 0 quad))
+              (set! (-> cquery best-other-tri vertex 1 quad) (-> s5-0 vertex 1 quad))
+              (set! (-> cquery best-other-tri vertex 2 quad) (-> s5-0 vertex 2 quad))
+              (set! (-> cquery best-other-tri intersect quad) (-> s5-0 intersect quad))
+              (set! (-> cquery best-other-tri normal quad) (-> s5-0 normal quad))
+              (set! (-> cquery best-other-tri pat) (-> s5-0 pat))
+              )
+            )
+          )
+        (label cfg-7)
+        (b! #t cfg-9 :delay (nop!))
+        (label cfg-8)
+        (format 0 "ERROR: Attempted unsupported mesh -> mesh test in collide-shape-prim::should-push-away-test!~%")
+        )
+      )
+    )
+  (label cfg-9)
+  0
+  (none)
+  )
+
+(defmethod should-push-away-test collide-shape-prim-sphere ((obj collide-shape-prim-sphere) (other collide-shape-prim) (cquery collide-query))
+  "Sphere against anything test."
+  (local-vars (v1-3 float))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((v1-0 (-> other prim-core prim-type)))
+      (cond
+        ((= v1-0 (prim-type group))
+         ;; test against a group
+         (should-push-away-a-group-test obj (the collide-shape-prim-group other) cquery)
+         )
+        (else
+          (b! (> (the-as int v1-0) 0) cfg-5 :delay (nop!))
+          ;; sphere sphere
+          (.lvf vf1 (&-> obj prim-core world-sphere quad))
+          (.lvf vf2 (&-> other prim-core world-sphere quad))
+          (.sub.vf vf3 vf2 vf1 :mask #b111)
+          (.add.w.vf vf5 vf1 vf2 :mask #b1000)
+          (.mul.vf vf4 vf3 vf3 :mask #b111)
+          (.mul.x.vf acc vf0 vf4 :mask #b1000)
+          (.add.mul.y.vf acc vf0 vf4 acc :mask #b1000)
+          (.add.mul.z.vf vf4 vf0 vf4 acc :mask #b1000)
+          (.sqrt.vf Q vf4 :ftf #b11)
+          (.mov.vf vf3 vf0 :mask #b1000)
+          (.add.w.vf vf5 vf0 vf5 :mask #b1)
+          (let ((f2-0 (-> cquery best-dist)))
+            (.wait.vf)
+            (nop!)
+            (.add.vf vf4 vf0 Q :mask #b1)
+            (.sub.x.vf vf6 vf4 vf5 :mask #b1)
+            (.mul.x.vf vf3 vf3 vf4 :mask #b111)
+            (.mov v1-3 vf6)
+            (let ((f1-0 v1-3))
+              (b! (<= f2-0 f1-0) cfg-9)
+              (let ((v1-4 (-> obj pat)))
+                (set! (-> cquery best-dist) f1-0)
+                (set! (-> cquery best-my-prim) obj)
+                (set! (-> cquery num-spheres) (the-as uint other))
+                (.svf (&-> cquery best-other-tri normal quad) vf3)
+                (set! (-> cquery best-other-tri pat) v1-4)
+                )
+              )
+            )
+          (let ((s3-0 (-> cquery best-other-tri normal))
+                (s4-1 (-> cquery best-other-tri intersect))
+                )
+            ;; some annoying logic to fake a "triangle" on the sphere
+            (vector-float*! s4-1 s3-0 (-> obj prim-core world-sphere w))
+            (vector+! s4-1 s4-1 (the-as vector (-> obj prim-core)))
+            (set! (-> cquery best-other-tri vertex 0 quad) (-> s4-1 quad))
+            (point-in-plane-<-point+normal! (-> cquery best-other-tri vertex 1) s4-1 s3-0)
+            (let* ((a0-8 (vector-normalize!
+                           (vector-!
+                             (new 'stack-no-clear 'vector)
+                             (-> cquery best-other-tri vertex 1)
+                             (the-as vector (-> cquery best-other-tri))
+                             )
+                           1.0
+                           )
+                         )
+                   (v1-11 (vector-cross! (new 'stack-no-clear 'vector) s3-0 a0-8))
+                   (a0-9 (-> cquery best-other-tri vertex 2))
+                   )
+              (let ((a1-7 4096.0))
+                (.mov vf7 a1-7)
+                )
+              (.lvf vf5 (&-> v1-11 quad))
+              (.lvf vf4 (&-> s4-1 quad))
+              (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+              (.mul.x.vf acc vf5 vf7 :mask #b111)
+              (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+              (.svf (&-> a0-9 quad) vf6)
+              )
+            )
+          (b! #t cfg-9 :delay (nop!))
+          (label cfg-5)
+          ;; sphere to mesh
+          (let ((s2-0 (-> (the-as collide-shape-prim-mesh other) mesh)))
+            (when s2-0
+              (let ((v1-13 (populate-for-prim-mesh *collide-mesh-cache* (the-as collide-shape-prim-mesh other))))
+                (when v1-13
+                  (let* ((s3-1 (new 'stack-no-clear 'collide-tri-result))
+                         (f0-3 (should-push-away-test
+                                 s2-0
+                                 (the-as collide-mesh-cache-tri (-> v1-13 tris))
+                                 s3-1
+                                 (the-as vector (-> obj prim-core))
+                                 (-> cquery best-dist)
+                                 )
+                               )
+                         )
+                    (when (< f0-3 (-> cquery best-dist))
+                      (set! (-> cquery best-dist) f0-3)
+                      (set! (-> cquery best-my-prim) obj)
+                      (set! (-> cquery num-spheres) (the-as uint other))
+                      (let ((s4-2 (-> cquery best-other-tri normal)))
+                        ;; some annoying logic to fake a "triangle" on the sphere
+                        (vector-! s4-2 (-> s3-1 intersect) (the-as vector (-> obj prim-core)))
+                        (vector-normalize! s4-2 1.0)
+                        (let ((s3-2 (-> cquery best-other-tri intersect)))
+                          (vector-float*! s3-2 s4-2 (-> obj prim-core world-sphere w))
+                          (vector+! s3-2 s3-2 (the-as vector (-> obj prim-core)))
+                          (set! (-> cquery best-other-tri vertex 0 quad) (-> s3-2 quad))
+                          (point-in-plane-<-point+normal! (-> cquery best-other-tri vertex 1) s3-2 s4-2)
+                          (let* ((a0-23 (vector-normalize!
+                                          (vector-!
+                                            (new 'stack-no-clear 'vector)
+                                            (-> cquery best-other-tri vertex 1)
+                                            (the-as vector (-> cquery best-other-tri))
+                                            )
+                                          1.0
+                                          )
+                                        )
+                                 (v1-23 (vector-cross! (new 'stack-no-clear 'vector) s4-2 a0-23))
+                                 (a0-24 (-> cquery best-other-tri vertex 2))
+                                 )
+                            (let ((a1-18 4096.0))
+                              (.mov vf7 a1-18)
+                              )
+                            (.lvf vf5 (&-> v1-23 quad))
+                            (.lvf vf4 (&-> s3-2 quad))
+                            (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+                            (.mul.x.vf acc vf5 vf7 :mask #b111)
+                            (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                            (.svf (&-> a0-24 quad) vf6)
+                            )
+                          )
+                        )
+                      (set! (-> cquery best-other-tri pat) (-> obj pat))
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    (label cfg-9)
+    0
+    (none)
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; COLLIDE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; the "collide" system is a bit more complicated. Instead of one object being pushed by another, one object will move
+;; until it hits another, and then the "collision reaction" function is called, which makes it bounce off, or something like that.
+
+;; there are two important details:
+;; - this system uses the collide cache. Objects may bounce off of multiple collide shapes, and the background,
+;;   so the collide cache will provide a large speedup. The functions below are for checking collide shapes against
+;;   data in the collide cache.
+;; - the collide-with functions figure out how far a moving sphere can move before it hits the first thing.
+;;   and return this value in best-u. They also populate the touching-list with all primts that were hit.
+;;   NOTE: it will over-populate the list, and the user must call (update-from-step-size *touching-list* u)
+;;   in order to get an accurate list.
+
+(defmethod collide-with-collide-cache-prim-mesh collide-shape-prim ((obj collide-shape-prim) (arg0 collide-query) (arg1 collide-cache-prim))
+  (format 0 "ERROR: Unsupported prim type in collide-shape-prim::collide-with-collide-cache-prim-mesh!~%")
+  (none)
+  )
+
+(defmethod collide-with-collide-cache-prim-mesh collide-shape-prim-sphere ((obj collide-shape-prim-sphere) (arg0 collide-query) (arg1 collide-cache-prim))
+  "Collide a moving sphere with a mesh in the collide cache."
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         )
+    (let* ((gp-0 (new 'stack-no-clear 'collide-tri-result))
+           ;; run moving sphere to mesh collision
+           (f0-1 (resolve-moving-sphere-tri
+                   arg1
+                   gp-0
+                   (-> obj prim-core)
+                   (-> arg0 move-dist)
+                   (-> arg0 best-dist)
+                   (-> obj prim-core action)
+                   )
+                 )
+           )
+      (when (>= f0-1 0.0) ;; did we hit anything?
+        (let ((v1-3 (-> arg1 prim-core action))
+              (a0-2 (-> obj prim-core action))
+              (a2-2 (-> arg1 prim))
+              )
+          ;; it really seems like these checks should have gone first...
+          (let* ((v1-4 (logand a0-2 v1-3))
+                 (a0-3 (-> obj cshape))
+                 (a1-2 (logand v1-4 (collide-action solid)))
+                 (v1-5 (-> a2-2 cshape))
+                 )
+            (b! (zero? a1-2) cfg-6 :delay (nop!))
+            (b! (= v1-5 #f) cfg-5 :likely-delay (set! a2-2 (the-as collide-shape-prim #f)))
+            (b! (logtest? (-> a0-3 penetrate-using) (-> v1-5 penetrated-by)) cfg-6 :delay (nop!))
+            (label cfg-5)
+            ;; fill out info
+            (.lvf vf3 (&-> gp-0 vertex 0 quad))
+            (.lvf vf4 (&-> gp-0 vertex 1 quad))
+            (.lvf vf5 (&-> gp-0 vertex 2 quad))
+            (.lvf vf1 (&-> gp-0 intersect quad))
+            (.lvf vf2 (&-> gp-0 normal quad))
+            (let ((a0-6 (-> gp-0 pat))
+                  (a1-4 (-> gp-0 collide-ptr))
+                  )
+              (set! (-> arg0 best-dist) f0-1)
+              (.svf (&-> arg0 best-other-tri vertex 0 quad) vf3)
+              (.svf (&-> arg0 best-other-tri vertex 1 quad) vf4)
+              (.svf (&-> arg0 best-other-tri vertex 2 quad) vf5)
+              (.svf (&-> arg0 best-other-tri intersect quad) vf1)
+              (.svf (&-> arg0 best-other-tri normal quad) vf2)
+              (set! (-> arg0 best-other-tri pat) a0-6)
+              (set! (-> arg0 best-other-tri collide-ptr) a1-4)
+              )
+            (set! (-> arg0 num-spheres) (the-as uint a2-2))
+            (set! (-> arg0 best-my-prim) obj)
+            (label cfg-6)
+            (b! (not v1-5) cfg-8 :delay (empty-form))
+            )
+          ;; add to touching list
+          (add-touching-prims
+            *touching-list*
+            obj
+            a2-2
+            f0-1
+            (the-as collide-tri-result #f)
+            (the-as collide-tri-result (-> gp-0 vertex))
+            )
+          )
+        )
+      )
+    (label cfg-8)
+    0
+    (none)
+    )
+  )
+
+(defmethod collide-with-collide-cache-prim-mesh collide-shape-prim-mesh ((obj collide-shape-prim-mesh) (arg0 collide-query) (arg1 collide-cache-prim))
+  "moving mesh to mesh not supported."
+  (format 0 "ERROR: collide-shape-prim-mesh vs. collide-cache-prim mesh is not currently supported!~%")
+  (none)
+  )
+
+(defmethod collide-with-collide-cache-prim-mesh collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 collide-query) (arg1 collide-cache-prim))
+  "Collide a group with a mesh in the collide cache."
+  (let ((s4-0 (-> arg1 prim-core collide-as))
+        (s3-0 (-> obj child 0))
+        )
+    (countdown (s2-0 (the-as uint (-> obj num-children)))
+      (if (logtest? (-> s3-0 prim-core collide-with) s4-0)
+          (collide-with-collide-cache-prim-mesh s3-0 arg0 arg1)
+          )
+      (&+! s3-0 80)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod collide-with-collide-cache-prim-sphere collide-shape-prim ((obj collide-shape-prim) (arg0 collide-query) (arg1 collide-cache-prim))
+  (format 0 "ERROR: Unsupported prim type in collide-shape-prim::collide-with-collide-cache-prim-sphere!~%")
+  (none)
+  )
+
+(defmethod collide-with-collide-cache-prim-sphere collide-shape-prim-sphere ((obj collide-shape-prim-sphere) (arg0 collide-query) (arg1 collide-cache-prim))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         )
+    (let* ((gp-0 (new 'stack-no-clear 'collide-tri-result))
+           (f0-1 (resolve-moving-sphere-sphere
+                   arg1
+                   gp-0
+                   (-> obj prim-core)
+                   (-> arg0 move-dist)
+                   (-> arg0 best-dist)
+                   (-> arg1 prim-core action)
+                   )
+                 )
+           )
+      (b! (< f0-1 0.0) cfg-5 :delay #f)
+      (let ((v1-3 (-> arg1 prim-core action))
+            (a0-2 (-> obj prim-core action))
+            (a2-2 (-> arg1 prim))
+            )
+        (let* ((a0-3 (logand a0-2 v1-3))
+               (v1-4 (-> obj cshape))
+               (a1-2 (logand a0-3 (collide-action solid)))
+               (a0-4 (-> a2-2 cshape))
+               )
+          (b! (zero? a1-2) cfg-4 :delay (nop!))
+          (b! (logtest? (-> v1-4 penetrate-using) (-> a0-4 penetrated-by)) cfg-4 :delay (nop!))
+          )
+        (.lvf vf3 (&-> gp-0 vertex 0 quad))
+        (.lvf vf4 (&-> gp-0 vertex 1 quad))
+        (.lvf vf5 (&-> gp-0 vertex 2 quad))
+        (.lvf vf1 (&-> gp-0 intersect quad))
+        (.lvf vf2 (&-> gp-0 normal quad))
+        (let ((v1-7 (-> gp-0 pat))
+              (a0-6 (-> gp-0 collide-ptr))
+              )
+          (set! (-> arg0 best-dist) f0-1)
+          (.svf (&-> arg0 best-other-tri vertex 0 quad) vf3)
+          (.svf (&-> arg0 best-other-tri vertex 1 quad) vf4)
+          (.svf (&-> arg0 best-other-tri vertex 2 quad) vf5)
+          (.svf (&-> arg0 best-other-tri intersect quad) vf1)
+          (.svf (&-> arg0 best-other-tri normal quad) vf2)
+          (set! (-> arg0 best-other-tri pat) v1-7)
+          (set! (-> arg0 best-other-tri collide-ptr) a0-6)
+          )
+        (set! (-> arg0 num-spheres) (the-as uint a2-2))
+        (set! (-> arg0 best-my-prim) obj)
+        (label cfg-4)
+        (add-touching-prims
+          *touching-list*
+          obj
+          a2-2
+          f0-1
+          (the-as collide-tri-result #f)
+          (the-as collide-tri-result (-> gp-0 vertex))
+          )
+        )
+      )
+    (label cfg-5)
+    0
+    (none)
+    )
+  )
+
+(defmethod collide-with-collide-cache-prim-sphere collide-shape-prim-mesh ((obj collide-shape-prim-mesh) (arg0 collide-query) (arg1 collide-cache-prim))
+  "Can't collide meshes with collide cache."
+  (format 0 "ERROR: collide-shape-prim-mesh vs. collide-cache-prim sphere is not currently supported!~%")
+  (none)
+  )
+
+(defmethod collide-with-collide-cache-prim-sphere collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 collide-query) (arg1 collide-cache-prim))
+  (let ((s4-0 (-> arg1 prim-core collide-as))
+        (s3-0 (-> obj child 0))
+        )
+    (countdown (s2-0 (the-as uint (-> obj num-children)))
+      (if (logtest? (-> s3-0 prim-core collide-with) s4-0)
+          (collide-with-collide-cache-prim-sphere s3-0 arg0 arg1)
+          )
+      (&+! s3-0 80)
+      )
+    )
+  0
+  (none)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; cshape reaction
+;;;;;;;;;;;;;;;;;;;;;
+
+;; this mess has callbacks for when a collide shape hits something. This is called as part of the collision system.
+
+(defun find-ground-point ((arg0 control-info) (arg1 vector) (arg2 float) (arg3 float))
+  "Find a safe ground point to bounce the player back to if they jump onto lava or similar."
+  (local-vars (sv-560 int))
+  (let* ((f0-0 819.2)
+         (v1-1 (-> arg0 transv))
+         (f30-0 (if (< f0-0 (sqrtf (+ (* (-> v1-1 x) (-> v1-1 x)) (* (-> v1-1 z) (-> v1-1 z)))))
+                    (vector-y-angle (-> arg0 transv))
+                    (y-angle arg0)
+                    )
+                )
+         (s2-0 (-> arg0 trans))
+         (s1-0 (new 'stack-no-clear 'collide-query))
+         )
+    (set! (-> s1-0 collide-with) (-> arg0 root-prim prim-core collide-with))
+    (set! (-> s1-0 ignore-process0) (-> arg0 process))
+    (set! (-> s1-0 ignore-process1) #f)
+    (set! (-> s1-0 ignore-pat) (-> arg0 pat-ignore-mask))
+    (set! (-> s1-0 action-mask) (collide-action solid))
+    (set! (-> arg1 w) 0.0)
+    (dotimes (v1-9 3)
+      (set! (-> s1-0 bbox min data v1-9) (- (-> s2-0 data v1-9) arg3))
+      (set! (-> s1-0 bbox max data v1-9) (+ (-> s2-0 data v1-9) arg3))
+      )
+    (set! (-> s1-0 bbox min y) (+ -40960.0 (-> s2-0 y)))
+    (set! (-> s1-0 bbox max y) (+ 20480.0 (-> s2-0 y)))
+    (fill-using-bounding-box *collide-cache* s1-0)
+    (vector+! (-> s1-0 start-pos) s2-0 (new 'static 'vector :y 20480.0 :w 1.0))
+    (let ((v1-16 s1-0))
+      (set! (-> v1-16 radius) 2048.0)
+      (set! (-> v1-16 collide-with) (-> arg0 root-prim prim-core collide-with))
+      (set! (-> v1-16 ignore-process0) (-> arg0 process))
+      (set! (-> v1-16 ignore-process1) #f)
+      (set! (-> v1-16 ignore-pat) (-> arg0 pat-ignore-mask))
+      (set! (-> v1-16 action-mask) (collide-action solid))
+      )
+    (dotimes (s0-0 8)
+      (let ((f28-0 (+ f30-0 (if (not (logtest? s0-0 1))
+                                (* 8192.0 (the float (/ s0-0 2)))
+                                (* -8192.0 (the float (/ s0-0 2)))
+                                )
+                      )
+                   )
+            )
+        (set! sv-560 0)
+        (let ((f26-0 arg3))
+          (set-vector! (-> s1-0 move-dist) 0.0 0.0 arg3 1.0)
+          (vector-rotate-y! (-> s1-0 move-dist) (-> s1-0 move-dist) f28-0)
+          (if (>= (probe-using-line-sphere *collide-cache* s1-0) 0.0)
+              (set! f26-0 (+ -6144.0 (vector-vector-xz-distance s2-0 (-> s1-0 best-other-tri intersect))))
+              )
+          (let ((f24-0 arg2))
+            (while (>= f26-0 f24-0)
+              (set-vector! (-> s1-0 start-pos) 0.0 0.0 f24-0 1.0)
+              (vector-rotate-y! (-> s1-0 start-pos) (-> s1-0 start-pos) f28-0)
+              (vector+! (-> s1-0 start-pos) s2-0 (-> s1-0 start-pos))
+              (set! (-> s1-0 start-pos y) (+ 20480.0 (-> s2-0 y)))
+              (set-vector! (-> s1-0 move-dist) 0.0 -61440.0 0.0 1.0)
+              (let ((v1-33 s1-0))
+                (set! (-> v1-33 radius) 10240.0)
+                (set! (-> v1-33 collide-with) (-> arg0 root-prim prim-core collide-with))
+                (set! (-> v1-33 ignore-process0) (-> arg0 process))
+                (set! (-> v1-33 ignore-process1) #f)
+                (set! (-> v1-33 ignore-pat) (-> arg0 pat-ignore-mask))
+                (set! (-> v1-33 action-mask) (collide-action solid))
+                )
+              (when (>= (probe-using-line-sphere *collide-cache* s1-0) 0.0)
+                (cond
+                  ((and (or (= (-> s1-0 best-other-tri pat mode) (pat-mode ground))
+                            (= (-> s1-0 best-other-tri pat mode) (pat-mode halfpipe))
+                            )
+                        (and (= (-> s1-0 best-other-tri pat event) (pat-event none)) (< 0.7 (-> s1-0 best-other-tri normal y)))
+                        )
+                   (set! (-> arg1 quad) (-> s1-0 best-other-tri intersect quad))
+                   (set! sv-560 (+ sv-560 1))
+                   (if (>= sv-560 2)
+                       (return arg1)
+                       )
+                   )
+                  ((and (= (-> s1-0 best-other-tri pat mode) (pat-mode wall))
+                        (< (+ 4096.0 (-> s2-0 y)) (-> s1-0 best-other-tri intersect y))
+                        )
+                   (goto cfg-38)
+                   )
+                  )
+                )
+              (set! f24-0 (+ 4096.0 f24-0))
+              )
+            )
+          )
+        )
+      (label cfg-38)
+      )
+    )
+  (the-as vector #f)
+  )
+
+(defun target-attack-up ((arg0 target) (arg1 symbol) (arg2 symbol))
+  "Send events to target in response to hitting a surface that launches you up."
+  (with-pp
+    ;; first, just send an event to test and see if we should even respond
+    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-1 from) (process->ppointer pp))
+      (set! (-> a1-1 num-params) 2)
+      (set! (-> a1-1 message) arg1)
+      (set! (-> a1-1 param 0) (the-as uint #f))
+      (let ((v1-2 (new 'static 'attack-info :mask (attack-info-mask mode id test))))
+        (set! (-> v1-2 id) (the-as uint 2))
+        (set! (-> v1-2 mode) arg2)
+        (set! (-> v1-2 test) #t)
+        (set! (-> a1-1 param 1) (the-as uint v1-2))
+        )
+      (when (send-event-function arg0 a1-1)
+        ;; we should respond. now do the more complicated ground point finding.
+        (let ((s3-0 (find-ground-point (-> arg0 control) (new 'stack-no-clear 'vector) 8192.0 40960.0)))
+          (set! s3-0 (cond
+                       (s3-0
+                         (empty)
+                         s3-0
+                         )
+                       (else
+                         (-> arg0 control last-trans-on-ground)
+                         )
+                       )
+                )
+          (let* ((s2-1 (vector-! (new 'stack-no-clear 'vector) s3-0 (-> arg0 control trans)))
+                 (f0-0 8192.0)
+                 (f1-0 40960.0)
+                 (v1-8 s2-1)
+                 (f30-0 (fmax f0-0 (fmin f1-0 (sqrtf (+ (* (-> v1-8 x) (-> v1-8 x)) (* (-> v1-8 z) (-> v1-8 z)))))))
+                 )
+            (cond
+              ((< (fabs (vector-dot
+                          (-> arg0 control dynam gravity-normal)
+                          (vector-! (new 'stack-no-clear 'vector) s3-0 (-> arg0 control trans))
+                          )
+                        )
+                  40960.0
+                  )
+               (vector-xz-normalize! s2-1 f30-0)
+               (let ((s1-0 (new 'stack-no-clear 'event-message-block)))
+                 (set! (-> s1-0 from) (process->ppointer pp))
+                 (set! (-> s1-0 num-params) 2)
+                 (set! (-> s1-0 message) arg1)
+                 (set! (-> s1-0 param 0) (the-as uint #f))
+                 (let ((s4-1 (new 'static 'attack-info :mask (attack-info-mask vector mode shove-up angle id))))
+                   (set! (-> s4-1 id) (the-as uint 2))
+                   (set! (-> s4-1 mode) arg2)
+                   (set! (-> s4-1 vector quad) (-> s2-1 quad))
+                   (set! (-> s4-1 shove-up)
+                         (+ (lerp-scale 4096.0 16384.0 f30-0 4096.0 40960.0) (fmax 0.0 (- (-> s3-0 y) (-> arg0 control trans y))))
+                         )
+                   (set! (-> s4-1 angle) 'up)
+                   (set! (-> s1-0 param 1) (the-as uint s4-1))
+                   )
+                 (send-event-function arg0 s1-0)
+                 )
+               )
+              (else
+                (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
+                  (set! (-> a1-7 from) (process->ppointer pp))
+                  (set! (-> a1-7 num-params) 2)
+                  (set! (-> a1-7 message) arg1)
+                  (set! (-> a1-7 param 0) (the-as uint #f))
+                  (let ((v1-24 (new 'static 'attack-info :mask (attack-info-mask vector mode shove-up control angle id))))
+                    (set! (-> v1-24 id) (the-as uint 2))
+                    (set! (-> v1-24 mode) arg2)
+                    (set! (-> v1-24 vector quad) (-> (new 'static 'vector :y 40960.0 :w 1.0) quad))
+                    (set! (-> v1-24 shove-up) 40960.0)
+                    (set! (-> v1-24 angle) 'up)
+                    (set! (-> v1-24 control) 1.0)
+                    (set! (-> a1-7 param 1) (the-as uint v1-24))
+                    )
+                  (send-event-function arg0 a1-7)
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+(defmethod react-to-pat! collide-shape-moving ((obj collide-shape-moving) (arg0 pat-surface))
+  "React to colliding with the given 'pat'."
+  (with-pp
+    (let ((s5-0 0))
+      (set! (-> obj cur-pat) arg0)
+      (set! (-> obj poly-pat) arg0)
+      ;; update the surface based on the material.
+      (case (-> arg0 material)
+        (((pat-material ice))
+         (set! (-> obj surf) *ice-surface*)
+         )
+        (((pat-material gravel))
+         (set! (-> obj surf) *gravel-surface*)
+         )
+        (((pat-material quicksand))
+         (set! (-> obj surf) *quicksand-surface*)
+         )
+        (((pat-material tube))
+         (set! (-> obj surf) *no-walk-surface*)
+         )
+        (else
+          (set! (-> obj surf) *standard-ground-surface*)
+          )
+        )
+      ;; respond to events.
+      (when (nonzero? (-> arg0 event))
+        (case (-> arg0 event)
+          (((pat-event slide))
+           (set! (-> obj surf) *gravel-surface*)
+           (send-event (-> obj process) 'slide)
+           )
+          (((pat-event slippery))
+           (set! (-> obj surf) *gravel-surface*)
+           )
+          (((pat-event rail))
+           (let* ((s4-0 (-> obj process))
+                  (a0-14 (if (type? s4-0 process-focusable)
+                             s4-0
+                             )
+                         )
+                  )
+             (if (and a0-14 (not (logtest? (focus-status rail) (-> (the-as process-focusable a0-14) focus-status))))
+                 (set! (-> obj surf) *rail-surface*)
+                 )
+             )
+           )
+          (((pat-event deadly))
+           (set! s5-0 (logior s5-0 #x4000))
+           (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-4 from) (process->ppointer pp))
+             (set! (-> a1-4 num-params) 2)
+             (set! (-> a1-4 message) 'attack)
+             (set! (-> a1-4 param 0) (the-as uint #f))
+             (let ((v1-24 (new 'static 'attack-info :mask (attack-info-mask mode shove-up id))))
+               (set! (-> v1-24 id) (the-as uint 2))
+               (set! (-> v1-24 mode) 'deadly)
+               (set! (-> v1-24 shove-up) 12288.0)
+               (set! (-> a1-4 param 1) (the-as uint v1-24))
+               )
+             (send-event-function (-> obj process) a1-4)
+             )
+           )
+          (((pat-event burn))
+           (set! s5-0 (logior s5-0 #x4000))
+           (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-5 from) (process->ppointer pp))
+             (set! (-> a1-5 num-params) 2)
+             (set! (-> a1-5 message) 'attack)
+             (set! (-> a1-5 param 0) (the-as uint #f))
+             (let ((v1-29 (new 'static 'attack-info :mask (attack-info-mask mode shove-up id))))
+               (set! (-> v1-29 id) (the-as uint 2))
+               (set! (-> v1-29 mode) 'burn)
+               (set! (-> v1-29 shove-up) 12288.0)
+               (set! (-> a1-5 param 1) (the-as uint v1-29))
+               )
+             (send-event-function (-> obj process) a1-5)
+             )
+           )
+          (((pat-event deadlup))
+           (set! s5-0 (logior s5-0 #x4000))
+           (target-attack-up (the-as target (-> obj process)) 'attack-or-shove 'deadlyup)
+           )
+          (((pat-event shockup))
+           (set! s5-0 (logior s5-0 #x4000))
+           (target-attack-up (the-as target (-> obj process)) 'attack-or-shove 'shockup)
+           )
+          (((pat-event burnup))
+           (when (not (focus-test? (the-as process-focusable (-> obj process)) pilot))
+             (set! s5-0 (logior s5-0 #x4000))
+             (target-attack-up (the-as target (-> obj process)) 'attack-or-shove 'burnup)
+             )
+           )
+          (((pat-event melt))
+           (set! s5-0 (logior s5-0 #x4000))
+           (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-9 from) (process->ppointer pp))
+             (set! (-> a1-9 num-params) 2)
+             (set! (-> a1-9 message) 'attack-invinc)
+             (set! (-> a1-9 param 0) (the-as uint #f))
+             (let ((v1-40 (new 'static 'attack-info :mask (attack-info-mask mode id))))
+               (set! (-> v1-40 id) (the-as uint 2))
+               (set! (-> v1-40 mode) 'melt)
+               (set! (-> a1-9 param 1) (the-as uint v1-40))
+               )
+             (send-event-function (-> obj process) a1-9)
+             )
+           )
+          (((pat-event endlessfall))
+           (set! s5-0 (logior s5-0 #x4000))
+           (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-10 from) (process->ppointer pp))
+             (set! (-> a1-10 num-params) 2)
+             (set! (-> a1-10 message) 'attack-invinc)
+             (set! (-> a1-10 param 0) (the-as uint #f))
+             (let ((v1-45 (new 'static 'attack-info :mask (attack-info-mask mode id))))
+               (set! (-> v1-45 id) (the-as uint 2))
+               (set! (-> v1-45 mode) 'endlessfall)
+               (set! (-> a1-10 param 1) (the-as uint v1-45))
+               )
+             (send-event-function (-> obj process) a1-10)
+             )
+           )
+          (((pat-event shock))
+           (set! s5-0 (logior s5-0 #x4000))
+           (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-11 from) (process->ppointer pp))
+             (set! (-> a1-11 num-params) 2)
+             (set! (-> a1-11 message) 'attack-invinc)
+             (set! (-> a1-11 param 0) (the-as uint #f))
+             (let ((v1-50 (new 'static 'attack-info :mask (attack-info-mask mode id))))
+               (set! (-> v1-50 id) (the-as uint 2))
+               (set! (-> v1-50 mode) 'shock)
+               (set! (-> a1-11 param 1) (the-as uint v1-50))
+               )
+             (send-event-function (-> obj process) a1-11)
+             )
+           )
+          (((pat-event lip))
+           (send-event (-> obj process) 'lip 'lip)
+           )
+          (((pat-event lipramp))
+           (send-event (-> obj process) 'lip 'lipramp)
+           )
+          )
+        )
+      s5-0
+      )
+    )
+  )
+
+(defun collide-shape-moving-angle-set! ((arg0 collide-shape-moving) (arg1 vector) (arg2 vector))
+  "Update the angle parameters"
+  (set! (-> arg0 surface-normal quad) (-> arg1 quad))
+  (set! (-> arg0 surface-angle) (vector-dot arg1 (-> arg0 dynam gravity-normal)))
+  (set! (-> arg0 poly-angle) (vector-dot (-> arg0 poly-normal) (-> arg0 dynam gravity-normal)))
+  (set! (-> arg0 touch-angle)
+        (fmax
+          (-> arg0 touch-angle)
+          (vector-dot arg1 (vector-normalize! (vector-negate! (new-stack-vector0) arg2) 1.0))
+          )
+        )
+  0
+  (none)
+  )
+
+(defun cshape-reaction-update-state ((arg0 control-info) (arg1 collide-query) (arg2 vector))
+  "Common update for cshape reaction."
+  (local-vars (sv-48 vector) (sv-52 vector) (sv-56 collide-status) (sv-96 symbol))
+  (set! sv-48 (new-stack-vector0))
+  (set! sv-52 (new-stack-vector0))
+  (set! sv-56 (collide-status))
+
+  ;; do the move!
+  (let ((a1-1 (new 'stack-no-clear 'vector)))
+    (vector-float*! a1-1 (-> arg1 move-dist) (-> arg1 best-dist))
+    (move-by-vector! arg0 a1-1)
+    )
+
+  ;; do reactions
+  (react-to-pat! arg0 (-> arg1 best-other-tri pat))
+
+  ;; direction to the collision point
+  (vector-! sv-48 (the-as vector (-> arg1 best-my-prim prim-core)) (-> arg1 best-other-tri intersect))
+
+  ;; compute "coverage". this is a measure of how much the triangle below us "supports" us.
+  (cond
+    ((and (= (-> arg1 best-dist) 0.0) ;; can't move
+          (< (vector-length sv-48) (+ -40.96 (-> arg1 best-my-prim prim-core world-sphere w))) ;; 1m in collision!
+          )
+
+     ;; hack: things have gone very wrong.
+     ;; added print
+     (format 0 "very far in collision hack running~%")
+     (set! (-> sv-48 quad) (-> arg1 best-other-tri normal quad)) ;; just use the triangle's normal, things are bad.
+     (set! (-> arg0 coverage) 0.0)
+     )
+    (else
+      (set! (-> sv-48 w) 1.0)
+      (vector-normalize! sv-48 1.0)
+      ;; dot with normal is the coverage
+      (set! (-> arg0 coverage) (vector-dot sv-48 (-> arg1 best-other-tri normal)))
+      ;; hack
+      (when (< (-> arg0 coverage) 0.0)
+        ;; no idea how this can happen, but cheat things to project to the plane of the triangle.
+        (set! (-> arg0 coverage) 0.0) ;; would be 0
+        ;; projects to plane
+        (vector-flatten! sv-48 sv-48 (-> arg1 best-other-tri normal))
+        (vector-normalize! sv-48 1.0)
+        )
+      )
+    )
+  ;; ??
+  (let ((v1-25 (-> sv-48 quad)))
+    (set! (-> sv-52 quad) v1-25)
+    )
+  ;; hack: if we can't move, move out, but only a very small amount.
+  (if (= (-> arg1 best-dist) 0.0)
+      (move-by-vector! arg0 (vector-normalize-copy! (new-stack-vector0) sv-52 6.0))
+      )
+
+  ;; fill out normals/angles
+  (set! (-> arg0 poly-normal quad) (-> arg1 best-other-tri normal quad))
+  (collide-shape-moving-angle-set! arg0 sv-52 arg2)
+
+  ;; flags!
+  (if (< (-> arg0 poly-angle) -0.2)
+      (set! sv-56 (logior sv-56 (collide-status touch-ceiling)))
+      )
+  (set! sv-96 (< (fabs (-> arg0 surface-angle)) (-> *pat-mode-info* (-> arg0 cur-pat mode) wall-angle)))
+
+  ;; if we hit this function, we hit some surface
+  (set! sv-56 (logior sv-56 (collide-status touch-surface)))
+
+  ;; if the thing we hit is spheres, it's not water or background.
+  (if (-> arg1 num-spheres)
+      (set! sv-56 (logior sv-56 (collide-status touch-actor)))
+      )
+  (cond
+    (sv-96
+      ;; on a wall
+      (set! sv-56 (logior sv-56 (collide-status touch-wall)))
+      (set! (-> arg0 cur-pat mode) 1)
+      )
+    (else
+      ;; on the ground
+      (set! sv-56 (logior sv-56 (collide-status on-surface)))
+      (set! (-> arg0 local-normal quad) (-> sv-52 quad))
+      )
+    )
+  (when (and (not sv-96) (>= (-> arg0 coverage) 0.9))
+    ;; on the ground, and not slipping off an edge.
+    (set! sv-56 (logior sv-56 (collide-status on-ground)))
+    (set! (-> arg0 ground-poly-normal quad) (-> arg0 poly-normal quad))
+    (when (!= (-> arg0 poly-pat mode) (pat-mode wall))
+      (set! (-> arg0 ground-pat) (-> arg0 poly-pat))
+      (set! (-> arg0 grount-touch-point quad) (-> arg1 best-other-tri intersect quad))
+      )
+    )
+  ;; catch transition to ground.
+  (when (not (logtest? (-> arg0 prev-status) (collide-status on-surface)))
+    (set! sv-56 (logior sv-56 (collide-status impact-surface)))
+    (set! (-> arg0 ground-impact-vel) (- (vector-dot (-> arg0 transv) (-> arg0 dynam gravity-normal))))
+    )
+  (logior! (-> arg0 status) sv-56)
+  0
+  (none)
+  )
+
+(defun cshape-reaction-default ((arg0 control-info) (arg1 collide-query) (arg2 vector) (arg3 vector))
+  "Default collision reaction. Bounce off of wall, react to things, etc."
+
+  ;; do most of the math and move:
+  (cshape-reaction-update-state arg0 arg1 arg3)
+
+  (let ((a1-1 (new 'stack-no-clear 'vector)))
+    (set! (-> a1-1 quad) (-> arg3 quad))
+    ;; check for impact:
+    (when (and (not (logtest? (-> arg0 prev-status) (collide-status on-surface)))
+               (not (logtest? (-> arg0 status) (collide-status touch-wall)))
+               )
+      ;; do "impact friction"
+      (let ((f0-1 (- 1.0 (-> arg0 surf impact-fric))))
+        (when (< f0-1 1.0)
+          (let ((v1-9 (new-stack-vector0))
+                (f1-3 (vector-dot (-> arg0 dynam gravity-normal) a1-1))
+                )
+            0.0
+            (vector-! v1-9 a1-1 (vector-float*! v1-9 (-> arg0 dynam gravity-normal) f1-3))
+            (let* ((f2-2 (vector-length v1-9))
+                   (f3-0 f2-2)
+                   )
+              (if (< f1-3 0.0)
+                  (set! f1-3 (* f1-3 f0-1))
+                  )
+              (vector+!
+                a1-1
+                (vector-float*! a1-1 (-> arg0 dynam gravity-normal) f1-3)
+                (vector-float*! v1-9 v1-9 (/ f2-2 f3-0))
+                )
+              )
+            )
+          )
+        )
+      )
+    ;; and compute our new velocity!
+    (vector-reflect-flat-above! arg2 a1-1 (-> arg0 surface-normal))
+    )
+  (-> arg0 status)
+  )
+
+(defun cshape-reaction-just-move ((arg0 control-info) (arg1 collide-query) (arg2 vector))
+  "Simple collision reaction. Just stop at the obstacle."
+  ;; set velocity to 0 to stop
+  (vector-reset! arg2)
+  ;; move until we hit the thing
+  (let ((a1-1 (new 'stack-no-clear 'vector)))
+    (vector-float*! a1-1 (-> arg1 move-dist) (-> arg1 best-dist))
+    (move-by-vector! arg0 a1-1)
+    )
+
+  ;; set falgs.
+  (let ((v1-5 4))
+    (if (-> arg1 num-spheres)
+        (set! v1-5 (logior v1-5 32))
+        )
+    (let ((v0-1 (logior (-> arg0 status) v1-5)))
+      (set! (-> arg0 status) v0-1)
+      v0-1
+      )
+    )
+  )
+
+(defmethod step-collison! collide-shape-moving ((obj collide-shape-moving) (arg0 vector) (arg1 vector) (arg2 float) (arg3 int))
+  "Main function to move forward until we hit a single thing, then react."
+  (local-vars (sv-592 int))
+  (with-pp
+    (let ((s5-0 (new 'stack 'collide-query))
+          (s2-0 (new 'stack-no-clear 'vector))
+          )
+      ;; figure out how far we want to move
+      (vector-float*! s2-0 arg1 (* arg2 (-> pp clock seconds-per-frame)))
+      ;; setup collision query
+      (set! (-> s5-0 move-dist quad) (-> s2-0 quad))
+      (set! (-> s5-0 best-dist) -100000000.0)
+      (set! (-> s5-0 best-my-prim) #f)
+      (set! (-> s5-0 num-spheres) (the-as uint #f))
+      (let* ((s1-1 (-> obj root-prim))
+             (v1-5 *collide-cache*)
+             (s0-0 (the-as collide-cache-prim (-> v1-5 prims)))
+             )
+        (set! sv-592 (-> v1-5 num-prims))
+
+        ;; collide against everything in the collide cache
+        (while (nonzero? sv-592)
+          (set! sv-592 (+ sv-592 -1))
+          (when (logtest? (-> s1-1 prim-core collide-with) (-> s0-0 prim-core collide-as))
+            (if (>= (the-as int (-> s0-0 prim-core prim-type)) 0)
+                (collide-with-collide-cache-prim-mesh s1-1 s5-0 s0-0)
+                (collide-with-collide-cache-prim-sphere s1-1 s5-0 s0-0)
+                )
+            )
+          (&+! s0-0 48)
+          )
+        )
+
+      ;; see how far we can move
+      (let ((f30-0 (-> s5-0 best-dist)))
+        (set! f30-0 (cond
+                      ((>= f30-0 0.0) ;; set a positive value, means we can't move all the way!
+
+                       ;; remember velocity before reaction
+                       (let ((s2-1 (new 'stack-no-clear 'vector)))
+                         (if *display-collision-marks*
+                             (set! (-> s2-1 quad) (-> arg1 quad))
+                             )
+
+                         ;; handle collision. will move us.
+                         (set! (-> obj prev-status) ((-> obj reaction) (the-as control-info obj) s5-0 arg0 arg1))
+
+                         ;; debug draw
+                         (when *display-collision-marks*
+                           (let ((t1-0 (-> *pat-mode-info* (-> s5-0 best-other-tri pat mode) hilite-color)))
+                             (add-debug-outline-triangle
+                               #t
+                               (bucket-id debug-no-zbuf1)
+                               (the-as vector (-> s5-0 best-other-tri))
+                               (-> s5-0 best-other-tri vertex 1)
+                               (-> s5-0 best-other-tri vertex 2)
+                               t1-0
+                               )
+                             )
+                           (add-debug-vector
+                             #t
+                             (bucket-id debug-no-zbuf1)
+                             (-> s5-0 best-other-tri intersect)
+                             s2-1
+                             (meters 0.00007324219)
+                             (new 'static 'rgba :r #xff :g #xa0 :a #x80)
+                             )
+                           (add-debug-vector
+                             #t
+                             (bucket-id debug-no-zbuf1)
+                             (-> s5-0 best-other-tri intersect)
+                             arg0
+                             (meters 0.00007324219)
+                             (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                             )
+                           (if (= (-> obj process type) target)
+                               (add-debug-vector
+                                 #t
+                                 (bucket-id debug-no-zbuf1)
+                                 (-> s5-0 best-other-tri intersect)
+                                 (-> obj surface-normal)
+                                 (meters 0.5)
+                                 (-> *pat-mode-info* (-> obj cur-pat mode) hilite-color)
+                                 )
+                               )
+                           )
+                         )
+                       ;; return how far we went.
+                       f30-0
+                       )
+                      (else
+                        ;; didn't collide. call no reaction and clear stuff
+                        (set! (-> obj reaction-flag) (cshape-reaction-flags))
+                        ((-> obj no-reaction) obj s5-0 arg0 arg1)
+                        (set! (-> obj prev-status) (collide-status))
+                        ;; move all the way
+                        (move-by-vector! obj s2-0)
+                        (set! (-> arg0 quad) (-> arg1 quad))
+                        1.0 ;; return 1 to indicate that we did the whole thing.
+                        )
+                      )
+              )
+        f30-0
+        )
+      )
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; integrate and collide
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; this function moves collide shapes by one frame.
+
+(defmethod integrate-and-collide! collide-shape ((obj collide-shape) (arg0 vector))
+  ;; for the simple collide shape, just move, and ignore collision.
+  (local-vars (at-0 int))
+  (with-pp
+    (rlet ((vf0 :class vf)
+           (vf1 :class vf)
+           (vf2 :class vf)
+           )
+      (init-vf0-vector)
+      (let ((t9-0 (method-of-object obj move-by-vector!))
+            (v1-1 (new 'stack-no-clear 'vector))
+            )
+        (.lvf vf1 (&-> arg0 quad))
+        (let ((f0-0 (-> pp clock seconds-per-frame)))
+          (.mov at-0 f0-0)
+          )
+        (.mov vf2 at-0)
+        (.mov.vf vf1 vf0 :mask #b1000)
+        (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+        (.svf (&-> v1-1 quad) vf1)
+        (t9-0 obj v1-1)
+        )
+      (none)
+      )
+    )
+  )
+
+(defmethod integrate-and-collide! collide-shape-moving ((obj collide-shape-moving) (arg0 vector))
+  "Main function to move a collide shape at a given velocity for 1 frame."
+
+  ;; compute the location of our collision geometry based on transforms from animations/other places.
+  (update-transforms obj)
+
+  ;; set up status
+  (set! (-> obj trans-old-old-old quad) (-> obj trans-old-old quad))
+  (set! (-> obj trans-old-old quad) (-> obj trans-old quad))
+  (set! (-> obj trans-old quad) (-> obj trans quad))
+  (set! (-> obj prev-status) (-> obj status))
+  (logclear! (-> obj status) (collide-status
+                               on-surface
+                               on-ground
+                               touch-surface
+                               touch-wall
+                               touch-ceiling
+                               touch-actor
+                               on-special-surface
+                               touch-edge
+                               blocked
+                               on-water
+                               impact-surface
+                               touch-background
+                               stuck
+                               glance
+                               )
+             )
+  (when (not (logtest? (-> obj root-prim prim-core action) (collide-action no-normal-reset)))
+    (let ((v1-13 (-> obj dynam gravity-normal)))
+      (set! (-> obj local-normal quad) (-> v1-13 quad))
+      (set! (-> obj surface-normal quad) (-> v1-13 quad))
+      (set! (-> obj poly-normal quad) (-> v1-13 quad))
+      )
+    (set! (-> obj coverage) 0.0)
+    (set! (-> obj touch-angle) 0.0)
+    )
+
+  ;; collision loop: run until we:
+  ;; - almost make it all the way
+  ;; - hit the iteration count
+  ;; - hit velocity of 0.
+  (let ((f30-0 1.0)
+        (s4-0 0)
+        )
+    (while (and (< 0.05 f30-0) (and (< s4-0 (the-as int (-> obj max-iteration-count)))
+                                    (not (and (= (-> arg0 x) 0.0) (= (-> arg0 y) 0.0) (= (-> arg0 z) 0.0)))
+                                    )
+                )
+      (let ((f28-0 (step-collison! obj arg0 arg0 f30-0 s4-0))) ;; move until we hit something, or travel the full distance
+        (update-from-step-size *touching-list* f28-0)          ;; update touch list with the actual step size
+        (set! f30-0 (- f30-0 (* f28-0 f30-0)))                 ;; update how much is left (fraction of what we tried)
+        )
+      (+! s4-0 1)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod integrate-and-collide! control-info ((obj control-info) (arg0 vector))
+  "specialization of integrate-and-collide! for the control-info used in target."
+  (with-pp
+    (stopwatch-start (the-as stopwatch (&-> *collide-stats* pad0 1))) ;; i think this code is just broken.
+
+    ;; hack: prevent crazy velocities.
+    (when (< 1638400.0 (vector-length arg0))
+      (format 0 "WARNING: target vel is ~M m/s, reseting to zero.~%" (vector-length arg0))
+      (vector-reset! arg0)
+      )
+
+    ;; the jump and double jump animations have a collide-offset trick applied to them.
+    ;; (todo: move part of this comment to target.gc)
+
+    ;; this trick is kind of complicated:
+    ;; some art-joint-anim's (jump only?) involve jak tucking in his feet near the apex, and we want the collision geometry to
+    ;; follow his feet.
+    ;; However, we don't wan't jak's feet to be the point that follows a ballistic trajectory - it should be
+    ;; his center of mass somewhere in his torso.
+
+    ;; the animation is in a frame that should follow the ballistic trajectory - his torso is roughly
+    ;; stationary. The control code is responsible for generating the actual trajectory;
+    ;; the animation stores a res-lump with a time-varying collide-offset, which is the trajectory of jak's feet moving.
+
+    ;; the way they handle this is by cheating jak's position to align with the feet/collision geometry,
+    ;; then applying an offset to drawing. To make it more confusing, this offset is applied on the velocity level
+    ;; - this makes the collision stuff more correct.
+
+    ;; remember old before recomputing - this is how much we've cheated jak's collision geometry
+    ;; position to account for movement in the animation frame.
+    (set! (-> obj old-anim-collide-offset-world quad) (-> obj anim-collide-offset-world quad))
+
+    ;; transform this frame's anim offset to world
+    (vector-matrix*!
+      (-> obj anim-collide-offset-world)
+      (-> obj anim-collide-offset-local)
+      (-> obj ctrl-orientation)
+      )
+
+    ;; compute how much the anim offset changed, in world frame, since last frame.
+    (vector-!
+      (-> obj anim-collide-offset-delta-world)
+      (-> obj anim-collide-offset-world)
+      (-> obj old-anim-collide-offset-world)
+      )
+
+    ;; compute the total offset of drawing. The draw-offset is used for non-collision animation like the zoomer bobbing.
+    ;; Note: we subtract off the anim offset here. This way, we can add the anim offset to jak's position later on, and
+    ;; it will move the collision geometry without changing the drawing.
+    (let ((total-offset
+            (vector-! (new 'stack-no-clear 'vector) (-> obj draw-offset) (-> obj anim-collide-offset-world))
+            )
+          )
+      ;; and also rate limit it to prevent huge jumps in jak's animation when exiting an anim early.
+      ;; in theory, this should follow the blending of animations, but this likely good enough.
+      (vector-seek! (-> obj cspace-offset) total-offset (* 16384.0 (-> pp clock seconds-per-frame)))
+      )
+
+    ;; compute the total extra velocity to add to collide.
+    (let ((bonus-vel (vector+float*!
+                       (new-stack-vector0)
+                       (-> obj collide-extra-velocity) ;; some other weird offset.
+                       (-> obj anim-collide-offset-delta-world)
+                       60.0
+                       )
+                     )
+          )
+
+      ;; new for jak 2: the movement of the collision geometry due to collide-offset now has its reaction
+      ;; canceled out. This is done by first stepping collision from only the bonus velcoity, keeping that
+      ;; position, then overwriting the old velocity.
+      ;; this is like trying to move the collision geometry, but if we hit something, don't go boucing off the ceiling.
+      (when (< 0.0 (vector-length bonus-vel))
+        (let ((old-iter-cnt (-> obj max-iteration-count))
+              (old-in-vel (new 'stack-no-clear 'vector))
+              )
+          (set! (-> old-in-vel quad) (-> arg0 quad))
+          (let ((old-stat-flg (-> obj status)))
+            (let ((t9-4 (method-of-type collide-shape-moving integrate-and-collide!)))
+              (t9-4 obj bonus-vel)
+              )
+            (set! (-> obj max-iteration-count) old-iter-cnt)
+            (set! (-> arg0 quad) (-> old-in-vel quad)) ;; set it back.
+            (logior! (-> obj status) old-stat-flg)
+            )
+          )
+        )
+      )
+
+    ;; now do normal collision.
+    (let ((regular-vel (new-stack-vector0)))
+      (set! (-> regular-vel quad) (-> arg0 quad))
+      (let ((before-regular-vel (new 'stack-no-clear 'vector)))
+        (set! (-> before-regular-vel quad) (-> arg0 quad))
+        ;; run collision!
+        (let ((t9-5 (method-of-type collide-shape-moving integrate-and-collide!)))
+          (t9-5 obj regular-vel)
+          )
+
+        ;; b1 and a1 are before and after velocities
+        (let ((b1 (new-stack-vector0)))
+          (set! (-> b1 quad) (-> before-regular-vel quad))
+          (let ((a1 (new-stack-vector0)))
+            (set! (-> a1 quad) (-> regular-vel quad))
+
+            ;; this code allows the weighting of normal and parallel to gravity components, but
+            ;; both are set up to just get normal to gravity.
+            (let ((b1-nrm-to-grav (new-stack-vector0)))
+              (let ((f0-6 (vector-dot (-> obj dynam gravity-normal) b1)))
+                0.0
+                ;; subtract off the stuff in the direction of gravity.
+                (vector-! b1-nrm-to-grav b1 (vector-float*! b1-nrm-to-grav (-> obj dynam gravity-normal) f0-6))
+                )
+              (let* ((b1-nrm-to-grav-vel (vector-length b1-nrm-to-grav))
+                     (f1-4 b1-nrm-to-grav-vel) ;; * 1.0 probably
+                     (f2-0 0.0)                ;; no weight for grav term.
+                     )
+                (vector+!
+                  b1
+                  (vector-float*! b1 (-> obj dynam gravity-normal) f2-0) ;; 0
+                  (vector-float*! b1-nrm-to-grav b1-nrm-to-grav (/ b1-nrm-to-grav-vel f1-4)) ;; just normal grav
+                  )
+                )
+              )
+            (let ((v1-33 (new-stack-vector0)))
+              (let ((f0-10 (vector-dot (-> obj dynam gravity-normal) a1)))
+                0.0
+                (vector-! v1-33 a1 (vector-float*! v1-33 (-> obj dynam gravity-normal) f0-10))
+                )
+              (let* ((f0-11 (vector-length v1-33))
+                     (f1-6 f0-11)
+                     (f2-1 0.0)
+                     )
+                (vector+!
+                  a1
+                  (vector-float*! a1 (-> obj dynam gravity-normal) f2-1)
+                  (vector-float*! v1-33 v1-33 (/ f0-11 f1-6))
+                  )
+                )
+              )
+
+            ;; normalize to get directions.
+            (vector-normalize! b1 1.0)
+            (vector-normalize! a1 1.0)
+
+            ;; detect if we are blocked. "blocked" means that collision changed our velocity direction,
+            ;; but we are still moving (which ends up being true if you're pushing on the stick at all)
+            ;; this is a noisy signal, so there's a filtered "blocked factor" between 0 and 1 that increases
+            ;; the more blocked you are.
+            (let ((ba-dot (vector-dot b1 a1)))
+              (cond
+                ((and (!= (vector-length (-> obj target-transv)) 0.0)             ;; standing still at wall doesn't count
+                      (if (logtest? (-> obj status) (collide-status touch-wall))  ;; make it easier to hit blocked if touching wall.
+                          (< ba-dot 0.9999)
+                          (< ba-dot 0.95)
+                          )
+                      )
+                 ;; increase a blocked counter.
+                 (seek! (-> obj blocked-factor) 1.0 (* 4.0 (-> pp clock seconds-per-frame)))
+
+                 ;; and a "air block" counter.
+                 (seek!
+                   (-> obj blocked-in-air-factor)
+                   (if (= (-> obj mod-surface mode) 'air)
+                       1.0
+                       0.0
+                       )
+                   (* 4.0 (-> pp clock seconds-per-frame))
+                   )
+                 ;; set block flag.
+                 (logior! (-> obj status) (collide-status blocked))
+                 )
+                (else
+                  ;; not blocked, wind down counters.
+                  (seek! (-> obj blocked-factor) 0.0 (* 2.0 (-> pp clock seconds-per-frame)))
+                  (seek! (-> obj blocked-in-air-factor) 0.0 (* 2.0 (-> pp clock seconds-per-frame)))
+                  )
+                )
+              )
+            )
+          )
+        ;; set velocity.
+        (set! (-> arg0 quad) (-> regular-vel quad))
+
+        ;; update btransv. this is suppposed to be the last good velocity before becoming blocked, or something like that.
+        ;; this is only increased in this function, and some other code clamps it to be no larger than your joystick command.
+        ;; so you can increase it by actually travelling at speed, and can decrease it by letting off the joystick.
+        (if (and (logtest? (-> obj status) (collide-status on-surface)) ;; only update if we're on a surface
+                 (and (not (logtest? (-> obj status) (collide-status touch-wall blocked))) ;; and not blocked
+                      (< (vector-length (-> obj btransv)) (vector-length before-regular-vel)) ;; and faster than current btransv.
+                      )
+                 )
+            (set! (-> obj btransv quad) (-> before-regular-vel quad))
+            )
+        )
+      )
+
+    ;; see how our velocity after collision compares to the velocity we got after aligning.
+    (let ((align-xz-dir (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> obj align-xz-vel) 1.0))
+          (align-xz-speed (vector-length (-> obj align-xz-vel)))
+          )
+      (set! (-> obj zx-vel-frac) (if (= align-xz-speed 0.0)
+                                     0.0
+                                     (fmax 0.0 (/ (vector-dot (-> obj transv) align-xz-dir) align-xz-speed))
+                                     )
+            )
+      )
+    (stopwatch-stop (the-as stopwatch (&-> *collide-stats* pad0 1)))
+    0
+    (none)
+    )
+  )
+
+(defmethod try-snap-to-surface collide-shape-moving ((obj collide-shape-moving) (vel vector) (check-dist float) (amt float) (bounce-dist float))
+  "Strange function to try to find a surface and move to it.
+   Teleports a distance of check-dist, then moves back to the start point plus amt.
+   If this move hits something, moves to that surface, then an additional bounce-dist.
+   I have no idea what this is used for - it kinda seems like this is a hack to make sure that
+   projectiles that start inside something will hit that thing."
+  (local-vars (at-0 int))
+  (with-pp
+    (rlet ((vf0 :class vf)
+           (vf1 :class vf)
+           (vf2 :class vf)
+           )
+      (init-vf0-vector)
+      (let ((initial-trans (new 'stack-no-clear 'vector))
+            (collide-vel (new 'stack-no-clear 'vector))
+            )
+        ;; remember where we started
+        (set! (-> initial-trans quad) (-> obj trans quad))
+        ;; move the check-dist (teleporting)
+        (vector-normalize-copy! (-> obj trans) vel check-dist)
+        (vector+! (-> obj trans) (-> obj trans) initial-trans)
+        ;; update for the start position
+        (update-transforms obj)
+        ;; compute vel to make it back (plus amt)
+        (vector-normalize-copy! collide-vel vel (- amt check-dist))
+        (let ((v1-4 collide-vel))
+          (.lvf vf1 (&-> collide-vel quad))
+          (let ((f0-2 (-> pp clock frames-per-second)))
+            (.mov at-0 f0-2)
+            )
+          (.mov vf2 at-0)
+          (.mov.vf vf1 vf0 :mask #b1000)
+          (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+          (.svf (&-> v1-4 quad) vf1)
+          )
+        ;; run collision.
+        (set! (-> obj prev-status) (-> obj status))
+        (logclear! (-> obj status) (collide-status
+                                     on-surface
+                                     on-ground
+                                     touch-surface
+                                     touch-wall
+                                     touch-ceiling
+                                     touch-actor
+                                     on-special-surface
+                                     touch-edge
+                                     blocked
+                                     on-water
+                                     impact-surface
+                                     touch-background
+                                     stuck
+                                     glance
+                                     )
+                   )
+        (when (not (logtest? (-> obj root-prim prim-core action) (collide-action no-normal-reset)))
+          (let ((v1-13 (-> obj dynam gravity-normal)))
+            (set! (-> obj local-normal quad) (-> v1-13 quad))
+            (set! (-> obj surface-normal quad) (-> v1-13 quad))
+            (set! (-> obj poly-normal quad) (-> v1-13 quad))
+            )
+          (set! (-> obj coverage) 0.0)
+          (set! (-> obj touch-angle) 0.0)
+          )
+        (let ((f30-0 (step-collison! obj collide-vel collide-vel 1.0 0))) ;; just one step.
+          (update-from-step-size *touching-list* f30-0) ;; update touching list, so we hit things.
+          (cond
+            ((< f30-0 1.0)
+             ;; hit a thing! do the bounce thing
+             (let ((vel-dir (new 'stack-no-clear 'vector))
+                   (s2-1 (new 'stack-no-clear 'vector))
+                   )
+               (vector-normalize-copy! vel-dir vel 1.0)
+               (vector-! s2-1 (-> obj trans) initial-trans)
+               (when (< (vector-dot vel-dir s2-1) bounce-dist)
+                 (vector-normalize-copy! s2-1 vel bounce-dist)
+                 (vector+! s2-1 s2-1 initial-trans)
+                 (move-to-point! obj s2-1)
+                 )
+               )
+             #t
+             )
+            (else
+              ;; nope, revert to old position.
+              (move-to-point! obj initial-trans)
+              #f
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+(defmethod fill-and-try-snap-to-surface collide-shape-moving ((obj collide-shape-moving) (arg0 vector) (arg1 float) (arg2 float) (arg3 float) (arg4 collide-query))
+  "Fill the collision cache and try to snap to a nearby surface."
+  (vector-normalize-copy! (-> arg4 start-pos) arg0 arg1)
+  (vector+! (-> arg4 start-pos) (-> arg4 start-pos) (-> obj trans))
+  (vector-normalize-copy! (-> arg4 move-dist) arg0 (- arg2 arg1))
+  (fill-using-line-sphere *collide-cache* arg4)
+  (try-snap-to-surface obj arg0 arg1 arg2 arg3)
+  )
+
+(defmethod move-to-ground-point collide-shape-moving ((obj collide-shape-moving) (arg0 vector) (arg1 vector) (arg2 vector))
+  "Move to point, and treat as ground."
+  (move-to-point! obj arg0)
+  (set! (-> arg1 y) 0.0)
+  (set! (-> obj grount-touch-point quad) (-> arg0 quad))
+  (set! (-> obj poly-normal quad) (-> arg2 quad))
+  (set! (-> obj surface-normal quad) (-> arg2 quad))
+  (set! (-> obj local-normal quad) (-> arg2 quad))
+  (set! (-> obj ground-poly-normal quad) (-> arg2 quad))
+  (logior! (-> obj status) (collide-status on-surface on-ground touch-surface))
+  (set! (-> obj ground-impact-vel) (- (vector-dot arg1 (-> obj dynam gravity-normal))))
+  0
+  (none)
+  )
+
+(defmethod integrate-no-collide! collide-shape-moving ((obj collide-shape-moving) (arg0 vector))
+  "Move, ignoring all collision."
+  (local-vars (at-0 int))
+  (with-pp
+    (rlet ((vf0 :class vf)
+           (vf1 :class vf)
+           (vf2 :class vf)
+           )
+      (init-vf0-vector)
+      (update-transforms obj)
+      (set! (-> obj trans-old-old-old quad) (-> obj trans-old-old quad))
+      (set! (-> obj trans-old-old quad) (-> obj trans-old quad))
+      (set! (-> obj trans-old quad) (-> obj trans quad))
+      (set! (-> obj prev-status) (-> obj status))
+      (logclear! (-> obj status) (collide-status
+                                   on-surface
+                                   on-ground
+                                   touch-surface
+                                   touch-wall
+                                   touch-ceiling
+                                   touch-actor
+                                   on-special-surface
+                                   touch-edge
+                                   blocked
+                                   on-water
+                                   impact-surface
+                                   touch-background
+                                   stuck
+                                   glance
+                                   )
+                 )
+      (when (not (logtest? (-> obj root-prim prim-core action) (collide-action no-normal-reset)))
+        (let ((v1-13 (-> obj dynam gravity-normal)))
+          (set! (-> obj local-normal quad) (-> v1-13 quad))
+          (set! (-> obj surface-normal quad) (-> v1-13 quad))
+          (set! (-> obj poly-normal quad) (-> v1-13 quad))
+          )
+        (set! (-> obj coverage) 0.0)
+        (set! (-> obj touch-angle) 0.0)
+        )
+      (let ((t9-1 (method-of-object obj move-by-vector!))
+            (a1-5 (new 'stack-no-clear 'vector))
+            )
+        (.lvf vf1 (&-> arg0 quad))
+        (let ((f0-2 (-> pp clock seconds-per-frame)))
+          (.mov at-0 f0-2)
+          )
+        (.mov vf2 at-0)
+        (.mov.vf vf1 vf0 :mask #b1000)
+        (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+        (.svf (&-> a1-5 quad) vf1)
+        (t9-1 obj a1-5)
+        )
+      0
+      (none)
+      )
+    )
+  )
+
+(defmethod integrate-for-enemy-no-mtg collide-shape-moving ((obj collide-shape-moving) (arg0 vector) (arg1 overlaps-others-params))
+  "Simpler move for enemy, with no moving to ground. Will just stop if the move collides."
+  (integrate-no-collide! obj arg0)
+  (let ((s5-1 (find-overlapping-shapes obj arg1)))
+    (if s5-1 ;; if we hit something, move back.
+        (move-to-point! obj (-> obj trans-old))
+        )
+    s5-1
+    )
+  )
+
+(defmethod find-ground collide-shape-moving ((obj collide-shape-moving) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
+  "Find the ground, return #t if we found it, and fill out gspot in the collide-query."
+  (with-pp
+    (set! (-> obj gspot-pos quad) (-> obj trans quad))
+    (set! (-> arg0 start-pos quad) (-> obj trans quad))
+    (vector-reset! (-> arg0 move-dist))
+    (let ((f0-0 (-> obj transv y)))
+      (if (< f0-0 0.0)
+          (set! arg2 (- arg2 (fmax -40960.0 (* f0-0 (-> pp clock seconds-per-frame)))))
+          )
+      )
+    (+! (-> arg0 start-pos y) arg2)
+    (set! (-> arg0 move-dist y) (- (+ arg2 arg3)))
+    (let ((v1-7 arg0))
+      (set! (-> v1-7 radius) arg4)
+      (set! (-> v1-7 collide-with) arg1)
+      (set! (-> v1-7 ignore-process0) (-> obj process))
+      (set! (-> v1-7 ignore-process1) #f)
+      (set! (-> v1-7 ignore-pat) (logior (new 'static 'pat-surface :noendlessfall #x1) (-> obj pat-ignore-mask)))
+      (set! (-> v1-7 action-mask) (collide-action solid))
+      )
+    (cond
+      ((>= (fill-and-probe-using-line-sphere *collide-cache* arg0) 0.0)
+       (set! (-> obj gspot-pos y) (-> arg0 best-other-tri intersect y))
+       (set! (-> obj gspot-normal quad) (-> arg0 best-other-tri normal quad))
+       #t
+       )
+      (else
+        (set! (-> obj gspot-pos y) -40959590.0)
+        (set! (-> obj gspot-normal quad) (-> *y-vector* quad))
+        #f
+        )
+      )
+    )
+  )
+
+(defmethod above-ground? collide-shape ((obj collide-shape)
+                                      (arg0 collide-query)
+                                      (arg1 vector)
+                                      (arg2 collide-spec)
+                                      (arg3 float)
+                                      (arg4 float)
+                                      (arg5 float)
+                                      )
+  (set! (-> arg0 start-pos quad) (-> arg1 quad))
+  (+! (-> arg0 start-pos y) arg3)
+  (vector-reset! (-> arg0 move-dist))
+  (set! (-> arg0 move-dist y) (- (+ arg3 arg4)))
+  (let ((v1-2 arg0))
+    (set! (-> v1-2 radius) arg5)
+    (set! (-> v1-2 collide-with) arg2)
+    (set! (-> v1-2 ignore-process0) (-> obj process))
+    (set! (-> v1-2 ignore-process1) #f)
+    (set! (-> v1-2 ignore-pat) (-> obj pat-ignore-mask))
+    (set! (-> v1-2 action-mask) (collide-action solid))
+    )
+  (>= (fill-and-probe-using-line-sphere *collide-cache* arg0) 0.0)
+  )
+
+(defmethod move-above-ground collide-shape-moving ((obj collide-shape-moving) (arg0 vector) (arg1 move-above-ground-params))
+  "Move at the given velocity, while not going through the ground"
+  (with-profiler 'collide *profile-collide-color*
+    (set! (-> arg1 on-ground?) #f)
+    (set! (-> arg1 do-move?) #t)
+    (set! (-> arg1 old-gspot-pos quad) (-> obj gspot-pos quad))
+    (set! (-> arg1 old-gspot-normal quad) (-> obj gspot-normal quad))
+    (set! (-> obj trans-old-old-old quad) (-> obj trans-old-old quad))
+    (set! (-> obj trans-old-old quad) (-> obj trans-old quad))
+    (set! (-> obj trans-old quad) (-> obj trans quad))
+    (set! (-> obj prev-status) (-> obj status))
+
+    ;; move! note that we don't actually call move-to-point! yet - that's more
+    ;; expensive, and we save it for when we actually know the final position.
+    (vector-v+! (-> obj trans) (-> obj trans) arg0)
+    (set! (-> arg1 new-pos quad) (-> obj trans quad))
+
+    ;; find the ground.
+    (let ((s3-1 (new 'stack-no-clear 'collide-query)))
+      (cond
+        ((find-ground obj s3-1 (-> arg1 gnd-collide-with) (-> arg1 popup) 81920.0 1024.0)
+         (when (>= (-> obj gspot-pos y) (-> arg1 new-pos y)) ;; check if we are at/below the ground
+           ;; we are
+           (set! (-> arg1 on-ground?) #t)
+           (set! (-> arg1 pat) (-> s3-1 best-other-tri pat))
+           ;; move to ground
+           (set! (-> arg1 new-pos y) (-> s3-1 best-other-tri intersect y))
+           (set! (-> obj ground-impact-vel) (- (vector-dot arg0 (-> obj dynam gravity-normal))))
+           (set! (-> arg0 y) 0.0)
+           )
+         )
+        (else
+          ;; no ground. if hover is enabled, disable falling.
+          (if (-> arg1 hover-if-no-ground?)
+              (set! (-> arg1 new-pos y) (-> obj trans-old y))
+              )
+          )
+        )
+      )
+
+    ;; do the (slightly) more expensive move
+    (set! (-> obj trans quad) (-> obj trans-old quad))
+    (move-to-point! obj (-> arg1 new-pos))
+
+    ;; see if the object should collide with foreground objects
+    (when (logtest? (logand (-> arg1 overlaps-params collide-with-filter)
+                            (collide-spec hit-by-player-list hit-by-others-list player-list)
+                            )
+                    (-> obj root-prim prim-core collide-with)
+                    )
+      ;; if it does, see if we moved into overlap
+      (when (find-overlapping-shapes obj (-> arg1 overlaps-params))
+        (when (-> arg1 dont-move-if-overlaps?)
+          ;; and abort the move.
+          (set! (-> arg1 do-move?) #f)
+          (move-to-point! obj (-> obj trans-old))
+          (set! (-> obj gspot-pos quad) (-> arg1 old-gspot-pos quad))
+          (set! (-> obj gspot-normal quad) (-> arg1 old-gspot-normal quad))
+          )
+        )
+      )
+
+    ;; update flags.
+    (when (-> arg1 do-move?)
+      (cond
+        ((-> arg1 on-ground?)
+         (let ((a1-8 (-> obj gspot-pos))
+               (a0-29 (-> obj gspot-normal))
+               (v1-59 (-> arg1 pat))
+               )
+           (set! (-> obj grount-touch-point quad) (-> a1-8 quad))
+           (set! (-> obj poly-normal quad) (-> a0-29 quad))
+           (set! (-> obj surface-normal quad) (-> a0-29 quad))
+           (set! (-> obj local-normal quad) (-> a0-29 quad))
+           (set! (-> obj ground-poly-normal quad) (-> a0-29 quad))
+           (set! (-> obj poly-pat) v1-59)
+           (set! (-> obj cur-pat) v1-59)
+           (set! (-> obj ground-pat) v1-59)
+           )
+         (logior! (-> obj status) (collide-status on-surface on-ground touch-surface))
+         )
+        (else
+          (logclear! (-> obj status) (collide-status
+                                       on-surface
+                                       on-ground
+                                       touch-surface
+                                       touch-wall
+                                       touch-ceiling
+                                       touch-actor
+                                       on-special-surface
+                                       touch-edge
+                                       blocked
+                                       on-water
+                                       impact-surface
+                                       touch-background
+                                       stuck
+                                       glance
+                                       )
+                     )
+          (when (not (logtest? (-> obj root-prim prim-core action) (collide-action no-normal-reset)))
+            (let ((v1-69 (-> obj dynam gravity-normal)))
+              (set! (-> obj local-normal quad) (-> v1-69 quad))
+              (set! (-> obj surface-normal quad) (-> v1-69 quad))
+              (set! (-> obj poly-normal quad) (-> v1-69 quad))
+              )
+            (set! (-> obj coverage) 0.0)
+            (set! (-> obj touch-angle) 0.0)
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod move-to-ground collide-shape-moving ((obj collide-shape-moving) (arg0 float) (arg1 float) (arg2 symbol) (arg3 collide-spec))
+  "Find the ground a move to it."
+  (local-vars (sv-576 profile-segment) (sv-592 int))
+  (with-profiler 'collide *profile-collide-color*
+    (let ((s1-1 (new 'stack-no-clear 'collide-query)))
+      (cond
+        ((find-ground obj s1-1 arg3 arg0 arg1 1024.0)
+         (let ((a1-4 (new 'stack-no-clear 'vector)))
+           (set! (-> a1-4 quad) (-> obj trans quad))
+           (set! (-> a1-4 y) (-> s1-1 best-other-tri intersect y))
+           (move-to-point! obj a1-4)
+           )
+         (let ((a1-5 (-> s1-1 best-other-tri intersect))
+               (a0-19 (-> s1-1 best-other-tri normal))
+               (v1-25 (-> s1-1 best-other-tri pat))
+               )
+           (set! (-> obj grount-touch-point quad) (-> a1-5 quad))
+           (set! (-> obj poly-normal quad) (-> a0-19 quad))
+           (set! (-> obj surface-normal quad) (-> a0-19 quad))
+           (set! (-> obj local-normal quad) (-> a0-19 quad))
+           (set! (-> obj ground-poly-normal quad) (-> a0-19 quad))
+           (set! (-> obj poly-pat) v1-25)
+           (set! (-> obj cur-pat) v1-25)
+           (set! (-> obj ground-pat) v1-25)
+           )
+         (logior! (-> obj status) (collide-status on-surface on-ground touch-surface))
+         #t
+         )
+        (else
+          (logclear! (-> obj status) (collide-status
+                                       on-surface
+                                       on-ground
+                                       touch-surface
+                                       touch-wall
+                                       touch-ceiling
+                                       touch-actor
+                                       on-special-surface
+                                       touch-edge
+                                       blocked
+                                       on-water
+                                       impact-surface
+                                       touch-background
+                                       stuck
+                                       glance
+                                       )
+                     )
+          (when (not (logtest? (-> obj root-prim prim-core action) (collide-action no-normal-reset)))
+            (let ((v1-36 (-> obj dynam gravity-normal)))
+              (set! (-> obj local-normal quad) (-> v1-36 quad))
+              (set! (-> obj surface-normal quad) (-> v1-36 quad))
+              (set! (-> obj poly-normal quad) (-> v1-36 quad))
+              )
+            (set! (-> obj coverage) 0.0)
+            (set! (-> obj touch-angle) 0.0)
+            )
+          (if arg2
+              (format 0 "WARNING: move-to-ground: failed to locate ground for ~S!~%" (-> obj process name))
+              )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+(defmethod compute-acc-due-to-gravity collide-shape-moving ((obj collide-shape-moving) (arg0 vector) (arg1 float))
+  "Adjust the velocity from the acceleration of gravity."
+  (let* ((s4-0 (vector-negate! (new 'stack-no-clear 'vector) (-> obj dynam gravity)))
+         (a2-1 (-> obj local-normal))
+         (a2-2 (vector-reflect-flat! (new-stack-vector0) s4-0 a2-1))
+         )
+    (vector--float*! arg0 s4-0 a2-2 (cond
+                                      ((logtest? (-> obj status) (collide-status on-surface))
+                                       (empty)
+                                       arg1
+                                       )
+                                      (else
+                                        0.0
+                                        )
+                                      )
+                     )
+    )
+  arg0
+  )
+
+(defmethod fill-cache-integrate-and-collide collide-shape ((obj collide-shape) (arg0 vector) (arg1 collide-query) (arg2 meters))
+  "Helper to fill the collide cache and call integrate-and-collide."
+  (local-vars (at-0 int))
+  (with-pp
+    (rlet ((vf0 :class vf)
+           (vf1 :class vf)
+           (vf2 :class vf)
+           )
+      (init-vf0-vector)
+      ;; scale the cache fill volume by frame rate
+      (let ((v1-0 (new 'stack-no-clear 'vector)))
+        (let ((a0-1 v1-0))
+          (.lvf vf1 (&-> arg0 quad))
+          (let ((f0-0 (-> pp clock seconds-per-frame)))
+            (.mov at-0 f0-0)
+            )
+          (.mov vf2 at-0)
+          (.mov.vf vf1 vf0 :mask #b1000)
+          (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+          (.svf (&-> a0-1 quad) vf1)
+          )
+        ;; fill the cache.
+        (fill-cache-for-shape obj (+ (vector-length v1-0) arg2) arg1)
+        )
+      ;; move.
+      (integrate-and-collide! obj arg0)
+      (none)
+      )
+    )
+  )
+
+(defmethod fill-cache-for-shape collide-shape ((obj collide-shape) (arg0 float) (arg1 collide-query))
+  "Fill the collide cache for a collide-shape by buliding a bounding box and filling from that."
+  (cond
+    ((build-bounding-box-for-shape obj (-> arg1 bbox) arg0 (-> arg1 collide-with))
+     (fill-using-bounding-box *collide-cache* arg1)
+     (if (and *display-collide-cache* (or (= (-> obj process type) target) (= (-> obj process) *debug-actor*)))
+         (debug-draw *collide-cache*)
+         )
+     )
+    (else
+      (reset *collide-cache*)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod build-bounding-box-for-shape collide-shape ((obj collide-shape) (arg0 bounding-box) (arg1 float) (arg2 collide-spec))
+  (rlet ((vf0 :class vf)
+         (vf24 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf27 :class vf)
+         (vf28 :class vf)
+         (vf29 :class vf)
+         (vf30 :class vf)
+         (vf31 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((t0-0 (new 'static 'vector :x 4.096))
+          (v1-0 (-> obj root-prim))
+          )
+      (.mov vf31 arg1)
+      (let ((a0-2 (logand (-> v1-0 prim-core collide-with) arg2))
+            (a2-1 (-> v1-0 prim-core prim-type))
+            )
+        (b! (zero? a0-2) cfg-9 :delay (.lvf vf28 (&-> t0-0 quad)))
+        (.add.x.vf vf31 vf31 vf28 :mask #b1)
+        (let ((a0-3 (-> v1-0 specific 0)))
+          (b! (= a2-1 (prim-type group)) cfg-3 :delay (.lvf vf24 (&-> v1-0 prim-core world-sphere quad)))
+          (.add.w.vf vf25 vf31 vf24 :mask #b1)
+          (.add.x.vf vf30 vf24 vf25 :mask #b111)
+          (b! #t cfg-10 :delay (.sub.x.vf vf29 vf24 vf25 :mask #b111))
+          (label cfg-3)
+          (b! (zero? a0-3) cfg-9 :delay (set! v1-0 (&+ v1-0 80)))
+          (+! a0-3 -1)
+          (let ((a2-3 (logand (-> v1-0 prim-core collide-with) arg2)))
+            (.lvf vf24 (&-> v1-0 prim-core world-sphere quad))
+            (b! (zero? a2-3) cfg-3 :delay (.add.w.vf vf25 vf31 vf24 :mask #b1))
+            )
+          (.add.x.vf vf30 vf24 vf25 :mask #b111)
+          (.sub.x.vf vf29 vf24 vf25 :mask #b111)
+          (label cfg-6)
+          (b! (zero? a0-3) cfg-10 :delay (set! v1-0 (&+ v1-0 80)))
+          (+! a0-3 -1)
+          )
+        )
+      (let ((a2-5 (logand (-> v1-0 prim-core collide-with) arg2)))
+        (.lvf vf24 (&-> v1-0 prim-core world-sphere quad))
+        (b! (zero? a2-5) cfg-6 :delay (.add.w.vf vf25 vf31 vf24 :mask #b1))
+        )
+      )
+    (.add.x.vf vf27 vf24 vf25 :mask #b111)
+    (.sub.x.vf vf26 vf24 vf25 :mask #b111)
+    (.min.vf vf29 vf29 vf26)
+    (.max.vf vf30 vf30 vf27)
+    (b! #t cfg-6 :delay (nop!))
+    (label cfg-9)
+    (let ((v0-0 #f))
+      (b! #t cfg-11 :delay (nop!))
+      (label cfg-10)
+      (.mov.vf vf29 vf0 :mask #b1000)
+      (.mov.vf vf30 vf0 :mask #b1000)
+      (.svf (&-> arg0 min quad) vf29)
+      (.svf (&-> arg0 max quad) vf30)
+      (set! v0-0 #t)
+      (label cfg-11)
+      v0-0
+      )
+    )
+  )
+
+(defmethod find-prim-by-id collide-shape ((obj collide-shape) (arg0 uint))
+  (let ((v1-0 (-> obj root-prim)))
+    (countdown (a0-1 (-> obj total-prims))
+      (if (= (-> v1-0 prim-id) arg0)
+          (return v1-0)
+          )
+      (&+! v1-0 80)
+      )
+    )
+  (the-as collide-shape-prim #f)
+  )
+
+(defmethod find-prim-by-id-logtest collide-shape ((obj collide-shape) (arg0 uint))
+  (let ((v1-0 (-> obj root-prim)))
+    (countdown (a0-1 (-> obj total-prims))
+      (if (logtest? (-> v1-0 prim-id) arg0)
+          (return v1-0)
+          )
+      (&+! v1-0 80)
+      )
+    )
+  (the-as collide-shape-prim #f)
+  )
+
+(defun-debug collide-shape-draw-debug-marks ()
+  "Draw geometry for all collide shapes."
+
+  ;; draw target separately
+  (add-debug-sphere
+    (or *display-collision-marks* *display-target-marks*)
+    (bucket-id debug2)
+    (target-pos 0)
+    (meters 0.2)
+    (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+    )
+
+  ;; loop over the 3 main lists.
+  (when *display-collision-marks*
+    (let ((v1-4 (-> *collide-player-list* alive-list next0)))
+      *collide-player-list*
+      (let ((gp-1 (-> v1-4 next0)))
+        (while (!= v1-4 (-> *collide-player-list* alive-list-end))
+          (let ((a0-4 (the-as collide-shape (-> (the-as connection v1-4) param1))))
+            (if (or (not *debug-actor*) (= (-> a0-4 process) *target*) (= (-> a0-4 process) *debug-actor*))
+                (debug-draw a0-4)
+                )
+            )
+          (set! v1-4 gp-1)
+          *collide-player-list*
+          (set! gp-1 (-> gp-1 next0))
+          )
+        )
+      )
+    (let ((v1-15 (-> *collide-hit-by-player-list* alive-list next0)))
+      *collide-hit-by-player-list*
+      (let ((gp-2 (-> v1-15 next0)))
+        (while (!= v1-15 (-> *collide-hit-by-player-list* alive-list-end))
+          (let ((a0-11 (-> (the-as connection v1-15) param1)))
+            (if (or (not *debug-actor*)
+                    (= (-> (the-as collide-shape a0-11) process) *target*)
+                    (= (-> (the-as collide-shape a0-11) process) *debug-actor*)
+                    )
+                (debug-draw (the-as collide-shape a0-11))
+                )
+            )
+          (set! v1-15 gp-2)
+          *collide-hit-by-player-list*
+          (set! gp-2 (-> gp-2 next0))
+          )
+        )
+      )
+    (let ((v1-26 (-> *collide-hit-by-others-list* alive-list next0)))
+      *collide-hit-by-others-list*
+      (let ((gp-3 (-> v1-26 next0)))
+        (while (!= v1-26 (-> *collide-hit-by-others-list* alive-list-end))
+          (let ((a0-18 (the-as collide-shape (-> (the-as connection v1-26) param1))))
+            (if (or (not *debug-actor*) (= (-> a0-18 process) *target*) (= (-> a0-18 process) *debug-actor*))
+                (debug-draw a0-18)
+                )
+            )
+          (set! v1-26 gp-3)
+          *collide-hit-by-others-list*
+          (set! gp-3 (-> gp-3 next0))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod debug-draw collide-shape ((obj collide-shape))
+  (if (sphere-in-view-frustum? (the-as sphere (-> obj root-prim prim-core)))
+      (debug-draw (-> obj root-prim))
+      )
+  0
+  (none)
+  )
+
+(define *col-timer* (new 'global 'stopwatch))
+
+(define *frame-timer* (new 'global 'stopwatch))
+
+(define *col-timer-enable* #t)
+
+(defun debug-report-col-stats ()
+  (when *col-timer-enable*
+    (stopwatch-end *frame-timer*)
+    (format *stdcon* "col stats:~%")
+    (format *stdcon* " col       ~F ms~%" (* 1000.0 (stopwatch-elapsed-seconds *col-timer*)))
+    (format *stdcon* " frame     ~F ms~%" (* 1000.0 (stopwatch-elapsed-seconds *frame-timer*)))
+    (stopwatch-init *col-timer*)
+    (stopwatch-init *frame-timer*)
+    (stopwatch-begin *frame-timer*)
+    )
+  )
+
+(defmethod update-transforms collide-shape ((obj collide-shape))
+  "Update collisision transforms."
+  (local-vars (v1-8 float) (a1-5 float) (a1-7 float))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s5-0 (-> obj root-prim))
+          (v1-1 (-> obj process node-list))
+          )
+      (cond
+        ((nonzero? v1-1) ;; using cspace stuff
+         (countdown (a0-1 (-> obj total-prims))
+           (let ((a1-0 (-> s5-0 transform-index)))
+             (cond
+               ((>= a1-0 0)
+                ;; normal cspace stuff - just do a cspace transformation.
+                (let ((a1-4 (-> v1-1 data a1-0 bone transform)))
+                  (.lvf vf5 (&-> a1-4 trans quad))
+                  (.lvf vf1 (&-> s5-0 local-sphere quad))
+                  (.lvf vf2 (&-> a1-4 vector 0 quad))
+                  (.mul.w.vf acc vf5 vf0)
+                  (.div.vf Q vf0 vf5 :fsf #b11 :ftf #b11)
+                  (.lvf vf3 (&-> a1-4 vector 1 quad))
+                  (.add.mul.x.vf acc vf2 vf1 acc)
+                  (.lvf vf4 (&-> a1-4 vector 2 quad))
+                  )
+                (.add.mul.y.vf acc vf3 vf1 acc)
+                (.add.mul.z.vf vf1 vf4 vf1 acc :mask #b111)
+                (.mul.vf vf1 vf1 Q :mask #b111)
+                (.svf (&-> s5-0 prim-core world-sphere quad) vf1)
+                (.mov a1-5 vf1)
+                )
+               (else
+                 ;; -2 is magic and tied to the root trans, skip cspace math.
+                 (when (= a1-0 -2)
+                   (.lvf vf1 (&-> s5-0 local-sphere quad))
+                   (.lvf vf2 (&-> obj trans quad))
+                   (.add.vf vf1 vf1 vf2 :mask #b111)
+                   (.svf (&-> s5-0 prim-core world-sphere quad) vf1)
+                   (.mov a1-7 vf1)
+                   )
+                 )
+               )
+             )
+           (&+! s5-0 80)
+           )
+         )
+        (else
+          ;; special cases for non-cspace users.
+          (countdown (s4-0 (-> obj total-prims))
+            (case (-> s5-0 transform-index)
+              ((-3)
+               ;; rotate and translate from root pos/orientation
+               (let ((s3-0 (new 'stack-no-clear 'vector)))
+                 (vector-orient-by-quat! s3-0 (-> s5-0 local-sphere) (-> obj quat))
+                 (vector+! (the-as vector (-> s5-0 prim-core)) s3-0 (-> obj trans))
+                 )
+               (set! (-> s5-0 prim-core world-sphere w) (-> s5-0 local-sphere w))
+               )
+              ((-2)
+               ;; just translate.
+               (.lvf vf1 (&-> s5-0 local-sphere quad))
+               (.lvf vf2 (&-> obj trans quad))
+               (.add.vf vf1 vf1 vf2 :mask #b111)
+               (.svf (&-> s5-0 prim-core world-sphere quad) vf1)
+               (.mov v1-8 vf1)
+               )
+              )
+            (&+! s5-0 80)
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+(defmethod move-by-vector! collide-shape ((obj collide-shape) (arg0 vector))
+  "Move everything by a vector."
+  (vector+! (-> obj trans) (-> obj trans) arg0)
+  (let ((v1-1 (-> obj root-prim)))
+    (countdown (a0-1 (-> obj total-prims))
+      (vector+! (the-as vector (-> v1-1 prim-core)) (the-as vector (-> v1-1 prim-core)) arg0)
+      (set! (-> v1-1 prim-core world-sphere w) (-> v1-1 local-sphere w))
+      (&+! v1-1 80)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod move-to-point! collide-shape ((obj collide-shape) (arg0 vector))
+  "Move root to a point."
+  (let ((v1-0 (new 'stack-no-clear 'vector)))
+    (vector-! v1-0 arg0 (-> obj trans))
+    (set! (-> obj trans quad) (-> arg0 quad))
+    (let ((a1-2 (-> obj root-prim)))
+      (countdown (a0-1 (-> obj total-prims))
+        (vector+! (the-as vector (-> a1-2 prim-core)) (the-as vector (-> a1-2 prim-core)) v1-0)
+        (set! (-> a1-2 prim-core world-sphere w) (-> a1-2 local-sphere w))
+        (&+! a1-2 80)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod set-collide-with! collide-shape ((obj collide-shape) (arg0 collide-spec))
+  "Set the collide with field of everything."
+  (let ((v1-0 (-> obj root-prim)))
+    (countdown (a0-1 (-> obj total-prims))
+      (set! (-> v1-0 prim-core collide-with) arg0)
+      (nop!)
+      (nop!)
+      (&+! v1-0 80)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod set-collide-as! collide-shape ((obj collide-shape) (arg0 collide-spec))
+  "Set the collide as field of everything"
+  (let ((v1-0 (-> obj root-prim)))
+    (countdown (a0-1 (-> obj total-prims))
+      (set! (-> v1-0 prim-core collide-as) arg0)
+      (nop!)
+      (nop!)
+      (&+! v1-0 80)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod iterate-prims collide-shape ((obj collide-shape) (arg0 (function collide-shape-prim none)))
+  "Call the given function for each prim."
+  (let ((s5-0 (-> obj root-prim)))
+    (countdown (s4-0 (-> obj total-prims))
+      (arg0 s5-0)
+      (&+! s5-0 80)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod find-collision-meshes collide-shape ((obj collide-shape))
+  "Find collision meshes for our collide prims.
+   The collide shape system is built in code, so this function should be called
+   to actually find the matching meshes."
+  (let ((s5-0 (-> obj root-prim))
+        (s4-0 0)
+        )
+    (case (-> s5-0 prim-core prim-type)
+      (((prim-type mesh))
+       (set! s4-0 1)
+       )
+      (((prim-type group))
+       (set! s4-0 (the-as int (-> s5-0 specific 1)))
+       (&+! s5-0 80)
+       )
+      )
+    (when (nonzero? s4-0)
+      (let ((s3-0 0))
+        (let ((v1-7 (-> obj process draw))
+              (s2-0 (the-as (array collide-mesh) #f))
+              )
+          (when (and (nonzero? v1-7) (-> v1-7 jgeo))
+            (set! s2-0 (res-lump-struct (-> v1-7 jgeo extra) 'collide-mesh-group (array collide-mesh)))
+            (when s2-0
+              (countdown (s1-0 s4-0)
+                (when (= (-> s5-0 prim-core prim-type) (prim-type mesh))
+                  (let ((s0-0 (-> (the-as collide-shape-prim-mesh s5-0) mesh-id)))
+                    (cond
+                      ((and (>= s0-0 0) (< s0-0 (length s2-0)))
+                       (set! (-> (the-as collide-shape-prim-mesh s5-0) mesh) (-> s2-0 s0-0))
+                       )
+                      (else
+                        (set! (-> (the-as collide-shape-prim-mesh s5-0) mesh) #f)
+                        (+! s3-0 1)
+                        )
+                      )
+                    )
+                  )
+                (set! s5-0 (&+ (the-as collide-shape-prim-mesh s5-0) 80))
+                )
+              )
+            )
+          (when (not s2-0)
+            (while (nonzero? s4-0)
+              (+! s4-0 -1)
+              (when (= (-> (the-as collide-shape-prim-mesh s5-0) prim-core prim-type) (prim-type mesh))
+                (set! (-> (the-as collide-shape-prim-mesh s5-0) mesh) #f)
+                (+! s3-0 1)
+                )
+              (set! s5-0 (&+ (the-as collide-shape-prim-mesh s5-0) 80))
+              )
+            )
+          )
+        (if (nonzero? s3-0)
+            (format 0 "ERROR: Failed to find collision meshes for ~D prim(s) in ~A!~%" s3-0 (-> obj process name))
+            )
+        )
+      )
+    )
+  (update-transforms obj)
+  0
+  (none)
+  )
+
+(defmethod debug-draw collide-shape-prim ((obj collide-shape-prim))
+  (add-debug-sphere
+    #t
+    (bucket-id debug2)
+    (the-as vector (-> obj prim-core))
+    (-> obj local-sphere w)
+    (new 'static 'rgba :r #xff :g #xff :b #xff :a #x40)
+    )
+  0
+  (none)
+  )
+
+(defmethod debug-draw collide-shape-prim-sphere ((obj collide-shape-prim-sphere))
+  (add-debug-sphere
+    #t
+    (bucket-id debug2)
+    (the-as vector (-> obj prim-core))
+    (-> obj local-sphere w)
+    (cond
+      ((and (zero? (-> obj prim-core collide-as)) (zero? (-> obj prim-core collide-with)))
+       (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x40)
+       )
+      ((logtest? (-> obj prim-core action) (collide-action solid))
+       (new 'static 'rgba :r #xff :g #xff :a #x40)
+       )
+      (else
+        (new 'static 'rgba :r #xff :g #x80 :a #x40)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod debug-draw collide-shape-prim-mesh ((obj collide-shape-prim-mesh))
+  (add-debug-sphere
+    #t
+    (bucket-id debug2)
+    (the-as vector (-> obj prim-core))
+    (-> obj local-sphere w)
+    (new 'static 'rgba :b #xff :a #x40)
+    )
+  0
+  (none)
+  )
+
+(defmethod debug-draw collide-shape-prim-group ((obj collide-shape-prim-group))
+  (add-debug-sphere
+    #t
+    (bucket-id debug2)
+    (the-as vector (-> obj prim-core))
+    (-> obj local-sphere w)
+    (new 'static 'rgba :g #xff :a #x10)
+    )
+  (countdown (s5-0 (the-as uint (-> obj num-children)))
+    (debug-draw (-> obj child s5-0))
+    )
+  0
+  (none)
+  )
+
+(deftype do-push-aways-work (structure)
+  "Added"
+  ((cquery collide-query :inline)
+   (push-vel   vector :inline)
+   (vec33    vector :inline :offset 560)
+   (cspec  collide-spec :offset 576)
+   )
+  )
+
+(defmethod do-push-aways collide-shape ((obj collide-shape))
+  "Push away things."
+  (local-vars (at-0 int) (v1-55 int) (a2-5 float) (a2-12 float))
+  (with-pp
+    (rlet ((vf0 :class vf)
+           (vf1 :class vf)
+           (vf2 :class vf)
+           (vf3 :class vf)
+           (vf4 :class vf)
+           (vf5 :class vf)
+           )
+      (init-vf0-vector)
+      (let ((gp-0 (new 'stack-no-clear 'do-push-aways-work)))
+        (set! (-> gp-0 cspec) (collide-spec))
+        (let ((s4-0 (-> obj root-prim prim-core collide-with)))
+
+          ;; first, we build the actor list. hit-by-others now uses spatial hash.
+          (set! *actor-list-length* 0)
+          (if (logtest? s4-0 (collide-spec hit-by-others-list))
+              (set! *actor-list-length*
+                    (fill-actor-list-for-sphere *actor-hash* (the-as sphere (-> obj root-prim prim-core)) *actor-list* 256)
+                    )
+              )
+
+          ;; if we want to collide with the player, add it explicitly.
+          (when (logtest? s4-0 (collide-spec player-list))
+            (let ((a0-2 (-> *collide-player-list* alive-list next0)))
+              *collide-player-list*
+              (let ((v1-13 (-> a0-2 next0)))
+                (while (!= a0-2 (-> *collide-player-list* alive-list-end))
+                  (let* ((a0-3 (-> (the-as connection a0-2) param1))
+                         (a1-1 (-> (the-as collide-shape a0-3) root-prim))
+                         )
+                    (when (logtest? s4-0 (-> a1-1 prim-core collide-as))
+                      (let ((a1-2 (-> a1-1 prim-core)))
+                        (let ((a2-4 a1-2)
+                              (a3-2 (-> obj root-prim prim-core))
+                              )
+                          (.lvf vf2 (&-> a2-4 world-sphere quad))
+                          (.lvf vf3 (&-> a3-2 world-sphere quad))
+                          )
+                        (.sub.vf vf1 vf3 vf2)
+                        (.mul.vf vf1 vf1 vf1)
+                        (.add.y.vf vf1 vf1 vf1 :mask #b1)
+                        (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                        (.mov a2-5 vf1)
+                        (let ((f0-0 a2-5)
+                              (f1-1 (+ (-> a1-2 world-sphere w) (-> obj root-prim prim-core world-sphere w)))
+                              )
+                          (when (< f0-0 (* f1-1 f1-1))
+                            (when (< *actor-list-length* 256)
+                              (set! (-> *actor-list* *actor-list-length*) (the-as collide-shape a0-3))
+                              (set! *actor-list-length* (+ *actor-list-length* 1))
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  (set! a0-2 v1-13)
+                  *collide-player-list*
+                  (set! v1-13 (-> v1-13 next0))
+                  )
+                )
+              )
+            )
+
+          ;; same for hit-by-plyer list
+          (when (logtest? s4-0 (collide-spec hit-by-player-list))
+            (let ((a0-5 (-> *collide-hit-by-player-list* alive-list next0)))
+              *collide-hit-by-player-list*
+              (let ((v1-21 (-> a0-5 next0)))
+                (while (!= a0-5 (-> *collide-hit-by-player-list* alive-list-end))
+                  (let* ((a0-6 (-> (the-as connection a0-5) param1))
+                         (a1-14 (-> (the-as collide-shape-moving a0-6) root-prim))
+                         )
+                    (when (logtest? s4-0 (-> a1-14 prim-core collide-as))
+                      (let ((a1-15 (-> a1-14 prim-core)))
+                        (let ((a2-11 a1-15)
+                              (a3-4 (-> obj root-prim prim-core))
+                              )
+                          (.lvf vf2 (&-> a2-11 world-sphere quad))
+                          (.lvf vf3 (&-> a3-4 world-sphere quad))
+                          )
+                        (.sub.vf vf1 vf3 vf2)
+                        (.mul.vf vf1 vf1 vf1)
+                        (.add.y.vf vf1 vf1 vf1 :mask #b1)
+                        (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                        (.mov a2-12 vf1)
+                        (let ((f0-1 a2-12)
+                              (f1-5 (+ (-> a1-15 world-sphere w) (-> obj root-prim prim-core world-sphere w)))
+                              )
+                          (when (< f0-1 (* f1-5 f1-5))
+                            (when (< *actor-list-length* 256)
+                              (set! (-> *actor-list* *actor-list-length*) (the-as collide-shape a0-6))
+                              (set! *actor-list-length* (+ *actor-list-length* 1))
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  (set! a0-5 v1-21)
+                  *collide-hit-by-player-list*
+                  (set! v1-21 (-> v1-21 next0))
+                  )
+                )
+              )
+            )
+
+          ;; now loop over all actors:
+          (dotimes (s3-0 *actor-list-length*)
+            (let* ((s1-0 (-> *actor-list* s3-0))
+                   (s2-0 (-> s1-0 root-prim))
+                   )
+              (when (logtest? s4-0 (-> s2-0 prim-core collide-as))
+                (when (!= (-> obj process) (-> s1-0 process))
+                  ;; do the test
+                  (when (and (should-push-away obj s1-0 (-> gp-0 cquery)) (>= -81.92 (-> gp-0 cquery best-dist)))
+                    (set! (-> gp-0 cquery collide-with) (-> s1-0 root-prim prim-core collide-with))
+                    (set! (-> gp-0 cquery ignore-process0) (-> s1-0 process))
+                    (set! (-> gp-0 cquery ignore-process1) #f)
+                    (set! (-> gp-0 cquery ignore-pat) (-> s1-0 pat-ignore-mask))
+                    (set! (-> gp-0 cquery action-mask) (collide-action solid))
+                    (-> gp-0 cquery)
+                    ;; push away
+                    (fill-cache-for-shape s1-0 8192.0 (-> gp-0 cquery))
+                    (let ((s4-1 3))
+                      (until (or (<= s4-1 0) (not (should-push-away obj s1-0 (-> gp-0 cquery))))
+                        (set! (-> gp-0 vec33 quad) (-> s1-0 trans quad))
+                        (let* ((f0-4 (+ 2867.2 (-> gp-0 vec33 y)))
+                               (f2-2 (+ 5734.4 f0-4))
+                               (f1-11 (-> gp-0 cquery best-other-tri intersect y))
+                               )
+                          (cond
+                            ((< f1-11 f0-4)
+                             (set! f1-11 f0-4)
+                             )
+                            ((< f2-2 f1-11)
+                             (set! f1-11 f2-2)
+                             )
+                            )
+                          (set! (-> gp-0 vec33 y) f1-11)
+                          )
+                        (.lvf vf4 (&-> (-> gp-0 vec33) quad))
+                        (.lvf vf3 (&-> (-> gp-0 cquery) best-other-tri intersect quad))
+                        (.lvf vf5 (&-> (-> gp-0 cquery) best-other-tri normal quad))
+                        (.sub.vf vf2 vf4 vf3)
+                        (.mul.vf vf1 vf5 vf2)
+                        (.add.x.vf vf1 vf1 vf1 :mask #b10)
+                        (.add.z.vf vf1 vf1 vf1 :mask #b10)
+                        (.mov v1-55 vf1)
+                        (b! (< (the-as int v1-55) 0) cfg-35 :likely-delay (.sub.vf vf2 vf0 vf2))
+                        (label cfg-35)
+                        (.svf (&-> (-> gp-0 push-vel) quad) vf2)
+                        (vector-normalize! (-> gp-0 push-vel) 1.0)
+                        (vector-float*! (-> gp-0 push-vel) (-> gp-0 push-vel) (- (-> gp-0 cquery best-dist)))
+                        (let ((v1-59 (-> gp-0 push-vel)))
+                          (.lvf vf1 (&-> (-> gp-0 push-vel) quad))
+                          (let ((f0-7 (-> pp clock frames-per-second)))
+                            (.mov at-0 f0-7)
+                            )
+                          (.mov vf2 at-0)
+                          (.mov.vf vf1 vf0 :mask #b1000)
+                          (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+                          (.svf (&-> v1-59 quad) vf1)
+                          )
+                        (let ((s0-0 (-> (the-as collide-shape-moving s1-0) status)))
+                          (integrate-and-collide! (the-as collide-shape-moving s1-0) (-> gp-0 push-vel))
+                          (set! (-> (the-as collide-shape-moving s1-0) status) s0-0)
+                          )
+                        (+! s4-1 -1)
+                        )
+                      (if (zero? s4-1)
+                          (logior! (-> gp-0 cspec) (-> s2-0 prim-core collide-as))
+                          )
+                      )
+                    (set! s4-0 (-> obj root-prim prim-core collide-with))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        (-> gp-0 cspec)
+        )
+      )
+    )
+  )
+
+;; definition for method 40 of type collide-shape
+;; WARN: Return type mismatch object vs symbol.
+(defmethod find-overlapping-shapes collide-shape ((obj collide-shape) (arg0 overlaps-others-params))
+  (local-vars (a0-10 float) (a0-14 uint) (a2-5 float) (a2-12 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((gp-0 (the-as object #f)))
+      (let* ((s3-0 (-> obj root-prim))
+             (s2-0 (the-as uint (logand (-> s3-0 prim-core collide-with) (-> arg0 collide-with-filter))))
+             )
+        (set! (-> arg0 filtered-root-collide-with) (the-as collide-spec s2-0))
+        (set! *actor-list-length* 0)
+        (b! (not (logtest? (the-as collide-spec s2-0) 512)) cfg-2 :delay (empty-form))
+        (set! *actor-list-length*
+              (fill-actor-list-for-sphere *actor-hash* (the-as sphere (-> s3-0 prim-core)) *actor-list* 256)
+              )
+        (label cfg-2)
+        (b! (not (logtest? (the-as collide-spec s2-0) 1024)) cfg-11 :delay (empty-form))
+        (let ((a0-3 (-> *collide-player-list* alive-list next0)))
+          *collide-player-list*
+          (let ((v1-12 (-> a0-3 next0)))
+            (b! #t cfg-9 :delay (nop!))
+            (label cfg-4)
+            (let ((a0-4 (-> (the-as connection a0-3) param1)))
+              (let ((a1-2 (-> (the-as collide-shape a0-4) root-prim)))
+                (b! (not (logtest? (the-as collide-spec s2-0) (-> a1-2 prim-core collide-as))) cfg-8 :delay (empty-form))
+                (let ((a1-3 (-> a1-2 prim-core)))
+                  (let ((a2-4 a1-3)
+                        (a3-1 (-> s3-0 prim-core))
+                        )
+                    (.lvf vf2 (&-> a2-4 world-sphere quad))
+                    (.lvf vf3 (&-> a3-1 world-sphere quad))
+                    )
+                  (.sub.vf vf1 vf3 vf2)
+                  (.mul.vf vf1 vf1 vf1)
+                  (.add.y.vf vf1 vf1 vf1 :mask #b1)
+                  (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                  (.mov a2-5 vf1)
+                  (let ((f0-0 a2-5)
+                        (f1-1 (+ (-> a1-3 world-sphere w) (-> s3-0 prim-core world-sphere w)))
+                        )
+                    (b! (>= f0-0 (* f1-1 f1-1)) cfg-8 :delay #f)
+                    )
+                  )
+                )
+              (b! (>= *actor-list-length* 256) cfg-8 :delay #f)
+              (set! (-> *actor-list* *actor-list-length*) (the-as collide-shape a0-4))
+              )
+            (set! *actor-list-length* (+ *actor-list-length* 1))
+            (label cfg-8)
+            (set! a0-3 v1-12)
+            *collide-player-list*
+            (set! v1-12 (-> v1-12 next0))
+            )
+          (label cfg-9)
+          (b! (!= a0-3 (-> *collide-player-list* alive-list-end)) cfg-4 :delay (nop!))
+          )
+        (label cfg-11)
+        (b! (not (logtest? (the-as collide-spec s2-0) 256)) cfg-20 :delay (empty-form))
+        (let ((a0-6 (-> *collide-hit-by-player-list* alive-list next0)))
+          *collide-hit-by-player-list*
+          (let ((v1-20 (-> a0-6 next0)))
+            (b! #t cfg-18 :delay (nop!))
+            (label cfg-13)
+            (let ((a0-7 (-> (the-as connection a0-6) param1)))
+              (let ((a1-14 (-> (the-as collide-shape-moving a0-7) root-prim)))
+                (b! (not (logtest? (the-as collide-spec s2-0) (-> a1-14 prim-core collide-as))) cfg-17 :delay (empty-form))
+                (let ((a1-15 (-> a1-14 prim-core)))
+                  (let ((a2-11 a1-15)
+                        (a3-2 (-> s3-0 prim-core))
+                        )
+                    (.lvf vf2 (&-> a2-11 world-sphere quad))
+                    (.lvf vf3 (&-> a3-2 world-sphere quad))
+                    )
+                  (.sub.vf vf1 vf3 vf2)
+                  (.mul.vf vf1 vf1 vf1)
+                  (.add.y.vf vf1 vf1 vf1 :mask #b1)
+                  (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                  (.mov a2-12 vf1)
+                  (let ((f0-1 a2-12)
+                        (f1-5 (+ (-> a1-15 world-sphere w) (-> s3-0 prim-core world-sphere w)))
+                        )
+                    (b! (>= f0-1 (* f1-5 f1-5)) cfg-17 :delay #f)
+                    )
+                  )
+                )
+              (b! (>= *actor-list-length* 256) cfg-17 :delay #f)
+              (set! (-> *actor-list* *actor-list-length*) (the-as collide-shape a0-7))
+              )
+            (set! *actor-list-length* (+ *actor-list-length* 1))
+            (label cfg-17)
+            (set! a0-6 v1-20)
+            *collide-hit-by-player-list*
+            (set! v1-20 (-> v1-20 next0))
+            )
+          (label cfg-18)
+          (b! (!= a0-6 (-> *collide-hit-by-player-list* alive-list-end)) cfg-13 :delay (nop!))
+          )
+        (label cfg-20)
+        (let ((s1-0 0))
+          (b! #t cfg-30 :delay (nop!))
+          (label cfg-21)
+          (let ((s0-0 (-> *actor-list* s1-0)))
+            (let ((a2-15 (-> s0-0 root-prim)))
+              (b! (not (logtest? (the-as collide-spec s2-0) (-> a2-15 prim-core collide-as))) cfg-29 :delay (empty-form))
+              (.lvf vf1 (&-> s3-0 prim-core world-sphere quad))
+              (.lvf vf2 (&-> a2-15 prim-core world-sphere quad))
+              (.sub.vf vf3 vf1 vf2)
+              (.add.w.vf vf4 vf1 vf2 :mask #b1000)
+              (.mul.vf vf3 vf3 vf3 :mask #b111)
+              (.mul.w.vf vf4 vf4 vf4 :mask #b1000)
+              (.mul.x.vf acc vf0 vf3 :mask #b1000)
+              (.add.mul.y.vf acc vf0 vf3 acc :mask #b1000)
+              (.add.mul.z.vf vf3 vf0 vf3 acc :mask #b1000)
+              (.sub.w.vf vf3 vf3 vf4 :mask #b1000)
+              (let ((f0-2 0.0))
+                (.add.w.vf vf3 vf0 vf3 :mask #b1)
+                (let ((v1-28 (-> obj process)))
+                  (.mov a0-10 vf3)
+                  (let ((a1-26 (-> s0-0 process)))
+                    (b! (< f0-2 a0-10) cfg-28)
+                    (b! (= v1-28 a1-26) cfg-28 :delay (nop!))
+                    )
+                  )
+                )
+              (let ((v1-30 (overlaps-others-test s3-0 arg0 a2-15)))
+                (.lvf vf1 (&-> s3-0 prim-core world-sphere quad))
+                (b! (= v1-30 #f) cfg-28 :delay (set! s2-0 (the-as uint (-> arg0 filtered-root-collide-with))))
+                )
+              )
+            (let ((a0-12 (-> (the-as (pointer uint64) arg0) 0))
+                  (v1-31 (-> obj penetrate-using))
+                  )
+              (b! (not (logtest? a0-12 4)) cfg-27 :delay (set! a0-14 (the-as uint (-> arg0 tlist))))
+              (b! (logtest? (-> s0-0 penetrated-by) v1-31) cfg-28 :delay (nop!))
+              )
+            )
+          (label cfg-27)
+          (b! (= a0-14 #f) cfg-32 :delay (set! gp-0 0))
+          (label cfg-28)
+          0
+          (label cfg-29)
+          (+! s1-0 1)
+          (label cfg-30)
+          (b! (< s1-0 *actor-list-length*) cfg-21)
+          )
+        )
+      (label cfg-32)
+      (b! (= (the-as uint gp-0) #f) cfg-34 :delay (nop!))
+      (set! gp-0 #t)
+      (label cfg-34)
+      (the-as symbol gp-0)
+      )
+    )
+  )
+
+;; definition for method 12 of type collide-shape-prim
+(defmethod overlaps-others-test collide-shape-prim ((obj collide-shape-prim) (arg0 overlaps-others-params) (arg1 collide-shape-prim))
+  (format 0 "ERROR: Unsupported call to collide-shape-prim::overlaps-others-test!~%")
+  #f
+  )
+
+;; definition for method 12 of type collide-shape-prim-group
+;; WARN: Return type mismatch object vs symbol.
+(defmethod overlaps-others-test collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 overlaps-others-params) (arg1 collide-shape-prim))
+  (local-vars (a0-3 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s4-0 (the-as collide-shape-prim obj))
+          (v1-0 (-> arg1 prim-core collide-as))
+          (s2-0 (the-as object #f))
+          )
+      (let ((a1-1 (-> arg0 collide-with-filter)))
+        (nop!)
+        (let ((s3-0 (the-as uint (-> obj num-children)))
+              (v1-1 (logand v1-0 a1-1))
+              )
+          (.lvf vf1 (&-> arg1 prim-core world-sphere quad))
+          (nop!)
+          (set! (-> arg0 filtered-other-collide-as) v1-1)
+          (label cfg-1)
+          (b! (zero? s3-0) cfg-6 :delay (set! s4-0 (&+ s4-0 80)))
+          (+! s3-0 -1)
+          (let ((a0-2 (logand (-> s4-0 prim-core collide-with) v1-1)))
+            (.lvf vf2 (&-> s4-0 prim-core world-sphere quad))
+            (b! (zero? a0-2) cfg-1 :delay (.sub.vf vf3 vf2 vf1))
+            )
+          (.add.w.vf vf4 vf2 vf1 :mask #b1000)
+          (.mul.vf vf3 vf3 vf3 :mask #b111)
+          (.mul.w.vf vf4 vf4 vf4 :mask #b1000)
+          (.mul.x.vf acc vf0 vf3 :mask #b1000)
+          (.add.mul.y.vf acc vf0 vf3 acc :mask #b1000)
+          (.add.mul.z.vf vf3 vf0 vf3 acc :mask #b1000)
+          (.sub.w.vf vf3 vf3 vf4 :mask #b1000)
+          (let ((f0-0 0.0))
+            (.add.w.vf vf3 vf0 vf3 :mask #b1)
+            (.mov a0-3 vf3)
+            (b! (< f0-0 a0-3) cfg-1)
+            )
+          (let ((a0-5 (overlaps-others-test s4-0 arg0 arg1)))
+            (set! v1-1 (-> arg0 filtered-other-collide-as))
+            (b! (= a0-5 #f) cfg-1 :delay (.lvf vf1 (&-> arg1 prim-core world-sphere quad)))
+            )
+          )
+        )
+      (b! (!= (-> arg0 tlist) #f) cfg-1 :delay (set! s2-0 0))
+      (label cfg-6)
+      (b! (= (the-as uint s2-0) #f) cfg-8 :delay (nop!))
+      (set! s2-0 #t)
+      (label cfg-8)
+      (the-as symbol s2-0)
+      )
+    )
+  )
+
+;; definition for method 13 of type collide-shape-prim
+;; WARN: Return type mismatch object vs symbol.
+(defmethod overlaps-others-group collide-shape-prim ((obj collide-shape-prim) (arg0 overlaps-others-params) (arg1 collide-shape-prim-group))
+  (local-vars (a0-4 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s4-0 (the-as collide-shape-prim arg1))
+          (v1-0 (-> obj prim-core collide-with))
+          )
+      (nop!)
+      (let ((a0-1 (-> arg0 collide-with-filter)))
+        (nop!)
+        (let ((s3-0 (the-as uint (-> arg1 num-children)))
+              (v1-1 (logand v1-0 a0-1))
+              )
+          (.lvf vf2 (&-> obj prim-core world-sphere quad))
+          (let ((s2-0 (the-as object #f)))
+            (set! (-> arg0 filtered-child-collide-with) v1-1)
+            (label cfg-1)
+            (b! (zero? s3-0) cfg-6 :delay (set! s4-0 (&+ s4-0 80)))
+            (+! s3-0 -1)
+            (let ((a0-3 (logand v1-1 (-> s4-0 prim-core collide-as))))
+              (.lvf vf1 (&-> s4-0 prim-core world-sphere quad))
+              (b! (zero? a0-3) cfg-1 :delay (.sub.vf vf3 vf2 vf1))
+              )
+            (.add.w.vf vf4 vf2 vf1 :mask #b1000)
+            (.mul.vf vf3 vf3 vf3 :mask #b111)
+            (.mul.w.vf vf4 vf4 vf4 :mask #b1000)
+            (.mul.x.vf acc vf0 vf3 :mask #b1000)
+            (.add.mul.y.vf acc vf0 vf3 acc :mask #b1000)
+            (.add.mul.z.vf vf3 vf0 vf3 acc :mask #b1000)
+            (.sub.w.vf vf3 vf3 vf4 :mask #b1000)
+            (let ((f0-0 0.0))
+              (.add.w.vf vf3 vf0 vf3 :mask #b1)
+              (.mov a0-4 vf3)
+              (b! (< f0-0 a0-4) cfg-1)
+              )
+            (let ((a0-6 (overlaps-others-test obj arg0 s4-0)))
+              (set! v1-1 (-> arg0 filtered-child-collide-with))
+              (b! (= a0-6 #f) cfg-1 :delay (.lvf vf2 (&-> obj prim-core world-sphere quad)))
+              )
+            (b! (!= (-> arg0 tlist) #f) cfg-1 :delay (set! s2-0 0))
+            (label cfg-6)
+            (b! (= (the-as uint s2-0) #f) cfg-8 :delay (nop!))
+            (set! s2-0 #t)
+            (label cfg-8)
+            (the-as symbol s2-0)
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 12 of type collide-shape-prim-sphere
+(defmethod overlaps-others-test collide-shape-prim-sphere ((obj collide-shape-prim-sphere) (arg0 overlaps-others-params) (arg1 collide-shape-prim))
+  (local-vars (v1-11 uint) (s4-0 uint))
+  (let ((v1-0 (-> arg1 prim-core prim-type)))
+    (b! (nonzero? v1-0) cfg-2 :delay (set! s4-0 (the-as uint (-> arg0 options))))
+    (let ((v0-1 (overlaps-others-group obj arg0 (the-as collide-shape-prim-group arg1))))
+      (b! #t cfg-17 :delay (nop!))
+      (label cfg-2)
+      (b! (> (the-as int v1-0) 0) cfg-4 :delay (nop!))
+      (b! #t cfg-11 :delay (logand s4-0 2))
+      (label cfg-4)
+      (b! (nonzero? 0) cfg-11 :delay (nop!))
+      (let ((s2-0 (-> (the-as collide-shape-prim-mesh arg1) mesh)))
+        (b! (not s2-0) cfg-10 :delay (empty-form))
+        (let ((v1-5 (populate-for-prim-mesh *collide-mesh-cache* (the-as collide-shape-prim-mesh arg1))))
+          (when v1-5
+            (when (overlap-test s2-0 (the-as collide-mesh-cache-tri (-> v1-5 tris)) (the-as vector (-> obj prim-core)))
+              (b! #t cfg-11 :delay (nop!))
+              (the-as none 0)
+              )
+            )
+          )
+        )
+      (label cfg-10)
+      (set! v0-1 #f)
+      (b! #t cfg-17 :delay (nop!))
+      (label cfg-11)
+      (let ((a0-8 (-> arg0 tlist)))
+        (b! (= a0-8 #f) cfg-13 :delay (nop!))
+        (add-touching-prims a0-8 obj arg1 -1.0 (the-as collide-tri-result #f) (the-as collide-tri-result #f))
+        )
+      (label cfg-13)
+      (b! (not (logtest? s4-0 1)) cfg-16 :delay (set! v1-11 (the-as uint (-> obj prim-core action))))
+      (let ((a0-9 (-> arg1 prim-core action)))
+        (b! (logtest? (the-as collide-action (logand v1-11 1)) a0-9) cfg-16 :delay (nop!))
+        )
+      (set! v0-1 #f)
+      (b! #t cfg-17 :delay (nop!))
+      (label cfg-16)
+      (set! v0-1 #t)
+      (label cfg-17)
+      v0-1
+      )
+    )
+  )
+
+;; definition for method 12 of type collide-shape-prim-mesh
+(defmethod overlaps-others-test collide-shape-prim-mesh ((obj collide-shape-prim-mesh) (arg0 overlaps-others-params) (arg1 collide-shape-prim))
+  (local-vars (v1-3 uint) (v1-11 uint) (s4-0 uint))
+  (let ((v1-0 (-> arg1 prim-core prim-type)))
+    (b! (nonzero? v1-0) cfg-2 :delay (set! s4-0 (the-as uint (-> arg0 options))))
+    (let ((v0-1 (overlaps-others-group obj arg0 (the-as collide-shape-prim-group arg1))))
+      (b! #t cfg-18 :delay (nop!))
+      (label cfg-2)
+      (b! (> (the-as int v1-0) 0) cfg-10 :delay (set! v1-3 (logand s4-0 2)))
+      (b! (nonzero? v1-3) cfg-12 :delay (nop!))
+      (let ((s2-0 (-> obj mesh)))
+        (b! (not s2-0) cfg-9 :delay (empty-form))
+        (let ((v1-5 (populate-for-prim-mesh *collide-mesh-cache* obj)))
+          (b! (not v1-5) cfg-9 :delay (empty-form))
+          (b!
+            (not (overlap-test s2-0 (the-as collide-mesh-cache-tri (-> v1-5 tris)) (the-as vector (-> arg1 prim-core))))
+            cfg-9
+            :delay (empty-form)
+            )
+          )
+        )
+      (b! #t cfg-12 :delay (nop!))
+      (the-as none 0)
+      (label cfg-9)
+      (set! v0-1 #f)
+      (b! #t cfg-18 :delay (nop!))
+      (label cfg-10)
+      (b! (nonzero? v1-3) cfg-12 :delay (nop!))
+      (format
+        0
+        "ERROR: Unsupported mesh -> mesh test attempted in collide-shape-prim-mesh::overlaps-others-test!~%"
+        )
+      (set! v0-1 #f)
+      (b! #t cfg-18 :delay (nop!))
+      (label cfg-12)
+      (let ((a0-9 (-> arg0 tlist)))
+        (b! (= a0-9 #f) cfg-14 :delay (nop!))
+        (add-touching-prims a0-9 obj arg1 -1.0 (the-as collide-tri-result #f) (the-as collide-tri-result #f))
+        )
+      (label cfg-14)
+      (b! (not (logtest? s4-0 1)) cfg-17 :delay (set! v1-11 (the-as uint (-> obj prim-core action))))
+      (let ((a0-10 (-> arg1 prim-core action)))
+        (b! (logtest? (the-as collide-action (logand v1-11 1)) a0-10) cfg-17 :delay (nop!))
+        )
+      (set! v0-1 #f)
+      (b! #t cfg-18 :delay (nop!))
+      (label cfg-17)
+      (set! v0-1 #t)
+      (label cfg-18)
+      v0-1
+      )
+    )
+  )
+
+;; definition for method 49 of type collide-shape
+;; WARN: Return type mismatch int vs none.
+(defmethod modify-collide-as! collide-shape ((obj collide-shape) (arg0 int) (arg1 collide-spec) (arg2 collide-spec))
+  (let ((v1-0 (-> obj root-prim)))
+    (countdown (a0-1 (-> obj total-prims))
+      (if (logtest? (-> v1-0 prim-id) arg0)
+          (set! (-> v1-0 prim-core collide-as) (logior (logclear (-> v1-0 prim-core collide-as) arg1) arg2))
+          )
+      (&+! v1-0 80)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 50 of type collide-shape
+;; INFO: Used lq/sq
+(defmethod send-shoves collide-shape ((obj collide-shape) (arg0 process) (arg1 touching-shapes-entry) (arg2 float) (arg3 float) (arg4 float))
+  (local-vars (sv-144 process) (sv-160 collide-shape-prim) (sv-176 vector))
+  (with-pp
+    (rlet ((vf0 :class vf)
+           (vf4 :class vf)
+           (vf5 :class vf)
+           (vf6 :class vf)
+           )
+      (init-vf0-vector)
+      (when arg1
+        (let ((s0-0 (-> arg1 head)))
+          (set! sv-144 arg0)
+          (let ((gp-0 (if (type? sv-144 process-focusable)
+                          sv-144
+                          )
+                      )
+                )
+            (when (and s0-0 gp-0)
+              (while s0-0
+                (set! sv-160 (get-touched-prim s0-0 obj arg1))
+                (get-touched-prim s0-0 (-> (the-as process-focusable gp-0) root-override) arg1)
+                (when (logtest? (-> sv-160 prim-core action) (collide-action no-standon))
+                  (let ((v1-12 (get-middle-of-bsphere-overlap s0-0 (new 'stack-no-clear 'vector))))
+                    (set! sv-176 (new 'stack-no-clear 'vector))
+                    (let ((a0-7 (-> sv-160 prim-core)))
+                      (.lvf vf4 (&-> v1-12 quad))
+                      (.lvf vf5 (&-> a0-7 world-sphere quad))
+                      )
+                    )
+                  (.mov.vf vf6 vf0 :mask #b1000)
+                  (.sub.vf vf6 vf4 vf5 :mask #b111)
+                  (.svf (&-> sv-176 quad) vf6)
+                  (vector-normalize! sv-176 1.0)
+                  (when (and (< arg2 (-> sv-176 y)) (and (not (focus-test? (the-as process-focusable gp-0) dead hit board mech))
+                                                         (< (-> (the-as process-focusable gp-0) root-override transv y) 4.096)
+                                                         )
+                             )
+                    (let ((s2-1 (new 'stack-no-clear 'vector)))
+                      (set! (-> s2-1 quad) (-> (the-as process-focusable gp-0) root-override transv quad))
+                      (let* ((v1-26 (-> (the-as process-focusable gp-0) root-override transv))
+                             (f30-0 (sqrtf (+ (* (-> v1-26 x) (-> v1-26 x)) (* (-> v1-26 z) (-> v1-26 z)))))
+                             )
+                        (if (= f30-0 0.0)
+                            (set! (-> s2-1 quad)
+                                  (-> (vector-z-quaternion! s2-1 (-> (the-as process-focusable gp-0) root-override quat)) quad)
+                                  )
+                            )
+                        (vector-xz-normalize! s2-1 (fmax f30-0 arg4))
+                        )
+                      (set! (-> s2-1 y) arg3)
+                      (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
+                        (set! (-> a1-8 from) (process->ppointer pp))
+                        (set! (-> a1-8 num-params) 2)
+                        (set! (-> a1-8 message) 'shove)
+                        (set! (-> a1-8 param 0) (the-as uint arg1))
+                        (let ((v1-34 (new 'static 'attack-info :mask (attack-info-mask vector angle id))))
+                          (let* ((a0-13 *game-info*)
+                                 (a2-4 (+ (-> a0-13 attack-id) 1))
+                                 )
+                            (set! (-> a0-13 attack-id) a2-4)
+                            (set! (-> v1-34 id) a2-4)
+                            )
+                          (set! (-> v1-34 vector quad) (-> s2-1 quad))
+                          (set! (-> v1-34 angle) 'jump)
+                          (set! (-> a1-8 param 1) (the-as uint v1-34))
+                          )
+                        (send-event-function gp-0 a1-8)
+                        )
+                      )
+                    (return #t)
+                    )
+                  )
+                (set! s0-0 (-> s0-0 next))
+                )
+              )
+            )
+          )
+        )
+      #f
+      )
+    )
+  )
+
+;; definition for method 41 of type collide-shape
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs vector.
+(defmethod shove-to-closest-point-on-path collide-shape ((obj collide-shape) (arg0 attack-info) (arg1 float))
+  (set! (-> arg0 shove-up) arg1)
+  (let* ((s3-0 (-> obj process path))
+         (s2-0 (-> s3-0 curve num-cverts))
+         (s4-0 (target-pos 0))
+         (s1-0 (new 'stack-no-clear 'vector))
+         (s5-0 (new 'stack-no-clear 'vector))
+         )
+    (let ((f30-0 -1.0))
+      (dotimes (s0-0 s2-0)
+        (get-point-in-path! s3-0 s1-0 (the float s0-0) 'interp)
+        (let ((f0-3 (vector-vector-distance-squared s4-0 s1-0)))
+          (when (or (< f30-0 0.0) (< f0-3 f30-0))
+            (set! f30-0 f0-3)
+            (set! (-> s5-0 quad) (-> s1-0 quad))
+            )
+          )
+        )
+      )
+    (vector-! (-> arg0 vector) s5-0 s4-0)
+    )
+  (the-as vector 0)
+  )

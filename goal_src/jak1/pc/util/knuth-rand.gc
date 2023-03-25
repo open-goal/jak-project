@@ -1,0 +1,87 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; mimicking Java's util.Random https://docs.oracle.com/javase/8/docs/api/java/util/Random.html
+;;;; This is a linear congruential pseudorandom number generator, as defined by D. H. Lehmer 
+;;;;  and described by Donald E. Knuth in The Art of Computer Programming, Volume 3: Seminumerical Algorithms, section 3.2.1.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defun scf-time-to-int64 ()
+  "pack system time into 64-bits for randomization purposes."
+  (let ((date (new 'stack-no-clear 'scf-time)))
+    (scf-get-time date)
+    
+    (logior (the int (-> date stat))
+            (shl (-> date second) 8)
+            (shl (-> date minute) 16)
+            (shl (-> date hour) 24)
+            (shl (-> date week) 32)
+            (shl (-> date day) 40)
+            (shl (-> date month) 48)
+            (shl (-> date year) 56))
+    )
+  )
+
+
+(deftype knuth-rand-state (structure)
+  ((seed int64))
+  )
+
+(define *knuth-rand-state* (new 'static 'knuth-rand-state))
+
+
+(defun knuth-rand-init ((seed int))
+  (set! (-> *knuth-rand-state* seed) seed)
+  )
+
+(defun knuth-rand-advance-seed ()
+  ;; seed =  (seed * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1)
+  (set! (-> *knuth-rand-state* seed) (logand (+ (imul64 (-> *knuth-rand-state* seed) #x5deece66d) #xb) (- (shl 1 48) 1)))
+  )
+
+(defun knuth-rand-next ((bits int))
+  (knuth-rand-advance-seed)
+  ;; return (int)(seed >>> (48 - bits))
+  (shr (-> *knuth-rand-state* seed) (- 48 bits))
+  )
+
+(defun knuth-rand-next-int () 
+  (knuth-rand-advance-seed)
+  (-> *knuth-rand-state* seed)
+  )
+
+;; returns a pseudorandom int in the range [min, max)
+(defun knuth-rand-int-range ((min int) (max int))
+  (let* ((bound (- max min))
+      ;; int bits, val;
+         (bits 0)
+         (val 0))
+
+    ;; if ((bound & -bound) == bound)  // i.e., bound is a power of 2
+    (if (= (logand bound (- bound)) bound)
+      ;; return (int)((bound * (long)next(31)) >> 31);
+      (return (+ min (sar (imul64 bound (knuth-rand-next 31)) 31)))
+      )
+
+    ;;  do {
+    ;;      bits = next(31);
+    ;;      val = bits % bound;
+    ;;  } while (bits - val + (bound-1) < 0);
+    ;;  return val;
+    (until (not (< (+ bits (- val) bound -1) 0))
+      (set! bits (knuth-rand-next 31))
+      (set! val (mod bits bound))
+      )
+    (+ min val))
+  )
+
+;; returns a pseudorandom float in the range [0, 1)
+(defun knuth-rand-next-float ()
+  ;; return next(24) / ((float)(1 << 24));
+  (/ (the float (knuth-rand-next 24)) (shl 1 24))
+  )
+
+(knuth-rand-init (scf-time-to-int64))
+

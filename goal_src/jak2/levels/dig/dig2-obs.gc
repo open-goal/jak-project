@@ -1,0 +1,77 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: dig2-obs.gc
+;; name in dgo: dig2-obs
+;; dgos: DG1, D3A
+
+;; DECOMP BEGINS
+
+(deftype dig-breakable-door (process-focusable)
+  ((anim         basic  :offset-assert 204)
+   (art-name     basic  :offset-assert 208)
+   (collide-mesh int32  :offset-assert 212)
+   )
+  :heap-base #x60
+  :method-count-assert 28
+  :size-assert         #xd8
+  :flag-assert         #x1c006000d8
+  (:methods
+    (idle () _type_ :state 27)
+    )
+  )
+
+
+(defskelgroup skel-dig-breakable-door dig-breakable-door dig-breakable-door-lod0-jg dig-breakable-door-idle-ja
+              ((dig-breakable-door-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 6 0 10.3)
+              :origin-joint-index 3
+              )
+
+(defstate idle (dig-breakable-door)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (transform-post)
+      (logior! (-> self mask) (process-mask sleep))
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! dig-breakable-door ((obj dig-breakable-door) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (stack-size-set! (-> obj main-thread) 512)
+  (set! (-> obj mask) (logior (process-mask collectable) (-> obj mask)))
+  (let ((s4-0 (art-group-get-by-name *level* "skel-dig-breakable-door" (the-as (pointer uint32) #f))))
+    (let ((s3-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+      (let ((v1-7 (new 'process 'collide-shape-prim-mesh s3-0 (the-as uint 0) (the-as uint 0))))
+        (set! (-> v1-7 prim-core collide-as) (collide-spec obstacle))
+        (set! (-> v1-7 prim-core collide-with) (collide-spec jak player-list))
+        (set! (-> v1-7 prim-core action) (collide-action solid))
+        (set! (-> v1-7 transform-index) 3)
+        (set-vector! (-> v1-7 local-sphere) 0.0 24576.0 0.0 42188.8)
+        (set! (-> s3-0 total-prims) (the-as uint 1))
+        (set! (-> s3-0 root-prim) v1-7)
+        )
+      (set! (-> s3-0 nav-radius) (* 0.75 (-> s3-0 root-prim local-sphere w)))
+      (let ((v1-10 (-> s3-0 root-prim)))
+        (set! (-> s3-0 backup-collide-as) (-> v1-10 prim-core collide-as))
+        (set! (-> s3-0 backup-collide-with) (-> v1-10 prim-core collide-with))
+        )
+      (set! (-> obj root-override) s3-0)
+      )
+    (process-drawable-from-entity! obj arg0)
+    (initialize-skeleton obj (the-as skeleton-group s4-0) (the-as pair 0))
+    )
+  (go (method-of-object obj idle))
+  (none)
+  )

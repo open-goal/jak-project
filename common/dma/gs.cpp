@@ -1,7 +1,9 @@
 #include "gs.h"
 
-#include "third-party/fmt/core.h"
 #include "common/util/Assert.h"
+
+#include "third-party/fmt/core.h"
+#include "third-party/fmt/format.h"
 
 std::string reg_descriptor_name(GifTag::RegisterDescriptor reg) {
   switch (reg) {
@@ -351,11 +353,21 @@ std::string GsTexa::print() const {
 std::string GsTex0::print() const {
   return fmt::format(
       "tbp0: {} tbw: {} psm: {} tw: {} th: {} tcc: {} tfx: {} cbp: {} cpsm: {} csm: {}\n", tbp0(),
-      tbw(), psm(), tw(), th(), tcc(), tfx(), cbp(), cpsm(), csm());
+      tbw(), fmt::underlying(psm()), tw(), th(), tcc(), fmt::underlying(tfx()), cbp(), cpsm(),
+      csm());
 }
 
 std::string GsPrim::print() const {
-  return fmt::format("0x{:x}, kind {}\n", data, kind());
+  return fmt::format("0x{:x}, kind {}\n", data, fmt::underlying(kind()));
+}
+
+std::string GsFrame::print() const {
+  return fmt::format("fbp: {} fbw: {} psm: {} fbmsk: {:x}\n", fbp(), fbw(), fmt::underlying(psm()),
+                     fbmsk());
+}
+
+std::string GsXYOffset::print() const {
+  return fmt::format("ofx: {} ofy: {}\n", ofx(), ofy());
 }
 
 std::string DrawMode::to_string() const {

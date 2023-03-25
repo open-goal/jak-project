@@ -1,0 +1,354 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: dma-h.gc
+;; name in dgo: dma-h
+;; dgos: ENGINE, GAME
+
+#|@file
+Constants/type for the PS2 DMA hardware
+There are a number of DMA channels.
+The PS2 supports several types of DMA, including simple chunk transfer and more complicated
+"chain" transfers, where the hardware can follow a linked data-structure.
+
+The code is organized into dma, dma-buffer, and dma-bucket
+ - dma interacts with the hardware and actually sends the DMA data.
+ - dma-buffer is memory management for the data to be sent
+ - dma-bucket is organization of all the frame's DMA data in the correct order
+|#
+
+;; DECOMP BEGINS
+
+;; DMA Channel Control Register. This starts the DMA and can be checked to see if it's done.
+;; There is one CHCR per DMA channel.
+(deftype dma-chcr (uint32)
+  ((dir uint8 :offset 0 :size 1) ;; 1 - from memory
+   (mod uint8 :offset 2 :size 2) ;; normal, chain, interleave
+   (asp uint8 :offset 4 :size 2) ;; none, 1, 2
+   (tte uint8 :offset 6 :size 1) ;; transfer tag (sc only)
+   (tie uint8 :offset 7 :size 1) ;; tag interrupt
+   (str uint8 :offset 8 :size 1) ;; start!
+   (tag uint16 :offset 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; Each DMA Channel has a bank of registers with the following layout.
+;; Some channels have more advanced features, but all support at least these three.
+(deftype dma-bank (structure)
+  ((chcr dma-chcr  :offset 0) ;; control register
+   (madr uint32  :offset 16)  ;; memory address
+   (qwc  uint32  :offset 32)  ;; quadword count
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+;; DMA register layout for channels supporting source-chain
+(deftype dma-bank-source (dma-bank)
+  ((tadr uint32  :offset 48) ;; tag address
+   )
+  :method-count-assert 9
+  :size-assert         #x34
+  :flag-assert         #x900000034
+  )
+
+;; The DMA source chain supports a two-entry "call stack" of tags.
+;; The tag addresses are stored here.
+(deftype dma-bank-vif (dma-bank-source)
+  ((as0  uint32  :offset 64) ;; pushed tag register
+   (as1  uint32  :offset 80) ;; pushed tag register
+   )
+  :method-count-assert 9
+  :size-assert         #x54
+  :flag-assert         #x900000054
+  )
+
+;; The toSPR and fromSPR DMA channels require a second address in the scratchpad.
+;; This is an offset from the start of SPR.
+(deftype dma-bank-spr (dma-bank-source)
+  ((sadr uint32  :offset 128) ;; spad address.
+   )
+  :method-count-assert 9
+  :size-assert         #x84
+  :flag-assert         #x900000084
+  )
+
+;; These addresses are the location of DMA banks for each channel.
+;; These do not exist in OpenGOAL.
+(defconstant VIF0_DMA_BANK (the dma-bank-vif (get-vm-ptr #x10008000)))
+(defconstant VIF1_DMA_BANK (the dma-bank-vif (get-vm-ptr #x10009000)))
+(defconstant GIF_DMA_BANK (the dma-bank (get-vm-ptr #x1000a000)))
+;; ipuFrom, ipTop, sif0, sif1, sif2 believed unused.
+(defconstant SPR_FROM_BANK (the dma-bank-spr (get-vm-ptr #x1000d000)))
+(defconstant SPR_TO_BANK (the dma-bank-spr (get-vm-ptr #x1000d400)))
+
+(defconstant VU0_DATA_MEM_MAP (the (pointer uint32) #x11004000))
+(defconstant VU1_DATA_MEM_MAP (the (pointer uint32) #x1100c000))
+
+;; D_CTRL, master DMA control register, shared for all channels.
+(deftype dma-ctrl (uint32)
+  ((dmae uint8 :offset   0 :size   1)
+   (rele uint8 :offset   1 :size   1)
+   (mfd  uint8 :offset   2 :size   2)
+   (sts  uint8 :offset   4 :size   2)
+   (std  uint8 :offset   6 :size   2)
+   (rcyc uint8 :offset   8 :size   3)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; D_ENABLEW, D_ENABLER?
+(deftype dma-enable (uint32)
+  ((cpnd uint8 :offset  16 :size   1)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; D_SQWC
+(deftype dma-sqwc (uint32)
+  ((sqwc uint8 :offset   0 :size   8)
+   (tqwc uint8 :offset  16 :size   8)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; Shared DMA control registers.
+(deftype dma-bank-control (structure)
+  ((ctrl    dma-ctrl  :offset   0)
+   (stat    uint32    :offset  16)
+   (pcr     uint32    :offset  32)
+   (sqwc    dma-sqwc  :offset  48)
+   (rbsr    uint32    :offset  64)
+   (rbor    uint32    :offset  80)
+   (stadr   uint32    :offset  96)
+   (enabler uint32    :offset 5408)
+   (enablew uint32    :offset 5520)
+   )
+  :method-count-assert 9
+  :size-assert         #x1594
+  :flag-assert         #x900001594
+  )
+
+;; Seems to be unused. The vu-function type is used instead.
+(deftype vu-code-block (basic)
+  ((name         basic   :offset-assert   4)
+   (code         uint32  :offset-assert   8)
+   (size         int32   :offset-assert  12)
+   (dest-address uint32  :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+;; ?? not sure what this is.
+(deftype vu-stat (uint64)
+  ()
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(defenum dma-tag-id
+    :bitfield #f
+    :type uint8
+    (refe 0) ;; addr=ADDR, ends after this transfer
+    (cnt 1)  ;; addr=after tag, next-tag=after data
+    (next 2) ;; addr=after tag, next-tag=ADDR
+    (ref 3)  ;; addr=ADDR, next-tag=after tag
+    (refs 4) ;; ref, but stall controled
+    (call 5) ;;
+    (ret 6)  ;;
+    (end 7)  ;; next, but ends.
+    )
+
+;; In source chain mode, the DMA controller reads "DMAtag"s to determine addresses
+;; sizes, and the next thing to transfer.
+;; A tag is 8 bytes.
+(deftype dma-tag (uint64)
+  ((qwc uint16    :offset 0)           ;; quadword count
+   (pce uint8     :offset 26 :size 2)  ;; priority (source mode)
+   (id dma-tag-id :offset 28 :size 3)  ;; ID (what the tag means)
+   (irq uint8     :offset 31 :size 1)  ;; interrupt at the end?
+   (addr uint32   :offset 32 :size 31) ;; address (31 bits)
+   (spr uint8     :offset 63 :size 1)  ;; spr or not flag.
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+
+;; DMA data is divided into buckets.
+;; At the end of a frame, the buckets are all connected together in order and sent.
+;; The order of these buckets should match the C++ buckets.h file, and determines the
+;; order that textures are uploaded and things are drawn.
+
+;; A DMA bucket is a way of sorting data within a dma buffer.
+;; The buckets themselves live inside in the dma buffer.
+;; the addr field of their tag should point to the next bucket.
+;; This is not a PS2 hardware thing
+(deftype dma-bucket (structure)
+  ((tag   dma-tag            :offset-assert   0) ;; the DMA tag to transfer the bucket's data
+   (last  (pointer dma-tag)  :offset-assert   8) ;; the last tag of this bucket.
+   (dummy uint32             :offset-assert  12) ;; empty space.
+   (next  uint32             :offset          4)
+   (clear uint64             :offset          8)
+   (vif0  uint32             :offset          8)
+   (vif1  uint32             :offset         12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; guess - VIF_MASK register?
+(deftype vif-mask (uint32)
+  ((m0  uint8 :offset   0 :size   2)
+   (m1  uint8 :offset   2 :size   2)
+   (m2  uint8 :offset   4 :size   2)
+   (m3  uint8 :offset   6 :size   2)
+   (m4  uint8 :offset   8 :size   2)
+   (m5  uint8 :offset  10 :size   2)
+   (m6  uint8 :offset  12 :size   2)
+   (m7  uint8 :offset  14 :size   2)
+   (m8  uint8 :offset  16 :size   2)
+   (m9  uint8 :offset  18 :size   2)
+   (m10 uint8 :offset  20 :size   2)
+   (m11 uint8 :offset  22 :size   2)
+   (m12 uint8 :offset  24 :size   2)
+   (m13 uint8 :offset  26 :size   2)
+   (m14 uint8 :offset  28 :size   2)
+   (m15 uint8 :offset  30 :size   2)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; the IMM field of a VIF STCYCL instruction
+(deftype vif-stcycl-imm (uint16)
+  ((cl uint8 :offset   0 :size   8)
+   (wl uint8 :offset   8 :size   8)
+   )
+  :method-count-assert 9
+  :size-assert         #x2
+  :flag-assert         #x900000002
+  )
+
+;; the IMM field of a VIF UNPACK instruction
+(deftype vif-unpack-imm (uint16)
+  ((addr uint16 :offset   0 :size  10)
+   (usn  uint8  :offset  14 :size   1)
+   (flg  uint8  :offset  15 :size   1)
+   )
+  :method-count-assert 9
+  :size-assert         #x2
+  :flag-assert         #x900000002
+  )
+
+;; all these have mask (only applies to unpacks) and interrupt not set.
+(defenum vif-cmd
+    :bitfield #f
+    :type uint8
+    (nop          0)  ;; no-op, can still have irq set.
+    (stcycl       1)  ;; set write recycle register
+    (offset       2)  ;; set offset register
+    (base         3)  ;; set base register
+    (itop         4)  ;; set data pointer register (itops)
+    (stmod        5)  ;; set mode register
+    (mskpath3     6)  ;; set path 3 mask
+    (mark         7)  ;; set mark register
+    (pc-port      8)  ;; special tag for PC Port data.
+    (flushe       16) ;; wait for end of microprogram
+    (flush        17) ;; wait for end of microprogram and transfer (path1/path2)
+    (flusha       19) ;; wait for end of microprogram and transfer (path1/path2/path3)
+    (mscal        20) ;; activate microprogram (call)
+    (mscalf       21) ;; flushe and activate (call)
+    (mscnt        23) ;; activate microprogram (continue)
+    (stmask       32) ;; set MASK register.
+    (strow        48) ;; set filling data
+    (stcol        49) ;; set filling data
+    (mpg          74) ;; transfer microprogram
+    (direct       80) ;; straight to GIF.
+    (directhl     81)
+    (unpack-s-32  96)
+    (unpack-s-16  97)
+    (unpack-s-8   98)
+    ;; 99 is invllid
+    (unpack-v2-32 100)
+    (unpack-v2-16 101)
+    (unpack-v2-8  102)
+    ;; 103 is invalid
+    (unpack-v3-32 104)
+    (unpack-v3-16 105)
+    (unpack-v3-8  106)
+    ;; 107 is invalid
+    (unpack-v4-32 108)
+    (unpack-v4-16 109)
+    (unpack-v4-8  110)
+    (unpack-v4-5  111)
+    (cmd-mask     239) ;; not sure what this is.
+    )
+
+;; this makes a copy of the above type, but uses a uint32.
+(defenum vif-cmd-32
+    :bitfield #f
+    :type uint32
+    :copy-entries vif-cmd
+    )
+
+;; The VIF also has tags to control it.
+;; Different VIF commands (called VIFcode) have different tag layouts.
+(deftype vif-tag (uint32)
+  ((imm uint16  :offset   0 :size  16)
+   (num uint8   :offset  16 :size   8)
+   (cmd vif-cmd :offset  24 :size   7)
+   (irq uint8   :offset  31 :size   1)
+   (msk uint8   :offset  28 :size   1)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; The dma send functions are disabled in OpenGOAL.
+
+(defun dma-sync-fast ((bank dma-bank))
+  "Wait for dma to finish."
+  (/ 0 0)
+  (none)
+  )
+
+(defun dma-send-no-scratch ((bank dma-bank)
+                            (madr uint32)
+                            (qwc uint32))
+  "Send from main memory. Wait for dma to be ready, flush the cache, and go!"
+  (/ 0 0)
+  (none)
+  )
+
+(defun dma-sync-with-count ((bank dma-bank)
+                            (count (pointer int32)))
+  "Sync, and 'count' how many iterations of checking for done.
+   This 'count' is often refered to as the 'wait'"
+  (/ 0 0)
+  0
+  )
+
+(defun dma-count-until-done ((bank dma-bank)
+                             (count (pointer int32)))
+  "Very similar to above, but won't change count if dma is already done."
+  (/ 0 0)
+  0
+  )

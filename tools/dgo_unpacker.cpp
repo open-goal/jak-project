@@ -1,8 +1,10 @@
 #include <cstdio>
 #include <stdexcept>
-#include "common/versions.h"
-#include "common/util/FileUtil.h"
+
 #include "common/util/DgoReader.h"
+#include "common/util/FileUtil.h"
+#include "common/util/unicode_util.h"
+#include "common/versions.h"
 
 namespace {
 int run(int argc, char** argv) {
@@ -48,6 +50,8 @@ int run(int argc, char** argv) {
 }  // namespace
 
 int main(int argc, char** argv) {
+  ArgumentGuard u8_guard(argc, argv);
+
   try {
     return run(argc, argv);
   } catch (const std::exception& e) {

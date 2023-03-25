@@ -1,0 +1,152 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: trajectory-h.gc
+;; name in dgo: trajectory-h
+;; dgos: ENGINE, GAME
+
+(declare-type collide-query structure)
+
+;; DECOMP BEGINS
+
+(deftype trajectory (structure)
+  ((initial-position vector :inline :offset-assert   0)
+   (initial-velocity vector :inline :offset-assert  16)
+   (time             float          :offset-assert  32)
+   (gravity          meters         :offset-assert  36)
+   )
+  :method-count-assert 18
+  :size-assert         #x28
+  :flag-assert         #x1200000028
+  (:methods
+    (compute-trans-at-time (_type_ float vector) vector 9)
+    (compute-transv-at-time (_type_ float vector) vector 10)
+    (compute-time-until-apex (_type_) float 11)
+    (setup-from-to-duration! (_type_ vector vector float float) none 12)
+    (setup-from-to-xz-vel! (_type_ vector vector float float) none 13)
+    (setup-from-to-y-vel! (_type_ vector vector float float) none 14)
+    (setup-from-to-height! (_type_ vector vector float float) none 15)
+    (setup-from-to-duration-and-height! (_type_ vector vector float float) none 16)
+    (debug-draw (_type_) none 17)
+    )
+  )
+
+
+(deftype impact-control (structure)
+  ((process      (pointer process-drawable)           :offset-assert   0)
+   (radius       float                                :offset-assert   4)
+   (joint        int32                                :offset-assert   8)
+   (collide-with collide-spec                         :offset-assert  12)
+   (start-time   time-frame                           :offset-assert  16)
+   (trans        vector                     2 :inline :offset-assert  32)
+   (dir          vector                     :inline   :offset-assert  64)
+   )
+  :method-count-assert 12
+  :size-assert         #x50
+  :flag-assert         #xc00000050
+  (:methods
+    (new (symbol type process-drawable int float collide-spec) _type_ 0)
+    (initialize (_type_ process-drawable int float collide-spec) impact-control :behavior process 9)
+    (update-from-cspace (_type_) none 10)
+    (impact-control-method-11 (_type_ collide-query process pat-surface) float 11)
+    )
+  )
+
+
+(defmethod new impact-control ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 float) (arg3 collide-spec))
+  (let ((t9-0 (method-of-type structure new))
+        (v1-1 type-to-make)
+        )
+    (-> type-to-make size)
+    ((method-of-type impact-control initialize)
+     (the-as impact-control (t9-0 allocation v1-1))
+     arg0
+     arg1
+     arg2
+     arg3
+     )
+    )
+  )
+
+(deftype point-tracker (structure)
+  ((trans vector 2 :inline :offset-assert   0)
+   )
+  :method-count-assert 12
+  :size-assert         #x20
+  :flag-assert         #xc00000020
+  (:methods
+    (new (symbol type vector vector) _type_ 0)
+    (initialize (_type_ vector vector) point-tracker 9)
+    (point-tracker-method-10 (_type_ vector vector vector float) vector 10)
+    (point-tracker-method-11 (_type_ vector vector vector float) vector 11)
+    )
+  )
+
+
+(defmethod new point-tracker ((allocation symbol) (type-to-make type) (arg0 vector) (arg1 vector))
+  (let ((t9-0 (method-of-type structure new))
+        (v1-1 type-to-make)
+        )
+    (-> type-to-make size)
+    ((method-of-type point-tracker initialize) (the-as point-tracker (t9-0 allocation v1-1)) arg0 arg1)
+    )
+  )
+
+(deftype combo-tracker (point-tracker)
+  ((target          handle      :offset-assert  32)
+   (move-start-time time-frame  :offset-assert  40)
+   )
+  :method-count-assert 14
+  :size-assert         #x30
+  :flag-assert         #xe00000030
+  (:methods
+    (combo-tracker-method-12 (_type_ vector vector process time-frame) combo-tracker 12)
+    (combo-tracker-method-13 (_type_ handle vector float vector float) basic 13)
+    )
+  )
+
+
+(deftype traj2d-params (structure)
+  ((x             float  :offset-assert   0)
+   (y             float  :offset-assert   4)
+   (gravity       float  :offset-assert   8)
+   (initial-tilt  float  :offset-assert  12)
+   (initial-speed float  :offset-assert  16)
+   (time          float  :offset-assert  20)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+
+(deftype traj3d-params (structure)
+  ((gravity          float          :offset-assert   0)
+   (initial-tilt     float          :offset-assert   4)
+   (initial-speed    float          :offset-assert   8)
+   (time             float          :offset-assert  12)
+   (src              vector :inline :offset-assert  16)
+   (dest             vector :inline :offset-assert  32)
+   (diff             vector :inline :offset-assert  48)
+   (initial-velocity vector :inline :offset-assert  64)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+
+(deftype cubic-curve (structure)
+  ((mat matrix :inline :offset-assert   0)
+   )
+  :method-count-assert 14
+  :size-assert         #x40
+  :flag-assert         #xe00000040
+  (:methods
+    (cubic-curve-method-9 (_type_ vector vector vector vector) none 9)
+    (cubic-curve-method-10 (_type_ vector float) vector 10)
+    (cubic-curve-method-11 (_type_ vector float) vector 11)
+    (cubic-curve-method-12 (_type_ vector float) vector 12)
+    (debug-draw-curve (_type_) none 13)
+    )
+  )

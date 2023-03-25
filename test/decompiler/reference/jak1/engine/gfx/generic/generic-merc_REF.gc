@@ -1,0 +1,234 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol mercneric-vu0-block, type vu-function
+(define mercneric-vu0-block (new 'static 'vu-function :length #xbe :origin #x118 :qlength 95))
+
+;; definition of type invinitdata
+(deftype invinitdata (structure)
+  ((count     uint8   :offset-assert   0)
+   (init-data uint8   :offset-assert   1)
+   (init-addr uint16  :offset-assert   2)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; definition for method 3 of type invinitdata
+(defmethod inspect invinitdata ((obj invinitdata))
+  (format #t "[~8x] ~A~%" obj 'invinitdata)
+  (format #t "~Tcount: ~D~%" (-> obj count))
+  (format #t "~Tinit-data: ~D~%" (-> obj init-data))
+  (format #t "~Tinit-addr: ~D~%" (-> obj init-addr))
+  obj
+  )
+
+;; definition for symbol *inv-init-table*, type (inline-array invinitdata)
+(define *inv-init-table* (new 'static 'inline-array invinitdata 8
+                           (new 'static 'invinitdata :count #x48 :init-addr #x1)
+                           (new 'static 'invinitdata :count #x43 :init-data #xc :init-addr #x11)
+                           (new 'static 'invinitdata :count #x3d :init-data #x18 :init-addr #x21)
+                           (new 'static 'invinitdata :count #x38 :init-data #x22 :init-addr #xe0)
+                           (new 'static 'invinitdata :count #x38 :init-data #x24 :init-addr #xe1)
+                           (new 'static 'invinitdata :count #x33 :init-data #x30 :init-addr #xf1)
+                           (new 'static 'invinitdata :count #x2e :init-data #x3a :init-addr #x190)
+                           (new 'static 'invinitdata :count #x2d :init-data #x3c :init-addr #x191)
+                           )
+        )
+
+;; definition for function generic-merc-init-asm
+;; INFO: function output is handled by mips2c
+(def-mips2c generic-merc-init-asm (function none))
+
+;; definition for function mercneric-matrix-asm
+;; INFO: function output is handled by mips2c
+(def-mips2c mercneric-matrix-asm function)
+
+;; definition for function mercneric-shader-asm
+;; INFO: function output is handled by mips2c
+(def-mips2c mercneric-shader-asm function)
+
+;; definition for function mercneric-bittable-asm
+;; INFO: function output is handled by mips2c
+(def-mips2c mercneric-bittable-asm function)
+
+;; definition for function mercneric-convert
+;; INFO: function output is handled by mips2c
+(def-mips2c mercneric-convert function)
+
+;; definition for function high-speed-reject
+;; INFO: function output is handled by mips2c
+(def-mips2c high-speed-reject (function none))
+
+;; definition for function generic-merc-execute-asm
+;; INFO: function output is handled by mips2c
+(def-mips2c generic-merc-execute-asm (function none))
+
+;; definition for function generic-merc-add-to-cue
+;; INFO: Return type mismatch merc-globals vs none.
+(defun generic-merc-add-to-cue ((arg0 generic-dma-foreground-sink))
+  (set! (-> *merc-globals* sink) arg0)
+  (+! (-> *merc-global-array* count) 1)
+  (set! *merc-globals* (-> *merc-global-array* globals (-> *merc-global-array* count)))
+  (none)
+  )
+
+;; definition for function generic-merc-execute-all
+;; INFO: Return type mismatch profile-frame vs none.
+;; WARN: Failed store: (s.w! (the-as int a0-19) a1-7) at op 109
+;; ERROR: Unsupported inline assembly instruction kind - [cache dxwbin v1, 0]
+;; ERROR: Unsupported inline assembly instruction kind - [cache dxwbin v1, 1]
+(defun generic-merc-execute-all ((arg0 dma-buffer))
+  (local-vars (a0-26 int) (a0-28 int))
+  (when (nonzero? (-> *merc-global-array* count))
+    (let ((gp-0 (-> *display* frames (-> *display* on-screen) frame global-buf base)))
+      (if *debug-segment*
+          (add-frame
+            (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+            'draw
+            (new 'static 'rgba :r #x40 :b #x40 :a #x80)
+            )
+          )
+      (let* ((v1-15 (-> *perf-stats* data 1))
+             (a0-8 (-> v1-15 ctrl))
+             )
+        (+! (-> v1-15 count) 1)
+        (b! (zero? a0-8) cfg-5 :delay (nop!))
+        (.mtc0 Perf 0)
+        (.sync.l)
+        (.sync.p)
+        (.mtpc pcr0 0)
+        (.mtpc pcr1 0)
+        (.sync.l)
+        (.sync.p)
+        (.mtc0 Perf a0-8)
+        )
+      (.sync.l)
+      (.sync.p)
+      (label cfg-5)
+      0
+      (set! (-> (the-as terrain-context #x70000000) work foreground joint-work joint-stack data 0 vector 0 y)
+            (the-as float 0)
+            )
+      (set! (-> (the-as terrain-context #x70000000) work foreground joint-work joint-stack data 0 vector 0 z)
+            (the-as float 0)
+            )
+      (set! (-> (the-as terrain-context #x70000000) work foreground joint-work joint-stack data 0 vector 0 w)
+            (the-as float 0)
+            )
+      (flush-cache 0)
+      (generic-initialize-without-sink (-> *math-camera* perspective) *default-lights*)
+      (generic-merc-init-asm)
+      (set! (-> (the-as terrain-context #x70000000) work foreground joint-work tq-acc 99 trans x)
+            (the-as float (&+ (-> arg0 end) -65536))
+            )
+      (dotimes (s4-0 (the-as int (-> *merc-global-array* count)))
+        (set! *merc-globals* (-> *merc-global-array* globals s4-0))
+        (let ((s3-0 (-> *merc-globals* sink)))
+          (when (nonzero? (-> *merc-globals* first))
+            (let* ((s1-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
+                   (s2-0 (-> s1-0 base))
+                   )
+              (generic-work-init s3-0)
+              (set! (-> (the-as terrain-context #x70000000) work foreground joint-work temp-mtx vector 3 w)
+                    (the-as float (-> s1-0 base))
+                    )
+              (generic-merc-execute-asm)
+              (set! (-> s1-0 base)
+                    (the-as pointer (-> (the-as terrain-context #x70000000) work foreground joint-work temp-mtx vector 3 w))
+                    )
+              (let ((v1-36 (the-as object #x1000d000))
+                    (a0-19 (the-as object #x7000006c))
+                    )
+                (b! (not (logtest? (-> (the-as terrain-context v1-36) bsp lev-index) 256)) cfg-9 :delay (nop!))
+                (let ((a1-6 (-> (the-as generic-envmap-saves a0-19) index-mask x)))
+                  (nop!)
+                  (let ((a2-1 (-> (the-as (pointer int32) v1-36) 0)))
+                    (nop!)
+                    (let ((a2-2 (logand a2-1 256))
+                          (a1-7 (+ a1-6 1))
+                          )
+                      (b! (nonzero? a2-2) cfg-8 :delay (s.w! (the-as int a0-19) a1-7))
+                      )
+                    )
+                  )
+                )
+              (label cfg-9)
+              0
+              (let ((a3-0 (-> s1-0 base)))
+                (let ((v1-38 (the-as object (-> s1-0 base))))
+                  (set! (-> (the-as dma-packet v1-38) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+                  (set! (-> (the-as dma-packet v1-38) vif0) (new 'static 'vif-tag))
+                  (set! (-> (the-as dma-packet v1-38) vif1) (new 'static 'vif-tag))
+                  (set! (-> s1-0 base) (&+ (the-as pointer v1-38) 16))
+                  )
+                (dma-bucket-insert-tag
+                  (-> *display* frames (-> *display* on-screen) frame bucket-group)
+                  (-> s3-0 bucket)
+                  s2-0
+                  (the-as (pointer dma-tag) a3-0)
+                  )
+                )
+              )
+            (let ((v1-44 (-> arg0 base)))
+              (.sync.l)
+              (.cache dxwbin v1-44 0)
+              (.sync.l)
+              (.cache dxwbin v1-44 1)
+              )
+            (.sync.l)
+            0
+            )
+          )
+        )
+      (let ((v1-51 (-> *perf-stats* data 1)))
+        (b! (zero? (-> v1-51 ctrl)) cfg-14 :delay (nop!))
+        (.mtc0 Perf 0)
+        (.sync.l)
+        (.sync.p)
+        (.mfpc a0-26 pcr0)
+        (+! (-> v1-51 accum0) a0-26)
+        (.mfpc a0-28 pcr1)
+        (+! (-> v1-51 accum1) a0-28)
+        )
+      (label cfg-14)
+      0
+      (update-wait-stats
+        (-> *perf-stats* data 1)
+        (the-as
+          uint
+          (-> (the-as terrain-context #x70000000) work foreground joint-work joint-stack data 0 vector 0 y)
+          )
+        (the-as
+          uint
+          (-> (the-as terrain-context #x70000000) work foreground joint-work joint-stack data 0 vector 0 z)
+          )
+        (the-as
+          uint
+          (-> (the-as terrain-context #x70000000) work foreground joint-work joint-stack data 0 vector 0 w)
+          )
+        )
+      (if *debug-segment*
+          (add-frame
+            (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+            'draw
+            (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+            )
+          )
+      (let ((v1-64 *dma-mem-usage*))
+        (when (nonzero? v1-64)
+          (set! (-> v1-64 length) (max 87 (-> v1-64 length)))
+          (set! (-> v1-64 data 86 name) "pris-generic")
+          (+! (-> v1-64 data 86 count) 1)
+          (+! (-> v1-64 data 86 used)
+              (&- (-> *display* frames (-> *display* on-screen) frame global-buf base) (the-as uint gp-0))
+              )
+          (set! (-> v1-64 data 86 total) (-> v1-64 data 86 used))
+          )
+        )
+      )
+    )
+  (none)
+  )

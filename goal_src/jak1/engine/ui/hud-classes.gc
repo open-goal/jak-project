@@ -1,0 +1,2152 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: hud-classes.gc
+;; name in dgo: hud-classes
+;; dgos: GAME, ENGINE
+;; note: changed for high fps
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/fuelcell-naked-ag.gc")
+
+(defpartgroup group-part-hud-pickup
+  :id 75
+  :flags (screen-space)
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 303 :flags (launch-asap) :binding 304)
+    (sp-item 304 :flags (start-dead launch-asap) :binding 305)
+    (sp-item 305 :flags (start-dead launch-asap) :binding 306)
+    (sp-item 306 :flags (start-dead launch-asap) :binding 307)
+    (sp-item 306 :flags (start-dead launch-asap) :binding 307)
+    (sp-item 306 :flags (start-dead launch-asap) :binding 307)
+    (sp-item 306 :flags (start-dead launch-asap) :binding 307)
+    (sp-item 307 :fade-after (meters 40) :flags (start-dead))
+    (sp-item 307 :fade-after (meters 40) :flags (start-dead))
+    (sp-item 307 :fade-after (meters 40) :flags (start-dead))
+    (sp-item 307 :fade-after (meters 40) :flags (start-dead))
+    )
+  )
+
+(defpart 303
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 0.5))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 32.0 92.0 1.0)
+    (sp-rnd-flt spt-g 128.0 128.0 1.0)
+    (sp-flt spt-a 0.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit3 bit9)
+    )
+  )
+
+(defpart 304
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-y (meters 0) (meters 16) 1.0)
+    (sp-flt spt-z (meters 0.03))
+    (sp-flt spt-scale-x (meters 2.5))
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 32.0 92.0 1.0)
+    (sp-rnd-flt spt-g 128.0 128.0 1.0)
+    (sp-flt spt-a 24.0)
+    (sp-rnd-flt spt-omega 0.0 65536.0 1.0)
+    (sp-rnd-flt spt-vel-x (meters 0.026666667) (meters 0.026666667) 1.0)
+    (sp-flt spt-vel-y (meters 0.0014814815))
+    (sp-flt spt-vel-z (meters 0))
+    (sp-flt spt-rotvel-z (degrees 0.2))
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit7 bit9)
+    )
+  )
+
+(defpart 305
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 3.0)
+    (sp-rnd-flt spt-y (meters 0) (meters 16) 1.0)
+    (sp-flt spt-z (meters 0.065))
+    (sp-rnd-flt spt-scale-x (meters 1.5) (meters 0.4) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 32.0 92.0 1.0)
+    (sp-rnd-flt spt-g 128.0 128.0 1.0)
+    (sp-flt spt-a 24.0)
+    (sp-rnd-flt spt-omega 0.0 65536.0 1.0)
+    (sp-rnd-flt spt-vel-x (meters 0.017777778) (meters 0.017777778) 1.0)
+    (sp-flt spt-vel-y (meters 0))
+    (sp-flt spt-vel-z (meters 0))
+    (sp-rnd-int-flt spt-rotvel-z (degrees -0.4) 1 145.63556)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit3 bit7 bit9)
+    )
+  )
+
+(defpart 306
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-y (meters 0) (meters 16) 1.0)
+    (sp-flt spt-z (meters 0.12))
+    (sp-flt spt-scale-x (meters 0.4))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 255.0)
+    (sp-flt spt-a 24.0)
+    (sp-rnd-flt spt-omega 0.0 65536.0 1.0)
+    (sp-rnd-flt spt-vel-x (meters 0.053333335) (meters 0.053333335) 1.0)
+    (sp-flt spt-vel-y (meters 0))
+    (sp-flt spt-vel-z (meters 0))
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit3 bit7 bit9)
+    )
+  )
+
+(defpart 307
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 0.25)
+    (sp-flt spt-scale-x (meters 0.35))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 255.0)
+    (sp-flt spt-b 0.0)
+    (sp-flt spt-a 96.0)
+    (sp-flt spt-scalevel-x (meters -0.0012500001))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-r -2.125)
+    (sp-flt spt-accel-y -0.08192)
+    (sp-int-plain-rnd spt-timer 30 239 1)
+    (sp-cpuinfo-flags bit2 bit9)
+    (sp-int spt-next-time 120)
+    (sp-launcher-by-id spt-next-launcher 308)
+    )
+  )
+
+(defpart 308
+  :init-specs ((sp-flt spt-fade-r 0.0))
+  )
+
+(deftype hud-pickups (hud)
+  ()
+  :heap-base #xb0
+  :method-count-assert 27
+  :size-assert         #x118
+  :flag-assert         #x1b00b00118
+  )
+
+
+(defmethod draw-hud hud-pickups ((obj hud-pickups))
+  (let ((t9-0 (method-of-type hud draw-hud)))
+    (t9-0 obj)
+    )
+  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
+         (gp-0 (-> s5-0 base))
+         )
+    (let ((s4-0 draw-string-xy))
+      (format (clear *temp-string*) "~D" (-> obj value))
+      (s4-0
+        *temp-string*
+        s5-0
+        (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset)))
+        (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
+              (the int (-> *video-parms* relative-y-scale))
+              )
+           2
+           )
+        (font-color bright-green)
+        (font-flags shadow kerning large)
+        )
+      )
+    (let ((a3-7 (-> s5-0 base)))
+      (let ((v1-8 (the-as object (-> s5-0 base))))
+        (set! (-> (the-as (pointer int64) v1-8)) #x20000000)
+        (set! (-> (the-as dma-packet v1-8) vif0) (new 'static 'vif-tag))
+        (set! (-> (the-as dma-packet v1-8) vif1) (new 'static 'vif-tag))
+        (set! (-> s5-0 base) (&+ (the-as pointer v1-8) 16))
+        )
+      (dma-bucket-insert-tag
+        (-> *display* frames (-> *display* on-screen) frame bucket-group)
+        (bucket-id debug)
+        gp-0
+        (the-as (pointer dma-tag) a3-7)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod hud-update hud-pickups ((obj hud-pickups))
+  (if *target*
+      (tally-value obj (the int (+ 0.5 (-> *target* fact-info-target eco-pill))) 0)
+      )
+  0
+  (none)
+  )
+
+(defmethod init-particles! hud-pickups ((obj hud-pickups) (arg0 int))
+  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
+    (let ((s5-0 (-> obj nb-of-particles)))
+      (set! (-> obj particles s5-0) (new 'static 'hud-particle))
+      (set! (-> obj particles s5-0 part) (create-launch-control (-> *part-group-id-table* 75) obj))
+      (set! (-> obj particles s5-0 init-pos x) 110.0)
+      (set! (-> obj particles s5-0 init-pos y) 55.0)
+      (set! (-> obj particles s5-0 init-pos z) 1.0)
+      (set! (-> obj particles s5-0 part matrix) -1)
+      )
+    (+! (-> obj nb-of-particles) 1)
+    )
+  (dotimes (s5-1 (-> obj nb-of-particles))
+    (if (= (-> obj particles s5-1 part matrix) -1)
+        (set! (-> obj particles s5-1 part matrix) (sprite-allocate-user-hvdf))
+        )
+    )
+  (set! (-> obj text-x) 118)
+  (set! (-> obj text-y) 45)
+  (set! (-> obj x-sgn) -1)
+  (set! (-> obj y-sgn) -1)
+  (set! (-> obj friend) 3)
+  0
+  (none)
+  )
+
+(defpartgroup group-part-hud-health-1
+  :id 76
+  :flags (screen-space)
+  :bounds (static-bspherem 0 0 0 100)
+  :parts ((sp-item 309 :flags (launch-asap)))
+  )
+
+(defpartgroup group-part-hud-health-2
+  :id 77
+  :flags (screen-space)
+  :bounds (static-bspherem 0 0 0 100)
+  :parts ((sp-item 310 :flags (launch-asap)))
+  )
+
+(defpartgroup group-part-hud-health-3
+  :id 78
+  :flags (screen-space)
+  :bounds (static-bspherem 0 0 0 100)
+  :parts ((sp-item 311 :flags (launch-asap)))
+  )
+
+(defpart 309
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x2d :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1.7))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9)
+    (sp-func spt-func 'part-hud-health-01-func)
+    )
+  )
+
+(defpart 310
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x2e :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1.7))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9)
+    (sp-func spt-func 'part-hud-health-03-func)
+    )
+  )
+
+(defpart 311
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x2f :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1.7))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9)
+    (sp-func spt-func 'part-hud-health-02-func)
+    )
+  )
+
+(deftype hud-health (hud)
+  ((scale float  :offset-assert 280)
+   )
+  :heap-base #xb0
+  :method-count-assert 27
+  :size-assert         #x11c
+  :flag-assert         #x1b00b0011c
+  )
+
+
+(defun part-hud-health-01-func ((arg0 basic) (arg1 basic) (arg2 hud-particle))
+  (let ((f0-0 (-> *hud-parts* health 0 scale)))
+    (set! (-> arg2 init-pos x) f0-0)
+    (set! (-> arg2 pos x) f0-0)
+    )
+  (cond
+    ((and *target* (< (-> *target* fact-info-target health) 1.0))
+     (set! (-> arg2 prev-pos x) 32.0)
+     )
+    (else
+      (let ((f0-3 128.0))
+        ;; low health flashing
+        ;; modified to support high fps
+        (when (and *target* (= (-> *target* fact-info-target health) 1.0))
+          (let* ((scaled-frame-counter (the int (* DISPLAY_FPS_RATIO (-> *display* integral-frame-counter))))
+                 (v1-16 (logand scaled-frame-counter 7)))
+            (set! f0-3 (if (zero? (logand scaled-frame-counter 8))
+                           (+ 128.0 (* 18.142857 (the float v1-16)))
+                           (- 255.0 (* 18.142857 (the float v1-16)))
+                           )
+                  )
+            )
+          )
+        (set! (-> arg2 pos y) f0-3)
+        (set! (-> arg2 pos z) f0-3)
+        (set! (-> arg2 pos w) f0-3)
+        )
+      (set! (-> arg2 prev-pos x) 128.0)
+      )
+    )
+  0
+  (none)
+  )
+
+(defun part-hud-health-02-func ((arg0 basic) (arg1 basic) (arg2 hud-particle))
+  (let ((f0-0 (-> *hud-parts* health 0 scale)))
+    (set! (-> arg2 init-pos x) f0-0)
+    (set! (-> arg2 pos x) f0-0)
+    )
+  (if (and *target* (< (-> *target* fact-info-target health) 2.0))
+      (set! (-> arg2 prev-pos x) 32.0)
+      (set! (-> arg2 prev-pos x) 128.0)
+      )
+  0
+  (none)
+  )
+
+(defun part-hud-health-03-func ((arg0 basic) (arg1 basic) (arg2 hud-particle))
+  (let ((f0-0 (-> *hud-parts* health 0 scale)))
+    (set! (-> arg2 init-pos x) f0-0)
+    (set! (-> arg2 pos x) f0-0)
+    )
+  (if (and *target* (< (-> *target* fact-info-target health) 3.0))
+      (set! (-> arg2 prev-pos x) 32.0)
+      (set! (-> arg2 prev-pos x) 128.0)
+      )
+  0
+  (none)
+  )
+
+(defmethod draw-hud hud-health ((obj hud-health))
+  ((method-of-type hud draw-hud) obj)
+  0
+  (none)
+  )
+
+(defmethod hud-update hud-health ((obj hud-health))
+  (if *target*
+      (tally-value
+        obj
+        (the int (-> *target* fact-info-target health))
+        (the-as int (-> *target* fact-info-target health-pickup-time))
+        )
+      )
+  0
+  (none)
+  )
+
+(defmethod init-particles! hud-health ((obj hud-health) (arg0 int))
+  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
+    (let ((s5-0 (-> obj nb-of-particles)))
+      (set! (-> obj particles s5-0) (new 'static 'hud-particle))
+      (set! (-> obj particles s5-0 part) (create-launch-control (-> *part-group-id-table* 76) obj))
+      (set! (-> obj particles s5-0 init-pos x) 61.0)
+      (set! (-> obj particles s5-0 init-pos y) 55.0)
+      (set! (-> obj particles s5-0 init-pos z) 5.0)
+      (set! (-> obj particles s5-0 part matrix) -1)
+      )
+    (+! (-> obj nb-of-particles) 1)
+    )
+  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
+    (let ((s5-1 (-> obj nb-of-particles)))
+      (set! (-> obj particles s5-1) (new 'static 'hud-particle))
+      (set! (-> obj particles s5-1 part) (create-launch-control (-> *part-group-id-table* 77) obj))
+      (set! (-> obj particles s5-1 init-pos x) 98.0)
+      (set! (-> obj particles s5-1 init-pos y) 55.0)
+      (set! (-> obj particles s5-1 init-pos z) 5.0)
+      (set! (-> obj particles s5-1 part matrix) -1)
+      )
+    (+! (-> obj nb-of-particles) 1)
+    )
+  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
+    (let ((s5-2 (-> obj nb-of-particles)))
+      (set! (-> obj particles s5-2) (new 'static 'hud-particle))
+      (set! (-> obj particles s5-2 part) (create-launch-control (-> *part-group-id-table* 78) obj))
+      (set! (-> obj particles s5-2 init-pos x) 70.0)
+      (set! (-> obj particles s5-2 init-pos y) 76.0)
+      (set! (-> obj particles s5-2 init-pos z) 5.0)
+      (set! (-> obj particles s5-2 part matrix) -1)
+      )
+    (+! (-> obj nb-of-particles) 1)
+    )
+  (dotimes (s5-3 (-> obj nb-of-particles))
+    (if (= (-> obj particles s5-3 part matrix) -1)
+        (set! (-> obj particles s5-3 part matrix) (sprite-allocate-user-hvdf))
+        )
+    )
+  (set-pos-and-scale obj (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
+  (set! (-> obj x-sgn) -1)
+  (set! (-> obj y-sgn) -1)
+  (set! (-> obj friend) 0)
+  0
+  (none)
+  )
+
+(defmethod set-pos-and-scale hud-health ((obj hud-health) (arg0 symbol) (arg1 symbol))
+  (cond
+    (arg0
+      (set! (-> obj particles 0 init-pos x) 65.0)
+      (set! (-> obj particles 0 init-pos y) 55.0)
+      (set! (-> obj particles 1 init-pos x) 98.0)
+      (set! (-> obj particles 1 init-pos y) 55.0)
+      (set! (-> obj particles 2 init-pos x) 73.0)
+      (set! (-> obj particles 2 init-pos y) 80.0)
+      (set! (-> obj scale) 6144.0)
+      )
+    (else
+      (set! (-> obj particles 0 init-pos x) 61.0)
+      (set! (-> obj particles 0 init-pos y) 55.0)
+      (set! (-> obj particles 1 init-pos x) 98.0)
+      (set! (-> obj particles 1 init-pos y) 55.0)
+      (set! (-> obj particles 2 init-pos x) 70.0)
+      (set! (-> obj particles 2 init-pos y) 76.0)
+      (set! (-> obj scale) 6963.2)
+      (with-pc
+        (when (not (-> *pc-settings* use-vis?))
+            (let ((base-x (-> obj particles 0 init-pos x)))
+              (set! (-> obj particles 1 init-pos x) (+ base-x (* (-> *pc-settings* aspect-ratio-reciprocal) (- (-> obj particles 1 init-pos x) base-x))))
+              (set! (-> obj particles 2 init-pos x) (+ base-x (* (-> *pc-settings* aspect-ratio-reciprocal) (- (-> obj particles 2 init-pos x) base-x))))
+              )
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defpartgroup group-part-hud-orb-all
+  :id 705
+  :flags (screen-space)
+  :bounds (static-bspherem 0 0 0 100)
+  :parts ((sp-item 2964 :flags (launch-asap)))
+  )
+
+(defpart 2964
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x2c :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 2.4))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9)
+    )
+  )
+
+(deftype hud-money-all (hud)
+  ((x-scale     float       :offset-assert 280)
+   (y-scale     float       :offset-assert 284)
+   (y-pos       int32       :offset-assert 288)
+   (total-orbs  int32       :offset-assert 292)
+   (level-index int32       :offset-assert 296)
+   (start-time  time-frame  :offset-assert 304)
+   )
+  :heap-base #xd0
+  :method-count-assert 27
+  :size-assert         #x138
+  :flag-assert         #x1b00d00138
+  )
+
+
+(defmethod draw-hud hud-money-all ((obj hud-money-all))
+  (let ((t9-0 (method-of-type hud draw-hud)))
+    (t9-0 obj)
+    )
+  0
+  (let ((s5-0 0))
+    (when (>= (-> obj level-index) 0)
+      (let ((s5-1
+              (new
+                'stack
+                'font-context
+                *font-default-matrix*
+                (+ (* (-> obj x-sgn) (-> obj offset)) -60 (-> obj text-x))
+                (+ (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
+                         (the int (-> *video-parms* relative-y-scale))
+                         )
+                      2
+                      )
+                   -17
+                   )
+                0.0
+                (font-color orange-red)
+                (font-flags shadow kerning)
+                )
+              )
+            )
+        (let ((v1-12 s5-1))
+          (set! (-> v1-12 width) (the float 228))
+          )
+        (let ((v1-13 s5-1))
+          (set! (-> v1-13 height) (the float 45))
+          )
+        (let ((v1-14 s5-1))
+          (set! (-> v1-14 scale) 0.6)
+          )
+        (set! (-> s5-1 flags) (font-flags shadow kerning middle left large))
+        (print-game-text
+          (lookup-text! *common-text* (-> *level-task-data* (-> obj level-index) level-name-id) #f)
+          s5-1
+          #f
+          128
+          18
+          )
+        )
+      (set! s5-0 13)
+      )
+    (let* ((s1-0 50)
+           (s3-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
+           (s4-1 (-> s3-0 base))
+           )
+      (let ((s2-0 draw-string-xy))
+        (format (clear *temp-string*) "~D/~D" (-> obj total-orbs) (-> obj total-orbs))
+        (s2-0
+          *temp-string*
+          s3-0
+          (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset)) s1-0)
+          (+ (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
+                   (the int (-> *video-parms* relative-y-scale))
+                   )
+                2
+                )
+             s5-0
+             )
+          (font-color dark-yellow)
+          (font-flags shadow kerning middle large)
+          )
+        )
+      (let ((a3-12 (-> s3-0 base)))
+        (let ((v1-32 (the-as dma-packet (-> s3-0 base))))
+          (set! (-> v1-32 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+          (set! (-> v1-32 vif0) (new 'static 'vif-tag))
+          (set! (-> v1-32 vif1) (new 'static 'vif-tag))
+          (set! (-> s3-0 base) (&+ (the-as pointer v1-32) 16))
+          )
+        (dma-bucket-insert-tag
+          (-> *display* frames (-> *display* on-screen) frame bucket-group)
+          (bucket-id debug)
+          s4-1
+          (the-as (pointer dma-tag) a3-12)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod hud-update hud-money-all ((obj hud-money-all))
+  (when *target*
+    (hide-bottom-hud)
+    (when (!= *master-mode* 'pause)
+      (when (and (!= (-> obj icons 0) 0) (-> obj icons 0 icon))
+        (set! (-> obj icons 0 scale-x) (-> obj x-scale))
+        (set! (-> obj icons 0 scale-y) (-> obj y-scale))
+        (set! (-> obj icons 0 icon-y) (* (-> obj y-pos) (the int (-> *video-parms* relative-y-scale))))
+        (let ((a0-6 (-> obj icons 0 icon 0 root)))
+          (set-yaw-angle-clear-roll-pitch!
+            a0-6
+            (- (y-angle a0-6) (* 182.04445 (* 4.0 (-> *display* time-adjust-ratio))))
+            )
+          )
+        )
+      )
+    (if (>= (+ (-> *display* base-frame-counter) (seconds -5)) (-> obj start-time))
+        (set! (-> obj deactivate-when-hidden) #t)
+        (tally-value obj (the-as int (-> *display* base-frame-counter)) 0)
+        )
+    )
+  0
+  (none)
+  )
+
+(defmethod init-particles! hud-money-all ((obj hud-money-all) (arg0 int))
+  (when (< (-> obj nb-of-icons) 6)
+    (let ((s4-0 (-> obj nb-of-icons)))
+      (set! (-> obj icons s4-0) (new 'static 'hud-icon))
+      (let ((s3-0 (manipy-spawn (new 'static 'vector :w 1.0) #f *money-sg* #f :to obj)))
+        (when s3-0
+          (set! (-> (the-as process-drawable (-> s3-0 0)) draw dma-add-func) dma-add-process-drawable-hud)
+          (set-vector! (-> (the-as process-drawable (-> s3-0 0)) root trans) 0.0 0.0 0.0 1.0)
+          (set-vector! (-> (the-as process-drawable (-> s3-0 0)) root scale) 0.0095 -0.011 0.0095 1.0)
+          (if #f
+              (send-event (ppointer->process s3-0) 'trans-hook #f)
+              )
+          )
+        (set! (-> obj icons s4-0 icon) (the-as (pointer manipy) s3-0))
+        (when s3-0
+          (logior! (-> s3-0 0 mask) (process-mask pause))
+          (logclear! (-> s3-0 0 mask) (process-mask menu progress))
+          (set! (-> (the-as process-drawable (-> s3-0 0)) root trans z) 1024.0)
+          (set! (-> obj icons s4-0 icon-x) 170)
+          (set! (-> obj icons s4-0 icon-y) 0)
+          (set! (-> obj icons s4-0 icon-z) 0)
+          (set! (-> obj icons s4-0 scale-x) 0.0095)
+          (set! (-> obj icons s4-0 scale-y) -0.011)
+          )
+        )
+      )
+    (+! (-> obj nb-of-icons) 1)
+    )
+  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
+    (let ((s4-1 (-> obj nb-of-particles)))
+      (set! (-> obj particles s4-1) (new 'static 'hud-particle))
+      (set! (-> obj particles s4-1 part) (create-launch-control (-> *part-group-id-table* 705) obj))
+      (set! (-> obj particles s4-1 init-pos x) 172.0)
+      (set! (-> obj particles s4-1 init-pos y) 330.0)
+      (set! (-> obj particles s4-1 init-pos z) 2.0)
+      (set! (-> obj particles s4-1 part matrix) -1)
+      )
+    (+! (-> obj nb-of-particles) 1)
+    )
+  (set-pos-and-scale obj (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
+  (dotimes (s4-3 (-> obj nb-of-particles))
+    (if (= (-> obj particles s4-3 part matrix) -1)
+        (set! (-> obj particles s4-3 part matrix) (sprite-allocate-user-hvdf))
+        )
+    )
+  (set! (-> obj text-x) 251)
+  (set! (-> obj text-y) 305)
+  (set! (-> obj x-sgn) 0)
+  (set! (-> obj y-sgn) 1)
+  (hide-bottom-hud)
+  (let ((s4-4 0)
+        (s3-2 0)
+        (s2-2 0)
+        )
+    (dotimes (s1-0 (length *level-task-data*))
+      (let ((v1-83 (-> *level-task-data* s1-0)))
+        (when (!= v1-83 #f)
+          (when (or (= *kernel-boot-message* 'play) (= (-> v1-83 level-name-id) (game-text-id misty-level-name)))
+            (if (= s1-0 arg0)
+                (set! s2-2 (the-as int (-> *game-info* money-per-level s1-0)))
+                )
+            (+! s3-2 (-> *game-info* money-per-level s1-0))
+            (+! s4-4 (-> (get-game-count s1-0) money-count))
+            )
+          )
+        )
+      )
+    (cond
+      ((= s3-2 s4-4)
+       (set! (-> obj total-orbs) s4-4)
+       (set! (-> obj total-orbs) s4-4)
+       (set! (-> obj level-index) -1)
+       )
+      ((begin (set! (-> obj total-orbs) s2-2) (< arg0 (length *level-task-data*)))
+       (set! (-> obj level-index) arg0)
+       )
+      (else
+        (set! (-> obj level-index) -1)
+        )
+      )
+    )
+  (set! (-> obj start-time) (-> *display* base-frame-counter))
+  (sound-play "get-all-orbs")
+  0
+  (none)
+  )
+
+(defmethod set-pos-and-scale hud-money-all ((obj hud-money-all) (arg0 symbol) (arg1 symbol))
+  (cond
+    (arg0
+      (set! (-> obj x-scale) 0.01845)
+      (set! (-> obj y-scale) -0.02175)
+      (set! (-> obj y-pos) (if arg1
+                               374
+                               373
+                               )
+            )
+      )
+    (else
+      (set! (-> obj x-scale) 0.013499999)
+      (set! (-> obj y-scale) -0.01575)
+      (set! (-> obj y-pos) 361)
+      )
+    )
+  (when arg1
+    (set! (-> obj x-scale) (* 1.02 (-> obj x-scale)))
+    (set! (-> obj y-scale) (* 1.2 (-> obj y-scale)))
+    (set! (-> obj y-pos) (the int (* 1.21 (the float (-> obj y-pos)))))
+    )
+  0
+  (none)
+  )
+
+(defpartgroup group-part-hud-orb
+  :id 79
+  :flags (screen-space)
+  :bounds (static-bspherem 0 0 0 100)
+  :parts ((sp-item 312 :flags (launch-asap)))
+  )
+
+(defpart 312
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x2c :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1.6))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9)
+    )
+  )
+
+(deftype hud-money (hud)
+  ((x-scale float  :offset-assert 280)
+   (y-scale float  :offset-assert 284)
+   (y-pos   int32  :offset-assert 288)
+   )
+  :heap-base #xc0
+  :method-count-assert 27
+  :size-assert         #x124
+  :flag-assert         #x1b00c00124
+  )
+
+(define-extern *game-counts* game-count-info)
+(defmethod draw-hud hud-money ((obj hud-money))
+  (let ((t9-0 (method-of-type hud draw-hud)))
+    (t9-0 obj)
+    )
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
+                               (bucket-id debug))
+    (let* ((string-x (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset))))
+           (string-y (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset)) (the int (-> *video-parms* relative-y-scale))) 2))
+           )
+      (case *hud-collectable-view*
+        (((hud-collectable-view game-totals))
+          ;; show orbs collected/total across entire game
+          (draw-string-xy-scaled
+            (string-format 
+              "~D~%/~D"
+              (the int (-> *game-info* money-total))
+              2000  ;;(-> (the progress (-> *progress-process* 0)) total-nb-of-orbs)
+              )
+            buf
+            string-x
+            (- string-y 5)
+            (font-color dark-yellow)
+            (font-flags shadow kerning large)
+            0.8
+            )
+          )
+        (((hud-collectable-view level-totals))
+          (let ((lvl-idx (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1))))
+            ;; show orbs collected/total this level
+            (draw-string-xy-scaled
+              (string-format 
+                "~D~%/~D"
+                (-> *game-info* money-per-level lvl-idx)
+                (-> *game-counts* data lvl-idx money-count)
+                )
+              buf
+              string-x
+              (- string-y 5)
+              (font-color dark-yellow)
+              (font-flags shadow kerning large)
+              0.8
+              )
+            )
+        )
+        (((hud-collectable-view original))
+          ;; show original (total collected, unspent orbs)
+          (draw-string-xy
+            (string-format "~D" (-> obj value))
+            buf
+            string-x
+            string-y
+            (font-color dark-yellow)
+            (font-flags shadow kerning large)
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod hud-update hud-money ((obj hud-money))
+  (when *target*
+    (when (!= *master-mode* 'pause)
+      (when (and (!= (-> obj icons 0) 0) (-> obj icons 0 icon))
+        (set! (-> obj icons 0 scale-x) (-> obj x-scale))
+        (set! (-> obj icons 0 scale-y) (-> obj y-scale))
+        (set! (-> obj icons 0 icon-y) (* (-> obj y-pos) (the int (-> *video-parms* relative-y-scale))))
+        (let ((a0-6 (-> obj icons 0 icon 0 root)))
+          (set-yaw-angle-clear-roll-pitch!
+            a0-6
+            (- (y-angle a0-6) (* 182.04445 (* 4.0 (-> *display* time-adjust-ratio))))
+            )
+          )
+        )
+      )
+    (tally-value obj (the int (+ 0.5 (-> *target* game money))) 0)
+    )
+  0
+  (none)
+  )
+
+(defmethod init-particles! hud-money ((obj hud-money) (arg0 int))
+  (when (< (-> obj nb-of-icons) 6)
+    (let ((s5-0 (-> obj nb-of-icons)))
+      (set! (-> obj icons s5-0) (new 'static 'hud-icon))
+      (let ((s4-0 (manipy-spawn (new 'static 'vector :w 1.0) #f *money-sg* #f :to obj)))
+        (when s4-0
+          (set! (-> (the-as process-drawable (-> s4-0 0)) draw dma-add-func) dma-add-process-drawable-hud)
+          (set-vector! (-> (the-as process-drawable (-> s4-0 0)) root trans) 0.0 0.0 0.0 1.0)
+          (set-vector! (-> (the-as process-drawable (-> s4-0 0)) root scale) 0.0095 -0.011 0.0095 1.0)
+          (if #f
+              (send-event (ppointer->process s4-0) 'trans-hook #f)
+              )
+          )
+        (set! (-> obj icons s5-0 icon) (the-as (pointer manipy) s4-0))
+        (when s4-0
+          (logior! (-> s4-0 0 mask) (process-mask pause))
+          (logclear! (-> s4-0 0 mask) (process-mask menu progress))
+          (set! (-> (the-as process-drawable (-> s4-0 0)) root trans z) 1024.0)
+          (set! (-> obj icons s5-0 icon-x) 399)
+          (set! (-> obj icons s5-0 icon-y) 79)
+          (set! (-> obj icons s5-0 icon-z) 0)
+          (set! (-> obj icons s5-0 scale-x) 0.0095)
+          (set! (-> obj icons s5-0 scale-y) -0.011)
+          )
+        )
+      )
+    (+! (-> obj nb-of-icons) 1)
+    )
+  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
+    (let ((s5-1 (-> obj nb-of-particles)))
+      (set! (-> obj particles s5-1) (new 'static 'hud-particle))
+      (set! (-> obj particles s5-1 part) (create-launch-control (-> *part-group-id-table* 79) obj))
+      (set! (-> obj particles s5-1 init-pos x) 400.0)
+      (set! (-> obj particles s5-1 init-pos y) 58.0)
+      (set! (-> obj particles s5-1 init-pos z) 2.0)
+      (set! (-> obj particles s5-1 part matrix) -1)
+      )
+    (+! (-> obj nb-of-particles) 1)
+    )
+  (set-pos-and-scale obj (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
+  (dotimes (s5-3 (-> obj nb-of-particles))
+    (if (= (-> obj particles s5-3 part matrix) -1)
+        (set! (-> obj particles s5-3 part matrix) (sprite-allocate-user-hvdf))
+        )
+    )
+  (set! (-> obj text-x) 420)
+  (set! (-> obj text-y) 45)
+  (set! (-> obj x-sgn) 1)
+  (set! (-> obj y-sgn) -1)
+  (set! (-> obj increment-on-event) #t)
+  0
+  (none)
+  )
+
+(defmethod set-pos-and-scale hud-money ((obj hud-money) (arg0 symbol) (arg1 symbol))
+  (cond
+    (arg0
+      (set! (-> obj x-scale) 0.0123)
+      (set! (-> obj y-scale) -0.0145)
+      (set! (-> obj y-pos) 86)
+      )
+    (else
+      (set! (-> obj x-scale) 0.0095)
+      (set! (-> obj y-scale) -0.011)
+      (set! (-> obj y-pos) 79)
+      )
+    )
+  (when arg1
+    (set! (-> obj x-scale) (* 1.1 (-> obj x-scale)))
+    (set! (-> obj y-scale) (* 1.2 (-> obj y-scale)))
+    (set! (-> obj y-pos) (the int (* (the float (-> obj y-pos)) (if arg0
+                                                                    0.95
+                                                                    0.9
+                                                                    )
+                                     )
+                              )
+          )
+    )
+  0
+  (none)
+  )
+
+(defmethod get-icon-pos-x hud-money ((obj hud-money))
+  (-> obj icons 0 icon-x)
+  )
+
+(defmethod get-icon-pos-y hud-money ((obj hud-money))
+  (-> obj icons 0 icon-y)
+  )
+
+(defmethod get-icon-scale-x hud-money ((obj hud-money))
+  0.01
+  )
+
+(defmethod get-icon-scale-y hud-money ((obj hud-money))
+  -0.011
+  )
+
+(defskelgroup *fuelcell-naked-sg* fuelcell-naked fuelcell-naked-lod0-jg fuelcell-naked-idle-ja
+              ((fuelcell-naked-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              :texture-level 2
+              )
+
+(defpart 313
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x31 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 0.4))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9)
+    (sp-flt spt-userdata 4.0)
+    (sp-func spt-func 'fuel-cell-hud-orbit-callback)
+    )
+  )
+
+(defpart 314
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x31 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 0.4))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9)
+    (sp-flt spt-userdata 5.0)
+    (sp-func spt-func 'fuel-cell-hud-orbit-callback)
+    )
+  )
+
+(defpart 315
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x31 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 0.4))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9)
+    (sp-flt spt-userdata 6.0)
+    (sp-func spt-func 'fuel-cell-hud-orbit-callback)
+    )
+  )
+
+(defpart 316
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x31 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 0.4))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9)
+    (sp-flt spt-userdata 7.0)
+    (sp-func spt-func 'fuel-cell-hud-orbit-callback)
+    )
+  )
+
+(defpart 317
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x31 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 0.2))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9)
+    (sp-flt spt-userdata 9.0)
+    (sp-func spt-func 'fuel-cell-hud-orbit-callback)
+    )
+  )
+
+(defpart 318
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x30 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1.8))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9)
+    (sp-func spt-func 'fuel-cell-hud-center-callback)
+    )
+  )
+
+(defpartgroup group-part-hud-power-cell-whole
+  :id 80
+  :flags (use-local-clock screen-space)
+  :bounds (static-bspherem 0 0 0 100)
+  :parts ((sp-item 318 :flags (launch-asap))
+    (sp-item 319 :fade-after (meters 35))
+    (sp-item 320 :fade-after (meters 20))
+    (sp-item 321 :flags (launch-asap) :period 3600 :length 5)
+    (sp-item 322 :flags (launch-asap) :period 3600 :length 5)
+    (sp-item 317 :flags (launch-asap))
+    (sp-item 313 :flags (launch-asap))
+    (sp-item 314 :flags (launch-asap))
+    (sp-item 315 :flags (launch-asap))
+    (sp-item 316 :flags (launch-asap))
+    )
+  )
+
+(defpart 323
+  :init-specs ((sp-flt spt-fade-a -0.53333336))
+  )
+
+(defpart 319
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x2 :page #x2))
+    (sp-flt spt-num 0.5)
+    (sp-flt spt-z (meters 22.5))
+    (sp-rnd-flt spt-scale-x (meters 0.3) (meters 0.5) 1.0)
+    (sp-int spt-rot-x 4)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-scale-y (meters 0.1) (meters 0.8) 1.0)
+    (sp-rnd-int spt-r 0 1 255.0)
+    (sp-rnd-int spt-g 0 1 255.0)
+    (sp-rnd-int spt-b 0 1 255.0)
+    (sp-flt spt-a 0.0)
+    (sp-flt spt-scalevel-x (meters 0.009765625))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.15) (degrees 0.3) 1.0)
+    (sp-flt spt-scalevel-y (meters 0.009765625))
+    (sp-flt spt-fade-a 0.35555556)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-int spt-next-time 90)
+    (sp-launcher-by-id spt-next-launcher 232)
+    )
+  )
+
+(defpart 320
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x2 :page #x2))
+    (sp-flt spt-num 0.06)
+    (sp-flt spt-z (meters 22.5))
+    (sp-rnd-flt spt-scale-x (meters 1.5) (meters 0.5) 1.0)
+    (sp-int spt-rot-x 4)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-scale-y (meters 0.2))
+    (sp-rnd-int spt-r 0 1 255.0)
+    (sp-rnd-int spt-g 0 1 255.0)
+    (sp-rnd-int spt-b 0 1 255.0)
+    (sp-flt spt-a 0.0)
+    (sp-flt spt-scalevel-x (meters 0.009765625))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.15) (degrees 0.3) 1.0)
+    (sp-flt spt-fade-a 0.32)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-int spt-next-time 75)
+    (sp-launcher-by-id spt-next-launcher 232)
+    )
+  )
+
+(defpart 321
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-z (meters 22.5))
+    (sp-flt spt-scale-x (meters 3.3))
+    (sp-flt spt-rot-z (degrees 0.0))
+    (sp-flt spt-scale-y (meters 2.8))
+    (sp-flt spt-r 192.0)
+    (sp-flt spt-g 192.0)
+    (sp-rnd-flt spt-b 0.0 128.0 1.0)
+    (sp-flt spt-a 64.0)
+    (sp-flt spt-rotvel-z (degrees -0.4))
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-func spt-func 'fuel-cell-hud-starburst-3-callback)
+    )
+  )
+
+(defpart 322
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-z (meters 22.5))
+    (sp-flt spt-scale-x (meters 3.8))
+    (sp-flt spt-rot-z (degrees 0.0))
+    (sp-flt spt-scale-y (meters 3.3))
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 64.0)
+    (sp-flt spt-rotvel-z (degrees 0.3))
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-func spt-func 'fuel-cell-hud-starburst-4-callback)
+    )
+  )
+
+(deftype hud-fuel-cell (hud)
+  ((scale-starburst-3-x float  :offset-assert 280)
+   (scale-starburst-3-y float  :offset-assert 284)
+   (scale-starburst-4-x float  :offset-assert 288)
+   (scale-starburst-4-y float  :offset-assert 292)
+   (scale-icon          float  :offset-assert 296)
+   (scale-center        float  :offset-assert 300)
+   (icon-pos-y          int32  :offset-assert 304)
+   )
+  :heap-base #xd0
+  :method-count-assert 27
+  :size-assert         #x134
+  :flag-assert         #x1b00d00134
+  )
+
+
+(defmethod draw-hud hud-fuel-cell ((obj hud-fuel-cell))
+  (let ((t9-0 (method-of-type hud draw-hud)))
+    (t9-0 obj)
+  )
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
+                               (bucket-id debug))
+    (let* ((string-x (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset))))
+            (string-y (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset)) (the int (-> *video-parms* relative-y-scale))) 2))
+            )
+      (case *hud-collectable-view*
+        (((hud-collectable-view game-totals))
+          ;; show cells collected/total across entire game
+          (draw-string-xy-scaled
+            (string-format 
+              "~D~%/~D"
+              (the int (-> *game-info* fuel))
+              101  ;;(-> (the progress (-> *progress-process* 0)) total-nb-of-power-cells)
+              )
+            buf
+            string-x
+            (- string-y 5)
+            (font-color dark-yellow)
+            (font-flags shadow kerning large)
+            0.8
+            )
+          )
+        (((hud-collectable-view level-totals))
+          (let ((lvl-idx (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1)))
+                (completed-task-count 0))
+            ;; determine number of cells collected in this level
+            (dotimes (task-idx (-> *level-task-data* lvl-idx nb-of-tasks))
+              (if (= (get-task-status (-> *level-task-data* lvl-idx task-info task-idx task-id)) (task-status invalid))
+                (+! completed-task-count 1)
+                )
+            )
+
+            ;; show cells/total collected this level
+            (draw-string-xy-scaled
+              (string-format 
+                "~D~%/~D"
+                completed-task-count
+                (-> *level-task-data* lvl-idx nb-of-tasks)
+                )
+              buf
+              string-x
+              (- string-y 5)
+              (font-color dark-yellow)
+              (font-flags shadow kerning large)
+              0.8
+              )
+            )
+          )
+        (((hud-collectable-view original))
+          ;; show original (cells collected across entire game)
+          (draw-string-xy
+            (string-format "~D" (-> obj value))
+            buf
+            string-x
+            string-y
+            (font-color dark-yellow)
+            (font-flags shadow kerning large)
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defun fuel-cell-hud-orbit-callback ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
+  (let ((s3-0 (-> arg1 key proc))
+        (v1-1 (the int (-> arg1 user-float)))
+        (s5-0 (new 'stack-no-clear 'vector))
+        )
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (vector<-cspace! s5-0 (-> (the-as hud-fuel-cell s3-0) icons 0 icon 0 node-list data v1-1))
+      (vector<-cspace! s4-0 (-> (the-as hud-fuel-cell s3-0) icons 0 icon 0 node-list data 3))
+      (vector-! s5-0 s5-0 s4-0)
+      )
+    (set! (-> arg2 vector 0 x) (* 60.0 (-> s5-0 x)))
+    (set! (-> arg2 vector 0 y) (* 60.0 (-> s5-0 y)))
+    (set! (-> arg2 vector 0 z) (* 1024.0 (-> s5-0 z)))
+    )
+  0
+  (none)
+  )
+
+(defun fuel-cell-hud-starburst-3-callback ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
+  (set! (-> arg2 vector 0 w) (-> *hud-parts* fuel-cell 0 scale-starburst-3-x))
+  (set! (-> arg2 vector 1 w) (-> *hud-parts* fuel-cell 0 scale-starburst-3-y))
+  0
+  (none)
+  )
+
+(defun fuel-cell-hud-starburst-4-callback ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
+  (set! (-> arg2 vector 0 w) (-> *hud-parts* fuel-cell 0 scale-starburst-4-x))
+  (set! (-> arg2 vector 1 w) (-> *hud-parts* fuel-cell 0 scale-starburst-4-y))
+  0
+  (none)
+  )
+
+(defun fuel-cell-hud-center-callback ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
+  (let ((f0-0 (-> *hud-parts* fuel-cell 0 scale-icon))
+        (f1-0 (-> *hud-parts* fuel-cell 0 scale-center))
+        )
+    (set-vector! (-> *hud-parts* fuel-cell 0 icons 0 icon 0 root scale) f0-0 f0-0 f0-0 1.0)
+    (set! (-> arg2 vector 0 w) f1-0)
+    (set! (-> arg2 vector 1 w) f1-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod hud-update hud-fuel-cell ((obj hud-fuel-cell))
+  (when *target*
+    (when (!= *master-mode* 'pause)
+      (let ((a0-2 (-> obj icons 0 icon 0 root)))
+        (set-yaw-angle-clear-roll-pitch!
+          a0-2
+          (+ (y-angle a0-2) (* 182.04445 (* 0.5 (-> *display* time-adjust-ratio))))
+          )
+        )
+      )
+    (set! (-> obj icons 0 icon-y) (-> obj icon-pos-y))
+    (tally-value obj (the int (+ 0.5 (-> *target* game fuel))) 0)
+    (let ((s5-1 (new 'stack-no-clear 'vector)))
+      (vector<-cspace! s5-1 (-> obj icons 0 icon 0 node-list data 3))
+      (set! (-> obj particles 0 pos x) (-> s5-1 x))
+      (set! (-> obj particles 0 pos y) (* 0.5 (-> s5-1 y)))
+      (set! (-> obj particles 0 pos z) (+ 2.0 (* 0.05 (+ -2048.0 (-> s5-1 z)))))
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod init-particles! hud-fuel-cell ((obj hud-fuel-cell) (arg0 int))
+  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
+    (let ((s5-0 (-> obj nb-of-particles)))
+      (set! (-> obj particles s5-0) (new 'static 'hud-particle))
+      (set! (-> obj particles s5-0 part) (create-launch-control (-> *part-group-id-table* 80) obj))
+      (set! (-> obj particles s5-0 init-pos x) 256.0)
+      (set! (-> obj particles s5-0 init-pos y) 224.0)
+      (set! (-> obj particles s5-0 init-pos z) 1.0)
+      (set! (-> obj particles s5-0 part matrix) -1)
+      )
+    (+! (-> obj nb-of-particles) 1)
+    )
+  (dotimes (s5-1 (-> obj nb-of-particles))
+    (if (= (-> obj particles s5-1 part matrix) -1)
+        (set! (-> obj particles s5-1 part matrix) (sprite-allocate-user-hvdf))
+        )
+    )
+  (when (< (-> obj nb-of-icons) 6)
+    (let ((s5-2 (-> obj nb-of-icons)))
+      (set! (-> obj icons s5-2) (new 'static 'hud-icon))
+      (let ((s4-0 (manipy-spawn (new 'static 'vector :w 1.0) #f *fuelcell-naked-sg* #f :to obj)))
+        (when s4-0
+          (set! (-> (the-as process-drawable (-> s4-0 0)) draw dma-add-func) dma-add-process-drawable-hud)
+          (set-vector! (-> (the-as process-drawable (-> s4-0 0)) root trans) 0.0 0.0 0.0 1.0)
+          (set-vector! (-> (the-as process-drawable (-> s4-0 0)) root scale) 0.009 0.009 0.009 1.0)
+          (if #f
+              (send-event (ppointer->process s4-0) 'trans-hook #f)
+              )
+          )
+        (set! (-> obj icons s5-2 icon) (the-as (pointer manipy) s4-0))
+        (when s4-0
+          (logior! (-> s4-0 0 mask) (process-mask pause))
+          (logclear! (-> s4-0 0 mask) (process-mask menu progress))
+          (set! (-> (the-as process-drawable (-> s4-0 0)) root trans z) 2048.0)
+          (set! (-> obj icons s5-2 icon-x) 256)
+          (set! (-> obj icons s5-2 icon-y) 62)
+          (set! (-> obj icons s5-2 icon-z) 0)
+          (set! (-> obj icons s5-2 scale-x) 0.009)
+          (set! (-> obj icons s5-2 scale-y) 0.009)
+          )
+        )
+      )
+    (+! (-> obj nb-of-icons) 1)
+    )
+  (set! (-> obj text-x) 276)
+  (set! (-> obj text-y) 45)
+  (set! (-> obj x-sgn) 0)
+  (set! (-> obj y-sgn) -1)
+  (set! (-> obj increment-on-event) #t)
+  (set! (-> obj skip-particle) -2)
+  (set-pos-and-scale obj (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
+  (let ((s5-4 (new 'stack-no-clear 'quaternion)))
+    (quaternion-axis-angle! s5-4 0.0 1.0 0.0 16384.0)
+    (quaternion*! (-> obj icons 0 icon 0 root quat) s5-4 (-> obj icons 0 icon 0 root quat))
+    )
+  0
+  (none)
+  )
+
+(defmethod set-pos-and-scale hud-fuel-cell ((obj hud-fuel-cell) (arg0 symbol) (arg1 symbol))
+  (cond
+    (arg0
+      (set! (-> obj scale-starburst-3-x) 10240.0)
+      (set! (-> obj scale-starburst-3-y) 9420.8)
+      (set! (-> obj scale-starburst-4-x) 9420.8)
+      (set! (-> obj scale-starburst-4-y) 8192.0)
+      (set! (-> obj scale-icon) 0.007)
+      (set! (-> obj scale-center) 6144.0)
+      (set! (-> obj icon-pos-y) 62)
+      )
+    (else
+      (set! (-> obj scale-starburst-3-x) 12288.0)
+      (set! (-> obj scale-starburst-3-y) 10240.0)
+      (set! (-> obj scale-starburst-4-x) 12288.0)
+      (set! (-> obj scale-starburst-4-y) 10240.0)
+      (set! (-> obj scale-icon) 0.009)
+      (set! (-> obj scale-center) 7372.8)
+      (set! (-> obj icon-pos-y) 62)
+      )
+    )
+  (if arg1
+      (set! (-> obj icon-pos-y) (the int (* (the float (-> obj icon-pos-y)) (if arg0
+                                                                                1.1
+                                                                                1.14
+                                                                                )
+                                            )
+                                     )
+            )
+      )
+  0
+  (none)
+  )
+
+(defpartgroup group-part-hud-buzzer
+  :id 81
+  :flags (screen-space)
+  :bounds (static-bspherem 0 0 0 100)
+  :parts ((sp-item 324 :flags (launch-asap) :binding 325) (sp-item 325 :flags (start-dead launch-asap)))
+  )
+
+(defpart 324
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x2a :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 2.2))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 0.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9)
+    )
+  )
+
+(defpart 325
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x2a :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-x (meters 0))
+    (sp-flt spt-y (meters 1.3333334))
+    (sp-flt spt-z (meters 0.1))
+    (sp-flt spt-scale-x (meters 1.8))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-omega 0.0)
+    (sp-flt spt-vel-x (meters 0.053333335))
+    (sp-flt spt-vel-z (meters 0))
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit7 bit9)
+    (sp-func spt-func 'part-hud-buzzer-func)
+    )
+  )
+
+(deftype hud-buzzers (hud)
+  ((scale         float  :offset-assert 280)
+   (text-y-offset int32  :offset-assert 284)
+   )
+  :heap-base #xb0
+  :method-count-assert 27
+  :size-assert         #x120
+  :flag-assert         #x1b00b00120
+  )
+
+
+(defun part-hud-buzzer-func ((arg0 basic) (arg1 basic) (arg2 hud-particle))
+  (let ((f0-0 (-> *hud-parts* buzzers 0 scale)))
+    (set! (-> arg2 init-pos x) f0-0)
+    (set! (-> arg2 pos x) f0-0)
+    )
+  (none)
+  )
+
+(defmethod draw-hud hud-buzzers ((obj hud-buzzers))
+  (let ((t9-0 (method-of-type hud draw-hud)))
+    (t9-0 obj)
+    )
+  (set! (-> obj text-y) (+ (if (nonzero? (-> obj next-y-offset))
+                               (-> obj text-y-offset)
+                               0
+                               )
+                           362
+                           )
+        )
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
+                               (bucket-id debug))
+    (let* ((string-x (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset))))
+          (string-y (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset)) (the int (-> *video-parms* relative-y-scale))) 2))
+          )
+      (case *hud-collectable-view*
+        (((hud-collectable-view game-totals))
+          ;; show flies collected/total across entire game
+          (draw-string-xy-scaled
+            (string-format 
+              " ~D~% /~D"
+              (the int (-> *game-info* buzzer-total))
+              112 ;; (-> (the progress (-> *progress-process* 0)) total-nb-of-buzzers)
+              )
+            buf
+            string-x
+            (- string-y 5)
+            (font-color dark-yellow)
+            (font-flags shadow kerning large)
+            0.8
+            )
+          )
+        (((hud-collectable-view level-totals))
+          (let ((lvl-idx (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1))))
+            ;; show flies collected/total this level
+            (draw-string-xy-scaled
+              (string-format 
+                " ~D~% /~D"
+                (buzzer-count *game-info* (-> *level-task-data* lvl-idx task-info (-> *level-task-data* lvl-idx buzzer-task-index) task-id))
+                (-> *game-counts* data lvl-idx buzzer-count)
+                )
+              buf
+              string-x
+              (- string-y 5)
+              (font-color dark-yellow)
+              (font-flags shadow kerning large)
+              0.8
+              )
+            )
+          )
+        (((hud-collectable-view original))
+          ;; show original (flies collected this level)
+          (draw-string-xy
+            (string-format " ~D" (-> obj value))
+            buf
+            string-x
+            string-y
+            (font-color dark-yellow)
+            (font-flags shadow kerning large)
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod hud-update hud-buzzers ((obj hud-buzzers))
+  (if *target*
+      (tally-value obj (the int (+ 0.5 (-> *target* fact-info-target buzzer))) 0)
+      )
+  0
+  (none)
+  )
+
+(defmethod init-particles! hud-buzzers ((obj hud-buzzers) (arg0 int))
+  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
+    (let ((s5-0 (-> obj nb-of-particles)))
+      (set! (-> obj particles s5-0) (new 'static 'hud-particle))
+      (set! (-> obj particles s5-0 part) (create-launch-control (-> *part-group-id-table* 81) obj))
+      (set! (-> obj particles s5-0 init-pos x) 60.0)
+      (set! (-> obj particles s5-0 init-pos y) 380.0)
+      (set! (-> obj particles s5-0 init-pos z) 1.0)
+      (set! (-> obj particles s5-0 part matrix) -1)
+      )
+    (+! (-> obj nb-of-particles) 1)
+    )
+  (dotimes (s5-1 (-> obj nb-of-particles))
+    (if (= (-> obj particles s5-1 part matrix) -1)
+        (set! (-> obj particles s5-1 part matrix) (sprite-allocate-user-hvdf))
+        )
+    )
+  (set-pos-and-scale obj (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
+  (set! (-> obj text-x) 85)
+  (set! (-> obj text-y) 362)
+  (set! (-> obj x-sgn) -1)
+  (set! (-> obj y-sgn) 1)
+  (set! (-> obj text-y-offset) 0)
+  (set! (-> obj increment-on-event) #t)
+  0
+  (none)
+  )
+
+(defmethod get-icon-pos-x hud-buzzers ((obj hud-buzzers))
+  (-> obj text-x)
+  )
+
+(defmethod get-icon-pos-y hud-buzzers ((obj hud-buzzers))
+  (+ (if (= (-> *setting-control* current video-mode) 'pal)
+         (+ (-> obj text-y) 120)
+         (+ (-> obj text-y) 50)
+         )
+     (-> obj next-y-offset)
+     )
+  )
+
+(defmethod get-icon-scale-x hud-buzzers ((obj hud-buzzers))
+  0.008
+  )
+
+(defmethod get-icon-scale-y hud-buzzers ((obj hud-buzzers))
+  -0.008
+  )
+
+(defmethod set-pos-and-scale hud-buzzers ((obj hud-buzzers) (arg0 symbol) (arg1 symbol))
+  (cond
+    (arg0
+      (set! (-> obj scale) 6553.6)
+      (set! (-> obj text-y-offset) -40)
+      )
+    (else
+      (set! (-> obj scale) 7372.8)
+      (set! (-> obj text-y-offset) 0)
+      0
+      )
+    )
+  0
+  (none)
+  )
+
+(defpartgroup group-part-hud-eco-timer
+  :id 82
+  :flags (screen-space)
+  :bounds (static-bspherem 0 0 0 100)
+  :parts ((sp-item 327 :flags (launch-asap)))
+  )
+
+(defpartgroup group-part-hud-eco-timer-backing
+  :id 83
+  :flags (screen-space)
+  :bounds (static-bspherem 0 0 0 100)
+  :parts ((sp-item 328 :flags (launch-asap)))
+  )
+
+(defpart 327
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x2b :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 3.2))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9)
+    (sp-func spt-func 'part-hud-eco-timer-func)
+    )
+  )
+
+(defpart 328
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x3 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 2.5))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 100.0)
+    (sp-flt spt-b 63.0)
+    (sp-flt spt-a 64.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9)
+    (sp-func spt-func 'part-hud-eco-timer-backing-func)
+    )
+  )
+
+(defpartgroup group-part-hud-timer-blue
+  :id 84
+  :flags (use-local-clock screen-space)
+  :bounds (static-bspherem 0 0 0 100)
+  :parts ((sp-item 329 :flags (launch-asap)) (sp-item 330 :flags (launch-asap)) (sp-item 331 :flags (launch-asap)))
+  )
+
+(defpart 329
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x32 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 2))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-flt spt-g 32.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9)
+    (sp-func spt-func 'part-hud-eco-timer-01-func)
+    )
+  )
+
+(defpart 330
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x32 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 2))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-flt spt-g 32.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9)
+    (sp-func spt-func 'part-hud-eco-timer-02-func)
+    )
+  )
+
+(defpart 331
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x32 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 2))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-flt spt-g 32.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9)
+    (sp-func spt-func 'part-hud-eco-timer-03-func)
+    )
+  )
+
+(deftype hud-power (hud)
+  ((scale-timer   float  :offset-assert 280)
+   (scale-backing float  :offset-assert 284)
+   (scale-blue    float  :offset-assert 288)
+   )
+  :heap-base #xc0
+  :method-count-assert 27
+  :size-assert         #x124
+  :flag-assert         #x1b00c00124
+  )
+
+
+(defun calculate-rotation-and-color-for-slice ((arg0 int) (arg1 float) (arg2 int) (arg3 int) (arg4 int) (arg5 hud-particle))
+  (cond
+    ((>= 0.0 arg1)
+     (set! (-> arg5 init-pos w) -16566.045)
+     )
+    (else
+      (let ((v1-1 arg0))
+        (cond
+          ((zero? v1-1)
+           (if (< 1.0 arg1)
+               (set! (-> arg5 init-pos w) 910.2222)
+               (set! (-> arg5 init-pos w) (* 182.04445 (+ 5.0 (* 263.0 (- 1.0 arg1)))))
+               )
+           )
+          ((= v1-1 1)
+           (if (< 0.6666667 arg1)
+               (set! (-> arg5 init-pos w) 17294.223)
+               (set! (-> arg5 init-pos w) (* 182.04445 (+ 95.0 (* 173.0 (- 1.0 (* 1.5 arg1))))))
+               )
+           )
+          ((= v1-1 2)
+           (if (< 0.33333334 arg1)
+               (set! (-> arg5 init-pos w) 33678.223)
+               (set! (-> arg5 init-pos w) (* 182.04445 (+ 185.0 (* 83.0 (- 1.0 (* 3.0 arg1))))))
+               )
+           )
+          )
+        )
+      )
+    )
+  ;; low eco flashing
+  ;; modified to support high fps
+  (if (and (< 0.0 arg1) (and (< arg1 0.2) (zero? (logand (the int (* DISPLAY_FPS_RATIO (-> *display* integral-frame-counter))) 4))))
+      (set! arg3 (* arg3 2))
+      )
+  (set! (-> arg5 pos y) (the float arg2))
+  (set! (-> arg5 pos z) (the float arg3))
+  (set! (-> arg5 pos w) (the float arg4))
+  0
+  (none)
+  )
+
+(defun part-hud-eco-timer-01-func ((arg0 basic) (arg1 basic) (arg2 hud-particle))
+  (let ((f0-2
+          (/ (the float
+                  (the-as
+                    uint
+                    (- (-> *target* fact-info-target eco-timeout)
+                       (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time)))
+                       )
+                    )
+                  )
+             (the float (the-as uint (-> *FACT-bank* eco-full-timeout)))
+             )
+          )
+        (a2-1 0)
+        (a3-0 64)
+        (t0-0 128)
+        )
+    (case (-> *target* fact-info-target eco-type)
+      (((pickup-type eco-yellow))
+       (set! a2-1 128)
+       (set! a3-0 96)
+       (set! t0-0 0)
+       )
+      (((pickup-type eco-red))
+       (set! a2-1 128)
+       (set! a3-0 32)
+       (set! t0-0 0)
+       )
+      (((pickup-type eco-green))
+       (set! a2-1 0)
+       (set! a3-0 128)
+       (set! t0-0 32)
+       )
+      )
+    (calculate-rotation-and-color-for-slice 0 f0-2 a2-1 a3-0 t0-0 arg2)
+    )
+  (let ((f0-3 (-> *hud-parts* power 0 scale-blue)))
+    (set! (-> arg2 init-pos x) f0-3)
+    (set! (-> arg2 pos x) f0-3)
+    )
+  0
+  (none)
+  )
+
+(defun part-hud-eco-timer-02-func ((arg0 basic) (arg1 basic) (arg2 hud-particle))
+  (let ((f0-2
+          (/ (the float
+                  (the-as
+                    uint
+                    (- (-> *target* fact-info-target eco-timeout)
+                       (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time)))
+                       )
+                    )
+                  )
+             (the float (the-as uint (-> *FACT-bank* eco-full-timeout)))
+             )
+          )
+        (a2-1 0)
+        (a3-0 64)
+        (t0-0 128)
+        )
+    (case (-> *target* fact-info-target eco-type)
+      (((pickup-type eco-yellow))
+       (set! a2-1 128)
+       (set! a3-0 96)
+       (set! t0-0 0)
+       )
+      (((pickup-type eco-red))
+       (set! a2-1 128)
+       (set! a3-0 32)
+       (set! t0-0 0)
+       )
+      (((pickup-type eco-green))
+       (set! a2-1 0)
+       (set! a3-0 128)
+       (set! t0-0 32)
+       )
+      )
+    (calculate-rotation-and-color-for-slice 1 f0-2 a2-1 a3-0 t0-0 arg2)
+    )
+  (let ((f0-3 (-> *hud-parts* power 0 scale-blue)))
+    (set! (-> arg2 init-pos x) f0-3)
+    (set! (-> arg2 pos x) f0-3)
+    )
+  0
+  (none)
+  )
+
+(defun part-hud-eco-timer-03-func ((arg0 basic) (arg1 basic) (arg2 hud-particle))
+  (let ((f0-2
+          (/ (the float
+                  (the-as
+                    uint
+                    (- (-> *target* fact-info-target eco-timeout)
+                       (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time)))
+                       )
+                    )
+                  )
+             (the float (the-as uint (-> *FACT-bank* eco-full-timeout)))
+             )
+          )
+        (a2-1 0)
+        (a3-0 64)
+        (t0-0 128)
+        )
+    (case (-> *target* fact-info-target eco-type)
+      (((pickup-type eco-yellow))
+       (set! a2-1 128)
+       (set! a3-0 96)
+       (set! t0-0 0)
+       )
+      (((pickup-type eco-red))
+       (set! a2-1 128)
+       (set! a3-0 32)
+       (set! t0-0 0)
+       )
+      (((pickup-type eco-green))
+       (set! a2-1 0)
+       (set! a3-0 128)
+       (set! t0-0 32)
+       )
+      )
+    (calculate-rotation-and-color-for-slice 2 f0-2 a2-1 a3-0 t0-0 arg2)
+    )
+  (let ((f0-3 (-> *hud-parts* power 0 scale-blue)))
+    (set! (-> arg2 init-pos x) f0-3)
+    (set! (-> arg2 pos x) f0-3)
+    )
+  0
+  (none)
+  )
+
+(defun part-hud-eco-timer-backing-func ((arg0 basic) (arg1 basic) (arg2 hud-particle))
+  (let ((f0-0 (-> *hud-parts* power 0 scale-backing)))
+    (set! (-> arg2 init-pos x) f0-0)
+    (set! (-> arg2 pos x) f0-0)
+    )
+  0
+  (none)
+  )
+
+(defun part-hud-eco-timer-func ((arg0 basic) (arg1 basic) (arg2 hud-particle))
+  (let ((f0-0 (-> *hud-parts* power 0 scale-timer)))
+    (set! (-> arg2 init-pos x) f0-0)
+    (set! (-> arg2 pos x) f0-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod hud-update hud-power ((obj hud-power))
+  (if *target*
+      (tally-value
+        obj
+        (max
+          0
+          (min
+            (the-as
+              int
+              (- (-> *target* fact-info-target eco-timeout)
+                 (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time)))
+                 )
+              )
+            (the-as int (-> *target* fact-info-target eco-timeout))
+            )
+          )
+        (the-as int (-> *target* fact-info-target eco-timeout))
+        )
+      )
+  0
+  (none)
+  )
+
+(defmethod init-particles! hud-power ((obj hud-power) (arg0 int))
+  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
+    (let ((s5-0 (-> obj nb-of-particles)))
+      (set! (-> obj particles s5-0) (new 'static 'hud-particle))
+      (set! (-> obj particles s5-0 part) (create-launch-control (-> *part-group-id-table* 83) obj))
+      (set! (-> obj particles s5-0 init-pos x) 435.0)
+      (set! (-> obj particles s5-0 init-pos y) 370.0)
+      (set! (-> obj particles s5-0 init-pos z) 10.0)
+      (set! (-> obj particles s5-0 part matrix) -1)
+      )
+    (+! (-> obj nb-of-particles) 1)
+    )
+  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
+    (let ((s5-1 (-> obj nb-of-particles)))
+      (set! (-> obj particles s5-1) (new 'static 'hud-particle))
+      (set! (-> obj particles s5-1 part) (create-launch-control (-> *part-group-id-table* 84) obj))
+      (set! (-> obj particles s5-1 init-pos x) 432.0)
+      (set! (-> obj particles s5-1 init-pos y) 368.0)
+      (set! (-> obj particles s5-1 init-pos z) 3.0)
+      (set! (-> obj particles s5-1 part matrix) -1)
+      )
+    (+! (-> obj nb-of-particles) 1)
+    )
+  (when (< (-> obj nb-of-particles) (-> obj max-nb-of-particles))
+    (let ((s5-2 (-> obj nb-of-particles)))
+      (set! (-> obj particles s5-2) (new 'static 'hud-particle))
+      (set! (-> obj particles s5-2 part) (create-launch-control (-> *part-group-id-table* 82) obj))
+      (set! (-> obj particles s5-2 init-pos x) 435.0)
+      (set! (-> obj particles s5-2 init-pos y) 370.0)
+      (set! (-> obj particles s5-2 init-pos z) 2.0)
+      (set! (-> obj particles s5-2 part matrix) -1)
+      )
+    (+! (-> obj nb-of-particles) 1)
+    )
+  (dotimes (s5-3 (-> obj nb-of-particles))
+    (if (= (-> obj particles s5-3 part matrix) -1)
+        (set! (-> obj particles s5-3 part matrix) (sprite-allocate-user-hvdf))
+        )
+    )
+  (set-pos-and-scale obj (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
+  (set! (-> obj x-sgn) 1)
+  (set! (-> obj y-sgn) 1)
+  0
+  (none)
+  )
+
+(defmethod set-pos-and-scale hud-power ((obj hud-power) (arg0 symbol) (arg1 symbol))
+  (cond
+    (arg0
+      (set! (-> obj scale-blue) 7168.0)
+      (set! (-> obj scale-timer) 11468.8)
+      (set! (-> obj scale-backing) 8960.0)
+      )
+    (else
+      (set! (-> obj scale-blue) 8192.0)
+      (set! (-> obj scale-timer) 13107.2)
+      (set! (-> obj scale-backing) 10240.0)
+      )
+    )
+  (#when PC_PORT
+    
+    (let ((base-x (-> obj particles 2 init-pos x)))
+        (+! base-x (* (- 512.0 base-x) (- 1.0 (-> *pc-settings* aspect-ratio-reciprocal))))
+        (set! (-> obj particles 0 init-pos x) 435.0)
+        (set! (-> obj particles 1 init-pos x) 432.0)
+        (set! (-> obj particles 2 init-pos x) 435.0)
+        
+    (when (not (-> *pc-settings* use-vis?))
+      (dotimes (i (-> obj nb-of-particles))
+        (set! (-> obj particles i init-pos x) (+ base-x (* (-> *pc-settings* aspect-ratio-reciprocal) (- (-> obj particles i init-pos x) base-x))))
+
+        ))
+        
+        )
+    )
+  0
+  (none)
+  )
+
+(defun activate-hud ((arg0 process))
+  (set! (-> *hud-parts* pickups) (process-spawn hud-pickups :init hud-init-by-other 0 :to arg0))
+  (set! (-> *hud-parts* money) (process-spawn hud-money :init hud-init-by-other 0 :to arg0))
+  (set! (-> *hud-parts* fuel-cell) (process-spawn hud-fuel-cell :init hud-init-by-other 0 :to arg0))
+  (set! (-> *hud-parts* health) (process-spawn hud-health :init hud-init-by-other 0 :to arg0))
+  (set! (-> *hud-parts* buzzers) (process-spawn hud-buzzers :init hud-init-by-other 0 :to arg0))
+  (set! (-> *hud-parts* power) (process-spawn hud-power :init hud-init-by-other 0 :to arg0))
+  (set! (-> *hud-parts* bike-speed) (the-as (pointer hud-bike-speed) #f))
+  (set! (-> *hud-parts* bike-heat) (the-as (pointer hud-bike-heat) #f))
+  (set! (-> *hud-parts* money-all) (the-as (pointer hud-money-all) #f))
+  0
+  (none)
+  )
+
+(defun hide-hud ()
+  (when *target*
+    (dotimes (gp-0 9)
+      (if (-> *hud-parts* parts gp-0)
+          (send-event (ppointer->process (-> *hud-parts* parts gp-0)) 'hide)
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+(defun hide-bottom-hud ()
+  (when *target*
+    (dotimes (gp-0 4)
+      (if (-> *hud-parts* parts (+ gp-0 4))
+          (send-event (ppointer->process (-> *hud-parts* parts (+ gp-0 4))) 'hide)
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+(defun disable-hud ((arg0 int))
+  (when *target*
+    (dotimes (s5-0 9)
+      (when (-> *hud-parts* parts s5-0)
+        (if (or (!= (-> *hud-parts* parts s5-0) arg0)
+                (zero? (-> (the-as (pointer hud) (-> *hud-parts* parts s5-0)) 0 value))
+                )
+            (send-event (ppointer->process (-> *hud-parts* parts s5-0)) 'hide)
+            )
+        (if (!= (-> *hud-parts* parts s5-0) arg0)
+            (send-event (ppointer->process (-> *hud-parts* parts s5-0)) 'disable)
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defun enable-hud ()
+  (when *target*
+    (dotimes (gp-0 9)
+      (if (-> *hud-parts* parts gp-0)
+          (send-event (ppointer->process (-> *hud-parts* parts gp-0)) 'enable)
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+(defun hide-hud-quick ()
+  (when *target*
+    (dotimes (gp-0 9)
+      (if (-> *hud-parts* parts gp-0)
+          (send-event (ppointer->process (-> *hud-parts* parts gp-0)) 'hide-quick)
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+(defun show-hud ()
+  (when (and *target* (or (not *progress-process*) (hidden? (-> *progress-process* 0))))
+    (dotimes (gp-0 9)
+      (if (-> *hud-parts* parts gp-0)
+          (send-event (ppointer->process (-> *hud-parts* parts gp-0)) 'show)
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+(defun set-hud-aspect-ratio ((arg0 symbol) (arg1 symbol))
+  (let ((gp-0 (= arg0 'aspect16x9))
+        (s5-0 (= arg1 'pal))
+        )
+    (when *target*
+      (dotimes (s4-0 9)
+        (if (-> *hud-parts* parts s4-0)
+            (set-pos-and-scale (-> (the-as (pointer hud) (-> *hud-parts* parts s4-0)) 0) gp-0 s5-0)
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defun hud-hidden? ()
+  (local-vars (gp-0 symbol))
+  (cond
+    (*target*
+      (set! gp-0 #t)
+      (dotimes (s5-0 9)
+        (when (-> *hud-parts* parts s5-0)
+          (if (not (hidden? (-> (the-as (pointer hud) (-> *hud-parts* parts s5-0)) 0)))
+              (set! gp-0 #f)
+              )
+          )
+        )
+      )
+    (else
+      (set! gp-0 #t)
+      )
+    )
+  gp-0
+  )
+
+(defun bottom-hud-hidden? ()
+  (local-vars (gp-0 symbol))
+  (cond
+    (*target*
+      (set! gp-0 #t)
+      (dotimes (s5-0 4)
+        (when (-> *hud-parts* parts (+ s5-0 4))
+          (if (not (hidden? (-> (the-as (pointer hud) (-> *hud-parts* parts (+ s5-0 4))) 0)))
+              (set! gp-0 #f)
+              )
+          )
+        )
+      )
+    (else
+      (set! gp-0 #t)
+      )
+    )
+  gp-0
+  )
+
+(defun activate-orb-all ((arg0 int))
+  (if (not (-> *hud-parts* money-all))
+      (set! (-> *hud-parts* money-all) (process-spawn hud-money-all :init hud-init-by-other arg0 :to *target*))
+      )
+  0
+  )
+
+(defbehavior convert-to-hud-object process-drawable ((arg0 process-drawable) (arg1 hud))
+  (when arg1
+    (logclear! (-> arg0 mask) (process-mask actor-pause))
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (transform-point-vector-scale! s4-0 (-> arg0 root trans))
+      (set! (-> arg0 root trans x) (+ -2048.0 (-> s4-0 x)))
+      (set! (-> arg0 root trans y) (* 2.0 (+ -2048.0 (-> s4-0 y))))
+      )
+    (set! (-> arg0 root trans z) 9999999.0)
+    (set! (-> arg0 root trans w) 1.0)
+    (set-vector! (-> arg0 root scale) (get-icon-scale-x arg1) (get-icon-scale-y arg1) (get-icon-scale-x arg1) 1.0)
+    (set! (-> arg0 draw dma-add-func) dma-add-process-drawable-hud)
+    (go hud-collecting (process->handle arg1))
+    )
+  0
+  (none)
+  )
+
+
+
+

@@ -1,0 +1,120 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; this file is debug only
+(declare-file (debug))
+
+;; definition of type glst-node
+(deftype glst-node (structure)
+  ((next glst-node  :offset-assert   0)
+   (prev glst-node  :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type glst-node
+(defmethod inspect glst-node ((obj glst-node))
+  (format #t "[~8x] ~A~%" obj 'glst-node)
+  (format #t "~Tnext: #<glst-node @ #x~X>~%" (-> obj next))
+  (format #t "~Tprev: #<glst-node @ #x~X>~%" (-> obj prev))
+  obj
+  )
+
+;; definition of type glst-named-node
+(deftype glst-named-node (glst-node)
+  ((privname string  :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type glst-named-node
+(defmethod inspect glst-named-node ((obj glst-named-node))
+  (format #t "[~8x] ~A~%" obj 'glst-named-node)
+  (format #t "~Tnext: #<glst-node @ #x~X>~%" (-> obj next))
+  (format #t "~Tprev: #<glst-node @ #x~X>~%" (-> obj prev))
+  (format #t "~Tprivname: ~A~%" (-> obj privname))
+  obj
+  )
+
+;; definition of type glst-list
+(deftype glst-list (structure)
+  ((head     glst-node  :offset-assert   0)
+   (tail     glst-node  :offset-assert   4)
+   (tailpred glst-node  :offset-assert   8)
+   (numelem  int32      :offset-assert  12)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type glst-list
+(defmethod inspect glst-list ((obj glst-list))
+  (format #t "[~8x] ~A~%" obj 'glst-list)
+  (format #t "~Thead: #<glst-node @ #x~X>~%" (-> obj head))
+  (format #t "~Ttail: #<glst-node @ #x~X>~%" (-> obj tail))
+  (format #t "~Ttailpred: #<glst-node @ #x~X>~%" (-> obj tailpred))
+  (format #t "~Tnumelem: ~D~%" (-> obj numelem))
+  obj
+  )
+
+;; definition for function glst-next
+(defun glst-next ((arg0 glst-node))
+  "return the next node in the list"
+  (-> arg0 next)
+  )
+
+;; definition for function glst-prev
+(defun glst-prev ((arg0 glst-node))
+  "return the previous node in the list"
+  (-> arg0 prev)
+  )
+
+;; definition for function glst-head
+(defun glst-head ((arg0 glst-list))
+  "return the start of the list"
+  (-> arg0 head)
+  )
+
+;; definition for function glst-tail
+(defun glst-tail ((arg0 glst-list))
+  "return the tail of the list"
+  (-> arg0 tailpred)
+  )
+
+;; definition for function glst-end-of-list?
+(defun glst-end-of-list? ((arg0 glst-node))
+  "is this node the end of the list. #t = end"
+  (not (-> arg0 next))
+  )
+
+;; definition for function glst-start-of-list?
+(defun glst-start-of-list? ((arg0 glst-node))
+  "is this node the start of the list. #t = start"
+  (not (-> arg0 prev))
+  )
+
+;; definition for function glst-empty?
+(defun glst-empty? ((arg0 glst-list))
+  "is the list empty, #t = empty"
+  (= (-> arg0 tailpred) arg0)
+  )
+
+;; definition for function glst-node-name
+(defun glst-node-name ((arg0 glst-named-node))
+  (-> arg0 privname)
+  )
+
+;; definition for function glst-set-name!
+(defun glst-set-name! ((arg0 glst-named-node) (arg1 string))
+  (set! (-> arg0 privname) arg1)
+  arg1
+  )
+
+;; failed to figure out what this is:
+0

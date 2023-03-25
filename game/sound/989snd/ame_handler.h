@@ -1,17 +1,21 @@
 // Copyright: 2021 - 2022, Ziemas
 // SPDX-License-Identifier: ISC
 #pragma once
+#include <array>
+
 #include "loader.h"
 #include "midi_handler.h"
 #include "sound_handler.h"
 #include "vagvoice.h"
+
 #include "common/common_types.h"
-#include <array>
 
 namespace snd {
 
 // added!
 extern u64 SoundFlavaHack;
+
+extern u8 GlobalExcite;
 
 class midi_handler;
 class ame_handler : public sound_handler {
@@ -24,9 +28,9 @@ class ame_handler : public sound_handler {
               s32 vol,
               s32 pan,
               locator& loc,
-              u32 bank);
+              SoundBank& bank);
   bool tick() override;
-  u32 bank() override { return m_bank; };
+  SoundBank& bank() override { return m_bank; };
 
   void pause() override;
   void unpause() override;
@@ -59,7 +63,7 @@ class ame_handler : public sound_handler {
   std::pair<bool, u8*> run_ame(midi_handler&, u8* stream);
 
   MIDISound& m_sound;
-  u32 m_bank{0};
+  SoundBank& m_bank;
 
   MultiMIDIBlockHeader* m_header{nullptr};
   locator& m_locator;
@@ -70,7 +74,6 @@ class ame_handler : public sound_handler {
 
   std::unordered_map<u32, std::unique_ptr<midi_handler>> m_midis;
 
-  u8 m_excite{0};
   std::array<GroupDescription, 16> m_groups{};
   std::array<u8, 16> m_register{};
   std::array<u8*, 16> m_macro{};

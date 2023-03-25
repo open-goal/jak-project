@@ -1,0 +1,61 @@
+name: Windows Build Clang
+
+on:
+  workflow_call:
+    inputs:
+      cmakePreset:
+        required: true
+        type: string
+      cachePrefix:
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: Clang
+    runs-on: windows-2022
+    # Set some sort of timeout in the event of run-away builds.  We are limited on concurrent jobs so, get rid of them.
+    timeout-minutes: 45
+
+    env: # overrides: https://github.com/mbitsnbites/buildcache/blob/master/doc/configuration.md
+      BUILDCACHE_MAX_CACHE_SIZE: 1000000000 # 1gb
+      BUILDCACHE_COMPRESS_FORMAT: ZSTD
+      BUILDCACHE_COMPRESS_LEVEL: 19
+      BUILDCACHE_DIRECT_MODE: true
+      BUILDCACHE_LOG_FILE: ${{ github.workspace }}/buildcache.log
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Install NASM
+        run: choco install ${{ github.workspace }}/third-party/nasm/nasm.2.15.05.nupkg
+
+      - name: Setup Buildcache
+        uses: mikehardy/buildcache-action@v2.1.0
+        with:
+          cache_key: windows-2022-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}
+
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: CMake Generation
+        shell: cmd
+        run: cmake -B build --preset=${{ inputs.cmakePreset }} -DCMAKE_C_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache.exe -DCMAKE_CXX_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache.exe .
+
+      - name: Build Project
+        shell: cmd
+        run: cmake --build build --parallel %NUMBER_OF_PROCESSORS%
+
+      - name: Run Tests
+        timeout-minutes: 10
+        env:
+          GTEST_OUTPUT: "xml:opengoal-test-report.xml"
+        run: ./build/bin/goalc-test.exe --gtest_color=yes --gtest_brief=0 --gtest_filter="-*MANUAL_TEST*"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: opengoal-windows-${{ inputs.cachePrefix }}
+          if-no-files-found: error
+          path: ./build/bin
+

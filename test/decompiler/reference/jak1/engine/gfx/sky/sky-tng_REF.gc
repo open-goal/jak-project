@@ -1,0 +1,961 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *sky-work*, type sky-work
+(define *sky-work* (new 'static 'sky-work
+                     :adgif-tmpl (new 'static 'dma-gif-packet
+                       :dma-vif (new 'static 'dma-packet
+                         :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+                         :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+                         )
+                       :gif0 (new 'static 'gif-tag64 :nloop #x5 :eop #x1 :nreg #x1)
+                       :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d))
+                       )
+                     :draw-tmpl (new 'static 'dma-gif-packet
+                       :dma-vif (new 'static 'dma-packet
+                         :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+                         :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+                         )
+                       :gif0 (new 'static 'gif-tag64
+                         :nloop #x1
+                         :eop #x1
+                         :pre #x1
+                         :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :fst #x1)
+                         :nreg #x5
+                         )
+                       :gif1 (new 'static 'gif-tag-regs
+                         :regs0 (gif-reg-id rgbaq)
+                         :regs1 (gif-reg-id uv)
+                         :regs2 (gif-reg-id xyzf2)
+                         :regs3 (gif-reg-id uv)
+                         :regs4 (gif-reg-id xyzf2)
+                         )
+                       )
+                     :blend-tmpl (new 'static 'dma-gif-packet
+                       :dma-vif (new 'static 'dma-packet
+                         :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+                         :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+                         )
+                       :gif0 (new 'static 'gif-tag64
+                         :nloop #x1
+                         :eop #x1
+                         :pre #x1
+                         :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :abe #x1 :fst #x1)
+                         :nreg #x5
+                         )
+                       :gif1 (new 'static 'gif-tag-regs
+                         :regs0 (gif-reg-id rgbaq)
+                         :regs1 (gif-reg-id uv)
+                         :regs2 (gif-reg-id xyzf2)
+                         :regs3 (gif-reg-id uv)
+                         :regs4 (gif-reg-id xyzf2)
+                         )
+                       )
+                     :sky-data (new 'static 'inline-array qword 5
+                       (new 'static 'qword :data (new 'static 'array uint32 4 #x0 #x0 #x0 #x80))
+                       (new 'static 'qword)
+                       (new 'static 'qword :data (new 'static 'array uint32 4 #x0 #x0 #xffffff #x0))
+                       (new 'static 'qword :data (new 'static 'array uint32 4 #x200 #x200 #x0 #x0))
+                       (new 'static 'qword :data (new 'static 'array uint32 4 #x200 #x200 #xffffff #x0))
+                       )
+                     :cloud-data (new 'static 'inline-array qword 5
+                       (new 'static 'qword :data (new 'static 'array uint32 4 #x0 #x0 #x0 #x80))
+                       (new 'static 'qword)
+                       (new 'static 'qword :data (new 'static 'array uint32 4 #x0 #x200 #xffffff #x0))
+                       (new 'static 'qword :data (new 'static 'array uint32 4 #x400 #x400 #x0 #x0))
+                       (new 'static 'qword :data (new 'static 'array uint32 4 #x400 #x600 #xffffff #x0))
+                       )
+                     )
+        )
+
+;; definition for function init-sky-tng-data
+;; INFO: Return type mismatch int vs none.
+(defun init-sky-tng-data ((arg0 sky-tng-data))
+  (set! (-> arg0 giftag-base tag)
+        (new 'static 'gif-tag64
+          :nloop #x1
+          :eop #x1
+          :pre #x1
+          :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan))
+          :nreg #x3
+          )
+        )
+  (set! (-> arg0 giftag-base regs)
+        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
+        )
+  (set! (-> arg0 giftag-roof tag)
+        (new 'static 'gif-tag64
+          :nloop #x1
+          :eop #x1
+          :pre #x1
+          :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :abe #x1)
+          :nreg #x3
+          )
+        )
+  (set! (-> arg0 giftag-roof regs)
+        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
+        )
+  (set! (-> arg0 giftag-ocean tag)
+        (new 'static 'gif-tag64
+          :nloop #x1
+          :eop #x1
+          :pre #x1
+          :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :fge #x1)
+          :nreg #x3
+          )
+        )
+  (set! (-> arg0 giftag-ocean regs)
+        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
+        )
+  (set! (-> arg0 time) 0.0)
+  (set! (-> arg0 off-s-0) (the-as uint 0))
+  (set! (-> arg0 off-t-0) (the-as uint 0))
+  (set! (-> arg0 off-s-1) (the-as uint 0))
+  (set! (-> arg0 off-t-1) (the-as uint 0))
+  0
+  (none)
+  )
+
+;; definition for symbol *sky-tng-data*, type sky-tng-data
+(define *sky-tng-data* (new 'global 'sky-tng-data))
+
+;; failed to figure out what this is:
+(init-sky-tng-data *sky-tng-data*)
+
+;; definition for method 3 of type sky-vertex
+;; INFO: this function exists in multiple non-identical object files
+(defmethod inspect sky-vertex ((obj sky-vertex))
+  (format #t "sky-vertex [~X]:~%" obj)
+  (format #t "~TPos: [~F ~F ~F ~F]~%" (-> obj pos x) (-> obj pos y) (-> obj pos z) (-> obj pos w))
+  (format #t "~TSTQ: [~F ~F ~F ~F]~%" (-> obj stq x) (-> obj stq y) (-> obj stq z) (-> obj stq w))
+  (format #t "~TCol: [~F ~F ~F ~F]~%" (-> obj col x) (-> obj col y) (-> obj col z) (-> obj col w))
+  obj
+  )
+
+;; definition for function update-sky-tng-data
+;; INFO: Return type mismatch int vs none.
+(defun update-sky-tng-data ((arg0 float))
+  (sky-make-sun-data *sky-parms* 0 arg0)
+  (sky-make-sun-data *sky-parms* 1 arg0)
+  (sky-make-moon-data *sky-parms* arg0)
+  (let ((v1-0 *sky-tng-data*))
+    (+! (-> v1-0 off-s-0) 16)
+    (+! (-> v1-0 off-t-0) 32)
+    (+! (-> v1-0 off-s-1) -21)
+    (+! (-> v1-0 off-t-1) 42)
+    (set! (-> v1-0 time) arg0)
+    )
+  0
+  (none)
+  )
+
+;; definition for function init-sky-regs
+;; INFO: function output is handled by mips2c
+(def-mips2c init-sky-regs (function none))
+
+;; definition for function set-tex-offset
+;; INFO: function output is handled by mips2c
+(def-mips2c set-tex-offset (function int int none))
+
+;; definition for function draw-large-polygon
+;; INFO: function output is handled by mips2c
+(def-mips2c draw-large-polygon function)
+
+;; definition for function clip-polygon-against-positive-hyperplane
+;; INFO: function output is handled by mips2c
+(def-mips2c clip-polygon-against-positive-hyperplane function)
+
+;; definition for function clip-polygon-against-negative-hyperplane
+;; INFO: function output is handled by mips2c
+(def-mips2c clip-polygon-against-negative-hyperplane function)
+
+;; definition for function render-sky-quad
+;; INFO: function output is handled by mips2c
+(def-mips2c render-sky-quad (function int dma-buffer none))
+
+;; definition for function render-sky-tri
+;; INFO: function output is handled by mips2c
+(def-mips2c render-sky-tri (function (inline-array sky-vertex) dma-buffer none))
+
+;; definition for function sky-duplicate-polys
+;; ERROR: function has no type analysis. Cannot decompile.
+
+;; definition for function close-sky-buffer
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch pointer vs none.
+;; ERROR: Function may read a register that is not set: ra
+;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
+(defun close-sky-buffer ((arg0 dma-buffer))
+  (local-vars (ra-0 none))
+  (nop!)
+  (let ((v1-0 #x8000)
+        (v0-0 (-> arg0 base))
+        )
+    (set! (-> (the-as (pointer int128) v0-0)) 0)
+    (nop!)
+    (set! (-> (the-as (pointer int32) v0-0)) v1-0)
+    (let ((v0-1 (&+ v0-0 16)))
+      (.jr ra-0)
+      (set! (-> arg0 base) v0-1)
+      )
+    )
+  (none)
+  )
+
+;; definition for symbol sky-base-polygons, type (inline-array sky-vertex)
+(define sky-base-polygons (new 'static 'inline-array sky-vertex 12
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :z -40960000.0)
+                              :col (new 'static 'vector :x 3.0 :y 18.0 :z 113.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :x 40960000.0)
+                              :col (new 'static 'vector :x 3.0 :y 18.0 :z 113.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :y -40960000.0)
+                              :col (new 'static 'vector :x 3.0 :y 18.0 :z 113.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :x 40960000.0)
+                              :col (new 'static 'vector :x 3.0 :y 18.0 :z 113.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :z 40960000.0)
+                              :col (new 'static 'vector :x 3.0 :y 18.0 :z 113.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :y -40960000.0)
+                              :col (new 'static 'vector :x 3.0 :y 18.0 :z 113.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :z 40960000.0)
+                              :col (new 'static 'vector :x 3.0 :y 18.0 :z 113.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :x -40960000.0)
+                              :col (new 'static 'vector :x 3.0 :y 18.0 :z 113.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :y -40960000.0)
+                              :col (new 'static 'vector :x 3.0 :y 18.0 :z 113.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :x -40960000.0)
+                              :col (new 'static 'vector :x 3.0 :y 18.0 :z 113.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :z -40960000.0)
+                              :col (new 'static 'vector :x 3.0 :y 18.0 :z 113.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :y -40960000.0)
+                              :col (new 'static 'vector :x 3.0 :y 18.0 :z 113.0 :w 128.0)
+                              )
+                            )
+        )
+
+;; definition for symbol sky-roof-polygons, type (inline-array sky-vertex)
+(define sky-roof-polygons (new 'static 'inline-array sky-vertex 12
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :z -40960000.0)
+                              :stq (new 'static 'vector :z 1.0)
+                              :col (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :x 40960000.0)
+                              :stq (new 'static 'vector :x 1.0 :z 1.0)
+                              :col (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :y 10240000.0)
+                              :stq (new 'static 'vector :x 0.5 :y 0.5 :z 1.0)
+                              :col (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :x 40960000.0)
+                              :stq (new 'static 'vector :x 1.0 :z 1.0)
+                              :col (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :z 40960000.0)
+                              :stq (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
+                              :col (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :y 10240000.0)
+                              :stq (new 'static 'vector :x 0.5 :y 0.5 :z 1.0)
+                              :col (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :z 40960000.0)
+                              :stq (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
+                              :col (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :x -40960000.0)
+                              :stq (new 'static 'vector :y 1.0 :z 1.0)
+                              :col (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :y 10240000.0)
+                              :stq (new 'static 'vector :x 0.5 :y 0.5 :z 1.0)
+                              :col (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :x -40960000.0)
+                              :stq (new 'static 'vector :y 1.0 :z 1.0)
+                              :col (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :z -40960000.0)
+                              :stq (new 'static 'vector :z 1.0)
+                              :col (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                              )
+                            (new 'static 'sky-vertex
+                              :pos (new 'static 'vector :y 10240000.0)
+                              :stq (new 'static 'vector :x 0.5 :y 0.5 :z 1.0)
+                              :col (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                              )
+                            )
+        )
+
+;; definition for symbol sky-cloud-polygons, type (inline-array sky-vertex)
+(define sky-cloud-polygons (new 'static 'inline-array sky-vertex 72
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             (new 'static 'sky-vertex)
+                             )
+        )
+
+;; definition for symbol sky-cloud-polygon-indices, type (pointer uint8)
+(define sky-cloud-polygon-indices (new 'static 'array uint8 48
+                                    #x0
+                                    #x1
+                                    #x9
+                                    #x8
+                                    #x1
+                                    #x2
+                                    #xa
+                                    #x9
+                                    #x2
+                                    #x3
+                                    #xb
+                                    #xa
+                                    #x3
+                                    #x0
+                                    #x8
+                                    #xb
+                                    #x8
+                                    #x9
+                                    #x5
+                                    #x4
+                                    #x9
+                                    #xa
+                                    #x6
+                                    #x5
+                                    #xa
+                                    #xb
+                                    #x7
+                                    #x6
+                                    #xb
+                                    #x8
+                                    #x4
+                                    #x7
+                                    #x4
+                                    #x5
+                                    #x6
+                                    #x7
+                                    #x0
+                                    #x0
+                                    #x0
+                                    #x0
+                                    #x0
+                                    #x0
+                                    #x0
+                                    #x0
+                                    #x0
+                                    #x0
+                                    #x0
+                                    #x0
+                                    )
+        )
+
+;; definition for function sky-tng-setup-cloud-layer
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
+(defun sky-tng-setup-cloud-layer ((arg0 float) (arg1 float) (arg2 vector) (arg3 (inline-array sky-vertex)))
+  (let ((f28-0 (sqrtf (- 1.0 (* arg0 arg0))))
+        (f26-0 (sqrtf (- 1.0 (* arg1 arg1))))
+        (s5-0 (new 'stack-no-clear 'inline-array 'sky-vertex 12))
+        )
+    (dotimes (s1-0 12)
+      ((method-of-type sky-vertex new) (the-as symbol (-> s5-0 s1-0)) sky-vertex)
+      )
+    (let ((f30-0 0.5))
+      (let ((f9-0 -22.0)
+            (f10-0 22.0)
+            (f11-0 -22.0)
+            (f8-0 22.0)
+            (f6-0 -4.0)
+            (f7-0 5.0)
+            (f12-0 -5.0)
+            (f13-0 4.0)
+            (f1-4 -2.0)
+            (f2-2 2.0)
+            (f4-0 -2.0)
+            (f0-4 2.0)
+            )
+        0.0
+        1.0
+        -1.0
+        0.0
+        (let* ((f3-5 (/ (- f1-4 f9-0) (- f10-0 f9-0)))
+               (f5-2 (/ (- f2-2 f9-0) (- f10-0 f9-0)))
+               (f15-1 (/ (- f4-0 f11-0) (- f8-0 f11-0)))
+               (f14-3 (/ (- f0-4 f11-0) (- f8-0 f11-0)))
+               (f3-7 (+ f6-0 (* f3-5 (- f7-0 f6-0))))
+               (f5-4 (+ f6-0 (* f5-2 (- f7-0 f6-0))))
+               )
+          (+ f12-0 (* f15-1 (- f13-0 f12-0)))
+          (+ f12-0 (* f14-3 (- f13-0 f12-0)))
+          (let ((v1-5 (-> s5-0 0)))
+            (set! (-> v1-5 pos x) f9-0)
+            (set! (-> v1-5 pos y) 0.0)
+            (set! (-> v1-5 pos z) f11-0)
+            (set! (-> v1-5 pos w) 0.0)
+            )
+          (let ((v1-6 (-> s5-0 1)))
+            (set! (-> v1-6 pos x) f10-0)
+            (set! (-> v1-6 pos y) 0.0)
+            (set! (-> v1-6 pos z) f11-0)
+            (set! (-> v1-6 pos w) 0.0)
+            )
+          (let ((v1-7 (-> s5-0 2)))
+            (set! (-> v1-7 pos x) f10-0)
+            (set! (-> v1-7 pos y) 0.0)
+            (set! (-> v1-7 pos z) f8-0)
+            (set! (-> v1-7 pos w) 0.0)
+            )
+          (let ((v1-8 (-> s5-0 3)))
+            (set! (-> v1-8 pos x) f9-0)
+            (set! (-> v1-8 pos y) 0.0)
+            (set! (-> v1-8 pos z) f8-0)
+            (set! (-> v1-8 pos w) 0.0)
+            )
+          (set-vector! (-> s5-0 0 stq) f6-0 f6-0 1.0 1.0)
+          (set-vector! (-> s5-0 1 stq) f7-0 f6-0 1.0 1.0)
+          (set-vector! (-> s5-0 2 stq) f7-0 f7-0 1.0 1.0)
+          (set-vector! (-> s5-0 3 stq) f6-0 f7-0 1.0 1.0)
+          (let ((v1-13 (-> s5-0 4)))
+            (set! (-> v1-13 pos x) f1-4)
+            (set! (-> v1-13 pos y) 1.0)
+            (set! (-> v1-13 pos z) f4-0)
+            (set! (-> v1-13 pos w) 0.0)
+            )
+          (let ((v1-14 (-> s5-0 5)))
+            (set! (-> v1-14 pos x) f2-2)
+            (set! (-> v1-14 pos y) 1.0)
+            (set! (-> v1-14 pos z) f4-0)
+            (set! (-> v1-14 pos w) 0.0)
+            )
+          (let ((v1-15 (-> s5-0 6)))
+            (set! (-> v1-15 pos x) f2-2)
+            (set! (-> v1-15 pos y) 1.0)
+            (set! (-> v1-15 pos z) f0-4)
+            (set! (-> v1-15 pos w) 0.0)
+            )
+          (let ((v1-16 (-> s5-0 7)))
+            (set! (-> v1-16 pos x) f1-4)
+            (set! (-> v1-16 pos y) 1.0)
+            (set! (-> v1-16 pos z) f0-4)
+            (set! (-> v1-16 pos w) 0.0)
+            )
+          (set-vector! (-> s5-0 4 stq) f3-7 f3-7 1.0 1.0)
+          (set-vector! (-> s5-0 5 stq) f5-4 f3-7 1.0 1.0)
+          (set-vector! (-> s5-0 6 stq) f5-4 f5-4 1.0 1.0)
+          (set-vector! (-> s5-0 7 stq) f3-7 f5-4 1.0 1.0)
+          )
+        )
+      (dotimes (v1-21 4)
+        (let ((f0-14 (-> s5-0 v1-21 pos x))
+              (f1-6 (-> s5-0 v1-21 pos z))
+              )
+          (set! (-> s5-0 v1-21 pos x) (+ (* f0-14 f26-0) (* f1-6 arg1)))
+          (set! (-> s5-0 v1-21 pos z) (- (* f1-6 f26-0) (* f0-14 arg1)))
+          )
+        (set! (-> s5-0 v1-21 col quad) (-> arg2 quad))
+        (set! (-> s5-0 v1-21 col w) 0.0)
+        )
+      (dotimes (v1-24 4)
+        (let ((f0-18 (-> s5-0 (+ v1-24 4) pos x))
+              (f1-8 (-> s5-0 (+ v1-24 4) pos z))
+              )
+          (set! (-> s5-0 (+ v1-24 4) pos x) (+ (* f0-18 f28-0) (* f1-8 arg0)))
+          (set! (-> s5-0 (+ v1-24 4) pos z) (- (* f1-8 f28-0) (* f0-18 arg0)))
+          )
+        (set! (-> s5-0 (+ v1-24 4) col quad) (-> arg2 quad))
+        )
+      (dotimes (s3-1 4)
+        (vector4-lerp!
+          (the-as vector (-> s5-0 (+ s3-1 8)))
+          (the-as vector (-> s5-0 s3-1))
+          (the-as vector (-> s5-0 (+ s3-1 4)))
+          f30-0
+          )
+        (vector4-lerp! (-> s5-0 (+ s3-1 8) stq) (-> s5-0 s3-1 stq) (-> s5-0 (+ s3-1 4) stq) f30-0)
+        (set! (-> s5-0 (+ s3-1 8) col quad) (-> arg2 quad))
+        )
+      )
+    (dotimes (v1-51 36)
+      (let ((a0-47 (-> sky-cloud-polygon-indices v1-51)))
+        (set! (-> arg3 v1-51 pos quad) (-> s5-0 a0-47 pos quad))
+        (set! (-> arg3 v1-51 stq quad) (-> s5-0 a0-47 stq quad))
+        (set! (-> arg3 v1-51 col quad) (-> s5-0 a0-47 col quad))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function sky-tng-setup-clouds
+;; INFO: Return type mismatch int vs none.
+(defun sky-tng-setup-clouds ()
+  (let ((a2-0 (new 'static 'vector :x 20.0 :y 20.0 :z 20.0 :w 128.0))
+        (gp-0 (new 'static 'vector :x 20.0 :y 20.0 :z 30.0 :w 128.0))
+        )
+    (sky-tng-setup-cloud-layer 0.0 0.0 a2-0 sky-cloud-polygons)
+    (sky-tng-setup-cloud-layer 0.05584 0.01396 gp-0 (the-as (inline-array sky-vertex) (-> sky-cloud-polygons 36)))
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(sky-tng-setup-clouds)
+
+;; definition for function render-sky-tng
+;; INFO: Return type mismatch int vs none.
+(defun render-sky-tng ((arg0 time-of-day-context))
+  (local-vars (v1-84 float))
+  (rlet ((vf23 :class vf)
+         (vf27 :class vf)
+         )
+    (if *debug-segment*
+        (add-frame
+          (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+          'draw
+          (new 'static 'rgba :r #x40 :b #x40 :a #x80)
+          )
+        )
+    (let ((gp-0 (-> *display* frames (-> *display* on-screen) frame global-buf base)))
+      (let* ((s4-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
+             (s5-0 (-> s4-0 base))
+             )
+        (let* ((v1-14 s4-0)
+               (a0-11 (the-as object (-> v1-14 base)))
+               )
+          (set! (-> (the-as dma-packet a0-11) dma) (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt)))
+          (set! (-> (the-as dma-packet a0-11) vif0) (new 'static 'vif-tag))
+          (set! (-> (the-as dma-packet a0-11) vif1) (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1))
+          (set! (-> v1-14 base) (&+ (the-as pointer a0-11) 16))
+          )
+        (let* ((v1-15 s4-0)
+               (a0-13 (the-as object (-> v1-15 base)))
+               )
+          (set! (-> (the-as gs-gif-tag a0-13) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x3))
+          (set! (-> (the-as gs-gif-tag a0-13) regs) GIF_REGS_ALL_AD)
+          (set! (-> v1-15 base) (&+ (the-as pointer a0-13) 16))
+          )
+        (let* ((v1-16 s4-0)
+               (a0-15 (-> v1-16 base))
+               )
+          (set! (-> (the-as (pointer gs-zbuf) a0-15) 0) (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24)))
+          (set! (-> (the-as (pointer gs-reg64) a0-15) 1) (gs-reg64 zbuf-1))
+          (set! (-> (the-as (pointer gs-test) a0-15) 2)
+                (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest always))
+                )
+          (set! (-> (the-as (pointer gs-reg64) a0-15) 3) (gs-reg64 test-1))
+          (set! (-> (the-as (pointer gs-alpha) a0-15) 4) (new 'static 'gs-alpha :b #x1 :d #x1))
+          (set! (-> (the-as (pointer gs-reg64) a0-15) 5) (gs-reg64 alpha-1))
+          (set! (-> v1-16 base) (&+ a0-15 48))
+          )
+        (init-sky-regs)
+        (.lvf vf27 (&-> *sky-tng-data* giftag-roof qword))
+        (when *sky-drawn*
+          (let* ((v1-20 s4-0)
+                 (a0-17 (the-as object (-> v1-20 base)))
+                 )
+            (set! (-> (the-as dma-packet a0-17) dma) (new 'static 'dma-tag :qwc #x5 :id (dma-tag-id cnt)))
+            (set! (-> (the-as dma-packet a0-17) vif0) (new 'static 'vif-tag))
+            (set! (-> (the-as dma-packet a0-17) vif1) (new 'static 'vif-tag :imm #x5 :cmd (vif-cmd direct) :msk #x1))
+            (set! (-> v1-20 base) (&+ (the-as pointer a0-17) 16))
+            )
+          (let* ((v1-21 s4-0)
+                 (a0-19 (the-as object (-> v1-21 base)))
+                 )
+            (set! (-> (the-as gs-gif-tag a0-19) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x4))
+            (set! (-> (the-as gs-gif-tag a0-19) regs) GIF_REGS_ALL_AD)
+            (set! (-> v1-21 base) (&+ (the-as pointer a0-19) 16))
+            )
+          (let* ((s3-0 s4-0)
+                 (s2-0 (-> s3-0 base))
+                 )
+            (set! (-> (the-as (pointer gs-tex0) s2-0) 0)
+                  (new 'static 'gs-tex0 :tbw #x1 :th (log2 32) :tw (log2 32) :tbp0 *sky-base-block*)
+                  )
+            (set! (-> (the-as (pointer gs-reg64) s2-0) 1) (gs-reg64 tex0-1))
+            (set! (-> (the-as (pointer gs-tex1) s2-0) 2) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+            (set! (-> (the-as (pointer gs-reg64) s2-0) 3) (gs-reg64 tex1-1))
+            (set! (-> (the-as (pointer gs-clamp) s2-0) 4)
+                  (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp))
+                  )
+            (set! (-> (the-as (pointer gs-reg64) s2-0) 5) (gs-reg64 clamp-1))
+            (set! (-> (the-as (pointer uint64) s2-0) 6) (the-as uint 0))
+            (set! (-> (the-as (pointer gs-reg64) s2-0) 7) (gs-reg64 texflush))
+            (set! (-> s3-0 base) (&+ s2-0 64))
+            )
+          (let ((s3-1 (the-as object (-> s4-0 base))))
+            (&+! (-> s4-0 base) 16)
+            (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-roof-polygons 0)) s4-0)
+            (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-roof-polygons 3)) s4-0)
+            (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-roof-polygons 6)) s4-0)
+            (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-roof-polygons 9)) s4-0)
+            (close-sky-buffer s4-0)
+            (let ((v1-46 (/ (the-as int (+ (- -16 (the-as int s3-1)) (the-as int (-> s4-0 base)))) 16)))
+              (set! (-> (the-as dma-packet s3-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc v1-46))
+              (set! (-> (the-as dma-packet s3-1) vif0) (new 'static 'vif-tag))
+              (set! (-> (the-as dma-packet s3-1) vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1 :imm v1-46))
+              )
+            )
+          )
+        (when *cloud-drawn*
+          (let* ((v1-52 s4-0)
+                 (a0-32 (the-as object (-> v1-52 base)))
+                 )
+            (set! (-> (the-as dma-packet a0-32) dma) (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt)))
+            (set! (-> (the-as dma-packet a0-32) vif0) (new 'static 'vif-tag))
+            (set! (-> (the-as dma-packet a0-32) vif1) (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1))
+            (set! (-> v1-52 base) (&+ (the-as pointer a0-32) 16))
+            )
+          (let* ((v1-53 s4-0)
+                 (a0-34 (the-as object (-> v1-53 base)))
+                 )
+            (set! (-> (the-as gs-gif-tag a0-34) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x5))
+            (set! (-> (the-as gs-gif-tag a0-34) regs) GIF_REGS_ALL_AD)
+            (set! (-> v1-53 base) (&+ (the-as pointer a0-34) 16))
+            )
+          (let* ((s3-2 s4-0)
+                 (s2-1 (-> s3-2 base))
+                 )
+            (set! (-> (the-as (pointer gs-alpha) s2-1) 0) (new 'static 'gs-alpha :b #x2 :d #x1))
+            (set! (-> (the-as (pointer gs-reg64) s2-1) 1) (gs-reg64 alpha-1))
+            (set! (-> (the-as (pointer gs-tex0) s2-1) 2)
+                  (new 'static 'gs-tex0 :tbw #x1 :th (log2 64) :tw (log2 64) :tbp0 (+ *sky-base-block* 32))
+                  )
+            (set! (-> (the-as (pointer gs-reg64) s2-1) 3) (gs-reg64 tex0-1))
+            (set! (-> (the-as (pointer gs-tex1) s2-1) 4) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+            (set! (-> (the-as (pointer gs-reg64) s2-1) 5) (gs-reg64 tex1-1))
+            (set! (-> (the-as (pointer gs-clamp) s2-1) 6) (new 'static 'gs-clamp))
+            (set! (-> (the-as (pointer gs-reg64) s2-1) 7) (gs-reg64 clamp-1))
+            (set! (-> (the-as (pointer int64) s2-1) 8) 0)
+            (set! (-> (the-as (pointer gs-reg64) s2-1) 9) (gs-reg64 texflush))
+            (set! (-> s3-2 base) (&+ s2-1 80))
+            )
+          (let ((s3-3 (the-as object (-> s4-0 base))))
+            (&+! (-> s4-0 base) 16)
+            (init-sky-regs)
+            (let ((s2-2 (the-as object (-> sky-cloud-polygons 0))))
+              (set-tex-offset (the-as int (-> *sky-tng-data* off-s-0)) (the-as int (-> *sky-tng-data* off-t-0)))
+              (dotimes (s1-4 9)
+                (render-sky-quad (the-as int s2-2) s4-0)
+                (set! s2-2 (-> (the-as (inline-array sky-vertex) s2-2) 4))
+                )
+              (set-tex-offset (the-as int (-> *sky-tng-data* off-s-1)) (the-as int (-> *sky-tng-data* off-t-1)))
+              (dotimes (s1-5 9)
+                (render-sky-quad (the-as int s2-2) s4-0)
+                (set! s2-2 (-> (the-as (inline-array sky-vertex) s2-2) 4))
+                )
+              )
+            (.lvf vf27 (&-> *sky-tng-data* giftag-base qword))
+            (let ((v1-83 #x43800000))
+              (.mov vf23 v1-83)
+              )
+            (.mov v1-84 vf23)
+            (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-base-polygons 0)) s4-0)
+            (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-base-polygons 3)) s4-0)
+            (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-base-polygons 6)) s4-0)
+            (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-base-polygons 9)) s4-0)
+            (close-sky-buffer s4-0)
+            (let ((v1-92 (/ (the-as int (+ (- -16 (the-as int s3-3)) (the-as int (-> s4-0 base)))) 16)))
+              (set! (-> (the-as dma-packet s3-3) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc v1-92))
+              (set! (-> (the-as dma-packet s3-3) vif0) (new 'static 'vif-tag))
+              (set! (-> (the-as dma-packet s3-3) vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1 :imm v1-92))
+              )
+            )
+          )
+        (let ((a3-0 (-> s4-0 base)))
+          (let ((v1-96 (the-as object (-> s4-0 base))))
+            (set! (-> (the-as dma-packet v1-96) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+            (set! (-> (the-as dma-packet v1-96) vif0) (new 'static 'vif-tag))
+            (set! (-> (the-as dma-packet v1-96) vif1) (new 'static 'vif-tag))
+            (set! (-> s4-0 base) (&+ (the-as pointer v1-96) 16))
+            )
+          (dma-bucket-insert-tag
+            (-> *display* frames (-> *display* on-screen) frame bucket-group)
+            (bucket-id sky-draw)
+            s5-0
+            (the-as (pointer dma-tag) a3-0)
+            )
+          )
+        )
+      (let ((v1-101 *dma-mem-usage*))
+        (when (nonzero? v1-101)
+          (set! (-> v1-101 length) (max 86 (-> v1-101 length)))
+          (set! (-> v1-101 data 85 name) "sky")
+          (+! (-> v1-101 data 85 count) 1)
+          (+! (-> v1-101 data 85 used)
+              (&- (-> *display* frames (-> *display* on-screen) frame global-buf base) (the-as uint gp-0))
+              )
+          (set! (-> v1-101 data 85 total) (-> v1-101 data 85 used))
+          )
+        )
+      )
+    (if *debug-segment*
+        (add-frame
+          (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+          'draw
+          (new 'static 'rgba :r #xff :b #xff :a #x80)
+          )
+        )
+    0
+    (none)
+    )
+  )
+
+;; definition for function copy-sky-texture
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch pointer vs none.
+(defun copy-sky-texture ((arg0 dma-buffer) (arg1 adgif-shader) (arg2 float))
+  (let ((s5-0 (-> arg0 base)))
+    (let ((v1-0 (the int (+ 0.5 (* 128.0 arg2))))
+          (a0-2 (-> *sky-work* sky-data))
+          )
+      (set! (-> a0-2 0 vector4w x) v1-0)
+      (set! (-> a0-2 0 vector4w y) v1-0)
+      (set! (-> a0-2 0 vector4w z) v1-0)
+      (set! (-> a0-2 0 vector4w w) 128)
+      )
+    (set! (-> (the-as (pointer uint128) s5-0) 0) (-> *sky-work* adgif-tmpl dma-vif quad))
+    (set! (-> (the-as (pointer uint128) s5-0) 1) (-> *sky-work* adgif-tmpl quad 1))
+    (let ((s4-0 (the-as object (&-> (the-as (pointer uint128) s5-0) 2))))
+      (quad-copy! (the-as (pointer uint128) s4-0) (the-as pointer arg1) 5)
+      (set! (-> (the-as adgif-shader s4-0) clamp)
+            (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp))
+            )
+      (set! (-> (the-as adgif-shader s4-0) alpha) (new 'static 'gs-alpha :b #x2 :c #x2 :d #x1 :fix #x80))
+      )
+    (cond
+      (*sky-drawn*
+        (set! (-> (the-as (pointer uint128) s5-0) 7) (-> *sky-work* blend-tmpl dma-vif quad))
+        (set! (-> (the-as (pointer uint128) s5-0) 8) (-> *sky-work* blend-tmpl quad 1))
+        )
+      (else
+        (set! (-> (the-as (pointer uint128) s5-0) 7) (-> *sky-work* draw-tmpl dma-vif quad))
+        (set! (-> (the-as (pointer uint128) s5-0) 8) (-> *sky-work* draw-tmpl quad 1))
+        (set! *sky-drawn* #t)
+        )
+      )
+    (quad-copy! (&+ s5-0 144) (the-as pointer (-> *sky-work* sky-data)) 5)
+    (set! (-> arg0 base) (&+ s5-0 224))
+    )
+  (none)
+  )
+
+;; definition for function copy-cloud-texture
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch pointer vs none.
+(defun copy-cloud-texture ((arg0 dma-buffer) (arg1 adgif-shader) (arg2 float))
+  (let ((s5-0 (-> arg0 base)))
+    (let ((v1-0 (the int (+ 0.5 (* 128.0 arg2))))
+          (a0-2 (-> *sky-work* cloud-data))
+          )
+      (set! (-> a0-2 0 vector4w x) v1-0)
+      (set! (-> a0-2 0 vector4w y) v1-0)
+      (set! (-> a0-2 0 vector4w z) v1-0)
+      (set! (-> a0-2 0 vector4w w) 128)
+      )
+    (set! (-> (the-as (pointer uint128) s5-0) 0) (-> *sky-work* adgif-tmpl dma-vif quad))
+    (set! (-> (the-as (pointer uint128) s5-0) 1) (-> *sky-work* adgif-tmpl quad 1))
+    (let ((s4-0 (the-as object (&-> (the-as (pointer uint128) s5-0) 2))))
+      (quad-copy! (the-as (pointer uint128) s4-0) (the-as pointer arg1) 5)
+      (set! (-> (the-as adgif-shader s4-0) clamp)
+            (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp))
+            )
+      (set! (-> (the-as adgif-shader s4-0) alpha) (new 'static 'gs-alpha :b #x2 :c #x2 :d #x1 :fix #x80))
+      )
+    (cond
+      (*cloud-drawn*
+        (set! (-> (the-as (pointer uint128) s5-0) 7) (-> *sky-work* blend-tmpl dma-vif quad))
+        (set! (-> (the-as (pointer uint128) s5-0) 8) (-> *sky-work* blend-tmpl quad 1))
+        )
+      (else
+        (set! (-> (the-as (pointer uint128) s5-0) 7) (-> *sky-work* draw-tmpl dma-vif quad))
+        (set! (-> (the-as (pointer uint128) s5-0) 8) (-> *sky-work* draw-tmpl quad 1))
+        (set! *cloud-drawn* #t)
+        )
+      )
+    (quad-copy! (&+ s5-0 144) (the-as pointer (-> *sky-work* cloud-data)) 5)
+    (set! (-> arg0 base) (&+ s5-0 224))
+    )
+  (none)
+  )
+
+;; definition for function make-sky-textures
+;; INFO: Return type mismatch int vs none.
+(defun make-sky-textures ((arg0 time-of-day-context) (arg1 int))
+  (when (and (= (-> *level* level arg1 status) 'active) (-> *level* level arg1 info sky))
+    (let ((f30-0 (-> arg0 current-interp)))
+      (if (zero? arg1)
+          (set! f30-0 (- 1.0 f30-0))
+          )
+      (if (= (-> arg0 active-count) 1)
+          (set! f30-0 1.0)
+          )
+      (when (!= f30-0 0.0)
+        (let ((gp-0 (if (zero? arg1)
+                        32
+                        39
+                        )
+                    )
+              (s1-0 (-> *level* level arg1 bsp adgifs))
+              )
+          (when (nonzero? s1-0)
+            (let* ((s2-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
+                   (s3-0 (-> s2-0 base))
+                   )
+              (set-display-gs-state s2-0 *sky-base-page* 64 96 0 0)
+              (dotimes (s0-0 8)
+                (let ((f0-3 (* (-> arg0 moods arg1 sky-times s0-0) f30-0)))
+                  (if (!= f0-3 0.0)
+                      (copy-sky-texture s2-0 (-> s1-0 data s0-0) f0-3)
+                      )
+                  )
+                )
+              (copy-cloud-texture s2-0 (-> s1-0 data 8) f30-0)
+              (let* ((v1-31 s2-0)
+                     (a0-19 (the-as object (-> v1-31 base)))
+                     )
+                (set! (-> (the-as dma-packet a0-19) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+                (set! (-> (the-as dma-packet a0-19) vif0) (new 'static 'vif-tag))
+                (set! (-> (the-as dma-packet a0-19) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
+                (set! (-> v1-31 base) (&+ (the-as pointer a0-19) 16))
+                )
+              (let* ((v1-32 s2-0)
+                     (a0-21 (the-as object (-> v1-32 base)))
+                     )
+                (set! (-> (the-as gs-gif-tag a0-21) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
+                (set! (-> (the-as gs-gif-tag a0-21) regs) GIF_REGS_ALL_AD)
+                (set! (-> v1-32 base) (&+ (the-as pointer a0-21) 16))
+                )
+              (let* ((v1-33 s2-0)
+                     (a0-23 (-> v1-33 base))
+                     )
+                (set! (-> (the-as (pointer gs-alpha) a0-23) 0) (new 'static 'gs-alpha :b #x1 :d #x1))
+                (set! (-> (the-as (pointer gs-reg64) a0-23) 1) (gs-reg64 alpha-1))
+                (set! (-> v1-33 base) (&+ a0-23 16))
+                )
+              (reset-display-gs-state *display* s2-0 *oddeven*)
+              (let ((a3-1 (-> s2-0 base)))
+                (let ((v1-34 (the-as object (-> s2-0 base))))
+                  (set! (-> (the-as dma-packet v1-34) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+                  (set! (-> (the-as dma-packet v1-34) vif0) (new 'static 'vif-tag))
+                  (set! (-> (the-as dma-packet v1-34) vif1) (new 'static 'vif-tag))
+                  (set! (-> s2-0 base) (&+ (the-as pointer v1-34) 16))
+                  )
+                (dma-bucket-insert-tag
+                  (-> *display* frames (-> *display* on-screen) frame bucket-group)
+                  (the-as bucket-id gp-0)
+                  s3-0
+                  (the-as (pointer dma-tag) a3-1)
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )

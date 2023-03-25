@@ -1,0 +1,119 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: mspace-h.gc
+;; name in dgo: mspace-h
+;; dgos: GAME, ENGINE
+
+;; this file contains types for the skeletal animation system.
+;; the "bones" are the actual matrix data consumed by the renderers.
+;; the "joints" describe how bones are connected.
+;; a "cspace" links together a bone, joint, and a way to control the joint (and bone)
+
+;; There's three main container types:
+;; - The cspace-array.  This contains references to the bones and the joints. (called node-list)
+;; - The skeleton: This is an inline array of bones. (called skeleton)
+;; - The joint-control (not in this file): this has the logic for running joint animations. (called skel)
+
+
+;; First, the joint. This type just describes how the skeleton is connected and the bind pose.
+(deftype joint (basic)
+  ((name      string         :offset-assert 4)   ;; the joint's name (neckA, neckB, Rtoes, etc)
+   (number    int32          :offset-assert 8)   ;; the joint's number in the cspace-array
+   (parent    joint          :offset-assert 12)  ;; the parent joint (ex, Lshould has parent of chest)
+   (bind-pose matrix :inline :offset-assert 16)  ;; the bind pose, as a matrix.
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+;; I believe this stores offsets, in bytes, of where there are stored
+;; (possibly in the scratchpad)
+(deftype bone-cache (structure)
+  ((bone-matrix   uint32  :offset-assert 0)
+   (parent-matrix uint32  :offset-assert 4)
+   (dummy         uint32  :offset-assert 8)
+   (frame         uint32  :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; The "bone" stores the final positions of the bodies.
+;; This is a world space transform.
+(deftype bone (structure)
+  ((transform matrix     :inline :offset-assert 0)
+   (position  vector     :inline :offset 48) ;; overlays the matrix
+   (scale     vector     :inline :offset-assert 64)
+   (cache     bone-cache :inline :offset-assert 80)
+   )
+  :method-count-assert 9
+  :size-assert         #x60
+  :flag-assert         #x900000060
+  )
+
+;; Like a real skeleton, this is a collection of bones for a single character.
+(deftype skeleton (inline-array-class)
+  ((bones bone :inline :dynamic))
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+(set! (-> skeleton heap-base) 96)
+
+;; The "cspace" seems to be a system for linking bones and joints.
+;; The tree structure matches the tree of joints.
+;; For example: (-> *target* node-list data 14 parent joint) is the same as
+;;              (-> *target* node-list data 14 joint parent)
+;; But, we appear to use bone indices here.
+;; So the joint index is always 1 less than the node index.
+;; By convention, node 0 is not a joint.
+;;                node 1 is an "align" joint. It has parent #f, and is joint 0.
+;;                node 2 is a "prejoint". It also has parent #f, and is joint 1.
+;;                node 3 is "main". It has parent prejoint, and is joint 2.
+;;                node 4 is the first real joint (for jak, it's upper body).
+
+(deftype cspace (structure)
+  ((parent    cspace   :offset-assert 0)   ;; the parent body
+   (joint     joint    :offset-assert 4)   ;; the joint which moves us
+   (joint-num int16    :offset-assert 8)   ;; seems to be 0 always??
+   (geo       basic    :offset-assert 12)  ;; seems to be #f always
+   (bone      bone     :offset-assert 16)  ;; points to our bone.
+   (param0    function :offset-assert 20)  ;; function to run to update.
+   (param1    basic    :offset-assert 24)  ;; parameter
+   (param2    basic    :offset-assert 28)  ;; parameter
+   )
+  :method-count-assert 10
+  :size-assert         #x20
+  :flag-assert         #xa00000020
+  ;; params are loaded with signed loads.
+  (:methods
+    (new (symbol type basic) _type_ 0)
+    (reset-and-assign-geo! (_type_ basic) _type_ 9)
+    )
+  )
+
+;; All the cspaces for a character.
+(deftype cspace-array (inline-array-class)
+  ((data cspace :inline :dynamic :offset-assert 16))
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+(set! (-> cspace-array heap-base) 32)
+
+
+(defmethod print cspace ((obj cspace))
+  "Print a cspace, with the attached joint"
+  (format #t "#<cspace ~S @ #x~X>"
+          (if (-> obj joint)
+              (-> obj joint name)
+              "nojoint")
+          obj
+          )
+  obj
+  )
+
+

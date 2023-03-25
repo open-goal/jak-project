@@ -1,6 +1,13 @@
 #pragma once
 
+#include <string>
+
+#include "common/versions.h"
+
 #include "third-party/discord-rpc/include/discord_rpc.h"
+
+extern int gDiscordRpcEnabled;
+extern int64_t gStartTime;
 
 void init_discord_rpc();
 void set_discord_rpc(int state);

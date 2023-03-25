@@ -4,15 +4,20 @@
  * Also called "Server".
  */
 
-#include <cstring>
-#include <cstdio>
-#include "common/common_types.h"
-#include "game/common/ramdisk_rpc_types.h"
 #include "ramdisk.h"
+
+#include <cstdio>
+#include <cstring>
+
 #include "iso.h"
 #include "iso_api.h"
-#include "game/sce/iop.h"
+
+#include "common/common_types.h"
 #include "common/util/Assert.h"
+
+#include "game/common/ramdisk_rpc_types.h"
+#include "game/runtime.h"
+#include "game/sce/iop.h"
 
 // Note - the RAMDISK code supports having multiple files, but it appears only one file can ever be
 // used at a time.
@@ -95,7 +100,8 @@ u32 Thread_Server() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, RAMDISK_RPC_ID, RPC_Ramdisk, gRPCBuf, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, RAMDISK_RPC_ID[g_game_version], RPC_Ramdisk, gRPCBuf, nullptr, nullptr,
+                    &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;

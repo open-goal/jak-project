@@ -1,0 +1,123 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: math-camera-h.gc
+;; name in dgo: math-camera-h
+;; dgos: ENGINE, GAME
+
+#|@file
+The "math-camera" is responsible for computing the projection matrix used in the renderer
+from the position of the in-game camera. It also computes some other common camera info.
+See cam-update.gc for how the game camera updates the math-camera.
+
+It also contains some GIF stuff, but these seem to be wrong/unused.
+Some of the code here may be extremely old and unused, but this does compute the camera projection
+matrix used almost everywhere.
+|#
+
+;; DECOMP BEGINS
+
+;; unused...
+(deftype vis-gif-tag (structure)
+  ((fog0  uint32  :offset-assert   0)
+   (strip uint32  :offset-assert   4)
+   (regs  uint32  :offset-assert   8)
+   (fan   uint32  :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; also seems unused?
+(deftype cull-info (structure)
+  ((x-fact      float  :offset-assert   0)
+   (y-fact      float  :offset-assert   4)
+   (z-fact      float  :offset-assert   8)
+   (cam-radius  float  :offset-assert  12)
+   (cam-x       float  :offset-assert  16)
+   (cam-y       float  :offset-assert  20)
+   (xz-dir-ax   float  :offset-assert  24)
+   (xz-dir-az   float  :offset-assert  28)
+   (xz-dir-bx   float  :offset-assert  32)
+   (xz-dir-bz   float  :offset-assert  36)
+   (xz-cross-ab float  :offset-assert  40)
+   (yz-dir-ay   float  :offset-assert  44)
+   (yz-dir-az   float  :offset-assert  48)
+   (yz-dir-by   float  :offset-assert  52)
+   (yz-dir-bz   float  :offset-assert  56)
+   (yz-cross-ab float  :offset-assert  60)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+(deftype math-camera (basic)
+  ((d                          meters                :offset-assert   4)
+   (f                          meters                :offset-assert   8)
+   (fov                        degrees               :offset-assert  12)
+   (x-ratio                    float                 :offset-assert  16)
+   (y-ratio                    float                 :offset-assert  20)
+   (x-pix                      float                 :offset-assert  24)
+   (x-clip                     float                 :offset-assert  28)
+   (x-clip-ratio-in            float                 :offset-assert  32)
+   (x-clip-ratio-over          float                 :offset-assert  36)
+   (y-pix                      float                 :offset-assert  40)
+   (y-clip                     float                 :offset-assert  44)
+   (y-clip-ratio-in            float                 :offset-assert  48)
+   (y-clip-ratio-over          float                 :offset-assert  52)
+   (cull-info                  cull-info   :inline   :offset-assert  56)
+   (fog-start                  meters                :offset-assert 120)
+   (fog-end                    meters                :offset-assert 124)
+   (fog-max                    float                 :offset-assert 128)
+   (fog-min                    float                 :offset-assert 132)
+   (reset                      int32                 :offset-assert 136)
+   (smooth-step                float                 :offset-assert 140)
+   (smooth-t                   float                 :offset-assert 144)
+   (perspective                matrix      :inline   :offset-assert 160)
+   (isometric                  matrix      :inline   :offset-assert 224)
+   (sprite-2d                  matrix      :inline   :offset-assert 288)
+   (sprite-2d-hvdf             vector      :inline   :offset-assert 352)
+   (camera-rot                 matrix      :inline   :offset-assert 368)
+   (inv-camera-rot             matrix      :inline   :offset-assert 432)
+   (inv-camera-rot-smooth      matrix      :inline   :offset-assert 496)
+   (inv-camera-rot-smooth-from quaternion  :inline   :offset-assert 560)
+   (camera-temp                matrix      :inline   :offset-assert 576)
+   (prev-camera-temp           matrix      :inline   :offset-assert 640)
+   (prev-inv-camera-rot        matrix      :inline   :offset-assert 704)
+   (prev-trans                 vector      :inline   :offset-assert 768)
+   (hmge-scale                 vector      :inline   :offset-assert 784)
+   (inv-hmge-scale             vector      :inline   :offset-assert 800)
+   (hvdf-off                   vector      :inline   :offset-assert 816)
+   (guard                      vector      :inline   :offset-assert 832)
+   (vis-gifs                   vis-gif-tag 4 :inline :offset-assert 848)
+   (giftex                     uint128               :offset        848)
+   (gifgr                      uint128               :offset        864)
+   (giftex-trans               uint128               :offset        880)
+   (gifgr-trans                uint128               :offset        896)
+   (pfog0                      float                 :offset-assert 912)
+   (pfog1                      float                 :offset-assert 916)
+   (trans                      vector      :inline   :offset-assert 928)
+   (plane                      plane       4 :inline :offset-assert 944)
+   (guard-plane                plane       4 :inline :offset-assert 1008)
+   (shrub-mat                  matrix      :inline   :offset-assert 1072)
+   (quat-other                 quaternion  :inline   :offset-assert 1136)
+   (trans-other                vector      :inline   :offset-assert 1152)
+   (shrub-mat-other            matrix      :inline   :offset-assert 1168)
+   (camera-temp-other          matrix      :inline   :offset-assert 1232)
+   (camera-rot-other           matrix      :inline   :offset-assert 1296)
+   (inv-camera-rot-other       matrix      :inline   :offset-assert 1360)
+   (plane-other                plane       4 :inline :offset-assert 1424)
+   (guard-plane-other          plane       4 :inline :offset-assert 1488)
+   (mirror-trans               vector      :inline   :offset-assert 1552)
+   (mirror-normal              vector      :inline   :offset-assert 1568)
+   (fov-correction-factor      float                 :offset-assert 1584)
+   )
+  (:methods (new (symbol type) _type_ 0))
+
+  :method-count-assert 9
+  :size-assert         #x634
+  :flag-assert         #x900000634
+  )

@@ -2,8 +2,8 @@
 
 #include <string>
 #include <vector>
-#include <filesystem>
-#include "third-party/xxhash.hpp"
+
+#include "common/util/FileUtil.h"
 
 struct IsoFile {
   struct Entry {
@@ -27,11 +27,14 @@ struct IsoFile {
   bool shouldHash = false;
   // There is no reason to map to the files, as we don't retain mappings of each file's expected
   // hash
-  std::vector<xxh::hash64_t> hashes = {};
+  std::vector<uint64_t> hashes = {};
 
   IsoFile();
 };
 
 IsoFile find_files_in_iso(FILE* fp);
-void unpack_iso_files(FILE* fp, IsoFile& layout, const std::filesystem::path& dest);
-IsoFile unpack_iso_files(FILE* fp, const std::filesystem::path& dest, const bool hashFiles = false);
+void unpack_iso_files(FILE* fp, IsoFile& layout, const fs::path& dest);
+IsoFile unpack_iso_files(FILE* fp,
+                         const fs::path& dest,
+                         bool print_progress,
+                         const bool hashFiles = false);

@@ -1,0 +1,933 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: joint-mod-h.gc
+;; name in dgo: joint-mod-h
+;; dgos: GAME, ENGINE
+
+;; The joint-mod system allows an animated character to change in a way that's not described in
+;; an animation. For example, this is used to point Jak's head toward an attacking enemy.
+
+(define-extern joint-mod-look-at-handler (function cspace transformq none))
+(define-extern joint-mod-world-look-at-handler (function cspace transformq none))
+(define-extern joint-mod-rotate-handler (function cspace transformq none))
+(define-extern joint-mod-joint-set-handler (function cspace transformq none))
+(define-extern joint-mod-joint-set*-handler (function cspace transformq none))
+
+;; There are several modes available for joint-mod.
+(defenum joint-mod-handler-mode
+    :bitfield #t
+    :type uint32
+    (flex-blend 0)  ;; 1
+    (look-at 1)     ;; 2
+    (world-look-at 2) ;; 4
+    (rotate 3)        ;; 8
+    (joint-set 4)     ;; 16
+    (joint-set* 5)    ;; 32
+    ;; ??             ;; 64
+    (reset 7) ;; 128
+    )
+
+;; The joint-mod itself represents a modification to a single joint.
+;; Although the mode is a bitfield, it appears that multiple kinds of mods cannot be
+;; activated at the same time.
+(deftype joint-mod (basic)
+  ((mode            joint-mod-handler-mode         :offset-assert   4)
+   (process         process-drawable               :offset-assert   8)
+   (joint           cspace                         :offset-assert  12)
+   (target          vector                 :inline :offset-assert  16)
+   (twist           vector                 :inline :offset-assert  32)
+   (twist-max       vector                 :inline :offset-assert  48)
+   (trans           vector                 :inline :offset-assert  64)
+   (quat            quaternion             :inline :offset-assert  80)
+   (scale           vector                 :inline :offset-assert  96)
+   (notice-time     time-frame                          :offset-assert 112)
+   (flex-blend      float                          :offset-assert 120)
+   (blend           float                          :offset-assert 124)
+   (max-dist        meters                         :offset-assert 128)
+   (ignore-angle    degrees                        :offset-assert 132)
+   (up              uint8                          :offset-assert 136)
+   (nose            uint8                          :offset-assert 137)
+   (ear             uint8                          :offset-assert 138)
+   (shutting-down?  symbol                         :offset-assert 140)
+   (parented-scale? symbol                         :offset        128)
+   )
+  :method-count-assert 16
+  :size-assert         #x90
+  :flag-assert         #x1000000090
+  (:methods
+   (new (symbol type joint-mod-handler-mode process-drawable int) _type_ 0)
+   (set-mode! (_type_ joint-mod-handler-mode) _type_ 9)
+   (set-target! (_type_ vector) none 10)
+   (look-at-enemy! (_type_ vector symbol process) none 11)
+   (reset-blend! (_type_) _type_ 12)
+   (set-twist! (_type_ float float float) vector 13)
+   (set-trs! (_type_ vector quaternion vector) none 14)
+   (shut-down! (_type_) none 15)
+   )
+  )
+
+(defun-debug joint-mod-debug-draw ((mod joint-mod))
+  "Draw a frame at the bone."
+  ;; I believe this draws a set of coordinate axes that represent the transformation matrix.
+  (add-debug-matrix #t (bucket-id debug-no-zbuf) (-> mod joint bone transform))
+  (none)
+  )
+
+(defmethod new joint-mod ((allocation symbol) (type-to-make type) (mode joint-mod-handler-mode) (proc process-drawable) (joint-idx int))
+  "Construct a new joint-mod. It will work on the given process-drawable's joint."
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> obj process) proc)
+    ;; grab the joint from our node-list.
+    (set! (-> obj joint) (-> (-> proc node-list) data joint-idx))
+    (set-mode! obj mode)
+    ;; set defaults.
+    (set-vector! (-> obj twist-max) 8192.0 11832.889 0.0 1.0)
+    (set! (-> obj up) (the-as uint 1))
+    (set! (-> obj nose) (the-as uint 2))
+    (set! (-> obj ear) (the-as uint 0))
+    (set! (-> obj max-dist) 122880.0)
+    (set! (-> obj ignore-angle) 65536.0)
+    (set! (-> obj flex-blend) 1.0)
+    (set! (-> obj shutting-down?) #f)
+    obj
+    )
+  )
+
+(defmethod set-mode! joint-mod ((obj joint-mod) (handler-mode joint-mod-handler-mode))
+  "Set up the joint-mod for the given mode. You can only pick one mode at a time."
+  (set! (-> obj mode) handler-mode)
+  (let ((joint (-> obj joint)))
+    (case handler-mode 
+      (((joint-mod-handler-mode flex-blend))
+       (set! (-> joint param0) #f)
+       (set! (-> joint param1) #f)
+       (set! (-> joint param2) #f)
+       (set! (-> obj blend) 0.0)
+       (set! (-> obj flex-blend) 1.0)
+       )
+      (((joint-mod-handler-mode reset))
+       (set! (-> joint param0) #f)
+       (set! (-> joint param1) #f)
+       (set! (-> joint param2) #f)
+       (set! (-> obj blend) 0.0)
+       (set! (-> obj shutting-down?) #f)
+       )
+      (((joint-mod-handler-mode look-at))
+       (set! (-> joint param0) joint-mod-look-at-handler)
+       (set! (-> joint param1) obj)
+       (set! (-> joint param2) #f)
+       )
+      (((joint-mod-handler-mode world-look-at))
+       (set! (-> joint param0) joint-mod-world-look-at-handler)
+       (set! (-> joint param1) obj)
+       (set! (-> joint param2) #f)
+       )
+      (((joint-mod-handler-mode rotate))
+       (set! (-> joint param0) joint-mod-rotate-handler)
+       (set! (-> joint param1) obj)
+       (set! (-> joint param2) #f)
+       (set! (-> obj blend) 1.0)
+       )
+      (((joint-mod-handler-mode joint-set))
+       (set! (-> joint param0) joint-mod-joint-set-handler)
+       (set! (-> joint param1) obj)
+       (set! (-> joint param2) #f)
+       (vector-reset! (-> obj trans))
+       (quaternion-identity! (-> obj quat))
+       (set-vector! (-> obj scale) 1.0 1.0 1.0 1.0)
+       (set! (-> obj max-dist) (the-as float #f))
+       )
+      (((joint-mod-handler-mode joint-set*))
+       (set! (-> joint param0) joint-mod-joint-set*-handler)
+       (set! (-> joint param1) obj)
+       (set! (-> joint param2) #f)
+       (vector-reset! (-> obj trans))
+       (quaternion-identity! (-> obj quat))
+       (set-vector! (-> obj scale) 1.0 1.0 1.0 1.0)
+       (set! (-> obj max-dist) (the-as float #f))
+       )
+      )
+    )
+  obj
+  )
+
+(defmethod reset-blend! joint-mod ((obj joint-mod))
+  "Reset the blend to 0."
+  (set! (-> obj blend) 0.0)
+  obj
+  )
+
+(defmethod shut-down! joint-mod ((obj joint-mod))
+  "Shut down and set the blend to zero."
+  (set! (-> obj shutting-down?) #t)
+  (set! (-> obj blend) 0.0)
+  (none)
+  )
+
+(defmethod set-twist! joint-mod ((obj joint-mod) (x float) (y float) (z float))
+  "Set the twist. You can use #f to not change the current value."
+  (if x (set! (-> obj twist x) x))
+  (if y (set! (-> obj twist y) y))
+  (if z (set! (-> obj twist z) z))
+  (-> obj twist)
+  )
+
+(defmethod set-trs! joint-mod ((obj joint-mod) (trans vector) (rot quaternion) (scale vector))
+  "Set the translation, rotation, and scale."
+  (if trans
+    (set! (-> obj trans quad) (-> trans quad))
+    )
+  (if rot
+    (quaternion-copy! (-> obj quat) rot)
+    )
+  (if scale
+    (set! (-> obj scale quad) (-> scale quad))
+    )
+  (none)
+  )
+
+(defmethod set-target! joint-mod ((obj joint-mod) (target-trans vector))
+  "Set the joint-mod to look-at if we aren't in a mode, and look at the given target-trans."
+
+  ;; set mode, if we aren't in one.
+  (if (= (-> obj mode) (joint-mod-handler-mode reset))
+      (set-mode! obj (joint-mod-handler-mode look-at))
+      )
+  ;; how far are we from the target?
+  (let ((distance (vector-vector-distance (-> obj process root trans) target-trans)))
+    (set! (-> obj shutting-down?) #f)
+    (set! (-> obj target quad) (-> target-trans quad))
+    (if (< distance (-> obj max-dist))
+        (set! (-> obj blend) 1.0) ;; in range, set blend to 1.0 to start
+        (set! (-> obj blend) 0.0) ;; not in range, set blend to 0.0 to disable.
+        )
+    )
+  (none)
+  )
+
+;; this type is for storing what we tried to look at last.
+(deftype try-to-look-at-info (basic)
+  ((who  handle  :offset-assert 8)
+   (horz float   :offset-assert 16)
+   (vert float   :offset-assert 20)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+;; this is the last thing we tried to look at.
+;; There's only one global instance of this, likely used by Jak looking at enemies.
+(define last-try-to-look-at-data (new 'global 'try-to-look-at-info))
+
+(defmethod look-at-enemy! joint-mod ((obj joint-mod) (target-trans vector) (option symbol) (proc process))
+  "Set up animation for Jak looking at an enemy. If option is 'attacking, remember when this happened.
+  Will only override an existing look-at if this one is closer, or option is 'force."
+
+  (when (= option 'attacking)
+    ;; make sure we got a process-drawable
+    (let* ((s3-0 proc)
+           (proc-drawable
+             (if (and (nonzero? s3-0) (type-type? (-> s3-0 type) process-drawable))
+                 (the-as process-drawable s3-0)
+                 )
+             )
+           )
+      (when proc-drawable
+        ;; get enemy fact info
+        (let* ((s0-0 (-> proc-drawable fact))
+               (enemy-facts (the-as fact-info-enemy (if (and (nonzero? s0-0) (type-type? (-> s0-0 type) fact-info-enemy))
+                                                        (the-as fact-info-enemy s0-0)
+                                                        )
+                                    )
+                            )
+               )
+          ;; check that we have enemy facts, and that we are within the notice distance
+          (when (and enemy-facts (< (vector-vector-distance (-> obj process root trans) (-> proc-drawable root trans))
+                                    (-> enemy-facts cam-notice-dist)
+                                    )
+                     )
+            ;; success! we consider this a noticed and remember when
+            (set! (-> obj notice-time) (-> *display* base-frame-counter))
+            ;; and update the look at data
+            (set! (-> last-try-to-look-at-data who) (process->handle proc))
+            ;; not sure what these are yet.
+            (if (< (-> last-try-to-look-at-data vert) (-> enemy-facts cam-vert))
+                (set! (-> last-try-to-look-at-data vert) (-> enemy-facts cam-vert))
+                )
+            (if (< (-> last-try-to-look-at-data horz) (-> enemy-facts cam-horz))
+                (set! (-> last-try-to-look-at-data horz) (-> enemy-facts cam-horz))
+                )
+            )
+          )
+        )
+      )
+    )
+  
+  ;; in all cases,
+  (let ((dist (vector-vector-distance (-> obj process root trans) target-trans)))
+    (when (and
+            ;; done with previous
+            (or (= (-> obj blend) 0.0)
+                ;; closer than previous.
+                (or (< dist (vector-vector-distance (-> obj process root trans) (-> obj target)))
+                    ;; force
+                    (= option 'force)
+                    )
+                )
+            ;; and in range
+            (< dist (-> obj max-dist))
+            )
+      ;; set mode, if we aren't in one
+      (if (= (-> obj mode) (joint-mod-handler-mode reset))
+          (set-mode! obj (joint-mod-handler-mode look-at))
+          )
+      ;; set our target.
+      (set! (-> obj target quad) (-> target-trans quad))
+      ;; activate us.
+      (set! (-> obj blend) 1.0)
+      (set! (-> obj shutting-down?) #f)
+      )
+    )
+  (none)
+  )
+
+(defun joint-mod-look-at-handler ((csp cspace) (xform transformq))
+  "Update bone transforms for look-at"
+  (local-vars (f1-12 float) (sv-48 vector) (sv-52 vector) (sv-56 vector))
+  (let ((gp-0 (the-as joint-mod (-> csp param1))))
+    (cspace<-parented-transformq-joint! csp xform)
+    (set!
+     sv-48
+     (vector-normalize-copy!
+      (new 'stack-no-clear 'vector)
+      (-> gp-0 process node-list data 0 bone transform vector 1)
+      1.0
+      )
+     )
+    (set!
+     sv-52
+     (vector-normalize! (-> csp bone transform vector (-> gp-0 nose)) 1.0)
+     )
+    (set!
+     sv-56
+     (vector-normalize!
+      (vector-!
+       (new 'stack-no-clear 'vector)
+       (-> gp-0 target)
+       (-> csp bone position)
+       )
+      1.0
+      )
+     )
+    (let* ((f30-0 (vector-y-angle sv-52))
+           (a0-8 (vector-flatten! (new-stack-vector0) sv-56 sv-48))
+           (f0-0 (vector-y-angle a0-8))
+           (f0-1 (deg-diff f30-0 f0-0))
+           )
+      (if (< (-> gp-0 ignore-angle) (fabs f0-1))
+          (set! f0-1 0.0)
+          )
+      (let
+          ((f30-1
+            (fmax
+             (fmin
+              (* (* f0-1 (-> gp-0 blend)) (-> gp-0 flex-blend))
+              (-> gp-0 twist-max y)
+              )
+             (- (-> gp-0 twist-max y))
+             )
+             )
+           )
+        (if (and (-> gp-0 shutting-down?) (= (-> gp-0 twist y) f30-1))
+            (set-mode! gp-0 (joint-mod-handler-mode reset))
+            )
+        (set!
+         (-> gp-0 twist y)
+         (deg-seek
+          (-> gp-0 twist y)
+          f30-1
+          (* 0.1 (fabs (deg-diff f30-1 (-> gp-0 twist y))))
+          )
+         )
+        )
+      )
+    (let ((v1-15 (-> gp-0 up)))
+      (cond
+        ((zero? v1-15)
+         (quaternion-rotate-x! (-> xform quat) (-> xform quat) (-> gp-0 twist y))
+         )
+        ((= v1-15 1)
+         (quaternion-rotate-local-y!
+          (-> xform quat)
+          (-> xform quat)
+          (-> gp-0 twist y)
+          )
+         )
+        (else
+         (quaternion-rotate-z! (-> xform quat) (-> xform quat) (-> gp-0 twist y))
+         )
+        )
+      )
+    (let*
+        ((s3-1
+          (vector-normalize-copy!
+           (new 'stack-no-clear 'vector)
+           (the-as vector (-> gp-0 process node-list data 0 bone transform))
+           1.0
+           )
+           )
+         (f30-2 (vector-x-angle sv-52))
+         (s3-2 (vector-flatten! (new-stack-vector0) sv-56 s3-1))
+         (f0-15 (vector-x-angle s3-2))
+         (f0-21
+          (fmax
+           (fmin
+            (* (* (- (deg-diff f30-2 f0-15)) (-> gp-0 blend)) (-> gp-0 flex-blend))
+            (-> gp-0 twist-max x)
+            )
+           (- (-> gp-0 twist-max x))
+           )
+           )
+         )
+      (let* ((v1-22 sv-52))
+        (set! f1-12 (vector-dot s3-2 v1-22))
+        )
+      (if (< f1-12 0.1)
+          (set! f0-21 0.0)
+          )
+      (set!
+       (-> gp-0 twist x)
+       (deg-seek
+        (-> gp-0 twist x)
+        f0-21
+        (* 0.1 (fabs (deg-diff f0-21 (-> gp-0 twist x))))
+        )
+       )
+      )
+    (let ((v1-27 (-> gp-0 ear)))
+      (cond
+        ((zero? v1-27)
+         (quaternion-rotate-x! (-> xform quat) (-> xform quat) (-> gp-0 twist x))
+         )
+        ((= v1-27 1)
+         (quaternion-rotate-local-y! (-> xform quat) (-> xform quat) (-> gp-0 twist x))
+         )
+        (else
+         (quaternion-rotate-z! (-> xform quat) (-> xform quat) (-> gp-0 twist x))
+         )
+        )
+      )
+    (cspace<-parented-transformq-joint! csp xform)
+    (if (and (= (-> gp-0 process type) target) (!= (-> gp-0 blend) 0.0))
+        (add-debug-text-sphere
+         *display-target-marks*
+         (bucket-id debug-no-zbuf)
+         (-> gp-0 target)
+         819.2
+         "look"
+         (new 'static 'rgba :r #xff :g #xff :a #x80)
+         )
+        )
+    )
+  (none)
+  )
+
+(defun joint-mod-world-look-at-handler ((arg0 cspace) (arg1 transformq))
+  (local-vars (f1-14 float) (sv-48 vector) (sv-52 vector) (sv-56 vector))
+  (let ((gp-0 (the-as joint-mod (-> arg0 param1))))
+    (let ((s5-0 (-> arg0 bone transform)))
+      (cspace<-parented-transformq-joint! arg0 arg1)
+      (set!
+       sv-48
+       (vector-normalize-copy!
+        (new 'stack-no-clear 'vector)
+        (-> gp-0 process node-list data 0 bone transform vector 1)
+        1.0
+        )
+       )
+      (set! sv-52 (vector-normalize! (-> s5-0 vector (-> gp-0 nose)) 1.0))
+      (set!
+       sv-56
+       (vector-normalize!
+        (vector-!
+         (new 'stack-no-clear 'vector)
+         (-> gp-0 target)
+         (-> s5-0 vector 3)
+         )
+        1.0
+        )
+       )
+      (let* ((f30-0 (vector-y-angle sv-52))
+             (a0-6 (vector-flatten! (new-stack-vector0) sv-56 sv-48))
+             (f0-0 (vector-y-angle a0-6))
+             (f0-1 (deg-diff f30-0 f0-0))
+             )
+        (if (< (-> gp-0 ignore-angle) (fabs f0-1))
+            (set! f0-1 0.0)
+            )
+        (let
+            ((f0-5
+              (fmax
+               (fmin
+                (* (* f0-1 (-> gp-0 blend)) (-> gp-0 flex-blend))
+                (-> gp-0 twist-max y)
+                )
+               (- (-> gp-0 twist-max y))
+               )
+               )
+             )
+          (set!
+           (-> gp-0 twist y)
+           (deg-seek
+            (-> gp-0 twist y)
+            f0-5
+            (fmax 1.0 (* 0.1 (fabs (deg-diff f0-5 (-> gp-0 twist y)))))
+            )
+           )
+          )
+        )
+      (when (!= (-> gp-0 twist y) 0.0)
+        (let
+            ((a2-3 (matrix-rotate-y! (new 'stack-no-clear 'matrix) (-> gp-0 twist y)))
+             (s4-2 (-> s5-0 vector 3 quad))
+             )
+          (matrix*! s5-0 s5-0 a2-3)
+          (set! (-> s5-0 vector 3 quad) s4-2)
+          )
+        )
+      (let*
+          ((s4-3
+            (vector-normalize-copy!
+             (new 'stack-no-clear 'vector)
+             (the-as vector (-> gp-0 process node-list data 0 bone transform))
+             1.0
+             )
+             )
+           (f30-2 (vector-x-angle sv-52))
+           (s4-4 (vector-flatten! (new-stack-vector0) sv-56 s4-3))
+           (f0-14 (vector-x-angle s4-4))
+           (f0-20
+            (fmax
+             (fmin
+              (* (* (- (deg-diff f30-2 f0-14)) (-> gp-0 blend)) (-> gp-0 flex-blend))
+              (-> gp-0 twist-max x)
+              )
+             (- (-> gp-0 twist-max x))
+             )
+             )
+           )
+        (let* ((v1-14 sv-52))
+          (set! f1-14 (vector-dot s4-4 v1-14))
+          )
+        (if (< f1-14 0.1)
+            (set! f0-20 0.0)
+            )
+        (set!
+         (-> gp-0 twist x)
+         (deg-seek
+          (-> gp-0 twist x)
+          f0-20
+          (fmax 1.0 (* 0.1 (fabs (deg-diff f0-20 (-> gp-0 twist x)))))
+          )
+         )
+        )
+      (when (!= (-> gp-0 twist x) 0.0)
+        (let* ((v1-20 (-> gp-0 ear))
+               (a1-17 ((cond
+                         ((zero? v1-20)
+                          matrix-rotate-x!
+                          )
+                         ((= v1-20 1)
+                          matrix-rotate-y!
+                          )
+                         (else
+                          matrix-rotate-z!
+                          )
+                         )
+                       (new 'stack-no-clear 'matrix) (-> gp-0 twist x)
+                       )
+                 )
+               )
+          (matrix*! s5-0 a1-17 s5-0)
+          )
+        )
+      )
+    (if (and (= (-> gp-0 process type) target) (!= (-> gp-0 blend) 0.0))
+        (add-debug-text-sphere
+         *display-target-marks*
+         (bucket-id debug-no-zbuf)
+         (-> gp-0 target)
+         819.2
+         "look"
+         (new 'static 'rgba :r #xff :g #xff :a #x80)
+         )
+        )
+    )
+  (let ((v0-22 0))
+    )
+  (none)
+  )
+
+(defun joint-mod-rotate-handler ((arg0 cspace) (arg1 transformq))
+  (let ((s4-0 (the-as joint-mod (-> arg0 param1)))
+        (s3-0 (new 'static 'inline-array vector 3
+                   (new 'static 'vector :x 1.0 :w 1.0)
+                   (new 'static 'vector :y 1.0 :w 1.0)
+                   (new 'static 'vector :z 1.0 :w 1.0)
+                   )
+          )
+        )
+    (let* ((v1-2 (-> s3-0 (-> s4-0 ear)))
+           (a1-2 (quaternion-axis-angle!
+                  (new 'stack-no-clear 'quaternion)
+                  (-> v1-2 x)
+                  (-> v1-2 y)
+                  (-> v1-2 z)
+                  (* (* (-> s4-0 twist x) (-> s4-0 blend)) (-> s4-0 flex-blend))
+                  )
+             )
+           )
+      (quaternion-normalize! (quaternion*! (-> arg1 quat) a1-2 (-> arg1 quat)))
+      )
+    (let* ((v1-6 (-> s3-0 (-> s4-0 up)))
+           (a1-4 (quaternion-axis-angle!
+                  (new 'stack-no-clear 'quaternion)
+                  (-> v1-6 x)
+                  (-> v1-6 y)
+                  (-> v1-6 z)
+                  (* (* (-> s4-0 twist y) (-> s4-0 blend)) (-> s4-0 flex-blend))
+                  )
+             )
+           )
+      (quaternion-normalize! (quaternion*! (-> arg1 quat) a1-4 (-> arg1 quat)))
+      )
+    (let* ((v1-10 (-> s3-0 (-> s4-0 nose)))
+           (a1-6 (quaternion-axis-angle!
+                  (new 'stack-no-clear 'quaternion)
+                  (-> v1-10 x)
+                  (-> v1-10 y)
+                  (-> v1-10 z)
+                  (* (* (-> s4-0 twist z) (-> s4-0 blend)) (-> s4-0 flex-blend))
+                  )
+             )
+           )
+      (quaternion-normalize! (quaternion*! (-> arg1 quat) a1-6 (-> arg1 quat)))
+      )
+    )
+  (cspace<-parented-transformq-joint! arg0 arg1)
+  (none)
+  )
+
+(defun joint-mod-joint-set-handler ((arg0 cspace) (arg1 transformq))
+  (let ((s4-0 (the-as joint-mod (-> arg0 param1))))
+    (set! (-> arg1 trans quad) (-> s4-0 trans quad))
+    (quaternion-copy! (-> arg1 quat) (-> s4-0 quat))
+    (set! (-> arg1 scale quad) (-> s4-0 scale quad))
+    )
+  (cspace<-parented-transformq-joint! arg0 arg1)
+  (let ((v0-2 0))
+    )
+  (none)
+  )
+
+;; todo vector+!
+(defun joint-mod-joint-set*-handler ((arg0 cspace) (arg1 transformq))
+  (let ((s5-0 (the-as joint-mod (-> arg0 param1))))
+    (vector+! (-> arg1 trans) (-> arg1 trans) (-> s5-0 trans))
+    (quaternion-normalize!
+     (quaternion*! (-> arg1 quat) (-> arg1 quat) (-> s5-0 quat))
+     )
+    (vector*! (-> arg1 scale) (-> arg1 scale) (-> s5-0 scale))
+    (cspace<-parented-transformq-joint! arg0 arg1)
+    (if (-> s5-0 max-dist)
+        (set-vector! (-> arg0 bone scale) 1.0 1.0 1.0 1.0)
+        )
+    )
+  (none)
+  )
+
+(define *joint-axis-vectors*
+  (new 'static 'inline-array vector 6
+   (new 'static 'vector :x 1.0 :w 1.0)
+   (new 'static 'vector :y 1.0 :w 1.0)
+   (new 'static 'vector :z 1.0 :w 1.0)
+   (new 'static 'vector :x -1.0 :w 1.0)
+   (new 'static 'vector :y -1.0 :w 1.0)
+   (new 'static 'vector :z -1.0 :w 1.0)
+   )
+  )
+
+;; These joint-mod types contain a bit of extra state required for special types of joint-mods
+(deftype joint-mod-wheel (basic)
+  ((last-position vector           :inline :offset-assert 16)
+   (angle         float                    :offset-assert 32)
+   (process       process-drawable         :offset-assert 36)
+   (wheel-radius  float                    :offset-assert 40)
+   (wheel-axis    int8                     :offset-assert 44)
+   )
+  :method-count-assert 9
+  :size-assert         #x2d
+  :flag-assert         #x90000002d
+  (:methods
+    (new (symbol type process-drawable int float int) _type_ 0)
+    )
+  )
+
+(defun joint-mod-wheel-callback ((arg0 cspace) (arg1 transformq))
+  (let ((s4-0 (the-as joint-mod-wheel (-> arg0 param1))))
+   (let ((v1-1 (-> s4-0 process root))
+         (s1-0 (new-stack-vector0))
+         (s3-0 (new-stack-vector0))
+         (s2-0 (new-stack-vector0))
+         )
+    0.0
+    0.0
+    (vector-z-quaternion! s2-0 (-> v1-1 quat))
+    (vector<-cspace! s1-0 arg0)
+    (vector-! s3-0 s1-0 (-> s4-0 last-position))
+    (set! (-> s4-0 last-position quad) (-> s1-0 quad))
+    (let* ((f0-3 (vector-dot s2-0 s3-0))
+           (f1-0 65536.0)
+           (f2-1 (* 6.28318 (-> s4-0 wheel-radius)))
+           (f0-4 (* (* f1-0 (/ 1.0 f2-1)) f0-3))
+           )
+     (+! (-> s4-0 angle) f0-4)
+     )
+    )
+   (quaternion-vector-angle!
+    (-> arg1 quat)
+    (-> *joint-axis-vectors* (-> s4-0 wheel-axis))
+    (-> s4-0 angle)
+    )
+   )
+  (cspace<-parented-transformq-joint! arg0 arg1)
+  (none)
+  )
+
+(defmethod new joint-mod-wheel ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 float) (arg3 int))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 process) arg0)
+    (set! (-> v0-0 wheel-radius) arg2)
+    (set! (-> v0-0 wheel-axis) arg3)
+    (set! (-> v0-0 angle) 0.0)
+    (set-vector! (-> v0-0 last-position) 0.0 0.0 0.0 1.0)
+    (let ((v1-5 (-> (-> arg0 node-list) data arg1)))
+      (set! (-> v1-5 param0) joint-mod-wheel-callback)
+      (set! (-> v1-5 param1) v0-0)
+      )
+    v0-0
+    )
+  )
+
+(deftype joint-mod-set-local (basic)
+  ((transform       transformq :inline :offset-assert 16)
+   (set-rotation    symbol             :offset-assert 64)
+   (set-scale       symbol             :offset-assert 68)
+   (set-translation symbol             :offset-assert 72)
+   (enable          symbol             :offset-assert 76)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  (:methods
+   (new (symbol type process-drawable int symbol symbol symbol) _type_ 0)
+   )
+  )
+
+
+(defun joint-mod-set-local-callback ((arg0 cspace) (arg1 transformq))
+  (let ((v1-0 (the-as joint-mod-set-local (-> arg0 param1))))
+    (cond
+      ((-> v1-0 enable)
+       (if (not (-> v1-0 set-translation))
+           (set! (-> v1-0 transform trans quad) (-> arg1 trans quad))
+           )
+       (if (not (-> v1-0 set-rotation))
+           (set! (-> v1-0 transform quat vec quad) (-> arg1 quat vec quad))
+           )
+       (if (not (-> v1-0 set-scale))
+           (set! (-> v1-0 transform scale quad) (-> arg1 scale quad))
+           )
+       (cspace<-parented-transformq-joint! arg0 (-> v1-0 transform))
+       )
+      (else
+       (cspace<-parented-transformq-joint! arg0 arg1)
+       )
+      )
+    )
+  (none)
+  )
+
+(defmethod new joint-mod-set-local ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 symbol) (arg4 symbol))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 set-translation) arg2)
+    (set! (-> v0-0 set-rotation) arg3)
+    (set! (-> v0-0 set-scale) arg4)
+    (set! (-> v0-0 enable) #t)
+    (set! (-> v0-0 transform trans quad) (-> *null-vector* quad))
+    (set! (-> v0-0 transform quat vec quad) (-> *null-vector* quad))
+    (set! (-> v0-0 transform scale quad) (-> *identity-vector* quad))
+    (let ((v1-8 (-> arg0 node-list data arg1)))
+      (set! (-> v1-8 param0) joint-mod-set-local-callback)
+      (set! (-> v1-8 param1) v0-0)
+      )
+    v0-0
+    )
+  )
+
+(deftype joint-mod-set-world (basic)
+  ((transform  transformq :inline :offset-assert 16)
+   (node-index int32              :offset-assert 64)
+   (enable     basic              :offset-assert 68)
+   )
+  :method-count-assert 9
+  :size-assert         #x48
+  :flag-assert         #x900000048
+  (:methods
+    (new (symbol type process-drawable int basic) _type_ 0)
+    )
+  )
+
+(defun joint-mod-set-world-callback ((arg0 cspace) (arg1 transformq))
+  (let ((v1-0 (the-as joint-mod-set-world (-> arg0 param1))))
+    (if (-> v1-0 enable)
+        (cspace<-transformq! arg0 (-> v1-0 transform))
+        (cspace<-parented-transformq-joint! arg0 arg1)
+        )
+    )
+  (none)
+  )
+
+(defmethod new joint-mod-set-world ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 basic))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 node-index) arg1)
+    (set! (-> v0-0 enable) arg2)
+    (set! (-> v0-0 transform trans quad) (-> *null-vector* quad))
+    (set! (-> v0-0 transform quat vec quad) (-> *null-vector* quad))
+    (set! (-> v0-0 transform scale quad) (-> *identity-vector* quad))
+    (let ((v1-7 (-> arg0 node-list data arg1)))
+      (set! (-> v1-7 param0) joint-mod-set-world-callback)
+      (set! (-> v1-7 param1) v0-0)
+      )
+    v0-0
+    )
+  )
+
+(deftype joint-mod-blend-local (basic)
+  ((transform       transformq :inline :offset-assert 16)
+   (blend-transform transformq :inline :offset-assert 64)
+   (node-index      int32              :offset-assert 112)
+   (blend           float              :offset-assert 116)
+   (enable          basic              :offset-assert 120)
+   )
+  :method-count-assert 9
+  :size-assert         #x7c
+  :flag-assert         #x90000007c
+  (:methods
+   (new (symbol type process-drawable int basic) _type_ 0)
+   )
+  )
+
+(defun joint-mod-blend-local-callback ((arg0 cspace) (arg1 transformq))
+  (let ((gp-0 (the-as joint-mod-blend-local (-> arg0 param1))))
+    (cond
+      ((-> gp-0 enable)
+       (vector-lerp!
+        (the-as vector (-> gp-0 blend-transform))
+        (-> arg1 trans)
+        (the-as vector (-> gp-0 transform))
+        (-> gp-0 blend)
+        )
+       (vector-lerp!
+        (-> gp-0 blend-transform scale)
+        (-> arg1 scale)
+        (-> gp-0 transform scale)
+        (-> gp-0 blend)
+        )
+       (quaternion-slerp!
+        (-> gp-0 blend-transform quat)
+        (-> arg1 quat)
+        (-> gp-0 transform quat)
+        (-> gp-0 blend)
+        )
+       (cspace<-parented-transformq-joint! arg0 (-> gp-0 blend-transform))
+       )
+      (else
+       (cspace<-parented-transformq-joint! arg0 arg1)
+       )
+      )
+    )
+  (none)
+  )
+
+(defmethod new joint-mod-blend-local ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 basic))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 node-index) arg1)
+    (set! (-> v0-0 enable) arg2)
+    (set! (-> v0-0 blend) 0.0)
+    (set! (-> v0-0 transform trans quad) (-> *null-vector* quad))
+    (set! (-> v0-0 transform quat vec quad) (-> *null-vector* quad))
+    (set! (-> v0-0 transform scale quad) (-> *identity-vector* quad))
+    (let ((v1-7 (-> arg0 node-list data arg1)))
+      (set! (-> v1-7 param0) joint-mod-blend-local-callback)
+      (set! (-> v1-7 param1) v0-0)
+      )
+    v0-0
+    )
+  )
+
+(deftype joint-mod-spinner (basic)
+  ((spin-axis vector :inline :offset-assert 16)
+   (angle     float          :offset-assert 32)
+   (spin-rate float          :offset-assert 36)
+   (enable    basic          :offset-assert 40)
+   )
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  (:methods
+    (new (symbol type process-drawable int vector float) _type_ 0)
+    )
+  )
+
+(defun joint-mod-spinner-callback ((arg0 cspace) (arg1 transformq))
+  (let ((gp-0 (the-as joint-mod-spinner (-> arg0 param1))))
+    (when (-> gp-0 enable)
+      (let ((f30-0 (+ (-> gp-0 angle)
+                      (* (-> gp-0 spin-rate) (-> *display* seconds-per-frame))
+                      )
+              )
+            )
+        (if (< 32768.0 f30-0)
+            (set! f30-0 (+ -65536.0 f30-0))
+            )
+        (if (< f30-0 -32768.0)
+            (set! f30-0 (+ 65536.0 f30-0))
+            )
+        (quaternion-vector-angle! (-> arg1 quat) (-> gp-0 spin-axis) f30-0)
+        (set! (-> gp-0 angle) f30-0)
+        )
+      )
+    )
+  (cspace<-parented-transformq-joint! arg0 arg1)
+  (none)
+  )
+
+(defmethod new joint-mod-spinner ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 vector) (arg3 float))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (let ((v1-2 (-> v0-0 spin-axis)))
+      (set! (-> v1-2 quad) (-> arg2 quad))
+      )
+    (set! (-> v0-0 spin-rate) arg3)
+    (set! (-> v0-0 enable) #t)
+    (set! (-> v0-0 angle) 0.0)
+    (let ((v1-6 (-> (-> arg0 node-list) data arg1)))
+      (set! (-> v1-6 param0) joint-mod-spinner-callback)
+      (set! (-> v1-6 param1) v0-0)
+      )
+    v0-0
+    )
+  )
+

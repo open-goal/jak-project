@@ -1,0 +1,183 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: trail-h.gc
+;; name in dgo: trail-h
+;; dgos: ENGINE, GAME
+
+(defenum trail-node-flag
+  :type uint8
+  :bitfield #t
+  (tnf0 0) ;; unused??
+  (tnf1 1)
+  )
+
+(defenum conn-flag
+  :type uint8
+  :bitfield #t
+  (cf0 0)
+  (cf1 1)
+  (cf2 2)
+  (cf3 3)
+  )
+
+(declare-type trail-graph basic)
+
+;; DECOMP BEGINS
+
+(deftype trail-node (structure)
+  ((next-id         int16            :offset-assert   0)
+   (prev-id         int16            :offset-assert   2)
+   (parent-id       int16            :offset-assert   4)
+   (x               int16            :offset-assert   6)
+   (z               int16            :offset-assert   8)
+   (first-conn      uint16           :offset-assert  10)
+   (cost-from-start uint16           :offset-assert  12)
+   (cost-to-goal    uint16           :offset-assert  14)
+   (flags           trail-node-flag  :offset-assert  16)
+   (conn-count      uint8            :offset-assert  17)
+   )
+  :pack-me
+  :method-count-assert 12
+  :size-assert         #x12
+  :flag-assert         #xc00000012
+  (:methods
+    (get-dist-score (_type_ vector) uint 9)
+    (debug-draw (_type_ int) none 10)
+    (get-position (_type_ vector) vector 11)
+    )
+  )
+
+
+(deftype trail-visgroup (structure)
+  ((first-node uint16  :offset-assert   0)
+   (node-count uint8   :offset-assert   2)
+   (pad        uint8   :offset-assert   3)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+
+(deftype trail-conn (structure)
+  ((head-id     uint16     :offset-assert   0)
+   (tail-id     uint16     :offset-assert   2)
+   (flags       conn-flag  :offset-assert   4)
+   (visgroup-id uint8      :offset-assert   5)
+   (cost        uint16     :offset-assert   6)
+   )
+  :pack-me
+  :method-count-assert 10
+  :size-assert         #x8
+  :flag-assert         #xa00000008
+  (:methods
+    (debug-draw (_type_ trail-graph int) none 9)
+    )
+  )
+
+
+(deftype trail-conn-hash-cell (structure)
+  ((first-conn uint16  :offset-assert   0)
+   (conn-count uint8   :offset-assert   2)
+   (pad        uint8   :offset-assert   3)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+
+(deftype trail-conn-search (structure)
+  ((best-conn-id         int32                    :offset-assert   0)
+   (best-dist            float                    :offset-assert   4)
+   (src-pos              vector                   :offset-assert   8)
+   (conn-pos             vector                   :offset-assert  12)
+   (debug-cells-searched int32                    :offset-assert  16)
+   (debug-conns-searched int32                    :offset-assert  20)
+   (bounds               bounding-box4w :inline   :offset-assert  32)
+   (cell-quads           qword          2 :inline :offset-assert  64)
+   (conn-quads           qword          7 :inline :offset-assert  96)
+   (cell-bits            vector16ub     2 :inline :offset         64)
+   )
+  :method-count-assert 9
+  :size-assert         #xd0
+  :flag-assert         #x9000000d0
+  )
+
+
+(deftype trail-conn-hash (basic)
+  ((cell-width meters                                      :offset-assert   4)
+   (origin     vector                              :inline :offset-assert  16)
+   (cell       (inline-array trail-conn-hash-cell)         :offset-assert  32)
+   (conn-ids   (pointer uint16)                            :offset-assert  36)
+   )
+  :method-count-assert 9
+  :size-assert         #x28
+  :flag-assert         #x900000028
+  )
+
+
+(deftype trail-cached-search-info (structure)
+  ((goal-conn-id  int16          :offset-assert   0)
+   (orig-goal-pos vector :inline :offset-assert  16)
+   (conn-goal-pos vector :inline :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+
+(deftype trail-graph (basic)
+  ((mode           uint8                                         :offset-assert   4)
+   (search-id      uint32                                        :offset-assert   8)
+   (open-head-id   int16                                         :offset-assert  12)
+   (goal-conn-id   int16                                         :offset-assert  14)
+   (goal-node-id   int16                                         :offset-assert  16)
+   (node-count     uint16                                        :offset-assert  18)
+   (conn-count     uint16                                        :offset-assert  20)
+   (conn-mask      uint8                                         :offset-assert  22)
+   (node           (inline-array trail-node)                     :offset-assert  24)
+   (conn           (inline-array trail-conn)                     :offset-assert  28)
+   (conn-ids       (pointer uint16)                              :offset-assert  32)
+   (visgroup       (inline-array trail-conn-hash-cell)           :offset-assert  36)
+   (visnode-ids    (pointer uint16)                              :offset-assert  40)
+   (conn-hash      trail-conn-hash                               :offset-assert  44)
+   (orig-start-pos vector                              :inline   :offset-assert  48)
+   (orig-goal-pos  vector                              :inline   :offset-assert  64)
+   (conn-start-pos vector                              :inline   :offset-assert  80)
+   (conn-goal-pos  vector                              :inline   :offset-assert  96)
+   (open-quads     qword                               6 :inline :offset-assert 112)
+   (closed-quads   qword                               6 :inline :offset-assert 208)
+   )
+  :method-count-assert 29
+  :size-assert         #x130
+  :flag-assert         #x1d00000130
+  (:methods
+    (trail-graph-method-9 (_type_ int) none 9)
+    (trail-graph-method-10 (_type_ int) none 10)
+    (trail-graph-method-11 (_type_ int int) trail-node 11)
+    (debug-draw (_type_) none 12)
+    (debug-draw-cell (_type_ int) none 13)
+    (debug-draw-path (_type_ int (pointer uint16) vector vector rgba float) symbol 14)
+    (do-path (_type_ vector vector) int 15)
+    (trail-graph-method-16 () none 16)
+    (get-node-location-by-id (_type_ uint vector) vector 17)
+    (get-path-to-root (_type_ (pointer uint16) int (pointer int32) (pointer float)) int 18)
+    (trail-graph-method-19 (_type_ int int) symbol 19)
+    (try-initialize (_type_) symbol 20)
+    (update-node-flags-for-conn (_type_ int trail-node-flag trail-node-flag) none 21)
+    (trail-graph-method-22 (_type_ int) none 22)
+    (reset-search-state (_type_) none 23)
+    (get-next-to-explore (_type_) int 24)
+    (trail-graph-method-25 (_type_ trail-conn-search int int) none 25)
+    (do-search! (_type_ vector vector trail-cached-search-info) none 26)
+    (do-some-work (_type_) int 27)
+    (run-until-done-or-timeout (_type_ int) none 28)
+    )
+  )
+
+
+(define *trail-graph* (the-as trail-graph #f))

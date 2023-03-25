@@ -3,6 +3,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+
 #include "common/common_types.h"
 #include "common/util/Assert.h"
 
@@ -153,6 +154,17 @@ class Serializer {
       vec->resize(load<size_t>());
     }
     from_raw_data(vec->data(), sizeof(T) * vec->size());
+  }
+
+  void from_string_vector(std::vector<std::string>* vec) {
+    if (is_saving()) {
+      save<size_t>(vec->size());
+    } else {
+      vec->resize(load<size_t>());
+    }
+    for (auto& str : *vec) {
+      from_str(&str);
+    }
   }
 
   /*!

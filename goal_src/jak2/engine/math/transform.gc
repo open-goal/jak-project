@@ -1,0 +1,80 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: transform.gc
+;; name in dgo: transform
+;; dgos: ENGINE, GAME
+
+;; DECOMP BEGINS
+
+(defmethod print transform ((obj transform))
+  "Print a transform."
+  (format #t "#<transform @ #x~X~%" obj)
+  (format #t "~T~Ttrans:~F ~F ~F ~F ~%" (-> obj trans x) (-> obj trans y) (-> obj trans z) (-> obj trans w))
+  (format #t "~T~Trot:  ~F ~F ~F ~F ~%" (-> obj rot x) (-> obj rot y) (-> obj rot z) (-> obj rot w))
+  (format #t "~T~Tscale:~F ~F ~F ~F>" (-> obj scale x) (-> obj scale y) (-> obj scale z) (-> obj scale w))
+  obj
+  )
+
+(defmethod new trs ((allocation symbol) (type-to-make type))
+  "Allocate a new transform and set to identity."
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 trans w) 1.0)
+    (set! (-> gp-0 rot w) 1.0)
+    (vector-identity! (-> gp-0 scale))
+    gp-0
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; transform utilities
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; these functions are unused and possibly extremely old.
+;; they aren't very efficient, and have the destination as the 2nd argument,
+;; which differens from almost all other GOAL code.
+
+(defun transform-matrix-calc! ((arg0 transform) (arg1 matrix))
+  "Convert a transform to matrix. Not efficient, and the output is the second arg."
+  (let ((s4-0 (new-stack-matrix0))
+        (s3-0 (new-stack-matrix0))
+        )
+    (matrix-identity! arg1)
+    (matrix-translate! arg1 (-> arg0 trans))
+    (matrix-rotate-y! s4-0 (-> arg0 rot y))
+    (matrix*! s3-0 s4-0 arg1)
+    (matrix-rotate-x! s4-0 (-> arg0 rot x))
+    (matrix*! arg1 s4-0 s3-0)
+    (matrix-rotate-z! s4-0 (-> arg0 rot z))
+    (matrix*! s3-0 s4-0 arg1)
+    (matrix-scale! s4-0 (-> arg0 scale))
+    (matrix*! arg1 s4-0 s3-0)
+    )
+  )
+
+(defun transform-matrix-parent-calc! ((arg0 transform) (arg1 matrix) (arg2 vector))
+  "Convert a transform to a matrix, applying an inverse scaling."
+  (let ((s4-0 (new-stack-matrix0))
+        (s3-0 (new-stack-matrix0))
+        )
+    (matrix-identity! s3-0)
+    (matrix-translate! s3-0 (-> arg0 trans))
+    (matrix-inv-scale! s4-0 arg2)
+    (matrix*! arg1 s4-0 s3-0)
+    (matrix-rotate-y! s4-0 (-> arg0 rot y))
+    (matrix*! s3-0 s4-0 arg1)
+    (matrix-rotate-x! s4-0 (-> arg0 rot x))
+    (matrix*! arg1 s4-0 s3-0)
+    (matrix-rotate-z! s4-0 (-> arg0 rot z))
+    (matrix*! s3-0 s4-0 arg1)
+    (matrix-scale! s4-0 (-> arg0 scale))
+    (matrix*! arg1 s4-0 s3-0)
+    )
+  )
+
+(defun trs-matrix-calc! ((arg0 trs) (arg1 matrix))
+  "Convert a trs to a matrix"
+  ;; this relies on the fact that trs and transform both have the same memory layout.
+  (transform-matrix-calc! (the-as transform (-> arg0 trans)) arg1)
+  )
+

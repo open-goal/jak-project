@@ -1,0 +1,222 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function truncate
+(defun truncate ((arg0 float))
+  (the float (the int arg0))
+  )
+
+;; definition for function integral?
+(defun integral? ((arg0 float))
+  (= (the float (the int arg0)) arg0)
+  )
+
+;; definition for function fractional-part
+(defun fractional-part ((arg0 float))
+  (- arg0 (the float (the int arg0)))
+  )
+
+;; definition of type rgba
+(deftype rgba (uint32)
+  ((r uint8 :offset   0 :size   8)
+   (g uint8 :offset   8 :size   8)
+   (b uint8 :offset  16 :size   8)
+   (a uint8 :offset  24 :size   8)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; definition of type xyzw
+(deftype xyzw (uint128)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition of type xyzwh
+(deftype xyzwh (uint128)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for function log2
+(defun log2 ((arg0 int))
+  (+ (sar (the-as int (the float arg0)) 23) -127)
+  )
+
+;; definition for function seek
+(defun seek ((x float) (target float) (diff float))
+  (let ((err (- target x)))
+    (cond
+      ((>= diff (fabs err))
+       target
+       )
+      ((>= err 0.0)
+       (+ x diff)
+       )
+      (else
+        (- x diff)
+        )
+      )
+    )
+  )
+
+;; definition for function lerp
+(defun lerp ((minimum float) (maximum float) (amount float))
+  (+ minimum (* amount (- maximum minimum)))
+  )
+
+;; definition for function lerp-scale
+(defun lerp-scale ((min-out float) (max-out float) (in float) (min-in float) (max-in float))
+  (let ((scale (fmax 0.0 (fmin 1.0 (/ (- in min-in) (- max-in min-in))))))
+    (+ (* (- 1.0 scale) min-out) (* scale max-out))
+    )
+  )
+
+;; definition for function lerp-clamp
+(defun lerp-clamp ((minimum float) (maximum float) (amount float))
+  (cond
+    ((>= 0.0 amount)
+     minimum
+     )
+    ((>= amount 1.0)
+     maximum
+     )
+    (else
+      (+ (* (- 1.0 amount) minimum) (* amount maximum))
+      )
+    )
+  )
+
+;; definition for function seekl
+(defun seekl ((arg0 int) (arg1 int) (arg2 int))
+  (let* ((v1-0 (- arg1 arg0))
+         (a3-0 (abs v1-0))
+         )
+    (cond
+      ((>= arg2 a3-0)
+       arg1
+       )
+      ((>= v1-0 0)
+       (+ arg0 arg2)
+       )
+      (else
+        (- arg0 arg2)
+        )
+      )
+    )
+  )
+
+;; definition for function rand-vu-init
+;; INFO: Return type mismatch int vs float.
+;; ERROR: Unsupported inline assembly instruction kind - [ctc2.i vi_R, a0]
+;; ERROR: Unsupported inline assembly instruction kind - [cfc2.i v0, vi_R]
+(defun rand-vu-init ((arg0 float))
+  (local-vars (v0-0 int))
+  (.ctc2.i vi_R arg0)
+  (.cfc2.i v0-0 vi_R)
+  (the-as float v0-0)
+  )
+
+;; failed to figure out what this is:
+(rand-vu-init 1.418091)
+
+;; definition for function rand-vu
+;; ERROR: Inline assembly instruction marked with TODO - [TODO.VRGET]
+;; ERROR: Inline assembly instruction marked with TODO - [TODO.VRXOR]
+;; ERROR: Inline assembly instruction marked with TODO - [TODO.VRNEXT]
+(defun rand-vu ()
+  (local-vars (v0-0 float))
+  (rlet ((Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (TODO.VRGET vf1)
+    (.sqrt.vf Q vf1 :ftf #b0)
+    (.add.vf vf2 vf0 Q :mask #b1)
+    (TODO.VRXOR vf2)
+    (TODO.VRNEXT vf1)
+    (.sub.w.vf vf1 vf1 vf0)
+    (.mov v0-0 vf1)
+    v0-0
+    )
+  )
+
+;; definition for function rand-vu-nostep
+;; ERROR: Inline assembly instruction marked with TODO - [TODO.VRGET]
+(defun rand-vu-nostep ()
+  (local-vars (v0-0 float))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         )
+    (init-vf0-vector)
+    (TODO.VRGET vf1)
+    (.sub.w.vf vf1 vf1 vf0)
+    (.mov v0-0 vf1)
+    v0-0
+    )
+  )
+
+;; definition for function rand-vu-float-range
+(defun rand-vu-float-range ((arg0 float) (arg1 float))
+  (+ arg0 (* (rand-vu) (- arg1 arg0)))
+  )
+
+;; definition for function rand-vu-percent?
+(defun rand-vu-percent? ((arg0 float))
+  (>= arg0 (rand-vu))
+  )
+
+;; definition for function rand-vu-int-range
+(defun rand-vu-int-range ((first int) (second int))
+  (if (< first second)
+      (set! second (+ second 1))
+      (set! first (+ first 1))
+      )
+  (let ((float-in-range (rand-vu-float-range (the float first) (the float second))))
+    (if (< float-in-range 0.0)
+        (set! float-in-range (+ -1.0 float-in-range))
+        )
+    (the int float-in-range)
+    )
+  )
+
+;; definition for function rand-vu-int-count
+(defun rand-vu-int-count ((arg0 int))
+  (the int (* (rand-vu) (the float arg0)))
+  )
+
+;; definition of type random-generator
+(deftype random-generator (basic)
+  ((seed uint32  :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type random-generator
+(defmethod inspect random-generator ((obj random-generator))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tseed: ~D~%" (-> obj seed))
+  obj
+  )
+
+;; definition for symbol *random-generator*, type random-generator
+(define *random-generator* (new 'global 'random-generator))
+
+;; failed to figure out what this is:
+(set! (-> *random-generator* seed) (the-as uint #x666edd1e))
+
+;; definition for function rand-uint31-gen
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; failed to figure out what this is:
+0

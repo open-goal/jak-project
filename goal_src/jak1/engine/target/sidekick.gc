@@ -1,0 +1,267 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: sidekick.gc
+;; name in dgo: sidekick
+;; dgos: GAME, ENGINE
+
+(load-art-import sidekick)
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/sidekick-ag.gc")
+
+(define *sidekick-remap* '(("run-to-stance-left" "run-to-stance")
+                           ("run-to-stance-loop-left" "run-to-stance-loop")
+                           ("stance-loop-left" "stance-loop")
+                           ("run-to-stance-right" "run-to-stance")
+                           ("run-to-stance-loop-right" "run-to-stance-loop")
+                           ("stance-loop-right" "stance-loop")
+                           ("run-to-stance-up" "run-to-stance")
+                           ("run-to-stance-loop-up" "run-to-stance-loop")
+                           ("stance-loop-up" "stance-loop")
+                           ("run-to-stance-down" "run-to-stance")
+                           ("run-to-stance-loop-down" "run-to-stance-loop")
+                           ("stance-loop-down" "stance-loop")
+                           ("run-right" "run")
+                           ("run-left" "run")
+                           ("walk-right" "walk")
+                           ("walk-left" "walk")
+                           ("edge-grab-stance1" "edge-grab-stance1" "edge-grab-stance1-alt")
+                           ("pole-cycle" "pole-cycle" "pole-cycle2")
+                           )
+        )
+
+(defun cspace<-cspace+quaternion! ((arg0 cspace) (arg1 cspace) (arg2 quaternion))
+  (rlet ((Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s5-0 (-> arg0 bone transform)))
+      (quaternion->matrix s5-0 arg2)
+      (.lvf vf1 (&-> (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0) quad))
+      (.lvf vf2 (&-> (-> arg1 bone) transform vector 3 quad))
+      (.lvf vf3 (&-> s5-0 vector 0 quad))
+      (.lvf vf4 (&-> s5-0 vector 1 quad))
+      (.lvf vf5 (&-> s5-0 vector 2 quad))
+      (.div.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
+      (.wait.vf)
+      (.mul.vf vf2 vf2 Q :mask #b111)
+      (.mov.vf vf2 vf0 :mask #b1000)
+      (.mul.x.vf vf3 vf3 vf1)
+      (.mul.y.vf vf4 vf4 vf1)
+      (.mul.z.vf vf5 vf5 vf1)
+      (.svf (&-> s5-0 vector 3 quad) vf2)
+      (.svf (&-> s5-0 vector 0 quad) vf3)
+      (.svf (&-> s5-0 vector 1 quad) vf4)
+      (.svf (&-> s5-0 vector 2 quad) vf5)
+      s5-0
+      )
+    )
+  )
+
+(defstate sidekick-clone (sidekick)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (local-vars (v0-0 object))
+    (case arg2
+      (('matrix)
+       (case (-> arg3 param 0)
+         (('play-anim)
+          (set! v0-0 (-> self node-list data))
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0) cspace<-cspace+quaternion!)
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param1)
+                (the-as basic (-> self parent-override 0 node-list data))
+                )
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param2)
+                (the-as basic (-> self parent-override 0 control quat))
+                )
+          )
+         (('copy-parent)
+          (set! v0-0 (-> self node-list data))
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0) cspace<-cspace!)
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param1)
+                (the-as basic (-> self parent-override 0 node-list data))
+                )
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param2) #f)
+          )
+         (else
+           (set! v0-0 (-> self node-list data))
+           (set! (-> (the-as (inline-array cspace) v0-0) 0 param0) cspace<-cspace+quaternion!)
+           (set! (-> (the-as (inline-array cspace) v0-0) 0 param1)
+                 (the-as basic (-> self parent-override 0 control unknown-cspace10 parent))
+                 )
+           (set! (-> (the-as (inline-array cspace) v0-0) 0 param2)
+                 (the-as basic (-> self parent-override 0 control quat))
+                 )
+           )
+         )
+       v0-0
+       )
+      (('shadow)
+       (set! v0-0 (-> arg3 param 0))
+       (set! (-> self shadow-in-movie?) (the-as symbol v0-0))
+       v0-0
+       )
+      (('blend-shape)
+       (cond
+         ((-> arg3 param 0)
+          (set! v0-0 (logior (-> self skel status) (janim-status blerc)))
+          (set! (-> self skel status) (the-as janim-status v0-0))
+          )
+         (else
+           (set! v0-0 (logclear (-> self skel status) (janim-status blerc)))
+           (set! (-> self skel status) (the-as janim-status v0-0))
+           )
+         )
+       v0-0
+       )
+      )
+    )
+  :code (the-as (function none :behavior sidekick) looping-code)
+  :post (behavior ()
+    (let ((v1-0 'process-drawable-art-error)
+          (a0-0 (-> self parent-override))
+          )
+      (when (!= (-> (if a0-0
+                        (-> a0-0 0 self-override)
+                        )
+                    next-state
+                    name
+                    )
+                v1-0
+                )
+        (quaternion-copy! (-> self root quat) (-> self parent-override 0 control quat))
+        (set! (-> self anim-seed) (-> self parent-override 0 anim-seed))
+        (set! (-> self draw status) (-> self parent-override 0 draw status))
+        (joint-control-copy! (-> self skel) (-> self parent-override 0 skel))
+        (joint-control-remap!
+          (-> self skel)
+          (-> self draw art-group)
+          (-> self parent-override 0 draw art-group)
+          *sidekick-remap*
+          (the-as int (-> self anim-seed))
+          ""
+          )
+        (let ((v1-22 (-> self parent-override 0 draw color-mult quad)))
+          (set! (-> self draw color-mult quad) v1-22)
+          )
+        (with-pc ;; duh!
+          (when (pc-cheats? (-> *pc-settings* cheats) sidekick-blue)
+              (set! (-> self draw color-mult x) (set! (-> self draw color-mult y) 0.1)))
+          )
+        (let ((v1-26 (-> self parent-override 0 draw color-emissive quad)))
+          (set! (-> self draw color-emissive quad) v1-26)
+          )
+        (set! (-> self draw secondary-interp) (-> self parent-override 0 draw secondary-interp))
+        (if *debug-segment*
+            (add-frame
+              (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+              'draw
+              (new 'static 'rgba :r #x40 :b #x40 :a #x80)
+              )
+            )
+        (do-joint-math! self)
+        (if *debug-segment*
+            (add-frame
+              (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+              'draw
+              (new 'static 'rgba :r #x80 :a #x80)
+              )
+            )
+        (vector<-cspace! (-> self draw origin) (-> self node-list data (-> self draw origin-joint-index)))
+        )
+      )
+    (when *display-sidekick-stats*
+      (format *stdcon* "~%")
+      (debug-print-channels (-> self skel) (the-as symbol *stdcon*))
+      (add-debug-sphere
+        *display-sidekick-stats*
+        (bucket-id debug-no-zbuf)
+        (-> self parent-override 0 control unknown-cspace10 parent bone transform vector 3)
+        409.6
+        (new 'static 'rgba :g #xff :a #x80)
+        )
+      (add-debug-sphere
+        *display-sidekick-stats*
+        (bucket-id debug-no-zbuf)
+        (-> self node-list data 3 bone transform vector 3)
+        409.6
+        (new 'static 'rgba :r #xff :g #xff :a #x80)
+        )
+      (add-debug-sphere
+        *display-sidekick-stats*
+        (bucket-id debug-no-zbuf)
+        (-> self draw origin)
+        409.6
+        (new 'static 'rgba :r #xff :g #x80 :a #x80)
+        )
+      )
+    (set! (-> self draw shadow) (the-as shadow-geo (if (and (movie?) (-> self shadow-in-movie?))
+                                                       sidekick-shadow-mg
+                                                       )
+                                        )
+          )
+    (let ((a0-26 (-> self skel effect)))
+      (if a0-26
+          (TODO-RENAME-9 a0-26)
+          )
+      )
+    (if (logtest? (-> self skel status) (janim-status blerc blerc-done))
+        (merc-blend-shape self)
+        )
+    (if (logtest? (-> self skel status) (janim-status eye-done eye))
+        (merc-eye-anim self)
+        )
+    (none)
+    )
+  )
+
+(defskelgroup *sidekick-sg* sidekick sidekick-lod0-jg -1
+              ((sidekick-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :longest-edge (meters 1)
+              :shadow sidekick-shadow-mg
+              :texture-level 2
+              :sort 1
+              )
+
+(defbehavior init-sidekick sidekick ()
+  (logior! (-> self mask) (process-mask sidekick))
+  (set! (-> self root) (new 'process 'trsqv))
+  (vector-identity! (-> self root scale))
+  (quaternion-identity! (-> self root quat))
+  (initialize-skeleton self *sidekick-sg* '())
+  (set! (-> self draw origin-joint-index) (the-as uint 6))
+  (set! (-> self draw shadow-joint-index) (the-as uint 6))
+  (set! (-> self draw shadow-ctrl) *target-shadow-control*)
+  (logior! (-> self skel status) (janim-status eye))
+
+  (#when PC_PORT
+    ;; daxter can be killed mid-blerc, leaving blerc modifications in the merc data.
+    ;; once sidekick is restarted, the blerc-done flag will be lost, so the modifications will
+    ;; to work around this, just set blerc-done on spawn. it will run blerc with 0's on the
+    ;; first frame when daxter is drawn, clearing blerc data.
+    (logior! (-> self skel status) (janim-status blerc-done))
+    )
+  (let ((v1-14 (-> self node-list data)))
+    (set! (-> v1-14 0 param0) cspace<-cspace+quaternion!)
+    (set! (-> v1-14 0 param1) (the-as basic (-> self parent-override 0 control unknown-cspace10 parent)))
+    (set! (-> v1-14 0 param2) (the-as basic (-> self parent-override 0 control quat)))
+    )
+  (set! (-> self shadow-in-movie?) #t)
+  (go sidekick-clone)
+  (none)
+  )
+
+(defun starts ()
+  (send-event *target* 'sidekick #t)
+  )
+
+
+
+

@@ -1,0 +1,142 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: memory-usage-h.gc
+;; name in dgo: memory-usage-h
+;; dgos: ENGINE, GAME
+
+(defenum mem-usage-id
+    :bitfield #f
+    :type uint32
+    (tfragment         1)
+    (tfragment-base    2)
+    (tfragment-common  3)
+    (tfragment-level0  4)
+    (tfragment-level1  5)
+    (tfragment-color   6)
+    (tfragment-debug   7)
+
+    (tie-fragment      9)
+    (tie-gif          10)
+    (tie-points       11)
+    (tie-colors       12)
+    (tie-draw-points  13)
+    (tie-debug        14)
+
+    (tie-generic      17)
+    (instance-tie     18)
+    (instance-tie-colors0 19)
+    (instance-tie-colors1 20)
+    (instance-tie-colors2 21)
+    (instance-tie-colors3 22)
+    (inst-tie-colors* 23)
+
+    ;; 25-33 is shrub stuff
+
+    ;;
+
+    (entity 43)
+    (camera 44)
+
+    (res 48)
+
+    ;; 50-57 is collision
+
+    (bsp-main          58)
+    (bsp-misc          59)
+    (bsp-node          60)
+    (bsp-leaf-vis-self 61)
+    (bsp-leaf-vis-adj  62)
+
+    (pat          64)
+    (level-code   65)
+    (entity-links 66)
+
+    (joint            67)
+
+    (joint-anim-compressed-control 69)
+    (joint-anim-fixed 70)
+    (joint-anim-frame 71)
+    (subtitle         72)
+    (art-group        73)
+    (art-mesh-anim    74)
+    (art-mesh-geo     75)
+    (art-joint-geo    76)
+    (art-joint-anim   77)
+    (merc-ctrl        78)
+    (joint-anim-drawable 79)
+    (blend-shape      80)
+
+    (texture          82)
+
+    (array            84)
+
+    (unsorted-proc    90)
+    (8k-dead-pool     91)
+    (16k-dead-pool    92)
+    (nk-dead-pool     93)
+    (target-dead-pool 94)
+    (camera-dead-pool 95)
+    (debug-dead-pool  96)
+    (process-active   97)
+    (heap-total       98)
+    (heap-process     99)
+    (heap-header     100)
+    (heap-thread     101)
+    (heap-root       102)
+
+    (heap-draw-control 103)
+    (heap-joint-control 104)
+    (heap-cspace     105)
+    (heap-bone       106)
+    (heap-part       107)
+    (heap-collide-prim 108)
+    (heap-misc       109)
+
+
+    (eye-anim        111)
+    )
+
+(define-extern mem-size (function basic symbol int int))
+
+;; DECOMP BEGINS
+
+;; this file is debug only
+(declare-file (debug))
+
+(deftype memory-usage-info (structure)
+  ((name  string  :offset-assert   0)
+   (count int32   :offset-assert   4)
+   (used  int32   :offset-assert   8)
+   (total int32   :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(deftype memory-usage-block (basic)
+  ((work-bsp basic                         :offset-assert   4)
+   (length   int32                         :offset-assert   8)
+   (data     memory-usage-info 112 :inline :offset-assert  16)
+   )
+  :method-count-assert 12
+  :size-assert         #x710
+  :flag-assert         #xc00000710
+  (:methods
+    (reset! (_type_) _type_ 9)
+    (calculate-total (_type_) int 10)
+    (print-mem-usage (_type_ level object) _type_ 11)
+    )
+  )
+
+
+(define *mem-usage* (new 'debug 'memory-usage-block))
+
+(define *dma-mem-usage* (new 'debug 'memory-usage-block))
+
+(define *temp-mem-usage* (the-as memory-usage-block #f))
+
+
+

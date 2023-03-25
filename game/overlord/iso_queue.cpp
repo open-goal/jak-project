@@ -1,10 +1,14 @@
-#include <cstring>
-#include <cstdio>
-#include "common/log/log.h"
-#include "game/sce/iop.h"
 #include "iso_queue.h"
+
+#include <cstdio>
+#include <cstring>
+
 #include "isocommon.h"
+
+#include "common/log/log.h"
 #include "common/util/Assert.h"
+
+#include "game/sce/iop.h"
 
 using namespace iop;
 
@@ -78,12 +82,11 @@ void InitBuffers() {
   sStrBuffer[N_STR_BUFFERS - 1].header.next = nullptr;
   sFreeStrBuffer = &sStrBuffer[0];
 
-  // TODO - this has options
   SemaParam params;
-  params.attr = 1;
+  params.attr = SA_THPRI;
   params.max_count = 1;
-  params.option = 1;
-  params.init_count = 0;
+  params.init_count = 1;
+  params.option = 0;
   sSema = CreateSema(&params);
 
   if (sSema < 0) {
@@ -160,7 +163,8 @@ void FreeBuffer(IsoBufferHeader* buffer) {
 void DisplayQueue() {
   for (int pri = 0; pri < N_PRIORITIES; pri++) {
     for (int cmd = 0; cmd < (int)gPriStack[pri].n; cmd++) {
-      lg::debug("  PRI {} elt {} {}", pri, cmd, gPriStack[pri].names[cmd]);
+      lg::debug("  PRI {} elt {} {} @ #x{:X}", pri, cmd, gPriStack[pri].names[cmd],
+                (u64)gPriStack[pri].cmds[cmd]);
     }
   }
 }
@@ -177,7 +181,7 @@ u32 QueueMessage(IsoMessage* cmd, int32_t priority, const char* name) {
     gPriStack[priority].names[gPriStack[priority].n] = name;
     gPriStack[priority].n++;
     lg::debug("[OVERLORD] Queue {} ({}/{}), {}", priority, gPriStack[priority].n, PRI_STACK_LENGTH,
-              gPriStack[priority].names[gPriStack[priority].n - 1].c_str());
+              name);
     DisplayQueue();
   } else {
     lg::warn("[OVERLORD ISO QUEUE] Failed to queue!");
@@ -197,24 +201,25 @@ void UnqueueMessage(IsoMessage* cmd) {
 
   // loop over priorities
   for (pri = 0; pri < N_PRIORITIES; pri++) {
-    pse = gPriStack + pri;
+    pse = &gPriStack[pri];
 
     // loop over entries
-    for (idx = 0; idx < gPriStack[pri].n; idx++) {
+    for (idx = 0; idx < pse->n; idx++) {
       if (pse->cmds[idx] == cmd) {
         goto found;
       }
     }
   }
   lg::warn("[OVERLORD ISO QUEUE] Failed to unqueue!");
+  return;
 
 found:
-  ASSERT(gPriStack[pri].cmds[idx] == cmd);
+  ASSERT(pse->cmds[idx] == cmd);
 
   // pop
-  gPriStack[pri].n--;
+  pse->n--;
   // and move other entries up.
-  while (idx < gPriStack[pri].n) {
+  while (idx < pse->n) {
     pse->cmds[idx] = pse->cmds[idx + 1];
     idx++;
   }
@@ -230,8 +235,8 @@ found:
 IsoMessage* GetMessage() {
   // loop over all priorities
   for (int pri = (N_PRIORITIES - 1); pri >= 0; pri--) {
-    auto pse = gPriStack + pri;
-    int idx = gPriStack[pri].n;
+    auto pse = &gPriStack[pri];
+    int idx = pse->n;
     for (idx = idx - 1; idx >= 0; idx--) {
       if (pse->cmds[idx]->fd && pse->cmds[idx]->status == CMD_STATUS_IN_PROGRESS &&
           pse->cmds[idx]->ready_for_data) {
@@ -328,8 +333,8 @@ VagCommand* GetVAGCommand() {
     }
 
     // wait for VAG semaphore
-    // while (WaitSema(sSema)) {
-    //}
+    while (WaitSema(sSema)) {
+    }
 
     // try to get something.
     for (s32 i = 0; i < N_VAG_CMDS; i++) {
@@ -340,24 +345,24 @@ VagCommand* GetVAGCommand() {
         if (vag_cmd_cnt > max_vag_cmd_cnt) {
           max_vag_cmd_cnt = vag_cmd_cnt;
         }
-        // SignalSema(sSema);
+        SignalSema(sSema);
         return &vag_cmds[i];
       }
     }
 
-    // SignalSema(sSema);
+    SignalSema(sSema);
   }
 }
 
 void FreeVAGCommand(VagCommand* cmd) {
   s32 idx = cmd - vag_cmds;
   if (idx >= 0 && idx < N_VAG_CMDS && ((vag_cmd_used >> (idx & 0x1f)) & 1)) {
-    // while (WaitSema(sSema)) {
-    // }
+    while (WaitSema(sSema)) {
+    }
 
     vag_cmd_used &= ~(1 << (idx & 0x1f));
     vag_cmd_cnt--;
-    // SignalSema(sSema);
+    SignalSema(sSema);
   } else {
     printf("[OVERLORD] Invalid FreeVAGCommand!\n");
   }

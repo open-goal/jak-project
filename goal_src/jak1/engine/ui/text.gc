@@ -1,0 +1,587 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: text.gc
+;; name in dgo: text
+;; dgos: GAME, ENGINE
+
+;; This file contains functions for:
+;; - loading text files containing translated game text
+;; - managing the memory for text
+;; - looking up strings from text
+;; - helpers to draw text on the screen
+
+;; It seems like there it would be possible to have multiple "groups" of text,
+;; but in practice, only the COMMON group is used.
+
+;; State of text drawing.
+(define *game-text-word* (new 'global 'string 128 (the string '#f)))
+(define *game-text-line* (new 'global 'string 256 (the string '#f)))
+(define *level-text-file-load-flag* #t)
+
+;; allocate the game text heap if it isn't already allocated.
+(when (= 0 (-> *common-text-heap* base))
+  (let ((heap *common-text-heap*))
+    (set! (-> heap base) (malloc 'global 64000))
+    (set! (-> heap current) (-> heap base))
+    (set! (-> heap top-base) (&+ (-> heap base) 64000))
+    (set! (-> heap top) (-> heap top-base))
+    )
+  )
+
+;; The game-text-info stores records for each string in the loaded text on the text heap.
+
+(defmethod length game-text-info ((obj game-text-info))
+  "Get the length (number of strings) in a game-text-info."
+  (-> obj length)
+  )
+
+(defmethod asize-of game-text-info ((obj game-text-info))
+  "Get the size in memory of the game-text-info"
+  ;; each record is 8 bytes
+  (the int (+ (-> obj type size) (* 8 (-> obj length))))
+  )
+
+(defmethod inspect game-text-info ((obj game-text-info))
+  "Print a game text info, including all strings"
+  (format '#t "[~8x] ~A~%" obj (-> obj type))
+  (format '#t "~Tlength: ~D~%" (-> obj length))
+  (format '#t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
+  
+  (let ((i 0))
+    (while (< i (-> obj length))
+      (format '#t "~T  [~D] #x~X ~A~%" i (-> obj data i id) (-> obj data i text))
+      (+! i 1)
+      )
+    )
+  obj
+  )
+
+(defmethod mem-usage game-text-info ((obj game-text-info) (arg0 memory-usage-block) (arg1 int))
+  "Get the memory usage."
+  (set! (-> arg0 length) (max 81 (-> arg0 length)))
+  (set! (-> arg0 data 80 name) "string")
+  (set! (-> arg0 data 80 count) (+ (-> arg0 data 80 count) 1))
+
+  ;; get the size of this structure
+  (let ((v1-6 (asize-of obj)))
+    (set! (-> arg0 data 80 used) (+ (-> arg0 data 80 used) v1-6))
+    (set! (-> arg0 data 80 total)
+          (+ (-> arg0 data 80 total) (logand -16 (+ v1-6 15)))
+          )
+    )
+
+  ;; get the size of all the strings
+  (dotimes (s4-0 (-> obj length))
+    (set! (-> arg0 length) (max 81 (-> arg0 length)))
+    (set! (-> arg0 data 80 name) "string")
+    (set! (-> arg0 data 80 count) (+ (-> arg0 data 80 count) 1))
+    (let ((v1-18 (asize-of (-> obj data s4-0 text))))
+      (set! (-> arg0 data 80 used) (+ (-> arg0 data 80 used) v1-18))
+      (set! (-> arg0 data 80 total)
+            (+ (-> arg0 data 80 total) (logand -16 (+ v1-18 15)))
+            )
+      )
+    )
+  obj
+  )
+
+(defmethod lookup-text! game-text-info ((obj game-text-info) (arg0 game-text-id) (arg1 symbol))
+  "Look up text by ID.  Will return the string.
+   If the ID can't be found, and arg1 is #t, it will return #f,
+   otherwise the temp string UNKNOWN ID <id number>"
+
+  ;; binary search for it
+  (let* ((a1-1 0)                     ;; min
+         (a3-0 (+ (-> obj length) 1)) ;; max
+         (v1-2 (/ (+ a1-1 a3-0) 2))   ;; mid
+         )
+    (let ((t0-0 -1)) ;; last time's lookup
+      (while (and (!= (-> obj data v1-2 id) arg0) (!= v1-2 t0-0)) ;; while we haven't found it/not the same as last time
+        (if (< arg0 (-> obj data v1-2 id))
+            (set! a3-0 v1-2) ;; bisect, right
+            (set! a1-1 v1-2) ;; bisect, left
+            )
+        (set! t0-0 v1-2) ;; remeber last time
+        (set! v1-2 (/ (+ a1-1 a3-0) 2)) ;; midpoint for next time
+        )
+      )
+    (cond
+      ((!= (-> obj data v1-2 id) arg0) ;; didn't find it :(
+       (cond
+         (arg1
+          (the-as string #f)
+          )
+         (else
+          (string-format "UNKNOWN ID ~D" arg0)
+          )
+         )
+       )
+      (else
+       (-> obj data v1-2 text) ;; found it!
+       )
+      )
+    )
+  )
+
+
+;; Game text loading.
+;; The implementation of loading is blocking.
+;; If you change languages, the game will freeze for a second while it loads
+
+;; This loading flag is never used.
+;; loading is complete once load-game-text-info returns
+(define text-is-loading #f)
+
+(defun load-game-text-info ((txt-name string) (curr-text symbol) (heap kheap))
+  "Load text, if needed. txt-name is the group name, curr-text is the _symbol_ for
+   the game-text-info, and heap is the heap to load to. The heap will be cleared."
+  (local-vars
+   (v0-2 int)
+   (heap-sym-heap game-text-info)
+   (lang language-enum)
+   (load-status int)
+   (heap-free int)
+   )
+  (set! heap-sym-heap (the-as game-text-info (-> curr-text value)))
+              ;; split languages in PC port
+  (set! lang (#if PC_PORT (the language-enum (-> *pc-settings* text-language))
+                          (-> *setting-control* current language)))
+  (set! load-status 0)
+  (set! heap-free (&- (-> heap top) (the-as uint (-> heap base))))
+  ;; english -> UK english in PAL
+  ;; PC port note : no longer necessary.
+  (#unless PC_PORT
+    (if (and (= (scf-get-territory) GAME_TERRITORY_SCEE) (= lang (language-enum english)))
+        (set! lang (language-enum uk-english))
+        )
+    )
+
+  ;; only load if we actually need to
+  (when (or (= heap-sym-heap #f) ;; nothing loaded
+            (!= (-> heap-sym-heap language-id) (the-as uint lang)) ;; loaded, but wrong lang
+            (not (string= (-> heap-sym-heap group-name) txt-name)) ;; loaded, but wrong group
+            )
+
+    ;; clear the heap!
+    (let ((v1-16 heap))
+      (set! (-> v1-16 current) (-> v1-16 base))
+      )
+    (b! #t cfg-14)
+    (label cfg-13)
+    (load-dbg "Strange error during text load.~%")
+    (set! v0-2 0)
+    (b! #t cfg-27)
+    (label cfg-14)
+
+    ;; call str-load to start loading the TXT file to the heap
+    (let ((s3-0 str-load))
+      (format (clear *temp-string*) "~D~S.TXT" lang txt-name)
+      ;; this branch is super weird.
+      (b! (not (s3-0
+                *temp-string*
+                -1
+                (logand -64 (&+ (-> heap current) 63))
+                (&- (-> heap top) (the-as uint (-> heap current)))
+                )
+               )
+          cfg-13
+          )
+      )
+
+    ;; loop to wait until loading is complete
+    (label cfg-16)
+    (let ((v1-20 (str-load-status (the-as (pointer int32) (& load-status)))))
+      (cond
+        ((= v1-20 'error)
+         (format 0 "Error loading text~%")
+         (return 0)
+         )
+        ((>= load-status (+ heap-free -300))
+         (format 0 "Game text heap overrun!~%")
+         (return 0)
+         )
+        ((= v1-20 'busy)
+         (begin
+          (nop!)
+          (nop!)
+          (nop!)
+          (nop!)
+          (nop!)
+          (nop!)
+          (goto cfg-16)
+          )
+         )
+        )
+      )
+
+    ;; loading is done. now we link.
+    (let ((s2-1 (logand -64 (&+ (-> heap current) 63))))
+      (flush-cache 0)
+      (let ((s3-1 link))
+        (format (clear *temp-string*) "~D~S.TXT" lang txt-name)
+        (set! (-> curr-text value)
+         (s3-1 s2-1 (-> *temp-string* data) load-status heap 0)
+         )
+        )
+      )
+
+    ;; linking error occured?
+    (if (<= (the-as int (-> curr-text value)) 0)
+        (set! (-> curr-text value) (the-as object #f))
+        )
+    )
+  (set! v0-2 0)
+  (label cfg-27)
+
+  v0-2
+  )
+
+(defun load-level-text-files ((arg0 int))
+  "Load the text files needed for level idx.
+   This function made more sense back when text files were split up, but in the end they put everything
+   in a single text group and file."
+
+  (if (or *level-text-file-load-flag* (>= arg0 0))
+      (load-game-text-info "common" '*common-text* *common-text-heap*)
+      )
+  (none)
+  )
+
+(defun draw-debug-text-box ((arg0 font-context))
+  "Not used outside of a single thing in progress.
+   Draws some lines"
+  (let ((s5-0 (new 'static 'vector4w))
+        (gp-0 (new 'static 'matrix))
+        )
+    (let ((s4-0 (new 'static 'vector)))
+      (set-vector! s4-0 (-> arg0 origin x) (-> arg0 origin y) 0.0 1.0)
+      (set! (-> s4-0 x) (* (-> s4-0 x) (-> *video-parms* relative-x-scale-reciprical)))
+      (vector-matrix*! s4-0 s4-0 (-> arg0 mat))
+      (set-vector!
+        (-> gp-0 vector 0)
+        (the-as float (the int (-> s4-0 x)))
+        (the-as float (the int (-> s4-0 y)))
+        (the-as float (the int (-> s4-0 z)))
+        (the-as float 1)
+        )
+      (set-vector! s4-0 (+ (-> arg0 origin x) (-> arg0 width)) (-> arg0 origin y) 0.0 1.0)
+      (set! (-> s4-0 x) (* (-> s4-0 x) (-> *video-parms* relative-x-scale-reciprical)))
+      (vector-matrix*! s4-0 s4-0 (-> arg0 mat))
+      (set-vector!
+        (-> gp-0 vector 1)
+        (the-as float (the int (-> s4-0 x)))
+        (the-as float (the int (-> s4-0 y)))
+        (the-as float (the int (-> s4-0 z)))
+        (the-as float 1)
+        )
+      (set-vector! s4-0 (+ (-> arg0 origin x) (-> arg0 width)) (+ (-> arg0 origin y) (-> arg0 height)) 0.0 1.0)
+      (set! (-> s4-0 x) (* (-> s4-0 x) (-> *video-parms* relative-x-scale-reciprical)))
+      (vector-matrix*! s4-0 s4-0 (-> arg0 mat))
+      (set-vector!
+        (-> gp-0 vector 2)
+        (the-as float (the int (-> s4-0 x)))
+        (the-as float (the int (-> s4-0 y)))
+        (the-as float (the int (-> s4-0 z)))
+        (the-as float 1)
+        )
+      (set-vector! s4-0 (-> arg0 origin x) (+ (-> arg0 origin y) (-> arg0 height)) 0.0 1.0)
+      (set! (-> s4-0 x) (* (-> s4-0 x) (-> *video-parms* relative-x-scale-reciprical)))
+      (vector-matrix*! s4-0 s4-0 (-> arg0 mat))
+      (set-vector!
+        (-> gp-0 vector 3)
+        (the-as float (the int (-> s4-0 x)))
+        (the-as float (the int (-> s4-0 y)))
+        (the-as float (the int (-> s4-0 z)))
+        (the-as float 1)
+        )
+      )
+    (set-vector! s5-0 128 128 128 128)
+    (add-debug-line2d
+      #t
+      (bucket-id debug-no-zbuf)
+      (the-as vector (-> gp-0 vector))
+      (-> gp-0 vector 1)
+      (the-as vector s5-0)
+      )
+    (add-debug-line2d #t (bucket-id debug-no-zbuf) (-> gp-0 vector 1) (-> gp-0 vector 2) (the-as vector s5-0))
+    (add-debug-line2d #t (bucket-id debug-no-zbuf) (-> gp-0 vector 2) (-> gp-0 vector 3) (the-as vector s5-0))
+    (add-debug-line2d
+      #t
+      (bucket-id debug-no-zbuf)
+      (-> gp-0 vector 3)
+      (the-as vector (-> gp-0 vector))
+      (the-as vector s5-0)
+      )
+    )
+  0
+  (none)
+  )
+
+(defun set-font-color-alpha ((idx font-color) (alpha int))
+  "Set the alpha for a given color index"
+  (set! (-> *font-work* color-table idx color 0 a) alpha)
+  (set! (-> *font-work* color-table idx color 1 a) alpha)
+  (set! (-> *font-work* color-table idx color 2 a) alpha)
+  (set! (-> *font-work* color-table idx color 3 a) alpha)
+  (set! (-> *font-work* color-shadow w) alpha)
+  (none)
+  )
+
+(defun print-game-text-scaled ((str string) (scale float) (font-ctxt font-context) (alpha int))
+  "Print text, with a given scaling"
+  (let ((orig-width (-> font-ctxt width))
+        (orig-height (-> font-ctxt height))
+        (orig-x (-> font-ctxt origin x))
+        (orig-y (-> font-ctxt origin y))
+        (orig-scale (-> font-ctxt scale))
+        )
+    (let ((scaled-width (* (-> font-ctxt width) scale))
+          (scaled-height (* (-> font-ctxt height) scale))
+          )
+      (if (logtest? (-> font-ctxt flags) (font-flags middle))
+          (+! (-> font-ctxt origin x) (* 0.5 (- orig-width scaled-width)))
+          )
+      (if (logtest? (-> font-ctxt flags) (font-flags left))
+          ;; this code is really weird. it does the divide with an int, but fails
+          ;; to convert it back to a float before adding??
+          (+! (-> font-ctxt origin y) (the-as float (/ (the int (- orig-height scaled-height)) 2)))
+          )
+      (set! (-> font-ctxt scale) (* orig-scale scale))
+      (set! (-> font-ctxt width) scaled-width)
+      (set! (-> font-ctxt height) scaled-height)
+      )
+    (print-game-text str font-ctxt #f alpha 22)
+    (set! (-> font-ctxt origin x) orig-x)
+    (set! (-> font-ctxt origin y) orig-y)
+    (set! (-> font-ctxt width) orig-width)
+    (set! (-> font-ctxt height) orig-height)
+    (set! (-> font-ctxt scale) orig-scale)
+    )
+  (none)
+  )
+
+(defun print-game-text ((str string) (font-ctxt font-context) (opaque symbol) (alpha int) (line-height int))
+  "Print text. Not worth commenting until we get stack variables in lets, I think"
+  (local-vars
+   (sv-112 float)
+   (sv-116 float)
+   (sv-120 float)
+   (sv-124 float)
+   (sv-128 float)
+   (sv-132 float)
+   (sv-136 float)
+   (sv-140 (pointer uint8))
+   (sv-144 float)
+   (sv-148 float)
+   (sv-152 float)
+   (sv-156 float)
+   (sv-160 float)
+   (sv-164 float)
+   (sv-168 int)
+   (sv-176 int)
+   (sv-184 int)
+   (sv-192 int)
+   (sv-200 int)
+   (sv-208 symbol)
+   (sv-212 symbol)
+   )
+  (let ((gp-0 (new
+                'stack
+                'font-context
+                *font-default-matrix*
+                (the int (-> font-ctxt origin x))
+                (the int (-> font-ctxt origin y))
+                0.0
+                (font-color default)
+                (font-flags shadow kerning)
+                )
+              )
+        )
+    (when (< 0.1 (-> font-ctxt scale))
+      (set! sv-112 (-> font-ctxt mat vector 0 x))
+      (set! sv-116 (-> font-ctxt mat vector 1 y))
+      (set! sv-120 (-> *video-parms* relative-x-scale))
+      (set! sv-124 (-> *video-parms* relative-y-scale))
+      (set! sv-128 (-> *video-parms* relative-x-scale-reciprical))
+      (set! sv-132 (-> *video-parms* relative-y-scale-reciprical))
+      (set! sv-136 (-> font-ctxt scale))
+      (set! (-> gp-0 origin z) (-> font-ctxt origin z))
+      (set! (-> gp-0 flags) (-> font-ctxt flags))
+      (set! (-> gp-0 color) (-> font-ctxt color))
+      (set! (-> gp-0 scale) sv-136)
+      (when (logtest? (-> gp-0 flags) (font-flags left))
+        (logclear! (-> gp-0 flags) (font-flags left))
+        (let ((f30-0 (-> gp-0 width))
+              (f28-0 (-> gp-0 height))
+              )
+          (set! (-> gp-0 width) (-> font-ctxt width))
+          (set! (-> gp-0 height) (-> font-ctxt height))
+          (+! (-> gp-0 origin y)
+              (the float (the int (* 0.5 (- (-> gp-0 height) (print-game-text str gp-0 #t 128 22)))))
+              )
+          (set! (-> gp-0 width) f30-0)
+          (set! (-> gp-0 height) f28-0)
+          )
+        )
+      (set! (-> gp-0 mat vector 0 x) (* (-> gp-0 mat vector 0 x) sv-136))
+      (set! (-> gp-0 mat vector 1 y) (* (-> gp-0 mat vector 1 y) sv-136))
+      (set! (-> *video-parms* relative-x-scale) (* (-> *video-parms* relative-x-scale) sv-136))
+      (set! (-> *video-parms* relative-y-scale) (* (-> *video-parms* relative-y-scale) sv-136))
+      (set! (-> *video-parms* relative-x-scale-reciprical) (/ 1.0 (-> *video-parms* relative-x-scale)))
+      (set! (-> *video-parms* relative-y-scale-reciprical) (/ 1.0 sv-136))
+      (set! sv-140 (-> str data))
+      (set! sv-144 (-> gp-0 origin x))
+      (set! sv-148 (-> gp-0 origin x))
+      (set! sv-152 (+ (-> gp-0 origin x) (-> font-ctxt width)))
+      (set! sv-156 (+ (-> gp-0 origin y) (-> font-ctxt height)))
+      (set! sv-160 (* (get-string-length " " gp-0) (-> *video-parms* relative-x-scale)))
+      (set! sv-164 (* (if (logtest? (-> gp-0 flags) (font-flags large))
+                          (the float line-height)
+                          14.0
+                          )
+                      sv-136
+                      )
+            )
+      (set! sv-168 0)
+      (if (logtest? (-> gp-0 flags) (font-flags middle))
+          (+! (-> gp-0 origin x) (* 0.5 (-> font-ctxt width)))
+          )
+      (set! sv-176 (the-as int (-> sv-140 0)))
+      (set! sv-184 0)
+      (set! sv-192 0)
+      (set! sv-200 0)
+      (set! sv-208 (the-as symbol #f))
+      (set! sv-212 (the-as symbol #f))
+      (set! (-> *game-text-line* data 0) (the-as uint 0))
+      (while (or (not (and (zero? sv-176) (zero? sv-184) (zero? sv-192))) (>= sv-156 (-> gp-0 origin y)))
+        (cond
+          ((= sv-176 32)
+           (set! (-> *game-text-word* data sv-184) (the-as uint sv-176))
+           (set! sv-184 (+ sv-184 1))
+           (set! sv-208 #t)
+           )
+          ((zero? sv-176)
+           (if (zero? sv-184)
+               (set! sv-212 #t)
+               (set! sv-208 #t)
+               )
+           )
+          (else
+            ;; PAL patch here
+            (if (= sv-176 3)
+                (set! sv-176 32)
+                )
+            (set! (-> *game-text-word* data sv-184) (the-as uint sv-176))
+            (set! sv-184 (+ sv-184 1))
+            )
+          )
+        (when (= sv-208 #t)
+          (set! (-> *game-text-word* data sv-184) (the-as uint 0))
+          (let* ((f30-1 sv-144)
+                 (f0-49 (* (get-string-length *game-text-word* gp-0) (-> *video-parms* relative-x-scale)))
+                 (f1-14 (+ f30-1 f0-49))
+                 )
+            (if (= (-> *game-text-word* data (+ sv-184 -1)) 32)
+                (set! f1-14 (- f1-14 sv-160))
+                )
+            (cond
+              ((< sv-152 f1-14)
+               (set! sv-144 (+ sv-148 f0-49))
+               (set! sv-212 #t)
+               )
+              (else
+                (set! sv-144 (+ sv-144 f0-49))
+                )
+              )
+            )
+          )
+        (when (= sv-212 #t)
+          (when (>= sv-200 (the-as int (-> gp-0 start-line)))
+            (let ((f30-2 (+ (-> gp-0 origin y) sv-164)))
+              (when (>= sv-156 f30-2)
+                (when (= (-> *game-text-line* data (+ sv-192 -1)) 32)
+                  (set! (-> *game-text-line* data (+ sv-192 -1)) (the-as uint 0))
+                  (when (and (= (-> *game-text-line* data (+ sv-192 -5)) 126) (= (-> *game-text-line* data (+ sv-192 -2)) 72))
+                    (set! (-> *game-text-line* data (+ sv-192 -5)) (the-as uint 0))
+                    0
+                    )
+                  )
+                )
+              (when (and (= (-> *game-text-line* data (+ sv-192 -4)) 126) (= (-> *game-text-line* data (+ sv-192 -1)) 72))
+                (set! (-> *game-text-line* data (+ sv-192 -4)) (the-as uint 0))
+                0
+                )
+              (if (nonzero? (-> *game-text-line* data 0))
+                  (set! sv-168 (+ sv-168 1))
+                  )
+              (when (not opaque)
+                (let* ((s1-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
+                       (s2-1 (-> s1-1 base))
+                       )
+                  (set-font-color-alpha (-> font-ctxt color) alpha)
+                  (draw-string *game-text-line* s1-1 gp-0)
+                  (set-font-color-alpha (-> font-ctxt color) 128)
+                  (set! (-> gp-0 color) (-> *font-work* last-color))
+                  (let ((a3-3 (-> s1-1 base)))
+                    (let ((v1-127 (the-as object (-> s1-1 base))))
+                      (set! (-> (the-as dma-packet v1-127) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+                      (set! (-> (the-as dma-packet v1-127) vif0) (new 'static 'vif-tag))
+                      (set! (-> (the-as dma-packet v1-127) vif1) (new 'static 'vif-tag))
+                      (set! (-> s1-1 base) (&+ (the-as pointer v1-127) 16))
+                      )
+                    (dma-bucket-insert-tag
+                      (-> *display* frames (-> *display* on-screen) frame bucket-group)
+                      (bucket-id debug)
+                      s2-1
+                      (the-as (pointer dma-tag) a3-3)
+                      )
+                    )
+                  )
+                )
+              (set! (-> gp-0 origin y) f30-2)
+              )
+            )
+          (set! sv-200 (+ sv-200 1))
+          (set! (-> *game-text-line* data 0) (the-as uint 0))
+          (set! sv-192 0)
+          (set! sv-212 (the-as symbol #f))
+          )
+        (when (= sv-208 #t)
+          (copy-charp<-charp (&-> *game-text-line* data sv-192) (-> *game-text-word* data))
+          (set! sv-192 (+ sv-192 sv-184))
+          (set! sv-184 0)
+          (set! sv-208 (the-as symbol #f))
+          )
+        (when (nonzero? sv-176)
+          (set! sv-140 (&-> sv-140 1))
+          (set! sv-176 (the-as int (-> sv-140 0)))
+          )
+        )
+      (set! (-> gp-0 mat vector 0 x) sv-112)
+      (set! (-> gp-0 mat vector 1 y) sv-116)
+      (set! (-> *video-parms* relative-x-scale) sv-120)
+      (set! (-> *video-parms* relative-y-scale) sv-124)
+      (set! (-> *video-parms* relative-x-scale-reciprical) sv-128)
+      (set! (-> *video-parms* relative-y-scale-reciprical) sv-132)
+      (with-pc
+        (if (and *debug-segment* (-> *pc-settings* display-text-box))
+          (draw-debug-text-box font-ctxt)))
+      (if (> sv-168 0)
+          (* sv-164 (the float sv-168))
+          0.0
+          )
+      )
+    )
+  )
+
+(defun disable-level-text-file-loading ()
+  (set! *level-text-file-load-flag* #f)
+  (none)
+  )
+
+(defun enable-level-text-file-loading ()
+  (set! *level-text-file-load-flag* #t)
+  (none)
+  )
+

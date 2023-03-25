@@ -1,0 +1,574 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: memory-usage.gc
+;; name in dgo: memory-usage
+;; dgos: ENGINE, GAME
+
+;; DECOMP BEGINS
+
+;; this file is debug only
+(declare-file (debug))
+
+;; definition for method 3 of type memory-usage-block
+(defmethod inspect memory-usage-block ((obj memory-usage-block))
+  (format #t "-------------------------------------------------------------~%")
+  (format #t " #                 name    count    bytes used   aligned bytes~%")
+  (format #t "-------------------------------------------------------------~%")
+  (let ((s5-0 0)
+        (s4-0 0)
+        )
+    (dotimes (s3-0 (-> obj length))
+      (let ((v1-2 (-> obj data s3-0)))
+        (+! s5-0 (-> v1-2 used))
+        (+! s4-0 (-> v1-2 total))
+        (format
+          #t
+          "~3D: ~20S ~7D     ~8D       ~8D~%"
+          s3-0
+          (-> v1-2 name)
+          (-> v1-2 count)
+          (-> v1-2 used)
+          (-> v1-2 total)
+          )
+        )
+      )
+    (format #t "total:                               ~8D       ~8D~%" s5-0 s4-0)
+    )
+  (format #t "-------------------------------------------------------------~%")
+  obj
+  )
+
+;; definition for method 8 of type object
+(defmethod mem-usage object ((obj object) (arg0 memory-usage-block) (arg1 int))
+  obj
+  )
+
+;; definition for method 10 of type memory-usage-block
+(defmethod calculate-total memory-usage-block ((obj memory-usage-block))
+  "@returns The total sum of all [[memory-usage-info]] `total`s"
+  (let ((sum 0))
+    (dotimes (idx (-> obj length))
+      (+! sum (-> obj data idx total))
+      )
+    sum
+    )
+  )
+
+(defmethod reset! memory-usage-block ((obj memory-usage-block))
+  "Sets `length` to 0 as well as resets all fields except `name` in the associated [[memory-usage-info]]"
+  (set! (-> obj length) 0)
+  (dotimes (idx 112)
+    (set! (-> obj data idx used) 0)
+    (set! (-> obj data idx total) 0)
+    (set! (-> obj data idx count) 0)
+    )
+  obj
+  )
+
+(defun mem-size ((data basic) (inspect-usage? symbol) (arg2 int))
+  "@param data The [[basic]] to call `mem-usage` on
+@param inspect-usage? Set to [[#t]] if `inspect` should be called on the resulting [[memory-usage-block]]
+@param arg2 TODO - unsure, some sort of bitfield
+@returns The total memory footprint of the provided [[basic]]"
+  (let ((block (new 'stack 'memory-usage-block)))
+    (mem-usage data block arg2)
+    (if inspect-usage?
+        (inspect block)
+        )
+    (calculate-total block)
+    )
+  )
+
+(defmethod compute-memory-usage! level ((obj level) (force? symbol))
+  "Calculates the memory usage of the level, returns and stores the [[memory-usage-block]]
+in `mem-usage-block` as well as the total size in `mem-usage`
+
+@param force? - Will re-compute the usage if set to [[#t]], even if `mem-usage` has been set to a non-zero value
+@returns The [[memory-usage-block]] representing the footprint of the level
+@see [[memory-usage-block::10]]"
+  (if (zero? (-> obj mem-usage-block))
+      (set! (-> obj mem-usage-block) (new 'debug 'memory-usage-block))
+      )
+  (set! force? (or (zero? (-> obj mem-usage-block length)) force?))
+  (when force?
+    (mem-usage obj (reset! (-> obj mem-usage-block)) 0)
+    (set! (-> obj mem-usage) (calculate-total (-> obj mem-usage-block)))
+    0
+    )
+  (-> obj mem-usage-block)
+  )
+
+(defmethod mem-usage process-tree ((obj process-tree) (arg0 memory-usage-block) (arg1 int))
+  (let ((v1-0 90))
+    (let* ((a0-1 *dead-pool-list*)
+           (a3-0 (car a0-1))
+           )
+      (while (not (null? a0-1))
+        (set! (-> arg0 data v1-0 name) (symbol->string (the-as symbol a3-0)))
+        (+! v1-0 1)
+        (set! a0-1 (cdr a0-1))
+        (set! a3-0 (car a0-1))
+        )
+      )
+    (set! (-> arg0 length) (max (-> arg0 length) v1-0))
+    )
+  (set! (-> arg0 data 96 name) "*debug-dead-pool*")
+  (set! *temp-mem-usage* arg0)
+  (when (logtest? arg1 32)
+    (let* ((s5-0 90)
+           (s4-0 *dead-pool-list*)
+           (v1-4 (car s4-0))
+           )
+      (while (not (null? s4-0))
+        (let ((a0-5 (-> (the-as symbol v1-4) value)))
+          (set! *global-search-count* s5-0)
+          (iterate-process-tree
+            (the-as process-tree a0-5)
+            (lambda ((arg0 basic))
+              (let ((gp-0 *temp-mem-usage*)
+                    (s5-0 *global-search-count*)
+                    )
+                (+! (-> gp-0 data s5-0 used) 1)
+                (+! (-> gp-0 data s5-0 total) (logand -16 (+ (asize-of arg0) 15)))
+                )
+              #t
+              )
+            *null-kernel-context*
+            )
+          )
+        (+! s5-0 1)
+        (set! s4-0 (cdr s4-0))
+        (set! v1-4 (car s4-0))
+        )
+      )
+    )
+  (iterate-process-tree
+    obj
+    (lambda ((arg0 process-drawable))
+      (let ((gp-0 *temp-mem-usage*))
+        (let ((s4-0 (cond
+                      ((= (-> arg0 pool) *8k-dead-pool*)
+                       91
+                       )
+                      ((= (-> arg0 pool) *16k-dead-pool*)
+                       92
+                       )
+                      ((= (-> arg0 pool) *nk-dead-pool*)
+                       93
+                       )
+                      ((= (-> arg0 pool) *target-dead-pool*)
+                       94
+                       )
+                      ((= (-> arg0 pool) *camera-dead-pool*)
+                       95
+                       )
+                      ((= (-> arg0 pool) *debug-dead-pool*)
+                       96
+                       )
+                      (else
+                        90
+                        )
+                      )
+                    )
+              )
+          (+! (-> gp-0 data s4-0 count) 1)
+          (+! (-> gp-0 data s4-0 total) (logand -16 (+ (asize-of arg0) 15)))
+          )
+        (set! (-> gp-0 length) (max 98 (-> gp-0 length)))
+        (set! (-> gp-0 data 97 name) "process-active")
+        (+! (-> gp-0 data 97 count) 1)
+        (let ((v1-23 (asize-of arg0)))
+          (+! (-> gp-0 data 97 used) v1-23)
+          (+! (-> gp-0 data 97 total) (logand -16 (+ v1-23 15)))
+          )
+        (set! (-> gp-0 length) (max 99 (-> gp-0 length)))
+        (set! (-> gp-0 data 98 name) "heap-total")
+        (+! (-> gp-0 data 98 count) 1)
+        (let ((v1-34 (+ (- -4 (the-as int arg0)) (the-as int (-> arg0 heap-cur)))))
+          (+! (-> gp-0 data 98 used) v1-34)
+          (+! (-> gp-0 data 98 total) (logand -16 (+ v1-34 15)))
+          )
+        (set! (-> gp-0 length) (max 100 (-> gp-0 length)))
+        (set! (-> gp-0 data 99 name) "heap-process")
+        (+! (-> gp-0 data 99 count) 1)
+        (let ((v1-45 (- (-> arg0 type size) (-> arg0 type heap-base))))
+          (+! (-> gp-0 data 99 used) v1-45)
+          (+! (-> gp-0 data 99 total) (logand -16 (+ v1-45 15)))
+          )
+        (set! (-> gp-0 length) (max 101 (-> gp-0 length)))
+        (set! (-> gp-0 data 100 name) "heap-header")
+        (+! (-> gp-0 data 100 count) 1)
+        (let ((v1-55 (-> arg0 type heap-base)))
+          (+! (-> gp-0 data 100 used) v1-55)
+          (+! (-> gp-0 data 100 total) (logand -16 (+ v1-55 15)))
+          )
+        (set! (-> gp-0 length) (max 102 (-> gp-0 length)))
+        (set! (-> gp-0 data 101 name) "heap-thread")
+        (+! (-> gp-0 data 101 count) 1)
+        (let ((v1-65 (asize-of (-> arg0 main-thread))))
+          (+! (-> gp-0 data 101 used) v1-65)
+          (+! (-> gp-0 data 101 total) (logand -16 (+ v1-65 15)))
+          )
+        (when (type? arg0 process-drawable)
+          (when (nonzero? (-> arg0 root))
+            (set! (-> gp-0 length) (max 103 (-> gp-0 length)))
+            (set! (-> gp-0 data 102 name) "heap-root")
+            (+! (-> gp-0 data 102 count) 1)
+            (let ((v1-78 (asize-of (-> arg0 root))))
+              (+! (-> gp-0 data 102 used) v1-78)
+              (+! (-> gp-0 data 102 total) (logand -16 (+ v1-78 15)))
+              )
+            (when (type? (-> arg0 root) collide-shape)
+              (set! (-> gp-0 length) (max 109 (-> gp-0 length)))
+              (set! (-> gp-0 data 108 name) "heap-collide-prim")
+              (+! (-> gp-0 data 108 count) 1)
+              (let ((v1-90 (asize-of (-> (the-as collide-shape-moving (-> arg0 root)) root-prim))))
+                (+! (-> gp-0 data 108 used) v1-90)
+                (+! (-> gp-0 data 108 total) (logand -16 (+ v1-90 15)))
+                )
+              )
+            )
+          (when (nonzero? (-> arg0 node-list))
+            (set! (-> gp-0 length) (max 106 (-> gp-0 length)))
+            (set! (-> gp-0 data 105 name) "heap-cspace")
+            (+! (-> gp-0 data 105 count) 1)
+            (let ((v1-102 (asize-of (-> arg0 node-list))))
+              (+! (-> gp-0 data 105 used) v1-102)
+              (+! (-> gp-0 data 105 total) (logand -16 (+ v1-102 15)))
+              )
+            )
+          (when (nonzero? (-> arg0 draw))
+            (set! (-> gp-0 length) (max 104 (-> gp-0 length)))
+            (set! (-> gp-0 data 103 name) "heap-draw-control")
+            (+! (-> gp-0 data 103 count) 1)
+            (let ((v1-114 (asize-of (-> arg0 draw))))
+              (+! (-> gp-0 data 103 used) v1-114)
+              (+! (-> gp-0 data 103 total) (logand -16 (+ v1-114 15)))
+              )
+            (when (nonzero? (-> arg0 draw skeleton))
+              (set! (-> gp-0 length) (max 107 (-> gp-0 length)))
+              (set! (-> gp-0 data 106 name) "heap-bone")
+              (+! (-> gp-0 data 106 count) 1)
+              (let ((v1-128 (asize-of (-> arg0 draw skeleton))))
+                (+! (-> gp-0 data 106 used) v1-128)
+                (+! (-> gp-0 data 106 total) (logand -16 (+ v1-128 15)))
+                )
+              )
+            )
+          (when (nonzero? (-> arg0 skel))
+            (set! (-> gp-0 length) (max 105 (-> gp-0 length)))
+            (set! (-> gp-0 data 104 name) "heap-joint-control")
+            (+! (-> gp-0 data 104 count) 1)
+            (let ((v1-140 (asize-of (-> arg0 skel))))
+              (+! (-> gp-0 data 104 used) v1-140)
+              (+! (-> gp-0 data 104 total) (logand -16 (+ v1-140 15)))
+              )
+            )
+          (when (nonzero? (-> arg0 part))
+            (set! (-> gp-0 length) (max 108 (-> gp-0 length)))
+            (set! (-> gp-0 data 107 name) "heap-part")
+            (+! (-> gp-0 data 107 count) 1)
+            (let ((v1-152 (asize-of (-> arg0 part))))
+              (+! (-> gp-0 data 107 used) v1-152)
+              (+! (-> gp-0 data 107 total) (logand -16 (+ v1-152 15)))
+              )
+            )
+          (when (nonzero? (-> arg0 nav))
+            (set! (-> gp-0 length) (max 110 (-> gp-0 length)))
+            (set! (-> gp-0 data 109 name) "heap-misc")
+            (+! (-> gp-0 data 109 count) 1)
+            (let ((v1-164 (asize-of (-> arg0 nav))))
+              (+! (-> gp-0 data 109 used) v1-164)
+              (+! (-> gp-0 data 109 total) (logand -16 (+ v1-164 15)))
+              )
+            )
+          (when (nonzero? (-> arg0 path))
+            (set! (-> gp-0 length) (max 110 (-> gp-0 length)))
+            (set! (-> gp-0 data 109 name) "heap-misc")
+            (+! (-> gp-0 data 109 count) 1)
+            (let ((v1-176 (asize-of (-> arg0 path))))
+              (+! (-> gp-0 data 109 used) v1-176)
+              (+! (-> gp-0 data 109 total) (logand -16 (+ v1-176 15)))
+              )
+            )
+          (when (nonzero? (-> arg0 vol))
+            (set! (-> gp-0 length) (max 110 (-> gp-0 length)))
+            (set! (-> gp-0 data 109 name) "heap-misc")
+            (+! (-> gp-0 data 109 count) 1)
+            (let ((v1-188 (asize-of (-> arg0 vol))))
+              (+! (-> gp-0 data 109 used) v1-188)
+              (+! (-> gp-0 data 109 total) (logand -16 (+ v1-188 15)))
+              )
+            )
+          )
+        )
+      #t
+      )
+    *null-kernel-context*
+    )
+  obj
+  )
+
+(define *max-dma* 0)
+
+(defmethod print-mem-usage memory-usage-block ((obj memory-usage-block) (level level) (fmt-dest object))
+  (local-vars (sv-16 object) (sv-32 string) (sv-48 int))
+  (let ((s3-0 (&- (-> level heap current) (the-as uint (-> level heap base)))))
+    (let ((v1-2 (+ (-> obj data 61 total) (-> obj data 62 total))))
+      (< #x10000 v1-2)
+      )
+    (let* ((v1-5
+             (- (- -49152 (the-as int (shl (-> level info borrow-size 1) 10))) (shl (-> level info borrow-size 0) 10))
+             )
+           (a0-12 (-> level info memory-mode))
+           (s2-0
+             (+ v1-5
+                (the-as int (cond
+                              ((= a0-12 (load-buffer-mode large))
+                               #xbd0000
+                               )
+                              ((= a0-12 (load-buffer-mode medium))
+                               #x8fb800
+                               )
+                              ((= a0-12 (load-buffer-mode small-center))
+                               #x627000
+                               )
+                              ((= a0-12 (load-buffer-mode borrow))
+                               (+ (- #xc000 (the-as int (-> level heap base))) (the-as int (-> level heap top-base)))
+                               )
+                              (else
+                                #x5e8000
+                                )
+                              )
+                        )
+                )
+             )
+           (s1-0 (* (dma-buffer-length (-> *display* frames (-> *display* last-screen) global-buf)) 16))
+           )
+      (set! *max-dma* (max s1-0 *max-dma*))
+      (if (< (the-as int s2-0) s3-0)
+          (format fmt-dest "~3L")
+          )
+      (let ((s0-0 format))
+        (set! sv-16 fmt-dest)
+        (set! sv-32 "~0K~10,'-S--~5,'-DK-of-~5,'-DK--~5,'-DK-of-~5,'-DK--")
+        (let ((s4-1 (-> level name))
+              (s3-1 (sar s3-0 10))
+              (s2-1 (shr s2-0 10))
+              )
+          (set! sv-48 (sar (memory-used *nk-dead-pool*) 10))
+          (let ((t2-0 (sar (memory-total *nk-dead-pool*) 10))
+                (t9-4 s0-0)
+                (a0-22 sv-16)
+                (a1-8 sv-32)
+                (a2-1 s4-1)
+                (a3-0 s3-1)
+                (t0-0 s2-1)
+                (t1-0 sv-48)
+                )
+            (t9-4 a0-22 a1-8 a2-1 a3-0 t0-0 t1-0 t2-0)
+            (format fmt-dest "~5,'-DK/~5,'-DK--~%" (shr s1-0 10) (sar *max-dma* 10))
+            (when *stats-memory-short*
+              (let ((s3-2 (if (cpad-hold? 1 l3)
+                              #t
+                              fmt-dest
+                              )
+                          )
+                    (s4-2 format)
+                    (s2-2 "heap-~5,'-DK/~5,'-DK----~D---~D/~D~%")
+                    (s1-1 (sar (memory-used *nk-dead-pool*) 10))
+                    (s0-1 (sar (memory-total *nk-dead-pool*) 10))
+                    )
+                (set! t0-0 (the-as int (compact-time *nk-dead-pool*)))
+                (set! t1-0 (the-as int (-> *nk-dead-pool* compact-count)))
+                (set! t2-0 (the-as int (-> *nk-dead-pool* compact-count-targ)))
+                (s4-2 s3-2 s2-2 s1-1 s0-1 t0-0 (the-as uint t1-0) (the-as uint t2-0))
+                )
+              )
+            (when (not *stats-memory-short*)
+              (set! (-> *dma-mem-usage* data 87 total)
+                    (* (dma-buffer-length (-> *display* frames (-> *display* last-screen) debug-buf)) 16)
+                    )
+              (let ((t9-11 format)
+                    (a0-31 fmt-dest)
+                    (a1-11 "  bsp ~192H~5DK ~280Hdebug~456H~5DK~%")
+                    (a2-6 (sar (+ (-> obj data 58 total) (-> obj data 59 total) (-> obj data 60 total)) 10))
+                    (a3-3 (sar (-> *dma-mem-usage* data 87 total) 10))
+                    )
+                (t9-11 a0-31 a1-11 a2-6 a3-3 (the-as none t0-0) (the-as none t1-0) (the-as none t2-0))
+                (format
+                  fmt-dest
+                  "  bsp-leaf-vis ~192H~5DK~%"
+                  (sar (+ (-> obj data 61 total) (-> obj data 62 total)) 10)
+                  (the-as none a3-3)
+                  )
+                (format fmt-dest "  level-code ~192H~5DK~%" (sar (-> obj data 65 total) 10) (the-as none a3-3))
+                )
+              (format
+                fmt-dest
+                "  tfrag ~192H~5DK ~280Htfragment~456H~5DK~%"
+                (sar
+                  (+ (-> obj data 1 total)
+                     (-> obj data 2 total)
+                     (-> obj data 3 total)
+                     (-> obj data 4 total)
+                     (-> obj data 5 total)
+                     (-> obj data 6 total)
+                     (-> obj data 7 total)
+                     (-> obj data 8 total)
+                     )
+                  10
+                  )
+                (sar (-> *dma-mem-usage* data 1 total) 10)
+                )
+              (format
+                fmt-dest
+                "  tie-proto ~192H~5DK ~280Hsky~456H~5DK~%"
+                (sar
+                  (+ (-> obj data 9 total)
+                     (-> obj data 10 total)
+                     (-> obj data 11 total)
+                     (-> obj data 12 total)
+                     (-> obj data 13 total)
+                     (-> obj data 14 total)
+                     (-> obj data 16 total)
+                     (-> obj data 17 total)
+                     )
+                  10
+                  )
+                (sar (-> *dma-mem-usage* data 88 total) 10)
+                )
+              (format
+                fmt-dest
+                "  tie-instance ~192H~5DK ~280Htie-fragment~456H~5DK~%"
+                (sar (+ (-> obj data 18 total) (-> obj data 20 total) (-> obj data 21 total) (-> obj data 22 total)) 10)
+                (sar (-> *dma-mem-usage* data 9 total) 10)
+                )
+              (format
+                fmt-dest
+                "  shrub-proto ~192H~5DK ~280Htie-scissor~456H~5DK~%"
+                (sar
+                  (+ (-> obj data 25 total)
+                     (-> obj data 26 total)
+                     (-> obj data 27 total)
+                     (-> obj data 28 total)
+                     (-> obj data 29 total)
+                     (-> obj data 30 total)
+                     (-> obj data 31 total)
+                     (-> obj data 32 total)
+                     (-> obj data 33 total)
+                     )
+                  10
+                  )
+                (sar (-> *dma-mem-usage* data 15 total) 10)
+                )
+              (format
+                fmt-dest
+                "  shrub-instance ~192H~5DK ~280Hshrubbery~456H~5DK~%"
+                (sar (-> obj data 34 total) 10)
+                (sar (-> *dma-mem-usage* data 27 total) 10)
+                )
+              (format
+                fmt-dest
+                "  collision ~192H~5DK ~280Htie-generic~456H~5DK~%"
+                (sar
+                  (+ (-> obj data 50 total)
+                     (-> obj data 51 total)
+                     (-> obj data 52 total)
+                     (-> obj data 53 total)
+                     (-> obj data 54 total)
+                     (-> obj data 55 total)
+                     (-> obj data 56 total)
+                     (-> obj data 57 total)
+                     )
+                  10
+                  )
+                (sar (-> *dma-mem-usage* data 17 total) 10)
+                )
+              (format
+                fmt-dest
+                "  pris-geo ~192H~5DK ~280Hpris-fragment~456H~5DK~%"
+                (sar
+                  (+ (-> obj data 35 total)
+                     (-> obj data 36 total)
+                     (-> obj data 37 total)
+                     (-> obj data 38 total)
+                     (-> obj data 39 total)
+                     (-> obj data 40 total)
+                     (-> obj data 41 total)
+                     (-> obj data 42 total)
+                     (-> obj data 73 total)
+                     (-> obj data 74 total)
+                     (-> obj data 75 total)
+                     (-> obj data 76 total)
+                     (-> obj data 78 total)
+                     (-> obj data 81 total)
+                     (-> obj data 80 total)
+                     (-> obj data 111 total)
+                     )
+                  10
+                  )
+                (sar (-> *dma-mem-usage* data 35 total) 10)
+                )
+              (format
+                fmt-dest
+                "  pris-anim ~192H~5DK ~280Hpris-generic~456H~5DK~%"
+                (sar
+                  (+ (-> obj data 67 total)
+                     (-> obj data 68 total)
+                     (-> obj data 69 total)
+                     (-> obj data 70 total)
+                     (-> obj data 71 total)
+                     (-> obj data 77 total)
+                     (-> obj data 79 total)
+                     (-> obj data 72 total)
+                     )
+                  10
+                  )
+                (sar (-> *dma-mem-usage* data 89 total) 10)
+                )
+              (format
+                fmt-dest
+                "  textures ~192H~5DK ~280Htextures~456H~5DK~%"
+                (sar (-> obj data 82 total) 10)
+                (sar (-> *dma-mem-usage* data 82 total) 10)
+                )
+              (format fmt-dest "  entity ~192H~5DK~%" (sar
+                                                        (+ (-> obj data 66 total)
+                                                           (-> obj data 43 total)
+                                                           (-> obj data 44 total)
+                                                           (-> obj data 45 total)
+                                                           (-> obj data 49 total)
+                                                           (-> obj data 48 total)
+                                                           (-> obj data 46 total)
+                                                           (-> obj data 47 total)
+                                                           )
+                                                        10
+                                                        )
+                      )
+              (format
+                fmt-dest
+                "  misc ~192H~5DK ~280Hsprite~456H~5DK~%"
+                (sar
+                  (+ (-> obj data 0 total)
+                     (-> obj data 63 total)
+                     (-> obj data 64 total)
+                     (-> obj data 83 total)
+                     (-> obj data 84 total)
+                     )
+                  10
+                  )
+                (sar (-> *dma-mem-usage* data 85 total) 10)
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (format fmt-dest "~1K~0L")
+  obj
+  )
+
+0

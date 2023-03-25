@@ -1,0 +1,66 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 2 of type transform
+(defmethod print transform ((obj transform))
+  (format #t "#<transform @ #x~X~%" obj)
+  (format #t "~T~Ttrans:~F ~F ~F ~F ~%" (-> obj trans x) (-> obj trans y) (-> obj trans z) (-> obj trans w))
+  (format #t "~T~Trot:  ~F ~F ~F ~F ~%" (-> obj rot x) (-> obj rot y) (-> obj rot z) (-> obj rot w))
+  (format #t "~T~Tscale:~F ~F ~F ~F>" (-> obj scale x) (-> obj scale y) (-> obj scale z) (-> obj scale w))
+  obj
+  )
+
+;; definition for method 0 of type trs
+(defmethod new trs ((allocation symbol) (type-to-make type))
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> obj trans w) 1.0)
+    (set! (-> obj rot w) 1.0)
+    (vector-identity! (-> obj scale))
+    obj
+    )
+  )
+
+;; definition for function transform-matrix-calc!
+;; INFO: Used lq/sq
+(defun transform-matrix-calc! ((tf transform) (dst-mat matrix))
+  (let ((s4-0 (new-stack-matrix0))
+        (s3-0 (new-stack-matrix0))
+        )
+    (matrix-identity! dst-mat)
+    (matrix-translate! dst-mat (-> tf trans))
+    (matrix-rotate-y! s4-0 (-> tf rot y))
+    (matrix*! s3-0 s4-0 dst-mat)
+    (matrix-rotate-x! s4-0 (-> tf rot x))
+    (matrix*! dst-mat s4-0 s3-0)
+    (matrix-rotate-z! s4-0 (-> tf rot z))
+    (matrix*! s3-0 s4-0 dst-mat)
+    (matrix-scale! s4-0 (-> tf scale))
+    (matrix*! dst-mat s4-0 s3-0)
+    )
+  )
+
+;; definition for function transform-matrix-parent-calc!
+;; INFO: Used lq/sq
+(defun transform-matrix-parent-calc! ((tf transform) (dst-mat matrix) (inv-scale vector))
+  (let ((s4-0 (new-stack-matrix0))
+        (s3-0 (new-stack-matrix0))
+        )
+    (matrix-identity! s3-0)
+    (matrix-translate! s3-0 (-> tf trans))
+    (matrix-inv-scale! s4-0 inv-scale)
+    (matrix*! dst-mat s4-0 s3-0)
+    (matrix-rotate-y! s4-0 (-> tf rot y))
+    (matrix*! s3-0 s4-0 dst-mat)
+    (matrix-rotate-x! s4-0 (-> tf rot x))
+    (matrix*! dst-mat s4-0 s3-0)
+    (matrix-rotate-z! s4-0 (-> tf rot z))
+    (matrix*! s3-0 s4-0 dst-mat)
+    (matrix-scale! s4-0 (-> tf scale))
+    (matrix*! dst-mat s4-0 s3-0)
+    )
+  )
+
+;; definition for function trs-matrix-calc!
+(defun trs-matrix-calc! ((tf trs) (dst-mat matrix))
+  (transform-matrix-calc! (the-as transform (-> tf trans)) dst-mat)
+  )

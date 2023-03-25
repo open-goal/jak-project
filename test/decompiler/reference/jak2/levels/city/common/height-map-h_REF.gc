@@ -1,0 +1,61 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type xz-height-map
+(deftype xz-height-map (structure)
+  "TODO - not terribly well understood yet, but this is used for the traffic height map
+this is primarily used to store a massive amount of bytes in the `data` field
+all initialized from static data."
+  ((offset        float          3 :offset-assert   0)
+   (x-offset      float            :offset          0)
+   (y-offset      float            :offset          4)
+   (z-offset      float            :offset          8)
+   (x-inv-spacing float            :offset-assert  12)
+   (z-inv-spacing float            :offset-assert  16)
+   (y-scale       float            :offset-assert  20)
+   (dim           int16          2 :offset-assert  24)
+   (x-dim         int16            :offset         24)
+   (z-dim         int16            :offset         26)
+   (data          (pointer int8)   :offset-assert  28)
+   )
+  :method-count-assert 15
+  :size-assert         #x20
+  :flag-assert         #xf00000020
+  (:methods
+    (get-height-at-point (_type_ vector) float 9)
+    (debug-draw-mesh (_type_ vector) none 10)
+    (debug-print (_type_) none 11)
+    (debug-draw-at-point (_type_ vector) none 12)
+    (debug-draw (_type_ vector) none 13)
+    (debug-add-offset (_type_ vector int) none 14)
+    )
+  )
+
+;; definition for method 3 of type xz-height-map
+(defmethod inspect xz-height-map ((obj xz-height-map))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'xz-height-map)
+  (format #t "~1Toffset[3] @ #x~X~%" (-> obj offset))
+  (format #t "~1Tx-offset: ~f~%" (-> obj x-offset))
+  (format #t "~1Ty-offset: ~f~%" (-> obj y-offset))
+  (format #t "~1Tz-offset: ~f~%" (-> obj z-offset))
+  (format #t "~1Tx-inv-spacing: ~f~%" (-> obj x-inv-spacing))
+  (format #t "~1Tz-inv-spacing: ~f~%" (-> obj z-inv-spacing))
+  (format #t "~1Ty-scale: ~f~%" (-> obj y-scale))
+  (format #t "~1Tdim[2] @ #x~X~%" (-> obj dim))
+  (format #t "~1Tx-dim: ~D~%" (-> obj x-dim))
+  (format #t "~1Tz-dim: ~D~%" (-> obj z-dim))
+  (format #t "~1Tdata: #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function get-traffic-height
+(defun get-traffic-height ((arg0 vector))
+  "@returns The value of [[xz-height-map::9]] using [[*traffic-height-map*]] and the [[vector]] provided
+@see [[xz-height-map::9]]"
+  (get-height-at-point *traffic-height-map* arg0)
+  )

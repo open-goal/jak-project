@@ -1,0 +1,209 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: prototype-h.gc
+;; name in dgo: prototype-h
+;; dgos: ENGINE, GAME
+
+(declare-type prototype-tie drawable)
+(declare-type collide-hash-fragment-array basic)
+
+(defenum prototype-flags
+  :bitfield #t
+  :type uint16
+  (disable     0) ;; set from debug menu, for debugging
+  ;; 1 is envmap related?
+  (tpage-alpha 2)
+  (vanish      3)
+  (visible     5) ;; set by prototypes-game-visible-set! to hide things on purpose
+  (no-collide  6)
+  (tpage-water 7)
+  )
+
+
+(defenum instance-flags
+  :type uint16
+  :bitfield #t
+  (no-collide 0)
+  )
+
+;; DECOMP BEGINS
+
+(deftype prototype-bucket (basic)
+  ((name                string           :offset-assert   4)
+   (flags               prototype-flags  :offset-assert   8)
+   (texture-masks-index uint16           :offset-assert  10)
+   (in-level            uint16           :offset-assert  12)
+   (utextures           uint16           :offset-assert  14)
+   (geometry            drawable 4       :offset-assert  16)
+   (dists               vector   :inline :offset-assert  32)
+   (rdists              vector   :inline :offset-assert  48)
+   (near-plane          meters           :offset         32)
+   (near-stiff          meters           :offset         36)
+   (mid-plane           meters           :offset         40)
+   (far-plane           meters           :offset         44)
+   (rlength-near        float            :offset         48)
+   (rlength-stiff       float            :offset         52)
+   (rlength-mid         float            :offset         56)
+   (stiffness           float            :offset         60)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+(deftype prototype-bucket-shrub (prototype-bucket)
+  ((next              uint32     4 :offset-assert  64)
+   (count             uint16     4 :offset-assert  80)
+   (mod-count         uint16     4 :offset-assert  88)
+   (last              dma-packet 4 :offset-assert  96)
+   (next-clear        uint128      :offset         64)
+   (count-clear       uint64       :offset         80)
+   (count-clear-qword uint128      :offset         80)
+   (last-clear        uint128      :offset         96)
+   )
+  :method-count-assert 9
+  :size-assert         #x70
+  :flag-assert         #x900000070
+  )
+
+(deftype prototype-inline-array-shrub (drawable)
+  ((length int16                            :offset          6)
+   (data   prototype-bucket-shrub 1 :inline :offset         32)
+   (_pad   uint32                           :offset-assert 144)
+   )
+  :method-count-assert 17
+  :size-assert         #x94
+  :flag-assert         #x1100000094
+  )
+
+(deftype prototype-array-shrub-info (basic)
+  ((prototype-inline-array-shrub prototype-inline-array-shrub  :offset-assert   4)
+   (wind-vectors                 uint32                        :offset-assert   8)
+   (wind-count                   int32                         :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype prototype-bucket-tie (prototype-bucket)
+  ((next                        uint32              12       :offset-assert  64)
+   (count                       uint16              12       :offset-assert 112)
+   (frag-count                  uint8               4        :offset-assert 136)
+   (index-start                 uint8               4        :offset-assert 140)
+   (base-qw                     uint16              4        :offset-assert 144)
+   (tie-rvanish                 float                        :offset-assert 152)
+   (tie-vanish-far              float                        :offset-assert 156)
+   (envmap-rfade                float                        :offset-assert 160)
+   (envmap-fade-far             float                        :offset-assert 164)
+   (envmap-shader               adgif-shader                 :offset-assert 168)
+   (tint-color                  uint32                       :offset-assert 172)
+   (collide-hash-fragment-array collide-hash-fragment-array  :offset-assert 176)
+   (tie-colors                  time-of-day-palette          :offset-assert 180)
+   (data                        uint32              :dynamic :offset-assert 184)
+   (color-index-qwc             uint32              :dynamic :offset-assert 184)
+   (scissor-frag-count          uint8                        :offset        136)
+   (near-frag-count             uint8                        :offset        137)
+   (mid-frag-count              uint8                        :offset        138)
+   (far-frag-count              uint8                        :offset        139)
+   (scissor-index-start         uint8                        :offset        140)
+   (near-index-start            uint8                        :offset        141)
+   (mid-index-start             uint8                        :offset        142)
+   (far-index-start             uint8                        :offset        143)
+   (scissor-base-qw             uint16                       :offset        144)
+   (near-base-qw                uint16                       :offset        146)
+   (mid-base-qw                 uint16                       :offset        148)
+   (far-base-qw                 uint16                       :offset        150)
+   (tie-next                    uint32              4        :offset         64)
+   (tie-scissor-next            uint32                       :offset         64)
+   (tie-near-next               uint32                       :offset         68)
+   (tie-mid-next                uint32                       :offset         72)
+   (tie-far-next                uint32                       :offset         76)
+   (trans-next                  uint32              4        :offset         64)
+   (trans-scissor-next          uint32              4        :offset         64)
+   (trans-near-next             uint32                       :offset         68)
+   (trans-mid-next              uint32                       :offset         72)
+   (trans-far-next              uint32                       :offset         76)
+   (water-next                  uint32              4        :offset         64)
+   (water-scissor-next          uint32              4        :offset         64)
+   (water-near-next             uint32                       :offset         68)
+   (water-mid-next              uint32                       :offset         72)
+   (water-far-next              uint32                       :offset         76)
+   (envmap-next                 uint32              4        :offset         80)
+   (envmap-scissor-next         uint32              4        :offset         80)
+   (envmap-near-next            uint32                       :offset         84)
+   (envmap-mid-next             uint32                       :offset         88)
+   (envmap-far-next             uint32                       :offset         92)
+   (generic-next                uint32              3        :offset         96)
+   (generic-near-next           uint32                       :offset         96)
+   (generic-mid-next            uint32                       :offset        100)
+   (generic-far-next            uint32                       :offset        104)
+   (vanish-next                 uint32                       :offset        108)
+   (tie-count                   uint16              4        :offset        112)
+   (tie-scissor-count           uint16                       :offset        112)
+   (tie-near-count              uint16                       :offset        114)
+   (tie-mid-count               uint16                       :offset        116)
+   (tie-far-count               uint16                       :offset        118)
+   (trans-count                 uint16              4        :offset        112)
+   (trans-scissor-count         uint16                       :offset        112)
+   (trans-near-count            uint16                       :offset        114)
+   (trans-mid-count             uint16                       :offset        116)
+   (trans-far-count             uint16                       :offset        118)
+   (water-count                 uint16              4        :offset        112)
+   (water-scissor-count         uint16                       :offset        112)
+   (water-near-count            uint16                       :offset        114)
+   (water-mid-count             uint16                       :offset        116)
+   (water-far-count             uint16                       :offset        118)
+   (envmap-count                uint16              4        :offset        120)
+   (envmap-scissor-count        uint16                       :offset        120)
+   (envmap-near-count           uint16                       :offset        122)
+   (envmap-mid-count            uint16                       :offset        124)
+   (envmap-far-count            uint16                       :offset        126)
+   (generic-count               uint16              3        :offset        128)
+   (generic-near-count          uint16                       :offset        128)
+   (generic-mid-count           uint16                       :offset        130)
+   (generic-far-count           uint16                       :offset        132)
+   (vanish-count                uint16                       :offset        134)
+   (next-clear                  uint128             3        :offset         64)
+   (count-clear                 uint64              3        :offset        112)
+   (tie-geom                    prototype-tie       4        :offset         16)
+   )
+  :method-count-assert 9
+  :size-assert         #xb8
+  :flag-assert         #x9000000b8
+  )
+
+(deftype prototype-array-tie (array)
+  ((array-data prototype-bucket-tie :dynamic :offset  16)
+   )
+  :method-count-assert 10
+  :size-assert         #x10
+  :flag-assert         #xa00000010
+  (:methods
+    (login (_type_) none 9)
+    )
+  )
+
+(deftype proxy-prototype-array-tie (basic)
+  ((prototype-array-tie prototype-array-tie  :offset-assert   4)
+   (wind-vectors        uint32               :offset-assert   8)
+   (wind-count          uint16               :offset-assert  12)
+   (prototype-max-qwc   uint16               :offset-assert  14)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype instance (drawable)
+  ((bucket-index uint16           :offset 6)
+   (origin       matrix4h :inline :offset-assert 32)
+   (flags        instance-flags   :offset 46)
+   (wind-index   uint16           :offset 62)
+   )
+  :method-count-assert 17
+  :size-assert         #x40
+  :flag-assert         #x1100000040
+  )
+

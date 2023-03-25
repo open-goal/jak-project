@@ -1,0 +1,161 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol generic-vu1-block, type vu-function
+(define generic-vu1-block (new 'static 'vu-function :length #x446 :qlength #x223))
+
+;; definition for function generic-setup-constants
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
+(defun generic-setup-constants ((arg0 generic-constants) (arg1 int))
+  (let ((a2-0 *math-camera*))
+    (set-vector! (-> arg0 fog) (-> a2-0 pfog0) (-> a2-0 fog-min) (-> a2-0 fog-max) 3071.0)
+    )
+  (set! (-> arg0 adgif tag) (new 'static 'gif-tag64 :nloop #x7 :nreg #x1))
+  (set! (-> arg0 adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+  (set! (-> arg0 giftag tag)
+        (new 'static 'gif-tag64
+          :pre #x1
+          :nreg #x3
+          :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1)
+          )
+        )
+  (set! (-> arg0 giftag regs)
+        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
+        )
+  (set! (-> arg0 hvdf-offset quad) (-> *math-camera* hvdf-off quad))
+  (set! (-> arg0 hmge-scale quad) (-> *math-camera* hmge-scale quad))
+  (set! (-> arg0 invh-scale quad) (-> *math-camera* inv-hmge-scale quad))
+  (set! (-> arg0 guard quad) (-> *math-camera* guard quad))
+  (set! (-> arg0 adnop dword 0) (the-as uint #x5026b))
+  (set! (-> arg0 adnop dword 1) (the-as uint 71))
+  (set! (-> arg0 flush dword 0) (the-as uint #x3f80000080808080))
+  (set! (-> arg0 flush dword 1) (the-as uint 1))
+  (none)
+  )
+
+;; definition for function generic-add-constants
+;; INFO: Return type mismatch pointer vs none.
+(defun generic-add-constants ((arg0 dma-buffer) (arg1 int))
+  (let* ((a2-0 10)
+         (v1-0 arg0)
+         (a0-1 (the-as dma-packet (-> v1-0 base)))
+         )
+    (set! (-> a0-1 dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a2-0))
+    (set! (-> a0-1 vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set! (-> a0-1 vif1) (new 'static 'vif-tag :imm #x381 :cmd (vif-cmd unpack-v4-32) :num a2-0))
+    (set! (-> v1-0 base) (the-as pointer (&+ a0-1 16)))
+    )
+  (generic-setup-constants (the-as generic-constants (-> arg0 base)) arg1)
+  (&+! (-> arg0 base) 160)
+  (none)
+  )
+
+;; definition for function generic-init-buf
+;; INFO: Return type mismatch int vs none.
+(defun generic-init-buf ((arg0 dma-buffer) (arg1 int) (arg2 gs-zbuf))
+  (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
+    (dma-buffer-add-vu-function arg0 generic-vu1-block 1)
+    (let* ((v1-3 arg0)
+           (a0-2 (the-as dma-packet (-> v1-3 base)))
+           )
+      (set! (-> a0-2 dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id cnt)))
+      (set! (-> a0-2 vif0) (new 'static 'vif-tag))
+      (set! (-> a0-2 vif1) (new 'static 'vif-tag :imm #x3 :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> v1-3 base) (the-as pointer (&+ a0-2 16)))
+      )
+    (let* ((v1-4 arg0)
+           (a0-4 (the-as gs-gif-tag (-> v1-4 base)))
+           )
+      (set! (-> a0-4 tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x2))
+      (set! (-> a0-4 regs) GIF_REGS_ALL_AD)
+      (set! (-> v1-4 base) (the-as pointer (&+ a0-4 16)))
+      )
+    (let* ((v1-5 arg0)
+           (a0-6 (-> v1-5 base))
+           )
+      (set! (-> (the-as (pointer gs-test) a0-6) 0) (new 'static 'gs-test
+                                                     :ate #x1
+                                                     :atst (gs-atest greater-equal)
+                                                     :aref #x26
+                                                     :afail #x1
+                                                     :zte #x1
+                                                     :ztst (gs-ztest greater-equal)
+                                                     )
+            )
+      (set! (-> (the-as (pointer uint64) a0-6) 1) (the-as uint (gs-reg test-1)))
+      (set! (-> (the-as (pointer gs-zbuf) a0-6) 2) arg2)
+      (set! (-> (the-as (pointer uint64) a0-6) 3) (the-as uint (gs-reg zbuf-1)))
+      (set! (-> v1-5 base) (&+ a0-6 32))
+      )
+    (generic-add-constants arg0 arg1)
+    (let* ((v1-6 arg0)
+           (a0-9 (the-as dma-packet (-> v1-6 base)))
+           )
+      (set! (-> a0-9 dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+      (set! (-> a0-9 vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1))
+      (set! (-> a0-9 vif1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
+      (set! (-> v1-6 base) (the-as pointer (&+ a0-9 16)))
+      )
+    (let ((v1-7 (the-as (pointer int32) (-> arg0 base))))
+      (set! (-> (the-as (pointer vif-tag) v1-7) 0) (new 'static 'vif-tag :cmd (vif-cmd base)))
+      (set! (-> (the-as (pointer vif-tag) v1-7) 1) (new 'static 'vif-tag :cmd (vif-cmd offset)))
+      (set! (-> (the-as (pointer vif-tag) v1-7) 2) (new 'static 'vif-tag))
+      (set! (-> (the-as (pointer vif-tag) v1-7) 3) (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
+      (set! (-> v1-7 4) 0)
+      (set! (-> v1-7 5) 0)
+      (set! (-> v1-7 6) 0)
+      (set! (-> v1-7 7) 0)
+      (set! (-> arg0 base) (&+ (the-as pointer v1-7) 32))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function generic-reset-buffers
+;; INFO: Return type mismatch int vs none.
+;; WARN: Failed store: (s.w! (+ t0-1 4) 0) at op 17
+;; WARN: Failed store: (s.w! (+ t0-1 8) a1-3) at op 21
+;; WARN: Failed store: (s.w! (+ t0-1 12) v1-5) at op 25
+;; WARN: Failed store: (s.w! (+ t0-1 16) 0) at op 26
+;; WARN: Failed store: (s.w! (+ t0-1 20) 0) at op 27
+;; WARN: Failed store: (s.w! (+ t0-1 24) 0) at op 28
+;; WARN: Failed store: (s.w! (+ t0-1 28) v1-6) at op 30
+(defun generic-reset-buffers ((arg0 dma-buffer) (arg1 int) (arg2 int))
+  (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
+    (let ((a3-0 (new 'static 'vector4w :x #x345 :y #x363))
+          (v1-3 (new 'static 'vector4w :y #x117 :z #x22e))
+          )
+      (let* ((t0-0 arg0)
+             (t1-0 (the-as object (-> t0-0 base)))
+             )
+        (set! (-> (the-as dma-packet t1-0) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+        (set! (-> (the-as dma-packet t1-0) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+        (set! (-> (the-as dma-packet t1-0) vif1)
+              (new 'static 'vif-tag :imm #x38a :num #x1 :cmd (vif-cmd unpack-v4-32))
+              )
+        (set! (-> t0-0 base) (the-as pointer (the-as dma-packet (&+ (the-as pointer t1-0) 16))))
+        )
+      (let ((t0-1 (-> arg0 base)))
+        (set! (-> (the-as (pointer int32) t0-1)) 0)
+        (s.w! (+ t0-1 4) 0)
+        (let ((a1-3 (-> (the-as (pointer int32) (+ (the-as uint a3-0) (* arg1 4))))))
+          (s.w! (+ t0-1 8) a1-3)
+          )
+        (let ((v1-5 (-> (the-as (pointer int32) (+ (the-as uint v1-3) (* arg2 4))))))
+          (s.w! (+ t0-1 12) v1-5)
+          )
+        (s.w! (+ t0-1 16) 0)
+        (s.w! (+ t0-1 20) 0)
+        (s.w! (+ t0-1 24) 0)
+        (let ((v1-6 #x1500000c))
+          (s.w! (+ t0-1 28) v1-6)
+          )
+        (set! (-> arg0 base) (&+ t0-1 32))
+        )
+      )
+    )
+  0
+  (none)
+  )

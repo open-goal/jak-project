@@ -2,14 +2,16 @@
 
 #include <string>
 #include <vector>
+
 #include "common/goos/Object.h"
-#include "decompiler/util/TP_Type.h"
-#include "decompiler/util/StackSpillMap.h"
+#include "common/util/Assert.h"
+
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/IR2/IR2_common.h"
 #include "decompiler/analysis/reg_usage.h"
 #include "decompiler/config.h"
-#include "common/util/Assert.h"
+#include "decompiler/util/StackSpillMap.h"
+#include "decompiler/util/TP_Type.h"
 
 namespace decompiler {
 class LinkedObjectFile;
@@ -56,6 +58,7 @@ struct FunctionVariableDefinitions {
  */
 class Env {
  public:
+  GameVersion version = GameVersion::Jak1;
   bool types_succeeded = false;
   bool has_local_vars() const { return m_has_local_vars; }
   bool has_type_analysis() const { return m_has_types; }
@@ -154,7 +157,7 @@ class Env {
   const std::string& art_group() const { return m_art_group; }
   std::optional<std::string> get_art_elt_name(int idx) const;
 
-  void set_remap_for_function(const TypeSpec& ts);
+  void set_remap_for_function(const Function& func);
   void set_remap_for_method(const TypeSpec& ts);
   void set_remap_for_new_method(const TypeSpec& ts);
   void map_args_from_config(const std::vector<std::string>& args_names,
@@ -171,6 +174,7 @@ class Env {
   }
 
   void set_stack_structure_hints(const std::vector<StackStructureHint>& hints);
+  void add_stack_structure_hint(const StackStructureHint& hint);
   const std::vector<StackStructureEntry>& stack_structure_hints() const {
     return m_stack_structures;
   }

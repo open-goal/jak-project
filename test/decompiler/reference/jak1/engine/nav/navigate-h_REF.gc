@@ -1,0 +1,543 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type nav-poly
+(deftype nav-poly (structure)
+  ((id       uint8   :offset-assert   0)
+   (vertex   uint8 3 :offset-assert   1)
+   (adj-poly uint8 3 :offset-assert   4)
+   (pat      uint8   :offset-assert   7)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type nav-poly
+(defmethod inspect nav-poly ((obj nav-poly))
+  (format #t "[~8x] ~A~%" obj 'nav-poly)
+  (format #t "~Tid: ~D~%" (-> obj id))
+  (format #t "~Tvertex[3] @ #x~X~%" (-> obj vertex))
+  (format #t "~Tadj-poly[3] @ #x~X~%" (-> obj adj-poly))
+  (format #t "~Tpat: ~D~%" (-> obj pat))
+  obj
+  )
+
+;; definition of type nav-vertex
+(deftype nav-vertex (vector)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type nav-vertex
+;; INFO: Used lq/sq
+(defmethod inspect nav-vertex ((obj nav-vertex))
+  (format #t "[~8x] ~A~%" obj 'nav-vertex)
+  (format #t "~Tdata[4] @ #x~X~%" (&-> obj x))
+  (format #t "~Tx: ~f~%" (-> obj x))
+  (format #t "~Ty: ~f~%" (-> obj y))
+  (format #t "~Tz: ~f~%" (-> obj z))
+  (format #t "~Tw: ~f~%" (-> obj w))
+  (format #t "~Tquad: ~D~%" (-> obj quad))
+  obj
+  )
+
+;; definition of type nav-sphere
+(deftype nav-sphere (structure)
+  ((trans sphere :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type nav-sphere
+(defmethod inspect nav-sphere ((obj nav-sphere))
+  (format #t "[~8x] ~A~%" obj 'nav-sphere)
+  (format #t "~Ttrans: #<sphere @ #x~X>~%" (-> obj trans))
+  obj
+  )
+
+;; definition of type nav-ray
+(deftype nav-ray (structure)
+  ((current-pos  vector   :inline :offset-assert   0)
+   (dir          vector   :inline :offset-assert  16)
+   (dest-pos     vector   :inline :offset-assert  32)
+   (current-poly nav-poly         :offset-assert  48)
+   (next-poly    nav-poly         :offset-assert  52)
+   (len          meters           :offset-assert  56)
+   (last-edge    int8             :offset-assert  60)
+   (terminated   symbol           :offset-assert  64)
+   (reached-dest symbol           :offset-assert  68)
+   (hit-boundary symbol           :offset-assert  72)
+   (hit-gap      symbol           :offset-assert  76)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+;; definition for method 3 of type nav-ray
+(defmethod inspect nav-ray ((obj nav-ray))
+  (format #t "[~8x] ~A~%" obj 'nav-ray)
+  (format #t "~Tcurrent-pos: #<vector @ #x~X>~%" (-> obj current-pos))
+  (format #t "~Tdir: #<vector @ #x~X>~%" (-> obj dir))
+  (format #t "~Tdest-pos: #<vector @ #x~X>~%" (-> obj dest-pos))
+  (format #t "~Tcurrent-poly: #<nav-poly @ #x~X>~%" (-> obj current-poly))
+  (format #t "~Tnext-poly: #<nav-poly @ #x~X>~%" (-> obj next-poly))
+  (format #t "~Tlen: (meters ~m)~%" (-> obj len))
+  (format #t "~Tlast-edge: ~D~%" (-> obj last-edge))
+  (format #t "~Tterminated: ~A~%" (-> obj terminated))
+  (format #t "~Treached-dest: ~A~%" (-> obj reached-dest))
+  (format #t "~Thit-boundary: ~A~%" (-> obj hit-boundary))
+  (format #t "~Thit-gap: ~A~%" (-> obj hit-gap))
+  obj
+  )
+
+;; definition of type nav-route-portal
+(deftype nav-route-portal (structure)
+  ((next-poly  nav-poly     :offset-assert   0)
+   (vertex     nav-vertex 2 :offset-assert   4)
+   (edge-index int8         :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #xd
+  :flag-assert         #x90000000d
+  )
+
+;; definition for method 3 of type nav-route-portal
+(defmethod inspect nav-route-portal ((obj nav-route-portal))
+  (format #t "[~8x] ~A~%" obj 'nav-route-portal)
+  (format #t "~Tnext-poly: #<nav-poly @ #x~X>~%" (-> obj next-poly))
+  (format #t "~Tvertex[2] @ #x~X~%" (-> obj vertex))
+  (format #t "~Tedge-index: ~D~%" (-> obj edge-index))
+  obj
+  )
+
+;; definition of type clip-travel-vector-to-mesh-return-info
+(deftype clip-travel-vector-to-mesh-return-info (structure)
+  ((found-boundary  symbol           :offset-assert   0)
+   (intersection    vector   :inline :offset-assert  16)
+   (boundary-normal vector   :inline :offset-assert  32)
+   (prev-normal     vector   :inline :offset-assert  48)
+   (next-normal     vector   :inline :offset-assert  64)
+   (poly            nav-poly         :offset-assert  80)
+   (gap-poly        nav-poly         :offset-assert  84)
+   (edge            int32            :offset-assert  88)
+   (vert-prev       vector   :inline :offset-assert  96)
+   (vert-0          vector   :inline :offset-assert 112)
+   (vert-1          vector   :inline :offset-assert 128)
+   (vert-next       vector   :inline :offset-assert 144)
+   )
+  :method-count-assert 9
+  :size-assert         #xa0
+  :flag-assert         #x9000000a0
+  )
+
+;; definition for method 3 of type clip-travel-vector-to-mesh-return-info
+(defmethod inspect clip-travel-vector-to-mesh-return-info ((obj clip-travel-vector-to-mesh-return-info))
+  (format #t "[~8x] ~A~%" obj 'clip-travel-vector-to-mesh-return-info)
+  (format #t "~Tfound-boundary: ~A~%" (-> obj found-boundary))
+  (format #t "~Tintersection: #<vector @ #x~X>~%" (-> obj intersection))
+  (format #t "~Tboundary-normal: #<vector @ #x~X>~%" (-> obj boundary-normal))
+  (format #t "~Tprev-normal: #<vector @ #x~X>~%" (-> obj prev-normal))
+  (format #t "~Tnext-normal: #<vector @ #x~X>~%" (-> obj next-normal))
+  (format #t "~Tpoly: #<nav-poly @ #x~X>~%" (-> obj poly))
+  (format #t "~Tgap-poly: #<nav-poly @ #x~X>~%" (-> obj gap-poly))
+  (format #t "~Tedge: ~D~%" (-> obj edge))
+  (format #t "~Tvert-prev: #<vector @ #x~X>~%" (-> obj vert-prev))
+  (format #t "~Tvert-0: #<vector @ #x~X>~%" (-> obj vert-0))
+  (format #t "~Tvert-1: #<vector @ #x~X>~%" (-> obj vert-1))
+  (format #t "~Tvert-next: #<vector @ #x~X>~%" (-> obj vert-next))
+  obj
+  )
+
+;; definition of type nav-node
+(deftype nav-node (structure)
+  ((center-x      float          :offset-assert   0)
+   (center-y      float          :offset-assert   4)
+   (center-z      float          :offset-assert   8)
+   (type          uint16         :offset-assert  12)
+   (parent-offset uint16         :offset-assert  14)
+   (center        vector :inline :offset          0)
+   (radius-x      float          :offset-assert  16)
+   (radius-y      float          :offset-assert  20)
+   (radius-z      float          :offset-assert  24)
+   (left-offset   uint16         :offset-assert  28)
+   (right-offset  uint16         :offset-assert  30)
+   (num-tris      uint32         :offset         28)
+   (radius        vector :inline :offset         16)
+   (scale-x       float          :offset-assert  32)
+   (first-tris    uint8  4       :offset-assert  36)
+   (scale-z       float          :offset-assert  40)
+   (last-tris     uint8  4       :offset-assert  44)
+   (scale         vector :inline :offset         32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;; definition for method 3 of type nav-node
+(defmethod inspect nav-node ((obj nav-node))
+  (format #t "[~8x] ~A~%" obj 'nav-node)
+  (format #t "~Tcenter-x: ~f~%" (-> obj center-x))
+  (format #t "~Tcenter-y: ~f~%" (-> obj center-y))
+  (format #t "~Tcenter-z: ~f~%" (-> obj center-z))
+  (format #t "~Ttype: ~D~%" (-> obj type))
+  (format #t "~Tparent-offset: ~D~%" (-> obj parent-offset))
+  (format #t "~Tcenter: #<vector @ #x~X>~%" (&-> obj center-x))
+  (format #t "~Tradius-x: ~f~%" (-> obj radius-x))
+  (format #t "~Tradius-y: ~f~%" (-> obj radius-y))
+  (format #t "~Tradius-z: ~f~%" (-> obj radius-z))
+  (format #t "~Tleft-offset: ~D~%" (-> obj left-offset))
+  (format #t "~Tright-offset: ~D~%" (-> obj right-offset))
+  (format #t "~Tnum-tris: ~D~%" (-> obj num-tris))
+  (format #t "~Tradius: #<vector @ #x~X>~%" (&-> obj radius-x))
+  (format #t "~Tscale-x: ~f~%" (-> obj scale-x))
+  (format #t "~Tfirst-tris[4] @ #x~X~%" (-> obj first-tris))
+  (format #t "~Tscale-z: ~f~%" (-> obj scale-z))
+  (format #t "~Tlast-tris[4] @ #x~X~%" (-> obj last-tris))
+  (format #t "~Tscale: #<vector @ #x~X>~%" (&-> obj scale-x))
+  obj
+  )
+
+;; definition of type nav-lookup-elem
+(deftype nav-lookup-elem (structure)
+  ((vec         vector :inline :offset-assert   0)
+   (y-thresh    float          :offset         12)
+   (time        uint32         :offset-assert  16)
+   (node-offset uint32         :offset-assert  20)
+   (lookup-type uint8          :offset-assert  24)
+   (poly-ind    uint8          :offset-assert  25)
+   (dummy0      uint16         :offset-assert  26)
+   (dummy       uint32         :offset-assert  28)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type nav-lookup-elem
+(defmethod inspect nav-lookup-elem ((obj nav-lookup-elem))
+  (format #t "[~8x] ~A~%" obj 'nav-lookup-elem)
+  (format #t "~Tvec: #<vector @ #x~X>~%" (-> obj vec))
+  (format #t "~Ty-thresh: ~f~%" (-> obj vec w))
+  (format #t "~Ttime: ~D~%" (-> obj time))
+  (format #t "~Tnode-offset: ~D~%" (-> obj node-offset))
+  (format #t "~Tlookup-type: ~D~%" (-> obj lookup-type))
+  (format #t "~Tpoly-ind: ~D~%" (-> obj poly-ind))
+  (format #t "~Tdummy0: ~D~%" (-> obj dummy0))
+  (format #t "~Tdummy: ~D~%" (-> obj dummy))
+  obj
+  )
+
+;; definition of type nav-mesh
+(deftype nav-mesh (basic)
+  ((user-list           engine                              :offset-assert   4)
+   (poly-lookup-history uint8                     2         :offset-assert   8)
+   (debug-time          uint8                               :offset-assert  10)
+   (static-sphere-count uint8                               :offset-assert  11)
+   (static-sphere       (inline-array nav-sphere)           :offset-assert  12)
+   (bounds              sphere                    :inline   :offset-assert  16)
+   (origin              vector                    :inline   :offset-assert  32)
+   (cache               nav-lookup-elem           4 :inline :offset-assert  48)
+   (node-count          int32                               :offset-assert 176)
+   (nodes               (inline-array nav-node)             :offset-assert 180)
+   (vertex-count        int32                               :offset-assert 184)
+   (vertex              (inline-array nav-vertex)           :offset-assert 188)
+   (poly-count          int32                               :offset-assert 192)
+   (poly                (inline-array nav-poly)             :offset-assert 196)
+   (route               (inline-array vector4ub)            :offset-assert 200)
+   )
+  :method-count-assert 30
+  :size-assert         #xcc
+  :flag-assert         #x1e000000cc
+  (:methods
+    (tri-centroid-world (_type_ nav-poly vector) vector 9)
+    (tri-centroid-local (_type_ nav-poly vector) vector 10)
+    (get-adj-poly (_type_ nav-poly nav-poly symbol) nav-poly 11)
+    (setup-portal (_type_ nav-poly nav-poly nav-route-portal) object 12)
+    (initialize-mesh! (_type_) none 13)
+    (move-along-nav-ray! (_type_ nav-ray) none 14)
+    (try-move-along-ray (_type_ nav-poly vector vector float) meters 15)
+    (TODO-RENAME-16 (_type_ vector nav-poly vector symbol float clip-travel-vector-to-mesh-return-info) none 16)
+    (update-route-table (_type_) none 17)
+    (dummy-18 (_type_ int vector int (pointer int8) int) none 18)
+    (compute-bounding-box (_type_ vector vector) none 19)
+    (debug-draw-poly (_type_ nav-poly rgba) none 20)
+    (point-in-poly? (_type_ nav-poly vector) symbol 21)
+    (find-opposite-vertices (_type_ nav-poly nav-poly) uint 22)
+    (dummy-23 (_type_ nav-poly vector vector vector nav-route-portal) vector 23)
+    (closest-point-on-boundary (_type_ nav-poly vector vector) vector 24)
+    (project-point-into-tri-3d (_type_ nav-poly vector vector) none 25)
+    (project-point-into-tri-2d (_type_ nav-poly vector vector) vector 26)
+    (find-poly-fast (_type_ vector meters) nav-poly 27)
+    (find-poly (_type_ vector meters (pointer nav-control-flags)) nav-poly 28)
+    (is-in-mesh? (_type_ vector float meters) symbol 29)
+    )
+  )
+
+;; definition for method 3 of type nav-mesh
+(defmethod inspect nav-mesh ((obj nav-mesh))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tuser-list: ~A~%" (-> obj user-list))
+  (format #t "~Tpoly-lookup-history[2] @ #x~X~%" (-> obj poly-lookup-history))
+  (format #t "~Tdebug-time: ~D~%" (-> obj debug-time))
+  (format #t "~Tstatic-sphere-count: ~D~%" (-> obj static-sphere-count))
+  (format #t "~Tstatic-sphere: #x~X~%" (-> obj static-sphere))
+  (format #t "~Tbounds: ~`sphere`P~%" (-> obj bounds))
+  (format #t "~Torigin: ~`vector`P~%" (-> obj origin))
+  (format #t "~Tcache[4] @ #x~X~%" (-> obj cache))
+  (format #t "~Tnode-count: ~D~%" (-> obj node-count))
+  (format #t "~Tnodes: #x~X~%" (-> obj nodes))
+  (format #t "~Tvertex-count: ~D~%" (-> obj vertex-count))
+  (format #t "~Tvertex: #x~X~%" (-> obj vertex))
+  (format #t "~Tpoly-count: ~D~%" (-> obj poly-count))
+  (format #t "~Tpoly: #x~X~%" (-> obj poly))
+  (format #t "~Troute: #x~X~%" (-> obj route))
+  obj
+  )
+
+;; definition of type check-vector-collision-with-nav-spheres-info
+(deftype check-vector-collision-with-nav-spheres-info (structure)
+  ((u         float          :offset-assert   0)
+   (intersect vector :inline :offset-assert  16)
+   (normal    vector :inline :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;; definition for method 3 of type check-vector-collision-with-nav-spheres-info
+(defmethod inspect check-vector-collision-with-nav-spheres-info ((obj check-vector-collision-with-nav-spheres-info))
+  (format #t "[~8x] ~A~%" obj 'check-vector-collision-with-nav-spheres-info)
+  (format #t "~Tu: ~f~%" (-> obj u))
+  (format #t "~Tintersect: #<vector @ #x~X>~%" (-> obj intersect))
+  (format #t "~Tnormal: #<vector @ #x~X>~%" (-> obj normal))
+  obj
+  )
+
+;; definition of type nav-gap-info
+(deftype nav-gap-info (structure)
+  ((dest vector   :inline :offset-assert   0)
+   (poly nav-poly         :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+;; definition for method 3 of type nav-gap-info
+(defmethod inspect nav-gap-info ((obj nav-gap-info))
+  (format #t "[~8x] ~A~%" obj 'nav-gap-info)
+  (format #t "~Tdest: #<vector @ #x~X>~%" (-> obj dest))
+  (format #t "~Tpoly: #<nav-poly @ #x~X>~%" (-> obj poly))
+  obj
+  )
+
+;; definition of type nav-control
+(deftype nav-control (basic)
+  ((flags               nav-control-flags                  :offset-assert   4)
+   (process             basic                              :offset-assert   8)
+   (shape               collide-shape                      :offset-assert  12)
+   (mesh                nav-mesh                           :offset-assert  16)
+   (gap-event           basic                              :offset-assert  20)
+   (block-event         basic                              :offset-assert  24)
+   (current-poly        nav-poly                           :offset-assert  28)
+   (next-poly           nav-poly                           :offset-assert  32)
+   (target-poly         nav-poly                           :offset-assert  36)
+   (portal              nav-route-portal  2                :offset-assert  40)
+   (nearest-y-threshold meters                             :offset-assert  48)
+   (event-temp          vector            :inline          :offset-assert  64)
+   (old-travel          vector            :inline          :offset-assert  80)
+   (blocked-travel      vector            :inline          :offset-assert  96)
+   (prev-pos            vector            :inline          :offset-assert 112)
+   (extra-nav-sphere    vector            :inline          :offset-assert 128)
+   (travel              vector            :inline          :offset-assert 144)
+   (target-pos          vector            :inline          :offset-assert 160)
+   (destination-pos     vector            :inline          :offset-assert 176)
+   (block-time          time-frame                         :offset-assert 192)
+   (block-count         float                              :offset-assert 200)
+   (user-poly           nav-poly                           :offset-assert 204)
+   (nav-cull-radius     float                              :offset-assert 208)
+   (num-spheres         int16                              :offset-assert 212)
+   (max-spheres         int16                              :offset-assert 214)
+   (sphere              sphere            :inline :dynamic :offset-assert 224)
+   )
+  :method-count-assert 36
+  :size-assert         #xe0
+  :flag-assert         #x24000000e0
+  (:methods
+    (new (symbol type collide-shape int float) _type_ 0)
+    (debug-draw (_type_) none 9)
+    (point-in-bounds? (_type_ vector) symbol 10)
+    (dummy-11 (_type_ vector) vector 11)
+    (TODO-RENAME-12 (_type_ nav-gap-info) symbol 12)
+    (dummy-13 (_type_ vector vector) vector 13)
+    (set-current-poly! (_type_ nav-poly) none 14)
+    (set-target-pos! (_type_ vector) none 15)
+    (dummy-16 (_type_ vector) nav-poly 16)
+    (project-onto-nav-mesh (_type_ vector vector) vector 17)
+    (find-poly (_type_ vector) nav-poly 18)
+    (dummy-19 (_type_ vector collide-shape-moving vector float) none 19)
+    (project-point-into-tri-3d (_type_ nav-poly vector vector) vector 20)
+    (TODO-RENAME-21 (_type_ vector) nav-poly 21)
+    (TODO-RENAME-22 (_type_ vector float) symbol 22)
+    (dummy-23 (_type_ vector check-vector-collision-with-nav-spheres-info) float 23)
+    (dummy-24 (_type_ float clip-travel-vector-to-mesh-return-info) none 24)
+    (is-in-mesh? (_type_ vector float) symbol 25)
+    (TODO-RENAME-26 (_type_) none 26)
+    (TODO-RENAME-27 (_type_) none 27)
+    (TODO-RENAME-28 (_type_ collide-kind) none 28)
+    (should-display? (_type_) symbol 29)
+    (dummy-30 (_type_ vector vector vector) sphere 30)
+    (intersect-ray-line-segment? (_type_ vector vector vector vector) symbol 31)
+    (TODO-ASM-32 (_type_ vector vector vector vector float) symbol 32)
+    (TODO-RENAME-33 (_type_ vector vector vector vector float) symbol 33)
+    (dummy-34 () none 34)
+    (dummy-35 (_type_ vector vector vector vector float) none 35)
+    )
+  )
+
+;; definition for method 3 of type nav-control
+(defmethod inspect nav-control ((obj nav-control))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tflags: #x~X~%" (-> obj flags))
+  (format #t "~Tprocess: ~A~%" (-> obj process))
+  (format #t "~Tshape: ~A~%" (-> obj shape))
+  (format #t "~Tmesh: ~A~%" (-> obj mesh))
+  (format #t "~Tgap-event: ~A~%" (-> obj gap-event))
+  (format #t "~Tblock-event: ~A~%" (-> obj block-event))
+  (format #t "~Tcurrent-poly: #<nav-poly @ #x~X>~%" (-> obj current-poly))
+  (format #t "~Tnext-poly: #<nav-poly @ #x~X>~%" (-> obj next-poly))
+  (format #t "~Ttarget-poly: #<nav-poly @ #x~X>~%" (-> obj target-poly))
+  (format #t "~Tportal[2] @ #x~X~%" (-> obj portal))
+  (format #t "~Tnearest-y-threshold: (meters ~m)~%" (-> obj nearest-y-threshold))
+  (format #t "~Tevent-temp: ~`vector`P~%" (-> obj event-temp))
+  (format #t "~Told-travel: ~`vector`P~%" (-> obj old-travel))
+  (format #t "~Tblocked-travel: ~`vector`P~%" (-> obj blocked-travel))
+  (format #t "~Tprev-pos: ~`vector`P~%" (-> obj prev-pos))
+  (format #t "~Textra-nav-sphere: ~`vector`P~%" (-> obj extra-nav-sphere))
+  (format #t "~Ttravel: ~`vector`P~%" (-> obj travel))
+  (format #t "~Ttarget-pos: ~`vector`P~%" (-> obj target-pos))
+  (format #t "~Tdestination-pos: ~`vector`P~%" (-> obj destination-pos))
+  (format #t "~Tblock-time: ~D~%" (-> obj block-time))
+  (format #t "~Tblock-count: ~f~%" (-> obj block-count))
+  (format #t "~Tuser-poly: #<nav-poly @ #x~X>~%" (-> obj user-poly))
+  (format #t "~Tnav-cull-radius: ~f~%" (-> obj nav-cull-radius))
+  (format #t "~Tnum-spheres: ~D~%" (-> obj num-spheres))
+  (format #t "~Tmax-spheres: ~D~%" (-> obj max-spheres))
+  (format #t "~Tsphere[0] @ #x~X~%" (-> obj sphere))
+  obj
+  )
+
+;; definition for function nav-mesh-connect
+;; INFO: Used lq/sq
+(defbehavior nav-mesh-connect process ((proc process) (trans trsqv) (nav-cont nav-control))
+  (local-vars (sv-16 type) (sv-32 symbol))
+  (let ((ent (-> proc entity)))
+    (when (zero? (-> ent nav-mesh))
+      (let ((lookup-entity (entity-actor-lookup ent 'nav-mesh-actor 0)))
+        (if lookup-entity
+            (set! ent lookup-entity)
+            )
+        )
+      )
+    (let ((entity-nav-mesh (-> ent nav-mesh)))
+      (cond
+        ((nonzero? entity-nav-mesh)
+         (when (zero? (-> entity-nav-mesh user-list))
+           (set! process-level-heap (-> self entity extra level heap))
+           (let ((s1-0 (method-of-type engine new))
+                 (s0-0 'process-level-heap)
+                 )
+             (set! sv-16 engine)
+             (set! sv-32 'nav-engine)
+             (let ((a3-1 (res-lump-value ent 'nav-max-users uint128 :default (the-as uint128 32))))
+               (set! (-> entity-nav-mesh user-list) (s1-0 s0-0 sv-16 sv-32 (the-as int a3-1)))
+               )
+             )
+           (initialize-mesh! entity-nav-mesh)
+           (update-route-table entity-nav-mesh)
+           )
+         (add-connection (-> entity-nav-mesh user-list) proc nothing proc nav-cont trans)
+         )
+        (else
+          (if (and nav-cont (-> proc entity))
+              (logior! (-> proc entity extra perm status) (entity-perm-status bit-1))
+              )
+          (set! entity-nav-mesh *default-nav-mesh*)
+          )
+        )
+      entity-nav-mesh
+      )
+    )
+  )
+
+;; definition for method 0 of type nav-control
+;; INFO: Return type mismatch object vs nav-control.
+(defmethod new nav-control ((allocation symbol)
+                          (type-to-make type)
+                          (shape collide-shape)
+                          (sphere-count int)
+                          (nearest-y-threshold-default float)
+                          )
+  (let ((obj (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* sphere-count 16))))))
+    (when (zero? obj)
+      (go process-drawable-art-error "memory")
+      (set! obj (the-as nav-control 0))
+      (goto cfg-4)
+      )
+    (set! (-> obj max-spheres) sphere-count)
+    (set! (-> obj flags) (nav-control-flags navcf8 navcf13))
+    (set! (-> obj mesh) (nav-mesh-connect (-> shape process) shape obj))
+    (let ((ent (-> shape process entity)))
+      (set! (-> obj nearest-y-threshold)
+            (res-lump-float ent 'nearest-y-threshold :default nearest-y-threshold-default)
+            )
+      )
+    (set! (-> obj shape) shape)
+    (set! (-> obj process) (-> shape process))
+    (set! (-> obj gap-event) #f)
+    (set! (-> obj current-poly) #f)
+    (set! (-> obj next-poly) #f)
+    (set! (-> obj target-poly) #f)
+    (set! (-> obj user-poly) #f)
+    (set! (-> obj portal 0) #f)
+    (set! (-> obj portal 1) #f)
+    (set! (-> obj nav-cull-radius) 40960.0)
+    (label cfg-4)
+    (the-as nav-control obj)
+    )
+  )
+
+;; definition for method 29 of type nav-control
+(defmethod should-display? nav-control ((obj nav-control))
+  (and *display-nav-marks* (logtest? (-> obj flags) (nav-control-flags display-marks)))
+  )
+
+;; definition for method 10 of type nav-control
+(defmethod point-in-bounds? nav-control ((obj nav-control) (arg0 vector))
+  (let ((v1-1 (-> obj mesh bounds)))
+    (>= (-> v1-1 w) (vector-vector-distance arg0 v1-1))
+    )
+  )
+
+;; definition for method 15 of type nav-control
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch vector vs none.
+(defmethod set-target-pos! nav-control ((obj nav-control) (arg0 vector))
+  (set! (-> obj target-pos quad) (-> arg0 quad))
+  (none)
+  )
+
+;; definition for function has-nav-mesh?
+;; INFO: Return type mismatch structure vs symbol.
+(defun has-nav-mesh? ((arg0 entity-actor))
+  (the-as symbol (or (-> arg0 nav-mesh) (res-lump-struct arg0 'nav-mesh-actor structure)))
+  )

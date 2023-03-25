@@ -1,8 +1,11 @@
-#include <algorithm>
-
 #include "collide_bvh.h"
-#include "common/util/Assert.h"
+
+#include <algorithm>
+#include <map>
+#include <unordered_set>
+
 #include "common/log/log.h"
+#include "common/util/Assert.h"
 #include "common/util/Timer.h"
 
 // Collision BVH algorithm
@@ -15,13 +18,12 @@
 namespace collide {
 
 namespace {
-
-constexpr int MAX_FACES_IN_FRAG = 100;
+constexpr int MAX_UNIQUE_VERTS_IN_FRAG = 128;
 
 /*!
  * The Collide node.
- * Has either children collide node or children faces, but not both
- * The size of child_nodes is either 0 or 8 at all times.
+ * If it's a leaf, it has faces
+ * Otherwise it has 2, 4, or 8 children nodes.
  */
 struct CNode {
   std::vector<CNode> child_nodes;
@@ -29,71 +31,70 @@ struct CNode {
   math::Vector4f bsphere;
 };
 
-struct BBox {
-  math::Vector3f mins, maxs;
-  std::string sz_to_string() const {
-    return fmt::format("({})", ((maxs - mins) / 4096.f).to_string_aligned());
+struct VectorHash {
+  size_t operator()(const math::Vector3f& in) const {
+    return std::hash<float>()(in.x()) ^ std::hash<float>()(in.y()) ^ std::hash<float>()(in.z());
   }
 };
 
 /*!
- * Make the bounding box hold this node and all its children.
+ * Recursively get a list of vertices.
  */
-void add_to_bbox_recursive(const CNode& node, BBox& bbox) {
-  if (node.faces.empty()) {
-    ASSERT(node.child_nodes.size() == 8);
-    for (auto& child : node.child_nodes) {
-      add_to_bbox_recursive(child, bbox);
-    }
-  } else {
-    for (auto& face : node.faces) {
-      for (auto& vert : face.v) {
-        bbox.mins.min_in_place(vert);
-        bbox.maxs.max_in_place(vert);
-      }
-    }
+void collect_vertices(const CNode& node, std::vector<math::Vector3f>& verts) {
+  for (auto& child : node.child_nodes) {
+    collect_vertices(child, verts);
   }
-}
-
-BBox bbox_of_node(const CNode& node) {
-  BBox bbox;
-  bbox.mins.fill(std::numeric_limits<float>::max());
-  bbox.maxs.fill(-std::numeric_limits<float>::max());
-  add_to_bbox_recursive(node, bbox);
-  return bbox;
-}
-
-/*!
- * Make the bsphere hold this node and all its children.
- */
-void update_bsphere_recursive(const CNode& node, const math::Vector3f& origin, float& r_squared) {
-  if (node.faces.empty()) {
-    ASSERT(node.child_nodes.size() == 8);
-    for (auto& child : node.child_nodes) {
-      update_bsphere_recursive(child, origin, r_squared);
-    }
-  } else {
-    for (auto& face : node.faces) {
-      for (auto& vert : face.v) {
-        r_squared = std::max(r_squared, (vert - origin).squared_length());
-      }
-    }
+  for (auto& face : node.faces) {
+    verts.push_back(face.v[0]);
+    verts.push_back(face.v[1]);
+    verts.push_back(face.v[2]);
   }
 }
 
 /*!
- * Compute the bsphere of a single node.
+ * Find the vertex in verts that is most distant from pt.
  */
-void compute_my_bsphere(CNode& node) {
-  // first compute bbox.
-  BBox bbox = bbox_of_node(node);
-  float r = 0;
-  math::Vector3f origin = (bbox.maxs + bbox.mins) * 0.5;
-  update_bsphere_recursive(node, origin, r);
+size_t find_most_distant(math::Vector3f pt, const std::vector<math::Vector3f>& verts) {
+  float max_dist_squared = 0;
+  size_t idx_of_best = 0;
+  for (size_t i = 0; i < verts.size(); i++) {
+    float dist = (pt - verts[i]).squared_length();
+    if (dist > max_dist_squared) {
+      max_dist_squared = dist;
+      idx_of_best = i;
+    }
+  }
+  return idx_of_best;
+}
+
+/*!
+ * Compute a bounding sphere for a node and its children.
+ */
+void compute_my_bsphere_ritters(CNode& node, const std::vector<math::Vector3f>& verts) {
+  ASSERT(verts.size() > 0);
+  auto px = verts[0];
+  auto py = verts[find_most_distant(px, verts)];
+  auto pz = verts[find_most_distant(py, verts)];
+
+  auto origin = (pz + py) / 2.f;
   node.bsphere.x() = origin.x();
   node.bsphere.y() = origin.y();
   node.bsphere.z() = origin.z();
-  node.bsphere.w() = std::sqrt(r);
+
+  float max_squared = 0;
+  for (auto& pt : verts) {
+    max_squared = std::max(max_squared, (pt - origin).squared_length());
+  }
+  node.bsphere.w() = std::sqrt(max_squared);
+}
+
+/*!
+ * Compute a bounding sphere for a node and its children.
+ */
+void compute_my_bsphere_ritters(CNode& node) {
+  std::vector<math::Vector3f> verts;
+  collect_vertices(node, verts);
+  compute_my_bsphere_ritters(node, verts);
 }
 
 /*!
@@ -107,6 +108,7 @@ void split_along_dim(std::vector<CollideFace>& faces,
   std::sort(faces.begin(), faces.end(), [=](const CollideFace& a, const CollideFace& b) {
     return a.bsphere[dim] < b.bsphere[dim];
   });
+  lg::print("splitting with size: {}\n", faces.size());
   size_t split_idx = faces.size() / 2;
   out0->insert(out0->end(), faces.begin(), faces.begin() + split_idx);
   out1->insert(out1->end(), faces.begin() + split_idx, faces.end());
@@ -116,17 +118,18 @@ void split_along_dim(std::vector<CollideFace>& faces,
  * Split a node into two nodes. The outputs should be uninitialized nodes
  */
 void split_node_once(CNode& node, CNode* out0, CNode* out1) {
+  compute_my_bsphere_ritters(node);
   CNode temps[6];
-  // split_along_dim(node.faces, pick_dim_for_split(node.faces), &out0->faces, &out1->faces);
   split_along_dim(node.faces, 0, &temps[0].faces, &temps[1].faces);
   split_along_dim(node.faces, 1, &temps[2].faces, &temps[3].faces);
   split_along_dim(node.faces, 2, &temps[4].faces, &temps[5].faces);
   node.faces.clear();
   for (auto& t : temps) {
-    compute_my_bsphere(t);
+    compute_my_bsphere_ritters(t);
   }
 
   float max_bspheres[3] = {0, 0, 0};
+
   for (int i = 0; i < 3; i++) {
     max_bspheres[i] = std::max(temps[i * 2].bsphere.w(), temps[i * 2 + 1].bsphere.w());
   }
@@ -144,68 +147,85 @@ void split_node_once(CNode& node, CNode* out0, CNode* out1) {
   *out1 = temps[best_dim * 2 + 1];
 }
 
-/*!
- * Split a node into 8 children and store these in the given node.
- */
-void split_node_to_8_children(CNode& node) {
+bool needs_split(const CNode& node) {
+  // quick reject.
+  if (node.faces.size() > 100) {
+    return true;
+  }
+
+  if (node.bsphere.w() > (125.f * 4096.f)) {
+    return true;
+  }
+
   ASSERT(node.child_nodes.empty());
-  node.child_nodes.resize(8);
-  // level 0
+  std::unordered_set<math::Vector3f, VectorHash> unique_verts;
+  for (auto& f : node.faces) {
+    for (auto& v : f.v) {
+      unique_verts.insert(v);
+    }
+  }
+
+  return unique_verts.size() >= MAX_UNIQUE_VERTS_IN_FRAG;
+}
+
+void split_recursive(CNode& to_split) {
+  ASSERT(to_split.child_nodes.empty());
+  ASSERT(!to_split.faces.empty());
+
   CNode level0[2];
-  split_node_once(node, &level0[0], &level0[1]);
-  // level 1
-  CNode level1[4];
-  split_node_once(level0[0], &level1[0], &level1[1]);
-  split_node_once(level0[1], &level1[2], &level1[3]);
-  // level 2
-  split_node_once(level1[0], &node.child_nodes[0], &node.child_nodes[1]);
-  split_node_once(level1[1], &node.child_nodes[2], &node.child_nodes[3]);
-  split_node_once(level1[2], &node.child_nodes[4], &node.child_nodes[5]);
-  split_node_once(level1[3], &node.child_nodes[6], &node.child_nodes[7]);
-}
-
-/*!
- * Split all leaf nodes. Returns the number of faces in the leaf with the most faces after
- * splitting.
- * This slightly unusual recursion pattern is to make sure we split everything to same depth,
- * which we believe might be a requirement of the collision system.
- */
-size_t split_all_leaves(CNode& node) {
-  size_t worst_leaf_face_count = 0;
-  if (node.child_nodes.empty()) {
-    // we're a leaf!
-    // split us:
-    split_node_to_8_children(node);
-    for (auto& child : node.child_nodes) {
-      worst_leaf_face_count = std::max(worst_leaf_face_count, child.faces.size());
-    }
-    return worst_leaf_face_count;
-  } else {
-    // not a leaf, recurse
-    for (auto& child : node.child_nodes) {
-      worst_leaf_face_count = std::max(worst_leaf_face_count, split_all_leaves(child));
-    }
-    return worst_leaf_face_count;
-  }
-}
-
-/*!
- * Main BVH construction function. Splits leaves until it is no longer needed.
- */
-void split_as_needed(CNode& root) {
-  int initial_tri_count = root.faces.size();
-  int num_leaves = 1;
-  bool need_to_split = true;
-  while (need_to_split) {
-    int faces_in_worst = split_all_leaves(root);
-    num_leaves *= 8;
-    lg::info("after splitting, the worst leaf has {} tris", faces_in_worst);
-    if (faces_in_worst < MAX_FACES_IN_FRAG) {
-      need_to_split = false;
+  split_node_once(to_split, &level0[0], &level0[1]);
+  for (int i = 0; i < 2; i++) {
+    if (needs_split(level0[i])) {
+      CNode level1[2];
+      split_node_once(level0[i], &level1[0], &level1[1]);
+      for (int j = 0; j < 2; j++) {
+        if (needs_split(level1[j])) {
+          CNode level2[2];
+          split_node_once(level1[j], &level2[0], &level2[1]);
+          for (int k = 0; k < 2; k++) {
+            if (needs_split(level2[k])) {
+              to_split.child_nodes.push_back(std::move(level2[k]));
+              split_recursive(to_split.child_nodes.back());
+            } else {
+              to_split.child_nodes.push_back(std::move(level2[k]));
+            }
+          }
+        } else {
+          to_split.child_nodes.push_back(std::move(level1[j]));
+        }
+      }
+    } else {
+      to_split.child_nodes.push_back(std::move(level0[i]));
     }
   }
-  lg::info("average triangles per leaf: {}", initial_tri_count / num_leaves);
-  lg::info("leaf count: {}", num_leaves);
+
+  ASSERT(to_split.child_nodes.size() <= 8);
+
+  bool has_leaves = false;
+  bool has_not_leaves = false;
+  for (auto& child : to_split.child_nodes) {
+    if (!child.faces.empty()) {
+      has_leaves = true;
+    }
+    if (!child.child_nodes.empty()) {
+      has_not_leaves = true;
+    }
+  }
+
+  if (has_leaves && has_not_leaves) {
+    std::vector<CNode> temp_children = std::move(to_split.child_nodes);
+    to_split.child_nodes = {};
+    for (auto& c : temp_children) {
+      if (!c.faces.empty()) {
+        to_split.child_nodes.emplace_back();
+        to_split.child_nodes.emplace_back();
+        split_node_once(c, &to_split.child_nodes[to_split.child_nodes.size() - 1],
+                        &to_split.child_nodes[to_split.child_nodes.size() - 2]);
+      } else {
+        to_split.child_nodes.push_back(std::move(c));
+      }
+    }
+  }
 }
 
 /*!
@@ -213,41 +233,40 @@ void split_as_needed(CNode& root) {
  * (note that we don't do bspheres of bspheres... I think this is better?)
  */
 void bsphere_recursive(CNode& node) {
-  compute_my_bsphere(node);
+  compute_my_bsphere_ritters(node);
   for (auto& child : node.child_nodes) {
     bsphere_recursive(child);
   }
 }
 
-void drawable_layout_helper(CNode& node, int depth, CollideTree& tree_out, size_t my_idx_check) {
-  if (node.child_nodes.empty()) {
-    // we're a leaf! add us to the frags
-    auto& frag = tree_out.frags.frags.emplace_back();
-    frag.bsphere = node.bsphere;
-    frag.faces = node.faces;
+void drawable_layout_helper(const CNode& node_in,
+                            CollideTree& tree_out,
+                            DrawNode& parent_to_add_to) {
+  if (node_in.faces.empty()) {
+    ASSERT(!node_in.child_nodes.empty());
+    auto& next = parent_to_add_to.draw_node_children.emplace_back();
+    next.bsphere = node_in.bsphere;
+    for (auto& c : node_in.child_nodes) {
+      drawable_layout_helper(c, tree_out, next);
+    }
+
   } else {
-    // not a leaf
-    if ((int)tree_out.node_arrays.size() <= depth) {
-      tree_out.node_arrays.resize(depth + 1);
-    }
-    ASSERT(my_idx_check == tree_out.node_arrays.at(depth).nodes.size());
-    auto& draw_node = tree_out.node_arrays[depth].nodes.emplace_back();
-    draw_node.bsphere = node.bsphere;
-    for (int i = 0; i < 8; i++) {
-      draw_node.children[i] = my_idx_check * 8 + i;
-      drawable_layout_helper(node.child_nodes.at(i), depth + 1, tree_out, draw_node.children[i]);
-    }
+    ASSERT(node_in.child_nodes.empty());
+    size_t frag_idx = tree_out.frags.frags.size();
+    auto& frag_out = tree_out.frags.frags.emplace_back();
+    frag_out.faces = node_in.faces;
+    frag_out.bsphere = node_in.bsphere;
+    parent_to_add_to.frag_children.push_back((int)frag_idx);
   }
 }
 
 CollideTree build_collide_tree(CNode& root) {
   CollideTree tree;
-  drawable_layout_helper(root, 0, tree, 0);
+  drawable_layout_helper(root, tree, tree.fake_root_node);
   return tree;
 }
 
 void debug_stats(const CollideTree& tree) {
-  lg::info("Tree build: {} draw node layers", tree.node_arrays.size());
   float sum_w = 0, max_w = 0;
   for (auto& frag : tree.frags.frags) {
     sum_w += frag.bsphere.w();
@@ -265,7 +284,7 @@ CollideTree construct_collide_bvh(const std::vector<CollideFace>& tris) {
   lg::info("Building collide bvh from {} triangles", tris.size());
   CNode root;
   root.faces = tris;
-  split_as_needed(root);
+  split_recursive(root);
   lg::info("BVH tree constructed in {:.2f} ms", bvh_timer.getMs());
 
   // part 2: compute bspheres
@@ -277,7 +296,17 @@ CollideTree construct_collide_bvh(const std::vector<CollideFace>& tris) {
   bvh_timer.start();
   auto tree = build_collide_tree(root);
   debug_stats(tree);
+
   lg::info("Tree layout done in {:.2f} ms", bvh_timer.getMs());
+  std::map<int, int> size_histogram;
+  for (const auto& f : tree.frags.frags) {
+    size_histogram[f.faces.size()]++;
+  }
+
+  for (auto [size, count] : size_histogram) {
+    lg::print(" [{:3d}] {:3d} ({})\n", size, count, size * count);
+  }
+
   return tree;
 }
 

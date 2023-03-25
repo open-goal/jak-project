@@ -1,0 +1,50 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: text-h.gc
+;; name in dgo: text-h
+;; dgos: ENGINE, GAME
+
+;; NOTE - for progress
+(define-extern disable-level-text-file-loading "Disables [[*level-text-file-load-flag*]]" (function none))
+(define-extern enable-level-text-file-loading "Disables [[*level-text-file-load-flag*]]" (function none))
+(define-extern load-game-text-info
+  "Load text, if needed. txt-name is the group name, curr-text is the _symbol_ for
+   the game-text-info, and heap is the heap to load to. The heap will be cleared."
+  (function string (pointer object) kheap int))
+(define-extern print-game-text-scaled "Print text, with a given scaling" (function string float font-context int none))
+(define-extern print-game-text "Print text." (function string font-context symbol int bucket-id float))
+
+;; DECOMP BEGINS
+
+(deftype game-text (structure)
+  ((id   game-text-id  :offset-assert   0)
+   (text string        :offset-assert   4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+
+(deftype game-text-info (basic)
+  ((length      int32                      :offset-assert   4)
+   (language-id int32                      :offset-assert   8)
+   (group-name  string                     :offset-assert  12)
+   (data        game-text :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 10
+  :size-assert         #x10
+  :flag-assert         #xa00000010
+  (:methods
+    (lookup-text! (_type_ game-text-id symbol) string 9)
+    )
+  )
+
+
+(define *text-group-names* (new 'static 'boxed-array :type string "common"))
+
+(define *common-text-heap* (new 'global 'kheap))
+
+(define *common-text* (the-as game-text-info #f))

@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "common/math/Vector.h"
+
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 
 namespace decompiler {
@@ -14,5 +15,6 @@ void extract_all_levels(const ObjectFileDB& db,
                         const std::string& common_name,
                         const DecompileHacks& hacks,
                         bool debug_dump_level,
-                        bool extract_collision);
+                        bool extract_collision,
+                        const fs::path& path);
 }  // namespace decompiler

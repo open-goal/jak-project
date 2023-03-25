@@ -1,0 +1,583 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: drill-turret.gc
+;; name in dgo: drill-turret
+;; dgos: DMI
+
+;; DECOMP BEGINS
+
+(deftype turret (base-turret)
+  ((hover-battle    handle           :offset-assert 568)
+   (hover-formation hover-formation  :offset-assert 576)
+   (use-egg-hud     symbol           :offset-assert 580)
+   (hud-egg         handle           :offset-assert 584)
+   (use-cgh-hud     symbol           :offset-assert 592)
+   (hud-cgh         handle           :offset-assert 600)
+   (hud-cgh-event   symbol           :offset-assert 608)
+   (egg-timer       time-frame       :offset-assert 616)
+   (cgh-timer       time-frame       :offset-assert 624)
+   )
+  :heap-base #x200
+  :method-count-assert 49
+  :size-assert         #x278
+  :flag-assert         #x3102000278
+  )
+
+
+(define *drill-turret-10-battle*
+  (new 'static 'boxed-array :type hover-enemy-battle-command
+    (new 'static 'hover-enemy-battle-command :command 'spawn :time (seconds 2) :alive-count 1)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x1 :time (seconds 2))
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x2 :time (seconds 2) :alive-count 1)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x3 :time (seconds 2))
+    (new 'static 'hover-enemy-battle-command :command 'spawn :time (seconds 2) :alive-count 1)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x2 :time (seconds 2) :alive-count 1)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x1 :time (seconds 2))
+    (new 'static 'hover-enemy-battle-command :command 'spawn :time (seconds 2))
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x3 :time (seconds 2))
+    )
+  )
+
+(define *drill-turret-11-battle*
+  (new 'static 'boxed-array :type hover-enemy-battle-command
+    (new 'static 'hover-enemy-battle-command :command 'spawn :time (seconds 2) :alive-count 1)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x1 :time (seconds 2) :alive-count 1)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x2 :time (seconds 2))
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x3 :time (seconds 2))
+    )
+  )
+
+(define *drill-turret-12-battle*
+  (new 'static 'boxed-array :type hover-enemy-battle-command
+    (new 'static 'hover-enemy-battle-command :command 'spawn :time (seconds 2) :alive-count 1)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x1 :time (seconds 2) :alive-count 2)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x2 :time (seconds 2) :alive-count 2)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x3 :time (seconds 2))
+    )
+  )
+
+;; NOTE: the turret paths were decompiled by hand
+;; the static boxed-arrays were originally just int32's, but that didn't compile
+;; TODO make these decompile
+(define *turret-13-path*
+  (new 'static 'turret-path
+    :event-count 16
+    :event-tbl (new 'static 'inline-array turret-path-event 16
+      (new 'static 'turret-path-event
+        :pos (the-as float #x3d4ccccd)
+        :event-type 'set-speed-mult
+        :param (new 'static 'boxed-array :type int32 #xa0)
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x3dcccccd)
+        :event-type 'script
+        :param '(send-event "drill-elec-gate-1" 'shutdown)
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x3dcccccd)
+        :event-type 'cue-chase
+        :param "crimson-guard-hover-5"
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x3f800000)
+        :event-type 'cue-chase
+        :param "crimson-guard-hover-6"
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x3f800000)
+        :event-type 'set-speed-mult
+        :param (new 'static 'boxed-array :type int32 #x50)
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x40400000)
+        :event-type 'cue-chase
+        :param "crimson-guard-hover-3"
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x40666666)
+        :event-type 'cue-chase
+        :param "crimson-guard-hover-1"
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x40d00000)
+        :event-type 'cue-chase
+        :param "crimson-guard-hover-7"
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x41066666)
+        :event-type 'cue-chase
+        :param "crimson-guard-hover-9"
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x4109999a)
+        :event-type 'cue-chase
+        :param "crimson-guard-hover-8"
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x41500000)
+        :event-type 'pause-until
+        :param (lambda ()
+                (and (logtest? (-> (entity-by-name "crimson-guard-hover-1") extra perm status)
+                              (entity-perm-status subtask-complete)
+                              )
+                    (logtest? (-> (entity-by-name "crimson-guard-hover-3") extra perm status)
+                              (entity-perm-status subtask-complete)
+                              )
+                    (logtest? (-> (entity-by-name "crimson-guard-hover-5") extra perm status)
+                              (entity-perm-status subtask-complete)
+                              )
+                    (logtest? (-> (entity-by-name "crimson-guard-hover-6") extra perm status)
+                              (entity-perm-status subtask-complete)
+                              )
+                    (logtest? (-> (entity-by-name "crimson-guard-hover-7") extra perm status)
+                              (entity-perm-status subtask-complete)
+                              )
+                    (logtest? (-> (entity-by-name "crimson-guard-hover-8") extra perm status)
+                              (entity-perm-status subtask-complete)
+                              )
+                    (logtest? (-> (entity-by-name "crimson-guard-hover-9") extra perm status)
+                              (entity-perm-status subtask-complete)
+                              )
+                    )
+                )
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x41580000)
+        :event-type 'trigger-battle
+        :param '()
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x41580000)
+        :event-type 'pause-while
+        :param (lambda ((arg0 turret))
+                 (send-event (handle->process (-> arg0 hover-battle)) 'spawning?)
+                 )
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x41680000)
+        :event-type 'set-speed-mult
+        :param (new 'static 'boxed-array :type int32 #x1e0)
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x41800000)
+        :event-type 'script
+        :param '(send-event "drill-elec-gate-7" 'shutdown)
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x41940000)
+        :event-type 'set-speed-mult
+        :param (new 'static 'boxed-array :type int32 #x50)
+        )
+      )
+    )
+  )
+
+;; (define *turret-14-path* (the-as turret-path L138))
+(define *turret-14-path*
+  (new 'static 'turret-path
+    :event-count 11
+    :event-tbl (new 'static 'inline-array turret-path-event 11
+      (new 'static 'turret-path-event
+        :pos (the-as float #x3d4ccccd)
+        :event-type 'set-speed-mult
+        :param (new 'static 'boxed-array :type int32 #x50)
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x3d4ccccd)
+        :event-type 'cue-chase
+        :param "crimson-guard-hover-25"
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x3dcccccd)
+        :event-type 'cue-chase
+        :param "crimson-guard-hover-26"
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x40800000)
+        :event-type 'script
+        :param '(send-event "drill-barons-ship-3" 'trigger)
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x41000000)
+        :event-type 'cue-chase
+        :param "crimson-guard-hover-47"
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x41d80000)
+        :event-type 'cue-chase
+        :param "crimson-guard-hover-49"
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x422b999a)
+        :event-type 'cue-chase
+        :param "crimson-guard-hover-48"
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x42340000)
+        :event-type 'pause-until
+        :param (lambda ()
+                 (let ((a0-1 (process-by-name "drill-barons-ship-3" *active-pool*)))
+                   (and a0-1 (send-event a0-1 'pass-complete?))
+                   )
+                 )
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x42380000)
+        :event-type 'script
+        :param '(send-event "drill-elec-gate-6" 'shutdown)
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x42386666)
+        :event-type 'set-speed-mult
+        :param (new 'static 'boxed-array :type int32 #x140)
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x42460000)
+        :event-type 'set-speed-mult
+        :param (new 'static 'boxed-array :type int32 #x50)
+        )
+      )
+    )
+  )
+
+;; (define *turret-15-path* (the-as turret-path L119))
+(define *turret-15-path*
+  (new 'static 'turret-path
+    :event-count 12
+    :event-tbl (new 'static 'inline-array turret-path-event 12
+      (new 'static 'turret-path-event
+        :pos (the-as float #x3d4ccccd)
+        :event-type 'set-speed-mult
+        :param (new 'static 'boxed-array :type int32 #x50)
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x40000000)
+        :event-type 'cue-chase
+        :param "crimson-guard-hover-27"
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x400ccccd)
+        :event-type 'cue-chase
+        :param "crimson-guard-hover-28"
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x40400000)
+        :event-type 'script
+        :param '(send-event "drill-barons-ship-3" 'trigger-back)
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x41000000)
+        :event-type 'cue-chase
+        :param "crimson-guard-hover-53"
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x41800000)
+        :event-type 'cue-chase
+        :param "crimson-guard-hover-54"
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x41f00000)
+        :event-type 'cue-chase
+        :param "crimson-guard-hover-55"
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x420f999a)
+        :event-type 'cue-chase
+        :param "crimson-guard-hover-56"
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x42100000)
+        :event-type 'pause-until
+        :param (lambda ()
+                 (let ((a0-1 (process-by-name "drill-barons-ship-3" *active-pool*)))
+                   (and a0-1 (send-event a0-1 'pass-complete?))
+                   )
+                 )
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x42120000)
+        :event-type 'script
+        :param '(send-event "drill-elec-gate-8" 'shutdown)
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x42146666)
+        :event-type 'set-speed-mult
+        :param (new 'static 'boxed-array :type int32 #x140)
+        )
+      (new 'static 'turret-path-event
+        :pos (the-as float #x421e0000)
+        :event-type 'set-speed-mult
+        :param (new 'static 'boxed-array :type int32 #x50)
+        )
+      )
+    )
+  )
+
+(define *drill-turret-13-battle*
+  (new 'static 'boxed-array :type hover-enemy-battle-command
+    (new 'static 'hover-enemy-battle-command :command 'spawn :time (seconds 2) :alive-count 2)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x1 :time (seconds 2) :alive-count 2)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x2 :time (seconds 2) :alive-count 2)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x3 :time (seconds 2) :alive-count 2)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x4 :time (seconds 4))
+    (new 'static 'hover-enemy-battle-command :command 'spawn :time (seconds 1) :alive-count 2)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x2 :time (seconds 1) :alive-count 3)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x4 :time (seconds 1) :alive-count 2)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :alive-count 3)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x1 :alive-count 3)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x2 :alive-count 3)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x3 :alive-count 3)
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x4)
+    )
+  )
+
+
+(defstate active (turret)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type base-turret active) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set! (-> *game-info* counter) 0.0)
+    (set! (-> self egg-timer) 0)
+    (set! (-> self cgh-timer) 0)
+    (if (and (handle->process (-> self hover-battle)) (zero? (-> self path-event)))
+        (send-event (handle->process (-> self hover-battle)) 'trigger)
+        )
+    (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-2 from) (process->ppointer self))
+      (set! (-> a1-2 num-params) 1)
+      (set! (-> a1-2 message) 'set-los)
+      (set! (-> a1-2 param 0) (the-as uint #f))
+      (let ((t9-2 send-event-function)
+            (v1-20 (-> self hover-formation))
+            )
+        (t9-2
+          (if v1-20
+              (-> v1-20 child 3)
+              )
+          a1-2
+          )
+        )
+      )
+    (none)
+    )
+  :exit (behavior ()
+    (let ((t9-1 (-> (the-as (state base-turret) (find-parent-method turret 29)) exit)))
+      (if t9-1
+          (t9-1)
+          )
+      )
+    (send-event (handle->process (-> self hud-egg)) 'hide-and-die)
+    (send-event (handle->process (-> self hud-cgh)) 'hide-and-die)
+    (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-3 from) (process->ppointer self))
+      (set! (-> a1-3 num-params) 1)
+      (set! (-> a1-3 message) 'set-los)
+      (set! (-> a1-3 param 0) (the-as uint #t))
+      (let ((t9-4 send-event-function)
+            (v1-18 (-> self hover-formation))
+            )
+        (t9-4
+          (if v1-18
+              (-> v1-18 child 3)
+              )
+          a1-3
+          )
+        )
+      )
+    (when (< 0.0 (-> *game-info* counter))
+      (let* ((v1-22 (rand-vu-int-count 3))
+             (t0-0 (cond
+                     ((zero? v1-22)
+                      "ds439"
+                      )
+                     ((= v1-22 1)
+                      "ds440"
+                      )
+                     ((= v1-22 2)
+                      "ds441"
+                      )
+                     )
+                   )
+             )
+        (add-process *gui-control* self (gui-channel daxter) (gui-action play) t0-0 -99.0 0)
+        )
+      )
+    (none)
+    )
+  :post (behavior ()
+    (let ((t9-1 (-> (the-as (state base-turret) (find-parent-method turret 29)) post)))
+      (if t9-1
+          ((the-as (function none) t9-1))
+          )
+      )
+    (when (and (-> self use-egg-hud) (< (-> self egg-timer) (-> self clock frame-counter)))
+      (let ((v1-6 0))
+        (let ((a0-4 (+ (-> self actor-group-count) -1)))
+          (dotimes (a1-1 (-> self actor-group a0-4 length))
+            (let ((a2-4 (-> self actor-group a0-4 data a1-1 actor)))
+              (when a2-4
+                (if (not (logtest? (-> a2-4 extra perm status) (entity-perm-status subtask-complete)))
+                    (+! v1-6 1)
+                    )
+                )
+              )
+            )
+          )
+        (set! (-> *game-info* counter) (the float v1-6))
+        )
+      (set! (-> self egg-timer) (+ (-> self clock frame-counter) (the int (* 300.0 (rand-vu-float-range 0.2 0.4)))))
+      )
+    (when (and (-> self use-cgh-hud)
+               (< (-> self cgh-timer) (-> self clock frame-counter))
+               (handle->process (-> self hover-battle))
+               )
+      (if (= (-> *game-info* counter) 0.0)
+          (set! (-> self hud-cgh-event) 'force-hide)
+          )
+      0
+      (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-4 from) (process->ppointer self))
+        (set! (-> a1-4 num-params) 0)
+        (set! (-> a1-4 message) 'total-to-spawn?)
+        (let ((gp-1 (the-as int (send-event-function (handle->process (-> self hover-battle)) a1-4)))
+              (a1-5 (new 'stack-no-clear 'event-message-block))
+              )
+          (set! (-> a1-5 from) (process->ppointer self))
+          (set! (-> a1-5 num-params) 0)
+          (set! (-> a1-5 message) 'num-spawned?)
+          ;; NOTE: added int casts
+          (let ((gp-2 (- gp-1 (the-as int (send-event-function (handle->process (-> self hover-battle)) a1-5)))))
+            (set! (-> *game-info* counter)
+                  (the float (+ gp-2 (the-as int (send-event (handle->process (-> self hover-battle)) 'num-alive?))))
+                  )
+            )
+          )
+        )
+      (if (= (-> *game-info* counter) 0.0)
+          (set! (-> self cgh-timer) (+ (-> self clock frame-counter) (seconds 4)))
+          (set! (-> self cgh-timer) (+ (-> self clock frame-counter) (the int (* 300.0 (rand-vu-float-range 0.2 0.4)))))
+          )
+      )
+    (none)
+    )
+  )
+
+(defstate die (turret)
+  :virtual #t
+  :enter (behavior ()
+    (speech-control-method-12 *speech-control* self (speech-type speech-type-1 speech-type-3))
+    (let ((t9-2 (-> (the-as (state base-turret) (find-parent-method turret 32)) enter)))
+      (if t9-2
+          (t9-2)
+          )
+      )
+    (none)
+    )
+  )
+
+(defmethod turret-init! turret ((obj turret) (arg0 entity-actor) (arg1 matrix))
+  (set! (-> obj hover-battle) (the-as handle #f))
+  (let ((v1-1 (res-lump-value (-> obj entity) 'extra-id uint128 :default (the-as uint128 -1) :time -1000000000.0)))
+    (cond
+      ((zero? v1-1)
+       (set! (-> obj hover-battle)
+             (process->handle (hover-manager-spawn obj (-> obj entity) *drill-turret-10-battle*))
+             )
+       (set! (-> obj use-egg-hud) #t)
+       (set! (-> obj use-cgh-hud) #f)
+       )
+      ((= (the-as uint v1-1) 1)
+       (set! (-> obj hover-battle)
+             (process->handle (hover-manager-spawn obj (-> obj entity) *drill-turret-11-battle*))
+             )
+       (set! (-> obj use-egg-hud) #t)
+       (set! (-> obj use-cgh-hud) #f)
+       )
+      ((= (the-as uint v1-1) 2)
+       (set! (-> obj hover-battle)
+             (process->handle (hover-manager-spawn obj (-> obj entity) *drill-turret-12-battle*))
+             )
+       (set! (-> obj use-egg-hud) #t)
+       (set! (-> obj use-cgh-hud) #f)
+       )
+      ((= (the-as uint v1-1) 3)
+       (set! (-> obj path-event) *turret-13-path*)
+       (set! (-> obj hover-battle)
+             (process->handle (hover-manager-spawn obj (-> obj entity) *drill-turret-13-battle*))
+             )
+       (set! (-> obj use-egg-hud) #f)
+       (set! (-> obj use-cgh-hud) #t)
+       )
+      ((= (the-as uint v1-1) 4)
+       (set! (-> obj path-event) *turret-14-path*)
+       (set! (-> obj use-egg-hud) #f)
+       (set! (-> obj use-cgh-hud) #f)
+       )
+      (else
+        (set! (-> obj path-event) *turret-15-path*)
+        (set! (-> obj use-egg-hud) #f)
+        (set! (-> obj use-cgh-hud) #f)
+        )
+      )
+    )
+  (let ((t9-5 (method-of-type base-turret turret-init!)))
+    (t9-5 obj arg0 arg1)
+    )
+  (set! (-> obj hud-egg) (the-as handle #f))
+  (set! (-> obj hud-cgh) (the-as handle #f))
+  (set! (-> obj hover-formation) (the-as hover-formation (entity-actor-lookup arg0 'formation-actor 0)))
+  (if (or (name= (-> obj name) "turret-14") (name= (-> obj name) "turret-15"))
+      (set! (-> obj shot-timeout) (seconds 2.667))
+      )
+  (none)
+  )
+
+(defmethod base-turret-method-39 turret ((obj turret) (arg0 turret-path-event))
+  (case (-> arg0 event-type)
+    (('trigger-battle)
+     (set! (-> obj hud-cgh-event) 'force-show)
+     (send-event (handle->process (-> obj hover-battle)) 'trigger)
+     )
+    (else
+      ((method-of-type base-turret base-turret-method-39) obj arg0)
+      )
+    )
+  (none)
+  )
+
+(defmethod base-turret-method-34 turret ((obj turret) (arg0 process))
+  (set! (-> obj hud)
+        (ppointer->handle (process-spawn hud-drill-turret-health :init hud-init-by-other :to arg0))
+        )
+  (if (-> obj use-egg-hud)
+      (set! (-> obj hud-egg) (ppointer->handle (process-spawn hud-gruntegg :init hud-init-by-other :to arg0)))
+      )
+  (when (-> obj use-cgh-hud)
+    (set! (-> obj hud-cgh) (ppointer->handle (process-spawn hud-crimsonhover :init hud-init-by-other :to arg0)))
+    (set! (-> obj hud-cgh-event) 'force-hide)
+    )
+  0
+  (none)
+  )
+
+(defmethod base-turret-method-35 turret ((obj turret))
+  (if (-> obj use-egg-hud)
+      (send-event (handle->process (-> obj hud-egg)) 'force-show)
+      )
+  (if (-> obj use-cgh-hud)
+      (send-event (handle->process (-> obj hud-cgh)) (-> obj hud-cgh-event))
+      )
+  ((the-as (function base-turret none) (find-parent-method turret 35)) obj)
+  (none)
+  )
+
+(defmethod base-turret-method-46 turret ((obj turret) (arg0 process))
+  (if (type? arg0 hover-enemy)
+      arg0
+      )
+  )

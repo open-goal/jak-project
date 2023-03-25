@@ -3,20 +3,22 @@
  * Compiler implementation for forms which actually control the compiler.
  */
 
-#include <filesystem>
 #include <regex>
 #include <stack>
 
-#include "common/goos/ReplUtils.h"
+#include "common/repl/util.h"
 #include "common/util/DgoWriter.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
+#include "common/util/string_util.h"
+
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
+#include "goalc/compiler/SymbolInfo.h"
+#include "goalc/compiler/docs/DocTypes.h"
 #include "goalc/data_compiler/dir_tpages.h"
 #include "goalc/data_compiler/game_count.h"
 #include "goalc/data_compiler/game_text_common.h"
-
 /*!
  * Exit the compiler. Disconnects the listener and tells the target to reset itself.
  * Will actually exit the next time the REPL runs.
@@ -66,9 +68,9 @@ Val* Compiler::compile_asm_data_file(const goos::Object& form, const goos::Objec
   va_check(form, args, {goos::ObjectType::SYMBOL, goos::ObjectType::STRING}, {});
   auto kind = symbol_string(args.unnamed.at(0));
   if (kind == "game-count") {
-    compile_game_count(as_string(args.unnamed.at(1)));
+    compile_game_count(as_string(args.unnamed.at(1)), m_make.compiler_output_prefix());
   } else if (kind == "dir-tpages") {
-    compile_dir_tpages(as_string(args.unnamed.at(1)));
+    compile_dir_tpages(as_string(args.unnamed.at(1)), m_make.compiler_output_prefix());
   } else {
     throw_compiler_error(form, "The option {} was not recognized for asm-data-file.", kind);
   }
@@ -84,7 +86,7 @@ Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Objec
   va_check(form, args, {goos::ObjectType::SYMBOL}, {{"files", {true, goos::ObjectType::PAIR}}});
 
   // list of files per text version.
-  std::unordered_map<GameTextVersion, std::vector<std::string>> inputs;
+  std::vector<std::string> inputs;
 
   // what kind of text file?
   const auto kind = symbol_string(args.unnamed.at(0));
@@ -100,15 +102,13 @@ Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Objec
 
   // compile files.
   if (kind == "subtitle") {
-    for (auto& [ver, in] : inputs) {
-      GameSubtitleDB db;
-      compile_game_subtitle(in, ver, db);
-    }
+    GameSubtitleDB db;
+    db.m_subtitle_groups = std::make_unique<GameSubtitleGroups>();
+    db.m_subtitle_groups->hydrate_from_asset_file();
+    compile_game_subtitle(inputs, db, m_make.compiler_output_prefix());
   } else if (kind == "text") {
-    for (auto& [ver, in] : inputs) {
-      GameTextDB db;
-      compile_game_text(in, ver, db);
-    }
+    GameTextDB db;
+    compile_game_text(inputs, db, m_make.compiler_output_prefix());
   } else {
     throw_compiler_error(form, "The option {} was not recognized for asm-text-file.", kind);
   }
@@ -122,18 +122,8 @@ Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Objec
 Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
   int i = 0;
-  std::string filename;
-  std::string disasm_filename = "";
-  bool load = false;
-  bool color = false;
-  bool write = false;
-  bool no_code = false;
-  bool disassemble = false;
-  bool no_time_prints = false;
+  CompilationOptions options;
   bool no_throw = false;
-
-  std::vector<std::pair<std::string, double>> timing;
-  Timer total_timer;
 
   // parse arguments
   bool last_was_disasm = false;
@@ -141,30 +131,28 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
     if (last_was_disasm) {
       last_was_disasm = false;
       if (o.type == goos::ObjectType::STRING) {
-        disasm_filename = as_string(o);
+        options.disassembly_output_file = as_string(o);
         i++;
         return;
       }
     }
     if (i == 0) {
-      filename = as_string(o);
+      options.filename = as_string(o);
     } else {
       auto setting = symbol_string(o);
       if (setting == ":load") {
-        load = true;
+        options.load = true;
       } else if (setting == ":color") {
-        color = true;
+        options.color = true;
       } else if (setting == ":write") {
-        write = true;
+        options.write = true;
       } else if (setting == ":no-code") {
-        no_code = true;
+        options.no_code = true;
       } else if (setting == ":no-throw") {
         no_throw = true;
       } else if (setting == ":disassemble") {
-        disassemble = true;
+        options.disassemble = true;
         last_was_disasm = true;
-      } else if (setting == ":no-time-prints") {
-        no_time_prints = true;
       } else {
         throw_compiler_error(form, "The option {} was not recognized for asm-file.", setting);
       }
@@ -172,92 +160,8 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
     i++;
   });
 
-  // READ
-  Timer reader_timer;
   try {
-    auto code = m_goos.reader.read_from_file({filename});
-    timing.emplace_back("read", reader_timer.getMs());
-
-    Timer compile_timer;
-    std::string obj_file_name = filename;
-
-    // Extract object name from file name.
-    for (int idx = int(filename.size()) - 1; idx-- > 0;) {
-      if (filename.at(idx) == '\\' || filename.at(idx) == '/') {
-        obj_file_name = filename.substr(idx + 1);
-        break;
-      }
-    }
-    obj_file_name = obj_file_name.substr(0, obj_file_name.find_last_of('.'));
-
-    // COMPILE
-    auto obj_file = compile_object_file(obj_file_name, code, !no_code);
-    timing.emplace_back("compile", compile_timer.getMs());
-
-    if (color) {
-      // register allocation
-      Timer color_timer;
-      color_object_file(obj_file);
-      timing.emplace_back("color", color_timer.getMs());
-
-      // code/object file generation
-      Timer codegen_timer;
-      std::vector<u8> data;
-      std::string disasm;
-      if (disassemble) {
-        codegen_and_disassemble_object_file(obj_file, &data, &disasm);
-        if (disasm_filename == "") {
-          printf("%s\n", disasm.c_str());
-        } else {
-          file_util::write_text_file(disasm_filename, disasm);
-        }
-      } else {
-        data = codegen_object_file(obj_file);
-      }
-      timing.emplace_back("codegen", codegen_timer.getMs());
-
-      // send to target
-      if (load) {
-        if (m_listener.is_connected()) {
-          m_listener.send_code(data, obj_file_name);
-        } else {
-          printf("WARNING - couldn't load because listener isn't connected\n");  // todo log warn
-        }
-      }
-
-      // save file
-      if (write) {
-        auto path = file_util::get_file_path({"out", "obj", obj_file_name + ".o"});
-        file_util::create_dir_if_needed_for_file(path);
-        file_util::write_binary_file(path, (void*)data.data(), data.size());
-      }
-    } else {
-      if (load) {
-        printf("WARNING - couldn't load because coloring is not enabled\n");
-      }
-
-      if (write) {
-        printf("WARNING - couldn't write because coloring is not enabled\n");
-      }
-
-      if (disassemble) {
-        printf("WARNING - couldn't disassemble because coloring is not enabled\n");
-      }
-    }
-
-    if (m_settings.print_timing) {
-      printf("F: %36s ", obj_file_name.c_str());
-      timing.emplace_back("total", total_timer.getMs());
-      for (auto& e : timing) {
-        printf(" %12s %4.0f", e.first.c_str(), e.second);
-      }
-      printf("\n");
-    } else {
-      auto total_time = total_timer.getMs();
-      if (total_time > 10.0 && color && !no_time_prints) {
-        fmt::print("[ASM-FILE] {} took {:.2f} ms\n", obj_file_name, total_time);
-      }
-    }
+    asm_file(options);
   } catch (std::runtime_error& e) {
     if (!no_throw) {
       throw_compiler_error(form, "Error while compiling file: {}", e.what());
@@ -272,6 +176,14 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
  */
 Val* Compiler::compile_repl_help(const goos::Object&, const goos::Object&, Env*) {
   m_repl.get()->print_help_message();
+  return get_none();
+}
+
+/*!
+ * Print out all set keybinds for the REPL (by our tooling)
+ */
+Val* Compiler::compile_repl_keybinds(const goos::Object&, const goos::Object&, Env*) {
+  m_repl.get()->print_keybind_help();
   return get_none();
 }
 
@@ -306,7 +218,17 @@ Val* Compiler::compile_listen_to_target(const goos::Object& form,
     }
   });
 
-  m_listener.connect_to_target(30, ip, port);
+  int retries = 30;
+  if (m_repl) {
+    retries = m_repl->repl_config.target_connect_attempts;
+  }
+  auto connected = m_listener.connect_to_target(retries, ip, port);
+  if (connected && m_repl) {
+    m_repl->reload_startup_file();
+    for (const auto& line : m_repl->startup_file.run_after_listen) {
+      handle_repl_string(line);
+    }
+  }
   return get_none();
 }
 
@@ -405,13 +327,14 @@ Val* Compiler::compile_build_dgo(const goos::Object& form, const goos::Object& r
         desc.entries.push_back(o);
       } else {
         // allow data objects to be missing.
-        if (std::filesystem::exists(file_util::get_file_path({"out", "obj", o.file_name}))) {
+        if (fs::exists(file_util::get_file_path(
+                {"out", m_make.compiler_output_prefix(), "obj", o.file_name}))) {
           desc.entries.push_back(o);
         }
       }
     });
 
-    build_dgo(desc);
+    build_dgo(desc, m_make.compiler_output_prefix());
   });
 
   return get_none();
@@ -434,7 +357,8 @@ std::string Compiler::make_symbol_info_description(const SymbolInfo& info) {
     case SymbolInfo::Kind::LANGUAGE_BUILTIN:
       return fmt::format("[Built-in Form] {}\n", info.name());
     case SymbolInfo::Kind::METHOD:
-      return fmt::format("[Method] Type: {} Method Name: {} Defined: {}", info.type(), info.name(),
+      return fmt::format("[Method] Type: {} Method Name: {} Defined: {}",
+                         info.method_info().defined_in_type, info.name(),
                          m_goos.reader.db.get_info_for(info.src_form()));
     case SymbolInfo::Kind::TYPE:
       return fmt::format("[Type] Name: {} Defined: {}", info.name(),
@@ -466,40 +390,67 @@ Val* Compiler::compile_get_info(const goos::Object& form, const goos::Object& re
 
   auto result = m_symbol_info.lookup_exact_name(args.unnamed.at(0).as_symbol()->name);
   if (!result) {
-    fmt::print("No results found.\n");
+    lg::print("No results found.\n");
   } else {
     for (auto& info : *result) {
-      fmt::print("{}", make_symbol_info_description(info));
+      lg::print("{}", make_symbol_info_description(info));
     }
   }
 
   return get_none();
 }
 
-Replxx::completions_t Compiler::find_symbols_by_prefix(std::string const& context,
+replxx::Replxx::completions_t Compiler::find_symbols_or_object_file_by_prefix(
+    std::string const& context,
+    int& contextLen,
+    std::vector<std::string> const& user_data) {
+  (void)contextLen;
+  (void)user_data;
+  replxx::Replxx::completions_t completions;
+
+  // If we are trying to execute a `(ml ...)` we can automatically get the object file
+  // insert quotes if needed as well.
+  if (str_util::starts_with(context, "(ml ")) {
+    std::string file_name_prefix = context.substr(4);
+    // Trim string just incase, extra whitespace is valid LISP
+    file_name_prefix = str_util::trim(file_name_prefix);
+    // Remove quotes
+    file_name_prefix.erase(remove(file_name_prefix.begin(), file_name_prefix.end(), '"'),
+                           file_name_prefix.end());
+    if (file_name_prefix.empty()) {
+      return completions;
+    }
+
+    // Get all the potential object file names
+    const auto& matches = m_global_env->list_files_with_prefix(file_name_prefix);
+    for (const auto& match : matches) {
+      completions.push_back(fmt::format("\"{}\")", match));
+    }
+  } else {
+    const auto [token, stripped_leading_paren] = m_repl->get_current_repl_token(context);
+    // Otherwise, look for symbols
+    auto possible_forms = lookup_symbol_infos_starting_with(token);
+
+    for (auto& x : possible_forms) {
+      completions.push_back(stripped_leading_paren ? "(" + x : x);
+    }
+  }
+
+  return completions;
+}
+
+replxx::Replxx::hints_t Compiler::find_hints_by_prefix(std::string const& context,
                                                        int& contextLen,
+                                                       replxx::Replxx::Color& color,
                                                        std::vector<std::string> const& user_data) {
   (void)contextLen;
   (void)user_data;
   auto token = m_repl->get_current_repl_token(context);
   auto possible_forms = lookup_symbol_infos_starting_with(token.first);
-  Replxx::completions_t completions;
-  for (auto& x : possible_forms) {
-    completions.push_back(token.second ? "(" + x : x);
-  }
-  return completions;
-}
 
-Replxx::hints_t Compiler::find_hints_by_prefix(std::string const& context,
-                                               int& contextLen,
-                                               Replxx::Color& color,
-                                               std::vector<std::string> const& user_data) {
-  (void)contextLen;
-  (void)user_data;
-  auto token = m_repl->get_current_repl_token(context);
-  auto possible_forms = lookup_symbol_infos_starting_with(token.first);
+  replxx::Replxx::hints_t hints;
 
-  Replxx::hints_t hints;
+  // TODO - hints for `(ml ...` as well
 
   // Only show hints if there are <= 3 possibilities
   if (possible_forms.size() <= 3) {
@@ -510,7 +461,7 @@ Replxx::hints_t Compiler::find_hints_by_prefix(std::string const& context,
 
   // set hint color to green if single match found
   if (hints.size() == 1) {
-    color = Replxx::Color::GREEN;
+    color = replxx::Replxx::Color::GREEN;
   }
 
   return hints;
@@ -518,10 +469,10 @@ Replxx::hints_t Compiler::find_hints_by_prefix(std::string const& context,
 
 void Compiler::repl_coloring(
     std::string const& context,
-    Replxx::colors_t& colors,
-    std::vector<std::pair<std::string, Replxx::Color>> const& regex_color) {
+    replxx::Replxx::colors_t& colors,
+    std::vector<std::pair<std::string, replxx::Replxx::Color>> const& regex_color) {
   (void)regex_color;
-  using cl = Replxx::Color;
+  using cl = replxx::Replxx::Color;
   // TODO - a proper circular queue would be cleaner to use
   std::deque<cl> paren_colors = {cl::GREEN, cl::CYAN, cl::MAGENTA};
   std::stack<std::pair<char, cl>> expression_stack;
@@ -593,22 +544,37 @@ Val* Compiler::compile_autocomplete(const goos::Object& form, const goos::Object
   auto time = timer.getMs();
 
   for (auto& x : result) {
-    fmt::print(" {}\n", x);
+    lg::print(" {}\n", x);
   }
 
-  fmt::print("Autocomplete: {}/{} symbols matched, took {:.2f} ms\n", result.size(),
-             m_symbol_info.symbol_count(), time);
+  lg::print("Autocomplete: {}/{} symbols matched, took {:.2f} ms\n", result.size(),
+            m_symbol_info.symbol_count(), time);
 
   return get_none();
 }
 
-Val* Compiler::compile_add_macro_to_autocomplete(const goos::Object& form,
-                                                 const goos::Object& rest,
-                                                 Env* env) {
+Val* Compiler::compile_update_macro_metadata(const goos::Object& form,
+                                             const goos::Object& rest,
+                                             Env* env) {
   (void)env;
   auto args = get_va(form, rest);
-  va_check(form, args, {goos::ObjectType::SYMBOL}, {});
-  m_symbol_info.add_macro(args.unnamed.at(0).as_symbol()->name, form);
+  // We have to manually check the args here, as an empty list is considered something distinct from
+  // a pair
+  if (args.unnamed.size() != 3 || args.unnamed.at(0).type != goos::ObjectType::SYMBOL ||
+      args.unnamed.at(1).type != goos::ObjectType::STRING ||
+      (args.unnamed.at(2).type != goos::ObjectType::PAIR &&
+       args.unnamed.at(2).type != goos::ObjectType::EMPTY_LIST)) {
+    throw_compiler_error(form, "Invalid arguments provided to `update-macro-metadata");
+  }
+
+  auto& name = args.unnamed.at(0).as_symbol()->name;
+
+  auto arg_spec = m_goos.parse_arg_spec(form, args.unnamed.at(2));
+  m_macro_specs[name] = arg_spec;
+
+  SymbolInfo::Metadata sym_meta;
+  sym_meta.docstring = args.unnamed.at(1).as_string()->data;
+  m_symbol_info.add_macro(name, form, sym_meta);
   return get_none();
 }
 
@@ -659,12 +625,199 @@ Val* Compiler::compile_print_debug_compiler_stats(const goos::Object& form,
   auto args = get_va(form, rest);
   va_check(form, args, {}, {});
 
-  fmt::print("Spill operations (total): {}\n", m_debug_stats.num_spills);
-  fmt::print("Spill operations (v1 only): {}\n", m_debug_stats.num_spills_v1);
-  fmt::print("Eliminated moves: {}\n", m_debug_stats.num_moves_eliminated);
-  fmt::print("Total functions: {}\n", m_debug_stats.total_funcs);
-  fmt::print("Functions requiring v1: {}\n", m_debug_stats.funcs_requiring_v1_allocator);
-  fmt::print("Size of autocomplete prefix tree: {}\n", m_symbol_info.symbol_count());
+  lg::print("Spill operations (total): {}\n", m_debug_stats.num_spills);
+  lg::print("Spill operations (v1 only): {}\n", m_debug_stats.num_spills_v1);
+  lg::print("Eliminated moves: {}\n", m_debug_stats.num_moves_eliminated);
+  lg::print("Total functions: {}\n", m_debug_stats.total_funcs);
+  lg::print("Functions requiring v1: {}\n", m_debug_stats.funcs_requiring_v1_allocator);
+  lg::print("Size of autocomplete prefix tree: {}\n", m_symbol_info.symbol_count());
 
+  return get_none();
+}
+
+Val* Compiler::compile_gen_docs(const goos::Object& form, const goos::Object& rest, Env*) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::STRING}, {});
+
+  const auto& doc_path = fs::path(args.unnamed.at(0).as_string()->data);
+  lg::info("Saving docs to: {}", doc_path.string());
+
+  const auto symbols = m_symbol_info.get_all_symbols();
+
+  std::unordered_map<std::string, Docs::SymbolDocumentation> all_symbols;
+  std::unordered_map<std::string, Docs::FileDocumentation> file_docs;
+
+  lg::info("Processing {} symbols...", symbols.size());
+  int count = 0;
+  for (const auto& sym_info : symbols) {
+    count++;
+    if (count % 100 == 0 || count == (int)symbols.size()) {
+      lg::info("Processing [{}/{}] symbols...", count, symbols.size());
+    }
+    std::optional<Docs::DefinitionLocation> def_loc;
+    const auto& goos_info = m_goos.reader.db.get_short_info_for(sym_info.src_form());
+    if (goos_info) {
+      Docs::DefinitionLocation new_def_loc;
+      new_def_loc.filename = file_util::convert_to_unix_path_separators(file_util::split_path_at(
+          goos_info->filename, {"goal_src", version_to_game_name(m_version)}));
+      new_def_loc.line_idx = goos_info->line_idx_to_display;
+      new_def_loc.char_idx = goos_info->pos_in_line;
+      def_loc = new_def_loc;
+    }
+
+    Docs::SymbolDocumentation sym_doc;
+    sym_doc.name = sym_info.name();
+    sym_doc.description = sym_info.meta().docstring;
+    sym_doc.kind = sym_info.kind();
+    sym_doc.def_location = def_loc;
+
+    if (all_symbols.count(sym_info.name()) > 1) {
+      lg::error("A symbol was defined twice, how did this happen? {}", sym_info.name());
+    } else {
+      all_symbols.emplace(sym_info.name(), sym_doc);
+    }
+
+    Docs::FileDocumentation file_doc;
+    std::string file_doc_key;
+    if (!goos_info) {
+      file_doc_key = "unknown";
+    } else {
+      file_doc_key = file_util::convert_to_unix_path_separators(
+          file_util::split_path_at(goos_info->filename, {"goal_src"}));
+    }
+
+    if (file_docs.count(file_doc_key) != 0) {
+      file_doc = file_docs.at(file_doc_key);
+    } else {
+      file_doc = Docs::FileDocumentation();
+    }
+
+    // TODO - states / enums / built-ins
+    if (sym_info.kind() == SymbolInfo::Kind::GLOBAL_VAR ||
+        sym_info.kind() == SymbolInfo::Kind::CONSTANT) {
+      Docs::VariableDocumentation var;
+      var.name = sym_info.name();
+      var.description = sym_info.meta().docstring;
+      if (sym_info.kind() == SymbolInfo::Kind::CONSTANT) {
+        var.type = "unknown";  // Unfortunately, constants are not properly typed
+      } else {
+        var.type = m_symbol_types.at(var.name).base_type();
+      }
+      var.def_location = def_loc;
+      if (sym_info.kind() == SymbolInfo::Kind::GLOBAL_VAR) {
+        file_doc.global_vars.push_back(var);
+      } else {
+        file_doc.constants.push_back(var);
+      }
+    } else if (sym_info.kind() == SymbolInfo::Kind::FUNCTION) {
+      Docs::FunctionDocumentation func;
+      func.name = sym_info.name();
+      func.description = sym_info.meta().docstring;
+      func.def_location = def_loc;
+      func.args = Docs::get_args_from_docstring(sym_info.args(), func.description);
+      // The last arg in the typespec is the return type
+      const auto& func_type = m_symbol_types.at(func.name);
+      func.return_type = func_type.last_arg().base_type();
+      file_doc.functions.push_back(func);
+    } else if (sym_info.kind() == SymbolInfo::Kind::TYPE) {
+      Docs::TypeDocumentation type;
+      type.name = sym_info.name();
+      type.description = sym_info.meta().docstring;
+      type.def_location = def_loc;
+      const auto& type_info = m_ts.lookup_type(type.name);
+      type.parent_type = type_info->get_parent();
+      type.size = type_info->get_size_in_memory();
+      type.method_count = type_info->get_methods_defined_for_type().size();
+      if (m_ts.typecheck_and_throw(m_ts.make_typespec("structure"), m_ts.make_typespec(type.name),
+                                   "", false, false, false)) {
+        auto struct_info = dynamic_cast<StructureType*>(type_info);
+        for (const auto& field : struct_info->fields()) {
+          Docs::FieldDocumentation field_doc;
+          field_doc.name = field.name();
+          field_doc.description = "";
+          field_doc.type = field.type().base_type();
+          field_doc.is_array = field.is_array();
+          field_doc.is_inline = field.is_inline();
+          field_doc.is_dynamic = field.is_dynamic();
+          type.fields.push_back(field_doc);
+        }
+      }
+      for (const auto& method : type_info->get_methods_defined_for_type()) {
+        // Check to see if it's a state
+        if (m_ts.typecheck_and_throw(m_ts.make_typespec("state"), method.type, "", false, false,
+                                     false)) {
+          Docs::TypeStateDocumentation state_doc;
+          state_doc.id = method.id;
+          state_doc.is_virtual = true;
+          state_doc.name = method.name;
+          type.states.push_back(state_doc);
+        } else {
+          Docs::TypeMethodDocumentation method_doc;
+          method_doc.id = method.id;
+          method_doc.name = method.name;
+          method_doc.is_override = method.overrides_parent;
+          type.methods.push_back(method_doc);
+        }
+      }
+      for (const auto& [state_name, state_info] : type_info->get_states_declared_for_type()) {
+        Docs::TypeStateDocumentation state_doc;
+        state_doc.name = state_name;
+        state_doc.is_virtual = false;
+        type.states.push_back(state_doc);
+      }
+      file_doc.types.push_back(type);
+    } else if (sym_info.kind() == SymbolInfo::Kind::MACRO) {
+      Docs::MacroDocumentation macro_doc;
+      macro_doc.name = sym_info.name();
+      macro_doc.description = sym_info.meta().docstring;
+      macro_doc.def_location = def_loc;
+      const auto& arg_spec = m_macro_specs[macro_doc.name];
+      for (const auto& arg : arg_spec.unnamed) {
+        macro_doc.args.push_back(arg);
+      }
+      for (const auto& arg : arg_spec.named) {
+        std::optional<std::string> def_value;
+        if (arg.second.has_default) {
+          def_value = arg.second.default_value.print();
+        }
+        macro_doc.kwargs.push_back({arg.first, def_value});
+      }
+      if (!arg_spec.rest.empty()) {
+        macro_doc.variadic_arg = arg_spec.rest;
+      }
+      file_doc.macros.push_back(macro_doc);
+    } else if (sym_info.kind() == SymbolInfo::Kind::METHOD) {
+      Docs::MethodDocumentation method_doc;
+      method_doc.name = sym_info.name();
+      method_doc.description = sym_info.meta().docstring;
+      method_doc.def_location = def_loc;
+      const auto& method_info = sym_info.method_info();
+      method_doc.id = method_info.id;
+      method_doc.type = sym_info.method_info().defined_in_type;
+      method_doc.is_override = method_info.overrides_parent;
+      method_doc.args = Docs::get_args_from_docstring(sym_info.args(), method_doc.description);
+      // The last arg in the typespec is the return type
+      const auto& method_type = method_info.type;
+      method_doc.return_type = method_type.last_arg().base_type();
+      method_doc.is_builtin = method_doc.id <= 9;
+      file_doc.methods.push_back(method_doc);
+    }
+    file_docs[file_doc_key] = file_doc;
+  }
+
+  json symbol_map_data(all_symbols);
+  file_util::write_text_file(
+      doc_path / fmt::format("{}-symbol-map.json", version_to_game_name(m_version)),
+      symbol_map_data.dump());
+  json file_docs_data(file_docs);
+  file_util::write_text_file(
+      doc_path / fmt::format("{}-file-docs.json", version_to_game_name(m_version)),
+      file_docs_data.dump());
+
+  return get_none();
+}
+
+Val* Compiler::compile_gc_text(const goos::Object&, const goos::Object&, Env*) {
+  m_goos.reader.db.clear_info();
   return get_none();
 }

@@ -1,0 +1,125 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: nav-graph-editor.gc
+;; name in dgo: nav-graph-editor
+;; dgos: ENGINE, GAME
+
+;; NOTE - for default-menu
+(declare-type nav-graph-editor process)
+(define-extern get-nav-graph-editor (function nav-graph-editor))
+(define-extern run-nav-graph-editor (function symbol (pointer process)))
+(define-extern exit-nav-graph-editor (function none))
+
+;; DECOMP BEGINS
+
+(deftype nav-graph-command (structure)
+  ((com-type uint32         :offset-assert 0) ;; TODO - enum
+   (id       int32          :offset-assert 4)
+   (index    int32          :offset-assert 8)
+   (move-vec vector :inline :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype nav-graph-command-array (inline-array-class)
+  ((data             nav-graph-command :inline :dynamic :offset-assert 16))
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype nav-graph-editor (process)
+  ((self-override       nav-graph-editor :offset 32 :score 100)
+   (nav-graph           mysql-nav-graph                  :offset-assert 128)
+   (mode                symbol                 :offset-assert 132)
+   (command-id          int32                  :offset-assert 136)
+   (max-command         int32                  :offset-assert 140)
+   (selected-index      int32                  :offset-assert 144)
+   (selected-dist       float                  :offset-assert 148)
+   (selected-node-edge? symbol                  :offset-assert 152)
+   (closest-node        int32                  :offset-assert 156)
+   (dist-closest-node   float                  :offset-assert 160)
+   (closest-edge        int32                  :offset-assert 164)
+   (dist-closest-edge   float                  :offset-assert 168)
+   (mouse-pos           vector         :inline :offset-assert 176)
+   (mouse-hit           vector         :inline :offset-assert 192)
+   (mouse-hit-pick      vector         :inline :offset-assert 208)
+   (mouse-normal        vector         :inline :offset-assert 224)
+   (mouse-spos-hold     vector         :inline :offset-assert 240)
+   (edge-src            int32                  :offset-assert 256)
+   (edge-dst            int32                  :offset-assert 260)
+   (edge-visibility     int32                  :offset-assert 264)
+   (vehicle-edit-mode   symbol                  :offset-assert 268)
+   (hover-edit-mode     symbol                  :offset-assert 272)
+   (clipping-dist       float                  :offset-assert 276)
+   (plane-height        float                  :offset-assert 280)
+   (plane-height-hold   float                  :offset-assert 284)
+   (default-node        mysql-nav-node :inline :offset-assert 288)
+   (default-edge        mysql-nav-edge :inline :offset-assert 356)
+   (command-array       nav-graph-command-array                  :offset-assert 424)
+   )
+  :method-count-assert 64
+  :size-assert         #x1ac
+  :flag-assert         #x40013001ac
+  (:methods
+    (move-node () _type_ :state 14)
+    (move-plane () _type_ :state 15)
+    (create () _type_ :state 16)
+    (edit-edge () _type_ :state 17)
+    (create-edge () _type_ :state 18)
+    (adjust-plane () _type_ :state 19)
+    (adjust-it () _type_ :state 20)
+    (adjust-minimap () _type_ :state 21)
+    (adjust-node-angle () _type_ :state 22)
+    (adjust-node-radius () _type_ :state 23)
+    (adjust-edge-visibility () _type_ :state 24)
+    (adjust-edge-width () _type_ :state 25)
+    (adjust-edge-density () _type_ :state 26)
+    (draw-closest-minimap () _type_ :state 27)
+    (nav-graph-editor-method-28 (_type_) none 28)
+    (nav-graph-editor-method-29 (_type_ string string string) none 29)
+    (nav-graph-editor-method-30 (_type_ int) symbol 30)
+    (nav-graph-editor-method-31 (_type_ int) symbol 31)
+    (nav-graph-editor-method-32 (_type_ symbol int) none 32)
+    (nav-graph-editor-method-33 (_type_ int) none 33)
+    (nav-graph-editor-method-34 (_type_) object 34)
+    (nav-graph-editor-method-35 (_type_) none 35)
+    (nav-graph-editor-method-36 (_type_) none 36)
+    (nav-graph-editor-method-37 (_type_) none 37)
+    (nav-graph-editor-method-38 (_type_) none 38)
+    (nav-graph-editor-method-39 (_type_) none 39)
+    (nav-graph-editor-method-40 (_type_) none 40)
+    (nav-graph-editor-method-41 (_type_) none 41)
+    (nav-graph-editor-method-42 (_type_) symbol 42)
+    (nav-graph-editor-method-43 (_type_) none 43)
+    (nav-graph-editor-method-44 (_type_) symbol 44)
+    (nav-graph-editor-method-45 (_type_) none 45)
+    (nav-graph-editor-method-46 (_type_) pad-buttons 46)
+    (nav-graph-editor-method-47 (_type_) none 47)
+    (nav-graph-editor-method-48 "TODO - enum / com-type" (_type_ uint32) nav-graph-command 48)
+    (nav-graph-editor-method-49 (_type_) nav-graph-command 49)
+    (nav-graph-editor-method-50 (_type_) none 50)
+    (nav-graph-editor-method-51 (_type_) none 51)
+    (nav-graph-editor-method-52 (_type_) none 52)
+    (nav-graph-editor-method-53 (_type_ int int) none 53)
+    (nav-graph-editor-method-54 (_type_ int) none 54)
+    (nav-graph-editor-method-55 (_type_ int) none 55)
+    (nav-graph-editor-method-56 (_type_ int) none 56)
+    (nav-graph-editor-method-57 (_type_ int int) int 57)
+    (nav-graph-editor-method-58 (_type_) symbol 58)
+    (nav-graph-editor-method-59 (_type_) pad-buttons 59)
+    (nav-graph-editor-method-60 (_type_) none 60)
+    (nav-graph-editor-method-61 (_type_) none 61)
+    (nav-graph-editor-method-62 (_type_ symbol symbol) none 62)
+    (nav-graph-editor-method-63 (_type_) none 63)
+    )
+  )
+
+;; hack
+;; stub
+(defun get-nav-graph-editor ()
+  (the nav-graph-editor #f)
+  )

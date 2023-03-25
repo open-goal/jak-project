@@ -1,0 +1,312 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *cheat-mode*, type symbol
+(define *cheat-mode* #t)
+
+;; definition of type hw-cpad
+(deftype hw-cpad (basic)
+  ((valid   uint8     :offset-assert   4)
+   (status  uint8     :offset-assert   5)
+   (button0 uint16    :offset-assert   6)
+   (rightx  uint8     :offset-assert   8)
+   (righty  uint8     :offset-assert   9)
+   (leftx   uint8     :offset-assert  10)
+   (lefty   uint8     :offset-assert  11)
+   (abutton uint8  12 :offset-assert  12)
+   (dummy   uint8  12 :offset-assert  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+;; definition for method 3 of type hw-cpad
+(defmethod inspect hw-cpad ((obj hw-cpad))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tvalid: #x~X~%" (-> obj valid))
+  (format #t "~Tstatus: #x~X~%" (-> obj status))
+  (format #t "~Tbutton0: #x~X~%" (-> obj button0))
+  (format #t "~Trightx: ~D~%" (-> obj rightx))
+  (format #t "~Trighty: ~D~%" (-> obj righty))
+  (format #t "~Tleftx: ~D~%" (-> obj leftx))
+  (format #t "~Tlefty: ~D~%" (-> obj lefty))
+  (format #t "~Tabutton[12] @ #x~X~%" (-> obj abutton))
+  (format #t "~Tdummy[12] @ #x~X~%" (-> obj dummy))
+  obj
+  )
+
+;; definition of type cpad-info
+(deftype cpad-info (hw-cpad)
+  ((number             int32         :offset-assert  36)
+   (cpad-file          int32         :offset-assert  40)
+   (button0-abs        pad-buttons 3 :offset-assert  44)
+   (button0-shadow-abs pad-buttons 1 :offset-assert  56)
+   (button0-rel        pad-buttons 3 :offset-assert  60)
+   (stick0-dir         float         :offset-assert  72)
+   (stick0-speed       float         :offset-assert  76)
+   (new-pad            int32         :offset-assert  80)
+   (state              int32         :offset-assert  84)
+   (align              uint8       6 :offset-assert  88)
+   (direct             uint8       6 :offset-assert  94)
+   (buzz-val           uint8       2 :offset-assert 100)
+   (buzz-time          time-frame  2 :offset-assert 104)
+   (buzz               basic         :offset-assert 120)
+   (buzz-act           int32         :offset-assert 124)
+   (change-time        time-frame    :offset-assert 128)
+   )
+  :method-count-assert 9
+  :size-assert         #x88
+  :flag-assert         #x900000088
+  (:methods
+    (new (symbol type int) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type cpad-info
+(defmethod inspect cpad-info ((obj cpad-info))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tvalid: #x~X~%" (-> obj valid))
+  (format #t "~Tstatus: #x~X~%" (-> obj status))
+  (format #t "~Tbutton0: #x~X~%" (-> obj button0))
+  (format #t "~Trightx: ~D~%" (-> obj rightx))
+  (format #t "~Trighty: ~D~%" (-> obj righty))
+  (format #t "~Tleftx: ~D~%" (-> obj leftx))
+  (format #t "~Tlefty: ~D~%" (-> obj lefty))
+  (format #t "~Tabutton[12] @ #x~X~%" (-> obj abutton))
+  (format #t "~Tdummy[12] @ #x~X~%" (-> obj dummy))
+  (format #t "~Tnumber: ~D~%" (-> obj number))
+  (format #t "~Tcpad-file: ~D~%" (-> obj cpad-file))
+  (format #t "~Tbutton0-abs[3] @ #x~X~%" (-> obj button0-abs))
+  (format #t "~Tbutton0-shadow-abs[1] @ #x~X~%" (-> obj button0-shadow-abs))
+  (format #t "~Tbutton0-rel[3] @ #x~X~%" (-> obj button0-rel))
+  (format #t "~Tstick0-dir: ~f~%" (-> obj stick0-dir))
+  (format #t "~Tstick0-speed: ~f~%" (-> obj stick0-speed))
+  (format #t "~Tnew-pad: ~D~%" (-> obj new-pad))
+  (format #t "~Tstate: ~D~%" (-> obj state))
+  (format #t "~Talign[6] @ #x~X~%" (-> obj align))
+  (format #t "~Tdirect[6] @ #x~X~%" (-> obj direct))
+  (format #t "~Tbuzz-val[2] @ #x~X~%" (-> obj buzz-val))
+  (format #t "~Tbuzz-time[2] @ #x~X~%" (-> obj buzz-time))
+  (format #t "~Tbuzz: ~A~%" (-> obj buzz))
+  (format #t "~Tbuzz-act: ~D~%" (-> obj buzz-act))
+  (format #t "~Tchange-time: ~D~%" (-> obj change-time))
+  obj
+  )
+
+;; definition for function cpad-invalid!
+(defun cpad-invalid! ((pad cpad-info))
+  (logior! (-> pad valid) 128)
+  (set! (-> pad button0) (the-as uint 0))
+  (set! (-> pad button0-abs 0) (pad-buttons))
+  (set! (-> pad button0-shadow-abs 0) (pad-buttons))
+  (set! (-> pad button0-rel 0) (pad-buttons))
+  (dotimes (v1-2 12)
+    (nop!)
+    (set! (-> pad abutton v1-2) (the-as uint 0))
+    )
+  (set! (-> pad stick0-dir) 0.0)
+  (set! (-> pad stick0-speed) 0.0)
+  (set! (-> pad rightx) (the-as uint 128))
+  (set! (-> pad righty) (the-as uint 128))
+  (set! (-> pad leftx) (the-as uint 128))
+  (set! (-> pad lefty) (the-as uint 128))
+  (set! (-> pad align 0) (the-as uint 0))
+  (set! (-> pad align 1) (the-as uint 1))
+  (set! (-> pad align 2) (the-as uint 255))
+  (set! (-> pad align 3) (the-as uint 255))
+  (set! (-> pad align 4) (the-as uint 255))
+  (set! (-> pad align 5) (the-as uint 255))
+  (dotimes (v1-14 6)
+    (set! (-> pad direct v1-14) (the-as uint 0))
+    )
+  (dotimes (v1-17 2)
+    (set! (-> pad buzz-val 0) (the-as uint 0))
+    (set! (-> pad buzz-time 0) 0)
+    )
+  pad
+  )
+
+;; definition for method 0 of type cpad-info
+(defmethod new cpad-info ((alloction symbol) (type-to-make type) (idx int))
+  (let ((obj (object-new alloction type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> obj number) idx)
+    (set! (-> obj buzz) #f)
+    (cpad-open obj idx)
+    (cpad-invalid! obj)
+    )
+  )
+
+;; definition of type cpad-list
+(deftype cpad-list (basic)
+  ((num-cpads int32       :offset-assert   4)
+   (cpads     cpad-info 4 :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  (:methods
+    (new (symbol type) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type cpad-list
+(defmethod inspect cpad-list ((obj cpad-list))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tnum-cpads: ~D~%" (-> obj num-cpads))
+  (format #t "~Tcpads[2] @ #x~X~%" (-> obj cpads))
+  obj
+  )
+
+;; definition for method 0 of type cpad-list
+(defmethod new cpad-list ((allocation symbol) (type-to-make type))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 num-cpads) 2)
+    (set! (-> gp-0 cpads 0) (new 'global 'cpad-info 0))
+    (set! (-> gp-0 cpads 1) (new 'global 'cpad-info 1))
+    gp-0
+    )
+  )
+
+;; definition for function analog-input
+(defun analog-input ((in int) (offset float) (center-val float) (max-val float) (out-range float))
+  (let* ((offset-in (- (the float in) offset))
+         (magnitude (- (fabs offset-in) center-val))
+         (max-magnitude (- max-val center-val))
+         )
+    (if (< offset-in 0.0)
+        (set! out-range (- out-range))
+        )
+    (cond
+      ((>= 0.0 magnitude)
+       0.0
+       )
+      ((>= magnitude max-magnitude)
+       out-range
+       )
+      (else
+        (/ (* magnitude out-range) max-magnitude)
+        )
+      )
+    )
+  )
+
+;; definition for function cpad-set-buzz!
+;; INFO: Return type mismatch int vs none.
+(defun cpad-set-buzz! ((pad cpad-info) (buzz-idx int) (buzz-amount int) (duration time-frame))
+  (cond
+    ((zero? buzz-amount)
+     (set! (-> pad buzz-val buzz-idx) (the-as uint 0))
+     0
+     )
+    ((= buzz-amount (-> pad buzz-val buzz-idx))
+     (set! (-> pad buzz-time buzz-idx) (max (-> pad buzz-time buzz-idx) (+ (get-current-time) duration)))
+     )
+    ((< (-> pad buzz-val buzz-idx) (the-as uint buzz-amount))
+     (set! (-> pad buzz-val buzz-idx) (the-as uint buzz-amount))
+     (set! (-> pad buzz-time buzz-idx) (+ (get-current-time) duration))
+     )
+    )
+  0
+  (none)
+  )
+
+;; definition for symbol *cpad-list*, type cpad-list
+(define *cpad-list* (new 'global 'cpad-list))
+
+;; definition for symbol *cpad-debug*, type symbol
+(define *cpad-debug* #f)
+
+;; definition for function service-cpads
+(defun service-cpads ()
+  (let ((pad-list *cpad-list*))
+    (dotimes (pad-idx (-> pad-list num-cpads))
+      (let ((pad (-> *cpad-list* cpads pad-idx)))
+        (cpad-get-data pad)
+        (cond
+          ((not (logtest? (-> pad valid) 128))
+           (dotimes (buzz-idx 2)
+             (cond
+               ((and (-> pad buzz) (< (get-current-time) (-> pad buzz-time buzz-idx)) (= *master-mode* 'game))
+                (let ((v1-10 buzz-idx))
+                  (cond
+                    ((zero? v1-10)
+                     (set! (-> pad direct buzz-idx)
+                           (logand (ash (-> pad buzz-val buzz-idx) (- (the-as int (logand (get-integral-current-time) 7)))) 1)
+                           )
+                     )
+                    ((= v1-10 1)
+                     (set! (-> pad direct buzz-idx) (-> pad buzz-val buzz-idx))
+                     )
+                    )
+                  )
+                )
+               (else
+                 (set! (-> pad buzz-val buzz-idx) (the-as uint 0))
+                 (set! (-> pad direct buzz-idx) (the-as uint 0))
+                 0
+                 )
+               )
+             )
+           (set! (-> pad button0-abs 2) (-> pad button0-abs 1))
+           (set! (-> pad button0-abs 1) (-> pad button0-shadow-abs 0))
+           (set! (-> pad button0-rel 2) (-> pad button0-rel 1))
+           (set! (-> pad button0-rel 1) (-> pad button0-rel 0))
+           (let ((current-button0 (-> pad button0)))
+             (set! (-> pad button0-shadow-abs 0) (the-as pad-buttons current-button0))
+             (set! (-> pad button0-abs 0) (the-as pad-buttons current-button0))
+             )
+           (set! (-> pad button0-rel 0) (logclear (-> pad button0-abs 0) (-> pad button0-abs 1)))
+           (when *cpad-debug*
+             (set! (-> pad leftx) (the-as uint 255))
+             (set! (-> pad rightx) (the-as uint 255))
+             )
+           (set! (-> pad stick0-speed) 1.0)
+           (cond
+             ((= (shr (-> pad status) 4) 7)
+              (let ((f30-0 (* 0.0078125 (the float (+ (-> pad leftx) -128))))
+                    (f28-0 (* 0.0078125 (the float (- 127 (the-as int (-> pad lefty))))))
+                    )
+                (set! (-> pad stick0-dir) (atan (- f30-0) f28-0))
+                (set! (-> pad stick0-speed) (fmin 1.0 (sqrtf (+ (* f30-0 f30-0) (* f28-0 f28-0)))))
+                )
+              (if (< (-> pad stick0-speed) 0.3)
+                  (set! (-> pad stick0-speed) 0.0)
+                  )
+              )
+             (else
+               (set! (-> pad leftx) (the-as uint 128))
+               (set! (-> pad lefty) (the-as uint 128))
+               (set! (-> pad rightx) (the-as uint 128))
+               (set! (-> pad righty) (the-as uint 128))
+               (set! (-> pad stick0-dir) 0.0)
+               (set! (-> pad stick0-speed) 0.0)
+               )
+             )
+           (if (or (!= (-> pad button0-abs 0) (-> pad button0-abs 1))
+                   (or (< 0.3 (-> pad stick0-speed)) (zero? (-> pad change-time)))
+                   )
+               (set! (-> pad change-time) (get-current-time))
+               )
+           )
+          (else
+            (cpad-invalid! pad)
+            )
+          )
+        )
+      )
+    )
+  *cpad-list*
+  )
+
+;; definition for function buzz-stop!
+;; INFO: Return type mismatch int vs none.
+(defun buzz-stop! ((idx int))
+  (cpad-set-buzz! (-> *cpad-list* cpads idx) 0 0 0)
+  (cpad-set-buzz! (-> *cpad-list* cpads idx) 1 0 0)
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+0

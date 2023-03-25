@@ -1,0 +1,116 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: bones-h.gc
+;; name in dgo: bones-h
+;; dgos: ENGINE, GAME
+
+
+(defenum bone-calc-flags
+  :type uint16
+  :bitfield #t
+  (write-ripple-data 0)
+  (no-cam-rot 1)
+  (bncfl02 2)
+  (bncfl03 3)
+  (bncfl04 4)
+  (bncfl05 5)
+  (bncfl06 6)
+  (bncfl07 7)
+  (bncfl08 8)
+  (bncfl09 9)
+  (bncfl10 10)
+  (bncfl11 11)
+  (bncfl12 12)
+  (bncfl13 13)
+  (bncfl14 14)
+  (bncfl15 15)
+  )
+
+;; DECOMP BEGINS
+
+(deftype bone-buffer (structure)
+  ((joint  matrix                    16 :inline :offset-assert   0)
+   (bone   bone                      16 :inline :offset-assert 1024)
+   (output pris-mtx                  16 :inline :offset-assert 2304)
+   )
+  :method-count-assert 9
+  :size-assert         #x1100
+  :flag-assert         #x900001100
+  )
+
+(deftype bone-layout (structure)
+  ((data   uint16                  8 :offset-assert 0)
+   (joint  (inline-array matrix)   2 :offset 0)
+   (bone   (inline-array bone)     2 :offset 8)
+   (output (inline-array pris-mtx) 2 :offset 16)
+   (unused uint32                  2 :offset 24)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype bone-regs (structure)
+  ((dma-buf    basic                   :offset-assert   0)
+   (wait-count uint32                  :offset-assert   4)
+   (in-count   uint32                  :offset-assert   8)
+   (sp-size    uint32                  :offset-assert  12)
+   (sp-bufnum  uint32                  :offset-assert  16)
+   (joint-ptr  (inline-array joint)    :offset-assert  20)
+   (bone-ptr   (inline-array bone)     :offset-assert  24)
+   (num-bones  uint32                  :offset-assert  28)
+   (mtxs       (inline-array pris-mtx) :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+(deftype bone-work (structure)
+  ((layout bone-layout :inline :offset-assert   0)
+   (regs   bone-regs   :inline :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x44
+  :flag-assert         #x900000044
+  )
+
+(deftype bone-debug (structure)
+  ((time-ctr uint32     :offset-assert   0)
+   (timing   uint32 360 :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x5a4
+  :flag-assert         #x9000005a4
+  )
+
+(deftype bone-memory (structure)
+  ((work   bone-work   :inline   :offset-assert   0)
+   (buffer bone-buffer 2 :inline :offset-assert  80)
+   )
+  :method-count-assert 9
+  :size-assert         #x2250
+  :flag-assert         #x900002250
+  )
+
+(deftype bone-calculation (structure)
+  ((flags               bone-calc-flags         :offset-assert   0)
+   (num-bones           uint16                  :offset-assert   2)
+   (matrix-area         (inline-array pris-mtx) :offset-assert   4)
+   (joints              (inline-array joint)    :offset-assert   8)
+   (bones               (inline-array bone)     :offset-assert  12)
+   (ripple-scale        float                   :offset-assert  16)
+   (ripple-y-scale      float                   :offset-assert  20)
+   (ripple-normal-scale float                   :offset-assert  24)
+   (ripple-area         (inline-array vector)   :offset-assert  28)
+   (ripple-vec          vector :inline          :offset 16)
+   (next                bone-calculation        :offset-assert  32)
+   (dummy-1             uint32                  :offset-assert  36)
+   (dummy-2             uint32                  :offset-assert  40)
+   (dummy-3             uint32                  :offset-assert  44)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )

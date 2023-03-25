@@ -1,10 +1,11 @@
-#include "gtest/gtest.h"
 #include "FormRegressionTest.h"
+
+#include "gtest/gtest.h"
 
 using namespace decompiler;
 
 // vector-rad<-vector-deg/2!
-TEST_F(FormRegressionTest, VectorDegToVectorRad) {
+TEST_F(FormRegressionTestJak1, VectorDegToVectorRad) {
   std::string func =
       "sll r0, r0, 0\n"
       "    lui v1, 14537\n"
@@ -56,7 +57,7 @@ TEST_F(FormRegressionTest, VectorDegToVectorRad) {
 }
 
 // weird short circuit thing
-TEST_F(FormRegressionTest, WeirdShortCircuit) {
+TEST_F(FormRegressionTestJak1, WeirdShortCircuit) {
   std::string func =
       "sll r0, r0, 0\n"
       "   daddiu sp, sp, -144\n"
@@ -143,7 +144,7 @@ TEST_F(FormRegressionTest, WeirdShortCircuit) {
   test_with_stack_structures(func, type, expected, "[[16, \"event-message-block\"]]");
 }
 
-TEST_F(FormRegressionTest, WeirdShortCircuit2) {
+TEST_F(FormRegressionTestJak1, WeirdShortCircuit2) {
   std::string func =
       "sll r0, r0, 0\n"
       "L62:\n"

@@ -1,0 +1,211 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: path-h.gc
+;; name in dgo: path-h
+;; dgos: ENGINE, GAME
+
+(defenum path-control-flag
+  :bitfield #t
+  :type uint32
+  (display 0)
+  (draw-line 1) ;; TODO - only seen it used to control debug drawing so far
+  (draw-point 2) ;; TODO - only seen it used to control debug drawing so far
+  (draw-text 3) ;; TODO - only seen it used to control debug drawing so far
+  (not-found 4)
+  )
+
+
+;; DECOMP BEGINS
+
+(deftype path-control (basic)
+  "An abstraction around a [[curve]], providing tools such as:
+- debug drawing
+- conveniant vertex accessing
+- vertex finding/searching algorithms"
+  ((flags   path-control-flag         :offset-assert   4)
+   (name    symbol                    :offset-assert   8)
+   (process process-drawable          :offset-assert  12)
+   (curve   curve             :inline :offset-assert  16)
+   )
+  :method-count-assert 27
+  :size-assert         #x24
+  :flag-assert         #x1b00000024
+  (:methods
+    (new (symbol type process symbol float entity symbol) _type_ 0)
+    (debug-draw (_type_) none 9)
+    (get-point-in-path! (_type_ vector float symbol) vector 10)
+    (get-random-point (_type_ vector) vector :behavior process 11)
+    (displacement-between-two-points-copy! (_type_ vector float float) vector 12)
+    (displacement-between-two-points-normalized! (_type_ vector float) vector 13)
+    (get-point-at-percent-along-path! (_type_ vector float symbol) vector 14)
+    (displacement-between-points-at-percent-scaled! (_type_ vector float float) vector 15)
+    (displacement-between-points-at-percent-normalized! (_type_ vector float) vector 16)
+    (get-num-segments (_type_) float 17)
+    (total-distance (_type_) float 18)
+    (get-num-verts (_type_) int 19)
+    (path-distance-equal-spacing (_type_ float) float 20)
+    (average-segment-length (_type_ float) float 21)
+    (get-furthest-point-on-path (_type_ vector) float 22)
+    (get-path-percentage-at-furthest-point (_type_ vector) float 23)
+    (path-control-method-24 (_type_ vector) vector 24)
+    (should-display-marks? (_type_) symbol 25)
+    (displacement-between-two-points! (_type_ vector float float) vector 26)
+    )
+  )
+
+
+(set! (-> path-control method-table 9) nothing)
+
+(deftype curve-control (path-control)
+  "Identical in terms of data to a [[path-control]] but has different implementation"
+  ()
+  :method-count-assert 27
+  :size-assert         #x24
+  :flag-assert         #x1b00000024
+  (:methods
+    (new (symbol type process symbol float) _type_ 0)
+    )
+  )
+
+
+;; ERROR: Stack slot load at 32 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 32 mismatch: defined as size 4, got size 16
+;; WARN: Return type mismatch object vs path-control.
+(defmethod new path-control ((allocation symbol)
+                           (type-to-make type)
+                           (arg0 process)
+                           (arg1 symbol)
+                           (arg2 float)
+                           (arg3 entity)
+                           (arg4 symbol)
+                           )
+  (local-vars (v0-3 object) (sv-16 res-tag) (sv-32 float))
+  (set! sv-32 arg2)
+  (let ((s0-0 arg3)
+        (s1-0 arg4)
+        )
+    (if (not s0-0)
+        (set! s0-0 (-> arg0 entity))
+        )
+    (when (= arg1 'path)
+      (let ((v0-0 (entity-actor-lookup s0-0 'path-actor 0)))
+        (if v0-0
+            (set! s0-0 v0-0)
+            )
+        )
+      )
+    (let ((s2-0 (the-as object 0)))
+      (set! sv-16 (new 'static 'res-tag))
+      (let* ((t9-1 (method-of-type res-lump get-property-data))
+             (a1-2 arg1)
+             (a2-2 'interp)
+             (t0-1 #f)
+             (t1-1 (the-as (pointer res-tag) (& sv-16)))
+             (t2-1 *res-static-buf*)
+             (s0-1 (t9-1 s0-0 a1-2 a2-2 sv-32 (the-as pointer t0-1) t1-1 t2-1))
+             )
+        (cond
+          (s0-1
+            (set! s2-0 (object-new allocation type-to-make (the-as int (-> type-to-make size))))
+            (set! v0-3 (cond
+                         ((nonzero? (the-as path-control s2-0))
+                          (set! (-> (the-as path-control s2-0) process) (the-as process-drawable arg0))
+                          (set! (-> (the-as path-control s2-0) name) arg1)
+                          (set! (-> (the-as path-control s2-0) curve cverts) (the-as (inline-array vector) s0-1))
+                          (set! v0-3 (-> sv-16 elt-count))
+                          (set! (-> (the-as path-control s2-0) curve num-cverts) (the-as int v0-3))
+                          v0-3
+                          )
+                         (else
+                           (go process-drawable-art-error "memory")
+                           )
+                         )
+                  )
+            )
+          (else
+            (when (not s1-0)
+              (set! s2-0 (object-new allocation type-to-make (the-as int (-> type-to-make size))))
+              (cond
+                ((nonzero? (the-as path-control s2-0))
+                 (logior! (-> (the-as path-control s2-0) flags) (path-control-flag not-found))
+                 (set! (-> (the-as path-control s2-0) process) (the-as process-drawable arg0))
+                 (set! (-> (the-as path-control s2-0) name) arg1)
+                 (set! (-> (the-as path-control s2-0) curve cverts) (the-as (inline-array vector) #f))
+                 (set! (-> (the-as path-control s2-0) curve num-cverts) 0)
+                 0
+                 )
+                (else
+                  (go process-drawable-art-error "memory")
+                  )
+                )
+              )
+            )
+          )
+        )
+      (the-as path-control s2-0)
+      )
+    )
+  )
+
+(defmethod should-display-marks? path-control ((obj path-control))
+  (and *display-path-marks* (logtest? (-> obj flags) (path-control-flag display)))
+  )
+
+(defmethod get-num-segments path-control ((obj path-control))
+  (the float (+ (-> obj curve num-cverts) -1))
+  )
+
+(defmethod get-num-verts path-control ((obj path-control))
+  (-> obj curve num-cverts)
+  )
+
+(defmethod path-distance-equal-spacing path-control ((obj path-control) (arg0 float))
+  (* arg0 (get-num-segments obj))
+  )
+
+(defmethod average-segment-length path-control ((obj path-control) (arg0 float))
+  (/ arg0 (get-num-segments obj))
+  )
+
+(defmethod new curve-control ((allocation symbol) (type-to-make type) (arg0 process) (arg1 symbol) (arg2 float))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 process) (the-as process-drawable arg0))
+    (set! (-> gp-0 name) arg1)
+    (let* ((s3-1 (-> arg0 entity))
+           (v1-2 arg1)
+           (s2-0 (cond
+                   ((= v1-2 'path)
+                    'path-k
+                    )
+                   (else
+                     (let ((s2-1 string->symbol))
+                       (format (clear *temp-string*) "~A-k" arg1)
+                       (s2-1 *temp-string*)
+                       )
+                     )
+                   )
+                 )
+           )
+      (let ((v1-3 (entity-actor-lookup s3-1 'path-actor 0)))
+        (if v1-3
+            (set! s3-1 v1-3)
+            )
+        )
+      (when (not (get-curve-data! s3-1 (-> gp-0 curve) arg1 s2-0 arg2))
+        (cond
+          ((> (-> gp-0 curve num-cverts) 0)
+           (set! (-> gp-0 type) path-control)
+           )
+          (else
+            (logior! (-> gp-0 flags) (path-control-flag not-found))
+            (set! (-> gp-0 curve cverts) (the-as (inline-array vector) #f))
+            (set! (-> gp-0 curve num-cverts) 0)
+            0
+            )
+          )
+        )
+      )
+    gp-0
+    )
+  )

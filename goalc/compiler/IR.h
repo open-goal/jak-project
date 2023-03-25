@@ -1,11 +1,13 @@
 #pragma once
 
 #include <string>
+
 #include "CodeGenerator.h"
-#include "goalc/regalloc/allocator_interface.h"
 #include "Val.h"
+
 #include "goalc/emitter/ObjectGenerator.h"
 #include "goalc/emitter/Register.h"
+#include "goalc/regalloc/allocator_interface.h"
 
 class IR {
  public:
@@ -581,7 +583,8 @@ class IR_Int128Math3Asm : public IR_Asm {
     PCGTW,
     POR,
     PXOR,
-    PAND
+    PAND,
+    PACKUSWB
   };
   IR_Int128Math3Asm(bool use_color,
                     const RegVal* dst,
@@ -603,7 +606,7 @@ class IR_Int128Math3Asm : public IR_Asm {
 
 class IR_Int128Math2Asm : public IR_Asm {
  public:
-  enum class Kind { PW_SLL, PW_SRL, PW_SRA, VPSRLDQ, VPSLLDQ, VPSHUFLW, VPSHUFHW };
+  enum class Kind { PW_SLL, PW_SRL, PH_SLL, PH_SRL, PW_SRA, VPSRLDQ, VPSLLDQ, VPSHUFLW, VPSHUFHW };
   IR_Int128Math2Asm(bool use_color,
                     const RegVal* dst,
                     const RegVal* src,

@@ -3,8 +3,9 @@
 #include <string>
 #include <vector>
 
-#include "common/util/BinaryReader.h"
 #include "common/common_types.h"
+#include "common/util/BinaryReader.h"
+#include "common/util/FileUtil.h"
 
 // The header data for a simple wave file
 struct WaveFileHeader {
@@ -28,9 +29,7 @@ struct WaveFileHeader {
   s32 subchunk2_size;
 };
 
-void write_wave_file_mono(const std::vector<s16>& samples,
-                          s32 sample_rate,
-                          const std::string& name);
+void write_wave_file_mono(const std::vector<s16>& samples, s32 sample_rate, const fs::path& name);
 
 std::vector<s16> decode_adpcm(BinaryReader& reader);
 

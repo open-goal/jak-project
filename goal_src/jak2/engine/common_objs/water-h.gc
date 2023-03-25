@@ -1,0 +1,156 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: water-h.gc
+;; name in dgo: water-h
+;; dgos: ENGINE, GAME
+
+(defenum water-flags
+  :bitfield #t
+  :type uint32
+  (active)
+  (can-wade)
+  (can-swim)
+  (swim-ground)
+  (can-ground)
+  (use-ocean)
+  (tar)
+  (mud)
+  (deadly)
+  (use-water-anim)
+  (no-grab-ground)
+  (dark-eco)
+  (lava)
+  (swamp)
+  (flow)
+  (under-water)
+  (head-under-water)
+  (bouncing)
+  (wading)
+  (swimming)
+  (touch-water)
+  (jump-out)
+  (break-surface)
+  (spawn-drip)
+  (part-splash)
+  (part-drip)
+  (part-rings)
+  (part-water)
+  (event)
+  (over-water)
+  (find-water)
+  (touch-water-good)
+  )
+
+(define-extern ripple-find-height (function process-drawable int vector float))
+
+;; DECOMP BEGINS
+
+(deftype water-info (structure)
+  ((trans       vector               :inline :offset-assert   0)
+   (normal      vector               :inline :offset-assert  16)
+   (base-height meters                       :offset-assert  32)
+   (depth       meters                       :offset-assert  36)
+   (handle      handle                       :offset-assert  40)
+   (flags       water-flags                  :offset-assert  48)
+   (prim        drawable-region-prim         :offset-assert  52)
+   (extra-flags uint32                       :offset-assert  56)
+   )
+  :method-count-assert 9
+  :size-assert         #x3c
+  :flag-assert         #x90000003c
+  )
+
+(deftype water-control (basic)
+  ((flags             water-flags             :offset-assert   4)
+   (process           target                  :offset-assert   8)
+   (joint-index       int32                   :offset-assert  12)
+   (top-y-offset      float                   :offset-assert  16)
+   (attack-id         uint32                  :offset-assert  20)
+   (enter-water-time  time-frame              :offset-assert  24)
+   (wade-time         time-frame              :offset-assert  32)
+   (on-water-time     time-frame              :offset-assert  40)
+   (enter-swim-time   time-frame              :offset-assert  48)
+   (swim-time         time-frame              :offset-assert  56)
+   (base-height       meters                  :offset-assert  64)
+   (wade-height       meters                  :offset-assert  68)
+   (swim-height       meters                  :offset-assert  72)
+   (surface-height    meters                  :offset-assert  76)
+   (bottom-height     meters                  :offset-assert  80)
+   (collide-height    meters                  :offset-assert  84)
+   (height            meters                  :offset-assert  88)
+   (height-offset     float         4         :offset-assert  92)
+   (base-ocean-offset meters                  :offset         92)
+   (real-ocean-offset meters                  :offset         92)
+   (ocean-offset      meters                  :offset         96)
+   (bob-offset        meters                  :offset        100)
+   (align-offset      meters                  :offset        104)
+   (swim-depth        meters                  :offset        108)
+   (bob               smush-control :inline   :offset        112)
+   (ripple            handle                  :offset        144)
+   (ripple-size       meters                  :offset        152)
+   (wake-size         meters                  :offset        156)
+   (bottom            vector        2 :inline :offset        160)
+   (top               vector        2 :inline :offset        192)
+   (enter-water-pos   vector        :inline   :offset        224)
+   (drip-old-pos      vector        :inline   :offset        240)
+   (drip-joint-index  int32                   :offset        256)
+   (drip-wetness      float                   :offset        260)
+   (drip-time         time-frame              :offset        264)
+   (drip-speed        float                   :offset        272)
+   (drip-height       meters                  :offset        276)
+   (drip-mult         float                   :offset        280)
+   (distort-time      time-frame              :offset        288)
+   )
+  :method-count-assert 17
+  :size-assert         #x128
+  :flag-assert         #x1100000128
+  (:methods
+    (new (symbol type process int float float float) _type_ 0)
+    (water-control-method-9 (_type_) none 9)
+    (water-control-method-10 (_type_) none 10)
+    (start-bobbing! (_type_ float int int) none 11)
+    (distance-from-surface (_type_) float 12)
+    (spawn-ripples (_type_ float vector int vector symbol) none 13)
+    (display-water-marks? (_type_) symbol 14)
+    (enter-water (_type_) none 15)
+    (water-control-method-16 (_type_) none 16)
+    )
+  )
+
+(defmethod display-water-marks? water-control ((obj water-control))
+  *display-water-marks*
+  )
+
+(defmethod new water-control ((allocation symbol) (type-to-make type) (arg0 process) (arg1 int) (arg2 float) (arg3 float) (arg4 float))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 process) (the-as target arg0))
+    (set! (-> v0-0 joint-index) arg1)
+    (set! (-> v0-0 wade-height) arg4)
+    (set! (-> v0-0 swim-height) arg3)
+    (set! (-> v0-0 bottom-height) 32768.0)
+    (set! (-> v0-0 ripple-size) 1638.4)
+    (set! (-> v0-0 wake-size) 3072.0)
+    (set! (-> v0-0 ripple) (the-as handle #f))
+    (set! (-> v0-0 drip-mult) 1.0)
+    (set! (-> v0-0 top-y-offset) arg2)
+    (let* ((v1-6 *game-info*)
+           (a0-2 (+ (-> v1-6 attack-id) 1))
+           )
+      (set! (-> v1-6 attack-id) a0-2)
+      (set! (-> v0-0 attack-id) a0-2)
+      )
+    v0-0
+    )
+  )
+
+(defmethod distance-from-surface water-control ((obj water-control))
+  (- (-> obj top 0 y) (-> obj height))
+  )
+
+(deftype water-vol (process-hidden)
+  ()
+  :method-count-assert 15
+  :size-assert         #x80
+  :flag-assert         #xf00000080
+  )

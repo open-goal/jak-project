@@ -1,11 +1,14 @@
-#include <cstring>
-#include <cstdio>
-#include <unordered_map>
-#include "common/util/FileUtil.h"
 #include "sif_ee.h"
-#include "game/system/iop_thread.h"
-#include "game/runtime.h"
+
+#include <cstdio>
+#include <cstring>
+#include <unordered_map>
+
 #include "common/util/Assert.h"
+#include "common/util/FileUtil.h"
+
+#include "game/runtime.h"
+#include "game/system/iop_thread.h"
 
 namespace ee {
 
@@ -42,7 +45,7 @@ void sceFsReset() {}
 
 int sceSifLoadModule(const char* name, int arg_size, const char* args) {
   if (!strcmp(name, "cdrom0:\\\\DRIVERS\\\\OVERLORD.IRX;1") ||
-      !strcmp(name, "host0:binee/overlord.irx")) {
+      !strcmp(name, "host0:binee/overlord.irx") || !strcmp(name, "host0:bin/overlord.irx")) {
     const char* src = args;
     char* dst = iop->overlord_arg_data;
     int cnt;
@@ -81,12 +84,12 @@ s32 sceSifCallRpc(sceSifClientData* bd,
   ASSERT(!end_para);
   ASSERT(mode == 1);  // async
   iop->kernel.sif_rpc(bd->rpcd.id, fno, mode, send, ssize, recv, rsize);
-  iop->signal_run_iop(false);
+  iop->signal_run_iop();
   return 0;
 }
 
 s32 sceSifCheckStatRpc(sceSifRpcData* bd) {
-  iop->signal_run_iop(false);
+  iop->signal_run_iop();
   return iop->kernel.sif_busy(bd->id);
 }
 
@@ -102,11 +105,11 @@ s32 sceOpen(const char* filename, s32 flag) {
   auto name = file_util::get_file_path({filename});
   switch (flag) {
     case SCE_RDONLY: {
-      fp = fopen(name.c_str(), "rb");
+      fp = file_util::open_file(name.c_str(), "rb");
     } break;
 
     default: {
-      fp = fopen(name.c_str(), "w");
+      fp = file_util::open_file(name.c_str(), "w");
     } break;
   }
   if (!fp) {

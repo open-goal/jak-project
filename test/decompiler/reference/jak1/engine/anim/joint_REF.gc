@@ -1,0 +1,1446 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 2 of type joint
+(defmethod print joint ((obj joint))
+  (format #t "#<~A ~S ~D @ #x~X>" (-> obj type) (-> obj name) (-> obj number) obj)
+  obj
+  )
+
+;; definition for method 8 of type joint
+(defmethod mem-usage joint ((obj joint) (arg0 memory-usage-block) (arg1 int))
+  (set! (-> arg0 length) (max 66 (-> arg0 length)))
+  (set! (-> arg0 data 65 name) "joint")
+  (+! (-> arg0 data 65 count) 1)
+  (let ((v1-6 (asize-of obj)))
+    (+! (-> arg0 data 65 used) v1-6)
+    (+! (-> arg0 data 65 total) (logand -16 (+ v1-6 15)))
+    )
+  obj
+  )
+
+;; definition for method 2 of type joint-anim
+(defmethod print joint-anim ((obj joint-anim))
+  (format #t "#<~A ~S ~D [~D] @ #x~X>" (-> obj type) (-> obj name) (-> obj number) (-> obj length) obj)
+  obj
+  )
+
+;; definition for method 4 of type joint-anim
+(defmethod length joint-anim ((obj joint-anim))
+  (-> obj length)
+  )
+
+;; definition for method 3 of type joint-anim-matrix
+(defmethod inspect joint-anim-matrix ((obj joint-anim-matrix))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Tnumber: ~D~%" (-> obj number))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
+  obj
+  )
+
+;; definition for method 5 of type joint-anim-matrix
+;; INFO: Return type mismatch uint vs int.
+(defmethod asize-of joint-anim-matrix ((obj joint-anim-matrix))
+  (the-as int (+ (-> joint-anim-matrix size) (* (-> obj length) 64)))
+  )
+
+;; definition for method 3 of type joint-anim-transformq
+(defmethod inspect joint-anim-transformq ((obj joint-anim-transformq))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Tnumber: ~D~%" (-> obj number))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
+  (dotimes (s5-0 (-> obj length))
+    (format #t "~T  [~D] ~`transformq`P~%" s5-0 (-> obj data s5-0))
+    )
+  obj
+  )
+
+;; definition for method 5 of type joint-anim-transformq
+;; INFO: Return type mismatch uint vs int.
+(defmethod asize-of joint-anim-transformq ((obj joint-anim-transformq))
+  (the-as int (+ (-> joint-anim-transformq size) (* 48 (-> obj length))))
+  )
+
+;; definition for method 5 of type joint-anim-drawable
+;; INFO: Return type mismatch uint vs int.
+(defmethod asize-of joint-anim-drawable ((obj joint-anim-drawable))
+  (the-as int (+ (-> joint-anim-drawable size) (* (-> obj length) 4)))
+  )
+
+;; definition for function joint-anim-login
+(defun joint-anim-login ((arg0 joint-anim-drawable))
+  (dotimes (s5-0 (-> arg0 length))
+    (if (-> arg0 data s5-0)
+        (login (-> arg0 data s5-0))
+        )
+    )
+  arg0
+  )
+
+;; definition for function joint-anim-inspect-elt
+(defun joint-anim-inspect-elt ((arg0 joint-anim) (arg1 float))
+  (case (-> arg0 type)
+    ((joint-anim-matrix)
+     ((method-of-type matrix inspect)
+      (the-as matrix (-> (the-as joint-anim-matrix arg0) data (the int arg1) vector))
+      )
+     )
+    ((joint-anim-transformq)
+     (format #t "~`transform`P~%" (-> (the-as joint-anim-transformq arg0) data (the int arg1)))
+     )
+    )
+  arg0
+  )
+
+;; definition for method 8 of type joint-anim-drawable
+(defmethod mem-usage joint-anim-drawable ((obj joint-anim-drawable) (arg0 memory-usage-block) (arg1 int))
+  (set! (-> arg0 length) (max 77 (-> arg0 length)))
+  (set! (-> arg0 data 76 name) "joint-anim-drawable")
+  (+! (-> arg0 data 76 count) 1)
+  (let ((v1-6 (asize-of obj)))
+    (+! (-> arg0 data 76 used) v1-6)
+    (+! (-> arg0 data 76 total) (logand -16 (+ v1-6 15)))
+    )
+  (dotimes (s3-0 (-> obj length))
+    (mem-usage (-> obj data s3-0) arg0 arg1)
+    )
+  obj
+  )
+
+;; definition for function jacc-mem-usage
+(defun jacc-mem-usage ((arg0 joint-anim-compressed-control) (arg1 memory-usage-block) (arg2 int))
+  (set! (-> arg1 length) (max 68 (-> arg1 length)))
+  (set! (-> arg1 data 67 name) "joint-anim-compressed-control")
+  (+! (-> arg1 data 67 count) 1)
+  (let ((v1-7 (+ (* (-> arg0 num-frames) 4) 16)))
+    (+! (-> arg1 data 67 used) v1-7)
+    (+! (-> arg1 data 67 total) (logand -16 (+ v1-7 15)))
+    )
+  (set! (-> arg1 length) (max 69 (-> arg1 length)))
+  (set! (-> arg1 data 68 name) "joint-anim-fixed")
+  (+! (-> arg1 data 68 count) 1)
+  (let ((v1-17 (+ (-> arg0 fixed-qwc) 16)))
+    (+! (-> arg1 data 68 used) v1-17)
+    (+! (-> arg1 data 68 total) (logand -16 (+ v1-17 15)))
+    )
+  (dotimes (v1-21 (the-as int (-> arg0 num-frames)))
+    (set! (-> arg1 length) (max 70 (-> arg1 length)))
+    (set! (-> arg1 data 69 name) "joint-anim-frame")
+    (+! (-> arg1 data 69 count) 1)
+    (let ((a2-15 (* (-> arg0 frame-qwc) 16)))
+      (+! (-> arg1 data 69 used) a2-15)
+      (+! (-> arg1 data 69 total) (logand -16 (+ a2-15 15)))
+      )
+    )
+  arg0
+  )
+
+;; definition for method 2 of type joint-control-channel
+(defmethod print joint-control-channel ((obj joint-control-channel))
+  (format
+    #t
+    "#<joint-control-channel ~A ~A ~F @ #x~X>"
+    (-> obj command)
+    (-> obj frame-group)
+    (-> obj frame-num)
+    obj
+    )
+  obj
+  )
+
+;; definition for method 5 of type joint-control
+;; INFO: Return type mismatch uint vs int.
+(defmethod asize-of joint-control ((obj joint-control))
+  (the-as int (+ (-> obj type size) (* 48 (-> obj allocated-length))))
+  )
+
+;; definition for method 0 of type joint-control
+(defmethod new joint-control ((allocation symbol) (type-to-make type) (arg0 int))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* 48 arg0))))))
+    (set! (-> v0-0 allocated-length) arg0)
+    (set! (-> v0-0 active-channels) 0)
+    (set! (-> v0-0 root-channel) (-> v0-0 channel))
+    (set! (-> v0-0 generate-frame-function) create-interpolated-joint-animation-frame)
+    (set! (-> v0-0 prebind-function) #f)
+    (set! (-> v0-0 postbind-function) #f)
+    (set! (-> v0-0 effect) #f)
+    (dotimes (v1-4 arg0)
+      (set! (-> v0-0 channel v1-4 parent) v0-0)
+      )
+    (set! (-> v0-0 blend-index) -1)
+    v0-0
+    )
+  )
+
+;; definition for method 9 of type joint-control-channel
+(defmethod debug-print-frames joint-control-channel ((obj joint-control-channel))
+  (let ((s5-0 (-> obj frame-group))
+        (f30-0 (-> obj frame-num))
+        )
+    (dotimes (s4-0 (length s5-0))
+      (format #t "joint ~A ~D " (-> s5-0 data s4-0 name) s4-0)
+      (joint-anim-inspect-elt (-> s5-0 data s4-0) f30-0)
+      )
+    )
+  obj
+  )
+
+;; definition for method 10 of type joint-control
+(defmethod debug-print-channels joint-control ((obj joint-control) (arg0 symbol))
+  (dotimes (s4-0 (-> obj active-channels))
+    (let* ((v1-6 (if (and (-> obj channel s4-0 frame-group) (nonzero? (-> obj channel s4-0 frame-group)))
+                     (-> obj channel s4-0 frame-group)
+                     )
+                 )
+           (t9-0 format)
+           (a0-5 arg0)
+           (a1-1 "ch:~2d ~C ~-35S f: ~6,,2f  ~4,,2f ~4,,2f%~%")
+           (a2-0 s4-0)
+           (a3-3 (-> obj channel s4-0 command))
+           (a3-4 (cond
+                   ((= a3-3 'push)
+                    80
+                    )
+                   ((= a3-3 'push1)
+                    112
+                    )
+                   ((= a3-3 'blend)
+                    66
+                    )
+                   ((= a3-3 'stack)
+                    83
+                    )
+                   ((= a3-3 'stack1)
+                    115
+                    )
+                   )
+                 )
+           )
+      (t9-0
+        a0-5
+        a1-1
+        a2-0
+        a3-4
+        (if v1-6
+            (-> v1-6 name)
+            "(none)"
+            )
+        (+ (* (-> obj channel s4-0 frame-num) (if v1-6
+                                                  (-> v1-6 artist-step)
+                                                  1.0
+                                                  )
+              )
+           (if v1-6
+               (-> v1-6 artist-base)
+               0.0
+               )
+           )
+        (-> obj channel s4-0 frame-interp)
+        (-> obj channel s4-0 inspector-amount)
+        )
+      )
+    )
+  0
+  )
+
+;; definition for method 12 of type art
+(defmethod needs-link? art ((obj art))
+  #f
+  )
+
+;; definition for method 10 of type art
+;; INFO: Return type mismatch symbol vs joint.
+(defmethod lookup-art art ((obj art) (arg0 string) (arg1 type))
+  (the-as joint #f)
+  )
+
+;; definition for method 11 of type art
+;; INFO: Return type mismatch symbol vs int.
+(defmethod lookup-idx-of-art art ((obj art) (arg0 string) (arg1 type))
+  (the-as int #f)
+  )
+
+;; definition for method 2 of type art
+(defmethod print art ((obj art))
+  (format #t "#<~A ~S :length ~D @ #x~X>" (-> obj type) (-> obj name) (-> obj length) obj)
+  obj
+  )
+
+;; definition for method 4 of type art
+(defmethod length art ((obj art))
+  (-> obj length)
+  )
+
+;; definition for method 9 of type art
+(defmethod login art ((obj art))
+  (if (and (-> obj extra) (zero? (-> obj extra tag)))
+      (set! (-> obj extra tag) (&+ (the-as (pointer res-tag) (-> obj extra)) 28))
+      )
+  obj
+  )
+
+;; definition for method 8 of type art-mesh-anim
+(defmethod mem-usage art-mesh-anim ((obj art-mesh-anim) (arg0 memory-usage-block) (arg1 int))
+  (set! (-> arg0 length) (max 72 (-> arg0 length)))
+  (set! (-> arg0 data 71 name) "art-mesh-anim")
+  (+! (-> arg0 data 71 count) 1)
+  (let ((v1-6 (asize-of obj)))
+    (+! (-> arg0 data 71 used) v1-6)
+    (+! (-> arg0 data 71 total) (logand -16 (+ v1-6 15)))
+    )
+  (if (-> obj extra)
+      (mem-usage (-> obj extra) arg0 (logior arg1 512))
+      )
+  (dotimes (s3-0 (-> obj length))
+    (mem-usage (-> obj data s3-0) arg0 arg1)
+    )
+  obj
+  )
+
+;; definition for method 5 of type art-joint-anim
+;; INFO: this function exists in multiple non-identical object files
+;; INFO: Return type mismatch uint vs int.
+(defmethod asize-of art-joint-anim ((obj art-joint-anim))
+  (the-as int (+ (-> art size) (* (-> obj length) 4)))
+  )
+
+;; definition for method 3 of type art-joint-anim
+(defmethod inspect art-joint-anim ((obj art-joint-anim))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Textra: ~A~%" (-> obj extra))
+  (format #t "~Tspeed: ~F~%" (-> obj speed))
+  (format #t "~Tartist-base: ~F~%" (-> obj artist-base))
+  (format #t "~Tartist-step: ~F~%" (-> obj artist-step))
+  (format #t "~Tmaster-art-group-name: ~A~%" (-> obj master-art-group-name))
+  (format #t "~Tmaster-art-group-index: ~D~%" (-> obj master-art-group-index))
+  (format #t "~Tframes: @ #x~X~%" (-> obj frames))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
+  (dotimes (s5-0 (-> obj length))
+    (format #t "~T  [~D] ~A~%" s5-0 (-> obj data s5-0))
+    )
+  obj
+  )
+
+;; definition for method 8 of type art-joint-anim
+(defmethod mem-usage art-joint-anim ((obj art-joint-anim) (arg0 memory-usage-block) (arg1 int))
+  (set! (-> arg0 length) (max 75 (-> arg0 length)))
+  (set! (-> arg0 data 74 name) "art-joint-anim")
+  (+! (-> arg0 data 74 count) 1)
+  (let ((v1-6 (asize-of obj)))
+    (+! (-> arg0 data 74 used) v1-6)
+    (+! (-> arg0 data 74 total) (logand -16 (+ v1-6 15)))
+    )
+  (if (-> obj extra)
+      (mem-usage (-> obj extra) arg0 (logior arg1 512))
+      )
+  (jacc-mem-usage (-> obj frames) arg0 arg1)
+  (dotimes (s4-1 (-> obj length))
+    (set! (-> arg0 length) (max 67 (-> arg0 length)))
+    (set! (-> arg0 data 66 name) "joint-anim-compressed")
+    (+! (-> arg0 data 66 count) 1)
+    (let ((v1-22 (asize-of (-> obj data s4-1))))
+      (+! (-> arg0 data 66 used) v1-22)
+      (+! (-> arg0 data 66 total) (logand -16 (+ v1-22 15)))
+      )
+    )
+  (when (and (nonzero? (-> obj eye-anim-data)) (-> obj eye-anim-data))
+    (set! (-> arg0 length) (max 109 (-> arg0 length)))
+    (set! (-> arg0 data 108 name) "eye-anim")
+    (+! (-> arg0 data 108 count) 1)
+    (let ((v1-41 (* (* (+ (-> obj eye-anim-data max-frame) 1) 2) 8)))
+      (+! (-> arg0 data 108 used) v1-41)
+      (+! (-> arg0 data 108 total) (logand -16 (+ v1-41 15)))
+      )
+    )
+  obj
+  )
+
+;; definition for method 5 of type art-joint-anim
+;; INFO: this function exists in multiple non-identical object files
+;; INFO: Return type mismatch uint vs int.
+(defmethod asize-of art-joint-anim ((obj art-joint-anim))
+  (the-as int (+ (-> art size) (* (-> obj length) 4)))
+  )
+
+;; definition for method 3 of type art-group
+(defmethod inspect art-group ((obj art-group))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tinfo: ~A~%" (-> obj info))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Textra: ~A~%" (-> obj extra))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
+  (dotimes (s5-0 (-> obj length))
+    (if (-> obj data s5-0)
+        (format #t "~T  [~D] ~A  (~D bytes)~%" s5-0 (-> obj data s5-0) (mem-size (-> obj data s5-0) #f 0))
+        (format #t "~T  [~D] ~A  (~D bytes)~%" s5-0 (-> obj data s5-0) 0)
+        )
+    )
+  obj
+  )
+
+;; definition for method 12 of type art-group
+;; INFO: Return type mismatch object vs symbol.
+(defmethod needs-link? art-group ((obj art-group))
+  (the-as symbol (and (-> obj length)
+                      (type-type? (-> obj data 0 type) art-joint-anim)
+                      (!= (-> obj name) (-> (the-as art-joint-anim (-> obj data 0)) master-art-group-name))
+                      )
+          )
+  )
+
+;; definition for method 10 of type art-group
+;; INFO: Return type mismatch art-element vs joint.
+(defmethod lookup-art art-group ((obj art-group) (arg0 string) (arg1 type))
+  (the-as
+    joint
+    (cond
+      (arg1
+        (let ((s3-0 (+ (length (-> obj name)) 1)))
+          (dotimes (s2-0 (-> obj length))
+            (if (and (-> obj data s2-0)
+                     (= (-> obj data s2-0 type) arg1)
+                     (or (name= arg0 (-> obj data s2-0 name)) (string-charp= arg0 (&-> (-> obj data s2-0 name) data s3-0)))
+                     )
+                (return (the-as joint (-> obj data s2-0)))
+                )
+            )
+          )
+        (the-as art-element #f)
+        )
+      (else
+        (dotimes (s4-1 (-> obj length))
+          (if (and (-> obj data s4-1) (name= arg0 (-> obj data s4-1 name)))
+              (return (the-as joint (-> obj data s4-1)))
+              )
+          )
+        (the-as art-element #f)
+        )
+      )
+    )
+  )
+
+;; definition for method 11 of type art-group
+(defmethod lookup-idx-of-art art-group ((obj art-group) (arg0 string) (arg1 type))
+  (cond
+    (arg1
+      (let ((s3-0 (+ (length (-> obj name)) 1)))
+        (dotimes (s2-0 (-> obj length))
+          (if (and (-> obj data s2-0)
+                   (= (-> obj data s2-0 type) arg1)
+                   (or (name= arg0 (-> obj data s2-0 name)) (string-charp= arg0 (&-> (-> obj data s2-0 name) data s3-0)))
+                   )
+              (return s2-0)
+              )
+          )
+        )
+      (the-as int #f)
+      )
+    (else
+      (dotimes (s4-1 (-> obj length))
+        (if (and (-> obj data s4-1) (name= arg0 (-> obj data s4-1 name)))
+            (return s4-1)
+            )
+        )
+      (the-as int #f)
+      )
+    )
+  )
+
+;; definition for method 9 of type art-group
+(defmethod login art-group ((obj art-group))
+  (dotimes (s5-0 (-> obj length))
+    (if (-> obj data s5-0)
+        (set! (-> obj data s5-0) (login (-> obj data s5-0)))
+        )
+    )
+  obj
+  )
+
+;; definition for method 8 of type art-group
+(defmethod mem-usage art-group ((obj art-group) (arg0 memory-usage-block) (arg1 int))
+  (set! (-> arg0 length) (max 71 (-> arg0 length)))
+  (set! (-> arg0 data 70 name) "art-group")
+  (+! (-> arg0 data 70 count) 1)
+  (let ((v1-6 (asize-of obj)))
+    (+! (-> arg0 data 70 used) v1-6)
+    (+! (-> arg0 data 70 total) (logand -16 (+ v1-6 15)))
+    )
+  (if (-> obj extra)
+      (mem-usage (-> obj extra) arg0 (logior arg1 512))
+      )
+  (dotimes (s3-0 (-> obj length))
+    (if (-> obj data s3-0)
+        (mem-usage (-> obj data s3-0) arg0 arg1)
+        )
+    )
+  obj
+  )
+
+;; definition for method 7 of type art-group
+;; INFO: Return type mismatch art-group vs none.
+(defmethod relocate art-group ((obj art-group) (arg0 kheap) (arg1 (pointer uint8)))
+  (let ((s4-0 (clear *temp-string*)))
+    (string<-charp s4-0 arg1)
+    (set! obj (cond
+                ((not obj)
+                 (format 0 "ERROR: art-group ~A is not a valid file.~%" s4-0)
+                 (the-as art-group #f)
+                 )
+                ((not (type-type? (-> obj type) art-group))
+                 (format 0 "ERROR: art-group ~A is not a art-group.~%" s4-0)
+                 (the-as art-group #f)
+                 )
+                ((not (file-info-correct-version? (-> obj info) (file-kind art-group) 0))
+                 (the-as art-group #f)
+                 )
+                (else
+                  (let ((s5-1 (-> *level* loading-level)))
+                    (if (or (not s5-1) (= (-> s5-1 name) 'default))
+                        (login obj)
+                        )
+                    (if s5-1
+                        (set-loaded-art (-> s5-1 art-group) obj)
+                        )
+                    )
+                  obj
+                  )
+                )
+          )
+    )
+  (none)
+  )
+
+;; definition for method 5 of type art-mesh-geo
+;; INFO: Return type mismatch uint vs int.
+(defmethod asize-of art-mesh-geo ((obj art-mesh-geo))
+  (the-as int (+ (-> art size) (* (-> obj length) 4)))
+  )
+
+;; definition for method 8 of type art-mesh-geo
+(defmethod mem-usage art-mesh-geo ((obj art-mesh-geo) (arg0 memory-usage-block) (arg1 int))
+  (set! (-> arg0 length) (max 73 (-> arg0 length)))
+  (set! (-> arg0 data 72 name) "art-mesh-geo")
+  (+! (-> arg0 data 72 count) 1)
+  (let ((v1-6 (asize-of obj)))
+    (+! (-> arg0 data 72 used) v1-6)
+    (+! (-> arg0 data 72 total) (logand -16 (+ v1-6 15)))
+    )
+  (if (-> obj extra)
+      (mem-usage (-> obj extra) arg0 (logior arg1 512))
+      )
+  (dotimes (s3-0 (-> obj length))
+    (mem-usage (-> obj data s3-0) arg0 arg1)
+    )
+  obj
+  )
+
+;; definition for method 9 of type art-mesh-geo
+;; ERROR: Type Propagation failed: Failed type prop at op 20 ((set! v1 (l.h (+ s4 6)))): Could not get type of load: (set! v1 (l.h (+ s4 6))). 
+;; ERROR: Type analysis failed
+(defmethod login art-mesh-geo ((a0-0 art-mesh-geo))
+  (local-vars
+    (v0-0 none)
+    (v0-1 art-mesh-geo)
+    (v1-0 int)
+    (v1-1 int)
+    (v1-2 none)
+    (v1-3 none)
+    (v1-4 none)
+    (v1-6 none)
+    (v1-7 none)
+    (v1-8 none)
+    (v1-10 none)
+    (v1-13 int)
+    (a0-1 none)
+    (s3-0 int)
+    (s4-0 basic)
+    (s5-0 int)
+    (t9-0 none)
+    )
+  (set! s5-0 0)
+  (while (begin (set! v1-13 (-> a0-0 length)) (<.si s5-0 v1-13))
+    (set! v1-0 (sll s5-0 2))
+    (set! v1-1 (+ v1-0 a0-0))
+    (set! s4-0 (dynamic-array-field-access v1-1 data PLACEHOLDER))
+    (set! s3-0 0)
+    (while (begin (set! v1-10 (the-as none (l.h (+ s4-0 6)))) (<.si s3-0 v1-10))
+      (when (begin
+              (set! v1-2 (the-as none (sll s3-0 2)))
+              (set! v1-3 (the-as none (+ v1-2 s4-0)))
+              (set! v1-4 (the-as none (l.wu (+ v1-3 8))))
+              v1-4
+              )
+        (set! v1-6 (the-as none (sll s3-0 2)))
+        (set! v1-7 (the-as none (+ v1-6 s4-0)))
+        (set! a0-1 (the-as none (l.wu (+ v1-7 8))))
+        (set! v1-8 (the-as none (l.wu (+ a0-1 -4))))
+        (set! t9-0 (the-as none (l.wu (+ v1-8 52))))
+        (call!)
+        (set! v1-9 (the-as none v0-0))
+        )
+      (set! s3-0 (the-as int (+ s3-0 1)))
+      )
+    (set! s5-0 (the-as int (+ s5-0 1)))
+    )
+  (set! v0-1 a0-0)
+  (ret-value v0-1)
+  )
+
+;; definition for method 9 of type art-joint-anim
+(defmethod login art-joint-anim ((obj art-joint-anim))
+  (if (and (-> obj extra) (zero? (-> obj extra tag)))
+      (set! (-> obj extra tag) (&+ (the-as (pointer res-tag) (-> obj extra)) 28))
+      )
+  obj
+  )
+
+;; definition for method 5 of type art-joint-geo
+;; INFO: Return type mismatch uint vs int.
+(defmethod asize-of art-joint-geo ((obj art-joint-geo))
+  (the-as int (+ (-> art size) (* (-> obj length) 4)))
+  )
+
+;; definition for method 10 of type art-joint-geo
+(defmethod lookup-art art-joint-geo ((obj art-joint-geo) (arg0 string) (arg1 type))
+  (cond
+    (arg1
+      (dotimes (s3-0 (-> obj length))
+        (if (and (= (-> obj data s3-0 type) arg1) (name= arg0 (-> obj data s3-0 name)))
+            (return (-> obj data s3-0))
+            )
+        )
+      (the-as joint #f)
+      )
+    (else
+      (dotimes (s4-1 (-> obj length))
+        (if (name= arg0 (-> obj data s4-1 name))
+            (return (-> obj data s4-1))
+            )
+        )
+      (the-as joint #f)
+      )
+    )
+  )
+
+;; definition for method 11 of type art-joint-geo
+(defmethod lookup-idx-of-art art-joint-geo ((obj art-joint-geo) (arg0 string) (arg1 type))
+  (cond
+    (arg1
+      (dotimes (s3-0 (-> obj length))
+        (if (and (= (-> obj data s3-0 type) arg1) (name= arg0 (-> obj data s3-0 name)))
+            (return s3-0)
+            )
+        )
+      (the-as int #f)
+      )
+    (else
+      (dotimes (s4-1 (-> obj length))
+        (if (name= arg0 (-> obj data s4-1 name))
+            (return s4-1)
+            )
+        )
+      (the-as int #f)
+      )
+    )
+  )
+
+;; definition for method 8 of type art-joint-geo
+(defmethod mem-usage art-joint-geo ((obj art-joint-geo) (arg0 memory-usage-block) (arg1 int))
+  (set! (-> arg0 length) (max 74 (-> arg0 length)))
+  (set! (-> arg0 data 73 name) "art-joint-geo")
+  (+! (-> arg0 data 73 count) 1)
+  (let ((v1-6 (asize-of obj)))
+    (+! (-> arg0 data 73 used) v1-6)
+    (+! (-> arg0 data 73 total) (logand -16 (+ v1-6 15)))
+    )
+  (if (-> obj extra)
+      (mem-usage (-> obj extra) arg0 (logior arg1 512))
+      )
+  (dotimes (s3-0 (-> obj length))
+    (mem-usage (-> obj data s3-0) arg0 arg1)
+    )
+  obj
+  )
+
+;; definition for function joint-control-channel-eval
+;; INFO: Return type mismatch float vs none.
+(defun joint-control-channel-eval ((arg0 joint-control-channel))
+  ((-> arg0 num-func) arg0 (-> arg0 param 0) (-> arg0 param 1))
+  (set! (-> arg0 eval-time) (the-as uint (-> *display* base-frame-counter)))
+  (none)
+  )
+
+;; definition for function joint-control-channel-eval!
+;; INFO: Return type mismatch float vs none.
+(defun joint-control-channel-eval! ((arg0 joint-control-channel) (arg1 (function joint-control-channel float float float)))
+  (set! (-> arg0 num-func) arg1)
+  (arg1 arg0 (-> arg0 param 0) (-> arg0 param 1))
+  (set! (-> arg0 eval-time) (the-as uint (-> *display* base-frame-counter)))
+  (none)
+  )
+
+;; definition for function joint-control-channel-group-eval!
+(defun joint-control-channel-group-eval! ((arg0 joint-control-channel) (arg1 art-joint-anim) (arg2 (function joint-control-channel float float float)))
+  (set! (-> arg0 num-func) arg2)
+  (cond
+    ((= (-> arg0 command) 'stack)
+     )
+    (else
+      (if arg1
+          (set! (-> arg0 frame-group) arg1)
+          )
+      (arg2 arg0 (-> arg0 param 0) (-> arg0 param 1))
+      (set! (-> arg0 eval-time) (the-as uint (-> *display* base-frame-counter)))
+      )
+    )
+  0
+  )
+
+;; definition for function joint-control-channel-group!
+(defun joint-control-channel-group! ((arg0 joint-control-channel) (arg1 art-joint-anim) (arg2 (function joint-control-channel float float float)))
+  (set! (-> arg0 num-func) arg2)
+  (cond
+    ((= (-> arg0 command) 'stack)
+     )
+    (arg1
+      (set! (-> arg0 frame-group) arg1)
+      )
+    )
+  0
+  )
+
+;; definition for function joint-control-copy!
+(defun joint-control-copy! ((arg0 joint-control) (arg1 joint-control))
+  (set! (-> arg0 blend-index) (-> arg1 blend-index))
+  (set! (-> arg0 active-channels) (-> arg1 active-channels))
+  (set! (-> arg0 root-channel)
+        (the-as
+          (inline-array joint-control-channel)
+          (-> arg0
+              channel
+              (/ (&- (the-as pointer (-> arg1 root-channel)) (the-as uint (the-as pointer (-> arg1 channel)))) 48)
+              )
+          )
+        )
+  (mem-copy!
+    (the-as pointer (-> arg0 channel))
+    (the-as pointer (-> arg1 channel))
+    (* 48 (-> arg0 allocated-length))
+    )
+  (dotimes (v1-7 (-> arg0 allocated-length))
+    (set! (-> arg0 channel v1-7 parent) arg0)
+    )
+  arg0
+  )
+
+;; definition for function joint-control-remap!
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch symbol vs object.
+;; WARN: Failed load: (set! v1-29 (l.wu (+ a0-9 -4))) at op 75
+(defun joint-control-remap! ((arg0 joint-control) (arg1 art-group) (arg2 art-group) (arg3 pair) (arg4 int) (arg5 string))
+  (local-vars
+    (sv-16 int)
+    (sv-24 symbol)
+    (sv-32 int)
+    (sv-40 int)
+    (sv-48 joint-control-channel)
+    (sv-52 object)
+    (sv-56 int)
+    (sv-64 joint)
+    (sv-80 string)
+    )
+  (set! sv-16 (+ (length (-> arg2 name)) 1))
+  (set! sv-24 #t)
+  (set! sv-32 arg4)
+  (set! sv-40 2)
+  (while (and (< sv-40 (-> arg1 length)) (!= (-> arg1 data sv-40 type) art-joint-anim))
+    (set! sv-40 (+ sv-40 1))
+    )
+  (dotimes (s2-1 (-> arg0 active-channels))
+    (set! sv-48 (-> arg0 channel s2-1))
+    (when (-> sv-48 frame-group)
+      (format (clear *temp-string*) "~S~G" arg5 (&+ (-> sv-48 frame-group name data) sv-16))
+      (when (not (null? arg3))
+        (set! sv-52 (nassoc *temp-string* arg3))
+        (when sv-52
+          (let ((s1-1 sv-32)
+                (a0-9 sv-52)
+                )
+            (set! sv-56 (mod s1-1 (+ ((method-of-type (rtype-of a0-9) length) a0-9) -1)))
+            )
+          (let ((s1-2 format)
+                (s0-0 (clear *temp-string*))
+                )
+            (set! sv-80 "~S")
+            (let ((a2-2 (ref sv-52 (+ sv-56 1))))
+              (s1-2 s0-0 sv-80 a2-2)
+              )
+            )
+          )
+        )
+      (set! sv-64 (lookup-art arg1 *temp-string* art-joint-anim))
+      (cond
+        (sv-64
+          (set! (-> sv-48 frame-group) (the-as art-joint-anim sv-64))
+          )
+        (else
+          (set! (-> sv-48 frame-group) (the-as art-joint-anim (-> arg1 data sv-40)))
+          (set! (-> sv-48 frame-num) 0.0)
+          (set! sv-24 (the-as symbol #f))
+          )
+        )
+      )
+    )
+  (the-as object sv-24)
+  )
+
+;; definition for function flatten-joint-control-to-spr
+;; INFO: Used lq/sq
+(defun flatten-joint-control-to-spr ((arg0 joint-control))
+  (rlet ((vf1 :class vf)
+         (vf10 :class vf)
+         (vf11 :class vf)
+         (vf12 :class vf)
+         (vf13 :class vf)
+         (vf14 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         (vf9 :class vf)
+         )
+    (let ((nb-channels (-> arg0 active-channels)))
+      (let ((f0-0 1.0)
+            (v1-0 0)
+            (a1-0 (the-as (inline-array vector) #x70000970))
+            )
+        (dotimes (a0-1 nb-channels)
+          (let ((a2-3 (-> arg0 channel a0-1)))
+            (case (-> a2-3 command)
+              (('push)
+               (let ((a2-4 (&+ (the-as pointer a1-0) v1-0)))
+                 (set! (-> a1-0 0 quad) (the-as uint128 0))
+                 (set! (-> a1-0 1 quad) (the-as uint128 0))
+                 (set! (-> a1-0 2 quad) (the-as uint128 0))
+                 (set! (-> a1-0 3 quad) (the-as uint128 0))
+                 (set! (-> a1-0 4 quad) (the-as uint128 0))
+                 (set! (-> a1-0 5 quad) (the-as uint128 0))
+                 (set! (-> (the-as (pointer float) a2-4)) f0-0)
+                 )
+               (set! a1-0 (the-as (inline-array vector) (-> a1-0 6)))
+               )
+              (('blend 'push1)
+               (let ((f1-0 (-> a2-3 frame-interp)))
+                 (let ((a2-5 (- f0-0 f1-0)))
+                   (.mov vf1 a2-5)
+                   )
+                 (let ((a1-1 (the-as (inline-array vector) (-> a1-0 -6))))
+                   (.lvf vf2 (&-> a1-1 0 quad))
+                   (let ((a2-6 (&+ (the-as pointer a1-1) v1-0)))
+                     (.lvf vf3 (&-> a1-1 1 quad))
+                     (.lvf vf4 (&-> a1-1 2 quad))
+                     (.lvf vf5 (&-> a1-1 3 quad))
+                     (.lvf vf6 (&-> a1-1 4 quad))
+                     (.lvf vf7 (&-> a1-1 5 quad))
+                     (.mul.x.vf vf2 vf2 vf1)
+                     (.mul.x.vf vf3 vf3 vf1)
+                     (.mul.x.vf vf4 vf4 vf1)
+                     (.mul.x.vf vf5 vf5 vf1)
+                     (.mul.x.vf vf6 vf6 vf1)
+                     (.mul.x.vf vf7 vf7 vf1)
+                     (.svf (&-> a1-1 0 quad) vf2)
+                     (.svf (&-> a1-1 1 quad) vf3)
+                     (.svf (&-> a1-1 2 quad) vf4)
+                     (.svf (&-> a1-1 3 quad) vf5)
+                     (.svf (&-> a1-1 4 quad) vf6)
+                     (.svf (&-> a1-1 5 quad) vf7)
+                     (set! (-> (the-as (pointer float) a2-6)) (+ (-> (the-as (pointer float) a2-6) 0) f1-0))
+                     )
+                   (set! a1-0 (the-as (inline-array vector) (-> a1-1 6)))
+                   )
+                 )
+               )
+              (('stack)
+               (let* ((f2-2 (-> a2-3 frame-interp))
+                      (f1-2 (- f0-0 f2-2))
+                      (a1-2 (the-as (inline-array vector) (-> a1-0 -12)))
+                      )
+                 (let ((a2-7 f2-2))
+                   (.mov vf1 a2-7)
+                   )
+                 (let ((a2-8 f1-2))
+                   (.mov vf2 a2-8)
+                   )
+                 (.lvf vf3 (&-> a1-2 0 quad))
+                 (.lvf vf4 (&-> a1-2 1 quad))
+                 (.lvf vf5 (&-> a1-2 2 quad))
+                 (.lvf vf6 (&-> a1-2 3 quad))
+                 (.lvf vf7 (&-> a1-2 4 quad))
+                 (.lvf vf8 (&-> a1-2 5 quad))
+                 (.mul.x.vf vf3 vf3 vf2)
+                 (.mul.x.vf vf4 vf4 vf2)
+                 (.mul.x.vf vf5 vf5 vf2)
+                 (.mul.x.vf vf6 vf6 vf2)
+                 (.mul.x.vf vf7 vf7 vf2)
+                 (.mul.x.vf vf8 vf8 vf2)
+                 (.lvf vf9 (&-> a1-2 6 quad))
+                 (.lvf vf10 (&-> a1-2 7 quad))
+                 (.lvf vf11 (&-> a1-2 8 quad))
+                 (.lvf vf12 (&-> a1-2 9 quad))
+                 (.lvf vf13 (&-> a1-2 10 quad))
+                 (.lvf vf14 (&-> a1-2 11 quad))
+                 (.mul.x.vf vf9 vf9 vf1)
+                 (.mul.x.vf vf10 vf10 vf1)
+                 (.mul.x.vf vf11 vf11 vf1)
+                 (.mul.x.vf vf12 vf12 vf1)
+                 (.mul.x.vf vf13 vf13 vf1)
+                 (.mul.x.vf vf14 vf14 vf1)
+                 (.add.vf vf3 vf3 vf9)
+                 (.add.vf vf4 vf4 vf10)
+                 (.add.vf vf5 vf5 vf11)
+                 (.add.vf vf6 vf6 vf12)
+                 (.add.vf vf7 vf7 vf13)
+                 (.add.vf vf8 vf8 vf14)
+                 (.svf (&-> a1-2 0 quad) vf3)
+                 (.svf (&-> a1-2 1 quad) vf4)
+                 (.svf (&-> a1-2 2 quad) vf5)
+                 (.svf (&-> a1-2 3 quad) vf6)
+                 (.svf (&-> a1-2 4 quad) vf7)
+                 (.svf (&-> a1-2 5 quad) vf8)
+                 (set! a1-0 (the-as (inline-array vector) (-> a1-2 6)))
+                 )
+               )
+              )
+            )
+          (+! v1-0 4)
+          )
+        )
+      (let ((upl-idx 0))
+        (dotimes (ch nb-channels)
+          (when (< 0.001 (-> (the-as terrain-context #x70000000) work foreground joint-work flatten-array ch))
+            (let* ((v1-9 (-> arg0 channel ch))
+                   (s2-0 (-> v1-9 frame-group frames))
+                   (f0-2 (-> v1-9 frame-num))
+                   (s1-0 (the int f0-2))
+                   (f30-0 (- f0-2 (the float s1-0)))
+                   )
+              (let ((s0-0 (+ (-> s2-0 num-frames) -1)))
+                (if (not (-> v1-9 frame-group))
+                    (format 0 "Channel ~D skel ~A frame-group is #f!!!~%" ch arg0)
+                    )
+                (when (>= s1-0 (the-as int s0-0))
+                  (set! f30-0 0.0)
+                  (set! s1-0 (the-as int s0-0))
+                  )
+                )
+              (let ((v1-18 (-> (the-as terrain-context #x70000000) work foreground joint-work uploads upl-idx)))
+                (set! (-> v1-18 fixed) (-> s2-0 fixed))
+                (set! (-> v1-18 fixed-qwc) (the-as int (-> s2-0 fixed-qwc)))
+                (set! (-> v1-18 frame) (-> s2-0 data s1-0))
+                (set! (-> v1-18 frame-qwc) (the-as int (if (= f30-0 0.0)
+                                                           (-> s2-0 frame-qwc)
+                                                           (* (-> s2-0 frame-qwc) 2)
+                                                           )
+                                                   )
+                      )
+                (set! (-> v1-18 amount) (-> (the-as terrain-context #x70000000) work foreground joint-work flatten-array ch))
+                (set! (-> v1-18 interp) f30-0)
+                )
+              )
+            (+! upl-idx 1)
+            )
+          )
+        (set! (-> (the-as terrain-context #x70000000) work foreground joint-work num-uploads) upl-idx)
+        )
+      (dotimes (v1-24 nb-channels)
+        (set! (-> arg0 channel v1-24 inspector-amount)
+              (-> (the-as terrain-context #x70000000) work foreground joint-work flatten-array v1-24)
+              )
+        )
+      )
+    0
+    )
+  )
+
+;; definition for function matrix-from-joint-anim-frame
+;; INFO: Return type mismatch object vs matrix.
+(defun matrix-from-joint-anim-frame ((arg0 joint-anim-compressed-control) (arg1 int) (arg2 int))
+  (let ((v1-1 (the-as object (-> arg0 fixed data)))
+        (v0-0 (the-as object (-> arg0 data arg2 data)))
+        )
+    (cond
+      ((not (logtest? (-> arg0 fixed hdr matrix-bits) 1))
+       (set! v1-1 (cond
+                    ((zero? arg1)
+                     (return (the-as matrix v1-1))
+                     v1-1
+                     )
+                    (else
+                      (-> (the-as (inline-array vector) v1-1) 4)
+                      )
+                    )
+             )
+       )
+      ((zero? arg1)
+       (return (the-as matrix v0-0))
+       )
+      (else
+        (set! v0-0 (-> (the-as (inline-array vector) v0-0) 4))
+        )
+      )
+    (if (not (logtest? (-> arg0 fixed hdr matrix-bits) 2))
+        (return (the-as matrix v1-1))
+        )
+    (the-as matrix v0-0)
+    )
+  )
+
+;; definition for function matrix-from-control-channel!
+;; INFO: Used lq/sq
+(defun matrix-from-control-channel! ((arg0 matrix) (arg1 joint) (arg2 joint-control-channel))
+  (let ((s4-0 (-> arg2 frame-group))
+        (s5-0 (-> arg1 number))
+        )
+    (if (>= s5-0 2)
+        (format 0 "ERROR: Call to matrix-from-control-channel! on joint ~D~%" s5-0)
+        )
+    (let* ((f30-0 (fmax 0.0 (fmin (-> arg2 frame-num) (the float (+ (-> s4-0 data 0 length) -1)))))
+           (f0-1 f30-0)
+           )
+      (cond
+        ((= (the float (the int f0-1)) f0-1)
+         (let* ((a2-3 (matrix-from-joint-anim-frame (-> s4-0 frames) s5-0 (the int f30-0)))
+                (v1-7 (-> a2-3 vector 0 quad))
+                (a0-3 (-> a2-3 vector 1 quad))
+                (a1-3 (-> a2-3 vector 2 quad))
+                (a2-4 (-> a2-3 vector 3 quad))
+                )
+           (set! (-> arg0 vector 0 quad) v1-7)
+           (set! (-> arg0 vector 1 quad) a0-3)
+           (set! (-> arg0 vector 2 quad) a1-3)
+           (set! (-> arg0 vector 3 quad) a2-4)
+           )
+         arg0
+         )
+        (else
+          (let ((s3-1 (matrix-from-joint-anim-frame (-> s4-0 frames) s5-0 (the int f30-0)))
+                (a2-7 (matrix-from-joint-anim-frame (-> s4-0 frames) s5-0 (+ (the int f30-0) 1)))
+                (f0-9 (- f30-0 (the float (the int f30-0))))
+                )
+            (matrix-lerp! arg0 s3-1 a2-7 f0-9)
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for function matrix-from-control-pair!
+(defun matrix-from-control-pair! ((arg0 matrix) (arg1 matrix) (arg2 joint))
+  (let ((f30-0 (-> arg1 vector 0 z)))
+    (cond
+      ((>= 0.0 f30-0)
+       (empty)
+       arg0
+       )
+      ((>= f30-0 1.0)
+       (matrix-from-control-channel! arg0 arg2 (the-as joint-control-channel arg1))
+       )
+      (else
+        (let ((a2-3 (matrix-from-control-channel!
+                      (the-as matrix (-> (the-as terrain-context #x70000000) work))
+                      arg2
+                      (the-as joint-control-channel arg1)
+                      )
+                    )
+              )
+          (matrix-lerp! arg0 arg0 a2-3 f30-0)
+          )
+        )
+      )
+    )
+  )
+
+;; definition for function matrix-from-control!
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch (inline-array matrix) vs matrix.
+(defun matrix-from-control! ((arg0 matrix-stack) (arg1 joint) (arg2 joint-control) (arg3 symbol))
+  (set! (-> arg0 top) (the-as matrix (-> arg0 data)))
+  (dotimes (s2-0 (-> arg2 active-channels))
+    (let* ((a2-1 (-> arg2 channel s2-0))
+           (v1-4 (-> a2-1 command))
+           (s1-0 64)
+           )
+      (cond
+        ((and (= arg3 'no-push) (= v1-4 'push1))
+         (matrix-from-control-channel!
+           (the-as matrix (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0)))
+           arg1
+           a2-1
+           )
+         )
+        ((and (= arg3 'no-push) (= v1-4 'stack))
+         (set! (-> arg0 top) (the-as matrix (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0))))
+         (let* ((v1-10 (the-as matrix (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0))))
+                (a3-1 (-> arg0 top))
+                (a0-10 (-> a3-1 vector 0 quad))
+                (a1-4 (-> a3-1 vector 1 quad))
+                (a2-2 (-> a3-1 vector 2 quad))
+                (a3-2 (-> a3-1 vector 3 quad))
+                )
+           (set! (-> v1-10 vector 0 quad) a0-10)
+           (set! (-> v1-10 vector 1 quad) a1-4)
+           (set! (-> v1-10 vector 2 quad) a2-2)
+           (set! (-> v1-10 vector 3 quad) a3-2)
+           )
+         )
+        ((= v1-4 'push)
+         (matrix-from-control-channel! (-> arg0 top) arg1 a2-1)
+         (set! (-> arg0 top) (the-as matrix (+ (the-as uint (-> arg0 top)) s1-0)))
+         )
+        ((or (= v1-4 'blend) (= v1-4 'push1))
+         (matrix-from-control-pair!
+           (the-as matrix (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0)))
+           (the-as matrix a2-1)
+           arg1
+           )
+         )
+        ((= v1-4 'stack)
+         (set! (-> arg0 top) (the-as matrix (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0))))
+         (let ((a1-8 (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0)))
+               (v1-19 (-> arg0 top))
+               (f0-0 (-> a2-1 frame-interp))
+               )
+           (matrix-lerp! (the-as matrix a1-8) (the-as matrix a1-8) v1-19 f0-0)
+           )
+         )
+        )
+      )
+    )
+  (the-as matrix (-> arg0 data))
+  )
+
+;; definition for method 9 of type cspace
+(defmethod reset-and-assign-geo! cspace ((obj cspace) (arg0 basic))
+  (set! (-> obj parent) #f)
+  (set! (-> obj joint) #f)
+  (set! (-> obj geo) arg0)
+  (set! (-> obj param0) #f)
+  (set! (-> obj param1) #f)
+  (set! (-> obj param2) #f)
+  obj
+  )
+
+;; definition for method 0 of type cspace
+(defmethod new cspace ((allocation symbol) (type-to-make type) (arg0 basic))
+  (let ((t9-0 (method-of-type structure new))
+        (v1-1 type-to-make)
+        )
+    (-> type-to-make size)
+    ((method-of-type cspace reset-and-assign-geo!) (the-as cspace (t9-0 allocation v1-1)) arg0)
+    )
+  )
+
+;; definition for function cspace<-cspace!
+;; INFO: Used lq/sq
+(defun cspace<-cspace! ((arg0 cspace) (arg1 cspace))
+  (let ((v0-0 (-> arg0 bone transform)))
+    (let* ((a2-0 (-> arg1 bone transform))
+           (v1-2 (-> a2-0 vector 0 quad))
+           (a0-1 (-> a2-0 vector 1 quad))
+           (a1-1 (-> a2-0 vector 2 quad))
+           (a2-1 (-> a2-0 vector 3 quad))
+           )
+      (set! (-> v0-0 vector 0 quad) v1-2)
+      (set! (-> v0-0 vector 1 quad) a0-1)
+      (set! (-> v0-0 vector 2 quad) a1-1)
+      (set! (-> v0-0 vector 3 quad) a2-1)
+      )
+    v0-0
+    )
+  )
+
+;; definition for function cspace<-rot-yxy!
+(defun cspace<-rot-yxy! ((arg0 cspace) (arg1 transform))
+  (let ((s5-0 (-> arg0 bone transform)))
+    (matrix-rotate-yxy! s5-0 (-> arg1 rot))
+    (scale-matrix! s5-0 (-> arg1 scale) s5-0)
+    )
+  )
+
+;; definition for function cspace<-transform-yxy!
+(defun cspace<-transform-yxy! ((arg0 cspace) (arg1 transform))
+  (let ((s4-0 (-> arg0 bone transform))
+        (s5-0 (new 'stack-no-clear 'matrix))
+        (s3-0 (new 'stack-no-clear 'matrix))
+        )
+    (matrix-identity! s4-0)
+    (matrix-translate! s4-0 (-> arg1 trans))
+    (matrix-rotate-yxy! s5-0 (-> arg1 rot))
+    (matrix*! s3-0 s5-0 s4-0)
+    (scale-matrix! s4-0 (-> arg1 scale) s3-0)
+    )
+  )
+
+;; definition for function cspace<-transformq!
+(defun cspace<-transformq! ((arg0 cspace) (arg1 transformq))
+  (matrix<-transformq! (-> arg0 bone transform) arg1)
+  )
+
+;; definition for function cspace<-transformq+trans!
+(defun cspace<-transformq+trans! ((arg0 cspace) (arg1 transformq) (arg2 vector))
+  (matrix<-transformq+trans! (-> arg0 bone transform) arg1 arg2)
+  )
+
+;; definition for function cspace<-transformq+world-trans!
+(defun cspace<-transformq+world-trans! ((arg0 cspace) (arg1 transformq) (arg2 vector))
+  (matrix<-transformq+world-trans! (-> arg0 bone transform) arg1 arg2)
+  )
+
+;; definition for function cspace-calc-total-matrix!
+(defun cspace-calc-total-matrix! ((arg0 cspace) (arg1 matrix))
+  (matrix*! arg1 (-> arg0 bone transform) (-> *math-camera* camera-temp))
+  )
+
+;; definition for function cspace<-matrix-no-push-joint!
+;; INFO: Used lq/sq
+(defun cspace<-matrix-no-push-joint! ((arg0 cspace) (arg1 joint-control))
+  (let ((v1-2 (matrix-from-control!
+                (-> (the-as terrain-context #x70000000) work foreground joint-work joint-stack)
+                (-> arg0 joint)
+                arg1
+                'no-push
+                )
+              )
+        (v0-1 (-> arg0 bone transform))
+        )
+    (let ((a0-4 (-> v1-2 vector 0 quad))
+          (a1-2 (-> v1-2 vector 1 quad))
+          (a2-1 (-> v1-2 vector 2 quad))
+          (v1-3 (-> v1-2 vector 3 quad))
+          )
+      (set! (-> v0-1 vector 0 quad) a0-4)
+      (set! (-> v0-1 vector 1 quad) a1-2)
+      (set! (-> v0-1 vector 2 quad) a2-1)
+      (set! (-> v0-1 vector 3 quad) v1-3)
+      )
+    v0-1
+    )
+  )
+
+;; definition for function cspace<-matrix-joint!
+;; INFO: Used lq/sq
+(defun cspace<-matrix-joint! ((arg0 cspace) (arg1 matrix))
+  (let ((v0-0 (-> arg0 bone transform)))
+    (let* ((a2-0 arg1)
+           (v1-1 (-> a2-0 vector 0 quad))
+           (a0-1 (-> a2-0 vector 1 quad))
+           (a1-1 (-> a2-0 vector 2 quad))
+           (a2-1 (-> a2-0 vector 3 quad))
+           )
+      (set! (-> v0-0 vector 0 quad) v1-1)
+      (set! (-> v0-0 vector 1 quad) a0-1)
+      (set! (-> v0-0 vector 2 quad) a1-1)
+      (set! (-> v0-0 vector 3 quad) a2-1)
+      )
+    v0-0
+    )
+  )
+
+;; definition for function cspace<-parented-matrix-joint!
+(defun cspace<-parented-matrix-joint! ((arg0 cspace) (arg1 matrix))
+  (matrix*! (-> arg0 bone transform) arg1 (-> arg0 parent bone transform))
+  )
+
+;; definition for function cspace<-parented-transformq-joint!
+;; INFO: function output is handled by mips2c
+(def-mips2c cspace<-parented-transformq-joint! (function cspace transformq none))
+
+;; definition for function clear-frame-accumulator
+;; INFO: function output is handled by mips2c
+(def-mips2c clear-frame-accumulator (function (inline-array vector) none))
+
+;; definition for function normalize-frame-quaternions
+;; INFO: function output is handled by mips2c
+(def-mips2c normalize-frame-quaternions function)
+
+;; definition for function decompress-fixed-data-to-accumulator
+;; INFO: function output is handled by mips2c
+(def-mips2c decompress-fixed-data-to-accumulator (function none))
+
+;; definition for function decompress-frame-data-to-accumulator
+;; INFO: function output is handled by mips2c
+(def-mips2c decompress-frame-data-to-accumulator (function none))
+
+;; definition for function decompress-frame-data-pair-to-accumulator
+;; INFO: function output is handled by mips2c
+(def-mips2c decompress-frame-data-pair-to-accumulator (function none))
+
+;; definition for function make-joint-jump-tables
+(defun make-joint-jump-tables ()
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work fix-jmp-table 0)
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 108 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work fix-jmp-table 1)
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 199 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work fix-jmp-table 2)
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 233 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work fix-jmp-table 3)
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 286 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work fix-jmp-table 4)
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 301 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work fix-jmp-table 5)
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 366 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work fix-jmp-table 6)
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 387 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work fix-jmp-table 7)
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 100 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work fix-jmp-table 8)
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 155 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work fix-jmp-table 9)
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 199 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work fix-jmp-table 10)
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 261 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work fix-jmp-table 11)
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 286 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work fix-jmp-table 12)
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 335 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work fix-jmp-table 13)
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 366 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work fix-jmp-table 14)
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 402 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work fix-jmp-table 15)
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 100 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work frm-jmp-table 0)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 84 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work frm-jmp-table 1)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 92 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work frm-jmp-table 2)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 119 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work frm-jmp-table 3)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 140 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work frm-jmp-table 4)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 205 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work frm-jmp-table 5)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 220 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work frm-jmp-table 6)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 273 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work frm-jmp-table 7)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 307 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work frm-jmp-table 8)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 84 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work frm-jmp-table 9)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 107 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work frm-jmp-table 10)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 119 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work frm-jmp-table 11)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 174 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work frm-jmp-table 12)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 205 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work frm-jmp-table 13)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 248 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work frm-jmp-table 14)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 273 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work frm-jmp-table 15)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 354 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work pair-jmp-table 0)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 117 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work pair-jmp-table 1)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 125 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work pair-jmp-table 2)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 169 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work pair-jmp-table 3)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 197 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work pair-jmp-table 4)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 293 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work pair-jmp-table 5)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 318 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work pair-jmp-table 6)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 408 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work pair-jmp-table 7)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 459 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work pair-jmp-table 8)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 117 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work pair-jmp-table 9)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 150 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work pair-jmp-table 10)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 169 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work pair-jmp-table 11)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 248 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work pair-jmp-table 12)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 293 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work pair-jmp-table 13)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 366 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work pair-jmp-table 14)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 408 4)))
+        )
+  (set! (-> (the-as terrain-context #x70000000) work foreground joint-work pair-jmp-table 15)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 533 4)))
+        )
+  0
+  )
+
+;; definition for function calc-animation-from-spr
+;; INFO: function output is handled by mips2c
+(def-mips2c calc-animation-from-spr (function (inline-array vector) int none))
+
+;; definition for function create-interpolated-joint-animation-frame
+(defun create-interpolated-joint-animation-frame ((arg0 (inline-array vector)) (arg1 int) (arg2 process-drawable))
+  (flatten-joint-control-to-spr (-> arg2 skel))
+  (make-joint-jump-tables)
+  (calc-animation-from-spr arg0 arg1)
+  0
+  )

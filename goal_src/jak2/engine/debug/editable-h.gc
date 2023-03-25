@@ -1,0 +1,747 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: editable-h.gc
+;; name in dgo: editable-h
+;; dgos: ENGINE, GAME
+
+;; +++editable-filter
+(defenum editable-filter
+  :type uint32
+  :bitfield #t
+  (none 0)
+  (unknown 1)
+  (sound 2)
+  (part 3)
+  (user-setting 4)
+  (cam-setting 5)
+  (load 6)
+  (water-command 7)
+  (camera 8)
+  (target 9)
+  (water  10)
+  (data  11)
+  (city_vis  12)
+  (sample  13)
+  (light  14)
+  (entity  15)
+  (selected  16)
+  )
+;; ---editable-filter
+
+;; +++editable-flag
+(defenum editable-flag
+  :type uint32
+  :bitfield #t
+  (selected)
+  (no-save)
+  (orient)
+  (x)
+  (y)
+  (z)
+  (no-plane-snap)
+  (no-update)
+  (mark)
+  (top-set)
+  (bot-set)
+  (changed)
+  )
+;; ---editable-flag
+
+;; +++editable-command
+(defenum editable-command
+  :type uint32
+  :bitfield #f
+  (none 0)
+  (exit 1)
+  (kill 2)
+  (select-one 3)
+  (select-toggle 4)
+  (select-all 5)
+  (select-none 6)
+  (select-region 7)
+  (select-face 8)
+  (select-prim 9)
+  (select-current-owner 10)
+  (select-current-region 11)
+  (select-current-face 12)
+  (select-current-prim 13)
+  (pick-target 14)
+  (pick-loc 15)
+  (pick-yes-no 16)
+  (cancel 17)
+  (drag-move-xy 18)
+  (drag-move-xz 19)
+  (drag-move-x 20)
+  (drag-move-y 21)
+  (drag-move-z 22)
+  (drag-resize 23)
+  (camera-tumble 24)
+  (camera-xy 25)
+  (camera-xz 26)
+  (insert-sphere 27)
+  (insert-point 28)
+  (insert-sample 29)
+  (insert-sample-camera 30)
+  (insert-light 31)
+  (insert-entity 32)
+  (insert-face 33)
+  (insert-plane 34)
+  (insert-box 35)
+  (delete 36)
+  (copy 37)
+  (resize 38)
+  (snap-to-ground 39)
+  (snap-xz 40)
+  (snap-y 41)
+  (flip-side 42)
+  (region-set 43)
+  (region-new 44)
+  (edit-plane-set 45)
+  (edit-plane-clear 46)
+  (delete-region 47)
+  (copy-region 48)
+  (region-add 49)
+  (save 50)
+  (load 51)
+  (update-game 52)
+  (print-region-info 53)
+  (refresh-filter 54)
+  (rotate-level 55)
+  (translate-y-level 56)
+  )
+;; ---editable-command
+
+(declare-type editable-array basic)
+(declare-type editable-plane editable)
+
+(declare-type editable-region basic)
+(define-extern *editable-sample-region* editable-region)
+(define-extern *editable-light-region* editable-region)
+(define-extern *editable-entity-region* editable-region)
+
+(define-extern *editable-menu-context* debug-menu-context)
+
+;; DECOMP BEGINS
+
+;; this file is debug only
+(declare-file (debug))
+
+(define *editable-temp-id* 0)
+
+(defun editable-command->string ((arg0 editable-command))
+  (case arg0
+    (((editable-command insert-entity))
+     "insert-entity"
+     )
+    (((editable-command print-region-info))
+     "print-region-info"
+     )
+    (((editable-command resize))
+     "resize"
+     )
+    (((editable-command insert-face))
+     "insert-face"
+     )
+    (((editable-command select-one))
+     "select-one"
+     )
+    (((editable-command update-game))
+     "update-game"
+     )
+    (((editable-command region-set))
+     "region-set"
+     )
+    (((editable-command select-all))
+     "select-all"
+     )
+    (((editable-command region-add))
+     "region-add"
+     )
+    (((editable-command flip-side))
+     "flip-side"
+     )
+    (((editable-command drag-resize))
+     "drag-resize"
+     )
+    (((editable-command select-current-prim))
+     "select-current-prim"
+     )
+    (((editable-command edit-plane-set))
+     "edit-plane-set"
+     )
+    (((editable-command edit-plane-clear))
+     "edit-plane-clear"
+     )
+    (((editable-command kill))
+     "kill"
+     )
+    (((editable-command delete-region))
+     "delete-region"
+     )
+    (((editable-command select-region))
+     "select-region"
+     )
+    (((editable-command camera-tumble))
+     "camera-tumble"
+     )
+    (((editable-command select-current-face))
+     "select-current-face"
+     )
+    (((editable-command snap-xz))
+     "snap-xz"
+     )
+    (((editable-command insert-sample))
+     "insert-sample"
+     )
+    (((editable-command camera-xy))
+     "camera-xy"
+     )
+    (((editable-command pick-loc))
+     "pick-loc"
+     )
+    (((editable-command select-face))
+     "select-face"
+     )
+    (((editable-command rotate-level))
+     "rotate-level"
+     )
+    (((editable-command pick-yes-no))
+     "pick-yes-no"
+     )
+    (((editable-command translate-y-level))
+     "translate-y-level"
+     )
+    (((editable-command save))
+     "save"
+     )
+    (((editable-command copy-region))
+     "copy-region"
+     )
+    (((editable-command cancel))
+     "cancel"
+     )
+    (((editable-command insert-light))
+     "insert-light"
+     )
+    (((editable-command drag-move-z))
+     "drag-move-z"
+     )
+    (((editable-command exit))
+     "exit"
+     )
+    (((editable-command drag-move-y))
+     "drag-move-y"
+     )
+    (((editable-command drag-move-xy))
+     "drag-move-xy"
+     )
+    (((editable-command select-prim))
+     "select-prim"
+     )
+    (((editable-command none))
+     "none"
+     )
+    (((editable-command delete))
+     "delete"
+     )
+    (((editable-command drag-move-x))
+     "drag-move-x"
+     )
+    (((editable-command insert-plane))
+     "insert-plane"
+     )
+    (((editable-command insert-sphere))
+     "insert-sphere"
+     )
+    (((editable-command insert-point))
+     "insert-point"
+     )
+    (((editable-command select-current-region))
+     "select-current-region"
+     )
+    (((editable-command camera-xz))
+     "camera-xz"
+     )
+    (((editable-command region-new))
+     "region-new"
+     )
+    (((editable-command drag-move-xz))
+     "drag-move-xz"
+     )
+    (((editable-command load))
+     "load"
+     )
+    (((editable-command insert-box))
+     "insert-box"
+     )
+    (((editable-command snap-to-ground))
+     "snap-to-ground"
+     )
+    (((editable-command select-none))
+     "select-none"
+     )
+    (((editable-command select-toggle))
+     "select-toggle"
+     )
+    (((editable-command insert-sample-camera))
+     "insert-sample-camera"
+     )
+    (((editable-command pick-target))
+     "pick-target"
+     )
+    (((editable-command select-current-owner))
+     "select-current-owner"
+     )
+    (((editable-command refresh-filter))
+     "refresh-filter"
+     )
+    (((editable-command copy))
+     "copy"
+     )
+    (((editable-command snap-y))
+     "snap-y"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+;; WARN: Return type mismatch basic vs string.
+(defun editable-filter->string ((arg0 editable-filter) (arg1 basic))
+  (if (= (logand arg0 (editable-filter target)) (editable-filter target))
+      (format arg1 "target ")
+      )
+  (if (= (logand arg0 (editable-filter city_vis)) (editable-filter city_vis))
+      (format arg1 "city_vis ")
+      )
+  (if (= (logand arg0 (editable-filter water-command)) (editable-filter water-command))
+      (format arg1 "water-command ")
+      )
+  (if (= (logand arg0 (editable-filter user-setting)) (editable-filter user-setting))
+      (format arg1 "user-setting ")
+      )
+  (if (= (logand arg0 (editable-filter sample)) (editable-filter sample))
+      (format arg1 "sample ")
+      )
+  (if (= (logand arg0 (editable-filter light)) (editable-filter light))
+      (format arg1 "light ")
+      )
+  (if (= (logand arg0 (editable-filter part)) (editable-filter part))
+      (format arg1 "part ")
+      )
+  (if (= (logand arg0 (editable-filter unknown)) (editable-filter unknown))
+      (format arg1 "unknown ")
+      )
+  (if (= (logand arg0 (editable-filter entity)) (editable-filter entity))
+      (format arg1 "entity ")
+      )
+  (if (= (logand arg0 (editable-filter data)) (editable-filter data))
+      (format arg1 "data ")
+      )
+  (if (= (logand arg0 (editable-filter water)) (editable-filter water))
+      (format arg1 "water ")
+      )
+  (if (= (logand arg0 (editable-filter cam-setting)) (editable-filter cam-setting))
+      (format arg1 "cam-setting ")
+      )
+  (if (= (logand (editable-filter selected) arg0) (editable-filter selected))
+      (format arg1 "selected ")
+      )
+  (if (= (logand arg0 (editable-filter none)) (editable-filter none))
+      (format arg1 "none ")
+      )
+  (if (= (logand arg0 (editable-filter camera)) (editable-filter camera))
+      (format arg1 "camera ")
+      )
+  (if (= (logand arg0 (editable-filter load)) (editable-filter load))
+      (format arg1 "load ")
+      )
+  (if (= (logand arg0 (editable-filter sound)) (editable-filter sound))
+      (format arg1 "sound ")
+      )
+  (the-as string arg1)
+  )
+
+(deftype editable-region (basic)
+  ((changed   symbol           :offset-assert   4)
+   (locked    symbol           :offset-assert   8)
+   (id        uint64           :offset-assert  16)
+   (filter    editable-filter  :offset-assert  24)
+   (tree      string           :offset-assert  28)
+   (level     string           :offset-assert  32)
+   (on-enter  string           :offset-assert  36)
+   (on-inside string           :offset-assert  40)
+   (on-exit   string           :offset-assert  44)
+   )
+  :method-count-assert 13
+  :size-assert         #x30
+  :flag-assert         #xd00000030
+  (:methods
+    (new (symbol type) _type_ 0)
+    (editable-region-method-9 (_type_ editable-array int int) none 9)
+    (editable-region-method-10 (_type_ int) symbol 10)
+    (editable-region-method-11 (_type_ vector int) none 11)
+    (editable-region-method-12 (_type_) editable-filter 12)
+    )
+  )
+
+
+(deftype editable (basic)
+  ((flags  editable-flag    :offset-assert   4)
+   (name   string           :offset-assert   8)
+   (id     uint32           :offset-assert  12)
+   (region editable-region  :offset-assert  16)
+   (owner  pair             :offset-assert  20)
+   )
+  :method-count-assert 30
+  :size-assert         #x18
+  :flag-assert         #x1e00000018
+  (:methods
+    (get-color (_type_ int) rgba 9)
+    (editable-method-10 (_type_) none 10)
+    (editable-method-11 (_type_ vector) symbol 11)
+    (select-editable! (_type_ symbol) none 12)
+    (edit-get-distance (_type_ vector) float 13)
+    (edit-get-trans (_type_) vector 14)
+    (editable-method-15 (_type_ vector int) none 15)
+    (edit-coord! (_type_ vector editable-flag) none 16)
+    (editable-method-17 (_type_ vector) none 17)
+    (editable-method-18 (_type_ vector matrix) none 18)
+    (editable-method-19 (_type_ vector) none 19)
+    (editable-method-20 (_type_ vector vector vector vector) none 20)
+    (editable-method-21 (_type_ editable-region) none 21)
+    (editable-method-22 (_type_ editable-array int int) symbol 22)
+    (editable-method-23 (_type_) symbol 23)
+    (editable-method-24 (_type_) none 24)
+    (editable-method-25 (_type_ editable-array) none 25)
+    (editable-method-26 (_type_ editable editable-array) none 26)
+    (editable-method-27 (_type_ editable-array) editable 27)
+    (editable-method-28 (_type_ editable-filter) none 28)
+    (editable-method-29 (_type_ editable-filter) symbol 29)
+    )
+  )
+
+
+(deftype editable-array (basic)
+  ((allocated-length  int32                     :offset-assert   4)
+   (length            int32                     :offset-assert   8)
+   (region            editable-region           :offset-assert  12)
+   (backup-region     editable-region           :offset-assert  16)
+   (region-lock?      symbol                    :offset-assert  20)
+   (move-lock?        symbol                    :offset-assert  24)
+   (move-speed        float                     :offset-assert  28)
+   (selection         (array editable)          :offset-assert  32)
+   (filter            editable-filter  2        :offset-assert  36)
+   (target            editable                  :offset-assert  44)
+   (target-mode       uint32                    :offset-assert  48)
+   (target-command    basic                     :offset-assert  52)
+   (target-message    string                    :offset-assert  56)
+   (edit-plane        editable-plane            :offset-assert  60)
+   (edit-plane-center vector           :inline  :offset-assert  64)
+   (edit-plane-normal vector           :inline  :offset-assert  80)
+   (level-offset      vector           :inline  :offset-assert  96)
+   (level-info-id     uint32                    :offset-assert 112)
+   (level             uint32                    :offset-assert 116)
+   (edit-param0       float                     :offset-assert 120)
+   (data              editable         :dynamic :offset-assert 124)
+   )
+  :method-count-assert 18
+  :size-assert         #x7c
+  :flag-assert         #x120000007c
+  (:methods
+    (new (symbol type int) _type_ 0)
+    (editable-array-method-9 (_type_ editable-command editable-array) symbol :behavior editable-player 9)
+    (editable-array-method-10 (_type_ vector int) editable 10)
+    (editable-array-method-11 (_type_) int 11)
+    (editable-array-method-12 (_type_ editable-array) none 12)
+    (editable-array-method-13 (_type_ uint basic string) none 13)
+    (editable-array-method-14 (_type_ (function symbol) symbol) none 14)
+    (editable-array-method-15 (_type_ editable) none 15)
+    (editable-array-method-16 (_type_) none 16)
+    (editable-array-method-17 (_type_ vector vector) vector 17)
+    )
+  )
+
+
+(defmethod new editable-array ((allocation symbol) (type-to-make type) (arg0 int))
+  (let ((s5-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* arg0 4))))))
+    (set! (-> s5-0 allocated-length) arg0)
+    (set! (-> s5-0 length) 0)
+    (set! (-> s5-0 region) #f)
+    (set! (-> s5-0 backup-region) #f)
+    (set! (-> s5-0 region-lock?) #f)
+    (set! (-> s5-0 move-lock?) #f)
+    (set! (-> s5-0 target) #f)
+    (set! (-> s5-0 target-command) (the-as basic 0))
+    (set! (-> s5-0 target-message) #f)
+    (set! (-> s5-0 selection)
+          (the-as (array editable) ((method-of-type array new) allocation array editable arg0))
+          )
+    (set! (-> s5-0 edit-plane) #f)
+    (set! (-> s5-0 filter 0) (editable-filter
+                               none
+                               unknown
+                               sound
+                               part
+                               user-setting
+                               cam-setting
+                               load
+                               water-command
+                               city_vis
+                               sample
+                               light
+                               entity
+                               )
+          )
+    (set! (-> s5-0 filter 1) (editable-filter camera target water data city_vis sample light entity selected))
+    (dotimes (v1-5 arg0)
+      (set! (-> s5-0 data v1-5) #f)
+      (set! (-> s5-0 selection v1-5) #f)
+      )
+    s5-0
+    )
+  )
+
+(deftype editable-point (editable)
+  ((radius float          :offset-assert  24)
+   (trans  vector :inline :offset-assert  32)
+   )
+  :method-count-assert 30
+  :size-assert         #x30
+  :flag-assert         #x1e00000030
+  (:methods
+    (new (symbol type vector editable-region) _type_ 0)
+    )
+  )
+
+
+(defmethod new editable-point ((allocation symbol) (type-to-make type) (arg0 vector) (arg1 editable-region))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 region) #f)
+    (set! (-> gp-0 name) "undefined")
+    (editable-method-21 gp-0 (cond
+                               (arg1
+                                 (empty)
+                                 arg1
+                                 )
+                               (else
+                                 (new 'debug 'editable-region)
+                                 )
+                               )
+                        )
+    (set! (-> gp-0 trans quad) (-> arg0 quad))
+    (set! (-> gp-0 radius) 2048.0)
+    (set! (-> gp-0 owner) '())
+    gp-0
+    )
+  )
+
+(deftype editable-sphere (editable-point)
+  ()
+  :method-count-assert 30
+  :size-assert         #x30
+  :flag-assert         #x1e00000030
+  (:methods
+    (new (symbol type vector float editable-region) _type_ 0)
+    )
+  )
+
+
+(defmethod new editable-sphere ((allocation symbol) (type-to-make type) (arg0 vector) (arg1 float) (arg2 editable-region))
+  (let ((s5-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> s5-0 region) #f)
+    (set! (-> s5-0 name) "undefined")
+    (editable-method-21 s5-0 (cond
+                               (arg2
+                                 (empty)
+                                 arg2
+                                 )
+                               (else
+                                 (new 'debug 'editable-region)
+                                 )
+                               )
+                        )
+    (set! (-> s5-0 trans quad) (-> arg0 quad))
+    (set! (-> s5-0 radius) arg1)
+    (set! (-> s5-0 owner) '())
+    s5-0
+    )
+  )
+
+(deftype editable-sample (editable-point)
+  ()
+  :method-count-assert 30
+  :size-assert         #x30
+  :flag-assert         #x1e00000030
+  )
+
+
+(deftype editable-light (editable-sphere)
+  ((direction           vector :inline :offset-assert  48)
+   (color               vector :inline :offset-assert  64)
+   (decay-start         float          :offset-assert  80)
+   (ambient-point-ratio float          :offset-assert  84)
+   (brightness          float          :offset-assert  88)
+   )
+  :method-count-assert 30
+  :size-assert         #x5c
+  :flag-assert         #x1e0000005c
+  (:methods
+    (new (symbol type vector float editable-region) _type_ 0)
+    )
+  )
+
+
+(defmethod new editable-light ((allocation symbol) (type-to-make type) (arg0 vector) (arg1 float) (arg2 editable-region))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 region) #f)
+    (editable-method-21 gp-0 (cond
+                               (arg2
+                                 (empty)
+                                 arg2
+                                 )
+                               (else
+                                 (new 'debug 'editable-region)
+                                 )
+                               )
+                        )
+    (set! (-> gp-0 trans quad) (-> arg0 quad))
+    (set! (-> gp-0 radius) arg1)
+    (set! (-> gp-0 owner) '())
+    (let ((s5-1 (new 'debug 'string 32 (the-as string #f))))
+      (format s5-1 "undefined-~d" *editable-temp-id*)
+      (set! (-> gp-0 name) s5-1)
+      )
+    (set! *editable-temp-id* (+ *editable-temp-id* 1))
+    (set! (-> gp-0 decay-start) 0.5)
+    (set! (-> gp-0 ambient-point-ratio) 1.0)
+    (set! (-> gp-0 brightness) 1.0)
+    (set-vector! (-> gp-0 color) 1.0 1.0 1.0 -1.0)
+    (set-vector! (-> gp-0 direction) 0.0 0.0 0.0 0.0)
+    gp-0
+    )
+  )
+
+(deftype editable-entity (editable-point)
+  ()
+  :method-count-assert 30
+  :size-assert         #x30
+  :flag-assert         #x1e00000030
+  )
+
+
+(deftype editable-face (editable)
+  ((length int32                  :offset-assert  24)
+   (normal vector         :inline :offset-assert  32)
+   (center vector         :inline :offset-assert  48)
+   (vertex editable-point 6       :offset-assert  64)
+   )
+  :method-count-assert 32
+  :size-assert         #x58
+  :flag-assert         #x2000000058
+  (:methods
+    (new (symbol type editable-region) _type_ 0)
+    (editable-face-method-30 (_type_ (inline-array vector)) int 30)
+    (editable-face-method-31 (_type_ vector) vector 31)
+    )
+  )
+
+
+(defmethod new editable-face ((allocation symbol) (type-to-make type) (arg0 editable-region))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 region) #f)
+    (set! (-> gp-0 name) "undefined")
+    (editable-method-21 gp-0 (cond
+                               (arg0
+                                 (empty)
+                                 arg0
+                                 )
+                               (else
+                                 (new 'debug 'editable-region)
+                                 )
+                               )
+                        )
+    (set! (-> gp-0 owner) '())
+    gp-0
+    )
+  )
+
+(deftype editable-plane (editable)
+  ((length int32            :offset-assert  24)
+   (radius float            :offset-assert  28)
+   (vertex editable-point 2 :offset-assert  32)
+   )
+  :method-count-assert 32
+  :size-assert         #x28
+  :flag-assert         #x2000000028
+  (:methods
+    (new (symbol type editable-region) _type_ 0)
+    (editable-plane-method-30 (_type_ matrix) int 30)
+    (editable-plane-method-31 (_type_ vector) vector 31)
+    )
+  )
+
+
+(defmethod new editable-plane ((allocation symbol) (type-to-make type) (arg0 editable-region))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 region) #f)
+    (set! (-> gp-0 name) "undefined")
+    (editable-method-21 gp-0 (cond
+                               (arg0
+                                 (empty)
+                                 arg0
+                                 )
+                               (else
+                                 (new 'debug 'editable-region)
+                                 )
+                               )
+                        )
+    (set! (-> gp-0 owner) '())
+    (set! (-> gp-0 radius) 20480.0)
+    gp-0
+    )
+  )
+
+(deftype editable-player (process-drawable)
+  ((current           editable-array   :offset-assert 200)
+   (select-command    function         :offset-assert 204)
+   (move-command      function         :offset-assert 208)
+   (extra-command     function         :offset-assert 212)
+   (left-handed       basic            :offset-assert 216)
+   (light-names       basic            :offset-assert 220)
+   (external-cam-mode symbol           :offset-assert 224)
+   (command           function       6 :offset-assert 228)
+   (close-menu-time   time-frame       :offset-assert 256)
+   )
+  :heap-base #x90
+  :method-count-assert 22
+  :size-assert         #x108
+  :flag-assert         #x1600900108
+  (:methods
+    (idle () _type_ :state 20)
+    (editable-player-method-21 (_type_) none 21)
+    )
+  )
+
+
+(deftype editable-work (basic)
+  ((num-found  int16        :offset-assert   4)
+   (last-found int16        :offset-assert   6)
+   (last-x     float        :offset-assert   8)
+   (last-y     float        :offset-assert  12)
+   (found      editable 256 :offset-assert  16)
+   (dists      uint32   256 :offset-assert 1040)
+   )
+  :method-count-assert 9
+  :size-assert         #x810
+  :flag-assert         #x900000810
+  )
+
+
+(define *editable-work* (new 'global 'editable-work))
+
+(define *editable* (the-as (pointer editable-player) #f))
+
+0

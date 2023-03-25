@@ -1,0 +1,156 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: sparticle-h.gc
+;; name in dgo: sparticle-h
+;; dgos: ENGINE, GAME
+
+(declare-type sparticle-system basic)
+
+;; +++sp-cpuinfo-flag
+(defenum sp-cpuinfo-flag
+  :bitfield #t
+  :type uint32
+  (sp-cpuinfo-flag-0 0)
+  (sp-cpuinfo-flag-1 1)
+  (sp-cpuinfo-flag-2 2)     ;; cleared after an aux has its func set to add-to-sprite-aux-lst
+  (sp-cpuinfo-flag-3 3)
+  (sp-cpuinfo-flag-4 4)
+  (sp-cpuinfo-flag-5 5)
+  (ready-to-launch 6) ;; maybe just just death?
+  (distort 7) ;; distort sprite
+  (aux-list 8)     ;; prevents relaunch, adds to aux
+  (sp-cpuinfo-flag-9 9)
+  (level0 10)
+  (level1 11)
+  (sp-cpuinfo-flag-12 12)   ;; required to relaunch
+  (sp-cpuinfo-flag-13 13)
+  (sp-cpuinfo-flag-14 14)
+  (glow 15) ;; glow sprite
+  (use-global-acc 16)
+  (launch-along-z 17)
+  (left-multiply-quat 18)
+  (right-multiply-quat 19)
+  (set-conerot 20)
+  (sp-cpuinfo-flag-21 21)
+  )
+;; ---sp-cpuinfo-flag
+
+(defenum sp-cpuinfo-flag-s32
+  :bitfield #t
+  :type int32
+  :copy-entries sp-cpuinfo-flag
+  )
+
+
+(declare-type sparticle-system basic)
+(declare-type sparticle-cpuinfo structure)
+(declare-type sparticle-launch-control inline-array-class)
+(define-extern forall-particles-with-key (function sparticle-launch-control (function sparticle-system sparticle-cpuinfo none) symbol symbol none))
+
+(define-extern *part-id-table* (array sparticle-launcher))
+
+(define-extern sp-get-particle (function sparticle-system int sparticle-launch-state sparticle-cpuinfo))
+(define-extern kill-all-particles-with-key (function sparticle-launch-control none))
+(define-extern sp-kill-particle (function sparticle-system sparticle-cpuinfo symbol))
+
+;; NOTE - for gun-blue-shot
+(define-extern draw-beam (function sparticle-launcher vector vector symbol symbol none))
+
+;; DECOMP BEGINS
+
+(define *sp-60-hz* #t)
+
+(deftype sparticle-cpuinfo (structure)
+  ((sprite        sprite-vec-data-2d                                                                 :offset-assert   0)
+   (adgif         adgif-shader                                                                       :offset-assert   4)
+   (radius        float                                                                              :offset-assert   8)
+   (omega         float                                                                              :offset-assert  12)
+   (vel-sxvel     vector                                                                     :inline :offset-assert  16)
+   (rot-syvel     vector                                                                     :inline :offset-assert  32)
+   (fade          rgbaf                                                                      :inline :offset-assert  48)
+   (acc           vector                                                                     :inline :offset-assert  64)
+   (rotvel3d      quaternion                                                                 :inline :offset-assert  80)
+   (vel           vector                                                                     :inline :offset         16)
+   (accel         vector                                                                     :inline :offset         64)
+   (scalevelx     float                                                                              :offset         28)
+   (scalevely     float                                                                              :offset         44)
+   (friction      float                                                                              :offset-assert  96)
+   (timer         int32                                                                              :offset-assert 100)
+   (flags         sp-cpuinfo-flag                  :offset-assert 104) ;; NOTE - loaded with lw and lwu?
+   (flags-s32     sp-cpuinfo-flag-s32              :offset        104)
+   (user-int32    int32                                                                              :offset-assert 108)
+   (user-uint32   uint32                                                                             :offset        108)
+   (user-float    float                                                                              :offset        108)
+   (user-pntr     uint32                                                                             :offset        108)
+   (user-object   basic                                                                              :offset        108)
+   (user-sprite   sprite-vec-data-2d                                                                 :offset        108)
+   (sp-func       (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d uint none)         :offset-assert 112)
+   (next-time     uint32                                                                             :offset-assert 116)
+   (next-launcher basic                                                                              :offset-assert 120)
+   (cache-alpha   float                                                                              :offset-assert 124)
+   (valid         uint8                                                                              :offset-assert 128)
+   (clock-index   uint8                                                                              :offset-assert 129)
+   (user1-int16   uint16                                                                             :offset-assert 130)
+   (key           sparticle-launch-control                                                           :offset-assert 132)
+   (key-alt       sparticle-launch-state                                                             :offset        132)
+   (binding       sparticle-launch-state                                                             :offset-assert 136)
+   (data          uint32                                                                     1       :offset         12)
+   (datab         int8                                                                       4       :offset         12)
+   (dataf         float                                                                      1       :offset         12)
+   (datac         uint8                                                                      1       :offset         12)
+   )
+  :method-count-assert 9
+  :size-assert         #x8c
+  :flag-assert         #x90000008c
+  )
+
+
+(deftype sparticle-launchinfo (structure)
+  ((launchrot  vector :inline :offset-assert   0)
+   (conerot    vector :inline :offset-assert  16)
+   (rotate-x   float          :offset-assert  32)
+   (rotate-y   float          :offset-assert  36)
+   (rotate-z   float          :offset-assert  40)
+   (coneradius float          :offset-assert  44)
+   (rotate     vector :inline :offset         32)
+   (scale-x    float          :offset         48)
+   (scale-y    float          :offset         52)
+   (scale-z    float          :offset         56)
+   (dummy      float          :offset         60)
+   (scale      vector :inline :offset         48)
+   (data       uint8  1       :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+
+(deftype sparticle-system (basic)
+  ((blocks          int32                            2 :offset-assert   4)
+   (length          int32                            2 :offset-assert  12)
+   (num-alloc       int32                            2 :offset-assert  20)
+   (is-3d           basic                              :offset-assert  28)
+   (flags           uint32                             :offset-assert  32)
+   (alloc-table     (pointer uint64)                   :offset-assert  36)
+   (cpuinfo-table   (inline-array sparticle-cpuinfo)   :offset-assert  40)
+   (vecdata-table   pointer                            :offset-assert  44)
+   (adgifdata-table (inline-array adgif-shader)        :offset-assert  48)
+   )
+  :method-count-assert 9
+  :size-assert         #x34
+  :flag-assert         #x900000034
+  (:methods
+    (new (symbol type int int symbol pointer (inline-array adgif-shader)) _type_ 0)
+    )
+  )
+
+
+0
+
+
+
+
+(define-extern *sp-particle-system-2d* sparticle-system)
+(define-extern *sp-particle-system-3d* sparticle-system)

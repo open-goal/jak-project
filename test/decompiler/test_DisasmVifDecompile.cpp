@@ -1,10 +1,11 @@
 
-#include "gtest/gtest.h"
 #include "FormRegressionTest.h"
+
+#include "gtest/gtest.h"
 
 using namespace decompiler;
 
-TEST_F(FormRegressionTest, ExprDisasmVif) {
+TEST_F(FormRegressionTestJak1, ExprDisasmVif) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L53:\n"

@@ -5,32 +5,26 @@ layout (location = 0) in vec3 position_in;
 layout (location = 1) in vec3 normal_in;
 layout (location = 2) in vec3 weights_in;
 layout (location = 3) in vec2 st_in;
-layout (location = 4) in vec3 rgba;
+layout (location = 4) in vec4 rgba;
 layout (location = 5) in uvec3 mats;
 
 // light control
 uniform vec3 light_dir0;
 uniform vec3 light_dir1;
 uniform vec3 light_dir2;
-uniform vec3 light_col0;
-uniform vec3 light_col1;
-uniform vec3 light_col2;
-uniform vec3 light_ambient;
+uniform vec4 light_col0;
+uniform vec4 light_col1;
+uniform vec4 light_col2;
+uniform vec4 light_ambient;
 
 // camera control
 uniform vec4 hvdf_offset;
-uniform vec4 perspective0;
-uniform vec4 perspective1;
-uniform vec4 perspective2;
-uniform vec4 perspective3;
 uniform vec4 fog_constants;
 
 uniform mat4 perspective_matrix;
 
-const float SCISSOR_ADJUST = 512.0/448.0;
-
 // output
-out vec3 vtx_color;
+out vec4 vtx_color;
 out vec2 vtx_st;
 
 out float fog;
@@ -74,21 +68,26 @@ void main() {
 //    transformed += -hmat2 * position_in.z;
 
     vec4 p = vec4(position_in, 1);
-    vec4 vtx_pos = -bones[mats[0]].X * p * weights_in[0]
-                   -bones[mats[1]].X * p * weights_in[1]
-                   -bones[mats[2]].X * p * weights_in[2];
+    vec4 vtx_pos = -bones[mats[0]].X * p * weights_in[0];
+    vec3 rotated_nrm = bones[mats[0]].R * normal_in * weights_in[0];
+
+    // game may send garbage bones if the weight is 0, don't let NaNs sneak in.
+    if (weights_in[1] > 0) {
+        vtx_pos += -bones[mats[1]].X * p * weights_in[1];
+        rotated_nrm += bones[mats[1]].R * normal_in * weights_in[1];
+    }
+    if (weights_in[2] > 0) {
+        vtx_pos += -bones[mats[2]].X * p * weights_in[2];
+        rotated_nrm += bones[mats[2]].R * normal_in * weights_in[2];
+    }
 
     vec4 transformed = perspective_matrix * vtx_pos;
-
-    vec3 rotated_nrm = bones[mats[0]].R * normal_in * weights_in[0]
-                     + bones[mats[1]].R * normal_in * weights_in[1]
-                     + bones[mats[2]].R * normal_in * weights_in[2];
 
     rotated_nrm = normalize(rotated_nrm);
     vec3 light_intensity = light_dir0 * rotated_nrm.x + light_dir1 * rotated_nrm.y + light_dir2 * rotated_nrm.z;
     light_intensity = max(light_intensity, vec3(0, 0, 0));
 
-    vec3 light_color = light_ambient
+    vec4 light_color = light_ambient
                      + light_intensity.x * light_col0
                      + light_intensity.y * light_col1
                      + light_intensity.z * light_col2;
@@ -106,7 +105,7 @@ void main() {
     transformed.x /= (256);
     transformed.y /= -(128);
     transformed.xyz *= transformed.w;
-    transformed.y *= SCISSOR_ADJUST;
+    transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
     gl_Position = transformed;
 
 

@@ -1,9 +1,13 @@
 #include "config.h"
-#include "third-party/json.hpp"
-#include "third-party/fmt/core.h"
+
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
+
 #include "decompiler/util/config_parsers.h"
+
+#include "third-party/fmt/core.h"
+#include "third-party/json.hpp"
 
 namespace decompiler {
 
@@ -12,39 +16,25 @@ namespace {
  * Read an entry from cfg containing the name of a json file, and parse that file.
  * Relative to jak-project directory.
  */
-nlohmann::json read_json_file_from_config(const nlohmann::json& cfg, const std::string& file_key) {
-  auto file_name = cfg.at(file_key).get<std::string>();
+nlohmann::json read_json_file_from_config(const nlohmann::json& json, const std::string& file_key) {
+  auto file_name = json.at(file_key).get<std::string>();
   auto file_txt = file_util::read_text_file(file_util::get_file_path({file_name}));
   return parse_commented_json(file_txt, file_name);
 }
-}  // namespace
 
-/*!
- * Parse the main config file and return decompiler config.
- */
-Config read_config_file(const std::string& path_to_config_file,
-                        const std::map<std::string, bool>& overrides) {
+Config make_config_via_json(nlohmann::json& json) {
   Config config;
-  auto config_str = file_util::read_text_file(path_to_config_file);
-  auto cfg = parse_commented_json(config_str, path_to_config_file);
-
-  // Override JSON
-  for (auto const& [key, val] : overrides) {
-    fmt::print("[Config] - Overwriting '{}' with '{}'\n", key, val);
-    cfg[key] = val;
-  }
-
-  int version_int = cfg.at("game_version").get<int>();
+  int version_int = json.at("game_version").get<int>();
   ASSERT(version_int == 1 || version_int == 2);
   config.game_version = (GameVersion)version_int;
-  config.text_version = cfg.at("text_version").get<GameTextVersion>();
-  config.game_name = cfg.at("game_name").get<std::string>();
-  if (cfg.contains("expected_elf_name")) {
-    config.expected_elf_name = cfg.at("expected_elf_name").get<std::string>();
+  config.text_version = json.at("text_version").get<GameTextVersion>();
+  config.game_name = json.at("game_name").get<std::string>();
+  if (json.contains("expected_elf_name")) {
+    config.expected_elf_name = json.at("expected_elf_name").get<std::string>();
   }
-  config.all_types_file = cfg.at("all_types_file").get<std::string>();
+  config.all_types_file = json.at("all_types_file").get<std::string>();
 
-  auto inputs_json = read_json_file_from_config(cfg, "inputs_file");
+  auto inputs_json = read_json_file_from_config(json, "inputs_file");
   config.dgo_names = inputs_json.at("dgo_names").get<std::vector<std::string>>();
   config.object_file_names = inputs_json.at("object_file_names").get<std::vector<std::string>>();
   config.str_file_names = inputs_json.at("str_file_names").get<std::vector<std::string>>();
@@ -52,38 +42,62 @@ Config read_config_file(const std::string& path_to_config_file,
   config.streamed_audio_file_names =
       inputs_json.at("streamed_audio_file_names").get<std::vector<std::string>>();
 
-  if (cfg.contains("obj_file_name_map_file")) {
-    config.obj_file_name_map_file = cfg.at("obj_file_name_map_file").get<std::string>();
+  if (json.contains("art_group_dump_file")) {
+    auto json_data = file_util::read_text_file(
+        file_util::get_file_path({json.at("art_group_dump_file").get<std::string>()}));
+    std::unordered_map<std::string, std::unordered_map<int, std::string>> serialized =
+        parse_commented_json(json_data, "art_group_dump_file");
+    config.art_group_info_dump = serialized;
   }
-  config.disassemble_code = cfg.at("disassemble_code").get<bool>();
-  config.decompile_code = cfg.at("decompile_code").get<bool>();
-  config.write_hex_near_instructions = cfg.at("write_hex_near_instructions").get<bool>();
-  config.write_scripts = cfg.at("write_scripts").get<bool>();
-  config.disassemble_data = cfg.at("disassemble_data").get<bool>();
-  config.process_tpages = cfg.at("process_tpages").get<bool>();
-  config.process_game_text = cfg.at("process_game_text").get<bool>();
-  config.process_game_count = cfg.at("process_game_count").get<bool>();
-  config.process_art_groups = cfg.at("process_art_groups").get<bool>();
-  config.hexdump_code = cfg.at("hexdump_code").get<bool>();
-  config.hexdump_data = cfg.at("hexdump_data").get<bool>();
-  config.find_functions = cfg.at("find_functions").get<bool>();
-  config.dump_objs = cfg.at("dump_objs").get<bool>();
-  config.print_cfgs = cfg.at("print_cfgs").get<bool>();
-  config.generate_symbol_definition_map = cfg.at("generate_symbol_definition_map").get<bool>();
-  config.is_pal = cfg.at("is_pal").get<bool>();
-  config.rip_levels = cfg.at("levels_convert_to_obj").get<bool>();
-  config.extract_collision = cfg.at("extract_collision").get<bool>();
 
-  auto allowed = cfg.at("allowed_objects").get<std::vector<std::string>>();
+  if (json.contains("obj_file_name_map_file")) {
+    config.obj_file_name_map_file = json.at("obj_file_name_map_file").get<std::string>();
+  }
+  config.disassemble_code = json.at("disassemble_code").get<bool>();
+  config.decompile_code = json.at("decompile_code").get<bool>();
+  config.write_hex_near_instructions = json.at("write_hex_near_instructions").get<bool>();
+  config.write_scripts = json.at("write_scripts").get<bool>();
+  config.disassemble_data = json.at("disassemble_data").get<bool>();
+  config.process_tpages = json.at("process_tpages").get<bool>();
+  config.process_game_text = json.at("process_game_text").get<bool>();
+  config.process_game_count = json.at("process_game_count").get<bool>();
+  config.process_art_groups = json.at("process_art_groups").get<bool>();
+  if (json.contains("process_subtitle_text")) {
+    config.process_subtitle_text = json.at("process_subtitle_text").get<bool>();
+  }
+  if (json.contains("process_subtitle_images")) {
+    config.process_subtitle_images = json.at("process_subtitle_images").get<bool>();
+  }
+  config.dump_art_group_info = json.at("dump_art_group_info").get<bool>();
+  config.hexdump_code = json.at("hexdump_code").get<bool>();
+  config.hexdump_data = json.at("hexdump_data").get<bool>();
+  config.find_functions = json.at("find_functions").get<bool>();
+  config.dump_objs = json.at("dump_objs").get<bool>();
+  config.print_cfgs = json.at("print_cfgs").get<bool>();
+  config.generate_symbol_definition_map = json.at("generate_symbol_definition_map").get<bool>();
+  config.is_pal = json.at("is_pal").get<bool>();
+  config.rip_levels = json.at("rip_levels").get<bool>();
+  config.extract_collision = json.at("extract_collision").get<bool>();
+  config.generate_all_types = json.at("generate_all_types").get<bool>();
+  if (json.contains("read_spools")) {
+    config.read_spools = json.at("read_spools").get<bool>();
+  }
+  if (json.contains("old_all_types_file")) {
+    config.old_all_types_file = json.at("old_all_types_file").get<std::string>();
+  }
+  auto allowed = json.at("allowed_objects").get<std::vector<std::string>>();
   for (const auto& x : allowed) {
     config.allowed_objects.insert(x);
   }
-  auto banned = cfg.at("banned_objects").get<std::vector<std::string>>();
+  auto banned = json.at("banned_objects").get<std::vector<std::string>>();
   for (const auto& x : banned) {
     config.banned_objects.insert(x);
   }
 
-  auto type_casts_json = read_json_file_from_config(cfg, "type_casts_file");
+  auto type_casts_json = read_json_file_from_config(json, "type_casts_file");
+  if (json.contains("type_casts_merge_file")) {
+    type_casts_json.update(read_json_file_from_config(json, "type_casts_merge_file"));
+  }
   for (auto& kv : type_casts_json.items()) {
     auto& function_name = kv.key();
     auto& casts = kv.value();
@@ -114,7 +128,10 @@ Config read_config_file(const std::string& path_to_config_file,
     }
   }
 
-  auto anon_func_json = read_json_file_from_config(cfg, "anonymous_function_types_file");
+  auto anon_func_json = read_json_file_from_config(json, "anonymous_function_types_file");
+  if (json.contains("anonymous_function_types_merge_file")) {
+    anon_func_json.update(read_json_file_from_config(json, "anonymous_function_types_merge_file"));
+  }
   for (auto& kv : anon_func_json.items()) {
     auto& obj_file_name = kv.key();
     auto& anon_types = kv.value();
@@ -124,7 +141,7 @@ Config read_config_file(const std::string& path_to_config_file,
       config.anon_function_types_by_obj_by_id[obj_file_name][id] = type_name;
     }
   }
-  auto var_names_json = read_json_file_from_config(cfg, "var_names_file");
+  auto var_names_json = read_json_file_from_config(json, "var_names_file");
   for (auto& kv : var_names_json.items()) {
     auto& function_name = kv.key();
     auto arg = kv.value().find("args");
@@ -151,7 +168,10 @@ Config read_config_file(const std::string& path_to_config_file,
     }
   }
 
-  auto label_types_json = read_json_file_from_config(cfg, "label_types_file");
+  auto label_types_json = read_json_file_from_config(json, "label_types_file");
+  if (json.contains("label_types_merge_file")) {
+    label_types_json.update(read_json_file_from_config(json, "label_types_merge_file"));
+  }
   for (auto& kv : label_types_json.items()) {
     auto& obj_name = kv.key();
     auto& types = kv.value();
@@ -172,7 +192,10 @@ Config read_config_file(const std::string& path_to_config_file,
     }
   }
 
-  auto stack_structures_json = read_json_file_from_config(cfg, "stack_structures_file");
+  auto stack_structures_json = read_json_file_from_config(json, "stack_structures_file");
+  if (json.contains("stack_structures_merge_file")) {
+    stack_structures_json.update(read_json_file_from_config(json, "stack_structures_merge_file"));
+  }
   for (auto& kv : stack_structures_json.items()) {
     auto& func_name = kv.key();
     auto& stack_structures = kv.value();
@@ -180,7 +203,21 @@ Config read_config_file(const std::string& path_to_config_file,
         parse_stack_structure_hints(stack_structures);
   }
 
-  auto hacks_json = read_json_file_from_config(cfg, "hacks_file");
+  auto hacks_json = read_json_file_from_config(json, "hacks_file");
+  if (json.contains("hacks_merge_file")) {
+    // NOTE - here we merge one level deeper because it's worth doing here
+    // - chances are you just need to override a few individual hacks
+    const auto hack_overrides = read_json_file_from_config(json, "hacks_merge_file");
+    for (const auto& entry : hack_overrides.items()) {
+      if (hacks_json.contains(entry.key())) {
+        // If the parent json file has this, update it
+        hacks_json.at(entry.key()).update(entry.value());
+      } else {
+        // Otherwise, we append it
+        hacks_json[entry.key()] = entry.value();
+      }
+    }
+  }
   config.hacks.hint_inline_assembly_functions =
       hacks_json.at("hint_inline_assembly_functions").get<std::unordered_set<std::string>>();
   config.hacks.asm_functions_by_name =
@@ -228,19 +265,66 @@ Config read_config_file(const std::string& path_to_config_file,
   }
 
   config.levels_to_extract = inputs_json.at("levels_to_extract").get<std::vector<std::string>>();
-  config.levels_extract = cfg.at("levels_extract").get<bool>();
+  config.levels_extract = json.at("levels_extract").get<bool>();
 
-  auto art_info_json = read_json_file_from_config(cfg, "art_info_file");
+  auto art_info_json = read_json_file_from_config(json, "art_info_file");
   config.art_groups_by_file =
       art_info_json.at("files").get<std::unordered_map<std::string, std::string>>();
   config.art_groups_by_function =
       art_info_json.at("functions").get<std::unordered_map<std::string, std::string>>();
 
-  auto import_deps = read_json_file_from_config(cfg, "import_deps_file");
+  auto import_deps = read_json_file_from_config(json, "import_deps_file");
   config.import_deps_by_file =
       import_deps.get<std::unordered_map<std::string, std::vector<std::string>>>();
 
+  config.write_patches = json.at("write_patches").get<bool>();
+  config.apply_patches = json.at("apply_patches").get<bool>();
+  const auto& object_patches = json.at("object_patches");
+  for (auto& [obj, pch] : object_patches.items()) {
+    ObjectPatchInfo new_pch;
+    new_pch.crc = (u32)std::stoull(pch.at("crc32").get<std::string>(), nullptr, 16);
+    new_pch.target_file = pch.at("in").get<std::string>();
+    new_pch.patch_file = pch.at("out").get<std::string>();
+    config.object_patches.insert({obj, new_pch});
+  }
+
   return config;
+}
+}  // namespace
+
+/*!
+ * Parse the main config file and return decompiler config.
+ */
+Config read_config_file(const fs::path& path_to_config_file,
+                        const std::string& config_game_version,
+                        const std::string& override_json) {
+  Config config;
+  auto config_str = file_util::read_text_file(path_to_config_file);
+  auto json = parse_commented_json(config_str, path_to_config_file.string());
+
+  // First, check if we need to update the JSON from the game versions overrides
+  if (json.contains("version_overrides")) {
+    if (!json.at("version_overrides").contains(config_game_version)) {
+      throw std::runtime_error(fmt::format(
+          "'{}' provided which doesn't correspond with a 'version_overrides", config_game_version));
+    }
+    lg::info("Game Config Overide: '{}'", config_game_version);
+    json.update(json.at("version_overrides").at(config_game_version));
+  }
+
+  // Then, update any config overrides
+  if (override_json != "{}" && !override_json.empty()) {
+    lg::info("Config Overide: '{}'", override_json);
+    auto cfg_override = parse_commented_json(override_json, "");
+    json.update(cfg_override);
+  }
+
+  // debugging, dump the JSON config to a file
+  // fs::path debug_path = path_to_config_file.parent_path() / "config-debug.jsonc";
+  // file_util::write_text_file(debug_path, json.dump(2));
+
+  // Lastly, update the struct via the JSON
+  return make_config_via_json(json);
 }
 
 }  // namespace decompiler

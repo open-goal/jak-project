@@ -1,8 +1,10 @@
 #include "game/graphics/sceGraphicsInterface.h"
-#include "game/graphics/gfx.h"
+
 #include <cstdio>
+
 #include "common/util/Assert.h"
-#include "game/overlord/srpc.h"
+
+#include "game/graphics/gfx.h"
 
 /*!
  * Wait for rendering to complete.
@@ -29,6 +31,5 @@ u32 sceGsSyncPath(u32 mode, u32 timeout) {
  */
 u32 sceGsSyncV(u32 mode) {
   ASSERT(mode == 0);
-  VBlank_Handler();
   return Gfx::vsync();
 }

@@ -1,0 +1,2319 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: task-control.gc
+;; name in dgo: task-control
+;; dgos: ENGINE, GAME
+
+(defenum fail-mission-flags
+  :bitfield #t
+  :type uint8
+  (famflags-0)
+  (famflags-1)
+  (famflags-2)
+  (famflags-3)
+  (famflags-4)
+  (famflags-5)
+  (famflags-6)
+  (famflags-7)
+  )
+
+(defenum fail-mission-message
+  :type uint8
+  (fammsg-0)
+  (fammsg-1)
+  (fammsg-2)
+  (fammsg-3)
+  (fammsg-4)
+  (fammsg-5)
+  )
+
+(declare-type fail-mission process)
+
+;; DECOMP BEGINS
+
+(deftype fail-mission-params (structure)
+  ((message        fail-mission-message  :offset-assert   0)
+   (flags          fail-mission-flags    :offset-assert   1)
+   (retry-continue basic                 :offset-assert   4)
+   (fail-continue  basic                 :offset-assert   8)
+   (reset-delay    uint32                :offset-assert  12)
+   (task           game-task             :offset-assert  16)
+   (fail-message   game-text-id          :offset-assert  20)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+
+(deftype fail-mission-control (basic)
+  ((process          handle   :offset-assert   8)
+   (handle-init-hack pointer  :offset          8)
+   )
+  :method-count-assert 13
+  :size-assert         #x10
+  :flag-assert         #xd00000010
+  (:methods
+    (reset? (_type_) symbol 9)
+    (get-proc (_type_) fail-mission 10)
+    (start! (_type_ fail-mission-params) symbol 11)
+    (reset! (_type_) object 12)
+    )
+  )
+
+
+(define *fail-mission-control* (new 'static 'fail-mission-control :handle-init-hack #f))
+
+(defun game-task-node->string ((arg0 game-task-node))
+  (-> *game-info* sub-task-list arg0 name)
+  )
+
+(defun update-task-masks ((arg0 symbol))
+  (if (= arg0 'none)
+      (return 0)
+      )
+  (cond
+    ((or (= arg0 'debug) (= arg0 'level))
+     )
+    ((logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+     (set! (-> *game-info* features) (game-feature gun gun-yellow gun-red gun-blue gun-dark))
+     )
+    (else
+      (set! (-> *game-info* features) (game-feature))
+      0
+      )
+    )
+  (let ((s5-0 (the-as connection-pers (-> *minimap* engine alive-list-override))))
+    (while s5-0
+      (let ((s4-0 (the-as connection-minimap s5-0)))
+        (if (and (logtest? (-> s4-0 flags) (minimap-flag task-graph))
+                 (not (open? (-> *game-info* sub-task-list (-> s4-0 node))))
+                 )
+            (logior! (-> s4-0 flags) (minimap-flag fade-out))
+            )
+        )
+      (set! s5-0 (-> s5-0 next))
+      )
+    )
+  (let ((borrow-eval (lambda ((arg0 pair))
+                       (let ((a0-1 (car arg0)))
+                         (while (not (null? arg0))
+                           (let* ((v1-0 (car a0-1))
+                                  (s5-0 (/ (the-as int (car (cdr a0-1))) 8))
+                                  (s4-0 (car (cdr (cdr a0-1))))
+                                  (s3-0 (car (cdr (cdr (cdr a0-1)))))
+                                  (s2-0 (-> (the-as symbol v1-0) value))
+                                  (v1-1 (if (type? s2-0 level-load-info)
+                                            (the-as level-load-info s2-0)
+                                            )
+                                        )
+                                  )
+                             (when v1-1
+                               (set! (-> v1-1 borrow-level s5-0) (the-as symbol s4-0))
+                               (set! (-> v1-1 borrow-display? s5-0) (the-as symbol s3-0))
+                               )
+                             )
+                           (set! arg0 (cdr arg0))
+                           (set! a0-1 (car arg0))
+                           )
+                         )
+                       #f
+                       )
+                     )
+        )
+    (borrow-eval (-> *game-info* sub-task-list 1 borrow))
+    (let ((game-nodes (-> *game-info* sub-task-list)))
+      (dotimes (i (-> game-nodes length))
+        (when (nonzero? i)
+          (let ((node (-> game-nodes i)))
+            (case arg0
+              (('debug 'level)
+               )
+              (else
+                (if (logtest? (-> node flags) (game-task-node-flag closed))
+                    (eval-add node)
+                    )
+                )
+              )
+            (let ((node-open? (open? node)))
+              (if (and (logtest? (-> node flags) (game-task-node-flag task-manager))
+                       (and (-> node info) (or node-open? (and (logtest? (-> node flags) (game-task-node-flag closed))
+                                                               (not (task-node-closed? (-> node info final-node)))
+                                                               )
+                                               )
+                            )
+                       )
+                  (script-eval '(task-manager) :key node)
+                  )
+              (when node-open?
+                (if (-> node on-open)
+                    (script-eval (-> node on-open) :key node)
+                    )
+                (when (-> node when-open)
+                  (countdown (node-ev-i (-> node when-open length))
+                    (let ((node-open-ev (-> node when-open node-ev-i)))
+                      (case (-> node-open-ev actor)
+                        (((game-task-actor minimap))
+                         (let ((v1-67
+                                 (add-icon! *minimap* *dproc* (-> node-open-ev icon) (the-as int (-> node-open-ev icon)) (the-as vector #f) i)
+                                 )
+                               )
+                           (if v1-67
+                               (logior! (-> v1-67 flags) (minimap-flag task-graph))
+                               )
+                           )
+                         )
+                        )
+                      )
+                    )
+                  )
+                (borrow-eval (-> node borrow))
+                )
+              )
+            )
+          )
+        )
+      )
+    (logior! (-> *game-info* features) (-> *game-info* debug-features))
+    (borrow-eval (-> *setting-control* user-current borrow))
+    )
+  (add-borrow-levels *load-state*)
+  (dotimes (lev-i (-> *level* length))
+    (let ((lev (-> *level* level lev-i)))
+      (if (= (-> lev status) 'active)
+          (level-method-22 lev arg0)
+          )
+      )
+    )
+  0
+  )
+
+(defmethod level-method-22 level ((obj level) (arg0 symbol))
+  (if (= arg0 'none)
+      (return 0)
+      )
+  (set! (-> obj task-mask)
+        (logand (-> obj info base-task-mask) (task-mask task0 task1 task2 task3 task4 task5 task6 task7 done))
+        )
+  (let ((name (-> obj info taskname))
+        (game-subtasks (-> *game-info* sub-task-list))
+        )
+    (dotimes (i (-> game-subtasks length))
+      (when (nonzero? i)
+        (let ((subtask (-> game-subtasks i)))
+          (when (and (logtest? (-> subtask flags) (game-task-node-flag closed)) (= (-> subtask level) name))
+            (cond
+              ((logtest? (-> subtask flags) (game-task-node-flag abs-task-mask))
+               (set! (-> obj task-mask) (-> subtask task-mask))
+               )
+              ((logtest? (-> subtask flags) (game-task-node-flag set-task-mask))
+               (logior! (-> obj task-mask) (-> subtask task-mask))
+               )
+              ((logtest? (-> subtask flags) (game-task-node-flag clear-task-mask))
+               (logclear! (-> obj task-mask) (-> subtask task-mask))
+               )
+              )
+            )
+          )
+        )
+      )
+    )
+  (case (-> obj name)
+    (('strip)
+     (prototypes-game-visible-set!
+       '("strip-ev-base-ring.mb"
+          "strip-ev-base-top.mb"
+          "strip-ev-base.mb"
+          "strip-ev-panel.mb"
+          "strip-ev-pipe-01.mb"
+          "strip-ev-pipe-02.mb"
+          "strip-ev-pipe-03.mb"
+          "strip-ev-tank.mb"
+          "strip-ev-band.mb"
+          "strip-ev-little-block.mb"
+          )
+       (not (task-node-closed? (game-task-node strip-grenade-explode)))
+       )
+     (prototypes-game-visible-set!
+       '("strip-pipe-01.mb"
+          "strip-pipe-02-nut-drop.mb"
+          "strip-shrub-nut-drop.mb"
+          "strip-shrub-yellow-stripe.mb"
+          "strip-pipe-col-disappear.mb"
+          )
+       (or (and (task-complete? *game-info* (game-task strip-grenade))
+                (task-node-closed? (game-task-node strip-drop-introduction))
+                )
+           (demo?)
+           )
+       )
+     (prototypes-game-visible-set!
+       '("strip-blown-up-vent-base.mb" "strip-blown-up-vent-pieces.mb")
+       (task-complete? *game-info* (game-task strip-grenade))
+       )
+     (prototypes-game-visible-set!
+       '("strip-blocker-crate-01.mb"
+          "strip-blocker-crate-02.mb"
+          "strip-blocker-crate-03.mb"
+          "strip-blocker-crate-04.mb"
+          "strip-blocker-crate-05.mb"
+          "strip-blocker-crate-06.mb"
+          )
+       (not (task-complete? *game-info* (game-task strip-rescue)))
+       )
+     (prototypes-game-visible-set!
+       '("lowres-casboss.mb")
+       (not (task-node-closed? (game-task-node castle-boss-resolution)))
+       )
+     )
+    (('ruins)
+     (prototypes-game-visible-set!
+       '("ruins-board-task2.mb"
+          "ruins-lgcollision-task2.mb"
+          "ruins-plank-task2.mb"
+          "ruins-smlcollision-task2.mb"
+          "ruins-support-task2.mb"
+          )
+       (and (task-complete? *game-info* (game-task ruins-tower))
+            (task-node-closed? (game-task-node ruins-enemy-introduction))
+            )
+       )
+     (prototypes-game-visible-set! '("ruin-tower-junk.mb") (task-complete? *game-info* (game-task ruins-tower)))
+     (prototypes-game-visible-set!
+       '("ruin-balcony-01-tower.mb"
+          "ruin-balcony-02-tower.mb"
+          "ruin-bar-01-tower.mb"
+          "ruin-bar-02-tower.mb"
+          "ruin-bar-03-tower.mb"
+          "ruin-bridge-01-tower.mb"
+          "ruin-lamp-post-01-tower.mb"
+          "ruin-lamp-post-03-tower.mb"
+          "ruin-lamp-post-04-tower.mb"
+          "ruin-lampbase-02-tower.mb"
+          "ruin-lamplite-01-tower.mb"
+          "ruin-pillar-broken-01-tower.mb"
+          "ruin-pillar-broken-03-tower.mb"
+          "ruin-top-tower.mb"
+          "ruin-tower-window-01.mb"
+          "ruin-window-01-tower.mb"
+          "ruins-city-corner-roof-tower.mb"
+          "ruins-city-roof-01-tower.mb"
+          "ruins-cracked-roof-tower.mb"
+          "ruins-pipe-2m-end-tower.mb"
+          "ruins-pipe-elbow-tower.mb"
+          "ruins-pipe-mid-tower.mb"
+          "ruins-pipe-ring-tower.mb"
+          "ruins-support-01-tower.mb"
+          "ruins-support-02-tower.mb"
+          "swingpole-geo.mb"
+          "ruin-top-brick-01.mb"
+          "ruin-brick-side-01.mb"
+          )
+       (not (task-complete? *game-info* (game-task ruins-tower)))
+       )
+     )
+    (('atoll)
+     (prototypes-game-visible-set!
+       '("atoll-tank.mb")
+       (and (not (task-complete? *game-info* (game-task atoll-sig)))
+            (not (task-node-closed? (game-task-node atoll-sig-tank)))
+            )
+       )
+     (prototypes-game-visible-set!
+       '("lowres-casboss.mb")
+       (not (task-node-closed? (game-task-node castle-boss-resolution)))
+       )
+     )
+    (('ctymarkb)
+     (prototypes-game-visible-set!
+       '("city-mark-roof-before-broken.mb")
+       (not (task-node-closed? (game-task-node city-intercept-tanker-roof-explode)))
+       )
+     (prototypes-game-visible-set!
+       '("city-mark-roof-broken.mb")
+       (task-node-closed? (game-task-node city-intercept-tanker-introduction))
+       )
+     )
+    (('ctypal)
+     (prototypes-game-visible-set!
+       '("ctyp-statue-wall-breakable.mb")
+       (not (task-node-closed? (game-task-node canyon-insert-items-shard)))
+       )
+     (prototypes-game-visible-set!
+       '("ctyp-statue-rubble-a.mb" "ctyp-statue-rubble-b.mb" "ctyp-statue-rubble-big-a.mb")
+       (task-node-closed? (game-task-node canyon-insert-items-shard))
+       )
+     )
+    (('sewer 'sewerb 'sewesc 'sewescb)
+     (prototypes-game-visible-set!
+       '("sewer-c-connect-door.mb")
+       (not (and (task-complete? *game-info* (game-task sewer-enemy))
+                 (task-node-closed? (game-task-node sewer-board-introduction))
+                 (not (task-complete? *game-info* (game-task sewer-board)))
+                 )
+            )
+       )
+     (prototypes-game-visible-set!
+       '("sewer-hover-door.mb")
+       (and (task-complete? *game-info* (game-task sewer-enemy))
+            (task-node-closed? (game-task-node sewer-board-introduction))
+            (not (task-complete? *game-info* (game-task sewer-board)))
+            )
+       )
+     (cond
+       ((= arg0 'debug)
+        )
+       ((task-complete? *game-info* (game-task sewer-board))
+        (set! *ocean-height-hack* (ocean-height-hack sewer-lo))
+        (set-height! *ocean-map-sewer* -368050.2)
+        )
+       ((not (task-node-closed? (game-task-node sewer-board-drain)))
+        (set! *ocean-height-hack* (ocean-height-hack zero))
+        (set-height! *ocean-map-sewer* -216498.17)
+        )
+       )
+     )
+    (('ctyasha)
+     (prototypes-game-visible-set!
+       '("cty-tanker-barrel.mb")
+       (task-node-closed? (game-task-node city-intercept-tanker-introduction))
+       )
+     )
+    (('consite)
+     (prototypes-game-visible-set!
+       '("consite-barrel-broken.mb"
+          "consite-cor-sheet-8x16-hi-broken.mb"
+          "consite-scaffold-assmb-24m-mid-broken.mb"
+          "consite-scaffold-beam-4m-broken.mb"
+          "consite-scaffold-beam-8m-broken.mb"
+          "consite-scaffold-i-hook-broken.mb"
+          "consite-scaffold-i-span-broken.mb"
+          "consite-scaffold-t-connector-broken.mb"
+          "consite-scaffold-x-connector-corner-broken.mb"
+          "consite-scaffold-x-connector-corner-out-broken.mb"
+          "consite-plank-double-broken.mb"
+          "consite-plank-single-broken.mb"
+          "consite-rope-14m-broken.mb"
+          "consite-rope-8m-broken.mb"
+          "consite-rope-ring-broken.mb"
+          "consite-scaffold-x-connector-broken.mb"
+          )
+       (task-node-closed? (game-task-node consite-find-baron-resolution))
+       )
+     )
+    (('caspad)
+     (prototypes-game-visible-set!
+       '("cpad-bigtank-side.mb"
+          "cpad-bigtank-top.mb"
+          "cpad-bigtank-top-details.mb"
+          "cpad-crane.mb"
+          "cpad-crane-base.mb"
+          "cpad-elev-scaffolding.mb"
+          "cpad-elev-shaft-ex.mb"
+          "cpad-elev-shaft-ex-detail.mb"
+          "cpad-elev-shaft-roof.mb"
+          "cpad-liltank-side.mb"
+          "cpad-liltank-top.mb"
+          "cpad-pipe-base.mb"
+          "cpad-pipe-flat.mb"
+          "cpad-pipe-lil-elbo.mb"
+          "cpad-pipe-lil-strt.mb"
+          "cpad-pipe-med-elbo.mb"
+          "cpad-pipe-med-strt.mb"
+          "cpad-pipe-tank-45.mb"
+          "cpad-pipe-tank-strt.mb"
+          "cpad-scaffold-structure.mb"
+          "cpad-scaff-x-beam.mb"
+          "cpad-stonework.mb"
+          "cpad-top.mb"
+          "cpad-tower-bottom.mb"
+          "cpad-tower-centrifuse.mb"
+          "cpad-tower-generator.mb"
+          "cpad-tower-generator-panels.mb"
+          "cpad-tower-smokestack.mb"
+          "cpad-tower-supports-lower.mb"
+          "cpad-tower-turbine.mb"
+          "cpad-tower-walkway-lower.mb"
+          "cpad-x-beam.mb"
+          )
+       (not (task-node-closed? (game-task-node castle-boss-resolution)))
+       )
+     )
+    (('stadiumb)
+     (prototypes-game-visible-set!
+       '("stdmb-tunnel-ramp-reverse.mb")
+       (task-node-closed? (game-task-node stadium-burning-bush-race-class3-r-introduction))
+       )
+     (prototypes-game-visible-set!
+       '("stdmb-tunnel-ramp.mb")
+       (not (task-node-closed? (game-task-node stadium-burning-bush-race-class3-r-introduction)))
+       )
+     )
+    (('hiphog)
+     (prototypes-game-visible-set!
+       '("hip-paintings-bar-a.mb" "hip-paintings-wall-reflection-a.mb" "hip-paintings-wall-a.mb")
+       (not (task-node-closed? (game-task-node nest-boss-resolution)))
+       )
+     (prototypes-game-visible-set!
+       '("hip-paintings-bar-b.mb" "hip-paintings-wall-reflection-b.mb" "hip-paintings-wall-b.mb")
+       (task-node-closed? (game-task-node nest-boss-resolution))
+       )
+     )
+    )
+  (logior! (-> obj task-mask) (-> *setting-control* user-current task-mask))
+  0
+  )
+
+(defun play-clean ((arg0 symbol))
+  (set! *display-entity-errors* #f)
+  (set! *display-profile* #f)
+  (set! *display-actor-marks* #f)
+  (set! (-> *level* play?) #t)
+  (time-of-day-setup #t)
+  (set! *time-of-day-fast* #f)
+  (send-event (ppointer->process *time-of-day*) 'change 'ratio #x3f800000)
+  (when arg0
+    (let ((s5-0 (-> *game-info* mode)))
+      (set! (-> *game-info* mode) arg0)
+      (initialize! *game-info* 'game (the-as game-save #f) (the-as string #f))
+      (set! (-> *game-info* mode) s5-0)
+      )
+    )
+  0
+  )
+
+(defun play-task ((arg0 game-task) (arg1 symbol) (arg2 symbol))
+  (play-clean arg1)
+  (let ((gp-1 (-> *game-info* play-list arg0)))
+    (cond
+      ((and (= arg2 'pre-play) (-> gp-1 pre-play-continue))
+       (task-node-open! (-> gp-1 pre-play-node))
+       (-> gp-1 pre-play-continue)
+       )
+      ((and (= arg2 'kiosk) (-> gp-1 kiosk-play-continue))
+       (task-node-open! (-> gp-1 kiosk-play-node))
+       (-> gp-1 kiosk-play-continue)
+       )
+      (else
+        (if (-> gp-1 play-continue)
+            (task-node-open! (-> gp-1 play-node))
+            )
+        (-> gp-1 play-continue)
+        )
+      )
+    )
+  )
+
+(defun restart-mission ()
+  (let ((restart? #t))
+    (let ((mgr-status #f))
+      (let ((v1-1 (the-as connection (-> *task-manager-engine* alive-list next0))))
+        *task-manager-engine*
+        (let ((s4-0 (the-as connection (-> v1-1 next0))))
+          (while (!= v1-1 (-> *task-manager-engine* alive-list-end))
+            (let ((task-mgr (the-as process (-> v1-1 param1))))
+              (if (not mgr-status)
+                  (set! mgr-status #t)
+                  )
+              (if (and (-> task-mgr next-state) (let ((v1-7 (-> task-mgr next-state name)))
+                                                  (or (= v1-7 'complete) (= v1-7 'fail) (= v1-7 'retry))
+                                                  )
+                       )
+                  (set! mgr-status 'busy)
+                  )
+              (if (send-event task-mgr 'retry)
+                  (set! restart? #f)
+                  )
+              )
+            (set! v1-1 s4-0)
+            *task-manager-engine*
+            (set! s4-0 (the-as connection (-> s4-0 next0)))
+            )
+          )
+        )
+      (if (or (and *target* (focus-test? *target* dead) mgr-status) (= mgr-status 'busy))
+          (return (the-as int #f))
+          )
+      )
+    (when restart?
+      (let ((gp-1 0))
+        (let ((cur-lev (level-get-target-inside *level*)))
+          (when (and cur-lev (not (logtest? (-> cur-lev info level-flags) 1)))
+            (let ((game-nodes (-> *game-info* sub-task-list)))
+              (dotimes (i (-> game-nodes length))
+                (when (nonzero? i)
+                  (let ((node (-> game-nodes i)))
+                    (if (and (= (-> node level) (-> cur-lev info taskname))
+                             (!= (-> node level) 'city)
+                             (not (logtest? (game-task-node-flag no-restart) (-> node flags)))
+                             (open? node)
+                             )
+                        (set! gp-1 (the-as int (-> node task)))
+                        )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        (when (nonzero? gp-1)
+          (let ((a1-4 (-> *game-info* play-list gp-1 play-continue)))
+            (if a1-4
+                (set-continue! *game-info* a1-4 #t)
+                )
+            )
+          )
+        )
+      (let ((a1-5 (new 'stack-no-clear 'fail-mission-params)))
+        (set! (-> a1-5 flags) (fail-mission-flags famflags-0 famflags-2))
+        (set! (-> a1-5 message) (fail-mission-message fammsg-0))
+        (set! (-> a1-5 retry-continue) #f)
+        (set! (-> a1-5 fail-continue) #f)
+        (set! (-> a1-5 reset-delay) (the-as uint 1500))
+        (set! (-> a1-5 task) (game-task none))
+        (set! (-> a1-5 fail-message) (game-text-id null))
+        (logior! (-> a1-5 flags) (fail-mission-flags famflags-3 famflags-4))
+        (start! *fail-mission-control* a1-5)
+        )
+      )
+    )
+  0
+  )
+
+(defun task-node-by-name ((arg0 string))
+  (let ((game-nodes (-> *game-info* sub-task-list)))
+    (dotimes (i (-> game-nodes length))
+      (when (nonzero? i)
+        (let ((node (-> game-nodes i)))
+          (if (string= arg0 (-> node name))
+              (return node)
+              )
+          )
+        )
+      )
+    )
+  (the-as game-task-node-info #f)
+  )
+
+(defun task-resolution-close! ((arg0 game-task))
+  (let ((game-nodes (-> *game-info* sub-task-list)))
+    (dotimes (i (-> game-nodes length))
+      (when (nonzero? i)
+        (let ((node (-> game-nodes i)))
+          (when (and (= (-> node task) arg0) (logtest? (-> node flags) (game-task-node-flag close-task)))
+            (close! node 'event)
+            (return #t)
+            )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+(defun task-close! ((arg0 string))
+  (let ((game-nodes (-> *game-info* sub-task-list)))
+    (dotimes (i (-> game-nodes length))
+      (when (nonzero? i)
+        (let ((node (-> game-nodes i)))
+          (when (string= arg0 (-> node name))
+            (let ((gp-2 (not (logtest? (-> node flags) (game-task-node-flag closed)))))
+              (close! node 'event)
+              (return gp-2)
+              )
+            )
+          )
+        )
+      )
+    )
+  (format 0 "ERROR: attempting to close unknown task node ~A.~%" arg0)
+  #f
+  )
+
+(defun task-closed? ((arg0 string))
+  (let ((game-nodes (-> *game-info* sub-task-list)))
+    (dotimes (i (-> game-nodes length))
+      (when (nonzero? i)
+        (let ((node (-> game-nodes i)))
+          (if (string= arg0 (-> node name))
+              (return (logtest? (-> node flags) (game-task-node-flag closed)))
+              )
+          )
+        )
+      )
+    )
+  (format 0 "ERROR: attempting to query closed? of unknown task node ~A.~%" arg0)
+  #f
+  )
+
+(defun open-task-nodes ((arg0 (array game-task-node-info)))
+  (local-vars (a3-4 symbol))
+  (set! (-> arg0 length) 0)
+  (let ((game-nodes (-> *game-info* sub-task-list)))
+    (dotimes (i (-> game-nodes length))
+      (when (nonzero? i)
+        (let ((node (-> game-nodes i)))
+          (when (and (not (logtest? (-> node flags) (game-task-node-flag closed)))
+                     (begin
+                       (dotimes (a3-3 4)
+                         (when (and (nonzero? (-> node parent-node a3-3))
+                                    (not (logtest? (-> game-nodes (-> node parent-node a3-3) flags) (game-task-node-flag closed)))
+                                    )
+                           (set! a3-4 #f)
+                           (goto cfg-14)
+                           )
+                         )
+                       (set! a3-4 #t)
+                       (label cfg-14)
+                       (and a3-4 (< (-> arg0 length) (-> arg0 allocated-length)))
+                       )
+                     )
+            (set! (-> arg0 (-> arg0 length)) node)
+            (+! (-> arg0 length) 1)
+            )
+          )
+        )
+      )
+    )
+  arg0
+  )
+
+(defmethod print game-task-node-info ((obj game-task-node-info))
+  (format
+    #t
+    "#<game-task-node-info ~S ~S @ #x~X>"
+    (-> obj name)
+    (cond
+      ((logtest? (-> obj flags) (game-task-node-flag closed))
+       "closed"
+       )
+      ((open? obj)
+       "open"
+       )
+      (else
+        "inactive"
+        )
+      )
+    obj
+    )
+  obj
+  )
+
+(defmethod close! game-task-node-info ((obj game-task-node-info) (arg0 symbol))
+  (when (not (logtest? (-> obj flags) (game-task-node-flag closed)))
+    (let ((task-node-close-func
+            (lambda ((arg0 game-task-node-info))
+              (logior! (-> arg0 flags) (game-task-node-flag closed))
+              (+! (-> *game-info* task-counter) 1)
+              (when (zero? (-> arg0 close-time))
+                (set! (-> arg0 gem-count) (the-as uint (the int (-> *game-info* gem))))
+                (set! (-> arg0 skill-count) (the-as uint (the int (-> *game-info* skill))))
+                (set! (-> arg0 close-time) (-> *display* game-clock frame-counter))
+                )
+              (if (-> arg0 on-close)
+                  (script-eval (-> arg0 on-close) :key arg0)
+                  )
+              (if (logtest? (-> arg0 flags) (game-task-node-flag close-task))
+                  ((lambda ((arg0 game-task-node-info))
+                     (if *target*
+                         (send-event *target* 'get-pickup 10 (the float (-> arg0 task)))
+                         (give *game-info* 'fuel-cell (the float (-> arg0 task)) (the-as handle #f))
+                         )
+                     )
+                   arg0
+                   )
+                  )
+              )
+            )
+          )
+      (let ((p-node-count 0)
+            (s3-0 (new 'stack-no-clear 'inline-array 'qword 8))
+            )
+        (let ((s1-0 obj))
+          (loop
+            (cond
+              ((= (-> s1-0 parent-node 0) (game-task-node none))
+               (goto cfg-21)
+               )
+              ((= (-> s1-0 parent-node 1) (game-task-node none))
+               (let ((v1-10 (-> *game-info* sub-task-list (-> s1-0 parent-node 0))))
+                 (cond
+                   ((logtest? (-> v1-10 flags) (game-task-node-flag closed))
+                    (goto cfg-21)
+                    )
+                   (else
+                     (set! (-> (&-> s3-0 0 hword p-node-count) 0) (the-as uint (-> s1-0 parent-node 0)))
+                     (+! p-node-count 1)
+                     (when (< 64 p-node-count)
+                       (break!)
+                       0
+                       )
+                     )
+                   )
+                 (set! s1-0 v1-10)
+                 )
+               )
+              (else
+                (dotimes (p-i 4)
+                  (let ((v1-15 (-> s1-0 parent-node p-i)))
+                    (if (nonzero? v1-15)
+                        (close! (-> *game-info* sub-task-list v1-15) 'none)
+                        )
+                    )
+                  )
+                (goto cfg-21)
+                )
+              )
+            )
+          )
+        (label cfg-21)
+        (while (nonzero? p-node-count)
+          (+! p-node-count -1)
+          (task-node-close-func (-> *game-info* sub-task-list (-> (&-> s3-0 0 hword p-node-count) 0)))
+          )
+        )
+      (task-node-close-func obj)
+      )
+    (let ((game-nodes (-> *game-info* sub-task-list)))
+      (dotimes (i (-> game-nodes length))
+        (when (nonzero? i)
+          (let ((node (-> game-nodes i)))
+            (if (and (logtest? (-> node flags) (game-task-node-flag auto-close)) (open? node))
+                (close! node 'none)
+                )
+            )
+          )
+        )
+      )
+    (update-task-masks arg0)
+    )
+  0
+  )
+
+(defun task-node-closed? ((arg0 game-task-node))
+  (let ((node (-> *game-info* sub-task-list arg0)))
+    (logtest? (-> node flags) (game-task-node-flag closed))
+    )
+  )
+
+(defun task-node-close! ((arg0 game-task-node))
+  (close! (-> *game-info* sub-task-list arg0) 'event)
+  0
+  )
+
+(defmethod open! game-task-node-info ((obj game-task-node-info) (arg0 symbol))
+  (local-vars (v1-19 symbol))
+  (when (logtest? (-> obj flags) (game-task-node-flag closed))
+    (logclear! (-> obj flags) (game-task-node-flag closed))
+    (+! (-> *game-info* task-counter) 1)
+    (if (logtest? (-> obj flags) (game-task-node-flag close-task))
+        (logclear! (-> *game-info* task-perm-list data (-> obj task) status) (entity-perm-status complete))
+        )
+    (let ((game-nodes (-> *game-info* sub-task-list)))
+      (dotimes (i (-> game-nodes length))
+        (when (nonzero? i)
+          (let ((node (-> game-nodes i)))
+            (set! v1-19
+                  (and (logtest? (-> node flags) (game-task-node-flag closed))
+                       (begin
+                         (dotimes (ii 4)
+                           (when (and (nonzero? (-> node parent-node ii))
+                                      (not (logtest? (-> game-nodes (-> node parent-node ii) flags) (game-task-node-flag closed)))
+                                      )
+                             (set! v1-19 #t)
+                             (goto cfg-17)
+                             )
+                           )
+                         #f
+                         )
+                       )
+                  )
+            (label cfg-17)
+            (if v1-19
+                (open! node 'none)
+                )
+            )
+          )
+        )
+      )
+    (update-task-masks arg0)
+    )
+  0
+  )
+
+(defun task-node-open? ((arg0 game-task-node))
+  (let ((game-nodes (-> *game-info* sub-task-list)))
+    (open? (-> game-nodes arg0))
+    )
+  )
+
+(defmethod open? game-task-node-info ((obj game-task-node-info))
+  (local-vars (a1-1 symbol))
+  (let ((game-nodes (-> *game-info* sub-task-list))
+        (node-info obj)
+        )
+    (and (not (logtest? (-> node-info flags) (game-task-node-flag closed)))
+         (begin
+           (dotimes (pi 4)
+             (let ((t0-0 (-> node-info parent-node pi)))
+               (when (and (nonzero? t0-0) (not (logtest? (-> game-nodes t0-0 flags) (game-task-node-flag closed))))
+                 (set! a1-1 #f)
+                 (goto cfg-12)
+                 )
+               )
+             )
+           (set! a1-1 #t)
+           (label cfg-12)
+           (and a1-1
+                (or (zero? (-> *setting-control* user-current exclusive-task))
+                    (= (-> *setting-control* user-current exclusive-task) (-> obj task))
+                    (logtest? (-> node-info flags) (game-task-node-flag auto-close))
+                    )
+                (or (not (-> node-info open?)) ((-> node-info open?) node-info))
+                )
+           )
+         )
+    )
+  )
+
+(defun task-node-open! ((arg0 game-task-node))
+  (let ((game-node (-> *game-info* sub-task-list arg0)))
+    (dotimes (p-i 4)
+      (if (nonzero? (-> game-node parent-node p-i))
+          (close! (-> *game-info* sub-task-list (-> game-node parent-node p-i)) 'event)
+          )
+      )
+    (open! game-node 'event)
+    )
+  0
+  )
+
+(defmethod eval-add game-task-node-info ((obj game-task-node-info))
+  (case (-> obj add)
+    (((game-task-node-command none))
+     )
+    (((game-task-node-command add-sidekick))
+     (logior! (-> *game-info* features) (game-feature sidekick))
+     )
+    (((game-task-node-command sub-sidekick))
+     (logclear! (-> *game-info* features) (game-feature sidekick))
+     )
+    (((game-task-node-command add-board))
+     (logior! (-> *game-info* features) (game-feature board))
+     )
+    (((game-task-node-command add-board-training))
+     (set! (-> *game-info* features) (logior (game-feature board-training) (-> *game-info* features)))
+     )
+    (((game-task-node-command sub-board))
+     (logclear! (-> *game-info* features) (game-feature board))
+     )
+    (((game-task-node-command add-gun-red))
+     (logior! (-> *game-info* features) (game-feature gun gun-red))
+     )
+    (((game-task-node-command add-gun-yellow))
+     (logior! (-> *game-info* features) (game-feature gun gun-yellow))
+     )
+    (((game-task-node-command add-gun-blue))
+     (logior! (-> *game-info* features) (game-feature gun gun-blue))
+     )
+    (((game-task-node-command add-gun-dark))
+     (logior! (-> *game-info* features) (game-feature gun gun-dark))
+     )
+    (((game-task-node-command add-gun-up-1))
+     (logior! (-> *game-info* features) (game-feature gun gun-upgrade-speed))
+     )
+    (((game-task-node-command add-gun-up-2))
+     (logior! (-> *game-info* features) (game-feature gun gun-upgrade-ammo))
+     )
+    (((game-task-node-command add-gun-up-3))
+     (set! (-> *game-info* features) (logior (game-feature gun gun-upgrade-damage) (-> *game-info* features)))
+     )
+    (((game-task-node-command add-pass-red))
+     (set! (-> *game-info* features) (logior (game-feature pass-red) (-> *game-info* features)))
+     )
+    (((game-task-node-command add-pass-green))
+     (set! (-> *game-info* features) (logior (game-feature pass-green) (-> *game-info* features)))
+     )
+    (((game-task-node-command add-pass-yellow))
+     (set! (-> *game-info* features) (logior (game-feature pass-yellow) (-> *game-info* features)))
+     )
+    (((game-task-node-command add-pass-blue))
+     (set! (-> *game-info* features) (logior (game-feature pass-blue) (-> *game-info* features)))
+     )
+    (((game-task-node-command add-darkjak))
+     (logior! (-> *game-info* features) (game-feature darkjak))
+     )
+    (((game-task-node-command add-darkjak-0))
+     (set! (-> *game-info* features) (logior (game-feature darkjak-bomb0) (-> *game-info* features)))
+     )
+    (((game-task-node-command add-darkjak-1))
+     (set! (-> *game-info* features) (logior (game-feature darkjak-bomb1) (-> *game-info* features)))
+     )
+    (((game-task-node-command add-darkjak-2))
+     (set! (-> *game-info* features) (logior (game-feature darkjak-invinc) (-> *game-info* features)))
+     )
+    (((game-task-node-command add-darkjak-3))
+     (set! (-> *game-info* features) (logior (game-feature darkjak-giant) (-> *game-info* features)))
+     )
+    )
+  0
+  )
+
+(defun task-node-reset ((arg0 symbol))
+  (let ((game-nodes (-> *game-info* sub-task-list)))
+    (dotimes (i (-> game-nodes length))
+      (when (nonzero? i)
+        (let ((node (-> game-nodes i)))
+          (when (logtest? (-> node flags) (game-task-node-flag closed))
+            (case arg0
+              (('game)
+               (if (nonzero? i)
+                   (logclear! (-> node flags) (game-task-node-flag closed))
+                   )
+               )
+              (('life)
+               (if (and (not (task-complete? *game-info* (-> node task)))
+                        (not (logtest? (-> node flags) (game-task-node-flag save-on-life)))
+                        )
+                   (logclear! (-> node flags) (game-task-node-flag closed))
+                   )
+               )
+              (('try)
+               (if (and (not (task-complete? *game-info* (-> node task)))
+                        (or (not (logtest? (-> node flags) (game-task-node-flag save-on-life save-on-try)))
+                            (logtest? (-> node flags) (game-task-node-flag reset-on-try))
+                            )
+                        )
+                   (logclear! (-> node flags) (game-task-node-flag closed))
+                   )
+               )
+              )
+            (when (logtest? (-> node flags) (game-task-node-flag closed))
+              (dotimes (v1-31 4)
+                (if (nonzero? (-> node parent-node v1-31))
+                    (logior! (-> game-nodes (-> node parent-node v1-31) flags) (game-task-node-flag closed))
+                    )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (+! (-> *game-info* task-counter) 1)
+  0
+  )
+
+(defun-debug task-node-dump ((arg0 symbol))
+  (let ((gp-0 (-> *game-info* sub-task-list)))
+    (dotimes (s5-0 (-> gp-0 length))
+      (when (nonzero? s5-0)
+        (let* ((s0-0 (-> gp-0 s5-0))
+               (s4-0 format)
+               (s3-0 #t)
+               (s2-0 "  ~-40S ~-8S  ~S~%")
+               (s1-0 (game-task-node->string (the-as game-task-node s5-0)))
+               (a3-0 (if (task-node-closed? (the-as game-task-node s5-0))
+                         "closed"
+                         "open"
+                         )
+                     )
+               (t0-0 (and (-> s0-0 info) (handle->process (-> s0-0 info manager))))
+               )
+          (set! t0-0 (cond
+                       (t0-0
+                         (empty)
+                         t0-0
+                         )
+                       (else
+                         ""
+                         )
+                       )
+                )
+          (s4-0 s3-0 s2-0 s1-0 a3-0 t0-0)
+          )
+        )
+      )
+    )
+  #f
+  )
+
+(defmethod print game-task-event ((obj game-task-event))
+  (let* ((t9-0 format)
+         (a0-1 #t)
+         (a1-0 "#<game-task-control ~S :action ~S :scene ~A @ #x~X>")
+         (v1-0 (-> obj actor))
+         (a2-1 (cond
+                 ((= v1-0 (game-task-actor burning-bush-genc))
+                  "burning-bush-genc"
+                  )
+                 ((= v1-0 (game-task-actor minimap))
+                  "minimap"
+                  )
+                 ((= v1-0 (game-task-actor youngsamos-tomb))
+                  "youngsamos-tomb"
+                  )
+                 ((= v1-0 (game-task-actor youngsamos-onintent))
+                  "youngsamos-onintent"
+                  )
+                 ((= v1-0 (game-task-actor baron-consite))
+                  "baron-consite"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-markb))
+                  "burning-bush-markb"
+                  )
+                 ((= v1-0 (game-task-actor keira-garage))
+                  "keira-garage"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-genc-2))
+                  "burning-bush-genc-2"
+                  )
+                 ((= v1-0 (game-task-actor samos-garage))
+                  "samos-garage"
+                  )
+                 ((= v1-0 (game-task-actor kid-hideout))
+                  "kid-hideout"
+                  )
+                 ((= v1-0 (game-task-actor krew-hiphog))
+                  "krew-hiphog"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-port-2))
+                  "burning-bush-port-2"
+                  )
+                 ((= v1-0 (game-task-actor none))
+                  "none"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-port-3))
+                  "burning-bush-port-3"
+                  )
+                 ((= v1-0 (game-task-actor brutter-kiosk))
+                  "brutter-kiosk"
+                  )
+                 ((= v1-0 (game-task-actor tess-alley))
+                  "tess-alley"
+                  )
+                 ((= v1-0 (game-task-actor whack-a-metal-hiphog))
+                  "whack-a-metal-hiphog"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-gena))
+                  "burning-bush-gena"
+                  )
+                 ((= v1-0 (game-task-actor vin-vinroom))
+                  "vin-vinroom"
+                  )
+                 ((= v1-0 (game-task-actor kor-hideout))
+                  "kor-hideout"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-pal-2))
+                  "burning-bush-pal-2"
+                  )
+                 ((= v1-0 (game-task-actor kid-alley))
+                  "kid-alley"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-stadium))
+                  "burning-bush-stadium"
+                  )
+                 ((= v1-0 (game-task-actor ashelin-market))
+                  "ashelin-market"
+                  )
+                 ((= v1-0 (game-task-actor kid-tomb))
+                  "kid-tomb"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-farma))
+                  "burning-bush-farma"
+                  )
+                 ((= v1-0 (game-task-actor baron-tomb))
+                  "baron-tomb"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-slumc))
+                  "burning-bush-slumc"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-slumb-2))
+                  "burning-bush-slumb-2"
+                  )
+                 ((= v1-0 (game-task-actor baron-palace))
+                  "baron-palace"
+                  )
+                 ((= v1-0 (game-task-actor crocadog-alley))
+                  "crocadog-alley"
+                  )
+                 ((= v1-0 (game-task-actor baron-castle))
+                  "baron-castle"
+                  )
+                 ((= v1-0 (game-task-actor crocadog-vinroom))
+                  "crocadog-vinroom"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-gena-2))
+                  "burning-bush-gena-2"
+                  )
+                 ((= v1-0 (game-task-actor daxter-tomb))
+                  "daxter-tomb"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-port))
+                  "burning-bush-port"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-marka))
+                  "burning-bush-marka"
+                  )
+                 ((= v1-0 (game-task-actor crocadog-tomb))
+                  "crocadog-tomb"
+                  )
+                 ((= v1-0 (game-task-actor keira-stadium))
+                  "keira-stadium"
+                  )
+                 ((= v1-0 (game-task-actor sig-hiphog))
+                  "sig-hiphog"
+                  )
+                 ((= v1-0 (game-task-actor youngsamos-hideout))
+                  "youngsamos-hideout"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-genb-2))
+                  "burning-bush-genb-2"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-inda))
+                  "burning-bush-inda"
+                  )
+                 ((= v1-0 (game-task-actor kor-tomb))
+                  "kor-tomb"
+                  )
+                 ((= v1-0 (game-task-actor kor-consite))
+                  "kor-consite"
+                  )
+                 ((= v1-0 (game-task-actor torn-hideout))
+                  "torn-hideout"
+                  )
+                 ((= v1-0 (game-task-actor onin-onintent))
+                  "onin-onintent"
+                  )
+                 ((= v1-0 (game-task-actor kor-alley))
+                  "kor-alley"
+                  )
+                 ((= v1-0 (game-task-actor kid-vinroom))
+                  "kid-vinroom"
+                  )
+                 ((= v1-0 (game-task-actor ashelin-atoll))
+                  "ashelin-atoll"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-sluma))
+                  "burning-bush-sluma"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-slumb))
+                  "burning-bush-slumb"
+                  )
+                 ((= v1-0 (game-task-actor youngsamos-alley))
+                  "youngsamos-alley"
+                  )
+                 ((= v1-0 (game-task-actor youngsamos-forest))
+                  "youngsamos-forest"
+                  )
+                 ((= v1-0 (game-task-actor samos-hideout))
+                  "samos-hideout"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-genb))
+                  "burning-bush-genb"
+                  )
+                 ((= v1-0 (game-task-actor oracle-oracle))
+                  "oracle-oracle"
+                  )
+                 ((= v1-0 (game-task-actor torn-alley))
+                  "torn-alley"
+                  )
+                 ((= v1-0 (game-task-actor kor-onintent))
+                  "kor-onintent"
+                  )
+                 ((= v1-0 (game-task-actor tess-hiphog))
+                  "tess-hiphog"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-markb-2))
+                  "burning-bush-markb-2"
+                  )
+                 ((= v1-0 (game-task-actor ashelin-throne))
+                  "ashelin-throne"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-indb))
+                  "burning-bush-indb"
+                  )
+                 ((= v1-0 (game-task-actor pecker-onintent))
+                  "pecker-onintent"
+                  )
+                 ((= v1-0 (game-task-actor kor-vinroom))
+                  "kor-vinroom"
+                  )
+                 ((= v1-0 (game-task-actor sig-atoll))
+                  "sig-atoll"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-pal))
+                  "burning-bush-pal"
+                  )
+                 ((= v1-0 (game-task-actor burning-bush-farmb))
+                  "burning-bush-farmb"
+                  )
+                 (else
+                   "*unknown*"
+                   )
+                 )
+               )
+         (v1-1 (-> obj action))
+         )
+    (t9-0
+      a0-1
+      a1-0
+      a2-1
+      (cond
+        ((= v1-1 (game-task-action idle))
+         "idle"
+         )
+        ((= v1-1 (game-task-action play))
+         "play"
+         )
+        ((= v1-1 (game-task-action show))
+         "show"
+         )
+        ((= v1-1 (game-task-action talk))
+         "talk"
+         )
+        ((= v1-1 (game-task-action hide))
+         "hide"
+         )
+        ((= v1-1 (game-task-action say))
+         "say"
+         )
+        ((= v1-1 (game-task-action shade))
+         "trade"
+         )
+        ((= v1-1 (game-task-action menu))
+         "menu"
+         )
+        (else
+          "*unknown*"
+          )
+        )
+      (-> obj scene)
+      obj
+      )
+    )
+  obj
+  )
+
+(defmethod new game-task-control ((allocation symbol) (type-to-make type) (arg0 game-task-actor))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 actor) arg0)
+    v0-0
+    )
+  )
+
+(defmethod get-current-task-event game-task-control ((obj game-task-control))
+  (with-pp
+    (let ((gp-0 (new 'static 'game-task-event :scene #f)))
+      (let ((s5-0 #f))
+        (when (!= (-> obj counter) (-> *game-info* task-counter))
+          (set! (-> obj counter) (-> *game-info* task-counter))
+          (set! (-> obj current-node) (game-task-node none))
+          (set! (-> obj current-event) #f)
+          (set! s5-0 #t)
+          (let ((game-nodes (-> *game-info* sub-task-list)))
+            (dotimes (i (-> game-nodes length))
+              (when (nonzero? i)
+                (let ((node (-> game-nodes i)))
+                  (when (and (task-node-open? (the-as game-task-node i))
+                             (-> node when-open)
+                             (begin
+                               (countdown (v1-12 (-> node when-open length))
+                                 (when (= (-> obj actor) (-> node when-open v1-12 actor))
+                                   (set! (-> obj current-event) (-> node when-open v1-12))
+                                   (set! (-> obj current-node) (the-as game-task-node i))
+                                   #t
+                                   (goto cfg-18)
+                                   )
+                                 )
+                               #f
+                               )
+                             )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        (label cfg-18)
+        (cond
+          ((= (-> obj current-node) (game-task-node none))
+           (set! (-> gp-0 actor) (-> obj actor))
+           )
+          (else
+            (set! gp-0 (-> obj current-event))
+            (cond
+              ((and (logtest? (-> gp-0 flags) (game-task-flags gatflag-00))
+                    (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+                      (set! (-> a1-2 from) (process->ppointer pp))
+                      (set! (-> a1-2 num-params) 0)
+                      (set! (-> a1-2 message) 'get-alert-level)
+                      (let ((a0-11 (send-event-function *traffic-manager* a1-2)))
+                        (and a0-11 (nonzero? a0-11))
+                        )
+                      )
+                    )
+               (set! (-> gp-0 action) (game-task-action hide))
+               0
+               )
+              (else
+                (set! (-> gp-0 action) (the-as game-task-action (-> gp-0 tex)))
+                )
+              )
+            )
+          )
+        (if s5-0
+            (logior! (-> gp-0 flags) (game-task-flags gatflag-01))
+            (logclear! (-> gp-0 flags) (game-task-flags gatflag-01))
+            )
+        )
+      gp-0
+      )
+    )
+  )
+
+(deftype fail-mission (process)
+  ((message        fail-mission-message  :offset-assert 128)
+   (flags          fail-mission-flags    :offset-assert 129)
+   (retry-continue basic                 :offset-assert 132)
+   (fail-continue  basic                 :offset-assert 136)
+   (reset-delay    uint32                :offset-assert 140)
+   (grabbed-time   time-frame            :offset-assert 144)
+   (retry          symbol                :offset-assert 152)
+   (task           game-task             :offset-assert 156)
+   (message-id     uint32                :offset-assert 160)
+   (fail-message   uint32                :offset-assert 164)
+   (stinger        uint32                :offset-assert 168)
+   )
+  :heap-base #x30
+  :method-count-assert 17
+  :size-assert         #xac
+  :flag-assert         #x11003000ac
+  (:methods
+    (idle () _type_ :state 14)
+    (resetting () _type_ :state 15)
+    (print-text (_type_) float 16)
+    )
+  )
+
+
+(defmethod run-logic? fail-mission ((obj fail-mission))
+  #t
+  )
+
+(defmethod print-text fail-mission ((obj fail-mission))
+  (when (and (not (logtest? (-> obj flags) (fail-mission-flags famflags-6)))
+             (= (get-status *gui-control* (the-as sound-id (-> obj message-id))) (gui-status active))
+             )
+    (let ((gp-0 (new
+                  'stack
+                  'font-context
+                  *font-default-matrix*
+                  70
+                  20
+                  0.0
+                  (font-color gold-#ba9200)
+                  (font-flags shadow kerning)
+                  )
+                )
+          )
+      (set! (-> gp-0 origin x) 120.0)
+      (let ((v1-7 gp-0))
+        (set! (-> v1-7 scale) 0.7)
+        )
+      (let ((v1-8 gp-0))
+        (set! (-> v1-8 width) (the float 300))
+        )
+      (let ((v1-9 gp-0))
+        (set! (-> v1-9 height) (the float 35))
+        )
+      (set! (-> gp-0 flags) (font-flags shadow kerning middle left large))
+      (let ((s4-0 (if (logtest? (-> obj flags) (fail-mission-flags famflags-2))
+                      (the-as int (-> obj fail-message))
+                      393
+                      )
+                  )
+            )
+        (when (nonzero? s4-0)
+          (let ((s3-0 print-game-text))
+            (format (clear *temp-string*) (lookup-text! *common-text* (the-as game-text-id s4-0) #f) 1)
+            (s3-0 *temp-string* gp-0 #f 44 (bucket-id progress))
+            )
+          )
+        )
+      (when (= (-> obj message) (fail-mission-message fammsg-1))
+        (let ((v1-17 gp-0))
+          (set! (-> v1-17 height) (the float 95))
+          )
+        (let ((s5-1 print-game-text))
+          (format (clear *temp-string*) (lookup-text! *common-text* (game-text-id text-x18a) #f) 1)
+          (s5-1 *temp-string* gp-0 #f 44 (bucket-id progress))
+          )
+        (let ((v1-19 gp-0))
+          (set! (-> v1-19 height) (the float 155))
+          )
+        (let ((s5-2 print-game-text))
+          (format (clear *temp-string*) (lookup-text! *common-text* (game-text-id text-x180) #f) 1)
+          (s5-2 *temp-string* gp-0 #f 44 (bucket-id progress))
+          )
+        )
+      )
+    )
+  )
+
+(defstate idle (fail-mission)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('reset)
+       (cond
+         ((logtest? (-> self flags) (fail-mission-flags famflags-1))
+          (persist-with-delay *setting-control* 'fail (seconds 10) 'bg-a 'abs 1.0 0)
+          (go-virtual resetting)
+          )
+         (else
+           (logior! (-> self flags) (fail-mission-flags famflags-0))
+           (set! (-> self reset-delay) (the-as uint 0))
+           #t
+           )
+         )
+       )
+      (('query)
+       (case (-> event param 0)
+         (('reset)
+          (logtest? (-> self flags) (fail-mission-flags famflags-1))
+          )
+         )
+       )
+      )
+    )
+  :exit (behavior ()
+    (update-rates! (-> *display* bg-clock) 1.0)
+    (update-rates! (-> *display* entity-clock) 1.0)
+    (update-rates! (-> *display* target-clock) 1.0)
+    (update-rates! (-> *display* camera-clock) 1.0)
+    (none)
+    )
+  :code (behavior ()
+    (when (and *target* (focus-test? *target* dead))
+      (if (and (logtest? (-> self flags) (fail-mission-flags famflags-3)) (zero? (-> self message)))
+          (deactivate self)
+          )
+      (if (= (-> self message) (fail-mission-message fammsg-0))
+          (logior! (-> self flags) (fail-mission-flags famflags-3))
+          )
+      )
+    (case (-> self message)
+      (((fail-mission-message fammsg-0))
+       (while (begin
+                (if (and *target* (focus-test? *target* grabbed))
+                    (process-release? *target*)
+                    )
+                (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+                  (set! (-> a1-0 from) (process->ppointer self))
+                  (set! (-> a1-0 num-params) 2)
+                  (set! (-> a1-0 message) 'attack-invinc)
+                  (set! (-> a1-0 param 0) (the-as uint #f))
+                  (let ((v1-24 (new 'static 'attack-info :mask (attack-info-mask mode id))))
+                    (let* ((a0-10 *game-info*)
+                           (a2-1 (+ (-> a0-10 attack-id) 1))
+                           )
+                      (set! (-> a0-10 attack-id) a2-1)
+                      (set! (-> v1-24 id) a2-1)
+                      )
+                    (set! (-> v1-24 mode) 'bot)
+                    (set! (-> a1-0 param 1) (the-as uint v1-24))
+                    )
+                  (not (or (send-event-function *target* a1-0) (and *target* (focus-test? *target* dead))))
+                  )
+                )
+         (suspend)
+         )
+       )
+      (((fail-mission-message fammsg-1))
+       (while (not (process-grab? *target* 'dead))
+         (suspend)
+         )
+       )
+      )
+    (logior! (-> self flags) (fail-mission-flags famflags-1))
+    (set! (-> self grabbed-time) (-> self clock frame-counter))
+    (when (not (logtest? (-> self flags) (fail-mission-flags famflags-3)))
+      (when (not (logtest? (-> self flags) (fail-mission-flags famflags-5)))
+        (while (< (- (-> self clock frame-counter) (-> self grabbed-time)) (seconds 1.5))
+          (let ((f30-0 (lerp-scale 0.0 1.0 (the float (- (-> self clock frame-counter) (-> self grabbed-time))) 0.0 450.0)))
+            (set-filter-color!
+              (lerp-scale 1.0 1.25 f30-0 0.0 1.0)
+              (lerp-scale 1.0 0.875 f30-0 0.0 1.0)
+              (lerp-scale 1.0 0.25 f30-0 0.0 1.0)
+              )
+            (update-rates! (-> *display* bg-clock) (- 1.0 f30-0))
+            (update-rates! (-> *display* entity-clock) (- 1.0 f30-0))
+            (update-rates! (-> *display* target-clock) (- 1.0 f30-0))
+            (update-rates! (-> *display* camera-clock) (- 1.0 f30-0))
+            )
+          (print-text self)
+          (suspend)
+          )
+        (set! (-> self clock) (-> *display* real-clock))
+        (logclear! (-> self mask) (process-mask freeze))
+        (set-master-mode 'freeze)
+        )
+      )
+    (case (-> self message)
+      (((fail-mission-message fammsg-0))
+       (until #f
+         (when (or (and (logtest? (-> self flags) (fail-mission-flags famflags-0))
+                        (>= (- (-> self clock frame-counter) (-> self grabbed-time)) (the-as time-frame (-> self reset-delay)))
+                        )
+                   (or (logtest? (pad-buttons confirm) (-> *cpad-list* cpads 0 button0-rel 0))
+                       (logtest? (-> self flags) (fail-mission-flags famflags-3))
+                       )
+                   )
+           (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
+           (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
+           (persist-with-delay *setting-control* 'fail (seconds 10) 'bg-a 'abs 1.0 0)
+           (go-virtual resetting)
+           )
+         (print-text self)
+         (suspend)
+         )
+       #f
+       )
+      (((fail-mission-message fammsg-1))
+       (until #f
+         (when (or (logtest? (pad-buttons confirm) (-> *cpad-list* cpads 0 button0-rel 0))
+                   (logtest? (-> self flags) (fail-mission-flags famflags-3))
+                   )
+           (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
+           (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
+           (set! (-> self retry) #t)
+           (while (not (process-release? *target*))
+             (suspend)
+             )
+           (suspend)
+           (persist-with-delay *setting-control* 'fail (seconds 10) 'bg-a 'abs 1.0 0)
+           (go-virtual resetting)
+           )
+         (when (cpad-pressed? 0 triangle)
+           (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons triangle))
+           (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle))
+           (set! (-> self retry) #f)
+           (while (not (process-release? *target*))
+             (suspend)
+             )
+           (suspend)
+           (go-virtual resetting)
+           )
+         (print-text self)
+         (suspend)
+         )
+       #f
+       )
+      )
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch process vs none.
+(defmethod deactivate fail-mission ((obj fail-mission))
+  (set-filter-color! 1.0 1.0 1.0)
+  (sound-group-continue (sound-group sfx music dialog sog3 ambient dialog2 sog6 sog7))
+  (update-rates! (-> *display* bg-clock) 1.0)
+  (update-rates! (-> *display* entity-clock) 1.0)
+  (update-rates! (-> *display* target-clock) 1.0)
+  (update-rates! (-> *display* camera-clock) 1.0)
+  ((the-as (function process process) (find-parent-method fail-mission 10)) obj)
+  (none)
+  )
+
+(defstate resetting (fail-mission)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('reset)
+                      #t
+                      )
+                     (('query)
+                      (case (-> event param 0)
+                        (('reset)
+                         #t
+                         )
+                        )
+                      )
+                     )
+            )
+    )
+  :enter (behavior ()
+    '()
+    (none)
+    )
+  :exit (behavior ()
+    (if (= *master-mode* 'freeze)
+        (set-master-mode 'game)
+        )
+    (process-release? *target*)
+    (none)
+    )
+  :code (behavior ()
+    (local-vars (a1-10 basic))
+    (let ((gp-0 (-> self clock frame-counter)))
+      (until (>= (- (-> self clock frame-counter) gp-0) (seconds 1))
+        (let ((f30-0 (lerp-scale 1.0 0.0 (the float (- (-> self clock frame-counter) gp-0)) 0.0 270.0)))
+          (when *sound-player-enable*
+            (let ((v1-6 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+              (set! (-> v1-6 command) (sound-command set-param))
+              (set! (-> v1-6 id) (the-as sound-id (-> self stinger)))
+              (set! (-> v1-6 params volume) (the int (* 1024.0 f30-0)))
+              (set! (-> v1-6 params mask) (the-as uint 1))
+              (-> v1-6 id)
+              )
+            )
+          )
+        (let ((f30-1 (lerp-scale 1.0 0.0 (the float (- (-> self clock frame-counter) gp-0)) 0.0 300.0)))
+          (set-filter-color!
+            (lerp-scale 1.0 1.25 f30-1 0.0 1.0)
+            (lerp-scale 1.0 0.875 f30-1 0.0 1.0)
+            (lerp-scale 1.0 0.25 f30-1 0.0 1.0)
+            )
+          )
+        (suspend)
+        )
+      )
+    (case (-> self message)
+      (((fail-mission-message fammsg-0))
+       (let ((a1-6 (-> self fail-continue)))
+         (if a1-6
+             (set-continue! *game-info* a1-6 #t)
+             )
+         )
+       (task-node-reset 'life)
+       (update-task-masks 'life)
+       (send-event *target* 'end-mode)
+       )
+      (((fail-mission-message fammsg-1))
+       (cond
+         ((-> self retry)
+          (let ((a1-8 (-> self retry-continue)))
+            (if a1-8
+                (set-continue! *game-info* a1-8 #t)
+                )
+            )
+          (initialize! *game-info* 'try (the-as game-save #f) (the-as string #f))
+          )
+         ((begin (set! a1-10 (-> self fail-continue)) a1-10)
+          (set-continue! *game-info* a1-10 #t)
+          (initialize! *game-info* 'life (the-as game-save #f) (the-as string #f))
+          )
+         (else
+           (task-node-reset 'life)
+           (update-task-masks 'life)
+           (if (and *target* (focus-test? *target* dead grabbed))
+               (send-event *target* 'end-mode)
+               )
+           )
+         )
+       )
+      )
+    (persist-with-delay *setting-control* 'allow-continue (seconds 3) 'allow-continue #f 0.0 0)
+    (persist-with-delay *setting-control* 'speech-control (seconds 3) 'speech-control #f 0.0 0)
+    (persist-with-delay *setting-control* 'music-volume (seconds 3) 'music-volume 'abs 0.0 0)
+    (persist-with-delay *setting-control* 'sfx-volume (seconds 3) 'music-volume 'abs 0.0 0)
+    (none)
+    )
+  )
+
+(defbehavior fail-mission-init-by-other fail-mission ((arg0 fail-mission-params))
+  (set! (-> self message) (-> arg0 message))
+  (set! (-> self flags) (-> arg0 flags))
+  (set! (-> self retry-continue) (-> arg0 retry-continue))
+  (set! (-> self fail-continue) (-> arg0 fail-continue))
+  (set! (-> self reset-delay) (-> arg0 reset-delay))
+  (set! (-> self task) (-> arg0 task))
+  (set! (-> self fail-message) (the-as uint (-> arg0 fail-message)))
+  (set-setting! 'allow-continue #f 0 0)
+  (set-setting! 'minimap 'clear 0 128)
+  (set-action!
+    *gui-control*
+    (gui-action stop)
+    (the-as sound-id 1)
+    (gui-channel guard)
+    (gui-action none)
+    (the-as string #f)
+    (the-as (function gui-connection symbol) #f)
+    (the-as process #f)
+    )
+  (set-action!
+    *gui-control*
+    (gui-action stop)
+    (the-as sound-id 1)
+    (gui-channel citizen)
+    (gui-action none)
+    (the-as string #f)
+    (the-as (function gui-connection symbol) #f)
+    (the-as process #f)
+    )
+  (when (not (logtest? (-> arg0 flags) (fail-mission-flags famflags-4)))
+    (if (not (and *target* (focus-test? *target* dead) (zero? (-> self message))))
+        (set! (-> self stinger)
+              (the-as uint (add-process *gui-control* *target* (gui-channel background) (gui-action play) "lose1" -99.0 0))
+              )
+        )
+    )
+  (set-setting! 'music-volume 'abs 0 0)
+  (set-setting! 'sfx-volume 'abs 0 0)
+  (set-setting! 'speech-control #f 0 0)
+  (set! (-> self clock) (-> *display* base-clock))
+  (apply-settings *setting-control*)
+  (if (or (not (logtest? (-> self flags) (fail-mission-flags famflags-2)))
+          (nonzero? (-> self fail-message))
+          (= (-> self message) (fail-mission-message fammsg-1))
+          )
+      (set! (-> self message-id)
+            (the-as uint (add-process *gui-control* self (gui-channel supertitle) (gui-action play) "fail" 81920.0 0))
+            )
+      )
+  (go-virtual idle)
+  )
+
+(defmethod start! fail-mission-control ((obj fail-mission-control) (arg0 fail-mission-params))
+  (when (not (handle->process (-> obj process)))
+    (let ((v1-4 (process-spawn fail-mission arg0 :to *entity-pool*)))
+      (when v1-4
+        (set! (-> obj process) (process->handle (-> v1-4 0)))
+        #t
+        )
+      )
+    )
+  )
+
+(defmethod reset! fail-mission-control ((obj fail-mission-control))
+  (send-event (handle->process (-> obj process)) 'reset)
+  )
+
+;; WARN: Return type mismatch object vs symbol.
+(defmethod reset? fail-mission-control ((obj fail-mission-control))
+  (the-as symbol (send-event (handle->process (-> obj process)) 'query 'reset))
+  )
+
+;; WARN: Return type mismatch process vs fail-mission.
+(defmethod get-proc fail-mission-control ((obj fail-mission-control))
+  (the-as fail-mission (handle->process (-> obj process)))
+  )
+
+(defmethod copy-hooks! game-task-node-info ((obj game-task-node-info) (arg0 game-task-node-info))
+  (when (and (-> obj info) (-> arg0 info))
+    (countdown (v1-3 7)
+      (set! (-> obj info hooks v1-3) (-> arg0 info hooks v1-3))
+      )
+    )
+  obj
+  )
+
+;; WARN: Return type mismatch process vs task-manager.
+(defmethod relocate task-manager ((obj task-manager) (arg0 int))
+  (if (nonzero? (-> obj link))
+      (+! (-> obj link) arg0)
+      )
+  (the-as task-manager ((method-of-type process relocate) obj arg0))
+  )
+
+(defbehavior task-manager-init-by-other task-manager ((arg0 game-task-node-info) (arg1 symbol))
+  (stack-size-set! (-> self main-thread) 4096) ;; increased from 1024
+  (add-connection *task-manager-engine* self nothing self arg0 #f)
+  (set! (-> self node-info) arg0)
+  (set! (-> self lev-name) arg1)
+  (add-setting! 'task arg0 0 0)
+  (add-setting! 'task-manager (process->ppointer self) 0 0)
+  (set! (-> self intro-time) (-> self clock frame-counter))
+  (set! (-> self fail-on-death?) (not (logtest? (-> arg0 flags) (game-task-node-flag no-fail-on-death))))
+  (when arg1
+    (let* ((v1-15 (level-get *level* arg1))
+           (a1-6 (if (and (nonzero? (-> v1-15 entity)) (> (-> v1-15 entity length) 0))
+                     (-> v1-15 entity data 0 entity)
+                     )
+                 )
+           )
+      (if a1-6
+          (process-entity-set! self a1-6)
+          )
+      )
+    )
+  (initialize! self)
+  (go-virtual wait)
+  )
+
+(defmethod kill-all-children task-manager ((obj task-manager))
+  (while (-> obj child)
+    (deactivate (ppointer->process (-> obj child)))
+    )
+  0
+  )
+
+(defmethod check-time task-manager ((obj task-manager))
+  (with-pp
+    (when (nonzero? (-> obj start-time))
+      (let ((v1-3 (handle->process (-> obj hud-timer))))
+        (if (and *target* (not v1-3))
+            (set! (-> obj hud-timer) (ppointer->handle (process-spawn hud-timer :init hud-init-by-other :to *target*)))
+            )
+        )
+      (let ((v1-15 (- (-> obj time-limit) (- (-> pp clock frame-counter) (-> obj start-time)))))
+        (let ((a0-15 *game-info*))
+          (set! (-> a0-15 timer) v1-15)
+          (set! (-> a0-15 timer-flash) (< v1-15 (seconds 10)))
+          )
+        (when (< v1-15 0)
+          (if *debug-segment*
+              (format #t "task failed:  ran out of time~%")
+              )
+          (send-event (handle->process (-> obj hud-timer)) 'hide-and-die)
+          (go (method-of-object obj fail))
+          )
+        )
+      )
+    0
+    )
+  )
+
+(defmethod initialize! task-manager ((obj task-manager))
+  (set! (-> obj info) (-> obj node-info info))
+  (countdown (v1-2 32)
+    (set! (-> obj slave v1-2) (the-as handle #f))
+    )
+  (countdown (v1-5 4)
+    (set! (-> obj hud v1-5) (the-as handle #f))
+    )
+  (set! (-> obj arrow) (the-as handle #f))
+  (countdown (v1-8 4)
+    (set! (-> obj minimap v1-8) #f)
+    )
+  (countdown (v1-11 4)
+    (set! (-> obj actor-group v1-11) (the-as (pointer entity-actor) #f))
+    )
+  (set! (-> obj fail-now) #f)
+  (set! (-> obj retry-now) #f)
+  (set! (-> obj allow-fail) #t)
+  0
+  )
+
+(defmethod deactivate task-manager ((obj task-manager))
+  (with-pp
+    (let ((s5-0 pp))
+      (set! pp obj)
+      (let ((t9-0 (-> obj info cleanup-hook)))
+        (if t9-0
+            (t9-0)
+            )
+        )
+      (set! pp s5-0)
+      )
+    (countdown (s5-1 4)
+      (send-event (handle->process (-> obj hud s5-1)) 'hide-and-die)
+      )
+    ((method-of-type process deactivate) obj)
+    (none)
+    )
+  )
+
+(defbehavior task-manager-event-handler task-manager ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-0 object))
+  (case arg2
+    (('fail)
+     (if (not (and (-> self next-state) (let ((v1-4 (-> self next-state name)))
+                                          (or (= v1-4 'complete) (= v1-4 'fail) (= v1-4 'retry))
+                                          )
+                   )
+              )
+         (go-virtual fail)
+         )
+     )
+    (('retry)
+     (if (and (not (and (-> self next-state) (let ((v1-10 (-> self next-state name)))
+                                               (or (= v1-10 'complete) (= v1-10 'fail) (= v1-10 'retry))
+                                               )
+                        )
+                   )
+              (-> self info retry-continue)
+              )
+         (go-virtual retry)
+         )
+     )
+    (('complete)
+     (if (or (not (and (-> self next-state) (let ((v1-18 (-> self next-state name)))
+                                              (or (= v1-18 'complete) (= v1-18 'fail) (= v1-18 'retry))
+                                              )
+                       )
+                  )
+             (not (-> self allow-fail))
+             )
+         (go-virtual complete)
+         )
+     )
+    (('wait)
+     (go-virtual wait)
+     )
+    (('active)
+     (go-virtual active)
+     )
+    (('fail-on-death)
+     (set! v0-0 (-> arg3 param 0))
+     (set! (-> self fail-on-death?) (the-as symbol v0-0))
+     v0-0
+     )
+    (('target)
+     (case (-> arg3 param 0)
+       (('die)
+        (when (-> self fail-on-death?)
+          (if (and (-> self next-state) (= (-> self next-state name) 'active))
+              (go-virtual fail)
+              )
+          (when (and (-> self next-state) (let ((v1-40 (-> self next-state name)))
+                                            (or (= v1-40 'active) (= v1-40 'fail) (= v1-40 'retry))
+                                            )
+                     )
+            (if (or (-> self info retry-continue) (-> self info fail-continue))
+                'wait
+                #f
+                )
+            )
+          )
+        )
+       )
+     )
+    (('fail-continue)
+     (if (and (-> self info fail-continue)
+              (= (-> *setting-control* user-current exclusive-task) (-> self node-info task))
+              )
+         (-> self info fail-continue)
+         )
+     )
+    (('fail-immediately)
+     (when (or (not (and (-> self next-state) (let ((v1-54 (-> self next-state name)))
+                                                (or (= v1-54 'complete) (= v1-54 'fail) (= v1-54 'retry))
+                                                )
+                         )
+                    )
+               (not (-> self allow-fail))
+               )
+       (set! (-> self allow-fail) #t)
+       (set! (-> self fail-now) #t)
+       (go-virtual fail)
+       )
+     )
+    (('allow-fail)
+     (set! v0-0 (-> arg3 param 0))
+     (set! (-> self allow-fail) (the-as symbol v0-0))
+     v0-0
+     )
+    (('retry-immediately)
+     (when (and (or (not (and (-> self next-state) (let ((v1-64 (-> self next-state name)))
+                                                     (or (= v1-64 'complete) (= v1-64 'fail) (= v1-64 'retry))
+                                                     )
+                              )
+                         )
+                    (not (-> self allow-fail))
+                    )
+                (-> self info retry-continue)
+                )
+       (set! (-> self retry-now) #t)
+       (go-virtual retry)
+       )
+     )
+    (else
+      (let ((t9-8 (-> self info event-hook)))
+        (if t9-8
+            (t9-8 arg0 arg1 arg2 arg3)
+            )
+        )
+      )
+    )
+  )
+
+;; WARN: Return type mismatch object vs symbol.
+(defmethod task-manager-method-22 task-manager ((obj task-manager))
+  (with-pp
+    (the-as
+      symbol
+      (and (or (not (logtest? (-> obj node-info flags) (game-task-node-flag city-wait)))
+               (let ((a0-2 (level-get-target-inside *level*)))
+                 (cond
+                   ((not (and a0-2 (logtest? (-> a0-2 info level-flags) 1)))
+                    (set! (-> obj intro-time) (-> pp clock frame-counter))
+                    #f
+                    )
+                   (else
+                     #t
+                     )
+                   )
+                 )
+               )
+           (or (zero? (-> obj info intro-delay))
+               (>= (- (-> pp clock frame-counter) (-> obj intro-time)) (the-as time-frame (-> obj info intro-delay)))
+               )
+           (and *target* (not (logtest? (focus-status dead teleporting) (-> *target* focus-status))))
+           )
+      )
+    )
+  )
+
+(defstate wait (task-manager)
+  :virtual #t
+  :event task-manager-event-handler
+  :trans (behavior ()
+    (if (or (and (nonzero? (-> self info final-node)) (task-node-closed? (-> self info final-node)))
+            (and (not (logtest? (-> self node-info flags) (game-task-node-flag closed)))
+                 (not (open? (-> self node-info)))
+                 )
+            )
+        (deactivate self)
+        )
+    (none)
+    )
+  :code (behavior ()
+    (while (or (not *target*) (not *spawn-actors*))
+      (suspend)
+      )
+    (when (or (logtest? (-> self node-info flags) (game-task-node-flag intro-wait city-wait))
+              (nonzero? (-> self info intro-delay))
+              )
+      (while (not (task-manager-method-22 self))
+        (suspend)
+        )
+      (let ((a0-3 (-> self info intro-scene)))
+        (if a0-3
+            (talker-spawn-func (string->talker-speech a0-3) *entity-pool* (target-pos 0) (the-as region #f))
+            )
+        )
+      (if (logtest? (-> self node-info flags) (game-task-node-flag intro-wait))
+          (close! (-> self node-info) 'event)
+          )
+      )
+    (let ((t9-5 (-> self info init-hook)))
+      (if t9-5
+          (t9-5)
+          )
+      )
+    (go-virtual active)
+    (none)
+    )
+  )
+
+(defstate active (task-manager)
+  :virtual #t
+  :event task-manager-event-handler
+  :trans (behavior ()
+    ((-> (method-of-object self wait) trans))
+    (let ((t9-1 (-> self info update-hook)))
+      (if t9-1
+          (t9-1)
+          )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (let ((t9-0 (-> self info code-hook)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (until #f
+      (if *debug-segment*
+          (format *stdcon* "task-manager: alive task ~A~%" (game-task->string (-> self node-info task)))
+          )
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate complete (task-manager)
+  :virtual #t
+  :event task-manager-event-handler
+  :code (behavior ()
+    (if (handle->process (-> *fail-mission-control* process))
+        (sleep-code)
+        )
+    (send-event (handle->process (-> self arrow)) 'die)
+    (countdown (gp-0 4)
+      (send-event (handle->process (-> self hud gp-0)) 'hide-and-die)
+      )
+    (let ((t9-3 (-> self info complete-hook)))
+      (if t9-3
+          (t9-3)
+          )
+      )
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (when (logtest? (-> self info mask) (task-manager-mask resolution-scene))
+      (let ((gp-2 (ppointer->handle (process-spawn
+                                      scene-player
+                                      :init scene-player-init
+                                      (-> self info resolution-scene)
+                                      #t
+                                      (-> self info resolution-scene-continue)
+                                      )
+                                    )
+                  )
+            )
+        (while (handle->process (the-as handle gp-2))
+          (suspend)
+          )
+        )
+      )
+    (let ((gp-3 (-> self info on-complete)))
+      (if gp-3
+          (script-eval gp-3)
+          )
+      )
+    (task-node-close! (-> self info final-node))
+    (while (-> self child)
+      (suspend)
+      )
+    (none)
+    )
+  )
+
+(defstate fail (task-manager)
+  :virtual #t
+  :event task-manager-event-handler
+  :exit (behavior ()
+    (disable *screen-filter*)
+    (none)
+    )
+  :code (behavior ()
+    (while (not (-> self allow-fail))
+      (suspend)
+      )
+    (send-event (handle->process (-> self arrow)) 'die)
+    (countdown (gp-0 4)
+      (send-event (handle->process (-> self hud gp-0)) 'hide-and-die)
+      )
+    (let ((t9-2 (-> self info fail-hook)))
+      (if t9-2
+          (t9-2)
+          )
+      )
+    (let ((gp-1 (-> self info on-fail)))
+      (if gp-1
+          (script-eval gp-1)
+          )
+      )
+    (let ((a0-10 (-> self info retry-continue))
+          (v1-28 (-> self info fail-continue))
+          )
+      (when (or a0-10 v1-28)
+        (let ((a1-5 (new 'stack-no-clear 'fail-mission-params)))
+          (cond
+            ((and (logtest? (-> self node-info flags) (game-task-node-flag task-retry))
+                  (logtest? (-> self info mask) (task-manager-mask retry-message))
+                  )
+             (set! (-> a1-5 flags) (fail-mission-flags famflags-0 famflags-2))
+             (set! (-> a1-5 message) (fail-mission-message fammsg-1))
+             (set! (-> a1-5 retry-continue) a0-10)
+             (set! (-> a1-5 fail-continue) v1-28)
+             (set! (-> a1-5 reset-delay) (the-as uint 1500))
+             (set! (-> a1-5 task) (-> self node-info task))
+             (set! (-> a1-5 fail-message) (-> self info retry-message))
+             )
+            ((logtest? (-> self node-info flags) (game-task-node-flag task-retry))
+             (set! (-> a1-5 flags) (fail-mission-flags famflags-0))
+             (set! (-> a1-5 message) (fail-mission-message fammsg-1))
+             (set! (-> a1-5 retry-continue) a0-10)
+             (set! (-> a1-5 fail-continue) v1-28)
+             (set! (-> a1-5 reset-delay) (the-as uint 1500))
+             (set! (-> a1-5 task) (-> self node-info task))
+             (set! (-> a1-5 fail-message) (game-text-id null))
+             )
+            ((logtest? (-> self info mask) (task-manager-mask fail-message))
+             (set! (-> a1-5 flags) (fail-mission-flags famflags-0 famflags-2))
+             (set! (-> a1-5 message) (fail-mission-message fammsg-0))
+             (set! (-> a1-5 retry-continue) a0-10)
+             (set! (-> a1-5 fail-continue) v1-28)
+             (set! (-> a1-5 reset-delay) (the-as uint 1500))
+             (set! (-> a1-5 task) (-> self node-info task))
+             (set! (-> a1-5 fail-message) (-> self info fail-message))
+             )
+            (else
+              (set! (-> a1-5 flags) (fail-mission-flags famflags-0))
+              (set! (-> a1-5 message) (fail-mission-message fammsg-0))
+              (set! (-> a1-5 retry-continue) a0-10)
+              (set! (-> a1-5 fail-continue) v1-28)
+              (set! (-> a1-5 reset-delay) (the-as uint 1500))
+              (set! (-> a1-5 task) (-> self node-info task))
+              (set! (-> a1-5 fail-message) (game-text-id null))
+              )
+            )
+          (if (logtest? (game-task-node-flag no-audio) (-> self node-info flags))
+              (logior! (-> a1-5 flags) (fail-mission-flags famflags-4))
+              )
+          (if (logtest? (game-task-node-flag no-slow-down) (-> self node-info flags))
+              (logior! (-> a1-5 flags) (fail-mission-flags famflags-5))
+              )
+          (when (-> self fail-now)
+            (set! (-> a1-5 flags) (fail-mission-flags famflags-0 famflags-2))
+            (set! (-> a1-5 message) (fail-mission-message fammsg-0))
+            (set! (-> a1-5 retry-continue) v1-28)
+            (set! (-> a1-5 fail-continue) v1-28)
+            (set! (-> a1-5 reset-delay) (the-as uint 1500))
+            (set! (-> a1-5 task) (-> self node-info task))
+            (set! (-> a1-5 fail-message) (game-text-id null))
+            (set! (-> a1-5 reset-delay) (the-as uint 0))
+            (logior! (-> a1-5 flags) (fail-mission-flags famflags-0 famflags-3 famflags-4 famflags-5 famflags-6))
+            )
+          (start! *fail-mission-control* a1-5)
+          )
+        (while (handle->process (-> *fail-mission-control* process))
+          (suspend)
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+(defstate retry (task-manager)
+  :virtual #t
+  :event task-manager-event-handler
+  :exit (-> (method-of-type task-manager fail) exit)
+  :code (behavior ()
+    (send-event (handle->process (-> self arrow)) 'die)
+    (countdown (gp-0 4)
+      (send-event (handle->process (-> self hud gp-0)) 'hide-and-die)
+      )
+    (let ((t9-2 (-> self info fail-hook)))
+      (if t9-2
+          (t9-2)
+          )
+      )
+    (let ((v1-20 (-> self info retry-continue)))
+      (cond
+        (v1-20
+          (let ((a1-2 (new 'stack-no-clear 'fail-mission-params)))
+            (set! (-> a1-2 flags) (fail-mission-flags famflags-0 famflags-2))
+            (set! (-> a1-2 message) (fail-mission-message fammsg-1))
+            (set! (-> a1-2 retry-continue) v1-20)
+            (set! (-> a1-2 fail-continue) v1-20)
+            (set! (-> a1-2 reset-delay) (the-as uint 1500))
+            (set! (-> a1-2 task) (-> self node-info task))
+            (set! (-> a1-2 fail-message) (game-text-id null))
+            (logior! (-> a1-2 flags) (fail-mission-flags famflags-3 famflags-4))
+            (when (-> self retry-now)
+              (set! (-> a1-2 reset-delay) (the-as uint 0))
+              (logior! (-> a1-2 flags) (fail-mission-flags famflags-0 famflags-3 famflags-4 famflags-5 famflags-6))
+              )
+            (start! *fail-mission-control* a1-2)
+            )
+          (while (handle->process (-> *fail-mission-control* process))
+            (suspend)
+            )
+          )
+        (else
+          (initialize! *game-info* 'try (the-as game-save #f) (the-as string #f))
+          )
+        )
+      )
+    (none)
+    )
+  )

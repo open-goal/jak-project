@@ -11,11 +11,14 @@
 #ifndef JAK_CODETESTER_H
 #define JAK_CODETESTER_H
 
-#include <string>
-#include "common/common_types.h"
-#include "Register.h"
-#include "Instruction.h"
+#include <cstring>
 #include <stdexcept>
+#include <string>
+
+#include "Instruction.h"
+#include "Register.h"
+
+#include "common/common_types.h"
 
 namespace emitter {
 class CodeTester {

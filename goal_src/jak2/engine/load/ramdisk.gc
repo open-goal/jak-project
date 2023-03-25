@@ -1,0 +1,63 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: ramdisk.gc
+;; name in dgo: ramdisk
+;; dgos: ENGINE, GAME
+
+;; DECOMP BEGINS
+
+(deftype ramdisk-rpc-fill (structure)
+  ((rsvd1    int32     :offset-assert   0)
+   (ee-id    int32     :offset-assert   4)
+   (rsvd2    int32   2 :offset-assert   8)
+   (filename uint128   :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype ramdisk-rpc-load (structure)
+  ((rsvd   int32   :offset-assert   0)
+   (ee-id  int32   :offset-assert   4)
+   (offset uint32  :offset-assert   8)
+   (length uint32  :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype ramdisk-rpc-load-to-ee (structure)
+  ((rsvd     int32    :offset-assert   0)
+   (addr     int32    :offset-assert   4)
+   (offset   int32    :offset-assert   8)
+   (length   int32    :offset-assert  12)
+   (filename uint128  :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(define *ramdisk-rpc* (new 'global 'rpc-buffer-pair (the-as uint 32) (the-as uint 1) 2))
+
+(define *current-ramdisk-id* 0)
+
+(defun ramdisk-load ((arg0 int) (arg1 uint) (arg2 uint) (arg3 pointer))
+  (let ((v1-1 (the-as ramdisk-rpc-load (add-element *ramdisk-rpc*))))
+    (set! (-> v1-1 offset) arg1)
+    (set! (-> v1-1 ee-id) arg0)
+    (set! (-> v1-1 length) arg2)
+    )
+  (call *ramdisk-rpc* (the-as uint 0) arg3 arg2)
+  0
+  )
+
+(defun ramdisk-sync ()
+  (sync *ramdisk-rpc* #t)
+  0
+  (none)
+  )
+

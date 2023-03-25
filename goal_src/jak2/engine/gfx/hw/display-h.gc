@@ -1,0 +1,153 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: display-h.gc
+;; name in dgo: display-h
+;; dgos: ENGINE, GAME
+
+#|@file
+At any point in time, there are 3 frames in progress:
+- one frame is fully rendered and being drawn on the screen.
+  this frame just sits in the frame buffer, and isn't tracked by the display system.
+- one frame is being rendered
+  (frame buffer is being written to by GS, VU1 sending tris to GS, VIF1 feeding VU1)
+  this frame needs a DMA buffer that is full, and being read by VIF1
+- one frame is being set up. The engine is running gameplay code and generating DMA data
+  this frame also needs a DMA buffer, which is being filled up.
+|#
+
+;; DECOMP BEGINS
+
+;; per-frame DMA buffers, timing, and profiling info.
+(deftype display-frame (basic)
+  ((buffer        dma-buffer                11      :offset-assert   4)
+   (calc-buf      dma-buffer                        :offset          8)
+   (vu1-buf       dma-buffer                        :offset          8)
+   (debug-buf     dma-buffer                        :offset         36)
+   (global-buf    dma-buffer                        :offset         40)
+   (bucket-group  (inline-array dma-bucket)         :offset         44)
+   (profile-array profile-array             :inline :offset-assert  48)
+   (start-time    time-frame                        :offset-assert  56)
+   (run-time      time-frame                        :offset-assert  64)
+   )
+  :method-count-assert 9
+  :size-assert         #x48
+  :flag-assert         #x900000048
+  (:methods
+    (new (symbol type) _type_ 0)
+    )
+  )
+
+(defmethod new display-frame ((allocation symbol) (type-to-make type))
+  "Allocate and initialize a display frame. Does not set up dma buffers."
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 calc-buf) (the-as dma-buffer 0))
+    (set! (-> gp-0 global-buf) (the-as dma-buffer 0))
+    (set! (-> gp-0 debug-buf) (the-as dma-buffer 0))
+    ;; allocate profile buffers if debugging.
+    (when *debug-segment*
+      (set! (-> gp-0 profile-array data 0) (new 'debug 'profile-segment-array))
+      (set! (-> gp-0 profile-array data 1) (new 'debug 'profile-segment-array))
+      )
+    gp-0
+    )
+  )
+
+;; The display is the global state related to frame timing and double-buffering of frames.
+;; it also holds the render enable mask.
+(deftype display (basic)
+  ((on-screen            int32                :offset-assert   4) ;; frame index (0 or 1)
+   (last-screen          int32                :offset-assert   8) ;; frame index (0 or 1)
+   (frames               display-frame     2  :offset-assert  12) ;; per-frame dma/timing
+   (bgcolor              gs-bgcolor           :offset-assert  24) ;; GS setting
+   (pmode                gs-pmode             :offset-assert  32) ;; GS setting
+   (clock                clock             13 :offset-assert  40)
+   (session-clock        clock                :offset         40)
+   (game-clock           clock                :offset         44)
+   (base-clock           clock                :offset         48)
+   (real-clock           clock                :offset         52)
+   (frame-clock          clock                :offset         56)
+   (real-frame-clock     clock                :offset         60)
+   (target-clock         clock                :offset         64)
+   (entity-clock         clock                :offset         68)
+   (part-clock           clock                :offset         72)
+   (bg-clock             clock                :offset         76)
+   (camera-clock         clock                :offset         80)
+   (user0-clock          clock                :offset         84)
+   (total-game-clock     clock                :offset         88)
+   (time-factor          float                :offset-assert  92)
+   (dog-ratio            float                :offset-assert  96)
+   (vblank-start-time    time-frame        2  :offset-assert 104)
+   (total-run-time       time-frame           :offset-assert 120)
+   (run-half-speed       basic                :offset-assert 128)
+   (dog-count            float                :offset-assert 132)
+   (vu1-enable-user      vu1-renderer-mask    :offset-assert 136)
+   (vu1-enable-user-menu vu1-renderer-mask    :offset-assert 144)
+   (force-sync           uint32               :offset-assert 152)
+   )
+  :method-count-assert 10
+  :size-assert         #x9c
+  :flag-assert         #xa0000009c
+  (:methods
+    (new (symbol type int int int int int) _type_ 0)
+    (set-time-ratios (_type_ float) float 9)
+    )
+  )
+
+(defconstant DEFAULT_ALL_RENDERERS
+  (vu1-renderer-mask
+    sky ocean ocean-wave tfrag tie tie-envmap tie-scissor tie-envmap-scissor
+    tie-vanish generic merc emerc shrubbery shrub-near billboard shrubbery-vanish
+    tfrag-trans tie-scissor-trans tie-trans tie-envmap-trans tie-envmap-scissor-trans
+    tfrag-water tie-scissor-water tie-water tie-envmap-water tie-envmap-scissor-water
+    sprite shadow rn31 rn32 depth-cue
+    )
+  )
+
+(define-extern set-display (function display display))
+
+(defmethod new display ((allocation symbol) (type-to-make type) (arg0 int) (arg1 int) (arg2 int) (arg3 int) (arg4 int))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set-display gp-0)
+    (set! (-> gp-0 frames 0) (new 'global 'display-frame))
+    (set! (-> gp-0 frames 1) (new 'global 'display-frame))
+    (set! (-> gp-0 pmode) (new 'static 'gs-pmode :en1 #x1 :crtmd #x1 :mmod #x1 :slbg #x1))
+    (set! (-> gp-0 run-half-speed) #f)
+    (set! (-> gp-0 vu1-enable-user-menu) DEFAULT_ALL_RENDERERS)
+    (set! (-> gp-0 vu1-enable-user) DEFAULT_ALL_RENDERERS)
+    gp-0
+    )
+  )
+
+;; optional functions to run before and after drawing.
+
+(define *pre-draw-hook* (the-as (function object none) nothing))
+
+(define *post-draw-hook* (the-as (function dma-buffer none) nothing))
+
+
+(define-extern *display* display)
+
+(defmacro current-frame ()
+  `(-> *display* frames (-> *display* on-screen))
+  )
+
+(defmacro current-time ()
+  `(-> *display* base-frame-counter)
+  )
+
+(defmacro integral-current-time ()
+  `(-> *display* integral-frame-counter)
+  )
+
+(defmacro real-current-time ()
+  `(-> *display* real-frame-counter)
+  )
+
+
+;; debug stuff really
+(defmacro get-screen-x (frac)
+  `(the int (* ,frac 512)))
+
+(defmacro get-screen-y (frac)
+  `(the int (* ,frac 416)))

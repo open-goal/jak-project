@@ -1,0 +1,65 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: drawable-h.gc
+;; name in dgo: drawable-h
+;; dgos: ENGINE, GAME
+
+(declare-type region-prim-list structure)
+(declare-type collide-list structure)
+(declare-type collide-query structure)
+
+;; NOTE - for sparticle-launcher and editable
+(define-extern sphere-in-view-frustum? (function sphere symbol))
+
+;; NOTE - for default-menu
+(define-extern *edit-instance* string)
+(declare-type prototype-bucket basic)
+(define-extern find-instance-by-name (function string prototype-bucket))
+(define-extern prototype-bucket-type (function prototype-bucket type))
+(define-extern print-prototype-list (function none))
+(define-extern prototype-bucket-recalc-fields (function prototype-bucket prototype-bucket))
+(define-extern determine-pause-mode (function int))
+(define-extern vis-cull (function int symbol))
+(define-extern sphere-cull (function vector symbol))
+
+(define-extern drawable-tri-count (function drawable int)) ;; NOTE - defined in kernel?
+(declare-type debug-vertex-stats basic)
+(define-extern drawable-vertex-ratio (function drawable debug-vertex-stats int)) ;; NOTE - defined in kernel?
+
+(declare-type draw-control basic)
+(define-extern add-process-drawable (function process-drawable draw-control symbol dma-buffer none))
+(define-extern dma-add-process-drawable (function process-drawable draw-control symbol dma-buffer none))
+
+;; gun
+(define-extern line-in-view-frustum? (function vector vector symbol))
+
+;; DECOMP BEGINS
+
+(deftype drawable (basic)
+  ((id      int16          :offset-assert 4)
+   (bsphere vector :inline :offset-assert 16)
+   )
+  :method-count-assert 17
+  :size-assert         #x20
+  :flag-assert         #x1100000020
+  (:methods
+    (login (_type_) _type_ 9)
+    (draw (_type_ _type_ display-frame) none 10)
+    (fill-collide-list-from-box (_type_ int collide-list collide-query) int 11)
+    (fill-collide-list-from-line-sphere (_type_ int collide-list collide-query) int 12)
+    (collect-stats (_type_) none 13)
+    (debug-draw (_type_ drawable display-frame) none 14)
+    (unpack-vis (_type_ (pointer int8) (pointer int8)) (pointer int8) 15)
+    (unpack-vis (_type_ (pointer int8) (pointer int8)) (pointer int8) 15)
+    (collect-regions (_type_ sphere int region-prim-list) none 16)
+    )
+  )
+
+(deftype drawable-error (drawable)
+  ((name string  :offset-assert  32)
+   )
+  :method-count-assert 17
+  :size-assert         #x24
+  :flag-assert         #x1100000024
+  )

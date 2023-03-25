@@ -1,12 +1,15 @@
-#include <vector>
 #include "Function.h"
+
+#include <vector>
+
 #include "common/log/log.h"
+#include "common/util/Assert.h"
+#include "common/util/BitUtils.h"
+
 #include "decompiler/Disasm/InstructionMatching.h"
+#include "decompiler/IR2/Form.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
-#include "decompiler/IR2/Form.h"
-#include "common/util/BitUtils.h"
-#include "common/util/Assert.h"
 
 namespace decompiler {
 namespace {
@@ -31,8 +34,10 @@ Register get_expected_fpr_backup(int n, int total) {
 
 }  // namespace
 
-Function::Function(int _start_word, int _end_word) : start_word(_start_word), end_word(_end_word) {
+Function::Function(int _start_word, int _end_word, GameVersion version)
+    : start_word(_start_word), end_word(_end_word) {
   ir2.form_pool.reset(new FormPool());
+  ir2.env.version = version;
 }
 
 Function::~Function() {}
@@ -66,7 +71,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
             "Function {} was flagged as asm due to this instruction: {}. Consider flagging as asm "
             "in config!",
             name(), instr.to_string(file.labels));
-        warnings.general_warning("Flagged as asm because of {}", instr.to_string(file.labels));
+        warnings.warning("Flagged as asm because of {}", instr.to_string(file.labels));
         suspected_asm = true;
         return;
       }
@@ -92,7 +97,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
             "Function {} was flagged as asm due to this instruction: {}. Consider flagging as asm "
             "in config!",
             name(), instr.to_string(file.labels));
-        warnings.general_warning("Flagged as asm because of {}", instr.to_string(file.labels));
+        warnings.warning("Flagged as asm because of {}", instr.to_string(file.labels));
         suspected_asm = true;
         return;
       }
@@ -128,7 +133,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       // sometimes stack memory is zeroed or a register is spilled immediately after gpr backups,
       // and this fools the previous check.
       if (store_reg == make_gpr(Reg::R0) || store_reg == make_gpr(Reg::A0)) {
-        warnings.general_warning("Check prologue - tricky store of {}", store_reg.to_string());
+        warnings.warning("Check prologue - tricky store of {}", store_reg.to_string());
         expect_nothing_after_gprs = true;
         break;
       }
@@ -147,8 +152,8 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
           suspected_asm = true;
           lg::warn("Function {} stores on the stack in a strange way ({}), flagging as asm!",
                    instructions.at(idx + i).to_string(file.labels), name());
-          warnings.general_warning("Flagged as asm due to strange stack store: {}",
-                                   instructions.at(idx + i).to_string(file.labels));
+          warnings.warning("Flagged as asm due to strange stack store: {}",
+                           instructions.at(idx + i).to_string(file.labels));
           return;
         }
       }
@@ -176,8 +181,8 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
             suspected_asm = true;
             lg::warn("Function {} stores on the stack in a strange way ({}), flagging as asm!",
                      instructions.at(idx + i).to_string(file.labels), name());
-            warnings.general_warning("Flagged as asm due to strange stack store: {}",
-                                     instructions.at(idx + i).to_string(file.labels));
+            warnings.warning("Flagged as asm due to strange stack store: {}",
+                             instructions.at(idx + i).to_string(file.labels));
             return;
           }
         }
@@ -367,7 +372,7 @@ void Function::check_epilogue(const LinkedObjectFile& file) {
       ASSERT(is_jr_ra(instructions.at(idx)));
       idx--;
       lg::warn("Function {} has a double return and is being flagged as asm.", name());
-      warnings.general_warning("Flagged as asm due to double return");
+      warnings.warning("Flagged as asm due to double return");
     }
     // delay slot should be daddiu sp, sp, offset
     ASSERT(is_gpr_2_imm_int(instructions.at(idx), InstructionKind::DADDIU, make_gpr(Reg::SP),
@@ -471,7 +476,8 @@ void Function::find_global_function_defs(LinkedObjectFile& file, DecompilerTypeS
           auto& func = file.get_function_at_label(label_id);
           ASSERT(func.guessed_name.empty());
           func.guessed_name.set_as_global(name);
-          dts.add_symbol(name, "function");
+          // TODO - get definition info?
+          dts.add_symbol(name, "function", {});
           ;
           // todo - inform function.
         }
@@ -498,8 +504,7 @@ void Function::find_method_defs(LinkedObjectFile& file, DecompilerTypeSystem& dt
   for (const auto& instr : instructions) {
     // look for lw t9, method-set!(s7)
     if (instr.kind == InstructionKind::LW && instr.get_dst(0).get_reg() == make_gpr(Reg::T9) &&
-        instr.get_src(0).kind == InstructionAtom::IMM_SYM &&
-        instr.get_src(0).get_sym() == "method-set!" &&
+        instr.get_src(0).is_sym() && instr.get_src(0).get_sym() == "method-set!" &&
         instr.get_src(1).get_reg() == make_gpr(Reg::S7)) {
       state = 1;
       continue;
@@ -508,8 +513,7 @@ void Function::find_method_defs(LinkedObjectFile& file, DecompilerTypeSystem& dt
     if (state == 1) {
       // look for lw a0, type-name(s7)
       if (instr.kind == InstructionKind::LW && instr.get_dst(0).get_reg() == make_gpr(Reg::A0) &&
-          instr.get_src(0).kind == InstructionAtom::IMM_SYM &&
-          instr.get_src(1).get_reg() == make_gpr(Reg::S7)) {
+          instr.get_src(0).is_sym() && instr.get_src(1).get_reg() == make_gpr(Reg::S7)) {
         type_name = instr.get_src(0).get_sym();
         state = 2;
         continue;
@@ -581,7 +585,7 @@ void Function::find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts)
 
   for (const auto& instr : instructions) {
     // look for lw xx, type(s7)
-    if (instr.kind == InstructionKind::LW && instr.get_src(0).kind == InstructionAtom::IMM_SYM &&
+    if (instr.kind == InstructionKind::LW && instr.get_src(0).is_sym() &&
         instr.get_src(0).get_sym() == "type" && instr.get_src(1).get_reg() == make_gpr(Reg::S7)) {
       state = 1;
       temp_reg = instr.get_dst(0).get_reg();
@@ -615,8 +619,7 @@ void Function::find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts)
     if (state == 3) {
       // look for lw a1, parent-type(s7)
       if (instr.kind == InstructionKind::LW && instr.get_dst(0).get_reg() == make_gpr(Reg::A1) &&
-          instr.get_src(0).kind == InstructionAtom::IMM_SYM &&
-          instr.get_src(1).get_reg() == make_gpr(Reg::S7)) {
+          instr.get_src(0).is_sym() && instr.get_src(1).get_reg() == make_gpr(Reg::S7)) {
         state = 4;
         parent_type = instr.get_src(0).get_sym();
         continue;
@@ -652,7 +655,7 @@ void Function::find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts)
       if (instr.kind == InstructionKind::SLL && instr.get_dst(0).get_reg() == make_gpr(Reg::V0) &&
           instr.get_src(0).get_reg() == make_gpr(Reg::RA) && instr.get_src(1).get_imm() == 0) {
         // done!
-        //        fmt::print("Got type {} parent {}\n", type_name, parent_type);
+        //        lg::print("Got type {} parent {}\n", type_name, parent_type);
         dts.add_type_parent(type_name, parent_type);
         DecompilerLabel flag_label = file.labels.at(label_idx);
         u64 word = file.read_data_word(flag_label);
@@ -661,7 +664,7 @@ void Function::find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts)
         word |= (word2 << 32);
         types_defined.push_back(type_name);
         dts.add_type_flags(type_name, word);
-        //        fmt::print("Flags are 0x{:x}\n", word);
+        //        lg::print("Flags are 0x{:x}\n", word);
         state = 0;
         continue;
       }

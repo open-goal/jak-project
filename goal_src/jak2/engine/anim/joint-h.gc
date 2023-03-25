@@ -1,0 +1,170 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: joint-h.gc
+;; name in dgo: joint-h
+;; dgos: ENGINE, GAME
+
+(declare-type joint-control basic)
+
+(defenum joint-control-status
+  :type uint16
+  :bitfield #t
+
+  (sync-math               0) ;; 1
+  (spooling                1) ;; 2
+  (spooling-not-last-block 2) ;; 4
+  (blend-shape             3) ;; 8
+  (math-when-off-screen    4) ;; 16
+  (valid-spooled-frame     5) ;; 32
+  (blend-shape-valid       6) ;; 64
+  (eye-anim-valid          7) ;; 128
+  (eye-anim                8) ;; 256
+  )
+;; +++joint-control-command
+(defenum joint-control-command
+  :type int64
+  (zero 0)
+  (push 1)
+  (blend 2)
+  (joint-control-command-4 4)
+  (eight 8)
+  (push1 19)
+  (thirty-two 32)
+  (stack 36)
+  (float 42)
+  (stack1 52)
+  )
+;; ---joint-control-command
+
+
+;; DECOMP BEGINS
+
+(deftype joint-control-channel (structure)
+  ((parent           joint-control                                              :offset-assert   0)
+   (frame-group      art-joint-anim                                             :offset-assert   4)
+   (frame-num        float                                                      :offset-assert   8)
+   (dist             meters                                                     :offset-assert  12)
+   (num-func         (function joint-control-channel float float float float)   :offset-assert  16)
+   (param            float                                                    3 :offset-assert  20)
+   (frame-interp     float                                                    2 :offset-assert  32)
+   (inspector-amount uint8                                                      :offset-assert  40)
+   (command          joint-control-command                                      :offset-assert  48)
+   (group-sub-index  int8                                                       :offset-assert  56)
+   (group-size       int8                                                       :offset-assert  57)
+   (eval-time        uint32                                                     :offset-assert  60)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+
+(deftype top-anim-joint-control (basic)
+  ((process             (pointer process-drawable)   :offset-assert   4)
+   (interp-select       uint64                     2 :offset-assert   8)
+   (base-anim           basic                        :offset-assert  24)
+   (base-anim-speed     float                        :offset-assert  28)
+   (base-anim-blend     float                        :offset-assert  32)
+   (interp              float                        :offset-assert  36)
+   (frame-group         art-joint-anim               :offset-assert  40)
+   (frame-group-push    art-joint-anim               :offset-assert  44)
+   (frame-num           float                        :offset-assert  48)
+   (frame-targ          art-joint-anim               :offset-assert  52)
+   (frame-speed         float                        :offset-assert  56)
+   (frame-blend         float                        :offset-assert  60)
+   (frame-cur-blend     float                        :offset-assert  64)
+   (frame-start         float                        :offset-assert  68)
+   (frame-post-blend    float                        :offset-assert  72)
+   (frame-post-end      float                        :offset-assert  76)
+   (frame-push-time     time-frame                   :offset-assert  80)
+   (frame-post-put-away basic                        :offset-assert  88)
+   (update-time         time-frame                   :offset-assert  96)
+   )
+  :method-count-assert 13
+  :size-assert         #x68
+  :flag-assert         #xd00000068
+  (:methods
+    (new (symbol type process-drawable) _type_ 0)
+    (reset (_type_) none 9)
+    (update (_type_) none 10)
+    (get-channel (_type_ int) joint-control-channel 11)
+    (push-anim-to-targ (_type_ art-joint-anim float int int float float symbol) none 12)
+    )
+  )
+
+
+(deftype joint-control (basic)
+  ((status                  joint-control-status                                                     :offset-assert   4)
+   (allocated-length        uint8                                                                    :offset-assert   6)
+   (active-channels         uint8                                                                    :offset-assert   7)
+   (root-channel            (inline-array joint-control-channel)                                     :offset         16)
+   (blend-index             uint8                                                                    :offset-assert  20)
+   (active-frame-interp     uint8                                                                    :offset-assert  21)
+   (float-channels          uint8                                                                    :offset-assert  22)
+   (generate-frame-function (function joint-anim-frame int joint-control int)                        :offset-assert  24)
+   (prebind-function        (function joint-anim-frame int joint-control int)                        :offset-assert  28)
+   (postbind-function       (function draw-control cspace-array joint-control none)                  :offset-assert  32)
+   (effect                  effect-control                                                           :offset-assert  36)
+   (interp-select           int64                                                   2                :offset-assert  40)
+   (top-anim                top-anim-joint-control                                                   :offset-assert  56)
+   (override                (array float)                                                            :offset-assert  60)
+   (channel                 joint-control-channel                                   :inline :dynamic :offset-assert  64)
+   )
+  :method-count-assert 12
+  :size-assert         #x40
+  :flag-assert         #xc00000040
+  (:methods
+    (new (symbol type int) _type_ 0)
+    (current-cycle-distance (_type_) float 9)
+    (update-anim-data (_type_) none 10)
+    (debug-print-channels (_type_ symbol) int 11)
+    )
+  )
+
+
+(deftype matrix-stack (structure)
+  ((top  matrix            :offset-assert   0)
+   (data matrix 24 :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x610
+  :flag-assert         #x900000610
+  )
+
+
+(deftype channel-upload-info (structure)
+  ((fixed     joint-anim-compressed-fixed  :offset-assert   0)
+   (fixed-qwc int32                        :offset-assert   4)
+   (frame     joint-anim-compressed-frame  :offset-assert   8)
+   (frame-qwc int32                        :offset-assert  12)
+   (amount    float                        :offset-assert  16)
+   (interp    float                        :offset-assert  20)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+
+(deftype joint-work (structure)
+  ((temp-mtx       matrix                      :inline     :offset-assert   0)
+   (joint-stack    matrix-stack                :inline     :offset-assert  64)
+   (fix-jmp-table  (function none)             16          :offset-assert 1616)
+   (frm-jmp-table  (function none)             16          :offset-assert 1680)
+   (pair-jmp-table (function none)             16          :offset-assert 1744)
+   (uploads        channel-upload-info         24 :inline  :offset-assert 1808)
+   (num-uploads    int32                                   :offset-assert 2384)
+   (mtx-acc        matrix                      2 :inline   :offset-assert 2400)
+   (tq-acc         transformq                  100 :inline :offset-assert 2528)
+   (jacp-hdr       joint-anim-compressed-hdr   :inline     :offset-assert 7328)
+   (fixed-data     joint-anim-compressed-fixed :inline     :offset-assert 7392)
+   (frame-data     joint-anim-compressed-frame 2 :inline   :offset-assert 9600)
+   (flatten-array  float                       576         :offset        2400)
+   (flattened      vector                      24          :offset        2400)
+   )
+  :method-count-assert 9
+  :size-assert         #x3640
+  :flag-assert         #x900003640
+  )

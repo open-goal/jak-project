@@ -1,0 +1,2808 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: collectables.gc
+;; name in dgo: collectables
+;; dgos: ENGINE, GAME
+
+(defenum collectable-flag
+  :type uint32
+  :bitfield #t
+  (bounce      0) ;; 1
+  (fadeout     1) ;; 2
+  (pickup      2) ;; 4
+  (do-fadeout  3)  ;; 8
+  (suck-in     4) ;; 16
+  (no-eco-blue 5) ;; 32
+  (no-bob      6) ;; 64
+  (no-distance-check-fadeout 7) ;; 128
+  )
+
+(declare-type collectable process-drawable)
+(declare-type eco collectable)
+(declare-type ammo collectable)
+
+;; DECOMP BEGINS
+
+(defskelgroup skel-health collectables collectables-health-lod0-jg collectables-health-idle-ja
+              ((collectables-health-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 6
+              )
+
+(defskelgroup skel-gem collectables collectables-gem-lod0-jg collectables-gem-idle-ja
+              ((collectables-gem-lod0-mg (meters 20)) (collectables-gem-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 0.6)
+              :texture-level 6
+              )
+
+(defskelgroup skel-gun-yellow-up yellow-barrel yellow-barrel-lod0-jg yellow-barrel-idle-ja
+              ((yellow-barrel-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-gun-dark-up dark-barrel dark-barrel-lod0-jg dark-barrel-idle-ja
+              ((dark-barrel-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-skill collectables collectables-skill-lod0-jg collectables-skill-idle-ja
+              ((collectables-skill-lod0-mg (meters 20))
+               (collectables-skill-lod1-mg (meters 40))
+               (collectables-skill-lod2-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 0 0 0.6)
+              :shadow collectables-skill-shadow-mg
+              :texture-level 6
+              :shadow-joint-index 0
+              )
+
+(deftype collectable (process-drawable)
+  ((root-override2  collide-shape-moving         :offset        128)
+   (pickup-type     pickup-type                  :offset-assert 200)
+   (pickup-amount   float                        :offset-assert 204)
+   (notify          handle                       :offset-assert 208)
+   (old-base        vector               :inline :offset-assert 224)
+   (base            vector               :inline :offset-assert 240)
+   (extra-trans     vector               :inline :offset-assert 256)
+   (jump-pos        vector               :inline :offset-assert 272)
+   (flags           collectable-flag             :offset-assert 288)
+   (birth-time      seconds                      :offset-assert 296)
+   (collect-timeout seconds                      :offset-assert 304)
+   (fadeout-timeout seconds                      :offset-assert 312)
+   (bob-offset      seconds                      :offset-assert 320)
+   (bob-amount      float                        :offset-assert 328)
+   (pickup-handle   handle                       :offset-assert 336)
+   (actor-pause     symbol                       :offset-assert 344)
+   (collect-effect  basic                        :offset-assert 348)
+   (collect-effect2 basic                        :offset-assert 352)
+   (target          handle                       :offset-assert 360)
+   (suck-time       seconds                      :offset-assert 368)
+   (suck-y-offset   float                        :offset-assert 376)
+   (speed           vector               :inline :offset-assert 384)
+   (movie-pos-index int32                        :offset-assert 400)
+   )
+  :heap-base #x120
+  :method-count-assert 36
+  :size-assert         #x194
+  :flag-assert         #x2401200194
+  (:methods
+    (blocked () _type_ :state 20)
+    (wait () _type_ :state 21)
+    (deploy () _type_ :state 22)
+    (suck (handle) _type_ :state 23)
+    (jump () _type_ :state 24)
+    (fade () _type_ :state 25)
+    (pickup (symbol handle) _type_ :state 26)
+    (die () _type_ :state 27)
+    (notice-blue (handle) _type_ :state 28)
+    (init-common (_type_ entity-actor pickup-type float) none 29)
+    (initialize-effects (_type_ pickup-type) none 30)
+    (go-to-initial-state (_type_) none 31)
+    (initialize-options (_type_ int float fact-info) collectable 32)
+    (initialize-allocations (_type_) none 33)
+    (common-post (_type_) none 34)
+    (do-pickup (_type_ handle) none 35)
+    )
+  )
+
+
+;; WARN: Return type mismatch object vs none.
+(defmethod go-to-initial-state collectable ((obj collectable))
+  (cond
+    ((logtest? (-> obj fact options) (actor-option wait-for-task-complete))
+     (go (method-of-object obj blocked))
+     )
+    ((logtest? (-> obj flags) (collectable-flag bounce))
+     (go (method-of-object obj deploy))
+     )
+    (else
+      (go (method-of-object obj wait))
+      )
+    )
+  (none)
+  )
+
+(defmethod initialize-options collectable ((obj collectable) (arg0 int) (arg1 float) (arg2 fact-info))
+  (with-pp
+    (logclear! (-> obj mask) (process-mask crate enemy platform ambient))
+    (set! (-> obj mask) (logior (process-mask bit18) (-> obj mask)))
+    (set! (-> obj flags) (collectable-flag pickup no-eco-blue))
+    (set! (-> obj bob-amount) arg1)
+    (set! (-> obj bob-offset) (the-as seconds (+ (the-as int (-> obj root-override2 trans x))
+                                                 (the-as int (-> obj root-override2 trans y))
+                                                 (the-as int (-> obj root-override2 trans z))
+                                                 )
+                                      )
+          )
+    (cond
+      ((or (= (vector-length (-> obj root-override2 transv)) 0.0)
+           (logtest? (-> obj fact options) (actor-option auto-pickup))
+           )
+       (vector-reset! (-> obj root-override2 transv))
+       )
+      (else
+        (logior! (-> obj flags) (collectable-flag bounce))
+        (logclear! (-> obj flags) (collectable-flag pickup))
+        (logclear! (-> obj mask) (process-mask actor-pause))
+        (set! (-> obj bob-amount) 0.0)
+        )
+      )
+    (when (> arg0 0)
+      (logior! (-> obj flags) (collectable-flag fadeout))
+      (set! (-> obj fadeout-timeout) (the-as seconds arg0))
+      (if (logtest? (actor-option no-distance-check-fadeout) (-> arg2 options))
+          (logior! (-> obj flags) (collectable-flag no-distance-check-fadeout))
+          )
+      )
+    (set! (-> obj collect-timeout) (the-as seconds 99))
+    (set! (-> obj birth-time) (-> pp clock frame-counter))
+    (set! (-> obj base quad) (-> obj root-override2 trans quad))
+    (set! (-> obj old-base quad) (-> obj root-override2 trans quad))
+    (set! (-> obj pickup-handle) (the-as handle #f))
+    (case (-> obj fact pickup-type)
+      (((pickup-type eco-pill-green)
+        (pickup-type eco-pill-dark)
+        (pickup-type eco-green)
+        (pickup-type money)
+        (pickup-type gem)
+        (pickup-type skill)
+        (pickup-type eco-blue)
+        (pickup-type health)
+        (pickup-type trick-point)
+        )
+       (logclear! (-> obj flags) (collectable-flag no-eco-blue))
+       )
+      )
+    (if (logtest? (-> obj fact options) (actor-option big-collision))
+        (set! (-> obj root-override2 root-prim local-sphere w)
+              (* 2.5 (-> obj root-override2 root-prim local-sphere w))
+              )
+        )
+    (when (and arg2 (nonzero? (-> obj draw)))
+      (let* ((s5-0 (-> arg2 process))
+             (v1-56 (if (type? s5-0 process-drawable)
+                        s5-0
+                        )
+                    )
+             )
+        (if v1-56
+            (set! (-> obj draw light-index) (-> (the-as process-drawable v1-56) draw light-index))
+            )
+        )
+      )
+    obj
+    )
+  )
+
+(defmethod initialize-allocations collectable ((obj collectable))
+  (stack-size-set! (-> obj main-thread) 128)
+  (logior! (-> obj mask) (process-mask actor-pause))
+  (set! (-> obj actor-pause) #t)
+  (set! (-> obj notify) (the-as handle #f))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-11 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec collectable notice-blue-eco-powerup))
+      (set! (-> v1-11 prim-core collide-with) (collide-spec jak player-list tobot))
+      (set-vector! (-> v1-11 local-sphere) 0.0 3276.8 0.0 3276.8)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-11)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-14 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-14 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-14 prim-core collide-with))
+      )
+    (set! (-> obj root-override2) s5-0)
+    )
+  (set! (-> obj fact) (new 'process 'fact-info obj (-> obj pickup-type) (-> obj pickup-amount)))
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch ambient-sound vs none.
+(defmethod initialize-effects collectable ((obj collectable) (arg0 pickup-type))
+  (let ((s5-0 (the-as sparticle-launch-group #f))
+        (s4-0 (the-as sound-spec #f))
+        )
+    (set! (-> obj fact pickup-type) arg0)
+    (case (-> obj fact pickup-type)
+      (((pickup-type eco-blue)
+        (pickup-type eco-red)
+        (pickup-type eco-green)
+        (pickup-type eco-yellow)
+        (pickup-type health)
+        (pickup-type eco-pill-dark)
+        (pickup-type trick-point)
+        )
+       (logclear! (-> obj mask) (process-mask actor-pause))
+       )
+      )
+    (case arg0
+      (((pickup-type eco-yellow))
+       (set! s5-0 (-> *part-group-id-table* 108))
+       (set! (-> obj collect-effect) (-> *part-group-id-table* 115))
+       (set! (-> obj collect-effect2) (-> *part-group-id-table* 109))
+       (set! s4-0 (static-sound-spec "yel-eco-idle" :fo-max 15))
+       )
+      (((pickup-type eco-red))
+       (set! s5-0 (-> *part-group-id-table* 102))
+       (set! (-> obj collect-effect) (-> *part-group-id-table* 116))
+       (set! (-> obj collect-effect2) (-> *part-group-id-table* 103))
+       (set! s4-0 (static-sound-spec "red-eco-idle" :fo-max 15))
+       )
+      (((pickup-type eco-blue))
+       (set! s5-0 (-> *part-group-id-table* 98))
+       (set! (-> obj collect-effect) (-> *part-group-id-table* 114))
+       (set! (-> obj collect-effect2) (-> *part-group-id-table* 99))
+       (set! s4-0 (static-sound-spec "blue-eco-idle" :fo-max 15))
+       )
+      (((pickup-type eco-green))
+       (set! s5-0 (-> *part-group-id-table* 83))
+       (set! (-> obj collect-effect) (-> *part-group-id-table* 93))
+       (set! (-> obj collect-effect2) (-> *part-group-id-table* 79))
+       (set! s4-0 (static-sound-spec "green-eco-idle" :fo-max 15))
+       )
+      (((pickup-type health))
+       (initialize-skeleton
+         obj
+         (the-as skeleton-group (art-group-get-by-name *level* "skel-health" (the-as (pointer uint32) #f)))
+         (the-as pair 0)
+         )
+       (let ((v1-37 (-> (the-as collide-shape (-> obj root-override2)) root-prim local-sphere)))
+         (set! (-> v1-37 y) 2457.6)
+         (set! (-> v1-37 w) 4096.0)
+         )
+       (set! (-> obj collect-effect) (-> *part-group-id-table* 93))
+       (set! (-> obj collect-effect2) (-> *part-group-id-table* 79))
+       (set! s4-0 (static-sound-spec "green-eco-idle" :fo-max 15))
+       )
+      (((pickup-type eco-pill-green))
+       (set! s5-0 (-> *part-group-id-table* 80))
+       (set! (-> obj collect-effect2) (-> *part-group-id-table* 81))
+       )
+      (((pickup-type eco-pill-dark))
+       (set! s5-0 (-> *part-group-id-table* 82))
+       (set! (-> obj collect-effect) (-> *part-group-id-table* 92))
+       )
+      )
+    (if s5-0
+        (set! (-> obj part) (create-launch-control s5-0 obj))
+        )
+    (if s4-0
+        (set! (-> obj sound) (new 'process 'ambient-sound s4-0 (-> obj root-override2 trans)))
+        )
+    )
+  (none)
+  )
+
+(defbehavior initialize-eco-by-other eco ((arg0 vector) (arg1 vector) (arg2 fact-info))
+  (let ((s3-0 (-> arg2 pickup-type))
+        (f30-0 (-> arg2 pickup-spawn-amount))
+        )
+    (set! (-> self pickup-amount) f30-0)
+    (set! (-> self pickup-type) s3-0)
+    (initialize-allocations self)
+    (set! (-> self fact pickup-type) s3-0)
+    (set! (-> self fact pickup-amount) f30-0)
+    )
+  (set! (-> self fact options) (-> arg2 options))
+  (set! (-> self root-override2 trans quad) (-> arg0 quad))
+  (set! (-> self root-override2 transv quad) (-> arg1 quad))
+  (initialize-effects self (-> self fact pickup-type))
+  (set! (-> self notify) (the-as handle #f))
+  (case (-> self fact pickup-type)
+    (((pickup-type eco-blue) (pickup-type eco-yellow) (pickup-type eco-red))
+     (initialize-options
+       self
+       (if (and arg2 (logtest? (-> arg2 options) (actor-option fade-out)))
+           (the-as int (-> arg2 fade-time))
+           0
+           )
+       1024.0
+       arg2
+       )
+     )
+    (else
+      (initialize-options
+        self
+        (if (and arg2 (logtest? (-> arg2 options) (actor-option fade-out)))
+            (the-as int (-> arg2 fade-time))
+            4500
+            )
+        1024.0
+        arg2
+        )
+      )
+    )
+  (update-transforms (-> self root-override2))
+  (set! (-> self event-hook) (-> (method-of-object self wait) event))
+  (go-to-initial-state self)
+  (none)
+  )
+
+(defmethod init-common collectable ((obj collectable) (arg0 entity-actor) (arg1 pickup-type) (arg2 float))
+  (set! (-> obj pickup-amount) arg2)
+  (set! (-> obj pickup-type) arg1)
+  (initialize-allocations obj)
+  (set! (-> obj root-override2 trans quad) (-> arg0 extra trans quad))
+  (initialize-effects obj (-> obj fact pickup-type))
+  (initialize-options obj 0 1024.0 (the-as fact-info #f))
+  (update-transforms (-> obj root-override2))
+  (if (logtest? (-> obj fact options) (actor-option wait-for-task-complete))
+      (go (method-of-object obj blocked))
+      )
+  (go-to-initial-state obj)
+  (none)
+  )
+
+(defmethod common-post collectable ((obj collectable))
+  (let ((s5-0 (-> obj part))
+        (s4-0 (-> obj root-override2 root-prim prim-core))
+        )
+    (if (nonzero? (-> obj draw))
+        (ja-post)
+        )
+    (if (nonzero? s5-0)
+        (spawn s5-0 (the-as vector s4-0))
+        )
+    )
+  (if (nonzero? (-> obj sound))
+      (update! (-> obj sound))
+      )
+  0
+  (none)
+  )
+
+(defmethod do-pickup collectable ((obj collectable) (arg0 handle))
+  (set! (-> obj pickup-handle) arg0)
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (let ((v1-3 (-> obj root-override2 root-prim)))
+    (set! (-> v1-3 prim-core collide-as) (collide-spec))
+    (set! (-> v1-3 prim-core collide-with) (collide-spec))
+    )
+  0
+  (if (nonzero? (-> obj sound))
+      (stop! (-> obj sound))
+      )
+  (if (nonzero? (-> obj draw))
+      (logior! (-> obj draw status) (draw-control-status no-draw))
+      )
+  (if (nonzero? (-> obj part))
+      (kill-and-free-particles (-> obj part))
+      )
+  (case (-> obj fact pickup-type)
+    (((pickup-type eco-yellow))
+     (sound-play "y-eco-pickup")
+     )
+    (((pickup-type eco-red))
+     (sound-play "r-eco-pickup")
+     )
+    (((pickup-type eco-blue))
+     (sound-play "b-eco-pickup")
+     )
+    (((pickup-type eco-green) (pickup-type health))
+     (sound-play "g-eco-pickup")
+     )
+    (((pickup-type eco-pill-green))
+     (sound-play "pill-pickup")
+     )
+    (((pickup-type eco-pill-dark))
+     (sound-play "pill-pickup")
+     (when (>= (-> *game-info* eco-pill-dark) (-> *FACT-bank* eco-pill-dark-max-default))
+       (set! (-> obj collect-effect) (the-as basic 0))
+       (set! (-> obj collect-effect2) (the-as basic 0))
+       0
+       )
+     )
+    (((pickup-type fuel-cell))
+     (sound-play "pu-powercell")
+     )
+    (((pickup-type ammo-yellow)
+      (pickup-type ammo-red)
+      (pickup-type ammo-blue)
+      (pickup-type ammo-dark)
+      (pickup-type gun-red)
+      (pickup-type gun-yellow)
+      (pickup-type gun-blue)
+      (pickup-type gun-dark)
+      (pickup-type board)
+      )
+     (sound-play "ammo-pickup")
+     )
+    (((pickup-type skill))
+     (talker-spawn-func (-> *talker-speech* 16) *entity-pool* (target-pos 0) (the-as region #f))
+     )
+    )
+  (let ((s4-9 (handle->process arg0)))
+    (when (nonzero? (-> obj collect-effect))
+      (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
+        (when s5-1
+          (let ((t9-21 (method-of-type part-tracker activate)))
+            (t9-21 (the-as part-tracker s5-1) s4-9 (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
+            )
+          (let ((t9-22 run-function-in-process)
+                (a0-60 s5-1)
+                (a1-26 part-tracker-init)
+                (a2-11 (-> obj collect-effect))
+                (a3-10 0)
+                (t0-8 part-tracker-track-target)
+                (t1-8 #f)
+                (t2-8 #f)
+                (t3-0 *launch-matrix*)
+                )
+            (set! (-> t3-0 trans quad) (-> obj root-override2 root-prim prim-core world-sphere quad))
+            ((the-as (function object object object object object object object object none) t9-22)
+             a0-60
+             a1-26
+             a2-11
+             a3-10
+             t0-8
+             t1-8
+             t2-8
+             t3-0
+             )
+            )
+          (-> s5-1 ppointer)
+          )
+        )
+      )
+    )
+  (when (nonzero? (-> obj collect-effect2))
+    (let ((s5-2 (get-process *default-dead-pool* part-tracker #x4000)))
+      (when s5-2
+        (let ((t9-24 (method-of-type part-tracker activate)))
+          (t9-24 (the-as part-tracker s5-2) obj (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
+          )
+        (let ((t9-25 run-function-in-process)
+              (a0-63 s5-2)
+              (a1-29 part-tracker-init)
+              (a2-16 (-> obj collect-effect2))
+              (a3-12 0)
+              (t0-9
+                (lambda ((arg0 part-tracker))
+                  (with-pp
+                    (let ((v1-1 (handle->process (-> arg0 userdata))))
+                      (when (the-as process v1-1)
+                        (let* ((s5-0 (handle->process (-> (the-as collectable v1-1) pickup-handle)))
+                               (a0-9 (if (type? s5-0 process-focusable)
+                                         s5-0
+                                         )
+                                     )
+                               (a2-0 (if (not a0-9)
+                                         (-> arg0 root trans)
+                                         (get-trans (the-as process-focusable a0-9) 3)
+                                         )
+                                     )
+                               )
+                          (vector-lerp!
+                            (-> arg0 root trans)
+                            (-> arg0 offset)
+                            a2-0
+                            (/ (the float (- (-> pp clock frame-counter) (-> arg0 start-time))) (the float (-> arg0 part group duration)))
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              (t1-13 (process->handle obj))
+              (t2-9 #f)
+              (t3-1 *launch-matrix*)
+              )
+          (set! (-> t3-1 trans quad) (-> obj root-override2 root-prim prim-core world-sphere quad))
+          ((the-as (function object object object object object object object object none) t9-25)
+           a0-63
+           a1-29
+           a2-16
+           a3-12
+           t0-9
+           t1-13
+           t2-9
+           t3-1
+           )
+          )
+        (-> s5-2 ppointer)
+        )
+      )
+    )
+  (send-event (handle->process (-> obj notify)) 'notify 'pickup)
+  0
+  (none)
+  )
+
+(defun add-blue-shake ((arg0 vector) (arg1 vector) (arg2 vector))
+  (let* ((f0-0 (vector-vector-distance arg1 arg2))
+         (f30-0 (lerp-scale 409.6 0.0 f0-0 (-> *FACT-bank* suck-suck-dist) (-> *FACT-bank* suck-bounce-dist)))
+         )
+    (+! (-> arg0 x) (rand-vu-float-range (- f30-0) f30-0))
+    (+! (-> arg0 y) (rand-vu-float-range (- f30-0) f30-0))
+    (+! (-> arg0 z) (rand-vu-float-range (- f30-0) f30-0))
+    )
+  arg0
+  )
+
+(defbehavior check-blue-suck eco ((arg0 process-drawable))
+  (let ((v1-0 (if (type? arg0 process-drawable)
+                  arg0
+                  )
+              )
+        )
+    (when v1-0
+      (let* ((gp-1 (-> v1-0 root))
+             (v1-1 (if (type? gp-1 collide-shape)
+                       gp-1
+                       )
+                   )
+             )
+        (when v1-1
+          (let ((a0-5 (-> self root-override2 root-prim prim-core))
+                (a1-2 (-> (the-as collide-shape v1-1) root-prim prim-core))
+                )
+            (when (< (vector-vector-distance (the-as vector a0-5) (the-as vector a1-2)) (-> *FACT-bank* suck-suck-dist))
+              (logior! (-> self flags) (collectable-flag suck-in))
+              #t
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+(defbehavior add-blue-motion eco ((arg0 symbol) (arg1 symbol) (arg2 symbol) (arg3 symbol))
+  (let* ((gp-0 (handle->process (-> self target)))
+         (s2-0 (if (type? gp-0 process-drawable)
+                   gp-0
+                   )
+               )
+         )
+    (when s2-0
+      (let ((a0-6 (if (type? s2-0 process-focusable)
+                      (the-as process-focusable s2-0)
+                      )
+                  )
+            )
+        (when a0-6
+          (let ((s2-1 (-> self root-override2 root-prim prim-core))
+                (gp-1 (get-trans a0-6 3))
+                )
+            (if (and arg1 (rand-vu-percent? 0.25))
+                (eco-blue-glow (the-as vector s2-1))
+                )
+            (let ((f0-0 (vector-vector-distance (the-as vector s2-1) gp-1)))
+              (cond
+                ((and arg3 (< f0-0 8192.0))
+                 (return #t)
+                 )
+                ((begin
+                   (set! arg0
+                         (and (or (not arg2)
+                                  (or (< f0-0 (-> *FACT-bank* suck-suck-dist)) (logtest? (-> self flags) (collectable-flag suck-in)))
+                                  )
+                              arg0
+                              )
+                         )
+                   arg0
+                   )
+                 (logior! (-> self flags) (collectable-flag suck-in))
+                 (when (= (-> self speed w) 0.0)
+                   (set! (-> self suck-time) (-> self clock frame-counter))
+                   (set! (-> self speed x) (rand-vu-float-range 327680.0 819200.0))
+                   )
+                 (+! (-> self speed w) (* (lerp-scale
+                                            40960.0
+                                            (-> self speed x)
+                                            (the float (- (-> self clock frame-counter) (the-as int (-> self suck-time))))
+                                            45.0
+                                            60.0
+                                            )
+                                          (-> self clock seconds-per-frame)
+                                          )
+                     )
+                 (let ((s5-2 (vector-! (new 'stack-no-clear 'vector) (-> self base) gp-1)))
+                   (vector-normalize!
+                     s5-2
+                     (fmax 0.0 (- (vector-length s5-2) (* (-> self speed w) (-> self clock seconds-per-frame))))
+                     )
+                   (when (< (vector-length s5-2) 81920.0)
+                     (+! (-> self speed y) (* 72817.78 (-> self clock seconds-per-frame)))
+                     (set! (-> self speed y) (fmin (fmin 291271.12 (-> self speed y)) (-> self speed y)))
+                     (vector-rotate-y! s5-2 s5-2 (* (-> self speed y) (-> self speed z) (-> self clock seconds-per-frame)))
+                     )
+                   (set! (-> self suck-y-offset)
+                         (* 2048.0
+                            (sin (* 873.81335 (the float (mod (- (-> self clock frame-counter) (the-as int (-> self suck-time))) 75))))
+                            )
+                         )
+                   (vector+! (-> self base) gp-1 s5-2)
+                   )
+                 )
+                ((and arg2 (and (< (+ 4096.0 (-> *FACT-bank* suck-bounce-dist)) f0-0)
+                                (not (logtest? (-> self flags) (collectable-flag suck-in)))
+                                )
+                      )
+                 (go-virtual wait)
+                 )
+                (arg1
+                  (add-blue-shake (-> self root-override2 trans) (the-as vector s2-1) gp-1)
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+;; WARN: Return type mismatch none vs object.
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 108]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 144]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 179]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 191]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 213]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 256]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 271]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 288]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 309]
+(defbehavior collectable-standard-event-handler collectable ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-4 none))
+  (when (and (or (= arg2 'touch) (= arg2 'attack))
+             (and (logtest? (-> self flags) (collectable-flag pickup))
+                  (>= (- (-> self clock frame-counter) (the-as int (-> self birth-time)))
+                      (the-as time-frame (-> self collect-timeout))
+                      )
+                  (not (and (-> self next-state) (= (-> self next-state name) 'pickup)))
+                  (send-event arg0 'get-pickup (-> self fact pickup-type) (-> self fact pickup-amount))
+                  )
+             )
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (process-contact-action arg0)
+    (go-virtual pickup #f (process->handle arg0))
+    )
+  (the-as object (cond
+                   ((= arg2 'trans)
+                    (set! (-> self root-override2 trans quad) (-> (the-as vector (-> arg3 param 0)) quad))
+                    (update-transforms (-> self root-override2))
+                    (ja-post)
+                    )
+                   ((= arg2 'jump)
+                    (logclear! (-> self mask) (process-mask actor-pause))
+                    (set! (-> self jump-pos quad) (-> (the-as vector (-> arg3 param 0)) quad))
+                    (go-virtual jump)
+                    )
+                   ((= arg2 'pickup)
+                    (when (not (and (-> self next-state) (= (-> self next-state name) 'pickup)))
+                      (if (and (> arg1 0) (-> arg3 param 0))
+                          (move-to-point! (-> self root-override2) (the-as vector (-> arg3 param 0)))
+                          )
+                      (logclear! (-> self mask) (process-mask actor-pause))
+                      (process-contact-action arg0)
+                      (go-virtual pickup #f (the-as handle #f))
+                      )
+                    )
+                   ((= arg2 'suck)
+                    (when (not (and (-> self next-state) (let ((v1-60 (-> self next-state name)))
+                                                           (or (= v1-60 'suck) (= v1-60 'pickup))
+                                                           )
+                                    )
+                               )
+                      (logclear! (-> self mask) (process-mask actor-pause))
+                      (go-virtual suck (process->handle (the-as process (-> arg3 param 0))))
+                      )
+                    )
+                   ((= arg2 'die)
+                    (logclear! (-> self mask) (process-mask actor-pause))
+                    (go-virtual die)
+                    )
+                   ((= arg2 'movie-pos)
+                    (set! v0-4 (the-as none (-> arg3 param 0)))
+                    (set! (-> self movie-pos-index) (the-as int v0-4))
+                    v0-4
+                    )
+                   ((= arg2 'actor-pause)
+                    (cond
+                      ((-> arg3 param 0)
+                       (logior! (-> self mask) (process-mask actor-pause))
+                       (set! v0-4 (the-as none #t))
+                       (set! (-> self actor-pause) (the-as symbol v0-4))
+                       v0-4
+                       )
+                      (else
+                        (logclear! (-> self mask) (process-mask actor-pause))
+                        (set! (-> self actor-pause) #f)
+                        #f
+                        )
+                      )
+                    )
+                   ((= arg2 'fade)
+                    (logior! (-> self flags) (collectable-flag fadeout))
+                    (set! (-> self fadeout-timeout) (the-as seconds 30))
+                    (set! v0-4 (the-as none (-> self clock frame-counter)))
+                    (set! (-> self birth-time) (the-as time-frame v0-4))
+                    v0-4
+                    )
+                   ((= arg2 'anim)
+                    (cond
+                      ((-> arg3 param 0)
+                       (set! v0-4 (the-as none (logclear (-> self flags) (collectable-flag no-bob))))
+                       (set! (-> self flags) (the-as collectable-flag v0-4))
+                       )
+                      (else
+                        (set! v0-4 (the-as none (logior (-> self flags) (collectable-flag no-bob))))
+                        (set! (-> self flags) (the-as collectable-flag v0-4))
+                        )
+                      )
+                    v0-4
+                    )
+                   ((= arg2 'collide-shape)
+                    (cond
+                      ((-> arg3 param 0)
+                       (let ((v1-97 (-> self root-override2 root-prim)))
+                         (set! (-> v1-97 prim-core collide-as) (-> self root-override2 backup-collide-as))
+                         (set! v0-4 (the-as none (-> self root-override2 backup-collide-with)))
+                         (set! (-> v1-97 prim-core collide-with) (the-as collide-spec v0-4))
+                         )
+                       v0-4
+                       )
+                      (else
+                        (let ((v1-99 (-> self root-override2 root-prim)))
+                          (set! (-> v1-99 prim-core collide-as) (collide-spec))
+                          (set! (-> v1-99 prim-core collide-with) (collide-spec))
+                          )
+                        0
+                        )
+                      )
+                    )
+                   ((= arg2 'get-notify)
+                    (cond
+                      ((= (-> arg3 param 0) #t)
+                       (let ((v1-103 (ppointer->process (-> self parent))))
+                         (cond
+                           ((logtest? (-> v1-103 mask) (process-mask process-tree))
+                            (set! (-> self notify) (the-as handle #f))
+                            #f
+                            )
+                           (else
+                             (set! v0-4 (the-as none (process->handle v1-103)))
+                             (set! (-> self notify) (the-as handle v0-4))
+                             v0-4
+                             )
+                           )
+                         )
+                       )
+                      ((= (-> arg3 param 0) #f)
+                       (set! (-> self notify) (the-as handle #f))
+                       #f
+                       )
+                      (else
+                        (set! v0-4 (the-as none (process->handle (the-as process (-> arg3 param 0)))))
+                        (set! (-> self notify) (the-as handle v0-4))
+                        v0-4
+                        )
+                      )
+                    )
+                   ((= arg2 'effect)
+                    (when (not (-> arg3 param 0))
+                      (set! (-> self collect-effect) (the-as basic 0))
+                      (set! (-> self collect-effect2) (the-as basic 0))
+                      0
+                      )
+                    )
+                   )
+          )
+  )
+
+(defstate blocked (collectable)
+  :virtual #t
+  :trans (behavior ()
+    (if (task-complete? *game-info* (the-as game-task (-> self entity extra perm task)))
+        (go-virtual wait)
+        )
+    (none)
+    )
+  :code (the-as (function none :behavior collectable) sleep-code)
+  )
+
+(defstate jump (collectable)
+  :virtual #t
+  :code (behavior ()
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (let ((gp-0 (new 'stack 'trajectory)))
+      (set! (-> self base y) (-> self jump-pos y))
+      (setup-from-to-duration! gp-0 (-> self root-override2 trans) (-> self jump-pos) 300.0 -2.2755556)
+      (set! (-> self state-time) (-> self clock frame-counter))
+      (until (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1))
+        (let ((f0-2 (the float (- (-> self clock frame-counter) (-> self state-time)))))
+          (compute-trans-at-time gp-0 f0-2 (-> self root-override2 trans))
+          )
+        (transform-post)
+        (common-post self)
+        (suspend)
+        (if (nonzero? (-> self skel))
+            (ja :num! (loop! 0.5))
+            )
+        )
+      )
+    (set! (-> self root-override2 trans quad) (-> self jump-pos quad))
+    (set! (-> self base quad) (-> self root-override2 trans quad))
+    (vector-reset! (-> self root-override2 transv))
+    (update-transforms (-> self root-override2))
+    (logclear! (-> self flags) (collectable-flag bounce))
+    (logior! (-> self flags) (collectable-flag pickup))
+    (if (-> self actor-pause)
+        (logior! (-> self mask) (process-mask actor-pause))
+        )
+    (go-virtual wait)
+    (none)
+    )
+  )
+
+(defstate deploy (collectable)
+  :virtual #t
+  :event collectable-standard-event-handler
+  :enter (behavior ()
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (case (-> self pickup-type)
+      (((pickup-type gem))
+       (sound-play "gem-spawn")
+       )
+      (((pickup-type eco-pill-dark))
+       (sound-play "pill-spawn")
+       )
+      )
+    (if (and (logtest? (-> self fact options) (actor-option suck-in))
+             (not (and (-> self next-state) (= (-> self next-state name) 'pickup)))
+             *target*
+             (not (logtest? (-> *target* focus-status) (focus-status dead)))
+             )
+        (go-virtual suck (process->handle *target*))
+        )
+    (none)
+    )
+  :exit (behavior ()
+    (vector-reset! (-> self root-override2 transv))
+    (logclear! (-> self flags) (collectable-flag bounce))
+    (logior! (-> self flags) (collectable-flag pickup))
+    (if (-> self actor-pause)
+        (logior! (-> self mask) (process-mask actor-pause))
+        )
+    (set! (-> self base quad) (-> self root-override2 trans quad))
+    (logclear! (-> self root-override2 root-prim prim-core action) (collide-action solid))
+    (set! (-> self root-override2 root-prim prim-core collide-with) (collide-spec jak player-list tobot))
+    (set! (-> self root-override2 root-prim prim-core collide-as)
+          (collide-spec collectable notice-blue-eco-powerup)
+          )
+    (none)
+    )
+  :trans (behavior ()
+    (vector-v++!
+      (-> self root-override2 transv)
+      (compute-acc-due-to-gravity (-> self root-override2) (new-stack-vector0) 0.0)
+      )
+    (integrate-no-collide! (-> self root-override2) (-> self root-override2 transv))
+    (when (and (>= 0.0 (-> self root-override2 transv y)) (>= (-> self base y) (-> self root-override2 trans y)))
+      (set! (-> self root-override2 trans y) (-> self base y))
+      (cond
+        ((< (-> self root-override2 transv y) -8192.0)
+         (set! (-> self root-override2 transv y) (* -0.5 (-> self root-override2 transv y)))
+         )
+        (else
+          (if (and (logtest? (-> self fact options) (actor-option suck-in))
+                   (not (logtest? (-> self flags) (collectable-flag no-eco-blue)))
+                   )
+              (go-virtual notice-blue (process->handle *target*))
+              )
+          (when (and (logtest? (-> self fact options) (actor-option auto-pickup suck-in))
+                     (not (and (-> self next-state) (= (-> self next-state name) 'pickup)))
+                     (send-event *target* 'get-pickup (-> self fact pickup-type) (-> self fact pickup-amount))
+                     )
+            (process-contact-action *target*)
+            (go-virtual pickup #f (process->handle *target*))
+            )
+          (go-virtual wait)
+          )
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (until #f
+      (common-post self)
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate suck (collectable)
+  :virtual #t
+  :event collectable-standard-event-handler
+  :enter (behavior ((arg0 handle))
+    (sound-play "pickup-suck")
+    (set! (-> self target) arg0)
+    (set! (-> self speed quad) (the-as uint128 0))
+    (set! (-> self speed z) (if (rand-vu-percent? 0.5)
+                                1.0
+                                -1.0
+                                )
+          )
+    (set! (-> self suck-y-offset) 0.0)
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (logior! (-> self flags) (collectable-flag pickup suck-in))
+    (none)
+    )
+  :code (behavior ((arg0 handle))
+    (until #f
+      (set! (-> self root-override2 trans quad) (-> self base quad))
+      (add-blue-motion #t #f #f #f)
+      (update-transforms (-> self root-override2))
+      (common-post self)
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate wait (collectable)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('eco-blue)
+       (when (and (not (logtest? (-> self flags) (collectable-flag do-fadeout no-eco-blue)))
+                  (not (and (-> self next-state) (= (-> self next-state name) 'pickup)))
+                  (and (if (check-blue-suck (the-as process-drawable proc))
+                           (go-virtual suck (process->handle proc))
+                           )
+                       (logtest? (-> self flags) (collectable-flag pickup))
+                       (>= (- (-> self clock frame-counter) (the-as int (-> self birth-time)))
+                           (the-as time-frame (-> self collect-timeout))
+                           )
+                       )
+                  )
+         (logclear! (-> self mask) (process-mask actor-pause))
+         (go-virtual notice-blue (process->handle proc))
+         )
+       )
+      (else
+        (collectable-standard-event-handler proc arg1 event-type event)
+        )
+      )
+    )
+  :enter (behavior ()
+    (when (and (logtest? (-> self fact options) (actor-option auto-pickup suck-in))
+               (logtest? (-> self flags) (collectable-flag pickup))
+               (not (and (-> self next-state) (= (-> self next-state name) 'pickup)))
+               (send-event *target* 'get-pickup (-> self fact pickup-type) (-> self fact pickup-amount))
+               )
+      (process-contact-action *target*)
+      (go-virtual pickup #f (process->handle *target*))
+      )
+    (none)
+    )
+  :code (behavior ()
+    (until #f
+      (if (and (logtest? (-> self flags) (collectable-flag fadeout))
+               (begin
+                 (if (movie?)
+                     (set! (-> self birth-time) (-> self clock frame-counter))
+                     )
+                 (>= (- (-> self clock frame-counter) (the-as int (-> self birth-time)))
+                     (the-as time-frame (-> self fadeout-timeout))
+                     )
+                 )
+               (or (or (not *target*)
+                       (or (< 204800.0 (vector-vector-distance (-> self root-override2 trans) (-> *target* control trans)))
+                           (focus-test? *target* teleporting)
+                           )
+                       )
+                   (logtest? (-> self flags) (collectable-flag no-distance-check-fadeout))
+                   )
+               )
+          (go-virtual fade)
+          )
+      (common-post self)
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate fade (collectable)
+  :virtual #t
+  :event collectable-standard-event-handler
+  :code (behavior ()
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (set! (-> self actor-pause) #f)
+    (logior! (-> self flags) (collectable-flag do-fadeout))
+    (logior! (-> self state-flags) (state-flags sf0))
+    (let ((gp-0 (-> self clock frame-counter)))
+      (until #f
+        (let ((f0-1 (- 300.0 (the float (- (-> self clock frame-counter) gp-0)))))
+          (cond
+            ((< f0-1 0.0)
+             (process-entity-status! self (entity-perm-status dead) #t)
+             (send-event (handle->process (-> self notify)) 'notify 'die)
+             (deactivate self)
+             )
+            (else
+              (if (nonzero? (-> self part))
+                  (set! (-> self part fade) (* 0.0033333334 f0-1))
+                  )
+              (when (nonzero? (-> self draw))
+                (logior! (-> self draw status) (draw-control-status force-fade))
+                (set! (-> self draw force-fade) (the-as uint (max 0 (min 128 (the int (* 0.42666668 f0-1))))))
+                )
+              )
+            )
+          )
+        (common-post self)
+        (suspend)
+        )
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate notice-blue (collectable)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (when (and (or (= event-type 'touch) (= event-type 'attack))
+               (and (logtest? (-> self flags) (collectable-flag pickup))
+                    (>= (- (-> self clock frame-counter) (the-as int (-> self birth-time)))
+                        (the-as time-frame (-> self collect-timeout))
+                        )
+                    (not (and (-> self next-state) (= (-> self next-state name) 'pickup)))
+                    (send-event proc 'get-pickup (-> self fact pickup-type) (-> self fact pickup-amount))
+                    )
+               )
+      (logclear! (-> self mask) (process-mask actor-pause))
+      (go-virtual pickup #f (process->handle proc))
+      )
+    )
+  :enter (behavior ((arg0 handle))
+    (set! (-> self target) arg0)
+    (set! (-> self speed quad) (the-as uint128 0))
+    (set! (-> self speed z) (if (rand-vu-percent? 0.5)
+                                1.0
+                                -1.0
+                                )
+          )
+    (set! (-> self suck-y-offset) 0.0)
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (none)
+    )
+  :exit (behavior ()
+    (if (-> self actor-pause)
+        (logior! (-> self mask) (process-mask actor-pause))
+        )
+    (none)
+    )
+  :trans (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 2)
+      (set! (-> a1-0 message) 'query)
+      (set! (-> a1-0 param 0) (the-as uint 'powerup))
+      (set! (-> a1-0 param 1) (the-as uint 3))
+      (if (and (not (send-event-function *target* a1-0)) (not (logtest? (-> self flags) (collectable-flag suck-in))))
+          (go-virtual wait)
+          )
+      )
+    (none)
+    )
+  :code (behavior ((arg0 handle))
+    (until #f
+      (set! (-> self root-override2 trans quad) (-> self base quad))
+      (add-blue-motion #t #f #t #f)
+      (update-transforms (-> self root-override2))
+      (common-post self)
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate pickup (collectable)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('set-movie-pos)
+                      (let ((v1-2 (res-lump-struct (-> self entity) 'movie-pos structure)))
+                        (when v1-2
+                          (set! (-> (the-as vector v1-2) quad) (-> (the-as vector (-> event param 0)) quad))
+                          v1-2
+                          )
+                        )
+                      )
+                     (('actor-pause)
+                      (cond
+                        ((-> event param 0)
+                         (logior! (-> self mask) (process-mask actor-pause))
+                         (let ((v0-1 (the-as object #t)))
+                           (set! (-> self actor-pause) (the-as symbol v0-1))
+                           v0-1
+                           )
+                         )
+                        (else
+                          (logclear! (-> self mask) (process-mask actor-pause))
+                          (set! (-> self actor-pause) #f)
+                          #f
+                          )
+                        )
+                      )
+                     (('fade)
+                      (process-entity-status! self (entity-perm-status dead) #t)
+                      (send-event (handle->process (-> self notify)) 'notify 'die)
+                      (the-as object (deactivate self))
+                      )
+                     (('effect)
+                      (when (not (-> event param 0))
+                        (set! (-> self collect-effect) (the-as basic 0))
+                        (set! (-> self collect-effect2) (the-as basic 0))
+                        0
+                        )
+                      )
+                     )
+            )
+    )
+  :enter (behavior ((arg0 symbol) (arg1 handle))
+    (do-pickup self arg1)
+    (none)
+    )
+  :code (behavior ((arg0 symbol) (arg1 handle))
+    (while (-> self child)
+      (suspend)
+      )
+    (go-virtual die)
+    (none)
+    )
+  )
+
+(defstate die (collectable)
+  :virtual #t
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status dead) #t)
+    (none)
+    )
+  )
+
+(deftype eco (collectable)
+  ((respan-delay seconds  :offset-assert 408)
+   )
+  :heap-base #x120
+  :method-count-assert 36
+  :size-assert         #x1a0
+  :flag-assert         #x24012001a0
+  )
+
+
+(defmethod initialize-allocations eco ((obj eco))
+  (let ((t9-0 (method-of-type collectable initialize-allocations)))
+    (t9-0 obj)
+    )
+  (if (logtest? (-> obj fact options) (actor-option respawn-delay))
+      (set! (-> obj respan-delay) (-> obj fact fade-time))
+      )
+  0
+  (none)
+  )
+
+(defstate die (eco)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('fade)
+                      (process-entity-status! self (entity-perm-status dead) #t)
+                      (send-event (handle->process (-> self notify)) 'notify 'die)
+                      (the-as object (deactivate self))
+                      )
+                     (('die)
+                      (go-virtual die)
+                      )
+                     )
+            )
+    )
+  :exit (behavior ()
+    (process-entity-status! self (entity-perm-status no-kill) #f)
+    (if (-> self actor-pause)
+        (logior! (-> self mask) (process-mask actor-pause))
+        )
+    (none)
+    )
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status no-kill) #t)
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (logclear! (-> self fact options) (actor-option auto-pickup suck-in))
+    (if (nonzero? (-> self part))
+        (kill-and-free-particles (-> self part))
+        )
+    (cond
+      ((nonzero? (-> self respan-delay))
+       (let ((gp-0 (-> self clock frame-counter)))
+         (while (< (- (-> self clock frame-counter) gp-0) (the-as time-frame (-> self respan-delay)))
+           (suspend)
+           )
+         )
+       )
+      (else
+        (while (let ((f30-0 0.0))
+                 (< f30-0 (the-as float (send-event *target* 'query 'pickup (-> self fact pickup-type))))
+                 )
+          (suspend)
+          )
+        )
+      )
+    (set! (-> self base quad) (-> self old-base quad))
+    (set! (-> self root-override2 trans quad) (-> self base quad))
+    (let ((v1-26 (-> self root-override2 root-prim)))
+      (set! (-> v1-26 prim-core collide-as) (-> self root-override2 backup-collide-as))
+      (set! (-> v1-26 prim-core collide-with) (-> self root-override2 backup-collide-with))
+      )
+    (set! (-> self clock) (-> *display* entity-clock))
+    (if (nonzero? (-> self draw))
+        (logclear! (-> self draw status) (draw-control-status no-draw))
+        )
+    (go-virtual wait)
+    (none)
+    )
+  )
+
+(defstate pickup (eco)
+  :virtual #t
+  :code (behavior ((arg0 symbol) (arg1 handle))
+    (if (not (logtest? (-> self fact options) (actor-option no-reaction)))
+        (send-event (handle->process arg1) 'powerup (-> self fact pickup-type) (-> self fact pickup-amount))
+        )
+    (let ((t9-2 (-> (the-as state (find-parent-method eco 26)) code)))
+      (if t9-2
+          ((the-as (function none) t9-2))
+          )
+      )
+    (none)
+    )
+  )
+
+(deftype eco-yellow (eco)
+  ()
+  :heap-base #x120
+  :method-count-assert 36
+  :size-assert         #x1a0
+  :flag-assert         #x24012001a0
+  )
+
+
+(defmethod init-from-entity! eco-yellow ((obj eco-yellow) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (init-common obj arg0 (pickup-type eco-yellow) (-> *FACT-bank* eco-single-inc))
+  (none)
+  )
+
+(deftype eco-red (eco)
+  ()
+  :heap-base #x120
+  :method-count-assert 36
+  :size-assert         #x1a0
+  :flag-assert         #x24012001a0
+  )
+
+
+(defmethod init-from-entity! eco-red ((obj eco-red) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (init-common obj arg0 (pickup-type eco-red) (-> *FACT-bank* eco-single-inc))
+  (none)
+  )
+
+(deftype eco-blue (eco)
+  ()
+  :heap-base #x120
+  :method-count-assert 36
+  :size-assert         #x1a0
+  :flag-assert         #x24012001a0
+  )
+
+
+(defmethod init-from-entity! eco-blue ((obj eco-blue) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (init-common obj arg0 (pickup-type eco-blue) (-> *FACT-bank* eco-single-inc))
+  (none)
+  )
+
+(deftype eco-green (eco)
+  ()
+  :heap-base #x120
+  :method-count-assert 36
+  :size-assert         #x1a0
+  :flag-assert         #x24012001a0
+  )
+
+
+(defmethod init-from-entity! eco-green ((obj eco-green) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (init-common obj arg0 (pickup-type eco-green) (-> *FACT-bank* eco-single-inc))
+  (none)
+  )
+
+(deftype health (collectable)
+  ()
+  :heap-base #x120
+  :method-count-assert 36
+  :size-assert         #x194
+  :flag-assert         #x2401200194
+  )
+
+
+(defmethod init-from-entity! health ((obj health) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (init-common obj arg0 (pickup-type health) (-> *FACT-bank* health-default-inc))
+  (none)
+  )
+
+(deftype eco-pill (collectable)
+  ()
+  :heap-base #x120
+  :method-count-assert 36
+  :size-assert         #x194
+  :flag-assert         #x2401200194
+  )
+
+
+(defstate wait (eco-pill)
+  :virtual #t
+  :trans (behavior ()
+    (if (and (and *target*
+                  (and (>= 32768.0 (vector-vector-distance (-> self root-override2 trans) (-> *target* control trans)))
+                       (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
+                       )
+                  )
+             (and (not (focus-test? *target* dead hit))
+                  (case (-> self fact pickup-type)
+                    (((pickup-type eco-pill-dark))
+                     (< (-> *game-info* eco-pill-dark) (-> *FACT-bank* eco-pill-dark-max-default))
+                     )
+                    (else
+                      #t
+                      )
+                    )
+                  )
+             )
+        (send-event self 'suck *target*)
+        )
+    (none)
+    )
+  )
+
+(defmethod init-from-entity! eco-pill ((obj eco-pill) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (init-common obj arg0 (pickup-type eco-pill-green) (-> *FACT-bank* health-small-inc))
+  (none)
+  )
+
+(defmethod deactivate eco-pill ((obj eco-pill))
+  (+! (-> *game-info* live-eco-pill-count) -1)
+  ((method-of-type collectable deactivate) obj)
+  (none)
+  )
+
+(defmethod initialize-allocations eco-pill ((obj eco-pill))
+  (+! (-> *game-info* live-eco-pill-count) 1)
+  (stack-size-set! (-> obj main-thread) 128)
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> obj actor-pause) #f)
+  (set! (-> obj notify) (the-as handle #f))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec collectable notice-blue-eco-powerup))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec jak player-list tobot))
+      (set-vector! (-> v1-13 local-sphere) 0.0 3276.8 0.0 1638.4)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-13)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-16 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-16 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-16 prim-core collide-with))
+      )
+    (set! (-> obj root-override2) s5-0)
+    )
+  (set! (-> obj fact) (new 'process 'fact-info obj (-> obj pickup-type) (-> obj pickup-amount)))
+  0
+  (none)
+  )
+
+(deftype money (collectable)
+  ()
+  :heap-base #x120
+  :method-count-assert 36
+  :size-assert         #x194
+  :flag-assert         #x2401200194
+  )
+
+
+(defmethod run-logic? money ((obj money))
+  (or (not (logtest? (-> obj mask) (process-mask actor-pause)))
+      (or (and (nonzero? (-> obj draw))
+               (logtest? (-> obj draw status) (draw-control-status on-screen))
+               (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj root-override2 pause-adjust-distance))
+                   (vector-vector-distance (-> obj root-override2 trans) (math-camera-pos))
+                   )
+               )
+          (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
+          (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-control-status uninited)))
+          )
+      )
+  )
+
+(defmethod deactivate money ((obj money))
+  (when (and (-> obj next-state) (= (-> obj next-state name) 'pickup))
+    (case (-> obj pickup-type)
+      (((pickup-type gem))
+       (if (not (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status save))))
+           (format #t "~A ~A was killed in pickup~%" (-> obj type) (-> obj name))
+           )
+       (process-entity-status! obj (entity-perm-status dead) #t)
+       )
+      (else
+        (if (not (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status dead))))
+            (format #t "~A ~A was killed in pickup~%" (-> obj type) (-> obj name))
+            )
+        )
+      )
+    )
+  ((method-of-type collectable deactivate) obj)
+  (none)
+  )
+
+(defmethod common-post money ((obj money))
+  (with-pp
+    (quaternion-rotate-y!
+      (-> obj root-override2 quat)
+      (-> obj root-override2 quat)
+      (* 40049.777 (-> pp clock seconds-per-frame))
+      )
+    (let ((f30-0 (-> obj bob-amount)))
+      (when (< 0.0 f30-0)
+        (set! (-> obj root-override2 trans y)
+              (+ (-> obj base y)
+                 (-> obj suck-y-offset)
+                 (* f30-0
+                    (sin
+                      (* 109.22667
+                         (the float
+                              (mod
+                                (+ (- (-> pp clock frame-counter) (the-as int (-> obj birth-time))) (the-as time-frame (-> obj bob-offset)))
+                                600
+                                )
+                              )
+                         )
+                      )
+                    )
+                 )
+              )
+        (update-transforms (-> obj root-override2))
+        )
+      )
+    (ja-post)
+    (none)
+    )
+  )
+
+(defstate notice-blue (money)
+  :virtual #t
+  :code (behavior ((arg0 handle))
+    (until #f
+      (quaternion-rotate-y!
+        (-> self root-override2 quat)
+        (-> self root-override2 quat)
+        (* 91022.22 (-> self clock seconds-per-frame))
+        )
+      (set! (-> self root-override2 trans quad) (-> self base quad))
+      (add-blue-motion #t #t #t #f)
+      (let ((f30-0 (-> self bob-amount)))
+        (if (< 0.0 f30-0)
+            (set! (-> self root-override2 trans y)
+                  (+ (-> self base y)
+                     (-> self suck-y-offset)
+                     (* f30-0
+                        (sin (* 109.22667 (the float (mod
+                                                       (+ (- (-> self clock frame-counter) (the-as int (-> self birth-time)))
+                                                          (the-as time-frame (-> self bob-offset))
+                                                          )
+                                                       600
+                                                       )
+                                               )
+                                )
+                             )
+                        )
+                     )
+                  )
+            )
+        )
+      (transform-post)
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate pickup (money)
+  :virtual #t
+  :code (behavior ((arg0 symbol) (arg1 handle))
+    (process-entity-status! self (entity-perm-status dead) #t)
+    (none)
+    )
+  )
+
+(defmethod initialize-allocations money ((obj money))
+  (stack-size-set! (-> obj main-thread) 128)
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-8 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-8 prim-core collide-as) (collide-spec collectable notice-blue-eco-powerup))
+      (set! (-> v1-8 prim-core collide-with) (collide-spec jak player-list tobot))
+      (set-vector! (-> v1-8 local-sphere) 0.0 2048.0 0.0 4915.2)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-8)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-11 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-11 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-11 prim-core collide-with))
+      )
+    (set! (-> obj root-override2) s5-0)
+    )
+  (logior! (-> obj mask) (process-mask actor-pause))
+  (set! (-> obj actor-pause) #t)
+  (set! (-> obj notify) (the-as handle #f))
+  (set! (-> obj fact) (new 'process 'fact-info obj (pickup-type money) 1.0))
+  (let ((a0-11 (-> obj entity)))
+    (if (when a0-11
+          (let ((a0-12 (-> a0-11 extra perm task)))
+            (if a0-12
+                (zero? a0-12)
+                )
+            )
+          )
+        (set! (-> obj entity extra perm task) (the-as uint 1))
+        )
+    )
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gem" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (if (-> obj entity)
+      (nav-mesh-connect-from-ent obj)
+      )
+  (set-vector! (-> obj draw color-mult) 0.8 0.8 0.8 1.0)
+  (set-vector! (-> obj draw color-emissive) 0.2 0.2 0.2 1.0)
+  0
+  (none)
+  )
+
+(defmethod init-from-entity! money ((obj money) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (initialize-allocations obj)
+  (process-drawable-from-entity! obj (-> obj entity))
+  (initialize-options obj 0 1024.0 (the-as fact-info #f))
+  (update-transforms (-> obj root-override2))
+  (go-to-initial-state obj)
+  (none)
+  )
+
+(defbehavior money-init-by-other money ((arg0 vector) (arg1 vector) (arg2 fact-info) (arg3 entity-actor))
+  (let ((s3-0 (-> arg2 pickup-type))
+        (f30-0 (-> arg2 pickup-spawn-amount))
+        )
+    (process-entity-set! self arg3)
+    (set! (-> self pickup-type) s3-0)
+    (set! (-> self pickup-amount) f30-0)
+    (initialize-allocations self)
+    (set! (-> self fact pickup-type) s3-0)
+    (set! (-> self fact pickup-amount) f30-0)
+    )
+  (set! (-> self fact options) (-> arg2 options))
+  (let ((v1-5 (ppointer->process (-> self parent))))
+    (set! (-> self notify) (if (logtest? (-> v1-5 mask) (process-mask process-tree))
+                               (the-as handle #f)
+                               (process->handle v1-5)
+                               )
+          )
+    )
+  (set! (-> self root-override2 trans quad) (-> arg0 quad))
+  (quaternion-identity! (-> self root-override2 quat))
+  (set! (-> self root-override2 transv quad) (-> arg1 quad))
+  (initialize-options
+    self
+    (if (and arg2 (logtest? (-> arg2 options) (actor-option fade-out)))
+        (the-as int (-> arg2 fade-time))
+        4500
+        )
+    1024.0
+    arg2
+    )
+  (update-transforms (-> self root-override2))
+  (set! (-> self event-hook) (-> (method-of-object self wait) event))
+  (go-to-initial-state self)
+  (none)
+  )
+
+(defbehavior money-init-by-other-no-bob money ((arg0 vector) (arg1 vector) (arg2 fact-info) (arg3 float) (arg4 entity-actor))
+  (process-entity-set! self arg4)
+  (set! (-> self pickup-type) (the-as pickup-type arg2))
+  (set! (-> self pickup-amount) arg3)
+  (initialize-allocations self)
+  (set! (-> self fact pickup-type) (the-as pickup-type arg2))
+  (set! (-> self fact pickup-amount) arg3)
+  (let ((v1-4 (ppointer->process (-> self parent))))
+    (set! (-> self notify) (if (logtest? (-> v1-4 mask) (process-mask process-tree))
+                               (the-as handle #f)
+                               (process->handle v1-4)
+                               )
+          )
+    )
+  (set! (-> self root-override2 trans quad) (-> arg0 quad))
+  (quaternion-identity! (-> self root-override2 quat))
+  (set! (-> self root-override2 transv quad) (-> arg1 quad))
+  (initialize-options self 4500 0.0 (the-as fact-info #f))
+  (logior! (-> self flags) (collectable-flag no-eco-blue))
+  (update-transforms (-> self root-override2))
+  (set! (-> self event-hook) (-> (method-of-object self wait) event))
+  (go-to-initial-state self)
+  (none)
+  )
+
+(deftype gem (money)
+  ((roty-speed  degrees  :offset-assert 404)
+   (bounce-time seconds  :offset-assert 408)
+   )
+  :heap-base #x120
+  :method-count-assert 36
+  :size-assert         #x1a0
+  :flag-assert         #x24012001a0
+  )
+
+
+(defmethod deactivate gem ((obj gem))
+  (+! (-> *game-info* live-gem-count) -1)
+  ((the-as (function gem none) (find-parent-method gem 10)) obj)
+  (none)
+  )
+
+(defmethod common-post gem ((obj gem))
+  (with-pp
+    (seek! (-> obj roty-speed) 20024.889 (* 65536.0 (-> pp clock seconds-per-frame)))
+    (quaternion-rotate-y!
+      (-> obj root-override2 quat)
+      (-> obj root-override2 quat)
+      (* (-> obj roty-speed) (-> pp clock seconds-per-frame))
+      )
+    (logclear! (-> obj draw status) (draw-control-status no-draw-temp uninited))
+    (do-joint-math (-> obj draw) (-> obj node-list) (-> obj skel))
+    (let ((a0-7 (-> obj part))
+          (a1-3 (-> obj draw skeleton bones 3))
+          )
+      (if (nonzero? a0-7)
+          (spawn-with-matrix a0-7 (the-as matrix a1-3))
+          )
+      )
+    0
+    (none)
+    )
+  )
+
+(defstate deploy (gem)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type collectable deploy) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set-vector!
+      (-> self root-override2 transv)
+      (rand-vu-float-range -20480.0 20480.0)
+      81920.0
+      (rand-vu-float-range -20480.0 20480.0)
+      1.0
+      )
+    (set-gravity-length (-> self root-override2 dynam) 122880.0)
+    (set! (-> self roty-speed) 186413.52)
+    (logior! (-> self flags) (collectable-flag pickup))
+    (set! (-> self root-override2 root-prim prim-core collide-with)
+          (collide-spec backgnd bot crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+          )
+    (set! (-> self root-override2 root-prim prim-core collide-as) (collide-spec collectable))
+    (set! (-> self root-override2 max-iteration-count) (the-as uint 2))
+    (logior! (-> self root-override2 root-prim prim-core action) (collide-action solid))
+    (set! (-> self root-override2 reaction) projectile-bounce-reaction)
+    (set! (-> self root-override2 penetrated-by) (the-as penetrate -1))
+    (none)
+    )
+  :exit (behavior ()
+    (set! (-> self roty-speed) (fmin 262144.0 (-> self roty-speed)))
+    (set-gravity-length (-> self root-override2 dynam) 245760.0)
+    (set! (-> self root-override2 root-prim local-sphere w) 6144.0)
+    (update-transforms (-> self root-override2))
+    (let ((t9-2 (-> (method-of-type collectable deploy) exit)))
+      (if t9-2
+          (t9-2)
+          )
+      )
+    (none)
+    )
+  :trans (the-as (function none :behavior gem) #f)
+  :code (the-as (function none :behavior gem) sleep-code)
+  :post (behavior ()
+    (let ((gp-0 #t))
+      (vector-v++!
+        (-> self root-override2 transv)
+        (compute-acc-due-to-gravity (-> self root-override2) (new-stack-vector0) 0.0)
+        )
+      (when (-> self entity)
+        (when (get-simple-travel-vector
+                (-> self entity)
+                (-> self root-override2 transv)
+                (-> self root-override2 trans)
+                (-> self root-override2 transv)
+                (* 1.5 (-> self root-override2 root-prim prim-core world-sphere w))
+                0.8
+                )
+          (let ((s5-1 (new 'stack-no-clear 'vector))
+                (f30-0 (-> self root-override2 transv y))
+                )
+            (project-point-to-nav-mesh
+              (-> self entity)
+              s5-1
+              (-> self root-override2 trans)
+              (the-as nav-poly #f)
+              40960000.0
+              )
+            (when (>= (vector-vector-xz-distance s5-1 (-> self root-override2 trans)) 204.8)
+              (vector-! (-> self root-override2 transv) s5-1 (-> self root-override2 trans))
+              (vector-normalize! (-> self root-override2 transv) 40960.0)
+              (set! (-> self root-override2 transv y)
+                    (if (< 0.0 (-> self root-override2 transv y))
+                        (+ f30-0 (* 4.0 (-> self clock seconds-per-frame) (-> self root-override2 transv y)))
+                        f30-0
+                        )
+                    )
+              (set! gp-0 #f)
+              )
+            )
+          )
+        )
+      (cond
+        (gp-0
+          (let ((v1-31 (-> self root-override2))
+                (a2-3 (new 'stack-no-clear 'collide-query))
+                )
+            (set! (-> a2-3 collide-with) (-> v1-31 root-prim prim-core collide-with))
+            (set! (-> a2-3 ignore-process0) self)
+            (set! (-> a2-3 ignore-process1) #f)
+            (set! (-> a2-3 ignore-pat) (-> v1-31 pat-ignore-mask))
+            (set! (-> a2-3 action-mask) (collide-action solid))
+            (fill-cache-integrate-and-collide v1-31 (-> v1-31 transv) a2-3 (meters 0))
+            )
+          )
+        (else
+          (integrate-no-collide! (-> self root-override2) (-> self root-override2 transv))
+          )
+        )
+      )
+    (let* ((gp-1 (-> self root-override2))
+           (s5-2 (-> gp-1 status))
+           )
+      (cond
+        ((logtest? s5-2 (collide-status touch-surface))
+         (set! (-> gp-1 transv x) (* 0.7 (-> gp-1 transv x)))
+         (set! (-> gp-1 transv y) (* (-> gp-1 transv y) (rand-vu-float-range 0.7 0.75)))
+         (set! (-> gp-1 transv z) (* 0.7 (-> gp-1 transv z)))
+         (set! (-> self roty-speed)
+               (fmin
+                 131072.0
+                 (+ (-> self roty-speed) (lerp-scale 0.0 131072.0 (-> self root-override2 ground-impact-vel) 0.0 122880.0))
+                 )
+               )
+         (if (or (and (logtest? s5-2 (collide-status on-surface)) (< (vector-length (-> gp-1 transv)) 1228.8))
+                 (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 10))
+                 )
+             (go-virtual wait)
+             )
+         (when (>= (- (-> self clock frame-counter) (the-as int (-> self bounce-time))) (seconds 0.1))
+           (set! (-> self bounce-time) (-> self clock frame-counter))
+           (sound-play-by-name
+             (static-sound-name "gem-bounce")
+             (new-sound-id)
+             (the int (* 1024.0 (lerp-scale 0.5 1.0 (-> self root-override2 ground-impact-vel) 0.0 40960.0)))
+             0
+             0
+             (sound-group sfx)
+             #t
+             )
+           )
+         )
+        ((>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 15))
+         (go-virtual wait)
+         )
+        )
+      )
+    (seek! (-> self roty-speed) 0.0 (* 16384.0 (-> self clock seconds-per-frame)))
+    (common-post self)
+    (none)
+    )
+  )
+
+(defmethod initialize-allocations gem ((obj gem))
+  (+! (-> *game-info* live-gem-count) 1)
+  (stack-size-set! (-> obj main-thread) 128)
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-11 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec collectable notice-blue-eco-powerup))
+      (set! (-> v1-11 prim-core collide-with) (collide-spec jak player-list tobot))
+      (set-vector! (-> v1-11 local-sphere) 0.0 2048.0 0.0 2048.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-11)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-14 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-14 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-14 prim-core collide-with))
+      )
+    (set! (-> obj root-override2) s5-0)
+    )
+  (set! (-> obj roty-speed) 40049.777)
+  (quaternion-rotate-y!
+    (-> obj root-override2 quat)
+    (-> obj root-override2 quat)
+    (rand-vu-float-range 0.0 65536.0)
+    )
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> obj actor-pause) #f)
+  (set! (-> obj notify) (the-as handle #f))
+  (set! (-> obj fact) (new 'process 'fact-info obj (pickup-type gem) 1.0))
+  (let ((v1-22 (-> obj entity)))
+    (if (and (-> obj entity)
+             (-> v1-22 extra perm task)
+             (zero? (-> v1-22 extra perm task))
+             (type-type? (-> v1-22 etype) crate)
+             )
+        (set! (-> obj entity extra perm task) (the-as uint 1))
+        )
+    )
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gem" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set-vector! (-> obj root-override2 scale) 1.5 1.5 1.5 1.0)
+  (if (-> obj entity)
+      (nav-mesh-connect-from-ent obj)
+      )
+  (set-vector! (-> obj draw color-mult) 0.8 0.8 0.8 1.0)
+  (set-vector! (-> obj draw color-emissive) 0.2 0.2 0.2 1.0)
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 86) obj))
+  (set! (-> obj collect-effect) (-> *part-group-id-table* 87))
+  0
+  (none)
+  )
+
+(define *collectable-dummy-shadow-control*
+  (new 'static 'shadow-control :settings (new 'static 'shadow-settings
+                                           :flags (shadow-flags disable-fade)
+                                           :shadow-dir (new 'static 'vector :y -1.0 :w 163840.0)
+                                           :bot-plane (new 'static 'plane :y 1.0 :w 40960.0)
+                                           :top-plane (new 'static 'plane :y 1.0 :w -4096.0)
+                                           )
+                               )
+  )
+
+(deftype skill (money)
+  ()
+  :heap-base #x120
+  :method-count-assert 36
+  :size-assert         #x194
+  :flag-assert         #x2401200194
+  )
+
+
+(defstate wait (skill)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (if (and (logtest? (-> self flags) (collectable-flag fadeout))
+               (begin
+                 (if (movie?)
+                     (set! (-> self birth-time) (-> self clock frame-counter))
+                     )
+                 (>= (- (-> self clock frame-counter) (the-as int (-> self birth-time)))
+                     (the-as time-frame (-> self fadeout-timeout))
+                     )
+                 )
+               )
+          (go-virtual fade)
+          )
+      (common-post self)
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+(defmethod initialize-allocations skill ((obj skill))
+  (stack-size-set! (-> obj main-thread) 128)
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-8 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-8 prim-core collide-as) (collide-spec collectable notice-blue-eco-powerup))
+      (set! (-> v1-8 prim-core collide-with) (collide-spec jak player-list tobot))
+      (set-vector! (-> v1-8 local-sphere) 0.0 2048.0 0.0 4915.2)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-8)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-11 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-11 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-11 prim-core collide-with))
+      )
+    (set! (-> obj root-override2) s5-0)
+    )
+  (logior! (-> obj mask) (process-mask actor-pause))
+  (set! (-> obj actor-pause) #t)
+  (set! (-> obj notify) (the-as handle #f))
+  (set! (-> obj fact) (new 'process 'fact-info obj (pickup-type skill) 1.0))
+  (let ((a0-11 (-> obj entity)))
+    (if (when a0-11
+          (let ((a0-12 (-> a0-11 extra perm task)))
+            (if a0-12
+                (zero? a0-12)
+                )
+            )
+          )
+        (set! (-> obj entity extra perm task) (the-as uint 1))
+        )
+    )
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-skill" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> obj draw shadow-ctrl) *collectable-dummy-shadow-control*)
+  (if (-> obj entity)
+      (nav-mesh-connect-from-ent obj)
+      )
+  (cond
+    ((>= (-> obj pickup-amount) (-> *FACT-bank* super-skill-inc))
+     (set-vector! (-> obj draw color-mult) 0.8 0.8 0.0 1.0)
+     (set-vector! (-> obj draw color-emissive) 0.0 1.0 0.2 1.0)
+     )
+    (else
+      (set-vector! (-> obj draw color-mult) 0.8 0.8 0.8 1.0)
+      (set-vector! (-> obj draw color-emissive) 0.2 0.2 0.2 1.0)
+      )
+    )
+  0
+  (none)
+  )
+
+(deftype fuel-cell (process-hidden)
+  ()
+  :method-count-assert 15
+  :size-assert         #x80
+  :flag-assert         #xf00000080
+  )
+
+
+(deftype trick-point (collectable)
+  ()
+  :heap-base #x120
+  :method-count-assert 36
+  :size-assert         #x194
+  :flag-assert         #x2401200194
+  )
+
+
+(deftype skate-point (trick-point)
+  ()
+  :heap-base #x120
+  :method-count-assert 36
+  :size-assert         #x194
+  :flag-assert         #x2401200194
+  )
+
+
+(defmethod initialize-allocations trick-point ((obj trick-point))
+  (stack-size-set! (-> obj main-thread) 128)
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-8 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-8 prim-core collide-as) (collide-spec collectable))
+      (set! (-> v1-8 prim-core collide-with) (collide-spec jak player-list tobot))
+      (set-vector! (-> v1-8 local-sphere) 0.0 2048.0 0.0 4915.2)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-8)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-11 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-11 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-11 prim-core collide-with))
+      )
+    (set! (-> obj root-override2) s5-0)
+    )
+  (logior! (-> obj mask) (process-mask actor-pause))
+  (set! (-> obj actor-pause) #t)
+  (set! (-> obj notify) (the-as handle #f))
+  (set! (-> obj root-override2 pause-adjust-distance) 204800.0)
+  (set! (-> obj fact) (new 'process 'fact-info obj (pickup-type trick-point) 100.0))
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 94) obj))
+  (set! (-> obj collect-effect) (-> *part-group-id-table* 95))
+  0
+  (none)
+  )
+
+(defmethod init-from-entity! trick-point ((obj trick-point) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (initialize-allocations obj)
+  (process-drawable-from-entity! obj (-> obj entity))
+  (initialize-options obj 0 1024.0 (the-as fact-info #f))
+  (update-transforms (-> obj root-override2))
+  (go-to-initial-state obj)
+  (none)
+  )
+
+(deftype ammo-collectable (collectable)
+  ((ammo-effect basic  :offset-assert 404)
+   )
+  :heap-base #x120
+  :method-count-assert 36
+  :size-assert         #x198
+  :flag-assert         #x2401200198
+  )
+
+
+(defmethod initialize-allocations ammo-collectable ((obj ammo-collectable))
+  (stack-size-set! (-> obj main-thread) 128)
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> obj actor-pause) #f)
+  (set! (-> obj notify) (the-as handle #f))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-10 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-10 prim-core collide-as) (collide-spec collectable))
+      (set! (-> v1-10 prim-core collide-with) (collide-spec jak player-list tobot))
+      (set-vector! (-> v1-10 local-sphere) 0.0 3276.8 0.0 6553.6)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-10)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-13 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-13 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-13 prim-core collide-with))
+      )
+    (set! (-> obj root-override2) s5-0)
+    )
+  (quaternion-rotate-y!
+    (-> obj root-override2 quat)
+    (-> obj root-override2 quat)
+    (rand-vu-float-range 0.0 65536.0)
+    )
+  (set! (-> obj fact) (new 'process 'fact-info obj (-> obj pickup-type) (-> obj pickup-amount)))
+  (case (-> obj pickup-type)
+    (((pickup-type ammo-yellow))
+     (set! (-> obj collect-effect) (-> *part-group-id-table* 88))
+     )
+    (((pickup-type ammo-red))
+     (set! (-> obj collect-effect) (-> *part-group-id-table* 89))
+     )
+    (((pickup-type ammo-blue))
+     (set! (-> obj collect-effect) (-> *part-group-id-table* 90))
+     )
+    (((pickup-type ammo-dark))
+     (set! (-> obj collect-effect) (-> *part-group-id-table* 91))
+     )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod initialize-effects ammo-collectable ((obj ammo-collectable) (arg0 pickup-type))
+  (set! (-> obj fact pickup-type) arg0)
+  (case arg0
+    (((pickup-type ammo-yellow))
+     (initialize-skeleton
+       obj
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-ammo-yellow" (the-as (pointer uint32) #f)))
+       (the-as pair 0)
+       )
+     (set-vector! (-> obj root-override2 scale) 2.5 2.5 2.5 1.0)
+     (set! (-> obj ammo-effect) (-> *part-group-id-table* 108))
+     )
+    (((pickup-type ammo-red))
+     (initialize-skeleton
+       obj
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-ammo-red" (the-as (pointer uint32) #f)))
+       (the-as pair 0)
+       )
+     (set-vector! (-> obj root-override2 scale) 4.0 4.0 4.0 1.0)
+     (set! (-> obj ammo-effect) (-> *part-group-id-table* 102))
+     )
+    (((pickup-type ammo-blue))
+     (initialize-skeleton
+       obj
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-ammo-blue" (the-as (pointer uint32) #f)))
+       (the-as pair 0)
+       )
+     (set-vector! (-> obj root-override2 scale) 4.0 4.0 4.0 1.0)
+     (set! (-> obj ammo-effect) (-> *part-group-id-table* 98))
+     )
+    (((pickup-type ammo-dark))
+     (initialize-skeleton
+       obj
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-ammo-dark" (the-as (pointer uint32) #f)))
+       (the-as pair 0)
+       )
+     (set-vector! (-> obj root-override2 scale) 3.0 3.0 3.0 1.0)
+     (set! (-> obj ammo-effect) (-> *part-group-id-table* 83))
+     )
+    (((pickup-type gun-yellow))
+     (initialize-skeleton
+       obj
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-yellow-up" (the-as (pointer uint32) #f)))
+       (the-as pair 0)
+       )
+     (set-vector! (-> obj root-override2 scale) 3.0 3.0 3.0 1.0)
+     (logclear! (-> obj flags) (collectable-flag fadeout))
+     (let ((v1-34 (-> obj node-list data)))
+       (set! (-> v1-34 0 param0) (the-as (function cspace transformq none) cspace<-transformq+trans!))
+       (set! (-> v1-34 0 param1) (the-as basic (-> obj root-override2 trans)))
+       (set! (-> v1-34 0 param2) (the-as basic (-> obj extra-trans)))
+       )
+     (set-vector! (-> obj extra-trans) 0.0 1638.4 0.0 1.0)
+     )
+    (((pickup-type gun-dark))
+     (initialize-skeleton
+       obj
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dark-up" (the-as (pointer uint32) #f)))
+       (the-as pair 0)
+       )
+     (set-vector! (-> obj root-override2 scale) 3.0 3.0 3.0 1.0)
+     (logclear! (-> obj flags) (collectable-flag fadeout))
+     )
+    (((pickup-type board))
+     (process-entity-set! obj (the-as entity #f))
+     (initialize-skeleton
+       obj
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-board" (the-as (pointer uint32) #f)))
+       (the-as pair 0)
+       )
+     (ja-channel-set! 1)
+     (let ((v1-48 (-> obj skel root-channel 0)))
+       (set! (-> v1-48 frame-group) (the-as art-joint-anim (-> obj draw art-group data 3)))
+       )
+     (set-vector! (-> obj root-override2 scale) 2.0 2.0 2.0 1.0)
+     (let ((v1-52 (-> obj node-list data)))
+       (set! (-> v1-52 0 param0) (the-as (function cspace transformq none) cspace<-transformq+trans!))
+       (set! (-> v1-52 0 param1) (the-as basic (-> obj root-override2 trans)))
+       (set! (-> v1-52 0 param2) (the-as basic (-> obj extra-trans)))
+       )
+     (set-vector! (-> obj extra-trans) 0.0 2048.0 0.0 1.0)
+     (logclear! (-> obj flags) (collectable-flag fadeout))
+     )
+    (((pickup-type shield))
+     (set! (-> obj ammo-effect) (-> *part-group-id-table* 80))
+     )
+    (((pickup-type trick-point))
+     )
+    )
+  (none)
+  )
+
+(defbehavior initialize-ammo-by-other ammo ((arg0 vector) (arg1 vector) (arg2 fact-info))
+  (let ((s3-0 (-> arg2 pickup-type))
+        (f30-0 (-> arg2 pickup-spawn-amount))
+        )
+    (set! (-> self pickup-amount) f30-0)
+    (set! (-> self pickup-type) s3-0)
+    (initialize-allocations self)
+    (set! (-> self fact pickup-type) s3-0)
+    (set! (-> self fact pickup-amount) f30-0)
+    )
+  (set! (-> self fact options) (-> arg2 options))
+  (set! (-> self root-override2 trans quad) (-> arg0 quad))
+  (set! (-> self root-override2 transv quad) (-> arg1 quad))
+  (initialize-effects self (-> self fact pickup-type))
+  (set! (-> self notify) (the-as handle #f))
+  (initialize-options self 4500 1024.0 arg2)
+  (update-transforms (-> self root-override2))
+  (set! (-> self event-hook) (-> (method-of-object self wait) event))
+  (go-to-initial-state self)
+  (none)
+  )
+
+(defmethod init-common ammo-collectable ((obj ammo-collectable) (arg0 entity-actor) (arg1 pickup-type) (arg2 float))
+  (set! (-> obj pickup-amount) arg2)
+  (set! (-> obj pickup-type) arg1)
+  (initialize-allocations obj)
+  (set! (-> obj root-override2 trans quad) (-> arg0 extra trans quad))
+  (initialize-effects obj (-> obj fact pickup-type))
+  (initialize-options obj 0 1024.0 (the-as fact-info #f))
+  (update-transforms (-> obj root-override2))
+  (go-to-initial-state obj)
+  (none)
+  )
+
+(defmethod common-post ammo-collectable ((obj ammo-collectable))
+  (with-pp
+    (quaternion-rotate-y!
+      (-> obj root-override2 quat)
+      (-> obj root-override2 quat)
+      (* 40049.777 (-> pp clock seconds-per-frame))
+      )
+    ((method-of-type collectable common-post) obj)
+    0
+    (none)
+    )
+  )
+
+(defstate die (ammo-collectable)
+  :virtual #t
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status dead) #t)
+    (none)
+    )
+  )
+
+(deftype ammo (ammo-collectable)
+  ()
+  :heap-base #x120
+  :method-count-assert 36
+  :size-assert         #x198
+  :flag-assert         #x2401200198
+  )
+
+
+(deftype shield (ammo-collectable)
+  ()
+  :heap-base #x120
+  :method-count-assert 36
+  :size-assert         #x198
+  :flag-assert         #x2401200198
+  )
+
+
+(deftype upgrade-collectable (ammo-collectable)
+  ()
+  :heap-base #x120
+  :method-count-assert 36
+  :size-assert         #x198
+  :flag-assert         #x2401200198
+  )
+
+
+(defbehavior initialize-upgrade-by-other upgrade-collectable ((arg0 vector) (arg1 vector) (arg2 fact-info) (arg3 entity-actor))
+  (process-entity-set! self arg3)
+  (let ((s3-0 (-> arg2 pickup-type))
+        (f30-0 (-> arg2 pickup-spawn-amount))
+        )
+    (set! (-> self pickup-amount) f30-0)
+    (set! (-> self pickup-type) s3-0)
+    (initialize-allocations self)
+    (set! (-> self fact pickup-type) s3-0)
+    (set! (-> self fact pickup-amount) f30-0)
+    )
+  (set! (-> self fact options) (-> arg2 options))
+  (set! (-> self root-override2 trans quad) (-> arg0 quad))
+  (set! (-> self root-override2 transv quad) (-> arg1 quad))
+  (initialize-effects self (-> self fact pickup-type))
+  (set! (-> self notify) (the-as handle #f))
+  (initialize-options
+    self
+    (if (and arg2 (logtest? (-> arg2 options) (actor-option fade-out)))
+        (the-as int (-> arg2 fade-time))
+        0
+        )
+    1024.0
+    (the-as fact-info #f)
+    )
+  (set! (-> self collect-timeout) (the-as seconds 300))
+  (update-transforms (-> self root-override2))
+  (set! (-> self event-hook) (-> (method-of-object self wait) event))
+  (go-to-initial-state self)
+  (none)
+  )
+
+(defmethod init-from-entity! eco ((obj eco) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((v1-1 (res-lump-value (-> obj entity) 'eco-info uint128 :time -1000000000.0)))
+    (set! (-> obj type) (cond
+                          ((= (the-as uint v1-1) 3)
+                           eco-blue
+                           )
+                          ((= (the-as uint v1-1) 2)
+                           eco-red
+                           )
+                          ((= (the-as uint v1-1) 1)
+                           eco-yellow
+                           )
+                          ((= (the-as uint v1-1) 5)
+                           eco-green
+                           )
+                          ((= (the-as uint v1-1) 18)
+                           health
+                           )
+                          ((= (the-as uint v1-1) 9)
+                           money
+                           )
+                          ((= (the-as uint v1-1) 19)
+                           trick-point
+                           )
+                          ((= (the-as uint v1-1) 21)
+                           gem
+                           )
+                          ((= (the-as uint v1-1) 22)
+                           skill
+                           )
+                          ((= (the-as uint v1-1) 10)
+                           fuel-cell
+                           )
+                          (else
+                            eco-pill
+                            )
+                          )
+          )
+    )
+  (init-from-entity! obj arg0)
+  (none)
+  )
+
+(defbehavior birth-pickup-at-point process ((arg0 vector) (arg1 pickup-type) (arg2 float) (arg3 symbol) (arg4 process-tree) (arg5 fact-info))
+  (local-vars (sv-32 vector) (sv-36 float) (sv-40 (pointer process)) (sv-48 int) (sv-56 fact-info) (sv-64 int))
+  (set! sv-32 (new-stack-vector0))
+  (set! sv-36 (res-lump-float
+                (if (and arg5 (nonzero? (-> arg5 process)))
+                    (-> arg5 process entity)
+                    )
+                'pickup-radius
+                :default (cond
+                  ((= arg1 (pickup-type buzzer))
+                   0.0
+                   )
+                  ((= arg2 1.0)
+                   409.6
+                   )
+                  (else
+                    8192.0
+                    )
+                  )
+                )
+        )
+  (set! sv-40 (the-as (pointer process) #f))
+  (set! sv-48 (the int arg2))
+  (set! sv-56 (new 'static 'fact-info))
+  (set! (-> sv-56 options) (actor-option))
+  (if arg5
+      (mem-copy! (&-> sv-56 type) (&-> arg5 type) 40)
+      )
+  (set! (-> sv-56 pickup-type) arg1)
+  (set! (-> sv-56 pickup-spawn-amount) 1.0)
+  (while (> sv-48 0)
+    (set! sv-48 (+ sv-48 -1))
+    (when arg3
+      (set-vector! sv-32 0.0 57001.605 sv-36 1.0)
+      (vector-rotate-around-y! sv-32 sv-32 (/ (* 65536.0 (the float sv-48)) arg2))
+      )
+    (case arg1
+      (((pickup-type eco-yellow))
+       (set! sv-40
+             (process-spawn eco-yellow :init initialize-eco-by-other arg0 sv-32 sv-56 :from *pickup-dead-pool* :to arg4)
+             )
+       )
+      (((pickup-type eco-red))
+       (set! sv-40
+             (process-spawn eco-red :init initialize-eco-by-other arg0 sv-32 sv-56 :from *pickup-dead-pool* :to arg4)
+             )
+       )
+      (((pickup-type eco-blue))
+       (set! sv-40
+             (process-spawn eco-blue :init initialize-eco-by-other arg0 sv-32 sv-56 :from *pickup-dead-pool* :to arg4)
+             )
+       )
+      (((pickup-type eco-green))
+       (set! sv-40
+             (process-spawn eco-green :init initialize-eco-by-other arg0 sv-32 sv-56 :from *pickup-dead-pool* :to arg4)
+             )
+       )
+      (((pickup-type health))
+       (set! (-> sv-56 pickup-spawn-amount) arg2)
+       (set! sv-40
+             (process-spawn health :init initialize-eco-by-other arg0 sv-32 sv-56 :from *pickup-dead-pool* :to arg4)
+             )
+       (set! sv-48 0)
+       0
+       )
+      (((pickup-type eco-pill-green) (pickup-type eco-pill-dark))
+       (set! sv-40
+             (process-spawn eco-pill :init initialize-eco-by-other arg0 sv-32 sv-56 :from *pickup-dead-pool* :to arg4)
+             )
+       )
+      (((pickup-type ammo-yellow)
+        (pickup-type ammo-red)
+        (pickup-type ammo-blue)
+        (pickup-type ammo-dark)
+        (pickup-type shield)
+        )
+       (let ((v1-56 arg1))
+         (set! sv-64 (cond
+                       ((= v1-56 (pickup-type ammo-red))
+                        5
+                        )
+                       ((= v1-56 (pickup-type ammo-dark))
+                        1
+                        )
+                       (else
+                         10
+                         )
+                       )
+               )
+         )
+       (set! (-> sv-56 pickup-spawn-amount) (the float sv-64))
+       (set! sv-40 (process-spawn
+                     ammo-collectable
+                     :init initialize-ammo-by-other
+                     arg0
+                     sv-32
+                     sv-56
+                     :from *pickup-dead-pool*
+                     :to arg4
+                     )
+             )
+       (set! sv-48 (- sv-48 (+ sv-64 -1)))
+       )
+      (((pickup-type gun-yellow)
+        (pickup-type gun-red)
+        (pickup-type gun-blue)
+        (pickup-type gun-dark)
+        (pickup-type board)
+        )
+       (set! sv-40 (process-spawn
+                     upgrade-collectable
+                     :init initialize-upgrade-by-other
+                     arg0
+                     sv-32
+                     sv-56
+                     (-> self entity)
+                     :from *pickup-dead-pool*
+                     :to arg4
+                     )
+             )
+       (set! sv-48 0)
+       0
+       )
+      (((pickup-type trick-point))
+       (set! (-> sv-56 pickup-spawn-amount) arg2)
+       (set! sv-40
+             (process-spawn trick-point :init initialize-ammo-by-other arg0 sv-32 sv-56 :from *pickup-dead-pool* :to arg4)
+             )
+       (set! sv-48 0)
+       0
+       )
+      (((pickup-type money))
+       (set! sv-40 (process-spawn money arg0 sv-32 sv-56 (-> self entity) :from *pickup-dead-pool* :to arg4))
+       )
+      (((pickup-type trick-point))
+       (set! sv-40 (process-spawn money arg0 sv-32 sv-56 (-> self entity) :from *pickup-dead-pool* :to arg4))
+       )
+      (((pickup-type gem))
+       (if (>= (-> *game-info* live-gem-count) 20)
+           (return (the-as (pointer process) #f))
+           )
+       (set! sv-40 (process-spawn
+                     gem
+                     :init money-init-by-other
+                     arg0
+                     sv-32
+                     sv-56
+                     (-> self entity)
+                     :from *pickup-dead-pool*
+                     :to arg4
+                     )
+             )
+       )
+      (((pickup-type skill))
+       (when (>= arg2 (-> *FACT-bank* super-skill-inc))
+         (set! (-> sv-56 pickup-spawn-amount) arg2)
+         (set! sv-48 0)
+         0
+         )
+       (set! sv-40 (process-spawn
+                     skill
+                     :init money-init-by-other
+                     arg0
+                     sv-32
+                     sv-56
+                     (-> self entity)
+                     :from *pickup-dead-pool*
+                     :to arg4
+                     )
+             )
+       )
+      (else
+        (format 0 "ERROR: unknown type of eco ~d~%" arg1)
+        )
+      )
+    )
+  sv-40
+  )
+
+(defmethod drop-pickup fact-info ((obj fact-info) (arg0 symbol) (arg1 process-tree) (arg2 fact-info) (arg3 int))
+  (let ((s2-0 (the-as int (-> obj pickup-type)))
+        (f30-0 (-> obj pickup-amount))
+        )
+    (when (= (the-as pickup-type s2-0) (pickup-type ammo-random))
+      (let ((s2-1 (-> *game-info* features)))
+        0.0
+        (let* ((f0-2 (if (logtest? s2-1 (game-feature gun-yellow))
+                         (-> *FACT-bank* ammo-yellow-max)
+                         0.0
+                         )
+                     )
+               (f1-1 (if (logtest? s2-1 (game-feature gun-red))
+                         (-> *FACT-bank* ammo-red-max)
+                         0.0
+                         )
+                     )
+               (f2-1 (if (logtest? s2-1 (game-feature gun-blue))
+                         (-> *FACT-bank* ammo-blue-max)
+                         0.0
+                         )
+                     )
+               (f3-1 (if (logtest? s2-1 (game-feature gun-dark))
+                         (-> *FACT-bank* ammo-dark-max)
+                         0.0
+                         )
+                     )
+               (f4-1 (if (logtest? s2-1 (game-feature gun-yellow))
+                         (-> *FACT-bank* ammo-yellow-max)
+                         0.0
+                         )
+                     )
+               (f5-1 (if (logtest? s2-1 (game-feature gun-red))
+                         (-> *FACT-bank* ammo-red-max)
+                         0.0
+                         )
+                     )
+               (f6-1 (if (logtest? s2-1 (game-feature gun-blue))
+                         (-> *FACT-bank* ammo-blue-max)
+                         0.0
+                         )
+                     )
+               (f7-1 (if (logtest? s2-1 (game-feature gun-dark))
+                         (-> *FACT-bank* ammo-dark-max)
+                         0.0
+                         )
+                     )
+               (f8-1 (if (logtest? s2-1 (game-feature gun-yellow))
+                         (-> *game-info* gun-ammo 0)
+                         0.0
+                         )
+                     )
+               (f9-1 (if (logtest? s2-1 (game-feature gun-red))
+                         (-> *game-info* gun-ammo 1)
+                         0.0
+                         )
+                     )
+               (f10-1 (if (logtest? s2-1 (game-feature gun-blue))
+                          (-> *game-info* gun-ammo 2)
+                          0.0
+                          )
+                      )
+               (f11-1 (if (logtest? s2-1 (game-feature gun-dark))
+                          (-> *game-info* gun-ammo 3)
+                          0.0
+                          )
+                      )
+               (f0-3 (+ f0-2 (- f4-1 f8-1)))
+               (f1-2 (+ f1-1 (- f5-1 f9-1)))
+               (f2-2 (+ f2-1 (- f6-1 f10-1)))
+               (f3-2 (+ f3-1 (- f7-1 f11-1)))
+               (f4-8 (+ f0-3 f1-2 f2-2 f3-2))
+               )
+          (cond
+            ((!= f4-8 0.0)
+             (let* ((f26-0 (/ f0-3 f4-8))
+                    (f0-4 (/ f1-2 f4-8))
+                    (f1-3 (/ f2-2 f4-8))
+                    (f2-3 (/ f3-2 f4-8))
+                    (f22-0 (+ f0-4 f26-0))
+                    (f24-0 (+ f1-3 f22-0))
+                    (f28-0 (+ f2-3 f24-0))
+                    (f0-5 (rand-vu))
+                    )
+               (cond
+                 ((and (>= f26-0 f0-5) (logtest? s2-1 (game-feature gun-yellow)))
+                  (set! s2-0 13)
+                  )
+                 ((and (>= f22-0 f0-5) (logtest? s2-1 (game-feature gun-red)))
+                  (set! s2-0 14)
+                  (set! f30-0 (* 0.5 f30-0))
+                  )
+                 ((and (>= f24-0 f0-5) (logtest? s2-1 (game-feature gun-blue)))
+                  (set! s2-0 15)
+                  )
+                 ((and (>= f28-0 f0-5) (logtest? s2-1 (game-feature gun-dark)))
+                  (set! s2-0 16)
+                  (set! f30-0 (* 0.1 f30-0))
+                  )
+                 (else
+                   (set! s2-0 7)
+                   )
+                 )
+               )
+             )
+            (else
+              (return (the-as (pointer process) #f))
+              )
+            )
+          )
+        )
+      )
+    (when (= s2-0 8)
+      f30-0
+      (you-suck-stage *game-info* #f)
+      (set! s2-0 7)
+      (set! f30-0 (cond
+                    ((< 20 (-> *game-info* live-eco-pill-count))
+                     (return (the-as (pointer process) #f))
+                     f30-0
+                     )
+                    ((< 10 (-> *game-info* live-eco-pill-count))
+                     1.0
+                     )
+                    ((type? obj fact-info-enemy)
+                     (+ (rand-vu-float-range 3.0 (+ 5.0 f30-0)) (the float arg3))
+                     )
+                    (else
+                      (+ (rand-vu-float-range 2.0 (+ 3.0 f30-0)) (the float arg3))
+                      )
+                    )
+            )
+      )
+    (let ((s3-1 (new 'stack-no-clear 'collide-query)))
+      (set! (-> s3-1 start-pos quad) (-> (the-as process-drawable (-> obj process)) root trans quad))
+      (set-vector! (-> s3-1 move-dist) 0.0 -81920.0 0.0 1.0)
+      (set! (-> s3-1 start-pos y) (+ 12288.0 (-> s3-1 start-pos y)))
+      (let ((v1-75 s3-1))
+        (set! (-> v1-75 radius) 40.96)
+        (set! (-> v1-75 collide-with) (collide-spec backgnd))
+        (set! (-> v1-75 ignore-process0) #f)
+        (set! (-> v1-75 ignore-process1) #f)
+        (set! (-> v1-75 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+        (set! (-> v1-75 action-mask) (collide-action solid))
+        )
+      (if (>= (fill-and-probe-using-line-sphere *collide-cache* s3-1) 0.0)
+          (set! (-> s3-1 start-pos quad) (-> s3-1 best-other-tri intersect quad))
+          (set! (-> s3-1 start-pos quad) (-> (the-as process-drawable (-> obj process)) root trans quad))
+          )
+      (if (= s2-0 10)
+          (set! (-> s3-1 start-pos y) (+ 6144.0 (-> s3-1 start-pos y)))
+          )
+      (birth-pickup-at-point (-> s3-1 start-pos) (the-as pickup-type s2-0) f30-0 arg0 arg1 obj)
+      )
+    )
+  )
+
+(deftype ecovent (process-hidden)
+  ()
+  :method-count-assert 15
+  :size-assert         #x80
+  :flag-assert         #xf00000080
+  )

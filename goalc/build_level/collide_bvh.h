@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+
 #include "goalc/build_level/collide_common.h"
 
 // requirements:
@@ -11,7 +12,8 @@
 namespace collide {
 
 struct DrawNode {
-  s32 children[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
+  std::vector<DrawNode> draw_node_children;
+  std::vector<int> frag_children;
   math::Vector4f bsphere;
 };
 
@@ -29,7 +31,8 @@ struct DrawableInlineArrayCollideFrag {
 };
 
 struct CollideTree {
-  std::vector<DrawableInlineArrayNode> node_arrays;
+  //  std::vector<DrawableInlineArrayNode> node_arrays;
+  DrawNode fake_root_node;  // the children of this are the ones that go in the top level.
   DrawableInlineArrayCollideFrag frags;
 };
 

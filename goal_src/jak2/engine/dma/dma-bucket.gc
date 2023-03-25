@@ -1,0 +1,95 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: dma-bucket.gc
+;; name in dgo: dma-bucket
+;; dgos: ENGINE, GAME
+
+#|@file
+A dma-bucket is used to organize dma data into groups called buckets.
+Each bucket is a linked list of DMA. At DMA time, the buckets are sent in order.
+
+A dma-bucket is a 16 byte thing that lives in the dma-buffer.
+buckets live consecutively in the dma-buffer, and can mark the start of a DMA chain
+location anywhere.
+
+The bucket doesn't own the data, but rather is a beginning of a linked list of DMA data associated with that bucket
+that's stored somewhere else.
+
+At the end, all the buckets are spliced together.
+
+The typical process is:
+- empty buckets are allocated with add-buckets
+- tags are put somewhere and added to the appropriate bucket with insert-tag, updating last as needed.
+- buckets are patched to link to each other with dma-buffer-patch-buckets.
+
+the idea here is that you can build the buckets in whatever order you want, but the buckets
+will be DMAd in the bucket allocation order.
+
+Each bucket contains:
+  a tag, (64-bits), to point to the chain of the bucket
+  last, a pointer to the last tag of this bucket, so that the bucket can be patched to point to the next.
+|#
+
+;; DECOMP BEGINS
+
+(defun dma-buffer-add-buckets ((arg0 dma-buffer) (arg1 int))
+  "Add count buckets. Each bucket is initialized as empty and won't transfer anything."
+  (let ((v0-0 (-> arg0 base)))
+    (let ((v1-0 (the-as object v0-0)))
+      (dotimes (a2-0 arg1)
+        (set! (-> (the-as dma-bucket v1-0) tag)
+              (new 'static 'dma-tag :id (dma-tag-id next) :addr (the-as int (&+ (the-as pointer v1-0) 16)))
+              )
+        (set! (-> (the-as dma-bucket v1-0) last) (the-as (pointer dma-tag) v1-0))
+        (set! v1-0 (&+ (the-as pointer v1-0) 16))
+        )
+      (set! (-> arg0 base) (the-as pointer v1-0))
+      )
+    (the-as (inline-array dma-bucket) v0-0)
+    )
+  )
+
+(defun dma-buffer-patch-buckets ((arg0 (inline-array dma-bucket)) (arg1 int))
+  "After adding all data to buckets, call this to stitch together the chains for
+   count consecutive buckets"
+  (when (nonzero? arg0)
+    (dotimes (v1-1 arg1)
+      (cond
+        ((= (the-as object arg0) (-> arg0 0 last))
+         (set! (-> arg0 0 tag) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+         (set! (-> arg0 0 clear) (the-as uint 0))
+         0
+         )
+        (else
+          (set! (-> arg0 0 last 0 addr) (the-as int (-> arg0 1)))
+          (cond
+            ((or *display-profile* *stats-profile-bars*)
+             ;; if we're VU profiling, trigger an interrupt after this bucket's DMA finishes.
+             ;; the profiler will record this.
+             (set! (-> (the-as dma-packet arg0) vif0) (new 'static 'vif-tag :cmd (vif-cmd mark) :imm v1-1))
+             (set! (-> (the-as dma-packet arg0) vif1) (new 'static 'vif-tag :irq #x1))
+             )
+            (else
+              (set! (-> arg0 0 clear) (the-as uint 0))
+              0
+              )
+            )
+          )
+        )
+      (set! arg0 (the-as (inline-array dma-bucket) (-> arg0 1)))
+      )
+    )
+  (the-as (inline-array dma-bucket) arg0)
+  )
+
+(defun dma-bucket-insert-tag ((arg0 (inline-array dma-bucket)) (arg1 bucket-id) (arg2 pointer) (arg3 (pointer dma-tag)))
+  "Add a DMA chain to the bucket"
+
+  (let ((v1-1 (-> arg0 arg1)))
+    (set! (-> (the-as dma-bucket (-> v1-1 last)) next) (the-as uint arg2))
+    (set! (-> v1-1 last) arg3)
+    )
+  arg2
+  )
+

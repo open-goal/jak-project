@@ -1,0 +1,267 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: sky-h.gc
+;; name in dgo: sky-h
+;; dgos: ENGINE, GAME
+
+(define-extern close-sky-buffer (function dma-buffer none))
+
+;; DECOMP BEGINS
+
+(deftype sky-color-hour (structure)
+  ((snapshot1   int32  :offset-assert   0)
+   (snapshot2   int32  :offset-assert   4)
+   (morph-start float  :offset-assert   8)
+   (morph-end   float  :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(deftype sky-color-day (structure)
+  ((hour sky-color-hour 24 :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x180
+  :flag-assert         #x900000180
+  )
+
+
+(deftype sky-sun-data (structure)
+  ((data           uint128 4       :offset-assert   0)
+   (pos            vector  :inline :offset          0)
+   (r-sun          float           :offset         16)
+   (r-halo         float           :offset         20)
+   (r-aurora       float           :offset         24)
+   (c-sun-start    rgba            :offset         32)
+   (c-sun-end      rgba            :offset         48)
+   (c-halo-start   rgba            :offset         36)
+   (c-halo-end     rgba            :offset         52)
+   (c-aurora-start rgba            :offset         40)
+   (c-aurora-end   rgba            :offset         56)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+
+(deftype sky-moon-data (structure)
+  ((data  uint128 2       :offset-assert   0)
+   (pos   vector  :inline :offset          0)
+   (scale vector  :inline :offset         16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+
+(deftype sky-orbit (structure)
+  ((high-noon float  :offset-assert   0)
+   (tilt      float  :offset-assert   4)
+   (rise      float  :offset-assert   8)
+   (dist      float  :offset-assert  12)
+   (min-halo  float  :offset-assert  16)
+   (max-halo  float  :offset-assert  20)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+
+(deftype sky-upload-data (structure)
+  ((data uint128       10        :offset-assert   0)
+   (sun  sky-sun-data  2 :inline :offset          0)
+   (moon sky-moon-data :inline   :offset        128)
+   )
+  :method-count-assert 9
+  :size-assert         #xa0
+  :flag-assert         #x9000000a0
+  )
+
+
+(deftype sky-vertex (structure)
+  ((pos vector :inline :offset-assert   0)
+   (stq vector :inline :offset-assert  16)
+   (col vector :inline :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+
+
+(deftype cloud-vertex (structure)
+  ((pos  vector :inline :offset-assert   0)
+   (stq  vector :inline :offset-assert  16)
+   (col  vector :inline :offset-assert  32)
+   (nrm  vector :inline :offset-assert  48)
+   (stq2 vector :inline :offset-assert  64)
+   (col2 vector :inline :offset-assert  80)
+   (nrm2 vector :inline :offset-assert  96)
+   )
+  :method-count-assert 9
+  :size-assert         #x70
+  :flag-assert         #x900000070
+  )
+
+
+(deftype cloud-vert-array (structure)
+  ((data cloud-vertex 100 :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x2bc0
+  :flag-assert         #x900002bc0
+  )
+
+
+(deftype haze-vertex (structure)
+  ((pos vector :inline :offset-assert   0)
+   (nrm vector :inline :offset-assert  16)
+   (col vector :inline :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+
+(deftype haze-vert-array (structure)
+  ((data haze-vertex 36 :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x6c0
+  :flag-assert         #x9000006c0
+  )
+
+
+(deftype cloud-lights (structure)
+  ((sun0-normal      vector :inline :offset-assert   0)
+   (sun1-normal      vector :inline :offset-assert  16)
+   (moon-normal      vector :inline :offset-assert  32)
+   (ambi-color       vector :inline :offset-assert  48)
+   (ambi-color-lower vector :inline :offset-assert  64)
+   (sun0-color       vector :inline :offset-assert  80)
+   (sun1-color       vector :inline :offset-assert  96)
+   (moon-color       vector :inline :offset-assert 112)
+   (sun0-color-lower vector :inline :offset-assert 128)
+   (sun0-scale       float          :offset-assert 144)
+   (sun1-scale       float          :offset-assert 148)
+   (moon-scale       float          :offset-assert 152)
+   )
+  :method-count-assert 9
+  :size-assert         #x9c
+  :flag-assert         #x90000009c
+  )
+
+
+(deftype haze-lights (structure)
+  ((sun0-normal vector :inline :offset-assert   0)
+   (sun1-normal vector :inline :offset-assert  16)
+   (moon-normal vector :inline :offset-assert  32)
+   (ambi-color  vector :inline :offset-assert  48)
+   (sun0-color  vector :inline :offset-assert  64)
+   (sun1-color  vector :inline :offset-assert  80)
+   (moon-color  vector :inline :offset-assert  96)
+   (sun0-scale  float          :offset-assert 112)
+   (sun1-scale  float          :offset-assert 116)
+   (moon-scale  float          :offset-assert 120)
+   )
+  :method-count-assert 9
+  :size-assert         #x7c
+  :flag-assert         #x90000007c
+  )
+
+
+(deftype sky-work (structure)
+  ((adgif-tmpl       dma-gif-packet  :inline     :offset-assert   0)
+   (draw-tmpl        dma-gif-packet  :inline     :offset-assert  32)
+   (draw-tmpl2       dma-gif-packet  :inline     :offset-assert  64)
+   (fog-tmpl         dma-gif-packet  :inline     :offset-assert  96)
+   (blend-tmpl       dma-gif-packet  :inline     :offset-assert 128)
+   (sprite-tmpl      dma-gif-packet  :inline     :offset-assert 160)
+   (sprite-tmpl2     dma-gif-packet  :inline     :offset-assert 192)
+   (sun-coords       vector          2 :inline   :offset-assert 224)
+   (green-coords     vector          2 :inline   :offset-assert 256)
+   (moon0-coords     vector          2 :inline   :offset-assert 288)
+   (moon1-coords     vector          2 :inline   :offset-assert 320)
+   (moon2-coords     vector          2 :inline   :offset-assert 352)
+   (star-coords      vector          2 :inline   :offset-assert 384)
+   (sun-colors       vector4w        2 :inline   :offset-assert 416)
+   (green-colors     vector4w        2 :inline   :offset-assert 448)
+   (moon-colors      vector4w        3 :inline   :offset-assert 480)
+   (star-colors      vector4w        16 :inline  :offset-assert 528)
+   (st-coords        vector          2 :inline   :offset-assert 784)
+   (random           vector4w        8 :inline   :offset-assert 816)
+   (giftag-base      dma-gif         :inline     :offset-assert 944)
+   (giftag-haze      dma-gif         :inline     :offset-assert 960)
+   (giftag-roof      dma-gif         :inline     :offset-assert 976)
+   (giftag-ocean     dma-gif         :inline     :offset-assert 992)
+   (fog              vector          :inline     :offset-assert 1008)
+   (sky              float           8           :offset-assert 1024)
+   (time             float                       :offset-assert 1056)
+   (off-s            uint16                      :offset-assert 1060)
+   (off-t            uint16                      :offset-assert 1062)
+   (orbit            sky-orbit       3 :inline   :offset-assert 1064)
+   (upload-data      sky-upload-data :inline     :offset-assert 1168)
+   (ambi-color       vector4w        :inline     :offset-assert 1328)
+   (ambi-color-lower vector4w        :inline     :offset-assert 1344)
+   (sun0-color       vector4w        :inline     :offset-assert 1360)
+   (sun1-color       vector4w        :inline     :offset-assert 1376)
+   (moon-color       vector4w        :inline     :offset-assert 1392)
+   (sun0-color-lower vector4w        :inline     :offset-assert 1408)
+   (cam-mat          matrix          :inline     :offset-assert 1424)
+   (star-mat         matrix          :inline     :offset-assert 1488)
+   (vec0             vector4w        :inline     :offset-assert 1552)
+   (vec1             vector4w        :inline     :offset-assert 1568)
+   (cloud-lights     cloud-lights    :inline     :offset-assert 1584)
+   (haze-lights      haze-lights     :inline     :offset-assert 1744)
+   (buf              dma-buffer                  :offset-assert 1868)
+   (draw-vortex      basic                       :offset-assert 1872)
+   (stars            vector          512 :inline :offset-assert 1888)
+   )
+  :method-count-assert 37
+  :size-assert         #x2760
+  :flag-assert         #x2500002760
+  (:methods
+    (init-sun-data! (_type_ int float float float) none 9)
+    (init-orbit-settings! (_type_ int float float float float float float) none 10)
+    (update-colors-for-time (_type_ float) none 11)
+    (update-time-and-speed (_type_ float float) none 12)
+    (draw (_type_) none 13)
+    (update-matrix (_type_ matrix) none 14)
+    (update-template-colors (_type_) none 15)
+    (init-regs-for-large-polygon-draw (_type_) none 16)
+    (init-regs-for-sky-asm (_type_) none 17)
+    (cloud-vtx-light-update (_type_ vector vector cloud-lights vector vector) none 18)
+    (cloud-vtx-tex-update (_type_ vector vector vector cloud-lights) none 19)
+    (adjust-cloud-lighting (_type_) none 20)
+    (cloud-vtx1-to-sky (_type_ sky-vertex cloud-vertex) none 21)
+    (cloud-vtx2-to-sky (_type_ sky-vertex cloud-vertex) none 22)
+    (draw-clouds (_type_ dma-buffer) none 23)
+    (apply-haze-light (_type_ vector vector haze-lights) none 24)
+    (adjust-haze-lighting (_type_) none 25)
+    (haze-vtx-to-sky (_type_ sky-vertex sky-vertex haze-vertex) none 26)
+    (draw-haze (_type_ dma-buffer) none 27)
+    (sun-dma (_type_ dma-buffer) none 28)
+    (green-sun-dma (_type_ dma-buffer) none 29)
+    (moon-dma (_type_ dma-buffer) none 30)
+    (setup-stars (_type_ matrix sky-upload-data) none 31)
+    (stars-transform-asm (_type_) none 32)
+    (stars-dma (_type_ dma-buffer) none 33)
+    (draw-roof (_type_ dma-buffer) none 34)
+    (draw-base (_type_ dma-buffer) none 35)
+    (draw-fog (_type_ dma-buffer) none 36)
+    )
+  )
+
+0
+
+(define-extern *sky-work* sky-work)

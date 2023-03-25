@@ -13,12 +13,12 @@
  *   (+ 1 (+ a b)) ; compute the sum
  */
 
-#include <string>
-#include <vector>
-#include <stdexcept>
-#include <unordered_map>
 #include <memory>
 #include <optional>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "common/goos/Object.h"
 
@@ -107,10 +107,16 @@ class TextDb {
   void insert(const std::shared_ptr<SourceText>& frag);
   void link(const Object& o, std::shared_ptr<SourceText> frag, int offset);
   std::string get_info_for(const Object& o, bool* terminate_compiler_error = nullptr) const;
+  std::optional<ShortInfo> get_short_info_for(const Object& o) const;
   std::string get_info_for(const std::shared_ptr<SourceText>& frag, int offset) const;
+  std::optional<ShortInfo> get_short_info_for(const std::shared_ptr<SourceText>& frag,
+                                              int offset) const;
   std::optional<ShortInfo> try_get_short_info(const Object& o) const;
+  std::optional<ShortInfo> try_get_short_info(const std::shared_ptr<goos::HeapObject>& o) const;
+
   bool has_info(const Object& o) const;
   void inherit_info(const Object& parent, const Object& child);
+  void clear_info();
 
  private:
   std::vector<std::shared_ptr<SourceText>> m_fragments;

@@ -77,7 +77,17 @@ class Vector {
     return true;
   }
 
+  bool operator==(const T other) const {
+    for (int i = 0; i < Size; i++) {
+      if (m_data[i] != other) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   bool operator!=(const Vector<T, Size>& other) const { return !((*this) == other); }
+  bool operator!=(const T other) const { return !((*this) == other); }
 
   const T length() const { return std::sqrt(squared_length()); }
 
@@ -114,6 +124,13 @@ class Vector {
   Vector<T, Size>& operator-=(const T& other) {
     for (int i = 0; i < Size; i++) {
       m_data[i] -= other;
+    }
+    return *this;
+  }
+
+  Vector<T, Size>& operator+=(const T& other) {
+    for (int i = 0; i < Size; i++) {
+      m_data[i] += other;
     }
     return *this;
   }
@@ -225,6 +242,15 @@ class Vector {
     return result + "]";
   }
 
+  std::string to_string_hex_word() const {
+    std::string result = "[";
+    for (auto x : m_data) {
+      result.append(fmt::format("0x{:08x} ", x));
+    }
+    result.pop_back();
+    return result + "]";
+  }
+
   T* data() { return m_data; }
   const T* data() const { return m_data; }
 
@@ -248,7 +274,7 @@ class Vector {
   }
 
   Vector<T, 3> xyz() const { return head<3>(); }
-  Vector<T, 3> xy() const { return head<2>(); }
+  Vector<T, 2> xy() const { return head<2>(); }
 
   void fill(const T& val) {
     for (auto& x : m_data) {

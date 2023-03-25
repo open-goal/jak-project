@@ -1,13 +1,22 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
+
 #include "common/common_types.h"
-#include "decompiler/util/goal_data_reader.h"
-#include "common/math/Vector.h"
 #include "common/dma/gs.h"
+#include "common/math/Vector.h"
+
+#include "decompiler/util/goal_data_reader.h"
 
 namespace decompiler {
+
+struct MercEyeCtrl {
+  s8 eye_slot;
+  // there's more...
+  void from_ref(TypedRef tr, const DecompilerTypeSystem& dts);
+};
 
 /*!
  * per-ctrl information. the first qw is uploaded to vu1
@@ -39,7 +48,7 @@ struct MercCtrlHeader {
   u16 cross_copy_count;
   u16 num_verts;
   float longest_edge;
-  // todo (eye-ctrl               merc-eye-ctrl    :offset-assert 64)
+  std::optional<MercEyeCtrl> eye_ctrl;
   u32 masks[3];
   // (dummy-bytes            uint8       48 :offset 32)
   u32 envmap_tint;
@@ -159,12 +168,27 @@ struct MercFragment {
   std::string print() const;
 };
 
+struct MercBlendCtrl {
+  u8 blend_vtx_count;
+  u8 nonzero_index_count;
+  std::vector<u8> bt_index;
+  TypedRef from_ref(TypedRef tr, const DecompilerTypeSystem& dts, int blend_target_count);
+};
+
+struct MercExtraInfo {
+  std::optional<MercShader> shader;
+};
+
+constexpr int kTextureScrollEffectBit = 1;
+constexpr int kRippleEffectBit = 4;  // true in jak 1 and jak 2
+
 struct MercEffect {
   //((frag-geo         merc-fragment          :offset-assert 0) ;; ?
   std::vector<MercFragment> frag_geo;
   // (frag-ctrl        merc-fragment-control  :offset-assert 4)
   std::vector<MercFragmentControl> frag_ctrl;
   // (blend-data       merc-blend-data        :offset-assert 8) ??
+  std::vector<MercBlendCtrl> blend_ctrl;
   // (blend-ctrl       merc-blend-ctrl        :offset-assert 12) ??
   // (dummy0           uint8                  :offset-assert 16) ??
   u8 effect_bits;
@@ -173,8 +197,11 @@ struct MercEffect {
   u16 tri_count;
   u16 dvert_count;
   // (dummy1           uint8                  :offset-assert 26) ??
-  u8 envmap_usage;
+  u8 envmap_or_effect_usage;
   // (extra-info       merc-extra-info        :offset-assert 28) ??
+  MercExtraInfo extra_info;
+
+  u8 texture_index = -1;  // jak 2 only
 
   void from_ref(TypedRef tr, const DecompilerTypeSystem& dts, const MercCtrlHeader& main_control);
   std::string print();
@@ -187,6 +214,7 @@ struct MercCtrl {
   std::vector<MercEffect> effects;
 
   void from_ref(TypedRef tr, const DecompilerTypeSystem& dts);
+  void debug_print_blerc();
   std::string print();
 };
 }  // namespace decompiler

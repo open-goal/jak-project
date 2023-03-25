@@ -1,9 +1,10 @@
 #pragma once
 
-#include "decompiler/level_extractor/BspHeader.h"
-#include "common/math/Vector.h"
 #include "common/custom_data/Tfrag3Data.h"
+#include "common/math/Vector.h"
+
 #include "decompiler/data/TextureDB.h"
+#include "decompiler/level_extractor/BspHeader.h"
 
 namespace decompiler {
 
@@ -27,6 +28,8 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
                    const TextureDB& tex_db,
                    const std::vector<std::pair<int, int>>& expected_missing_textures,
                    tfrag3::Level& out,
-                   bool dump_level);
+                   bool dump_level,
+                   const std::string& level_name,
+                   bool disable_atest_in_normal);
 
 }  // namespace decompiler

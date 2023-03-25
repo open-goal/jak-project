@@ -1,9 +1,10 @@
-#include "gtest/gtest.h"
 #include "FormRegressionTest.h"
+
+#include "gtest/gtest.h"
 
 using namespace decompiler;
 
-TEST_F(FormRegressionTest, ExprTruncate) {
+TEST_F(FormRegressionTestJak1, ExprTruncate) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    mtc1 f0, a0\n"
@@ -17,7 +18,7 @@ TEST_F(FormRegressionTest, ExprTruncate) {
   test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprIntegralP) {
+TEST_F(FormRegressionTestJak1, ExprIntegralP) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    mtc1 f0, a0\n"
@@ -39,7 +40,7 @@ TEST_F(FormRegressionTest, ExprIntegralP) {
   test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprFractionalPart) {
+TEST_F(FormRegressionTestJak1, ExprFractionalPart) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    mtc1 f0, a0\n"
@@ -57,7 +58,7 @@ TEST_F(FormRegressionTest, ExprFractionalPart) {
   test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprSeek) {
+TEST_F(FormRegressionTestJak1, ExprSeek) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L24:\n"

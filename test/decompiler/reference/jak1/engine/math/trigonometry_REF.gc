@@ -1,0 +1,782 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function radmod
+(defun radmod ((arg0 float))
+  (let ((f0-1 (+ PI arg0)))
+    (if (< 0.0 f0-1)
+        (+ MINUS_PI (- f0-1 (* (the float (the int (/ f0-1 6.283185))) 6.283185)))
+        (+ PI (- f0-1 (* (the float (the int (/ f0-1 6.283185))) 6.283185)))
+        )
+    )
+  )
+
+;; definition for function deg-
+(defun deg- ((arg0 float) (arg1 float))
+  (the float (sar (- (shl (the int arg0) 48) (shl (the int arg1) 48)) 48))
+  )
+
+;; definition for function deg-diff
+(defun deg-diff ((arg0 float) (arg1 float))
+  (the float (sar (- (shl (the int arg1) 48) (shl (the int arg0) 48)) 48))
+  )
+
+;; definition for function deg-seek
+(defun deg-seek ((in float) (target float) (max-diff float))
+  (let ((in-int (shl (the int in) 48))
+        (target-int (shl (the int target) 48))
+        )
+    (let* ((max-diff-int (shl (the int max-diff) 48))
+           (diff (- target-int in-int))
+           (abs-diff (abs diff))
+           )
+      (set! target-int (cond
+                         ((< abs-diff 0)
+                          (+ in-int max-diff-int)
+                          )
+                         ((>= max-diff-int abs-diff)
+                          (empty)
+                          target-int
+                          )
+                         ((>= diff 0)
+                          (+ in-int max-diff-int)
+                          )
+                         (else
+                           (- in-int max-diff-int)
+                           )
+                         )
+            )
+      )
+    (the float (sar target-int 48))
+    )
+  )
+
+;; definition for function deg-seek-smooth
+(defun deg-seek-smooth ((in float) (target float) (max-diff float) (amount float))
+  (let ((step (* (deg- target in) amount)))
+    (if (< max-diff (fabs step))
+        (set! step (if (>= step 0.0)
+                       max-diff
+                       (- max-diff)
+                       )
+              )
+        )
+    (+ in step)
+    )
+  )
+
+;; definition for function deg-lerp-clamp
+(defun deg-lerp-clamp ((min-val float) (max-val float) (in float))
+  (cond
+    ((>= 0.0 in)
+     min-val
+     )
+    ((>= in 1.0)
+     max-val
+     )
+    (else
+      (the float (sar (shl (the int (+ min-val (* in (deg-diff min-val max-val)))) 48) 48))
+      )
+    )
+  )
+
+;; definition for symbol binary-table, type (array float)
+(define binary-table (new 'static 'boxed-array :type float
+                       1.0
+                       0.5
+                       0.25
+                       0.125
+                       0.0625
+                       0.03125
+                       0.015625
+                       0.0078125
+                       0.00390625
+                       0.001953125
+                       0.0009765625
+                       0.00048828125
+                       0.00024414062
+                       0.00012207031
+                       0.000061035156
+                       0.000030517578
+                       0.000015258789
+                       0.0000076293945
+                       0.0000038146973
+                       0.0000019073486
+                       0.0000009536743
+                       0.00000047683716
+                       0.00000023841858
+                       0.00000011920929
+                       0.000000059604645
+                       0.000000029802322
+                       0.000000014901161
+                       0.000000007450581
+                       0.0000000037252903
+                       0.0000000018626451
+                       0.0000000009313226
+                       0.0000000004656613
+                       )
+        )
+
+;; definition for symbol sincos-table, type (array float)
+(define sincos-table (new 'static 'boxed-array :type float
+                       0.7853982
+                       0.4636476
+                       0.24497867
+                       0.124354996
+                       0.06241881
+                       0.031239834
+                       0.015623729
+                       0.007812341
+                       0.0039062302
+                       0.0019531226
+                       0.0009765622
+                       0.0004882812
+                       0.00024414062
+                       0.00012207031
+                       0.000061035156
+                       0.000030517578
+                       0.000015258789
+                       0.0000076293945
+                       0.0000038146973
+                       0.0000019073486
+                       0.0000009536743
+                       0.00000047683716
+                       0.00000023841858
+                       0.00000011920929
+                       0.000000059604645
+                       0.000000029802322
+                       0.000000014901161
+                       0.000000007450581
+                       0.0000000037252903
+                       0.0000000018626451
+                       0.0000000009313226
+                       0.0000000004656613
+                       )
+        )
+
+;; definition for function sin
+(defun sin ((arg0 float))
+  (let ((f2-0 (* 0.000095873795 (the float (sar (shl (the int arg0) 48) 48)))))
+    f2-0
+    (let* ((f1-4 (* 0.999998 f2-0))
+           (f0-3 (* f2-0 f2-0))
+           (f2-1 (* f2-0 f0-3))
+           (f1-5 (+ f1-4 (* -0.16666014 f2-1)))
+           (f2-2 (* f2-1 f0-3))
+           (f1-6 (+ f1-5 (* 0.008326521 f2-2)))
+           (f2-3 (* f2-2 f0-3))
+           (f1-7 (+ f1-6 (* -0.0001956241 f2-3)))
+           (f0-4 (* f2-3 f0-3))
+           )
+      (+ f1-7 (* 0.0000023042373 f0-4))
+      )
+    )
+  )
+
+;; definition for function sin-rad
+;; ERROR: Unsupported inline assembly instruction kind - [mula.s f0, f7]
+;; ERROR: Unsupported inline assembly instruction kind - [madda.s f2, f8]
+;; ERROR: Unsupported inline assembly instruction kind - [madda.s f4, f9]
+;; ERROR: Unsupported inline assembly instruction kind - [madda.s f5, f10]
+;; ERROR: Unsupported inline assembly instruction kind - [madd.s f12, f6, f11]
+(defun sin-rad ((arg0 float))
+  (local-vars (f12-0 float))
+  (let* ((f1-0 (* arg0 arg0))
+         (f7-0 0.999998)
+         (f8-0 -0.16666014)
+         (f2-0 (* arg0 f1-0))
+         (f3-0 (* f1-0 f1-0))
+         (f9-0 0.008326521)
+         (f4-0 (* f2-0 f1-0))
+         (f5-0 (* f3-0 f2-0))
+         (f10-0 -0.0001956241)
+         (f6-0 (* f4-0 f3-0))
+         (f11-0 0.0000023042373)
+         )
+    (.mula.s arg0 f7-0)
+    (.madda.s f2-0 f8-0)
+    (.madda.s f4-0 f9-0)
+    (.madda.s f5-0 f10-0)
+    (.madd.s f12-0 f6-0 f11-0)
+    )
+  f12-0
+  )
+
+;; definition for symbol *sin-poly-vec*, type vector
+(define *sin-poly-vec*
+  (new 'static 'vector :x -0.16666014 :y 0.008326521 :z -0.0001956241 :w 0.0000023042373)
+  )
+
+;; definition for symbol *sin-poly-vec2*, type vector
+(define *sin-poly-vec2* (new 'static 'vector :x 0.999998))
+
+;; definition for function vector-sin-rad!
+(defun vector-sin-rad! ((arg0 vector) (arg1 vector))
+  (rlet ((acc :class vf)
+         (vf1 :class vf)
+         (vf10 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         (vf9 :class vf)
+         )
+    (.lvf vf1 (&-> arg1 quad))
+    (.mul.vf vf3 vf1 vf1)
+    (.lvf vf10 (&-> *sin-poly-vec2* quad))
+    (.lvf vf9 (&-> *sin-poly-vec* quad))
+    (.mul.vf vf4 vf3 vf1)
+    (.mul.vf vf5 vf3 vf3)
+    (.mul.x.vf acc vf1 vf10)
+    (.mul.vf vf6 vf4 vf3)
+    (.mul.vf vf7 vf5 vf4)
+    (.add.mul.x.vf acc vf4 vf9 acc)
+    (.mul.vf vf8 vf6 vf5)
+    (.add.mul.y.vf acc vf6 vf9 acc)
+    (.add.mul.z.vf acc vf7 vf9 acc)
+    (.add.mul.w.vf vf2 vf8 vf9 acc)
+    (.svf (&-> arg0 quad) vf2)
+    arg0
+    )
+  )
+
+;; definition for function cos-rad
+;; ERROR: Unsupported inline assembly instruction kind - [mula.s f7, f7]
+;; ERROR: Unsupported inline assembly instruction kind - [madda.s f8, f1]
+;; ERROR: Unsupported inline assembly instruction kind - [madda.s f9, f3]
+;; ERROR: Unsupported inline assembly instruction kind - [madda.s f10, f4]
+;; ERROR: Unsupported inline assembly instruction kind - [madd.s f12, f11, f5]
+(defun cos-rad ((arg0 float))
+  (local-vars (f12-0 float))
+  (let* ((f1-0 (* arg0 arg0))
+         (f7-0 1.0)
+         (f8-0 -0.49998003)
+         (f3-0 (* f1-0 f1-0))
+         (f9-0 0.041620404)
+         (f10-0 -0.0013636408)
+         (f4-0 (* f3-0 f1-0))
+         (f5-0 (* f3-0 f3-0))
+         (f11-0 0.000020170546)
+         )
+    (.mula.s f7-0 f7-0)
+    (.madda.s f8-0 f1-0)
+    (.madda.s f9-0 f3-0)
+    (.madda.s f10-0 f4-0)
+    (.madd.s f12-0 f11-0 f5-0)
+    )
+  f12-0
+  )
+
+;; definition for symbol *cos-poly-vec*, type vector
+(define *cos-poly-vec* (new 'static 'vector :x -0.49998003 :y 0.041620404 :z -0.0013636408 :w 0.000020170546))
+
+;; definition for function vector-cos-rad!
+;; ERROR: Bad vector register dependency: vf2
+(defun vector-cos-rad! ((arg0 vector) (arg1 vector))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf9 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg1 quad))
+    (.sub.vf vf2 vf2 vf2)
+    (.lvf vf9 (&-> *cos-poly-vec* quad))
+    (.mul.vf vf3 vf1 vf1)
+    (.add.w.vf acc vf2 vf0)
+    (.mul.vf vf4 vf3 vf3)
+    (.add.mul.x.vf acc vf3 vf9 acc)
+    (.mul.vf vf5 vf4 vf3)
+    (.add.mul.y.vf acc vf4 vf9 acc)
+    (.mul.vf vf6 vf4 vf4)
+    (.add.mul.z.vf acc vf5 vf9 acc)
+    (.add.mul.w.vf vf2 vf6 vf9 acc)
+    (.svf (&-> arg0 quad) vf2)
+    arg0
+    )
+  )
+
+;; definition for function vector-sincos-rad!
+;; ERROR: Bad vector register dependency: vf14
+(defun vector-sincos-rad! ((arg0 vector) (arg1 vector) (arg2 vector))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf10 :class vf)
+         (vf11 :class vf)
+         (vf12 :class vf)
+         (vf13 :class vf)
+         (vf14 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         (vf9 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg2 quad))
+    (.sub.vf vf14 vf14 vf14)
+    (.lvf vf11 (&-> *sin-poly-vec2* quad))
+    (.mul.vf vf2 vf1 vf1)
+    (.lvf vf10 (&-> *sin-poly-vec* quad))
+    (.lvf vf13 (&-> *cos-poly-vec* quad))
+    (.mul.x.vf acc vf1 vf11)
+    (.mul.vf vf3 vf2 vf1)
+    (.mul.vf vf4 vf2 vf2)
+    (.mul.vf vf5 vf3 vf2)
+    (.mul.vf vf6 vf3 vf3)
+    (.mul.vf vf7 vf4 vf3)
+    (.mul.vf vf8 vf4 vf4)
+    (.mul.vf vf9 vf5 vf4)
+    (.add.mul.x.vf acc vf3 vf10 acc)
+    (.add.mul.y.vf acc vf5 vf10 acc)
+    (.add.mul.z.vf acc vf7 vf10 acc)
+    (.add.mul.w.vf vf12 vf9 vf10 acc)
+    (.add.w.vf acc vf14 vf0)
+    (.add.mul.x.vf acc vf2 vf13 acc)
+    (.add.mul.y.vf acc vf4 vf13 acc)
+    (.add.mul.z.vf acc vf6 vf13 acc)
+    (.add.mul.w.vf vf14 vf8 vf13 acc)
+    (.svf (&-> arg0 quad) vf12)
+    (.svf (&-> arg1 quad) vf14)
+    0
+    )
+  )
+
+;; definition for function sincos-rad!
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function sincos!
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function vector-rad<-vector-deg!
+;; INFO: Return type mismatch float vs none.
+(defun vector-rad<-vector-deg! ((arg0 vector) (arg1 vector))
+  (local-vars (v0-0 float) (v1-1 uint128) (v1-2 uint128) (v1-3 uint128))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (let ((v1-0 #x38c90fda))
+      (.lvf vf1 (&-> arg1 quad))
+      (.ftoi.vf vf1 vf1)
+      (.mov vf2 v1-0)
+      )
+    (.mov v1-1 vf1)
+    (.pw.sll v1-2 v1-1 16)
+    (.pw.sra v1-3 v1-2 16)
+    (.mov vf1 v1-3)
+    (.itof.vf vf1 vf1)
+    (.mul.x.vf vf1 vf1 vf2)
+    (.svf (&-> arg0 quad) vf1)
+    (.mov v0-0 vf1)
+    (none)
+    )
+  )
+
+;; definition for function vector-rad<-vector-deg/2!
+;; INFO: Return type mismatch float vs int.
+(defun vector-rad<-vector-deg/2! ((arg0 vector) (arg1 vector))
+  (local-vars (v0-0 float) (v1-1 uint128) (v1-2 uint128) (v1-3 uint128))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (let ((v1-0 #x38c90fda))
+      (let ((a2-0 #x3f000000))
+        (.lvf vf1 (&-> arg1 quad))
+        (.mov vf2 a2-0)
+        )
+      (.mul.x.vf vf1 vf1 vf2)
+      (.ftoi.vf vf1 vf1)
+      (.mov vf2 v1-0)
+      )
+    (.mov v1-1 vf1)
+    (.pw.sll v1-2 v1-1 16)
+    (.pw.sra v1-3 v1-2 16)
+    (.mov vf1 v1-3)
+    (.itof.vf vf1 vf1)
+    (.mul.x.vf vf1 vf1 vf2)
+    (.svf (&-> arg0 quad) vf1)
+    (.mov v0-0 vf1)
+    (the-as int v0-0)
+    )
+  )
+
+;; definition for function vector-sincos!
+(defun vector-sincos! ((arg0 vector) (arg1 vector) (arg2 vector))
+  (let ((s4-0 (new 'stack-no-clear 'vector)))
+    (vector-rad<-vector-deg! s4-0 arg2)
+    (vector-sincos-rad! arg0 arg1 s4-0)
+    )
+  )
+
+;; definition for function tan-rad
+(defun tan-rad ((arg0 float))
+  (/ (sin arg0) (cos arg0))
+  )
+
+;; definition for function cos
+(defun cos ((arg0 float))
+  (sin (+ 16384.0 arg0))
+  )
+
+;; definition for function tan
+(defun tan ((arg0 float))
+  (/ (sin arg0) (cos arg0))
+  )
+
+;; definition for function atan0
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function atan-series-rad
+;; ERROR: Unsupported inline assembly instruction kind - [adda.s f0, f18]
+;; ERROR: Unsupported inline assembly instruction kind - [madda.s f2, f11]
+;; ERROR: Unsupported inline assembly instruction kind - [madda.s f4, f12]
+;; ERROR: Unsupported inline assembly instruction kind - [madda.s f5, f13]
+;; ERROR: Unsupported inline assembly instruction kind - [madda.s f6, f14]
+;; ERROR: Unsupported inline assembly instruction kind - [madda.s f7, f15]
+;; ERROR: Unsupported inline assembly instruction kind - [madda.s f8, f16]
+;; ERROR: Unsupported inline assembly instruction kind - [madd.s f18, f9, f17]
+(defun atan-series-rad ((arg0 float))
+  (local-vars (f18-1 float))
+  (let* ((f1-0 (* arg0 arg0))
+         (f10-0 0.99999934)
+         (f11-0 -0.33329856)
+         (f2-0 (* arg0 f1-0))
+         (f3-0 (* f1-0 f1-0))
+         (f12-0 0.19946536)
+         (f4-0 (* f2-0 f1-0))
+         (f5-0 (* f3-0 f2-0))
+         (f13-0 -0.13908534)
+         (f6-0 (* f4-0 f3-0))
+         (f7-0 (* f5-0 f3-0))
+         (f14-0 0.09642004)
+         (f8-0 (* f6-0 f3-0))
+         (f9-0 (* f7-0 f3-0))
+         (f15-0 -0.055909887)
+         (f18-0 0.7853982)
+         (f0-1 (* arg0 f10-0))
+         (f16-0 0.02186123)
+         (f17-0 -0.004054058)
+         )
+    (.adda.s f0-1 f18-0)
+    (.madda.s f2-0 f11-0)
+    (.madda.s f4-0 f12-0)
+    (.madda.s f5-0 f13-0)
+    (.madda.s f6-0 f14-0)
+    (.madda.s f7-0 f15-0)
+    (.madda.s f8-0 f16-0)
+    (.madd.s f18-1 f9-0 f17-0)
+    )
+  f18-1
+  )
+
+;; definition for function atan-rad
+(defun atan-rad ((arg0 float))
+  (atan-series-rad (/ (+ -1.0 arg0) (+ 1.0 arg0)))
+  )
+
+;; definition for function sign
+(defun sign ((arg0 float))
+  (cond
+    ((< 0.0 arg0)
+     1.0
+     )
+    ((< arg0 0.0)
+     -1.0
+     )
+    (else
+      0.0
+      )
+    )
+  )
+
+;; definition for function atan2-rad
+(defun atan2-rad ((arg0 float) (arg1 float))
+  (cond
+    ((= arg1 0.0)
+     (* 1.5707963 (sign arg0))
+     )
+    ((and (< arg0 0.0) (< arg1 0.0))
+     (let ((f30-1 MINUS_PI)
+           (f0-6 (/ arg0 arg1))
+           )
+       (+ f30-1 (atan-series-rad (/ (+ -1.0 f0-6) (+ 1.0 f0-6))))
+       )
+     )
+    ((< arg0 0.0)
+     (let ((f0-14 (- (/ arg0 arg1))))
+       (- (atan-series-rad (/ (+ -1.0 f0-14) (+ 1.0 f0-14))))
+       )
+     )
+    ((< arg1 0.0)
+     (let ((f30-2 PI)
+           (f0-22 (- (/ arg0 arg1)))
+           )
+       (- f30-2 (atan-series-rad (/ (+ -1.0 f0-22) (+ 1.0 f0-22))))
+       )
+     )
+    (else
+      (let ((f0-28 (/ arg0 arg1)))
+        (atan-series-rad (/ (+ -1.0 f0-28) (+ 1.0 f0-28)))
+        )
+      )
+    )
+  )
+
+;; definition of type float-type
+(deftype float-type (uint32)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; definition for symbol exp-slead, type (pointer float)
+(define exp-slead (new 'static 'array float 32
+                    1.0
+                    1.0218964
+                    1.0442734
+                    1.0671387
+                    1.0905075
+                    1.1143799
+                    1.1387863
+                    1.1637192
+                    1.1892014
+                    1.2152405
+                    1.2418518
+                    1.2690506
+                    1.2968369
+                    1.3252335
+                    1.354248
+                    1.3839035
+                    1.4142075
+                    1.4451752
+                    1.4768219
+                    1.5091629
+                    1.5422058
+                    1.5759735
+                    1.6104889
+                    1.645752
+                    1.6817856
+                    1.7186127
+                    1.7562485
+                    1.7947083
+                    1.8340073
+                    1.8741608
+                    1.9151993
+                    1.9571381
+                    )
+        )
+
+;; definition for symbol exp-strail, type (pointer float)
+(define exp-strail (new 'static 'array float 32
+                     0.0
+                     0.0000007863494
+                     0.00000040596257
+                     0.0000017288019
+                     0.00000022534104
+                     0.0000068597833
+                     0.0000023188388
+                     0.0000056815315
+                     0.0000057600223
+                     0.0000068814647
+                     0.000006005433
+                     0.0000003590472
+                     0.0000027016238
+                     0.000003183687
+                     0.000007500062
+                     0.000006378546
+                     0.000006103877
+                     0.0000056360786
+                     0.0000042465254
+                     0.0000015247614
+                     0.000005014861
+                     0.000007334366
+                     0.0000014403477
+                     0.000003525029
+                     0.000007247011
+                     0.000006627224
+                     0.0000036862523
+                     0.00000082304996
+                     0.0000008232258
+                     0.0000068675085
+                     0.000007281612
+                     0.000006062652
+                     )
+        )
+
+;; definition for function exp
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function atan
+(defun atan ((arg0 float) (arg1 float))
+  (cond
+    ((and (= arg1 0.0) (= arg0 0.0))
+     0.0
+     )
+    ((and (< arg1 0.0) (< arg0 0.0))
+     (+ -32768.0 (atan0 (- arg0) (- arg1)))
+     )
+    ((< arg0 0.0)
+     (- (atan0 (- arg0) arg1))
+     )
+    ((< arg1 0.0)
+     (- 32768.0 (atan0 arg0 (- arg1)))
+     )
+    (else
+      (atan0 arg0 arg1)
+      )
+    )
+  )
+
+;; definition for function asin
+(defun asin ((arg0 float))
+  (let ((gp-0 #f))
+    0.0
+    (when (< arg0 0.0)
+      (set! arg0 (- arg0))
+      (set! gp-0 #t)
+      )
+    (let ((f0-5 (cond
+                  ((< 1.0 arg0)
+                   16383.996
+                   )
+                  (else
+                    (let* ((f0-6 1.0)
+                           (f1-2 arg0)
+                           (f0-8 (sqrtf (- f0-6 (* f1-2 f1-2))))
+                           )
+                      (atan0 arg0 f0-8)
+                      )
+                    )
+                  )
+                )
+          )
+      (if gp-0
+          (- f0-5)
+          f0-5
+          )
+      )
+    )
+  )
+
+;; definition for function acos
+(defun acos ((arg0 float))
+  (- 16384.0 (asin arg0))
+  )
+
+;; definition for function acos-rad
+(defun acos-rad ((arg0 float))
+  (cond
+    ((>= arg0 0.0)
+     (let* ((f0-1 1.0)
+            (f1-1 arg0)
+            (f0-3 (sqrtf (- f0-1 (* f1-1 f1-1))))
+            (f0-5 (/ (- f0-3 arg0) (+ f0-3 arg0)))
+            )
+       (atan-series-rad f0-5)
+       )
+     )
+    (else
+      (let* ((f0-6 1.0)
+             (f1-6 arg0)
+             (f0-8 (sqrtf (- f0-6 (* f1-6 f1-6))))
+             (f0-10 (/ (+ f0-8 arg0) (- f0-8 arg0)))
+             )
+        (- PI (atan-series-rad f0-10))
+        )
+      )
+    )
+  )
+
+;; definition for function sinerp
+(defun sinerp ((arg0 float) (arg1 float) (arg2 float))
+  (lerp arg0 arg1 (sin (* 16384.0 arg2)))
+  )
+
+;; definition for function sinerp-clamp
+(defun sinerp-clamp ((minimum float) (maximum float) (amount float))
+  (cond
+    ((>= 0.0 amount)
+     minimum
+     )
+    ((>= amount 1.0)
+     maximum
+     )
+    (else
+      (sinerp minimum maximum amount)
+      )
+    )
+  )
+
+;; definition for function coserp
+(defun coserp ((minimum float) (maximum float) (amount float))
+  (lerp minimum maximum (- 1.0 (cos (* 16384.0 amount))))
+  )
+
+;; definition for function coserp-clamp
+(defun coserp-clamp ((minimum float) (maximum float) (amount float))
+  (cond
+    ((>= 0.0 amount)
+     minimum
+     )
+    ((>= amount 1.0)
+     maximum
+     )
+    (else
+      (coserp minimum maximum amount)
+      )
+    )
+  )
+
+;; definition for function coserp180
+(defun coserp180 ((minimum float) (maximum float) (amount float))
+  (lerp minimum maximum (* 0.5 (- 1.0 (cos (* 32768.0 amount)))))
+  )
+
+;; definition for function coserp180-clamp
+(defun coserp180-clamp ((minimum float) (maximum float) (amount float))
+  (cond
+    ((>= 0.0 amount)
+     minimum
+     )
+    ((>= amount 1.0)
+     maximum
+     )
+    (else
+      (coserp180 minimum maximum amount)
+      )
+    )
+  )
+
+;; definition for function ease-in-out
+(defun ease-in-out ((total int) (progress int))
+  (local-vars (v1-0 int))
+  (cond
+    ((>= progress total)
+     1.0
+     )
+    ((<= progress 0)
+     0.0
+     )
+    ((begin (set! v1-0 (/ total 2)) (< v1-0 progress))
+     (let ((a0-1 (- progress total)))
+       (+ 0.5 (* 0.5 (sin (- 16384.0 (/ (* 16384.0 (the float a0-1)) (the float v1-0))))))
+       )
+     )
+    (else
+      (- 0.5 (* 0.5 (cos (/ (* 16384.0 (the float progress)) (the float v1-0)))))
+      )
+    )
+  )

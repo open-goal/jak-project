@@ -1,0 +1,178 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: credits.gc
+;; name in dgo: credits
+;; dgos: GAME, ENGINE
+
+;; DECOMP BEGINS
+
+(defun set-credits-font-color ((arg0 float))
+  255.0
+  (dotimes (v1-0 4)
+    (let ((f0-2 (* 64.0 arg0)))
+      (if (< 128.0 f0-2)
+          (set! f0-2 128.0)
+          )
+      (set! (-> *font-work* color-table 32 color v1-0 r) (the int f0-2))
+      )
+    (let ((f0-5 (* 64.0 arg0)))
+      (if (< 128.0 f0-5)
+          (set! f0-5 128.0)
+          )
+      (set! (-> *font-work* color-table 32 color v1-0 g) (the int f0-5))
+      )
+    (let ((f0-8 (* 64.0 arg0)))
+      (if (< 128.0 f0-8)
+          (set! f0-8 128.0)
+          )
+      (set! (-> *font-work* color-table 32 color v1-0 b) (the int f0-8))
+      )
+    )
+  0
+  (none)
+  )
+
+(define *title-credits-scale* (new 'static 'boxed-array :type float 0.9 0.9 0.6 0.6 1.0 0.9 1.1 0.9))
+
+(define *title-credits-spacing* (new 'static 'boxed-array :type int32 15 20 15 15 20 15 20 15))
+
+(defun draw-title-credits ((arg0 float))
+  (when (>= 1.0 arg0)
+    (let* ((s4-0 11)
+           (f30-0 (* arg0 (the float (+ s4-0 -2))))
+           (s5-0 (the int f30-0))
+           (gp-0
+             (new 'stack 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning))
+             )
+           )
+      1.0
+      (let ((v1-3 gp-0))
+        (set! (-> v1-3 width) (the float 600))
+        )
+      (let ((v1-4 gp-0))
+        (set! (-> v1-4 height) (the float 10))
+        )
+      (set! (-> gp-0 flags) (font-flags kerning middle large))
+      (let* ((s5-1 (- s5-0 (mod s5-0 3)))
+             (f0-10 (- f30-0 (the float s5-1)))
+             )
+        (when (and (>= s5-1 0) (< s5-1 s4-0))
+          (let ((f30-1 (cond
+                         ((< f0-10 0.8)
+                          0.0
+                          )
+                         ((< f0-10 1.6)
+                          (* 160.0 (+ -0.8 f0-10))
+                          )
+                         ((< f0-10 2.2)
+                          128.0
+                          )
+                         (else
+                           (* 128.0 (- 1.0 (* 1.25 (+ -2.2 f0-10))))
+                           )
+                         )
+                       )
+                )
+            (set! (-> gp-0 origin x) -44.0)
+            (set! (-> gp-0 origin y) 90.0)
+            (dotimes (s4-1 3)
+              (let* ((s2-0 (+ s4-1 3840 s5-1))
+                     (s3-0 (lookup-text! *common-text* (the-as game-text-id s2-0) #t))
+                     )
+                (when (= s2-0 3841)
+                  (case (scf-get-territory)
+                    ((GAME_TERRITORY_SCEE)
+                     (set! s3-0 (lookup-text! *common-text* (game-text-id europe) #t))
+                     )
+                    ((GAME_TERRITORY_SCEI)
+                     (set! s3-0 (lookup-text! *common-text* (game-text-id inc) #t))
+                     )
+                    )
+                  )
+                (when s3-0
+                  (let ((v1-25 gp-0))
+                    (set! (-> v1-25 scale) (-> *title-credits-scale* (+ s5-1 s4-1)))
+                    )
+                  (print-game-text s3-0 gp-0 #f (the int f30-1) 22)
+                  )
+                )
+              (+! (-> gp-0 origin y) (the float (-> *title-credits-spacing* (+ s5-1 s4-1))))
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defun draw-end-credits ((arg0 int))
+  (local-vars (v1-13 int))
+  (#when PC_PORT
+    ;; pc port note : change text language during credits
+
+    ;; disable the automatic text loading for now
+    (disable-level-text-file-loading)
+    (protect ((-> *pc-settings* text-language))
+      ;; swap language and load new text files
+      (set! (-> *pc-settings* text-language) (the pc-subtitle-lang (-> *setting-control* current language)))
+      (load-level-text-files 0)))
+  (let ((s4-0 (+ (- arg0) (the int (* 1.5 (the float (-> *video-parms* screen-sy))))))
+        (gp-0 2815)
+        (s3-0 0)
+        (s2-0 #t)
+        (s5-0
+          (new 'stack 'font-context *font-default-matrix* 31 0 0.0 (font-color default) (font-flags shadow kerning))
+          )
+        )
+    (let ((v1-2 s5-0))
+      (set! (-> v1-2 width) (the float 450))
+      )
+    (let ((v1-3 s5-0))
+      (set! (-> v1-3 height) (the float 10))
+      )
+    (let ((v1-4 s5-0))
+      (set! (-> v1-4 scale) 1.0)
+      )
+    (set! (-> s5-0 flags) (font-flags shadow kerning middle large))
+    (while (or s2-0 (and (< s4-0 (- s3-0)) (< (the-as uint gp-0) (the-as uint 3262))))
+      (+! s4-0 s3-0)
+      (+! gp-0 1)
+      (let ((a0-8 (lookup-text! *common-text* (the-as game-text-id gp-0) #t)))
+        (if a0-8
+            (set! s3-0 (the int (+ 5.0 (print-game-text a0-8 s5-0 #t 128 20))))
+            (set! s3-0 25)
+            )
+        )
+      (set! s2-0 #f)
+      )
+    (cond
+      ((>= (the-as uint gp-0) (the-as uint 3262))
+       (#when PC_PORT
+          ;; credits are over - re-enable automatic text loading
+          (enable-level-text-file-loading))
+       #t
+       )
+      (else
+        (set! (-> s5-0 origin y) (the float s4-0))
+        (while (< (-> s5-0 origin y) (the float (-> *video-parms* screen-sy)))
+          (let ((a0-11 (lookup-text! *common-text* (the-as game-text-id gp-0) #t)))
+            (if a0-11
+                (set! v1-13 (the int (+ 5.0 (print-game-text a0-11 s5-0 #f 128 20))))
+                (set! v1-13 25)
+                )
+            )
+          (+! (-> s5-0 origin y) (the float v1-13))
+          (+! gp-0 1)
+          )
+        #f
+        )
+      )
+    )
+  )
+
+
+
+

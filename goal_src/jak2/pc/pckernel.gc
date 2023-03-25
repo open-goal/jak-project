@@ -1,0 +1,138 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+
+  This file runs the game-specific version of the pckernel.
+	See pckernel-common.gc for the bulk of the pckernel.
+
+ |#
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; methods
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod set-game-setting! pc-settings-jak2 ((obj pc-settings-jak2) (setting symbol) (value symbol))
+  (case setting
+    (('video-mode)
+      (set! (-> *setting-control* user-current video-mode) #f)
+      (set! (-> *setting-control* user-default video-mode) value)
+      )
+    (('aspect-ratio)
+      (set! (-> *setting-control* user-default aspect-ratio) value)
+      )
+    (else
+      (format #t "unknown setting  ~A (~A) to set-game-setting!" setting value))
+    )
+  )
+
+(defmethod get-game-setting! pc-settings-jak2 ((obj pc-settings-jak2) (setting symbol))
+  (case setting
+    (('video-mode)
+      (-> *setting-control* user-default video-mode)
+      )
+    (('aspect-ratio)
+      (-> *setting-control* user-default aspect-ratio)
+      )
+    (else
+      (format #t "unknown setting  ~A to get-game-setting!" setting)
+      #f)
+    )
+  )
+
+(defmethod set-game-language! pc-settings-jak2 ((obj pc-settings-jak2) (lang language-enum))
+  (set! (-> *setting-control* user-default language) lang)
+  )
+
+(defmethod get-game-language! pc-settings-jak2 ((obj pc-settings-jak2))
+  (get-current-language)
+  )
+
+(defmethod update-discord-rpc pc-settings-jak2 ((obj pc-settings-jak2))
+  "update discord rpc module"
+
+  (let ((info (new 'stack 'discord-info)))
+    (set! (-> info orb-count) (&-> *game-info* skill-total))
+    (set! (-> info gem-count) (&-> *game-info* gem-total))
+    (set! (-> info death-count) (&-> *game-info* total-deaths))
+    (set! (-> info status) "Playing Jak II™")
+    ;; grab the name of the level we're in
+    (if (and *level* (level-get-target-inside *level*))
+      (set! (-> info level) (symbol->string (-> (level-get-target-inside *level*) name)))
+      (set! (-> info level) "unknown"))
+    (set! (-> info cutscene?) #f) ;; TODO - cutscenes don't work yet
+    (set! (-> info time-of-day) (&-> *time-of-day-context* time))
+    (set! (-> info percent-complete) (calculate-percentage *game-info*))
+
+    ;; TODO - wrapping in `with-profiler` causes an error, fix it
+    (pc-discord-rpc-update info)
+    )
+  0)
+
+(defmethod update-speedrun pc-settings-jak2 ((obj pc-settings-jak2))
+  "update speedrun module"
+
+  #f
+  )
+
+(defmethod update-video-hacks pc-settings-jak2 ((obj pc-settings-jak2))
+  "update the graphics hacks used for the progress menu. ugh."
+
+  (set! (-> (get-video-params) relative-x-scale) (-> obj aspect-ratio-reciprocal))
+  (set! (-> (get-video-params) relative-x-scale-reciprical) (-> obj aspect-ratio-scale))
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; file I/O
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod handle-input-settings pc-settings-jak2 ((obj pc-settings-jak2) (file file-stream))
+  "handle the text parsing input for the 'settings' group"
+
+	((method-of-type pc-settings handle-input-settings) obj file)
+  (case-str *pc-temp-string*
+    (("jetboard-trick-text?") (set! (-> obj jetboard-trick-text?) (file-stream-read-symbol file)))
+    )
+  0)
+
+(defmethod handle-output-settings pc-settings-jak2 ((obj pc-settings-jak2) (file file-stream))
+  "handle the text writing output for the 'settings' group"
+  
+	((method-of-type pc-settings handle-output-settings) obj file)
+  (format file "  (jetboard-trick-text? ~A)~%" (-> obj jetboard-trick-text?))
+  0)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; PC settings
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(define-once *pc-settings* (new 'global 'pc-settings-jak2))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; other
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun draw-build-revision ()
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
+                                     (bucket-id debug-no-zbuf1))
+          (draw-string-xy *pc-settings-built-sha*
+                          buf
+                          0 10
+                          (font-color flat-yellow)
+                          (font-flags shadow kerning))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; process pools
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; the actor pool for PC processes! it has space for 4 processes, with 16K of space.
+(define *pc-dead-pool* (new 'global 'dead-pool 4 (* 16 1024) "*pc-dead-pool*"))
+

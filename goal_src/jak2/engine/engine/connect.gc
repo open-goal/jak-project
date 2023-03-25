@@ -1,0 +1,797 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: connect.gc
+;; name in dgo: connect
+;; dgos: ENGINE, GAME
+
+#|@file
+This extremely confusing "connection system" allows the connection between
+"engines" and "processes".  Basically, a process can "register" itself with any number of "engines".
+The "engines" can then iterate through all the connected processes. If a process is destroyed, it will
+be removed from all engines.  It is okay to connect a process to multiple engines, or even to the same engine
+multiple times.
+
+Some example uses:
+- a "foreground-engine" has connections to all foreground objects that need to be drawn on each frame.
+- when a process wants to change a game setting, it opens a connection to the settings engine to request a change.
+  when the process is killed (or it stops requesting the change), the setting change is reverted.
+
+A "connection" is really just a function that gets called when the engine runs, or a set of parameters that the engine can iterate through.
+|#
+
+;; DECOMP BEGINS
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; connectable
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; A connectable is the linked-list node part of a connection.
+;; The connections themselves are owned by the engine.
+
+;; the next0/prev0 references are used for how this belongs in the connectable list
+;; belonging to the _engine_. These terminate on special nodes stored in the engine:
+;; alive-list/alive-list-end for the active connections, and dead-list/dead-list-end
+;; for the inactive.
+
+;; the next1/prev1 references are used to build a linked list _per process_.
+;; the head of this list is the inline connectable in process and it ends with #f.
+;; This is a bit confusing at first, but these belong to two linked lists...
+;; These terminate on both ends with #f.
+(deftype connectable (structure)
+  ((next0 connectable  :offset-assert   0)
+   (prev0 connectable  :offset-assert   4)
+   (next1 connectable  :offset-assert   8)
+   (prev1 connectable  :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; connection
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; this is the actual data for the connection.
+;; it may be used in multiple ways, but the most common is to use param0 as a function
+;; it receives param1, param2, param3, and the engine as the arugmetns.
+;; in some cases, the return value is checked for 'dead.
+(declare-type engine basic)
+
+(deftype connection (connectable)
+  ((param0 basic     :offset-assert  16)
+   (param1 basic     :offset-assert  20)
+   (param2 int32     :offset-assert  24)
+   (param3 int32     :offset-assert  28)
+   (quad   uint128 2 :offset          0)
+   )
+  :method-count-assert 14
+  :size-assert         #x20
+  :flag-assert         #xe00000020
+  (:methods
+    (get-engine (connection) engine 9)
+    (get-process (connection) process 10)
+    (belongs-to-engine? (connection engine) symbol 11)
+    (belongs-to-process? (connection process) symbol 12)
+    (move-to-dead (connection) connection 13)
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; engine
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; an engine is a collection of connections.
+;; you can iterate over the connections, or run them.
+;; the engine is dynamically sized based on how many connections it can store.
+
+;; new for jak 2, you can use a child class of connection
+
+(deftype engine (basic)
+  ((name             symbol                       :offset-assert   4)
+   (engine-time      time-frame                   :offset         16)
+   (allocated-length int16                        :offset         10)
+   (length           int16                        :offset          8)
+   (element-type     type                         :offset         12)
+   (alive-list       connectable :inline          :offset-assert  32)
+   (alive-list-end   connectable :inline          :offset-assert  48)
+   (dead-list        connectable :inline          :offset-assert  64)
+   (dead-list-end    connectable :inline          :offset-assert  80)
+   (data             connection  :inline :dynamic :offset-assert  96)
+   )
+  :method-count-assert 26
+  :size-assert         #x60
+  :flag-assert         #x1a00000060
+  (:methods
+    (new (symbol type symbol int type) _type_ 0)
+    (inspect-all-connections (engine) engine 9)
+    (apply-to-connections (engine (function connectable none)) int 10)
+    (apply-to-connections-reverse (engine (function connectable none)) int 11)
+    (execute-connections (engine object) int 12)
+    (execute-connections-and-move-to-dead (engine object) int 13)
+    (execute-connections-if-needed (engine object) int 14)
+    (add-connection (engine process object object object object) connection 15)
+    (remove-from-process (engine process) int 16)
+    (remove-matching (engine (function connection engine symbol)) int 17)
+    (remove-all (engine) int 18)
+    (remove-by-param0 (engine object) int 19)
+    (remove-by-param1 (engine int) int 20)
+    (remove-by-param2 (engine int) int 21)
+    (get-first-connectable (engine) connectable 22)
+    (get-last-connectable (engine) connectable 23)
+    (get-next-connectable (_type_ connectable) connectable 24)
+    (get-prev-connectable (_type_ connectable) connectable 25)
+    )
+  )
+
+(defmethod belongs-to-process? connection ((obj connection) (arg0 process))
+  "Does this connection belong to the given process?"
+  (= arg0 (get-process obj))
+  )
+
+(defmethod print connection ((obj connection))
+  "Print a connection and its parameters"
+  (format #t "#<connection (~A ~A ~A ~A) @ #x~X>"
+    (-> obj param0)
+    (-> obj param1)
+    (-> obj param2)
+    (-> obj param3)
+    obj
+    )
+  obj
+  )
+
+(defmethod get-engine connection ((obj connection))
+  "Get the engine for this connection. This must be used on a live connection."
+  (while (-> (the-as connectable obj) prev0)
+    (nop!)
+    (nop!)
+    (set! obj (the-as connection (-> (the-as connectable obj) prev0)))
+    )
+  (the-as engine (&+ (the-as pointer obj) -28))
+  )
+
+(defmethod get-process connection ((obj connection))
+  "Get the process for this connection"
+  (while (-> (the-as connectable obj) prev1)
+    (nop!)
+    (nop!)
+    (set! obj (the-as connection (-> (the-as connectable obj) prev1)))
+    )
+  (the-as process (&+ (the-as pointer obj) -108))
+  )
+
+(defmethod belongs-to-engine? connection ((obj connection) (arg0 engine))
+  "Check to see if this connection is located in the data section of the engine.
+  This works on dead or alive connections."
+  (and (< (the-as int arg0) (the-as int obj))
+       (< (the-as int obj)
+          (the-as int (&+ (&+ (the-as pointer arg0) (-> arg0 type size))
+                          (* (-> arg0 allocated-length) (the-as int (-> arg0 element-type size)))
+                          )
+                  )
+          )
+       )
+  )
+
+(defmethod get-first-connectable engine ((obj engine))
+  (-> obj alive-list next0)
+  )
+
+(defmethod get-last-connectable engine ((obj engine))
+  (-> obj alive-list-end)
+  )
+
+(defmethod get-next-connectable engine ((obj engine) (arg0 connectable))
+  (-> arg0 next0)
+  )
+
+(defmethod get-prev-connectable engine ((obj engine) (arg0 connectable))
+  (-> arg0 prev0)
+  )
+
+(defmethod new engine ((allocation symbol) (type-to-make type) (arg0 symbol) (arg1 int) (arg2 type))
+  (let ((v0-0 (object-new allocation type-to-make
+                          (the-as int (+ (-> type-to-make size) (* (the-as uint arg1) (-> arg2 size))))
+                          )
+              )
+        )
+    (set! (-> v0-0 allocated-length) arg1)
+    (set! (-> v0-0 length) 0)
+    (set! (-> v0-0 name) arg0)
+    (set! (-> v0-0 element-type) arg2)
+    (set! (-> v0-0 alive-list next0) (-> v0-0 alive-list-end))
+    (set! (-> v0-0 alive-list prev0) #f)
+    (set! (-> v0-0 alive-list next1) #f)
+    (set! (-> v0-0 alive-list prev1) #f)
+    (set! (-> v0-0 alive-list-end next0) #f)
+    (set! (-> v0-0 alive-list-end prev0) (-> v0-0 alive-list))
+    (set! (-> v0-0 alive-list-end next1) #f)
+    (set! (-> v0-0 alive-list-end prev1) #f)
+    (set! (-> v0-0 dead-list next0) (the-as connectable (-> v0-0 data)))
+    (set! (-> v0-0 dead-list prev0) #f)
+    (set! (-> v0-0 dead-list next1) #f)
+    (set! (-> v0-0 dead-list prev1) #f)
+    (set! (-> v0-0 dead-list-end next0) #f)
+    (set! (-> v0-0 dead-list-end prev0)
+          (the-as connectable (+ (+ (* (the-as uint (+ arg1 -1)) (-> arg2 size)) 92) (the-as uint v0-0)))
+          )
+    (set! (-> v0-0 dead-list-end next1) #f)
+    (set! (-> v0-0 dead-list-end prev1) #f)
+    ;; this crazy logic is to lay out the linked list structure in the data.
+    ;; the object size is now determined from the specified type.
+    (let ((v1-9 (the-as object (-> v0-0 data))))
+      (set! (-> v0-0 data 0 prev0) (-> v0-0 dead-list))
+      (set! (-> v0-0 data 0 next0) (the-as connectable (&+ (the-as pointer v1-9) (-> arg2 size))))
+      (let ((v1-10 (the-as object (&+ (the-as pointer v1-9) (-> arg2 size)))))
+        (let ((a0-6 1)
+              (a1-3 (+ arg1 -2))
+              )
+          (while (>= a1-3 a0-6)
+            (set! (-> (the-as connectable v1-10) prev0)
+                  (the-as connectable (&- (the-as pointer v1-10) (the-as uint (-> arg2 size))))
+                  )
+            (set! (-> (the-as (pointer pointer) v1-10)) (&+ (the-as pointer v1-10) (-> arg2 size)))
+            (set! v1-10 (&+ (the-as pointer v1-10) (-> arg2 size)))
+            (+! a0-6 1)
+            )
+          )
+        (set! (-> (the-as connectable v1-10) prev0)
+              (the-as connectable (&- (the-as pointer v1-10) (the-as uint (-> arg2 size))))
+              )
+        (set! (-> (the-as (pointer connectable) v1-10)) (-> v0-0 dead-list-end))
+        )
+      )
+    v0-0
+    )
+  )
+
+(defmethod print engine ((obj engine))
+  "Print an engine and its name"
+  (format #t "#<~A ~A @ #x~X>" (-> obj type) (-> obj name) obj)
+  obj
+  )
+
+(defmethod inspect engine ((obj engine))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Tengine-time: ~D~%" (-> obj engine-time))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Telement-type: ~A~%" (-> obj element-type))
+  (format #t "~Talive-list:~%")
+  (let ((s5-0 *print-column*))
+    (set! *print-column* (+ *print-column* 64))
+    (inspect (-> obj alive-list))
+    (set! *print-column* s5-0)
+    )
+  (format #t "~Talive-list-end:~%")
+  (let ((s5-1 *print-column*))
+    (set! *print-column* (+ *print-column* 64))
+    (inspect (-> obj alive-list-end))
+    (set! *print-column* s5-1)
+    )
+  (format #t "~Tdead-list:~%")
+  (let ((s5-2 *print-column*))
+    (set! *print-column* (+ *print-column* 64))
+    (inspect (-> obj dead-list))
+    (set! *print-column* s5-2)
+    )
+  (format #t "~Tdead-list-end:~%")
+  (let ((s5-3 *print-column*))
+    (set! *print-column* (+ *print-column* 64))
+    (inspect (-> obj dead-list-end))
+    (set! *print-column* s5-3)
+    )
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj allocated-length) (-> obj data))
+  obj
+  )
+
+(defmethod length engine ((obj engine))
+  "Get the in-use length of an engine"
+  (-> obj length)
+  )
+
+(defmethod asize-of engine ((obj engine))
+  "Get the size in memory of an engine"
+  (the-as int (+ (-> obj type size) (* (-> obj allocated-length) (the-as int (-> obj element-type size)))))
+  )
+
+(defmethod apply-to-connections engine ((obj engine) (arg0 (function connectable none)))
+  "Apply f to all connections for the engine. It's okay to have f remove the connection."
+  (let* ((a0-1 (-> obj alive-list next0))
+         (s4-0 (-> a0-1 next0)))
+    (while (!= a0-1 (-> obj alive-list-end))
+      (arg0 a0-1)
+      (set! a0-1 s4-0)
+      (set! s4-0 (-> s4-0 next0))
+      )
+    )
+  0
+  )
+
+(defmethod apply-to-connections-reverse engine ((obj engine) (arg0 (function connectable none)))
+  "Apply f to all connections, reverse order.
+   Do not use f to remove yourself from the list."
+  (let ((s4-0 (-> obj alive-list-end prev0)))
+    (while (!= s4-0 (-> obj alive-list))
+      (arg0 s4-0)
+      (set! s4-0 (-> s4-0 prev0))
+      )
+    )
+  0
+  )
+
+(defmethod execute-connections engine ((obj engine) (arg0 object))
+  "Run the engine!"
+  (set! (-> obj engine-time) (-> *display* real-clock frame-counter))
+  (let ((s4-0 (the-as connection (-> obj alive-list-end prev0))))
+    (while (!= s4-0 (-> obj alive-list))
+      ((the-as (function object object object object object) (-> s4-0 param0))
+       (-> s4-0 param1)
+       (-> s4-0 param2)
+       (-> s4-0 param3)
+       arg0
+       )
+      (set! s4-0 (the-as connection (-> s4-0 prev0)))
+      )
+    )
+  0
+  )
+
+(defmethod execute-connections-and-move-to-dead engine ((obj engine) (arg0 object))
+  "Run the engine! If any objects return 'dead, then remove them"
+  (set! (-> obj engine-time) (-> *display* real-clock frame-counter))
+  (let ((s4-0 (the-as connection (-> obj alive-list-end prev0))))
+    (while (!= s4-0 (-> obj alive-list))
+      (let ((v1-3 ((the-as (function object object object object object) (-> s4-0 param0))
+                   (-> s4-0 param1)
+                   (-> s4-0 param2)
+                   (-> s4-0 param3)
+                   arg0
+                   )
+                  )
+            )
+        (set! s4-0 (the-as connection (-> s4-0 prev0)))
+        (if (= v1-3 'dead)
+            ((method-of-type connection move-to-dead) (the-as connection (-> s4-0 next0)))
+            )
+        )
+      )
+    )
+  0
+  )
+
+(defmethod execute-connections-if-needed engine ((obj engine) (arg0 object))
+  "Execute connections, but only if it hasn't been done on this frame."
+  (if (!= (-> *display* real-clock frame-counter) (-> obj engine-time))
+      (execute-connections obj arg0)
+      )
+  0
+  )
+
+(defun connection-process-apply ((arg0 process) (arg1 (function object none)))
+  "Apply a function to all connectables of a process."
+  (when arg0
+    (let ((s5-0 (-> arg0 connection-list next1)))
+      (while s5-0
+        (arg1 s5-0)
+        (set! s5-0 (-> s5-0 next1))
+        )
+      )
+    #f
+    )
+  )
+
+(defmethod inspect-all-connections engine ((obj engine))
+  "inspect all of the connections."
+  (apply-to-connections obj (the-as (function connectable none) (method-of-type connection inspect)))
+  obj
+  )
+
+(defmethod add-connection engine ((obj engine) (arg0 process) (arg1 object) (arg2 object) (arg3 object) (arg4 object))
+  "Add a connection between this engine and a given process."
+  (let ((v1-0 (the-as connection (-> obj dead-list next0))))
+    (when (not (or (not arg0) (= v1-0 (-> obj dead-list-end))))
+      (set! (-> v1-0 param0) (the-as basic arg1))
+      (set! (-> v1-0 param1) (the-as basic arg2))
+      (set! (-> v1-0 param2) (the-as int arg3))
+      (set! (-> v1-0 param3) (the-as int arg4))
+      (set! (-> obj dead-list next0) (-> v1-0 next0))
+      (set! (-> v1-0 next0 prev0) (-> obj dead-list))
+      (set! (-> v1-0 next0) (-> obj alive-list next0))
+      (set! (-> v1-0 next0 prev0) v1-0)
+      (set! (-> v1-0 prev0) (-> obj alive-list))
+      (set! (-> obj alive-list next0) v1-0)
+      (set! (-> v1-0 next1) (-> arg0 connection-list next1))
+      (if (-> v1-0 next1)
+          (set! (-> v1-0 next1 prev1) v1-0)
+          )
+      (set! (-> v1-0 prev1) (-> arg0 connection-list))
+      (set! (-> arg0 connection-list next1) v1-0)
+      (+! (-> obj length) 1)
+      v1-0
+      )
+    )
+  )
+
+(defmethod move-to-dead connection ((obj connection))
+  "Move this connection from the alive list to the dead list"
+  (let ((v1-1 (get-engine obj)))
+    (set! (-> obj prev0 next0) (-> obj next0))
+    (set! (-> obj next0 prev0) (-> obj prev0))
+    (set! (-> obj prev1 next1) (-> obj next1))
+    (if (-> obj next1)
+        (set! (-> obj next1 prev1) (-> obj prev1))
+        )
+    (set! (-> obj next0) (-> v1-1 dead-list next0))
+    (set! (-> obj next0 prev0) obj)
+    (set! (-> obj prev0) (-> v1-1 dead-list))
+    (set! (-> v1-1 dead-list next0) obj)
+    (+! (-> v1-1 length) -1)
+    )
+  obj
+  )
+
+(defun process-disconnect ((arg0 process))
+  "Disconnect all connections for the given process."
+  (when arg0
+    (let ((gp-0 (-> arg0 connection-list next1)))
+      (while gp-0
+        ((method-of-type connection move-to-dead) (the-as connection gp-0))
+        (set! gp-0 (-> gp-0 next1))
+        )
+      )
+    )
+  0
+  )
+
+(defmethod remove-from-process engine ((obj engine) (arg0 process))
+  "Remove all connections from process for this engine"
+  (when arg0
+    (let ((s5-0 (-> arg0 connection-list next1)))
+      (while s5-0
+        (if ((method-of-type connection belongs-to-engine?) (the-as connection s5-0) obj)
+            ((method-of-type connection move-to-dead) (the-as connection s5-0))
+            )
+        (set! s5-0 (-> s5-0 next1))
+        )
+      )
+    )
+  0
+  )
+
+(defmethod remove-matching engine ((obj engine) (arg0 (function connection engine symbol)))
+  "call the given function on each connection and the engine.
+   if it returns truthy, move to dead that connection."
+  (let* ((s4-0 (-> obj alive-list next0))
+         (s3-0 (-> s4-0 next0))
+         )
+    (while (!= s4-0 (-> obj alive-list-end))
+      (if (arg0 (the-as connection s4-0) obj)
+          ((method-of-type connection move-to-dead) (the-as connection s4-0))
+          )
+      (set! s4-0 s3-0)
+      (set! s3-0 (-> s3-0 next0))
+      )
+    )
+  0
+  )
+
+(defmethod remove-all engine ((obj engine))
+  "Remove all connections from an engine"
+  (let* ((a0-1 (-> obj alive-list next0))
+         (s5-0 (-> a0-1 next0))
+         )
+    (while (!= a0-1 (-> obj alive-list-end))
+      ((method-of-type connection move-to-dead) (the-as connection a0-1))
+      (set! a0-1 s5-0)
+      (set! s5-0 (-> s5-0 next0))
+      )
+    )
+  0
+  )
+
+(defmethod remove-by-param0 engine ((obj engine) (arg0 object))
+  "Remove all connections with param0 matching arg0"
+  (let* ((a0-1 (-> obj alive-list next0))
+         (s4-0 (-> a0-1 next0))
+         )
+    (while (!= a0-1 (-> obj alive-list-end))
+      (if (= (-> (the-as connection a0-1) param0) arg0)
+          ((method-of-type connection move-to-dead) (the-as connection a0-1))
+          )
+      (set! a0-1 s4-0)
+      (set! s4-0 (-> s4-0 next0))
+      )
+    )
+  0
+  )
+
+(defmethod remove-by-param1 engine ((obj engine) (arg0 int))
+  "Remove all connections with param1 matching arg0"
+  (let* ((a0-1 (-> obj alive-list next0))
+         (s4-0 (-> a0-1 next0))
+         )
+    (while (!= a0-1 (-> obj alive-list-end))
+      (if (= (-> (the-as connection a0-1) param1) arg0)
+          ((method-of-type connection move-to-dead) (the-as connection a0-1))
+          )
+      (set! a0-1 s4-0)
+      (set! s4-0 (-> s4-0 next0))
+      )
+    )
+  0
+  )
+
+(defmethod remove-by-param2 engine ((obj engine) (arg0 int))
+  "Remove all connections with param2 matching arg0"
+  (let* ((a0-1 (-> obj alive-list next0))
+         (s4-0 (-> a0-1 next0))
+         )
+    (while (!= a0-1 (-> obj alive-list-end))
+      (if (= (-> (the-as connection a0-1) param2) arg0)
+          ((method-of-type connection move-to-dead) (the-as connection a0-1))
+          )
+      (set! a0-1 s4-0)
+      (set! s4-0 (-> s4-0 next0))
+      )
+    )
+  0
+  )
+
+;;;;;;;;;;;;;;;;;;;
+;; PERS engine
+;;;;;;;;;;;;;;;;;;;
+
+;; this is another engine system, very similar to the first, but not specific to a process.
+;; each connection has a "key", which is like the process, but unlike normal engine,
+;; the key's don't track which engine-pers they belong to.
+
+;; Unlike engine, users can use engine-pers as a parent class.
+
+(deftype connection-pers (structure)
+  ((next        connection-pers   :offset-assert   0)
+   (key         object            :offset-assert   4)
+   (update-time time-frame        :offset-assert   8)
+   (param       object          4 :offset         16)
+   (param-int32 int32           4 :offset         16)
+   (param-int64 int64           2 :offset         16)
+   (param-float float           4 :offset         16)
+   (param-quat  int128            :offset         16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(defmethod inspect connection-pers ((obj connection-pers))
+  (when (not obj)
+    (return obj)
+    )
+  (format #t "[~8x] ~A~%" obj 'connection-pers)
+  (format #t "~1Tnext: #<connection-pers @ #x~X>~%" (-> obj next))
+  (format #t "~1Tkey: ~A~%" (-> obj key))
+  (format #t "~1Tupdate-time: ~D~%" (-> obj update-time))
+  (format #t "~1Tparam[4] @ #x~X~%" (-> obj param))
+  (dotimes (s5-0 4)
+    (format #t "~T  [~D]~1Tparam: ~A~%" s5-0 (-> obj param s5-0))
+    )
+  (format #t "~1Tparam-int32[4] @ #x~X~%" (-> obj param))
+  (dotimes (s5-1 4)
+    (format #t "~T  [~D]~1Tparam-int32: ~D~%" s5-1 (-> obj param s5-1))
+    )
+  (format #t "~1Tparam-int64[2] @ #x~X~%" (-> obj param))
+  (dotimes (s5-2 2)
+    (format #t "~T  [~D]~1Tparam-int64: ~D~%" s5-2 (-> obj param-int64 s5-2))
+    )
+  (format #t "~1Tparam-float[4] @ #x~X~%" (-> obj param))
+  (dotimes (s5-3 4)
+    (format #t "~T  [~D]~1Tparam-float: ~f~%" s5-3 (the-as float (-> obj param s5-3)))
+    )
+  ;(format #t "~1Tparam-quat: #x~X~%" (-> obj param-quat))
+  obj
+  )
+
+(deftype engine-pers (basic)
+  ((name             symbol                           :offset-assert   4)
+   (length           int16                            :offset-assert   8)
+   (allocated-length int16                            :offset-assert  10)
+   (element-type     type                             :offset-assert  12)
+   (execute-time     time-frame                       :offset-assert  16)
+   (alive-list       connection-pers                  :offset-assert  24)
+   (dead-list        connection-pers                  :offset-assert  28)
+   (data             connection-pers :inline :dynamic :offset-assert  32)
+   )
+  :method-count-assert 15
+  :size-assert         #x20
+  :flag-assert         #xf00000020
+  (:methods
+    (new (symbol type symbol int type) _type_ 0)
+    (schedule-callback (_type_ object time-frame) connection-pers 9)
+    (kill-callback (_type_ connection-pers) none 10)
+    (kill-by-key (_type_ object) none 11)
+    (kill-matching (_type_ (function engine-pers connection-pers object object symbol) object object) none 12)
+    (update-callback (_type_) none 13)
+    (run-pending-updates! (_type_ time-frame) none 14)
+    )
+  )
+
+
+(defmethod new engine-pers ((allocation symbol) (type-to-make type) (arg0 symbol) (arg1 int) (arg2 type))
+  (let ((v0-0 (object-new
+                allocation
+                type-to-make
+                (the-as int (+ (-> type-to-make size) (* (the-as uint arg1) (-> arg2 size))))
+                )
+              )
+        )
+    (set! (-> v0-0 allocated-length) arg1)
+    (set! (-> v0-0 length) 0)
+    (set! (-> v0-0 name) arg0)
+    (set! (-> v0-0 element-type) arg2)
+    (set! (-> v0-0 alive-list) #f)
+    (set! (-> v0-0 dead-list) (the-as connection-pers (-> v0-0 data)))
+    (let ((v1-3 (the-as object (-> v0-0 data))))
+      (dotimes (a0-1 arg1)
+        (set! (-> (the-as (pointer uint32) v1-3) 0) (the-as uint (&+ (the-as pointer v1-3) (-> arg2 size))))
+        (set! v1-3 (&+ (the-as pointer v1-3) (-> arg2 size)))
+        )
+      (set! (-> (the-as (pointer symbol) (&- (the-as pointer v1-3) (the-as uint (-> arg2 size))))) #f)
+      )
+    v0-0
+    )
+  )
+
+(defmethod length engine-pers ((obj engine-pers))
+  "Get in use connection count."
+  (-> obj length)
+  )
+
+(defmethod asize-of engine-pers ((obj engine-pers))
+  "Get size in memory."
+  (the-as int (+ (-> obj type size) (* (-> obj allocated-length) (the-as int (-> obj element-type size)))))
+  )
+
+(defmethod schedule-callback engine-pers ((obj engine-pers) (arg0 object) (arg1 time-frame))
+  "Get a connection for this key.
+   If no connection exists, add it.
+   Schedule an update to happen in arg1 seconds."
+  (local-vars (v0-0 connection-pers))
+  (let ((v1-0 (-> obj alive-list)))
+    (while v1-0
+      (when (= arg0 (-> v1-0 key))
+        (set! v0-0 v1-0)
+        (goto cfg-8)
+        )
+      (set! v1-0 (-> v1-0 next))
+      )
+    )
+  (set! v0-0 (-> obj dead-list))
+  (when v0-0
+    (set! (-> obj dead-list) (-> v0-0 next))
+    (set! (-> v0-0 next) (-> obj alive-list))
+    (set! (-> obj alive-list) v0-0)
+    (+! (-> obj length) 1)
+    (set! (-> v0-0 key) arg0)
+    (set! (-> v0-0 param-quat) (the-as int128 0))
+    0
+    )
+  (label cfg-8)
+  (if v0-0
+      (set! (-> v0-0 update-time) (+ (-> obj execute-time) arg1))
+      )
+  v0-0
+  )
+
+(defmethod kill-callback engine-pers ((obj engine-pers) (arg0 connection-pers))
+  "Called when a connection is removed."
+  0
+  (none)
+  )
+
+(defmethod update-callback engine-pers ((obj engine-pers))
+  "Called when a connection is run.
+   Users can override this as needed."
+  0
+  (none)
+  )
+
+(defmethod kill-by-key engine-pers ((obj engine-pers) (arg0 object))
+  "Remove connections with this key, calling kill-callback."
+  (let ((s4-0 (&-> obj alive-list))
+        (s2-0 (-> obj alive-list))
+        )
+    (while s2-0
+      (let ((s3-0 (-> s2-0 next)))
+        (cond
+          ((!= arg0 (-> s2-0 key))
+           (set! s4-0 (&-> s2-0 next))
+           )
+          (else
+            (kill-callback obj s2-0)
+            (set! (-> s4-0 0) (-> s2-0 next))
+            (set! (-> s2-0 next) (-> obj dead-list))
+            (set! (-> obj dead-list) s2-0)
+            (+! (-> obj length) -1)
+            )
+          )
+        (set! s2-0 s3-0)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod kill-matching engine-pers ((obj engine-pers)
+                                     (arg0 (function engine-pers connection-pers object object symbol))
+                                     (arg1 object)
+                                     (arg2 object)
+                                     )
+  "Call the given function on each connection. If it returns truthy, kill that connection."
+  (let ((s2-0 (&-> obj alive-list))
+        (s0-0 (-> obj alive-list))
+        )
+    (while s0-0
+      (let ((s1-0 (-> s0-0 next)))
+        (cond
+          ((not (arg0 obj s0-0 arg1 arg2))
+           (set! s2-0 (&-> s0-0 next))
+           )
+          (else
+            (kill-callback obj s0-0)
+            (set! (-> s2-0 0) (-> s0-0 next))
+            (set! (-> s0-0 next) (-> obj dead-list))
+            (set! (-> obj dead-list) s0-0)
+            (+! (-> obj length) -1)
+            )
+          )
+        (set! s0-0 s1-0)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod run-pending-updates! engine-pers ((obj engine-pers) (arg0 time-frame))
+  "Run updates if they scheduled. If something is found that has no pending update, kill it.
+   Note that we won't kill things on this call if they fail to update their update-time.
+   They will survive until the next call to run-pending-updates!
+   (or you can modify their update-time before that to prevent them from being killed)"
+  (let ((s4-0 (-> obj execute-time))
+        (s2-0 (&-> obj alive-list))
+        (s1-0 (-> obj alive-list))
+        )
+    (while s1-0
+      (let ((s3-0 (-> s1-0 next)))
+        (cond
+          ((>= (-> s1-0 update-time) s4-0)
+           (update-callback obj)
+           (set! s2-0 (&-> s1-0 next))
+           )
+          (else
+            (kill-callback obj s1-0)
+            (set! (-> s2-0 0) (-> s1-0 next))
+            (set! (-> s1-0 next) (-> obj dead-list))
+            (set! (-> obj dead-list) s1-0)
+            (+! (-> obj length) -1)
+            )
+          )
+        (set! s1-0 s3-0)
+        )
+      )
+    )
+  (set! (-> obj execute-time) arg0)
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+

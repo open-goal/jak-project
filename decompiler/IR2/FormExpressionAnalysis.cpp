@@ -1,17 +1,20 @@
 #include "Form.h"
 #include "FormStack.h"
 #include "GenericElementMatcher.h"
+
 #include "common/goos/PrettyPrinter.h"
-#include "decompiler/util/DecompilerTypeSystem.h"
-#include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include "decompiler/util/data_decompile.h"
-#include "decompiler/IR2/bitfields.h"
-#include "common/util/BitUtils.h"
+#include "common/log/log.h"
 #include "common/type_system/state.h"
-#include "common/util/print_float.h"
-#include "decompiler/IR2/ExpressionHelpers.h"
-#include "decompiler/util/goal_constants.h"
 #include "common/util/Assert.h"
+#include "common/util/BitUtils.h"
+#include "common/util/print_float.h"
+
+#include "decompiler/IR2/ExpressionHelpers.h"
+#include "decompiler/IR2/bitfields.h"
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/util/data_decompile.h"
+#include "decompiler/util/type_utils.h"
 
 /*
  * TODO
@@ -70,12 +73,33 @@ Form* strip_pcypld_64(Form* in) {
   }
 }
 
-std::optional<float> get_goal_float_constant(Form* in) {
-  auto as_fc = in->try_as_element<ConstantFloatElement>();
+std::optional<float> get_goal_float_constant(FormElement* in) {
+  auto as_fc = dynamic_cast<ConstantFloatElement*>(in);
   if (as_fc) {
     return as_fc->value();
   }
   return {};
+}
+
+std::optional<float> get_goal_float_constant(Form* in) {
+  auto elt = in->try_as_single_element();
+  if (elt) {
+    return get_goal_float_constant(elt);
+  } else {
+    return {};
+  }
+}
+
+bool cond_has_only_single_elements(CondWithElseElement* in) {
+  for (auto& entry : in->entries) {
+    if (entry.body->elts().size() > 1) {
+      return false;
+    }
+  }
+  if (in->else_ir->elts().size() > 1) {
+    return false;
+  }
+  return true;
 }
 }  // namespace
 
@@ -95,15 +119,38 @@ Form* try_cast_simplify(Form* in,
     return in;
   }
 
+  if (env.version == GameVersion::Jak2) {
+    if (new_type == TypeSpec("float")) {
+      auto ic = get_goal_integer_constant(in, env);
+      if (ic) {
+        // ASSERT(*ic <= UINT32_MAX);
+        ASSERT((s64)*ic == (s64)(s32)*ic);
+        float f;
+        memcpy(&f, &ic.value(), sizeof(float));
+        return pool.form<ConstantFloatElement>(f);
+      }
+    }
+  }
+
   if (new_type == TypeSpec("meters")) {
     auto fc = get_goal_float_constant(in);
+
+    if (!fc && env.version == GameVersion::Jak2) {
+      auto ic = get_goal_integer_constant(in, env);
+      if (ic) {
+        ASSERT((s64)*ic == (s64)(s32)*ic);
+        float f;
+        memcpy(&f, &ic.value(), sizeof(float));
+        fc = f;
+      }
+    }
 
     if (fc) {
       double div = (double)*fc / METER_LENGTH;  // GOOS will use doubles here
       if (div * METER_LENGTH == *fc) {
         return pool.form<GenericElement>(
             GenericOperator::make_function(pool.form<ConstantTokenElement>("meters")),
-            pool.form<ConstantFloatElement>(div));
+            pool.form<ConstantTokenElement>(float_to_string(div, false)));
       } else {
         lg::error("Floating point value {} could not be converted to meters.", *fc);
       }
@@ -153,7 +200,7 @@ Form* try_cast_simplify(Form* in,
       auto g = dynamic_cast<GenericElement*>(in->try_as_single_element());
       if (g && g->op().kind() == GenericOperator::Kind::FUNCTION_EXPR) {
         auto f = dynamic_cast<SimpleExpressionElement*>(g->op().func()->try_as_single_element());
-        if (f->expr().is_identity() && f->expr().get_arg(0).is_sym_val()) {
+        if (f && f->expr().is_identity() && f->expr().get_arg(0).is_sym_val()) {
           auto& func_name = f->expr().get_arg(0).get_str();
           if (func_name == "rand-vu-int-range" || func_name == "nav-enemy-rnd-int-range") {
             std::vector<Form*> new_forms;
@@ -181,8 +228,29 @@ Form* try_cast_simplify(Form* in,
     }
   }
 
-  auto type_info = env.dts->ts.lookup_type(new_type);
+  auto type_info = env.dts->ts.lookup_type_allow_partial_def(new_type);
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
+  auto enum_info = dynamic_cast<EnumType*>(type_info);
+  auto* in_as_cond = in->try_as_element<CondWithElseElement>();
+
+  // try to fix (the-as <enum> (if foo 12 13)) type stuff by applying the casts inside a cond if:
+  // - it's casting to a bitfield/enum (this could be expanded to more in the future if needed)
+  // - the cond has an explicit else case (otherwise the #f from not hitting any case...)
+  // - it's not a sound-id - these are basically used like ints so it gets worse
+  // - the cond doesn't have multiple entries in the body
+  //    in theory this could be better if we could only apply a cast to the last element in the body
+  //    but this is a bit too much work for exactly 1 case in jak 1.
+  if ((bitfield_info || enum_info) && in_as_cond && type_info->get_name() != "sound-id" &&
+      cond_has_only_single_elements(in_as_cond)) {
+    for (auto& cas : in_as_cond->entries) {
+      cas.body = try_cast_simplify(cas.body, new_type, pool, env, tc_pass);
+      cas.body->parent_element = in_as_cond;
+    }
+    in_as_cond->else_ir = try_cast_simplify(in_as_cond->else_ir, new_type, pool, env, tc_pass);
+    in_as_cond->else_ir->parent_element = in_as_cond;
+    return in;
+  }
+
   if (bitfield_info) {
     // todo remove this.
     if (bitfield_info->get_load_size() == 8) {
@@ -191,7 +259,6 @@ Form* try_cast_simplify(Form* in,
     return cast_to_bitfield(bitfield_info, new_type, pool, env, in);
   }
 
-  auto enum_info = dynamic_cast<EnumType*>(type_info);
   if (enum_info) {
     if (enum_info->is_bitfield()) {
       return cast_to_bitfield_enum(enum_info, new_type, pool, env, in);
@@ -336,7 +403,7 @@ void pop_helper(const std::vector<RegisterAccess>& vars,
           submit_regs.push_back(var.reg());
         } else {
           // auto var_id = env.get_program_var_id(var);
-          //          fmt::print(
+          //          lg::print(
           //              "Unsafe to pop {}: used {} times, def {} times, expected use {} ({} {} rd:
           //              {}) ({} "
           //              "{})\n",
@@ -347,7 +414,7 @@ void pop_helper(const std::vector<RegisterAccess>& vars,
           //          if (var.to_string(env) == "a3-0") {
           //            for (auto& use : use_def.uses) {
           //              if (!use.disabled) {
-          //                fmt::print("  at instruction {}\n", use.op_id);
+          //                lg::print("  at instruction {}\n", use.op_id);
           //              }
           //            }
           //          }
@@ -632,8 +699,48 @@ void LoadSourceElement::update_from_stack(const Env& env,
                                           bool allow_side_effects) {
   mark_popped();
   m_addr->update_children_from_stack(env, pool, stack, allow_side_effects);
+
+  // most of the time, the AtomicOpForm logic is able to figure the load, but sometimes
+  // it's impossible before expressions:
+
+  //  ori a2, r0, 33708
+  //  lw a3, *level*(s7)
+  //  daddu a2, a2, a3
+  //  lq a2, 0(a2)
+
+  /*
+  if (m_load_source_ro && m_load_source_ro->offset == 0) {
+    // maybe a case like above, try to improve
+  }
+  */
+
   result->push_back(this);
 }
+
+namespace {
+FormElement* label_to_form_element(const Env& env, const SimpleAtom& atom, FormPool& pool) {
+  auto lab = env.file->labels.at(atom.label());
+  if (env.file->is_string(lab.target_segment, lab.offset)) {
+    auto str = env.file->get_goal_string(lab.target_segment, lab.offset / 4 - 1, false);
+    return pool.alloc_element<StringConstantElement>(str);
+  } else {
+    // look for a label hint:
+    const auto& hint = env.file->label_db->lookup(lab.name);
+    if (!hint.known) {
+      throw std::runtime_error(
+          fmt::format("Label {} was unknown in FormExpressionAnalysis.", hint.name));
+    }
+    if (hint.is_value) {
+      return nullptr;
+    }
+    if (hint.result_type.base_type() == "function") {
+      return nullptr;
+    } else {
+      return pool.alloc_element<DecompiledDataElement>(lab, hint);
+    }
+  }
+}
+}  // namespace
 
 void SimpleExpressionElement::update_from_stack_identity(const Env& env,
                                                          FormPool& pool,
@@ -647,36 +754,29 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
       result->push_back(x);
     }
   } else if (arg.is_static_addr()) {
-    auto lab = env.file->labels.at(arg.label());
-    if (env.file->is_string(lab.target_segment, lab.offset)) {
-      auto str = env.file->get_goal_string(lab.target_segment, lab.offset / 4 - 1, false);
-      result->push_back(pool.alloc_element<StringConstantElement>(str));
+    auto as_label_form_element = label_to_form_element(env, arg, pool);
+    if (as_label_form_element) {
+      result->push_back(as_label_form_element);
     } else {
-      // look for a label hint:
-      const auto& hint = env.file->label_db->lookup(lab.name);
-      if (!hint.known) {
-        throw std::runtime_error(
-            fmt::format("Label {} was unknown in FormExpressionAnalysis.", hint.name));
-      }
-      if (hint.is_value) {
-        result->push_back(this);
-        return;
-      }
-      if (hint.result_type.base_type() == "function") {
-        result->push_back(this);
-        return;
-      } else {
-        result->push_back(pool.alloc_element<DecompiledDataElement>(lab, hint));
-        return;
-      }
+      result->push_back(this);
     }
-
-  } else if (arg.is_sym_ptr() || arg.is_sym_val() || arg.is_int() || arg.is_empty_list()) {
+    return;
+  } else if (arg.is_sym_ptr() || arg.is_sym_val() || arg.is_int() || arg.is_empty_list() ||
+             arg.is_sym_val_ptr()) {
     result->push_back(this);
     return;
   } else {
     throw std::runtime_error(fmt::format(
         "SimpleExpressionElement::update_from_stack_identity NYI for {}", to_string(env)));
+  }
+}
+
+bool u64_valid_for_float_constant(u64 in) {
+  u32 top = in >> 32;
+  if (top == 0 || top == UINT32_MAX) {
+    return true;
+  } else {
+    return false;
   }
 }
 
@@ -706,10 +806,27 @@ void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
       result->push_back(x);
     }
   } else {
-    // converting something else to an FPR, put an expression around it.
-    result->push_back(pool.alloc_element<GenericElement>(
-        GenericOperator::make_fixed(FixedOperatorKind::GPR_TO_FPR),
-        pool.alloc_sequence_form(nullptr, src_fes)));
+    if (env.version != GameVersion::Jak1) {
+      auto frm = pool.alloc_sequence_form(nullptr, src_fes);
+      if (src_fes.size() == 1) {
+        auto int_constant = get_goal_integer_constant(frm, env);
+        if (int_constant && u64_valid_for_float_constant(*int_constant)) {
+          float flt;
+          memcpy(&flt, &int_constant.value(), sizeof(float));
+          if (proper_float(flt)) {
+            result->push_back(pool.alloc_element<ConstantFloatElement>(flt));
+            return;
+          }
+        }
+      }
+      // converting something else to an FPR, put an expression around it.
+      result->push_back(pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::GPR_TO_FPR), frm));
+    } else {
+      result->push_back(pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::GPR_TO_FPR),
+          pool.alloc_sequence_form(nullptr, src_fes)));
+    }
   }
 }
 
@@ -927,8 +1044,21 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
                         allow_side_effects);
   } else {
+    // arg1 might be a label.
+    // do arg0 like a normal var
     args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
-    args.push_back(pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
+
+    // then try to simplify the label
+    if (m_expr.get_arg(1).is_label()) {
+      auto as_lab = label_to_form_element(env, m_expr.get_arg(1), pool);
+      if (as_lab) {
+        args.push_back(pool.alloc_single_form(nullptr, as_lab));
+      } else {
+        args.push_back(pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
+      }
+    } else {
+      args.push_back(pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
+    }
   }
 
   bool arg0_ptr = is_ptr_or_child(env, m_my_idx, m_expr.get_arg(0).var(), true);
@@ -944,8 +1074,9 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
 
     // try to find symbol to string stuff
     auto arg0_int = get_goal_integer_constant(args.at(0), env);
-    if (arg0_int && (*arg0_int == DECOMP_SYM_INFO_OFFSET + 4) &&
-        arg1_type.typespec() == TypeSpec("symbol")) {
+
+    if (arg0_int && ((s64)*arg0_int == SYMBOL_TO_STRING_MEM_OFFSET_DECOMP[env.version]) &&
+        allowable_base_type_for_symbol_to_string(arg1_type.typespec())) {
       result->push_back(pool.alloc_element<GetSymbolStringPointer>(args.at(1)));
       return;
     }
@@ -983,7 +1114,9 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
           return;
         } else {
-          throw std::runtime_error("Failed to match for stride 1 address access with add.");
+          throw std::runtime_error(
+              fmt::format("Failed to match for stride 1 address access with add: {}",
+                          args.at(0)->to_string(env)));
         }
       }
     } else if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR_MULT) {
@@ -1124,7 +1257,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           }
         }
       }
-      // fmt::print("here {} {} {}\n", rd_in.base_type.print(), rd.success,
+      // lg::print("here {} {} {}\n", rd_in.base_type.print(), rd.success,
       // rd.has_variable_token());
 
       if (idx_of_success >= 0) {
@@ -1154,14 +1287,33 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           return;
         } else {
           // TODO - output error to IR
-          lg::error("Bad {} at OP: {}\n", args.at(0)->to_string(env), m_my_idx);
+          lg::error("Bad {} at OP: {}", args.at(0)->to_string(env), m_my_idx);
           throw std::runtime_error("Failed to match product_with_constant inline array access 2.");
         }
+      }
+    } else if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT) {
+      // try to see if this is valid, from the type system.
+      FieldReverseLookupInput input;
+      input.offset = arg0_type.get_integer_constant();
+      input.stride = 0;
+      input.base_type = arg1_type.typespec();
+      auto out = env.dts->ts.reverse_field_lookup(input);
+      if (out.success && !out.has_variable_token()) {
+        // it is. now we have to modify things
+        // first, look for the index
+        std::vector<DerefToken> tokens;
+        for (auto& tok : out.tokens) {
+          tokens.push_back(to_token(tok));
+        }
+
+        result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
+        return;
       }
     }
   }
 
-  if (env.dts->ts.tc(TypeSpec("structure"), arg0_type.typespec()) && m_expr.get_arg(1).is_int()) {
+  if (env.dts->ts.tc(TypeSpec("structure"), arg0_type.typespec()) && m_expr.get_arg(1).is_int() &&
+      arg0_type.kind != TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR) {
     auto type_info = env.dts->ts.lookup_type(arg0_type.typespec());
     if (type_info->get_size_in_memory() == m_expr.get_arg(1).get_int()) {
       auto new_form = pool.alloc_element<GenericElement>(
@@ -1174,7 +1326,9 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
   auto& name = env.func->guessed_name;
   if (name.kind == FunctionName::FunctionKind::METHOD && name.method_id == 7 &&
       env.func->type.arg_count() == 3) {
-    if (env.dts->ts.tc(TypeSpec("structure"), arg0_type.typespec()) && (arg1_i || arg1_u)) {
+    if ((env.dts->ts.tc(TypeSpec("structure"), arg0_type.typespec()) ||
+         arg0_type.typespec().base_type() == "inline-array") &&
+        (arg1_i || arg1_u)) {
       auto new_form = pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::ADDITION_PTR), args.at(0), args.at(1));
       result->push_back(new_form);
@@ -1182,7 +1336,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     }
   }
 
-  if (arg0_ptr) {
+  if (arg0_ptr && arg0_type.kind != TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR) {
     auto new_form = pool.alloc_element<GenericElement>(
         GenericOperator::make_fixed(FixedOperatorKind::ADDITION_PTR), args.at(0), args.at(1));
     result->push_back(new_form);
@@ -1231,23 +1385,41 @@ void SimpleExpressionElement::update_from_stack_mult_si(const Env& env,
                                                         FormStack& stack,
                                                         std::vector<FormElement*>* result,
                                                         bool allow_side_effects) {
-  auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
-  auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
+  if (m_expr.get_arg(0).is_int()) {
+    // annoyingly there's a mult3 v1, r0, v1 in jak 2.
+    auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
 
-  auto args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
-                           allow_side_effects);
+    auto args = pop_to_forms({m_expr.get_arg(1).var()}, env, pool, stack, allow_side_effects);
 
-  if (!arg0_i) {
-    args.at(0) = pool.form<CastElement>(TypeSpec("int"), args.at(0));
+    if (!arg1_i) {
+      args.at(0) = pool.form<CastElement>(TypeSpec("int"), args.at(1));
+    }
+
+    auto new_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::MULTIPLICATION),
+        pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(m_expr.get_arg(0).get_int())),
+        args.at(0));
+
+    result->push_back(new_form);
+  } else {
+    auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
+    auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
+
+    auto args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
+                             allow_side_effects);
+
+    if (!arg0_i) {
+      args.at(0) = pool.form<CastElement>(TypeSpec("int"), args.at(0));
+    }
+
+    if (!arg1_i) {
+      args.at(1) = pool.form<CastElement>(TypeSpec("int"), args.at(1));
+    }
+
+    auto new_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::MULTIPLICATION), args.at(0), args.at(1));
+    result->push_back(new_form);
   }
-
-  if (!arg1_i) {
-    args.at(1) = pool.form<CastElement>(TypeSpec("int"), args.at(1));
-  }
-
-  auto new_form = pool.alloc_element<GenericElement>(
-      GenericOperator::make_fixed(FixedOperatorKind::MULTIPLICATION), args.at(0), args.at(1));
-  result->push_back(new_form);
 }
 
 void SimpleExpressionElement::update_from_stack_force_si_2(const Env& env,
@@ -1397,7 +1569,7 @@ void SimpleExpressionElement::update_from_stack_pcypld(const Env& env,
       result->push_back(as_mod);
       return;
     } else {
-      fmt::print("pcpyud rewrite form fail: {} {}\n", base_form.print(), a1_form.print());
+      lg::warn("pcpyud rewrite form fail: {} {}", base_form.print(), a1_form.print());
     }
   }
   auto new_form = pool.alloc_element<GenericElement>(
@@ -1429,6 +1601,31 @@ void SimpleExpressionElement::update_from_stack_vector_plus_minus_cross(
   result->push_back(new_form);
 }
 
+void SimpleExpressionElement::update_from_stack_vector_plus_float_times(
+    const Env& env,
+    FormPool& pool,
+    FormStack& stack,
+    std::vector<FormElement*>* result,
+    bool allow_side_effects) {
+  std::vector<Form*> popped_args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var(),
+                                                 m_expr.get_arg(2).var(), m_expr.get_arg(3).var()},
+                                                env, pool, stack, allow_side_effects);
+
+  for (int i = 0; i < 4; i++) {
+    auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
+    TypeSpec desired_type(i == 3 ? "float" : "vector");
+    if (arg_type.typespec() != desired_type) {
+      popped_args.at(i) = cast_form(popped_args.at(i), desired_type, pool, env);
+    }
+  }
+
+  auto new_form = pool.alloc_element<GenericElement>(
+      GenericOperator::make_fixed(FixedOperatorKind::VECTOR_PLUS_FLOAT_TIMES),
+      std::vector<Form*>{popped_args.at(0), popped_args.at(1), popped_args.at(2),
+                         popped_args.at(3)});
+  result->push_back(new_form);
+}
+
 void SimpleExpressionElement::update_from_stack_vector_float_product(
     const Env& env,
     FormPool& pool,
@@ -1453,24 +1650,28 @@ void SimpleExpressionElement::update_from_stack_vector_float_product(
   result->push_back(new_form);
 }
 
-void SimpleExpressionElement::update_from_stack_vector_dot(FixedOperatorKind kind,
-                                                           const Env& env,
-                                                           FormPool& pool,
-                                                           FormStack& stack,
-                                                           std::vector<FormElement*>* result,
-                                                           bool allow_side_effects) {
-  std::vector<Form*> popped_args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()},
-                                                env, pool, stack, allow_side_effects);
+void SimpleExpressionElement::update_from_stack_vectors_in_common(FixedOperatorKind kind,
+                                                                  const Env& env,
+                                                                  FormPool& pool,
+                                                                  FormStack& stack,
+                                                                  std::vector<FormElement*>* result,
+                                                                  bool allow_side_effects) {
+  std::vector<RegisterAccess> register_acccesses;
+  for (int arg_idx = 0; arg_idx < m_expr.args(); arg_idx++) {
+    register_acccesses.push_back(m_expr.get_arg(arg_idx).var());
+  }
+  std::vector<Form*> popped_args =
+      pop_to_forms(register_acccesses, env, pool, stack, allow_side_effects);
 
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < m_expr.args(); i++) {
     auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
     if (arg_type.typespec() != TypeSpec("vector")) {
       popped_args.at(i) = cast_form(popped_args.at(i), TypeSpec("vector"), pool, env);
     }
   }
 
-  auto new_form = pool.alloc_element<GenericElement>(
-      GenericOperator::make_fixed(kind), std::vector<Form*>{popped_args.at(0), popped_args.at(1)});
+  auto new_form =
+      pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind), popped_args);
   result->push_back(new_form);
 }
 
@@ -1555,7 +1756,14 @@ FormElement* SimpleExpressionElement::update_from_stack_logor_or_logand_helper(
     FormStack& stack,
     bool allow_side_effects) {
   // grab the normal variable type
-  auto arg0_type = env.get_variable_type(m_expr.get_arg(0).var(), true);
+  TypeSpec arg0_type;
+  if (m_expr.get_arg(0).is_var()) {
+    arg0_type = env.get_variable_type(m_expr.get_arg(0).var(), true);
+  } else if (m_expr.get_arg(0).is_int(0)) {
+    arg0_type = TypeSpec("int");  // ??
+  } else {
+    ASSERT(false);
+  }
 
   // and try to get it as a bitfield
   auto type_info = env.dts->ts.lookup_type(arg0_type);
@@ -1563,7 +1771,7 @@ FormElement* SimpleExpressionElement::update_from_stack_logor_or_logand_helper(
   bool had_pcpyud = false;
   TypeSpec bitfield_type = arg0_type;
 
-  if (!bitfield_info) {
+  if (!bitfield_info && m_expr.get_arg(0).is_var()) {
     // the above won't work if we're already done a pcpyud to grab the upper 64 bits.
     // we need to grab the type in the register (a TP_type) and check
     const auto& arg0_reg_type =
@@ -1621,15 +1829,25 @@ FormElement* SimpleExpressionElement::update_from_stack_logor_or_logand_helper(
   } else {
     // and, two forms
     auto arg1_type = env.get_variable_type(m_expr.get_arg(1).var(), true);
-    auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
-    auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
+    auto arg0_i =
+        m_expr.get_arg(0).is_var() ? is_int_type(env, m_my_idx, m_expr.get_arg(0).var()) : true;
+    auto arg0_u =
+        m_expr.get_arg(0).is_var() ? is_uint_type(env, m_my_idx, m_expr.get_arg(0).var()) : false;
     auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
     auto arg1_u = is_uint_type(env, m_my_idx, m_expr.get_arg(1).var());
     auto arg0_n = arg0_i || arg0_u;
     auto arg1_n = arg1_i || arg1_u;
 
-    auto args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
-                             allow_side_effects);
+    std::vector<Form*> args;
+
+    if (m_expr.get_arg(0).is_var()) {
+      args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
+                          allow_side_effects);
+    } else {
+      args = pop_to_forms({m_expr.get_arg(1).var()}, env, pool, stack, allow_side_effects);
+      args.insert(args.begin(), pool.form<SimpleAtomElement>(
+                                    SimpleAtom::make_int_constant(m_expr.get_arg(0).get_int())));
+    }
 
     if (bitfield_info) {
       // either the immediate didn't fit in the 16-bit imm or it's with a variable
@@ -1786,21 +2004,42 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
     return;
   }
 
+  // (-> (the-as process-drawable (-> v1-32 0)) pid)
+  // (-> v1-61 0 pid)
+  auto just_deref_matcher = Matcher::match_or(
+      {Matcher::deref(Matcher::any_reg(0), false,
+                      {DerefTokenMatcher::integer(0), DerefTokenMatcher::string("pid")}),
+       Matcher::deref({Matcher::cast_to_any(4, Matcher::deref(Matcher::any_reg(0), false,
+                                                              {DerefTokenMatcher::integer(0)}))},
+                      false, {DerefTokenMatcher::string("pid")})});
+
+  // jak 1:
+  // (logior (shl (-> v1-61 0 pid) 32) (.asm.sllv.r0 v1-61))
+  // jak 2:
+  // (logior (if v1-61 (shl (-> v1-61 0 pid) 32) 0) (.asm.sllv.r0 v1-61))
+  auto pid_deref_matcher =
+      Matcher::op_fixed(FixedOperatorKind::SHL, {just_deref_matcher, Matcher::integer(32)});
+
   auto make_handle_matcher = Matcher::op_fixed(
       FixedOperatorKind::LOGIOR,
-      {Matcher::op_fixed(
-           FixedOperatorKind::SHL,
-           {Matcher::deref(Matcher::any_reg(0), false,
-                           {DerefTokenMatcher::integer(0), DerefTokenMatcher::string("pid")}),
-            Matcher::integer(32)}),
+      {env.version == GameVersion::Jak1
+           ? pid_deref_matcher
+           : Matcher::if_with_else(
+                 Matcher::op(GenericOpMatcher::condition(IR2_Condition::Kind::TRUTHY),
+                             {Matcher::any_reg(2)}),
+                 pid_deref_matcher, Matcher::integer(0)),
        Matcher::op_fixed(FixedOperatorKind::ASM_SLLV_R0, {Matcher::any_reg(1)})});
 
   auto handle_mr = match(make_handle_matcher, element);
+
   if (handle_mr.matched) {
     auto var_a = handle_mr.maps.regs.at(0).value();
     auto var_b = handle_mr.maps.regs.at(1).value();
-    if (env.get_variable_name(var_a) == env.get_variable_name(var_b) &&
-        env.dts->ts.tc(TypeSpec("pointer", {TypeSpec("process")}),
+    const auto& var_name = env.get_variable_name(var_a);
+    if (var_name == env.get_variable_name(var_b) &&
+        (env.version == GameVersion::Jak1 ||
+         var_name == env.get_variable_name(handle_mr.maps.regs.at(2).value())) &&
+        env.dts->ts.tc(TypeSpec("pointer", {TypeSpec("process-tree")}),
                        env.get_variable_type(var_a, true))) {
       auto* menv = const_cast<Env*>(&env);
       menv->disable_use(var_a);
@@ -1808,7 +2047,7 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
       auto repopped = stack.pop_reg(var_b, {}, env, true, stack.size() - 1);
 
       if (!repopped) {
-        fmt::print("repop failed.\n{}\n", stack.print(env));
+        lg::warn("repop failed.\n{}", stack.print(env));
         repopped = var_to_form(var_b, pool);
       }
 
@@ -1834,63 +2073,77 @@ void SimpleExpressionElement::update_from_stack_left_shift(const Env& env,
                                                            FormStack& stack,
                                                            std::vector<FormElement*>* result,
                                                            bool allow_side_effects) {
-  auto arg0_type = env.get_variable_type(m_expr.get_arg(0).var(), true);
+  TypeSpec arg0_type;
+  auto& arg0 = m_expr.get_arg(0);
+  if (arg0.is_var()) {
+    arg0_type = env.get_variable_type(m_expr.get_arg(0).var(), true);
+    auto type_info = env.dts->ts.lookup_type(arg0_type);
+    auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
+    if (arg0_type.base_type() != "time-frame" && bitfield_info && m_expr.get_arg(1).is_int()) {
+      auto base =
+          pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
+      auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
+      BitfieldManip step(BitfieldManip::Kind::LEFT_SHIFT, m_expr.get_arg(1).get_int());
+      auto other = read_elt->push_step(step, env.dts->ts, pool, env);
+      ASSERT(!other);  // shouldn't be complete.
+      result->push_back(read_elt);
+    } else {
+      // try to turn this into a multiplication, if possible
+      if (m_expr.get_arg(1).is_int()) {
+        auto args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
+        int sa = m_expr.get_arg(1).get_int();
 
-  auto type_info = env.dts->ts.lookup_type(arg0_type);
-  auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
-  if (arg0_type.base_type() != "time-frame" && bitfield_info && m_expr.get_arg(1).is_int()) {
-    auto base = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
-    auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
-    BitfieldManip step(BitfieldManip::Kind::LEFT_SHIFT, m_expr.get_arg(1).get_int());
-    auto other = read_elt->push_step(step, env.dts->ts, pool, env);
-    ASSERT(!other);  // shouldn't be complete.
-    result->push_back(read_elt);
-  } else {
-    // try to turn this into a multiplication, if possible
-    if (m_expr.get_arg(1).is_int()) {
-      auto args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
-      int sa = m_expr.get_arg(1).get_int();
+        auto as_ba = args.at(0)->try_as_element<BitfieldAccessElement>();
+        if (as_ba) {
+          BitfieldManip step(BitfieldManip::Kind::LEFT_SHIFT, m_expr.get_arg(1).get_int());
+          auto other = as_ba->push_step(step, env.dts->ts, pool, env);
+          ASSERT(!other);  // shouldn't be complete.
+          result->push_back(as_ba);
+          return;
+        }
 
-      auto as_ba = args.at(0)->try_as_element<BitfieldAccessElement>();
-      if (as_ba) {
-        BitfieldManip step(BitfieldManip::Kind::LEFT_SHIFT, m_expr.get_arg(1).get_int());
-        auto other = as_ba->push_step(step, env.dts->ts, pool, env);
-        ASSERT(!other);  // shouldn't be complete.
-        result->push_back(as_ba);
+        // somewhat arbitrary threshold to switch from multiplications to shift.
+        if (sa < 10) {
+          s64 multiplier = (s64(1) << sa);
+
+          auto new_form = pool.alloc_element<GenericElement>(
+              GenericOperator::make_fixed(FixedOperatorKind::MULTIPLICATION), args.at(0),
+              pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(multiplier)));
+          result->push_back(new_form);
+          return;
+        }
+
+        auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
+        auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
+        if (!arg0_i && !arg0_u) {
+          auto new_form = pool.alloc_element<GenericElement>(
+              GenericOperator::make_fixed(FixedOperatorKind::SHL),
+              pool.form<CastElement>(TypeSpec("int"), args.at(0)),
+              pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
+          result->push_back(new_form);
+        } else {
+          auto new_form = pool.alloc_element<GenericElement>(
+              GenericOperator::make_fixed(FixedOperatorKind::SHL), args.at(0),
+              pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
+          result->push_back(new_form);
+        }
+
         return;
       }
 
-      // somewhat arbitrary threshold to switch from multiplications to shift.
-      if (sa < 10) {
-        s64 multiplier = (s64(1) << sa);
-
-        auto new_form = pool.alloc_element<GenericElement>(
-            GenericOperator::make_fixed(FixedOperatorKind::MULTIPLICATION), args.at(0),
-            pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(multiplier)));
-        result->push_back(new_form);
-        return;
-      }
-
-      auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
-      auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
-      if (!arg0_i && !arg0_u) {
-        auto new_form =
-            pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::SHL),
-                                               pool.form<CastElement>(TypeSpec("int"), args.at(0)),
-                                               pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
-        result->push_back(new_form);
-      } else {
-        auto new_form = pool.alloc_element<GenericElement>(
-            GenericOperator::make_fixed(FixedOperatorKind::SHL), args.at(0),
-            pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
-        result->push_back(new_form);
-      }
-
-      return;
+      update_from_stack_copy_first_int_2(env, FixedOperatorKind::SHL, pool, stack, result,
+                                         allow_side_effects);
     }
+  } else if ((arg0.is_sym_val("#f") || arg0.is_sym_ptr("#f")) && m_expr.get_arg(1).is_int()) {
+    auto new_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::SHL),
+        pool.form<CastElement>(TypeSpec("int"), pool.form<SimpleAtomElement>(m_expr.get_arg(0))),
+        pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
+    result->push_back(new_form);
+    return;
 
-    update_from_stack_copy_first_int_2(env, FixedOperatorKind::SHL, pool, stack, result,
-                                       allow_side_effects);
+  } else {
+    ASSERT(false);
   }
 }
 
@@ -2111,7 +2364,7 @@ void SimpleExpressionElement::update_from_stack_subu_l32_s7(const Env& env,
   auto arg = pop_to_forms({var}, env, pool, stack, allow_side_effects).at(0);
   auto type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
   if (type != TypeSpec("handle")) {
-    env.func->warnings.general_warning(
+    env.func->warnings.warning(
         ".subu (32-bit) used on a {} at idx {}. This probably should be a handle.", type.print(),
         var.idx());
   }
@@ -2267,12 +2520,19 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       update_from_stack_subu_l32_s7(env, pool, stack, result, allow_side_effects);
       break;
     case SimpleExpression::Kind::VECTOR_3_DOT:
-      update_from_stack_vector_dot(FixedOperatorKind::VECTOR_3_DOT, env, pool, stack, result,
-                                   allow_side_effects);
+      update_from_stack_vectors_in_common(FixedOperatorKind::VECTOR_3_DOT, env, pool, stack, result,
+                                          allow_side_effects);
       break;
     case SimpleExpression::Kind::VECTOR_4_DOT:
-      update_from_stack_vector_dot(FixedOperatorKind::VECTOR_4_DOT, env, pool, stack, result,
-                                   allow_side_effects);
+      update_from_stack_vectors_in_common(FixedOperatorKind::VECTOR_4_DOT, env, pool, stack, result,
+                                          allow_side_effects);
+      break;
+    case SimpleExpression::Kind::VECTOR_LENGTH:
+      update_from_stack_vectors_in_common(FixedOperatorKind::VECTOR_LENGTH, env, pool, stack,
+                                          result, allow_side_effects);
+      break;
+    case SimpleExpression::Kind::VECTOR_PLUS_FLOAT_TIMES:
+      update_from_stack_vector_plus_float_times(env, pool, stack, result, allow_side_effects);
       break;
     default:
       throw std::runtime_error(
@@ -2384,7 +2644,7 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
       m_src = value;
     }
   } else if (src_as_bf_set) {
-    fmt::print("invalid bf set: {}\n", src_as_bf_set->to_string(env));
+    lg::warn("invalid bf set: {}", src_as_bf_set->to_string(env));
   }
 
   // setting a bitfield to zero is wonky.
@@ -2566,6 +2826,10 @@ bool try_to_rewrite_vector_inline_ctor(const Env& env,
       token_matchers = {DerefTokenMatcher::string("quad")};
     }
 
+    if (env.version == GameVersion::Jak2) {
+      token_matchers = {DerefTokenMatcher::string("quad")};
+    }
+
     auto matcher = Matcher::set(Matcher::deref(Matcher::any_reg(0), false, token_matchers),
                                 Matcher::cast("uint128", Matcher::integer(0)));
 
@@ -2616,23 +2880,53 @@ bool try_to_rewrite_matrix_inline_ctor(const Env& env, FormPool& pool, FormStack
 
     // zeroing the rows:
     std::vector<RegisterAccess> write_vars;
-    for (int i = 0; i < 4; i++) {
-      auto elt = matrix_entries->at(i + 1).elt;
+    if (env.version == GameVersion::Jak1) {
+      for (int i = 0; i < 4; i++) {
+        auto elt = matrix_entries->at(i + 1).elt;
 
-      auto matcher = Matcher::set(
-          Matcher::deref(Matcher::any_reg(0), false,
-                         {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i),
-                          DerefTokenMatcher::string("quad")}),
-          Matcher::cast("uint128", Matcher::integer(0)));
+        auto matcher = Matcher::set(
+            Matcher::deref(Matcher::any_reg(0), false,
+                           {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i),
+                            DerefTokenMatcher::string("quad")}),
+            Matcher::cast("uint128", Matcher::integer(0)));
 
-      auto mr = match(matcher, elt);
-      if (mr.matched) {
-        if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+        auto mr = match(matcher, elt);
+        if (mr.matched) {
+          if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+            return false;
+          }
+          write_vars.push_back(*mr.maps.regs.at(0));
+        } else {
           return false;
         }
-        write_vars.push_back(*mr.maps.regs.at(0));
-      } else {
-        return false;
+      }
+    } else {
+      for (int i = 0; i < 4; i++) {
+        auto elt = matrix_entries->at(i + 1).elt;
+
+        Matcher matcher;
+        if (i == 3) {
+          matcher = Matcher::set(Matcher::deref(Matcher::any_reg(0), false,
+                                                {DerefTokenMatcher::string("trans"),
+                                                 DerefTokenMatcher::string("quad")}),
+                                 Matcher::cast("uint128", Matcher::integer(0)));
+
+        } else {
+          matcher = Matcher::set(
+              Matcher::deref(Matcher::any_reg(0), false,
+                             {DerefTokenMatcher::string("quad"), DerefTokenMatcher::integer(i)}),
+              Matcher::cast("uint128", Matcher::integer(0)));
+        }
+
+        auto mr = match(matcher, elt);
+        if (mr.matched) {
+          if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+            return false;
+          }
+          write_vars.push_back(*mr.maps.regs.at(0));
+        } else {
+          return false;
+        }
       }
     }
 
@@ -2775,12 +3069,12 @@ Form* get_set_next_state(FormElement* set_elt, const Env& env) {
       Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("next-state")});
   auto mr = match(dst_matcher, dst);
   if (!mr.matched) {
-    fmt::print("failed to match dst {}\n", dst->to_string(env));
+    lg::error("failed to match dst {}", dst->to_string(env));
     return nullptr;
   }
 
   if (mr.maps.regs.at(0)->reg() != Register(Reg::GPR, Reg::S6)) {
-    fmt::print("failed to match pp reg, got {}\n", mr.maps.regs.at(0)->reg().to_string());
+    lg::error("failed to match pp reg, got {}", mr.maps.regs.at(0)->reg().to_string());
     return nullptr;
   }
 
@@ -2979,72 +3273,83 @@ void FunctionCallElement::update_from_stack(const Env& env,
       auto vtable_var_name = env.get_variable_name(*vtable_reg);
       auto arg0_mr = match(Matcher::any_reg(0), unstacked.at(1));
       if (arg0_mr.matched && env.get_variable_name(*arg0_mr.maps.regs.at(0)) == vtable_var_name) {
-        if (tp_type.kind != TP_Type::Kind::VIRTUAL_METHOD) {
+        if (tp_type.kind != TP_Type::Kind::VIRTUAL_METHOD &&
+            tp_type.kind != TP_Type::Kind::GET_ART_BY_NAME_METHOD) {
           throw std::runtime_error(
               "Method internal mismatch. METHOD_OF_OBJECT operator didn't get a VIRTUAL_METHOD "
               "type.");
         }
 
-        bool is_res_lump = tp_type.method_from_type().base_type() == "res-lump";
+        bool is_res_lump = tp_type.method_from_type().base_type() == "res-lump" ||
+                           tp_type.method_from_type().base_type() == "entity-actor";
         bool should_use_virtual =
             env.dts->ts.should_use_virtual_methods(tp_type.method_from_type(), tp_type.method_id());
 
         if (!should_use_virtual && !is_res_lump) {
           throw std::runtime_error(
-              fmt::format("Method call on {} id {} used a virtual call unexpectedly.",
-                          tp_type.method_from_type().print(), tp_type.method_id()));
+              fmt::format("Method call on {} id {} at {} used a virtual call unexpectedly.",
+                          tp_type.method_from_type().print(), tp_type.method_id(), "ya"));
         }
 
         if (should_use_virtual) {
-          // fmt::print("STACK\n{}\n\n", stack.print(env));
+          // lg::print("STACK\n{}\n\n", stack.print(env));
           auto pop = pop_to_forms({*arg0_mr.maps.regs.at(0)}, env, pool, stack, allow_side_effects,
                                   {}, {2})
                          .at(0);
-          // fmt::print("GOT: {}\n", pop->to_string(env));
+          // lg::print("GOT: {}\n", pop->to_string(env));
           arg_forms.at(0) = pop;
           auto head = mr.maps.forms.at(1);
-
           auto head_obj = head->to_form(env);
-          if (head_obj.is_symbol() && tp_type.method_from_type().base_type() == "setting-control" &&
-              arg_forms.at(0)->to_form(env).is_symbol("*setting-control*") &&
-              arg_forms.size() > 1) {
-            auto arg1_reg = get_form_reg_acc(arg_forms.at(1));
-            if (arg1_reg && arg1_reg->reg().is_s6()) {
-              std::string new_head;
-              if (head_obj.is_symbol("add-setting")) {
-                new_head = "add-setting!";
-              } else if (head_obj.is_symbol("set-setting")) {
-                new_head = "set-setting!";
-              } else if (head_obj.is_symbol("remove-setting")) {
-                new_head = "remove-setting!";
-              }
-              if (!new_head.empty()) {
-                auto oldp = head->parent_element;
-                head = pool.form<ConstantTokenElement>(new_head);
-                head->parent_element = oldp;
-                arg_forms.erase(arg_forms.begin());
-                arg_forms.erase(arg_forms.begin());
-                if (arg_forms.size() > 3) {
-                  auto argi = arg_forms.at(3);
-                  auto argi_o = argi->to_form(env);
-                  if (argi_o.is_int()) {
-                    auto argset = arg_forms.at(0)->to_string(env);
-                    if (argset == "'process-mask") {
-                      auto en = env.dts->ts.try_enum_lookup("process-mask");
-                      if (en) {
-                        arg_forms.at(3) =
-                            cast_to_bitfield_enum(env.dts->ts.try_enum_lookup("process-mask"), pool,
-                                                  env, argi_o.as_int());
-                      }
-                    } else if (argset == "'sound-flava") {
-                      auto en = env.dts->ts.try_enum_lookup("music-flava");
-                      if (en) {
-                        arg_forms.at(3) = cast_to_int_enum(
-                            env.dts->ts.try_enum_lookup("music-flava"), pool, env, argi_o.as_int());
+
+          // rewrite get-art-by-name-method calls to get-art-by-name, which is a macro that
+          // will apply the appropriate cast.
+          if (tp_type.kind == TP_Type::Kind::GET_ART_BY_NAME_METHOD) {
+            ASSERT(head_obj.is_symbol("get-art-by-name-method"));
+            head = pool.form<ConstantTokenElement>("get-art-by-name");
+          } else {
+            if (head_obj.is_symbol() &&
+                tp_type.method_from_type().base_type() == "setting-control" &&
+                arg_forms.at(0)->to_form(env).is_symbol("*setting-control*") &&
+                arg_forms.size() > 1) {
+              auto arg1_reg = get_form_reg_acc(arg_forms.at(1));
+              if (arg1_reg && arg1_reg->reg().is_s6()) {
+                std::string new_head;
+                if (head_obj.is_symbol("add-setting")) {
+                  new_head = "add-setting!";
+                } else if (head_obj.is_symbol("set-setting")) {
+                  new_head = "set-setting!";
+                } else if (head_obj.is_symbol("remove-setting")) {
+                  new_head = "remove-setting!";
+                }
+                if (!new_head.empty()) {
+                  auto oldp = head->parent_element;
+                  head = pool.form<ConstantTokenElement>(new_head);
+                  head->parent_element = oldp;
+                  arg_forms.erase(arg_forms.begin());
+                  arg_forms.erase(arg_forms.begin());
+                  if (arg_forms.size() > 3) {
+                    auto argi = arg_forms.at(3);
+                    auto argi_o = argi->to_form(env);
+                    if (argi_o.is_int()) {
+                      auto argset = arg_forms.at(0)->to_string(env);
+                      if (argset == "'process-mask") {
+                        auto en = env.dts->ts.try_enum_lookup("process-mask");
+                        if (en) {
+                          arg_forms.at(3) =
+                              cast_to_bitfield_enum(env.dts->ts.try_enum_lookup("process-mask"),
+                                                    pool, env, argi_o.as_int());
+                        }
+                      } else if (argset == "'sound-flava") {
+                        auto en = env.dts->ts.try_enum_lookup("music-flava");
+                        if (en) {
+                          arg_forms.at(3) =
+                              cast_to_int_enum(env.dts->ts.try_enum_lookup("music-flava"), pool,
+                                               env, argi_o.as_int());
+                        }
                       }
                     }
+                    arg_forms.at(3)->parent_element = argi->parent_element;
                   }
-                  arg_forms.at(3)->parent_element = argi->parent_element;
                 }
               }
             }
@@ -3204,8 +3509,8 @@ void FunctionCallElement::update_from_stack(const Env& env,
     auto temp_form = pool.alloc_single_form(nullptr, new_form);
     auto match_result = match(matcher, temp_form);
     if (match_result.matched) {
-      auto type_1 = match_result.maps.strings.at(type_for_method);
-      auto& name = match_result.maps.strings.at(method_name);
+      const auto type_1 = match_result.maps.strings.at(type_for_method);
+      const auto& name = match_result.maps.strings.at(method_name);
 
       if (name == "new" && type_1 == "object") {
         // calling the new method of object. This is a special case that turns into an (object-new
@@ -3305,7 +3610,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
     auto temp_form = pool.alloc_single_form(nullptr, new_form);
     auto match_result = match(matcher, temp_form);
     if (match_result.matched) {
-      auto name = match_result.maps.strings.at(method_name);
+      const auto name = match_result.maps.strings.at(method_name);
       if (name != "new") {
         // only do these checks on non-new methods.  New methods are treated as functions because
         // they are never virtual and are never called like a method.
@@ -3318,35 +3623,95 @@ void FunctionCallElement::update_from_stack(const Env& env,
       }
 
       auto type_source_form = match_result.maps.forms.at(type_source);
+      auto type_source_obj = type_source_form->to_form(env);
 
-      if (name == "get-property-value-float" && type_source_form->to_string(env) == "res-lump") {
+      bool is_res_lump = type_source_obj.is_symbol("res-lump");
+      if (name == "get-property-value-float" && is_res_lump) {
         auto as_macro = handle_get_property_value_float(arg_forms, pool, env);
         if (as_macro) {
           result->push_back(as_macro);
           return;
         }
-      } else if (name == "get-property-data" && type_source_form->to_string(env) == "res-lump") {
+      } else if (name == "get-property-data" && is_res_lump) {
         auto as_macro = handle_get_property_data(arg_forms, pool, env);
         if (as_macro) {
           result->push_back(as_macro);
           return;
         }
-      } else if (name == "get-property-struct" && type_source_form->to_string(env) == "res-lump") {
+      } else if (name == "get-property-struct" && is_res_lump) {
         auto as_macro = handle_get_property_struct(arg_forms, pool, env);
         if (as_macro) {
           result->push_back(as_macro);
           return;
         }
-      } else if (name == "get-property-value" && type_source_form->to_string(env) == "res-lump") {
+      } else if (name == "get-property-value" && is_res_lump) {
         auto as_macro = handle_get_property_value(arg_forms, pool, env);
         if (as_macro) {
           result->push_back(as_macro);
           return;
         }
+      } else if (name == "eval!" && arg_forms.size() == 2 &&
+                 type_source_obj.is_symbol("script-context")) {
+        // jak 2 macro for eval'ing a "script"
+        auto arg_context = arg_forms.at(0);  // the script context
+        auto arg_script = arg_forms.at(1);   // the script itself
+        auto mr_new_script_context =
+            match(Matcher::op_fixed(FixedOperatorKind::NEW,
+                                    {Matcher::constant_token("'stack"),
+                                     Matcher::constant_token("'script-context"), Matcher::any(0),
+                                     Matcher::any(1), Matcher::any(2)}),
+                  arg_context);
+        if (mr_new_script_context.matched) {
+          // grab the arguments passed to the context alloc. nullptr = dont put in macro (uses
+          // defaults)
+          auto ctx_key = mr_new_script_context.maps.forms.at(0);  // a key given to the context
+          auto ctx_proc =
+              mr_new_script_context.maps.forms.at(1);  // the process the context's bound to
+          auto ctx_vector = mr_new_script_context.maps.forms.at(2);  // some vector for positioning
+
+          // default for arg is (process->ppointer self) [weird]
+          auto mr_ctx_key = match(
+              Matcher::op_fixed(FixedOperatorKind::PROCESS_TO_PPOINTER, {Matcher::s6()}), ctx_key);
+          if (mr_ctx_key.matched) {
+            ctx_key = nullptr;
+          }
+          // default for process arg is just self
+          auto mr_ctx_proc = match(Matcher::s6(), ctx_proc);
+          if (mr_ctx_proc.matched) {
+            ctx_proc = nullptr;
+          }
+          // default for vector is just #f
+          auto mr_ctx_vector = match(Matcher::cast("vector", Matcher::symbol("#f")), ctx_vector);
+          if (mr_ctx_vector.matched) {
+            ctx_vector = nullptr;
+          }
+
+          // build the macro!
+          std::vector<Form*> macro_args;
+
+          macro_args.push_back(arg_script);
+          if (ctx_key) {
+            macro_args.push_back(pool.form<ConstantTokenElement>(":key"));
+            macro_args.push_back(ctx_key);
+          }
+          if (ctx_proc) {
+            macro_args.push_back(pool.form<ConstantTokenElement>(":proc"));
+            macro_args.push_back(ctx_proc);
+          }
+          if (ctx_vector) {
+            macro_args.push_back(pool.form<ConstantTokenElement>(":vector"));
+            macro_args.push_back(ctx_vector);
+          }
+
+          result->push_back(pool.alloc_element<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>("script-eval")),
+              macro_args));
+          return;
+        }
       }
 
       // if the type is the exact type of the argument, we want to build it into a method call
-      if (type_source_form->to_string(env) == first_arg_type.base_type() && name != "new") {
+      if (type_source_obj.is_symbol(first_arg_type.base_type()) && name != "new") {
         if (env.dts->ts.should_use_virtual_methods(tp_type.method_from_type(),
                                                    tp_type.method_id())) {
           throw std::runtime_error(fmt::format(
@@ -3435,8 +3800,10 @@ ConstantTokenElement* DerefElement::try_as_art_const(const Env& env, FormPool& p
     if (elt_name) {
       return pool.alloc_element<ConstantTokenElement>(*elt_name);
     } else {
-      lg::error("function {}: did not find art element {} in {}", env.func->name(),
-                mr.maps.ints.at(0), env.art_group());
+      if (env.version != GameVersion::Jak2) {
+        lg::error("function {}: did not find art element {} in {}", env.func->name(),
+                  mr.maps.ints.at(0), env.art_group());
+      }
     }
   }
 
@@ -3536,6 +3903,22 @@ void UntilElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
   }
 
   stack.push_form_element(this, true);
+  if (false_destination) {
+    env.func->warnings.warning("new jak 2 until loop case, check carefully");
+    stack.push_value_to_reg(*false_destination,
+                            pool.form<SimpleAtomElement>(SimpleAtom::make_sym_val("#f")), true,
+                            TypeSpec("symbol"));
+    RegAccessSet accessed_regs;
+    body->collect_vars(accessed_regs, true);
+    condition->collect_vars(accessed_regs, true);
+    auto check_name = env.get_variable_name(*false_destination);
+    for (auto& reg : accessed_regs) {
+      if (env.get_variable_name(reg) == check_name) {
+        ASSERT_MSG(false, fmt::format("Jak 2 loop uses delay slot variable improperly: {} {}\n",
+                                      env.func->name(), check_name));
+      }
+    }
+  }
 }
 
 void WhileElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
@@ -3592,7 +3975,7 @@ Form* try_rewrite_as_process_to_ppointer(CondNoElseElement* value,
     return nullptr;
   }
 
-  // fmt::print("Matched condition {} in {}\n", condition_var.to_string(env),
+  // lg::print("Matched condition {} in {}\n", condition_var.to_string(env),
   // value->to_string(env));
 
   auto* menv = const_cast<Env*>(&env);
@@ -3646,7 +4029,7 @@ Form* try_rewrite_as_pppointer_to_process(CondNoElseElement* value,
     return nullptr;
   }
 
-  // fmt::print("Matched condition {} in {}\n", condition_var.to_string(env),
+  // lg::print("Matched condition {} in {}\n", condition_var.to_string(env),
   // value->to_string(env));
 
   auto* menv = const_cast<Env*>(&env);
@@ -3782,7 +4165,7 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
           stack.push_value_to_reg(write_as_value, as_ja_group, true,
                                   env.get_variable_type(final_destination, false));
         } else {
-          //        fmt::print("func {} final destination {} type {}\n", env.func->name(),
+          //        lg::print("func {} final destination {} type {}\n", env.func->name(),
           //                   final_destination.to_string(env),
           //                   env.get_variable_type(final_destination, false).print());
           stack.push_value_to_reg(write_as_value, pool.alloc_single_form(nullptr, this), true,
@@ -3950,24 +4333,24 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
       // (set! x (if y z (expr))) and z requires a cast, but the move from z to x is
       // eliminated by GOAL's register allocator.
 
-      //      fmt::print("func: {}\n", env.func->name());
+      //      lg::print("func: {}\n", env.func->name());
       //
-      //      fmt::print("checking:\n");
+      //      lg::print("checking:\n");
       //      for (auto& t : source_types) {
-      //        fmt::print("  {}\n", t.print());
+      //        lg::print("  {}\n", t.print());
       //      }
 
       auto expected_type = env.get_variable_type(*last_var, true);
-      //       fmt::print("The expected type is {}\n", expected_type.print());
+      //       lg::print("The expected type is {}\n", expected_type.print());
       auto result_type =
           source_types.empty() ? expected_type : env.dts->ts.lowest_common_ancestor(source_types);
-      //       fmt::print("but we actually got {}\n", result_type.print());
+      //       lg::print("but we actually got {}\n", result_type.print());
 
       Form* result_value = pool.alloc_single_form(nullptr, this);
       if (!env.dts->ts.tc(expected_type, result_type)) {
         result_value = pool.form<CastElement>(expected_type, result_value);
       }
-      //      fmt::print("{}\n", result_value->to_string(env));
+      //      lg::print("{}\n", result_value->to_string(env));
 
       stack.push_value_to_reg(*last_var, result_value, true,
                               env.get_variable_type(*last_var, false));
@@ -4151,6 +4534,28 @@ std::vector<Form*> cast_to_64_bit(const std::vector<Form*>& forms,
   return result;
 }
 
+std::vector<Form*> cast_for_64bit_equality_check(const std::vector<Form*>& forms,
+                                                 const std::vector<TypeSpec>& types,
+                                                 FormPool& pool,
+                                                 const Env& env) {
+  if (env.version == GameVersion::Jak1) {
+    return cast_to_64_bit(forms, types, pool, env);
+  }
+  std::vector<Form*> result;
+  for (size_t i = 0; i < forms.size(); i++) {
+    if (env.dts->ts.tc(TypeSpec("uint128"), types.at(i))) {
+      result.push_back(cast_form(forms[i], TypeSpec("uint"), pool, env));
+    } else if (env.dts->ts.tc(TypeSpec("int128"), types.at(i))) {
+      result.push_back(cast_form(forms[i], TypeSpec("int"), pool, env));
+    } else if (env.dts->ts.tc(TypeSpec("float"), types.at(i))) {
+      result.push_back(cast_form(forms[i], TypeSpec("int"), pool, env));
+    } else {
+      result.push_back(forms[i]);
+    }
+  }
+  return result;
+}
+
 FormElement* try_make_nonzero_logtest(Form* in, FormPool& pool) {
   /*
  (defmacro logtest? (a b)
@@ -4168,65 +4573,62 @@ FormElement* try_make_nonzero_logtest(Form* in, FormPool& pool) {
   }
   return nullptr;
 }
-}  // namespace
 
-FormElement* ConditionElement::make_zero_check_generic(const Env& env,
-                                                       FormPool& pool,
-                                                       const std::vector<Form*>& source_forms,
-                                                       const std::vector<TypeSpec>& source_types) {
-  // (zero? (+ thing small-integer)) -> (= thing (- small-integer))
-  ASSERT(source_forms.size() == 1);
-
-  auto enum_type_info = env.dts->ts.try_enum_lookup(source_types.at(0));
-  if (enum_type_info && !enum_type_info->is_bitfield()) {
-    // (zero? (+ (the-as uint arg0) (the-as uint -2))) check enum value
-    auto mr = match(
-        Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
-                    {make_int_uint_cast_matcher(Matcher::any(0)),
-                     Matcher::match_or({Matcher::any_integer(1),
-                                        make_int_uint_cast_matcher(Matcher::any_integer(1))})}),
-        source_forms.at(0));
-    if (mr.matched) {
-      s64 value = mr.maps.ints.at(1);
-      value = -value;
-      auto enum_constant = cast_to_int_enum(enum_type_info, pool, env, value);
-      return pool.alloc_element<GenericElement>(
-          GenericOperator::make_fixed(FixedOperatorKind::EQ),
-          std::vector<Form*>{mr.maps.forms.at(0), enum_constant});
-    }
-  }
-
-  {
-    auto mr = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
-                                {Matcher::any(0), Matcher::any_integer(1)}),
-                    source_forms.at(0));
-    if (mr.matched) {
-      s64 value = -mr.maps.ints.at(1);
-      auto value_form = pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(value));
-      return pool.alloc_element<GenericElement>(
-          GenericOperator::make_fixed(FixedOperatorKind::EQ),
-          std::vector<Form*>{mr.maps.forms.at(0), value_form});
-    }
-  }
-
-  auto nice_constant = try_make_constant_from_int_for_compare(0, source_types.at(0), pool, env);
-  if (nice_constant) {
-    return pool.alloc_element<GenericElement>(
-        GenericOperator::make_fixed(FixedOperatorKind::EQ),
-        std::vector<Form*>{source_forms.at(0), nice_constant});
-  }
-
+FormElement* try_make_focus_test_macro(Form* in, FormPool& pool) {
   /*
-  auto as_logtest = try_make_nonzero_logtest(source_forms.at(0), pool);
-  if (as_logtest) {
-    auto logtest_form = pool.alloc_single_form(nullptr, as_logtest);
-    auto not_form = pool.alloc_element<GenericElement>(
-        GenericOperator::make_compare(IR2_Condition::Kind::FALSE), logtest_form);
-    return not_form;
-  }
-   */
+(defmacro focus-test? (pfoc &rest status)
+`(logtest? (-> (the process-focusable ,pfoc) focus-status) (focus-status ,@status)))
 
-  return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
+pfoc first:
+(logtest? (-> self focus-status) (focus-status dead hit grabbed))
+
+enum first:
+(logtest? (focus-status mech) (-> a1-2 focus-status))
+  */
+  auto logtest_focus_matcher_pfoc = Matcher::op(
+      GenericOpMatcher::fixed(FixedOperatorKind::LOGTEST),
+      {Matcher::deref(Matcher::any(0), false, {DerefTokenMatcher::string("focus-status")}),
+       Matcher::op_with_rest(GenericOpMatcher::func(Matcher::constant_token("focus-status")), {})});
+  auto logtest_focus_matcher_enum = Matcher::op(
+      GenericOpMatcher::fixed(FixedOperatorKind::LOGTEST),
+      {
+          Matcher::op_with_rest(GenericOpMatcher::func(Matcher::constant_token("focus-status")),
+                                {}),
+          Matcher::deref(Matcher::any(0), false, {DerefTokenMatcher::string("focus-status")}),
+      });
+  auto mr_logtest_pfoc = match(logtest_focus_matcher_pfoc, in);
+  auto mr_logtest_enum = match(logtest_focus_matcher_enum, in);
+  if (mr_logtest_pfoc.matched) {
+    auto logtest_elt = dynamic_cast<GenericElement*>(in->at(0));
+    if (logtest_elt != nullptr) {
+      auto focus_form = logtest_elt->elts().at(1);
+      std::vector<Form*> macro;
+      macro.push_back(mr_logtest_pfoc.maps.forms.at(0));
+      auto* focus = dynamic_cast<GenericElement*>(focus_form->at(0));
+      if (focus) {
+        macro.insert(macro.end(), focus->elts().begin(), focus->elts().end());
+      }
+
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::FOCUS_TEST), macro);
+    }
+  }
+  if (mr_logtest_enum.matched) {
+    auto logtest_elt = dynamic_cast<GenericElement*>(in->at(0));
+    if (logtest_elt != nullptr) {
+      auto focus_form = logtest_elt->elts().at(0);
+      std::vector<Form*> macro;
+      macro.push_back(mr_logtest_enum.maps.forms.at(0));
+      auto* focus = dynamic_cast<GenericElement*>(focus_form->at(0));
+      if (focus) {
+        macro.insert(macro.end(), focus->elts().begin(), focus->elts().end());
+      }
+
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::FOCUS_TEST), macro);
+    }
+  }
+  return nullptr;
 }
 
 FormElement* try_make_logtest_cpad_macro(Form* in, FormPool& pool) {
@@ -4283,6 +4685,75 @@ FormElement* try_make_logtest_cpad_macro(Form* in, FormPool& pool) {
   }
   return nullptr;
 }
+}  // namespace
+
+FormElement* ConditionElement::make_zero_check_generic(const Env& env,
+                                                       FormPool& pool,
+                                                       const std::vector<Form*>& source_forms,
+                                                       const std::vector<TypeSpec>& source_types) {
+  // (zero? (+ thing small-integer)) -> (= thing (- small-integer))
+  ASSERT(source_forms.size() == 1);
+
+  auto enum_type_info = env.dts->ts.try_enum_lookup(source_types.at(0));
+  if (enum_type_info && !enum_type_info->is_bitfield()) {
+    // (zero? (+ (the-as uint arg0) (the-as uint -2))) check enum value
+    auto mr = match(
+        Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                    {make_int_uint_cast_matcher(Matcher::any(0)),
+                     Matcher::match_or({Matcher::any_integer(1),
+                                        make_int_uint_cast_matcher(Matcher::any_integer(1))})}),
+        source_forms.at(0));
+    if (mr.matched) {
+      s64 value = mr.maps.ints.at(1);
+      value = -value;
+      auto enum_constant = cast_to_int_enum(enum_type_info, pool, env, value);
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::EQ),
+          std::vector<Form*>{mr.maps.forms.at(0), enum_constant});
+    }
+  }
+
+  {
+    auto mr = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                                {Matcher::any(0), Matcher::any_integer(1)}),
+                    source_forms.at(0));
+    if (mr.matched) {
+      s64 value = -mr.maps.ints.at(1);
+      auto value_form = pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(value));
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::EQ),
+          std::vector<Form*>{mr.maps.forms.at(0), value_form});
+    }
+  }
+
+  auto nice_constant = try_make_constant_from_int_for_compare(0, source_types.at(0), pool, env);
+  if (nice_constant) {
+    return pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::EQ),
+        std::vector<Form*>{source_forms.at(0), nice_constant});
+  }
+
+  auto as_logtest = try_make_nonzero_logtest(source_forms.at(0), pool);
+  if (as_logtest) {
+    auto logtest_form = pool.alloc_single_form(nullptr, as_logtest);
+    auto as_cpad_macro = try_make_logtest_cpad_macro(logtest_form, pool);
+    if (as_cpad_macro) {
+      logtest_form = pool.alloc_single_form(nullptr, as_cpad_macro);
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_compare(IR2_Condition::Kind::FALSE), logtest_form);
+    }
+    auto focus_test_macro = try_make_focus_test_macro(logtest_form, pool);
+    if (focus_test_macro) {
+      logtest_form = pool.alloc_single_form(nullptr, focus_test_macro);
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_compare(IR2_Condition::Kind::FALSE), logtest_form);
+    }
+    return pool.alloc_element<GenericElement>(
+        GenericOperator::make_compare(IR2_Condition::Kind::FALSE), logtest_form);
+  }
+
+  return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
+}
 
 FormElement* ConditionElement::make_nonzero_check_generic(const Env& env,
                                                           FormPool& pool,
@@ -4318,6 +4789,10 @@ FormElement* ConditionElement::make_nonzero_check_generic(const Env& env,
     auto as_cpad_macro = try_make_logtest_cpad_macro(logtest_form, pool);
     if (as_cpad_macro) {
       return as_cpad_macro;
+    }
+    auto focus_test_macro = try_make_focus_test_macro(logtest_form, pool);
+    if (focus_test_macro) {
+      return focus_test_macro;
     }
     return as_logtest;
   }
@@ -4371,7 +4846,7 @@ FormElement* ConditionElement::make_equal_check_generic(const Env& env,
       }
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::EQ),
-          cast_to_64_bit(source_forms, source_types, pool, env));
+          cast_for_64bit_equality_check(source_forms, source_types, pool, env));
     }
   }
 }
@@ -4402,7 +4877,7 @@ FormElement* ConditionElement::make_not_equal_check_generic(
     } else {
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::NEQ),
-          cast_to_64_bit(source_forms, source_types, pool, env));
+          cast_for_64bit_equality_check(source_forms, source_types, pool, env));
     }
   }
 }
@@ -4767,7 +5242,7 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
 namespace {
 
 void push_asm_srl_to_stack(const AsmOp* op,
-                           FormElement* /*form_elt*/,
+                           FormElement* form_elt,
                            const Env& env,
                            FormPool& pool,
                            FormStack& stack) {
@@ -4794,7 +5269,7 @@ void push_asm_srl_to_stack(const AsmOp* op,
     stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
                             env.get_variable_type(*dst, true));
   } else {
-    // stack.push_form_element(form_elt, true);
+    //
     auto src_var = pop_to_forms({*var}, env, pool, stack, true).at(0);
     auto as_ba = src_var->try_as_element<BitfieldAccessElement>();
     if (as_ba) {
@@ -4804,9 +5279,10 @@ void push_asm_srl_to_stack(const AsmOp* op,
       stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
                               env.get_variable_type(*dst, true));
     } else {
-      throw std::runtime_error(
-          fmt::format("Got invalid bitfield manip for srl at op {}: {} type was {}", op->op_id(),
-                      src_var->to_string(env), arg0_type.print()));
+      stack.push_form_element(form_elt, true);
+      //  throw std::runtime_error(
+      //  fmt::format("Got invalid bitfield manip for srl at op {}: {} type was {}", op->op_id(),
+      //             src_var->to_string(env), arg0_type.print()));
     }
   }
 }
@@ -5057,7 +5533,7 @@ void AsmBranchElement::push_to_stack(const Env& env, FormPool& pool, FormStack& 
 
   auto op = pool.alloc_element<TranslatedAsmBranch>(
       branch_condition, m_branch_delay, m_branch_op->label_id(), m_branch_op->is_likely());
-  // fmt::print("rewrote as {}\n", op->to_string(env));
+  // lg::print("rewrote as {}\n", op->to_string(env));
   stack.push_form_element(op, true);
 }
 
@@ -5115,7 +5591,7 @@ void BranchElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   ASSERT(!m_op->likely());
   auto op = pool.alloc_element<TranslatedAsmBranch>(branch_condition, branch_delay,
                                                     m_op->label_id(), m_op->likely());
-  // fmt::print("rewrote (non-asm) as {}\n", op->to_string(env));
+  // lg::print("rewrote (non-asm) as {}\n", op->to_string(env));
   stack.push_form_element(op, true);
 }
 
@@ -5236,7 +5712,7 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
         if (!match_result.matched) {
           result->push_back(this);
           return;
-          fmt::print("power {}\n", power_of_two);
+          lg::error("power {}", power_of_two);
           throw std::runtime_error(
               "Couldn't match ArrayFieldAccess (stride power of 2, 0 offset) values: " +
               new_val->to_string(env));
@@ -5480,15 +5956,40 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
 
   Form* val = nullptr;
 
-  if (!val && on_zero) {
+  if (on_zero) {
     auto as_logtest = try_make_nonzero_logtest(popped.at(1), pool);
     if (as_logtest) {
       auto logtest_form = pool.alloc_single_form(nullptr, as_logtest);
       auto as_cpad_macro = try_make_logtest_cpad_macro(logtest_form, pool);
       if (as_cpad_macro) {
         val = pool.alloc_single_form(nullptr, as_cpad_macro);
-      } else {
-        val = pool.alloc_single_form(nullptr, as_logtest);
+      }
+      if (!val) {
+        auto focus_test_macro = try_make_focus_test_macro(logtest_form, pool);
+        if (focus_test_macro) {
+          val = pool.alloc_single_form(nullptr, focus_test_macro);
+        } else {
+          val = pool.alloc_single_form(nullptr, as_logtest);
+        }
+      }
+    }
+  } else {
+    auto as_logtest = try_make_nonzero_logtest(popped.at(1), pool);
+    if (as_logtest) {
+      auto logtest_form = pool.alloc_single_form(nullptr, as_logtest);
+      auto not_form = pool.form<GenericElement>(
+          GenericOperator::make_compare(IR2_Condition::Kind::FALSE), logtest_form);
+      auto as_cpad_macro = try_make_logtest_cpad_macro(not_form, pool);
+      if (as_cpad_macro) {
+        val = pool.alloc_single_form(nullptr, as_cpad_macro);
+      }
+      if (!val) {
+        auto focus_test_macro = try_make_focus_test_macro(not_form, pool);
+        if (focus_test_macro) {
+          val = pool.alloc_single_form(nullptr, focus_test_macro);
+        } else {
+          val = not_form;
+        }
       }
     }
   }
@@ -5598,7 +6099,7 @@ bool try_vector_reset_inline(const Env& env,
   // the function that attempts the pop.
   auto store_var = form_as_ra(store);
   if (!store_var) {
-    env.func->warnings.general_warning("Almost found vector reset, but couldn't get store var.");
+    env.func->warnings.warning("Almost found vector reset, but couldn't get store var.");
     // stack.push_form_element(new_thing->elts().at(0), true);
     return false;
   }
@@ -5828,6 +6329,15 @@ void ResLumpMacroElement::update_from_stack(const Env&,
                                             FormStack&,
                                             std::vector<FormElement*>* result,
                                             bool) {
+  mark_popped();
+  result->push_back(this);
+}
+
+void WithDmaBufferAddBucketElement::update_from_stack(const Env&,
+                                                      FormPool&,
+                                                      FormStack&,
+                                                      std::vector<FormElement*>* result,
+                                                      bool) {
   mark_popped();
   result->push_back(this);
 }

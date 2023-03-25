@@ -38,11 +38,14 @@
  *
  */
 
-#include <cinttypes>
 #include "Object.h"
+
+#include <cinttypes>
+
 #include "common/util/FileUtil.h"
-#include "third-party/fmt/core.h"
 #include "common/util/print_float.h"
+
+#include "third-party/fmt/core.h"
 
 namespace goos {
 
@@ -255,6 +258,10 @@ bool Object::operator==(const Object& other) const {
 
 bool Object::is_symbol(const std::string& name) const {
   return is_symbol() && as_symbol()->name == name;
+}
+
+bool Object::is_string(const std::string& val) const {
+  return is_string() && as_string()->data == val;
 }
 
 template <>

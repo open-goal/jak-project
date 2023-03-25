@@ -1,0 +1,93 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+
+;; This file is used for debugging and testing the large font encoding.
+;; This file should *not* be included as part of any packages, it should be manually loaded by the user.
+
+;; To run this:
+
+#|
+(mi)  ;; build the game
+(lt)  ;; connect to the runtime
+(ml "goal_src/jak1/pc/util/font-encode-test.gc")  ;; build and load this file.
+|#
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defconstant FONT_ENCODE_TEXT_LEFT 56)
+(defconstant FONT_ENCODE_TEXT_Y 80)
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define *font-string* (new 'global 'string 64 (the string #f)))
+(define *font-string-ex* (the string #f))
+(define *font-string-val* #x96)
+
+(defun-debug font-encode-test-start ()
+  "start the encode test proc"
+  
+  (unless (process-by-name 'font-encode *active-pool*)
+    (process-spawn-function process :name 'font-encode
+        (lambda :behavior process ()
+            (let ((fnt (new 'stack 'font-context *font-default-matrix* FONT_ENCODE_TEXT_LEFT FONT_ENCODE_TEXT_Y 0.0
+                                    (font-color orange-red) (font-flags shadow kerning large middle)))
+                  )
+                
+                (set-width! fnt 400)
+                (set-height! fnt 100)
+                
+                (loop
+                  (suspend)
+                  
+                  (if (or (cpad-pressed? 0 left) (cpad-hold? 0 l1))
+                    (-! *font-string-val* 1))
+                  (if (or (cpad-pressed? 0 right) (cpad-hold? 0 r1))
+                    (+! *font-string-val* 1))
+                  (minmax! *font-string-val* 1 #x1ff)
+                  
+                  (clear *font-string*)
+                  (cond
+                    ((>= *font-string-val* #x100)
+                     (set! (-> *font-string* data 0) (/ *font-string-val* 256))
+                     (set! (-> *font-string* data 1) (logand *font-string-val* #xff))
+                     (set! (-> *font-string* data 2) 0)
+                     )
+                    (else
+                     (set! (-> *font-string* data 0) (logand *font-string-val* #xff))
+                     (set! (-> *font-string* data 1) 0)
+                     )
+                    )
+                  
+                  (set-origin! fnt FONT_ENCODE_TEXT_LEFT FONT_ENCODE_TEXT_Y)
+                  (set-flags! fnt (font-flags shadow kerning large middle))
+                  (print-game-text *font-string* fnt #f 128 24)
+                  (when *font-string-ex*
+                      (set-origin! fnt FONT_ENCODE_TEXT_LEFT (+ FONT_ENCODE_TEXT_Y 32))
+                      (print-game-text *font-string-ex* fnt #f 128 24))
+                  (set-origin! fnt FONT_ENCODE_TEXT_LEFT (- FONT_ENCODE_TEXT_Y 16))
+                  (set-flags! fnt (font-flags shadow kerning middle))
+                  (print-game-text (string-format "#x~x" *font-string-val*) fnt #f 128 12)
+                  )
+                )
+            
+            )
+        )
+    )
+  )
+
+(defun-debug font-encode-test-stop ()
+  "stop the encode test proc"
+  
+  (kill-by-name 'font-encode *active-pool*)
+  )
+
+

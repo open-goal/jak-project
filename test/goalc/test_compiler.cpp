@@ -1,11 +1,7 @@
-#include <thread>
-#include <chrono>
-
-#include "gtest/gtest.h"
-#include "game/runtime.h"
-#include "goalc/listener/Listener.h"
 #include "goalc/compiler/Compiler.h"
+#include "gtest/gtest.h"
 
 TEST(CompilerAndRuntime, ConstructCompiler) {
-  Compiler compiler;
+  Compiler compiler1(GameVersion::Jak1);
+  Compiler compiler2(GameVersion::Jak2);
 }

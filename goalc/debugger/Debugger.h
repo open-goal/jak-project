@@ -12,9 +12,13 @@
 #include <queue>
 #include <thread>
 #include <unordered_map>
+
 #include "DebugInfo.h"
+
 #include "common/common_types.h"
 #include "common/cross_os_debug/xdbg.h"
+#include "common/versions.h"
+
 #include "goalc/listener/MemoryMap.h"
 
 namespace listener {
@@ -58,8 +62,8 @@ struct BacktraceFrame {
 
 class Debugger {
  public:
-  explicit Debugger(listener::Listener* listener, const goos::Reader* reader)
-      : m_listener(listener), m_reader(reader) {}
+  explicit Debugger(listener::Listener* listener, const goos::Reader* reader, GameVersion version)
+      : m_listener(listener), m_reader(reader), m_version(version) {}
   ~Debugger();
   bool is_halted() const;
   bool is_valid() const;
@@ -85,12 +89,14 @@ class Debugger {
   }
   bool write_memory(const u8* src_buffer, int size, u32 goal_addr);
   void read_symbol_table();
+  void read_symbol_table_jak1();
+  void read_symbol_table_jak2();
   u32 get_symbol_address(const std::string& sym_name);
   bool get_symbol_value(const std::string& sym_name, u32* output);
   const char* get_symbol_name_from_offset(s32 ofs) const;
   void add_addr_breakpoint(u32 addr);
   void remove_addr_breakpoint(u32 addr);
-  void update_break_info();
+  void update_break_info(std::optional<std::string> dump_path);
 
   InstructionPointerInfo get_rip_info(u64 x86_rip);
   DebugInfo& get_debug_info_for_object(const std::string& object_name);
@@ -99,7 +105,7 @@ class Debugger {
   std::string get_info_about_addr(u32 addr);
   Disassembly disassemble_at_rip(const InstructionPointerInfo& info);
 
-  std::vector<BacktraceFrame> get_backtrace(u64 rip, u64 rsp);
+  std::vector<BacktraceFrame> get_backtrace(u64 rip, u64 rsp, std::optional<std::string> dump_path);
 
   std::string disassemble_x86_with_symbols(int len, u64 base_addr) const;
 
@@ -218,4 +224,5 @@ class Debugger {
   const goos::Reader* m_reader = nullptr;
   listener::MemoryMap m_memory_map;
   std::unordered_map<std::string, DebugInfo> m_debug_info;
+  GameVersion m_version;
 };

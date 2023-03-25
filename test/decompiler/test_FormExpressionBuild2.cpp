@@ -1,10 +1,11 @@
-#include "gtest/gtest.h"
 #include "FormRegressionTest.h"
+
+#include "gtest/gtest.h"
 
 using namespace decompiler;
 
 // tests stack variables
-TEST_F(FormRegressionTest, MatrixPMult) {
+TEST_F(FormRegressionTestJak1, MatrixPMult) {
   std::string func =
       "sll r0, r0, 0\n"
       "    daddiu sp, sp, -112\n"
@@ -56,7 +57,7 @@ TEST_F(FormRegressionTest, MatrixPMult) {
 }
 
 // TODO- this should also work without the cast, but be uglier.
-TEST_F(FormRegressionTest, VectorXQuaternionWithCast) {
+TEST_F(FormRegressionTestJak1, VectorXQuaternionWithCast) {
   std::string func =
       "sll r0, r0, 0\n"
 
@@ -102,7 +103,7 @@ TEST_F(FormRegressionTest, VectorXQuaternionWithCast) {
                              "[[10, \"v1\", \"(pointer uint128)\"]]");
 }
 
-TEST_F(FormRegressionTest, EliminateFloatDeadSet) {
+TEST_F(FormRegressionTestJak1, EliminateFloatDeadSet) {
   std::string func =
       "sll r0, r0, 0\n"
       "L32:\n"
@@ -229,7 +230,7 @@ TEST_F(FormRegressionTest, EliminateFloatDeadSet) {
   test_with_stack_structures(func, type, expected, "[]");
 }
 
-TEST_F(FormRegressionTest, IterateProcessTree) {
+TEST_F(FormRegressionTestJak1, IterateProcessTree) {
   std::string func =
       "sll r0, r0, 0\n"
 
@@ -321,7 +322,7 @@ TEST_F(FormRegressionTest, IterateProcessTree) {
   test_with_stack_structures(func, type, expected, "[]");
 }
 
-TEST_F(FormRegressionTest, InspectVifStatBitfield) {
+TEST_F(FormRegressionTestJak1, InspectVifStatBitfield) {
   std::string func =
       "sll r0, r0, 0\n"
 
@@ -464,7 +465,7 @@ TEST_F(FormRegressionTest, InspectVifStatBitfield) {
                   {"L27", "~T ~D~%"}});
 }
 
-TEST_F(FormRegressionTest, InspectHandleBitfield) {
+TEST_F(FormRegressionTestJak1, InspectHandleBitfield) {
   std::string func =
       "sll r0, r0, 0\n"
       "    daddiu sp, sp, -32\n"
@@ -515,7 +516,7 @@ TEST_F(FormRegressionTest, InspectHandleBitfield) {
                  {{"L79", "[~8x] ~A~%"}, {"L32", "~Tprocess: #x~X~%"}, {"L31", "~Tpid: ~D~%"}});
 }
 
-TEST_F(FormRegressionTest, InspectDmaTagBitfield) {
+TEST_F(FormRegressionTestJak1, InspectDmaTagBitfield) {
   std::string func =
       "sll r0, r0, 0\n"
       "    daddiu sp, sp, -32\n"
@@ -610,7 +611,7 @@ TEST_F(FormRegressionTest, InspectDmaTagBitfield) {
 }
 
 // Tests nonzero-check on bitfield
-TEST_F(FormRegressionTest, DmaSyncCrash) {
+TEST_F(FormRegressionTestJak1, DmaSyncCrash) {
   std::string func =
       "sll r0, r0, 0\n"
       "L46:\n"
@@ -663,7 +664,7 @@ TEST_F(FormRegressionTest, DmaSyncCrash) {
   test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, DmaSend) {
+TEST_F(FormRegressionTestJak1, DmaSend) {
   std::string func =
       "sll r0, r0, 0\n"
       "    daddiu sp, sp, -64\n"
@@ -744,7 +745,7 @@ TEST_F(FormRegressionTest, DmaSend) {
   test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, DmaInitialize) {
+TEST_F(FormRegressionTestJak1, DmaInitialize) {
   std::string func =
       "sll r0, r0, 0\n"
       "    lui v1, 4096\n"
@@ -781,7 +782,7 @@ TEST_F(FormRegressionTest, DmaInitialize) {
 }
 
 // Dynamic bitfield stuff.
-TEST_F(FormRegressionTest, SetDisplayEnv) {
+TEST_F(FormRegressionTestJak1, SetDisplayEnv) {
   std::string func =
       "sll r0, r0, 0\n"
       "    ori v1, r0, 65441\n"
@@ -861,7 +862,7 @@ TEST_F(FormRegressionTest, SetDisplayEnv) {
   test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, DmaBufferAddVuFunction) {
+TEST_F(FormRegressionTestJak1, DmaBufferAddVuFunction) {
   std::string func =
       "sll r0, r0, 0\n"
       "    daddiu v1, a1, 16\n"
@@ -929,54 +930,42 @@ TEST_F(FormRegressionTest, DmaBufferAddVuFunction) {
   std::string type = "(function dma-buffer vu-function int symbol)";
   std::string expected =
       "(begin\n"
-      "  (let ((v1-0 (&-> arg1 data 4))\n"
+      "  (let ((v1-0 (the-as object (+ (the-as uint arg1) 16)))\n"
       "        (a3-0 (-> arg1 qlength))\n"
       "        (a1-1 (-> arg1 origin))\n"
       "        )\n"
-      "   (while (> a3-0 0)\n"
-      "    (let ((t0-1 (min 127 a3-0)))\n"
-      "     (let* ((t1-1 arg0)\n"
-      "            (t2-0 (the-as object (-> t1-1 base)))\n"
-      "            )\n"
-      "      (set!\n"
-      "       (-> (the-as dma-packet t2-0) dma)\n"
-      "       (new\n"
-      "        'static\n"
-      "        'dma-tag\n"
-      "        :id\n"
-      "        (dma-tag-id ref)\n"
-      "        :addr\n"
-      "        (the-as int v1-0)\n"
-      "        :qwc\n"
-      "        t0-1\n"
+      "    (while (> a3-0 0)\n"
+      "      (let ((t0-1 (min 127 a3-0)))\n"
+      "        (let* ((t1-1 arg0)\n"
+      "               (t2-0 (the-as object (-> t1-1 base)))\n"
+      "               )\n"
+      "          (set! (-> (the-as dma-packet t2-0) dma)\n"
+      "                (new 'static 'dma-tag :id (dma-tag-id ref) :addr (the-as int v1-0) :qwc "
+      "t0-1)\n"
+      "                )\n"
+      "          (set! (-> (the-as dma-packet t2-0) vif0) (new 'static 'vif-tag :cmd (if (zero? "
+      "arg2)\n"
+      "                                                                                  16\n"
+      "                                                                                  19\n"
+      "                                                                                  )\n"
+      "                                                        )\n"
+      "                )\n"
+      "          (set! (-> (the-as dma-packet t2-0) vif1) (new 'static 'vif-tag :cmd (vif-cmd mpg) "
+      ":num (* t0-1 2) :imm a1-1))\n"
+      "          (set! (-> t1-1 base) (&+ (the-as pointer t2-0) 16))\n"
+      "          )\n"
+      "        (set! v1-0 (+ (the-as uint v1-0) (* t0-1 16)))\n"
+      "        (set! a3-0 (- a3-0 t0-1))\n"
+      "        (+! a1-1 (* t0-1 2))\n"
       "        )\n"
-      "       )\n"
-      "      (set!\n"
-      "       (-> (the-as dma-packet t2-0) vif0)\n"
-      "       (new 'static 'vif-tag :cmd (if (zero? arg2)\n"
-      "                                   16\n"
-      "                                   19\n"
-      "                                   )\n"
-      "        )\n"
-      "       )\n"
-      "      (set!\n"
-      "       (-> (the-as dma-packet t2-0) vif1)\n"
-      "       (new 'static 'vif-tag :cmd (vif-cmd mpg) :num (* t0-1 2) :imm a1-1)\n"
-      "       )\n"
-      "      (set! (-> t1-1 base) (&+ (the-as pointer t2-0) 16))\n"
       "      )\n"
-      "     (&+! v1-0 (* t0-1 16))\n"
-      "     (set! a3-0 (- a3-0 t0-1))\n"
-      "     (+! a1-1 (* t0-1 2))\n"
-      "     )\n"
       "    )\n"
-      "   )\n"
       "  #f\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {}, "[[[9, 33], \"t2\", \"dma-packet\"]]");
 }
 
-TEST_F(FormRegressionTest, DmaBucketInsertTag) {
+TEST_F(FormRegressionTestJak1, DmaBucketInsertTag) {
   std::string func =
       "sll r0, r0, 0\n"
       "    dsll v1, a1, 4\n"
@@ -1003,7 +992,7 @@ TEST_F(FormRegressionTest, DmaBucketInsertTag) {
                  "  ]");
 }
 
-TEST_F(FormRegressionTest, StupidFloatMove) {
+TEST_F(FormRegressionTestJak1, StupidFloatMove) {
   std::string func =
       "sll r0, r0, 0\n"
       "    daddiu sp, sp, -48\n"
@@ -1112,7 +1101,7 @@ TEST_F(FormRegressionTest, StupidFloatMove) {
 }
 
 // gpr->fpr not being propagated
-TEST_F(FormRegressionTest, Method11FontContext) {
+TEST_F(FormRegressionTestJak1, Method11FontContext) {
   std::string func =
       "sll r0, r0, 0\n"
       "    mtc1 f0, a1\n"
@@ -1131,7 +1120,7 @@ TEST_F(FormRegressionTest, Method11FontContext) {
 }
 
 // 128-bit bitfields, also type for pextuw
-TEST_F(FormRegressionTest, Method4ResTag) {
+TEST_F(FormRegressionTestJak1, Method4ResTag) {
   std::string func =
       "sll r0, r0, 0\n"
       "L135:\n"
@@ -1168,7 +1157,7 @@ TEST_F(FormRegressionTest, Method4ResTag) {
   test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, MakeSqrtTable) {
+TEST_F(FormRegressionTestJak1, MakeSqrtTable) {
   std::string func =
       "sll r0, r0, 0\n"
       "L149:\n"
@@ -1244,7 +1233,7 @@ TEST_F(FormRegressionTest, MakeSqrtTable) {
       {{"L190", "static int sqrt_table[256] =~%{~%"}, {"L189", "~D,~%"}, {"L188", "};~%"}});
 }
 
-TEST_F(FormRegressionTest, Method2Vec4s) {
+TEST_F(FormRegressionTestJak1, Method2Vec4s) {
   std::string func =
       "sll r0, r0, 0\n"
       "    daddiu sp, sp, -32\n"
@@ -1290,7 +1279,7 @@ TEST_F(FormRegressionTest, Method2Vec4s) {
   test_with_expr(func, type, expected, false, "", {{"L344", "#<vector ~F ~F ~F ~F @ #x~X>"}});
 }
 
-TEST_F(FormRegressionTest, SoundNameEqual) {
+TEST_F(FormRegressionTestJak1, SoundNameEqual) {
   std::string func =
       "sll r0, r0, 0\n"
       "    dsubu v1, a0, a1\n"
@@ -1312,7 +1301,7 @@ TEST_F(FormRegressionTest, SoundNameEqual) {
   test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, DebugMenuFuncDecode) {
+TEST_F(FormRegressionTestJak1, DebugMenuFuncDecode) {
   std::string func =
       "sll r0, r0, 0\n"
       "    dsll32 v1, a0, 29\n"
@@ -1378,7 +1367,7 @@ TEST_F(FormRegressionTest, DebugMenuFuncDecode) {
   test_with_expr(func, type, expected, false, "", {}, "[[13, \"a0\", \"symbol\"]]");
 }
 
-TEST_F(FormRegressionTest, MatrixNewInlineProp) {
+TEST_F(FormRegressionTestJak1, MatrixNewInlineProp) {
   std::string func =
       "sll r0, r0, 0\n"
       "    daddiu sp, sp, -112\n"
@@ -1433,7 +1422,7 @@ TEST_F(FormRegressionTest, MatrixNewInlineProp) {
   test_with_stack_structures(func, type, expected, R"([[16, "matrix"]])");
 }
 
-TEST_F(FormRegressionTest, VectorNewInlineProp) {
+TEST_F(FormRegressionTestJak1, VectorNewInlineProp) {
   std::string func =
       "sll r0, r0, 0\n"
       "    daddiu sp, sp, -64\n"
@@ -1493,7 +1482,7 @@ TEST_F(FormRegressionTest, VectorNewInlineProp) {
   test_with_stack_structures(func, type, expected, R"([[16, "vector"]])");
 }
 
-TEST_F(FormRegressionTest, Method23Trsqv) {
+TEST_F(FormRegressionTestJak1, Method23Trsqv) {
   std::string func =
       "sll r0, r0, 0\n"
       "    daddiu sp, sp, -32\n"
@@ -1519,7 +1508,7 @@ TEST_F(FormRegressionTest, Method23Trsqv) {
   test_with_stack_structures(func, type, expected, R"([[16, "vector"]])");
 }
 
-TEST_F(FormRegressionTest, VectorLineDistance) {
+TEST_F(FormRegressionTestJak1, VectorLineDistance) {
   std::string func =
       "sll r0, r0, 0\n"
       "\n"

@@ -1,0 +1,463 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: sparticle-launcher-h.gc
+;; name in dgo: sparticle-launcher-h
+;; dgos: ENGINE, GAME
+
+;; note: changed from jak 1, slightly.
+(defenum sp-field-id
+  :type uint16
+
+  (misc-fields-start 0)
+  (spt-texture 1)
+  (spt-anim 2)
+  (spt-anim-speed 3)
+  (spt-birth-func 4)
+  (spt-joint/refpoint 5)
+  (spt-num 6)
+  (spt-sound 7)
+  (misc-fields-end 8)
+
+  (sprite-fields-start 9)
+  (spt-x 10)
+  (spt-y 11)
+  (spt-z 12)
+  (spt-scale-x 13)
+  (spt-rot-x 14)
+  (spt-rot-y 15)
+  (spt-rot-z 16)
+  (spt-scale-y 17)
+  (spt-r 18)
+  (spt-g 19)
+  (spt-b 20)
+  (spt-a 21)
+  (sprite-fields-end 22)
+
+  (cpu-fields-start 23)
+  (spt-omega 24)
+  (spt-vel-x 25)
+  (spt-vel-y 26)
+  (spt-vel-z 27)
+  (spt-scalevel-x 28)
+  (spt-rotvel-x 29)
+  (spt-rotvel-y 30)
+  (spt-rotvel-z 31)
+  (spt-scalevel-y 32)
+  (spt-fade-r 33)
+  (spt-fade-g 34)
+  (spt-fade-b 35)
+  (spt-fade-a 36)
+  (spt-accel-x 37)
+  (spt-accel-y 38)
+  (spt-accel-z 39)
+  (spt-dummy 40)
+  (spt-quat-x 41)
+  (spt-quat-y 42)
+  (spt-quat-z 43)
+  (spt-quad-w 44)
+  (spt-friction 45)
+  (spt-timer 46)
+  (spt-flags 47)
+  (spt-userdata 48)
+  (spt-func 49)
+  (spt-next-time 50)
+  (spt-next-launcher 51)
+  (cpu-fields-end 52)
+
+  (launch-fields-start 53)
+  (spt-launchrot-x 54)
+  (spt-launchrot-y 55)
+  (spt-launchrot-z 56)
+  (spt-launchrot-w 57)
+  (spt-conerot-x 58)
+  (spt-conerot-y 59)
+  (spt-conerot-z 60)
+  (spt-conerot-w 61)
+  (spt-rotate-x 62)
+  (spt-rotate-y 63)
+  (spt-rotate-z 64)
+
+  (spt-conerot-radius 65)
+  (spt-mat-scale-x 66)
+  (spt-mat-scale-y 67)
+  (spt-mat-scale-z 68)
+  (launch-fields-end 69)
+
+  (spt-scale 70)
+  (spt-scalevel 71)
+  (spt-end 72)
+  )
+
+;; appears the same as jak 1
+(defenum sp-flag
+  :type uint16
+  (plain-v1 0) ;; just a plain signed integer. No random crap.
+  (float-with-rand 1)
+  (int-with-rand 2)
+  (copy-from-other-field 3)
+  (plain-v2 4)
+  (from-pointer 5)
+  (part-by-id 6)
+  (spflag7 7)
+  )
+
+(defenum sp-group-item-flag
+  :bitfield #t
+  :type uint16
+  (is-3d 0)
+  (bit1 1)
+  (start-dead 2)
+  (launch-asap 3)
+  (bit6 6)
+  (bit7 7)
+  (bit8 8)
+  )
+
+(defenum sp-launch-state-flags
+  :bitfield #t
+  :type uint16
+  (launcher-active 0)        ;; active
+  (particles-active 1) ;; wants to launch
+  (bit2 2)
+  )
+
+;; +++sp-group-flag
+(defenum sp-group-flag
+  :bitfield #t
+  :type uint16
+  (use-local-clock 0)
+  (always-draw 1)
+  (screen-space 2)
+  (unk-3 3) ;; beach-part
+  (unk-4 4)
+  (unk-5 5)
+  (unk-6 6)
+  (unk-7 7)
+  (unk-8 8)
+  )
+;; ---sp-group-flag
+
+(declare-type sparticle-cpuinfo structure)
+
+(defmacro sp-item (launcher
+                    &key (fade-after 0.0)
+                    &key (falloff-to 0.0)
+                    &key (flags ())
+                    &key (period 0)
+                    &key (length 0)
+                    &key (offset 0)
+                    &key (hour-mask 0)
+                    &key (binding 0)
+                    )
+  `(new 'static 'sparticle-group-item
+        :launcher ,launcher
+        :fade-after ,fade-after
+        :falloff-to ,falloff-to
+        :flags (sp-group-item-flag ,@flags)
+        :period ,period
+        :length ,length
+        :offset ,offset
+        :hour-mask ,hour-mask
+        :binding ,binding
+        )
+  )
+
+(defmacro defpartgroup (name &key id &key parts &key (duration 3000) &key (linger-duration 1500) &key (flags ()) &key bounds
+                             &key (rotate (0.0 0.0 0.0)) &key (scale (1.0 1.0 1.0)))
+  "define a new part group. defines a constant with the name of the group with the ID as its value"
+  `(begin
+    (defconstant ,name ,id)
+    (set! (-> *part-group-id-table* ,id)
+      (new 'static 'sparticle-launch-group
+          :duration ,duration
+          :linger-duration ,linger-duration
+          :flags (sp-group-flag ,@flags)
+          :bounds ,bounds
+          :name ,(symbol->string name)
+          :length ,(length parts)
+          :launcher (new 'static 'inline-array sparticle-group-item ,(length parts) ,@parts)
+          :rotate-x ,(car rotate)
+          :rotate-y ,(cadr rotate)
+          :rotate-z ,(caddr rotate)
+          :scale-x ,(car scale)
+          :scale-y ,(cadr scale)
+          :scale-z ,(caddr scale)
+          )
+      )
+    )
+  )
+
+(defmacro defpart (id &key (init-specs ()))
+  "define a new sparticle-launcher"
+  `(set! (-> *part-id-table* ,id)
+      (new 'static 'sparticle-launcher
+          :init-specs (new 'static 'inline-array sp-field-init-spec ,(1+ (length init-specs))
+                  ,@init-specs
+                  (sp-end)
+                  )))
+  )
+
+(defmacro sp-tex (field-name tex-id)
+  `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-name) :tex ,tex-id)
+  )
+
+(defmacro sp-rnd-flt (field-name val range mult)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-valuef ,val
+        :random-rangef ,range
+        :random-multf ,mult
+        :flags (sp-flag float-with-rand)
+        )
+  )
+
+(defmacro sp-flt (field-name val)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-valuef ,val
+        :random-rangef 0.0
+        :random-multf 1.0
+        :flags (sp-flag float-with-rand)
+        )
+  )
+
+(defmacro sp-int (field-name val)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :random-range 0
+        :random-mult 1
+        )
+  )
+
+(defmacro sp-int-plain-rnd (field-name val range mult)
+  "For when we use plain integer, but set the randoms."
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :random-range ,range
+        :random-mult ,mult
+        )
+  )
+
+(defmacro sp-rnd-int (field-name val range mult)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :random-range ,range
+        :random-multf ,mult
+        :flags (sp-flag int-with-rand)
+        )
+  )
+
+
+(defmacro sp-rnd-int-flt (field-name val range mult)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-valuef ,val
+        :random-range ,range
+        :random-multf ,mult
+        :flags (sp-flag int-with-rand)
+        )
+  )
+
+(defmacro sp-cpuinfo-flags (&rest flags)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id spt-flags)
+        :initial-value (sp-cpuinfo-flag ,@flags)
+        :random-mult 1
+        )
+  )
+
+(defmacro sp-launcher-by-id (field-name val)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :flags (sp-flag part-by-id)
+        )
+  )
+
+(defmacro sp-func (field-name val)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :sym ,val
+        :flags (sp-flag from-pointer)
+        )
+  )
+
+(defmacro sp-sound (sound)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id spt-sound)
+        :sound ,sound
+        :flags (sp-flag plain-v2)
+        )
+  )
+
+(defmacro sp-end ()
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id spt-end)
+        )
+  )
+
+(defmacro sp-copy-from-other (field-name offset)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,offset
+        :random-mult 1
+        :flags (sp-flag copy-from-other-field)
+        )
+  )
+
+;; DECOMP BEGINS
+
+(deftype sparticle-birthinfo (structure)
+  ((sprite       uint32   :offset-assert   0)
+   (anim         int32    :offset-assert   4)
+   (anim-speed   float    :offset-assert   8)
+   (birth-func   basic    :offset-assert  12)
+   (joint-ppoint int32    :offset-assert  16)
+   (num-to-birth float    :offset-assert  20)
+   (sound        basic    :offset-assert  24)
+   (dataf        float  1 :offset          0)
+   (data         uint32 1 :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+
+(deftype sp-field-init-spec (structure)
+  ((field          sp-field-id  :offset-assert   0)
+   (flags          sp-flag      :offset-assert   2)
+   (initial-valuef float        :offset-assert   4)
+   (random-rangef  float        :offset-assert   8)
+   (random-multf   float        :offset-assert  12)
+   (initial-value  int32        :offset          4)
+   (random-range   int32        :offset          8)
+   (random-mult    int32        :offset         12)
+   (func           symbol       :offset          4)
+   (tex            texture-id   :offset          4)
+   (pntr           pointer      :offset          4)
+   (object         basic        :offset          4)
+   (sym            symbol       :offset          4)
+   (sound          sound-spec   :offset          4)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(deftype sparticle-launcher (basic)
+  ((birthaccum float                              :offset-assert   4)
+   (soundaccum float                              :offset-assert   8)
+   (init-specs (inline-array sp-field-init-spec)  :offset-assert  12)
+   )
+  :method-count-assert 11
+  :size-assert         #x10
+  :flag-assert         #xb00000010
+  (:methods
+    (get-field-spec-by-id (_type_ sp-field-id) sp-field-init-spec 9)
+    (setup-user-array (_type_ string) none 10)
+    )
+  )
+
+
+(deftype sparticle-group-item (structure)
+  ((launcher   uint32              :offset-assert   0)
+   (fade-after meters              :offset-assert   4)
+   (falloff-to meters              :offset-assert   8)
+   (flags      sp-group-item-flag  :offset-assert  12)
+   (period     uint16              :offset-assert  14)
+   (length     uint16              :offset-assert  16)
+   (offset     int16               :offset-assert  18)
+   (hour-mask  uint32              :offset-assert  20)
+   (binding    uint32              :offset-assert  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+
+(deftype sparticle-launch-state (structure)
+  ((group-item sparticle-group-item      :offset-assert   0)
+   (flags      sp-launch-state-flags     :offset-assert   4)
+   (randomize  uint16                    :offset-assert   6)
+   (center     vector                    :offset-assert   8)
+   (sprite3d   sprite-vec-data-3d        :offset-assert  12)
+   (sprite     sparticle-cpuinfo         :offset-assert  16)
+   (offset     uint32                    :offset-assert  20)
+   (accum      float                     :offset-assert  24)
+   (spawn-time uint32                    :offset-assert  28)
+   (control    sparticle-launch-control  :offset-assert  32)
+   (swarm      basic                     :offset         20)
+   (seed       uint32                    :offset         24)
+   (time       uint32                    :offset         28)
+   (spec       basic                     :offset         16)
+   (id         uint32                    :offset         12)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+
+(deftype sparticle-launch-group (basic)
+  ((length          int16                                       :offset-assert   4)
+   (duration        uint16                                      :offset-assert   6)
+   (linger-duration uint16                                      :offset-assert   8)
+   (flags           sp-group-flag                               :offset-assert  10)
+   (name            string                                      :offset-assert  12)
+   (launcher        (inline-array sparticle-group-item)         :offset-assert  16)
+   (rotate-x        degrees                                     :offset-assert  20)
+   (rotate-y        degrees                                     :offset-assert  24)
+   (rotate-z        degrees                                     :offset-assert  28)
+   (scale-x         float                                       :offset-assert  32)
+   (scale-y         float                                       :offset-assert  36)
+   (scale-z         float                                       :offset-assert  40)
+   (bounds          sphere                              :inline :offset-assert  48)
+   )
+  :method-count-assert 10
+  :size-assert         #x40
+  :flag-assert         #xa00000040
+  (:methods
+    (create-launch-control (_type_ process) sparticle-launch-control 9)
+    )
+  )
+
+
+(define *launch-matrix* (matrix-identity! (new 'global 'matrix)))
+
+(deftype sparticle-launch-control (inline-array-class)
+  ((group            sparticle-launch-group                  :offset-assert  16)
+   (proc             process-drawable                        :offset-assert  20)
+   (local-clock      int32                                   :offset-assert  24)
+   (fade             float                                   :offset-assert  28)
+   (matrix           int8                                    :offset-assert  32)
+   (state-mode       uint8                  3                :offset-assert  33)
+   (state-counter    uint32                                  :offset-assert  36)
+   (last-spawn-frame int32                                   :offset-assert  40)
+   (last-spawn-time  int32                                   :offset-assert  44)
+   (origin           matrix                 :inline          :offset-assert  48)
+   (center           vector                 :inline          :offset         96)
+   (data             sparticle-launch-state :inline :dynamic :offset-assert 112)
+   )
+  :method-count-assert 16
+  :size-assert         #x70
+  :flag-assert         #x1000000070
+  (:methods
+    (initialize (_type_ sparticle-launch-group process) none 9)
+    (is-visible? (_type_ vector) symbol 10)
+    (spawn (_type_ vector) none 11)
+    (spawn-with-matrix (_type_ matrix) none 12)
+    (spawn-with-cspace (_type_ cspace) none 13)
+    (kill-and-free-particles (_type_) none 14)
+    (kill-particles (_type_) none 15)
+    )
+  )
+
+
+(set! (-> sparticle-launch-control heap-base) (the-as uint 48))

@@ -1,0 +1,1900 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: matrix.gc
+;; name in dgo: matrix
+;; dgos: ENGINE, GAME
+
+#|@file
+This file implements the GOAL matrix library.
+
+In general, a vector is always treated as a row vector.
+Chaining transformation is done like v_row * T1_goal * T2_goal, which means do T1 before T2.
+This is the opposite of the usual convention:
+T2_normal * T1_normal * v_col
+However, there is good news:
+  T1_normal = T1_goal ^ T
+  T2_normal = T2_goal ^ T
+This is due to the property
+ (A * B)^T = B^T * A^T
+
+So a homogeneous transformation is:
+R_xx R_xy R_xz 0
+R_yx R_yy R_yz 0
+R_zx R_zy R_zz 0
+T_x  T_y  T_z  1
+
+which is probably the transpose of what you're used to.
+
+note that they also used row-major storage, so the 3rd qword of a matrix is the translation
+part of the affine transform.
+
+In general, be careful with using these functions as they often have strange
+requirements for the form of the input matrix or if the input/output matrix are
+allowed to be the same memory.
+|#
+
+;; DECOMP BEGINS
+
+(defmethod inspect matrix ((obj matrix))
+  (format #t "[~8x] matrix~%" obj)
+  (format #t "~T[~F] [~F] [~F] [~F]~%" (-> obj data 0) (-> obj data 1) (-> obj data 2) (-> obj data 3))
+  (format #t "~T[~F] [~F] [~F] [~F]~%" (-> obj data 4) (-> obj data 5) (-> obj data 6) (-> obj data 7))
+  (format #t "~T[~F] [~F] [~F] [~F]~%" (-> obj data 8) (-> obj data 9) (-> obj data 10) (-> obj data 11))
+  (format #t "~T[~F] [~F] [~F] [~F]~%" (-> obj trans x) (-> obj trans y) (-> obj trans z) (-> obj trans w))
+  obj
+  )
+
+(defmethod inspect matrix3 ((obj matrix3))
+  "Print out the values in a 3x3 matrix."
+  (format #t "[~8x] matrix3~%" obj)
+  (format #t "~T[~F] [~F] [~F]~%" (-> obj data 0) (-> obj data 1) (-> obj data 2))
+  (format #t "~T[~F] [~F] [~F]~%" (-> obj data 4) (-> obj data 5) (-> obj data 6))
+  (format #t "~T[~F] [~F] [~F]~%" (-> obj data 8) (-> obj data 9) (-> obj data 10))
+  obj
+  )
+
+(defun matrix-identity! ((arg0 matrix))
+  "Set dst to the identity matrix."
+  (set! (-> arg0 quad 0) (the-as uint128 0))
+  (set! (-> arg0 quad 1) (the-as uint128 0))
+  (set! (-> arg0 quad 2) (the-as uint128 0))
+  (set! (-> arg0 trans quad) (the-as uint128 0))
+  (let ((f0-0 1.0))
+    (set! (-> arg0 trans w) f0-0)
+    (set! (-> arg0 data 10) f0-0)
+    (set! (-> arg0 data 5) f0-0)
+    (set! (-> arg0 data 0) f0-0)
+    )
+  arg0
+  )
+
+(define *identity-matrix* (matrix-identity! (new 'global 'matrix)))
+
+(define *hermite-matrix* (new 'static 'matrix :vector (new 'static 'inline-array vector 4
+                                                        (new 'static 'vector :x 2.0 :y -2.0 :z 1.0 :w 1.0)
+                                                        (new 'static 'vector :x -3.0 :y 3.0 :z -2.0 :w -1.0)
+                                                        (new 'static 'vector :z 1.0)
+                                                        (new 'static 'vector :x 1.0)
+                                                        )
+                                              )
+        )
+
+(defun matrix+! ((arg0 matrix) (arg1 matrix) (arg2 matrix))
+  "Set dst = src1 + src2. It is okay for any arguments to be the same data.
+   This is not an efficient implementation."
+  (dotimes (v1-0 16)
+    (set! (-> arg0 data v1-0) (+ (-> arg1 data v1-0) (-> arg2 data v1-0)))
+    )
+  arg0
+  )
+
+(defun matrix-! ((arg0 matrix) (arg1 matrix) (arg2 matrix))
+  "Set dst = src1 - src1. It is okay for any arugments to be the same data.
+   This is not an efficient implementation."
+  (dotimes (v1-0 16)
+    (set! (-> arg0 data v1-0) (- (-> arg1 data v1-0) (-> arg2 data v1-0)))
+    )
+  arg0
+  )
+
+(defun matrix*! ((arg0 matrix) (arg1 matrix) (arg2 matrix))
+  "Set dst = src1 * src2. It is okay for any arguments to be the same data.
+   This is a moderately efficient implementation."
+  (rlet ((acc :class vf)
+         (vf10 :class vf)
+         (vf11 :class vf)
+         (vf12 :class vf)
+         (vf13 :class vf)
+         (vf14 :class vf)
+         (vf15 :class vf)
+         (vf16 :class vf)
+         (vf17 :class vf)
+         (vf18 :class vf)
+         (vf19 :class vf)
+         (vf20 :class vf)
+         (vf21 :class vf)
+         )
+    (.lvf vf10 (&-> arg1 quad 0))
+    (.lvf vf14 (&-> arg2 quad 0))
+    (.lvf vf15 (&-> arg2 quad 1))
+    (.lvf vf16 (&-> arg2 quad 2))
+    (.lvf vf17 (&-> arg2 trans quad))
+    (.lvf vf11 (&-> arg1 quad 1))
+    (.lvf vf12 (&-> arg1 quad 2))
+    (.lvf vf13 (&-> arg1 trans quad))
+    (.mul.x.vf acc vf14 vf10)
+    (.add.mul.y.vf acc vf15 vf10 acc)
+    (.add.mul.z.vf acc vf16 vf10 acc)
+    (.add.mul.w.vf vf18 vf17 vf10 acc)
+    (.mul.x.vf acc vf14 vf11)
+    (.add.mul.y.vf acc vf15 vf11 acc)
+    (.add.mul.z.vf acc vf16 vf11 acc)
+    (.add.mul.w.vf vf19 vf17 vf11 acc)
+    (.mul.x.vf acc vf14 vf12)
+    (.add.mul.y.vf acc vf15 vf12 acc)
+    (.add.mul.z.vf acc vf16 vf12 acc)
+    (.add.mul.w.vf vf20 vf17 vf12 acc)
+    (.mul.x.vf acc vf14 vf13)
+    (.add.mul.y.vf acc vf15 vf13 acc)
+    (.add.mul.z.vf acc vf16 vf13 acc)
+    (.add.mul.w.vf vf21 vf17 vf13 acc)
+    (.svf (&-> arg0 quad 0) vf18)
+    (.svf (&-> arg0 quad 1) vf19)
+    (.svf (&-> arg0 quad 2) vf20)
+    (.svf (&-> arg0 trans quad) vf21)
+    arg0
+    )
+  )
+
+(defun matrixp*! ((arg0 matrix) (arg1 matrix) (arg2 matrix))
+  "Set dst = src1 * src2. NOTE: this function is a wrapper around matrix*!
+   that adds no additional functionality. It seems to be a leftover from
+   a time when matrix*! wasn't safe to use in place. This is unused."
+  (let ((s5-0 (new-stack-matrix0)))
+    (matrix*! s5-0 arg1 arg2)
+    (set! (-> arg0 quad 0) (-> s5-0 quad 0))
+    (set! (-> arg0 quad 1) (-> s5-0 quad 1))
+    (set! (-> arg0 quad 2) (-> s5-0 quad 2))
+    (set! (-> arg0 trans quad) (-> s5-0 trans quad))
+    )
+  arg0
+  )
+
+(defun vector-matrix*! ((arg0 vector) (arg1 vector) (arg2 matrix))
+  "Set dst = vec * mat. dst may be equal to src."
+  (rlet ((acc :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         )
+    (.lvf vf1 (&-> arg2 quad 0))
+    (.lvf vf2 (&-> arg2 quad 1))
+    (.lvf vf3 (&-> arg2 quad 2))
+    (.lvf vf4 (&-> arg2 trans quad))
+    (.lvf vf5 (&-> arg1 quad))
+    (.mul.x.vf acc vf1 vf5)
+    (.add.mul.y.vf acc vf2 vf5 acc)
+    (.add.mul.z.vf acc vf3 vf5 acc)
+    (.add.mul.w.vf vf5 vf4 vf5 acc)
+    (.svf (&-> arg0 quad) vf5)
+    arg0
+    )
+  )
+
+(defun vector-rotate*! ((arg0 vector) (arg1 vector) (arg2 matrix))
+  "Set dst to be the input vector rotated by the rotation part of mat.
+   The input matrix should be a homogeneous transform with a rotation matrix as its upper-left 3x3.
+   dst may be equal to src."
+  (rlet ((acc :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         )
+    (nop!)
+    (nop!)
+    (.lvf vf5 (&-> arg1 quad))
+    (nop!)
+    (.lvf vf1 (&-> arg2 quad 0))
+    (nop!)
+    (.lvf vf2 (&-> arg2 quad 1))
+    (.mul.x.vf acc vf1 vf5)
+    (.lvf vf3 (&-> arg2 quad 2))
+    (.add.mul.y.vf acc vf2 vf5 acc)
+    (.lvf vf4 (&-> arg2 trans quad))
+    (.add.mul.z.vf vf5 vf3 vf5 acc)
+    (nop!)
+    (nop!)
+    (.svf (&-> arg0 quad) vf5)
+    arg0
+    )
+  )
+
+(defun vector3s-matrix*! ((arg0 vector3s) (arg1 vector3s) (arg2 matrix))
+  "Set dst to be ([src 1.0] * mat).xyz.  Doesn't touch the w of dst.
+   dst and vec can be the same memory"
+  (let ((s5-0 (new-stack-vector0)))
+    (set-vector! s5-0 (-> arg1 x) (-> arg1 y) (-> arg1 z) 1.0)
+    (vector-matrix*! s5-0 s5-0 arg2)
+    (set! (-> arg0 x) (-> s5-0 x))
+    (set! (-> arg0 y) (-> s5-0 y))
+    (set! (-> arg0 z) (-> s5-0 z))
+    )
+  arg0
+  )
+
+(defun vector3s-rotate*! ((arg0 vector3s) (arg1 vector3s) (arg2 matrix))
+  "Set dst to vec rotated by the rotation in the homogeneous transform mat.
+   mat should not have a scale/shear (the upper 3x3 should be a pure rotation)."
+  (let ((s5-0 (new-stack-vector0)))
+    (set-vector! s5-0 (-> arg1 x) (-> arg1 y) (-> arg1 z) 1.0)
+    (vector-rotate*! s5-0 s5-0 arg2)
+    (set! (-> arg0 x) (-> s5-0 x))
+    (set! (-> arg0 y) (-> s5-0 y))
+    (set! (-> arg0 z) (-> s5-0 z))
+    )
+  arg0
+  )
+
+(defun matrix-transpose! ((dst matrix) (src matrix))
+  "Set dst = src^T. src and dst can be the same."
+  (local-vars
+   (v1-0 uint128)
+   (v1-1 uint128)
+   (v1-2 uint128)
+   (a1-1 uint128)
+   (a2-1 uint128)
+   (a3-1 uint128)
+   (a3-2 uint128)
+   (t0-1 uint128)
+   )
+  (let ((t0-0 (-> src vector 0 quad)))
+   (let ((t1-0 (-> src vector 1 quad)))
+    (let ((a2-0 (-> src vector 2 quad)))
+     (.pextlw v1-0 t1-0 t0-0)
+     (let ((a3-0 (-> src vector 3 quad)))
+      (.pextuw a1-1 t1-0 t0-0)
+      ;; (.mov r0-0 f31-0) not sure what this weird thing is.
+      ;; it has no effect, but they use it instead of nop sometimes?
+      (.pextlw t0-1 a3-0 a2-0)
+      ;; (.mov r0-1 f31-0)
+      (.pextuw a2-1 a3-0 a2-0)
+      )
+     )
+    )
+   )
+  ;; (.mov r0-2 f31-0)
+  (.pcpyld a3-1 t0-1 v1-0)
+  ;; (.mov r0-3 f31-0)
+  (.pcpyud v1-1 v1-0 t0-1)
+  (set! (-> dst vector 0 quad) a3-1)
+  (.pcpyld a3-2 a2-1 a1-1)
+  (set! (-> dst vector 1 quad) v1-1)
+  (.pcpyud v1-2 a1-1 a2-1)
+  (set! (-> dst vector 2 quad) a3-2)
+  (set! (-> dst vector 3 quad) v1-2)
+  dst
+  )
+
+
+(defun matrix-inverse-of-rot-trans! ((arg0 matrix) (arg1 matrix))
+  "Set dst = src^-1, assuming src is a homogeneous tranform with only rotation/translation.
+   NOTE: THIS FUNCTION REQUIRES dst != src"
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf8 :class vf)
+         )
+    (init-vf0-vector)
+    (matrix-transpose! arg0 arg1)
+    (.lvf vf1 (&-> arg0 quad 0))
+    (.lvf vf2 (&-> arg0 quad 1))
+    (.lvf vf3 (&-> arg0 quad 2))
+    (.sub.vf vf1 vf1 vf1 :mask #b1000)
+    (.sub.vf vf2 vf2 vf2 :mask #b1000)
+    (.sub.vf vf3 vf3 vf3 :mask #b1000)
+    (.lvf vf8 (&-> arg1 trans quad))
+    (.mul.x.vf acc vf1 vf8)
+    (.add.mul.y.vf acc vf2 vf8 acc)
+    (.add.mul.z.vf vf4 vf3 vf8 acc)
+    (.sub.vf vf4 vf0 vf4)
+    (.mov.vf vf4 vf0 :mask #b1000)
+    (.svf (&-> arg0 quad 0) vf1)
+    (.svf (&-> arg0 quad 1) vf2)
+    (.svf (&-> arg0 quad 2) vf3)
+    (.svf (&-> arg0 trans quad) vf4)
+    arg0
+    )
+  )
+
+(defun matrix-4x4-inverse! ((arg0 matrix) (arg1 matrix))
+  "Invert a 4x4 matrix. This assumes that the input is a homogeneous transform.
+   Src and dst can be the same."
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf10 :class vf)
+         (vf11 :class vf)
+         (vf12 :class vf)
+         (vf13 :class vf)
+         (vf14 :class vf)
+         (vf15 :class vf)
+         (vf16 :class vf)
+         (vf17 :class vf)
+         (vf18 :class vf)
+         (vf19 :class vf)
+         (vf2 :class vf)
+         (vf20 :class vf)
+         (vf23 :class vf)
+         (vf24 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf27 :class vf)
+         (vf28 :class vf)
+         (vf29 :class vf)
+         (vf3 :class vf)
+         (vf30 :class vf)
+         (vf31 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         (vf9 :class vf)
+         )
+
+    ;; ADDED: the original implementation does math on vectors where some values are
+    ;; uninitialized. It doesn't use the result, so there's no problem, but this
+    ;; may cause strange slowdowns on x86 where doing math on NaNs can be extremely slow.
+    ;; ideally we should find a better solution.
+    (.xor.vf vf26 vf26 vf26)
+    (.xor.vf vf27 vf27 vf27)
+    (.xor.vf vf28 vf28 vf28)
+    (.xor.vf vf29 vf29 vf29)
+    (.xor.vf vf30 vf30 vf30)
+    (.xor.vf vf31 vf31 vf31)
+    (.xor.vf vf16 vf16 vf16)
+    (.xor.vf vf17 vf17 vf17)
+    (.xor.vf vf18 vf18 vf18)
+    (.xor.vf vf23 vf23 vf23)
+    (.xor.vf vf19 vf19 vf19)
+    (.xor.vf vf3 vf3 vf3)
+    (.xor.vf vf4 vf4 vf4)
+    (.xor.vf vf5 vf5 vf5)
+
+    (init-vf0-vector)
+    (nop!)
+    (nop!)
+    (.lvf vf23 (&-> arg1 quad 0))
+    (nop!)
+    (.lvf vf24 (&-> arg1 quad 1))
+    (nop!)
+    (.lvf vf25 (&-> arg1 quad 2))
+    (nop!)
+    (.lvf vf1 (&-> arg1 trans quad))
+    (.mul.x.vf vf7 vf24 vf23)
+    (nop!)
+    (.mul.y.vf vf8 vf24 vf23)
+    (nop!)
+    (.mul.z.vf vf9 vf24 vf23)
+    (nop!)
+    (.mul.x.vf vf10 vf25 vf23)
+    (nop!)
+    (.mul.y.vf vf11 vf25 vf23)
+    (nop!)
+    (.mul.z.vf vf12 vf25 vf23)
+    (nop!)
+    (.mul.x.vf vf13 vf25 vf24)
+    (nop!)
+    (.mul.y.vf vf14 vf25 vf24)
+    (nop!)
+    (.mul.z.vf vf15 vf25 vf24)
+    (nop!)
+    (.mul.z.vf vf26 vf7 vf25 :mask #b10)
+    (nop!)
+    (.mul.z.vf vf27 vf11 vf24 :mask #b1)
+    (nop!)
+    (.mul.y.vf vf28 vf9 vf25 :mask #b1)
+    (nop!)
+    (.mul.z.vf vf29 vf14 vf23 :mask #b1)
+    (nop!)
+    (.mul.z.vf vf30 vf8 vf25 :mask #b1)
+    (nop!)
+    (.mul.y.vf vf31 vf7 vf25 :mask #b100)
+    (nop!)
+    (.add.y.vf vf16 vf27 vf26 :mask #b1)
+    (nop!)
+    (.sub.vf vf1 vf0 vf1)
+    (nop!)
+    (.add.x.vf vf17 vf29 vf30 :mask #b1)
+    (nop!)
+    (.sub.z.vf vf18 vf28 vf31 :mask #b1)
+    (nop!)
+    (.sub.y.vf vf23 vf14 vf15 :mask #b100)
+    (nop!)
+    (.sub.z.vf vf26 vf15 vf13 :mask #b1)
+    (nop!)
+    (.sub.x.vf vf29 vf13 vf14 :mask #b10)
+    (nop!)
+    (.sub.vf vf19 vf16 vf17 :mask #b1)
+    (nop!)
+    (.sub.z.vf vf24 vf12 vf11 :mask #b10)
+    (nop!)
+    (.sub.x.vf vf27 vf10 vf12 :mask #b100)
+    (nop!)
+    (.sub.y.vf vf30 vf11 vf10 :mask #b1)
+    (nop!)
+    (.add.vf vf20 vf19 vf18 :mask #b1)
+    (nop!)
+    (.sub.y.vf vf25 vf8 vf9 :mask #b100)
+    (nop!)
+    (.sub.z.vf vf28 vf9 vf7 :mask #b1)
+    (nop!)
+    (.sub.x.vf vf31 vf7 vf8 :mask #b10)
+    (nop!)
+    (.div.vf Q vf0 vf20 :fsf #b11 :ftf #b0)
+    (nop!)
+    (.sub.w.vf vf3 vf3 vf3 :mask #b1000)
+    (nop!)
+    (.sub.w.vf vf4 vf4 vf4 :mask #b1000)
+    (nop!)
+    (.sub.w.vf vf5 vf5 vf5 :mask #b1000)
+    (nop!)
+    (.mov.vf vf6 vf0 :mask #b1000)
+    (nop!)
+    (.wait.vf)
+    (nop!)
+    (.add.vf vf2 vf0 Q :mask #b1)
+    (nop!)
+    (.add.x.vf vf2 vf0 vf2 :mask #b111)
+    (nop!)
+    (.mul.z.vf vf3 vf2 vf23 :mask #b1)
+    (nop!)
+    (.mul.x.vf vf4 vf2 vf26 :mask #b1)
+    (nop!)
+    (.mul.y.vf vf5 vf2 vf29 :mask #b1)
+    (nop!)
+    (.mul.y.vf vf3 vf2 vf24 :mask #b10)
+    (nop!)
+    (.mul.z.vf vf4 vf2 vf27 :mask #b10)
+    (nop!)
+    (.mul.x.vf vf5 vf2 vf30 :mask #b10)
+    (nop!)
+    (.mul.z.vf vf3 vf2 vf25 :mask #b100)
+    (nop!)
+    (.mul.x.vf vf4 vf2 vf28 :mask #b100)
+    (nop!)
+    (.mul.y.vf vf5 vf2 vf31 :mask #b100)
+    (nop!)
+    (.mul.x.vf acc vf3 vf1)
+    (.svf (&-> arg0 quad 0) vf3)
+    (.add.mul.y.vf acc vf4 vf1 acc)
+    (.svf (&-> arg0 quad 1) vf4)
+    (.add.mul.z.vf vf6 vf5 vf1 acc :mask #b111)
+    (.svf (&-> arg0 quad 2) vf5)
+    (nop!)
+    (.svf (&-> arg0 trans quad) vf6)
+    arg0
+    )
+  )
+
+(defun matrix-translate! ((arg0 matrix) (arg1 vector))
+  "Set dst to a homogeneous transform with only a translation of trans"
+  (matrix-identity! arg0)
+  (set! (-> arg0 trans x) (-> arg1 x))
+  (set! (-> arg0 trans y) (-> arg1 y))
+  (set! (-> arg0 trans z) (-> arg1 z))
+  arg0
+  )
+
+(defun matrix-translate+! ((arg0 matrix) (arg1 matrix) (arg2 vector))
+  "Add the given translation to the translation of homogenous transform mat src
+   and store in dst.  It is okay for dst = src."
+  (set! (-> arg0 trans x) (+ (-> arg1 trans x) (-> arg2 x)))
+  (set! (-> arg0 trans y) (+ (-> arg1 trans y) (-> arg2 y)))
+  (set! (-> arg0 trans z) (+ (-> arg1 trans z) (-> arg2 z)))
+  (when (!= arg0 arg1)
+    (set! (-> arg0 quad 0) (-> arg1 quad 0))
+    (set! (-> arg0 quad 1) (-> arg1 quad 1))
+    (set! (-> arg0 quad 2) (-> arg1 quad 2))
+    )
+  arg0
+  )
+
+(defun matrix-scale! ((arg0 matrix) (arg1 vector))
+  "Set dst to a homogenous transform with only a scale. The x,y,z components
+   of scale become the x,y,z scaling factors"
+  (set! (-> arg0 quad 0) (the-as uint128 0))
+  (set! (-> arg0 quad 1) (the-as uint128 0))
+  (set! (-> arg0 quad 2) (the-as uint128 0))
+  (set! (-> arg0 trans quad) (the-as uint128 0))
+  (set! (-> arg0 data 0) (-> arg1 x))
+  (set! (-> arg0 data 5) (-> arg1 y))
+  (set! (-> arg0 data 10) (-> arg1 z))
+  (set! (-> arg0 trans w) 1.0)
+  arg0
+  )
+
+(defun scale-matrix! ((arg0 matrix) (arg1 vector) (arg2 matrix))
+  "Scale an existing matrix. Okay for dst = src. The scaling is applied per row.
+   This means the x component of scale is used to scale the first row of src.
+   The w component of scale is used."
+  (rlet ((vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         )
+    (.lvf vf4 (&-> arg1 quad))
+    (.lvf vf5 (&-> arg2 quad 0))
+    (.lvf vf6 (&-> arg2 quad 1))
+    (.lvf vf7 (&-> arg2 quad 2))
+    (.lvf vf8 (&-> arg2 trans quad))
+    (.mul.x.vf vf5 vf5 vf4)
+    (.mul.y.vf vf6 vf6 vf4)
+    (.mul.z.vf vf7 vf7 vf4)
+    (.mul.w.vf vf8 vf8 vf4)
+    (.svf (&-> arg0 quad 0) vf5)
+    (.svf (&-> arg0 quad 1) vf6)
+    (.svf (&-> arg0 quad 2) vf7)
+    (.svf (&-> arg0 trans quad) vf8)
+    arg0
+    )
+  )
+
+(defun matrix-inv-scale! ((arg0 matrix) (arg1 vector))
+  "Set dst to a homogeneous transform with only a scale.
+   The x,y,z components of scale are inverted and used as the x,y,z scaling factors"
+  (set! (-> arg0 quad 0) (the-as uint128 0))
+  (set! (-> arg0 quad 1) (the-as uint128 0))
+  (set! (-> arg0 quad 2) (the-as uint128 0))
+  (set! (-> arg0 trans quad) (the-as uint128 0))
+  (set! (-> arg0 data 0) (/ 1.0 (-> arg1 x)))
+  (set! (-> arg0 data 5) (/ 1.0 (-> arg1 y)))
+  (set! (-> arg0 data 10) (/ 1.0 (-> arg1 z)))
+  (set! (-> arg0 trans w) 1.0)
+  arg0
+  )
+
+(defun column-scale-matrix! ((arg0 matrix) (arg1 vector) (arg2 matrix))
+  "Scale an existing matrix. Okay for dst = src. The scaling is applied column-wise.
+   Meaning the x component of scale will scale the first column of src."
+  (rlet ((vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         )
+    (.lvf vf4 (&-> arg1 quad))
+    (.lvf vf5 (&-> arg2 quad 0))
+    (.lvf vf6 (&-> arg2 quad 1))
+    (.lvf vf7 (&-> arg2 quad 2))
+    (.lvf vf8 (&-> arg2 trans quad))
+    (.mul.vf vf5 vf5 vf4)
+    (.mul.vf vf6 vf6 vf4)
+    (.mul.vf vf7 vf7 vf4)
+    (.mul.vf vf8 vf8 vf4)
+    (.svf (&-> arg0 quad 0) vf5)
+    (.svf (&-> arg0 quad 1) vf6)
+    (.svf (&-> arg0 quad 2) vf7)
+    (.svf (&-> arg0 trans quad) vf8)
+    arg0
+    )
+  )
+
+(defun matrix-rotate-x! ((arg0 matrix) (arg1 float))
+  "Set dst to a homogeneous transform  matrix for a rotation around the x-axis (degrees)"
+  (let ((f30-0 (sin arg1))
+        (f0-0 (cos arg1))
+        )
+    (set! (-> arg0 quad 0) (the-as uint128 0))
+    (set! (-> arg0 quad 1) (the-as uint128 0))
+    (set! (-> arg0 quad 2) (the-as uint128 0))
+    (set! (-> arg0 trans quad) (the-as uint128 0))
+    (set! (-> arg0 data 0) (the-as float 1.0))
+    (set! (-> arg0 data 5) f0-0)
+    (set! (-> arg0 data 6) f30-0)
+    (set! (-> arg0 data 9) (- f30-0))
+    (set! (-> arg0 data 10) f0-0)
+    )
+  (set! (-> arg0 trans w) 1.0)
+  arg0
+  )
+
+(defun matrix-rotate-y! ((arg0 matrix) (arg1 float))
+  "Set dst to a homoegeneous transform matrix for a rotation around the y axis (degrees)"
+  (let ((f30-0 (sin arg1))
+        (f0-0 (cos arg1))
+        )
+    (set! (-> arg0 quad 0) (the-as uint128 0))
+    (set! (-> arg0 quad 1) (the-as uint128 0))
+    (set! (-> arg0 quad 2) (the-as uint128 0))
+    (set! (-> arg0 trans quad) (the-as uint128 0))
+    (set! (-> arg0 data 0) f0-0)
+    (set! (-> arg0 data 2) (- f30-0))
+    (set! (-> arg0 data 5) 1.0)
+    (set! (-> arg0 data 8) f30-0)
+    (set! (-> arg0 data 10) f0-0)
+    )
+  (set! (-> arg0 trans w) 1.0)
+  arg0
+  )
+
+(defun matrix-rotate-z! ((arg0 matrix) (arg1 float))
+  "Set dst to a homogeneous transform matrix for a rotation around the z-axis (degrees)"
+  (let ((f30-0 (sin arg1))
+        (f0-0 (cos arg1))
+        )
+    (set! (-> arg0 quad 0) (the-as uint128 0))
+    (set! (-> arg0 quad 1) (the-as uint128 0))
+    (set! (-> arg0 quad 2) (the-as uint128 0))
+    (set! (-> arg0 trans quad) (the-as uint128 0))
+    (set! (-> arg0 data 0) f0-0)
+    (set! (-> arg0 data 1) f30-0)
+    (set! (-> arg0 data 4) (- f30-0))
+    (set! (-> arg0 data 5) f0-0)
+    )
+  (set! (-> arg0 data 10) 1.0)
+  (set! (-> arg0 trans w) 1.0)
+  arg0
+  )
+
+(defun matrix-rotate-zyx! ((arg0 matrix) (arg1 vector))
+  "Rotate in z,y,x order."
+  (let ((gp-0 (new-stack-matrix0))
+        (s5-0 (new-stack-matrix0))
+        )
+    (matrix-rotate-x! arg0 (-> arg1 x))
+    (matrix-rotate-y! gp-0 (-> arg1 y))
+    (matrix*! s5-0 gp-0 arg0)
+    (matrix-rotate-z! gp-0 (-> arg1 z))
+    (matrix*! arg0 gp-0 s5-0)
+    )
+  arg0
+  )
+
+(defun-debug matrix-rotate-xyz-2! ((arg0 matrix) (arg1 vector))
+  "Jak 1 version of matrix-rotate-xyz. Slower than the one below"
+  (let ((gp-0 (new 'stack-no-clear 'matrix))
+        (s5-0 (new 'stack-no-clear 'matrix))
+        )
+    (matrix-rotate-z! arg0 (-> arg1 z))
+    (matrix-rotate-y! gp-0 (-> arg1 y))
+    (matrix*! s5-0 gp-0 arg0)
+    (matrix-rotate-x! gp-0 (-> arg1 x))
+    (matrix*! arg0 gp-0 s5-0)
+    )
+  arg0
+  )
+
+(defun matrix-rotate-xyz! ((arg0 matrix) (arg1 vector))
+  "Rotate in x,y,z order"
+  (rlet ((vf0 :class vf))
+    (init-vf0-vector)
+    (let ((s4-0 (new 'stack-no-clear 'vector))
+          (s5-0 (new 'stack-no-clear 'vector))
+          )
+      (vector-sincos! s4-0 s5-0 arg1)
+      (let ((f2-0 (-> s4-0 x))
+            (f5-0 (-> s4-0 y))
+            (f3-0 (-> s4-0 z))
+            (f0-0 (-> s5-0 x))
+            (f1-0 (-> s5-0 y))
+            )
+        (let ((f4-0 (-> s5-0 z)))
+          (set! (-> arg0 data 0) (* f1-0 f4-0))
+          (set! (-> arg0 data 1) (* f1-0 f3-0))
+          (set! (-> arg0 data 2) (- f5-0))
+          (set! (-> arg0 data 3) 0.0)
+          (let ((f6-4 (* f2-0 f5-0))
+                (f5-1 (* f0-0 f5-0))
+                )
+            (set! (-> arg0 data 4) (- (* f6-4 f4-0) (* f0-0 f3-0)))
+            (set! (-> arg0 data 5) (+ (* f6-4 f3-0) (* f0-0 f4-0)))
+            (set! (-> arg0 data 6) (* f2-0 f1-0))
+            (set! (-> arg0 data 7) 0.0)
+            (set! (-> arg0 data 8) (+ (* f2-0 f3-0) (* f5-1 f4-0)))
+            (set! (-> arg0 data 9) (- (* f5-1 f3-0) (* f2-0 f4-0)))
+            )
+          )
+        (set! (-> arg0 data 10) (* f0-0 f1-0))
+        )
+      )
+    (set! (-> arg0 data 11) 0.0)
+    (.svf (&-> arg0 trans quad) vf0)
+    arg0
+    )
+  )
+
+(defun matrix-rotate-zxy! ((arg0 matrix) (arg1 vector))
+  "Rotate in z,x,y order"
+  (let ((gp-0 (new-stack-matrix0))
+        (s5-0 (new-stack-matrix0))
+        )
+    (matrix-rotate-y! arg0 (-> arg1 y))
+    (matrix-rotate-x! gp-0 (-> arg1 x))
+    (matrix*! s5-0 gp-0 arg0)
+    (matrix-rotate-z! gp-0 (-> arg1 z))
+    (matrix*! arg0 gp-0 s5-0)
+    )
+  arg0
+  )
+
+(defun matrix-rotate-yxz! ((arg0 matrix) (arg1 vector))
+  "Rotate in y,x,z order."
+  (let ((gp-0 (new-stack-matrix0))
+        (s5-0 (new-stack-matrix0))
+        )
+    (matrix-rotate-z! arg0 (-> arg1 z))
+    (matrix-rotate-x! gp-0 (-> arg1 x))
+    (matrix*! s5-0 gp-0 arg0)
+    (matrix-rotate-y! gp-0 (-> arg1 y))
+    (matrix*! arg0 gp-0 s5-0)
+    )
+  arg0
+  )
+
+(defun matrix-rotate-yzx! ((arg0 matrix) (arg1 vector))
+  "Rotate in y,z,x order"
+  (let ((gp-0 (new-stack-matrix0))
+        (s5-0 (new-stack-matrix0))
+        )
+    (matrix-rotate-z! arg0 (-> arg1 x))
+    (matrix-rotate-x! gp-0 (-> arg1 z))
+    (matrix*! s5-0 gp-0 arg0)
+    (matrix-rotate-y! gp-0 (-> arg1 y))
+    (matrix*! arg0 gp-0 s5-0)
+    )
+  arg0
+  )
+
+(defun matrix-rotate-yxy! ((arg0 matrix) (arg1 vector))
+  "Rotate. I believe in yxy order? Compared to the other rotations, this one
+   is quite a bit more optimized and avoid repeated trig operations."
+  (let ((a2-0 (new 'stack-no-clear 'vector))
+        (s5-0 (new 'stack-no-clear 'vector))
+        (s4-0 (new 'stack-no-clear 'vector))
+        )
+    (set-vector! a2-0 (-> arg1 x) (- (-> arg1 y) (-> arg1 z)) (-> arg1 z) 1.0)
+    (vector-sincos! s5-0 s4-0 a2-0)
+    (let ((f1-1 (-> s4-0 y))
+          (f0-5 (-> s5-0 y))
+          (f2-0 (-> s4-0 x))
+          (f5-0 (-> s5-0 x))
+          (f3-0 (-> s4-0 z))
+          (f4-0 (-> s5-0 z))
+          )
+      (set! (-> arg0 data 0) (- (* f1-1 f3-0) (* f0-5 f2-0 f4-0)))
+      (set! (-> arg0 data 1) (* f0-5 f5-0))
+      (set! (-> arg0 data 2) (- (+ (* f1-1 f4-0) (* f0-5 f2-0 f3-0))))
+      (set! (-> arg0 data 3) 0.0)
+      (set! (-> arg0 data 4) (* f5-0 f4-0))
+      (set! (-> arg0 data 5) f2-0)
+      (set! (-> arg0 data 6) (* f5-0 f3-0))
+      (set! (-> arg0 data 7) 0.0)
+      (set! (-> arg0 data 8) (+ (* f0-5 f3-0) (* f1-1 f2-0 f4-0)))
+      (set! (-> arg0 data 9) (- (* f1-1 f5-0)))
+      (set! (-> arg0 data 10) (- (* f1-1 f2-0 f3-0) (* f0-5 f4-0)))
+      )
+    )
+  (set! (-> arg0 data 11) 0.0)
+  (set! (-> arg0 trans x) 0.0)
+  (set! (-> arg0 trans y) 0.0)
+  (set! (-> arg0 trans z) 0.0)
+  (set! (-> arg0 trans w) 1.0)
+  arg0
+  )
+
+(defun matrix-rotate-yx! ((arg0 matrix) (arg1 float) (arg2 float))
+  "Rotate by y then x."
+  (matrix-rotate-y! arg0 arg1)
+  (let ((a1-2 (matrix-rotate-x! (new-stack-matrix0) arg2)))
+    (matrix*! arg0 a1-2 arg0)
+    )
+  arg0
+  )
+
+(defun matrix-axis-sin-cos-vu! ((arg0 matrix) (arg1 vector) (arg2 float) (arg3 float))
+  "Create an axis-angle rotation matrix. But given the sin/cos of the angle."
+  ;; this is unused and basically identital to the non-VU version, so I'm leaving this out.
+  (/ 0 0)
+  (none)
+  )
+
+(defun matrix-axis-sin-cos! ((dst matrix) (axis vector) (s float) (c float))
+  "Create an axis-angle rotation matrix. But given the sin/cos of the angle."
+  ;;or v0, a0, r0
+  ;;or v1, a1, r0
+  ;;mtc1 f0, a2
+  ;;mtc1 f1, a3
+  ;;sll r0, r0, 0
+
+  ;; input scramble:
+  ;;  - v0 = dst
+  ;;  - v1 = axis
+  ;;  - f0 = sine
+  ;;  - f1 = cosine
+  (rlet ((vf5 :class vf) ;; vf5.x will be sine, vf5.w will be -cosine
+         (vf6 :class vf) ;; vf6.x will be cosine
+         (vf1 :class vf) ;; vector.
+         (vf0 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf11 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         (vf9 :class vf)
+         (vf10 :class vf)
+         (a1 :class i128 :type uint128)
+         (r0 :class i128 :type uint128)) ;; will be used for zero check.
+    ;; initialize constant vectors
+    (init-vf0-vector)
+    (.xor.p r0 r0 r0)
+
+    ;; this is an overly complicated check to see if xyz = 0.
+
+    (let ((a0 65535)           ;; ori a0, r0, 65535
+          (v1 (-> axis quad))) ;; lq v1, 0(v1)
+
+      ;; this a0 constant has ffff in the upper 16 bits to mask out w, later on.
+      ;; dsll32 a0, a0, 16
+      (set! a0 (shl a0 48)) ;; a0 = ffff'0000'0000'0000
+
+      ;;mfc1 a1, f1
+      ;;qmtc2.i vf6, a1
+      (.mov vf6 c) ;; will set vf6.x to cosine.
+
+      ;;pceqw a1, v1, r0
+      ;; compare for equality with zero.
+      ;; this will set 32-bits for each component.
+      (.pceqw a1 v1 r0)
+
+      ;; so we pack: [upper64, w0?16, z0?16, y0?16, x0?16]
+      (.ppach a1 r0 a1)
+
+      ;;qmtc2.i vf1, v1
+      (.mov vf1 v1) ;; should be quad move!
+
+      ;;or v1, a1, a0
+      ;;  make it seem like w is zero. If x,y,z = 0, but w != 0, we want
+      ;; it to act like zero.
+      (let ((xyz-zero (logior a0 (the uint a1))))
+        ;;mfc1 a0, f0
+        ;;qmtc2.i vf5, a0
+        (.mov vf5 s)
+
+        ;;daddiu v1, v1, 1
+        ;; if all is zero, this will overflow and give us 0.
+        (+! xyz-zero 1)
+
+        ;;vsubx.w vf5, vf0, vf6
+        (.sub.x.vf vf5 vf0 vf6 :mask #b1000)
+
+        ;;beq v1, r0, L15
+        ;;vaddx.y vf5, vf0, vf6
+        (.add.x.vf vf5 vf0 vf6 :mask #b0010)
+        (when-goto (zero? xyz-zero) zero-case)
+        )
+      )
+
+    ;; Nonzero case:
+    ;; vsubw.w vf2, vf0, vf0
+    ;; vsubw.w vf3, vf0, vf0
+    ;; vsubw.w vf4, vf0, vf0
+    (.xor.vf vf2 vf2 vf2)
+    (.xor.vf vf3 vf3 vf3)
+    (.xor.vf vf4 vf4 vf4)
+
+    ;;vmulx.xyz vf11, vf1, vf5
+    (.mul.x.vf vf11 vf1 vf5 :mask #b0111)
+
+    ;;vaddy.x vf7, vf0, vf5
+    (.add.y.vf vf7 vf0 vf5 :mask #b0001)
+
+    ;;vaddy.y vf8, vf0, vf5
+    (.add.y.vf vf8 vf0 vf5 :mask #b0010)
+
+    ;;vaddy.z vf9, vf0, vf5
+    (.add.y.vf vf9 vf0 vf5 :mask #b0100)
+
+    ;;vmulw.xyz vf10, vf1, vf5
+    (.mul.w.vf vf10 vf1 vf5 :mask #b0111)
+
+    ;;vsubz.y vf7, vf0, vf11
+    (.sub.z.vf vf7 vf0 vf11 :mask #b0010)
+
+    ;;vaddy.z vf7, vf0, vf11
+    (.add.y.vf vf7 vf0 vf11 :mask #b0100)
+
+    ;;vaddz.x vf8, vf0, vf11
+    (.add.z.vf vf8 vf0 vf11 :mask #b0001)
+
+    ;;vsubx.z vf8, vf0, vf11
+    (.sub.x.vf vf8 vf0 vf11 :mask #b0100)
+
+    ;;vmulx.xyz vf2, vf10, vf1
+    (.mul.x.vf vf2 vf10 vf1 :mask #b0111)
+
+    ;;vmuly.xyz vf3, vf10, vf1
+    (.mul.y.vf vf3 vf10 vf1 :mask #b0111)
+
+    ;;vmulz.xyz vf4, vf10, vf1
+    (.mul.z.vf vf4 vf10 vf1 :mask #b0111)
+
+    ;;vsuby.x vf9, vf0, vf11
+    (.sub.y.vf vf9 vf0 vf11 :mask #b0001)
+
+    ;;vaddx.y vf9, vf0, vf11
+    (.add.x.vf vf9 vf0 vf11 :mask #b0010)
+
+    ;;vadd.xyz vf2, vf2, vf7
+    (.add.vf vf2 vf2 vf7 :mask #b0111)
+
+    ;;vadd.xyz vf3, vf3, vf8
+    (.add.vf vf3 vf3 vf8 :mask #b0111)
+
+    ;;vadd.xyz vf4, vf4, vf9
+    (.add.vf vf4 vf4 vf9 :mask #b0111)
+
+    ;;sqc2 vf2, 0(v0)
+    ;;sqc2 vf3, 16(v0)
+    ;;sqc2 vf0, 48(v0)
+    ;;sqc2 vf4, 32(v0)
+    (.svf (-> dst vector 0) vf2)
+    (.svf (-> dst vector 1) vf3)
+    (.svf (-> dst vector 3) vf0)
+    (.svf (-> dst vector 2) vf4)
+    (goto end)
+    (label zero-case)
+    ;; overly clever way to set identity matrix
+    ;;lui v1, 16256
+    ;;sqc2 vf0, 48(v0)
+    ;;pcpyld v1, r0, v1
+    ;;mfc1 r0, f31
+    ;;prot3w a0, v1
+    ;;mfc1 r0, f31
+    ;;prot3w a1, a0
+    ;;sq v1, 0(v0)
+    ;;sll r0, r0, 0
+    ;;sq a0, 32(v0)
+    ;;sll r0, r0, 0
+    ;;sq a1, 16(v0)
+    (matrix-identity! dst)
+    (label end)
+    )
+  dst
+  )
+
+(defun matrix-axis-angle! ((arg0 matrix) (arg1 vector) (arg2 float))
+  "Create an axis-angle rotation matrix."
+  (matrix-axis-sin-cos! arg0 arg1 (sin arg2) (cos arg2))
+  )
+
+(defun matrix-lerp! ((arg0 matrix) (arg1 matrix) (arg2 matrix) (arg3 float))
+  "Lerp an entire matrix, coefficient-wise."
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         (vf9 :class vf)
+         )
+    (.mov vf9 arg3)
+    (.lvf vf1 (&-> arg1 quad 0))
+    (.lvf vf2 (&-> arg1 quad 1))
+    (.lvf vf3 (&-> arg1 quad 2))
+    (.lvf vf4 (&-> arg1 trans quad))
+    (.lvf vf5 (&-> arg2 quad 0))
+    (.lvf vf6 (&-> arg2 quad 1))
+    (.lvf vf7 (&-> arg2 quad 2))
+    (.lvf vf8 (&-> arg2 trans quad))
+    (.sub.vf vf5 vf5 vf1)
+    (.sub.vf vf6 vf6 vf2)
+    (.sub.vf vf7 vf7 vf3)
+    (.sub.vf vf8 vf8 vf4)
+    (.mul.x.vf vf5 vf5 vf9)
+    (.mul.x.vf vf6 vf6 vf9)
+    (.mul.x.vf vf7 vf7 vf9)
+    (.mul.x.vf vf8 vf8 vf9)
+    (.add.vf vf1 vf1 vf5)
+    (.add.vf vf2 vf2 vf6)
+    (.add.vf vf3 vf3 vf7)
+    (.add.vf vf4 vf4 vf8)
+    (.svf (&-> arg0 quad 0) vf1)
+    (.svf (&-> arg0 quad 1) vf2)
+    (.svf (&-> arg0 quad 2) vf3)
+    (.svf (&-> arg0 trans quad) vf4)
+    arg0
+    )
+  )
+
+(defun matrix-3x3-determinant ((arg0 matrix))
+  "Compute the determinant of a 3x3 matrix"
+  (let ((f8-0 (-> arg0 data 0))
+        (f1-0 (-> arg0 data 1))
+        (f4-0 (-> arg0 data 2))
+        (f2-0 (-> arg0 data 4))
+        (f5-0 (-> arg0 data 5))
+        (f9-0 (-> arg0 data 6))
+        (f3-0 (-> arg0 data 8))
+        (f6-0 (-> arg0 data 9))
+        (f0-0 (-> arg0 data 10))
+        )
+    (- (+ (* f8-0 f5-0 f0-0) (* f1-0 f9-0 f3-0) (* f4-0 f2-0 f6-0))
+       (+ (* f8-0 f9-0 f6-0) (* f4-0 f5-0 f3-0) (* f1-0 f2-0 f0-0))
+       )
+    )
+  )
+
+(defun matrix3-determinant ((arg0 matrix))
+  "Unused. Not sure if this has limitations compared to the above version."
+  (local-vars (v0-0 float))
+  (rlet ((acc :class vf)
+         (vf10 :class vf)
+         (vf11 :class vf)
+         (vf12 :class vf)
+         (vf13 :class vf)
+         )
+    (.lvf vf11 (&-> arg0 quad 1))
+    (.lvf vf12 (&-> arg0 quad 2))
+    (.lvf vf10 (&-> arg0 quad 0))
+    (.outer.product.a.vf acc vf11 vf12)
+    (.outer.product.b.vf vf13 vf12 vf11 acc)
+    (.mul.vf vf13 vf13 vf10 :mask #b111)
+    (.add.y.vf vf13 vf13 vf13 :mask #b1)
+    (.add.z.vf vf13 vf13 vf13 :mask #b1)
+    (.mov v0-0 vf13)
+    v0-0
+    )
+  )
+
+(defun matrix-3x3-inverse! ((arg0 matrix) (arg1 matrix))
+  "Compute the inverse of a 3x3 matrix. Not very efficient.
+   Requires src != dst."
+  (let ((f0-0 (matrix-3x3-determinant arg1)))
+    (set! (-> arg0 data 0)
+          (/ (- (* (-> arg1 data 5) (-> arg1 data 10)) (* (-> arg1 data 6) (-> arg1 data 9))) f0-0)
+          )
+    (set! (-> arg0 data 4)
+          (/ (- (* (-> arg1 data 6) (-> arg1 data 8)) (* (-> arg1 data 4) (-> arg1 data 10))) f0-0)
+          )
+    (set! (-> arg0 data 8)
+          (/ (- (* (-> arg1 data 4) (-> arg1 data 9)) (* (-> arg1 data 5) (-> arg1 data 8))) f0-0)
+          )
+    (set! (-> arg0 data 1)
+          (/ (- (* (-> arg1 data 9) (-> arg1 data 2)) (* (-> arg1 data 10) (-> arg1 data 1))) f0-0)
+          )
+    (set! (-> arg0 data 5)
+          (/ (- (* (-> arg1 data 10) (-> arg1 data 0)) (* (-> arg1 data 8) (-> arg1 data 2))) f0-0)
+          )
+    (set! (-> arg0 data 9)
+          (/ (- (* (-> arg1 data 8) (-> arg1 data 1)) (* (-> arg1 data 9) (-> arg1 data 0))) f0-0)
+          )
+    (set! (-> arg0 data 2)
+          (/ (- (* (-> arg1 data 1) (-> arg1 data 6)) (* (-> arg1 data 2) (-> arg1 data 5))) f0-0)
+          )
+    (set! (-> arg0 data 6)
+          (/ (- (* (-> arg1 data 2) (-> arg1 data 4)) (* (-> arg1 data 0) (-> arg1 data 6))) f0-0)
+          )
+    (set! (-> arg0 data 10)
+          (/ (- (* (-> arg1 data 0) (-> arg1 data 5)) (* (-> arg1 data 1) (-> arg1 data 4))) f0-0)
+          )
+    )
+  arg0
+  )
+
+(defun matrix-3x3-inverse-transpose! ((arg0 matrix) (arg1 matrix))
+  "Invert and transpose.
+   Requires dst != src."
+  (let ((f0-0 (matrix-3x3-determinant arg1)))
+    (set! (-> arg0 data 0)
+          (/ (- (* (-> arg1 data 5) (-> arg1 data 10)) (* (-> arg1 data 6) (-> arg1 data 9))) f0-0)
+          )
+    (set! (-> arg0 data 1)
+          (/ (- (* (-> arg1 data 6) (-> arg1 data 8)) (* (-> arg1 data 4) (-> arg1 data 10))) f0-0)
+          )
+    (set! (-> arg0 data 2)
+          (/ (- (* (-> arg1 data 4) (-> arg1 data 9)) (* (-> arg1 data 5) (-> arg1 data 8))) f0-0)
+          )
+    (set! (-> arg0 data 4)
+          (/ (- (* (-> arg1 data 9) (-> arg1 data 2)) (* (-> arg1 data 10) (-> arg1 data 1))) f0-0)
+          )
+    (set! (-> arg0 data 5)
+          (/ (- (* (-> arg1 data 10) (-> arg1 data 0)) (* (-> arg1 data 8) (-> arg1 data 2))) f0-0)
+          )
+    (set! (-> arg0 data 6)
+          (/ (- (* (-> arg1 data 8) (-> arg1 data 1)) (* (-> arg1 data 9) (-> arg1 data 0))) f0-0)
+          )
+    (set! (-> arg0 data 8)
+          (/ (- (* (-> arg1 data 1) (-> arg1 data 6)) (* (-> arg1 data 2) (-> arg1 data 5))) f0-0)
+          )
+    (set! (-> arg0 data 9)
+          (/ (- (* (-> arg1 data 2) (-> arg1 data 4)) (* (-> arg1 data 0) (-> arg1 data 6))) f0-0)
+          )
+    (set! (-> arg0 data 10)
+          (/ (- (* (-> arg1 data 0) (-> arg1 data 5)) (* (-> arg1 data 1) (-> arg1 data 4))) f0-0)
+          )
+    )
+  arg0
+  )
+
+(defun matrix3-inverse-transpose! ((arg0 matrix) (arg1 matrix))
+  "Unused. Not sure if this has limitations compared to other version."
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf10 :class vf)
+         (vf11 :class vf)
+         (vf12 :class vf)
+         (vf13 :class vf)
+         (vf14 :class vf)
+         (vf15 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf10 (&-> arg1 quad 0))
+    (.lvf vf11 (&-> arg1 quad 1))
+    (.lvf vf12 (&-> arg1 quad 2))
+    (.outer.product.a.vf acc vf11 vf12)
+    (.outer.product.b.vf vf13 vf12 vf11 acc)
+    (.outer.product.a.vf acc vf12 vf10)
+    (.outer.product.b.vf vf14 vf10 vf12 acc)
+    (.mul.vf vf1 vf10 vf13 :mask #b111)
+    (.outer.product.a.vf acc vf10 vf11)
+    (.outer.product.b.vf vf15 vf11 vf10 acc)
+    (.nop.vf)
+    (.add.y.vf vf1 vf1 vf1 :mask #b1)
+    (.nop.vf)
+    (.nop.vf)
+    (.nop.vf)
+    (.add.z.vf vf1 vf1 vf1 :mask #b1)
+    (.nop.vf)
+    (.nop.vf)
+    (.nop.vf)
+    (.div.vf Q vf0 vf1 :fsf #b11 :ftf #b0)
+    (.wait.vf)
+    (.mul.vf vf13 vf13 Q)
+    (.mul.vf vf14 vf14 Q)
+    (.mul.vf vf15 vf15 Q)
+    (.nop.vf)
+    (.nop.vf)
+    (.svf (&-> arg0 quad 0) vf13)
+    (.svf (&-> arg0 quad 1) vf14)
+    (.svf (&-> arg0 quad 2) vf15)
+    arg0
+    )
+  )
+
+(defun matrix-3x3-normalize! ((arg0 matrix) (arg1 matrix))
+  "Unused."
+  (/ 0 0)
+  arg0
+  #|
+  (local-vars (f0-1 float) (f0-2 float))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf10 :class vf)
+         (vf11 :class vf)
+         (vf12 :class vf)
+         (vf13 :class vf)
+         (vf14 :class vf)
+         (vf15 :class vf)
+         (vf16 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((f2-0 (-> arg1 data 0))
+          (f0-0 (-> arg1 data 1))
+          (f1-0 (-> arg1 data 2))
+          (v1-0 #x3f800000)
+          )
+      (.lvf vf10 (&-> arg1 quad 0))
+      (.mula.s f2-0 f2-0)
+      (.lvf vf11 (&-> arg1 quad 1))
+      (let ((f2-1 (gpr->fpr v1-0)))
+        (.lvf vf12 (&-> arg1 quad 2))
+        (.madda.s f0-0 f0-0)
+        (.sub.w.vf vf13 vf0 vf0 :mask #b1000)
+        (.madd.s f0-1 f1-0 f1-0)
+        (.sub.w.vf vf14 vf0 vf0 :mask #b1000)
+        (.rsqrt.s f0-2 f2-1 f0-1)
+        )
+      )
+    (.sub.w.vf vf15 vf0 vf0 :mask #b1000)
+    (let ((v1-1 f0-2))
+      (.mov vf16 v1-1)
+      )
+    (.mul.x.vf vf13 vf10 vf16 :mask #b111)
+    (.outer.product.a.vf acc vf11 vf13)
+    (.outer.product.b.vf vf14 vf13 vf11 acc)
+    (.outer.product.a.vf acc vf13 vf14)
+    (.outer.product.b.vf vf14 vf14 vf13 acc)
+    (.mul.vf vf16 vf14 vf14 :mask #b111)
+    (.mul.x.vf acc vf0 vf16 :mask #b1000)
+    (.add.mul.y.vf acc vf0 vf16 acc :mask #b1000)
+    (.add.mul.z.vf vf16 vf0 vf16 acc :mask #b1000)
+    (.isqrt.vf Q vf0 vf16 :fsf #b11 :ftf #b11)
+    (.wait.vf)
+    (.mul.vf vf14 vf14 Q :mask #b111)
+    (.outer.product.a.vf acc vf13 vf14)
+    (.outer.product.b.vf vf15 vf14 vf13 acc)
+    (.svf (&-> arg0 quad 0) vf13)
+    (.svf (&-> arg0 quad 1) vf14)
+    (.svf (&-> arg0 quad 2) vf15)
+    arg0
+    )
+    |#
+  )
+
+(defun matrix-4x4-determinant ((arg0 matrix))
+  "Take the determinant of a 4x4 matrix, but this is wrong."
+  (let ((f15-0 (-> arg0 data 0))
+        (f14-0 (-> arg0 data 1))
+        (f10-0 (-> arg0 data 2))
+        (f2-0 (-> arg0 data 3))
+        (f9-0 (-> arg0 data 4))
+        (f6-0 (-> arg0 data 5))
+        (f3-0 (-> arg0 data 6))
+        (f11-0 (-> arg0 data 7))
+        (f5-0 (-> arg0 data 8))
+        (f1-0 (-> arg0 data 9))
+        (f8-0 (-> arg0 data 10))
+        (f13-0 (-> arg0 data 11))
+        (f0-0 (-> arg0 trans x))
+        (f7-0 (-> arg0 trans y))
+        (f4-0 (-> arg0 trans z))
+        (f12-0 (-> arg0 trans w))
+        )
+    (- (+ (* f15-0 f6-0 f8-0 f12-0)
+          (* f15-0 f3-0 f13-0 f7-0)
+          (* f15-0 f11-0 f1-0 f4-0)
+          (* f14-0 f9-0 f13-0 f4-0)
+          (* f14-0 f3-0 f5-0 f4-0)
+          (* f14-0 f11-0 f8-0 f0-0)
+          (* f10-0 f9-0 f1-0 f12-0)
+          (* f10-0 f6-0 f13-0 f0-0)
+          (* f10-0 f11-0 f5-0 f7-0)
+          (* f2-0 f9-0 f1-0 f4-0)
+          (* f2-0 f6-0 f8-0 f0-0)
+          (* f2-0 f3-0 f5-0 f7-0)
+          )
+       (+ (* f15-0 f6-0 f13-0 f4-0)
+          (* f15-0 f3-0 f1-0 f12-0)
+          (* f15-0 f11-0 f8-0 f7-0)
+          (* f14-0 f9-0 f8-0 f12-0)
+          (* f14-0 f3-0 f13-0 f0-0)
+          (* f14-0 f11-0 f5-0 f4-0)
+          (* f10-0 f9-0 f13-0 f7-0)
+          (* f10-0 f6-0 f5-0 f12-0)
+          (* f10-0 f11-0 f1-0 f0-0)
+          (* f2-0 f9-0 f8-0 f7-0)
+          (* f2-0 f6-0 f5-0 f4-0)
+          (* f2-0 f3-0 f1-0 f0-0)
+          )
+       )
+    )
+  )
+
+(defun matrix-4x4-inverse-transpose! ((arg0 matrix) (arg1 matrix))
+  "Invert and transpose an entire 4x4. I think has no restrictions, other than dst != src. Unused.
+   The answer is wrong. The determinant function is wrong."
+  (let ((f0-0 (matrix-4x4-determinant arg1)))
+    (let ((f9-0 (-> arg1 data 5))
+          (f2-0 (-> arg1 data 6))
+          (f5-0 (-> arg1 data 7))
+          (f3-0 (-> arg1 data 9))
+          (f6-0 (-> arg1 data 10))
+          (f10-0 (-> arg1 data 11))
+          (f4-0 (-> arg1 trans y))
+          (f7-0 (-> arg1 trans z))
+          (f1-0 (-> arg1 trans w))
+          )
+      (set! (-> arg0 data 0) (/ (- (+ (* f9-0 f6-0 f1-0) (* f2-0 f10-0 f4-0) (* f5-0 f3-0 f7-0))
+                                   (+ (* f9-0 f10-0 f7-0) (* f5-0 f6-0 f4-0) (* f2-0 f3-0 f1-0))
+                                   )
+                                f0-0
+                                )
+            )
+      )
+    (let ((f9-2 (-> arg1 data 4))
+          (f2-2 (-> arg1 data 6))
+          (f5-2 (-> arg1 data 7))
+          (f3-1 (-> arg1 data 8))
+          (f6-1 (-> arg1 data 10))
+          (f10-1 (-> arg1 data 11))
+          (f4-3 (-> arg1 trans x))
+          (f7-2 (-> arg1 trans z))
+          (f1-6 (-> arg1 trans w))
+          )
+      (set! (-> arg0 data 1) (- (/ (- (+ (* f9-2 f6-1 f1-6) (* f2-2 f10-1 f4-3) (* f5-2 f3-1 f7-2))
+                                      (+ (* f9-2 f10-1 f7-2) (* f5-2 f6-1 f4-3) (* f2-2 f3-1 f1-6))
+                                      )
+                                   f0-0
+                                   )
+                                )
+            )
+      )
+    (let ((f9-4 (-> arg1 data 4))
+          (f2-4 (-> arg1 data 5))
+          (f5-4 (-> arg1 data 7))
+          (f3-2 (-> arg1 data 8))
+          (f6-2 (-> arg1 data 9))
+          (f10-2 (-> arg1 data 11))
+          (f4-6 (-> arg1 trans x))
+          (f7-4 (-> arg1 trans y))
+          (f1-13 (-> arg1 trans w))
+          )
+      (set! (-> arg0 data 2) (/ (- (+ (* f9-4 f6-2 f1-13) (* f2-4 f10-2 f4-6) (* f5-4 f3-2 f7-4))
+                                   (+ (* f9-4 f10-2 f7-4) (* f5-4 f6-2 f4-6) (* f2-4 f3-2 f1-13))
+                                   )
+                                f0-0
+                                )
+            )
+      )
+    (let ((f9-6 (-> arg1 data 4))
+          (f2-6 (-> arg1 data 5))
+          (f5-6 (-> arg1 data 6))
+          (f3-3 (-> arg1 data 8))
+          (f6-3 (-> arg1 data 9))
+          (f10-3 (-> arg1 data 10))
+          (f4-9 (-> arg1 trans x))
+          (f7-6 (-> arg1 trans y))
+          (f1-19 (-> arg1 trans z))
+          )
+      (set! (-> arg0 data 3) (- (/ (- (+ (* f9-6 f6-3 f1-19) (* f2-6 f10-3 f4-9) (* f5-6 f3-3 f7-6))
+                                      (+ (* f9-6 f10-3 f7-6) (* f5-6 f6-3 f4-9) (* f2-6 f3-3 f1-19))
+                                      )
+                                   f0-0
+                                   )
+                                )
+            )
+      )
+    (let ((f9-8 (-> arg1 data 1))
+          (f2-8 (-> arg1 data 2))
+          (f5-8 (-> arg1 data 3))
+          (f3-4 (-> arg1 data 9))
+          (f6-4 (-> arg1 data 10))
+          (f10-4 (-> arg1 data 11))
+          (f4-12 (-> arg1 trans y))
+          (f7-8 (-> arg1 trans z))
+          (f1-26 (-> arg1 trans w))
+          )
+      (set! (-> arg0 data 4) (- (/ (- (+ (* f9-8 f6-4 f1-26) (* f2-8 f10-4 f4-12) (* f5-8 f3-4 f7-8))
+                                      (+ (* f9-8 f10-4 f7-8) (* f5-8 f6-4 f4-12) (* f2-8 f3-4 f1-26))
+                                      )
+                                   f0-0
+                                   )
+                                )
+            )
+      )
+    (let ((f9-10 (-> arg1 data 0))
+          (f2-10 (-> arg1 data 2))
+          (f5-10 (-> arg1 data 3))
+          (f3-5 (-> arg1 data 8))
+          (f6-5 (-> arg1 data 10))
+          (f10-5 (-> arg1 data 11))
+          (f4-15 (-> arg1 trans x))
+          (f7-10 (-> arg1 trans z))
+          (f1-33 (-> arg1 trans w))
+          )
+      (set! (-> arg0 data 5) (/ (- (+ (* f9-10 f6-5 f1-33) (* f2-10 f10-5 f4-15) (* f5-10 f3-5 f7-10))
+                                   (+ (* f9-10 f10-5 f7-10) (* f5-10 f6-5 f4-15) (* f2-10 f3-5 f1-33))
+                                   )
+                                f0-0
+                                )
+            )
+      )
+    (let ((f9-12 (-> arg1 data 0))
+          (f2-12 (-> arg1 data 1))
+          (f5-12 (-> arg1 data 3))
+          (f3-6 (-> arg1 data 8))
+          (f6-6 (-> arg1 data 9))
+          (f10-6 (-> arg1 data 11))
+          (f4-18 (-> arg1 trans x))
+          (f7-12 (-> arg1 trans y))
+          (f1-39 (-> arg1 trans w))
+          )
+      (set! (-> arg0 data 6) (- (/ (- (+ (* f9-12 f6-6 f1-39) (* f2-12 f10-6 f4-18) (* f5-12 f3-6 f7-12))
+                                      (+ (* f9-12 f10-6 f7-12) (* f5-12 f6-6 f4-18) (* f2-12 f3-6 f1-39))
+                                      )
+                                   f0-0
+                                   )
+                                )
+            )
+      )
+    (let ((f9-14 (-> arg1 data 0))
+          (f2-14 (-> arg1 data 1))
+          (f5-14 (-> arg1 data 2))
+          (f3-7 (-> arg1 data 8))
+          (f6-7 (-> arg1 data 9))
+          (f10-7 (-> arg1 data 10))
+          (f4-21 (-> arg1 trans x))
+          (f7-14 (-> arg1 trans y))
+          (f1-46 (-> arg1 trans z))
+          )
+      (set! (-> arg0 data 7) (/ (- (+ (* f9-14 f6-7 f1-46) (* f2-14 f10-7 f4-21) (* f5-14 f3-7 f7-14))
+                                   (+ (* f9-14 f10-7 f7-14) (* f5-14 f6-7 f4-21) (* f2-14 f3-7 f1-46))
+                                   )
+                                f0-0
+                                )
+            )
+      )
+    (let ((f9-16 (-> arg1 data 1))
+          (f2-16 (-> arg1 data 2))
+          (f5-16 (-> arg1 data 3))
+          (f3-8 (-> arg1 data 5))
+          (f6-8 (-> arg1 data 6))
+          (f10-8 (-> arg1 data 7))
+          (f4-24 (-> arg1 trans y))
+          (f7-16 (-> arg1 trans z))
+          (f1-52 (-> arg1 trans w))
+          )
+      (set! (-> arg0 data 8) (/ (- (+ (* f9-16 f6-8 f1-52) (* f2-16 f10-8 f4-24) (* f5-16 f3-8 f7-16))
+                                   (+ (* f9-16 f10-8 f7-16) (* f5-16 f6-8 f4-24) (* f2-16 f3-8 f1-52))
+                                   )
+                                f0-0
+                                )
+            )
+      )
+    (let ((f9-18 (-> arg1 data 0))
+          (f2-18 (-> arg1 data 2))
+          (f5-18 (-> arg1 data 3))
+          (f3-9 (-> arg1 data 4))
+          (f6-9 (-> arg1 data 6))
+          (f10-9 (-> arg1 data 7))
+          (f4-27 (-> arg1 trans x))
+          (f7-18 (-> arg1 trans z))
+          (f1-58 (-> arg1 trans w))
+          )
+      (set! (-> arg0 data 9) (- (/ (- (+ (* f9-18 f6-9 f1-58) (* f2-18 f10-9 f4-27) (* f5-18 f3-9 f7-18))
+                                      (+ (* f9-18 f10-9 f7-18) (* f5-18 f6-9 f4-27) (* f2-18 f3-9 f1-58))
+                                      )
+                                   f0-0
+                                   )
+                                )
+            )
+      )
+    (let ((f9-20 (-> arg1 data 0))
+          (f2-20 (-> arg1 data 1))
+          (f5-20 (-> arg1 data 3))
+          (f3-10 (-> arg1 data 4))
+          (f6-10 (-> arg1 data 5))
+          (f10-10 (-> arg1 data 7))
+          (f4-30 (-> arg1 trans x))
+          (f7-20 (-> arg1 trans y))
+          (f1-65 (-> arg1 trans w))
+          )
+      (set! (-> arg0 data 10) (/ (- (+ (* f9-20 f6-10 f1-65) (* f2-20 f10-10 f4-30) (* f5-20 f3-10 f7-20))
+                                    (+ (* f9-20 f10-10 f7-20) (* f5-20 f6-10 f4-30) (* f2-20 f3-10 f1-65))
+                                    )
+                                 f0-0
+                                 )
+            )
+      )
+    (let ((f9-22 (-> arg1 data 0))
+          (f2-22 (-> arg1 data 1))
+          (f5-22 (-> arg1 data 2))
+          (f3-11 (-> arg1 data 4))
+          (f6-11 (-> arg1 data 5))
+          (f10-11 (-> arg1 data 6))
+          (f4-33 (-> arg1 trans x))
+          (f7-22 (-> arg1 trans y))
+          (f1-71 (-> arg1 trans z))
+          )
+      (set! (-> arg0 data 11) (- (/ (- (+ (* f9-22 f6-11 f1-71) (* f2-22 f10-11 f4-33) (* f5-22 f3-11 f7-22))
+                                       (+ (* f9-22 f10-11 f7-22) (* f5-22 f6-11 f4-33) (* f2-22 f3-11 f1-71))
+                                       )
+                                    f0-0
+                                    )
+                                 )
+            )
+      )
+    (let ((f9-24 (-> arg1 data 1))
+          (f2-24 (-> arg1 data 2))
+          (f5-24 (-> arg1 data 3))
+          (f3-12 (-> arg1 data 5))
+          (f6-12 (-> arg1 data 6))
+          (f10-12 (-> arg1 data 7))
+          (f4-36 (-> arg1 data 9))
+          (f7-24 (-> arg1 data 10))
+          (f1-78 (-> arg1 data 11))
+          )
+      (set! (-> arg0 trans x) (- (/ (- (+ (* f9-24 f6-12 f1-78) (* f2-24 f10-12 f4-36) (* f5-24 f3-12 f7-24))
+                                       (+ (* f9-24 f10-12 f7-24) (* f5-24 f6-12 f4-36) (* f2-24 f3-12 f1-78))
+                                       )
+                                    f0-0
+                                    )
+                                 )
+            )
+      )
+    (let ((f9-26 (-> arg1 data 0))
+          (f2-26 (-> arg1 data 2))
+          (f5-26 (-> arg1 data 3))
+          (f3-13 (-> arg1 data 4))
+          (f6-13 (-> arg1 data 6))
+          (f10-13 (-> arg1 data 7))
+          (f4-39 (-> arg1 data 8))
+          (f7-26 (-> arg1 data 10))
+          (f1-85 (-> arg1 data 11))
+          )
+      (set! (-> arg0 trans y) (/ (- (+ (* f9-26 f6-13 f1-85) (* f2-26 f10-13 f4-39) (* f5-26 f3-13 f7-26))
+                                    (+ (* f9-26 f10-13 f7-26) (* f5-26 f6-13 f4-39) (* f2-26 f3-13 f1-85))
+                                    )
+                                 f0-0
+                                 )
+            )
+      )
+    (let ((f9-28 (-> arg1 data 0))
+          (f2-28 (-> arg1 data 1))
+          (f5-28 (-> arg1 data 3))
+          (f3-14 (-> arg1 data 4))
+          (f6-14 (-> arg1 data 5))
+          (f10-14 (-> arg1 data 7))
+          (f4-42 (-> arg1 data 8))
+          (f7-28 (-> arg1 data 9))
+          (f1-91 (-> arg1 data 11))
+          )
+      (set! (-> arg0 trans z) (- (/ (- (+ (* f9-28 f6-14 f1-91) (* f2-28 f10-14 f4-42) (* f5-28 f3-14 f7-28))
+                                       (+ (* f9-28 f10-14 f7-28) (* f5-28 f6-14 f4-42) (* f2-28 f3-14 f1-91))
+                                       )
+                                    f0-0
+                                    )
+                                 )
+            )
+      )
+    (let ((f8-60 (-> arg1 data 0))
+          (f1-98 (-> arg1 data 1))
+          (f5-30 (-> arg1 data 2))
+          (f2-30 (-> arg1 data 4))
+          (f6-15 (-> arg1 data 5))
+          (f9-30 (-> arg1 data 6))
+          (f4-45 (-> arg1 data 8))
+          (f7-30 (-> arg1 data 9))
+          (f3-15 (-> arg1 data 10))
+          )
+      (set! (-> arg0 trans w) (/ (- (+ (* f8-60 f6-15 f3-15) (* f1-98 f9-30 f4-45) (* f5-30 f2-30 f7-30))
+                                    (+ (* f8-60 f9-30 f7-30) (* f5-30 f6-15 f4-45) (* f1-98 f2-30 f3-15))
+                                    )
+                                 f0-0
+                                 )
+            )
+      )
+    )
+  arg0
+  )
+
+(defun matrix-y-angle ((arg0 matrix))
+  "If mat has its upper 3x3 as a rotation, gets the y axis rotation."
+
+  (let ((v1-0 (&-> arg0 data 8)))
+    (atan (-> v1-0 0) (-> v1-0 2))
+    )
+  )
+
+(defun matrix->trans ((arg0 matrix) (arg1 vector))
+  "Multiply xyz by 1/w."
+  (rlet ((Q :class vf)
+         (vf0 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf2 (&-> arg0 trans quad))
+    (.div.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
+    (.wait.vf)
+    (.mul.vf vf2 vf2 Q :mask #b111)
+    (.nop.vf)
+    (.nop.vf)
+    (.mov.vf vf2 vf0 :mask #b1000)
+    (.svf (&-> arg1 quad) vf2)
+    arg1
+    )
+  )
+
+(defun matrix<-trans ((arg0 matrix) (arg1 vector))
+  "Set the translation."
+  (set! (-> arg0 trans quad) (-> arg1 quad))
+  arg0
+  )
+
+(defun matrix->scale ((arg0 matrix) (arg1 vector))
+  "Get the scale of a matrix."
+  (set! (-> arg1 x) (vector-length (the-as vector (-> arg0 data))))
+  (set! (-> arg1 y) (vector-length (the-as vector (&-> arg0 data 4))))
+  (set! (-> arg1 z) (vector-length (the-as vector (&-> arg0 data 8))))
+  (set! (-> arg1 w) 1.0)
+  arg1
+  )
+
+(defun matrix<-scale ((arg0 matrix) (arg1 vector))
+  "Set the scale of a matrix by rescaling."
+  (vector-normalize! (the-as vector (-> arg0 data)) (-> arg1 x))
+  (vector-normalize! (the-as vector (&-> arg0 data 4)) (-> arg1 y))
+  (vector-normalize! (the-as vector (&-> arg0 data 8)) (-> arg1 z))
+  arg0
+  )
+
+(defun matrix->quat ((arg0 matrix) (arg1 quaternion))
+  "Convert matrix to quaternion, works for matrix with scale.
+   unlike matrix->quaternion."
+  (let ((s5-0 (new 'stack-no-clear 'matrix)))
+    (let* ((a2-0 arg0)
+           (v1-0 (-> a2-0 quad 0))
+           (a0-1 (-> a2-0 quad 1))
+           (a1-1 (-> a2-0 quad 2))
+           (a2-1 (-> a2-0 trans quad))
+           )
+      (set! (-> s5-0 quad 0) v1-0)
+      (set! (-> s5-0 quad 1) a0-1)
+      (set! (-> s5-0 quad 2) a1-1)
+      (set! (-> s5-0 trans quad) a2-1)
+      )
+    (vector-reset! (-> s5-0 trans))
+    (vector-normalize! (the-as vector (-> s5-0 data)) 1.0)
+    (vector-normalize! (the-as vector (&-> s5-0 data 4)) 1.0)
+    (vector-normalize! (the-as vector (&-> s5-0 data 8)) 1.0)
+    (matrix->quaternion arg1 s5-0)
+    )
+  )
+
+(defun matrix<-quat ((arg0 matrix) (arg1 quaternion))
+  "Modify the rotation part of a transform."
+  (let ((s5-0 (matrix->scale arg0 (new 'stack-no-clear 'vector)))
+        (s4-1 (quaternion->matrix (new 'stack-no-clear 'matrix) arg1))
+        )
+    (vector-normalize-copy! (the-as vector (-> arg0 data)) (the-as vector (-> s4-1 data)) (-> s5-0 x))
+    (vector-normalize-copy! (the-as vector (&-> arg0 data 4)) (the-as vector (&-> s4-1 data 4)) (-> s5-0 y))
+    (vector-normalize-copy! (the-as vector (&-> arg0 data 8)) (the-as vector (&-> s4-1 data 8)) (-> s5-0 z))
+    )
+  (set! (-> arg0 data 3) 0.0)
+  (set! (-> arg0 data 7) 0.0)
+  (set! (-> arg0 data 11) 0.0)
+  arg0
+  )
+
+(defun matrix->transformq ((arg0 transformq) (arg1 matrix))
+  "Create a transformq from a matrix. Allowing scale, etc."
+  (rlet ((Q :class vf)
+         (vf0 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf2 (&-> arg1 trans quad))
+    (.div.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
+    (.wait.vf)
+    (.mul.vf vf2 vf2 Q :mask #b111)
+    (.nop.vf)
+    (.nop.vf)
+    (.mov.vf vf2 vf0 :mask #b1000)
+    (.svf (&-> arg0 trans quad) vf2)
+    (let ((s4-0 (new 'stack-no-clear 'matrix)))
+      (let* ((a2-0 arg1)
+             (v1-0 (-> a2-0 quad 0))
+             (a0-1 (-> a2-0 quad 1))
+             (a1-1 (-> a2-0 quad 2))
+             (a2-1 (-> a2-0 trans quad))
+             )
+        (set! (-> s4-0 quad 0) v1-0)
+        (set! (-> s4-0 quad 1) a0-1)
+        (set! (-> s4-0 quad 2) a1-1)
+        (set! (-> s4-0 trans quad) a2-1)
+        )
+      (vector-normalize! (the-as vector (-> s4-0 data)) 1.0)
+      (vector-normalize! (the-as vector (&-> s4-0 data 4)) 1.0)
+      (vector-normalize! (the-as vector (&-> s4-0 data 8)) 1.0)
+      (vector-cross!
+        (the-as vector (&-> s4-0 data 8))
+        (the-as vector (-> s4-0 data))
+        (the-as vector (&-> s4-0 data 4))
+        )
+      (vector-cross!
+        (the-as vector (&-> s4-0 data 4))
+        (the-as vector (&-> s4-0 data 8))
+        (the-as vector (-> s4-0 data))
+        )
+      (matrix->quaternion (-> arg0 quat) s4-0)
+      )
+    (set-vector!
+      (-> arg0 scale)
+      (vector-length (the-as vector (-> arg1 data)))
+      (vector-length (the-as vector (&-> arg1 data 4)))
+      (vector-length (the-as vector (&-> arg1 data 8)))
+      1.0
+      )
+    arg0
+    )
+  )
+
+(defmethod transform-vectors! matrix ((obj _type_) (dst (inline-array vector)) (src (inline-array vector)) (count int))
+  "Transform many vectors. This acts like w = 1, even if it isn't. The value of w is copied."
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         (acc :class vf)
+         (v1 :type int)
+         )
+    (init-vf0-vector)
+
+    ;; blez a3, L3
+    (when-goto (<= count 0) end)
+
+    ;; lqc2 vf1, 0(a0)
+    (.lvf vf1 (-> obj vector 0))
+
+    ;; lqc2 vf2, 16(a0)
+    (.lvf vf2 (-> obj vector 1))
+
+    ;; lqc2 vf3, 32(a0)
+    (.lvf vf3 (-> obj vector 2))
+
+    ;; lqc2 vf4, 48(a0)
+    (.lvf vf4 (-> obj vector 3))
+
+    ;; lqc2 vf5, 0(a2)
+    (.lvf vf5 (-> src 0))
+
+    ;; lqc2 vf6, 16(a2)
+    (.lvf vf6 (-> src 1))
+
+    (label loop-top)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;;vmulaw.xyzw acc, vf4, vf0
+    (.mul.w.vf acc vf4 vf0)
+
+    ;; lqc2 vf7, 32(a2)
+    (.lvf vf7 (-> src 2))
+
+    ;;vmaddax.xyzw acc, vf1, vf5
+    (.add.mul.x.vf acc vf1 vf5 acc)
+
+    ;;lqc2 vf8, 48(a2)
+    (.lvf vf8 (-> src 3))
+
+    ;;vmadday.xyzw acc, vf2, vf5
+    (.add.mul.y.vf acc vf2 vf5 acc)
+
+    ;;daddiu a2, a2, 64
+    ;;(&+! src 64)
+    (set! src (the (inline-array vector) (+ 64 (the int src))))
+
+    ;;vmaddz.xyz vf5, vf3, vf5
+    (.add.mul.z.vf vf5 vf3 vf5 acc :mask #b0111)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+    ;;daddiu v1, a3, -1
+    (set! v1 (- count 1))
+
+    ;;vmulaw.xyzw acc, vf4, vf0
+    (.mul.w.vf acc vf4 vf0)
+
+    ;;vmaddax.xyzw acc, vf1, vf6
+    (.add.mul.x.vf acc vf1 vf6 acc)
+
+    ;; vmadday.xyzw acc, vf2, vf6
+    (.add.mul.y.vf acc vf2 vf6 acc)
+
+    ;; vmaddz.xyz vf6, vf3, vf6
+    (.add.mul.z.vf vf6 vf3 vf6 acc :mask #b0111)
+
+    ;;sqc2 vf5, 0(a1)
+    (.svf (-> dst 0) vf5)
+
+    ;;beq v1, r0, L3
+    ;;vmulaw.xyzw acc, vf4, vf0
+    (.mul.w.vf acc vf4 vf0)
+    (when-goto (zero? v1) end)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+    ;;vmaddax.xyzw acc, vf1, vf7
+    (.add.mul.x.vf acc vf1 vf7 acc)
+    ;;daddiu v1, v1, -1
+    (+! v1 -1)
+    ;;vmadday.xyzw acc, vf2, vf7
+    (.add.mul.y.vf acc vf2 vf7 acc)
+    ;;lqc2 vf5, 0(a2)
+    (.lvf vf5 (-> src 0))
+    ;;vmaddz.xyz vf7, vf3, vf7
+    (.add.mul.z.vf vf7 vf3 vf7 acc :mask #b0111)
+    ;;sqc2 vf6, 16(a1)
+    (.svf (-> dst 1) vf6)
+
+    ;;beq v1, r0, L3
+    ;;vmulaw.xyzw acc, vf4, vf0
+    (.mul.w.vf acc vf4 vf0)
+    (when-goto (zero? v1) end)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;;vmaddax.xyzw acc, vf1, vf8
+    (.add.mul.x.vf acc vf1 vf8 acc)
+    ;;daddiu v1, v1, -1
+    (+! v1 -1)
+    ;;vmadday.xyzw acc, vf2, vf8
+    (.add.mul.y.vf acc vf2 vf8 acc)
+    ;;lqc2 vf6, 16(a2)
+    (.lvf vf6 (-> src 1))
+    ;;vmaddz.xyz vf8, vf3, vf8
+    (.add.mul.z.vf vf8 vf3 vf8 acc :mask #b0111)
+    ;;sqc2 vf7, 32(a1)
+    (.svf (-> dst 2) vf7)
+
+    ;;beq v1, r0, L3
+    ;;daddiu a1, a1, 64
+    ;;(&!+ dst 64)
+    (set! dst (the (inline-array vector) (+ 64 (the int dst))))
+    (when-goto (zero? v1) end)
+
+    ;;daddiu a3, v1, -1
+    (set! count (- v1 1))
+    ;;sqc2 vf8, -16(a1)
+    (.svf dst vf8 :offset -16)
+    (when-goto (not (zero? count)) loop-top)
+    (label end)
+    (none)
+    )
+  )
+
+
+(defun matrix-mirror! ((arg0 matrix) (arg1 vector) (arg2 vector))
+  "Make a matrix that mirrors. Arguments are unclear."
+  (let ((f10-0 -2.0)
+        (f0-0 1.0)
+        )
+    (let* ((f1-0 0.0)
+           (f9-0 (-> arg2 x))
+           (f12-0 (-> arg2 y))
+           (f11-0 (-> arg2 z))
+           (f6-0 (-> arg1 x))
+           (f5-0 (-> arg1 y))
+           (f2-0 (-> arg1 z))
+           (f3-2 (+ f0-0 (* f10-0 f9-0 f9-0)))
+           (f4-2 (+ f0-0 (* f10-0 f12-0 f12-0)))
+           (f7-2 (+ f0-0 (* f10-0 f11-0 f11-0)))
+           (f8-1 (* f10-0 f9-0 f12-0))
+           (f9-2 (* f10-0 f9-0 f11-0))
+           (f10-2 (* f10-0 f12-0 f11-0))
+           (f11-4 (- f6-0 (+ (* f6-0 f3-2) (* f5-0 f8-1) (* f2-0 f9-2))))
+           (f12-6 (- f5-0 (+ (* f6-0 f8-1) (* f5-0 f4-2) (* f2-0 f10-2))))
+           (f2-1 (- f2-0 (+ (* f6-0 f9-2) (* f5-0 f10-2) (* f2-0 f7-2))))
+           )
+      (set! (-> arg0 data 0) f3-2)
+      (set! (-> arg0 data 1) f8-1)
+      (set! (-> arg0 data 2) f9-2)
+      (set! (-> arg0 data 3) f1-0)
+      (set! (-> arg0 data 4) f8-1)
+      (set! (-> arg0 data 5) f4-2)
+      (set! (-> arg0 data 6) f10-2)
+      (set! (-> arg0 data 7) f1-0)
+      (set! (-> arg0 data 8) f9-2)
+      (set! (-> arg0 data 9) f10-2)
+      (set! (-> arg0 data 10) f7-2)
+      (set! (-> arg0 data 11) f1-0)
+      (set! (-> arg0 trans x) f11-4)
+      (set! (-> arg0 trans y) f12-6)
+      (set! (-> arg0 trans z) f2-1)
+      )
+    (set! (-> arg0 trans w) f0-0)
+    )
+  arg0
+  )
+
+
+
+

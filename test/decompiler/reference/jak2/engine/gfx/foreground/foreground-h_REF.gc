@@ -1,0 +1,360 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type mercneric-chain
+(deftype mercneric-chain (structure)
+  ((first      uint32                       :offset-assert   0)
+   (next       uint32                       :offset-assert   4)
+   (state      generic-bucket-state :inline :offset-assert   8)
+   (vu1-bucket bucket-id                    :offset-assert  16)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+;; definition for method 3 of type mercneric-chain
+(defmethod inspect mercneric-chain ((obj mercneric-chain))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'mercneric-chain)
+  (format #t "~1Tfirst: #x~X~%" (-> obj first))
+  (format #t "~1Tnext: #x~X~%" (-> obj next))
+  (format #t "~1Tstate: #<generic-bucket-state @ #x~X>~%" (-> obj state))
+  (format #t "~1Tvu1-bucket: ~D~%" (-> obj vu1-bucket))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type merc-chain
+(deftype merc-chain (structure)
+  ((first      dma-packet  :offset-assert   0)
+   (patch      dma-packet  :offset-assert   4)
+   (vu1-bucket bucket-id   :offset-assert   8)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type merc-chain
+(defmethod inspect merc-chain ((obj merc-chain))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'merc-chain)
+  (format #t "~1Tfirst: #<dma-packet @ #x~X>~%" (-> obj first))
+  (format #t "~1Tpatch: #<dma-packet @ #x~X>~%" (-> obj patch))
+  (format #t "~1Tvu1-bucket: ~D~%" (-> obj vu1-bucket))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type foreground-bucket
+(deftype foreground-bucket (structure)
+  ((merc      merc-chain      :inline :offset-assert   0)
+   (emerc     merc-chain      :inline :offset-assert  12)
+   (mercneric mercneric-chain :inline :offset-assert  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  )
+
+;; definition for method 3 of type foreground-bucket
+(defmethod inspect foreground-bucket ((obj foreground-bucket))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'foreground-bucket)
+  (format #t "~1Tmerc: #<merc-chain @ #x~X>~%" (-> obj merc))
+  (format #t "~1Temerc: #<merc-chain @ #x~X>~%" (-> obj emerc))
+  (format #t "~1Tmercneric: #<mercneric-chain @ #x~X>~%" (-> obj mercneric))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type foreground-level-buckets
+(deftype foreground-level-buckets (structure)
+  ((data foreground-bucket 7 :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x150
+  :flag-assert         #x900000150
+  )
+
+;; definition for method 3 of type foreground-level-buckets
+(defmethod inspect foreground-level-buckets ((obj foreground-level-buckets))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'foreground-level-buckets)
+  (format #t "~1Tdata[7] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type foreground-bucket-grid
+(deftype foreground-bucket-grid (structure)
+  ((level-buckets foreground-level-buckets 7 :inline :offset-assert   0)
+   (warp-chain    mercneric-chain          :inline   :offset-assert 2352)
+   )
+  :method-count-assert 9
+  :size-assert         #x944
+  :flag-assert         #x900000944
+  )
+
+;; definition for method 3 of type foreground-bucket-grid
+(defmethod inspect foreground-bucket-grid ((obj foreground-bucket-grid))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'foreground-bucket-grid)
+  (format #t "~1Tlevel-buckets[7] @ #x~X~%" (-> obj level-buckets))
+  (format #t "~1Twarp-chain: #<mercneric-chain @ #x~X>~%" (-> obj warp-chain))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type foreground-regs
+(deftype foreground-regs (structure)
+  ((dist                  float                     :offset-assert   0)
+   (merc-used             uint32                    :offset-assert   4)
+   (emerc-used            uint32                    :offset-assert   8)
+   (mercneric-used        uint32                    :offset-assert  12)
+   (use-isometric         uint32                    :offset-assert  16)
+   (base-start            dma-packet                :offset-assert  20)
+   (joint-ptr             (inline-array joint)      :offset-assert  24)
+   (bone-ptr              (inline-array bone)       :offset-assert  28)
+   (num-bones             uint32                    :offset-assert  32)
+   (mtxs                  (inline-array pris-mtx)   :offset-assert  36)
+   (dma-buf               dma-buffer                :offset-assert  40)
+   (default-texture-index uint32                    :offset-assert  44)
+   (mercneric-chain       mercneric-chain           :offset-assert  48)
+   (level-buckets         foreground-level-buckets  :offset-assert  52)
+   )
+  :method-count-assert 9
+  :size-assert         #x38
+  :flag-assert         #x900000038
+  )
+
+;; definition for method 3 of type foreground-regs
+(defmethod inspect foreground-regs ((obj foreground-regs))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'foreground-regs)
+  (format #t "~1Tdist: ~f~%" (-> obj dist))
+  (format #t "~1Tmerc-used: ~D~%" (-> obj merc-used))
+  (format #t "~1Temerc-used: ~D~%" (-> obj emerc-used))
+  (format #t "~1Tmercneric-used: ~D~%" (-> obj mercneric-used))
+  (format #t "~1Tuse-isometric: ~D~%" (-> obj use-isometric))
+  (format #t "~1Tbase-start: #<dma-packet @ #x~X>~%" (-> obj base-start))
+  (format #t "~1Tjoint-ptr: #x~X~%" (-> obj joint-ptr))
+  (format #t "~1Tbone-ptr: #x~X~%" (-> obj bone-ptr))
+  (format #t "~1Tnum-bones: ~D~%" (-> obj num-bones))
+  (format #t "~1Tmtxs: #x~X~%" (-> obj mtxs))
+  (format #t "~1Tdma-buf: ~A~%" (-> obj dma-buf))
+  (format #t "~1Tdefault-texture-index: ~D~%" (-> obj default-texture-index))
+  (format #t "~1Tmercneric-chain: #<mercneric-chain @ #x~X>~%" (-> obj mercneric-chain))
+  (format #t "~1Tlevel-buckets: #<foreground-level-buckets @ #x~X>~%" (-> obj level-buckets))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type foreground-work
+(deftype foreground-work (structure)
+  ((regs           foreground-regs        :inline :offset-assert   0)
+   (draw-index-map uint8                  7       :offset         64)
+   (grid           foreground-bucket-grid :inline :offset-assert  80)
+   (bounds         sphere                 :inline :offset-assert 2464)
+   (lights         vu-lights              :inline :offset-assert 2480)
+   (distance       vector                 :inline :offset-assert 2592)
+   (next-tmpl      dma-packet             :inline :offset-assert 2608)
+   )
+  :method-count-assert 9
+  :size-assert         #xa40
+  :flag-assert         #x900000a40
+  )
+
+;; definition for method 3 of type foreground-work
+(defmethod inspect foreground-work ((obj foreground-work))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'foreground-work)
+  (format #t "~1Tregs: #<foreground-regs @ #x~X>~%" (-> obj regs))
+  (format #t "~1Tdraw-index-map[7] @ #x~X~%" (-> obj draw-index-map))
+  (format #t "~1Tgrid: #<foreground-bucket-grid @ #x~X>~%" (-> obj grid))
+  (format #t "~1Tbounds: #<sphere @ #x~X>~%" (-> obj bounds))
+  (format #t "~1Tlights: #<vu-lights @ #x~X>~%" (-> obj lights))
+  (format #t "~1Tdistance: #<vector @ #x~X>~%" (-> obj distance))
+  (format #t "~1Tnext-tmpl: #<dma-packet @ #x~X>~%" (-> obj next-tmpl))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function invalidate-cache-line
+;; ERROR: Unsupported inline assembly instruction kind - [cache dxwbin a0, 0]
+;; ERROR: Unsupported inline assembly instruction kind - [cache dxwbin a0, 1]
+(defun invalidate-cache-line ((arg0 pointer))
+  (.sync.l)
+  (.cache dxwbin arg0 0)
+  (.sync.l)
+  (.cache dxwbin arg0 1)
+  (.sync.l)
+  0
+  )
+
+;; definition of type texscroll-globals
+(deftype texscroll-globals (structure)
+  ((requests int32          :offset-assert   0)
+   (effects  merc-effect 32 :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x84
+  :flag-assert         #x900000084
+  )
+
+;; definition for method 3 of type texscroll-globals
+(defmethod inspect texscroll-globals ((obj texscroll-globals))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'texscroll-globals)
+  (format #t "~1Trequests: ~D~%" (-> obj requests))
+  (format #t "~1Teffects[32] @ #x~X~%" (-> obj effects))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type merc-effect-bucket-info
+(deftype merc-effect-bucket-info (structure)
+  ((color-fade     rgba   :offset-assert   0)
+   (alpha          uint8  :offset          3)
+   (merc-path      uint8  :offset-assert   4)
+   (ignore-alpha   uint8  :offset-assert   5)
+   (disable-draw   uint8  :offset-assert   6)
+   (disable-envmap uint8  :offset-assert   7)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type merc-effect-bucket-info
+(defmethod inspect merc-effect-bucket-info ((obj merc-effect-bucket-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'merc-effect-bucket-info)
+  (format #t "~1Tcolor-fade: ~D~%" (-> obj color-fade))
+  (format #t "~1Tmerc-path: ~D~%" (-> obj merc-path))
+  (format #t "~1Tignore-alpha: ~D~%" (-> obj ignore-alpha))
+  (format #t "~1Tdisable-draw: ~D~%" (-> obj disable-draw))
+  (format #t "~1Tdisable-envmap: ~D~%" (-> obj disable-envmap))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type merc-bucket-info
+(deftype merc-bucket-info (structure)
+  ((light                       vu-lights               :inline    :offset-assert   0)
+   (needs-clip                  int32                              :offset-assert 112)
+   (need-mercprime-if-merc      int32                              :offset-assert 116)
+   (must-use-mercneric-for-clip int32                              :offset-assert 120)
+   (effect                      merc-effect-bucket-info 64 :inline :offset-assert 124)
+   )
+  :method-count-assert 9
+  :size-assert         #x27c
+  :flag-assert         #x90000027c
+  )
+
+;; definition for method 3 of type merc-bucket-info
+(defmethod inspect merc-bucket-info ((obj merc-bucket-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'merc-bucket-info)
+  (format #t "~1Tlight: #<vu-lights @ #x~X>~%" (-> obj light))
+  (format #t "~1Tneeds-clip: ~D~%" (-> obj needs-clip))
+  (format #t "~1Tneed-mercprime-if-merc: ~D~%" (-> obj need-mercprime-if-merc))
+  (format #t "~1Tmust-use-mercneric-for-clip: ~D~%" (-> obj must-use-mercneric-for-clip))
+  (format #t "~1Teffect[64] @ #x~X~%" (-> obj effect))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type foreground-globals
+(deftype foreground-globals (structure)
+  ((foreground-grid  foreground-bucket-grid :inline :offset-assert   0)
+   (merc-bucket-info merc-bucket-info       :inline :offset-assert 2384)
+   (texscroll        texscroll-globals      :inline :offset-assert 3024)
+   )
+  :method-count-assert 9
+  :size-assert         #xc54
+  :flag-assert         #x900000c54
+  )
+
+;; definition for method 3 of type foreground-globals
+(defmethod inspect foreground-globals ((obj foreground-globals))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'foreground-globals)
+  (format #t "~1Tforeground-grid: #<foreground-bucket-grid @ #x~X>~%" (-> obj foreground-grid))
+  (format #t "~1Tmerc-bucket-info: #<merc-bucket-info @ #x~X>~%" (-> obj merc-bucket-info))
+  (format #t "~1Ttexscroll: #<texscroll-globals @ #x~X>~%" (-> obj texscroll))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol *foreground*, type foreground-globals
+(define *foreground* (new 'global 'foreground-globals))
+
+;; definition of type shadow-dma-packet
+(deftype shadow-dma-packet (structure)
+  ((tag      generic-merc-tag :inline :offset-assert   0)
+   (settings shadow-settings  :inline :offset-assert  16)
+   (geo-ref  dma-packet       :inline :offset-assert  96)
+   (mtx-ref  dma-packet       :inline :offset-assert 112)
+   (end-tag  dma-packet       :inline :offset-assert 128)
+   )
+  :method-count-assert 9
+  :size-assert         #x90
+  :flag-assert         #x900000090
+  )
+
+;; definition for method 3 of type shadow-dma-packet
+(defmethod inspect shadow-dma-packet ((obj shadow-dma-packet))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'shadow-dma-packet)
+  (format #t "~1Ttag: #<generic-merc-tag @ #x~X>~%" (-> obj tag))
+  (format #t "~1Tsettings: #<shadow-settings @ #x~X>~%" (-> obj settings))
+  (format #t "~1Tgeo-ref: #<dma-packet @ #x~X>~%" (-> obj geo-ref))
+  (format #t "~1Tmtx-ref: #<dma-packet @ #x~X>~%" (-> obj mtx-ref))
+  (format #t "~1Tend-tag: #<dma-packet @ #x~X>~%" (-> obj end-tag))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+0

@@ -1,8 +1,10 @@
 #pragma once
 
-#include "common/type_system/TypeSystem.h"
-#include "decompiler/Disasm/Register.h"
 #include "common/goos/Reader.h"
+#include "common/goos/TextDB.h"
+#include "common/type_system/TypeSystem.h"
+
+#include "decompiler/Disasm/Register.h"
 
 namespace decompiler {
 class TP_Type;
@@ -10,11 +12,25 @@ class TypeState;
 
 class DecompilerTypeSystem {
  public:
-  DecompilerTypeSystem();
+  DecompilerTypeSystem(GameVersion version);
   TypeSystem ts;
+
   std::unordered_map<std::string, TypeSpec> symbol_types;
   std::unordered_set<std::string> symbols;
   std::vector<std::string> symbol_add_order;
+
+  // TODO - these are needed to propagate the info from the `Type` to the final result
+  // as only the `TypeSpec` is available at that point
+  std::unordered_map<std::string, DefinitionMetadata> symbol_metadata_map;
+  // {type_name : {method_name : {handler : doc}}}
+  std::unordered_map<
+      std::string,
+      std::unordered_map<std::string, std::unordered_map<std::string, DefinitionMetadata>>>
+      virtual_state_metadata;
+  // {state_name : {handler : doc}}
+  std::unordered_map<std::string, std::unordered_map<std::string, DefinitionMetadata>>
+      state_metadata;
+
   std::unordered_map<std::string, u64> type_flags;
   std::unordered_map<std::string, std::string> type_parents;
   std::unordered_map<std::string, int> bad_format_strings;
@@ -29,11 +45,15 @@ class DecompilerTypeSystem {
     }
   }
 
-  void add_symbol(const std::string& name, const std::string& base_type) {
-    add_symbol(name, TypeSpec(base_type));
+  void add_symbol(const std::string& name,
+                  const std::string& base_type,
+                  const DefinitionMetadata& symbol_metadata) {
+    add_symbol(name, TypeSpec(base_type), symbol_metadata);
   }
 
-  void add_symbol(const std::string& name, const TypeSpec& type_spec);
+  void add_symbol(const std::string& name,
+                  const TypeSpec& type_spec,
+                  const DefinitionMetadata& symbol_metadata);
   void parse_type_defs(const std::vector<std::string>& file_path);
   TypeSpec parse_type_spec(const std::string& str) const;
   void add_type_flags(const std::string& name, u64 flags);

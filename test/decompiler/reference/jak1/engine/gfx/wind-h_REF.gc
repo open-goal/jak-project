@@ -1,0 +1,86 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type wind-vector
+(deftype wind-vector (structure)
+  ((wind-pos vector2w :inline :offset-assert   0)
+   (wind-vel vector2w :inline :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type wind-vector
+(defmethod inspect wind-vector ((obj wind-vector))
+  (format #t "[~8x] ~A~%" obj 'wind-vector)
+  (format #t "~Twind-pos: #<vector2w @ #x~X>~%" (-> obj wind-pos))
+  (format #t "~Twind-vel: #<vector2w @ #x~X>~%" (-> obj wind-vel))
+  obj
+  )
+
+;; definition for symbol *wind-scales*, type (array uint8)
+(define *wind-scales* (new 'static 'boxed-array :type uint8
+                        #x2
+                        #x5
+                        #x2
+                        #x3
+                        #x2
+                        #x2
+                        #x3
+                        #x10
+                        #xa
+                        #x2
+                        #x4
+                        #x2
+                        #x8
+                        #x2
+                        #x2
+                        #x10
+                        #x2
+                        #x2
+                        #x8
+                        #x2
+                        #x10
+                        #x2
+                        #x4
+                        #x10
+                        #xa
+                        #x2
+                        #x4
+                        #x2
+                        #x8
+                        #x2
+                        #x2
+                        #x10
+                        )
+        )
+
+;; definition of type wind-work
+(deftype wind-work (basic)
+  ((wind-array  vector 64 :inline :offset-assert  16)
+   (wind-normal vector :inline    :offset-assert 1040)
+   (wind-temp   vector :inline    :offset-assert 1056)
+   (wind-force  float  64         :offset-assert 1072)
+   (wind-time   uint32            :offset-assert 1328)
+   )
+  :method-count-assert 9
+  :size-assert         #x534
+  :flag-assert         #x900000534
+  )
+
+;; definition for method 3 of type wind-work
+(defmethod inspect wind-work ((obj wind-work))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Twind-array[64] @ #x~X~%" (-> obj wind-array))
+  (format #t "~Twind-normal: ~`vector`P~%" (-> obj wind-normal))
+  (format #t "~Twind-temp: ~`vector`P~%" (-> obj wind-temp))
+  (format #t "~Twind-force[64] @ #x~X~%" (-> obj wind-force))
+  (format #t "~Twind-time: ~D~%" (-> obj wind-time))
+  obj
+  )
+
+;; definition for function wind-get-hashed-index
+(defun wind-get-hashed-index ((arg0 vector))
+  (logand (+ (the int (-> arg0 x)) (the int (-> arg0 z)) (-> *wind-work* wind-time)) 63)
+  )

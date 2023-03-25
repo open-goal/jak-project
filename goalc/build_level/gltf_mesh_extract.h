@@ -3,6 +3,7 @@
 #include <string>
 
 #include "common/custom_data/Tfrag3Data.h"
+
 #include "goalc/build_level/TexturePool.h"
 #include "goalc/build_level/collide_common.h"
 
@@ -12,6 +13,9 @@ struct Input {
   std::string filename;
   TexturePool* tex_pool = nullptr;
   bool get_colors = true;
+  bool auto_wall_enable = true;
+  float auto_wall_angle = 30.f;
+  bool double_sided_collide = false;
 };
 
 struct TfragOutput {

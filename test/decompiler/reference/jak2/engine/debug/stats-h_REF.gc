@@ -1,0 +1,339 @@
+(in-package goal)
+
+(deftype tr-stat (structure)
+  ((groups    uint16  :offset-assert   0)
+   (fragments uint16  :offset-assert   2)
+   (tris      uint32  :offset-assert   4)
+   (dverts    uint32  :offset-assert   8)
+   (instances uint16  :offset-assert  12)
+   (pad       uint16  :offset-assert  14)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(defmethod inspect tr-stat ((obj tr-stat))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'tr-stat)
+  (format #t "~1Tgroups: ~D~%" (-> obj groups))
+  (format #t "~1Tfragments: ~D~%" (-> obj fragments))
+  (format #t "~1Ttris: ~D~%" (-> obj tris))
+  (format #t "~1Tdverts: ~D~%" (-> obj dverts))
+  (format #t "~1Tinstances: ~D~%" (-> obj instances))
+  (format #t "~1Tpad: ~D~%" (-> obj pad))
+  (label cfg-4)
+  obj
+  )
+
+(deftype merc-global-stats (structure)
+  ((merc      tr-stat :inline :offset-assert   0)
+   (emerc     tr-stat :inline :offset-assert  16)
+   (mercneric tr-stat :inline :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(defmethod inspect merc-global-stats ((obj merc-global-stats))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'merc-global-stats)
+  (format #t "~1Tmerc: #<tr-stat @ #x~X>~%" (-> obj merc))
+  (format #t "~1Temerc: #<tr-stat @ #x~X>~%" (-> obj emerc))
+  (format #t "~1Tmercneric: #<tr-stat @ #x~X>~%" (-> obj mercneric))
+  (label cfg-4)
+  obj
+  )
+
+(deftype perf-stat (structure)
+  ((frame-number   uint32  :offset-assert   0)
+   (count          uint32  :offset-assert   4)
+   (cycles         uint32  :offset-assert   8)
+   (instructions   uint32  :offset-assert  12)
+   (icache         uint32  :offset-assert  16)
+   (dcache         uint32  :offset-assert  20)
+   (select         uint32  :offset-assert  24)
+   (ctrl           uint32  :offset-assert  28)
+   (accum0         uint32  :offset-assert  32)
+   (accum1         uint32  :offset-assert  36)
+   (to-vu0-waits   uint32  :offset-assert  40)
+   (to-spr-waits   uint32  :offset-assert  44)
+   (from-spr-waits uint32  :offset-assert  48)
+   )
+  :pack-me
+  :method-count-assert 14
+  :size-assert         #x34
+  :flag-assert         #xe00000034
+  (:methods
+    (perf-stat-method-9 () none 9)
+    (print-to-stream (_type_ string basic) none 10)
+    (reset! (_type_) none 11)
+    (read! (_type_) none 12)
+    (update-wait-stats (_type_ uint uint uint) none 13)
+    )
+  )
+
+(defmethod inspect perf-stat ((obj perf-stat))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'perf-stat)
+  (format #t "~1Tframe-number: ~D~%" (-> obj frame-number))
+  (format #t "~1Tcount: ~D~%" (-> obj count))
+  (format #t "~1Tcycles: ~D~%" (-> obj cycles))
+  (format #t "~1Tinstructions: ~D~%" (-> obj instructions))
+  (format #t "~1Ticache: ~D~%" (-> obj icache))
+  (format #t "~1Tdcache: ~D~%" (-> obj dcache))
+  (format #t "~1Tselect: ~D~%" (-> obj select))
+  (format #t "~1Tctrl: ~D~%" (-> obj ctrl))
+  (format #t "~1Taccum0: ~D~%" (-> obj accum0))
+  (format #t "~1Taccum1: ~D~%" (-> obj accum1))
+  (format #t "~1Tto-vu0-waits: ~D~%" (-> obj to-vu0-waits))
+  (format #t "~1Tto-spr-waits: ~D~%" (-> obj to-spr-waits))
+  (format #t "~1Tfrom-spr-waits: ~D~%" (-> obj from-spr-waits))
+  (label cfg-4)
+  obj
+  )
+
+(defun-debug perf-stat-bucket->string ((arg0 perf-stat-bucket))
+  (case arg0
+    (((perf-stat-bucket collide-fill))
+     "collide-fill"
+     )
+    (((perf-stat-bucket nav))
+     "nav"
+     )
+    (((perf-stat-bucket bones))
+     "bones"
+     )
+    (((perf-stat-bucket foreground))
+     "foreground"
+     )
+    (((perf-stat-bucket inst-tie))
+     "inst-tie"
+     )
+    (((perf-stat-bucket common-post))
+     "common-post"
+     )
+    (((perf-stat-bucket nav-dma-write))
+     "nav-dma-write"
+     )
+    (((perf-stat-bucket collide-list))
+     "collide-list"
+     )
+    (((perf-stat-bucket clamp-vector-to-mesh))
+     "clamp-vector-to-mesh"
+     )
+    (((perf-stat-bucket nav-part3))
+     "nav-part3"
+     )
+    (((perf-stat-bucket mercneric))
+     "mercneric"
+     )
+    (((perf-stat-bucket apply-velocity))
+     "apply-velocity"
+     )
+    (((perf-stat-bucket tfrag-scissor))
+     "tfrag-scissor"
+     )
+    (((perf-stat-bucket misc))
+     "misc"
+     )
+    (((perf-stat-bucket find-nearest-poly))
+     "find-nearest-poly"
+     )
+    (((perf-stat-bucket nav-part6))
+     "nav-part6"
+     )
+    (((perf-stat-bucket nav-part2))
+     "nav-part2"
+     )
+    (((perf-stat-bucket generate-velocity))
+     "generate-velocity"
+     )
+    (((perf-stat-bucket inst-shrub))
+     "inst-shrub"
+     )
+    (((perf-stat-bucket avoid-spheres))
+     "avoid-spheres"
+     )
+    (((perf-stat-bucket proto-shrub))
+     "proto-shrub"
+     )
+    (((perf-stat-bucket drawable))
+     "drawable"
+     )
+    (((perf-stat-bucket nav-part9))
+     "nav-part9"
+     )
+    (((perf-stat-bucket all-code))
+     "all-code"
+     )
+    (((perf-stat-bucket actor-hash))
+     "actor-hash"
+     )
+    (((perf-stat-bucket nav-dma-all))
+     "nav-dma-all"
+     )
+    (((perf-stat-bucket travel-post))
+     "travel-post"
+     )
+    (((perf-stat-bucket travel-around-spheres))
+     "travel-around-spheres"
+     )
+    (((perf-stat-bucket nav-part10))
+     "nav-part10"
+     )
+    (((perf-stat-bucket nav-dma-work))
+     "nav-dma-work"
+     )
+    (((perf-stat-bucket proto-tie))
+     "proto-tie"
+     )
+    (((perf-stat-bucket nav-part4))
+     "nav-part4"
+     )
+    (((perf-stat-bucket ray-step))
+     "ray-step"
+     )
+    (((perf-stat-bucket spatial-hash-search))
+     "spatial-hash-search"
+     )
+    (((perf-stat-bucket apply-rotation))
+     "apply-rotation"
+     )
+    (((perf-stat-bucket find-containing-poly))
+     "find-containing-poly"
+     )
+    (((perf-stat-bucket update-spheres))
+     "update-spheres"
+     )
+    (((perf-stat-bucket nav-part7))
+     "nav-part7"
+     )
+    (((perf-stat-bucket tfrag))
+     "tfrag"
+     )
+    (((perf-stat-bucket collide))
+     "collide"
+     )
+    (((perf-stat-bucket update-current-poly))
+     "update-current-poly"
+     )
+    (((perf-stat-bucket nav-dma-read))
+     "nav-dma-read"
+     )
+    (((perf-stat-bucket spatial-hash-build))
+     "spatial-hash-build"
+     )
+    (((perf-stat-bucket tie-generic))
+     "tie-generic"
+     )
+    (((perf-stat-bucket camera))
+     "camera"
+     )
+    (((perf-stat-bucket background))
+     "background"
+     )
+    (((perf-stat-bucket nav-part5))
+     "nav-part5"
+     )
+    (((perf-stat-bucket nav-part1))
+     "nav-part1"
+     )
+    (((perf-stat-bucket check-vector-collision-with-nav-spheres))
+     "check-vector-collision-with-nav-spheres"
+     )
+    (((perf-stat-bucket add-to-translation))
+     "add-to-translation"
+     )
+    (((perf-stat-bucket nav-part8))
+     "nav-part8"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+(deftype perf-stat-array (inline-array-class)
+  ((data perf-stat :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(defmethod inspect perf-stat-array ((obj perf-stat-array))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+(set! (-> perf-stat-array heap-base) (the-as uint 52))
+
+(defmethod reset! perf-stat ((obj perf-stat))
+  (let ((v1-0 (-> obj ctrl)))
+    (+! (-> obj count) 1)
+    (b! (zero? v1-0) cfg-2 :delay (nop!))
+    (.mtc0 Perf 0)
+    (.sync.l)
+    (.sync.p)
+    (.mtpc pcr0 0)
+    (.mtpc pcr1 0)
+    (.sync.l)
+    (.sync.p)
+    (.mtc0 Perf v1-0)
+    )
+  (.sync.l)
+  (.sync.p)
+  (label cfg-2)
+  0
+  (none)
+  )
+
+(defmethod read! perf-stat ((obj perf-stat))
+  (local-vars (v1-1 int) (v1-3 int))
+  (b! (zero? (-> obj ctrl)) cfg-2 :delay (nop!))
+  (.mtc0 Perf 0)
+  (.sync.l)
+  (.sync.p)
+  (.mfpc v1-1 pcr0)
+  (+! (-> obj accum0) v1-1)
+  (.mfpc v1-3 pcr1)
+  (+! (-> obj accum1) v1-3)
+  (label cfg-2)
+  0
+  (none)
+  )
+
+(defmethod update-wait-stats perf-stat ((obj perf-stat) (arg0 uint) (arg1 uint) (arg2 uint))
+  (when (nonzero? (-> obj ctrl))
+    (+! (-> obj to-vu0-waits) arg0)
+    (+! (-> obj to-spr-waits) arg1)
+    (+! (-> obj from-spr-waits) arg2)
+    )
+  0
+  (none)
+  )
+
+(when (not *debug-segment*)
+  (set! (-> perf-stat method-table 11) nothing)
+  (set! (-> perf-stat method-table 12) nothing)
+  (set! (-> perf-stat method-table 13) nothing)
+  )

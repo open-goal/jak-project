@@ -1,0 +1,741 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: gkernel-h.gc
+;; name in dgo: gkernel-h
+;; dgos: KERNEL
+
+;; DECOMP BEGINS
+
+(defconstant *kernel-major-version* 2)
+(defconstant *kernel-minor-version* 0)
+
+(defconstant DPROCESS_STACK_SIZE (#if PC_PORT #x8000 #x3800))
+(defconstant PROCESS_STACK_SIZE (#if PC_PORT #x6000 #x1c00))
+
+;; the size of the shared heap used by dynamically sized processes
+(#if PC_BIG_MEMORY
+  (defconstant PROCESS_HEAP_MULT 4) ;; 4x actors
+  (defconstant PROCESS_HEAP_MULT 1)
+  )
+(defconstant PROCESS_HEAP_SIZE (* PROCESS_HEAP_MULT 1540 1024))
+(defconstant PROCESS_HEAP_MAX (* PROCESS_HEAP_MULT 768))
+
+(defconstant *tab-size* (the binteger 8))
+(defconstant *gtype-basic-offset* 4)
+
+;; if set, will attempt to detect memory corruption and stack overflow bugs
+;; to some extent.
+(defglobalconstant KERNEL_DEBUG #t)
+
+(defconstant *scratch-memory-top* (the pointer #x70004000))
+
+
+;; Each process has a bitmask.
+;; The kernel can be configured to skip processes with certain mask bits set.
+(defenum process-mask
+  :type uint32
+  :bitfield #t
+  (execute 0)
+  (freeze 1)
+  (pause 2)
+  (menu 3)
+  (progress 4)
+  (actor-pause 5)
+  (sleep 6)
+  (sleep-code 7)
+  (process-tree 8)
+  (heap-shrunk 9)
+  (going 10)
+  (kernel-run 11)
+  (no-kill 12)
+  (movie 13)
+  (dark-effect 14)
+  (target 15)
+  (sidekick 16)
+  (crate 17)
+  (bit18 18) ;; unused?
+  (enemy 19)
+  (camera 20)
+  (platform 21)
+  (ambient 22)
+  (entity 23)
+  (projectile 24)
+  (bot 25)
+  (collectable 26)
+  (death 27)
+  (no-track 28)
+  (guard 29)
+  (vehicle 30)
+  (civilian 31)
+  )
+
+;; forward declarations
+(declare-type process-tree basic)
+(declare-type process process-tree)
+(declare-type entity basic)
+(declare-type entity-actor entity)
+(declare-type dead-pool basic)
+(declare-type level basic)
+(declare-type state basic)
+(declare-type event-message-block structure)
+(declare-type stack-frame basic)
+(declare-type cpu-thread basic)
+
+
+;; The state of the kernel, containing the masks to allow/deny certain processes,
+;; the currently running process, and the currently relocating process.
+(deftype kernel-context (basic)
+  ((prevent-from-run   process-mask  :offset-assert   4)
+   (require-for-run    process-mask  :offset-assert   8)
+   (allow-to-run       process-mask  :offset-assert  12)
+   (next-pid           int32         :offset-assert  16)
+   (fast-stack-top     pointer       :offset-assert  20)
+   (current-process    process       :offset-assert  24)
+   (relocating-process basic         :offset-assert  28)
+   (relocating-min     int32         :offset-assert  32)
+   (relocating-max     int32         :offset-assert  36)
+   (relocating-offset  int32         :offset-assert  40)
+   (relocating-level   level         :offset-assert  44)
+   (low-memory-message symbol        :offset-assert  48)
+   (login-object       basic         :offset-assert  52)
+   )
+  :method-count-assert 9
+  :size-assert         #x38
+  :flag-assert         #x900000038
+  )
+
+;; The usual "time" type.
+(deftype time-frame (int64)
+  ()
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; times are stored in 300ths of a second.
+;; this divides evenly into frames at both 50 and 60 fps.
+;; typically these are stored as integers as more precision is not useful.
+;; an unsigned 32-bit integer can store about 150 days
+(defglobalconstant TICKS_PER_SECOND 300) ;; 5 t/frame @ 60fps, 6 t/frame @ 50fps
+
+;; this was usec in GOAL
+(defmacro seconds (x)
+  "Convert number to seconds unit.
+   Returns uint."
+  (cond
+    ((integer? x)
+     (* TICKS_PER_SECOND x)
+     )
+    ((float? x)
+     (* 1 (* 1.0 x TICKS_PER_SECOND))
+     )
+    (#t
+     `(the uint (* TICKS_PER_SECOND ,x))
+     )
+    )
+  )
+
+;; Each clock counts in 3 different ways:
+;;
+;; 1). A "frame counter", which, confusingly, doesn't count frames.
+;;     It counts elapsed time, in 1/300ths of a second.
+;;     This counts in real-time, even if the game is lagging.
+;;
+;; 2). A "integral-frame-counter", which counts the number of vsyncs.
+;;     This doens't count the number of frames the game actually manages to draw,
+;;     just the number of vsyncs. It counts at different rates in NTSC/PAL.
+;;     NOTE: changing clock-ratio will make this count faster/slower. This only counts real
+;;           vsyncs if clock-ratio is 1.0.
+;;
+;; 3). The "time ratio", which adjusts based on the actual achieved framerate.
+;;     Unlike the others, this isn't a incrementing counter, but instead ratios:
+;;      time-adjust-ratio, frames-per-second, seconds-per-frame.
+;;
+;; For the most part, users should just adjust per-frame values by time-adjust-ratio, and this will
+;; compensate for pal/ntsc, lag, and clock-ratio scaling.
+;;
+;; The clock won't tick if its process-mask is prevent-from-run in the kernel.
+;; A clock can change the rate it runs at with clock-ratio.
+;; Note: both integral-frame-counter and seconds-per-frame/frames-per-second are affected by
+;; clock-ratio, which is somewhat weird.
+;; Changing clock-ratio will make integral-frame-counter not count actual vsyncs
+
+(deftype clock (basic)
+  ((index                      int32          :offset-assert   4) ;; which clock we are, in *display*
+   (mask                       process-mask   :offset-assert   8) ;; mask for ticking
+   (clock-ratio                float          :offset-assert  12) ;; how fast to run. 1.0 = realtime.
+   (accum                      float          :offset-assert  16) ;; fractional time for frame-counter (time-frame units)
+   (integral-accum             float          :offset-assert  20) ;; fractional time for integral (time-frame untis)
+   (frame-counter              time-frame     :offset-assert  24) ;; how much time has gone by since reset (time-frame units)
+   (old-frame-counter          time-frame     :offset-assert  32) ;; the frame-counter on the last engine iteration
+   (integral-frame-counter     uint64         :offset-assert  40) ;; how many vsyncs have gone by since reset
+   (old-integral-frame-counter uint64         :offset-assert  48) ;; the integral-frame-counter on the last engine iteration
+   (sparticle-data             vector :inline :offset-assert  64) ;; sparticle timescale info
+   (seconds-per-frame          float          :offset-assert  80) ;; how many seconds (not time-frames) should go by in 1 vsync
+   (frames-per-second          float          :offset-assert  84) ;; inverse of above
+   (time-adjust-ratio          float          :offset-assert  88) ;; 1, if the game runs at 60fps NTSC with clock-ratio = 1.
+   )
+  :method-count-assert 15
+  :size-assert         #x5c
+  :flag-assert         #xf0000005c
+  (:methods
+    (new (symbol type int) _type_ 0)
+    (update-rates! (_type_ float) float 9)
+    (advance-by! (_type_ float) clock 10)
+    (tick! (_type_) clock 11)
+    (save! (_type_ (pointer uint64)) int 12)
+    (load! (_type_ (pointer uint64)) int 13)
+    (reset! (_type_) none 14)
+    )
+  )
+
+(defmethod new clock ((allocation symbol) (type-to-make type) (arg0 int))
+  "Create a new clock and initialize to a non-zero time."
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 index) arg0)
+    (set! (-> gp-0 frame-counter) (seconds 1000))
+    (set! (-> gp-0 integral-frame-counter) (the-as uint 300000))
+    (set! (-> gp-0 old-frame-counter) (+ (-> gp-0 frame-counter) -1))
+    (set! (-> gp-0 old-integral-frame-counter) (+ (-> gp-0 integral-frame-counter) -1))
+    (update-rates! gp-0 1.0)
+    gp-0
+    )
+  )
+
+;; The basic node used to organize processes into a tree.
+;; The process types themselves are children of the process-tree type
+;; Typically, each instance of a game object is a process.
+(deftype process-tree (basic)
+  ((name     string                 :offset-assert 4)
+   (mask     process-mask           :offset-assert 8)
+   (clock    clock                  :offset-assert 12)
+   (parent   (pointer process-tree) :offset-assert 16)
+   (brother  (pointer process-tree) :offset-assert 20)
+   (child    (pointer process-tree) :offset-assert 24)
+   (ppointer (pointer process)      :offset-assert 28)
+   (self     process-tree           :offset-assert 32)
+   )
+  (:methods
+    (new (symbol type string) _type_ 0)
+    (activate (_type_ process-tree basic pointer) process-tree 9)
+    (deactivate  (_type_) none 10)
+    (init-from-entity! (_type_ entity-actor) none 11) ;; todo check
+    (run-logic? (_type_) symbol 12)
+    (process-tree-method-13 () none 13)
+    )
+  :size-assert #x24
+  :method-count-assert 14
+  :no-runtime-type
+  )
+
+;; Each process has a single "main" thread that is suspended and resumed.
+;; The "thread" object is what holds the needed state to start, suspend, and resume execution.
+;; Additionally, the kernel creates various temporary threads to run single functions.
+;; These "temporary" threads are never suspended.
+
+;; unlike modern implementations, the "thread" objects store small "backup" stacks (often only 100's of bytes).
+;; when a thread is suspended, it copies the stack from the execution stack to the backup stack.
+;; this seems silly, but it has an advantage to reduce memory - typically threads suspend without a very deep call
+;; stack, so the backup stack can be much, much smaller than a single large, shared execution stack.
+(deftype thread (basic)
+  ((name         symbol                      :offset-assert   4)
+   (process      process                     :offset-assert   8)
+   (previous     thread                      :offset-assert  12)
+   (suspend-hook (function cpu-thread none)  :offset-assert  16) ;; called by user to suspend
+   (resume-hook  (function cpu-thread none)  :offset-assert  20) ;; called by kernel to resume
+   (pc           pointer                     :offset-assert  24) ;; pc (x86 rip) to resume to
+   (sp           pointer                     :offset-assert  28) ;; stack pointer of thread
+   (stack-top    pointer                     :offset-assert  32) ;; stack to execute on
+   (stack-size   int32                       :offset-assert  36) ;; size of _suspend_ stack
+   )
+  :method-count-assert 12
+  :size-assert         #x28
+  :flag-assert         #xc00000028
+  (:methods
+    (stack-size-set! (_type_ int) none 9)
+    (thread-suspend (_type_) none 10)
+    (thread-resume (_type_) none 11)
+    )
+  )
+
+;; additional information to context switch
+(deftype cpu-thread (thread)
+  ((rreg  uint64 7        :offset-assert  40) ;; GPRs
+   (freg  float  8        :offset-assert  96) ;; FPRs
+   (stack uint8  :dynamic :offset-assert 128) ;; backup stack (dynamically sized)
+   )
+  :method-count-assert 12
+  :size-assert         #x80
+  :flag-assert         #xc00000080
+  (:methods
+    (new (symbol type process symbol int pointer) _type_ 0)
+    )
+  )
+
+;; Base type for all actual processes.
+;; this can be used directly, or child types can be made.
+(deftype process (process-tree)
+  ((pool             dead-pool                   ) ;; where to return us when we die
+   (status           symbol     :offset-assert 40) ;; used by kernel to track init/death
+   (pid              int32                       ) ;; globally unique ID, never reused for another
+   (main-thread      cpu-thread :offset-assert 48) ;; suspendable main thread
+   (top-thread       cpu-thread :offset-assert 52) ;; currently running thread
+   (entity           entity-actor  :offset-assert 56) ;; if we were spawned from an entity, that entity
+   (level            level      :offset-assert 60) ;; if we're associated with a level, that level
+   (state            state      :offset-assert 64) ;; current state, if we're in one
+   (next-state       state      :offset-assert 68) ;; set if we have a pending (go)
+   (trans-hook       function   :offset-assert 72) ;; function to run before resuming
+   (post-hook        function   :offset-assert 76) ;; function to run after suspending
+
+   ;; function to run if we receive an event
+   (event-hook (function process int symbol event-message-block object) :offset-assert 80)
+
+   ;; process heap size
+   (allocated-length int32 :offset-assert 84)
+
+   ;; ??
+   (pad-unknown-0 uint32 2) ;; had to rename this unfortunately, there is a type that uses this same name "vehicle"
+
+   ;; process heap
+   (heap-base pointer :offset-assert 96)
+   (heap-top  pointer :offset-assert 100)
+   (heap-cur  pointer :offset-assert 104)
+
+   ;; linked list of stack frames that have been created.
+   ;; note that these aren't created on every function call, only
+   ;; if the user explicitly creates a catch block or similar
+   (stack-frame-top stack-frame :offset-assert 108)
+
+   ;; list of engines this process is connected to
+   (connection-list connectable :inline :offset-assert 112)
+
+   ;; the process memory: contains child fields, then the process heap.
+   (stack uint8 :dynamic :offset-assert 128)
+   )
+  (:methods
+    (new (symbol type string int) _type_ 0)
+    )
+  (:states
+    dead-state
+    empty-state)
+  :size-assert #x80
+  :method-count-assert 14
+  :no-runtime-type ;; already defined by kscheme. Don't do it again.
+  )
+
+;; dead-pool is the simplest way to store dead processes - it's just a tree of processes that
+;; are inactive.
+(deftype dead-pool (process-tree)
+  ()
+  :method-count-assert 16
+  :size-assert         #x24
+  :flag-assert         #x1000000024
+  (:methods
+    (new (symbol type int int string) _type_ 0)
+    (get-process (_type_ type int) process 14)
+    (return-process (_type_ process) none 15)
+    )
+  )
+
+;; dead-pool-heap is a special thing - it pretends to be a dead-pool, but secretly
+;; creates and destroys processes on demand, as they are requested/returned.
+;; to do this, it has a single large heap and memory allocator.
+;; to prevent fragmentation of this heap, it has a relocate/compaction system
+;; that moves processes in memory.
+
+
+;; A dead-pool-heap-rec is a record for a process used by the handle system.
+;; The kernel will make sure that:
+;;  - the dead-pool-heap-rec for a process will continue to point to that process until the process
+;;    is killed.
+;;  - the dead-pool-heap-rec itself is never moved in memory, and it always points to some process, or #f.
+;;    (it is always safe to do (-> rec process pid) and see if it still points to your process)
+(deftype dead-pool-heap-rec (structure)
+  ((process process             :offset-assert   0)
+   (prev    dead-pool-heap-rec  :offset-assert   4)
+   (next    dead-pool-heap-rec  :offset-assert   8)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; the actual pool implementation
+(deftype dead-pool-heap (dead-pool)
+  ((allocated-length   int32                               :offset-assert  36)
+   (compact-time       uint32                              :offset-assert  40)
+   (compact-count-targ uint32                              :offset-assert  44)
+   (compact-count      uint32                              :offset-assert  48)
+   (fill-percent       float                               :offset-assert  52)
+   (first-gap          dead-pool-heap-rec                  :offset-assert  56)
+   (first-shrink       dead-pool-heap-rec                  :offset-assert  60)
+   (heap               kheap              :inline          :offset-assert  64)
+   (alive-list         dead-pool-heap-rec :inline          :offset-assert  80)
+   (last               dead-pool-heap-rec                  :offset         84)
+   (dead-list          dead-pool-heap-rec :inline          :offset-assert  92)
+   (process-list       dead-pool-heap-rec :inline :dynamic :offset-assert 104)
+   )
+  :method-count-assert 28
+  :size-assert         #x68
+  :flag-assert         #x1c00000068
+  (:methods
+    (new (symbol type string int int) _type_ 0)
+    (init (_type_ symbol int) none 16)
+    (compact (dead-pool-heap int) none 17)
+    (shrink-heap (dead-pool-heap process) dead-pool-heap 18)
+    (churn (dead-pool-heap int) none 19)
+    (memory-used (_type_) int 20)
+    (memory-total (_type_) int 21)
+    (memory-free (dead-pool-heap) int 22)
+    (compact-time (dead-pool-heap) uint 23)
+    (gap-size (dead-pool-heap dead-pool-heap-rec) int 24)
+    (gap-location (dead-pool-heap dead-pool-heap-rec) pointer 25)
+    (find-gap (dead-pool-heap dead-pool-heap-rec) dead-pool-heap-rec 26)
+    (find-gap-by-size (dead-pool-heap int) dead-pool-heap-rec 27)
+    )
+  )
+
+;; parent type for all kinds of stack-frames.
+;; at least for jak 1, these are only used internally by the kernel
+;; "next" brings you "up" the stack (toward the caller)
+(deftype stack-frame (basic)
+  ((name symbol :offset 4)
+   (next stack-frame :offset 8)
+   )
+  :size-assert #xc
+  :method-count-assert 9
+  :flag-assert #x90000000c
+  )
+
+;; a "catch" frame is a frame that can be "thrown" to.
+;; the "throw" is a nonlocal control flow back to the state before the "catch" block.
+(deftype catch-frame (stack-frame)
+  ((sp   int32     :offset-assert  12)
+   (ra   int32     :offset-assert  16)
+   ; (freg float   6 :offset-assert  20)
+   ; (rreg uint128 8 :offset-assert  48)
+   ;; In OpenGOAL, we swap a rreg for 4 more fregs.
+   (freg float 10 :offset-assert 20) ;; only use 8
+   (rreg uint128 7)                  ;; only use 5
+   )
+  :method-count-assert 9
+  :size-assert         #xb0
+  :flag-assert         #x9000000b0
+  (:methods
+    (new (symbol type symbol function (pointer uint64)) object 0)
+    )
+  )
+
+;; a "protect" frame is a way to indicate there's a "exit" function that should
+;; run if there's a "throw" or "abandon".
+(deftype protect-frame (stack-frame)
+  ((exit (function none)  :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  (:methods
+    (new (symbol type (function none)) protect-frame 0)
+    )
+  )
+
+;; a handle is a safe way to refer to a process. It solves two problems:
+;; - it allows you to find a process that moves in memory
+;; - it allows you to tell if the original process has died. otherwise you may get confused
+;;   because there could be another process located at the exact same address.
+(deftype handle (uint64)
+  ((process (pointer process) :offset   0 :size  32) ;; additional level of indirection to support moving processes
+   (pid     int32             :offset  32 :size  32) ;; unique pid to check if it's the same process or not.
+   (u64     uint64            :offset   0 :size  64)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(defmethod inspect handle ((obj handle))
+  (when (not obj)
+    (return obj)
+    )
+  (format #t "[~8x] ~A~%" obj 'handle)
+  (format #t "~1Tprocess: #x~X~%" (-> obj process))
+  (format #t "~1Tpid: ~D~%" (-> obj pid))
+  obj
+  )
+
+(defmacro handle->process (handle)
+  "Convert a handle to a process. If the process no longer exists, returns #f."
+  `(let ((the-handle (the-as handle ,handle)))
+     (if (-> the-handle process) ;; if we don't point to a process, kernel sets this to #f
+         (let ((proc (-> (-> the-handle process))))
+           (if (= (-> the-handle pid) (-> proc pid)) ;; make sure it's the same process
+               proc
+               )
+           )
+         )
+     )
+  )
+
+(defmacro ppointer->process (ppointer)
+  "convert a (pointer process) to a process."
+  ;; this uses the self field, which seems to always just get set to the object.
+  ;; confirmed in Jak 1 that using self here is useless, not sure...
+  `(let ((the-pp ,ppointer))
+     (the process (if the-pp (-> the-pp 0 self)))
+     )
+  )
+
+(defmacro process->ppointer (proc)
+  "safely get a (pointer process) from a process, returning #f if invalid."
+  `(let ((the-proc (the-as process ,proc)))
+     (if the-proc (-> the-proc ppointer))
+     )
+  )
+
+(defmacro ppointer->handle (pproc)
+  "convert a ppointer to a handle. assumes the ppointer is valid."
+  `(let ((the-process (the-as (pointer process) ,pproc)))
+      (new 'static 'handle :process the-process :pid (if the-process (-> the-process 0 pid)))
+      )
+  )
+
+(defmacro process->handle (proc)
+  "convert a process to a handle. if proc is #f, returns a #f handle."
+  `(ppointer->handle (process->ppointer ,proc))
+  )
+
+(defmethod print handle ((obj handle))
+  (if (nonzero? obj)
+      (format #t "#<handle :process ~A :pid ~D>" (handle->process obj) (-> obj pid))
+      (format #t "#<handle :process 0 :pid 0>")
+      )
+  obj
+  )
+
+;; A "state" defines functions that a process should run when it is in that state.
+;; the "code" function is executed by the main thread and can suspend/resume.
+;; the "trans" function is executed before code is resumed
+;; the "post" function is executed after code is suspended
+;; the "enter" function is executed when the process first transitions to the state
+;; the "exit" function is executed when the process exits the state (or dies)
+;; the "event" function is executed when the process receives an event.
+;; See gstate.gc for a lot more details on how this all works.
+;; This type is just a container to hold those functions.
+(deftype state (protect-frame)
+  ((code  function                                                  :offset-assert  16)
+   (trans (function none)                                           :offset-assert  20)
+   (post  function                                                  :offset-assert  24)
+   (enter function                                                  :offset-assert  28)
+   (event (function process int symbol event-message-block object)  :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  (:methods
+    (new (symbol
+           type
+           symbol
+           function
+           (function none)
+           function
+           (function none)
+           (function process int symbol event-message-block object))
+         _type_ 0)
+    )
+  )
+
+;; data contained in an "event" sent from one process to another
+;; in jak2, the events may be queued and sent at a later time, so the block
+;; contains handles, to see if the to/from processes are still alive.
+(deftype event-message-block (structure)
+  ((to-handle   handle              :offset-assert   0) ;; who to send to
+   (to          (pointer process)   :offset          0)
+   (form-handle handle              :offset-assert   8) ;; who is doing the sending
+   (from        (pointer process)   :offset          8)
+   (param       uint64            6 :offset-assert  16) ;; the data being sent
+   (message     symbol              :offset-assert  64) ;; the message name
+   (num-params  int32               :offset-assert  68)
+   )
+  :method-count-assert 9
+  :size-assert         #x48
+  :flag-assert         #x900000048
+  )
+
+;; a queue of messages.
+(deftype event-message-block-array (inline-array-class)
+  ((data event-message-block :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 10
+  :size-assert         #x10
+  :flag-assert         #xa00000010
+  (:methods
+    (send-all! (_type_) none 9)
+    )
+  )
+(set! (-> event-message-block-array heap-base) (the-as uint 80))
+
+;; the type returned by the C Kernel, contains the result of a SQL Query.
+(deftype sql-result (basic)
+  ((len              int32           :offset-assert   4)
+   (allocated-length uint32          :offset-assert   8)
+   (error            symbol          :offset-assert  12)
+   (data             string :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  (:methods
+    (new (symbol type uint) _type_ 0)
+    )
+  )
+
+(define-extern sql-query (function string sql-result))
+
+(defmethod new sql-result ((allocation symbol) (type-to-make type) (arg0 uint))
+  "Allocate a new sql-result with enough room for arg0 entries in data."
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* arg0 4))))))
+    (set! (-> v0-0 allocated-length) arg0)
+    (set! (-> v0-0 error) 'error)
+    v0-0
+    )
+  )
+
+(defmethod print sql-result ((obj sql-result))
+  "Print a sql-result as an array of symbols."
+  (format #t "#(~A" (-> obj error))
+  (dotimes (s5-0 (-> obj len))
+    (format #t " ~A" (-> obj data s5-0))
+    )
+  (format #t ")")
+  obj
+  )
+
+;; the result that the C Kernel will send us.
+(define *sql-result* (the-as sql-result #f))
+
+(defmacro defbehavior (name process-type bindings &rest body)
+  "define a new behavior. This is simply a function where self is bound to the process register,
+   which is assumed to have type process-type."
+  (if (and
+       (> (length body) 1)     ;; more than one thing in function
+       (string? (first body))  ;; first thing is a string
+       )
+      ;; then it's a docstring and we ignore it.
+      `(define ,name (lambda :name ,name :behavior ,process-type ,bindings ,@(cdr body)))
+      ;; otherwise don't ignore it.
+      `(define ,name (lambda :name ,name :behavior ,process-type ,bindings ,@body))
+      )
+  )
+
+(defmacro process-stack-used (proc)
+  "get how much stack the top thread of a process has used."
+  `(- (the int (-> ,proc top-thread stack-top))
+      (the int (-> ,proc top-thread sp))
+      )
+  )
+
+(defmacro process-stack-size (proc)
+  "get how much stack the top thread of a process has"
+  `(-> ,proc top-thread stack-size)
+  )
+
+(defmacro process-heap-used (proc)
+  "get how much heap a process has used."
+  `(- (-> ,proc allocated-length)
+      (- (the int (-> ,proc heap-top))
+         (the int (-> ,proc heap-cur))
+         )
+      )
+  )
+
+(defmacro process-heap-size (proc)
+  "get how much heap a process has"
+  `(the int (-> ,proc allocated-length))
+  )
+
+(defmacro break ()
+  "crash the game by dividing by 0."
+  `(/ 0 0)
+  )
+
+(defmacro with-pp (&rest body)
+  "execute the body with pp bound to the current process register."
+  `(rlet ((pp :reg r13 :reset-here #t :type process))
+         ,@body)
+  )
+
+(defconstant PP (with-pp pp))
+
+(defmacro process-mask? (mask enum-value)
+  "Are any of the given bits set in the process mask?"
+  `(!= 0 (logand ,mask (process-mask ,enum-value)))
+  )
+
+(defmacro process-mask-set! (mask &rest enum-value)
+  "Set the given bits in the process mask"
+  `(set! ,mask (logior ,mask (process-mask ,@enum-value)))
+  )
+
+(defmacro process-mask-clear! (mask &rest enum-value)
+  "Clear the given bits in the process mask."
+  `(set! ,mask (logand ,mask (lognot (process-mask ,@enum-value))))
+  )
+
+(defmacro suspend ()
+  "suspend the current process, to be resumed on the next frame."
+  `(rlet ((pp :reg r13 :reset-here #t))
+         ;; debug check for stack overflow here, where we can easily print the process name.
+         (#when (or KERNEL_DEBUG)
+           (rlet ((sp :reg rsp :reset-here #t :type int)
+                  (off :reg r15 :type uint))
+                 (let* ((sp-goal (- sp off))
+                        (stack-top-goal (-> (the process pp) top-thread stack-top))
+                        (stack-used (&- stack-top-goal sp-goal))
+                        (stack-size (-> (the process pp) top-thread stack-size))
+                        )
+                   (when (> stack-used stack-size)
+                     (format 0 "ERROR: suspend called without enough stack in proc:~%~A~%Stack: ~D/~D~%" pp stack-used stack-size)
+                     )
+                   )
+                 )
+           )
+         ;; set to the current thread
+         (set! pp (-> (the process pp) top-thread))
+         ;; call the suspend hook (put nothing as the argument)
+         ((-> (the cpu-thread pp) suspend-hook) (the cpu-thread 0))
+         ;; the kernel will set pp (possibly to a new value, if we've been relocated) on resume.
+         )
+  )
+
+(defmacro process-deactivate ()
+  "deactivate (kill) the current process"
+  `(rlet ((pp :reg r13 :reset-here #t :type process))
+         (deactivate pp)
+         )
+  )
+
+;; Some assembly functions in GOAL are ported to C++, then accessed from GOAL using these mips2c macros.
+(defmacro def-mips2c (name type)
+  "Define a mips2c object (typically a function)."
+  `(begin
+     (define-extern ,name ,type)
+     (set! ,name (the-as ,type (__pc-get-mips2c ,(symbol->string name))))
+     )
+  )
+
+(defmacro defmethod-mips2c (name method-id method-type)
+  "Define a mips2c method."
+  `(method-set! ,method-type ,method-id (__pc-get-mips2c ,name))
+  )
+
+(defmacro scratchpad-object (type &key (offset 0))
+  "Access an object on the scratchpad."
+  `(the-as ,type (&+ *fake-scratchpad-data* ,offset))
+  )
+
+(defmacro scratchpad-ptr (type &key (offset 0))
+  "Create a pointer to an object on the scratchpad."
+  `(the-as (pointer ,type) (&+ *fake-scratchpad-data* ,offset))
+  )

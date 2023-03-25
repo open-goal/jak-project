@@ -1,0 +1,1500 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: under-sig-obs.gc
+;; name in dgo: under-sig-obs
+;; dgos: UNB
+
+;; DECOMP BEGINS
+
+(deftype under-plat-shoot (plat)
+  ((draw-test-script    script-context         :offset-assert 324)
+   (incoming-attack-id  uint32                 :offset-assert 328)
+   (angle-flip          float                  :offset-assert 332)
+   (angle-flip-vel      float                  :offset-assert 336)
+   (state-flip          uint32                 :offset-assert 340)
+   (time-flip           uint32                 :offset-assert 344)
+   (disable-track-under basic                  :offset-assert 348)
+   (dest-angle          float                  :offset-assert 352)
+   (on-shake            basic                  :offset-assert 356)
+   (hint-count          float                  :offset-assert 360)
+   (hit-time            time-frame             :offset-assert 368)
+   (knocked-sound-time  time-frame             :offset-assert 376)
+   (axe-flip            vector         :inline :offset-assert 384)
+   )
+  :heap-base #x110
+  :method-count-assert 39
+  :size-assert         #x190
+  :flag-assert         #x2701100190
+  (:methods
+    (die-falling () _type_ :state 37)
+    (dormant () _type_ :state 38)
+    )
+  )
+
+
+(defskelgroup skel-under-plat-shoot under-plat-shoot under-plat-shoot-lod0-jg under-plat-shoot-idle-ja
+              ((under-plat-shoot-lod0-mg (meters 20)) (under-plat-shoot-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5.1)
+              )
+
+(defmethod get-art-group under-plat-shoot ((obj under-plat-shoot))
+  "@returns The associated [[art-group]]"
+  (art-group-get-by-name *level* "skel-under-plat-shoot" (the-as (pointer uint32) #f))
+  )
+
+(defbehavior cshape-reaction-under-plat-shoot under-plat-shoot ((arg0 control-info) (arg1 collide-query) (arg2 vector) (arg3 vector))
+  (let ((gp-0 (cshape-reaction-default arg0 arg1 arg2 arg3)))
+    (when (logtest? gp-0 (collide-status touch-surface))
+      (let ((s5-0 self))
+        (when (>= (- (-> self clock frame-counter) (-> s5-0 hit-time)) (seconds 0.25))
+          (sound-play "shoot-plat-fall")
+          (set! (-> s5-0 hit-time) (-> self clock frame-counter))
+          )
+        )
+      )
+    gp-0
+    )
+  )
+
+(defmethod init-plat-collision! under-plat-shoot ((obj under-plat-shoot))
+  "TODO - collision stuff for setting up the platform"
+  (set! (-> obj clock) (-> *display* user0-clock))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-under-plat-shoot)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle pusher))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak bot obstacle hit-by-others-list player-list pusher)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 0)
+      (set-vector! (-> s4-0 local-sphere) 0.0 -4915.2 0.0 17203.2)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (let ((v1-16 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-16 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-16 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-16 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-16 transform-index) 0)
+      (set-vector! (-> v1-16 local-sphere) 0.0 -4915.2 0.0 17203.2)
+      )
+    (let ((v1-18 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-18 prim-core collide-with) (collide-spec backgnd obstacle hit-by-others-list pusher))
+      (set! (-> v1-18 prim-core action) (collide-action solid))
+      (set! (-> v1-18 transform-index) 0)
+      (set-vector! (-> v1-18 local-sphere) 0.0 -4915.2 0.0 13516.8)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-21 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-21 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-21 prim-core collide-with))
+      )
+    (set! (-> s5-0 rider-max-momentum) 0.0)
+    (set! (-> s5-0 max-iteration-count) (the-as uint 5))
+    (set! (-> obj root-override) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod base-plat-method-32 under-plat-shoot ((obj under-plat-shoot))
+  0
+  (none)
+  )
+
+(defmethod init-plat! under-plat-shoot ((obj under-plat-shoot))
+  "Does any necessary initial platform setup.
+For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
+  (set-vector! (-> obj axe-flip) 1.0 0.0 0.0 1.0)
+  (set! (-> obj angle-flip) 180.0)
+  (set! (-> obj time-flip) (the-as uint 570))
+  (set! (-> obj draw-test-script) (res-lump-struct (-> obj entity) 'on-activate script-context))
+  (set! (-> obj disable-track-under) #f)
+  (if (>= (res-lump-value (-> obj entity) 'extra-id int :default (the-as uint128 -1) :time -1000000000.0) 0)
+      (set! (-> obj disable-track-under) (the-as basic #t))
+      )
+  (set! (-> obj hint-count) 0.0)
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "shoot-plat-lp" :fo-max 70) (-> obj root-override trans))
+        )
+  0
+  (none)
+  )
+
+(defstate dormant (under-plat-shoot)
+  :virtual #t
+  :enter (behavior ()
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (let ((v1-4 (-> self root-override root-prim)))
+      (set! (-> v1-4 prim-core collide-as) (collide-spec))
+      (set! (-> v1-4 prim-core collide-with) (collide-spec))
+      )
+    0
+    (none)
+    )
+  :exit (behavior ()
+    (logclear! (-> self draw status) (draw-control-status no-draw))
+    (let ((v1-3 (-> self root-override root-prim)))
+      (set! (-> v1-3 prim-core collide-as) (-> self root-override backup-collide-as))
+      (set! (-> v1-3 prim-core collide-with) (-> self root-override backup-collide-with))
+      )
+    (none)
+    )
+  :trans (behavior ()
+    (when (not (script-eval (the-as pair (-> self draw-test-script))))
+      enter-state
+      #t
+      (go-virtual plat-path-active)
+      )
+    (none)
+    )
+  :code (the-as (function none :behavior under-plat-shoot) sleep-code)
+  )
+
+(defstate plat-path-active (under-plat-shoot)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('bonk)
+         (the-as object (start-bouncing! self))
+         )
+        (('attack)
+         (when (zero? (-> self state-flip))
+           (let ((s5-0 (the-as object (-> event param 1))))
+             (when (!= (-> (the-as attack-info s5-0) id) (-> self incoming-attack-id))
+               (set! (-> self incoming-attack-id) (-> (the-as attack-info s5-0) id))
+               (let* ((gp-0 proc)
+                      (s4-0 (if (type? gp-0 process-drawable)
+                                gp-0
+                                )
+                            )
+                      )
+                 (when s4-0
+                   (let* ((s3-0 (-> (the-as process-drawable s4-0) root))
+                          (gp-1 (if (type? (the-as collide-shape s3-0) collide-shape)
+                                    s3-0
+                                    )
+                                )
+                          )
+                     (when gp-1
+                       (when (logtest? (-> (the-as collide-shape gp-1) root-prim prim-core collide-as) (collide-spec projectile))
+                         (when (zero? (-> self state-flip))
+                           (sound-play "mtn-plat-flip1")
+                           (set! (-> self state-flip) (the-as uint 1))
+                           )
+                         (if (= (-> (find-offending-process-focusable s4-0 (the-as attack-info s5-0)) type) target)
+                             (set! (-> self time-flip) (the-as uint 1140))
+                             (set! (-> self time-flip) (the-as uint 570))
+                             )
+                         (set! (-> self hint-count) -1.0)
+                         (vector-! (-> self axe-flip) (-> gp-1 trans) (-> self root-override trans))
+                         (set! (-> self axe-flip y) 0.0)
+                         (vector-normalize! (-> self axe-flip) 1.0)
+                         (vector-rotate90-around-y! (-> self axe-flip) (-> self axe-flip))
+                         (set! (-> self angle-flip-vel) -10.0)
+                         (set! (-> self state-time) (-> self clock frame-counter))
+                         )
+                       )
+                     )
+                   )
+                 )
+               #f
+               )
+             )
+           )
+         )
+        (('hint)
+         (when (>= (-> self hint-count) 0.0)
+           (+! (-> self hint-count) (-> self clock seconds-per-frame))
+           (if (< 6.0 (-> self hint-count))
+               #f
+               )
+           )
+         )
+        (('track)
+         (cond
+           ((-> event param 0)
+            (if (zero? (-> self state-flip))
+                #t
+                'abort
+                )
+            )
+           ((and *target*
+                 (-> self disable-track-under)
+                 (< (-> *target* control trans y) (+ -20480.0 (-> self root-override trans y)))
+                 )
+            #f
+            )
+           (else
+             (zero? (-> self state-flip))
+             )
+           )
+         )
+        (('centipede)
+         (when (not (and (-> self next-state) (let ((v1-39 (-> self next-state name)))
+                                                (or (= v1-39 'die-falling) (= v1-39 'empty-state))
+                                                )
+                         )
+                    )
+           (vector-reset! (-> self root-override transv))
+           (let* ((gp-2 proc)
+                  (a0-11 (if (type? (the-as process-focusable gp-2) process-focusable)
+                             gp-2
+                             )
+                         )
+                  )
+             (when a0-11
+               (vector-!
+                 (-> self root-override transv)
+                 (-> self root-override trans)
+                 (get-trans (the-as process-focusable a0-11) 0)
+                 )
+               (set! (-> self root-override transv y) 0.0)
+               (vector-normalize! (-> self root-override transv) 163840.0)
+               (set! (-> self root-override transv y) 20480.0)
+               )
+             )
+           (go-virtual die-falling)
+           )
+         )
+        )
+      )
+    )
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type plat plat-path-active) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set! (-> self dest-angle) 180.0)
+    (set! (-> self on-shake) #f)
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (none)
+    )
+  :trans (behavior ()
+    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (-> self time-flip)))
+      (set! (-> self state-flip) (the-as uint 0))
+      0
+      )
+    (cond
+      ((zero? (-> self state-flip))
+       (set! (-> self on-shake) #f)
+       (when (!= (-> self dest-angle) 180.0)
+         (sound-play "mtn-plat-flip2")
+         (set! (-> self dest-angle) 180.0)
+         )
+       )
+      (else
+        (if (!= (-> self dest-angle) 0.0)
+            (set! (-> self dest-angle) 0.0)
+            )
+        )
+      )
+    (+! (-> self angle-flip-vel)
+        (* -0.5 (-> self clock seconds-per-frame) (- (-> self angle-flip) (-> self dest-angle)))
+        )
+    (+! (-> self angle-flip-vel) (* -6.0 (-> self clock seconds-per-frame) (-> self angle-flip-vel)))
+    (+! (-> self angle-flip) (-> self angle-flip-vel))
+    (if (!= *bot-record-path* -1)
+        (set! (-> self angle-flip) 0.0)
+        )
+    (quaternion-vector-angle! (-> self root-override quat) (-> self axe-flip) (* 182.04445 (-> self angle-flip)))
+    (when (and (>= (- (-> self clock frame-counter) (-> self state-time)) (the-as time-frame (+ (-> self time-flip) -300)))
+               (= 1 (-> self state-flip))
+               )
+      (when (not (-> self on-shake))
+        (sound-play "mtn-plat-shake")
+        (set! (-> self on-shake) (the-as basic #t))
+        )
+      (let ((s5-2 (new 'stack-no-clear 'vector))
+            (gp-2 (new 'stack-no-clear 'quaternion))
+            )
+        (set-vector!
+          s5-2
+          (rand-vu-float-range -1.0 1.0)
+          (rand-vu-float-range -1.0 1.0)
+          (rand-vu-float-range -1.0 1.0)
+          1.0
+          )
+        (vector-normalize! s5-2 1.0)
+        (quaternion-vector-angle! gp-2 s5-2 910.2222)
+        (quaternion-pseudo-seek
+          (-> self root-override quat)
+          (-> self root-override quat)
+          gp-2
+          (-> self clock seconds-per-frame)
+          )
+        )
+      )
+    (quaternion-normalize! (-> self root-override quat))
+    (let ((t9-12 (-> (method-of-type plat plat-path-active) trans)))
+      (if t9-12
+          (t9-12)
+          )
+      )
+    (none)
+    )
+  :post (behavior ()
+    (let ((t9-0 (-> (method-of-type plat plat-path-active) post)))
+      (if t9-0
+          ((the-as (function none) t9-0))
+          )
+      )
+    (none)
+    )
+  )
+
+(defstate die-falling (under-plat-shoot)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (logclear! (-> self mask) (process-mask actor-pause enemy platform))
+    (let ((v1-7 (-> (the-as collide-shape-prim-group (-> self root-override root-prim)) child 0)))
+      (set! (-> v1-7 prim-core collide-as) (collide-spec))
+      (set! (-> v1-7 prim-core collide-with) (collide-spec))
+      )
+    0
+    (none)
+    )
+  :trans (behavior ()
+    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1))
+      (let ((f30-0 (* 0.0016666667 (the float (+ (- (seconds -1) (-> self state-time)) (-> self clock frame-counter))))))
+        (when (>= f30-0 1.0)
+          (cleanup-for-death self)
+          (go empty-state)
+          )
+        (let ((f0-3 (- 1.0 f30-0)))
+          (set-vector! (-> self root-override scale) f0-3 f0-3 f0-3 1.0)
+          )
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (let ((f30-0 (rand-vu-float-range 0.5 0.8)))
+      (sound-play-by-name
+        (static-sound-name "und-floor-break")
+        (new-sound-id)
+        716
+        (the int (* 1524.0 f30-0))
+        0
+        (sound-group sfx)
+        #t
+        )
+      )
+    (set! (-> self hit-time) (-> self clock frame-counter))
+    (let ((gp-1 (new 'stack-no-clear 'quaternion))
+          (s5-1 (new 'stack-no-clear 'quaternion))
+          (s4-0 (new 'stack-no-clear 'vector))
+          (f30-1 0.0)
+          )
+      (vector-normalize-copy! s4-0 (-> self root-override transv) 1.0)
+      (vector-rotate90-around-y! s4-0 s4-0)
+      (quaternion-copy! gp-1 (-> self root-override quat))
+      (until #f
+        (+! f30-1 (* 65536.0 (-> self clock seconds-per-frame)))
+        (quaternion-vector-angle! s5-1 s4-0 (- f30-1))
+        (quaternion*! (-> self root-override quat) s5-1 gp-1)
+        (suspend)
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (let ((v1-0 (-> self root-override)))
+      (set! (-> v1-0 transv y) (- (-> v1-0 transv y) (* 512000.0 (-> self clock seconds-per-frame))))
+      (let ((a2-0 (new 'stack-no-clear 'collide-query)))
+        (set! (-> a2-0 collide-with) (-> v1-0 root-prim prim-core collide-with))
+        (set! (-> a2-0 ignore-process0) self)
+        (set! (-> a2-0 ignore-process1) #f)
+        (set! (-> a2-0 ignore-pat) (-> v1-0 pat-ignore-mask))
+        (set! (-> a2-0 action-mask) (collide-action solid))
+        (fill-cache-integrate-and-collide v1-0 (-> v1-0 transv) a2-0 (meters 0))
+        )
+      )
+    (ja-post)
+    (none)
+    )
+  )
+
+(defmethod plat-path-sync under-plat-shoot ((obj under-plat-shoot))
+  "If the `sync` period is greater than `0` then transition the state to [[plat::35]]
+otherwise, [[plat::34]]
+
+@see [[sync-eased]]"
+  (cond
+    ((and (script-eval (the-as pair (-> obj draw-test-script))) (= *bot-record-path* -1))
+     (go (method-of-object obj dormant))
+     )
+    (else
+      enter-state
+      #t
+      (go (method-of-object obj plat-path-active))
+      )
+    )
+  )
+
+(deftype under-break-floor (process-drawable)
+  ((root-override collide-shape-moving  :offset 128)
+   )
+  :heap-base #x50
+  :method-count-assert 23
+  :size-assert         #xc8
+  :flag-assert         #x17005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    (die () _type_ :state 21)
+    (die-fast () _type_ :state 22)
+    )
+  )
+
+
+(defskelgroup skel-under-break-floor under-break-floor under-break-floor-lod0-jg under-break-floor-idle-ja
+              ((under-break-floor-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 7.25)
+              )
+
+(defskelgroup skel-under-break-floor-explode under-break-floor under-break-floor-explode-lod0-jg under-break-floor-explode-idle-ja
+              ((under-break-floor-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 15)
+              )
+
+(define *under-break-floor-exploder-params*
+  (new 'static 'joint-exploder-static-params
+    :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+      (new 'static 'joint-exploder-static-joint-params :joint-index 3 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 10 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 11 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 12 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 13 :parent-joint-index -1)
+      )
+    :collide-spec #x1
+    )
+  )
+
+(defstate idle (under-break-floor)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('attack)
+         (when (logtest? (-> (the-as attack-info (-> event param 1)) penetrate-using) (penetrate flop))
+           (go-virtual die)
+           #f
+           )
+         )
+        )
+      )
+    )
+  :code (the-as (function none :behavior under-break-floor) sleep-code)
+  )
+
+(defstate die (under-break-floor)
+  :virtual #t
+  :enter (behavior ()
+    (let ((v1-1 (-> self root-override root-prim)))
+      (set! (-> v1-1 prim-core collide-as) (collide-spec))
+      (set! (-> v1-1 prim-core collide-with) (collide-spec))
+      )
+    0
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (none)
+    )
+  :code (behavior ()
+    ((lambda ()
+       (with-pp
+         (sound-play "und-floor-break")
+         (let ((gp-1 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
+           (set! (-> gp-1 duration) (seconds 0.6))
+           (set-vector! (-> gp-1 fountain-rand-transv-lo) -98304.0 24576.0 -98304.0 1.0)
+           (set-vector! (-> gp-1 fountain-rand-transv-hi) 98304.0 114688.0 98304.0 1.0)
+           (process-spawn
+             joint-exploder
+             (art-group-get-by-name *level* "skel-under-break-floor-explode" (the-as (pointer uint32) #f))
+             5
+             gp-1
+             *under-break-floor-exploder-params*
+             :to pp
+             )
+           )
+         )
+       )
+     )
+    (suspend)
+    (ja-channel-set! 0)
+    (let ((gp-0 (-> self clock frame-counter)))
+      (until (>= (- (-> self clock frame-counter) gp-0) (seconds 1))
+        (suspend)
+        )
+      )
+    (send-event self 'death-end)
+    (while (-> self child)
+      (suspend)
+      )
+    (cleanup-for-death self)
+    (none)
+    )
+  :post (the-as (function none :behavior under-break-floor) ja-post)
+  )
+
+(defstate die-fast (under-break-floor)
+  :virtual #t
+  :code (behavior ()
+    (cleanup-for-death self)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! under-break-floor ((obj under-break-floor) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 3))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 0)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 20480.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-8 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-8 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-8 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-8 prim-core action) (collide-action solid))
+      (set! (-> v1-8 transform-index) 0)
+      (set-vector! (-> v1-8 local-sphere) 0.0 0.0 0.0 20480.0)
+      )
+    (let ((v1-10 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-10 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-10 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-10 prim-core action) (collide-action solid))
+      (set! (-> v1-10 transform-index) 0)
+      (set-vector! (-> v1-10 local-sphere) 0.0 0.0 0.0 20480.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-13 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-13 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-13 prim-core collide-with))
+      )
+    (set! (-> obj root-override) (the-as collide-shape-moving s4-0))
+    )
+  (set! (-> obj root-override penetrated-by) (penetrate flop))
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-under-break-floor" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> obj draw light-index) (the-as uint 3))
+  (let ((a0-20 (-> obj skel root-channel 0)))
+    (set! (-> a0-20 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+    (set! (-> a0-20 frame-num) 0.0)
+    (joint-control-channel-group! a0-20 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-identity)
+    )
+  (transform-post)
+  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
+      (go (method-of-object obj die-fast))
+      (go (method-of-object obj idle))
+      )
+  (none)
+  )
+
+(deftype under-break-wall (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 22
+  :size-assert         #xc8
+  :flag-assert         #x16005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    (die () _type_ :state 21)
+    )
+  )
+
+
+(defskelgroup skel-under-break-wall1 under-break-wall under-break-wall-lod0-jg under-break-wall-idle-ja
+              ((under-break-wall-lod0-mg (meters 999999)))
+              :bounds (static-spherem 8.5 1.8 -1.3 10)
+              )
+
+(defskelgroup skel-under-break-wall2 under-break-wall-b under-break-wall-b-lod0-jg under-break-wall-b-idle-ja
+              ((under-break-wall-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 8.5 1.8 -1.3 10)
+              )
+
+(defstate idle (under-break-wall)
+  :virtual #t
+  :code (the-as (function none :behavior under-break-wall) sleep-code)
+  )
+
+(defstate die (under-break-wall)
+  :virtual #t
+  :code (behavior ()
+    (cleanup-for-death self)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! under-break-wall ((obj under-break-wall) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (local-vars (sv-16 res-tag))
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-2 prim-core action) (collide-action solid))
+      (set! (-> v1-2 transform-index) 4)
+      (set-vector! (-> v1-2 local-sphere) 5324.8 -18432.0 -8192.0 32768.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-2)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> obj root) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (if (= (res-lump-value (-> obj entity) 'extra-id uint :time -1000000000.0) 2)
+      (initialize-skeleton
+        obj
+        (the-as skeleton-group (art-group-get-by-name *level* "skel-under-break-wall2" (the-as (pointer uint32) #f)))
+        (the-as pair 0)
+        )
+      (initialize-skeleton
+        obj
+        (the-as skeleton-group (art-group-get-by-name *level* "skel-under-break-wall1" (the-as (pointer uint32) #f)))
+        (the-as pair 0)
+        )
+      )
+  (let ((s4-4 (-> obj root)))
+    (set! sv-16 (new 'static 'res-tag))
+    (let ((v1-15 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-16))))
+      (when v1-15
+        (+! (-> obj root trans x) (-> v1-15 0))
+        (+! (-> obj root trans y) (-> v1-15 1))
+        (+! (-> obj root trans z) (-> v1-15 2))
+        )
+      )
+    (let ((f0-12 (res-lump-float arg0 'rotoffset)))
+      (if (!= f0-12 0.0)
+          (quaternion-rotate-y! (-> s4-4 quat) (-> s4-4 quat) f0-12)
+          )
+      )
+    )
+  (transform-post)
+  (if (script-eval (res-lump-struct (-> obj entity) 'on-activate pair))
+      (go (method-of-object obj die))
+      (go (method-of-object obj idle))
+      )
+  (none)
+  )
+
+(deftype under-break-bridge (process-drawable)
+  ((root-override collide-shape-moving  :offset        128)
+   (bridge-id     int8                  :offset-assert 200)
+   )
+  :heap-base #x50
+  :method-count-assert 23
+  :size-assert         #xc9
+  :flag-assert         #x17005000c9
+  (:methods
+    (idle () _type_ :state 20)
+    (broken () _type_ :state 21)
+    (die () _type_ :state 22)
+    )
+  )
+
+
+(defskelgroup skel-under-bridge1 under-break-bridge under-break-bridge-lod0-jg under-break-bridge-idle-ja
+              ((under-break-bridge-lod0-mg (meters 999999)))
+              :bounds (static-spherem 3 0 -6.5 14)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-under-bridge2 under-break-bridge-b under-break-bridge-b-lod0-jg under-break-bridge-b-idle-ja
+              ((under-break-bridge-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 3 0 -6.5 14)
+              :origin-joint-index 3
+              )
+
+(defstate idle (under-break-bridge)
+  :virtual #t
+  :code (the-as (function none :behavior under-break-bridge) sleep-code)
+  )
+
+(defstate broken (under-break-bridge)
+  :virtual #t
+  :code (behavior ()
+    (set! (-> self draw origin-joint-index) (the-as uint 54))
+    (let* ((v1-2 (-> self root-override root-prim))
+           (a1-0 (-> (the-as collide-shape-prim-group v1-2) child 0))
+           (a0-3 (-> (the-as collide-shape-prim-group v1-2) child 1))
+           )
+      (set! (-> a1-0 prim-core collide-as) (collide-spec))
+      (set! (-> v1-2 transform-index) (-> a0-3 transform-index))
+      (set! (-> v1-2 local-sphere quad) (-> a0-3 local-sphere quad))
+      (set! (-> self draw bounds quad) (-> a0-3 local-sphere quad))
+      (set! (-> a0-3 prim-core collide-as) (-> v1-2 prim-core collide-as))
+      )
+    (ja-channel-push! 1 0)
+    (ja :group! (-> self draw art-group data 3) :num! min)
+    (transform-post)
+    (sleep-code)
+    (none)
+    )
+  )
+
+(defstate die (under-break-bridge)
+  :virtual #t
+  :code (behavior ()
+    (cleanup-for-death self)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! under-break-bridge ((obj under-break-bridge) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (local-vars (sv-16 res-tag))
+  (set! (-> obj bridge-id) (res-lump-value (-> obj entity) 'extra-id int :time -1000000000.0))
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 3))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 12288.0 0.0 -26624.0 57344.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-9 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-9 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-9 prim-core action) (collide-action solid))
+      (set! (-> v1-9 transform-index) 3)
+      (set-vector! (-> v1-9 local-sphere) 12288.0 0.0 -26624.0 57344.0)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-11 prim-core action) (collide-action solid))
+      (set! (-> v1-11 transform-index) 54)
+      (set-vector! (-> v1-11 local-sphere) 0.0 0.0 49152.0 61440.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-14 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-14 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-14 prim-core collide-with))
+      )
+    (set! (-> obj root-override) (the-as collide-shape-moving s4-0))
+    )
+  (process-drawable-from-entity! obj arg0)
+  (if (= (res-lump-value (-> obj entity) 'extra-id uint :time -1000000000.0) 1)
+      (initialize-skeleton
+        obj
+        (the-as skeleton-group (art-group-get-by-name *level* "skel-under-bridge2" (the-as (pointer uint32) #f)))
+        (the-as pair 0)
+        )
+      (initialize-skeleton
+        obj
+        (the-as skeleton-group (art-group-get-by-name *level* "skel-under-bridge1" (the-as (pointer uint32) #f)))
+        (the-as pair 0)
+        )
+      )
+  (let ((s4-4 (-> obj root-override)))
+    (set! sv-16 (new 'static 'res-tag))
+    (let ((v1-24 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-16))))
+      (when v1-24
+        (+! (-> obj root-override trans x) (-> v1-24 0))
+        (+! (-> obj root-override trans y) (-> v1-24 1))
+        (+! (-> obj root-override trans z) (-> v1-24 2))
+        )
+      )
+    (let ((f0-20 (res-lump-float arg0 'rotoffset)))
+      (if (!= f0-20 0.0)
+          (quaternion-rotate-y! (-> s4-4 quat) (-> s4-4 quat) f0-20)
+          )
+      )
+    )
+  (transform-post)
+  (cond
+    ((script-eval (res-lump-struct (-> obj entity) 'on-activate pair))
+     (if (= (-> obj bridge-id) 1)
+         (go (method-of-object obj broken))
+         (go (method-of-object obj die))
+         )
+     )
+    (else
+      (go (method-of-object obj idle))
+      )
+    )
+  (none)
+  )
+
+(deftype under-int-door (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 23
+  :size-assert         #xc8
+  :flag-assert         #x17005000c8
+  (:methods
+    (idle-closed () _type_ :state 20)
+    (open () _type_ :state 21)
+    (idle-open () _type_ :state 22)
+    )
+  )
+
+
+(defskelgroup skel-under-int-door under-int-door under-int-door-lod0-jg -1
+              ((under-int-door-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 6 0 15)
+              )
+
+(defstate idle-closed (under-int-door)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('trigger)
+       (go-virtual open)
+       )
+      )
+    )
+  :code (the-as (function none :behavior under-int-door) sleep-code)
+  )
+
+(defstate open (under-int-door)
+  :virtual #t
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (sound-play "und-block-door")
+    (logior! (-> self skel status) (joint-control-status sync-math))
+    (ja-no-eval :group! (-> self draw art-group data 2)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)) 0.13)
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 0.13))
+      )
+    (logclear! (-> self skel status) (joint-control-status sync-math))
+    (go-virtual idle-open)
+    (none)
+    )
+  :post (the-as (function none :behavior under-int-door) transform-post)
+  )
+
+(defstate idle-open (under-int-door)
+  :virtual #t
+  :code (the-as (function none :behavior under-int-door) sleep-code)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! under-int-door ((obj under-int-door) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (local-vars (sv-16 res-tag))
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 3))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s3-0 local-sphere) 0.0 24576.0 0.0 57344.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-7 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-7 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-7 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-7 prim-core action) (collide-action solid))
+      (set! (-> v1-7 transform-index) 3)
+      (set-vector! (-> v1-7 local-sphere) 8192.0 24576.0 0.0 28672.0)
+      )
+    (let ((v1-9 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-9 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-9 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-9 prim-core action) (collide-action solid))
+      (set! (-> v1-9 transform-index) 4)
+      (set-vector! (-> v1-9 local-sphere) -8192.0 24576.0 0.0 28672.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-12 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-12 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-12 prim-core collide-with))
+      )
+    (set! (-> obj root) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-under-int-door" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-18 (res-lump-data (-> obj entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
+    (when (and v1-18 (nonzero? (-> sv-16 elt-count)))
+      (let ((a0-25 (-> v1-18 0 data 0 actor)))
+        (if (and a0-25 (logtest? (-> a0-25 extra perm status) (entity-perm-status subtask-complete)))
+            (process-entity-status! obj (entity-perm-status subtask-complete) #t)
+            )
+        )
+      )
+    )
+  (ja-channel-push! 1 0)
+  (let ((s5-2 #t))
+    (cond
+      ((script-eval (res-lump-struct (-> obj entity) 'on-activate pair))
+       (set! s5-2 #f)
+       )
+      ((not (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete))))
+       (set! s5-2 #f)
+       )
+      )
+    (cond
+      (s5-2
+        (let ((a0-40 (-> obj skel root-channel 0)))
+          (set! (-> a0-40 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+          (set! (-> a0-40 param 0) 1.0)
+          (set! (-> a0-40 frame-num)
+                (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 2)) frames num-frames) -1))
+                )
+          (joint-control-channel-group! a0-40 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-loop!)
+          )
+        )
+      (else
+        (let ((a0-41 (-> obj skel root-channel 0)))
+          (set! (-> a0-41 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+          (set! (-> a0-41 param 0) 1.0)
+          (set! (-> a0-41 frame-num) 0.0)
+          (joint-control-channel-group! a0-41 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-loop!)
+          )
+        )
+      )
+    (transform-post)
+    (if s5-2
+        (go (method-of-object obj idle-open))
+        (go (method-of-object obj idle-closed))
+        )
+    )
+  (none)
+  )
+
+(deftype under-plat-long (base-plat)
+  ((sync       sync-eased :inline :offset-assert 272)
+   (move-start vector     :inline :offset-assert 320)
+   (move-end   vector     :inline :offset-assert 336)
+   )
+  :heap-base #xe0
+  :method-count-assert 35
+  :size-assert         #x160
+  :flag-assert         #x2300e00160
+  (:methods
+    (idle () _type_ :state 34)
+    )
+  )
+
+
+(defskelgroup skel-under-plat-long under-plat-long under-plat-long-lod0-jg under-plat-long-idle-ja
+              ((under-plat-long-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 11.5)
+              :origin-joint-index 3
+              )
+
+(defstate idle (under-plat-long)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior under-plat-long) plat-event)
+  :trans (behavior ()
+    (plat-trans)
+    (vector-lerp!
+      (-> self root-override trans)
+      (-> self move-start)
+      (-> self move-end)
+      (get-norm! (-> self sync) 0)
+      )
+    (none)
+    )
+  :code (the-as (function none :behavior under-plat-long) sleep-code)
+  :post (the-as (function none :behavior under-plat-long) plat-post)
+  )
+
+(defmethod init-plat-collision! under-plat-long ((obj under-plat-long))
+  "TODO - collision stuff for setting up the platform"
+  (set! (-> obj clock) (-> *display* user0-clock))
+  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 47104.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-14 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-14 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-14 prim-core collide-with))
+      )
+    (set! (-> obj root-override) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! under-plat-long ((obj under-plat-long) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (local-vars (sv-16 res-tag))
+  (init-plat-collision! obj)
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-under-plat-long" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (stop-bouncing! obj)
+  (let ((s5-1 (-> obj root-override)))
+    (set! sv-16 (new 'static 'res-tag))
+    (let ((v1-8 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-16))))
+      (when v1-8
+        (+! (-> s5-1 trans x) (-> v1-8 0))
+        (+! (-> s5-1 trans y) (-> v1-8 1))
+        (+! (-> s5-1 trans z) (-> v1-8 2))
+        )
+      )
+    (let ((f0-6 (res-lump-float arg0 'rotoffset)))
+      (if (!= f0-6 0.0)
+          (quaternion-rotate-y! (-> s5-1 quat) (-> s5-1 quat) f0-6)
+          )
+      )
+    (set! (-> obj move-start quad) (-> s5-1 trans quad))
+    (let ((s3-1 (new 'stack-no-clear 'vector)))
+      (vector-z-quaternion! s3-1 (-> s5-1 quat))
+      (vector-rotate90-around-y! s3-1 s3-1)
+      (let ((f0-7 (res-lump-float arg0 'distance :default 65536.0)))
+        (vector+float*! (-> obj move-end) (-> obj move-start) s3-1 f0-7)
+        )
+      )
+    (let ((a1-10 (new 'stack-no-clear 'sync-info-params)))
+      (let ((v1-16 0))
+        (if #t
+            (set! v1-16 (logior v1-16 1))
+            )
+        (set! (-> a1-10 sync-type) 'sync-eased)
+        (set! (-> a1-10 sync-flags) (the-as sync-flags v1-16))
+        )
+      (set! (-> a1-10 period) (the-as uint 1800))
+      (set! (-> a1-10 entity) arg0)
+      (set! (-> a1-10 percent) 0.0)
+      (set! (-> a1-10 ease-in) 0.15)
+      (set! (-> a1-10 ease-out) 0.15)
+      (set! (-> a1-10 pause-in) 0.0)
+      (set! (-> a1-10 pause-out) 0.0)
+      (initialize! (-> obj sync) a1-10)
+      )
+    (vector-lerp! (-> s5-1 trans) (-> obj move-start) (-> obj move-end) (get-norm! (-> obj sync) 0))
+    )
+  (transform-post)
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "und-float-plat" :fo-max 50) (-> obj root-override trans))
+        )
+  (base-plat-method-32 obj)
+  (set! (-> obj fact)
+        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+        )
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype under-plat-wall (process-drawable)
+  ((root-override   collide-shape-moving         :offset        128)
+   (extended-amount float                        :offset-assert 200)
+   (in-trans        vector               :inline :offset-assert 208)
+   (out-trans       vector               :inline :offset-assert 224)
+   (sync            sync-paused          :inline :offset-assert 240)
+   )
+  :heap-base #x90
+  :method-count-assert 21
+  :size-assert         #x108
+  :flag-assert         #x1500900108
+  (:methods
+    (active () _type_ :state 20)
+    )
+  )
+
+
+(defskelgroup skel-under-plat-wall under-plat-wall under-plat-wall-lod0-jg -1
+              ((under-plat-wall-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -2 6 8)
+              )
+
+(defstate active (under-plat-wall)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('touch)
+                      (send-event proc 'no-look-around (seconds 1.5))
+                      #f
+                      )
+                     )
+            )
+    )
+  :enter (behavior ()
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (none)
+    )
+  :exit (behavior ()
+    (logior! (-> self mask) (process-mask actor-pause))
+    (none)
+    )
+  :trans (the-as (function none :behavior under-plat-wall) rider-trans)
+  :code (behavior ()
+    (let ((gp-0 #t))
+      (until #f
+        (let ((f30-0 (get-norm! (-> self sync) 0)))
+          (let ((s5-0 (new 'stack-no-clear 'vector)))
+            (vector-lerp! s5-0 (-> self in-trans) (-> self out-trans) f30-0)
+            (move-to-point! (-> self root-override) s5-0)
+            )
+          (cond
+            ((= f30-0 0.0)
+             (set! gp-0 #f)
+             )
+            ((= f30-0 1.0)
+             (set! gp-0 #f)
+             )
+            (else
+              (when (not gp-0)
+                (sound-play "und-wall-plat")
+                (set! gp-0 #t)
+                )
+              )
+            )
+          )
+        (suspend)
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior under-plat-wall) rider-post)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! under-plat-wall ((obj under-plat-wall) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj extended-amount) 0.0)
+  (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
+  (set! (-> obj clock) (-> *display* user0-clock))
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid rideable pull-rider-can-collide))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 -8192.0 24576.0 32768.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (pusher-init s4-0)
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-16 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-16 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-16 prim-core collide-with))
+      )
+    (set! (-> s4-0 rider-max-momentum) 0.0)
+    (set! (-> obj root-override) (the-as collide-shape-moving s4-0))
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-under-plat-wall" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (logior! (-> obj skel status) (joint-control-status sync-math))
+  (let ((a1-6 (new 'stack-no-clear 'sync-info-params)))
+    (let ((v1-24 0))
+      (if #t
+          (set! v1-24 (logior v1-24 1))
+          )
+      (set! (-> a1-6 sync-type) 'sync-paused)
+      (set! (-> a1-6 sync-flags) (the-as sync-flags v1-24))
+      )
+    (set! (-> a1-6 entity) (-> obj entity))
+    (set! (-> a1-6 period) (the-as uint 1500))
+    (set! (-> a1-6 percent) 0.0)
+    (set! (-> a1-6 pause-in) 0.2)
+    (set! (-> a1-6 pause-out) 0.2)
+    (initialize! (-> obj sync) a1-6)
+    )
+  (let ((f30-0 (quaternion-y-angle (-> obj root-override quat)))
+        (s4-2 (new 'stack-no-clear 'vector))
+        )
+    (set-vector! s4-2 0.0 0.0 (res-lump-float arg0 'tunemeters) 1.0)
+    (vector-rotate-around-y! s4-2 s4-2 f30-0)
+    (vector+! (-> obj out-trans) (-> obj root-override trans) s4-2)
+    (set-vector! s4-2 0.0 0.0 -32768.0 1.0)
+    (vector-rotate-around-y! s4-2 s4-2 f30-0)
+    (vector+! (-> obj in-trans) (-> obj out-trans) s4-2)
+    )
+  (ja-channel-push! 1 0)
+  (let ((s5-1 (-> obj skel root-channel 0)))
+    (joint-control-channel-group-eval!
+      s5-1
+      (the-as art-joint-anim (-> obj draw art-group data 2))
+      num-func-identity
+      )
+    (set! (-> s5-1 frame-num) 0.0)
+    )
+  (transform-post)
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (go (method-of-object obj active))
+  (none)
+  )
+
+(deftype under-pipe-growls (process-drawable)
+  ((volume             float       :offset-assert 200)
+   (desired-volume     float       :offset-assert 204)
+   (volume-seek-speed  float       :offset-assert 208)
+   (approach-sound-id  sound-id    :offset-assert 212)
+   (approach-play-time time-frame  :offset-assert 216)
+   )
+  :heap-base #x60
+  :method-count-assert 23
+  :size-assert         #xe0
+  :flag-assert         #x17006000e0
+  (:methods
+    (block-puzzle () _type_ :state 20)
+    (block-puzzle-fade () _type_ :state 21)
+    (intro-shooting () _type_ :state 22)
+    )
+  )
+
+
+(defbehavior under-pipe-growls-post under-pipe-growls ()
+  (when (and (zero? (-> self approach-sound-id)) (>= (-> self clock frame-counter) (-> self approach-play-time)))
+    (let ((gp-0 (-> self root trans)))
+      (set! (-> self approach-sound-id) (if (zero? (rand-vu-int-count 3))
+                                            (sound-play "grunt-warn" :position gp-0)
+                                            (sound-play "grunt-notice" :position gp-0)
+                                            )
+            )
+      )
+    )
+  (when (!= (-> self volume) (-> self desired-volume))
+    (seek!
+      (-> self volume)
+      (-> self desired-volume)
+      (* (-> self volume-seek-speed) (-> self clock seconds-per-frame))
+      )
+    (when (nonzero? (-> self approach-sound-id))
+      (when *sound-player-enable*
+        (let ((v1-12 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+          (set! (-> v1-12 command) (sound-command set-param))
+          (set! (-> v1-12 id) (-> self approach-sound-id))
+          (set! (-> v1-12 params volume) (the int (* 1024.0 (-> self volume))))
+          (set! (-> v1-12 params mask) (the-as uint 1))
+          (-> v1-12 id)
+          )
+        )
+      )
+    )
+  )
+
+(defstate intro-shooting (under-pipe-growls)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('sig-shot)
+       (when (>= (-> self volume) 0.6)
+         (when (nonzero? (-> self approach-sound-id))
+           (sound-stop (-> self approach-sound-id))
+           (set! (-> self approach-sound-id) (new 'static 'sound-id))
+           0
+           )
+         (let ((v1-5 (rand-vu-int-count 5)))
+           (cond
+             ((zero? v1-5)
+              (let ((f30-0 (rand-vu-float-range 0.9 1.5)))
+                (sound-play-by-name
+                  (static-sound-name "grunt-die")
+                  (new-sound-id)
+                  (the int (* 1024.0 f30-0))
+                  0
+                  0
+                  (sound-group sfx)
+                  (-> self root trans)
+                  )
+                )
+              (go-virtual intro-shooting)
+              )
+             ((and (>= v1-5 1) (>= 2 v1-5))
+              #f
+              )
+             (else
+               (let ((f30-1 (rand-vu-float-range 0.9 1.5)))
+                 (sound-play-by-name
+                   (static-sound-name "grunt-hit")
+                   (new-sound-id)
+                   (the int (* 1024.0 f30-1))
+                   0
+                   0
+                   (sound-group sfx)
+                   (-> self root trans)
+                   )
+                 )
+               )
+             )
+           )
+         )
+       )
+      (('die-fast)
+       (cleanup-for-death self)
+       (go empty-state)
+       )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self volume) 0.0)
+    (set! (-> self desired-volume) 1.0)
+    (set! (-> self volume-seek-speed) (rand-vu-float-range 0.5 0.2))
+    (none)
+    )
+  :code (the-as (function none :behavior under-pipe-growls) sleep-code)
+  :post (the-as (function none :behavior under-pipe-growls) under-pipe-growls-post)
+  )
+
+(defstate block-puzzle (under-pipe-growls)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('fade)
+       (go-virtual block-puzzle-fade)
+       )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self volume) 0.25)
+    (set! (-> self desired-volume) 1.0)
+    (set! (-> self volume-seek-speed) 0.8)
+    (none)
+    )
+  :code (behavior ()
+    (sound-play "grunt-notice" :vol 40 :position (target-pos 0))
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (until (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.2))
+      (suspend)
+      )
+    (sound-play "grunt-warn" :vol 50 :position (target-pos 0))
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (until (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.2))
+      (suspend)
+      )
+    (sound-play "grunt-hit" :vol 60 :position (target-pos 0))
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (until (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.5))
+      (suspend)
+      )
+    (sound-play "grunt-notice" :vol 70 :position (target-pos 0))
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (until (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1))
+      (suspend)
+      )
+    (sound-play "grunt-notice" :position (target-pos 0))
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (until (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1))
+      (suspend)
+      )
+    (sound-play "grunt-notice" :vol 200 :position (target-pos 0))
+    (sleep-code)
+    (none)
+    )
+  :post (the-as (function none :behavior under-pipe-growls) under-pipe-growls-post)
+  )
+
+(defstate block-puzzle-fade (under-pipe-growls)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self desired-volume) 0.0)
+    (set! (-> self volume-seek-speed) 0.5)
+    (none)
+    )
+  :trans (behavior ()
+    (when (= (-> self volume) (-> self desired-volume))
+      (cleanup-for-death self)
+      (go empty-state)
+      )
+    (none)
+    )
+  :code (the-as (function none :behavior under-pipe-growls) sleep-code)
+  :post (the-as (function none :behavior under-pipe-growls) under-pipe-growls-post)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior under-pipe-growls-init-by-other under-pipe-growls ((arg0 vector) (arg1 symbol))
+  (set! (-> self approach-sound-id) (new 'static 'sound-id))
+  (set! (-> self approach-play-time)
+        (+ (-> self clock frame-counter) (rand-vu-int-range (seconds 0.1) (seconds 1)))
+        )
+  (set! (-> self root) (new 'process 'trsqv))
+  (logclear! (-> self mask) (process-mask actor-pause))
+  (let ((s4-1 (-> self root)))
+    (set! (-> s4-1 trans quad) (-> arg0 quad))
+    (quaternion-identity! (-> s4-1 quat))
+    (vector-identity! (-> s4-1 scale))
+    )
+  (set! (-> self volume) 0.0)
+  (set! (-> self desired-volume) 0.0)
+  (set! (-> self volume-seek-speed) 1.0)
+  (if (= arg1 'intro-shooting)
+      (go-virtual intro-shooting)
+      (go-virtual block-puzzle)
+      )
+  (none)
+  )

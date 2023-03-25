@@ -1,0 +1,100 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type ramdisk-rpc-fill
+(deftype ramdisk-rpc-fill (structure)
+  ((rsvd1    int32     :offset-assert   0)
+   (ee-id    int32     :offset-assert   4)
+   (rsvd2    int32   2 :offset-assert   8)
+   (filename uint128   :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type ramdisk-rpc-fill
+;; INFO: Used lq/sq
+(defmethod inspect ramdisk-rpc-fill ((obj ramdisk-rpc-fill))
+  (format #t "[~8x] ~A~%" obj 'ramdisk-rpc-fill)
+  (format #t "~Trsvd1: ~D~%" (-> obj rsvd1))
+  (format #t "~Tee-id: ~D~%" (-> obj ee-id))
+  (format #t "~Trsvd2[2] @ #x~X~%" (-> obj rsvd2))
+  (format #t "~Tfilename: ~D~%" (-> obj filename))
+  obj
+  )
+
+;; definition of type ramdisk-rpc-load
+(deftype ramdisk-rpc-load (structure)
+  ((rsvd   int32   :offset-assert   0)
+   (ee-id  int32   :offset-assert   4)
+   (offset uint32  :offset-assert   8)
+   (length uint32  :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type ramdisk-rpc-load
+(defmethod inspect ramdisk-rpc-load ((obj ramdisk-rpc-load))
+  (format #t "[~8x] ~A~%" obj 'ramdisk-rpc-load)
+  (format #t "~Trsvd: ~D~%" (-> obj rsvd))
+  (format #t "~Tee-id: ~D~%" (-> obj ee-id))
+  (format #t "~Toffset: ~D~%" (-> obj offset))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  obj
+  )
+
+;; definition of type ramdisk-rpc-load-to-ee
+(deftype ramdisk-rpc-load-to-ee (structure)
+  ((rsvd     int32    :offset-assert   0)
+   (addr     int32    :offset-assert   4)
+   (offset   int32    :offset-assert   8)
+   (length   int32    :offset-assert  12)
+   (filename uint128  :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type ramdisk-rpc-load-to-ee
+;; INFO: Used lq/sq
+(defmethod inspect ramdisk-rpc-load-to-ee ((obj ramdisk-rpc-load-to-ee))
+  (format #t "[~8x] ~A~%" obj 'ramdisk-rpc-load-to-ee)
+  (format #t "~Trsvd: ~D~%" (-> obj rsvd))
+  (format #t "~Taddr: ~D~%" (-> obj addr))
+  (format #t "~Toffset: ~D~%" (-> obj offset))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tfilename: ~D~%" (-> obj filename))
+  obj
+  )
+
+;; definition for symbol *ramdisk-rpc*, type rpc-buffer-pair
+(define *ramdisk-rpc* (new 'global 'rpc-buffer-pair (the-as uint 32) (the-as uint 1) 2))
+
+;; definition for symbol *current-ramdisk-id*, type int
+(define *current-ramdisk-id* 0)
+
+;; definition for function ramdisk-load
+(defun ramdisk-load ((file-id int) (offset uint) (length uint) (buffer pointer))
+  (let ((cmd (the-as ramdisk-rpc-load (add-element *ramdisk-rpc*))))
+    (set! (-> cmd offset) offset)
+    (set! (-> cmd ee-id) file-id)
+    (set! (-> cmd length) length)
+    )
+  (call *ramdisk-rpc* (the-as uint 0) buffer length)
+  0
+  )
+
+;; definition for function ramdisk-sync
+;; INFO: Return type mismatch int vs none.
+(defun ramdisk-sync ()
+  (sync *ramdisk-rpc* #t)
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+0

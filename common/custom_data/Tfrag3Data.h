@@ -5,9 +5,9 @@
 
 #include "common/common_types.h"
 #include "common/dma/gs.h"
-#include "common/util/Serializer.h"
 #include "common/math/Vector.h"
 #include "common/util/Assert.h"
+#include "common/util/Serializer.h"
 
 namespace tfrag3 {
 
@@ -44,26 +44,51 @@ enum MemoryUsageCategory {
   SHRUB_TIME_OF_DAY,
   SHRUB_VERT,
   SHRUB_IND,
+  SHRUB_DRAW,
 
   MERC_VERT,
   MERC_INDEX,
+  MERC_DRAW,
+
+  MERC_MOD_DRAW_1,
+  MERC_MOD_DRAW_2,
+  MERC_MOD_VERT,
+  MERC_MOD_IND,
+  MERC_MOD_TABLE,
 
   COLLISION,
 
   NUM_CATEGORIES
 };
 
-constexpr int TFRAG3_VERSION = 20;
+struct MemoryUsageTracker {
+  u32 data[MemoryUsageCategory::NUM_CATEGORIES];
+
+  MemoryUsageTracker() {
+    for (auto& x : data) {
+      x = 0;
+    }
+  }
+
+  void add(MemoryUsageCategory category, u32 size_bytes) { data[category] += size_bytes; }
+};
+
+constexpr int TFRAG3_VERSION = 30;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
   // the vertex position
-  float x, y, z;
+  float x = 0, y = 0, z = 0;
   // texture coordinates
-  float s, t, q_unused;
+  float s = 0, t = 0;
+
+  u8 r = 0, g = 0, b = 0, a = 0;  // envmap tint color, not used in == or hash.
+
   // color table index
-  u16 color_index;
-  u16 pad[3];
+  u16 color_index = 0;
+
+  // not used in == or hash!!
+  s16 nx = 0, ny = 0, nz = 0;
 
   struct hash {
     std::size_t operator()(const PreloadedVertex& x) const;
@@ -80,6 +105,8 @@ struct PackedTieVertices {
   struct Vertex {
     float x, y, z;
     float s, t;
+    s8 nx, ny, nz;
+    u8 r, g, b, a;
   };
 
   struct MatrixGroup {
@@ -93,16 +120,17 @@ struct PackedTieVertices {
   std::vector<MatrixGroup> matrix_groups;  // todo pack
   std::vector<Vertex> vertices;
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 struct PackedTfragVertices {
   struct Vertex {
     u16 xoff, yoff, zoff;
     u16 cluster_idx;
-    u16 s, t;
+    s16 s, t;
     u16 color_index;
   };
-
+  void memory_usage(MemoryUsageTracker* tracker) const;
   std::vector<Vertex> vertices;
   std::vector<math::Vector<u16, 3>> cluster_origins;
 };
@@ -135,7 +163,7 @@ struct PackedShrubVertices {
   std::vector<InstanceGroup> instance_groups;  // todo pack
   std::vector<Vertex> vertices;
   u32 total_vertex_count;
-
+  void memory_usage(MemoryUsageTracker* tracker) const;
   void serialize(Serializer& ser);
 };
 
@@ -167,7 +195,8 @@ struct StripDraw {
   struct VisGroup {
     u32 num_inds = 0;           // number of vertex indices in this group
     u32 num_tris = 0;           // number of triangles
-    u32 vis_idx_in_pc_bvh = 0;  // the visibility group they belong to (in BVH)
+    u16 vis_idx_in_pc_bvh = 0;  // the visibility group they belong to (in BVH)
+    u16 tie_proto_idx = 0;      // index of tie proto (tie only)
   };
   std::vector<VisGroup> vis_groups;
 
@@ -207,6 +236,7 @@ struct InstancedStripDraw {
   // for debug counting.
   u32 num_triangles = 0;
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 // node in the BVH.
@@ -256,13 +286,14 @@ struct Texture {
   std::string debug_tpage_name;
   bool load_to_pool = false;
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 // Tfrag trees have several kinds:
-enum class TFragmentTreeKind { NORMAL, TRANS, DIRT, ICE, LOWRES, LOWRES_TRANS, INVALID };
+enum class TFragmentTreeKind { NORMAL, TRANS, DIRT, ICE, LOWRES, LOWRES_TRANS, WATER, INVALID };
 
-constexpr const char* tfrag_tree_names[] = {"normal", "trans",        "dirt",   "ice",
-                                            "lowres", "lowres-trans", "invalid"};
+constexpr const char* tfrag_tree_names[] = {"normal", "trans",        "dirt",  "ice",
+                                            "lowres", "lowres-trans", "water", "invalid"};
 
 // A tfrag model
 struct TfragTree {
@@ -279,6 +310,7 @@ struct TfragTree {
   } unpacked;
   void unpack();
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 struct TieWindInstance {
@@ -288,10 +320,66 @@ struct TieWindInstance {
   void serialize(Serializer& ser);
 };
 
+// Tie draws are split into categories.
+enum class TieCategory {
+  // normal tie buckets
+  NORMAL,
+  TRANS,  // also called alpha
+  WATER,
+
+  // first draw (normal base draw) for envmapped stuff
+  NORMAL_ENVMAP,
+  TRANS_ENVMAP,
+  WATER_ENVMAP,
+
+  // second draw (shiny) for envmapped ties.
+  NORMAL_ENVMAP_SECOND_DRAW,
+  TRANS_ENVMAP_SECOND_DRAW,
+  WATER_ENVMAP_SECOND_DRAW,
+};
+constexpr int kNumTieCategories = 9;
+
+constexpr bool is_envmap_first_draw_category(tfrag3::TieCategory category) {
+  switch (category) {
+    case tfrag3::TieCategory::NORMAL_ENVMAP:
+    case tfrag3::TieCategory::WATER_ENVMAP:
+    case tfrag3::TieCategory::TRANS_ENVMAP:
+      return true;
+    default:
+      return false;
+  }
+}
+
+constexpr bool is_envmap_second_draw_category(tfrag3::TieCategory category) {
+  switch (category) {
+    case tfrag3::TieCategory::NORMAL_ENVMAP_SECOND_DRAW:
+    case tfrag3::TieCategory::WATER_ENVMAP_SECOND_DRAW:
+    case tfrag3::TieCategory::TRANS_ENVMAP_SECOND_DRAW:
+      return true;
+    default:
+      return false;
+  }
+}
+
+constexpr TieCategory get_second_draw_category(tfrag3::TieCategory category) {
+  switch (category) {
+    case TieCategory::NORMAL_ENVMAP:
+      return TieCategory::NORMAL_ENVMAP_SECOND_DRAW;
+    case TieCategory::TRANS_ENVMAP:
+      return TieCategory::TRANS_ENVMAP_SECOND_DRAW;
+    case TieCategory::WATER_ENVMAP:
+      return TieCategory::WATER_ENVMAP_SECOND_DRAW;
+    default:
+      return TieCategory::NORMAL_ENVMAP;
+  }
+}
+
 // A tie model
 struct TieTree {
   BVH bvh;
-  std::vector<StripDraw> static_draws;  // the actual topology and settings
+  std::vector<StripDraw> static_draws;
+  // Category n uses draws: static_draws[cdi[n]] to static_draws[cdi[n + 1]]
+  std::array<u32, kNumTieCategories + 1> category_draw_indices;
 
   PackedTieVertices packed_vertices;
   std::vector<TimeOfDayColor> colors;  // vertex colors (pre-interpolation)
@@ -299,12 +387,17 @@ struct TieTree {
   std::vector<InstancedStripDraw> instanced_wind_draws;
   std::vector<TieWindInstance> wind_instance_info;
 
+  // jak 2 and later can toggle on and off visibility per proto by name
+  bool has_per_proto_visibility_toggle = false;
+  std::vector<std::string> proto_names;
+
   struct {
     std::vector<PreloadedVertex> vertices;  // mesh vertices
     std::vector<u32> indices;
   } unpacked;
 
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
   void unpack();
 };
 
@@ -321,6 +414,7 @@ struct ShrubTree {
   } unpacked;
 
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
   void unpack();
 };
 
@@ -336,6 +430,7 @@ struct CollisionMesh {
   static_assert(sizeof(Vertex) == 32);
   std::vector<Vertex> vertices;
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 // MERC
@@ -361,25 +456,44 @@ static_assert(sizeof(MercVertex) == 64);
 struct MercDraw {
   DrawMode mode;
   u32 tree_tex_id = 0;  // the texture that should be bound for the draw
-
+  u8 eye_id = 0xff;     // 0xff if not eyes, (slot << 1) | (is_r)
   u32 first_index;
   u32 index_count;
   u32 num_triangles;
   void serialize(Serializer& ser);
 };
 
-struct MercEffect {
-  std::vector<MercDraw> draws;
+struct MercModifiableDrawGroup {
+  std::vector<MercVertex> vertices;
+  std::vector<u16> vertex_lump4_addr;
+  std::vector<MercDraw> fix_draw, mod_draw;
+  std::vector<u8> fragment_mask;
+  u32 expect_vidx_end = 0;
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
+};
+
+struct MercEffect {
+  std::vector<MercDraw> all_draws;
+  MercModifiableDrawGroup mod;
+  DrawMode envmap_mode;
+  u32 envmap_texture;
+  bool has_envmap = false;
+  bool has_mod_draw = false;
+  void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 struct MercModel {
   std::string name;
   std::vector<MercEffect> effects;
-  float scale_xyz;
   u32 max_draws;
   u32 max_bones;
+  u32 st_vif_add;
+  float xyz_scale;
+  float st_magic;
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 struct MercModelGroup {
@@ -387,6 +501,7 @@ struct MercModelGroup {
   std::vector<u32> indices;
   std::vector<MercModel> models;
   void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 //
@@ -405,8 +520,7 @@ struct Level {
   MercModelGroup merc_data;
   u16 version2 = TFRAG3_VERSION;
   void serialize(Serializer& ser);
-
-  std::array<int, MemoryUsageCategory::NUM_CATEGORIES> get_memory_usage() const;
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size);

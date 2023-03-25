@@ -1,10 +1,13 @@
 #include "iso_api.h"
+
+#include "iso_queue.h"
+#include "sbank.h"
+
+#include "common/log/log.h"
+#include "common/util/Assert.h"
+
 #include "game/overlord/srpc.h"
 #include "game/sce/iop.h"
-#include "common/log/log.h"
-#include "sbank.h"
-#include "common/util/Assert.h"
-#include "iso_queue.h"
 
 using namespace iop;
 
@@ -53,7 +56,7 @@ s32 LoadISOFileToEE(FileRecord* file, uint32_t addr, uint32_t length) {
 }
 
 s32 LoadISOFileChunkToEE(FileRecord* file, uint32_t dest_addr, uint32_t length, uint32_t offset) {
-  lg::debug("[OVERLORD] LoadISOFileChunkToEE {} : {} offset {}\n", file->name, length, offset);
+  lg::debug("[OVERLORD] LoadISOFileChunkToEE {} : {} offset {}", file->name, length, offset);
   IsoCommandLoadSingle cmd;
   cmd.cmd_id = LOAD_TO_EE_OFFSET_CMD_ID;
   cmd.messagebox_to_reply = 0;
@@ -154,7 +157,7 @@ void PlayVAGStream(FileRecord* file,
 
 void SetVAGStreamVolume(s32 volume) {
   auto cmd = GetVAGCommand();
-  cmd->cmd_id = 1029;
+  cmd->cmd_id = SET_VAG_VOLUME;
   cmd->messagebox_to_reply = 0;
   cmd->thread_id = 0;
   cmd->volume = volume;
@@ -163,7 +166,7 @@ void SetVAGStreamVolume(s32 volume) {
 
 void SetDialogVolume(s32 volume) {
   auto cmd = GetVAGCommand();
-  cmd->cmd_id = 1030;
+  cmd->cmd_id = SET_DIALOG_VOLUME;
   cmd->messagebox_to_reply = 0;
   cmd->thread_id = 0;
   cmd->volume = volume;
@@ -183,7 +186,7 @@ void StopVAGStream(VagDirEntry* vag, u32 priority) {
 
 void PauseVAGStream() {
   auto cmd = GetVAGCommand();
-  cmd->cmd_id = 1027;
+  cmd->cmd_id = PAUSE_VAG_STREAM;
   cmd->messagebox_to_reply = 0;
   cmd->thread_id = 0;
   SendMbx(iso_mbx, cmd);
@@ -191,7 +194,7 @@ void PauseVAGStream() {
 
 void UnpauseVAGStream() {
   auto cmd = GetVAGCommand();
-  cmd->cmd_id = 1028;
+  cmd->cmd_id = CONTINUE_VAG_STREAM;
   cmd->messagebox_to_reply = 0;
   cmd->thread_id = 0;
   SendMbx(iso_mbx, cmd);

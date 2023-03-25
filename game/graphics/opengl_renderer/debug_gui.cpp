@@ -1,6 +1,11 @@
 
 #include "debug_gui.h"
+
 #include <algorithm>
+
+#include "game/graphics/gfx.h"
+#include "game/kernel/svnrev.h"
+
 #include "third-party/imgui/imgui.h"
 
 void FrameTimeRecorder::finish_frame() {
@@ -94,31 +99,35 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       ImGui::MenuItem("Render Debug", nullptr, &m_draw_debug);
       ImGui::MenuItem("Profiler", nullptr, &m_draw_profiler);
       ImGui::MenuItem("Small Profiler", nullptr, &small_profiler);
+      ImGui::MenuItem("Loader", nullptr, &m_draw_loader);
       ImGui::EndMenu();
     }
 
     if (ImGui::BeginMenu("Tools")) {
       ImGui::MenuItem("Subtitle Editor", nullptr, &m_subtitle_editor);
+      ImGui::MenuItem("Filters", nullptr, &m_filters_menu);
       ImGui::EndMenu();
     }
 
     if (ImGui::BeginMenu("Screenshot")) {
       ImGui::MenuItem("Screenshot Next Frame!", nullptr, &m_want_screenshot);
       ImGui::InputText("File", m_screenshot_save_name, 50);
+      ImGui::InputInt("Width", &screenshot_width);
+      ImGui::InputInt("Height", &screenshot_height);
+      ImGui::InputInt("MSAA", &screenshot_samples);
+      ImGui::Checkbox("Screenshot on f2", &screenshot_hotkey_enabled);
       ImGui::EndMenu();
     }
 
     if (ImGui::BeginMenu("Frame Rate")) {
-      ImGui::Checkbox("Enable V-Sync", &m_vsync);
-      ImGui::Separator();
-      ImGui::Checkbox("Framelimiter", &framelimiter);
+      ImGui::Checkbox("Framelimiter", &Gfx::g_global_settings.framelimiter);
       ImGui::InputFloat("Target FPS", &target_fps_input);
       if (ImGui::MenuItem("Apply")) {
-        target_fps = target_fps_input;
+        Gfx::g_global_settings.target_fps = target_fps_input;
       }
       ImGui::Separator();
-      ImGui::Checkbox("Accurate Lag Mode", &experimental_accurate_lag);
-      ImGui::Checkbox("Sleep in Frame Limiter", &sleep_in_frame_limiter);
+      ImGui::Checkbox("Accurate Lag Mode", &Gfx::g_global_settings.experimental_accurate_lag);
+      ImGui::Checkbox("Sleep in Frame Limiter", &Gfx::g_global_settings.sleep_in_frame_limiter);
       ImGui::EndMenu();
     }
 
@@ -132,10 +141,6 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       if (ImGui::MenuItem("Reboot now!")) {
         want_reboot_in_debug = true;
       }
-      ImGui::EndMenu();
-    }
-
-    if (ImGui::BeginMenu("WORK IN PROGRESS VERSION!")) {
       ImGui::EndMenu();
     }
   }

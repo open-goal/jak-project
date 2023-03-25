@@ -2,6 +2,7 @@
 
 #include "find_defstates.h"
 #include "common/goos/PrettyPrinter.h"
+#include "common/log/log.h"
 #include "common/type_system/state.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
@@ -21,7 +22,7 @@ namespace {
 std::pair<std::string, TypeSpec> get_state_info(FormElement* state_set, const Env& env) {
   auto sff = dynamic_cast<SetFormFormElement*>(state_set);
   if (!sff) {
-    env.func->warnings.warn_and_throw(
+    env.func->warnings.error_and_throw(
         "Failed to identify defstate. The state symbol set was supposed to be: {}, but "
         "this doesn't look like a set.",
         state_set->to_string(env));
@@ -29,7 +30,7 @@ std::pair<std::string, TypeSpec> get_state_info(FormElement* state_set, const En
 
   auto atom = form_as_atom(sff->dst());
   if (!atom || atom->get_kind() != SimpleAtom::Kind::SYMBOL_VAL) {
-    env.func->warnings.warn_and_throw(
+    env.func->warnings.error_and_throw(
         "Failed to identify defstate. The state symbol set was: {}, which doesn't set a symbol",
         state_set->to_string(env));
   }
@@ -38,25 +39,25 @@ std::pair<std::string, TypeSpec> get_state_info(FormElement* state_set, const En
 
   auto type = env.dts->symbol_types.find(state_name);
   if (type == env.dts->symbol_types.end()) {
-    env.func->warnings.warn_and_throw(
+    env.func->warnings.error_and_throw(
         "Identified a defstate for state {}, but there is no type information for this state.",
         state_name);
   }
 
   if (type->second.base_type() != "state") {
-    env.func->warnings.warn_and_throw(
+    env.func->warnings.error_and_throw(
         "Identified a defstate for state {}, but our type information thinks it is a {}, not a "
         "state.",
         state_name, type->second.print());
   }
 
   if (type->second.arg_count() == 0) {
-    env.func->warnings.warn_and_throw(
+    env.func->warnings.error_and_throw(
         "Identified a defstate for state {}, but there is no argument information.", state_name);
   }
 
   if (type->second.last_arg() == TypeSpec("none")) {
-    env.func->warnings.warn_and_throw(
+    env.func->warnings.error_and_throw(
         "Identified a defstate for state {}, but the process type is none. You must "
         "provide a process type as the final argument of a state",
         state_name);
@@ -88,7 +89,7 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
     auto mr = match(matcher, &temp);
 
     if (!mr.matched) {
-      env.func->warnings.warn_and_throw(
+      env.func->warnings.error_and_throw(
           "In defstate for state {}, failed to recognize handler set: {}", state_name,
           temp.to_string(env));
     }
@@ -107,16 +108,16 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
 
     if (!var || env.get_variable_name(*var) != env.get_variable_name(let_dest_var)) {
       if (var) {
-        env.func->warnings.warn_and_throw("Messed up defstate. State is in {}, but we set {}",
-                                          env.get_variable_name(let_dest_var),
-                                          env.get_variable_name(*var));
+        env.func->warnings.error_and_throw("Messed up defstate. State is in {}, but we set {}",
+                                           env.get_variable_name(let_dest_var),
+                                           env.get_variable_name(*var));
       } else {
         ASSERT(false);
       }
     }
 
     if (debug_defstates) {
-      fmt::print("SET: {} to {}\n", name, val->to_string(env));
+      lg::debug("SET: {} to {}", name, val->to_string(env));
     }
 
     // now we try to find a function
@@ -125,21 +126,22 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
     if (handler_atom && handler_atom->is_label()) {
       auto handler_func = env.file->try_get_function_at_label(handler_atom->label());
       if (!handler_func) {
-        env.func->warnings.warn_and_throw("Failed to find handler function.");
+        env.func->warnings.error_and_throw("Failed to find handler function.");
       }
 
       this_entry.is_behavior = true;
       if (print_renames) {
-        fmt::print("RENAME: {} to ", handler_func->name());
+        lg::info("RENAME: {} to ", handler_func->name());
       }
 
+      handler_func->state_handler_as_anon_func = handler_func->name();
       if (virtual_child) {
         handler_func->guessed_name.set_as_v_state(*virtual_child, state_name, handler_kind);
       } else {
         handler_func->guessed_name.set_as_nv_state(state_name, handler_kind);
       }
       if (print_renames) {
-        fmt::print("{}\n", handler_func->name());
+        lg::info("{}", handler_func->name());
       }
 
       // scary part - modify the function type!
@@ -161,8 +163,8 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
     if (skip_states.count(name_to_check_for_skip) > 0) {
       if (skip_states.at(name_to_check_for_skip).find(name) !=
           skip_states.at(name_to_check_for_skip).end()) {
-        env.func->warnings.general_warning("SKIP: skipping '{}' handler for state '{}'", name,
-                                           name_to_check_for_skip);
+        env.func->warnings.warning("SKIP: skipping '{}' handler for state '{}'", name,
+                                   name_to_check_for_skip);
         continue;
       }
     }
@@ -186,12 +188,12 @@ FormElement* rewrite_nonvirtual_defstate(
   auto first_in_body = elt->body()->at(body_index);
   auto info = get_state_info(first_in_body, env);
   if (info.first != expected_state_name) {
-    env.func->warnings.warn_and_throw(
+    env.func->warnings.error_and_throw(
         "Inconsistent defstate name. code has {}, static state has {}", info.first,
         expected_state_name);
   }
   if (debug_defstates) {
-    fmt::print("State: {} Type: {}\n", info.first, info.second.print());
+    lg::debug("State: {} Type: {}", info.first, info.second.print());
   }
   body_index++;
 
@@ -237,18 +239,18 @@ std::string verify_empty_state_and_get_name(DecompiledDataElement* state, const 
 
   auto first_word = words.at(start_word_idx);
   if (first_word.kind() != LinkedWord::TYPE_PTR || first_word.symbol_name() != "state") {
-    env.func->warnings.warn_and_throw("Reference to state bad: invalid type pointer");
+    env.func->warnings.error_and_throw("Reference to state bad: invalid type pointer");
   }
 
   auto name_word = words.at(start_word_idx + 1);
   if (name_word.kind() != LinkedWord::SYM_PTR) {
-    env.func->warnings.warn_and_throw("Reference to state bad: invalid name");
+    env.func->warnings.error_and_throw("Reference to state bad: invalid name");
   }
 
   for (int i = 0; i < 7; i++) {
     auto& word = words.at(start_word_idx + 2 + i);
     if (word.kind() != LinkedWord::SYM_PTR || word.symbol_name() != "#f") {
-      env.func->warnings.warn_and_throw(
+      env.func->warnings.error_and_throw(
           "Reference to state bad: got a non #f in the initial fields");
     }
   }
@@ -270,7 +272,6 @@ FormElement* rewrite_virtual_defstate(
 
   // see if the first thing is an inherit-state.
   auto maybe_inherit_form = elt->body()->at(body_idx);
-  //  fmt::print("first is {}\n", maybe_inherit_form->to_string(env));
   Form temp;
   temp.elts().push_back(maybe_inherit_form);
   // (inherit-state gp-1 (method-of-type plat-button dummy-24))
@@ -297,7 +298,7 @@ FormElement* rewrite_virtual_defstate(
     auto parent_state = inherit_mr.maps.forms.at(1);
 
     if (env.get_variable_name(state_var_from_let_def) != env.get_variable_name(state_var)) {
-      env.func->warnings.warn_and_throw(
+      env.func->warnings.error_and_throw(
           "Variable name disagreement in virtual defstate: began with {}, but did method "
           "set using {}",
           env.get_variable_name(state_var_from_let_def), env.get_variable_name(state_var));
@@ -307,7 +308,7 @@ FormElement* rewrite_virtual_defstate(
     // let's warn here instead of trying to go on.
     auto parent_state_cast = parent_state->try_as_element<CastElement>();
     if (parent_state_cast) {
-      env.func->warnings.warn_and_throw(
+      env.func->warnings.error_and_throw(
           "virtual defstate attempted on something that isn't a state: {}\nDid you "
           "forget to put :state in the method definition?",
           parent_state_cast->to_string(env));
@@ -318,7 +319,7 @@ FormElement* rewrite_virtual_defstate(
                                    {Matcher::any_symbol(0), Matcher::any_constant_token(1)});
     auto mot_mr = match(mot_matcher, parent_state);
     if (!mot_mr.matched) {
-      env.func->warnings.warn_and_throw(
+      env.func->warnings.error_and_throw(
           "Failed to recognize virtual defstate. Got a {} as the parent to inherit from.",
           parent_state->to_string(env));
     }
@@ -338,7 +339,7 @@ FormElement* rewrite_virtual_defstate(
                   {Matcher::any_symbol(0), Matcher::any_integer(1), Matcher::any(2)});
   auto mset_mr = match(mset_matcher, &temp);
   if (!mset_mr.matched) {
-    env.func->warnings.warn_and_throw(
+    env.func->warnings.error_and_throw(
         "Failed to recognize virtual defstate. Got a {} as the second thing, but was "
         "expecting method-set! call",
         temp.to_string(env));
@@ -351,7 +352,7 @@ FormElement* rewrite_virtual_defstate(
   // should be the state again.
   auto val = strip_cast(mset_mr.maps.forms.at(2)->try_as_single_element());
   if (val->to_string(env) != env.get_variable_name(state_var_from_let_def)) {
-    env.func->warnings.warn_and_throw(
+    env.func->warnings.error_and_throw(
         "Variable name disagreement in virtual defstate: began with {}, but did method "
         "set using {}",
         val->to_string(env), env.get_variable_name(state_var_from_let_def));
@@ -361,7 +362,7 @@ FormElement* rewrite_virtual_defstate(
   auto method_info = env.dts->ts.lookup_method(type_name, method_id);
   if (method_info.type.base_type() != "state" ||
       method_info.type.last_arg().base_type() != "_type_") {
-    env.func->warnings.warn_and_throw(
+    env.func->warnings.error_and_throw(
         "Virtual defstate is defining a virtual state in method {} of {}, but the type "
         "of this method is {}, which is not a valid virtual state type (must be "
         "\"(state ... _type_)\")",
@@ -383,7 +384,7 @@ FormElement* rewrite_virtual_defstate(
       }
     } else {
       if (inherit_info) {
-        env.func->warnings.warn_and_throw(
+        env.func->warnings.error_and_throw(
             "Virtual defstate for state {} in type {}: the state wasn't defined in the "
             "parent but was inherited.",
             expected_state_name, type_name);
@@ -395,7 +396,7 @@ FormElement* rewrite_virtual_defstate(
   if (inherit_info) {
     auto child_type_info = env.dts->ts.lookup_type(type_name);
     if (child_type_info->get_parent() != inherit_info->parent_type_name) {
-      env.func->warnings.warn_and_throw(
+      env.func->warnings.error_and_throw(
           "Parent type disagreement in virtual defstate. The state is inherited from {}, but the "
           "parent is {}",
           inherit_info->parent_type_name, child_type_info->get_parent());
@@ -403,7 +404,7 @@ FormElement* rewrite_virtual_defstate(
 
     auto parent_method_info = env.dts->ts.lookup_method(inherit_info->parent_type_name, method_id);
     if (parent_method_info.name != inherit_info->method_name) {
-      env.func->warnings.warn_and_throw(
+      env.func->warnings.error_and_throw(
           "Disagreement between inherit and define. We inherited from method {}, but redefine {}",
           inherit_info->method_name, parent_method_info.name);
     }
@@ -412,13 +413,11 @@ FormElement* rewrite_virtual_defstate(
   // name matches
 
   if (expected_state_name != method_info.name) {
-    env.func->warnings.warn_and_throw(
+    env.func->warnings.error_and_throw(
         "Disagreement between state name and type system name. The state is named {}, "
         "but the slot is named {}, defined in type {}",
         expected_state_name, method_info.name, method_info.defined_in_type);
   }
-
-  // fmt::print("is a {}\n", typeid(*parent_state->try_as_single_element()).name());
 
   auto entries = get_defstate_entries(
       elt->body(), body_idx + 1, env, expected_state_name, elt->entries().at(0).dest,
@@ -461,7 +460,7 @@ void run_defstate(
             env.get_variable_type(as_let->entries().at(0).dest, false) == TypeSpec("state")) {
           std::string expected_state_name = verify_empty_state_and_get_name(src_as_label, env);
           if (debug_defstates) {
-            fmt::print("got state let:\n{}\n", pretty_print::to_string(as_let->to_form(env)));
+            lg::debug("got state let:\n{}", pretty_print::to_string(as_let->to_form(env)));
           }
 
           if (is_nonvirtual_state(as_let)) {

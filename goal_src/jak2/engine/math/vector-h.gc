@@ -1,0 +1,761 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: vector-h.gc
+;; name in dgo: vector-h
+;; dgos: ENGINE, GAME
+
+#|@file
+Changes:
+- vector+!, vector-!, vector-dot, vector4-dot replaced with actual implementations.
+|#
+
+;; DECOMP BEGINS
+
+;; Array of booleans, stored as bits.
+(deftype bit-array (basic)
+  ((length           int32          :offset-assert   4)
+   (allocated-length int32          :offset-assert   8)
+   (_pad             uint8          :offset-assert  12)
+   (bytes            uint8 :dynamic :offset         12)
+   )
+  :method-count-assert 13
+  :size-assert         #xd
+  :flag-assert         #xd0000000d
+  (:methods
+    (new (symbol type int) _type_ 0)
+    (get-bit (_type_ int) symbol 9)
+    (clear-bit (_type_ int) int 10)
+    (set-bit (_type_ int) int 11)
+    (clear-all! (_type_) _type_ 12)
+    )
+  )
+
+(defmethod new bit-array ((allocation symbol) (type-to-make type) (arg0 int))
+  "Allocate a new bit-array with room arg0 bits."
+  (let ((v0-0 (object-new allocation type-to-make (+ (/ (logand -8 (+ arg0 7)) 8) -1 (-> type-to-make size)))))
+    (set! (-> v0-0 length) arg0)
+    (set! (-> v0-0 allocated-length) arg0)
+    v0-0
+    )
+  )
+
+(defmethod length bit-array ((obj bit-array))
+  "Get the number of bits."
+  (-> obj length)
+  )
+
+(defmethod asize-of bit-array ((obj bit-array))
+  "Get the size in memory."
+  (the-as int (+ (-> obj type size) (/ (logand -8 (+ (-> obj allocated-length) 7)) 8)))
+  )
+
+(defmethod get-bit bit-array ((obj bit-array) (arg0 int))
+  "Get the nth bit as a boolean."
+  (let ((v1-2 (-> obj bytes (/ arg0 8))))
+    (logtest? v1-2 (ash 1 (logand arg0 7)))
+    )
+  )
+
+(defmethod clear-bit bit-array ((obj bit-array) (arg0 int))
+  "Set the nth bit to 0."
+  (logclear! (-> obj bytes (/ arg0 8)) (ash 1 (logand arg0 7)))
+  0
+  )
+
+(defmethod set-bit bit-array ((obj bit-array) (arg0 int))
+  "Set the nth bit to 1."
+  (logior! (-> obj bytes (/ arg0 8)) (ash 1 (logand arg0 7)))
+  0
+  )
+
+(defmethod clear-all! bit-array ((obj bit-array))
+  "Set all bits to 0."
+  (countdown (v1-2 (/ (logand -8 (+ (-> obj allocated-length) 7)) 8))
+    (nop!)
+    (nop!)
+    (set! (-> obj bytes v1-2) (the-as uint 0))
+    )
+  obj
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; vector types
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro init-vf0-vector ()
+  "Initializes the VF0 vector which is a constant vector in the VU set to <0,0,0,1>"
+  `(.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+  )
+
+;; generally named after number of elements.
+;; u is unsigned, b = byte, h = halfword (16-bit), w = word (32-bit), d = doubleword (64-bit)
+;; s = float (single precision)
+
+;; BYTE vectors
+
+(deftype vector16ub (structure)
+  ((data uint8   16 :offset-assert   0)
+   (quad uint128    :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype vector4ub (structure)
+  ((data uint8  4 :offset-assert   0)
+   (x    uint8    :offset          0)
+   (y    uint8    :offset          1)
+   (z    uint8    :offset          2)
+   (w    uint8    :offset          3)
+   (clr  uint32   :offset          0)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype vector4b (structure)
+  ((data int8  4 :offset-assert   0)
+   (x    int8    :offset          0)
+   (y    int8    :offset          1)
+   (z    int8    :offset          2)
+   (w    int8    :offset          3)
+   (clr  int32   :offset          0)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype vector2ub (structure)
+  ((data uint8  2 :offset-assert   0)
+   (x    uint8    :offset          0)
+   (y    uint8    :offset          1)
+   (clr  uint16   :offset          0)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x2
+  :flag-assert         #x900000002
+  )
+
+(deftype vector2b (structure)
+  ((data int8  2 :offset-assert   0)
+   (x    int8    :offset          0)
+   (y    int8    :offset          1)
+   (clr  int16   :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x2
+  :flag-assert         #x900000002
+  )
+
+;; HALFWORD vectors
+
+(deftype vector2h (structure)
+  ((data int16 2 :offset-assert   0)
+   (x    int16   :offset          0)
+   (y    int16   :offset          2)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype vector2uh (structure)
+  ((data uint16 2 :offset-assert   0)
+   (x    uint16   :offset          0)
+   (y    uint16   :offset          2)
+   (val  uint32   :offset          0)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype vector3h (structure)
+  ((data int16 3 :offset-assert   0)
+   (x    int16   :offset          0)
+   (y    int16   :offset          2)
+   (z    int16   :offset          4)
+   )
+  :method-count-assert 9
+  :size-assert         #x6
+  :flag-assert         #x900000006
+  )
+
+(deftype vector3uh (structure)
+  ((data uint16 3 :offset-assert   0)
+   (x    uint16   :offset          0)
+   (y    uint16   :offset          2)
+   (z    uint16   :offset          4)
+   )
+  :method-count-assert 9
+  :size-assert         #x6
+  :flag-assert         #x900000006
+  )
+
+;; WORD vectors
+
+(deftype vector2w (structure)
+  ((data int32 2 :offset-assert   0)
+   (x    int32   :offset          0)
+   (y    int32   :offset          4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype vector3w (structure)
+  ((data int32 3 :offset-assert   0)
+   (x    int32   :offset          0)
+   (y    int32   :offset          4)
+   (z    int32   :offset          8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+(deftype vector4w (structure)
+  ((data  int32  4  :offset-assert   0)
+   (x     int32     :offset          0)
+   (y     int32     :offset          4)
+   (z     int32     :offset          8)
+   (w     int32     :offset         12)
+   (dword uint64  2 :offset          0)
+   (quad  uint128   :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; FLOAT vectors
+
+(deftype vector2 (structure)
+  ((data float 2 :offset-assert   0)
+   (x    float   :offset          0)
+   (y    float   :offset          4)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype vector3 (structure)
+  ((data float 3 :offset-assert   0)
+   (x    float   :offset          0)
+   (y    float   :offset          4)
+   (z    float   :offset          8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; Note: typically vector is used instead of vector4.
+;; vector usually means "xyz only, with w = 1", and vector4
+;; is sometimes used when w is more meaningful.
+(deftype vector4 (structure)
+  ((data  float   4 :offset-assert   0)
+   (x     float     :offset          0)
+   (y     float     :offset          4)
+   (z     float     :offset          8)
+   (w     float     :offset         12)
+   (dword uint64  2 :offset          0)
+   (quad  uint128   :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+;; SPECIAL vectors
+
+(defmethod print vector4w ((obj vector4w))
+  "Print a vector4w"
+  (format #t "#<vector4w ~D ~D ~D ~D @ #x~X>" (-> obj x) (-> obj y) (-> obj z) (-> obj w) obj)
+  obj
+  )
+
+;; group of 2 vector4w's
+(deftype vector4w-2 (structure)
+  ((data   int32    8         :offset-assert   0)
+   (quad   uint128  2         :offset          0)
+   (vector vector4w 2 :inline :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+
+(deftype vector4w-3 (structure)
+  ((data   int32    12        :offset-assert   0)
+   (quad   uint128  3         :offset          0)
+   (vector vector4w 3 :inline :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(deftype vector4w-4 (structure)
+  ((data   int32    16        :offset-assert   0)
+   (quad   uint128  4         :offset          0)
+   (vector vector4w 4 :inline :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+(deftype vector4h (structure)
+  ((data int16  4 :offset-assert   0)
+   (x    int16    :offset          0)
+   (y    int16    :offset          2)
+   (z    int16    :offset          4)
+   (w    int16    :offset          6)
+   (long uint64   :offset          0)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype vector8h (structure)
+  ((data int16   8 :offset-assert   0)
+   (quad uint128   :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(deftype vector16b (structure)
+  ((data int8    16 :offset-assert   0)
+   (quad uint128    :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(defmethod inspect vector ((obj vector))
+  "Inspect a vector."
+  (format #t "[~8x] vector~%" obj)
+  (format #t "~T[~F] [~F] [~F] [~F]~%" (-> obj x) (-> obj y) (-> obj z) (-> obj w))
+  obj
+  )
+
+(defmethod print vector ((obj vector))
+  "Print a vector."
+  (format #t "#<vector ~F ~F ~F ~F @ #x~X>" (-> obj x) (-> obj y) (-> obj z) (-> obj w) obj)
+  obj
+  )
+
+;; Constant Vectors
+
+(define *null-vector* (new 'static 'vector :w 1.0))
+(define *identity-vector* (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+(define *x-vector* (new 'static 'vector :x 1.0 :w 1.0))
+(define *y-vector* (new 'static 'vector :y 1.0 :w 1.0))
+(define *z-vector* (new 'static 'vector :z 1.0 :w 1.0))
+(define *up-vector* (new 'static 'vector :y 1.0 :w 1.0))
+
+;; SPECIAL vector (of floats)
+
+(deftype vector4s-3 (structure)
+  ((data   float   12        :offset-assert   0)
+   (quad   uint128 3         :offset          0)
+   (vector vector  3 :inline :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;; definition of type vector-array
+(deftype vector-array (inline-array-class)
+  ((data vector :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+(set! (-> vector-array heap-base) (the-as uint 16))
+
+(deftype rgbaf (vector)
+  ((r float  :offset   0)
+   (g float  :offset   4)
+   (b float  :offset   8)
+   (a float  :offset  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; ax + by + cz = d form
+(deftype plane (vector)
+  ((a float  :offset   0)
+   (b float  :offset   4)
+   (c float  :offset   8)
+   (d float  :offset  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype sphere (vector)
+  ((r float  :offset  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype isphere (vec4s)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(defmacro static-vectorm (x y z w)
+  `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,w))
+  )
+(defmacro static-spherem (x y z r)
+  "actually makes a vector. use bspherem for sphere."
+  `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
+  )
+(defmacro static-bspherem (x y z r)
+  `(new 'static 'sphere :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
+  )
+
+;; box, stored as 8 floats (min/max along each dim, unused w's)
+(deftype box8s (structure)
+  ((data   float   8       :offset-assert   0)
+   (quad   uint128 2       :offset          0)
+   (vector vector  2       :offset          0)
+   (min    vector  :inline :offset          0)
+   (max    vector  :inline :offset         16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype box8s-array (inline-array-class)
+  ((data box8s :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+(set! (-> box8s-array heap-base) (the-as uint 32))
+
+;; actually a capsule
+(deftype cylinder (structure)
+  ((origin vector :inline :offset-assert   0)
+   (axis   vector :inline :offset-assert  16)
+   (radius float          :offset-assert  32)
+   (length float          :offset-assert  36)
+   )
+  :method-count-assert 11
+  :size-assert         #x28
+  :flag-assert         #xb00000028
+  (:methods
+    (debug-draw (_type_ vector4w) none 9)
+    (ray-capsule-intersect (_type_ vector vector) float 10)
+    )
+  )
+
+;; a normal cylinder
+(deftype cylinder-flat (structure)
+  ((origin vector :inline :offset-assert   0)
+   (axis   vector :inline :offset-assert  16)
+   (radius float          :offset-assert  32)
+   (length float          :offset-assert  36)
+   )
+  :method-count-assert 11
+  :size-assert         #x28
+  :flag-assert         #xb00000028
+  (:methods
+    (debug-draw (_type_ vector4w) none 9)
+    (ray-flat-cyl-intersect (_type_ vector vector) float 10)
+    )
+  )
+
+(deftype vertical-planes (structure)
+  ((data uint128 4 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+(deftype vertical-planes-array (basic)
+  ((length uint32                           :offset-assert   4)
+   (data   vertical-planes :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype qword (structure)
+  ((data     uint32   4       :offset-assert   0)
+   (byte     uint8    16      :offset          0)
+   (hword    uint16   8       :offset          0)
+   (word     uint32   4       :offset          0)
+   (dword    uint64   2       :offset          0)
+   (quad     uint128          :offset          0)
+   (vector   vector   :inline :offset          0)
+   (vector4w vector4w :inline :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype vector3s (structure)
+  ((data float 3 :offset-assert   0)
+   (x    float   :offset          0)
+   (y    float   :offset          4)
+   (z    float   :offset          8)
+   )
+  :pack-me ;; removeme
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+(define-extern vector-cross! (function vector vector vector vector))
+(define-extern vector-float*! (function vector vector float vector))
+(define-extern vector-identity! (function vector vector))
+(define-extern vector-normalize! (function vector float vector))
+(define-extern vector-normalize-copy! (function vector vector float vector))
+(define-extern vector-length (function vector float))
+(define-extern vector-length-squared (function vector float))
+(define-extern vector-xz-normalize! (function vector float vector))
+(define-extern vector-xz-length (function vector float))
+(define-extern vector+float*! (function vector vector vector float vector))
+(define-extern vector-vector-distance-squared (function vector vector float))
+(define-extern vector-negate! (function vector vector vector))
+(define-extern vector-normalize-ret-len! (function vector float float))
+(define-extern vector-vector-distance (function vector vector float))
+
+;; Macros and inline functions.
+;; These are inlined for performance reasons
+
+(defmacro set-vector! (v xv yv zv wv)
+  "Set all fields in a vector"
+  (with-gensyms (vec)
+     `(let ((,vec ,v))
+       (set! (-> ,vec x) ,xv)
+       (set! (-> ,vec y) ,yv)
+       (set! (-> ,vec z) ,zv)
+       (set! (-> ,vec w) ,wv)
+       ,vec
+       ))
+     )
+
+(defun vector-dot ((a vector) (b vector))
+  "Take the dot product of two vectors.
+   Only does the x, y, z compoments.
+   Originally handwritten assembly to space out loads and use FPU accumulator"
+  (declare (inline))
+  (let ((result 0.))
+    (+! result (* (-> a x) (-> b x)))
+    (+! result (* (-> a y) (-> b y)))
+    (+! result (* (-> a z) (-> b z)))
+    result
+    )
+  )
+
+(defun vector-dot-vu ((arg0 vector) (arg1 vector))
+  "Take the dot product (xyz only). Using VU0."
+  (local-vars (v0-0 float))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (.lvf vf1 (&-> arg0 quad))
+    (.lvf vf2 (&-> arg1 quad))
+    (.mul.vf vf1 vf1 vf2)
+    (.add.y.vf vf1 vf1 vf1 :mask #b1)
+    (.add.z.vf vf1 vf1 vf1 :mask #b1)
+    (.mov v0-0 vf1)
+    v0-0
+    )
+  )
+
+(defun vector4-dot ((a vector) (b vector))
+  "Take the dot product of two vectors.
+   Does the x, y, z, and w compoments"
+  (declare (inline))
+  (let ((result 0.))
+    (+! result (* (-> a x) (-> b x)))
+    (+! result (* (-> a y) (-> b y)))
+    (+! result (* (-> a z) (-> b z)))
+    (+! result (* (-> a w) (-> b w)))
+    result
+    )
+  )
+
+(defun vector4-dot-vu ((arg0 vector) (arg1 vector))
+  "Take the dot product (xyzw). Using VU0."
+  (local-vars (v0-0 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg0 quad))
+    (.lvf vf2 (&-> arg1 quad))
+    (.mul.vf vf1 vf1 vf2)
+    (.add.w.vf vf3 vf0 vf0 :mask #b1)
+    (.mul.x.vf acc vf3 vf1 :mask #b1)
+    (.add.mul.y.vf acc vf3 vf1 acc :mask #b1)
+    (.add.mul.z.vf acc vf3 vf1 acc :mask #b1)
+    (.add.mul.w.vf vf1 vf3 vf1 acc :mask #b1)
+    (.mov v0-0 vf1)
+    v0-0
+    )
+  )
+
+(defmacro print-vf (vf &key (name #f))
+  "Print out a vf register as a vector."
+  `(let ((temp (new 'stack 'vector)))
+     (.svf temp ,vf)
+     ,(if name
+          `(format #t "~A: ~`vector`P~%" (quote ,name) temp)
+          `(format #t "~`vector`P~%" temp)
+          )
+     )
+  )
+
+(defmacro print-vf-hex (vf)
+  "Print out a vf register as 4x 32-bit hexadecimal integers"
+  `(let ((temp (new 'stack 'vector4w)))
+     (.svf temp ,vf)
+     (format #t "~`vector4w`P~%" temp)
+     )
+  )
+
+(defmacro print-vf-dec (vf)
+  "Print out a vf register as 4x 32-bit base-10 integers"
+  `(let ((temp (new 'stack 'vector4w)))
+     (.svf temp ,vf)
+     (format #t " ~d ~d ~d ~d~%" (-> temp data 0) (-> temp data 1) (-> temp data 2) (-> temp data 3))
+     )
+  )
+
+(defun vector+! ((dst vector) (a vector) (b vector))
+  "Set dst = a + b. The w component of dst is set to 0."
+  (declare (inline))
+  (rlet ((vf0 :class vf :reset-here #t)
+         (vf1 :class vf :reset-here #t)
+         (vf2 :class vf :reset-here #t)
+         (vf3 :class vf :reset-here #t))
+    ;; load vectors
+    (.lvf vf2 a)
+    (.lvf vf3 b)
+    (init-vf0-vector)
+    ;; add
+    (.add.vf vf1 vf2 vf3)
+    ;; set w = 1
+    (.blend.vf vf1 vf1 vf0 :mask #b1000)
+    ;; store
+    (.svf dst vf1)
+    )
+  dst
+  )
+
+(defun vector-! ((dst vector) (a vector) (b vector))
+  "Set dst = a - b. The w componenent of dst is set to 0."
+  (declare (inline))
+  (rlet ((vf0 :class vf :reset-here #t)
+         (vf1 :class vf :reset-here #t)
+         (vf2 :class vf :reset-here #t)
+         (vf3 :class vf :reset-here #t))
+    ;; load vectors
+    (.lvf vf2 a)
+    (.lvf vf3 b)
+    (init-vf0-vector)
+    ;; subtract
+    (.sub.vf vf1 vf2 vf3)
+    ;; set w = 1
+    (.blend.vf vf1 vf1 vf0 :mask #b1000)
+    ;; store
+    (.svf dst vf1)
+    )
+  dst
+  )
+
+(defun vector-zero! ((dest vector))
+  "Set xyzw to 0."
+  (declare (inline))
+  (rlet ((vf1 :class vf :reset-here #t))
+    ;; set vf1 = 0
+    (.xor.vf vf1 vf1 vf1)
+    ;; store the 0
+    (.svf dest vf1)
+    )
+  dest
+  )
+
+(defun vector-reset! ((dst vector))
+  "Set vector to 0,0,0,1."
+  (declare (inline))
+  (vector-zero! dst)
+  (set! (-> dst w) 1.0)
+  dst
+  )
+
+(defun vector-copy! ((arg0 vector) (arg1 vector))
+  "Copy arg1 to arg0."
+  (declare (inline))
+  (set! (-> arg0 quad) (-> arg1 quad))
+  arg0
+  )
+
+(defun vector-length< ((arg0 vector) (arg1 float))
+  (let ((f0-0 (vector-length-squared arg0))
+        (f1-0 arg1)
+        )
+    (< f0-0 (* f1-0 f1-0))
+    )
+  )
+
+(defun vector-length> ((arg0 vector) (arg1 float))
+  (< (* arg1 arg1) (vector-length-squared arg0))
+  )
+
+(define *zero-vector* (new 'static 'vector))
+
+(defmacro new-stack-vector0 ()
+  "Get a stack vector that's set to 0.
+   This is more efficient than (new 'stack 'vector) because
+   this doesn't call the constructor."
+  `(let ((vec (new 'stack-no-clear 'vector)))
+     (set! (-> vec quad) (the-as uint128 0))
+     vec
+     )
+  )

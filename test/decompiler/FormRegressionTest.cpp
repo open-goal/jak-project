@@ -1,26 +1,34 @@
 #include "FormRegressionTest.h"
 
-#include "decompiler/analysis/type_analysis.h"
-#include "decompiler/analysis/variable_naming.h"
-#include "decompiler/analysis/reg_usage.h"
+#include "common/goos/PrettyPrinter.h"
+#include "common/util/json_util.h"
+
+#include "decompiler/IR2/Form.h"
 #include "decompiler/analysis/cfg_builder.h"
 #include "decompiler/analysis/expression_build.h"
 #include "decompiler/analysis/final_output.h"
-#include "decompiler/analysis/stack_spill.h"
-#include "decompiler/analysis/insert_lets.h"
 #include "decompiler/analysis/inline_asm_rewrite.h"
+#include "decompiler/analysis/insert_lets.h"
+#include "decompiler/analysis/reg_usage.h"
+#include "decompiler/analysis/stack_spill.h"
+#include "decompiler/analysis/type_analysis.h"
+#include "decompiler/analysis/variable_naming.h"
 #include "decompiler/util/config_parsers.h"
-#include "common/goos/PrettyPrinter.h"
-#include "common/util/json_util.h"
-#include "decompiler/IR2/Form.h"
+
 #include "third-party/json.hpp"
 
 using namespace decompiler;
 
-void FormRegressionTest::SetUpTestCase() {
+void FormRegressionTestJak1::SetUpTestCase() {
   parser = std::make_unique<InstructionParser>();
-  dts = std::make_unique<DecompilerTypeSystem>();
-  dts->parse_type_defs({"decompiler", "config", "all-types.gc"});
+  dts = std::make_unique<DecompilerTypeSystem>(GameVersion::Jak1);
+  dts->parse_type_defs({"decompiler", "config", "jak1", "all-types.gc"});
+}
+
+void FormRegressionTestJak2::SetUpTestCase() {
+  parser = std::make_unique<InstructionParser>();
+  dts = std::make_unique<DecompilerTypeSystem>(GameVersion::Jak2);
+  dts->parse_type_defs({"decompiler", "config", "jak2", "all-types.gc"});
 }
 
 void FormRegressionTest::TearDownTestCase() {
@@ -126,7 +134,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   auto program = parser->parse_program(code, string_label_names);
 
   // create the test data collection
-  auto test = std::make_unique<TestData>(program.instructions.size());
+  auto test = std::make_unique<TestData>(program.instructions.size(), settings.version);
   // populate the LinkedObjectFile
   test->file.words_by_seg.resize(3);
   test->file.labels = program.labels;
@@ -158,7 +166,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   // analyze function prologue/epilogue
   test->func.analyze_prologue(test->file);
   // build control flow graph
-  test->func.cfg = build_cfg(test->file, 0, test->func, {}, {});
+  test->func.cfg = build_cfg(test->file, 0, test->func, {}, {}, settings.version);
   EXPECT_TRUE(test->func.cfg->is_fully_resolved());
   if (!test->func.cfg->is_fully_resolved()) {
     fmt::print("CFG:\n{}\n", test->func.cfg->to_dot());
@@ -174,7 +182,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   // convert instruction to atomic ops
   DecompWarnings warnings;
   auto ops = convert_function_to_atomic_ops(test->func, program.labels, warnings, false, {},
-                                            GameVersion::Jak1);
+                                            settings.version);
   test->func.ir2.atomic_ops = std::make_shared<FunctionAtomicOps>(std::move(ops));
   test->func.ir2.atomic_ops_succeeded = true;
   test->func.ir2.env.set_end_var(test->func.ir2.atomic_ops->end_op().return_var());

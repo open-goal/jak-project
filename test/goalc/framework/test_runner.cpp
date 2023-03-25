@@ -1,19 +1,19 @@
 
 #include "test_runner.h"
-#include "third-party/fmt/core.h"
 
 #include <string>
 
-#include "gtest/gtest.h"
 #include "inja.hpp"
-#include "third-party/json.hpp"
-
-#include "game/runtime.h"
-#include "goalc/listener/Listener.h"
-#include "goalc/compiler/Compiler.h"
 
 #include "common/util/FileUtil.h"
-#include <filesystem>
+
+#include "game/runtime.h"
+#include "goalc/compiler/Compiler.h"
+#include "goalc/listener/Listener.h"
+#include "gtest/gtest.h"
+
+#include "third-party/fmt/core.h"
+#include "third-party/json.hpp"
 
 namespace GoalTest {
 
@@ -49,6 +49,14 @@ void CompilerTestRunner::run_static_test(inja::Environment& env,
                                          std::optional<int> truncate) {
   env.write(test_file, {}, test_file);
   run_test(testCategory, test_file, expected, truncate);
+}
+
+void CompilerTestRunner::run_static_test(std::string& testCategory,
+                                         const std::string& test_file,
+                                         const std::vector<std::string>& expected,
+                                         std::optional<int> truncate) {
+  auto env = getInjaEnvironment(testCategory);
+  run_static_test(env, testCategory, test_file, expected, truncate);
 }
 
 void CompilerTestRunner::run_test(const std::string& test_category,
@@ -98,27 +106,51 @@ void CompilerTestRunner::run_always_pass(const std::string& test_category,
   tests.push_back({{}, {}, test_file, true});
 }
 
-void runtime_no_kernel() {
-  constexpr int argc = 6;
-  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nokernel", "-nodisplay", "-nosound"};
-  exec_runtime(argc, const_cast<char**>(argv));
+void runtime_no_kernel_jak1() {
+  constexpr int argc = 5;
+  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nokernel", "-nosound"};
+  GameLaunchOptions game_options;
+  game_options.disable_display = true;
+  exec_runtime(game_options, argc, argv);
 }
 
-void runtime_with_kernel() {
+void runtime_no_kernel_jak2() {
   constexpr int argc = 5;
-  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nodisplay", "-nosound"};
-  exec_runtime(argc, const_cast<char**>(argv));
+  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nokernel", "-nosound"};
+  GameLaunchOptions game_options;
+  game_options.disable_display = true;
+  game_options.game_version = GameVersion::Jak2;
+  exec_runtime(game_options, argc, argv);
+}
+
+void runtime_with_kernel_jak1() {
+  constexpr int argc = 4;
+  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nosound"};
+  GameLaunchOptions game_options;
+  game_options.disable_display = true;
+  exec_runtime(game_options, argc, argv);
+}
+
+void runtime_with_kernel_jak2() {
+  constexpr int argc = 4;
+  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nosound"};
+  GameLaunchOptions game_options;
+  game_options.disable_display = true;
+  game_options.game_version = GameVersion::Jak2;
+  exec_runtime(game_options, argc, argv);
 }
 
 void runtime_with_kernel_no_debug_segment() {
-  constexpr int argc = 5;
-  const char* argv[argc] = {"", "-fakeiso", "-debug-mem", "-nodisplay", "-nosound"};
-  exec_runtime(argc, const_cast<char**>(argv));
+  constexpr int argc = 4;
+  const char* argv[argc] = {"", "-fakeiso", "-debug-mem", "-nosound"};
+  GameLaunchOptions game_options;
+  game_options.disable_display = true;
+  exec_runtime(game_options, argc, argv);
 }
 
 void createDirIfAbsent(const std::string& path) {
-  if (!std::filesystem::is_directory(path) || !std::filesystem::exists(path)) {
-    std::filesystem::create_directory(path);
+  if (!fs::is_directory(path) || !fs::exists(path)) {
+    fs::create_directory(path);
   }
 }
 std::string getTemplateDir(const std::string& category) {
@@ -130,4 +162,9 @@ std::string getGeneratedDir(const std::string& category) {
 std::string getFailedDir(const std::string& category) {
   return file_util::get_file_path({"test/goalc/source_generated/failed", category + "/"});
 }
+
+inja::Environment getInjaEnvironment(const std::string& category) {
+  return inja::Environment(getTemplateDir(category), getGeneratedDir(category));
+}
+
 }  // namespace GoalTest

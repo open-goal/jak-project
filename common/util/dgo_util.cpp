@@ -1,8 +1,11 @@
-#include <cstring>
 #include "dgo_util.h"
-#include "common/versions.h"
-#include "third-party/fmt/core.h"
+
+#include <cstring>
+
 #include "common/util/Assert.h"
+#include "common/versions.h"
+
+#include "third-party/fmt/core.h"
 
 /*!
  * Assert false if the char[] has non-null data after the null terminated string.

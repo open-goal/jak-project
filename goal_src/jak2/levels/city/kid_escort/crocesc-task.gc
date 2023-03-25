@@ -1,0 +1,48 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: crocesc-task.gc
+;; name in dgo: crocesc-task
+;; dgos: LKIDDOGE
+
+;; DECOMP BEGINS
+
+(defmethod reset-task! crocesct-wait-spot ((obj crocesct-wait-spot))
+  (set! (-> obj check-done) #f)
+  (set! (-> obj which-spot) -1)
+  (set! (-> obj num-spots) (the-as uint 0))
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod ai-task-method-11 crocesct-wait-spot ((obj crocesct-wait-spot) (arg0 bot))
+  (let ((s4-0 (-> obj which-spot)))
+    (when (>= s4-0 0)
+      (let ((s3-0 (-> arg0 course spots (-> obj spot-indexes s4-0))))
+        (if (and (not (outside-spot-radius? arg0 s3-0 (the-as vector #f) #f)) (player-blocking-spot? arg0 s3-0))
+            (set! s4-0 -1)
+            )
+        )
+      )
+    (when (< s4-0 0)
+      (set! s4-0 (choose-spot arg0 (the-as int (-> obj num-spots)) (the-as (pointer uint) (-> obj spot-indexes))))
+      (set! (-> obj which-spot) s4-0)
+      (mem-copy!
+        (the-as pointer (-> arg0 spot))
+        (the-as pointer (-> arg0 course spots (-> obj spot-indexes s4-0)))
+        20
+        )
+      )
+    (if (logtest? *display-bot-marks* (bot-marks-controls bmc16))
+        (bot-debug-draw-spot-sphere
+          arg0
+          (the-as int (-> obj num-spots))
+          (the-as (pointer uint) (-> obj spot-indexes))
+          (the-as int (-> obj spot-indexes s4-0))
+          )
+        )
+    )
+  ((-> obj check-done) obj (the-as crocadog-escort arg0))
+  (none)
+  )

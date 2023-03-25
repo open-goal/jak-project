@@ -1,0 +1,13 @@
+("LWIDESTA.DGO"
+ ("tpage-2964.go"
+  "tpage-3257.go"
+  "errol-highres-ag.go"
+  "baron-highres-ag.go"
+  "crimson-guard-highres-ag.go"
+  "stdm-baron-box-ag.go"
+  "crimson-guard-lowres-ag.go"
+  "stdm-barrels-ag.go"
+  "palmpilot-ag.go"
+  "particleman-ag.go"
+  "lwidesta.go"
+ ))

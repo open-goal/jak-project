@@ -1,0 +1,137 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: debug-h.gc
+;; name in dgo: debug-h
+;; dgos: ENGINE, GAME
+
+;; NOTE - for cam-states
+(define-extern add-debug-flat-triangle (function symbol bucket-id vector vector vector rgba symbol))
+;; NOTE - for cam-debug
+(define-extern transform-float-point (function vector vector4w vector4w))
+(define-extern add-debug-line (function symbol bucket-id vector vector rgba symbol rgba symbol))
+;; NOTE - for editable
+(define-extern add-debug-x (function symbol bucket-id vector rgba symbol))
+(define-extern add-debug-vector (function symbol bucket-id vector vector meters rgba symbol))
+
+(define-extern add-debug-line2d (function symbol bucket-id vector4w vector4w vector4w symbol))
+(define-extern add-debug-text-3d (function symbol bucket-id string vector font-color vector2h symbol))
+(define-extern add-debug-text-sphere (function symbol bucket-id vector meters string rgba symbol))
+
+;; NOTE - for debug
+(define-extern add-debug-sphere (function symbol bucket-id vector meters rgba symbol))
+
+;; NOTE - for joint-mod-h
+(define-extern add-debug-matrix (function symbol bucket-id matrix meters matrix))
+
+;; NOTE - for menu
+;; +++debug-menu-msg
+(defenum debug-menu-msg
+  :type int32
+  (activate 1)
+  (deactivate 2)
+  (update 3)
+  (press 4)
+  )
+;; ---debug-menu-msg
+
+;; +++debug-menu-dest
+(defenum debug-menu-dest
+  :type int32
+  (activation 0)
+  (root 1)
+  (open-menus 2)
+  (current-selection 3))
+;; ---debug-menu-dest
+
+(declare-type debug-menu basic)
+(declare-type debug-menu-node basic)
+(declare-type debug-menu-item debug-menu-node)
+(declare-type debug-menu-context basic)
+(define-extern debug-menu-context-send-msg (function debug-menu-context debug-menu-msg debug-menu-dest debug-menu-context))
+(define-extern debug-menu-make-from-template (function debug-menu-context pair debug-menu-node))
+(define-extern debug-menu-func-decode (function object function))
+(define-extern debug-menu-item-send-msg (function debug-menu-item debug-menu-msg debug-menu-item))
+(define-extern debug-menu-send-msg (function debug-menu debug-menu-msg symbol debug-menu))
+(define-extern debug-menus-handler (function debug-menu-context debug-menu-context))
+
+;; DECOMP BEGINS
+
+(deftype pos-history (structure)
+  ((points     (inline-array vector)  :offset-assert   0)
+   (num-points int32                  :offset-assert   4)
+   (h-first    int32                  :offset-assert   8)
+   (h-last     int32                  :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(deftype debug-vertex (structure)
+  ((trans  vector4w :inline :offset-assert   0)
+   (normal vector3h :inline :offset-assert  16)
+   (st     vector2h :inline :offset-assert  22)
+   (color  uint32           :offset-assert  28)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+
+(deftype debug-vertex-stats (basic)
+  ((length    int32                    :offset-assert   4)
+   (pos-count int32                    :offset-assert   8)
+   (vertex    debug-vertex 600 :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x4b10
+  :flag-assert         #x900004b10
+  )
+
+
+(define *color-black* (new 'static 'rgba :a #x80))
+
+(define *color-white* (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))
+
+(define *color-gray* (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+
+(define *color-red* (new 'static 'rgba :r #xff :a #x80))
+
+(define *color-green* (new 'static 'rgba :g #xff :a #x80))
+
+(define *color-blue* (new 'static 'rgba :b #xff :a #x80))
+
+(define *color-cyan* (new 'static 'rgba :g #xff :b #xff :a #x80))
+
+(define *color-magenta* (new 'static 'rgba :r #xff :b #xff :a #x80))
+
+(define *color-yellow* (new 'static 'rgba :r #xff :g #xff :a #x80))
+
+(define *color-light-red* (new 'static 'rgba :r #xff :g #x80 :b #x80 :a #x80))
+
+(define *color-light-green* (new 'static 'rgba :r #x80 :g #xff :b #x80 :a #x80))
+
+(define *color-light-blue* (new 'static 'rgba :r #x80 :g #x80 :b #xff :a #x80))
+
+(define *color-light-cyan* (new 'static 'rgba :r #x80 :g #xff :b #xff :a #x80))
+
+(define *color-light-magenta* (new 'static 'rgba :r #xff :g #x80 :b #xff :a #x80))
+
+(define *color-light-yellow* (new 'static 'rgba :r #xff :g #xff :b #x80 :a #x80))
+
+(define *color-dark-red* (new 'static 'rgba :r #x80 :a #x80))
+
+(define *color-dark-green* (new 'static 'rgba :g #x80 :a #x80))
+
+(define *color-dark-blue* (new 'static 'rgba :b #x80 :a #x80))
+
+(define *color-dark-cyan* (new 'static 'rgba :g #x80 :b #x80 :a #x80))
+
+(define *color-dark-magenta* (new 'static 'rgba :r #x80 :b #x80 :a #x80))
+
+(define *color-dark-yellow* (new 'static 'rgba :r #x80 :g #x80 :a #x80))
+
+(define *color-orange* (new 'static 'rgba :r #xff :g #x80 :a #x80))

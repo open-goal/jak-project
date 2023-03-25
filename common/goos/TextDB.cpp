@@ -11,10 +11,11 @@
  *   (+ 1 (+ a b)) ; compute the sum
  */
 
-#include "common/util/FileUtil.h"
-#include "third-party/fmt/core.h"
-
 #include "TextDB.h"
+
+#include "common/util/FileUtil.h"
+
+#include "third-party/fmt/core.h"
 
 namespace goos {
 
@@ -136,6 +137,19 @@ std::string TextDb::get_info_for(const Object& o, bool* terminate_compiler_error
   }
 }
 
+std::optional<TextDb::ShortInfo> TextDb::get_short_info_for(const Object& o) const {
+  if (o.is_pair()) {
+    auto kv = m_map.find(o.heap_obj);
+    if (kv != m_map.end()) {
+      return get_short_info_for(kv->second.frag, kv->second.offset);
+    } else {
+      return {};
+    }
+  } else {
+    return {};
+  }
+}
+
 /*!
  * Given a source text and an offset, print a description of where it is.
  */
@@ -150,39 +164,56 @@ std::string TextDb::get_info_for(const std::shared_ptr<SourceText>& frag, int of
   return result + pointer;
 }
 
+std::optional<TextDb::ShortInfo> TextDb::get_short_info_for(const std::shared_ptr<SourceText>& frag,
+                                                            int offset) const {
+  int line_idx = frag->get_line_idx(offset);
+  int offset_in_line = std::max(offset - frag->get_offset_of_line(line_idx), 1) - 1;
+  ShortInfo info_result;
+  info_result.filename = frag->get_description();
+  info_result.line_idx_to_display = line_idx;
+  info_result.pos_in_line = offset_in_line;
+  return std::make_optional(info_result);
+}
+
+std::optional<TextDb::ShortInfo> TextDb::try_get_short_info(
+    const std::shared_ptr<goos::HeapObject>& heap_obj) const {
+  auto it = m_map.find(heap_obj);
+  if (it != m_map.end()) {
+    auto& frag = it->second.frag;
+    // shorten the string
+    std::string name = frag->get_description();
+    size_t start = 0;
+    for (size_t i = 0; i < name.size(); i++) {
+      if (name[i] == '/' || name[i] == '\\') {
+        start = i + 1;
+      }
+    }
+    if (start < name.size()) {
+      name = name.substr(start);
+    }
+
+    ShortInfo result;
+    result.filename = name;
+
+    int line_idx = frag->get_line_idx(it->second.offset);
+    result.line_idx_to_display = line_idx + 1;
+
+    int offset_of_line = frag->get_offset_of_line(line_idx);
+    int offset_of_next_line = frag->get_offset_of_line(line_idx + 1);
+
+    int line_length = offset_of_next_line - offset_of_line;
+
+    int start_offset_in_line = it->second.offset - offset_of_line - 1;
+    result.pos_in_line = std::max(start_offset_in_line, 0);
+    result.line_text = std::string(frag->get_text() + offset_of_line + 1, line_length - 1);
+    return result;
+  }
+  return {};
+}
+
 std::optional<TextDb::ShortInfo> TextDb::try_get_short_info(const Object& o) const {
   if (o.is_pair()) {
-    auto it = m_map.find(o.heap_obj);
-    if (it != m_map.end()) {
-      auto& frag = it->second.frag;
-      // shorten the string
-      std::string name = frag->get_description();
-      size_t start = 0;
-      for (size_t i = 0; i < name.size(); i++) {
-        if (name[i] == '/' || name[i] == '\\') {
-          start = i + 1;
-        }
-      }
-      if (start < name.size()) {
-        name = name.substr(start);
-      }
-
-      ShortInfo result;
-      result.filename = name;
-
-      int line_idx = frag->get_line_idx(it->second.offset);
-      result.line_idx_to_display = line_idx + 1;
-
-      int offset_of_line = frag->get_offset_of_line(line_idx);
-      int offset_of_next_line = frag->get_offset_of_line(line_idx + 1);
-
-      int line_length = offset_of_next_line - offset_of_line;
-
-      int start_offset_in_line = it->second.offset - offset_of_line - 1;
-      result.pos_in_line = std::max(start_offset_in_line, 0);
-      result.line_text = std::string(frag->get_text() + offset_of_line + 1, line_length - 1);
-      return result;
-    }
+    return try_get_short_info(o.heap_obj);
   }
 
   return {};
@@ -219,5 +250,10 @@ void TextDb::inherit_info(const Object& parent, const Object& child) {
       }
     }
   }
+}
+
+void TextDb::clear_info() {
+  m_map.clear();
+  m_fragments.clear();
 }
 }  // namespace goos

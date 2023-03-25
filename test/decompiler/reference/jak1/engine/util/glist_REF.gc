@@ -1,0 +1,241 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; this file is debug only
+(declare-file (debug))
+
+;; definition for function glst-num-elements
+(defun glst-num-elements ((arg0 glst-list))
+  (-> arg0 numelem)
+  )
+
+;; definition for function glst-remove
+(defun glst-remove ((arg0 glst-list) (arg1 glst-node))
+  (let ((v1-0 arg1))
+    "return the previous node in the list"
+    (let ((v1-1 (-> v1-0 prev))
+          (a2-1 arg1)
+          )
+      "return the next node in the list"
+      (let ((a2-2 (-> a2-1 next)))
+        (set! (-> v1-1 next) a2-2)
+        (set! (-> a2-2 prev) v1-1)
+        )
+      )
+    )
+  (+! (-> arg0 numelem) -1)
+  arg1
+  )
+
+;; definition for function glst-remove-tail
+(defun glst-remove-tail ((arg0 glst-list))
+  (let ((v1-0 arg0))
+    "return the tail of the list"
+    (let* ((a1-1 (-> v1-0 tailpred))
+           (v1-1 a1-1)
+           )
+      "is this node the start of the list. #t = start"
+      (if (not (not (-> v1-1 prev)))
+          (glst-remove arg0 a1-1)
+          (the-as glst-node #f)
+          )
+      )
+    )
+  )
+
+;; definition for function glst-remove-head
+(defun glst-remove-head ((arg0 glst-list))
+  (let ((v1-0 arg0))
+    "return the start of the list"
+    (let* ((a1-1 (-> v1-0 head))
+           (v1-1 a1-1)
+           )
+      "is this node the end of the list. #t = end"
+      (if (not (not (-> v1-1 next)))
+          (glst-remove arg0 a1-1)
+          (the-as glst-node #f)
+          )
+      )
+    )
+  )
+
+;; definition for function glst-insert-before
+(defun glst-insert-before ((arg0 glst-list) (arg1 glst-node) (arg2 glst-node))
+  (let ((v1-0 arg1))
+    "return the previous node in the list"
+    (let ((v1-1 (-> v1-0 prev)))
+      (set! (-> arg2 prev) v1-1)
+      (set! (-> arg2 next) arg1)
+      (set! (-> v1-1 next) arg2)
+      )
+    )
+  (set! (-> arg1 prev) arg2)
+  (+! (-> arg0 numelem) 1)
+  arg2
+  )
+
+;; definition for function glst-insert-after
+(defun glst-insert-after ((arg0 glst-list) (arg1 glst-node) (arg2 glst-node))
+  (let ((v1-0 arg1))
+    "return the next node in the list"
+    (let ((v1-1 (-> v1-0 next)))
+      (set! (-> arg2 prev) arg1)
+      (set! (-> arg2 next) v1-1)
+      (set! (-> v1-1 prev) arg2)
+      )
+    )
+  (set! (-> arg1 next) arg2)
+  (+! (-> arg0 numelem) 1)
+  arg2
+  )
+
+;; definition for function glst-add-tail
+(defun glst-add-tail ((arg0 glst-list) (arg1 glst-node))
+  (glst-insert-before arg0 (the-as glst-node (&-> arg0 tail)) arg1)
+  arg1
+  )
+
+;; definition for function glst-add-head
+(defun glst-add-head ((arg0 glst-list) (arg1 glst-node))
+  (glst-insert-after arg0 (the-as glst-node arg0) arg1)
+  arg1
+  )
+
+;; definition for function glst-init-list!
+(defun glst-init-list! ((arg0 glst-list))
+  (set! (-> arg0 head) (the-as glst-node (&-> arg0 tail)))
+  (set! (-> arg0 tail) #f)
+  (set! (-> arg0 tailpred) (the-as glst-node (&-> arg0 head)))
+  (set! (-> arg0 numelem) 0)
+  arg0
+  )
+
+;; definition for function glst-find-node-by-name
+;; ERROR: Type Propagation failed: Failed type prop at op 7 ((set! a0 (l.wu (+ v1 8)))): Could not get type of load: (set! a0 (l.wu (+ v1 8))). 
+;; ERROR: Type analysis failed
+(defun glst-find-node-by-name ((a0-0 glst-list) (a1-0 string))
+  (local-vars
+    (v0-0 none)
+    (v0-1 symbol)
+    (v1-0 glst-list)
+    (v1-1 glst-node)
+    (v1-4 none)
+    (v1-5 none)
+    (v1-6 glst-node)
+    (v1-7 glst-node)
+    (v1-8 symbol)
+    (a0-1 string)
+    (a0-2 none)
+    (a0-3 string)
+    (s5-0 glst-node)
+    (t9-0 (function basic basic symbol))
+    )
+  (set! v1-0 a0-0)
+  (set! a0-1 L41)
+  (set! s5-0 (-> v1-0 head))
+  (while (begin (set! v1-6 s5-0) (set! a0-3 L40) (set! v1-7 (-> v1-6 next)) (set! v1-8 (not v1-7)) (not v1-8))
+    (if (begin
+          (set! t9-0 name=)
+          (set! v1-1 s5-0)
+          (set! a0-2 (the-as none (l.wu (+ v1-1 8))))
+          (set! a1-1 (the-as none a1-0))
+          (set! v0-0 (the-as none (call!)))
+          v0-0
+          )
+        (return (set! v0-1 (the-as symbol s5-0)))
+        )
+    (set! v1-4 (the-as none L44))
+    (set! v1-5 (the-as none (l.wu s5-0)))
+    (set! s5-0 (the-as glst-node v1-5))
+    )
+  (set! v0-1 #f)
+  (ret-value v0-1)
+  )
+
+;; definition for function glst-get-node-by-index
+(defun glst-get-node-by-index ((arg0 glst-list) (arg1 int))
+  (when (and (< arg1 (glst-num-elements arg0)) (>= arg1 0))
+    "return the start of the list"
+    (let ((v1-3 (-> arg0 head)))
+      (dotimes (a0-3 arg1)
+        (nop!)
+        (nop!)
+        (nop!)
+        (nop!)
+        "return the next node in the list"
+        (set! v1-3 (-> v1-3 next))
+        )
+      (return v1-3)
+      )
+    )
+  (the-as glst-node #f)
+  )
+
+;; definition for function glst-length-of-longest-name
+;; ERROR: Type Propagation failed: Failed type prop at op 6 ((set! a0 (l.wu (+ v1 8)))): Could not get type of load: (set! a0 (l.wu (+ v1 8))). 
+;; ERROR: Type analysis failed
+(defun glst-length-of-longest-name ((a0-0 glst-list))
+  (local-vars
+    (v0-0 none)
+    (v0-1 int)
+    (v1-0 glst-list)
+    (v1-1 glst-node)
+    (v1-2 none)
+    (v1-3 none)
+    (v1-4 none)
+    (v1-5 none)
+    (v1-6 glst-node)
+    (v1-7 glst-node)
+    (v1-8 symbol)
+    (a0-1 string)
+    (a0-2 none)
+    (a0-5 string)
+    (s5-0 glst-node)
+    (t9-0 none)
+    (gp-0 int)
+    )
+  (set! gp-0 0)
+  (set! v1-0 a0-0)
+  (set! a0-1 L41)
+  (set! s5-0 (-> v1-0 head))
+  (while (begin (set! v1-6 s5-0) (set! a0-5 L40) (set! v1-7 (-> v1-6 next)) (set! v1-8 (not v1-7)) (not v1-8))
+    (when (begin
+            (set! v1-1 s5-0)
+            (set! a0-2 (the-as none (l.wu (+ v1-1 8))))
+            (set! v1-2 (the-as none string))
+            (set! t9-0 (the-as none (l.wu (+ v1-2 32))))
+            (set! v0-0 (the-as none (call!)))
+            (set! v1-3 (the-as none v0-0))
+            (<.si gp-0 v1-3)
+            )
+      (set! gp-0 (the-as int v1-3))
+      (set! a0-4 (the-as none gp-0))
+      )
+    (set! v1-4 (the-as none L44))
+    (set! v1-5 (the-as none (l.wu s5-0)))
+    (set! s5-0 (the-as glst-node v1-5))
+    )
+  (set! v0-1 gp-0)
+  (ret-value v0-1)
+  )
+
+;; definition for function glst-get-node-index
+(defun glst-get-node-index ((arg0 glst-list) (arg1 glst-node))
+  (let ((v1-0 0))
+    "return the start of the list"
+    (let ((a0-1 (-> arg0 head)))
+      (while (let ((a2-3 a0-1))
+               "is this node the end of the list. #t = end"
+               (not (not (-> a2-3 next)))
+               )
+        (if (= a0-1 arg1)
+            (return v1-0)
+            )
+        (+! v1-0 1)
+        "return the next node in the list"
+        (set! a0-1 (-> a0-1 next))
+        )
+      )
+    )
+  -1
+  )

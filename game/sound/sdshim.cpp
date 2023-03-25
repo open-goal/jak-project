@@ -1,7 +1,11 @@
 #include "sdshim.h"
+
 #include <cstring>
+
 #include "common/common_types.h"
+
 #include "game/sound/common/voice.h"
+
 #include "third-party/fmt/core.h"
 
 std::shared_ptr<snd::voice> voice;

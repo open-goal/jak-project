@@ -1,7 +1,11 @@
 #pragma once
-#include "immintrin.h"
-#include "common/math/Vector.h"
 #include <cfloat>
+
+#include "immintrin.h"
+
+#include "common/common_types.h"
+#include "common/math/Vector.h"
+#include "common/util/Assert.h"
 
 enum class Mask {
   NONE = 0,
@@ -89,6 +93,13 @@ struct alignas(16) Vf {
     data[1] = 0;
     data[2] = 0;
     data[3] = 0;
+  }
+
+  void set_u32s(u32 xx, u32 yy, u32 zz, u32 ww) {
+    memcpy(&data[0], &xx, 4);
+    memcpy(&data[1], &yy, 4);
+    memcpy(&data[2], &zz, 4);
+    memcpy(&data[3], &ww, 4);
   }
 
   u16 x_as_u16() const {

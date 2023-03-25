@@ -10,11 +10,13 @@
  */
 
 #include "Reader.h"
+
+#include "common/log/log.h"
+#include "common/repl/util.h"
 #include "common/util/FileUtil.h"
 #include "common/util/FontUtils.h"
+
 #include "third-party/fmt/core.h"
-#include <filesystem>
-#include "ReplUtils.h"
 
 namespace goos {
 
@@ -192,7 +194,7 @@ bool Reader::is_valid_source_char(char c) const {
 /*!
  * Prompt the user and read the result.
  */
-std::optional<Object> Reader::read_from_stdin(const std::string& prompt, ReplWrapper& repl) {
+std::optional<Object> Reader::read_from_stdin(const std::string& prompt, REPL::Wrapper& repl) {
   // escape code will make sure that we remove any color
   std::string prompt_full = "\033[0m" + prompt;
 
@@ -236,17 +238,9 @@ Object Reader::read_from_string(const std::string& str,
  * Read a file
  */
 Object Reader::read_from_file(const std::vector<std::string>& file_path, bool check_encoding) {
-  std::string joined_name;
+  std::string joined_path = fmt::format("{}", fmt::join(file_path, "/"));
 
-  for (const auto& thing : file_path) {
-    if (!joined_name.empty()) {
-      joined_name += '/';
-    }
-
-    joined_name += thing;
-  }
-
-  auto textFrag = std::make_shared<FileText>(file_util::get_file_path(file_path), joined_name);
+  auto textFrag = std::make_shared<FileText>(file_util::get_file_path(file_path), joined_path);
   db.insert(textFrag);
 
   auto result = internal_read(textFrag, check_encoding);
@@ -289,11 +283,16 @@ Object Reader::internal_read(std::shared_ptr<SourceText> text,
   ts.seek_past_whitespace_and_comments();
 
   // read list!
-  auto objs = read_list(ts, false);
-  if (add_top_level) {
-    return PairObject::make_new(SymbolObject::make_new(symbolTable, "top-level"), objs);
-  } else {
-    return objs;
+  try {
+    auto objs = read_list(ts, false);
+    if (add_top_level) {
+      return PairObject::make_new(SymbolObject::make_new(symbolTable, "top-level"), objs);
+    } else {
+      return objs;
+    }
+  } catch (std::exception& e) {
+    lg::print("{}", e.what());
+    throw;
   }
 }
 
@@ -341,7 +340,8 @@ Token Reader::get_next_token(TextStream& stream) {
   // Second - not a special token, so we read until we get a character that ends the token.
   while (stream.text_remains()) {
     char next = stream.peek();
-    if (next == ' ' || next == '\n' || next == '\t' || next == ')' || next == ';' || next == '(') {
+    if (next == ' ' || next == '\n' || next == '\t' || next == '\r' || next == ')' || next == ';' ||
+        next == '(') {
       return t;
     } else {
       // not the end, so add to token.

@@ -1,0 +1,98 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: eye-h.gc
+;; name in dgo: eye-h
+;; dgos: ENGINE, GAME
+
+(define-extern update-eyes (function none))
+
+
+;; DECOMP BEGINS
+
+(deftype eye (structure)
+  ((data        vector 2 :inline :offset-assert   0)
+   (x           float            :offset          0)
+   (y           float            :offset          4)
+   (lid         float            :offset          8)
+   (iris-scale  float            :offset         16)
+   (pupil-scale float            :offset         20)
+   (lid-scale   float            :offset         24)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+
+(deftype eye-control (structure)
+  ((process        handle                              :offset-assert   0)
+   (draw-flag      symbol                              :offset-assert   8)
+   (different-eyes symbol                              :offset-assert  12)
+   (random-time    uint16                              :offset-assert  16)
+   (bucket         uint16                              :offset-assert  18)
+   (blink          float                               :offset-assert  20)
+   (shaders        (inline-array adgif-shader)         :offset-assert  24)
+   (left           eye                         :inline :offset-assert  32)
+   (right          eye                         :inline :offset-assert  64)
+   )
+  :method-count-assert 9
+  :size-assert         #x60
+  :flag-assert         #x900000060
+  )
+
+
+(deftype eye-control-array (basic)
+  ((data eye-control 16 :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x610
+  :flag-assert         #x900000610
+  )
+
+
+(deftype eye-control-arrays (basic)
+  ((data eye-control-array 6 :inline :offset-assert  16)
+   (pad  uint32                      :offset-assert 9328)
+   )
+  :method-count-assert 9
+  :size-assert         #x2474
+  :flag-assert         #x900002474
+  )
+
+
+(deftype eye-work (structure)
+  ((sprite-tmpl  dma-gif-packet :inline :offset-assert   0)
+   (sprite-tmpl2 dma-gif-packet :inline :offset-assert  32)
+   (adgif-tmpl   dma-gif-packet :inline :offset-assert  64)
+   (blink-table  float          10      :offset-assert  96)
+   )
+  :method-count-assert 9
+  :size-assert         #x88
+  :flag-assert         #x900000088
+  )
+
+
+(define *eye-control-arrays*
+  (new 'static 'eye-control-arrays :data (new 'static 'inline-array eye-control-array 6
+                                           (new 'static 'eye-control-array)
+                                           (new 'static 'eye-control-array)
+                                           (new 'static 'eye-control-array)
+                                           (new 'static 'eye-control-array)
+                                           (new 'static 'eye-control-array)
+                                           (new 'static 'eye-control-array)
+                                           )
+                                   )
+  )
+
+(dotimes (v1-6 6)
+  (dotimes (a0-10 16)
+    (let ((a1-14 (the-as eye-control (+ (+ (* 96 a0-10) 28 (* 1552 v1-6)) (the-as int *eye-control-arrays*)))))
+      (set! (-> a1-14 process) (the-as handle #f))
+      (set! (-> a1-14 draw-flag) #t)
+      (set! (-> a1-14 shaders) (the-as (inline-array adgif-shader) #f))
+      (set! (-> a1-14 random-time) (the-as uint 60))
+      (set! (-> a1-14 blink) 0.0)
+      )
+    )
+  )

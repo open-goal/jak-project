@@ -1,7 +1,8 @@
 #pragma once
 
-#include <vector>
 #include <string>
+#include <vector>
+
 #include "common/util/Assert.h"
 
 /*!
@@ -34,6 +35,9 @@ class Trie {
 
   // Get all objects starting with the given prefix.
   std::vector<T*> lookup_prefix(const std::string& str) const;
+
+  // Get all nodes in the tree.
+  std::vector<T*> get_all_nodes() const;
   ~Trie();
 
  private:
@@ -176,4 +180,11 @@ T* Trie<T>::operator[](const std::string& str) {
 template <typename T>
 std::vector<T*> Trie<T>::lookup_prefix(const std::string& str) const {
   return m_root.lookup_prefix(str.c_str());
+}
+
+template <typename T>
+std::vector<T*> Trie<T>::get_all_nodes() const {
+  std::vector<T*> result;
+  m_root.get_all_children(result);
+  return result;
 }

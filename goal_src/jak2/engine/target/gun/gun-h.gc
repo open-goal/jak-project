@@ -1,0 +1,249 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: gun-h.gc
+;; name in dgo: gun-h
+;; dgos: ENGINE, GAME
+
+(define-extern *setting-control* setting-control)
+(define-extern can-exit-duck? (function target symbol))
+(define-extern target-collide-set! (function symbol float int :behavior target))
+
+(declare-type gun-blue-shot projectile)
+(declare-type gun-yellow-shot projectile)
+(declare-type gun-red-shot process-drawable)
+
+;; DECOMP BEGINS
+
+(deftype gun (process-drawable)
+  ((control       control-info   :offset        128)
+   (shadow-backup shadow-geo     :offset        208)
+   (read-scale    basic          :offset-assert 212)
+   (gun-type      pickup-type    :offset-assert 216)
+   (barrel        joint-mod      :offset-assert 220)
+   (mag           joint-mod    4 :offset-assert 224)
+   (mag-scale     float        4 :offset-assert 240)
+   )
+  :heap-base #x80
+  :method-count-assert 24
+  :size-assert         #x100
+  :flag-assert         #x1800800100
+  (:methods
+    (idle () _type_ :state 20)
+    (use (symbol) _type_ :state 21)
+    (hidden () _type_ :state 22)
+    (die () _type_ :state 23)
+    )
+  )
+
+
+(deftype gun-info (basic)
+  ((process                (pointer target)           :offset-assert   4)
+   (gun                    (pointer gun)              :offset-assert   8)
+   (gun-pos                transformq       :inline   :offset-assert  16)
+   (gun-trans              vector           :inline   :offset         16)
+   (gun-quat               quaternion       :inline   :offset         32)
+   (gun-scale              vector           :inline   :offset         48)
+   (gun-type               pickup-type                :offset-assert  64)
+   (using-gun-type         pickup-type                :offset-assert  68)
+   (active?                symbol                     :offset-assert  72)
+   (latch?                 symbol                     :offset-assert  76)
+   (put-away?              symbol                     :offset-assert  80)
+   (surpress-time          time-frame                 :offset-assert  88)
+   (fire-time              time-frame                 :offset-assert  96)
+   (gun-time               time-frame                 :offset-assert 104)
+   (gun-get-on-time        time-frame                 :offset-assert 112)
+   (active-time            time-frame                 :offset-assert 120)
+   (fire-delay             uint32                     :offset-assert 128)
+   (gun-control            uint32                     :offset-assert 132)
+   (gun-target             uint32                     :offset-assert 136)
+   (gun-daxter             float                      :offset-assert 140)
+   (gun-roty-rel           degrees                    :offset-assert 144)
+   (gun-roty               degrees                    :offset-assert 148)
+   (gun-roty-targ          degrees                    :offset-assert 152)
+   (hips                   joint-mod                  :offset-assert 156)
+   (upper-body             joint-mod                  :offset-assert 160)
+   (chest                  joint-mod                  :offset-assert 164)
+   (fire-dir-rot           degrees                    :offset-assert 168)
+   (fire-dir               vector           2 :inline :offset-assert 176)
+   (fire-point             vector           :inline   :offset-assert 208)
+   (fire-dir-backup        vector           :inline   :offset-assert 224)
+   (fire-dir-out           vector           :inline   :offset-assert 240)
+   (fire-pending           int32                      :offset-assert 256)
+   (fire-pending-time      time-frame                 :offset-assert 264)
+   (fire-start-time        time-frame                 :offset-assert 272)
+   (fire-charge            float                      :offset-assert 280)
+   (fire-spin              degrees                    :offset-assert 284)
+   (fire-spinv             degrees                    :offset-assert 288)
+   (fire-chamber           int32                      :offset-assert 292)
+   (fire-range             meters                     :offset-assert 296)
+   (laser-active?          symbol                     :offset-assert 300)
+   (laser-point            vector           :inline   :offset-assert 304)
+   (laser-dir              vector           2 :inline :offset-assert 320)
+   (laser-hit-point        vector           :inline   :offset-assert 352)
+   (track?                 uint16                     :offset-assert 368)
+   (track-tilt             degrees                    :offset-assert 372)
+   (track-turn             degrees                    :offset-assert 376)
+   (track-find-range       meters                     :offset-assert 380)
+   (track-turnv-range      meters                     :offset-assert 384)
+   (track-tilt-range       meters                     :offset-assert 388)
+   (track-turn-range       meters                     :offset-assert 392)
+   (track-tilt-max         degrees                    :offset-assert 396)
+   (track-turn-max         degrees                    :offset-assert 400)
+   (track-angle-mult       float                      :offset-assert 404)
+   (track-beam-size        float                      :offset-assert 408)
+   (track-auto-fire        symbol                     :offset-assert 412)
+   (track-require          uint32                     :offset-assert 416)
+   (track-target-hold-time time-frame                 :offset-assert 424)
+   (track-start-time       time-frame                 :offset-assert 432)
+   (track-press-start-time time-frame                 :offset-assert 440)
+   (track-target           focus            2 :inline :offset-assert 448)
+   (track-trans            vector           :inline   :offset-assert 480)
+   (track-dir              vector           :inline   :offset-assert 496)
+   (turn-fast-hold-time    time-frame                 :offset-assert 512)
+   (blue-whine-sound-id    uint32                     :offset-assert 520)
+   (blue-whine-volume      float                      :offset-assert 524)
+   (top-anim-twist         vector           :inline   :offset-assert 528)
+   (top-anim-twist-targ    vector           :inline   :offset-assert 544)
+   (top-anim-look-at       vector           :inline   :offset-assert 560)
+   (top-anim-twist-reset   uint64                     :offset-assert 576)
+   (top-anim-gun-height    meters                     :offset-assert 584)
+   (top-anim-blue-cycle    float                      :offset-assert 588)
+   (top-anim-low-high      float                      :offset-assert 592)
+   (top-anim-extra-twistv  degrees                    :offset-assert 596)
+   (top-anim-tilt-up       degrees                    :offset-assert 600)
+   (attack-combo           combo-tracker    :inline   :offset-assert 608)
+   (combo-window-start     time-frame                 :offset-assert 656)
+   (combo-window-state     symbol                     :offset-assert 664)
+   (combo-fire-delay       uint32                     :offset-assert 668)
+   (charge-ammo            float                      :offset-assert 672)
+   (charge-start-time      time-frame                 :offset-assert 680)
+   (charge-inc-time        time-frame                 :offset-assert 688)
+   (charge-active?         handle                     :offset-assert 696)
+   )
+  :method-count-assert 10
+  :size-assert         #x2c0
+  :flag-assert         #xa000002c0
+  (:methods
+    (gun-info-method-9 (_type_) (inline-array vector) 9)
+    )
+  )
+
+
+(defbehavior want-to-gun? process ((arg0 target) (arg1 symbol))
+  (local-vars (v1-36 symbol))
+  (and (logtest? (-> arg0 game features) (game-feature gun))
+       (>= (- (-> self clock frame-counter) (-> arg0 gun gun-time)) (seconds 0.1))
+       (not (focus-test? arg0 dead hit board mech dark teleporting))
+       (not (logtest? (surface-flag gun-inactive gun-hide gun-off) (-> arg0 control current-surface flags)))
+       (not (logtest? (state-flags prevent-gun) (-> arg0 state-flags)))
+       (logtest? (logand (-> *setting-control* user-current features) (game-feature gun-yellow gun-red gun-blue gun-dark))
+                 (-> arg0 game features)
+                 )
+       (or (not (logtest? (-> arg0 control current-surface flags) (surface-flag duck))) (can-exit-duck? arg0))
+       (or (not (focus-test? arg0 pilot)) (-> arg0 pilot gun?))
+       (or arg1
+           (nonzero? (-> arg0 gun using-gun-type))
+           (begin
+             (set! v1-36 (and (cpad-hold? (-> arg0 control cpad number) r1)
+                              (not (focus-test? arg0 grabbed))
+                              (begin (set! v1-36 #t) (set! (-> arg0 gun latch?) v1-36) v1-36)
+                              )
+                   )
+             v1-36
+             )
+           (-> arg0 gun latch?)
+           )
+       (not (-> arg0 skel top-anim frame-group))
+       (>= (- (-> self clock frame-counter) (-> arg0 control time-of-last-debug-float)) (seconds 0.1))
+       )
+  )
+
+(defun using-gun? ((arg0 target))
+  (nonzero? (-> arg0 gun gun-type))
+  )
+
+(defun enabled-gun? ((arg0 target))
+  (nonzero? (-> arg0 gun using-gun-type))
+  )
+
+(defun gun->ammo ((arg0 pickup-type))
+  (case arg0
+    (((pickup-type eco-yellow))
+     13
+     )
+    (((pickup-type eco-red))
+     14
+     )
+    (((pickup-type eco-blue))
+     15
+     )
+    (((pickup-type eco-dark))
+     16
+     )
+    (else
+      0
+      )
+    )
+  )
+
+(defmethod get-gun-ammo fact-info-target ((obj fact-info-target))
+  (let ((current-gun (gun->ammo (-> (the-as target (-> obj process)) gun gun-type))))
+    (if (zero? current-gun)
+        0.0
+        (-> (the-as target (-> obj process)) game gun-ammo (+ current-gun -13))
+        )
+    )
+  )
+
+(defskelgroup skel-gun gun gun-lod0-jg -1
+              ((gun-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.5)
+              :shadow gun-shadow-mg
+              :sort 1
+              :origin-joint-index 3
+              )
+
+(define *gun-shadow-control*
+  (new 'static 'shadow-control :settings (new 'static 'shadow-settings
+                                           :flags (shadow-flags disable-fade shdf03)
+                                           :shadow-dir (new 'static 'vector :y -1.0 :w 614400.0)
+                                           :bot-plane (new 'static 'plane :y 1.0 :w 81920.0)
+                                           :top-plane (new 'static 'plane :y 1.0 :w 2048.0)
+                                           )
+                               )
+  )
+
+(defskelgroup skel-ammo-yellow gun gun-ammo-yellow-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-yellow-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 6
+              :sort 1
+              )
+
+(defskelgroup skel-ammo-red gun gun-ammo-red-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-red-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 6
+              :sort 1
+              )
+
+(defskelgroup skel-ammo-blue gun gun-ammo-blue-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-blue-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 6
+              :sort 1
+              )
+
+(defskelgroup skel-ammo-dark gun gun-ammo-dark-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-dark-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 6
+              :sort 1
+              )
+
+(defskelgroup skel-gun-red-cone gun gun-red-cone-lod0-jg gun-red-cone-idle-ja
+              ((gun-red-cone-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 6
+              )

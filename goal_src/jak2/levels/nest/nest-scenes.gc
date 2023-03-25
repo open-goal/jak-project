@@ -1,0 +1,1162 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: nest-scenes.gc
+;; name in dgo: nest-scenes
+;; dgos: NESTT, NES
+
+;; DECOMP BEGINS
+
+(defskelgroup skel-nest-gun-elevator nest-gun-elevator nest-gun-elevator-lod0-jg -1
+              ((nest-gun-elevator-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-nest-break-rocks-break nest-break-rocks nest-break-rocks-break-lod0-jg -1
+              ((nest-break-rocks-break-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 100)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-nest-break-rocks-break-a nest-break-rocks nest-break-rocks-break-a-lod0-jg -1
+              ((nest-break-rocks-break-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 300)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-nest-break-rocks-break-b nest-break-rocks nest-break-rocks-break-b-lod0-jg -1
+              ((nest-break-rocks-break-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 200)
+              :origin-joint-index 3
+              )
+
+(defpartgroup group-canyon-lightning-thingy-charge
+  :id 1223
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 5227))
+  )
+
+(defpart 5227
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x92 :page #xc))
+    (sp-rnd-flt spt-num 3.0 3.0 1.0)
+    (sp-flt spt-scale-x (meters 12.5))
+    (sp-int spt-rot-x 4)
+    (sp-flt spt-scale-y (meters 0.033))
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 255.0)
+    (sp-flt spt-b 255.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-omega 4.096)
+    (sp-rnd-flt spt-vel-y (meters 0.06666667) (meters 0.06666667) 1.0)
+    (sp-rnd-flt spt-fade-g -0.85 -1.7 1.0)
+    (sp-flt spt-fade-b -8.0)
+    (sp-rnd-flt spt-fade-a -0.21333334 -0.21333334 1.0)
+    (sp-rnd-flt spt-accel-y -6.826667 -2.7306666 1.0)
+    (sp-flt spt-friction 0.97)
+    (sp-int-plain-rnd spt-timer 50 149 1)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-3)
+    (sp-func spt-func 'sparticle-motion-blur)
+    (sp-rnd-flt spt-conerot-x (degrees 225.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees -45.0) (degrees 90.0) 1.0)
+    )
+  )
+
+(deftype canyon-lightning-thingy (process-drawable)
+  ((lightning lightning-control 5 :offset-assert 200)
+   )
+  :heap-base #x60
+  :method-count-assert 21
+  :size-assert         #xdc
+  :flag-assert         #x15006000dc
+  (:methods
+    (zap () _type_ :state 20)
+    )
+  )
+
+
+(defstate zap (canyon-lightning-thingy)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (none)
+    )
+  :exit (behavior ()
+    (dotimes (v1-0 5)
+      (let ((control (-> self lightning v1-0))
+            (mode 3)
+            )
+        (let ((control-mode (!= mode (-> control state mode))))
+          (case mode
+            ((3)
+             (if control-mode
+                 (set! (-> control state counter) 0.0)
+                 )
+             )
+            ((1)
+             (set! (-> control state start-color) (-> control spec start-color))
+             (set! (-> control state end-color) (-> control spec end-color))
+             )
+            )
+          )
+        (set! (-> control state mode) (the-as lightning-mode mode))
+        )
+      )
+    (none)
+    )
+  :trans (behavior ()
+    (cond
+      ((>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.125))
+       (let ((gp-0 (new 'stack-no-clear 'vector)))
+         (set! (-> gp-0 quad) (-> self root trans quad))
+         (let ((v1-7 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root quat)))
+               (s5-0 (new 'stack-no-clear 'matrix))
+               (s4-0 (new 'stack-no-clear 'vector))
+               (s3-0 (new 'stack-no-clear 'vector))
+               (s2-0 (new 'stack-no-clear 'vector))
+               )
+           (vector-float*! s4-0 (-> v1-7 vector 2) 143360.0)
+           (vector+float*! s4-0 s4-0 (-> v1-7 vector 1) 20480.0)
+           (vector-float*! s3-0 (-> v1-7 vector 1) 12288.0)
+           (matrix-axis-angle! s5-0 (-> v1-7 vector 2) 13107.2)
+           (dotimes (s1-0 5)
+             (case (-> self lightning s1-0 state mode)
+               (((lightning-mode lm0) (lightning-mode lm3))
+                (let ((v1-15 (-> self lightning s1-0))
+                      (a0-11 1)
+                      )
+                  (let ((a1-6 (!= a0-11 (-> v1-15 state mode))))
+                    (case a0-11
+                      ((3)
+                       (if a1-6
+                           (set! (-> v1-15 state counter) 0.0)
+                           )
+                       )
+                      ((1)
+                       (set! (-> v1-15 state start-color) (-> v1-15 spec start-color))
+                       (set! (-> v1-15 state end-color) (-> v1-15 spec end-color))
+                       )
+                      )
+                    )
+                  (set! (-> v1-15 state mode) (the-as lightning-mode a0-11))
+                  )
+                )
+               )
+             (when (nonzero? s1-0)
+               (vector-matrix*! s4-0 s4-0 s5-0)
+               (vector-matrix*! s3-0 s3-0 s5-0)
+               )
+             (vector+! s2-0 s3-0 gp-0)
+             (let ((a0-15 (-> self lightning s1-0))
+                   (v1-21 s2-0)
+                   )
+               (set! (-> a0-15 state meet data 0 quad) (-> v1-21 quad))
+               )
+             (vector+! s2-0 s4-0 gp-0)
+             (let ((a0-19 (-> self lightning s1-0))
+                   (v1-26 s2-0)
+                   )
+               (set! (-> a0-19 state meet data (+ (-> a0-19 state points-to-draw) -1) quad) (-> v1-26 quad))
+               )
+             )
+           )
+         )
+       )
+      (else
+        (spawn (-> self part) (-> self root trans))
+        )
+      )
+    (none)
+    )
+  :code (the-as (function none :behavior canyon-lightning-thingy) sleep-code)
+  )
+
+;; WARN: Return type mismatch process-drawable vs canyon-lightning-thingy.
+(defmethod relocate canyon-lightning-thingy ((obj canyon-lightning-thingy) (arg0 int))
+  (dotimes (index 5)
+    (if (nonzero? (-> obj lightning index))
+        (&+! (-> obj lightning index) arg0)
+        )
+    )
+  (the-as canyon-lightning-thingy ((method-of-type process-drawable relocate) obj arg0))
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior canyon-lightning-thingy-init-by-other canyon-lightning-thingy ((arg0 vector) (arg1 vector))
+  (process-entity-set! self (the-as entity #f))
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (let ((a2-1 (vector-normalize-copy! (new 'stack-no-clear 'vector) arg1 1.0)))
+    (quaternion-from-two-vectors! (-> self root quat) (new 'static 'vector :z 1.0) a2-1)
+    )
+  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 1223) self))
+  (dotimes (gp-1 5)
+    (set! (-> self lightning gp-1) (new
+                                     'process
+                                     'lightning-control
+                                     (new 'static 'lightning-spec
+                                       :name #f
+                                       :flags (lightning-spec-flags lsf0)
+                                       :start-color (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
+                                       :end-color (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
+                                       :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                       :fade-start-factor 0.2
+                                       :fade-time 120.0
+                                       :texture (new 'static 'texture-id :page #xd15)
+                                       :reduction 0.4
+                                       :num-points 48
+                                       :box-size 57344.0
+                                       :merge-factor 0.5
+                                       :merge-count 2
+                                       :radius 9216.0
+                                       :duration -1.0
+                                       :sound #f
+                                       )
+                                     self
+                                     0.0
+                                     )
+          )
+    (let ((v1-13 (-> self lightning gp-1))
+          (a0-8 0)
+          )
+      (let ((a1-8 (!= a0-8 (-> v1-13 state mode))))
+        (case a0-8
+          ((3)
+           (if a1-8
+               (set! (-> v1-13 state counter) 0.0)
+               )
+           )
+          ((1)
+           (set! (-> v1-13 state start-color) (-> v1-13 spec start-color))
+           (set! (-> v1-13 state end-color) (-> v1-13 spec end-color))
+           )
+          )
+        )
+      (set! (-> v1-13 state mode) (the-as lightning-mode a0-8))
+      )
+    )
+  (go-virtual zap)
+  (none)
+  )
+
+(defun activate-canyon-lightning-thingy ((arg0 object) (arg1 vector) (arg2 sparticle-launch-state))
+  (process-spawn canyon-lightning-thingy arg1 (-> arg2 sprite rot-syvel) :to *entity-pool*)
+  0
+  (none)
+  )
+
+(defpartgroup group-nest-gun-core
+  :id 1224
+  :flags (unk-4)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 5228 :flags (bit7)) (sp-item 5229 :flags (bit7)))
+  )
+
+(defpart 5228
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xca :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-z (meters -35))
+    (sp-flt spt-scale-x (meters 6))
+    (sp-flt spt-rot-x 2048.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-flt spt-g 255.0)
+    (sp-flt spt-b 0.0)
+    (sp-flt spt-a 64.0)
+    (sp-flt spt-vel-z (meters 0.4))
+    (sp-int spt-timer 100)
+    (sp-cpuinfo-flags glow)
+    (sp-flt spt-userdata 40960.0)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 5229
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xca :page #xc))
+    (sp-flt spt-num 5.0)
+    (sp-rnd-flt spt-z (meters -35) (meters -5) 1.0)
+    (sp-flt spt-scale-x (meters 1))
+    (sp-flt spt-rot-x 2048.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 255.0)
+    (sp-flt spt-b 255.0)
+    (sp-flt spt-a 64.0)
+    (sp-flt spt-vel-z (meters 0.4))
+    (sp-int spt-timer 100)
+    (sp-cpuinfo-flags glow)
+    (sp-flt spt-userdata 40960.0)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 5230
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xca :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-z (meters -35))
+    (sp-flt spt-scale-x (meters 0.1))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-flt spt-g 0.0)
+    (sp-flt spt-b 0.0)
+    (sp-flt spt-a 64.0)
+    (sp-flt spt-vel-z (meters 0.06666667))
+    (sp-int spt-timer 600)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 5231
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xc9 :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 0.5))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 196.0)
+    (sp-flt spt-g 255.0)
+    (sp-flt spt-b 196.0)
+    (sp-flt spt-a 255.0)
+    (sp-rnd-flt spt-omega 0.0 655360.0 1.0)
+    (sp-flt spt-vel-z (meters 0.033333335))
+    (sp-flt spt-fade-r 0.0)
+    (sp-flt spt-fade-g 0.0)
+    (sp-flt spt-fade-b 0.0)
+    (sp-flt spt-fade-a 0.0)
+    (sp-int spt-timer 600)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-3 ready-to-launch)
+    )
+  )
+
+(defpartgroup group-nest-break-rocks-chargeup
+  :id 1225
+  :linger-duration (seconds 3)
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 12)
+  :parts ((sp-item 5232 :flags (launch-asap)))
+  )
+
+(defpart 5232
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xca :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-rot-x 4096.0)
+    (sp-flt spt-r 0.0)
+    (sp-flt spt-g 0.0)
+    (sp-flt spt-b 0.0)
+    (sp-flt spt-a 1.0)
+    (sp-flt spt-scalevel-x (meters 0.13333334))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-g 0.784)
+    (sp-flt spt-fade-a 0.85333335)
+    (sp-int spt-timer 600)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 glow)
+    (sp-flt spt-userdata 12288.0)
+    (sp-int spt-next-time 150)
+    (sp-launcher-by-id spt-next-launcher 5233)
+    )
+  )
+
+(defpart 5233
+  :init-specs ((sp-flt spt-fade-r 1.0)
+    (sp-flt spt-fade-g 0.0)
+    (sp-flt spt-fade-b 1.0)
+    (sp-flt spt-fade-a 0.0)
+    (sp-int spt-next-time 100)
+    (sp-launcher-by-id spt-next-launcher 5234)
+    )
+  )
+
+(defpart 5234
+  :init-specs ((sp-flt spt-scalevel-x (meters 32))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-r 0.0)
+    (sp-flt spt-fade-b 0.0)
+    (sp-flt spt-fade-a -0.512)
+    )
+  )
+
+(defpartgroup group-nest-break-rocks-explosion
+  :id 1226
+  :linger-duration (seconds 4)
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 64)
+  :parts ((sp-item 5235) (sp-item 5236) (sp-item 5237) (sp-item 5238))
+  )
+
+(defpart 5235
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc))
+    (sp-flt spt-num 10.0)
+    (sp-rnd-flt spt-x (meters 0) (meters 0.6) 1.0)
+    (sp-flt spt-y (meters 4))
+    (sp-rnd-flt spt-scale-x (meters 40) (meters 5) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 3600.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-rnd-flt spt-g 128.0 16.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 8.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.033333335) (meters 0.04) 1.0)
+    (sp-rnd-flt spt-scalevel-x (meters 0.026666667) (meters 0.016666668) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -0.12) (degrees 0.24) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-rnd-flt spt-fade-a 0.32 0.32 1.0)
+    (sp-rnd-flt spt-friction 0.94 0.04 1.0)
+    (sp-int spt-timer 2400)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (sp-int-plain-rnd spt-next-time 70 29 1)
+    (sp-launcher-by-id spt-next-launcher 5239)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 3600.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 3600.0) 1.0)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 5239
+  :init-specs ((sp-flt spt-scalevel-x (meters 0.008333334))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a 0.0)
+    (sp-int-plain-rnd spt-next-time 100 149 1)
+    (sp-launcher-by-id spt-next-launcher 5240)
+    )
+  )
+
+(defpart 5240
+  :init-specs ((sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-rnd-flt spt-fade-a -0.21333334 -0.10666667 1.0)
+    )
+  )
+
+(defpart 5236
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x32 :page #xc))
+    (sp-rnd-flt spt-num 10.0 20.0 1.0)
+    (sp-flt spt-x (meters 0.25))
+    (sp-flt spt-y (meters 4))
+    (sp-rnd-flt spt-scale-x (meters 4) (meters 2) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0) (meters 0.13333334) 1.0)
+    (sp-rnd-flt spt-scalevel-x (meters 0.006666667) (meters 0.0033333334) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -0.12) (degrees 0.24) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-rnd-flt spt-accel-y -0.68266666 -2.7306666 1.0)
+    (sp-rnd-flt spt-friction 0.88 0.02 1.0)
+    (sp-int spt-timer 6000)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (sp-int-plain-rnd spt-next-time 70 29 1)
+    (sp-launcher-by-id spt-next-launcher 5241)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 3600.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 3600.0) 1.0)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    (sp-rnd-flt spt-conerot-radius (meters 0) (meters 3) 1.0)
+    )
+  )
+
+(defpart 5241
+  :init-specs ((sp-flt spt-scalevel-x (meters 0.01))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-int-plain-rnd spt-next-time 90 29 1)
+    (sp-launcher-by-id spt-next-launcher 5242)
+    )
+  )
+
+(defpart 5242
+  :init-specs ((sp-flt spt-scalevel-x (meters 0.0033333334))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-rnd-flt spt-fade-a -0.053333335 -0.053333335 1.0)
+    )
+  )
+
+(defpart 5237
+  :init-specs ((sp-func spt-birth-func 'birth-func-texture-group)
+    (sp-rnd-flt spt-num 10.0 20.0 1.0)
+    (sp-flt spt-y (meters 4))
+    (sp-rnd-flt spt-scale-x (meters 30) (meters 3) 1.0)
+    (new 'static 'sp-field-init-spec
+      :field (sp-field-id spt-rot-z)
+      :flags (sp-flag spflag7)
+      :random-rangef 655360.0
+      :random-multf 1.0
+      )
+    (sp-rnd-flt spt-scale-y (meters 38) (meters 3.5) 1.0)
+    (sp-flt spt-r 128.0)
+    (sp-rnd-flt spt-g 108.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.05) (meters 0.1) 1.0)
+    (sp-rnd-flt spt-scalevel-x (meters 0.033333335) (meters 0.033333335) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.13333334)
+    (sp-rnd-flt spt-friction 0.92 0.02 1.0)
+    (sp-int spt-timer 2000)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (new 'static 'sp-field-init-spec
+      :field (sp-field-id spt-userdata)
+      :flags (sp-flag plain-v2)
+      :object (new 'static 'boxed-array :type int32 80 1 0 #xc00000 #xc03300)
+      )
+    (sp-int spt-next-time 50)
+    (sp-launcher-by-id spt-next-launcher 5243)
+    (new 'static 'sp-field-init-spec
+      :field (sp-field-id spt-conerot-x)
+      :flags (sp-flag from-pointer)
+      :func '*sp-temp*
+      )
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 3600.0) 1.0)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    (sp-rnd-flt spt-conerot-radius (meters 0) (meters 2) 1.0)
+    )
+  )
+
+(defpart 5238
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x34 :page #xc))
+    (sp-rnd-flt spt-num 10.0 20.0 1.0)
+    (sp-flt spt-y (meters 4))
+    (sp-rnd-flt spt-scale-x (meters 30) (meters 3) 1.0)
+    (sp-int spt-rot-x 4)
+    (new 'static 'sp-field-init-spec
+      :field (sp-field-id spt-rot-z)
+      :flags (sp-flag spflag7)
+      :random-rangef 65536.0
+      :random-multf 1.0
+      )
+    (sp-rnd-flt spt-scale-y (meters 38) (meters 3.5) 1.0)
+    (sp-flt spt-r 128.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.05) (meters 0.1) 1.0)
+    (sp-rnd-flt spt-scalevel-x (meters 0.033333335) (meters 0.033333335) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.13333334)
+    (sp-rnd-flt spt-friction 0.92 0.02 1.0)
+    (sp-int spt-timer 2000)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (sp-func spt-func 'sparticle-motion-blur)
+    (sp-int spt-next-time 50)
+    (sp-launcher-by-id spt-next-launcher 5243)
+    (new 'static 'sp-field-init-spec
+      :field (sp-field-id spt-conerot-x)
+      :flags (sp-flag from-pointer)
+      :func '*sp-temp*
+      )
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 3600.0) 1.0)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    (sp-rnd-flt spt-conerot-radius (meters 0) (meters -5) 1.0)
+    )
+  )
+
+(defpart 5243
+  :init-specs ((sp-rnd-flt spt-scalevel-x (meters 0.033333335) (meters 0.033333335) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-int-plain-rnd spt-next-time 60 19 1)
+    (sp-launcher-by-id spt-next-launcher 5244)
+    )
+  )
+
+(defpart 5244
+  :init-specs ((sp-rnd-flt spt-scalevel-x (meters 0.016666668) (meters 0.016666668) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-rnd-flt spt-fade-a -0.18 -0.12 1.0)
+    )
+  )
+
+(defpartgroup group-nest-break-rocks-trailer
+  :id 1227
+  :bounds (static-bspherem 0 0 0 15)
+  :parts ((sp-item 5245))
+  )
+
+(defpart 5245
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-x (meters -0.25) (meters 1) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 8) (meters 2) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 3600.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters -0.013333334) (meters -0.013333334) 1.0)
+    (sp-rnd-flt spt-scalevel-x (meters 0.01) (meters 0.006666667) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -0.3) (degrees 0.6) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-rnd-flt spt-fade-a -0.08 -0.08 1.0)
+    (sp-rnd-flt spt-friction 0.95 0.03 1.0)
+    (sp-int spt-timer 1200)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 3600.0) 1.0)
+    )
+  )
+
+(defpartgroup group-nest-break-rocks-billow
+  :id 1228
+  :bounds (static-bspherem 0 0 0 15)
+  :parts ((sp-item 5246))
+  )
+
+(defpart 5246
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc))
+    (sp-rnd-flt spt-num 1.0 0.5 1.0)
+    (sp-rnd-flt spt-x (meters -6) (meters 12) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 8) (meters 2) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 3600.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-x (meters 0.02) (meters 0.02) 1.0)
+    (sp-rnd-flt spt-scalevel-x (meters 0.033333335) (meters 0.006666667) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -0.3) (degrees 0.6) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-rnd-flt spt-fade-a -0.04 -0.08 1.0)
+    (sp-flt spt-accel-y 2.7306666)
+    (sp-rnd-flt spt-friction 0.95 0.03 1.0)
+    (sp-int spt-timer 1300)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 3600.0) 1.0)
+    )
+  )
+
+(defpartgroup group-nest-precursor-stone-glow
+  :id 1229
+  :bounds (static-bspherem 0 0 0 3)
+  :parts ((sp-item 5247 :flags (bit6)))
+  )
+
+(defpart 5247
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xca :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 3.5))
+    (sp-flt spt-rot-x 8192.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 16.0)
+    (sp-flt spt-g 192.0)
+    (sp-flt spt-b 16.0)
+    (sp-flt spt-a 24.0)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags glow)
+    (sp-flt spt-userdata 4096.0)
+    )
+  )
+
+(defpartgroup group-nest-palmpilot-glow
+  :id 1230
+  :bounds (static-bspherem 0 0 0 3)
+  :parts ((sp-item 5248 :flags (bit6)))
+  )
+
+(defpart 5248
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xca :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.15) (meters 0.01) 1.0)
+    (sp-flt spt-rot-x 409.6)
+    (sp-rnd-flt spt-scale-y (meters 0.1) (meters 0.01) 1.0)
+    (sp-flt spt-r 16.0)
+    (sp-flt spt-g 42.0)
+    (sp-flt spt-b 32.0)
+    (sp-rnd-flt spt-a 16.0 48.0 1.0)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags glow)
+    (sp-flt spt-userdata 2048.0)
+    )
+  )
+
+(scene-method-16
+  (new 'static 'scene
+    :name "nest-break-barrier-res"
+    :extra #f
+    :info #f
+    :mask-to-clear #x1282000
+    :entity "scene-stage-83"
+    :art-group "scenecamera"
+    :anim "nest-break-barrier-res"
+    :parts 29
+    :command-list '((-120
+        (fadein (frame-time-30 (new 'static 'bfloat :data 10.0)))
+        (kill "nest-unbroken-rocks-1")
+        (kill "nest-gun-parts-1")
+        (part-tracker
+          "group-nest-precursor-stone-glow"
+          entity
+          "precursor-stone"
+          joint
+          "main"
+          track
+          #t
+          duration
+          (frame-range -120 1146)
+          )
+        )
+      (202 (part-tracker
+             "group-nest-palmpilot-glow"
+             entity
+             "palmpilot"
+             joint
+             "datascreen"
+             track
+             #t
+             duration
+             (frame-range 202 324)
+             )
+           )
+      (728
+        (part-tracker
+          "group-nest-gun-core"
+          entity
+          "nest-gun-parts"
+          joint
+          "wing_a"
+          track
+          #t
+          duration
+          (frame-range 728 778)
+          )
+        (apply ,(lambda () (set-nest-green-flag! #t)))
+        )
+      (741 (joint-eval activate-canyon-lightning-thingy entity "nest-gun-parts" joint "wing_a"))
+      (745 (part-tracker "group-nest-break-rocks-chargeup" entity "nest-break-rocks-break" joint "ac" track #t))
+      (772
+        (part-tracker
+          "group-nest-break-rocks-explosion"
+          entity
+          "nest-break-rocks-break"
+          joint
+          "ac"
+          track
+          #t
+          duration
+          (frame-range 772 773)
+          )
+        (part-tracker
+          "group-nest-break-rocks-trailer"
+          entity
+          "nest-break-rocks-break-a"
+          joint
+          "at"
+          track
+          #t
+          duration
+          (frame-range 772 775)
+          )
+        )
+      (773
+        (part-tracker
+          "group-nest-break-rocks-trailer"
+          entity
+          "nest-break-rocks-break"
+          joint
+          "ap"
+          track
+          #t
+          duration
+          (frame-range 773 781)
+          )
+        (part-tracker
+          "group-nest-break-rocks-trailer"
+          entity
+          "nest-break-rocks-break"
+          joint
+          "o"
+          track
+          #t
+          duration
+          (frame-range 773 781)
+          )
+        (part-tracker
+          "group-nest-break-rocks-trailer"
+          entity
+          "nest-break-rocks-break"
+          joint
+          "n"
+          track
+          #t
+          duration
+          (frame-range 773 799)
+          )
+        (part-tracker
+          "group-nest-break-rocks-trailer"
+          entity
+          "nest-break-rocks-break"
+          joint
+          "r"
+          track
+          #t
+          duration
+          (frame-range 773 799)
+          )
+        (part-tracker
+          "group-nest-break-rocks-trailer"
+          entity
+          "nest-break-rocks-break"
+          joint
+          "k"
+          track
+          #t
+          duration
+          (frame-range 773 784)
+          )
+        (part-tracker
+          "group-nest-break-rocks-trailer"
+          entity
+          "nest-break-rocks-break"
+          joint
+          "an"
+          track
+          #t
+          duration
+          (frame-range 773 784)
+          )
+        (part-tracker
+          "group-nest-break-rocks-trailer"
+          entity
+          "nest-break-rocks-break"
+          joint
+          "an"
+          track
+          #t
+          duration
+          (frame-range 773 784)
+          )
+        (part-tracker
+          "group-nest-break-rocks-trailer"
+          entity
+          "nest-break-rocks-break"
+          joint
+          "v"
+          track
+          #t
+          duration
+          (frame-range 773 775)
+          )
+        )
+      (774
+        (part-tracker
+          "group-nest-break-rocks-trailer"
+          entity
+          "nest-break-rocks-break-a"
+          joint
+          "aw"
+          track
+          #t
+          duration
+          (frame-range 774 781)
+          )
+        (part-tracker
+          "group-nest-break-rocks-trailer"
+          entity
+          "nest-break-rocks-break-a"
+          joint
+          "au"
+          track
+          #t
+          duration
+          (frame-range 774 807)
+          )
+        )
+      (775 (apply ,(lambda :behavior scene-player
+                     ()
+                     (when (not (-> self aborted?))
+                       (disable *screen-filter*)
+                       (setup
+                         *screen-filter*
+                         (new 'static 'vector :x 255.0 :y 255.0 :z 255.0)
+                         (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
+                         (* 128.0 (-> self clock seconds-per-frame))
+                         (bucket-id screen-filter)
+                         )
+                       )
+                     (none)
+                     )
+                  )
+           )
+      (776
+        (part-tracker
+          "group-nest-break-rocks-explosion"
+          entity
+          "nest-break-rocks-break-a"
+          joint
+          "bq"
+          track
+          #t
+          duration
+          (frame-range 776 777)
+          )
+        (part-tracker
+          "group-nest-break-rocks-billow"
+          entity
+          "nest-break-rocks-break"
+          joint
+          "c"
+          track
+          #t
+          duration
+          (frame-range 773 795)
+          )
+        )
+      (780
+        (part-tracker
+          "group-nest-break-rocks-trailer"
+          entity
+          "nest-break-rocks-break-b"
+          joint
+          "cq"
+          track
+          #t
+          duration
+          (frame-range 780 819)
+          )
+        (part-tracker
+          "group-nest-break-rocks-trailer"
+          entity
+          "nest-break-rocks-break-b"
+          joint
+          "main"
+          track
+          #t
+          duration
+          (frame-range 780 791)
+          )
+        (part-tracker
+          "group-nest-break-rocks-trailer"
+          entity
+          "nest-break-rocks-break-b"
+          joint
+          "co"
+          track
+          #t
+          duration
+          (frame-range 780 798)
+          )
+        (part-tracker
+          "group-nest-break-rocks-trailer"
+          entity
+          "nest-break-rocks-break-a"
+          joint
+          "ce"
+          track
+          #t
+          duration
+          (frame-range 780 815)
+          )
+        )
+      (781 (apply ,(lambda () (kill-by-type canyon-lightning-thingy *active-pool*) (set-nest-green-flag! #f))))
+      (786 (apply ,(lambda :behavior scene-player
+                     ()
+                     (if (not (-> self aborted?))
+                         (setup
+                           *screen-filter*
+                           (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
+                           (new 'static 'vector :x 255.0 :y 128.0)
+                           (-> self clock seconds-per-frame)
+                           (bucket-id screen-filter)
+                           )
+                         )
+                     (none)
+                     )
+                  )
+           )
+      (787 (part-tracker
+             "group-nest-break-rocks-billow"
+             entity
+             "nest-break-rocks-break-b"
+             joint
+             "di"
+             track
+             #t
+             duration
+             (frame-range 787 816)
+             )
+           )
+      (797
+        (part-tracker
+          "group-nest-break-rocks-trailer"
+          entity
+          "nest-break-rocks-break-a"
+          joint
+          "bz"
+          track
+          #t
+          duration
+          (frame-range 797 815)
+          )
+        (part-tracker
+          "group-nest-break-rocks-trailer"
+          entity
+          "nest-break-rocks-break-b"
+          joint
+          "cv"
+          track
+          #t
+          duration
+          (frame-range 797 798)
+          )
+        )
+      (1141 (fadeout (frame-time-30 (new 'static 'bfloat :data 5.0))))
+      (9000 (want-continue "nest-gun"))
+      (10000 (task-close! "nest-get-to-gun-resolution") (apply ,(lambda () (disable *screen-filter*) (none))))
+      )
+    :cut-list '(0 202 276 324 367 392 458 628 728 853 943)
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #t
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'nestb
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xb
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "darkjak-highres"
+        :level 'nestb
+        :art-group "skel-darkjak-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xb
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "palmpilot"
+        :level 'nestb
+        :art-group "skel-palmpilot"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xb
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "precursor-stone"
+        :level 'nestb
+        :art-group "skel-precursor-stone"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xb
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "nest-gun-elevator"
+        :level 'nestb
+        :art-group "skel-nest-gun-elevator"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xb
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "nest-break-rocks-break"
+        :level 'nest
+        :art-group "skel-nest-break-rocks-break"
+        :prefix "break-"
+        :draw-frames '((min 852))
+        :scissor-frames '()
+        :light-index #x1
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "nest-break-rocks-break-a"
+        :level 'nest
+        :art-group "skel-nest-break-rocks-break-a"
+        :prefix "break-a-"
+        :draw-frames '((min 852))
+        :scissor-frames '()
+        :light-index #x1
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "nest-break-rocks-break-b"
+        :level 'nest
+        :art-group "skel-nest-break-rocks-break-b"
+        :prefix "break-b-"
+        :draw-frames '((min 852))
+        :scissor-frames '()
+        :light-index #x1
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "nest-gun-parts"
+        :level 'nestb
+        :art-group "skel-nest-gun-parts"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xb
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj "nest-gun"
+    :end-point-obj #f
+    :borrow '()
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :blackout-end #t
+    :peaceful #t
+    :music-delay 1500.0
+    :save #t
+    )
+  )
+
+(defun nest-deactivate ()
+  (if (not (level-get *level* 'nestb))
+      (set-time-for-random-weather! *mood-control* 0.0 0.0)
+      )
+  0
+  (none)
+  )
+
+(defun nest-activate ()
+  (cond
+    ((level-get *level* 'nestb)
+     (update-mood-weather! *mood-control* 1.0 0.0 0.0 0.0)
+     )
+    (else
+      (update-mood-weather! *mood-control* 0.5 0.1 0.0 0.0)
+      (update-mood-weather! *mood-control* 1.0 0.0 180.0 180.0)
+      )
+    )
+  (set-time-for-random-weather! *mood-control* -99.0 -99.0)
+  0
+  (none)
+  )

@@ -1,10 +1,12 @@
 #pragma once
 
-#include "common/serialization/subtitles/subtitles.h"
 #include <optional>
-#include "common/nrepl/ReplClient.h"
-#include "third-party/imgui/imgui.h"
 #include <string_view>
+
+#include "common/repl/nrepl/ReplClient.h"
+#include "common/serialization/subtitles/subtitles_ser.h"
+
+#include "third-party/imgui/imgui.h"
 
 class SubtitleEditorDB {
  public:
@@ -13,6 +15,7 @@ class SubtitleEditorDB {
     std::string process_name;
     std::string continue_name;
     std::vector<double> move_to;
+    int delay_frames;
     std::string execute_code;
     bool move_first;
     std::vector<std::string> requirements;
@@ -28,8 +31,13 @@ class SubtitleEditor {
   void draw_window();
 
  private:
+  void update_subtitle_editor_db();
+
   void draw_edit_options();
   void draw_repl_options();
+
+  bool any_cutscenes_in_group(const std::string& group_name);
+  bool any_hints_in_group(const std::string& group_name);
 
   void draw_all_cutscene_groups();
   void draw_all_scenes(std::string group_name, bool base_cutscenes = false);
@@ -50,6 +58,7 @@ class SubtitleEditor {
   std::string m_current_scene_text = "";
   std::string m_current_scene_speaker = "";
   bool m_current_scene_offscreen = false;
+  bool m_add_new_scene_as_current = false;
 
   std::string m_new_scene_name = "";
   std::string m_new_scene_group = "";

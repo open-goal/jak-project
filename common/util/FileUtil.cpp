@@ -4,23 +4,26 @@
  */
 
 #include "FileUtil.h"
-#include <iostream>
-#include <filesystem>
+
+#include <algorithm>
 #include <cstdio> /* defines FILENAME_MAX */
-#include <fstream>
-#include <sstream>
 #include <cstdlib>
-#include "common/util/BinaryReader.h"
+#include <fstream>
+#include <iostream>
+#include <sstream>
+
 #include "BinaryWriter.h"
+
 #include "common/common_types.h"
+#include "common/util/BinaryReader.h"
+#include "common/util/unicode_util.h"
 
 // This disables the use of PCLMULQDQ which is probably ok, but let's just be safe and disable it
 // because nobody will care if png compression is 10% slower.
 #define FPNG_NO_SSE 1
-#include "third-party/fpng/fpng.cpp"
-
-#include "third-party/fpng/fpng.h"
 #include "third-party/fmt/core.h"
+#include "third-party/fpng/fpng.cpp"
+#include "third-party/fpng/fpng.h"
 #include "third-party/lzokay/lzokay.hpp"
 
 #ifdef _WIN32
@@ -28,40 +31,60 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #else
-#include <unistd.h>
 #include <cstring>
+#include <unistd.h>
 #endif
+#include "common/log/log.h"
 #include "common/util/Assert.h"
-#include <common/log/log.h>
 
 namespace file_util {
-std::filesystem::path get_user_home_dir() {
+fs::path get_user_home_dir() {
 #ifdef _WIN32
   // NOTE - on older systems, this may case issues if it cannot be found!
-  std::string home_dir = std::getenv("USERPROFILE");
-  return std::filesystem::path(home_dir);
+  std::string home_dir = get_env("USERPROFILE");
+  return fs::path(home_dir);
 #else
-  std::string home_dir = std::getenv("HOME");
-  return std::filesystem::path(home_dir);
+  std::string home_dir = get_env("HOME");
+  return fs::path(home_dir);
 #endif
 }
 
-std::filesystem::path get_user_game_dir() {
-  // TODO - i anticipate UTF-8 problems on windows with our current FS api
-  return get_user_home_dir() / "OpenGOAL";
+fs::path get_user_config_dir() {
+  fs::path config_base_path;
+#ifdef _WIN32
+  auto config_base_dir = get_env("APPDATA");
+  config_base_path = fs::path(config_base_dir);
+#elif __linux
+  // Docs - https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+  // Prefer XDG_CONFIG_HOME if available
+  auto config_base_dir = get_env("XDG_CONFIG_HOME");
+  if (config_base_dir.empty()) {
+    config_base_path = get_user_home_dir() / ".config";
+  } else {
+    config_base_path = fs::path(config_base_dir);
+  }
+#endif
+  return config_base_path / "OpenGOAL";
 }
 
-std::filesystem::path get_user_settings_dir() {
-  return get_user_game_dir() / "jak1" / "settings";
+fs::path get_user_settings_dir(GameVersion game_version) {
+  auto game_version_name = game_version_names[game_version];
+  return get_user_config_dir() / game_version_name / "settings";
 }
 
-std::filesystem::path get_user_memcard_dir() {
-  return get_user_game_dir() / "jak1" / "saves";
+fs::path get_user_memcard_dir(GameVersion game_version) {
+  auto game_version_name = game_version_names[game_version];
+  return get_user_config_dir() / game_version_name / "saves";
+}
+
+fs::path get_user_misc_dir(GameVersion game_version) {
+  auto game_version_name = game_version_names[game_version];
+  return get_user_config_dir() / game_version_name / "misc";
 }
 
 struct {
   bool initialized = false;
-  std::filesystem::path path_to_data;
+  fs::path path_to_data;
 } gFilePathInfo;
 
 /*!
@@ -69,9 +92,10 @@ struct {
  */
 std::string get_current_executable_path() {
 #ifdef _WIN32
-  char buffer[FILENAME_MAX];
-  GetModuleFileNameA(NULL, buffer, FILENAME_MAX);
-  std::string file_path(buffer);
+  // NOTE - MAX_PATH is kinda wrong here as you can have a path longer than 260 in windows
+  wchar_t path[MAX_PATH];
+  GetModuleFileNameW(NULL, path, MAX_PATH);
+  std::string file_path = wide_string_to_utf8_string(path);
   if (file_path.rfind("\\\\?\\", 0) == 0) {
     return file_path.substr(4);
   }
@@ -99,21 +123,22 @@ std::optional<std::string> try_get_jak_project_path() {
     return {};
   }
 
-  return std::string(my_path).substr(
-      0, pos + 11);  // + 12 to include "/jak-project" in the returned filepath
+  return std::make_optional(std::string(my_path).substr(
+      0, pos + 11));  // + 12 to include "/jak-project" in the returned filepath
 }
 
-std::optional<std::filesystem::path> try_get_data_dir() {
-  std::filesystem::path my_path = get_current_executable_path();
+std::optional<fs::path> try_get_data_dir() {
+  fs::path my_path = get_current_executable_path();
+  lg::info("Current executable directory - {}", my_path.string());
   auto data_dir = my_path.parent_path() / "data";
-  if (std::filesystem::exists(data_dir) && std::filesystem::is_directory(data_dir)) {
-    return data_dir;
+  if (fs::exists(data_dir) && fs::is_directory(data_dir)) {
+    return std::make_optional(data_dir);
   } else {
     return {};
   }
 }
 
-bool setup_project_path(std::optional<std::filesystem::path> project_path_override) {
+bool setup_project_path(std::optional<fs::path> project_path_override) {
   if (gFilePathInfo.initialized) {
     return true;
   }
@@ -121,7 +146,7 @@ bool setup_project_path(std::optional<std::filesystem::path> project_path_overri
   if (project_path_override) {
     gFilePathInfo.path_to_data = *project_path_override;
     gFilePathInfo.initialized = true;
-    fmt::print("Using explicitly set project path: {}\n", project_path_override->string());
+    lg::info("Using explicitly set project path: {}", project_path_override->string());
     return true;
   }
 
@@ -129,7 +154,7 @@ bool setup_project_path(std::optional<std::filesystem::path> project_path_overri
   if (data_path) {
     gFilePathInfo.path_to_data = *data_path;
     gFilePathInfo.initialized = true;
-    fmt::print("Using data path: {}\n", data_path->string());
+    lg::info("Using data path: {}", data_path->string());
     return true;
   }
 
@@ -137,15 +162,15 @@ bool setup_project_path(std::optional<std::filesystem::path> project_path_overri
   if (development_repo_path) {
     gFilePathInfo.path_to_data = *development_repo_path;
     gFilePathInfo.initialized = true;
-    fmt::print("Using development repo path: {}\n", *development_repo_path);
+    lg::info("Using development repo path: {}", *development_repo_path);
     return true;
   }
 
-  fmt::print("Failed to initialize project path.\n");
+  lg::error("Failed to initialize project path.");
   return false;
 }
 
-std::filesystem::path get_jak_project_dir() {
+fs::path get_jak_project_dir() {
   ASSERT(gFilePathInfo.initialized);
   return gFilePathInfo.path_to_data;
 }
@@ -155,7 +180,7 @@ std::string get_file_path(const std::vector<std::string>& input) {
   // the project path should be explicitly provided by whatever if needed
   // TEMP HACK
   // - if the provided path is absolute, don't add the project path
-  if (input.size() == 1 && std::filesystem::path(input.at(0)).is_absolute()) {
+  if (input.size() == 1 && fs::path(input.at(0)).is_absolute()) {
     return input.at(0);
   }
 
@@ -167,74 +192,98 @@ std::string get_file_path(const std::vector<std::string>& input) {
   return current_path.string();
 }
 
-bool create_dir_if_needed(const std::string& path) {
-  if (!std::filesystem::is_directory(path)) {
-    std::filesystem::create_directories(path);
+bool create_dir_if_needed(const fs::path& path) {
+  if (!fs::is_directory(path)) {
+    fs::create_directories(path);
     return true;
   }
   return false;
 }
 
 bool create_dir_if_needed_for_file(const std::string& path) {
-  return std::filesystem::create_directories(std::filesystem::path(path).parent_path());
+  return create_dir_if_needed_for_file(fs::path(path));
 }
 
-void write_binary_file(const std::string& name, const void* data, size_t size) {
-  FILE* fp = fopen(name.c_str(), "wb");
+bool create_dir_if_needed_for_file(const fs::path& path) {
+  return fs::create_directories(path.parent_path());
+}
+
+void write_binary_file(const fs::path& name, const void* data, size_t size) {
+  FILE* fp = file_util::open_file(name.string().c_str(), "wb");
   if (!fp) {
-    throw std::runtime_error("couldn't open file " + name);
+    throw std::runtime_error("couldn't open file " + name.string());
+  }
+
+  if (size == 0) {
+    // nothing to write, just 'touch' the file
+    fclose(fp);
+    return;
   }
 
   if (fwrite(data, size, 1, fp) != 1) {
     fclose(fp);
-    throw std::runtime_error("couldn't write file " + name);
+    throw std::runtime_error("couldn't write file " + name.string());
   }
 
   fclose(fp);
 }
 
-void write_rgba_png(const std::string& name, void* data, int w, int h) {
+void write_binary_file(const std::string& name, const void* data, size_t size) {
+  write_binary_file(fs::path(name), data, size);
+}
+
+void write_rgba_png(const fs::path& name, void* data, int w, int h) {
   auto flags = 0;
 
-  auto ok = fpng::fpng_encode_image_to_file(name.c_str(), data, w, h, 4, flags);
+  auto ok = fpng::fpng_encode_image_to_file(name.string().c_str(), data, w, h, 4, flags);
 
   if (!ok) {
-    throw std::runtime_error("couldn't save png file " + name);
+    throw std::runtime_error("couldn't save png file " + name.string());
   }
 }
 
 void write_text_file(const std::string& file_name, const std::string& text) {
-  FILE* fp = fopen(file_name.c_str(), "w");
+  write_text_file(fs::path(file_name), text);
+}
+
+void write_text_file(const fs::path& file_name, const std::string& text) {
+  FILE* fp = file_util::open_file(file_name.string().c_str(), "w");
   if (!fp) {
-    lg::error("Failed to fopen {}\n", file_name);
+    lg::error("Failed to fopen {}\n", file_name.string());
     throw std::runtime_error("Failed to open file");
   }
   fprintf(fp, "%s\n", text.c_str());
   fclose(fp);
 }
-
 std::vector<uint8_t> read_binary_file(const std::string& filename) {
+  return read_binary_file(fs::path(filename));
+}
+
+std::vector<uint8_t> read_binary_file(const fs::path& path) {
   // make sure file exists and isn't a directory
-  std::filesystem::path path(filename);
 
-  auto status = std::filesystem::status(std::filesystem::path(filename));
+  auto status = fs::status(path);
 
-  if (!std::filesystem::exists(status)) {
-    throw std::runtime_error(fmt::format("File {} cannot be opened: does not exist.", filename));
-  }
-
-  if (status.type() != std::filesystem::file_type::regular &&
-      status.type() != std::filesystem::file_type::symlink) {
+  if (!fs::exists(status)) {
     throw std::runtime_error(
-        fmt::format("File {} cannot be opened: not a regular file or symlink.", filename));
+        fmt::format("File {} cannot be opened: does not exist.", path.string()));
   }
 
-  auto fp = fopen(filename.c_str(), "rb");
+  if (status.type() != fs::file_type::regular && status.type() != fs::file_type::symlink) {
+    throw std::runtime_error(
+        fmt::format("File {} cannot be opened: not a regular file or symlink.", path.string()));
+  }
+
+  auto fp = file_util::open_file(path.string().c_str(), "rb");
   if (!fp)
-    throw std::runtime_error("File " + filename +
+    throw std::runtime_error("File " + path.string() +
                              " cannot be opened: " + std::string(strerror(errno)));
   fseek(fp, 0, SEEK_END);
   auto len = ftell(fp);
+  if (len == 0) {
+    fclose(fp);
+    return {};
+  }
   rewind(fp);
 
   std::vector<uint8_t> data;
@@ -242,21 +291,25 @@ std::vector<uint8_t> read_binary_file(const std::string& filename) {
 
   if (fread(data.data(), len, 1, fp) != 1) {
     fclose(fp);
-    throw std::runtime_error("File " + filename + " cannot be read");
+    throw std::runtime_error("File " + path.string() + " cannot be read");
   }
   fclose(fp);
 
   return data;
 }
 
-std::string read_text_file(const std::string& path) {
-  std::ifstream file(path);
+std::string read_text_file(const fs::path& path) {
+  fs::ifstream file(path);
   if (!file.good()) {
-    throw std::runtime_error("couldn't open " + path);
+    throw std::runtime_error("couldn't open " + path.string());
   }
   std::stringstream ss;
   ss << file.rdbuf();
   return ss.str();
+}
+
+std::string read_text_file(const std::string& path) {
+  return read_text_file(fs::path(path));
 }
 
 bool is_printable_char(char c) {
@@ -268,7 +321,7 @@ std::string combine_path(const std::string& parent, const std::string& child) {
 }
 
 bool file_exists(const std::string& path) {
-  return std::filesystem::exists(path);
+  return fs::exists(path);
 }
 
 std::string base_name(const std::string& filename) {
@@ -280,8 +333,44 @@ std::string base_name(const std::string& filename) {
       break;
     }
   }
-
   return filename.substr(pos);
+}
+
+std::string base_name_no_ext(const std::string& filename) {
+  size_t pos = 0;
+  ASSERT(!filename.empty());
+  for (size_t i = filename.size() - 1; i-- > 0;) {
+    if (filename.at(i) == '/' || filename.at(i) == '\\') {
+      pos = (i + 1);
+      break;
+    }
+  }
+  std::string file_name = filename.substr(pos);
+  return file_name.substr(0, file_name.find_last_of('.'));
+  ;
+}
+
+std::string split_path_at(const fs::path& path, const std::vector<std::string>& folders) {
+  std::string split_str = "";
+  for (const auto& folder : folders) {
+#ifdef _WIN32
+    split_str += folder + "\\";
+#else
+    split_str += folder + "/";
+#endif
+  }
+  const auto& path_str = path.u8string();
+  return path_str.substr(path_str.find(split_str) + split_str.length());
+}
+
+std::string convert_to_unix_path_separators(const std::string& path) {
+#ifdef _WIN32
+  std::string copy = path;
+  std::replace(copy.begin(), copy.end(), '\\', '/');
+  return copy;
+#else
+  return path;
+#endif
 }
 
 void ISONameFromAnimationName(char* dst, const char* src) {
@@ -320,11 +409,16 @@ void ISONameFromAnimationName(char* dst, const char* src) {
 
         // some special case words map to special letters (likely to avoid animation name conflicts)
         if (next_ptr - src_ptr == 10 && !memcmp(src_ptr, "resolution", 10)) {
+          // NOTE : jak 2 also allows "res" here but that doesn't work properly.
           char_to_add = 'z';
         } else if (next_ptr - src_ptr == 6 && !memcmp(src_ptr, "accept", 6)) {
           char_to_add = 'y';
         } else if (next_ptr - src_ptr == 6 && !memcmp(src_ptr, "reject", 6)) {
           char_to_add = 'n';
+        } else if (next_ptr - src_ptr == 5 && !memcmp(src_ptr, "keira", 5)) {
+          // NOTE : this was added in jak 2. it's safe to use in jak 1 since she was referred to as
+          // "assistant" there
+          char_to_add = 'i';
         } else {
           // not a special case, just take the first letter.
           char_to_add = *src_ptr;
@@ -412,7 +506,7 @@ void MakeISOName(char* dst, const char* src) {
 }
 
 void assert_file_exists(const char* path, const char* error_message) {
-  if (!std::filesystem::exists(path)) {
+  if (!fs::exists(path)) {
     ASSERT_MSG(false, fmt::format("File {} was not found: {}", path, error_message));
   }
 }
@@ -474,6 +568,49 @@ std::vector<u8> decompress_dgo(const std::vector<u8>& data_in) {
   }
 
   return decompressed_data;
+}
+
+FILE* open_file(const fs::path& path, const std::string& mode) {
+#ifdef _WIN32
+  return _wfopen(path.wstring().c_str(), std::wstring(mode.begin(), mode.end()).c_str());
+#else
+  return fopen(path.string().c_str(), mode.c_str());
+#endif
+}
+
+std::vector<fs::path> find_files_recursively(const fs::path& base_dir, const std::regex& pattern) {
+  std::vector<fs::path> files = {};
+  for (auto& p : fs::recursive_directory_iterator(base_dir)) {
+    if (p.is_regular_file()) {
+      if (std::regex_match(p.path().filename().string(), pattern)) {
+        files.push_back(p.path());
+      }
+    }
+  }
+  return files;
+}
+
+std::vector<fs::path> find_directories_in_dir(const fs::path& base_dir) {
+  std::vector<fs::path> dirs = {};
+  for (auto& p : fs::recursive_directory_iterator(base_dir)) {
+    if (p.is_directory()) {
+      dirs.push_back(p.path());
+    }
+  }
+  return dirs;
+}
+
+void copy_file(const fs::path& src, const fs::path& dst) {
+  // Check that the src path exists
+  if (!fs::exists(src)) {
+    throw std::runtime_error(fmt::format("Cannot copy '{}', path does not exist", src.string()));
+  }
+  // Ensure the directory can be copied into
+  if (!fs::exists(dst.parent_path()) && !create_dir_if_needed_for_file(dst)) {
+    throw std::runtime_error(fmt::format(
+        "Cannot copy '{}', couldn't make directory to copy into '{}'", src.string(), dst.string()));
+  }
+  fs::copy_file(src, dst, fs::copy_options::overwrite_existing);
 }
 
 }  // namespace file_util

@@ -1,0 +1,58 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: focus.gc
+;; name in dgo: focus
+;; dgos: ENGINE, GAME
+
+
+;; DECOMP BEGINS
+
+(deftype focus (structure)
+  ((handle       handle        :offset-assert   0)
+   (collide-with collide-spec  :offset-assert   8)
+   )
+  :method-count-assert 13
+  :size-assert         #xc
+  :flag-assert         #xd0000000c
+  (:methods
+    (clear-focused (_type_) none 9)
+    (collide-check? (_type_ process-focusable) object 10)
+    (reset-to-collide-spec (_type_ collide-spec) none 11)
+    (try-update-focus (_type_ process-focusable) symbol 12)
+    )
+  )
+
+
+(defmethod reset-to-collide-spec focus ((obj focus) (arg0 collide-spec))
+  (set! (-> obj collide-with) arg0)
+  (set! (-> obj handle) (the-as handle #f))
+  0
+  (none)
+  )
+
+(defmethod collide-check? focus ((obj focus) (arg0 process-focusable))
+  (when (and arg0 (not (logtest? (-> arg0 focus-status) (focus-status disable dead))))
+    (let* ((s5-0 (-> arg0 root-override))
+           (v1-2 (if (type? s5-0 collide-shape)
+                     s5-0
+                     )
+                 )
+           )
+      (and v1-2 (logtest? (-> obj collide-with) (-> v1-2 root-prim prim-core collide-as)))
+      )
+    )
+  )
+
+(defmethod try-update-focus focus ((obj focus) (arg0 process-focusable))
+  (when (!= (handle->process (-> obj handle)) arg0)
+    (set! (-> obj handle) (process->handle arg0))
+    #t
+    )
+  )
+
+(defmethod clear-focused focus ((obj focus))
+  (set! (-> obj handle) (the-as handle #f))
+  0
+  (none)
+  )

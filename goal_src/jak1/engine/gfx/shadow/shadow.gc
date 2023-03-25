@@ -1,0 +1,199 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: shadow.gc
+;; name in dgo: shadow
+;; dgos: GAME, ENGINE
+
+;; DECOMP BEGINS
+
+(defun add-fake-shadow-to-buffer ((arg0 vector) (arg1 vector) (arg2 float) (arg3 int))
+  (let ((v1-0 *fake-shadow-buffer*))
+    (when (< (-> v1-0 num-shadows) 32)
+      (let ((t0-5 (-> v1-0 data (-> v1-0 num-shadows))))
+        (set! (-> t0-5 px) (-> arg0 x))
+        (set! (-> t0-5 py) (-> arg0 y))
+        (set! (-> t0-5 pz) (-> arg0 z))
+        (set! (-> t0-5 scale) arg2)
+        (set! (-> t0-5 qx) (-> arg1 x))
+        (set! (-> t0-5 qy) (-> arg1 y))
+        (set! (-> t0-5 qz) (-> arg1 z))
+        (set! (-> t0-5 flags) arg3)
+        )
+      (+! (-> v1-0 num-shadows) 1)
+      )
+    )
+  0
+  (none)
+  )
+
+(defun swap-fake-shadow-buffers ()
+  (set! *fake-shadow-buffer* (if (= *fake-shadow-buffer* *fake-shadow-buffer-1*)
+                                 *fake-shadow-buffer-2*
+                                 *fake-shadow-buffer-1*
+                                 )
+        )
+  (set! (-> *fake-shadow-buffer* num-shadows) 0)
+  0
+  (none)
+  )
+
+(defun draw-shadow ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float) (arg4 float) (arg5 float))
+  (let ((f0-1 (- (-> arg0 y) (-> arg1 y))))
+    (if (< f0-1 arg4)
+        (add-fake-shadow-to-buffer arg1 arg2 (* (- 1.0 (/ f0-1 arg4)) arg3) (the-as int arg5))
+        )
+    )
+  0
+  (none)
+  )
+
+(defun compute-and-draw-shadow ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 float) (arg5 float))
+  (local-vars
+    (v1-10 float)
+    (v1-11 float)
+    (sv-96 vector)
+    (sv-112 (function quaternion vector float quaternion))
+    (sv-128 vector)
+    (sv-144 vector)
+    )
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (set! sv-96 arg2)
+    (let ((s4-0 arg3)
+          (s3-0 arg4)
+          (s2-0 arg5)
+          )
+      (when (< (- (-> arg0 y) (-> arg1 y)) s3-0)
+        (set! sv-144 (new 'stack-no-clear 'vector))
+        (let ((s0-0 (new 'stack-no-clear 'vector))
+              (s1-0 (new 'stack-no-clear 'sparticle-cpuinfo))
+              )
+          (set! (-> arg1 y) (+ 40.96 (-> arg1 y)))
+          (set! (-> sv-144 x) (-> sv-96 z))
+          (set! (-> sv-144 y) 0.0)
+          (set! (-> sv-144 z) (- (-> sv-96 x)))
+          (vector-normalize! sv-144 1.0)
+          (set! sv-112 quaternion-vector-angle!)
+          (set! sv-128 s0-0)
+          (let ((a2-1 (acos (-> sv-96 y))))
+            (sv-112 (the-as quaternion sv-128) sv-144 a2-1)
+            )
+          (let ((v1-9 s1-0))
+            (cond
+              ((< (-> s0-0 w) 0.0)
+               (.lvf vf1 (&-> v1-9 vel-sxvel quad))
+               (.lvf vf2 (&-> s0-0 quad))
+               (.sub.vf vf1 vf0 vf2 :mask #b111)
+               (.svf (&-> v1-9 vel-sxvel quad) vf1)
+               (.mov v1-10 vf1)
+               )
+              (else
+                (.lvf vf1 (&-> v1-9 vel-sxvel quad))
+                (.lvf vf2 (&-> s0-0 quad))
+                (.add.vf vf1 vf0 vf2 :mask #b111)
+                (.svf (&-> v1-9 vel-sxvel quad) vf1)
+                (.mov v1-11 vf1)
+                )
+              )
+            )
+          (draw-shadow arg0 arg1 (-> s1-0 vel-sxvel) (the-as float s4-0) s3-0 s2-0)
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+(defun find-ground-and-draw-shadow ((arg0 vector)
+                           (arg1 vector)
+                           (arg2 float)
+                           (arg3 collide-kind)
+                           (arg4 process-drawable)
+                           (arg5 float)
+                           (arg6 float)
+                           )
+  (let ((s2-0 (new 'stack-no-clear 'vector)))
+    (set! (-> s2-0 quad) (-> arg0 quad))
+    (new 'stack-no-clear 'vector)
+    (+! (-> s2-0 y) arg5)
+    (let ((s4-0 (new 'stack-no-clear 'collide-tri-result)))
+      (cond
+        ((>= (fill-and-probe-using-y-probe
+               *collide-cache*
+               s2-0
+               arg6
+               arg3
+               arg4
+               s4-0
+               (new 'static 'pat-surface :noentity #x1)
+               )
+             0.0
+             )
+         (if (!= arg2 0.0)
+             (compute-and-draw-shadow s2-0 (-> s4-0 intersect) (-> s4-0 normal) (the-as vector arg2) arg6 (the-as float 0))
+             )
+         (if (and arg1 (!= (-> s4-0 pat material) 3))
+             (set! (-> arg1 quad) (-> s4-0 intersect quad))
+             )
+         )
+        (else
+          (if arg1
+              (vector+float*! arg1 arg0 (-> *standard-dynamics* gravity-normal) (- arg6))
+              )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defbehavior do-target-shadow target ()
+  (if (and (logtest? (-> self control status) (cshape-moving-flags onsurf))
+           (!= (-> self control unknown-surface00 mode) 'swim)
+           (!= (-> self control unknown-surface00 mode) 'dive)
+           (!= (-> self next-state name) 'target-flop)
+           (not (logtest? (-> self draw status) (draw-status hidden no-anim skip-bones)))
+           )
+      (set! (-> self control shadow-pos quad) (-> self control trans quad))
+      (find-ground-and-draw-shadow
+        (-> self control trans)
+        (-> self control shadow-pos)
+        0.0
+        (-> (the-as collide-shape-prim (-> self control root-prim)) collide-with)
+        self
+        0.0
+        81920.0
+        )
+      )
+  0
+  (none)
+  )
+
+(defpart 362
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 8.0)
+    (sp-flt spt-scale-x (meters 0.3))
+    (sp-rnd-flt spt-rot-z (degrees -180.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 90.0)
+    (sp-flt spt-g 90.0)
+    (sp-flt spt-b 90.0)
+    (sp-rnd-flt spt-a 20.0 20.0 1.0)
+    (sp-flt spt-vel-y (meters 0.002))
+    (sp-flt spt-scalevel-x (meters 0.004166667))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.3)
+    (sp-int spt-timer 5004)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-rnd-flt spt-launchrot-x (degrees -20.0) (degrees 15.0) 1.0)
+    (sp-flt spt-conerot-x (degrees 90.0))
+    (sp-rnd-flt spt-conerot-y (degrees -180.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 0.2))
+    )
+  )

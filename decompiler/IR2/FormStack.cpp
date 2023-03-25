@@ -1,7 +1,10 @@
-#include <algorithm>
 #include "FormStack.h"
+
+#include <algorithm>
+
 #include "Form.h"
 #include "GenericElementMatcher.h"
+
 #include "decompiler/Function/Function.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 
@@ -394,7 +397,7 @@ std::optional<RegisterAccess> rewrite_to_get_var(std::vector<FormElement*>& defa
 
       auto cast = last_op_as_set->required_cast(env);
       if (cast && cast == TypeSpec("none")) {
-        env.func->warnings.general_warning(
+        env.func->warnings.warning(
             "rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: {}]",
             last_op_as_set->dst().idx());
         cast = std::nullopt;

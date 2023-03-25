@@ -1,7 +1,8 @@
 #pragma once
 
-#include <string>
 #include <optional>
+#include <string>
+#include <vector>
 
 #include "common/common_types.h"
 
@@ -36,7 +37,7 @@ enum class VuInstrK {
   MULAbc,
   MADD,
   //  MADDi,
-  //  MADDq,
+  MADDq,
   MADDbc,
   MADDA,
   //  MADDAi,  // 30
@@ -125,13 +126,13 @@ enum class VuInstrK {
   JALR,
   MFP,
   WAITP,
-  //  ESADD,
+  ESADD,
   //  ERSADD,
   ELENG,
   ERLENG,
   //  EATANxy,
   //  EATANxz,
-  //  ESUM,
+  ESUM,
   //  ERCPR,
   //  ESQRT,
   //  ERSQRT,

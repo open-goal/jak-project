@@ -1,0 +1,2633 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: tomb-scenes.gc
+;; name in dgo: tomb-scenes
+;; dgos: TOA
+
+;; DECOMP BEGINS
+
+(defskelgroup skel-tomb-boss-explode tomb-boss-explode tomb-boss-explode-lod0-jg -1
+              ((tomb-boss-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 20)
+              :origin-joint-index 4
+              )
+
+(defskelgroup skel-tomb-boss-explode-a tomb-boss-explode tomb-boss-explode-a-lod0-jg -1
+              ((tomb-boss-explode-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 20)
+              :origin-joint-index 3
+              )
+
+(scene-method-16 (new 'static 'scene
+                   :name "tomb-unlock-start"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1282000
+                   :entity "scene-stage-73"
+                   :art-group "scenecamera"
+                   :anim "tomb-unlock-start"
+                   :parts 3
+                   :command-list '((120 (task-close! "tomb-boss-torches"))
+                     (10000
+                       (apply ,(lambda :behavior scene-player
+                                 ()
+                                 (if (-> self aborted?)
+                                     (script-eval '(cond
+                                                     ((task-closed? "tomb-water-resolution")
+                                                      (send-event "tomb-sphinx-2" 'trigger)
+                                                      (send-event "tomb-plat-return-2" 'trigger)
+                                                      )
+                                                     ((task-closed? "tomb-poles-resolution")
+                                                      (send-event "tomb-sphinx-1" 'trigger)
+                                                      (send-event "tomb-plat-return-1" 'trigger)
+                                                      )
+                                                     )
+                                                  )
+                                     )
+                                 (none)
+                                 )
+                              )
+                       (want-continue "tomb-start-bottom")
+                       )
+                     )
+                   :cut-list '()
+                   :wait-ground-time (seconds 1)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "tomb-boss-door"
+                       :level 'tomba
+                       :art-group "skel-tomb-boss-door"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #x11
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj #f
+                   :end-point-obj #f
+                   :borrow '()
+                   :sfx-volume -1.0
+                   :ambient-volume -1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   )
+                 )
+
+(scene-method-16
+  (new 'static 'scene
+    :name "tomb-unlock-water"
+    :extra #f
+    :info #f
+    :mask-to-clear #x1282000
+    :entity "scene-stage-73"
+    :art-group "scenecamera"
+    :anim "tomb-unlock-water"
+    :parts 2
+    :command-list '((0 (task-close! "tomb-water-resolution") (send-event "tomb-plat-return-2" 'trigger))
+      (35 (send-event "tomb-sphinx-2" 'trigger))
+      (10000 (send-event "tomb-plat-return-2" 'trigger))
+      )
+    :cut-list '()
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #t
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "tomb-boss-door"
+        :level 'tomba
+        :art-group "skel-tomb-boss-door"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #x11
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj #f
+    :end-point-obj (new 'static 'continue-point
+      :name "tomb-start-bottom"
+      :level #f
+      :trans (new 'static 'vector :x 546954.06 :y -221173.77 :z 4443352.5 :w 1.0)
+      :quat (new 'static 'vector :y 0.4261 :w 0.9046)
+      :camera-trans (new 'static 'vector :x 517370.25 :y -201672.7 :z 4408801.0 :w 1.0)
+      :camera-rot (new 'static 'inline-array vector3s 3
+        (new 'static 'vector3s :data (new 'static 'array float 3 0.7655 0.0 -0.6434))
+        (new 'static 'vector3s :data (new 'static 'array float 3 0.0811 0.992 0.0964))
+        (new 'static 'vector3s :data (new 'static 'array float 3 0.6382 -0.126 0.7594))
+        )
+      :on-goto '(cond
+         ((and (task-closed? "tomb-water-resolution") (task-closed? "tomb-poles-resolution"))
+          (want-load 'tomba 'tombboss 'tombext)
+          )
+         )
+      :vis-nick 'tomba
+      :want (new 'static 'inline-array level-buffer-state 6
+        (new 'static 'level-buffer-state :name 'tomba :display? 'display :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name 'tombb :display? #f :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name 'tombboss :display? #f :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name #f :display? #f :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name #f :display? #f :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name #f :display? #f :force-vis? #f :force-inside? #f)
+        )
+      :want-sound (new 'static 'array symbol 3 'tomb1 'tomb2 'tomb3)
+      )
+    :borrow '()
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :blackout-end #t
+    :peaceful #t
+    :music-delay 1500.0
+    :save #t
+    )
+  )
+
+(scene-method-16
+  (new 'static 'scene
+    :name "tomb-unlock-poles"
+    :extra #f
+    :info #f
+    :mask-to-clear #x1282000
+    :entity "scene-stage-73"
+    :art-group "scenecamera"
+    :anim "tomb-unlock-poles"
+    :parts 2
+    :command-list '((0 (task-close! "tomb-poles-resolution") (send-event "tomb-plat-return-1" 'trigger))
+      (35 (send-event "tomb-sphinx-1" 'trigger))
+      )
+    :cut-list '()
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #t
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "tomb-boss-door"
+        :level 'tomba
+        :art-group "skel-tomb-boss-door"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #x11
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj #f
+    :end-point-obj (new 'static 'continue-point
+      :name "tomb-start-bottom"
+      :level #f
+      :trans (new 'static 'vector :x 1024811.8 :y -221145.1 :z 4446944.5 :w 1.0)
+      :quat (new 'static 'vector :y -0.3799 :w 0.9249)
+      :camera-trans (new 'static 'vector :x 1055031.8 :y -200876.03 :z 4409347.5 :w 1.0)
+      :camera-rot (new 'static 'inline-array vector3s 3
+        (new 'static 'vector3s :data (new 'static 'array float 3 0.7783 0.0 0.6278))
+        (new 'static 'vector3s :data (new 'static 'array float 3 -0.0749 0.9928 0.0929))
+        (new 'static 'vector3s :data (new 'static 'array float 3 -0.6233 -0.1194 0.7727))
+        )
+      :on-goto '(cond
+         ((and (task-closed? "tomb-water-resolution") (task-closed? "tomb-poles-resolution"))
+          (want-load 'tomba 'tombboss 'tombext)
+          )
+         )
+      :vis-nick 'tomba
+      :want (new 'static 'inline-array level-buffer-state 6
+        (new 'static 'level-buffer-state :name 'tomba :display? 'display :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name 'tombc :display? #f :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name 'tombboss :display? #f :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name #f :display? #f :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name #f :display? #f :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name #f :display? #f :force-vis? #f :force-inside? #f)
+        )
+      :want-sound (new 'static 'array symbol 3 'tomb1 'tomb2 'tomb3)
+      )
+    :borrow '()
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :blackout-end #t
+    :peaceful #t
+    :music-delay 1500.0
+    :save #t
+    )
+  )
+
+(scene-method-16
+  (new 'static 'scene
+    :name "tomb-boss-open"
+    :extra #f
+    :info #f
+    :mask-to-clear #x1282000
+    :entity "scene-stage-73"
+    :art-group "scenecamera"
+    :anim "tomb-boss-open"
+    :parts 2
+    :command-list '((0 (kill "tomb-boss-door-1") (alive "tomb-sphinx-1") (alive "tomb-sphinx-2"))
+      (1 (send-event "tomb-sphinx-1" 'trigger) (send-event "tomb-sphinx-2" 'trigger))
+      (19 (send-event "tomb-sphinx-1" 'door-left) (send-event "tomb-sphinx-2" 'door-right))
+      (10000
+        (task-close! "tomb-boss-door")
+        (kill "tomb-sphinx-1")
+        (kill "tomb-sphinx-2")
+        (send-event "tomb-plat-return-1" 'trigger)
+        (send-event "tomb-plat-return-2" 'trigger)
+        )
+      )
+    :cut-list '()
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #t
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "tomb-boss-door"
+        :level 'tomba
+        :art-group "skel-tomb-boss-door"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #x11
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj (new 'static 'continue-point
+      :name "tomb-start"
+      :level #f
+      :trans (new 'static 'vector :x 788477.56 :y -131086.34 :z 4270196.5 :w 1.0)
+      :quat (new 'static 'vector :y 0.1202 :w -0.9927)
+      :camera-trans (new 'static 'vector :x 787632.1 :y -109991.94 :z 4227172.0 :w 1.0)
+      :camera-rot (new 'static 'inline-array vector3s 3
+        (new 'static 'vector3s :data (new 'static 'array float 3 0.9998 0.0 -0.019))
+        (new 'static 'vector3s :data (new 'static 'array float 3 0.0033 0.9845 0.1751))
+        (new 'static 'vector3s :data (new 'static 'array float 3 0.0187 -0.1751 0.9843))
+        )
+      :on-goto #f
+      :vis-nick 'tomba
+      :want (new 'static 'inline-array level-buffer-state 6
+        (new 'static 'level-buffer-state :name 'tomba :display? 'display :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name 'tombboss :display? 'display :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name 'tombext :display? #f :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name #f :display? #f :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name #f :display? #f :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name #f :display? #f :force-vis? #f :force-inside? #f)
+        )
+      :want-sound (new 'static 'array symbol 3 'tomb1 'tomb2 'tomb3)
+      )
+    :end-point-obj #f
+    :borrow '()
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :blackout-end #t
+    :peaceful #t
+    :music-delay 1500.0
+    :save #t
+    :scene-task #xa8
+    )
+  )
+
+(defbehavior attach-pod-part scene-player ()
+  (let ((v1-0 #f)
+        (sub-change-time (-> self subtitle-change-time))
+        )
+    (when (>= (- (-> self clock frame-counter) (-> self speed-press-time)) 0)
+      (set! sub-change-time (logxor sub-change-time 2048))
+      (set! (-> self speed-press-time) (+ (-> self clock frame-counter) (seconds 0.5)))
+      (set! v1-0 #t)
+      )
+    (when (>= (- (-> self clock frame-counter) (-> self unknown-time)) 0)
+      (dotimes (s5-0 10)
+        (let* ((f30-0 0.5)
+               (v1-6 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+               (v1-7 (the-as number (logior #x3f800000 v1-6)))
+               )
+          (if (< f30-0 (+ -1.0 (the-as float v1-7)))
+              (set! sub-change-time (logior sub-change-time (ash 1 s5-0)))
+              (set! sub-change-time (logclear sub-change-time (ash 1 s5-0)))
+              )
+          )
+        )
+      (set! (-> self unknown-time)
+            (+ (-> self clock frame-counter) (the int (* 300.0 (rand-vu-float-range 0.25 0.75))))
+            )
+      (set! v1-0 #t)
+      )
+    (when v1-0
+      (set! (-> self subtitle-change-time) sub-change-time)
+      (remove-from-process *part-engine* self)
+      (add-connection *part-engine* self 13 self 3264 (new 'static 'vector :w 819200.0))
+      (add-connection *part-engine* self 14 self 3264 (new 'static 'vector :w 819200.0))
+      (if (logtest? (-> self subtitle-change-time) 2048)
+          (add-connection *part-engine* self 5 self 3251 (new 'static 'vector :w 819200.0))
+          (add-connection *part-engine* self 6 self 3251 (new 'static 'vector :w 819200.0))
+          )
+      (if (logtest? sub-change-time 1)
+          (add-connection *part-engine* self 8 self 3252 (new 'static 'vector :w 819200.0))
+          )
+      (if (logtest? sub-change-time 2)
+          (add-connection *part-engine* self 9 self 3252 (new 'static 'vector :w 819200.0))
+          )
+      (if (logtest? sub-change-time 4)
+          (add-connection *part-engine* self 10 self 3252 (new 'static 'vector :w 819200.0))
+          )
+      (if (logtest? sub-change-time 8)
+          (add-connection *part-engine* self 11 self 3252 (new 'static 'vector :w 819200.0))
+          )
+      (if (logtest? sub-change-time 16)
+          (add-connection *part-engine* self 12 self 3252 (new 'static 'vector :w 819200.0))
+          )
+      (if (logtest? sub-change-time 32)
+          (add-connection *part-engine* self 15 self 3252 (new 'static 'vector :w 819200.0))
+          )
+      (if (logtest? sub-change-time 64)
+          (add-connection *part-engine* self 16 self 3252 (new 'static 'vector :w 819200.0))
+          )
+      (if (logtest? sub-change-time 128)
+          (add-connection *part-engine* self 17 self 3252 (new 'static 'vector :w 819200.0))
+          )
+      (if (logtest? sub-change-time 256)
+          (add-connection *part-engine* self 18 self 3252 (new 'static 'vector :w 819200.0))
+          )
+      (if (logtest? sub-change-time 512)
+          (add-connection *part-engine* self 19 self 3252 (new 'static 'vector :w 819200.0))
+          )
+      (cond
+        ((logtest? sub-change-time 4096)
+         (add-connection *part-engine* self 4 self 3258 (new 'static 'vector :y 4096.0 :w 819200.0))
+         (add-connection *part-engine* self 4 self 3259 (new 'static 'vector :y 4096.0 :w 819200.0))
+         )
+        (else
+          (add-connection *part-engine* self 4 self 3256 (new 'static 'vector :y 4096.0 :w 819200.0))
+          (add-connection *part-engine* self 4 self 3257 (new 'static 'vector :y 4096.0 :w 819200.0))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(scene-method-16
+  (new 'static 'scene
+    :name "tomb-boss-intro"
+    :extra #f
+    :info #f
+    :mask-to-clear #x1282000
+    :entity "scene-stage-60"
+    :art-group "scenecamera"
+    :anim "tomb-boss-intro"
+    :parts 65
+    :command-list '((0
+        (kill "tomb-boss-door-1")
+        (kill "tomb-boss-bridge-1" store #f)
+        (kill "tomb-boss-bridge-3" store #f)
+        (apply ,(lambda () (set-tombboss-gem-light! 1.0)))
+        (fadein (frame-time-30 5))
+        )
+      (0
+        (part-tracker
+          "group-widow-stone-glow"
+          entity
+          "heart-mar"
+          joint
+          "main"
+          track
+          #t
+          duration
+          (frame-range 0 10000)
+          )
+        )
+      (1
+        (send-event "widow" 'segment 0 126)
+        (send-event "baron-pod" 'segment 0 12)
+        (send-event "baron-pod" 'trans-hook attach-pod-part)
+        )
+      (1957
+        (part-tracker
+          "group-widow-stone-glint"
+          entity
+          "particleman"
+          joint
+          "particleA"
+          track
+          #t
+          duration
+          (frame-range 1957 1970)
+          )
+        )
+      (2160 (part-tracker "group-widow-land" entity "widow" joint "LaftFoot" track #t duration (frame-range 0 1)))
+      (2160 (part-tracker "group-widow-land" entity "widow" joint "RaftFoot" track #t duration (frame-range 0 1)))
+      (2161 (part-tracker "group-widow-land" entity "widow" joint "LmidFoot" track #t duration (frame-range 0 1)))
+      (2162 (part-tracker "group-widow-land" entity "widow" joint "RmidFoot" track #t duration (frame-range 0 1)))
+      (2162 (part-tracker "group-widow-land" entity "widow" joint "Lwrist" track #t duration (frame-range 0 1)))
+      (2162 (part-tracker "group-widow-land" entity "widow" joint "Rwrist" track #t duration (frame-range 0 1)))
+      (2361 (part-tracker "group-widow-land" entity "widow" joint "Rwrist" track #t duration (frame-range 0 1)))
+      (2371 (part-tracker "group-widow-land" entity "widow" joint "RaftFoot" track #t duration (frame-range 0 1)))
+      (2371 (part-tracker "group-widow-land" entity "widow" joint "LmidFoot" track #t duration (frame-range 0 1)))
+      (2381 (part-tracker "group-widow-land" entity "widow" joint "LaftFoot" track #t duration (frame-range 0 1)))
+      (2391 (part-tracker "group-widow-land" entity "widow" joint "RmidFoot" track #t duration (frame-range 0 1)))
+      (2414 (part-tracker "group-widow-land" entity "widow" joint "Rwrist" track #t duration (frame-range 0 1)))
+      (2423
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "ap"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "aq"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "as"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "at"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "aw"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "ax"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "ay"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        )
+      (2425
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "ai"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "aj"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "ak"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "al"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "ao"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        )
+      (2429
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "main"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "ab"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "ac"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "ad"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "ae"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        )
+      (2432
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "an"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "ar"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "au"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "av"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "ah"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "am"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        )
+      (2433
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "s"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "t"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "v"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "x"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "y"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "z"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        )
+      (2435
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "h"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "m"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "p"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "u"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        )
+      (2439
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "a"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "b"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "c"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "d"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "e"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "f"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "au"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "av"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "aw"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "ax"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "ay"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        )
+      (2440
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "f"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "g"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "h"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "i"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "j"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "p"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "an"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "ap"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "aq"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "ar"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "as"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "at"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        )
+      (2441
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "af"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "ag"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "w"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "aa"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        )
+      (2442
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "b"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "c"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "d"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "g"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "i"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "l"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "n"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "q"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "r"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "k"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "o"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "a"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "e"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "f"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-a"
+          joint
+          "j"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        )
+      (2446
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "k"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "l"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "m"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "n"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "o"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "t"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "ah"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "ai"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "aj"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "al"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "am"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "ao"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        )
+      (2447
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "q"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "r"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "s"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "u"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "v"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "w"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "x"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "y"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "z"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "main"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "aa"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "ab"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "ac"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "ad"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "ae"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "af"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        (part-tracker
+          "group-tomb-boss-bridge-trailer"
+          entity
+          "tomb-boss-bridge-b"
+          joint
+          "ag"
+          track
+          #t
+          duration
+          (frame-time-30 (new 'static 'bfloat :data 2.0))
+          )
+        )
+      (2490 (part-tracker "group-widow-land" entity "widow" joint "LmidFoot" track #t duration (frame-range 0 1)))
+      (2495 (part-tracker "group-widow-land" entity "widow" joint "RmidFoot" track #t duration (frame-range 0 1)))
+      (2533 (part-tracker "group-widow-land" entity "widow" joint "LaftFoot" track #t duration (frame-range 0 1)))
+      (2533 (part-tracker "group-widow-land" entity "widow" joint "RaftFoot" track #t duration (frame-range 0 1)))
+      (2536 (part-tracker "group-widow-land" entity "widow" joint "LmidFoot" track #t duration (frame-range 0 1)))
+      (2536 (part-tracker "group-widow-land" entity "widow" joint "RmidFoot" track #t duration (frame-range 0 1)))
+      (2536 (part-tracker "group-widow-land" entity "widow" joint "Lwrist" track #t duration (frame-range 0 1)))
+      (2536 (part-tracker "group-widow-land" entity "widow" joint "Rwrist" track #t duration (frame-range 0 1)))
+      (2552 (part-tracker "group-widow-land" entity "widow" joint "RmidFoot" track #t duration (frame-range 0 1)))
+      (2562 (part-tracker "group-widow-land" entity "widow" joint "LmidFoot" track #t duration (frame-range 0 1)))
+      (2886
+        (part-tracker
+          "group-widow-drilling-sparks"
+          entity
+          "particleman"
+          joint
+          "particleA"
+          track
+          #t
+          duration
+          (frame-range 2886 10000)
+          )
+        )
+      (2887
+        (part-tracker
+          "group-widow-drilling-sparks-alt"
+          entity
+          "particleman"
+          joint
+          "particleB"
+          track
+          #t
+          duration
+          (frame-range 2887 10000)
+          )
+        )
+      (10000 (task-close! "tomb-boss-introduction"))
+      )
+    :cut-list '(107
+       264
+       383
+       474
+       705
+       845
+       1118
+       1239
+       1344
+       1467
+       1606
+       1864
+       1992
+       2162
+       2200
+       2283
+       2323
+       2412
+       2491
+       2606
+       2703
+       2744
+       2834
+       )
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #t
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'tomba
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "jak-highres"
+        :level 'tomba
+        :art-group "skel-jak-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '((107 130))
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "baron-highres"
+        :level 'tombext
+        :art-group "skel-baron-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #x1
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "baron-pod"
+        :level 'tombboss
+        :art-group "skel-baron-pod"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '((2200 2281))
+        :light-index #xb
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "widow"
+        :level 'tombboss
+        :art-group "skel-widow"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '((2162 2200))
+        :light-index #xb
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "tomb-boss-door"
+        :level 'tomba
+        :art-group "skel-tomb-boss-door"
+        :prefix ""
+        :draw-frames '((min 705) (1118 max))
+        :scissor-frames '()
+        :light-index #x11
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "tomb-boss-bridge-a"
+        :level 'tombboss
+        :art-group "skel-tomb-boss-bridge-a"
+        :prefix "a-"
+        :draw-frames '((min max))
+        :scissor-frames '((1235 1240) (1990 2170) (2300 2412))
+        :light-index #x2
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "tomb-boss-bridge-b"
+        :level 'tombboss
+        :art-group "skel-tomb-boss-bridge-b"
+        :prefix "b-"
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #x2
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "heart-mar"
+        :level 'tombboss
+        :art-group "skel-heart-mar"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "particleman"
+        :level 'tombboss
+        :art-group "skel-particleman"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj "tombboss-start"
+    :end-point-obj "tombboss-play-start"
+    :borrow '()
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :blackout-end #t
+    :peaceful #t
+    :save #t
+    )
+  )
+
+(scene-method-16 (new 'static 'scene
+                   :name "tomb-boss-res"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1282000
+                   :entity "scene-stage-60"
+                   :art-group "scenecamera"
+                   :anim "tomb-boss-res"
+                   :parts 12
+                   :command-list '((0 (kill "tomb-boss-door-1") (fadein (frame-time (new 'static 'bfloat :data 2.0))))
+                     (0
+                       (part-tracker
+                         "group-widow-green-cannon-glow-rays-movie"
+                         entity
+                         "baron-pod"
+                         joint
+                         "tip"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "sparkA"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "sparkB"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "sparkC"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "sparkD"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "sparkE"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "sparkF"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "sparkG"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "sparkH"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "redConstantL"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "redConstantR"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "yellowBlinkAL"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "yellowBlinkBL"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "yellowBlinkCL"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "yellowBlinkDL"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "yellowBlinkEL"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "yellowBlinkAR"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "yellowBlinkBR"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "yellowBlinkCR"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "yellowBlinkDR"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       (part-tracker
+                         "group-widow-damaged-sparks"
+                         entity
+                         "baron-pod"
+                         joint
+                         "yellowBlinkER"
+                         track
+                         #t
+                         duration
+                         (frame-range 0 10000)
+                         )
+                       )
+                     (1
+                       (send-event "widow" 'segment 0 3968)
+                       (send-event "baron-pod" 'sync #t)
+                       (send-event "baron-pod" 'user 0 0)
+                       (send-event "baron-pod" 'user 1 0)
+                       (send-event "baron-pod" 'user 2 (unbox 4096))
+                       (send-event "baron-pod" 'trans-hook attach-pod-part)
+                       )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-explosion"
+                           entity
+                           "tomb-boss-explode"
+                           joint
+                           "explode"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 50)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode"
+                           joint
+                           "main"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 44)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode"
+                           joint
+                           "b"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 49)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode"
+                           joint
+                           "c"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 48)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode"
+                           joint
+                           "d"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 48)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode"
+                           joint
+                           "e"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 55)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode"
+                           joint
+                           "bq"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 52)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode-a"
+                           joint
+                           "main"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 54)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode-a"
+                           joint
+                           "cw"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 49)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode-a"
+                           joint
+                           "da"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 43)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode-a"
+                           joint
+                           "db"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 40)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode-a"
+                           joint
+                           "dc"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 41)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode-a"
+                           joint
+                           "dd"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 46)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode-a"
+                           joint
+                           "df"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 46)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode-a"
+                           joint
+                           "dg"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 46)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode-a"
+                           joint
+                           "dh"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 55)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode-a"
+                           joint
+                           "dn"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 55)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode-a"
+                           joint
+                           "do"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 43)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode-a"
+                           joint
+                           "dp"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 45)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode-a"
+                           joint
+                           "dq"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 55)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode-a"
+                           joint
+                           "dr"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 46)
+                           )
+                         )
+                     (31 (part-tracker
+                           "group-tomb-boss-end-trailer-large"
+                           entity
+                           "tomb-boss-explode-a"
+                           joint
+                           "ds"
+                           track
+                           #t
+                           duration
+                           (frame-range 31 45)
+                           )
+                         )
+                     (675 (fadeout (frame-time-30 15)))
+                     (10000 (task-close! "tomb-boss-resolution"))
+                     )
+                   :cut-list '(325 426)
+                   :wait-ground-time (seconds 1)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "sidekick-highres"
+                       :level 'tomba
+                       :art-group "skel-sidekick-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "jak-highres"
+                       :level 'tomba
+                       :art-group "skel-jak-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "baron-highres"
+                       :level 'tombext
+                       :art-group "skel-baron-highres"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #x1
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "baron-pod"
+                       :level 'tombboss
+                       :art-group "skel-baron-pod"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #xb
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "widow"
+                       :level 'tombboss
+                       :art-group "skel-widow"
+                       :prefix ""
+                       :draw-frames '((min 30))
+                       :scissor-frames '()
+                       :light-index #xb
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "tomb-boss-explode"
+                       :level 'tombext
+                       :art-group "skel-tomb-boss-explode"
+                       :prefix ""
+                       :draw-frames '((30 max))
+                       :scissor-frames '()
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "tomb-boss-explode-a"
+                       :level 'tombext
+                       :art-group "skel-tomb-boss-explode-a"
+                       :prefix "a-"
+                       :draw-frames '((30 max))
+                       :scissor-frames '()
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj "tombboss-start"
+                   :end-point-obj "tombboss-start"
+                   :borrow '()
+                   :sfx-volume -1.0
+                   :ambient-volume -1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   )
+                 )
+
+(scene-method-16
+  (new 'static 'scene
+    :name "tomb-face-tests-intro"
+    :extra #f
+    :info #f
+    :mask-to-clear #x1282000
+    :entity "scene-stage-43"
+    :art-group "scenecamera"
+    :anim "tomb-face-tests-intro"
+    :parts 39
+    :command-list '((0
+        (kill "tomb-mar-door-1")
+        (kill "tomb-mar-door-2")
+        (send-event "jak-highres" 'eval ,(lambda ((arg0 process-drawable)) (let ((v0-0 (-> arg0 root scale)))
+                                                                             (set! (-> v0-0 x) 1.4)
+                                                                             (set! (-> v0-0 y) 1.4)
+                                                                             (set! (-> v0-0 z) 1.4)
+                                                                             (set! (-> v0-0 w) 1.0)
+                                                                             v0-0
+                                                                             )
+                                                 )
+                    )
+        (fadein (frame-time-30 15))
+        )
+      (10000 (task-close! "tomb-poles-introduction"))
+      )
+    :cut-list '(94
+       200
+       242
+       292
+       572
+       650
+       796
+       1048
+       1192
+       1300
+       1362
+       1442
+       1510
+       1534
+       1556
+       1581
+       1618
+       1680
+       1724
+       1764
+       1786
+       1812
+       1850
+       1908
+       2074
+       2216
+       )
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #t
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'tombd
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "jak-highres"
+        :level 'tombd
+        :art-group "skel-jak-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "kor-highres"
+        :level 'tombd
+        :art-group "skel-kor-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "kid-highres"
+        :level 'tombd
+        :art-group "skel-kid-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "youngsamos-highres"
+        :level 'tombd
+        :art-group "skel-youngsamos-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "tomb-mar-door"
+        :level 'tomba
+        :art-group "skel-tomb-mar-door"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '((796 1192) (1556 1581) (1908 2074))
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj "tombd-start"
+    :end-point-obj "tomb-start"
+    :borrow '()
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :blackout-end #t
+    :peaceful #t
+    :music-delay 1500.0
+    :save #t
+    )
+  )

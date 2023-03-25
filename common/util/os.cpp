@@ -21,6 +21,13 @@ size_t get_peak_rss() {
 #ifdef _WIN32
 // windows has a __cpuid
 #include <intrin.h>
+#elif __APPLE__
+// for now, just return 0's.
+void __cpuidex(int result[4], int eax, int ecx) {
+  for (int i = 0; i < 4; i++) {
+    result[i] = 0;
+  }
+}
 #else
 // using int to be compatible with msvc's intrinsic
 void __cpuidex(int result[4], int eax, int ecx) {

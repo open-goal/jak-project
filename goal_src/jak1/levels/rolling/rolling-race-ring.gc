@@ -1,0 +1,1045 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: rolling-race-ring.gc
+;; name in dgo: rolling-race-ring
+;; dgos: L1, ROL
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/race-ring-ag.gc")
+
+(deftype race-ring (process-drawable)
+  ((rot-y                 float                 :offset-assert 176)
+   (face-vec              vector        :inline :offset-assert 192)
+   (part-track            handle                :offset-assert 208)
+   (keep-part-track-alive symbol                :offset-assert 216)
+   (timeout               time-frame            :offset-assert 224)
+   (alt-actor             entity-actor          :offset-assert 232)
+   (alt-task              uint8                 :offset-assert 236)
+   (cyl                   cylinder-flat :inline :offset-assert 240)
+   (old-hips              vector        :inline :offset-assert 288)
+   )
+  :heap-base #xc0
+  :method-count-assert 20
+  :size-assert         #x130
+  :flag-assert         #x1400c00130
+  (:states
+    race-ring-active
+    race-ring-idle
+    race-ring-wait
+    )
+  )
+
+
+(defpartgroup group-rolling-ring
+  :id 457
+  :linger-duration 0
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 1773 :fade-after (meters 100) :falloff-to (meters 100))
+    (sp-item 1774 :fade-after (meters 80))
+    (sp-item 1775 :flags (is-3d))
+    (sp-item 1776 :flags (is-3d))
+    )
+  )
+
+(defpart 1773
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-rnd-flt spt-num 2.0 2.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1115684864 1 64.0)
+    (sp-flt spt-g 0.0)
+    (sp-rnd-int spt-b 1115684864 1 64.0)
+    (sp-flt spt-a 64.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-flt spt-fade-a -1.4222221)
+    (sp-int spt-timer 42)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 4.5))
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 1774
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 4) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1115684864 1 64.0)
+    (sp-flt spt-g 0.0)
+    (sp-rnd-int spt-b 1115684864 1 64.0)
+    (sp-flt spt-a 64.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-flt spt-fade-a -1.4222221)
+    (sp-int spt-timer 42)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 4.5))
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 1775
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 10))
+    (sp-rnd-flt spt-rot-x 0.0 65536.0 1.0)
+    (sp-rnd-flt spt-rot-y (degrees -1.0) (degrees 2.0) 1.0)
+    (sp-flt spt-rot-z (degrees 90.0))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1124073472 1 127.0)
+    (sp-flt spt-g 0.0)
+    (sp-rnd-int spt-b 1124073472 1 127.0)
+    (sp-rnd-flt spt-a 96.0 32.0 1.0)
+    (sp-flt spt-fade-a -8.533334)
+    (sp-int spt-timer 10)
+    (sp-cpuinfo-flags bit2 bit3)
+    )
+  )
+
+(defpart 1776
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 12))
+    (sp-rnd-flt spt-rot-x 0.0 65536.0 1.0)
+    (sp-flt spt-rot-y (degrees 0.0))
+    (sp-flt spt-rot-z (degrees 90.0))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1124073472 1 127.0)
+    (sp-flt spt-g 0.0)
+    (sp-rnd-int spt-b 1124073472 1 127.0)
+    (sp-rnd-flt spt-a 32.0 32.0 1.0)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags bit2 bit3)
+    )
+  )
+
+(defpartgroup group-rolling-spawn-ring
+  :id 458
+  :duration 5
+  :linger-duration 141
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 1777 :fade-after (meters 100) :falloff-to (meters 100))
+    (sp-item 1778 :flags (is-3d))
+    (sp-item 1779 :flags (is-3d))
+    )
+  )
+
+(defpart 1777
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 32.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 3) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1115684864 1 64.0)
+    (sp-flt spt-g 0.0)
+    (sp-rnd-int spt-b 1115684864 1 64.0)
+    (sp-rnd-int spt-a 0 63 1.0)
+    (sp-flt spt-vel-y (meters 0.03))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit3)
+    (sp-int-plain-rnd spt-next-time 20 19 1)
+    (sp-launcher-by-id spt-next-launcher 1780)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 0))
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 1780
+  :init-specs ((sp-rnd-int spt-r 1115684864 1 64.0)
+    (sp-flt spt-g 0.0)
+    (sp-rnd-int spt-b 1115684864 1 64.0)
+    (sp-rnd-int spt-a 0 63 1.0)
+    (sp-int-plain-rnd spt-next-time 20 19 1)
+    (sp-launcher-by-id spt-next-launcher 1780)
+    )
+  )
+
+(defpart 1778
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 0))
+    (sp-rnd-flt spt-rot-x 0.0 65536.0 1.0)
+    (sp-rnd-flt spt-rot-y (degrees -1.0) (degrees 2.0) 1.0)
+    (sp-flt spt-rot-z (degrees 90.0))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1124073472 1 127.0)
+    (sp-flt spt-g 0.0)
+    (sp-rnd-int spt-b 1124073472 1 127.0)
+    (sp-rnd-flt spt-a 96.0 32.0 1.0)
+    (sp-flt spt-scalevel-x (meters 0.06666667))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit3 left-multiply-quat)
+    (sp-int spt-next-time 5)
+    (sp-launcher-by-id spt-next-launcher 1781)
+    )
+  )
+
+(defpart 1781
+  :init-specs ((sp-rnd-int spt-r 1124073472 1 127.0)
+    (sp-flt spt-g 0.0)
+    (sp-rnd-int spt-b 1124073472 1 127.0)
+    (sp-rnd-flt spt-a 32.0 32.0 1.0)
+    (sp-int spt-next-time 5)
+    (sp-launcher-by-id spt-next-launcher 1781)
+    )
+  )
+
+(defpart 1779
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 0))
+    (sp-rnd-flt spt-rot-x 0.0 65536.0 1.0)
+    (sp-flt spt-rot-y (degrees 0.0))
+    (sp-flt spt-rot-z (degrees 90.0))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1124073472 1 127.0)
+    (sp-flt spt-g 0.0)
+    (sp-rnd-int spt-b 1124073472 1 127.0)
+    (sp-rnd-flt spt-a 32.0 32.0 1.0)
+    (sp-flt spt-scalevel-x (meters 0.08))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit3 left-multiply-quat)
+    (sp-int spt-next-time 5)
+    (sp-launcher-by-id spt-next-launcher 1782)
+    )
+  )
+
+(defpart 1782
+  :init-specs ((sp-rnd-int spt-r 1124073472 1 127.0)
+    (sp-flt spt-g 0.0)
+    (sp-rnd-int spt-b 1124073472 1 127.0)
+    (sp-rnd-flt spt-a 32.0 32.0 1.0)
+    (sp-int spt-next-time 5)
+    (sp-launcher-by-id spt-next-launcher 1782)
+    )
+  )
+
+(defpartgroup group-rolling-explode-ring
+  :id 459
+  :duration 5
+  :linger-duration 150
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 1783 :fade-after (meters 100) :falloff-to (meters 100)) (sp-item 1784 :flags (is-3d)))
+  )
+
+(defpart 1783
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 64.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1115684864 1 64.0)
+    (sp-flt spt-g 0.0)
+    (sp-rnd-int spt-b 1115684864 1 64.0)
+    (sp-rnd-flt spt-a 32.0 96.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.1) (meters 0.033333335) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-flt spt-fade-a -0.85333335)
+    (sp-flt spt-friction 0.9)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 4.5))
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 1784
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
+    (sp-flt spt-num 2.0)
+    (sp-flt spt-scale-x (meters 10))
+    (sp-rnd-flt spt-rot-x 0.0 65536.0 1.0)
+    (sp-rnd-flt spt-rot-y (degrees -1.0) (degrees 2.0) 1.0)
+    (sp-flt spt-rot-z (degrees 90.0))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-int spt-r 1124073472 1 127.0)
+    (sp-flt spt-g 0.0)
+    (sp-rnd-int spt-b 1124073472 1 127.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-scalevel-x (meters 0.06666667))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.85333335)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit3)
+    )
+  )
+
+(defun race-ring-set-particle-rotation-callback ((arg0 part-tracker))
+  (let ((f0-0 (-> (the-as (pointer race-ring) (-> arg0 userdata)) 0 rot-y)))
+    (set! (-> *part-id-table* 1773 init-specs 15 initial-valuef) f0-0)
+    (set! (-> *part-id-table* 1774 init-specs 15 initial-valuef) f0-0)
+    (set! (-> *part-id-table* 1775 init-specs 4 initial-valuef) (+ -182.04445 f0-0))
+    (set! (-> *part-id-table* 1776 init-specs 4 initial-valuef) f0-0)
+    (set! (-> *part-id-table* 1777 init-specs 17 initial-valuef) f0-0)
+    (set! (-> *part-id-table* 1778 init-specs 4 initial-valuef) f0-0)
+    (set! (-> *part-id-table* 1779 init-specs 4 initial-valuef) f0-0)
+    (set! (-> *part-id-table* 1783 init-specs 17 initial-valuef) f0-0)
+    (set! (-> *part-id-table* 1784 init-specs 4 initial-valuef) f0-0)
+    )
+  0
+  (none)
+  )
+
+(defpartgroup group-rolling-ring-blue
+  :id 460
+  :linger-duration 0
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 1785 :fade-after (meters 100) :falloff-to (meters 100))
+    (sp-item 1786 :fade-after (meters 80))
+    (sp-item 1787 :flags (is-3d))
+    (sp-item 1788 :flags (is-3d))
+    )
+  )
+
+(defpart 1785
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-rnd-flt spt-num 2.0 2.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-rnd-int spt-g 1115684864 1 64.0)
+    (sp-rnd-int spt-b 1115684864 1 64.0)
+    (sp-flt spt-a 64.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-flt spt-fade-a -1.4222221)
+    (sp-int spt-timer 42)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 4.5))
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 1786
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 4) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-rnd-int spt-g 1115684864 1 64.0)
+    (sp-rnd-int spt-b 1115684864 1 64.0)
+    (sp-flt spt-a 64.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-flt spt-fade-a -1.4222221)
+    (sp-int spt-timer 42)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 4.5))
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 1787
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 10))
+    (sp-rnd-flt spt-rot-x 0.0 65536.0 1.0)
+    (sp-rnd-flt spt-rot-y (degrees -1.0) (degrees 2.0) 1.0)
+    (sp-flt spt-rot-z (degrees 90.0))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-rnd-int spt-g 1124073472 1 127.0)
+    (sp-rnd-int spt-b 1124073472 1 127.0)
+    (sp-rnd-flt spt-a 96.0 32.0 1.0)
+    (sp-flt spt-fade-a -8.533334)
+    (sp-int spt-timer 10)
+    (sp-cpuinfo-flags bit2 bit3)
+    )
+  )
+
+(defpart 1788
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 12))
+    (sp-rnd-flt spt-rot-x 0.0 65536.0 1.0)
+    (sp-flt spt-rot-y (degrees 0.0))
+    (sp-flt spt-rot-z (degrees 90.0))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-rnd-int spt-g 1124073472 1 127.0)
+    (sp-rnd-int spt-b 1124073472 1 127.0)
+    (sp-rnd-flt spt-a 32.0 32.0 1.0)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags bit2 bit3)
+    )
+  )
+
+(defpartgroup group-rolling-spawn-ring-blue
+  :id 461
+  :duration 5
+  :linger-duration 141
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 1789 :fade-after (meters 100) :falloff-to (meters 100))
+    (sp-item 1790 :flags (is-3d))
+    (sp-item 1791 :flags (is-3d))
+    )
+  )
+
+(defpart 1789
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 32.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 3) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-rnd-int spt-g 1115684864 1 64.0)
+    (sp-rnd-int spt-b 1115684864 1 64.0)
+    (sp-rnd-int spt-a 0 63 1.0)
+    (sp-flt spt-vel-y (meters 0.03))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit3)
+    (sp-int-plain-rnd spt-next-time 20 19 1)
+    (sp-launcher-by-id spt-next-launcher 1792)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 0))
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 1792
+  :init-specs ((sp-flt spt-r 0.0)
+    (sp-rnd-int spt-g 1115684864 1 64.0)
+    (sp-rnd-int spt-b 1115684864 1 64.0)
+    (sp-rnd-int spt-a 0 63 1.0)
+    (sp-int-plain-rnd spt-next-time 20 19 1)
+    (sp-launcher-by-id spt-next-launcher 1792)
+    )
+  )
+
+(defpart 1790
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 0))
+    (sp-rnd-flt spt-rot-x 0.0 65536.0 1.0)
+    (sp-rnd-flt spt-rot-y (degrees -1.0) (degrees 2.0) 1.0)
+    (sp-flt spt-rot-z (degrees 90.0))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-rnd-int spt-g 1124073472 1 127.0)
+    (sp-rnd-int spt-b 1124073472 1 127.0)
+    (sp-rnd-flt spt-a 96.0 32.0 1.0)
+    (sp-flt spt-scalevel-x (meters 0.06666667))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit3 left-multiply-quat)
+    (sp-int spt-next-time 5)
+    (sp-launcher-by-id spt-next-launcher 1793)
+    )
+  )
+
+(defpart 1793
+  :init-specs ((sp-flt spt-r 0.0)
+    (sp-rnd-int spt-g 1124073472 1 127.0)
+    (sp-rnd-int spt-b 1124073472 1 127.0)
+    (sp-rnd-flt spt-a 32.0 32.0 1.0)
+    (sp-int spt-next-time 5)
+    (sp-launcher-by-id spt-next-launcher 1793)
+    )
+  )
+
+(defpart 1791
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 0))
+    (sp-rnd-flt spt-rot-x 0.0 65536.0 1.0)
+    (sp-flt spt-rot-y (degrees 0.0))
+    (sp-flt spt-rot-z (degrees 90.0))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-rnd-int spt-g 1124073472 1 127.0)
+    (sp-rnd-int spt-b 1124073472 1 127.0)
+    (sp-rnd-flt spt-a 32.0 32.0 1.0)
+    (sp-flt spt-scalevel-x (meters 0.08))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit3 left-multiply-quat)
+    (sp-int spt-next-time 5)
+    (sp-launcher-by-id spt-next-launcher 1794)
+    )
+  )
+
+(defpart 1794
+  :init-specs ((sp-flt spt-r 0.0)
+    (sp-rnd-int spt-g 1124073472 1 127.0)
+    (sp-rnd-int spt-b 1124073472 1 127.0)
+    (sp-rnd-flt spt-a 32.0 32.0 1.0)
+    (sp-int spt-next-time 5)
+    (sp-launcher-by-id spt-next-launcher 1794)
+    )
+  )
+
+(defpartgroup group-rolling-explode-ring-blue
+  :id 462
+  :duration 5
+  :linger-duration 150
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 1795 :fade-after (meters 100) :falloff-to (meters 100)) (sp-item 1796 :flags (is-3d)))
+  )
+
+(defpart 1795
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 64.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-rnd-int spt-g 1115684864 1 64.0)
+    (sp-rnd-int spt-b 1115684864 1 64.0)
+    (sp-rnd-flt spt-a 32.0 96.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.1) (meters 0.033333335) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
+    (sp-flt spt-fade-a -0.85333335)
+    (sp-flt spt-friction 0.9)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 4.5))
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 1796
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
+    (sp-flt spt-num 2.0)
+    (sp-flt spt-scale-x (meters 10))
+    (sp-rnd-flt spt-rot-x 0.0 65536.0 1.0)
+    (sp-rnd-flt spt-rot-y (degrees -1.0) (degrees 2.0) 1.0)
+    (sp-flt spt-rot-z (degrees 90.0))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-rnd-int spt-g 1124073472 1 127.0)
+    (sp-rnd-int spt-b 1124073472 1 127.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-scalevel-x (meters 0.06666667))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.85333335)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit3)
+    )
+  )
+
+(defun race-ring-blue-set-particle-rotation-callback ((arg0 part-tracker))
+  (let ((f0-0 (-> (the-as (pointer race-ring) (-> arg0 userdata)) 0 rot-y)))
+    (set! (-> *part-id-table* 1785 init-specs 15 initial-valuef) f0-0)
+    (set! (-> *part-id-table* 1786 init-specs 15 initial-valuef) f0-0)
+    (set! (-> *part-id-table* 1787 init-specs 4 initial-valuef) (+ -182.04445 f0-0))
+    (set! (-> *part-id-table* 1788 init-specs 4 initial-valuef) f0-0)
+    (set! (-> *part-id-table* 1789 init-specs 17 initial-valuef) f0-0)
+    (set! (-> *part-id-table* 1790 init-specs 4 initial-valuef) f0-0)
+    (set! (-> *part-id-table* 1791 init-specs 4 initial-valuef) f0-0)
+    (set! (-> *part-id-table* 1795 init-specs 17 initial-valuef) f0-0)
+    (set! (-> *part-id-table* 1796 init-specs 4 initial-valuef) f0-0)
+    )
+  0
+  (none)
+  )
+
+(defskelgroup *race-ring-sg* race-ring race-ring-lod0-jg race-ring-race-ring-idle-ja
+              ((race-ring-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+(defun first-ring? ((arg0 race-ring))
+  (not (-> arg0 alt-actor))
+  )
+
+(defun last-ring? ((arg0 race-ring))
+  (not (-> arg0 link next))
+  )
+
+(defstate race-ring-active (race-ring)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (local-vars (v0-0 symbol))
+    (let ((v1-0 arg2))
+      (the-as
+        object
+        (when (= v1-0 'notify)
+          (when (and (= (-> arg3 param 0) 'die) (= arg0 (-> self part-track process 0)))
+            (cond
+              ((= (-> self entity extra perm task) (game-task rolling-ring-chase-2))
+               (set! (-> self part-track) (ppointer->handle (process-spawn
+                                                              part-tracker
+                                                              :init part-tracker-init
+                                                              (-> *part-group-id-table* 460)
+                                                              -1
+                                                              race-ring-blue-set-particle-rotation-callback
+                                                              (-> self ppointer)
+                                                              #f
+                                                              (-> self root trans)
+                                                              :to self
+                                                              )
+                                                            )
+                     )
+               (set! v0-0 #t)
+               (set! (-> self keep-part-track-alive) v0-0)
+               )
+              (else
+                (set! (-> self part-track) (ppointer->handle (process-spawn
+                                                               part-tracker
+                                                               :init part-tracker-init
+                                                               (-> *part-group-id-table* 457)
+                                                               -1
+                                                               race-ring-set-particle-rotation-callback
+                                                               (-> self ppointer)
+                                                               #f
+                                                               (-> self root trans)
+                                                               :to self
+                                                               )
+                                                             )
+                      )
+                (set! v0-0 #t)
+                (set! (-> self keep-part-track-alive) v0-0)
+                )
+              )
+            v0-0
+            )
+          )
+        )
+      )
+    )
+  :enter (behavior ()
+    (cond
+      ((first-ring? self)
+       (logior! (-> self mask) (process-mask actor-pause))
+       (process-entity-status! self (entity-perm-status bit-3) #f)
+       )
+      (else
+        (logclear! (-> self mask) (process-mask actor-pause))
+        (process-entity-status! self (entity-perm-status bit-3) #t)
+        )
+      )
+    (set! (-> self keep-part-track-alive) #f)
+    (if (= (-> self entity extra perm task) (game-task rolling-ring-chase-2))
+        (set! (-> self part-track) (ppointer->handle (process-spawn
+                                                       part-tracker
+                                                       :init part-tracker-init
+                                                       (-> *part-group-id-table* 461)
+                                                       -1
+                                                       race-ring-blue-set-particle-rotation-callback
+                                                       (-> self ppointer)
+                                                       #f
+                                                       (-> self root trans)
+                                                       :to self
+                                                       )
+                                                     )
+              )
+        (set! (-> self part-track) (ppointer->handle (process-spawn
+                                                       part-tracker
+                                                       :init part-tracker-init
+                                                       (-> *part-group-id-table* 458)
+                                                       -1
+                                                       race-ring-set-particle-rotation-callback
+                                                       (-> self ppointer)
+                                                       #f
+                                                       (-> self root trans)
+                                                       :to self
+                                                       )
+                                                     )
+              )
+        )
+    (set! (-> self old-hips quad) (-> (target-pos 26) quad))
+    (set! (-> self old-hips x) (+ 1.0 (-> self old-hips x)))
+    (set! (-> self state-time) (-> *display* game-frame-counter))
+    (none)
+    )
+  :exit (behavior ()
+    (sound-play "close-racering")
+    (let ((a0-3 (handle->process (-> self part-track))))
+      (if a0-3
+          (deactivate a0-3)
+          )
+      )
+    (if (= (-> self entity extra perm task) (game-task rolling-ring-chase-2))
+        (set! (-> self part-track) (ppointer->handle (process-spawn
+                                                       part-tracker
+                                                       :init part-tracker-init
+                                                       (-> *part-group-id-table* 462)
+                                                       -1
+                                                       race-ring-blue-set-particle-rotation-callback
+                                                       (-> self ppointer)
+                                                       #f
+                                                       (-> self root trans)
+                                                       :to self
+                                                       )
+                                                     )
+              )
+        (set! (-> self part-track) (ppointer->handle (process-spawn
+                                                       part-tracker
+                                                       :init part-tracker-init
+                                                       (-> *part-group-id-table* 459)
+                                                       -1
+                                                       race-ring-set-particle-rotation-callback
+                                                       (-> self ppointer)
+                                                       #f
+                                                       (-> self root trans)
+                                                       :to self
+                                                       )
+                                                     )
+              )
+        )
+    (cond
+      ((first-ring? self)
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (process-entity-status! self (entity-perm-status bit-3) #t)
+       )
+      (else
+        (logior! (-> self mask) (process-mask actor-pause))
+        (process-entity-status! self (entity-perm-status bit-3) #f)
+        )
+      )
+    (none)
+    )
+  :trans (behavior ()
+    (if (nonzero? (-> self sound))
+        (update! (-> self sound))
+        )
+    (cond
+      ((handle->process (-> self part-track))
+       (if (-> self keep-part-track-alive)
+           (set! (-> (the-as part-tracker (-> self part-track process 0)) start-time) (-> *display* base-frame-counter))
+           )
+       )
+      ((= (-> self entity extra perm task) (game-task rolling-ring-chase-2))
+       (set! (-> self part-track) (ppointer->handle (process-spawn
+                                                      part-tracker
+                                                      :init part-tracker-init
+                                                      (-> *part-group-id-table* 460)
+                                                      -1
+                                                      race-ring-blue-set-particle-rotation-callback
+                                                      (-> self ppointer)
+                                                      #f
+                                                      (-> self root trans)
+                                                      :to self
+                                                      )
+                                                    )
+             )
+       (set! (-> self keep-part-track-alive) #t)
+       )
+      (else
+        (set! (-> self part-track) (ppointer->handle (process-spawn
+                                                       part-tracker
+                                                       :init part-tracker-init
+                                                       (-> *part-group-id-table* 457)
+                                                       -1
+                                                       race-ring-set-particle-rotation-callback
+                                                       (-> self ppointer)
+                                                       #f
+                                                       (-> self root trans)
+                                                       :to self
+                                                       )
+                                                     )
+              )
+        (set! (-> self keep-part-track-alive) #t)
+        )
+      )
+    (cond
+      ((not (last-ring? self))
+       )
+      ((= (-> self entity extra perm task) (game-task rolling-ring-chase-2))
+       (spool-push *art-control* "race-ring-second-anim" 0 self -99.0)
+       )
+      (else
+        (spool-push *art-control* "race-ring-anim" 0 self -99.0)
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (loop
+      (suspend)
+      (cond
+        ((first-ring? self)
+         )
+        ((>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self timeout))
+         (level-hint-spawn
+           (game-text-id rolling-ring-chase-fail)
+           "sksp0121"
+           (the-as entity #f)
+           *entity-pool*
+           (game-task none)
+           )
+         (ambient-hint-spawn "st-lose" (the-as vector #f) *entity-pool* 'stinger)
+         (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+           (set! (-> a1-2 from) self)
+           (set! (-> a1-2 num-params) 0)
+           (set! (-> a1-2 message) 'activate)
+           (let ((t9-3 send-event-function)
+                 (v1-7 (-> self alt-actor))
+                 )
+             (t9-3
+               (if v1-7
+                   (-> v1-7 extra process)
+                   )
+               a1-2
+               )
+             )
+           )
+         (go race-ring-idle)
+         )
+        )
+      (when *target*
+        (let ((gp-0 (new 'stack-no-clear 'vector)))
+          (set! (-> gp-0 quad) (-> self old-hips quad))
+          (set! (-> self old-hips quad) (-> (target-pos 26) quad))
+          (vector-! gp-0 gp-0 (-> self old-hips))
+          (when (>= (ray-flat-cyl-intersect (-> self cyl) (-> self old-hips) gp-0) 0.0)
+            (level-hint-spawn
+              (game-text-id rolling-ring-chase-1-hint)
+              "sksp0119"
+              (the-as entity #f)
+              *entity-pool*
+              (game-task none)
+              )
+            (if (= (-> self entity extra perm task) (game-task rolling-ring-chase-2))
+                (level-hint-spawn
+                  (game-text-id rolling-ring-chase-2-hint)
+                  "sksp0120"
+                  (the-as entity #f)
+                  *entity-pool*
+                  (game-task none)
+                  )
+                )
+            (cond
+              ((first-ring? self)
+               (close-specific-task! (-> self entity extra perm task) (task-status need-hint))
+               (entity-birth-no-kill (-> self link next))
+               (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
+                 (set! (-> a1-9 from) self)
+                 (set! (-> a1-9 num-params) 0)
+                 (set! (-> a1-9 message) 'activate)
+                 (let ((t9-12 send-event-function)
+                       (v1-30 (-> self link next))
+                       )
+                   (t9-12
+                     (if v1-30
+                         (-> v1-30 extra process)
+                         )
+                     a1-9
+                     )
+                   )
+                 )
+               )
+              ((last-ring? self)
+               (let ((gp-2 (ppointer->handle (process-spawn othercam self 4 #f #t :to self)))
+                     (s5-2 (ppointer->handle (process-spawn
+                                               fuel-cell
+                                               :init fuel-cell-init-as-clone
+                                               (process->handle self)
+                                               (-> self entity extra perm task)
+                                               :to self
+                                               )
+                                             )
+                           )
+                     )
+                 (if *target*
+                     (logior! (-> *target* mask) (process-mask sleep))
+                     )
+                 (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
+                 (logclear! (-> self draw status) (draw-status hidden))
+                 (logior! (-> self draw status) (draw-status skip-bones))
+                 (if (= (-> self entity extra perm task) (game-task rolling-ring-chase-2))
+                     (ja-play-spooled-anim
+                       (new 'static 'spool-anim :name "race-ring-second-anim" :index 4 :parts 2 :command-list '())
+                       (the-as art-joint-anim #f)
+                       (the-as art-joint-anim #f)
+                       (the-as (function process-drawable symbol) false-func)
+                       )
+                     (ja-play-spooled-anim
+                       (new 'static 'spool-anim :name "race-ring-anim" :index 3 :parts 2 :command-list '())
+                       (the-as art-joint-anim #f)
+                       (the-as art-joint-anim #f)
+                       (the-as (function process-drawable symbol) false-func)
+                       )
+                     )
+                 (logclear! (-> self draw status) (draw-status skip-bones))
+                 (logior! (-> self draw status) (draw-status hidden))
+                 (cond
+                   ((handle->process (the-as int gp-2))
+                    (deactivate (-> gp-2 process 0))
+                    )
+                   (else
+                     )
+                   )
+                 (if *target*
+                     (logclear! (-> *target* mask) (process-mask sleep))
+                     )
+                 (let ((a0-54 (handle->process s5-2)))
+                   (if a0-54
+                       (send-event a0-54 'stop-cloning)
+                       )
+                   )
+                 )
+               )
+              (else
+                (entity-birth-no-kill (-> self link next))
+                (let ((a1-22 (new 'stack-no-clear 'event-message-block)))
+                  (set! (-> a1-22 from) self)
+                  (set! (-> a1-22 num-params) 0)
+                  (set! (-> a1-22 message) 'activate)
+                  (let ((t9-26 send-event-function)
+                        (v1-86 (-> self link next))
+                        )
+                    (t9-26
+                      (if v1-86
+                          (-> v1-86 extra process)
+                          )
+                      a1-22
+                      )
+                    )
+                  )
+                )
+              )
+            (go race-ring-idle)
+            )
+          )
+        )
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior race-ring) ja-post)
+  )
+
+(defstate race-ring-wait (race-ring)
+  :code (behavior ()
+    (if (nonzero? (-> self sound))
+        (stop! (-> self sound))
+        )
+    (loop
+      (suspend)
+      (when (= (get-task-status (the-as game-task (-> self alt-task))) (task-status invalid))
+        (close-specific-task! (-> self entity extra perm task) (task-status need-hint))
+        (logclear! (-> self mask) (process-mask actor-pause))
+        (go race-ring-active)
+        )
+      )
+    (none)
+    )
+  )
+
+(defstate race-ring-idle (race-ring)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('activate)
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (go race-ring-active)
+       )
+      )
+    )
+  :code (behavior ()
+    (if (nonzero? (-> self sound))
+        (stop! (-> self sound))
+        )
+    (loop
+      (suspend)
+      )
+    (none)
+    )
+  )
+
+(defmethod init-from-entity! race-ring ((obj race-ring) (arg0 entity-actor))
+  (let ((a0-1 arg0))
+    (if (not (entity-actor-lookup a0-1 'next-actor 0))
+        (stack-size-set! (-> obj main-thread) 512)
+        )
+    )
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj *race-ring-sg* '())
+  (set! (-> obj root pause-adjust-distance) 122880.0)
+  (set! (-> obj link) (new 'process 'actor-link-info obj))
+  (set! (-> obj part-track) (the-as handle #f))
+  (set! (-> obj alt-actor) (entity-actor-lookup arg0 'alt-actor 0))
+  (logior! (-> obj draw status) (draw-status hidden))
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "loop-racering" :fo-max 40) (-> obj root trans))
+        )
+  (let ((f0-1 (res-lump-float arg0 'timeout)))
+    (set! (-> obj timeout) (the-as time-frame (the int (* 300.0 f0-1))))
+    )
+  (let ((s4-0 (new 'stack-no-clear 'vector)))
+    (cond
+      ((-> obj link next)
+       (vector-! (-> obj face-vec) (-> obj link next extra trans) (-> obj root trans))
+       )
+      ((-> obj link prev)
+       (vector-! (-> obj face-vec) (-> obj root trans) (-> obj link prev extra trans))
+       )
+      )
+    (vector-flatten! (-> obj face-vec) (-> obj face-vec) (new 'static 'vector :y 1.0))
+    (vector-normalize! (-> obj face-vec) 1.0)
+    (cond
+      ((and (-> obj link next) (-> obj link prev))
+       (vector-! s4-0 (-> obj link prev extra trans) (-> obj root trans))
+       (vector-flatten! s4-0 s4-0 (new 'static 'vector :y 1.0))
+       (vector-normalize! s4-0 1.0)
+       (vector+! s4-0 s4-0 (-> obj face-vec))
+       (vector-normalize! s4-0 1.0)
+       (set! (-> obj rot-y) (acos (vector-dot s4-0 (new 'static 'vector :z 1.0))))
+       (if (< (vector-dot s4-0 (new 'static 'vector :x 1.0)) 0.0)
+           (set! (-> obj rot-y) (- (-> obj rot-y)))
+           )
+       )
+      (else
+        (set! (-> obj rot-y) (acos (vector-dot (-> obj face-vec) (new 'static 'vector :z 1.0))))
+        (if (< (vector-dot (-> obj face-vec) (new 'static 'vector :x 1.0)) 0.0)
+            (set! (-> obj rot-y) (- (-> obj rot-y)))
+            )
+        (set! (-> obj rot-y) (+ 16384.0 (-> obj rot-y)))
+        )
+      )
+    )
+  (+! (-> obj rot-y) (res-lump-float arg0 'rotoffset))
+  (set-vector! (-> obj cyl axis) (cos (-> obj rot-y)) 0.0 (- (sin (-> obj rot-y))) 1.0)
+  (vector+float*! (the-as vector (-> obj cyl)) (-> obj root trans) (-> obj cyl axis) -2048.0)
+  (set! (-> obj cyl radius) 24576.0)
+  (set! (-> obj cyl length) 4096.0)
+  (cond
+    ((and (first-ring? obj)
+          (!= (get-task-status (-> obj entity extra perm task)) (task-status invalid))
+          (!= (get-task-status (-> obj entity extra perm task)) 7)
+          )
+     (set! (-> obj alt-task) (res-lump-value (-> obj entity) 'alt-task uint))
+     (if (or (= (-> obj alt-task) 0) (= (get-task-status (the-as game-task (-> obj alt-task))) (task-status invalid)))
+         (go race-ring-active)
+         (go race-ring-wait)
+         )
+     )
+    ((and (last-ring? obj) (= (get-task-status (-> obj entity extra perm task)) (task-status need-resolution)))
+     (let ((s5-2 (new 'stack-no-clear 'vector)))
+       (logclear! (-> obj draw status) (draw-status hidden))
+       (ja-post)
+       (vector<-cspace! s5-2 (-> obj node-list data 5))
+       (logior! (-> obj draw status) (draw-status hidden))
+       (birth-pickup-at-point
+         s5-2
+         (pickup-type fuel-cell)
+         (the float (-> obj entity extra perm task))
+         #f
+         obj
+         (the-as fact-info #f)
+         )
+       )
+     )
+    ((and (last-ring? obj) (!= (get-task-status (-> obj entity extra perm task)) (task-status invalid)))
+     )
+    )
+  (set! (-> obj event-hook) (-> race-ring-idle event))
+  (go race-ring-idle)
+  (none)
+  )
+
+
+
+

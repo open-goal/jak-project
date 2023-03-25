@@ -1,16 +1,19 @@
 // Copyright: 2021 - 2022, Ziemas
 // SPDX-License-Identifier: ISC
 #pragma once
-#include "../common/synth.h"
-#include "common/common_types.h"
-#include "handle_allocator.h"
-#include "sound_handler.h"
-#include "musicbank.h"
-#include "soundbank.h"
-#include "sfxblock.h"
-#include <filesystem>
+
 #include <memory>
 #include <vector>
+
+#include "handle_allocator.h"
+#include "musicbank.h"
+#include "sfxblock.h"
+#include "sound_handler.h"
+#include "soundbank.h"
+
+#include "common/common_types.h"
+
+#include "../common/synth.h"
 
 namespace snd {
 
@@ -30,9 +33,12 @@ struct FileAttributes {
 class loader : public locator {
  public:
   SoundBank* get_bank_by_handle(u32 id) override;
-  MusicBank* get_bank_by_name(u32 id) override;
+  MusicBank* get_bank_by_id(u32 id) override;
   MIDIBlock* get_midi(u32 id) override;
   u8* get_bank_samples(u32 id) override;
+
+  SoundBank* get_bank_by_name(const char* name);
+  SoundBank* get_bank_with_sound(const char* name);
 
   void unload_bank(u32 id);
 
@@ -43,8 +49,6 @@ class loader : public locator {
 
  private:
   void load_samples(u32 bank, std::unique_ptr<u8[]> samples);
-  u32 read_music_bank(SoundBankData* data);
-  u32 read_sfx_bank(SFXBlockData* data);
 
   id_allocator m_id_allocator;
   std::unordered_map<u32, std::unique_ptr<SoundBank>> m_soundbanks;

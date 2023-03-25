@@ -1,0 +1,161 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type joint
+(deftype joint (basic)
+  ((name      string         :offset-assert   4)
+   (number    int32          :offset-assert   8)
+   (parent    joint          :offset-assert  12)
+   (bind-pose matrix :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+;; definition for method 3 of type joint
+(defmethod inspect joint ((obj joint))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Tnumber: ~D~%" (-> obj number))
+  (format #t "~Tparent: ~A~%" (-> obj parent))
+  (format #t "~Tbind-pose: #<matrix @ #x~X>~%" (-> obj bind-pose))
+  obj
+  )
+
+;; definition of type bone-cache
+(deftype bone-cache (structure)
+  ((bone-matrix   uint32  :offset-assert   0)
+   (parent-matrix uint32  :offset-assert   4)
+   (dummy         uint32  :offset-assert   8)
+   (frame         uint32  :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type bone-cache
+(defmethod inspect bone-cache ((obj bone-cache))
+  (format #t "[~8x] ~A~%" obj 'bone-cache)
+  (format #t "~Tbone-matrix: ~D~%" (-> obj bone-matrix))
+  (format #t "~Tparent-matrix: ~D~%" (-> obj parent-matrix))
+  (format #t "~Tdummy: ~D~%" (-> obj dummy))
+  (format #t "~Tframe: ~D~%" (-> obj frame))
+  obj
+  )
+
+;; definition of type bone
+(deftype bone (structure)
+  ((transform matrix     :inline :offset-assert   0)
+   (position  vector     :inline :offset         48)
+   (scale     vector     :inline :offset-assert  64)
+   (cache     bone-cache :inline :offset-assert  80)
+   )
+  :method-count-assert 9
+  :size-assert         #x60
+  :flag-assert         #x900000060
+  )
+
+;; definition for method 3 of type bone
+(defmethod inspect bone ((obj bone))
+  (format #t "[~8x] ~A~%" obj 'bone)
+  (format #t "~Ttransform: #<matrix @ #x~X>~%" (-> obj transform))
+  (format #t "~Tposition: #<vector @ #x~X>~%" (-> obj transform vector 3))
+  (format #t "~Tscale: #<vector @ #x~X>~%" (-> obj scale))
+  (format #t "~Tcache: #<bone-cache @ #x~X>~%" (-> obj cache))
+  obj
+  )
+
+;; definition of type skeleton
+(deftype skeleton (inline-array-class)
+  ((bones bone :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type skeleton
+(defmethod inspect skeleton ((obj skeleton))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tdata[0] @ #x~X~%" (-> obj bones))
+  obj
+  )
+
+;; failed to figure out what this is:
+(set! (-> skeleton heap-base) (the-as uint 96))
+
+;; definition of type cspace
+(deftype cspace (structure)
+  ((parent    cspace    :offset-assert   0)
+   (joint     joint     :offset-assert   4)
+   (joint-num int16     :offset-assert   8)
+   (geo       basic     :offset-assert  12)
+   (bone      bone      :offset-assert  16)
+   (param0    function  :offset-assert  20)
+   (param1    basic     :offset-assert  24)
+   (param2    basic     :offset-assert  28)
+   )
+  :method-count-assert 10
+  :size-assert         #x20
+  :flag-assert         #xa00000020
+  (:methods
+    (new (symbol type basic) _type_ 0)
+    (reset-and-assign-geo! (_type_ basic) _type_ 9)
+    )
+  )
+
+;; definition for method 3 of type cspace
+(defmethod inspect cspace ((obj cspace))
+  (format #t "[~8x] ~A~%" obj 'cspace)
+  (format #t "~Tparent: #<cspace @ #x~X>~%" (-> obj parent))
+  (format #t "~Tjoint: ~A~%" (-> obj joint))
+  (format #t "~Tjoint-num: ~D~%" (-> obj joint-num))
+  (format #t "~Tgeo: ~A~%" (-> obj geo))
+  (format #t "~Tbone: #<bone @ #x~X>~%" (-> obj bone))
+  (format #t "~Tparam0: ~A~%" (-> obj param0))
+  (format #t "~Tparam1: ~A~%" (-> obj param1))
+  (format #t "~Tparam2: ~A~%" (-> obj param2))
+  obj
+  )
+
+;; definition of type cspace-array
+(deftype cspace-array (inline-array-class)
+  ((data cspace :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type cspace-array
+(defmethod inspect cspace-array ((obj cspace-array))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tdata[0] @ #x~X~%" (-> obj data))
+  obj
+  )
+
+;; failed to figure out what this is:
+(set! (-> cspace-array heap-base) (the-as uint 32))
+
+;; definition for method 2 of type cspace
+(defmethod print cspace ((obj cspace))
+  (format
+    #t
+    "#<cspace ~S @ #x~X>"
+    (if (-> obj joint)
+        (-> obj joint name)
+        "nojoint"
+        )
+    obj
+    )
+  obj
+  )
+
+;; failed to figure out what this is:
+0

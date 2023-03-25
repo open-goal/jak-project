@@ -1,4 +1,5 @@
 #include "ParseHelpers.h"
+
 #include "third-party/fmt/core.h"
 
 namespace goos {
@@ -52,6 +53,7 @@ bool va_check(
 
   for (size_t i = 0; i < unnamed.size(); i++) {
     if (unnamed[i].has_value() && unnamed[i] != args.unnamed[i].type) {
+      // special case -- an empty list is a valid pair
       *err_string = fmt::format("Argument {} has type {} but {} was expected\nArgument is: {}", i,
                                 object_type_to_string(args.unnamed[i].type),
                                 object_type_to_string(unnamed[i].value()), args.unnamed[i].print());

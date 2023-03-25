@@ -1,0 +1,1003 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: res.gc
+;; name in dgo: res
+;; dgos: ENGINE, GAME
+
+#|@file
+res is a generic storage system for not very large data, used mostly for the game entities.
+These res files store collections of data, which can be as values (int8, int16, int32, int64, uint8, uint16, uint32, uint64, float, vector), or any structure (as references), which are tagged and identified with a res-tag.
+The data is stored similar to an unboxed inline-array, the type of the data is stored in the res-tag.
+
+A res-lump stores and is used to access all of the data for a single "resource", a collection of varying data.
+This is similar to a C++ map or C# dictionary. The key is a res-tag and the value is the corresponding binary data.
+
+A res-tag is a tag that contains information about a particular property of this resource, such as type, name, and amount of elements.
+For example, information about an array of vectors that make up a path - for a moving platform - or an integer to store its entity ID.
+
+Keyframes are used to specify when/where the data is relevant.
+For example (this is made-up), say you have a camera spline, and you want the FOV to change at three specific points:
+when it starts, somewhere in the middle, and at the end.
+You would store an array of three FOV values. The key-frame field could then be used to say at which point in the spline
+the FOV should be at that value. If the camera is somewhere between those points, the result could then be interpolated.
+
+Properties are looked up from a res-lump using their name (a symbol).
+You can look up the data of the property you want directly using the various get-property methods.
+Curves can be quickly filled in using the get-curve-data! method.
+
+
+This is updated from the entity system used in Crash 2, which had most of these features and worked very similarly!
+|#
+
+(declare-type nav-mesh basic)
+(declare-type collide-mesh basic)
+
+;; DECOMP BEGINS
+
+(defmacro res-ref? (tag)
+  "Checks resource tag, and returns #t if resource data is a reference type, #f if it is inlined."
+
+  `(zero? (-> ,tag inlined?))
+  )
+
+(defmethod print res-tag ((obj res-tag))
+  "print a res-tag."
+
+    (if (res-ref? obj)
+
+      (format #t "#<res-tag :name ~A :key-frame ~f :elt-type ~A :elt-count ~D>"
+                  (-> obj name)
+                  (-> obj key-frame)
+                  (-> obj elt-type)
+                  (-> obj elt-count)
+                  )
+
+      (format #t "#<res-tag (i) :name ~A :key-frame ~f :elt-type ~A :elt-count ~D>"
+                  (-> obj name)
+                  (-> obj key-frame)
+                  (-> obj elt-type)
+                  (-> obj elt-count)
+                  )
+      )
+
+    obj
+  )
+
+(defmethod length res-tag ((obj res-tag))
+  "get the length in bytes of this tag's resource."
+  (the-as int (if (zero? (-> obj inlined?))
+                  (* (-> obj elt-count) 4)
+                  (* (-> obj elt-count) (-> obj elt-type size))
+                  )
+          )
+  )
+
+(defmethod get-tag-index-data res-lump ((obj res-lump) (arg0 int))
+  "get the data address of the n'th tag."
+  (&+ (-> obj data-base) (-> obj tag arg0 data-offset))
+  )
+
+(defmethod get-tag-data res-lump ((obj res-lump) (arg0 res-tag))
+  "get the data address of the specified tag."
+  (&+ (-> obj data-base) (-> arg0 data-offset))
+  )
+
+(defmethod new res-lump ((allocation symbol) (type-to-make type) (arg0 int) (arg1 int))
+  "Allocate a new res-lump."
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* (+ arg0 -1) 16) arg1)))))
+    (set! (-> v0-0 allocated-length) arg0)
+    (set! (-> v0-0 data-size) arg1)
+    (set! (-> v0-0 length) 0)
+    (set! (-> v0-0 data-base) (&-> (-> v0-0 tag) arg0))
+    (set! (-> v0-0 data-top) (&-> (-> v0-0 tag) arg0))
+    v0-0
+    )
+  )
+
+(defmethod length res-lump ((obj res-lump))
+  "get the amount of resources in a res-lump."
+  (-> obj length)
+  )
+
+(defmethod asize-of res-lump ((obj res-lump))
+  "get the allocated size of a res-lump."
+  (the-as int (+ (-> obj type psize) (* (-> obj allocated-length) 16) (-> obj data-size)))
+  )
+
+(defmethod inspect res-lump ((obj res-lump))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Textra: ~A~%" (-> obj extra))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tdata-base: #x~X~%" (-> obj data-base))
+  (format #t "~Tdata-top: #x~X~%" (-> obj data-top))
+  (format #t "~Tdata-size: #x~X~%" (-> obj data-size))
+  (format #t "~Ttag[~D]: @ #x~X~%" (-> obj allocated-length) (-> obj tag))
+  (dotimes (i (-> obj length))
+    (format #t "~T  [~D] " i)
+    (print (-> (-> obj tag) i))
+    (format #t " @ #x~X" (get-tag-index-data obj i))
+    (cond
+      ((res-ref? (-> obj tag i))
+        (format #t " = ~A~%" (deref basic (get-tag-index-data obj i)))
+        )
+      (else
+        (format #t "~%")
+        )
+      )
+    )
+  obj
+  )
+
+(defmethod lookup-tag-idx res-lump ((obj res-lump) (arg0 symbol) (arg1 symbol) (arg2 float))
+  "Look up the index of the tag containing with the given name and timestamp.
+   Correct lookups return a res-tag-pair, which contains one tag index in the lower 32 bits and one in the upper 32 bits.
+   Depending on the mode, they may be the same, or they may be two tags that you should interpolate
+   between, if the exact time was not found.
+
+   name-sym should be the name of the thing you want.
+   time is for the timestamp you want.
+   If mode = 'base, then both the indices are the same and the timestamp is ignored.
+   If mode = 'interp, then it tries to get closest below/closest above (or both the same, if exact match found)
+   If mode = 'exact, then it requires an exact timestamp match and both indices are the same.
+   If things go wrong, returns a negative number"
+  (local-vars (t4-1 int))
+  (when (or (= arg0 'id)
+            (= arg0 'aid)
+            (= arg0 'trans)
+            (= arg0 'rot)
+            (= arg0 'nav-mesh)
+            (= arg0 'process-type)
+            (= arg0 'task)
+            )
+    (crash!)
+    0
+    )
+  (if (or (not obj) (zero? obj) (<= (-> obj length) 0))
+      (return (new 'static 'res-tag-pair :lo #xffffffff :hi #xffffffff))
+      )
+  (let ((v1-14 -1)
+        (t0-6 -1)
+        )
+    (let ((t1-0 -1)
+          (t2-4 (-> (the-as (pointer uint64) (-> (symbol->string arg0) data)) 0))
+          )
+      (let ((t3-1 (+ (-> obj length) -1))
+            (t4-0 0)
+            )
+        (while (>= t3-1 t4-0)
+          (let* ((t5-2 (+ t4-0 (/ (- t3-1 t4-0) 2)))
+                 (t6-5 (- t2-4 (-> (the-as (pointer uint64) (-> (symbol->string (-> obj tag t5-2 name)) data)) 0)))
+                 )
+            (cond
+              ((zero? t6-5)
+               (set! t4-1 t5-2)
+               (goto cfg-32)
+               )
+              ((< (the-as int t6-5) 0)
+               (set! t3-1 (+ t5-2 -1))
+               )
+              (else
+                (set! t4-0 (+ t5-2 1))
+                )
+              )
+            )
+          )
+        )
+      (set! t4-1 -1)
+      (label cfg-32)
+      (if (< t4-1 0)
+          (return (the-as res-tag-pair t4-1))
+          )
+      (while (and (> t4-1 0)
+                  (= t2-4 (-> (the-as (pointer uint64) (-> (symbol->string (-> obj tag (+ t4-1 -1) name)) data)) 0))
+                  )
+        (+! t4-1 -1)
+        )
+      (when (= arg1 'base)
+        (set! t0-6 t4-1)
+        (set! v1-14 t4-1)
+        (goto cfg-73)
+        )
+      (let ((t3-13 t4-1)
+            (t4-4 (&-> (-> obj tag) t4-1))
+            )
+        (while (not (or (>= t3-13 (-> obj length))
+                        (< t2-4 (-> (&+ (the-as (pointer uint64) (symbol->string (-> t4-4 0 name))) 4) 0))
+                        )
+                    )
+          (cond
+            ((!= arg0 (-> t4-4 0 name))
+             )
+            ((= (-> t4-4 0 key-frame) arg2)
+             (set! t0-6 t3-13)
+             (set! v1-14 t3-13)
+             (goto cfg-73)
+             )
+            ((and (>= arg2 (-> t4-4 0 key-frame)) (!= arg1 'exact))
+             (set! t0-6 t3-13)
+             (set! v1-14 t3-13)
+             (if (= (-> t4-4 0 key-frame) -1000000000.0)
+                 (set! t1-0 t3-13)
+                 )
+             )
+            ((< arg2 (-> t4-4 0 key-frame))
+             (if (and (!= t0-6 t1-0) (= arg1 'interp))
+                 (set! v1-14 t3-13)
+                 )
+             (goto cfg-73)
+             )
+            )
+          (+! t3-13 1)
+          (set! t4-4 (&-> t4-4 1))
+          )
+        )
+      )
+    (label cfg-73)
+    (the-as res-tag-pair (logior (logand (the-as uint #xffffffff) t0-6) (shl v1-14 32)))
+    )
+  )
+
+(defmethod make-property-data res-lump ((obj res-lump) (arg0 float) (arg1 res-tag-pair) (arg2 pointer))
+   "Returns (a pointer to) the value data of a property with the tag-pair.
+   If tag-pair does not represent an exact point in the timeline, then the data is interpolated based on time
+   with the result written into buf. buf must have enough space to copy all of the data.
+   Otherwise, simply returns an address to the resource binary."
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (let* ((t0-2 (-> obj tag (-> arg1 lo)))
+           (t1-2 (-> obj tag (-> arg1 hi)))
+           (v1-6 (-> t0-2 elt-count))
+           )
+      (cond
+        ((zero? (-> t0-2 inlined?))
+         (&+ (-> obj data-base) (-> t0-2 data-offset))
+         )
+        ((or (not arg2)
+             (= (-> arg1 lo) (-> arg1 hi))
+             (!= v1-6 (-> t1-2 elt-count))
+             (!= (-> t0-2 elt-type) (-> t1-2 elt-type))
+             )
+         (let ((a0-4 t0-2))
+           (&+ (-> obj data-base) (-> a0-4 data-offset))
+           )
+         )
+        (else
+          (let* ((f0-2 (/ (- arg0 (-> t0-2 key-frame)) (- (-> t1-2 key-frame) (-> t0-2 key-frame))))
+                 (a1-4 obj)
+                 (a2-7 t0-2)
+                 (a1-6 (&+ (-> a1-4 data-base) (-> a2-7 data-offset)))
+                 (a2-13 (&+ (-> obj data-base) (-> t1-2 data-offset)))
+                 )
+            (case (-> t0-2 elt-type symbol)
+              (('float)
+               (dotimes (a0-8 (the-as int v1-6))
+                 (set! (-> (the-as (pointer float) (&+ arg2 (* a0-8 4))))
+                       (+ (* (-> (the-as (pointer float) (&+ a1-6 (* a0-8 4)))) (- 1.0 f0-2))
+                          (* (-> (the-as (pointer float) (&+ a2-13 (* a0-8 4)))) f0-2)
+                          )
+                       )
+                 )
+               arg2
+               )
+              (('integer 'sinteger 'uinteger 'int64 'uint64)
+               (let ((a0-10 (the int (* 4096.0 f0-2))))
+                 (dotimes (t0-10 (the-as int v1-6))
+                   (set! (-> (the-as (pointer int64) (&+ arg2 (* t0-10 8))))
+                         (sar
+                           (+ (* (the-as int (-> (the-as (pointer uint64) (&+ a1-6 (* t0-10 8))))) (- 4096 a0-10))
+                              (* (the-as int (-> (the-as (pointer uint64) (&+ a2-13 (* t0-10 8))))) a0-10)
+                              )
+                           12
+                           )
+                         )
+                   )
+                 )
+               arg2
+               )
+              (('int8)
+               (let ((a0-12 (the int (* 4096.0 f0-2))))
+                 (dotimes (t0-11 (the-as int v1-6))
+                   (set! (-> (the-as (pointer int8) (&+ arg2 t0-11)))
+                         (sar
+                           (+ (* (-> (the-as (pointer int8) (&+ a1-6 t0-11))) (- 4096 a0-12))
+                              (* (-> (the-as (pointer int8) (&+ a2-13 t0-11))) a0-12)
+                              )
+                           12
+                           )
+                         )
+                   )
+                 )
+               arg2
+               )
+              (('uint8)
+               (let ((a0-14 (the int (* 4096.0 f0-2))))
+                 (dotimes (t0-12 (the-as int v1-6))
+                   (set! (-> (the-as (pointer uint8) (&+ arg2 t0-12)))
+                         (shr
+                           (+ (* (-> (the-as (pointer uint8) (&+ a1-6 t0-12))) (the-as uint (- 4096 a0-14)))
+                              (* (-> (the-as (pointer uint8) (&+ a2-13 t0-12))) (the-as uint a0-14))
+                              )
+                           12
+                           )
+                         )
+                   )
+                 )
+               arg2
+               )
+              (('int16)
+               (let ((a0-16 (the int (* 4096.0 f0-2))))
+                 (dotimes (t0-13 (the-as int v1-6))
+                   (set! (-> (the-as (pointer int16) (&+ arg2 (* t0-13 2))))
+                         (sar
+                           (+ (* (-> (the-as (pointer int16) (&+ a1-6 (* t0-13 2)))) (- 4096 a0-16))
+                              (* (-> (the-as (pointer int16) (&+ a2-13 (* t0-13 2)))) a0-16)
+                              )
+                           12
+                           )
+                         )
+                   )
+                 )
+               arg2
+               )
+              (('uint16)
+               (let ((a0-18 (the int (* 4096.0 f0-2))))
+                 (dotimes (t0-14 (the-as int v1-6))
+                   (set! (-> (the-as (pointer uint16) (&+ arg2 (* t0-14 2))))
+                         (shr
+                           (+ (* (-> (the-as (pointer uint16) (&+ a1-6 (* t0-14 2)))) (the-as uint (- 4096 a0-18)))
+                              (* (-> (the-as (pointer uint16) (&+ a2-13 (* t0-14 2)))) (the-as uint a0-18))
+                              )
+                           12
+                           )
+                         )
+                   )
+                 )
+               arg2
+               )
+              (('int32)
+               (let ((a0-20 (the int (* 4096.0 f0-2))))
+                 (dotimes (t0-15 (the-as int v1-6))
+                   (set! (-> (the-as (pointer int32) (&+ arg2 (* t0-15 4))))
+                         (sar
+                           (+ (* (-> (the-as (pointer int32) (&+ a1-6 (* t0-15 4)))) (- 4096 a0-20))
+                              (* (-> (the-as (pointer int32) (&+ a2-13 (* t0-15 4)))) a0-20)
+                              )
+                           12
+                           )
+                         )
+                   )
+                 )
+               arg2
+               )
+              (('uint32)
+               (let ((a0-22 (the int (* 4096.0 f0-2))))
+                 (dotimes (t0-16 (the-as int v1-6))
+                   (set! (-> (the-as (pointer uint32) (&+ arg2 (* t0-16 4))))
+                         (shr
+                           (+ (* (-> (the-as (pointer uint32) (&+ a1-6 (* t0-16 4)))) (the-as uint (- 4096 a0-22)))
+                              (* (-> (the-as (pointer uint32) (&+ a2-13 (* t0-16 4)))) (the-as uint a0-22))
+                              )
+                           12
+                           )
+                         )
+                   )
+                 )
+               arg2
+               )
+              (('vector)
+               (let ((a0-23 f0-2))
+                 (.mov vf3 a0-23)
+                 )
+               (let ((a0-25 (- 1.0 f0-2)))
+                 (.mov vf4 a0-25)
+                 )
+               (dotimes (a0-26 (the-as int v1-6))
+                 (let ((t0-18 (+ (* a0-26 16) (the-as int a1-6))))
+                   (.lvf vf1 (&-> (the-as (pointer int128) t0-18)))
+                   )
+                 (let ((t0-20 (+ (* a0-26 16) (the-as int a2-13))))
+                   (.lvf vf2 (&-> (the-as (pointer int128) t0-20)))
+                   )
+                 (.mul.x.vf vf1 vf1 vf4)
+                 (.mul.x.vf vf2 vf2 vf3)
+                 (.add.vf vf1 vf1 vf2)
+                 (.svf (&-> (the-as (pointer uint128) (+ (* a0-26 16) (the-as int arg2))) 0) vf1)
+                 )
+               arg2
+               )
+              (else
+                (let ((a0-27 t0-2))
+                  (&+ (-> obj data-base) (-> a0-27 data-offset))
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+(defmethod get-property-data res-lump ((obj res-lump)
+                                       (arg0 symbol)
+                                       (arg1 symbol)
+                                       (arg2 float)
+                                       (arg3 pointer)
+                                       (arg4 (pointer res-tag))
+                                       (arg5 pointer)
+                                       )
+  "Returns an address to a given property's data at a specific time stamp, or default on error.
+  name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
+  default is the default result returned in the case of an error.
+  tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
+  buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
+
+  (let ((s3-0 (lookup-tag-idx obj arg0 arg1 arg2)))
+    (cond
+      ((< (the-as int s3-0) 0)
+       (empty)
+       )
+      (else
+        (set! arg3 (make-property-data obj arg2 s3-0 arg5))
+        (if arg4
+            (set! (-> arg4 0) (-> obj tag (-> s3-0 lo)))
+            )
+        )
+      )
+    )
+  arg3
+  )
+
+(defmethod get-property-struct res-lump ((obj res-lump)
+                                         (arg0 symbol)
+                                         (arg1 symbol)
+                                         (arg2 float)
+                                         (arg3 structure)
+                                         (arg4 (pointer res-tag))
+                                         (arg5 pointer)
+                                         )
+  "Returns a given struct property's value at a specific time stamp, or default on error.
+  name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
+  default is the default result returned in the case of an error.
+  tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
+  buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
+  (let ((s3-0 (lookup-tag-idx obj arg0 arg1 arg2)))
+    (cond
+      ((< (the-as int s3-0) 0)
+       (empty)
+       )
+      (else
+        (set! arg3 (the-as structure (make-property-data obj arg2 s3-0 arg5)))
+        (let ((v1-4 (-> obj tag (-> s3-0 lo))))
+          (if arg4
+              (set! (-> arg4 0) v1-4)
+              )
+          (if (zero? (-> v1-4 inlined?))
+              (set! arg3 (the-as structure (-> (the-as (pointer uint32) arg3))))
+              (empty)
+              )
+          )
+        )
+      )
+    )
+  (the-as structure arg3)
+  )
+
+(defmethod get-property-value res-lump ((obj res-lump)
+                                        (arg0 symbol)
+                                        (arg1 symbol)
+                                        (arg2 float)
+                                        (arg3 uint128)
+                                        (arg4 (pointer res-tag))
+                                        (arg5 pointer)
+                                        )
+  "Returns a given value property's value at a specific time stamp, or default on error.
+  name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
+  default is the default result returned in the case of an error.
+  tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
+  buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
+  (let ((a2-1 (lookup-tag-idx obj arg0 arg1 arg2)))
+    (cond
+      ((< (the-as int a2-1) 0)
+       (empty)
+       )
+      (else
+        (let* ((a0-2 (-> a2-1 lo))
+               (s1-0 (-> obj tag a0-2))
+               (s0-0 (-> s1-0 elt-type))
+               (gp-1 (make-property-data obj arg2 a2-1 arg5))
+               )
+          (if arg4
+              (set! (-> arg4 0) s1-0)
+              )
+          (cond
+            ((type-type? (the-as type s0-0) uinteger)
+             (case (-> s1-0 elt-type size)
+               ((1)
+                (set! arg3 (the-as uint128 (-> (the-as (pointer uint8) gp-1))))
+                )
+               ((2)
+                (set! arg3 (the-as uint128 (-> (the-as (pointer uint16) gp-1))))
+                )
+               ((4)
+                (set! arg3 (the-as uint128 (-> (the-as (pointer uint32) gp-1))))
+                )
+               ((16)
+                (set! arg3 (-> (the-as (pointer uint128) gp-1)))
+                )
+               (else
+                 (set! arg3 (the-as uint128 (-> (the-as (pointer uint64) gp-1))))
+                 )
+               )
+             )
+            ((type-type? (the-as type s0-0) integer)
+             (case (-> s1-0 elt-type size)
+               ((1)
+                (set! arg3 (the-as uint128 (-> (the-as (pointer int8) gp-1))))
+                )
+               ((2)
+                (set! arg3 (the-as uint128 (-> (the-as (pointer int16) gp-1))))
+                )
+               ((4)
+                (set! arg3 (the-as uint128 (-> (the-as (pointer int32) gp-1))))
+                )
+               ((16)
+                (set! arg3 (-> (the-as (pointer uint128) gp-1)))
+                )
+               (else
+                 (set! arg3 (the-as uint128 (-> (the-as (pointer uint64) gp-1))))
+                 )
+               )
+             )
+            ((type-type? (the-as type s0-0) float)
+             (set! arg3 (the-as uint128 (the int (-> (the-as (pointer float) gp-1)))))
+             )
+            (else
+              (empty)
+              )
+            )
+          )
+        )
+      )
+    )
+  (the-as uint128 arg3)
+  )
+
+(defmethod get-property-value-float res-lump ((obj res-lump) (arg0 symbol) (arg1 symbol) (arg2 float) (arg3 float) (arg4 (pointer res-tag)) (arg5 pointer))
+  "same as get-property-value but float type is checked first?"
+  (local-vars (v1-8 uint) (v1-11 int))
+  (let ((a2-1 (lookup-tag-idx obj arg0 arg1 arg2)))
+    (cond
+      ((< (the-as int a2-1) 0)
+       (empty)
+       )
+      (else
+        (let* ((a0-2 (-> a2-1 lo))
+               (s1-0 (-> obj tag a0-2))
+               (s0-0 (-> s1-0 elt-type))
+               (gp-1 (make-property-data obj arg2 a2-1 arg5))
+               )
+          (if arg4
+              (set! (-> arg4 0) s1-0)
+              )
+          (cond
+            ((type-type? (the-as type s0-0) float)
+             (set! arg3 (-> (the-as (pointer float) gp-1)))
+             )
+            ((type-type? (the-as type s0-0) uinteger)
+             (case (-> s1-0 elt-type size)
+               ((1)
+                (set! v1-8 (-> (the-as (pointer uint8) gp-1)))
+                )
+               ((2)
+                (set! v1-8 (-> (the-as (pointer uint16) gp-1)))
+                )
+               ((4)
+                (set! v1-8 (-> (the-as (pointer uint32) gp-1)))
+                )
+               ((16)
+                (set! v1-8 (the-as uint (-> (the-as (pointer uint128) gp-1))))
+                )
+               (else
+                 (set! v1-8 (-> (the-as (pointer uint64) gp-1)))
+                 )
+               )
+             (set! arg3 (the float v1-8))
+             )
+            ((type-type? (the-as type s0-0) integer)
+             (case (-> s1-0 elt-type size)
+               ((1)
+                (set! v1-11 (-> (the-as (pointer int8) gp-1)))
+                )
+               ((2)
+                (set! v1-11 (-> (the-as (pointer int16) gp-1)))
+                )
+               ((4)
+                (set! v1-11 (-> (the-as (pointer int32) gp-1)))
+                )
+               ((16)
+                (set! v1-11 (the-as int (-> (the-as (pointer uint128) gp-1))))
+                )
+               (else
+                 (set! v1-11 (the-as int (-> (the-as (pointer uint64) gp-1))))
+                 )
+               )
+             (set! arg3 (the float v1-11))
+             )
+            (else
+              (empty)
+              )
+            )
+          )
+        )
+      )
+    )
+  arg3
+  )
+
+(defmethod sort! res-lump ((obj res-lump))
+  "Sort all tags based on name, then key-frame."
+  (let ((v1-0 -1))
+    (while (nonzero? v1-0)
+      (set! v1-0 0)
+      (let ((a1-0 0)
+            (a2-1 (+ (-> obj length) -2))
+            )
+        (while (>= a2-1 a1-0)
+          (let* ((a3-2 (-> obj tag a1-0))
+                 (t0-3 (-> obj tag (+ a1-0 1)))
+                 (t1-6 (-> (the-as (pointer uint64) (-> (symbol->string (-> a3-2 name)) data)) 0))
+                 (t2-6 (-> (the-as (pointer uint64) (-> (symbol->string (-> t0-3 name)) data)) 0))
+                 )
+            (when (or (< t2-6 t1-6) (and (= t1-6 t2-6) (< (-> t0-3 key-frame) (-> a3-2 key-frame))))
+              (+! v1-0 1)
+              (set! (-> obj tag a1-0) t0-3)
+              (set! (-> obj tag (+ a1-0 1)) a3-2)
+              )
+            )
+          (+! a1-0 1)
+          )
+        )
+      )
+    )
+  obj
+  )
+
+(defmethod allocate-data-memory-for-tag! res-lump ((obj res-lump) (arg0 res-tag))
+  "Find space for the data described by arg0 in obj.
+   Returns a tag with data-offset set correctly for this res-lump.
+   If the lump already contains memory for the given tag, and it is big enough,
+   it will be reused.  Alignment will be at least 8 bytes.
+   If the input tag has elt-count = 0, it will return a tag for elt-count = 1."
+  (local-vars (resource-mem pointer))
+  (let* ((tag-pair (lookup-tag-idx obj (-> arg0 name) 'exact (-> arg0 key-frame)))
+         (existing-tag (-> obj tag (-> tag-pair lo)))
+         )
+    0
+    (if (and (>= (the-as int tag-pair) 0) (!= (-> arg0 key-frame) (-> arg0 key-frame)))
+        (set! tag-pair (new 'static 'res-tag-pair :lo #xffffffff :hi #xffffffff))
+        )
+    (if (zero? (-> arg0 elt-count))
+        (set! arg0 (copy-and-set-field arg0 elt-count 1))
+        )
+    (let ((data-size (length arg0)))
+      (cond
+        ((and (>= (the-as int tag-pair) 0) (>= (length existing-tag) data-size))
+         (set! resource-mem (&+ (-> obj data-base) (-> existing-tag data-offset)))
+         (when (logtest? (the-as int resource-mem) 7)
+           (set! resource-mem (logand -16 (&+ (-> obj data-top) 15)))
+           (set! (-> obj data-top) (&+ resource-mem data-size))
+           )
+         )
+        (else
+          (set! resource-mem (logand -16 (&+ (-> obj data-top) 15)))
+          (set! (-> obj data-top) (&+ resource-mem data-size))
+          )
+        )
+      (let* ((a0-22 arg0)
+             (s4-1 (copy-and-set-field a0-22 data-offset (&- resource-mem (the-as uint (-> obj data-base)))))
+             )
+        (when (>= (the-as int (&+ resource-mem data-size)) (the-as int (&+ (-> obj data-base) (-> obj data-size))))
+          (format
+            0
+            "ERROR: attempting to a new tag ~`res-tag`P data of #x~X bytes to ~A, but data memory is full.~%"
+            s4-1
+            data-size
+            obj
+            )
+          (return (the-as res-tag #f))
+          )
+        (cond
+          ((< (the-as int tag-pair) 0)
+           (cond
+             ((>= (-> obj length) (-> obj allocated-length))
+              (format 0 "ERROR: attempting to a new tag ~`res-tag`P to ~A, but tag memory is full.~%" s4-1 obj)
+              (return (the-as res-tag #f))
+              )
+             (else
+               (set! (-> obj tag (-> obj length)) s4-1)
+               (+! (-> obj length) 1)
+               (sort! obj)
+               )
+             )
+           )
+          (else
+            (set! (-> obj tag (-> tag-pair lo)) s4-1)
+            )
+          )
+        s4-1
+        )
+      )
+    )
+  )
+
+(defmethod add-data! res-lump ((obj res-lump) (arg0 res-tag) (arg1 pointer))
+  "Given a tag and a pointer to its data, copy it to this res-lump.
+   This doesn't seem to do the right thing if the given tag is a non-inline tag
+   with > 1 element."
+  (let ((a0-2 (allocate-data-memory-for-tag! obj arg0)))
+    (when a0-2
+      (let* ((v1-2 obj)
+             (a1-1 a0-2)
+             (s4-0 (&+ (-> v1-2 data-base) (-> a1-1 data-offset)))
+             )
+        (cond
+          ((zero? (-> a0-2 inlined?))
+           (length a0-2)
+           (set! (-> (the-as (pointer pointer) s4-0) 0) arg1)
+           )
+          (else
+            (let ((a2-1 (length a0-2)))
+              (mem-copy! s4-0 arg1 a2-1)
+              )
+            )
+          )
+        )
+      )
+    )
+  obj
+  )
+
+(defmethod add-32bit-data! res-lump ((obj res-lump) (arg0 res-tag) (arg1 object))
+  "Add a single 32-bit value using add-data."
+  (set! (-> arg0 inlined?) 1)
+  (add-data! obj arg0 (& arg1)) ;; note, only 32-bits are spilled to the stack here.
+  #|
+  (local-vars (sv-16 object))
+  (set! sv-16 arg1)
+  (let* ((v1-0 arg0)
+         (a1-4 (copy-and-set-bf v1-0 :inlined? 1))
+         )
+   (add-data! obj a1-4 (& sv-16))
+   )
+   |#
+  )
+
+(defmethod get-curve-data! res-lump ((obj res-lump) (arg0 curve) (arg1 symbol) (arg2 symbol) (arg3 float))
+  "Read curve data and write it to curve-target. Return #t if both control points and knots data was succesfully read, #f otherwise."
+  (local-vars (sv-16 res-tag) (sv-32 res-tag))
+  (let ((s5-0 #f))
+    (set! sv-16 (new 'static 'res-tag))
+    (let ((a0-2
+            ((method-of-object obj get-property-data) obj arg1 'exact arg3 (the-as pointer #f) (& sv-16) *res-static-buf*)
+            )
+          )
+      (when a0-2
+        (set! (-> arg0 cverts) (the-as (inline-array vector) a0-2))
+        (set! (-> arg0 num-cverts) (the-as int (-> sv-16 elt-count)))
+        (when (< 256 (-> arg0 num-cverts))
+          (format
+            0
+            "ERROR<GMJ>: curve has ~D control points--only ~D are allowed. Increase MAX-CURVE-CONTROL-POINTS or shorten the curve.~%"
+            (-> arg0 num-cverts)
+            256
+            )
+          (set! (-> arg0 num-cverts) 256)
+          )
+        (set! sv-32 (new 'static 'res-tag))
+        (let ((a0-6
+                ((method-of-object obj get-property-data) obj arg2 'exact arg3 (the-as pointer #f) (& sv-32) *res-static-buf*)
+                )
+              )
+          (when a0-6
+            (set! (-> arg0 knots) (the-as (pointer float) a0-6))
+            (set! (-> arg0 num-knots) (the-as int (-> sv-32 elt-count)))
+            (set! s5-0 #t)
+            )
+          )
+        )
+      )
+    s5-0
+    )
+  )
+
+(defmethod mem-usage res-lump ((obj res-lump) (arg0 memory-usage-block) (arg1 int))
+  "Get the memory usage of this lump and its data"
+  (local-vars (sv-16 int))
+  (let ((s3-0 48)
+        (s2-0 "res")
+        )
+    (cond
+      ((logtest? arg1 256)
+       (set! s3-0 44)
+       (set! s2-0 "camera")
+       )
+      ((logtest? arg1 64)
+       (set! s3-0 43)
+       (set! s2-0 "entity")
+       )
+      ((logtest? arg1 512)
+       (set! s3-0 76)
+       (set! s2-0 "art-joint-geo")
+       )
+      )
+    (set! (-> arg0 length) (max (-> arg0 length) (+ s3-0 1)))
+    (set! (-> arg0 data s3-0 name) s2-0)
+    (+! (-> arg0 data s3-0 count) 1)
+    (let ((v1-19 (asize-of obj)))
+      (+! (-> arg0 data s3-0 used) v1-19)
+      (+! (-> arg0 data s3-0 total) (logand -16 (+ v1-19 15)))
+      )
+    (dotimes (s1-0 (-> obj length))
+      (when (zero? (-> obj tag s1-0 inlined?))
+        (let* ((a1-4 obj)
+               (a0-15 s1-0)
+               (s0-0 (the-as object (-> (the-as (pointer int32) (&+ (-> a1-4 data-base) (-> a1-4 tag a0-15 data-offset))))))
+               )
+          (when (not (part-group-pointer? (the-as pointer s0-0)))
+            (let ((v1-34 (rtype-of (the-as int s0-0))))
+              (cond
+                ((or (= v1-34 symbol) (or (= v1-34 type) (= v1-34 pair)))
+                 )
+                ((= v1-34 string)
+                 (set! (-> arg0 length) (max (-> arg0 length) (+ s3-0 1)))
+                 (set! (-> arg0 data s3-0 name) s2-0)
+                 (+! (-> arg0 data s3-0 count) 1)
+                 (let ((v1-48 ((method-of-type (rtype-of (the-as int s0-0)) asize-of) (the-as int s0-0))))
+                   (+! (-> arg0 data s3-0 used) v1-48)
+                   (+! (-> arg0 data s3-0 total) (logand -16 (+ v1-48 15)))
+                   )
+                 )
+                ((or (= v1-34 nav-mesh) (= v1-34 collide-mesh))
+                 (let ((a0-48 (the-as (array object) s0-0)))
+                   ((method-of-type (rtype-of a0-48) mem-usage) a0-48 arg0 arg1)
+                   )
+                 )
+                ((= v1-34 array)
+                 (set! (-> arg0 length) (max (-> arg0 length) (+ s3-0 1)))
+                 (set! (-> arg0 data s3-0 name) s2-0)
+                 (+! (-> arg0 data s3-0 count) 1)
+                 (let* ((a0-53 (the-as (array object) s0-0))
+                        (v1-68 ((method-of-type (rtype-of a0-53) asize-of) a0-53))
+                        )
+                   (+! (-> arg0 data s3-0 used) v1-68)
+                   (+! (-> arg0 data s3-0 total) (logand -16 (+ v1-68 15)))
+                   )
+                 (set! sv-16 0)
+                 (while (< sv-16 (-> (the-as array s0-0) length))
+                   (let ((a0-63 (-> (the-as (array object) s0-0) sv-16)))
+                     ((method-of-type (rtype-of a0-63) mem-usage) a0-63 arg0 arg1)
+                     )
+                   (set! sv-16 (+ sv-16 1))
+                   )
+                 )
+                (else
+                  (set! (-> arg0 length) (max (-> arg0 length) (+ s3-0 1)))
+                  (set! (-> arg0 data s3-0 name) s2-0)
+                  (+! (-> arg0 data s3-0 count) 1)
+                  (let* ((a0-68 (the-as int s0-0))
+                         (v1-96 ((method-of-type (rtype-of a0-68) asize-of) a0-68))
+                         )
+                    (+! (-> arg0 data s3-0 used) v1-96)
+                    (+! (-> arg0 data s3-0 total) (logand -16 (+ v1-96 15)))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (the-as res-lump 0)
+  )
+
+;; definition for symbol *res-static-buf*, type pointer
+(define *res-static-buf* (malloc 'global 128))
+
+
+
+
+;; There are four common types of lookup:
+;; data. This is something like (pointer int32) or (inline-array vector), it should have a size.
+;; struct. This will get a GOAL struct or basic. Like a string.
+;; value. This will get a value. Possibly even a 128-bit value, though this does not appear to work properly.
+;; float. This will get a float. If the value stored is an int, it will be converted to a float.
+
+(defmacro res-lump-data (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
+  "Helper macro to get data from a res-lump without interpolation."
+  `(the-as ,type ((method-of-type res-lump get-property-data)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  (the-as pointer #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-data-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time 0.0))
+  "Helper macro to get start of data from a res-lump."
+  `(the-as ,type ((method-of-type res-lump get-property-data)
+                  ,lump
+                  ,name
+                  'exact
+                  ,time
+                  (the-as pointer #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-struct (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
+  `(the-as ,type ((method-of-type res-lump get-property-struct)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  (the-as structure #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-struct-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time 0.0))
+  `(the-as ,type ((method-of-type res-lump get-property-struct)
+                  ,lump
+                  ,name
+                  'exact
+                  ,time
+                  (the-as structure #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-value (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default (the-as uint128 0)) &key (time -1000000000.0))
+  "Helper macro to get a value from a res-lump with no interpolation."
+  `(the-as ,type ((method-of-type res-lump get-property-value)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  ,default
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-float (lump name &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default 0.0) &key (time -1000000000.0))
+  "Helper macro to get a float from a res-lump with no interpolation."
+  `((method-of-type res-lump get-property-value-float)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  ,default
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+  )
+
+

@@ -4,6 +4,7 @@
  */
 
 #include "libcdvd_ee.h"
+
 #include "common/util/Assert.h"
 
 namespace ee {

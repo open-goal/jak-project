@@ -1,6 +1,6 @@
+#include <functional>
 #include <thread>
 #include <vector>
-#include <functional>
 
 /*!
  * Very simple group of threads.

@@ -1,0 +1,1379 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: mood.gc
+;; name in dgo: mood
+;; dgos: ENGINE, GAME
+
+;; og:ignore-form:update-mood-direction
+;; og:ignore-form:(defmethod gen-lightning-and-thunder!
+;; og:ignore-form:(defmethod init-weather!
+
+(define-extern update-mood-direction (function mood-context-core3 mood-table float float))
+
+;; DECOMP BEGINS
+
+(defun palette-select-special ((arg0 mood-context-core3))
+  "Use the `special` time-of-day mode palette"
+  (dotimes (v1-0 8)
+    (if (logtest? (-> *time-of-day-context* mode) (ash 16 v1-0))
+        (set! (-> arg0 times v1-0 w) (-> *time-of-day-context* times v1-0 w))
+        (set! (-> arg0 times v1-0 w) 0.0)
+        )
+    )
+  #f
+  )
+
+(defun clear-mood-times ((arg0 mood-context))
+  "Clear all of the mood times on the given context"
+  (dotimes (v1-0 8)
+    (set! (-> arg0 times v1-0 w) 0.0)
+    )
+  #f
+  )
+
+(defun update-mood-itimes ((arg0 mood-context))
+  (local-vars
+    (v1-1 uint128)
+    (v1-2 uint128)
+    (v1-3 uint128)
+    (v1-4 uint128)
+    (a1-0 uint128)
+    (a1-1 uint128)
+    (a1-2 uint128)
+    (a1-3 uint128)
+    (a2-0 uint128)
+    (a2-1 uint128)
+    (a3-0 uint128)
+    (a3-1 uint128)
+    (t0-0 uint128)
+    (t0-1 uint128)
+    (t1-0 uint128)
+    (t1-1 uint128)
+    (t2-0 uint128)
+    (t2-1 uint128)
+    (t3-0 uint128)
+    (t3-1 uint128)
+    )
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         )
+    (nop!)
+    (nop!)
+    *time-of-day-context*
+    (nop!)
+    (.lvf vf1 (&-> arg0 times 0 quad))
+    (nop!)
+    (.lvf vf2 (&-> arg0 times 1 quad))
+    (.mul.w.vf vf1 vf1 vf1 :mask #b111)
+    (.lvf vf3 (&-> arg0 times 2 quad))
+    (.mul.w.vf vf2 vf2 vf2 :mask #b111)
+    (.lvf vf4 (&-> arg0 times 3 quad))
+    (.mul.w.vf vf3 vf3 vf3 :mask #b111)
+    (.lvf vf5 (&-> arg0 times 4 quad))
+    (.mul.w.vf vf4 vf4 vf4 :mask #b111)
+    (.lvf vf6 (&-> arg0 times 5 quad))
+    (.mul.w.vf vf5 vf5 vf5 :mask #b111)
+    (.lvf vf7 (&-> arg0 times 6 quad))
+    (.mul.w.vf vf6 vf6 vf6 :mask #b111)
+    (.lvf vf8 (&-> arg0 times 7 quad))
+    (.mul.w.vf vf7 vf7 vf7 :mask #b111)
+    (nop!)
+    (.mul.w.vf vf8 vf8 vf8 :mask #b111)
+    (nop!)
+    (vftoi12.xyzw vf1 vf1)
+    (nop!)
+    (vftoi12.xyzw vf2 vf2)
+    (nop!)
+    (vftoi12.xyzw vf3 vf3)
+    (nop!)
+    (vftoi12.xyzw vf4 vf4)
+    (nop!)
+    (vftoi12.xyzw vf5 vf5)
+    (nop!)
+    (vftoi12.xyzw vf6 vf6)
+    (nop!)
+    (vftoi12.xyzw vf7 vf7)
+    (nop!)
+    (vftoi12.xyzw vf8 vf8)
+    (nop!)
+    (.mov v1-1 vf1)
+    (nop!)
+    (.mov a1-0 vf2)
+    (nop!)
+    (.mov a2-0 vf3)
+    (.pw.sra v1-2 v1-1 6)
+    (.mov a3-0 vf4)
+    (.pw.sra a1-1 a1-0 6)
+    (.mov t0-0 vf5)
+    (.pw.sra a2-1 a2-0 6)
+    (.mov t1-0 vf6)
+    (.pw.sra a3-1 a3-0 6)
+    (.mov t2-0 vf7)
+    (.pw.sra t0-1 t0-0 6)
+    (.mov t3-0 vf8)
+    (.pw.sra t1-1 t1-0 6)
+    (.pw.sra t2-1 t2-0 6)
+    (nop!)
+    (.pw.sra t3-1 t3-0 6)
+    (nop!)
+    (.ppach v1-3 a1-1 v1-2)
+    (nop!)
+    (.ppach a1-2 a3-1 a2-1)
+    (set! (-> arg0 itimes 0 quad) v1-3)
+    (.ppach v1-4 t1-1 t0-1)
+    (set! (-> arg0 itimes 1 quad) a1-2)
+    (.ppach a1-3 t3-1 t2-1)
+    (set! (-> arg0 itimes 2 quad) v1-4)
+    (nop!)
+    (set! (-> arg0 itimes 3 quad) a1-3)
+    0
+    (none)
+    )
+  )
+
+(defun update-mood-direction ((arg0 mood-context-core3) (arg1 mood-table) (arg2 float))
+  (local-vars (sv-16 light-group))
+  (let* ((v1-0 (-> arg1 mood-channel-group))
+         (a2-1 (-> arg1 mood-direction-table))
+         (a3-0 (the int arg2))
+         (t0-1 (mod (+ a3-0 1) 24))
+         (f0-3 (- arg2 (the float a3-0)))
+         (f1-3 (- 1.0 f0-3))
+         (t1-0 0)
+         (a1-3 (-> arg0 light-group))
+         )
+    (set! sv-16 (-> arg0 light-group 1))
+    (set! (-> a1-3 0 ambi extra x) 1.0)
+    (set! (-> a1-3 0 dir0 extra x) 0.0)
+    (set! (-> a1-3 0 dir1 extra x) 0.0)
+    (set! (-> a1-3 0 dir2 extra x) 0.0)
+    (dotimes (t2-2 4)
+      (let ((f2-6 (+ (* f1-3 (-> (the-as (pointer float) (+ (+ (* a3-0 4) (* 96 t2-2)) (the-as int v1-0)))))
+                     (* f0-3 (-> (the-as (pointer float) (+ (+ (* t0-1 4) (* 96 t2-2)) (the-as int v1-0)))))
+                     )
+                  )
+            )
+        (when (!= f2-6 0.0)
+          (set! (-> a1-3 0 lights t1-0 extra x) f2-6)
+          (set! (-> a1-3 0 lights t1-0 mask) (the-as uint (ash 2 t2-2)))
+          (set! (-> a1-3 0 lights t1-0 palette-index) (+ t2-2 1))
+          (set! (-> a1-3 0 lights t1-0 direction quad) (-> a2-1 data t2-2 quad))
+          (set! (-> (the-as (pointer uint128) (+ (the-as uint (-> a1-3 0 dir0 color)) (* 48 t1-0))))
+                (-> arg0 times (+ t2-2 1) quad)
+                )
+          (set! (-> arg0 times (+ t2-2 1) w) f2-6)
+          (+! t1-0 1)
+          )
+        )
+      )
+    (set! (-> a1-3 0 ambi mask) (the-as uint 1))
+    (set! (-> a1-3 0 ambi palette-index) 0)
+    (mem-copy! (the-as pointer sv-16) (the-as pointer a1-3) 192)
+    )
+  (let ((f0-4 1.0))
+    (let ((f1-4 1.1))
+      (cond
+        ((or (>= 6.0 arg2) (>= arg2 18.0))
+         (set! f0-4 f1-4)
+         )
+        ((and (< 6.0 arg2) (< arg2 7.0))
+         (+! f0-4 (* (- f1-4 f0-4) (- 7.0 arg2)))
+         )
+        ((and (< 17.0 arg2) (< arg2 18.0))
+         (+! f0-4 (* (- f1-4 f0-4) (+ -17.0 arg2)))
+         )
+        )
+      )
+    (set! (-> sv-16 dir0 extra x) (* (-> sv-16 dir0 extra x) f0-4))
+    (set! (-> sv-16 dir1 extra x) (* (-> sv-16 dir1 extra x) f0-4))
+    (set! (-> sv-16 dir2 extra x) (* (-> sv-16 dir2 extra x) f0-4))
+    )
+  )
+(defun update-mood-exterior ((arg0 mood-context-core3) (arg1 mood-table) (arg2 float) (arg3 int))
+  (local-vars (v0-1 object) (sv-32 mood-color) (sv-48 mood-color) (sv-64 vector))
+  (cond
+    ((< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+     (palette-select-special arg0)
+     )
+    (else
+      0
+      0
+      0.0
+      (let* ((v1-3 (the int arg2))
+             (f0-4 (- arg2 (the float v1-3)))
+             (f1-3 (- 1.0 f0-4))
+             (a0-6 (/ v1-3 24))
+             (v1-7 (-> arg1 mood-interp-table hour (- v1-3 (* 24 a0-6))))
+             (s3-0 (-> v1-7 snapshot1))
+             (s2-0 (-> v1-7 snapshot2))
+             (f30-0 (+ (* f1-3 (-> v1-7 morph-start)) (* f0-4 (-> v1-7 morph-end))))
+             )
+        (set! v0-1
+              (cond
+                ((and (-> *level* level arg3 bsp)
+                      (nonzero? (-> *level* level arg3 bsp))
+                      (not (-> *level* level arg3 bsp ambients))
+                      )
+                 (set! v0-1 (-> arg0 times))
+                 (set! (-> (the-as (inline-array vector) v0-1) 0 x) 1.0)
+                 (set! (-> (the-as (inline-array vector) v0-1) 0 y) 1.0)
+                 (set! (-> (the-as (inline-array vector) v0-1) 0 z) 1.0)
+                 (set! (-> (the-as (inline-array vector) v0-1) 0 w) 1.0)
+                 v0-1
+                 )
+                ((= s3-0 s2-0)
+                 (let ((a2-1 (-> arg1 mood-color-table data s3-0))
+                       (v1-26 (-> arg0 times))
+                       (a1-2 (-> arg0 times 1))
+                       (a0-16 (-> arg0 light-group))
+                       )
+                   (set! (-> v1-26 0 quad) (-> a2-1 amb-color quad))
+                   (set! (-> a1-2 quad) (-> a2-1 lgt-color quad))
+                   (set! (-> arg0 times 2 quad) (-> a1-2 quad))
+                   (set! (-> arg0 times 3 quad) (-> a1-2 quad))
+                   (set! (-> arg0 times 4 quad) (-> a1-2 quad))
+                   (set! (-> a0-16 0 ambi color quad) (-> v1-26 0 quad))
+                   )
+                 (set! (-> arg0 current-sky-color quad) (-> arg1 mood-sky-table data s3-0 quad))
+                 (mem-copy! (the-as pointer (-> arg0 current-fog)) (the-as pointer (-> arg1 mood-fog-table data s3-0)) 48)
+                 )
+                (else
+                  (set! sv-32 (-> arg1 mood-color-table data s3-0))
+                  (set! sv-48 (-> arg1 mood-color-table data s2-0))
+                  (let ((s1-0 (-> arg0 times)))
+                    (set! sv-64 (-> arg0 times 1))
+                    (let ((s0-0 (-> arg0 light-group)))
+                      (vector4-lerp! (the-as vector s1-0) (-> sv-32 amb-color) (-> sv-48 amb-color) f30-0)
+                      (vector4-lerp! sv-64 (-> sv-32 lgt-color) (-> sv-48 lgt-color) f30-0)
+                      (set! (-> arg0 times 2 quad) (-> sv-64 quad))
+                      (set! (-> arg0 times 3 quad) (-> sv-64 quad))
+                      (set! (-> arg0 times 4 quad) (-> sv-64 quad))
+                      (set! (-> s0-0 0 ambi color quad) (-> s1-0 0 quad))
+                      )
+                    )
+                  (vector4-lerp!
+                    (-> arg0 current-sky-color)
+                    (-> arg1 mood-sky-table data s3-0)
+                    (-> arg1 mood-sky-table data s2-0)
+                    f30-0
+                    )
+                  (vector4-array-lerp!
+                    (the-as (inline-array vector4) (-> arg0 current-fog))
+                    (the-as (inline-array vector4) (-> arg1 mood-fog-table data s3-0))
+                    (the-as (inline-array vector4) (-> arg1 mood-fog-table data s2-0))
+                    f30-0
+                    3
+                    )
+                  )
+                )
+              )
+        )
+      (set-vector! (-> arg0 current-prt-color) 0.0 0.0 0.0 0.0)
+      (set-vector! (-> arg0 current-env-color) 0.0 0.0 0.0 0.0)
+      (let ((f0-18 (-> *mood-control* lightning-flash))
+            (a0-36 (-> *mood-control* lightning-index))
+            )
+        (when (and (!= f0-18 0.0) (< a0-36 4))
+          (let ((v1-64 (new 'stack-no-clear 'vector))
+                (a0-40 (-> arg0 times (+ a0-36 1)))
+                )
+            (set-vector! v1-64 f0-18 f0-18 f0-18 0.0)
+            (vector+! a0-40 a0-40 v1-64)
+            )
+          )
+        )
+      (update-mood-direction arg0 arg1 arg2)
+      )
+    )
+  )
+
+(defun copy-mood-exterior ((arg0 mood-context))
+  (set! (-> *time-of-day-context* exterior-level) (the-as basic #t))
+  (cond
+    ((< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+     (palette-select-special arg0)
+     )
+    (else
+      (let ((v1-2 (the-as object arg0))
+            (a1-4 (the-as (inline-array vector) (-> *level* default-level mood-context)))
+            )
+        (dotimes (a2-0 31)
+          (set! (-> (the-as (inline-array vector) v1-2) 0 quad) (-> a1-4 0 quad))
+          (set! v1-2 (-> (the-as (inline-array vector) v1-2) 1))
+          (set! a1-4 (the-as (inline-array vector) (-> a1-4 1)))
+          )
+        )
+      (let ((v1-5 (-> arg0 times))
+            (a0-2 (-> *level* default-level mood-context times))
+            )
+        (dotimes (a1-6 5)
+          (set! (-> v1-5 0 quad) (-> a0-2 0 quad))
+          (set! v1-5 (the-as (inline-array vector) (-> v1-5 1)))
+          (set! a0-2 (the-as (inline-array vector) (-> a0-2 1)))
+          )
+        )
+      #f
+      )
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defun copy-mood-exterior-ambi ((arg0 mood-context) (arg1 symbol))
+  (cond
+    ((< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+     (palette-select-special arg0)
+     )
+    (else
+      (let ((v1-1 arg0)
+            (a2-3 (the-as structure (-> *level* default-level mood-context)))
+            )
+        (dotimes (a3-0 31)
+          (set! (-> v1-1 current-fog fog-color quad) (-> (the-as mood-context a2-3) current-fog fog-color quad))
+          (set! v1-1 (the-as mood-context (-> v1-1 current-fog fog-dists)))
+          (set! a2-3 (-> (the-as mood-context a2-3) current-fog fog-dists))
+          )
+        )
+      (set! (-> arg0 times 0 quad) (-> *level* default-level mood-context times 0 quad))
+      (when arg1
+        (set! (-> arg0 times 1 quad) (-> *level* default-level mood-context times 1 quad))
+        (set! (-> arg0 times 1 w) 1.0)
+        )
+      )
+    )
+  (none)
+  )
+
+(defun clear-mood-context ((arg0 mood-context))
+  (let ((v1-0 arg0))
+    (dotimes (a1-0 123)
+      (set! (-> v1-0 data a1-0) (the-as uint128 0))
+      )
+    )
+  (dotimes (v1-3 8)
+    (set-vector! (-> arg0 times v1-3) 1.0 1.0 1.0 0.0)
+    )
+  #f
+  )
+
+(defun update-mood-interior ((arg0 mood-context))
+  (let ((v1-0 (-> arg0 light-group)))
+    (set! (-> arg0 current-fog fog-color quad) (-> *level* default-level mood-context current-fog fog-color quad))
+    (set-vector! (-> arg0 current-fog fog-dists) 98304.0 3072000.0 255.0 150.0)
+    (set-vector! (-> arg0 current-fog erase-color) 0.0 0.0 0.0 128.0)
+    (set-vector! (-> arg0 current-prt-color) 0.0 0.0 0.0 0.0)
+    (set-vector! (-> arg0 current-env-color) 96.0 96.0 96.0 128.0)
+    (set-vector! (-> arg0 current-sky-color) 0.0 0.0 0.0 1.0)
+    (let ((a0-2 (-> v1-0 0)))
+      (set! (-> a0-2 dir0 direction x) 0.0)
+      (set! (-> a0-2 dir0 direction y) 1.0)
+      (set! (-> a0-2 dir0 direction z) 0.0)
+      (set! (-> a0-2 dir0 direction w) 0.0)
+      )
+    (set-vector! (-> v1-0 0 dir0 color) 0.667 0.667 0.667 1.0)
+    (set-vector! (-> v1-0 0 ambi color) 0.333 0.333 0.333 1.0)
+    (set! (-> v1-0 0 dir0 extra x) 1.0)
+    (set! (-> v1-0 0 dir1 extra x) 0.0)
+    (set! (-> v1-0 0 dir2 extra x) 0.0)
+    (set! (-> v1-0 0 ambi extra x) 1.0)
+    )
+  )
+
+(deftype flames-state (structure)
+  ((time   float  :offset-assert   0)
+   (index  uint8  :offset-assert   4)
+   (length uint8  :offset-assert   5)
+   (height uint8  :offset-assert   6)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x7
+  :flag-assert         #x900000007
+  )
+
+
+(defbehavior update-mood-flames time-of-day-proc ((arg0 mood-context) (arg1 int) (arg2 int) (arg3 int) (arg4 float) (arg5 float) (arg6 float))
+  (let* ((gp-0 (the-as flames-state (+ (+ arg3 1840) (the-as int arg0))))
+         (s4-0 (+ (-> gp-0 index) arg1))
+         (f0-0 (-> gp-0 time))
+         (v1-2 (-> gp-0 length))
+         (s0-0 (-> gp-0 height))
+         )
+    (dotimes (a0-1 arg2)
+      (set! (-> arg0 times (+ arg1 a0-1) w) arg4)
+      )
+    (cond
+      ((>= f0-0 (the float v1-2))
+       (set! (-> gp-0 index) (the-as uint (the int (rand-vu-float-range 0.0 (+ -0.01 (the float arg2))))))
+       (set! (-> gp-0 time) 0.0)
+       (set! (-> gp-0 length) (the-as uint (the int (* (rand-vu-float-range 7.0 15.0) arg6))))
+       (set! (-> gp-0 height) (the-as uint (the int (rand-vu-float-range 0.0 255.0))))
+       (set! (-> arg0 times s4-0 w) arg4)
+       )
+      (else
+        (let ((f0-14 (sin (* 32768.0 (/ f0-0 (the float v1-2))))))
+          (set! (-> arg0 times s4-0 w) (+ (* (the float s0-0) f0-14 arg5) arg4))
+          )
+        (if (not (paused?))
+            (set! (-> gp-0 time) (+ (-> gp-0 time) (if (= (-> *display* bg-clock clock-ratio) 0.0)
+                                                       1.0
+                                                       (-> self clock time-adjust-ratio)
+                                                       )
+                                    )
+                  )
+            )
+        )
+      )
+    )
+  )
+
+(define *flash0*
+  (new 'static 'boxed-array :type float 1.0 0.0 0.5 1.0 0.5 0.0 0.5 0.35 0.4 0.35 0.25 0.1 0.04)
+  )
+
+(define *flash1* (new 'static 'boxed-array :type float 1.0 0.8 0.0 1.0 0.5 1.0 0.4 0.2 0.1))
+
+(define *flash2* (new 'static 'boxed-array :type float 1.0 0.9 0.8 0.7 0.0 0.0 1.0 0.0 1.0 0.5))
+
+(define *flash3* (new 'static 'boxed-array :type float 0.5 0.0 1.0 0.9 1.0 0.8 0.3 0.0 0.0 0.5 0.1 0.5 0.35))
+
+(define *flash4*
+  (new 'static 'boxed-array :type float 1.0 0.0 1.0 0.0 1.0 0.9 0.8 0.7 0.6 0.5 0.4 0.3 0.2 0.5 0.4 0.3 0.2 0.1)
+  )
+
+(define *flash5* (new 'static 'boxed-array :type float
+                   1.0
+                   0.0
+                   1.0
+                   0.0
+                   1.0
+                   0.95
+                   0.9
+                   0.85
+                   0.8
+                   0.75
+                   0.7
+                   0.65
+                   0.6
+                   0.55
+                   0.5
+                   0.45
+                   0.4
+                   0.35
+                   0.3
+                   0.25
+                   0.2
+                   0.5
+                   0.45
+                   0.4
+                   0.35
+                   0.3
+                   0.25
+                   0.2
+                   0.15
+                   0.1
+                   0.05
+                   )
+        )
+
+(define *flash6*
+  (new 'static 'boxed-array :type float 1.0 0.0 1.0 0.0 0.5 0.0 0.5 0.35 0.0 0.0 1.0 0.0 0.2 0.1)
+  )
+
+(define *flash7*
+  (new 'static 'boxed-array :type float 1.0 0.8 0.3 0.0 0.6 0.5 0.4 0.3 0.2 0.5 0.4 0.3 0.2 0.1)
+  )
+
+(deftype light-state (structure)
+  ((time float  :offset-assert   0)
+   (fade float  :offset-assert   4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+
+(defun update-mood-light ((arg0 mood-context) (arg1 int) (arg2 int) (arg3 float) (arg4 float) (arg5 float) (arg6 float) (arg7 float))
+  (with-pp
+    (let ((gp-0 (the-as light-state (+ (+ arg2 1840) (the-as int arg0)))))
+      (let* ((f0-0 512.0)
+             (f1-1 (+ (-> gp-0 time) arg6))
+             (f28-0 (* f0-0 (- f1-1 (* (the float (the int (/ f1-1 256.0))) 256.0))))
+             (f0-3 (+ arg3 (* (cos f28-0) arg4)))
+             (f30-1 (-> gp-0 fade))
+             )
+        (cond
+          ((or (>= arg5 18.0) (>= 6.0 arg5))
+           (cond
+             ((< f28-0 3640.889)
+              (set! (-> arg0 times arg1 w) f0-3)
+              (set! (-> gp-0 fade) 1.0)
+              )
+             ((= f30-1 1.0)
+              (set! (-> arg0 times arg1 w) f0-3)
+              )
+             )
+           )
+          ((= f30-1 1.0)
+           (cond
+             ((< f28-0 3640.889)
+              (set! (-> arg0 times arg1 w) f0-3)
+              (set! (-> gp-0 fade) 0.99)
+              )
+             (else
+               (set! (-> arg0 times arg1 w) f0-3)
+               )
+             )
+           )
+          ((and (< f30-1 1.0) (< 0.0 f30-1))
+           (set! (-> arg0 times arg1 w) f30-1)
+           (when (not (paused?))
+             (if (< 0.75 f30-1)
+                 (set! (-> gp-0 fade) (- (-> gp-0 fade) (* 0.04 (-> pp clock time-adjust-ratio))))
+                 (set! (-> gp-0 fade) (- (-> gp-0 fade) (* 0.02 (-> pp clock time-adjust-ratio))))
+                 )
+             )
+           )
+          (else
+            (set! (-> gp-0 fade) 0.0)
+            (set! (-> gp-0 time) 0.0)
+            )
+          )
+        )
+      (when (not (paused?))
+        (let ((f0-15 (-> gp-0 time)))
+          (set! arg7 (cond
+                       ((= (-> *display* bg-clock clock-ratio) 0.0)
+                        (empty)
+                        arg7
+                        )
+                       (else
+                         (* arg7 (-> pp clock time-adjust-ratio))
+                         )
+                       )
+                )
+          (set! (-> gp-0 time) (+ f0-15 arg7))
+          )
+        )
+      )
+    )
+  )
+
+(deftype lava-state (structure)
+  ((lava float  :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+
+(defun update-mood-lava ((arg0 mood-context) (arg1 int) (arg2 int) (arg3 float) (arg4 float) (arg5 float) (arg6 float) (arg7 float))
+  "Unused"
+  (let ((gp-0 (the-as lava-state (+ (+ arg2 1840) (the-as int arg0)))))
+    (let ((f0-1 (cos (-> gp-0 lava))))
+      (set! (-> arg0 times arg1 w) (+ arg3 (* f0-1 arg4)))
+      (set! (-> arg0 times (+ arg1 1) w) (+ arg3 (* (- f0-1) arg4)))
+      )
+    (if (not (paused?))
+        (set! (-> gp-0 lava) (+ (-> gp-0 lava) arg5))
+        )
+    )
+  )
+
+(deftype flicker-state (structure)
+  ((flicker-off uint8  :offset-assert   0)
+   (flicker-on  uint8  :offset-assert   1)
+   )
+  :method-count-assert 9
+  :size-assert         #x2
+  :flag-assert         #x900000002
+  )
+
+
+(defun update-mood-flicker ((arg0 mood-context) (arg1 int) (arg2 int))
+  "Unused"
+  (let ((gp-0 (the-as flicker-state (+ (+ arg2 1840) (the-as int arg0)))))
+    (cond
+      ((nonzero? (-> gp-0 flicker-on))
+       (set! (-> arg0 times arg1 w) 1.0)
+       (if (not (paused?))
+           (+! (-> gp-0 flicker-on) -1)
+           )
+       )
+      ((nonzero? (-> gp-0 flicker-off))
+       (if (not (paused?))
+           (+! (-> gp-0 flicker-off) -1)
+           )
+       )
+      (else
+        (set! (-> gp-0 flicker-on) (the-as uint (the int (rand-vu-float-range 2.0 20.0))))
+        (if (zero? (the int (rand-vu-float-range 0.0 3.0)))
+            (set! (-> gp-0 flicker-off) (the-as uint (the int (rand-vu-float-range 2.0 120.0))))
+            (set! (-> gp-0 flicker-off) (the-as uint (the int (rand-vu-float-range 2.0 20.0))))
+            )
+        )
+      )
+    )
+  (none)
+  )
+
+(deftype florescent-state (structure)
+  ((value  float  :offset-assert   0)
+   (delay  int8   :offset-assert   4)
+   (delay2 int8   :offset-assert   5)
+   )
+  :method-count-assert 9
+  :size-assert         #x6
+  :flag-assert         #x900000006
+  )
+
+
+(defun update-mood-florescent ((arg0 mood-context) (arg1 int) (arg2 int))
+  "Unused"
+  (let ((gp-0 (the-as florescent-state (+ (+ arg2 1840) (the-as int arg0)))))
+    (set! (-> arg0 times arg1 w) (-> gp-0 value))
+    (when (not (paused?))
+      (cond
+        ((zero? (-> gp-0 delay))
+         (set! (-> gp-0 delay2) (the int (rand-vu-float-range 10.0 60.0)))
+         (set! (-> gp-0 delay) (the int (rand-vu-float-range 60.0 120.0)))
+         )
+        (else
+          (+! (-> gp-0 delay) -1)
+          )
+        )
+      (cond
+        ((>= (-> gp-0 delay2) (-> gp-0 delay))
+         (set! (-> gp-0 value) (rand-vu-float-range 1.0 1.5))
+         )
+        ((< (-> gp-0 delay2) (-> gp-0 delay))
+         (set! (-> gp-0 value) 1.5)
+         )
+        )
+      )
+    )
+  )
+
+(deftype electricity-state (structure)
+  ((value float  :offset-assert   0)
+   (scale float  :offset-assert   4)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+
+;; WARN: Return type mismatch float vs none.
+(defun update-mood-electricity ((arg0 mood-context) (arg1 int) (arg2 int) (arg3 float) (arg4 float))
+  (let ((gp-0 (the-as electricity-state (+ (+ arg2 1840) (the-as int arg0)))))
+    (set! (-> arg0 times arg1 w) (* (-> gp-0 value) (-> gp-0 scale)))
+    (if (not (paused?))
+        (set! (-> gp-0 value) (rand-vu-float-range arg3 arg4))
+        )
+    )
+  (none)
+  )
+
+(deftype pulse-state (structure)
+  ((pulse float  :offset-assert   0)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+
+;; WARN: Return type mismatch float vs none.
+(defun update-mood-pulse ((arg0 mood-context) (arg1 int) (arg2 int) (arg3 float) (arg4 float) (arg5 float) (arg6 float))
+  (let ((gp-0 (the-as pulse-state (+ (+ arg2 1840) (the-as int arg0)))))
+    (set! (-> arg0 times arg1 w) (+ arg3 (* (cos (+ (-> gp-0 pulse) arg6)) arg4)))
+    (if (not (paused?))
+        (+! (-> gp-0 pulse) arg5)
+        )
+    )
+  (none)
+  )
+
+(deftype strobe-state (structure)
+  ((time float  :offset-assert   0)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+
+(defun update-mood-strobe ((arg0 mood-context) (arg1 int) (arg2 int) (arg3 int) (arg4 float))
+  (let ((gp-0 (the-as strobe-state (+ (+ arg2 1840) (the-as int arg0)))))
+    (let ((a2-1 (the int (-> gp-0 time))))
+      (if (logtest? arg3 (ash 1 a2-1))
+          (set! (-> arg0 times arg1 w) 1.0)
+          (set! (-> arg0 times arg1 w) 0.3)
+          )
+      )
+    (when (not (paused?))
+      (let ((f0-5 (+ (-> gp-0 time) arg4)))
+        (set! (-> gp-0 time) (- f0-5 (* (the float (the int (/ f0-5 32.0))) 32.0)))
+        )
+      )
+    )
+  )
+
+(defun update-mood-caustics ((arg0 mood-context) (arg1 int) (arg2 float) (arg3 float) (arg4 float) (arg5 float))
+  (let ((f0-2 (sin (+ arg2 arg3))))
+    (set! (-> arg0 times arg1 w) (+ arg4 (* f0-2 arg5)))
+    )
+  )
+
+(defmethod apply-mood-clouds-and-fog mood-control ((obj mood-control) (arg0 mood-control-work))
+  (let ((v1-0 (-> obj mood-fog-table)))
+    (dotimes (a0-1 24)
+      (set! (-> v1-0 data-raw a0-1) (the-as uint128 0))
+      )
+    )
+  (let ((s4-0 (-> obj mood-fog-table)))
+    (let ((f30-0 (- 1.0 (-> arg0 interp cloud))))
+      (when (!= f30-0 0.0)
+        (let ((f0-4 (* (- 1.0 (-> arg0 interp fog)) f30-0))
+              (a2-0 (-> obj fogs (-> arg0 index 0)))
+              )
+          (if (!= f0-4 0.0)
+              (vector4-array-madd!
+                (the-as (inline-array vector4) s4-0)
+                (the-as (inline-array vector4) s4-0)
+                (the-as (inline-array vector4) a2-0)
+                f0-4
+                24
+                )
+              )
+          )
+        (let ((f0-6 (* (-> arg0 interp fog) f30-0))
+              (a2-1 (-> obj fogs (-> arg0 index 1)))
+              )
+          (if (!= f0-6 0.0)
+              (vector4-array-madd!
+                (the-as (inline-array vector4) s4-0)
+                (the-as (inline-array vector4) s4-0)
+                (the-as (inline-array vector4) a2-1)
+                f0-6
+                24
+                )
+              )
+          )
+        )
+      )
+    (let ((f30-1 (-> arg0 interp cloud)))
+      (when (!= f30-1 0.0)
+        (let ((f0-10 (* (- 1.0 (-> arg0 interp fog)) f30-1))
+              (a2-2 (-> obj fogs (-> arg0 index 2)))
+              )
+          (if (!= f0-10 0.0)
+              (vector4-array-madd!
+                (the-as (inline-array vector4) s4-0)
+                (the-as (inline-array vector4) s4-0)
+                (the-as (inline-array vector4) a2-2)
+                f0-10
+                24
+                )
+              )
+          )
+        (let ((f0-12 (* (-> arg0 interp fog) f30-1))
+              (a2-3 (-> obj fogs (-> arg0 index 3)))
+              )
+          (if (!= f0-12 0.0)
+              (vector4-array-madd!
+                (the-as (inline-array vector4) s4-0)
+                (the-as (inline-array vector4) s4-0)
+                (the-as (inline-array vector4) a2-3)
+                f0-12
+                24
+                )
+              )
+          )
+        )
+      )
+    )
+  (let ((f0-13 (-> *time-of-day-context* fog-mult))
+        (v1-29 (-> obj mood-fog-table))
+        )
+    (dotimes (a0-6 8)
+      (set! (-> v1-29 data a0-6 fog-dists y) (* (-> v1-29 data a0-6 fog-dists y) f0-13))
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod apply-mood-color mood-control ((obj mood-control) (arg0 mood-control-work))
+  (let ((v1-0 (-> obj mood-color-table)))
+    (dotimes (a0-1 16)
+      (set! (-> v1-0 data-raw a0-1) (the-as uint128 0))
+      )
+    )
+  (let ((s4-0 (-> obj mood-color-table)))
+    (let ((f0-1 (- 1.0 (-> arg0 color-interp)))
+          (a2-0 (-> obj colors (-> arg0 color-index 0)))
+          )
+      (if (!= f0-1 0.0)
+          (vector4-array-madd!
+            (the-as (inline-array vector4) s4-0)
+            (the-as (inline-array vector4) s4-0)
+            (the-as (inline-array vector4) a2-0)
+            f0-1
+            16
+            )
+          )
+      )
+    (let ((f0-2 (-> arg0 color-interp))
+          (a2-1 (-> obj colors (-> arg0 color-index 1)))
+          )
+      (if (!= f0-2 0.0)
+          (vector4-array-madd!
+            (the-as (inline-array vector4) s4-0)
+            (the-as (inline-array vector4) s4-0)
+            (the-as (inline-array vector4) a2-1)
+            f0-2
+            16
+            )
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod apply-mood-channels mood-control ((obj mood-control) (arg0 mood-control-work))
+  (let ((v1-0 (-> obj mood-channel-group)))
+    (dotimes (a0-1 24)
+      (set! (-> v1-0 data 0 vecs a0-1 quad) (the-as uint128 0))
+      )
+    )
+  (let ((s4-0 (-> obj mood-channel-group)))
+    (let ((f0-1 (- 1.0 (-> arg0 channel-interp)))
+          (a2-0 (-> obj channels (-> arg0 channel-index 0)))
+          )
+      (if (!= f0-1 0.0)
+          (vector4-array-madd!
+            (the-as (inline-array vector4) s4-0)
+            (the-as (inline-array vector4) s4-0)
+            (the-as (inline-array vector4) a2-0)
+            f0-1
+            24
+            )
+          )
+      )
+    (let ((f0-2 (-> arg0 channel-interp))
+          (a2-1 (-> obj channels (-> arg0 channel-index 1)))
+          )
+      (if (!= f0-2 0.0)
+          (vector4-array-madd!
+            (the-as (inline-array vector4) s4-0)
+            (the-as (inline-array vector4) s4-0)
+            (the-as (inline-array vector4) a2-1)
+            f0-2
+            24
+            )
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod adjust-num-clouds! mood-control ((obj mood-control) (arg0 mood-control-work))
+  (let ((v1-0 (-> obj mood-clouds)))
+    (set! (-> v1-0 cloud-min) 0.0)
+    (set! (-> v1-0 cloud-max) 0.0)
+    (let ((f0-3 (- 1.0 (-> arg0 cloud-interp)))
+          (a2-4 (-> obj clouds (-> arg0 cloud-index 0)))
+          )
+      (when (!= f0-3 0.0)
+        (set! (-> v1-0 cloud-min) (* (-> a2-4 cloud-min) f0-3))
+        (set! (-> v1-0 cloud-max) (* (-> a2-4 cloud-max) f0-3))
+        )
+      )
+    (let ((f0-5 (-> arg0 cloud-interp))
+          (a0-2 (-> obj clouds (-> arg0 cloud-index 1)))
+          )
+      (when (!= f0-5 0.0)
+        (+! (-> v1-0 cloud-min) (* (-> a0-2 cloud-min) f0-5))
+        (+! (-> v1-0 cloud-max) (* (-> a0-2 cloud-max) f0-5))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch int vs sound-id.
+(defmethod play-or-stop-lightning! mood-control ((obj mood-control) (arg0 sound-spec) (arg1 vector))
+  "Handles playing/stopping of the lightning sound
+- Plays the lightning sound if we are not loading and `lightning-id` is zero
+- Stops the lightning sound first if `lightning-id` is non-zero
+Returns the current value of `lightning-id`"
+  (vector+! (new 'stack-no-clear 'vector) arg1 (math-camera-pos))
+  (the-as sound-id (cond
+                     ((or (load-in-progress? *level*) (movie?))
+                      (the-as sound-id (when (nonzero? (-> obj lightning-id))
+                                         (sound-stop (-> obj lightning-id))
+                                         (set! (-> obj lightning-id) (new 'static 'sound-id))
+                                         (new 'static 'sound-id)
+                                         )
+                              )
+                      )
+                     (else
+                       (when (nonzero? (-> obj lightning-id))
+                         (sound-stop (-> obj lightning-id))
+                         (set! (-> obj lightning-id) (new 'static 'sound-id))
+                         0
+                         )
+                       (let ((lightning-sound-id (sound-play-by-spec arg0 (new-sound-id) arg1)))
+                         (set! (-> obj lightning-id) lightning-sound-id)
+                         lightning-sound-id
+                         )
+                       )
+                     )
+          )
+  )
+
+;; definition for method 17 of type mood-control
+;; INFO: Used lq/sq
+;; WARN: disable def twice: 141. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod gen-lightning-and-thunder! mood-control ((obj mood-control))
+  (local-vars (a1-1 (array float)))
+  (with-pp
+    (let ((v1-3 (-> obj mood-channel-group data (-> obj lightning-index) vecs))
+          (a1-0 (-> obj lightning-val))
+          (a0-4 (/ (-> obj lightning-time) 2))
+          (f0-0 (-> obj lightning-time2))
+          )
+      (set! (-> obj lightning-flash) 0.0)
+      (cond
+        ((>= 0.0 f0-0)
+         (cond
+           ((zero? a1-0)
+            (set! a1-1 *flash0*)
+            )
+           ((= a1-0 1)
+            (set! a1-1 *flash1*)
+            )
+           ((= a1-0 2)
+            (set! a1-1 *flash2*)
+            )
+           ((= a1-0 3)
+            (set! a1-1 *flash3*)
+            )
+           ((= a1-0 4)
+            (set! a1-1 *flash4*)
+            )
+           ((= a1-0 5)
+            (set! a1-1 *flash5*)
+            )
+           ((= a1-0 6)
+            (set! a1-1 *flash6*)
+            )
+           (else
+             (set! a1-1 *flash7*)
+             )
+           )
+         (cond
+           ((< a0-4 (-> a1-1 length))
+            (let ((f30-0 (-> a1-1 a0-4))
+                  (s5-0 (new 'stack-no-clear 'vector))
+                  )
+              (cond
+                ((= (-> obj lightning-index) 4)
+                 (set! (-> obj lightning-flash) f30-0)
+                 )
+                ((= (-> obj lightning-index) 5)
+                 (set! (-> obj lightning-flash) f30-0)
+                 (dotimes (s4-0 8)
+                   (set-vector! s5-0 255.0 255.0 255.0 128.0)
+                   (vector4-lerp!
+                     (the-as vector (-> obj mood-fog-table data s4-0))
+                     (the-as vector (-> obj mood-fog-table data s4-0))
+                     s5-0
+                     f30-0
+                     )
+                   )
+                 )
+                (else
+                  (set! (-> obj lightning-flash) (* 1.9921875 f30-0))
+                  (set-vector! (-> v1-3 0) 1.0 1.0 1.0 1.0)
+                  (set! (-> v1-3 1 quad) (-> v1-3 0 quad))
+                  (set! (-> v1-3 2 quad) (-> v1-3 0 quad))
+                  (set! (-> v1-3 3 quad) (-> v1-3 0 quad))
+                  (set! (-> v1-3 4 quad) (-> v1-3 0 quad))
+                  (set! (-> v1-3 5 quad) (-> v1-3 0 quad))
+                  )
+                )
+              )
+            (when (not (paused?))
+              (let ((v0-2 (the-as number (+ (-> obj lightning-time) 1))))
+                (set! (-> obj lightning-time) (the-as int v0-2))
+                v0-2
+                )
+              )
+            )
+           ((and (level-get-target-inside *level*) (= (-> (level-get-target-inside *level*) name) 'nest))
+            (set! (-> obj lightning-time2) (rand-vu-float-range 3.0 5.0))
+            )
+           (else
+             (set! (-> obj lightning-time2) (rand-vu-float-range 15.0 20.0))
+             )
+           )
+         )
+        (else
+          (when (not (paused?))
+            (set! (-> obj lightning-time2) (- (-> obj lightning-time2) (-> pp clock seconds-per-frame)))
+            (when (>= 0.0 (-> obj lightning-time2))
+              (set! (-> obj lightning-index) (mod (the-as int (rand-uint31-gen *random-generator*)) 6))
+              (set! (-> obj lightning-val) (the-as int (logand (rand-uint31-gen *random-generator*) 7)))
+              (set! (-> obj lightning-time) 0)
+              (cond
+                ((zero? (-> obj lightning-index))
+                 (play-or-stop-lightning!
+                   obj
+                   (static-sound-spec "thunder-b")
+                   (new 'static 'vector :x 37109760.0 :y 16261120.0 :z 5857280.0)
+                   )
+                 )
+                ((= (-> obj lightning-index) 1)
+                 (play-or-stop-lightning!
+                   obj
+                   (static-sound-spec "thunder-b")
+                   (new 'static 'vector :x 20480000.0 :y 33341440.0 :z 12124160.0)
+                   )
+                 )
+                ((= (-> obj lightning-index) 2)
+                 (play-or-stop-lightning!
+                   obj
+                   (static-sound-spec "thunder-b")
+                   (new 'static 'vector :x -20480000.0 :y 33341440.0 :z 12124160.0)
+                   )
+                 )
+                ((= (-> obj lightning-index) 3)
+                 (play-or-stop-lightning!
+                   obj
+                   (static-sound-spec "thunder-b")
+                   (new 'static 'vector :x -37109760.0 :y 16261120.0 :z 5857280.0)
+                   )
+                 )
+                ((= (-> obj lightning-index) 4)
+                 (play-or-stop-lightning! obj (static-sound-spec "thunder-c") (new 'static 'vector :y 40960000.0))
+                 )
+                ((= (-> obj lightning-index) 5)
+                 (play-or-stop-lightning! obj (static-sound-spec "thunder-a") (new 'static 'vector :y 40960000.0))
+                 )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 9 of type mood-control
+;; WARN: Return type mismatch int vs none.
+(defmethod init-weather! mood-control ((obj mood-control))
+  (local-vars (v1-39 int))
+  (let ((s5-0 (level-get-target-inside *level*)))
+    (when s5-0
+      (cond
+        ((= (-> s5-0 info taskname) 'drill)
+         (mem-copy! (the-as pointer (-> obj mood-fog-table)) (the-as pointer *drill-mood-fog-table*) 384)
+         (mem-copy! (the-as pointer (-> obj mood-color-table)) (the-as pointer *drill-mood-color-table*) 256)
+         (set! (-> obj mood-direction-table) *drill-mood-direction-table*)
+         (set! (-> obj mood-clouds cloud-min) (-> *clouds-1000* cloud-min))
+         (set! (-> obj mood-clouds cloud-max) (-> *clouds-1000* cloud-max))
+         )
+        (else
+          (set! (-> obj mood-direction-table) *mood-direction-table*)
+          (let ((s4-0 (new 'stack-no-clear 'mood-control-work)))
+            (cond
+              ((and (-> obj overide-weather-flag) (not (movie?)))
+               (set! (-> s4-0 weather cloud) (* 2.0 (fmax 0.0 (fmin 1.0 (-> obj overide cloud)))))
+               (set! (-> s4-0 weather fog) (* 2.0 (-> obj overide fog)))
+               )
+              (else
+                (set! (-> s4-0 weather cloud) (* 2.0 (fmax 0.0 (fmin 1.0 (-> obj current-interp cloud)))))
+                (set! (-> s4-0 weather fog) (* 2.0 (fmax 0.0 (fmin 1.0 (-> obj current-interp fog)))))
+                )
+              )
+            (set! (-> s4-0 iweather cloud) (the int (-> s4-0 weather cloud)))
+            (let ((f0-13 (- (-> s4-0 weather cloud) (the float (-> s4-0 iweather cloud)))))
+              (cond
+                ((zero? (-> s4-0 iweather cloud))
+                 (if (< f0-13 0.5)
+                     (set! (-> s4-0 interp cloud) 0.0)
+                     (set! (-> s4-0 interp cloud) (* 2.0 (+ -0.5 f0-13)))
+                     )
+                 )
+                (else
+                  (set! (-> s4-0 interp cloud) f0-13)
+                  )
+                )
+              )
+            (set! (-> s4-0 iweather fog) (the int (-> s4-0 weather fog)))
+            (set! (-> s4-0 interp fog) (- (-> s4-0 weather fog) (the float (-> s4-0 iweather fog))))
+            (let ((a0-6 (-> s4-0 iweather fog))
+                  (v1-30 (-> s4-0 iweather cloud))
+                  )
+              (set! (-> s4-0 index 0) (+ (* 3 (the-as int v1-30)) (the-as int a0-6)))
+              (set! (-> s4-0 index 1) (the-as int (+ a0-6 1 (* 3 (the-as int v1-30)))))
+              (set! (-> s4-0 index 2) (+ (* 3 (the-as int (+ v1-30 1))) (the-as int a0-6)))
+              (set! (-> s4-0 index 3) (the-as int (+ a0-6 1 (* 3 (the-as int (+ v1-30 1))))))
+              )
+            (let ((v1-34 (-> s4-0 iweather cloud)))
+              (set! (-> s4-0 color-interp) (-> s4-0 interp cloud))
+              (set! (-> s4-0 color-index 0) (the-as int v1-34))
+              (set! (-> s4-0 color-index 1) (the-as int (+ v1-34 1)))
+              )
+            0
+            (let ((f0-23 (- (-> s4-0 weather cloud) (the float (-> s4-0 iweather cloud)))))
+              (cond
+                ((zero? (-> s4-0 iweather cloud))
+                 (set! (-> s4-0 channel-interp) 0.0)
+                 (set! v1-39 0)
+                 )
+                ((= (-> s4-0 iweather cloud) 2)
+                 (set! (-> s4-0 channel-interp) 0.0)
+                 (set! v1-39 2)
+                 )
+                ((< f0-23 0.5)
+                 (set! (-> s4-0 channel-interp) (* 2.0 f0-23))
+                 (set! v1-39 0)
+                 )
+                (else
+                  (set! (-> s4-0 channel-interp) (* 2.0 (+ -0.5 f0-23)))
+                  (set! v1-39 1)
+                  )
+                )
+              )
+            (set! (-> s4-0 channel-index 0) v1-39)
+            (set! (-> s4-0 channel-index 1) (+ v1-39 1))
+            (let* ((f0-33 (if (and (-> obj overide-weather-flag) (not (movie?)))
+                              (* 8.0 (-> obj overide cloud))
+                              (* 8.0 (fmax 0.0 (fmin 1.0 (-> obj current-interp cloud))))
+                              )
+                          )
+                   (v1-52 (the int f0-33))
+                   )
+              (set! (-> s4-0 cloud-interp) (- f0-33 (the float v1-52)))
+              (set! (-> s4-0 cloud-index 0) v1-52)
+              (set! (-> s4-0 cloud-index 1) (+ v1-52 1))
+              )
+            (apply-mood-clouds-and-fog obj s4-0)
+            (apply-mood-color obj s4-0)
+            (apply-mood-channels obj s4-0)
+            (adjust-num-clouds! obj s4-0)
+            )
+          (when (not (or (paused?) (and (-> obj overide-weather-flag) (not (movie?)))))
+            (set! (-> obj target-interp cloud)
+                  (fmax (fmin (-> obj target-interp cloud) (-> obj range max-cloud)) (-> obj range min-cloud))
+                  )
+            (set! (-> obj target-interp fog)
+                  (fmax (fmin (-> obj target-interp fog) (-> obj range max-fog)) (-> obj range min-fog))
+                  )
+            (seek!
+              (-> obj current-interp cloud)
+              (-> obj target-interp cloud)
+              (* (/ 1.0 (-> obj speed-interp cloud)) (-> self clock seconds-per-frame))
+              )
+            (seek!
+              (-> obj current-interp fog)
+              (-> obj target-interp fog)
+              (* (/ 1.0 (-> obj speed-interp fog)) (-> self clock seconds-per-frame))
+              )
+            (when (!= (-> obj time-until-random cloud) -99.0)
+              (set! (-> obj time-until-random cloud)
+                    (- (-> obj time-until-random cloud) (* 300.0 (-> self clock seconds-per-frame)))
+                    )
+              (when (< (-> obj time-until-random cloud) 0.0)
+                (set! (-> obj time-until-random cloud)
+                      (rand-vu-float-range (-> obj time-until-random-min cloud) (-> obj time-until-random-max cloud))
+                      )
+                (let ((f30-0 (rand-vu-float-range (-> obj range min-cloud) (-> obj range max-cloud)))
+                      (f28-0 (rand-vu-float-range (-> obj range min-cloud) (-> obj range max-cloud)))
+                      (f26-0 (rand-vu-float-range (-> obj range min-cloud) (-> obj range max-cloud)))
+                      (f24-0 (rand-vu-float-range (-> obj range min-cloud) (-> obj range max-cloud)))
+                      (f1-36 (rand-vu-float-range (-> obj range min-cloud) (-> obj range max-cloud)))
+                      )
+                  (set! (-> obj target-interp cloud) (fabs (+ -0.25 (* 0.25 (+ f30-0 f28-0 f26-0 f24-0 f1-36)))))
+                  )
+                (set! (-> obj speed-interp cloud) (rand-vu-float-range 30.0 120.0))
+                (when (and (< 0.0 (-> *setting-control* user-current rain))
+                           (< (-> obj target-interp cloud) 0.5)
+                           (< 0.25 (-> obj target-interp cloud))
+                           (or (< (-> obj target-interp fog) 0.25) (< 0.75 (-> obj target-interp fog)))
+                           )
+                  (set! (-> obj speed-interp fog)
+                        (fabs
+                          (/ (* 1.25 (-> obj current-interp fog) (-> obj speed-interp cloud)) (+ -0.75 (-> obj current-interp cloud)))
+                          )
+                        )
+                  (set! (-> obj target-interp fog) 0.5)
+                  (set! (-> obj time-until-random fog) (-> obj time-until-random cloud))
+                  )
+                )
+              )
+            (when (!= (-> obj time-until-random fog) -99.0)
+              (set! (-> obj time-until-random fog)
+                    (- (-> obj time-until-random fog) (* 300.0 (-> self clock seconds-per-frame)))
+                    )
+              (when (< (-> obj time-until-random fog) 0.0)
+                (set! (-> obj time-until-random fog)
+                      (rand-vu-float-range (-> obj time-until-random-min fog) (-> obj time-until-random-max fog))
+                      )
+                (let ((f30-1 (rand-vu-float-range (-> obj range min-fog) (-> obj range max-fog)))
+                      (f28-1 (rand-vu-float-range (-> obj range min-fog) (-> obj range max-fog)))
+                      (f26-1 (rand-vu-float-range (-> obj range min-fog) (-> obj range max-fog)))
+                      (f1-52 (rand-vu-float-range (-> obj range min-fog) (-> obj range max-fog)))
+                      )
+                  (set! (-> obj target-interp fog) (fabs (+ -1.0 (* 0.5 (+ f30-1 f28-1 f26-1 f1-52)))))
+                  )
+                (set! (-> obj speed-interp fog) (rand-vu-float-range 30.0 120.0))
+                )
+              )
+            )
+          (let ((f30-2 (if (and (-> obj overide-weather-flag) (not (movie?)))
+                           (-> obj overide cloud)
+                           (-> obj current-interp cloud)
+                           )
+                       )
+                (f26-2 (if (and (-> obj overide-weather-flag) (not (movie?)))
+                           (-> obj overide fog)
+                           (-> obj current-interp fog)
+                           )
+                       )
+                (f28-2 (fmin (-> s5-0 info max-rain) (-> *time-of-day-context* max-rain)))
+                )
+            (set! (-> obj sound-pitch) (* 1.442695 (logf (-> *display* bg-clock clock-ratio))))
+            (let* ((f0-114 (fmax 0.0 (fmin (* 4.0 (fmax 0.0 (+ -0.5 f26-2)) (fmax 0.0 (+ -0.5 f30-2))) f28-2)))
+                   (f30-3 (fmin 0.75 f0-114))
+                   )
+              (set! (-> *setting-control* user-default rain) f30-3)
+              (cond
+                ((and (or (and (level-get-target-inside *level*) (= (-> (level-get-target-inside *level*) name) 'nest))
+                          (< 0.0 (-> *setting-control* user-current rain))
+                          )
+                      (!= *master-mode* 'progress)
+                      )
+                 (gen-lightning-and-thunder! obj)
+                 (cond
+                   ((zero? (-> obj rain-id))
+                    (set! (-> obj rain-id) (the-as uint (sound-play-by-name
+                                                          (static-sound-name "rain-hiss")
+                                                          (new-sound-id)
+                                                          (the int (* 1024.0 f30-3))
+                                                          (the int (* 1524.0 (-> obj sound-pitch)))
+                                                          0
+                                                          (sound-group sfx)
+                                                          #t
+                                                          )
+                                                   )
+                          )
+                    )
+                   (else
+                     (when *sound-player-enable*
+                       (let ((v1-136 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+                         (set! (-> v1-136 command) (sound-command set-param))
+                         (set! (-> v1-136 id) (the-as sound-id (-> obj rain-id)))
+                         (set! (-> v1-136 params volume) (the int (* 1024.0 f30-3)))
+                         (set! (-> v1-136 params pitch-mod) (the int (* 1524.0 (-> obj sound-pitch))))
+                         (set! (-> v1-136 params mask) (the-as uint 3))
+                         (-> v1-136 id)
+                         )
+                       )
+                     )
+                   )
+                 )
+                (else
+                  (set! (-> obj lightning-flash) 0.0)
+                  (when (nonzero? (-> obj rain-id))
+                    (sound-stop (the-as sound-id (-> obj rain-id)))
+                    (set! (-> obj rain-id) (the-as uint 0))
+                    0
+                    )
+                  )
+                )
+              )
+            )
+          (when (-> obj display-flag)
+            (cond
+              ((and (-> obj overide-weather-flag) (not (movie?)))
+               (format *stdcon* "overide cloud ~f~%" (-> obj overide cloud))
+               (format *stdcon* "overide fog ~f~%" (-> obj overide fog))
+               )
+              (else
+                (format *stdcon* "time until random cloud ~f~%" (* 0.0033333334 (-> obj time-until-random cloud)))
+                (format *stdcon* "current cloud ~f~%" (-> obj current-interp cloud))
+                (format *stdcon* "target cloud ~f~%" (-> obj target-interp cloud))
+                (format *stdcon* "speed cloud ~f~%" (* (/ 1.0 (-> obj speed-interp cloud)) (-> self clock seconds-per-frame)))
+                (format *stdcon* "time until random fog ~f~%" (* 0.0033333334 (-> obj time-until-random fog)))
+                (format *stdcon* "current fog ~f~%" (-> obj current-interp fog))
+                (format *stdcon* "target fog ~f~%" (-> obj target-interp fog))
+                (format *stdcon* "speed fog ~f~%" (* (/ 1.0 (-> obj speed-interp fog)) (-> self clock seconds-per-frame)))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch int vs none.
+(defmethod update-mood-weather! mood-control ((obj mood-control) (cloud-target float) (fog-target float) (cloud-speed float) (fog-speed float))
+  "Set the `target-interp` and `speed-interp` for the clouds and fog
+       If `*-speed` is 0.0, use the `*-target` args to set `current-interp`
+       See [[mood-weather]]"
+  (set! (-> obj target-interp cloud) cloud-target)
+  (set! (-> obj target-interp fog) fog-target)
+  (set! (-> obj speed-interp cloud) cloud-speed)
+  (set! (-> obj speed-interp fog) fog-speed)
+  (if (= cloud-speed 0.0)
+      (set! (-> obj current-interp cloud) cloud-target)
+      )
+  (if (= fog-speed 0.0)
+      (set! (-> obj current-interp fog) fog-target)
+      )
+  0
+  (none)
+  )
+
+(defmethod update-mood-range! mood-control ((obj mood-control) (min-cloud float) (max-cloud float) (min-fog float) (max-fog float))
+  "Set the minimum and maximum ranges of clouds and fog
+See [[mood-range]]"
+  (set! (-> obj range min-cloud) min-cloud)
+  (set! (-> obj range max-cloud) max-cloud)
+  (set! (-> obj range min-fog) min-fog)
+  (set! (-> obj range max-fog) max-fog)
+  0
+  (none)
+  )
+
+(defmethod set-time-for-random-weather! mood-control ((obj mood-control) (arg0 float) (arg1 float))
+  "Set the `time-until-random`'s cloud and fog values
+See [[mood-weather]]"
+  (set! (-> obj time-until-random cloud) arg0)
+  (set! (-> obj time-until-random fog) arg1)
+  0
+  (none)
+  )

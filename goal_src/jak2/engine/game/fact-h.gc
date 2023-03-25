@@ -1,0 +1,558 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: fact-h.gc
+;; name in dgo: fact-h
+;; dgos: ENGINE, GAME
+
+(defenum pickup-type
+  :bitfield #f
+  :type int32
+  (none            0)
+  (eco-yellow      1)
+  (eco-red         2)
+  (eco-blue        3)
+  (eco-dark        4)
+  (eco-green       5)
+  (eco-pill-green  6)
+  (eco-pill-dark   7)
+  (eco-pill-random 8)
+  (money           9)
+  (fuel-cell      10)
+  (buzzer         11)
+  (darkjak        12)
+  (ammo-yellow    13)
+  (ammo-red       14)
+  (ammo-blue      15)
+  (ammo-dark      16)
+  (shield         17)
+  (health         18)
+  (trick-point    19)
+  (trick-judge    20)
+  (gem            21)
+  (skill          22)
+  (karma          23)
+  (gun-red        24)
+  (gun-yellow     25)
+  (gun-blue       26)
+  (gun-dark       27)
+  (board          28)
+  (pass-red       29)
+  (pass-green     30)
+  (pass-yellow    31)
+  (pass-blue      32)
+  (ammo-random    33)
+  )
+
+(defenum actor-option
+  :bitfield #t
+  :type uint64
+
+  (blocked           0) ;; 1
+  (spawns-fuel-cell  1) ;; 2
+  (draw-blocker      2) ;; 4
+  (loop              3) ;; 8
+  (reflect           4) ;; 16
+  (wait-for-cue      5) ;; 32
+  (auto-pickup       6) ;; 64
+  (fuel-cell-no-jump 7) ;; 128
+  (suck-in           8) ;; 256
+  (fade-out          9) ;; 512
+  (big-collision    10) ;; 1024
+  (racer-only       11) ;; 2048
+  (no-reaction      12) ;; 4096
+  (no-shadow        13) ;; 8192
+  (wait-for-task-complete 14) ;; 16384
+  (respawn-delay    15) ;; 32768
+
+  (no-amb-sound     16) ;; hi 1
+  (user17           17) ;; hi 2
+  (user18           18) ;; hi 4
+  (user19           19) ;; hi 8
+  (user20           20) ;; hi 16
+  (cond-hide        21) ;; hi 32
+  (cond-respawn     22) ;; hi 64
+  (fall             23) ;; hi 128
+  (mirror           24) ;; hi 256
+  (cond-low-ammo             25) ;; hi 512
+  (no-distance-check-fadeout 26) ;; 1024
+  (no-track                  27) ;; hi 2048
+  )
+
+(defenum enemy-option
+  :bitfield #t
+  :type uint32
+  (user0              0) ;; 1
+  (user1              1) ;; 2
+  (user2              2) ;; 4
+  (user3              3) ;; 8
+  (user4              4) ;; 16
+  (user5              5) ;; 32
+  (user6              6) ;; 64
+  (user7              7) ;; 128
+  (user8              8) ;; 256
+  (user9              9) ;; 512
+  (user10            10) ;; 1024
+  (user11            11) ;; 2048
+  (user12            12) ;; 4096
+  (user13            13) ;; 8192
+  (user14            14) ;; 16k
+  (user15            15)
+
+  (dormant           16) ;; hi 1
+  (dormant-aware     17) ;; hi 2
+  (ambush            18) ;; hi 4
+  (spawner           19) ;; hi 8
+  (prespawned        20) ;; hi 16
+  (multi-focus       21) ;; hi 32
+  (has-trigger       22)
+  (idle-til-trigger  23) ;; hi 128
+  (knocked-into-water 24) ;; hi 256
+  (water             25) ;; hi 512
+  )
+
+(declare-type entity res-lump)
+(declare-type entity-actor entity)
+(declare-type actor-group inline-array-class)
+(declare-type target process-focusable)
+(define-extern process-task-mask (function process task-mask))
+
+;; DECOMP BEGINS
+
+(deftype fact-bank (basic)
+  ((eco-level-max              float    :offset-assert   4)
+   (eco-single-inc             float    :offset-assert   8)
+   (eco-full-inc               float    :offset-assert  12)
+   (eco-single-timeout         seconds  :offset-assert  16)
+   (eco-full-timeout           seconds  :offset-assert  24)
+   (dummy                      seconds  :offset-assert  32)
+   (health-max-default         float    :offset-assert  40)
+   (health-single-inc          float    :offset-assert  44)
+   (health-default-inc         float    :offset-assert  48)
+   (health-darkjak-inc         float    :offset-assert  52)
+   (health-darkjak-min         float    :offset-assert  56)
+   (health-darkjak-error       float    :offset-assert  60)
+   (eco-pill-green-max-default float    :offset-assert  64)
+   (eco-pill-dark-max-default  float    :offset-assert  68)
+   (health-small-inc           float    :offset-assert  72)
+   (buzzer-max-default         float    :offset-assert  76)
+   (buzzer-single-inc          float    :offset-assert  80)
+   (suck-bounce-dist           meters   :offset-assert  84)
+   (suck-suck-dist             meters   :offset-assert  88)
+   (default-eco-pill-green-inc float    :offset-assert  92)
+   (default-eco-pill-dark-inc  float    :offset-assert  96)
+   (ammo-yellow-max            float    :offset-assert 100)
+   (ammo-red-max               float    :offset-assert 104)
+   (ammo-blue-max              float    :offset-assert 108)
+   (ammo-dark-max              float    :offset-assert 112)
+   (ammo-yellow-start          float    :offset-assert 116)
+   (ammo-red-start             float    :offset-assert 120)
+   (ammo-blue-start            float    :offset-assert 124)
+   (ammo-dark-start            float    :offset-assert 128)
+   (shield-max                 float    :offset-assert 132)
+   (shield-use-speed           float    :offset-assert 136)
+   (shield-time-min            seconds  :offset-assert 144)
+   (trick-point-max            float    :offset-assert 152)
+   (super-skill-inc            float    :offset-assert 156)
+   )
+  :method-count-assert 9
+  :size-assert         #xa0
+  :flag-assert         #x9000000a0
+  )
+
+
+(define *FACT-bank* (new 'static 'fact-bank
+                      :eco-level-max 2.0
+                      :eco-single-inc 1.0
+                      :eco-full-inc 5.0
+                      :eco-single-timeout (seconds 5)
+                      :eco-full-timeout (seconds 20)
+                      :dummy (seconds 15)
+                      :health-max-default 8.0
+                      :health-single-inc 1.0
+                      :health-default-inc 2.0
+                      :health-darkjak-inc 0.1
+                      :health-darkjak-min 1.05
+                      :health-darkjak-error 0.05
+                      :eco-pill-green-max-default 50.0
+                      :eco-pill-dark-max-default 100.0
+                      :health-small-inc 1.0
+                      :buzzer-max-default 7.0
+                      :buzzer-single-inc 1.0
+                      :suck-bounce-dist (meters 18)
+                      :suck-suck-dist (meters 7.5)
+                      :ammo-yellow-max 100.0
+                      :ammo-red-max 50.0
+                      :ammo-blue-max 100.0
+                      :ammo-dark-max 5.0
+                      :ammo-yellow-start 100.0
+                      :ammo-red-start 50.0
+                      :ammo-blue-start 100.0
+                      :ammo-dark-start 5.0
+                      :shield-max 100.0
+                      :shield-use-speed 10.0
+                      :shield-time-min (seconds 1.5)
+                      :trick-point-max 999999.0
+                      :super-skill-inc 3.0
+                      )
+        )
+
+(defun pickup-type->string ((arg0 pickup-type))
+  (case arg0
+    (((pickup-type eco-pill-dark))
+     "eco-pill-dark"
+     )
+    (((pickup-type gun-blue))
+     "gun-blue"
+     )
+    (((pickup-type ammo-random))
+     "ammo-random"
+     )
+    (((pickup-type eco-blue))
+     "eco-blue"
+     )
+    (((pickup-type gun-red))
+     "gun-red"
+     )
+    (((pickup-type pass-red))
+     "pass-red"
+     )
+    (((pickup-type eco-pill-green))
+     "eco-pill-green"
+     )
+    (((pickup-type eco-red))
+     "eco-red"
+     )
+    (((pickup-type skill))
+     "skill"
+     )
+    (((pickup-type karma))
+     "karma"
+     )
+    (((pickup-type gun-dark))
+     "gun-dark"
+     )
+    (((pickup-type eco-dark))
+     "eco-dark"
+     )
+    (((pickup-type gem))
+     "gem"
+     )
+    (((pickup-type eco-green))
+     "eco-green"
+     )
+    (((pickup-type darkjak))
+     "darkjak"
+     )
+    (((pickup-type ammo-yellow))
+     "ammo-yellow"
+     )
+    (((pickup-type pass-blue))
+     "pass-blue"
+     )
+    (((pickup-type ammo-red))
+     "ammo-red"
+     )
+    (((pickup-type fuel-cell))
+     "fuel-cell"
+     )
+    (((pickup-type buzzer))
+     "buzzer"
+     )
+    (((pickup-type shield))
+     "shield"
+     )
+    (((pickup-type eco-pill-random))
+     "eco-pill-random"
+     )
+    (((pickup-type board))
+     "board"
+     )
+    (((pickup-type none))
+     "none"
+     )
+    (((pickup-type pass-green))
+     "pass-green"
+     )
+    (((pickup-type gun-yellow))
+     "gun-yellow"
+     )
+    (((pickup-type money))
+     "money"
+     )
+    (((pickup-type eco-yellow))
+     "eco-yellow"
+     )
+    (((pickup-type ammo-dark))
+     "ammo-dark"
+     )
+    (((pickup-type trick-judge))
+     "trick-judge"
+     )
+    (((pickup-type trick-point))
+     "trick-point"
+     )
+    (((pickup-type ammo-blue))
+     "ammo-blue"
+     )
+    (((pickup-type pass-yellow))
+     "pass-yellow"
+     )
+    (((pickup-type health))
+     "health"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+(deftype fact-info (basic)
+  ((process             process       :offset-assert   4)
+   (pickup-type         pickup-type   :offset-assert   8)
+   (pickup-amount       float         :offset-assert  12)
+   (pickup-spawn-amount float         :offset-assert  16)
+   (options             actor-option  :offset-assert  24)
+   (fade-time           time-frame    :offset-assert  32)
+   )
+  :method-count-assert 12
+  :size-assert         #x28
+  :flag-assert         #xc00000028
+  (:methods
+    (new (symbol type process pickup-type float) _type_ 0)
+    (drop-pickup (_type_ symbol process-tree fact-info int) (pointer process) 9)
+    (reset! (_type_ symbol) none 10)
+    (pickup-collectable! (_type_ pickup-type float handle) float 11)
+    )
+  )
+
+
+(deftype fact-info-target (fact-info)
+  ((eco-type                   int32       :offset-assert  40)
+   (eco-level                  float       :offset-assert  44)
+   (eco-pickup-time            time-frame  :offset-assert  48)
+   (eco-timeout                time-frame  :offset-assert  56)
+   (eco-source                 handle      :offset-assert  64)
+   (eco-source-time            time-frame  :offset-assert  72)
+   (health                     float       :offset-assert  80)
+   (health-max                 float       :offset-assert  84)
+   (health-pickup-time         time-frame  :offset-assert  88)
+   (buzzer                     float       :offset-assert  96)
+   (buzzer-max                 float       :offset-assert 100)
+   (eco-pill-green             float       :offset-assert 104)
+   (eco-pill-green-max         float       :offset-assert 108)
+   (eco-pill-green-pickup-time time-frame  :offset-assert 112)
+   (eco-pill-dark-pickup-time  time-frame  :offset-assert 120)
+   (money-pickup-time          time-frame  :offset-assert 128)
+   (buzzer-pickup-time         time-frame  :offset-assert 136)
+   (task-pickup-time           time-frame  :offset-assert 144)
+   (stop-time-timeout          time-frame  :offset-assert 152)
+   (darkjak-start-time         time-frame  :offset-assert 160)
+   (darkjak-effect-time        time-frame  :offset-assert 168)
+   (ammo-pickup-time           time-frame  :offset-assert 176)
+   (shield-pickup-time         time-frame  :offset-assert 184)
+   (shield-start-time          time-frame  :offset-assert 192)
+   (shield-use-time            time-frame  :offset-assert 200)
+   (shield-level               float       :offset-assert 208)
+   (shield-attack-id           uint32      :offset-assert 212)
+   (trick-point                float       :offset-assert 216)
+   (trick-point-pickup-time    time-frame  :offset-assert 224)
+   (trick-point-start-time     time-frame  :offset-assert 232)
+   (trick-point-duration       time-frame  :offset-assert 240)
+   (gem-pickup-time            time-frame  :offset-assert 248)
+   (skill-pickup-time          time-frame  :offset-assert 256)
+   (karma-pickup-time          time-frame  :offset-assert 264)
+   )
+  :method-count-assert 13
+  :size-assert         #x110
+  :flag-assert         #xd00000110
+  (:methods
+    (new (symbol type process-drawable pickup-type float) _type_ 0)
+    (get-gun-ammo (_type_) float 12)
+    )
+  )
+
+
+(deftype fact-info-enemy (fact-info)
+  ((speed            float                   :offset-assert  40)
+   (idle-distance    meters                  :offset-assert  44)
+   (notice-top       meters                  :offset-assert  48)
+   (notice-bottom    meters                  :offset-assert  52)
+   (cam-horz         meters                  :offset-assert  56)
+   (cam-vert         meters                  :offset-assert  60)
+   (cam-notice-dist  meters                  :offset-assert  64)
+   (enemy-options    enemy-option            :offset-assert  68)
+   (trig-dist        meters                  :offset-assert  72)
+   (trig-actor-group (pointer actor-group)   :offset-assert  76)
+   (trig-mask-count  int8                    :offset-assert  80)
+   (trig-mask        uint8                 2 :offset-assert  81)
+   )
+  :method-count-assert 13
+  :size-assert         #x53
+  :flag-assert         #xd00000053
+  (:methods
+    (new (symbol type process (pointer float) pickup-type float) _type_ 0)
+    (clear-mask-bits (_type_ int) none 12)
+    )
+  )
+
+
+(deftype fact-info-crate (fact-info)
+  ((suck-count int32  :offset-assert  40)
+   )
+  :method-count-assert 12
+  :size-assert         #x2c
+  :flag-assert         #xc0000002c
+  (:methods
+    (new (symbol type process pickup-type float) _type_ 0)
+    )
+  )
+
+
+;; WARN: Return type mismatch object vs fact-info.
+(defmethod new fact-info ((allocation symbol) (type-to-make type) (arg0 process) (arg1 pickup-type) (arg2 float))
+  (local-vars (sv-16 fact-info) (sv-20 res-lump) (sv-24 task-mask))
+  (set! sv-16 (object-new allocation type-to-make (the-as int (-> type-to-make size))))
+  (set! sv-20 (the-as res-lump (-> arg0 entity)))
+  (set! sv-24 (process-task-mask arg0))
+  (when (zero? sv-16)
+    (go process-drawable-art-error "memory")
+    (return (the-as fact-info 0))
+    )
+  (set! (-> sv-16 process) arg0)
+  (set! (-> sv-16 pickup-type) arg1)
+  (set! (-> sv-16 pickup-amount) arg2)
+  (let ((s4-1 (-> (lookup-tag-idx sv-20 'eco-info 'base -1000000000.0) lo)))
+    (when (>= (the-as int s4-1) 0)
+      (let ((s3-0 (the-as int s4-1))
+            (s2-0 (-> sv-20 tag s4-1))
+            )
+        0
+        (while (= (-> s2-0 name) (-> sv-20 tag s4-1 name))
+          (let ((v1-17 (make-property-data sv-20 0.0 (the-as res-tag-pair s3-0) (the-as pointer #f)))
+                (a0-7 (the int (-> s2-0 key-frame)))
+                )
+            (when (or (< a0-7 0) (and (-> arg0 entity) (logtest? sv-24 (ash 1 a0-7))))
+              (when v1-17
+                (let ((a0-15 (-> s2-0 elt-count)))
+                  (set! (-> sv-16 pickup-type) (the-as pickup-type (-> (the-as (pointer int32) v1-17))))
+                  (set! (-> sv-16 pickup-amount) (if (< (the-as uint 1) a0-15)
+                                                     (the float (-> (the-as (pointer int32) v1-17) 1))
+                                                     arg2
+                                                     )
+                        )
+                  )
+                )
+              )
+            )
+          (+! s3-0 1)
+          (set! s2-0 (-> sv-20 tag s3-0))
+          )
+        )
+      )
+    )
+  (set! (-> sv-16 options) (res-lump-value sv-20 'options actor-option :time -1000000000.0))
+  (if (logtest? (-> sv-16 options) (actor-option fade-out respawn-delay))
+      (set! (-> sv-16 fade-time) (the-as time-frame (the int (* 300.0 (res-lump-float sv-20 'timeout)))))
+      )
+  (the-as fact-info sv-16)
+  )
+
+(defmethod pickup-collectable! fact-info ((obj fact-info) (arg0 pickup-type) (arg1 float) (arg2 handle))
+  0.0
+  )
+
+(deftype fact-info-enemy-defaults (basic)
+  ((idle-distance meters  :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+
+(define *fact-info-enemy-defaults* (new 'static 'fact-info-enemy-defaults :idle-distance (meters 80)))
+
+(defmethod new fact-info-enemy ((allocation symbol)
+                              (type-to-make type)
+                              (arg0 process)
+                              (arg1 (pointer float))
+                              (arg2 pickup-type)
+                              (arg3 float)
+                              )
+  (local-vars (sv-16 res-tag) (sv-32 res-tag))
+  (let ((gp-0 (the-as fact-info-enemy ((method-of-type fact-info new) allocation type-to-make arg0 arg2 arg3))))
+    (let ((s5-0 (the-as res-lump (-> gp-0 process entity))))
+      (set! (-> gp-0 speed) (res-lump-float s5-0 'speed :default 1.0))
+      (set! (-> gp-0 idle-distance) (res-lump-float s5-0 'idle-distance :default (-> arg1 0)))
+      (set! (-> gp-0 notice-top) (res-lump-float s5-0 'notice-top :default 4096000.0))
+      (set! (-> gp-0 notice-bottom) (res-lump-float s5-0 'notice-bottom :default 4096000.0))
+      (set! (-> gp-0 cam-horz) (res-lump-float s5-0 'cam-horz))
+      (set! (-> gp-0 cam-vert) (res-lump-float s5-0 'cam-vert))
+      (set! (-> gp-0 cam-notice-dist) (res-lump-float s5-0 'cam-notice-dist :default -4096.0))
+      (set! (-> gp-0 enemy-options) (res-lump-value s5-0 'enemy-options enemy-option :time -1000000000.0))
+      (let ((s4-1 0))
+        (set! sv-16 (new 'static 'res-tag))
+        (let ((v1-11 (res-lump-data s5-0 'trigger pointer :tag-ptr (& sv-16))))
+          (when v1-11
+            (set! (-> gp-0 enemy-options) (logior (enemy-option has-trigger) (-> gp-0 enemy-options)))
+            (let ((a0-13 0))
+              (dotimes (a1-11 (the-as int (-> sv-16 elt-count)))
+                (let ((a2-12 (-> (the-as (pointer uint32) (&+ v1-11 (* a1-11 4))))))
+                  (when (and (nonzero? a2-12) (< a0-13 2))
+                    (set! (-> gp-0 trig-mask a0-13) a2-12)
+                    (set! s4-1 (logior s4-1 a2-12))
+                    (+! a0-13 1)
+                    )
+                  )
+                )
+              (set! (-> gp-0 trig-mask-count) a0-13)
+              )
+            )
+          )
+        (set! (-> gp-0 trig-dist) (if (logtest? s4-1 1)
+                                      (res-lump-float s5-0 'trig-dist :default 327680.0)
+                                      327680.0
+                                      )
+              )
+        (when (logtest? s4-1 2)
+          (set! sv-32 (new 'static 'res-tag))
+          (let ((v1-20 (res-lump-data s5-0 'trig-ag pointer :tag-ptr (& sv-32))))
+            (if (and v1-20 (nonzero? (-> sv-32 elt-count)))
+                (set! (-> gp-0 trig-actor-group) (the-as (pointer actor-group) v1-20))
+                (clear-mask-bits gp-0 2)
+                )
+            )
+          )
+        )
+      )
+    gp-0
+    )
+  )
+
+(defmethod clear-mask-bits fact-info-enemy ((obj fact-info-enemy) (arg0 int))
+  (let ((v1-0 (lognot arg0)))
+    (dotimes (a1-1 (-> obj trig-mask-count))
+      (logand! (-> obj trig-mask a1-1) v1-0)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod new fact-info-crate ((allocation symbol) (type-to-make type) (arg0 process) (arg1 pickup-type) (arg2 float))
+  (let ((gp-0 (the-as fact-info-crate ((method-of-type fact-info new) allocation type-to-make arg0 arg1 arg2))))
+    (let ((a0-1 (the-as res-lump (-> gp-0 process entity))))
+      (set! (-> gp-0 suck-count) (res-lump-value a0-1 'suck-count int :time -1000000000.0))
+      )
+    gp-0
+    )
+  )
+
+(defmethod new fact-info-target ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 pickup-type) (arg2 float))
+  (let ((gp-0 (the-as fact-info-target ((method-of-type fact-info new) allocation type-to-make arg0 arg1 arg2))))
+    (set! (-> gp-0 eco-source) (the-as handle #f))
+    (reset! gp-0 #f)
+    gp-0
+    )
+  )

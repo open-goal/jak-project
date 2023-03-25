@@ -1,0 +1,331 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+(defun hack-update-camera ((location vector) (inv-rot matrix))
+  "Debugging function to set the camera's position and orientation"
+  ;; update to compute the perspective matrix.
+  (update-math-camera
+   *math-camera*
+   'ntsc
+   'aspect4x3
+   (-> *math-camera* fov)
+   )
+
+  ;; need to set this - math-camera starts up wrong
+  (set-video-mode 'ntsc)
+
+  ;; copy the input rotation
+  (matrix-copy! (-> *math-camera* inv-camera-rot) inv-rot)
+  ;; inverse of rotation matrix matrix is its transpose
+  (matrix-transpose! (-> *math-camera* camera-rot) (-> *math-camera* inv-camera-rot))
+
+  ;; fake some value here
+  (set! (-> *math-camera* fov-correction-factor) 1.0)
+
+  ;; do the math
+  (set! (-> *math-camera* trans quad) (-> location quad))
+    (let ((cam-temp (-> *math-camera* camera-temp))
+        (cam-rot (-> *math-camera* camera-rot))
+        (inv-cam-rot (-> *math-camera* inv-camera-rot))
+        (cam-trans (-> *math-camera* trans))
+        )
+   (let ((rotated-trans (new-stack-vector0)))
+    (set! (-> rotated-trans x) (- (-> cam-trans x)))
+    (set! (-> rotated-trans y) (- (-> cam-trans y)))
+    (set! (-> rotated-trans z) (- (-> cam-trans z)))
+    (set! (-> rotated-trans w) 1.0)
+    (vector-matrix*! rotated-trans rotated-trans cam-rot)
+    (set! (-> cam-rot vector 3 quad) (-> rotated-trans quad))
+    )
+   (matrix*! cam-temp cam-rot (-> *math-camera* perspective))
+   (set! (-> inv-cam-rot vector 3 quad) (-> cam-trans quad))
+   (matrix-copy! *save-camera-inv-rot* inv-cam-rot) ;; hack
+   (set! *external-cam-mode* 'pad-1)
+   ;; fixes it!
+   ;(set! (-> *math-camera* camera-temp data 15) -6.)
+   )
+
+  (none)
+  )
+
+(defun test-function ((iter int))
+  "This function draws the debug stuff. You can edit this, then reload this file to play with it."
+
+  ;; val will increase from 0 to 1, then reset back to 0.
+  (let* ((frame (the float (mod (* 4 iter) 1600)))
+         (val (/ frame 1600.0)))
+    (format *stdcon* "~0kval ~f~%" val)
+
+    ;; orbit the camera around in a circle with radius 5 m.
+    (let* ((rad (meters 5.0))
+           (x (* rad (sin (* (degrees 360.0) val))))
+           (z (* rad (cos (* (degrees 360.0) val))))
+           (cam-pos (new 'stack 'vector))
+           (cam-inv-rot (new 'stack 'matrix))
+           )
+      ;; this matrix will look directly at the origin...
+      (set! (-> cam-pos x) x)
+      (set! (-> cam-pos z) z)
+      (set! (-> cam-pos y) (meters 1.))
+      (forward-down->inv-matrix cam-inv-rot cam-pos (new 'static 'vector :y 1.0))
+
+      ;; if the camera is here.
+      (set! (-> cam-pos x) (- 0. x))
+      (set! (-> cam-pos z) (- 0. z))
+      (set! (-> cam-pos y) (meters -3.))
+      ;; (hack-update-camera cam-pos cam-inv-rot)
+
+
+      ;; create some test points
+      (let ((p0 (new 'static 'vector :x (meters .8) :y (meters .2) :z (meters 2.0)))
+            (p1 (new 'static 'vector :x (meters .3) :y (meters .3) :z (meters 2.5)))
+            (p2 (new 'static 'vector :x (meters .5) :y (meters .7) :z (meters 1.5)))
+            (b0 (new 'static 'vector :x (meters .5) :y (meters .5) :z (meters .5)))
+            (b1 (new 'static 'vector :x (meters -.5) :y (meters -.5) :z (meters -.5)))
+
+            )
+
+        (add-debug-cross #t (bucket-id debug-no-zbuf1) (new 'static 'vector) (meters 2.0))
+        (add-debug-box #t (bucket-id debug-no-zbuf1) p0 p2 (new 'static 'rgba :b #x80 :r #x80 :g #x80 :a #x80))
+        (add-debug-flat-triangle #t (bucket-id debug-no-zbuf1) p0 p1 p2 (new 'static 'rgba :r #x80 :a #x80))
+        (add-debug-text-3d #t (bucket-id debug-no-zbuf1) "triangle!" p0 (the font-color 1) (the vector2h #f))
+        (add-debug-sphere #t (bucket-id debug-no-zbuf1) p0 (meters 0.5) (new 'static 'rgba :r #x80 :a #x80))
+
+        (add-debug-line-sphere #t (bucket-id debug-no-zbuf1)
+                               (new 'static 'vector :x (meters 0.8))
+                               (new 'static 'vector :y (meters -4.0))
+                                (meters 1.0) (new 'static 'rgba :r #x40 :g #x80 :a #x80))
+        )
+      )
+    )
+  (none)
+  )
+
+
+(defun launch-test-process ()
+  "Call this to launch a process that draws the debug demo"
+  (let ((proc (get-process *nk-dead-pool* process 1024)))
+    (activate proc *active-pool* "test" *kernel-dram-stack*)
+    (run-next-time-in-process proc (lambda ()
+                                     (let ((iter 0))
+                                       (while #t
+                                         (test-function iter)
+                                         (suspend)
+                                         (+! iter 1)
+                                         )
+                                       )
+                                     )
+                              )
+    proc)
+
+  )
+
+(define *wasd-camera-transform* (new 'global 'transform))
+(defun wasd-camera-update ()
+  (let ((local-trans (new-stack-vector0))
+        (trans *wasd-camera-transform*)
+        (fast-mode (cpad-hold? 0 r2))
+        (pad-idx 0))
+    ;; circle/square move camera relative x (left and right)
+    (set! (-> local-trans x)
+          (cond
+            ((cpad-hold? 0 circle)
+             -1600.0
+             )
+            ((cpad-hold? 0 square)
+             1600.0
+             )
+            (else
+              0.0
+              )
+            )
+          )
+
+    ;; no way to move camera relative y (up/down)
+    (set! (-> local-trans y) 0.0)
+
+    ;; in and out movement
+    (set! (-> local-trans z)
+          (cond
+            ((cpad-hold? 0 down)
+             -1600.0
+             )
+            ((cpad-hold? 0 up)
+             1600.0
+             )
+            (else
+              0.0
+              )
+            )
+          )
+    (set! (-> local-trans w) 1.0)
+
+    (when fast-mode
+      (vector-float*! local-trans local-trans 10.)
+      )
+
+    ;; rotate this into world frame
+    (let ((inv-cam-rot (new-stack-vector0))
+          (cam-rot-mat (new-stack-matrix0)))
+      ;; unused.
+      (vector-negate! inv-cam-rot (-> trans rot))
+      ;; convert rotation to rotation matrix.
+      (matrix-rotate-xyz! cam-rot-mat (-> trans rot))
+      ;; and rotate the translation.
+      (vector-matrix*! local-trans local-trans cam-rot-mat)
+      )
+
+    ;; and update the transform
+    (vector+! (-> trans trans) (-> trans trans) local-trans)
+
+
+    ;; don't forget to fix w.
+    (set! (-> trans trans w) 1.0)
+
+    ;; global translation
+    (let ((diff (if fast-mode 10000.0 2000.0)))
+      (if (cpad-hold? 0 l1)
+          (set! (-> trans trans y) (+ diff (-> trans trans y)))
+          )
+      (if (cpad-hold? 0 r1)
+          (set! (-> trans trans y) (+ (- diff) (-> trans trans y)))
+          )
+      )
+
+
+    ;; rotation (don't allow camera roll)
+    (if (cpad-hold? 0 x)
+        (set! (-> trans rot x) (+ 200. (-> trans rot x)))
+        )
+    (if (cpad-hold? 0 triangle)
+        (set! (-> trans rot x) (+ -200. (-> trans rot x)))
+        )
+    (if (cpad-hold? 0 left)
+        (set! (-> trans rot y) (+ 300. (-> trans rot y)))
+        )
+    (if (cpad-hold? 0 right)
+        (set! (-> trans rot y) (+ -300. (-> trans rot y)))
+        )
+
+    (set! (-> trans scale x) 1.)
+    (set! (-> trans scale y) 1.)
+    (set! (-> trans scale z) 1.)
+    (set! (-> trans scale w) 1.)
+    )
+  )
+
+
+
+(defun launch-wasd-process ()
+  "Launch a process to control the camera with keyboard.
+   Note that the test process above also controls the camera and should be killed first.
+   For example, after loading this file, do
+   (kill-test-procs)
+   (launch-wasd-process)"
+  (let ((proc (get-process *nk-dead-pool* process 1024)))
+    (activate proc *active-pool* "test" *kernel-dram-stack*)
+    (set! (-> *wasd-camera-transform* trans y) (meters 4.0))
+    (run-next-time-in-process proc (lambda ()
+                                     (let ((iter 0))
+                                       (while #t
+                                         (wasd-camera-update)
+                                         (let ((mat (new-stack-matrix0)))
+                                           (transform-matrix-calc! *wasd-camera-transform* mat)
+                                           (set! (-> mat data 3) 0.)
+                                           (set! (-> mat data 7) 0.)
+                                           (set! (-> mat data 11) 0.)
+                                           (set! (-> mat data 12) 0.)
+                                           (set! (-> mat data 13) 0.)
+                                           (set! (-> mat data 14) 0.)
+                                           (set! (-> mat data 15) 1.)
+                                           ;;(matrix-transpose! mat mat)
+                                           (hack-update-camera (-> *wasd-camera-transform* trans) mat)
+                                           )
+                                         (suspend)
+                                         (+! iter 1)
+                                         )
+                                       )
+                                     )
+                              )
+    proc)
+  )
+
+(defun levelname->x11-color ((name symbol))
+  (case name
+    (('city) "khaki")
+    (('fortress) "salmon")
+    (('stadium) "yellow")
+    (('palace) "hotpink")
+    (('castle) "gray")
+    (('ruins) "darkkhaki")
+    (('atoll) "gold")
+    (('sewer) "turquoise")
+    (('strip) "white")
+    (('mountain) "tan")
+    (('forest) "limegreen")
+    (('drill) "seagreen")
+    (('tomb) "chartreuse")
+    (('dig) "orange")
+    (('canyon) "#008B8B")
+    (('consite) "#90EE90")
+    (('under) "dodgerblue")
+    (('nest) "violet")
+    (('default) "white")
+    (('test) "purple")
+    (else "magenta")
+    )
+  )
+
+(defun print-task-node-tree-graphviz ()
+
+  (format #t "digraph G {~%")
+  (format #t "  node [style=filled shape=ellipse]~%~%")
+  (let ((game-tasks (-> *game-info* play-list)))
+    (dotimes (t (-> game-tasks length))
+      (let ((task (-> game-tasks t)))
+        (format #t "  subgraph cluster_task_~D {~%" t)
+        (format #t "    label = ~A;~%" (-> task name))
+        (format #t "    style = filled;~%")
+        (format #t "    fontsize = \"25pt\";~%")
+        (cond
+          ((and (>= t (game-task fortress-escape))
+                (<= t (game-task nest-boss))
+                (!= t (game-task city-blue-gun-training))
+                (!= t (game-task city-dark-gun-training)))
+            (format #t "    fillcolor = lightgray;~%")
+            )
+          ((and (>= t (game-task city-burning-bush-ring-1))
+                (<= t (game-task stadium-burning-bush-race-class1-r)))
+            (format #t "    fillcolor = pink;~%")
+            )
+          (else
+            (format #t "    fillcolor = lightyellow;~%")
+            )
+          )
+        (let ((game-nodes (-> *game-info* sub-task-list)))
+          (dotimes (i (-> game-nodes length))
+            (let ((node (-> game-nodes i)))
+              (when (= t (-> node task))
+                ;; iterate through parents
+                (dotimes (ii 4)
+                  (when (!= (game-task-node none) (-> node parent-node ii))
+                    (format #t "    ~A -> ~A;~%" (game-task-node->string (-> node parent-node ii)) (-> node name))
+                    )
+                  )
+                (format #t "    ~A [fillcolor=~A shape=~S];~%" (-> node name) (levelname->x11-color (-> node level))
+                                                               (cond
+                                                                ((logtest? (-> node flags) (game-task-node-flag close-task))
+                                                                  "oval")
+                                                                (else
+                                                                  "box")))
+                )
+              )
+            )
+          (format #t "  }~%")
+          )
+        )
+      )
+    )
+  (format #t "}~%")
+  0)
+

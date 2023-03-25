@@ -1,8 +1,10 @@
-#include "gtest/gtest.h"
-#include "common/goos/Reader.h"
-#include "common/util/FileUtil.h"
 #include "common/goos/PrettyPrinter.h"
 #include "common/goos/PrettyPrinter2.h"
+#include "common/goos/Reader.h"
+#include "common/util/FileUtil.h"
+
+#include "gtest/gtest.h"
+
 #include "third-party/fmt/core.h"
 
 using namespace goos;
@@ -35,7 +37,7 @@ TEST(PrettyPrinter, Basics) {
 TEST(PrettyPrinter, ReadAgain) {
   // first read the gcommon file
   auto gcommon_code = pretty_print::get_pretty_printer_reader().read_from_file(
-      {"goal_src", "kernel", "gcommon.gc"});
+      {"goal_src", "jak1", "kernel", "gcommon.gc"});
   // pretty print it
   auto printed_gcommon = pretty_print::to_string(gcommon_code);
   auto gcommon_code2 = pretty_print::get_pretty_printer_reader()
@@ -50,7 +52,7 @@ TEST(PrettyPrinter, ReadAgain) {
 TEST(PrettyPrinter, ReadAgainVeryShortLines) {
   // first read the gcommon file
   auto gcommon_code = pretty_print::get_pretty_printer_reader().read_from_file(
-      {"goal_src", "kernel", "gcommon.gc"});
+      {"goal_src", "jak1", "kernel", "gcommon.gc"});
   // pretty print it but with a very short line length. This looks terrible but will hopefully
   // hit many of the cases for line breaking.
   auto printed_gcommon = pretty_print::to_string(gcommon_code, 80);
@@ -90,7 +92,7 @@ TEST(PrettyPrinter, DefunNoArgs) {
 TEST(PrettyPrinter2, Debugging) {
   // first read the gcommon file
   auto gcommon_code = pretty_print::get_pretty_printer_reader().read_from_file(
-      {"goal_src", "kernel", "gcommon.gc"});
+      {"goal_src", "jak1", "kernel", "gcommon.gc"});
   // pretty print it
   auto printed_gcommon = pretty_print::to_string(gcommon_code);
   auto gcommon_code2 = pretty_print::get_pretty_printer_reader()

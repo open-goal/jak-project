@@ -1,0 +1,1712 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: drill-obs.gc
+;; name in dgo: drill-obs
+;; dgos: DMI
+
+;; DECOMP BEGINS
+
+(defmethod draw hud-gruntegg ((obj hud-gruntegg))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> obj sprites))
+    (the int (+ 462.0 (* 130.0 (-> obj offset))))
+    200
+    )
+  (format (clear (-> obj strings 0 text)) "~D" (-> obj values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (-> obj sprites)) -25 33)
+  ((method-of-type hud draw) obj)
+  0
+  (none)
+  )
+
+(defmethod update-values hud-gruntegg ((obj hud-gruntegg))
+  (set! (-> obj values 0 target) (the int (-> *game-info* counter)))
+  ((method-of-type hud update-values) obj)
+  0
+  (none)
+  )
+
+(defmethod init-callback hud-gruntegg ((obj hud-gruntegg))
+  (set! (-> obj level) (level-get *level* 'drillmid))
+  (set! (-> obj gui-id)
+        (add-process *gui-control* obj (gui-channel hud-lower-right) (gui-action hidden) (-> obj name) 81920.0 0)
+        )
+  (logior! (-> obj flags) (hud-flags show))
+  (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #xd :page #xb1e)))
+  (set! (-> obj sprites 0 flags) (the-as uint 4))
+  (set! (-> obj sprites 0 scale-x) 0.7)
+  (set! (-> obj sprites 0 scale-y) 0.7)
+  (alloc-string-if-needed obj 0)
+  (set! (-> obj strings 0 scale) 0.6)
+  (set! (-> obj strings 0 flags) (font-flags kerning middle large))
+  0
+  (none)
+  )
+
+(defmethod draw hud-crimsonhover ((obj hud-crimsonhover))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> obj sprites))
+    (the int (+ 462.0 (* 130.0 (-> obj offset))))
+    200
+    )
+  (format (clear (-> obj strings 0 text)) "~D" (-> obj values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (-> obj sprites)) -25 33)
+  ((method-of-type hud draw) obj)
+  0
+  (none)
+  )
+
+(defmethod update-values hud-crimsonhover ((obj hud-crimsonhover))
+  (set! (-> obj values 0 target) (the int (-> *game-info* counter)))
+  ((method-of-type hud update-values) obj)
+  0
+  (none)
+  )
+
+(defmethod init-callback hud-crimsonhover ((obj hud-crimsonhover))
+  (set! (-> obj level) (level-get *level* 'drillmid))
+  (set! (-> obj gui-id)
+        (add-process *gui-control* obj (gui-channel hud-lower-right) (gui-action hidden) (-> obj name) 81920.0 0)
+        )
+  (logior! (-> obj flags) (hud-flags show))
+  (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x11 :page #xb1e)))
+  (set! (-> obj sprites 0 flags) (the-as uint 4))
+  (set! (-> obj sprites 0 scale-x) 0.7)
+  (set! (-> obj sprites 0 scale-y) 0.7)
+  (alloc-string-if-needed obj 0)
+  (set! (-> obj strings 0 scale) 0.6)
+  (set! (-> obj strings 0 flags) (font-flags kerning middle large))
+  0
+  (none)
+  )
+
+(deftype drill-plat-falling (base-plat)
+  ((init-quat quaternion :inline :offset-assert 272)
+   )
+  :heap-base #xa0
+  :method-count-assert 36
+  :size-assert         #x120
+  :flag-assert         #x2400a00120
+  (:methods
+    (idle () _type_ :state 34)
+    (falling () _type_ :state 35)
+    )
+  )
+
+
+(defskelgroup skel-drill-plat-falling drill-plat-falling drill-plat-falling-lod0-jg -1
+              ((drill-plat-falling-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 4.2 7.4)
+              :longest-edge (meters 5.0046)
+              )
+
+(defmethod start-bouncing! drill-plat-falling ((obj drill-plat-falling))
+  "Sets `bouncing` to [[#t]] and sets up the clock to periodically bounce
+and translate the platform via the `smush`
+@see [[smush-control]]"
+  (activate! (-> obj smush) -1.0 24 120 1.0 1.0 (-> self clock))
+  (set! (-> obj bounce-time) (-> self clock frame-counter))
+  (set! (-> obj bouncing) #t)
+  (logclear! (-> obj mask) (process-mask sleep))
+  (logclear! (-> obj mask) (process-mask sleep-code))
+  0
+  (none)
+  )
+
+(defbehavior drill-plat-falling-trans drill-plat-falling ()
+  (rider-trans)
+  (cond
+    ((-> self bouncing)
+     (new 'stack-no-clear 'quaternion)
+     (quaternion-rotate-local-x!
+       (-> self root-override quat)
+       (-> self init-quat)
+       (* 182.04445 (update! (-> self smush)))
+       )
+     (if (not (!= (-> self smush amp) 0.0))
+         (set! (-> self bouncing) #f)
+         )
+     )
+    (else
+      (move-to-point! (-> self root-override) (-> self basetrans))
+      )
+    )
+  (none)
+  )
+
+(defstate idle (drill-plat-falling)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('ridden 'edge-grabbed)
+       (start-bouncing! self)
+       (go-virtual falling)
+       )
+      )
+    )
+  :enter (behavior ()
+    (ja :group! (-> self draw art-group data 2) :num! min)
+    (logior! (-> self root-override root-prim prim-core action) (collide-action rideable))
+    (none)
+    )
+  :trans drill-plat-falling-trans
+  :code (the-as (function none :behavior drill-plat-falling) sleep-code)
+  :post (the-as (function none :behavior drill-plat-falling) plat-post)
+  )
+
+(defstate falling (drill-plat-falling)
+  :virtual #t
+  :trans (behavior ()
+    (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.4))
+        (logclear! (-> self root-override root-prim prim-core action) (collide-action rideable))
+        )
+    (drill-plat-falling-trans)
+    (none)
+    )
+  :code (behavior ()
+    (ja-no-eval :group! (ja-group)
+                :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual idle)
+    (none)
+    )
+  :post (the-as (function none :behavior drill-plat-falling) plat-post)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! drill-plat-falling ((obj drill-plat-falling) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 17203.2 28672.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (pusher-init s4-0)
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-12 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-12 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-12 prim-core collide-with))
+      )
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-drill-plat-falling" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (stop-bouncing! obj)
+  (quaternion-copy! (-> obj init-quat) (-> obj root-override quat))
+  (update-transforms (-> obj root-override))
+  (ja-channel-push! 1 0)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype drill-elevator-shaft (process-drawable)
+  ((extent vector 2 :inline :offset-assert 208)
+   (length float            :offset-assert 240)
+   )
+  :heap-base #x80
+  :method-count-assert 22
+  :size-assert         #xf4
+  :flag-assert         #x16008000f4
+  (:methods
+    (idle () _type_ :state 20)
+    (set-extent! (_type_ vector) none 21)
+    )
+  )
+
+
+(deftype drill-elevator (elevator)
+  ((shaft    (pointer drill-elevator-shaft)  :offset-assert 368)
+   (sound-id sound-id                        :offset-assert 372)
+   )
+  :heap-base #x100
+  :method-count-assert 49
+  :size-assert         #x178
+  :flag-assert         #x3101000178
+  )
+
+
+(defskelgroup skel-drill-elevator drill-elevator drill-elevator-lod0-jg drill-elevator-idle-ja
+              ((drill-elevator-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 7)
+              )
+
+(defmethod get-art-group drill-elevator ((obj drill-elevator))
+  "@returns The associated [[art-group]]"
+  (art-group-get-by-name *level* "skel-drill-elevator" (the-as (pointer uint32) #f))
+  )
+
+(defmethod init-plat-collision! drill-elevator ((obj drill-elevator))
+  "TODO - collision stuff for setting up the platform"
+  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list obstacle-for-jak))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 28672.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (let ((v1-10 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-10 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-10 prim-core collide-with)
+            (collide-spec jak bot hit-by-others-list player-list obstacle-for-jak)
+            )
+      (set! (-> v1-10 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-10 transform-index) 3)
+      (set-vector! (-> v1-10 local-sphere) 0.0 0.0 0.0 28672.0)
+      )
+    (let ((v1-12 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-12 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-12 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-12 prim-core action) (collide-action solid))
+      (set! (-> v1-12 transform-index) 4)
+      (set-vector! (-> v1-12 local-sphere) 0.0 0.0 0.0 28672.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-15 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-15 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-15 prim-core collide-with))
+      )
+    (set! (-> obj root-override) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defstate waiting (drill-elevator)
+  :virtual #t
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data 2)
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate running (drill-elevator)
+  :virtual #t
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (ja-no-eval :group! (-> self draw art-group data 3)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (sound-play "drill-elevator" :id (-> self sound-id) :position (-> self root-override trans))
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (logior! (-> self elevator-status) (elevator-status waiting-to-ascend))
+    (until (= (-> self path-pos) 1.0)
+      (sound-play "drill-elevator" :id (-> self sound-id) :position (-> self root-override trans))
+      (suspend)
+      )
+    (sound-stop (-> self sound-id))
+    (sound-play "d-elev-fence-dn" :position (-> self root-override trans))
+    (ja-no-eval :group! (-> self draw art-group data 4)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (logclear! (-> self elevator-status) (elevator-status waiting-to-ascend))
+    (sleep-code)
+    (none)
+    )
+  :post (behavior ()
+    (let ((t9-0 (-> (method-of-type elevator running) post)))
+      (if t9-0
+          ((the-as (function none) t9-0))
+          )
+      )
+    (set-extent! (-> self shaft 0) (-> self root-override trans))
+    (none)
+    )
+  )
+
+(defskelgroup skel-drill-elevator-shaft drill-elevator-base drill-elevator-base-lod0-jg -1
+              ((drill-elevator-base-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 13)
+              :origin-joint-index 8
+              )
+
+(defstate idle (drill-elevator-shaft)
+  :virtual #t
+  :enter (behavior ()
+    (ja-channel-push! 1 0)
+    (ja-no-eval :group! (-> self draw art-group data 2) :num! zero)
+    (-> self skel root-channel 0)
+    (ja-post)
+    (none)
+    )
+  :code (behavior ()
+    (until #f
+      (let ((f30-0 (- (-> self extent 1 y) (-> self extent 0 y))))
+        (when (!= f30-0 (-> self length))
+          (let ((f0-3 (* 0.000010172526 f30-0))
+                (a0-0 (-> self skel root-channel 0))
+                )
+            (set! (-> a0-0 frame-num) f0-3)
+            (joint-control-channel-group-eval! a0-0 (the-as art-joint-anim #f) num-func-identity)
+            )
+          (transform-post)
+          (set! (-> self length) f30-0)
+          )
+        )
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch vector vs none.
+(defmethod set-extent! drill-elevator-shaft ((obj drill-elevator-shaft) (arg0 vector))
+  (set! (-> obj extent 1 quad) (-> arg0 quad))
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior drill-elevator-shaft-init-by-other drill-elevator-shaft ((arg0 vector) (arg1 vector))
+  (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 symbol) (sv-48 type) (sv-64 collide-shape))
+  (let ((s4-0 (new 'process 'collide-shape self (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 7) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 8))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 28672.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      (let* ((s2-0 (the-as object '((6 3 16384) (5 4 16384) (4 5 16384) (3 6 16384) (2 7 16384) (1 8 16384) (0 9 16384))))
+             (s1-0 (-> (the-as pair s2-0) car))
+             )
+        (while (not (null? s2-0))
+          (let ((s0-0 (method-of-type collide-shape-prim-mesh new)))
+            (set! sv-32 'process)
+            (set! sv-48 collide-shape-prim-mesh)
+            (set! sv-64 s4-0)
+            (let ((a3-2 (command-get-int (-> (the-as pair s1-0) car) 0))
+                  (t0-1 0)
+                  )
+              (set! sv-16 (s0-0 sv-32 sv-48 sv-64 (the-as uint a3-2) (the-as uint t0-1)))
+              )
+            )
+          (let ((s0-1 sv-16))
+            (set! (-> s0-1 prim-core collide-as) (-> s3-0 prim-core collide-as))
+            (set! (-> s0-1 prim-core collide-with) (-> s3-0 prim-core collide-with))
+            (set! (-> s0-1 prim-core action) (-> s3-0 prim-core action))
+            (set! (-> s0-1 transform-index) (command-get-int (-> (the-as pair (-> (the-as pair s1-0) cdr)) car) 0))
+            )
+          (set-vector!
+            (-> sv-16 local-sphere)
+            0.0
+            0.0
+            0.0
+            (command-get-float (-> (the-as pair (-> (the-as pair (-> (the-as pair s1-0) cdr)) cdr)) car) 0.0)
+            )
+          (set! s2-0 (-> (the-as pair s2-0) cdr))
+          (set! s1-0 (-> (the-as pair s2-0) car))
+          )
+        )
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-21 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-21 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-21 prim-core collide-with))
+      )
+    (set! (-> self root) s4-0)
+    )
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (initialize-skeleton
+    self
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-drill-elevator-shaft" (the-as (pointer uint32) #f))
+      )
+    (the-as pair 0)
+    )
+  (set! (-> self extent 0 quad) (-> arg0 quad))
+  (set! (-> self extent 1 quad) (-> arg1 quad))
+  (set! (-> self length) -1.0)
+  (go-virtual idle)
+  (none)
+  )
+
+(defmethod move-between-points drill-elevator ((obj drill-elevator) (arg0 vector) (arg1 float) (arg2 float))
+  "Move between two points on the elevator's path
+@param vec TODO not sure
+@param point-a The first point fetched from the elevator's path
+@param point-b The second point fetched from the path
+@see [[path-control]] and [[elevator]]"
+  (let ((s4-0 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg1 'interp))
+        (a0-3 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg2 'interp))
+        (v1-3 (-> obj root-override trans))
+        )
+    (when (and (< (-> a0-3 y) (-> s4-0 y)) (< (-> arg0 y) (+ -8192.0 (-> v1-3 y))))
+      (let ((s4-2 (vector-! (new 'stack-no-clear 'vector) arg0 v1-3)))
+        (vector-inv-orient-by-quat! s4-2 s4-2 (-> obj root-override quat))
+        (and (< (fabs (-> s4-2 x)) 20480.0) (< (fabs (-> s4-2 z)) 20480.0))
+        )
+      )
+    )
+  )
+
+(defmethod deactivate drill-elevator ((obj drill-elevator))
+  (sound-stop (-> obj sound-id))
+  ((the-as (function process-drawable none) (find-parent-method drill-elevator 10)) obj)
+  (none)
+  )
+
+;; WARN: Return type mismatch sound-id vs none.
+(defmethod set-ambient-sound! drill-elevator ((obj drill-elevator))
+  "Sets the elevator's [[ambient-sound]] up"
+  (set! (-> obj sound-id) (new-sound-id))
+  (none)
+  )
+
+(defmethod activate-elevator drill-elevator ((obj drill-elevator))
+  "Puts the elevator initially into the correct state. This is typically based upon game completion"
+  (if (or (not (task-node-closed? (game-task-node drill-ship-introduction)))
+          (task-node-closed? (game-task-node nest-boss-resolution))
+          )
+      ((method-of-type elevator activate-elevator) obj)
+      (go (method-of-object obj dormant))
+      )
+  )
+
+(defmethod init-plat! drill-elevator ((obj drill-elevator))
+  "Does any necessary initial platform setup.
+For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
+  (set! (-> obj shaft)
+        (process-spawn drill-elevator-shaft (-> obj entity extra trans) (-> obj basetrans) :to obj)
+        )
+  0
+  (none)
+  )
+
+(deftype drill-mech-elevator (drill-elevator)
+  ((running-sound-id sound-id  :offset-assert 376)
+   )
+  :heap-base #x100
+  :method-count-assert 49
+  :size-assert         #x17c
+  :flag-assert         #x310100017c
+  )
+
+
+(defskelgroup skel-drill-mech-elevator drill-elevator drill-elevator-lod0-jg drill-elevator-idle-ja
+              ((drill-elevator-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+(defstate running (drill-mech-elevator)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type drill-elevator running) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set! (-> self running-sound-id) (sound-play "mech-lift"))
+    (none)
+    )
+  :exit (behavior ()
+    (remove-setting! 'pilot)
+    (remove-setting! 'pilot-exit)
+    (let ((t9-2 (-> (method-of-type drill-elevator running) exit)))
+      (if t9-2
+          (t9-2)
+          )
+      )
+    (sound-stop (-> self running-sound-id))
+    (none)
+    )
+  :code (behavior ()
+    (logior! (-> self elevator-status) (elevator-status waiting-to-ascend))
+    (logclear! (-> self params flags) (elevator-flags elevator-flags-3))
+    (logior! (-> self params flags) (elevator-flags elevator-flags-0))
+    (when (logtest? (-> self elevator-status) (elevator-status waiting-to-descend))
+      (let ((v1-9 *target*))
+        (when v1-9
+          (if (not (focus-test? v1-9 mech))
+              (set-setting! 'pilot #f 0 0)
+              )
+          (set-setting! 'pilot-exit #f 0 0)
+          )
+        )
+      )
+    (until (= (-> self path-pos) 1.0)
+      (sound-play "mech-lift" :id (-> self sound-id) :position (-> self root-override trans))
+      (suspend)
+      )
+    (sound-stop (-> self sound-id))
+    (logclear! (-> self elevator-status) (elevator-status waiting-to-ascend))
+    (sleep-code)
+    (none)
+    )
+  )
+
+(defmethod commited-to-ride? drill-mech-elevator ((obj drill-mech-elevator))
+  "@returns if the target is considered within the elevator area enough to begin descending/ascending"
+  (when (= (-> obj move-pos 1) (-> obj bottom-top 0))
+    (let* ((s5-0 *target*)
+           (a0-2 (if (type? s5-0 process-focusable)
+                     s5-0
+                     )
+                 )
+           )
+      (when (and a0-2 (focus-test? a0-2 mech) (not (logtest? (-> a0-2 focus-status) (focus-status dead ignore))))
+        (let* ((v1-5 (get-trans a0-2 0))
+               (s5-2 (vector-! (new 'stack-no-clear 'vector) v1-5 (-> obj root-override trans)))
+               )
+          (vector-inv-orient-by-quat! s5-2 s5-2 (-> obj root-override quat))
+          (and (< (fabs (-> s5-2 x)) 16384.0) (< (fabs (-> s5-2 z)) 16384.0))
+          )
+        )
+      )
+    )
+  )
+
+(defmethod move-to-next-point! drill-mech-elevator ((obj drill-mech-elevator))
+  "If the [[*target*]] is in a valid state and there is a point to transition to in the elevator's path
+do so.
+@see [[elevator::47]]"
+  (local-vars (sv-16 float))
+  (let ((a0-1 *target*))
+    (when (and a0-1
+               (not (logtest? (focus-status dead inactive in-air grabbed edge-grab pole pilot-riding pilot teleporting)
+                              (-> a0-1 focus-status)
+                              )
+                    )
+               )
+      (set! sv-16 (the-as float 0.0))
+      (when (and (find-closest-point-in-path! obj (get-trans a0-1 0) (& sv-16) #t #t)
+                 (!= (-> obj move-pos 1) sv-16)
+                 (= sv-16 (-> obj bottom-top 0))
+                 )
+        (set! (-> obj move-pos 0) (-> obj move-pos 1))
+        (set! (-> obj move-pos 1) sv-16)
+        (logior! (-> obj elevator-status) (elevator-status moving))
+        (go (method-of-object obj running))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod deactivate drill-mech-elevator ((obj drill-mech-elevator))
+  (if (nonzero? (-> obj running-sound-id))
+      (sound-stop (-> obj running-sound-id))
+      )
+  ((method-of-type drill-elevator deactivate) obj)
+  (none)
+  )
+
+(defmethod init-plat! drill-mech-elevator ((obj drill-mech-elevator))
+  "Does any necessary initial platform setup.
+For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
+  (set! (-> obj running-sound-id) (new 'static 'sound-id))
+  ((method-of-type drill-elevator init-plat!) obj)
+  (none)
+  )
+
+(defmethod activate-elevator drill-mech-elevator ((obj drill-mech-elevator))
+  "Puts the elevator initially into the correct state. This is typically based upon game completion"
+  (go (method-of-object obj waiting))
+  )
+
+(deftype fire-floor (process-drawable)
+  ((root-override      collide-shape-moving             :offset        128)
+   (part-off           sparticle-launch-control         :offset-assert 200)
+   (size               float                    2       :offset-assert 204)
+   (attack-id          uint32                           :offset-assert 212)
+   (sound-id           sound-id                         :offset-assert 216)
+   (sound-playing      symbol                           :offset-assert 220)
+   (deadly-width       float                            :offset-assert 224)
+   (deadly-length      float                            :offset-assert 228)
+   (flames-end-tt      float                            :offset-assert 232)
+   (generous           float                            :offset-assert 236)
+   (no-collision-timer time-frame                       :offset-assert 240)
+   (local-to-world     matrix                   :inline :offset-assert 256)
+   (world-to-local     matrix                   :inline :offset-assert 320)
+   (sync               sync-linear              :inline :offset-assert 384)
+   )
+  :heap-base #x110
+  :method-count-assert 22
+  :size-assert         #x190
+  :flag-assert         #x1601100190
+  (:methods
+    (idle () _type_ :state 20)
+    (set-part (_type_) none 21)
+    )
+  )
+
+
+(defstate idle (fire-floor)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('touch 'attack)
+         (let* ((s4-0 proc)
+                (gp-0 (if (type? s4-0 process-focusable)
+                          s4-0
+                          )
+                      )
+                )
+           (when gp-0
+             (when (or (focus-test? (the-as process-focusable gp-0) mech)
+                       (>= (- (-> self clock frame-counter) (-> self no-collision-timer))
+                           (the-as time-frame (-> *TARGET-bank* hit-invulnerable-timeout))
+                           )
+                       )
+               (let ((f0-0 (get-norm! (-> self sync) 0)))
+                 (when (and (< (-> self generous) f0-0) (< f0-0 (- (-> self flames-end-tt) (-> self generous))))
+                   (let ((s4-1 (new 'stack-no-clear 'vector)))
+                     (vector-matrix*! s4-1 (get-trans (the-as process-focusable gp-0) 0) (-> self world-to-local))
+                     (when (and (>= (-> s4-1 x) 0.0)
+                                (>= (-> self deadly-width) (-> s4-1 x))
+                                (>= (-> s4-1 z) 0.0)
+                                (>= (-> self deadly-length) (-> s4-1 z))
+                                (>= (-> s4-1 y) -2048.0)
+                                (>= 2048.0 (-> s4-1 y))
+                                )
+                       (let ((s4-2 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root-override quat))))
+                         (let* ((v1-23
+                                  (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> (the-as process-focusable gp-0) root-override quat))
+                                  )
+                                (f0-8 (vector-dot s4-2 v1-23))
+                                )
+                           (if (< 0.0 f0-8)
+                               (vector-float*! s4-2 s4-2 -1.0)
+                               )
+                           )
+                         (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
+                           (set! (-> a1-10 from) (process->ppointer self))
+                           (set! (-> a1-10 num-params) 2)
+                           (set! (-> a1-10 message) 'attack)
+                           (set! (-> a1-10 param 0) (-> event param 0))
+                           (let ((v1-32 (new 'static 'attack-info :mask (attack-info-mask vector mode shove-back shove-up control id))))
+                             (set! (-> v1-32 id) (-> self attack-id))
+                             (set! (-> v1-32 mode) 'burnup)
+                             (set! (-> v1-32 vector quad) (-> s4-2 quad))
+                             (set! (-> v1-32 shove-back) 409.6)
+                             (set! (-> v1-32 shove-up) 12288.0)
+                             (set! (-> v1-32 control) (if (focus-test? (the-as process-focusable gp-0) board)
+                                                          1.0
+                                                          0.0
+                                                          )
+                                   )
+                             (set! (-> a1-10 param 1) (the-as uint v1-32))
+                             )
+                           (when (send-event-function gp-0 a1-10)
+                             (let ((v0-0 (-> self clock frame-counter)))
+                               (set! (-> self no-collision-timer) v0-0)
+                               v0-0
+                               )
+                             )
+                           )
+                         )
+                       )
+                     )
+                   )
+                 )
+               )
+             )
+           )
+         )
+        )
+      )
+    )
+  :trans (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'overlaps-others-params)))
+      (set! (-> a1-0 options) (overlaps-others-options oo0))
+      (set! (-> a1-0 collide-with-filter) (the-as collide-spec -1))
+      (set! (-> a1-0 tlist) *touching-list*)
+      (find-overlapping-shapes (-> self root-override) a1-0)
+      )
+    (none)
+    )
+  :code (the-as (function none :behavior fire-floor) sleep-code)
+  :post (behavior ()
+    (let ((f28-0 (+ -8192.0 (-> self size 0)))
+          (f30-0 (+ -8192.0 (-> self size 1)))
+          )
+      (cond
+        ((< (get-norm! (-> self sync) 0) (-> self flames-end-tt))
+         (set-drill-fire-floor! #t)
+         (sound-play "fire-floor" :id (-> self sound-id))
+         (set! (-> self sound-playing) #t)
+         (let ((s3-0 (get-field-spec-by-id (-> *part-id-table* 1674) (sp-field-id spt-x)))
+               (s2-0 (get-field-spec-by-id (-> *part-id-table* 1674) (sp-field-id spt-z)))
+               (s1-0 (get-field-spec-by-id (-> *part-id-table* 1676) (sp-field-id spt-x)))
+               (s0-0 (get-field-spec-by-id (-> *part-id-table* 1676) (sp-field-id spt-z)))
+               (s5-0 (get-field-spec-by-id (-> *part-id-table* 1670) (sp-field-id spt-x)))
+               (gp-0 (get-field-spec-by-id (-> *part-id-table* 1670) (sp-field-id spt-z)))
+               (s4-0 (get-field-spec-by-id (-> *part-id-table* 1675) (sp-field-id spt-x)))
+               (v1-22 (get-field-spec-by-id (-> *part-id-table* 1675) (sp-field-id spt-z)))
+               )
+           (if s3-0
+               (set! (-> s3-0 random-rangef) f28-0)
+               )
+           (if s2-0
+               (set! (-> s2-0 random-rangef) f30-0)
+               )
+           (if s1-0
+               (set! (-> s1-0 random-rangef) f28-0)
+               )
+           (if s0-0
+               (set! (-> s0-0 random-rangef) f30-0)
+               )
+           (if s5-0
+               (set! (-> s5-0 random-rangef) (* 0.5 f28-0))
+               )
+           (if gp-0
+               (set! (-> gp-0 random-rangef) (* 0.5 f30-0))
+               )
+           (if s4-0
+               (set! (-> s5-0 random-rangef) (* 0.5 f28-0))
+               )
+           (if v1-22
+               (set! (-> gp-0 random-rangef) (* 0.5 f30-0))
+               )
+           )
+         (spawn-with-matrix (-> self part) (-> self local-to-world))
+         )
+        (else
+          (set-drill-fire-floor! #f)
+          (when (-> self sound-playing)
+            (sound-stop (-> self sound-id))
+            (set! (-> self sound-playing) #f)
+            )
+          (let ((s5-1 (get-field-spec-by-id (-> *part-id-table* 1671) (sp-field-id spt-x)))
+                (s4-1 (get-field-spec-by-id (-> *part-id-table* 1671) (sp-field-id spt-z)))
+                (gp-1 (get-field-spec-by-id (-> *part-id-table* 1670) (sp-field-id spt-x)))
+                (v1-39 (get-field-spec-by-id (-> *part-id-table* 1670) (sp-field-id spt-z)))
+                )
+            (if s5-1
+                (set! (-> s5-1 random-rangef) f28-0)
+                )
+            (if s4-1
+                (set! (-> s4-1 random-rangef) f30-0)
+                )
+            (if gp-1
+                (set! (-> gp-1 random-rangef) (* 0.5 f28-0))
+                )
+            (if v1-39
+                (set! (-> v1-39 random-rangef) (* 0.5 f30-0))
+                )
+            )
+          (spawn-with-matrix (-> self part-off) (-> self local-to-world))
+          )
+        )
+      )
+    (debug-draw (-> self path))
+    (transform-post)
+    (none)
+    )
+  )
+
+(defmethod set-part fire-floor ((obj fire-floor))
+  "Set the particle launch controls for the on/off states."
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 399) obj))
+  (set! (-> obj part-off) (create-launch-control (-> *part-group-id-table* 398) obj))
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch process-drawable vs fire-floor.
+(defmethod relocate fire-floor ((obj fire-floor) (arg0 int))
+  (if (nonzero? (-> obj part-off))
+      (&+! (-> obj part-off) arg0)
+      )
+  (the-as
+    fire-floor
+    ((the-as (function process-drawable int process-drawable) (find-parent-method fire-floor 7)) obj arg0)
+    )
+  )
+
+(defmethod deactivate fire-floor ((obj fire-floor))
+  (sound-stop (-> obj sound-id))
+  (if (nonzero? (-> obj part-off))
+      (kill-and-free-particles (-> obj part-off))
+      )
+  ((the-as (function process-drawable none) (find-parent-method fire-floor 10)) obj)
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! fire-floor ((obj fire-floor) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-2 prim-core action) (collide-action deadly))
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-2)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> obj root-override) (the-as collide-shape-moving s4-0))
+    )
+  (process-drawable-from-entity! obj arg0)
+  (set-part obj)
+  (let ((a1-4 (new 'stack-no-clear 'sync-info-params)))
+    (let ((v1-9 0))
+      (if #t
+          (set! v1-9 (logior v1-9 1))
+          )
+      (set! (-> a1-4 sync-type) 'sync-linear)
+      (set! (-> a1-4 sync-flags) (the-as sync-flags v1-9))
+      )
+    (set! (-> a1-4 entity) arg0)
+    (set! (-> a1-4 period) (the-as uint 2100))
+    (set! (-> a1-4 percent) 0.0)
+    (initialize! (-> obj sync) a1-4)
+    )
+  (set! (-> obj flames-end-tt) (/ (the float (the int (* 300.0 (res-lump-float arg0 'timeout :default 3.0))))
+                                  (the float (-> obj sync period))
+                                  )
+        )
+  (set! (-> obj generous) (/ 90.0 (the float (-> obj sync period))))
+  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 arg0 #t))
+  (if (-> obj path)
+      (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+      )
+  (let ((s4-1 (new 'stack-no-clear 'matrix3))
+        (s3-0 (-> obj local-to-world))
+        (s5-1 (-> obj size))
+        )
+    (get-point-in-path! (-> obj path) (the-as vector (-> s4-1 vector)) 0.0 'interp)
+    (get-point-in-path! (-> obj path) (-> s4-1 vector 1) 1.0 'interp)
+    (get-point-in-path! (-> obj path) (-> s4-1 vector 2) 3.0 'interp)
+    (matrix-identity! s3-0)
+    (vector-normalize-copy!
+      (the-as vector (-> s3-0 vector))
+      (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 1) (the-as vector (-> s4-1 vector)))
+      1.0
+      )
+    (vector-normalize-copy!
+      (-> s3-0 vector 2)
+      (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 2) (the-as vector (-> s4-1 vector)))
+      1.0
+      )
+    (vector-normalize! (vector-cross! (-> s3-0 vector 1) (-> s3-0 vector 2) (the-as vector (-> s3-0 vector))) 1.0)
+    (vector-cross! (-> s3-0 vector 2) (the-as vector (-> s3-0 vector)) (-> s3-0 vector 1))
+    (vector-normalize! (-> s3-0 vector 2) 1.0)
+    (set! (-> s3-0 trans quad) (-> s4-1 vector 0 quad))
+    (matrix-inverse-of-rot-trans! (-> obj world-to-local) (-> obj local-to-world))
+    (set! (-> obj deadly-width) (vector-vector-distance (-> s4-1 vector 1) (the-as vector (-> s4-1 vector))))
+    (set! (-> obj deadly-length) (vector-vector-distance (-> s4-1 vector 2) (the-as vector (-> s4-1 vector))))
+    (let ((v1-39 (-> obj root-override root-prim)))
+      (vector-reset! (-> v1-39 local-sphere))
+      (let* ((f0-14 (* 0.5 (-> obj deadly-width)))
+             (f0-16 (* f0-14 f0-14))
+             (f1-7 (* 0.5 (-> obj deadly-length)))
+             )
+        (set! (-> v1-39 local-sphere w) (sqrtf (+ f0-16 (* f1-7 f1-7))))
+        )
+      )
+    (set! (-> s5-1 0)
+          (vector-length (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 1) (the-as vector (-> s4-1 vector))))
+          )
+    (set! (-> s5-1 1)
+          (vector-length (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 2) (the-as vector (-> s4-1 vector))))
+          )
+    )
+  (let* ((v1-46 *game-info*)
+         (a0-42 (+ (-> v1-46 attack-id) 1))
+         )
+    (set! (-> v1-46 attack-id) a0-42)
+    (set! (-> obj attack-id) a0-42)
+    )
+  (set! (-> obj sound-id) (new-sound-id))
+  (set! (-> obj sound-playing) #f)
+  (update-transforms (-> obj root-override))
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype fire-floor-a (fire-floor)
+  ()
+  :heap-base #x110
+  :method-count-assert 22
+  :size-assert         #x190
+  :flag-assert         #x1601100190
+  )
+
+
+(defmethod set-part fire-floor-a ((obj fire-floor-a))
+  "Set the particle launch controls for the on/off states."
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 401) obj))
+  (set! (-> obj part-off) (create-launch-control (-> *part-group-id-table* 400) obj))
+  0
+  (none)
+  )
+
+(defpartgroup group-drill-switch-red
+  :id 451
+  :bounds (static-bspherem 0 0 0 4)
+  :parts ((sp-item 1991 :flags (bit6)))
+  )
+
+(defpart 1991
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xbb :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 2.5))
+    (sp-flt spt-rot-x 819.2)
+    (sp-flt spt-rot-z (degrees 0.0))
+    (sp-flt spt-scale-y (meters 1.5))
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 16.0)
+    (sp-flt spt-b 16.0)
+    (sp-rnd-flt spt-a 17.0 4.0 1.0)
+    (sp-flt spt-omega 494387.2)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 glow)
+    (sp-flt spt-userdata 2048.0)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpartgroup group-drill-switch-green
+  :id 452
+  :bounds (static-bspherem 0 0 0 4)
+  :parts ((sp-item 1992 :flags (bit6)))
+  )
+
+(defpart 1992
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xbb :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 2.5))
+    (sp-flt spt-rot-x 819.2)
+    (sp-flt spt-rot-z (degrees 0.0))
+    (sp-flt spt-scale-y (meters 1.5))
+    (sp-flt spt-r 64.0)
+    (sp-flt spt-g 255.0)
+    (sp-flt spt-b 64.0)
+    (sp-rnd-flt spt-a 8.0 2.0 1.0)
+    (sp-flt spt-omega 494387.2)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 glow)
+    (sp-flt spt-userdata 2048.0)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(deftype drill-switch (basebutton)
+  ((green-part sparticle-launch-control  :offset-assert 288)
+   (down-frame float                     :offset-assert 292)
+   )
+  :heap-base #xb0
+  :method-count-assert 41
+  :size-assert         #x128
+  :flag-assert         #x2900b00128
+  (:methods
+    (drill-switch-method-39 (_type_) none 39)
+    (set-switch-color (_type_ symbol) none 40)
+    )
+  )
+
+
+(defskelgroup skel-drill-switch drill-switch drill-switch-lod0-jg drill-switch-idle-ja
+              ((drill-switch-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              )
+
+;; WARN: Return type mismatch basebutton vs drill-switch.
+(defmethod relocate drill-switch ((obj drill-switch) (arg0 int))
+  (if (nonzero? (-> obj green-part))
+      (&+! (-> obj green-part) arg0)
+      )
+  (the-as drill-switch ((method-of-type basebutton relocate) obj arg0))
+  )
+
+(defmethod deactivate drill-switch ((obj drill-switch))
+  (if (nonzero? (-> obj green-part))
+      (kill-and-free-particles (-> obj green-part))
+      )
+  ((method-of-type basebutton deactivate) obj)
+  (none)
+  )
+
+(defmethod set-switch-color drill-switch ((obj drill-switch) (arg0 symbol))
+  "Set the switch color based on its state."
+  (with-pp
+    (when (or arg0 (not (logtest? (-> pp clock frame-counter) 64)))
+      (let ((s4-0 (new 'stack-no-clear 'vector)))
+        (vector<-cspace+vector! s4-0 (-> obj node-list data 4) (new 'static 'vector :y 6963.2 :w 1.0))
+        (spawn
+          (if arg0
+              (-> obj green-part)
+              (-> obj part)
+              )
+          s4-0
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+(defmethod basebutton-method-34 drill-switch ((obj drill-switch))
+  "TODO - collision stuff"
+  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 4096.0 0.0 8192.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-8 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-8 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-8 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-8 prim-core action) (collide-action solid))
+      (set! (-> v1-8 transform-index) 3)
+      (set-vector! (-> v1-8 local-sphere) 0.0 0.0 0.0 3072.0)
+      )
+    (let ((v1-10 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-10 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-10 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-10 prim-core action) (collide-action solid))
+      (set! (-> v1-10 transform-index) 4)
+      (set-vector! (-> v1-10 local-sphere) 0.0 3686.4 1843.2 5324.8)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-13 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-13 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-13 prim-core collide-with))
+      )
+    (set! (-> obj root-override) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defstate up-idle (drill-switch)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('track)
+       #t
+       )
+      (else
+        ((-> (method-of-type basebutton up-idle) event) proc arg1 event-type event)
+        )
+      )
+    )
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type basebutton up-idle) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (setup-masks (-> self draw) 4 2)
+    (none)
+    )
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type basebutton up-idle) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set-switch-color self #f)
+    (none)
+    )
+  :code (behavior ()
+    (ja :group! (-> self draw art-group data 2) :num! (identity 1.0))
+    (transform-post)
+    (sleep-code)
+    (none)
+    )
+  )
+
+(defstate going-down (drill-switch)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type basebutton going-down) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (sound-play "drill-switch")
+    (setup-masks (-> self draw) 2 4)
+    (set! (-> self down-frame) 0.0)
+    (let ((gp-1 (new 'stack-no-clear 'vector))
+          (s5-1 (new 'stack-no-clear 'vector))
+          )
+      (vector-z-quaternion! gp-1 (-> self root-override quat))
+      (vector-! s5-1 (target-pos 0) (-> self root-override trans))
+      (if (< (vector-dot s5-1 gp-1) 0.0)
+          (set! (-> self down-frame) 2.0)
+          )
+      )
+    (none)
+    )
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type basebutton going-down) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set-switch-color self #f)
+    (none)
+    )
+  :code (behavior ()
+    (ja-no-eval :num! (seek! (-> self down-frame) (-> self anim-speed)))
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! (-> self down-frame) (-> self anim-speed)))
+      )
+    (send-event! self (-> self event-down))
+    (let ((gp-0 (res-lump-struct (-> self entity) 'on-activate structure)))
+      (if gp-0
+          (script-eval (the-as pair gp-0))
+          )
+      )
+    (go-virtual down-idle)
+    (none)
+    )
+  )
+
+(defstate down-idle (drill-switch)
+  :virtual #t
+  :event (-> (method-of-type basebutton down-idle) event)
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type basebutton down-idle) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (setup-masks (-> self draw) 2 4)
+    (none)
+    )
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type basebutton down-idle) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set-switch-color self #t)
+    (none)
+    )
+  :code (behavior ()
+    (ja :group! (-> self draw art-group data 2) :num! (identity (-> self down-frame)))
+    (transform-post)
+    (cond
+      ((= (-> self timeout) 0.0)
+       (sleep-code)
+       )
+      (else
+        (until (>= (- (-> self clock frame-counter) (-> self state-time)) (the int (* 300.0 (-> self timeout))))
+          (suspend)
+          )
+        (send-event! self (-> self event-going-up))
+        (go-virtual going-up)
+        )
+      )
+    (none)
+    )
+  )
+
+(defstate going-up (drill-switch)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type basebutton going-up) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (setup-masks (-> self draw) 4 2)
+    (none)
+    )
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type basebutton going-up) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set-switch-color self #f)
+    (none)
+    )
+  :code (behavior ()
+    (local-vars
+      (a0-0 process)
+      (a1-0 event-message-block)
+      (t9-0 (function process-tree event-message-block object))
+      )
+    (until (t9-0 a0-0 a1-0)
+      (suspend)
+      (set! a1-0 (new 'stack-no-clear 'event-message-block))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 1)
+      (set! (-> a1-0 message) 'query)
+      (set! (-> a1-0 param 0) (the-as uint 'arrived?))
+      (set! t9-0 send-event-function)
+      (let ((v1-4 (-> self notify-actor)))
+        (set! a0-0 (if v1-4
+                       (-> v1-4 extra process)
+                       )
+              )
+        )
+      )
+    (ja-no-eval :num! (seek! 1.0 (-> self anim-speed)))
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! 1.0 (-> self anim-speed)))
+      )
+    (send-event! self (-> self event-up))
+    (sound-play "drill-switch")
+    (go-virtual up-idle)
+    (none)
+    )
+  )
+
+(defmethod press! drill-switch ((obj drill-switch) (arg0 symbol))
+  (if arg0
+      (logior! (-> obj button-status) (button-status pressed))
+      (logclear! (-> obj button-status) (button-status pressed))
+      )
+  (when (not (logtest? (-> obj button-status) (button-status button-status-1)))
+    (if arg0
+        (process-entity-status! obj (entity-perm-status bit-12) #t)
+        (process-entity-status! obj (entity-perm-status bit-12) #f)
+        )
+    )
+  )
+
+(defmethod basebutton-method-33 drill-switch ((obj drill-switch))
+  "TODO - joint stuff"
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-drill-switch" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (ja-channel-set! 1)
+  (let ((s5-1 (-> obj skel root-channel 0)))
+    (joint-control-channel-group-eval!
+      s5-1
+      (the-as art-joint-anim (-> obj draw art-group data 2))
+      num-func-identity
+      )
+    (set! (-> s5-1 frame-num) 0.0)
+    )
+  (transform-post)
+  0
+  (none)
+  )
+
+(defmethod prepare-trigger-event! drill-switch ((obj drill-switch))
+  "Sets `event-going-down` to `'trigger`"
+  (set! (-> obj down-frame) 2.0)
+  (logior! (-> obj button-status) (button-status button-status-3))
+  (set! (-> obj event-going-down) 'trigger)
+  (set! (-> obj event-going-up) 'untrigger)
+  (if (and (= (-> obj entity extra perm task) 61)
+           (task-node-closed? (game-task-node drill-mech-smash-consoles))
+           (= (-> obj timeout) 0.0)
+           )
+      (process-entity-status! obj (entity-perm-status bit-12) #t)
+      )
+  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status bit-12)))
+      (logior! (-> obj button-status) (button-status pressed))
+      (logclear! (-> obj button-status) (button-status pressed))
+      )
+  (set! (-> obj mask) (logior (process-mask collectable) (-> obj mask)))
+  (logclear! (-> obj mask) (process-mask no-track))
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 451) obj))
+  (set! (-> obj green-part) (create-launch-control (-> *part-group-id-table* 452) obj))
+  0
+  (none)
+  )
+
+(defpart 1993
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x83 :page #xc))
+    (sp-func spt-birth-func 'birth-func-set-quat)
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1))
+    (sp-flt spt-scale-y (meters 40))
+    (sp-rnd-flt spt-r 128.0 64.0 1.0)
+    (sp-rnd-flt spt-g 128.0 64.0 1.0)
+    (sp-rnd-flt spt-b 128.0 64.0 1.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14 left-multiply-quat)
+    )
+  )
+
+(defpart 1994
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xbc :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 2))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 128.0 64.0 1.0)
+    (sp-rnd-flt spt-g 128.0 64.0 1.0)
+    (sp-rnd-flt spt-b 128.0 64.0 1.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-rotvel-z (degrees 0.3))
+    (sp-flt spt-fade-g -1.0666667)
+    (sp-flt spt-fade-b -1.0666667)
+    (sp-flt spt-fade-a -8.533334)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14)
+    )
+  )
+
+(defpart 1995
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xbc :page #xc))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 2))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 128.0 64.0 1.0)
+    (sp-rnd-flt spt-g 128.0 64.0 1.0)
+    (sp-rnd-flt spt-b 128.0 64.0 1.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-rotvel-z (degrees 0.3))
+    (sp-flt spt-fade-g -1.0666667)
+    (sp-flt spt-fade-b -1.0666667)
+    (sp-flt spt-fade-a -8.533334)
+    (sp-int spt-timer 5)
+    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14)
+    )
+  )
+
+(deftype drill-laser (process-drawable)
+  ((speed        float     :offset-assert 200)
+   (offset       float     :offset-assert 204)
+   (pause        float     :offset-assert 208)
+   (firing?      symbol    :offset-assert 212)
+   (hit-sound-id sound-id  :offset-assert 216)
+   )
+  :heap-base #x60
+  :method-count-assert 21
+  :size-assert         #xdc
+  :flag-assert         #x15006000dc
+  (:methods
+    (drill-laser-idle () _type_ :state 20)
+    )
+  )
+
+
+(defmethod deactivate drill-laser ((obj drill-laser))
+  (sound-stop (-> obj hit-sound-id))
+  ((method-of-type process-drawable deactivate) obj)
+  (none)
+  )
+
+(defstate drill-laser-idle (drill-laser)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (none)
+    )
+  :trans (behavior ()
+    (let* ((f0-2 (+ (* 0.0033333334 (the float (- (-> self clock frame-counter) (-> self state-time))))
+                    (* (-> self offset) (+ (-> self speed) (-> self pause)))
+                    )
+                 )
+           (f1-5 (+ (-> self speed) (-> self pause)))
+           (f0-3 (- f0-2 (* (the float (the int (/ f0-2 f1-5))) f1-5)))
+           (gp-0 #f)
+           )
+      (cond
+        ((< f0-3 (-> self speed))
+         (when (not (-> self firing?))
+           (set! (-> self firing?) #t)
+           (sound-play "drill-laser")
+           )
+         (let ((s3-0 (new 'stack-no-clear 'vector)))
+           (set! (-> s3-0 quad) (-> self entity trans quad))
+           (let ((s4-1 (new 'stack-no-clear 'vector)))
+             (set! (-> s4-1 quad) (-> (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self entity quat)) quad))
+             (let ((s5-1 (new 'stack-no-clear 'collide-query)))
+               (let ((v1-15 s5-1))
+                 (set! (-> v1-15 radius) 409.6)
+                 (set! (-> v1-15 collide-with) (collide-spec backgnd jak enemy obstacle player-list))
+                 (set! (-> v1-15 ignore-process0) #f)
+                 (set! (-> v1-15 ignore-process1) #f)
+                 (set! (-> v1-15 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+                 (set! (-> v1-15 action-mask) (collide-action solid))
+                 )
+               (set! (-> s5-1 start-pos quad) (-> s3-0 quad))
+               (vector-float*! (-> s5-1 move-dist) s4-1 245760.0)
+               (fill-using-line-sphere *collide-cache* s5-1)
+               (set! (-> s5-1 radius) 409.6)
+               (let ((f0-7 (probe-using-line-sphere *collide-cache* s5-1)))
+                 (when (>= f0-7 0.0)
+                   (vector-float*! (-> s5-1 move-dist) (-> s5-1 move-dist) f0-7)
+                   (let ((s4-2 (-> s5-1 best-other-tri collide-ptr)))
+                     (when (if (type? s4-2 collide-shape-prim-sphere)
+                               s4-2
+                               )
+                       (set! gp-0 #t)
+                       (if (zero? (-> self hit-sound-id))
+                           (set! (-> self hit-sound-id) (sound-play "drill-laser-cut"))
+                           )
+                       )
+                     )
+                   )
+                 )
+               (set! (-> *part-id-table* 1993 init-specs 4 initial-valuef) (vector-length (-> s5-1 move-dist)))
+               (draw-beam (-> *part-id-table* 1993) (-> s5-1 start-pos) (-> s5-1 move-dist) #f #t)
+               (let ((t9-9 sp-launch-particles-var)
+                     (a0-17 *sp-particle-system-2d*)
+                     (a1-7 (-> *part-id-table* 1994))
+                     (a2-3 *launch-matrix*)
+                     )
+                 (set! (-> a2-3 trans quad) (-> s5-1 start-pos quad))
+                 (t9-9 a0-17 a1-7 a2-3 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+                 )
+               (let ((t9-10 sp-launch-particles-var)
+                     (a0-18 *sp-particle-system-2d*)
+                     (a1-8 (-> *part-id-table* 1995))
+                     (a2-4 *launch-matrix*)
+                     )
+                 (set! (-> a2-4 trans quad)
+                       (-> (vector+! (new 'stack-no-clear 'vector) (-> s5-1 start-pos) (-> s5-1 move-dist)) quad)
+                       )
+                 (t9-10 a0-18 a1-8 a2-4 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+                 )
+               (let ((s4-4 (new 'stack-no-clear 'projectile-init-by-other-params)))
+                 (set! (-> s4-4 ent) (-> self entity))
+                 (set! (-> s4-4 charge) 1.0)
+                 (set! (-> s4-4 options) (projectile-options))
+                 (set! (-> s4-4 notify-handle) (the-as handle #f))
+                 (set! (-> s4-4 owner-handle) (the-as handle #f))
+                 (set! (-> s4-4 ignore-handle) (process->handle self))
+                 (let* ((v1-48 *game-info*)
+                        (a0-24 (+ (-> v1-48 attack-id) 1))
+                        )
+                   (set! (-> v1-48 attack-id) a0-24)
+                   (set! (-> s4-4 attack-id) a0-24)
+                   )
+                 (set! (-> s4-4 timeout) (seconds 4))
+                 (set! (-> s4-4 pos quad) (-> s5-1 start-pos quad))
+                 (vector-normalize-copy! (-> s4-4 vel) (-> s5-1 move-dist) 4096000.0)
+                 (spawn-projectile guard-lazer-shot s4-4 self *default-dead-pool*)
+                 )
+               )
+             )
+           )
+         )
+        (else
+          (set! (-> self firing?) #f)
+          )
+        )
+      (when (not gp-0)
+        (let ((a0-29 (-> self hit-sound-id)))
+          (when (nonzero? a0-29)
+            (sound-stop a0-29)
+            (set! (-> self hit-sound-id) (new 'static 'sound-id))
+            0
+            )
+          )
+        )
+      )
+    (none)
+    )
+  :code (the-as (function none :behavior drill-laser) sleep-code)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! drill-laser ((obj drill-laser) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (local-vars (sv-16 res-tag))
+  (set! (-> obj firing?) #f)
+  (set! (-> obj hit-sound-id) (new 'static 'sound-id))
+  (set! (-> obj root) (new 'process 'trsqv))
+  (set! (-> obj root trans quad) (-> arg0 extra trans quad))
+  (quaternion-copy! (-> obj root quat) (-> arg0 quat))
+  (vector-identity! (-> obj root scale))
+  (set! (-> obj entity) arg0)
+  (let ((f30-0 1.0)
+        (f28-0 0.0)
+        (f26-0 3.0)
+        )
+    (set! sv-16 (new 'static 'res-tag))
+    (let ((v1-8 (res-lump-data arg0 'cycle-speed (pointer float) :tag-ptr (& sv-16))))
+      (when v1-8
+        (set! f30-0 (-> v1-8 0))
+        (set! f28-0 (-> v1-8 1))
+        (set! f26-0 (-> v1-8 2))
+        )
+      )
+    (set! (-> obj speed) f30-0)
+    (set! (-> obj offset) f28-0)
+    (set! (-> obj pause) f26-0)
+    )
+  (go (method-of-object obj drill-laser-idle))
+  (none)
+  )
+
+(set-subtask-hook!
+  *game-info*
+  118
+  0
+  (lambda ()
+    (speech-control-method-10
+      *speech-control*
+      6
+      (new 'static 'speech-type-info
+        :min-delay #x4b0
+        :max-delay #x960
+        :list (new 'static 'boxed-array :type string
+          "kg001"
+          "kg006"
+          "kg001a"
+          "kg013"
+          "kg018"
+          "kg023"
+          "kg078a"
+          "kg079a"
+          "kg080a"
+          "kg081a"
+          "kg082a"
+          "kg083a"
+          "kg084a"
+          "kg085a"
+          "kg086a"
+          "kg088a"
+          "kg091a"
+          "kg023a"
+          "kg006a"
+          "kg092a"
+          "kg093a"
+          "kg094a"
+          "kg095a"
+          "kg103a"
+          "kg104a"
+          "kg112a"
+          "kg134"
+          "kg136"
+          "kg138"
+          "kg139"
+          "kg140"
+          "kg141"
+          "kg130"
+          "kg135"
+          "kg156"
+          "kg157"
+          )
+        )
+      )
+    (speech-control-method-10
+      *speech-control*
+      9
+      (new 'static 'speech-type-info
+        :priority 1
+        :min-delay #x12c
+        :max-delay #x258
+        :list (new 'static 'boxed-array :type string
+          "kg133"
+          "kg142"
+          "kg144"
+          "kg145"
+          "kg146"
+          "kg147"
+          "kg148"
+          "kg149"
+          "kg150"
+          "kg138"
+          "kg151"
+          "kg152"
+          "kg153"
+          "kg154"
+          "kg155"
+          "kg159"
+          "kg163"
+          "kg164"
+          )
+        )
+      )
+    (the-as
+      object
+      (speech-control-method-10
+        *speech-control*
+        10
+        (new 'static 'speech-type-info :priority #xa :max-delay #x12c :list (new 'static 'boxed-array :type string
+                                                                              "kg166"
+                                                                              "kg167"
+                                                                              "kg168"
+                                                                              "kg169"
+                                                                              "kg171"
+                                                                              "kg172"
+                                                                              "kg173"
+                                                                              "kg174"
+                                                                              "kg175"
+                                                                              )
+                                       )
+        )
+      )
+    )
+  )
+
+(set-subtask-hook! *game-info* 118 1 (lambda () (the-as object (speech-control-method-9 *speech-control*))))
+
+(defun drill-login ()
+  (set! *nav-network* (new 'loading-level 'nav-network))
+  (nav-network-method-9 *nav-network*)
+  0
+  (none)
+  )
+
+(defun drill-deactivate ((arg0 level))
+  (set! *nav-network* (the-as nav-network 0))
+  0
+  (none)
+  )
+
+(defun drill-activate ((arg0 level))
+  (nav-network-method-10 *nav-network* arg0 *drill-adjacency*)
+  0
+  (none)
+  )

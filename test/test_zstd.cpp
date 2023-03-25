@@ -3,11 +3,12 @@
 #include <vector>
 
 #include "common/common_types.h"
+#include "common/util/compress.h"
 
 #include "gtest/gtest.h"
 #include "test/all_jak1_symbols.h"
+
 #include "third-party/zstd/lib/zstd.h"
-#include "common/util/compress.h"
 
 TEST(ZSTD, Basic) {
   std::string all;

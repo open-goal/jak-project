@@ -1,0 +1,174 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type dma-packet
+(deftype dma-packet (structure)
+  ((dma  dma-tag  :offset-assert   0)
+   (vif0 vif-tag  :offset-assert   8)
+   (vif1 vif-tag  :offset-assert  12)
+   (quad uint128  :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type dma-packet
+;; INFO: Used lq/sq
+(defmethod inspect dma-packet ((obj dma-packet))
+  (format #t "[~8x] ~A~%" obj 'dma-packet)
+  (format #t "~Tdma: #x~X~%" (-> obj dma))
+  (format #t "~Tvif0: #x~X~%" (-> obj vif0))
+  (format #t "~Tvif1: #x~X~%" (-> obj vif1))
+  (format #t "~Tquad: ~D~%" (-> obj quad))
+  obj
+  )
+
+;; definition of type dma-packet-array
+(deftype dma-packet-array (inline-array-class)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type dma-packet-array
+(defmethod inspect dma-packet-array ((obj dma-packet-array))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tdata[0] @ #x~X~%" (-> obj _data))
+  obj
+  )
+
+;; failed to figure out what this is:
+(set! (-> dma-packet-array heap-base) (the-as uint 16))
+
+;; definition of type dma-gif-packet
+(deftype dma-gif-packet (structure)
+  ((dma-vif dma-packet :inline :offset-assert   0)
+   (gif     uint64     2       :offset-assert  16)
+   (gif0    uint64             :offset         16)
+   (gif1    uint64             :offset         24)
+   (quad    uint128    2       :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type dma-gif-packet
+(defmethod inspect dma-gif-packet ((obj dma-gif-packet))
+  (format #t "[~8x] ~A~%" obj 'dma-gif-packet)
+  (format #t "~Tdma-vif: #<dma-packet @ #x~X>~%" (-> obj dma-vif))
+  (format #t "~Tgif[2] @ #x~X~%" (&-> obj gif0))
+  (format #t "~Tquad[2] @ #x~X~%" (-> obj dma-vif))
+  obj
+  )
+
+;; definition of type dma-buffer
+(deftype dma-buffer (basic)
+  ((allocated-length int32            :offset-assert   4)
+   (base             pointer          :offset-assert   8)
+   (end              pointer          :offset-assert  12)
+   (data             uint64  1        :offset-assert  16)
+   (data-buffer      uint8   :dynamic :offset         16)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  (:methods
+    (new (symbol type int) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type dma-buffer
+(defmethod inspect dma-buffer ((obj dma-buffer))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tbase: #x~X~%" (-> obj base))
+  (format #t "~Tend: #x~X~%" (-> obj end))
+  (format #t "~Tdata[1] @ #x~X~%" (-> obj data))
+  obj
+  )
+
+;; definition for method 0 of type dma-buffer
+(defmethod new dma-buffer ((allocation symbol) (type-to-make type) (arg0 int))
+  (let ((v0-0 (object-new allocation type-to-make (+ arg0 -4 (-> type-to-make size)))))
+    (set! (-> v0-0 base) (-> v0-0 data))
+    (set! (-> v0-0 allocated-length) arg0)
+    v0-0
+    )
+  )
+
+;; definition for function dma-buffer-inplace-new
+(defun dma-buffer-inplace-new ((arg0 dma-buffer) (arg1 int))
+  (set! (-> arg0 base) (-> arg0 data))
+  (set! (-> arg0 allocated-length) arg1)
+  arg0
+  )
+
+;; definition for method 4 of type dma-buffer
+(defmethod length dma-buffer ((obj dma-buffer))
+  (-> obj allocated-length)
+  )
+
+;; definition for method 5 of type dma-buffer
+(defmethod asize-of dma-buffer ((obj dma-buffer))
+  (+ (-> obj allocated-length) -4 (-> dma-buffer size))
+  )
+
+;; definition for function dma-buffer-length
+(defun dma-buffer-length ((arg0 dma-buffer))
+  (shr (+ (&- (-> arg0 base) (the-as uint (-> arg0 data))) 15) 4)
+  )
+
+;; definition for function dma-buffer-free
+(defun dma-buffer-free ((arg0 dma-buffer))
+  (shr (+ (&- (-> arg0 end) (the-as uint (-> arg0 base))) 15) 4)
+  )
+
+;; definition for function dma-buffer-add-vu-function
+(defun dma-buffer-add-vu-function ((dma-buf dma-buffer) (vu-func vu-function) (arg2 int))
+  (let ((func-ptr (the-as object (+ (the-as uint vu-func) 16)))
+        (qlen (-> vu-func qlength))
+        (origin (-> vu-func origin))
+        )
+    (while (> qlen 0)
+      (let ((qwc-now (min 127 qlen)))
+        (let* ((dma-buf-2 dma-buf)
+               (buf-ptr (the-as dma-packet (-> dma-buf-2 base)))
+               )
+          (set! (-> buf-ptr dma) (new 'static 'dma-tag :id (dma-tag-id ref) :addr (the-as int func-ptr) :qwc qwc-now))
+          (set! (-> buf-ptr vif0) (new 'static 'vif-tag :cmd (if (zero? arg2) 16 19)))
+          (set! (-> buf-ptr vif1) (new 'static 'vif-tag :cmd (vif-cmd mpg) :num (* qwc-now 2) :imm origin))
+          (set! (-> dma-buf-2 base) (&+ (the-as pointer buf-ptr) 16))
+          )
+        (set! func-ptr (+ (the-as uint func-ptr) (* qwc-now 16)))
+        (set! qlen (- qlen qwc-now))
+        (+! origin (* qwc-now 2))
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for function dma-buffer-send
+(defun dma-buffer-send ((arg0 dma-bank) (arg1 dma-buffer))
+  (when (< (-> arg1 allocated-length) (&- (-> arg1 base) (the-as uint (-> arg1 data))))
+    (crash!)
+    0
+    )
+  (dma-send arg0 (the-as uint (-> arg1 data)) (the-as uint (dma-buffer-length arg1)))
+  (none)
+  )
+
+;; definition for function dma-buffer-send-chain
+(defun dma-buffer-send-chain ((arg0 dma-bank-source) (arg1 dma-buffer))
+  (when (< (-> arg1 allocated-length) (&- (-> arg1 base) (the-as uint (-> arg1 data))))
+    (crash!)
+    0
+    )
+  (dma-send-chain arg0 (the-as uint (-> arg1 data)))
+  (none)
+  )

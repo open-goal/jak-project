@@ -1,0 +1,414 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: main-h.gc
+;; name in dgo: main-h
+;; dgos: ENGINE, GAME
+
+;; +++strip-lines-controls
+(defenum strip-lines-controls
+  :type int64
+  (none 0)
+  (strippable 1)
+  (convertible 2)
+  (good 3)
+  (edgeable 4)
+  (ordinary 8)
+  (color-mismatch 16)
+  (shader-mismatch 32)
+  (uv-mismatch 64)
+  (too-big 128)
+  (bad 240)
+  (all-edges 255)
+  (strips 256)
+  (frags 512))
+;; ---strip-lines-controls
+
+;; +++scene-controls
+(defenum scene-controls
+  :type int64
+  :bitfield #t
+  (channel)
+  (anim-name)
+  (dma-size)
+  (bounds-spheres)
+  (actors)
+  (actor-marks)
+  (special-fma-spheres)
+  (scene-controls-7)
+  (scene-controls-8)
+  (display-controls)
+  )
+;; ---scene-controls
+
+;; +++bot-marks-controls
+(defenum bot-marks-controls
+  :type int64
+  (all-off 0)
+  (course-spots 1)
+  (task-spots 2)
+  (all-on 3)
+  (bmc04 4)
+  (bmc05 5)
+  (bmc06 6)
+  (bmc07 7)
+  (bmc08 8)
+  (bmc09 9)
+  (bmc10 10)
+  (bmc11 11)
+  (bmc12 12)
+  (bmc13 13)
+  (bmc14 14)
+  (bmc15 15)
+  (bmc16 16))
+;; ---bot-marks-controls
+
+;; +++race-marks-controls
+(defenum race-marks-controls
+  :type int64
+  (all-off 0)
+  (path0-red 1)
+  (path1-green 2)
+  (path2-blue 4)
+  (path3-yellow 8)
+  (path4-cyan 16)
+  (path5-violet 32)
+  (path6-orange 64)
+  (path7-black 128)
+  (all-paths-on 255)
+  (rmc2040 2040))
+;; ---race-marks-controls
+
+;; +++race-selection
+(defenum race-selection
+  :type int64
+  (kiera-class3 0)
+  (kiera-class2 1)
+  (kiera-class1 2)
+  (errol 3)
+  (bush-class3 4)
+  (bush-class2 5)
+  (bush-class1 6)
+  (bush-errol 7)
+  (bush-port 8)
+  (bush-class3-reverse 9)
+  (bush-class2-reverse 10)
+  (bush-class1-reverse 11))
+;; ---race-selection
+
+;; +++subdivide-setting
+(defenum subdivide-setting
+  :type int64
+  (textured 0)
+  (outline 1)
+  (gouraud 2)
+  (hack 3))
+;; ---subdivide-setting
+
+;; +++ocean-height-hack
+(defenum ocean-height-hack
+  :type int64
+  (zero 1)
+  (far-below 2)
+  (sewer-start 3)
+  (sewer-hi 4)
+  (sewer-med 5)
+  (sewer-lo 6))
+;; ---ocean-height-hack
+
+;; NOTE - for settings
+(define-extern *master-exit* symbol)
+
+;; NOTE - for default-menu
+(define-extern set-master-mode (function symbol none))
+
+(define-extern set-blackout-frames (function time-frame none))
+
+
+;; DECOMP BEGINS
+
+;; engine debug settings
+(define *stats-poly* #f)
+(define *stats-memory* #f)
+(define *stats-memory-short* #f)
+(define *stats-memory-level-index* 0)
+(define *stats-collide* #f)
+(define *stats-bsp* #f)
+(define *stats-buffer* #f)
+(define *stats-target* #f)
+(define *stats-profile-bars* #f)
+(define *stats-perf* #f)
+(define *artist-all-visible* #f)
+(define *artist-flip-visible* #f)
+(define *artist-fix-visible* #f)
+(define *artist-fix-frustum* #f)
+(define *artist-error-spheres* #f)
+(define *artist-use-menu-subdiv* #f)
+(define *display-profile* #t)
+(define *display-sidekick-stats* #f)
+(define *display-quad-stats* #f)
+(define *display-tri-stats* #f)
+(define *display-ground-stats* #f)
+(define *display-collision-marks* #f)
+(define *display-collide-cache* #f)
+(define *display-render-collision* #f)
+(define *display-hipri-collision-marks* #f)
+(define *display-edge-collision-marks* #f)
+(define *display-geo-marks* #f)
+(define *display-target-marks* #f)
+(define *target-rc-board-controls* #f)
+(define *display-collide-history* 0)
+(define *display-xyz-axes* #f)
+(define *display-cam-collide-history* #f)
+(define *record-cam-collide-history* #f)
+(define *display-cam-master-marks* #f)
+(define *display-cam-other* #f)
+(define *display-camera-marks* #f)
+(define *camera-no-mip-correction* #f)
+(define *display-cam-los-info* #f)
+(define *display-cam-los-debug* #f)
+(define *display-cam-los-marks* #f)
+(define *display-cam-coll-marks* #f)
+(define *display-camera-info* #f)
+(define *display-camera-old-stats* #f)
+(define *display-camera-last-attacker* #f)
+(define *display-file-info* #f)
+(define *display-actor-marks* #f)
+(define *display-sprite-info* #f)
+(define *display-sprite-marks* #f)
+(define *display-sprite-spheres* #f)
+(define *display-entity-errors* #t)
+(#when PC_PORT (define *display-lights* #f))
+(define *display-instance-info* #f)
+(define *display-deci-count* #f)
+(define *sync-dma* #f)
+(define *display-strip-lines* (the-as strip-lines-controls 0))
+(define *display-battle-marks* #f)
+(define *display-joint-axes* #f)
+(define *display-nav-marks* #f)
+(define *display-nav-network* #f)
+(define *display-path-marks* #f)
+(define *display-vol-marks* #f)
+(define *display-water-marks* #f)
+(define *display-nav-mesh* #f)
+(define *display-actor-pointer* #f)
+(define *display-actor-vis* #f)
+(define *display-actor-graph* #f)
+(define *display-traffic-height-map* #f)
+(define *display-trail-graph* #f)
+(define *display-color-bars* #f)
+(define *display-bug-report* #f)
+(define *display-level-border* #f)
+(define *display-memcard-info* #f)
+(define *display-split-boxes* #f)
+(define *display-split-box-info* #f)
+(define *display-texture-distances* #f)
+(define *display-texture-download* #f)
+(define *display-art-control* #f)
+(define *display-gui-control* #f)
+(define *display-level-spheres* #f)
+(define *time-of-day-fast* #f)
+(define *display-iop-info* #f)
+(define *ambient-sound-class* #t)
+(define *slow-frame-rate* #f)
+(define *display-region-marks* #f)
+(define *execute-regions* #t)
+(define *debug-pause* #f)
+(define *debug-view-anims* #f)
+(define *debug-unkillable* #f)
+(define *debug-actor* (the-as object #f))
+(define *gun-marks* #f)
+(define *bug-report-output-mode*
+        (if *debug-segment*
+            'file-stream
+            '*stdcon*
+            )
+        )
+(define *display-scene-control* (the-as scene-controls 0))
+(define *display-bot-marks* (the-as bot-marks-controls 0))
+(define *display-race-marks* (the-as race-marks-controls 0))
+(define *race-record-path* #f)
+(define *select-race* (the-as race-selection 0))
+(define *select-race-path* 0)
+(define *bot-record-path* -1)
+(define *subdivide-draw-mode* (the-as subdivide-setting 0))
+(define *subdivide-scissor-draw-mode* (the-as subdivide-setting 0))
+(define *subdivide-foreground-draw-mode* (the-as subdivide-setting 0))
+(define *subdivide-ocean-draw-mode* (the-as subdivide-setting 0))
+(define *ocean-height-hack* (the-as ocean-height-hack 0))
+
+;; Main Loop stuff
+(define-perm *dproc* process #f) ;; the main display process
+(define *run* #f) ;; should we run the main loop?
+(define *teleport* #f) ;; did we just teleport locations?
+;; set to a nonzero amount to apply the *teleport* for several frames.
+(define *teleport-count* 0)
+
+;; main hooks to call from the main loop
+
+;; hook for rendering system
+(define *draw-hook* nothing)
+
+;; hook for various debug functions that should run separately from everything else
+(define *debug-hook* '())
+
+;; hook to draw the debug menu
+(declare-type debug-menu-context basic)
+(define *menu-hook* (the-as (function debug-menu-context) nothing))
+
+;; hook to run the progress menu
+(define *progress-hook* nothing)
+
+;; function to call if main DMA times out, to try to recover
+(define *dma-timeout-hook* nothing)
+
+;; unused?
+(deftype frame-stats (structure)
+  ((field-time time-frame 2 :offset-assert   0)
+   (field      int32        :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+(define *frame-stats* (new 'static 'frame-stats))
+
+
+(deftype screen-filter (basic)
+  ((draw?          symbol         :offset-assert 4)
+   (bucket         bucket-id      :offset-assert 8)
+   (color          vector :inline :offset-assert 16)
+   (color-src      vector :inline :offset-assert 32)
+   (color-dest     vector :inline :offset-assert 48)
+   (extra          vector :inline :offset-assert 64)
+   (speed          float          :offset 64)
+   (current-interp float          :offset 68)
+   )
+  :method-count-assert 12
+  :size-assert         #x50
+  :flag-assert         #xc00000050
+  (:methods
+    (draw (_type_) none 9)
+    (setup (_type_ vector vector float bucket-id) none 10)
+    (disable (_type_) none 11)
+    )
+  )
+
+(defenum collide-spec
+  :bitfield #t
+  :type uint32
+
+  (backgnd            0) ;; 1
+  (jak                1) ;; 2
+  (bot                2) ;; 4
+  (crate              3) ;; 8
+  (civilian           4) ;; 16
+  (enemy              5) ;; 32
+  (obstacle           6) ;; 64
+  (vehicle-sphere     7) ;; 128
+  (hit-by-player-list 8) ;; 256
+  (hit-by-others-list 9) ;; 512
+  (player-list       10) ;; 1024
+  (water             11) ;; 2048
+  (collectable       12) ;; 4096
+  (blocking-plane    13) ;; 8192
+  (projectile        14) ;; 16384
+  (jak-vulnerable    15) ;; 32768
+  (camera-blocker    16) ;; hi 1
+  (notice-blue-eco-powerup 17) ;; hi 2
+  (tobot             18) ;; hi 4
+  (pusher            19) ;; hi 8
+  (vehicle-mesh      20) ;; hi 16
+  (bot-targetable    21) ;; hi 32
+  (jak-vehicle       22) ;; hi 64
+  (special-obstacle  23) ;; hi 128
+  (mech-punch        24) ;; hi 256
+  (obstacle-for-jak  25) ;; hi 512
+  (vehicle-mesh-probeable 26) ;; hi 1024
+  (unknown-27 27)
+  (unknown-28 28)
+  (unknown-29 29)
+  (unknown-30 30)
+  (unknown-31 31)
+  (unknown-32 32)
+  (unknown-33 33)
+  (unknown-34 34)
+  (unknown-35 35)
+  (unknown-36 36)
+  (unknown-37 37)
+  (unknown-38 38)
+  (unknown-39 39)
+  (unknown-40 40)
+  (unknown-41 41)
+  (unknown-42 42)
+  (unknown-43 43)
+  (unknown-44 44)
+  (unknown-45 45)
+  (unknown-46 46)
+  (unknown-47 47)
+  (unknown-48 48)
+  (unknown-49 49)
+  (unknown-50 50)
+  (unknown-51 51)
+  (unknown-52 52)
+  (unknown-53 53)
+  (unknown-54 54)
+  (unknown-55 55)
+  (unknown-56 56)
+  (unknown-57 57)
+  (unknown-58 58)
+  (unknown-59 59)
+  (unknown-60 60)
+  (unknown-61 61)
+  (unknown-62 62)
+  (unknown-63 63)
+  )
+
+;; collision renderer settings.
+(deftype col-rend (basic)
+  ((draw?               symbol         :offset-assert 4)
+   (outline?            symbol         :offset-assert 8)
+   (show-back-faces?    symbol         :offset-assert 12)
+   (show-normals?       symbol         :offset-assert 16)
+   (ghost-hidden?       symbol         :offset-assert 20)
+   (show-only           uint32         :offset-assert 24)
+   (cspec               collide-spec   :offset-assert 28)
+   (track               uint8          :offset-assert 32)
+   (bbox-radius         float          :offset-assert 36)
+   (bbox-center         vector :inline :offset-assert 48)
+   (camera-to-bbox-dist float          :offset-assert 64)
+   )
+  :method-count-assert 10
+  :size-assert         #x44
+  :flag-assert         #xa00000044
+  (:methods
+    (col-rend-method-9 (_type_) none 9)
+    )
+  )
+
+
+(define *col-rend* (new 'static 'col-rend
+                     :draw? #f
+                     :outline? #t
+                     :show-back-faces? #t
+                     :show-normals? #f
+                     :ghost-hidden? #t
+                     :cspec #x38
+                     :track #x1
+                     :bbox-radius 24576.0
+                     :camera-to-bbox-dist 65536.0
+                     )
+        )
+
+
+(defun-debug debug-actor? ((arg0 object))
+  (= arg0 *debug-actor*)
+  )
+
+(define-extern movie? (function symbol))
+(define-extern paused? (function symbol))
+(define-extern set-master-mode (function symbol none))
+(define-extern toggle-pause (function int))
+(define-extern *screen-filter* screen-filter)
+(define-extern on (function symbol process))
+(define-extern menu-respond-to-pause (function symbol))

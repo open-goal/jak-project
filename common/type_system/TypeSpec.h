@@ -5,11 +5,12 @@
  * A GOAL TypeSpec is a reference to a type or compound type.
  */
 
-#include <vector>
-#include <string>
 #include <optional>
-#include "common/util/SmallVector.h"
+#include <string>
+#include <vector>
+
 #include "common/util/Assert.h"
+#include "common/util/SmallVector.h"
 
 /*!
  * A :name value modifier to apply to a type.
@@ -78,7 +79,8 @@ class TypeSpec {
   bool operator!=(const TypeSpec& other) const;
   bool operator==(const TypeSpec& other) const;
   bool is_compatible_child_method(const TypeSpec& implementation,
-                                  const std::string& child_type) const;
+                                  const std::string& child_type,
+                                  int* bad_arg_idx_out = nullptr) const;
   std::string print() const;
 
   void add_arg(const TypeSpec& ts) {
@@ -93,7 +95,7 @@ class TypeSpec {
   void modify_tag(const std::string& tag_name, const std::string& tag_value);
   void add_or_modify_tag(const std::string& tag_name, const std::string& tag_value);
 
-  const std::string base_type() const { return m_type; }
+  const std::string& base_type() const { return m_type; }
 
   bool has_single_arg() const {
     if (m_arguments) {
@@ -131,6 +133,12 @@ class TypeSpec {
     return m_arguments->back();
   }
 
+  TypeSpec& last_arg() {
+    ASSERT(m_arguments);
+    ASSERT(!m_arguments->empty());
+    return m_arguments->back();
+  }
+
   bool empty() const {
     if (!m_arguments) {
       return true;
@@ -139,7 +147,7 @@ class TypeSpec {
     }
   }
 
-  const cu::SmallVector<TypeTag, 1>& tags() const { return m_tags; }
+  const std::vector<TypeTag>& tags() const { return m_tags; }
 
  private:
   friend class TypeSystem;
@@ -147,5 +155,5 @@ class TypeSpec {
   // hiding this behind a pointer makes things faster in the case where we have no
   // arguments (most of the time) and makes the type analysis pass in the decompiler 2x faster.
   std::vector<TypeSpec>* m_arguments = nullptr;
-  cu::SmallVector<TypeTag, 1> m_tags;
+  std::vector<TypeTag> m_tags;
 };

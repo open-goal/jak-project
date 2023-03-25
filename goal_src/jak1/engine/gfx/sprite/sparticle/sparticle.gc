@@ -1,0 +1,762 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: sparticle.gc
+;; name in dgo: sparticle
+;; dgos: GAME, ENGINE
+
+
+;; This file contains the interface between sparticle and sprite as well as the actual particle updates.
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;; basic methods
+;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmethod print sparticle-cpuinfo ((obj sparticle-cpuinfo))
+  (format #t "<sparticle-cpuinfo>~%")
+  (dotimes (s5-0 16)
+    (format #t "~D:~F~%" s5-0 (the-as float (-> obj data s5-0)))
+    )
+  (format #t "TIMER:~D~%" (-> obj timer))
+  (the-as sparticle-cpuinfo (format #t "FLAGS:~X~%" (-> obj flags)))
+  )
+
+(defun sp-particle-copy! ((arg0 sparticle-cpuinfo) (arg1 sparticle-cpuinfo))
+  "copy some of the particle state."
+  (let ((v1-1 (-> arg1 sprite x-y-z-sx quad)))
+    (set! (-> arg0 sprite x-y-z-sx quad) v1-1)
+    )
+  (let ((v1-3 (-> arg1 sprite flag-rot-sy quad)))
+    (set! (-> arg0 sprite flag-rot-sy quad) v1-3)
+    )
+  (let ((v1-5 (-> arg1 sprite color quad)))
+    (set! (-> arg0 sprite color quad) v1-5)
+    )
+  (dotimes (v1-6 10)
+    (set! (-> arg0 adgif prims v1-6) (-> arg1 adgif prims v1-6))
+    )
+  (set! (-> arg0 vel-sxvel quad) (-> arg1 vel-sxvel quad))
+  (set! (-> arg0 rot-syvel quad) (-> arg1 rot-syvel quad))
+  (set! (-> arg0 fade quad) (-> arg1 fade quad))
+  (set! (-> arg0 acc quad) (-> arg1 acc quad))
+  (set! (-> arg0 friction) (-> arg1 friction))
+  (set! (-> arg0 timer) (-> arg1 timer))
+  (set! (-> arg0 flags) (-> arg1 flags))
+  (set! (-> arg0 user-float) (-> arg1 user-float))
+  (set! (-> arg0 func) (-> arg1 func))
+  (none)
+  )
+
+(defmethod new sparticle-system
+  ((allocation symbol)
+   (type-to-make type)
+   (arg0 int)
+   (arg1 int)
+   (arg2 symbol)
+   (arg3 pointer)
+   (arg4 (inline-array adgif-shader))
+   )
+  "allocate a particle system.
+  arg0: number of group0's
+  arg1: number of group1's
+  arg2: is 3d?
+  arg3: pointer to sprite allocations
+  arg4: pointer to adgif allocation"
+  (#when PC_BIG_MEMORY
+    (*! arg0 SPRITE_MAX_AMOUNT_MULT)
+    ; (*! arg1 SPRITE_MAX_AMOUNT_MULT)
+    )
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (let* ((v1-3 (/ (+ arg0 63) 64)) ;; num blocks
+           (a0-2 (/ (+ arg1 63) 64))
+           (a1-2 (* v1-3 64))        ;; length
+           (a2-2 (* a0-2 64))
+           (s2-1 (+ v1-3 a0-2))      ;; total blocks
+           (s5-1 (+ a1-2 a2-2))      ;; total length
+           )
+      (set! (-> gp-0 blocks 0) v1-3)
+      (set! (-> gp-0 length 0) a1-2)
+      (set! (-> gp-0 num-alloc 0) 0)
+      (set! (-> gp-0 blocks 1) a0-2)
+      (set! (-> gp-0 length 1) a2-2)
+      (set! (-> gp-0 num-alloc 1) 0)
+      (set! (-> gp-0 is-3d) arg2)
+      ;; per block
+      (set! (-> gp-0 alloc-table) (the-as (pointer uint64) (malloc 'global (* s2-1 8))))
+      ;; per particle
+      (set! (-> gp-0 cpuinfo-table) (the-as (inline-array sparticle-cpuinfo) (malloc 'global (* 144 s5-1))))
+      ;; sprite data
+      (set! (-> gp-0 vecdata-table) arg3)
+      ;; adgifs
+      (set! (-> gp-0 adgifdata-table) arg4)
+      (dotimes (v1-5 s2-1)
+        (set! (-> gp-0 alloc-table v1-5) (the-as uint -1))
+        )
+      (dotimes (s4-1 s5-1)
+        (set! (-> gp-0 cpuinfo-table s4-1 valid) #f)
+        ;; link cpuinfos to sprite data
+        (set! (-> gp-0 cpuinfo-table s4-1 sprite)
+              (the-as sprite-vec-data-2d (&+ (-> gp-0 vecdata-table) (* 48 s4-1)))
+              )
+        ;; and to adgif
+        (set! (-> gp-0 cpuinfo-table s4-1 adgif) (-> gp-0 adgifdata-table s4-1))
+        ;; default init adgifs.
+        (adgif-shader<-texture-simple!
+          (-> gp-0 adgifdata-table s4-1)
+          (the-as texture #f)
+          )
+        (set! (-> gp-0 adgifdata-table s4-1 alpha) (new 'static 'gs-alpha :b #x2 :d #x1))
+        )
+      )
+    gp-0
+    )
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;
+;; particle systems
+;;;;;;;;;;;;;;;;;;;;
+
+;; note: these constants must match the sizes of the sprite arrays.
+
+(define *sp-particle-system-2d*
+        (new 'global 'sparticle-system 1920 128 #f (-> *sprite-array-2d* vec-data) (-> *sprite-array-2d* adgif-data))
+        )
+
+(define *sp-particle-system-3d*
+        (new 'global 'sparticle-system 256 0 #t (-> *sprite-array-3d* vec-data) (-> *sprite-array-3d* adgif-data))
+        )
+
+(defmacro launch-particles (&key (system *sp-particle-system-2d*) particle origin &key (launch-state (the-as sparticle-launch-state #f)) &key (launch-control (the-as sparticle-launch-control #f))
+                            &key (rate DISPLAY_FPS_RATIO))
+  `(sp-launch-particles-var ,system ,particle ,origin ,launch-state ,launch-control ,rate)
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;
+;; alloc and block
+;;;;;;;;;;;;;;;;;;;;
+
+(defun sp-get-block-size ((arg0 sparticle-system) (arg1 int))
+  "get the index of the highest used block for the given group (0 or 1)"
+  (let ((v0-0 0))
+    (let ((v1-0 0)
+          (a2-0 (-> arg0 blocks 0))
+          )
+      (when (= arg1 1)
+        (set! v1-0 a2-0)
+        (set! a2-0 (-> arg0 blocks 1))
+        )
+      (dotimes (a1-3 a2-0)
+        (if (!= (-> arg0 alloc-table (+ v1-0 a1-3)) -1)
+            (set! v0-0 (+ a1-3 1))
+            )
+        )
+      )
+    v0-0
+    )
+  )
+
+(defun sp-get-approx-alloc-size ((arg0 sparticle-system) (arg1 int))
+  "get approximately the amount of sprite memory used."
+  ;; this is just (* 64 (sp-get-block-size arg0 arg1))
+  (let ((a3-0 arg1)
+        (v1-0 0)
+        )
+    (let ((a1-1 0)
+          (a2-0 (-> arg0 blocks 0))
+          )
+      (when (= a3-0 1)
+        (set! a1-1 a2-0)
+        (set! a2-0 (-> arg0 blocks 1))
+        )
+      (dotimes (a3-3 a2-0)
+        (if (!= (-> arg0 alloc-table (+ a1-1 a3-3)) -1)
+            (set! v1-0 (+ a3-3 1))
+            )
+        )
+      )
+    (* v1-0 64)
+    )
+  )
+
+(defun sp-free-particle ((arg0 sparticle-system) (arg1 int) (arg2 sparticle-cpuinfo) (arg3 sprite-vec-data-2d))
+  "free a particle"
+  
+  ;; clear flags on our launch state.
+  (if (and (-> arg2 binding) (nonzero? (-> arg2 binding)))
+      (logclear! (-> arg2 binding flags)
+                 (sp-launch-state-flags launcher-active particles-active)
+                 )
+      )
+  
+  ;; clear the bit indicating that we're alive.
+  (let ((v1-6 (/ arg1 64))
+        (t0-4 (logand arg1 63))
+        )
+   (logior! (-> arg0 alloc-table v1-6) (ash 1 t0-4))
+   )
+  
+  ;; decrease alloc count for the appropriate group
+  (if (< arg1 (-> arg0 length 0))
+   (+! (-> arg0 num-alloc 0) -1)
+   (+! (-> arg0 num-alloc 1) -1)
+   )
+  (set! (-> arg2 valid) #f)
+  (set! (-> arg3 a) 0.0)
+  0
+  (none)
+  )
+
+(defun sp-get-particle ((arg0 sparticle-system) (arg1 int) (arg2 sparticle-launch-state))
+  "alloc a particle"
+  (local-vars
+   (a2-3 int)
+   (a2-4 int)
+   (a2-5 int)
+   (a2-6 int)
+   (a2-7 int)
+   (a2-8 int)
+   (t1-16 int)
+   (t1-17 int)
+   (t1-18 int)
+   (t1-19 int)
+   (t1-20 int)
+   (t3-5 int)
+   )
+  (let ((v1-0 0)
+        (t0-0 (-> arg0 blocks 0))
+        (a3-0 0)
+        )
+   (when (= arg1 1)
+    (set! v1-0 t0-0)
+    (set! t0-0 (-> arg0 blocks 1))
+    )
+   
+   ;; this adds a moving offset to the allocation system. I'm not sure why.
+   (when arg2
+    (set! a3-0 (the-as int (-> arg2 randomize)))
+    (+! (-> arg2 randomize) 1)
+    (when (= (-> arg2 randomize) t0-0)
+     (set! (-> arg2 randomize) (the-as uint 0))
+     0
+     )
+    )
+   
+   ;; find the earliest free.
+   (dotimes (a2-1 t0-0)
+    (when (nonzero? (-> arg0 alloc-table (+ v1-0 a3-0)))
+     (let ((a2-2 0)
+           (t1-15 (-> arg0 alloc-table (+ v1-0 a3-0)))
+           (t0-4 (* (+ v1-0 a3-0) 64))
+           )
+      0
+      0
+      (let ((t2-4 (shl t1-15 32))
+            (t3-0 (+ a2-2 32))
+            )
+       (.movn t1-16 t2-4 t2-4 t1-15)
+       (.movz a2-3 t3-0 t2-4 a2-2)
+       )
+      (let ((t2-5 (shl t1-16 16))
+            (t3-1 (+ a2-3 16))
+            )
+       (.movn t1-17 t2-5 t2-5 t1-16)
+       (.movz a2-4 t3-1 t2-5 a2-3)
+       )
+      (let ((t2-6 (* t1-17 256))
+            (t3-2 (+ a2-4 8))
+            )
+       (.movn t1-18 t2-6 t2-6 t1-17)
+       (.movz a2-5 t3-2 t2-6 a2-4)
+       )
+      (let ((t2-7 (* t1-18 16))
+            (t3-3 (+ a2-5 4))
+            )
+       (.movn t1-19 t2-7 t2-7 t1-18)
+       (.movz a2-6 t3-3 t2-7 a2-5)
+       )
+      (let ((t2-8 (* t1-19 4))
+            (t3-4 (+ a2-6 2))
+            )
+       (.movn t1-20 t2-8 t2-8 t1-19)
+       (.movz a2-7 t3-4 t2-8 a2-6)
+       (let ((t1-21 (* t1-20 2))
+             (t2-9 (+ a2-7 1))
+             )
+        (.movn t3-5 t1-21 t1-21 t3-4)
+        (.movz a2-8 t2-9 t1-21 a2-7)
+        )
+       )
+      ;; mark as allocated
+      (let ((t0-5 (+ t0-4 a2-8)))
+       (set! (-> arg0 alloc-table (+ v1-0 a3-0))
+        (logxor (-> arg0 alloc-table (+ v1-0 a3-0)) (the-as uint (ash 1 a2-8)))
+        )
+       ;; update group's alloc count
+       (+! (-> arg0 num-alloc arg1) 1)
+       ;; return it!
+       (let ((v1-9 (-> arg0 cpuinfo-table t0-5)))
+        (set! (-> v1-9 valid) #t)
+        (return v1-9)
+        )
+       )
+      )
+     )
+    (+! a3-0 1)
+    (when (= a3-0 t0-0)
+        ;; wrap
+     (set! a3-0 0)
+     )
+    )
+   )
+  
+  (the-as sparticle-cpuinfo #f)
+  )
+
+(defun sp-kill-particle ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
+  "kill the given particle"
+  (cond
+    ;; modified to check the end of the spad too.
+    ((in-scratchpad? arg1) ;;(>= (the-as int arg1) #x70000000) ;; TODO PC port
+     ;; if in the sratchpad, just set the timer to 0.
+     (set! (-> arg1 timer) 0)
+     0
+     )
+    (else
+      (let ((a2-1 (/ (the-as int (- (the-as uint arg1) (the-as uint (-> arg0 cpuinfo-table 0)))) 144)))
+        (when (or (< a2-1 0) (>= a2-1 (+ (-> arg0 length 0) (-> arg0 length 1))))
+          ;; invalid location for particle, error
+          (format 0 "Tried to release particle ~D~%" a2-1)
+          (return #f)
+          )
+        ;; free it.
+        (sp-free-particle arg0 a2-1 arg1 (-> arg1 sprite))
+        )
+      )
+    )
+  #t
+  (none)
+  )
+
+
+;;;;;;;;;;;;;;;;
+;; effects
+;;;;;;;;;;;;;;;;
+
+(defun sp-orbiter ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
+  (let* ((f2-0 (-> arg1 omega))
+         (f0-0 (-> arg1 radius))
+         (f4-0 (-> arg1 vel-sxvel x))
+         (f24-0 (-> arg1 vel-sxvel y))
+         (f1-0 (-> arg1 vel-sxvel z))
+         (f3-0 (-> *sp-frame-time* y))
+         (f28-0 (+ f2-0 (* f4-0 f3-0)))
+         )
+    (set! (-> arg1 omega) f28-0)
+    (let ((f30-0 (+ f0-0 (* f1-0 f3-0))))
+      (set! (-> arg1 radius) f30-0)
+      (let ((f26-0 (sin f28-0))
+            (f28-1 (cos f28-0))
+            (f22-0 (sin (* 0.5 f24-0)))
+            (f0-5 (cos (* 0.5 f24-0)))
+            (a1-1 (new 'stack-no-clear 'vector))
+            (s4-0 (new 'stack-no-clear 'vector))
+            )
+        (let ((s3-0 (new 'stack-no-clear 'matrix)))
+          (set-vector! a1-1 (* f22-0 f28-1) 0.0 (* f22-0 f26-0) f0-5)
+          (quaternion*!
+            (-> arg1 rotvel3d)
+            (the-as quaternion a1-1)
+            (-> arg1 rotvel3d)
+            )
+          (quaternion-normalize! (-> arg1 rotvel3d))
+          (set-vector! s4-0 (* f26-0 f30-0) 0.0 (* f28-1 f30-0) 1.0)
+          (quaternion->matrix s3-0 (-> arg1 rotvel3d))
+          (vector-matrix*! s4-0 s4-0 s3-0)
+          )
+        (let ((v1-3 (the-as object (-> arg1 user-float))))
+          (set! (-> arg2 x) (+ (-> s4-0 x) (-> (the-as sprite-vec-data-2d v1-3) x)))
+          (set! (-> arg2 y) (+ (-> s4-0 y) (-> (the-as sprite-vec-data-2d v1-3) y)))
+          (set! (-> arg2 z) (+ (-> s4-0 z) (-> (the-as sprite-vec-data-2d v1-3) z)))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; particle update
+;;;;;;;;;;;;;;;;;;;;;
+
+;; TODO sp-process-block-2d
+;; TODO sp-process-block-3d
+(define-extern sp-process-block-3d (function sparticle-system int int int int symbol none))
+(set! sp-process-block-3d (the (function sparticle-system int int int int symbol none)
+                               (__pc-get-mips2c "sp-process-block-3d")))
+(define-extern sp-process-block-2d (function sparticle-system int int int int symbol none))
+(set! sp-process-block-2d (the (function sparticle-system int int int int symbol none)
+                               (__pc-get-mips2c "sp-process-block-2d")))
+
+
+(defun sp-copy-to-spr ((arg0 int) (arg1 pointer) (arg2 int))
+  ;; modified to use fake spad
+  (let ((a2-1 (/ (+ arg2 15) 16)))
+    (__mem-move (&+ (scratchpad-start) arg0) arg1 (the uint (* a2-1 16)))
+    ;; (dma-send-to-spr-no-flush (the-as uint arg0) (the-as uint arg1) (the-as uint a2-1) #t)
+    )
+  0
+  (none)
+  )
+
+(defun sp-copy-from-spr ((arg0 int) (arg1 pointer) (arg2 int))
+  ;; modified to use fake spad.
+  (let ((a2-1 (/ (+ arg2 15) 16)))
+    (__mem-move arg1 (&+ (scratchpad-start) arg0) (the uint (* a2-1 16)))
+    ;;(dma-send-from-spr-no-flush (the-as uint arg1) (the-as uint arg0) (the-as uint a2-1) #t)
+    )
+  0
+  (none)
+  )
+
+;; TODO memcpy (unused)
+
+(defun sp-process-block ((arg0 sparticle-system) (arg1 int) (arg2 sprite-array-2d) (arg3 int))
+  "update the given block of particles"
+  (local-vars
+    (sv-16 int)
+    (sv-32 int)
+    (sv-80 int)
+    (sv-96 int)
+    )
+  (let ((s3-0 16)
+        (s2-0 (* 144 arg3))
+        (s5-0 (* 48 arg3))
+        )
+    (set! sv-32 (* 80 arg3))
+    (let ((s1-0 (+ s3-0 s2-0)))
+      (set! sv-16 (+ s1-0 s5-0))
+      (sp-copy-to-spr s3-0 (the-as pointer (-> arg0 cpuinfo-table arg1)) s2-0)
+      (sp-copy-to-spr s1-0 (&+ (-> arg0 vecdata-table) (* 48 arg1)) s5-0)
+      (let ((t9-2 sp-copy-to-spr)
+            (a1-7 (-> arg0 adgifdata-table arg1))
+            )
+        (t9-2 sv-16 (the-as pointer a1-7) sv-32)
+        )
+      
+      ;; alternate to run without doing scratchpad (will change behavior of kill, but at least works for hud)
+      ; (set! sv-80 (the-as int (-> arg0 cpuinfo-table arg1)))
+      ; (set! sv-96 (the-as int (&+ (-> arg0 vecdata-table) (* 48 arg1))))
+      (set! sv-80 (+ (the int (scratchpad-start)) s3-0)) ;; spad
+      (set! sv-96 (+ (the int (scratchpad-start)) s1-0)) ;; spad
+      (cond
+        ((-> arg0 is-3d)
+         (sp-process-block-3d arg0 sv-80 sv-96 arg1 arg3 (paused?))
+         )
+        (else
+          (sp-process-block-2d arg0 sv-80 sv-96 arg1 arg3 (paused?))
+          )
+        )
+      (sp-copy-from-spr s3-0 (the-as pointer (-> arg0 cpuinfo-table arg1)) s2-0)
+      (sp-copy-from-spr s1-0 (&+ (-> arg0 vecdata-table) (* 48 arg1)) s5-0)
+      )
+    )
+  0
+  (none)
+  )
+
+(defun sp-process-particle-system ((arg0 sparticle-system) (arg1 int) (arg2 sprite-array-2d))
+  "update an entire particle system."
+  (let* ((v1-0 16)
+         (s1-0 (/ (- #x4000 v1-0) 272)) ;; offset in spad of vecdata, max sprite data in spad
+         (s3-0 0) ;; mem offset
+         (s4-0 (sp-get-approx-alloc-size arg0 arg1)) ;; remaining size.
+         )
+    ;; group 1 starts after group 0
+    (if (= arg1 1)
+        (set! s3-0 (* (-> arg0 blocks 0) 64))
+        )
+    (set! (-> arg2 num-valid arg1) s4-0)
+    ;; flush before processing
+    (flush-cache 0)
+    (while (>= s4-0 s1-0) ;; there are full blocks remaining...
+      (sp-process-block arg0 s3-0 arg2 s1-0) ;; process it
+      (set! s4-0 (- s4-0 s1-0))
+      (+! s3-0 s1-0) ;; next data
+      )
+    ;; if there's anything leftover, don't forget that.
+    (if (> s4-0 0)
+        (sp-process-block arg0 s3-0 arg2 s4-0)
+        )
+    )
+  0
+  (none)
+  )
+
+(define-perm *particles-flag* symbol #t)
+
+(defun forall-particles-with-key-runner ((arg0 sparticle-launch-control) (arg1 (function sparticle-system sparticle-cpuinfo none)) (arg2 sparticle-system))
+  "call the given function on all particles with the given key (arg0)"
+  (local-vars (sv-16 int))
+  (let ((s3-0 (the-as object (-> arg2 cpuinfo-table 0)))
+        (s2-0 (&+ (-> arg2 vecdata-table) 0))
+        (s1-0 (+ (-> arg2 blocks 0) (-> arg2 blocks 1)))
+        )
+    (dotimes (s0-0 s1-0) ;; loop over blocks
+      (cond
+        ((!= (-> arg2 alloc-table s0-0) -1) ;; block has something allocated.
+         (set! sv-16 0)
+         (while (< sv-16 64)
+           (if (and (-> (the-as sparticle-cpuinfo s3-0) valid) ;; is allocated
+                    (= (-> (the-as sparticle-cpuinfo s3-0) key) arg0) ;; matches the key
+                    )
+               (arg1 arg2 (the-as sparticle-cpuinfo s3-0)) ;; run the callback!
+               )
+           (set! s3-0 (-> (the-as (inline-array sparticle-cpuinfo) s3-0) 1)) ;; next cpu
+           (&+! s2-0 48) ;; next vec
+           (set! sv-16 (+ sv-16 1)) ;; next idx in block
+           )
+         )
+        (else
+          ;; skip the whole block!
+          (set! s3-0 (-> (the-as (inline-array sparticle-cpuinfo) s3-0) 64))
+          (&+! s2-0 3072)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defun forall-particles-with-key ((arg0 sparticle-launch-control) (arg1 (function sparticle-system sparticle-cpuinfo none)) (arg2 symbol) (arg3 symbol))
+  "call the given function on all particles with the given key. arg2 is 2d, arg3 is 3d."
+  (if arg2
+   (forall-particles-with-key-runner arg0 arg1 *sp-particle-system-2d*)
+   )
+  (if arg3
+   (forall-particles-with-key-runner arg0 arg1 *sp-particle-system-3d*)
+   )
+  0
+  (none)
+  )
+
+
+(defun sparticle-kill-it ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
+  "kill a particle without freeing it."
+  (set! (-> arg1 timer) 0) ;; advance timer to zero
+  (set! (-> arg1 func) (the-as basic 0)) ;; don't let the callback run and save the timer
+  (when (and (-> arg1 binding) (nonzero? (-> arg1 binding)))
+    ;; kill the launcher too.
+    (logclear! (-> arg1 binding flags)
+               (sp-launch-state-flags launcher-active particles-active)
+               )
+    ;; and forget it, I guess it could be unloaded
+    (set! (-> arg1 binding) #f)
+    )
+  0
+  (none)
+  )
+
+(defun sparticle-kill-it-level0 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
+  "kill all particles belonging to level 0"
+  (if (logtest? (-> arg1 flags) (sp-cpuinfo-flag level0))
+      (sparticle-kill-it arg0 arg1)
+      )
+  0
+  (none)
+  )
+
+(defun sparticle-kill-it-level1 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
+  "kill all particles belonging to level 1."
+  (if (logtest? (-> arg1 flags) (sp-cpuinfo-flag level1))
+      (sparticle-kill-it arg0 arg1)
+      )
+  0
+  (none)
+  )
+
+(defun sparticle-60-to-50 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 pointer))
+  "convert from 60hz to 50hz particles"
+  (let ((gp-0 (-> arg1 rotvel3d))
+        (s5-0 (new 'stack-no-clear 'quaternion))
+        )
+    (vector-angle<-quaternion! (the-as vector s5-0) gp-0)
+    (set! (-> s5-0 w) (* 12516.455 (-> s5-0 w)))
+    (quaternion-vector-angle! gp-0 (the-as vector s5-0) (-> s5-0 w))
+    )
+  0
+  (none)
+  )
+
+(defun sparticle-50-to-60 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 pointer))
+  "convert from 50hz to 60hz particles"
+  (let ((gp-0 (-> arg1 rotvel3d))
+        (s5-0 (new 'stack-no-clear 'quaternion))
+        )
+    (vector-angle<-quaternion! (the-as vector s5-0) gp-0)
+    (set! (-> s5-0 w) (* 8691.982 (-> s5-0 w)))
+    (quaternion-vector-angle! gp-0 (the-as vector s5-0) (-> s5-0 w))
+    )
+  0
+  (none)
+  )
+
+(defun kill-all-particles-with-key ((arg0 sparticle-launch-control))
+  (forall-particles-with-key arg0 sparticle-kill-it #t #t)
+  0
+  (none)
+  )
+
+
+(defun forall-particles-runner ((arg0 (function sparticle-system sparticle-cpuinfo pointer none)) (arg1 sparticle-system))
+  "run function on all particles in the system."
+  (let ((s4-0 (the-as object (-> arg1 cpuinfo-table 0)))
+        (s3-0 (&+ (-> arg1 vecdata-table) 0))
+        (s2-0 (+ (-> arg1 blocks 0) (-> arg1 blocks 1)))
+        )
+    (dotimes (s1-0 s2-0)
+      (cond
+        ((!= (-> arg1 alloc-table s1-0) -1)
+         (dotimes (s0-0 64)
+           (if (-> (the-as sparticle-cpuinfo s4-0) valid)
+               (arg0 arg1 (the-as sparticle-cpuinfo s4-0) s3-0)
+               )
+           (set! s4-0 (+ (the-as uint s4-0) 144))
+           (&+! s3-0 48)
+           )
+         )
+        (else
+          (set! s4-0 (&+ (the-as pointer s4-0) 9216))
+          (&+! s3-0 3072)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defun forall-particles ((arg0 function) (arg1 symbol) (arg2 symbol))
+  "run function on all particles. arg1 for 2d, arg2 for 3d."
+  (if arg1
+      (forall-particles-runner
+        (the-as (function sparticle-system sparticle-cpuinfo pointer none) arg0)
+        *sp-particle-system-2d*
+        )
+      )
+  (if arg2
+      (forall-particles-runner
+        (the-as (function sparticle-system sparticle-cpuinfo pointer none) arg0)
+        *sp-particle-system-3d*
+        )
+      )
+  0
+  (none)
+  )
+
+(defun kill-all-particles-in-level ((arg0 level))
+  "kill all particles belonging to the given level."
+  (forall-particles (if (zero? (-> arg0 index))
+                        sparticle-kill-it-level0
+                        sparticle-kill-it-level1
+                        )
+                    #t
+                    #t
+                    )
+  0
+  )
+
+(defun all-particles-50-to-60 ()
+  (forall-particles-runner sparticle-50-to-60 *sp-particle-system-3d*)
+  (none)
+  )
+
+(defun all-particles-60-to-50 ()
+  (forall-particles-runner sparticle-60-to-50 *sp-particle-system-3d*)
+  (none)
+  )
+
+(defun set-particle-frame-time ((scaled-seconds int))
+  "Adjusts particle frame time based on the frame-rate (scaled-seconds). Note: This used to be a case statement and has been rewritten as a more generic formula"
+  (set-vector! *sp-frame-time* (the-as float (logior #x800000 scaled-seconds)) (the float scaled-seconds) (* 0.2 scaled-seconds) (* 0.2 scaled-seconds))
+  (none)
+  )
+
+(defun process-particles ()
+  "main particle system update."
+  (local-vars (v1-29 int) (gp-0 int))
+  (when *particles-flag*
+   0
+   0
+   ;;(.mfc0 gp-0 Count)
+   (set! *sp-launcher-lock* #t)
+   ;; start a profile frame.
+   (if *debug-segment*
+    (add-frame
+     (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+     'draw
+     (new 'static 'rgba :r #x40 :b #x40 :a #x80)
+     )
+    )
+   
+   ;; update timer
+   (let ((v1-14 (logand (the-as int (-> *sp-frame-time* x)) 255)))
+     (set! *particle-300hz-timer* (+ *particle-300hz-timer* v1-14))
+     (cond
+       (*sp-60-hz*
+         ;; this is such a hack, but we can never get 6 or 12 in 50hz mode
+         (when (or (= v1-14 6) (= v1-14 12))
+           (set! *sp-60-hz* #f)
+           (all-particles-60-to-50)
+           )
+         )
+       (else
+         ;; also a hack
+         (when (or (= v1-14 5) (= v1-14 10))
+           (set! *sp-60-hz* #t)
+           (all-particles-50-to-60)
+           )
+         )
+       )
+     )
+   
+   ;; process the particles
+   ;; pc port note : made this not run when paused, since aux sprites wont get added.
+   (unless (paused?)
+      (clear-sprite-aux-list))
+   (sp-process-particle-system *sp-particle-system-2d* 0 *sprite-array-2d*)
+   (sp-process-particle-system *sp-particle-system-2d* 1 *sprite-array-2d*)
+   (sp-process-particle-system *sp-particle-system-3d* 0 (the-as sprite-array-2d *sprite-array-3d*))
+   (if *debug-segment*
+    (add-frame
+     (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+     'draw
+     (new 'static 'rgba :r #x80 :g #x80 :b #xff :a #x80)
+     )
+    )
+   (set! *sp-launcher-lock* #f)
+   
+   ;; launch queued particles
+   (sp-clear-queue)
+   ;;(.mfc0 v1-29 Count)
+   (let ((a2-5 (- v1-29 gp-0)))
+    (if *display-sprite-info*
+     (format
+      *stdcon*
+      "Particle time = ~D cycles for ~D 2D [~D warp] and ~D HUD and ~D 3D~%"
+      1234 ;;a2-5
+      (-> *sp-particle-system-2d* num-alloc 0)
+      (-> *sprite-aux-list* entry)
+      (-> *sp-particle-system-2d* num-alloc 1)
+      (-> *sp-particle-system-3d* num-alloc 0)
+      )
+     )
+    )
+   )
+  0
+  (none)
+  )

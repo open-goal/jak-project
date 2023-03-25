@@ -1,0 +1,198 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: subdivide-h.gc
+;; name in dgo: subdivide-h
+;; dgos: ENGINE, GAME
+
+(declare-type subdivide-settings basic)
+(define-extern *subdivide-settings* subdivide-settings)
+(define-extern *stat-string-tfrag* string)
+(define-extern *stat-string-tfrag-scissor* string)
+(define-extern *stat-string-total* string)
+(define-extern update-subdivide-settings! (function subdivide-settings math-camera int none))
+
+(define-extern *perf-stats* perf-stat-array)
+
+;; DECOMP BEGINS
+
+(deftype subdivide-settings (basic)
+  ((dist   float 5 :offset-assert   4)
+   (meters float 5 :offset-assert  24)
+   (close  float 8 :offset-assert  44)
+   (far    float 8 :offset-assert  76)
+   )
+  :method-count-assert 9
+  :size-assert         #x6c
+  :flag-assert         #x90000006c
+  (:methods
+    (new (symbol type meters meters) _type_ 0)
+    )
+  )
+
+
+(defmethod new subdivide-settings ((allocation symbol) (type-to-make type) (arg0 meters) (arg1 meters))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (dotimes (v1-2 6)
+      (set! (-> v0-0 close v1-2) arg0)
+      (set! (-> v0-0 far v1-2) arg1)
+      )
+    v0-0
+    )
+  )
+
+(deftype subdivide-dists (structure)
+  ((data   uint32  32        :offset-assert   0)
+   (vector vector  8 :inline :offset          0)
+   (k0s    uint128 4         :offset          0)
+   (k1s    uint128 4         :offset         64)
+   )
+  :method-count-assert 9
+  :size-assert         #x80
+  :flag-assert         #x900000080
+  )
+
+
+(deftype terrain-stats (structure)
+  ((pris                     tr-stat :inline :offset-assert   0)
+   (tie-generic              tr-stat :inline :offset-assert  16)
+   (tie-vanish               tr-stat :inline :offset-assert  32)
+   (tie                      tr-stat :inline :offset-assert  48)
+   (tie-scissor              tr-stat :inline :offset-assert  64)
+   (tie-envmap               tr-stat :inline :offset-assert  80)
+   (tie-envmap-scissor       tr-stat :inline :offset-assert  96)
+   (tie-trans                tr-stat :inline :offset-assert 112)
+   (tie-scissor-trans        tr-stat :inline :offset-assert 128)
+   (tie-envmap-trans         tr-stat :inline :offset-assert 144)
+   (tie-envmap-scissor-trans tr-stat :inline :offset-assert 160)
+   (tie-water                tr-stat :inline :offset-assert 176)
+   (tie-scissor-water        tr-stat :inline :offset-assert 192)
+   (tie-envmap-water         tr-stat :inline :offset-assert 208)
+   (tie-envmap-scissor-water tr-stat :inline :offset-assert 224)
+   (shrub-near               tr-stat :inline :offset-assert 240)
+   (shrub                    tr-stat :inline :offset-assert 256)
+   (tfrag-scissor            tr-stat :inline :offset-assert 272)
+   (tfrag                    tr-stat :inline :offset-assert 288)
+   (billboard                tr-stat :inline :offset-assert 304)
+   (tfrag-trans              tr-stat :inline :offset-assert 320)
+   (tfrag-scissor-trans      tr-stat :inline :offset-assert 336)
+   (tfrag-water              tr-stat :inline :offset-assert 352)
+   (tfrag-scissor-water      tr-stat :inline :offset-assert 368)
+   (trans-pris               tr-stat :inline :offset-assert 384)
+   (trans-shrub              tr-stat :inline :offset-assert 400)
+   (ocean-mid                tr-stat :inline :offset-assert 416)
+   (ocean-near               tr-stat :inline :offset-assert 432)
+   (shadow                   tr-stat :inline :offset-assert 448)
+   (total                    tr-stat :inline :offset-assert 464)
+   )
+  :method-count-assert 9
+  :size-assert         #x1e0
+  :flag-assert         #x9000001e0
+  )
+
+
+(deftype dma-area (structure)
+  ((instance-shrub-dma instance-shrub-dma :inline :offset   0)
+   (draw-node-dma      draw-node-dma      :inline :offset   0)
+   (tfrag-dma          tfrag-dma          :inline :offset   0)
+   (instance-tie-dma   instance-tie-dma   :inline :offset   0)
+   (prototype-tie-dma  prototype-tie-dma  :inline :offset   0)
+   (wind-dma           wind-dma           :inline :offset   0)
+   (time-of-day-dma    time-of-day-dma    :inline :offset   0)
+   (decomp-work        decomp-work        :inline :offset   0)
+   (ocean-vertex       ocean-vertex       4       :offset   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x38a0
+  :flag-assert         #x9000038a0
+  )
+
+
+(deftype background-area (structure)
+  ((dma-area dma-area :inline :offset-assert   0)
+   (vis-list uint8    2048    :offset-assert 14496)
+   )
+  :method-count-assert 9
+  :size-assert         #x40a0
+  :flag-assert         #x9000040a0
+  )
+
+
+(deftype foreground-area (structure)
+  ((generic-work    generic-work    :inline :offset-assert   0)
+   (foreground-work foreground-work :inline :offset          0)
+   (joint-work      joint-work      :inline :offset          0)
+   (bone-mem        bone-memory     :inline :offset          0)
+   (shadow-work     shadow-work     :inline :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x3fe0
+  :flag-assert         #x900003fe0
+  )
+
+
+(deftype region-prim-area (structure)
+  ((region-prim-list        region-prim-list       :inline :offset-assert   0)
+   (pos                     vector                 :inline :offset-assert 1296)
+   (unknown-vector-uiyb1    vector                 :inline :offset-assert 1312)
+   (ray                     vector                 :inline :offset        1328)
+   (unknown-vector-t3edh    vector                 :inline :offset-assert 1344)
+   (region-enter-count      int32                          :offset        1360)
+   (region-enter-list       region-prim-area       320     :offset-assert 1364)
+   (region-enter-prim-list  drawable-region-sphere 320     :offset-assert 2644)
+   (region-exit-count       int32                          :offset-assert 3924)
+   (region-exit-list        region-prim-area       320     :offset-assert 3928)
+   (region-exit-prim-list   drawable-region-sphere 320     :offset-assert 5208)
+   (region-inside-count     int32                          :offset-assert 6488)
+   (region-inside-list      region-prim-area       320     :offset-assert 6492)
+   (region-inside-prim-list drawable-region-sphere 320     :offset-assert 7772)
+   (region-start-count      int32                          :offset-assert 9052)
+   (region-start-list       region-prim-area       320     :offset-assert 9056)
+   (region-start-prim-list  drawable-region-sphere 320     :offset-assert 10336)
+   )
+  :method-count-assert 13
+  :size-assert         #x2d60
+  :flag-assert         #xd00002d60
+  (:methods
+    (track-entered-region! (_type_ drawable-region-sphere) none 9)
+    (track-exited-region! (_type_ drawable-region-sphere) none 10)
+    (track-inside-region! (_type_ drawable-region-sphere) none 11)
+    (track-start-region! (_type_ drawable-region-sphere) none 12)
+    )
+  )
+
+
+(deftype sprite-area (structure)
+  ((clock-data vector 13 :inline :offset-assert   0)
+   (buffer     uint8  :dynamic   :offset-assert 208)
+   )
+  :method-count-assert 9
+  :size-assert         #xd0
+  :flag-assert         #x9000000d0
+  )
+
+
+(deftype work-area (structure)
+  ((background  background-area  :inline :offset-assert   0)
+   (foreground  foreground-area  :inline :offset          0)
+   (region-prim region-prim-area :inline :offset          0)
+   (sprite      sprite-area      :inline :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x40a0
+  :flag-assert         #x9000040a0
+  )
+
+
+(deftype terrain-context (structure)
+  ((work work-area :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x40a0
+  :flag-assert         #x9000040a0
+  )
+
+
+(define *terrain-stats* (new 'global 'terrain-stats))
+
+(define *collide-stats* (new 'global 'collide-stats))

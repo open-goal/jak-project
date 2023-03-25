@@ -1,0 +1,91 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: effect-control-h.gc
+;; name in dgo: effect-control-h
+;; dgos: ENGINE, GAME
+
+(defenum effect-control-flag
+  :type uint32
+  :bitfield #t
+  (ecf0)
+  (ecf1)
+  (ecf2)
+  (ecf3)
+  (ecf4)
+  (ecf5)
+  (ecf6)
+  (ecf7)
+  (ecf8)
+  (ecf9)
+  (ecf10)
+  (ecf11)
+  (ecf12)
+  (ecf13)
+  (ecf14)
+  (ecf15)
+  (ecf16)
+  (ecf17)
+  (ecf18)
+  (ecf19)
+  (ecf20)
+  (ecf21)
+  (ecf22)
+  (ecf23)
+  (ecf24)
+  (ecf25)
+  (ecf26)
+  (ecf27)
+  (ecf28)
+  (ecf29)
+  (ecf30)
+  (ecf31)
+  )
+
+;; DECOMP BEGINS
+
+(deftype effect-control (basic)
+  ((process          process-drawable    :offset-assert 4)
+   (flags            effect-control-flag :offset-assert 8)
+   (last-frame-group art-joint-anim      :offset-assert 12)
+   (last-frame-num   float               :offset-assert 16)
+   (channel-offset   int32               :offset-assert 20)
+   (res              res-lump            :offset-assert 24)
+   (name             (pointer res-tag)   :offset-assert 28)
+   (param            uint32              :offset-assert 32)
+   )
+  :method-count-assert 15
+  :size-assert         #x24
+  :flag-assert         #xf00000024
+  (:methods
+    (new (symbol type process-drawable) _type_ 0)
+    (update-effects (_type_) none 9)
+    (do-effect (_type_ symbol float int) none 10)
+    (do-effect-for-surface (_type_ symbol float int basic pat-surface) none 11)
+    (play-effect-sound (_type_ symbol float int basic sound-name) int 12)
+    (set-channel-offset! (_type_ int) none 13)
+    (play-effects-from-res-lump (_type_ float float float) none 14)
+    )
+  )
+
+
+(defmethod new effect-control ((allocation symbol) (type-to-make type) (arg0 process-drawable))
+  (cond
+    ((res-lump-struct (-> arg0 draw jgeo extra) 'effect-name structure)
+     (let ((v0-1 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+       (set! (-> v0-1 process) arg0)
+       (set! (-> v0-1 last-frame-group) #f)
+       v0-1
+       )
+     )
+    (else
+      (the-as effect-control #f)
+      )
+    )
+  )
+
+(defmethod set-channel-offset! effect-control ((obj effect-control) (arg0 int))
+  (set! (-> obj channel-offset) arg0)
+  0
+  (none)
+  )

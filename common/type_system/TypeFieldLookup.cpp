@@ -4,8 +4,12 @@
  */
 
 #include <algorithm>
-#include "third-party/fmt/core.h"
+
 #include "TypeSystem.h"
+
+#include "common/log/log.h"
+
+#include "third-party/fmt/core.h"
 
 namespace {
 // debug prints for the reverse lookup
@@ -450,8 +454,8 @@ void try_reverse_lookup(const FieldReverseLookupInput& input,
                         FieldReverseMultiLookupOutput* output,
                         int max_count) {
   if (debug_reverse_lookup) {
-    fmt::print(" try_reverse_lookup on {} offset {} deref {} stride {}\n", input.base_type.print(),
-               input.offset, input.deref.has_value(), input.stride);
+    lg::debug(" try_reverse_lookup on {} offset {} deref {} stride {}", input.base_type.print(),
+              input.offset, input.deref.has_value(), input.stride);
   }
 
   auto base_input_type = input.base_type.base_type();
@@ -480,31 +484,17 @@ FieldReverseLookupOutput TypeSystem::reverse_field_lookup(
   // just use the multi-lookup set to 1 and grab the first result.
   auto multi_result = reverse_field_multi_lookup(input, 100);
 
-  for (auto& result : multi_result.results) {
-    // compute the score.
-    result.total_score = 0;
-    for (auto& tok : result.tokens) {
-      result.total_score += tok.score();
-    }
-  }
-
-  // use stable sort to make sure we break ties by being first in the order.
-  std::stable_sort(multi_result.results.begin(), multi_result.results.end(),
-                   [](const FieldReverseLookupOutput& a, const FieldReverseLookupOutput& b) {
-                     return a.total_score > b.total_score;
-                   });
-
   /*
   if (multi_result.results.size() > 1) {
-    fmt::print("Multiple:\n");
+    lg::print("Multiple:\n");
     for (auto& result : multi_result.results) {
-      fmt::print("  [{}] [{}] ", result.total_score, result.result_type.print());
+      lg::print("  [{}] [{}] ", result.total_score, result.result_type.print());
       for (auto& tok : result.tokens) {
-        fmt::print("{} ", tok.print());
+        lg::print("{} ", tok.print());
       }
-      fmt::print("\n");
+      lg::print("\n");
     }
-    fmt::print("\n\n\n");
+    lg::print("\n\n\n");
   }
    */
 
@@ -522,14 +512,27 @@ FieldReverseMultiLookupOutput TypeSystem::reverse_field_multi_lookup(
     const FieldReverseLookupInput& input,
     int max_count) const {
   if (debug_reverse_lookup) {
-    fmt::print("reverse_field_lookup on {} offset {} deref {} stride {}\n", input.base_type.print(),
-               input.offset, input.deref.has_value(), input.stride);
+    lg::debug("reverse_field_lookup on {} offset {} deref {} stride {}", input.base_type.print(),
+              input.offset, input.deref.has_value(), input.stride);
   }
 
   FieldReverseMultiLookupOutput result;
   try_reverse_lookup(input, *this, nullptr, &result, max_count);
   if (!result.results.empty()) {
     result.success = true;
+    for (auto& r : result.results) {
+      // compute the score.
+      r.total_score = 0;
+      for (auto& tok : r.tokens) {
+        r.total_score += tok.score();
+      }
+    }
+
+    // use stable sort to make sure we break ties by being first in the order.
+    std::stable_sort(result.results.begin(), result.results.end(),
+                     [](const FieldReverseLookupOutput& a, const FieldReverseLookupOutput& b) {
+                       return a.total_score > b.total_score;
+                     });
   }
   return result;
 }

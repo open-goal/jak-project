@@ -1,0 +1,233 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: loader-h.gc
+;; name in dgo: loader-h
+;; dgos: GAME, ENGINE
+
+;; The loader is responsible for managing streaming loads.
+
+;; note: lower values are more important.
+;; negative values will preload.
+(defconstant SPOOL_PRIORITY_LOWEST 100000000.0)
+(defconstant SPOOL_PRIORITY_RECALC -99.0)
+(defconstant SPOOL_PRIORITY_HIGHEST -20.0)
+(defconstant SPOOL_PRIORITY_HIGH -10.0)
+
+(defconstant SPOOL_HEAP_SIZE (* 247 1024)) ;; size of the heap to be used for each spool
+
+
+;; A load-dir is a collection of references to loaded art.
+;; This type didn't have a nomral inspect method, so these field names are made up.
+(declare-type art-group basic)
+(deftype load-dir (basic)
+  ((lev level :offset-assert 4)
+   (string-array (array string) :offset-assert  8) ;; these are the names
+   (data-array (array basic)    :offset-assert 12) ;; this is the file data.
+   )
+  :method-count-assert 11
+  :size-assert         #x10
+  :flag-assert         #xb00000010
+  (:methods
+    (new (symbol type int level) _type_ 0)
+    (load-to-heap-by-name (_type_ string symbol kheap int) art-group 9)
+    (set-loaded-art (_type_ art-group) art-group 10)
+    )
+  )
+
+;; specialization of load-dir where the data-array holds art-groups.
+(deftype load-dir-art-group (load-dir)
+  ((art-group-array (array art-group) :offset 12)
+   )
+  :method-count-assert 11
+  :size-assert         #x10
+  :flag-assert         #xb00000010
+  (:methods
+    (new (symbol type int level) _type_ 0)
+    )
+  )
+
+
+(defmethod new load-dir ((allocation symbol) (type-to-make type) (length int) (lev level))
+  "Allocate a new load-dir with room for length entries"
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> obj lev) lev)
+    ;; create the name array
+    (set! (-> obj string-array)
+          (the-as (array string)
+                  ((method-of-type array new) allocation array string length)
+                  )
+          )
+    (set! (-> obj string-array length) 0)
+    ;; create the data array
+    (set! (-> obj data-array)
+          (the-as (array art-group)
+                  ((method-of-type array new) allocation array basic length)
+                  ))
+    (set! (-> obj data-array length) 0)
+    obj
+    )
+  )
+
+(defmethod new load-dir-art-group ((allocation symbol) (type-to-make type) (length int) (lev level))
+  "Allocate a new load-dir with room for length art-groups"
+  ;; call parent ctor.
+  (let ((obj ((method-of-type load-dir new) allocation type-to-make length lev)))
+    ;; override the content type
+    (set! (-> obj data-array content-type) art-group)
+    ;; and cast to child.
+    (the-as load-dir-art-group obj)
+    )
+  )
+
+;; An external-art-buffer owns some memory for loading files.
+;; the "external" means it's not part of the level's (or common, always loaded) static data
+;; status:
+;;  - 'active: file is loaded and art group is linked to level's art group.
+;;  - 'reserved: buffer is reserved for other purpose
+;;  - 'error: load has encountered an error, goes to 'inactive
+;;  - 'inactive: not in use
+;;  - 'loading: loading is in progress
+;;  - 'loaded: loading has finished, goes to 'locked or 'active
+;;  - 'locked: loaded, but another buffer is active and blocks this one.
+;; Note: a locked buffer has loaded/linked the file, but hasn't linked the file
+;;  to the "master" art group, located in the level.
+(deftype external-art-buffer (basic)
+  ((index                      int32                 :offset-assert 4)
+   (other                      external-art-buffer   :offset-assert 8)
+   (status                     symbol                :offset-assert 12)
+   (locked?                    symbol                :offset-assert 16)
+   (frame-lock                 symbol                :offset-assert 20)
+   (heap                       kheap  :inline        :offset-assert 32)
+   (pending-load-file          string                :offset-assert 48)
+   (pending-load-file-part     int32                 :offset-assert 52)
+   (pending-load-file-owner    handle                :offset-assert 56)
+   (pending-load-file-priority float                 :offset-assert 64)
+   (load-file                  string                :offset-assert 68)
+   (load-file-part             int32                 :offset-assert 72)
+   (load-file-owner            handle                :offset-assert 80)
+   (load-file-priority         float                 :offset-assert 88)
+   (buf                        pointer               :offset-assert 92)
+   (len                        int32                 :offset-assert 96)
+   (art-group                  art-group             :offset-assert 100)
+   )
+  :method-count-assert 16
+  :size-assert         #x68
+  :flag-assert         #x1000000068
+  (:methods
+    (new (symbol type int) _type_ 0)
+    (set-pending-file (_type_ string int handle float) int 9)
+    (update (_type_) int 10)
+    (inactive? (_type_) symbol 11)
+    (file-status (_type_ string int) symbol 12)
+    (link-file (_type_ art-group) art-group 13)
+    (unlink-file (_type_ art-group) int 14)
+    (unlock! (_type_) symbol 15)
+    )
+  )
+
+(defmethod new external-art-buffer ((allocation symbol) (type-to-make type) (idx int))
+  "Allocate a new external-art-buffer"
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+   (set! (-> obj index) idx)
+   (set! (-> obj load-file) #f)
+   (set! (-> obj load-file-part) -1)
+   (set! (-> obj load-file-owner) (the-as handle #f))
+   (set! (-> obj load-file-priority) SPOOL_PRIORITY_LOWEST)
+   (set! (-> obj pending-load-file) #f)
+   (set! (-> obj pending-load-file-part) -1)
+   (set! (-> obj pending-load-file-owner) (the-as handle #f))
+   (set! (-> obj pending-load-file-priority) SPOOL_PRIORITY_LOWEST)
+   (set! (-> obj art-group) #f)
+   (set! (-> obj status) 'initialize)
+   (set! (-> obj locked?) #f)
+   (set! (-> obj other) #f)
+   obj
+   )
+  )
+
+
+;; A spool-anim tracks the buffers holding chunks of a spooled animation.
+(deftype spool-anim (basic)
+  ((name         string  :offset 16) ;; why?
+   (buf1         external-art-buffer  :offset 16) ;; custom
+   (index        int32   :score 100   :offset 20)
+   (buf2         external-art-buffer  :offset 20) ;; custom the old buffer
+   (parts        int32   :offset-assert 24)
+   (priority     float   :offset-assert 28)
+   (owner        handle  :offset-assert 32)
+   (command-list pair    :offset-assert 40)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  )
+
+;; This is the main controller for the streaming loader.
+;; It has two buffers for holding chunks of a spooling animation
+;; The buffer can also be reused to hold other things.
+(deftype external-art-control (basic)
+  ((buffer               external-art-buffer    2       :offset-assert 4) ;; actual data buffers
+   (rec                  spool-anim 3 :inline :offset-assert 16) ;; things we would consider loading
+   (spool-lock           handle             :offset-assert 160)
+   (reserve-buffer       external-art-buffer  :offset-assert 168) ;; ??
+   (reserve-buffer-count int32              :offset-assert 172)   ;; ??
+   (active-stream        string             :offset-assert 176)
+   (preload-stream       spool-anim :inline :offset-assert 184)
+   (last-preload-stream  spool-anim :inline :offset-assert 232)
+   (end-pad uint32)
+   )
+  :method-count-assert 17
+  :size-assert         #x118
+  :flag-assert         #x1100000118
+  (:methods
+    (new (symbol type) _type_ 0)
+    (update (_type_ symbol) int 9)
+    (clear-rec (_type_) int 10)
+    (spool-push (_type_ string int process float) int 11)
+    (file-status (_type_ string int) symbol 12)
+    (reserve-alloc (_type_) kheap 13)
+    (reserve-free (_type_ kheap) int 14)
+    (none-reserved? (_type_) symbol 15)
+    (try-preload-stream (_type_ string int process float) int 16)
+    )
+  )
+
+
+(defmethod new external-art-control ((allocation symbol) (type-to-make type))
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    ;; allocate buffers.
+    (dotimes (buff-idx 2)
+      (set! (-> obj buffer buff-idx)
+            ((method-of-type external-art-buffer new) allocation external-art-buffer buff-idx)
+            )
+      )
+    ;; point buffers to each other
+    (set! (-> obj buffer 0 other) (-> obj buffer 1))
+    (set! (-> obj buffer 1 other) (-> obj buffer 0))
+    ;; set up recs
+    (dotimes (rec-idx 3)
+      (set! (-> obj rec rec-idx name) #f)
+      (set! (-> obj rec rec-idx priority) SPOOL_PRIORITY_LOWEST)
+      (set! (-> obj rec rec-idx owner) (the-as handle #f))
+      )
+    ;; set up defaults.
+    (set! (-> obj spool-lock) (the-as handle #f))
+    (set! (-> obj reserve-buffer) #f)
+    (set! (-> obj active-stream) #f)
+    (set! (-> obj preload-stream name) #f)
+    (set! (-> obj preload-stream priority) SPOOL_PRIORITY_LOWEST)
+    (set! (-> obj preload-stream owner) (the-as handle #f))
+    (set! (-> obj last-preload-stream name) #f)
+    (set! (-> obj last-preload-stream priority) SPOOL_PRIORITY_LOWEST)
+    (set! (-> obj last-preload-stream owner) (the-as handle #f))
+    obj
+    )
+  )
+
+
+(define-extern *art-control* external-art-control)
+(defun-extern art-group-load-check string kheap int art-group)
+
+

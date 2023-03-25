@@ -1,0 +1,371 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function creates-new-method?
+(defun creates-new-method? ((arg0 type) (arg1 int))
+  (let ((v1-1 (-> arg0 parent allocated-length)))
+    (-> arg0 allocated-length)
+    (>= arg1 (the-as int v1-1))
+    )
+  )
+
+;; definition for function overrides-parent-method?
+(defun overrides-parent-method? ((arg0 type) (arg1 int))
+  (!= (-> arg0 method-table arg1) (-> arg0 parent method-table arg1))
+  )
+
+;; definition for function describe-methods
+(defun describe-methods ((arg0 type))
+  (let ((s5-0 (-> arg0 allocated-length)))
+    (dotimes (s4-0 (the-as int s5-0))
+      (let ((s3-0 arg0))
+        (format #t "~3d:~%" s4-0)
+        (while (!= s3-0 basic)
+          (cond
+            ((creates-new-method? s3-0 s4-0)
+             (format #t "   created by ~s.~%" (symbol->string (-> s3-0 symbol)))
+             (set! s3-0 basic)
+             )
+            ((overrides-parent-method? s3-0 s4-0)
+             (format #t "   overridden by ~s.~%" (symbol->string (-> s3-0 symbol)))
+             (set! s3-0 (-> s3-0 parent))
+             )
+            (else
+              (set! s3-0 (-> s3-0 parent))
+              )
+            )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for function indent-to
+;; INFO: Return type mismatch symbol vs none.
+(defun indent-to ((arg0 int))
+  (dotimes (s5-0 arg0)
+    (format #t " ")
+    )
+  (none)
+  )
+
+;; definition for function probe-traverse-draw-node
+;; INFO: Return type mismatch int vs none.
+(defun probe-traverse-draw-node ((arg0 draw-node) (arg1 int))
+  (indent-to arg1)
+  (format
+    #t
+    "[~08x] child-count: ~d, flags: ~d, dist: ~f, child: ~a~%"
+    arg0
+    (-> arg0 child-count)
+    (-> arg0 flags)
+    (-> arg0 distance)
+    (-> arg0 child)
+    )
+  (cond
+    ((nonzero? (-> arg0 flags))
+     (let ((s4-0 (-> arg0 child)))
+       (dotimes (s3-0 (the-as int (-> arg0 child-count)))
+         (probe-traverse-draw-node (the-as draw-node (+ (the-as uint s4-0) (* s3-0 32))) (+ arg1 1))
+         )
+       )
+     )
+    (else
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function probe-traverse-inline-array-node
+;; INFO: Return type mismatch symbol vs none.
+(defun probe-traverse-inline-array-node ((arg0 drawable-inline-array-node) (arg1 int))
+  (indent-to arg1)
+  (format #t "[~08x] drawable-inline-array-node: length = ~d~%" arg0 (-> arg0 length))
+  (let ((s4-0 (-> arg0 length)))
+    (dotimes (s3-0 s4-0)
+      (indent-to arg1)
+      (format #t "(~3d) ~a~%" s3-0 (-> arg0 data s3-0))
+      (if (= (-> arg0 data s3-0 type) draw-node)
+          (probe-traverse-draw-node (-> arg0 data s3-0) (+ arg1 1))
+          )
+      )
+    )
+  (none)
+  )
+
+;; definition for function probe-traverse-collide-fragment
+;; INFO: Return type mismatch symbol vs none.
+(defun probe-traverse-collide-fragment ((arg0 drawable-tree-collide-fragment) (arg1 int))
+  (indent-to arg1)
+  (format #t "[~08x] drawable-tree-collide-fragment: length = ~d~%" arg0 (-> arg0 length))
+  (let ((s4-0 (-> arg0 length)))
+    (dotimes (s3-0 (+ s4-0 -1))
+      (indent-to arg1)
+      (if (= (-> arg0 data s3-0 type) drawable-inline-array-node)
+          (probe-traverse-inline-array-node (the-as drawable-inline-array-node (-> arg0 data s3-0)) (+ arg1 1))
+          (format #t "unknown: ~a~%" (-> arg0 data s3-0))
+          )
+      )
+    )
+  (none)
+  )
+
+;; definition of type collide-probe-stack-elem
+(deftype collide-probe-stack-elem (structure)
+  ((child uint32  :offset-assert   0)
+   (count uint32  :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type collide-probe-stack-elem
+(defmethod inspect collide-probe-stack-elem ((obj collide-probe-stack-elem))
+  (format #t "[~8x] ~A~%" obj 'collide-probe-stack-elem)
+  (format #t "~Tchild: #x~X~%" (-> obj child))
+  (format #t "~Tcount: ~D~%" (-> obj count))
+  obj
+  )
+
+;; definition of type collide-probe-stack
+(deftype collide-probe-stack (structure)
+  ((data collide-probe-stack-elem 1024 :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4000
+  :flag-assert         #x900004000
+  )
+
+;; definition for method 3 of type collide-probe-stack
+(defmethod inspect collide-probe-stack ((obj collide-probe-stack))
+  (format #t "[~8x] ~A~%" obj 'collide-probe-stack)
+  (format #t "~Tdata[1024] @ #x~X~%" (-> obj data))
+  obj
+  )
+
+;; definition for symbol *collide-probe-stack*, type collide-probe-stack
+(define *collide-probe-stack* (the-as collide-probe-stack (+ 4192 #x70000000)))
+
+;; definition for symbol collide-vu0-block, type vu-function
+(define collide-vu0-block (the-as vu-function 0))
+
+;; definition for function collide-probe-node
+;; INFO: function output is handled by mips2c
+(def-mips2c collide-probe-node (function (inline-array draw-node) int collide-list int))
+
+;; definition for function print-out
+(defun print-out ((arg0 int))
+  (format *stdcon* "~d~%" arg0)
+  )
+
+;; definition for function collide-probe-instance-tie-collide-frags
+;; INFO: Return type mismatch int vs none.
+(defun collide-probe-instance-tie-collide-frags ()
+  0
+  (none)
+  )
+
+;; definition for function collide-probe-instance-tie
+;; INFO: function output is handled by mips2c
+(def-mips2c collide-probe-instance-tie (function object int collide-list int int))
+
+;; definition for function collide-probe-collide-fragment-tree-make-list
+;; INFO: Return type mismatch int vs none.
+(defun collide-probe-collide-fragment-tree-make-list ((arg0 drawable-tree-collide-fragment) (arg1 collide-list))
+  (cond
+    ((< 1 (-> arg0 length))
+     (let ((v1-1 (-> arg0 data-override)))
+       (collide-probe-node (-> (the-as drawable-inline-array-node v1-1) data) (-> v1-1 length) arg1)
+       )
+     )
+    (else
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function collide-probe-instance-tie-tree-make-list
+(defun collide-probe-instance-tie-tree-make-list ((arg0 drawable-tree-instance-tie) (arg1 collide-list))
+  (cond
+    ((< 1 (-> arg0 length))
+     (let ((v1-2 (-> arg0 data 0)))
+       (collide-probe-instance-tie
+         (-> (the-as drawable-inline-array-node v1-2) data)
+         (-> (the-as drawable-inline-array-node v1-2) length)
+         arg1
+         1
+         )
+       )
+     )
+    ((= (-> arg0 length) 1)
+     (let ((v1-7 (-> arg0 data 0)))
+       (collide-probe-instance-tie
+         (-> (the-as drawable-inline-array-instance-tie v1-7) data)
+         (-> (the-as drawable-inline-array-instance-tie v1-7) length)
+         arg1
+         0
+         )
+       )
+     )
+    )
+  0
+  )
+
+;; definition for function collide-upload-vu0
+;; INFO: Return type mismatch int vs none.
+(defun collide-upload-vu0 ()
+  (let ((gp-0 *vu0-dma-list*))
+    (let ((v1-0 gp-0))
+      (set! (-> v1-0 base) (-> v1-0 data))
+      (set! (-> v1-0 end) (&-> v1-0 data-buffer (-> v1-0 allocated-length)))
+      )
+    (dma-buffer-add-vu-function gp-0 collide-vu0-block 0)
+    (let* ((v1-1 gp-0)
+           (a0-5 (the-as object (-> v1-1 base)))
+           )
+      (set! (-> (the-as dma-packet a0-5) dma) (new 'static 'dma-tag :id (dma-tag-id end)))
+      (set! (-> (the-as (pointer uint64) a0-5) 1) (the-as uint 0))
+      (set! (-> v1-1 base) (&+ (the-as pointer a0-5) 16))
+      )
+    (.sync.l)
+    (dma-buffer-send-chain (the-as dma-bank-source #x10008000) gp-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for function collide-probe-make-list
+;; INFO: Return type mismatch symbol vs none.
+(defun collide-probe-make-list ((arg0 level) (arg1 collide-list))
+  (let ((s5-0 (-> arg0 bsp)))
+    0
+    (collide-upload-vu0)
+    (let ((s5-1 (-> s5-0 drawable-trees)))
+      (dotimes (s4-0 (-> s5-1 length))
+        (let ((v1-3 (-> s5-1 trees s4-0)))
+          (cond
+            ((= (-> v1-3 type) drawable-tree-instance-tie)
+             (let ((a2-0 arg1))
+               (cond
+                 ((< 1 (-> v1-3 length))
+                  (let ((v1-4 (-> v1-3 data 0)))
+                    (collide-probe-instance-tie
+                      (-> (the-as drawable-inline-array-node v1-4) data)
+                      (-> (the-as drawable-inline-array-node v1-4) length)
+                      a2-0
+                      1
+                      )
+                    )
+                  )
+                 ((= (-> v1-3 length) 1)
+                  (let ((v1-6 (-> v1-3 data 0)))
+                    (collide-probe-instance-tie
+                      (-> (the-as drawable-inline-array-instance-tie v1-6) data)
+                      (-> (the-as drawable-inline-array-instance-tie v1-6) length)
+                      a2-0
+                      0
+                      )
+                    )
+                  )
+                 )
+               )
+             0
+             )
+            ((= (-> v1-3 type) drawable-tree-collide-fragment)
+             (let ((a2-1 arg1))
+               (cond
+                 ((< 1 (-> v1-3 length))
+                  (let ((v1-9 (-> v1-3 data 0)))
+                    (collide-probe-node
+                      (-> (the-as drawable-inline-array-node v1-9) data)
+                      (-> (the-as drawable-inline-array-node v1-9) length)
+                      a2-1
+                      )
+                    )
+                  )
+                 (else
+                   )
+                 )
+               )
+             0
+             )
+            (else
+              )
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for function distc
+(defun distc ((arg0 vector) (arg1 vector))
+  (let* ((f0-1 (- (-> arg0 x) (-> arg1 x)))
+         (f0-3 (* f0-1 f0-1))
+         (f1-2 (- (-> arg0 z) (-> arg1 z)))
+         )
+    (sqrtf (+ f0-3 (* f1-2 f1-2)))
+    )
+  )
+
+;; definition for function interpolate
+(defun interpolate ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
+  (let ((f0-1 (- arg3 arg1))
+        (f1-2 (- arg4 arg2))
+        (f3-1 (- arg0 arg1))
+        )
+    (+ arg2 (/ (* f3-1 f1-2) f0-1))
+    )
+  )
+
+;; definition for function misty-ambush-height
+(defun misty-ambush-height ((arg0 vector))
+  (let* ((a1-0 (new 'static 'vector :x -808960.0 :y 111656.96 :z 3924992.0))
+         (f0-0 (distc arg0 a1-0))
+         )
+    (cond
+      ((< f0-0 52019.2)
+       111656.96
+       )
+      ((>= 58982.4 f0-0)
+       (interpolate f0-0 52019.2 111656.96 58982.4 116776.96)
+       )
+      ((>= 124436.48 f0-0)
+       (interpolate f0-0 58982.4 116776.96 124436.48 114688.0)
+       )
+      ((>= 219217.92 f0-0)
+       (interpolate f0-0 124436.48 114688.0 219217.92 113254.4)
+       )
+      (else
+        113254.4
+        )
+      )
+    )
+  )
+
+;; definition for function misty-ambush-height-probe
+(defun misty-ambush-height-probe ((arg0 vector) (arg1 float))
+  (let ((f0-0 (misty-ambush-height arg0)))
+    (cond
+      ((< f0-0 (-> arg0 y))
+       (/ (- (-> arg0 y) f0-0) arg1)
+       )
+      (else
+        (format 0 "WARNING: ~%height = ~f, pos.y = ~f" (* 0.00024414062 f0-0) (* 0.00024414062 (-> arg0 y)))
+        -1.0
+        )
+      )
+    )
+  )
+
+;; definition for function pke-collide-test
+;; INFO: Return type mismatch int vs none.
+(defun pke-collide-test ()
+  0
+  (none)
+  )

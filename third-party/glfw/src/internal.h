@@ -899,6 +899,8 @@ void* _glfwPlatformLoadModule(const char* path);
 void _glfwPlatformFreeModule(void* module);
 GLFWproc _glfwPlatformGetModuleSymbol(void* module, const char* name);
 
+int _glfwPlatformSetJoystickRumble(_GLFWjoystick* js, float slowMotorIntensity, float fastMotorIntensity);
+
 
 //////////////////////////////////////////////////////////////////////////
 //////                         GLFW event API                       //////

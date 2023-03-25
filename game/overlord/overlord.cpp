@@ -1,13 +1,22 @@
-#include <cstring>
 #include "overlord.h"
-#include "game/sce/iop.h"
-#include "ramdisk.h"
+
+#include <cstring>
+
 #include "iso.h"
-#include "ssound.h"
+#include "ramdisk.h"
 #include "sbank.h"
 #include "srpc.h"
+#include "ssound.h"
+
+#include "common/util/Assert.h"
+
+#include "game/sce/iop.h"
 
 using namespace iop;
+
+static s32 gargc;
+static const char* const* gargv;
+static bool* init_complete;
 
 int start_overlord(int argc, const char* const* argv) {
   (void)argc;
@@ -30,7 +39,7 @@ int start_overlord(int argc, const char* const* argv) {
     InitSound_Overlord();
   }
   InitRamdisk();
-  // RegisterVblankHandler(0, 0x20, VBlank_Handler, nullptr);
+  RegisterVblankHandler(0, 0x20, VBlank_Handler, nullptr);
 
   ThreadParam thread_param;
   thread_param.attr = TH_C;
@@ -71,6 +80,35 @@ int start_overlord(int argc, const char* const* argv) {
 
   StartThread(thread_player, 0);
   StartThread(thread_loader, 0);
+  return 0;
+}
+
+static void call_start() {
+  start_overlord(gargc, gargv);
+  *init_complete = true;
+
+  while (true) {
+    SleepThread();
+  }
+}
+
+int start_overlord_wrapper(int argc, const char* const* argv, bool* signal) {
+  ThreadParam param = {};
+
+  gargc = argc;
+  gargv = argv;
+  init_complete = signal;
+
+  param.attr = TH_C;
+  param.initPriority = 0;
+  param.stackSize = 0x800;
+  param.option = 0;
+  strcpy(param.name, "start");  // added for debug
+  param.entry = (void*)call_start;
+
+  auto start_thread = CreateThread(&param);
+  StartThread(start_thread, 0);
+
   return 0;
 }
 

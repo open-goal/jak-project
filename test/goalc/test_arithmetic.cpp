@@ -1,24 +1,21 @@
 // https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#value-parameterized-tests
 
-#include <thread>
 #include <chrono>
-
-#include "gtest/gtest.h"
-#include "game/runtime.h"
-#include "goalc/listener/Listener.h"
-#include "goalc/compiler/Compiler.h"
-
-#include "inja.hpp"
-#include "third-party/json.hpp"
-
-#include "test/goalc/framework/test_runner.h"
-
-#include <iostream>
-#include <string>
-#include <cstdio>
-#include <sstream>
 #include <iostream>
 #include <random>
+#include <sstream>
+#include <string>
+#include <thread>
+
+#include "inja.hpp"
+
+#include "game/runtime.h"
+#include "goalc/compiler/Compiler.h"
+#include "goalc/listener/Listener.h"
+#include "gtest/gtest.h"
+#include "test/goalc/framework/test_runner.h"
+
+#include "third-party/json.hpp"
 
 // --------
 // This is a very over-engineered integer test, but it serves as a decent example of how to use the
@@ -121,8 +118,8 @@ class ArithmeticTests : public testing::TestWithParam<IntegerParam> {
   // Per-test-suite set-up.
   // Called before the first test in this test suite.
   static void SetUpTestSuite() {
-    runtime_thread = std::make_unique<std::thread>(std::thread((GoalTest::runtime_no_kernel)));
-    compiler = std::make_unique<Compiler>();
+    runtime_thread = std::make_unique<std::thread>(std::thread(GoalTest::runtime_no_kernel_jak1));
+    compiler = std::make_unique<Compiler>(GameVersion::Jak1);
     runner = std::make_unique<GoalTest::CompilerTestRunner>();
     runner->c = compiler.get();
   }

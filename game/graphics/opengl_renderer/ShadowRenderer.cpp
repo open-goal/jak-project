@@ -1,10 +1,10 @@
 #include "ShadowRenderer.h"
-#include "third-party/imgui/imgui.h"
 
 #include <cfloat>
 
-ShadowRenderer::ShadowRenderer(const std::string& name, BucketId my_id)
-    : BucketRenderer(name, my_id) {
+#include "third-party/imgui/imgui.h"
+
+ShadowRenderer::ShadowRenderer(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   // create OpenGL objects
   glGenBuffers(1, &m_ogl.vertex_buffer);
 
@@ -157,9 +157,8 @@ void ShadowRenderer::xgkick(u16 imm) {
               }
               break;
             default:
-              fmt::print("Register {} is not supported in packed mode yet\n",
-                         reg_descriptor_name(reg_desc[reg]));
-              ASSERT(false);
+              ASSERT_MSG(false, fmt::format("Register {} is not supported in packed mode yet\n",
+                                            reg_descriptor_name(reg_desc[reg])));
           }
           offset += 16;  // PACKED = quadwords
         }
@@ -347,16 +346,6 @@ void ShadowRenderer::draw(SharedRenderState* render_state, ScopedProfilerNode& p
 
   render_state->shaders.at(ShaderId::SHADOW).activate();
 
-  glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"),
-              0., 0.4, 0., 0.5);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ogl.index_buffer[1]);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_next_back_index * sizeof(u32), m_back_indices,
-               GL_STREAM_DRAW);
-
-  // First pass.
-  // here, we don't write depth or color.
-  // but we increment stencil on depth fail.
-
   glDepthMask(GL_FALSE);  // no depth writes.
   if (m_debug_draw_volume) {
     glEnable(GL_BLEND);
@@ -365,45 +354,63 @@ void ShadowRenderer::draw(SharedRenderState* render_state, ScopedProfilerNode& p
   } else {
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);  // no color writes.
   }
-  glStencilFunc(GL_ALWAYS, 0, 0);          // always pass stencil
-  glStencilOp(GL_KEEP, GL_INCR, GL_KEEP);  // increment on depth fail.
-  glDrawElements(GL_TRIANGLES, m_next_back_index, GL_UNSIGNED_INT, nullptr);
 
-  if (m_debug_draw_volume) {
-    glDisable(GL_BLEND);
-    glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"),
-                0., 0.0, 0., 0.5);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glDrawElements(GL_TRIANGLES, m_next_back_index, GL_UNSIGNED_INT, nullptr);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    glEnable(GL_BLEND);
-  }
-  prof.add_draw_call();
-  prof.add_tri(m_next_back_index / 3);
+  // First pass.
+  // here, we don't write depth or color.
+  // but we increment stencil on depth fail.
 
-  glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"),
-              0.4, 0.0, 0., 0.5);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ogl.index_buffer[0]);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_next_front_index * sizeof(u32), m_front_indices,
-               GL_STREAM_DRAW);
-  // Second pass.
-  // same settings, but decrement.
-  glStencilOp(GL_KEEP, GL_DECR, GL_KEEP);  // decrement on depth fail.
-  glDrawElements(GL_TRIANGLES, (m_next_front_index - 6), GL_UNSIGNED_INT, nullptr);
-  if (m_debug_draw_volume) {
-    glDisable(GL_BLEND);
+  {
     glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"),
-                0., 0.0, 0., 0.5);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                0., 0.4, 0., 0.5);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ogl.index_buffer[0]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_next_front_index * sizeof(u32), m_front_indices,
+                 GL_STREAM_DRAW);
+    glStencilFunc(GL_ALWAYS, 0, 0);          // always pass stencil
+    glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);  // increment on depth pass.
     glDrawElements(GL_TRIANGLES, (m_next_front_index - 6), GL_UNSIGNED_INT, nullptr);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    glEnable(GL_BLEND);
+
+    if (m_debug_draw_volume) {
+      glDisable(GL_BLEND);
+      glUniform4f(
+          glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"), 0.,
+          0.0, 0., 0.5);
+      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      glDrawElements(GL_TRIANGLES, (m_next_front_index - 6), GL_UNSIGNED_INT, nullptr);
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+      glEnable(GL_BLEND);
+    }
+    prof.add_draw_call();
+    prof.add_tri(m_next_back_index / 3);
   }
 
-  prof.add_draw_call();
-  prof.add_tri(m_next_front_index / 3);
+  {
+    glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"),
+                0.4, 0.0, 0., 0.5);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ogl.index_buffer[1]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_next_back_index * sizeof(u32), m_back_indices,
+                 GL_STREAM_DRAW);
+    // Second pass.
+    // same settings, but decrement.
+    glStencilFunc(GL_ALWAYS, 0, 0);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_DECR);  // decrement on depth pass.
+    glDrawElements(GL_TRIANGLES, m_next_back_index, GL_UNSIGNED_INT, nullptr);
+    if (m_debug_draw_volume) {
+      glDisable(GL_BLEND);
+      glUniform4f(
+          glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"), 0.,
+          0.0, 0., 0.5);
+      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      glDrawElements(GL_TRIANGLES, (m_next_back_index - 0), GL_UNSIGNED_INT, nullptr);
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+      glEnable(GL_BLEND);
+    }
+
+    prof.add_draw_call();
+    prof.add_tri(m_next_front_index / 3);
+  }
 
   // finally, draw shadow.
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ogl.index_buffer[0]);
   glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"),
               0.13, 0.13, 0.13, 0.5);
   glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);

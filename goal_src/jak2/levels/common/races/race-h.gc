@@ -1,0 +1,202 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: race-h.gc
+;; name in dgo: race-h
+;; dgos: STD, STC, LERLCHAL, STB, LPRTRACE
+
+(declare-type race-state structure)
+
+;; DECOMP BEGINS
+
+(deftype race-turbo-pad (structure)
+  ((position vector :inline :offset-assert   0)
+   (handle   handle         :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+
+(deftype race-decision-point (structure)
+  ((pos           float  :offset-assert   0)
+   (decision-type uint8  :offset-assert   4)
+   (shortcuts     uint8  :offset-assert   5)
+   (safe-paths    uint8  :offset-assert   6)
+   )
+  :method-count-assert 9
+  :size-assert         #x7
+  :flag-assert         #x900000007
+  )
+
+
+(deftype race-racer-info (structure)
+  ((rider       uint8  :offset-assert   0)
+   (vehicle     uint8  :offset-assert   1)
+   (flags       uint8  :offset-assert   2)
+   (seek-offset int8   :offset-assert   3)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+
+(deftype race-info (basic)
+  ((race-mesh-name           string                                     :offset-assert   4)
+   (path-group-name          string                                     :offset-assert   8)
+   (task-node                uint16                                     :offset-assert  12)
+   (mesh                     race-mesh                                  :offset-assert  16)
+   (ai-min-speed-factor      float                                      :offset-assert  20)
+   (ai-max-speed-factor      float                                      :offset-assert  24)
+   (ai-spread-factor         float                                      :offset-assert  28)
+   (start-sphere             sphere                             :inline :offset-assert  32)
+   (start-dir                vector                             :inline :offset-assert  48)
+   (finish-sphere            sphere                             :inline :offset-assert  64)
+   (finish-dir               vector                             :inline :offset-assert  80)
+   (player-intro-pos         vector                             :inline :offset-assert  96)
+   (flags                    uint8                                      :offset-assert 112)
+   (score                    uint8                                      :offset-assert 113)
+   (lap-count                int8                                       :offset-assert 114)
+   (racer-count              int8                                       :offset-assert 115)
+   (turbo-pad-count          int8                                       :offset-assert 116)
+   (map-index                int8                                       :offset-assert 117)
+   (decision-point-count     int8                                       :offset-assert 118)
+   (safe-paths               uint8                                      :offset-assert 119)
+   (turbo-pad-array          (inline-array race-turbo-pad)              :offset-assert 120)
+   (racer-array              (inline-array race-racer-info)             :offset-assert 124)
+   (decision-point-array     (inline-array race-decision-point)         :offset-assert 128)
+   (level                    symbol                                     :offset-assert 132)
+   (borrow-level             symbol                                     :offset-assert 136)
+   (borrow                   pair                                       :offset-assert 140)
+   (manager                  handle                                     :offset-assert 144)
+   (manager-handle-init-hack basic                                      :offset        144)
+   (hatch-actor-name         string                                     :offset-assert 152)
+   (countdown-scene          basic                                      :offset-assert 156)
+   (complete-continue        basic                                      :offset-assert 160)
+   (start-camera             string                                     :offset-assert 164)
+   (go-speech                uint16                                     :offset-assert 168)
+   )
+  :method-count-assert 10
+  :size-assert         #xaa
+  :flag-assert         #xa000000aa
+  (:methods
+    (race-info-method-9 (_type_) none 9)
+    )
+  )
+
+
+(deftype racer-state (structure)
+  ((position          vector :inline :offset-assert   0)
+   (racer             handle         :offset-assert  16)
+   (flags             uint8          :offset-assert  24)
+   (rank              int8           :offset-assert  25)
+   (finish-count      int8           :offset-assert  26)
+   (lap-count         int8           :offset-assert  27)
+   (lap-quadrant      int8           :offset-assert  28)
+   (rider             uint8          :offset-assert  29)
+   (lap-distance      float          :offset-assert  32)
+   (lap-distance-prev float          :offset-assert  36)
+   (pos               float          :offset-assert  40)
+   (target-pos-offset float          :offset-assert  44)
+   (speed-factor      float          :offset-assert  48)
+   (finish-time       uint32         :offset-assert  52)
+   (lap-start         uint32         :offset-assert  56)
+   (best-lap-time     uint32         :offset-assert  60)
+   (lap-time-array    float  5       :offset-assert  64)
+   (start-position    vector :inline :offset-assert  96)
+   )
+  :method-count-assert 14
+  :size-assert         #x70
+  :flag-assert         #xe00000070
+  (:methods
+    (racer-state-method-9 (_type_ race-state) none 9)
+    (begin-lap (_type_ race-state) none 10)
+    (end-lap (_type_ race-state) none 11)
+    (print-laps (_type_ race-state string) none 12)
+    (init-racer! (_type_ process-drawable) none 13)
+    )
+  )
+
+
+(deftype race-state (structure)
+  ((info                 race-info              :offset-assert   0)
+   (flags                uint8                  :offset-assert   4)
+   (state                uint8                  :offset-assert   5)
+   (racer-count          int8                   :offset-assert   6)
+   (finished-count       int8                   :offset-assert   7)
+   (i-player             int8                   :offset-assert   8)
+   (i-countdown          int8                   :offset-assert   9)
+   (manager              handle                 :offset-assert  16)
+   (scene-player         handle                 :offset-assert  24)
+   (race-signal          handle                 :offset-assert  32)
+   (arrow                handle                 :offset-assert  40)
+   (hud-timer            handle                 :offset-assert  48)
+   (hud-lap-counter      handle                 :offset-assert  56)
+   (hud-turbo-counter    handle                 :offset-assert  64)
+   (hud-position         handle                 :offset-assert  72)
+   (current-time         uint32                 :offset-assert  80)
+   (countdown-start-time uint32                 :offset-assert  84)
+   (race-start-time      uint32                 :offset-assert  88)
+   (rankings             int8        10         :offset-assert  92)
+   (target-pos           float                  :offset-assert 104)
+   (suck-factor          float                  :offset-assert 108)
+   (racer-array          racer-state 10 :inline :offset-assert 112)
+   (player-intro-curve   cubic-curve :inline    :offset-assert 1232)
+   )
+  :method-count-assert 19
+  :size-assert         #x510
+  :flag-assert         #x1300000510
+  (:methods
+    (init-racers! (_type_ process-drawable) none 9)
+    (begin-race (_type_) none 10)
+    (race-state-method-11 (_type_) none 11)
+    (race-state-method-12 (_type_) none 12)
+    (race-state-method-13 (_type_) none 13)
+    (race-state-method-14 (_type_) none 14)
+    (race-state-method-15 (_type_) none 15)
+    (initialize (_type_ process race-info) none 16)
+    (race-state-method-17 (_type_) none 17)
+    (race-state-method-18 (_type_) none 18)
+    )
+  )
+
+
+(deftype race-manager (process)
+  ((race-state           race-state  :offset-assert 128)
+   (state-time           time-frame  :offset-assert 136)
+   (player-on-track-time time-frame  :offset-assert 144)
+   (message-id           uint32      :offset-assert 152)
+   (finish-sound-id      sound-id    :offset-assert 156)
+   )
+  :heap-base #x20
+  :method-count-assert 28
+  :size-assert         #xa0
+  :flag-assert         #x1c002000a0
+  (:methods
+    (idle () _type_ :state 14)
+    (active () _type_ :state 15)
+    (fail () _type_ :state 16)
+    (win () _type_ :state 17)
+    (lose () _type_ :state 18)
+    (die () _type_ :state 19)
+    (race-manager-method-20 (_type_) none 20)
+    (initialize-state (_type_) none 21)
+    (race-manager-method-22 (_type_) none 22)
+    (race-manager-method-23 (_type_) none 23)
+    (race-manager-method-24 (_type_) none 24)
+    (race-manager-method-25 (_type_) none 25)
+    (race-manager-method-26 (_type_ float) none 26)
+    (race-manager-method-27 (_type_) none 27)
+    )
+  )
+
+(deftype mystery-race-manager-type (structure)
+  "stack slot 16 in race-state::initialize"
+  ((mat  matrix :inline)
+   (vec0 vector :inline)
+   (vec1 vector :inline)
+   (word int32)
+   )
+  )

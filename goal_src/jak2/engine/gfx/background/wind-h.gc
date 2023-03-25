@@ -1,0 +1,68 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: wind-h.gc
+;; name in dgo: wind-h
+;; dgos: ENGINE, GAME
+
+;; DECOMP BEGINS
+
+(deftype wind-vector (structure)
+  ((wind-pos  vector4w :inline :offset-assert   0)
+   (wind-vel  vector4w :inline :offset-assert  16)
+   (stiffness float            :offset         28)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(define *wind-scales*
+        (new 'static 'boxed-array :type uint8
+             #x2 #x5 #x2 #x3 #x2 #x2 #x3 #x10 #xa
+             #x2 #x4 #x2 #x8 #x2 #x2 #x10 #x2 #x2
+             #x8 #x2 #x10 #x2 #x4 #x10 #xa #x2 #x4
+             #x2 #x8 #x2 #x2 #x10
+             )
+
+        )
+
+(deftype wind-work (basic)
+  ((wind-array    vector 64 :inline :offset-assert  16)
+   (wind-normal   vector :inline    :offset-assert 1040)
+   (wind-temp     vector :inline    :offset-assert 1056)
+   (wind-force    float  64         :offset-assert 1072)
+   (wind-const    vector :inline    :offset-assert 1328)
+   (wind-time     uint32            :offset-assert 1344)
+   (wait-to-vu0   uint32            :offset-assert 1348)
+   (wait-to-spr   uint32            :offset-assert 1352)
+   (wait-from-spr uint32            :offset-assert 1356)
+   (spr-index     uint32            :offset-assert 1360)
+   (count         uint32            :offset-assert 1364)
+   (next-count    uint32            :offset-assert 1368)
+   (last-count    uint32            :offset-assert 1372)
+   (to-spr        uint32            :offset-assert 1376)
+   (from-spr      uint32            :offset-assert 1380)
+   (next-mem      uint32            :offset-assert 1384)
+   (last-mem      uint32            :offset-assert 1388)
+   (next-spr      uint32            :offset-assert 1392)
+   (last-spr      uint32            :offset-assert 1396)
+   (to-ptrs       uint32 3          :offset-assert 1400)
+   )
+  :method-count-assert 9
+  :size-assert         #x584
+  :flag-assert         #x900000584
+  )
+
+(deftype wind-dma (structure)
+  ((buffer0 wind-vector 128 :inline :offset-assert   0)
+   (buffer1 wind-vector 128 :inline :offset-assert 4096)
+   (buffer2 wind-vector 128 :inline :offset-assert 8192)
+   )
+  :method-count-assert 9
+  :size-assert         #x3000
+  :flag-assert         #x900003000
+  )
+
+;; DECOMP ENDS
+(define-extern level-update-wind (function wind-work none))

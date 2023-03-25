@@ -1,8 +1,11 @@
 #include "opengl_utils.h"
-#include "game/graphics/opengl_renderer/BucketRenderer.h"
-#include "common/util/Assert.h"
-#include <cstdio>
+
 #include <array>
+#include <cstdio>
+
+#include "common/util/Assert.h"
+
+#include "game/graphics/opengl_renderer/BucketRenderer.h"
 
 FramebufferTexturePair::FramebufferTexturePair(int w, int h, u64 texture_format, int num_levels)
     : m_w(w), m_h(h) {
@@ -141,6 +144,7 @@ void FullScreenDraw::draw(const math::Vector4f& color,
   shader.activate();
   glUniform4f(glGetUniformLocation(shader.id(), "fragment_color"), color[0], color[1], color[2],
               color[3]);
+
   prof.add_tri(2);
   prof.add_draw_call();
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);

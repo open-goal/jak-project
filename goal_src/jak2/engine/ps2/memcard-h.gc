@@ -1,0 +1,142 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: memcard-h.gc
+;; name in dgo: memcard-h
+;; dgos: ENGINE, GAME
+
+;; +++mc-status-code
+(defenum mc-status-code
+  :type uint32
+  (busy 0)
+  (ok 1)
+  (bad-handle 2)
+  (format-failed 3)
+  (internal-error 4)
+  (write-error 5)
+  (read-error 6)
+  (new-game 7)
+  (no-memory 8)
+  (no-card 9)
+  (no-last 10)
+  (no-format 11)
+  (no-file 12)
+  (no-save 13)
+  (no-space 14)
+  (bad-version 15)
+  (no-process 16)
+  (no-auto-save 17)
+  )
+;; ---mc-status-code
+
+
+;; DECOMP BEGINS
+
+(deftype mc-handle (int32)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype mc-file-info (structure)
+  ((present               int32     :offset-assert   0)
+   (blind-data            float  16 :offset          4)
+   (blind-data-int8       int8   64 :offset          4)
+   (level-index           int32     :offset          4)
+   (gem-count             float     :offset          8)
+   (skill-count           float     :offset         12)
+   (completion-percentage float     :offset         16)
+   (minute                uint8     :offset         24)
+   (hour                  uint8     :offset         25)
+   (week                  uint8     :offset         26)
+   (day                   uint8     :offset         27)
+   (month                 uint8     :offset         28)
+   (year                  uint8     :offset         29)
+   (game-time0            uint32    :offset         36)
+   (game-time1            uint32    :offset         40)
+   (secrets               uint32    :offset         44)
+   (features              uint32    :offset         48)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x44
+  :flag-assert         #x900000044
+  )
+
+
+(deftype mc-slot-info (structure)
+  ((handle       int32                  :offset-assert   0)
+   (known        int32                  :offset-assert   4)
+   (formatted    int32                  :offset-assert   8)
+   (inited       int32                  :offset-assert  12)
+   (last-file    int32                  :offset-assert  16)
+   (mem-required int32                  :offset-assert  20)
+   (mem-actual   int32                  :offset-assert  24)
+   (file         mc-file-info 4 :inline :offset-assert  28)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x12c
+  :flag-assert         #x90000012c
+  )
+
+
+(defun mc-sync ()
+  (let ((v0-0 0))
+    (while (zero? v0-0)
+      (mc-run)
+      (set! v0-0 (the-as int (mc-check-result)))
+      )
+    v0-0
+    )
+  )
+
+(defun show-mc-info ((arg0 dma-buffer))
+  (let ((s5-0 (new 'stack-no-clear 'mc-slot-info)))
+    (dotimes (s4-0 2)
+      (mc-get-slot-info s4-0 s5-0)
+      (cond
+        ((zero? (-> s5-0 known))
+         (format (clear *temp-string*) "SLOT ~D: EXAMINING SLOT~%" s4-0)
+         *temp-string*
+         )
+        ((zero? (-> s5-0 handle))
+         (format (clear *temp-string*) "SLOT ~D: NO CARD~%" s4-0)
+         *temp-string*
+         )
+        ((zero? (-> s5-0 formatted))
+         (format (clear *temp-string*) "SLOT ~D: CARD [~D] : NOT FORMATTED~%" s4-0 (-> s5-0 handle))
+         *temp-string*
+         )
+        ((zero? (-> s5-0 inited))
+         (format
+           (clear *temp-string*)
+           "SLOT ~D: CARD [~D] : NO FILE [~D/~D]~%"
+           s4-0
+           (-> s5-0 handle)
+           (-> s5-0 mem-required)
+           (-> s5-0 mem-actual)
+           )
+         *temp-string*
+         )
+        (else
+          (format (clear *temp-string*) "SLOT ~D: CARD [~D] : " s4-0 (-> s5-0 handle))
+          *temp-string*
+          (format
+            *temp-string*
+            "SAVES ~D ~D ~D ~D : LAST ~D~%"
+            (-> s5-0 file 0 present)
+            (-> s5-0 file 1 present)
+            (-> s5-0 file 2 present)
+            (-> s5-0 file 3 present)
+            (-> s5-0 last-file)
+            )
+          )
+        )
+      (draw-string-xy *temp-string* arg0 32 (+ (* 12 s4-0) 8) (font-color red) (font-flags shadow))
+      )
+    )
+  0
+  (none)
+  )

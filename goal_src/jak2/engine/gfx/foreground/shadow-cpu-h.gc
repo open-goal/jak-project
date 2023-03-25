@@ -1,0 +1,262 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: shadow-cpu-h.gc
+;; name in dgo: shadow-cpu-h
+;; dgos: ENGINE, GAME
+
+;; copied from jak 1
+(defenum shadow-flags
+  :bitfield #t
+  :type int32
+  (shdf00) ;; unused
+  (disable-fade)
+  (shdf02) ;; only set, never used.
+  (shdf03)
+  (shdf04) ;; unused
+  (disable-draw)
+  (shdf06)
+  (shdf07)
+  )
+
+;; DECOMP BEGINS
+
+(deftype shadow-settings (structure)
+  ((flags         shadow-flags         :offset         12)
+   (center        vector       :inline :offset          0)
+   (shadow-dir    vector       :inline :offset-assert  16)
+   (dist-to-locus float                :offset         28)
+   (bot-plane     plane        :inline :offset-assert  32)
+   (top-plane     plane        :inline :offset-assert  48)
+   (fade-dist     float                :offset-assert  64)
+   (fade-start    float                :offset-assert  68)
+   (dummy-2       int32                :offset-assert  72)
+   (shadow-type   int32                :offset-assert  76)
+   (flag-vector   vector       :inline :offset         64)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+
+(deftype shadow-control (basic)
+  ((settings shadow-settings :inline :offset-assert  16)
+   )
+  :method-count-assert 15
+  :size-assert         #x60
+  :flag-assert         #xf00000060
+  (:methods
+    (new (symbol type float float float shadow-flags float) _type_ 0)
+    (clear-offset-bit (shadow-control) int 9)
+    (set-offset-bit (shadow-control) int 10)
+    (set-top-plane-offset (shadow-control float) int 11)
+    (set-bottom-plane-offset (shadow-control float) int 12)
+    (shadow-control-method-13 (_type_ vector float float float) none 13)
+    (shadow-control-method-14 (_type_ vector vector float float float) none 14)
+    )
+  )
+
+
+(defmethod clear-offset-bit shadow-control ((obj shadow-control))
+  (logclear! (-> obj settings flags) (shadow-flags disable-draw))
+  0
+  )
+
+(defmethod set-offset-bit shadow-control ((obj shadow-control))
+  (logior! (-> obj settings flags) (shadow-flags disable-draw))
+  0
+  )
+
+(defmethod set-bottom-plane-offset shadow-control ((obj shadow-control) (arg0 float))
+  (set! (-> obj settings bot-plane w) (- arg0))
+  0
+  )
+
+(defmethod set-top-plane-offset shadow-control ((obj shadow-control) (arg0 float))
+  (set! (-> obj settings top-plane w) (- arg0))
+  0
+  )
+
+(deftype shadow-data (structure)
+  ((dma-unpack-template dma-packet :inline :offset-assert   0)
+   (dma-cnt             dma-tag            :offset-assert  16)
+   (vif-nop             vif-tag            :offset-assert  24)
+   (vif-unpack-v4-8     vif-tag            :offset-assert  28)
+   (pdc                 basic              :offset-assert  32)
+   (dist                float              :offset-assert  36)
+   (waits               uint32             :offset-assert  40)
+   (inside-volume?      uint32             :offset-assert  44)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+
+(deftype shadow-work (structure)
+  ((shadow-data shadow-data :inline :offset-assert   0)
+   (inbuf       uint128     600     :offset-assert  48)
+   )
+  :method-count-assert 9
+  :size-assert         #x25b0
+  :flag-assert         #x9000025b0
+  )
+
+
+(deftype shadow-bucket (structure)
+  ((first        uint32  :offset-assert   0)
+   (next         uint32  :offset-assert   4)
+   (bucket-id    int32   :offset-assert   8)
+   (shadow-color rgba    :offset-assert  12)
+   (constants    basic   :offset-assert  16)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+
+(deftype shadow-globals (structure)
+  ((num-buckets uint32                  :offset-assert   0)
+   (cur-bucket  uint32                  :offset-assert   4)
+   (bucket      shadow-bucket 2 :inline :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #x48
+  :flag-assert         #x900000048
+  )
+
+
+(define *shadow-globals* (new 'global 'shadow-globals))
+
+(deftype shadow-vertex (structure)
+  ((x      float  :offset-assert   0)
+   (y      float  :offset-assert   4)
+   (z      float  :offset-assert   8)
+   (weight float  :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(deftype shadow-matrix-ref (structure)
+  ((joint-0 uint8  :offset-assert   0)
+   (joint-1 uint8  :offset-assert   1)
+   )
+  :method-count-assert 9
+  :size-assert         #x2
+  :flag-assert         #x900000002
+  )
+
+(deftype shadow-tri (structure)
+  ((ind-0 uint8  :offset-assert   0)
+   (ind-1 uint8  :offset-assert   1)
+   (ind-2 uint8  :offset-assert   2)
+   (faces uint8  :offset-assert   3)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+
+(deftype shadow-edge (structure)
+  ((ind-0 uint8  :offset-assert   0)
+   (ind-1 uint8  :offset-assert   1)
+   (tri-0 uint8  :offset-assert   2)
+   (tri-1 uint8  :offset-assert   3)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+
+(deftype shadow-frag-header (structure)
+  ((qwc-data         uint32  :offset-assert   0)
+   (num-joints       uint32  :offset-assert   4)
+   (num-verts        uint16  :offset-assert   8)
+   (num-twos         uint16  :offset-assert  10)
+   (num-single-tris  uint16  :offset-assert  12)
+   (num-single-edges uint16  :offset-assert  14)
+   (num-double-tris  uint16  :offset-assert  16)
+   (num-double-edges uint16  :offset-assert  18)
+   (ofs-verts        uint32  :offset-assert  20)
+   (ofs-refs         uint32  :offset-assert  24)
+   (ofs-single-tris  uint32  :offset-assert  28)
+   (ofs-single-edges uint32  :offset-assert  32)
+   (ofs-double-tris  uint32  :offset-assert  36)
+   (ofs-double-edges uint32  :offset-assert  40)
+   )
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  )
+
+
+(deftype shadow-frag-ref (structure)
+  ((header shadow-frag-header  :offset-assert   0)
+   (qwc    uint32              :offset-assert   4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+
+(deftype shadow-geo-old (art-element)
+  ((version   uint32                      :offset         20)
+   (header    shadow-frag-header :inline  :offset-assert  32)
+   (total-qwc uint32                      :offset         32)
+   (rest      uint64             :dynamic :offset-assert  80)
+   )
+  :method-count-assert 13
+  :size-assert         #x50
+  :flag-assert         #xd00000050
+  )
+
+
+(deftype shadow-geo (art-element)
+  ((version       uint32                           :offset         20)
+   (total-qwc     uint32                           :offset-assert  32)
+   (num-joints    uint32                           :offset-assert  36)
+   (num-fragments uint32                           :offset-assert  40)
+   (frags         shadow-frag-ref :inline :dynamic :offset-assert  44)
+   )
+  :method-count-assert 13
+  :size-assert         #x2c
+  :flag-assert         #xd0000002c
+  )
+
+
+(defmethod new shadow-control ((allocation symbol)
+                             (type-to-make type)
+                             (arg0 float)
+                             (arg1 float)
+                             (arg2 float)
+                             (arg3 shadow-flags)
+                             (arg4 float)
+                             )
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 settings flags) arg3)
+    (set-vector! (-> v0-0 settings shadow-dir) 0.0 -1.0 0.0 arg2)
+    (set-vector! (-> v0-0 settings bot-plane) 0.0 1.0 0.0 (- arg0))
+    (set-vector! (-> v0-0 settings top-plane) 0.0 1.0 0.0 (- arg1))
+    (set! (-> v0-0 settings fade-dist) arg4)
+    (set! (-> v0-0 settings shadow-type) 0)
+    v0-0
+    )
+  )
+
+(define *shadow* (the-as object #f))
+
+(define *shadow-object* (the-as object #f))
+
+(define *shadow-debug* (the-as object #f))
+
+(define *shadow-dma-buf* (new 'global 'dma-buffer 512))

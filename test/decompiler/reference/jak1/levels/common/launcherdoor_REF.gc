@@ -1,0 +1,225 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+(import "goal_src/jak1/import/launcherdoor-maincave-ag.gc")
+(import "goal_src/jak1/import/launcherdoor-ag.gc")
+
+;; definition of type launcherdoor
+(deftype launcherdoor (process-drawable)
+  ((root-override              collide-shape  :offset        112)
+   (notify-player-passed-thru? symbol         :offset-assert 176)
+   (thresh-y                   float          :offset-assert 180)
+   (open-speed                 float          :offset-assert 184)
+   (close-speed                float          :offset-assert 188)
+   (load-mode                  symbol         :offset-assert 192)
+   )
+  :heap-base #x60
+  :method-count-assert 20
+  :size-assert         #xc4
+  :flag-assert         #x14006000c4
+  (:states
+    (launcherdoor-closed symbol)
+    (launcherdoor-open symbol)
+    )
+  )
+
+;; definition for method 3 of type launcherdoor
+(defmethod inspect launcherdoor ((obj launcherdoor))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Tnotify-player-passed-thru?: ~A~%" (-> obj notify-player-passed-thru?))
+  (format #t "~T~Tthresh-y: ~f~%" (-> obj thresh-y))
+  (format #t "~T~Topen-speed: ~f~%" (-> obj open-speed))
+  (format #t "~T~Tclose-speed: ~f~%" (-> obj close-speed))
+  (format #t "~T~Tload-mode: ~A~%" (-> obj load-mode))
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup *launcherdoor-sg* launcherdoor launcherdoor-geo-jg -1
+              ((launcherdoor-geo-mg (meters 20)) (launcherdoor-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup *launcherdoor-maincave-sg* launcherdoor-maincave launcherdoor-maincave-geo-jg -1
+              ((launcherdoor-maincave-geo-mg (meters 20)) (launcherdoor-maincave-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+;; failed to figure out what this is:
+(defstate launcherdoor-closed (launcherdoor)
+  :code (behavior ((arg0 symbol))
+    (if (not arg0)
+        (sound-play "ldoor-close")
+        )
+    (when *target*
+      (case (-> *target* current-level name)
+        (('jungle 'jungleb)
+         (send-event *target* 'no-load-wait (seconds 20))
+         )
+        )
+      )
+    (restore-collide-with-as (-> self root-override))
+    (ja-no-eval :num! (seek! 0.0))
+    (when arg0
+      (ja :num-func num-func-identity :frame-num 0.0)
+      (set! (-> self draw force-lod) 1)
+      )
+    (suspend)
+    (loop
+      (if (and *target*
+               (= (-> *target* control unknown-surface00 name) 'launch-jump)
+               (< (-> *target* control trans y) (-> self thresh-y))
+               )
+          (go launcherdoor-open #f)
+          )
+      (ja :num! (seek! 0.0 (-> self close-speed)))
+      (suspend)
+      (when (ja-done? 0)
+        (set! (-> self draw force-lod) 1)
+        (when (-> self notify-player-passed-thru?)
+          (set! (-> self notify-player-passed-thru?) #f)
+          (let* ((gp-1 (-> self entity))
+                 (s5-1 (entity-actor-count gp-1 'alt-actor))
+                 )
+            (dotimes (s4-1 s5-1)
+              (let ((v1-43 (entity-actor-lookup gp-1 'alt-actor s4-1)))
+                (if v1-43
+                    (send-event
+                      (if v1-43
+                          (-> v1-43 extra process)
+                          )
+                      'notify
+                      )
+                    )
+                )
+              )
+            )
+          (case (-> self load-mode)
+            (('jungle)
+             (load-state-want-levels 'village1 'jungle)
+             (load-state-want-display-level 'village1 'display)
+             )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior launcherdoor) ja-post)
+  )
+
+;; failed to figure out what this is:
+(defstate launcherdoor-open (launcherdoor)
+  :code (behavior ((arg0 symbol))
+    (if (not arg0)
+        (sound-play "ldoor-open")
+        )
+    (set! (-> self draw force-lod) 0)
+    (clear-collide-with-as (-> self root-override))
+    (ja-no-eval :num! (seek!))
+    (if arg0
+        (ja :num-func num-func-identity :frame-num max)
+        )
+    (loop
+      (when (or (not *target*)
+                (!= (-> *target* control unknown-surface00 name) 'launch-jump)
+                (< (+ 4096.0 (-> self root-override trans y)) (-> *target* control trans y))
+                )
+        (when (and *target* (< (-> self thresh-y) (-> *target* control trans y)))
+          (let ((a1-3 (res-lump-struct (-> self entity) 'continue-name structure)))
+            (when a1-3
+              (let ((v1-36 (set-continue! *game-info* (the-as basic a1-3))))
+                (load-commands-set! *level* (-> v1-36 load-commands))
+                )
+              )
+            )
+          (set! (-> self notify-player-passed-thru?) #t)
+          )
+        (go launcherdoor-closed #f)
+        )
+      (ja :num! (seek! max (-> self open-speed)))
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior launcherdoor) ja-post)
+  )
+
+;; definition for method 11 of type launcherdoor
+;; INFO: Return type mismatch object vs none.
+(defmethod init-from-entity! launcherdoor ((obj launcherdoor) (arg0 entity-actor))
+  (set! (-> obj notify-player-passed-thru?) #f)
+  (set! (-> obj open-speed) 4.0)
+  (set! (-> obj close-speed) 2.0)
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s3-0 transform-index) 0)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 14336.0)
+      (set-root-prim! s4-0 s3-0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (cond
+    ((= (-> (if (-> obj entity)
+                (-> obj entity extra level)
+                (-> *level* level-default)
+                )
+            name
+            )
+        'maincave
+        )
+     (set! (-> obj close-speed) 4.0)
+     (initialize-skeleton obj *launcherdoor-maincave-sg* '())
+     (ja-channel-set! 1)
+     (let ((s5-1 (-> obj skel root-channel 0)))
+       (joint-control-channel-group-eval!
+         s5-1
+         (the-as art-joint-anim (-> obj draw art-group data 3))
+         num-func-identity
+         )
+       (set! (-> s5-1 frame-num) 0.0)
+       )
+     )
+    (else
+      (initialize-skeleton obj *launcherdoor-sg* '())
+      (ja-channel-set! 1)
+      (let ((s5-2 (-> obj skel root-channel 0)))
+        (joint-control-channel-group-eval!
+          s5-2
+          (the-as art-joint-anim (-> obj draw art-group data 3))
+          num-func-identity
+          )
+        (set! (-> s5-2 frame-num) 0.0)
+        )
+      )
+    )
+  (transform-post)
+  (case (-> obj entity extra level name)
+    (('jungle)
+     (set! (-> obj draw shadow-mask) (the-as uint 28))
+     )
+    )
+  (set! (-> obj load-mode) (-> (if (-> obj entity)
+                                   (-> obj entity extra level)
+                                   (-> *level* level-default)
+                                   )
+                               name
+                               )
+        )
+  (set! (-> obj thresh-y) (+ -81920.0 (-> obj root-override trans y)))
+  (if (and *target* (= (-> *target* control unknown-surface00 name) 'launch-jump))
+      (go launcherdoor-open #t)
+      (go launcherdoor-closed #t)
+      )
+  (none)
+  )

@@ -1,9 +1,14 @@
+#include "CfgVtx.h"
+
+#include "Function.h"
+
 #include "common/goos/PrettyPrinter.h"
+#include "common/log/log.h"
+#include "common/symbols.h"
+#include "common/util/Assert.h"
+
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include "CfgVtx.h"
-#include "Function.h"
-#include "common/util/Assert.h"
 
 namespace decompiler {
 /////////////////////////////////////////
@@ -492,12 +497,12 @@ bool ControlFlowGraph::is_while_loop(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2) {
   bool debug = b0->to_string() == "Seq CONDNE104 ... Block 18100";
 
   if (debug) {
-    fmt::print("try while: {} | {} | {}\n", b0->to_string(), b1->to_string(), b2->to_string());
+    lg::debug("try while: {} | {} | {}", b0->to_string(), b1->to_string(), b2->to_string());
   }
 
   if (b0->end_branch.asm_branch || b1->end_branch.asm_branch) {
     if (debug)
-      fmt::print("reject 1 {} {}\n", b0->end_branch.asm_branch, b1->end_branch.asm_branch);
+      lg::debug("reject 1 {} {}", b0->end_branch.asm_branch, b1->end_branch.asm_branch);
     return false;
   }
 
@@ -528,17 +533,17 @@ bool ControlFlowGraph::is_while_loop(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2) {
     return false;
   ASSERT(!b1->end_branch.has_branch);
   if (!b2->has_pred(b0)) {
-    printf("expect b2 (%s) to have pred b0 (%s)\n", b2->to_string().c_str(),
-           b0->to_string().c_str());
-    printf("but it doesn't! instead it has:\n");
+    lg::debug("expect b2 ({}) to have pred b0 ({})", b2->to_string().c_str(),
+              b0->to_string().c_str());
+    lg::debug("but it doesn't! instead it has:");
     for (auto* x : b2->pred) {
-      printf(" %s\n", x->to_string().c_str());
+      lg::debug(" {}", x->to_string().c_str());
     }
     if (b0->succ_ft) {
-      printf("b0's succ_ft: %s\n", b0->succ_ft->to_string().c_str());
+      lg::debug("b0's succ_ft: {}", b0->succ_ft->to_string().c_str());
     }
     if (b0->succ_branch) {
-      printf("b0's succ_branch: %s\n", b0->succ_branch->to_string().c_str());
+      lg::debug("b0's succ_branch: {}", b0->succ_branch->to_string().c_str());
     }
   }
   ASSERT(b2->has_pred(b0));
@@ -579,12 +584,9 @@ bool ControlFlowGraph::is_until_loop(CfgVtx* b1, CfgVtx* b2) {
     return false;
   ASSERT(!b1->end_branch.has_branch);
 
-  if (!b2->has_pred(b1)) {
-    fmt::print("Graph error {} (s {}) should have pred {} (s {})\n", b2->to_string(),
-               b2->get_first_block_id(), b1->to_string(), b1->get_first_block_id());
-  }
-
-  ASSERT(b2->has_pred(b1));
+  ASSERT_MSG(b2->has_pred(b1),
+             fmt::format("Graph error {} (s {}) should have pred {} (s {})\n", b2->to_string(),
+                         b2->get_first_block_id(), b1->to_string(), b1->get_first_block_id()));
   if (b2->pred.size() != 1)
     return false;
 
@@ -934,8 +936,6 @@ bool ControlFlowGraph::find_infinite_continue() {
       int my_block = b0->get_first_block_id();
       int dest_block = b0->succ_branch->get_first_block_id();
 
-      // fmt::print("Considering {} as an infinite continue:\n", b0->to_string());
-
       if (b0->end_branch.asm_branch) {
         return true;
       }
@@ -1151,8 +1151,8 @@ bool ControlFlowGraph::clean_up_asm_branches() {
       }
 
       if (debug_asm_branch) {
-        fmt::print("Looks like asm likely branch: {} {} to {}\n", b0->to_string(), bds->to_string(),
-                   b1->to_string());
+        lg::debug("Looks like asm likely branch: {} {} to {}", b0->to_string(), bds->to_string(),
+                  b1->to_string());
       }
 
       auto* b0_seq = dynamic_cast<SequenceVtx*>(b0);
@@ -1170,7 +1170,7 @@ bool ControlFlowGraph::clean_up_asm_branches() {
 
         for (auto* new_pred : b0->pred) {
           if (debug_asm_branch) {
-            fmt::print("  pred {}\n", new_pred->to_string());
+            lg::debug("  pred {}", new_pred->to_string());
           }
           new_pred->replace_succ_and_check(b0, new_seq);
         }
@@ -1290,19 +1290,19 @@ bool ControlFlowGraph::clean_up_asm_branches() {
       else {
         lg::error("unhandled sequences in clean_up_asm_branches likely seq: {} {}", !!b0_seq,
                   !!b1_seq);
-        lg::error("{} {}\n", b0->get_first_block_id(), b1->get_first_block_id());
+        lg::error("{} {}", b0->get_first_block_id(), b1->get_first_block_id());
       }
 
     } else {
       if (debug_asm_branch) {
-        fmt::print("Looks like asm normal branch: {} to {}\n", b0->to_string(), b1->to_string());
+        lg::debug("Looks like asm normal branch: {} to {}", b0->to_string(), b1->to_string());
       }
       auto* b0_seq = dynamic_cast<SequenceVtx*>(b0);
       auto* b1_seq = dynamic_cast<SequenceVtx*>(b1);
 
       if (!b0_seq && !b1_seq) {
         if (debug_asm_branch) {
-          fmt::print("[combo nn] {} and {}\n", b0->get_first_block_id(), b1->get_first_block_id());
+          lg::debug("[combo nn] {} and {}", b0->get_first_block_id(), b1->get_first_block_id());
         }
         // build new sequence
         replaced = true;
@@ -1326,19 +1326,19 @@ bool ControlFlowGraph::clean_up_asm_branches() {
 
         for (auto* new_succ : b1->succs()) {
           if (debug_asm_branch) {
-            fmt::print("changing {}'s pred {} to seq. bc: {}", new_succ->to_string(),
-                       b1->to_string(), new_succ->pred.size());
+            lg::debug("changing {}'s pred {} to seq. bc: {}", new_succ->to_string(),
+                      b1->to_string(), new_succ->pred.size());
           }
           new_succ->replace_pred_and_check(b1, new_seq);
           if (debug_asm_branch) {
-            fmt::print(" ac: {}\n", new_succ->pred.size());
+            lg::debug(" ac: {}", new_succ->pred.size());
           }
         }
         new_seq->succ_ft = b1->succ_ft;
 
         if (b1->succ_branch && debug_asm_branch) {
-          fmt::print("combining {} and {} into a sequence, succ {}\n", b0->get_first_block_id(),
-                     b1->get_first_block_id(), b1->succ_branch->get_first_block_id());
+          lg::debug("combining {} and {} into a sequence, succ {}", b0->get_first_block_id(),
+                    b1->get_first_block_id(), b1->succ_branch->get_first_block_id());
         }
 
         new_seq->succ_branch = b1->succ_branch;
@@ -1363,13 +1363,13 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         return false;
       } else if (b0_seq && !b1_seq) {
         if (debug_asm_branch) {
-          fmt::print("[combo sn] {} and {}\n", b0->get_first_block_id(), b1->get_first_block_id());
-          fmt::print("expanding sequence: {} (s {}) to include {}\n", b0_seq->to_string(),
-                     b0_seq->get_first_block_id(), b1->get_first_block_id());
+          lg::debug("[combo sn] {} and {}", b0->get_first_block_id(), b1->get_first_block_id());
+          lg::debug("expanding sequence: {} (s {}) to include {}", b0_seq->to_string(),
+                    b0_seq->get_first_block_id(), b1->get_first_block_id());
         }
         if (b1->succ_ft) {
           if (debug_asm_branch) {
-            fmt::print("  b1 succ_ft is {}\n", b1->succ_ft->to_string());
+            lg::debug("  b1 succ_ft is {}", b1->succ_ft->to_string());
           }
           ASSERT(b1->succ_ft->has_pred(b1));
         }
@@ -1382,18 +1382,18 @@ bool ControlFlowGraph::clean_up_asm_branches() {
 
         if (b0->succ_branch) {
           if (debug_asm_branch) {
-            fmt::print("succ {} has {} preds parent: {}\n", b0->succ_branch->get_first_block_id(),
-                       b0->succ_branch->pred.size(), !!b0->succ_branch->parent);
+            lg::debug("succ {} has {} preds parent: {}", b0->succ_branch->get_first_block_id(),
+                      b0->succ_branch->pred.size(), !!b0->succ_branch->parent);
           }
           b0->succ_branch->replace_preds_with_and_check({b0}, nullptr);
           if (debug_asm_branch) {
-            fmt::print("OKOK\n");
+            lg::debug("OKOK");
           }
         }
 
         for (auto* new_succ : b1->succs()) {
           if (debug_asm_branch) {
-            fmt::print("fixing up succ {}\n", new_succ->to_string());
+            lg::debug("fixing up succ {}", new_succ->to_string());
           }
           new_succ->replace_pred_and_check(b1, b0);
         }
@@ -1415,7 +1415,7 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         }
 
         if (seq->succ_branch && debug_asm_branch) {
-          fmt::print("  new sb: {}\n", seq->succ_branch->get_first_block_id());
+          lg::debug("  new sb: {}", seq->succ_branch->get_first_block_id());
         }
         seq->next = b1->next;
         if (seq->next) {
@@ -1430,8 +1430,8 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         return false;
       } else if (b0_seq && b1_seq) {
         if (debug_asm_branch) {
-          fmt::print("[combo ss] {} and {}\n", b0->get_first_block_id(), b1->get_first_block_id());
-          fmt::print(" {} and {}\n", b0->to_string(), b1->to_string());
+          lg::debug("[combo ss] {} and {}", b0->get_first_block_id(), b1->get_first_block_id());
+          lg::debug(" {} and {}", b0->to_string(), b1->to_string());
         }
 
         //      printf("make seq type 3 %s %s\n", b0->to_string().c_str(), b1->to_string().c_str());
@@ -1445,8 +1445,8 @@ bool ControlFlowGraph::clean_up_asm_branches() {
 
         if (b0->succ_branch) {
           if (debug_asm_branch) {
-            fmt::print("  sbp: {}\n", !!b0->succ_branch->parent);
-            fmt::print("  sb: {}\n", b0->succ_branch->to_string());
+            lg::debug("  sbp: {}", !!b0->succ_branch->parent);
+            lg::debug("  sb: {}", b0->succ_branch->to_string());
           }
           b0->succ_branch->replace_preds_with_and_check({b0}, nullptr);
         }
@@ -1463,7 +1463,7 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         seq->succ_branch = old_seq->succ_branch;
         seq->succ_branch = b1->succ_branch;
         if (seq->succ_branch && debug_asm_branch) {
-          fmt::print("  DS new sb: {}\n", seq->succ_branch->get_first_block_id());
+          lg::debug("  DS new sb: {}", seq->succ_branch->get_first_block_id());
         }
         seq->succ_ft = old_seq->succ_ft;
         seq->end_branch = old_seq->end_branch;
@@ -1479,15 +1479,15 @@ bool ControlFlowGraph::clean_up_asm_branches() {
       } else if (!b0_seq && b1_seq) {
         replaced = true;
         if (!b0->succ_branch) {
-          fmt::print("bad: {}\n", b0->to_string());
+          lg::debug("bad: {}", b0->to_string());
         }
         m_blocks.at(b0->succ_branch->get_first_block_id())->needs_label = true;
         auto* old_seq = dynamic_cast<SequenceVtx*>(b1);
         ASSERT(old_seq);
         if (b0->succ_branch) {
           if (debug_asm_branch) {
-            fmt::print("  sbp: {}\n", !!b0->succ_branch->parent);
-            fmt::print("  sb: {}\n", b0->succ_branch->to_string());
+            lg::debug("  sbp: {}", !!b0->succ_branch->parent);
+            lg::debug("  sb: {}", b0->succ_branch->to_string());
           }
           b0->succ_branch->replace_preds_with_and_check({b0}, nullptr);
         }
@@ -2314,18 +2314,18 @@ bool ControlFlowGraph::find_short_circuits() {
     ShortCircuit::Entry candidate = {vtx, vtx->next};
     CfgVtx* end = vtx->next->succ_branch;
 
-    //    fmt::print("Starting loop\n");
+    //    lg::print("Starting loop\n");
 
     while (true) {
       // check candidate:
       if (!candidate.condition || !candidate.likely_delay || !end) {
-        //        fmt::print("reject begin {} {} {}\n", !!candidate.condition,
+        //        lg::print("reject begin {} {} {}\n", !!candidate.condition,
         //        !!candidate.likely_delay,
         //                   !!end);
         return true;
       }
 
-      //      fmt::print(" try {} and {} end {}\n", candidate.condition->to_string(),
+      //      lg::print(" try {} and {} end {}\n", candidate.condition->to_string(),
       //                 candidate.likely_delay->to_string(), end->to_string());
 
       if (candidate.condition->next == end) {
@@ -2337,13 +2337,13 @@ bool ControlFlowGraph::find_short_circuits() {
           candidate.likely_delay = nullptr;
           entries.push_back(candidate);
 
-          //          fmt::print("all done!");
+          //          lg::print("all done!");
           break;
         }
       }
 
       if (!candidate.condition->next || !candidate.condition->succ_branch) {
-        //        fmt::print(" fail 0 {}, {}\n", !!candidate.condition->next,
+        //        lg::print(" fail 0 {}, {}\n", !!candidate.condition->next,
         //                   !!candidate.condition->succ_branch);
         return true;
       }
@@ -2353,12 +2353,12 @@ bool ControlFlowGraph::find_short_circuits() {
           candidate.condition->next != candidate.condition->succ_branch ||
           !candidate.condition->end_branch.branch_likely ||
           candidate.condition->end_branch.kind != CfgVtx::DelaySlotKind::NO_DELAY) {
-        //        fmt::print("  fail 1 {} {} {} {}\n", !candidate.condition->next,
+        //        lg::print("  fail 1 {} {} {} {}\n", !candidate.condition->next,
         //                   candidate.condition->next != candidate.condition->succ_branch,
         //                   !candidate.condition->end_branch.branch_likely,
         //                   candidate.condition->end_branch.kind !=
         //                   CfgVtx::DelaySlotKind::NO_DELAY);
-        //        fmt::print(" fail 1 condition->next {}, condition->succ_branch {}\n",
+        //        lg::print(" fail 1 condition->next {}, condition->succ_branch {}\n",
         //                   candidate.condition->next->to_string(),
         //                   candidate.condition->succ_branch->to_string());
         return true;
@@ -2367,7 +2367,7 @@ bool ControlFlowGraph::find_short_circuits() {
       if (entries.empty() && candidate.likely_delay->next == end) {
         entries.push_back(candidate);
 
-        //        fmt::print("all don2!");
+        //        lg::print("all don2!");
         break;
       }
 
@@ -2376,7 +2376,7 @@ bool ControlFlowGraph::find_short_circuits() {
           !candidate.likely_delay->end_branch.branch_always ||
           candidate.likely_delay->end_branch.branch_likely ||
           candidate.likely_delay->end_branch.kind != CfgVtx::DelaySlotKind::NO_DELAY) {
-        //        fmt::print("  fail 2 {} {} {} {} {} {} {}\n", candidate.likely_delay->pred.size()
+        //        lg::print("  fail 2 {} {} {} {} {} {} {}\n", candidate.likely_delay->pred.size()
         //        != 1,
         //                   !!candidate.likely_delay->succ_ft,
         //                   !candidate.likely_delay->succ_branch,
@@ -2385,21 +2385,21 @@ bool ControlFlowGraph::find_short_circuits() {
         //                   !!candidate.likely_delay->end_branch.branch_likely,
         //                   candidate.likely_delay->end_branch.kind !=
         //                   CfgVtx::DelaySlotKind::NO_DELAY);
-        //        fmt::print("delay {} has ft {}\n", candidate.likely_delay->to_string(),
+        //        lg::print("delay {} has ft {}\n", candidate.likely_delay->to_string(),
         //                   candidate.likely_delay->succ_ft->to_string());
         return true;
       }
 
       // slot -> end
       if (candidate.likely_delay->succ_branch != end) {
-        //        fmt::print("  fail 3\n");
+        //        lg::print("  fail 3\n");
         return true;
       }
 
       // root -> next root
       if (!candidate.condition->next->next ||
           candidate.condition->next->next != candidate.condition->succ_ft) {
-        //        fmt::print("  fail 4\n");
+        //        lg::print("  fail 4\n");
         return true;
       }
 
@@ -2411,10 +2411,10 @@ bool ControlFlowGraph::find_short_circuits() {
 
       // pre next root check
       if (next_root->pred.size() != 1) {
-        //        fmt::print("  fail 5\n");
+        //        lg::print("  fail 5\n");
         return true;
       }
-      //      fmt::print("on to next!\n");
+      //      lg::print("on to next!\n");
     }
 
     auto new_sc = alloc<ShortCircuit>();
@@ -2556,13 +2556,14 @@ void ControlFlowGraph::flag_early_exit(const std::vector<BasicBlock>& blocks) {
   }
 }
 
-CfgVtx::DelaySlotKind get_delay_slot(const Instruction& i) {
+CfgVtx::DelaySlotKind get_delay_slot(const Instruction& i, GameVersion version) {
   if (is_nop(i)) {
     return CfgVtx::DelaySlotKind::NOP;
   } else if (is_gpr_3(i, InstructionKind::OR, {}, Register(Reg::GPR, Reg::S7),
                       Register(Reg::GPR, Reg::R0))) {
     return CfgVtx::DelaySlotKind::SET_REG_FALSE;
-  } else if (is_gpr_2_imm_int(i, InstructionKind::DADDIU, {}, Register(Reg::GPR, Reg::S7), 8)) {
+  } else if (is_gpr_2_imm_int(i, InstructionKind::DADDIU, {}, Register(Reg::GPR, Reg::S7),
+                              true_symbol_offset(version))) {
     return CfgVtx::DelaySlotKind::SET_REG_TRUE;
   } else {
     return CfgVtx::DelaySlotKind::OTHER;
@@ -2573,7 +2574,7 @@ namespace {
 /*!
  * Is this instruction possible in the delay slot, without using inline assembly?
  */
-bool branch_delay_asm(const Instruction& i) {
+bool branch_delay_asm(const Instruction& i, GameVersion version) {
   if (is_nop(i)) {
     // nop can be used as a delay
     return false;
@@ -2581,7 +2582,8 @@ bool branch_delay_asm(const Instruction& i) {
                       Register(Reg::GPR, Reg::R0))) {
     // set false is used in ifs, etc
     return false;
-  } else if (is_gpr_2_imm_int(i, InstructionKind::DADDIU, {}, Register(Reg::GPR, Reg::S7), 8)) {
+  } else if (is_gpr_2_imm_int(i, InstructionKind::DADDIU, {}, Register(Reg::GPR, Reg::S7),
+                              true_symbol_offset(version))) {
     // set true is used in sc
     return false;
   } else if (is_gpr_3(i, InstructionKind::OR, {}, {}, Register(Reg::GPR, Reg::R0))) {
@@ -2606,13 +2608,13 @@ bool branch_delay_asm(const Instruction& i) {
 /*!
  * Build and resolve a Control Flow Graph as much as possible.
  */
-std::shared_ptr<ControlFlowGraph> build_cfg(
-    const LinkedObjectFile& file,
-    int seg,
-    Function& func,
-    const CondWithElseLengthHack& cond_with_else_hack,
-    const std::unordered_set<int>& blocks_ending_in_asm_br) {
-  // fmt::print("START {}\n", func.guessed_name.to_string());
+std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
+                                            int seg,
+                                            Function& func,
+                                            const CondWithElseLengthHack& cond_with_else_hack,
+                                            const std::unordered_set<int>& blocks_ending_in_asm_br,
+                                            GameVersion version) {
+  // lg::print("START {}\n", func.guessed_name.to_string());
   auto cfg = std::make_shared<ControlFlowGraph>();
 
   const auto& blocks = cfg->create_blocks(func.basic_blocks.size());
@@ -2705,7 +2707,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
           if (is_branch(branch_candidate, false)) {
             blocks.at(i)->end_branch.has_branch = true;
             blocks.at(i)->end_branch.branch_likely = false;
-            blocks.at(i)->end_branch.kind = get_delay_slot(delay_slot_candidate);
+            blocks.at(i)->end_branch.kind = get_delay_slot(delay_slot_candidate, version);
             bool branch_always = is_always_branch(branch_candidate);
 
             // need to find block target
@@ -2763,7 +2765,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
     if (blocks_ending_in_asm_br.find(i) != blocks_ending_in_asm_br.end()) {
       b->end_branch.asm_branch = true;
       if (debug_asm_branch) {
-        fmt::print("OVERRIDE asm branch at block {}\n", i);
+        lg::debug("OVERRIDE asm branch at block {}", i);
       }
       continue;
     }
@@ -2776,12 +2778,11 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
     if (is_branch(likely_branch_candidate, true)) {
       // likely branch!
       auto following = func.instructions.at(likely_branch_idx + 1);
-      if (branch_delay_asm(following)) {
+      if (branch_delay_asm(following, version)) {
         b->end_branch.asm_branch = true;
         if (debug_asm_branch) {
-          fmt::print("LIKELY ASM BRANCH: {} and {}\n",
-                     likely_branch_candidate.to_string(file.labels),
-                     following.to_string(file.labels));
+          lg::debug("LIKELY ASM BRANCH: {} and {}", likely_branch_candidate.to_string(file.labels),
+                    following.to_string(file.labels));
         }
       }
     }
@@ -2792,11 +2793,11 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
       auto& branch_candidate = func.instructions.at(idx);
       auto& delay_slot_candidate = func.instructions.at(idx + 1);
       if (is_branch(branch_candidate, false)) {
-        if (branch_delay_asm(delay_slot_candidate)) {
+        if (branch_delay_asm(delay_slot_candidate, version)) {
           b->end_branch.asm_branch = true;
           if (debug_asm_branch) {
-            fmt::print("NORMAL ASM BRANCH: {} and {}\n", branch_candidate.to_string(file.labels),
-                       delay_slot_candidate.to_string(file.labels));
+            lg::debug("NORMAL ASM BRANCH: {} and {}", branch_candidate.to_string(file.labels),
+                      delay_slot_candidate.to_string(file.labels));
           }
         }
       }
@@ -2849,14 +2850,14 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
       changed = changed || cfg->find_infinite_continue();
       if (changed && !complained_about_weird_gotos) {
         complained_about_weird_gotos = true;
-        func.warnings.general_warning(
+        func.warnings.warning(
             "Found some very strange gotos. Check result carefully, this is not well tested.");
       }
     }
   }
 
   if (!cfg->is_fully_resolved()) {
-    func.warnings.cfg_build_warning("Could not fully resolve CFG");
+    func.warnings.error("CFG building failed: Could not fully resolve CFG");
   }
 
   return cfg;

@@ -3,15 +3,19 @@
  * IsoFs API for accessing the CD/DVD drive.
  */
 
-#include <cstring>
-#include "game/sce/iop.h"
-#include "game/sce/stubs.h"
 #include "iso_cd.h"
+
+#include <cstring>
+
 #include "isocommon.h"
 #include "overlord.h"
 #include "soundcommon.h"
 #include "srpc.h"
+
 #include "common/log/log.h"
+
+#include "game/sce/iop.h"
+#include "game/sce/stubs.h"
 
 // iso_cd is an implementation of the IsoFs API for loading files from a CD/DVD with an ISO and/or
 // DUP filesystem.
@@ -386,7 +390,7 @@ void LoadDiscID() {
   for (uint32_t i = 0; i < SECTOR_SIZE / 4; i++) {
     CD_ID_SectorSum += CD_ID_Sector[i];
   }
-  lg::info("[OVERLORD] DISK_ID.DIZ OK 0x{:x}\n", CD_ID_SectorSum);
+  lg::info("[OVERLORD] DISK_ID.DIZ OK 0x{:x}", CD_ID_SectorSum);
 }
 
 /*!

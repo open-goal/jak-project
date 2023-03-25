@@ -1,14 +1,15 @@
 #pragma once
 
-#include <unordered_map>
-#include <vector>
-#include <string>
 #include <cstring>
 #include <random>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
-#include "game/kernel/Ptr.h"
 #include "common/common_types.h"
 #include "common/util/Assert.h"
+
+#include "game/kernel/common/Ptr.h"
 
 namespace Mips2C {
 
@@ -25,7 +26,8 @@ class LinkedFunctionTable {
   std::unordered_map<std::string, Func> m_executes;
 };
 
-extern std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks;
+extern PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>>
+    gMips2CLinkCallbacks;
 extern LinkedFunctionTable gLinkedFunctionTable;
 
 struct Rng {

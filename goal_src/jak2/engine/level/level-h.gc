@@ -1,0 +1,528 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: level-h.gc
+;; name in dgo: level-h
+;; dgos: ENGINE, GAME
+;; todo docs, methods
+
+;; max amount of levels in level heap
+(defconstant LEVEL_MAX 6)
+;; total amount of levels, including ones outside level heap (default-level)
+(defconstant LEVEL_TOTAL 7)
+
+(declare-type bsp-header basic)
+(declare-type drawable basic)
+(declare-type entity-links structure)
+(declare-type level-group basic)
+(declare-type entity-links-array inline-array-class)
+(declare-type game-text-info basic)
+(declare-type engine basic)
+
+(define-extern *level* level-group)
+(define-extern *draw-index* int)
+(define-extern *level-index* int)
+(define-extern *print-login* symbol)
+(define-extern *level-load-list* pair)
+
+(defmacro start-debug (str &rest args)
+  ;`(format 0 ,(string-append "[START] " str) ,@args)
+  0)
+
+
+(defenum load-buffer-mode
+  :type uint32
+  (small-edge 0)
+  (small-center 1)
+  (medium 2)
+  (large 3)
+  (borrow 4)
+  (ten 10)
+  )
+
+(defenum vis-info-flag
+  :type uint32
+  :bitfield #t
+  (dummy0  0)
+  (dummy1  1)
+  (dummy2  2)
+  (dummy3  3)
+  (dummy4  4)
+  (dummy5  5)
+  (dummy6  6)
+  (dummy7  7)
+  (dummy8  8)
+  (dummy9  9)
+  (dummy10 10)
+  (dummy11 11)
+  (dummy12 12)
+  (dummy13 13)
+  (dummy14 14)
+  (dummy15 15)
+  (dummy16 16)
+  (dummy17 17)
+  (dummy18 18)
+  (dummy19 19)
+  (dummy20 20)
+  (dummy21 21)
+  (dummy22 22)
+  (dummy23 23)
+  (dummy24 24)
+  (dummy25 25)
+  (dummy26 26)
+  (dummy27 27)
+  (dummy28 28)
+  (in-iop  29)
+  (loading 30)
+  (vis-valid 31)
+  )
+
+(defenum task-mask
+  :type uint32
+  :bitfield #t
+  (task0    0) ;; 0x1
+  (task1    1) ;; 0x2
+  (task2    2) ;; 0x4
+  (task3    3) ;; 0x8
+  (task4    4) ;; 0x10
+  (task5    5) ;; 0x20
+  (task6    6) ;; 0x40
+  (task7    7) ;; 0x80
+  (done     8) ;; 0x100
+  (dummy0   9) ;; 0x200
+  (dummy1   10) ;; 0x400
+  (dummy2   11) ;; 0x800
+  (special  12) ;; 0x1000
+  (primary0 13) ;; 0x2000
+  (ctywide  14) ;; 0x4000
+  (never    15) ;; 0x8000
+  (movie0   16) ;; 0x10000
+  (movie1   17) ;; 0x20000
+  (movie2   18) ;; 0x40000
+
+  (tm19)
+  (tm20)
+  (tm21)
+  (tm22)
+  (tm23)
+  (tm24)
+  (tm25)
+  (tm26)
+  (tm27)
+  (tm28)
+  (tm29)
+  (tm30)
+  (tm31)
+  )
+
+(declare-type game-text-id uint32)
+
+;; NOTE - for editable-player
+(declare-type level-load-info basic)
+(define-extern lookup-level-info (function symbol level-load-info))
+
+;; +++bigmap-id
+(defenum bigmap-id
+  :type uint32
+  (bigmap-id-0 0)
+  (bigmap-id-1 1)
+  (bigmap-id-2 2)
+  (bigmap-id-3 3)
+  (bigmap-id-4 4)
+  (bigmap-id-5 5)
+  (bigmap-id-6 6)
+  (bigmap-id-7 7)
+  (bigmap-id-8 8)
+  (bigmap-id-9 9)
+  (bigmap-id-10 10)
+  (bigmap-id-11 11)
+  (bigmap-id-12 12)
+  (bigmap-id-13 13)
+  (sewer-default 14)
+  (sewer-with-board-area 15)
+  (bigmap-id-16 16)
+  (bigmap-id-17 17)
+  (bigmap-id-18 18)
+  (bigmap-id-19 19)
+  (bigmap-id-20 20))
+;; ---bigmap-id
+
+
+;; DECOMP BEGINS
+
+(deftype level-vis-info (basic)
+  ((level              level                  :offset-assert   4)
+   (from-level         level                  :offset-assert   8)
+   (from-bsp           bsp-header             :offset-assert  12)
+   (flags              vis-info-flag          :offset-assert  16)
+   (length             uint32                 :offset-assert  20)
+   (allocated-length   uint32                 :offset-assert  24)
+   (dictionary-length  uint32                 :offset-assert  28)
+   (dictionary         uint32                 :offset-assert  32)
+   (string-block       uint32                 :offset-assert  36)
+   (ramdisk            uint32                 :offset-assert  40)
+   (vis-bits           uint32                 :offset-assert  44)
+   (current-vis-string uint32                 :offset-assert  48)
+   (vis-string         uint32        :dynamic :offset-assert  52)
+   )
+  :method-count-assert 9
+  :size-assert         #x34
+  :flag-assert         #x900000034
+  )
+
+
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of level-vis-info ((obj level-vis-info))
+  (the-as int (+ (-> level-vis-info size) (-> obj dictionary-length)))
+  )
+
+(deftype level-load-info (basic)
+  ((name-list               symbol           6       :offset-assert   4)
+   (index                   int16                    :offset-assert  28)
+   (task-level              uint8                    :offset-assert  30)
+   (name                    symbol                   :offset          4)
+   (visname                 symbol                   :offset          8)
+   (nickname                symbol                   :offset         12)
+   (dbname                  symbol                   :offset         16)
+   (taskname                symbol                   :offset         20)
+   (other-name-1            symbol                   :offset         24)
+   (packages                pair                     :offset-assert  32)
+   (memory-mode             load-buffer-mode         :offset-assert  36)
+   (music-bank              symbol                   :offset-assert  40)
+   (ambient-sounds          symbol                   :offset-assert  44)
+   (sound-reverb            float                    :offset-assert  48)
+   (mood-func               symbol                   :offset-assert  52)
+   (mood-init               symbol                   :offset-assert  56)
+   (ocean                   symbol                   :offset-assert  60)
+   (sky                     symbol                   :offset-assert  64)
+   (use-camera-other        symbol                   :offset-assert  68)
+   (part-engine-max         int32                    :offset-assert  72)
+   (city-map-bits           uint64                   :offset-assert  80)
+   (continues               pair                     :offset-assert  88)
+   (tasks                   pair                     :offset-assert  92)
+   (priority                int32                    :offset-assert  96)
+   (load-commands           pair                     :offset-assert 100)
+   (alt-load-commands       pair                     :offset-assert 104)
+   (bsp-mask                uint64                   :offset-assert 112)
+   (buzzer                  int32                    :offset-assert 120)
+   (buttom-height           meters                   :offset-assert 124)
+   (run-packages            pair                     :offset-assert 128)
+   (prev-level              symbol                   :offset-assert 132)
+   (next-level              symbol                   :offset-assert 136)
+   (wait-for-load           symbol                   :offset-assert 140)
+   (login-func              symbol                   :offset-assert 144)
+   (activate-func           symbol                   :offset-assert 148)
+   (deactivate-func         symbol                   :offset-assert 152)
+   (kill-func               symbol                   :offset-assert 156)
+   (borrow-size             uint16           2       :offset-assert 160)
+   (borrow-level            symbol           2       :offset-assert 164)
+   (borrow-display?         symbol           2       :offset-assert 172)
+   (base-task-mask          task-mask                :offset-assert 180)
+   (texture-anim            symbol           10      :offset-assert 184)
+   (texture-anim-tfrag      symbol                   :offset        184)
+   (texture-anim-pris       symbol                   :offset        188)
+   (texture-anim-shrub      symbol                   :offset        192)
+   (texture-anim-alpha      symbol                   :offset        196)
+   (texture-anim-water      symbol                   :offset        200)
+   (texture-anim-twarp      symbol                   :offset        204)
+   (texture-anim-pris2      symbol                   :offset        208)
+   (texture-anim-sprite     symbol                   :offset        212)
+   (texture-anim-map        symbol                   :offset        216)
+   (texture-anim-sky        symbol                   :offset        220)
+   (draw-priority           float                    :offset-assert 224)
+   (level-flags             uint32                   :offset-assert 228)
+   (fog-height              float                    :offset-assert 232)
+   (bigmap-id               bigmap-id                :offset-assert 236)
+   (ocean-near-translucent? symbol                   :offset-assert 240)
+   (ocean-far?              symbol                   :offset-assert 244)
+   (mood-range              mood-range       :inline :offset-assert 256)
+   (max-rain                float                    :offset-assert 272)
+   (fog-mult                float                    :offset-assert 276)
+   (ocean-alpha             float                    :offset-assert 280)
+   (extra-sound-bank        pair                     :offset-assert 284)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x120
+  :flag-assert         #x900000120
+  )
+
+
+(deftype login-state (basic)
+  ((state int32       :offset-assert   4)
+   (pos   uint32      :offset-assert   8)
+   (elts  uint32      :offset-assert  12)
+   (elt   drawable 16 :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+
+(deftype level (basic)
+  ((name                      symbol                                            :offset-assert   4)
+   (load-name                 string                                            :offset-assert   8)
+   (nickname                  string                                            :offset-assert  12)
+   (index                     int32                                             :offset-assert  16)
+   (status                    symbol                                            :offset-assert  20)
+   (borrow-level              level                                  2          :offset-assert  24)
+   (borrow-from-level         level                                             :offset-assert  32)
+   (heap                      kheap                                  :inline    :offset-assert  48)
+   (borrow-heap               kheap                                  2 :inline  :offset-assert  64)
+   (bsp                       bsp-header                                        :offset-assert  96)
+   (art-group                 load-dir-art-group                                :offset-assert 100)
+   (info                      level-load-info                                   :offset-assert 104)
+   (texture-page              texture-page                           18         :offset-assert 108)
+   (loaded-texture-page       texture-page                           16         :offset-assert 180)
+   (loaded-texture-page-count int32                                             :offset-assert 244)
+   (entity                    entity-links-array                                :offset-assert 248)
+   (closest-object            float                                             :offset-assert 252)
+   (closest-object-array      float                                  18         :offset        252)
+   (upload-size               int32                                  18         :offset        324)
+   (inside-boxes              symbol                                            :offset-assert 396)
+   (display?                  symbol                                            :offset-assert 400)
+   (render?                   symbol                                            :offset-assert 404)
+   (meta-inside?              symbol                                            :offset-assert 408)
+   (force-inside?             symbol                                            :offset-assert 412)
+   (mood-context              mood-context                           :inline    :offset-assert 416)
+   (mood-func                 (function mood-context float int none)            :offset-assert 2384)
+   (mood-init                 (function mood-context none)                      :offset-assert 2388)
+   (vis-bits                  pointer                                           :offset-assert 2392)
+   (all-visible?              symbol                                            :offset-assert 2396)
+   (force-all-visible?        symbol                                            :offset-assert 2400)
+   (linking                   symbol                                            :offset-assert 2404)
+   (vis-info                  level-vis-info                         8          :offset-assert 2408)
+   (vis-self-index            int32                                             :offset-assert 2440)
+   (vis-adj-index             int32                                             :offset-assert 2444)
+   (vis-buffer                uint8                                  2048       :offset-assert 2448)
+   (mem-usage-block           memory-usage-block                                :offset-assert 4496)
+   (mem-usage                 int32                                             :offset-assert 4500)
+   (code-memory-start         pointer                                           :offset-assert 4504)
+   (code-memory-end           pointer                                           :offset-assert 4508)
+   (load-start-time           time-frame                                        :offset-assert 4512)
+   (load-stop-time            time-frame                                        :offset-assert 4520)
+   (load-buffer               uint32                                 2          :offset-assert 4528)
+   (load-buffer-size          uint32                                            :offset-assert 4536)
+   (load-buffer-last          uint32                                            :offset-assert 4540)
+   (load-buffer-mode          load-buffer-mode                                  :offset-assert 4544)
+   (display-start-time        time-frame                                        :offset-assert 4552)
+   (memory-mask               uint32                                            :offset-assert 4560)
+   (task-mask                 task-mask                                         :offset-assert 4564)
+   (tfrag-gs-test             gs-test                                           :offset-assert 4568)
+   (texture-dirty-masks       texture-mask                           10 :inline :offset-assert 4576)
+   (texture-mask              texture-mask                           18 :inline :offset-assert 4736)
+   (sky-mask                  texture-mask                           :inline    :offset-assert 5024)
+   (tfrag-masks               texture-masks-array                               :offset-assert 5040)
+   (tfrag-dists               pointer                                           :offset-assert 5044)
+   (shrub-masks               texture-masks-array                               :offset-assert 5048)
+   (shrub-dists               pointer                                           :offset-assert 5052)
+   (alpha-masks               texture-masks-array                               :offset-assert 5056)
+   (alpha-dists               pointer                                           :offset-assert 5060)
+   (water-masks               texture-masks-array                               :offset-assert 5064)
+   (water-dists               pointer                                           :offset-assert 5068)
+   (tfrag-last-calls          int32                                  6          :offset-assert 5072)
+   (tfrag-last-calls-u32      uint32                                 6          :offset        5072)
+   (texture-anim-array        texture-anim-array                     10         :offset-assert 5096)
+   (light-hash                light-hash                                        :offset-assert 5136)
+   (draw-priority             float                                             :offset-assert 5140)
+   (draw-index                int32                                             :offset-assert 5144)
+   (part-engine               engine                                            :offset-assert 5148)
+   (user-object               basic                                  4          :offset-assert 5152)
+   (loaded-text-info-count    int32                                             :offset-assert 5168)
+   (loaded-text-info          game-text-info                         8          :offset-assert 5172)
+   (level-type                type                                              :offset-assert 5204)
+   (load-order                int64                                             :offset-assert 5208)
+   (pad                       int8                                   12         :offset-assert 5216)
+   )
+  :method-count-assert 30
+  :size-assert         #x146c
+  :flag-assert         #x1e0000146c
+  (:methods
+    (deactivate (_type_) _type_ 9)
+    (is-object-visible? (_type_ int) symbol 10)
+    (level-method-11 () none 11)
+    (unload! (_type_) _type_ 12)
+    (bsp-name (_type_) symbol 13)
+    (compute-memory-usage! (_type_ symbol) memory-usage-block 14)
+    (inside-boxes-check (_type_ vector) symbol 15)
+    (update-vis! (_type_ level-vis-info uint (pointer uint8)) symbol 16)
+    (load-continue (_type_) _type_ 17)
+    (load-begin (_type_) _type_ 18)
+    (login-begin (_type_) _type_ 19)
+    (debug-print-region-splitbox (_type_ vector object) none 20)
+    (get-art-group-by-name (_type_ string) art-group 21)
+    (level-method-22 (_type_ symbol) int 22)
+    (lookup-text (_type_ game-text-id symbol) string 23)
+    (level-method-24 () none 24)
+    (birth (_type_) _type_ 25)
+    (level-status-update! (_type_ symbol) _type_ 26)
+    (load-required-packages (_type_) _type_ 27)
+    (init-vis-from-bsp (_type_) none 28)
+    (vis-clear (_type_) none 29)
+    )
+  )
+
+
+(deftype level-group (basic)
+  ((length                int32                           :offset-assert   4)
+   (log-in-level-bsp      bsp-header                      :offset-assert   8)
+   (loading-level         level                           :offset-assert  12)
+   (entity-link           entity-links                    :offset         16)
+   (border?               symbol                          :offset-assert  20)
+   (vis?                  symbol                          :offset-assert  24)
+   (want-level            basic                           :offset-assert  28)
+   (receiving-level       basic                           :offset-assert  32)
+   (load-commands         pair                            :offset-assert  36)
+   (play?                 symbol                          :offset-assert  40)
+   (target-pos            vector                2 :inline :offset-assert  48)
+   (camera-pos            vector                2 :inline :offset-assert  80)
+   (heap                  kheap                 :inline   :offset-assert 112)
+   (sound-bank            basic                 4         :offset-assert 128)
+   (disk-load-timing?     symbol                          :offset-assert 144)
+   (load-level            basic                           :offset-assert 148)
+   (load-size             uint32                          :offset-assert 152)
+   (load-time             float                           :offset-assert 156)
+   (load-login-time       float                           :offset-assert 160)
+   (draw-level-count      int32                           :offset-assert 164)
+   (draw-level            level                 LEVEL_TOTAL :offset-assert 168)
+   (draw-index-map        uint8                 LEVEL_TOTAL :offset-assert 196)
+   (load-order            uint64                          :offset-assert 208)
+   (pad                   uint8                 30        :offset 216)
+   (level                 level                 LEVEL_TOTAL :inline :offset-assert 256)
+   (level0                level                 :inline   :offset        256)
+   (level1                level                 :inline   :offset        5488)
+   (level2                level                 :inline   :offset        10720)
+   (level3                level                 :inline   :offset        15952)
+   (level4                level                 :inline   :offset        21184)
+   (level5                level                 :inline   :offset        26416)
+   (default-level         level                 :inline   :offset        31648)
+   (pad2                  uint8                 4)
+   )
+  :method-count-assert 31
+  :size-assert         #x9014
+  :flag-assert         #x1f00009014
+  (:methods
+    (level-get (_type_ symbol) level 9)
+    (level-get-with-status (_type_ symbol) level 10)
+    (get-level-by-heap-ptr-and-status (_type_ pointer symbol) level 11)
+    (level-get-for-use (_type_ symbol symbol) level 12)
+    (activate-levels! (_type_) int 13)
+    (debug-print-entities (_type_ symbol type) none 14)
+    (debug-draw-actors (_type_ symbol) none 15)
+    (assign-draw-indices (_type_) none 16)
+    (actors-update (_type_) none 17)
+    (update-nav-meshes-method (_type_) none 18)
+    (level-update (_type_) none 19)
+    (level-get-target-inside (_type_) level 20)
+    (alloc-levels-if-needed (_type_ symbol) none 21)
+    (load-commands-set! (_type_ pair) none 22)
+    (art-group-get-by-name (_type_ string (pointer uint32)) art-group 23)
+    (alt-load-command-get-index (_type_ symbol int) pair 24)
+    (update-vis-volumes (_type_) none 25)
+    (update-vis-volumes-from-nav-mesh (_type_) none 26)
+    (print-volume-sizes (_type_) none 27)
+    (level-status (_type_ symbol) symbol 28)
+    (load-in-progress? (_type_) symbol 29)
+    (level-get-most-disposable (_type_) level 30)
+    )
+  )
+
+
+(when (zero? *level*)
+  (set! *level* (new 'static 'level-group
+                  :length LEVEL_MAX
+                  :log-in-level-bsp #f
+                  :loading-level #f
+                  :entity-link #f
+                  :border? #f
+                  :vis? #f
+                  :want-level #f
+                  :load-commands '()
+                  :play? #f
+                  :sound-bank (new 'static 'array basic 4 #f #f #f #f)
+                  :disk-load-timing? #f
+                  :level0 (new 'static 'level
+                    :name #f
+                    :status 'inactive
+                    :borrow-level (new 'static 'array level 2 #f #f)
+                    :borrow-from-level #f
+                    :inside-boxes #f
+                    :force-inside? #f
+                    :linking #f
+                    :level-type #f
+                    )
+                  :level1 (new 'static 'level
+                    :name #f
+                    :index 1
+                    :status 'inactive
+                    :borrow-level (new 'static 'array level 2 #f #f)
+                    :borrow-from-level #f
+                    :inside-boxes #f
+                    :force-inside? #f
+                    :linking #f
+                    :level-type #f
+                    )
+                  :level2 (new 'static 'level
+                    :name #f
+                    :index 2
+                    :status 'inactive
+                    :borrow-level (new 'static 'array level 2 #f #f)
+                    :borrow-from-level #f
+                    :inside-boxes #f
+                    :force-inside? #f
+                    :linking #f
+                    :level-type #f
+                    )
+                  :level3 (new 'static 'level
+                    :name #f
+                    :index 3
+                    :status 'inactive
+                    :borrow-level (new 'static 'array level 2 #f #f)
+                    :borrow-from-level #f
+                    :inside-boxes #f
+                    :force-inside? #f
+                    :linking #f
+                    :level-type #f
+                    )
+                  :level4 (new 'static 'level
+                    :name #f
+                    :index 4
+                    :status 'inactive
+                    :borrow-level (new 'static 'array level 2 #f #f)
+                    :borrow-from-level #f
+                    :inside-boxes #f
+                    :force-inside? #f
+                    :linking #f
+                    :level-type #f
+                    )
+                  :level5 (new 'static 'level
+                    :name #f
+                    :index 5
+                    :status 'inactive
+                    :borrow-level (new 'static 'array level 2 #f #f)
+                    :borrow-from-level #f
+                    :inside-boxes #f
+                    :force-inside? #f
+                    :linking #f
+                    :level-type #f
+                    )
+                  :default-level (new 'static 'level
+                    :name 'default
+                    :index LEVEL_MAX
+                    :status 'reserved
+                    :borrow-level (new 'static 'array level 2 #f #f)
+                    :borrow-from-level #f
+                    :bsp #f
+                    :inside-boxes #f
+                    :display? #f
+                    :force-inside? #f
+                    :linking #f
+                    :level-type #f
+                    )
+                  )
+        )
+  (set! *draw-index* 0)
+  (set! *level-index* 0)
+  0
+  )

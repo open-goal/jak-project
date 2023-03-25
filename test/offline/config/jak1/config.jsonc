@@ -1,0 +1,270 @@
+{
+  "dgos": [
+    "CGO/KERNEL.CGO",
+    "CGO/ENGINE.CGO",
+    "CGO/GAME.CGO",
+    "DGO/BEA.DGO",
+    "DGO/INT.DGO",
+    "DGO/VI1.DGO",
+    "DGO/VI2.DGO",
+    "DGO/VI3.DGO",
+    "DGO/CIT.DGO",
+    "DGO/MIS.DGO",
+    "DGO/JUB.DGO",
+    "DGO/SUN.DGO",
+    "DGO/SUB.DGO",
+    "DGO/DEM.DGO",
+    "DGO/FIN.DGO",
+    "DGO/JUN.DGO",
+    "DGO/FIC.DGO",
+    "DGO/SNO.DGO",
+    "DGO/SWA.DGO",
+    "DGO/MAI.DGO",
+    "DGO/ROB.DGO",
+    "DGO/LAV.DGO",
+    "DGO/OGR.DGO",
+    "DGO/TRA.DGO",
+    "DGO/ROL.DGO",
+    "DGO/DAR.DGO",
+    "DGO/TIT.DGO"
+  ],
+
+  "skip_compile_files": [
+    "timer", // accessing timer regs
+    "display", // interrupt handlers
+    "target-snowball" // screwed up labels, likely cut content
+  ],
+
+  "skip_compile_functions": [
+    /// GCOMMON
+    // these functions are not implemented by the compiler in OpenGOAL, but are in GOAL.
+    "abs",
+    "ash",
+    "min",
+    "max",
+    "lognor",
+    // weird PS2 specific debug registers:
+    "breakpoint-range-set!",
+    // inline assembly
+    "valid?",
+
+    /// GKERNEL
+    // asm
+    "(method 10 process)",
+    "(method 14 dead-pool)",
+
+    /// GSTATE
+    "enter-state", // stack pointer asm
+
+    /// MATH
+    "rand-vu-init",
+    "rand-vu",
+    "rand-vu-nostep", // random hardware
+
+    // trig
+    "sin-rad", // fpu acc
+    "cos-rad", // fpu acc
+    "atan-series-rad", // fpu acc
+
+    /// VECTOR-H
+    "(method 3 vector)", // this function appears twice, which confuses the compiler.
+    "vector4-dot", // fpu acc
+
+    "(method 3 profile-frame)", // double definition.
+
+    // dma-disasm
+    "disasm-dma-list", // missing a single cast :(
+
+    // math camera
+    "transform-point-vector!",
+    "transform-point-qword!",
+    "transform-point-vector-scale!",
+
+    // display-h
+    "put-draw-env",
+
+    // geometry
+    "calculate-basis-functions-vector!", // asm requiring manual rewrite
+    "curve-evaluate!", // asm requiring manual rewrite
+    "point-in-triangle-cross", // logior on floats manual fixup
+
+    // texture
+    "(method 9 texture-page-dir)", // multiplication on pointers
+    "adgif-shader<-texture-with-update!", // misrecognized bitfield stuff.
+
+    // asm
+    "invalidate-cache-line",
+
+    // stats-h
+    "(method 11 perf-stat)",
+    "(method 12 perf-stat)",
+
+    // sprite-distorter
+    "sprite-draw-distorters", // uses clipping flag.
+
+    // sync-info
+    "(method 15 sync-info)", // needs display stuff first
+    "(method 15 sync-info-eased)", // needs display stuff first
+    "(method 15 sync-info-paused)", // needs display stuff first
+
+    // sparticle
+    "lookup-part-group-pointer-by-name", // address of element in array issue
+
+    // ripple - calls an asm function
+    "ripple-execute",
+
+    "get-task-status",
+
+    "print-game-text-scaled", // float/int, looks like a bug in original code?
+
+    // aligner - return-from-thread, currently not supported
+    "(method 9 align-control)",
+
+    // stat collection
+    "start-perf-stat-collection",
+    "end-perf-stat-collection",
+
+    // double definition
+    "(method 3 game-save)",
+
+    // new stack boxed array
+    "update-time-of-day",
+
+    // weird asm, was rewritten
+    "close-sky-buffer",
+
+    // float to int
+    "(method 10 bsp-header)",
+
+    // multiply defined.
+    "(method 3 sprite-aux-list)",
+
+    // camera
+    "slave-set-rotation!",
+    "v-slrp2!",
+    "v-slrp3!", // vector-dot involving the stack
+
+    // function returning float with a weird cast.
+    "debug-menu-item-var-make-float",
+
+    // decompiler BUG
+    "level-hint-task-process",
+    "(method 26 level)",
+    "(method 9 level)",
+    "(method 10 level)", // asm
+
+    // cam-states
+    "cam-los-collide", // vector-dot involving the stack
+
+    // cam-layout
+    "cam-layout-save-cam-trans", // temporary, im sure this can be fixed
+
+    // anim-tester
+    "(method 3 anim-tester)",
+    "anim-tester-save-object-seqs", // anim-tester -- new basic on the stack
+
+    // default-menu
+    "all-texture-tweak-adjust", // dynamic-field access placeholder case TODO
+    "debug-menu-make-instance-menu", // also disabled
+
+    // joint
+    "(method 9 art-mesh-geo)", // PLACEHOLDER array access
+    "flatten-joint-control-to-spr",
+    "make-joint-jump-tables",
+    "(method 5 art-joint-anim)", // defined identically twice in the same file...probably a bug?
+
+    // process-drawable
+    "fill-skeleton-cache", // cache dxwbin
+    "execute-math-engine", // handle casts -- was fixed manually
+
+    // ambient
+    "ambient-type-music", // IR_StoreConstOffset::do_codegen can't handle this (c {} sz {})
+
+    // main
+    "display-loop",
+    "on",
+
+    // target-handler
+    "target-generic-event-handler", // return type forced to none
+
+    // shadow-cpu-h
+    "(method 3 shadow-edge)", // defined twice in the same file, one is wrong and old
+
+    // sky - these are skipped and not used
+    "sky-draw",
+    "sky-upload",
+    "sky-add-frame-data",
+
+    // drawable
+    "vis-cull", // unsupported asm
+    "draw-instance-info", // skipped for now, debug only
+    "foreground-engine-execute",
+    "real-main-draw-hook", // dma handling not complete
+
+    // generic-obs
+    "command-get-process", // handle casts
+
+    // navigate
+    "end-collect-nav",
+    "start-collect-nav",
+
+    // appears twice
+    "(method 9 drawable-tree-instance-tie)",
+    "(method 11 drawable-tree-instance-tie)",
+    "(method 12 drawable-tree-instance-tie)",
+    "(method 13 drawable-tree-instance-tie)",
+
+    "ray-triangle-intersect", // requires SLL implementation
+
+    "(method 51 snow-bunny)", // bitfield problem
+
+    "ice-cube-default-event-handler", // return casted to none issue
+    "(method 51 ice-cube)", // bitfield problem
+
+    "(method 13 collide-mesh)", // scratchpad sadness
+    "(method 10 collide-mesh)", // collide-mesh-cache-tri handling
+
+    // not in use in PC port
+    "tie-near-init-engine",
+    "tie-near-end-buffer",
+
+    "(method 19 process-drawable)",
+
+    "curve-evaluate!",
+
+    "generic-reset-buffers",
+    "generic-merc-execute-all",
+
+    /// COLLIDE-EDGE-GRAB
+    "(method 9 edge-grab-info)", // asm
+
+    /// COLLIDE-SHAPE-RIDER
+    // type mess
+    "(method 22 collide-shape-prim-mesh)",
+
+    /// COLLIDE-REACTION-TARGET
+    "poly-find-nearest-edge",
+
+    /// GLIST
+    // i dont even want to know
+    "glst-find-node-by-name",
+    "glst-length-of-longest-name",
+
+    "race-time-save"
+  ],
+
+  "skip_compile_states": {
+    "cam-master-active": [
+      "event"
+    ],
+    "target-death": [
+      "event"
+    ],
+    "ogreboss-missile-seek": [
+      "code" // inserts a bad cfg-1 goto
+    ],
+    "(active pistons)": [
+      "code" // dead code not analyzed properly after a loop
+    ]
+  }
+}

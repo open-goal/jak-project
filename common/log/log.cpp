@@ -1,8 +1,10 @@
+#include "log.h"
+
 #include <cstdio>
 #include <cstdlib>
 #include <mutex>
+
 #include "third-party/fmt/color.h"
-#include "log.h"
 #ifdef _WIN32  // see lg::initialize
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -33,21 +35,22 @@ struct Logger {
 Logger gLogger;
 
 namespace internal {
-const char* log_level_names[] = {"trace", "debug", "info", "warn", "error", "die"};
-const fmt::color log_colors[] = {fmt::color::gray,   fmt::color::turquoise, fmt::color::light_green,
-                                 fmt::color::yellow, fmt::color::red,       fmt::color::hot_pink};
+const char* log_level_names[] = {"trace", "debug", "info", "warn", "error", "die", "die"};
+const fmt::color log_colors[] = {
+    fmt::color::gray, fmt::color::turquoise, fmt::color::light_green, fmt::color::yellow,
+    fmt::color::red,  fmt::color::hot_pink,  fmt::color::hot_pink};
 
 void log_message(level log_level, LogTime& now, const char* message) {
 #ifdef __linux__
   char date_time_buffer[128];
   time_t now_seconds = now.tv.tv_sec;
   auto now_milliseconds = now.tv.tv_usec / 1000;
-  strftime(date_time_buffer, 128, "%Y-%m-%d %H:%M:%S", localtime(&now_seconds));
-  std::string date_string = fmt::format("[{}:{:03d}]", date_time_buffer, now_milliseconds);
+  strftime(date_time_buffer, 128, "%M:%S", localtime(&now_seconds));
+  std::string time_string = fmt::format("[{}:{:03d}]", date_time_buffer, now_milliseconds);
 #else
   char date_time_buffer[128];
-  strftime(date_time_buffer, 128, "%Y-%m-%d %H:%M:%S", localtime(&now.tim));
-  std::string date_string = fmt::format("[{}]", date_time_buffer);
+  strftime(date_time_buffer, 128, "%M:%S", localtime(&now.tim));
+  std::string time_string = fmt::format("[{}]", date_time_buffer);
 #endif
 
   {
@@ -55,33 +58,82 @@ void log_message(level log_level, LogTime& now, const char* message) {
     if (gLogger.fp && log_level >= gLogger.file_log_level) {
       // log to file
       std::string file_string =
-          fmt::format("{} [{}] {}\n", date_string, log_level_names[int(log_level)], message);
+          fmt::format("{} [{}] {}\n", time_string, log_level_names[int(log_level)], message);
       fwrite(file_string.c_str(), file_string.length(), 1, gLogger.fp);
       if (log_level >= gLogger.flush_level) {
         fflush(gLogger.fp);
       }
     }
 
-    if (log_level >= gLogger.stdout_log_level) {
-      fmt::print("{} [", date_string);
+    if (log_level >= gLogger.stdout_log_level ||
+        (log_level == level::die && gLogger.stdout_log_level == level::off_unless_die)) {
+      fmt::print("{} [", time_string);
       fmt::print(fg(log_colors[int(log_level)]), "{}", log_level_names[int(log_level)]);
       fmt::print("] {}\n", message);
       if (log_level >= gLogger.flush_level) {
         fflush(stdout);
+        fflush(stderr);
       }
     }
   }
 
   if (log_level == level::die) {
-    exit(-1);
+    fflush(stdout);
+    fflush(stderr);
+    if (gLogger.fp) {
+      fflush(gLogger.fp);
+    }
+    abort();
+  }
+}
+
+void log_print(const char* message) {
+  {
+    // We always immediately flush prints because since it has no associated level
+    // it could be anything from a fatal error to a useless debug log.
+    std::lock_guard<std::mutex> lock(gLogger.mutex);
+    if (gLogger.fp) {
+      // Log to File
+      std::string msg(message);
+      fwrite(msg.c_str(), msg.length(), 1, gLogger.fp);
+      fflush(gLogger.fp);
+    }
+
+    if (gLogger.stdout_log_level < lg::level::off_unless_die) {
+      fmt::print(message);
+      fflush(stdout);
+      fflush(stderr);
+    }
   }
 }
 }  // namespace internal
 
-void set_file(const std::string& filename) {
+// how many extra log files for a single program should be kept?
+constexpr int LOG_ROTATE_MAX = 5;
+
+void set_file(const std::string& filename, const bool should_rotate) {
   ASSERT(!gLogger.fp);
   file_util::create_dir_if_needed_for_file(filename);
-  gLogger.fp = fopen(filename.c_str(), "w");
+
+  // rotate files. log.txt is the current one, log.1.txt is the previous one, etc.
+  if (should_rotate) {
+    auto as_path = fs::path(filename);
+    auto stem = as_path.stem().string();
+    auto ext = as_path.extension().string();
+    auto dir = as_path.parent_path();
+    for (int i = LOG_ROTATE_MAX; i-- > 0;) {
+      auto src_name =
+          i != 0 ? fmt::format("{}.{}{}", stem, i, ext) : fmt::format("{}{}", stem, ext);
+      auto src_path = dir / src_name;
+      if (file_util::file_exists(src_path.string())) {
+        auto dst_name = fmt::format("{}.{}{}", stem, i + 1, ext);
+        auto dst_path = dir / dst_name;
+        file_util::copy_file(src_path, dst_path);
+      }
+    }
+  }
+
+  gLogger.fp = file_util::open_file(filename.c_str(), "w");
   ASSERT(gLogger.fp);
 }
 

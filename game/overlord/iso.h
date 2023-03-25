@@ -6,8 +6,9 @@
  * This is a huge mess
  */
 
-#include "common/common_types.h"
 #include "isocommon.h"
+
+#include "common/common_types.h"
 
 extern s32 gFakeVAGClockPaused;
 extern s32 gFakeVAGClockRunning;
@@ -26,9 +27,16 @@ struct VagDir {
   VagDirEntry vag[VAG_COUNT];
 };
 
+static constexpr int VAG_COUNT_JAK2 = 2728;
+struct VagDirJak2 {
+  u32 count;
+  VagDirEntry vag[VAG_COUNT_JAK2];
+};
+
 void iso_init_globals();
 FileRecord* FindISOFile(const char* name);
 u32 GetISOFileLength(FileRecord* f);
 u32 InitISOFS(const char* fs_mode, const char* loading_screen);
 VagDirEntry* FindVAGFile(const char* name);
 s32 GetVAGStreamPos();
+void SetVAGVol();

@@ -1,10 +1,11 @@
 #include "Generic2.h"
 
 #include "game/graphics/opengl_renderer/AdgifHandler.h"
+
 #include "third-party/imgui/imgui.h"
 
 Generic2::Generic2(const std::string& name,
-                   BucketId my_id,
+                   int my_id,
                    u32 num_verts,
                    u32 num_frags,
                    u32 num_adgif,
@@ -30,6 +31,19 @@ void Generic2::draw_debug_window() {
   ImGui::Checkbox("Alpha 4", &m_alpha_draw_enable[3]);
   ImGui::Checkbox("Alpha 5", &m_alpha_draw_enable[4]);
   ImGui::Checkbox("Alpha 6", &m_alpha_draw_enable[5]);
+  ImGui::Checkbox("Alpha 7", &m_alpha_draw_enable[6]);
+
+  ImGui::Text("Max Seen:");
+  ImGui::Text(" frag: %d/%d %.1f%%", m_max_frags_seen, (int)m_fragments.size(),
+              100.f * m_max_frags_seen / (float)m_fragments.size());
+  ImGui::Text(" vert: %d/%d %.1f%%", m_max_verts_seen, (int)m_verts.size(),
+              100.f * m_max_verts_seen / (float)m_verts.size());
+  ImGui::Text(" adgif: %d/%d %.1f%%", m_max_frags_seen, (int)m_adgifs.size(),
+              100.f * m_max_adgifs_seen / (float)m_adgifs.size());
+  ImGui::Text(" idx: %d/%d %.1f%%", m_max_frags_seen, (int)m_indices.size(),
+              100.f * m_max_indices_seen / (float)m_indices.size());
+  ImGui::Text(" bucket: %d/%d %.1f%%", m_max_frags_seen, (int)m_fragments.size(),
+              100.f * m_max_frags_seen / (float)m_fragments.size());
 }
 
 /*!
@@ -39,6 +53,13 @@ void Generic2::draw_debug_window() {
  * and then return.
  */
 void Generic2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  render_in_mode(dma, render_state, prof, Mode::NORMAL);
+}
+
+void Generic2::render_in_mode(DmaFollower& dma,
+                              SharedRenderState* render_state,
+                              ScopedProfilerNode& prof,
+                              Mode mode) {
   // completely clear out state. These will get populated by the rendering functions, then displayed
   // by draw_debug_window() if the user opens that window
   m_debug.clear();
@@ -57,14 +78,32 @@ void Generic2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedP
   {
     // our first pass is to go over the DMA chain from the game and extract the data into buffers
     auto p = prof.make_scoped_child("dma");
-    process_dma(dma, render_state->next_bucket);
+    switch (mode) {
+      case Mode::NORMAL:
+        process_dma(dma, render_state->next_bucket);
+        break;
+      case Mode::LIGHTNING:
+        process_dma_lightning(dma, render_state->next_bucket);
+        break;
+      default:
+        ASSERT_NOT_REACHED();
+    }
   }
 
   {
     // the next pass is to look at all of that data, and figure out the best order to draw it
     // using OpenGL
     auto p = prof.make_scoped_child("setup");
-    setup_draws();
+    switch (mode) {
+      case Mode::NORMAL:
+        setup_draws(true);
+        break;
+      case Mode::LIGHTNING:
+        setup_draws(false);
+        break;
+      default:
+        ASSERT_NOT_REACHED();
+    }
   }
 
   {

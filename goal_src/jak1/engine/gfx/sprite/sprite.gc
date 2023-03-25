@@ -1,0 +1,1004 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: sprite.gc
+;; name in dgo: sprite
+;; dgos: GAME, ENGINE
+
+;; the sprite renderer draw 2D or 3D sprites, plus the old circular "fake shadow".
+
+;; Most of the work is done on VU1 and this code just sets up
+;; DMA lists for chunks of sprites
+
+;; at most, 48 sprites may be rendered per chunk.
+(defconstant SPRITE_CHUNK_COUNT 48)
+
+;; This is the first quadword of the data sent to VU1.
+;; It contains the number of sprites that should be drawn.
+(deftype sprite-header (structure)
+  ((header      qword 1 :inline :offset-assert   0)
+   (num-sprites int32           :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(defun sprite-setup-header ((hdr sprite-header) (num-sprites int))
+  "Setup a sprite-header for the given number of sprites"
+  (set! (-> hdr num-sprites) num-sprites)
+  (none)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; HVDF Data
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; the meaning of this is unknown.
+;; the first one in the list is special and the remaining 75 can be allocated/freed.
+(deftype sprite-hvdf-data (structure)
+  ((data qword 76 :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4c0
+  :flag-assert         #x9000004c0
+  )
+
+;; Each byte indicates if the corresponding entry in
+;; sprite-hvdf-data is allocated or not.
+(deftype sprite-hvdf-control (structure)
+  ((alloc int8 76 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4c
+  :flag-assert         #x90000004c
+  )
+
+(define *sprite-hvdf-data* (new 'global 'sprite-hvdf-data))
+(define *sprite-hvdf-control* (new 'global 'sprite-hvdf-control))
+
+;; make all unallocated...
+(dotimes (v1-6 76)
+  (set! (-> *sprite-hvdf-control* alloc v1-6) 0)
+  )
+
+;; except for the first.
+(set! (-> *sprite-hvdf-control* alloc 0) 1)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; aux list
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; this list is not currently understood, but the sparticle system
+;; pushes stuff onto it.
+
+(deftype sprite-aux-list (basic)
+  ((num-entries int32   :offset-assert   4) ;; capacity
+   (entry       int32   :offset-assert   8) ;; current entry
+   (data        sprite-vec-data-2d 1 :offset-assert  12) ;; "dynamic" array.
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  (:methods
+    (new (symbol type int) _type_ 0)
+    )
+  )
+
+(defmethod new sprite-aux-list ((allocation symbol) (type-to-make type) (size int))
+  "Allocate a sprite-aux-list with room for size 4-byte entries"
+
+  (#when PC_BIG_MEMORY
+    (*! size SPRITE_MAX_AMOUNT_MULT))
+
+  (let ((v0-0 (object-new allocation type-to-make
+                          (the-as int (+ (-> type-to-make size) (the-as uint (* (+ size -1) 4))))
+                          )
+          )
+        )
+    (set! (-> v0-0 num-entries) size)
+    (set! (-> v0-0 entry) 0)
+    v0-0
+    )
+  )
+
+(defmethod inspect sprite-aux-list ((obj sprite-aux-list))
+  (format #t "[~X] sprite-aux-list:~%" obj)
+  (format #t "~Tnum-entries: ~D~%" (-> obj num-entries))
+  (format #t "~Tentry: ~D~%" (-> obj entry))
+  (dotimes (s5-0 (-> obj entry))
+   (format #t "~T~D : ~X~%" s5-0 (-> obj data s5-0))
+   )
+  (the-as sprite-aux-list #f)
+  )
+
+(define *sprite-aux-list* (new 'global 'sprite-aux-list 256))
+
+(defun clear-sprite-aux-list ()
+  "Remove everything from the sprite aux list"
+  (set! (-> *sprite-aux-list* entry) 0)
+  (none)
+  )
+
+(defun add-to-sprite-aux-list ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sprite-vec-data-3d))
+  (let ((v1-0 *sprite-aux-list*))
+    (when (< (-> v1-0 entry) (-> v1-0 num-entries))
+      (set! (-> v1-0 data (-> v1-0 entry)) (-> arg1 sprite))
+      (+! (-> v1-0 entry) 1)
+      )
+    )
+  (set! (-> arg2 r-g-b-a w) 0.0)
+  0
+  (none)
+  )
+
+;; The sprite-frame-data is data transferred to VU1 and remains there for all chunks of sprites.
+(deftype sprite-frame-data (structure)
+  ((cdata              vector       16 :inline :offset-assert   0)
+   (hmge-scale         vector       :inline    :offset        256) ;; math camera value
+   (consts             vector       :inline    :offset-assert 272)
+   (pfog0              float                   :offset        272) ;; math camera value
+   (deg-to-rad         float                   :offset        276) ;; 2*pi / 65,536
+   (min-scale          float                   :offset        280)
+   (inv-area           float                   :offset        284)
+   (adgif-giftag       gs-gif-tag   :inline    :offset-assert 288) ;; sets adgif shader values
+   (sprite-2d-giftag   gs-gif-tag   :inline    :offset-assert 304) ;; draws 2d sprites
+   (sprite-2d-giftag-2 gs-gif-tag   :inline    :offset-assert 320) ;; 2d with different settings
+   (sincos-01          vector       :inline    :offset-assert 336)
+   (sincos-23          vector       :inline    :offset-assert 352)
+   (sincos-45          vector       :inline    :offset-assert 368)
+   (sincos-67          vector       :inline    :offset-assert 384)
+   (sincos-89          vector       :inline    :offset-assert 400)
+   (basis-x            vector       :inline    :offset-assert 416)
+   (basis-y            vector       :inline    :offset-assert 432)
+   (sprite-3d-giftag   gs-gif-tag   :inline    :offset-assert 448) ;; draws 3d sprites
+   (screen-shader      adgif-shader :inline    :offset-assert 464)
+   (clipped-giftag     gs-gif-tag   :inline    :offset-assert 544)
+   (inv-hmge-scale     vector       :inline    :offset-assert 560) ;; math camera value
+   (stq-offset         vector       :inline    :offset-assert 576)
+   (stq-scale          vector       :inline    :offset-assert 592)
+   (rgba-plain         qword        :inline    :offset-assert 608)
+   (warp-giftag        gs-gif-tag   :inline    :offset-assert 624)
+   (fog-clamp          vector       :inline    :offset-assert 640)
+   (fog-min            float                   :offset        640)
+   (fog-max            float                   :offset        644)
+   (max-scale          float                   :offset        648)
+   )
+  :method-count-assert 9
+  :size-assert         #x290
+  :flag-assert         #x900000290
+  )
+
+(defun sprite-setup-frame-data ((data sprite-frame-data) (tbp-offset int))
+  "Build the sprite-frame-data. This should be done once per frame"
+  (set! (-> data hmge-scale quad) (-> *math-camera* hmge-scale quad))
+  (set! (-> data inv-hmge-scale quad) (-> *math-camera* inv-hmge-scale quad))
+  (set! (-> data pfog0) (-> *math-camera* pfog0))
+  (set! (-> data deg-to-rad) 0.000095873795)
+
+  ;; the adgif-giftag sets GS registers according to the adgif shader using
+  ;; the A+D mode
+  ;; each adgif has 5x registers, so we set up a tag to do 5x a+d's
+  (set! (-> data adgif-giftag tag) (new 'static 'gif-tag64 :nloop #x1 :nreg #x5))
+  (set! (-> data adgif-giftag regs)
+        (new 'static 'gif-tag-regs
+             :regs0 (gif-reg-id a+d)
+             :regs1 (gif-reg-id a+d)
+             :regs2 (gif-reg-id a+d)
+             :regs3 (gif-reg-id a+d)
+             :regs4 (gif-reg-id a+d)
+             )
+        )
+
+  ;; I believe this is used for the group 0's in 2d
+  (set! (-> data sprite-2d-giftag tag)
+        (new 'static 'gif-tag64
+             :nloop #x1
+             :eop #x1
+             :pre #x1
+             :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :tme #x1 :fge #x1 :abe #x1)
+             :nreg #x9
+             )
+
+        )
+  (set! (-> data sprite-2d-giftag regs)
+   (new 'static 'gif-tag-regs
+    :regs0 (gif-reg-id rgbaq)
+    :regs1 (gif-reg-id st)
+    :regs2 (gif-reg-id xyzf2)
+    :regs3 (gif-reg-id st)
+    :regs4 (gif-reg-id xyzf2)
+    :regs5 (gif-reg-id st)
+    :regs6 (gif-reg-id xyzf2)
+    :regs7 (gif-reg-id st)
+    :regs8 (gif-reg-id xyzf2)
+    )
+   )
+
+
+  ;; group 1's in 2d
+  (set! (-> data sprite-2d-giftag-2 tag)
+        (new 'static 'gif-tag64
+             :nloop #x1
+             :eop #x1
+             :pre #x1
+             :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :tme #x1 :abe #x1)
+             :nreg #x9)
+        )
+  (set! (-> data sprite-2d-giftag-2 regs)
+   (new 'static 'gif-tag-regs
+    :regs0 (gif-reg-id rgbaq)
+    :regs1 (gif-reg-id st)
+    :regs2 (gif-reg-id xyzf2)
+    :regs3 (gif-reg-id st)
+    :regs4 (gif-reg-id xyzf2)
+    :regs5 (gif-reg-id st)
+    :regs6 (gif-reg-id xyzf2)
+    :regs7 (gif-reg-id st)
+    :regs8 (gif-reg-id xyzf2)
+    )
+   )
+
+  ;; 3d's don't have different groups?
+  (set! (-> data sprite-3d-giftag tag)
+        (new 'static 'gif-tag64
+             :nloop #x1
+             :eop #x1
+             :pre #x1
+             :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :tme #x1 :fge #x1 :abe #x1)
+             :nreg #xc
+             )
+
+        )
+  ;; note that we have rgbaq's per vertex in 3d
+  (set! (-> data sprite-3d-giftag regs)
+   (new 'static 'gif-tag-regs
+    :regs0 (gif-reg-id st)
+    :regs1 (gif-reg-id rgbaq)
+    :regs2 (gif-reg-id xyzf2)
+    :regs3 (gif-reg-id st)
+    :regs4 (gif-reg-id rgbaq)
+    :regs5 (gif-reg-id xyzf2)
+    :regs6 (gif-reg-id st)
+    :regs7 (gif-reg-id rgbaq)
+    :regs8 (gif-reg-id xyzf2)
+    :regs9 (gif-reg-id st)
+    :regs10 (gif-reg-id rgbaq)
+    :regs11 (gif-reg-id xyzf2)
+    )
+   )
+
+  ;; ??
+  (set! (-> data clipped-giftag tag)
+        (new 'static 'gif-tag64
+             :nloop #x1
+             :eop #x1
+             :pre #x1
+             :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :tme #x1 :fge #x1 :abe #x1)
+             :nreg #x3
+             )
+        )
+
+  (set! (-> data clipped-giftag regs)
+   (new 'static 'gif-tag-regs
+    :regs0 (gif-reg-id st)
+    :regs1 (gif-reg-id rgbaq)
+    :regs2 (gif-reg-id xyzf2)
+    )
+   )
+
+  ;; not sure what this is either
+  (set! (-> data warp-giftag tag)
+        (new 'static 'gif-tag64
+             :nloop #x1
+             :eop #x1
+             :pre #x1
+             :prim (new 'static 'gs-prim :prim (gs-prim-type tri) :tme #x1 :abe #x1)
+             :nreg #xc
+             )
+        )
+
+  (set! (-> data warp-giftag regs)
+   (new 'static 'gif-tag-regs
+    :regs0 (gif-reg-id st)
+    :regs1 (gif-reg-id rgbaq)
+    :regs2 (gif-reg-id xyzf2)
+    :regs3 (gif-reg-id st)
+    :regs4 (gif-reg-id rgbaq)
+    :regs5 (gif-reg-id xyzf2)
+    :regs6 (gif-reg-id st)
+    :regs7 (gif-reg-id rgbaq)
+    :regs8 (gif-reg-id xyzf2)
+    )
+   )
+
+  ;; set up an adgif.
+  (set! (-> data screen-shader prims 1) (gs-reg64 tex0-1))
+  (set! (-> data screen-shader tex0) (new 'static 'gs-tex0 :tbw #x8 :tw #xa :th #x8 :tbp0 (* tbp-offset 32)))
+  (set! (-> data screen-shader prims 3) (gs-reg64 tex1-1))
+  (set! (-> data screen-shader tex1) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+  (set! (-> data screen-shader prims 5) (gs-reg64 miptbp1-1))
+  (set! (-> data screen-shader miptbp1) (new 'static 'gs-miptbp))
+  (set! (-> data screen-shader clamp-reg) (gs-reg64 clamp-1))
+  (set! (-> data screen-shader clamp) (new 'static 'gs-clamp :wms (gs-tex-wrap-mode region-clamp)
+                                                             :wmt (gs-tex-wrap-mode region-clamp)
+                                                             :maxu 639 :maxv 239))
+  (set! (-> data screen-shader prims 9) (gs-reg64 alpha-1))
+  (set! (-> data screen-shader alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
+
+  ;; sin/cosine table
+  (set! (-> data sincos-01 z) 0.999998)
+  (set! (-> data sincos-23 z) -0.16666014)
+  (set! (-> data sincos-45 z) 0.008326521)
+  (set! (-> data sincos-67 z) -0.0001956241)
+  (set! (-> data sincos-89 z) 0.0000023042373)
+  (set! (-> data sincos-01 w) 1.0)
+  (set! (-> data sincos-23 w) -0.49998003)
+  (set! (-> data sincos-45 w) 0.041620404)
+  (set! (-> data sincos-67 w) -0.0013636408)
+  (set! (-> data sincos-89 w) 0.000020170546)
+
+  ;; math camera stuff
+  (set! (-> data basis-x quad) (the-as uint128 0))
+  (set! (-> data basis-x x) (- (-> *math-camera* perspective vector 0 x)))
+  (with-pc
+    (when (pc-cheats? (-> *pc-settings* cheats) mirror)
+        (*! (-> data basis-x x) -1.0)))
+  (set! (-> data basis-y quad) (the-as uint128 0))
+  (set! (-> data basis-y y) (- (-> *math-camera* perspective vector 1 y)))
+  (set! (-> data min-scale) (sqrtf (* (/ 1.0 (-> data basis-x x)) (/ 1.0 (-> data basis-y y)))))
+  (set! (-> data inv-area) (/ 1.0 (* (-> data min-scale) (-> data min-scale))))
+  ;; ??
+  (set-vector! (-> data cdata 0) -0.5 -0.5 0.0 0.0)
+  (set-vector! (-> data cdata 1) 0.5 -0.5 0.0 0.0)
+  (set-vector! (-> data cdata 2) 0.5 0.5 0.0 0.0)
+  (set-vector! (-> data cdata 3) -0.5 0.5 0.0 0.0)
+  (set-vector! (-> data cdata 4) 0.0 -0.5 0.0 0.0)
+  (set-vector! (-> data cdata 5) 1.0 -0.5 0.0 0.0)
+  (set-vector! (-> data cdata 6) 1.0 0.5 0.0 0.0)
+  (set-vector! (-> data cdata 7) 0.0 0.5 0.0 0.0)
+  (set-vector! (-> data cdata 8) 0.0 0.0 1.0 0.0)
+  (set-vector! (-> data cdata 9) 1.0 0.0 1.0 0.0)
+  (set-vector! (-> data cdata 10) 1.0 1.0 1.0 0.0)
+  (set-vector! (-> data cdata 11) 0.0 1.0 1.0 0.0)
+  (set-vector! (-> data cdata 12) -0.5 0.0 -0.5 0.0)
+  (set-vector! (-> data cdata 13) 0.5 0.0 -0.5 0.0)
+  (set-vector! (-> data cdata 14) 0.5 0.0 0.5 0.0)
+  (set-vector! (-> data cdata 15) -0.5 0.0 0.5 0.0)
+
+  ;; perspective correction stuff
+  (set-vector! (-> data stq-offset)
+   -1792.0
+   (+ -2048.0 (the float (-> *video-parms* screen-hy)))
+   0.0
+   0.0
+   )
+  (set-vector! (-> data stq-scale) 0.0009765625 0.00390625 1.0 1.0)
+
+  ;; ??
+  (set! (-> data rgba-plain vector4w x) 128)
+  (set! (-> data rgba-plain vector4w y) 128)
+  (set! (-> data rgba-plain vector4w z) 128)
+  (set! (-> data rgba-plain vector4w w) 64)
+  (set! (-> data fog-clamp x) (-> *math-camera* fog-min))
+  (set! (-> data fog-clamp y) (-> *math-camera* fog-max))
+  (set! (-> data fog-clamp z) 2048.0)
+  (none)
+  )
+
+;; we need to at least put something here so dma-buffer-add-vu-function doesn't crash.
+(define sprite-vu1-block (new 'static 'vu-function))
+
+;;;;;;;;;;;;;;;;;;
+;; sprite-arrays
+;;;;;;;;;;;;;;;;;;
+
+;; There are two global sprite arrays - one for 2d and one for 3d
+;; Each array has two groups, but 3d sprites only use group 0.
+;; Data from these arrarys is used in sprite-draw to build DMA lists.
+
+(defmethod new sprite-array-2d ((allocation symbol) (type-to-make type) (group-0-size int) (group-1-size int))
+  "Allocate a sprite-array for 2d sprites.  There are two groups, each can contain the given number."
+  (#when PC_BIG_MEMORY
+    (*! group-0-size SPRITE_MAX_AMOUNT_MULT)
+    ; (*! group-1-size SPRITE_MAX_AMOUNT_MULT)
+    )
+  (let* ((sprite-count (+ group-0-size group-1-size))
+         (vec-data-size (* 3 sprite-count)) ;; 3 quadwords of vec-data per sprite
+         (adgif-data-size (* 5 sprite-count)) ;; 5 quadwords of adgif data per sprite
+         (v0-0 (object-new allocation type-to-make
+                           (the-as int (+ (-> type-to-make size) (the-as uint (* (+ (+ adgif-data-size -1) vec-data-size) 16))))
+                           )
+           )
+         )
+    (set! (-> v0-0 num-sprites 0) group-0-size)
+    (set! (-> v0-0 num-sprites 1) group-1-size)
+    (set! (-> v0-0 num-valid 0) 0)
+    (set! (-> v0-0 num-valid 1) 0)
+
+    ;; internally, we put the vec-data and then the adgif-data
+    (set! (-> v0-0 vec-data) (-> v0-0 data))
+    (set! (-> v0-0 adgif-data) (the-as (inline-array adgif-shader) (&-> v0-0 data vec-data-size)))
+    v0-0
+    )
+  )
+
+(defmethod new sprite-array-3d ((allocation symbol) (type-to-make type) (group-0-size int) (group-1-size int))
+  "Allocate a sprite-array for 3d sprites.  There are two groups, each can contain the given number of sprites.
+   Group 1 size is zero in practice for 3d."
+  (#when PC_BIG_MEMORY
+    (*! group-0-size SPRITE_MAX_AMOUNT_MULT)
+    ; (*! group-1-size SPRITE_MAX_AMOUNT_MULT)
+    )
+  (let* ((sprite-count (+ group-0-size group-1-size))
+         (vec-data-size (* 3 sprite-count))
+         (adgif-data-size (* 5 sprite-count))
+         (v0-0 (object-new allocation type-to-make
+           (the-as int (+ (-> type-to-make size) (the-as uint (* (+ (+ adgif-data-size -1) vec-data-size) 16))))
+           )
+          )
+         )
+   (set! (-> v0-0 num-sprites 0) group-0-size)
+   (set! (-> v0-0 num-sprites 1) group-1-size)
+   (set! (-> v0-0 num-valid 0) 0)
+   (set! (-> v0-0 num-valid 1) 0)
+   (set! (-> v0-0 vec-data) (-> v0-0 data))
+   (set! (-> v0-0 adgif-data) (the-as (inline-array adgif-shader) (&-> v0-0 data vec-data-size)))
+   v0-0
+   )
+  )
+
+(define *sprite-array-2d* (new 'global 'sprite-array-2d 1920 128))
+;; note that there are 0 group 1 3d's
+(define *sprite-array-3d* (new 'global 'sprite-array-3d 256 0))
+
+(defun sprite-set-3d-quaternion! ((arg0 sprite-vec-data-3d) (arg1 quaternion))
+  "Set the quaternion for a 3d sprite.
+   NOTE: the w component of the quaternion is not stored and
+   the original w value is preserved."
+  (local-vars (v1-0 float) (v1-1 float))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+   (init-vf0-vector)
+   (cond
+    ((< (-> arg1 w) 0.0)
+     (.lvf vf1 (&-> arg0 qx-qy-qz-sy quad))
+     (.lvf vf2 (&-> arg1 vec quad))
+     (.sub.vf vf1 vf0 vf2 :mask #b111)
+     (.svf (&-> arg0 qx-qy-qz-sy quad) vf1)
+     (.mov v1-0 vf1)
+     )
+    (else
+     (.lvf vf1 (&-> arg0 qx-qy-qz-sy quad))
+     (.lvf vf2 (&-> arg1 vec quad))
+     (.add.vf vf1 vf0 vf2 :mask #b111)
+     (.svf (&-> arg0 qx-qy-qz-sy quad) vf1)
+     (.mov v1-1 vf1)
+     )
+    )
+   arg1
+   )
+  )
+
+(defun sprite-get-3d-quaternion! ((arg0 quaternion) (arg1 sprite-vec-data-3d))
+  "Get a quaternion. It's stored with only 3 components, so qw is
+   recalculated."
+  (let ((f0-0 (-> arg1 qx-qy-qz-sy x))
+        (f1-0 (-> arg1 qx-qy-qz-sy y))
+        (f3-0 (-> arg1 qx-qy-qz-sy z))
+        )
+   (set! (-> arg0 x) f0-0)
+   (set! (-> arg0 y) f1-0)
+   (set! (-> arg0 z) f3-0)
+   (set!
+    (-> arg0 w)
+    (sqrtf (- (- (- 1.0 (* f3-0 f3-0)) (* f1-0 f1-0)) (* f0-0 f0-0)))
+    )
+   )
+  arg0
+  )
+
+(defun sprite-add-matrix-data ((dma-buff dma-buffer) (matrix-mode uint))
+  "Add matrix data to a dma-buffer.
+   Mode 0 = send (-> *math-camera* camera-temp)
+   Mode 1 = screen sprites, like the HUD"
+  (let ((count 900)) ;; maybe address??
+    (cond
+      ((zero? matrix-mode)
+
+       ;; upload to VU1 memory setup
+       (dma-buffer-add-cnt-vif2 dma-buff 5
+                  (new 'static 'vif-tag :cmd (vif-cmd stcycl)
+                                        :imm (new 'static 'vif-stcycl-imm :cl 4 :wl 4))
+                  (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num 5 ;; matrix + qword
+                                        :imm (new 'static 'vif-unpack-imm :addr count))
+                  )
+
+       ;; sent the camera-temp matrix
+       ;; these weren't done through the usual macros which is strange
+       (let* ((mtx (the-as matrix (-> dma-buff base)))
+              (t1-0 (-> *math-camera* camera-temp))
+              (a2-4 (-> t1-0 vector 0 quad))
+              (a3-4 (-> t1-0 vector 1 quad))
+              (t0-4 (-> t1-0 vector 2 quad))
+              (t1-1 (-> t1-0 vector 3 quad))
+              )
+         (set! (-> mtx vector 0 quad) a2-4)
+         (set! (-> mtx vector 1 quad) a3-4)
+         (set! (-> mtx vector 2 quad) t0-4)
+         (set! (-> mtx vector 3 quad) t1-1)
+         )
+       (&+! (-> dma-buff base) 64)
+
+       ;; also send this thing.
+       (let ((v1-1 (+ count 4)))
+         (set! (-> (the-as (pointer uint128) (-> dma-buff base)))
+          (-> *math-camera* hvdf-off quad)
+          )
+         (&+! (-> dma-buff base) 16)
+         (+ v1-1 1)
+         )
+       )
+
+      ((= matrix-mode 1)
+       (dma-buffer-add-cnt-vif2 dma-buff 80
+                  (new 'static 'vif-tag :cmd (vif-cmd stcycl)
+                                        :imm (new 'static 'vif-stcycl-imm :cl 4 :wl 4))
+                  (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num 80 ;; matrix + qword + 75 qword table
+                                        :imm (new 'static 'vif-unpack-imm :addr count))
+                  )
+
+       (let ((mtx2 (the-as matrix (-> dma-buff base)))
+             (f1-0 (-> *math-camera* perspective vector 0 x))
+             (f2-0 (-> *math-camera* perspective vector 1 y))
+             (f0-1 (* -1.9996 (-> *math-camera* perspective vector 0 x)))
+             )
+         (with-pc
+           (when (not (-> *pc-settings* use-vis?))
+             ;; when the game is in widescreen, HUD sprites are generally enlarged, which looks terrible.
+             ;; this reverts that.
+             (*! f1-0 (-> *pc-settings* aspect-ratio-scale))
+             (*! f0-1 (-> *pc-settings* aspect-ratio-scale))
+             )
+          (when (pc-cheats? (-> *pc-settings* cheats) mirror)
+              (*! f1-0 -1.0)
+              (*! f0-1 -1.0)
+              )
+           )
+         (set-vector! (-> mtx2 vector 0) f0-1 0.0 0.0 0.0)
+         (set-vector! (-> mtx2 vector 1) 0.0 (- (* (/ f2-0 f1-0) f0-1)) 0.0 0.0)
+         (set-vector! (-> mtx2 vector 2) 0.0 0.0 (- f0-1) 0.0)
+         (set-vector! (-> mtx2 vector 3)
+          0.0
+          0.0
+          (* 500000000.0 f0-1)
+          (* (* 60.0 f0-1) (-> *math-camera* pfog0))
+          )
+         )
+       (&+! (-> dma-buff base) 64)
+       (let ((v1-2 (+ count 4)))
+         (let ((a1-16 (the-as vector (-> dma-buff base))))
+           (set! (-> a1-16 quad) (-> *math-camera* hvdf-off quad))
+           (set! (-> a1-16 x) 2048.0)
+           (set! (-> a1-16 y) 2048.0)
+           (set! (-> a1-16 z) (-> *math-camera* hvdf-off z))
+           )
+         (&+! (-> dma-buff base) 16)
+         (let ((v1-3 (+ v1-2 1)))
+           (dotimes (hvdf-idx 75)
+             (set!
+              (-> (the-as (pointer uint128) (-> dma-buff base)))
+              (-> *sprite-hvdf-data* data (+ hvdf-idx 1) quad)
+              )
+             (&+! (-> dma-buff base) 16)
+             (+! v1-3 1)
+             )
+           )
+         )
+       )
+      )
+    )
+  0
+  (none)
+  )
+
+#|
+(defun sprite-add-frame-data ((dma-buff dma-buffer) (tbp-offset uint))
+  "Upload the frame data."
+  (let ((s5-0 41)) ;; qwc of frame data.
+    (dma-buffer-add-cnt-vif2 dma-buff s5-0
+               (new 'static 'vif-tag :cmd (vif-cmd stcycl)
+                                     :imm (new 'static 'vif-stcycl-imm :cl 4 :wl 4))
+               (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num s5-0
+                                     :imm (new 'static 'vif-unpack-imm :addr 980))
+               )
+    ;; setup frame data directly in the dma buffer.
+    (sprite-setup-frame-data
+     (the-as sprite-frame-data (-> dma-buff base))
+     (the-as int tbp-offset)
+     )
+    (&+! (-> dma-buff base) (* s5-0 16))
+    )
+  (none)
+  )
+|#
+
+(defun sprite-add-frame-data ((dma-buff dma-buffer) (tbp-offset uint))
+  (let ((s5-0 41))
+   (let* ((v1-0 dma-buff)
+          (pkt (the-as dma-packet (-> v1-0 base)))
+          )
+    (set! (-> pkt dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc s5-0))
+    (set! (-> pkt vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set!
+     (-> pkt vif1)
+     (new 'static 'vif-tag :imm #x3d4 :cmd (vif-cmd unpack-v4-32) :num s5-0)
+     )
+    (set! (-> v1-0 base) (&+ (the-as pointer pkt) 16))
+    )
+   (sprite-setup-frame-data
+    (the-as sprite-frame-data (-> dma-buff base))
+    (the-as int tbp-offset)
+    )
+   (&+! (-> dma-buff base) (* s5-0 16))
+   )
+  (none)
+  )
+
+(defun sprite-add-2d-chunk ((sprites sprite-array-2d) (start-sprite-idx int) (num-sprites int) (dma-buff dma-buffer) (mscal-addr int))
+  "Upload sprite data from elements in the array."
+  ;; first packet is just the header
+  (let ((qwc-pkt1 1))
+    (dma-buffer-add-cnt-vif2 dma-buff qwc-pkt1
+               (new 'static 'vif-tag :cmd (vif-cmd stcycl)
+                                     :imm (new 'static 'vif-stcycl-imm :cl 4 :wl 4))
+               (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc-pkt1
+                                     :imm (new 'static 'vif-unpack-imm :flg 1))
+               )
+    ;; set up the header data.
+    (sprite-setup-header (the-as sprite-header (-> dma-buff base)) num-sprites)
+    (&+! (-> dma-buff base) (* qwc-pkt1 16))
+    )
+
+  ;; second packet is vector data (3 qw / sprite)
+  (let ((qwc-pkt2 (* 3 num-sprites)))
+    ;; we do a ref to the vec-data and don't actually copy it into the dma-buffer
+    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt2 (&+ (-> sprites vec-data) (* 48 start-sprite-idx))
+               (new 'static 'vif-tag :cmd (vif-cmd nop))
+               (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc-pkt2
+                                     :imm (new 'static 'vif-unpack-imm :flg 1 :addr 1))
+               )
+    )
+  
+  #|
+  ;(when (= mscal-addr 3)
+    (dotimes (i num-sprites)
+      (let ((spidx (+ i start-sprite-idx)))
+        ;(when (or (= spidx (-> sprites num-sprites 0)) (= spidx (+ 1 (-> sprites num-sprites 0))))
+          (let ((data (the sprite-vec-data-2d (&+ (-> sprites vec-data) (* 48 (+ i start-sprite-idx))))))
+            (let ((vec (-> data x-y-z-sx)))
+              (format 0 "sp: ~d ~f ~f ~f~%" (+ i start-sprite-idx) (-> vec x) (-> vec y) (-> vec z))
+              )
+            )
+         ; )
+        )
+      )
+   ; )
+   |#
+
+
+  ;; third packet is adgif data (5 qw/sprite)
+  (let ((qwc-pkt3 (* 5 num-sprites)))
+    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt3 (&+ (-> sprites adgif-data) (* 80 start-sprite-idx))
+               (new 'static 'vif-tag :cmd (vif-cmd nop))
+               (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc-pkt3
+                                     :imm (new 'static 'vif-unpack-imm :flg 1 :addr 145))
+               )
+    )
+
+  ;; fourth packet runs the renderer!
+  (dma-buffer-add-cnt-vif2 dma-buff 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
+                                      (new 'static 'vif-tag :cmd (vif-cmd mscal) :imm mscal-addr)
+                                      )
+  (none)
+  )
+
+(defun sprite-add-2d-all ((sprites sprite-array-2d) (dma-buff dma-buffer) (group-idx int))
+  "Builds a DMA list for sprites"
+  ;; skip if we have no sprites
+  (when (> (-> sprites num-valid group-idx) 0)
+    ;; we'll do batches of up to 48 at a time.
+    (let ((current-sprite-idx 0)
+          (mscal-addr 3)
+          )
+      (when (= group-idx 1)
+        ;; if we're doing group 1 sprites, start at the first sprite in group 1.
+        (set! current-sprite-idx (-> sprites num-sprites 0))
+        ;; and use the other mpg.
+        (set! mscal-addr 109)
+        )
+      
+      ;;(format #t "group ~d 2D ~d~%" group-idx (-> sprites num-valid group-idx))
+
+      ;; loop over chunks
+      (let ((remaining-sprites (-> sprites num-valid group-idx)))
+        (while (< 48 remaining-sprites)
+          (sprite-add-2d-chunk sprites current-sprite-idx 48 dma-buff mscal-addr)
+          (+! current-sprite-idx 48)
+          (+! remaining-sprites -48)
+          )
+        (sprite-add-2d-chunk sprites current-sprite-idx remaining-sprites dma-buff mscal-addr)
+        )
+      )
+    )
+  (none)
+  )
+
+(defun sprite-add-3d-chunk ((sprites sprite-array-3d) (start-sprite-idx int) (num-sprites int) (dma-buff dma-buffer))
+  "Add DMA list data for up to 48 sprites. This is very similar to the 2D one, see that for more documentation"
+  ;; first packet is just the header
+  (let ((qwc-pkt1 1))
+    (dma-buffer-add-cnt-vif2 dma-buff qwc-pkt1
+               (new 'static 'vif-tag :cmd (vif-cmd stcycl)
+                                     :imm (new 'static 'vif-stcycl-imm :cl 4 :wl 4))
+               (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc-pkt1
+                                     :imm (new 'static 'vif-unpack-imm :flg 1))
+               )
+    ;; set up the header data.
+    (sprite-setup-header (the-as sprite-header (-> dma-buff base)) num-sprites)
+    (&+! (-> dma-buff base) (* qwc-pkt1 16))
+    )
+
+  ;; second packet is vector data (3 qw / sprite)
+  (let ((qwc-pkt2 (* 3 num-sprites)))
+    ;; we do a ref to the vec-data and don't actually copy it into the dma-buffer
+    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt2 (&+ (-> sprites vec-data) (* 48 start-sprite-idx))
+               (new 'static 'vif-tag :cmd (vif-cmd nop))
+               (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc-pkt2
+                                     :imm (new 'static 'vif-unpack-imm :flg 1 :addr 1))
+               )
+    )
+
+  ;; third packet is adgif data (5 qw/sprite)
+  (let ((qwc-pkt3 (* 5 num-sprites)))
+    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt3 (&+ (-> sprites adgif-data) (* 80 start-sprite-idx))
+               (new 'static 'vif-tag :cmd (vif-cmd nop))
+               (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc-pkt3
+                                     :imm (new 'static 'vif-unpack-imm :flg 1 :addr 145))
+               )
+    )
+
+  ;; fourth packet runs the renderer!
+  (dma-buffer-add-cnt-vif2 dma-buff 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
+                                      (new 'static 'vif-tag :cmd (vif-cmd mscal) :imm 211)
+                                      )
+  (none)
+  )
+
+(defun sprite-add-3d-all ((sprites sprite-array-3d) (dma-buff dma-buffer) (group-idx int))
+  "Set up DMA for all 3d sprites"
+  (when (> (-> sprites num-valid group-idx) 0)
+    ;; pick the starting idx
+    (let ((current-sprite-idx
+           (if (zero? group-idx)
+               0
+               (-> sprites num-sprites 0)
+               )
+            )
+          (remaining-sprites (-> sprites num-valid group-idx))
+          )
+      ;; loop over chunks
+      (while (< 48 remaining-sprites)
+        (sprite-add-3d-chunk sprites current-sprite-idx 48 dma-buff)
+        (+! current-sprite-idx 48)
+        (+! remaining-sprites -48)
+        )
+      (sprite-add-3d-chunk sprites current-sprite-idx remaining-sprites dma-buff)
+      )
+    )
+  (none)
+  )
+
+(defun sprite-add-shadow-chunk ((shadow-buff fake-shadow-buffer) (start-idx int) (num-sprites int) (dma-buff dma-buffer))
+  "Add shadow sprites"
+
+  ;; first packet is just the header
+  (let ((qwc-pkt1 1))
+    (dma-buffer-add-cnt-vif2 dma-buff qwc-pkt1
+               (new 'static 'vif-tag :cmd (vif-cmd stcycl)
+                                     :imm (new 'static 'vif-stcycl-imm :cl 4 :wl 4))
+               (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc-pkt1
+                                     :imm (new 'static 'vif-unpack-imm :flg 1))
+               )
+    ;; set up the header data.
+    (sprite-setup-header (the-as sprite-header (-> dma-buff base)) num-sprites)
+    (&+! (-> dma-buff base) (* qwc-pkt1 16))
+    )
+
+  ;; second packet is vector data (3 qw / sprite)
+  (let ((qwc-pkt2 (* 3 num-sprites)))
+    ;; we do a ref to the vec-data and don't actually copy it into the dma-buffer
+    (dma-buffer-add-cnt-vif2 dma-buff qwc-pkt2
+               (new 'static 'vif-tag :cmd (vif-cmd nop))
+               (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc-pkt2
+                                     :imm (new 'static 'vif-unpack-imm :flg 1 :addr 1))
+               )
+    )
+  ;; which we populate inside the dma-buffer, unlike normal sprites
+  (dotimes (sprite-idx num-sprites)
+    (let ((dma-vec-data (the-as (inline-array vector) (-> dma-buff base))))
+      (let ((in-vec-data (-> shadow-buff data (+ start-idx sprite-idx))))
+        (set! (-> dma-vec-data 0 x) (-> in-vec-data px))
+        (set! (-> dma-vec-data 0 y) (-> in-vec-data py))
+        (set! (-> dma-vec-data 0 z) (-> in-vec-data pz))
+        (set! (-> dma-vec-data 0 w) (-> in-vec-data scale))
+        (set! (-> dma-vec-data 1 x) (-> in-vec-data qx))
+        (set! (-> dma-vec-data 1 y) (-> in-vec-data qy))
+        (set! (-> dma-vec-data 1 z) (-> in-vec-data qz))
+        (set! (-> dma-vec-data 1 w) (-> in-vec-data scale))
+        )
+      (set! (-> dma-vec-data 2 x) 128.0)
+      (set! (-> dma-vec-data 2 y) 128.0)
+      (set! (-> dma-vec-data 2 z) 128.0)
+      (set! (-> dma-vec-data 2 w) 40.0)
+      )
+    (&+! (-> dma-buff base) 48)
+    )
+
+  ;; third packet is adgif data (5 qw/sprite)
+  (let ((qwc-pkt3 (* 5 num-sprites)))
+    (dma-buffer-add-cnt-vif2 dma-buff qwc-pkt3
+               (new 'static 'vif-tag :cmd (vif-cmd nop))
+               (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc-pkt3
+                                     :imm (new 'static 'vif-unpack-imm :flg 1 :addr 145))
+               )
+    )
+  ;; again, populated as we go.  This is inefficient, but these shadows were only temporary.
+  (dotimes (si num-sprites)
+    (let ((dma-adgif-data (the-as adgif-shader (-> dma-buff base)))
+          (in-adgif-data (-> shadow-buff data (+ start-idx si)))
+          )
+      (adgif-shader<-texture-simple! dma-adgif-data *shadow-middot-texture*)
+      (if (logtest? (-> in-adgif-data flags) 1)
+          (set! (-> dma-adgif-data alpha) (new 'static 'gs-alpha :b #x2 :d #x1))
+          (set! (-> dma-adgif-data alpha) (new 'static 'gs-alpha :a #x2 :d #x1))
+          )
+      )
+    (&+! (-> dma-buff base) 80)
+    )
+
+  ;; and run
+  (dma-buffer-add-cnt-vif2 dma-buff 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
+                                      (new 'static 'vif-tag :cmd (vif-cmd mscal) :imm 211)
+                                      )
+  (none)
+  )
+
+(defun sprite-add-shadow-all ((shadow-buff fake-shadow-buffer) (dma-buff dma-buffer))
+  "Set up DMA to add all shadows in the shadow buffer"
+  (when (> (-> shadow-buff num-shadows) 0)
+   (let ((current-shadow 0)
+         (remaining-shadows (-> shadow-buff num-shadows))
+         )
+    (while (< 48 remaining-shadows)
+     (sprite-add-shadow-chunk shadow-buff current-shadow 48 dma-buff)
+     (+! current-shadow 48)
+     (+! remaining-shadows -48)
+     )
+    (sprite-add-shadow-chunk shadow-buff current-shadow remaining-shadows dma-buff)
+    )
+   )
+  (none)
+  )
+
+
+(defun sprite-draw ((disp display))
+  "Main sprite draw function."
+  ;; start of our DMA for all the sprite data
+  (let ((dma-mem-begin (-> (current-frame) global-buf base)))
+    ;; draw in global-buf
+    (with-dma-buffer-add-bucket ((dma-buff (-> (current-frame) global-buf)) (bucket-id sprite))
+
+      ;; run the distorters
+      (sprite-init-distorter dma-buff (-> disp frames (-> disp on-screen) draw frame1 fbp))
+      (sprite-draw-distorters dma-buff)
+
+      ;; first packet - set up the GS registers
+      (dma-buffer-add-gs-set dma-buff
+                  (test-1 (new 'static 'gs-test
+                               :ate 1 :atst (gs-atest greater-equal) :aref 38 ;; (the int (* 255 0.15))
+                               :afail 1
+                               :zte 1 :ztst (gs-ztest greater-equal)
+                               ))
+                  (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
+                  )
+
+      ;; load the VU1 code
+      (dma-buffer-add-vu-function dma-buff sprite-vu1-block 1)
+      ;; add the common data
+      (sprite-add-frame-data dma-buff (-> disp frames (-> disp on-screen) draw frame1 fbp))
+
+      ;; run the init part of the VU1 mpg
+      (dma-buffer-add-cnt-vif2 dma-buff 0
+                  (new 'static 'vif-tag :cmd (vif-cmd mscalf) :imm 0) ;; wait for mpg and gif, start mpg
+                  (new 'static 'vif-tag :cmd (vif-cmd flushe)) ;; wait for mpg
+                  )
+
+      ;; set up double buffer upload and draw
+      (dma-buffer-add-cnt-vif2 dma-buff 0
+                  (new 'static 'vif-tag :cmd (vif-cmd base) :imm 0)
+                  (new 'static 'vif-tag :cmd (vif-cmd offset) :imm 400)
+                  )
+
+      ;; add matrix data (not needed for init)
+      (sprite-add-matrix-data dma-buff (the-as uint 0))
+      ;; draw 3d's
+      (sprite-add-3d-all *sprite-array-3d* dma-buff 0)
+      ;; draw 2d's (group 0)
+      (sprite-add-2d-all *sprite-array-2d* dma-buff 0)
+      ;; draw shadows
+      (sprite-add-shadow-all (if (= *fake-shadow-buffer* *fake-shadow-buffer-1*)
+                                 *fake-shadow-buffer-2*
+                                 *fake-shadow-buffer-1*
+                                 )
+                             dma-buff
+                             )
+      (dma-buffer-add-cnt-vif2 dma-buff 0
+                  (new 'static 'vif-tag :cmd (vif-cmd nop))
+                  (new 'static 'vif-tag :cmd (vif-cmd flushe))
+                  )
+      ;; set matrix for group 1 (screen-space sprites)
+      (sprite-add-matrix-data dma-buff (the-as uint 1))
+      ;; draw screen sprites
+      (sprite-add-2d-all *sprite-array-2d* dma-buff 1)
+
+      )
+
+    ;; update memory usage
+    (let ((mem-use *dma-mem-usage*))
+      (when (nonzero? mem-use)
+        (set! (-> mem-use length) (max 83 (-> mem-use length)))
+        (set! (-> mem-use data 82 name) "sprite")
+        (+! (-> mem-use data 82 count) 1)
+        (+! (-> mem-use data 82 used)
+            (&- (-> (current-frame) global-buf base)
+                (the-as uint dma-mem-begin)
+                )
+            )
+        (set! (-> mem-use data 82 total) (-> mem-use data 82 used))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+
+
+(defun sprite-allocate-user-hvdf ()
+  "Allocate an HVDF entry. Returns the index. Or 0 if it fails"
+  (dotimes (v1-0 76)
+   (when (zero? (-> *sprite-hvdf-control* alloc v1-0))
+    (set! (-> *sprite-hvdf-control* alloc v1-0) 1)
+    (return v1-0)
+    )
+   )
+  0
+  )
+
+(defun sprite-release-user-hvdf ((arg0 int))
+  "Free an HVDF"
+  (when (and (>= arg0 1) (< arg0 76))
+   (set! (-> *sprite-hvdf-control* alloc arg0) 0)
+   )
+  (none)
+  )
+
+(defun sprite-get-user-hvdf ((arg0 int))
+  "Get an HVDF entry by index"
+  (the-as vector (-> *sprite-hvdf-data* data arg0))
+  )
+
+

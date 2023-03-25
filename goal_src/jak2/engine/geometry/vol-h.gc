@@ -1,0 +1,127 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: vol-h.gc
+;; name in dgo: vol-h
+;; dgos: ENGINE, GAME
+
+;; +++vol-flags
+(defenum vol-flags
+  :bitfield #t
+  :type uint32
+  (display?)
+  (vol-flags-1)
+  )
+;; ---vol-flags
+
+;; DECOMP BEGINS
+
+(deftype plane-volume (structure)
+  ((volume-type  symbol                :offset-assert   0)
+   (point-count  int16                 :offset-assert   4)
+   (normal-count int16                 :offset-assert   6)
+   (first-point  (pointer vector)      :offset-assert   8)
+   (first-normal (pointer vector)      :offset-assert  12)
+   (num-planes   int32                 :offset-assert  16)
+   (plane        (inline-array plane)  :offset-assert  20)
+   )
+  :pack-me
+  :method-count-assert 12
+  :size-assert         #x18
+  :flag-assert         #xc00000018
+  (:methods
+    (plane-volume-method-9 (_type_ symbol vector-array vector-array) plane-volume 9)
+    (debug-draw (_type_) none 10)
+    (point-in-vol? (_type_ vector float) symbol 11)
+    )
+  )
+
+
+(deftype vol-control (basic)
+  ((flags         vol-flags                   :offset-assert   4)
+   (process       process-drawable            :offset-assert   8)
+   (pos-vol-count int32                       :offset-assert  12)
+   (pos-vol       plane-volume     32 :inline :offset-assert  16)
+   (neg-vol-count int32                       :offset-assert 784)
+   (neg-vol       plane-volume     32 :inline :offset-assert 788)
+   (debug-point   vector-array                :offset-assert 1556)
+   (debug-normal  vector-array                :offset-assert 1560)
+   )
+  :method-count-assert 12
+  :size-assert         #x61c
+  :flag-assert         #xc0000061c
+  (:methods
+    (new (symbol type process-drawable) _type_ 0)
+    (debug-draw (_type_) none 9)
+    (vol-control-method-10 (_type_ plane) symbol 10)
+    (should-display? (_type_) symbol 11)
+    )
+  )
+
+
+;; WARN: Return type mismatch object vs vol-control.
+(defmethod new vol-control ((allocation symbol) (type-to-make type) (arg0 process-drawable))
+  (let ((gp-0 (the-as object (object-new allocation type-to-make (the-as int (-> type-to-make size))))))
+    (when (zero? (the-as vol-control gp-0))
+      (go process-drawable-art-error "memory")
+      (set! gp-0 0)
+      (goto cfg-13)
+      )
+    (set! (-> (the-as vol-control gp-0) process) arg0)
+    (let* ((s5-1 (-> (the-as vol-control gp-0) process entity))
+           (s4-0 (-> ((method-of-type res-lump lookup-tag-idx) s5-1 'vol 'base -1000000000.0) lo))
+           )
+      (when (>= (the-as int s4-0) 0)
+        (let ((s3-0 (the-as int s4-0))
+              (s2-0 (-> s5-1 tag s4-0))
+              )
+          0
+          (while (= (-> s2-0 name) (-> s5-1 tag s4-0 name))
+            (let ((v1-12 (make-property-data s5-1 0.0 (the-as res-tag-pair s3-0) (the-as pointer #f)))
+                  (a0-8 (-> (the-as vol-control gp-0) pos-vol (-> (the-as vol-control gp-0) pos-vol-count)))
+                  )
+              (set! (-> a0-8 num-planes) (the-as int (-> s2-0 elt-count)))
+              (set! (-> a0-8 plane) (the-as (inline-array plane) v1-12))
+              )
+            (+! (-> (the-as vol-control gp-0) pos-vol-count) 1)
+            (+! s3-0 1)
+            (set! s2-0 (-> s5-1 tag s3-0))
+            )
+          )
+        )
+      )
+    (let* ((s5-2 (-> (the-as vol-control gp-0) process entity))
+           (s4-1 (-> ((method-of-type res-lump lookup-tag-idx) s5-2 'cutoutvol 'base -1000000000.0) lo))
+           )
+      (when (>= (the-as int s4-1) 0)
+        (let ((s3-1 (the-as int s4-1))
+              (s2-1 (-> s5-2 tag s4-1))
+              )
+          0
+          (while (= (-> s2-1 name) (-> s5-2 tag s4-1 name))
+            (let ((v1-31 (make-property-data s5-2 0.0 (the-as res-tag-pair s3-1) (the-as pointer #f)))
+                  (a0-19 (-> (the-as vol-control gp-0) neg-vol (-> (the-as vol-control gp-0) neg-vol-count)))
+                  )
+              (set! (-> a0-19 num-planes) (the-as int (-> s2-1 elt-count)))
+              (set! (-> a0-19 plane) (the-as (inline-array plane) v1-31))
+              )
+            (+! (-> (the-as vol-control gp-0) neg-vol-count) 1)
+            (+! s3-1 1)
+            (set! s2-1 (-> s5-2 tag s3-1))
+            )
+          )
+        )
+      )
+    (label cfg-13)
+    (the-as vol-control gp-0)
+    )
+  )
+
+(defmethod should-display? vol-control ((obj vol-control))
+  "Returns true/false if the volume's marks should be displayed"
+  (and *display-vol-marks* (logtest? (-> obj flags) (vol-flags display?)))
+  )
+
+
+
+

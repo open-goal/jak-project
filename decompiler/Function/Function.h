@@ -1,19 +1,22 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <unordered_map>
 #include <stdexcept>
+#include <string>
+#include <unordered_map>
 #include <unordered_set>
-#include "decompiler/analysis/atomic_op_builder.h"
-#include "decompiler/Disasm/Instruction.h"
-#include "decompiler/Disasm/Register.h"
+#include <vector>
+
 #include "BasicBlocks.h"
 #include "CfgVtx.h"
-#include "common/type_system/TypeSpec.h"
-#include "decompiler/config.h"
 #include "Warnings.h"
+
+#include "common/type_system/TypeSpec.h"
 #include "common/type_system/state.h"
+
+#include "decompiler/Disasm/Instruction.h"
+#include "decompiler/Disasm/Register.h"
+#include "decompiler/analysis/atomic_op_builder.h"
+#include "decompiler/config.h"
 
 namespace decompiler {
 class DecompilerTypeSystem;
@@ -64,6 +67,13 @@ struct FunctionName {
 
   bool empty() const { return kind == FunctionKind::UNIDENTIFIED; }
 
+  bool is_handler() const {
+    return kind == FunctionKind::NV_STATE || kind == FunctionKind::V_STATE;
+  }
+  bool is_handler(StateHandler shk) const { return is_handler() && handler_kind == shk; }
+
+  bool is_event_handler() const { return is_handler(StateHandler::EVENT); }
+
   void set_as_top_level(const std::string& object_file_name) {
     kind = FunctionKind::TOP_LEVEL_INIT;
     object_name = object_file_name;
@@ -96,7 +106,7 @@ struct FunctionName {
 
 class Function {
  public:
-  Function(int _start_word, int _end_word);
+  Function(int _start_word, int _end_word, GameVersion version);
   ~Function();
   void analyze_prologue(const LinkedObjectFile& file);
   void find_global_function_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts);
@@ -115,6 +125,7 @@ class Function {
   int end_word = -1;  // not inclusive, but does include padding.
 
   FunctionName guessed_name;
+  std::string state_handler_as_anon_func;
 
   bool suspected_asm = false;
   bool is_inspect_method = false;

@@ -1,10 +1,11 @@
-#include <filesystem>
+
+
+#include "common/log/log.h"
+#include "common/util/FileUtil.h"
+#include "common/util/os.h"
+#include "common/util/unicode_util.h"
 
 #include "gtest/gtest.h"
-
-#include "common/util/FileUtil.h"
-#include "common/log/log.h"
-#include "common/util/os.h"
 
 // Running subsets of tests, see:
 // -
@@ -18,6 +19,8 @@
 // to make it easier to test a subset of tests
 
 int main(int argc, char** argv) {
+  ArgumentGuard u8_guard(argc, argv);
+
   // hopefully get a debug print on github actions
   setup_cpu_info();
   file_util::setup_project_path(std::nullopt);
@@ -27,10 +30,10 @@ int main(int argc, char** argv) {
 
   // Re-init failed folder
   std::string failedFolder = file_util::get_file_path({"test/goalc/source_generated/failed/"});
-  if (std::filesystem::exists(failedFolder)) {
-    std::filesystem::remove_all(failedFolder);
+  if (fs::exists(failedFolder)) {
+    fs::remove_all(failedFolder);
   }
-  std::filesystem::create_directory(failedFolder);
+  fs::create_directory(failedFolder);
 
   return RUN_ALL_TESTS();
 }

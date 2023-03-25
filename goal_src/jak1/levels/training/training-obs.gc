@@ -1,0 +1,992 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: training-obs.gc
+;; name in dgo: training-obs
+;; dgos: L1, TRA
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/scarecrow-b-ag.gc")
+(import "goal_src/jak1/import/pontoonfive-ag.gc")
+(import "goal_src/jak1/import/trainingcam-ag.gc")
+(import "goal_src/jak1/import/scarecrow-a-ag.gc")
+(import "goal_src/jak1/import/jng-iris-door-ag.gc")
+
+(deftype training-water (water-anim)
+  ()
+  :heap-base #x70
+  :method-count-assert 30
+  :size-assert         #xdc
+  :flag-assert         #x1e007000dc
+  )
+
+
+(define ripple-for-training-water (new 'static 'ripple-wave-set
+                                    :count 3
+                                    :converted #f
+                                    :normal-scale 1.0
+                                    :wave (new 'static 'inline-array ripple-wave 4
+                                      (new 'static 'ripple-wave :scale 40.0 :xdiv 1 :speed 1.5)
+                                      (new 'static 'ripple-wave :scale 40.0 :xdiv -1 :zdiv 1 :speed 1.5)
+                                      (new 'static 'ripple-wave :scale 20.0 :xdiv 5 :zdiv 3 :speed 0.75)
+                                      (new 'static 'ripple-wave)
+                                      )
+                                    )
+        )
+
+(defmethod TODO-RENAME-22 training-water ((obj training-water))
+  (let ((t9-0 (method-of-type water-anim TODO-RENAME-22)))
+    (t9-0 obj)
+    )
+  (let ((v1-2 (new 'process 'ripple-control)))
+    (set! (-> obj draw ripple) v1-2)
+    (set-vector! (-> obj draw color-mult) 0.01 0.45 0.5 0.75)
+    (set! (-> v1-2 global-scale) 3072.0)
+    (set! (-> v1-2 close-fade-dist) 163840.0)
+    (set! (-> v1-2 far-fade-dist) 245760.0)
+    (set! (-> v1-2 waveform) ripple-for-training-water)
+    )
+  (none)
+  )
+
+(defskelgroup *training-cam-sg* trainingcam trainingcam-lod0-jg -1
+              ((trainingcam-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 80)
+              )
+
+(deftype training-cam (process)
+  ((root       trsq        :offset-assert 112)
+   (range      meters      :offset-assert 116)
+   (index      int32       :offset-assert 120)
+   (state-time time-frame  :offset-assert 128)
+   )
+  :heap-base #x20
+  :method-count-assert 15
+  :size-assert         #x88
+  :flag-assert         #xf00200088
+  (:methods
+    (idle () _type_ :state 14)
+    )
+  )
+
+
+(defmethod relocate training-cam ((obj training-cam) (arg0 int))
+  (if (nonzero? (-> obj root))
+      (&+! (-> obj root) arg0)
+      )
+  (the-as training-cam ((method-of-type process relocate) obj arg0))
+  )
+
+(defstate idle (training-cam)
+  :virtual #t
+  :code (behavior ()
+    (loop
+      (when (and *target*
+                 (< (vector-vector-distance (target-pos 0) (-> self root trans)) (-> self range))
+                 (-> *setting-control* current play-hints)
+                 (and (< 0.0 (-> *setting-control* current dialog-volume))
+                      (let ((a0-3 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
+                        (or (not a0-3) (not (logtest? (-> a0-3 extra perm status) (entity-perm-status dead))))
+                        )
+                      )
+                 )
+        (when (!= (-> self index) 6)
+          (while (and *target*
+                      (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+                      (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
+                      )
+            (suspend)
+            )
+          (set! (-> self state-time) (-> *display* base-frame-counter))
+          (process-grab? *target*)
+          (process-entity-status! self (entity-perm-status bit-3) #t)
+          (until (not (or (-> *setting-control* current talking) (or (-> *setting-control* current spooling)
+                                                                     (-> *setting-control* current hint)
+                                                                     (-> *setting-control* current ambient)
+                                                                     )
+                          )
+                      )
+            (set-setting! 'allow-progress #f 0.0 0)
+            (let* ((a0-15 *setting-control*)
+                   (t9-6 (method-of-object a0-15 set-setting))
+                   (a2-3 'movie)
+                   (a3-1 (process->ppointer self))
+                   )
+              (t9-6 a0-15 self a2-3 a3-1 0.0 0)
+              )
+            (apply-settings *setting-control*)
+            (dotimes (gp-1 2)
+              (while (or (-> *setting-control* current talking)
+                         (-> *setting-control* current spooling)
+                         (-> *setting-control* current hint)
+                         (-> *setting-control* current ambient)
+                         *progress-process*
+                         )
+                (suspend)
+                )
+              )
+            (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
+              (suspend)
+              )
+            (remove-setting! 'movie)
+            (apply-settings *setting-control*)
+            (suspend)
+            (suspend)
+            )
+          (process-release? *target*)
+          )
+        (when (-> *setting-control* current play-hints)
+          (let ((v1-61 (-> self index)))
+            (cond
+              ((zero? v1-61)
+               (level-hint-spawn (game-text-id training-money) "asstvb41" (the-as entity #f) *entity-pool* (game-task none))
+               (process-spawn pov-camera (-> self entity extra trans) *training-cam-sg* "orbcam" 0 #f '() :to self)
+               )
+              ((= v1-61 1)
+               (level-hint-spawn
+                 (game-text-id training-fuel-cell)
+                 "asstvb42"
+                 (the-as entity #f)
+                 *entity-pool*
+                 (game-task none)
+                 )
+               (process-spawn pov-camera (-> self entity extra trans) *training-cam-sg* "fuelcellcam" 0 #f '() :to self)
+               )
+              ((= v1-61 2)
+               (level-hint-spawn
+                 (game-text-id training-eco-blue)
+                 "sagevb22"
+                 (the-as entity #f)
+                 *entity-pool*
+                 (game-task none)
+                 )
+               (process-spawn pov-camera (-> self entity extra trans) *training-cam-sg* "ecocam" 0 #f '() :to self)
+               )
+              ((= v1-61 3)
+               (level-hint-spawn
+                 (game-text-id training-precursor-door)
+                 "sagevb24"
+                 (the-as entity #f)
+                 *entity-pool*
+                 (game-task none)
+                 )
+               (process-spawn pov-camera (-> self entity extra trans) *training-cam-sg* "precursordoorcam" 0 #f '() :to self)
+               )
+              ((= v1-61 4)
+               (level-hint-spawn
+                 (game-text-id training-blue-eco-vent)
+                 "asstvb48"
+                 (the-as entity #f)
+                 *entity-pool*
+                 (game-task none)
+                 )
+               (process-spawn pov-camera (-> self entity extra trans) *training-cam-sg* "ecoventcam" 0 #f '() :to self)
+               )
+              ((= v1-61 5)
+               (level-hint-spawn
+                 (game-text-id training-eco-green)
+                 "sagevb21"
+                 (the-as entity #f)
+                 *entity-pool*
+                 (game-task none)
+                 )
+               (process-spawn pov-camera (-> self entity extra trans) *training-cam-sg* "greenecocam" 0 #f '() :to self)
+               )
+              ((= v1-61 6)
+               (when (not (task-complete? *game-info* (game-task training-climb)))
+                 (clear-text-seen! *game-info* (game-text-id training-double-jump))
+                 (level-hint-spawn
+                   (game-text-id training-double-jump)
+                   "sagevb27"
+                   (the-as entity #f)
+                   *entity-pool*
+                   (game-task none)
+                   )
+                 (let ((gp-8 (-> *display* base-frame-counter)))
+                   (until (>= (- (-> *display* base-frame-counter) gp-8) (seconds 30))
+                     (suspend)
+                     )
+                   )
+                 (process-entity-status! self (entity-perm-status bit-3) #f)
+                 (go-virtual idle)
+                 )
+               )
+              )
+            )
+          (while (-> self child)
+            (suspend)
+            )
+          )
+        (let ((a0-61 (-> self entity)))
+          (if (when a0-61
+                (let ((a0-62 (-> a0-61 extra perm task)))
+                  (if a0-62
+                      (= a0-62 (game-task none))
+                      )
+                  )
+                )
+              (set! (-> self entity extra perm task) (game-task complete))
+              )
+          )
+        (process-entity-status! self (entity-perm-status dead) #t)
+        (process-entity-status! self (entity-perm-status bit-3) #f)
+        (deactivate self)
+        )
+      (suspend)
+      )
+    (none)
+    )
+  )
+
+(defmethod init-from-entity! training-cam ((obj training-cam) (arg0 entity-actor))
+  "Copy defaults from the entity."
+  (logior! (-> obj mask) (process-mask actor-pause))
+  (set! (-> obj root) (new 'process 'trsq))
+  (set! (-> obj root trans quad) (-> arg0 extra trans quad))
+  (quaternion-copy! (-> obj root quat) (-> arg0 quat))
+  (vector-identity! (-> obj root scale))
+  (set! (-> obj range) (res-lump-float arg0 'cam-notice-dist :default 81920.0))
+  (set! (-> obj index) (res-lump-value arg0 'index int))
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype tra-pontoon (rigid-body-platform)
+  ((anchor-point vector :inline :offset-assert 736)
+   )
+  :heap-base #x280
+  :method-count-assert 35
+  :size-assert         #x2f0
+  :flag-assert         #x23028002f0
+  )
+
+
+(defmethod init-from-entity! tra-pontoon ((obj tra-pontoon) (arg0 entity-actor))
+  (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
+  (TODO-RENAME-30 obj)
+  (process-drawable-from-entity! obj arg0)
+  (TODO-RENAME-31 obj)
+  (go (method-of-object obj rigid-body-platform-idle))
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-23 tra-pontoon ((obj tra-pontoon) (arg0 float))
+  ((the-as (function rigid-body-platform float none) (find-parent-method tra-pontoon 23)) obj arg0)
+  (TODO-RENAME-27 obj (-> obj anchor-point))
+  0
+  (none)
+  )
+
+(define *tra-pontoon-constants* (new 'static 'rigid-body-platform-constants
+                                  :drag-factor 4.0
+                                  :buoyancy-factor 3.0
+                                  :max-buoyancy-depth (meters 3)
+                                  :gravity-factor 1.0
+                                  :gravity (meters 80)
+                                  :player-weight (meters 35)
+                                  :player-bonk-factor 1.0
+                                  :player-dive-factor 1.0
+                                  :player-force-distance (meters 1000)
+                                  :player-force-clamp (meters 1000000)
+                                  :player-force-timeout (seconds 0.1)
+                                  :explosion-force (meters 1000)
+                                  :linear-damping 0.98
+                                  :angular-damping 0.98
+                                  :control-point-count 4
+                                  :mass 2.0
+                                  :inertial-tensor-x (meters 2.5)
+                                  :inertial-tensor-y (meters 2)
+                                  :inertial-tensor-z (meters 3.2)
+                                  :idle-distance (meters 50)
+                                  :platform #t
+                                  :sound-name "pontoonten"
+                                  )
+        )
+
+(defskelgroup *tra-pontoon-sg* pontoonfive pontoonfive-lod0-jg pontoonfive-idle-ja
+              ((pontoonfive-lod0-mg (meters 20)) (pontoonfive-lod1-mg (meters 40)) (pontoonfive-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+(defmethod TODO-RENAME-30 tra-pontoon ((obj tra-pontoon))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) default-collision-reaction)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (alloc-riders s5-0 1)
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s4-0 transform-index) 0)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 18432.0)
+      (set-root-prim! s5-0 s4-0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (backup-collide-with-as s5-0)
+    (set! (-> obj root-overlay) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-31 tra-pontoon ((obj tra-pontoon))
+  (initialize-skeleton obj *tra-pontoon-sg* '())
+  (TODO-RENAME-29 obj *tra-pontoon-constants*)
+  (set! (-> obj float-height-offset) 6144.0)
+  (set! (-> obj root-overlay nav-radius) 20480.0)
+  (let ((v1-6 (-> obj control-point-array data)))
+    (set! (-> v1-6 0 local-pos x) 9216.0)
+    (set! (-> v1-6 0 local-pos y) 0.0)
+    (set! (-> v1-6 0 local-pos z) 12083.2)
+    (set! (-> v1-6 0 local-pos w) 1.0)
+    )
+  (let ((v1-8 (-> obj control-point-array data 1)))
+    (set! (-> v1-8 local-pos x) 9216.0)
+    (set! (-> v1-8 local-pos y) 0.0)
+    (set! (-> v1-8 local-pos z) -12083.2)
+    (set! (-> v1-8 local-pos w) 1.0)
+    )
+  (let ((v1-10 (-> obj control-point-array data 2)))
+    (set! (-> v1-10 local-pos x) -9216.0)
+    (set! (-> v1-10 local-pos y) 0.0)
+    (set! (-> v1-10 local-pos z) -12083.2)
+    (set! (-> v1-10 local-pos w) 1.0)
+    )
+  (let ((v1-12 (-> obj control-point-array data 3)))
+    (set! (-> v1-12 local-pos x) -9216.0)
+    (set! (-> v1-12 local-pos y) 0.0)
+    (set! (-> v1-12 local-pos z) 12083.2)
+    (set! (-> v1-12 local-pos w) 1.0)
+    )
+  (set! (-> obj anchor-point quad) (-> obj root-overlay trans quad))
+  (nav-mesh-connect obj (-> obj root-overlay) (the-as nav-control #f))
+  0
+  (none)
+  )
+
+(deftype tra-iris-door (eco-door)
+  ()
+  :heap-base #xa0
+  :method-count-assert 27
+  :size-assert         #x104
+  :flag-assert         #x1b00a00104
+  )
+
+
+(defskelgroup *tra-iris-door-sg* jng-iris-door jng-iris-door-lod0-jg jng-iris-door-idle-ja
+              ((jng-iris-door-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              )
+
+(defmethod TODO-RENAME-24 tra-iris-door ((obj tra-iris-door))
+  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s4-0 transform-index) 0)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 16384.0)
+      (set-root-prim! s5-0 s4-0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (backup-collide-with-as s5-0)
+    (set! (-> obj root-override) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-25 tra-iris-door ((obj tra-iris-door))
+  (initialize-skeleton obj *tra-iris-door-sg* '())
+  (set! (-> obj open-distance) 32768.0)
+  (set! (-> obj close-distance) 49152.0)
+  (update-transforms! (-> obj root-override))
+  0
+  (none)
+  )
+
+(defpartgroup group-scarecrow-explode
+  :id 143
+  :duration (seconds 0.05)
+  :bounds (static-bspherem 0 0 0 1)
+  :parts ((sp-item 2912) (sp-item 2913) (sp-item 2914) (sp-item 2915) (sp-item 2916))
+  )
+
+(defpart 2912
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 16.0)
+    (sp-rnd-flt spt-y (meters 2.5) (meters 1) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 2.5) (meters 1.5) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 192.0 32.0 1.0)
+    (sp-rnd-flt spt-g 160.0 32.0 1.0)
+    (sp-rnd-flt spt-b 128.0 32.0 1.0)
+    (sp-rnd-flt spt-a 8.0 16.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.026666667) (meters 0.10666667) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.011904762))
+    (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 1.2) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-accel-y 2.7306666)
+    (sp-flt spt-friction 0.9)
+    (sp-int spt-timer 420)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-int-plain-rnd spt-next-time 30 59 1)
+    (sp-launcher-by-id spt-next-launcher 2917)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 2917
+  :init-specs ((sp-flt spt-fade-a -0.4) (sp-int-plain-rnd spt-next-time 30 29 1) (sp-launcher-by-id spt-next-launcher 2918))
+  )
+
+(defpart 2918
+  :init-specs ((sp-flt spt-fade-a -0.04))
+  )
+
+(defpart 2913
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x2 :page #x2))
+    (sp-flt spt-num 4.0)
+    (sp-flt spt-y (meters 2.5))
+    (sp-rnd-flt spt-scale-x (meters 6) (meters 3) 1.0)
+    (sp-int spt-rot-x 4)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-scale-y (meters 0.3) (meters 1) 1.0)
+    (sp-flt spt-r 192.0)
+    (sp-flt spt-g 192.0)
+    (sp-rnd-flt spt-b 64.0 128.0 1.0)
+    (sp-flt spt-a 0.0)
+    (sp-flt spt-scalevel-x (meters 0.009765625))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.15) (degrees 0.3) 1.0)
+    (sp-flt spt-scalevel-y (meters 0.009765625))
+    (sp-flt spt-fade-a 2.1333334)
+    (sp-int spt-timer 30)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-int spt-next-time 15)
+    (sp-launcher-by-id spt-next-launcher 2919)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 2919
+  :init-specs ((sp-flt spt-fade-a -2.1333334))
+  )
+
+(defpart 2914
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 2.5)
+    (sp-flt spt-y (meters 1.5))
+    (sp-flt spt-scale-x (meters 12))
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 196.0)
+    (sp-flt spt-g 196.0)
+    (sp-flt spt-b 196.0)
+    (sp-flt spt-a 48.0)
+    (sp-int spt-timer 10)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    )
+  )
+
+(defpart 2915
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x6 :page #x2))
+    (sp-rnd-flt spt-num 8.0 8.0 1.0)
+    (sp-rnd-flt spt-x (meters -0.5) (meters 1) 1.0)
+    (sp-rnd-flt spt-y (meters 2.5) (meters 1.5) 1.0)
+    (sp-rnd-flt spt-z (meters -0.5) (meters 1) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.00048828125) 2457.6)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-scale-y (meters 0.3))
+    (sp-flt spt-r 160.0)
+    (sp-flt spt-g 160.0)
+    (sp-flt spt-b 160.0)
+    (sp-flt spt-a 128.0)
+    (sp-rnd-flt spt-vel-y (meters 0.06666667) (meters 0.06666667) 1.0)
+    (sp-flt spt-rotvel-x (degrees 1.2))
+    (sp-flt spt-rotvel-y (degrees 2.4))
+    (sp-rnd-int-flt spt-rotvel-z (degrees 0.0) 2 436.90668)
+    (sp-flt spt-accel-y -13.653334)
+    (sp-flt spt-friction 0.97)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-int spt-next-time 75)
+    (sp-launcher-by-id spt-next-launcher 2920)
+    (sp-rnd-flt spt-conerot-x (degrees 40.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 2920
+  :init-specs ((sp-flt spt-scalevel-x (meters -0.0033333334))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -3.4)
+    )
+  )
+
+(defpart 2916
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x5 :page #x2))
+    (sp-rnd-flt spt-num 8.0 8.0 1.0)
+    (sp-rnd-flt spt-x (meters -0.5) (meters 1) 1.0)
+    (sp-rnd-flt spt-y (meters 2.5) (meters 1.5) 1.0)
+    (sp-rnd-flt spt-z (meters -0.5) (meters 1) 1.0)
+    (sp-rnd-int-flt spt-scale-x (meters 0.3) 1 4096.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-scale-y (meters 0.3))
+    (sp-flt spt-r 100.0)
+    (sp-flt spt-g 100.0)
+    (sp-flt spt-b 100.0)
+    (sp-flt spt-a 128.0)
+    (sp-rnd-flt spt-vel-y (meters 0.06666667) (meters 0.06666667) 1.0)
+    (sp-flt spt-rotvel-x (degrees 1.2))
+    (sp-flt spt-rotvel-y (degrees 2.4))
+    (sp-rnd-int-flt spt-rotvel-z (degrees 0.0) 3 436.90668)
+    (sp-flt spt-accel-y -13.653334)
+    (sp-flt spt-friction 0.97)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit12 bit14)
+    (sp-int spt-next-time 75)
+    (sp-launcher-by-id spt-next-launcher 2920)
+    (sp-rnd-flt spt-conerot-x (degrees 40.0) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpartgroup group-scarecrow-joint-explode
+  :id 144
+  :duration (seconds 0.05)
+  :bounds (static-bspherem 0 0 0 1)
+  :parts ((sp-item 2912))
+  )
+
+(defpartgroup group-scarecrow-hit
+  :id 145
+  :duration (seconds 0.05)
+  :bounds (static-bspherem 0 0 0 1)
+  :parts ((sp-item 2913))
+  )
+
+(deftype scarecrow-a (process-drawable)
+  ((root-override       collide-shape         :offset        112)
+   (incomming-attack-id uint64                :offset-assert 176)
+   (intersection        vector        :inline :offset-assert 192)
+   )
+  :heap-base #x60
+  :method-count-assert 22
+  :size-assert         #xd0
+  :flag-assert         #x16006000d0
+  (:methods
+    (idle () _type_ :state 20)
+    (hit (float vector symbol) _type_ :state 21)
+    )
+  )
+
+
+(deftype scarecrow-b (process-drawable)
+  ((root-override       collide-shape         :offset        112)
+   (incomming-attack-id uint64                :offset-assert 176)
+   (intersection        vector        :inline :offset-assert 192)
+   )
+  :heap-base #x60
+  :method-count-assert 22
+  :size-assert         #xd0
+  :flag-assert         #x16006000d0
+  (:methods
+    (idle () _type_ :state 20)
+    (hit (float vector symbol) _type_ :state 21)
+    )
+  )
+
+
+(defskelgroup *scarecrow-a-sg* scarecrow-a scarecrow-a-lod0-jg scarecrow-a-idle-ja
+              ((scarecrow-a-lod0-mg (meters 20)) (scarecrow-a-lod1-mg (meters 40)) (scarecrow-a-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 2.5 0 3)
+              )
+
+(defskelgroup *scarecrow-a-break-sg* scarecrow-a scarecrow-a-lod0-jg scarecrow-a-idle-ja
+              ((scarecrow-a-break-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -15 0 50)
+              )
+
+(defstate idle (scarecrow-a)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('attack)
+         (let* ((s3-0 (-> event param 2))
+                (s4-0 (get-task-control (game-task training-gimmie)))
+                (v1-2 (get-reminder s4-0 0))
+                )
+           (when (!= s3-0 (-> self incomming-attack-id))
+             (set! (-> self incomming-attack-id) s3-0)
+             (cond
+               ((= (-> self type) scarecrow-b)
+                )
+               ((and (= (-> event param 1) 'spin) (zero? v1-2))
+                (save-reminder s4-0 1 0)
+                1
+                )
+               ((and (= (-> event param 1) 'punch) (= v1-2 1))
+                (save-reminder s4-0 2 0)
+                2
+                )
+               ((zero? v1-2)
+                )
+               ((= v1-2 1)
+                )
+               )
+             (let* ((s4-1 proc)
+                    (v1-14 (if (and (nonzero? s4-1) (type-type? (-> s4-1 type) process-drawable))
+                               s4-1
+                               )
+                           )
+                    (f30-0
+                      (cond
+                        (v1-14
+                          (let ((s4-2 (-> self root-override))
+                                (s2-0 (-> (the-as process-drawable v1-14) root trans))
+                                )
+                            (deg-diff (y-angle s4-2) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s2-0 (-> s4-2 trans))))
+                            )
+                          )
+                        (else
+                          0.0
+                          )
+                        )
+                      )
+                    (a0-24 ((method-of-type touching-shapes-entry prims-touching?)
+                            (the-as touching-shapes-entry (-> event param 0))
+                            (the-as collide-shape-moving (-> self root-override))
+                            (the-as uint -1)
+                            )
+                           )
+                    )
+               (go-virtual
+                 hit
+                 f30-0
+                 (if a0-24
+                     (get-middle-of-bsphere-overlap a0-24 (-> self intersection))
+                     (target-pos 0)
+                     )
+                 (the-as
+                   symbol
+                   (and ((method-of-type touching-shapes-entry prims-touching?)
+                         (the-as touching-shapes-entry (-> event param 0))
+                         (the-as collide-shape-moving (-> self root-override))
+                         (the-as uint 2)
+                         )
+                        (or (= (-> self type) scarecrow-a)
+                            (and (= (-> proc type) target)
+                                 (logtest? (-> (the-as target proc) control unknown-surface00 flags) (surface-flags jump))
+                                 (not (logtest? (-> (the-as target proc) control status) (cshape-moving-flags onsurf)))
+                                 )
+                            )
+                        )
+                   )
+                 )
+               )
+             )
+           )
+         )
+        (('touch)
+         (send-shove-back
+           (-> self root-override)
+           proc
+           (the-as touching-shapes-entry (-> event param 0))
+           0.7
+           6144.0
+           16384.0
+           )
+         )
+        )
+      )
+    )
+  :trans (behavior ()
+    (if (and *target* (>= 40960.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+        (get-reminder (get-task-control (game-task training-gimmie)) 0)
+        )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.12))
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior scarecrow-a) ja-post)
+  )
+
+(defstate hit (scarecrow-a)
+  :virtual #t
+  :code (behavior ((arg0 float) (arg1 vector) (arg2 symbol))
+    (when (not arg2)
+      (dummy-10 (-> self skel effect) 'group-scarecrow-hit 4.0 -1)
+      (ja-channel-push! 1 (seconds 0.07))
+      (cond
+        ((< (fabs arg0) 8192.0)
+         (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         )
+        ((and (< 8192.0 arg0) (< arg0 24576.0))
+         (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         )
+        (else
+          (ja-no-eval :group! (-> self draw art-group data 7) :num! (seek!) :frame-num 0.0)
+          (until (ja-done? 0)
+            (suspend)
+            (ja :num! (seek!))
+            )
+          )
+        )
+      (go-virtual idle)
+      )
+    (clear-collide-with-as (-> self root-override))
+    (dummy-10 (-> self skel effect) 'group-scarecrow-joint-explode 12.0 -1)
+    (dummy-10 (-> self skel effect) 'group-scarecrow-joint-explode 20.0 -1)
+    (dummy-10 (-> self skel effect) 'group-scarecrow-explode 4.0 -1)
+    (sound-play "break-dummy")
+    (ja-channel-set! 0)
+    (let ((s5-2 (new 'stack 'joint-exploder-tuning 1)))
+      (set! (-> s5-2 duration) (seconds 1.5))
+      (set! (-> s5-2 gravity) -327680.0)
+      (set! (-> s5-2 fountain-rand-transv-hi x) 32768.0)
+      (set! (-> s5-2 fountain-rand-transv-hi y) 81920.0)
+      (set! (-> s5-2 fountain-rand-transv-hi z) 20480.0)
+      (set! (-> s5-2 fountain-rand-transv-hi w) 49152.0)
+      (set! (-> s5-2 fountain-rand-transv-lo quad) (-> arg1 quad))
+      (process-spawn
+        joint-exploder
+        *scarecrow-a-break-sg*
+        5
+        s5-2
+        (new 'static 'joint-exploder-static-params
+          :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+            (new 'static 'joint-exploder-static-joint-params :joint-index 12)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 10)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 20)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 4)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 5)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 11)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 9)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 7)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 14)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 13)
+            )
+          )
+        :to self
+        )
+      )
+    (while (-> self child)
+      (suspend)
+      )
+    (cleanup-for-death self)
+    (none)
+    )
+  :post (the-as (function none :behavior scarecrow-a) ja-post)
+  )
+
+(defmethod init-from-entity! scarecrow-a ((obj scarecrow-a) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s3-0 local-sphere) 0.0 10240.0 0.0 12288.0)
+      (set-root-prim! s4-0 s3-0)
+      (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 2))))
+        (set! (-> s2-0 prim-core collide-as) (collide-kind enemy))
+        (set! (-> s2-0 collide-with) (collide-kind target))
+        (set! (-> s2-0 prim-core action) (collide-action solid))
+        (set! (-> s2-0 prim-core offense) (collide-offense touch))
+        (set-vector! (-> s2-0 local-sphere) 0.0 7372.8 0.0 7372.8)
+        (append-prim s3-0 s2-0)
+        )
+      (let ((s2-1 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 2))))
+        (set! (-> s2-1 prim-core collide-as) (collide-kind enemy))
+        (set! (-> s2-1 collide-with) (collide-kind target))
+        (set! (-> s2-1 prim-core action) (collide-action solid))
+        (set! (-> s2-1 prim-core offense) (collide-offense touch))
+        (set-vector! (-> s2-1 local-sphere) 0.0 12288.0 0.0 7372.8)
+        (append-prim s3-0 s2-1)
+        )
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj *scarecrow-a-sg* '())
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(defskelgroup *scarecrow-b-sg* scarecrow-b scarecrow-b-lod0-jg scarecrow-b-idle-ja
+              ((scarecrow-b-lod0-mg (meters 20)) (scarecrow-b-lod1-mg (meters 40)) (scarecrow-b-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 3.5 0 3.8)
+              )
+
+(defskelgroup *scarecrow-b-break-sg* scarecrow-b scarecrow-b-lod0-jg scarecrow-b-idle-ja
+              ((scarecrow-b-break-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -15 0 50)
+              )
+
+(defstate idle (scarecrow-b)
+  :virtual #t
+  :event (-> (method-of-type scarecrow-a idle) event)
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.12))
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior scarecrow-b) ja-post)
+  )
+
+(defstate hit (scarecrow-b)
+  :virtual #t
+  :code (behavior ((arg0 float) (arg1 vector) (arg2 symbol))
+    (when (not arg2)
+      (dummy-10 (-> self skel effect) 'group-scarecrow-hit 4.0 -1)
+      (ja-channel-push! 1 (seconds 0.07))
+      (cond
+        ((< (fabs arg0) 8192.0)
+         (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         )
+        ((and (< 8192.0 arg0) (< arg0 24576.0))
+         (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         )
+        (else
+          (ja-no-eval :group! (-> self draw art-group data 7) :num! (seek!) :frame-num 0.0)
+          (until (ja-done? 0)
+            (suspend)
+            (ja :num! (seek!))
+            )
+          )
+        )
+      (go-virtual idle)
+      )
+    (clear-collide-with-as (-> self root-override))
+    (dummy-10 (-> self skel effect) 'group-scarecrow-joint-explode 12.0 -1)
+    (dummy-10 (-> self skel effect) 'group-scarecrow-joint-explode 21.0 -1)
+    (dummy-10 (-> self skel effect) 'group-scarecrow-explode 4.0 -1)
+    (sound-play "break-dummy")
+    (ja-channel-set! 0)
+    (let ((s5-2 (new 'stack 'joint-exploder-tuning 1)))
+      (set! (-> s5-2 duration) (seconds 1.5))
+      (set! (-> s5-2 fountain-rand-transv-hi x) 32768.0)
+      (set! (-> s5-2 fountain-rand-transv-hi y) 81920.0)
+      (set! (-> s5-2 fountain-rand-transv-hi z) 40960.0)
+      (set! (-> s5-2 fountain-rand-transv-hi w) 102400.0)
+      (set! (-> s5-2 fountain-rand-transv-lo quad) (-> arg1 quad))
+      (process-spawn
+        joint-exploder
+        *scarecrow-b-break-sg*
+        5
+        s5-2
+        (new 'static 'joint-exploder-static-params
+          :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+            (new 'static 'joint-exploder-static-joint-params :joint-index 12)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 10)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 21)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 4)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 5)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 11)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 9)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 7)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 14)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 13)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 14)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 13)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 16)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 15)
+            )
+          )
+        :to self
+        )
+      )
+    (while (-> self child)
+      (suspend)
+      )
+    (cleanup-for-death self)
+    (none)
+    )
+  :post (the-as (function none :behavior scarecrow-b) ja-post)
+  )
+
+(defmethod init-from-entity! scarecrow-b ((obj scarecrow-b) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s3-0 local-sphere) 0.0 14336.0 0.0 15564.8)
+      (set-root-prim! s4-0 s3-0)
+      (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+        (set! (-> s2-0 prim-core collide-as) (collide-kind enemy))
+        (set! (-> s2-0 collide-with) (collide-kind target))
+        (set! (-> s2-0 prim-core action) (collide-action solid))
+        (set! (-> s2-0 prim-core offense) (collide-offense indestructible))
+        (set-vector! (-> s2-0 local-sphere) 0.0 4096.0 0.0 4096.0)
+        (append-prim s3-0 s2-0)
+        )
+      (let ((s2-1 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+        (set! (-> s2-1 prim-core collide-as) (collide-kind enemy))
+        (set! (-> s2-1 collide-with) (collide-kind target))
+        (set! (-> s2-1 prim-core action) (collide-action solid))
+        (set! (-> s2-1 prim-core offense) (collide-offense indestructible))
+        (set-vector! (-> s2-1 local-sphere) 0.0 14745.6 0.0 6553.6)
+        (append-prim s3-0 s2-1)
+        )
+      (let ((s2-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 2))))
+        (set! (-> s2-2 prim-core collide-as) (collide-kind enemy))
+        (set! (-> s2-2 collide-with) (collide-kind target))
+        (set! (-> s2-2 prim-core action) (collide-action solid))
+        (set! (-> s2-2 prim-core offense) (collide-offense touch))
+        (set-vector! (-> s2-2 local-sphere) 0.0 20480.0 0.0 6553.6)
+        (append-prim s3-0 s2-2)
+        )
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj *scarecrow-b-sg* '())
+  (go (method-of-object obj idle))
+  (none)
+  )

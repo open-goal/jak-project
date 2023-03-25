@@ -1,0 +1,394 @@
+;; kernel-defs.gc
+;; everything defined in the C Kernel / runtime
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; kscheme - InitHeapAndSymbol
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; fixed symbols
+(define-extern #f symbol)
+(define-extern #t symbol)
+(define-extern function type)
+(define-extern basic type)
+(define-extern string type)
+(define-extern symbol type)
+(define-extern type type)
+(define-extern object type)
+(define-extern link-block type)
+(define-extern integer type)
+(define-extern sinteger type)
+(define-extern uinteger type)
+(define-extern binteger type)
+(define-extern int8 type)
+(define-extern int16 type)
+(define-extern int32 type)
+(define-extern int64 type)
+(define-extern int128 type)
+(define-extern uint8 type)
+(define-extern uint16 type)
+(define-extern uint32 type)
+(define-extern uint64 type)
+(define-extern uint128 type)
+(define-extern float type)
+(define-extern process-tree type)
+(define-extern process type)
+(define-extern thread type)
+(define-extern structure type)
+(define-extern pair type)
+(define-extern pointer type)
+(define-extern number type)
+(define-extern array type)
+(define-extern vu-function type)
+(define-extern connectable type)
+(define-extern stack-frame type)
+(define-extern file-stream type)
+(define-extern kheap type)
+(define-extern nothing (function none))
+(define-extern delete-basic (function basic none))
+(define-extern static symbol)
+(define-extern global kheap)
+(define-extern debug kheap)
+(define-extern loading-level kheap)   ;; not a kheap at boot
+(define-extern loading-package kheap) ;; not a kheap at boot
+(define-extern process-level-heap kheap) ;; not a kheap at boot
+(define-extern stack symbol)
+(define-extern scratch symbol)
+(define-extern *scratch-top* pointer)
+(define-extern zero-func (function int))
+;; asize-of-basic-func - has a bug
+;; copy-basic-func - has a bug
+;; level - unknown type
+;; art-group
+;; texture-page-dir
+;; texture-page
+;; sound
+;; dgo
+;; top-level
+
+(defenum kmalloc-flags
+  :bitfield #t
+  (align-16    4)
+  (align-64    6)
+  (align-256   8)
+  (memset     12)
+  (top        13)
+  )
+
+(defenum link-flag
+  :bitfield #t
+  :type int32
+  (output-load-msg 0)
+  (output-load-true-msg 1)
+  (execute-login 2)
+  (print-login 3)
+  (force-debug 4)
+  (fast-link 5)
+  )
+
+
+(define-extern string->symbol (function string symbol))
+(define-extern print (function object object))
+(define-extern inspect (function object object))
+(define-extern load (function string kheap object))
+(define-extern loado (function string kheap object))
+(define-extern unload (function string none))
+(define-extern _format (function _varargs_ object))
+(define-extern malloc (function symbol int pointer))
+(define-extern kmalloc (function kheap int kmalloc-flags string pointer))
+(define-extern new-dynamic-structure (function symbol type int structure))
+(define-extern method-set! (function type int object none)) ;; may actually return function.
+(define-extern link (function pointer pointer int kheap int pointer))
+(define-extern dgo-load (function string kheap link-flag int none))
+(define-extern link-begin (function pointer (pointer uint8) int kheap link-flag int))
+(define-extern link-resume (function int))
+
+(defenum mc-status-code
+  :type uint32
+  (busy 0)
+  (ok 1)
+  (bad-handle 2)
+  (format-failed 3)
+  (internal-error 4)
+  (write-error 5)
+  (read-error 6)
+  (new-game 7)
+  (no-memory 8)
+  (no-card 9)
+  (no-last 10)
+  (no-format 11)
+  (no-file 12)
+  (no-save 13)
+  (no-space 14)
+  (bad-version 15)
+  (no-process 16)
+  (no-auto-save 17)
+  )
+
+(defenum language-enum
+  :type int64
+  (english)
+  (french)
+  (german)
+  (spanish)
+  (italian)
+  (japanese)
+  (uk-english)
+  )
+
+(define-extern mc-run (function none))
+(define-extern mc-format (function int mc-status-code))
+(define-extern mc-unformat (function int mc-status-code))
+(define-extern mc-create-file (function int uint mc-status-code))
+(define-extern mc-save (function int int pointer int mc-status-code))
+(define-extern mc-load (function int int pointer mc-status-code))
+(declare-type mc-slot-info structure)
+(define-extern mc-sync (function int))
+(define-extern mc-get-slot-info (function int mc-slot-info none))
+
+(define-extern mc-check-result (function int))
+;; mc-makefile
+(define-extern kset-language (function language-enum int))
+
+(define-extern *debug-segment* symbol)
+(define-extern *enable-method-set* int)
+(define-extern *boot-video-mode* int)
+(define-extern *deci-count* int)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; klisten - InitListener
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; *listener-link-block*
+(define-extern *listener-function* (function object))
+;; kernel-dispatcher
+;; kernel-packages
+(define-extern *print-column* binteger)
+;; *print-column*
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; kmachine - InitMachineScheme
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(define-extern put-display-env (function object none))
+(define-extern syncv (function int int))
+(define-extern sync-path (function int int int))
+(define-extern reset-path (function none))
+(define-extern reset-graph (function int int int int none))
+
+(define-extern dma-sync (function pointer int int int))
+;; gs-put-imr
+;; gs-get-imr
+(define-extern gs-store-image (function object object object))
+(define-extern flush-cache (function int none))
+(declare-type cpad-info basic)
+(declare-type discord-info structure)
+(define-extern cpad-open (function cpad-info int cpad-info))
+(define-extern cpad-get-data (function cpad-info cpad-info))
+(define-extern install-handler (function int function int)) ;; check return val
+;; install-debug-handler
+(defconstant SCE_SEEK_SET 0)
+(defconstant SCE_SEEK_CUR 1)
+(defconstant SCE_SEEK_END 2)
+(define-extern file-stream-open (function file-stream basic basic file-stream))
+(define-extern file-stream-close (function file-stream file-stream))
+(define-extern file-stream-length (function file-stream int))
+(define-extern file-stream-seek (function file-stream int int int))
+(define-extern file-stream-read (function file-stream pointer int int))
+(define-extern file-stream-write (function file-stream pointer uint uint))
+
+(defconstant GAME_TERRITORY_SCEA 0)
+(defconstant GAME_TERRITORY_SCEE 1)
+(defconstant GAME_TERRITORY_SCEI 2)
+
+(define-extern scf-get-language (function language-enum))
+(declare-type scf-time structure)
+(define-extern scf-get-time (function scf-time none))
+(define-extern scf-get-aspect (function uint))
+(define-extern scf-get-volume (function int))
+(define-extern scf-get-territory (function int)) ;; not actually a scf function...
+(define-extern scf-get-timeout (function int))
+(define-extern scf-get-inactive-timeout (function int))
+;; dma-to-iop
+(define-extern kernel-shutdown (function none))
+(define-extern aybabtu (function int int)) ;; this is just sceCdMmode
+;; *stack-top*
+;; *stack-base*
+;; *stack-size*
+(define-extern *kernel-boot-message* symbol)
+;; *kernel-boot-mode*
+;; *kernel-boot-level*
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; ksound - InitSoundScheme
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-extern rpc-call (function int uint uint uint int uint int uint))
+(define-extern rpc-busy? (function int uint))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; kernel types
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; These are types that are both:
+;;  - set up in the kernel
+;;  - not set up in GOAL code
+;;  So these deftypes generate no code.
+
+(defenum process-mask
+    :bitfield #t :type uint32
+    (execute         0) ;; 1
+    (draw            1) ;; 2
+    (pause           2) ;; 4
+    (menu            3) ;; 8
+    (progress        4) ;; 16
+    (actor-pause     5) ;; 32
+    (sleep           6) ;; 64
+    (sleep-code      7) ;; 128
+    (process-tree    8) ;; 256        not an actual process, just a "tree node" for organization
+    (heap-shrunk     9) ;; 512
+    (going          10) ;; 1024
+    (movie          11) ;; 2048
+    (movie-subject  12) ;; 4096
+    (target         13) ;; 8192
+    (sidekick       14) ;; 16384
+    (crate          15) ;; 32768
+    (collectable    16) ;; 65536
+    (enemy          17) ;; 131072
+    (camera         18) ;; 262144
+    (platform       19) ;; 524288
+    (ambient        20) ;; 1048576
+    (entity         21) ;; 2097152
+    (projectile     22) ;; 4194304
+    (attackable     23) ;; 8388608
+    (death          24) ;; 16777216
+    )
+
+(declare-type process basic)
+(declare-type entity-actor basic)
+(deftype process-tree (basic)
+  ((name basic :offset-assert 4)
+   (mask process-mask :offset-assert 8)
+   (parent (pointer process-tree) :offset-assert 12)
+   (brother (pointer process-tree) :offset-assert 16)
+   (child (pointer process-tree) :offset-assert 20)
+   (ppointer (pointer process) :offset-assert 24)
+   (self process-tree :offset-assert 28)
+   )
+
+  (:methods
+   (new (symbol type basic) _type_ 0)
+   (activate (_type_ process-tree basic pointer) process-tree 9)
+   (deactivate  (_type_) none 10)
+    (init-from-entity! (_type_ entity-actor) none 11)
+   (run-logic? (_type_) symbol 12)
+   (dummy-method () none 13)
+   )
+
+  :size-assert #x20
+  :method-count-assert 14
+  :no-runtime-type ;; already defined by kscheme. Don't do it again.
+  )
+
+
+(deftype stack-frame (basic)
+  ((name symbol :offset 4)
+   (next stack-frame :offset 8) ;; which way does this point?
+   )
+
+  :size-assert #xc
+  :method-count-assert 9
+  :flag-assert #x90000000c
+  :no-runtime-type ;; already constructed, don't do it again.
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; PC Port functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defenum pc-renderer-tree-type
+  (none   0)
+  (tfrag3 1)
+  (tie3   2)
+  (invalid))
+
+(defenum pc-collision-mode
+  (none     0)
+  (mode     1)
+  (event    2)
+  (material 3)
+  (skip     4))
+
+(defenum pc-gfx-hack
+  (no-tex 0))
+
+(define-extern __read-ee-timer (function uint))
+(define-extern __mem-move (function pointer pointer uint none))
+(define-extern __send-gfx-dma-chain (function object object none))
+(define-extern __pc-texture-upload-now (function object object none))
+(define-extern __pc-texture-relocate (function object object object none))
+(define-extern __pc-get-mips2c (function string function))
+(define-extern __pc-set-levels (function string string none))
+(define-extern pc-pad-input-mode-set (function symbol none))
+(define-extern pc-pad-input-pad-set (function int none))
+(define-extern pc-pad-input-mode-get (function int))
+(define-extern pc-pad-input-key-get (function int))
+(define-extern pc-pad-input-index-get (function int))
+(define-extern pc-pad-input-map-save! (function none))
+(define-extern pc-pad-get-mapped-button (function int int int))
+(define-extern pc-get-fullscreen (function symbol))
+(define-extern pc-get-screen-size (function int (pointer int32) (pointer int32) none))
+(define-extern pc-get-screen-rate (function int int))
+(define-extern pc-get-screen-vmode-count (function int))
+(define-extern pc-get-monitor-count (function int))
+(define-extern pc-get-os (function symbol))
+(define-extern pc-get-window-size (function (pointer int32) (pointer int32) none))
+(define-extern pc-get-window-scale (function (pointer float) (pointer float) none))
+(define-extern pc-set-window-size (function int int none))
+(define-extern pc-set-fullscreen (function symbol int none))
+(define-extern pc-set-frame-rate (function int none))
+(define-extern pc-set-vsync (function symbol none))
+(define-extern pc-renderer-tree-set-lod (function pc-renderer-tree-type int none))
+(define-extern pc-set-letterbox (function int int none))
+(define-extern pc-set-collision (function symbol none))
+(define-extern pc-set-collision-wireframe (function symbol none))
+(define-extern pc-get-collision-mask (function pc-collision-mode int symbol))
+(define-extern pc-set-collision-mask (function pc-collision-mode int symbol none))
+(define-extern pc-set-collision-mode (function pc-collision-mode none))
+(define-extern pc-discord-rpc-update (function discord-info none))
+(define-extern pc-discord-rpc-set (function int none))
+(define-extern pc-filepath-exists? (function string symbol))
+(define-extern pc-mkdir-file-path (function string none))
+(define-extern pc-sound-set-flava-hack (function int none))
+(define-extern pc-sound-set-fade-hack (function int none))
+(define-extern pc-set-window-lock (function symbol none))
+(define-extern pc-set-game-resolution (function int int none))
+(define-extern pc-set-msaa (function int none))
+(define-extern pc-set-gfx-hack (function pc-gfx-hack symbol none))
+
+(define-extern pc-get-unix-timestamp (function int))
+
+(defenum pc-prof-event
+  (begin 0)
+  (end 1)
+  (instant 2)
+  )
+
+(define-extern pc-prof (function string pc-prof-event none))
+
+(defconstant *user* (get-user))
+
+;; Constants generated within the C++ runtime
+(define-extern *pc-user-dir-base-path* string)
+(define-extern *pc-settings-folder* string)
+(define-extern *pc-settings-built-sha* string)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; vm functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; These are functions used by the OpenGOAL PS2 VM components
+;; These were made by us.
+
+(define-extern vm-ptr (function int pointer))
+(define-extern pc-filter-debug-string? (function string float symbol))

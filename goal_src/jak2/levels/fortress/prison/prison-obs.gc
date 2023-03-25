@@ -1,0 +1,808 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: prison-obs.gc
+;; name in dgo: prison-obs
+;; dgos: PRI
+
+(declare-type prsn-hang-cell process-drawable)
+(define-extern prsn-hang-cell-init-by-other (function float none :behavior prsn-hang-cell))
+
+;; DECOMP BEGINS
+
+(set! (-> *lightning-spec-id-table* 19) (new 'static 'lightning-spec
+                                          :name "lightning-darkjak-prison"
+                                          :flags (lightning-spec-flags lsf0)
+                                          :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                          :fade-start-factor 0.2
+                                          :texture (new 'static 'texture-id :index #x84 :page #xc)
+                                          :reduction 0.42
+                                          :num-points 12
+                                          :box-size 1638.4
+                                          :merge-factor 0.6
+                                          :merge-count 2
+                                          :radius 819.2
+                                          :duration 30.0
+                                          :sound (static-sound-spec "stretched-zap")
+                                          )
+      )
+
+(set! (-> *lightning-spec-id-table* 20) (new 'static 'lightning-spec
+                                          :name "lightning-darkjak-prison-shock"
+                                          :flags (lightning-spec-flags lsf0)
+                                          :rand-func #x2
+                                          :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                          :fade-start-factor 0.2
+                                          :texture (new 'static 'texture-id :index #x84 :page #xc)
+                                          :reduction 0.42
+                                          :num-points 32
+                                          :box-size 4096.0
+                                          :merge-factor 0.6
+                                          :merge-count 2
+                                          :radius 819.2
+                                          :duration 30.0
+                                          :duration-rand 150.0
+                                          :sound #f
+                                          )
+      )
+
+(define *prsn-torture-lightning-joints* (new 'static 'boxed-array :type int32 14 16 18 20))
+
+(define *prsn-chair-shackle-lightning-joints* (new 'static 'boxed-array :type int32 4 5 6 7))
+
+;; WARN: Return type mismatch none vs object.
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 119]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 195]
+(defbehavior dark-lightning-handler process-drawable ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (sv-112 sparticle-launcher) (sv-160 vector) (sv-164 vector) (sv-176 lightning-spec))
+  (let ((s3-0 (new 'static 'vector4w :x -1))
+        (s4-0 (new 'static 'vector4w :x -1))
+        (s5-0 (command-get-process "jak-highres-prison" *target*))
+        )
+    (the-as
+      object
+      (cond
+        ((= arg2 'lightning-claw)
+         (let ((s1-0 (command-get-process "prsn-chair-shackle" *target*))
+               (gp-1 (new 'stack-no-clear 'matrix))
+               (s2-0 *prsn-torture-lightning-joints*)
+               (s3-1 (rand-vu-int-range-exclude 0 (+ (-> *prsn-torture-lightning-joints* length) -1) (-> s3-0 x)))
+               )
+           *prsn-chair-shackle-lightning-joints*
+           (let ((v1-7 (rand-vu-int-range-exclude 0 (+ (-> *prsn-chair-shackle-lightning-joints* length) -1) (-> s4-0 x))))
+             (when s1-0
+               (set! (-> s4-0 x) v1-7)
+               (vector<-cspace! (the-as vector (-> gp-1 vector)) (-> self node-list data 13))
+               (vector<-cspace! (-> gp-1 vector 1) (-> self node-list data (-> s2-0 s3-1)))
+               (vector<-cspace! (-> gp-1 vector 2) (-> self node-list data (+ (-> s2-0 s3-1) 1)))
+               (vector<-cspace! (-> gp-1 trans) (-> (the-as process-drawable s5-0) node-list data 8))
+               (dotimes (s5-1 3)
+                 (process-spawn
+                   lightning-tracker
+                   :init lightning-tracker-init
+                   (-> *lightning-spec-id-table* 19)
+                   (the int (* 300.0 (rand-vu-float-range 1.0 2.0)))
+                   lightning-probe-callback
+                   #f
+                   (+ (the-as uint gp-1) (* s5-1 16))
+                   (+ (the-as uint gp-1) (* (+ s5-1 1) 16))
+                   :to self
+                   )
+                 )
+               #f
+               )
+             )
+           )
+         )
+        ((= arg2 'lightning-needle)
+         (let ((gp-2 (command-get-process "prsn-chair-shackle" *target*)))
+           *prsn-chair-shackle-lightning-joints*
+           (let ((v1-38 (rand-vu-int-range-exclude 0 (+ (-> *prsn-chair-shackle-lightning-joints* length) -1) (-> s4-0 x))))
+             (when gp-2
+               (set! (-> s4-0 x) v1-38)
+               (let ((s4-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 8)))
+                     (s5-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> (the-as process-drawable s5-0) node-list data 5)))
+                     (s3-3 (get-process *default-dead-pool* lightning-tracker #x4000))
+                     )
+                 (when s3-3
+                   (let ((t9-17 (method-of-type lightning-tracker activate)))
+                     (t9-17
+                       (the-as lightning-tracker s3-3)
+                       self
+                       (symbol->string (-> lightning-tracker symbol))
+                       (the-as pointer #x70004000)
+                       )
+                     )
+                   (let ((s2-2 run-function-in-process)
+                         (s1-2 s3-3)
+                         (s0-1 lightning-tracker-init)
+                         )
+                     (set! sv-176 (-> *lightning-spec-id-table* 19))
+                     (let ((a3-4 (the int (* 300.0 (rand-vu-float-range 1.0 2.0))))
+                           (t0-1 lightning-probe-callback)
+                           )
+                       ((the-as (function object object object object object object object object none) s2-2)
+                        s1-2
+                        s0-1
+                        sv-176
+                        a3-4
+                        t0-1
+                        gp-2
+                        s4-2
+                        s5-2
+                        )
+                       )
+                     )
+                   (-> s3-3 ppointer)
+                   )
+                 )
+               )
+             )
+           )
+         )
+        ((= arg2 'lightning-shackle)
+         (let ((gp-3 (command-get-process "prsn-chair-shackle" *target*))
+               (s2-3 *prsn-torture-lightning-joints*)
+               (s5-3 *prsn-chair-shackle-lightning-joints*)
+               )
+           (when gp-3
+             (when (and (nonzero? (-> self skel)) (nonzero? (-> (the-as process-drawable gp-3) skel)))
+               (let* ((v1-52 (-> s2-3 length))
+                      (s1-3 (-> s5-3 length))
+                      (s0-2 (rand-vu-int-range-exclude 0 (+ v1-52 -1) (-> s3-0 x)))
+                      (s1-4 (rand-vu-int-range-exclude 0 (+ s1-3 -1) (-> s4-0 x)))
+                      )
+                 (set! sv-112 (-> *part-id-table* 179))
+                 (set! (-> s3-0 x) s0-2)
+                 (set! (-> s4-0 x) s1-4)
+                 (set! sv-160 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data (-> s2-3 s0-2))))
+                 (set! sv-164 (vector<-cspace!
+                                (new 'stack-no-clear 'vector)
+                                (-> (the-as process-drawable gp-3) node-list data (-> s5-3 s1-4))
+                                )
+                       )
+                 )
+               (let ((s4-3 (process-spawn
+                             lightning-tracker
+                             :init lightning-tracker-init
+                             (-> *lightning-spec-id-table* 19)
+                             (the int (* 300.0 (rand-vu-float-range 1.0 2.0)))
+                             lightning-probe-callback
+                             self
+                             sv-160
+                             sv-164
+                             :to gp-3
+                             )
+                           )
+                     )
+                 (when (and sv-112 s4-3)
+                   (let ((v1-74 (get-field-spec-by-id sv-112 (sp-field-id spt-timer))))
+                     (if v1-74
+                         (set! (-> v1-74 initial-valuef) (the-as float (-> (the-as lightning-tracker (-> s4-3 0)) duration)))
+                         )
+                     )
+                   (let ((t9-30 sp-launch-particles-var)
+                         (a0-35 *sp-particle-system-2d*)
+                         (a1-37 sv-112)
+                         (a2-19 *launch-matrix*)
+                         )
+                     (set! (-> a2-19 trans quad) (-> sv-160 quad))
+                     (t9-30 a0-35 a1-37 a2-19 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+                     )
+                   (let ((t9-31 sp-launch-particles-var)
+                         (a0-36 *sp-particle-system-2d*)
+                         (a1-38 sv-112)
+                         (a2-20 *launch-matrix*)
+                         )
+                     (set! (-> a2-20 trans quad) (-> sv-164 quad))
+                     (t9-31 a0-36 a1-38 a2-20 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+                     )
+                   )
+                 )
+               )
+             )
+           )
+         )
+        )
+      )
+    )
+  )
+
+(deftype prsn-hang-cell (process-drawable)
+  ((path-u  float  :offset-assert 200)
+   (path-du float  :offset-assert 204)
+   )
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xd0
+  :flag-assert         #x15005000d0
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+
+(defskelgroup skel-prsn-hang-cell prsn-hang-cell prsn-hang-cell-lod0-jg prsn-hang-cell-idle-ja
+              ((prsn-hang-cell-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -9.5 0 10)
+              )
+
+(defstate idle (prsn-hang-cell)
+  :virtual #t
+  :code (behavior ()
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (let* ((f0-2 (* (/ 1.0 (-> self path-du)) (-> self path-u)))
+           (f0-3 (- f0-2 (* (the float (the int (/ f0-2 1.0))) 1.0)))
+           )
+      (ja-no-eval :group! (ja-group) :num! (loop!) :frame-num f0-3)
+      )
+    (until #f
+      (suspend)
+      (ja :num! (loop!))
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (seek! (-> self path-u) 1.0 (* (-> self path-du) (-> self clock seconds-per-frame)))
+    (when (>= (-> self path-u) 1.0)
+      (set! (-> self path-u) 0.0)
+      (set! (-> self state-time) (-> self clock frame-counter))
+      )
+    (get-point-at-percent-along-path! (-> self path) (-> self root trans) (-> self path-u) 'interp)
+    (ja-post)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! prsn-hang-cell ((obj prsn-hang-cell) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (with-pp
+    (set! (-> obj root) (new 'process 'trsqv))
+    (process-drawable-from-entity! obj arg0)
+    (initialize-skeleton
+      obj
+      (the-as skeleton-group (art-group-get-by-name *level* "skel-prsn-hang-cell" (the-as (pointer uint32) #f)))
+      (the-as pair 0)
+      )
+    (logclear! (-> obj mask) (process-mask actor-pause))
+    (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #f))
+    (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+    (set! (-> obj path-du) 0.01)
+    (let ((f0-2 (* 300.0 (/ 1.0 (-> obj path-du))))
+          (f1-3 (the float (-> pp clock frame-counter)))
+          )
+      (set! (-> obj path-u) (/ (- f1-3 (* (the float (the int (/ f1-3 f0-2))) f0-2)) f0-2))
+      )
+    (let* ((f30-0 (-> obj path-u))
+           (f28-0 8.0)
+           (f26-0 (/ 1.0 f28-0))
+           )
+      (dotimes (s5-2 (+ (the int f28-0) -1))
+        (+! f30-0 f26-0)
+        (process-spawn
+          prsn-hang-cell
+          (if (>= f30-0 1.0)
+              (+ -1.0 f30-0)
+              f30-0
+              )
+          :to obj
+          )
+        )
+      )
+    (go (method-of-object obj idle))
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior prsn-hang-cell-init-by-other prsn-hang-cell ((arg0 float))
+  (set! (-> self root) (new 'process 'trsqv))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-prsn-hang-cell" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (logclear! (-> self mask) (process-mask actor-pause))
+  (set! (-> self path) (new 'process 'path-control self 'path 0.0 (the-as entity #f) #f))
+  (logior! (-> self path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> self path-u) arg0)
+  (set! (-> self path-du) 0.01)
+  (set! (-> self draw light-index) (the-as uint 10))
+  (go-virtual idle)
+  (none)
+  )
+
+(defskelgroup skel-warp-gate-b warp-gate-b warp-gate-b-lod0-jg warp-gate-b-idle-ja
+              ((warp-gate-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 3 0 4)
+              :origin-joint-index 3
+              )
+
+(deftype warp-gate-b (warp-gate)
+  ()
+  :heap-base #x80
+  :method-count-assert 26
+  :size-assert         #x100
+  :flag-assert         #x1a00800100
+  )
+
+
+;; WARN: Return type mismatch draw-control vs none.
+(defmethod init-skel-and-collide warp-gate-b ((obj warp-gate-b))
+  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 penetrated-by) (penetrate))
+    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-2 prim-core action) (collide-action solid))
+      (set! (-> v1-2 transform-index) 3)
+      (set-vector! (-> v1-2 local-sphere) 0.0 -12288.0 0.0 16384.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-2)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> obj root-override) s5-0)
+    )
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-warp-gate-b" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (none)
+  )
+
+(deftype prsn-cell-door (process-drawable)
+  ((frame   float  :offset-assert 200)
+   (desired float  :offset-assert 204)
+   )
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xd0
+  :flag-assert         #x15005000d0
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+
+(defskelgroup skel-prsn-cell-door prsn-cell-door prsn-cell-door-lod0-jg prsn-cell-door-idle-ja
+              ((prsn-cell-door-lod0-mg (meters 999999)))
+              :bounds (static-spherem -2.5 3.25 0 4.25)
+              :origin-joint-index 3
+              )
+
+(defstate idle (prsn-cell-door)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('open)
+       (set! (-> self desired) 1.0)
+       (format #t "open~%")
+       )
+      (('close)
+       (set! (-> self desired) 0.0)
+       (format #t "close~%")
+       )
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (cond
+        ((< (-> self frame) (-> self desired))
+         (+! (-> self frame) (* 0.075 (-> self clock seconds-per-frame)))
+         )
+        ((< (-> self desired) (-> self frame))
+         (set! (-> self frame) (- (-> self frame) (* 0.075 (-> self clock seconds-per-frame))))
+         )
+        )
+      (set! (-> self frame) (fmax 0.0 (fmin 1.0 (-> self frame))))
+      (ja :num-func num-func-identity :frame-num (ja-aframe (-> self frame) 0))
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior prsn-cell-door) transform-post)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! prsn-cell-door ((obj prsn-cell-door) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-2 prim-core action) (collide-action solid))
+      (set! (-> v1-2 transform-index) 3)
+      (set-vector! (-> v1-2 local-sphere) -10240.0 13312.0 0.0 17408.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-2)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> obj root) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-prsn-cell-door" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> obj frame) 0.0)
+  (set! (-> obj desired) 0.0)
+  (set! (-> obj draw light-index) (the-as uint 10))
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype prsn-vent-fan (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+
+(defskelgroup skel-prsn-vent-fan prsn-vent-fan prsn-vent-fan-lod0-jg prsn-vent-fan-idle-ja
+              ((prsn-vent-fan-lod0-mg (meters 999999)))
+              :bounds (static-spherem -2.5 3.25 0 4.25)
+              :origin-joint-index 3
+              )
+
+(defstate idle (prsn-vent-fan)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group)
+                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior prsn-vent-fan) ja-post)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! prsn-vent-fan ((obj prsn-vent-fan) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-prsn-vent-fan" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> obj draw light-index) (the-as uint 10))
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype prsn-torture (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+
+(defstate idle (prsn-torture)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior prsn-torture)
+    dark-lightning-handler
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group)
+                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (transform-post)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! prsn-torture ((obj prsn-torture) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 penetrated-by) (penetrate))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 9) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 10))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 2)
+      (set-vector! (-> s3-0 local-sphere) 0.0 -14336.0 0.0 32768.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (pusher-init s4-0)
+    (let ((v1-11 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 20) (the-as uint 0))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-11 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-11 prim-core action) (collide-action solid))
+      (set! (-> v1-11 transform-index) 3)
+      (set-vector! (-> v1-11 local-sphere) 0.0 -10240.0 0.0 16384.0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 13) (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set! (-> v1-13 transform-index) 10)
+      (set-vector! (-> v1-13 local-sphere) 0.0 -4096.0 0.0 10240.0)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 12) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid))
+      (set! (-> v1-15 transform-index) 11)
+      (set-vector! (-> v1-15 local-sphere) 0.0 -5120.0 0.0 8192.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 16) (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-17 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-17 prim-core action) (collide-action solid))
+      (set! (-> v1-17 transform-index) 24)
+      (set-vector! (-> v1-17 local-sphere) 0.0 4096.0 0.0 10240.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 15) (the-as uint 0))))
+      (set! (-> v1-19 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-19 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-19 prim-core action) (collide-action solid))
+      (set! (-> v1-19 transform-index) 25)
+      (set-vector! (-> v1-19 local-sphere) 0.0 -2662.4 0.0 6144.0)
+      )
+    (let ((v1-21 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 14) (the-as uint 0))))
+      (set! (-> v1-21 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-21 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-21 prim-core action) (collide-action solid))
+      (set! (-> v1-21 transform-index) 27)
+      (set-vector! (-> v1-21 local-sphere) 0.0 -819.2 0.0 4096.0)
+      )
+    (let ((v1-23 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 19) (the-as uint 0))))
+      (set! (-> v1-23 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-23 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-23 prim-core action) (collide-action solid))
+      (set! (-> v1-23 transform-index) 51)
+      (set-vector! (-> v1-23 local-sphere) 0.0 4096.0 0.0 10240.0)
+      )
+    (let ((v1-25 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 18) (the-as uint 0))))
+      (set! (-> v1-25 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-25 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-25 prim-core action) (collide-action solid))
+      (set! (-> v1-25 transform-index) 52)
+      (set-vector! (-> v1-25 local-sphere) 0.0 2457.6 0.0 6144.0)
+      )
+    (let ((v1-27 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 17) (the-as uint 0))))
+      (set! (-> v1-27 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-27 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-27 prim-core action) (collide-action solid))
+      (set! (-> v1-27 transform-index) 54)
+      (set-vector! (-> v1-27 local-sphere) 0.0 819.2 0.0 4096.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-30 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-30 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-30 prim-core collide-with))
+      )
+    (set! (-> obj root) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-prsn-torture" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> obj draw light-index) (the-as uint 10))
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(scene-method-16
+  (new 'static 'scene
+    :name "fortress-save-friends-res"
+    :extra #f
+    :info #f
+    :mask-to-clear #x1282000
+    :entity "scene-stage-49"
+    :art-group "scenecamera"
+    :anim "fortress-save-friends-res"
+    :parts 43
+    :command-list '((0 (kill "prsn-cell-door-3") (task-close! "fortress-save-friends-resolution") (fadein (frame-time-30 10)))
+      (75 (send-event "prsn-cell-door-2" 'open))
+      (75 (send-event "prsn-cell-door-1" 'open))
+      (75 (send-event "prsn-cell-door-4" 'open))
+      (1143 (apply <lambda at L2>))
+      (1189 (apply <lambda at L1>))
+      (2427 (send-event "warp-gate-b-1" 'effect) (sound-play "warpgate-mov"))
+      (2445 (send-event "warp-gate-b-1" 'effect) (sound-play "warpgate-mov"))
+      (2463 (send-event "warp-gate-b-1" 'effect) (sound-play "warpgate-mov"))
+      (2485 (send-event "warp-gate-b-1" 'effect) (sound-play "warpgate-mov"))
+      (2507 (send-event "warp-gate-b-1" 'effect) (sound-play "warpgate-mov"))
+      (2549 (send-event "warp-gate-b-1" 'effect) (sound-play "warpgate-mov"))
+      (2550 (fadeout (frame-time-30 20)))
+      )
+    :cut-list '(47
+       76
+       130
+       189
+       253
+       448
+       496
+       522
+       555
+       624
+       768
+       893
+       954
+       977
+       1089
+       1143
+       1189
+       1328
+       1407
+       1463
+       1603
+       1718
+       1857
+       1983
+       2146
+       2206
+       2307
+       2390
+       )
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #t
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'prison
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min 2507))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "jak-highres"
+        :level 'lprsncst
+        :art-group "skel-jak-highres"
+        :prefix ""
+        :draw-frames '((min 2427))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "tess-highres"
+        :level 'lprsncst
+        :art-group "skel-tess-highres"
+        :prefix ""
+        :draw-frames '((min 2445))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "samos-highres"
+        :level 'lprsncst
+        :art-group "skel-samos-highres"
+        :prefix ""
+        :draw-frames '((min 2146) (2206 2485))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "youngsamos-highres"
+        :level 'lprsncst
+        :art-group "skel-youngsamos-highres"
+        :prefix ""
+        :draw-frames '((min 2146) (2206 2463))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "prsn-cell-door"
+        :level 'prison
+        :art-group "skel-prsn-cell-door"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :light-index #xa
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj "prison-start"
+    :end-point-obj "vinroom-warp"
+    :borrow '((prison 0 lprsncst special))
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :blackout-end #t
+    :peaceful #t
+    :music-delay 1500.0
+    :save #t
+    )
+  )

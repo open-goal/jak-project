@@ -1,0 +1,562 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: history.gc
+;; name in dgo: history
+;; dgos: ENGINE, GAME
+
+(defenum collide-status
+  :bitfield #t
+  :type uint64
+  (on-surface 0)
+  (on-ground 1)
+  (touch-surface 2)
+  (touch-wall 3)
+  (touch-ceiling 4)
+  (touch-actor 5)
+  (on-special-surface 6)
+  (touch-edge 7)
+  (no-touch 8)
+  (blocked 9)
+  (on-water 10)
+  (impact-surface 11)
+  (touch-background 12)
+  (stuck 13)
+  (touch-ceiling-sticky 14)
+  (glance 15)
+  (probe-hit 16)
+  )
+
+(defenum history-channel
+  :type uint8
+  (trans 0)
+  (transv 1)
+  (transv-in 2)
+  (transv-out 3)
+  (intersect 4)
+  (local-normal 5)
+  (surface-normal 6)
+  (collide-status 7)
+  (pat 8)
+  (time 9)
+  (friction 10))
+
+;; DECOMP BEGINS
+
+;; this file is debug only
+(declare-file (debug))
+
+(defun history-channel->string ((arg0 history-channel))
+  (case arg0
+    (((history-channel friction))
+     "friction"
+     )
+    (((history-channel transv-out))
+     "transv-out"
+     )
+    (((history-channel pat))
+     "pat"
+     )
+    (((history-channel transv-in))
+     "transv-in"
+     )
+    (((history-channel trans))
+     "trans"
+     )
+    (((history-channel local-normal))
+     "local-normal"
+     )
+    (((history-channel collide-status))
+     "collide-status"
+     )
+    (((history-channel time))
+     "time"
+     )
+    (((history-channel intersect))
+     "intersect"
+     )
+    (((history-channel surface-normal))
+     "surface-normal"
+     )
+    (((history-channel transv))
+     "transv"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+(deftype history-elt (structure)
+  ((record-tag-bytes      uint8           4       :offset-assert   0)
+   (record-tag            uint32                  :offset          0)
+   (record-id             uint16                  :offset          0)
+   (owner                 uint8                   :offset          2)
+   (channel               history-channel         :offset-assert   4)
+   (timestamp             time-frame              :offset-assert   8)
+   (origin                vector          :inline :offset-assert  16)
+   (bytes                 uint8           16      :offset-assert  32)
+   (vector                vector          :inline :offset         32)
+   (float                 float                   :offset         32)
+   (collide-status        collide-status          :offset         32)
+   (collide-reaction-flag uint32                  :offset         40)
+   (pat                   pat-surface             :offset         32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+
+(deftype history-iterator (basic)
+  ((max-age      uint32   :offset-assert   4)
+   (owner        uint8    :offset-assert   8)
+   (proc         process  :offset-assert  12)
+   (out          object   :offset-assert  16)
+   (channel-mask uint64   :offset-assert  24)
+   (index        int32    :offset-assert  32)
+   (done?        symbol   :offset-assert  36)
+   )
+  :method-count-assert 12
+  :size-assert         #x28
+  :flag-assert         #xc00000028
+  (:methods
+    (new (symbol type uint) _type_ 0)
+    (frame-counter-delta (_type_ history-elt) time-frame 9)
+    (update-entries! (_type_) history-elt 10)
+    (get-age (_type_ history-elt) float 11)
+    )
+  )
+
+
+(deftype history (basic)
+  ((alloc-index      int32                        :offset-assert   4)
+   (allocated-length int32                        :offset-assert   8)
+   (elts             history-elt :inline :dynamic :offset         16)
+   )
+  :method-count-assert 11
+  :size-assert         #x10
+  :flag-assert         #xb00000010
+  (:methods
+    (new (symbol type int) _type_ 0)
+    (clear-record-tags! (_type_ history-channel uint uint) history-elt 9)
+    (clear-history-entries! (_type_) none 10)
+    )
+  )
+
+
+(defmethod length history ((obj history))
+  (-> obj allocated-length)
+  )
+
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of history ((obj history))
+  (the-as int (+ (-> obj type size) (* 48 (-> obj allocated-length))))
+  )
+
+(defmethod new history ((allocation symbol) (type-to-make type) (arg0 int))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* 48 arg0))))))
+    (set! (-> v0-0 allocated-length) arg0)
+    v0-0
+    )
+  )
+
+(defmethod clear-history-entries! history ((obj history))
+  "Iterates through each [[history-elt]] in the `elt` dynamic array
+For each entry:
+- clear `timestamp`
+- clear `record-tag`"
+  (set! (-> obj alloc-index) 0)
+  (countdown (v1-0 (-> obj allocated-length))
+    (let ((a1-3 (-> obj elts v1-0)))
+      (set! (-> a1-3 record-tag) (the-as uint 0))
+      (set! (-> a1-3 timestamp) 0)
+      )
+    0
+    )
+  0
+  (none)
+  )
+
+(define-perm *history* history (new 'debug 'history 4096))
+
+(clear-history-entries! *history*)
+
+;; WARN: new jak 2 until loop case, check carefully
+(defmethod clear-record-tags! history ((obj history) (arg0 history-channel) (arg1 uint) (arg2 uint))
+  "First grab the latest [[history-elt]] at `alloc-index`
+1. update it's `channel`, `record-id` and `owner` from the provided args
+2. - if it's `record-tag` is zero -- return it
+- otherwise, iterate through all `elts` until one is found that does not match it's `timestamp`
+- if not `0` out the `record-tag` for that elt and continue iteration"
+  (let* ((t1-0 (-> obj alloc-index))
+         (v1-0 (-> obj elts))
+         (v0-0 (-> v1-0 t1-0))
+         )
+    (let ((t2-0 (-> v0-0 record-tag))
+          (t0-2 (-> v0-0 timestamp))
+          )
+      (set! (-> v0-0 channel) arg0)
+      (set! (-> v0-0 record-id) arg1)
+      (set! (-> v0-0 owner) arg2)
+      (set! (-> v0-0 timestamp) (-> *display* base-clock frame-counter))
+      (let* ((a1-4 (-> obj allocated-length))
+             (a2-2 (mod (+ t1-0 1) a1-4))
+             )
+        (set! (-> obj alloc-index) a2-2)
+        (when (nonzero? t2-0)
+          (until #f
+            (let ((a0-4 (-> v1-0 a2-2)))
+              (if (!= t0-2 (-> a0-4 timestamp))
+                  (return v0-0)
+                  )
+              (set! (-> a0-4 record-tag) (the-as uint 0))
+              )
+            (set! a2-2 (mod (+ a2-2 1) a1-4))
+            )
+          #f
+          )
+        )
+      )
+    v0-0
+    )
+  )
+
+(defmethod new history-iterator ((allocation symbol) (type-to-make type) (arg0 uint))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 max-age) arg0)
+    (set! (-> v0-0 owner) (the-as uint 1))
+    (set! (-> v0-0 proc) #f)
+    (set! (-> v0-0 out) *stdcon*)
+    (set! (-> v0-0 channel-mask) (the-as uint -1))
+    (set! (-> v0-0 index) (-> *history* alloc-index))
+    (set! (-> v0-0 done?) #f)
+    v0-0
+    )
+  )
+
+(defmethod update-entries! history-iterator ((obj history-iterator))
+  "Iterate through each [[history-elt]] in [[*history*]]
+- If we hit the end set `done?` to true
+- If the `timestamp` on the elt, minus the current framecounter exceeds `max-age`, we are also done, return #f
+- However if we find an elt who's `owner` matches the iterator's, break out early returning that `elt`"
+  (let ((v1-0 *history*)
+        (a1-2 (-> *display* base-clock frame-counter))
+        )
+    (while (not (-> obj done?))
+      (let ((a2-1 (+ (-> obj index) -1)))
+        (if (< a2-1 0)
+            (set! a2-1 (+ (-> v1-0 allocated-length) -1))
+            )
+        (set! (-> obj index) a2-1)
+        (if (= a2-1 (-> v1-0 alloc-index))
+            (set! (-> obj done?) #t)
+            )
+        (let ((a2-5 (-> v1-0 elts a2-1)))
+          (when (nonzero? (-> a2-5 record-tag))
+            (when (< (the-as time-frame (-> obj max-age)) (- a1-2 (-> a2-5 timestamp)))
+              (set! (-> obj done?) #t)
+              (return (the-as history-elt #f))
+              )
+            (if (= (-> a2-5 owner) (-> obj owner))
+                (return a2-5)
+                )
+            )
+          )
+        )
+      )
+    )
+  (the-as history-elt #f)
+  )
+
+(defmethod get-age history-iterator ((obj history-iterator) (arg0 history-elt))
+  "Get the age of a history element"
+  (- 1.0 (fmin 1.0 (/ (the float (+ (- 1 (-> arg0 timestamp)) (-> *display* base-clock frame-counter)))
+                      (the float (+ (-> obj max-age) 1))
+                      )
+               )
+     )
+  )
+
+(defmethod frame-counter-delta history-iterator ((obj history-iterator) (arg0 history-elt))
+  "Returns the difference between [[*display*]]'s `base-clock.frame-counter` and the elt's `timestamp`"
+  (- (-> *display* base-clock frame-counter) (-> arg0 timestamp))
+  )
+
+;; WARN: new jak 2 until loop case, check carefully
+(defun history-print ((arg0 history-iterator))
+  (local-vars
+    (sv-16 object)
+    (sv-24 int)
+    (sv-32 int)
+    (sv-40 history-elt)
+    (sv-48 time-frame)
+    (sv-56 uint)
+    (sv-64 collide-status)
+    (sv-72 float)
+    (sv-80 string)
+    (sv-96 string)
+    )
+  (set! sv-16 (-> arg0 out))
+  (set! sv-24 -1)
+  (set! sv-32 0)
+  (until #f
+    (set! sv-40 (update-entries! arg0))
+    (if (not sv-40)
+        (goto cfg-71)
+        )
+    (when (logtest? (-> arg0 channel-mask) (ash 1 (-> sv-40 channel)))
+      (set! sv-48 (frame-counter-delta arg0 sv-40))
+      (set! sv-56 (-> sv-40 record-id))
+      (cond
+        ((!= sv-24 sv-48)
+         (set! sv-24 (the-as int sv-48))
+         (set! sv-32 (the-as int sv-56))
+         (format sv-16 "~3D ~4X " sv-48 (-> sv-40 record-id))
+         )
+        ((!= sv-32 sv-56)
+         (set! sv-32 (the-as int sv-56))
+         (format sv-16 "    ~4X " (-> sv-40 record-id))
+         )
+        (else
+          (format sv-16 "         ")
+          )
+        )
+      (let ((v1-22 (-> sv-40 channel)))
+        (cond
+          ((or (= v1-22 (history-channel trans))
+               (or (= v1-22 (history-channel transv))
+                   (= v1-22 (history-channel transv-in))
+                   (= v1-22 (history-channel transv-out))
+                   (= v1-22 (history-channel intersect))
+                   )
+               )
+           (format
+             sv-16
+             "~-15S: ~14Mm ~14Mm ~14Mm~%"
+             (history-channel->string (-> sv-40 channel))
+             (-> sv-40 vector x)
+             (-> sv-40 vector y)
+             (-> sv-40 vector z)
+             )
+           )
+          ((or (= v1-22 (history-channel local-normal)) (= v1-22 (history-channel surface-normal)))
+           (format
+             sv-16
+             "~-15S: ~14f  ~14f  ~14f~%"
+             (history-channel->string (-> sv-40 channel))
+             (-> sv-40 vector x)
+             (-> sv-40 vector y)
+             (-> sv-40 vector z)
+             )
+           )
+          ((= v1-22 (history-channel pat))
+           (let* ((s2-0 (-> sv-40 vector x))
+                  (s5-2 format)
+                  (s4-2 sv-16)
+                  (s3-2 "~-15S: #x~6X  mode:~-8S  material:~-10S  event:~S~%")
+                  (s1-0 (history-channel->string (-> sv-40 channel)))
+                  (s0-0 s2-0)
+                  )
+             (set! sv-80 (pat-mode->string (the-as pat-surface s2-0)))
+             (set! sv-96 (pat-material->string (the-as pat-surface s2-0)))
+             (let ((t2-0 (pat-event->string (the-as pat-surface s2-0))))
+               (s5-2 s4-2 s3-2 s1-0 s0-0 sv-80 sv-96 t2-0)
+               )
+             )
+           )
+          ((= v1-22 (history-channel collide-status))
+           (set! sv-64 (-> sv-40 collide-status))
+           (set! sv-72 (-> sv-40 vector z))
+           (format sv-16 "~-15S: #x~6X " (history-channel->string (-> sv-40 channel)) sv-64)
+           (let ((s5-4 sv-64))
+             (if (= (logand s5-4 (collide-status touch-background)) (collide-status touch-background))
+                 (format sv-16 "touch-background ")
+                 )
+             (if (= (logand s5-4 (collide-status on-special-surface)) (collide-status on-special-surface))
+                 (format sv-16 "on-special-surface ")
+                 )
+             (if (= (logand s5-4 (collide-status touch-wall)) (collide-status touch-wall))
+                 (format sv-16 "touch-wall ")
+                 )
+             (if (= (logand s5-4 (collide-status on-surface)) (collide-status on-surface))
+                 (format sv-16 "on-surface ")
+                 )
+             (if (= (logand s5-4 (collide-status impact-surface)) (collide-status impact-surface))
+                 (format sv-16 "impact-surface ")
+                 )
+             (if (= (logand s5-4 (collide-status touch-ceiling)) (collide-status touch-ceiling))
+                 (format sv-16 "touch-ceiling ")
+                 )
+             (if (= (logand s5-4 (collide-status on-ground)) (collide-status on-ground))
+                 (format sv-16 "on-ground ")
+                 )
+             (if (= (logand s5-4 (collide-status glance)) (collide-status glance))
+                 (format sv-16 "glance ")
+                 )
+             (if (= (logand s5-4 (collide-status blocked)) (collide-status blocked))
+                 (format sv-16 "blocked ")
+                 )
+             (if (= (logand s5-4 (collide-status touch-edge)) (collide-status touch-edge))
+                 (format sv-16 "touch-edge ")
+                 )
+             (if (= (logand s5-4 (collide-status touch-ceiling-sticky)) (collide-status touch-ceiling-sticky))
+                 (format sv-16 "touch-ceiling-sticky ")
+                 )
+             (if (= (logand s5-4 (collide-status on-water)) (collide-status on-water))
+                 (format sv-16 "on-water ")
+                 )
+             (if (= (logand s5-4 (collide-status touch-actor)) (collide-status touch-actor))
+                 (format sv-16 "touch-actor ")
+                 )
+             (if (= (logand (collide-status probe-hit) s5-4) (collide-status probe-hit))
+                 (format sv-16 "probe-hit ")
+                 )
+             (if (= (logand s5-4 (collide-status stuck)) (collide-status stuck))
+                 (format sv-16 "stuck ")
+                 )
+             (if (= (logand s5-4 (collide-status no-touch)) (collide-status no-touch))
+                 (format sv-16 "no-touch ")
+                 )
+             (if (= (logand s5-4 (collide-status touch-surface)) (collide-status touch-surface))
+                 (format sv-16 "touch-surface ")
+                 )
+             )
+           (format sv-16 " #x~6X~%" sv-72)
+           )
+          ((= v1-22 (history-channel friction))
+           (let ((f30-0 (-> sv-40 vector x)))
+             (format sv-16 "~-15S: ~f~%" (history-channel->string (-> sv-40 channel)) f30-0)
+             )
+           )
+          )
+        )
+      )
+    )
+  #f
+  (label cfg-71)
+  0
+  (none)
+  )
+
+;; WARN: new jak 2 until loop case, check carefully
+(defun history-draw ((arg0 history-iterator))
+  (local-vars (sv-16 vector) (sv-20 vector) (sv-24 pat-surface))
+  (set! sv-16 (the-as vector #f))
+  (set! sv-20 (the-as vector #f))
+  (set! sv-24 (new 'static 'pat-surface))
+  (until #f
+    (let ((s5-0 (update-entries! arg0)))
+      (if (not s5-0)
+          (goto cfg-34)
+          )
+      (when (logtest? (-> arg0 channel-mask) (ash 1 (-> s5-0 channel)))
+        (let* ((f0-0 (get-age arg0 s5-0))
+               (v1-8 (the int (lerp 4.0 128.0 f0-0)))
+               )
+          (case (-> s5-0 channel)
+            (((history-channel trans))
+             (if sv-16
+                 (add-debug-line
+                   #t
+                   (bucket-id debug-no-zbuf1)
+                   sv-16
+                   (-> s5-0 vector)
+                   (the-as rgba (logior #xffff00 (shl v1-8 24)))
+                   #f
+                   (the-as rgba -1)
+                   )
+                 (add-debug-x #t (bucket-id debug-no-zbuf1) (-> s5-0 vector) (the-as rgba (logior #xffff00 (shl v1-8 24))))
+                 )
+             (set! sv-16 (-> s5-0 vector))
+             )
+            (((history-channel intersect))
+             (if sv-20
+                 (add-debug-line
+                   #t
+                   (bucket-id debug-no-zbuf1)
+                   sv-20
+                   (-> s5-0 vector)
+                   (the-as rgba (logior #xffffff (shl v1-8 24)))
+                   #f
+                   (the-as rgba -1)
+                   )
+                 (add-debug-x #t (bucket-id debug-no-zbuf1) (-> s5-0 vector) (the-as rgba (logior #xffffff (shl v1-8 24))))
+                 )
+             (set! sv-20 (-> s5-0 vector))
+             )
+            (((history-channel transv))
+             (add-debug-vector
+               #t
+               (bucket-id debug-no-zbuf1)
+               (-> s5-0 origin)
+               (-> s5-0 vector)
+               (meters 0.000024414063)
+               (the-as rgba (logior (shl v1-8 24) #xff00))
+               )
+             )
+            (((history-channel transv-in))
+             (add-debug-vector
+               #t
+               (bucket-id debug-no-zbuf1)
+               (-> s5-0 origin)
+               (-> s5-0 vector)
+               (meters 0.000024414063)
+               (the-as rgba (logior #x408040 (shl v1-8 24)))
+               )
+             )
+            (((history-channel transv-out))
+             (add-debug-vector
+               #t
+               (bucket-id debug-no-zbuf1)
+               (-> s5-0 origin)
+               (-> s5-0 vector)
+               (meters 0.000024414063)
+               (the-as rgba (logior #x404080 (shl v1-8 24)))
+               )
+             )
+            (((history-channel local-normal) (history-channel surface-normal))
+             (let ((t1-7
+                     (logand (the-as uint (-> *pat-mode-info* (-> sv-24 mode) hilite-color)) (the-as uint #xffffffff00ffffff))
+                     )
+                   )
+               (add-debug-vector
+                 #t
+                 (bucket-id debug-no-zbuf1)
+                 (-> s5-0 origin)
+                 (-> s5-0 vector)
+                 (meters 1)
+                 (the-as rgba (logior t1-7 (shl v1-8 24)))
+                 )
+               )
+             )
+            (((history-channel pat))
+             (set! sv-24 (the-as pat-surface (-> s5-0 vector x)))
+             )
+            (((history-channel friction))
+             (let ((f0-3 (-> s5-0 vector x))
+                   (a3-10 (new 'stack-no-clear 'vector))
+                   )
+               (set-vector! a3-10 0.0 (* -8192.0 f0-3) 0.0 1.0)
+               (add-debug-vector
+                 #t
+                 (bucket-id debug-no-zbuf1)
+                 (-> s5-0 origin)
+                 a3-10
+                 (meters 0.00024414062)
+                 (the-as rgba (logior #xffffff (shl v1-8 24)))
+                 )
+               )
+             )
+            )
+          )
+        )
+      )
+    )
+  #f
+  (label cfg-34)
+  0
+  (none)
+  )
+
+0

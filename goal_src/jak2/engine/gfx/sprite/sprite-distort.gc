@@ -1,0 +1,477 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: sprite-distort.gc
+;; name in dgo: sprite-distort
+;; dgos: ENGINE, GAME
+
+#|@file
+Works just like Jak 1 with some exceptions:
+- Sprite texture source doesn't seem to be the current framebuffer, instead tbp0 is hardcoded to #x3300.
+- The sprite-aux-list contains more than just distort sprites. Instead of containing sprite-vec-data-2d's
+  directly, it's now a list of sprite-aux-elem. If the aux-type is 0, then that element is a distort sprite.
+- No longer takes *video-params* screen-sy into account.
+
+Sprite distort works by drawing a circle for each sprite whose texture is the framebuffer contents of what's
+been drawn so far. The texture coordinates are off slightly to give a "distortion" effect as the sprite moves
+across the screen. The resolution of the circle is defined by the number of "turns", which can range between
+3 and 11. Turns basically define the number of edges that make up the circle, so 3 turns will create a triangle,
+5 will create a pentagon, etc. The sprite-vec-data-2d 'warp-turns'/'flag' field contains the number of turns.
+|#
+
+;; DECOMP BEGINS
+
+;; Contains the base mesh of each possible distort sprite shape. Everything excluding aspx and aspy
+;; are uploaded to VU memory.
+;;
+;; See sprite-distorter-generate-tables.
+(deftype sprite-distorter-sine-tables (basic)
+  ((aspx   float                  :offset-assert   4)
+   (aspy   float                  :offset-assert   8)
+   (entry  vector     128 :inline :offset-assert  16)
+   (ientry qword      9 :inline   :offset-assert 2064)
+   (giftag gs-gif-tag :inline     :offset-assert 2208)
+   (color  qword      :inline     :offset-assert 2224)
+   )
+  :method-count-assert 9
+  :size-assert         #x8c0
+  :flag-assert         #x9000008c0
+  )
+
+(defmethod inspect sprite-distorter-sine-tables ((obj sprite-distorter-sine-tables))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Taspx: ~f~%" (-> obj aspx))
+  (format #t "~1Taspy: ~f~%" (-> obj aspy))
+  (format #t "~1Tentry[128] @ #x~X~%" (-> obj entry))
+  (format #t "~1Tientry[9] @ #x~X~%" (-> obj ientry))
+  (format #t "~1Tgiftag: #<qword @ #x~X>~%" (-> obj giftag))
+  (format #t "~1Tcolor: #<qword @ #x~X>~%" (-> obj color))
+  (label cfg-4)
+  obj
+  )
+
+(kmemopen global "sprite-distort-tables")
+(define *sprite-distorter-sine-tables* (new 'global 'sprite-distorter-sine-tables))
+(kmemclose)
+
+;; Called from update-math-camera. 
+;; Whenever the camera's aspect ratio changes, recalculates the *sprite-distorter-sine-tables*.
+;;
+;; Every two vectors in 'entry' contain the position and texture coordinates for a vertex.
+;; The vertices for each circular shape made up of a given number of turns/edges are placed into this
+;; list. For example, the first 6 vectors in entry will be the 3 vertices of a circle made up of 3 turns.
+;; Then the next 8 vectors will be the 4 vertices of one made up of 4 turns, and so on until (and including) 11 turns.
+;;
+;; This list also cheats a little. When the VU program goes to render one of these shapes, the final vertex
+;; of the shape will be connected to the first vertex of the next shape. In other words, when rendering the
+;; shape of 3 turns, the final vertex will be connected to the first vertex of the vertices for 4 turns.
+;; Because of this, a single extra vertex is added after the 11 turns shape, totalling the 128 vectors.
+;; This works because the first vertex is always the same top-center position.
+;;
+;; The ientry list is given VU memory addresses into the entry list for each shape.
+;; For example, ientry[0] is 352 which is the vertex data for 3 turns, ientry[1] is 358 which is the
+;; vertex data for 4 turns, etc.
+;;
+;; Additionally, a giftag is pre-calculated for rendering each shape along with a color. But the giftag
+;; never changes and the color is always (1.0, 1.0, 1.0, 1.0).
+(defun sprite-distorter-generate-tables ()
+  (let ((tbls *sprite-distorter-sine-tables*))
+    (let ((entry-idx 0)
+          (ientry-idx 0)
+          (turns 3)
+          (cam-aspx (- (-> *math-camera* perspective data 0)))
+          (cam-aspy (- (-> *math-camera* perspective data 5)))
+          )
+      (when (or (!= cam-aspx (-> tbls aspx)) (!= cam-aspy (-> tbls aspy)))
+        (set! (-> tbls aspx) cam-aspx)
+        (set! (-> tbls aspy) cam-aspy)
+        (while (< turns 12)
+          (set! (-> tbls ientry ientry-idx vector4w x) (+ entry-idx 352))
+          (+! ientry-idx 1)
+          (dotimes (turn turns)
+            (let ((rot (* 65536.0 (/ (the float turn) (the float turns)))))
+              (set-vector! (-> tbls entry entry-idx) (* (sin rot) cam-aspx) (* (cos rot) cam-aspy) 0.0 0.0)
+              (let ((s3-1 (+ entry-idx 1)))
+                (set-vector!
+                  (-> tbls entry s3-1)
+                  (* 0.001953125 cam-aspx (sin rot))
+                  (* 0.001953125 cam-aspy (cos rot))
+                  0.0
+                  0.0
+                  )
+                (set! entry-idx (+ s3-1 1))
+                )
+              )
+            )
+          (+! turns 1)
+          )
+        (set-vector! (-> tbls entry entry-idx) 0.0 cam-aspy 0.0 0.0)
+        (let ((v1-20 (+ entry-idx 1)))
+          (set-vector! (-> tbls entry v1-20) 0.0 (* 0.001953125 cam-aspy) 0.0 0.0)
+          (+ v1-20 1)
+          )
+        )
+      )
+    (set! (-> tbls giftag tag) (new 'static 'gif-tag64
+                                 :nloop #x1
+                                 :eop #x1
+                                 :pre #x1
+                                 :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :tme #x1)
+                                 :nreg #xf
+                                 )
+          )
+    (set! (-> tbls giftag regs) (new 'static 'gif-tag-regs
+                                  :regs0 (gif-reg-id st)
+                                  :regs1 (gif-reg-id rgbaq)
+                                  :regs2 (gif-reg-id xyzf2)
+                                  :regs3 (gif-reg-id st)
+                                  :regs4 (gif-reg-id rgbaq)
+                                  :regs5 (gif-reg-id xyzf2)
+                                  :regs6 (gif-reg-id st)
+                                  :regs7 (gif-reg-id rgbaq)
+                                  :regs8 (gif-reg-id xyzf2)
+                                  :regs9 (gif-reg-id st)
+                                  :regs10 (gif-reg-id rgbaq)
+                                  :regs11 (gif-reg-id xyzf2)
+                                  :regs12 (gif-reg-id st)
+                                  :regs13 (gif-reg-id rgbaq)
+                                  :regs14 (gif-reg-id xyzf2)
+                                  )
+          )
+    (set! (-> tbls color vector4w x) 128)
+    (set! (-> tbls color vector4w y) 128)
+    (set! (-> tbls color vector4w z) 128)
+    (set! (-> tbls color vector4w w) 128)
+    )
+  0
+  (none)
+  )
+
+(define sprite-distort-vu1-block (new 'static 'vu-function :length 63 :qlength 32))
+
+;; Sets up GS registers, adds a reference to *sprite-distorter-sine-tables*, and loads the VU program.
+(defun sprite-init-distorter ((dma-buff dma-buffer))
+  (let* ((v1-0 dma-buff)
+         (a1-0 (the-as object (-> v1-0 base)))
+         )
+    (set! (-> (the-as dma-packet a1-0) dma) (new 'static 'dma-tag :qwc #x7 :id (dma-tag-id cnt)))
+    (set! (-> (the-as dma-packet a1-0) vif0) (new 'static 'vif-tag))
+    (set! (-> (the-as dma-packet a1-0) vif1) (new 'static 'vif-tag :imm #x7 :cmd (vif-cmd direct) :msk #x1))
+    (set! (-> v1-0 base) (&+ (the-as pointer a1-0) 16))
+    )
+  (let* ((v1-1 dma-buff)
+         (a1-2 (the-as object (-> v1-1 base)))
+         )
+    (set! (-> (the-as gs-gif-tag a1-2) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x6))
+    (set! (-> (the-as gs-gif-tag a1-2) regs) (new 'static 'gif-tag-regs
+                                               :regs0 (gif-reg-id a+d)
+                                               :regs1 (gif-reg-id a+d)
+                                               :regs2 (gif-reg-id a+d)
+                                               :regs3 (gif-reg-id a+d)
+                                               :regs4 (gif-reg-id a+d)
+                                               :regs5 (gif-reg-id a+d)
+                                               :regs6 (gif-reg-id a+d)
+                                               :regs7 (gif-reg-id a+d)
+                                               :regs8 (gif-reg-id a+d)
+                                               :regs9 (gif-reg-id a+d)
+                                               :regs10 (gif-reg-id a+d)
+                                               :regs11 (gif-reg-id a+d)
+                                               :regs12 (gif-reg-id a+d)
+                                               :regs13 (gif-reg-id a+d)
+                                               :regs14 (gif-reg-id a+d)
+                                               :regs15 (gif-reg-id a+d)
+                                               )
+          )
+    (set! (-> v1-1 base) (&+ (the-as pointer a1-2) 16))
+    )
+  (let* ((v1-2 dma-buff)
+         (a1-4 (-> v1-2 base))
+         )
+    (set! (-> (the-as (pointer gs-zbuf) a1-4) 0) (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24) :zmsk #x1))
+    (set! (-> (the-as (pointer gs-reg64) a1-4) 1) (gs-reg64 zbuf-1))
+    (set! (-> (the-as (pointer gs-tex0) a1-4) 2) (new 'static 'gs-tex0 :tbp0 #x3300 :tbw #x8 :tw #x9 :th #x9))
+    (set! (-> (the-as (pointer gs-reg64) a1-4) 3) (gs-reg64 tex0-1))
+    (set! (-> (the-as (pointer gs-tex1) a1-4) 4) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+    (set! (-> (the-as (pointer gs-reg64) a1-4) 5) (gs-reg64 tex1-1))
+    (set! (-> (the-as (pointer gs-miptbp) a1-4) 6) (new 'static 'gs-miptbp))
+    (set! (-> (the-as (pointer gs-reg64) a1-4) 7) (gs-reg64 miptbp1-1))
+    (set! (-> (the-as (pointer gs-clamp) a1-4) 8) (new 'static 'gs-clamp
+                                                    :wms (gs-tex-wrap-mode region-clamp)
+                                                    :wmt (gs-tex-wrap-mode region-clamp)
+                                                    :maxu #x1ff
+                                                    :maxv #x19f
+                                                    )
+          )
+    (set! (-> (the-as (pointer gs-reg64) a1-4) 9) (gs-reg64 clamp-1))
+    (set! (-> (the-as (pointer gs-alpha) a1-4) 10) (new 'static 'gs-alpha :b #x1 :d #x1))
+    (set! (-> (the-as (pointer gs-reg64) a1-4) 11) (gs-reg64 alpha-1))
+    (set! (-> v1-2 base) (&+ a1-4 96))
+    )
+  (let* ((v1-3 dma-buff)
+         (a1-6 (the-as object (-> v1-3 base)))
+         )
+    (set! (-> (the-as dma-packet a1-6) dma)
+          (new 'static 'dma-tag
+            :qwc #x8b
+            :id (dma-tag-id ref)
+            :addr (the-as uint (-> *sprite-distorter-sine-tables* entry))
+            )
+          )
+    (set! (-> (the-as dma-packet a1-6) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set! (-> (the-as dma-packet a1-6) vif1)
+          (new 'static 'vif-tag :imm #x160 :num #x8b :cmd (vif-cmd unpack-v4-32))
+          )
+    (set! (-> v1-3 base) (&+ (the-as pointer a1-6) 16))
+    )
+  (dma-buffer-add-vu-function dma-buff sprite-distort-vu1-block 1)
+  0
+  (none)
+  )
+
+;; Calculates per-sprite data like positions and texture coordinates, puts each sprite onto
+;; the DMA chain in chunks, and calls into the VU program to draw.
+;;
+;; - Only aux sprites with an aux-type of 0 are processed.
+;; - Sprites will be skipped if their 'warp-turns'/'flag' is 0 or if they fail the clipping test.
+;; - Sprite coordinates are transformed into screen-coordinates ahead of time in GOAL.
+;;   - If the sprite's 'matrix' field is 1, then the sprite is in screen-space,
+;;     otherwise it's in world-space.
+;; - Sprites are uploaded in chunks of 85.
+;; - For every 2 chunks, a call into the VU program is added.
+(defun sprite-draw-distorters ((dma-buff dma-buffer))
+  (local-vars
+    (v1-15 float)
+    (v1-21 float)
+    (clip-result int)
+    (v1-63 float)
+    (sprite sprite-vec-data-2d)
+    (dma-st-flag pointer)
+    (dma-color pointer)
+    )
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf10 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf8 :class vf)
+         (vf9 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf8 (&-> *math-camera* hmge-scale quad))
+    (let ((dma-chunk-start (-> dma-buff base))
+          (chunk-sprite-count 0)
+          (draw-sprite-count 0)
+          )
+      (&+! (-> dma-buff base) 16)
+      (let* ((s3-0 *sprite-aux-list*)
+             (num-entries (-> s3-0 entry))
+             )
+        (dotimes (i num-entries)
+          (let ((aux-elem (-> s3-0 data i)))
+            (when (= (-> aux-elem aux-type) (sprite-aux-type distort))
+              (set! sprite (-> aux-elem vec-data))
+              (let ((dma-position (the-as object (-> dma-buff base))))
+                (set! dma-st-flag (&+ (the-as pointer dma-position) 16))
+                (set! dma-color (&+ (the-as pointer dma-position) 32))
+                (cond
+                  ((= (the-as int (-> sprite flag-rot-sy y)) 1)
+                   (.lvf vf3 (&-> *math-camera* sprite-2d vector 0 quad))
+                   (.lvf vf4 (&-> *math-camera* sprite-2d vector 1 quad))
+                   (.lvf vf5 (&-> *math-camera* sprite-2d vector 2 quad))
+                   (.lvf vf6 (&-> *math-camera* sprite-2d trans quad))
+                   (.lvf vf9 (&-> *math-camera* sprite-2d-hvdf quad))
+                   (.mov v1-15 vf9)
+                   )
+                  (else
+                    (.lvf vf3 (&-> *math-camera* camera-temp vector 0 quad))
+                    (.lvf vf4 (&-> *math-camera* camera-temp vector 1 quad))
+                    (.lvf vf5 (&-> *math-camera* camera-temp vector 2 quad))
+                    (.lvf vf6 (&-> *math-camera* camera-temp trans quad))
+                    (.lvf vf9 (&-> *math-camera* hvdf-off quad))
+                    (.mov v1-21 vf9)
+                    )
+                  )
+                (.lvf vf1 (&-> sprite x-y-z-sx quad))
+                (.lvf vf2 (&-> sprite r-g-b-a quad))
+                (.mul.w.vf acc vf6 vf0)
+                (.add.mul.x.vf acc vf3 vf1 acc)
+                (.add.mul.y.vf acc vf4 vf1 acc)
+                (.add.mul.z.vf vf1 vf5 vf1 acc)
+                (.mul.vf vf10 vf1 vf8)
+                (.div.vf Q vf0 vf10 :fsf #b11 :ftf #b11)
+                ;;(TODO.VCLIP vf10 vf10)
+                (b! (zero? (-> sprite flag-rot-sy x)) cfg-22 :delay (nop!))
+                (.wait.vf)
+                (.mul.vf vf1 vf1 Q :mask #b111)
+                (.mul.vf vf2 vf2 Q :mask #b111)
+                ;;(.cfc2.i clip-result Clipping)
+                (set! clip-result (vu-clip vf10 0)) ;; safe to just drop the higher bits.
+                (b! (logtest? clip-result 63) cfg-22 :delay (.add.vf vf1 vf1 vf9))
+                (.max.x.vf vf1 vf1 vf0 :mask #b1000)
+                (.svf (&-> (the-as vector dma-position) quad) vf1)
+                (.svf (&-> (the-as vector dma-color) quad) vf2)
+                (set! (-> (the-as vector dma-position) w) 255.0)
+                (set! (-> (the-as vector dma-st-flag) x) (* 0.001953125 (+ -1792.0 (-> (the-as vector dma-position) x))))
+                (set! (-> (the-as vector dma-st-flag) y) (* 0.001953125 (+ -1840.0 (-> (the-as vector dma-position) y))))
+                )
+              (set! (-> (the-as vector dma-st-flag) z) 1.0)
+              (when (or (< (the-as int (-> sprite flag-rot-sy x)) 3) (< 11 (the-as int (-> sprite flag-rot-sy x))))
+                (format 0 "Turns = ~D!!!~%" (-> sprite flag-rot-sy x))
+                (set! (-> sprite flag-rot-sy x) (the-as float #xb))
+                )
+              (set! (-> (the-as (pointer int32) dma-st-flag) 3) (the-as int (-> sprite flag-rot-sy x)))
+              (let* ((f1-4 (- (-> *math-camera* perspective data 5)))
+                     (f2-2 (-> (the-as vector dma-st-flag) y))
+                     (f4-0 (+ f2-2 (* (-> (the-as vector dma-color) x) f1-4)))
+                     (f3-0 256.0)
+                     (f0-9 (-> (the-as vector dma-color) x))
+                     )
+                (if (< 416.0 f4-0)
+                    (set! f3-0 (/ (- 416.0 f2-2) f1-4))
+                    )
+                (if (< 128.0 f3-0)
+                    (set! f3-0 128.0)
+                    )
+                (when (< f3-0 f0-9)
+                  (let ((v1-61 (/ f3-0 f0-9)))
+                    (.mov vf1 v1-61)
+                    )
+                  (.mul.x.vf vf2 vf2 vf1)
+                  (.svf (&-> (the-as vector dma-color) quad) vf2)
+                  (.mov v1-63 vf2)
+                  )
+                )
+              (&+! (-> dma-buff base) 48)
+              (+! chunk-sprite-count 1)
+              (when (= chunk-sprite-count 85)
+                (let ((v1-68 (-> dma-buff base)))
+                  (set! (-> dma-buff base) dma-chunk-start)
+                  (let* ((a0-10 dma-buff)
+                         (a1-3 (the-as object (-> a0-10 base)))
+                         )
+                    (set! (-> (the-as dma-packet a1-3) dma)
+                          (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc (* 3 chunk-sprite-count))
+                          )
+                    (set! (-> (the-as dma-packet a1-3) vif0) (new 'static 'vif-tag))
+                    (set! (-> (the-as dma-packet a1-3) vif1) (new 'static 'vif-tag
+                                                               :cmd (vif-cmd unpack-v4-32)
+                                                               :imm (shr (shl (+ (* 3 draw-sprite-count) 512) 54) 54)
+                                                               :num (* 3 chunk-sprite-count)
+                                                               )
+                          )
+                    (set! (-> a0-10 base) (&+ (the-as pointer a1-3) 16))
+                    )
+                  (set! (-> dma-buff base) v1-68)
+                  )
+                (set! chunk-sprite-count 0)
+                (+! draw-sprite-count 85)
+                (when (= draw-sprite-count 170)
+                  (let* ((v1-71 dma-buff)
+                         (a0-11 (the-as object (-> v1-71 base)))
+                         )
+                    (set! (-> (the-as dma-packet a0-11) dma) (new 'static 'dma-tag :qwc #x1 :id (dma-tag-id cnt)))
+                    (set! (-> (the-as dma-packet a0-11) vif0) (new 'static 'vif-tag))
+                    (set! (-> (the-as dma-packet a0-11) vif1)
+                          (new 'static 'vif-tag :imm #x1ff :num #x1 :cmd (vif-cmd unpack-v4-32))
+                          )
+                    (set! (-> v1-71 base) (&+ (the-as pointer a0-11) 16))
+                    )
+                  (let* ((v1-72 dma-buff)
+                         (a0-13 (the-as object (-> v1-72 base)))
+                         )
+                    (set! (-> (the-as vector4w a0-13) x) draw-sprite-count)
+                    (set! (-> (the-as vector4w a0-13) y) 0)
+                    (set! (-> (the-as vector4w a0-13) z) 0)
+                    (set! (-> (the-as vector4w a0-13) w) 0)
+                    (set! (-> v1-72 base) (&+ (the-as pointer a0-13) 16))
+                    )
+                  (let* ((v1-73 dma-buff)
+                         (a0-15 (the-as object (-> v1-73 base)))
+                         )
+                    (set! (-> (the-as dma-packet a0-15) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+                    (set! (-> (the-as dma-packet a0-15) vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1))
+                    (set! (-> (the-as dma-packet a0-15) vif1) (new 'static 'vif-tag :cmd (vif-cmd flush) :msk #x1))
+                    (set! (-> v1-73 base) (&+ (the-as pointer a0-15) 16))
+                    )
+                  (set! draw-sprite-count 0)
+                  )
+                (set! dma-chunk-start (-> dma-buff base))
+                (&+! (-> dma-buff base) 16)
+                )
+              )
+            )
+          (label cfg-22)
+          0
+          )
+        )
+      (cond
+        ((zero? chunk-sprite-count)
+         (set! (-> dma-buff base) dma-chunk-start)
+         (nop!)
+         0
+         )
+        (else
+          (let ((v1-81 (-> dma-buff base)))
+            (set! (-> dma-buff base) dma-chunk-start)
+            (let* ((a0-17 dma-buff)
+                   (a1-10 (the-as object (-> a0-17 base)))
+                   )
+              (set! (-> (the-as dma-packet a1-10) dma)
+                    (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc (* 3 chunk-sprite-count))
+                    )
+              (set! (-> (the-as dma-packet a1-10) vif0) (new 'static 'vif-tag))
+              (set! (-> (the-as dma-packet a1-10) vif1) (new 'static 'vif-tag
+                                                          :cmd (vif-cmd unpack-v4-32)
+                                                          :imm (shr (shl (+ (* 3 draw-sprite-count) 512) 54) 54)
+                                                          :num (* 3 chunk-sprite-count)
+                                                          )
+                    )
+              (set! (-> a0-17 base) (&+ (the-as pointer a1-10) 16))
+              )
+            (set! (-> dma-buff base) v1-81)
+            )
+          )
+        )
+      (let ((v1-82 (+ chunk-sprite-count draw-sprite-count)))
+        (when (nonzero? v1-82)
+          (let* ((a0-19 dma-buff)
+                 (a1-12 (the-as object (-> a0-19 base)))
+                 )
+            (set! (-> (the-as dma-packet a1-12) dma) (new 'static 'dma-tag :qwc #x1 :id (dma-tag-id cnt)))
+            (set! (-> (the-as dma-packet a1-12) vif0) (new 'static 'vif-tag))
+            (set! (-> (the-as dma-packet a1-12) vif1)
+                  (new 'static 'vif-tag :imm #x1ff :num #x1 :cmd (vif-cmd unpack-v4-32))
+                  )
+            (set! (-> a0-19 base) (&+ (the-as pointer a1-12) 16))
+            )
+          (let* ((a0-20 dma-buff)
+                 (a1-14 (the-as object (-> a0-20 base)))
+                 )
+            (set! (-> (the-as vector4w a1-14) x) v1-82)
+            (set! (-> (the-as vector4w a1-14) y) 0)
+            (set! (-> (the-as vector4w a1-14) z) 0)
+            (set! (-> (the-as vector4w a1-14) w) 0)
+            (set! (-> a0-20 base) (&+ (the-as pointer a1-14) 16))
+            )
+          (let ((v1-84 (the-as object (-> dma-buff base))))
+            (set! (-> (the-as dma-packet v1-84) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+            (set! (-> (the-as dma-packet v1-84) vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1))
+            (set! (-> (the-as dma-packet v1-84) vif1) (new 'static 'vif-tag :cmd (vif-cmd flush) :msk #x1))
+            (set! (-> dma-buff base) (&+ (the-as pointer v1-84) 16))
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )

@@ -1,0 +1,339 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: sniper.gc
+;; name in dgo: sniper
+;; dgos: ATE
+
+;; DECOMP BEGINS
+
+(deftype sniper (spyder)
+  ((next-pick-time time-frame  :offset-assert 944)
+   )
+  :heap-base #x340
+  :method-count-assert 186
+  :size-assert         #x3b8
+  :flag-assert         #xba034003b8
+  )
+
+
+(define *sniper-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #t
+    :use-victory #t
+    :use-jump-blocked #t
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'array idle-control-frame 2
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x4 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 4
+    :notice-anim 6
+    :hostile-anim 8
+    :hit-anim 15
+    :knocked-anim 16
+    :knocked-land-anim 20
+    :die-anim 12
+    :die-falling-anim 11
+    :victory-anim 7
+    :jump-wind-up-anim 14
+    :jump-in-air-anim 14
+    :jump-land-anim 23
+    :neck-joint 6
+    :look-at-joint 7
+    :bullseye-joint 5
+    :sound-hit (static-sound-name "sniper-hit")
+    :sound-die (static-sound-name "sniper-die")
+    :notice-distance (meters 1)
+    :notice-distance-delta (meters 10)
+    :proximity-notice-distance (meters 1)
+    :default-hit-points 12
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-giant
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      penetrate-33
+      penetrate-34
+      penetrate-35
+      penetrate-36
+      penetrate-37
+      penetrate-38
+      penetrate-39
+      penetrate-40
+      penetrate-41
+      penetrate-42
+      penetrate-43
+      penetrate-44
+      penetrate-45
+      penetrate-46
+      penetrate-47
+      penetrate-48
+      penetrate-49
+      penetrate-50
+      penetrate-51
+      penetrate-52
+      penetrate-53
+      penetrate-54
+      penetrate-55
+      penetrate-56
+      penetrate-57
+      penetrate-58
+      penetrate-59
+      penetrate-60
+      penetrate-61
+      penetrate-62
+      penetrate-63
+      )
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 2730.6667
+    :knocked-soft-vxz-lo 72089.6
+    :knocked-soft-vxz-hi 108134.4
+    :knocked-soft-vy-lo 81920.0
+    :knocked-soft-vy-hi 122880.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 78643.2
+    :knocked-hard-vxz-hi 117964.8
+    :knocked-hard-vy-lo 183500.8
+    :knocked-hard-vy-hi 209715.2
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 40960.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 57344.0
+    :knocked-yellow-vy-hi 81920.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 131072.0
+    :knocked-red-vy-lo 94208.0
+    :knocked-red-vy-hi 139264.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 57344.0
+    :knocked-blue-vy-hi 98304.0
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #t
+    :use-stop-chase #f
+    :use-circling #t
+    :use-pacing #t
+    :walk-anim 5
+    :turn-anim -1
+    :run-anim 8
+    :taunt-anim -1
+    :run-travel-speed (meters 12)
+    :run-acceleration (meters 1)
+    :run-turning-acceleration (meters 50)
+    :walk-travel-speed (meters 4)
+    :walk-acceleration (meters 1)
+    :walk-turning-acceleration (meters 3)
+    :maximum-rotation-rate (degrees 360.0)
+    :notice-nav-radius (meters 1)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+(set! (-> *sniper-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+(defmethod run-logic? sniper ((obj sniper))
+  (let ((f0-0 573440.0))
+    (>= (* f0-0 f0-0) (vector-vector-distance-squared (-> obj root-override2 trans) (camera-pos)))
+    )
+  )
+
+(defmethod enemy-method-129 sniper ((obj sniper))
+  (let ((a0-1 *target*))
+    (if a0-1
+        (set! (-> obj focus handle) (process->handle a0-1))
+        (set! (-> obj focus handle) (the-as handle #f))
+        )
+    )
+  (set! (-> obj focus aware) (if (>= (vector-vector-distance (-> obj root-override2 trans) (camera-pos))
+                                     (-> obj fact-info-override idle-distance)
+                                     )
+                                 (enemy-aware enemy-aware-0)
+                                 (enemy-aware enemy-aware-1)
+                                 )
+        )
+  (none)
+  )
+
+(defmethod nav-enemy-method-156 sniper ((obj sniper))
+  (let ((s4-0 (-> obj path curve num-cverts)))
+    (if (<= s4-0 0)
+        (go process-drawable-art-error "no path")
+        )
+    (let ((s2-0 (get-rand-int obj s4-0))
+          (gp-0 (new 'stack-no-clear 'vector))
+          )
+      (countdown (s3-0 s4-0)
+        (get-point-in-path! (-> obj path) gp-0 (the float s2-0) 'interp)
+        (if (< 409.6 (vector-vector-xz-distance gp-0 (-> obj root-override2 trans)))
+            (goto cfg-9)
+            )
+        (set! s2-0 (mod (+ s2-0 1) s4-0))
+        )
+      (label cfg-9)
+      (let ((v1-16 (-> obj nav state)))
+        (logclear! (-> v1-16 flags) (nav-state-flag directional-mode))
+        (logior! (-> v1-16 flags) (nav-state-flag target-poly-dirty))
+        (set! (-> v1-16 target-post quad) (-> gp-0 quad))
+        )
+      )
+    )
+  0
+  0
+  (none)
+  )
+
+(defstate active (sniper)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type spyder active) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set! (-> self next-pick-time) (-> self clock frame-counter))
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+      (until #f
+        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override walk-anim))
+                    :num! (seek!
+                      (the float
+                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override walk-anim)))
+                                  frames
+                                  num-frames
+                                  )
+                              -1
+                              )
+                           )
+                      f30-0
+                      )
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max f30-0))
+          )
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (when (or (logtest? (-> self nav state flags) (nav-state-flag at-target))
+              (nav-enemy-method-163 self)
+              (>= (-> self clock frame-counter) (-> self next-pick-time))
+              )
+      (nav-enemy-method-156 self)
+      (nav-enemy-method-162 self)
+      (set! (-> self next-pick-time) (+ (-> self clock frame-counter) (get-rand-int-range self 300 1050)))
+      )
+    (nav-enemy-method-176 self)
+    (none)
+    )
+  )
+
+(defmethod init-enemy! sniper ((obj sniper))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
+  (let ((t9-0 (method-of-type spyder init-enemy!)))
+    (t9-0 obj)
+    )
+  (set-enemy-info! obj *sniper-nav-enemy-info*)
+  (logior! (-> obj focus-status) (focus-status ignore))
+  (logclear! (-> obj focus-status) (focus-status dangerous))
+  (logclear! (-> obj enemy-flags) (enemy-flag check-water))
+  0
+  (none)
+  )
+
+(defmethod init-enemy-collision! sniper ((obj sniper))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
+  (let ((t9-0 (method-of-type spyder init-enemy-collision!)))
+    (t9-0 obj)
+    )
+  (let ((v1-2 (-> obj root-override2 root-prim)))
+    (set! (-> v1-2 prim-core collide-as) (collide-spec))
+    (set! (-> v1-2 prim-core collide-with) (collide-spec))
+    )
+  (set! (-> obj root-override2 backup-collide-as) (collide-spec))
+  (set! (-> obj root-override2 backup-collide-with) (collide-spec))
+  0
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod go-idle sniper ((obj sniper))
+  (cond
+    ((script-eval (res-lump-struct (-> obj entity) 'on-activate pair))
+     (cleanup-for-death obj)
+     (go (method-of-object obj die-fast))
+     )
+    (else
+      (go (method-of-object obj idle))
+      )
+    )
+  (none)
+  )

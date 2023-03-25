@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <optional>
+
 #include "Object.h"
 #include "Reader.h"
 
@@ -15,7 +16,7 @@ class Interpreter {
  public:
   Interpreter(const std::string& user_profile = "#f");
   ~Interpreter();
-  void execute_repl(ReplWrapper& repl);
+  void execute_repl(REPL::Wrapper& repl);
   void throw_eval_error(const Object& o, const std::string& err);
   Object eval_with_rewind(const Object& obj, const std::shared_ptr<EnvironmentObject>& env);
   bool get_global_variable_by_name(const std::string& name, Object* dest);
@@ -61,8 +62,11 @@ class Interpreter {
       const std::unordered_map<std::string, std::pair<bool, std::optional<ObjectType>>>& named);
 
   Object eval_pair(const Object& o, const std::shared_ptr<EnvironmentObject>& env);
+
+ public:
   ArgumentSpec parse_arg_spec(const Object& form, Object& rest);
 
+ private:
   Object quasiquote_helper(const Object& form, const std::shared_ptr<EnvironmentObject>& env);
 
   IntType number_to_integer(const Object& obj);
@@ -115,6 +119,9 @@ class Interpreter {
   Object eval_read(const Object& form,
                    Arguments& args,
                    const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_read_data_file(const Object& form,
+                             Arguments& args,
+                             const std::shared_ptr<EnvironmentObject>& env);
   Object eval_read_file(const Object& form,
                         Arguments& args,
                         const std::shared_ptr<EnvironmentObject>& env);
@@ -196,6 +203,15 @@ class Interpreter {
   Object eval_string_append(const Object& form,
                             Arguments& args,
                             const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_string_starts_with(const Object& form,
+                                 Arguments& args,
+                                 const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_string_ends_with(const Object& form,
+                               Arguments& args,
+                               const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_string_split(const Object& form,
+                           Arguments& args,
+                           const std::shared_ptr<EnvironmentObject>& env);
   Object eval_ash(const Object& form,
                   Arguments& args,
                   const std::shared_ptr<EnvironmentObject>& env);

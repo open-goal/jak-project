@@ -1,0 +1,383 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: game-info-h.gc
+;; name in dgo: game-info-h
+;; dgos: ENGINE, GAME
+
+(declare-type entity-perm-array inline-array-class)
+(declare-type continue-point basic)
+(declare-type game-save basic)
+
+(defenum continue-flags
+  :type uint32
+  :bitfield #t
+  (cf0 0)
+  (cf1 1)
+  (cf2 2)
+  (cf3 3)
+  (cf4 4)
+  (cf5 5)
+  (cf6 6)
+  (cf7 7)
+  (cf8 8)
+  (cf9 9)
+  (cf10 10)
+  (cf11 11)
+  (cf12 12)
+  (cf13 13)
+  (cf14 14)
+  (cf15 15)
+  (cf16 16)
+  (cf17 17)
+  (cf18 18)
+  (cf19 19)
+  (cf20 20)
+  (cf21 21)
+  (cf22 22)
+  (cf23 23)
+  (cf24 24)
+  (cf25 25)
+  (cf26 26)
+  (cf27 27)
+  (cf28 28)
+  (cf29 29)
+  (cf30 30)
+  )
+
+;; +++game-secrets
+(defenum game-secrets
+  :type uint32
+  :bitfield #t
+  (toggle-beard)
+  (hflip-screen)
+  (endless-ammo)
+  (invulnerable)
+  (endless-dark)
+  (scene-player-1)
+  (scene-player-2)
+  (scene-player-3)
+  (level-select)
+  (scrap-book-1)
+  (scrap-book-2)
+  (scrap-book-3)
+  (gungame-blue)
+  (gungame-dark)
+  (reverse-races)
+  (hero-mode)
+  (big-head)
+  (little-head)
+  (game-secret-unknown))
+;; ---game-secrets
+
+(defenum game-score
+  (none)
+  (race-1)
+  (race-2)
+  (race-3)
+  (gungame-red)
+  (gungame-yellow)
+  (gungame-blue)
+  (gungame-dark)
+  (onin-game)
+  (whack)
+  (judge-skatea)
+  (bush-race-1)
+  (bush-race-2)
+  (bush-race-3)
+  (bush-port)
+  (bush-errol)
+  (reverse-race-1)
+  (reverse-race-2)
+  (reverse-race-3)
+  )
+
+(defenum highscore-flags
+  :bitfield #t
+  :type uint8
+  (time)
+  )
+
+(declare-type game-info basic)
+(define-extern *game-info* game-info)
+(declare-type process-drawable process)
+(define-extern process-drawable-art-error (state string process-drawable))
+(define-extern part-group-pointer? (function pointer symbol))
+
+;; NOTE - for default-menu
+(define-extern bug-report-display (function symbol int))
+(define-extern trsq->continue-point (function trsq int))
+
+;; NOTE - for progress
+(declare-type highscore-info structure)
+(define-extern *highscore-info-array* (array highscore-info))
+
+(declare-type entity-perm structure)
+(define-extern *task-level* (array symbol))
+
+;; DECOMP BEGINS
+
+(local-vars (gp-0 game-info))
+
+(deftype game-bank (basic)
+  ((life-max-default   float  :offset-assert   4)
+   (life-start-default float  :offset-assert   8)
+   (life-single-inc    float  :offset-assert  12)
+   (money-task-inc     float  :offset-assert  16)
+   (money-oracle-inc   float  :offset-assert  20)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+
+(define *GAME-bank* (new 'static 'game-bank
+                      :life-max-default 99.0
+                      :life-start-default 5.0
+                      :life-single-inc 1.0
+                      :money-task-inc 90.0
+                      :money-oracle-inc 120.0
+                      )
+        )
+
+(deftype actor-id (uint32)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype highscore-info (structure)
+  ((flags        highscore-flags   :offset-assert   0)
+   (award-scores float           3 :offset-assert   4)
+   (bronze-score float             :offset          4)
+   (silver-score float             :offset          8)
+   (gold-score   float             :offset         12)
+   )
+  :method-count-assert 10
+  :size-assert         #x10
+  :flag-assert         #xa00000010
+  (:methods
+    (get-rank (_type_ float) int 9)
+    )
+  )
+
+
+(deftype level-buffer-state (structure)
+  ((name          symbol  :offset-assert   0)
+   (display?      symbol  :offset-assert   4)
+   (force-vis?    symbol  :offset-assert   8)
+   (force-inside? symbol  :offset-assert  12)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(deftype load-state (basic)
+  ((want          level-buffer-state LEVEL_MAX :inline :offset-assert   4)
+   (want-sound    symbol             3         :offset-assert 100)
+   (vis-nick      symbol                       :offset-assert 112)
+   (command-list  pair                         :offset-assert 116)
+   (object-name   string             256       :offset-assert 120)
+   (object-status basic              256       :offset-assert 1144)
+   )
+  :method-count-assert 22
+  :size-assert         #x878
+  :flag-assert         #x1600000878
+  (:methods
+    (new (symbol type) _type_ 0)
+    (reset! (_type_) _type_ 9)
+    (update! (_type_) int 10)
+    (want-levels (_type_ (pointer symbol)) int 11)
+    (want-sound-banks (_type_ (pointer symbol)) none 12)
+    (want-display-level (_type_ symbol symbol) int 13)
+    (want-vis-level (_type_ symbol) none 14)
+    (want-force-vis (_type_ symbol symbol) int 15)
+    (want-force-inside (_type_ symbol symbol) none 16)
+    (execute-commands-up-to (_type_ float) none 17)
+    (backup-load-state-and-set-cmds (_type_ pair) int 18)
+    (restore-load-state-and-cleanup (_type_) int 19)
+    (restore-load-state (_type_) int 20)
+    (add-borrow-levels (_type_) none 21)
+    )
+  )
+
+
+(defmethod new load-state ((allocation symbol) (type-to-make type))
+  (reset! (object-new allocation type-to-make (the-as int (-> type-to-make size))))
+  )
+
+(deftype continue-point (basic)
+  ((name         string                       :offset-assert   4)
+   (level        symbol                       :offset-assert   8)
+   (flags        continue-flags               :offset-assert  12)
+   (trans        vector             :inline   :offset-assert  16)
+   (quat         vector             :inline   :offset-assert  32)
+   (camera-trans vector             :inline   :offset-assert  48)
+   (camera-rot   vector3s           3 :inline :offset-assert  64)
+   (on-goto      pair                         :offset-assert 100)
+   (vis-nick     symbol                       :offset-assert 104)
+   (want         level-buffer-state 6 :inline :offset-assert 108)
+   (want-sound   symbol             3         :offset-assert 204)
+   )
+  :method-count-assert 12
+  :size-assert         #xd8
+  :flag-assert         #xc000000d8
+  (:methods
+    (debug-draw (_type_) int 9)
+    (continue-point-method-10 (_type_ load-state) continue-point 10)
+    (move-camera! (_type_) none 11)
+    )
+  )
+
+
+(deftype game-info (basic)
+  ((mode                   symbol                         :offset-assert   4)
+   (save-name              string                         :offset-assert   8)
+   (life                   float                          :offset-assert  12)
+   (life-max               float                          :offset-assert  16)
+   (money                  float                          :offset-assert  20)
+   (money-total            float                          :offset-assert  24)
+   (money-per-level        uint8                       32 :offset-assert  28)
+   (deaths-per-level       uint8                       32 :offset-assert  60)
+   (buzzer-total           float                          :offset-assert  92)
+   (fuel                   float                          :offset-assert  96)
+   (gem                    float                          :offset-assert 100)
+   (gem-total              float                          :offset-assert 104)
+   (skill                  float                          :offset-assert 108)
+   (skill-total            float                          :offset-assert 112)
+   (karma                  float                          :offset-assert 116)
+   (eco-pill-dark          float                          :offset-assert 120)
+   (eco-pill-dark-total    float                          :offset-assert 124)
+   (features               game-feature                   :offset-assert 128)
+   (debug-features         game-feature                   :offset-assert 136)
+   (secrets                game-secrets                   :offset-assert 144)
+   (unknown-pad1           uint32                         :offset-assert 148)
+   (purchase-secrets       game-secrets                   :offset-assert 152)
+   (unknown-pad2           uint32                         :offset-assert 156)
+   (gun-type               int32                          :offset-assert 160)
+   (gun-ammo               float                       4  :offset-assert 164)
+   (shield                 float                          :offset-assert 180)
+   (score                  float                          :offset-assert 184)
+   (score-owner            handle                         :offset-assert 192)
+   (timer                  time-frame                     :offset-assert 200)
+   (timer-owner            handle                         :offset-assert 208)
+   (timer-flash            symbol                         :offset-assert 216)
+   (counter                float                          :offset-assert 220)
+   (counter-flash          basic                          :offset-assert 224)
+   (attack-id              uint32                         :offset-assert 228)
+   (perm-list              entity-perm-array              :offset-assert 232)
+   (task-perm-list         entity-perm-array              :offset-assert 236)
+   (current-continue       continue-point                 :offset-assert 240)
+   (last-continue          continue-point                 :offset-assert 244)
+   (play-list              (array game-task-info)         :offset-assert 248)
+   (sub-task-list          (array game-task-node-info)    :offset-assert 252)
+   (mission-list           (array game-task-node-info)    :offset-assert 256)
+   (task-counter           uint32                         :offset-assert 260)
+   (unknown-pad6           (array uint16)                 :offset-assert 264)
+   (level-opened           uint8                       32 :offset-assert 268)
+   (total-deaths           int32                          :offset-assert 300)
+   (continue-deaths        int32                          :offset-assert 304)
+   (task-deaths            int32                          :offset-assert 308)
+   (total-trys             int32                          :offset-assert 312)
+   (game-start-time        time-frame                     :offset-assert 320)
+   (continue-time          time-frame                     :offset-assert 328)
+   (death-time             time-frame                     :offset-assert 336)
+   (hit-time               time-frame                     :offset-assert 344)
+   (task-pickup-time       time-frame                     :offset-assert 352)
+   (unknown-array1         (array time-frame)             :offset-assert 360)
+   (task-enter-times       (array time-frame)             :offset-assert 364)
+   (task-in-times          (array time-frame)             :offset-assert 368)
+   (death-pos              vector-array                   :offset        372)
+   (stop-watch-start       uint64                         :offset-assert 376)
+   (stop-watch-stop        uint64                         :offset-assert 384)
+   (blackout-time          time-frame                     :offset-assert 392)
+   (letterbox-time         time-frame                     :offset-assert 400)
+   (hint-play-time         time-frame                     :offset-assert 408)
+   (display-text-time      time-frame                     :offset-assert 416)
+   (display-text-handle    handle                         :offset-assert 424)
+   (death-movie-tick       int32                          :offset-assert 432)
+   (want-auto-save         symbol                         :offset-assert 436)
+   (auto-save-proc         handle                         :offset-assert 440)
+   (auto-save-status       mc-status-code                 :offset-assert 448)
+   (auto-save-card         int32                          :offset-assert 452)
+   (auto-save-which        int32                          :offset-assert 456)
+   (auto-save-count        int32                          :offset-assert 460)
+   (pov-camera-handle      handle                         :offset-assert 464)
+   (other-camera-handle    handle                         :offset-assert 472)
+   (controller             handle                      2  :offset-assert 480)
+   (race-timer             uint64                         :offset-assert 496)
+   (race-current-lap-count int32                          :offset-assert 504)
+   (race-total-lap-count   int32                          :offset-assert 508)
+   (race-position          int32                          :offset-assert 512)
+   (race-number-turbos     int32                          :offset-assert 516)
+   (bot-health             float                       3  :offset-assert 520)
+   (demo-state             uint32                         :offset-assert 532)
+   (wanted-flash           basic                          :offset-assert 536)
+   (distance               float                          :offset-assert 540)
+   (kiosk-timeout          uint64                         :offset-assert 544)
+   (pause-start-time       time-frame                     :offset-assert 552)
+   (game-score             (array float)                  :offset-assert 560)
+   (goal                   float                          :offset-assert 564)
+   (miss                   float                          :offset-assert 568)
+   (miss-max               float                          :offset-assert 572)
+   (task-close-times       (array time-frame)             :offset-assert 576)
+   (live-eco-pill-count    int32                          :offset-assert 580)
+   (live-gem-count         int32                          :offset-assert 584)
+   (air-supply             float                          :offset-assert 588)
+   (homing-beacon          int32                          :offset-assert 592)
+   (dark-eco-pickup        int32                          :offset-assert 596)
+   (green-eco-pickup       int32                          :offset-assert 600)
+   )
+  :method-count-assert 31
+  :size-assert         #x25c
+  :flag-assert         #x1f0000025c
+  (:methods
+    (initialize! (_type_ symbol game-save string) _type_ 9)
+    (give (_type_ symbol float handle) float 10)
+    (task-complete? (_type_ game-task) symbol 11)
+    (subtask-index-by-name (_type_ string) int 12)
+    (set-subtask-hook! (_type_ int int (function object :behavior task-manager)) (function object :behavior task-manager) 13)
+    (actor-perm (_type_ actor-id) entity-perm 14)
+    (task-perm-by-index (_type_ int) entity-perm 15)
+    (copy-perms-from-level! (_type_ level) int 16)
+    (copy-perms-to-level! (_type_ level) int 17)
+    (debug-inspect (_type_ symbol) _type_ 18)
+    (get-current-continue-forced (_type_) continue-point 19)
+    (get-continue-by-name (_type_ string) continue-point 20)
+    (set-continue! (_type_ basic symbol) continue-point 21)
+    (game-info-method-22 (_type_) int 22)
+    (save-game (_type_ game-save string) game-save 23)
+    (load-game (_type_ game-save) game-save 24)
+    (you-suck-stage (_type_ symbol) int 25)
+    (you-suck-scale (_type_ object) float 26)
+    (get-next-attack-id (_type_) uint 27)
+    (game-info-method-28 (_type_ game-score float) int 28)
+    (get-game-score-ref (_type_ int) (pointer float) 29)
+    (calculate-percentage (_type_) float 30)
+    )
+  )
+
+
+(defmethod get-next-attack-id game-info ((obj game-info))
+  (let ((v0-0 (+ (-> obj attack-id) 1)))
+    (set! (-> obj attack-id) v0-0)
+    v0-0
+    )
+  )
+
+(set! gp-0
+      (when (or (not *game-info*) (zero? *game-info*))
+        (set! gp-0 (new 'static 'game-info :mode 'debug :current-continue #f :last-continue #f))
+        (set! (-> gp-0 unknown-array1) (the-as (array time-frame) (new 'global 'boxed-array uint64 110)))
+        (set! (-> gp-0 task-close-times) (the-as (array time-frame) (new 'global 'boxed-array uint64 110)))
+        (set! (-> gp-0 task-enter-times) (the-as (array time-frame) (new 'global 'boxed-array uint64 32)))
+        (set! (-> gp-0 task-in-times) (the-as (array time-frame) (new 'global 'boxed-array uint64 32)))
+        (set! *game-info* gp-0)
+        gp-0
+        )
+      )

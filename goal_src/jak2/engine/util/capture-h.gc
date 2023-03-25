@@ -1,0 +1,54 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: capture-h.gc
+;; name in dgo: capture-h
+;; dgos: ENGINE, GAME
+
+;; DECOMP BEGINS
+
+(declare-file (debug))
+
+
+;; GS packet to download the framebuffer.
+(deftype gs-store-image-packet (structure)
+  ((vifcode        vif-tag      4 :offset-assert   0)
+   (giftag         gif-tag        :offset-assert  16)
+   (bitbltbuf      gs-bitbltbuf   :offset-assert  32)
+   (bitbltbuf-addr gs-reg64       :offset-assert  40)
+   (trxpos         gs-trxpos      :offset-assert  48)
+   (trxpos-addr    gs-reg64       :offset-assert  56)
+   (trxreg         gs-trxreg      :offset-assert  64)
+   (trxreg-addr    gs-reg64       :offset-assert  72)
+   (finish         int64          :offset-assert  80)
+   (finish-addr    gs-reg64       :offset-assert  88)
+   (trxdir         gs-trxdir      :offset-assert  96)
+   (trxdir-addr    gs-reg64       :offset-assert 104)
+   )
+  :method-count-assert 9
+  :size-assert         #x70
+  :flag-assert         #x900000070
+  )
+
+;; screen shot settings.
+(deftype screen-shot-work (structure)
+  ((count          int16   :offset-assert   0)
+   (size           int16   :offset-assert   2)
+   (name           string  :offset-assert   4)
+   (highres-enable symbol  :offset-assert   8)
+   (hud-enable     symbol  :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+(define *screen-shot-work* (new 'global 'screen-shot-work))
+
+(set! (-> *screen-shot-work* count) -1)
+(set! (-> *screen-shot-work* size) -1)
+(set! (-> *screen-shot-work* highres-enable) #f)
+(set! (-> *screen-shot-work* hud-enable) #f)
+(define *image-name* (new 'global 'string 32 (the-as string #f)))
+
+
+

@@ -1,0 +1,449 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: pad.gc
+;; name in dgo: pad
+;; dgos: GAME, ENGINE
+
+;; Interface for game controllers.
+;; the *cpad-list* contains both game controllers.
+;; Use the service-cpads functions once per frame to update the data and vibration control
+;; The cpad-set-buzz! function can be used for vibration.
+
+;; in display, but we haven't gotten to display-h.gc yet.
+(define-extern get-current-time (function time-frame))
+(define-extern get-integral-current-time (function time-frame))
+
+(defenum pad-buttons
+    :bitfield #t
+    :type uint32
+    (select   0)
+    (l3       1)
+    (r3       2)
+    (start    3)
+    (up       4)
+    (right    5)
+    (down     6)
+    (left     7)
+    (l2       8)
+    (r2       9)
+    (l1       10)
+    (r1       11)
+    (triangle 12)
+    (circle   13)
+    (x        14)
+    (square   15)
+    )
+
+(defenum pad-type
+  (normal 4)
+  (analog 5)
+  (dualshock 7)
+  (negcon 2)
+  (namco-gun 6)
+  )
+
+;; this gets set to #f later on.
+(define *cheat-mode* #t)
+
+;; data that comes directly from hardware. it's 32 bytes + type tag (ignored in C kernel).
+(deftype hw-cpad (basic)
+  (;; BASIC CONTROLLER data
+   ;; status = 0x40 | (data length / 2)
+   (valid   uint8     :offset-assert 4) ;; 0 if success, 255 if fail
+   (status  uint8     :offset-assert 5) ;; depends on controller
+   (button0 uint16    :offset-assert 6) ;; binary button states!
+   ;; DUALSHOCK or JOYSTICK data
+   ;; status (dualshock) = 0x70 | (data length / 2)
+   ;; status (joystick)  = 0x50 | (data length / 2)
+   (rightx  uint8     :offset-assert 8) ;; right stick xdir
+   (righty  uint8     :offset-assert 9) ;; right stick ydir
+   (leftx   uint8     :offset-assert 10) ;; left stick xdir
+   (lefty   uint8     :offset-assert 11) ;; left stick ydir
+   ;; DUALSHOCK 2 data
+   ;; status = 0x70 | (data length / 2)
+   (abutton uint8  12 :offset-assert 12) ;; pressure sensitivity information
+
+   ;; pad buffer needs to be 32 bytes large.
+   (dummy   uint8  12 :offset-assert 24)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+;; data from hardware + additional info calculated here.
+(deftype cpad-info (hw-cpad)
+  ((number             int32           :offset-assert 36) ;; controller port number
+   (cpad-file          int32           :offset-assert 40)
+   (button0-abs        pad-buttons 3   :offset-assert 44) ;; bitmask of buttons, pressed or not, with history
+   (button0-shadow-abs pad-buttons 1   :offset-assert 56) ;; modify this to change button history in the future.
+   (button0-rel        pad-buttons 3   :offset-assert 60) ;; bitmask of if button going down.
+   (stick0-dir         float           :offset-assert 72)
+   (stick0-speed       float           :offset-assert 76)
+   (new-pad            int32           :offset-assert 80)
+   (state              int32           :offset-assert 84)
+   (align              uint8 6         :offset-assert 88) ;; hardware control of buzzing.
+   (direct             uint8 6         :offset-assert 94) ;; hardware control of buzzing.
+   (buzz-val           uint8 2         :offset-assert 100) ;; intensity for buzzing
+   (buzz-time          time-frame 2         :offset-assert 104) ;; when to stop buzzing
+   (buzz               basic           :offset-assert 120) ;; is vibration enabled?
+   (buzz-act           int32           :offset-assert 124)
+   (change-time        time-frame           :offset-assert 128)
+   )
+  (:methods
+   (new (symbol type int) _type_ 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x88
+  :flag-assert         #x900000088
+  )
+
+(defmacro cpad-type? (type)
+  `(= (shr (-> pad status) 4) (cpad-type ,type))
+  )
+
+(defun cpad-invalid! ((pad cpad-info))
+  "Reset all data in a cpad-info"
+  (logior! (-> pad valid) 128)
+  (set! (-> pad button0) (the-as uint 0))
+  (set! (-> pad button0-abs 0) (pad-buttons))
+  (set! (-> pad button0-shadow-abs 0) (pad-buttons))
+  (set! (-> pad button0-rel 0) (pad-buttons))
+  (dotimes (v1-2 12)
+    (nop!)
+    (set! (-> pad abutton v1-2) 0)
+    )
+  (set! (-> pad stick0-dir) 0.0)
+  (set! (-> pad stick0-speed) 0.0)
+  (set! (-> pad rightx) (the-as uint 128))
+  (set! (-> pad righty) (the-as uint 128))
+  (set! (-> pad leftx) (the-as uint 128))
+  (set! (-> pad lefty) (the-as uint 128))
+  (set! (-> pad align 0) (the-as uint 0))
+  (set! (-> pad align 1) (the-as uint 1))
+  (set! (-> pad align 2) (the-as uint 255))
+  (set! (-> pad align 3) (the-as uint 255))
+  (set! (-> pad align 4) (the-as uint 255))
+  (set! (-> pad align 5) (the-as uint 255))
+  (dotimes (v1-14 6)
+    (set! (-> pad direct v1-14) 0)
+    )
+  ;; probably a bug here, this should use v1-17 as the index.
+  (dotimes (v1-17 2)
+    (set! (-> pad buzz-val 0) (the-as uint 0))
+    (set! (-> pad buzz-time 0) 0)
+    )
+  pad
+  )
+
+(defmethod new cpad-info ((alloction symbol) (type-to-make type) (idx int))
+  "Allocate a new cpad-info and open the pad itself through the kernel"
+  (let ((obj (object-new alloction type-to-make (the-as int (-> type-to-make size)))))
+   (set! (-> obj number) idx)
+   (set! (-> obj buzz) #f)
+   (cpad-open obj idx) ;; kernel function.
+   (cpad-invalid! obj)
+   )
+  )
+
+;; List of controllers. It always has 4 controllers.
+(deftype cpad-list (basic)
+  ((num-cpads int32       :offset-assert 4)
+   (cpads     cpad-info 4 :offset-assert 8)  ;; modified from 2->4 for PC 4-pad support
+   )
+  (:methods
+   (new (symbol type) _type_ 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+
+(defmethod new cpad-list ((allocation symbol) (type-to-make type))
+  "Create a cpad-list for 4 controllers. It's fine to do this even if controllers
+   aren't connected yet. "
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 num-cpads) 4)
+    (set! (-> gp-0 cpads 0) (new 'global 'cpad-info 0))
+    (set! (-> gp-0 cpads 1) (new 'global 'cpad-info 1))
+    (set! (-> gp-0 cpads 2) (new 'global 'cpad-info 2))
+    (set! (-> gp-0 cpads 3) (new 'global 'cpad-info 3))
+    gp-0
+    )
+  )
+
+(defun analog-input ((in int) (offset float) (center-val float) (max-val float) (out-range float))
+  "Convert integer input from pad into a float between -out-range and +out-range.
+   The offset is applied directly to the input.
+   The center val is the expected value for 0, after applying offset.
+   The max val is the expected value with the stick pushed all the way"
+  (let* ((offset-in (- (the float in) offset)) ;; apply offset to in
+         (magnitude (- (fabs offset-in) center-val)) ;; determine our magnitude
+         (max-magnitude (- max-val center-val)) ;; maximum expected magnitude.
+         )
+    ;; flip the output if negative
+    (if (< offset-in 0.0)
+        (set! out-range (- out-range))
+        )
+    ;; scale and return value.
+    (cond
+      ((>= 0.0 magnitude)
+       0.0
+       )
+      ((>= magnitude max-magnitude)
+       out-range
+       )
+      (else
+       (/ (* magnitude out-range) max-magnitude)
+       )
+      )
+    )
+  )
+
+(defmacro analog-input-horizontal-first (in offset center-val max-val out-range)
+  "Same as analog-input but respects First-Person Horizontal camera control setting."
+  `(#if PC_PORT ;; first-person horizontal is NOT inverted in original game
+        (* (if (-> *pc-settings* first-camera-h-inverted?) -1.0 1.0)
+           (analog-input ,in ,offset ,center-val ,max-val ,out-range))
+        (analog-input ,in ,offset ,center-val ,max-val ,out-range)
+        )
+  )
+
+(defmacro analog-input-vertical-first (in offset center-val max-val out-range)
+  "Same as analog-input but respects First-Person Vertical camera control setting."
+  `(#if PC_PORT ;; first-person vertical is already inverted in original game
+        (* (if (-> *pc-settings* first-camera-v-inverted?) 1.0 -1.0)
+           (analog-input ,in ,offset ,center-val ,max-val ,out-range))
+        (analog-input ,in ,offset ,center-val ,max-val ,out-range)
+        )
+  )
+
+(defmacro analog-input-horizontal-third (in offset center-val max-val out-range)
+  "Same as analog-input but respects Third-Person Horizontal camera control setting."
+  `(#if PC_PORT ;; third-person horizontal is already inverted in original game
+        (* (if (-> *pc-settings* third-camera-h-inverted?) 1.0 -1.0)
+           (analog-input ,in ,offset ,center-val ,max-val ,out-range))
+        (analog-input ,in ,offset ,center-val ,max-val ,out-range)
+        )
+  )
+
+(defmacro analog-input-vertical-third (in offset center-val max-val out-range)
+  "Same as analog-input but respects Third-Person Vertical camera control setting."
+  `(#if PC_PORT ;; third-person vertical is already inverted in original game
+        (* (if (-> *pc-settings* third-camera-v-inverted?) 1.0 -1.0)
+           (analog-input ,in ,offset ,center-val ,max-val ,out-range))
+        (analog-input ,in ,offset ,center-val ,max-val ,out-range)
+        )
+  )
+
+(defun cpad-set-buzz! ((pad cpad-info) (buzz-idx int) (buzz-amount int) (duration time-frame))
+  "Turn on vibration motor 'buzz-idx' for duration, at magnitude buzz-amount."
+  (cond
+    ((zero? buzz-amount)
+     ;; set buzz-amount to 0, immediately kill it.
+     (set! (-> pad buzz-val buzz-idx) 0)
+     )
+    ((= buzz-amount (-> pad buzz-val buzz-idx))
+     ;; we are already buzzing at this intensity.
+     ;; buzz for max (old_buzz, new_buzz) duration
+     (set! (-> pad buzz-time buzz-idx)
+           (max (-> pad buzz-time buzz-idx) (+ (get-current-time) duration))
+           )
+     )
+    ((< (-> pad buzz-val buzz-idx) (the-as uint buzz-amount))
+     ;; buzz harder than the older value, overwrite the old buzz.
+     (set! (-> pad buzz-val buzz-idx) buzz-amount)
+     (set! (-> pad buzz-time buzz-idx)
+           (+ (get-current-time) duration)
+           )
+     )
+    )
+  (none)
+  )
+
+;; the four controllers
+(define *cpad-list* (new 'global 'cpad-list))
+
+;; weird leftover debug thing, enabling overrides the x position of both sticks on all controllers.
+(define *cpad-debug* #f)
+
+(#if PC_PORT
+    (defconstant STICK_DEADZONE (-> *pc-settings* stick-deadzone))
+    (defconstant STICK_DEADZONE 0.3)
+    )
+
+(defun service-cpads ()
+  "Read from cpads and update vibration"
+  ;; iterate over pads
+  (let ((pad-list *cpad-list*))
+    (dotimes (pad-idx (-> pad-list num-cpads))
+      (let ((pad (-> *cpad-list* cpads pad-idx)))
+        ;; read from hardware.
+        (cpad-get-data pad)
+        (cond
+          ((zero? (logand (-> pad valid) 128))
+           (dotimes (buzz-idx 2)
+             (cond
+               ;; check if okay to buzz:
+               ((and (-> pad buzz) (< (get-current-time) (-> pad buzz-time buzz-idx)) (= *master-mode* 'game))
+                (let ((v1-10 buzz-idx))
+                  (cond
+                    ((zero? v1-10)
+                     ;; vibration motor 0 only has on/off. This pulses it to approximate
+                     ;; an analog control
+                     (set! (-> pad direct buzz-idx)
+                           (logand (ash (-> pad buzz-val buzz-idx) (- (logand (get-integral-current-time) 7))) 1)
+                           )
+                     )
+                    ((= v1-10 1)
+                     ;; vibration motor 1 has analog control. set the speed.
+                     (set! (-> pad direct buzz-idx) (-> pad buzz-val buzz-idx))
+                     )
+                    )
+                  )
+                )
+               (else
+                 ;; not okay to buzz this motor, set to zero.
+                 (set! (-> pad buzz-val buzz-idx) (the-as uint 0))
+                 (set! (-> pad direct buzz-idx) (the-as uint 0))
+                 )
+               )
+             )
+           ;; update button history.
+           (set! (-> pad button0-abs 2) (-> pad button0-abs 1))
+           (set! (-> pad button0-abs 1) (-> pad button0-shadow-abs 0))
+           (set! (-> pad button0-rel 2) (-> pad button0-rel 1))
+           (set! (-> pad button0-rel 1) (-> pad button0-rel 0))
+           ;; we might want to clear a button after it is pressed, so we back it up in a "shadow" field
+           (let ((current-button0 (-> pad button0)))
+             (set! (-> pad button0-shadow-abs 0) (the-as pad-buttons current-button0))
+             (set! (-> pad button0-abs 0) (the-as pad-buttons current-button0))
+             )
+           ;; buttons going down
+           (set! (-> pad button0-rel 0) (logclear (-> pad button0-abs 0) (-> pad button0-abs 1)))
+           ;; some debugging thing they wrote at some point
+           (when *cpad-debug*
+             (set! (-> pad leftx) (the-as uint 255))
+             (set! (-> pad rightx) (the-as uint 255))
+             )
+
+           ;; compute a speed and direction for stick0
+           (set! (-> pad stick0-speed) 1.0)
+           (cond
+             ;; check if controller is a valid dualshock 2
+             ((= (shr (-> pad status) 4) 7)
+              ;; invert analogs if mirrored mode. trust me, you'll need this.
+              (#when PC_PORT
+                  (when (pc-cheats? (-> *pc-settings* cheats) mirror)
+                      (set! (-> pad leftx) (- 255 (-> pad leftx)))
+                      (set! (-> pad rightx) (- 255 (-> pad rightx)))
+                      ))
+              ;; compute speed and direction, with deadband.
+              (let ((f30-0 (* 0.0078125 (the float (+ (-> pad leftx) -128))))
+                    (f28-0 (* 0.0078125 (the float (- 127 (the-as int (-> pad lefty))))))
+                    )
+                (set! (-> pad stick0-dir) (atan (- f30-0) f28-0))
+                (set! (-> pad stick0-speed) (fmin 1.0 (sqrtf (+ (* f30-0 f30-0) (* f28-0 f28-0)))))
+                )
+              (if (< (-> pad stick0-speed) STICK_DEADZONE)
+                  (set! (-> pad stick0-speed) 0.0)
+                  )
+              )
+             (else
+               ;; analog is invalid? set to zero.
+               (set! (-> pad leftx) (the-as uint 128))
+               (set! (-> pad lefty) (the-as uint 128))
+               (set! (-> pad rightx) (the-as uint 128))
+               (set! (-> pad righty) (the-as uint 128))
+               (set! (-> pad stick0-dir) 0.0)
+               (set! (-> pad stick0-speed) 0.0)
+               )
+             )
+           ;; if the pad was changed or stick0 pushed, update the last changed time.
+           (if (or (!= (-> pad button0-abs 0) (-> pad button0-abs 1))
+                   (or (< STICK_DEADZONE (-> pad stick0-speed)) (zero? (-> pad change-time)))
+                   )
+               (set! (-> pad change-time) (get-current-time))
+               )
+           )
+          (else
+            ;; invalid bits set, controller is not connected.
+            (cpad-invalid! pad)
+            )
+          )
+        )
+      )
+    )
+  *cpad-list*
+  )
+
+(defun buzz-stop! ((idx int))
+  "Set the buzz to 0 on both vibration motors of the given cpad."
+  (cpad-set-buzz! (-> *cpad-list* cpads idx) 0 0 0)
+  (cpad-set-buzz! (-> *cpad-list* cpads idx) 1 0 0)
+  (none)
+  )
+
+
+(defmacro cpad-pressed (pad-idx)
+  `(-> *cpad-list* cpads ,pad-idx button0-rel 0)
+  )
+
+(defmacro cpad-hold (pad-idx)
+  `(-> *cpad-list* cpads ,pad-idx button0-abs 0)
+  )
+
+(defmacro cpad-pressed? (pad-idx &rest buttons)
+  `(logtest? (cpad-pressed ,pad-idx) (pad-buttons ,@buttons))
+  )
+
+(defmacro cpad-hold? (pad-idx &rest buttons)
+  `(logtest? (cpad-hold ,pad-idx) (pad-buttons ,@buttons))
+  )
+
+(defmacro cpad-clear! (pad-idx &rest buttons)
+  `(begin
+      (logclear! (cpad-pressed ,pad-idx) (pad-buttons ,@buttons))
+      (logclear! (cpad-hold ,pad-idx) (pad-buttons ,@buttons))
+      )
+  )
+
+(defmacro cpad-change-time (pad-idx)
+  `(-> *cpad-list* cpads ,pad-idx change-time)
+  )
+
+(defmacro check-cheat-code (cheat-var pad-idx buttons &rest body)
+  "execute body when a cheat code made up of sequential inputs has been inputted"
+
+  `(when (nonzero? (cpad-pressed ,pad-idx)) ;; only check when some button has been pressed
+    (case ,cheat-var
+      ,@(apply-i
+          (lambda (x i)
+            `((,i)
+              (if (cpad-pressed? ,pad-idx ,x)
+                ,(if (< i (- (length buttons) 1))
+                    `(1+! ,cheat-var)
+
+                    `(begin ,@body (set! ,cheat-var 0))
+                    )
+
+                (set! ,cheat-var 0)
+                )
+              )
+            )
+        buttons)
+      )
+    )
+  )
+
+(defmacro cheats-sound-play (cheat?)
+  "play the appropriate sound for inputting a cheat code"
+
+  `(if ,cheat?
+      (sound-play "select-menu")
+      (sound-play "cursor-options")
+      )
+  )
+

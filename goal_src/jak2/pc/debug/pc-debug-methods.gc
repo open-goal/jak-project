@@ -1,0 +1,62 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+  Various debugging displays made for the pc port. This file includes overrides or game-specific implementations.
+ |#
+
+;; debug-only file!
+(declare-file (debug))
+
+(defmethod print-debug-misc pc-settings-jak2 ((obj pc-settings-jak2))
+	"prints various miscellaneous debug text to the game console, according to what's enabled in this object."
+
+  (when (-> obj display-bug-report)
+		#f)
+	)
+
+(defconstant MEM_BAR_HEIGHT 14) ;; total height of the bar
+(defconstant MEM_BAR_BOTTOM 416) ;; x coord for the bottom side of the bar list
+(defconstant MEM_BAR_NUM (+ LEVEL_MAX 5)) ;; amount of memory usage bars (override later if wanted)
+(defmethod draw-memory pc-settings-jak2 ((obj pc-settings-jak2) (buf dma-buffer))
+	"draw the memory heap status in the bottom right corner"
+
+	(when (-> obj display-heap-status)
+		(let ((idx 0)
+					(level-heap-colors (new 'static 'array rgba 3 (static-rgba 32 255 255 64)
+																												(static-rgba 255 32 255 64)
+																												(static-rgba 255 255 32 64)
+																												)))
+			(draw-memory-bar-kheap buf global :idx idx :color (static-rgba 32 32 255 64))
+			(draw-memory-bar-kheap buf debug :idx (1+! idx) :color (static-rgba 255 32 32 64))
+			(dotimes (i LEVEL_MAX)
+				(draw-memory-bar-kheap buf (-> *level* level i heap)
+								:name (aif (-> *level* level i borrow-from-level)
+													(string-format "(~A)l~D<-l~D" (-> *level* level i name) i (-> it index))
+													(string-format "(~A)l~D" (-> *level* level i name) i))
+								:idx (1+! idx) :color (-> level-heap-colors (mod i 3)))
+				)
+			(draw-memory-bar-dead-pool-heap buf *nk-dead-pool* :name "actor" :idx (1+! idx) :color (static-rgba 32 255 32 64))
+			(draw-memory-bar-generic buf
+							:remain (* 16 (dma-buffer-free (-> *display* frames (-> *display* on-screen) global-buf)))
+							:total  (length (-> *display* frames (-> *display* on-screen) global-buf))
+							:name "dma-global" :idx (1+! idx) :color (static-rgba 32 32 255 64))
+			(draw-memory-bar-generic buf
+							:remain (* 16 (dma-buffer-free (-> *display* frames (-> *display* on-screen) debug-buf)))
+							:total  (length (-> *display* frames (-> *display* on-screen) debug-buf))
+							:name "dma-debug" :idx (1+! idx) :color (static-rgba 255 32 32 64))
+			)
+		#t)
+	)
+
+
+(define *region-debug-inspect* (the drawable-region-prim #f))
+(define *display-region-inside* #f)
+(define *merge-region-prims* #f)
+
+(define *display-city-info* #f)
+(define *city-info-x* 0)
+(define *city-info-y* 0)
+(define *city-info-z* 0)
+
+

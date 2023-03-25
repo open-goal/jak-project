@@ -1,0 +1,467 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: ash1-course.gc
+;; name in dgo: ash1-course
+;; dgos: ATE
+
+;; DECOMP BEGINS
+
+(deftype ashelin-battle (ashelin)
+  ((player-in-bounds-time time-frame  :offset-assert 1040)
+   )
+  :heap-base #x3a0
+  :method-count-assert 252
+  :size-assert         #x418
+  :flag-assert         #xfc03a00418
+  (:methods
+    (set-frontline-dist! (_type_) none 251)
+    )
+  )
+
+
+(defmethod set-frontline-dist! ashelin-battle ((obj ashelin-battle))
+  (let ((a0-1 *target*))
+    (when a0-1
+      (set! (-> obj frontline w) (- (+ 40960.0 (vector-dot (the-as vector (-> obj frontline)) (get-trans a0-1 0)))))
+      0
+      )
+    )
+  (none)
+  )
+
+(define *ash1-course*
+  (new 'static 'ashelin-course
+    :course-id #x1
+    :speech-count #x30
+    :spot-count #x8
+    :attack-player-speeches (new 'static 'bot-speech-list-shuffle
+      :flags #xe
+      :last-local-index -1
+      :speech-indexes (new 'static 'boxed-array :type int16 11 7 8 9 10 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26)
+      )
+    :default-check-too-far #f
+    :waypoints (new 'static 'boxed-array :type bot-waypoint
+      (new 'static 'bot-waypoint
+        :waypoint-id 1
+        :skip-to -1
+        :on-set (lambda ((arg0 ashelin-battle))
+          (clear-speech-flags! arg0)
+          (move-to-point! (-> arg0 root-override2) (the-as vector (-> arg0 ash-course spots 0)))
+          (let ((v1-7 (get-current-task-event (-> arg0 task))))
+            (if (= (-> v1-7 action) (game-task-action say))
+                (add-process
+                  *gui-control*
+                  arg0
+                  (gui-channel art-load)
+                  (gui-action queue)
+                  (the-as string (-> v1-7 scene))
+                  -99.0
+                  0
+                  )
+                )
+            )
+          (let ((a0-8 15))
+            (set! (-> arg0 hit-points) a0-8)
+            (set! (-> arg0 enemy-info-override default-hit-points) a0-8)
+            )
+          (set! (-> arg0 waypoint-time0) 0)
+          (let ((v1-10 (get-task-by-type (-> arg0 ai-ctrl) asht-wait-spot arg0)))
+            (set! (-> v1-10 bytes 5) 1)
+            (set! (-> v1-10 bytes 6) 0)
+            (set! (-> v1-10 bytes 4) -1)
+            (set! (-> (the-as asht-wait-spot v1-10) check-done)
+                  (lambda ((arg0 asht-wait-spot) (arg1 ashelin-battle))
+                    (with-pp
+                      (if (and (zero? (-> arg1 waypoint-time0)) (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                                                                  (set! (-> a1-1 from) (process->ppointer pp))
+                                                                  (set! (-> a1-1 num-params) 1)
+                                                                  (set! (-> a1-1 message) 'query)
+                                                                  (set! (-> a1-1 param 0) (the-as uint 'beaten))
+                                                                  (let ((t9-0 send-event-function)
+                                                                        (v1-9 (-> arg1 actor-group 0 data 0 actor))
+                                                                        )
+                                                                    (t9-0
+                                                                      (if v1-9
+                                                                          (-> v1-9 extra process)
+                                                                          )
+                                                                      a1-1
+                                                                      )
+                                                                    )
+                                                                  )
+                               )
+                          (set! (-> arg1 waypoint-time0) (-> pp clock frame-counter))
+                          )
+                      (let ((s5-0 (get-current-task-event (-> arg1 task))))
+                        (cond
+                          ((and (nonzero? (-> arg1 waypoint-time0))
+                                (and (>= (- (-> pp clock frame-counter) (-> arg1 waypoint-time0)) (seconds 1))
+                                     (let ((f0-0 143360.0))
+                                       (and (>= (* f0-0 f0-0) (vector-vector-xz-distance-squared (target-pos 0) (-> arg1 root-override2 trans)))
+                                            (= (-> s5-0 action) (game-task-action say))
+                                            )
+                                       )
+                                     )
+                                )
+                           (process-entity-status! arg1 (entity-perm-status no-kill) #t)
+                           (when (scene-play arg1 (the-as string (-> s5-0 scene)) #f)
+                             (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                             (go-to-waypoint! arg1 2 #f)
+                             (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                             (return #t)
+                             )
+                           )
+                          (else
+                            (process-entity-status! arg1 (entity-perm-status no-kill) #f)
+                            )
+                          )
+                        )
+                      #f
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 2
+        :skip-to -1
+        :on-set (lambda ((arg0 ashelin-battle))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) asht-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 0)
+            (set! (-> (the-as asht-wait-spot v1-1) check-done)
+                  (lambda ((arg0 asht-wait-spot) (arg1 ashelin-battle))
+                    (when (scene-release? arg1)
+                      (set! (-> arg1 bot-flags) (logior (bot-flags bf20) (-> arg1 bot-flags)))
+                      (let ((s5-0 (-> arg1 ash-course spots)))
+                        (vector-! (the-as vector (-> arg1 frontline)) (the-as vector (-> s5-0 2)) (the-as vector (-> s5-0 1)))
+                        (vector-normalize! (-> arg1 frontline) 1.0)
+                        (set! (-> arg1 frontline w) (- (vector-dot (the-as vector (-> arg1 frontline)) (the-as vector (-> s5-0 1)))))
+                        )
+                      (set-frontline-dist! arg1)
+                      (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                      (go-to-waypoint! arg1 3 #f)
+                      (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                      #t
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 3
+        :skip-to -1
+        :on-set (lambda ((arg0 ashelin-battle))
+          (with-pp
+            (send-event arg0 'hide #f)
+            (ashelin-method-250 arg0 #t)
+            (set! (-> arg0 notice-enemy-dist) 245760.0)
+            (set-setting! 'sound-mode #f 0 1)
+            (logior! (-> arg0 bot-flags) (bot-flags bf06))
+            (set-setting! 'airlock #f 0 0)
+            (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-4 from) (process->ppointer pp))
+              (set! (-> a1-4 num-params) 0)
+              (set! (-> a1-4 message) 'trigger)
+              (let ((t9-4 send-event-function)
+                    (v1-18 (-> arg0 actor-group 0 data 1 actor))
+                    )
+                (t9-4
+                  (if v1-18
+                      (-> v1-18 extra process)
+                      )
+                  a1-4
+                  )
+                )
+              )
+            (add-process *gui-control* arg0 (gui-channel art-load) (gui-action queue) "atoll-save-ashelin-res-b" -99.0 0)
+            (let ((v1-24 (get-task-by-type (-> arg0 ai-ctrl) asht-wait-spot arg0)))
+              (set! (-> v1-24 bytes 5) 2)
+              (set! (-> v1-24 bytes 6) 3)
+              (set! (-> v1-24 bytes 7) 4)
+              (set! (-> (the-as asht-wait-spot v1-24) check-done)
+                    (lambda ((arg0 asht-wait-spot) (arg1 ashelin-battle))
+                      (with-pp
+                        (when (not (channel-active? arg1 (the-as uint 0)))
+                          (cond
+                            ((and (not (speech-playing? arg1 45))
+                                  (>= (- (-> pp clock frame-counter) (-> arg1 waypoint-time0)) (seconds 2.5))
+                                  )
+                             (play-speech arg1 45)
+                             )
+                            ((and (not (speech-playing? arg1 46))
+                                  (>= (- (-> pp clock frame-counter) (-> arg1 waypoint-time0)) (seconds 7))
+                                  )
+                             (play-speech arg1 46)
+                             )
+                            ((and (not (speech-playing? arg1 47))
+                                  (>= (- (-> pp clock frame-counter) (-> arg1 waypoint-time0)) (seconds 14))
+                                  )
+                             (play-speech arg1 47)
+                             )
+                            )
+                          )
+                        (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
+                          (set! (-> a1-8 from) (process->ppointer pp))
+                          (set! (-> a1-8 num-params) 1)
+                          (set! (-> a1-8 message) 'query)
+                          (set! (-> a1-8 param 0) (the-as uint 'beaten))
+                          (let ((t9-7 send-event-function)
+                                (v1-37 (-> arg1 actor-group 0 data 1 actor))
+                                )
+                            (when (t9-7
+                                    (if v1-37
+                                        (-> v1-37 extra process)
+                                        )
+                                    a1-8
+                                    )
+                              (logclear! (-> arg1 bot-flags) (bot-flags bf20))
+                              (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                              (go-to-waypoint! arg1 4 #f)
+                              (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                              #t
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+              )
+            (none)
+            )
+          )
+        :on-update (lambda ((arg0 ashelin-battle))
+          (with-pp
+            (set-frontline-dist! arg0)
+            (let ((s5-0 (target-pos 0)))
+              (if (>= (-> s5-0 y) 176128.0)
+                  (set! (-> arg0 player-in-bounds-time) (-> pp clock frame-counter))
+                  )
+              (if (>= (- (-> pp clock frame-counter) (-> arg0 player-in-bounds-time)) (seconds 4))
+                  (send-event arg0 'instant-death)
+                  )
+              (if (< (-> s5-0 y) 192512.0)
+                  (logior! (-> arg0 bot-flags) (bot-flags bf10))
+                  (logclear! (-> arg0 bot-flags) (bot-flags bf10))
+                  )
+              )
+            (none)
+            )
+          )
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 4
+        :skip-to -1
+        :on-set (lambda ((arg0 ashelin-battle))
+          (task-node-close! (game-task-node atoll-battle-battle))
+          (remove-setting! 'sound-mode)
+          (ashelin-method-250 arg0 #f)
+          (remove-setting! 'airlock)
+          (logclear! (-> arg0 bot-flags) (bot-flags bf10))
+          (when (not (channel-active? arg0 (the-as uint 0)))
+            (let ((v1-12 (get-rand-int arg0 3)))
+              (cond
+                ((zero? v1-12)
+                 (play-speech arg0 42)
+                 )
+                ((= v1-12 1)
+                 (play-speech arg0 43)
+                 )
+                (else
+                  (play-speech arg0 44)
+                  )
+                )
+              )
+            )
+          (let ((v1-20 (get-current-task-event (-> arg0 task))))
+            (if (= (-> v1-20 action) (game-task-action say))
+                (add-process
+                  *gui-control*
+                  arg0
+                  (gui-channel art-load)
+                  (gui-action queue)
+                  (the-as string (-> v1-20 scene))
+                  -99.0
+                  0
+                  )
+                )
+            )
+          (let ((v1-22 (get-task-by-type (-> arg0 ai-ctrl) asht-wait-spot arg0)))
+            (set! (-> v1-22 bytes 5) 3)
+            (set! (-> v1-22 bytes 6) 5)
+            (set! (-> v1-22 bytes 7) 6)
+            (set! (-> v1-22 bytes 8) 7)
+            (let ((v0-12
+                    (lambda ((arg0 asht-wait-spot) (arg1 ashelin-battle))
+                      (with-pp
+                        (when (>= (- (-> pp clock frame-counter) (-> arg1 waypoint-time0)) (seconds 1.5))
+                          (let ((s5-0 (get-current-task-event (-> arg1 task))))
+                            (when (and (= (-> s5-0 action) (game-task-action say))
+                                       (not (channel-active? arg1 (the-as uint 0)))
+                                       (scene-play arg1 (the-as string (-> s5-0 scene)) #f)
+                                       )
+                              (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                              (go-to-waypoint! arg1 5 #f)
+                              (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                              #t
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+              (set! (-> (the-as asht-wait-spot v1-22) check-done) v0-12)
+              (the-as symbol v0-12)
+              )
+            )
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 5
+        :skip-to -1
+        :on-set (lambda ((arg0 ashelin-battle))
+          (logclear! (-> arg0 bot-flags) (bot-flags bf06))
+          (bot-method-196 arg0)
+          (let ((v1-5 (-> arg0 root-override2 root-prim)))
+            (set! (-> v1-5 prim-core collide-as) (collide-spec))
+            (set! (-> v1-5 prim-core collide-with) (collide-spec))
+            )
+          (set! (-> arg0 root-override2 backup-collide-as) (collide-spec))
+          (set! (-> arg0 root-override2 backup-collide-with) (collide-spec))
+          0
+          (send-event arg0 'hide #t)
+          (let ((v1-15 (get-task-by-type (-> arg0 ai-ctrl) asht-wait-spot arg0)))
+            (set! (-> v1-15 bytes 5) 3)
+            (set! (-> v1-15 bytes 6) 5)
+            (set! (-> v1-15 bytes 7) 6)
+            (set! (-> v1-15 bytes 8) 7)
+            (set! (-> (the-as asht-wait-spot v1-15) check-done)
+                  (lambda ((arg0 asht-wait-spot) (arg1 ashelin-battle)) (when (scene-release? arg1)
+                                                                          (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                                          (go-to-waypoint! arg1 6 #f)
+                                                                          (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                                          #t
+                                                                          )
+                          )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 6
+        :skip-to -1
+        :on-set (lambda ((arg0 ashelin-battle))
+          (process-entity-status! arg0 (entity-perm-status bit-4) #f)
+          (process-entity-status! arg0 (entity-perm-status no-kill) #f)
+          (logclear! (-> arg0 enemy-flags) (enemy-flag use-notice-distance))
+          (let ((v1-3 (get-task-by-type (-> arg0 ai-ctrl) asht-wait-spot arg0)))
+            (set! (-> v1-3 bytes 5) 3)
+            (set! (-> v1-3 bytes 6) 5)
+            (set! (-> v1-3 bytes 7) 6)
+            (set! (-> v1-3 bytes 8) 7)
+            (set! (-> (the-as asht-wait-spot v1-3) check-done) (lambda ((arg0 asht-wait-spot) (arg1 ashelin-battle)) #f))
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      )
+    :speeches (new 'static 'inline-array bot-speech-info 48
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha001")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha008")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha009")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha010")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha011")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha012")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha013")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha002")
+      (new 'static 'bot-speech-info :flags (speech-flags sf10) :hold-time #x5a :slave-id -1 :name "asha003")
+      (new 'static 'bot-speech-info :flags (speech-flags sf06) :hold-time #x5a :slave-id -1 :name "asha004")
+      (new 'static 'bot-speech-info :flags (speech-flags sf06) :hold-time #x5a :slave-id -1 :name "asha005")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha006")
+      (new 'static 'bot-speech-info :flags (speech-flags sf08) :hold-time #x5a :slave-id -1 :name "asha007")
+      (new 'static 'bot-speech-info :flags (speech-flags sf09) :hold-time #x5a :slave-id -1 :name "asha018")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha019")
+      (new 'static 'bot-speech-info :flags (speech-flags sf09) :hold-time #x5a :slave-id -1 :name "asha020")
+      (new 'static 'bot-speech-info :flags (speech-flags sf09) :hold-time #x5a :slave-id -1 :name "asha021")
+      (new 'static 'bot-speech-info :flags (speech-flags sf09) :hold-time #x5a :slave-id -1 :name "asha022")
+      (new 'static 'bot-speech-info :flags (speech-flags sf09) :hold-time #x5a :slave-id -1 :name "asha023")
+      (new 'static 'bot-speech-info :flags (speech-flags sf09) :hold-time #x5a :slave-id -1 :name "asha024")
+      (new 'static 'bot-speech-info :flags (speech-flags sf09) :hold-time #x5a :slave-id -1 :name "asha025")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha026")
+      (new 'static 'bot-speech-info :flags (speech-flags sf09) :hold-time #x5a :slave-id -1 :name "asha027")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha028")
+      (new 'static 'bot-speech-info :flags (speech-flags sf09) :hold-time #x5a :slave-id -1 :name "asha029")
+      (new 'static 'bot-speech-info :flags (speech-flags sf10) :hold-time #x5a :slave-id -1 :name "asha030")
+      (new 'static 'bot-speech-info :flags (speech-flags sf09) :hold-time #x5a :slave-id -1 :name "asha031")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha035")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha036")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha039")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha041")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha050")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha051")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha052")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha054")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha014")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha015")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha016")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha017")
+      (new 'static 'bot-speech-info :flags (speech-flags sf11) :hold-time #x5a :slave-id -1 :name "asha038")
+      (new 'static 'bot-speech-info :flags (speech-flags sf11) :hold-time #x5a :slave-id -1 :name "asha044")
+      (new 'static 'bot-speech-info :flags (speech-flags sf11) :hold-time #x5a :slave-id -1 :name "asha049")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha032")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha033")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha034")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha037")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha047")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "asha042")
+      )
+    :speech-tunings (new 'static 'inline-array bot-speech-tuning 1
+      (new 'static 'bot-speech-tuning :fo-min 30 :fo-max 100 :fo-curve #xb :trans? #t)
+      )
+    :spots (new 'static 'inline-array bot-spot 8
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2263285.8 :y 213319.69 :z -4552335.5 :w 16384.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2293555.2 :z -4570276.0 :w 4096.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2235105.2 :z -4669890.5 :w 4096.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2224291.8 :y 222167.05 :z -4707533.0 :w 16384.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2164695.0 :y 221593.6 :z -4725145.5 :w 16384.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2305392.8 :y 214671.36 :z -4561797.0 :w 8192.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2245959.8 :y 214425.6 :z -4561961.0 :w 8192.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2269757.5 :y 216965.12 :z -4560404.5 :w 8192.0))
+      )
+    :ouch-speeches (new 'static 'bot-speech-list-shuffle
+      :flags #x6
+      :last-local-index -1
+      :speech-indexes (new 'static 'boxed-array :type int16 35 36 37 38 39 40 41)
+      )
+    :victory-speeches (new 'static 'bot-speech-list-shuffle
+      :flags #xe
+      :last-local-index -1
+      :speech-indexes (new 'static 'boxed-array :type int16 0 1 2 3 4 5 6 27 28 29 30 31 32 33 34)
+      )
+    )
+  )
+
+(set! (-> *bot-course-table* course 1) *ash1-course*)

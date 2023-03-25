@@ -1,9 +1,10 @@
-#include "gtest/gtest.h"
 #include "FormRegressionTest.h"
+
+#include "gtest/gtest.h"
 
 using namespace decompiler;
 
-TEST_F(FormRegressionTest, ExprArrayMethod2) {
+TEST_F(FormRegressionTestJak1, ExprArrayMethod2) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L130:\n"
@@ -692,7 +693,7 @@ TEST_F(FormRegressionTest, ExprArrayMethod2) {
                  "\t\t[258, \"gp\", \"(array basic)\"]]");
 }
 
-TEST_F(FormRegressionTest, ExprArrayMethod3) {
+TEST_F(FormRegressionTestJak1, ExprArrayMethod3) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L91:\n"
@@ -1249,7 +1250,7 @@ TEST_F(FormRegressionTest, ExprArrayMethod3) {
                  "\t\t[243, \"gp\", \"(array basic)\"]]");
 }
 
-TEST_F(FormRegressionTest, ExprValid) {
+TEST_F(FormRegressionTestJak1, ExprValid) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L1:\n"
@@ -1885,7 +1886,7 @@ TEST_F(FormRegressionTest, ExprValid) {
       "    )\n"
       "   ((= arg1 binteger)\n"
       "    (cond\n"
-      "     ((zero? (logand (the-as int arg0) 7))\n"
+      "     ((not (logtest? (the-as int arg0) 7))\n"
       "      #t\n"
       "      )\n"
       "     (else\n"
@@ -2026,7 +2027,7 @@ TEST_F(FormRegressionTest, ExprValid) {
         "ERROR: object #x~X ~S is not a valid object of type '~A' (inside symbol table)~%"}});
 }
 
-TEST_F(FormRegressionTest, ExprStringToInt) {
+TEST_F(FormRegressionTestJak1, ExprStringToInt) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L14:\n"
@@ -2399,7 +2400,7 @@ TEST_F(FormRegressionTest, ExprStringToInt) {
   test_final_function(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, Method19ResTag) {
+TEST_F(FormRegressionTestJak1, Method19ResTag) {
   std::string func =
       "sll r0, r0, 0\n"
       "L101:\n"

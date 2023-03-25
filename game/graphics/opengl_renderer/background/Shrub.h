@@ -2,15 +2,16 @@
 
 #include <optional>
 
-#include "game/graphics/gfx.h"
-#include "game/graphics/opengl_renderer/background/background_common.h"
-#include "game/graphics/opengl_renderer/BucketRenderer.h"
-#include "game/graphics/pipelines/opengl.h"
 #include "common/util/FilteredValue.h"
+
+#include "game/graphics/gfx.h"
+#include "game/graphics/opengl_renderer/BucketRenderer.h"
+#include "game/graphics/opengl_renderer/background/background_common.h"
+#include "game/graphics/pipelines/opengl.h"
 
 class Shrub : public BucketRenderer {
  public:
-  Shrub(const std::string& name, BucketId my_id);
+  Shrub(const std::string& name, int my_id);
   ~Shrub();
   bool setup_for_level(const std::string& level, SharedRenderState* render_state);
   void render_all_trees(const TfragRenderSettings& settings,

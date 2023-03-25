@@ -1,0 +1,240 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: minimap-h.gc
+;; name in dgo: minimap-h
+;; dgos: ENGINE, GAME
+
+(defenum minimap-flag
+  :bitfield #t
+  :type uint16
+  (active      0) ;; 1
+  (fade-in     1) ;; 2
+  (fade-out    2) ;; 4
+  (clamp       3) ;; 8
+  (trail       4) ;; 16
+  (task-graph  5) ;; 32
+  (flash       6) ;; 64
+  (minimap     7) ;; 128
+  (background  8) ;; 256
+  (task        9) ;; 512
+  (enemy      10) ;; 1024
+  (frustum    11) ;; 2048
+  (racer      12) ;; 4096
+  (bigmap     13) ;; 8192
+  (goal       14) ;; 16384
+  (city-only  15) ;; 32768
+  )
+
+(defenum minimap-class
+  :type uint16
+  :bitfield #f
+  (none 0)
+  (onintent 1)
+  (ruins 2)
+  (vinroom 3)
+  (mountain 4)
+  (hideout 5)
+  (sewer 6)
+  (atoll 7)
+  (hiphog 8)
+  (fortress 9)
+  (gungame 10)
+  (gun-yellow 11)
+  (garage 12)
+  (palace-cable 13)
+  (guard 14)
+  (goal 15)
+  (goal-no-trail 16)
+  (parking-spot 17)
+  (forest 18)
+  (kiosk 19)
+  (dig 20)
+  (canyon 21)
+  (tomb 22)
+  (tanker 23)
+  (kid 24)
+  (consite 25)
+  (palace 26)
+  (castle 27)
+  (underport 28)
+  (stadium 29)
+  (port-turret 30)
+  (oracle 31)
+  (guard-frustum 32)
+  (burning-bush 33)
+  (gun-dark 34)
+  (slumc-seal 35)
+  (racer 36)
+  (racer-target 37)
+  (racer-errol 38)
+  (flag 39)
+  (bbush-gena 40)
+  (bbush-gena-2 41)
+  (bbush-genb 42)
+  (bbush-genb-2 43)
+  (bbush-genc 44)
+  (bbush-genc-2 45)
+  (bbush-sluma 46)
+  (bbush-slumb   47)
+  (bbush-slumb-2 48)
+  (bbush-slumc 49)
+  (bbush-port-3 50)
+  (bbush-port-2 51)
+  (bbush-port   52)
+  (bbush-farma 53)
+  (bbush-farmb 54)
+  (bbush-inda 55)
+  (bbush-indb 56)
+  (bbush-marka 57)
+  (bbush-markb 58)
+  (bbush-markb-2 59)
+  (bbush-pal 60)
+  (bbush-pal-2 61)
+  (bbush-stadium 62)
+  (atoll-valve 63)
+  (atoll-ashelin 64)
+  (mountain-lens 65)
+  (mountain-shard 66)
+  (mountain-gear 67)
+  (ruins-hut 68)
+  (forest-samos 69)
+  (metalhead 70)
+  )
+
+(declare-type process-drawable process)
+(declare-type minimap structure)
+(define-extern *minimap* minimap)
+
+;; DECOMP BEGINS
+
+(deftype minimap-class-node (structure)
+  ((default-position vector        :inline :offset-assert   0)
+   (flags            minimap-flag          :offset-assert  16)
+   (class            minimap-class         :offset-assert  18)
+   (name             basic                 :offset-assert  20)
+   (icon-xy          vector2ub     :inline :offset-assert  24)
+   (scale            float                 :offset-assert  28)
+   (color            rgba                  :offset-assert  32)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+
+(deftype connection-minimap (connection-pers)
+  ((handle            handle                     :offset          8)
+   (position          object                     :offset         16)
+   (alpha             float                      :offset         20)
+   (class             minimap-class-node         :offset         24)
+   (flags             minimap-flag               :offset         28)
+   (node              uint16                     :offset         30)
+   (edge-ry           float                      :offset-assert  32)
+   (last-world-pos    vector             :inline :offset-assert  48)
+   (last-relative-pos vector             :inline :offset-assert  64)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+
+(deftype engine-minimap (engine-pers)
+  ((alive-list-override connection-minimap  :offset  24)
+   (dead-list-override  connection-minimap  :offset  28)
+   )
+  :method-count-assert 15
+  :size-assert         #x20
+  :flag-assert         #xf00000020
+  )
+
+
+(deftype minimap-trail (structure)
+  ((used-by        connection-minimap               :offset-assert   0)
+   (search-id      uint32                           :offset-assert   4)
+   (node-count     int16                            :offset-assert   8)
+   (goal-node-id   int32                            :offset-assert  12)
+   (node-path-dist float                            :offset-assert  16)
+   (last-updated   uint64                           :offset-assert  24)
+   (cached-info    trail-cached-search-info :inline :offset-assert  32)
+   (node-id        uint16                   64      :offset-assert  80)
+   )
+  :method-count-assert 11
+  :size-assert         #xd0
+  :flag-assert         #xb000000d0
+  (:methods
+    (get-distance-with-path (_type_ vector vector) float 9)
+    (reset (_type_) none 10)
+    )
+  )
+
+
+(deftype minimap-draw-work (structure)
+  ((buf           dma-buffer           :offset-assert   0)
+   (justify-right symbol               :offset-assert   4)
+   (draw-pos      vector4w   :inline   :offset-assert  16)
+   (mat           matrix     :inline   :offset-assert  32)
+   (corner        vector     4 :inline :offset-assert  96)
+   )
+  :method-count-assert 9
+  :size-assert         #xa0
+  :flag-assert         #x9000000a0
+  )
+
+
+(deftype minimap (structure)
+  ((draw-tmpl        dma-gif-packet :inline   :offset-assert   0)
+   (draw2-tmpl       dma-gif-packet :inline   :offset-assert  32)
+   (draw3-tmpl       dma-gif-packet :inline   :offset-assert  64)
+   (draw4-tmpl       dma-gif-packet :inline   :offset-assert  96)
+   (sprite-tmpl      dma-gif-packet :inline   :offset-assert 128)
+   (adgif-tmpl       dma-gif-packet :inline   :offset-assert 160)
+   (color            vector4w       :inline   :offset-assert 192)
+   (offset           vector         :inline   :offset-assert 208)
+   (minimap-corner   vector         :inline   :offset-assert 224)
+   (last-name        string                   :offset-assert 240)
+   (last-tex         basic                    :offset-assert 244)
+   (target-inv-scale float                    :offset-assert 248)
+   (map-bits         uint64                   :offset-assert 256)
+   (level            level                    :offset-assert 264)
+   (ctywide          level                    :offset-assert 268)
+   (inv-scale        float                    :offset        212)
+   (fade             float                    :offset        220)
+   (engine           engine-minimap           :offset-assert 272)
+   (engine-key       uint32                   :offset-assert 276)
+   (trail            minimap-trail  6 :inline :offset-assert 288)
+   (race-tex         texture                  :offset-assert 1536)
+   (race-scale       float                    :offset-assert 1540)
+   (race-level       level                    :offset-assert 1544)
+   (sprite2-tmpl     dma-gif-packet :inline   :offset-assert 1552)
+   (race-corner      vector         :inline   :offset-assert 1584)
+   (goal-time        float                    :offset-assert 1600)
+   (frustum-alpha    float                    :offset-assert 1604)
+   )
+  :method-count-assert 28
+  :size-assert         #x648
+  :flag-assert         #x1c00000648
+  (:methods
+    (debug-draw (_type_) none 9)
+    (get-trail-for-connection (_type_ connection-minimap symbol) minimap-trail 10)
+    (get-icon-draw-pos (_type_ connection-minimap minimap-trail vector float vector) symbol 11)
+    (add-icon! (_type_ process uint int vector int) connection-minimap 12)
+    (free-trail-by-connection (_type_ connection-minimap) none 13)
+    (update-trails (_type_) none 14)
+    (draw-1 (_type_ dma-buffer vector4w symbol) none 15)
+    (draw-connection (_type_ minimap-draw-work connection-minimap) none 16)
+    (draw-frustum-1 (_type_ minimap-draw-work connection-minimap) none 17)
+    (draw-frustum-2 (_type_ minimap-draw-work connection-minimap) none 18)
+    (sub-draw-1-2 (_type_ minimap-draw-work) none 19)
+    (update! (_type_) symbol 20)
+    (sub-draw-1-1 (_type_ minimap-draw-work) none 21)
+    (set-color (_type_ vector) none 22)
+    (draw-racer-2 (_type_ minimap-draw-work connection-minimap) none 23)
+    (draw-sprite2 (_type_ dma-buffer vector4w symbol) none 24)
+    (set-race-texture (_type_ texture float level) none 25)
+    (draw-racer-1 (_type_ minimap-draw-work connection-minimap float float float) none 26)
+    (set-race-corner (_type_ float float) none 27)
+    )
+  )

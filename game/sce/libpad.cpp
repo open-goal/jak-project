@@ -1,8 +1,9 @@
 #include "libpad.h"
 
-#include "game/kernel/kmachine.h"
-#include "game/graphics/gfx.h"
 #include "common/util/Assert.h"
+
+#include "game/graphics/gfx.h"
+#include "game/kernel/common/kernel_types.h"
 
 /*!
  * @file libpad.cpp
@@ -69,10 +70,10 @@ int scePadRead(int port, int /*slot*/, u8* rdata) {
 
   cpad->status = 0x70 /* (dualshock2) */ | (20 / 2); /* (dualshock2 data size) */
 
-  cpad->rightx = Gfx::PadAnalogValue(Pad::Analog::Right_X, port);
-  cpad->righty = Gfx::PadAnalogValue(Pad::Analog::Right_Y, port);
-  cpad->leftx = Gfx::PadAnalogValue(Pad::Analog::Left_X, port);
-  cpad->lefty = Gfx::PadAnalogValue(Pad::Analog::Left_Y, port);
+  cpad->rightx = Gfx::PadGetAnalogValue(Pad::Analog::Right_X, port);
+  cpad->righty = Gfx::PadGetAnalogValue(Pad::Analog::Right_Y, port);
+  cpad->leftx = Gfx::PadGetAnalogValue(Pad::Analog::Left_X, port);
+  cpad->lefty = Gfx::PadGetAnalogValue(Pad::Analog::Left_Y, port);
 
   // pressure sensitivity. ignore for now.
   for (int i = 0; i < 12; ++i) {
@@ -90,10 +91,13 @@ int scePadRead(int port, int /*slot*/, u8* rdata) {
   return 32;
 }
 
-// buzzer control. We don't care right now, return success.
-int scePadSetActDirect(int /*port*/, int /*slot*/, const u8* /*data*/) {
-  return 1;
+int scePadSetActDirect(int port, int /*slot*/, const u8* data) {
+  // offsets are set by scePadSetActAlign, but we already know the game uses 0 for big motor and 1
+  // for small motor
+  // also, the "slow" motor corresponds to the "large" motor on the PS2
+  return Pad::rumble(port, ((float)data[1]) / 255, ((float)data[0]));
 }
+
 int scePadSetActAlign(int /*port*/, int /*slot*/, const u8* /*data*/) {
   return 1;
 }

@@ -4,9 +4,12 @@
  * This is the front end for things in StaticObject.cpp
  */
 
-#include "goalc/compiler/Compiler.h"
-#include "third-party/fmt/core.h"
 #include "common/goos/ParseHelpers.h"
+#include "common/util/math_util.h"
+
+#include "goalc/compiler/Compiler.h"
+
+#include "third-party/fmt/core.h"
 
 /*!
  * Compile the fields of a static structure into the given StaticStructure*, applying an offset.
@@ -42,10 +45,6 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
 
     field_name_def = field_name_def.substr(1);
     auto field_info = m_ts.lookup_field_info(type_info->get_name(), field_name_def);
-
-    if (field_info.field.is_dynamic()) {
-      throw_compiler_error(form, "Dynamic fields are not supported for inline");
-    }
 
     auto field_offset = field_info.field.offset() + offset;
 
@@ -97,7 +96,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
 
       s64 elt_array_len = get_constant_integer_or_error(new_form.at(4), env);
 
-      if (elt_array_len != field_info.field.array_size()) {
+      if (!field_info.field.is_dynamic() && elt_array_len != field_info.field.array_size()) {
         throw_compiler_error(field_value, "Array field had an expected size of {} but got {}",
                              field_info.field.array_size(), elt_array_len);
       }
@@ -108,11 +107,25 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       }
 
       if (is_inline) {
+        if (field_info.field.is_dynamic()) {
+          throw_compiler_error(form, "Dynamic fields are not supported for inline");
+        }
         fill_static_inline_array_inline(field_value, field_info.field.type(), arg_list, structure,
                                         field_offset, env);
       } else {
+        int num_elts = arg_list.size() - 4;
+        if (field_info.field.is_dynamic()) {
+          // need to resize data
+          // first, expected original size
+          int expected_data_size = type_info->get_size_in_memory();
+          ASSERT(expected_data_size == (int)structure->data.size());
+          int stride = align(type_info->get_size_in_memory(),
+                             type_info->get_inline_array_stride_alignment());
+          int increase_by = stride * num_elts;
+          structure->data.resize(expected_data_size + increase_by);
+        }
         fill_static_array_inline(field_value, field_info.field.type(), arg_list.data() + 4,
-                                 (int)arg_list.size() - 4, structure, field_offset, env);
+                                 num_elts, structure, field_offset, env);
       }
 
     } else if (is_integer(field_info.type)) {
@@ -137,7 +150,8 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
                              deref_info.sign_extend);
       }
 
-    } else if (is_structure(field_info.type) || is_pair(field_info.type)) {
+    } else if (is_structure(field_info.type) || is_pair(field_info.type) ||
+               is_symbol(field_info.type) || field_info.type == TypeSpec("object")) {
       if (is_pair(field_info.type)) {
         ASSERT(!field_info.field.is_inline());
       }
@@ -186,7 +200,9 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
         auto sr = compile_static(field_value, env);
         if (sr.is_symbol()) {
           if (sr.symbol_name() != "#f" && sr.symbol_name() != "_empty_") {
-            typecheck(form, field_info.type, sr.typespec());
+            typecheck(form, field_info.type, sr.typespec(),
+                      fmt::format("Field {}, containing symbol {}", field_info.field.name(),
+                                  sr.symbol_name()));
           }
           structure->add_symbol_record(sr.symbol_name(), field_offset);
           ASSERT(deref_info.mem_deref);
@@ -227,13 +243,25 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       memcpy(structure->data.data() + field_offset, &value, sizeof(float));
     } else if (field_info.type.base_type() == "inline-array") {
       auto sr = compile_static(field_value, env);
-      if (!sr.is_reference()) {
+      if (sr.is_symbol() && sr.symbol_name() == "#f") {
+        // allow #f to be used for an inline-array
+        structure->add_symbol_record(sr.symbol_name(), field_offset);
+        auto deref_info = m_ts.get_deref_info(m_ts.make_pointer_typespec(field_info.type));
+        ASSERT(deref_info.mem_deref);
+        ASSERT(deref_info.can_deref);
+        ASSERT(deref_info.load_size == 4);
+        // the linker needs to see a -1 in order to know to insert a symbol pointer
+        // instead of just the symbol table offset.
+        u32 linker_val = 0xffffffff;
+        memcpy(structure->data.data() + field_offset, &linker_val, 4);
+      } else if (!sr.is_reference()) {
         throw_compiler_error(form, "Invalid definition of field {}", field_info.field.name());
+      } else {
+        typecheck(form, field_info.type, sr.typespec());
+        ASSERT(sr.reference()->get_addr_offset() == 0);
+        structure->add_pointer_record(field_offset, sr.reference(),
+                                      sr.reference()->get_addr_offset());
       }
-      typecheck(form, field_info.type, sr.typespec());
-      ASSERT(sr.reference()->get_addr_offset() == 0);
-      structure->add_pointer_record(field_offset, sr.reference(),
-                                    sr.reference()->get_addr_offset());
     } else if (field_info.type.base_type() == "pointer") {
       auto sr = compile_static(field_value, env);
       if (sr.is_symbol() && sr.symbol_name() == "#f") {
@@ -583,14 +611,14 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
                                                         bool can_macro) {
   auto fie = env->file_env();
   if (form.is_pair()) {
-    if (form.as_pair()->car.is_symbol() && (form.as_pair()->car.as_symbol()->name == "new" ||
-                                            form.as_pair()->car.as_symbol()->name == "the" ||
-                                            form.as_pair()->car.as_symbol()->name == "lambda")) {
+    if (form.as_pair()->car.is_symbol("new") || form.as_pair()->car.is_symbol("the") ||
+        (can_macro && form.as_pair()->car.is_symbol("lambda"))) {
       return compile_static(form, env);
     }
     if (form.as_pair()->car.is_symbol() && form.as_pair()->car.as_symbol()->name == "unquote") {
       // ,(macro-name args...) is actually (unquote (macro-name args...))
       // decompile the arg as macro if possible.
+      // ,(lambda ...) is also a special case.
       auto& unq_arg_pair = form.as_pair()->cdr;
       if (unq_arg_pair.is_empty_list()) {
         throw_compiler_error(form, "Cannot unquote empty list");
@@ -600,7 +628,8 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
         throw_compiler_error(form, "Cannot unquote non-list");
       }
       goos::Object macro_obj;
-      if (!try_getting_macro_from_goos(unq_arg.as_pair()->car, &macro_obj)) {
+      if (!unq_arg.as_pair()->car.is_symbol("lambda") &&
+          !try_getting_macro_from_goos(unq_arg.as_pair()->car, &macro_obj)) {
         throw_compiler_error(form, "Macro {} not found", unq_arg.as_pair()->car.print());
       }
       return compile_static_no_eval_for_pairs(form.as_pair()->cdr.as_pair()->car, env, seg, true);
@@ -727,15 +756,20 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
                              args.at(1).print());
       }
 
-      if (unquote(args.at(1)).as_symbol()->name == "boxed-array") {
-        return fill_static_boxed_array(form, rest, env, segment);
-      } else if (unquote(args.at(1)).as_symbol()->name == "array") {
+      auto unquoted_type = unquote(args.at(1));
+      if (unquoted_type.as_symbol()->name == "boxed-array") {
+        return fill_static_boxed_array(form, rest, env, segment, "array");
+      } else if (unquoted_type.as_symbol()->name == "array") {
         return fill_static_array(form, rest, env, segment);
-      } else if (unquote(args.at(1)).as_symbol()->name == "inline-array") {
+      } else if (unquoted_type.as_symbol()->name == "inline-array") {
         return fill_static_inline_array(form, rest, env, segment);
       } else {
-        auto ts = parse_typespec(unquote(args.at(1)), env);
-        if (ts == TypeSpec("string")) {
+        auto ts = parse_typespec(unquoted_type, env);
+        bool is_array_subtype =
+            m_ts.typecheck_and_throw(TypeSpec("array"), ts, "", false, false, false);
+        if (is_array_subtype) {
+          return fill_static_boxed_array(form, rest, env, segment, ts.base_type());
+        } else if (ts == TypeSpec("string")) {
           // (new 'static 'string)
           if (rest.is_pair() && rest.as_pair()->cdr.is_empty_list() &&
               rest.as_pair()->car.is_string()) {
@@ -840,11 +874,31 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
   ASSERT(deref_info.mem_deref);
   for (int arg_idx = 0; arg_idx < args_array_length; arg_idx++) {
     int elt_offset = offset + arg_idx * deref_info.stride;
-    auto sr = compile_static(args_array[arg_idx], env);
+    const auto& arg = args_array[arg_idx];
+    // Special case for symbols that refer to types
+    StaticResult sr;
+    if (content_type == TypeSpec("type") && arg.is_symbol()) {
+      const auto& type_name = arg.as_symbol()->name;
+      std::optional<int> expected_method_count = m_ts.try_get_type_method_count(type_name);
+      if (!expected_method_count) {
+        throw_compiler_error(form, "Undeclared type used in inline-array - {}", type_name);
+      }
+      sr = StaticResult::make_type_ref(type_name, expected_method_count.value());
+    } else {
+      sr = compile_static(arg, env);
+    }
+
     if (is_integer(content_type)) {
       typecheck(form, TypeSpec("integer"), sr.typespec());
     } else {
-      typecheck(form, content_type, sr.typespec());
+      if (sr.is_symbol() && sr.symbol_name() == "#f") {
+        // allow #f for any structure, or symbol (no longer a structure in jak 2)
+        if (content_type.base_type() != "symbol") {
+          typecheck(form, TypeSpec("structure"), content_type);
+        }
+      } else {
+        typecheck(form, content_type, sr.typespec());
+      }
     }
     if (sr.is_symbol()) {
       ASSERT(deref_info.stride == 4);
@@ -860,6 +914,12 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
         throw_compiler_error(form, "The integer {} doesn't fit in element {} of array of {}",
                              sr.constant().print(), arg_idx, content_type.print());
       }
+    } else if (sr.is_type()) {
+      ASSERT(deref_info.stride == 4);
+      structure->add_type_record(sr.symbol_name(), elt_offset);
+    } else if (sr.is_func()) {
+      ASSERT(deref_info.stride == 4);
+      structure->add_function_record(sr.function(), elt_offset);
     } else {
       ASSERT(false);
     }
@@ -871,7 +931,7 @@ StaticResult Compiler::fill_static_array(const goos::Object& form,
                                          Env* env,
                                          int seg) {
   auto fie = env->file_env();
-  // (new 'static 'boxed-array ...)
+  // (new 'static '[boxed-array|array-subtype] ...)
   // get all arguments now
   auto args = get_list_as_vector(rest);
   if (args.size() < 4) {
@@ -905,7 +965,8 @@ StaticResult Compiler::fill_static_array(const goos::Object& form,
 StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
                                                const goos::Object& rest,
                                                Env* env,
-                                               int seg) {
+                                               int seg,
+                                               const std::string& array_type) {
   auto fie = env->file_env();
   // (new 'static 'boxed-array ...)
   // get all arguments now
@@ -958,7 +1019,10 @@ StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
   auto array_data_size_bytes = allocated_length * deref_info.stride;
   // todo, segments
   std::unique_ptr<StaticStructure> obj;
-  obj = std::make_unique<StaticBasic>(seg, "array");
+
+  // Determine if we are dealing with a subtype of an 'array' if so, use that type instead!
+  const std::string type = array_type == "boxed-array" ? "array" : array_type;
+  obj = std::make_unique<StaticBasic>(seg, type);
 
   int array_header_size = 16;
   obj->data.resize(array_header_size + array_data_size_bytes);
@@ -978,7 +1042,7 @@ StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
 
   TypeSpec result_type;
 
-  result_type = m_ts.make_array_typespec(content_type);
+  result_type = m_ts.make_array_typespec(type, content_type);
 
   auto result = StaticResult::make_structure_reference(obj.get(), result_type);
   fie->add_static(std::move(obj));
@@ -1044,7 +1108,7 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
   // get all arguments now
   auto args = get_list_as_vector(rest);
   if (args.size() < 4) {
-    throw_compiler_error(form, "new static boxed array must have type and min-size arguments");
+    throw_compiler_error(form, "new static inline array must have type and min-size arguments");
   }
   auto content_type = parse_typespec(args.at(2), env);
   s64 min_size = get_constant_integer_or_error(args.at(3), env);
@@ -1052,8 +1116,10 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
 
   auto inline_array_type = m_ts.make_inline_array_typespec(content_type);
   auto deref_info = m_ts.get_deref_info(inline_array_type);
-  ASSERT(deref_info.can_deref);
-  ASSERT(!deref_info.mem_deref);
+  if (!deref_info.can_deref || deref_info.mem_deref) {
+    throw_compiler_error(form, "new static inline array of type {} is currently not supported",
+                         content_type.print());
+  }
   auto obj = std::make_unique<StaticStructure>(seg);
   obj->set_offset(is_basic(content_type) ? 4 : 0);
   obj->data.resize(length * deref_info.stride);
@@ -1069,7 +1135,7 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
 
 Val* Compiler::compile_static_pair(const goos::Object& form, Env* env, int seg) {
   ASSERT(form.is_pair());  // (quote PAIR)
-  auto result = compile_static_no_eval_for_pairs(form, env, seg, true);
+  auto result = compile_static_no_eval_for_pairs(form, env, seg, false);
   ASSERT(result.is_reference());
   auto fe = env->function_env();
   auto static_result = fe->alloc_val<StaticVal>(result.reference(), result.typespec());

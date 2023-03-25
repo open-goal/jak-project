@@ -11,5 +11,7 @@ struct TPageResultStats {
   int num_px = 0;
 };
 
-TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db);
+TPageResultStats process_tpage(ObjectFileData& data,
+                               TextureDB& texture_db,
+                               const fs::path& output_path);
 }  // namespace decompiler

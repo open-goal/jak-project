@@ -1,0 +1,11 @@
+("LGARCSTA.DGO"
+ ("tpage-2699.go"
+  "tpage-3512.go"
+  "tpage-3271.go"
+  "krew-highres-ag.go"
+  "samos-highres-ag.go"
+  "tess-highres-ag.go"
+  "ashelin-highres-ag.go"
+  "sew-gold-key-ag.go"
+  "lgarcsta.go"
+ ))

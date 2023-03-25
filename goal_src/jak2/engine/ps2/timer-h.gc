@@ -1,0 +1,127 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: timer-h.gc
+;; name in dgo: timer-h
+;; dgos: ENGINE, GAME
+
+#|@file
+There are two sources for timing:
+- EE TIMER1, used for the frame profiler. There are 9765 counts of this per frame. It gets reset in drawable.
+- The "stopwatch" system, used for reading the CPU clock cycle counter, at 300 MHz (32-bit)
+|#
+
+;; DECOMP BEGINS
+
+;; The Emotion Engine has 4 hardware timers, timer1 is used as the
+(defconstant TIMER0_BANK (the timer-bank #x10000000)) ;; has HOLD register!
+(defconstant TIMER1_BANK (the timer-bank #x10000800)) ;; has HOLD register!
+(defconstant TIMER2_BANK (the timer-bank #x10001000)) ;; does NOT have HOLD register!
+(defconstant TIMER3_BANK (the timer-bank #x10001800)) ;; does NOT have HOLD register!
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; PC Port Timer
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defmacro get-cpu-clock ()
+  "Read the 300 MHz clock."
+  ;; __read-ee-timer is a 300 MHz timer from the C Kernel.
+  ;; it's a real timer.
+  `(the uint (logand #xffffffff (__read-ee-timer)))
+  )
+
+(defmacro get-bus-clock/256 ()
+  "Read the 150 MHz / 256 clock."
+  ;; 300 MHz / (2^9)
+  `(the uint (logand #xffffffff (shr (__read-ee-timer) 9)))
+  )
+
+(#when PC_PORT
+  ;; the bus clock can be reset, which just stores the current count here.
+  (define *timer-reset-value* (the uint 0))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Timer HW
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defenum timer-clock-selection
+  :type uint8
+  (busclk 0)
+  (busclk/16 1)
+  (busclk/256 2)
+  (hblank 3)
+  )
+
+;; this matches the Tn_MODE register structure of the ps2 EE timers.
+;; Only the lower 32 bits of these registers are usable, and the upper 16 hardwired to zero
+(deftype timer-mode (uint32)
+  ((clks  timer-clock-selection :offset 0 :size 2)
+   (gate  uint8 :offset 2 :size 1) ;; gate function enable
+   (gats  uint8 :offset 3 :size 1) ;; gate selection: 0 = hblank, 1 = vblank
+   ;; gate mode:
+   ;;  0: count while gate signal is low
+   ;;  1: start when gate signal rises
+   ;;  2: start when gate signal falls
+   ;;  3: start when gate signal rises/falls
+   (gatm  uint8 :offset 4 :size 2)
+   (zret  uint8 :offset 6 :size 1) ;; zero return: clear counter when equal to reference value
+   (cue   uint8 :offset 7 :size 1) ;; count-up enable
+   (cmpe  uint8 :offset 8 :size 1) ;; compare-interrupt enable
+   (ovfe  uint8 :offset 9 :size 1) ;; overflow-interrupt enable
+   (equf  uint8 :offset 10 :size 1) ;; equal-flag
+   (ovff  uint8 :offset 11 :size 1) ;; overflow-flag
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; this matches an EE timer (without a HOLD register, timers 2 and 3)
+;; Each register is 128-bits wide, but only the lower 32-bits are usable, and the upper
+;; 16-bits of that are hardwired to zero.
+(deftype timer-bank (structure)
+  ((count uint32      :offset 0)
+   (mode  timer-mode  :offset 16)
+   (comp  uint32      :offset 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+;; this matches an EE timer (with a HOLD register, timers 0 and 1)
+(deftype timer-hold-bank (timer-bank)
+  ((hold  uint32  :offset 48)
+   )
+  :method-count-assert 9
+  :size-assert         #x34
+  :flag-assert         #x900000034
+  )
+
+;; stopwatches are used to measure CPU clock cycles
+;; they don't use the timer above, but instead the Count COP0 register
+;; which counts CPU clock cycles directly
+(deftype stopwatch (basic)
+  ((prev-time-elapsed time-frame  :offset-assert 8)
+   (start-time        time-frame  :offset-assert 16)
+   (begin-level       int32   :offset-assert 24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+;; Confusing! What IS this measuring exactly? Hmm...
+;; this is set by default for NTSC, it will later be changed if PAL.
+(define *ticks-per-frame* (/ 2500000 256)) ;; 2 500 000 / 256 = 9765
+
+(defun timer-init ((timer timer-bank) (mode timer-mode))
+  "Initiate a timer, start counting at a rate of 1 every 256 bus clocks (BUSCLK: ~147.456MHz)."
+  (set! (-> timer mode) mode)
+  (set! (-> timer count) 0)
+  )
+
+;; needs PS2 TIMER porting
+(#unless PC_PORT
+  (timer-init (the-as timer-bank TIMER1_BANK) (new 'static 'timer-mode :clks (timer-clock-selection busclk/16) :cue 1))
+  )

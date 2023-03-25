@@ -1,11 +1,13 @@
 
 
 #include "background_common.h"
-#include "game/graphics/opengl_renderer/BucketRenderer.h"
-#include "game/graphics/pipelines/opengl.h"
-#include "common/util/os.h"
 
 #include <immintrin.h>
+
+#include "common/util/os.h"
+
+#include "game/graphics/opengl_renderer/BucketRenderer.h"
+#include "game/graphics/pipelines/opengl.h"
 
 DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap) {
   glActiveTexture(tex_unit);
@@ -32,9 +34,16 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
     glDisable(GL_DEPTH_TEST);
   }
 
+  DoubleDraw double_draw;
+
+  bool should_enable_blend = false;
   if (mode.get_ab_enable() && mode.get_alpha_blend() != DrawMode::AlphaBlend::DISABLED) {
-    glEnable(GL_BLEND);
+    should_enable_blend = true;
     switch (mode.get_alpha_blend()) {
+      case DrawMode::AlphaBlend::SRC_SRC_SRC_SRC:
+        should_enable_blend = false;
+        // (SRC - SRC) * alpha + SRC = SRC, no blend.
+        break;
       case DrawMode::AlphaBlend::SRC_DST_SRC_DST:
         glBlendEquation(GL_FUNC_ADD);
         glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
@@ -59,9 +68,20 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
         glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
         glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
         break;
+      case DrawMode::AlphaBlend::SRC_0_DST_DST:
+        glBlendFunc(GL_DST_ALPHA, GL_ONE);
+        glBlendEquation(GL_FUNC_ADD);
+        double_draw.color_mult = 0.5f;
+        break;
       default:
         ASSERT(false);
     }
+  } else {
+    should_enable_blend = false;
+  }
+
+  if (should_enable_blend) {
+    glEnable(GL_BLEND);
   } else {
     glDisable(GL_BLEND);
   }
@@ -89,7 +109,6 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
 
   // for some reason, they set atest NEVER + FB_ONLY to disable depth writes
   bool alpha_hack_to_disable_z_write = false;
-  DoubleDraw double_draw;
 
   float alpha_min = 0.;
   if (mode.get_at_enable()) {
@@ -138,38 +157,63 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
 
 DoubleDraw setup_tfrag_shader(SharedRenderState* render_state, DrawMode mode, ShaderId shader) {
   auto draw_settings = setup_opengl_from_draw_mode(mode, GL_TEXTURE0, true);
-  glUniform1f(glGetUniformLocation(render_state->shaders[shader].id(), "alpha_min"),
-              draw_settings.aref_first);
-  glUniform1f(glGetUniformLocation(render_state->shaders[shader].id(), "alpha_max"), 10.f);
+  auto sh_id = render_state->shaders[shader].id();
+  if (auto u_id = glGetUniformLocation(sh_id, "alpha_min"); u_id != -1) {
+    glUniform1f(u_id, draw_settings.aref_first);
+  }
+  if (auto u_id = glGetUniformLocation(sh_id, "alpha_max"); u_id != -1) {
+    glUniform1f(u_id, 10.f);
+  }
   return draw_settings;
 }
 
 void first_tfrag_draw_setup(const TfragRenderSettings& settings,
                             SharedRenderState* render_state,
                             ShaderId shader) {
-  render_state->shaders[shader].activate();
-  auto shid = render_state->shaders[shader].id();
-  glUniform1i(glGetUniformLocation(shid, "tex_T0"), 0);
-  glUniformMatrix4fv(glGetUniformLocation(shid, "camera"), 1, GL_FALSE,
-                     settings.math_camera.data());
-  glUniform4f(glGetUniformLocation(shid, "hvdf_offset"), settings.hvdf_offset[0],
+  const auto& sh = render_state->shaders[shader];
+  sh.activate();
+  auto id = sh.id();
+  glUniform1i(glGetUniformLocation(id, "gfx_hack_no_tex"), Gfx::g_global_settings.hack_no_tex);
+  glUniform1i(glGetUniformLocation(id, "decal"), false);
+
+  glUniform1i(glGetUniformLocation(id, "tex_T0"), 0);
+  glUniformMatrix4fv(glGetUniformLocation(id, "camera"), 1, GL_FALSE, settings.math_camera.data());
+  glUniform4f(glGetUniformLocation(id, "hvdf_offset"), settings.hvdf_offset[0],
               settings.hvdf_offset[1], settings.hvdf_offset[2], settings.hvdf_offset[3]);
-  glUniform1f(glGetUniformLocation(shid, "fog_constant"), settings.fog.x());
-  glUniform1f(glGetUniformLocation(shid, "fog_min"), settings.fog.y());
-  glUniform1f(glGetUniformLocation(shid, "fog_max"), settings.fog.z());
-  glUniform4f(glGetUniformLocation(shid, "fog_color"), render_state->fog_color[0] / 255.f,
+  glUniform1f(glGetUniformLocation(id, "fog_constant"), settings.fog.x());
+  glUniform1f(glGetUniformLocation(id, "fog_min"), settings.fog.y());
+  glUniform1f(glGetUniformLocation(id, "fog_max"), settings.fog.z());
+  glUniform4f(glGetUniformLocation(id, "fog_color"), render_state->fog_color[0] / 255.f,
               render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
               render_state->fog_intensity / 255);
 }
 
-void interp_time_of_day_slow(const float weights[8],
+void interp_time_of_day_slow(const math::Vector<s32, 4> itimes[4],
                              const std::vector<tfrag3::TimeOfDayColor>& in,
                              math::Vector<u8, 4>* out) {
   // Timer interp_timer;
+  math::Vector4f weights[8];
+  for (int component = 0; component < 8; component++) {
+    int quad_idx = component / 2;
+    int word_off = (component % 2 * 2);
+    for (int channel = 0; channel < 4; channel++) {
+      int word = word_off + (channel / 2);
+      int hw_off = channel % 2;
+
+      u32 word_val = itimes[quad_idx][word];
+      u32 hw_val = hw_off ? (word_val >> 16) : word_val;
+      hw_val = hw_val & 0xff;
+      weights[component][channel] = hw_val / 64.f;
+    }
+  }
+
   for (size_t color = 0; color < in.size(); color++) {
     math::Vector4f result = math::Vector4f::zero();
     for (int component = 0; component < 8; component++) {
-      result += in[color].rgba[component].cast<float>() * weights[component];
+      for (int channel = 0; channel < 4; channel++) {
+        result[channel] += in[color].rgba[component][channel] * weights[component][channel];
+      }
+      // result += in[color].rgba[component].cast<float>() * weights[component];
     }
     result[0] = std::min(result[0], 255.f);
     result[1] = std::min(result[1], 255.f);
@@ -226,127 +270,52 @@ SwizzledTimeOfDay swizzle_time_of_day(const std::vector<tfrag3::TimeOfDayColor>&
   return out;
 }
 
-// This does the same thing as interp_time_of_day_slow, but is faster.
-// Due to using integers instead of floats, it may be a tiny bit different.
-// TODO: it might be possible to reorder the loop into two blocks of loads and avoid spilling xmms.
-// It's ~8x faster than the slow version.
-
-void interp_time_of_day_fast_avx2(const float weights[8],
-                                  const SwizzledTimeOfDay& in,
-                                  math::Vector<u8, 4>* out) {
-  // even though the colors are 8 bits, we'll use 16 bits so we can saturate correctly
-#ifdef __AVX2__
-  // weight multipliers
-  __m256i weights0 = _mm256_set1_epi16(weights[0] * 64.f);
-  __m256i weights1 = _mm256_set1_epi16(weights[1] * 64.f);
-  __m256i weights2 = _mm256_set1_epi16(weights[2] * 64.f);
-  __m256i weights3 = _mm256_set1_epi16(weights[3] * 64.f);
-  __m256i weights4 = _mm256_set1_epi16(weights[4] * 64.f);
-  __m256i weights5 = _mm256_set1_epi16(weights[5] * 64.f);
-  __m256i weights6 = _mm256_set1_epi16(weights[6] * 64.f);
-  __m256i weights7 = _mm256_set1_epi16(weights[7] * 64.f);
-
-  // saturation: note that alpha is saturated to 128 but the rest are 255.
-  // TODO: maybe we should saturate to 255 for everybody (can do this using a single packus) and
-  // change the shader to deal with this.
-  __m256i sat = _mm256_set_epi16(128, 255, 255, 255, 128, 255, 255, 255, 128, 255, 255, 255, 128,
-                                 255, 255, 255);
-
-  for (u32 color_quad = 0; color_quad < in.color_count / 4; color_quad++) {
-    // first, load colors. We put 16 bytes / register and don't touch the upper half because we
-    // convert u8s to u16s.
-    const u8* base = in.data.data() + color_quad * 128;
-    __m128i color0_p = _mm_loadu_si128((const __m128i*)(base + 0));
-    __m128i color1_p = _mm_loadu_si128((const __m128i*)(base + 16));
-    __m128i color2_p = _mm_loadu_si128((const __m128i*)(base + 32));
-    __m128i color3_p = _mm_loadu_si128((const __m128i*)(base + 48));
-    __m128i color4_p = _mm_loadu_si128((const __m128i*)(base + 64));
-    __m128i color5_p = _mm_loadu_si128((const __m128i*)(base + 80));
-    __m128i color6_p = _mm_loadu_si128((const __m128i*)(base + 96));
-    __m128i color7_p = _mm_loadu_si128((const __m128i*)(base + 112));
-
-    // unpack to 16-bits. each has 16x 16 bit colors.
-    __m256i color0 = _mm256_cvtepu8_epi16(color0_p);
-    __m256i color1 = _mm256_cvtepu8_epi16(color1_p);
-    __m256i color2 = _mm256_cvtepu8_epi16(color2_p);
-    __m256i color3 = _mm256_cvtepu8_epi16(color3_p);
-    __m256i color4 = _mm256_cvtepu8_epi16(color4_p);
-    __m256i color5 = _mm256_cvtepu8_epi16(color5_p);
-    __m256i color6 = _mm256_cvtepu8_epi16(color6_p);
-    __m256i color7 = _mm256_cvtepu8_epi16(color7_p);
-
-    // multiply by weights
-    color0 = _mm256_mullo_epi16(color0, weights0);
-    color1 = _mm256_mullo_epi16(color1, weights1);
-    color2 = _mm256_mullo_epi16(color2, weights2);
-    color3 = _mm256_mullo_epi16(color3, weights3);
-    color4 = _mm256_mullo_epi16(color4, weights4);
-    color5 = _mm256_mullo_epi16(color5, weights5);
-    color6 = _mm256_mullo_epi16(color6, weights6);
-    color7 = _mm256_mullo_epi16(color7, weights7);
-
-    // add. This order minimizes dependencies.
-    color0 = _mm256_add_epi16(color0, color1);
-    color2 = _mm256_add_epi16(color2, color3);
-    color4 = _mm256_add_epi16(color4, color5);
-    color6 = _mm256_add_epi16(color6, color7);
-
-    color0 = _mm256_add_epi16(color0, color2);
-    color4 = _mm256_add_epi16(color4, color6);
-
-    color0 = _mm256_add_epi16(color0, color4);
-
-    // divide, because we multiplied our weights by 2^7.
-    color0 = _mm256_srli_epi16(color0, 6);
-
-    // saturate
-    color0 = _mm256_min_epu16(sat, color0);
-
-    // back to u8s.
-    auto hi = _mm256_extracti128_si256(color0, 1);
-    auto result = _mm_packus_epi16(_mm256_castsi256_si128(color0), hi);
-
-    // store result
-    _mm_storeu_si128((__m128i*)(&out[color_quad * 4]), result);
-  }
-#else
-  // unreachable.
-  (void)weights;
-  (void)in;
-  (void)out;
-  ASSERT(false);
-#endif
-}
-
-void interp_time_of_day_fast(const float weights[8],
-                             const SwizzledTimeOfDay& in,
+void interp_time_of_day_fast(const math::Vector<s32, 4> itimes[4],
+                             const SwizzledTimeOfDay& swizzled_colors,
                              math::Vector<u8, 4>* out) {
-  // even though the colors are 8 bits, we'll use 16 bits so we can saturate correctly
-  if (get_cpu_info().has_avx2) {
-    interp_time_of_day_fast_avx2(weights, in, out);
-    return;
+  math::Vector<u16, 4> weights[8];
+  for (int component = 0; component < 8; component++) {
+    int quad_idx = component / 2;
+    int word_off = (component % 2 * 2);
+    for (int channel = 0; channel < 4; channel++) {
+      int word = word_off + (channel / 2);
+      int hw_off = channel % 2;
+
+      u32 word_val = itimes[quad_idx][word];
+      u32 hw_val = hw_off ? (word_val >> 16) : word_val;
+      hw_val = hw_val & 0xff;
+      weights[component][channel] = hw_val;
+    }
   }
 
   // weight multipliers
-  __m128i weights0 = _mm_set1_epi16(weights[0] * 64.f);
-  __m128i weights1 = _mm_set1_epi16(weights[1] * 64.f);
-  __m128i weights2 = _mm_set1_epi16(weights[2] * 64.f);
-  __m128i weights3 = _mm_set1_epi16(weights[3] * 64.f);
-  __m128i weights4 = _mm_set1_epi16(weights[4] * 64.f);
-  __m128i weights5 = _mm_set1_epi16(weights[5] * 64.f);
-  __m128i weights6 = _mm_set1_epi16(weights[6] * 64.f);
-  __m128i weights7 = _mm_set1_epi16(weights[7] * 64.f);
+  __m128i weights0 = _mm_setr_epi16(weights[0][0], weights[0][1], weights[0][2], weights[0][3],
+                                    weights[0][0], weights[0][1], weights[0][2], weights[0][3]);
+  __m128i weights1 = _mm_setr_epi16(weights[1][0], weights[1][1], weights[1][2], weights[1][3],
+                                    weights[1][0], weights[1][1], weights[1][2], weights[1][3]);
+  __m128i weights2 = _mm_setr_epi16(weights[2][0], weights[2][1], weights[2][2], weights[2][3],
+                                    weights[2][0], weights[2][1], weights[2][2], weights[2][3]);
+  __m128i weights3 = _mm_setr_epi16(weights[3][0], weights[3][1], weights[3][2], weights[3][3],
+                                    weights[3][0], weights[3][1], weights[3][2], weights[3][3]);
+  __m128i weights4 = _mm_setr_epi16(weights[4][0], weights[4][1], weights[4][2], weights[4][3],
+                                    weights[4][0], weights[4][1], weights[4][2], weights[4][3]);
+  __m128i weights5 = _mm_setr_epi16(weights[5][0], weights[5][1], weights[5][2], weights[5][3],
+                                    weights[5][0], weights[5][1], weights[5][2], weights[5][3]);
+  __m128i weights6 = _mm_setr_epi16(weights[6][0], weights[6][1], weights[6][2], weights[6][3],
+                                    weights[6][0], weights[6][1], weights[6][2], weights[6][3]);
+  __m128i weights7 = _mm_setr_epi16(weights[7][0], weights[7][1], weights[7][2], weights[7][3],
+                                    weights[7][0], weights[7][1], weights[7][2], weights[7][3]);
 
   // saturation: note that alpha is saturated to 128 but the rest are 255.
   // TODO: maybe we should saturate to 255 for everybody (can do this using a single packus) and
   // change the shader to deal with this.
   __m128i sat = _mm_set_epi16(128, 255, 255, 255, 128, 255, 255, 255);
 
-  for (u32 color_quad = 0; color_quad < in.color_count / 4; color_quad++) {
+  for (u32 color_quad = 0; color_quad < swizzled_colors.color_count / 4; color_quad++) {
     // first, load colors. We put 16 bytes / register and don't touch the upper half because we
     // convert u8s to u16s.
     {
-      const u8* base = in.data.data() + color_quad * 128;
+      const u8* base = swizzled_colors.data.data() + color_quad * 128;
       __m128i color0_p = _mm_loadu_si64((const __m128i*)(base + 0));
       __m128i color1_p = _mm_loadu_si64((const __m128i*)(base + 16));
       __m128i color2_p = _mm_loadu_si64((const __m128i*)(base + 32));
@@ -401,7 +370,7 @@ void interp_time_of_day_fast(const float weights[8],
     }
 
     {
-      const u8* base = in.data.data() + color_quad * 128 + 8;
+      const u8* base = swizzled_colors.data.data() + color_quad * 128 + 8;
       __m128i color0_p = _mm_loadu_si64((const __m128i*)(base + 0));
       __m128i color1_p = _mm_loadu_si64((const __m128i*)(base + 16));
       __m128i color2_p = _mm_loadu_si64((const __m128i*)(base + 32));
@@ -513,18 +482,16 @@ u32 make_all_visible_multidraws(std::pair<int, int>* draw_ptrs_out,
     u64 iidx = draw.unpacked.idx_of_first_idx_in_full_buffer;
     std::pair<int, int> ds;
     ds.first = md_idx;
-    ds.second = 0;
+    ds.second = 1;
+    int num_inds = 0;
     for (auto& grp : draw.vis_groups) {
-      // visible!
-      // let's use a multidraw
-      counts_out[md_idx] = grp.num_inds;
-      index_offsets_out[md_idx] = (void*)(iidx * sizeof(u32));
-      ds.second++;
-      md_idx++;
       num_tris += grp.num_tris;
-      iidx += grp.num_inds;
+      num_inds += grp.num_inds;
     }
+    counts_out[md_idx] = num_inds;
+    index_offsets_out[md_idx] = (void*)(iidx * sizeof(u32));
     draw_ptrs_out[i] = ds;
+    md_idx++;
   }
   return num_tris;
 }
@@ -562,19 +529,98 @@ u32 make_multidraws_from_vis_string(std::pair<int, int>* draw_ptrs_out,
     std::pair<int, int> ds;
     ds.first = md_idx;
     ds.second = 0;
+    bool building_run = false;
+    u64 run_start = 0;
     for (auto& grp : draw.vis_groups) {
       sanity_check += grp.num_inds;
-      if (grp.vis_idx_in_pc_bvh == 0xffffffff || vis_data[grp.vis_idx_in_pc_bvh]) {
-        // visible!
-        // let's use a multidraw
-        counts_out[md_idx] = grp.num_inds;
-        index_offsets_out[md_idx] = (void*)(iidx * sizeof(u32));
-        ds.second++;
-        md_idx++;
+      bool vis = grp.vis_idx_in_pc_bvh == UINT16_MAX || vis_data[grp.vis_idx_in_pc_bvh];
+      if (vis) {
         num_tris += grp.num_tris;
       }
+
+      if (building_run) {
+        if (!vis) {
+          building_run = false;
+          counts_out[md_idx] = iidx - run_start;
+          index_offsets_out[md_idx] = (void*)(run_start * sizeof(u32));
+          ds.second++;
+          md_idx++;
+        }
+      } else {
+        if (vis) {
+          building_run = true;
+          run_start = iidx;
+        }
+      }
+
       iidx += grp.num_inds;
     }
+
+    if (building_run) {
+      building_run = false;
+      counts_out[md_idx] = iidx - run_start;
+      index_offsets_out[md_idx] = (void*)(run_start * sizeof(u32));
+      ds.second++;
+      md_idx++;
+    }
+
+    draw_ptrs_out[i] = ds;
+  }
+  return num_tris;
+}
+
+u32 make_multidraws_from_vis_and_proto_string(std::pair<int, int>* draw_ptrs_out,
+                                              GLsizei* counts_out,
+                                              void** index_offsets_out,
+                                              const std::vector<tfrag3::StripDraw>& draws,
+                                              const std::vector<u8>& vis_data,
+                                              const std::vector<u8>& proto_vis_data) {
+  u64 md_idx = 0;
+  u32 num_tris = 0;
+  u32 sanity_check = 0;
+  for (size_t i = 0; i < draws.size(); i++) {
+    const auto& draw = draws[i];
+    u64 iidx = draw.unpacked.idx_of_first_idx_in_full_buffer;
+    ASSERT(sanity_check == iidx);
+    std::pair<int, int> ds;
+    ds.first = md_idx;
+    ds.second = 0;
+    bool building_run = false;
+    u64 run_start = 0;
+    for (auto& grp : draw.vis_groups) {
+      sanity_check += grp.num_inds;
+      bool vis = (grp.vis_idx_in_pc_bvh == UINT16_MAX || vis_data[grp.vis_idx_in_pc_bvh]) &&
+                 proto_vis_data[grp.tie_proto_idx];
+      if (vis) {
+        num_tris += grp.num_tris;
+      }
+
+      if (building_run) {
+        if (!vis) {
+          building_run = false;
+          counts_out[md_idx] = iidx - run_start;
+          index_offsets_out[md_idx] = (void*)(run_start * sizeof(u32));
+          ds.second++;
+          md_idx++;
+        }
+      } else {
+        if (vis) {
+          building_run = true;
+          run_start = iidx;
+        }
+      }
+
+      iidx += grp.num_inds;
+    }
+
+    if (building_run) {
+      building_run = false;
+      counts_out[md_idx] = iidx - run_start;
+      index_offsets_out[md_idx] = (void*)(run_start * sizeof(u32));
+      ds.second++;
+      md_idx++;
+    }
+
     draw_ptrs_out[i] = ds;
   }
   return num_tris;
@@ -597,7 +643,64 @@ u32 make_index_list_from_vis_string(std::pair<int, int>* group_out,
     int run_start_out = 0;
     int run_start_in = 0;
     for (auto& grp : draw.vis_groups) {
-      bool vis = grp.vis_idx_in_pc_bvh == 0xffffffff || vis_data[grp.vis_idx_in_pc_bvh];
+      bool vis = grp.vis_idx_in_pc_bvh == UINT16_MAX || vis_data[grp.vis_idx_in_pc_bvh];
+      if (vis) {
+        num_tris += grp.num_tris;
+      }
+
+      if (building_run) {
+        if (vis) {
+          idx_buffer_ptr += grp.num_inds;
+        } else {
+          building_run = false;
+          memcpy(&idx_out[run_start_out],
+                 idx_in + draw.unpacked.idx_of_first_idx_in_full_buffer + run_start_in,
+                 (idx_buffer_ptr - run_start_out) * sizeof(u32));
+        }
+      } else {
+        if (vis) {
+          building_run = true;
+          run_start_out = idx_buffer_ptr;
+          run_start_in = vtx_idx;
+          idx_buffer_ptr += grp.num_inds;
+        }
+      }
+      vtx_idx += grp.num_inds;
+    }
+
+    if (building_run) {
+      memcpy(&idx_out[run_start_out],
+             idx_in + draw.unpacked.idx_of_first_idx_in_full_buffer + run_start_in,
+             (idx_buffer_ptr - run_start_out) * sizeof(u32));
+    }
+
+    ds.second = idx_buffer_ptr - ds.first;
+    group_out[i] = ds;
+  }
+  *num_tris_out = num_tris;
+  return idx_buffer_ptr;
+}
+
+u32 make_index_list_from_vis_and_proto_string(std::pair<int, int>* group_out,
+                                              u32* idx_out,
+                                              const std::vector<tfrag3::StripDraw>& draws,
+                                              const std::vector<u8>& vis_data,
+                                              const std::vector<u8>& proto_vis_data,
+                                              const u32* idx_in,
+                                              u32* num_tris_out) {
+  int idx_buffer_ptr = 0;
+  u32 num_tris = 0;
+  for (size_t i = 0; i < draws.size(); i++) {
+    const auto& draw = draws[i];
+    int vtx_idx = 0;
+    std::pair<int, int> ds;
+    ds.first = idx_buffer_ptr;
+    bool building_run = false;
+    int run_start_out = 0;
+    int run_start_in = 0;
+    for (auto& grp : draw.vis_groups) {
+      bool vis = (grp.vis_idx_in_pc_bvh == UINT16_MAX || vis_data[grp.vis_idx_in_pc_bvh]) &&
+                 proto_vis_data[grp.tie_proto_idx];
       if (vis) {
         num_tris += grp.num_tris;
       }
@@ -666,6 +769,8 @@ void update_render_state_from_pc_settings(SharedRenderState* state, const TfragP
     for (int i = 0; i < 4; i++) {
       state->camera_planes[i] = data.planes[i];
       state->camera_matrix[i] = data.camera[i];
+      state->camera_no_persp[i] = data.camera_rot[i];
+      state->camera_persp[i] = data.camera_perspective[i];
     }
     state->camera_pos = data.cam_trans;
     state->camera_hvdf_off = data.hvdf_off;

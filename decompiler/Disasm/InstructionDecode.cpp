@@ -4,10 +4,13 @@
  * This is the part of the disassembler that decodes MIPS instructions.
  */
 
-#include "third-party/fmt/core.h"
 #include "InstructionDecode.h"
-#include "decompiler/ObjectFile/LinkedObjectFile.h"
+
 #include "common/util/Assert.h"
+
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 // utility class to extract fields of an opcode.
@@ -1185,6 +1188,17 @@ Instruction decode_instruction(LinkedWord& word, LinkedObjectFile& file, int seg
       if (i.src[j].kind == InstructionAtom::IMM) {
         fixed = true;
         i.src[j].set_sym(word.symbol_name());
+      }
+    }
+    ASSERT(fixed);
+  }
+
+  if (word.kind() == LinkedWord::SYM_VAL_OFFSET) {
+    bool fixed = false;
+    for (int j = 0; j < i.n_src; j++) {
+      if (i.src[j].kind == InstructionAtom::IMM) {
+        fixed = true;
+        i.src[j].set_sym_val_ptr(word.symbol_name());
       }
     }
     ASSERT(fixed);

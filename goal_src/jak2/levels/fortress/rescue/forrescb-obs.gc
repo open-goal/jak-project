@@ -1,0 +1,814 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: forrescb-obs.gc
+;; name in dgo: forrescb-obs
+;; dgos: FRB
+
+;; DECOMP BEGINS
+
+(deftype fort-twist-rail (process-drawable)
+  ((sync      sync-eased :inline :offset-assert 200)
+   (init-quat quaternion :inline :offset-assert 256)
+   )
+  :heap-base #x90
+  :method-count-assert 21
+  :size-assert         #x110
+  :flag-assert         #x1500900110
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+
+(defskelgroup skel-fort-twist-rail fort-twist-rail 0 3
+              ((1 (meters 999999)))
+              :bounds (static-spherem 0 0 10 14)
+              )
+
+(defstate idle (fort-twist-rail)
+  :virtual #t
+  :trans (the-as (function none :behavior fort-twist-rail) rider-trans)
+  :code (the-as (function none :behavior fort-twist-rail) sleep-code)
+  :post (behavior ()
+    (let ((f0-0 (get-norm! (-> self sync) 0)))
+      (quaternion-rotate-y! (-> self root quat) (-> self init-quat) (+ -2730.6667 (* 5461.3335 f0-0)))
+      )
+    (rider-post)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! fort-twist-rail ((obj fort-twist-rail) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 3))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 40960.0 57344.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (pusher-init s4-0)
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-15 transform-index) 3)
+      (set-vector! (-> v1-15 local-sphere) 0.0 -19660.8 0.0 24576.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-17 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-17 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-17 transform-index) 3)
+      (set-vector! (-> v1-17 local-sphere) 0.0 0.0 45056.0 45056.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-20 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-20 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-20 prim-core collide-with))
+      )
+    (set! (-> obj root) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-fort-twist-rail" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (quaternion-copy! (-> obj init-quat) (-> obj root quat))
+  (let ((a1-14 (new 'stack-no-clear 'sync-info-params)))
+    (let ((v1-26 0))
+      (if #t
+          (set! v1-26 (logior v1-26 1))
+          )
+      (set! (-> a1-14 sync-type) 'sync-eased)
+      (set! (-> a1-14 sync-flags) (the-as sync-flags v1-26))
+      )
+    (set! (-> a1-14 period) (the-as uint 900))
+    (set! (-> a1-14 entity) (-> obj entity))
+    (set! (-> a1-14 percent) 0.0)
+    (set! (-> a1-14 ease-in) 0.15)
+    (set! (-> a1-14 ease-out) 0.15)
+    (set! (-> a1-14 pause-in) 0.0)
+    (set! (-> a1-14 pause-out) 0.0)
+    (initialize! (-> obj sync) a1-14)
+    )
+  (let ((a0-29 (-> obj skel root-channel 0)))
+    (set! (-> a0-29 frame-group) (the-as art-joint-anim (-> obj draw art-group data 3)))
+    (set! (-> a0-29 frame-num) 0.0)
+    (joint-control-channel-group! a0-29 (the-as art-joint-anim (-> obj draw art-group data 3)) num-func-identity)
+    )
+  (transform-post)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype fort-elec-belt-inst (process-drawable)
+  ((l-spec    lightning-spec               :offset-assert 200)
+   (l-bolt    lightning-control            :offset-assert 204)
+   (points    vector            17 :inline :offset-assert 208)
+   (path-u    float                        :offset-assert 480)
+   (path-du   float                        :offset-assert 484)
+   (attack-id uint32                       :offset-assert 488)
+   (sound-id  uint32                       :offset-assert 492)
+   )
+  :heap-base #x170
+  :method-count-assert 23
+  :size-assert         #x1f0
+  :flag-assert         #x17017001f0
+  (:methods
+    (idle () _type_ :state 20)
+    (running () _type_ :state 21)
+    (die () _type_ :state 22)
+    )
+  )
+
+
+(defskelgroup skel-fort-elec-belt-inst fort-elec-belt fort-elec-belt-lod0-jg fort-elec-belt-idle-ja
+              ((fort-elec-belt-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 -19 20)
+              )
+
+(defstate idle (fort-elec-belt-inst)
+  :virtual #t
+  :code (behavior ()
+    (suspend)
+    (let ((v1-0 (-> self l-bolt))
+          (a0-0 1)
+          )
+      (let ((a1-1 (!= a0-0 (-> v1-0 state mode))))
+        (case a0-0
+          ((3)
+           (if a1-1
+               (set! (-> v1-0 state counter) 0.0)
+               )
+           )
+          ((1)
+           (set! (-> v1-0 state start-color) (-> v1-0 spec start-color))
+           (set! (-> v1-0 state end-color) (-> v1-0 spec end-color))
+           )
+          )
+        )
+      (set! (-> v1-0 state mode) (the-as lightning-mode a0-0))
+      )
+    (go-virtual running)
+    (none)
+    )
+  :post (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 2)
+      (set! (-> a1-0 message) 'get-point-norm)
+      (set! (-> a1-0 param 0) (the-as uint (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 param 1) (the-as uint (-> self path-u)))
+      (let ((v1-7 (the-as vector (send-event-function (ppointer->process (-> self parent)) a1-0))))
+        (set! (-> self root trans quad) (-> v1-7 quad))
+        )
+      )
+    (+! (-> self path-u) (* (-> self path-du) (-> self clock seconds-per-frame)))
+    (ja-post)
+    (none)
+    )
+  )
+
+(defstate running (fort-elec-belt-inst)
+  :virtual #t
+  :exit (behavior ()
+    (sound-stop (the-as sound-id (-> self sound-id)))
+    (none)
+    )
+  :trans (behavior ()
+    (if (>= (-> self path-u) 1.0)
+        (go-virtual die)
+        )
+    (none)
+    )
+  :code (the-as (function none :behavior fort-elec-belt-inst) sleep-code)
+  :post (behavior ()
+    (local-vars
+      (sv-1696
+        (function lightning-spec time-frame symbol process-drawable vector vector none :behavior lightning-tracker)
+        )
+      (sv-1712 lightning-spec)
+      )
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 2)
+      (set! (-> a1-0 message) 'get-point-norm)
+      (set! (-> a1-0 param 0) (the-as uint (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 param 1) (the-as uint (-> self path-u)))
+      (let ((v1-7 (the-as vector (send-event-function (ppointer->process (-> self parent)) a1-0))))
+        (set! (-> self root trans quad) (-> v1-7 quad))
+        )
+      )
+    (+! (-> self path-u) (* (-> self path-du) (-> self clock seconds-per-frame)))
+    (let ((s3-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 4)))
+          (s2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 5)))
+          )
+      (let ((t2-0 (new 'stack-no-clear 'vector)))
+        (vector+! t2-0 s3-0 s2-0)
+        (vector-float*! t2-0 t2-0 0.5)
+        (set! (-> t2-0 y) (+ -20480.0 (-> t2-0 y)))
+        (sound-play "sliding-laser" :id (the-as sound-id (-> self sound-id)) :position t2-0)
+        )
+      (let* ((v0-4 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) s2-0 s3-0) 1.0))
+             (gp-1 (vector-cross! (new 'stack-no-clear 'vector) v0-4 *up-vector*))
+             (s5-0 (-> self l-bolt))
+             (f30-0 90112.0)
+             (f0-6 (* f30-0 f30-0))
+             (s4-1 (vector-! (new 'stack-no-clear 'vector) s2-0 s3-0))
+             (f1-4 (* 0.5 (vector-length s4-1)))
+             )
+        (let ((f2-2 (* f1-4 f1-4)))
+          (vector-float*! s4-1 s4-1 0.5)
+          (vector+! s4-1 s3-0 s4-1)
+          (+! (-> s4-1 y) (sqrtf (- f0-6 f2-2)))
+          )
+        (let* ((f0-12 (* 2.0 (asin (/ f1-4 f30-0))))
+               (f28-1 (* 0.0625 f0-12))
+               (s3-1 (new 'stack-no-clear 'vector))
+               )
+          (set! (-> s3-1 x) 0.0)
+          (set! (-> s3-1 y) (- f30-0))
+          (set! (-> s3-1 z) 0.0)
+          (set! (-> s3-1 w) 0.0)
+          (let ((a2-2 (quaternion-vector-angle! (new 'stack-no-clear 'quaternion) gp-1 (* -0.5 f0-12))))
+            (vector-orient-by-quat! s3-1 s3-1 a2-2)
+            )
+          (dotimes (s2-1 17)
+            (let ((s1-1 (vector+! (new 'stack-no-clear 'vector) s4-1 s3-1)))
+              (set-point! s5-0 s2-1 s1-1)
+              (set! (-> self points s2-1 quad) (-> s1-1 quad))
+              )
+            (let ((a2-5 (quaternion-vector-angle! (new 'stack-no-clear 'quaternion) gp-1 f28-1)))
+              (vector-orient-by-quat! s3-1 s3-1 a2-5)
+              )
+            )
+          )
+        )
+      )
+    (let ((gp-2 (new 'stack-no-clear 'collide-query)))
+      (let ((s5-1 (new 'stack-no-clear 'bounding-box)))
+        (let ((a1-15 (new 'stack-no-clear 'inline-array 'sphere 17)))
+          (dotimes (v1-37 17)
+            (set! (-> a1-15 v1-37 quad) (-> self points v1-37 quad))
+            (set! (-> a1-15 v1-37 r) 4096.0)
+            )
+          (set-from-spheres! s5-1 a1-15 17)
+          )
+        (set! (-> gp-2 collide-with) (collide-spec jak bot player-list))
+        (set! (-> gp-2 ignore-process0) self)
+        (set! (-> gp-2 ignore-process1) #f)
+        (set! (-> gp-2 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+        (set! (-> gp-2 action-mask) (collide-action solid))
+        (mem-copy! (the-as pointer (-> gp-2 bbox)) (the-as pointer s5-1) 32)
+        )
+      (fill-using-bounding-box *collide-cache* gp-2)
+      )
+    (let ((gp-3 1))
+      (while (< gp-3 17)
+        (let ((s3-2 (new 'stack-no-clear 'collide-query))
+              (s5-2 (-> self points (+ gp-3 -1)))
+              (s4-2 (-> self points gp-3))
+              )
+          (let ((v1-52 (vector-! (new 'stack-no-clear 'vector) s4-2 s5-2)))
+            (set! (-> s3-2 start-pos quad) (-> s5-2 quad))
+            (set! (-> s3-2 move-dist quad) (-> v1-52 quad))
+            )
+          (let ((v1-54 s3-2))
+            (set! (-> v1-54 radius) 4096.0)
+            (set! (-> v1-54 collide-with) (collide-spec jak bot player-list))
+            (set! (-> v1-54 ignore-process0) self)
+            (set! (-> v1-54 ignore-process1) #f)
+            (set! (-> v1-54 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+            (set! (-> v1-54 action-mask) (collide-action solid semi-solid))
+            )
+          (when (>= (probe-using-line-sphere *collide-cache* s3-2) 0.0)
+            (let* ((s2-2 (-> s3-2 best-other-tri collide-ptr))
+                   (s3-3 (if (type? s2-2 collide-shape-prim-sphere)
+                             (the-as collide-shape-prim-sphere s2-2)
+                             )
+                         )
+                   )
+              (when s3-3
+                (sound-play "laser-hit")
+                (let ((s2-4 (get-process *default-dead-pool* lightning-tracker #x4000)))
+                  (when s2-4
+                    (let ((t9-19 (method-of-type lightning-tracker activate)))
+                      (t9-19
+                        (the-as lightning-tracker s2-4)
+                        *entity-pool*
+                        (symbol->string (-> lightning-tracker symbol))
+                        (the-as pointer #x70004000)
+                        )
+                      )
+                    (let ((s1-3 run-function-in-process)
+                          (s0-0 s2-4)
+                          )
+                      (set! sv-1696 lightning-tracker-init)
+                      (set! sv-1712 (-> self l-spec))
+                      (let ((a3-3 (the int (* 3.0 (rand-vu-float-range 5.0 11.0))))
+                            (t0-2 #f)
+                            (t1-2 #f)
+                            )
+                        ((the-as (function object object object object object object object object none) s1-3)
+                         s0-0
+                         sv-1696
+                         sv-1712
+                         a3-3
+                         t0-2
+                         t1-2
+                         s5-2
+                         s4-2
+                         )
+                        )
+                      )
+                    (-> s2-4 ppointer)
+                    )
+                  )
+                (let ((v1-68 (vector-reset! (new 'stack-no-clear 'vector)))
+                      (a1-28 (new 'stack-no-clear 'event-message-block))
+                      )
+                  (set! (-> a1-28 from) (process->ppointer self))
+                  (set! (-> a1-28 num-params) 2)
+                  (set! (-> a1-28 message) 'attack)
+                  (set! (-> a1-28 param 0) (the-as uint #f))
+                  (let ((a0-50 (new 'static 'attack-info :mask (attack-info-mask vector invinc-time shove-up id))))
+                    (set! (-> a0-50 id) (-> self attack-id))
+                    (set! (-> a0-50 invinc-time) (seconds 3))
+                    (set! (-> a0-50 vector quad) (-> v1-68 quad))
+                    (set! (-> a0-50 shove-up) 12288.0)
+                    (set! (-> a1-28 param 1) (the-as uint a0-50))
+                    )
+                  (send-event-function (-> s3-3 cshape process) a1-28)
+                  )
+                )
+              )
+            )
+          )
+        (+! gp-3 1)
+        )
+      )
+    (ja-post)
+    (none)
+    )
+  )
+
+(defstate die (fort-elec-belt-inst)
+  :virtual #t
+  :code (behavior ()
+    (let ((v1-0 (-> self l-bolt))
+          (a0-0 3)
+          )
+      (let ((a1-1 (!= a0-0 (-> v1-0 state mode))))
+        (case a0-0
+          ((3)
+           (if a1-1
+               (set! (-> v1-0 state counter) 0.0)
+               )
+           )
+          ((1)
+           (set! (-> v1-0 state start-color) (-> v1-0 spec start-color))
+           (set! (-> v1-0 state end-color) (-> v1-0 spec end-color))
+           )
+          )
+        )
+      (set! (-> v1-0 state mode) (the-as lightning-mode a0-0))
+      )
+    (suspend)
+    (cleanup-for-death self)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch process-drawable vs fort-elec-belt-inst.
+(defmethod relocate fort-elec-belt-inst ((obj fort-elec-belt-inst) (arg0 int))
+  (if (nonzero? (-> obj l-bolt))
+      (&+! (-> obj l-bolt) arg0)
+      )
+  (the-as fort-elec-belt-inst ((method-of-type process-drawable relocate) obj arg0))
+  )
+
+(defmethod deactivate fort-elec-belt-inst ((obj fort-elec-belt-inst))
+  (sound-stop (the-as sound-id (-> obj sound-id)))
+  ((the-as (function process-drawable none) (find-parent-method fort-elec-belt-inst 10)) obj)
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior fort-elec-belt-inst-init-by-other fort-elec-belt-inst ((arg0 quaternion) (arg1 float) (arg2 float) (arg3 lightning-spec) (arg4 uint))
+  (set! (-> self root) (new 'process 'trsqv))
+  (initialize-skeleton
+    self
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-fort-elec-belt-inst" (the-as (pointer uint32) #f))
+      )
+    (the-as pair 0)
+    )
+  (quaternion-copy! (-> self root quat) arg0)
+  (set! (-> self path-u) arg1)
+  (set! (-> self path-du) arg2)
+  (logclear! (-> self mask) (process-mask actor-pause))
+  (set! (-> self l-bolt) (new 'process 'lightning-control arg3 self 0.0))
+  (let ((v1-8 (-> self l-bolt))
+        (a0-7 0)
+        )
+    (let ((a1-7 (!= a0-7 (-> v1-8 state mode))))
+      (case a0-7
+        ((3)
+         (if a1-7
+             (set! (-> v1-8 state counter) 0.0)
+             )
+         )
+        ((1)
+         (set! (-> v1-8 state start-color) (-> v1-8 spec start-color))
+         (set! (-> v1-8 state end-color) (-> v1-8 spec end-color))
+         )
+        )
+      )
+    (set! (-> v1-8 state mode) (the-as lightning-mode a0-7))
+    )
+  (set! (-> self l-spec) arg3)
+  (set! (-> self attack-id) arg4)
+  (set! (-> self sound-id) (the-as uint (new-sound-id)))
+  (ja-no-eval :group! (-> self draw art-group data 2) :num! zero)
+  (ja-post)
+  (go-virtual idle)
+  (none)
+  )
+
+(deftype fort-elec-belt (process)
+  ((l-spec          lightning-spec         :offset-assert 128)
+   (next-spawn-time time-frame             :offset-assert 136)
+   (path            path-control           :offset-assert 144)
+   (init-quat       quaternion     :inline :offset-assert 160)
+   (sync            sync-linear    :inline :offset-assert 176)
+   (attack-id       uint32                 :offset-assert 192)
+   (path-du         float                  :offset-assert 196)
+   )
+  :heap-base #x50
+  :method-count-assert 16
+  :size-assert         #xc8
+  :flag-assert         #x10005000c8
+  (:methods
+    (idle () _type_ :state 14)
+    (fort-elec-belt-method-15 (_type_) none 15)
+    )
+  )
+
+
+(defstate idle (fort-elec-belt)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('get-point-norm)
+                      (get-point-at-percent-along-path!
+                        (-> self path)
+                        (the-as vector (-> event param 0))
+                        (the-as float (-> event param 1))
+                        'interp
+                        )
+                      )
+                     )
+            )
+    )
+  :trans (behavior ()
+    (set-forrescb-electricity-scale! 1.0 0)
+    (when (>= (-> self clock frame-counter) (-> self next-spawn-time))
+      (process-spawn
+        fort-elec-belt-inst
+        (-> self init-quat)
+        0
+        (-> self path-du)
+        (-> self l-spec)
+        (-> self attack-id)
+        :to self
+        )
+      (set! (-> self next-spawn-time) (get-timeframe-offset! (-> self sync) 0))
+      )
+    (none)
+    )
+  :code (the-as (function none :behavior fort-elec-belt) sleep-code)
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod fort-elec-belt-method-15 fort-elec-belt ((obj fort-elec-belt))
+  (with-pp
+    (let* ((f28-0 (total-distance (-> obj path)))
+           (s5-0 (-> obj sync))
+           (f26-0 81.92)
+           (a0-3 (- (-> pp clock frame-counter) (get-timeframe-offset! s5-0 0)))
+           (v1-6 (-> s5-0 period))
+           (f30-0 (/ (* f26-0 (the float a0-3)) f28-0))
+           (f28-1 (/ (* f26-0 (the float v1-6)) f28-0))
+           )
+      (while (>= 1.0 f30-0)
+        (if (>= f30-0 0.0)
+            (process-spawn
+              fort-elec-belt-inst
+              (-> obj init-quat)
+              f30-0
+              (-> obj path-du)
+              (-> obj l-spec)
+              (-> obj attack-id)
+              :to obj
+              )
+            )
+        (+! f30-0 f28-1)
+        )
+      )
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch process vs fort-elec-belt.
+(defmethod relocate fort-elec-belt ((obj fort-elec-belt) (arg0 int))
+  (if (nonzero? (-> obj path))
+      (&+! (-> obj path) arg0)
+      )
+  (the-as fort-elec-belt ((method-of-type process relocate) obj arg0))
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! fort-elec-belt ((obj fort-elec-belt) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (local-vars (sv-64 int))
+  (quaternion-copy! (-> obj init-quat) (-> arg0 quat))
+  (let ((s5-0 (new 'stack-no-clear 'sync-info-params)))
+    (let ((s3-0 1200))
+      0.0
+      (set! sv-64 0)
+      (let ((v1-1 (res-lump-data arg0 'sync (pointer float) :tag-ptr (the-as (pointer res-tag) (& sv-64)))))
+        (when v1-1
+          (set! s3-0 (the int (* 300.0 (-> v1-1 0))))
+          (-> v1-1 1)
+          )
+        )
+      (let ((v1-2 0))
+        (if #t
+            (set! v1-2 (logior v1-2 1))
+            )
+        (set! (-> s5-0 sync-type) 'sync-linear)
+        (set! (-> s5-0 sync-flags) (the-as sync-flags v1-2))
+        )
+      (set! (-> s5-0 entity) arg0)
+      (set! (-> s5-0 period) (the-as uint s3-0))
+      )
+    (set! (-> s5-0 percent) 0.0)
+    (initialize! (-> obj sync) s5-0)
+    )
+  (set! (-> obj l-spec) (new 'static 'lightning-spec
+                          :name #f
+                          :flags (lightning-spec-flags lsf2)
+                          :rand-func #x2
+                          :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                          :end-color (new 'static 'rgba :a #x80)
+                          :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                          :fade-start-factor 0.2
+                          :fade-time 120.0
+                          :texture (new 'static 'texture-id :index #x83 :page #xc)
+                          :reduction 0.72
+                          :num-points 17
+                          :box-size 4997.12
+                          :merge-factor 0.32
+                          :merge-count 2
+                          :radius 7372.8
+                          :duration -1.0
+                          :sound #f
+                          )
+        )
+  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #f))
+  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> obj path-du) (/ 24576.0 (total-distance (-> obj path))))
+  (let* ((v1-14 *game-info*)
+         (a0-15 (+ (-> v1-14 attack-id) 1))
+         )
+    (set! (-> v1-14 attack-id) a0-15)
+    (set! (-> obj attack-id) a0-15)
+    )
+  (fort-elec-belt-method-15 obj)
+  (set! (-> obj next-spawn-time) (get-timeframe-offset! (-> obj sync) 0))
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype fort-conveyor (conveyor)
+  ()
+  :heap-base #x80
+  :method-count-assert 28
+  :size-assert         #x100
+  :flag-assert         #x1c00800100
+  )
+
+
+(defskelgroup skel-fort-conveyor fort-conveyor fort-conveyor-lod0-jg fort-conveyor-idle-ja
+              ((fort-conveyor-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 16 16.5)
+              )
+
+(defmethod get-art-group fort-conveyor ((obj fort-conveyor))
+  "@returns The respective [[art-group]] for the [[conveyor]]"
+  (art-group-get-by-name *level* "skel-fort-conveyor" (the-as (pointer uint32) #f))
+  )
+
+;; WARN: Return type mismatch collide-shape-moving vs none.
+(defmethod reset-root! fort-conveyor ((obj fort-conveyor))
+  "Re-initializes the `root` [[trsqv]]"
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 0)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 65536.0 67584.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-15 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-15 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-15 prim-core collide-with))
+      )
+    (set! (-> obj root) s5-0)
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch vector vs none.
+(defmethod init! fort-conveyor ((obj fort-conveyor))
+  "Initializes defaults for things like the `speed` and `belt-radius`"
+  (set! (-> obj speed) -47104.0)
+  (set! (-> obj belt-radius) 24576.0)
+  (set! (-> obj pull-y-threshold) 4096.0)
+  (if (name= (-> obj name) "fort-conveyor-4")
+      (set-vector! (-> obj root scale) 0.8 0.0 0.657 1.0)
+      )
+  (none)
+  )
+
+(defmethod set-and-get-ambient-sound! fort-conveyor ((obj fort-conveyor))
+  "So long as [[actor-option::16]] is not set, fetch the [[ambient-sound]] for the [[conveyor]]
+and return it as well.  Otherwise, set it to `0`"
+  (let* ((s5-0 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) 0.0 'interp))
+         (v1-2 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) 1.0 'interp))
+         (a3-3 (vector+! (new 'stack-no-clear 'vector) s5-0 v1-2))
+         )
+    (vector-float*! a3-3 a3-3 0.5)
+    (let ((v0-2 (new 'process 'ambient-sound (static-sound-spec "fort-conveyor" :fo-max 50) a3-3)))
+      (set! (-> obj sound) v0-2)
+      v0-2
+      )
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  172
+  0
+  (the-as
+    (function object)
+    (lambda :behavior task-manager
+      ()
+      (set-setting! 'sound-mode #f 0 1)
+      (set-setting! 'sound-excitement 'abs #x3f4ccccd 0)
+      (speech-control-method-10
+        *speech-control*
+        6
+        (new 'static 'speech-type-info
+          :min-delay #x4b0
+          :max-delay #x960
+          :list (new 'static 'boxed-array :type string
+            "kg001"
+            "kg002"
+            "kg004"
+            "kg006"
+            "kg001a"
+            "kg013"
+            "kg016"
+            "kg018"
+            "kg019"
+            "kg023"
+            "kg024"
+            "kg002a"
+            "kg004a"
+            "kg078a"
+            "kg079a"
+            "kg080a"
+            "kg081a"
+            "kg004a"
+            "kg082a"
+            "kg083a"
+            "kg084a"
+            "kg085a"
+            "kg086a"
+            "kg087a"
+            "kg088a"
+            "kg091a"
+            "kg023a"
+            "kg006a"
+            "kg092a"
+            "kg020a"
+            "kg093a"
+            "kg094a"
+            "kg095a"
+            "kg103a"
+            "kg104a"
+            "kg112a"
+            "kg024a"
+            "kg134"
+            "kg136"
+            "kg137"
+            "kg138"
+            "kg139"
+            "kg140"
+            "kg141"
+            )
+          )
+        )
+      (speech-control-method-10
+        *speech-control*
+        9
+        (new 'static 'speech-type-info
+          :priority 1
+          :min-delay #x12c
+          :max-delay #x258
+          :list (new 'static 'boxed-array :type string
+            "kg133"
+            "kg142"
+            "kg144"
+            "kg145"
+            "kg146"
+            "kg147"
+            "kg148"
+            "kg149"
+            "kg150"
+            "kg138"
+            "kg151"
+            "kg152"
+            "kg153"
+            "kg154"
+            "kg155"
+            "kg159"
+            "kg163"
+            "kg164"
+            )
+          )
+        )
+      (speech-control-method-10
+        *speech-control*
+        10
+        (new 'static 'speech-type-info :priority #xa :max-delay #x12c :list (new 'static 'boxed-array :type string
+                                                                              "kg166"
+                                                                              "kg167"
+                                                                              "kg168"
+                                                                              "kg169"
+                                                                              "kg171"
+                                                                              "kg172"
+                                                                              "kg173"
+                                                                              "kg174"
+                                                                              "kg175"
+                                                                              )
+                                       )
+        )
+      (none)
+      )
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  172
+  1
+  (the-as
+    (function object)
+    (lambda :behavior task-manager () (speech-control-method-9 *speech-control*) (none))
+    )
+  )

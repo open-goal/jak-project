@@ -1,9 +1,13 @@
 #include "extract_merc.h"
-#include "decompiler/util/goal_data_reader.h"
-#include "decompiler/level_extractor/MercData.h"
-#include "decompiler/level_extractor/extract_common.h"
+
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/colors.h"
+#include "common/util/string_util.h"
+
+#include "decompiler/level_extractor/MercData.h"
+#include "decompiler/level_extractor/extract_common.h"
+#include "decompiler/util/goal_data_reader.h"
 
 namespace decompiler {
 
@@ -91,6 +95,12 @@ struct MercUnpackedVtx {
 
   u16 dst0;
   u16 dst1;
+
+  bool can_be_modified = false;
+  int idx_in_combined_lump4 = -1;  // divided by 3
+
+  int flump4 = -1;
+  int frag = -1;
 };
 
 /*!
@@ -104,6 +114,11 @@ struct ConvertedMercEffect {
   // draws from all fragments.
   std::vector<MercDraw> draws;
   std::vector<MercUnpackedVtx> vertices;
+  std::vector<u32> verts_per_frag;
+  bool has_envmap = false;
+  DrawMode envmap_mode;
+  u32 envmap_texture;
+  std::optional<s8> eye_slot;
 };
 
 /*!
@@ -192,12 +207,16 @@ void update_mode_from_alpha1(GsAlpha reg, DrawMode& mode) {
              reg.b_mode() == GsAlpha::BlendMode::SOURCE &&
              reg.c_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
              reg.d_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED) {
+  } else if (reg.a_mode() == GsAlpha::BlendMode::SOURCE &&
+             reg.b_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+             reg.c_mode() == GsAlpha::BlendMode::DEST && reg.d_mode() == GsAlpha::BlendMode::DEST) {
+    mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
   }
 
   else {
     // unsupported blend: a 0 b 1 c 0 d 2 is this part of generic?
-    fmt::print("unsupported blend: a {} b {} c {} d {}\n", (int)reg.a_mode(), (int)reg.b_mode(),
-               (int)reg.c_mode(), (int)reg.d_mode());
+    lg::warn("unsupported blend: a {} b {} c {} d {}", (int)reg.a_mode(), (int)reg.b_mode(),
+             (int)reg.c_mode(), (int)reg.d_mode());
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
     // ASSERT(false);
   }
@@ -206,7 +225,9 @@ void update_mode_from_alpha1(GsAlpha reg, DrawMode& mode) {
 /*!
  * Convert merc shader to PC draw mode
  */
-DrawMode process_draw_mode(const MercShader& info) {
+DrawMode process_draw_mode(const MercShader& info,
+                           bool enable_alpha_test,
+                           bool enable_alpha_blend) {
   DrawMode mode;
   /*
    *       (new 'static 'gs-test
@@ -217,7 +238,7 @@ DrawMode process_draw_mode(const MercShader& info) {
            :ztst (gs-ztest greater-equal)
            )
    */
-  mode.enable_at();
+  mode.set_at(enable_alpha_test);
   mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
   mode.set_aref(0x26);
   mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
@@ -227,10 +248,14 @@ DrawMode process_draw_mode(const MercShader& info) {
   mode.set_depth_test(GsTest::ZTest::GEQUAL);
 
   // check these
-  mode.disable_ab();
+  mode.set_ab(enable_alpha_blend);
   mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
   mode.set_tcc(info.tex0.tcc());
   mode.set_decal(info.tex0.tfx() == GsTex0::TextureFunction::DECAL);
+  if (info.tex0.tfx() != GsTex0::TextureFunction::DECAL) {
+    ASSERT(info.tex0.tfx() == GsTex0::TextureFunction::MODULATE);
+  }
+
   mode.set_filt_enable(info.tex1.mmag());
 
   // the alpha matters (maybe?)
@@ -292,11 +317,14 @@ void handle_frag(const std::string& debug_name,
                  const MercFragmentControl& frag_ctrl,
                  const MercState& state,
                  std::vector<MercUnpackedVtx>& effect_vertices,
-                 MercMemory& memory) {
+                 MercMemory& memory,
+                 bool can_be_modified,
+                 int base_lump4,
+                 int frag_idx) {
   (void)frag_ctrl;
   (void)debug_name;
-  // fmt::print("handling frag: {}\n", debug_name);
-  // fmt::print("{}\n", frag.print());
+  // lg::print("handling frag: {}\n", debug_name);
+  // lg::print("{}\n", frag.print());
 
   // we'll iterate through the lump and rgba data
   int lump_ptr = 0;                     // vertex data starts at the beginning of "lump"
@@ -316,6 +344,10 @@ void handle_frag(const std::string& debug_name,
   for (size_t i = 0; i < mat123_cnt; i++) {
     u32 current_vtx_idx = effect_vertices.size();  // idx in effect vertex list.
     auto& vtx = effect_vertices.emplace_back();
+    vtx.can_be_modified = can_be_modified;
+    vtx.idx_in_combined_lump4 = lump_ptr / 3 + base_lump4;
+    vtx.frag = frag_idx;
+    vtx.flump4 = lump_ptr / 3;
 
     if (i < mat1_cnt) {
       vtx.kind = 1;  // 1 matrix
@@ -488,7 +520,7 @@ void handle_frag(const std::string& debug_name,
       //      dst1_adc = dst0_adc && (mat0_flag >= 0);
       //      dst0_adc = !dst0_adc;
       //      dst1_adc = !dst1_adc;
-      //      fmt::print("{}\n", dst1_adc);
+      //      lg::print("{}\n", dst1_adc);
     }
 
     // write to two spots in memory
@@ -508,7 +540,7 @@ void handle_frag(const std::string& debug_name,
     memory.memory.at(vtx.dst1 + 2).kind = MercOutputQuadword::Kind::INVALID;
 
     /*
-    fmt::print("place vertex {} @ {} {}: {} (adc {} {}) {}\n", current_vtx_idx, vtx.dst0, vtx.dst1,
+    lg::print("place vertex {} @ {} {}: {} (adc {} {}) {}\n", current_vtx_idx, vtx.dst0, vtx.dst1,
                vtx.pos.to_string_aligned(), dst0_adc, dst1_adc, mat1_flag);
                */
 
@@ -540,7 +572,7 @@ std::vector<u32> index_list_from_packet(u32 vtx_ptr, u32 nloop, const MercMemory
       prev_vtx = vtx_mem.vtx_idx;
     } else {
       // missing vertex!
-      fmt::print("MISSING VERTEX at {}\n", vtx_ptr);
+      lg::warn("MISSING VERTEX at {}", vtx_ptr);
       result.push_back(UINT32_MAX);
     }
 
@@ -649,17 +681,152 @@ std::string debug_dump_to_ply(const std::vector<MercDraw>& draws,
   return result;
 }
 
+int find_or_add_texture_to_level(tfrag3::Level& out,
+                                 const TextureDB& tex_db,
+                                 const std::string& debug_name,
+                                 u32 pc_combo_tex_id,
+                                 const MercCtrlHeader& hdr,
+                                 u8* eye_out,
+                                 GameVersion version) {
+  u32 idx_in_level_texture = UINT32_MAX;
+  for (u32 i = 0; i < out.textures.size(); i++) {
+    if (out.textures[i].combo_id == pc_combo_tex_id) {
+      idx_in_level_texture = i;
+      break;
+    }
+  }
+
+  if (idx_in_level_texture == UINT32_MAX) {
+    // not added to level, add it
+    auto tex_it = tex_db.textures.find(pc_combo_tex_id);
+    if (tex_it == tex_db.textures.end()) {
+      lg::error("merc failed to find texture: 0x{:x} for {}. Should be in tpage {}",
+                pc_combo_tex_id, debug_name, pc_combo_tex_id >> 16);
+      idx_in_level_texture = 0;
+    } else {
+      idx_in_level_texture = out.textures.size();
+      auto& new_tex = out.textures.emplace_back();
+      new_tex.combo_id = pc_combo_tex_id;
+      new_tex.w = tex_it->second.w;
+      new_tex.h = tex_it->second.h;
+      new_tex.debug_name = tex_it->second.name;
+      new_tex.debug_tpage_name = tex_db.tpage_names.at(tex_it->second.page);
+      new_tex.data = tex_it->second.rgba_bytes;
+    }
+  }
+
+  // check eyes
+  u32 eye_tpage = version == GameVersion::Jak2 ? 0x70c : 0x1cf;
+  u32 left_id = version == GameVersion::Jak2 ? 7 : 0x6f;
+  u32 right_id = version == GameVersion::Jak2 ? 8 : 0x70;
+
+  if (eye_out && (pc_combo_tex_id >> 16) == eye_tpage) {
+    auto tex_it = tex_db.textures.find(pc_combo_tex_id);
+    if (tex_it == tex_db.textures.end()) {
+      // fmt::print("{} got dynamic merc texture (no known texture)\n", debug_name);
+    } else {
+      // fmt::print("{} got dynamic merc texture (will overwrite {})\n", debug_name,
+      //                  tex_it->second.name);
+    }
+    u32 idx = pc_combo_tex_id & 0xffff;
+
+    if (idx == left_id || idx == right_id) {
+      if (!hdr.eye_ctrl) {
+        fmt::print("no eye ctrl, but expected one");
+        if (debug_name != "kor-break-lod0") {
+          ASSERT(false);
+        }
+      }
+      if (idx == left_id) {
+        *eye_out = (hdr.eye_ctrl->eye_slot * 2);
+      } else if (idx == right_id) {
+        *eye_out = (hdr.eye_ctrl->eye_slot * 2) + 1;
+      }
+    } else {
+      // fmt::print("got unknown tex id in eye page: {}\n", idx);
+    }
+  }
+
+  return idx_in_level_texture;
+}
+
 ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
                                         const MercCtrlHeader& ctrl_header,
-                                        const TextureDB& tdb,
                                         const std::vector<level_tools::TextureRemap>& map,
                                         const std::string& debug_name,
                                         size_t ctrl_idx,
                                         size_t effect_idx,
-                                        bool dump) {
+                                        bool dump,
+                                        const TextureDB& tex_db,
+                                        tfrag3::Level& out,
+                                        GameVersion version) {
   ConvertedMercEffect result;
   result.ctrl_idx = ctrl_idx;
   result.effect_idx = effect_idx;
+  if (ctrl_header.eye_ctrl) {
+    result.eye_slot = ctrl_header.eye_ctrl->eye_slot;
+  }
+  if (input_effect.extra_info.shader) {
+    result.has_envmap = true;
+    result.envmap_mode = process_draw_mode(*input_effect.extra_info.shader, false, false);
+    result.envmap_mode.set_ab(true);
+    u32 new_tex = remap_texture(input_effect.extra_info.shader->original_tex, map);
+    ASSERT(result.envmap_mode.get_tcc_enable());
+    ASSERT(result.envmap_mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_0_DST_DST);
+
+    // texture the texture page/texture index, and convert to a PC port texture ID
+    u32 tpage = new_tex >> 20;
+    u32 tidx = (new_tex >> 8) & 0b1111'1111'1111;
+    u32 tex_combo = (((u32)tpage) << 16) | tidx;
+    result.envmap_texture = find_or_add_texture_to_level(out, tex_db, "envmap", tex_combo,
+                                                         ctrl_header, nullptr, version);
+  } else if (input_effect.envmap_or_effect_usage) {
+    u32 tex_combo = 0;
+    switch (version) {
+      case GameVersion::Jak1: {
+        u32 env = 0x10000000;  // jak 1, check for jak 2.
+        u32 tpage = env >> 20;
+        u32 tidx = (env >> 8) & 0b1111'1111'1111;
+        tex_combo = (((u32)tpage) << 16) | tidx;
+      } break;
+      case GameVersion::Jak2: {
+        u32 tpage = 0x1f;
+        u32 tidx = 2;
+        tex_combo = (((u32)tpage) << 16) | tidx;
+      } break;
+      default:
+        ASSERT_NOT_REACHED();
+    }
+
+    result.envmap_texture = find_or_add_texture_to_level(out, tex_db, "envmap-default", tex_combo,
+                                                         ctrl_header, nullptr, version);
+
+    DrawMode mode;
+    mode.set_at(false);
+    mode.enable_zt();
+    mode.enable_depth_write();
+    mode.set_depth_test(GsTest::ZTest::GEQUAL);
+
+    // check these
+    mode.disable_ab();
+    mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
+    mode.set_tcc(true);
+    mode.set_decal(false);
+    mode.set_filt_enable(true);
+
+    mode.set_clamp_s_enable(true);
+    mode.set_clamp_t_enable(true);
+
+    result.has_envmap = true;
+    result.envmap_mode = mode;
+    result.envmap_mode.set_ab(true);
+  }
+
+  bool use_alpha_blend = false;
+  if (version == GameVersion::Jak2) {
+    use_alpha_blend = input_effect.texture_index == 4;  // water
+  }
+
   // full reset of state per effect.
   // we have no idea what the previous effect draw will be - it might be given to
   // mercneric.
@@ -667,6 +834,8 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   MercState merc_state;          // current gs settings/matrix slots
   MercMemory merc_memories[2];   // double buffered output
   int memory_buffer_toggle = 0;  // which output we're in
+
+  int combined_lump4_addr = 0;
 
   for (size_t fi = 0; fi < input_effect.frag_ctrl.size(); fi++) {
     const auto& frag = input_effect.frag_geo[fi];
@@ -689,9 +858,24 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     // run the frag.
     // this will add vertices to the per-effect vertex lists and also update the merc memory
     // to point to these.
+    bool can_be_modified = false;
+    if (fi < input_effect.blend_ctrl.size()) {
+      can_be_modified = input_effect.blend_ctrl.at(fi).blend_vtx_count > 0;
+    }
+
+    if (input_effect.effect_bits & kRippleEffectBit) {
+      can_be_modified = true;
+    }
+
+    if (input_effect.effect_bits & kTextureScrollEffectBit) {
+      can_be_modified = true;
+    }
 
     handle_frag(debug_name, ctrl_header, frag, frag_ctrl, merc_state, result.vertices,
-                merc_memories[memory_buffer_toggle]);
+                merc_memories[memory_buffer_toggle], can_be_modified, combined_lump4_addr, fi);
+    u32 vert_count = frag.lump4_unpacked.size() / 3;
+    combined_lump4_addr += vert_count;
+    result.verts_per_frag.push_back(vert_count);
 
     // we'll add draws after this draw, but wait to actually populate the index lists until
     // we've processed all the vertices.
@@ -716,16 +900,18 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     for (size_t i = 0; i < frag.fp_header.shader_cnt; i++) {
       const auto& shader = frag.shaders.at(i);
       // update merc state from shader (will hold over to next fragment, if needed)
-      merc_state.merc_draw_mode.mode = process_draw_mode(shader);
+      merc_state.merc_draw_mode.mode =
+          process_draw_mode(shader, result.has_envmap, use_alpha_blend);
+      if (!merc_state.merc_draw_mode.mode.get_tcc_enable()) {
+        ASSERT(false);
+      }
       u32 new_tex = remap_texture(shader.original_tex, map);
 
       // texture the texture page/texture index, and convert to a PC port texture ID
       u32 tpage = new_tex >> 20;
       u32 tidx = (new_tex >> 8) & 0b1111'1111'1111;
       u32 tex_combo = (((u32)tpage) << 16) | tidx;
-      // look up the texture to make sure it's valid
-      auto tex = tdb.textures.find(tex_combo);
-      ASSERT(tex != tdb.textures.end());
+
       // remember the texture id
       merc_state.merc_draw_mode.pc_combo_tex_id = tex_combo;
 
@@ -757,7 +943,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     u32 srcdst_ptr = frag.header.srcdest_off;
     for (u32 sci = 0; sci < frag.header.samecopy_cnt; sci++) {
       auto& cpy = frag.unsigned_four_including_header[srcdst_ptr];
-      // fmt::print("sci: {}\n", cpy.to_string_hex_byte());
+      // lg::print("sci: {}\n", cpy.to_string_hex_byte());
       u32 src = cpy[0];
       auto& vert = merc_memories[memory_buffer_toggle].memory.at(src);
       u32 dst = cpy[1];
@@ -769,7 +955,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
           dvert.adc = !dvert.adc;
         }
       } else {
-        fmt::print("sc missing vert\n");
+        lg::warn("sc missing vert");
         dvert.kind = MercOutputQuadword::Kind::INVALID;
       }
 
@@ -779,7 +965,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     // "cross" copy from the other output buffer
     for (u32 cci = 0; cci < frag.header.crosscopy_cnt; cci++) {
       auto& cpy = frag.unsigned_four_including_header[srcdst_ptr];
-      // fmt::print("cci: {}\n", cpy.to_string_hex_byte());
+      // lg::print("cci: {}\n", cpy.to_string_hex_byte());
       u32 src = cpy[0];
       auto& vert = merc_memories[memory_buffer_toggle ^ 1].memory.at(src);
       u32 dst = cpy[1];
@@ -791,7 +977,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
           dvert.adc = !dvert.adc;
         }
       } else {
-        fmt::print("cc missing vert\n");
+        lg::warn("cc missing vert");
         dvert.kind = MercOutputQuadword::Kind::INVALID;
       }
       srcdst_ptr++;
@@ -808,10 +994,10 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   }
 
   if (dump) {
-    file_util::write_text_file(
-        file_util::get_file_path(
-            {"debug_out/merc", fmt::format("{}_{}.ply", debug_name, effect_idx)}),
-        debug_dump_to_ply(result.draws, result.vertices));
+    auto file_path = file_util::get_file_path(
+        {"debug_out/merc", fmt::format("{}_{}.ply", debug_name, effect_idx)});
+    file_util::create_dir_if_needed_for_file(file_path);
+    file_util::write_text_file(file_path, debug_dump_to_ply(result.draws, result.vertices));
   }
 
   return result;
@@ -825,11 +1011,11 @@ u8 convert_mat(int in) {
   }
 }
 
-tfrag3::MercVertex convert_vertex(const MercUnpackedVtx& vtx) {
+tfrag3::MercVertex convert_vertex(const MercUnpackedVtx& vtx, float xyz_scale) {
   tfrag3::MercVertex out;
-  out.pos[0] = vtx.pos[0];
-  out.pos[1] = vtx.pos[1];
-  out.pos[2] = vtx.pos[2];
+  out.pos[0] = vtx.pos[0] * xyz_scale;
+  out.pos[1] = vtx.pos[1] * xyz_scale;
+  out.pos[2] = vtx.pos[2] * xyz_scale;
   out.pad0 = 0;
   out.normal[0] = vtx.nrm[0];
   out.normal[1] = vtx.nrm[1];
@@ -852,6 +1038,193 @@ tfrag3::MercVertex convert_vertex(const MercUnpackedVtx& vtx) {
   return out;
 }
 
+struct VertexSourceInfo {
+  int combined_lump4;
+  int frag;
+  int flump4;
+};
+
+void create_modifiable_vertex_data(
+    const std::vector<bool>& vtx_mod_flag,
+    const std::vector<VertexSourceInfo>& vtx_srcs,
+    tfrag3::MercModelGroup& out,
+    size_t first_out_vertex,
+    size_t first_out_model,
+    const std::vector<std::vector<ConvertedMercEffect>>& all_effects) {
+  ASSERT(vtx_mod_flag.size() + first_out_vertex == out.vertices.size());
+
+  // we need to be able to modify some vertices at runtime.
+  // this can be detected vertex-by-vertex
+  // the plan is to find MercEffects that contain modifiable vertices, and provide an alternate way
+  // to draw them. In the case where no vertices should be modified, we can fall back to the normal
+  // merc drawing path.
+
+  // In this modifiable draw path, there will be a list of "fixed draws", which draw vertices that
+  // cannot be modified. This set is known at build-time.
+  // The "mod draws" will draw the modifiable vertices. These use the normal index buffer, but
+  // index into a per-effect modifiable vertex buffer.
+
+  //  std::vector<tfrag3::MercDraw> fixed_draws, mod_draws;
+
+  // some stats
+  int num_tris = 0;  // all triangles
+  int mod_tris = 0;  // triangles in mod draws
+
+  // loop over models added from this art-group
+  for (size_t mi = first_out_model; mi < out.models.size(); mi++) {
+    auto& model = out.models.at(mi);
+    // loop over "effects" within this model. the pc format merges all fragments in an effect
+    // together.
+
+    for (size_t ei = 0; ei < model.effects.size(); ei++) {
+      auto& effect = model.effects[ei];
+
+      std::vector<std::vector<u32>> inds_per_mod_draw;
+
+      for (const auto& draw : effect.all_draws) {
+        num_tris += draw.num_triangles;
+
+        // first check to see what's in this draw
+        bool found_mod = false;
+        bool found_fixed = false;
+        for (int i = 0; i < (int)draw.index_count; i++) {
+          u32 idx = out.indices.at(draw.first_index + i);
+          if (idx == UINT32_MAX) {
+            continue;
+          }
+          ASSERT(idx >= first_out_vertex);
+          if (vtx_mod_flag.at(idx - first_out_vertex)) {
+            found_mod = true;
+          } else {
+            found_fixed = true;
+          }
+        }
+
+        if (!found_fixed && !found_mod) {
+          // nothing found at all, bad
+          ASSERT_NOT_REACHED();
+        } else if (found_fixed && !found_mod) {
+          // only fixed. can just copy the fixed draw
+          effect.mod.fix_draw.push_back(draw);
+        } else if (found_mod && !found_fixed) {
+          // only mod
+          effect.mod.mod_draw.push_back(draw);
+          auto& inds_out = inds_per_mod_draw.emplace_back();
+          for (u32 i = 0; i < draw.index_count; i++) {
+            inds_out.push_back(out.indices.at(draw.first_index + i));
+          }
+          mod_tris += draw.num_triangles;
+        } else {
+          // it's a mix...
+          std::vector<std::vector<u32>> strips;
+          strips.emplace_back();
+          for (u32 i = 0; i < draw.index_count; i++) {
+            u32 val = out.indices.at(draw.first_index + i);
+            if (val == UINT32_MAX) {
+              if (!strips.back().empty()) {
+                strips.emplace_back();
+              }
+            } else {
+              strips.back().push_back(val);
+            }
+          }
+
+          tfrag3::MercDraw mod = draw;
+          tfrag3::MercDraw fix = draw;
+          std::vector<u32> mod_ind, fix_ind;
+          for (auto& strip : strips) {
+            bool strip_has_mod = false;
+            for (auto ind : strip) {
+              if (vtx_mod_flag.at(ind - first_out_vertex)) {
+                strip_has_mod = true;
+                break;
+              }
+            }
+            if (strip_has_mod) {
+              mod_ind.insert(mod_ind.end(), strip.begin(), strip.end());
+              mod_ind.push_back(UINT32_MAX);
+            } else {
+              fix_ind.insert(fix_ind.end(), strip.begin(), strip.end());
+              fix_ind.push_back(UINT32_MAX);
+            }
+          }
+
+          mod.index_count = mod_ind.size();
+          inds_per_mod_draw.push_back(mod_ind);
+          fix.first_index = out.indices.size();
+          fix.index_count = fix_ind.size();
+          out.indices.insert(out.indices.end(), fix_ind.begin(), fix_ind.end());
+
+          effect.mod.mod_draw.push_back(mod);
+          effect.mod.fix_draw.push_back(fix);
+        }
+      }  // for draw
+
+      // if there are no modifiable draws, we can't possible modify anything, so not worth
+      // storing the fixed draws
+      if (effect.mod.mod_draw.empty()) {
+        effect.mod.fix_draw.clear();
+      } else {
+        effect.has_mod_draw = true;
+        // need to set up the vertex buffer for the modifiable draws
+        // map of original vertex indices to mod buffer index
+        std::unordered_map<u32, u32> vtx_to_mod_vtx;
+        for (size_t mdi = 0; mdi < effect.mod.mod_draw.size(); mdi++) {
+          auto& draw = effect.mod.mod_draw[mdi];
+          auto& orig_inds = inds_per_mod_draw.at(mdi);
+          u32 new_first_index = out.indices.size();
+          for (auto vidx : orig_inds) {
+            if (vidx == UINT32_MAX) {
+              out.indices.push_back(UINT32_MAX);
+              continue;  // strip restart
+            }
+            const auto& existing = vtx_to_mod_vtx.find(vidx);
+            if (existing == vtx_to_mod_vtx.end()) {
+              // add vertex to mod buffer
+              auto idx = effect.mod.vertices.size();
+              vtx_to_mod_vtx[vidx] = idx;
+              effect.mod.vertices.push_back(out.vertices.at(vidx));
+              auto src = vtx_srcs.at(vidx - first_out_vertex);
+              ASSERT(src.combined_lump4 < UINT16_MAX);
+              effect.mod.vertex_lump4_addr.push_back(src.combined_lump4);
+              u32 frag_idx = src.frag;
+              if (frag_idx >= effect.mod.fragment_mask.size()) {
+                effect.mod.fragment_mask.resize(frag_idx + 1);
+              }
+              effect.mod.fragment_mask[frag_idx] = true;
+              out.indices.push_back(idx);
+            } else {
+              out.indices.push_back(existing->second);
+            }
+          }
+          draw.first_index = new_first_index;
+        }
+
+        // splice out masked fragments, the renderer won't index them
+        const auto& frag_counts = all_effects.at(mi - first_out_model).at(ei).verts_per_frag;
+        std::unordered_map<u32, u32> old_to_new;
+        u32 old_idx = 0;
+        u32 new_idx = 0;
+        for (size_t fi = 0; fi < effect.mod.fragment_mask.size(); fi++) {
+          if (effect.mod.fragment_mask[fi]) {
+            for (u32 vi = 0; vi < frag_counts.at(fi); vi++) {
+              old_to_new[old_idx] = new_idx;
+              old_idx++;
+              new_idx++;
+            }
+          } else {
+            old_idx += frag_counts.at(fi);
+          }
+        }
+        effect.mod.expect_vidx_end = new_idx;
+        for (auto& v : effect.mod.vertex_lump4_addr) {
+          v = old_to_new.at(v);
+        }
+      }
+    }
+  }
+}
+
 /*!
  * Top-level merc extraction
  */
@@ -860,7 +1233,8 @@ void extract_merc(const ObjectFileData& ag_data,
                   const DecompilerTypeSystem& dts,
                   const std::vector<level_tools::TextureRemap>& map,
                   tfrag3::Level& out,
-                  bool dump_level) {
+                  bool dump_level,
+                  GameVersion version) {
   if (dump_level) {
     file_util::create_dir_if_needed(file_util::get_file_path({"debug_out/merc"}));
   }
@@ -879,14 +1253,18 @@ void extract_merc(const ObjectFileData& ag_data,
   for (size_t ci = 0; ci < ctrls.size(); ci++) {
     auto& effects_in_ctrl = all_effects.emplace_back();
     for (size_t ei = 0; ei < ctrls[ci].effects.size(); ei++) {
-      effects_in_ctrl.push_back(convert_merc_effect(ctrls[ci].effects[ei], ctrls[ci].header, tex_db,
-                                                    map, ctrls[ci].name, ci, ei, dump_level));
+      effects_in_ctrl.push_back(convert_merc_effect(ctrls[ci].effects[ei], ctrls[ci].header, map,
+                                                    ctrls[ci].name, ci, ei, dump_level, tex_db, out,
+                                                    version));
     }
   }
 
+  size_t first_out_vertex = out.merc_data.vertices.size();
   // convert to PC format
   // first pass, before merging indices
   u32 first_model = out.merc_data.models.size();
+  std::vector<bool> vertex_modify_flags;
+  std::vector<VertexSourceInfo> vertex_srcs;
   std::vector<std::vector<std::vector<std::vector<u32>>>> indices_temp;  // ctrl, effect, draw, vtx
   for (size_t ci = 0; ci < ctrls.size(); ci++) {
     indices_temp.emplace_back();
@@ -894,17 +1272,24 @@ void extract_merc(const ObjectFileData& ag_data,
     auto& ctrl = ctrls[ci];
 
     pc_ctrl.name = ctrl.name;
-    pc_ctrl.scale_xyz = ctrl.header.xyz_scale;
     pc_ctrl.max_draws = 0;
     pc_ctrl.max_bones = 0;
+    pc_ctrl.st_vif_add = ctrl.header.st_vif_add;
+    pc_ctrl.st_magic = u32_as_float(ctrl.header.st_magic);
+    pc_ctrl.xyz_scale = ctrl.header.xyz_scale;
 
     for (size_t ei = 0; ei < ctrls[ci].effects.size(); ei++) {
       indices_temp[ci].emplace_back();
       auto& pc_effect = pc_ctrl.effects.emplace_back();
       auto& effect = all_effects[ci][ei];
+      pc_effect.has_envmap = effect.has_envmap;
+      pc_effect.envmap_texture = effect.envmap_texture;
+      pc_effect.envmap_mode = effect.envmap_mode;
       u32 first_vertex = out.merc_data.vertices.size();
       for (auto& vtx : effect.vertices) {
-        auto cvtx = convert_vertex(vtx);
+        auto cvtx = convert_vertex(vtx, ctrl.header.xyz_scale);
+        vertex_modify_flags.push_back(vtx.can_be_modified);
+        vertex_srcs.push_back({vtx.idx_in_combined_lump4, vtx.frag, vtx.flump4});
         out.merc_data.vertices.push_back(cvtx);
         for (int i = 0; i < 3; i++) {
           pc_ctrl.max_bones = std::max(pc_ctrl.max_bones, (u32)cvtx.mats[i]);
@@ -915,47 +1300,22 @@ void extract_merc(const ObjectFileData& ag_data,
       std::map<u64, u64> draw_mode_dedup;
 
       for (auto& draw : effect.draws) {
-        pc_ctrl.max_draws++;
         indices_temp[ci][ei].emplace_back();
         // find draw to add to, or create a new one
         const auto& existing = draw_mode_dedup.find(draw.state.merc_draw_mode.as_u64());
         tfrag3::MercDraw* pc_draw = nullptr;
         u64 pc_draw_idx = -1;
         if (existing == draw_mode_dedup.end()) {
-          pc_draw_idx = pc_effect.draws.size();
+          pc_draw_idx = pc_effect.all_draws.size();
           draw_mode_dedup[draw.state.merc_draw_mode.as_u64()] = pc_draw_idx;
-          pc_draw = &pc_effect.draws.emplace_back();
+          pc_draw = &pc_effect.all_draws.emplace_back();
           pc_draw->mode = draw.state.merc_draw_mode.mode;
-
-          u32 idx_in_level_texture = UINT32_MAX;
-          for (u32 i = 0; i < out.textures.size(); i++) {
-            if (out.textures[i].combo_id == draw.state.merc_draw_mode.pc_combo_tex_id) {
-              idx_in_level_texture = i;
-              break;
-            }
-          }
-
-          if (idx_in_level_texture == UINT32_MAX) {
-            // not added to level, add it
-            auto tex_it = tex_db.textures.find(draw.state.merc_draw_mode.pc_combo_tex_id);
-            if (tex_it == tex_db.textures.end()) {
-              ASSERT(false);
-            } else {
-              idx_in_level_texture = out.textures.size();
-              auto& new_tex = out.textures.emplace_back();
-              new_tex.combo_id = draw.state.merc_draw_mode.pc_combo_tex_id;
-              new_tex.w = tex_it->second.w;
-              new_tex.h = tex_it->second.h;
-              new_tex.debug_name = tex_it->second.name;
-              new_tex.debug_tpage_name = tex_db.tpage_names.at(tex_it->second.page);
-              new_tex.data = tex_it->second.rgba_bytes;
-            }
-          }
-
-          pc_draw->tree_tex_id = idx_in_level_texture;
+          pc_draw->tree_tex_id = find_or_add_texture_to_level(
+              out, tex_db, ctrl.name, draw.state.merc_draw_mode.pc_combo_tex_id, ctrl.header,
+              &pc_draw->eye_id, version);
         } else {
           pc_draw_idx = existing->second;
-          pc_draw = &pc_effect.draws.at(pc_draw_idx);
+          pc_draw = &pc_effect.all_draws.at(pc_draw_idx);
         }
 
         for (auto idx : draw.indices) {
@@ -974,13 +1334,28 @@ void extract_merc(const ObjectFileData& ag_data,
     auto& pc_ctrl = out.merc_data.models.at(ci + first_model);
     for (size_t ei = 0; ei < ctrls[ci].effects.size(); ei++) {
       auto& pc_effect = pc_ctrl.effects.at(ei);
-      for (size_t di = 0; di < pc_effect.draws.size(); di++) {
-        auto& pc_draw = pc_effect.draws.at(di);
+      for (size_t di = 0; di < pc_effect.all_draws.size(); di++) {
+        auto& pc_draw = pc_effect.all_draws.at(di);
         auto& inds = indices_temp[ci][ei][di];
         pc_draw.num_triangles = clean_up_vertex_indices(inds);
         pc_draw.first_index = out.merc_data.indices.size();
         pc_draw.index_count = inds.size();
         out.merc_data.indices.insert(out.merc_data.indices.end(), inds.begin(), inds.end());
+      }
+    }
+  }
+
+  create_modifiable_vertex_data(vertex_modify_flags, vertex_srcs, out.merc_data, first_out_vertex,
+                                first_model, all_effects);
+
+  // compute max draws
+  for (u32 mi = first_model; mi < out.merc_data.models.size(); mi++) {
+    auto& model = out.merc_data.models[mi];
+    model.max_draws = 0;
+    for (auto& e : model.effects) {
+      model.max_draws += e.all_draws.size();
+      if (e.has_mod_draw) {
+        model.max_draws += e.mod.mod_draw.size() + e.mod.fix_draw.size();
       }
     }
   }

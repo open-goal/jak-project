@@ -5,17 +5,21 @@
  * Currently owns the logic for emitting the function prologues/epilogues and stack spill ops.
  */
 
-#include <unordered_set>
-#include "goalc/debugger/DebugInfo.h"
-#include "third-party/fmt/core.h"
 #include "CodeGenerator.h"
-#include "goalc/emitter/IGen.h"
+
+#include <unordered_set>
+
 #include "IR.h"
+
+#include "goalc/debugger/DebugInfo.h"
+#include "goalc/emitter/IGen.h"
+
+#include "third-party/fmt/core.h"
 
 using namespace emitter;
 
-CodeGenerator::CodeGenerator(FileEnv* env, DebugInfo* debug_info)
-    : m_fe(env), m_debug_info(debug_info) {}
+CodeGenerator::CodeGenerator(FileEnv* env, DebugInfo* debug_info, GameVersion version)
+    : m_gen(version), m_fe(env), m_debug_info(debug_info) {}
 
 /*!
  * Generate an object file.
@@ -34,7 +38,12 @@ std::vector<u8> CodeGenerator::run(const TypeSystem* ts) {
     }
     auto rec =
         m_gen.add_function_to_seg(f->segment, &m_debug_info->add_function(f->name(), m_fe->name()));
-    rec.debug->function = f;
+    for (auto& x : f->code_source()) {
+      rec.debug->code_sources.push_back(x.heap_obj);
+    }
+    for (auto& x : f->code()) {
+      rec.debug->ir_strings.push_back(x->print());
+    }
   }
 
   // next, add all static objects.
@@ -44,14 +53,14 @@ std::vector<u8> CodeGenerator::run(const TypeSystem* ts) {
 
   // next, add instructions to functions
   for (size_t i = 0; i < m_fe->functions().size(); i++) {
-    do_function(m_fe->functions().at(i), i);
+    do_function(m_fe->functions().at(i).get(), i);
   }
 
   // generate a v3 object.
   return m_gen.generate_data_v3(ts).to_vector();
 }
 
-void CodeGenerator::do_function(const std::shared_ptr<FunctionEnv>& env, int f_idx) {
+void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
   if (env->is_asm_func) {
     do_asm_function(env, f_idx, env->asm_func_saved_regs);
   } else {
@@ -63,7 +72,7 @@ void CodeGenerator::do_function(const std::shared_ptr<FunctionEnv>& env, int f_i
  * Add instructions to the function, specified by index.
  * Generates prologues / epilogues.
  */
-void CodeGenerator::do_goal_function(const std::shared_ptr<FunctionEnv>& env, int f_idx) {
+void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
   bool use_new_xmms = true;
   auto* debug = &m_debug_info->function_by_name(env->name());
 
@@ -271,9 +280,7 @@ void CodeGenerator::do_goal_function(const std::shared_ptr<FunctionEnv>& env, in
   m_gen.add_instr_no_ir(f_rec, IGen::ret(), InstructionInfo::Kind::EPILOGUE);
 }
 
-void CodeGenerator::do_asm_function(const std::shared_ptr<FunctionEnv>& env,
-                                    int f_idx,
-                                    bool allow_saved_regs) {
+void CodeGenerator::do_asm_function(FunctionEnv* env, int f_idx, bool allow_saved_regs) {
   auto f_rec = m_gen.get_existing_function_record(f_idx);
   const auto& allocs = env->alloc_result();
 

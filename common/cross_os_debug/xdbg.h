@@ -6,8 +6,9 @@
 
 #pragma once
 
-#include <string>
 #include <cstdint>
+#include <string>
+
 #include "common/common_types.h"
 
 #ifdef __linux
@@ -19,7 +20,7 @@
 #endif
 
 namespace xdbg {
-#ifdef __linux
+#ifdef OS_POSIX
 
 /*!
  * Identification for a thread.

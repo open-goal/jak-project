@@ -1,0 +1,145 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: profile-h.gc
+;; name in dgo: profile-h
+;; dgos: ENGINE, GAME
+
+#|@file
+The Jak 2 profiler is a significant improvement over Jak 1's.
+VU segments are categorized by renderer, and the EE profiler allows nesting of events.
+The EE profiler also allows events with the same name to be "collapsed" into a single
+category.
+The profiler can display results as bars, or as a text display by category.
+
+Each "event" is called a "segment". It stores a time and also a "count".
+The "count" can be used for whatever you want (ex: fragments, VU calls, etc)
+|#
+
+;; DECOMP BEGINS
+
+;; A single "event".
+;; annoyingly, this type is used both to record events, and
+;; to summarize all events in a category (both EE and VU), so there's
+;; some overlap
+(deftype profile-segment (structure)
+  ((name       symbol  :offset-assert   0) ;; used for categorization.
+   (start-time int16   :offset-assert   4) ;; timestamp of start
+   (end-time   int16   :offset-assert   6) ;; timestamp of end
+   (count      uint8   :offset-assert   8) ;; how many on EE
+   (vu-count   uint8   :offset-assert   9) ;; how many on VU
+   (depth      uint16  :offset-assert  10) ;; depth in the profile stack
+   (color      rgba    :offset-assert  12) ;; color for bar/text
+   (code-time  uint16  :offset          4) ;; total time, EE
+   (vu-time    uint16  :offset          6) ;; total time, VU
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; segments with the same name are combined together. Each "collapse" entry
+;; has a summary of all the events with the same name.
+(deftype profile-collapse (structure)
+  ((count int32                      :offset-assert   0)
+   (data  profile-segment 48 :inline :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x304
+  :flag-assert         #x900000304
+  )
+
+;; Profiling data. For either EE or VU (each has one)
+(deftype profile-segment-array (basic)
+  ((count     int16                       :offset-assert   4) ;; number of used segments
+   (depth     int8                        :offset-assert   6) ;; current stack depth
+   (max-depth int8                        :offset-assert   7) ;; max depth ever seen
+   (base-time int16                       :offset-assert   8) ;; time at profile start
+   (segment   profile-segment 9           :offset-assert  12) ;; stack of open segments
+   (data      profile-segment 512 :inline :offset-assert  48) ;; segment buffer
+   )
+  :method-count-assert 13
+  :size-assert         #x2030
+  :flag-assert         #xd00002030
+  (:methods
+    (get-total-time (_type_) int 9)
+    (start-frame! (_type_) none 10)
+    (start-segment! (_type_ symbol rgba) none 11)
+    (end-segment! (_type_) none 12)
+    )
+  )
+
+(declare-type dma-buffer structure)
+
+;; Pair of profilers (EE, VU)
+(deftype profile-array (structure)
+  ((data profile-segment-array 2 :offset-assert   0)
+   )
+  :method-count-assert 12
+  :size-assert         #x8
+  :flag-assert         #xc00000008
+  (:methods
+    (setup-categories! (_type_) none 9)
+    (draw-bars! (_type_ dma-buffer int) none 10)
+    (draw-text! (_type_) none 11)
+    )
+  )
+
+
+(defmethod get-total-time profile-segment-array ((obj profile-segment-array))
+  "Get the total time spent."
+  ;; assuming 0 is "all" here.
+  (- (-> obj data 0 end-time) (-> obj data 0 start-time))
+  )
+
+(define *profile-gap-color* (new 'static 'rgba :r #x30 :g #x30 :b #x30 :a #x80))
+(define *profile-all-color* (new 'static 'rgba :r #x55 :g #x55 :b #x55 :a #x80))
+(define *profile-particles-color* (new 'static 'rgba :r #x80 :g #x40 :b #x40 :a #x80))
+(define *profile-target-color* (new 'static 'rgba :r #x40 :g #x80 :b #x40 :a #x80))
+(define *profile-target-post-color* (new 'static 'rgba :r #x40 :g #x40 :b #x80 :a #x80))
+(define *profile-joints-color* (new 'static 'rgba :r #x70 :g #x70 :b #x20 :a #x80))
+(define *profile-debug-color* (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+(define *profile-draw-hook-color* (new 'static 'rgba :r #x20 :g #x70 :b #x70 :a #x80))
+(define *profile-sky-color* (new 'static 'rgba :r #x80 :g #x60 :b #x20 :a #x80))
+(define *profile-ocean-color* (new 'static 'rgba :r #x60 :g #x80 :b #x20 :a #x80))
+(define *profile-background-color* (new 'static 'rgba :r #x60 :g #x60 :b #x40 :a #x80))
+(define *profile-bsp-color* (new 'static 'rgba :r #x60 :g #x40 :b #x60 :a #x80))
+(define *profile-foreground-color* (new 'static 'rgba :r #x40 :g #x60 :b #x60 :a #x80))
+(define *profile-tfrag-color* (new 'static 'rgba :r #x80 :g #x80 :a #x80))
+(define *profile-instance-tie-color* (new 'static 'rgba :r #x80 :b #x80 :a #x80))
+(define *profile-instance-shrubbery-color* (new 'static 'rgba :g #x80 :b #x80 :a #x80))
+(define *profile-generic-tie-color* (new 'static 'rgba :r #x80 :g #x20 :b #x60 :a #x80))
+(define *profile-bones-color* (new 'static 'rgba :r #x20 :g #x80 :b #x60 :a #x80))
+(define *profile-generic-merc-color* (new 'static 'rgba :r #x20 :g #x60 :b #x80 :a #x80))
+(define *profile-shadow-color* (new 'static 'rgba :r #x48 :g #x48 :b #x70 :a #x80))
+(define *profile-update-actors-color* (new 'static 'rgba :r #x48 :g #x70 :b #x48 :a #x80))
+(define *profile-menu-hook-color* (new 'static 'rgba :r #x70 :g #x48 :b #x48 :a #x80))
+(define *profile-texture-color* (new 'static 'rgba :r #x80 :g #x70 :b #x10 :a #x80))
+(define *profile-effects-color* (new 'static 'rgba :r #x70 :g #x80 :b #x10 :a #x80))
+(define *profile-sprite-color* (new 'static 'rgba :r #x70 :g #x10 :b #x80 :a #x80))
+(define *profile-merc-color* (new 'static 'rgba :r #x10 :g #x70 :b #x80 :a #x80))
+(define *profile-actors-color* (new 'static 'rgba :r #x80 :g #x10 :b #x70 :a #x80))
+(define *profile-collide-color* (new 'static 'rgba :r #x80 :g #x40 :b #x80 :a #x80))
+(define *profile-nav-color* (new 'static 'rgba :r #x38 :g #x48 :b #x80 :a #x80))
+(define *profile-camera-color* (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+(define *profile-blit-color* (new 'static 'rgba :r #xff :g #xff :b #x80 :a #x80))
+(define *profile-hud-color* (new 'static 'rgba :r #xff :g #x80 :b #xff :a #x80))
+(define *profile-emerc-color* (new 'static 'rgba :r #x80 :g #xff :b #xff :a #x80))
+
+;; allocate profile arrays
+(when *debug-segment*
+  (define *profile-array* (new 'debug 'profile-array))
+
+  (set! (-> *profile-array* data 0) (new 'debug 'profile-segment-array))
+  (set! (-> *profile-array* data 1) (new 'debug 'profile-segment-array))
+
+  (define *profile-collapse* (new 'debug 'profile-collapse))
+
+  (define *profile-interrupt-segment* (-> *profile-array* data 1))
+
+  (define *profile-interrupt-start* #f)
+  )
+
+(define-extern *stats-profile-bars* symbol)
+(define-extern *display-profile* symbol)

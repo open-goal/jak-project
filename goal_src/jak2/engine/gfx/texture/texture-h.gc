@@ -1,0 +1,810 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: texture-h.gc
+;; name in dgo: texture-h
+;; dgos: ENGINE, GAME
+
+(declare-type texture-page basic)
+(declare-type texture-pool basic)
+(declare-type fog-texture-work structure)
+(declare-type adgif-shader structure)
+(declare-type texture basic)
+(declare-type texture-id uint32)
+(declare-type texture-anim-array array)
+(declare-type texture-anim structure)
+(define-extern adgif-shader<-texture-simple! (function adgif-shader texture adgif-shader))
+(define-extern lookup-texture-by-id-fast (function texture-id texture))
+(define-extern *edit-shader* texture-id)
+(define-extern adgif-shader-update! (function adgif-shader texture none))
+(declare-type texture-page-dir basic)
+(define-extern texture-page-dir-inspect (function texture-page-dir symbol none))
+(define-extern *texture-pool* texture-pool)
+(define-extern *fog-texture-work* fog-texture-work)
+(define-extern *skull-gem-texture-anim-array* (texture-anim-array texture-anim))
+
+(defenum tex-upload-mode
+  (none     -3)
+  (seg0-1   -2)
+  (seg0-1-2 -1)
+  (seg0      0)
+  (seg2      2)
+  )
+
+;; DECOMP BEGINS
+
+;; unique identifier for a texture, as the tpage number and index of the texture within the tpage
+(deftype texture-id (uint32)
+  ((index uint16 :offset   8 :size  12)
+   (page  uint16 :offset  20 :size  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; a chunk of vram.
+(deftype texture-pool-segment (structure)
+  ((dest uint32  :offset-assert   0)
+   (size uint32  :offset-assert   4)
+   )
+  :pack-me
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; the manager for the VRAM.
+(deftype texture-pool (basic)
+  ((top                      int32                                                                 :offset-assert   4)
+   (cur                      int32                                                                 :offset-assert   8)
+   (allocate-func            (function texture-pool texture-page kheap int texture-page)           :offset-assert  12)
+   (font-palette             int32                                                                 :offset-assert  16)
+   (segment                  texture-pool-segment                                        4 :inline :offset-assert  20)
+   (segment-near             texture-pool-segment                                        :inline   :offset         20)
+   (segment-common           texture-pool-segment                                        :inline   :offset         28)
+   (common-page              texture-page                                                32        :offset-assert  52)
+   (common-page-mask         int32                                                                 :offset-assert 180)
+   (update-sprites-flag      symbol                                                                :offset-assert 184)
+   (update-flag              symbol                                                                :offset-assert 188)
+   (texture-enable-user      texture-enable-mask                                                   :offset-assert 192)
+   (texture-enable-user-menu texture-enable-mask                                                   :offset-assert 200)
+   (ids                      uint32                                                      128       :offset-assert 208)
+   )
+  :method-count-assert 26
+  :size-assert         #x2d0
+  :flag-assert         #x1a000002d0
+  (:methods
+    (new (symbol type) _type_ 0)
+    (initialize! (_type_) _type_ 9)
+    (print-usage (_type_) _type_ 10)
+    (setup-font-texture (_type_) none 11)
+    (allocate-defaults (_type_) none 12)
+    (login-level-textures (_type_ level int (pointer texture-id)) none 13)
+    (add-level-tpage-dma (_type_ level tpage-category bucket-id) none 14)
+    (allocate-vram-words! (_type_ int) int 15)
+    (allocate-segment (_type_ texture-pool-segment int) texture-pool-segment 16)
+    (unload-page (_type_ texture-page) none 17)
+    (get-common-page-slot-by-id (_type_ int) int 18)
+    (update-warp-and-hud (_type_) none 19)
+    (update-sprites (_type_) none 20)
+    (mark-hud-warp-sprite-dirty (_type_) none 21)
+    (lay-out-sprite-tex (_type_) none 22)
+    (lay-out-hud-tex (_type_) none 23)
+    (lay-out-warp-tex (_type_) none 24)
+    (clear-ids (_type_) none 25)
+    )
+  )
+
+;; mask where each bit indicates if some part of a tpage is used, by a texture.
+;; additionally, the w component holds a minimum distance. The texture is only needed
+;; if the distance to the object is smaller than this.
+(deftype texture-mask (structure)
+  ((mask vector4w :inline :offset-assert   0)
+   (dist float            :offset         12)
+   (long uint64   2       :offset          0)
+   (quad uint128          :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; grouping of three masks, corresponding to the 3 segments of the texture.
+;; so mask 0 is needed if segment 0 of the texture is needed, etc...
+(deftype texture-masks (structure)
+  ((data texture-mask 3 :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;; group of all texture-masks for a given tpage
+(deftype texture-masks-array (inline-array-class)
+  ((data texture-masks :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+(set! (-> texture-masks-array heap-base) (the-as uint 48))
+
+
+;; these globals are used during login. The level loading system sets this to the appropriate
+;; mask/mask array, and the login methods of drawables will fill these out.
+(define *texture-masks* (the-as texture-masks #f))
+(define *texture-masks-array* (the-as texture-masks-array #f))
+
+;; metadata for a texture.
+(deftype texture (basic)
+  ((w            int16                 :offset-assert   4)
+   (h            int16                 :offset-assert   6)
+   (num-mips     uint8                 :offset-assert   8)
+   (tex1-control uint8                 :offset-assert   9)
+   (psm          gs-psm                :offset-assert  10)
+   (mip-shift    uint8                 :offset-assert  11)
+   (clutpsm      uint16                :offset-assert  12)
+   (dest         uint16        7       :offset-assert  14)
+   (clutdest     uint16                :offset-assert  28)
+   (width        uint8         7       :offset-assert  30)
+   (name         string                :offset-assert  40)
+   (size         uint32                :offset-assert  44)
+   (uv-dist      float                 :offset-assert  48)
+   (pad          uint32        3       :offset-assert  52)
+   (masks        texture-masks :inline :offset-assert  64)
+   )
+  :method-count-assert 9
+  :size-assert         #x70
+  :flag-assert         #x900000070
+  )
+
+;; metadata for a "segment" of a texture page.
+;; Each texture page has 3 segments - smaller number segments have higher detail
+;; mips.
+(deftype texture-page-segment (structure)
+  ((block-data pointer  :offset-assert   0)
+   (size       uint32   :offset-assert   4)
+   (dest       uint32   :offset-assert   8)
+   )
+  :pack-me
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+(defun texture-mip->segment ((arg0 int) (arg1 int))
+  "Figure out which segment of a tpage a given mip level of a texture will be in.
+   arg0 is the mip level, arg1 is the total number of mips.
+   higher mip level is lower detail."
+  (if (>= 2 arg1)
+      (+ (- -1 arg0) arg1)
+      (max 0 (- 2 arg0))
+      )
+  )
+
+;; a collection of textures. there is a tpage per category per level.
+;; these tpages are loaded from the DVD.
+;; eg: prison tfrag is its own tpage.
+;; the tpage has multiple textures, and 3 segments. lower number segments
+;; are larger and have hi-res versions of textures.
+(deftype texture-page (basic)
+  ((info      file-info                      :offset-assert   4)
+   (name      string                         :offset-assert   8)
+   (id        uint32                         :offset-assert  12)
+   (length    int32                          :offset-assert  16)
+   (mip0-size uint32                         :offset-assert  20)
+   (size      uint32                         :offset-assert  24)
+   (segment   texture-page-segment 3 :inline :offset-assert  28)
+   (dram-size uint32                         :offset-assert  64)
+   (pad       uint32               15        :offset-assert  68)
+   (data      texture              :dynamic  :offset-assert 128)
+   )
+  :method-count-assert 14
+  :size-assert         #x80
+  :flag-assert         #xe00000080
+  (:methods
+    (relocate (_type_ kheap (pointer uint8)) texture-page :replace 7)
+    (remove-data-from-heap (_type_ kheap) _type_ 9)
+    (get-leftover-block-count (_type_ int int) int 10)
+    (relocate-dests! (_type_ int int) none 11)
+    (add-to-dma-buffer (_type_ dma-buffer tex-upload-mode) int 12)
+    (upload-now! (_type_ tex-upload-mode) none 13)
+    )
+  )
+
+;; a pointer to an adgif-shader, stored in bits 8-32. This allows them to fit into
+;; an adgif shader easily.
+(deftype shader-ptr (uint32)
+  ((shader uint32 :offset   8 :size  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; an overlay structure containing a shader-ptr that points to the next adgif shader
+;; in a linked list.
+(deftype texture-link (structure)
+  ((next shader-ptr  1 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; an entry for a texture in the texture-page-dir.
+;; the texture-page-dir contains an entry for each tpage.
+;; Each entry contains a reference to the tpage, and a linked list of shaders
+;; using it.
+(deftype texture-page-dir-entry (structure)
+  ((length int16         :offset-assert   0)
+   (status uint16        :offset-assert   2)
+   (page   texture-page  :offset-assert   4)
+   (link   texture-link  :offset-assert   8)
+   )
+  :pack-me
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; the list of all texture pages.
+;; this is static data loaded from the DVD at boot.
+(deftype texture-page-dir (basic)
+  ((length  int32                            :offset-assert   4)
+   (entries texture-page-dir-entry 1 :inline :offset-assert   8)
+   )
+  :method-count-assert 10
+  :size-assert         #x14
+  :flag-assert         #xa00000014
+  (:methods
+    (relocate (_type_ kheap (pointer uint8)) none :replace 7)
+    (unlink-shaders-in-heap (_type_ kheap) int 9)
+    )
+  )
+
+;; unused in jak 2, but metadata for postponing tpage copies until a second frame, to have a smaller
+;; impact on frame times when loading.
+(deftype texture-relocate-later (basic)
+  ((memcpy symbol                  :offset-assert   4)
+   (dest   uint32                  :offset-assert   8)
+   (source uint32                  :offset-assert  12)
+   (move   uint32                  :offset-assert  16)
+   (entry  texture-page-dir-entry  :offset-assert  20)
+   (page   texture-page            :offset-assert  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+(define *texture-relocate-later* (new 'global 'texture-relocate-later))
+(set! (-> *texture-relocate-later* memcpy) #f)
+
+(define *texture-page-dir* (the-as texture-page-dir #f))
+
+(defenum link-test-flags
+  :type uint32
+  :bitfield #t
+  (needs-log-in 8)
+  (bit-9 9)
+  (backup-sprite-tex 10) ;; set when particle-setup-adgif fails texture lookup.
+  )
+
+;; GS texturing/blending settings, called adgif-shader.
+;; these are used by many different renderers and partially managed by the texture system.
+;; for example, the texture system will automatically update tbp to point to the location
+;; of texture.
+(deftype adgif-shader (structure)
+  ((quad       qword           5 :inline :offset-assert   0)
+   (prims      gs-reg64        10        :offset          0)
+   (reg-0      uint8                     :offset          8)
+   (reg-1      uint8                     :offset         24)
+   (reg-2      uint8                     :offset         40)
+   (reg-3      uint8                     :offset         56)
+   (reg-4-u32  gs-reg32           :offset 72)
+   (reg-4      uint8                     :offset         72)
+   (tex0       gs-tex0                   :offset          0)
+   (tex1       gs-tex1                   :offset         16)
+   (miptbp1    gs-miptbp                 :offset         32)
+   (clamp      gs-clamp                  :offset         48)
+   (clamp-reg  gs-reg64                  :offset         56)
+   (alpha      gs-alpha                  :offset         64)
+   (alpha-as-miptb2 gs-miptbp :offset 64)
+   (link-test  link-test-flags           :offset          8)
+   (texture-id texture-id                :offset         24)
+   (next       shader-ptr                :offset         40)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+(deftype adgif-shader-array (inline-array-class)
+  ((data adgif-shader :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+(set! (-> adgif-shader-array heap-base) (the-as uint 80))
+
+;; metadata about an area of vram set aside for fancy dynamic texture effects (sky, eye, etc)
+(deftype texture-base (structure)
+  ((vram-page  uint32  :offset-assert   0)
+   (vram-block uint32  :offset-assert   4)
+   (vram-word  uint32  :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; GS swizzling tables.
+
+(define ct32-24-block-table
+        (new 'static 'boxed-array :type int32
+             0 1 4 5 16 17 20 21 2 3 6 7 18 19 22 23
+             8 9 12 13 24 25 28 29 10 11 14 15 26 27
+             30 31 )
+        )
+
+(define mz32-24-block-table
+        (new 'static 'boxed-array :type int32
+             16 17 20 21 0 1 4 5 18 19 22 23 2 3 6 7
+             24 25 28 29 8 9 12 13 26 27 30 31 10 11
+             14 15 )
+
+        )
+
+(define ct16-block-table
+        (new 'static 'boxed-array :type int32
+             0 2 8 10 1 3 9 11 4 6 12 14 5 7 13 15 16 18
+             24 26 17 19 25 27 20 22 28 30 21 23 29 31
+             )
+
+        )
+
+(define ct16s-block-table
+        (new 'static 'boxed-array :type int32
+             0 2 16 18 1 3 17 19 8 10 24 26 9 11 25 27
+             4 6 20 22 5 7 21 23 12 14 28 30 13 15 29 31
+             )
+
+        )
+
+(define mz16-block-table
+        (new 'static 'boxed-array :type int32
+             16 18 24 26 17 19 25 27 20 22 28 30 21 23 29
+             31 0 2 8 10 1 3 9 11 4 6 12 14 5 7 13 15)
+        )
+
+(define mz16s-block-table
+        (new 'static 'boxed-array :type int32
+             16 18 0 2 17 19 1 3 24 26 8 10 25 27 9 11
+             20 22 4 6 21 23 5 7 28 30 12 14 29 31 13
+             15
+             )
+        )
+
+(define mt8-block-table
+        (new 'static 'boxed-array :type int32
+             0 1 4 5 16 17 20 21 2 3 6 7 18 19 22 23 8 9
+             12 13 24 25 28 29 10 11 14 15 26 27 30 31
+             )
+        )
+
+(define mt4-block-table
+        (new 'static 'boxed-array :type int32
+             0 2 8 10 1 3 9 11 4 6 12 14 5 7 13 15 16 18
+             24 26 17 19 25 27 20 22 28 30 21 23 29 31
+             )
+        )
+
+(deftype texture-page-translate-item (structure)
+  ((bucket             bucket-id                :offset-assert   0)
+   (level-index        uint32                   :offset-assert   4)
+   (level-texture-page tpage-category-u32       :offset-assert   8)
+   (texture-user       texture-enable-mask-u32  :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; the order of all texture uploads in a frame.
+;; this is used by the texture system to figure out if anything can be reused
+;; or if it needs to be uploaded at a certain time.
+(define *texture-page-translate*
+        (new 'static 'boxed-array :type texture-page-translate-item
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-lcom-sky-pre)
+                  :level-index #x6
+                  :level-texture-page (tpage-category-u32 sky)
+                  :texture-user (texture-enable-mask-u32 sky)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l0-tfrag)
+                  :texture-user (texture-enable-mask-u32 tfrag)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l1-tfrag)
+                  :level-index #x1
+                  :texture-user (texture-enable-mask-u32 tfrag)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l2-tfrag)
+                  :level-index #x2
+                  :texture-user (texture-enable-mask-u32 tfrag)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l3-tfrag)
+                  :level-index #x3
+                  :texture-user (texture-enable-mask-u32 tfrag)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l4-tfrag)
+                  :level-index #x4
+                  :texture-user (texture-enable-mask-u32 tfrag)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l5-tfrag)
+                  :level-index #x5
+                  :texture-user (texture-enable-mask-u32 tfrag)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l0-shrub)
+                  :level-texture-page (tpage-category-u32 shrub)
+                  :texture-user (texture-enable-mask-u32 shrub)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l1-shrub)
+                  :level-index #x1
+                  :level-texture-page (tpage-category-u32 shrub)
+                  :texture-user (texture-enable-mask-u32 shrub)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l2-shrub)
+                  :level-index #x2
+                  :level-texture-page (tpage-category-u32 shrub)
+                  :texture-user (texture-enable-mask-u32 shrub)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l3-shrub)
+                  :level-index #x3
+                  :level-texture-page (tpage-category-u32 shrub)
+                  :texture-user (texture-enable-mask-u32 shrub)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l4-shrub)
+                  :level-index #x4
+                  :level-texture-page (tpage-category-u32 shrub)
+                  :texture-user (texture-enable-mask-u32 shrub)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l5-shrub)
+                  :level-index #x5
+                  :level-texture-page (tpage-category-u32 shrub)
+                  :texture-user (texture-enable-mask-u32 shrub)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l0-alpha)
+                  :level-texture-page (tpage-category-u32 alpha)
+                  :texture-user (texture-enable-mask-u32 alpha)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l1-alpha)
+                  :level-index #x1
+                  :level-texture-page (tpage-category-u32 alpha)
+                  :texture-user (texture-enable-mask-u32 alpha)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l2-alpha)
+                  :level-index #x2
+                  :level-texture-page (tpage-category-u32 alpha)
+                  :texture-user (texture-enable-mask-u32 alpha)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l3-alpha)
+                  :level-index #x3
+                  :level-texture-page (tpage-category-u32 alpha)
+                  :texture-user (texture-enable-mask-u32 alpha)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l4-alpha)
+                  :level-index #x4
+                  :level-texture-page (tpage-category-u32 alpha)
+                  :texture-user (texture-enable-mask-u32 alpha)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l5-alpha)
+                  :level-index #x5
+                  :level-texture-page (tpage-category-u32 alpha)
+                  :texture-user (texture-enable-mask-u32 alpha)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-lcom-tfrag)
+                  :level-index #x6
+                  :texture-user (texture-enable-mask-u32 tfrag)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-lcom-shrub)
+                  :level-index #x6
+                  :level-texture-page (tpage-category-u32 shrub)
+                  :texture-user (texture-enable-mask-u32 shrub)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l0-pris)
+                  :level-texture-page (tpage-category-u32 pris)
+                  :texture-user (texture-enable-mask-u32 pris)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l1-pris)
+                  :level-index #x1
+                  :level-texture-page (tpage-category-u32 pris)
+                  :texture-user (texture-enable-mask-u32 pris)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l2-pris)
+                  :level-index #x2
+                  :level-texture-page (tpage-category-u32 pris)
+                  :texture-user (texture-enable-mask-u32 pris)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l3-pris)
+                  :level-index #x3
+                  :level-texture-page (tpage-category-u32 pris)
+                  :texture-user (texture-enable-mask-u32 pris)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l4-pris)
+                  :level-index #x4
+                  :level-texture-page (tpage-category-u32 pris)
+                  :texture-user (texture-enable-mask-u32 pris)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l5-pris)
+                  :level-index #x5
+                  :level-texture-page (tpage-category-u32 pris)
+                  :texture-user (texture-enable-mask-u32 pris)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-lcom-pris)
+                  :level-index #x6
+                  :level-texture-page (tpage-category-u32 pris)
+                  :texture-user (texture-enable-mask-u32 pris)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l0-pris2)
+                  :level-texture-page (tpage-category-u32 pris2)
+                  :texture-user (texture-enable-mask-u32 pris)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l1-pris2)
+                  :level-index #x1
+                  :level-texture-page (tpage-category-u32 pris2)
+                  :texture-user (texture-enable-mask-u32 pris)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l2-pris2)
+                  :level-index #x2
+                  :level-texture-page (tpage-category-u32 pris2)
+                  :texture-user (texture-enable-mask-u32 pris)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l3-pris2)
+                  :level-index #x3
+                  :level-texture-page (tpage-category-u32 pris2)
+                  :texture-user (texture-enable-mask-u32 pris)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l4-pris2)
+                  :level-index #x4
+                  :level-texture-page (tpage-category-u32 pris2)
+                  :texture-user (texture-enable-mask-u32 pris)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l5-pris2)
+                  :level-index #x5
+                  :level-texture-page (tpage-category-u32 pris2)
+                  :texture-user (texture-enable-mask-u32 pris)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-lcom-pris2)
+                  :level-index #x6
+                  :level-texture-page (tpage-category-u32 pris2)
+                  :texture-user (texture-enable-mask-u32 pris)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l0-water)
+                  :level-texture-page (tpage-category-u32 water)
+                  :texture-user (texture-enable-mask-u32 water)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l1-water)
+                  :level-index #x1
+                  :level-texture-page (tpage-category-u32 water)
+                  :texture-user (texture-enable-mask-u32 water)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l2-water)
+                  :level-index #x2
+                  :level-texture-page (tpage-category-u32 water)
+                  :texture-user (texture-enable-mask-u32 water)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l3-water)
+                  :level-index #x3
+                  :level-texture-page (tpage-category-u32 water)
+                  :texture-user (texture-enable-mask-u32 water)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l4-water)
+                  :level-index #x4
+                  :level-texture-page (tpage-category-u32 water)
+                  :texture-user (texture-enable-mask-u32 water)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-l5-water)
+                  :level-index #x5
+                  :level-texture-page (tpage-category-u32 water)
+                  :texture-user (texture-enable-mask-u32 water)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-lcom-water)
+                  :level-index #x6
+                  :level-texture-page (tpage-category-u32 water)
+                  :texture-user (texture-enable-mask-u32 water)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-lcom-sky-post)
+                  :level-index #x6
+                  :level-texture-page (tpage-category-u32 sky)
+                  :texture-user (texture-enable-mask-u32 sky)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-sprite)
+                  :level-texture-page (tpage-category-u32 sprite)
+                  :texture-user (texture-enable-mask-u32 sprite)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-sprite)
+                  :level-index #x1
+                  :level-texture-page (tpage-category-u32 sprite)
+                  :texture-user (texture-enable-mask-u32 sprite)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-sprite)
+                  :level-index #x2
+                  :level-texture-page (tpage-category-u32 sprite)
+                  :texture-user (texture-enable-mask-u32 sprite)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-sprite)
+                  :level-index #x3
+                  :level-texture-page (tpage-category-u32 sprite)
+                  :texture-user (texture-enable-mask-u32 sprite)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-sprite)
+                  :level-index #x4
+                  :level-texture-page (tpage-category-u32 sprite)
+                  :texture-user (texture-enable-mask-u32 sprite)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-sprite)
+                  :level-index #x5
+                  :level-texture-page (tpage-category-u32 sprite)
+                  :texture-user (texture-enable-mask-u32 sprite)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-sprite)
+                  :level-index #x6
+                  :level-texture-page (tpage-category-u32 sprite)
+                  :texture-user (texture-enable-mask-u32 sprite)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-warp)
+                  :level-texture-page (tpage-category-u32 warp)
+                  :texture-user (texture-enable-mask-u32 warp)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-warp)
+                  :level-index #x1
+                  :level-texture-page (tpage-category-u32 warp)
+                  :texture-user (texture-enable-mask-u32 warp)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-warp)
+                  :level-index #x2
+                  :level-texture-page (tpage-category-u32 warp)
+                  :texture-user (texture-enable-mask-u32 warp)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-warp)
+                  :level-index #x3
+                  :level-texture-page (tpage-category-u32 warp)
+                  :texture-user (texture-enable-mask-u32 warp)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-warp)
+                  :level-index #x4
+                  :level-texture-page (tpage-category-u32 warp)
+                  :texture-user (texture-enable-mask-u32 warp)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-warp)
+                  :level-index #x5
+                  :level-texture-page (tpage-category-u32 warp)
+                  :texture-user (texture-enable-mask-u32 warp)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-warp)
+                  :level-index #x6
+                  :level-texture-page (tpage-category-u32 warp)
+                  :texture-user (texture-enable-mask-u32 warp)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-map)
+                  :level-texture-page (tpage-category-u32 map)
+                  :texture-user (texture-enable-mask-u32 map)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-map)
+                  :level-index #x1
+                  :level-texture-page (tpage-category-u32 map)
+                  :texture-user (texture-enable-mask-u32 map)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-map)
+                  :level-index #x2
+                  :level-texture-page (tpage-category-u32 map)
+                  :texture-user (texture-enable-mask-u32 map)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-map)
+                  :level-index #x3
+                  :level-texture-page (tpage-category-u32 map)
+                  :texture-user (texture-enable-mask-u32 map)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-map)
+                  :level-index #x4
+                  :level-texture-page (tpage-category-u32 map)
+                  :texture-user (texture-enable-mask-u32 map)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-map)
+                  :level-index #x5
+                  :level-texture-page (tpage-category-u32 map)
+                  :texture-user (texture-enable-mask-u32 map)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-map)
+                  :level-index #x6
+                  :level-texture-page (tpage-category-u32 map)
+                  :texture-user (texture-enable-mask-u32 map)
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id tex-all-map)
+                  :level-index #x6
+                  :level-texture-page (tpage-category-u32 alpha)
+                  :texture-user (texture-enable-mask-u32 map)
+                  )
+             )
+        )
+
+(define *eyes-texture-base* (new 'static 'texture-base))
+(define *skull-gem-texture-base* (new 'static 'texture-base))
+(define *ocean-texture-base* (new 'static 'texture-base))
+(define *ocean-envmap-texture-base* (new 'static 'texture-base))
+(define *grey-scale-base* (new 'static 'texture-base))
+(define *map-texture-base* (new 'static 'texture-base))
+
+(define-extern texture-page-default-allocate (function texture-pool texture-page kheap int texture-page))
+(define-extern texture-page-login  (function texture-id (function texture-pool texture-page kheap int texture-page) kheap texture-page-dir-entry))
+(define-extern lookup-texture-by-id (function texture-id texture))

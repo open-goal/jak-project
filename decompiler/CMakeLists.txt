@@ -1,6 +1,7 @@
 add_library(
         decomp
 
+        analysis/analyze_inspect_method.cpp
         analysis/atomic_op_builder.cpp
         analysis/cfg_builder.cpp
         analysis/expression_build.cpp
@@ -59,12 +60,17 @@ add_library(
         level_extractor/extract_tfrag.cpp
         level_extractor/extract_tie.cpp
         level_extractor/extract_shrub.cpp
+        level_extractor/fr3_to_gltf.cpp
         level_extractor/MercData.cpp
+        level_extractor/tfrag_tie_fixup.cpp
 
         ObjectFile/LinkedObjectFile.cpp
         ObjectFile/LinkedObjectFileCreation.cpp
         ObjectFile/ObjectFileDB.cpp
         ObjectFile/ObjectFileDB_IR2.cpp
+
+        types2/ForwardProp.cpp
+        types2/types2.cpp
 
         util/config_parsers.cpp
         util/data_decompile.cpp
@@ -73,6 +79,7 @@ add_library(
         util/goal_data_reader.cpp
         util/sparticle_decompile.cpp
         util/TP_Type.cpp
+        util/type_utils.cpp
 
         VuDisasm/VuDisassembler.cpp
         VuDisasm/VuInstruction.cpp
@@ -84,6 +91,8 @@ target_link_libraries(decomp
         common
         fmt
         stb_image
+        xdelta3
+        tiny_gltf
         )
 
 add_executable(decompiler
@@ -94,11 +103,12 @@ target_link_libraries(decompiler
         common
         lzokay
         fmt
-        stb_image)
+        stb_image
+        tiny_gltf)
 
 
 add_executable(extractor
-        extractor/main.cpp)
+        extractor/main.cpp extractor/extractor_util.hpp )
 
 target_link_libraries(extractor
         decomp
@@ -106,4 +116,5 @@ target_link_libraries(extractor
         lzokay
         fmt
         compiler
-        stb_image)
+        stb_image
+        tiny_gltf)

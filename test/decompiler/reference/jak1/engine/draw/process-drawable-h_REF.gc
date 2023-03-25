@@ -1,0 +1,107 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function cspace-by-name-no-fail
+;; INFO: Return type mismatch object vs cspace.
+(defun cspace-by-name-no-fail ((arg0 process-drawable) (arg1 string))
+  (let ((result (cspace-by-name arg0 arg1)))
+    (the-as cspace (cond
+                     (result
+                       (empty)
+                       result
+                       )
+                     (else
+                       (format 0 "no cspace (~A)~%" arg1)
+                       (the-as cspace (-> arg0 node-list data))
+                       )
+                     )
+            )
+    )
+  )
+
+;; definition for function cspace-index-by-name-no-fail
+(defun cspace-index-by-name-no-fail ((arg0 process-drawable) (arg1 string))
+  (let ((v0-0 (cspace-index-by-name arg0 arg1)))
+    (cond
+      ((< v0-0 0)
+       (format 0 "no cspace[ndx] (~A)~%" arg1)
+       0
+       )
+      (else
+        (empty)
+        v0-0
+        )
+      )
+    )
+  )
+
+;; definition for function num-func-none
+(defun num-func-none ((arg0 joint-control-channel) (arg1 float) (arg2 float))
+  (-> arg0 frame-num)
+  )
+
+;; definition for function num-func-+!
+(defun num-func-+! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
+  (set! (-> arg0 frame-num)
+        (+ (-> arg0 frame-num) (* arg1 (* (-> arg0 frame-group speed) (-> *display* time-adjust-ratio))))
+        )
+  )
+
+;; definition for function num-func--!
+(defun num-func--! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
+  (set! (-> arg0 frame-num)
+        (- (-> arg0 frame-num) (* arg1 (* (-> arg0 frame-group speed) (-> *display* time-adjust-ratio))))
+        )
+  )
+
+;; definition for function num-func-loop!
+(defun num-func-loop! ((chan joint-control-channel) (inc float) (arg2 float))
+  (let* ((duration (the float (+ (-> chan frame-group data 0 length) -1)))
+         (after-inc
+           (+ (-> chan frame-num) duration (* inc (* (-> chan frame-group speed) (-> *display* time-adjust-ratio))))
+           )
+         )
+    (set! (-> chan frame-num) (- after-inc (* (the float (the int (/ after-inc duration))) duration)))
+    )
+  )
+
+;; definition for function num-func-seek!
+(defun num-func-seek! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
+  (let ((f0-3
+          (seek (-> arg0 frame-num) arg1 (* arg2 (* (-> arg0 frame-group speed) (-> *display* time-adjust-ratio))))
+          )
+        )
+    (set! (-> arg0 frame-num) f0-3)
+    (set! (-> arg0 frame-num) f0-3)
+    f0-3
+    )
+  )
+
+;; definition for function num-func-blend-in!
+(defun num-func-blend-in! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
+  (let ((f30-0 (seek (-> arg0 frame-interp) 1.0 (* arg1 (-> *display* time-adjust-ratio)))))
+    (set! (-> arg0 frame-interp) f30-0)
+    (set! (-> arg0 frame-interp) f30-0)
+    (if (= f30-0 1.0)
+        (joint-control-reset! (-> arg0 parent) arg0)
+        )
+    f30-0
+    )
+  )
+
+;; definition for function num-func-chan
+(defun num-func-chan ((arg0 joint-control-channel) (arg1 float) (arg2 float))
+  (set! (-> arg0 frame-num)
+        (-> (the-as joint-control-channel (+ (the-as uint arg0) (* 48 (- (the int arg1) (-> arg0 group-sub-index)))))
+            frame-num
+            )
+        )
+  )
+
+;; definition for function num-func-identity
+(defun num-func-identity ((arg0 joint-control-channel) (arg1 float) (arg2 float))
+  (-> arg0 frame-num)
+  )
+
+;; failed to figure out what this is:
+0

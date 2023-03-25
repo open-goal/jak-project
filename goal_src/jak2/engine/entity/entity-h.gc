@@ -1,0 +1,256 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: entity-h.gc
+;; name in dgo: entity-h
+;; dgos: ENGINE, GAME
+
+(defenum entity-perm-status
+  :bitfield #t
+  :type uint16
+  (bit-0 0) ;; blocks birth
+  (bit-1 1)
+  (dead 2)
+  (no-kill 3)
+  (bit-4 4)
+  (bit-5 5)
+  (subtask-complete 6)
+  (bit-7 7)
+  (complete 8)
+  (bit-9 9)
+  (bit-10 10)
+  (save 11)
+  (bit-12 12)
+  )
+
+(defenum vehicle-type
+  :type int32
+  (bikea 0)
+  (bikeb 1)
+  (bikec 2)
+  (cara  3)
+  (carb  4)
+  (carc  5)
+  (guard-bike 6)
+  (hellcat 7)
+  (evan-test-bike 8)
+  (test-bike 9)
+  (test-car 10)
+  )
+
+
+(declare-type race-mesh basic)
+
+;; NOTE - for cam-start
+(define-extern reset-cameras (function none))
+
+;; NOTE - for airlock
+(define-extern process-entity-status! (function process entity-perm-status symbol entity-perm-status))
+(define-extern process-drawable-from-entity! (function process-drawable entity-actor none))
+
+(declare-type nav-poly structure)
+
+(define-extern *compact-actors* symbol)
+(define-extern *spawn-actors* symbol)
+(define-extern debug-actor (function string none))
+(define-extern reset-actors (function symbol none))
+
+;; NOTE - for projectile
+(define-extern process-entity-set! (function process entity entity))
+(define-extern process-by-ename (function string process))
+(define-extern entity-birth-no-kill (function entity process))
+
+;; DECOMP BEGINS
+
+(define *generate-actor-vis* #f)
+
+(define *generate-actor-vis-start* #f)
+
+(define *generate-actor-vis-output* #f)
+
+(deftype entity-perm (structure)
+  ((user-object object             2 :offset-assert   0)
+   (user-uint64 uint64               :offset          0)
+   (user-float  float              2 :offset          0)
+   (user-int32  int32              2 :offset          0)
+   (user-uint32 uint32             2 :offset          0)
+   (user-int16  int16              4 :offset          0)
+   (user-uint16 uint16             4 :offset          0)
+   (user-int8   int8               8 :offset          0)
+   (user-uint8  uint8              8 :offset          0)
+   (status      entity-perm-status   :offset          8)
+   (dummy       uint8              1 :offset         10)
+   (task        uint8                :offset         11)
+   (aid         actor-id             :offset         12)
+   (quad        uint128              :offset          0)
+   )
+  :method-count-assert 10
+  :size-assert         #x10
+  :flag-assert         #xa00000010
+  (:methods
+    (update (_type_ symbol entity-perm-status) _type_ 9)
+    )
+  )
+
+
+(deftype entity-links (structure)
+  ((prev-link entity-links         :offset-assert   0)
+   (next-link entity-links         :offset-assert   4)
+   (entity    entity               :offset-assert   8)
+   (process   process              :offset-assert  12)
+   (level     level                :offset-assert  16)
+   (vis-id    int32                :offset-assert  20)
+   (kill-mask task-mask            :offset-assert  24)
+   (vis-dist  meters               :offset-assert  28)
+   (trans     vector       :inline :offset-assert  32)
+   (perm      entity-perm  :inline :offset-assert  48)
+   (status    uint16               :offset         56)
+   (aid       uint32               :offset         60)
+   (task      uint8                :offset         59)
+   )
+  :method-count-assert 10
+  :size-assert         #x40
+  :flag-assert         #xa00000040
+  (:methods
+    (birth? (_type_ vector) symbol 9)
+    )
+  )
+
+
+(deftype entity-perm-array (inline-array-class)
+  ((data entity-perm :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(set! (-> entity-perm-array heap-base) (the-as uint 16))
+
+(deftype entity-links-array (inline-array-class)
+  ((data entity-links :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(set! (-> entity-links-array heap-base) (the-as uint 64))
+
+(deftype entity (res-lump)
+  ((trans vector :inline :offset-assert  32)
+   (aid   uint32         :offset-assert  48)
+   )
+  :method-count-assert 27
+  :size-assert         #x34
+  :flag-assert         #x1b00000034
+  (:methods
+    (birth! (_type_) _type_ 22)
+    (kill! (_type_) _type_ 23)
+    (add-to-level! (_type_ level-group level actor-id) none 24)
+    (remove-from-level! (_type_ level-group) _type_ 25)
+    (get-level (_type_) level 26)
+    )
+  )
+
+(deftype entity-camera (entity)
+  ((connect connectable :inline :offset-assert  64)
+   )
+  :method-count-assert 27
+  :size-assert         #x50
+  :flag-assert         #x1b00000050
+  )
+
+(deftype entity-nav-mesh (entity)
+  ((nav-mesh nav-mesh  :offset-assert  52)
+   )
+  :method-count-assert 29
+  :size-assert         #x38
+  :flag-assert         #x1d00000038
+  (:methods
+    (initialize-nav-mesh! (_type_) none 27)
+    (debug-draw (_type_) none 28)
+    )
+  )
+
+(deftype entity-race-mesh (entity)
+  ((race-mesh race-mesh  :offset-assert  52)
+   )
+  :method-count-assert 29
+  :size-assert         #x38
+  :flag-assert         #x1d00000038
+  (:methods
+    (entity-race-mesh-method-27 () none 27)
+    (entity-race-mesh-method-28 () none 28)
+    )
+  )
+
+(deftype entity-actor (entity)
+  ((etype     type               :offset         56)
+   (task      game-task          :offset-assert  60)
+   (kill-mask task-mask          :offset         52)
+   (vis-id    int16              :offset-assert  62)
+   (quat      quaternion :inline :offset-assert  64)
+   )
+  :method-count-assert 33
+  :size-assert         #x50
+  :flag-assert         #x2100000050
+  (:methods
+    (next-actor (_type_) entity-actor 27)
+    (prev-actor (_type_) entity-actor 28)
+    (debug-print (_type_ symbol type) none 29)
+    (toggle-status (_type_ entity-perm-status symbol) none 30)
+    (get-simple-travel-vector (_type_ vector vector vector object float) nav-mesh 31)
+    (project-point-to-nav-mesh (_type_ vector vector nav-poly float) nav-poly 32)
+    )
+  )
+
+(deftype actor-reference (structure)
+  ((actor entity        :offset-assert   0)
+   (id    uint32        :offset-assert   4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+
+(deftype actor-group (inline-array-class)
+  ((data actor-reference :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(set! (-> actor-group heap-base) (the-as uint 8))
+
+(deftype entity-info (basic)
+  ((ptype     type    :offset-assert   4)
+   (package   string  :offset-assert   8)
+   (art-group pair    :offset-assert  12)
+   (pool      symbol  :offset-assert  16)
+   (heap-size int32   :offset-assert  20)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+
+(deftype actor-bank (basic)
+  ((pause-dist meters  :offset-assert   4)
+   (birth-dist meters  :offset-assert   8)
+   (birth-max  int32   :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(define *ACTOR-bank* (new 'static 'actor-bank :pause-dist (meters 50) :birth-dist (meters 220) :birth-max 10))

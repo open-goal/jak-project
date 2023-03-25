@@ -1,9 +1,16 @@
 // Copyright: 2021 - 2022, Ziemas
 // SPDX-License-Identifier: ISC
 #include "loader.h"
-#include "midi_handler.h"
+
 #include <fstream>
 #include <optional>
+
+#include "midi_handler.h"
+#include "sfxblock.h"
+
+#include "common/log/log.h"
+
+#include "sfxblock2.h"
 #include <third-party/fmt/core.h>
 
 namespace snd {
@@ -11,103 +18,47 @@ enum chunk : u32 { bank, samples, midi };
 
 #define FOURCC(a, b, c, d) ((u32)(((d) << 24) | ((c) << 16) | ((b) << 8) | (a)))
 
-u32 loader::read_music_bank(SoundBankData* data) {
-  u32 handle = m_id_allocator.get_id();
-
-  auto bank = std::make_unique<MusicBank>(*this);
-
-  auto sound = (MIDISound*)((uintptr_t)data + data->FirstSound);
-  for (int i = 0; i < data->NumSounds; i++) {
-    bank->sounds.emplace_back(sound[i]);
-  }
-
-  auto progdata = (ProgData*)((uintptr_t)data + data->FirstProg);
-  for (int i = 0; i < data->NumProgs; i++) {
-    Prog prog;
-    prog.d = progdata[i];
-    bank->programs.emplace_back(std::move(prog));
-  }
-
-  for (auto& prog : bank->programs) {
-    auto tonedata = (Tone*)((uintptr_t)data + prog.d.FirstTone);
-    for (int i = 0; i < prog.d.NumTones; i++) {
-      Tone tone = tonedata[i];
-      tone.BankID = handle;
-      prog.tones.emplace_back(tone);
-    }
-  }
-
-  bank->type = BankType::Music;
-
-  bank->bank_id = handle;
-  bank->bank_name = data->BankID;
-  m_soundbanks.emplace(handle, std::move(bank));
-
-  fmt::print("Loaded music bank {:.4}\n", (char*)&data->BankID);
-
-  return handle;
-}
-
-u32 loader::read_sfx_bank(SFXBlockData* data) {
-  u32 handle = m_id_allocator.get_id();
-
-  auto bank = std::make_unique<SFXBlock>(*this);
-
-  auto sounddata = (SFXData*)((uintptr_t)data + data->FirstSound);
-  for (int i = 0; i < data->NumSounds; i++) {
-    SFX sound;
-    sound.d = sounddata[i];
-    bank->sounds.push_back(sound);
-  }
-
-  for (auto& sound : bank->sounds) {
-    auto graindata = (SFXGrain*)((uintptr_t)data + data->FirstGrain + sound.d.FirstGrain);
-    for (int i = 0; i < sound.d.NumGrains; i++) {
-      SFXGrain grain = graindata[i];
-      if (grain.Type == 1) {
-        grain.GrainParams.tone.BankID = handle;
-      }
-      sound.grains.push_back(grain);
-    }
-  }
-
-  bank->type = BankType::SFX;
-
-  bank->bank_id = handle;
-  m_soundbanks.emplace(handle, std::move(bank));
-  return handle;
-}
-
 u32 loader::read_bank(std::fstream& in) {
   size_t origin = in.tellg();
   FileAttributes<3> attr;
   in.read((char*)(&attr), sizeof(attr));
 
   if (attr.type != 1 && attr.type != 3) {
-    fmt::print("Error: File type {} not supported.", attr.type);
+    lg::error("Error: File type {} not supported.", attr.type);
     return -1;
   }
 
+  /*
+   * if there's midi data the pointer to the allocated memory is stored
+   * just before the sound bank data...
   if (attr.num_chunks > 2) {
-    // Fix for bugged tooling I assume?
     attr.where[chunk::bank].size += 4;
   }
+  */
 
   // auto pos = in.tellg();
   auto bank_buf = std::make_unique<u8[]>(attr.where[chunk::bank].size);
   in.seekg(origin + attr.where[chunk::bank].offset, std::fstream::beg);
   in.read((char*)bank_buf.get(), attr.where[chunk::bank].size);
-  auto bank = (BankTag*)bank_buf.get();
+  auto bank_tag = (BankTag*)bank_buf.get();
 
-  u32 bank_id = 0;
+  u32 bank_id = m_id_allocator.get_id();
+  std::unique_ptr<SoundBank> bank;
 
-  if (bank->DataID == FOURCC('S', 'B', 'v', '2')) {
-    bank_id = read_music_bank((SoundBankData*)bank_buf.get());
-  } else if (bank->DataID == FOURCC('S', 'B', 'l', 'k')) {
-    bank_id = read_sfx_bank((SFXBlockData*)bank_buf.get());
+  if (bank_tag->DataID == FOURCC('S', 'B', 'v', '2')) {
+    bank = std::make_unique<MusicBank>(*this, bank_id, bank_tag);
+  } else if (bank_tag->DataID == FOURCC('S', 'B', 'l', 'k')) {
+    if (bank_tag->Version < 2) {
+      bank = std::make_unique<SFXBlock>(*this, bank_id, bank_tag);
+    } else {
+      bank = std::make_unique<SFXBlock2>(*this, bank_id, bank_tag);
+    }
   } else {
+    m_id_allocator.free_id(bank_id);
     throw std::runtime_error("Unknown bank ID, bad file?");
   }
+
+  m_soundbanks.emplace(bank_id, std::move(bank));
 
   if (attr.num_chunks >= 2) {
     in.seekg(origin + attr.where[chunk::samples].offset, std::fstream::beg);
@@ -120,8 +71,6 @@ u32 loader::read_bank(std::fstream& in) {
     in.seekg(origin + attr.where[chunk::midi].offset, std::fstream::beg);
     load_midi(in);
   }
-
-  fmt::print("Created bank {}\n", bank_id);
 
   return bank_id;
 }
@@ -137,7 +86,7 @@ void loader::load_midi(std::fstream& in) {
   in.read((char*)midi.get(), attr.where[0].size);
 
   auto h = (MIDIBlock*)midi.get();
-  fmt::print("Loaded midi {:.4}\n", (char*)&h->ID);
+  lg::info("Loaded midi {:.4}", (char*)&h->ID);
 
   m_midi.emplace(h->ID, (MIDIBlock*)midi.get());
   m_midi_chunks.emplace_back(std::move(midi));
@@ -151,13 +100,37 @@ SoundBank* loader::get_bank_by_handle(u32 id) {
   return m_soundbanks[id].get();
 }
 
-MusicBank* loader::get_bank_by_name(u32 id) {
+MusicBank* loader::get_bank_by_id(u32 id) {
   for (auto& b : m_soundbanks) {
     if (b.second->type == BankType::Music) {
       auto* bank = static_cast<MusicBank*>(b.second.get());
       if (bank->bank_name == id) {
         return bank;
       }
+    }
+  }
+
+  return nullptr;
+}
+
+SoundBank* loader::get_bank_by_name(const char* name) {
+  for (auto& b : m_soundbanks) {
+    auto bankname = b.second->get_name();
+    if (bankname.has_value()) {
+      if (bankname->compare(name) == 0) {
+        return b.second.get();
+      }
+    }
+  }
+
+  return nullptr;
+}
+
+SoundBank* loader::get_bank_with_sound(const char* name) {
+  for (auto& b : m_soundbanks) {
+    auto sound = b.second->get_sound_by_name(name);
+    if (sound.has_value()) {
+      return b.second.get();
     }
   }
 

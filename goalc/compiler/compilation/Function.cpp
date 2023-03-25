@@ -5,6 +5,7 @@
 
 #include "goalc/compiler/Compiler.h"
 #include "goalc/emitter/CallingConvention.h"
+
 #include "third-party/fmt/core.h"
 
 namespace {
@@ -32,8 +33,7 @@ const goos::Object& get_lambda_body(const goos::Object& def) {
  * when used in a function call. This only works for immediaate function calls, you can't "save"
  * an (inline my-func) into a function pointer.
  *
- * If inlining is not possible (function disallows inlining or didn't save its code), throw an
- * error.
+ * If inlining is not possible (function didn't save its code), throw an error.
  */
 Val* Compiler::compile_inline(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
@@ -46,12 +46,8 @@ Val* Compiler::compile_inline(const goos::Object& form, const goos::Object& rest
                          args.unnamed.at(0).print());
   }
 
-  if (kv->second->func && !kv->second->func->settings.allow_inline) {
-    throw_compiler_error(form,
-                         "Cannot inline {} because inlining of this function was disallowed.");
-  }
   auto fe = env->function_env();
-  return fe->alloc_val<InlinedLambdaVal>(kv->second->type(), kv->second);
+  return fe->alloc_val<InlinedLambdaVal>(kv->second.type, kv->second);
 }
 
 Val* Compiler::compile_local_vars(const goos::Object& form, const goos::Object& rest, Env* env) {
@@ -203,6 +199,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     if (args.has_named("behavior")) {
       const std::string behavior_type = symbol_string(args.get_named("behavior"));
       auto self_var = new_func_env->make_gpr(m_ts.make_typespec(behavior_type));
+      self_var->mark_as_settable();
       IRegConstraint constr;
       constr.contrain_everywhere = true;
       constr.desired_register = emitter::gRegInfo.get_process_reg();
@@ -331,13 +328,11 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
     auto kv = m_inlineable_functions.find(uneval_head.as_symbol());
     if (kv != m_inlineable_functions.end()) {
       // it's inlinable.  However, we do not always inline an inlinable function by default
-      if (kv->second->func ==
-              nullptr ||  // only-inline, we must inline it as there is no code generated for it
-          kv->second->func->settings
-              .inline_by_default) {  // inline when possible, so we should inline
-
+      if (kv->second.inline_by_default) {  // inline when possible, so we should inline
         auto_inline = true;
-        head = kv->second;
+        auto* lv = env->function_env()->alloc_val<LambdaVal>(kv->second.type);
+        lv->lambda = kv->second.lambda;
+        head = lv;
       }
     }
   }
@@ -392,7 +387,8 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
       auto head_as_inlined_lambda = dynamic_cast<InlinedLambdaVal*>(head);
       if (head_as_inlined_lambda) {
         // yes, remember the lambda that contains and flag that we're inlining.
-        head_as_lambda = head_as_inlined_lambda->lv;
+        head_as_lambda = env->function_env()->alloc_val<LambdaVal>(head_as_inlined_lambda->lv.type);
+        head_as_lambda->lambda = head_as_inlined_lambda->lv.lambda;
         got_inlined_lambda = true;
       }
     }
@@ -452,7 +448,8 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
       // note, inlined functions will get a more specific type if possible
       // todo, is this right?
       auto type = eval_args.at(i)->type();
-      auto copy = env->make_ireg(type, m_ts.lookup_type(type)->get_preferred_reg_class());
+      auto copy =
+          env->make_ireg(type, m_ts.lookup_type_allow_partial_def(type)->get_preferred_reg_class());
       env->emit_ir<IR_RegSet>(form, copy, eval_args.at(i));
       copy->mark_as_settable();
       lexical_env->vars[head_as_lambda->lambda.params.at(i).name] = copy;
@@ -732,7 +729,10 @@ Val* Compiler::compile_declare_file(const goos::Object& /*form*/,
       if (!rrest->is_empty_list()) {
         throw_compiler_error(first, "Invalid debug declare");
       }
-      env->file_env()->set_debug_file();
+      if (!env->file_env()->is_debug_file()) {
+        env->file_env()->set_debug_file();
+        throw DebugFileDeclareException();
+      }
 
     } else {
       throw_compiler_error(first, "Unrecognized declare-file option {}.", first.print());

@@ -5,15 +5,18 @@
  * The GOAL Value. A value represents a place (where the value is stored) and a type.
  */
 
-#include <utility>
-#include <string>
-#include <stdexcept>
 #include <optional>
-#include "common/type_system/TypeSystem.h"
-#include "goalc/regalloc/IRegister.h"
+#include <stdexcept>
+#include <string>
+#include <utility>
+
 #include "Lambda.h"
 #include "StaticObject.h"
+
+#include "common/type_system/TypeSystem.h"
+
 #include "goalc/compiler/ConstantValue.h"
+#include "goalc/regalloc/IRegister.h"
 
 class RegVal;
 class Env;
@@ -137,9 +140,9 @@ class LambdaVal : public Val {
 
 class InlinedLambdaVal : public Val {
  public:
-  explicit InlinedLambdaVal(TypeSpec ts, LambdaVal* _lv) : Val(std::move(ts)), lv(_lv) {}
-  std::string print() const override { return "inline-lambda-" + lv->lambda.debug_name; }
-  LambdaVal* lv = nullptr;
+  explicit InlinedLambdaVal(TypeSpec ts, InlineableFunction _lv) : Val(std::move(ts)), lv(_lv) {}
+  std::string print() const override { return "inline-lambda-" + lv.lambda.debug_name; }
+  InlineableFunction lv;
   RegVal* to_reg(const goos::Object& form, Env* fe) override;
 };
 

@@ -1,0 +1,1360 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *sound-player-rpc*, type rpc-buffer-pair
+(define *sound-player-rpc* (new 'global 'rpc-buffer-pair (the-as uint 80) (the-as uint 128) 0))
+
+;; definition for symbol *sound-loader-rpc*, type rpc-buffer-pair
+(define *sound-loader-rpc* (new 'global 'rpc-buffer-pair (the-as uint 80) (the-as uint 1) 1))
+
+;; definition for function sound-name=
+(defun sound-name= ((arg0 sound-name) (arg1 sound-name))
+  (and (= (the-as uint arg0) (the-as uint arg1)) (= (-> arg0 hi) (-> arg1 hi)))
+  )
+
+;; definition of type sound-iop-info
+(deftype sound-iop-info (basic)
+  ((frame       uint32      :offset         16)
+   (strpos      int32       :offset-assert  20)
+   (str-id      sound-id    :offset-assert  24)
+   (str-id-sign int32       :offset         24)
+   (freemem     uint32      :offset-assert  28)
+   (chinfo      uint8    48 :offset-assert  32)
+   (freemem2    uint32      :offset-assert  80)
+   (nocd        uint32      :offset-assert  84)
+   (dirtycd     uint32      :offset-assert  88)
+   (diskspeed   uint32   2  :offset-assert  92)
+   (lastspeed   uint32      :offset-assert 100)
+   (dupseg      int32       :offset-assert 104)
+   (times       uint32   41 :offset-assert 108)
+   (times-seq   uint32      :offset-assert 272)
+   )
+  :method-count-assert 9
+  :size-assert         #x114
+  :flag-assert         #x900000114
+  )
+
+;; definition for method 3 of type sound-iop-info
+(defmethod inspect sound-iop-info ((obj sound-iop-info))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tframe: ~D~%" (-> obj frame))
+  (format #t "~Tstrpos: ~D~%" (-> obj strpos))
+  (format #t "~Tstr-id: ~D~%" (-> obj str-id))
+  (format #t "~Tstr-id-sign: ~D~%" (-> obj str-id-sign))
+  (format #t "~Tfreemem: ~D~%" (-> obj freemem))
+  (format #t "~Tchinfo[48] @ #x~X~%" (-> obj chinfo))
+  (format #t "~Tfreemem2: ~D~%" (-> obj freemem2))
+  (format #t "~Tnocd: ~D~%" (-> obj nocd))
+  (format #t "~Tdirtycd: ~D~%" (-> obj dirtycd))
+  (format #t "~Tdiskspeed[2] @ #x~X~%" (-> obj diskspeed))
+  (format #t "~Tlastspeed: ~D~%" (-> obj lastspeed))
+  (format #t "~Tdupseg: ~D~%" (-> obj dupseg))
+  (format #t "~Ttimes[41] @ #x~X~%" (-> obj times))
+  (format #t "~Ttimes-seq: ~D~%" (-> obj times-seq))
+  obj
+  )
+
+;; definition for symbol *sound-iop-info*, type sound-iop-info
+(define *sound-iop-info* (new 'global 'sound-iop-info))
+
+;; definition for function str-is-playing?
+(defun str-is-playing? ()
+  (!= (-> *sound-iop-info* strpos) -1)
+  )
+
+;; definition for function current-str-id
+;; INFO: Return type mismatch int vs sound-id.
+(defun current-str-id ()
+  (the-as sound-id (-> *sound-iop-info* str-id-sign))
+  )
+
+;; definition for function current-str-pos
+(defun current-str-pos ((arg0 sound-id))
+  (let ((v0-0 -1))
+    (if (= arg0 (-> *sound-iop-info* str-id))
+        (set! v0-0 (-> *sound-iop-info* strpos))
+        )
+    v0-0
+    )
+  )
+
+;; definition for function is-cd-in?
+(defun is-cd-in? ()
+  (zero? (-> *sound-iop-info* nocd))
+  )
+
+;; definition for function new-sound-id
+(defun new-sound-id ()
+  (set! *current-sound-id* (+ *current-sound-id* 1))
+  (if (< (the-as int *current-sound-id*) #x10000)
+      (set! *current-sound-id* (the-as sound-id #x10000))
+      )
+  *current-sound-id*
+  )
+
+;; definition for function check-irx-version
+(defun check-irx-version ()
+  (let ((cmd (the-as sound-rpc-get-irx-version (add-element *sound-loader-rpc*))))
+    (set! (-> cmd command) (sound-command get-irx-version))
+    (set! (-> cmd ee-addr) (&-> *sound-iop-info* frame))
+    (call *sound-loader-rpc* (the-as uint 0) (the-as pointer cmd) (the-as uint 80))
+    (sync *sound-loader-rpc* #f)
+    (format 0 "IRX version ~D.~D~%" (-> cmd major) (-> cmd minor))
+    (when (or (!= (-> cmd major) 2) (nonzero? (-> cmd minor)))
+      (format 0 "ERROR: IRX is the wrong version - need ~D.~D~%" 2 0)
+      (format 0 "~%~%Please do (:mch) then mkee on linux-dog~%~%~%")
+      (crash!)
+      0
+      )
+    )
+  0
+  )
+
+;; failed to figure out what this is:
+(check-irx-version)
+
+;; definition for function sound-bank-load
+;; INFO: Used lq/sq
+(defun sound-bank-load ((arg0 sound-name))
+  (let ((gp-0 (new-sound-id)))
+    (let ((cmd (the-as sound-rpc-load-bank (add-element *sound-loader-rpc*))))
+      (set! (-> cmd command) (sound-command load-bank))
+      (set! (-> cmd bank-name) arg0)
+      )
+    (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
+    gp-0
+    )
+  )
+
+;; definition for function sound-bank-unload
+;; INFO: Used lq/sq
+(defun sound-bank-unload ((arg0 sound-name))
+  (let ((cmd (the-as sound-rpc-unload-bank (add-element *sound-loader-rpc*))))
+    (set! (-> cmd command) (sound-command unload-bank))
+    (set! (-> cmd bank-name) arg0)
+    )
+  (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
+  0
+  )
+
+;; definition for function sound-music-load
+;; INFO: Used lq/sq
+(defun sound-music-load ((arg0 sound-name))
+  (let ((cmd (the-as sound-rpc-load-music (add-element *sound-loader-rpc*))))
+    (set! (-> cmd command) (sound-command load-music))
+    (set! (-> cmd bank-name) arg0)
+    )
+  (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
+  0
+  )
+
+;; definition for function sound-music-unload
+(defun sound-music-unload ()
+  (let ((cmd (the-as sound-rpc-unload-music (add-element *sound-loader-rpc*))))
+    (set! (-> cmd command) (sound-command unload-music))
+    )
+  (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
+  0
+  )
+
+;; failed to figure out what this is:
+(sound-bank-load (static-sound-name "common"))
+
+;; failed to figure out what this is:
+(sound-bank-load (static-sound-name "empty1"))
+
+;; failed to figure out what this is:
+(sound-bank-load (static-sound-name "empty2"))
+
+;; definition for symbol *sound-bank-1*, type symbol
+(define *sound-bank-1* 'empty1)
+
+;; definition for symbol *sound-bank-2*, type symbol
+(define *sound-bank-2* 'empty2)
+
+;; definition for function sound-reload-info
+(defun sound-reload-info ()
+  (let ((cmd (the-as sound-rpc-reload-info (add-element *sound-loader-rpc*))))
+    (set! (-> cmd command) (sound-command reload-info))
+    )
+  (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
+  0
+  )
+
+;; definition for function set-language
+(defun set-language ((arg0 language-enum))
+  (kset-language arg0)
+  (let ((cmd (the-as sound-rpc-set-language (add-element *sound-loader-rpc*))))
+    (set! (-> cmd command) (sound-command set-language))
+    (set! (-> cmd lang) (the-as uint arg0))
+    )
+  (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
+  0
+  )
+
+;; definition for function list-sounds
+(defun list-sounds ()
+  (let ((cmd (the-as sound-rpc-list-sounds (add-element *sound-loader-rpc*))))
+    (set! (-> cmd command) (sound-command list-sounds))
+    )
+  (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
+  0
+  )
+
+;; definition for function sound-command->string
+(defun sound-command->string ((arg0 sound-command))
+  (case arg0
+    (((sound-command unload-music))
+     "unload-music"
+     )
+    (((sound-command list-sounds))
+     "list-sounds"
+     )
+    (((sound-command shutdown))
+     "shutdown"
+     )
+    (((sound-command set-ear-trans))
+     "set-ear-trans"
+     )
+    (((sound-command set-reverb))
+     "set-reverb"
+     )
+    (((sound-command set-flava))
+     "set-flava"
+     )
+    (((sound-command set-language))
+     "set-language"
+     )
+    (((sound-command reload-info))
+     "reload-info"
+     )
+    (((sound-command set-sound-falloff))
+     "set-sound-falloff"
+     )
+    (((sound-command set-falloff-curve))
+     "set-falloff-curve"
+     )
+    (((sound-command get-irx-version))
+     "get-irx-version"
+     )
+    (((sound-command continue-group))
+     "continue-group"
+     )
+    (((sound-command stop-group))
+     "stop-group"
+     )
+    (((sound-command pause-group))
+     "pause-group"
+     )
+    (((sound-command set-master-volume))
+     "set-master-volume"
+     )
+    (((sound-command set-param))
+     "set-param"
+     )
+    (((sound-command continue-sound))
+     "continue-sound"
+     )
+    (((sound-command stop-sound))
+     "stop-sound"
+     )
+    (((sound-command pause-sound))
+     "pause-sound"
+     )
+    (((sound-command play))
+     "play"
+     )
+    (((sound-command unload-bank))
+     "unload-bank"
+     )
+    (((sound-command load-music))
+     "load-music"
+     )
+    (((sound-command load-bank))
+     "load-bank"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+;; definition for function sound-buffer-dump
+;; INFO: Used lq/sq
+(defun sound-buffer-dump ()
+  (let ((gp-0 (-> *sound-player-rpc* current elt-used))
+        (s5-0 (-> *sound-player-rpc* current elt-size))
+        )
+    (dotimes (s4-0 (the-as int gp-0))
+      (let* ((cmd (the-as sound-rpc-play (&+ (-> *sound-player-rpc* current base) (* s5-0 (the-as uint s4-0)))))
+             (a3-0 (sound-command->string (-> cmd command)))
+             )
+        (case (-> cmd command)
+          (((sound-command play))
+           (format #t "~D ~A ~G~%" s4-0 a3-0 (-> cmd name))
+           )
+          (else
+            (format #t "~D ~A~%" s4-0 a3-0)
+            )
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; definition for symbol *sound-player-enable*, type symbol
+(define *sound-player-enable* #t)
+
+;; definition for function swap-sound-buffers
+(defun swap-sound-buffers ((arg0 vector) (arg1 vector) (arg2 float))
+  (cond
+    ((check-busy *sound-player-rpc*)
+     (set! *sound-player-enable* #f)
+     )
+    (else
+      (let ((a0-2 (-> *sound-player-rpc* current)))
+        (if (< (-> a0-2 elt-used) (-> a0-2 elt-count))
+            (sound-set-ear-trans arg0 arg1 arg2)
+            )
+        )
+      (call *sound-player-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
+      (set! *sound-player-enable* #t)
+      )
+    )
+  (cond
+    ((nonzero? (-> *sound-iop-info* nocd))
+     (if (or (not *progress-process*) (!= (-> *progress-process* 0 display-state) 32))
+         (activate-progress *dproc* (progress-screen no-disc))
+         )
+     )
+    ((nonzero? (-> *sound-iop-info* dirtycd))
+     (if (or (not *progress-process*) (!= (-> *progress-process* 0 display-state) 33))
+         (activate-progress *dproc* (progress-screen bad-disc))
+         )
+     )
+    )
+  0
+  )
+
+;; definition for function get-sound-buffer-entry
+(defun get-sound-buffer-entry ()
+  (add-element *sound-player-rpc*)
+  )
+
+;; definition for function free-last-sound-buffer-entry
+(defun free-last-sound-buffer-entry ()
+  (decrement-elt-used *sound-player-rpc*)
+  0
+  )
+
+;; definition for function sound-basic-cb
+;; INFO: Return type mismatch int vs none.
+(defun sound-basic-cb ((arg0 int) (arg1 (pointer int32)))
+  (set! (-> arg1 0) arg0)
+  0
+  (none)
+  )
+
+;; definition for function sound-trans-convert
+(defun sound-trans-convert ((arg0 vector3w) (arg1 vector))
+  (let ((v1-0 (if arg1
+                  arg1
+                  (ear-trans)
+                  )
+              )
+        )
+    (set! (-> arg0 x) (the int (* 0.0625 (-> v1-0 x))))
+    (set! (-> arg0 y) (the int (* 0.0625 (-> v1-0 y))))
+    (set! (-> arg0 z) (the int (* 0.0625 (-> v1-0 z))))
+    )
+  0
+  )
+
+;; definition for function sound-angle-convert
+(defun sound-angle-convert ((arg0 float))
+  (let* ((f0-3 (the float (sar (shl (the int arg0) 48) 48)))
+         (v0-0 (the int (* 0.005493164 f0-3)))
+         )
+    (if (< v0-0 0)
+        (+! v0-0 360)
+        )
+    (if (< 359 v0-0)
+        (+! v0-0 -360)
+        )
+    v0-0
+    )
+  )
+
+;; definition for function string->sound-name
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch uint128 vs sound-name.
+(defun string->sound-name ((str string))
+  (let ((snd-name (new 'stack-no-clear 'qword)))
+    (set! (-> snd-name quad) (the-as uint128 0))
+    (let ((out-ptr (the-as (pointer uint8) snd-name))
+          (in-ptr (-> str data))
+          )
+      (while (and (nonzero? (-> in-ptr 0)) (< (&- in-ptr (the-as uint (-> str data))) 15))
+        (set! (-> out-ptr 0) (-> in-ptr 0))
+        (set! out-ptr (&-> out-ptr 1))
+        (set! in-ptr (&-> in-ptr 1))
+        )
+      )
+    (the-as sound-name (-> snd-name quad))
+    )
+  )
+
+;; definition for function sound-set-volume
+(defun sound-set-volume ((arg0 sound-group) (arg1 float))
+  (let ((cmd (the-as sound-rpc-set-master-volume (get-sound-buffer-entry))))
+    (set! (-> cmd command) (sound-command set-master-volume))
+    (set! (-> cmd group) arg0)
+    (set! (-> cmd volume) (the int (* 10.24 arg1)))
+    )
+  0
+  )
+
+;; definition for function sound-set-reverb
+(defun sound-set-reverb ((arg0 int) (arg1 float) (arg2 float) (arg3 uint))
+  (let ((cmd (the-as sound-rpc-set-reverb (get-sound-buffer-entry))))
+    (set! (-> cmd command) (sound-command set-reverb))
+    (set! (-> cmd core) arg3)
+    (set! (-> cmd reverb) arg0)
+    (set! (-> cmd left) (the-as uint (the int (* 32767.0 arg1))))
+    (set! (-> cmd right) (the-as uint (the int (* 32767.0 arg2))))
+    )
+  0
+  )
+
+;; definition for function sound-set-ear-trans
+(defun sound-set-ear-trans ((arg0 vector) (arg1 vector) (arg2 float))
+  (let ((cmd (the-as sound-rpc-set-ear-trans (get-sound-buffer-entry))))
+    (set! (-> cmd command) (sound-command set-ear-trans))
+    (sound-trans-convert (-> cmd ear-trans) arg0)
+    (sound-trans-convert (-> cmd cam-trans) arg1)
+    (set! (-> cmd cam-angle) (sound-angle-convert arg2))
+    )
+  0
+  )
+
+;; definition for function sound-play-by-name
+;; INFO: Used lq/sq
+(defun sound-play-by-name ((name sound-name) (id sound-id) (vol int) (pitch int) (bend int) (group sound-group) (trans symbol))
+  (local-vars (sv-16 sound-group))
+  (with-pp
+    (set! sv-16 group)
+    (let ((sound-trans (the-as structure trans)))
+      (when *sound-player-enable*
+        (let ((cmd (the-as sound-rpc-play (get-sound-buffer-entry))))
+          (set! (-> cmd command) (sound-command play))
+          (set! (-> cmd id) id)
+          (set! (-> cmd name) name)
+          (set! (-> cmd parms mask) (sound-mask))
+          (set! (-> cmd parms group) sv-16)
+          (set! (-> cmd parms volume) vol)
+          (set! (-> cmd parms pitch-mod) pitch)
+          (set! (-> cmd parms bend) bend)
+          (let ((proc (the-as process-drawable pp)))
+            (when (= (the-as symbol sound-trans) #t)
+              (if (and proc (type-type? (-> proc type) process-drawable) (nonzero? (-> proc root)))
+                  (set! sound-trans (-> proc root trans))
+                  (set! sound-trans #f)
+                  )
+              )
+            )
+          (sound-trans-convert (-> cmd parms trans) (the-as vector sound-trans))
+          )
+        )
+      )
+    id
+    )
+  )
+
+;; definition for function sound-play-by-spec
+;; INFO: Used lq/sq
+(defun sound-play-by-spec ((spec sound-spec) (id sound-id) (trans vector))
+  (with-pp
+    (when *sound-player-enable*
+      (let ((cmd (the-as sound-rpc-play (get-sound-buffer-entry))))
+        (set! (-> cmd command) (sound-command play))
+        (set! (-> cmd id) id)
+        (set! (-> cmd name) (-> spec sound-name))
+        (set! (-> cmd parms mask) (-> spec mask))
+        (set! (-> cmd parms group) (-> spec group))
+        (set! (-> cmd parms volume) (-> spec volume))
+        (set! (-> cmd parms pitch-mod) (-> spec pitch-mod))
+        (set! (-> cmd parms bend) (-> spec bend))
+        (set! (-> cmd parms fo-min) (-> spec fo-min))
+        (set! (-> cmd parms fo-max) (-> spec fo-max))
+        (set! (-> cmd parms fo-curve) (-> spec fo-curve))
+        (set! (-> cmd parms priority) (-> spec priority))
+        (let ((proc (the-as process-drawable pp)))
+          (when (= trans #t)
+            (if (and proc (type-type? (-> proc type) process-drawable) (nonzero? (-> proc root)))
+                (set! trans (-> proc root trans))
+                (set! trans (the-as vector #f))
+                )
+            )
+          )
+        (sound-trans-convert (-> cmd parms trans) trans)
+        )
+      )
+    id
+    )
+  )
+
+;; definition for function sound-pause
+(defun sound-pause ((arg0 sound-id))
+  (let ((cmd (the-as sound-rpc-pause-sound (get-sound-buffer-entry))))
+    (set! (-> cmd command) (sound-command pause-sound))
+    (set! (-> cmd id) arg0)
+    )
+  0
+  )
+
+;; definition for function sound-stop
+(defun sound-stop ((arg0 sound-id))
+  (let ((cmd (the-as sound-rpc-stop-sound (get-sound-buffer-entry))))
+    (set! (-> cmd command) (sound-command stop-sound))
+    (set! (-> cmd id) arg0)
+    )
+  0
+  )
+
+;; definition for function sound-continue
+(defun sound-continue ((arg0 sound-id))
+  (let ((cmd (the-as sound-rpc-continue-sound (get-sound-buffer-entry))))
+    (set! (-> cmd command) (sound-command continue-sound))
+    (set! (-> cmd id) arg0)
+    )
+  0
+  )
+
+;; definition for function sound-group-pause
+(defun sound-group-pause ((arg0 sound-group))
+  (let ((cmd (the-as sound-rpc-pause-group (get-sound-buffer-entry))))
+    (set! (-> cmd command) (sound-command pause-group))
+    (set! (-> cmd group) arg0)
+    )
+  0
+  )
+
+;; definition for function sound-group-stop
+(defun sound-group-stop ((arg0 sound-group))
+  (let ((cmd (the-as sound-rpc-stop-group (get-sound-buffer-entry))))
+    (set! (-> cmd command) (sound-command stop-group))
+    (set! (-> cmd group) arg0)
+    )
+  0
+  )
+
+;; definition for function sound-group-continue
+(defun sound-group-continue ((arg0 sound-group))
+  (let ((cmd (the-as sound-rpc-continue-group (get-sound-buffer-entry))))
+    (set! (-> cmd command) (sound-command continue-group))
+    (set! (-> cmd group) arg0)
+    )
+  0
+  )
+
+;; definition for function sound-set-falloff-curve
+(defun sound-set-falloff-curve ((arg0 int) (arg1 float) (arg2 float))
+  (let ((cmd (the-as sound-rpc-set-falloff-curve (get-sound-buffer-entry))))
+    (set! (-> cmd command) (sound-command set-falloff-curve))
+    (set! (-> cmd curve) arg0)
+    (set! (-> cmd falloff) (the int (* 4096.0 arg1)))
+    (set! (-> cmd ease) (the int (* 4096.0 arg2)))
+    )
+  0
+  )
+
+;; definition for function sound-set-sound-falloff
+;; INFO: Used lq/sq
+(defun sound-set-sound-falloff ((arg0 sound-name) (arg1 int) (arg2 int) (arg3 int))
+  (let ((cmd (the-as sound-rpc-set-sound-falloff (get-sound-buffer-entry))))
+    (set! (-> cmd command) (sound-command set-sound-falloff))
+    (set! (-> cmd name) arg0)
+    (set! (-> cmd min) arg1)
+    (set! (-> cmd max) arg2)
+    (set! (-> cmd curve) arg3)
+    )
+  0
+  )
+
+;; definition for function sound-set-flava
+(defun sound-set-flava ((arg0 uint))
+  (let ((cmd (the-as sound-rpc-set-flava (get-sound-buffer-entry))))
+    (set! (-> cmd command) (sound-command set-flava))
+    (set! (-> cmd flava) arg0)
+    )
+  0
+  )
+
+;; definition for function sound-volume-off
+(defun sound-volume-off ()
+  (set-setting! 'music-volume 'abs 0.0 0)
+  (set-setting! 'sfx-volume 'abs 0.0 0)
+  (set-setting! 'ambient-volume 'abs 0.0 0)
+  0
+  )
+
+;; definition for symbol *ambient-spec*, type sound-spec
+(define *ambient-spec* (new 'static 'sound-spec))
+
+;; definition for method 0 of type ambient-sound
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch object vs ambient-sound.
+(defmethod new ambient-sound ((allocation symbol) (type-to-make type) (arg0 basic) (arg1 vector))
+  (local-vars
+    (sv-16 sound-spec)
+    (sv-32 sound-name)
+    (sv-48 (pointer float))
+    (sv-52 sound-play-parms)
+    (sv-56 int)
+    (sv-64 res-tag)
+    )
+  (set! sv-16 (the-as sound-spec #f))
+  (set! sv-32 (the-as sound-name 0))
+  (set! sv-48 (the-as (pointer float) #f))
+  (set! sv-52 (the-as sound-play-parms #f))
+  (set! sv-56 0)
+  (case (-> arg0 type)
+    ((entity-actor entity-ambient)
+     (let ((bc
+             ((method-of-type res-lump get-property-struct)
+              (the-as res-lump arg0)
+              'effect-name
+              'exact
+              0.0
+              #f
+              (the-as (pointer res-tag) #f)
+              *res-static-buf*
+              )
+             )
+           )
+       (when bc
+         (set! sv-32 (string->sound-name (symbol->string bc)))
+         (set! sv-48 (res-lump-data (the-as res-lump arg0) 'cycle-speed (pointer float)))
+         (set! sv-16 *ambient-spec*)
+         (set! sv-64 (new 'static 'res-tag))
+         (let ((v1-7
+                 ((method-of-type res-lump get-property-data)
+                  (the-as res-lump arg0)
+                  'effect-param
+                  'exact
+                  0.0
+                  (the-as pointer #f)
+                  (& sv-64)
+                  *res-static-buf*
+                  )
+                 )
+               )
+           (when v1-7
+             (set! sv-52 (the-as sound-play-parms v1-7))
+             (set! sv-56 (the-as int (-> sv-64 elt-count)))
+             )
+           )
+         )
+       )
+     )
+    ((sound-spec)
+     (set! sv-16 (the-as sound-spec arg0))
+     )
+    ((symbol)
+     (set! sv-32 (string->sound-name (symbol->string arg0)))
+     )
+    ((string)
+     (set! sv-32 (string->sound-name (the-as string arg0)))
+     )
+    (else
+      (format 0 "ERROR: ambient sound was told to play an unknown ~A.~%" arg0)
+      )
+    )
+  (the-as
+    ambient-sound
+    (cond
+      ((or sv-16 (nonzero? sv-32))
+       (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+         (set! (-> obj spec) sv-16)
+         (set! (-> obj name) sv-32)
+         (set! (-> obj playing-id) (new-sound-id))
+         (set! (-> obj params) (the-as (pointer float) sv-52))
+         (set! (-> obj param-count) sv-56)
+         (set! (-> obj entity) #f)
+         (set! (-> obj sound-count) 1)
+         (set! (-> obj volume) 1024)
+         (set! (-> obj pitch) 0)
+         (when (and sv-16 (!= sv-16 *ambient-spec*))
+           (if (logtest? (-> (the-as sound-spec sv-16) mask) (sound-mask volume))
+               (set! (-> obj volume) (-> (the-as sound-spec sv-16) volume))
+               )
+           (if (logtest? (-> (the-as sound-spec sv-16) mask) (sound-mask pitch))
+               (set! (-> obj pitch) (-> (the-as sound-spec sv-16) pitch-mod))
+               )
+           )
+         (cond
+           (sv-48
+             (set! (-> obj time-base) (the-as time-frame (the int (* 300.0 (-> sv-48 0)))))
+             (set! (-> obj time-random) (the-as time-frame (the int (* 300.0 (-> sv-48 1)))))
+             )
+           (else
+             (set! (-> obj time-base) -1)
+             )
+           )
+         (set! (-> obj trans quad) (-> arg1 quad))
+         obj
+         )
+       )
+      (else
+        (the-as ambient-sound 0)
+        )
+      )
+    )
+  )
+
+;; definition for method 9 of type ambient-sound
+;; INFO: Used lq/sq
+(defmethod update! ambient-sound ((obj ambient-sound))
+  (with-pp
+    (if (not *ambient-sound-class*)
+        (return (the-as int #f))
+        )
+    (cond
+      ((-> obj spec)
+       (when (or (< (-> obj time-base) 0) (>= (-> *display* base-frame-counter) (-> obj play-time)))
+         (when (>= (-> obj time-base) 0)
+           (set! (-> obj play-time)
+                 (+ (-> *display* base-frame-counter) (-> obj time-base) (rand-vu-int-count (the-as int (-> obj time-random))))
+                 )
+           (set! (-> obj playing-id) (new-sound-id))
+           )
+         (let ((spec (-> obj spec)))
+           (when (= spec *ambient-spec*)
+             (set! (-> spec volume) (-> obj volume))
+             (set! (-> spec pitch-mod) (-> obj pitch))
+             (set! (-> spec bend) 0)
+             (set! (-> spec sound-name) (-> obj name))
+             (set! (-> spec fo-max) (-> obj falloff-far))
+             (set! (-> spec mask) (sound-mask))
+             (if (-> obj params)
+                 (effect-param->sound-spec spec (-> obj params) (-> obj param-count))
+                 )
+             )
+           (if (and (nonzero? (-> spec fo-max))
+                    (< (* 4096.0 (the float (-> spec fo-max))) (vector-vector-distance (ear-trans) (-> obj trans)))
+                    )
+               (return 0)
+               )
+           (when (and *debug-effect-control* (>= (-> obj time-base) 0))
+             (format #t "(~5D) effect sound ~A ~G " (-> *display* base-frame-counter) (-> pp name) (&-> spec sound-name))
+             (format
+               #t
+               "volume: ~f  pitch-mod: ~f~%"
+               (* 0.09765625 (the float (-> spec volume)))
+               (* 0.000656168 (the float (-> spec pitch-mod)))
+               )
+             )
+           (let ((spec-volume (-> spec volume)))
+             (set! (-> spec volume) (-> obj volume))
+             (set! (-> obj playing-id) (sound-play-by-spec spec (-> obj playing-id) (-> obj trans)))
+             (set! (-> spec volume) spec-volume)
+             )
+           )
+         )
+       )
+      ((< (-> obj time-base) 0)
+       (set! (-> obj playing-id) (sound-play-by-name
+                                   (-> obj name)
+                                   (-> obj playing-id)
+                                   (-> obj volume)
+                                   (-> obj pitch)
+                                   0
+                                   (sound-group sfx)
+                                   (the-as symbol (-> obj trans))
+                                   )
+             )
+       )
+      (else
+        (when (>= (-> *display* base-frame-counter) (-> obj play-time))
+          (set! (-> obj playing-id)
+                (sound-play-by-name
+                  (-> obj name)
+                  (new-sound-id)
+                  (-> obj volume)
+                  (-> obj pitch)
+                  0
+                  (sound-group sfx)
+                  (the-as symbol (-> obj trans))
+                  )
+                )
+          (set! (-> obj play-time)
+                (+ (-> *display* base-frame-counter) (-> obj time-base) (rand-vu-int-count (the-as int (-> obj time-random))))
+                )
+          )
+        )
+      )
+    0
+    )
+  )
+
+;; definition for method 13 of type ambient-sound
+(defmethod stop! ambient-sound ((obj ambient-sound))
+  (sound-stop (-> obj playing-id))
+  0
+  )
+
+;; definition for method 11 of type ambient-sound
+;; INFO: Used lq/sq
+(defmethod update-trans! ambient-sound ((obj ambient-sound) (arg0 vector))
+  (with-pp
+    (set! (-> obj trans quad) (-> arg0 quad))
+    (when (nonzero? (-> obj playing-id))
+      (let ((cmd (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+        (set! (-> cmd command) (sound-command set-param))
+        (set! (-> cmd id) (-> obj playing-id))
+        (let ((s4-1 pp))
+          (when (= arg0 #t)
+            (if (and (the-as process-drawable s4-1)
+                     (type-type? (-> (the-as process-drawable s4-1) type) process-drawable)
+                     (nonzero? (-> (the-as process-drawable s4-1) root))
+                     )
+                (set! arg0 (-> (the-as process-drawable s4-1) root trans))
+                (set! arg0 (the-as vector #f))
+                )
+            )
+          )
+        (sound-trans-convert (-> cmd parms trans) arg0)
+        (set! (-> cmd parms mask) (sound-mask trans))
+        (-> cmd id)
+        )
+      )
+    0
+    )
+  )
+
+;; definition for method 12 of type ambient-sound
+(defmethod update-vol! ambient-sound ((obj ambient-sound) (arg0 int))
+  (when (nonzero? (-> obj playing-id))
+    (let ((cmd (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+      (set! (-> cmd command) (sound-command set-param))
+      (set! (-> cmd id) (-> obj playing-id))
+      (set! (-> cmd parms volume) (the int (* 10.24 (the float arg0))))
+      (set! (-> cmd parms mask) (sound-mask volume))
+      (-> cmd id)
+      )
+    )
+  (set! (-> obj volume) (the int (* 10.24 (the float arg0))))
+  0
+  )
+
+;; definition for method 10 of type ambient-sound
+;; INFO: Used lq/sq
+(defmethod change-sound! ambient-sound ((obj ambient-sound) (arg0 sound-name))
+  (when (not (and (= (the-as uint (-> obj name)) (the-as uint arg0)) (= (-> arg0 hi) (-> obj name hi))))
+    (stop! obj)
+    (set! (-> obj playing-id) (new-sound-id))
+    (set! (-> obj name) arg0)
+    )
+  0
+  )
+
+;; definition for function show-iop-info
+(defun show-iop-info ((arg0 dma-buffer))
+  (dotimes (s5-0 24)
+    (draw-string-xy
+      (if (zero? (-> *sound-iop-info* chinfo s5-0))
+          "."
+          "X"
+          )
+      arg0
+      (+ (* s5-0 16) 16)
+      48
+      (font-color default)
+      (font-flags shadow)
+      )
+    )
+  (dotimes (s5-1 24)
+    (draw-string-xy
+      (if (zero? (-> *sound-iop-info* chinfo (+ s5-1 24)))
+          "."
+          "X"
+          )
+      arg0
+      (+ (* s5-1 16) 16)
+      64
+      (font-color default)
+      (font-flags shadow)
+      )
+    )
+  0
+  )
+
+;; definition for function show-iop-memory
+(defun show-iop-memory ((arg0 dma-buffer))
+  (let ((s5-0 draw-string-xy))
+    (format
+      (clear *temp-string*)
+      "~8D [~4D]"
+      (-> *sound-iop-info* freemem)
+      (shr (-> *sound-iop-info* freemem) 10)
+      )
+    (s5-0 *temp-string* arg0 32 96 (font-color default) (font-flags shadow))
+    )
+  (let ((s5-1 draw-string-xy))
+    (format
+      (clear *temp-string*)
+      "~8D [~4D]"
+      (-> *sound-iop-info* freemem2)
+      (shr (-> *sound-iop-info* freemem2) 10)
+      )
+    (s5-1 *temp-string* arg0 32 64 (font-color default) (font-flags shadow))
+    )
+  0
+  )
+
+;; definition for function ear-trans
+(defun ear-trans ()
+  (cond
+    ((or (movie?) *external-cam-mode*)
+     (math-camera-pos)
+     )
+    (*target*
+      (target-pos 0)
+      )
+    (else
+      (camera-pos)
+      )
+    )
+  )
+
+;; definition (debug) for function make-sqrt-table
+(defun-debug make-sqrt-table ()
+  (format #t "static int sqrt_table[256] =~%{~%")
+  (dotimes (gp-0 256)
+    (let* ((f0-2 (sqrtf (* 16777216.0 (the float gp-0))))
+           (a2-0 (the int (+ 0.5 f0-2)))
+           )
+      (format #t "~D,~%" a2-0)
+      )
+    )
+  (format #t "};~%")
+  0
+  )
+
+;; definition of type flava-table-row
+(deftype flava-table-row (structure)
+  ((music symbol    :offset-assert   0)
+   (flava uint8  50 :offset-assert   4)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x36
+  :flag-assert         #x900000036
+  )
+
+;; definition for method 3 of type flava-table-row
+(defmethod inspect flava-table-row ((obj flava-table-row))
+  (format #t "[~8x] ~A~%" obj 'flava-table-row)
+  (format #t "~Tmusic: ~A~%" (-> obj music))
+  (format #t "~Tflava[50] @ #x~X~%" (-> obj flava))
+  obj
+  )
+
+;; definition of type flava-table
+(deftype flava-table (basic)
+  ((row   flava-table-row 20 :inline :offset-assert   4)
+   (count int32                      :offset-assert 1284)
+   )
+  :method-count-assert 9
+  :size-assert         #x508
+  :flag-assert         #x900000508
+  )
+
+;; definition for method 3 of type flava-table
+(defmethod inspect flava-table ((obj flava-table))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Trow[20] @ #x~X~%" (-> obj row))
+  (format #t "~Tcount: ~D~%" (-> obj count))
+  obj
+  )
+
+;; definition for symbol *flava-table*, type flava-table
+(define *flava-table* (new 'global 'flava-table))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* count) 0)
+
+;; definition for function flava-lookup
+(defun flava-lookup ((arg0 symbol) (arg1 music-flava))
+  (dotimes (v1-0 (-> *flava-table* count))
+    (if (= (-> *flava-table* row v1-0 music) arg0)
+        (return (the-as int (-> *flava-table* row 0 flava (+ arg1 (* v1-0 64)))))
+        )
+    )
+  0
+  )
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (-> *flava-table* count) music) 'village1)
+
+;; failed to figure out what this is:
+(dotimes (v1-61 50)
+  (set! (-> *flava-table* row 0 flava (+ v1-61 (* (-> *flava-table* count) 64))) (the-as uint 0))
+  )
+
+;; failed to figure out what this is:
+(+! (-> *flava-table* count) 1)
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 5) (the-as uint 2))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 6) (the-as uint 6))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 7) (the-as uint 4))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 20) (the-as uint 5))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 8) (the-as uint 7))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 9) (the-as uint 8))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 10) (the-as uint 9))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 19) (the-as uint 10))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 18) (the-as uint 3))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (-> *flava-table* count) music) 'jungle)
+
+;; failed to figure out what this is:
+(dotimes (v1-77 50)
+  (set! (-> *flava-table* row 0 flava (+ v1-77 (* (-> *flava-table* count) 64))) (the-as uint 0))
+  )
+
+;; failed to figure out what this is:
+(+! (-> *flava-table* count) 1)
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 39) (the-as uint 1))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 40) (the-as uint 2))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 41) (the-as uint 3))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (-> *flava-table* count) music) 'firecanyon)
+
+;; failed to figure out what this is:
+(dotimes (v1-87 50)
+  (set! (-> *flava-table* row 0 flava (+ v1-87 (* (-> *flava-table* count) 64))) (the-as uint 0))
+  )
+
+;; failed to figure out what this is:
+(+! (-> *flava-table* count) 1)
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 1) (the-as uint 1))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (-> *flava-table* count) music) 'jungleb)
+
+;; failed to figure out what this is:
+(dotimes (v1-95 50)
+  (set! (-> *flava-table* row 0 flava (+ v1-95 (* (-> *flava-table* count) 64))) (the-as uint 0))
+  )
+
+;; failed to figure out what this is:
+(+! (-> *flava-table* count) 1)
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 21) (the-as uint 1))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (-> *flava-table* count) music) 'beach)
+
+;; failed to figure out what this is:
+(dotimes (v1-103 50)
+  (set! (-> *flava-table* row 0 flava (+ v1-103 (* (-> *flava-table* count) 64))) (the-as uint 0))
+  )
+
+;; failed to figure out what this is:
+(+! (-> *flava-table* count) 1)
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 7) (the-as uint 4))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 24) (the-as uint 1))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 25) (the-as uint 2))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 26) (the-as uint 3))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (-> *flava-table* count) music) 'misty)
+
+;; failed to figure out what this is:
+(dotimes (v1-114 50)
+  (set! (-> *flava-table* row 0 flava (+ v1-114 (* (-> *flava-table* count) 64))) (the-as uint 0))
+  )
+
+;; failed to figure out what this is:
+(+! (-> *flava-table* count) 1)
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 1) (the-as uint 3))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 22) (the-as uint 2))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 23) (the-as uint 1))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (-> *flava-table* count) music) 'village2)
+
+;; failed to figure out what this is:
+(dotimes (v1-124 50)
+  (set! (-> *flava-table* row 0 flava (+ v1-124 (* (-> *flava-table* count) 64))) (the-as uint 0))
+  )
+
+;; failed to figure out what this is:
+(+! (-> *flava-table* count) 1)
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 5) (the-as uint 1))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 6) (the-as uint 2))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 15) (the-as uint 3))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 16) (the-as uint 4))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 17) (the-as uint 5))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 36) (the-as uint 6))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (-> *flava-table* count) music) 'swamp)
+
+;; failed to figure out what this is:
+(dotimes (v1-137 50)
+  (set! (-> *flava-table* row 0 flava (+ v1-137 (* (-> *flava-table* count) 64))) (the-as uint 0))
+  )
+
+;; failed to figure out what this is:
+(+! (-> *flava-table* count) 1)
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 2) (the-as uint 4))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 37) (the-as uint 2))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 38) (the-as uint 3))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (-> *flava-table* count) music) 'rolling)
+
+;; failed to figure out what this is:
+(dotimes (v1-147 50)
+  (set! (-> *flava-table* row 0 flava (+ v1-147 (* (-> *flava-table* count) 64))) (the-as uint 0))
+  )
+
+;; failed to figure out what this is:
+(+! (-> *flava-table* count) 1)
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 42) (the-as uint 1))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (-> *flava-table* count) music) 'ogre)
+
+;; failed to figure out what this is:
+(dotimes (v1-155 50)
+  (set! (-> *flava-table* row 0 flava (+ v1-155 (* (-> *flava-table* count) 64))) (the-as uint 0))
+  )
+
+;; failed to figure out what this is:
+(+! (-> *flava-table* count) 1)
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 43) (the-as uint 1))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 44) (the-as uint 2))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (-> *flava-table* count) music) 'village3)
+
+;; failed to figure out what this is:
+(dotimes (v1-164 50)
+  (set! (-> *flava-table* row 0 flava (+ v1-164 (* (-> *flava-table* count) 64))) (the-as uint 0))
+  )
+
+;; failed to figure out what this is:
+(+! (-> *flava-table* count) 1)
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 3) (the-as uint 4))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 4) (the-as uint 5))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 5) (the-as uint 2))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 6) (the-as uint 3))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 14) (the-as uint 1))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (-> *flava-table* count) music) 'maincave)
+
+;; failed to figure out what this is:
+(dotimes (v1-176 50)
+  (set! (-> *flava-table* row 0 flava (+ v1-176 (* (-> *flava-table* count) 64))) (the-as uint 0))
+  )
+
+;; failed to figure out what this is:
+(+! (-> *flava-table* count) 1)
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 28) (the-as uint 1))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 29) (the-as uint 2))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 30) (the-as uint 3))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 31) (the-as uint 4))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (-> *flava-table* count) music) 'snow)
+
+;; failed to figure out what this is:
+(dotimes (v1-187 50)
+  (set! (-> *flava-table* row 0 flava (+ v1-187 (* (-> *flava-table* count) 64))) (the-as uint 0))
+  )
+
+;; failed to figure out what this is:
+(+! (-> *flava-table* count) 1)
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 2) (the-as uint 2))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 32) (the-as uint 1))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 33) (the-as uint 3))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 34) (the-as uint 4))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 35) (the-as uint 5))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (-> *flava-table* count) music) 'lavatube)
+
+;; failed to figure out what this is:
+(dotimes (v1-199 50)
+  (set! (-> *flava-table* row 0 flava (+ v1-199 (* (-> *flava-table* count) 64))) (the-as uint 0))
+  )
+
+;; failed to figure out what this is:
+(+! (-> *flava-table* count) 1)
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 45) (the-as uint 2))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 46) (the-as uint 3))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 49) (the-as uint 1))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (-> *flava-table* count) music) 'citadel)
+
+;; failed to figure out what this is:
+(dotimes (v1-209 50)
+  (set! (-> *flava-table* row 0 flava (+ v1-209 (* (-> *flava-table* count) 64))) (the-as uint 0))
+  )
+
+;; failed to figure out what this is:
+(+! (-> *flava-table* count) 1)
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 5) (the-as uint 1))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 6) (the-as uint 2))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 11) (the-as uint 3))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 12) (the-as uint 4))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 13) (the-as uint 5))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 27) (the-as uint 6))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (-> *flava-table* count) music) 'finalboss)
+
+;; failed to figure out what this is:
+(dotimes (v1-222 50)
+  (set! (-> *flava-table* row 0 flava (+ v1-222 (* (-> *flava-table* count) 64))) (the-as uint 0))
+  )
+
+;; failed to figure out what this is:
+(+! (-> *flava-table* count) 1)
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 47) (the-as uint 1))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 48) (the-as uint 2))
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (-> *flava-table* count) music) 'credits)
+
+;; failed to figure out what this is:
+(dotimes (v1-231 50)
+  (set! (-> *flava-table* row 0 flava (+ v1-231 (* (-> *flava-table* count) 64))) (the-as uint 0))
+  )
+
+;; failed to figure out what this is:
+(+! (-> *flava-table* count) 1)
+
+;; failed to figure out what this is:
+(set! (-> *flava-table* row (+ (-> *flava-table* count) -1) flava 49) (the-as uint 2))

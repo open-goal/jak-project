@@ -47,6 +47,7 @@ class Matcher {
   static Matcher set_var(const Matcher& src, int dst_match_id);  // var-form
   static Matcher match_or(const std::vector<Matcher>& args);
   static Matcher cast(const std::string& type, Matcher value);
+  static Matcher cast_to_any(int type_out, Matcher value);
   static Matcher any(int match_id = -1);
   static Matcher integer(std::optional<int> value);
   static Matcher any_integer(int match_id = -1);
@@ -54,6 +55,7 @@ class Matcher {
   static Matcher any_reg_cast_to_int_or_uint(int match_id = -1);
   static Matcher any_quoted_symbol(int match_id = -1);
   static Matcher any_symbol(int match_id = -1);
+  static Matcher quoted_symbol(const std::string& name);
   static Matcher symbol(const std::string& name);
   static Matcher deref(const Matcher& root,
                        bool is_addr_of,
@@ -74,6 +76,7 @@ class Matcher {
     GENERIC_OP_WITH_REST,
     OR,
     CAST,
+    CAST_TO_ANY,
     ANY,
     INT,
     ANY_INT,
@@ -93,6 +96,7 @@ class Matcher {
     SC_OR,
     BEGIN,
     REG,  // a specific register. like s6.
+    QUOTED_SYMBOL,
     INVALID
   };
 

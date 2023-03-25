@@ -1,10 +1,12 @@
+#include "print_float.h"
+
 #include <cmath>
+
+#include "common/goal_constants.h"
+#include "common/util/Assert.h"
 
 #include "third-party/dragonbox.h"
 #include "third-party/fmt/core.h"
-#include "print_float.h"
-#include "common/goal_constants.h"
-#include "common/util/Assert.h"
 
 /*!
  * Convert a float to a string. The string is _always_ in this format:
@@ -25,6 +27,14 @@ std::string float_to_string(float value, bool append_trailing_decimal) {
  */
 std::string meters_to_string(float value, bool append_trailing_decimal) {
   return float_to_string(value / METER_LENGTH, append_trailing_decimal);
+}
+
+/*!
+ * Wrapper around float_to_string, for printing degrees. Unlike float_to_string, it does not append
+ * decimals by default.
+ */
+std::string degrees_to_string(float value, bool append_trailing_decimal) {
+  return float_to_string(value / DEGREES_LENGTH, append_trailing_decimal);
 }
 
 /*!
@@ -197,4 +207,16 @@ int float_to_cstr(float value, char* buffer, bool append_trailing_decimal) {
     }
   }
   return i;
+}
+
+bool proper_float(float value) {
+  u32 int_value;
+  memcpy(&int_value, &value, 4);
+  u8 exp = (int_value >> 23) & 0xff;
+  u32 mant = int_value & 0x7fffff;
+  if ((exp == 0 && mant != 0) || exp == 0xff || !std::isfinite(value)) {
+    return false;
+  } else {
+    return true;
+  }
 }

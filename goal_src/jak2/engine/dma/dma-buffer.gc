@@ -1,0 +1,484 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: dma-buffer.gc
+;; name in dgo: dma-buffer
+;; dgos: ENGINE, GAME
+
+#|@file
+DMA buffers store data to be sent over DMA.
+They are a very simple wrapper around the data.
+Typically a dma-buffer will store dma-buckets or other more complicated data structures.
+
+The main display list uses a "chain transfer". In this mode, the DMA system reads dma-tags which
+tell it what to transfer next. This can be used to construct linked lists of DMA data.
+
+If the DMA is configured correctly, it is possible to make the first quadword contain
+both a dma-tag and a tag for the peripheral. This allows you to have a single quadword
+tag that controls both the DMA and peripheral. We call these a "dma-packet" for some reason.
+
+Ex:
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+32-bit vifcode ;; 32-bit vifcode ;; 64-bit dma-tag ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+in this case, the vifcodes will be sent to the vif, if
+the dma transfer has tte set.
+note that the second vifcode can also hold other stuff depending on the mode.
+|#
+
+;; DECOMP BEGINS
+
+;; A dma-tag plus two vif-tags in a single quadword.
+;; Most DMA stuff goes directly to the VIF, so this is the
+;; most common.
+(deftype dma-packet (structure)
+  ((dma  dma-tag  :offset-assert   0)
+   (vif0 vif-tag  :offset-assert   8)
+   (vif1 vif-tag  :offset-assert  12)
+   (quad uint128  :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; seems to be unused? Also, it seems to be broken. Do not use this.
+(deftype dma-packet-array (inline-array-class)
+  ((data dma-packet :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+(set! (-> dma-packet-array heap-base) (the-as uint 16))
+
+
+(deftype dma-gif (structure)
+  ((gif  uint64  2 :offset-assert   0)
+   (quad uint128   :offset          0)
+   ;; added these two
+   (gif0    uint64 :offset 0 :score 1)
+   (gif1    uint64 :offset 8 :score 1)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; For doing a dma -> vif -> gif (path 2) transfer.
+(deftype dma-gif-packet (structure)
+  ((dma-vif dma-packet :inline :offset-assert   0)
+   (gif     uint64     2       :offset-assert  16)
+   (gif0    uint64             :offset         16) ;; added
+   (gif1    uint64             :offset         24) ;; added
+   (quad    uint128    2       :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; dma-buffer is a dynamically sized container for storing DMA data.
+;; It seems like this was not actually implemented as a proper dynamic type.
+;; I added a data-buffer field that overlaps with data to get at the array of
+;; bytes more easily.
+(deftype dma-buffer (basic)
+  ((allocated-length int32     :offset-assert   4)
+   (base             pointer   :offset-assert   8)
+   (end              pointer   :offset-assert  12)
+   (data             uint64  1 :offset-assert  16)
+   (data-buffer      uint8    :dynamic :offset 16) ;; the actual dynamic array backing it.
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  (:methods
+    (new (symbol type int) _type_ 0)
+    )
+  )
+
+(defmethod new dma-buffer ((allocation symbol) (type-to-make type) (arg0 int))
+  "Create a new dma-buffer with enough room to store arg0 bytes.
+   Note that this does not set the end field."
+  (let ((v0-0 (object-new allocation type-to-make (+ arg0 -4 (-> type-to-make size)))))
+    (set! (-> v0-0 base) (-> v0-0 data))
+    (set! (-> v0-0 allocated-length) arg0)
+    v0-0
+    )
+  )
+
+(defun dma-buffer-inplace-new ((arg0 dma-buffer) (arg1 int))
+  "Create a dma-buffer in-place. Does not set the type of the dma-buffer object."
+  (set! (-> arg0 base) (-> arg0 data))
+  (set! (-> arg0 allocated-length) arg1)
+  arg0
+  )
+
+(defmethod length dma-buffer ((obj dma-buffer))
+  "Get the amount of data the buffer can hold, in bytes."
+  (-> obj allocated-length)
+  )
+
+(defmethod asize-of dma-buffer ((obj dma-buffer))
+  "Get the size in memory of the object"
+  (+ (-> obj allocated-length) -4 (-> dma-buffer size))
+  )
+
+(defun dma-buffer-length ((arg0 dma-buffer))
+  "Get length used in quadwords, rounded down"
+  (shr (+ (&- (-> arg0 base) (the-as uint (-> arg0 data))) 15) 4)
+  )
+
+(defun dma-buffer-free ((arg0 dma-buffer))
+  "Get the number of free quadwords, rounded down, between base and end pointers."
+  (shr (+ (&- (-> arg0 end) (the-as uint (-> arg0 base))) 15) 4)
+  )
+
+(defmacro dma-buffer-add-base-type (buf pkt dma-type &rest body)
+  "Base macro for adding stuff to a dma-buffer. Don't use this directly!"
+
+  (with-gensyms (dma-buf)
+    `(let* ((,dma-buf ,buf)
+            (,pkt (the-as ,dma-type (-> ,dma-buf base))))
+
+          ,@body
+
+          (set! (-> ,dma-buf base) (&+ (the-as pointer ,pkt) (size-of ,dma-type)))
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-base-data (buf data-type forms)
+  "Base macro for adding data words to a dma-buffer.
+   Each form in forms is converted into data-type and added to the buffer. NO TYPE CHECKING is performed, so be careful!"
+
+  (with-gensyms (dma-buf ptr)
+    `(let* ((,dma-buf ,buf)
+            (,ptr (the-as (pointer ,data-type) (-> ,dma-buf base))))
+
+          ,@(apply-i (lambda (x i) `(set! (-> ,ptr ,i) (the-as ,data-type ,x))) forms)
+
+          (set! (-> ,dma-buf base) (&+ (the-as pointer ,ptr) (* ,(length forms) (size-of ,data-type))))
+
+        )
+    )
+  )
+
+
+(defmacro dma-buffer-add-cnt-vif2 (buf qwc vif0 vif1)
+  "Add a dma-packet to a dma-buffer.
+   The packet is made up of a 'cnt' DMAtag (transfer qwc qwords of data after the tag and continue from after that point)
+    and includes two vif-tags for vifcode, or something else if needed."
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt dma-packet
+
+        (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc ,qwc))
+
+        (set! (-> ,pkt vif0) ,vif0)
+        (set! (-> ,pkt vif1) ,vif1)
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-ref-vif2 (buf qwc addr vif0 vif1)
+  "Add a dma-packet to a dma-buffer.
+   The packet is made up of a 'cnt' DMAtag (transfer qwc qwords of data at addr and continue from after the tag)
+    and includes two vif-tags for vifcode, or something else if needed."
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt dma-packet
+
+        (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id ref) :qwc ,qwc :addr (the-as int ,addr)))
+
+        (set! (-> ,pkt vif0) ,vif0)
+        (set! (-> ,pkt vif1) ,vif1)
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-ret (buf)
+  "Add a dma-packet to a dma-buffer. This packet simply does a DMA 'return' "
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt dma-packet
+
+        (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id ret) :qwc 0))
+
+        (set! (-> ,pkt vif0) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+        (set! (-> ,pkt vif1) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-gif-tag (buf giftag gifregs)
+  "Add a giftag to a dma-buffer."
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt gs-gif-tag
+
+        (set! (-> ,pkt tag) ,giftag)
+
+        (set! (-> ,pkt regs) ,gifregs)
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-uint64 (buf &rest body)
+  "Add 64-bit words to a dma-buffer. See dma-buffer-add-base-data"
+
+  `(dma-buffer-add-base-data ,buf uint64 ,body)
+  )
+
+(defmacro dma-buffer-add-uint128 (buf &rest body)
+  "Add 128-bit words to a dma-buffer. See dma-buffer-add-base-data"
+
+  `(dma-buffer-add-base-data ,buf uint128 ,body)
+  )
+
+(defun dma-buffer-add-vu-function ((dma-buf dma-buffer) (vu-func vu-function) (flush-path-3 int))
+  "Add DMA tags to load the given VU function. The destination in vu instruction memory
+   is specific inside the vu-function. This does NOT copy the vu-function into the buffer,
+   but creates a reference to the existing VU function."
+
+  ;; The first 4 bytes of a vu-function object's data are discarded because they aren't aligned.
+  (let ((func-ptr (the-as pointer (&-> vu-func data 4)))
+        (qlen (-> vu-func qlength)) ;; number of quadwords
+        (origin (-> vu-func origin)) ;; destination address in VU instruction memory.
+        )
+    ;; loop until whole program is transferred.
+    (while (> qlen 0)
+      ;; transfer up to 127 quadwords at a single time.
+      (let ((qwc-now (min 127 qlen)))
+        ;; Set up DMA to transfer the data from the vu-function
+        ;; ref id = reference to data outside of the buffer.
+        (dma-buffer-add-ref-vif2 dma-buf qwc-now func-ptr
+                    ;; Set up first vifcode as a flush.
+                    (new 'static 'vif-tag :cmd (if (zero? flush-path-3) (vif-cmd flushe) (vif-cmd flusha)))
+                    ;; next vifcode, transfer microprogram. This is in 64-bit units (VU instructions)
+                    (new 'static 'vif-tag :cmd (vif-cmd mpg) :num (shl qwc-now 1) :imm origin)
+                    )
+        ;; increment by qwc-now quadwords.
+        (&+! func-ptr (shl qwc-now 4))
+        (set! qlen (- qlen qwc-now))
+        (+! origin (shl qwc-now 1))
+        )
+      )
+    )
+  #f
+  )
+
+(defun dma-buffer-send ((chan dma-bank) (buf dma-buffer))
+  "Send the DMA buffer! DOES NOT TRANSFER TAG, you probably want dma-buffer-send-chain instead."
+  (when (< (-> buf allocated-length)
+           (&- (-> buf base) (-> buf data))
+           )
+    ;; oops. we overflowed the DMA buffer. die.
+    (segfault)
+    )
+  (dma-send chan
+   (the-as uint (-> buf data))
+   (the-as uint (dma-buffer-length buf))
+   )
+  )
+
+(defun dma-buffer-send-chain ((chan dma-bank-source) (buf dma-buffer))
+  "Send the DMA buffer! Sends the tags"
+  (when (< (-> buf allocated-length)
+           (&- (-> buf base) (-> buf data))
+           )
+    ;; oops. we overflowed the DMA buffer. die.
+    (segfault)
+    )
+  (dma-send-chain chan
+   (the-as uint (-> buf data))
+   )
+  )
+
+(defmacro dma-buffer-add-gs-set-flusha (buf &rest reg-list)
+  "Add a gif cnt dma packet to a dma-buffer for setting GS registers. Up to 16 can be set at once.
+   The packet runs the flusha command which waits for GIF transfer to end and VU1 microprogram to stop.
+   reg-list is a list of pairs where the car is the register name and the cadr is the value to be set for that register."
+
+  (let ((reg-count (length reg-list))
+        (qwc (+ (length reg-list) 1))
+        (reg-names (apply first reg-list))
+        (reg-datas (apply second reg-list))
+        )
+    `(begin
+      ;; dma tag
+      (dma-buffer-add-cnt-vif2 ,buf ,qwc
+                              (new 'static 'vif-tag :cmd (vif-cmd flusha))
+                              (new 'static 'vif-tag :cmd (vif-cmd direct) :imm ,qwc)
+                              )
+
+      ;; gif tag for editing gs regs
+      (dma-buffer-add-gif-tag ,buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :nreg ,reg-count)
+                                   (gs-reg-list a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d)
+                                   )
+
+      ;; gs regs
+      (dma-buffer-add-uint64 ,buf
+          ,@(apply2 (lambda (x) x) (lambda (x) `(gs-reg64 ,x)) reg-datas reg-names)
+          )
+      )
+    )
+  )
+
+(defmacro dma-buffer-add-gs-set (buf &rest reg-list)
+  "Add a gif cnt dma packet to a dma-buffer for setting GS registers. Up to 16 can be set at once.
+   reg-list is a list of pairs where the car is the register name and the cadr is the value to be set for that register."
+
+  (let ((reg-count (length reg-list))
+        (qwc (+ (length reg-list) 1))
+        (reg-names (apply first reg-list))
+        (reg-datas (apply second reg-list))
+        )
+    `(begin
+      ;; dma tag
+      (dma-buffer-add-cnt-vif2 ,buf ,qwc
+                              (new 'static 'vif-tag :cmd (vif-cmd nop))
+                              (new 'static 'vif-tag :cmd (vif-cmd direct) :imm ,qwc)
+                              )
+
+      ;; gif tag for editing gs regs
+      (dma-buffer-add-gif-tag ,buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :nreg ,reg-count)
+                                   (gs-reg-list a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d)
+                                   )
+
+      ;; gs regs
+      (dma-buffer-add-uint64 ,buf
+          ,@(apply2 (lambda (x) x) (lambda (x) `(gs-reg64 ,x)) reg-datas reg-names)
+          )
+      )
+    )
+  )
+
+(defmacro with-cnt-vif-block (bindings &rest body)
+  "Start a cnt w/ vif direct to gif dma packet setup for the dma-buffer in bindings.
+   With this, you can transfer data through PATH2 without having to setup the tag yourself.
+   The qwc of the transfer is determined at runtime at the end of this block."
+
+  (let ((buf (first bindings)))
+
+  (with-gensyms (buf-start buf-qwc)
+    `(let ((,buf-start (-> ,buf base)))
+
+        ;; setup the dmatag for PATH2 transfer, qwc is 0 (patched later)
+        (dma-buffer-add-cnt-vif2 ,buf 0
+                        (new 'static 'vif-tag :cmd (vif-cmd nop))
+                        (new 'static 'vif-tag :cmd (vif-cmd direct))
+                        )
+
+        ;; things with this buffer!
+        ,@body
+
+        ;; patch qwc! just do the difference between the current ptr and the old one and turn it into qwords.
+        ;; we take one qword out because it's the initial dmatag which isnt part of the count.
+        ;; this rounds *down*, so make sure to fill the buffer in 128-bit boundaries.
+        (let ((,buf-qwc (/ (+ (&- -16 ,buf-start) (the int (-> ,buf base))) 16)))
+          (cond
+            ((nonzero? ,buf-qwc) ;; stuff was added to the buffer
+             ;; patch the DMA tag
+             (logior! (-> (the-as (pointer dma-tag) ,buf-start) 0) (the-as uint (new 'static 'dma-tag :qwc ,buf-qwc)))
+             ;; patch the 2nd vifcode's imm field (qwc)
+             (logior! (-> (the-as (pointer dma-tag) ,buf-start) 1) (the-as uint (shl (shr (shl ,buf-qwc 48) 48) 32)))
+             )
+            (else ;; nothing was added to the buffer. delete the dmatag, you cannot transfer 0 qwords.
+             (set! (-> ,buf base) ,buf-start)
+             )
+            )
+          )
+        )
+
+    ))
+  )
+
+(defmacro with-cnt-vif-block-qwc (bindings &rest body)
+  "Start a cnt w/ vif direct to gif dma packet setup for the dma-buffer in bindings.
+   With this, you can transfer data through PATH2 without having to setup the tag yourself.
+   The qwc of the transfer is determined at runtime at the end of this block.
+   WARNING: You MUST guarantee that the resulting qwc is NOT zero!"
+
+  (let ((buf (first bindings)))
+
+  (with-gensyms (buf-start buf-qwc)
+    `(let ((,buf-start (the-as dma-packet (-> ,buf base))))
+        ;; dmatag will be added at the end so we reserve
+        (&+! (-> ,buf base) 16)
+
+        ;; setup the dmatag for PATH2 transfer, qwc is 0 (patched later)
+        (dma-buffer-add-cnt-vif2 ,buf 0
+                        (new 'static 'vif-tag :cmd (vif-cmd nop))
+                        (new 'static 'vif-tag :cmd (vif-cmd direct))
+                        )
+
+        ;; things with this buffer!
+        ,@body
+
+        ;; we make the dmatag now! its at the start.
+        (let ((,buf-qwc (/ (+ (- -16 (the-as int ,buf-start)) (the-as int (-> ,buf base))) 16)))
+          (set! (-> ,buf-start dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc ,buf-qwc))
+          (set! (-> ,buf-start vif0) (new 'static 'vif-tag))
+          (set! (-> ,buf-start vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1 :imm ,buf-qwc))
+          )
+        )
+
+    ))
+  )
+
+(defmacro with-dma-bucket (bindings &rest body)
+  "Start a new dma-bucket in body that will be finished at the end.
+   The bindings are the dma-buffer, dma-bucket and bucket-id respectively."
+
+  (let ((buf (first bindings))
+        (bucket (second bindings))
+        (bucket-id (third bindings))
+        )
+
+      (with-gensyms (buf-start bucket-edge pkt)
+        `(let ((,buf-start (-> ,buf base)))
+
+            ,@body
+
+            ;; we end the chain with a next.  The bucket system will patch the next chain to this,
+            ;; and then patch all the buckets togehter before sending the DMA.
+            (let ((,bucket-edge (the (pointer dma-tag) (-> ,buf base))))
+                (let ((,pkt (the-as dma-packet (-> ,buf base))))
+
+                  (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+                  (set! (-> ,pkt vif0) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+                  (set! (-> ,pkt vif1) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+
+                  (set! (-> ,buf base) (&+ (the-as pointer ,pkt) (size-of dma-packet)))
+
+                  )
+                (dma-bucket-insert-tag ,bucket ,bucket-id
+                      ,buf-start ;; the first thing in this chain, bucket will patch previous to this
+                      ,bucket-edge ;; end of this chain (ptr to next tag)
+                      )
+                )
+            )
+        )
+
+      )
+  )
+
+(defmacro with-dma-buffer-add-bucket (bindings &key (bucket-group (-> (current-frame) bucket-group)) &rest body)
+  "Bind a dma-buffer to a variable and use it on a block to allow adding things to a new bucket.
+   usage: (with-dma-buffer-add-bucket ((buffer-name buffer) bucket-id) &rest body)
+   example: (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf)) (bucket-id debug-no-zbuf)) ...)"
+
+  `(let ((,(caar bindings) ,(cadar bindings)))
+    (with-dma-bucket (,(caar bindings) ,bucket-group ,(cadr bindings))
+      ,@body
+      )
+    )
+  )
+
+

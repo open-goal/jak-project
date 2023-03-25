@@ -1,12 +1,15 @@
 #include "bitfields.h"
 
-#include "decompiler/IR2/Form.h"
 #include "common/goos/PrettyPrinter.h"
-#include "common/util/Range.h"
+#include "common/log/log.h"
 #include "common/util/BitUtils.h"
-#include "decompiler/util/DecompilerTypeSystem.h"
-#include "decompiler/IR2/GenericElementMatcher.h"
+#include "common/util/Range.h"
+#include "common/util/print_float.h"
+
 #include "decompiler/Function/Function.h"
+#include "decompiler/IR2/Form.h"
+#include "decompiler/IR2/GenericElementMatcher.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
 
 namespace decompiler {
 
@@ -42,7 +45,12 @@ goos::Object BitfieldStaticDefElement::to_form_internal(const Env& env) const {
     auto def_as_atom = form_as_atom(def.value);
     if (def_as_atom && def_as_atom->is_int()) {
       u64 v = def_as_atom->get_int();
-      if (def.is_signed) {
+      if (def.is_float) {
+        float vf;
+        memcpy(&vf, &v, 4);
+        result.push_back(pretty_print::to_symbol(
+            fmt::format(":{} {}", def.field_name, float_to_string(vf, true))));
+      } else if (def.is_signed) {
         result.push_back(pretty_print::to_symbol(fmt::format(":{} {}", def.field_name, (s64)v)));
       } else {
         result.push_back(pretty_print::to_symbol(fmt::format(":{} #x{:x}", def.field_name, v)));
@@ -319,10 +327,13 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
     int right = 0;
     int size = 64 - left;
     int offset = left - right;
-    auto f = find_field(ts, type, offset + offset_in_bitfield, size, {});
+    auto f = try_find_field(ts, type, offset + offset_in_bitfield, size, {});
+    if (!f) {
+      return {};
+    }
     BitFieldDef def;
     def.value = value;
-    def.field_name = f.name();
+    def.field_name = f->name();
     def.is_signed = false;  // we don't know.
     return def;
   }
@@ -559,7 +570,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
 
     // in this case, we expect the value we're oring with to be the appropriate mask for the field.
 
-    fmt::print("Rare bitfield set!\n");
+    lg::info("Rare bitfield set!");
     u64 value = step.amount;
     auto type = ts.lookup_type(m_type);
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
@@ -617,7 +628,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
   }
   lg::error("Current: {}", step.print());
   if (m_got_pcpyud) {
-    lg::error("Got pcpyud\n");
+    lg::error("Got pcpyud");
   }
 
   throw std::runtime_error("Unknown state in BitfieldReadElement");
@@ -704,6 +715,7 @@ BitFieldDef BitFieldDef::from_constant(const BitFieldConstantDef& constant, Form
   BitFieldDef bfd;
   bfd.field_name = constant.field_name;
   bfd.is_signed = constant.is_signed;
+  bfd.is_float = constant.is_float;
   if (constant.nested_field) {
     std::vector<BitFieldDef> defs;
     for (auto& x : constant.nested_field->fields) {
@@ -858,9 +870,13 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
   // check if it's just a constant:
   auto in_as_atom = form_as_atom(in);
   if (in_as_atom && in_as_atom->is_int()) {
+    s64 val = in_as_atom->get_int();
+    if (type_info->get_name() == "gif-tag-regs" && (u64)val == 0xeeeeeeeeeeeeeeee) {
+      return pool.form<ConstantTokenElement>("GIF_REGS_ALL_AD");
+    }
+
     // will always be 64-bits
-    auto fields =
-        try_decompile_bitfield_from_int(typespec, env.dts->ts, in_as_atom->get_int(), false, {});
+    auto fields = try_decompile_bitfield_from_int(typespec, env.dts->ts, val, false, {});
     if (!fields) {
       return pool.form<CastElement>(typespec, in);
     }
@@ -942,6 +958,9 @@ Form* cast_to_bitfield_enum(const EnumType* type_info,
                             s64 in,
                             bool no_head) {
   ASSERT(type_info->is_bitfield());
+  if (in == -1) {
+    return nullptr;
+  }
   auto elts = decompile_bitfield_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, in);
   if (no_head) {
     ASSERT(elts.size() >= 1);

@@ -3,17 +3,21 @@
  * An object file's data with linking information included.
  */
 
+#include "LinkedObjectFile.h"
+
 #include <algorithm>
 #include <cstring>
 #include <numeric>
-#include "third-party/fmt/core.h"
-#include "LinkedObjectFile.h"
+
+#include "common/goos/PrettyPrinter.h"
+#include "common/log/log.h"
+#include "common/util/Assert.h"
+
 #include "decompiler/Disasm/InstructionDecode.h"
 #include "decompiler/config.h"
+
+#include "third-party/fmt/core.h"
 #include "third-party/json.hpp"
-#include "common/log/log.h"
-#include "common/goos/PrettyPrinter.h"
-#include "common/util/Assert.h"
 
 namespace decompiler {
 /*!
@@ -174,18 +178,25 @@ void LinkedObjectFile::symbol_link_word(int source_segment,
   if (word.kind() != LinkedWord::PLAIN_DATA) {
     printf("bad symbol link word\n");
   }
-  word.set_to_symbol(kind, name);
+  if (kind == LinkedWord::EMPTY_PTR) {
+    word.set_to_empty_ptr();
+  } else {
+    word.set_to_symbol(kind, name);
+  }
 }
 
 /*!
  * Add link information that a word's lower 16 bits are the offset of the given symbol relative to
  * the symbol table register.
  */
-void LinkedObjectFile::symbol_link_offset(int source_segment, int source_offset, const char* name) {
+void LinkedObjectFile::symbol_link_offset(int source_segment,
+                                          int source_offset,
+                                          const char* name,
+                                          bool subtract_one) {
   ASSERT((source_offset % 4) == 0);
   auto& word = words_by_seg.at(source_segment).at(source_offset / 4);
   ASSERT(word.kind() == LinkedWord::PLAIN_DATA);
-  word.set_to_symbol(LinkedWord::SYM_OFFSET, name);
+  word.set_to_symbol(subtract_one ? LinkedWord::SYM_VAL_OFFSET : LinkedWord::SYM_OFFSET, name);
 }
 
 /*!
@@ -265,6 +276,10 @@ std::string LinkedObjectFile::print_words() {
 
       auto& word = words_by_seg[seg][i];
       append_word_to_string(result, word);
+
+      if (word.kind() == LinkedWord::TYPE_PTR && word.symbol_name() == "string") {
+        result += "; " + get_goal_string(seg, i) + "\n";
+      }
     }
   }
 
@@ -303,6 +318,9 @@ void LinkedObjectFile::append_word_to_string(std::string& dest, const LinkedWord
       break;
     case LinkedWord::SYM_OFFSET:
       sprintf(buff, "    .sym-off 0x%x %s\n", word.data >> 16, word.symbol_name().c_str());
+      break;
+    case LinkedWord::SYM_VAL_OFFSET:
+      sprintf(buff, "    .sym-val-off 0x%x %s\n", word.data >> 16, word.symbol_name().c_str());
       break;
     default:
       throw std::runtime_error("nyi");
@@ -396,7 +414,7 @@ void LinkedObjectFile::find_code() {
 /*!
  * Find all the functions in each segment.
  */
-void LinkedObjectFile::find_functions() {
+void LinkedObjectFile::find_functions(GameVersion version) {
   if (segments == 1) {
     // it's a v2 file, shouldn't have any functions
     ASSERT(offset_of_data_zone_by_seg.at(0) == 0);
@@ -423,7 +441,7 @@ void LinkedObjectFile::find_functions() {
         // mark this as a function, and try again from the current function start
         ASSERT(found_function_tag_loc);
         stats.function_count++;
-        functions_by_seg.at(seg).emplace_back(function_tag_loc, function_end);
+        functions_by_seg.at(seg).emplace_back(function_tag_loc, function_end, version);
         function_end = function_tag_loc;
       }
 

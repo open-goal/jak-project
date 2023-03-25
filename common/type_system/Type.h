@@ -5,14 +5,23 @@
  * Representation of a GOAL type in the type system.
  */
 
-#include <string>
 #include <map>
+#include <string>
 #include <unordered_map>
-#include "common/goal_constants.h"
+
 #include "TypeSpec.h"
+
+#include "common/goal_constants.h"
+#include "common/goos/TextDB.h"
 #include "common/util/Assert.h"
 
 class TypeSystem;
+
+// Various metadata that can be associated with a symbol or form
+struct DefinitionMetadata {
+  std::optional<goos::TextDb::ShortInfo> definition_info;
+  std::optional<std::string> docstring;
+};
 
 struct MethodInfo {
   int id = -1;
@@ -20,7 +29,9 @@ struct MethodInfo {
   TypeSpec type;
   std::string defined_in_type;
   bool no_virtual = false;
-  bool overrides_method_type_of_parent = false;
+  bool overrides_parent = false;
+  bool only_overrides_docstring = false;
+  std::optional<std::string> docstring;
 
   bool operator==(const MethodInfo& other) const;
   bool operator!=(const MethodInfo& other) const { return !((*this) == other); }
@@ -78,6 +89,7 @@ class Type {
   bool get_my_method(int id, MethodInfo* out) const;
   bool get_my_last_method(MethodInfo* out) const;
   bool get_my_new_method(MethodInfo* out) const;
+  int get_num_methods() const;
   const MethodInfo& add_method(const MethodInfo& info);
   const MethodInfo& add_new_method(const MethodInfo& info);
   std::string print_method_info() const;
@@ -103,6 +115,12 @@ class Type {
   int heap_base() const { return m_heap_base; }
 
   bool gen_inspect() const { return m_generate_inspect; }
+
+  DefinitionMetadata m_metadata;
+  std::unordered_map<std::string, std::unordered_map<std::string, DefinitionMetadata>>
+      m_virtual_state_definition_meta = {};
+  std::unordered_map<std::string, std::unordered_map<std::string, DefinitionMetadata>>
+      m_state_definition_meta = {};
 
  protected:
   Type(std::string parent, std::string name, bool is_boxed, int heap_base);
@@ -207,6 +225,7 @@ class Field {
   void mark_as_user_placed() { m_placed_by_user = true; }
   std::string print() const;
   const TypeSpec& type() const { return m_type; }
+  TypeSpec& type() { return m_type; }
   bool is_inline() const { return m_inline; }
   bool is_array() const { return m_array; }
   bool is_dynamic() const { return m_dynamic; }

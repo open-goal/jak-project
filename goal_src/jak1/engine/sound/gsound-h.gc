@@ -1,0 +1,561 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: gsound-h.gc
+;; name in dgo: gsound-h
+;; dgos: GAME, ENGINE
+
+;; Type definitions for sound.
+;; Sound is handled on the IOP, a separate processor.
+;; The EE sends commands using the IOP RPC system to the OVERLORD IOP driver telling it to load and play sounds.
+;; There is also some sort of per-frame status update, that is not included here.
+
+(defenum sound-group
+  :bitfield #t
+  :type uint8
+  (sfx)
+  (music)
+  (dialog)
+  (sog3)
+  (ambient)
+  (sog5)
+  (sog6)
+  (sog7)
+  )
+
+(deftype sound-id (uint32)
+  ()
+  (:methods
+   (unused-9 () none 9) ;; unused
+   )
+  :flag-assert #xa00000004
+  )
+
+(deftype sound-bank-id (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+
+;; Sound names were sometimes packed into a uint128
+;; this is also used for dgo names sent to the IOP.
+;; fields added by us
+(deftype sound-name (uint128)
+  ((lo  uint64  :offset 0)
+   (hi  uint64  :offset 64)
+   )
+  :flag-assert #x900000010
+  )
+
+(defmacro static-sound-name (str)
+  "Convert a string constant to a static sound-name."
+
+  ;; all this is done at compile-time so we can come up with 2
+  ;; 64-bit constants to use
+  (when (> (string-length str) 16)
+    (error "static-sound-name got a string that is too long")
+    )
+  (let ((lo-val 0)
+        (hi-val 0)
+        )
+    (dotimes (i (string-length str))
+      (if (>= i 8)
+          (+! hi-val (ash (string-ref str i) (* 8 (- i 8))))
+          (+! lo-val (ash (string-ref str i) (* 8 i)))
+          )
+      )
+    `(new 'static 'sound-name :lo ,lo-val :hi ,hi-val)
+    )
+  )
+
+;; command types that can be sent to the IOP.
+(defenum sound-command
+  :type uint16
+  (load-bank)
+  (load-music)
+  (unload-bank)
+  (play)
+  (pause-sound)
+  (stop-sound)
+  (continue-sound)
+  (set-param)
+  (set-master-volume)
+  (pause-group)
+  (stop-group)
+  (continue-group)
+  (get-irx-version)
+  (set-falloff-curve)
+  (set-sound-falloff)
+  (reload-info)
+  (set-language)
+  (set-flava)
+  (set-reverb)
+  (set-ear-trans)
+  (shutdown)
+  (list-sounds)
+  (unload-music)
+  (set-fps)
+  (set-mirror 201)
+  )
+
+;; flavors for music
+(defenum music-flava
+  :type uint8
+  (racer 1)
+  (flutflut 2)
+  (to-maincave 3)
+  (to-snow 4)
+  (sage 5)
+  (assistant 6)
+  (birdlady 7)
+  (mayor 8)
+  (sculptor 9)
+  (explorer 10)
+  (sage-yellow 11)
+  (sage-red 12)
+  (sage-blue 13)
+  (miners 14)
+  (warrior 15)
+  (geologist 16)
+  (gambler 17)
+  (sage-hut 18)
+  (dock 19)
+  (farmer 20)
+  (jungleb-eggtop 21)
+  (misty-boat 22)
+  (misty-battle 23)
+  (beach-sentinel 24)
+  (beach-cannon 25)
+  (beach-grotto 26)
+  (citadel-center 27)
+  (robocave 28)
+  (robocave-top 29)
+  (maincave 30)
+  (darkcave 31)
+  (snow-battle 32)
+  (snow-cave 33)
+  (snow-fort 34)
+  (snow-balls 35)
+  (levitator 36)
+  (swamp-launcher 37)
+  (swamp-battle 38)
+  (jungle-temple-exit 39)
+  (jungle-lurkerm 40)
+  (jungle-temple-top 41)
+  (rolling-gorge 42)
+  (ogre-middle 43)
+  (ogre-end 44)
+  (lavatube-middle 45)
+  (lavatube-end 46)
+  (finalboss-middle 47)
+  (finalboss-end 48)
+  (default 49)
+  )
+
+(defenum sound-mask
+  :bitfield #t
+  :type uint16
+  (volume)
+  (pitch)
+  (bend)
+  (unused)
+  (time)
+  (trans)
+  (fo-min)
+  (fo-max)
+  (fo-curve)
+  )
+
+(defenum sound-mirror-mode
+  :type uint8
+  (normal)
+  (mirrored)
+  )
+
+;; like should match the sound type in OVERLORD
+;; This is shared between all sound RPCs and acts like the header for the sound messages
+(deftype sound-rpc-cmd (structure)
+  ((rsvd1   uint16  :offset-assert 0)
+   (command sound-command  :offset-assert 2)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; playback parameters sent to the IOP.
+(deftype sound-play-parms (structure)
+  ((mask      sound-mask :offset-assert 0)
+   (pitch-mod int16     :offset-assert 2)
+   (bend      int16     :offset-assert 4)
+   (fo-min    int16     :offset-assert 6)
+   (fo-max    int16     :offset-assert 8)
+   (fo-curve  int8      :offset-assert 10)
+   (priority  int8      :offset-assert 11)
+   (volume    int32     :offset-assert 12)
+   (trans     vector3w  :inline :offset-assert 16)
+   (group     sound-group     :offset-assert 28)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x1d
+  :flag-assert         #x90000001d
+  )
+
+(deftype sound-rpc-bank-cmd (sound-rpc-cmd)
+  ((bank-name sound-name  :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype sound-rpc-sound-cmd (sound-rpc-cmd)
+  ((id      sound-id  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-group-cmd (sound-rpc-cmd)
+  ((group   sound-group   :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x5
+  :flag-assert         #x900000005
+  )
+
+(deftype sound-rpc-load-bank (sound-rpc-bank-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype sound-rpc-load-music (sound-rpc-bank-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype sound-rpc-unload-bank (sound-rpc-bank-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype sound-rpc-play (sound-rpc-sound-cmd)
+  ((name    sound-name               :offset-assert 16)
+   (parms   sound-play-parms :inline :offset-assert 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x3d
+  :flag-assert         #x90000003d
+  )
+
+(deftype sound-rpc-pause-sound (sound-rpc-sound-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-stop-sound (sound-rpc-sound-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-continue-sound (sound-rpc-sound-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-set-param (sound-rpc-sound-cmd)
+  ((parms     sound-play-parms :inline :offset-assert 8)
+   (auto-time int32                    :offset-assert 40)
+   (auto-from int32                    :offset-assert 44)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(deftype sound-rpc-set-master-volume (sound-rpc-group-cmd)
+  ((volume  int32   :offset-assert 8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+(deftype sound-rpc-pause-group (sound-rpc-group-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x5
+  :flag-assert         #x900000005
+  )
+
+(deftype sound-rpc-stop-group (sound-rpc-group-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x5
+  :flag-assert         #x900000005
+  )
+
+(deftype sound-rpc-continue-group (sound-rpc-group-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x5
+  :flag-assert         #x900000005
+  )
+
+(deftype sound-rpc-get-irx-version (sound-rpc-cmd)
+  ((major   uint32  :offset-assert 4)
+   (minor   uint32  :offset-assert 8)
+   (ee-addr pointer :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype sound-rpc-set-language (sound-rpc-cmd)
+  ((lang    uint32  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-set-falloff-curve (sound-rpc-cmd)
+  ((curve   int32   :offset-assert 4)
+   (falloff int32   :offset-assert 8)
+   (ease    int32   :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype sound-rpc-set-sound-falloff (sound-rpc-cmd)
+  ((name    sound-name  :offset-assert 16)
+   (curve   int32    :offset-assert 32)
+   (min     int32    :offset-assert 36)
+   (max     int32    :offset-assert 40)
+   )
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  )
+
+(deftype sound-rpc-reload-info (sound-rpc-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype sound-rpc-set-reverb (sound-rpc-cmd)
+  ((core    uint8   :offset-assert 4)
+   (reverb  int32   :offset-assert 8)
+   (left    uint32  :offset-assert 12)
+   (right   uint32  :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+(deftype sound-rpc-set-ear-trans (sound-rpc-cmd)
+  ((ear-trans vector3w :inline :offset-assert 4)
+   (cam-trans vector3w :inline :offset-assert 16)
+   (cam-angle int32     :offset-assert 28)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype sound-rpc-set-flava (sound-rpc-cmd)
+  ((flava   uint8   :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x5
+  :flag-assert         #x900000005
+  )
+
+(deftype sound-rpc-shutdown (sound-rpc-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype sound-rpc-set-fps (sound-rpc-cmd)
+  ((fps  uint8  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x5
+  :flag-assert         #x900000005
+  )
+
+(deftype sound-rpc-list-sounds (sound-rpc-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype sound-rpc-unload-music (sound-rpc-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+; added for mirror mode
+(deftype sound-rpc-set-mirror-mode (sound-rpc-cmd)
+  ((mirror sound-mirror-mode)))
+
+;; union of all the possible sound commands.
+(deftype sound-rpc-union (structure)
+  ((data              uint32                     20 :offset-assert 0)
+   (load-bank         sound-rpc-load-bank            :offset 0)
+   (unload-bank       sound-rpc-unload-bank          :offset 0)
+   (play              sound-rpc-play                 :offset 0)
+   (pause-sound       sound-rpc-pause-sound          :offset 0)
+   (stop-sound        sound-rpc-stop-sound           :offset 0)
+   (continue-sound    sound-rpc-continue-sound       :offset 0)
+   (set-param         sound-rpc-set-param            :offset 0)
+   (set-master-volume sound-rpc-set-master-volume    :offset 0)
+   (pause-group       sound-rpc-pause-group          :offset 0)
+   (stop-group        sound-rpc-stop-group           :offset 0)
+   (continue-group    sound-rpc-continue-group       :offset 0)
+   (get-irx-version   sound-rpc-get-irx-version      :offset 0)
+   (set-falloff-curve sound-rpc-set-falloff-curve    :offset 0)
+   (set-sound-falloff sound-rpc-set-sound-falloff    :offset 0)
+   (reload-info       sound-rpc-reload-info          :offset 0)
+   (set-language      sound-rpc-set-language         :offset 0)
+   (set-reverb        sound-rpc-set-reverb           :offset 0)
+   (set-ear-trans     sound-rpc-set-ear-trans        :offset 0)
+   (set-flava         sound-rpc-set-flava            :offset 0)
+   (set-fps           sound-rpc-set-fps              :offset 0)
+   (shutdown          sound-rpc-shutdown             :offset 0)
+   (list-sounds       sound-rpc-list-sounds          :offset 0)
+   (unload-music      sound-rpc-unload-music         :offset 0)
+   (mirror-mode       sound-rpc-set-mirror-mode      :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+;; GOAL-side sound specification.
+(deftype sound-spec (basic)
+  ((mask            sound-mask :offset-assert 4)
+   (num             float      :offset-assert 8)
+   (group           sound-group      :offset-assert 12)
+   (sound-name-char uint8 16   :offset 16)
+   (sound-name      sound-name :score 20 :offset 16)
+   (trans           float 4    :offset-assert 32) ;; guess
+   (volume          int32      :offset-assert 48)
+   (pitch-mod       int32      :offset-assert 52)
+   (bend            int32      :offset-assert 56)
+   (fo-min          int16      :offset-assert 60)
+   (fo-max          int16      :offset-assert 62)
+   (fo-curve        int8       :offset-assert 64)
+   (priority        int8       :offset-assert 65)
+   (auto-time       int32      :offset-assert 68)
+   (auto-from       int32      :offset-assert 72)
+   )
+  :method-count-assert 9
+  :size-assert         #x4c
+  :flag-assert         #x90000004c
+  )
+
+(defmacro sound-vol (vol)
+  "convert to sound volume units"
+  (if (number? vol)
+      (* 1 (/ (* vol 1024) 100))
+      `(the int (/ (* ,vol 1024) 100))
+      )
+  )
+
+(defmacro static-sound-spec (name &key (num 1.0) &key (group 1)
+                                  &key (volume #f)
+                                  &key (pitch-mod 0)
+                                  &key (fo-min 0) &key (fo-max 0)
+                                  &key (mask ()))
+  (let ((snd-mask mask)
+        (snd-volume 100.0))
+    (when (nonzero? fo-max) (cons! snd-mask 'fo-max))
+    (when (nonzero? fo-min) (cons! snd-mask 'fo-min))
+    (when (nonzero? pitch-mod) (cons! snd-mask 'pitch))
+    (when volume (cons! snd-mask 'volume) (set! snd-volume volume))
+    `(new 'static 'sound-spec
+          :sound-name (static-sound-name ,name)
+          :num ,num
+          :group ,group
+          :volume (sound-vol ,snd-volume)
+          :pitch-mod ,pitch-mod
+          :fo-min ,fo-min
+          :fo-max ,fo-max
+          :mask (sound-mask ,@snd-mask)
+          ))
+  )
+
+;; each sound command gets a unique ID.
+(define *current-sound-id* (the sound-id #x10000))
+
+;; a in-game background sound.
+(declare-type entity basic)
+(deftype ambient-sound (basic)
+  ((spec         sound-spec       :offset-assert 4)
+   (playing-id   sound-id         :offset-assert 8)
+   (trans        vector   :inline :offset-assert 16)
+   (name         sound-name       :offset-assert 32)
+   (play-time    time-frame            :offset-assert 48)
+   (time-base    time-frame            :offset-assert 56)
+   (time-random  time-frame            :offset-assert 64)
+   (volume       int32            :offset-assert 72)
+   (pitch        int32            :offset-assert 76)
+   (falloff-near int32            :offset-assert 80)
+   (falloff-far  int32            :offset-assert 84)
+   (falloff-mode int32            :offset-assert 88)
+   (params       (pointer float)  :offset-assert 92)
+   (param-count  int32            :offset-assert 96)
+   (entity       entity           :offset-assert 100)
+   (sound-count  int32            :offset-assert 104)
+   )
+  :method-count-assert 14
+  :size-assert         #x6c
+  :flag-assert         #xe0000006c
+  (:methods
+    (new (symbol type basic vector) _type_ 0)
+    (update! (_type_) int 9)
+    (change-sound! (_type_ sound-name) int 10)
+    (update-trans! (_type_ vector) int 11)
+    (update-vol! (_type_ int) int 12)
+    (stop! (_type_) int 13)
+    )
+  )
+
+;; currently loaded sound effect banks.
+;; there is an always-loaded common bank and two level-specific banks.
+(define *sound-bank-1* #f)
+(define *sound-bank-2* #f)
+
+;; added for PC port
+(defun-debug music-flava->string ((f music-flava))
+  "print the name of a music-flava"
+  (enum->string music-flava f))
+
+(defun-extern string->sound-name string sound-name)
+(defun-extern sound-set-ear-trans vector vector float int)
+(defun-extern ear-trans vector)

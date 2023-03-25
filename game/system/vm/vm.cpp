@@ -6,11 +6,13 @@
  */
 
 #include "vm.h"
-#include "dmac.h"
-#include "common/log/log.h"
-#include "game/kernel/kscheme.h"
+
 #include <condition_variable>
 #include <mutex>
+
+#include "dmac.h"
+
+#include "common/log/log.h"
 
 namespace VM {
 
@@ -58,7 +60,7 @@ void vm_prepare() {
 
 void vm_init() {
   if (status != Status::Uninited) {
-    lg::warn("[VM] unexpected status {}", status);
+    lg::warn("[VM] unexpected status {}", fmt::underlying(status));
   }
 
   lg::debug("[VM] Inited");

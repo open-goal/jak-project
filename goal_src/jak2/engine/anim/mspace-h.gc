@@ -1,0 +1,104 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: mspace-h.gc
+;; name in dgo: mspace-h
+;; dgos: ENGINE, GAME
+
+(declare-type cspace structure)
+(define-extern cspace<-parented-transformq-joint! (function cspace transformq none))
+(define-extern cspace<-transformq! (function cspace transformq matrix))
+(define-extern matrix<-transformq! (function matrix transformq matrix))
+(define-extern matrix<-parented-transformq! (function matrix transformq vector matrix))
+
+;; DECOMP BEGINS
+
+(deftype joint (basic)
+  ((name      basic          :offset-assert   4)
+   (number    int32          :offset-assert   8)
+   (parent    joint          :offset-assert  12)
+   (bind-pose matrix :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+
+(deftype bone-cache (structure)
+  ((bone-matrix   uint32  :offset-assert   0)
+   (parent-matrix uint32  :offset-assert   4)
+   (dummy         uint32  :offset-assert   8)
+   (frame         uint32  :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(deftype bone (structure)
+  ((transform matrix :inline :offset-assert   0)
+   (position  vector :inline :offset         48)
+   (scale     vector :inline :offset-assert  64)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+
+(deftype skeleton (inline-array-class)
+  ((bones bone :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(set! (-> skeleton heap-base) (the-as uint 80))
+
+(deftype cspace (structure)
+  ((parent    cspace                             :offset-assert   0)
+   (joint     joint                              :offset-assert   4)
+   (joint-num int16                              :offset-assert   8)
+   (geo       drawable                           :offset-assert  12)
+   (bone      bone                               :offset-assert  16)
+   (param0    (function cspace transformq none)  :offset-assert  20)
+   (param1    basic                              :offset-assert  24)
+   (param2    basic                              :offset-assert  28)
+   )
+  :method-count-assert 10
+  :size-assert         #x20
+  :flag-assert         #xa00000020
+  (:methods
+    (new (symbol type drawable) _type_ 0)
+    (reset-and-assign-geo! (_type_ drawable) _type_ 9)
+    )
+  )
+
+
+(deftype cspace-array (inline-array-class)
+  ((data cspace :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(set! (-> cspace-array heap-base) (the-as uint 32))
+
+(defmethod print cspace ((obj cspace))
+  (format
+    #t
+    "#<cspace ~S @ #x~X>"
+    (if (-> obj joint)
+        (-> obj joint name)
+        "nojoint"
+        )
+    obj
+    )
+  obj
+  )

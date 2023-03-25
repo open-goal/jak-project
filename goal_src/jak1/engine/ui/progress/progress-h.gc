@@ -1,0 +1,375 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: progress-h.gc
+;; name in dgo: progress-h
+;; dgos: GAME, ENGINE
+
+;; PC port adds new menus and option types
+(#cond
+  ((not PC_PORT)
+(defenum progress-screen
+  :type int64
+  (invalid -1)
+  (fuel-cell 0)
+  (money 1)
+  (buzzer 2)
+  (settings 3)
+  (game-settings 4)
+  (graphic-settings 5)
+  (sound-settings 6)
+  (memcard-no-space 7)
+  (memcard-not-inserted 8)
+  (memcard-not-formatted 9)
+  (memcard-format 10)
+  (memcard-data-exists 11)
+  (memcard-loading 12)
+  (memcard-saving 13)
+  (memcard-formatting 14)
+  (memcard-creating 15)
+  (load-game 16)
+  (save-game 17)
+  (save-game-title 18)
+  (memcard-insert 19)
+  (memcard-error-loading 20)
+  (memcard-error-saving 21)
+  (memcard-removed 22)
+  (memcard-no-data 23)
+  (memcard-error-formatting 24)
+  (memcard-error-creating 25)
+  (memcard-auto-save-error 26)
+  (title 27)
+  (settings-title 28)
+  (auto-save 29)
+  (pal-change-to-60hz 30)
+  (pal-now-60hz 31)
+  (no-disc 32)
+  (bad-disc 33)
+  (quit 34)
+  (max 35)
+  )
+
+(defenum game-option-type
+  :type uint64
+  (slider 0)
+  (language 1)
+  (on-off 2)
+  (center-screen 3)
+  (aspect-ratio 4)
+  (video-mode 5)
+  (menu 6)
+  (yes-no 7)
+  (button 8)
+  )
+    )
+  (#t
+(defenum progress-screen
+  :type int64
+  (invalid -1)
+  (fuel-cell 0)
+  (money 1)
+  (buzzer 2)
+  (settings 3)
+  (game-settings 4)
+  (graphic-settings 5)
+  (sound-settings 6)
+  (memcard-no-space 7)
+  (memcard-not-inserted 8)
+  (memcard-not-formatted 9)
+  (memcard-format 10)
+  (memcard-data-exists 11)
+  (memcard-loading 12)
+  (memcard-saving 13)
+  (memcard-formatting 14)
+  (memcard-creating 15)
+  (load-game 16)
+  (save-game 17)
+  (save-game-title 18)
+  (memcard-insert 19)
+  (memcard-error-loading 20)
+  (memcard-error-saving 21)
+  (memcard-removed 22)
+  (memcard-no-data 23)
+  (memcard-error-formatting 24)
+  (memcard-error-creating 25)
+  (memcard-auto-save-error 26)
+  (title 27)
+  (settings-title 28)
+  (auto-save 29)
+  (pal-change-to-60hz 30)
+  (pal-now-60hz 31)
+  (no-disc 32)
+  (bad-disc 33)
+  (quit 34)
+
+  ;; extra screens for pc port
+  (camera-options)
+  (accessibility-options)
+  (game-ps2-options)
+  (misc-options)
+  (resolution)
+  (aspect-msg)
+  (aspect-ratio)
+  (gfx-ps2-options)
+  (secrets)
+  (hint-log)
+  (cheats)
+  (scrapbook)
+  (music-player)
+  (scene-player)
+  (credits)
+  (quit-title)
+  (flava-player)
+  (memcard-disable-auto-save)
+  (memcard-auto-save-disabled)
+  (monitor)
+  (checkpoint-select)
+  (speedrun-options)
+  (speedrun-il-options)
+  (speedrun-cat-ext-options)
+
+  ;; the last one!
+  (max)
+  )
+
+(defenum game-option-type
+  :type uint64
+  (slider 0)
+  (language 1)
+  (on-off 2)
+  (center-screen 3)
+  (aspect-ratio 4)
+  (video-mode 5)
+  (menu 6)
+  (yes-no 7)
+  (button 8)
+
+  ;; extra types for pc port
+  (normal-inverted)
+  (display-mode)
+  (msaa)
+  (frame-rate)
+  (lod-bg)
+  (lod-fg)
+  (resolution)
+  (aspect-new)
+  (language-subtitles)
+  (language-text)
+  (speaker)
+  (aspect-native)
+  (button-music)
+  (button-flava)
+  (cheat-toggle)
+  (monitor)
+  )
+    )
+  )
+
+(defenum game-option-menu
+  :type int32
+  :copy-entries progress-screen)
+
+(defun-extern activate-progress process progress-screen none)
+(defun-extern hide-progress-screen none)
+(defun-extern hide-progress-icons none)
+
+(defun-extern progress-allowed? symbol)
+(defun-extern pause-allowed? symbol)
+
+;; DECOMP BEGINS
+
+(deftype count-info (structure)
+  ((money-count  int32  :offset-assert   0)
+   (buzzer-count int32  :offset-assert   4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+
+(deftype game-count-info (basic)
+  ((length int32                       :offset-assert   4)
+   (data   count-info :inline :dynamic :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+
+(deftype task-info-data (basic)
+  ((task-id                  game-task      :offset-assert   4)
+   (task-name                game-text-id 4 :offset-assert   8)
+   (text-index-when-resolved int32          :offset-assert  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+
+(deftype level-tasks-info (basic)
+  ((level-name-id     game-text-id     :offset-assert   4)
+   (text-group-index  int32            :offset-assert   8)
+   (nb-of-tasks       int32            :offset-assert  12)
+   (buzzer-task-index int32            :offset-assert  16)
+   (task-info         task-info-data 8 :offset-assert  20)
+   )
+  :method-count-assert 9
+  :size-assert         #x34
+  :flag-assert         #x900000034
+  )
+
+
+(deftype game-option (basic)
+  ((option-type     game-option-type  :offset-assert   8)
+   (name            game-text-id      :offset-assert  16)
+   (scale           symbol            :offset-assert  20)
+   (param1          float             :offset-assert  24)
+   (param2          float             :offset-assert  28)
+   (param3          game-option-menu  :offset-assert  32)
+   (value-to-modify pointer           :offset-assert  36)
+   (option-disabled-func (function symbol) :offset-assert 40) ;; added in pc port
+   )
+  :method-count-assert 9
+  :size-assert         #x2C
+  :flag-assert         #x90000002C
+  )
+
+
+(deftype progress (process)
+  ((current-debug-string         int32              :offset-assert 112)
+   (current-debug-language       int32              :offset-assert 116)
+   (current-debug-group          int32              :offset-assert 120)
+   (in-out-position              int32              :offset-assert 124)
+   (display-state                progress-screen    :offset-assert 128)
+   (next-display-state           progress-screen    :offset-assert 136)
+   (option-index                 int32              :offset-assert 144)
+   (selected-option              basic              :offset-assert 148)
+   (completion-percentage        float              :offset-assert 152)
+   (ready-to-run                 basic              :offset-assert 156)
+   (display-level-index          int32              :offset-assert 160)
+   (next-level-index             int32              :offset-assert 164)
+   (task-index                   int32              :offset-assert 168)
+   (in-transition                basic              :offset-assert 172)
+   (last-in-transition           basic              :offset-assert 176)
+   (force-transition             basic              :offset-assert 180)
+   (stat-transition              basic              :offset-assert 184)
+   (level-transition             int32              :offset-assert 188)
+   (language-selection           language-enum      :offset-assert 192)
+   (language-direction           symbol             :offset-assert 200)
+   (language-transition          basic              :offset-assert 204)
+   (language-x-offset            int32              :offset-assert 208)
+   (sides-x-scale                float              :offset-assert 212)
+   (sides-y-scale                float              :offset-assert 216)
+   (left-x-offset                int32              :offset-assert 220)
+   (right-x-offset               int32              :offset-assert 224)
+   (button-scale                 float              :offset-assert 228)
+   (slot-scale                   float              :offset-assert 232)
+   (left-side-x-scale            float              :offset-assert 236)
+   (left-side-y-scale            float              :offset-assert 240)
+   (right-side-x-scale           float              :offset-assert 244)
+   (right-side-y-scale           float              :offset-assert 248)
+   (small-orb-y-offset           int32              :offset-assert 252)
+   (big-orb-y-offset             int32              :offset-assert 256)
+   (transition-offset            int32              :offset-assert 260)
+   (transition-offset-invert     int32              :offset-assert 264)
+   (transition-percentage        float              :offset-assert 268)
+   (transition-percentage-invert float              :offset-assert 272)
+   (transition-speed             float              :offset-assert 276)
+   (total-nb-of-power-cells      int32              :offset-assert 280)
+   (total-nb-of-orbs             int32              :offset-assert 284)
+   (total-nb-of-buzzers          int32              :offset-assert 288)
+   (card-info                    mc-slot-info       :offset-assert 292)
+   (last-option-index-change     time-frame         :offset-assert 296)
+   (video-mode-timeout           time-frame         :offset-assert 304)
+   (display-state-stack          progress-screen 5  :offset-assert 312)
+   (option-index-stack           int32           5  :offset-assert 352)
+   (display-state-pos            int32              :offset-assert 372)
+   (nb-of-icons                  int32              :offset-assert 376)
+   (icons                        hud-icon        6  :offset-assert 380)
+   (max-nb-of-particles          int32              :offset-assert 404)
+   (nb-of-particles              int32              :offset-assert 408)
+   (particles                    hud-particle    40 :offset-assert 412)
+   (particle-state               int32           40 :offset-assert 572)
+   )
+  :heap-base #x270
+  :method-count-assert 59
+  :size-assert         #x2dc
+  :flag-assert         #x3b027002dc
+  (:methods
+    (progress-dummy-14 (_type_) none 14) ;; unused
+    (progress-dummy-15 (_type_) none 15) ;; unused
+    (progress-dummy-16 (_type_) none 16) ;; unused
+    (draw-progress (_type_) none 17)
+    (progress-dummy-18 () none 18) ;; unused
+    (visible? (_type_) symbol 19)
+    (hidden? (_type_) symbol 20)
+    (adjust-sprites (_type_) none 21)
+    (adjust-icons (_type_) none 22)
+    (adjust-ratios (_type_ symbol symbol) none 23)
+    (draw-fuel-cell-screen (_type_ int) none 24)
+    (draw-money-screen (_type_ int) none 25)
+    (draw-buzzer-screen (_type_ int) none 26)
+    (draw-notice-screen (_type_) none 27)
+    (draw-options (_type_ int int float) none 28)
+    (respond-common (_type_) none 29)
+    (respond-progress (_type_) none 30)
+    (respond-memcard (_type_) none 31)
+    (can-go-back? (_type_) symbol 32)
+    (initialize-icons (_type_) none 33)
+    (initialize-particles (_type_) none 34)
+    (draw-memcard-storage-error (_type_ font-context) none 35)
+    (draw-memcard-data-exists (_type_ font-context) none 36)
+    (draw-memcard-no-data (_type_ font-context) none 37)
+    (draw-memcard-accessing (_type_ font-context) none 38)
+    (draw-memcard-insert (_type_ font-context) none 39)
+    (draw-memcard-file-select (_type_ font-context) none 40)
+    (draw-memcard-auto-save-error (_type_ font-context) none 41)
+    (draw-memcard-removed (_type_ font-context) none 42)
+    (draw-memcard-error (_type_ font-context) none 43)
+    (progress-dummy-44 (_type_) none 44) ;; unused
+    (push! (_type_) none 45)
+    (pop! (_type_) none 46)
+    (progress-dummy-47 (_type_) none 47) ;; unused
+    (enter! (_type_ progress-screen int) none 48)
+    (draw-memcard-format (_type_ font-context) none 49)
+    (draw-auto-save (_type_ font-context) none 50)
+    (set-transition-progress! (_type_ int) none 51)
+    (set-transition-speed! (_type_) none 52)
+    (set-memcard-screen (_type_ progress-screen) progress-screen 53)
+    (draw-pal-change-to-60hz (_type_ font-context) none 54)
+    (draw-pal-now-60hz (_type_ font-context) none 55)
+    (draw-no-disc (_type_ font-context) none 56)
+    (draw-bad-disc (_type_ font-context) none 57)
+    (draw-quit (_type_ font-context) none 58)
+    )
+  (:states
+    progress-coming-in
+    progress-debug
+    progress-going-out
+    progress-gone
+    progress-normal
+    progress-waiting
+    )
+  )
+
+
+(define *progress-process* (the-as (pointer progress) #f))
+
+(define *progress-last-task-index* 0)
+
+
+(defun-extern get-game-count int count-info)
+
+(define-extern *level-task-data* (array level-tasks-info))
+(define-extern *level-task-data-remap* (array int32))
+
+(defun-extern deactivate-progress none)
+(defun-extern calculate-completion progress float)
+(defun-extern make-current-level-available-to-progress none)
+
+
+

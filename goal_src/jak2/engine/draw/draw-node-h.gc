@@ -1,0 +1,35 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: draw-node-h.gc
+;; name in dgo: draw-node-h
+;; dgos: ENGINE, GAME
+
+(deftype draw-node (drawable)
+  ((child-count uint8     :offset   6)
+   (flags       uint8     :offset   7)
+   (child       drawable  :offset   8)
+   (distance    float     :offset  12)
+   )
+  :method-count-assert 17
+  :size-assert         #x20
+  :flag-assert         #x1100000020
+  )
+
+(deftype drawable-inline-array-node (drawable-inline-array)
+  ((data draw-node 1 :inline :offset-assert  32)
+   (pad  uint32              :offset-assert  64)
+   )
+  :method-count-assert 17
+  :size-assert         #x44
+  :flag-assert         #x1100000044
+  )
+
+(deftype draw-node-dma (structure)
+  ((banka draw-node 32 :inline :offset-assert   0)
+   (bankb draw-node 32 :inline :offset-assert 1024)
+   )
+  :method-count-assert 9
+  :size-assert         #x800
+  :flag-assert         #x900000800
+  )

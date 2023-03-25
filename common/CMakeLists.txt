@@ -1,4 +1,5 @@
 add_library(common
+        versions.cpp
         audio/audio_formats.cpp
         cross_os_debug/xdbg.cpp
         cross_sockets/XSocket.cpp
@@ -6,7 +7,6 @@ add_library(common
         cross_sockets/XSocketClient.cpp
         custom_data/pack_helpers.cpp
         custom_data/TFrag3Data.cpp
-        deserialization/subtitles/subtitles.cpp
         dma/dma.cpp
         dma/dma_copy.cpp
         dma/gs.cpp
@@ -19,12 +19,12 @@ add_library(common
         goos/PrettyPrinter2.cpp
         goos/Reader.cpp
         goos/TextDB.cpp
-        goos/ReplUtils.cpp
+        repl/config.cpp
+        repl/util.cpp
         log/log.cpp
         math/geometry.cpp
-        nrepl/ReplClient.cpp
-        nrepl/ReplServer.cpp
-        serialization/subtitles/subtitles.cpp
+        repl/nrepl/ReplClient.cpp
+        repl/nrepl/ReplServer.cpp
         type_system/defenum.cpp
         type_system/deftype.cpp
         type_system/state.cpp
@@ -32,6 +32,8 @@ add_library(common
         type_system/TypeFieldLookup.cpp
         type_system/TypeSpec.cpp
         type_system/TypeSystem.cpp
+        serialization/subtitles/subtitles_ser.cpp
+        serialization/subtitles/subtitles_deser.cpp
         util/Assert.cpp
         util/BitUtils.cpp
         util/compress.cpp
@@ -41,19 +43,24 @@ add_library(common
         util/DgoWriter.cpp
         util/diff.cpp
         util/FileUtil.cpp
+        util/FontUtils.cpp
         util/json_util.cpp
         util/read_iso_file.cpp
         util/SimpleThreadGroup.cpp
+        util/string_util.cpp
         util/Timer.cpp
         util/os.cpp
         util/print_float.cpp
-        util/FontUtils.cpp
-        util/FrameLimiter.cpp)
+        util/FrameLimiter.cpp
+        util/unicode_util.cpp
+        util/term_util.cpp)
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)
 
 if(WIN32)
     target_link_libraries(common wsock32 ws2_32 windowsapp)
+elseif(APPLE)
+    # don't need anything special
 else()
     target_link_libraries(common stdc++fs)
 endif()

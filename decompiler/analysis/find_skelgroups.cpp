@@ -14,12 +14,12 @@ namespace {
 std::string get_skelgroup_name(FormElement* skel_set, const Env& env) {
   auto sff = dynamic_cast<SetFormFormElement*>(skel_set);
   if (!sff || !skel_set) {
-    env.func->warnings.warn_and_throw("Failed to identify defskelgroup.");
+    env.func->warnings.error_and_throw("Failed to identify defskelgroup.");
   }
 
   auto atom = form_as_atom(sff->dst());
   if (!atom || atom->get_kind() != SimpleAtom::Kind::SYMBOL_VAL) {
-    env.func->warnings.warn_and_throw(
+    env.func->warnings.error_and_throw(
         "Failed to identify defskelgroup. The skeleton-group symbol set was: {}, which doesn't set "
         "a symbol",
         skel_set->to_string(env));
@@ -62,34 +62,34 @@ DefskelgroupElement::StaticInfo inspect_skel_group_data(DecompiledDataElement* s
 
   auto& type_word = words.at(start_word_idx - 1);
   if (type_word.kind() != LinkedWord::TYPE_PTR || type_word.symbol_name() != "skeleton-group") {
-    env.func->warnings.warn_and_throw("Reference to skelgroup bad: invalid type pointer");
+    env.func->warnings.error_and_throw("Reference to skelgroup bad: invalid type pointer");
   }
   auto& string_word = words.at(start_word_idx);
   if (string_word.kind() != LinkedWord::PTR) {
-    env.func->warnings.warn_and_throw("Reference to skelgroup bad: invalid name label");
+    env.func->warnings.error_and_throw("Reference to skelgroup bad: invalid art-group-name label");
   }
-  result.art_name = env.file->get_goal_string_by_label(
+  result.art_group_name = env.file->get_goal_string_by_label(
       env.file->get_label_by_name(env.file->get_label_name(string_word.label_id())));
   for (int i = 0; i < 4; i++) {
     auto& word = words.at(start_word_idx + 3 + i);
     if (word.kind() != LinkedWord::PLAIN_DATA) {
-      env.func->warnings.warn_and_throw("Reference to skelgroup bad: invalid bounds");
+      env.func->warnings.error_and_throw("Reference to skelgroup bad: invalid bounds");
     }
     result.bounds[i] = *reinterpret_cast<float*>(&word.data);
   }
   auto& lod_word = words.at(start_word_idx + 9);
   if (lod_word.kind() != LinkedWord::PLAIN_DATA) {
-    env.func->warnings.warn_and_throw("Reference to skelgroup bad: invalid max-lod");
+    env.func->warnings.error_and_throw("Reference to skelgroup bad: invalid max-lod");
   }
   result.max_lod = lod_word.data;
   auto& edge_word = words.at(start_word_idx + 14);
   if (edge_word.kind() != LinkedWord::PLAIN_DATA) {
-    env.func->warnings.warn_and_throw("Reference to skelgroup bad: invalid longest-edge");
+    env.func->warnings.error_and_throw("Reference to skelgroup bad: invalid longest-edge");
   }
   result.longest_edge = *reinterpret_cast<float*>(&edge_word.data);
   auto& other_word = words.at(start_word_idx + 15);
   if (other_word.kind() != LinkedWord::PLAIN_DATA) {
-    env.func->warnings.warn_and_throw("Reference to skelgroup bad: invalid other data");
+    env.func->warnings.error_and_throw("Reference to skelgroup bad: invalid other data");
   }
   result.tex_level = other_word.get_byte(0);
   result.version = other_word.get_byte(1);
@@ -99,7 +99,110 @@ DefskelgroupElement::StaticInfo inspect_skel_group_data(DecompiledDataElement* s
   for (auto i : empty_words) {
     auto& word = words.at(start_word_idx + i);
     if (word.data != LinkedWord::PLAIN_DATA || word.data != 0) {
-      env.func->warnings.warn_and_throw(fmt::format("Reference to skelgroup bad: set word {}", i));
+      env.func->warnings.error_and_throw(fmt::format("Reference to skelgroup bad: set word {}", i));
+    }
+  }
+
+  return result;
+}
+
+static const std::vector<int> empty_words_jak2 = {2,  4,  5,  6,  8,  9,  10, 15,
+                                                  16, 17, 19, 20, 21, 22, 23, 24};
+DefskelgroupElement::StaticInfo inspect_skel_group_data_jak2(DecompiledDataElement* skel,
+                                                             const Env& env) {
+  DefskelgroupElement::StaticInfo result;
+
+  auto lab = skel->label();
+  // example from "crates"
+  /*
+    .type skeleton-group
+    L30:
+    .symbol #f        // info                                                  // 4
+    .word L263        // name (string)                                         // 8
+    .word 0x0         // length                                                // 12
+    .symbol #f        // extra                                                 // 16
+    .word 0x0         // ? (word 4)                                            // 20
+    .word 0x0         // ? (word 5)                                            // 24
+    .word 0x0         // ? (word 6)                                            // 28
+    .word L262        // art-group-name (string)                               // 32
+    .word 0x0         // jgeo                                                  // 36
+    .word 0x0         // janim                                                 // 40
+    .word 0x0         // ? (word 10)                                           // 44
+    .word 0x0         // bounds x                                              // 48
+    .word 0x45800000  // bounds y                                              // 52
+    .word 0x0         // bounds z                                              // 56
+    .word 0x45cccccd  // bounds w/radius                                       // 60
+    .word 0x0         // mgeo 0/1                                              // 64
+    .word 0x0         // mgeo 2/3                                              // 68
+    .word 0x0         // mgeo 4/5                                              // 72
+    .word 0x1         // max-lod                                               // 76
+    .word 0x0         // lod-dist 0                                            // 80
+    .word 0x0         // lod-dist 1                                            // 84
+    .word 0x0         // lod-dist 2                                            // 88
+    .word 0x0         // lod-dist 3                                            // 92
+    .word 0x0         // lod-dist 4                                            // 96
+    .word 0x0         // lod-dist 5                                            // 100
+    .word 0x0         // longest-edge                                          // 104
+    .word 0x706       // texture-level/version/shadow/sort                     // 108
+    .word 0x0         // origin-joint-index/shadow-joint-index/light-index/pad // 112
+   */
+
+  int start_word_idx = lab.offset / 4;
+  auto& words = env.file->words_by_seg.at(lab.target_segment);
+
+  auto& type_word = words.at(start_word_idx - 1);
+  if (type_word.kind() != LinkedWord::TYPE_PTR || type_word.symbol_name() != "skeleton-group") {
+    env.func->warnings.error_and_throw("Reference to skelgroup bad: invalid type pointer");
+  }
+  auto& name_word = words.at(start_word_idx + 1);
+  if (name_word.kind() != LinkedWord::PTR) {
+    env.func->warnings.error_and_throw("Reference to skelgroup bad: invalid name label");
+  }
+  result.name = env.file->get_goal_string_by_label(
+      env.file->get_label_by_name(env.file->get_label_name(name_word.label_id())));
+  auto& art_name_word = words.at(start_word_idx + 7);
+  if (art_name_word.kind() != LinkedWord::PTR) {
+    env.func->warnings.error_and_throw("Reference to skelgroup bad: invalid art-group-name label");
+  }
+  result.art_group_name = env.file->get_goal_string_by_label(
+      env.file->get_label_by_name(env.file->get_label_name(art_name_word.label_id())));
+  for (int i = 0; i < 4; i++) {
+    auto& word = words.at(start_word_idx + 11 + i);
+    if (word.kind() != LinkedWord::PLAIN_DATA) {
+      env.func->warnings.error_and_throw("Reference to skelgroup bad: invalid bounds");
+    }
+    result.bounds[i] = *reinterpret_cast<float*>(&word.data);
+  }
+  auto& lod_word = words.at(start_word_idx + 18);
+  if (lod_word.kind() != LinkedWord::PLAIN_DATA) {
+    env.func->warnings.error_and_throw("Reference to skelgroup bad: invalid max-lod");
+  }
+  result.max_lod = lod_word.data;
+  auto& edge_word = words.at(start_word_idx + 25);
+  if (edge_word.kind() != LinkedWord::PLAIN_DATA) {
+    env.func->warnings.error_and_throw("Reference to skelgroup bad: invalid longest-edge");
+  }
+  result.longest_edge = *reinterpret_cast<float*>(&edge_word.data);
+  auto& other_word = words.at(start_word_idx + 26);
+  if (other_word.kind() != LinkedWord::PLAIN_DATA) {
+    env.func->warnings.error_and_throw("Reference to skelgroup bad: invalid other data");
+  }
+  result.tex_level = other_word.get_byte(0);
+  result.version = other_word.get_byte(1);
+  result.shadow = other_word.get_byte(2);
+  result.sort = other_word.get_byte(3);
+  auto& index_word = words.at(start_word_idx + 27);
+  if (index_word.kind() != LinkedWord::PLAIN_DATA) {
+    env.func->warnings.error_and_throw("Reference to skelgroup bad: invalid index data");
+  }
+  result.origin_joint_index = index_word.get_byte(0);
+  result.shadow_joint_index = index_word.get_byte(1);
+  result.light_index = index_word.get_byte(2);
+
+  for (auto i : empty_words_jak2) {
+    auto& word = words.at(start_word_idx + i);
+    if (word.data != LinkedWord::PLAIN_DATA || word.data != 0) {
+      env.func->warnings.error_and_throw(fmt::format("Reference to skelgroup bad: set word {}", i));
     }
   }
 
@@ -125,7 +228,7 @@ DefskelgroupElement::Info get_defskelgroup_entries(Form* body,
     auto mr = match(matcher, &temp);
 
     if (!mr.matched) {
-      env.func->warnings.warn_and_throw("defskelgroup set no match");
+      env.func->warnings.error_and_throw("defskelgroup set no match");
     }
 
     auto& var = mr.maps.regs.at(0);
@@ -138,9 +241,9 @@ DefskelgroupElement::Info get_defskelgroup_entries(Form* body,
 
     if (!var || env.get_variable_name(*var) != env.get_variable_name(let_dest_var)) {
       if (var) {
-        env.func->warnings.warn_and_throw("Messed up defskelgroup. It is in {}, but we set {}",
-                                          env.get_variable_name(let_dest_var),
-                                          env.get_variable_name(*var));
+        env.func->warnings.error_and_throw("Messed up defskelgroup. It is in {}, but we set {}",
+                                           env.get_variable_name(let_dest_var),
+                                           env.get_variable_name(*var));
       } else {
         ASSERT(false);
       }
@@ -171,14 +274,18 @@ FormElement* rewrite_defskelgroup(LetElement* elt,
 
   int last_lod = (elt->body()->size() - 3) / 2 - 1;
   if (last_lod > skelgroup_info.max_lod) {
-    env.func->warnings.warn_and_throw("defskelgroup exceeds max-lod of {} ({})",
-                                      skelgroup_info.max_lod, last_lod);
+    env.func->warnings.error_and_throw("defskelgroup exceeds max-lod of {} ({})",
+                                       skelgroup_info.max_lod, last_lod);
   }
 
   auto rest_info = get_defskelgroup_entries(elt->body(), env, elt->entries().at(0).dest);
 
-  return pool.alloc_element<DefskelgroupElement>(get_skelgroup_name(elt->body()->back(), env),
-                                                 rest_info, skelgroup_info);
+  if (env.version != GameVersion::Jak1) {
+    return pool.alloc_element<DefskelgroupElement>(skelgroup_info.name, rest_info, skelgroup_info);
+  } else {
+    return pool.alloc_element<DefskelgroupElement>(get_skelgroup_name(elt->body()->back(), env),
+                                                   rest_info, skelgroup_info);
+  }
 }
 }  // namespace
 
@@ -210,7 +317,12 @@ void run_defskelgroups(Function& top_level_func) {
         auto src_as_label = as_let->entries().at(0).src->try_as_element<DecompiledDataElement>();
         if (src_as_label && env.get_variable_type(as_let->entries().at(0).dest, false) ==
                                 TypeSpec("skeleton-group")) {
-          auto sg = inspect_skel_group_data(src_as_label, env);
+          DefskelgroupElement::StaticInfo sg;
+          if (env.version != GameVersion::Jak1) {
+            sg = inspect_skel_group_data_jak2(src_as_label, env);
+          } else {
+            sg = inspect_skel_group_data(src_as_label, env);
+          }
           auto rewritten = rewrite_defskelgroup(as_let, env, sg, pool);
           if (rewritten) {
             fe = rewritten;

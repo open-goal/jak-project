@@ -1,0 +1,360 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: mog.gc
+;; name in dgo: mog
+;; dgos: SEB, SWB, UNB
+
+;; DECOMP BEGINS
+
+(define *mog-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #t
+    :use-victory #f
+    :use-jump-blocked #t
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'array idle-control-frame 2
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x3 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 3
+    :notice-anim 3
+    :hostile-anim -1
+    :hit-anim 3
+    :knocked-anim 3
+    :knocked-land-anim 3
+    :die-anim 25
+    :die-falling-anim 25
+    :victory-anim -1
+    :jump-wind-up-anim 29
+    :jump-in-air-anim 30
+    :jump-land-anim 31
+    :neck-joint 6
+    :look-at-joint 7
+    :bullseye-joint 5
+    :notice-distance (meters 40)
+    :notice-distance-delta (meters 10)
+    :proximity-notice-distance (meters 20)
+    :default-hit-points 10
+    :gnd-collide-with (collide-spec backgnd obstacle hit-by-others-list)
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-giant
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      penetrate-33
+      penetrate-34
+      penetrate-35
+      penetrate-36
+      penetrate-37
+      penetrate-38
+      penetrate-39
+      penetrate-40
+      penetrate-41
+      penetrate-42
+      penetrate-43
+      penetrate-44
+      penetrate-45
+      penetrate-46
+      penetrate-47
+      penetrate-48
+      penetrate-49
+      penetrate-50
+      penetrate-51
+      penetrate-52
+      penetrate-53
+      penetrate-54
+      penetrate-55
+      penetrate-56
+      penetrate-57
+      penetrate-58
+      penetrate-59
+      penetrate-60
+      penetrate-61
+      penetrate-62
+      penetrate-63
+      )
+    :movement-gravity (meters -100)
+    :friction 0.7
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 2730.6667
+    :knocked-soft-vxz-lo 45056.0
+    :knocked-soft-vxz-hi 54067.2
+    :knocked-soft-vy-lo 38092.8
+    :knocked-soft-vy-hi 45056.0
+    :knocked-medium-vxz-lo 65536.0
+    :knocked-medium-vxz-hi 74547.2
+    :knocked-medium-vy-lo 65536.0
+    :knocked-medium-vy-hi 73728.0
+    :knocked-hard-vxz-lo 66355.2
+    :knocked-hard-vxz-hi 85196.8
+    :knocked-hard-vy-lo 60620.8
+    :knocked-hard-vy-hi 101580.8
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 20480.0
+    :knocked-yellow-vxz-hi 24576.0
+    :knocked-yellow-vy-lo 28672.0
+    :knocked-yellow-vy-hi 40960.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 73728.0
+    :knocked-red-vy-lo 65536.0
+    :knocked-red-vy-hi 81920.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 24576.0
+    :knocked-blue-vy-hi 40960.0
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :callback-info #f
+    :use-momentum #t
+    :use-frustration #t
+    :use-stop-chase #t
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 3
+    :turn-anim -1
+    :run-anim 3
+    :taunt-anim -1
+    :run-travel-speed (meters 10)
+    :run-acceleration (meters 14)
+    :run-turning-acceleration (meters 9)
+    :walk-travel-speed (meters 3)
+    :walk-acceleration (meters 8)
+    :walk-turning-acceleration (meters 6)
+    :maximum-rotation-rate (degrees 360.0)
+    :notice-nav-radius (meters 10)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+(set! (-> *mog-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+(defun mog-prebind-function ((arg0 joint-anim-frame) (arg1 int) (arg2 joint-control))
+  (let ((v1-0 (-> arg0 data)))
+    (let ((a0-1 (-> v1-0 2)))
+      (set! (-> a0-1 trans y) (+ -663.552 (-> a0-1 trans y)))
+      )
+    (let ((a0-3 (-> v1-0 5)))
+      (set! (-> a0-3 trans x) (+ 409.6 (-> a0-3 trans x)))
+      )
+    (let ((a0-5 (-> v1-0 21)))
+      (set! (-> a0-5 trans x) (+ 409.6 (-> a0-5 trans x)))
+      )
+    (let ((v1-1 (-> v1-0 8)))
+      (set! (-> v1-1 trans x) (+ -409.6 (-> v1-1 trans x)))
+      )
+    )
+  0
+  )
+
+(defmethod init-enemy-collision! mog ((obj mog))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    vehicle
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-giant
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 4))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec bot bot-targetable))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid can-ride no-standon))
+      (set-vector! (-> s4-0 local-sphere) 0.0 6553.6 0.0 9011.2)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec bot bot-targetable))
+      (set! (-> v1-13 prim-core collide-with)
+            (collide-spec backgnd jak crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> v1-13 prim-core action) (collide-action solid can-ride))
+      (set-vector! (-> v1-13 local-sphere) 0.0 4915.2 0.0 4915.2)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec bot bot-targetable))
+      (set! (-> v1-15 prim-core collide-with)
+            (collide-spec backgnd jak crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> v1-15 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-15 local-sphere) 0.0 7168.0 0.0 4915.2)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec bot bot-targetable))
+      (set! (-> v1-17 prim-core collide-with)
+            (collide-spec backgnd jak crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> v1-17 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> v1-17 local-sphere) 0.0 9420.8 0.0 4915.2)
+      )
+    (set! (-> s5-0 nav-radius) 4096.0)
+    (let ((v1-19 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-19 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-19 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> s5-0 event-priority) (the-as uint 6))
+    (set! (-> obj root-override2) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod init-enemy! mog ((obj mog))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
+  (let ((t9-0 (method-of-type jinx init-enemy!)))
+    (t9-0 obj)
+    )
+  (set-enemy-info! obj *mog-nav-enemy-info*)
+  (set! (-> obj channel) (the-as uint 23))
+  (set! (-> obj spot-color) (the-as uint #x50ff0000))
+  (set-vector! (-> obj root-override2 scale) 1.15 1.15 1.15 1.0)
+  (set! (-> obj skel prebind-function) mog-prebind-function)
+  (set! (-> obj min-speed) 14336.0)
+  (set! (-> obj max-speed) 32768.0)
+  (set! (-> obj follow-offset) -20480.0)
+  (set! (-> obj bot-health-index) 2)
+  (setup-masks (-> obj draw) #x26002 #x19ffc)
+  (none)
+  )
+
+(defmethod ruffian-method-244 mog ((obj mog))
+  (with-pp
+    (ruffian-method-245 obj)
+    (let ((f30-0 (-> obj nav state speed)))
+      (let ((f0-1 (lerp-scale 0.0 1.0 f30-0 12288.0 40960.0)))
+        (seek! (-> obj travel-anim-interp) f0-1 (* 4.0 (-> pp clock seconds-per-frame)))
+        )
+      (let ((f28-0 (-> obj travel-anim-interp))
+            (v1-9 (if (> (-> obj skel active-channels) 0)
+                      (-> obj skel root-channel 0 frame-group)
+                      )
+                  )
+            )
+        (cond
+          ((and v1-9 (= v1-9 (-> obj draw art-group data 36)))
+           (let ((v1-14 (-> obj skel root-channel 1)))
+             (set! (-> v1-14 frame-interp 1) f28-0)
+             (set! (-> v1-14 frame-interp 0) f28-0)
+             )
+           (let* ((f28-1 (current-cycle-distance (-> obj skel)))
+                  (f0-5 (quaternion-y-angle (-> obj root-override2 quat)))
+                  (f1-2 (deg- f0-5 (-> obj travel-prev-ry)))
+                  (f0-8 (fmin 40960.0 (* 0.35342914 (-> pp clock frames-per-second) (fabs f1-2))))
+                  (f0-11 (/ (* 20.0 (fmax f30-0 f0-8)) (* 15.0 f28-1)))
+                  (a0-11 (-> obj skel root-channel 0))
+                  )
+             (set! (-> a0-11 param 0) f0-11)
+             (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-loop!)
+             )
+           (let ((a0-12 (-> obj skel root-channel 1)))
+             (set! (-> a0-12 param 0) 0.0)
+             (joint-control-channel-group-eval! a0-12 (the-as art-joint-anim #f) num-func-chan)
+             )
+           )
+          (else
+            (ja-channel-push! 2 (seconds 0.15))
+            (let ((a0-14 (-> obj skel root-channel 0)))
+              (set! (-> a0-14 dist) 13107.2)
+              (set! (-> a0-14 frame-group) (the-as art-joint-anim (-> obj draw art-group data 36)))
+              (set! (-> a0-14 param 0) 1.0)
+              (joint-control-channel-group! a0-14 (the-as art-joint-anim (-> obj draw art-group data 36)) num-func-loop!)
+              )
+            (let ((a0-15 (-> obj skel root-channel 1)))
+              (set! (-> a0-15 frame-interp 1) f28-0)
+              (set! (-> a0-15 frame-interp 0) f28-0)
+              (set! (-> a0-15 dist) 21843.969)
+              (set! (-> a0-15 frame-group) (the-as art-joint-anim (-> obj draw art-group data 37)))
+              (set! (-> a0-15 param 0) 0.0)
+              (joint-control-channel-group! a0-15 (the-as art-joint-anim (-> obj draw art-group data 37)) num-func-chan)
+              )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+(defstate die-falling (mog)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type ruffian die-falling) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (play-death-sound self "hal143")
+    (none)
+    )
+  )

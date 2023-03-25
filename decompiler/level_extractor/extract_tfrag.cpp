@@ -1,11 +1,14 @@
 #include "extract_tfrag.h"
-#include "common/dma/dma.h"
-#include "decompiler/util/Error.h"
-#include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include "common/util/FileUtil.h"
-#include "common/dma/gs.h"
-#include "common/util/Assert.h"
+
 #include "common/custom_data/pack_helpers.h"
+#include "common/dma/dma.h"
+#include "common/dma/gs.h"
+#include "common/log/log.h"
+#include "common/util/Assert.h"
+#include "common/util/FileUtil.h"
+
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/util/Error.h"
 
 namespace decompiler {
 namespace {
@@ -40,7 +43,7 @@ bool verify_node_indices_from_array(const level_tools::DrawableInlineArray* arra
   if (as_tfrags) {
     for (auto& elt : as_tfrags->tfragments) {
       if (elt.id != start) {
-        fmt::print("bad frag: exp {} got {}\n", start, elt.id);
+        lg::error("bad frag: exp {} got {}", start, elt.id);
         return false;
       }
       start++;
@@ -50,7 +53,7 @@ bool verify_node_indices_from_array(const level_tools::DrawableInlineArray* arra
   } else if (as_nodes) {
     for (auto& elt : as_nodes->draw_nodes) {
       if (elt.id != start) {
-        fmt::print("bad node: exp {} got {}\n", start, elt.id);
+        lg::error("bad node: exp {} got {}", start, elt.id);
         return false;
       }
       start++;
@@ -58,7 +61,7 @@ bool verify_node_indices_from_array(const level_tools::DrawableInlineArray* arra
     *end = start;
     return true;
   } else {
-    fmt::print("bad node array type: {}\n", array->my_type());
+    lg::error("bad node array type: {}", array->my_type());
     return false;
   }
 }
@@ -366,7 +369,7 @@ int handle_unpack_v4_16_mode1(const VifCode& code,
     qw[3] = row[3] + (u32)deref_ptr<u16>(dma + offset);
     offset += 2;
 
-    // fmt::print("  unpack rgba?: {:x} {:x} {:x} {:x}\n", qw[0], qw[1], qw[2], qw[3]);
+    // lg::print("  unpack rgba?: {:x} {:x} {:x} {:x}\n", qw[0], qw[1], qw[2], qw[3]);
     memcpy(vu_mem + (dest_qw * 16), qw, 16);
   }
   ASSERT((offset % 4) == 0);
@@ -454,7 +457,7 @@ void emulate_chain(UnpackState& state, u32 max_words, const u32* start, u8* vu_m
   while (word < max_words) {
     VifCode code(start[word]);
     word++;
-    // fmt::print("{}\n", code.print());
+    // lg::print("{}\n", code.print());
     switch (code.kind) {
       case VifCode::Kind::STROW:
         state.row_init = true;
@@ -735,7 +738,7 @@ bool emulate_kick_subroutine(VuMemWrapper& mem,
   //  iblez vi12, L123
   //  iaddi vi09, vi09, 0x1
   vi09_draw_addr_book++;  // on to the next chunk
-  //  fmt::print("VI09 now {}\n", vars.vi09);
+  //  lg::print("VI09 now {}\n", vars.vi09);
 
   // no need for new adgifs, just a new strgif.
   if (((s16)vi12_vert_count) > 0) {
@@ -757,10 +760,10 @@ bool emulate_kick_subroutine(VuMemWrapper& mem,
     //  ilwr.x vi12, vi09
     vi12_vert_count = mem.ilw_data(vi09_draw_addr_book, 0);  // next vert count!
     if (DEBUG) {
-      fmt::print("continue with this adgif, but new strgif. next {} verts (kick zone now {})\n",
-                 vi12_vert_count, vi06_kick_zone_ptr);
+      lg::debug("continue with this adgif, but new strgif. next {} verts (kick zone now {})",
+                vi12_vert_count, vi06_kick_zone_ptr);
     }
-    //    fmt::print("didn't kick, vi12 now {}\n", vars.vi12);
+    //    lg::print("didn't kick, vi12 now {}\n", vars.vi12);
     all_draws.push_back(current_draw);
     current_draw.verts.clear();
     return false;
@@ -771,10 +774,10 @@ bool emulate_kick_subroutine(VuMemWrapper& mem,
   u16 vi01 = mem.ilw_data(vi09_draw_addr_book - 1, 1);  // ?
   //  ilw.z vi13, -1(vi09)
   vi13_adgifs = mem.ilw_data(vi09_draw_addr_book - 1, 2);  // load new adgif addr
-  //  fmt::print("VI09 loads: {} {}\n", m_ptrs.vi01, vars.vi13);
+  //  lg::print("VI09 loads: {} {}\n", m_ptrs.vi01, vars.vi13);
   //  ibeq vi00, vi12, L126
   //  ilwr.x vi14, vi10
-  //  fmt::print("val is {}: {}\n", vars.vi10, ilw_kick_zone(vars.vi10, 0));
+  //  lg::print("val is {}: {}\n", vars.vi10, ilw_kick_zone(vars.vi10, 0));
   // vars.vi14 = mem.ilw_kick_zone(vi10_start_of_vert_kick_data, 0); old vert count
   if (vi12_vert_count != 0) {
     //  ibltz vi01, L124
@@ -836,10 +839,10 @@ bool emulate_kick_subroutine(VuMemWrapper& mem,
       //  ilwr.x vi12, vi09
       vi12_vert_count = mem.ilw_data(vi09_draw_addr_book, 0);
       if (DEBUG) {
-        fmt::print("done with adgifs but not packet, now moving on to another with {}\n",
-                   (s16)vi12_vert_count);
+        lg::debug("done with adgifs but not packet, now moving on to another with {}",
+                  (s16)vi12_vert_count);
       }
-      //      fmt::print("didn't kick 2, vi12 now {}\n", vars.vi12);
+      //      lg::print("didn't kick 2, vi12 now {}\n", vars.vi12);
       return false;
     }
 
@@ -855,7 +858,7 @@ bool emulate_kick_subroutine(VuMemWrapper& mem,
 
     //  ibgez vi13, L125
     //  iswr.x vi14, vi10
-    //    fmt::print("kick zone store: {}\n", vars.vi14);
+    //    lg::print("kick zone store: {}\n", vars.vi14);
     // store_u32_kick_zone(vars.vi14, vars.vi10, 0); set eop.
     if (((s16)vi13_adgifs) < 0) {
       //  xgkick vi01
@@ -942,7 +945,7 @@ bool emulate_kick_subroutine(VuMemWrapper& mem,
     //  jr vi15
     //  ilwr.x vi12, vi09
     vi12_vert_count = mem.ilw_data(vi09_draw_addr_book, 0);
-    //    fmt::print("did kick, vi12 now {}\n", vars.vi12);
+    //    lg::print("did kick, vi12 now {}\n", vars.vi12);
     return false;
   }
 
@@ -958,10 +961,10 @@ bool emulate_kick_subroutine(VuMemWrapper& mem,
   all_draws.push_back(current_draw);
   current_draw.verts.clear();
   //  iadd vi14, vi14, vi11
-  //  fmt::print("before add: {}\n", vars.vi14);
+  //  lg::print("before add: {}\n", vars.vi14);
   //  vars.vi14 += vars.vi11;
   //  iswr.x vi14, vi10
-  //  fmt::print("kick zone store: {}\n", vars.vi14);
+  //  lg::print("kick zone store: {}\n", vars.vi14);
   //  store_u32_kick_zone(vars.vi14, vars.vi10, 0);
   //  lq.xyzw vf04, 664(vi00)
   // todo don't think I needed that load of ambient
@@ -976,7 +979,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
                                                VuMemWrapper& mem,
                                                TFragColorUnpack& color_indices,
                                                TFragExtractStats* /*stats*/) {
-  // fmt::print("tfrag exec. offset of colors = {}\n", color_indices.unpack_qw_addr);
+  // lg::print("tfrag exec. offset of colors = {}\n", color_indices.unpack_qw_addr);
   std::vector<TFragDraw> all_draws;
   TFragDraw current_draw;
 
@@ -988,7 +991,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
 
   //  ilw.w vi08, 4(vi14)        |  nop
   u16 vi08_adgif_base = mem.ilw_data(4 + vi14, 3);  // is an address, v4/32 unpack.
-  //  fmt::print("------------- VI08 init: {}\n", vars.vi08);
+  //  lg::print("------------- VI08 init: {}\n", vars.vi08);
   //  ilw.z vi09, 4(vi14)        |  nop
   u16 vi09_draw_addr_book =
       mem.ilw_data(4 + vi14, 2);  // is an input address, v4/8 unpack (seems small?)
@@ -997,17 +1000,17 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
       3 + vi14,
       1);  // is an input address (v4-8 with strow). a list of addresses for v4-16's with strow
 
-  //  fmt::print("-------VI03 init: {}\n", vars.vi03);
+  //  lg::print("-------VI03 init: {}\n", vars.vi03);
 
   if (DEBUG) {
     // small, like 9, 54, 66
     level_tools::PrintSettings settings;
     settings.print_tfrag = true;
-    fmt::print("{}\n", frag.print(settings, 0));
-    fmt::print("ints: {} {} {}\n", vi08_adgif_base, vi09_draw_addr_book, vi03_vert_addr_book);
+    lg::debug("{}", frag.print(settings, 0));
+    lg::debug("ints: {} {} {}", vi08_adgif_base, vi09_draw_addr_book, vi03_vert_addr_book);
   }
 
-  // fmt::print("vi09: #x{:x} ({})\n", vars.vi09, vars.vi14);
+  // lg::print("vi09: #x{:x} ({})\n", vars.vi09, vars.vi14);
 
   //  fcset 0x0                  |  nop
   //  iaddi vi07, vi00, -0x1     |  nop
@@ -1033,7 +1036,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   ASSERT(vi03_vert_addr_book < 328);                            // should be a buffer 0 addr
   u16 vi02_pre_vtx_ptr = mem.ilw_data(vi03_vert_addr_book, 0);  // is an addr? v4/16 with strom
   if (DEBUG) {
-    fmt::print("vi02-warmup 0: {}\n", vi02_pre_vtx_ptr);
+    lg::debug("vi02-warmup 0: {}", vi02_pre_vtx_ptr);
   }
 
   //  lq.xyzw vf09, 8(vi14)      |  nop
@@ -1050,8 +1053,8 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   float vf28_w_addr_of_next_vtx = vf28_load_temp.w();  // addr, of v3-32, with 2, 1
 
   if (DEBUG) {
-    fmt::print("vf28 load 0: x_f {} y_f {} z_u32 {}\n", vf28_x, vf28_y,
-               float_2_u32(vf28_w_addr_of_next_vtx));
+    lg::debug("vf28 load 0: x_f {} y_f {} z_u32 {}", vf28_x, vf28_y,
+              float_2_u32(vf28_w_addr_of_next_vtx));
   };
 
   // they rotate vi06 to alternate the kick zone buffer.
@@ -1063,13 +1066,13 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   //  ilwr.x vi12, vi09          |  nop
   u16 vi12_vert_count = mem.ilw_data(vi09_draw_addr_book, 0);  // some sort of counter?
   if (DEBUG) {
-    fmt::print("vi12: 0x{:x}\n", vi12_vert_count);
+    lg::debug("vi12: 0x{:x}", vi12_vert_count);
   }
 
   //  ilwr.z vi13, vi09          |  nop
   u16 vi13_adgifs = mem.ilw_data(vi09_draw_addr_book, 2);
   if (DEBUG) {
-    fmt::print("vi13: 0x{:x}\n", vi13_adgifs);
+    lg::debug("vi13: 0x{:x}", vi13_adgifs);
   }
 
   //  mtir vi04, vf28.w          |  subz.xyz vf24, vf28, vf02
@@ -1090,7 +1093,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   //  ilwr.y vi02, vi03          |  nop
   vi02_pre_vtx_ptr = mem.ilw_data(vi03_vert_addr_book, 1);
   if (DEBUG) {
-    fmt::print("vi02-warmup 1: {}\n", vi02_pre_vtx_ptr);
+    lg::debug("vi02-warmup 1: {}", vi02_pre_vtx_ptr);
   }
 
   // vertex load
@@ -1117,9 +1120,9 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   vf12_vtx_pos_0 = itof0(vf12_vtx_pos_0);
 
   if (DEBUG) {
-    fmt::print("vf28 load 0: x_f {} y_f {} w_u32 {}\n", vf28_x, vf28_y,
-               float_2_u32(vf28_w_addr_of_next_vtx));
-    fmt::print("vtx w0: {}\n", vf12_vtx_pos_0.to_string_aligned());
+    lg::debug("vf28 load 0: x_f {} y_f {} w_u32 {}", vf28_x, vf28_y,
+              float_2_u32(vf28_w_addr_of_next_vtx));
+    lg::debug("vtx w0: {}", vf12_vtx_pos_0.to_string_aligned());
   };
 
   //  mfir.w vf24, vi06          |  nop
@@ -1166,7 +1169,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   //  ilwr.z vi02, vi03          |  nop
   vi02_pre_vtx_ptr = mem.ilw_data(vi03_vert_addr_book, 2);
   if (DEBUG) {
-    fmt::print("pre-vtx-vi02-warmup 2: {}\n", vi02_pre_vtx_ptr);
+    lg::debug("pre-vtx-vi02-warmup 2: {}", vi02_pre_vtx_ptr);
   }
 
   //  lq.xyzw vf13, 0(vi04)      |  madday.xyzw ACC, vf07, vf12
@@ -1232,7 +1235,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   //  ilwr.w vi02, vi03          |  mul.xyz vf24, vf24, Q
   vi02_pre_vtx_ptr = mem.ilw_data(vi03_vert_addr_book, 3);
   if (DEBUG) {
-    fmt::print("pre-vtx-vi02-warmup 3: {}\n", vi02_pre_vtx_ptr);
+    lg::debug("pre-vtx-vi02-warmup 3: {}", vi02_pre_vtx_ptr);
   }
 
   //  lq.xyzw vf14, 0(vi04)      |  madday.xyzw ACC, vf07, vf13
@@ -1353,12 +1356,12 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
 
     //  ibeq vi05, vi06, L133      |  miniz.w vf13, vf13, vf01
     bool take_branch = (vi05_end_of_vert_kick_data == vi06_kick_zone_ptr);
-    //  fmt::print("L129 prog: {} {}\n", vars.vi05, vars.vi06_kick_zone_ptr);
+    //  lg::print("L129 prog: {} {}\n", vars.vi05, vars.vi06_kick_zone_ptr);
     // vars.vf13_root_pos_1.w() = std::min(vars.vf13_root_pos_1.w(), m_tfrag_data.fog.z());
 
     //  sqi.xyzw vf12, vi06        |  clipw.xyz vf17, vf17
     vertex_pipeline[0].pre_cam_trans_pos = vf12_vtx_pos_0;  // todo move down?
-    //  fmt::print("C: vf12 store: {}\n", int_vec_debug(vars.vf12_root_pos_0));
+    //  lg::print("C: vf12 store: {}\n", int_vec_debug(vars.vf12_root_pos_0));
     current_draw.verts.push_back(vertex_pipeline[0]);
     vi06_kick_zone_ptr++;
     // m_clip_and_3ffff = clip_xyz_plus_minus(vars.vf17_scaled_pos_1);
@@ -1424,14 +1427,14 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
     vertex_pipeline[1].stq[0] = vf25_stq_1[0];
     vertex_pipeline[1].stq[1] = vf25_stq_1[1];
     vertex_pipeline[1].stq[2] = vf25_stq_1[2];
-    //  fmt::print("A: vf25 store: {}\n", vars.vf25.to_string_aligned());
+    //  lg::print("A: vf25 store: {}\n", vars.vf25.to_string_aligned());
     vi06_kick_zone_ptr++;
     // vf14 += m_tfrag_data.hvdf_offset;
 
     //  sqi.xyzw vf21, vi06        |  ftoi4.xyzw vf13, vf13
     // store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf21);
     vertex_pipeline[1].rgba = vf21_vtx_rgba_1;
-    // fmt::print("B: vf21 store: {}\n", int_vec_debug(vars.vf21));
+    // lg::print("B: vf21 store: {}\n", int_vec_debug(vars.vf21));
     vi06_kick_zone_ptr++;
     // vars.vf13_root_pos_1 = ftoi4(vars.vf13_root_pos_1);
 
@@ -1460,7 +1463,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
     // store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf13_root_pos_1);
     vertex_pipeline[1].pre_cam_trans_pos = vf13_vtx_pos_1;
     current_draw.verts.push_back(vertex_pipeline[1]);
-    //  fmt::print("C: vf13 store: {}\n", int_vec_debug(vars.vf13_root_pos_1));
+    //  lg::print("C: vf13 store: {}\n", int_vec_debug(vars.vf13_root_pos_1));
     vi06_kick_zone_ptr++;
     // m_clip_and_3ffff = clip_xyz_plus_minus(vars.vf18_scaled_pos_2);
 
@@ -1515,7 +1518,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
 
     //  lq.xyzw vf21, 1(vi04)      |  maddz.xyzw vf12, vf08, vf12
     vf21_vtx_rgba_1 = color_indices.load_color_idx(vi04_vtx_ptr + 1);
-    //  fmt::print("vf21 load from: {}\n", vars.vi04 + 1);
+    //  lg::print("vf21 load from: {}\n", vars.vi04 + 1);
     // vars.vf12_root_pos_0 = m_acc + in.vf08_cam_mat_z * vars.vf12_root_pos_0.z();
 
     //  sqi.xyzw vf26, vi06        |  add.xyzw vf15, vf15, vf10
@@ -1523,14 +1526,14 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
     vertex_pipeline[2].stq[0] = vf26_stq_2[0];
     vertex_pipeline[2].stq[1] = vf26_stq_2[1];
     vertex_pipeline[2].stq[2] = vf26_stq_2[2];
-    //  fmt::print("A: vf26 store: {}\n", vars.vf26.to_string_aligned());
+    //  lg::print("A: vf26 store: {}\n", vars.vf26.to_string_aligned());
     vi06_kick_zone_ptr++;
     // vars.vf15_loop_pos_1 += m_tfrag_data.hvdf_offset;
 
     //  sqi.xyzw vf22, vi06        |  ftoi4.xyzw vf14, vf14
     // store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf22);
     vertex_pipeline[2].rgba = vf22_vtx_rgba_2;
-    // fmt::print("B: vf22 store: {}\n", int_vec_debug(vars.vf22));
+    // lg::print("B: vf22 store: {}\n", int_vec_debug(vars.vf22));
     vi06_kick_zone_ptr++;
     // vars.vf14_loop_pos_0 = ftoi4(vars.vf14_loop_pos_0);
 
@@ -1558,7 +1561,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
     vertex_pipeline[2].pre_cam_trans_pos = vf14_vtx_pos_2;
     current_draw.verts.push_back(vertex_pipeline[2]);
 
-    //  fmt::print("C: vf14 store: {}\n", int_vec_debug(vars.vf14_loop_pos_0));
+    //  lg::print("C: vf14 store: {}\n", int_vec_debug(vars.vf14_loop_pos_0));
     vi06_kick_zone_ptr++;
     // m_clip_and_3ffff = clip_xyz_plus_minus(vars.vf19_scaled_pos_3);
 
@@ -1621,7 +1624,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
     vertex_pipeline[3].stq[0] = vf27_vtx_stq_3[0];
     vertex_pipeline[3].stq[1] = vf27_vtx_stq_3[1];
     vertex_pipeline[3].stq[2] = vf27_vtx_stq_3[2];
-    //  fmt::print("A: vf27 store: {}\n", vars.vf27.to_string_aligned());
+    //  lg::print("A: vf27 store: {}\n", vars.vf27.to_string_aligned());
     vi06_kick_zone_ptr++;
     // vars.vf12_root_pos_0 += m_tfrag_data.hvdf_offset;
 
@@ -1629,7 +1632,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
     // store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf23);
     vertex_pipeline[3].rgba = vf23_vtx_rgba_3;
 
-    // fmt::print("B: vf23 store: {}\n", int_vec_debug(vars.vf23));
+    // lg::print("B: vf23 store: {}\n", int_vec_debug(vars.vf23));
     vi06_kick_zone_ptr++;
     // vars.vf15_loop_pos_1 = ftoi4(vars.vf15_loop_pos_1);
 
@@ -1650,7 +1653,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
 
     //  ibne vi05, vi06, L128      |  miniz.w vf12, vf12, vf01
     take_branch = (vi05_end_of_vert_kick_data != vi06_kick_zone_ptr);
-    //  fmt::print("kick check: {} {}\n", vars.vi05, vars.vi06_kick_zone_ptr);
+    //  lg::print("kick check: {} {}\n", vars.vi05, vars.vi06_kick_zone_ptr);
     // vars.vf12_root_pos_0.w() = std::min(vars.vf12_root_pos_0.w(), m_tfrag_data.fog.z());
 
     //  sqi.xyzw vf15, vi06        |  clipw.xyz vf16, vf16
@@ -1658,7 +1661,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
     vertex_pipeline[3].pre_cam_trans_pos = vf15_vtx_pos_3;
     current_draw.verts.push_back(vertex_pipeline[3]);
     vi06_kick_zone_ptr++;
-    //  fmt::print("C: vf15 store: {}\n", int_vec_debug(vars.vf15_loop_pos_1));
+    //  lg::print("C: vf15 store: {}\n", int_vec_debug(vars.vf15_loop_pos_1));
     // m_clip_and_3ffff = clip_xyz_plus_minus(vars.vf16_scaled_pos_0);
 
     if (!take_branch) {
@@ -1813,7 +1816,7 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
   auto masked = original & 0xffffff00;
   for (auto& t : map) {
     if (t.original_texid == masked) {
-      fmt::print("OKAY! remapped!\n");
+      lg::info("OKAY! remapped!");
       return t.new_texid | 20;
     }
   }
@@ -1822,7 +1825,8 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
 
 void process_draw_mode(std::vector<TFragDraw>& all_draws,
                        const std::vector<level_tools::TextureRemap>& map,
-                       tfrag3::TFragmentTreeKind tree_kind) {
+                       tfrag3::TFragmentTreeKind tree_kind,
+                       bool disable_atest_for_normal_tfrag) {
   // set up the draw mode based on the code in background.gc and tfrag-methods.gc
   DrawMode mode;
   mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
@@ -1835,13 +1839,24 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
   switch (tree_kind) {
     case tfrag3::TFragmentTreeKind::NORMAL:
     case tfrag3::TFragmentTreeKind::LOWRES:
-      mode.enable_at();                                  // :ate #x1
-      mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);  // :atst (gs-atest greater-equal)
-      mode.set_aref(0x26);                               // :aref #x26
-      mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
-      mode.enable_zt();                            // :zte #x1
-      mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
-      mode.disable_ab();
+      if (disable_atest_for_normal_tfrag) {
+        mode.enable_at();                                  // :ate #x1
+        mode.set_alpha_test(DrawMode::AlphaTest::ALWAYS);  // :atst (gs-atest greater-equal)
+        mode.set_aref(0x0);                                // :aref #x26
+        mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+        mode.enable_zt();                            // :zte #x1
+        mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
+        mode.disable_ab();
+      } else {
+        mode.enable_at();                                  // :ate #x1
+        mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);  // :atst (gs-atest greater-equal)
+        mode.set_aref(0x26);                               // :aref #x26
+        mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+        mode.enable_zt();                            // :zte #x1
+        mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
+        mode.disable_ab();
+      }
+
       break;
     case tfrag3::TFragmentTreeKind::TRANS:
     case tfrag3::TFragmentTreeKind::LOWRES_TRANS:
@@ -1872,6 +1887,16 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
       mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal)
       mode.enable_ab();
       break;
+    case tfrag3::TFragmentTreeKind::WATER:
+      // (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal))
+      mode.enable_at();
+      mode.set_alpha_test(DrawMode::AlphaTest::NEVER);
+      mode.set_alpha_fail(GsTest::AlphaFail::FB_ONLY);
+      mode.set_aref(0);
+      mode.enable_zt();
+      mode.set_depth_test(GsTest::ZTest::GEQUAL);
+      mode.enable_ab();
+      break;
     default:
       ASSERT(false);
   }
@@ -1886,7 +1911,7 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
           update_mode_from_test1(val, mode);
           break;
         case GsRegisterAddress::TEX0_1:
-          ASSERT(val == 0);
+          // ASSERT(val == 0); HACK jak 2 sets this.
           break;
         case GsRegisterAddress::TEX1_1:
           ASSERT(val == 0x120);  // some flag
@@ -1894,11 +1919,11 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
             u32 original_tex = draw.get_adgif_upper(ad_idx);
             u32 new_tex = remap_texture(original_tex, map);
             if (original_tex != new_tex) {
-              fmt::print("map from 0x{:x} to 0x{:x}\n", original_tex, new_tex);
+              lg::info("map from 0x{:x} to 0x{:x}", original_tex, new_tex);
             }
             u32 tpage = new_tex >> 20;
             u32 tidx = (new_tex >> 8) & 0b1111'1111'1111;
-            // fmt::print("texture: {} : {}\n", tpage, tidx);
+            // lg::print("texture: {} : {}\n", tpage, tidx);
             draw.tpage = tpage;
             draw.tex_in_page = tidx;
           }
@@ -1911,8 +1936,6 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
             ASSERT_MSG(false, fmt::format("clamp: 0x{:x}", val));
           }
 
-          // this isn't quite right, but I'm hoping it's enough!
-          // mode.set_clamp_enable(val == 0b101);
           mode.set_clamp_s_enable(val & 0b1);
           mode.set_clamp_t_enable(val & 0b100);
           break;
@@ -1920,8 +1943,8 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
           update_mode_from_alpha1(val, mode);
           break;
         default:
-          fmt::print("Address {} ({}) is not supported in process_draw_mode\n",
-                     register_address_name(addr), ad_idx);
+          lg::info("Address {} ({}) is not supported in process_draw_mode",
+                   register_address_name(addr), ad_idx);
       }
     }
     draw.mode = mode;
@@ -1973,7 +1996,7 @@ std::map<u32, std::vector<GroupedDraw>> make_draw_groups(std::vector<TFragDraw>&
     }
   }
 
-  // fmt::print("    grouped to get {} draw calls\n", dc);
+  // lg::print("    grouped to get {} draw calls\n", dc);
 
   return result;
 }
@@ -1983,7 +2006,8 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
                       std::vector<tfrag3::PreloadedVertex>& vertices,
                       std::vector<tfrag3::Texture>& texture_pool,
                       const TextureDB& tdb,
-                      const std::vector<std::pair<int, int>>& expected_missing_textures) {
+                      const std::vector<std::pair<int, int>>& expected_missing_textures,
+                      const std::string& level_name) {
   // we will set:
   // draws
   // color_indices_per_vertex
@@ -2017,9 +2041,9 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
               fmt::format("texture {} wasn't found. make sure it is loaded somehow. You may need "
                           "to include "
                           "ART.DGO or GAME.DGO in addition to the level DGOs for shared textures."
-                          "tpage is {}. id is {} (0x{:x})",
+                          "tpage is {}. id is {} (0x{:x}) for level {}",
                           combo_tex_id, combo_tex_id >> 16, combo_tex_id & 0xffff,
-                          combo_tex_id & 0xffff));
+                          combo_tex_id & 0xffff, level_name));
         }
       }
       tfrag3_tex_id = texture_pool.size();
@@ -2041,6 +2065,7 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
 
       for (auto& strip : draw.strips) {
         tfrag3::StripDraw::VisGroup vgroup;
+        ASSERT(strip.tfrag_id < UINT16_MAX);
         vgroup.vis_idx_in_pc_bvh = strip.tfrag_id;  // associate with the tfrag for culling
         vgroup.num_inds = strip.verts.size() + 1;   // one for the primitive restart!
         vgroup.num_tris = strip.verts.size() - 2;
@@ -2057,9 +2082,8 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
           vtx.z = vert.pre_cam_trans_pos.z();
           vtx.s = vert.stq.x();
           vtx.t = vert.stq.y();
-          vtx.q_unused = vert.stq.z();
-          // if this is true, we can remove a divide in the shader
-          ASSERT(vtx.q_unused == 1.f);
+          // because this is true, we can remove a divide in the shader
+          ASSERT(vert.stq.z() == 1.f);
           vtx.color_index = vert.rgba / 4;
           // ASSERT((vert.rgba >> 2) < 1024); spider cave has 2048?
           ASSERT((vert.rgba & 3) == 0);
@@ -2084,7 +2108,9 @@ void emulate_tfrags(int geom,
                     std::vector<tfrag3::PreloadedVertex>& vertices,
                     const TextureDB& tdb,
                     const std::vector<std::pair<int, int>>& expected_missing_textures,
-                    bool dump_level) {
+                    bool dump_level,
+                    const std::string& level_name,
+                    bool disable_alpha_test_in_normal) {
   TFragExtractStats stats;
 
   std::vector<u8> vu_mem;
@@ -2100,16 +2126,18 @@ void emulate_tfrags(int geom,
     all_draws.insert(all_draws.end(), draws.begin(), draws.end());
   }
 
-  process_draw_mode(all_draws, map, tree_out.kind);
+  process_draw_mode(all_draws, map, tree_out.kind, disable_alpha_test_in_normal);
   auto groups = make_draw_groups(all_draws);
 
-  make_tfrag3_data(groups, tree_out, vertices, level_out.textures, tdb, expected_missing_textures);
+  make_tfrag3_data(groups, tree_out, vertices, level_out.textures, tdb, expected_missing_textures,
+                   level_name);
 
   if (dump_level) {
     auto debug_out = debug_dump_to_obj(all_draws);
-    file_util::write_text_file(
-        file_util::get_file_path({"debug_out", fmt::format("tfrag-{}.obj", debug_name)}),
-        debug_out);
+    auto file_path =
+        file_util::get_file_path({"debug_out", fmt::format("tfrag-{}.obj", debug_name)});
+    file_util::create_dir_if_needed_for_file(file_path);
+    file_util::write_text_file(file_path, debug_out);
   }
 }
 
@@ -2144,7 +2172,9 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
                    const TextureDB& tex_db,
                    const std::vector<std::pair<int, int>>& expected_missing_textures,
                    tfrag3::Level& out,
-                   bool dump_level) {
+                   bool dump_level,
+                   const std::string& level_name,
+                   bool disable_atest_in_normal) {
   // go through 3 lods(?)
   for (int geom = 0; geom < GEOM_MAX; ++geom) {
     tfrag3::TfragTree this_tree;
@@ -2158,6 +2188,10 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
       this_tree.kind = tfrag3::TFragmentTreeKind::LOWRES;
     } else if (tree->my_type() == "drawable-tree-trans-tfrag") {
       this_tree.kind = tfrag3::TFragmentTreeKind::TRANS;
+    } else if (tree->my_type() == "drawable-tree-tfrag-trans") {
+      this_tree.kind = tfrag3::TFragmentTreeKind::TRANS;
+    } else if (tree->my_type() == "drawable-tree-tfrag-water") {
+      this_tree.kind = tfrag3::TFragmentTreeKind::WATER;
     } else {
       ASSERT_MSG(false, fmt::format("unknown tfrag tree kind: {}", tree->my_type()));
     }
@@ -2178,7 +2212,7 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
     }
     bool ok = verify_node_indices(tree);
     ASSERT(ok);
-    // fmt::print("    tree has {} arrays and {} tfragments\n", tree->length,
+    // lg::print("    tree has {} arrays and {} tfragments\n", tree->length,
     // as_tfrag_array->length);
 
     auto vis_nodes = extract_vis_data(tree, as_tfrag_array->tfragments.front().id);
@@ -2203,7 +2237,8 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
 
     std::vector<tfrag3::PreloadedVertex> vertices;
     emulate_tfrags(geom, as_tfrag_array->tfragments, debug_name, map, out, this_tree, vertices,
-                   tex_db, expected_missing_textures, dump_level);
+                   tex_db, expected_missing_textures, dump_level, level_name,
+                   disable_atest_in_normal);
     pack_tfrag_vertices(&this_tree.packed_vertices, vertices);
     extract_time_of_day(tree, this_tree);
 
@@ -2211,7 +2246,7 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
       for (auto& str : draw.vis_groups) {
         auto it = tfrag_parents.find(str.vis_idx_in_pc_bvh);
         if (it == tfrag_parents.end()) {
-          str.vis_idx_in_pc_bvh = UINT32_MAX;
+          str.vis_idx_in_pc_bvh = UINT16_MAX;
         } else {
           str.vis_idx_in_pc_bvh = it->second;
         }

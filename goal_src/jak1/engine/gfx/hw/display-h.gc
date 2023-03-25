@@ -1,0 +1,257 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: display-h.gc
+;; name in dgo: display-h
+;; dgos: GAME, ENGINE
+
+;; The display system takes care of managing the contexts for settings framebuffers/display settings
+;; It also handles drawing the profile bars, game engine timing, and managing the two DMA buffers for
+;; the double buffered rendering system.
+;; The *display* global will hold the main display state, including the DMA buffers for each of the two frames
+
+;; display-env stores the GS settings for displaying a framebuffer on screen.
+;; this is identical to the Sony sceGsDispEnv struct.
+;; you can set one of these up with set-display-env, then use it with
+;; put-display-env, which is implemented in the kernel and is a wrapper
+;; around a Sony function.
+(deftype display-env (structure)
+  ((pmode   gs-pmode      :offset-assert 0)
+   (smode2  gs-smode2     :offset-assert 8)
+   (dspfb   gs-display-fb :offset-assert 16)
+   (display gs-display    :offset-assert 24)
+   (bgcolor gs-bgcolor    :offset-assert 32)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x28
+  :flag-assert         #x900000028
+  )
+
+;; draw-env stores the GS settings for drawing to somewhere in VRAM.
+;; the "addr" fields represent GS register addresses
+;; this is identical to the Sony sceGsDrawEnv1/2 structs
+;; Internally, this is register + address GIF data.
+(deftype draw-env (structure)
+  ((frame1         gs-frame        :offset-assert 0)
+   (frame1addr     gs-reg64        :offset-assert 8)
+   (zbuf1          gs-zbuf         :offset-assert 16)
+   (zbuf1addr      gs-reg64        :offset-assert 24)
+   (xyoffset1      gs-xy-offset    :offset-assert 32)
+   (xyoffset1addr  gs-reg64        :offset-assert 40)
+   (scissor1       gs-scissor      :offset-assert 48)
+   (scissor1addr   gs-reg64        :offset-assert 56)
+   (prmodecont     gs-prmode-cont  :offset-assert 64)
+   (prmodecontaddr gs-reg64        :offset-assert 72)
+   (colclamp       gs-color-clamp  :offset-assert 80)
+   (colclampaddr   gs-reg64        :offset-assert 88)
+   (dthe           gs-dthe         :offset-assert 96)
+   (dtheaddr       gs-reg64        :offset-assert 104)
+   (test1          gs-test         :offset-assert 112)
+   (test1addr      gs-reg64        :offset-assert 120)
+   )
+  :method-count-assert 9
+  :size-assert         #x80
+  :flag-assert         #x900000080
+  )
+
+(defun put-draw-env ((packet (pointer gif-tag)))
+  "Begin DMA transfer to the GIF/GS to send a draw env packet.
+   The length of the transfer is taken from the nloop field of the tag."
+  ;; this is a workaround for OpenGOAL not supporting 128-bitfield access yet.
+  (let ((packet64 (the-as (pointer gif-tag64) packet)))
+    (dma-send GIF_DMA_BANK
+              (the-as uint packet)
+              (the-as uint (+ (the-as uint (-> packet64 0 nloop)) (the-as uint 1)))
+              )
+    )
+  (none)
+  )
+
+;; Per frame data that is used by the renderers.
+(deftype display-frame (basic)
+  ((calc-buf     dma-buffer    :offset 8)
+   (vu1-buf      dma-buffer    :offset 8)
+   (debug-buf    dma-buffer    :offset 36)
+   (global-buf   dma-buffer    :offset 40)
+   (bucket-group (inline-array dma-bucket)    :offset 44)
+   (buffer       dma-buffer    11  :offset 4)
+   (profile-bar  profile-bar 2 :offset 48)
+   (run-time     int64        :offset 56)
+   )
+  (:methods
+   (new (symbol type) _type_ 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+(defmethod new display-frame ((allocation symbol) (type-to-make type))
+  "Allocate a new display frame"
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> obj calc-buf) (the-as dma-buffer 0))
+    (set! (-> obj global-buf) (the-as dma-buffer 0))
+    (set! (-> obj debug-buf) (the-as dma-buffer 0))
+    ;; allocate profile-bars in the debug heap, if we're debugging.
+    (when *debug-segment*
+      (set! (-> obj profile-bar 0) (new 'debug 'profile-bar))
+      (set! (-> obj profile-bar 1) (new 'debug 'profile-bar))
+      )
+    obj
+    )
+  )
+
+;; unused?
+(deftype virtual-frame (structure)
+  ((display      display-env    :offset-assert 0)
+   (display-last display-env    :offset-assert 4)
+   (gif          pointer        :offset-assert 8)
+   (draw         draw-env       :offset-assert 12)
+   (frame        display-frame  :offset-assert 16)
+   )
+
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+
+;; This tracks all of the display stuff in a single global
+(deftype display (basic)
+  ;; first, 3x environments. Not sure why we need 3.
+  ((display-env0                    display-env :inline :offset-assert 8)
+   (display-env1                    display-env :inline :offset-assert 48)
+   (display-env2                    display-env :inline :offset-assert 88)
+   ;; the gif-tag + draw is a gif-packet to setting the draw-env.
+   ;; the draw-env is actually just a+d data.
+   (gif-tag0                        gs-gif-tag  :inline :offset-assert 128)
+   (draw0                           draw-env    :inline :offset-assert 144)
+   (gif-tag1                        gs-gif-tag  :inline :offset-assert 272)
+   (draw1                           draw-env    :inline :offset-assert 288)
+   (gif-tag2                        gs-gif-tag  :inline :offset-assert 416)
+   (draw2                           draw-env    :inline :offset-assert 432)
+
+   ;; frame indices
+   (on-screen                       int32               :offset-assert 560)
+   (last-screen                     int32               :offset-assert 564)
+   ;; not sure why we have 6, it seems like only the first 2 actually
+   ;; have valid display-frames in them.
+   (frames                          virtual-frame 6 :inline :offset-assert 568)
+   (bg-clear-color                  rgba         4      :offset-assert 760)
+   ;; counters (why are there so many???)
+   (real-frame-counter              time-frame               :offset-assert 776)
+   (base-frame-counter              time-frame               :offset-assert 784)
+   (game-frame-counter              time-frame               :offset-assert 792)
+   (integral-frame-counter          time-frame               :offset-assert 800)
+   (real-integral-frame-counter     time-frame               :offset-assert 808)
+   (actual-frame-counter            time-frame               :offset-assert 816)
+   (real-actual-frame-counter       time-frame               :offset-assert 824)
+   (part-frame-counter              time-frame               :offset-assert 832)
+
+   ;; the "old" counters are the values from the previous tick.
+   ;; the counters above may jump during a load.
+   (old-real-frame-counter          time-frame               :offset-assert 840)
+   (old-base-frame-counter          time-frame               :offset-assert 848)
+   (old-game-frame-counter          time-frame               :offset-assert 856)
+   (old-integral-frame-counter      time-frame               :offset-assert 864)
+   (old-real-integral-frame-counter time-frame               :offset-assert 872)
+   (old-actual-frame-counter        time-frame               :offset-assert 880)
+   (old-real-actual-frame-counter   time-frame               :offset-assert 888)
+   (old-part-frame-counter          time-frame               :offset-assert 896)
+
+   ;; timing stats for how fast the engine is currently running.
+   (time-ratio                      float               :offset-assert 904) ;; engine speed, 1.0 = full speed
+   (seconds-per-frame               float               :offset-assert 908) ;; 1/fps
+   (frames-per-second               float               :offset-assert 912) ;; fps
+   (time-factor                     float               :offset-assert 916) ;; 6 on PAL, 5 on NTSC, "ticks" / frame
+   (time-adjust-ratio               float               :offset-assert 920) ;; 1 on NTSC full speed, 1.2 PAL full speed.
+   )
+  :method-count-assert 10
+  :size-assert         #x39c
+  :flag-assert         #xa0000039c
+  (:methods
+   (new (symbol type int int int int int) _type_ 0)
+   (set-time-ratios (_type_ float) float 9)
+   )
+  )
+
+(define-extern *display* display)
+(define-extern set-display (function display int int int int int display))
+
+(defmethod new display ((allocation symbol) (type-to-make type) (psm int) (w int) (h int) (ztest int) (zpsm int))
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    ;; set the display size, texture format, zbuffer format, etc.
+    (set-display obj psm w h ztest zpsm)
+    ;; set up frames. for the most part only the first 2 make sense, and
+    ;; the rest have repeats.
+    (set! (-> obj frames 0 display) (-> obj display-env0))
+    (set! (-> obj frames 1 display) (-> obj display-env1))
+    (set! (-> obj frames 2 display) (-> obj display-env2))
+    (set! (-> obj frames 3 display) (-> obj display-env0))
+    (set! (-> obj frames 4 display) (-> obj display-env1))
+    (set! (-> obj frames 5 display) (-> obj display-env2))
+    (set! (-> obj frames 0 display-last) (-> obj display-env2))
+    (set! (-> obj frames 1 display-last) (-> obj display-env0))
+    (set! (-> obj frames 2 display-last) (-> obj display-env1))
+    (set! (-> obj frames 3 display-last) (-> obj display-env2))
+    (set! (-> obj frames 4 display-last) (-> obj display-env0))
+    (set! (-> obj frames 5 display-last) (-> obj display-env1))
+    (set! (-> obj frames 0 gif) (&-> obj gif-tag0 qword))
+    (set! (-> obj frames 1 gif) (&-> obj gif-tag1 qword))
+    (set! (-> obj frames 2 gif) (&-> obj gif-tag2 qword))
+    (set! (-> obj frames 3 gif) (&-> obj gif-tag0 qword))
+    (set! (-> obj frames 4 gif) (&-> obj gif-tag1 qword))
+    (set! (-> obj frames 5 gif) (&-> obj gif-tag2 qword))
+    (set! (-> obj frames 0 draw) (-> obj draw0))
+    (set! (-> obj frames 1 draw) (-> obj draw1))
+    (set! (-> obj frames 2 draw) (-> obj draw2))
+    (set! (-> obj frames 3 draw) (-> obj draw0))
+    (set! (-> obj frames 4 draw) (-> obj draw1))
+    (set! (-> obj frames 5 draw) (-> obj draw2))
+    (set! (-> obj frames 0 frame) (new 'global 'display-frame))
+    (set! (-> obj frames 1 frame) (new 'global 'display-frame))
+    (set! (-> obj frames 2 frame) (-> obj frames 0 frame))
+    (set! (-> obj frames 3 frame) (-> obj frames 1 frame))
+    (set! (-> obj frames 4 frame) (-> obj frames 0 frame))
+    (set! (-> obj frames 5 frame) (-> obj frames 1 frame))
+    ;; do this again. just in case.
+    (default-buffer-init *default-regs-buffer*)
+    ;; set the default gray color.
+    (set! (-> obj bg-clear-color 0) (static-rgba #x80 #x80 #x80 #x80))
+    (set! (-> obj bg-clear-color 1) (static-rgba #x80 #x80 #x80 #x80))
+    (set! (-> obj bg-clear-color 2) (static-rgba #x80 #x80 #x80 #x80))
+    (set! (-> obj bg-clear-color 3) (static-rgba #x80 #x80 #x80 #x80))
+    obj
+    )
+  )
+
+(define *pre-draw-hook* (the (function object none) nothing))
+(define *post-draw-hook* (the-as (function dma-buffer none) nothing))
+
+
+(defmacro current-frame ()
+  `(-> *display* frames (-> *display* on-screen) frame)
+  )
+
+(defmacro current-time ()
+  `(-> *display* base-frame-counter)
+  )
+
+(defmacro integral-current-time ()
+  `(-> *display* integral-frame-counter)
+  )
+
+(defmacro real-current-time ()
+  `(-> *display* real-frame-counter)
+  )
+
+
+;; debug stuff really
+(defmacro get-screen-x (frac)
+  `(the int (* ,frac 512)))
+
+(defmacro get-screen-y (frac)
+  `(the int (* ,frac 224)))
+

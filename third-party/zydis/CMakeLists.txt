@@ -97,6 +97,7 @@ endif ()
 # Library configuration                                                                           #
 # =============================================================================================== #
 
+message(STATUS "zydis: dynamically link? ${ZYDIS_BUILD_SHARED_LIB}")
 if (ZYDIS_BUILD_SHARED_LIB)
     add_library("Zydis" SHARED)
 else ()

@@ -1,0 +1,262 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: generic-obs-h.gc
+;; name in dgo: generic-obs-h
+;; dgos: ENGINE, GAME
+
+(defenum manipy-options
+  :bitfield #t
+  :type uint32
+  (mo-0 0)
+  )
+(declare-type part-tracker process)
+(declare-type manipy process-drawable)
+(declare-type sparticle-launch-group basic)
+(define-extern part-tracker-init (function sparticle-launch-group time-frame (function part-tracker none) (pointer process-drawable) process matrix none :behavior part-tracker))
+(define-extern manipy-init (function vector entity-actor skeleton-group vector object none :behavior manipy))
+(define-extern lightning-tracker-init (function lightning-spec time-frame symbol process-drawable vector vector none :behavior lightning-tracker))
+(define-extern birth-pickup-at-point (function vector pickup-type float symbol process-tree fact-info (pointer process) :behavior process))
+(define-extern process-grab? (function process symbol symbol :behavior process))
+(define-extern process-release? (function process symbol :behavior process))
+
+;; DECOMP BEGINS
+
+(deftype manipy (process-drawable)
+  ((root-override        collide-shape           :offset        128)
+   (new-trans-hook       (function none)         :offset-assert 200)
+   (cur-trans-hook       (function none)         :offset-assert 204)
+   (cur-event-hook       (function none)         :offset-assert 208)
+   (new-joint-anim       art-joint-anim          :offset-assert 212)
+   (new-joint-anim-blend uint64                  :offset-assert 216)
+   (anim-mode            symbol                  :offset-assert 224)
+   (cur-grab-handle      handle                  :offset-assert 232)
+   (cur-target-handle    handle                  :offset-assert 240)
+   (old-grab-pos         vector          :inline :offset-assert 256)
+   (joint                joint-mod       4       :offset-assert 272)
+   (new-post-hook        (function none)         :offset-assert 288)
+   (cur-post-hook        (function none)         :offset-assert 292)
+   (clone-copy-trans     symbol                  :offset-assert 296)
+   (shadow-backup        basic                   :offset-assert 300)
+   (draw?                symbol                  :offset-assert 304)
+   (userdata             uint64                  :offset-assert 312)
+   (prefix               basic                   :offset-assert 320)
+   (shadow-volume-joint  int32                   :offset-assert 324)
+   (speed                float                   :offset-assert 328)
+   (user-uint64          uint64          4       :offset-assert 336)
+   (options              manipy-options          :offset-assert 368)
+   )
+  :heap-base #x100
+  :method-count-assert 21
+  :size-assert         #x174
+  :flag-assert         #x1501000174
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+
+(deftype part-spawner (process)
+  ((root         trsqv                                    :offset-assert 128)
+   (part         sparticle-launch-control                 :offset-assert 132)
+   (sound        ambient-sound                            :offset-assert 136)
+   (mode         (pointer sparticle-launch-group)         :offset-assert 140)
+   (enable       symbol                                   :offset-assert 144)
+   (radius       meters                                   :offset-assert 148)
+   (world-sphere sphere                           :inline :offset-assert 160)
+   )
+  :heap-base #x30
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
+  (:methods
+    (active () _type_ :state 14)
+    (is-in-view? (_type_) symbol 15)
+    )
+  )
+
+
+(deftype part-tracker (process)
+  ((root            trsqv                                  :offset-assert 128)
+   (mat             matrix                         :inline :offset-assert 144)
+   (part            sparticle-launch-control               :offset-assert 208)
+   (callback        (function part-tracker vector)         :offset-assert 212)
+   (linger-callback (function part-tracker vector)         :offset-assert 216)
+   (duration        uint64                                 :offset-assert 224)
+   (linger-duration uint64                                 :offset-assert 232)
+   (start-time      time-frame                             :offset-assert 240)
+   (target          handle                                 :offset-assert 248)
+   (target-joint    int32                                  :offset-assert 256)
+   (offset          vector                         :inline :offset-assert 272)
+   (userdata        uint64                                 :offset-assert 288)
+   (user-time       time-frame                     2       :offset-assert 296)
+   (user-vector     vector                         :inline :offset-assert 320)
+   (user-handle     uint32                         2       :offset        352)
+   )
+  :heap-base #xf0
+  :method-count-assert 16
+  :size-assert         #x168
+  :flag-assert         #x1000f00168
+  (:methods
+    (active () _type_ :state 14)
+    (notify-parent-of-death (_type_) none 15)
+    )
+  )
+
+
+(deftype lightning-tracker (process)
+  ((ppointer-override (pointer lightning-tracker)               :offset         28)
+   (root              trsqv                                     :offset-assert 128)
+   (lightning         lightning-control                         :offset-assert 132)
+   (callback          (function lightning-tracker none)         :offset-assert 136)
+   (duration          uint64                                    :offset-assert 144)
+   (start-time        time-frame                                :offset-assert 152)
+   (offset0           vector                            :inline :offset-assert 160)
+   (offset1           vector                            :inline :offset-assert 176)
+   (target0           handle                                    :offset-assert 192)
+   (target1           handle                                    :offset-assert 200)
+   (target-joint0     int32                                     :offset-assert 208)
+   (target-joint1     int32                                     :offset-assert 212)
+   (sound             uint32                                    :offset-assert 216)
+   (userdata          uint64                                    :offset-assert 224)
+   (user-time         time-frame                        2       :offset-assert 232)
+   (user-vector       vector                            :inline :offset-assert 256)
+   (user-handle       handle                            2       :offset        288)
+   )
+  :heap-base #xb0
+  :method-count-assert 17
+  :size-assert         #x130
+  :flag-assert         #x1100b00130
+  (:methods
+    (active () _type_ :state 14)
+    (notify-parent-of-death (_type_) none 15)
+    (update (_type_) none 16)
+    )
+  )
+
+
+(deftype touch-tracker (process-drawable)
+  ((root-override collide-shape                  :offset        128)
+   (duration      time-frame                     :offset-assert 200)
+   (target        handle                         :offset-assert 208)
+   (event         symbol                         :offset-assert 216)
+   (run-function  (function object)              :offset-assert 220)
+   (callback      (function touch-tracker none)  :offset-assert 224)
+   (event-mode    basic                          :offset-assert 228)
+   )
+  :heap-base #x70
+  :method-count-assert 21
+  :size-assert         #xe8
+  :flag-assert         #x15007000e8
+  (:methods
+    (active () _type_ :state 20)
+    )
+  )
+
+
+(deftype swingpole (process-drawable)
+  ((root-override collide-shape         :offset        128)
+   (edge-length   meters                :offset-assert 200)
+   (path-pos      float                 :offset-assert 204)
+   (joint-track   int32                 :offset-assert 208)
+   (speed         meters                :offset-assert 212)
+   (dir           vector        :inline :offset-assert 224)
+   (sync          sync-eased    :inline :offset-assert 240)
+   )
+  :heap-base #xa0
+  :method-count-assert 23
+  :size-assert         #x11c
+  :flag-assert         #x1700a0011c
+  (:methods
+    (idle () _type_ :state 20)
+    (active (handle) _type_ :state 21)
+    (move-along-path (_type_) none 22)
+    )
+  )
+
+
+(deftype gui-query (structure)
+  ((x-position        int32   :offset-assert   0)
+   (y-position        int32   :offset-assert   4)
+   (message           string  :offset-assert   8)
+   (decision          symbol  :offset-assert  12)
+   (only-allow-cancel symbol  :offset-assert  16)
+   (no-msg            string  :offset-assert  20)
+   (message-space     int32   :offset-assert  24)
+   )
+  :method-count-assert 11
+  :size-assert         #x1c
+  :flag-assert         #xb0000001c
+  (:methods
+    (gui-query-method-9 () none 9)
+    (gui-query-method-10 () none 10)
+    )
+  )
+
+
+(deftype othercam (process)
+  ((hand              handle               :offset-assert 128)
+   (old-global-mask   process-mask         :offset-assert 136)
+   (mask-to-clear     process-mask         :offset-assert 140)
+   (cam-joint-index   int32                :offset-assert 144)
+   (old-pos           vector       :inline :offset-assert 160)
+   (old-mat-z         vector       :inline :offset-assert 176)
+   (had-valid-frame   basic                :offset-assert 192)
+   (border-value      basic                :offset-assert 196)
+   (die?              symbol               :offset-assert 200)
+   (survive-anim-end? symbol               :offset-assert 204)
+   (spooling?         symbol               :offset-assert 208)
+   (fov               float                :offset-assert 212)
+   )
+  :heap-base #x60
+  :method-count-assert 14
+  :size-assert         #xd8
+  :flag-assert         #xe006000d8
+  (:states
+    othercam-running
+    )
+  )
+
+
+(deftype explosion (process-drawable)
+  ((root-override   collide-shape  :offset        128)
+   (start-time      time-frame     :offset-assert 200)
+   (duration        uint32         :offset-assert 208)
+   (linger-duration uint32         :offset-assert 212)
+   (attack-id       uint32         :offset-assert 216)
+   )
+  :heap-base #x60
+  :method-count-assert 23
+  :size-assert         #xdc
+  :flag-assert         #x17006000dc
+  (:methods
+    (explode () _type_ :state 20)
+    (setup-explosion-collision (_type_) none 21)
+    (explosion-method-22 (_type_) none 22)
+    )
+  )
+
+
+(deftype explosion-init-params (structure)
+  ((spawn-point     vector                 :inline :offset-assert   0)
+   (spawn-quat      quaternion             :inline :offset-assert  16)
+   (radius          float                          :offset-assert  32)
+   (group           sparticle-launch-group         :offset-assert  36)
+   (collide-with    collide-spec                   :offset-assert  40)
+   (penetrate-using penetrate                      :offset-assert  48)
+   )
+  :method-count-assert 9
+  :size-assert         #x38
+  :flag-assert         #x900000038
+  )
+
+
+(deftype process-hidden (process)
+  ()
+  :method-count-assert 15
+  :size-assert         #x80
+  :flag-assert         #xf00000080
+  (:methods
+    (die () _type_ :state 14)
+    )
+  )

@@ -1,0 +1,41 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: quaternion-h.gc
+;; name in dgo: quaternion-h
+;; dgos: ENGINE, GAME
+
+;; DECOMP BEGINS
+
+;; quaternion, stored in xyzw order.
+(deftype quaternion (structure)
+  ((data float   4       :offset-assert   0)
+   (x    float           :offset          0)
+   (y    float           :offset          4)
+   (z    float           :offset          8)
+   (w    float           :offset         12)
+   (vec  vector  :inline :offset          0)
+   (quad uint128         :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(define *unity-quaternion* (new 'static 'quaternion :w 1.0))
+
+(define-extern vector-y-angle (function vector float))
+(define-extern quaternion->matrix (function matrix quaternion matrix))
+(define-extern matrix->quaternion (function quaternion matrix quaternion))
+(define-extern quaternion-normalize! (function quaternion quaternion))
+
+
+(defmacro new-stack-quaternion0 ()
+  "Get a stack quaternion that's set to 0.
+   This is more efficient than (new 'stack 'quaternion) because
+   this doesn't call the constructor."
+  `(let ((q (new 'stack-no-clear 'quaternion)))
+     (set! (-> q quad) (the-as uint128 0))
+     q
+     )
+  )

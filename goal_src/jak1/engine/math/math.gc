@@ -1,0 +1,318 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: math.gc
+;; name in dgo: math
+;; dgos: GAME, ENGINE
+
+;; various math helpers
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; float utility
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun truncate ((x float))
+  "Truncate a floating point number to an integer value.
+  Positive values round down and negative values round up."
+  (declare (inline))
+  (the float (the int x))
+  )
+
+(defun integral? ((x float))
+  "Is a float an exact integer?"
+  (= (truncate x) x)
+  )
+
+(defun fractional-part ((x float))
+  "Get the fractional part of a float"
+  (- x (truncate x))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; bitfield types
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype rgba (uint32)
+  ((r uint8 :offset 0)
+   (g uint8 :offset 8)
+   (b uint8 :offset 16)
+   (a uint8 :offset 24)
+   )
+  :flag-assert #x900000004
+  )
+
+(defmacro static-rgba (r g b a)
+  "make a new static rgba"
+
+  `(new 'static 'rgba :r ,r :g ,g :b ,b :a ,a)
+  )
+
+(defmacro static-rgba-uint (col)
+  "make a new static rgba"
+  `(the-as rgba ,col)
+  )
+
+;; TODO: fields
+(deftype xyzw (uint128)
+  ()
+  :flag-assert #x900000010
+  )
+
+;; TODO: fields
+(deftype xyzwh (uint128)
+  ()
+  :flag-assert #x900000010
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; utility functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun log2 ((x int))
+  "Straight out of Bit Twiddling Hacks graphics.stanford.edu.
+   This website is old enough that they possibly used this back
+   in 1999."
+  (- (sar (the-as int (the float x)) 23) 127)
+  )
+
+(defun seek ((x float) (target float) (diff float))
+  "Move x toward target by at most diff, with floats"
+  (let ((err (- target x)))
+    (cond
+      ((>= diff (fabs err))
+       ;; can get there in one go
+       target
+       )
+      ((>= err 0)
+       ;; increase
+       (+ x diff)
+       )
+      (else
+       (- x diff)
+       )
+      )
+    )
+  )
+
+(defun lerp ((minimum float) (maximum float) (amount float))
+  "Interpolate between minimum and maximum.  The output is not clamped."
+  (+ minimum (* amount (- maximum minimum)))
+  )
+
+(defun lerp-scale ((min-out float) (max-out float)
+                   (in float) (min-in float) (max-in float))
+  "Interpolate from [min-in, max-in] to [min-out, max-out].
+   If the output is out of range, it will be clamped.
+   This is not a great implementation."
+   (let ((scale (fmax 0.0 (fmin 1.0 (/ (- in min-in) (- max-in min-in))))))
+     (+ (* (- 1.0 scale) min-out)
+        (* scale max-out)
+        )
+     )
+   )
+
+(defun lerp-clamp ((minimum float) (maximum float) (amount float))
+  "Interpolate between minimum and maximum, but saturate the amount to [0, 1]"
+  (cond
+    ((>= 0.0 amount)
+     minimum)
+    ((>= amount 1.0)
+     maximum)
+    (else
+     ;; the implementation in lerp uses fewer operations...
+     (+ (* (- 1.0 amount) minimum)
+        (* amount maximum)
+        )
+     )
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; utility macros
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro seek! (place target rate)
+  "Macro to use seek in-place. place is the base, and where the result is stored."
+  `(set! ,place (seek ,place ,target ,rate))
+  )
+
+(defmacro seekl! (place target rate)
+  "Macro to use seekl in-place. place is the base, and where the result is stored."
+  `(set! ,place (seekl ,place ,target ,rate))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; integer utility
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun seekl ((x int) (target int) (diff int))
+  "Move x toward a target by at most diff, with integers"
+  (let ((err (- target x)))
+    (if (< (abs err) diff)
+      (return-from #f target)
+      )
+
+    (if (>= err 0)
+      (+ x diff)
+      (- x diff)
+      )
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; random vu hardware
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; in the PS2 there is a R register for generating random numbers
+;; it is a "32-bit" register, but the upper bits are fixed so it always
+;; represents a float in (1, 2).
+;; we don't have this register on x86, so we add a special global: *_vu-reg-R_*
+(define *_vu-reg-R_* 0)
+
+(defun rand-vu-init ((seed float))
+  "Initialize the VU0 random generator"
+  ;; (.ctc2.i R arg0)
+  ;; (.cfc2.i v0 R)
+  (set! *_vu-reg-R_*
+        (logior #x3F800000 (logand (the-as int seed) #x007FFFFF))
+        )
+  (the-as float *_vu-reg-R_*)
+  )
+
+;; this is _almost_ sqrt(2) = 1.414
+(rand-vu-init 1.418091058731079)
+
+;; rand-vu
+(defun rand-vu ()
+  "Get a random number in [0, 1) and advance the random generator."
+  ;; (.vrget.xyzw vf1) - get current random
+  (let ((current-random *_vu-reg-R_*))
+    ;; here they update the random generate with some junk
+    ;; for now, we don't do this in OpenGOAL.
+    ;; (.vsqrty Q vf1)
+    ;; (.vaddq.x vf2 vf0 Q) ;; you're not allowed to do this!
+    ;; (.vrxorw vf2)
+
+    ;; and advance
+    ;; (.vrnext.xyzw vf1)
+    (let ((x (logand 1 (shr current-random 4)))
+          (y (logand 1 (shr current-random 22)))
+          )
+      (set! current-random (shl current-random 1))
+      (set! current-random (logxor current-random (logxor x y)))
+      (set! *_vu-reg-R_* (logior #x3f800000 (logand current-random #x7fffff)))
+      )
+    )
+
+  ;; (.vsubw.xyzw vf1 vf1 vf0)
+  ;; (.qmfc2.i v0 vf1)
+  (- (the-as float *_vu-reg-R_*) 1.0)
+  )
+
+;; rand-vu-nostep
+(defun rand-vu-nostep ()
+  "Get the number currently in the random generator.
+   This will be equal to the last call of (rand-vu)
+   This will not update the random generator"
+  (- (the-as float *_vu-reg-R_*) 1.0)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; random vu utilities
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun rand-vu-float-range ((minimum float) (maximum float))
+  "Get a random number in the given range.
+  TODO: is this inclusive? I think it's [min, max)"
+  (+ minimum (* (rand-vu) (- maximum minimum)))
+  )
+
+(defun rand-vu-percent? ((prob float))
+  "Get a boolean that's true with the given probability."
+  (>= prob (rand-vu))
+  )
+
+(defun rand-vu-int-range ((first int) (second int))
+  "Get an integer the given range. Inclusive of both?
+   It looks like they actually did this right??"
+
+  (local-vars (float-in-range float))
+
+  ;; increment the larger of the range, so it is inclusive
+  ;; (we should have (max - min) + 1 buckets)
+  (if (< first second)
+      (set! second (+ second 1))
+      (set! first (+ first 1))
+      )
+
+  ;; get a float in the range
+  (set! float-in-range
+   (rand-vu-float-range (the float first) (the float second))
+   )
+
+  ;; negatives round up and positives round down.
+  ;; but we want all to round consistently, so we subtract one from negatives.
+  (when (< float-in-range 0)
+   (set! float-in-range (+ -1.0 float-in-range))
+   )
+  ;; and back to integer.
+  (the int float-in-range)
+  )
+
+(defun rand-vu-int-count ((maximum int))
+  "Get an integer in [0, maximum)"
+  (the int (* (rand-vu) (the float maximum)))
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; terrible random integer generator
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype random-generator (basic)
+  ((seed uint32  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(define *random-generator* (new 'global 'random-generator))
+;; I wonder who wrote this code.
+(set! (-> *random-generator* seed) #x666edd1e)
+
+(defmacro sext32-64 (x)
+  "Sign extend a 32-bit value to 64-bits"
+  `(sar (shl ,x 32) 32)
+  )
+
+(defun rand-uint31-gen ((gen random-generator))
+  "Generate a supposedly random integer.
+  Note, this might not quite be right.
+  But the highest bit is always zero, like it says
+  and it looks kinda random to me."
+  (let* ((sd (-> gen seed))
+         ;; addiu v1, r0, 16807
+         ;; mult3 v0, v1, a1
+         (prod (imul64 16807 sd))
+         ;; mfhi v1
+         (hi (shr prod 32)) ;; sign extend this?
+         (lo (sar (shl prod 32) 32))
+         ;; daddu v1, v1, v1
+         (v1 (+ hi hi))
+         ;; srl a1, v0, 31
+         (a1 (logand #xffffffff (shr lo 31)))
+         ;; or v1, v1, a1
+         ;; daddu v0, v0 v1
+         (result (+ lo (logior v1 a1)))
+        )
+    (set! result (shr (logand #xffffffff (shl result 1)) 1))
+    (set! (-> gen seed) result)
+    (the uint result)
+    )
+  )
+
+(defmacro rand-float-gen (&key (gen *random-generator*))
+  "Generate a float from [0, 1)"
+  `(+ -1.0 (the-as float (logior #x3f800000 (/ (rand-uint31-gen ,gen) 256))))
+  )

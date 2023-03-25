@@ -1,8 +1,10 @@
 #include "sparticle_decompile.h"
-#include "decompiler/util/data_decompile.h"
+
 #include "common/goos/PrettyPrinter.h"
-#include "common/util/print_float.h"
 #include "common/util/Assert.h"
+#include "common/util/print_float.h"
+
+#include "decompiler/util/data_decompile.h"
 
 namespace decompiler {
 // sparticle fields.
@@ -78,6 +80,83 @@ enum class FieldId {
   SPT_END = 67,
 };
 
+// jak2 version
+enum class FieldId2 {
+  MISC_FIELDS_START = 0,
+  SPT_TEXTURE = 1,
+  SPT_ANIM = 2,
+  SPT_ANIM_SPEED = 3,
+  SPT_BIRTH_FUNC = 4,
+  SPT_JOINT_REFPOINT = 5,
+  SPT_NUM = 6,
+  SPT_SOUND = 7,
+  MISC_FIELDS_END = 8,
+  SPRITE_FIELDS_START = 9,
+  SPT_X = 10,
+  SPT_Y = 11,
+  SPT_Z = 12,
+  SPT_SCALE_X = 13,
+  SPT_ROT_X = 14,
+  SPT_ROT_Y = 15,
+  SPT_ROT_Z = 16,
+  SPT_SCALE_Y = 17,
+  SPT_R = 18,
+  SPT_G = 19,
+  SPT_B = 20,
+  SPT_A = 21,
+  SPRITE_FIELDS_END = 22,
+  CPU_FIELDS_START = 23,
+  SPT_OMEGA = 24,
+  SPT_VEL_X = 25,
+  SPT_VEL_Y = 26,
+  SPT_VEL_Z = 27,
+  SPT_SCALEVEL_X = 28,
+  SPT_ROTVEL_X = 29,
+  SPT_ROTVEL_Y = 30,
+  SPT_ROTVEL_Z = 31,
+  SPT_SCALEVEL_Y = 32,
+  SPT_FADE_R = 33,
+  SPT_FADE_G = 34,
+  SPT_FADE_B = 35,
+  SPT_FADE_A = 36,
+  SPT_ACCEL_X = 37,
+  SPT_ACCEL_Y = 38,
+  SPT_ACCEL_Z = 39,
+  SPT_DUMMY = 40,
+  SPT_QUAT_X = 41,
+  SPT_QUAT_Y = 42,
+  SPT_QUAT_Z = 43,
+  SPT_QUAD_W = 44,
+  SPT_FRICTION = 45,
+  SPT_TIMER = 46,
+  SPT_FLAGS = 47,
+  SPT_USERDATA = 48,
+  SPT_FUNC = 49,
+  SPT_NEXT_TIME = 50,
+  SPT_NEXT_LAUNCHER = 51,
+  CPU_FIELDS_END = 52,
+  LAUNCH_FIELDS_START = 53,
+  SPT_LAUNCHROT_X = 54,
+  SPT_LAUNCHROT_Y = 55,
+  SPT_LAUNCHROT_Z = 56,
+  SPT_LAUNCHROT_W = 57,
+  SPT_CONEROT_X = 58,
+  SPT_CONEROT_Y = 59,
+  SPT_CONEROT_Z = 60,
+  SPT_CONEROT_W = 61,
+  SPT_ROTATE_X = 62,
+  SPT_ROTATE_Y = 63,
+  SPT_ROTATE_Z = 64,
+  SPT_CONEROT_RADIUS = 65,
+  SPT_MAT_SCALE_X = 66,
+  SPT_MAT_SCALE_Y = 67,
+  SPT_MAT_SCALE_Z = 68,
+  LAUNCH_FIELDS_END = 69,
+  SPT_SCALE = 70,
+  SPT_SCALEVEL = 71,
+  SPT_END = 72,
+};
+
 // flag vals:
 // 0: timer, flags, end
 // 1: texture, float, random-rangef
@@ -113,7 +192,7 @@ struct SparticleFieldDecomp {
   FieldKind kind = FieldKind::INVALID;
 };
 
-const SparticleFieldDecomp field_kinds[68] = {
+const SparticleFieldDecomp field_kind_jak1[68] = {
     {false},                                  // MISC_FIELDS_START = 0
     {true, FieldKind::TEXTURE_ID},            // SPT_TEXTURE = 1
     {false},                                  // SPT_ANIM = 2
@@ -181,9 +260,88 @@ const SparticleFieldDecomp field_kinds[68] = {
     {false},                                  // LAUNCH_FIELDS_END = 64
     {false},                                  // SPT_SCALE = 65
     {false},                                  // SPT_SCALEVEL = 66
-    {true, FieldKind::END_FLAG},              // SPT_END = 67
-
+    {true, FieldKind::END_FLAG}               // SPT_END = 67
 };
+
+const SparticleFieldDecomp field_kind_jak2[73] = {
+    {false},                                  // MISC_FIELDS_START = 0
+    {true, FieldKind::TEXTURE_ID},            // SPT_TEXTURE = 1
+    {false},                                  // SPT_ANIM = 2
+    {false},                                  // SPT_ANIM_SPEED = 3
+    {true, FieldKind::FUNCTION},              // SPT_BIRTH_FUNC = 4
+    {false},                                  // SPT_JOINT/REFPOINT = 5
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_NUM = 6
+    {true, FieldKind::SOUND_SPEC},            // SPT_SOUND = 7
+    {false},                                  // MISC_FIELDS_END = 8
+    {false},                                  // SPRITE_FIELDS_START = 9
+    {true, FieldKind::METER_WITH_RAND},       // SPT_X = 10
+    {true, FieldKind::METER_WITH_RAND},       // SPT_Y = 11
+    {true, FieldKind::METER_WITH_RAND},       // SPT_Z = 12
+    {true, FieldKind::METER_WITH_RAND},       // SPT_SCALE_X = 13
+    {true, FieldKind::ROT_X},                 // SPT_ROT_X = 14
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROT_Y = 15
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROT_Z = 16
+    {true, FieldKind::METER_WITH_RAND},       // SPT_SCALE_Y = 17
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_R = 18
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_G = 19
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_B = 20
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_A = 21
+    {false},                                  // SPRITE_FIELDS_END = 22
+    {false},                                  // CPU_FIELDS_START = 23
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_OMEGA = 24
+    {true, FieldKind::METER_WITH_RAND},       // SPT_VEL_X = 25  (likely m/s)
+    {true, FieldKind::METER_WITH_RAND},       // SPT_VEL_Y = 26
+    {true, FieldKind::METER_WITH_RAND},       // SPT_VEL_Z = 27
+    {true, FieldKind::METER_WITH_RAND},       // SPT_SCALEVEL_X = 28
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROTVEL_X = 29
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROTVEL_Y = 30
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROTVEL_Z = 31
+    {true, FieldKind::METER_WITH_RAND},       // SPT_SCALEVEL_Y = 32
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_FADE_R = 33
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_FADE_G = 34
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_FADE_B = 35
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_FADE_A = 36
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_ACCEL_X = 37
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_ACCEL_Y = 38
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_ACCEL_Z = 39
+    {false},                                  // SPT_DUMMY = 40
+    {false},                                  // SPT_QUAT_X = 41
+    {false},                                  // SPT_QUAT_Y = 42
+    {false},                                  // SPT_QUAT_Z = 43
+    {false},                                  // SPT_QUAD_W = 44
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_FRICTION = 45
+    {true, FieldKind::PLAIN_INT_WITH_RANDS},  // SPT_TIMER = 46
+    {true, FieldKind::CPUINFO_FLAGS},         // SPT_FLAGS = 47
+    {true, FieldKind::USERDATA},              // SPT_USERDATA = 48
+    {true, FieldKind::FUNCTION},              // SPT_FUNC = 49
+    {true, FieldKind::PLAIN_INT_WITH_RANDS},  // SPT_NEXT_TIME = 50
+    {true, FieldKind::LAUNCHER_BY_ID},        // SPT_NEXT_LAUNCHER = 51
+    {false},                                  // CPU_FIELDS_END = 52
+    {false},                                  // LAUNCH_FIELDS_START = 53
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_LAUNCHROT_X = 54
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_LAUNCHROT_Y = 55
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_LAUNCHROT_Z = 56
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_LAUNCHROT_W = 57
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_CONEROT_X = 58
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_CONEROT_Y = 59
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_CONEROT_Z = 60
+    {false},                                  // SPT_CONEROT_W = 61
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROTATE_X = 62
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROTATE_Y = 63
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROTATE_Z = 64
+    {true, FieldKind::METER_WITH_RAND},       // SPT_CONEROT_RADIUS = 65
+    {true, FieldKind::METER_WITH_RAND},       // SPT_MAT_SCALE_X = 66
+    {true, FieldKind::METER_WITH_RAND},       // SPT_MAT_SCALE_X = 67
+    {true, FieldKind::METER_WITH_RAND},       // SPT_MAT_SCALE_X = 68
+    {false},                                  // LAUNCH_FIELDS_END = 69
+    {false},                                  // SPT_SCALE = 70
+    {false},                                  // SPT_SCALEVEL = 71
+    {true, FieldKind::END_FLAG}               // SPT_END = 72
+};
+
+const std::unordered_map<GameVersion, const SparticleFieldDecomp*> field_kinds = {
+    {GameVersion::Jak1, field_kind_jak1},
+    {GameVersion::Jak2, field_kind_jak2}};
 
 std::string make_flags_str(const std::vector<std::string>& flags) {
   if (flags.empty()) {
@@ -324,10 +482,7 @@ goos::Object decompile_sparticle_rot_x(const std::vector<LinkedWord>& words,
 goos::Object decompile_sparticle_int_with_rand_init(const std::vector<LinkedWord>& words,
                                                     const std::string& field_name,
                                                     const std::string& flag_name) {
-  if (flag_name != "plain-v1") {
-    fmt::print("Bad {} {}\n", field_name, flag_name);
-  }
-  ASSERT(flag_name == "plain-v1");
+  ASSERT_MSG(flag_name == "plain-v1", fmt::format("Bad {} {}\n", field_name, flag_name));
   if (word_as_s32(words.at(2)) == 0 && word_as_s32(words.at(3)) == 1) {
     return decompile_sparticle_int_init(words, field_name, flag_name);
   }
@@ -410,26 +565,31 @@ goos::Object decompile_sparticle_float_meters_with_rand_init(const std::vector<L
 
 goos::Object decompile_sparticle_float_degrees_with_rand_init(const std::vector<LinkedWord>& words,
                                                               const std::string& field_name,
-                                                              const std::string& flag_name) {
+                                                              const std::string& flag_name,
+                                                              const goos::Object& original) {
   if (flag_name == "int-with-rand") {
     return pretty_print::to_symbol(
         fmt::format("(sp-rnd-int-flt {} (degrees {}) {} {})", field_name,
                     float_to_string(word_as_float(words.at(1)) / DEGREES_LENGTH),
                     word_as_s32(words.at(2)), float_to_string(word_as_float(words.at(3)))));
   }
-  ASSERT(flag_name == "float-with-rand");
-  float range = word_as_float(words.at(2));
-  float mult = word_as_float(words.at(3));
-  if (range == 0.f && mult == 1.f) {
-    return pretty_print::to_symbol(
-        fmt::format("(sp-flt {} (degrees {}))", field_name,
-                    float_to_string(word_as_float(words.at(1)) / DEGREES_LENGTH)));
+
+  if (flag_name == "float-with-rand") {
+    float range = word_as_float(words.at(2));
+    float mult = word_as_float(words.at(3));
+    if (range == 0.f && mult == 1.f) {
+      return pretty_print::to_symbol(
+          fmt::format("(sp-flt {} (degrees {}))", field_name,
+                      float_to_string(word_as_float(words.at(1)) / DEGREES_LENGTH)));
+    } else {
+      return pretty_print::to_symbol(
+          fmt::format("(sp-rnd-flt {} (degrees {}) (degrees {}) {})", field_name,
+                      float_to_string(word_as_float(words.at(1)) / DEGREES_LENGTH),
+                      float_to_string(word_as_float(words.at(2)) / DEGREES_LENGTH),
+                      float_to_string(word_as_float(words.at(3)))));
+    }
   } else {
-    return pretty_print::to_symbol(
-        fmt::format("(sp-rnd-flt {} (degrees {}) (degrees {}) {})", field_name,
-                    float_to_string(word_as_float(words.at(1)) / DEGREES_LENGTH),
-                    float_to_string(word_as_float(words.at(2)) / DEGREES_LENGTH),
-                    float_to_string(word_as_float(words.at(3)))));
+    return original;
   }
 }
 
@@ -449,7 +609,7 @@ goos::Object decompile_sparticle_group_item(const TypeSpec& type,
                                             const TypeSystem& ts,
                                             const LinkedObjectFile* /*file*/) {
   // auto normal = decompile_structure(type, label, labels, words, ts, file, false);
-  // fmt::print("Doing: {}\n", normal.print());
+  // lg::print("Doing: {}\n", normal.print());
   auto uncast_type_info = ts.lookup_type(type);
   auto type_info = dynamic_cast<StructureType*>(uncast_type_info);
   if (!type_info) {
@@ -528,7 +688,7 @@ goos::Object decompile_sparticle_group_item(const TypeSpec& type,
   }
 
   result += ')';
-  // fmt::print("Result: {}\n", result);
+  // lg::print("Result: {}\n", result);
   return pretty_print::to_symbol(result);
 }
 
@@ -537,9 +697,9 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
                                             const std::vector<DecompilerLabel>& labels,
                                             const std::vector<std::vector<LinkedWord>>& words,
                                             const TypeSystem& ts,
-                                            const LinkedObjectFile* file) {
-  auto normal = decompile_structure(type, label, labels, words, ts, file, false);
-  // fmt::print("Doing: {}\n", normal.print());
+                                            const LinkedObjectFile* file,
+                                            GameVersion version) {
+  auto normal = decompile_structure(type, label, labels, words, ts, file, false, version);
   auto uncast_type_info = ts.lookup_type(type);
   auto type_info = dynamic_cast<StructureType*>(uncast_type_info);
   if (!type_info) {
@@ -561,7 +721,7 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
 
   ASSERT(field_id <= (u32)FieldId::SPT_END);
   auto field_name = decompile_int_enum_from_int(TypeSpec("sp-field-id"), ts, field_id);
-  const auto& field_info = field_kinds[field_id];
+  const auto& field_info = field_kinds.at(version)[field_id];
   if (!field_info.known) {
     throw std::runtime_error("Unknown sparticle field: " + field_name);
   }
@@ -583,7 +743,8 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
         result = decompile_sparticle_float_meters_with_rand_init(obj_words, field_name, flag_name);
         break;
       case FieldKind::DEGREES_WITH_RAND:
-        result = decompile_sparticle_float_degrees_with_rand_init(obj_words, field_name, flag_name);
+        result = decompile_sparticle_float_degrees_with_rand_init(obj_words, field_name, flag_name,
+                                                                  normal);
         break;
         //      case FieldKind::INT_WITH_RAND:
         //        result = decompile_sparticle_int_with_rand_init(obj_words, field_name, flag_name);
@@ -621,8 +782,33 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
     }
   }
 
-  // fmt::print("Result: {}\n\n", result.print());
+  // lg::print("Result: {}\n\n", result.print());
   return result;
+}
+
+std::string debug_print(const LinkedWord& word) {
+  switch (word.kind()) {
+    case LinkedWord::PLAIN_DATA:
+      return fmt::format("0x{:08x}", word.data);
+    case LinkedWord::TYPE_PTR:
+      return fmt::format("type: {}\n", word.symbol_name());
+    case LinkedWord::EMPTY_PTR:
+      return fmt::format("'()");
+    case LinkedWord::HI_PTR:
+      return fmt::format("hi ptr");
+    case LinkedWord::LO_PTR:
+      return fmt::format("lo ptr");
+    case LinkedWord::PTR:
+      return fmt::format("ptr");
+    case LinkedWord::SYM_OFFSET:
+      return fmt::format("offset '{}", word.symbol_name());
+    case LinkedWord::SYM_PTR:
+      return fmt::format("ptr '{}", word.symbol_name());
+    case LinkedWord::SYM_VAL_OFFSET:
+      return fmt::format("val-ptr '{}", word.symbol_name());
+    default:
+      ASSERT(false);
+  }
 }
 
 goos::Object decompile_sparticle_userdata_ASSERT(const std::vector<LinkedWord>& words,
@@ -631,18 +817,19 @@ goos::Object decompile_sparticle_userdata_ASSERT(const std::vector<LinkedWord>& 
   if (flag_name == "int-with-rand" || flag_name == "float-with-rand") {
     return decompile_sparticle_float_with_rand_init(words, field_name, flag_name);
   } else {
+    fmt::print("flag name is {}\n", flag_name);
     ASSERT(false);
   }
 }
 
 goos::Object decompile_sparticle_field_init(const DefpartElement::StaticInfo::PartField& field,
-                                            const TypeSystem& ts) {
+                                            const TypeSystem& ts,
+                                            GameVersion version) {
   auto field_id = field.field_id;
   auto flags = field.flags;
-
   ASSERT(field_id <= (u32)FieldId::SPT_END);
   auto field_name = decompile_int_enum_from_int(TypeSpec("sp-field-id"), ts, field_id);
-  const auto& field_info = field_kinds[field_id];
+  const auto& field_info = field_kinds.at(version)[field_id];
   if (!field_info.known) {
     throw std::runtime_error("Unknown sparticle field: " + field_name);
   }
@@ -664,8 +851,8 @@ goos::Object decompile_sparticle_field_init(const DefpartElement::StaticInfo::Pa
         result = decompile_sparticle_float_meters_with_rand_init(field.data, field_name, flag_name);
         break;
       case FieldKind::DEGREES_WITH_RAND:
-        result =
-            decompile_sparticle_float_degrees_with_rand_init(field.data, field_name, flag_name);
+        result = decompile_sparticle_float_degrees_with_rand_init(field.data, field_name, flag_name,
+                                                                  field.userdata);
         break;
         //      case FieldKind::INT_WITH_RAND:
         //        result = decompile_sparticle_int_with_rand_init(field.data, field_name,
@@ -692,7 +879,7 @@ goos::Object decompile_sparticle_field_init(const DefpartElement::StaticInfo::Pa
         result = decompile_sparticle_func(field.data, field_name, flag_name);
         break;
       case FieldKind::USERDATA:
-        result = decompile_sparticle_userdata_ASSERT(field.data, field_name, flag_name);
+        result = decompile_sparticle_userdata(field.data, field_name, flag_name, field.userdata);
         break;
       case FieldKind::ROT_X:
         result = decompile_sparticle_rot_x(field.data, field_name, flag_name);
@@ -706,7 +893,7 @@ goos::Object decompile_sparticle_field_init(const DefpartElement::StaticInfo::Pa
     }
   }
 
-  // fmt::print("Result: {}\n\n", result.print());
+  // lg::print("Result: {}\n\n", result.print());
   return result;
 }
 }  // namespace decompiler

@@ -1,0 +1,338 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function dma-sync-hang
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function dma-sync-crash
+;; INFO: Return type mismatch int vs none.
+(defun dma-sync-crash ((arg0 dma-bank))
+  (let ((v1-0 #x4c4b40))
+    (while (nonzero? (-> arg0 chcr str))
+      (cond
+        ((zero? v1-0)
+         (crash!)
+         0
+         )
+        (else
+          (+! v1-0 -1)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function dma-send
+;; INFO: Return type mismatch int vs none.
+(defun dma-send ((arg0 dma-bank) (arg1 uint) (arg2 uint))
+  (dma-sync (the-as pointer arg0) 0 0)
+  (flush-cache 0)
+  (.sync.l)
+  (set! (-> arg0 madr) (logior (logand #xfffffff arg1) (if (= (logand #x70000000 arg1) #x70000000)
+                                                           (shl #x8000 16)
+                                                           0
+                                                           )
+                               )
+        )
+  (set! (-> arg0 qwc) arg2)
+  (.sync.l)
+  (set! (-> arg0 chcr) (new 'static 'dma-chcr :str #x1))
+  (.sync.l)
+  0
+  (none)
+  )
+
+;; definition for function dma-send-chain
+;; INFO: Return type mismatch int vs none.
+(defun dma-send-chain ((arg0 dma-bank-source) (arg1 uint))
+  (dma-sync (the-as pointer arg0) 0 0)
+  (flush-cache 0)
+  (.sync.l)
+  (set! (-> arg0 qwc) (the-as uint 0))
+  (set! (-> arg0 tadr) (logior (logand #xfffffff arg1) (if (= (logand #x70000000 arg1) #x70000000)
+                                                           (shl #x8000 16)
+                                                           0
+                                                           )
+                               )
+        )
+  (.sync.l)
+  (set! (-> arg0 chcr) (new 'static 'dma-chcr :dir #x1 :mod #x1 :tte #x1 :str #x1))
+  (.sync.l)
+  0
+  (none)
+  )
+
+;; definition for function dma-send-chain-no-tte
+;; INFO: Return type mismatch int vs none.
+(defun dma-send-chain-no-tte ((arg0 dma-bank-source) (arg1 uint))
+  (dma-sync (the-as pointer arg0) 0 0)
+  (flush-cache 0)
+  (.sync.l)
+  (set! (-> arg0 qwc) (the-as uint 0))
+  (set! (-> arg0 tadr) (logior (logand #xfffffff arg1) (if (= (logand #x70000000 arg1) #x70000000)
+                                                           (shl #x8000 16)
+                                                           0
+                                                           )
+                               )
+        )
+  (.sync.l)
+  (set! (-> arg0 chcr) (new 'static 'dma-chcr :dir #x1 :mod #x1 :str #x1))
+  (.sync.l)
+  0
+  (none)
+  )
+
+;; definition for function dma-send-chain-no-flush
+;; INFO: Return type mismatch int vs none.
+(defun dma-send-chain-no-flush ((arg0 dma-bank-source) (arg1 uint))
+  (dma-sync (the-as pointer arg0) 0 0)
+  (.sync.l)
+  (set! (-> arg0 qwc) (the-as uint 0))
+  (set! (-> arg0 tadr) (logior (logand #xfffffff arg1) (if (= (logand #x70000000 arg1) #x70000000)
+                                                           (shl #x8000 16)
+                                                           0
+                                                           )
+                               )
+        )
+  (.sync.l)
+  (set! (-> arg0 chcr) (new 'static 'dma-chcr :dir #x1 :mod #x1 :tte #x1 :str #x1))
+  (.sync.l)
+  0
+  (none)
+  )
+
+;; definition for function dma-send-to-spr
+;; INFO: Return type mismatch int vs none.
+(defun dma-send-to-spr ((sadr uint) (madr uint) (qwc uint) (sync symbol))
+  (let ((s5-0 (the-as dma-bank-spr #x1000d400)))
+    (dma-sync (the-as pointer s5-0) 0 0)
+    (flush-cache 0)
+    (.sync.l)
+    (set! (-> s5-0 madr) (logand #xfffffff madr))
+    (set! (-> s5-0 sadr) (logand #xfffffff sadr))
+    (set! (-> s5-0 qwc) qwc)
+    (.sync.l)
+    (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str #x1))
+    (.sync.l)
+    (if sync
+        (dma-sync (the-as pointer s5-0) 0 0)
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for function dma-send-to-spr-no-flush
+;; INFO: Return type mismatch int vs none.
+(defun dma-send-to-spr-no-flush ((sadr uint) (madr uint) (qwc uint) (sync symbol))
+  (let ((s5-0 (the-as dma-bank-spr #x1000d400)))
+    (dma-sync (the-as pointer s5-0) 0 0)
+    (.sync.l)
+    (set! (-> s5-0 madr) (logand #xfffffff madr))
+    (set! (-> s5-0 sadr) (logand #xfffffff sadr))
+    (set! (-> s5-0 qwc) qwc)
+    (.sync.l)
+    (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str #x1))
+    (.sync.l)
+    (if sync
+        (dma-sync (the-as pointer s5-0) 0 0)
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for function dma-send-from-spr
+;; INFO: Return type mismatch int vs none.
+(defun dma-send-from-spr ((madr uint) (sadr uint) (qwc uint) (sync symbol))
+  (let ((s5-0 (the-as dma-bank-spr #x1000d000)))
+    (dma-sync (the-as pointer s5-0) 0 0)
+    (flush-cache 0)
+    (.sync.l)
+    (set! (-> s5-0 madr) (logand #xfffffff madr))
+    (set! (-> s5-0 sadr) (logand #xfffffff sadr))
+    (set! (-> s5-0 qwc) qwc)
+    (.sync.l)
+    (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str #x1))
+    (.sync.l)
+    (if sync
+        (dma-sync (the-as pointer s5-0) 0 0)
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for function dma-send-from-spr-no-flush
+;; INFO: Return type mismatch int vs none.
+(defun dma-send-from-spr-no-flush ((madr uint) (sadr uint) (qwc uint) (sync symbol))
+  (let ((s5-0 (the-as dma-bank-spr #x1000d000)))
+    (dma-sync (the-as pointer s5-0) 0 0)
+    (.sync.l)
+    (set! (-> s5-0 madr) (logand #xfffffff madr))
+    (set! (-> s5-0 sadr) (logand #xfffffff sadr))
+    (set! (-> s5-0 qwc) qwc)
+    (.sync.l)
+    (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str #x1))
+    (.sync.l)
+    (if sync
+        (dma-sync (the-as pointer s5-0) 0 0)
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for function dma-initialize
+;; INFO: Return type mismatch int vs none.
+(defun dma-initialize ()
+  (set! (-> (the-as vif-bank #x10003800) err me0) 1)
+  (set! (-> (the-as vif-bank #x10003c00) err me0) 1)
+  0
+  (none)
+  )
+
+;; definition for function clear-vu0-mem
+;; INFO: Return type mismatch int vs none.
+(defun clear-vu0-mem ()
+  (let ((v1-0 (the-as (pointer uint32) #x11004000)))
+    (dotimes (a0-0 1024)
+      (set! (-> v1-0 a0-0) (the-as uint #xabadbeef))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function clear-vu1-mem
+;; INFO: Return type mismatch int vs none.
+(defun clear-vu1-mem ()
+  (let ((v1-0 (the-as (pointer uint32) #x1100c000)))
+    (dotimes (a0-0 4096)
+      (set! (-> v1-0 a0-0) (the-as uint #xabadbeef))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function dump-vu1-mem
+;; INFO: Return type mismatch symbol vs none.
+(defun dump-vu1-mem ()
+  (let ((gp-0 (the-as (pointer uint32) #x1100c000)))
+    (dotimes (s5-0 1024)
+      (format
+        0
+        "~4,'0X: ~8,'0X ~8,'0X ~8,'0X ~8,'0X"
+        s5-0
+        (-> gp-0 (* s5-0 4))
+        (-> gp-0 (+ (* s5-0 4) 1))
+        (-> gp-0 (+ (* s5-0 4) 2))
+        (-> gp-0 (+ (* s5-0 4) 3))
+        )
+      (format
+        0
+        "      ~F ~F ~F ~F ~%"
+        (-> gp-0 (* s5-0 4))
+        (-> gp-0 (+ (* s5-0 4) 1))
+        (-> gp-0 (+ (* s5-0 4) 2))
+        (-> gp-0 (+ (* s5-0 4) 3))
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for function dump-vu1-range
+(defun dump-vu1-range ((start uint) (total-count uint))
+  (let ((s4-0 (the-as (pointer uint32) #x1100c000)))
+    (dotimes (s3-0 (the-as int total-count))
+      (let ((s2-0 (+ s3-0 start)))
+        (format
+          0
+          "~4,'0X: ~8x ~8x ~8x ~8x"
+          s2-0
+          (-> s4-0 (* s2-0 4))
+          (-> s4-0 (+ (* s2-0 4) 1))
+          (-> s4-0 (+ (* s2-0 4) 2))
+          (-> s4-0 (+ (* s2-0 4) 3))
+          )
+        (format
+          0
+          "      ~F ~F ~F ~F ~%"
+          (-> s4-0 (* s2-0 4))
+          (-> s4-0 (+ (* s2-0 4) 1))
+          (-> s4-0 (+ (* s2-0 4) 2))
+          (-> s4-0 (+ (* s2-0 4) 3))
+          )
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for symbol *video-reset-parm*, type int
+(define *video-reset-parm* 2)
+
+;; definition for function reset-vif1-path
+;; INFO: Return type mismatch int vs none.
+(defun reset-vif1-path ()
+  ((method-of-type dma-bank-vif inspect) (the-as dma-bank-vif #x10009000))
+  ((method-of-type vif-bank inspect) (the-as vif-bank #x10003c00))
+  (reset-path)
+  (reset-graph 1 1 *video-reset-parm* 1)
+  (format 0 "gkernel: vif1 path reset!~%")
+  0
+  (none)
+  )
+
+;; definition for function ultimate-memcpy
+;; INFO: Return type mismatch int vs none.
+(defun ultimate-memcpy ((dst pointer) (src pointer) (size-bytes uint))
+  (let ((spr-to-bank (the-as dma-bank-spr #x1000d400))
+        (spr-from-bank (the-as dma-bank-spr #x1000d000))
+        (qwc-remaining (shr size-bytes 4))
+        )
+    (flush-cache 0)
+    (dma-sync (the-as pointer spr-to-bank) 0 0)
+    (dma-sync (the-as pointer spr-from-bank) 0 0)
+    (while (> qwc-remaining 0)
+      (let ((qwc-transferred-now (the-as int qwc-remaining)))
+        (if (< (the-as uint 1024) (the-as uint qwc-transferred-now))
+            (set! qwc-transferred-now 1024)
+            )
+        (set! qwc-remaining (- qwc-remaining (the-as uint qwc-transferred-now)))
+        (.sync.l)
+        (set! (-> spr-to-bank madr) (the-as uint src))
+        (set! (-> spr-to-bank sadr) (the-as uint 0))
+        (set! (-> spr-to-bank qwc) (the-as uint qwc-transferred-now))
+        (.sync.l)
+        (set! (-> spr-to-bank chcr) (new 'static 'dma-chcr :str #x1))
+        (.sync.l)
+        (dma-sync (the-as pointer spr-to-bank) 0 0)
+        (&+! src (* qwc-transferred-now 16))
+        (set! (-> spr-from-bank madr) (the-as uint dst))
+        (set! (-> spr-from-bank sadr) (the-as uint 0))
+        (set! (-> spr-from-bank qwc) (the-as uint qwc-transferred-now))
+        (.sync.l)
+        (set! (-> spr-from-bank chcr) (new 'static 'dma-chcr :str #x1))
+        (.sync.l)
+        (dma-sync (the-as pointer spr-from-bank) 0 0)
+        (&+! dst (* qwc-transferred-now 16))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function symlink2
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function symlink3
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; failed to figure out what this is:
+(dma-initialize)

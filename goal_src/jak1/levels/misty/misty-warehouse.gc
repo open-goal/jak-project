@@ -1,0 +1,220 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: misty-warehouse.gc
+;; name in dgo: misty-warehouse
+;; dgos: L1, MIS
+
+(declare-type silostep process-drawable)
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/silostep-ag.gc")
+(import "goal_src/jak1/import/rounddoor-ag.gc")
+
+(deftype silostep (process-drawable)
+  ((anim-limit  float   :offset-assert 176)
+   (cam-tracker handle  :offset-assert 184)
+   )
+  :heap-base #x50
+  :method-count-assert 20
+  :size-assert         #xc0
+  :flag-assert         #x14005000c0
+  (:states
+    silostep-camera
+    silostep-idle
+    (silostep-rise symbol)
+    )
+  )
+
+
+(defskelgroup *silostep-sg* silostep silostep-lod0-jg silostep-idle-ja
+              ((silostep-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 2 0 8)
+              )
+
+(defstate silostep-idle (silostep)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('trigger)
+       (go silostep-camera)
+       )
+      (('trigger-rise)
+       (go silostep-rise #f)
+       )
+      )
+    )
+  :code (behavior ()
+    (ja :group! (-> self draw art-group data 2) :num! min)
+    (transform-post)
+    (loop
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior silostep) ja-post)
+  )
+
+(defbehavior misty-camera-view silostep ()
+  (set! (-> self cam-tracker)
+        (ppointer->handle (process-spawn
+                            camera-tracker
+                            :init camera-tracker-init
+                            (lambda :behavior camera-tracker
+                              ()
+                              (while (not (process-grab? *target*))
+                                (suspend)
+                                )
+                              (camera-change-to "camera-160" 150 #f)
+                              (let ((gp-0 (-> *display* base-frame-counter)))
+                                (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 3))
+                                  (suspend)
+                                  )
+                                )
+                              (while (not (process-release? (handle->process (-> self grab-target))))
+                                (suspend)
+                                )
+                              (camera-change-to (the-as string 'base) 150 #f)
+                              (none)
+                              )
+                            :to self
+                            )
+                          )
+        )
+  (none)
+  )
+
+(defstate silostep-camera (silostep)
+  :code (behavior ()
+    (misty-camera-view)
+    (let* ((gp-0 (get-task-control (game-task misty-warehouse)))
+           (v1-1 (get-reminder gp-0 0))
+           )
+      (save-reminder gp-0 (logior v1-1 2) 0)
+      )
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (let ((gp-1 (-> *display* base-frame-counter)))
+      (until (>= (- (-> *display* base-frame-counter) gp-1) (seconds 1))
+        (suspend)
+        )
+      )
+    (sound-play "arena-steps")
+    (send-to-all-after (-> self link) 'trigger-rise)
+    (go silostep-rise #f)
+    (none)
+    )
+  :post (the-as (function none :behavior silostep) ja-post)
+  )
+
+(defstate silostep-rise (silostep)
+  :code (behavior ((arg0 symbol))
+    (process-entity-status! self (entity-perm-status complete) #t)
+    (when (not arg0)
+      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! (-> self anim-limit)) :frame-num 0.0)
+      (until (ja-done? 0)
+        (rider-trans)
+        (rider-post)
+        (suspend)
+        (ja :num! (seek! (-> self anim-limit)))
+        )
+      )
+    (ja :group! (-> self draw art-group data 2) :num! (identity (-> self anim-limit)))
+    (rider-post)
+    (loop
+      (ja-post)
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior silostep) #f)
+  )
+
+(defmethod init-from-entity! silostep ((obj silostep) (arg0 entity-actor))
+  (logior! (-> obj mask) (process-mask movie-subject))
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (alloc-riders s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s3-0 transform-index) 4)
+      (set-vector! (-> s3-0 local-sphere) 0.0 4096.0 0.0 18432.0)
+      (set-root-prim! s4-0 s3-0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj *silostep-sg* '())
+  (set! (-> obj anim-limit)
+        (* (res-lump-float arg0 'distance :default 1.0)
+           (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 2)) data 0 length) -1))
+           )
+        )
+  (set! (-> obj link) (new 'process 'actor-link-info obj))
+  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+      (go silostep-rise #t)
+      (go silostep-idle)
+      )
+  (none)
+  )
+
+(defskelgroup *rounddoor-sg* rounddoor rounddoor-lod0-jg rounddoor-idle-ja
+              ((rounddoor-lod0-mg (meters 20)) (rounddoor-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              )
+
+(deftype rounddoor (eco-door)
+  ()
+  :heap-base #xa0
+  :method-count-assert 27
+  :size-assert         #x104
+  :flag-assert         #x1b00a00104
+  )
+
+
+(defmethod TODO-RENAME-24 rounddoor ((obj rounddoor))
+  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s4-0 transform-index) 0)
+      (set-vector! (-> s4-0 local-sphere) -12288.0 0.0 0.0 40960.0)
+      (set-root-prim! s5-0 s4-0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (backup-collide-with-as s5-0)
+    (set! (-> obj root-override) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-25 rounddoor ((obj rounddoor))
+  (initialize-skeleton obj *rounddoor-sg* '())
+  (set! (-> obj open-distance) 69632.0)
+  (set! (-> obj close-distance) 81920.0)
+  (set! (-> obj open-sound) (static-sound-name "arenadoor-open"))
+  (set! (-> obj close-sound) (static-sound-name "arenadoor-close"))
+  (set! (-> obj speed) 1.5)
+  (set! (-> obj auto-close) #t)
+  (set! (-> obj one-way) #t)
+  (vector-x-quaternion! (-> obj out-dir) (-> obj root-override quat))
+  (set! (-> obj out-dir w) (- 8192.0 (vector-dot (-> obj out-dir) (-> obj root-override trans))))
+  (update-transforms! (-> obj root-override))
+  0
+  (none)
+  )
+
+
+
+

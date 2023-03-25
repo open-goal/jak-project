@@ -1,0 +1,9 @@
+("TITLE.DGO"
+ ("title-obs.o"
+  "tpage-3091.go"
+  "tpage-3090.go"
+  "daxter-highres-ag.go"
+  "jak-logo-ag.go"
+  "jak-stand-ag.go"
+  "title.go"
+ ))
