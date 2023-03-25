@@ -166,13 +166,24 @@ bool Shrub::setup_for_level(const std::string& level, SharedRenderState* render_
   // make sure we have the level data.
   Timer tfrag3_setup_timer;
   auto lev_data = render_state->loader->get_tfrag3_level(level);
-  if (!lev_data || (m_has_level && lev_data->load_id != m_load_id)) {
+
+  if (!lev_data) {
+    // not loaded
     m_has_level = false;
     m_textures = nullptr;
     m_level_name = "";
     discard_tree_cache();
     return false;
   }
+
+  if (m_has_level && lev_data->load_id != m_load_id) {
+    m_has_level = false;
+    m_textures = nullptr;
+    m_level_name = "";
+    discard_tree_cache();
+    return setup_for_level(level, render_state);
+  }
+
   m_textures = &lev_data->textures;
   m_load_id = lev_data->load_id;
 

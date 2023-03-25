@@ -1072,7 +1072,6 @@ void Merc2::do_draws(const Draw* draw_array,
   bool normal_vtx_buffer_bound = true;
   for (u32 di = 0; di < num_draws; di++) {
     auto& draw = draw_array[di];
-    auto mode = draw.mode;
     if (draw.flags & MOD_VTX) {
       glBindVertexArray(draw.mod_vtx_buffer.vao);
       glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lev->merc_indices);
@@ -1113,7 +1112,7 @@ void Merc2::do_draws(const Draw* draw_array,
       set_uniform(uniforms.light_ambient, m_lights_buffer[draw.light_idx].ambient);
       last_light = draw.light_idx;
     }
-    setup_opengl_from_draw_mode(mode, GL_TEXTURE0, use_mipmaps_for_filtering);
+    setup_opengl_from_draw_mode(draw.mode, GL_TEXTURE0, use_mipmaps_for_filtering);
 
     glUniform1i(uniforms.decal, draw.mode.get_decal());
 
