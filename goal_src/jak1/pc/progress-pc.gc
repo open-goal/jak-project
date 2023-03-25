@@ -189,18 +189,21 @@
 (define *controller-options* (new 'static 'boxed-array :type game-option
   (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id input-opts-select-controller) :scale #t :param3 (game-option-menu select-controller))
   (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id vibrations) :scale #t)
-  (new 'static 'game-option :option-type (game-option-type slider) :name (game-text-id input-opts-analog-deadzone) :scale #t :param1 0.0 :param2 1.0)
-  (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id input-opts-ignore-controller-win-focus) :scale #t)
+  (new 'static 'game-option :option-type (game-option-type slider) :name (game-text-id input-opts-analog-deadzone) :scale #t :param1 0.0 :param2 1.0
+    :slider-step-size 0.01 :slider-show-decimal? #t)
+  (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id input-opts-ignore-controller-win-focus) :scale #t
+    :on-change (lambda ((val object))
+                (let ((val-sym (the-as symbol val)))
+                  ;; TODO - pc settings method
+                  (set! (-> *pc-settings* ignore-controller-win-unfocused?) val-sym)
+                  (pc-ignore-background-controller-events! val-sym)
+                  (none))))
   (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id input-opts-controller-led-reflect-hp) :scale #t
     :option-disabled-func (lambda () #f)) ;; TODO - disable if no LED detected on active controller
   (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)))
 
 (define *mouse-options* (new 'static 'boxed-array :type game-option
   (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id input-opts-mouse-enable-camera) :scale #t)
-  ;; TODO - fix their sliders:
-  ;; - they don't support negative numbers well
-  ;; - they always assume a max of 100
-  ;; - no step size customization
   (new 'static 'game-option :option-type (game-option-type slider) :name (game-text-id input-opts-mouse-horizontal-sens) :scale #t
     :param1 -20.0 :param2 20.0 :slider-step-size 0.5 :slider-show-decimal? #t)
   (new 'static 'game-option :option-type (game-option-type slider) :name (game-text-id input-opts-mouse-vertical-sens) :scale #t
@@ -222,17 +225,19 @@
   (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id input-opts-enable-kb) :scale #t
     :on-change (lambda ((val object))
                 (let ((val-sym (the-as symbol val)))
+                  ;; TODO pc-settings method
                   (set! (-> *pc-settings* keyboard-enabled?) val-sym)
                   (pc-set-keyboard-enabled! val-sym)
                   (none))))
   (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id input-opts-enable-mouse) :scale #t
     :on-change (lambda ((val object))
                 (let ((val-sym (the-as symbol val)))
+                  ;; TODO pc-settings method
                   (set! (-> *pc-settings* mouse-enabled?) val-sym)
                   (pc-set-mouse-enabled! val-sym)
                   (none))))
   (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id input-opts-mouse-opts) :scale #t :param3 (game-option-menu mouse-options)
-    :option-disabled-func (lambda () #f)) ;; TODO - disable if mouse is disabled
+    :option-disabled-func (lambda () (-> *pc-settings* mouse-enabled?)))
   (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id input-opts-reassign-binds) :scale #t :param3 (game-option-menu reassign-binds-options))
   (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)))
 

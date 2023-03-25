@@ -5,6 +5,7 @@ add_library(imgui
         imgui_widgets.cpp
         imgui_impl_sdl.cpp
         imgui_impl_opengl3.cpp
-        imgui_stdlib.cpp)
+        imgui_stdlib.cpp
+        imgui_style.cpp)
 
 target_link_libraries(imgui SDL2::SDL2)

@@ -8,6 +8,19 @@
 DisplayManager::DisplayManager(SDL_Window* window) : m_window(window) {
   update_curr_display_info();
   update_video_modes();
+  // Load display settings from a file
+  m_display_settings.load_settings();
+  // Adjust window / monitor position
+  set_window_position();
+}
+
+DisplayManager::~DisplayManager() {
+  if (m_window_display_mode == WindowDisplayMode::Windowed) {
+    m_display_settings.display_id = m_active_display_id;
+    m_display_settings.window_xpos = m_window_xpos;
+    m_display_settings.window_ypos = m_window_ypos;
+  }
+  m_display_settings.save_settings();
 }
 
 void DisplayManager::process_sdl_event(const SDL_Event& event) {
@@ -92,6 +105,28 @@ void DisplayManager::set_window_size(int width, int height) {
   SDL_SetWindowSize(m_window, width, height);
 }
 
+// TODO - probably rename appropriately
+void DisplayManager::set_window_position() {
+  // Check that the display id is still valid
+  if (m_current_display_modes.find(m_display_settings.display_id) ==
+      m_current_display_modes.end()) {
+    m_display_settings.display_id = 0;
+    m_display_settings.window_xpos = 50;
+    m_display_settings.window_ypos = 50;
+  }
+
+  SDL_Rect rect;
+  // TODO - error handlking
+  SDL_GetDisplayBounds(m_display_settings.display_id, &rect);
+  if (m_display_settings.window_xpos < rect.x) {
+    m_display_settings.window_xpos = rect.x + 50;
+  }
+  if (m_display_settings.window_ypos < rect.y) {
+    m_display_settings.window_ypos = rect.y + 50;
+  }
+  SDL_SetWindowPosition(m_window, m_display_settings.window_xpos, m_display_settings.window_ypos);
+}
+
 void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
   // https://wiki.libsdl.org/SDL2/SDL_SetWindowFullscreen
   int result = 0;
@@ -108,6 +143,7 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
       result = SDL_SetWindowFullscreen(m_window, 0);
       if (result == 0) {
         SDL_Rect rect;
+        // TODO -error handlking
         SDL_GetDisplayBounds(m_selected_fullscreen_display_id, &rect);
         // 2. move it to the right monitor (a bit away from the edge)
         SDL_SetWindowPosition(m_window, rect.x + 50, rect.y + 50);

@@ -4,6 +4,8 @@
 #include <string>
 #include <unordered_map>
 
+#include <game/settings/settings.h>
+
 #include "third-party/SDL/include/SDL.h"
 
 /*
@@ -35,6 +37,7 @@ struct DisplayMode {
 class DisplayManager {
  public:
   DisplayManager(SDL_Window* window);
+  ~DisplayManager();
 
   /// Propagate and handle the SDL event, ignoring it if it's not relevant
   void process_sdl_event(const SDL_Event& event);
@@ -56,11 +59,13 @@ class DisplayManager {
   // Mutators
   void set_window_resizable(bool resizable);
   void set_window_size(int width, int height);
+  void set_window_position();
   void set_window_display_mode(WindowDisplayMode mode);
   void set_fullscreen_display_id(int display_id);
 
  private:
   SDL_Window* m_window;
+  GameSettings::DisplaySettings m_display_settings;
 
   WindowDisplayMode m_window_display_mode = WindowDisplayMode::Windowed;
   int m_active_display_id;

@@ -86,7 +86,7 @@ struct GraphicsData {
 std::unique_ptr<GraphicsData> g_gfx_data;
 
 static bool gl_inited = false;
-static int gl_init(GfxSettings& settings) {
+static int gl_init(GfxGlobalSettings& settings) {
   // Initialize SDL
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC) != 0) {
     lg::error("Could not initialize SDL, exiting - {}", SDL_GetError());
@@ -131,18 +131,21 @@ static void init_imgui(SDL_Window* window, SDL_GLContext gl_context, std::string
   g_gfx_data->imgui_filename = file_util::get_file_path({"imgui.ini"});
   g_gfx_data->imgui_log_filename = file_util::get_file_path({"imgui_log.txt"});
   ImGuiIO& io = ImGui::GetIO();
-  // if the font doesn't exist, use the default
-  std::string font_path =
-      (file_util::get_jak_project_dir() / "game" / "assets" / "fonts" / "Roboto-Medium.ttf")
-          .string();
-  if (file_util::file_exists(font_path)) {
-    io.Fonts->AddFontFromFileTTF(font_path.c_str(), 13);  // TODO - make the font size configurable
+  if (!Gfx::g_debug_settings.monospaced_font) {
+    std::string font_path =
+        (file_util::get_jak_project_dir() / "game" / "assets" / "fonts" / "Roboto-Medium.ttf")
+            .string();
+    if (file_util::file_exists(font_path)) {
+      io.Fonts->AddFontFromFileTTF(font_path.c_str(), Gfx::g_debug_settings.imgui_font_size);
+    }
   }
 
   io.IniFilename = g_gfx_data->imgui_filename.c_str();
   io.LogFilename = g_gfx_data->imgui_log_filename.c_str();
 
-  setImGuiStyle();
+  if (Gfx::g_debug_settings.alternate_style) {
+    ImGui::applyAlternateStyle();
+  }
 
   // set up to get inputs for this window
   auto test = SDL_GetCurrentVideoDriver();
@@ -160,15 +163,13 @@ static void init_imgui(SDL_Window* window, SDL_GLContext gl_context, std::string
 static std::shared_ptr<GfxDisplay> gl_make_display(int width,
                                                    int height,
                                                    const char* title,
-                                                   GfxSettings& settings,
+                                                   GfxGlobalSettings& settings,
                                                    GameVersion game_version,
                                                    bool is_main) {
   // Setup the window
-  // TODO - SDL2 doesn't seem to support HDR
+  // TODO - SDL2 doesn't seem to support HDR (and neither does windows)
   //   Related -
   //   https://answers.microsoft.com/en-us/windows/forum/all/hdr-monitor-low-brightness-after-exiting-full/999f7ee9-7ba3-4f9c-b812-bbeb9ff8dcc1
-  // TODO - Window position and set it on startup properly handle edge case of window going outside
-  // bounds
   SDL_Window* window =
       SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height,
                        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
@@ -237,10 +238,12 @@ GLDisplay::GLDisplay(SDL_Window* window, SDL_GLContext gl_context, bool is_main)
   m_display_manager = std::make_shared<DisplayManager>(m_window);
 
   // Register commands
-  // TODO - ignore this if the setting is set
-  m_input_manager->register_command(
-      CommandBinding::Source::KEYBOARD,
-      CommandBinding(SDLK_LALT, [&]() { set_imgui_visible(!is_imgui_visible()); }));
+  m_input_manager->register_command(CommandBinding::Source::KEYBOARD,
+                                    CommandBinding(SDLK_LALT, [&]() {
+                                      if (!Gfx::g_debug_settings.ignore_hide_imgui) {
+                                        set_imgui_visible(!is_imgui_visible());
+                                      }
+                                    }));
   m_input_manager->register_command(
       CommandBinding::Source::KEYBOARD,
       CommandBinding(SDLK_F2, [&]() { m_take_screenshot_next_frame = true; }));

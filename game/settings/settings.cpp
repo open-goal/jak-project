@@ -1,222 +1,122 @@
 #include "settings.h"
 
+#include "common/log/log.h"
 #include "common/util/json_util.h"
 
 #include "game/runtime.h"
 
-void DebugSettings::load_settings(const ghc::filesystem::path& filepath) {
-  auto file_txt = file_util::read_text_file(filepath);
-  auto json = parse_commented_json(file_txt, filepath.string());
+namespace GameSettings {
 
-  if (json.contains("show_imgui")) {
-    show_imgui = json["show_imgui"].get<bool>();
+void to_json(json& j, const DebugSettings& obj) {
+  j = json{{"show_imgui", obj.show_imgui},
+           {"imgui_font_size", obj.imgui_font_size},
+           {"monospaced_font", obj.monospaced_font},
+           {"alternate_style", obj.alternate_style},
+           {"ignore_hide_imgui", obj.ignore_hide_imgui},
+           {"text_filters", obj.text_filters},
+           {"text_check_range", obj.text_check_range},
+           {"text_max_range", obj.text_max_range}};
+}
+
+void from_json(const json& j, DebugSettings& obj) {
+  if (j.contains("show_imgui")) {
+    j.at("show_imgui").get_to(obj.show_imgui);
   }
-  if (json.contains("ignore_imgui_hide_keybind")) {
-    ignore_imgui_hide_keybind = json["ignore_imgui_hide_keybind"].get<bool>();
+  if (j.contains("imgui_font_size")) {
+    j.at("imgui_font_size").get_to(obj.imgui_font_size);
   }
-  if (json.contains("debug_text_check_range")) {
-    debug_text_check_range = json["debug_text_check_range"].get<bool>();
+  if (j.contains("monospaced_font")) {
+    j.at("monospaced_font").get_to(obj.monospaced_font);
   }
-  if (json.contains("debug_text_max_range")) {
-    debug_text_max_range = json["debug_text_max_range"].get<float>();
+  if (j.contains("alternate_style")) {
+    j.at("alternate_style").get_to(obj.alternate_style);
   }
-  // TODO - not loading filters because they aren't being persisted
+  if (j.contains("ignore_hide_imgui")) {
+    j.at("ignore_hide_imgui").get_to(obj.ignore_hide_imgui);
+  }
+  if (j.contains("text_filters")) {
+    j.at("text_filters").get_to(obj.text_filters);
+  }
+  if (j.contains("text_check_range")) {
+    j.at("text_check_range").get_to(obj.text_check_range);
+  }
+  if (j.contains("text_max_range")) {
+    j.at("text_max_range").get_to(obj.text_max_range);
+  }
+}
+
+void DebugSettings::load_settings() {
+  try {
+    std::string file_path =
+        (file_util::get_user_misc_dir(g_game_version) / "debug-settings.json").string();
+    if (!file_util::file_exists(file_path)) {
+      return;
+    }
+    lg::info("Loading display settings at {}", file_path);
+    auto raw = file_util::read_text_file(file_path);
+    DebugSettings saved_settings = parse_commented_json(raw, "debug-settings.json");
+    show_imgui = saved_settings.show_imgui;
+    imgui_font_size = saved_settings.imgui_font_size;
+    monospaced_font = saved_settings.monospaced_font;
+    alternate_style = saved_settings.alternate_style;
+    ignore_hide_imgui = saved_settings.ignore_hide_imgui;
+    text_filters = saved_settings.text_filters;
+    text_check_range = saved_settings.text_check_range;
+    text_max_range = saved_settings.text_max_range;
+  } catch (std::exception& e) {
+    // do nothing
+    lg::error("Error encountered when attempting to load debug settings {}", e.what());
+  }
 }
 
 void DebugSettings::save_settings() {
-  nlohmann::json json;
-  json["show_imgui"] = show_imgui;
-  json["ignore_imgui_hide_keybind"] = ignore_imgui_hide_keybind;
-  json["debug_text_check_range"] = debug_text_check_range;
-  json["debug_text_max_range"] = debug_text_max_range;
-  // TODO - persist the filters as well, not doing it yet because i havn't added a way to remove em
-  // via the UI
+  json data = *this;
   auto debug_settings_filename =
       file_util::get_user_misc_dir(g_game_version) / "debug-settings.json";
   file_util::create_dir_if_needed_for_file(debug_settings_filename);
-  file_util::write_text_file(debug_settings_filename, json.dump(2));
+  file_util::write_text_file(debug_settings_filename, data.dump(2));
 }
 
-// Pad::MappingInfo& get_button_mapping() {
-//   return g_settings.pad_mapping_info;
-// }
+void to_json(json& j, const DisplaySettings& obj) {
+  j = json{{"display_id", obj.display_id},
+           {"window_xpos", obj.window_xpos},
+           {"window_ypos", obj.window_ypos}};
+}
+void from_json(const json& j, DisplaySettings& obj) {
+  if (j.contains("display_id")) {
+    j.at("display_id").get_to(obj.display_id);
+  }
+  if (j.contains("window_xpos")) {
+    j.at("window_xpos").get_to(obj.window_xpos);
+  }
+  if (j.contains("window_ypos")) {
+    j.at("window_ypos").get_to(obj.window_ypos);
+  }
+}
 
-// const std::vector<const GfxRendererModule*> renderers = {&moduleOpenGL};
+void DisplaySettings::load_settings() {
+  try {
+    std::string file_path =
+        (file_util::get_user_settings_dir(g_game_version) / "display-settings.json").string();
+    if (!file_util::file_exists(file_path)) {
+      return;
+    }
+    lg::info("Loading display settings at {}", file_path);
+    auto raw = file_util::read_text_file(file_path);
+    DisplaySettings saved_settings = parse_commented_json(raw, "display-settings.json");
+    display_id = saved_settings.display_id;
+    window_xpos = saved_settings.window_xpos;
+    window_ypos = saved_settings.window_ypos;
+  } catch (std::exception& e) {
+    // do nothing
+    lg::error("Error encountered when attempting to load display settings {}", e.what());
+  }
+}
 
-// Not crazy about this declaration
-// const std::pair<std::string, Pad::Button> gamepad_map[] = {{"Select", Pad::Button::Select},
-//                                                           {"L3", Pad::Button::L3},
-//                                                           {"R3", Pad::Button::R3},
-//                                                           {"Start", Pad::Button::Start},
-//                                                           {"Up", Pad::Button::Up},
-//                                                           {"Right", Pad::Button::Right},
-//                                                           {"Down", Pad::Button::Down},
-//                                                           {"Left", Pad::Button::Left},
-//                                                           {"L1", Pad::Button::L1},
-//                                                           {"R1", Pad::Button::R1},
-//                                                           {"Triangle", Pad::Button::Triangle},
-//                                                           {"Circle", Pad::Button::Circle},
-//                                                           {"X", Pad::Button::X},
-//                                                           {"Square", Pad::Button::Square}};
-//
-// const std::pair<std::string, Pad::Analog> analog_map[] = {
-//    {"Left X Axis", Pad::Analog::Left_X},
-//    {"Left Y Axis", Pad::Analog::Left_Y},
-//    {"Right X Axis", Pad::Analog::Right_X},
-//    {"Right Y Axis", Pad::Analog::Right_Y},
-//};
-
-// void DumpToJson(ghc::filesystem::path& filename) {
-//   nlohmann::json json;
-//   auto& peripherals_json = json["Peripherals"];
-//   /*json["Use Mouse"] = g_settings.pad_mapping_info.use_mouse;
-//
-//   for (uint32_t i = 0; i < Pad::CONTROLLER_COUNT; ++i) {
-//     nlohmann::json peripheral_json;
-//     peripheral_json["ID"] = i + 1;
-//
-//     auto& controller_json = peripheral_json["Controller"];
-//     auto& controller_buttons_json = controller_json["Buttons"];
-//     for (const auto& [name, value] : gamepad_map) {
-//       controller_buttons_json[name] =
-//           g_settings.pad_mapping_info.controller_button_mapping[i][(int)value];
-//     }
-//
-//     auto& keyboard_json = peripheral_json["Keyboard+Mouse"];
-//     auto& keyboard_buttons_json = keyboard_json["Buttons"];
-//     for (const auto& [name, value] : gamepad_map) {
-//       keyboard_buttons_json[name] =
-//           g_settings.pad_mapping_info.keyboard_button_mapping[i][(int)value];
-//     }
-//
-//     auto& keyboard_analogs_json = keyboard_json["Analog"];
-//     for (const auto& [name, value] : analog_map) {
-//       if (g_settings.pad_mapping_info.keyboard_analog_mapping[i][(int)value].mode ==
-//           Pad::AnalogMappingMode::AnalogInput) {
-//         keyboard_analogs_json[name]["Axis Id"] =
-//             g_settings.pad_mapping_info.keyboard_analog_mapping[i][(int)value].axis_id;
-//       } else {
-//         keyboard_analogs_json[name]["Positive Key"] =
-//             g_settings.pad_mapping_info.keyboard_analog_mapping[i][(int)value].positive_key;
-//         keyboard_analogs_json[name]["Negative Key"] =
-//             g_settings.pad_mapping_info.keyboard_analog_mapping[i][(int)value].negative_key;
-//       }
-//     }
-//     peripheral_json["X-Axis Mouse Sensitivity"] =
-//         g_settings.pad_mapping_info.mouse_x_axis_sensitivities[i];
-//     peripheral_json["Y-Axis Mouse Sensitivity"] =
-//         g_settings.pad_mapping_info.mouse_y_axis_sensitivities[i];
-//     peripherals_json.emplace_back(peripheral_json);
-//   }*/
-//
-//   file_util::write_text_file(filename, json.dump(4));
-// }
-//
-// void SavePeripheralSettings() {
-//   auto filename = (file_util::get_user_config_dir() / "controller" / "controller-settings.json");
-//   file_util::create_dir_if_needed_for_file(filename);
-//
-//   DumpToJson(filename);
-//   lg::info("Saved graphics configuration file.");
-// }
-//
-// void LoadPeripheralSettings(const ghc::filesystem::path& filepath) {
-//   /*Pad::DefaultMapping(g_settings.pad_mapping_info);
-//
-//   lg::info("reading {}", filepath.string());
-//   auto file_txt = file_util::read_text_file(filepath);
-//   auto configuration = parse_commented_json(file_txt, filepath.string());
-//
-//   if (configuration.find("Use Mouse") != configuration.end()) {
-//     g_settings.pad_mapping_info.use_mouse = configuration["Use Mouse"].get<bool>();
-//   }
-//   int controller_index = 0;
-//   for (const auto& peripheral : configuration["Peripherals"]) {
-//     auto& controller_buttons_json = peripheral["Controller"]["Buttons"];
-//     auto& keyboard_buttons_json = peripheral["Keyboard+Mouse"]["Buttons"];
-//
-//     for (const auto& [name, button] : gamepad_map) {
-//       if (controller_buttons_json.find(name) != controller_buttons_json.end()) {
-//         g_settings.pad_mapping_info.controller_button_mapping[controller_index][(int)button] =
-//             controller_buttons_json[name].get<int>();
-//       } else {
-//         lg::warn(
-//             "Controller button override not found for {}. Using controller default value: {}",
-//             name,
-//             g_settings.pad_mapping_info.controller_button_mapping[controller_index][(int)button]);
-//       }
-//
-//       if (keyboard_buttons_json.find(name) != keyboard_buttons_json.end()) {
-//         g_settings.pad_mapping_info.keyboard_button_mapping[controller_index][(int)button] =
-//             keyboard_buttons_json[name].get<int>();
-//       } else {
-//         lg::warn(
-//             "Keyboard button override not found for {}. Using keyboard default value: {}", name,
-//             g_settings.pad_mapping_info.keyboard_button_mapping[controller_index][(int)button]);
-//       }
-//     }
-//
-//     auto& keyboard_analogs_json = peripheral["Keyboard+Mouse"]["Analog"];
-//     for (const auto& [name, value] : analog_map) {
-//       Pad::AnalogMappingInfo analog_mapping;
-//       if (keyboard_analogs_json[name].contains("Axis Id") == true) {
-//         analog_mapping.mode = Pad::AnalogMappingMode::AnalogInput;
-//         analog_mapping.axis_id = keyboard_analogs_json[name]["Axis Id"].get<int>();
-//         g_settings.pad_mapping_info.keyboard_analog_mapping[controller_index][(int)value] =
-//             analog_mapping;
-//         continue;
-//       }
-//
-//       if (keyboard_analogs_json[name].contains("Positive Key") == true) {
-//         analog_mapping.positive_key = keyboard_analogs_json[name]["Positive Key"].get<int>();
-//       } else {
-//         lg::warn("Keyboard analog override not found for {}. Using keyboard default value: {}",
-//                  name,
-//                  g_settings.pad_mapping_info.keyboard_analog_mapping[controller_index][(int)value]
-//                      .positive_key);
-//       }
-//
-//       if (keyboard_analogs_json[name].contains("Negative Key") == true) {
-//         analog_mapping.negative_key = keyboard_analogs_json[name]["Negative Key"].get<int>();
-//       } else {
-//         lg::warn("Keyboard analog override not found for {}. Using keyboard default value: {}",
-//                  name,
-//                  g_settings.pad_mapping_info.keyboard_analog_mapping[controller_index][(int)value]
-//                      .negative_key);
-//       }
-//       g_settings.pad_mapping_info.keyboard_analog_mapping[controller_index][(int)value] =
-//           analog_mapping;
-//     }
-//     g_settings.pad_mapping_info.mouse_x_axis_sensitivities[controller_index] =
-//         peripheral["X-Axis Mouse Sensitivity"].get<double>();
-//     g_settings.pad_mapping_info.mouse_y_axis_sensitivities[controller_index] =
-//         peripheral["Y-Axis Mouse Sensitivity"].get<double>();
-//     controller_index++;
-//   }*/
-// }
-//
-// void LoadSettings() {
-//   // load controller settings
-//   // TODO - make this game specific as well
-//   auto controller_settings_filename =
-//       file_util::get_user_config_dir() / "controller" / "controller-settings.json";
-//   if (fs::exists(controller_settings_filename)) {
-//     LoadPeripheralSettings(controller_settings_filename);
-//     lg::info("Loaded controller configuration file.");
-//   } else {
-//     SavePeripheralSettings();
-//     lg::info(
-//         "Couldn't find $USER/controller/controller-settings.json creating new controller settings
-//         " "file.");
-//   }
-//   // load debug settings
-//   auto debug_settings_filename =
-//       file_util::get_user_misc_dir(g_game_version) / "debug-settings.json";
-//   if (fs::exists(debug_settings_filename)) {
-//     g_debug_settings.load_settings(debug_settings_filename);
-//     lg::info("Loaded debug settings file.");
-//   } else {
-//     lg::info("Couldn't find $USER/misc/debug-settings.json creating new controller settings
-//     file."); g_debug_settings.save_settings();
-//   }
-// }
+void DisplaySettings::save_settings() {
+  json data = *this;
+  auto file_path = file_util::get_user_settings_dir(g_game_version) / "display-settings.json";
+  file_util::create_dir_if_needed_for_file(file_path);
+  file_util::write_text_file(file_path, data.dump(2));
+}
+}  // namespace GameSettings

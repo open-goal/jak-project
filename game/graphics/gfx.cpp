@@ -64,7 +64,7 @@ u32 Init(GameVersion version) {
   if (g_main_thread_id != std::this_thread::get_id()) {
     lg::error("Ran Gfx::Init outside main thread. Init display elsewhere?");
   } else {
-    // TODO - i thought i made the tital not always be hardcoded with `work in progress`?
+    // TODO - make this not hardcoded to always be "work in progress"
     Display::InitMainDisplay(640, 480,
                              fmt::format("OpenGOAL - Work in Progress - {}", GIT_VERSION).c_str(),
                              g_global_settings, version);
@@ -78,7 +78,6 @@ void Loop(std::function<bool()> f) {
   while (f()) {
     // check if we have a display
     if (Display::GetMainDisplay()) {
-      // lg::debug("run display");
       Display::GetMainDisplay()->render();
     }
   }
