@@ -118,10 +118,12 @@ void DisplayManager::set_window_position() {
   SDL_Rect rect;
   // TODO - error handlking
   SDL_GetDisplayBounds(m_display_settings.display_id, &rect);
-  if (m_display_settings.window_xpos < rect.x) {
+  if (m_display_settings.window_xpos < rect.x ||
+      m_display_settings.window_xpos + 50 >= rect.x + rect.w) {
     m_display_settings.window_xpos = rect.x + 50;
   }
-  if (m_display_settings.window_ypos < rect.y) {
+  if (m_display_settings.window_ypos < rect.y ||
+      m_display_settings.window_ypos + 50 > rect.y + rect.h) {
     m_display_settings.window_ypos = rect.y + 50;
   }
   SDL_SetWindowPosition(m_window, m_display_settings.window_xpos, m_display_settings.window_ypos);
