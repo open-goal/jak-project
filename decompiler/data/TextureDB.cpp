@@ -87,8 +87,13 @@ std::string TextureDB::generate_texture_dest_adjustment_table() const {
   for (const auto& [tpage, texture_ids_in_page] : textures_by_page) {
     // organize by tbp offset
     std::map<u32, std::vector<u32>> textures_by_tbp_offset;
+    std::set<u32> all_used_tbp_offsets;
+    u32 max_tbp_offset = 0;
     for (auto tid : texture_ids_in_page) {
-      textures_by_tbp_offset[textures.at(tid).dest].push_back(tid);
+      u32 tbp = textures.at(tid).dest;
+      textures_by_tbp_offset[tbp].push_back(tid);
+      all_used_tbp_offsets.insert(tbp);
+      max_tbp_offset = std::max(max_tbp_offset, tbp);
     }
 
     // find tbp's with overlaps:
@@ -104,9 +109,25 @@ std::string TextureDB::generate_texture_dest_adjustment_table() const {
       result += fmt::format("{{{},{{\n", tpage);
       for (const auto& [tbp, tex_ids] : textures_by_tbp_offset) {
         if (tex_ids.size() > 1) {
-          int offset = 0;
-          for (auto id : tex_ids) {
-            result += fmt::format("{{{}, {}}},", id & 0xffff, offset++);
+          int offset = 1;
+          for (size_t id_id = 1; id_id < tex_ids.size(); id_id++) {
+            auto id = tex_ids[id_id];
+
+            bool ok = false;
+            int tries = 50;
+            // make sure we don't overlap again.
+            while (!ok && tries > 0) {
+              tries--;
+              if (!all_used_tbp_offsets.count(tbp + offset)) {
+                ok = true;
+                break;
+              }
+              offset++;
+            }
+
+            ASSERT(ok);
+            all_used_tbp_offsets.insert(tbp + offset);
+            result += fmt::format("{{{}, {}}},", id & 0xffff, offset);
             offset++;
           }
         }
