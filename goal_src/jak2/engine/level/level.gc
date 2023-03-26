@@ -523,16 +523,14 @@ into 7 sections, which might explain the weird sizes in the center.
   ;; interestingly, if we are in the 'medium' mode, we use the size of the
   ;; previous object, plus 2048 bytes. Maybe the objects are sorted in decreasing size,
   ;; so this allows the big ones to load first, then shrink the temp buffer as the rest come in.
-  ;; also seems to be no way to hit this case - the load-buffer-mode is eventually
-  ;; forced to small-edge in all cases that I see. -- NOTE: not true!
+  ;; the "medium" case is hit because the relocate method for `art-group` changes the mode.
+  ;; if it detects that it runs after textures.
   (case (-> arg0 load-buffer-mode)
     (((load-buffer-mode small-center))
      (set! (-> arg0 load-buffer-size) (the-as uint (* 1100 1024))) ;; 1100 KB
      )
     (((load-buffer-mode medium))
      (set! (-> arg0 load-buffer-size) (+ (-> arg1 length) (* 2 1024)))
-     (format 0 "believed unused load-buffer-resize case hit.~%")
-     ; (break!)
      )
     )
 

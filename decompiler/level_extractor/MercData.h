@@ -7,6 +7,7 @@
 #include "common/common_types.h"
 #include "common/dma/gs.h"
 #include "common/math/Vector.h"
+#include "common/versions.h"
 
 #include "decompiler/util/goal_data_reader.h"
 
@@ -63,7 +64,13 @@ struct MercCtrlHeader {
   u8 use_translucent;
   u8 display_this_fragment;
 
-  void from_ref(TypedRef tr, const DecompilerTypeSystem& dts);
+  u8 disable_fog = false;  // jak 2 only
+  u8 use_warp = false;
+  u8 ignore_alpha = false;
+  u8 force_fade = false;
+  u8 disable_envamp = false;
+
+  void from_ref(TypedRef tr, const DecompilerTypeSystem& dts, GameVersion version);
   std::string print() const;
 };
 
@@ -213,7 +220,7 @@ struct MercCtrl {
   MercCtrlHeader header;
   std::vector<MercEffect> effects;
 
-  void from_ref(TypedRef tr, const DecompilerTypeSystem& dts);
+  void from_ref(TypedRef tr, const DecompilerTypeSystem& dts, GameVersion version);
   void debug_print_blerc();
   std::string print();
 };

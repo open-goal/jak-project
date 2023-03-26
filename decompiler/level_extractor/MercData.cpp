@@ -13,7 +13,7 @@ void MercEyeCtrl::from_ref(TypedRef tr, const DecompilerTypeSystem& dts) {
   eye_slot = read_plain_data_field<s8>(tr, "eye-slot", dts);
 }
 
-void MercCtrlHeader::from_ref(TypedRef tr, const DecompilerTypeSystem& dts) {
+void MercCtrlHeader::from_ref(TypedRef tr, const DecompilerTypeSystem& dts, GameVersion version) {
   st_magic = read_plain_data_field<u32>(tr, "st-magic", dts);
   xyz_scale = read_plain_data_field<float>(tr, "xyz-scale", dts);
   st_out_a = read_plain_data_field<u32>(tr, "st-out-a", dts);
@@ -58,6 +58,16 @@ void MercCtrlHeader::from_ref(TypedRef tr, const DecompilerTypeSystem& dts) {
   death_effect = read_plain_data_field<u32>(tr, "death-effect", dts);
   use_translucent = read_plain_data_field<u8>(tr, "use-translucent", dts);
   display_this_fragment = read_plain_data_field<u8>(tr, "display-this-fragment", dts);
+
+  if (version > GameVersion::Jak1) {
+    disable_fog = read_plain_data_field<u8>(tr, "disable-fog", dts);
+    use_warp = read_plain_data_field<u8>(tr, "use-warp", dts);
+    ignore_alpha = read_plain_data_field<u8>(tr, "ignore-alpha", dts);
+    force_fade = read_plain_data_field<u8>(tr, "force-fade", dts);
+    disable_envamp = read_plain_data_field<u8>(tr, "disable-envmap", dts);
+  } else {
+    disable_fog = false;
+  }
 }
 
 std::string MercCtrlHeader::print() const {
@@ -427,12 +437,12 @@ std::string MercEffect::print() {
   return result;
 }
 
-void MercCtrl::from_ref(TypedRef tr, const DecompilerTypeSystem& dts) {
+void MercCtrl::from_ref(TypedRef tr, const DecompilerTypeSystem& dts, GameVersion version) {
   name = read_string_field(tr, "name", dts, false);
   num_joints = read_plain_data_field<s32>(tr, "num-joints", dts);
   auto merc_ctrl_header_ref =
       TypedRef(get_field_ref(tr, "header", dts), dts.ts.lookup_type("merc-ctrl-header"));
-  header.from_ref(merc_ctrl_header_ref, dts);
+  header.from_ref(merc_ctrl_header_ref, dts, version);
 
   auto eff_ref = TypedRef(get_field_ref(tr, "effect", dts), dts.ts.lookup_type("merc-effect"));
   for (u32 i = 0; i < header.effect_count; i++) {
