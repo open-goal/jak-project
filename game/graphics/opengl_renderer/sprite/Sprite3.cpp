@@ -337,7 +337,17 @@ void Sprite3::render_2d_group1(DmaFollower& dma,
     auto run = dma.read_and_advance();
     ASSERT(run.vifcode0().kind == VifCode::Kind::NOP);
     ASSERT(run.vifcode1().kind == VifCode::Kind::MSCAL);
-    ASSERT(run.vifcode1().immediate == SpriteProgMem::Sprites2dHud);
+
+    switch (render_state->version) {
+      case GameVersion::Jak1:
+        ASSERT(run.vifcode1().immediate == SpriteProgMem::Sprites2dHud_Jak1);
+        break;
+      case GameVersion::Jak2:
+        ASSERT(run.vifcode1().immediate == SpriteProgMem::Sprites2dHud_Jak2);
+        break;
+      default:
+        ASSERT_NOT_REACHED();
+    }
     if (m_enabled && m_2d_enable) {
       do_block_common(SpriteMode::ModeHUD, sprite_count, render_state, prof);
     }
