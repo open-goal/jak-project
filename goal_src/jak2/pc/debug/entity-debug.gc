@@ -25,10 +25,16 @@
   
   (update-pad inspect-info 0)
   (let* ((e (-> inspect-info entity)) (name (res-lump-struct e 'name string)))
-  (set! *debug-actor* (the string (and (-> inspect-info show-actor-info) name)))
-  ;; draw trans
-  (add-debug-x #t (bucket-id debug-no-zbuf1) (-> e trans) (static-rgba 255 255 0 128))
-  (add-debug-text-3d #t (bucket-id debug-no-zbuf1) name (-> e trans) (font-color red) (new 'static 'vector2h :y 8))
+  (set! *debug-actor* (the string (and (type-type? (-> e type) entity-actor) (-> inspect-info show-actor-info) name)))
+  (case (-> e type)
+    ((entity-actor entity-camera entity-race-mesh)
+      ;; draw trans
+      (add-debug-x #t (bucket-id debug-no-zbuf1) (-> e trans) (static-rgba 255 255 0 128))
+      (add-debug-text-3d #t (bucket-id debug-no-zbuf1) name (-> e trans) (font-color red) (new 'static 'vector2h :y 8))
+      )
+    ((entity-nav-mesh)
+      (debug-draw (the entity-nav-mesh e)))
+    )
 
   ;; start writing text
   (let* ((begin-y (- 16 (* (-> inspect-info scroll-y) 16))) (cur-y begin-y) (y-adv 16))
