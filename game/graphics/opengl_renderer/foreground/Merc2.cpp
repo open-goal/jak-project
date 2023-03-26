@@ -247,14 +247,15 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
     u64 enable_mask;
     u64 ignore_alpha_mask;
     u8 effect_count;
-    u8 update_verts;
+    u8 bitflags;
   };
   auto* flags = (const PcMercFlags*)input_data;
   int num_effects = flags->effect_count;  // mostly just a sanity check
   ASSERT(num_effects < kMaxEffect);
   u64 current_ignore_alpha_bits = flags->ignore_alpha_mask;  // shader settings
   u64 current_effect_enable_bits = flags->enable_mask;       // mask for game to disable an effect
-  bool model_uses_mod = flags->update_verts;  // if we should update vertices from game.
+  bool model_uses_mod = flags->bitflags & 1;  // if we should update vertices from game.
+  bool model_disables_fog = (flags->bitflags & 2);
   input_data += 32;
 
   // Next is "fade data", indicating the color/intensity of envmap effect
@@ -500,7 +501,8 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
 
       // do fixed draws:
       for (auto& fdraw : effect.mod.fix_draw) {
-        alloc_normal_draw(fdraw, ignore_alpha, lev_bucket, first_bone, lights, uses_water);
+        alloc_normal_draw(fdraw, ignore_alpha, lev_bucket, first_bone, lights, uses_water,
+                          model_disables_fog);
         if (should_envmap) {
           try_alloc_envmap_draw(fdraw, effect.envmap_mode, effect.envmap_texture, lev_bucket,
                                 fade_buffer + 4 * ei, first_bone, lights, uses_water);
@@ -509,7 +511,8 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
 
       // do mod draws
       for (auto& mdraw : effect.mod.mod_draw) {
-        auto n = alloc_normal_draw(mdraw, ignore_alpha, lev_bucket, first_bone, lights, uses_water);
+        auto n = alloc_normal_draw(mdraw, ignore_alpha, lev_bucket, first_bone, lights, uses_water,
+                                   model_disables_fog);
         // modify the draw, set the mod flag and point it to the opengl buffer
         n->flags |= MOD_VTX;
         n->mod_vtx_buffer = mod_opengl_buffers[ei];
@@ -530,7 +533,8 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
           try_alloc_envmap_draw(draw, effect.envmap_mode, effect.envmap_texture, lev_bucket,
                                 fade_buffer + 4 * ei, first_bone, lights, uses_water);
         }
-        alloc_normal_draw(draw, ignore_alpha, lev_bucket, first_bone, lights, uses_water);
+        alloc_normal_draw(draw, ignore_alpha, lev_bucket, first_bone, lights, uses_water,
+                          model_disables_fog);
       }
     }
   }
@@ -944,7 +948,8 @@ Merc2::Draw* Merc2::alloc_normal_draw(const tfrag3::MercDraw& mdraw,
                                       LevelDrawBucket* lev_bucket,
                                       u32 first_bone,
                                       u32 lights,
-                                      bool jak1_water_mode) {
+                                      bool jak1_water_mode,
+                                      bool disable_fog) {
   Draw* draw = &lev_bucket->draws[lev_bucket->next_free_draw++];
   draw->flags = 0;
   draw->first_index = mdraw.first_index;
@@ -954,6 +959,12 @@ Merc2::Draw* Merc2::alloc_normal_draw(const tfrag3::MercDraw& mdraw,
     draw->mode.set_ab(true);
     draw->mode.disable_depth_write();
   }
+
+  if (disable_fog) {
+    draw->mode.set_fog(false);
+    // but don't toggle it the other way?
+  }
+
   draw->texture = mdraw.eye_id == 0xff ? mdraw.tree_tex_id : (0xffffff00 | mdraw.eye_id);
   draw->first_bone = first_bone;
   draw->light_idx = lights;
@@ -1070,6 +1081,9 @@ void Merc2::do_draws(const Draw* draw_array,
   int last_tex = -1;
   int last_light = -1;
   bool normal_vtx_buffer_bound = true;
+
+  bool fog_on = true;
+
   for (u32 di = 0; di < num_draws; di++) {
     auto& draw = draw_array[di];
     if (draw.flags & MOD_VTX) {
@@ -1086,6 +1100,18 @@ void Merc2::do_draws(const Draw* draw_array,
       }
     }
     glUniform1i(uniforms.ignore_alpha, draw.flags & DrawFlags::IGNORE_ALPHA);
+
+    if (fog_on && !draw.mode.get_fog_enable()) {
+      // on -> off
+      glUniform4f(uniforms.fog_color, render_state->fog_color[0] / 255.f,
+                  render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f, 0);
+      fog_on = false;
+    } else if (!fog_on && draw.mode.get_fog_enable()) {
+      glUniform4f(uniforms.fog_color, render_state->fog_color[0] / 255.f,
+                  render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
+                  render_state->fog_intensity / 255);
+      fog_on = true;
+    }
     bool use_mipmaps_for_filtering = true;
     if ((int)draw.texture != last_tex) {
       if (draw.texture < lev->textures.size()) {
