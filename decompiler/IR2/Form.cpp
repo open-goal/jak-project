@@ -3215,8 +3215,8 @@ goos::Object DefpartgroupElement::to_form_internal(const Env& env) const {
     }
     if (m_static_info.scale != 1) {
       forms.push_back(pretty_print::to_symbol(fmt::format(
-          ":scale ({} {} {})", float_to_string(m_static_info.rot.x()),
-          float_to_string(m_static_info.rot.y()), float_to_string(m_static_info.rot.z()))));
+          ":scale ({} {} {})", float_to_string(m_static_info.scale.x()),
+          float_to_string(m_static_info.scale.y()), float_to_string(m_static_info.scale.z()))));
     }
   }
 

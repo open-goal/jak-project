@@ -56,14 +56,14 @@
       (let ((data (get-tag-index-data e i)))
 
       ;; tag info
-      (format (clear *debug-temp-string*) "~3L~2D)~0L ~20L~A~0L:" i (-> e tag i name) (-> e tag i elt-type))
+      (format (clear *debug-temp-string*) "~3L~2D)~0L ~20L~A~0L: " i (-> e tag i name) (-> e tag i elt-type))
       
       ;; tag data - special cases first
       (cond
         ;; some water-height info
         ((and (= (-> e tag i name) 'water-height) (= (-> e tag i elt-count) 4) (= (-> e tag i elt-type) float))
           (+! y-adv (* 14 1))
-          (format *debug-temp-string* " ~mm ~mm ~mm~%(~S)"
+          (format *debug-temp-string* "~mm ~mm ~mm~%(~S)"
                 (-> (the (pointer float) data) 0)
                 (-> (the (pointer float) data) 1)
                 (-> (the (pointer float) data) 2)
@@ -73,7 +73,7 @@
         ;; some water-height info but with 5 elts
         ((and (= (-> e tag i name) 'water-height) (= (-> e tag i elt-count) 4) (= (-> e tag i elt-type) float))
           (+! y-adv (* 14 3))
-          (format *debug-temp-string* " ~mm ~mm ~mm~%(~S)~%~mm"
+          (format *debug-temp-string* "~mm ~mm ~mm~%(~S)~%~mm"
                 (-> (the (pointer float) data) 0)
                 (-> (the (pointer float) data) 1)
                 (-> (the (pointer float) data) 2)
@@ -83,17 +83,17 @@
           )
         ;; text id (can be hint ambient)
         ;; ((and (= (-> e tag i name) 'text-id) (= (-> e tag i elt-count) 1) (= (-> e tag i elt-type) int32))
-        ;;   (format *debug-temp-string* " (game-text-id ~S)" (game-text-id->string (-> (the (pointer game-text-id) data) 0)))
+        ;;   (format *debug-temp-string* "(game-text-id ~S)" (game-text-id->string (-> (the (pointer game-text-id) data) 0)))
         ;;   )
         ;; eco-info, like in vents, crates, or collectables in general
         ((and (= (-> e tag i name) 'eco-info) (= (-> e tag i elt-count) 2) (= (-> e tag i elt-type) int32))
-          (format *debug-temp-string* " ~S " (pickup-type->string (the-as pickup-type (-> (the (pointer int32) data) 0))))
+          (format *debug-temp-string* "~S " (pickup-type->string (the-as pickup-type (-> (the (pointer int32) data) 0))))
           (if (= (pickup-type fuel-cell) (-> (the (pointer int32) data) 0))
               (format *debug-temp-string* "~S" (game-task->string (the-as game-task (-> (the (pointer int32) data) 1))))
               (format *debug-temp-string* "~D" (-> (the (pointer int32) data) 1))
               )
           (if (= (pickup-type buzzer) (-> (the (pointer int32) data) 0))
-              (format *debug-temp-string* " ~S" (game-task->string (the-as game-task (logand #xffff (-> (the (pointer int32) data) 1)))))
+              (format *debug-temp-string* "~S" (game-task->string (the-as game-task (logand #xffff (-> (the (pointer int32) data) 1)))))
               )
           )
         ;; fact options, usually enemies or crates
@@ -104,18 +104,33 @@
         ;;   )
         ;; these can be displayed visually with other tools.
         ((and (= (-> e tag i name) 'visvol) (= (-> e tag i elt-count) 2) (= (-> e tag i elt-type) vector))
-          (format *debug-temp-string* " display actor-vis!")
+          (format *debug-temp-string* "display actor-vis!")
           )
         ((and (= (-> e tag i name) 'path) (= (-> e tag i elt-type) vector))
-          (format *debug-temp-string* " display path marks!")
+          (format *debug-temp-string* "display path marks!")
           )
         ((and (= (-> e tag i name) 'vol) (= (-> e tag i elt-type) vector))
-          (format *debug-temp-string* " display vol marks!")
+          (format *debug-temp-string* "display vol marks!")
+          )
+        ((and (= (-> e tag i name) 'art-name) (= (-> e tag i elt-count) 1) (type-type? (-> e type) entity-actor) (type-type? (-> (the-as entity-actor e) etype) part-spawner))
+          (let* ((as-launch-group-ptr (-> (the (pointer (pointer sparticle-launch-group)) data)))
+                (as-string (the string as-launch-group-ptr)))
+            (cond
+              ((part-group-pointer? as-launch-group-ptr)
+                (format *debug-temp-string* "(group) ~A" (-> as-launch-group-ptr 0 name))
+                )
+              ((= (-> as-string type) string)
+                (format *debug-temp-string* "(string) ~A" as-string)
+                )
+              (else
+                (format *debug-temp-string* "<unknown art-name res-tag #x~x>" as-launch-group-ptr)
+                )
+              )
+            )
           )
         (else
         ;; more generic tag info
       (dotimes (ii (-> e tag i elt-count))
-          (format *debug-temp-string* " ")
           (case (-> e tag i elt-type)
               ((string symbol type)
                 (format *debug-temp-string* "~A" (-> (the (pointer basic) data) ii)))
@@ -198,10 +213,10 @@
                     (format *debug-temp-string* "~%(~S)" (begin (bit-enum->string task-mask (-> (the (pointer uint32) data) ii) (clear *temp-string*)) *temp-string*))
                     (+! y-adv 14)
                     )
-                  ;; (('elevator-flags)
-                  ;;   (format *debug-temp-string* "~%(~S)" (begin (bit-enum->string elevator-flags (-> (the (pointer uint32) data) ii) (clear *temp-string*)) *temp-string*))
-                  ;;   (+! y-adv 14)
-                  ;;   )
+                  (('elevator-flags)
+                    (format *debug-temp-string* "~%(~S)" (begin (bit-enum->string elevator-flags (-> (the (pointer uint32) data) ii) (clear *temp-string*)) *temp-string*))
+                    (+! y-adv 14)
+                    )
                   (else
                     (format *debug-temp-string* "#x~x" (-> (the (pointer uint32) data) ii))
                     )
@@ -267,6 +282,7 @@
                 (set! ii (the int (-> e tag i elt-count)))
                 )
               )
+          (format *debug-temp-string* " ")
           )
           )
         )
