@@ -124,13 +124,13 @@ u64 execute(void* ctxt) {
   acc = c->fprs[f16] * c->fprs[f16];
   // nop                                            // sll r0, r0, 0
   // Unknown instr: madda.s f2, f17
-  acc += c->fprs[f2] + c->fprs[f17];
+  acc += c->fprs[f2] * c->fprs[f17];
   // nop                                            // sll r0, r0, 0
   // Unknown instr: madda.s f4, f18
-  acc += c->fprs[f4] + c->fprs[f18];
+  acc += c->fprs[f4] * c->fprs[f18];
   // nop                                            // sll r0, r0, 0
   // Unknown instr: madda.s f6, f19
-  acc += c->fprs[f6] + c->fprs[f19];
+  acc += c->fprs[f6] * c->fprs[f19];
   // nop                                            // sll r0, r0, 0
   // Unknown instr: madd.s f22, f8, f20
   c->fprs[f22] = acc + (c->fprs[f8] * c->fprs[f20]);

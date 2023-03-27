@@ -21,7 +21,6 @@
 #include "game/graphics/opengl_renderer/ocean/OceanMidAndFar.h"
 #include "game/graphics/opengl_renderer/ocean/OceanNear.h"
 #include "game/graphics/opengl_renderer/sprite/Sprite3.h"
-#include "game/graphics/opengl_renderer/sprite/SpriteRenderer.h"
 #include "game/graphics/pipelines/opengl.h"
 
 #include "third-party/imgui/imgui.h"
@@ -445,13 +444,7 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
   init_bucket_renderer<TextureUploadHandler>("common-tex", BucketCategory::TEX,
                                              BucketId::PRE_SPRITE_TEX);  // 65
 
-  std::vector<std::unique_ptr<BucketRenderer>> sprite_renderers;
-  // the first renderer added will be the default for sprite.
-  sprite_renderers.push_back(std::make_unique<Sprite3>("sprite-3", (int)BucketId::SPRITE));
-  sprite_renderers.push_back(
-      std::make_unique<SpriteRenderer>("sprite-renderer", (int)BucketId::SPRITE));
-  init_bucket_renderer<RenderMux>("sprite", BucketCategory::SPRITE, BucketId::SPRITE,
-                                  std::move(sprite_renderers));  // 66
+  init_bucket_renderer<Sprite3>("sprite", BucketCategory::SPRITE, BucketId::SPRITE);  // 66
 
   init_bucket_renderer<DirectRenderer>("debug", BucketCategory::OTHER, BucketId::DEBUG, 0x20000);
   init_bucket_renderer<DirectRenderer>("debug-no-zbuf", BucketCategory::OTHER,
