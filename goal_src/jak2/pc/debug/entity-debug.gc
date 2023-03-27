@@ -25,10 +25,21 @@
   
   (update-pad inspect-info 0)
   (let* ((e (-> inspect-info entity)) (name (res-lump-struct e 'name string)))
-  (set! *debug-actor* (the string (and (-> inspect-info show-actor-info) name)))
-  ;; draw trans
-  (add-debug-x #t (bucket-id debug-no-zbuf1) (-> e trans) (static-rgba 255 255 0 128))
-  (add-debug-text-3d #t (bucket-id debug-no-zbuf1) name (-> e trans) (font-color red) (new 'static 'vector2h :y 8))
+  (set! *debug-actor* (the string (and (type-type? (-> e type) entity-actor) (-> inspect-info show-actor-info) name)))
+  (set! *display-race-marks* (race-marks-controls all-off))
+  (case (-> e type)
+    ((entity-race-mesh)
+      (set! *display-race-marks* (race-marks-controls all-paths-on))
+      ;(debug-draw-edges (-> (the entity-race-mesh e) race-mesh))
+      )
+    ((entity-nav-mesh)
+      (debug-draw (the entity-nav-mesh e)))
+    (else
+      ;; draw trans
+      (add-debug-x #t (bucket-id debug-no-zbuf1) (-> e trans) (static-rgba 255 255 0 128))
+      (add-debug-text-3d #t (bucket-id debug-no-zbuf1) name (-> e trans) (font-color red) (new 'static 'vector2h :y 8))
+      )
+    )
 
   ;; start writing text
   (let* ((begin-y (- 16 (* (-> inspect-info scroll-y) 16))) (cur-y begin-y) (y-adv 16))
@@ -199,10 +210,15 @@
               ((uint32)
                 (case (-> e tag i name)
                   ;; actually actor-id
-                  (('nav-mesh-actor 'open-actor 'trigger-actor 'path-actor 'state-actor 'alt-actor 'next-actor 'prev-actor
+                  (('open-actor 'trigger-actor 'path-actor 'state-actor 'alt-actor 'next-actor 'prev-actor
                     'spawner-blocker-actor 'spawner-trigger-actor 'kill-actor 'fade-actor 'water-actor 'target-actor 'formation-actor)
                     (format *debug-temp-string* "~%#x~x (~S)" (-> (the (pointer uint32) data) ii)
                             (res-lump-struct (entity-by-aid (-> (the (pointer uint32) data) ii)) 'name string))
+                    (+! y-adv 14)
+                    )
+                  (('nav-mesh-actor)
+                    (format *debug-temp-string* "~%#x~x (~S)" (-> (the (pointer uint32) data) ii)
+                            (res-lump-struct (entity-nav-mesh-by-aid (-> (the (pointer actor-id) data) ii)) 'name string))
                     (+! y-adv 14)
                     )
                   (('enemy-options)
