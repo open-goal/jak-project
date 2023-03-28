@@ -9,7 +9,7 @@
 #include <memory>
 #include <mutex>
 #include <sstream>
-
+#include <fstream>
 
 #include "common/dma/dma_copy.h"
 #include "common/global_profiler/GlobalProfiler.h"
@@ -754,7 +754,7 @@ void update_global_profiler() {
       while (true) {
         std::stringstream ss;
         ss << "profile_data/prof" << file_index << ".json";
-        std::string new_file_path = (file_util::get_jak_project_dir() /  ss.str()).string();
+        std::string new_file_path = (file_util::get_jak_project_dir() / ss.str()).string();
         std::ifstream new_file(new_file_path);
         if (!new_file.good()) {
           file_path = new_file_path;
