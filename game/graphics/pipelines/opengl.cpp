@@ -9,7 +9,6 @@
 #include <memory>
 #include <mutex>
 #include <sstream>
-#include <fstream>
 
 #include "common/dma/dma_copy.h"
 #include "common/global_profiler/GlobalProfiler.h"
