@@ -8,6 +8,7 @@
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <sstream>
 
 #include "common/dma/dma_copy.h"
 #include "common/global_profiler/GlobalProfiler.h"
@@ -739,11 +740,35 @@ void update_global_profiler() {
   if (g_gfx_data->debug_gui.dump_events) {
     prof().set_enable(false);
     g_gfx_data->debug_gui.dump_events = false;
-    prof().dump_to_json((file_util::get_jak_project_dir() / "prof.json").string());
+
+    std::string dir_path = (file_util::get_jak_project_dir() / "profile_data").string();
+    fs::create_directories(dir_path);
+
+    std::string file_path = (file_util::get_jak_project_dir() / "profile_data/prof.json").string();
+    std::ifstream file(file_path);
+    if (file.good()) {
+      file.close();
+
+      int file_index = 1;
+      while (true) {
+        std::stringstream ss;
+        ss << "profile_data/prof" << file_index << ".json";
+        std::string new_file_path = (file_util::get_jak_project_dir() / ss.str()).string();
+        std::ifstream new_file(new_file_path);
+        if (!new_file.good()) {
+          file_path = new_file_path;
+          break;
+        }
+        new_file.close();
+        file_index++;
+      }
+    } else {
+      file.close();
+    }
+    prof().dump_to_json(file_path);
   }
   prof().set_enable(g_gfx_data->debug_gui.record_events);
 }
-
 void GLDisplay::VMode::set(const GLFWvidmode* vmode) {
   width = vmode->width;
   height = vmode->height;
