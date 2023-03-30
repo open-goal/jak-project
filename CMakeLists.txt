@@ -38,7 +38,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -Wall \
         -Wno-c++11-narrowing \
         -Wno-c++98-compat \
-        -O3")
+        -O3 \
+        -D_CRT_SECURE_NO_WARNINGS")
 
     # Increase stack size for windows, who's default is too low
     if(WIN32)
