@@ -206,9 +206,8 @@ function(add_headers VAR)
 endfunction()
 
 # Define the fmt library, its includes and the needed defines.
-add_headers(FMT_HEADERS args.h chrono.h color.h compile.h core.h format.h
-                        format-inl.h os.h ostream.h printf.h ranges.h std.h
-                        xchar.h)
+add_headers(FMT_HEADERS args.h color.h core.h format.h
+                        format-inl.h os.h ranges.h)
 if (FMT_MODULE)
   set(FMT_SOURCES fmt.cc)
 elseif (FMT_OS)
@@ -217,7 +216,7 @@ else()
   set(FMT_SOURCES format.cc)
 endif ()
 
-add_library(fmt ${FMT_SOURCES} ${FMT_HEADERS} README.rst ChangeLog.rst)
+add_library(fmt ${FMT_SOURCES} ${FMT_HEADERS})
 add_library(fmt::fmt ALIAS fmt)
 
 if (FMT_WERROR)
