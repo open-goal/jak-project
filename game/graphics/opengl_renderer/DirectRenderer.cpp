@@ -726,6 +726,9 @@ void DirectRenderer::handle_ad(const u8* data,
       ASSERT(render_state->version == GameVersion::Jak2);  // hardcoded jak 2 scissor vals in handle
       handle_xyoffset(value);
       break;
+    case GsRegisterAddress::COLCLAMP:
+      ASSERT(value == 1);
+      break;
     default:
       ASSERT_MSG(false, fmt::format("Address {} is not supported", register_address_name(addr)));
   }
