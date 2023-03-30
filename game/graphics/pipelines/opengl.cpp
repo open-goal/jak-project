@@ -741,34 +741,23 @@ void update_global_profiler() {
     prof().set_enable(false);
     g_gfx_data->debug_gui.dump_events = false;
 
-    std::string dir_path = (file_util::get_jak_project_dir() / "profile_data").string();
+    auto dir_path = file_util::get_jak_project_dir() / "profile_data";
     fs::create_directories(dir_path);
 
-    std::string file_path = (file_util::get_jak_project_dir() / "profile_data/prof.json").string();
-    std::ifstream file(file_path);
-    if (file.good()) {
-      file.close();
-
+    if (fs::exists(dir_path / "prof.json")) {
       int file_index = 1;
-      while (true) {
-        std::stringstream ss;
-        ss << "profile_data/prof" << file_index << ".json";
-        std::string new_file_path = (file_util::get_jak_project_dir() / ss.str()).string();
-        std::ifstream new_file(new_file_path);
-        if (!new_file.good()) {
-          file_path = new_file_path;
-          break;
-        }
-        new_file.close();
-        file_index++;
+      auto file_path = dir_path / fmt::format("prof{}.json", file_index);
+      while (!fs::exists(file_path)) {
+        file_path = dir_path / fmt::format("prof{}.json", ++file_index);
       }
+      prof().dump_to_json(file_path.string());
     } else {
-      file.close();
+      prof().dump_to_json((dir_path / "prof.json").string());
     }
-    prof().dump_to_json(file_path);
   }
   prof().set_enable(g_gfx_data->debug_gui.record_events);
 }
+
 void GLDisplay::VMode::set(const GLFWvidmode* vmode) {
   width = vmode->width;
   height = vmode->height;

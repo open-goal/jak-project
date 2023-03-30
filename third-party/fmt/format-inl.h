@@ -117,7 +117,7 @@ template <typename Char> FMT_FUNC Char decimal_point_impl(locale_ref) {
 #endif
 
 FMT_FUNC auto write_loc(appender out, loc_value value,
-                        const format_specs& specs, locale_ref loc) -> bool {
+                        const format_specs<>& specs, locale_ref loc) -> bool {
 #ifndef FMT_STATIC_THOUSANDS_SEPARATOR
   auto locale = loc.get<std::locale>();
   // We cannot use the num_put<char> facet because it may produce output in
@@ -142,7 +142,7 @@ template <typename Locale> format_facet<Locale>::format_facet(Locale& loc) {
 
 template <>
 FMT_API FMT_FUNC auto format_facet<std::locale>::do_put(
-    appender out, loc_value val, const format_specs& specs) const -> bool {
+    appender out, loc_value val, const format_specs<>& specs) const -> bool {
   return val.visit(
       detail::loc_writer<>{out, specs, separator_, grouping_, decimal_point_});
 }
@@ -174,58 +174,8 @@ FMT_CONSTEXPR inline uint64_t rotr(uint64_t n, uint32_t r) noexcept {
   return (n >> r) | (n << (64 - r));
 }
 
-// Computes 128-bit result of multiplication of two 64-bit unsigned integers.
-inline uint128_fallback umul128(uint64_t x, uint64_t y) noexcept {
-#if FMT_USE_INT128
-  auto p = static_cast<uint128_opt>(x) * static_cast<uint128_opt>(y);
-  return {static_cast<uint64_t>(p >> 64), static_cast<uint64_t>(p)};
-#elif defined(_MSC_VER) && defined(_M_X64)
-  auto result = uint128_fallback();
-  result.lo_ = _umul128(x, y, &result.hi_);
-  return result;
-#else
-  const uint64_t mask = static_cast<uint64_t>(max_value<uint32_t>());
-
-  uint64_t a = x >> 32;
-  uint64_t b = x & mask;
-  uint64_t c = y >> 32;
-  uint64_t d = y & mask;
-
-  uint64_t ac = a * c;
-  uint64_t bc = b * c;
-  uint64_t ad = a * d;
-  uint64_t bd = b * d;
-
-  uint64_t intermediate = (bd >> 32) + (ad & mask) + (bc & mask);
-
-  return {ac + (intermediate >> 32) + (ad >> 32) + (bc >> 32),
-          (intermediate << 32) + (bd & mask)};
-#endif
-}
-
 // Implementation of Dragonbox algorithm: https://github.com/jk-jeon/dragonbox.
 namespace dragonbox {
-// Computes upper 64 bits of multiplication of two 64-bit unsigned integers.
-inline uint64_t umul128_upper64(uint64_t x, uint64_t y) noexcept {
-#if FMT_USE_INT128
-  auto p = static_cast<uint128_opt>(x) * static_cast<uint128_opt>(y);
-  return static_cast<uint64_t>(p >> 64);
-#elif defined(_MSC_VER) && defined(_M_X64)
-  return __umulh(x, y);
-#else
-  return umul128(x, y).high();
-#endif
-}
-
-// Computes upper 128 bits of multiplication of a 64-bit unsigned integer and a
-// 128-bit unsigned integer.
-inline uint128_fallback umul192_upper128(uint64_t x,
-                                         uint128_fallback y) noexcept {
-  uint128_fallback r = umul128(x, y.high());
-  r += umul128_upper64(x, y.low());
-  return r;
-}
-
 // Computes upper 64 bits of multiplication of a 32-bit unsigned integer and a
 // 64-bit unsigned integer.
 inline uint64_t umul96_upper64(uint32_t x, uint64_t y) noexcept {
@@ -247,19 +197,7 @@ inline uint64_t umul96_lower64(uint32_t x, uint64_t y) noexcept {
   return x * y;
 }
 
-// Computes floor(log10(pow(2, e))) for e in [-2620, 2620] using the method from
-// https://fmt.dev/papers/Dragonbox.pdf#page=28, section 6.1.
-inline int floor_log10_pow2(int e) noexcept {
-  FMT_ASSERT(e <= 2620 && e >= -2620, "too large exponent");
-  static_assert((-1 >> 1) == -1, "right shift is not arithmetic");
-  return (e * 315653) >> 20;
-}
-
 // Various fast log computations.
-inline int floor_log2_pow10(int e) noexcept {
-  FMT_ASSERT(e <= 1233 && e >= -1233, "too large exponent");
-  return (e * 1741647) >> 19;
-}
 inline int floor_log10_pow2_minus_log10_4_over_3(int e) noexcept {
   FMT_ASSERT(e <= 2936 && e >= -2985, "too large exponent");
   return (e * 631305 - 261663) >> 21;
@@ -319,7 +257,7 @@ inline uint64_t divide_by_10_to_kappa_plus_1(uint64_t n) noexcept {
 }
 
 // Various subroutines using pow10 cache
-template <class T> struct cache_accessor;
+template <typename T> struct cache_accessor;
 
 template <> struct cache_accessor<float> {
   using carrier_uint = float_info<float>::carrier_uint;
@@ -1040,7 +978,23 @@ template <> struct cache_accessor<double> {
       {0xfcf62c1dee382c42, 0x46729e03dd9ed7b6},
       {0x9e19db92b4e31ba9, 0x6c07a2c26a8346d2},
       {0xc5a05277621be293, 0xc7098b7305241886},
-      {0xf70867153aa2db38, 0xb8cbee4fc66d1ea8}
+      {0xf70867153aa2db38, 0xb8cbee4fc66d1ea8},
+      {0x9a65406d44a5c903, 0x737f74f1dc043329},
+      {0xc0fe908895cf3b44, 0x505f522e53053ff3},
+      {0xf13e34aabb430a15, 0x647726b9e7c68ff0},
+      {0x96c6e0eab509e64d, 0x5eca783430dc19f6},
+      {0xbc789925624c5fe0, 0xb67d16413d132073},
+      {0xeb96bf6ebadf77d8, 0xe41c5bd18c57e890},
+      {0x933e37a534cbaae7, 0x8e91b962f7b6f15a},
+      {0xb80dc58e81fe95a1, 0x723627bbb5a4adb1},
+      {0xe61136f2227e3b09, 0xcec3b1aaa30dd91d},
+      {0x8fcac257558ee4e6, 0x213a4f0aa5e8a7b2},
+      {0xb3bd72ed2af29e1f, 0xa988e2cd4f62d19e},
+      {0xe0accfa875af45a7, 0x93eb1b80a33b8606},
+      {0x8c6c01c9498d8b88, 0xbc72f130660533c4},
+      {0xaf87023b9bf0ee6a, 0xeb8fad7c7f8680b5},
+      { 0xdb68c2ca82ed2a05,
+        0xa67398db9f6820e2 }
 #else
       {0xff77b1fcbebcdc4f, 0x25e8e89c13bb0f7b},
       {0xce5d73ff402d98e3, 0xfb0a3d212dc81290},
@@ -1064,8 +1018,8 @@ template <> struct cache_accessor<double> {
       {0x8da471a9de737e24, 0x5ceaecfed289e5d3},
       {0xe4d5e82392a40515, 0x0fabaf3feaa5334b},
       {0xb8da1662e7b00a17, 0x3d6a751f3b936244},
-      { 0x95527a5202df0ccb,
-        0x0f37801e0c43ebc9 }
+      {0x95527a5202df0ccb, 0x0f37801e0c43ebc9},
+      {0xf13e34aabb430a15, 0x647726b9e7c68ff0}
 #endif
     };
 
@@ -1168,8 +1122,12 @@ template <> struct cache_accessor<double> {
   }
 };
 
+FMT_FUNC uint128_fallback get_cached_power(int k) noexcept {
+  return cache_accessor<double>::get_cached_power(k);
+}
+
 // Various integer checks
-template <class T>
+template <typename T>
 bool is_left_endpoint_integer_shorter_interval(int exponent) noexcept {
   const int case_shorter_interval_left_endpoint_lower_threshold = 2;
   const int case_shorter_interval_left_endpoint_upper_threshold = 3;
@@ -1180,8 +1138,12 @@ bool is_left_endpoint_integer_shorter_interval(int exponent) noexcept {
 // Remove trailing zeros from n and return the number of zeros removed (float)
 FMT_INLINE int remove_trailing_zeros(uint32_t& n) noexcept {
   FMT_ASSERT(n != 0, "");
+  // Modular inverse of 5 (mod 2^32): (mod_inv_5 * 5) mod 2^32 = 1.
+  // See https://github.com/fmtlib/fmt/issues/3163 for more details.
   const uint32_t mod_inv_5 = 0xcccccccd;
-  const uint32_t mod_inv_25 = mod_inv_5 * mod_inv_5;
+  // Casts are needed to workaround a bug in MSVC 19.22 and older.
+  const uint32_t mod_inv_25 =
+      static_cast<uint32_t>(uint64_t(mod_inv_5) * mod_inv_5);
 
   int s = 0;
   while (true) {
@@ -1195,7 +1157,6 @@ FMT_INLINE int remove_trailing_zeros(uint32_t& n) noexcept {
     n = q;
     s |= 1;
   }
-
   return s;
 }
 
@@ -1253,7 +1214,7 @@ FMT_INLINE int remove_trailing_zeros(uint64_t& n) noexcept {
 }
 
 // The main algorithm for shorter interval case
-template <class T>
+template <typename T>
 FMT_INLINE decimal_fp<T> shorter_interval_case(int exponent) noexcept {
   decimal_fp<T> ret_value;
   // Compute k and beta

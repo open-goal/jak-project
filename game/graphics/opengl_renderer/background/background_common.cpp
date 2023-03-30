@@ -186,6 +186,9 @@ void first_tfrag_draw_setup(const TfragRenderSettings& settings,
   glUniform4f(glGetUniformLocation(id, "fog_color"), render_state->fog_color[0] / 255.f,
               render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
               render_state->fog_intensity / 255);
+
+  glUniform1f(glGetUniformLocation(id, "fog_hack_threshold"),
+              render_state->version == GameVersion::Jak1 ? 0.005f : 0);
 }
 
 void interp_time_of_day_slow(const math::Vector<s32, 4> itimes[4],

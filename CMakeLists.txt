@@ -38,7 +38,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -Wall \
         -Wno-c++11-narrowing \
         -Wno-c++98-compat \
-        -O3")
+        -O3 \
+        -D_CRT_SECURE_NO_WARNINGS")
 
     # Increase stack size for windows, who's default is too low
     if(WIN32)
@@ -151,8 +152,6 @@ if(WIN32)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-    set(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION 7.1.7600.0.30514) # win7.1, supports xp
-    message("Windows SDK version: ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}")
 endif()
 
 # Code Coverage
