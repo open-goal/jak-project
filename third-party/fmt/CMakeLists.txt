@@ -206,7 +206,7 @@ function(add_headers VAR)
 endfunction()
 
 # Define the fmt library, its includes and the needed defines.
-add_headers(FMT_HEADERS args.h color.h core.h format.h
+add_headers(FMT_HEADERS color.h core.h format.h
                         format-inl.h os.h ranges.h)
 if (FMT_MODULE)
   set(FMT_SOURCES fmt.cc)
