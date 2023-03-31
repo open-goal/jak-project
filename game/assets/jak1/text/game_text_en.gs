@@ -357,8 +357,6 @@
         "NORSK")
 (#x1117 "MAGYAR"
         "MAGYAR")
-(#x1118 "ITALIAN"
-        "ITALIAN")
 
 (#x1500 "SPEEDRUNNER MODE"
         "SPEEDRUNNER MODE")
