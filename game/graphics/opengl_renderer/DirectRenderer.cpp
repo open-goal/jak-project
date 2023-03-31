@@ -329,7 +329,8 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
       lg::warn("Failed to find texture at {}, using random (eye zone)", state.texture_base_ptr);
       tex = render_state->texture_pool->get_placeholder_texture();
     } else {
-      lg::warn("Failed to find texture at {}, using random", state.texture_base_ptr);
+      lg::warn("Failed to find texture at {}, using random (direct: {})", state.texture_base_ptr,
+               name_and_id());
       tex = render_state->texture_pool->get_placeholder_texture();
     }
   }
@@ -724,6 +725,9 @@ void DirectRenderer::handle_ad(const u8* data,
     case GsRegisterAddress::XYOFFSET_1:
       ASSERT(render_state->version == GameVersion::Jak2);  // hardcoded jak 2 scissor vals in handle
       handle_xyoffset(value);
+      break;
+    case GsRegisterAddress::COLCLAMP:
+      ASSERT(value == 1);
       break;
     default:
       ASSERT_MSG(false, fmt::format("Address {} is not supported", register_address_name(addr)));

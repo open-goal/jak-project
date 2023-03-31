@@ -100,6 +100,7 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/sparticle_launcher.cpp
         mips2c/jak2_functions/spatial_hash.cpp
         mips2c/jak2_functions/texture.cpp
+        mips2c/jak2_functions/vortex.cpp
         mips2c/jak2_functions/ocean.cpp
         mips2c/jak2_functions/ocean_vu0.cpp
         mips2c/jak2_functions/merc_blend_shape.cpp
@@ -137,7 +138,6 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/sprite/Sprite3.cpp
         graphics/opengl_renderer/sprite/Sprite3_Distort.cpp
         graphics/opengl_renderer/sprite/Sprite3_Glow.cpp
-        graphics/opengl_renderer/sprite/SpriteRenderer.cpp
         graphics/opengl_renderer/ocean/CommonOceanRenderer.cpp
         graphics/opengl_renderer/ocean/OceanMid.cpp
         graphics/opengl_renderer/ocean/OceanMid_PS2.cpp

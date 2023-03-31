@@ -86,7 +86,7 @@ class Merc2 : public BucketRenderer {
   static constexpr int MAX_SHADER_BONE_VECTORS = 1024 * 32;  // ??
 
   static constexpr int MAX_LEVELS = 3;
-  static constexpr int MAX_DRAWS_PER_LEVEL = 2048;
+  static constexpr int MAX_DRAWS_PER_LEVEL = 2048 * 2;
   static constexpr int MAX_ENVMAP_DRAWS_PER_LEVEL = MAX_DRAWS_PER_LEVEL;
 
   math::Vector4f m_shader_bone_vector_buffer[MAX_SHADER_BONE_VECTORS];
@@ -200,7 +200,9 @@ class Merc2 : public BucketRenderer {
                           LevelDrawBucket* lev_bucket,
                           u32 first_bone,
                           u32 lights,
-                          bool jak1_water_mode);
+                          bool jak1_water_mode,
+                          bool disable_fog);
+
   Draw* try_alloc_envmap_draw(const tfrag3::MercDraw& mdraw,
                               const DrawMode& envmap_mode,
                               u32 envmap_texture,

@@ -11,20 +11,31 @@
 /////////////////////////
 EyeRenderer::EyeRenderer(const std::string& name, int id) : BucketRenderer(name, id) {}
 
-void EyeRenderer::init_textures(TexturePool& texture_pool, GameVersion) {
+void EyeRenderer::init_textures(TexturePool& texture_pool, GameVersion version) {
   // set up eyes
   for (int pair_idx = 0; pair_idx < NUM_EYE_PAIRS; pair_idx++) {
     for (int lr = 0; lr < 2; lr++) {
       u32 tidx = pair_idx * 2 + lr;
 
-      u32 tbp = EYE_BASE_BLOCK + pair_idx * 2 + lr;
+      u32 tbp = pair_idx * 2 + lr;
+      switch (version) {
+        case GameVersion::Jak1:
+          tbp += EYE_BASE_BLOCK_JAK1;
+          break;
+        case GameVersion::Jak2:
+          // NOTE: using jak 1's address because jak 2's breaks some ocean stuff.
+          tbp += EYE_BASE_BLOCK_JAK1;
+          break;
+        default:
+          ASSERT_NOT_REACHED();
+      }
       TextureInput in;
       in.gpu_texture = m_gpu_eye_textures[tidx].fb.texture();
       in.w = 32;
       in.h = 32;
       in.debug_page_name = "PC-EYES";
       in.debug_name = fmt::format("{}-eye-gpu-{}", lr ? "left" : "right", pair_idx);
-      in.id = texture_pool.allocate_pc_port_texture();
+      in.id = texture_pool.allocate_pc_port_texture(version);
       m_gpu_eye_textures[tidx].gpu_tex = texture_pool.give_texture_and_load_to_vram(in, tbp);
       m_gpu_eye_textures[tidx].tbp = tbp;
     }

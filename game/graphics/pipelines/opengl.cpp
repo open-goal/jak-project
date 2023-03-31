@@ -8,6 +8,7 @@
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <sstream>
 
 #include "common/dma/dma_copy.h"
 #include "common/global_profiler/GlobalProfiler.h"
@@ -739,7 +740,20 @@ void update_global_profiler() {
   if (g_gfx_data->debug_gui.dump_events) {
     prof().set_enable(false);
     g_gfx_data->debug_gui.dump_events = false;
-    prof().dump_to_json((file_util::get_jak_project_dir() / "prof.json").string());
+
+    auto dir_path = file_util::get_jak_project_dir() / "profile_data";
+    fs::create_directories(dir_path);
+
+    if (fs::exists(dir_path / "prof.json")) {
+      int file_index = 1;
+      auto file_path = dir_path / fmt::format("prof{}.json", file_index);
+      while (!fs::exists(file_path)) {
+        file_path = dir_path / fmt::format("prof{}.json", ++file_index);
+      }
+      prof().dump_to_json(file_path.string());
+    } else {
+      prof().dump_to_json((dir_path / "prof.json").string());
+    }
   }
   prof().set_enable(g_gfx_data->debug_gui.record_events);
 }

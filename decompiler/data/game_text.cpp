@@ -435,7 +435,7 @@ std::vector<SpoolSubtitleRange> process_spool_subtitles(ObjectFileData& data,
 }
 
 std::string write_spool_subtitles(
-    GameTextVersion version,
+    GameTextVersion,
     const fs::path& image_out,
     const std::unordered_map<std::string, std::vector<SpoolSubtitleRange>>& data) {
   // write!
@@ -469,7 +469,7 @@ std::string write_spool_subtitles(
             if (dump_images) {
               std::vector<u32> rgba_out;
               rgba_out.resize(msg.w * msg.h);
-              for (int px = 0; px < rgba_out.size(); ++px) {
+              for (int px = 0; px < (int)rgba_out.size(); ++px) {
                 int idx = px & 1 ? msg.data[px / 2] >> 4 : msg.data[px / 2] & 0xf;
                 rgba_out.at(px) = msg.palette[idx];
               }

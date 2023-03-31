@@ -944,11 +944,18 @@
 ;; flags    2 qw
 ;; fades    (u32 x N), padding to qw aligned
 
+(defenum pc-merc-bits
+  :type uint8
+  :bitfield #t
+  (update-verts 0)
+  (disable-fog 1)
+  )
+
 (deftype pc-merc-flags (structure)
   ((enable-mask uint64)
    (ignore-alpha-mask uint64)
    (effect-count uint8)
-   (update-verts uint8)
+   (bit-flags pc-merc-bits)
    )
   )
 
@@ -1055,7 +1062,10 @@
           ;; flags
           (let ((flags (the (pc-merc-flags) dma-buf)))
             (set! (-> flags effect-count) (-> merc-ctrl header effect-count))
-            (set! (-> flags update-verts) (if update-verts 1 0))
+            (set! (-> flags bit-flags) (the pc-merc-bits 0))
+            (when update-verts
+              (logior! (-> flags bit-flags) (pc-merc-bits update-verts))
+              )
             (set! (-> flags enable-mask) enable-mask)
             (set! (-> flags ignore-alpha-mask) ignore-alpha-mask)
             )

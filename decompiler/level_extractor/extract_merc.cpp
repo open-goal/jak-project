@@ -136,7 +136,7 @@ MercCtrl extract_merc_ctrl(const LinkedObjectFile& file,
   auto tr = typed_ref_from_basic(ref, dts);
 
   MercCtrl ctrl;
-  ctrl.from_ref(tr, dts);  // the merc data import
+  ctrl.from_ref(tr, dts, file.version);  // the merc data import
   return ctrl;
 }
 
@@ -227,7 +227,9 @@ void update_mode_from_alpha1(GsAlpha reg, DrawMode& mode) {
  */
 DrawMode process_draw_mode(const MercShader& info,
                            bool enable_alpha_test,
-                           bool enable_alpha_blend) {
+                           bool enable_alpha_blend,
+                           bool depth_write,
+                           bool fge) {
   DrawMode mode;
   /*
    *       (new 'static 'gs-test
@@ -244,7 +246,7 @@ DrawMode process_draw_mode(const MercShader& info,
   mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
   mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
   mode.enable_zt();
-  mode.enable_depth_write();
+  mode.set_depth_write_enable(depth_write);
   mode.set_depth_test(GsTest::ZTest::GEQUAL);
 
   // check these
@@ -268,6 +270,8 @@ DrawMode process_draw_mode(const MercShader& info,
 
   mode.set_clamp_s_enable(info.clamp & 0b1);
   mode.set_clamp_t_enable(info.clamp & 0b100);
+
+  mode.set_fog(fge);
 
   return mode;
 }
@@ -768,7 +772,8 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   }
   if (input_effect.extra_info.shader) {
     result.has_envmap = true;
-    result.envmap_mode = process_draw_mode(*input_effect.extra_info.shader, false, false);
+    result.envmap_mode =
+        process_draw_mode(*input_effect.extra_info.shader, false, false, false, false);
     result.envmap_mode.set_ab(true);
     u32 new_tex = remap_texture(input_effect.extra_info.shader->original_tex, map);
     ASSERT(result.envmap_mode.get_tcc_enable());
@@ -823,8 +828,17 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   }
 
   bool use_alpha_blend = false;
+  bool depth_write = true;
   if (version == GameVersion::Jak2) {
-    use_alpha_blend = input_effect.texture_index == 4;  // water
+    constexpr int kWaterTexture = 4;
+    constexpr int kAlphaTexture = 3;
+    if (input_effect.texture_index == kAlphaTexture) {
+      use_alpha_blend = true;
+    }
+    if (input_effect.texture_index == kWaterTexture) {
+      depth_write = false;
+      use_alpha_blend = true;
+    }
   }
 
   // full reset of state per effect.
@@ -900,8 +914,9 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     for (size_t i = 0; i < frag.fp_header.shader_cnt; i++) {
       const auto& shader = frag.shaders.at(i);
       // update merc state from shader (will hold over to next fragment, if needed)
+      bool fog = ctrl_header.disable_fog == 0;
       merc_state.merc_draw_mode.mode =
-          process_draw_mode(shader, result.has_envmap, use_alpha_blend);
+          process_draw_mode(shader, result.has_envmap, use_alpha_blend, depth_write, fog);
       if (!merc_state.merc_draw_mode.mode.get_tcc_enable()) {
         ASSERT(false);
       }

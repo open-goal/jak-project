@@ -215,13 +215,21 @@ bool Tie3::try_loading_level(const std::string& level, SharedRenderState* render
   Timer tfrag3_setup_timer;
   auto lev_data = render_state->loader->get_tfrag3_level(level);
 
-  if (!lev_data || (m_has_level && lev_data->load_id != m_load_id)) {
-    // loader failed, or we have an old copy of a level. either way, we have nothing to draw.
+  if (!lev_data) {
+    // not loaded
     m_has_level = false;
     m_textures = nullptr;
     m_level_name = "";
     discard_tree_cache();
     return false;
+  }
+
+  if (m_has_level && lev_data->load_id != m_load_id) {
+    m_has_level = false;
+    m_textures = nullptr;
+    m_level_name = "";
+    discard_tree_cache();
+    return try_loading_level(level, render_state);
   }
 
   // loading was successful. Link textures/load ID.

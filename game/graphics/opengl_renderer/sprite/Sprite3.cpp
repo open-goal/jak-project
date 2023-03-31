@@ -337,7 +337,17 @@ void Sprite3::render_2d_group1(DmaFollower& dma,
     auto run = dma.read_and_advance();
     ASSERT(run.vifcode0().kind == VifCode::Kind::NOP);
     ASSERT(run.vifcode1().kind == VifCode::Kind::MSCAL);
-    ASSERT(run.vifcode1().immediate == SpriteProgMem::Sprites2dHud);
+
+    switch (render_state->version) {
+      case GameVersion::Jak1:
+        ASSERT(run.vifcode1().immediate == SpriteProgMem::Sprites2dHud_Jak1);
+        break;
+      case GameVersion::Jak2:
+        ASSERT(run.vifcode1().immediate == SpriteProgMem::Sprites2dHud_Jak2);
+        break;
+      default:
+        ASSERT_NOT_REACHED();
+    }
     if (m_enabled && m_2d_enable) {
       do_block_common(SpriteMode::ModeHUD, sprite_count, render_state, prof);
     }
@@ -503,6 +513,7 @@ void Sprite3::draw_debug_window() {
               m_debug_stats.count_2d_grp1);
   ImGui::Checkbox("Culling", &m_enable_culling);
   ImGui::Checkbox("2d", &m_2d_enable);
+  ImGui::Checkbox("Glow", &m_enable_glow);
   ImGui::SameLine();
   ImGui::Checkbox("3d", &m_3d_enable);
   ImGui::Checkbox("Distort", &m_distort_enable);
@@ -726,6 +737,16 @@ void Sprite3::do_block_common(SpriteMode mode,
       auto bsphere = m_vec_data_2d[sprite_idx].xyz_sx;
       bsphere.w() = std::max(bsphere.w(), m_vec_data_2d[sprite_idx].sy());
       if (bsphere.w() == 0 || !sphere_in_view_ref(bsphere, render_state->camera_planes)) {
+        continue;
+      }
+    }
+
+    if (render_state->version > GameVersion::Jak1) {
+      // glow code sets the matrix to -1,
+      // jak 2 adds:
+      // ibltz vi08, L4
+      // which is set from ilw.y vi08, 1(vi02)
+      if (m_vec_data_2d[sprite_idx].matrix() == -1) {
         continue;
       }
     }
