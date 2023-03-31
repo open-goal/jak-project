@@ -201,10 +201,3 @@
 
 (#x1501 "SALTA FILMATI")
 
-;; -----------------
-;; test
-
-(#x7fff
-  "ARMATURA"
-  )
-
