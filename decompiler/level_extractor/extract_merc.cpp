@@ -914,7 +914,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     for (size_t i = 0; i < frag.fp_header.shader_cnt; i++) {
       const auto& shader = frag.shaders.at(i);
       // update merc state from shader (will hold over to next fragment, if needed)
-      bool fog = ctrl_header.disable_fog == 0;
+      bool fog = true;
       merc_state.merc_draw_mode.mode =
           process_draw_mode(shader, result.has_envmap, use_alpha_blend, depth_write, fog);
       if (!merc_state.merc_draw_mode.mode.get_tcc_enable()) {
