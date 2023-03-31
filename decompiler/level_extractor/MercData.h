@@ -64,12 +64,6 @@ struct MercCtrlHeader {
   u8 use_translucent;
   u8 display_this_fragment;
 
-  u8 disable_fog = false;  // jak 2 only
-  u8 use_warp = false;
-  u8 ignore_alpha = false;
-  u8 force_fade = false;
-  u8 disable_envamp = false;
-
   void from_ref(TypedRef tr, const DecompilerTypeSystem& dts, GameVersion version);
   std::string print() const;
 };

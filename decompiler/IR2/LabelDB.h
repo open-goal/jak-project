@@ -35,7 +35,9 @@ class LabelDB {
   int get_index_by_offset(int seg, int offset) const;
   std::optional<int> try_get_index_by_offset(int seg, int offset) const;
   int get_index_by_name(const std::string& name) const;
-  bool label_exists_by_name(const std::string& name) const;
+
+  // automatic, or from user
+  bool label_info_known_by_name(const std::string& name) const;
 
   LabelInfo set_and_get_previous(int idx,
                                  const TypeSpec& type,
