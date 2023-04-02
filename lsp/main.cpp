@@ -83,28 +83,32 @@ int main(int argc, char** argv) {
   _setmode(_fileno(stdin), _O_BINARY);
 #endif
 
-  char c;
-  MessageBuffer message_buffer;
-  while (std::cin.get(c)) {
-    message_buffer.handle_char(c);
+  try {
+    char c;
+    MessageBuffer message_buffer;
+    while (std::cin.get(c)) {
+      message_buffer.handle_char(c);
 
-    if (message_buffer.message_completed()) {
-      json body = message_buffer.body();
-      auto method_name = body["method"].get<std::string>();
-      lg::info(">>> Received message of method '{}'", method_name);
-      auto responses = lsp_router.route_message(message_buffer, appstate);
-      if (responses) {
-        for (const auto& response : responses.value()) {
-          std::cout << response.c_str() << std::flush;
-          if (appstate.verbose) {
-            lg::debug("<<< Sending message: {}", response);
-          } else {
-            lg::info("<<< Sending message of method '{}'", method_name);
+      if (message_buffer.message_completed()) {
+        json body = message_buffer.body();
+        auto method_name = body["method"].get<std::string>();
+        lg::info(">>> Received message of method '{}'", method_name);
+        auto responses = lsp_router.route_message(message_buffer, appstate);
+        if (responses) {
+          for (const auto& response : responses.value()) {
+            std::cout << response.c_str() << std::flush;
+            if (appstate.verbose) {
+              lg::debug("<<< Sending message: {}", response);
+            } else {
+              lg::info("<<< Sending message of method '{}'", method_name);
+            }
           }
         }
+        message_buffer.clear();
       }
-      message_buffer.clear();
     }
+  } catch (std::exception& e) {
+    lg::error("Unexpected LSP Exception occured - {}", e.what());
   }
 
   return 0;
