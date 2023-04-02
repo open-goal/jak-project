@@ -27,6 +27,7 @@ Compiler::Compiler(GameVersion version,
       m_repl(std::move(repl)),
       m_make(user_profile) {
   m_listener.add_debugger(&m_debugger);
+  m_listener.set_default_port(version);
   m_ts.add_builtin_types(m_version);
   m_global_env = std::make_unique<GlobalEnv>();
   m_none = std::make_unique<None>(m_ts.make_typespec("none"));

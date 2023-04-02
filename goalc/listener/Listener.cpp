@@ -87,6 +87,10 @@ bool Listener::is_connected() const {
  * Returns true if successfully connected.
  */
 bool Listener::connect_to_target(int n_tries, const std::string& ip, int port) {
+  if (port == -1) {
+    port = m_default_port;
+  }
+
   if (m_connected) {
     printf("already connected!\n");
     return true;
