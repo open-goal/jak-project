@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/listener_common.h"
 #include "common/versions.h"
 
 //! Supported languages.
@@ -18,4 +19,5 @@ struct GameLaunchOptions {
   GameVersion game_version = GameVersion::Jak1;
   bool disable_display = false;
   bool disable_debug_vm = false;
+  int server_port = DECI2_PORT;
 };

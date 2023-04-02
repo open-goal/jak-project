@@ -140,11 +140,15 @@ int main(int argc, char** argv) {
   bool disable_avx2 = false;
   bool disable_display = false;
   bool disable_debug_vm = false;
+  int port_number = -1;
   fs::path project_path_override;
   std::vector<std::string> game_args;
   CLI::App app{"OpenGOAL Game Runtime"};
   app.add_option("-g,--game", game_name, "The game name: 'jak1' or 'jak2'");
   app.add_flag("-v,--verbose", verbose_logging, "Enable verbose logging on stdout");
+  app.add_flag(
+      "--port", port_number,
+      "Specify port number for listener connection (default is 8112 for Jak 1 and 8113 for Jak 2)");
   app.add_flag("--no-avx2", verbose_logging, "Disable AVX2 for testing");
   app.add_flag("--no-display", disable_display, "Disable video display");
   app.add_flag("--no-vm", disable_debug_vm, "Disable debug PS2 VM (defaulted to on)");
@@ -161,6 +165,8 @@ int main(int argc, char** argv) {
   game_options.disable_debug_vm = disable_debug_vm;
   game_options.disable_display = disable_display;
   game_options.game_version = game_name_to_version(game_name);
+  game_options.server_port =
+      port_number == -1 ? DECI2_PORT - 1 + (int)game_options.game_version : port_number;
 
   // Figure out if the CPU has AVX2 to enable higher performance AVX2 versions of functions.
   setup_cpu_info();
