@@ -284,11 +284,11 @@
         )
       )
     (.lvf vf9 (&-> arg1 dir1 levels quad))
-    (let ((a3-1 (make-u128 t1-1 v1-0)))
+    (let ((a3-1 (the uint128 (make-u128 t1-1 v1-0))))
       (.lvf vf6 (&-> arg1 dir2 color quad))
       (.pcpyud v1-1 v1-0 t1-1)
       (.lvf vf10 (&-> arg1 dir2 levels quad))
-      (let ((a2-2 (make-u128 (the-as int t0-1) a2-1)))
+      (let ((a2-2 (the uint128 (make-u128 (the-as int t0-1) a2-1))))
         (.lvf vf7 (&-> arg1 ambi color quad))
         (.mul.x.vf vf4 vf4 vf8)
         (.lvf vf11 (&-> arg1 ambi levels quad))
@@ -941,8 +941,39 @@
 ;; lights (7 qw x 1)
 ;; matrix slot string (128 char, 8 qw)
 ;; matrices (7 qw x N)
-;; flags    (num-effects, effect-alpha-ignore, effect-disable)
+;; flags    2 qw
 ;; fades    (u32 x N), padding to qw aligned
+
+(defenum pc-merc-bits
+  :type uint8
+  :bitfield #t
+  (update-verts 0)
+  (disable-fog 1)
+  )
+
+(deftype pc-merc-flags (structure)
+  ((enable-mask uint64)
+   (ignore-alpha-mask uint64)
+   (effect-count uint8)
+   (bit-flags pc-merc-bits)
+   )
+  )
+
+(defun draw-control-uses-water-bucket ((dc draw-control))
+  "Does this draw control use a water bucket?"
+  (let ((sg (-> dc sink-group)))
+    (dotimes (i 3)
+      (let ((lev (-> *level* level i)))
+        (when lev
+          (when (= sg (-> lev water-tex-foreground-sink-group))
+            (return #t)
+            )
+          )
+        )
+      )
+    #f
+    )
+  )
 
 (defun pc-merc-draw-request ((dc draw-control) (dma-buf pointer) (matrix-buf pointer) (update-verts symbol))
   (let ((start-packet (the-as dma-packet dma-buf))
@@ -968,7 +999,12 @@
     (&+! dma-buf (* 16 7))
     (+! qwc-total 7)
 
-
+    (let ((uses-water (draw-control-uses-water-bucket dc)))
+      ;; tell PC renderer if we're in a water bucket or not (has different settings.)
+      (set! (-> (the (pointer uint64) dma-buf)) (if uses-water 1 0))
+      (&+! dma-buf 16)
+      (+! qwc-total 1)
+      )
     (let ((matrix-slot-string (the (pointer uint8) dma-buf)) ;; matrix slot list (so PC knows what order they come in)
           (enable-mask 0)
           (ignore-alpha-mask 0)
@@ -1024,14 +1060,17 @@
             )
 
           ;; flags
-          (let ((flags (the (pointer uint32) dma-buf)))
-            (set! (-> flags 0) (-> merc-ctrl header effect-count))
-            (set! (-> flags 1) ignore-alpha-mask)
-            (set! (-> flags 2) enable-mask)
-            (set! (-> flags 3) (if update-verts 1 0))
+          (let ((flags (the (pc-merc-flags) dma-buf)))
+            (set! (-> flags effect-count) (-> merc-ctrl header effect-count))
+            (set! (-> flags bit-flags) (the pc-merc-bits 0))
+            (when update-verts
+              (logior! (-> flags bit-flags) (pc-merc-bits update-verts))
+              )
+            (set! (-> flags enable-mask) enable-mask)
+            (set! (-> flags ignore-alpha-mask) ignore-alpha-mask)
             )
-          (&+! dma-buf (* 16 1))
-          (+! qwc-total 1)
+          (&+! dma-buf (* 16 2))
+          (+! qwc-total 2)
 
           ;; fades
           (let ((fades (the (pointer uint32) dma-buf)))
@@ -1079,6 +1118,9 @@
 
 ;; when set, use merc for blerc instead of generic.
 (define *blerc-hack* #t)
+
+(define *texscroll-force-generic* #f)
+(define *ripple-force-generic* #f)
 
 (defun draw-bones ((arg0 draw-control) (dma-buf dma-buffer) (arg2 float))
   "Main draw function for all bone-related renderers. Will set up merc, generic and shadow.
@@ -1308,9 +1350,10 @@
                          (v1-36 (the-as mei-texture-scroll (+ (the-as uint v1-35) (* (-> v1-35 texture-scroll-offset) 16))))
                          )
                     (when (< arg2 (-> v1-36 max-dist)) ;; in range to draw?
-                        ;; do scrolling. in PC, always use generic here because merc2 can't update texture coordinates
-                        (#when PC_PORT
-                          (set! pc-force-mercneric #t)
+                      ;; do scrolling.
+                      (if *texscroll-force-generic*
+                          (set! pc-force-mercneric #t) ;; use generic for texscroll
+                          (set! pc-merc-vtx-update #t) ;; use merc2 for texscroll
                           )
                         (texscroll-make-request (-> geom effect effect-idx))
                         )
@@ -1320,9 +1363,9 @@
                 ;; check if this effect uses "ripple"
                 (when (logtest? (-> geom effect effect-idx effect-bits) 4)
                   (when (-> arg0 ripple)
-                    ;; merc2 can't handle ripple, even if it's off.
-                    (#when PC_PORT
+                    (if *ripple-force-generic*
                       (set! pc-force-mercneric #t)
+                      (set! pc-merc-vtx-update #t)
                       )
                     (set! sv-144 (-> arg0 ripple))
                     (let* ((f1-4 (/ (- (-> sv-144 far-fade-dist) arg2) (- (-> sv-144 far-fade-dist) (-> sv-144 close-fade-dist))))
@@ -1397,19 +1440,6 @@
                    )
                   ((nonzero? (-> geom effect effect-idx envmap-usage))
                    ;; if we need envmap, set it up.
-
-                   ;; hack:
-                   ;; the game switches from mercneric to merc after the envmap is faded out.
-                   ;; this would normally be fine in the PC port too, but we want the eyes to remain
-                   ;; using mercneric (dynamic texture updates) in PC.
-                   ;; so we force mercneric on models with envmap.
-                   ;; it seems to work so far...
-                   (#when PC_PORT
-                     (when (and (-> geom header eye-ctrl)
-                                (nonzero? (-> geom header eye-ctrl)))
-                       (set! pc-force-mercneric #t)
-                       )
-                     )
                    (let* ((v1-83 (-> geom effect effect-idx extra-info))
                           ;; pointer to envmap tint data
                           (v1-84 (the-as structure (+ (the-as uint v1-83) (* (-> v1-83 envmap-tint-offset) 16))))

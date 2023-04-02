@@ -5,26 +5,28 @@
 ;; name in dgo: math-camera
 ;; dgos: ENGINE, GAME
 
+#|@file
+;;;;;;;;;;;;;;;;;;;;
+math camera basics
+;;;;;;;;;;;;;;;;;;;;
+
+the math camera computes the perspective matrix, hvdf offset, and hmge scale.
+
+multiplying a point by the perspective matrix, doing the persepctive divide, then adding hvdf offset gives you:
+H : horizontal position (in GS coordinates)
+V : vertical position (in GS coordinates)
+D : depth (as a 24-bit integer for the z buffer)
+F : fog
+
+Multiplying by hmge then checking the clipping flags can be used to see if a point is outside the view frustum.
+
+The "camera-temp" matrix is the perspective matrix multplied by the camera tranformation and is used
+renderers that want a single matrix.
+|#
+
 (define-extern sprite-distorter-generate-tables (function none))
 
 ;; DECOMP BEGINS
-
-;;;;;;;;;;;;;;;;;;;;;;
-;; math camera basics
-;;;;;;;;;;;;;;;;;;;;;;
-
-;; the math camera computes the perspective matrix, hvdf offset, and hmge scale.
-
-;; multiplying a point by the perspective matrix, doing the persepctive divide, then adding hvdf offset gives you:
-;; H : horizontal position (in GS coordinates)
-;; V : vertical position (in GS coordinates)
-;; D : depth (as a 24-bit integer for the z buffer)
-;; F : fog
-
-;; Multiplying by hmge then checking the clipping flags can be used to see if a point is outside the view frustum.
-
-;; The "camera-temp" matrix is the perspective matrix multplied by the camera tranformation and is used
-;; renderers that want a single matrix.
 
 ;;;;;;;;;;;;;;;;;;;
 ;; fog correction
@@ -67,6 +69,31 @@
       (set! (-> arg0 y-ratio) (* 0.75 (-> arg0 x-ratio)))
       (set! (-> arg0 y-ratio) (* 0.5625 (-> arg0 x-ratio)))
       )
+  (with-pc
+    (cond
+      ((-> *pc-settings* use-vis?)
+       ;; using game vis, cannot allow seeing more of the view
+       ;; crops excess aspect ratio at the top and bottom
+       ;(set! (-> arg0 y-ratio) (* (1/ (-> *pc-settings* aspect-ratio)) (-> arg0 x-ratio)))
+       )
+      ((-> *pc-settings* movie?)
+       ;; this mess is just so that we can force the original 16x9 cropping during cutscenes.
+       (if (<= (-> *pc-settings* aspect-ratio) ASPECT_16X9)
+           (set! (-> arg0 y-ratio) (* (1/ (-> *pc-settings* aspect-ratio)) (-> arg0 x-ratio)))
+           (begin
+              (set! (-> arg0 y-ratio) (* (1/ ASPECT_16X9) (-> arg0 x-ratio)))
+              (*! (-> arg0 x-ratio) (/ (-> *pc-settings* aspect-ratio) ASPECT_16X9))
+              )
+           )
+       )
+      (else
+       ;; not using game vis, allow *extended* aspect ratios
+       ;; there is no vertical cropping, and you can see more of the sides
+       (set! (-> arg0 y-ratio) (* (1/ ASPECT_4X3) (-> arg0 x-ratio))) ;; same cropping as 4x3
+       (*! (-> arg0 x-ratio) (/ (-> *pc-settings* aspect-ratio) ASPECT_4X3)) ;; extend fov! shows more on the sides.
+       )
+      )
+    )
 
   ;; compute culling constants. these seem unused...
   (let ((f1-3 (-> arg0 x-ratio))
@@ -424,7 +451,7 @@
       (.add.vf vf28 vf28 vf30)
       (.max.x.vf vf28 vf28 vf0 :mask #b1000)
       (.svf (&-> arg0 quad) vf28)
-      (zero? (logand clip 63))
+      (not (logtest? clip 63))
       )
     )
   )
@@ -498,7 +525,7 @@
      ;; store result!
      (.svf (&-> arg0 quad) vf28)
      ;; return result of clipping.
-     (zero? (logand clip 63))
+     (not (logtest? clip 63))
      )
    )
   )

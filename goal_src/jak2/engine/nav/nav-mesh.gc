@@ -394,7 +394,7 @@
       )
     (let ((s4-1 add-debug-text-3d)
           (s3-1 #t)
-          (s2-1 318)
+          (s2-1 (bucket-id debug-no-zbuf1))
           )
       (format (clear *temp-string*) "aid ~D" (-> obj aid))
       (s4-1
@@ -540,7 +540,7 @@
         (add-debug-x #t (bucket-id debug-no-zbuf1) (-> gp-0 1) *color-magenta*)
         (let ((s4-1 add-debug-text-3d)
               (s3-1 #t)
-              (s2-1 318)
+              (s2-1 (bucket-id debug-no-zbuf1))
               )
           (format (clear *temp-string*) "link ~D" (-> s5-1 id))
           (s4-1
@@ -688,7 +688,7 @@
            )
       (when v1-1
         (let ((a0-3 (-> v1-1 nav-mesh))
-              (v1-2 (the-as structure #f))
+              (v1-2 (the-as nav-mesh-link #f))
               )
           (dotimes (a1-2 (the-as int (-> a0-3 link-count)))
             (let ((a2-1 (-> a0-3 link-array a1-2)))
@@ -701,13 +701,13 @@
             (label cfg-7)
             )
           (label cfg-10)
-          (when (the-as nav-mesh-link v1-2)
+          (when v1-2
             (set! (-> arg0 dest-mesh) a0-3)
-            (set! (-> (the-as nav-mesh v1-2) route) (the-as (pointer nav-poly) obj))
-            (set! (-> arg0 dest-link-poly-id) (-> (the-as nav-mesh v1-2) poly-count))
-            (set! (-> arg0 dest-switch-poly-id) (-> (the-as nav-mesh v1-2) static-sphere-count))
-            (set! (-> (the-as nav-mesh v1-2) nav-control-count) (-> arg0 src-switch-poly-id))
-            (set! (-> (the-as nav-mesh v1-2) max-nav-control-count) (-> arg0 src-link-poly-id))
+            (set! (-> v1-2 dest-mesh) obj)
+            (set! (-> arg0 dest-link-poly-id) (-> v1-2 src-switch-poly-id))
+            (set! (-> arg0 dest-switch-poly-id) (-> v1-2 src-link-poly-id))
+            (set! (-> v1-2 dest-link-poly-id) (-> arg0 src-switch-poly-id))
+            (set! (-> v1-2 dest-switch-poly-id) (-> arg0 src-link-poly-id))
             #t
             )
           )
@@ -1466,7 +1466,7 @@
         )
       (let ((s4-0 add-debug-text-3d)
             (s3-0 #t)
-            (s2-0 318)
+            (s2-0 (bucket-id debug-no-zbuf1))
             )
         (format (clear *temp-string*) "~D" s5-0)
         (s4-0
@@ -1502,7 +1502,7 @@
         (when (logtest? sv-36 32)
           (let ((s3-1 add-debug-text-3d)
                 (s2-1 #t)
-                (s1-1 318)
+                (s1-1 (bucket-id debug-no-zbuf1))
                 )
             (format (clear *temp-string*) "~D" (-> s4-1 id))
             (s3-1
@@ -1623,7 +1623,7 @@
           (set! v1-6 (and a0-3 (begin (b! (>= f0-0 (- (-> v1-5 vertex2 w) f1-0)) cfg-9 :delay (set! v1-6 #t)) #f)))
           )
         (label cfg-9)
-        (when (and v1-6 (zero? (logand (-> sv-16 pat) (-> arg0 ignore))))
+        (when (and v1-6 (not (logtest? (-> sv-16 pat) (-> arg0 ignore))))
           (if (point-in-poly? obj sv-16 (-> arg0 point))
               (return sv-16)
               )
@@ -1941,7 +1941,7 @@
             )
         (b!
           (not (and (and (>= (+ (-> v1-6 vertex3 w) f1-0) f0-0) (>= f0-0 (- (-> v1-6 vertex2 w) f1-0)))
-                    (zero? (logand (-> sv-24 pat) (-> arg0 ignore)))
+                    (not (logtest? (-> sv-24 pat) (-> arg0 ignore)))
                     )
                )
           cfg-16
@@ -1989,7 +1989,7 @@
               (f1-2 (-> arg0 y-threshold))
               )
           (when (and (and (>= (+ (-> v1-22 vertex3 w) f1-2) f0-3) (>= f0-3 (- (-> v1-22 vertex2 w) f1-2)))
-                     (zero? (logand (-> sv-48 pat) (-> arg0 ignore)))
+                     (not (logtest? (-> sv-48 pat) (-> arg0 ignore)))
                      )
             (set! sv-40 (+ sv-40 1))
             (set! sv-52 (point-poly-distance-min (-> obj work) (the-as nav-poly (-> arg0 point)) sv-28 sv-48))

@@ -5,6 +5,6 @@
   "tpage-1562.go"
   "tpage-1361.go"
   "tpage-1640.go"
-  "door-ctyinda-ag.go"
+  "vin-door-ctyinda-ag.go"
   "ctyinda-vis.go"
  ))

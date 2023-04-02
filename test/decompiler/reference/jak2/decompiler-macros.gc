@@ -81,6 +81,7 @@
   `(rlet ((pp :reg r13 :reset-here #t :type process))
          ,@body)
   )
+(defconstant PP (with-pp pp))
 
 (defmacro fabs (x)
   `(if (< (the float ,x) 0)
@@ -1295,3 +1296,9 @@
   "Define a mips2c method."
   `(method-set! ,method-type ,method-id (__pc-get-mips2c ,name))
   )
+
+(defmacro script-eval (script &key (key (process->ppointer PP)) &key (proc PP) &key (vector (the-as vector #f)))
+  `(eval! (new 'stack 'script-context ,key ,proc ,vector) ,script))
+
+(defmacro focus-test? (pfoc &rest status)
+  `(logtest? (-> (the process-focusable ,pfoc) focus-status) (focus-status ,@status)))

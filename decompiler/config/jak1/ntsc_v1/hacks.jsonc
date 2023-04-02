@@ -1,0 +1,671 @@
+{
+  ////////////////////////////
+  // HACKS and ASM FUNCTIONS
+  ////////////////////////////
+
+  "types_with_bad_inspect_methods": [
+    "engine",
+    "bsp-header",
+    "joint-anim-matrix",
+    "part-tracker"
+  ],
+
+  "no_type_analysis_functions_by_name": [],
+
+  // this limits the number of cases in a cond.  The first argument is the name of the function.
+  // the second argument is the name of the first condition in the cond. Use print_cfg to find it out.
+  // The third argument is the number of cases. If you set it too small it may fail to build the CFG.
+  "cond_with_else_max_lengths": [
+    ["(method 20 res-lump)", "b0", 2],
+    ["(method 11 res-lump)", "b0", 1],
+    ["(method 12 res-lump)", "b0", 1],
+    ["(method 31 progress)", "b35", 1]
+  ],
+
+  // if a cond with an else case is being used a value in a place where it looks wrong
+  // you can add the function name to this list and it will more aggressively reject this rewrite.
+  "aggressively_reject_cond_to_value_rewrite": [
+    "(method 10 res-lump)",
+    "(method 11 res-lump)",
+    "(method 12 res-lump)",
+    "(method 7 texture-page)"
+  ],
+
+  // this provides a hint to the decompiler that these functions will have a lot of inline assembly.
+  // currently it just leaves pcpyld as an asm op.
+  "hint_inline_assembly_functions": ["matrix-transpose!"],
+
+  "asm_functions_by_name": [
+    // gcommon
+    "quad-copy!",
+
+    // gkernel
+    "(method 11 cpu-thread)",
+    "throw",
+    "return-from-thread",
+    "return-from-thread-dead",
+    "reset-and-call",
+    "(method 10 cpu-thread)",
+    "(method 0 catch-frame)",
+    "throw-dispatch",
+    "set-to-run-bootstrap",
+    "run-function-in-process", // not asm, but it uses the stack.
+
+    // pskernel
+    "return-from-exception", // F: eret
+    "kernel-read-function", // F: delay slot tricks
+    "kernel-write-function", // F: delay slot tricks
+    "kernel-copy-function",
+    "kernel-check-hardwired-addresses",
+
+    // math
+    "rand-uint31-gen",
+
+    // bounding box
+    "(method 9 bounding-box)", // F: asm branching
+    "(method 14 bounding-box)",
+
+    // matrix
+    "(method 9 matrix)", // F: asm branching
+    "matrix-axis-sin-cos!", // F: asm branching
+    "matrix-axis-sin-cos-vu!",
+
+    // geometry
+    "circle-circle-xz-intersect", // F: asm branching
+
+    // trigonometry
+    "exp", // BUG: cfg is wrong.
+    "atan0", // P: manual use of stack
+    "sincos!", // P: manual use of stack
+    "sincos-rad!",
+
+    // dma-h
+    "dma-count-until-done", // F: asm branching
+    "dma-sync-with-count", // F: asm branching
+    "dma-send-no-scratch", // F: asm branching
+    "dma-sync-fast",
+
+    // dma
+    "symlink3", // F: asm branching
+    "symlink2", // F: asm branching
+    "dma-sync-hang",
+
+    // display
+    "vblank-handler", // F: weird asm for interrupt handler
+    "vif1-handler", // F: weird asm for interrupt handler
+    "vif1-handler-debug",
+
+    // texture
+    "adgif-shader<-texture!",
+
+    // vector
+    "vector=", // asm branching
+
+    // collide-mesh-h
+    "(method 11 collide-mesh-cache)",
+
+    // collide-func
+    "moving-sphere-triangle-intersect", // P: weird branching
+    "collide-do-primitives", // P: asm branching
+
+    // joint
+    "calc-animation-from-spr", // F: asm branching
+    "decompress-frame-data-pair-to-accumulator", // P: asm calling
+    "decompress-frame-data-to-accumulator", // P: asm calling
+    "decompress-fixed-data-to-accumulator", // P: asm calling
+    "normalize-frame-quaternions", // F: asm branching, return
+    "clear-frame-accumulator", // F: asm branching
+    "cspace<-parented-transformq-joint!",
+
+    // sprite
+
+    // merc-blend-shape
+    "setup-blerc-chains-for-one-fragment", // F: asm branching
+    "merc-dma-chain-to-spr", // F: asm branching
+    "blerc-a-fragment",
+
+    // ripple
+    "ripple-matrix-scale",
+    "ripple-apply-wave-table",
+    "ripple-create-wave-table",
+    "ripple-execute-init",
+
+    // bones
+    "bones-mtx-calc",
+
+    // generic-effect
+    "generic-debug-light-proc",
+    "generic-none-dma-wait",
+    "generic-copy-vtx-dclr-dtex",
+    "generic-light",
+    "generic-envmap-only-proc",
+    "generic-no-light",
+    "generic-no-light+envmap",
+    "generic-no-light-dproc-only",
+    "generic-no-light-proc",
+    "generic-prepare-dma-single",
+    "generic-prepare-dma-double",
+    "generic-envmap-proc",
+    "generic-light-proc",
+    "generic-dma-from-spr",
+    "upload-vu0-program",
+
+    // generic-merc
+    "generic-merc-execute-asm", // CFG
+    "high-speed-reject",
+    "mercneric-convert",
+    "mercneric-bittable-asm",
+    "mercneric-shader-asm",
+    "mercneric-matrix-asm",
+    "generic-merc-init-asm",
+
+    // generic-tie
+    "generic-tie-convert-proc",
+    "generic-tie-upload-next",
+    "generic-tie-decompress",
+
+    // shadow-cpu
+    "shadow-add-double-edges",
+    "shadow-add-double-tris",
+    "shadow-add-single-edges",
+    "shadow-add-facing-single-tris",
+    "shadow-add-verts",
+    "shadow-find-double-edges",
+    "shadow-find-facing-double-tris",
+    "shadow-find-single-edges",
+    "shadow-find-facing-single-tris",
+    "shadow-scissor-top",
+    "shadow-scissor-edges",
+    "shadow-calc-dual-verts",
+
+    // background
+    "background-upload-vu0",
+
+    // draw-node
+    "draw-node-cull",
+
+    // shrubbery
+    "draw-inline-array-instance-shrub", // CFG
+
+    // tfrag
+    "stats-tfrag-asm",
+    "draw-inline-array-tfrag-near",
+    "draw-inline-array-tfrag",
+
+    // tie-methods
+    "draw-inline-array-prototype-tie-near-asm",
+    "draw-inline-array-prototype-tie-asm",
+
+    // sparticle-launcher
+    "sp-init-fields!",
+
+    // sparticle
+    "memcpy",
+    "sp-process-block-3d",
+    "sp-process-block-2d",
+    "sp-launch-particles-var",
+    "particle-adgif",
+    "sp-init-fields!",
+
+    // time-of-day
+    "time-of-day-interp-colors-scratch",
+    "time-of-day-interp-colors",
+
+    // sky-tng
+    "clip-polygon-against-negative-hyperplane",
+    "clip-polygon-against-positive-hyperplane",
+    "draw-large-polygon",
+
+    // load-boundary
+    "render-boundary-tri",
+    "render-boundary-quad",
+    "draw-boundary-polygon",
+
+    // collide-probe
+    "collide-probe-instance-tie", // CFG
+    "collide-probe-node", // CFG
+
+    // collide-edge-grab
+    "(method 15 collide-edge-work)", // CFG
+
+    "(method 12 collide-mesh)",
+
+    // process-drawable BUG
+    "cspace-inspect-tree",
+    //"(method 19 process-drawable)",
+
+    // ambient
+    "ambient-inspect",
+
+    // target2 BUG
+    "look-for-points-of-interest", // Failed to split nested sc - looks like dead code to me
+
+    // collide-cache
+    "(method 10 collide-puss-work)", // CFG
+    "(method 9 collide-puss-work)", // decompiler crash
+    "(method 32 collide-cache)", // CFG
+
+    // ocean
+    "draw-large-polygon-ocean", // CFG
+
+    // ocean-vu0
+    "ocean-generate-verts", // crash
+    "ocean-interp-wave"
+  ],
+
+  // these functions use pairs and the decompiler
+  // will be less picky about types related to pairs.
+  "pair_functions_by_name": [
+    "ref",
+    "last",
+    "member",
+    "nmember",
+    "assoc",
+    "assoce",
+    "append!",
+    "delete!",
+    "delete-car!",
+    "insert-cons!",
+    "sort",
+    "unload-package",
+    "(method 4 pair)",
+    "nassoc",
+    "nassoce",
+    "lookup-level-info",
+    "(method 21 level-group)",
+    "(method 12 level)",
+    "update-sound-banks",
+    "(method 16 level-group)",
+    "bg",
+    "(method 18 game-info)",
+    "debug-menu-context-default-selection",
+    "debug-menu-rebuild",
+    "debug-menu-func-decode",
+    "debug-menu-make-from-template",
+    "debug-menu-render",
+    "debug-menu-context-select-next-or-prev-item",
+    "debug-menu-context-select-new-item",
+    "debug-menu-send-msg",
+    "debug-menu-find-from-template",
+    "build-continue-menu",
+    "(method 8 process-tree)",
+    "(method 16 load-state)",
+    "(method 15 load-state)",
+    "build-continue-menu",
+    "entity-remap-names",
+    "(method 21 swamp-rat-nest-dummy-a)",
+    "(method 21 swamp-rat-nest-dummy-b)",
+    "(method 21 swamp-rat-nest-dummy-c)",
+    "(method 27 battlecontroller)",
+    "load-boundary-from-template",
+    "command-get-time",
+    "command-get-param",
+    "command-get-quoted-param",
+    "command-get-trans",
+    "command-get-camera",
+    "(method 14 camera-tracker)",
+    "(enter billy-playing)",
+    "(code target-continue)",
+    "next-level"
+  ],
+
+  // If format is used with the wrong number of arguments,
+  // it will often mess up the decompilation, as the decompiler assumes
+  // that they used the correct number.  This will override the decompiler's
+  // automatic detection.
+  "bad_format_strings": {
+    "ERROR: dma tag has data in reserved bits ~X~%": 0,
+    "#<surface f0:~m f1:~f tf+:~f tf-:~f sf:~f tvv:~m": 5,
+    "ERROR<GMJ>: value of symbol ~A in task-controls is not a task-control~%": 0,
+    "~0K~10,'-S--~5,'-DK-of-~5,'-DK--~5,'-DK-of-~5,'-DK--": 5,
+    "  bsp ~192H~5DK ~280Hdebug~456H~5DK~%": 2,
+    "  bsp-leaf-vis-iop ~192H~5DK~%": 1,
+    "  bsp-leaf-vis-adj ~192H~5DK~%": 1,
+    "  level-code ~192H~5DK~%": 1,
+    "  tfrag ~192H~5DK ~280Htfragment~456H~5DK~%": 2,
+    "  tie-proto ~192H~5DK ~280Hsky~456H~5DK~%": 2,
+    "  tie-instance ~192H~5DK ~280Htie-fragment~456H~5DK~%": 2,
+    "  shrub-proto ~192H~5DK ~280Htie-near~456H~5DK~%": 2,
+    "  shrub-instance ~192H~5DK ~280Hshrubbery~456H~5DK~%": 2,
+    "  collision ~192H~5DK ~280Htie-generic~456H~5DK~%": 2,
+    "  pris-geo ~192H~5DK ~280Hpris-fragment~456H~5DK~%": 2,
+    "  pris-anim ~192H~5DK ~280Hpris-generic~456H~5DK~%": 2,
+    "  textures ~192H~5DK ~280Htextures~456H~5DK~%": 2,
+    "  entity ~192H~5DK~%": 1,
+    "  misc ~192H~5DK ~280Hsprite~456H~5DK~%": 2,
+    "ERROR: <asg> ~A in spool anim loop for ~A ~D, but not loaded.~": 3,
+    "~0k~5d/~d   ~6d/~d   ~6d/~d      ": 6,
+    "~0k~s~%": 1,
+    "money ~A was killed in pickup~%": 0,
+    "   id     address  name                      aid tsk lev  status              x              y              z             address    name         state                 heap         flags~%": 3
+  },
+
+  "blocks_ending_in_asm_branch": {
+    "closest-pt-in-triangle": [17],
+
+    // this one is all asm branches
+    "circle-circle-xz-intersect": [
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
+    ],
+
+    "find-knot-span": [0, 1, 2, 3, 5, 6, 7, 8, 9],
+
+    "curve-evaluate!": [0, 2, 5, 6, 7, 8, 9],
+
+    "(method 9 texture-page-dir)": [4, 5],
+
+    "adgif-shader<-texture-with-update!": [0, 1],
+
+    "display-loop": [44, 49, 66, 96],
+
+    "load-game-text-info": [12, 13, 14, 16, 17, 18],
+
+    "real-main-draw-hook": [75, 77],
+
+    "(method 12 perf-stat)": [0],
+    "(method 11 perf-stat)": [0],
+    "raw-ray-sphere-intersect": [0, 1, 2, 3, 4, 5],
+    "ray-cylinder-intersect": [0, 1, 2, 3, 4, 5],
+    "ray-triangle-intersect": [0, 1, 2, 3, 4],
+    "bsp-camera-asm": [1, 2, 3],
+    "level-remap-texture": [2, 3, 4, 5, 6],
+    "start-perf-stat-collection": [26],
+    "end-perf-stat-collection": [0],
+    "sprite-draw-distorters": [4, 5],
+    "draw-string": [
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+      22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+      40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57,
+      58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75,
+      76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93,
+      94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
+      110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124,
+      125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139,
+      140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154,
+      155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169,
+      170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184,
+      185, 186, 187, 188, 189
+    ],
+    "get-string-length": [
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+      21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
+      39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50
+    ],
+    "unpack-comp-rle": [1, 3, 5, 6],
+    "(method 16 level)": [1, 5, 13, 14, 15, 19, 26, 53],
+    "unpack-comp-huf": [2, 4, 5, 6, 7, 8, 9],
+    "blerc-execute": [
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+      21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33
+    ],
+    "(method 11 fact-info-target)": [42],
+    "(anon-function 9 game-save)": [3, 4, 5, 6, 7, 8, 10],
+    "particle-adgif": [0, 1, 2, 3, 4, 5, 7],
+    "sp-launch-particles-var": [
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+      21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
+      39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56,
+      57, 58, 59, 60, 61, 62, 63, 64, 65, 66
+    ],
+    "(method 11 sparticle-launch-control)": [27, 28, 35, 46, 48, 49, 77],
+    "upload-vis-bits": [0, 1, 2, 3, 4, 5, 6],
+
+    "draw-drawable-tree-tfrag": [6, 8, 13, 15],
+    "draw-drawable-tree-trans-tfrag": [6, 8, 13, 15],
+    "draw-drawable-tree-dirt-tfrag": [6, 8, 13, 15],
+    "draw-drawable-tree-ice-tfrag": [6, 8, 13, 15],
+    "draw-drawable-tree-instance-tie": [10, 12, 18, 20, 26, 28, 37, 39],
+    "draw-drawable-tree-instance-shrub": [5, 7, 9, 11],
+
+    "birth-pickup-at-point": [0],
+    "draw-bones": [0, 1, 2, 8, 81],
+    "draw-bones-hud": [7, 8],
+    "(method 16 drawable-tree)": [7, 9, 10],
+    "(method 21 collide-cache)": [3, 5, 19, 20, 24, 25, 28, 29],
+    "(method 14 collide-cache)": [0, 1, 2, 3, 4, 5],
+    "(method 9 collide-mesh-cache)": [0, 1, 2, 5],
+    "(method 42 collide-shape)": [0, 1, 2, 3, 4, 7],
+    "(method 23 collide-shape-prim-group)": [1, 2, 3, 4, 5],
+    "(method 23 collide-shape-prim-mesh)": [
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
+    ],
+    "(method 23 collide-shape-prim-sphere)": [
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
+    ],
+    "(method 18 collide-shape-prim-sphere)": [1, 3, 4, 5, 7],
+    "(method 45 collide-shape)": [0, 16, 42, 67, 92],
+    "(method 24 collide-shape-prim)": [2, 3, 4, 5, 1],
+    "(method 20 collide-shape-prim-group)": [11],
+    "(method 28 collide-shape-prim-mesh)": [10],
+    "(method 40 collide-shape)": [0, 2, 5, 6, 7, 11, 12, 28, 43, 58, 63],
+    "(method 15 collide-shape-prim-group)": [1, 2, 3, 4, 5, 6],
+    "(method 16 collide-shape-prim)": [1, 2, 3, 4, 5, 6],
+    "(method 15 collide-shape-prim-sphere)": [
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+    ],
+    "(method 15 collide-shape-prim-mesh)": [
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 29
+    ],
+    "(method 35 collide-shape)": [1],
+    "(method 22 collide-cache)": [2, 3, 4, 13, 14, 15, 23, 24, 25, 33, 34, 35],
+    "(method 12 collide-shape-prim-sphere)": [0, 1],
+    "(method 12 collide-shape-prim-group)": [1, 2, 3, 4],
+    "(method 24 collide-cache)": [2, 3, 4, 13, 14, 15, 23, 24, 25, 33, 34, 35],
+    "(method 14 collide-shape-prim-sphere)": [0, 1, 2, 3],
+    "(method 14 collide-shape-prim-group)": [0, 1, 2, 3, 4],
+    "(method 23 collide-cache)": [2, 3, 4, 13, 14, 15, 23, 24, 25, 33, 34, 35],
+    "(method 13 collide-shape-prim-sphere)": [0, 1, 2],
+    "(method 13 collide-shape-prim-group)": [0, 1, 2, 3, 4],
+    "(method 19 collide-cache)": [0, 1, 3, 4, 5, 18, 19],
+    "(method 10 collide-mesh)": [1, 2, 4, 5],
+    "(method 19 process-drawable)": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+    "(anon-function 9 racer)": [75],
+    "(method 13 collide-edge-work)": [0, 2],
+    "(method 17 collide-edge-work)": [0, 1, 2, 3, 4],
+    "(method 9 edge-grab-info)": [15, 16, 18, 19, 21, 22, 24],
+    "target-falling-anim-trans": [5, 6],
+    "(method 27 nav-mesh)": [8],
+    "(method 32 nav-control)": [12, 21, 32],
+    "start-collect-nav": [0],
+    "end-collect-nav": [0],
+    "robotboss-always-trans": [9, 10, 11, 12, 13, 14, 15, 18, 29, 36, 45, 48],
+    "target-flut-falling-anim-trans": [5, 6],
+    "(method 27 ropebridge)": [5, 7],
+    "(anon-function 5 orbit-plat)": [4, 5, 11],
+    "(anon-function 21 plant-boss)": [0, 1, 3, 4],
+    "(method 55 ram-boss)": [5],
+    "(method 60 ice-cube)": [8],
+    "(anon-function 2 snow-ball)": [22],
+    "draw-bones-merc": [1, 3, 5, 7, 8, 10, 11, 12, 13],
+    "(anon-function 48 lavatube-energy)": [13],
+    "generic-tie-execute": [4, 9],
+    "generic-merc-execute-all": [3, 7, 12]
+  },
+
+  // Sometimes the game might use format strings that are fetched dynamically,
+  // for example using the game text lookup method
+  // Add information about those format instructions here.
+  // e.g. "function-name":[[op, argc], [op, argc], ...]
+  // where "op" is the op number for the call to format.
+  "dynamic_format_arg_counts": {
+    "(method 35 progress)": [
+      [44, 1],
+      [92, 1]
+    ],
+    "(method 49 progress)": [[35, 1]],
+    "(method 37 progress)": [[41, 1]],
+    "(method 38 progress)": [[106, 1]],
+    "(method 39 progress)": [[41, 1]],
+    "(method 41 progress)": [[73, 1]],
+    "(method 42 progress)": [[41, 1]],
+    "(method 43 progress)": [
+      [51, 1],
+      [94, 1]
+    ]
+  },
+
+  "mips2c_functions_by_name": [
+    "sp-init-fields!",
+    "particle-adgif",
+    "sp-launch-particles-var",
+    "sp-process-block-2d",
+    "sp-process-block-3d",
+    "draw-large-polygon",
+    "clip-polygon-against-positive-hyperplane",
+    "clip-polygon-against-negative-hyperplane",
+    "render-sky-quad",
+    "render-sky-tri",
+    "init-sky-regs",
+    "set-tex-offset",
+    "adgif-shader<-texture-with-update!",
+    "init-boundary-regs",
+    "draw-boundary-polygon",
+    "render-boundary-quad",
+    "render-boundary-tri",
+    "draw-inline-array-tfrag",
+    "stats-tfrag-asm",
+    "time-of-day-interp-colors-scratch",
+    "normalize-frame-quaternions",
+    "collide-do-primitives",
+    "moving-sphere-triangle-intersect",
+    "(method 12 collide-mesh)",
+    "(method 11 collide-mesh)",
+    "collide-probe-node",
+    "collide-probe-instance-tie",
+    "(method 32 collide-cache)",
+    "(method 28 collide-cache)",
+    "(method 26 collide-cache)",
+    "(method 27 collide-cache)",
+    "(method 29 collide-cache)",
+    "(method 12 collide-shape-prim-mesh)",
+    "(method 14 collide-shape-prim-mesh)",
+    "(method 13 collide-shape-prim-mesh)",
+    "(method 30 collide-cache)",
+    "(method 9 collide-cache-prim)",
+    "(method 10 collide-cache-prim)",
+    "(method 9 collide-puss-work)",
+    "(method 10 collide-puss-work)",
+
+    // these could easily be goal, but probably faster/easier this way.
+    "(method 14 collide-mesh)",
+    "(method 15 collide-mesh)",
+
+    "(method 16 collide-edge-work)",
+    "(method 10 collide-edge-hold-list)",
+    "(method 15 collide-edge-work)",
+    "(method 18 collide-edge-work)",
+    "normalize-frame-quaternions",
+    "calc-animation-from-spr",
+    "clear-frame-accumulator",
+    "bones-mtx-calc",
+    "cspace<-parented-transformq-joint!",
+    "draw-bones-merc",
+    "draw-bones-check-longest-edge-asm",
+    "setup-blerc-chains-for-one-fragment",
+    "blerc-execute",
+
+    "generic-merc-execute-asm",
+    "high-speed-reject",
+    "mercneric-convert",
+    "mercneric-bittable-asm",
+    "mercneric-shader-asm",
+    "mercneric-matrix-asm",
+    "generic-merc-init-asm",
+    "generic-prepare-dma-double",
+    "generic-light-proc",
+    "generic-envmap-proc",
+    "draw-bones-generic-merc",
+    "generic-prepare-dma-single",
+
+    "ripple-matrix-scale",
+    "ripple-apply-wave-table",
+    "ripple-create-wave-table",
+    "ripple-execute-init",
+
+    // ocean
+    "init-ocean-far-regs",
+    "draw-large-polygon-ocean",
+    "render-ocean-quad",
+    "ocean-generate-verts",
+    "ocean-interp-wave",
+
+    // shadow
+    "shadow-execute",
+    "shadow-add-double-edges",
+    "shadow-add-double-tris",
+    "shadow-add-single-edges",
+    "shadow-add-facing-single-tris",
+    "shadow-add-verts",
+    "shadow-find-double-edges",
+    "shadow-find-facing-double-tris",
+    "shadow-find-single-edges",
+    "shadow-find-facing-single-tris",
+    "shadow-init-vars",
+    "shadow-scissor-top",
+    "shadow-scissor-edges",
+    "shadow-calc-dual-verts",
+    "shadow-xform-verts",
+
+    // generic tie
+    "draw-inline-array-instance-tie",
+    "generic-tie-dma-to-spad-sync",
+    "draw-inline-array-prototype-tie-generic-asm",
+    "generic-interp-dproc",
+    "generic-no-light-dproc",
+    "generic-envmap-dproc",
+    "generic-tie-convert"
+  ],
+
+  "mips2c_jump_table_functions": {
+    "decompress-fixed-data-to-accumulator": [
+      108, 199, 233, 286, 301, 366, 387, 100, 155, 199, 261, 286, 335, 366, 402,
+      100
+    ],
+    "decompress-frame-data-to-accumulator": [
+      84, 92, 119, 140, 205, 220, 273, 307, 84, 107, 119, 174, 205, 248, 273,
+      354
+    ],
+    "decompress-frame-data-pair-to-accumulator": [
+      117, 125, 169, 197, 293, 318, 408, 459, 117, 150, 169, 248, 293, 366, 408,
+      533
+    ]
+  },
+
+  // there are some missing textures. I don't know what the game actually does here.
+  // the format for entries is [level, tpage, index]
+  "missing_textures": [["finalboss", 1419, 3]],
+
+  // some object files have garbage pad data at the end which makes the decompiler
+  // assume they must be different files, such as the art group for orb-cache-top.
+  // this just suppresses a message.
+  "expected_merged_objs": [
+    "orb-cache-top-ag",
+    "ecovalve-ag",
+    "barrel-ag",
+    "sack-ag",
+    "sharkey-ag",
+    "warp-gate-switch-ag",
+    "baby-spider-ag",
+    "cavetrapdoor-ag",
+    "spider-egg-ag",
+    "darkvine-ag",
+    "jng-iris-door-ag",
+    "eichar-fish+0-ag",
+    "launcherdoor-ag",
+    "plat-eco-ag",
+    "eichar-tube+0-ag",
+    "eichar-pole+0-ag",
+    "crate-darkeco-cluster-ag",
+    "ef-plane-ag",
+    "racer-ag",
+    "flut-saddle-ag",
+    "shover-ag",
+    "steam-cap-ag",
+    "sunkencam-ag",
+    "swampcam-ag",
+    "pontoonfive-ag",
+    "oracle-ag",
+    "village-cam-ag",
+    "plat-ag"
+  ]
+}

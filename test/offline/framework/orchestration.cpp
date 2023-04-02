@@ -16,11 +16,6 @@
 #include "third-party/fmt/core.h"
 #include "third-party/fmt/ranges.h"
 
-// TODO - this should probably go somewhere common when it's needed eventually
-std::unordered_map<std::string, std::string> game_name_to_config = {
-    {"jak1", "jak1_ntsc_black_label.jsonc"},
-    {"jak2", "jak2_ntsc_v1.jsonc"}};
-
 OfflineTestThreadManager g_offline_test_thread_manager;
 
 OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
@@ -28,10 +23,11 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
                                        const OfflineTestConfig& offline_config) {
   // TODO - pull out extractor logic to determine release into common and use here
   OfflineTestDecompiler dc;
-  dc.config = std::make_unique<decompiler::Config>(
-      decompiler::read_config_file((file_util::get_jak_project_dir() / "decompiler" / "config" /
-                                    game_name_to_config[offline_config.game_name])
-                                       .string()));
+  // TODO - this should probably go somewhere common when it's needed eventually
+  dc.config = std::make_unique<decompiler::Config>(decompiler::read_config_file(
+      file_util::get_jak_project_dir() / "decompiler" / "config" / offline_config.game_name /
+          fmt::format("{}_config.jsonc", offline_config.game_name),
+      "ntsc_v1"));
 
   // TODO - do I need to limit the `inputs.jsonc` as well, or is the decompiler smart enough
   // to lazily load the DGOs as needed based on the allowed objects?

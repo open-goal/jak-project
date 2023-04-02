@@ -5,6 +5,8 @@
 ;; name in dgo: drawable
 ;; dgos: ENGINE, GAME
 
+(define-extern draw-vortex (function none))
+
 ;; DECOMP BEGINS
 
 (defmacro spr-work ()
@@ -164,7 +166,7 @@
     (.mov a0-1 vf10)
     (.pcgtw a0-2 0 a0-1)
     (.ppach a0-3 (the-as uint128 0) a0-2)
-    (zero? (logand (the-as int v1-3) (the-as int a0-3)))
+    (not (logtest? (the-as int v1-3) (the-as int a0-3)))
     )
   )
 
@@ -962,21 +964,19 @@
                       )
                     (when (not (or (>= lev-idx-for-mood (the-as uint 6)) (zero? shadow-mask)))
                       (let ((packed-shadow-vals (-> dc shadow-values)))
-                        (set! light-idx (the uint 0))
-                        (while (< light-idx 4)
-                          (when (nonzero? (-> lg lights light-idx mask))
-                            (when (not (logtest? (-> lg lights light-idx mask) shadow-mask-not))
-                              (let ((light-pal-idx (-> lg lights light-idx palette-index)))
-                                (set! (-> lg lights light-idx extra x)
+                        (dotimes (light-idx2 4)
+                          (when (nonzero? (-> lg lights light-idx2 mask))
+                            (when (not (logtest? (-> lg lights light-idx2 mask) shadow-mask-not))
+                              (let ((light-pal-idx (-> lg lights light-idx2 palette-index)))
+                                (set! (-> lg lights light-idx2 extra x)
                                       (* 0.0625
                                          (the float (logand (ash packed-shadow-vals (* -4 light-pal-idx)) 15))
-                                         (-> lg lights light-idx extra x)
+                                         (-> lg lights light-idx2 extra x)
                                          )
                                       )
                                 )
                               )
                             )
-                          (+! light-idx 1)
                           )
                         )
                       )
@@ -1026,7 +1026,7 @@
                     (when (and (nonzero? (-> dc shadow-ctrl))
                                (-> dc shadow-ctrl)
                                (not (logtest? (-> dc shadow-ctrl settings flags) (shadow-flags disable-draw)))
-                               (zero? (logand (-> dc shadow-ctrl settings flags) (shadow-flags shdf07)))
+                               (not (logtest? (-> dc shadow-ctrl settings flags) (shadow-flags shdf07)))
                                )
                       (let ((target-shadow-dir (new 'stack-no-clear 'vector))
                             (current-shadow-dir (-> dc shadow-ctrl settings shadow-dir))
@@ -1062,6 +1062,8 @@
                         (set! (-> dc shadow-ctrl settings shadow-dir w) shadow-dir-w)
                         )
                       )
+
+                    (#when PC_PORT (add-debug-lights *display-lights* (bucket-id debug2) (-> lg lights) (-> dc origin)))
                     )
                   )
                 )
@@ -1126,7 +1128,9 @@
                       (cond
                         ((>= (-> dc force-lod) 0)
                          (set! lod-idx (-> dc force-lod))
-                         (if (< (-> dc lod-set lod (-> dc lod-set max-lod) dist) dist-w)
+                         (if (#if (not PC_PORT)
+                                  (< (-> dc lod-set lod (-> dc lod-set max-lod) dist) dist-w)
+                                  (and (-> *pc-settings* ps2-lod-dist?) (< (-> dc lod-set lod (-> dc lod-set max-lod) dist) dist-w)))
                              (return #f)
                              )
                          )
@@ -1137,7 +1141,15 @@
                           )
                         )
                       )
-                    (if (and (< (-> dc lod-set lod lod-idx dist) dist-w) (< (-> dc force-lod) 0))
+                    ;; lod hacks!
+                    (with-pc
+                      (if (not (-> *pc-settings* ps2-lod-dist?))
+                        (set! lod-idx (minmax (-> *pc-settings* lod-force-actor) 0 (-> dc lod-set max-lod))))
+                      )
+                    (if (#if (not PC_PORT)
+                             (and (< (-> dc lod-set lod lod-idx dist) dist-w) (< (-> dc force-lod) 0))
+                             (and (-> *pc-settings* ps2-lod-dist?) (< (-> dc lod-set lod lod-idx dist) dist-w) (< (-> dc force-lod) 0))
+                             )
                         (return #f)
                         )
 
@@ -1197,10 +1209,13 @@
 
                   ;; trick to do joint math twice if we're changing lods.
                   (when (and (< lod-idx (-> dc cur-lod)) (logtest? (-> dc status) (draw-control-status math-skel)))
-                    (let ((v1-159 *matrix-engine*))
-                      (set! (-> v1-159 (-> v1-159 length)) (process->handle sv-16))
-                      (+! (-> v1-159 length) 1)
-                      )
+                    ;; NOTE : added this check for PC port to prevent memory corruption
+                    (if (< (-> *matrix-engine* length) (-> *matrix-engine* allocated-length))
+                        (let ((v1-159 *matrix-engine*))
+                          (set! (-> v1-159 (-> v1-159 length)) (process->handle sv-16))
+                          (+! (-> v1-159 length) 1)
+                          )
+                        )
                     )
                   (lod-set! dc lod-idx)
                   )
@@ -1385,7 +1400,7 @@
   (local-vars (a0-96 int) (a0-98 int))
   (with-pp
     (when *slow-frame-rate*
-      (dotimes (v1-2 #xc35000)
+      (dotimes (v1-2 12800000)
         (nop!)
         (nop!)
         (nop!)
@@ -1445,7 +1460,7 @@
     ;; draw the sky
     (with-profiler 'sky *profile-sky-color*
       (if (-> *sky-work* draw-vortex)
-          (format 0 "no vortex.~%");(draw-vortex)
+          (draw-vortex)
           (draw *sky-work*)
           )
       (flush-cache 0)
@@ -1590,25 +1605,7 @@
                (t1-2 (the-as object (-> t0-1 base)))
                )
           (set! (-> (the-as gs-gif-tag t1-2) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x9))
-          (set! (-> (the-as gs-gif-tag t1-2) regs) (new 'static 'gif-tag-regs
-                                                     :regs0 (gif-reg-id a+d)
-                                                     :regs1 (gif-reg-id a+d)
-                                                     :regs2 (gif-reg-id a+d)
-                                                     :regs3 (gif-reg-id a+d)
-                                                     :regs4 (gif-reg-id a+d)
-                                                     :regs5 (gif-reg-id a+d)
-                                                     :regs6 (gif-reg-id a+d)
-                                                     :regs7 (gif-reg-id a+d)
-                                                     :regs8 (gif-reg-id a+d)
-                                                     :regs9 (gif-reg-id a+d)
-                                                     :regs10 (gif-reg-id a+d)
-                                                     :regs11 (gif-reg-id a+d)
-                                                     :regs12 (gif-reg-id a+d)
-                                                     :regs13 (gif-reg-id a+d)
-                                                     :regs14 (gif-reg-id a+d)
-                                                     :regs15 (gif-reg-id a+d)
-                                                     )
-                )
+          (set! (-> (the-as gs-gif-tag t1-2) regs) GIF_REGS_ALL_AD)
           (set! (-> t0-1 base) (&+ (the-as pointer t1-2) 16))
           )
         (let* ((t0-2 a0-8)
@@ -1667,25 +1664,7 @@
                (t1-2 (the-as object (-> t0-2 base)))
                )
           (set! (-> (the-as gs-gif-tag t1-2) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x9))
-          (set! (-> (the-as gs-gif-tag t1-2) regs) (new 'static 'gif-tag-regs
-                                                     :regs0 (gif-reg-id a+d)
-                                                     :regs1 (gif-reg-id a+d)
-                                                     :regs2 (gif-reg-id a+d)
-                                                     :regs3 (gif-reg-id a+d)
-                                                     :regs4 (gif-reg-id a+d)
-                                                     :regs5 (gif-reg-id a+d)
-                                                     :regs6 (gif-reg-id a+d)
-                                                     :regs7 (gif-reg-id a+d)
-                                                     :regs8 (gif-reg-id a+d)
-                                                     :regs9 (gif-reg-id a+d)
-                                                     :regs10 (gif-reg-id a+d)
-                                                     :regs11 (gif-reg-id a+d)
-                                                     :regs12 (gif-reg-id a+d)
-                                                     :regs13 (gif-reg-id a+d)
-                                                     :regs14 (gif-reg-id a+d)
-                                                     :regs15 (gif-reg-id a+d)
-                                                     )
-                )
+          (set! (-> (the-as gs-gif-tag t1-2) regs) GIF_REGS_ALL_AD)
           (set! (-> t0-2 base) (&+ (the-as pointer t1-2) 16))
           )
         (let* ((t0-3 a3-2)
@@ -1766,6 +1745,8 @@
   (tick! (-> arg0 bg-clock))
   (set! (-> arg0 bg-clock frame-counter) (the-as time-frame (mod (-> arg0 bg-clock frame-counter) #x69780)))
   (tick! (-> arg0 part-clock))
+  (#when PC_PORT
+    (tick! *airlock-clock*))
 
   ; (when (and (nonzero? *screen-shot-work*) (!= (-> *screen-shot-work* count) -1))
   ;   (let ((v1-43 (-> *screen-shot-work* size)))
@@ -1807,7 +1788,7 @@
       (debug-reset-buffers)
       (clear! *simple-sprite-system*)
       )
-    (set! (-> s5-1 bucket-group) (dma-buffer-add-buckets (-> s5-1 calc-buf) 327))
+    (set! (-> s5-1 bucket-group) (dma-buffer-add-buckets (-> s5-1 calc-buf) (enum-length bucket-id)))
     )
 
   (service-cpads)
@@ -2085,12 +2066,12 @@
 
       ;; unclear why eyes are here... maybe they rely on textures that were just remapped.
       ; (-> *display* frames (-> *display* on-screen) global-buf)
-      ; (update-eyes)
+      (update-eyes)
 
 
       ;; end each normal bucket with the standard GS state reset
       (let ((s3-3 6)
-            (s2-2 324)
+            (s2-2 (bucket-id debug2))
             )
         (while (>= s2-2 s3-3)
           (default-end-buffer
@@ -2131,7 +2112,7 @@
         )
 
       ;; link all buckets to build the final massive dma list.
-      (dma-buffer-patch-buckets (-> s4-0 bucket-group) 327)
+      (dma-buffer-patch-buckets (-> s4-0 bucket-group) (enum-length bucket-id))
 
       ;; append the final END
       (let* ((v1-71 s5-0)
@@ -2211,4 +2192,3 @@
   (display-sync arg0)
   (none)
   )
-

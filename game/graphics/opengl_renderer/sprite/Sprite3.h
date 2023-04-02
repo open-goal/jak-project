@@ -163,6 +163,7 @@ class Sprite3 : public BucketRenderer {
 
   bool m_enable_distort_instancing = true;
   bool m_enable_culling = true;
+  bool m_enable_glow = true;
 
   bool m_2d_enable = true;
   bool m_3d_enable = true;

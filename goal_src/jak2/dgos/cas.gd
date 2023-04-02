@@ -17,7 +17,7 @@
   "cas-rot-bridge-ag.go"
   "cas-electric-fence-ag.go"
   "cas-rot-blade-ag.go"
-  "switch-ag.go"
+  "cas-switch-ag.go"
   "cas-conveyor-switch-ag.go"
   "cas-robot-door-ag.go"
   "cas-trapdoor-ag.go"

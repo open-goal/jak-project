@@ -409,7 +409,8 @@ void GlowRenderer::add_sprite_pass_3(const SpriteGlowOutput& data, int sprite_id
 
   // handle adgif stuff
   {
-    ASSERT(data.adgif.tex0_addr == (u32)GsRegisterAddress::TEX0_1);
+    // don't check upper bits: ps2 GS ignores them and ND uses them as flags.
+    ASSERT((u8)data.adgif.tex0_addr == (u8)GsRegisterAddress::TEX0_1);
     GsTex0 reg(data.adgif.tex0_data);
     record.tbp = reg.tbp0();
     record.draw_mode.set_tcc(reg.tcc());
@@ -491,6 +492,7 @@ void GlowRenderer::blit_depth(SharedRenderState* render_state) {
 void GlowRenderer::draw_debug_window() {
   ImGui::Checkbox("Show Probes", &m_debug.show_probes);
   ImGui::Checkbox("Show Copy", &m_debug.show_probe_copies);
+  ImGui::SliderFloat("Boost Glow", &m_debug.glow_boost, 0, 10);
   ImGui::Text("Count: %d", m_debug.num_sprites);
 }
 
@@ -503,6 +505,8 @@ void GlowRenderer::downsample_chain(SharedRenderState* render_state,
   glBindVertexArray(m_ogl_downsampler.vao);
   glEnable(GL_PRIMITIVE_RESTART);
   glPrimitiveRestartIndex(UINT32_MAX);
+  GLint old_viewport[4];
+  glGetIntegerv(GL_VIEWPORT, old_viewport);
   render_state->shaders[ShaderId::GLOW_PROBE_DOWNSAMPLE].activate();
   for (int i = 0; i < kDownsampleIterations - 1; i++) {
     auto* source = &m_ogl.downsample_fbos[i];
@@ -520,8 +524,7 @@ void GlowRenderer::downsample_chain(SharedRenderState* render_state,
     // if we aren't using all sprites.
     glDrawElements(GL_TRIANGLE_STRIP, num_sprites * 5, GL_UNSIGNED_INT, nullptr);
   }
-  glViewport(render_state->draw_offset_x, render_state->draw_offset_y, render_state->draw_region_w,
-             render_state->draw_region_h);
+  glViewport(old_viewport[0], old_viewport[1], old_viewport[2], old_viewport[3]);
 }
 
 /*!
@@ -575,6 +578,8 @@ void GlowRenderer::draw_probe_copies(SharedRenderState* render_state,
                                      u32 idx_start,
                                      u32 idx_end) {
   // read probe from probe fbo, write it to the first downsample fbo
+  GLint old_viewport[4];
+  glGetIntegerv(GL_VIEWPORT, old_viewport);
   render_state->shaders[ShaderId::GLOW_PROBE_READ].activate();
   glBindFramebuffer(GL_FRAMEBUFFER, m_ogl.downsample_fbos[0].fbo);
   glBindTexture(GL_TEXTURE_2D, m_ogl.probe_fbo_rgba_tex);
@@ -587,8 +592,7 @@ void GlowRenderer::draw_probe_copies(SharedRenderState* render_state,
   prof.add_tri(m_next_sprite * 2);
   glDrawElements(GL_TRIANGLE_STRIP, idx_end - idx_start, GL_UNSIGNED_INT,
                  (void*)(idx_start * sizeof(u32)));
-  glViewport(render_state->draw_offset_x, render_state->draw_offset_y, render_state->draw_region_w,
-             render_state->draw_region_h);
+  glViewport(old_viewport[0], old_viewport[1], old_viewport[2], old_viewport[3]);
 }
 
 /*!
@@ -678,7 +682,12 @@ void GlowRenderer::draw_sprites(SharedRenderState* render_state, ScopedProfilerN
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
   render_state->shaders[ShaderId::GLOW_DRAW].activate();
-  glEnable(GL_DEPTH_TEST);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::GLOW_DRAW].id(), "glow_boost"),
+              m_debug.glow_boost);
+
+  // on PS2's, it's enabled but all sprite z's are UINT24_MAX, so it always passes.
+  // this z-override is done in VU1 code and we don't replicate it here.
+  glDisable(GL_DEPTH_TEST);
   glDepthFunc(GL_GEQUAL);
   glEnable(GL_BLEND);
   // Cv = (Cs - 0) * Ad + D
@@ -720,6 +729,7 @@ void GlowRenderer::draw_sprites(SharedRenderState* render_state, ScopedProfilerN
     prof.add_tri(2);
     glDrawElements(GL_TRIANGLE_STRIP, 5, GL_UNSIGNED_INT, (void*)(record.idx * sizeof(u32)));
   }
+  glEnable(GL_DEPTH_TEST);
 }
 
 GlowRenderer::Vertex* GlowRenderer::alloc_vtx(int num) {

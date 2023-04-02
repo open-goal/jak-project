@@ -216,7 +216,7 @@
              (s2-0 #f)
              )
         (when s4-0
-          (let ((s3-1 7))
+          (let ((s3-1 LEVEL_TOTAL))
             (while (begin (label cfg-24) (nonzero? s3-1))
               (+! s3-1 -1)
               (let ((v1-8 (get-art-group-by-name (-> *level* level s3-1) (-> s4-0 master-art-group-name))))
@@ -268,7 +268,7 @@
              (s3-1 #f)
              )
         (when s4-0
-          (let ((s2-0 7))
+          (let ((s2-0 LEVEL_TOTAL))
             (while (begin (label cfg-13) (nonzero? s2-0))
               (+! s2-0 -1)
               (let ((v1-8 (get-art-group-by-name (-> *level* level s2-0) (-> s4-0 master-art-group-name))))
@@ -793,23 +793,22 @@
 (#cond
   (STREAM_PLAY_HACK
     (define *hack-pos-buffer-id* (new 'static 'array int 4)) ;; 4 channels?
-    (define *hack-pos-buffer-pos* (new 'static 'array int 4)) ;; 4 channels?
+    (define *hack-pos-buffer-pos* (new 'static 'array float 4)) ;; 4 channels?
     (define *hack-pos-next-idx* 0) ;; new channel, if none is found.
-    (define *hack-pos-speed* 5)
+    (define *hack-pos-speed* 8.5)
     (defun get-current-str-pos ((obj sound-id))
       (dotimes (i 4)
         (when (= (-> *hack-pos-buffer-id* i) obj)
-          (+! (-> *hack-pos-buffer-pos* i) *hack-pos-speed*)
-          (return (-> *hack-pos-buffer-pos* i))
+          (return (the int (+! (-> *hack-pos-buffer-pos* i) *hack-pos-speed*)))
           )
         )
       (set! (-> *hack-pos-buffer-id* *hack-pos-next-idx*) (the-as int obj))
-      (set! (-> *hack-pos-buffer-pos* *hack-pos-next-idx*) 0)
+      (set! (-> *hack-pos-buffer-pos* *hack-pos-next-idx*) 0.0)
       (+! *hack-pos-next-idx* 1)
       (if (= *hack-pos-next-idx* 4)
           (set! *hack-pos-next-idx* 0)
           )
-      *hack-pos-speed*
+      (the int *hack-pos-speed*)
       )
     (defun get-str-id-is-playing? ((obj int))
       #t
@@ -824,7 +823,6 @@
 
 (defbehavior ja-play-spooled-anim process-drawable ((arg0 spool-anim) (arg1 art-joint-anim) (arg2 art-joint-anim) (arg3 (function process-drawable symbol)))
   (local-vars (v0-59 int) (sv-176 int))
-  (define *hack-pos* 12)
   (let ((s2-0 arg2)
         (s1-0 arg3)
         (gp-0 (new 'stack 'spooler-block arg2 arg3))
@@ -1519,7 +1517,7 @@
          )
         ((= v1-0 (gui-channel query))
          (and (not (or (logtest? (-> *art-control* frame-mask) 28) (!= *master-mode* 'game)))
-              (and *target* (zero? (logand (-> *target* focus-status) (focus-status dead hit))))
+              (and *target* (not (logtest? (-> *target* focus-status) (focus-status dead hit))))
               )
          )
         (else

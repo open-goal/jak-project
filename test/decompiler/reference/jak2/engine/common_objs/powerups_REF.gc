@@ -576,7 +576,7 @@
       (set! (-> self game eco-pill-dark) (-> *FACT-bank* eco-pill-dark-max-default))
       )
   (when (and (< 0.0 (-> (the-as fact-info-target (-> self fact-override)) eco-level))
-             (not (logtest? (-> self focus-status) (focus-status in-head)))
+             (not (focus-test? self in-head))
              (not (logtest? (-> self draw status) (draw-control-status no-draw no-draw-temp)))
              (not (movie?))
              (rand-vu-percent? (lerp-scale
@@ -673,7 +673,7 @@
        (let ((v1-99 (rand-vu-int-range 3 (+ (-> self node-list length) -1))))
          (cond
            ((and (logtest? (-> self control mod-surface flags) (surface-flag air))
-                 (zero? (logand (-> self control status) (collide-status on-surface)))
+                 (not (logtest? (-> self control status) (collide-status on-surface)))
                  )
             (set! (-> *part-id-table* 543 init-specs 4 initial-valuef) 0.0)
             (set! (-> *part-id-table* 543 init-specs 4 random-rangef) 65536.0)
@@ -888,7 +888,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defbehavior target-powerup-process target ()
   (let ((f30-0 (-> self control collision-spheres 0 prim-core world-sphere w)))
-    (if (logtest? (focus-status board) (-> self focus-status))
+    (if (focus-test? self board)
         (set! (-> self control collision-spheres 0 prim-core world-sphere w)
               (+ 4096.0 (-> self control collision-spheres 0 prim-core world-sphere w))
               )
@@ -897,7 +897,7 @@
     (set! (-> self control collision-spheres 0 prim-core world-sphere w) f30-0)
     )
   (if (and (logtest? (-> self water flags) (water-flags under-water))
-           (zero? (logand (-> self water flags) (water-flags swim-ground)))
+           (not (logtest? (-> self water flags) (water-flags swim-ground)))
            )
       (set! (-> self control unknown-time-frame26) (-> self clock frame-counter))
       (set! (-> self control unknown-time-frame27) (-> self clock frame-counter))
@@ -1099,7 +1099,7 @@
       (('sewer 'forest)
        (let ((f30-2 (-> self board camera-interp)))
          (cond
-           ((logtest? (focus-status board) (-> self focus-status))
+           ((focus-test? self board)
             (seek! (-> self board camera-interp) 1.0 (* 0.1 (-> self clock seconds-per-frame)))
             )
            ((< (-> self control ctrl-xz-vel) 2048.0)
@@ -1129,7 +1129,7 @@
       )
     )
   (logclear! (-> self focus-status) (focus-status super))
-  (if (or (logtest? (-> self focus-status) (focus-status dead hit))
+  (if (or (focus-test? self dead hit)
           (logtest? (state-flags sf2 tinvul1 sf5 tinvul2) (-> self state-flags))
           (-> *setting-control* user-current ignore-target)
           )
@@ -1138,9 +1138,9 @@
       )
   (cond
     ((or (and (logtest? (-> self control mod-surface flags) (surface-flag air))
-              (zero? (logand (-> self control status) (collide-status on-surface)))
+              (not (logtest? (-> self control status) (collide-status on-surface)))
               )
-         (and (logtest? (focus-status board) (-> self focus-status))
+         (and (focus-test? self board)
               (< (- (-> self clock frame-counter) (-> self board unknown-time-frame00)) (seconds 0.1))
               )
          )
@@ -1168,7 +1168,7 @@
       (logclear! (-> self focus-status) (focus-status on-water))
       )
   (if (and (logtest? (-> self water flags) (water-flags under-water))
-           (zero? (logand (-> self water flags) (water-flags swim-ground)))
+           (not (logtest? (-> self water flags) (water-flags swim-ground)))
            )
       (logior! (-> self focus-status) (focus-status under-water))
       (logclear! (-> self focus-status) (focus-status under-water))
@@ -1211,7 +1211,3 @@
   0
   (none)
   )
-
-
-
-

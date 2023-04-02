@@ -1,0 +1,88 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+	This file has the game-specific implementation of the pckernel (see pckernel-h.gc and pckernel.gc).
+ |#
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+                                            ;; version: 1.10.3.1
+(defconstant PC_KERNEL_VERSION (static-pckernel-version 1 10 3 1))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; types and enums
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; The Jak 1 version of the pc-settings object.
+(deftype pc-settings-jak1 (pc-settings)
+  (
+   (skip-movies? symbol) ;; if on, enable cutscene skipping
+   (subtitles? symbol) ;; if on, cutscene subtitles will show up
+   (subtitle-language pc-subtitle-lang) ;; language for subtitles
+   (money-starburst? symbol) ;; add a starburst to the money
+   (extra-hud? symbol) ;; extra hud elements.
+	 )
+  )
+
+(define *pc-settings* (the pc-settings-jak1 #f))
+
+
+;; jak 1 discord rpc structure
+(deftype discord-info (structure)
+  ((fuel (pointer float))
+   (money-total (pointer float))
+   (buzzer-total (pointer float))
+   (deaths (pointer int32))
+   (status string)
+   (level string)
+   (cutscene? symbol)
+   (ogreboss? symbol)
+   (plant-boss? symbol)
+   (racer? symbol)
+   (flutflut? symbol)
+   (time-of-day (pointer float))
+   )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; resets
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod reset-misc pc-settings-jak1 ((obj pc-settings-jak1))
+  "Set the default misc settings"
+
+  ((method-of-type pc-settings reset-misc) obj)
+  (set! (-> obj text-language) (the pc-subtitle-lang (scf-get-language)))
+  (set! (-> obj subtitle-language) (the pc-subtitle-lang (scf-get-language)))
+  (set! (-> obj skip-movies?) #t)
+  (set! (-> obj subtitles?) *debug-segment*)
+  (cond
+    ((and (= *jak1-territory* GAME_TERRITORY_SCEE) (= (-> obj text-language) (pc-subtitle-lang english)))
+      (set! (-> obj text-language) (pc-subtitle-lang uk-english))
+      ;(set! (-> obj subtitle-language) (pc-subtitle-lang uk-english))
+      )
+    ((= *jak1-territory* GAME_TERRITORY_SCEI)
+      (set! (-> obj text-language) (pc-subtitle-lang japanese))
+      ;(set! (-> obj subtitle-language) (pc-subtitle-lang japanese))
+      )
+    (else
+      ))
+  (set! (-> obj money-starburst?) #f)
+  (set! (-> obj extra-hud?) #f)
+  (none))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; other
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defun get-video-params () *video-parms*)
+
+

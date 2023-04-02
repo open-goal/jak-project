@@ -277,13 +277,13 @@
 
     ;; stash drawing map
     (let ((v1-7 *level*))
-      (dotimes (a0-9 7)
+      (dotimes (a0-9 LEVEL_TOTAL)
         (set! (-> gp-0 draw-index-map a0-9) (-> v1-7 draw-index-map a0-9))
         )
       )
 
     ;; bucket lookups, set up chains.
-    (dotimes (s5-1 7)
+    (dotimes (s5-1 LEVEL_TOTAL)
       (let ((s4-0 (-> gp-0 grid level-buckets s5-1)))
         (dotimes (s3-0 7)
           (let ((s1-0 (-> s4-0 data s3-0)))
@@ -414,12 +414,12 @@
     ;; ????????
     (let ((a3-0 (the-as uint128 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))))
       (nop!)
-      (let ((a2-0 (-> arg1 dir0 direction quad)))
+      (let ((a2-0 (-> arg1 dir0 direction quad)))   ;; a2-0 = l0.dir
         (nop!)
-        (let ((t1-0 (-> arg1 dir1 direction quad)))
+        (let ((t1-0 (-> arg1 dir1 direction quad))) ;; t1-0 = l1.dir
           (nop!)
-          (.lvf vf4 (&-> arg1 dir0 color quad))
-          (.pextlw v1-0 t1-0 a2-0)
+          (.lvf vf4 (&-> arg1 dir0 color quad))     ;; vf4 = l0.col
+          (.pextlw v1-0 t1-0 a2-0)                  ;;
           (let ((t0-0 (-> arg1 dir2 direction quad)))
             (.pextuw a2-1 t1-0 a2-0)
             (.lvf vf8 (&-> arg1 dir0 extra quad))
@@ -431,11 +431,11 @@
         )
       )
     (.lvf vf9 (&-> arg1 dir1 extra quad))
-    (let ((a3-1 (make-u128 t1-1 v1-0)))
+    (let ((a3-1 (the uint128 (make-u128 t1-1 v1-0))))
       (.lvf vf6 (&-> arg1 dir2 color quad))
       (.pcpyud v1-1 v1-0 t1-1)
       (.lvf vf10 (&-> arg1 dir2 extra quad))
-      (let ((a2-2 (make-u128 t0-1 a2-1)))
+      (let ((a2-2 (the uint128 (make-u128 t0-1 a2-1))))
         (.lvf vf7 (&-> arg1 ambi color quad))
         (.mul.x.vf vf4 vf4 vf8)
         (.lvf vf11 (&-> arg1 ambi extra quad))
@@ -498,7 +498,7 @@
 
 (defun foreground-wrapup ()
   (let ((gp-0 (scratchpad-object foreground-work)))
-    (dotimes (s5-0 7)
+    (dotimes (s5-0 LEVEL_TOTAL)
       (let ((s4-0 (-> gp-0 grid level-buckets s5-0)))
         (dotimes (s3-0 7)
           (let ((s2-0 (-> s4-0 data s3-0)))
@@ -630,6 +630,21 @@
     )
   )
 
+(defenum pc-merc-bits
+  :type uint8
+  :bitfield #t
+  (update-verts 0)
+  (disable-fog 1)
+  )
+
+(deftype pc-merc-flags (structure)
+  ((enable-mask uint64)
+   (ignore-alpha-mask uint64)
+   (effect-count uint8)
+   (bit-flags pc-merc-bits)
+   )
+  )
+
 (defun pc-merc-draw-request ((dc draw-control) (dma-buf pointer) (matrix-buf pointer) (tex-idx int) (update-verts symbol))
   "Send a request to PC Merc2 to draw the given object.
    Only draws the effects which match this texture index.
@@ -720,14 +735,20 @@
             )
 
           ;; flags
-          (let ((flags (the (pointer uint32) dma-buf)))
-            (set! (-> flags 0) (-> merc-ctrl header effect-count))
-            (set! (-> flags 1) ignore-alpha-mask)
-            (set! (-> flags 2) enable-mask)
-            (set! (-> flags 3) (if update-verts 1 0))
+          (let ((flags (the (pc-merc-flags) dma-buf)))
+            (set! (-> flags effect-count) (-> merc-ctrl header effect-count))
+            (set! (-> flags bit-flags) (the pc-merc-bits 0))
+            (when update-verts
+              (logior! (-> flags bit-flags) (pc-merc-bits update-verts))
+              )
+            (when (logtest? (-> dc status) (draw-control-status disable-fog))
+              (logior! (-> flags bit-flags) (pc-merc-bits disable-fog))
+              )
+            (set! (-> flags enable-mask) enable-mask)
+            (set! (-> flags ignore-alpha-mask) ignore-alpha-mask)
             )
-          (&+! dma-buf (* 16 1))
-          (+! qwc-total 1)
+          (&+! dma-buf (* 16 2))
+          (+! qwc-total 2)
 
           ;; fades
           (let ((fades (the (pointer uint32) dma-buf)))
@@ -765,7 +786,7 @@
   (let ((use-flags (new 'stack-no-clear 'array 'uint8 7))
         (mctrl (-> dc mgeo))
         (buckets (-> (scratchpad-object foreground-work) grid level-buckets (-> (scratchpad-object foreground-work) draw-index-map (-> dc level-index))))
-        (has-ripple #f)
+        (has-ripple-or-texscroll #f)
         )
     ;; mark all as unused, until we see a use
     (dotimes (i 7) (set! (-> use-flags i) 0))
@@ -774,8 +795,8 @@
     (dotimes (i (-> mctrl header effect-count))
       ;;(format 0 "effect ~d, texture ~d~%" i (-> mctrl effect i texture-index))
       (set! (-> use-flags (-> mctrl effect i texture-index)) 1)
-      (when (logtest? (-> (-> dc lod-set lod (-> dc cur-lod) geo) effect i effect-bits) (effect-bits ripple))
-        (set! has-ripple #t)
+      (when (logtest? (-> (-> dc lod-set lod (-> dc cur-lod) geo) effect i effect-bits) (effect-bits ripple texscroll))
+        (set! has-ripple-or-texscroll #t)
         )
       )
 
@@ -787,7 +808,7 @@
         (let ((packet (the-as dma-packet dma-buf))
               (vertex-update #f)
               )
-          (when has-ripple
+          (when has-ripple-or-texscroll
             (set! vertex-update #t)
             )
           (let* ((pd (the process-drawable (-> dc process)))
@@ -849,6 +870,9 @@
          )
         ;;(.lui fg-work 28672)
         (set! fg-work (scratchpad-object foreground-work))
+        (with-pc
+          (when (-> *pc-settings* force-envmap?)
+              (set! dist-in 0.0)))
         (let* ((bone-calc (the-as bone-calculation (-> dma-buf base)))
                (matrix-mem (the-as object (&+ (the-as pointer bone-calc) 64)))
                )
@@ -1280,5 +1304,5 @@
 
 ;; todo foreground-draw-hud
 
-;; changed to perm.
-(define-perm *foreground-draw-engine* engine (new 'global 'engine 'draw 768 connection))
+;; changed to perm and added multiplier.
+(define-perm *foreground-draw-engine* engine (new 'global 'engine 'draw PROCESS_HEAP_MAX connection))

@@ -100,6 +100,7 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/sparticle_launcher.cpp
         mips2c/jak2_functions/spatial_hash.cpp
         mips2c/jak2_functions/texture.cpp
+        mips2c/jak2_functions/vortex.cpp
         mips2c/jak2_functions/ocean.cpp
         mips2c/jak2_functions/ocean_vu0.cpp
         mips2c/jak2_functions/merc_blend_shape.cpp
@@ -120,6 +121,7 @@ set(RUNTIME_SOURCE
         overlord/ssound.cpp
         overlord/stream.cpp
         graphics/gfx.cpp
+        graphics/jak2_texture_remap.cpp
         graphics/display.cpp
         graphics/sceGraphicsInterface.cpp
         graphics/opengl_renderer/background/background_common.cpp
@@ -136,7 +138,6 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/sprite/Sprite3.cpp
         graphics/opengl_renderer/sprite/Sprite3_Distort.cpp
         graphics/opengl_renderer/sprite/Sprite3_Glow.cpp
-        graphics/opengl_renderer/sprite/SpriteRenderer.cpp
         graphics/opengl_renderer/ocean/CommonOceanRenderer.cpp
         graphics/opengl_renderer/ocean/OceanMid.cpp
         graphics/opengl_renderer/ocean/OceanMid_PS2.cpp
@@ -158,6 +159,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/opengl_utils.cpp
         graphics/opengl_renderer/OpenGLRenderer.cpp
         graphics/opengl_renderer/Profiler.cpp
+        graphics/opengl_renderer/ProgressRenderer.cpp
         graphics/opengl_renderer/Shader.cpp
         graphics/opengl_renderer/Shadow_PS2.cpp
         graphics/opengl_renderer/ShadowRenderer.cpp

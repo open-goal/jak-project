@@ -156,9 +156,7 @@
         (the-as uint (add-process *gui-control* obj (gui-channel background) (gui-action queue) "pmkrxplo" -99.0 0))
         )
   (set-falloff! *gui-control* (the-as sound-id (-> obj explode-sound)) #t 50 150 11)
-  (set! (-> obj start-pilot?)
-        (the-as basic (and *target* (logtest? (focus-status pilot) (-> *target* focus-status))))
-        )
+  (set! (-> obj start-pilot?) (the-as basic (and *target* (focus-test? *target* pilot))))
   ((method-of-type projectile init-proj-settings!) obj)
   0
   (none)
@@ -168,7 +166,7 @@
   "Spawns associated particles with the projectile if applicable"
   (cond
     ((and (and (-> obj next-state) (= (-> obj next-state name) 'startup))
-          (and *target* (logtest? (-> *target* focus-status) (focus-status in-head)))
+          (and *target* (focus-test? *target* in-head))
           )
      (kill-and-free-particles (-> obj part))
      )
@@ -214,12 +212,10 @@
     (until #f
       (cond
         ((or (and *target*
-                  (logtest? (focus-status dead grabbed under-water pole flut board mech dark carry indax teleporting)
-                            (-> *target* focus-status)
-                            )
+                  (focus-test? *target* dead grabbed under-water pole flut board mech dark carry indax teleporting)
                   )
-             (and *target* (zero? (logand (focus-status in-head gun) (-> *target* focus-status))))
-             (and *target* (not (-> self start-pilot?)) (logtest? (focus-status pilot) (-> *target* focus-status)))
+             (and *target* (not (logtest? (focus-status in-head gun) (-> *target* focus-status))))
+             (and *target* (not (-> self start-pilot?)) (focus-test? *target* pilot))
              )
          (go-virtual dissipate)
          )
@@ -292,7 +288,7 @@
                                )
             )
       )
-    (when (and *target* (logtest? (-> *target* focus-status) (focus-status in-head)))
+    (when (and *target* (focus-test? *target* in-head))
       (set! (-> self core-position quad) (-> (camera-pos) quad))
       (set! (-> self core-velocity quad) (-> (camera-matrix) vector 2 quad))
       )
@@ -701,8 +697,8 @@
                 ((and (nonzero? (-> sv-256 root-prim prim-core collide-as))
                       s0-0
                       (logtest? (process-mask crate enemy collectable guard) (-> s0-0 mask))
-                      (not (logtest? (-> (the-as process-focusable s0-0) focus-status) (focus-status disable dead ignore)))
-                      (zero? (logand (process-mask no-track) (-> s0-0 mask)))
+                      (not (focus-test? (the-as process-focusable s0-0) disable dead ignore))
+                      (not (logtest? (process-mask no-track) (-> s0-0 mask)))
                       )
                  (set! sv-288 (get-trans (the-as process-focusable s0-0) 3))
                  (let ((f28-0 (- (vector-vector-distance (-> self root-override trans) sv-288) (-> sv-288 w))))
@@ -798,14 +794,14 @@
                     (set! (-> self clock) (-> s5-0 0 clock))
                     (while (and (nonzero? (-> (the-as process-drawable (-> s5-0 0)) skel))
                                 (let ((v1-30 s5-0))
-                                  (and (or (logtest? (-> (the-as process-focusable (if v1-30
-                                                                                       (the-as process-focusable (-> v1-30 0 self))
-                                                                                       )
-                                                                 )
-                                                         focus-status
-                                                         )
-                                                     (focus-status dead hit)
+                                  (and (or (focus-test?
+                                             (the-as process-focusable (if v1-30
+                                                                           (the-as process-focusable (-> v1-30 0 self))
+                                                                           )
                                                      )
+                                             dead
+                                             hit
+                                             )
                                            (let ((v1-35 s5-0))
                                              (or (and (-> (the-as process (if v1-35
                                                                               (the-as process (-> v1-35 0 self))
@@ -830,8 +826,8 @@
                                              )
                                            )
                                        (< (- (-> self clock frame-counter) s3-0) (seconds 5))
-                                       (zero? (logand (-> (the-as process-drawable (-> s5-0 0)) draw status) (draw-control-status no-draw no-draw-temp))
-                                              )
+                                       (not (logtest? (-> (the-as process-drawable (-> s5-0 0)) draw status) (draw-control-status no-draw no-draw-temp))
+                                            )
                                        )
                                   )
                                 )

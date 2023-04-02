@@ -256,10 +256,7 @@
   :enter (behavior ()
     (process-entity-status! self (entity-perm-status subtask-complete) #f)
     (if (-> self on-start)
-        (eval!
-          (new 'stack 'script-context (the-as basic (process->ppointer self)) self (-> self root trans))
-          (the-as pair (-> self on-start))
-          )
+        (script-eval (the-as pair (-> self on-start)) :vector (-> self root trans))
         )
     (dotimes (bolt-idx 5)
       (let* ((curr-bolt (-> self l-bolt bolt-idx bolt))
@@ -394,7 +391,7 @@
                   (set! (-> attack vector quad) (-> s4-0 dir quad))
                   (set! (-> attack shove-back) 24576.0)
                   (set! (-> attack shove-up) 12288.0)
-                  (set! (-> attack control) (if (logtest? (focus-status board) (-> proc-focus focus-status))
+                  (set! (-> attack control) (if (focus-test? proc-focus board)
                                                 1.0
                                                 0.0
                                                 )
@@ -638,10 +635,7 @@
     (sound-play "elec-gate-off")
     (blocking-plane-destroy)
     (if (-> self on-stop)
-        (eval!
-          (new 'stack 'script-context (the-as basic (process->ppointer self)) self (-> self root trans))
-          (the-as pair (-> self on-stop))
-          )
+        (script-eval (the-as pair (-> self on-stop)) :vector (-> self root trans))
         )
     (none)
     )
@@ -788,7 +782,6 @@
   )
 
 (defmethod elec-gate-method-24 elec-gate ((obj elec-gate))
-  "virtual"
   0
   (none)
   )

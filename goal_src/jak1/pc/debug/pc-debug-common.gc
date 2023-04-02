@@ -1,0 +1,63 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+  Various debugging displays made for the pc port. This file is shared for all games.
+ |#
+
+;; debug-only file!
+(declare-file (debug))
+
+;; ----------------------
+;; memory usage bars!
+;; ----------------------
+
+(defconstant MEM_BAR_WIDTH 112) ;; total width of the bar
+(defconstant MEM_BAR_HEIGHT 8) ;; total height of the bar
+(defconstant MEM_BAR_HORZ_PAD 8) ;; horizontal padding for the bar text
+(defconstant MEM_BAR_NUM 7) ;; amount of bars (override later if wanted)
+(defconstant MEM_BAR_BG_COL (static-rgba 64 64 64 64)) ;; color for the empty part of the bar
+(defconstant MEM_BAR_RIGHT 480) ;; x coord for the right side of the bar list
+(defconstant MEM_BAR_BOTTOM 224) ;; x coord for the bottom side of the bar list
+
+(defconstant MEM_BAR_X (- MEM_BAR_RIGHT MEM_BAR_WIDTH MEM_BAR_HORZ_PAD)) ;; x coord for left side of the bar list
+(defconstant MEM_BAR_Y (- MEM_BAR_BOTTOM 4 (* MEM_BAR_HEIGHT MEM_BAR_NUM))) ;; y coord for top side of the bar list
+
+(defmacro draw-memory-bar-generic (buf &key remain &key total &key name &key idx &key color)
+	"draw a memory usage bar"
+  `(let* (
+        (total  (the float ,total))
+        (remain (the float ,remain))
+        (used-p (if (zero? total) 0.0 (/ (- total remain) total)))
+        (used-x (the int (* used-p MEM_BAR_WIDTH)))
+        (used-y (+ MEM_BAR_Y (* ,idx MEM_BAR_HEIGHT)))
+        )
+      (draw-sprite2d-xy ,buf    MEM_BAR_X         used-y used-x MEM_BAR_HEIGHT ,color)
+      (draw-sprite2d-xy ,buf (+ MEM_BAR_X used-x) used-y (- MEM_BAR_WIDTH used-x) MEM_BAR_HEIGHT MEM_BAR_BG_COL)
+      (draw-string-xy ,name ,buf (- MEM_BAR_X MEM_BAR_HORZ_PAD) used-y (font-color red) (font-flags shadow kerning right))
+      (draw-string-xy (string-format "~,,2f%" (* used-p 100)) ,buf (+ MEM_BAR_X used-x) used-y (font-color default) (font-flags shadow kerning middle))
+      (draw-string-xy (string-format "~,,1fM" (/ total (* 1024 1024))) ,buf (+ MEM_BAR_X MEM_BAR_WIDTH MEM_BAR_HORZ_PAD) used-y (font-color red) (font-flags shadow kerning left))
+      )
+  )
+(defmacro draw-memory-bar-kheap (buf heap &key (name #f) &key idx &key color)
+	"draw a memory usage bar for a kheap"
+  `(let ((heap ,heap))
+      (draw-memory-bar-generic ,buf
+              :remain (&- (-> heap top) (-> heap current))
+              :total  (&- (-> heap top-base) (-> heap base))
+              :name ,(if name name (symbol->string heap))
+              :idx ,idx
+              :color ,color)
+      )
+  )
+(defmacro draw-memory-bar-dead-pool-heap (buf heap &key (name #f) &key idx &key color)
+	"draw a memory usage bar for a dead-pool-heap (actor heap)"
+  `(let* ((heap ,heap) (pool-total (memory-total heap)))
+      (draw-memory-bar-generic ,buf
+              :remain (- pool-total (memory-used heap))
+              :total  pool-total
+              :name ,(if name name (symbol->string heap))
+              :idx ,idx
+              :color ,color)
+      )
+  )

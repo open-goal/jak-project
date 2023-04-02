@@ -5,9 +5,11 @@
 ;; name in dgo: debug
 ;; dgos: ENGINE, GAME
 
-;; This file contains functions for debug drawing.
-;; In general, the 3d functions draw using the camera and the 2d functions draw in screen coordinates.
-;; Most functions take a boolean as their first argument. If the boolean is set to #f, it will skip drawing the point.
+#|@file
+This file contains functions for debug drawing.
+In general, the 3d functions draw using the camera and the 2d functions draw in screen coordinates.
+Most functions take a boolean as their first argument. If the boolean is set to #f, it will skip drawing the point.
+|#
 
 (define-extern draw-string (function string dma-buffer font-context draw-string-result))
 (define-extern debug-set-camera-pos-rot! (function vector matrix vector))
@@ -983,7 +985,7 @@
 (defun-debug add-debug-text-sphere ((enable symbol) (bucket bucket-id) (position vector) (radius meters) (text string) (color rgba))
   "Add a debug sphere at the given point, with some text. The color is for the sphere - the text is color 0."
   (add-debug-sphere enable bucket position radius color)
-  (add-debug-text-3d enable bucket text position (font-color default-#cddbcd) (the-as vector2h #f))
+  (add-debug-text-3d enable bucket text position (font-color default) (the-as vector2h #f))
   #f
   )
 
@@ -1415,41 +1417,16 @@
     (if (not enable)
         (return #f)
         )
-    (when (!= (-> light extra x) 0.0)
-      (add-debug-vector
-        enable
-        bucket
-        position
-        (-> light direction)
-        (meters 3)
-        (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
-        )
-      (let ((sphere-pos (new-stack-vector0)))
-        (let ((v1-3 (-> light direction)))
-          (let ((a0-3 (* 12288.0 (-> light extra x))))
-            (.mov vf7 a0-3)
-            )
-          (.lvf vf5 (&-> v1-3 quad))
-          )
-        (.lvf vf4 (&-> position quad))
-        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-        (.mul.x.vf acc vf5 vf7 :mask #b111)
-        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
-        (.svf (&-> sphere-pos quad) vf6)
-        (let ((color-rgba (logior (logior (logior (shr (shl (the int (* 128.0 (-> light color w))) 56) 32)
-                                                  (shr (shl (the int (* 128.0 (-> light color z))) 56) 40)
-                                                  )
-                                          (shr (shl (the int (* 128.0 (-> light color y))) 56) 48)
-                                          )
-                                  (shr (shl (the int (* 128.0 (-> light color x))) 56) 56)
-                                  )
-                          )
-              )
-          (format (clear *temp-string*) "~S ~,,2f" text (-> light extra x))
-          (let ((t0-2 *temp-string*))
-            (add-debug-text-sphere enable bucket sphere-pos (* 2048.0 (-> light extra x)) t0-2 (the-as rgba color-rgba))
-            )
-          )
+    (when (!= (-> light level) 0.0)
+      (add-debug-vector enable bucket position (-> light direction) (meters 3) (static-rgba #xff #xff #xff #x80))
+      (let ((light-vec-end (vector+*! (new-stack-vector0) position (-> light direction) (* (meters 3) (-> light level))))
+            ;; the original code here uses w for alpha but that looks terrible
+            (light-rgba (new 'static 'rgba :r (the int (* 128.0 (-> light color x)))
+                                          :g (the int (* 128.0 (-> light color y)))
+                                          :b (the int (* 128.0 (-> light color z)))
+                                          :a 128
+                                          )))
+        (add-debug-text-sphere enable bucket light-vec-end (* (meters 0.5) (-> light level)) (string-format "~S ~,,2f" text (-> light level)) light-rgba)
         )
       )
     #f
@@ -1618,7 +1595,7 @@
             (+ y -4)
             (cond
               ((= v1-7 1)
-               (font-color precursor-#ec3b00)
+               (font-color red)
                )
               ((= v1-7 2)
                (font-color yellow-#f3f300)
@@ -1627,7 +1604,7 @@
                (font-color green-#3df23d)
                )
               (else
-                (font-color default-#cddbcd)
+                (font-color default)
                 )
               )
             (font-flags shadow)

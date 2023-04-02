@@ -3,6 +3,7 @@
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/colors.h"
+#include "common/util/string_util.h"
 
 #include "decompiler/level_extractor/MercData.h"
 #include "decompiler/level_extractor/extract_common.h"
@@ -117,6 +118,7 @@ struct ConvertedMercEffect {
   bool has_envmap = false;
   DrawMode envmap_mode;
   u32 envmap_texture;
+  std::optional<s8> eye_slot;
 };
 
 /*!
@@ -134,7 +136,7 @@ MercCtrl extract_merc_ctrl(const LinkedObjectFile& file,
   auto tr = typed_ref_from_basic(ref, dts);
 
   MercCtrl ctrl;
-  ctrl.from_ref(tr, dts);  // the merc data import
+  ctrl.from_ref(tr, dts, file.version);  // the merc data import
   return ctrl;
 }
 
@@ -225,7 +227,9 @@ void update_mode_from_alpha1(GsAlpha reg, DrawMode& mode) {
  */
 DrawMode process_draw_mode(const MercShader& info,
                            bool enable_alpha_test,
-                           bool enable_alpha_blend) {
+                           bool enable_alpha_blend,
+                           bool depth_write,
+                           bool fge) {
   DrawMode mode;
   /*
    *       (new 'static 'gs-test
@@ -242,7 +246,7 @@ DrawMode process_draw_mode(const MercShader& info,
   mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
   mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
   mode.enable_zt();
-  mode.enable_depth_write();
+  mode.set_depth_write_enable(depth_write);
   mode.set_depth_test(GsTest::ZTest::GEQUAL);
 
   // check these
@@ -266,6 +270,8 @@ DrawMode process_draw_mode(const MercShader& info,
 
   mode.set_clamp_s_enable(info.clamp & 0b1);
   mode.set_clamp_t_enable(info.clamp & 0b100);
+
+  mode.set_fog(fge);
 
   return mode;
 }
@@ -682,7 +688,10 @@ std::string debug_dump_to_ply(const std::vector<MercDraw>& draws,
 int find_or_add_texture_to_level(tfrag3::Level& out,
                                  const TextureDB& tex_db,
                                  const std::string& debug_name,
-                                 u32 pc_combo_tex_id) {
+                                 u32 pc_combo_tex_id,
+                                 const MercCtrlHeader& hdr,
+                                 u8* eye_out,
+                                 GameVersion version) {
   u32 idx_in_level_texture = UINT32_MAX;
   for (u32 i = 0; i < out.textures.size(); i++) {
     if (out.textures[i].combo_id == pc_combo_tex_id) {
@@ -710,6 +719,38 @@ int find_or_add_texture_to_level(tfrag3::Level& out,
     }
   }
 
+  // check eyes
+  u32 eye_tpage = version == GameVersion::Jak2 ? 0x70c : 0x1cf;
+  u32 left_id = version == GameVersion::Jak2 ? 7 : 0x6f;
+  u32 right_id = version == GameVersion::Jak2 ? 8 : 0x70;
+
+  if (eye_out && (pc_combo_tex_id >> 16) == eye_tpage) {
+    auto tex_it = tex_db.textures.find(pc_combo_tex_id);
+    if (tex_it == tex_db.textures.end()) {
+      // fmt::print("{} got dynamic merc texture (no known texture)\n", debug_name);
+    } else {
+      // fmt::print("{} got dynamic merc texture (will overwrite {})\n", debug_name,
+      //                  tex_it->second.name);
+    }
+    u32 idx = pc_combo_tex_id & 0xffff;
+
+    if (idx == left_id || idx == right_id) {
+      if (!hdr.eye_ctrl) {
+        fmt::print("no eye ctrl, but expected one");
+        if (debug_name != "kor-break-lod0") {
+          ASSERT(false);
+        }
+      }
+      if (idx == left_id) {
+        *eye_out = (hdr.eye_ctrl->eye_slot * 2);
+      } else if (idx == right_id) {
+        *eye_out = (hdr.eye_ctrl->eye_slot * 2) + 1;
+      }
+    } else {
+      // fmt::print("got unknown tex id in eye page: {}\n", idx);
+    }
+  }
+
   return idx_in_level_texture;
 }
 
@@ -726,9 +767,13 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   ConvertedMercEffect result;
   result.ctrl_idx = ctrl_idx;
   result.effect_idx = effect_idx;
+  if (ctrl_header.eye_ctrl) {
+    result.eye_slot = ctrl_header.eye_ctrl->eye_slot;
+  }
   if (input_effect.extra_info.shader) {
     result.has_envmap = true;
-    result.envmap_mode = process_draw_mode(*input_effect.extra_info.shader, false, false);
+    result.envmap_mode =
+        process_draw_mode(*input_effect.extra_info.shader, false, false, false, false);
     result.envmap_mode.set_ab(true);
     u32 new_tex = remap_texture(input_effect.extra_info.shader->original_tex, map);
     ASSERT(result.envmap_mode.get_tcc_enable());
@@ -738,7 +783,8 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     u32 tpage = new_tex >> 20;
     u32 tidx = (new_tex >> 8) & 0b1111'1111'1111;
     u32 tex_combo = (((u32)tpage) << 16) | tidx;
-    result.envmap_texture = find_or_add_texture_to_level(out, tex_db, "envmap", tex_combo);
+    result.envmap_texture = find_or_add_texture_to_level(out, tex_db, "envmap", tex_combo,
+                                                         ctrl_header, nullptr, version);
   } else if (input_effect.envmap_or_effect_usage) {
     u32 tex_combo = 0;
     switch (version) {
@@ -757,7 +803,8 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
         ASSERT_NOT_REACHED();
     }
 
-    result.envmap_texture = find_or_add_texture_to_level(out, tex_db, "envmap-default", tex_combo);
+    result.envmap_texture = find_or_add_texture_to_level(out, tex_db, "envmap-default", tex_combo,
+                                                         ctrl_header, nullptr, version);
 
     DrawMode mode;
     mode.set_at(false);
@@ -781,8 +828,17 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   }
 
   bool use_alpha_blend = false;
+  bool depth_write = true;
   if (version == GameVersion::Jak2) {
-    use_alpha_blend = input_effect.texture_index == 4;  // water
+    constexpr int kWaterTexture = 4;
+    constexpr int kAlphaTexture = 3;
+    if (input_effect.texture_index == kAlphaTexture) {
+      use_alpha_blend = true;
+    }
+    if (input_effect.texture_index == kWaterTexture) {
+      depth_write = false;
+      use_alpha_blend = true;
+    }
   }
 
   // full reset of state per effect.
@@ -825,6 +881,10 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
       can_be_modified = true;
     }
 
+    if (input_effect.effect_bits & kTextureScrollEffectBit) {
+      can_be_modified = true;
+    }
+
     handle_frag(debug_name, ctrl_header, frag, frag_ctrl, merc_state, result.vertices,
                 merc_memories[memory_buffer_toggle], can_be_modified, combined_lump4_addr, fi);
     u32 vert_count = frag.lump4_unpacked.size() / 3;
@@ -854,8 +914,9 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     for (size_t i = 0; i < frag.fp_header.shader_cnt; i++) {
       const auto& shader = frag.shaders.at(i);
       // update merc state from shader (will hold over to next fragment, if needed)
+      bool fog = true;
       merc_state.merc_draw_mode.mode =
-          process_draw_mode(shader, result.has_envmap, use_alpha_blend);
+          process_draw_mode(shader, result.has_envmap, use_alpha_blend, depth_write, fog);
       if (!merc_state.merc_draw_mode.mode.get_tcc_enable()) {
         ASSERT(false);
       }
@@ -1229,6 +1290,7 @@ void extract_merc(const ObjectFileData& ag_data,
     pc_ctrl.max_draws = 0;
     pc_ctrl.max_bones = 0;
     pc_ctrl.st_vif_add = ctrl.header.st_vif_add;
+    pc_ctrl.st_magic = u32_as_float(ctrl.header.st_magic);
     pc_ctrl.xyz_scale = ctrl.header.xyz_scale;
 
     for (size_t ei = 0; ei < ctrls[ci].effects.size(); ei++) {
@@ -1264,7 +1326,8 @@ void extract_merc(const ObjectFileData& ag_data,
           pc_draw = &pc_effect.all_draws.emplace_back();
           pc_draw->mode = draw.state.merc_draw_mode.mode;
           pc_draw->tree_tex_id = find_or_add_texture_to_level(
-              out, tex_db, ctrl.name, draw.state.merc_draw_mode.pc_combo_tex_id);
+              out, tex_db, ctrl.name, draw.state.merc_draw_mode.pc_combo_tex_id, ctrl.header,
+              &pc_draw->eye_id, version);
         } else {
           pc_draw_idx = existing->second;
           pc_draw = &pc_effect.all_draws.at(pc_draw_idx);

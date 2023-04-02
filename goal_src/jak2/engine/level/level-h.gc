@@ -6,6 +6,11 @@
 ;; dgos: ENGINE, GAME
 ;; todo docs, methods
 
+;; max amount of levels in level heap
+(defconstant LEVEL_MAX 6)
+;; total amount of levels, including ones outside level heap (default-level)
+(defconstant LEVEL_TOTAL 7)
+
 (declare-type bsp-header basic)
 (declare-type drawable basic)
 (declare-type entity-links structure)
@@ -21,8 +26,8 @@
 (define-extern *level-load-list* pair)
 
 (defmacro start-debug (str &rest args)
-  `(format 0 ,(string-append "[START] " str) ,@args)
-  )
+  ;`(format 0 ,(string-append "[START] " str) ,@args)
+  0)
 
 
 (defenum load-buffer-mode
@@ -380,11 +385,11 @@
    (load-time             float                           :offset-assert 156)
    (load-login-time       float                           :offset-assert 160)
    (draw-level-count      int32                           :offset-assert 164)
-   (draw-level            level                 7         :offset-assert 168)
-   (draw-index-map        uint8                 7         :offset-assert 196)
+   (draw-level            level                 LEVEL_TOTAL :offset-assert 168)
+   (draw-index-map        uint8                 LEVEL_TOTAL :offset-assert 196)
    (load-order            uint64                          :offset-assert 208)
-   (pad                   uint8                 30        :offset-assert 216)
-   (level                 level                 7 :inline :offset-assert 256)
+   (pad                   uint8                 30        :offset 216)
+   (level                 level                 LEVEL_TOTAL :inline :offset-assert 256)
    (level0                level                 :inline   :offset        256)
    (level1                level                 :inline   :offset        5488)
    (level2                level                 :inline   :offset        10720)
@@ -392,9 +397,7 @@
    (level4                level                 :inline   :offset        21184)
    (level5                level                 :inline   :offset        26416)
    (default-level         level                 :inline   :offset        31648)
-   (unknown-inline-vec-01 (inline-array vector)           :offset        32064)
-   (unknown-inline-vec-02 (inline-array vector)           :offset        33712)
-   (pad2                  uint8                 4         :offset-assert 36880)
+   (pad2                  uint8                 4)
    )
   :method-count-assert 31
   :size-assert         #x9014
@@ -428,7 +431,7 @@
 
 (when (zero? *level*)
   (set! *level* (new 'static 'level-group
-                  :length 6
+                  :length LEVEL_MAX
                   :log-in-level-bsp #f
                   :loading-level #f
                   :entity-link #f
@@ -506,7 +509,7 @@
                     )
                   :default-level (new 'static 'level
                     :name 'default
-                    :index 6
+                    :index LEVEL_MAX
                     :status 'reserved
                     :borrow-level (new 'static 'array level 2 #f #f)
                     :borrow-from-level #f

@@ -763,7 +763,7 @@
           )
         (dma-bucket-insert-tag
           (-> *display* frames (-> *display* on-screen) bucket-group)
-          (bucket-id bucket-322)
+          (bucket-id subtitle)
           s4-1
           (the-as (pointer dma-tag) a3-15)
           )
@@ -792,17 +792,9 @@
                   (when (and (>= f30-0 (-> v1-16 start-frame)) (< f30-0 (-> v1-16 end-frame)))
                     (let ((s3-0 (-> v1-16 message s5-0)))
                       (when (and s3-0 (nonzero? s3-0))
-                        (let ((s2-0 (new
-                                      'stack
-                                      'font-context
-                                      *font-default-matrix*
-                                      20
-                                      290
-                                      0.0
-                                      (font-color default-#cddbcd)
-                                      (font-flags shadow kerning)
-                                      )
-                                    )
+                        (let ((s2-0
+                                (new 'stack 'font-context *font-default-matrix* 20 290 0.0 (font-color default) (font-flags shadow kerning))
+                                )
                               )
                           (let ((v1-20 s2-0))
                             (set! (-> v1-20 width) (the float 465))
@@ -828,9 +820,9 @@
                              (set! (-> s2-0 color) (font-color #000000))
                              (set! (-> s2-0 origin x) (+ 1.0 (-> s2-0 origin x)))
                              (set! (-> s2-0 origin y) (+ 1.0 (-> s2-0 origin y)))
-                             (set! (-> s2-0 color) (font-color default-#cddbcd))
+                             (set! (-> s2-0 color) (font-color default))
                              (set! (-> s2-0 flags) (font-flags shadow kerning middle left large))
-                             (print-game-text (the-as string s3-0) s2-0 #f 44 (bucket-id bucket-322))
+                             (print-game-text (the-as string s3-0) s2-0 #f 44 (bucket-id subtitle))
                              (gui-control-method-12
                                *gui-control*
                                self
@@ -939,7 +931,7 @@
       (set-setting! 'bg-a-force 'abs #x3f800000 0)
       (apply-settings *setting-control*)
       )
-    (if (or (not *target*) (or (logtest? (-> *target* focus-status) (focus-status grabbed))
+    (if (or (not *target*) (or (focus-test? *target* grabbed)
                                (begin
                                  (dotimes (v1-17 6)
                                    (when (= (-> *load-state* want v1-17 name) (-> *target* current-level name))
@@ -957,7 +949,7 @@
         (set! arg0 #f)
         )
     (while (and arg0
-                (or (logtest? (-> *target* focus-status) (focus-status in-air))
+                (or (focus-test? *target* in-air)
                     (and (-> *target* next-state) (= (-> *target* next-state name) 'target-flop-hit-ground))
                     )
                 (-> self scene)
@@ -967,7 +959,7 @@
       )
     (suspend)
     (let ((s5-0 (-> self clock frame-counter)))
-      (when (and *target* (zero? (logand (-> *target* focus-status) (focus-status grabbed))))
+      (when (and *target* (not (logtest? (-> *target* focus-status) (focus-status grabbed))))
         (label cfg-44)
         (when (not (process-grab? *target* #f))
           (suspend)
@@ -1052,7 +1044,7 @@
           )
         )
       )
-    (if (and *target* (logtest? (focus-status in-head flut board pilot mech dark) (-> *target* focus-status)))
+    (if (and *target* (focus-test? *target* in-head flut board pilot mech dark))
         (send-event *target* 'change-mode 'normal)
         )
     (when (< (-> self scene-index) (-> self scene-list length))
@@ -1304,7 +1296,7 @@
           )
         )
       )
-    (if (and (-> self wait) *target* (logtest? (-> *target* focus-status) (focus-status grabbed)))
+    (if (and (-> self wait) *target* (focus-test? *target* grabbed))
         (go-virtual release)
         )
     (none)
@@ -1445,17 +1437,9 @@
     (when (and (< (- (-> self clock frame-counter) (-> self subtitle-change-time)) (seconds 2))
                (< (mod (- (-> self clock frame-counter) (-> self subtitle-change-time)) 300) 210)
                )
-      (let ((gp-6 (new
-                    'stack
-                    'font-context
-                    *font-default-matrix*
-                    36
-                    60
-                    0.0
-                    (font-color default-#cddbcd)
-                    (font-flags shadow kerning)
-                    )
-                  )
+      (let ((gp-6
+              (new 'stack 'font-context *font-default-matrix* 36 60 0.0 (font-color default) (font-flags shadow kerning))
+              )
             )
         (let ((v1-121 gp-6))
           (set! (-> v1-121 width) (the float 440))
@@ -1479,7 +1463,7 @@
           gp-6
           #f
           44
-          (bucket-id bucket-322)
+          (bucket-id subtitle)
           )
         )
       )
@@ -1610,7 +1594,7 @@
 ;; WARN: Using new Jak 2 rtype-of
 (defbehavior scene-player-init scene-player ((arg0 object) (arg1 symbol) (arg2 string))
   "`object` arg can be an `(array scene)`, `pair of scene` or a `scene`"
-  (process-entity-set! self (the-as entity-actor #f))
+  (process-entity-set! self (the-as entity #f))
   (stack-size-set! (-> self main-thread) 1024)
   (set! (-> self root) (new 'process 'trsqv))
   (case (rtype-of arg0)

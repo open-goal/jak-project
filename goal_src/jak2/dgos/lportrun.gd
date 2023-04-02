@@ -4,7 +4,7 @@
   "tpage-2373.go"
   "ctyport-cargo-ag.go"
   "ctyport-spy-ag.go"
-  "mine-b-ag.go"
+  "sew-mine-b-ag.go"
   "ctyport-mine-ag.go"
   "lportrun.go"
  ))

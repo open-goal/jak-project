@@ -1,0 +1,318 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+
+  Entity debugging utilities.
+
+|#
+
+(declare-file (debug))
+
+(define *debug-temp-string* (new 'debug 'string 4096 (the string #f)))
+
+(defmethod set-entity! entity-debug-inspect ((obj entity-debug-inspect) (e entity))
+  "set the entity to inspect"
+
+  (set! (-> obj entity) e)
+  (set! (-> obj scroll-y) 0)
+
+  e
+  )
+
+(defun entity-inspect-draw ((inspect-info entity-debug-inspect))
+  "draw text about an entity on screen"
+  
+  (update-pad inspect-info 0)
+  (let* ((e (-> inspect-info entity)) (name (res-lump-struct e 'name string)))
+  (set! *debug-actor* (the string (and (type-type? (-> e type) entity-actor) (-> inspect-info show-actor-info) name)))
+  (set! *display-race-marks* (race-marks-controls all-off))
+  (case (-> e type)
+    ((entity-race-mesh)
+      (set! *display-race-marks* (race-marks-controls all-paths-on))
+      ;(debug-draw-edges (-> (the entity-race-mesh e) race-mesh))
+      )
+    ((entity-nav-mesh)
+      (debug-draw (the entity-nav-mesh e)))
+    (else
+      ;; draw trans
+      (add-debug-x #t (bucket-id debug-no-zbuf1) (-> e trans) (static-rgba 255 255 0 128))
+      (add-debug-text-3d #t (bucket-id debug-no-zbuf1) name (-> e trans) (font-color red) (new 'static 'vector2h :y 8))
+      )
+    )
+
+  ;; start writing text
+  (let* ((begin-y (- 16 (* (-> inspect-info scroll-y) 16))) (cur-y begin-y) (y-adv 16))
+  (with-dma-buffer-add-bucket ((debug-buf (-> (current-frame) debug-buf))
+                               (bucket-id debug-no-zbuf1))
+      ;; basic info, actor id, etc
+      (draw-string-xy
+          (string-format "~3L~A~0L ~A~%tags: ~D size: ~D aid: #x~x~%R1/L1 scroll L3 toggle display-actor-info~%--------------------" (-> e type) name (length e) (asize-of e) (-> e aid))
+          debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
+      (+! cur-y (* 14 4))
+      (cond
+        ((type-type? (-> e type) entity-actor)
+          (let ((actor (the entity-actor e)))
+            ;; print info for entity-actors
+            (draw-string-xy
+                (string-format "etype: ~A~%vis: ~D task: ~S" (-> actor etype) (-> actor vis-id) (game-task->string (-> actor task)))
+                debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
+            (+! cur-y (* 14 2))
+            )
+          )
+        )
+
+      ;; draw each tag in entity
+      (dotimes (i (length e))
+      (let ((data (get-tag-index-data e i)))
+
+      ;; tag info
+      (format (clear *debug-temp-string*) "~3L~2D)~0L ~20L~A~0L: " i (-> e tag i name) (-> e tag i elt-type))
+      
+      ;; tag data - special cases first
+      (cond
+        ;; some water-height info
+        ((and (= (-> e tag i name) 'water-height) (= (-> e tag i elt-count) 4) (= (-> e tag i elt-type) float))
+          (+! y-adv (* 14 1))
+          (format *debug-temp-string* "~mm ~mm ~mm~%(~S)"
+                (-> (the (pointer float) data) 0)
+                (-> (the (pointer float) data) 1)
+                (-> (the (pointer float) data) 2)
+                (begin (bit-enum->string water-flags (the int (-> (the (pointer float) data) 3)) (clear *temp-string*)) *temp-string*)
+                )
+          )
+        ;; some water-height info but with 5 elts
+        ((and (= (-> e tag i name) 'water-height) (= (-> e tag i elt-count) 4) (= (-> e tag i elt-type) float))
+          (+! y-adv (* 14 3))
+          (format *debug-temp-string* "~mm ~mm ~mm~%(~S)~%~mm"
+                (-> (the (pointer float) data) 0)
+                (-> (the (pointer float) data) 1)
+                (-> (the (pointer float) data) 2)
+                (begin (bit-enum->string water-flags (the int (-> (the (pointer float) data) 3)) (clear *temp-string*)) *temp-string*)
+                (-> (the (pointer float) data) 4)
+                )
+          )
+        ;; text id (can be hint ambient)
+        ;; ((and (= (-> e tag i name) 'text-id) (= (-> e tag i elt-count) 1) (= (-> e tag i elt-type) int32))
+        ;;   (format *debug-temp-string* "(game-text-id ~S)" (game-text-id->string (-> (the (pointer game-text-id) data) 0)))
+        ;;   )
+        ;; eco-info, like in vents, crates, or collectables in general
+        ((and (= (-> e tag i name) 'eco-info) (= (-> e tag i elt-count) 2) (= (-> e tag i elt-type) int32))
+          (format *debug-temp-string* "~S " (pickup-type->string (the-as pickup-type (-> (the (pointer int32) data) 0))))
+          (if (= (pickup-type fuel-cell) (-> (the (pointer int32) data) 0))
+              (format *debug-temp-string* "~S" (game-task->string (the-as game-task (-> (the (pointer int32) data) 1))))
+              (format *debug-temp-string* "~D" (-> (the (pointer int32) data) 1))
+              )
+          (if (= (pickup-type buzzer) (-> (the (pointer int32) data) 0))
+              (format *debug-temp-string* "~S" (game-task->string (the-as game-task (logand #xffff (-> (the (pointer int32) data) 1)))))
+              )
+          )
+        ;; fact options, usually enemies or crates
+        ;; ((and (= (-> e tag i name) 'options) (= (-> e tag i elt-count) 1) (= (-> e tag i elt-type) uint32))
+        ;;   (format *debug-temp-string* " (fact-options ")
+        ;;   (bit-enum->string fact-options (-> (the (pointer uint32) data) 0) *debug-temp-string*)
+        ;;   (format *debug-temp-string* ")")
+        ;;   )
+        ;; these can be displayed visually with other tools.
+        ((and (= (-> e tag i name) 'visvol) (= (-> e tag i elt-count) 2) (= (-> e tag i elt-type) vector))
+          (format *debug-temp-string* "display actor-vis!")
+          )
+        ((and (= (-> e tag i name) 'path) (= (-> e tag i elt-type) vector))
+          (format *debug-temp-string* "display path marks!")
+          )
+        ((and (= (-> e tag i name) 'vol) (= (-> e tag i elt-type) vector))
+          (format *debug-temp-string* "display vol marks!")
+          )
+        ((and (= (-> e tag i name) 'art-name) (= (-> e tag i elt-count) 1) (type-type? (-> e type) entity-actor) (type-type? (-> (the-as entity-actor e) etype) part-spawner))
+          (let* ((as-launch-group-ptr (-> (the (pointer (pointer sparticle-launch-group)) data)))
+                (as-string (the string as-launch-group-ptr)))
+            (cond
+              ((part-group-pointer? as-launch-group-ptr)
+                (format *debug-temp-string* "(group) ~A" (-> as-launch-group-ptr 0 name))
+                )
+              ((= (-> as-string type) string)
+                (format *debug-temp-string* "(string) ~A" as-string)
+                )
+              (else
+                (format *debug-temp-string* "<unknown art-name res-tag #x~x>" as-launch-group-ptr)
+                )
+              )
+            )
+          )
+        (else
+        ;; more generic tag info
+      (dotimes (ii (-> e tag i elt-count))
+          (case (-> e tag i elt-type)
+              ((string symbol type)
+                (format *debug-temp-string* "~A" (-> (the (pointer basic) data) ii)))
+              ((float)
+                (case (-> e tag i name)
+                  ;; meters are better here
+                  (('spring-height 'vis-dist 'height-info 'distance 'cam-notice-dist 'cam-vert 'cam-horz 'idle-distance
+                    'nearest-y-threshold 'center-point 'center-radius 'notice-dist 'trigger-height 'notice-top
+                    'elevator-move-rate 'elevator-y-threshold 'elevator-xz-threshold 'height)
+                    (format *debug-temp-string* "~mm" (-> (the (pointer float) data) ii))
+                    )
+                  ;; degrees are better for these
+                  (('rotoffset 'fov 'rotmin 'rotmax 'tiltmin 'tiltmax 'rotspeed 'spinup-angle)
+                    (format *debug-temp-string* "~rdeg" (-> (the (pointer float) data) ii))
+                    )
+                  (else
+                    (format *debug-temp-string* "~f" (-> (the (pointer float) data) ii))
+                    )
+                  )
+                )
+              ((int8)
+                (case (-> e tag i name)
+                  (('task-actor)
+                    (format *debug-temp-string* "~S" (game-task-actor->string (the-as game-task-actor (-> (the (pointer uint8) data) ii))))
+                    )
+                  (else
+                    (format *debug-temp-string* "~D" (-> (the (pointer int8) data) ii))
+                    )
+                  )
+                )
+              ((int16) (format *debug-temp-string* "~D" (-> (the (pointer int16) data) ii)))
+              ((int32)
+                (case (-> e tag i name)
+                  (('final-pickup 'pickup-type)
+                    (format *debug-temp-string* "~S" (pickup-type->string (the-as pickup-type (-> (the (pointer int32) data) ii))))
+                    )
+                  (('alt-task)
+                    (format *debug-temp-string* "~S" (game-task->string (the-as game-task (-> (the (pointer int32) data) ii))))
+                    )
+                  (else
+                    (format *debug-temp-string* "~D" (-> (the (pointer int32) data) ii))
+                    )
+                  )
+                )
+              ((uint8)
+                (case (-> e tag i name)
+                  ;; not sure
+                  (('shadow-mask)
+                    (format *debug-temp-string* "#b~b" (-> (the (pointer uint8) data) ii))
+                    )
+                  (('light-index)
+                    (format *debug-temp-string* "~D" (-> (the (pointer uint8) data) ii))
+                    )
+                  (('task)
+                    (format *debug-temp-string* "~S" (game-task->string (the-as game-task (-> (the (pointer uint8) data) ii))))
+                    )
+                  (('task-actor)
+                    (format *debug-temp-string* "~S" (game-task-actor->string (the-as game-task-actor (-> (the (pointer uint8) data) ii))))
+                    )
+                  (else
+                    (format *debug-temp-string* "#x~x" (-> (the (pointer uint8) data) ii))
+                    )
+                  )
+                )
+              ((uint16) (format *debug-temp-string* "#x~x" (-> (the (pointer uint16) data) ii)))
+              ((uint32)
+                (case (-> e tag i name)
+                  ;; actually actor-id
+                  (('open-actor 'trigger-actor 'path-actor 'state-actor 'alt-actor 'next-actor 'prev-actor
+                    'spawner-blocker-actor 'spawner-trigger-actor 'kill-actor 'fade-actor 'water-actor 'target-actor 'formation-actor)
+                    (format *debug-temp-string* "~%#x~x (~S)" (-> (the (pointer uint32) data) ii)
+                            (res-lump-struct (entity-by-aid (-> (the (pointer uint32) data) ii)) 'name string))
+                    (+! y-adv 14)
+                    )
+                  (('nav-mesh-actor)
+                    (format *debug-temp-string* "~%#x~x (~S)" (-> (the (pointer uint32) data) ii)
+                            (res-lump-struct (entity-nav-mesh-by-aid (-> (the (pointer actor-id) data) ii)) 'name string))
+                    (+! y-adv 14)
+                    )
+                  (('enemy-options)
+                    (format *debug-temp-string* "~%(~S)" (begin (bit-enum->string enemy-option (-> (the (pointer uint32) data) ii) (clear *temp-string*)) *temp-string*))
+                    (+! y-adv 14)
+                    )
+                  (('kill-mask)
+                    (format *debug-temp-string* "~%(~S)" (begin (bit-enum->string task-mask (-> (the (pointer uint32) data) ii) (clear *temp-string*)) *temp-string*))
+                    (+! y-adv 14)
+                    )
+                  (('elevator-flags)
+                    (format *debug-temp-string* "~%(~S)" (begin (bit-enum->string elevator-flags (-> (the (pointer uint32) data) ii) (clear *temp-string*)) *temp-string*))
+                    (+! y-adv 14)
+                    )
+                  (else
+                    (format *debug-temp-string* "#x~x" (-> (the (pointer uint32) data) ii))
+                    )
+                  )
+                )
+              ((uint128)
+                (case (-> e tag i name)
+                  (('task)
+                    (format *debug-temp-string* "~S" (game-task->string (the-as game-task (-> (the (pointer uint128) data) ii))))
+                    )
+                  (('task-actor)
+                    (format *debug-temp-string* "~S" (game-task-actor->string (the-as game-task-actor (-> (the (pointer uint128) data) ii))))
+                    )
+                  )
+                )
+              ((vector)
+                (case (-> e tag i name)
+                  ;; guess
+                  (('movie-pos)
+                    (format *debug-temp-string* "~%(~mm ~mm ~mm ~rdeg)"
+                        (-> (the (inline-array vector) data) ii x)
+                        (-> (the (inline-array vector) data) ii y)
+                        (-> (the (inline-array vector) data) ii z)
+                        (-> (the (inline-array vector) data) ii w)
+                        )
+                    )
+                  ;; not super useful
+                  (('nav-mesh-sphere 'intro)
+                    (format *debug-temp-string* "~%(~mm ~mm ~mm ~mm)"
+                        (-> (the (inline-array vector) data) ii x)
+                        (-> (the (inline-array vector) data) ii y)
+                        (-> (the (inline-array vector) data) ii z)
+                        (-> (the (inline-array vector) data) ii w)
+                        )
+                    )
+                  (else
+                    (format *debug-temp-string* "~%(~f ~f ~f ~f)"
+                        (-> (the (inline-array vector) data) ii x)
+                        (-> (the (inline-array vector) data) ii y)
+                        (-> (the (inline-array vector) data) ii z)
+                        (-> (the (inline-array vector) data) ii w)
+                        )
+                    )
+                  )
+                (+! y-adv 14))
+              ((pair)
+                (format *debug-temp-string* "~%~A" (-> (the (pointer pair) data) 0))
+                (+! y-adv 14)
+                )
+              ((actor-group)
+                (let* ((group (-> (the (pointer actor-group) data) ii))
+                       (len (-> group length)))
+                  (format *debug-temp-string* "~%--- GROUP ~D: ---" ii len)
+                  (dotimes (iii len)
+                    (format *debug-temp-string* "~% #x~x (~S)" (-> group data iii id) (res-lump-struct (entity-by-aid (-> group data iii id)) 'name string))
+                    (+! y-adv 14))
+                  )
+                (+! y-adv 14)
+                )
+              ;; no clue! please report this.
+              (else
+                (format *debug-temp-string* "<unknown res-tag type ~A>" (-> e tag i elt-type))
+                (set! ii (the int (-> e tag i elt-count)))
+                )
+              )
+          (format *debug-temp-string* " ")
+          )
+          )
+        )
+      
+      ;; draw a string for each tag instead of all at once. allows using smaller strings.
+      (draw-string-xy *debug-temp-string* debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
+      (+! cur-y y-adv)
+      (set! y-adv 14)
+
+        ))
+      ;; set max scroll based on how large the whole text was, ignore first 20 lines.
+      (set! (-> inspect-info scroll-y-max) (max 0 (+ -20 (/ (- cur-y begin-y) 14))))
+      
+      )
+  )))
+
+

@@ -8,6 +8,7 @@
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <sstream>
 
 #include "common/dma/dma_copy.h"
 #include "common/global_profiler/GlobalProfiler.h"
@@ -38,7 +39,7 @@ namespace {
 
 constexpr bool run_dma_copy = false;
 
-constexpr PerGameVersion<int> fr3_level_count(3, 7);
+constexpr PerGameVersion<int> fr3_level_count(jak1::LEVEL_TOTAL, jak2::LEVEL_TOTAL);
 
 struct GraphicsData {
   // vsync
@@ -466,22 +467,6 @@ void render_game_frame(int game_width,
     options.gpu_sync = g_gfx_data->debug_gui.should_gl_finish();
     options.borderless_windows_hacks = windows_borderless_hack;
 
-    // hack for jak 2 resize
-    if (g_game_version == GameVersion::Jak2) {
-      float ratio = 0.75 * (float)window_fb_width / (float)window_fb_height;
-      if (ratio > 1) {
-        window_fb_width /= ratio;
-      } else {
-        window_fb_height *= ratio;
-      }
-      options.game_res_w = window_fb_width;
-      options.game_res_h = window_fb_height;
-      options.window_framebuffer_width = window_fb_width;
-      options.window_framebuffer_height = window_fb_height;
-      options.draw_region_width = window_fb_width;
-      options.draw_region_height = window_fb_height;
-    }
-
     if (want_hotkey_screenshot && g_gfx_data->debug_gui.screenshot_hotkey_enabled) {
       options.save_screenshot = true;
       std::string screenshot_file_name = make_hotkey_screenshot_file_name();
@@ -755,7 +740,20 @@ void update_global_profiler() {
   if (g_gfx_data->debug_gui.dump_events) {
     prof().set_enable(false);
     g_gfx_data->debug_gui.dump_events = false;
-    prof().dump_to_json((file_util::get_jak_project_dir() / "prof.json").string());
+
+    auto dir_path = file_util::get_jak_project_dir() / "profile_data";
+    fs::create_directories(dir_path);
+
+    if (fs::exists(dir_path / "prof.json")) {
+      int file_index = 1;
+      auto file_path = dir_path / fmt::format("prof{}.json", file_index);
+      while (!fs::exists(file_path)) {
+        file_path = dir_path / fmt::format("prof{}.json", ++file_index);
+      }
+      prof().dump_to_json(file_path.string());
+    } else {
+      prof().dump_to_json((dir_path / "prof.json").string());
+    }
   }
   prof().set_enable(g_gfx_data->debug_gui.record_events);
 }
