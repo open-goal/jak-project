@@ -197,7 +197,7 @@ Val* Compiler::compile_listen_to_target(const goos::Object& form,
                                         Env* env) {
   (void)env;
   std::string ip = "127.0.0.1";
-  int port = DECI2_PORT;
+  int port = -1;
   bool got_port = false, got_ip = false;
 
   for_each_in_list(rest, [&](const goos::Object& o) {
