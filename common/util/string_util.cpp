@@ -124,13 +124,13 @@ std::string current_isotimestamp() {
 }
 
 std::string to_upper(const std::string& str) {
-  std::string new_str;
+  std::string new_str(str.size(), ' ');
   std::transform(str.begin(), str.end(), new_str.begin(), ::toupper);
   return new_str;
 }
 
 std::string to_lower(const std::string& str) {
-  std::string new_str;
+  std::string new_str(str.size(), ' ');
   std::transform(str.begin(), str.end(), new_str.begin(), ::tolower);
   return new_str;
 }

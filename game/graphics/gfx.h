@@ -41,9 +41,6 @@ struct GfxRendererModule {
   std::function<void(const void*, u32)> send_chain;
   std::function<void(const u8*, int, u32)> texture_upload_now;
   std::function<void(u32, u32, u32)> texture_relocate;
-  /// NOTE - this is called _no where_ right now
-  /// it's call was commented out in `libpad.cpp` a long time ago
-  std::function<void()> poll_events;
   std::function<void(const std::vector<std::string>&)> set_levels;
   std::function<void(float)> set_pmode_alp;
   GfxPipeline pipeline;
@@ -106,13 +103,16 @@ struct GfxGlobalSettings {
 namespace Gfx {
 
 extern GfxGlobalSettings g_global_settings;
-extern GameSettings::DebugSettings g_debug_settings;
+extern game_settings::DebugSettings g_debug_settings;
 
 const GfxRendererModule* GetCurrentRenderer();
 
 u32 Init(GameVersion version);
 void Loop(std::function<bool()> f);
 u32 Exit();
+
+// TODO - think of a better system to call into the C++ runtime than having to add a global function
+// in `Gfx` pretty verbose and clunky
 
 u32 vsync();
 void register_vsync_callback(std::function<void()> f);
@@ -121,8 +121,6 @@ u32 sync_path();
 void send_chain(const void* data, u32 offset);
 void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr);
 void texture_relocate(u32 destination, u32 source, u32 format);
-/// Unused
-void poll_events();
 void set_levels(const std::vector<std::string>& levels);
 
 // InputMonitor usages
@@ -131,11 +129,21 @@ int update_rumble(const int port, const u8 low_intensity, const u8 high_intensit
 std::pair<s32, s32> get_mouse_pos();
 int get_controller_count();
 std::string get_controller_name(const int id);
+std::string get_current_bind(const int port,
+                             const int device_type,
+                             const bool buttons,
+                             const int input_idx);
 void set_controller_id_for_port(const int id, const int port);
 void set_keyboard_enabled(const bool enabled);
 void set_mouse_enabled(const bool enabled);
 void ignore_background_controller_events(const bool ignore);
 void set_controller_led(const int port, const u8 red, const u8 green, const u8 blue);
+bool get_waiting_for_bind();
+void set_wait_for_bind(const InputDeviceType device_type,
+                       const bool for_analog,
+                       const bool for_minimum_analog,
+                       const int input_idx);
+void stop_waiting_for_bind();
 
 // VideoMonitor usages
 u64 get_window_width();
@@ -152,8 +160,6 @@ WindowDisplayMode get_window_display_mode();
 void set_window_display_mode(WindowDisplayMode mode);
 
 // Global Settings Related
-// TODO - how many of these actually need to be globals and instead should just be virtual functions
-// in the gfx pipeline
 void set_game_resolution(int w, int h);
 void set_msaa(int samples);
 void set_frame_rate(int rate);

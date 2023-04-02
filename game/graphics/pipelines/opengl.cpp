@@ -26,6 +26,7 @@
 #include "game/runtime.h"
 #include "game/sce/libscf.h"
 #include "game/system/hid/input_manager.h"
+#include "game/system/hid/sdl_util.h"
 
 #include "third-party/SDL/include/SDL.h"
 #include "third-party/fmt/core.h"
@@ -34,7 +35,7 @@
 #include "third-party/imgui/imgui_impl_sdl.h"
 #include "third-party/imgui/imgui_style.h"
 #define STBI_WINDOWS_UTF8
-#include <common/util/string_util.h>
+#include "common/util/string_util.h"
 
 #include "third-party/stb_image/stb_image.h"
 
@@ -89,7 +90,7 @@ static bool gl_inited = false;
 static int gl_init(GfxGlobalSettings& settings) {
   // Initialize SDL
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC) != 0) {
-    lg::error("Could not initialize SDL, exiting - {}", SDL_GetError());
+    sdl_util::log_error("Could not initialize SDL, exiting");
     return 1;
   }
 
@@ -174,19 +175,18 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
       SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height,
                        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
   if (!window) {
-    lg::error("gl_make_display failed - Could not create display window - {}", SDL_GetError());
+    sdl_util::log_error("gl_make_display failed - Could not create display window");
     return NULL;
   }
 
   // Make an OpenGL Context
   SDL_GLContext gl_context = SDL_GL_CreateContext(window);
   if (!gl_context) {
-    lg::error("gl_make_display failed - Could not create OpenGL Context - {}", SDL_GetError());
+    sdl_util::log_error("gl_make_display failed - Could not create OpenGL Context");
     return NULL;
   }
   if (SDL_GL_MakeCurrent(window, gl_context) != 0) {
-    lg::error("gl_make_display failed - Could not associated context with window - {}",
-              SDL_GetError());
+    sdl_util::log_error("gl_make_display failed - Could not associated context with window");
     return NULL;
   }
 
@@ -363,7 +363,6 @@ void GLDisplay::process_sdl_events() {
   SDL_Event evt;
   while (SDL_PollEvent(&evt) != 0) {
     if (evt.type == SDL_QUIT) {
-      // TODO - also need to do this for window closing?
       m_should_quit = true;
     }
 
@@ -587,11 +586,6 @@ void gl_texture_relocate(u32 destination, u32 source, u32 format) {
   }
 }
 
-void gl_poll_events() {
-  // TODO - should we process the SDL events here
-  // does this run before `render`?
-}
-
 void gl_set_levels(const std::vector<std::string>& levels) {
   g_gfx_data->loader->set_want_levels(levels);
 }
@@ -609,7 +603,6 @@ const GfxRendererModule gRendererOpenGL = {
     gl_send_chain,          // send_chain
     gl_texture_upload_now,  // texture_upload_now
     gl_texture_relocate,    // texture_relocate
-    gl_poll_events,         // poll_events
     gl_set_levels,          // set_levels
     gl_set_pmode_alp,       // set_pmode_alp
     GfxPipeline::OpenGL,    // pipeline

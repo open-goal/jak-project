@@ -27,7 +27,7 @@ namespace Gfx {
 
 std::function<void()> vsync_callback;
 GfxGlobalSettings g_global_settings;
-GameSettings::DebugSettings g_debug_settings;
+game_settings::DebugSettings g_debug_settings;
 
 const GfxRendererModule* GetRenderer(GfxPipeline pipeline) {
   switch (pipeline) {
@@ -53,7 +53,7 @@ const GfxRendererModule* GetCurrentRenderer() {
 u32 Init(GameVersion version) {
   lg::info("GFX Init");
 
-  g_debug_settings.load_settings();
+  g_debug_settings = game_settings::DebugSettings();
   g_global_settings.renderer = GetRenderer(GfxPipeline::OpenGL);
 
   if (GetCurrentRenderer()->init(g_global_settings)) {
@@ -140,12 +140,6 @@ void set_levels(const std::vector<std::string>& levels) {
   }
 }
 
-void poll_events() {
-  if (GetCurrentRenderer()) {
-    GetCurrentRenderer()->poll_events();
-  }
-}
-
 std::optional<std::shared_ptr<PadData>> get_current_frames_pad_data(const int port) {
   if (Display::GetMainDisplay()) {
     return Display::GetMainDisplay()->get_input_manager()->get_current_data(port);
@@ -182,6 +176,19 @@ std::string get_controller_name(const int id) {
   return "";
 }
 
+std::string get_current_bind(const int port,
+                             const int device_type,
+                             const bool buttons,
+                             const int input_idx) {
+  if (Display::GetMainDisplay()) {
+    // TODO - return something that lets the runtime use a translatable string if unset
+    return Display::GetMainDisplay()->get_input_manager()->get_current_bind(
+        port, (InputDeviceType)device_type, buttons, input_idx);
+  }
+  // TODO - return something that lets the runtime use a translatable string
+  return "UNKNOWN";
+}
+
 void set_controller_id_for_port(const int id, const int port) {
   if (Display::GetMainDisplay()) {
     return Display::GetMainDisplay()->get_input_manager()->set_controller_for_port(id, port);
@@ -211,6 +218,28 @@ void set_controller_led(const int port, const u8 red, const u8 green, const u8 b
   if (Display::GetMainDisplay()) {
     return Display::GetMainDisplay()->get_input_manager()->set_controller_led(port, red, green,
                                                                               blue);
+  }
+}
+
+bool get_waiting_for_bind() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_input_manager()->get_waiting_for_bind();
+  }
+}
+
+void set_wait_for_bind(const InputDeviceType device_type,
+                       const bool for_analog,
+                       const bool for_minimum_analog,
+                       const const int input_idx) {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_input_manager()->set_wait_for_bind(
+        device_type, for_analog, for_minimum_analog, input_idx);
+  }
+}
+
+void stop_waiting_for_bind() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_input_manager()->stop_waiting_for_bind();
   }
 }
 

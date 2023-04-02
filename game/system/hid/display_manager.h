@@ -10,11 +10,7 @@
 
 /*
 TODO:
-  - is scaling fine? I have it set to 1.0 all the time and I notice nothing wrong with the game at
-different scaling just fuzzy imgui text
-
-  - hiDPI support
-    - see https://wiki.libsdl.org/SDL2/SDL_GetRendererOutputSize
+  - hiDPI support, see https://wiki.libsdl.org/SDL2/SDL_GetRendererOutputSize
 */
 
 enum WindowDisplayMode { Windowed = 0, Fullscreen = 1, Borderless = 2 };
@@ -65,7 +61,7 @@ class DisplayManager {
 
  private:
   SDL_Window* m_window;
-  GameSettings::DisplaySettings m_display_settings;
+  game_settings::DisplaySettings m_display_settings;
 
   WindowDisplayMode m_window_display_mode = WindowDisplayMode::Windowed;
   int m_active_display_id;

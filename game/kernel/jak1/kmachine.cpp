@@ -600,6 +600,15 @@ u64 get_controller_name(u32 id) {
   return make_string_from_c(str_util::to_upper(name).c_str());
 }
 
+u64 get_current_bind(s32 port, s32 device_type, u32 buttons, s32 input_idx) {
+  const auto name = Gfx::get_current_bind(port, device_type, buttons != s7.offset, input_idx);
+  // TODO - translate for empty and such
+  if (name.empty()) {
+    return s7.offset;
+  }
+  return make_string_from_c(str_util::to_upper(name).c_str());
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
   init_common_pc_port_functions(make_function_symbol_from_c);
@@ -609,6 +618,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
 
   make_function_symbol_from_c("pc-get-controller-name", (void*)get_controller_name);
+  make_function_symbol_from_c("pc-get-current-bind", (void*)get_current_bind);
   make_function_symbol_from_c("pc-get-display-name", (void*)get_display_name);
   make_function_symbol_from_c("pc-get-display-mode", (void*)get_display_mode);
   make_function_symbol_from_c("pc-get-os", (void*)get_os);

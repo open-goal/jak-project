@@ -1,21 +1,21 @@
 #pragma once
+#pragma once
 
+#include <algorithm>
 #include <array>
 #include <functional>
+#include <string>
 #include <unordered_map>
 #include <utility>
-// TODO - move this to .cpp file
-#include <algorithm>
 
-#include <common/common_types.h>
+#include "common/common_types.h"
+#include "common/util/json_util.h"
 
-/// <summary>
 /// A simple abstraction around the PS2 controller data with some convenience functions for
 /// pulling specific data out if it's useful.
 ///
 /// Pressure is always assumed to be the max, barely any input library handles pressure properly
 /// and the VAST majority of controllers don't even support it either.
-/// </summary>
 struct PadData {
   enum AnalogIndex { LEFT_X = 0, LEFT_Y, RIGHT_X, RIGHT_Y = 3 };
 
@@ -98,18 +98,24 @@ struct PadData {
   std::pair<bool, u8> circle() const { return {button_data.at(ButtonIndex::CIRCLE), 255}; };
   std::pair<bool, u8> cross() const { return {button_data.at(ButtonIndex::CROSS), 255}; };
   std::pair<bool, u8> square() const { return {button_data.at(ButtonIndex::SQUARE), 255}; };
+
+  void clear() {
+    for (int i = 0; i < button_data.size(); i++) {
+      button_data[i] = 0;
+    }
+    for (int i = 0; i < analog_data.size(); i++) {
+      analog_data[i] = ANALOG_NEUTRAL;
+    }
+  }
 };
 
 // order of pressure sensitive buttons in memory (not the same as their bit order...).
 extern const std::vector<PadData::ButtonIndex> PAD_DATA_PRESSURE_INDEX_ORDER;
 
-/// <summary>
 /// Contains all information needed when processing a host input (ie. from SDL)
 /// For example -- for a keyboard binding it informs us what modifiers need to be hit at the same
 /// time, etc <para> All bindings _must_ provide the PS2 button/analog index they map to
-/// </para>
 ///
-/// <para>
 /// There is also a special case for binary inputs mapping to the analog sticks.  In such a
 /// situation both keys will be modifying the same underlying value, but one will mutate the value
 /// to the minimum of the range and the other to the maximum.  The key intended to map to the
@@ -117,9 +123,8 @@ extern const std::vector<PadData::ButtonIndex> PAD_DATA_PRESSURE_INDEX_ORDER;
 ///
 /// For example, pressing both W and S should result in Jak not moving. And then letting go of W
 /// should make him move towards the camera.
-/// </para>
-/// </summary>
 struct InputBinding {
+  InputBinding() = default;
   InputBinding(int index) : pad_data_index(index){};
   InputBinding(int index, bool _minimum_in_range)
       : pad_data_index(index), minimum_in_range(_minimum_in_range){};
@@ -136,21 +141,56 @@ struct InputBinding {
   bool need_alt = false;
 };
 
+void to_json(json& j, const InputBinding& obj);
+void from_json(const json& j, InputBinding& obj);
+
+enum InputDeviceType { CONTROLLER = 0, KEYBOARD = 1, MOUSE = 2 };
+
+// Contains all info related to the current binding we are waiting for
+// so the relevant device can successfully apply it
+struct InputBindAssignmentMeta {
+  InputDeviceType device_type = InputDeviceType::CONTROLLER;
+  int pad_idx;
+  bool for_analog = false;
+  bool for_analog_minimum = false;
+
+  bool assigned = false;
+};
+
+struct InputBindingInfo {
+  s32 sdl_idx;
+  u32 pad_idx;
+  std::string host_name;
+  bool analog_button;
+};
+
+// TODO - change u32 to s32
+
 struct InputBindingGroups {
   InputBindingGroups() = default;
-  InputBindingGroups(std::unordered_map<u32, std::vector<InputBinding>> _analog_axii,
+  InputBindingGroups(const InputDeviceType _device_type,
+                     std::unordered_map<u32, std::vector<InputBinding>> _analog_axii,
                      std::unordered_map<u32, std::vector<InputBinding>> _button_axii,
                      std::unordered_map<u32, std::vector<InputBinding>> _buttons)
-      : analog_axii(_analog_axii), button_axii(_button_axii), buttons(_buttons){};
+      : device_type(_device_type),
+        analog_axii(_analog_axii),
+        button_axii(_button_axii),
+        buttons(_buttons){};
 
   // TODO - eventually make these private (when implementing re-mapping)
+  InputDeviceType device_type;
   std::unordered_map<u32, std::vector<InputBinding>> analog_axii;
   std::unordered_map<u32, std::vector<InputBinding>> button_axii;
   std::unordered_map<u32, std::vector<InputBinding>> buttons;
 
-  std::vector<std::pair<u32, InputBinding>> lookup_analog_binds(PadData::AnalogIndex idx,
-                                                                bool only_minimum_binds = false);
-  std::vector<std::pair<u32, InputBinding>> lookup_button_binds(PadData::ButtonIndex idx);
+  std::vector<InputBindingInfo> lookup_analog_binds(PadData::AnalogIndex idx,
+                                                    bool only_minimum_binds = false);
+  std::vector<InputBindingInfo> lookup_button_binds(PadData::ButtonIndex idx);
+
+  void assign_analog_bind(u32 sdl_idx, InputBindAssignmentMeta& bind_meta);
+  void assign_button_bind(u32 sdl_idx,
+                          InputBindAssignmentMeta& bind_meta,
+                          const bool analog_button = false);
 
  private:
   typedef std::pair<int, bool> BindCacheKey;
@@ -167,11 +207,12 @@ struct InputBindingGroups {
   //
   // However there are some situations where we want to the reverse -- find out what binds
   // correspond with the PS2 value. Such as when remapping a key so you can unbind overlapping binds
-  std::unordered_map<BindCacheKey, std::vector<std::pair<u32, InputBinding>>, hash_name>
-      m_analog_lookup;
-  std::unordered_map<BindCacheKey, std::vector<std::pair<u32, InputBinding>>, hash_name>
-      m_button_lookup;
+  std::unordered_map<BindCacheKey, std::vector<InputBindingInfo>, hash_name> m_analog_lookup;
+  std::unordered_map<BindCacheKey, std::vector<InputBindingInfo>, hash_name> m_button_lookup;
 };
+
+void to_json(json& j, const InputBindingGroups& obj);
+void from_json(const json& j, InputBindingGroups& obj);
 
 /// https://wiki.libsdl.org/SDL2/SDL_GameControllerButton
 extern const InputBindingGroups DEFAULT_CONTROLLER_BINDS;
@@ -180,7 +221,6 @@ extern const InputBindingGroups DEFAULT_KEYBOARD_BINDS;
 /// https://wiki.libsdl.org/SDL2/SDL_MouseButtonEvent
 extern const InputBindingGroups DEFAULT_MOUSE_BINDS;
 
-/// <summary>
 /// A CommandBinding by contrast is a way to map some arbitrary runtime command to
 /// a user initiated input.
 ///
@@ -188,7 +228,6 @@ extern const InputBindingGroups DEFAULT_MOUSE_BINDS;
 /// an arbitrary lambda (with no return value) when triggered.
 ///
 /// An example of these would be taking a screenshot or save-state actions
-/// </summary>
 struct CommandBinding {
   enum Source { CONTROLLER, KEYBOARD, MOUSE };
 
@@ -208,3 +247,8 @@ struct CommandBindingGroups {
   std::unordered_map<u32, std::vector<CommandBinding>> keyboard_binds;
   std::unordered_map<u32, std::vector<CommandBinding>> mouse_binds;
 };
+
+namespace input_bindings {
+bool has_necessary_modifiers(const CommandBinding& bind, const u16 key_modifiers);
+bool has_necessary_modifiers(const InputBinding& bind, const u16 key_modifiers);
+}  // namespace input_bindings

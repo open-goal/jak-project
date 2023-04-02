@@ -9,7 +9,7 @@ DisplayManager::DisplayManager(SDL_Window* window) : m_window(window) {
   update_curr_display_info();
   update_video_modes();
   // Load display settings from a file
-  m_display_settings.load_settings();
+  m_display_settings = game_settings::DisplaySettings();
   // Adjust window / monitor position
   set_window_position();
 }

@@ -574,6 +574,10 @@ inline bool symbol_to_bool(const u32 symptr) {
   return symptr != s7.offset;
 }
 
+inline u64 bool_to_symbol(const bool val) {
+  return val ? static_cast<u64>(s7.offset) + true_symbol_offset(g_game_version) : s7.offset;
+}
+
 void set_keyboard_enabled(u32 symptr) {
   Gfx::set_keyboard_enabled(symbol_to_bool(symptr));
 }
@@ -586,13 +590,19 @@ void ignore_background_controller_events(u32 symptr) {
   Gfx::ignore_background_controller_events(symbol_to_bool(symptr));
 }
 
-/// <summary>
-/// Initializes all functions that are common across all game versions
+u64 get_waiting_for_bind() {
+  return bool_to_symbol(Gfx::get_waiting_for_bind());
+}
+
+void set_waiting_for_bind(u32 device_type, u32 for_analog, u32 for_minimum_analog, s32 input_idx) {
+  Gfx::set_wait_for_bind((InputDeviceType)device_type, symbol_to_bool(for_analog),
+                         symbol_to_bool(for_minimum_analog), input_idx);
+}
+
+/// @brief Initializes all functions that are common across all game versions
 /// These functions have the same implementation and do not use any game specific functions (other
 /// than the one to create a function in the first place)
-/// </summary>
-/// <param name="make_func_symbol_func">The game specific function that is used to create a function
-/// symbol</param>
+/// @param make_func_symbol_func The game specific function that is used to create a function symbol
 void init_common_pc_port_functions(
     std::function<Ptr<Function>(const char*, void*)> make_func_symbol_func) {
   make_func_symbol_func("__read-ee-timer", (void*)read_ee_timer);
@@ -625,6 +635,9 @@ void init_common_pc_port_functions(
   make_func_symbol_func("pc-ignore-background-controller-events!",
                         (void*)ignore_background_controller_events);
   make_func_symbol_func("pc-set-controller-led!", (void*)Gfx::set_controller_led);
+  make_func_symbol_func("pc-get-waiting-for-bind", (void*)get_waiting_for_bind);
+  make_func_symbol_func("pc-set-waiting-for-bind!", (void*)set_waiting_for_bind);
+  make_func_symbol_func("pc-stop-waiting-for-bind!", (void*)Gfx::stop_waiting_for_bind);
 
   // graphics things
   make_func_symbol_func("pc-set-letterbox", (void*)Gfx::set_letterbox);
