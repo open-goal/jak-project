@@ -31,9 +31,7 @@ class Listener {
   static constexpr int BUFFER_SIZE = 32 * 1024 * 1024;
   Listener();
   ~Listener();
-  bool connect_to_target(int n_tries = 1,
-                         const std::string& ip = "127.0.0.1",
-                         int port = -1);
+  bool connect_to_target(int n_tries = 1, const std::string& ip = "127.0.0.1", int port = -1);
   void record_messages(ListenerMessageKind kind);
   int get_received_message_count();
   std::vector<std::string> stop_recording_messages();
