@@ -44,33 +44,32 @@
               )
 
 (defstate spider-egg-idle (spider-egg)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (local-vars (v0-0 none))
-    (let ((v1-0 arg2))
-      (the-as object (cond
-                       ((= v1-0 'touch)
-                        (send-shove-back
-                          (-> self root-override)
-                          arg0
-                          (the-as touching-shapes-entry (-> arg3 param 0))
-                          0.7
-                          6144.0
-                          16384.0
-                          )
-                        )
-                       ((= v1-0 'can-spawn?)
-                        (return (the-as object #t))
-                        v0-0
-                        )
-                       ((= v1-0 'notify-spawned)
-                        (go spider-egg-hatch)
-                        )
-                       ((= v1-0 'attack)
-                        (go spider-egg-die)
-                        )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (local-vars (v0-0 object))
+    (the-as object (case event-type
+                     (('touch)
+                      (the-as object (send-shove-back
+                                       (-> self root-override)
+                                       proc
+                                       (the-as touching-shapes-entry (-> event param 0))
+                                       0.7
+                                       6144.0
+                                       16384.0
+                                       )
+                              )
+                      )
+                     (('can-spawn?)
+                      (return #t)
+                      v0-0
+                      )
+                     (('notify-spawned)
+                      (go spider-egg-hatch)
+                      )
+                     (('attack)
+                      (go spider-egg-die)
+                      )
+                     )
+            )
     )
   :enter (behavior ((arg0 symbol))
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -119,9 +118,9 @@
   )
 
 (defstate spider-egg-hatch (spider-egg)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 symbol))
-    (case arg2
+    (case event-type
       (('can-spawn?)
        (return (the-as object #f))
        v0-0
@@ -160,9 +159,9 @@
   )
 
 (defstate spider-egg-die (spider-egg)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 symbol))
-    (case arg2
+    (case event-type
       (('can-spawn?)
        (return (the-as object #f))
        v0-0
@@ -269,7 +268,3 @@
   (go spider-egg-idle #t)
   (none)
   )
-
-
-
-
