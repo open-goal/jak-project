@@ -143,7 +143,7 @@
       (set! sv-80 (logior sv-80 16))
       )
   (set! sv-224 (< (fabs (-> arg0 surface-angle)) (-> *pat-mode-info* (-> arg0 cur-pat mode) wall-angle)))
-  (if (zero? (logand (-> arg0 prev-status) (cshape-moving-flags onsurf)))
+  (if (not (logtest? (-> arg0 prev-status) (cshape-moving-flags onsurf)))
       (set! (-> arg0 ground-impact-vel) (- (vector-dot (-> arg0 transv) (-> arg0 dynam gravity-normal))))
       )
   (set! sv-80 (logior sv-80 4))
@@ -176,7 +176,7 @@
 
 (defpartgroup group-yellow-eco-fireball
   :id 102
-  :duration 300
+  :duration (seconds 1)
   :bounds (static-bspherem 0 0 0 3)
   :parts ((sp-item 349 :flags (launch-asap) :binding 350)
     (sp-item 350 :flags (start-dead launch-asap) :binding 351)
@@ -316,7 +316,7 @@
 
 (defpartgroup group-part-yellow-eco-fireball-launcher
   :id 103
-  :duration 600
+  :duration (seconds 2)
   :bounds (static-bspherem 0 0 0 6)
   :parts ((sp-item 355 :flags (launch-asap))
     (sp-item 356 :flags (bit1) :period 630 :length 15)
@@ -487,7 +487,7 @@
 
 (defpartgroup group-part-yellow-eco-fireball-hit
   :id 104
-  :duration 600
+  :duration (seconds 2)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 6)
   :parts ((sp-item 2059 :period 600 :length 5)
@@ -591,46 +591,46 @@
     )
   )
 
-(defmethod dummy-24 projectile ((obj projectile))
+(defmethod projectile-method-24 projectile ((obj projectile))
   (spawn (-> obj part) (the-as vector (-> obj root-override root-prim prim-core)))
   0
   (none)
   )
 
-(defmethod dummy-28 projectile ((obj projectile))
+(defmethod projectile-method-28 projectile ((obj projectile))
   0
   (none)
   )
 
 (defstate projectile-moving (projectile)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touched)
        (when (-> self attack-mode)
          (when (cond
-                 ((= (-> arg0 type) target)
-                  (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode (-> self attack-mode)))))
+                 ((= (-> proc type) target)
+                  (send-event proc 'attack (-> event param 0) (static-attack-info ((mode (-> self attack-mode)))))
                   )
                  (else
                    (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
                      (set! (-> a1-2 from) self)
                      (set! (-> a1-2 num-params) 4)
                      (set! (-> a1-2 message) 'attack)
-                     (set! (-> a1-2 param 0) (-> arg3 param 0))
+                     (set! (-> a1-2 param 0) (-> event param 0))
                      (set! (-> a1-2 param 1) (the-as uint (-> self attack-mode)))
                      (let ((v1-13 (+ *global-attack-id* 1)))
                        (set! *global-attack-id* v1-13)
                        (set! (-> a1-2 param 2) (the-as uint v1-13))
                        )
                      (set! (-> a1-2 param 3) (the-as uint 0))
-                     (send-event-function arg0 a1-2)
+                     (send-event-function proc a1-2)
                      )
                    )
                  )
            (let ((v1-14 (-> self notify-handle)))
              (if (handle->process v1-14)
-                 (send-event (-> v1-14 process 0) 'notify 'attack arg0)
+                 (send-event (-> v1-14 process 0) 'notify 'attack proc)
                  )
              )
            (+! (-> self hits) 1)
@@ -658,7 +658,7 @@
             (if gp-0
                 (go-virtual projectile-impact)
                 )
-            (dummy-28 self)
+            (projectile-method-28 self)
             ((-> self update-velocity) self)
             (when (logtest? (-> self options) 2)
               (seek! (-> self tween) 1.0 (* 0.5 (-> *display* seconds-per-frame)))
@@ -699,7 +699,7 @@
             )
           (set-time-ratios *display* (the float s5-0))
           )
-        (dummy-24 self)
+        (projectile-method-24 self)
         (suspend)
         )
       )
@@ -792,12 +792,12 @@
     )
   )
 
-(defmethod dummy-27 projectile ((obj projectile))
+(defmethod projectile-method-27 projectile ((obj projectile))
   0
   (none)
   )
 
-(defmethod dummy-26 projectile ((obj projectile))
+(defmethod projectile-method-26 projectile ((obj projectile))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) projectile-collision-reaction)
@@ -822,7 +822,7 @@
   (none)
   )
 
-(defmethod dummy-25 projectile ((obj projectile))
+(defmethod projectile-method-25 projectile ((obj projectile))
   (go (method-of-object obj projectile-moving))
   0
   (none)
@@ -864,7 +864,7 @@
   (countdown (v1-4 16)
     (set! (-> self old-dist v1-4) 4095996000.0)
     )
-  (dummy-26 self)
+  (projectile-method-26 self)
   (set! (-> self root-override dynam gravity y) 1228800.0)
   (set! (-> self root-override dynam gravity-length) 1228800.0)
   (set! (-> self root-override dynam gravity-max) 1228800.0)
@@ -881,8 +881,8 @@
   (vector-normalize-copy! (-> self base-vector) arg2 1.0)
   (vector+float*! (-> self target) (-> self root-override trans) (-> self root-override transv) 2.0)
   (set! (-> self target-base quad) (-> self target quad))
-  (dummy-27 self)
-  (dummy-24 self)
+  (projectile-method-27 self)
+  (projectile-method-24 self)
   (when (not (type-type? (-> self type) projectile-blue))
     (let ((a1-8 (new 'stack-no-clear 'collide-edge-hold-list)))
       (set! (-> a1-8 num-allocs) (the-as uint 1))
@@ -891,11 +891,11 @@
       )
     )
   (set! (-> self event-hook) (-> (method-of-object self projectile-moving) event))
-  (dummy-25 self)
+  (projectile-method-25 self)
   (none)
   )
 
-(defmethod dummy-27 projectile-yellow ((obj projectile-yellow))
+(defmethod projectile-method-27 projectile-yellow ((obj projectile-yellow))
   (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 (seconds 0.1))
   (set! (-> obj attack-mode) 'eco-yellow)
   (set! (-> obj mode) 1)
@@ -922,7 +922,7 @@
             )
       (sound-play "yellow-fire")
       (set! (-> obj sound-id) (sound-play "yellow-buzz"))
-      (if (zero? (logand (-> obj options) 416))
+      (if (not (logtest? (-> obj options) 416))
           (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 103) -1 #f #f #f s5-0 :to obj)
           )
       (set! (-> *part-id-table* 350 init-specs 2 initial-valuef) f30-0)
@@ -942,7 +942,7 @@
        (logior! (-> obj root-override root-prim collide-with) (collide-kind water))
        )
       (('ogre)
-       (when (zero? (logand (-> obj options) 128))
+       (when (not (logtest? (-> obj options) 128))
          (set! (-> obj water) (new 'process 'water-control obj 0 0.0 8192.0 2048.0))
          (set! (-> obj water flags) (water-flags wt01 wt04 wt07))
          (set! (-> obj water height) 129024.0)
@@ -962,15 +962,15 @@
   (none)
   )
 
-(defmethod dummy-26 projectile-yellow ((obj projectile-yellow))
-  (let ((t9-0 (method-of-type projectile dummy-26)))
+(defmethod projectile-method-26 projectile-yellow ((obj projectile-yellow))
+  (let ((t9-0 (method-of-type projectile projectile-method-26)))
     (t9-0 obj)
     )
   (logior! (-> obj root-override root-prim collide-with) (collide-kind mother-spider))
   (none)
   )
 
-(defmethod dummy-24 projectile-yellow ((obj projectile-yellow))
+(defmethod projectile-method-24 projectile-yellow ((obj projectile-yellow))
   (with-pp
     (find-ground-and-draw-shadow
       (-> obj root-override trans)
@@ -1024,7 +1024,7 @@
     )
   )
 
-(defmethod dummy-28 projectile-yellow ((obj projectile-yellow))
+(defmethod projectile-method-28 projectile-yellow ((obj projectile-yellow))
   (cond
     ((or (not (handle->process (-> obj last-target)))
          (zero? (-> (the-as target (handle->process (-> obj last-target))) control root-prim prim-core collide-as))
@@ -1103,7 +1103,7 @@
   (none)
   )
 
-(defmethod dummy-27 projectile-blue ((obj projectile-blue))
+(defmethod projectile-method-27 projectile-blue ((obj projectile-blue))
   (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 (seconds 0.1))
   (sound-play "blue-eco-on")
   (set! (-> obj mode) 2)
@@ -1129,7 +1129,7 @@
   (none)
   )
 
-(defmethod dummy-26 projectile-blue ((obj projectile-blue))
+(defmethod projectile-method-26 projectile-blue ((obj projectile-blue))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) projectile-collision-reaction)
@@ -1203,7 +1203,7 @@
     )
   )
 
-(defmethod dummy-28 projectile-blue ((obj projectile-blue))
+(defmethod projectile-method-28 projectile-blue ((obj projectile-blue))
   (let* ((s5-0 (handle->process (-> obj last-target)))
          (v1-4 (if (and (nonzero? s5-0) (type-type? (-> s5-0 type) process-drawable))
                    s5-0
@@ -1221,7 +1221,7 @@
   (none)
   )
 
-(defmethod dummy-24 projectile-blue ((obj projectile-blue))
+(defmethod projectile-method-24 projectile-blue ((obj projectile-blue))
   (if (rand-vu-percent? 0.75)
       (eco-blue-glow (the-as vector (-> obj root-override root-prim prim-core)))
       )
@@ -1244,7 +1244,3 @@
     (none)
     )
   )
-
-
-
-

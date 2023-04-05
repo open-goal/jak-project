@@ -46,18 +46,18 @@
   :size-assert         #x198
   :flag-assert         #x2001300198
   (:methods
-    (dummy-20 (_type_ vector) none 20)
-    (dummy-21 (_type_) none 21)
-    (dummy-22 (_type_) symbol 22)
-    (dummy-23 (_type_ symbol) symbol 23)
-    (dummy-24 (_type_ vector) symbol 24)
-    (dummy-25 (_type_ float) symbol 25)
-    (dummy-26 (_type_) none 26)
-    (dummy-27 (_type_) none 27)
-    (dummy-28 (_type_) none 28)
+    (puffer-method-20 (_type_ vector) none 20)
+    (puffer-method-21 (_type_) none 21)
+    (puffer-method-22 (_type_) symbol 22)
+    (puffer-method-23 (_type_ symbol) symbol 23)
+    (puffer-method-24 (_type_ vector) symbol 24)
+    (puffer-method-25 (_type_ float) symbol 25)
+    (puffer-method-26 (_type_) none 26)
+    (puffer-method-27 (_type_) none 27)
+    (puffer-method-28 (_type_) none 28)
     (flip-look! (_type_ symbol) none 29)
-    (dummy-30 (_type_) vector 30)
-    (dummy-31 (_type_) vector 31)
+    (puffer-method-30 (_type_) vector 30)
+    (puffer-method-31 (_type_) vector 31)
     )
   (:states
     puffer-attack
@@ -84,44 +84,44 @@
 
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 56]
 (defbehavior puffer-default-event-handler puffer ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-    (the-as
-      object
-      (when (or (= v1-0 'touch) (= v1-0 'attack))
-        (when (and (= arg2 'attack) (!= (-> self cprims-type) 2))
-          (let* ((gp-0 arg0)
-                 (v1-7 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable))
-                           gp-0
-                           )
-                       )
-                 )
-            (when v1-7
-              (let ((f0-4 (atan
-                            (- (-> (the-as process-drawable v1-7) root trans x) (-> self root-override trans x))
-                            (- (-> (the-as process-drawable v1-7) root trans z) (-> self root-override trans z))
-                            )
+  (the-as
+    object
+    (case arg2
+      (('touch 'attack)
+       (when (and (= arg2 'attack) (!= (-> self cprims-type) 2))
+         (let* ((gp-0 arg0)
+                (v1-7 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable))
+                          gp-0
                           )
-                    )
-                (quaternion-axis-angle! (-> self root-override quat) 0.0 1.0 0.0 f0-4)
+                      )
                 )
-              )
-            )
-          (go puffer-die)
-          (return (the-as object #t))
-          )
-        (when (= (-> arg0 type) target)
-          (when (send-event
-                  arg0
-                  'attack
-                  (-> arg3 param 0)
-                  (static-attack-info ((shove-up (meters 1.5)) (shove-back (meters 2.5))))
-                  )
-            (set! (-> self hit-player?) #t)
-            (set! (-> self hit-player-time) (-> *display* base-frame-counter))
-            (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
-            )
-          )
-        )
+           (when v1-7
+             (let ((f0-4 (atan
+                           (- (-> (the-as process-drawable v1-7) root trans x) (-> self root-override trans x))
+                           (- (-> (the-as process-drawable v1-7) root trans z) (-> self root-override trans z))
+                           )
+                         )
+                   )
+               (quaternion-axis-angle! (-> self root-override quat) 0.0 1.0 0.0 f0-4)
+               )
+             )
+           )
+         (go puffer-die)
+         (return (the-as object #t))
+         )
+       (when (= (-> arg0 type) target)
+         (when (send-event
+                 arg0
+                 'attack
+                 (-> arg3 param 0)
+                 (static-attack-info ((shove-up (meters 1.5)) (shove-back (meters 2.5))))
+                 )
+           (set! (-> self hit-player?) #t)
+           (set! (-> self hit-player-time) (-> *display* base-frame-counter))
+           (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
+           )
+         )
+       )
       )
     )
   )
@@ -129,10 +129,10 @@
 (defbehavior puffer-post puffer ()
   (when (and (-> self hit-player?)
              (or (not *target*)
-                 (and (zero? (logand (-> *target* state-flags)
+                 (and (not (logtest? (-> *target* state-flags)
                                      (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
                                      )
-                             )
+                           )
                       (>= (- (-> *display* base-frame-counter) (-> self hit-player-time)) (seconds 0.05))
                       )
                  )
@@ -144,7 +144,7 @@
   (none)
   )
 
-(defmethod dummy-28 puffer ((obj puffer))
+(defmethod puffer-method-28 puffer ((obj puffer))
   (cond
     ((and (-> obj draw shadow)
           (zero? (-> obj draw cur-lod))
@@ -201,13 +201,13 @@
   (none)
   )
 
-(defmethod dummy-24 puffer ((obj puffer) (arg0 vector))
+(defmethod puffer-method-24 puffer ((obj puffer) (arg0 vector))
   (and (is-in-mesh? (-> obj nav) arg0 11468.8)
        (< (-> arg0 y) (+ (-> obj root-override trans y) (-> obj fact-info-override notice-top)))
        )
   )
 
-(defmethod dummy-22 puffer ((obj puffer))
+(defmethod puffer-method-22 puffer ((obj puffer))
   (let* ((a1-0 (-> obj buddy))
          (v1-0 (if a1-0
                    (-> a1-0 ppointer 3)
@@ -225,14 +225,14 @@
   #f
   )
 
-(defmethod dummy-25 puffer ((obj puffer) (arg0 float))
+(defmethod puffer-method-25 puffer ((obj puffer) (arg0 float))
   (when *target*
     (let ((gp-0 (target-pos 0)))
-      (when (and (zero? (logand (-> *target* state-flags)
+      (when (and (not (logtest? (-> *target* state-flags)
                                 (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
                                 )
-                        )
-                 (dummy-24 obj gp-0)
+                      )
+                 (puffer-method-24 obj gp-0)
                  (>= (-> gp-0 y) (+ -14336.0 (-> obj attack-bottom-y)))
                  (>= (+ 2048.0 (-> obj top-y)) (-> gp-0 y))
                  )
@@ -280,7 +280,7 @@
   )
 
 
-(defmethod dummy-23 puffer ((obj puffer) (arg0 symbol))
+(defmethod puffer-method-23 puffer ((obj puffer) (arg0 symbol))
   (local-vars (v1-0 process))
   (set! v1-0 (when arg0
                (let ((a0-1 (-> obj buddy)))
@@ -349,7 +349,7 @@
   #f
   )
 
-(defmethod dummy-20 puffer ((obj puffer) (arg0 vector))
+(defmethod puffer-method-20 puffer ((obj puffer) (arg0 vector))
   (if (-> obj attacking?)
       (set! (-> obj travel-speed)
             (seek-with-smooth (-> obj travel-speed) 30720.0 (* 8192.0 (-> *display* seconds-per-frame)) 0.125 40.96)
@@ -358,77 +358,9 @@
             (seek-with-smooth (-> obj travel-speed) 18432.0 (* 2048.0 (-> *display* seconds-per-frame)) 0.125 40.96)
             )
       )
-  (TODO-RENAME-27 (-> obj nav))
-  (TODO-RENAME-28
-    (-> obj nav)
-    (collide-kind
-      background
-      cak-1
-      cak-2
-      cak-3
-      target
-      water
-      powerup
-      crate
-      enemy
-      wall-object
-      projectile
-      ground-object
-      target-attack
-      mother-spider
-      cak-14
-      blue-eco-suck
-      unknown-16
-      unknown-17
-      unknown-18
-      unknown-19
-      unknown-20
-      unknown-21
-      unknown-22
-      unknown-23
-      unknown-24
-      unknown-25
-      unknown-26
-      unknown-27
-      unknown-28
-      unknown-29
-      unknown-30
-      unknown-31
-      unknown-32
-      unknown-33
-      unknown-34
-      unknown-35
-      unknown-36
-      unknown-37
-      unknown-38
-      unknown-39
-      unknown-40
-      unknown-41
-      unknown-42
-      unknown-43
-      unknown-44
-      unknown-45
-      unknown-46
-      unknown-47
-      unknown-48
-      unknown-49
-      unknown-50
-      unknown-51
-      unknown-52
-      unknown-53
-      unknown-54
-      unknown-55
-      unknown-56
-      unknown-57
-      unknown-58
-      unknown-59
-      unknown-60
-      unknown-61
-      unknown-62
-      unknown-63
-      )
-    )
-  (dummy-13 (-> obj nav) arg0 (-> obj root-override transv))
+  (nav-control-method-27 (-> obj nav))
+  (nav-control-method-28 (-> obj nav) (the-as collide-kind -1))
+  (nav-control-method-13 (-> obj nav) arg0 (-> obj root-override transv))
   (let ((f30-0 (* (vector-xz-length (-> obj nav travel)) (-> *display* frames-per-second))))
     (let ((f0-11 (atan (-> obj nav travel x) (-> obj nav travel z)))
           (s5-1 (new 'stack-no-clear 'vector))
@@ -453,13 +385,13 @@
           (set-vector! s4-0 (* (sin (-> obj travel-ry)) f28-0) 0.0 (* (cos (-> obj travel-ry)) f28-0) 1.0)
           (let ((s3-1 (new 'stack 'clip-travel-vector-to-mesh-return-info)))
             (set! (-> obj nav travel quad) (-> s4-0 quad))
-            (dummy-24 (-> obj nav) f28-0 s3-1)
+            (nav-control-method-24 (-> obj nav) f28-0 s3-1)
             (if (-> s3-1 found-boundary)
                 (set! f26-0 (vector-vector-xz-distance (-> s3-1 intersection) (-> obj root-override trans)))
                 )
             )
           (let ((s3-2 (new 'stack-no-clear 'matrix)))
-            (when (>= (dummy-23 (-> obj nav) s4-0 (the-as check-vector-collision-with-nav-spheres-info s3-2)) 0.0)
+            (when (>= (nav-control-method-23 (-> obj nav) s4-0 (the-as check-vector-collision-with-nav-spheres-info s3-2)) 0.0)
               (let ((f0-26 (vector-vector-xz-distance (-> s3-2 vector 1) (-> obj root-override trans))))
                 (if (or (< f26-0 0.0) (< f0-26 f26-0))
                     (set! f26-0 f0-26)
@@ -486,11 +418,11 @@
   (set! (-> obj facing-ry)
         (deg-seek-smooth (-> obj facing-ry) (-> obj travel-ry) (* 32768.0 (-> *display* seconds-per-frame)) 0.125)
         )
-  (dummy-27 obj)
+  (puffer-method-27 obj)
   (none)
   )
 
-(defmethod dummy-27 puffer ((obj puffer))
+(defmethod puffer-method-27 puffer ((obj puffer))
   (let ((f30-0 (-> obj patrol-bottom-y)))
     (cond
       ((-> obj attacking?)
@@ -587,7 +519,7 @@
                )
           (go puffer-patrol)
           )
-      (dummy-26 self)
+      (puffer-method-26 self)
       (suspend)
       )
     (none)
@@ -601,7 +533,7 @@
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self attacking?) #f)
     (set! (-> self reaction-delay) (rand-vu-int-range (seconds 0.1) (seconds 0.35)))
-    (if (not (dummy-23 self #f))
+    (if (not (puffer-method-23 self #f))
         (go puffer-idle)
         )
     (set! (-> self picked-point-time) (-> *display* base-frame-counter))
@@ -629,37 +561,37 @@
             )
         )
       )
-    (when (dummy-22 self)
-      (when (dummy-23 self #t)
+    (when (puffer-method-22 self)
+      (when (puffer-method-23 self #t)
         (set! (-> self picked-point-time) (-> *display* base-frame-counter))
         (set! (-> self pick-new-point-delay) (rand-vu-int-range (seconds 3) (seconds 10)))
         )
       )
     (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self reaction-delay))
-             (dummy-25 self (-> self notice-dist))
+             (puffer-method-25 self (-> self notice-dist))
              )
         (go puffer-attack)
         )
     (when (or (< (vector-vector-xz-distance (-> self root-override trans) (-> self dest-pos)) 8192.0)
               (>= (- (-> *display* base-frame-counter) (-> self picked-point-time)) (-> self pick-new-point-delay))
               )
-      (when (dummy-23 self #f)
+      (when (puffer-method-23 self #f)
         (set! (-> self picked-point-time) (-> *display* base-frame-counter))
         (set! (-> self pick-new-point-delay) (rand-vu-int-range (seconds 3) (seconds 10)))
         )
       )
-    (dummy-20 self (-> self dest-pos))
+    (puffer-method-20 self (-> self dest-pos))
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (set-vector! gp-0 (sin (-> self facing-ry)) 0.0 (cos (-> self facing-ry)) 1.0)
       (set-heading-vec-clear-roll-pitch! (-> self root-override) gp-0)
       )
     (vector-v+! (-> self root-override trans) (-> self root-override trans) (-> self root-override transv))
-    (dummy-28 self)
+    (puffer-method-28 self)
     (none)
     )
   :code (behavior ()
     (loop
-      (dummy-26 self)
+      (puffer-method-26 self)
       (suspend)
       )
     (none)
@@ -682,7 +614,7 @@
     (none)
     )
   :trans (behavior ()
-    (if (not (dummy-25 self (-> self give-up-dist)))
+    (if (not (puffer-method-25 self (-> self give-up-dist)))
         (go puffer-patrol)
         )
     (when *target*
@@ -696,18 +628,18 @@
           )
       (set-target! (-> self neck) (target-pos 5))
       )
-    (dummy-20 self (target-pos 0))
+    (puffer-method-20 self (target-pos 0))
     (let ((gp-2 (new 'stack-no-clear 'vector)))
       (set-vector! gp-2 (sin (-> self facing-ry)) 0.0 (cos (-> self facing-ry)) 1.0)
       (set-heading-vec-clear-roll-pitch! (-> self root-override) gp-2)
       )
     (vector-v+! (-> self root-override trans) (-> self root-override trans) (-> self root-override transv))
-    (dummy-28 self)
+    (puffer-method-28 self)
     (none)
     )
   :code (behavior ()
     (loop
-      (dummy-26 self)
+      (puffer-method-26 self)
       (suspend)
       )
     (none)
@@ -716,21 +648,19 @@
   )
 
 (defstate puffer-die (puffer)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as
-        uint
-        (cond
-          ((= v1-0 'death-start)
-           (the-as uint (drop-pickup (-> self fact-info-override) #t *entity-pool* (-> self fact-info-override) 0))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      uint
+      (case event-type
+        (('death-start)
+         (the-as uint (drop-pickup (-> self fact-info-override) #t *entity-pool* (-> self fact-info-override) 0))
+         )
+        (('death-end)
+         (let ((v0-0 (the-as uint (logior (-> self draw status) (draw-status hidden)))))
+           (set! (-> self draw status) (the-as draw-status v0-0))
+           v0-0
            )
-          ((= v1-0 'death-end)
-           (let ((v0-0 (the-as uint (logior (-> self draw status) (draw-status hidden)))))
-             (set! (-> self draw status) (the-as draw-status v0-0))
-             v0-0
-             )
-           )
-          )
+         )
         )
       )
     )
@@ -750,7 +680,7 @@
   :post (the-as (function none :behavior puffer) ja-post)
   )
 
-(defmethod dummy-21 puffer ((obj puffer))
+(defmethod puffer-method-21 puffer ((obj puffer))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -791,7 +721,7 @@
     (backup-collide-with-as s5-0)
     (set! (-> obj root-override) s5-0)
     )
-  (dummy-30 obj)
+  (puffer-method-30 obj)
   0
   (none)
   )
@@ -807,7 +737,7 @@
   (none)
   )
 
-(defmethod dummy-30 puffer ((obj puffer))
+(defmethod puffer-method-30 puffer ((obj puffer))
   (when (!= (-> obj cprims-type) 1)
     (set! (-> obj cprims-type) (the-as uint 1))
     (let ((v1-3 (the-as basic (-> obj root-override root-prim))))
@@ -823,7 +753,7 @@
     )
   )
 
-(defmethod dummy-31 puffer ((obj puffer))
+(defmethod puffer-method-31 puffer ((obj puffer))
   (when (!= (-> obj cprims-type) 2)
     (set! (-> obj cprims-type) (the-as uint 2))
     (let ((v1-3 (the-as basic (-> obj root-override root-prim))))
@@ -839,7 +769,7 @@
     )
   )
 
-(defmethod dummy-26 puffer ((obj puffer))
+(defmethod puffer-method-26 puffer ((obj puffer))
   (let ((f30-0 (get-current-phase (-> obj sync))))
     (if (and (< 0.025 f30-0) (< f30-0 0.525))
         (flip-look! obj #f)
@@ -1132,10 +1062,10 @@
             (-> obj skel root-channel 0 frame-group)
             )
     (((-> obj draw art-group data 10) (-> obj draw art-group data 12))
-     (dummy-31 obj)
+     (puffer-method-31 obj)
      )
     (else
-      (dummy-30 obj)
+      (puffer-method-30 obj)
       )
     )
   (none)
@@ -1159,7 +1089,7 @@
   (set! (-> obj hit-player?) #f)
   (set! (-> obj look-mean?) #f)
   (set! (-> obj travel-turn-speed) 16384.0)
-  (dummy-21 obj)
+  (puffer-method-21 obj)
   (process-drawable-from-entity! obj (-> obj entity))
   (initialize-skeleton obj *puffer-sg* '())
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
@@ -1172,7 +1102,7 @@
   (set! (-> obj give-up-dist) (+ 20480.0 (-> obj notice-dist)))
   (set! (-> obj nav) (new 'process 'nav-control (-> obj root-override) 16 40960.0))
   (logior! (-> obj nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
-  (TODO-RENAME-26 (-> obj nav))
+  (nav-control-method-26 (-> obj nav))
   (set! (-> obj path) (new 'process 'path-control obj 'path 0.0))
   (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
   (set! (-> obj fact-info-override)
@@ -1231,7 +1161,3 @@
   (go puffer-idle)
   (none)
   )
-
-
-
-

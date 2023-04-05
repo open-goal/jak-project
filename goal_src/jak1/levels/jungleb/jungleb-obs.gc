@@ -45,7 +45,7 @@
 
 (defpartgroup group-jungle-blue-eco-room-activate
   :id 190
-  :duration 900
+  :duration (seconds 3)
   :bounds (static-bspherem 0 -6 0 8)
   :parts ((sp-item 903) (sp-item 903) (sp-item 904 :flags (bit1) :period 1200 :length 15))
   )
@@ -182,19 +182,19 @@
   )
 
 (defstate eggtop-idle (eggtop)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'notify)
-                       (case (-> arg3 param 0)
-                         (('pickup)
-                          (if (type-type? (-> arg0 type) fuel-cell)
-                              (save-reminder (get-task-control (-> self entity extra perm task)) 1 0)
-                              )
-                          )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('notify)
+                      (case (-> event param 0)
+                        (('pickup)
+                         (if (type-type? (-> proc type) fuel-cell)
+                             (save-reminder (get-task-control (-> self entity extra perm task)) 1 0)
+                             )
                          )
-                       )
-              )
-      )
+                        )
+                      )
+                     )
+            )
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
@@ -363,7 +363,7 @@
               :bounds (static-spherem 0 0 0 8)
               )
 
-(defmethod TODO-RENAME-24 jng-iris-door ((obj jng-iris-door))
+(defmethod eco-door-method-24 jng-iris-door ((obj jng-iris-door))
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
@@ -382,7 +382,7 @@
   (none)
   )
 
-(defmethod TODO-RENAME-25 jng-iris-door ((obj jng-iris-door))
+(defmethod eco-door-method-25 jng-iris-door ((obj jng-iris-door))
   (initialize-skeleton obj *jng-iris-door-sg* '())
   (set! (-> obj open-distance) 32768.0)
   (set! (-> obj close-distance) 49152.0)
@@ -390,7 +390,3 @@
   0
   (none)
   )
-
-
-
-

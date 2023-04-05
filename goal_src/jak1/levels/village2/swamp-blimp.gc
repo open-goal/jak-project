@@ -45,7 +45,7 @@
 
 (defpartgroup group-tetherrock-explode
   :id 285
-  :duration 150
+  :duration (seconds 0.5)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 16)
   :parts ((sp-item 2065 :period 600 :length 5)
@@ -339,7 +339,7 @@
   :flag-assert         #xb00000018
   (:methods
     (init! (_type_ float float float float) none 9)
-    (TODO-RENAME-10 (_type_ float) none 10)
+    (swamp-rope-oscillator-method-10 (_type_ float) none 10)
     )
   )
 
@@ -355,7 +355,7 @@
   (none)
   )
 
-(defmethod TODO-RENAME-10 swamp-rope-oscillator ((obj swamp-rope-oscillator) (arg0 float))
+(defmethod swamp-rope-oscillator-method-10 swamp-rope-oscillator ((obj swamp-rope-oscillator) (arg0 float))
   (let ((f0-3 (* (- (+ (-> obj target) arg0) (-> obj value)) (* (-> obj accel) (-> *display* time-adjust-ratio)))))
     (+! (-> obj vel) f0-3)
     )
@@ -424,7 +424,7 @@
   :flag-assert         #xb0000003c
   (:methods
     (init! (_type_ vector float float float) none 9)
-    (TODO-RENAME-10 (_type_ vector) none 10)
+    (swamp-blimp-oscillator-method-10 (_type_ vector) none 10)
     )
   )
 
@@ -448,7 +448,7 @@
   (none)
   )
 
-(defmethod TODO-RENAME-10 swamp-blimp-oscillator ((obj swamp-blimp-oscillator) (arg0 vector))
+(defmethod swamp-blimp-oscillator-method-10 swamp-blimp-oscillator ((obj swamp-blimp-oscillator) (arg0 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (cond
       (arg0
@@ -538,7 +538,7 @@
   :size-assert         #x120
   :flag-assert         #x1500b00120
   (:methods
-    (dummy-20 (_type_) basic 20)
+    (swamp-rope-method-20 (_type_) basic 20)
     )
   (:states
     swamp-rope-break
@@ -548,7 +548,7 @@
   )
 
 
-(defmethod dummy-20 swamp-rope ((obj swamp-rope))
+(defmethod swamp-rope-method-20 swamp-rope ((obj swamp-rope))
   (and (-> obj other-entity)
        (not (task-closed? (-> obj other-entity extra perm task) (task-status need-reminder)))
        )
@@ -817,17 +817,17 @@
   )
 
 (defstate swamp-tetherrock-idle (swamp-tetherrock)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack)
-       (when (and (>= arg1 2) (= (-> arg3 param 1) 'eco-yellow))
+       (when (and (>= arg1 2) (= (-> event param 1) 'eco-yellow))
          (+! (-> self hits) 1)
          (cond
            ((>= (-> self hits) 1)
             (go swamp-tetherrock-break)
             )
            (else
-             (let* ((s5-0 arg0)
+             (let* ((s5-0 proc)
                     (gp-0 (if (and (nonzero? s5-0) (type-type? (-> s5-0 type) process-drawable))
                               s5-0
                               )
@@ -1001,8 +1001,8 @@
   )
 
 (defstate precursor-arm-idle (precursor-arm)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('arm-sink-evt)
        (go precursor-arm-sink)
        )
@@ -1248,7 +1248,7 @@
 (defbehavior swamp-rope-trans swamp-rope ()
   (vector<-cspace! (-> self root trans) (-> self parent-override 0 node-list data (-> self parent-rp)))
   (cond
-    ((not (dummy-20 self))
+    ((not (swamp-rope-method-20 self))
      (let ((gp-0 (new 'stack-no-clear 'matrix)))
        (quaternion->matrix gp-0 (-> self root quat))
        (set! (-> self base-vec quad) (-> gp-0 vector 1 quad))
@@ -1295,7 +1295,7 @@
              )
         (set! (-> self frame target) (fmin 1.0 (fmax 0.0 f1-3)))
         )
-      (TODO-RENAME-10 (-> self frame) 0.0)
+      (swamp-rope-oscillator-method-10 (-> self frame) 0.0)
       (let* ((v1-6 (-> self other-entity))
              (a0-4 (if v1-6
                        (-> v1-6 extra process)
@@ -1330,7 +1330,7 @@
             (set! (-> self frame target) (- 1.0 (-> (the-as swamp-rope v1-3) scale-t)))
             )
         )
-      (TODO-RENAME-10 (-> self frame) 0.0)
+      (swamp-rope-oscillator-method-10 (-> self frame) 0.0)
       (ja :num-func num-func-identity :frame-num (* (-> self frame value) (the float (ja-num-frames 0))))
       (suspend)
       )
@@ -1375,7 +1375,7 @@
     )
   (update-timer! (-> self scale-rand))
   (set! (-> self scale-oscillator target) (* 0.9 (-> self scale-oscillator target)))
-  (TODO-RENAME-10 (-> self scale-oscillator) (-> self scale-rand value))
+  (swamp-rope-oscillator-method-10 (-> self scale-oscillator) (-> self scale-rand value))
   (let ((a3-0 (new 'stack-no-clear 'vector)))
     (set! (-> a3-0 y) (+ 1.0 (-> self scale-oscillator value)))
     (set! (-> a3-0 x) (sqrtf (/ 1.0 (-> a3-0 y))))
@@ -1385,9 +1385,9 @@
     )
   (update-timer! (-> self main-tilt-rand))
   (update-timer! (-> self pos-rand))
-  (TODO-RENAME-10 (-> self main-tilt-oscillator) (-> self main-tilt-rand value))
-  (TODO-RENAME-10 (-> self gondola-tilt-oscillator) (the-as vector #f))
-  (TODO-RENAME-10 (-> self pos-oscillator) (-> self pos-rand value))
+  (swamp-blimp-oscillator-method-10 (-> self main-tilt-oscillator) (-> self main-tilt-rand value))
+  (swamp-blimp-oscillator-method-10 (-> self gondola-tilt-oscillator) (the-as vector #f))
+  (swamp-blimp-oscillator-method-10 (-> self pos-oscillator) (-> self pos-rand value))
   (new 'stack-no-clear 'vector)
   (let ((gp-0 (new 'stack-no-clear 'quaternion)))
     (let ((s5-0 (new 'stack-no-clear 'vector)))
@@ -1416,10 +1416,7 @@
     )
   (quaternion-normalize! (-> self root-override quat))
   (vector+! (-> self root-override trans) (-> self trans-at-init) (-> self pos-oscillator value))
-  (let ((f0-34 (+ (-> self root-override trans y) (-> self y-offset))))
-    (set! (-> self root-override trans y) f0-34)
-    f0-34
-    )
+  (set! (-> self root-override trans y) (+ (-> self root-override trans y) (-> self y-offset)))
   )
 
 (defstate swamp-blimp-bye-bye (swamp-blimp)
@@ -1489,7 +1486,7 @@
                  (-> self root-override trans)
                  )
                )
-              ((dummy-20 (the-as swamp-rope s4-0))
+              ((swamp-rope-method-20 (the-as swamp-rope s4-0))
                (vector+!
                  (the-as vector (-> self pos-oscillator))
                  (the-as vector (-> self pos-oscillator))
@@ -1552,14 +1549,14 @@
   )
 
 (defstate swamp-blimp-idle (swamp-blimp)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'tetherrock-break-evt)
-                       (increment-success-for-hint (game-text-id swamp-tetherrock-eco-yellow-hint))
-                       (swamp-blimp-setup)
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('tetherrock-break-evt)
+                      (increment-success-for-hint (game-text-id swamp-tetherrock-eco-yellow-hint))
+                      (swamp-blimp-setup)
+                      )
+                     )
+            )
     )
   :trans (the-as (function none :behavior swamp-blimp) blimp-trans)
   :code (behavior ()
@@ -1692,7 +1689,3 @@
       )
     )
   )
-
-
-
-

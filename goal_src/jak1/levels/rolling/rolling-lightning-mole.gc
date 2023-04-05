@@ -22,7 +22,7 @@
     (cond
       ((= v1-4 255)
        )
-      ((zero? (logand (-> arg0 poly v1-4 pat) 1))
+      ((not (logtest? (-> arg0 poly v1-4 pat) 1))
        (format 0 "ERROR<GMJ>: find-adjacent-bounds-one given a non-boundary edge to start~%")
        (return #f)
        )
@@ -81,7 +81,7 @@
   #f
   )
 
-;; WARN: Expression building failed: Function find-adjacent-bounds has a return type of none, but the expression builder found a return statement.
+;; WARN: Function find-adjacent-bounds has a return type of none, but the expression builder found a return statement.
 (defun find-adjacent-bounds ((arg0 nav-mesh) (arg1 clip-travel-vector-to-mesh-return-info))
   (when (!= (-> arg1 found-boundary) #t)
     (format 0 "ERROR<GMJ>: find-adjacent-bounds passed info which doesn't specify a boundary edge~%")
@@ -186,16 +186,12 @@
                                                (parameter-ease-sin-clamp (* 0.00081380206 (+ -409.6 f30-0)))
                                                )
           )
-    (let ((f0-9 (lerp-clamp
-                  (-> self flee-info min-stop-chase-dist)
-                  (-> self flee-info max-stop-chase-dist)
-                  (parameter-ease-sin-clamp (* 0.00081380206 (+ -409.6 f30-0)))
-                  )
-                )
+    (set! (-> self nav-info stop-chase-distance) (lerp-clamp
+                                                   (-> self flee-info min-stop-chase-dist)
+                                                   (-> self flee-info max-stop-chase-dist)
+                                                   (parameter-ease-sin-clamp (* 0.00081380206 (+ -409.6 f30-0)))
+                                                   )
           )
-      (set! (-> self nav-info stop-chase-distance) f0-9)
-      f0-9
-      )
     )
   )
 
@@ -207,7 +203,7 @@
         )
     (set! (-> gp-0 quad) (-> arg0 nav travel quad))
     (set! (-> arg0 nav travel quad) (-> arg1 quad))
-    (dummy-24 (-> arg0 nav) (-> arg0 flee-info deflection-max-dist) s2-0)
+    (nav-control-method-24 (-> arg0 nav) (-> arg0 flee-info deflection-max-dist) s2-0)
     (when (-> s2-0 found-boundary)
       (let ((s0-0 (new 'stack-no-clear 'vector))
             (s3-0 (new 'stack-no-clear 'vector))
@@ -333,12 +329,9 @@
     (quaternion->matrix s5-0 (-> self collide-info quat))
     (set! (-> self run-blend-interp) (acos (vector-dot (-> s5-0 vector 2) (-> gp-0 vector 2))))
     (set! (-> self run-blend-interp) (/ (-> self run-blend-interp) (-> self flee-info blend_interp_angle)))
-    (when (< (vector-dot (-> s5-0 vector 2) (the-as vector (-> gp-0 vector))) 0.0)
-      (let ((f0-8 (- (-> self run-blend-interp))))
-        (set! (-> self run-blend-interp) f0-8)
-        f0-8
+    (if (< (vector-dot (-> s5-0 vector 2) (the-as vector (-> gp-0 vector))) 0.0)
+        (set! (-> self run-blend-interp) (- (-> self run-blend-interp)))
         )
-      )
     )
   )
 
@@ -900,7 +893,7 @@
   :post (the-as (function none :behavior lightning-mole) fleeing-nav-enemy-chase-post)
   )
 
-(defmethod dummy-43 lightning-mole ((obj lightning-mole) (arg0 process) (arg1 event-message-block))
+(defmethod attack-handler lightning-mole ((obj lightning-mole) (arg0 process) (arg1 event-message-block))
   (send-event arg0 'get-attack-count 1)
   (when (!= (-> obj state) lightning-mole-yelp)
     (send-event arg0 'jump 32768.0 32768.0)
@@ -909,7 +902,7 @@
   (the-as object #t)
   )
 
-(defmethod dummy-44 lightning-mole ((obj lightning-mole) (arg0 process) (arg1 event-message-block))
+(defmethod touch-handler lightning-mole ((obj lightning-mole) (arg0 process) (arg1 event-message-block))
   (when (!= (-> obj state) lightning-mole-yelp)
     (send-event arg0 'jump 32768.0 32768.0)
     (go lightning-mole-yelp)
@@ -991,7 +984,7 @@
     )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *lightning-mole-sg* '())
-  (TODO-RENAME-45 obj *lightning-mole-nav-enemy-info*)
+  (init-defaults! obj *lightning-mole-nav-enemy-info*)
   (logclear! (-> obj nav flags) (nav-control-flags navcf5 navcf6 navcf7))
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
   (set! (-> obj reaction-time) (seconds 0.05))
@@ -1033,7 +1026,7 @@
 
 (defpartgroup group-peeper
   :id 456
-  :duration 5
+  :duration (seconds 0.017)
   :bounds (static-bspherem 0 0 0 15)
   :parts ((sp-item 1768) (sp-item 1769 :period 120 :length 30) (sp-item 1770 :period 120 :length 60))
   )
@@ -1199,16 +1192,16 @@
 
 
 (defstate peeper-wait (peeper)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'hide)
-                       (let ((v0-0 (-> *display* base-frame-counter)))
-                         (set! (-> self state-time) v0-0)
-                         v0-0
-                         )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('hide)
+                      (let ((v0-0 (-> *display* base-frame-counter)))
+                        (set! (-> self state-time) v0-0)
+                        v0-0
+                        )
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (if (nonzero? (-> self sound))
@@ -1253,8 +1246,8 @@
   )
 
 (defstate peeper-down (peeper)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('hide)
        (go peeper-wait)
        )
@@ -1301,8 +1294,8 @@
   )
 
 (defstate peeper-up (peeper)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('hide)
        (go peeper-hide)
        )
@@ -1344,7 +1337,3 @@
   (go peeper-up)
   (none)
   )
-
-
-
-

@@ -106,8 +106,8 @@
 
 
 (defstate qbert-plat-on-mimic (qbert-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('die)
        (go qbert-plat-on-die)
        )
@@ -160,7 +160,7 @@
 (defbehavior qbert-plat-event-handler qbert-plat ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('notify)
-     (dummy-32 self)
+     (rigid-body-platform-method-32 self)
      )
     (else
       (rigid-body-platform-event-handler arg0 arg1 arg2 arg3)
@@ -168,7 +168,7 @@
     )
   )
 
-(defmethod dummy-33 qbert-plat ((obj qbert-plat))
+(defmethod rigid-body-platform-method-33 qbert-plat ((obj qbert-plat))
   (let* ((a1-0 (-> obj master))
          (v1-0 (if a1-0
                    (-> a1-0 extra process)
@@ -181,7 +181,7 @@
     )
   )
 
-(defmethod dummy-32 qbert-plat ((obj qbert-plat))
+(defmethod rigid-body-platform-method-32 qbert-plat ((obj qbert-plat))
   (let* ((v1-0 (-> obj master))
          (a0-1 (if v1-0
                    (-> v1-0 extra process)
@@ -221,7 +221,7 @@
                   (-> v1-0 extra process)
                   )
           (suspend)
-          (dummy-32 self)
+          (rigid-body-platform-method-32 self)
           (go-virtual rigid-body-platform-idle)
           )
         )
@@ -262,7 +262,7 @@
            )
       (when gp-1
         (if (not (-> self player-is-riding?))
-            (dummy-33 self)
+            (rigid-body-platform-method-33 self)
             )
         )
       (set! (-> self player-is-riding?) gp-1)
@@ -282,21 +282,21 @@
     )
   )
 
-(defmethod TODO-RENAME-22 qbert-plat ((obj qbert-plat) (arg0 vector) (arg1 float))
+(defmethod rigid-body-platform-method-22 qbert-plat ((obj qbert-plat) (arg0 vector) (arg1 float))
   (+ (-> obj anchor-point y)
      (-> obj float-height-offset)
      (* 512.0 (cos (* 546.13336 (+ (* 60.0 arg1) (* 0.03 (-> arg0 x)) (* 0.03 (-> arg0 z))))))
      )
   )
 
-(defmethod TODO-RENAME-23 qbert-plat ((obj qbert-plat) (arg0 float))
+(defmethod rigid-body-platform-method-23 qbert-plat ((obj qbert-plat) (arg0 float))
   ((the-as (function rigid-body-platform float none) (find-parent-method qbert-plat 23)) obj arg0)
-  (TODO-RENAME-27 obj (-> obj anchor-point))
+  (rigid-body-platform-method-27 obj (-> obj anchor-point))
   0
   (none)
   )
 
-(defmethod TODO-RENAME-30 qbert-plat ((obj qbert-plat))
+(defmethod rigid-body-platform-method-30 qbert-plat ((obj qbert-plat))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -321,12 +321,12 @@
   (none)
   )
 
-(defmethod TODO-RENAME-31 qbert-plat ((obj qbert-plat))
+(defmethod rigid-body-platform-method-31 qbert-plat ((obj qbert-plat))
   (initialize-skeleton obj *qbert-plat-sg* '())
   (set! (-> obj anchor-point quad) (-> obj root-overlay trans quad))
   (logior! (-> obj skel status) (janim-status inited))
   (update-transforms! (-> obj root-overlay))
-  (TODO-RENAME-29 obj *qbert-plat-constants*)
+  (rigid-body-platform-method-29 obj *qbert-plat-constants*)
   (set! (-> obj float-height-offset) 6144.0)
   (let ((v1-11 (-> obj control-point-array data)))
     (set! (-> v1-11 0 local-pos x) -14336.0)
@@ -363,9 +363,9 @@
 
 (defmethod init-from-entity! qbert-plat ((obj qbert-plat) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
-  (TODO-RENAME-30 obj)
+  (rigid-body-platform-method-30 obj)
   (process-drawable-from-entity! obj arg0)
-  (TODO-RENAME-31 obj)
+  (rigid-body-platform-method-31 obj)
   (go qbert-plat-wait-for-master)
   (none)
   )
@@ -375,19 +375,19 @@
   )
 
 (defstate qbert-plat-master-idle (qbert-plat-master)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (start-hint-timer (game-text-id sunken-qbert-plat-hint))
        (close-specific-task! (game-task sunken-platforms) (task-status need-hint))
        (when (not (-> self puzzle-beaten?))
-         (let ((v1-2 (-> arg3 param 0)))
+         (let ((v1-2 (-> event param 0)))
            (when (!= v1-2 (-> self last-plat-triggered))
              (set! (-> self last-plat-triggered) (the-as int v1-2))
              (let ((s5-1 (= (-> self plat-states-needed-to-open-door) (-> self plat-states))))
                (let ((v1-3 (ash 1 v1-2)))
                  (logxor! (-> self plat-states) (the-as uint v1-3))
-                 (if (zero? (logand v1-3 (-> self plat-states)))
+                 (if (not (logtest? v1-3 (-> self plat-states)))
                      (level-hint-spawn
                        (game-text-id sunken-qbert-plat-hint)
                        "sksp0130"
@@ -397,7 +397,7 @@
                        )
                      )
                  )
-               (send-event arg0 'notify)
+               (send-event proc 'notify)
                (let ((a0-13 (= (-> self plat-states-needed-to-open-door) (-> self plat-states))))
                  (if (!= s5-1 a0-13)
                      (go qbert-plat-master-do-door a0-13)
@@ -754,7 +754,3 @@
   (go qbert-plat-master-wait-for-door)
   (none)
   )
-
-
-
-

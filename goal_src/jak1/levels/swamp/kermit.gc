@@ -317,7 +317,7 @@
 
 (defpartgroup group-kermit-pulse-impact
   :id 301
-  :duration 5
+  :duration (seconds 0.017)
   :bounds (static-bspherem 0 0 0 3)
   :parts ((sp-item 1371) (sp-item 1372))
   )
@@ -526,10 +526,10 @@
 
 
 (defstate kermit-pulse-idle (kermit-pulse)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch 'attack)
-       (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+       (send-event proc 'attack (-> event param 0) (new 'static 'attack-info))
        (go kermit-pulse-impact)
        )
       )
@@ -861,7 +861,7 @@ nav-enemy-default-event-handler
 (defbehavior kermit-post kermit ()
   (cond
     ((-> self airborne)
-     (dummy-11 (-> self nav) (-> self nav target-pos))
+     (nav-control-method-11 (-> self nav) (-> self nav target-pos))
      (set! (-> self collide-info transv x) (-> self nav travel x))
      (set! (-> self collide-info transv y) 0.0)
      (set! (-> self collide-info transv z) (-> self nav travel z))
@@ -879,9 +879,6 @@ nav-enemy-default-event-handler
        (-> self collide-info transv)
        (compute-acc-due-to-gravity (-> self collide-info) (new-stack-vector0) 0.0)
        )
-     ;; high fps fix
-     (*! (-> self collide-info transv x) DISPLAY_FPS_RATIO)
-     (*! (-> self collide-info transv z) DISPLAY_FPS_RATIO)
      (integrate-for-enemy-with-move-to-ground!
        (-> self collide-info)
        (-> self collide-info transv)
@@ -949,7 +946,7 @@ nav-enemy-default-event-handler
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set-mode! (-> self neck) (joint-mod-handler-mode flex-blend))
     (kermit-get-new-patrol-point)
-    (dummy-11 (-> self nav) (-> self nav target-pos))
+    (nav-control-method-11 (-> self nav) (-> self nav target-pos))
     (none)
     )
   :trans (behavior ()
@@ -1050,7 +1047,7 @@ nav-enemy-default-event-handler
           (kermit-set-nav-mesh-target (-> self collide-info trans))
           )
       )
-    (dummy-11 (-> self nav) (-> self nav target-pos))
+    (nav-control-method-11 (-> self nav) (-> self nav target-pos))
     (none)
     )
   :trans (behavior ()
@@ -1092,7 +1089,7 @@ nav-enemy-default-event-handler
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set-mode! (-> self neck) (joint-mod-handler-mode look-at))
     (kermit-set-nav-mesh-target (-> self collide-info trans))
-    (dummy-11 (-> self nav) (-> self nav target-pos))
+    (nav-control-method-11 (-> self nav) (-> self nav target-pos))
     (none)
     )
   :trans (behavior ()
@@ -1420,7 +1417,7 @@ nav-enemy-default-event-handler
   (initialize-skeleton obj *kermit-sg* '())
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
   (set! (-> obj airborne) #f)
-  (TODO-RENAME-45 obj *kermit-nav-enemy-info*)
+  (init-defaults! obj *kermit-nav-enemy-info*)
   (set-vector! (-> obj neck twist-max) 3640.889 3640.889 0.0 1.0)
   (set! (-> obj neck up) (the-as uint 1))
   (set! (-> obj neck nose) (the-as uint 2))
@@ -1442,7 +1439,3 @@ nav-enemy-default-event-handler
   (go kermit-idle)
   (none)
   )
-
-
-
-

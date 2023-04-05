@@ -37,10 +37,10 @@
     (basebutton-startup () _type_ :state 23)
     (basebutton-up-idle () _type_ :state 24)
     (reset! (_type_) float 25)
-    (TODO-RENAME-26 (_type_) none 26)
-    (TODO-RENAME-27 (_type_) collide-shape-moving 27)
+    (basebutton-method-26 (_type_) none 26)
+    (basebutton-method-27 (_type_) collide-shape-moving 27)
     (arm-trigger-event! (_type_) symbol 28)
-    (TODO-RENAME-29 (_type_ symbol entity) none 29)
+    (basebutton-method-29 (_type_ symbol entity) none 29)
     (move-to-vec-or-quat! (_type_ vector quaternion) quaternion 30)
     (press! (_type_ symbol) int 31)
     )
@@ -77,12 +77,12 @@
 
 (defstate basebutton-up-idle (basebutton)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack)
-       (case (-> arg3 param 1)
+       (case (-> event param 1)
          (('flop)
-          (TODO-RENAME-29 self (-> self event-going-down) (-> self notify-actor))
+          (basebutton-method-29 self (-> self event-going-down) (-> self notify-actor))
           (sound-play "silo-button")
           (go-virtual basebutton-going-down)
           )
@@ -93,7 +93,7 @@
        (go-virtual basebutton-going-down)
        )
       (('move-to)
-       (move-to-vec-or-quat! self (the-as vector (-> arg3 param 0)) (the-as quaternion (-> arg3 param 1)))
+       (move-to-vec-or-quat! self (the-as vector (-> event param 0)) (the-as quaternion (-> event param 1)))
        )
       )
     )
@@ -121,14 +121,14 @@
 
 (defstate basebutton-going-down (basebutton)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('untrigger)
        (sound-play "silo-button")
        (go-virtual basebutton-going-up)
        )
       (('move-to)
-       (move-to-vec-or-quat! self (the-as vector (-> arg3 param 0)) (the-as quaternion (-> arg3 param 1)))
+       (move-to-vec-or-quat! self (the-as vector (-> event param 0)) (the-as quaternion (-> event param 1)))
        )
       )
     )
@@ -143,7 +143,7 @@
       (suspend)
       (ja :num! (seek! max (-> self anim-speed)))
       )
-    (TODO-RENAME-29 self (-> self event-down) (-> self notify-actor))
+    (basebutton-method-29 self (-> self event-down) (-> self notify-actor))
     (go-virtual basebutton-down-idle)
     (none)
     )
@@ -160,14 +160,14 @@
 
 (defstate basebutton-down-idle (basebutton)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('untrigger)
        (sound-play "silo-button")
        (go-virtual basebutton-going-up)
        )
       (('move-to)
-       (move-to-vec-or-quat! self (the-as vector (-> arg3 param 0)) (the-as quaternion (-> arg3 param 1)))
+       (move-to-vec-or-quat! self (the-as vector (-> event param 0)) (the-as quaternion (-> event param 1)))
        )
       )
     )
@@ -191,7 +191,7 @@
         (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (the int (* 300.0 (-> self timeout))))
           (suspend)
           )
-        (TODO-RENAME-29 self (-> self event-going-up) (-> self notify-actor))
+        (basebutton-method-29 self (-> self event-going-up) (-> self notify-actor))
         (sound-play "silo-button")
         (go-virtual basebutton-going-up)
         )
@@ -211,10 +211,10 @@
 
 (defstate basebutton-going-up (basebutton)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('move-to)
-       (move-to-vec-or-quat! self (the-as vector (-> arg3 param 0)) (the-as quaternion (-> arg3 param 1)))
+       (move-to-vec-or-quat! self (the-as vector (-> event param 0)) (the-as quaternion (-> event param 1)))
        )
       (('trigger)
        (sound-play "silo-button")
@@ -233,7 +233,7 @@
       (suspend)
       (ja :num! (seek! 0.0 (-> self anim-speed)))
       )
-    (TODO-RENAME-29 self (-> self event-up) (-> self notify-actor))
+    (basebutton-method-29 self (-> self event-up) (-> self notify-actor))
     (go-virtual basebutton-up-idle)
     (none)
     )
@@ -264,7 +264,7 @@
     )
   )
 
-(defmethod TODO-RENAME-29 basebutton ((obj basebutton) (arg0 symbol) (arg1 entity))
+(defmethod basebutton-method-29 basebutton ((obj basebutton) (arg0 symbol) (arg1 entity))
   (with-pp
     (when arg0
       (cond
@@ -304,10 +304,7 @@
   (set! (-> obj event-down) #f)
   (set! (-> obj event-going-up) #f)
   (set! (-> obj event-up) #f)
-  (let ((f0-1 1.0))
-    (set! (-> obj anim-speed) f0-1)
-    f0-1
-    )
+  (set! (-> obj anim-speed) 1.0)
   )
 
 (defmethod arm-trigger-event! basebutton ((obj basebutton))
@@ -317,7 +314,7 @@
     )
   )
 
-(defmethod TODO-RENAME-26 basebutton ((obj basebutton))
+(defmethod basebutton-method-26 basebutton ((obj basebutton))
   (initialize-skeleton obj *generic-button-sg* '())
   (logior! (-> obj skel status) (janim-status inited))
   (ja-channel-set! 1)
@@ -351,7 +348,7 @@
   (none)
   )
 
-(defmethod TODO-RENAME-27 basebutton ((obj basebutton))
+(defmethod basebutton-method-27 basebutton ((obj basebutton))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -406,7 +403,7 @@
         (set! (-> obj button-id) (actor-count-before (-> obj link)))
         )
     )
-  (TODO-RENAME-27 obj)
+  (basebutton-method-27 obj)
   (process-drawable-from-entity! obj arg0)
   (let ((v1-16 #f))
     (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
@@ -420,7 +417,7 @@
       (nav-mesh-connect obj (-> obj root-override) (the-as nav-control #f))
       )
   (arm-trigger-event! obj)
-  (TODO-RENAME-26 obj)
+  (basebutton-method-26 obj)
   (go (method-of-object obj basebutton-startup))
   (none)
   )
@@ -435,24 +432,23 @@
   (if arg0
       (set! (-> self entity) arg0)
       )
-  (TODO-RENAME-27 self)
+  (basebutton-method-27 self)
   (set! (-> self root-override trans quad) (-> arg1 quad))
   (quaternion-copy! (-> self root-override quat) arg2)
   (set-vector! (-> self root-override scale) 1.0 1.0 1.0 1.0)
   (arm-trigger-event! self)
-  (TODO-RENAME-26 self)
+  (basebutton-method-26 self)
   (go-virtual basebutton-startup)
   (none)
   )
 
-(define *warp-info* (the-as (array string) (new 'static 'boxed-array :type string
-                                             "training-warp"
-                                             "village1-warp"
-                                             "village2-warp"
-                                             "village3-warp"
-                                             "citadel-warp"
-                                             )
-                                           )
+(define *warp-info* (new 'static 'boxed-array :type string
+                      "training-warp"
+                      "village1-warp"
+                      "village2-warp"
+                      "village3-warp"
+                      "citadel-warp"
+                      )
         )
 
 (deftype warp-gate (process-drawable)
@@ -508,7 +504,7 @@
     ;; dispose the old code from memory.
     (case (-> self level)
       (('citadel 'lavatube 'training)
-       (while (and *target* (zero? (logand (-> *target* draw status) (draw-status hidden))))
+       (while (and *target* (not (logtest? (-> *target* draw status) (draw-status hidden))))
          (suspend)
          )
        )
@@ -555,8 +551,8 @@
         )
 
 (defstate target-warp-out (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('death-end)
        (let ((v0-0 (the-as object (logior (-> self draw status) (draw-status hidden)))))
          (set! (-> self draw status) (the-as draw-status v0-0))
@@ -564,7 +560,7 @@
          )
        )
       (else
-        (target-generic-event-handler arg0 arg1 arg2 arg3)
+        (target-generic-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -676,7 +672,3 @@
     )
   :post target-no-stick-post
   )
-
-
-
-
