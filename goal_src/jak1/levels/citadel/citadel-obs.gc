@@ -355,7 +355,7 @@
   :flag-assert         #x16005000bc
   (:methods
     (init! (_type_) none 20)
-    (dummy-21 (_type_) none 21)
+    (citb-disc-method-21 (_type_) none 21)
     )
   (:states
     citb-disc-idle
@@ -364,14 +364,14 @@
 
 
 (defstate citb-disc-idle (citb-disc)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'touch)
-                       (send-event arg0 'no-look-around (seconds 0.25))
-                       #f
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('touch)
+                      (send-event proc 'no-look-around (seconds 0.25))
+                      #f
+                      )
+                     )
+            )
     )
   :trans (the-as (function none :behavior citb-disc) rider-trans)
   :code (behavior ()
@@ -416,7 +416,7 @@
   (none)
   )
 
-(defmethod dummy-21 citb-disc ((obj citb-disc))
+(defmethod citb-disc-method-21 citb-disc ((obj citb-disc))
   0
   (none)
   )
@@ -437,7 +437,7 @@
         )
       )
     )
-  (dummy-21 obj)
+  (citb-disc-method-21 obj)
   (set! (-> obj sound)
         (new 'process 'ambient-sound (static-sound-spec "rotate-plat" :fo-max 20) (-> obj root-override trans))
         )
@@ -482,25 +482,25 @@
   )
 
 
-(defmethod dummy-21 citb-disc-a ((obj citb-disc-a))
+(defmethod citb-disc-method-21 citb-disc-a ((obj citb-disc-a))
   (initialize-skeleton obj *citb-disc-a-sg* '())
   0
   (none)
   )
 
-(defmethod dummy-21 citb-disc-b ((obj citb-disc-b))
+(defmethod citb-disc-method-21 citb-disc-b ((obj citb-disc-b))
   (initialize-skeleton obj *citb-disc-b-sg* '())
   0
   (none)
   )
 
-(defmethod dummy-21 citb-disc-c ((obj citb-disc-c))
+(defmethod citb-disc-method-21 citb-disc-c ((obj citb-disc-c))
   (initialize-skeleton obj *citb-disc-c-sg* '())
   0
   (none)
   )
 
-(defmethod dummy-21 citb-disc-d ((obj citb-disc-d))
+(defmethod citb-disc-method-21 citb-disc-d ((obj citb-disc-d))
   (initialize-skeleton obj *citb-disc-d-sg* '())
   0
   (none)
@@ -520,7 +520,7 @@
               :bounds (static-spherem 0 0 0 8)
               )
 
-(defmethod TODO-RENAME-24 citb-iris-door ((obj citb-iris-door))
+(defmethod eco-door-method-24 citb-iris-door ((obj citb-iris-door))
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
@@ -539,7 +539,7 @@
   (none)
   )
 
-(defmethod TODO-RENAME-25 citb-iris-door ((obj citb-iris-door))
+(defmethod eco-door-method-25 citb-iris-door ((obj citb-iris-door))
   (initialize-skeleton obj *citb-iris-door-sg* '())
   (set! (-> obj open-distance) 32768.0)
   (set! (-> obj close-distance) 49152.0)
@@ -564,7 +564,7 @@
   )
 
 
-(defmethod TODO-RENAME-27 citb-button ((obj citb-button))
+(defmethod basebutton-method-27 citb-button ((obj citb-button))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -587,7 +587,7 @@
   (the-as collide-shape-moving 0)
   )
 
-(defmethod TODO-RENAME-26 citb-button ((obj citb-button))
+(defmethod basebutton-method-26 citb-button ((obj citb-button))
   (initialize-skeleton obj *citb-button-sg* '())
   (logior! (-> obj skel status) (janim-status inited))
   (ja-channel-set! 1)
@@ -654,7 +654,7 @@
   *citb-launcher-sg*
   )
 
-(defmethod dummy-26 citb-launcher ((obj citb-launcher))
+(defmethod baseplat-method-26 citb-launcher ((obj citb-launcher))
   (let ((f30-0 (res-lump-float (-> obj entity) 'spring-height :default 163840.0))
         (s5-0 (res-lump-value (-> obj entity) 'mode uint128))
         )
@@ -735,12 +735,12 @@
 
 
 (defstate citb-robotboss-idle (citb-robotboss)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (sv-96 int) (sv-112 int))
     (the-as
       object
       (cond
-        ((= arg2 'shield-off)
+        ((= event-type 'shield-off)
          (stop! (-> self sound))
          (if (-> self shield-on)
              (sound-play "robotcage-off")
@@ -748,17 +748,17 @@
          (set! (-> self shield-on) #f)
          #f
          )
-        ((= arg2 'shield-on)
+        ((= event-type 'shield-on)
          (let ((v0-3 #t))
            (set! (-> self shield-on) v0-3)
            v0-3
            )
          )
-        ((= arg2 'die)
+        ((= event-type 'die)
          (cleanup-for-death self)
          (the-as symbol (deactivate self))
          )
-        ((or (= arg2 'touch) (= arg2 'attack))
+        ((or (= event-type 'touch) (= event-type 'attack))
          (let ((s4-0 sound-play-by-name)
                (s3-0 (make-u128 #x7061 (the-as uint #x7a2d646c65696873)))
                (s2-0 (new-sound-id))
@@ -772,9 +772,9 @@
              )
            )
          (the-as symbol (send-event
-                          arg0
+                          proc
                           'shove
-                          (-> arg3 param 0)
+                          (-> event param 0)
                           (static-attack-info ((shove-up (meters 2)) (shove-back (meters 3))))
                           )
                  )
@@ -918,8 +918,8 @@
   )
 
 (defstate citb-coil-idle (citb-coil)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (go citb-coil-break)
        )
@@ -1118,7 +1118,7 @@
   :flag-assert         #x1600c00124
   (:methods
     (init! (_type_) none 20)
-    (dummy-21 (_type_) none 21)
+    (citb-generator-method-21 (_type_) none 21)
     )
   (:states
     citb-generator-break
@@ -1225,8 +1225,8 @@
   )
 
 (defstate citb-generator-idle (citb-generator)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack)
        (if (-> self mushroom)
            (increment-success-for-hint (game-text-id citadel-generator))
@@ -1382,7 +1382,7 @@
   (none)
   )
 
-(defmethod dummy-21 citb-generator ((obj citb-generator))
+(defmethod citb-generator-method-21 citb-generator ((obj citb-generator))
   (initialize-skeleton obj *citb-generator-sg* '())
   (setup-lods! (-> obj normal-look) *citb-generator-sg* (-> obj draw art-group) (-> obj entity))
   (setup-lods! (-> obj broken-look) *citb-generator-broken-sg* (-> obj draw art-group) (-> obj entity))
@@ -1430,7 +1430,7 @@
 (defmethod init-from-entity! citb-generator ((obj citb-generator) (arg0 entity-actor))
   (init! obj)
   (process-drawable-from-entity! obj arg0)
-  (dummy-21 obj)
+  (citb-generator-method-21 obj)
   (let ((v1-4 (entity-actor-lookup (-> obj entity) 'state-actor 0)))
     (if (not v1-4)
         (set! v1-4 (-> obj entity))
@@ -1462,8 +1462,8 @@
 
 
 (defstate citadelcam-idle (citadelcam)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (when (and (task-complete? *game-info* (game-task citadel-sage-blue))
                   (task-complete? *game-info* (game-task citadel-sage-red))
@@ -1525,13 +1525,7 @@
         (suspend)
         )
       )
-    (level-hint-spawn
-      (game-text-id citadel-plat)
-      "sksp0387"
-      (the-as entity #f)
-      *entity-pool*
-      (game-task none)
-      )
+    (level-hint-spawn (game-text-id citadel-plat) "sksp0387" (the-as entity #f) *entity-pool* (game-task none))
     (go citadelcam-idle)
     (none)
     )
@@ -1557,13 +1551,7 @@
 (defstate battlecontroller-play-intro-camera (citb-battlecontroller)
   :virtual #t
   :code (behavior ()
-    (level-hint-spawn
-      (game-text-id citadel-battle)
-      "sksp0383"
-      (the-as entity #f)
-      *entity-pool*
-      (game-task none)
-      )
+    (level-hint-spawn (game-text-id citadel-battle) "sksp0383" (the-as entity #f) *entity-pool* (game-task none))
     (suspend)
     (let ((gp-1 (ppointer->handle (process-spawn
                                     pov-camera
@@ -1602,13 +1590,9 @@
     )
   )
 
-(defmethod TODO-RENAME-27 citb-battlecontroller ((obj citb-battlecontroller))
+(defmethod battlecontroller-method-27 citb-battlecontroller ((obj citb-battlecontroller))
   ((the-as (function battlecontroller none) (find-parent-method citb-battlecontroller 27)) obj)
   (set! (-> obj activate-distance) 143360.0)
   0
   (none)
   )
-
-
-
-

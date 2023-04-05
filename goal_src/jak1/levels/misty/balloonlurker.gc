@@ -11,8 +11,8 @@
 
 (defpartgroup group-balloonlurker-pilot-death
   :id 203
-  :duration 5
-  :linger-duration 600
+  :duration (seconds 0.017)
+  :linger-duration (seconds 2)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 12)
   :parts ((sp-item 2015))
@@ -37,7 +37,7 @@
 
 (defpartgroup group-balloonlurker-mine-explosion
   :id 204
-  :duration 600
+  :duration (seconds 2)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 16)
   :parts ((sp-item 964 :period 1200 :length 30)
@@ -319,8 +319,8 @@
   :size-assert         #xb0
   :flag-assert         #x16004000b0
   (:methods
-    (dummy-20 (_type_) none 20)
-    (dummy-21 (_type_) none 21)
+    (balloonlurker-pilot-method-20 (_type_) none 20)
+    (balloonlurker-pilot-method-21 (_type_) none 21)
     )
   (:states
     balloonlurker-pilot-die
@@ -376,7 +376,7 @@
         )
     (eval-path-curve-div! (-> self path) s4-0 (the float arg0) 'interp)
     (set! (-> self root-overlay trans quad) (-> s4-0 quad))
-    (TODO-RENAME-12 (-> self path) gp-0 (the float arg0))
+    (path-control-method-12 (-> self path) gp-0 (the float arg0))
     (set! (-> gp-0 y) 0.0)
     (vector-normalize! gp-0 1.0)
     (forward-up-nopitch->quaternion (-> self root-overlay quat) gp-0 *up-vector*)
@@ -469,7 +469,7 @@
     )
   )
 
-(defmethod TODO-RENAME-23 balloonlurker ((obj balloonlurker) (arg0 float))
+(defmethod rigid-body-platform-method-23 balloonlurker ((obj balloonlurker) (arg0 float))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (let ((s3-0 (new 'stack-no-clear 'vector))
           (s4-0 (-> obj rbody matrix))
@@ -477,7 +477,7 @@
       (dotimes (s2-0 4)
         (let ((s1-0 (-> obj control-point-array data s2-0)))
           (vector-matrix*! (-> s1-0 world-pos) (-> s1-0 local-pos) s4-0)
-          (TODO-RENAME-17 (-> obj rbody) (-> s1-0 world-pos) (-> s1-0 velocity))
+          (rigid-body-method-17 (-> obj rbody) (-> s1-0 world-pos) (-> s1-0 velocity))
           (let* ((f30-0 (vector-vector-xz-distance (-> obj dest-point) (-> obj root-overlay trans)))
                  (f0-0 (vector-vector-xz-distance (-> obj dest-point-old) (-> obj root-overlay trans)))
                  (f0-6
@@ -502,16 +502,16 @@
                  )
               )
             )
-          (TODO-RENAME-13 (-> obj rbody) (-> s1-0 world-pos) s5-0)
+          (rigid-body-method-13 (-> obj rbody) (-> s1-0 world-pos) s5-0)
           (vector-float*! s5-0 (-> s1-0 velocity) (* -1.0 (-> obj info drag-factor)))
-          (TODO-RENAME-13 (-> obj rbody) (-> s1-0 world-pos) s5-0)
+          (rigid-body-method-13 (-> obj rbody) (-> s1-0 world-pos) s5-0)
           )
         0
         )
       (let ((s2-1 (-> obj control-point-array data 4)))
         (let ((f30-1 (* (-> *BALLOONLURKER-bank* max-rudder-deflection-angle) (-> obj rudder-control))))
           (vector-matrix*! (-> s2-1 world-pos) (-> s2-1 local-pos) s4-0)
-          (TODO-RENAME-17 (-> obj rbody) (-> s2-1 world-pos) (-> s2-1 velocity))
+          (rigid-body-method-17 (-> obj rbody) (-> s2-1 world-pos) (-> s2-1 velocity))
           (set-vector! s3-0 (cos f30-1) 0.0 (sin f30-1) 1.0)
           )
         (vector-rotate*! s3-0 s3-0 s4-0)
@@ -520,14 +520,14 @@
           s3-0
           (* -1.0 (-> *BALLOONLURKER-bank* rudder-factor) (vector-dot s3-0 (-> s2-1 velocity)))
           )
-        (TODO-RENAME-13 (-> obj rbody) (-> s2-1 world-pos) s5-0)
+        (rigid-body-method-13 (-> obj rbody) (-> s2-1 world-pos) s5-0)
         )
       0
       (let ((s3-1 (-> obj control-point-array data 5)))
         (vector-matrix*! (-> s3-1 world-pos) (-> s3-1 local-pos) s4-0)
         (set! (-> s3-1 world-pos quad) (-> s3-1 world-pos quad))
         (vector-float*! s5-0 (-> s4-0 vector 2) (-> obj engine-thrust))
-        (TODO-RENAME-13 (-> obj rbody) (-> s3-1 world-pos) s5-0)
+        (rigid-body-method-13 (-> obj rbody) (-> s3-1 world-pos) s5-0)
         )
       )
     (dotimes (s4-1 2)
@@ -540,7 +540,7 @@
                      )
               )
           (vector-float*! s5-0 *y-vector* (-> *BALLOONLURKER-bank* mine-weight))
-          (TODO-RENAME-13 (-> obj rbody) (-> v1-43 world-pos) s5-0)
+          (rigid-body-method-13 (-> obj rbody) (-> v1-43 world-pos) s5-0)
           )
         )
       )
@@ -549,15 +549,15 @@
       *y-vector*
       (* -1.0 (-> obj info gravity-factor) (-> obj info gravity) (-> obj rbody mass))
       )
-    (TODO-RENAME-15 (-> obj rbody) s5-0)
+    (rigid-body-method-15 (-> obj rbody) s5-0)
     )
   (when (or (-> obj player-impulse) (-> obj player-contact))
     (set! (-> obj player-impulse) #f)
-    (TODO-RENAME-13 (-> obj rbody) (-> obj player-force-position) (-> obj player-force))
+    (rigid-body-method-13 (-> obj rbody) (-> obj player-force-position) (-> obj player-force))
     )
   (when (-> obj explosion)
     (set! (-> obj explosion) #f)
-    (TODO-RENAME-13 (-> obj rbody) (-> obj explosion-force-position) (-> obj explosion-force))
+    (rigid-body-method-13 (-> obj rbody) (-> obj explosion-force-position) (-> obj explosion-force))
     )
   0
   (none)
@@ -666,9 +666,9 @@
     (quaternion-vector-angle! gp-1 *x-vector* f0-34)
     (quaternion*! (-> self rudder transform quat) (the-as quaternion *balloonlurker-rudder-joint-home*) gp-1)
     )
-  (TODO-RENAME-28 self)
+  (rigid-body-platform-method-28 self)
   (quaternion-copy! (-> self root-overlay quat) (-> self rbody rotation))
-  (TODO-RENAME-18 (-> self rbody) (-> self root-overlay trans))
+  (rigid-body-method-18 (-> self rbody) (-> self root-overlay trans))
   (balloonlurker-play-sounds)
   (when (nonzero? (-> self draw))
     (cond
@@ -830,8 +830,8 @@
   )
 
 (defstate balloonlurker-pilot-idle (balloonlurker-pilot)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack)
        (send-event (ppointer->process (-> self parent-override)) 'die)
        (go balloonlurker-pilot-die)
@@ -874,7 +874,7 @@
       (-> self root-override trans)
       :to *entity-pool*
       )
-    (TODO-RENAME-17
+    (rigid-body-method-17
       (-> self parent-override 0 rbody)
       (-> self root-override trans)
       (-> self root-override transv)
@@ -900,7 +900,7 @@
     )
   )
 
-(defmethod dummy-20 balloonlurker-pilot ((obj balloonlurker-pilot))
+(defmethod balloonlurker-pilot-method-20 balloonlurker-pilot ((obj balloonlurker-pilot))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -923,7 +923,7 @@
   (none)
   )
 
-(defmethod dummy-21 balloonlurker-pilot ((obj balloonlurker-pilot))
+(defmethod balloonlurker-pilot-method-21 balloonlurker-pilot ((obj balloonlurker-pilot))
   (initialize-skeleton obj *balloonlurker-pilot-sg* '())
   (set! (-> obj draw origin-joint-index) (the-as uint 6))
   0
@@ -932,7 +932,7 @@
 
 (defbehavior balloonlurker-pilot-init-by-other balloonlurker-pilot ((arg0 balloonlurker))
   (set! (-> self mask) (logior (process-mask enemy) (-> self mask)))
-  (dummy-20 self)
+  (balloonlurker-pilot-method-20 self)
   (logclear! (-> self mask) (process-mask actor-pause))
   (set! (-> self fact)
         (new 'process 'fact-info-enemy self (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
@@ -940,12 +940,12 @@
   (set! (-> self root-override trans quad) (-> arg0 root-overlay trans quad))
   (set! (-> self root-override quat vec quad) (-> arg0 root-overlay quat vec quad))
   (set! (-> self root-override scale quad) (-> arg0 root-overlay scale quad))
-  (dummy-21 self)
+  (balloonlurker-pilot-method-21 self)
   (go balloonlurker-pilot-idle)
   (none)
   )
 
-(defmethod TODO-RENAME-30 balloonlurker ((obj balloonlurker))
+(defmethod rigid-body-platform-method-30 balloonlurker ((obj balloonlurker))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -1000,7 +1000,7 @@
   (none)
   )
 
-(defmethod TODO-RENAME-31 balloonlurker ((obj balloonlurker))
+(defmethod rigid-body-platform-method-31 balloonlurker ((obj balloonlurker))
   (logclear! (-> obj mask) (process-mask actor-pause))
   (initialize-skeleton obj *balloonlurker-sg* '())
   (set! (-> obj root-overlay pause-adjust-distance) 1228800.0)
@@ -1013,7 +1013,7 @@
   (set! (-> obj link) (new 'process 'actor-link-info obj))
   (balloonlurker-find-nearest-path-point)
   (balloonlurker-snap-to-path-point (-> obj dest-index))
-  (TODO-RENAME-29 obj *balloonlurker-constants*)
+  (rigid-body-platform-method-29 obj *balloonlurker-constants*)
   (dotimes (s5-0 4)
     (let ((s4-0 (-> obj control-point-array data s5-0)))
       (let ((f30-0 (* 16384.0 (the float (logand s5-0 3)))))
@@ -1063,12 +1063,12 @@
   (none)
   )
 
-;; WARN: Expression building failed: Function (method 11 balloonlurker) has a return type of none, but the expression builder found a return statement.
+;; WARN: Function (method 11 balloonlurker) has a return type of none, but the expression builder found a return statement.
 (defmethod init-from-entity! balloonlurker ((obj balloonlurker) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
-  (TODO-RENAME-30 obj)
+  (rigid-body-platform-method-30 obj)
   (process-drawable-from-entity! obj arg0)
-  (TODO-RENAME-31 obj)
+  (rigid-body-platform-method-31 obj)
   (cond
     ((logtest? (-> (entity-actor-lookup (-> obj entity) 'alt-actor 0) extra perm status)
                (entity-perm-status complete)
@@ -1083,7 +1083,3 @@
     )
   (none)
   )
-
-
-
-

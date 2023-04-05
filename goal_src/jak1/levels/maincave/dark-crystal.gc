@@ -25,8 +25,8 @@
   :size-assert         #x100
   :flag-assert         #x1600900100
   (:methods
-    (dummy-20 (_type_) none 20)
-    (dummy-21 (_type_) symbol 21)
+    (dark-crystal-method-20 (_type_) none 20)
+    (dark-crystal-method-21 (_type_) symbol 21)
     )
   (:states
     dark-crystal-activate
@@ -47,9 +47,7 @@
               :bounds (static-spherem 0 -15 0 50)
               )
 
-(define *dark-crystal-flash-delays*
-  (the-as (array int32) (new 'static 'boxed-array :type int32 #xb4 #x96 #x78 90 60 30 15 7 3))
-  )
+(define *dark-crystal-flash-delays* (new 'static 'boxed-array :type int32 #xb4 #x96 #x78 90 60 30 15 7 3))
 
 (define *dark-crystal-exploder-params*
   (new 'static 'joint-exploder-static-params
@@ -75,7 +73,7 @@
 
 (defpartgroup group-dark-crystal-gnd-explode
   :id 322
-  :duration 75
+  :duration (seconds 0.25)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 16)
   :parts ((sp-item 2153 :fade-after (meters 100) :period 600 :length 5 :binding 296)
@@ -260,8 +258,8 @@
 
 (defpartgroup group-dark-crystal-water-explode
   :id 323
-  :duration 75
-  :linger-duration 12000
+  :duration (seconds 0.25)
+  :linger-duration (seconds 40)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 16)
   :parts ((sp-item 2159 :period 600 :length 5)
@@ -418,10 +416,10 @@
   )
 
 (defstate dark-crystal-idle (dark-crystal)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch 'attack)
-       (if (= (-> arg0 type) target)
+       (if (= (-> proc type) target)
            (level-hint-spawn
              (game-text-id cave-dark-crystals-flee)
              "sksp0334"
@@ -485,12 +483,12 @@
       (process-spawn joint-exploder *dark-crystal-explode-sg* 5 gp-0 *dark-crystal-exploder-params* :to self)
       )
     (activate! *camera-smush-control* 819.2 37 210 1.0 0.995)
-    (let ((gp-1 (dummy-21 self)))
+    (let ((gp-1 (dark-crystal-method-21 self)))
       (suspend)
       (ja-channel-set! 0)
       (ja-post)
       (logior! (-> self draw status) (draw-status hidden))
-      (dummy-20 self)
+      (dark-crystal-method-20 self)
       (if (-> self underwater?)
           (sound-play "water-explosion")
           (sound-play "crystal-explode")
@@ -564,7 +562,7 @@
     )
   )
 
-(defmethod dummy-20 dark-crystal ((obj dark-crystal))
+(defmethod dark-crystal-method-20 dark-crystal ((obj dark-crystal))
   (when *target*
     (let ((s5-0 (new 'stack-no-clear 'vector))
           (s3-0 (new 'stack-no-clear 'vector))
@@ -598,7 +596,7 @@
   (none)
   )
 
-(defmethod dummy-21 dark-crystal ((obj dark-crystal))
+(defmethod dark-crystal-method-21 dark-crystal ((obj dark-crystal))
   (let ((s5-0 #f))
     (when (nonzero? (-> obj crystal-num))
       (let* ((s4-0 (get-task-control (game-task cave-dark-crystals)))
@@ -661,7 +659,3 @@
       )
   (none)
   )
-
-
-
-

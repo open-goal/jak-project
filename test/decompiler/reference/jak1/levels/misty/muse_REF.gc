@@ -175,7 +175,7 @@
 
 ;; definition for method 51 of type muse
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-51 muse ((obj muse))
+(defmethod nav-enemy-method-51 muse ((obj muse))
   (dotimes (s5-0 2)
     (let ((v1-2 (rand-vu-int-range 3 (+ (-> obj node-list length) -1))))
       (sp-launch-particles-var
@@ -195,7 +195,7 @@
 ;; definition for method 39 of type muse
 (defmethod common-post muse ((obj muse))
   (spool-push *art-control* (-> obj anim name) 0 obj -99.0)
-  (dummy-51 obj)
+  (nav-enemy-method-51 obj)
   ((method-of-type nav-enemy common-post) obj)
   (none)
   )
@@ -208,12 +208,12 @@
               )
 
 ;; definition for method 44 of type muse
-(defmethod dummy-44 muse ((obj muse) (arg0 process) (arg1 event-message-block))
+(defmethod touch-handler muse ((obj muse) (arg0 process) (arg1 event-message-block))
   (go muse-caught)
   )
 
 ;; definition for method 43 of type muse
-(defmethod dummy-43 muse ((obj muse) (arg0 process) (arg1 event-message-block))
+(defmethod attack-handler muse ((obj muse) (arg0 process) (arg1 event-message-block))
   (go muse-caught)
   )
 
@@ -251,7 +251,7 @@ nav-enemy-default-event-handler
       (ja-no-eval :group! muse-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (spool-push *art-control* (-> self anim name) 0 self -99.0)
-        (dummy-51 self)
+        (nav-enemy-method-51 self)
         (suspend)
         (ja :num! (seek!))
         )
@@ -321,7 +321,7 @@ nav-enemy-default-event-handler
     )
   :post (behavior ()
     (set! (-> self nav destination-pos quad) (-> self dest-point quad))
-    (dummy-19
+    (nav-control-method-19
       (-> self nav)
       (-> self nav target-pos)
       (-> self collide-info)
@@ -457,7 +457,7 @@ nav-enemy-default-event-handler
     (none)
     )
   :post (behavior ()
-    (dummy-51 self)
+    (nav-enemy-method-51 self)
     (level-hint-surpress!)
     (kill-current-level-hint '() '() 'exit)
     (ja-post)
@@ -547,7 +547,7 @@ nav-enemy-default-event-handler
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *muse-sg* '())
   (logclear! (-> obj mask) (process-mask actor-pause))
-  (TODO-RENAME-45 obj *muse-nav-enemy-info*)
+  (init-defaults! obj *muse-nav-enemy-info*)
   (set! (-> obj max-path-index) (the float (+ (-> obj path curve num-cverts) -1)))
   (set! (-> obj current-path-index) 7.0)
   (set! (-> obj prev-path-index) 7.0)
