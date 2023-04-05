@@ -55,7 +55,7 @@
   )
 
 ;; definition for method 42 of type nav-enemy
-(defmethod TODO-RENAME-42 nav-enemy ((obj nav-enemy))
+(defmethod new-patrol-point! nav-enemy ((obj nav-enemy))
   (local-vars (v1-11 symbol))
   (if (<= (-> obj path curve num-cverts) 0)
       (go process-drawable-art-error "no path")
@@ -118,7 +118,7 @@
   )
 
 ;; definition for method 44 of type nav-enemy
-(defmethod dummy-44 nav-enemy ((obj nav-enemy) (arg0 process) (arg1 event-message-block))
+(defmethod touch-handler nav-enemy ((obj nav-enemy) (arg0 process) (arg1 event-message-block))
   (if (and (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf6))
            ((method-of-type touching-shapes-entry prims-touching?)
             (the-as touching-shapes-entry (-> arg1 param 0))
@@ -153,7 +153,7 @@
   )
 
 ;; definition for method 43 of type nav-enemy
-(defmethod dummy-43 nav-enemy ((obj nav-enemy) (arg0 process) (arg1 event-message-block))
+(defmethod attack-handler nav-enemy ((obj nav-enemy) (arg0 process) (arg1 event-message-block))
   (cond
     ((logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf5))
      (send-event arg0 'get-attack-count 1)
@@ -161,7 +161,7 @@
      (go (method-of-object obj nav-enemy-die))
      )
     (else
-      (dummy-44 obj arg0 arg1)
+      (touch-handler obj arg0 arg1)
       )
     )
   )
@@ -193,11 +193,11 @@
   (case arg2
     (('touch)
      (set! (-> self touch-time) (-> *display* base-frame-counter))
-     (dummy-44 self arg0 arg3)
+     (touch-handler self arg0 arg3)
      )
     (('attack)
      (nav-enemy-set-hit-from-direction arg0)
-     (dummy-43 self arg0 arg3)
+     (attack-handler self arg0 arg3)
      )
     (('instant-death)
      (let ((gp-1 (-> self hit-from-dir)))
@@ -284,8 +284,8 @@ nav-enemy-default-event-handler
 
 ;; definition for method 40 of type nav-enemy
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-40 nav-enemy ((obj nav-enemy))
-  (dummy-11 (-> obj nav) (-> obj nav target-pos))
+(defmethod nav-enemy-method-40 nav-enemy ((obj nav-enemy))
+  (nav-control-method-11 (-> obj nav) (-> obj nav target-pos))
   0
   (none)
   )
@@ -293,7 +293,7 @@ nav-enemy-default-event-handler
 ;; definition for method 41 of type nav-enemy
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-41 nav-enemy ((obj nav-enemy))
+(defmethod nav-enemy-method-41 nav-enemy ((obj nav-enemy))
   (cond
     ((-> obj nav-info use-align)
      (align-vel-and-quat-only!
@@ -345,7 +345,7 @@ nav-enemy-default-event-handler
 
 ;; definition for method 37 of type nav-enemy
 ;; INFO: Return type mismatch int vs none.
-(defmethod TODO-RENAME-37 nav-enemy ((obj nav-enemy))
+(defmethod nav-enemy-method-37 nav-enemy ((obj nav-enemy))
   (when (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags enable-travel))
     (if (or (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf7))
             (logtest? (nav-control-flags navcf19) (-> obj nav flags))
@@ -365,7 +365,7 @@ nav-enemy-default-event-handler
 
 ;; definition for method 38 of type nav-enemy
 ;; INFO: Return type mismatch int vs none.
-(defmethod TODO-RENAME-38 nav-enemy ((obj nav-enemy))
+(defmethod nav-enemy-method-38 nav-enemy ((obj nav-enemy))
   (if (-> obj nav-info move-to-ground)
       (integrate-for-enemy-with-move-to-ground!
         (-> obj collide-info)
@@ -376,7 +376,7 @@ nav-enemy-default-event-handler
         (-> obj nav-info hover-if-no-ground)
         (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf15))
         )
-      (dummy-58 (-> obj collide-info) (-> obj collide-info transv))
+      (collide-shape-moving-method-58 (-> obj collide-info) (-> obj collide-info transv))
       )
   0
   (none)
@@ -388,10 +388,10 @@ nav-enemy-default-event-handler
   (cond
     ((logtest? (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
      (compute-alignment! (-> self align))
-     (dummy-40 self)
-     (dummy-41 self)
-     (TODO-RENAME-37 self)
-     (TODO-RENAME-38 self)
+     (nav-enemy-method-40 self)
+     (nav-enemy-method-41 self)
+     (nav-enemy-method-37 self)
+     (nav-enemy-method-38 self)
      (nav-enemy-common-post)
      )
     (else
@@ -424,7 +424,7 @@ nav-enemy-default-event-handler
     (logior! (-> self nav flags) (nav-control-flags navcf10))
     (nav-enemy-get-new-patrol-point)
     )
-  (dummy-19
+  (nav-control-method-19
     (-> self nav)
     (-> self nav target-pos)
     (-> self collide-info)
@@ -461,7 +461,7 @@ nav-enemy-default-event-handler
     (set! (-> self nav travel quad) (-> gp-1 quad))
     )
   (vector-normalize! (-> self nav travel) 409600.0)
-  (dummy-24 (-> self nav) 204.8 (the-as clip-travel-vector-to-mesh-return-info #f))
+  (nav-control-method-24 (-> self nav) 204.8 (the-as clip-travel-vector-to-mesh-return-info #f))
   (vector+! (-> self nav target-pos) (-> self collide-info trans) (-> self nav travel))
   (nav-enemy-travel-post)
   0
@@ -548,7 +548,7 @@ nav-enemy-default-event-handler
   )
 
 ;; definition for method 46 of type nav-enemy
-(defmethod TODO-RENAME-46 nav-enemy ((obj nav-enemy) (arg0 float))
+(defmethod target-in-range? nav-enemy ((obj nav-enemy) (arg0 float))
   (and *target*
        (not (logtest? (-> *target* state-flags)
                       (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
@@ -573,7 +573,7 @@ nav-enemy-default-event-handler
          )
        )
       (else
-        (when (or (TODO-RENAME-46 self (-> self nav-info notice-distance))
+        (when (or (target-in-range? self (-> self nav-info notice-distance))
                   (and (-> self nav-info use-proximity-notice)
                        *target*
                        (>= (-> self nav-info proximity-notice-distance)
@@ -618,13 +618,13 @@ nav-enemy-default-event-handler
 ;; definition for function nav-enemy-test-nav-mesh-intersection-xz?
 ;; INFO: Return type mismatch nav-poly vs symbol.
 (defbehavior nav-enemy-test-nav-mesh-intersection-xz? nav-enemy ((arg0 vector))
-  (the-as symbol (dummy-16 (-> self nav) arg0))
+  (the-as symbol (nav-control-method-16 (-> self nav) arg0))
   )
 
 ;; definition for function nav-enemy-test-point-in-nav-mesh?
 ;; INFO: Return type mismatch structure vs symbol.
 (defbehavior nav-enemy-test-point-in-nav-mesh? nav-enemy ((arg0 vector))
-  (the-as symbol (and (dummy-16 (-> self nav) arg0)
+  (the-as symbol (and (nav-control-method-16 (-> self nav) arg0)
                       (< (-> arg0 y) (+ (-> self collide-info trans y) (-> self enemy-info notice-top)))
                       )
           )
@@ -639,7 +639,7 @@ nav-enemy-default-event-handler
 
 ;; definition for function nav-enemy-get-new-patrol-point
 (defbehavior nav-enemy-get-new-patrol-point nav-enemy ()
-  (TODO-RENAME-42 self)
+  (new-patrol-point! self)
   0
   )
 
@@ -991,7 +991,7 @@ nav-enemy-default-event-handler
           )
       (set! (-> gp-0 target-pos quad) (-> v1-10 quad))
       )
-    (dummy-11 (-> self nav) (-> self nav target-pos))
+    (nav-control-method-11 (-> self nav) (-> self nav target-pos))
     (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
     (set! (-> self turn-time) (-> self nav-info run-turn-time))
     (none)
@@ -1145,7 +1145,7 @@ nav-enemy-default-event-handler
               )
           (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf13))
           )
-      (if (or (not (TODO-RENAME-46 self (-> self nav-info stop-chase-distance)))
+      (if (or (not (target-in-range? self (-> self nav-info stop-chase-distance)))
               (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf13))
               )
           (go-virtual nav-enemy-stop-chase)
@@ -1206,7 +1206,7 @@ nav-enemy-default-event-handler
       (if (logtest? (-> *target* state-flags) (state-flags do-not-notice))
           (go-virtual nav-enemy-patrol)
           )
-      (if (and (TODO-RENAME-46 self (-> self nav-info notice-distance)) (not (nav-enemy-frustrated?)))
+      (if (and (target-in-range? self (-> self nav-info notice-distance)) (not (nav-enemy-frustrated?)))
           (go-virtual nav-enemy-chase)
           )
       (if (or (or (not *target*) (< (-> self enemy-info idle-distance)
@@ -1269,7 +1269,7 @@ nav-enemy-default-event-handler
           (go-virtual nav-enemy-patrol)
           )
       (cond
-        ((TODO-RENAME-46 self (-> self nav-info notice-distance))
+        ((target-in-range? self (-> self nav-info notice-distance))
          (if (and (>= (- (-> *display* base-frame-counter) (-> self notice-time)) (-> self reaction-time))
                   (not (nav-enemy-frustrated?))
                   )
@@ -1327,7 +1327,7 @@ nav-enemy-default-event-handler
     )
   :trans (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
-      (if (TODO-RENAME-46 self (-> self nav-info notice-distance))
+      (if (target-in-range? self (-> self nav-info notice-distance))
           (go-virtual nav-enemy-chase)
           )
       )
@@ -1617,7 +1617,7 @@ nav-enemy-default-event-handler
   :event nav-enemy-jump-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (if (and (-> self nav-info use-jump-blocked) (TODO-RENAME-50 self (-> self event-param-point)))
+    (if (and (-> self nav-info use-jump-blocked) (nav-enemy-method-50 self (-> self event-param-point)))
         (go-virtual nav-enemy-jump-blocked)
         )
     (nav-enemy-initialize-jump (-> self event-param-point))
@@ -1631,7 +1631,7 @@ nav-enemy-default-event-handler
     (nav-enemy-execute-jump)
     (let ((a1-0 (-> self nav user-poly)))
       (if (not a1-0)
-          (set! a1-0 (dummy-16 (-> self nav) (-> self jump-dest)))
+          (set! a1-0 (nav-control-method-16 (-> self nav) (-> self jump-dest)))
           )
       (if a1-0
           (set-current-poly! (-> self nav) a1-0)
@@ -1647,7 +1647,7 @@ nav-enemy-default-event-handler
 ;; INFO: Used lq/sq
 (defbehavior nav-enemy-jump-land-post nav-enemy ()
   (compute-alignment! (-> self align))
-  (dummy-11 (-> self nav) (-> self nav target-pos))
+  (nav-control-method-11 (-> self nav) (-> self nav target-pos))
   (seek! (-> self target-speed) (-> self nav-info run-travel-speed) 2048.0)
   (set! (-> self momentum-speed) (-> self target-speed))
   (let* ((f0-7
@@ -1845,11 +1845,11 @@ nav-enemy-default-event-handler
 
 ;; definition for method 45 of type nav-enemy
 ;; INFO: Return type mismatch int vs none.
-(defmethod TODO-RENAME-45 nav-enemy ((obj nav-enemy) (arg0 nav-enemy-info))
+(defmethod init-defaults! nav-enemy ((obj nav-enemy) (arg0 nav-enemy-info))
   (set! (-> obj rand-gen) (new 'process 'random-generator))
   (set! (-> obj rand-gen seed) (the-as uint #x666edd1e))
   (set! (-> obj mask) (the-as process-mask (logior (process-mask enemy) (-> obj mask))))
-  (TODO-RENAME-49 obj arg0)
+  (init-jm! obj arg0)
   (if (-> obj draw shadow)
       (set! (-> obj draw shadow-ctrl)
             (new
@@ -1868,7 +1868,7 @@ nav-enemy-default-event-handler
   (set! (-> obj nav) (new 'process 'nav-control (-> obj collide-info) 16 (-> arg0 nav-nearest-y-threshold)))
   (logior! (-> obj nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
   (set! (-> obj nav gap-event) 'jump)
-  (TODO-RENAME-26 (-> obj nav))
+  (nav-control-method-26 (-> obj nav))
   (set! (-> obj path) (new 'process 'path-control obj 'path 0.0))
   (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
   (set! (-> obj enemy-info)
@@ -1882,7 +1882,7 @@ nav-enemy-default-event-handler
   )
 
 ;; definition for method 49 of type nav-enemy
-(defmethod TODO-RENAME-49 nav-enemy ((obj nav-enemy) (arg0 nav-enemy-info))
+(defmethod init-jm! nav-enemy ((obj nav-enemy) (arg0 nav-enemy-info))
   (set! (-> obj nav-info) arg0)
   (set! (-> obj rotate-speed) (-> obj nav-info walk-rotate-speed))
   (set! (-> obj turn-time) (-> obj nav-info walk-turn-time))
@@ -1914,7 +1914,7 @@ nav-enemy-default-event-handler
     )
   (vector-identity! (-> self collide-info scale))
   (set! (-> self entity) (-> arg0 entity))
-  (TODO-RENAME-48 self)
+  (nav-enemy-method-48 self)
   (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf12))
   (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
   (go-virtual nav-enemy-wait-for-cue)
@@ -1930,14 +1930,14 @@ nav-enemy-default-event-handler
 
 ;; definition for method 48 of type nav-enemy
 ;; INFO: Return type mismatch int vs none.
-(defmethod TODO-RENAME-48 nav-enemy ((obj nav-enemy))
+(defmethod nav-enemy-method-48 nav-enemy ((obj nav-enemy))
   0
   (none)
   )
 
 ;; definition for method 59 of type nav-enemy
 ;; INFO: Return type mismatch int vs none.
-(defmethod TODO-RENAME-59 nav-enemy ((obj nav-enemy))
+(defmethod nav-enemy-method-59 nav-enemy ((obj nav-enemy))
   (go (method-of-object obj nav-enemy-idle))
   0
   (none)
@@ -1948,20 +1948,20 @@ nav-enemy-default-event-handler
 (defmethod init-from-entity! nav-enemy ((obj nav-enemy) (arg0 entity-actor))
   (initialize-collision obj)
   (process-drawable-from-entity! obj arg0)
-  (TODO-RENAME-48 obj)
-  (TODO-RENAME-59 obj)
+  (nav-enemy-method-48 obj)
+  (nav-enemy-method-59 obj)
   0
   (none)
   )
 
 ;; definition for method 50 of type nav-enemy
 ;; INFO: Used lq/sq
-(defmethod TODO-RENAME-50 nav-enemy ((obj nav-enemy) (arg0 vector))
+(defmethod nav-enemy-method-50 nav-enemy ((obj nav-enemy) (arg0 vector))
   (let ((s4-0 (new 'stack-no-clear 'vector)))
     (set! (-> s4-0 quad) (-> obj collide-info trans quad))
     (set! (-> obj collide-info trans quad) (-> arg0 quad))
     (let ((gp-0 (-> obj nav)))
-      (TODO-RENAME-28 gp-0 (the-as collide-kind -1))
+      (nav-control-method-28 gp-0 (the-as collide-kind -1))
       (set! (-> obj collide-info trans quad) (-> s4-0 quad))
       (let* ((v1-8 (-> gp-0 mesh origin))
              (f0-1 (- (-> arg0 x) (-> v1-8 x)))
