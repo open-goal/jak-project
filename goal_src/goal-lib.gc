@@ -1046,3 +1046,158 @@
    (seval (fmt #t "Jak 2 Mode\n"))
    )
   )
+
+(defmacro defnew (type-to-make bindings &rest body)
+  "Defines the new method, which allocates a new instance of the type and returns it"
+  `(defmethod new ,type-to-make ((allocation symbol) (new-type type) ,@bindings)
+    (let ((self (object-new allocation new-type (the-as int (-> new-type size))))
+          )
+      ,@body
+      self
+     )
+   )
+ )
+
+(defmacro defclass (type parent-type &rest elements)
+  "deftype that supports declaring fields, methods,
+   behaviors, states, skelgroups, options, other types, and globals within the type.
+   Automatically predeclares methods and states."
+  (with-gensyms (fields
+                 methods    
+                 behaviors  
+                 states     
+                 skelgroups 
+                 options    
+                 types
+                 globals
+                )
+       (set! fields '())
+       (set! methods '())
+       (set! behaviors '())
+       (set! states '())
+       (set! skelgroups '())
+       (set! options '())
+       (set! types '())
+       (set! globals '())
+    ;; Collect elements based on the type tag
+    (apply (lambda (element)
+             (cond
+              ((string? element)
+                ;; docstrings can be placed before any element, ignored for now
+                #f)
+              ((eq? (car element) (string->symbol ":fields")) 
+               (set! fields (cdr element)))
+              ((eq? (car element) (string->symbol ":methods"))
+               (set! methods (cdr element)))
+              ((eq? (car element) (string->symbol ":behaviors")) 
+               (set! behaviors (cdr element)))
+              ((eq? (car element) (string->symbol ":states")) 
+               (set! states (cdr element)))
+              ((eq? (car element) (string->symbol ":skelgroups")) 
+               (set! skelgroups (cdr element)))
+              ((eq? (car element) (string->symbol ":options")) 
+               (set! options (cdr element)))
+              ((eq? (car element) (string->symbol ":types")) 
+               (set! types (cdr element)))
+              ((eq? (car element) (string->symbol ":globals"))
+               (set! globals (cdr element)))
+              (#t 
+               ;; Did not have any tag, so we assume it's a fields list
+               ;; TODO: Check for unsupported tags and print a warning 
+               (set! fields element)))
+             )
+           elements)
+    ;; Define all of the elements that were collected 
+    `(begin
+        ;; predeclare parent type
+        (declare-type ,type ,@(if (eq? parent-type '()) `(basic) parent-type))
+        ,@(if (eq? globals '())
+          `(#f)
+          (apply (lambda (global)
+                  `(define ,(car global) ,(cadr global))
+                  )
+                globals)
+         )
+        ,@(if (eq? skelgroups '())
+            `(#f)
+            (apply (lambda (skelgroup)
+                     ;; defskelgroup name             art-name                joint geom            joint-anim
+                     `(defskelgroup ,(car skelgroup) ,(car (cdr skelgroup)) ,(car (cddr skelgroup)) ,(car (cdddr skelgroup))
+                       ;; skelgroup body
+                       ,@(cdr (cdddr skelgroup))
+                       )
+                     )
+                   skelgroups)
+         )
+        ,@(if (eq? types '())
+          `(#f)
+          (apply (lambda (type)
+                  `(defclass ,(car type) ,(cadr type)
+                    ;; method body
+                    ,@(cddr type)
+                    )
+                  )
+                types)
+         )
+        (deftype ,type ,(if (eq? parent-type '()) `(basic) parent-type)
+          ,fields
+          (:methods
+          ,@(apply (lambda (method)
+                     (if (eq? (car method) 'new)
+                       `(new (symbol type ,@(apply (lambda (param-pair) (cadr param-pair)) (cadr method))) ,type 0)
+                       ;;  name                  parameter types                                                 return type  
+                       `(,(car method) (_type_ ,@(apply (lambda (param-pair) (cadr param-pair)) (cadr method))) ,@(caddr method)))
+                     ) 
+                   methods)
+          )
+          (:states
+            ,@(apply (lambda (state)
+                      ;;  name
+                      `(,(car state))
+                    ) 
+                  states)
+            )
+         ,@(if (eq? options '())
+             `(#f) 
+              options
+           )
+        )
+        ,@(if (eq? methods '())
+          `(#f)
+          (apply (lambda (method)
+                  (if (eq? (car method) 'new)
+                    `(defnew ,type (,@(cadr method)) ,@(cddr method))
+                    ;;            name               parameter types                                              ;; return type  
+                    `(defmethod ,(car method) ,type ((self ,type) ,@(cadr method))
+                      ;; method body
+                      ,@(cdddr method)
+                     )
+                   )
+                  )
+                methods)
+         )
+        ,@(if (eq? behaviors '())
+            `(#f)
+            (apply (lambda (behavior)
+                     ;; defbehavior name         type  parameters       
+                     `(defbehavior ,(car behavior) ,type ,(cadr behavior)
+                       ;; body
+                       ,@(cddr behavior)
+                       )
+                     )
+                   behaviors)
+         )
+        ,@(if (eq? states '())
+            `(#f)
+            (apply (lambda (state)
+                     ;; defstate name         type       
+                     `(defstate ,(car state) (,type)
+                       ;; body
+                       ,@(cdr state)
+                       )
+                     )
+                   states)
+         )
+       )
+     )
+  )
