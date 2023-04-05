@@ -73,7 +73,7 @@ struct MemoryUsageTracker {
   void add(MemoryUsageCategory category, u32 size_bytes) { data[category] += size_bytes; }
 };
 
-constexpr int TFRAG3_VERSION = 32;
+constexpr int TFRAG3_VERSION = 33;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {

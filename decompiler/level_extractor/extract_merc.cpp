@@ -885,6 +885,10 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
       can_be_modified = true;
     }
 
+    if (version == GameVersion::Jak1 && (input_effect.effect_bits & kTransEffectBitJak1)) {
+      use_alpha_blend = true;
+    }
+
     handle_frag(debug_name, ctrl_header, frag, frag_ctrl, merc_state, result.vertices,
                 merc_memories[memory_buffer_toggle], can_be_modified, combined_lump4_addr, fi);
     u32 vert_count = frag.lump4_unpacked.size() / 3;
