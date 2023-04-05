@@ -488,7 +488,7 @@
 (defstate wait (eco-collectable)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (local-vars (v0-3 none))
+    (local-vars (v0-3 object))
     (when (and (or (= event-type 'touch) (= event-type 'attack))
                (and (logtest? (-> self flags) (collectable-flags can-collect))
                     (>= (- (-> *display* base-frame-counter) (-> self birth-time)) (-> self collect-timeout))
@@ -516,7 +516,7 @@
         ((= event-type 'trans)
          (set! (-> self root-override trans quad) (-> (the-as vector (-> event param 0)) quad))
          (update-transforms! (-> self root-override))
-         (ja-post)
+         (the-as object (ja-post))
          )
         ((= event-type 'jump)
          (logclear! (-> self mask) (process-mask actor-pause))
@@ -537,7 +537,7 @@
          (go-virtual die)
          )
         ((= event-type 'movie-pos)
-         (set! v0-3 (the-as none (-> event param 0)))
+         (set! v0-3 (-> event param 0))
          (set! (-> self movie-pos-index) (the-as int v0-3))
          v0-3
          )
@@ -545,7 +545,7 @@
          (cond
            ((-> event param 0)
             (logior! (-> self mask) (process-mask actor-pause))
-            (set! v0-3 (the-as none #t))
+            (set! v0-3 #t)
             (set! (-> self actor-pause) (the-as symbol v0-3))
             v0-3
             )
@@ -559,7 +559,7 @@
         ((= event-type 'fade)
          (logior! (-> self flags) (collectable-flags fade))
          (set! (-> self fadeout-timeout) (seconds 0.1))
-         (set! v0-3 (the-as none (-> *display* base-frame-counter)))
+         (set! v0-3 (-> *display* base-frame-counter))
          (set! (-> self birth-time) (the-as time-frame v0-3))
          v0-3
          )
@@ -946,7 +946,7 @@
     (the-as object (case event-type
                      (('fade)
                       (process-entity-status! self (entity-perm-status dead) #t)
-                      (deactivate self)
+                      (the-as object (deactivate self))
                       )
                      (('die)
                       (go-virtual die)
@@ -1569,7 +1569,7 @@
 (defstate wait (fuel-cell)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (local-vars (v0-3 none))
+    (local-vars (v0-3 object))
     (when (and (or (= event-type 'touch) (= event-type 'attack))
                (and (logtest? (-> self flags) (collectable-flags can-collect))
                     (>= (- (-> *display* base-frame-counter) (-> self birth-time)) (-> self collect-timeout))
@@ -1603,23 +1603,23 @@
                       )
                      ((= event-type 'collide-shape)
                       (if (-> event param 0)
-                          (restore-collide-with-as (-> self root-override))
-                          (clear-collide-with-as (-> self root-override))
+                          (the-as object (restore-collide-with-as (-> self root-override)))
+                          (the-as object (clear-collide-with-as (-> self root-override)))
                           )
                       )
                      ((= event-type 'movie-pos)
-                      (set! v0-3 (the-as none (-> event param 0)))
+                      (set! v0-3 (-> event param 0))
                       (set! (-> self movie-pos-index) (the-as int v0-3))
                       v0-3
                       )
                      ((= event-type 'anim)
                       (cond
                         ((-> event param 0)
-                         (set! v0-3 (the-as none (logclear (-> self flags) (collectable-flags anim))))
+                         (set! v0-3 (logclear (-> self flags) (collectable-flags anim)))
                          (set! (-> self flags) (the-as collectable-flags v0-3))
                          )
                         (else
-                          (set! v0-3 (the-as none (logior (-> self flags) (collectable-flags anim))))
+                          (set! v0-3 (logior (-> self flags) (collectable-flags anim)))
                           (set! (-> self flags) (the-as collectable-flags v0-3))
                           )
                         )

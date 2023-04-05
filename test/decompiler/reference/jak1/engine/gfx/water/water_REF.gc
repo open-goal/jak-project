@@ -674,7 +674,7 @@
 
 ;; definition for method 9 of type water-control
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-9 water-control ((obj water-control))
+(defmethod water-control-method-9 water-control ((obj water-control))
   0
   (none)
   )
@@ -682,7 +682,7 @@
 ;; definition for method 10 of type water-control
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-10 water-control ((obj water-control))
+(defmethod water-control-method-10 water-control ((obj water-control))
   (with-pp
     (let ((s5-0 (-> obj flags)))
       (cond
@@ -754,7 +754,7 @@
          (set! (-> obj drip-height) (fmax (- (-> obj surface-height) (-> obj bottom 0 y)) (-> obj drip-height)))
          (set! (-> obj drip-speed) 15.0)
          (if (not (logtest? (-> obj flags) (water-flags wt09)))
-             (TODO-RENAME-15 obj)
+             (water-control-method-15 obj)
              )
          (cond
            ((>= (-> obj top 0 y) (-> obj height))
@@ -815,7 +815,7 @@
                   )
                 )
               (if (< (-> obj top 1 y) (-> obj height))
-                  (dummy-13 obj 0.2 s4-0 1 (-> obj process root transv))
+                  (create-splash obj 0.2 s4-0 1 (-> obj process root transv))
                   )
               )
             )
@@ -1015,7 +1015,7 @@
          )
         (else
           (if (logtest? (-> obj flags) (water-flags wt09))
-              (TODO-RENAME-16 obj)
+              (water-control-method-16 obj)
               )
           )
         )
@@ -1181,7 +1181,7 @@
 
 ;; definition for method 15 of type water-control
 ;; INFO: Return type mismatch int vs none.
-(defmethod TODO-RENAME-15 water-control ((obj water-control))
+(defmethod water-control-method-15 water-control ((obj water-control))
   (with-pp
     (logior! (-> obj flags) (water-flags wt09))
     (logclear! (-> obj flags) (water-flags wt16))
@@ -1197,9 +1197,9 @@
                (f30-0 (lerp-scale 0.3 1.0 f0-4 2048.0 24576.0))
                )
           (if (nonzero? (-> obj process skel effect))
-              (dummy-10 (-> obj process skel effect) 'swim-stroke 0.0 -1)
+              (effect-control-method-10 (-> obj process skel effect) 'swim-stroke 0.0 -1)
               )
-          (dummy-13 obj f30-0 (-> obj enter-water-pos) 1 (-> obj process root transv))
+          (create-splash obj f30-0 (-> obj enter-water-pos) 1 (-> obj process root transv))
           )
         )
       )
@@ -1213,7 +1213,7 @@
 
 ;; definition for method 16 of type water-control
 ;; INFO: Return type mismatch int vs none.
-(defmethod TODO-RENAME-16 water-control ((obj water-control))
+(defmethod water-control-method-16 water-control ((obj water-control))
   (logclear! (-> obj flags) (water-flags wt09))
   (set-zero! (-> obj bob))
   (if (logtest? (water-flags wt17) (-> obj flags))
@@ -1246,7 +1246,7 @@
 
 ;; definition for method 13 of type water-control
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-13 water-control ((obj water-control) (arg0 float) (arg1 vector) (arg2 int) (arg3 vector))
+(defmethod create-splash water-control ((obj water-control) (arg0 float) (arg1 vector) (arg2 int) (arg3 vector))
   (when (and (logtest? (-> obj flags) (water-flags wt05)) (logtest? (water-flags wt23) (-> obj flags)))
     (let ((a1-3 (vector+float*! (new 'stack-no-clear 'vector) arg1 arg3 0.05)))
       (set! (-> a1-3 y) (-> obj surface-height))
@@ -1259,7 +1259,7 @@
 
 ;; definition for method 27 of type water-vol
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-27 water-vol ((obj water-vol))
+(defmethod on-exit-water water-vol ((obj water-vol))
   (when (handle->process (-> obj target))
     (let ((v1-7 (-> (the-as target (-> obj target process 0)) water)))
       (logclear! (-> v1-7 flags) (water-flags wt01 wt02 wt03 wt08 wt17 wt18 wt19 wt20 wt21 wt23 wt24 wt25 wt26))
@@ -1284,12 +1284,12 @@
 
 ;; definition for method 26 of type water-vol
 ;; INFO: Return type mismatch int vs none.
-(defmethod TODO-RENAME-26 water-vol ((obj water-vol))
+(defmethod update! water-vol ((obj water-vol))
   (cond
     ((handle->process (-> obj target))
      (cond
-       ((not (dummy-10 (-> obj vol) (-> (the-as target (-> obj target process 0)) control trans)))
-        (dummy-27 obj)
+       ((not (point-in-vol? (-> obj vol) (-> (the-as target (-> obj target process 0)) control trans)))
+        (on-exit-water obj)
         )
        (else
          (let ((v1-15 (-> (the-as target (-> obj target process 0)) water)))
@@ -1321,8 +1321,9 @@
          )
        )
      )
-    ((and *target*
-          (and (not (handle->process (-> *target* water volume))) (dummy-10 (-> obj vol) (-> *target* control trans)))
+    ((and *target* (and (not (handle->process (-> *target* water volume)))
+                        (point-in-vol? (-> obj vol) (-> *target* control trans))
+                        )
           )
      (let ((s5-0 (-> *target* water)))
        (process-entity-status! obj (entity-perm-status bit-3) #t)
@@ -1364,17 +1365,17 @@
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (the-as object (case event-type
                      (('update)
-                      (TODO-RENAME-26 self)
+                      (the-as symbol (update! self))
                       )
                      )
             )
     )
   :exit (behavior ()
-    (dummy-27 self)
+    (on-exit-water self)
     (none)
     )
   :trans (behavior ()
-    (TODO-RENAME-26 self)
+    (update! self)
     (none)
     )
   :code (the-as (function none :behavior water-vol) anim-loop)
@@ -1395,7 +1396,7 @@
 
 ;; definition for method 25 of type water-vol
 ;; INFO: Return type mismatch int vs none.
-(defmethod TODO-RENAME-25 water-vol ((obj water-vol))
+(defmethod water-vol-method-25 water-vol ((obj water-vol))
   0
   (none)
   )
@@ -1403,7 +1404,7 @@
 ;; definition for method 29 of type water-vol
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch water-flags vs none.
-(defmethod TODO-RENAME-29 water-vol ((obj water-vol))
+(defmethod init! water-vol ((obj water-vol))
   (local-vars (sv-16 res-tag))
   (set! (-> obj attack-event) (the-as symbol ((method-of-type res-lump get-property-struct)
                                               (-> obj entity)
@@ -1465,7 +1466,7 @@
 
 ;; definition for method 22 of type water-vol
 ;; INFO: Return type mismatch int vs none.
-(defmethod TODO-RENAME-22 water-vol ((obj water-vol))
+(defmethod water-vol-method-22 water-vol ((obj water-vol))
   0
   (none)
   )
@@ -1476,9 +1477,9 @@
   (set! (-> self entity) arg0)
   (set-stack-size! self)
   (reset-root! self)
-  (TODO-RENAME-29 self)
-  (TODO-RENAME-25 self)
-  (TODO-RENAME-22 self)
+  (init! self)
+  (water-vol-method-25 self)
+  (water-vol-method-22 self)
   (go-virtual water-vol-startup)
   (none)
   )
@@ -1488,9 +1489,9 @@
 (defmethod init-from-entity! water-vol ((obj water-vol) (arg0 entity-actor))
   (set-stack-size! obj)
   (reset-root! obj)
-  (TODO-RENAME-29 obj)
-  (TODO-RENAME-25 obj)
-  (TODO-RENAME-22 obj)
+  (init! obj)
+  (water-vol-method-25 obj)
+  (water-vol-method-22 obj)
   (go (method-of-object obj water-vol-startup))
   (none)
   )

@@ -65,7 +65,7 @@
   (:methods
     (follow-path (_type_) none 20)
     (play-landing-sound (_type_ float) sound-id 21)
-    (dummy-22 (_type_ process-drawable) none 22)
+    (snow-ball-roller-method-22 (_type_ process-drawable) none 22)
     )
   (:states
     snow-ball-roller-idle
@@ -86,8 +86,8 @@
   :size-assert         #x8c
   :flag-assert         #x100020008c
   (:methods
-    (dummy-14 (_type_ (inline-array snow-ball-junction) float int) symbol 14)
-    (dummy-15 (_type_ (inline-array snow-ball-junction) int) symbol 15)
+    (snow-ball-method-14 (_type_ (inline-array snow-ball-junction) float int) symbol 14)
+    (snow-ball-method-15 (_type_ (inline-array snow-ball-junction) int) symbol 15)
     )
   (:states
     snow-ball-idle
@@ -253,7 +253,7 @@
       )
     )
   (let ((s4-0 (new 'stack-no-clear 'vector)))
-    (TODO-RENAME-14 (-> self path) s4-0 (-> self path-u))
+    (path-control-method-14 (-> self path) s4-0 (-> self path-u))
     (let ((gp-0 (new 'stack-no-clear 'matrix)))
       (let ((s5-0 (new 'stack-no-clear 'matrix)))
         (let ((s3-0 (new 'stack-no-clear 'vector)))
@@ -312,7 +312,7 @@
   (none)
   )
 
-(defmethod dummy-22 snow-ball-roller ((obj snow-ball-roller) (arg0 process-drawable))
+(defmethod snow-ball-roller-method-22 snow-ball-roller ((obj snow-ball-roller) (arg0 process-drawable))
   (cond
     ((< (+ 4096.0 (-> arg0 root trans y)) (-> obj root-override trans y))
      (let ((f0-2 81920.0))
@@ -332,7 +332,7 @@
       (vector-! s4-0 (-> arg0 root trans) (-> obj root-override trans))
       (set! (-> s4-0 y) 0.0)
       (vector-normalize! s4-0 1.0)
-      (TODO-RENAME-14 (-> obj path) s3-0 (-> obj path-u))
+      (path-control-method-14 (-> obj path) s3-0 (-> obj path-u))
       (set! (-> s3-0 y) 0.0)
       (vector-normalize! s3-0 1.0)
       (let* ((f28-0 (atan (-> s4-0 x) (-> s4-0 z)))
@@ -365,19 +365,19 @@
   )
 
 (defstate snow-ball-roller-idle (snow-ball-roller)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (or (= v1-0 'touch) (= v1-0 'attack))
-                       (when (= (-> arg0 type) target)
-                         (do-push-aways! (-> self root-override))
-                         (when (>= (- (-> *display* base-frame-counter) (-> self hit-player-time)) (seconds 0.5))
-                           (set! (-> self hit-player-time) (-> *display* base-frame-counter))
-                           (dummy-22 self *target*)
-                           )
-                         )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('touch 'attack)
+                      (when (= (-> proc type) target)
+                        (do-push-aways! (-> self root-override))
+                        (when (>= (- (-> *display* base-frame-counter) (-> self hit-player-time)) (seconds 0.5))
+                          (set! (-> self hit-player-time) (-> *display* base-frame-counter))
+                          (the-as symbol (snow-ball-roller-method-22 self *target*))
+                          )
+                        )
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (set! (-> self last-bounce-time) (-> *display* base-frame-counter))
@@ -461,7 +461,7 @@
   (none)
   )
 
-(defmethod dummy-14 snow-ball ((obj snow-ball) (arg0 (inline-array snow-ball-junction)) (arg1 float) (arg2 int))
+(defmethod snow-ball-method-14 snow-ball ((obj snow-ball) (arg0 (inline-array snow-ball-junction)) (arg1 float) (arg2 int))
   (local-vars (v1-0 (pointer float)))
   (if (zero? arg2)
       (set! v1-0 (new 'static 'array float 8 0.3309 0.36 0.4691 0.5061 0.6904 0.7264 0.864 0.8667))
@@ -481,7 +481,7 @@
   #f
   )
 
-(defmethod dummy-15 snow-ball ((obj snow-ball) (arg0 (inline-array snow-ball-junction)) (arg1 int))
+(defmethod snow-ball-method-15 snow-ball ((obj snow-ball) (arg0 (inline-array snow-ball-junction)) (arg1 int))
   (local-vars (v0-0 symbol))
   (let ((v1-0 (-> obj child-override)))
     (while v1-0
@@ -533,8 +533,8 @@
             )
         (loop
           (let ((s3-0 (/ (+ 98304.0 (rand-vu-float-range 0.0 32768.0)) (path-distance (-> self path gp-0)))))
-            (dummy-14 self s5-0 s3-0 gp-0)
-            (when (dummy-15 self s5-0 gp-0)
+            (snow-ball-method-14 self s5-0 s3-0 gp-0)
+            (when (snow-ball-method-15 self s5-0 gp-0)
               (process-spawn snow-ball-roller (-> self entity) self s3-0 gp-0 s5-0 :to self)
               (set! (-> self state-time) (-> *display* base-frame-counter))
               (set! (-> self delay-til-next) (rand-vu-int-range 450 1650))
@@ -587,7 +587,3 @@
   (go snow-ball-idle)
   (none)
   )
-
-
-
-

@@ -33,8 +33,8 @@
 
 (defpartgroup group-bad-fish
   :id 177
-  :duration 5
-  :linger-duration 450
+  :duration (seconds 0.017)
+  :linger-duration (seconds 1.5)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 2)
   :parts ((sp-item 828) (sp-item 2013))
@@ -84,8 +84,8 @@
 
 (defpartgroup group-normal-fish
   :id 178
-  :duration 5
-  :linger-duration 450
+  :duration (seconds 0.017)
+  :linger-duration (seconds 1.5)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 2)
   :parts ((sp-item 2001))
@@ -111,8 +111,8 @@
 
 (defpartgroup group-fish-collect
   :id 179
-  :duration 5
-  :linger-duration 1200
+  :duration (seconds 0.017)
+  :linger-duration (seconds 4)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
   :parts ((sp-item 830) (sp-item 831))
@@ -802,7 +802,7 @@
               :shadow fisher-shadow-mg
               )
 
-(defmethod dummy-52 fisher ((obj fisher))
+(defmethod process-taskable-method-52 fisher ((obj fisher))
   (let ((v1-1 (-> obj draw shadow-ctrl)))
     (when v1-1
       (let ((f0-0 (-> obj root-override trans y)))
@@ -862,7 +862,7 @@
 (defbehavior fisher-fish-move fisher-fish ()
   (+! (-> self pos) (* (-> self vel) (-> *display* seconds-per-frame)))
   (eval-path-curve-div! (-> (the-as fisher (-> self parent 0)) path) (-> self root trans) (-> self pos) 'interp)
-  (TODO-RENAME-12 (-> (the-as fisher (-> self parent 0)) path) (-> self dir) (-> self pos))
+  (path-control-method-12 (-> (the-as fisher (-> self parent 0)) path) (-> self dir) (-> self pos))
   (seek-toward-heading-vec! (-> self root) (-> self dir) 291271.12 (seconds 0.2))
   (let ((f30-1 (+ 16384.0 (y-angle (-> self root))))
         (gp-0 (new-stack-vector0))
@@ -886,7 +886,7 @@
   :code (behavior ()
     (set-heading-vec!
       (-> self root)
-      (TODO-RENAME-12 (-> (the-as fisher (-> self parent 0)) path) (-> self dir) (-> self pos))
+      (path-control-method-12 (-> (the-as fisher (-> self parent 0)) path) (-> self dir) (-> self pos))
       )
     (loop
       (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
@@ -1183,7 +1183,7 @@
       )
   )
 
-(defmethod dummy-38 fisher ((obj fisher))
+(defmethod process-taskable-method-38 fisher ((obj fisher))
   (case (current-status (-> obj tasks))
     (((task-status need-reminder-a) (task-status need-reminder))
      (go (method-of-object obj query))
@@ -1508,18 +1508,18 @@
   )
 
 (defstate fisher-playing (fisher)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-2 object))
-    (case arg2
+    (case event-type
       (('fisher-fish-die)
        (sound-play "fish-miss")
-       (set! v0-2 (+ (-> self missed) (-> arg3 param 0)))
+       (set! v0-2 (+ (-> self missed) (-> event param 0)))
        (set! (-> self missed) (the-as int v0-2))
        v0-2
        )
       (('fisher-fish-caught)
        (send-event *target* 'bounce)
-       (set! v0-2 (+ (-> self caught) (-> arg3 param 0)))
+       (set! v0-2 (+ (-> self caught) (-> event param 0)))
        (set! (-> self caught) (the-as int v0-2))
        v0-2
        )
@@ -1689,16 +1689,16 @@
     )
   :exit (behavior ()
     (#when PC_PORT
-    ;; needed for cutscene skipping
+      ;; needed for cutscene skipping
       (set! (-> self cur-trans-hook) nothing)
       )
     ((-> (method-of-type process-taskable play-anim) exit)))
   )
 
-(defmethod TODO-RENAME-43 fisher ((obj fisher))
+(defmethod process-taskable-method-43 fisher ((obj fisher))
   (cond
     ((closed? (-> obj tasks) (game-task jungle-fishgame) (task-status need-reminder))
-     (when (TODO-RENAME-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 1) 122880.0 obj)
+     (when (ambient-control-method-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 1) 122880.0 obj)
        (let ((f0-2 (rand-float-gen)))
          (if (< 0.5 f0-2)
              (play-ambient (-> obj ambient) "FIS-LO03" #f (-> obj root-override trans))
@@ -1708,7 +1708,7 @@
        )
      )
     (else
-      (when (TODO-RENAME-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
+      (when (ambient-control-method-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
         (let ((f0-5 (rand-float-gen)))
           (cond
             ((< 0.875 f0-5)
@@ -1744,31 +1744,29 @@
 
 (defstate play-accept (fisher)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 rgbaf))
-    (let ((v1-0 arg2))
-      (the-as object (cond
-                       ((= v1-0 'emissive-on)
-                        (set-vector! (-> self draw color-mult) 0.6 0.6 0.6 1.0)
-                        (set! v0-0 (-> self draw color-emissive))
-                        (set! (-> v0-0 x) 0.6)
-                        (set! (-> v0-0 y) 0.6)
-                        (set! (-> v0-0 z) 0.6)
-                        (set! (-> v0-0 w) 0.0)
-                        v0-0
-                        )
-                       ((= v1-0 'emissive-off)
-                        (set-vector! (-> self draw color-mult) 1.0 1.0 1.0 1.0)
-                        (set! v0-0 (-> self draw color-emissive))
-                        (set! (-> v0-0 x) 0.0)
-                        (set! (-> v0-0 y) 0.0)
-                        (set! (-> v0-0 z) 0.0)
-                        (set! (-> v0-0 w) 0.0)
-                        v0-0
-                        )
-                       )
-              )
-      )
+    (the-as object (case event-type
+                     (('emissive-on)
+                      (set-vector! (-> self draw color-mult) 0.6 0.6 0.6 1.0)
+                      (set! v0-0 (-> self draw color-emissive))
+                      (set! (-> v0-0 x) 0.6)
+                      (set! (-> v0-0 y) 0.6)
+                      (set! (-> v0-0 z) 0.6)
+                      (set! (-> v0-0 w) 0.0)
+                      v0-0
+                      )
+                     (('emissive-off)
+                      (set-vector! (-> self draw color-mult) 1.0 1.0 1.0 1.0)
+                      (set! v0-0 (-> self draw color-emissive))
+                      (set! (-> v0-0 x) 0.0)
+                      (set! (-> v0-0 y) 0.0)
+                      (set! (-> v0-0 z) 0.0)
+                      (set! (-> v0-0 w) 0.0)
+                      v0-0
+                      )
+                     )
+            )
     )
   :trans (behavior ()
     (when (-> self training)
@@ -1929,7 +1927,7 @@
         (countdown (gp-1 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-10)))) 5))
           (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
-            (TODO-RENAME-43 self)
+            (process-taskable-method-43 self)
             (suspend)
             (ja :num! (seek!))
             )
@@ -1938,7 +1936,7 @@
       (when (ja-group? fisher-idle-more-often-ja)
         (ja-no-eval :group! fisher-idle-less-often-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
-          (TODO-RENAME-43 self)
+          (process-taskable-method-43 self)
           (suspend)
           (ja :num! (seek!))
           )
@@ -1989,12 +1987,12 @@
   )
 
 (defmethod init-from-entity! fisher ((obj fisher) (arg0 entity-actor))
-  (dummy-40 obj arg0 *fisher-sg* 3 49 (new 'static 'vector :w 4096.0) 33)
+  (process-taskable-method-40 obj arg0 *fisher-sg* 3 49 (new 'static 'vector :w 4096.0) 33)
   (set! (-> obj tasks) (get-task-control (game-task jungle-fishgame)))
   (set! (-> obj path) (new 'process 'curve-control obj 'path -1000000000.0))
   (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
   (let ((s5-0 (eval-path-curve-div! (-> obj path) (-> obj paddle-pos) 6.5 'interp))
-        (s4-0 (TODO-RENAME-12 (-> obj path) (new-stack-vector0) 6.5))
+        (s4-0 (path-control-method-12 (-> obj path) (new-stack-vector0) 6.5))
         )
     (set! (-> s5-0 y) (+ 2457.6 (-> s5-0 y)))
     (vector-normalize! (vector-rotate-y! s4-0 s4-0 16384.0) (-> *FISHER-bank* width))
@@ -2006,23 +2004,23 @@
   (set! (-> obj hard) #f)
   (set! (-> *FISHER-bank* max-caught) 200)
   (set! (-> obj training) #f)
-  (dummy-42 obj)
+  (process-taskable-method-42 obj)
   (none)
   )
 
 (defstate target-fishing (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (cond
-      ((= arg2 'bounce)
+      ((= event-type 'bounce)
        (set-zero! (-> self control unknown-smush00))
        (activate! (-> self control unknown-smush00) 1.0 120 210 0.3 1.0)
        )
-      ((= arg2 'lose)
-       (set! (-> self control unknown-uint20) (the-as uint arg2))
-       arg2
+      ((= event-type 'lose)
+       (set! (-> self control unknown-uint20) (the-as uint event-type))
+       event-type
        )
       (else
-        ((-> target-grab event) arg0 arg1 arg2 arg3)
+        ((-> target-grab event) proc arg1 event-type event)
         )
       )
     )
@@ -2145,7 +2143,3 @@
     )
   :post target-post
   )
-
-
-
-

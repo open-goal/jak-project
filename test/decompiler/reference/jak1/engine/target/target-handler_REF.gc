@@ -4,32 +4,8 @@
 ;; definition for function target-generic-event-handler
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 37]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 39]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 60]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 69]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 73]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 151]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 168]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 185]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 196]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 201]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 222]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 292]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 351]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 366]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 408]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 420]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 427]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 451]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 465]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 472]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 482]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 524]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 552]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 563]
 (defbehavior target-generic-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (local-vars (v0-0 none))
+  (local-vars (v0-0 object))
   (the-as
     object
     (case arg2
@@ -53,7 +29,7 @@
          )
        )
       (('reset-pickup)
-       (reset! (-> self fact-info-target) (the-as symbol (-> arg3 param 0)))
+       (the-as object (reset! (-> self fact-info-target) (the-as symbol (-> arg3 param 0))))
        )
       (('reset-collide)
        (cond
@@ -98,7 +74,7 @@
          )
        )
       (('get-attack-count)
-       (set! v0-0 (the-as none (+ (-> self control unknown-dword51) (-> arg3 param 0))))
+       (set! v0-0 (+ (-> self control unknown-dword51) (-> arg3 param 0)))
        (set! (-> self control unknown-dword51) (the-as int v0-0))
        v0-0
        )
@@ -138,24 +114,29 @@
             )
           (rot->dir-targ! (-> self control))
           (logior! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
-          (set! v0-0 (the-as none (-> *display* base-frame-counter)))
+          (set! v0-0 (-> *display* base-frame-counter))
           (set! (-> self control unknown-dword11) (the-as time-frame v0-0))
           v0-0
           )
          (('reset)
-          (set! v0-0 (the-as none (logclear (-> self state-flags) (state-flags has-saved-position))))
+          (set! v0-0 (logclear (-> self state-flags) (state-flags has-saved-position)))
           (set! (-> self state-flags) (the-as state-flags v0-0))
           v0-0
           )
          )
        )
       (('effect)
-       (target-powerup-effect (the-as symbol (-> arg3 param 0)))
+       (the-as object (target-powerup-effect (the-as symbol (-> arg3 param 0))))
        )
       (('do-effect)
-       (dummy-10 (-> self skel effect) (the-as symbol (-> arg3 param 0)) (the-as float (-> arg3 param 1)) -1)
+       (effect-control-method-10
+         (-> self skel effect)
+         (the-as symbol (-> arg3 param 0))
+         (the-as float (-> arg3 param 1))
+         -1
+         )
        (if (-> self sidekick)
-           (dummy-10
+           (effect-control-method-10
              (-> self sidekick 0 skel effect)
              (the-as symbol (-> arg3 param 0))
              (the-as float (-> arg3 param 1))
@@ -169,10 +150,10 @@
          ((-> arg3 param 1)
           (set! (-> self state-flags) (logior (state-flags looking-at-enemy) (-> self state-flags)))
           (set! (-> self alt-neck-pos quad) (-> (the-as vector (-> arg3 param 1)) quad))
-          (look-at-enemy! (-> self neck) (-> self alt-neck-pos) 'force arg0)
+          (the-as object (look-at-enemy! (-> self neck) (-> self alt-neck-pos) 'force arg0))
           )
          (else
-           (set! v0-0 (the-as none (logclear (-> self state-flags) (state-flags looking-at-enemy))))
+           (set! v0-0 (logclear (-> self state-flags) (state-flags looking-at-enemy)))
            (set! (-> self state-flags) (the-as state-flags v0-0))
            v0-0
            )
@@ -276,7 +257,7 @@
          )
        )
       (('no-load-wait)
-       (set! v0-0 (the-as none (+ (-> *display* base-frame-counter) (the-as time-frame (-> arg3 param 0)))))
+       (set! v0-0 (+ (-> *display* base-frame-counter) (the-as time-frame (-> arg3 param 0))))
        (set! (-> self no-load-wait) (the-as time-frame v0-0))
        v0-0
        )
@@ -509,10 +490,10 @@
                    )
                  )
                (else
-                 (dummy-10 (-> self skel effect) 'group-spin-hit (the-as float -1.0) 74)
+                 (effect-control-method-10 (-> self skel effect) 'group-spin-hit (the-as float -1.0) 74)
                  )
                )
-             (dummy-12
+             (effect-control-method-12
                (-> self skel effect)
                (-> self control unknown-symbol30)
                (the-as float -1.0)
@@ -593,7 +574,7 @@
                   )
                 )
                )
-             (dummy-12
+             (effect-control-method-12
                (-> self skel effect)
                (-> self control unknown-symbol30)
                (the-as float -1.0)
@@ -604,7 +585,7 @@
              (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
              )
             ((= v1-5 'flip)
-             (dummy-12
+             (effect-control-method-12
                (-> self skel effect)
                (-> self control unknown-symbol30)
                (the-as float -1.0)
@@ -685,8 +666,8 @@
                   )
                 )
                )
-             (dummy-10 (-> self skel effect) 'group-uppercut-hit (the-as float -1.0) 23)
-             (dummy-12
+             (effect-control-method-10 (-> self skel effect) 'group-uppercut-hit (the-as float -1.0) 23)
+             (effect-control-method-12
                (-> self skel effect)
                (-> self control unknown-symbol30)
                (the-as float -1.0)
@@ -697,9 +678,9 @@
              (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
              )
             ((or (= v1-5 'flop) (= v1-5 'flop-down))
-             (dummy-10 (-> self skel effect) 'group-flop-hit (the-as float -1.0) 23)
-             (dummy-10 (-> self skel effect) 'group-flop-hit (the-as float -1.0) 17)
-             (dummy-12
+             (effect-control-method-10 (-> self skel effect) 'group-flop-hit (the-as float -1.0) 23)
+             (effect-control-method-10 (-> self skel effect) 'group-flop-hit (the-as float -1.0) 17)
+             (effect-control-method-12
                (-> self skel effect)
                (-> self control unknown-symbol30)
                (the-as float -1.0)
@@ -710,7 +691,7 @@
              (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
              )
             ((= v1-5 'flut-attack)
-             (dummy-12
+             (effect-control-method-12
                (-> self skel effect)
                (-> self control unknown-symbol30)
                (the-as float -1.0)

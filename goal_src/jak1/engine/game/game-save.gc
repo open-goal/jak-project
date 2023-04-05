@@ -93,6 +93,8 @@
     (aspect-ratio 509)
     )
 
+;; DECOMP BEGINS
+
 ;; the game save is a bunch of "game-save-tag"s
 ;; the elt-type field identifies what it is.
 ;; the data may be stored in one of the user fields, or
@@ -149,11 +151,11 @@
   :size-assert         #x50
   :flag-assert         #xc00000050
   (:methods
-   (new (symbol type int) _type_ 0)
-   (save-to-file (_type_ string) _type_ 9)
-   (load-from-file! (_type_ string) _type_ 10)
-   (debug-print (_type_ symbol) _type_ 11)
-   )
+    (new (symbol type int) _type_ 0)
+    (save-to-file (_type_ string) _type_ 9)
+    (load-from-file! (_type_ string) _type_ 10)
+    (debug-print (_type_ symbol) _type_ 11)
+    )
   )
 
 (defmethod asize-of game-save ((obj game-save))
@@ -1137,8 +1139,7 @@
   )
 
 (defpart 2662
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x6b :page #x1cf))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x6b :page #x1cf))
     (sp-flt spt-num 1.0)
     (sp-flt spt-scale-x (meters 1.5))
     (sp-copy-from-other spt-scale-y -4)
@@ -1159,17 +1160,17 @@
 (define *auto-save-info* (new 'global 'mc-slot-info))
 
 (deftype auto-save (process)
-  ((card       int32                     :offset-assert 112)
-   (slot       int32                     :offset-assert 116)
-   (which      int32                     :offset-assert 120)
-   (buffer     kheap                     :offset-assert 124)
-   (mode       basic                     :offset-assert 128)
-   (result     mc-status-code            :offset-assert 132)
-   (save       game-save                 :offset-assert 136)
-   (info       mc-slot-info      :inline :offset-assert 140)
-   (notify     handle                    :offset-assert 440)
-   (state-time time-frame                     :offset-assert 448)
-   (part       sparticle-launch-control  :offset-assert 456)
+  ((card       int32                            :offset-assert 112)
+   (slot       int32                            :offset-assert 116)
+   (which      int32                            :offset-assert 120)
+   (buffer     kheap                            :offset-assert 124)
+   (mode       basic                            :offset-assert 128)
+   (result     mc-status-code                   :offset-assert 132)
+   (save       game-save                        :offset-assert 136)
+   (info       mc-slot-info             :inline :offset-assert 140)
+   (notify     handle                           :offset-assert 440)
+   (state-time time-frame                       :offset-assert 448)
+   (part       sparticle-launch-control         :offset-assert 456)
    )
   :heap-base #x160
   :method-count-assert 23
@@ -1224,11 +1225,7 @@
         (set! (-> v1-6 height) (the float 80))
         )
       (set! (-> gp-0 flags) (font-flags shadow kerning))
-      (format (clear *temp-string*) "~S / ~S ~D~%"
-              (-> self mode)
-              (-> self state name)
-              (-> self which)
-              )
+      (format (clear *temp-string*) "~S / ~S ~D~%" (-> self mode) (-> self state name) (-> self which))
       (print-game-text *temp-string* gp-0 #f 128 22)
       )
     )
@@ -1354,8 +1351,7 @@
 ;; Get heap memory.
 (defstate get-heap (auto-save)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* real-frame-counter))
     (let ((a0-1 (reserve-alloc *art-control*)))
       (while (not a0-1)
@@ -1374,8 +1370,7 @@
 
 (defstate get-card (auto-save)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (label cfg-0)
     (mc-get-slot-info (-> self slot) (-> self info))
     (when (zero? (-> self info known))
@@ -1426,8 +1421,7 @@
 
 (defstate format-card (auto-save)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (when (zero? (-> self info formatted))
       (label cfg-1)
       (set! (-> self result) (mc-format (-> self card)))
@@ -1467,8 +1461,7 @@
 
 (defstate unformat-card (auto-save)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (when (nonzero? (-> self info formatted))
       (label cfg-1)
       (set! (-> self result) (mc-unformat (-> self card)))
@@ -1476,7 +1469,7 @@
         (suspend)
         (goto cfg-1)
         )
-      (while #t
+      (loop
         (set! (-> self result) (the-as mc-status-code (mc-check-result)))
         (case (-> self result)
           (((mc-status-code busy))
@@ -1499,8 +1492,7 @@
 
 (defstate create-file (auto-save)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (cond
       ((zero? (-> self info formatted))
        (go-virtual error (mc-status-code no-format))
@@ -1518,7 +1510,7 @@
          (suspend)
          (goto cfg-6)
          )
-       (while #t
+       (loop
          (set! (-> self result) (the-as mc-status-code (mc-check-result)))
          (case (-> self result)
            (((mc-status-code busy))
@@ -1550,8 +1542,7 @@
 
 (defstate save (auto-save)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (cond
       ((zero? (-> self info formatted))
        (go-virtual error (mc-status-code no-format))
@@ -1590,7 +1581,7 @@
         (suspend)
         (goto cfg-7)
         )
-      (while #t
+      (loop
         (set! (-> self result) (the-as mc-status-code (mc-check-result)))
         (let ((v1-24 (-> self result)))
           (set! gp-0 (cond
@@ -1627,8 +1618,7 @@
 
 (defstate restore (auto-save)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (local-vars (gp-0 object))
     (cond
       ((zero? (-> self info formatted))
@@ -1650,7 +1640,7 @@
       (suspend)
       (goto cfg-6)
       )
-    (while #t
+    (loop
       (set! (-> self result) (the-as mc-status-code (mc-check-result)))
       (let ((v1-22 (-> self result)))
         (set! gp-0 (cond
@@ -1689,7 +1679,7 @@
     (set! (-> *game-info* mode) 'play)
     (initialize! *game-info* 'game (-> self save) (the-as string #f))
     (set-master-mode 'game)
-    (add-setting! 'process-mask 'set 0.0 16)
+    (add-setting! 'process-mask 'set 0.0 (process-mask progress))
     (apply-settings *setting-control*)
     (dotimes (gp-1 15)
       (suspend)
@@ -1701,22 +1691,18 @@
 
 (defstate error (auto-save)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (cond
-                       ((= v1-0 'progress-allowed?)
-                        #t
-                        )
-                       ((= v1-0 'die)
-                        (deactivate self)
-                        )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('progress-allowed?)
+                      #t
+                      )
+                     (('die)
+                      (the-as symbol (deactivate self))
+                      )
+                     )
+            )
     )
-  :code
-  (behavior ((arg0 mc-status-code))
+  :code (behavior ((arg0 mc-status-code))
     (if (-> self buffer)
         (reserve-free *art-control* (-> self buffer))
         )
@@ -1751,8 +1737,7 @@
 
 (defstate done (auto-save)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (if (and (-> self buffer) (-> *art-control* reserve-buffer))
         (reserve-free *art-control* (-> self buffer))
         )
@@ -1795,19 +1780,14 @@
   )
 
 (defun auto-save-check ()
-  (when (and (-> *setting-control* current auto-save)
-             (not (handle->process (-> *game-info* auto-save-proc)))
-             )
+  (when (and (-> *setting-control* current auto-save) (not (handle->process (-> *game-info* auto-save-proc))))
     (mc-get-slot-info 0 *auto-save-info*)
     (if (and (nonzero? (-> *auto-save-info* known))
-             (or (zero? (-> *auto-save-info* handle))
-                 (!= (-> *auto-save-info* handle) (-> *game-info* auto-save-card))
-                 )
+             (or (zero? (-> *auto-save-info* handle)) (!= (-> *auto-save-info* handle) (-> *game-info* auto-save-card)))
              )
-      (auto-save-command 'error 0 0 *default-pool*)
-      )
-   )
+        (auto-save-command 'error 0 0 *default-pool*)
+        )
+    )
   0
   (none)
   )
-

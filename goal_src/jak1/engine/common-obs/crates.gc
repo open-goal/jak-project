@@ -90,7 +90,7 @@
     (params-init (_type_ entity) none 25)
     (art-init (_type_) crate 26)
     (params-set! (_type_ symbol symbol) none 27)
-    (dummy-28 (_type_) none 28)
+    (check-dead (_type_) none 28)
     (smush-update! (_type_) none 29)
     )
   )
@@ -240,7 +240,7 @@
 
 (defpartgroup group-crate-explode
   :id 71
-  :duration 5
+  :duration (seconds 0.017)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 12)
   :parts ((sp-item 281) (sp-item 283) (sp-item 285) (sp-item 286) (sp-item 288))
@@ -248,7 +248,7 @@
 
 (defpartgroup group-crate-steel-explode
   :id 72
-  :duration 5
+  :duration (seconds 0.017)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 12)
   :parts ((sp-item 281) (sp-item 283) (sp-item 285) (sp-item 288) (sp-item 288) (sp-item 288))
@@ -256,7 +256,7 @@
 
 (defpartgroup group-dark-eco-box-explosion
   :id 73
-  :duration 600
+  :duration (seconds 2)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 12)
   :parts ((sp-item 295 :fade-after (meters 100) :period 600 :length 5 :binding 296)
@@ -492,7 +492,7 @@
             (('flop 'uppercut 'explode 'darkeco 'eco-yellow 'bonk 'racer 'tube 'flut-bonk 'flut-attack)
              (if (and (logtest? (-> self fact options) (fact-options require-zoomer))
                       *target*
-                      (zero? (logand (-> *target* control root-prim prim-core action) (collide-action ca-9)))
+                      (not (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-9)))
                       )
                  (return #f)
                  )
@@ -774,28 +774,28 @@
 
 (defstate die (crate)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touched)
        (case (-> self defense)
          (('darkeco)
           (cond
-            ((= (-> arg0 type) target)
-             (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'darkeco))))
+            ((= (-> proc type) target)
+             (send-event proc 'attack (-> event param 0) (static-attack-info ((mode 'darkeco))))
              )
             (else
               (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
                 (set! (-> a1-5 from) self)
                 (set! (-> a1-5 num-params) 4)
                 (set! (-> a1-5 message) 'attack)
-                (set! (-> a1-5 param 0) (-> arg3 param 0))
+                (set! (-> a1-5 param 0) (-> event param 0))
                 (set! (-> a1-5 param 1) (the-as uint 'darkeco))
                 (let ((v1-12 (+ *global-attack-id* 1)))
                   (set! *global-attack-id* v1-12)
                   (set! (-> a1-5 param 2) (the-as uint v1-12))
                   )
                 (set! (-> a1-5 param 3) (the-as uint 0))
-                (send-event-function arg0 a1-5)
+                (send-event-function proc a1-5)
                 )
               )
             )
@@ -933,33 +933,33 @@
 
 (defstate special-contents-die (crate)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'notify)
-                       (case (-> arg3 param 0)
-                         (('pickup)
-                          (let ((gp-0 (-> self entity extra perm)))
-                            (logior! (-> gp-0 status) (entity-perm-status user-set-from-cstage))
-                            (set! (-> gp-0 user-int8 1) (min 127 (+ (-> gp-0 user-int8 1) 1)))
-                            (+! (-> self child-count) -1)
-                            (when (<= (-> self child-count) 0)
-                              (if (or (= (-> self defense) 'iron) (= (-> self defense) 'steel))
-                                  (process-entity-status! self (entity-perm-status bit-4) #f)
-                                  )
-                              (process-entity-status! self (entity-perm-status dead) #t)
-                              (process-entity-status! self (entity-perm-status complete) #t)
-                              (set! (-> gp-0 user-int8 0) 2)
-                              (let ((v0-0 (logclear (-> self mask) (process-mask sleep))))
-                                (set! (-> self mask) v0-0)
-                                v0-0
-                                )
-                              )
-                            )
-                          )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('notify)
+                      (case (-> event param 0)
+                        (('pickup)
+                         (let ((gp-0 (-> self entity extra perm)))
+                           (logior! (-> gp-0 status) (entity-perm-status user-set-from-cstage))
+                           (set! (-> gp-0 user-int8 1) (min 127 (+ (-> gp-0 user-int8 1) 1)))
+                           (+! (-> self child-count) -1)
+                           (when (<= (-> self child-count) 0)
+                             (if (or (= (-> self defense) 'iron) (= (-> self defense) 'steel))
+                                 (process-entity-status! self (entity-perm-status bit-4) #f)
+                                 )
+                             (process-entity-status! self (entity-perm-status dead) #t)
+                             (process-entity-status! self (entity-perm-status complete) #t)
+                             (set! (-> gp-0 user-int8 0) 2)
+                             (let ((v0-0 (logclear (-> self mask) (process-mask sleep))))
+                               (set! (-> self mask) v0-0)
+                               v0-0
+                               )
+                             )
+                           )
                          )
-                       )
-              )
-      )
+                        )
+                      )
+                     )
+            )
     )
   :trans (-> (method-of-type crate die) trans)
   :code (behavior ()
@@ -1005,14 +1005,14 @@
   (set! (-> self look) arg2)
   (set! (-> self defense) arg2)
   (art-init self)
-  (dummy-28 self)
+  (check-dead self)
   (none)
   )
 
 (defmethod init-from-entity! crate ((obj crate) (arg0 entity-actor))
   (params-init obj arg0)
   (art-init obj)
-  (dummy-28 obj)
+  (check-dead obj)
   (none)
   )
 
@@ -1154,7 +1154,7 @@
   (none)
   )
 
-(defmethod dummy-28 crate ((obj crate))
+(defmethod check-dead crate ((obj crate))
   (if (>= (-> obj entity extra perm user-int8 0) 1)
       (go (method-of-object obj die) #t 0)
       )
@@ -1210,8 +1210,8 @@
 
 (defpartgroup group-buzzer-crate
   :id 74
-  :duration 5
-  :linger-duration 450
+  :duration (seconds 0.017)
+  :linger-duration (seconds 1.5)
   :bounds (static-bspherem 0 0 0 2)
   :parts ((sp-item 302))
   )
@@ -1353,7 +1353,7 @@
   (none)
   )
 
-(defmethod dummy-28 pickup-spawner ((obj pickup-spawner))
+(defmethod check-dead pickup-spawner ((obj pickup-spawner))
   (go (method-of-object obj wait))
   0
   (none)
@@ -1371,7 +1371,3 @@
     (none)
     )
   )
-
-
-
-

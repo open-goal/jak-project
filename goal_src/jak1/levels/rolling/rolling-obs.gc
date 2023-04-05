@@ -421,7 +421,7 @@
 
 (defpartgroup group-dark-plant
   :id 455
-  :duration 42
+  :duration (seconds 0.14)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 15)
   :parts ((sp-item 1764) (sp-item 2356))
@@ -789,8 +789,8 @@
 
 
 (defstate rolling-start-break (rolling-start)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('unbreak)
        (go rolling-start-whole)
        )
@@ -824,8 +824,8 @@
   )
 
 (defstate rolling-start-whole (rolling-start)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('break)
        (sound-play "cool-rolling-st")
        (go rolling-start-break #f)
@@ -885,10 +885,7 @@
     )
   (set! (-> self coord vector 3 w) 1.0)
   (set! (-> self radius) arg2)
-  (let ((f0-2 arg3))
-    (set! (-> self thickness) f0-2)
-    f0-2
-    )
+  (set! (-> self thickness) arg3)
   )
 
 (deftype gorge-start (gorge)
@@ -1043,18 +1040,17 @@
   )
 
 (defbehavior gorge-start-draw-time gorge-start ((arg0 symbol) (arg1 symbol))
-  (let ((gp-0
-          (new
-            'stack
-            'font-context
-            *font-default-matrix*
-            0
-            0
-            0.0
-            (font-color yellow-orange)
-            (font-flags shadow kerning)
-            )
-          )
+  (let ((gp-0 (new
+                'stack
+                'font-context
+                *font-default-matrix*
+                0
+                0
+                0.0
+                (font-color yellow-orange)
+                (font-flags shadow kerning)
+                )
+              )
         )
     (let ((v1-1 gp-0))
       (set! (-> v1-1 width) (the float 200))
@@ -1068,26 +1064,14 @@
     (set! (-> gp-0 origin x) (the float (+ (-> self timer-pos-offset) 392)))
     (set! (-> gp-0 origin y) (the float (- 10 (-> self timer-pos-offset))))
     (set! (-> gp-0 flags) (font-flags shadow kerning right large))
-    (print-game-text
-      (lookup-text! *common-text* (game-text-id time) #f)
-      gp-0
-      #f
-      128
-      22
-      )
+    (print-game-text (lookup-text! *common-text* (game-text-id time) #f) gp-0 #f 128 22)
     (set! (-> gp-0 origin x) (+ 10.0 (-> gp-0 origin x)))
     (set! (-> gp-0 flags) (font-flags shadow kerning large))
     (print-game-text (race-time->string (-> self this-time)) gp-0 #f 128 22)
     (set! (-> gp-0 origin x) (+ -10.0 (-> gp-0 origin x)))
     (set! (-> gp-0 origin y) (+ 15.0 (-> gp-0 origin y)))
     (set! (-> gp-0 flags) (font-flags shadow kerning right large))
-    (print-game-text
-      (lookup-text! *common-text* (game-text-id record) #f)
-      gp-0
-      #f
-      128
-      22
-      )
+    (print-game-text (lookup-text! *common-text* (game-text-id record) #f) gp-0 #f 128 22)
     (set! (-> gp-0 origin x) (+ 10.0 (-> gp-0 origin x)))
     (set! (-> gp-0 flags) (font-flags shadow kerning large))
     (print-game-text (race-time->string (-> self record-time)) gp-0 #f 128 22)
@@ -1105,13 +1089,7 @@
          (let ((a0-15 gp-0))
            (set! (-> a0-15 color) (font-color orange-red))
            )
-         (print-game-text
-           (lookup-text! *common-text* (game-text-id new-record) #f)
-           gp-0
-           #f
-           128
-           22
-           )
+         (print-game-text (lookup-text! *common-text* (game-text-id new-record) #f) gp-0 #f 128 22)
          )
        (when arg1
          (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
@@ -1202,18 +1180,17 @@
         (send-event (ppointer->process (-> *hud-parts* money)) 'enable)
         )
       (when (< (mod (-> *display* real-frame-counter) 90) 60)
-        (let ((gp-0
-                (new
-                  'stack
-                  'font-context
-                  *font-default-matrix*
-                  156
-                  80
-                  0.0
-                  (font-color orange-red)
-                  (font-flags shadow kerning)
-                  )
-                )
+        (let ((gp-0 (new
+                      'stack
+                      'font-context
+                      *font-default-matrix*
+                      156
+                      80
+                      0.0
+                      (font-color orange-red)
+                      (font-flags shadow kerning)
+                      )
+                    )
               )
           (let ((v1-20 gp-0))
             (set! (-> v1-20 width) (the float 200))
@@ -1222,13 +1199,7 @@
             (set! (-> v1-21 height) (the float 50))
             )
           (set! (-> gp-0 flags) (font-flags shadow kerning middle left large))
-          (print-game-text
-            (lookup-text! *common-text* (game-text-id race-aborted) #f)
-            gp-0
-            #f
-            128
-            22
-            )
+          (print-game-text (lookup-text! *common-text* (game-text-id race-aborted) #f) gp-0 #f 128 22)
           )
         )
       (suspend)
@@ -1244,8 +1215,8 @@
   )
 
 (defstate gorge-start-racing (gorge-start)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('finished)
        (go gorge-start-race-finished)
        )
@@ -1437,8 +1408,8 @@
                  )
   )
 
-(defmethod TODO-RENAME-22 rolling-water ((obj rolling-water))
-  (let ((t9-0 (method-of-type water-anim TODO-RENAME-22)))
+(defmethod water-vol-method-22 rolling-water ((obj rolling-water))
+  (let ((t9-0 (method-of-type water-anim water-vol-method-22)))
     (t9-0 obj)
     )
   (let ((v1-2 (new 'process 'ripple-control)))
@@ -1452,7 +1423,3 @@
   (logclear! (-> obj flags) (water-flags wt23))
   (none)
   )
-
-
-
-

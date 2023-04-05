@@ -54,7 +54,7 @@
        (do-joint-math! self)
        (let ((a0-22 (-> self skel effect)))
          (if a0-22
-             (TODO-RENAME-9 a0-22)
+             (effect-control-method-9 a0-22)
              )
          )
        (if (logtest? (-> self skel status) (janim-status blerc blerc-done))
@@ -244,7 +244,7 @@
 ;; failed to figure out what this is:
 (defstate manipy-idle (manipy)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (local-vars (v0-0 none))
+    (local-vars (v0-0 object))
     (let ((v1-0 event-type))
       (the-as
         object
@@ -252,11 +252,11 @@
           ((= v1-0 'attackable)
            (cond
              ((-> event param 0)
-              (set! v0-0 (the-as none (logior (process-mask attackable) (-> self mask))))
+              (set! v0-0 (logior (process-mask attackable) (-> self mask)))
               (set! (-> self mask) (the-as process-mask v0-0))
               )
              (else
-               (set! v0-0 (the-as none (logclear (-> self mask) (process-mask attackable))))
+               (set! v0-0 (logclear (-> self mask) (process-mask attackable)))
                (set! (-> self mask) (the-as process-mask v0-0))
                )
              )
@@ -265,11 +265,11 @@
           ((= v1-0 'blend-shape)
            (cond
              ((-> event param 0)
-              (set! v0-0 (the-as none (logior (-> self skel status) (janim-status blerc eye))))
+              (set! v0-0 (logior (-> self skel status) (janim-status blerc eye)))
               (set! (-> self skel status) (the-as janim-status v0-0))
               )
              (else
-               (set! v0-0 (the-as none (logclear (-> self skel status) (janim-status blerc eye))))
+               (set! v0-0 (logclear (-> self skel status) (janim-status blerc eye)))
                (set! (-> self skel status) (the-as janim-status v0-0))
                )
              )
@@ -278,7 +278,7 @@
           ((= v1-0 'shadow)
            (cond
              ((-> event param 0)
-              (set! v0-0 (the-as none (-> self shadow-backup)))
+              (set! v0-0 (-> self shadow-backup))
               (set! (-> self draw shadow) (the-as shadow-geo v0-0))
               v0-0
               )
@@ -289,23 +289,23 @@
              )
            )
           ((= v1-0 'trans-hook)
-           (set! v0-0 (the-as none (-> event param 0)))
+           (set! v0-0 (-> event param 0))
            (set! (-> self new-trans-hook) (the-as (function none) v0-0))
            v0-0
            )
           ((= v1-0 'post-hook)
-           (set! v0-0 (the-as none (-> event param 0)))
+           (set! v0-0 (-> event param 0))
            (set! (-> self new-post-hook) (the-as (function none) v0-0))
            v0-0
            )
           ((= v1-0 'eval)
-           ((the-as (function manipy none) (-> event param 0)) self)
+           (the-as object ((the-as (function manipy none) (-> event param 0)) self))
            )
           ((= v1-0 'become-hud-object)
-           (convert-to-hud-object self (the-as hud (-> event param 0)))
+           (the-as object (convert-to-hud-object self (the-as hud (-> event param 0))))
            )
           ((= v1-0 'event-hook)
-           (set! v0-0 (the-as none (-> event param 0)))
+           (set! v0-0 (-> event param 0))
            (set! (-> self cur-event-hook) (the-as (function none) v0-0))
            v0-0
            )
@@ -316,7 +316,7 @@
                    (lookup-art (-> self draw art-group) (the-as string (-> event param 0)) art-joint-anim)
                    )
                  )
-           (set! v0-0 (the-as none (-> event param 1)))
+           (set! v0-0 (-> event param 1))
            (set! (-> self new-joint-anim-blend) (the-as uint v0-0))
            v0-0
            )
@@ -331,7 +331,7 @@
            )
           ((or (= v1-0 'origin-joint-index) (= v1-0 'center-joint))
            (set! (-> self draw origin-joint-index) (-> event param 0))
-           (set! v0-0 (the-as none (-> event param 0)))
+           (set! v0-0 (-> event param 0))
            (set! (-> self draw shadow-joint-index) (the-as uint v0-0))
            v0-0
            )
@@ -342,24 +342,24 @@
            (set! (-> self cur-grab-handle) (process->handle (the-as process (-> event param 0))))
            (let ((v1-30 (handle->process (-> self cur-grab-handle))))
              (when v1-30
-               (set! v0-0 (the-as none (-> self old-grab-pos)))
+               (set! v0-0 (-> self old-grab-pos))
                (set! (-> (the-as vector v0-0) quad) (-> (the-as process-drawable v1-30) root trans quad))
                v0-0
                )
              )
            )
           ((= v1-0 'target)
-           (set! v0-0 (the-as none (process->handle (the-as process (-> event param 0)))))
+           (set! v0-0 (process->handle (the-as process (-> event param 0))))
            (set! (-> self cur-target-handle) (the-as handle v0-0))
            v0-0
            )
           ((= v1-0 'trans)
            (cond
              ((type-type? (-> self root type) collide-shape)
-              (move-to-point! (the-as collide-shape (-> self root)) (the-as vector (-> event param 0)))
+              (the-as object (move-to-point! (the-as collide-shape (-> self root)) (the-as vector (-> event param 0))))
               )
              (else
-               (set! v0-0 (the-as none (-> self root trans)))
+               (set! v0-0 (-> self root trans))
                (set! (-> (the-as vector v0-0) quad) (-> (the-as vector (-> event param 0)) quad))
                v0-0
                )
@@ -375,7 +375,7 @@
            (quaternion-copy! (-> self root quat) (the-as quaternion (-> event param 0)))
            )
           ((= v1-0 'clone-copy-trans)
-           (set! v0-0 (the-as none (-> event param 0)))
+           (set! v0-0 (-> event param 0))
            (set! (-> self clone-copy-trans) (the-as symbol v0-0))
            v0-0
            )
@@ -394,20 +394,20 @@
                     ((nonzero? (-> self skel))
                      (let ((gp-1 (-> self skel status)))
                        (logior! (-> self skel status) (janim-status inited))
-                       (set! v0-0 (ja-post))
+                       (set! v0-0 (the-as object (ja-post)))
                        (set! (-> self skel status) gp-1)
                        )
                      v0-0
                      )
                     (else
-                      (ja-post)
+                      (the-as object (ja-post))
                       )
                     )
                   )
                 )
               )
              (else
-               (set! v0-0 (the-as none (logior (-> self draw status) (draw-status hidden))))
+               (set! v0-0 (logior (-> self draw status) (draw-status hidden)))
                (set! (-> self draw status) (the-as draw-status v0-0))
                v0-0
                )
@@ -435,7 +435,7 @@
            )
           (else
             (if (-> self cur-event-hook)
-                ((-> self cur-event-hook))
+                (the-as object ((-> self cur-event-hook)))
                 )
             )
           )
@@ -711,8 +711,7 @@
 
 ;; definition for function command-get-process
 ;; INFO: Return type mismatch object vs process.
-;; WARN: Failed load: (set! a0-1 (l.wu (+ a0-0 -4))) at op 11
-;; WARN: Failed load: (set! a0-2 (l.wu (+ a0-0 -4))) at op 48
+;; ERROR: Failed load: (set! a0-1 (l.wu (+ a0-0 -4))) at op 11
 ;; WARN: disable def twice: 68. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 ;; WARN: disable def twice: 82. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 ;; WARN: disable def twice: 96. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
@@ -786,9 +785,7 @@
 
 ;; definition for function command-get-camera
 ;; INFO: Return type mismatch object vs state.
-;; WARN: Failed load: (set! a0-3 (l.wu (+ a0-0 -4))) at op 47
-;; WARN: Failed load: (set! a0-1 (l.wu (+ a0-0 -4))) at op 23
-;; WARN: Failed load: (set! a0-2 (l.wu (+ a0-0 -4))) at op 35
+;; ERROR: Failed load: (set! a0-3 (l.wu (+ a0-0 -4))) at op 47
 (defun command-get-camera ((arg0 object) (arg1 state))
   (the-as state (cond
                   ((null? arg0)
@@ -982,8 +979,7 @@
 
 ;; definition for method 14 of type camera-tracker
 ;; INFO: Return type mismatch object vs process.
-;; WARN: Failed load: (set! v1-42 (l.wu (+ a0-22 -4))) at op 159
-;; WARN: Failed load: (set! a0-72 (l.wu (+ s2-3 -4))) at op 393
+;; ERROR: Failed load: (set! v1-42 (l.wu (+ a0-22 -4))) at op 159
 (defmethod eval camera-tracker ((obj camera-tracker) (arg0 pair))
   (with-pp
     (let ((gp-0 (the-as object #f)))
@@ -1185,7 +1181,7 @@
     )
   :enter (behavior ()
     (if (-> self entity)
-        (dummy-30 (-> self entity) (entity-perm-status bit-3) #t)
+        (set-or-clear-status! (-> self entity) (entity-perm-status bit-3) #t)
         )
     (if (not (-> self border-value))
         (add-setting! 'border-mode (-> self border-value) 0.0 0)
@@ -1197,7 +1193,7 @@
     )
   :exit (behavior ()
     (if (-> self entity)
-        (dummy-30 (-> self entity) (entity-perm-status bit-3) #f)
+        (set-or-clear-status! (-> self entity) (entity-perm-status bit-3) #f)
         )
     (send-event *camera* 'clear-entity)
     (none)
@@ -1225,7 +1221,7 @@
   )
 
 ;; definition for function camera-tracker-init
-;; WARN: Failed load: (set! a0-3 (l.wu (+ a0-0 -4))) at op 42
+;; ERROR: Failed load: (set! a0-3 (l.wu (+ a0-0 -4))) at op 42
 (defbehavior camera-tracker-init camera-tracker ((arg0 object))
   (stack-size-set! (-> self main-thread) 512)
   (logclear! (-> self mask) (process-mask actor-pause movie enemy platform projectile))
@@ -2239,7 +2235,7 @@
 ;; failed to figure out what this is:
 (defstate touch-tracker-idle (touch-tracker)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (local-vars (v0-0 none))
+    (local-vars (v0-0 object))
     (the-as object (case event-type
                      (('touched)
                       (let ((v1-1 (ppointer->process (-> self parent))))
@@ -2307,26 +2303,26 @@
                         )
                       )
                      (('target)
-                      (set! v0-0 (the-as none (process->handle (the-as process (-> event param 0)))))
+                      (set! v0-0 (process->handle (the-as process (-> event param 0))))
                       (set! (-> self target) (the-as handle v0-0))
                       v0-0
                       )
                      (('event)
                       (set! (-> self event) (the-as symbol (-> event param 0)))
-                      (set! v0-0 (the-as none (-> event param 1)))
+                      (set! v0-0 (-> event param 1))
                       (set! (-> self event-mode) (the-as basic v0-0))
                       v0-0
                       )
                      (('exit)
-                      (set! v0-0 (the-as none (-> event param 0)))
+                      (set! v0-0 (-> event param 0))
                       (set! (-> self run-function) (the-as (function object) v0-0))
                       v0-0
                       )
                      (('eval)
-                      ((the-as (function touch-tracker none) (-> event param 0)) self)
+                      (the-as object ((the-as (function touch-tracker none) (-> event param 0)) self))
                       )
                      (('function)
-                      (set! v0-0 (the-as none (-> event param 0)))
+                      (set! v0-0 (-> event param 0))
                       (set! (-> self callback) (the-as (function touch-tracker none) v0-0))
                       v0-0
                       )

@@ -52,9 +52,9 @@
 
 (defstate idle (logtrap)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (or (= arg2 'touch) (= arg2 'attack))
-        (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (or (= event-type 'touch) (= event-type 'attack))
+        (send-event proc 'attack (-> event param 0) (new 'static 'attack-info))
         )
     )
   :code (behavior ()
@@ -178,17 +178,14 @@
               )
 
 (defstate lurkerm-tall-sail-idle (lurkerm-tall-sail)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'stop)
-                       (process-entity-status! self (entity-perm-status complete) #t)
-                       (let ((f0-0 0.0))
-                         (set! (-> self speed) f0-0)
-                         f0-0
-                         )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('stop)
+                      (process-entity-status! self (entity-perm-status complete) #t)
+                      (set! (-> self speed) 0.0)
+                      )
+                     )
+            )
     )
   :trans (the-as (function none :behavior lurkerm-tall-sail) rider-trans)
   :code (behavior ()
@@ -273,17 +270,14 @@
               )
 
 (defstate lurkerm-short-sail-idle (lurkerm-short-sail)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'stop)
-                       (process-entity-status! self (entity-perm-status complete) #t)
-                       (let ((f0-0 0.0))
-                         (set! (-> self speed) f0-0)
-                         f0-0
-                         )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('stop)
+                      (process-entity-status! self (entity-perm-status complete) #t)
+                      (set! (-> self speed) 0.0)
+                      )
+                     )
+            )
     )
   :trans (the-as (function none :behavior lurkerm-short-sail) rider-trans)
   :code (behavior ()
@@ -388,17 +382,14 @@
               )
 
 (defstate lurkerm-piston-idle (lurkerm-piston)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'stop)
-                       (process-entity-status! self (entity-perm-status complete) #t)
-                       (let ((f0-0 0.0))
-                         (set! (-> self speed) f0-0)
-                         f0-0
-                         )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('stop)
+                      (process-entity-status! self (entity-perm-status complete) #t)
+                      (set! (-> self speed) 0.0)
+                      )
+                     )
+            )
     )
   :trans (the-as (function none :behavior lurkerm-piston) rider-trans)
   :code (behavior ()
@@ -503,17 +494,14 @@
               )
 
 (defstate accordian-idle (accordian)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'stop)
-                       (process-entity-status! self (entity-perm-status complete) #t)
-                       (let ((f0-0 0.0))
-                         (set! (-> self speed) f0-0)
-                         f0-0
-                         )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('stop)
+                      (process-entity-status! self (entity-perm-status complete) #t)
+                      (set! (-> self speed) 0.0)
+                      )
+                     )
+            )
     )
   :code (behavior ()
     (ja-no-eval :num! (loop!) :frame-num 0.0)
@@ -620,8 +608,8 @@
               )
 
 (defstate precurbridge-idle (precurbridge)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('go)
        (go precurbridge-activate)
        )
@@ -705,20 +693,20 @@
   )
 
 (defstate precurbridge-active (precurbridge)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as
-        object
-        (when (= v1-0 'bonk)
-          (let* ((gp-0 (the-as object (-> arg3 param 0)))
-                 (a0-2 (-> (the-as touching-shapes-entry gp-0) head))
-                 (s5-0 (-> self root-override))
-                 )
-            (get-touched-prim a0-2 s5-0 (the-as touching-shapes-entry gp-0))
-            ((method-of-type touching-shapes-entry get-touched-shape) (the-as touching-shapes-entry gp-0) s5-0)
-            )
-          (activate! (-> self smush) -1.0 150 600 1.0 1.0)
-          )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('bonk)
+         (let* ((gp-0 (the-as object (-> event param 0)))
+                (a0-2 (-> (the-as touching-shapes-entry gp-0) head))
+                (s5-0 (-> self root-override))
+                )
+           (get-touched-prim a0-2 s5-0 (the-as touching-shapes-entry gp-0))
+           ((method-of-type touching-shapes-entry get-touched-shape) (the-as touching-shapes-entry gp-0) s5-0)
+           )
+         (activate! (-> self smush) -1.0 150 600 1.0 1.0)
+         )
         )
       )
     )
@@ -1080,7 +1068,7 @@
               :bounds (static-spherem 0 0 0 8)
               )
 
-(defmethod TODO-RENAME-24 sidedoor ((obj sidedoor))
+(defmethod eco-door-method-24 sidedoor ((obj sidedoor))
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
@@ -1099,7 +1087,7 @@
   (none)
   )
 
-(defmethod TODO-RENAME-25 sidedoor ((obj sidedoor))
+(defmethod eco-door-method-25 sidedoor ((obj sidedoor))
   (initialize-skeleton obj *sidedoor-sg* '())
   (set! (-> obj open-distance) 22528.0)
   (set! (-> obj close-distance) 61440.0)
@@ -1229,8 +1217,8 @@
                                   )
         )
 
-(defmethod TODO-RENAME-22 jungle-water ((obj jungle-water))
-  (let ((t9-0 (method-of-type water-anim TODO-RENAME-22)))
+(defmethod water-vol-method-22 jungle-water ((obj jungle-water))
+  (let ((t9-0 (method-of-type water-anim water-vol-method-22)))
     (t9-0 obj)
     )
   (let ((v1-2 (new 'process 'ripple-control)))
@@ -1243,7 +1231,3 @@
     )
   (none)
   )
-
-
-
-

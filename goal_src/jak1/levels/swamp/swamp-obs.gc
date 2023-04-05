@@ -20,7 +20,7 @@
 
 (defpartgroup group-swamp-spike-up
   :id 289
-  :duration 5
+  :duration (seconds 0.017)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
   :parts ((sp-item 1325 :fade-after (meters 120) :falloff-to (meters 120))
@@ -111,7 +111,7 @@
 
 (defpartgroup group-swamp-spike-down
   :id 290
-  :duration 5
+  :duration (seconds 0.017)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
   :parts ((sp-item 1325 :fade-after (meters 120) :falloff-to (meters 120))
@@ -275,16 +275,16 @@
   )
 
 (defstate swamp-spike-gate-up (swampgate)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'trigger)
-                       (let ((v0-0 #t))
-                         (set! (-> self open-gate) v0-0)
-                         v0-0
-                         )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('trigger)
+                      (let ((v0-0 #t))
+                        (set! (-> self open-gate) v0-0)
+                        v0-0
+                        )
+                      )
+                     )
+            )
     )
   :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -417,16 +417,16 @@
               )
 
 (defstate balance-plat-idle (balance-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'grow)
-                       (let ((v0-0 #t))
-                         (set! (-> self got-grow) v0-0)
-                         v0-0
-                         )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('grow)
+                      (let ((v0-0 #t))
+                        (set! (-> self got-grow) v0-0)
+                        v0-0
+                        )
+                      )
+                     )
+            )
     )
   :trans (the-as (function none :behavior balance-plat) rider-trans)
   :code (behavior ()
@@ -532,7 +532,7 @@
 
 (defpartgroup group-swamp-rock-explosion
   :id 291
-  :duration 300
+  :duration (seconds 1)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
   :parts ((sp-item 1330 :period 1500 :length 5)
@@ -635,10 +635,10 @@
   )
 
 (defstate swamp-rock-idle (swamp-rock)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack)
-       (if (and (>= arg1 2) (= (-> arg3 param 1) 'eco-yellow))
+       (if (and (>= arg1 2) (= (-> event param 1) 'eco-yellow))
            (go swamp-rock-break)
            )
        )
@@ -754,16 +754,16 @@
   )
 
 
-(defmethod TODO-RENAME-22 tar-plat ((obj tar-plat) (arg0 vector) (arg1 float))
+(defmethod rigid-body-platform-method-22 tar-plat ((obj tar-plat) (arg0 vector) (arg1 float))
   (+ (-> obj float-height)
      (-> obj float-height-offset)
      (* 512.0 (cos (* 109.22667 (+ (* 60.0 arg1) (* 0.03 (-> arg0 x)) (* 0.03 (-> arg0 z))))))
      )
   )
 
-(defmethod TODO-RENAME-23 tar-plat ((obj tar-plat) (arg0 float))
+(defmethod rigid-body-platform-method-23 tar-plat ((obj tar-plat) (arg0 float))
   ((the-as (function rigid-body-platform basic none) (find-parent-method tar-plat 23)) obj (the-as basic arg0))
-  (TODO-RENAME-27 obj (-> obj anchor-point))
+  (rigid-body-platform-method-27 obj (-> obj anchor-point))
   0
   (none)
   )
@@ -820,7 +820,7 @@
   :post (the-as (function none :behavior tar-plat) rigid-body-platform-post)
   )
 
-(defmethod TODO-RENAME-30 tar-plat ((obj tar-plat))
+(defmethod rigid-body-platform-method-30 tar-plat ((obj tar-plat))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -845,9 +845,9 @@
   (none)
   )
 
-(defmethod TODO-RENAME-31 tar-plat ((obj tar-plat))
+(defmethod rigid-body-platform-method-31 tar-plat ((obj tar-plat))
   (initialize-skeleton obj *tar-plat-sg* '())
-  (TODO-RENAME-29 obj *tar-plat-constants*)
+  (rigid-body-platform-method-29 obj *tar-plat-constants*)
   (set! (-> obj float-height) (-> obj entity extra trans y))
   (set! (-> obj float-height-offset) -2048.0)
   (let ((s5-0 (-> obj info control-point-count)))
@@ -933,7 +933,3 @@
     (none)
     )
   )
-
-
-
-

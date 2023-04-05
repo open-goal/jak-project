@@ -53,9 +53,9 @@
   :size-assert         #x1f4
   :flag-assert         #x4c019001f4
   (:methods
-    (dummy-51 (_type_ vector) symbol :replace 51)
-    (dummy-52 (_type_) symbol :replace 52)
-    (dummy-57 (_type_ float) float :replace 57)
+    (ram-boss-method-51 (_type_ vector) symbol :replace 51)
+    (ram-boss-method-52 (_type_) symbol :replace 52)
+    (ram-boss-method-57 (_type_ float) float :replace 57)
     )
   (:states
     (ram-boss-already-down basic)
@@ -458,7 +458,7 @@
   :parts ((sp-item 1914))
   )
 
-(defmethod dummy-24 ram-boss-proj ((obj ram-boss-proj))
+(defmethod projectile-method-24 ram-boss-proj ((obj ram-boss-proj))
   (with-pp
     (quaternion-rotate-local-x!
       (-> obj root-override quat)
@@ -535,13 +535,13 @@
   (none)
   )
 
-(defmethod dummy-25 ram-boss-proj ((obj ram-boss-proj))
+(defmethod projectile-method-25 ram-boss-proj ((obj ram-boss-proj))
   (go ram-boss-proj-growing)
   0
   (none)
   )
 
-(defmethod dummy-26 ram-boss-proj ((obj ram-boss-proj))
+(defmethod projectile-method-26 ram-boss-proj ((obj ram-boss-proj))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) projectile-collision-reaction)
@@ -567,7 +567,7 @@
   (none)
   )
 
-(defmethod dummy-27 ram-boss-proj ((obj ram-boss-proj))
+(defmethod projectile-method-27 ram-boss-proj ((obj ram-boss-proj))
   (set! (-> obj charge-sound-id) (new 'static 'sound-id))
   (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 521) obj))
   (set! (-> obj part2) (create-launch-control (-> *part-group-id-table* 522) obj))
@@ -603,7 +603,7 @@
   (the-as ram-boss-proj ((method-of-type projectile relocate) obj arg0))
   )
 
-(defmethod dummy-28 ram-boss-proj ((obj ram-boss-proj))
+(defmethod projectile-method-28 ram-boss-proj ((obj ram-boss-proj))
   (when (and *target*
              (not (logtest? (-> *target* state-flags)
                             (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
@@ -653,7 +653,7 @@
           (sound-stop (-> self charge-sound-id))
           (go-virtual projectile-dissipate)
           )
-        (dummy-54 (-> gp-1 0) (-> self root-override trans))
+        (nav-enemy-method-54 (-> gp-1 0) (-> self root-override trans))
         (update-transforms! (-> self root-override))
         (cond
           ((-> gp-1 0 proj-stoked)
@@ -1053,7 +1053,7 @@
   (none)
   )
 
-(defmethod dummy-52 ram-boss ((obj ram-boss))
+(defmethod ram-boss-method-52 ram-boss ((obj ram-boss))
   (let ((v1-1 (the-as basic (-> obj collide-info root-prim))))
     (set-vector! (-> (the-as collide-shape-prim v1-1) local-sphere) 0.0 8192.0 0.0 13516.8)
     (set-vector! (-> (the-as (array collide-shape-prim) v1-1) 16 local-sphere) 0.0 4096.0 0.0 4505.6)
@@ -1074,7 +1074,7 @@
     )
   )
 
-(defmethod dummy-53 ram-boss ((obj ram-boss))
+(defmethod nav-enemy-method-53 ram-boss ((obj ram-boss))
   (let ((v1-1 (the-as (array collide-shape-prim) (-> obj collide-info root-prim))))
     (let ((a0-1 (-> v1-1 16)))
       (set! (-> a0-1 prim-core offense) (collide-offense touch))
@@ -1095,10 +1095,10 @@
   (the-as symbol 0)
   )
 
-(defmethod TODO-RENAME-48 ram-boss ((obj ram-boss))
+(defmethod nav-enemy-method-48 ram-boss ((obj ram-boss))
   (initialize-skeleton obj *ram-boss-sg* '())
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
-  (TODO-RENAME-45 obj *ram-boss-nav-enemy-info*)
+  (init-defaults! obj *ram-boss-nav-enemy-info*)
   (logclear! (-> obj enemy-info options) (fact-options has-power-cell))
   (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 525) obj))
   (set! (-> obj part2) (create-launch-control (-> *part-group-id-table* 574) obj))
@@ -1107,7 +1107,7 @@
   (set! (-> obj has-shield?) #t)
   (when (nonzero? (-> obj entity extra perm user-int8 1))
     (set! (-> obj has-shield?) #f)
-    (TODO-RENAME-49 obj *ram-boss-nav-enemy-info-no-shield*)
+    (init-jm! obj *ram-boss-nav-enemy-info-no-shield*)
     (let ((v1-23 (-> obj shield-jmod)))
       (set! (-> v1-23 enable) #t)
       (set! (-> v1-23 transform scale quad) (the-as uint128 0))
@@ -1130,7 +1130,7 @@
   (set! (-> self nav-enemy-patrol-timeout) (seconds 1))
   (initialize-collision self)
   (set! (-> self entity) (-> arg1 entity))
-  (TODO-RENAME-48 self)
+  (nav-enemy-method-48 self)
   (set! (-> self collide-info trans quad) (-> arg1 collide-info trans quad))
   (set-vector! (-> self collide-info scale) 1.0 1.0 1.0 1.0)
   (let ((t9-2 quaternion-copy!)
@@ -1151,7 +1151,7 @@
   (none)
   )
 
-(defmethod dummy-54 ram-boss ((obj ram-boss) (arg0 vector))
+(defmethod nav-enemy-method-54 ram-boss ((obj ram-boss) (arg0 vector))
   (let ((a2-0 (-> obj node-list data 18 bone transform)))
     (set-vector! arg0 0.0 0.0 -2457.6 1.0)
     (vector-matrix*! arg0 arg0 a2-0)
@@ -1159,7 +1159,7 @@
   (the-as symbol (vector-float*! arg0 arg0 (/ 1.0 (-> arg0 w))))
   )
 
-(defmethod dummy-55 ram-boss ((obj ram-boss))
+(defmethod nav-enemy-method-55 ram-boss ((obj ram-boss))
   (if (not *target*)
       (return #f)
       )
@@ -1195,7 +1195,7 @@
     )
   )
 
-(defmethod dummy-51 ram-boss ((obj ram-boss) (arg0 vector))
+(defmethod ram-boss-method-51 ram-boss ((obj ram-boss) (arg0 vector))
   (let* ((f30-0 (quaternion-y-angle (-> obj collide-info quat)))
          (f0-2 (atan (-> arg0 x) (-> arg0 z)))
          (f0-3 (deg- f30-0 f0-2))
@@ -1310,7 +1310,7 @@
       )
     )
   :enter (behavior ((arg0 basic))
-    (dummy-52 self)
+    (ram-boss-method-52 self)
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (let ((s5-0 (new 'stack-no-clear 'vector))
           (gp-0 (-> self node-list data 0 bone transform))
@@ -1393,7 +1393,7 @@
 (defstate ram-boss-already-down (ram-boss)
   :code (behavior ((arg0 basic))
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
-    (dummy-52 self)
+    (ram-boss-method-52 self)
     (let ((a1-0 (new 'stack-no-clear 'vector))
           (a2-0 (-> self parent-override 0 node-list data 0 bone transform))
           )
@@ -1413,7 +1413,7 @@
 
 (defstate ram-boss-nav-start (ram-boss)
   :code (behavior ()
-    (let ((a1-1 (dummy-16 (-> self nav) (-> self collide-info trans))))
+    (let ((a1-1 (nav-control-method-16 (-> self nav) (-> self collide-info trans))))
       (when (not a1-1)
         (go process-drawable-art-error "not on nav mesh")
         (return #f)
@@ -1434,10 +1434,10 @@
           ((>= 18432.0 f30-0)
            (go ram-boss-tracking)
            )
-          ((not (TODO-RENAME-46 self 237568.0))
+          ((not (target-in-range? self 237568.0))
            (go-virtual nav-enemy-patrol)
            )
-          ((and (< f30-0 106496.0) (dummy-55 self))
+          ((and (< f30-0 106496.0) (nav-enemy-method-55 self))
            (go-virtual nav-enemy-attack)
            )
           ((< f30-0 237568.0)
@@ -1494,10 +1494,10 @@
           (go ram-boss-tracking)
           )
       (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self reaction-time))
-        (if (not (TODO-RENAME-46 self (-> self nav-info stop-chase-distance)))
+        (if (not (target-in-range? self (-> self nav-info stop-chase-distance)))
             (go-virtual nav-enemy-patrol)
             )
-        (if (and (>= 73728.0 f30-0) (dummy-55 self))
+        (if (and (>= 73728.0 f30-0) (nav-enemy-method-55 self))
             (go-virtual nav-enemy-attack)
             )
         )
@@ -1527,7 +1527,7 @@
     )
   )
 
-(defmethod dummy-57 ram-boss ((obj ram-boss) (arg0 float))
+(defmethod ram-boss-method-57 ram-boss ((obj ram-boss) (arg0 float))
   (let ((f0-0 0.0))
     (when *target*
       (let ((s3-0 (new 'stack-no-clear 'vector)))
@@ -1601,7 +1601,7 @@
          (go-virtual nav-enemy-chase)
          )
         ((< 18432.0 f0-10)
-         (if (not (dummy-55 self))
+         (if (not (nav-enemy-method-55 self))
              (go-virtual nav-enemy-chase)
              )
          (when (>= (-> self frustration) 256)
@@ -1622,13 +1622,13 @@
       (let ((gp-2 (new 'stack-no-clear 'vector))
             (s5-2 (new 'stack-no-clear 'vector))
             )
-        (dummy-54 self s5-2)
+        (nav-enemy-method-54 self s5-2)
         (set! (-> gp-2 quad) (-> (target-pos 0) quad))
         (set! (-> gp-2 y) (+ 4915.2 (-> gp-2 y)))
         (vector-! (-> self proj-launch-vec) gp-2 s5-2)
         )
       (vector-normalize! (-> self proj-launch-vec) 1.0)
-      (if (not (dummy-51 self (-> self proj-launch-vec)))
+      (if (not (ram-boss-method-51 self (-> self proj-launch-vec)))
           (go ram-boss-throw)
           )
       )
@@ -1638,7 +1638,7 @@
   :code (behavior ()
     (let ((f30-0 -1.0))
       (loop
-        (set! f30-0 (dummy-57 self f30-0))
+        (set! f30-0 (ram-boss-method-57 self f30-0))
         (cond
           ((< 5461.3335 (-> self last-turn-speed))
            (cond
@@ -1820,8 +1820,8 @@
   :enter (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (nav-enemy-neck-control-inactive)
-    (dummy-53 self)
-    (TODO-RENAME-49 self *ram-boss-nav-enemy-info-no-shield*)
+    (nav-enemy-method-53 self)
+    (init-jm! self *ram-boss-nav-enemy-info-no-shield*)
     (none)
     )
   :exit (behavior ()
@@ -1858,7 +1858,7 @@
     )
   :post (behavior ()
     (compute-alignment! (-> self align))
-    (dummy-11 (-> self nav) (-> self nav target-pos))
+    (nav-control-method-11 (-> self nav) (-> self nav target-pos))
     (align-vel-and-quat-only!
       (-> self align)
       (align-opts adjust-xz-vel)

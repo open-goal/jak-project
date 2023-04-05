@@ -19,9 +19,10 @@ void klisten_init_globals() {
 
 /*!
  * Flush pending messages.  If debugging, will send to compiler, otherwise to stdout.
+ * Changed slightly, it will also print to stdout if there's no compiler connected.
  */
 void ClearPending() {
-  if (!MasterDebug) {
+  if (!MasterDebug || !ListenerStatus) {
     // if we aren't debugging print the print buffer to stdout.
     if (PrintPending.offset != 0) {
       auto size = strlen(PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader));

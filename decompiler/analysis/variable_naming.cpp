@@ -746,6 +746,11 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
                          function.guessed_name.to_string() == "(method 74 crimson-guard)";
   }
 
+  if (function.ir2.env.version == GameVersion::Jak1) {
+    event_handler_hack = function.guessed_name.is_event_handler() ||
+                         function.guessed_name.to_string() == "target-generic-event-handler";
+  }
+
   for (int block_id = 0; block_id < int(blocks.size()); block_id++) {
     const auto& block = blocks.at(block_id);
     const TypeState* init_types = &function.ir2.env.get_types_at_block_entry(block_id);

@@ -662,8 +662,8 @@
   )
 
 (defstate mistycannon-missile-idle (mistycannon-missile)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack)
        (go mistycannon-missile-explode)
        )
@@ -699,7 +699,7 @@
       )
     (restore-collide-with-as (-> self root-override))
     (set-vector! (-> self root-override scale) 0.6 0.6 0.6 1.0)
-    (while (zero? (logand (-> self root-override status) (cshape-moving-flags onsurf)))
+    (while (not (logtest? (-> self root-override status) (cshape-moving-flags onsurf)))
       (if (and (zero? (-> self sfx))
                (< (if *target*
                       (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
@@ -835,10 +835,10 @@
   )
 
 (defstate mistycannon-missile-explode (mistycannon-missile)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touched)
-       (let* ((s4-0 arg0)
+       (let* ((s4-0 proc)
               (v1-2 (if (and (nonzero? s4-0) (type-type? (-> s4-0 type) process-drawable))
                         s4-0
                         )
@@ -866,22 +866,22 @@
                       0.0
                       )
                (cond
-                 ((= (-> arg0 type) target)
-                  (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'explode))))
+                 ((= (-> proc type) target)
+                  (send-event proc 'attack (-> event param 0) (static-attack-info ((mode 'explode))))
                   )
                  (else
                    (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
                      (set! (-> a1-4 from) self)
                      (set! (-> a1-4 num-params) 4)
                      (set! (-> a1-4 message) 'attack)
-                     (set! (-> a1-4 param 0) (-> arg3 param 0))
+                     (set! (-> a1-4 param 0) (-> event param 0))
                      (set! (-> a1-4 param 1) (the-as uint 'explode))
                      (let ((v1-18 (+ *global-attack-id* 1)))
                        (set! *global-attack-id* v1-18)
                        (set! (-> a1-4 param 2) (the-as uint v1-18))
                        )
                      (set! (-> a1-4 param 3) (the-as uint 0))
-                     (send-event-function arg0 a1-4)
+                     (send-event-function proc a1-4)
                      )
                    )
                  )
@@ -1053,8 +1053,8 @@
   (:methods
     (rotate! (_type_ float) none 20)
     (tilt! (_type_ float) none 21)
-    (dummy-22 (_type_ float float float) none 22)
-    (dummy-23 (_type_) none 23)
+    (mistycannon-method-22 (_type_ float float float) none 22)
+    (mistycannon-method-23 (_type_) none 23)
     )
   (:states
     mistycannon-aim-at-player
@@ -1091,8 +1091,8 @@
   (none)
   )
 
-;; WARN: Expression building failed: Function (method 22 mistycannon) has a return type of none, but the expression builder found a return statement.
-(defmethod dummy-22 mistycannon ((obj mistycannon) (arg0 float) (arg1 float) (arg2 float))
+;; WARN: Function (method 22 mistycannon) has a return type of none, but the expression builder found a return statement.
+(defmethod mistycannon-method-22 mistycannon ((obj mistycannon) (arg0 float) (arg1 float) (arg2 float))
   (if (not (-> obj postbindinfo-ok))
       (return #f)
       )
@@ -1121,7 +1121,7 @@
   (none)
   )
 
-(defmethod dummy-23 mistycannon ((obj mistycannon))
+(defmethod mistycannon-method-23 mistycannon ((obj mistycannon))
   (when (< (- (-> *display* base-frame-counter) (-> obj part-timer)) (seconds 3))
     (let ((v1-4 (-> obj rotate)))
       (set! (-> *part-id-table* 529 init-specs 24 initial-valuef)
@@ -1253,7 +1253,7 @@
     )
   :code (behavior ()
     (loop
-      (dummy-23 self)
+      (mistycannon-method-23 self)
       (suspend)
       )
     (none)
@@ -1360,7 +1360,7 @@
   (none)
   )
 
-;; WARN: Expression building failed: Function mistycannon-do-aim has a return type of none, but the expression builder found a return statement.
+;; WARN: Function mistycannon-do-aim has a return type of none, but the expression builder found a return statement.
 (defbehavior mistycannon-do-aim mistycannon ((arg0 vector) (arg1 vector))
   (if (not (-> self postbindinfo-ok))
       (return #f)
@@ -1405,14 +1405,14 @@
     (mistycannon-find-trajectory gp-0)
     (when (= (-> gp-0 time) 0.0)
       (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
-        (dummy-22 self 409600.0 2.0 20480.0)
+        (mistycannon-method-22 self 409600.0 2.0 20480.0)
         (set! (-> self state-time) (-> *display* base-frame-counter))
         )
       (return #f)
       )
     (when (angle-tracker-seek! (-> self tilt) (-> gp-0 theta))
       (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
-        (dummy-22 self (fmax 163840.0 (fmin 409600.0 (-> gp-0 speed))) (-> gp-0 time) 20480.0)
+        (mistycannon-method-22 self (fmax 163840.0 (fmin 409600.0 (-> gp-0 speed))) (-> gp-0 time) 20480.0)
         (set! (-> self state-time) (-> *display* base-frame-counter))
         )
       )
@@ -1446,7 +1446,7 @@
           (mistycannon-do-aim (-> *target* control trans) (-> *target* control transv))
           (mistycannon-do-aim (-> self at-point) (new-stack-vector0))
           )
-      (dummy-23 self)
+      (mistycannon-method-23 self)
       (suspend)
       )
     (none)
@@ -1455,11 +1455,11 @@
   )
 
 (defstate mistycannon-waiting-for-player (mistycannon)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch)
        (when ((method-of-type touching-shapes-entry prims-touching?)
-              (the-as touching-shapes-entry (-> arg3 param 0))
+              (the-as touching-shapes-entry (-> event param 0))
               (-> self root-override)
               (the-as uint 1)
               )
@@ -1491,7 +1491,7 @@
             (angle-tracker-seek! (-> self tilt) 2730.6667)
             )
         )
-      (dummy-23 self)
+      (mistycannon-method-23 self)
       (when (and (-> self player-touching-grips?) (not (level-hint-displayed?)))
         (set! (-> self player-touching-grips?) #f)
         (hide-hud)
@@ -1537,7 +1537,7 @@
     (none)
     )
   :trans (behavior ()
-    (if (zero? (logand (-> *camera* master-options) 2))
+    (if (not (logtest? (-> *camera* master-options) 2))
         (cam-slave-go cam-free-floating)
         )
     (none)
@@ -1560,8 +1560,8 @@
   )
 
 (defstate mistycannon-player-control (mistycannon)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('change-mode)
        (send-event *camera* 'change-state cam-mistycannon 0)
        )
@@ -1573,7 +1573,7 @@
     (none)
     )
   :trans (behavior ()
-    (dummy-23 self)
+    (mistycannon-method-23 self)
     (rider-trans)
     (none)
     )
@@ -1619,12 +1619,16 @@
                     )
               (sound-play "cannon-charge" :id (-> self sound-id) :pitch (* 0.008 (the float gp-0)))
               )
-            (when (or (= gp-0 300)
-                      (and (zero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons x))) (nonzero? gp-0))
-                      )
+            (when (or (= gp-0 300) (and (not (cpad-hold? 0 x)) (nonzero? gp-0)))
               (let ((gp-1 (+ 50 (the int (* 0.16666667 (the float gp-0))))))
-                (level-hint-spawn (game-text-id sidekick-mistycannon) "sksp009f" (the-as entity #f) *entity-pool* (game-task none))
-                (dummy-22 self (* 4096.0 (the float gp-1)) 2.0 40960.0)
+                (level-hint-spawn
+                  (game-text-id sidekick-mistycannon)
+                  "sksp009f"
+                  (the-as entity #f)
+                  *entity-pool*
+                  (game-task none)
+                  )
+                (mistycannon-method-22 self (* 4096.0 (the float gp-1)) 2.0 40960.0)
                 )
               (set! (-> self state-time) (-> *display* base-frame-counter))
               (set! gp-0 0)
@@ -1643,7 +1647,7 @@
                 )
             )
           )
-        (if (zero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons x)))
+        (if (not (cpad-hold? 0 x))
             (set! s5-0 0)
             )
         (suspend)
@@ -1655,22 +1659,22 @@
   )
 
 (defstate mistycannon-waiting-for-player-to-fuck-off (mistycannon)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'touch)
-                       (when ((method-of-type touching-shapes-entry prims-touching?)
-                              (the-as touching-shapes-entry (-> arg3 param 0))
-                              (-> self root-override)
-                              (the-as uint 1)
-                              )
-                         (let ((v0-0 (-> *display* base-frame-counter)))
-                           (set! (-> self state-time) v0-0)
-                           v0-0
-                           )
-                         )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('touch)
+                      (when ((method-of-type touching-shapes-entry prims-touching?)
+                             (the-as touching-shapes-entry (-> event param 0))
+                             (-> self root-override)
+                             (the-as uint 1)
+                             )
+                        (let ((v0-0 (-> *display* base-frame-counter)))
+                          (set! (-> self state-time) v0-0)
+                          v0-0
+                          )
+                        )
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -1680,7 +1684,7 @@
   :code (behavior ()
     (loop
       (suspend)
-      (dummy-23 self)
+      (mistycannon-method-23 self)
       (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
           (go mistycannon-waiting-for-player)
           )
@@ -1804,7 +1808,3 @@
       )
   (none)
   )
-
-
-
-

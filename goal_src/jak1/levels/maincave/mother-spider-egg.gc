@@ -27,7 +27,7 @@
   :size-assert         #x150
   :flag-assert         #x1600e00150
   (:methods
-    (dummy-20 (_type_) none 20)
+    (mother-spider-egg-method-20 (_type_) none 20)
     (draw-egg-shadow (_type_ vector symbol) symbol 21)
     )
   (:states
@@ -60,8 +60,8 @@
 
 (defpartgroup group-spider-egg-hatches
   :id 324
-  :duration 5
-  :linger-duration 900
+  :duration (seconds 0.017)
+  :linger-duration (seconds 3)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
   :parts ((sp-item 2018 :fade-after (meters 50) :falloff-to (meters 50))
@@ -129,8 +129,8 @@
 
 (defpartgroup group-spider-egg-explodes
   :id 325
-  :duration 5
-  :linger-duration 375
+  :duration (seconds 0.017)
+  :linger-duration (seconds 1.25)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
   :parts ((sp-item 2074 :fade-after (meters 50) :falloff-to (meters 50)))
@@ -221,8 +221,8 @@
   )
 
 (defstate mother-spider-egg-falling (mother-spider-egg)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch 'attack)
        (go mother-spider-egg-die-while-falling)
        )
@@ -266,25 +266,24 @@
   )
 
 (defstate mother-spider-egg-on-ground (mother-spider-egg)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (cond
-                       ((= v1-0 'touch)
-                        (send-shove-back
-                          (-> self root-override)
-                          arg0
-                          (the-as touching-shapes-entry (-> arg3 param 0))
-                          0.7
-                          6144.0
-                          16384.0
-                          )
-                        )
-                       ((= v1-0 'attack)
-                        (go mother-spider-egg-die)
-                        )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('touch)
+                      (the-as object (send-shove-back
+                                       (-> self root-override)
+                                       proc
+                                       (the-as touching-shapes-entry (-> event param 0))
+                                       0.7
+                                       6144.0
+                                       16384.0
+                                       )
+                              )
+                      )
+                     (('attack)
+                      (go mother-spider-egg-die)
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -529,7 +528,3 @@
   (go mother-spider-egg-falling)
   (none)
   )
-
-
-
-

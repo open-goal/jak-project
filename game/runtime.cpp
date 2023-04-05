@@ -71,6 +71,7 @@
 u8* g_ee_main_mem = nullptr;
 std::thread::id g_main_thread_id = std::thread::id();
 GameVersion g_game_version = GameVersion::Jak1;
+int g_server_port = DECI2_PORT;
 
 namespace {
 
@@ -86,7 +87,7 @@ void deci2_runner(SystemThreadInterface& iface) {
   std::function<bool()> shutdown_callback = [&]() { return iface.get_want_exit(); };
 
   // create and register server
-  Deci2Server server(shutdown_callback, DECI2_PORT);
+  Deci2Server server(shutdown_callback, DECI2_PORT - 1 + (int)g_game_version);
   ee::LIBRARY_sceDeci2_register(&server);
 
   // now its ok to continue with initialization
@@ -318,6 +319,7 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
   bool enable_display = !game_options.disable_display;
   VM::use = !game_options.disable_debug_vm;
   g_game_version = game_options.game_version;
+  g_server_port = game_options.server_port;
 
   // set up discord stuff
   gStartTime = time(nullptr);

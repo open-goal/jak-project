@@ -398,12 +398,12 @@
   )
 
 (defbehavior energydoor-open-handler energydoor ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'open?)
-                       #t
-                       )
-            )
-    )
+  (the-as object (case arg2
+                   (('open?)
+                    #t
+                    )
+                   )
+          )
   )
 
 (defbehavior energydoor-closed-handler energydoor ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -662,8 +662,8 @@
   )
 
 (defstate energybase-idle (energybase)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('stop)
        (go energybase-stopping)
        )
@@ -672,13 +672,7 @@
   :code (behavior ()
     (loop
       (if (and *target* (>= 307200.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-          (level-hint-spawn
-            (game-text-id lavatube-balls)
-            "sksp0375"
-            (the-as entity #f)
-            *entity-pool*
-            (game-task none)
-            )
+          (level-hint-spawn (game-text-id lavatube-balls) "sksp0375" (the-as entity #f) *entity-pool* (game-task none))
           )
       (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
@@ -773,29 +767,29 @@
               )
 
 (defstate energyball-idle (energyball)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'attack)
-                       (when (and (>= arg1 2) (= (-> arg3 param 1) 'eco-yellow))
-                         (increment-success-for-hint (game-text-id lavatube-balls))
-                         (sound-play "dcrate-break")
-                         (process-spawn
-                           part-tracker
-                           :init part-tracker-init
-                           (-> *part-group-id-table* 546)
-                           600
-                           #f
-                           #f
-                           #f
-                           (-> self root-override trans)
-                           :to *entity-pool*
-                           )
-                         (cleanup-for-death self)
-                         (deactivate self)
-                         )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('attack)
+                      (when (and (>= arg1 2) (= (-> event param 1) 'eco-yellow))
+                        (increment-success-for-hint (game-text-id lavatube-balls))
+                        (sound-play "dcrate-break")
+                        (process-spawn
+                          part-tracker
+                          :init part-tracker-init
+                          (-> *part-group-id-table* 546)
+                          600
+                          #f
+                          #f
+                          #f
+                          (-> self root-override trans)
+                          :to *entity-pool*
+                          )
+                        (cleanup-for-death self)
+                        (the-as symbol (deactivate self))
+                        )
+                      )
+                     )
+            )
     )
   :trans (behavior ()
     (rider-trans)
@@ -938,8 +932,8 @@
   )
 
 (defstate energyarm-no-ball (energyarm)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('stop)
        (go energyarm-stop)
        )
@@ -1020,8 +1014,8 @@
   )
 
 (defstate energyarm-idle (energyarm)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('stop)
        (go energyarm-stop)
        )
@@ -1200,10 +1194,7 @@
             )
           (set! (-> *palette-fade-controls* control 2 fade) (-> self palette-val))
           (set! (-> (the-as process-drawable v1-2) root scale x) 1.25)
-          (let ((f0-6 1.25))
-            (set! (-> (the-as process-drawable v1-2) root scale z) f0-6)
-            f0-6
-            )
+          (set! (-> (the-as process-drawable v1-2) root scale z) 1.25)
           )
         )
       )
@@ -1246,16 +1237,13 @@
   )
 
 (defstate energyhub-stop (energyhub)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'flash)
-                       (let ((f0-0 1.9921875))
-                         (set! (-> self palette-val) f0-0)
-                         f0-0
-                         )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('flash)
+                      (set! (-> self palette-val) 1.9921875)
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (set! (-> self rotation-speed target) 0.0)
@@ -1330,16 +1318,13 @@
   )
 
 (defstate energyhub-idle (energyhub)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'flash)
-                       (let ((f0-0 1.9921875))
-                         (set! (-> self palette-val) f0-0)
-                         f0-0
-                         )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('flash)
+                      (set! (-> self palette-val) 1.9921875)
+                      )
+                     )
+            )
     )
   :trans (behavior ()
     (if (nonzero? (-> self sound))
@@ -1483,7 +1468,3 @@
   (go energylava-idle)
   (none)
   )
-
-
-
-

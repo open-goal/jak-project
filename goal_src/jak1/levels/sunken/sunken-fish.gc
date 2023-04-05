@@ -30,14 +30,14 @@
   :size-assert         #x140
   :flag-assert         #x1c00d00140
   (:methods
-    (TODO-RENAME-20 (_type_) float 20)
-    (TODO-RENAME-orbit?-21 (_type_ vector float vector) vector 21)
-    (dummy-22 (_type_) none 22)
-    (TODO-RENAME-23 (_type_) quaternion 23)
-    (TODO-RENAME-24 (_type_) vector 24)
-    (dummy-25 (_type_) none 25)
-    (TODO-RENAME-26 (_type_) float 26)
-    (TODO-RENAME-27 (_type_) float 27)
+    (sunkenfisha-method-20 (_type_) float 20)
+    (sunkenfisha-method-21 (_type_ vector float vector) vector 21)
+    (sunkenfisha-method-22 (_type_) none 22)
+    (sunkenfisha-method-23 (_type_) quaternion 23)
+    (sunkenfisha-method-24 (_type_) vector 24)
+    (sunkenfisha-method-25 (_type_) none 25)
+    (sunkenfisha-method-26 (_type_) float 26)
+    (sunkenfisha-method-27 (_type_) float 27)
     )
   (:states
     sunkenfisha-idle
@@ -60,16 +60,16 @@
               :bounds (static-spherem 0 1.5 0 2.5)
               )
 
-(defmethod dummy-22 sunkenfisha ((obj sunkenfisha))
+(defmethod sunkenfisha-method-22 sunkenfisha ((obj sunkenfisha))
   0
   (none)
   )
 
-(defmethod TODO-RENAME-orbit?-21 sunkenfisha ((obj sunkenfisha) (arg0 vector) (arg1 float) (arg2 vector))
+(defmethod sunkenfisha-method-21 sunkenfisha ((obj sunkenfisha) (arg0 vector) (arg1 float) (arg2 vector))
   (eval-path-curve! (-> obj path) arg0 arg1 'interp)
   (vector+! arg0 arg0 (-> obj path-trans-offset))
   (let ((s2-0 (new 'stack-no-clear 'vector)))
-    (TODO-RENAME-14 (-> obj path) s2-0 arg1)
+    (path-control-method-14 (-> obj path) s2-0 arg1)
     (let ((f0-2 (atan (-> s2-0 x) (-> s2-0 z)))
           (s4-1 (new 'stack-no-clear 'vector))
           )
@@ -79,7 +79,7 @@
     )
   )
 
-(defmethod TODO-RENAME-24 sunkenfisha ((obj sunkenfisha))
+(defmethod sunkenfisha-method-24 sunkenfisha ((obj sunkenfisha))
   (let ((s4-0 (new 'stack-no-clear 'vector))
         (s3-0 (new 'stack-no-clear 'matrix))
         (gp-0 (new 'stack-no-clear 'vector))
@@ -111,7 +111,7 @@
     )
   )
 
-(defmethod dummy-25 sunkenfisha ((obj sunkenfisha))
+(defmethod sunkenfisha-method-25 sunkenfisha ((obj sunkenfisha))
   (let* ((f0-0 (-> obj path-speed))
          (f1-1
            (seek f0-0 (-> obj targ-path-speed) (* (-> obj path-speed-seek-speed) (-> *display* seconds-per-frame)))
@@ -122,11 +122,11 @@
       (cond
         ((< f30-0 0.0)
          (set! f30-0 (- f30-0))
-         (TODO-RENAME-20 obj)
+         (sunkenfisha-method-20 obj)
          )
         ((< 1.0 f30-0)
          (+! f30-0 (* 2.0 (- 1.0 f30-0)))
-         (TODO-RENAME-20 obj)
+         (sunkenfisha-method-20 obj)
          )
         )
       (set! (-> obj path-u) f30-0)
@@ -135,7 +135,7 @@
   (none)
   )
 
-(defmethod TODO-RENAME-23 sunkenfisha ((obj sunkenfisha))
+(defmethod sunkenfisha-method-23 sunkenfisha ((obj sunkenfisha))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (set-vector! s5-0 (- (vector-x-angle (-> obj root transv))) (vector-y-angle (-> obj root transv)) 0.0 1.0)
     (set! (-> obj facing-rot x)
@@ -148,7 +148,7 @@
   (quaternion-zxy! (-> obj root quat) (-> obj facing-rot))
   )
 
-(defmethod TODO-RENAME-20 sunkenfisha ((obj sunkenfisha))
+(defmethod sunkenfisha-method-20 sunkenfisha ((obj sunkenfisha))
   (set! (-> obj path-dir) (- (-> obj path-dir)))
   (set! (-> obj path-speed) 0.0)
   (set! (-> obj targ-path-speed)
@@ -164,20 +164,10 @@
          (f1-3 (- (-> obj targ-local-path-offset x) f0-8))
          )
     (when (< (fabs f1-3) 12288.0)
-      (cond
-        ((>= f1-3 0.0)
-         (let ((f0-10 (fmin (+ 12288.0 f0-8) (-> obj max-local-path-offset x))))
-           (set! (-> obj targ-local-path-offset x) f0-10)
-           f0-10
-           )
-         )
-        (else
-          (let ((f0-12 (fmax (+ -12288.0 f0-8) (- (-> obj max-local-path-offset x)))))
-            (set! (-> obj targ-local-path-offset x) f0-12)
-            f0-12
-            )
+      (if (>= f1-3 0.0)
+          (set! (-> obj targ-local-path-offset x) (fmin (+ 12288.0 f0-8) (-> obj max-local-path-offset x)))
+          (set! (-> obj targ-local-path-offset x) (fmax (+ -12288.0 f0-8) (- (-> obj max-local-path-offset x))))
           )
-        )
       )
     )
   )
@@ -191,12 +181,12 @@
            )
       (init-vf0-vector)
       (if (>= (-> *display* base-frame-counter) (-> self change-path-dir-time))
-          (TODO-RENAME-20 self)
+          (sunkenfisha-method-20 self)
           )
-      (TODO-RENAME-24 self)
-      (dummy-25 self)
+      (sunkenfisha-method-24 self)
+      (sunkenfisha-method-25 self)
       (let ((gp-0 (new 'stack-no-clear 'vector)))
-        (TODO-RENAME-orbit?-21 self gp-0 (-> self path-u) (-> self local-path-offset))
+        (sunkenfisha-method-21 self gp-0 (-> self path-u) (-> self local-path-offset))
         (vector-! (-> self root transv) gp-0 (-> self root trans))
         (set! (-> self root trans quad) (-> gp-0 quad))
         )
@@ -210,7 +200,7 @@
         (.mul.x.vf vf1 vf1 vf2 :mask #b111)
         (.svf (&-> v1-16 quad) vf1)
         )
-      (TODO-RENAME-23 self)
+      (sunkenfisha-method-23 self)
       (none)
       )
     )
@@ -227,7 +217,7 @@
   :post (the-as (function none :behavior sunkenfisha) ja-post)
   )
 
-(defmethod TODO-RENAME-26 sunkenfisha ((obj sunkenfisha))
+(defmethod sunkenfisha-method-26 sunkenfisha ((obj sunkenfisha))
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj (-> obj entity))
   (set-vector! (-> obj root scale) 6.0 6.0 6.0 1.0)
@@ -251,14 +241,11 @@
       (the-as art-joint-anim (-> obj draw art-group data 6))
       num-func-identity
       )
-    (let ((f0-4 0.0))
-      (set! (-> s5-0 frame-num) f0-4)
-      f0-4
-      )
+    (set! (-> s5-0 frame-num) 0.0)
     )
   )
 
-(defmethod TODO-RENAME-27 sunkenfisha ((obj sunkenfisha))
+(defmethod sunkenfisha-method-27 sunkenfisha ((obj sunkenfisha))
   (local-vars (sv-16 res-tag) (sv-32 res-tag) (sv-48 res-tag))
   (vector-reset! (-> obj path-trans-offset))
   (set! (-> obj path-u) (rand-vu-float-range 0.0 1.0))
@@ -325,28 +312,25 @@
   (set! (-> obj path-speed) (rand-vu-float-range (-> obj path-normal-speed-lo) (-> obj path-normal-speed-hi)))
   (set! (-> obj targ-path-speed) (-> obj path-speed))
   (let ((s4-0 (new 'stack-no-clear 'vector)))
-    (TODO-RENAME-14 (-> obj path) s4-0 (-> obj path-u))
+    (path-control-method-14 (-> obj path) s4-0 (-> obj path-u))
     (set-vector! (-> obj facing-rot) 0.0 (atan (-> s4-0 x) (-> s4-0 z)) 0.0 1.0)
     )
-  (when (< (-> obj path-dir) 0.0)
-    (let ((f0-52 (- (-> obj facing-rot y))))
-      (set! (-> obj facing-rot y) f0-52)
-      f0-52
+  (if (< (-> obj path-dir) 0.0)
+      (set! (-> obj facing-rot y) (- (-> obj facing-rot y)))
       )
-    )
   )
 
 (defbehavior sunkenfisha-init-by-other sunkenfisha ((arg0 entity-actor))
   (set! (-> self entity) arg0)
-  (TODO-RENAME-26 self)
-  (TODO-RENAME-27 self)
+  (sunkenfisha-method-26 self)
+  (sunkenfisha-method-27 self)
   (go sunkenfisha-idle)
   (none)
   )
 
 (defmethod init-from-entity! sunkenfisha ((obj sunkenfisha) (arg0 entity-actor))
-  (TODO-RENAME-26 obj)
-  (TODO-RENAME-27 obj)
+  (sunkenfisha-method-26 obj)
+  (sunkenfisha-method-27 obj)
   (let ((s5-0 (+ (res-lump-value (-> obj entity) 'count uint128 :default (the-as uint128 1)) -1)))
     (while (> (the-as int s5-0) 0)
       (process-spawn sunkenfisha (-> obj entity) :to obj)
@@ -356,7 +340,3 @@
   (go sunkenfisha-idle)
   (none)
   )
-
-
-
-
