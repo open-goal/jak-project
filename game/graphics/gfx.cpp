@@ -201,9 +201,16 @@ void set_keyboard_enabled(const bool enabled) {
   }
 }
 
-void set_mouse_enabled(const bool enabled) {
+void set_mouse_enabled(const bool enabled, const bool control_camera, const bool control_movement) {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_input_manager()->enable_mouse(enabled);
+    return Display::GetMainDisplay()->get_input_manager()->enable_mouse(enabled, control_camera,
+                                                                        control_movement);
+  }
+}
+
+void set_mouse_camera_sens(const float xsens, const float ysens) {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_input_manager()->set_camera_sens(xsens, ysens);
   }
 }
 
@@ -211,6 +218,12 @@ void Gfx::ignore_background_controller_events(const bool ignore) {
   if (Display::GetMainDisplay()) {
     return Display::GetMainDisplay()->get_input_manager()->ignore_background_controller_events(
         ignore);
+  }
+}
+
+bool current_controller_has_led() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_input_manager()->controller_has_led(0);
   }
 }
 

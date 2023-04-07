@@ -84,18 +84,21 @@ class MouseDevice : public InputDevice {
       // there is nothing to close
   };
 
-  void enable_mouse_motion_controls(bool enable) { m_enable_mouse_motion_controls = enable; }
-
+  void enable_relative_mode(const bool enable);
+  void enable_camera_control(const bool enable);
+  void enable_movement_control(const bool enable) { m_control_movement = enable; }
   std::pair<int, int> get_mouse_pos() const { return {m_xcoord, m_ycoord}; }
+  void set_camera_sens(const float xsens, const float ysens);
 
  private:
   int m_xcoord = 0;
   int m_ycoord = 0;
 
-  bool m_enable_mouse_motion_controls = false;
+  bool m_control_camera = false;
+  bool m_control_movement = false;
   bool m_was_moving_with_mouse = false;
-  float m_ysens = 10.0;
   float m_xsens = -15.0;
+  float m_ysens = 10.0;
 };
 
 /// Central class that:
@@ -124,16 +127,18 @@ class InputManager {
                                const InputDeviceType device_type,
                                const bool buttons,
                                const int input_idx);
+  bool controller_has_led(const int port);
   void set_controller_for_port(const int controller_id, const int port);
   void set_controller_led(const int port, const u8 red, const u8 green, const u8 blue);
   void enable_keyboard(const bool enabled);
-  void enable_mouse(const bool enabled);
+  void enable_mouse(const bool enabled, const bool control_camera, const bool control_movement);
   bool get_waiting_for_bind() const { return m_waiting_for_bind.has_value(); }
   void set_wait_for_bind(const InputDeviceType device_type,
                          const bool for_analog,
                          const bool for_minimum_analog,
                          const int input_idx);
   void stop_waiting_for_bind() { m_waiting_for_bind = std::nullopt; }
+  void set_camera_sens(const float xsens, const float ysens);
 
  private:
   std::shared_ptr<game_settings::InputSettings> m_settings;

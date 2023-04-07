@@ -118,11 +118,11 @@ void DisplayManager::set_window_position() {
   SDL_Rect rect;
   // TODO - error handlking
   SDL_GetDisplayBounds(m_display_settings.display_id, &rect);
-  if (m_display_settings.window_xpos < rect.x ||
+  if (m_display_settings.window_xpos <= rect.x ||
       m_display_settings.window_xpos + 50 >= rect.x + rect.w) {
     m_display_settings.window_xpos = rect.x + 50;
   }
-  if (m_display_settings.window_ypos < rect.y ||
+  if (m_display_settings.window_ypos <= rect.y ||
       m_display_settings.window_ypos + 50 > rect.y + rect.h) {
     m_display_settings.window_ypos = rect.y + 50;
   }
@@ -203,7 +203,12 @@ void DisplayManager::update_video_modes() {
 
   for (int display_id = 0; display_id < num_displays; display_id++) {
     SDL_DisplayMode curr_mode;
-    const auto num_display_modes = SDL_GetCurrentDisplayMode(display_id, &curr_mode);
+    const auto success = SDL_GetCurrentDisplayMode(display_id, &curr_mode);
+    if (success != 0) {
+      sdl_util::log_error(
+          fmt::format("couldn't retrieve current display mode for display id {}", display_id));
+      continue;
+    }
     DisplayMode new_mode = {curr_mode.format, curr_mode.w, curr_mode.h, curr_mode.refresh_rate};
     m_current_display_modes[display_id] = new_mode;
   }

@@ -135,8 +135,10 @@ std::string get_current_bind(const int port,
                              const int input_idx);
 void set_controller_id_for_port(const int id, const int port);
 void set_keyboard_enabled(const bool enabled);
-void set_mouse_enabled(const bool enabled);
+void set_mouse_enabled(const bool enabled, const bool control_camera, const bool control_movement);
+void set_mouse_camera_sens(const float xsens, const float ysens);
 void ignore_background_controller_events(const bool ignore);
+bool current_controller_has_led();
 void set_controller_led(const int port, const u8 red, const u8 green, const u8 blue);
 bool get_waiting_for_bind();
 void set_wait_for_bind(const InputDeviceType device_type,

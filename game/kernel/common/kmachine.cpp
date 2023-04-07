@@ -582,8 +582,17 @@ void set_keyboard_enabled(u32 symptr) {
   Gfx::set_keyboard_enabled(symbol_to_bool(symptr));
 }
 
-void set_mouse_enabled(u32 symptr) {
-  Gfx::set_mouse_enabled(symbol_to_bool(symptr));
+void set_mouse_enabled(u32 enabled, u32 control_camera, u32 control_movement) {
+  Gfx::set_mouse_enabled(symbol_to_bool(enabled), symbol_to_bool(control_camera),
+                         symbol_to_bool(control_movement));
+}
+
+void set_mouse_camera_sens(u32 xsens, u32 ysens) {
+  float xsens_val;
+  memcpy(&xsens_val, &xsens, 4);
+  float ysens_val;
+  memcpy(&ysens_val, &ysens, 4);
+  Gfx::set_mouse_camera_sens(xsens_val, ysens_val);
 }
 
 void ignore_background_controller_events(u32 symptr) {
@@ -597,6 +606,10 @@ u64 get_waiting_for_bind() {
 void set_waiting_for_bind(u32 device_type, u32 for_analog, u32 for_minimum_analog, s32 input_idx) {
   Gfx::set_wait_for_bind((InputDeviceType)device_type, symbol_to_bool(for_analog),
                          symbol_to_bool(for_minimum_analog), input_idx);
+}
+
+u64 current_controller_has_led() {
+  return bool_to_symbol(Gfx::current_controller_has_led());
 }
 
 /// @brief Initializes all functions that are common across all game versions
@@ -627,13 +640,15 @@ void init_common_pc_port_functions(
   make_func_symbol_func("pc-set-frame-rate", (void*)set_frame_rate);
   make_func_symbol_func("pc-set-game-resolution", (void*)Gfx::set_game_resolution);
 
-  // pad stuff
+  // input stuff
   make_func_symbol_func("pc-get-controller-count", (void*)Gfx::get_controller_count);
   make_func_symbol_func("pc-set-controller!", (void*)Gfx::set_controller_id_for_port);
   make_func_symbol_func("pc-set-keyboard-enabled!", (void*)set_keyboard_enabled);
-  make_func_symbol_func("pc-set-mouse-enabled!", (void*)set_keyboard_enabled);
+  make_func_symbol_func("pc-set-mouse-enabled!", (void*)set_mouse_enabled);
+  make_func_symbol_func("pc-set-mouse-camera-sens!", (void*)set_mouse_camera_sens);
   make_func_symbol_func("pc-ignore-background-controller-events!",
                         (void*)ignore_background_controller_events);
+  make_func_symbol_func("pc-current-controller-has-led?", (void*)current_controller_has_led);
   make_func_symbol_func("pc-set-controller-led!", (void*)Gfx::set_controller_led);
   make_func_symbol_func("pc-get-waiting-for-bind", (void*)get_waiting_for_bind);
   make_func_symbol_func("pc-set-waiting-for-bind!", (void*)set_waiting_for_bind);

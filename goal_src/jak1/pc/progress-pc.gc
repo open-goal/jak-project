@@ -193,30 +193,48 @@
   (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id input-opts-ignore-controller-win-focus) :scale #t
     :on-change (lambda ((val object))
                 (let ((val-sym (the-as symbol val)))
-                  ;; TODO - pc settings method
-                  (set! (-> *pc-settings* ignore-controller-win-unfocused?) val-sym)
-                  (pc-ignore-background-controller-events! val-sym)
+                  (set-ignore-controller-in-bg! *pc-settings* val-sym)
                   (none))))
   (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id input-opts-controller-led-reflect-hp) :scale #t
-    :option-disabled-func (lambda () #f)) ;; TODO - disable if no LED detected on active controller
+    :option-disabled-func (lambda () (not (pc-current-controller-has-led?))))
   (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id input-opts-controller-led-reflect-eco) :scale #t
-    :option-disabled-func (lambda () #f)) ;; TODO - disable if no LED detected on active controller
+    :option-disabled-func (lambda () (not (pc-current-controller-has-led?))))
   (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)))
 
 (define *mouse-options* (new 'static 'boxed-array :type game-option
-  (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id input-opts-mouse-enable-camera) :scale #t)
+  (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id input-opts-mouse-enable-camera) :scale #t
+    :on-change (lambda ((val object))
+                (let ((val-sym (the-as symbol val)))
+                  (set! (-> *pc-settings* mouse-camera?) val-sym)
+                  (update-mouse-controls! *pc-settings*)
+                  (none))))
   (new 'static 'game-option :option-type (game-option-type slider) :name (game-text-id input-opts-mouse-horizontal-sens) :scale #t
-    :param1 -20.0 :param2 20.0 :slider-step-size 0.5 :slider-show-decimal? #t)
+    :param1 -30.0 :param2 30.0 :slider-step-size 0.25 :slider-show-decimal? #t
+    :on-confirm (lambda ()
+                  (update-mouse-controls! *pc-settings*)
+                  (none))
+    :option-disabled-func (lambda () (not (-> *pc-settings* mouse-camera?))))
   (new 'static 'game-option :option-type (game-option-type slider) :name (game-text-id input-opts-mouse-vertical-sens) :scale #t
-    :param1 -20.0 :param2 20.0 :slider-step-size 0.5 :slider-show-decimal? #t)
-  (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id input-opts-mouse-enable-movement) :scale #t)
+    :param1 -30.0 :param2 30.0 :slider-step-size 0.25 :slider-show-decimal? #t
+    :on-confirm (lambda ()
+                  (update-mouse-controls! *pc-settings*)
+                  (none))
+    :option-disabled-func (lambda () (not (-> *pc-settings* mouse-camera?))))
+  (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id input-opts-mouse-enable-movement) :scale #t
+    :on-change (lambda ((val object))
+                (let ((val-sym (the-as symbol val)))
+                  (set! (-> *pc-settings* mouse-movement?) val-sym)
+                  (update-mouse-controls! *pc-settings*)
+                  (none))))
   (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)))
 
 (define *reassign-binds-options* (new 'static 'boxed-array :type game-option
-  ;; TODO - disable these if there is no respective device enabled/detected
-  (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id input-opts-binds-controller) :scale #t :param3 (game-option-menu controller-binds))
-  (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id input-opts-binds-keyboard) :scale #t :param3 (game-option-menu keyboard-binds))
-  (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id input-opts-binds-mouse) :scale #t :param3 (game-option-menu mouse-binds))
+  (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id input-opts-binds-controller) :scale #t :param3 (game-option-menu controller-binds)
+    :option-disabled-func (lambda () (<= (pc-get-controller-count) 0)))
+  (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id input-opts-binds-keyboard) :scale #t :param3 (game-option-menu keyboard-binds)
+    :option-disabled-func (lambda () (not (-> *pc-settings* keyboard-enabled?))))
+  (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id input-opts-binds-mouse) :scale #t :param3 (game-option-menu mouse-binds)
+    :option-disabled-func (lambda () (not (-> *pc-settings* mouse-enabled?))))
   (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)))
 
 (define *input-options* (new 'static 'boxed-array :type game-option
@@ -226,16 +244,13 @@
   (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id input-opts-enable-kb) :scale #t
     :on-change (lambda ((val object))
                 (let ((val-sym (the-as symbol val)))
-                  ;; TODO pc-settings method
-                  (set! (-> *pc-settings* keyboard-enabled?) val-sym)
-                  (pc-set-keyboard-enabled! val-sym)
+                  (set-enable-keyboard! *pc-settings* val-sym)
                   (none))))
   (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id input-opts-enable-mouse) :scale #t
     :on-change (lambda ((val object))
                 (let ((val-sym (the-as symbol val)))
-                  ;; TODO pc-settings method
                   (set! (-> *pc-settings* mouse-enabled?) val-sym)
-                  (pc-set-mouse-enabled! val-sym)
+                  (update-mouse-controls! *pc-settings*)
                   (none))))
   (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id input-opts-mouse-opts) :scale #t :param3 (game-option-menu mouse-options)
     :option-disabled-func (lambda () (not (-> *pc-settings* mouse-enabled?))))
@@ -250,13 +265,11 @@
     )
   )
 
-;; TODO -add back to misc, since this menu is actually dead code
-;; TOD - crash in misc menu
+;; TODO - add back to misc, since this menu is actually dead code
 (define *accessibility-options* (new 'static 'boxed-array :type game-option
-    (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id money-starburst) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
-    )
-  )
+  "This menu is not rendered anywhere right now"
+  (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id money-starburst) :scale #t)
+  (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)))
 
 (define *gfx-ps2-options* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type lod-bg) :name (game-text-id lod-bg) :scale #t)
@@ -1851,6 +1864,9 @@
                 (set-video-mode (-> *setting-control* default video-mode))
                 )
                )
+              ;; if the option has a `on-confirm` function, run it
+              (when (nonzero? (-> options (-> obj option-index) on-confirm))
+                ((-> options (-> obj option-index) on-confirm)))
               (commit-to-file *pc-settings*)
              )
            )
@@ -2159,8 +2175,8 @@
                 (locked? #f)
                 )
             ;; Check if the option should be disabled
-            (when (and (!= (-> options index option-disabled-func) 0)
-                      ((-> options index option-disabled-func)))
+            (when (and (nonzero? (-> options index option-disabled-func))
+                       ((-> options index option-disabled-func)))
                   (set! locked? #t))
             (case (-> options index option-type)
               (((game-option-type yes-no))

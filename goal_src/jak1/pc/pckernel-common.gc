@@ -379,6 +379,23 @@
 
   0)
 
+(defmethod set-ignore-controller-in-bg! pc-settings ((obj pc-settings) (val symbol))
+  "sets whether or not to ignore controller inputs if the window is in the background"
+  (set! (-> obj ignore-controller-win-unfocused?) val)
+  (pc-ignore-background-controller-events! val)
+  (none))
+
+(defmethod set-enable-keyboard! pc-settings ((obj pc-settings) (val symbol))
+  "sets whether to ignore keyboard input events"
+  (set! (-> obj keyboard-enabled?) val)
+  (pc-set-keyboard-enabled! val)
+  (none))
+
+(defmethod update-mouse-controls! pc-settings ((obj pc-settings))
+  "Uses whatever is set on the [[pc-settings]] to update the runtime on how it should interpret mouse events"
+  (pc-set-mouse-enabled! (-> obj mouse-enabled?) (-> obj mouse-camera?) (-> obj mouse-movement?))
+  (pc-set-mouse-camera-sens! (-> obj mouse-xsens) (-> obj mouse-ysens))
+  (none))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -494,6 +511,8 @@
 
       (file-stream-seek-past-whitespace ,fs)
       (when (!= #x29 (file-stream-getc ,fs))
+        ;; NOTE - if you have a setting in the file that isn't handled (even if its valid lisp)
+        ;; this error will be thrown.
         (pc-settings-read-throw-error ,fs "invalid char, ) not found")
         )
       )
@@ -641,12 +660,17 @@
     (("text-language") (set! (-> obj text-language) (the-as pc-subtitle-lang (file-stream-read-int file))))
     (("subtitle-speaker") (set! (-> obj subtitle-speaker?) (file-stream-read-symbol file)))
 
-    ;; TODO - finish the rest
+    (("ignore-controller-win-unfocused?") (set-ignore-controller-in-bg! obj (file-stream-read-symbol file)))
     (("controller-hp-led?") (set! (-> obj controller-hp-led?) (file-stream-read-symbol file)))
     (("controller-eco-led?") (set! (-> obj controller-eco-led?) (file-stream-read-symbol file)))
-
-
     (("stick-deadzone") (set! (-> obj stick-deadzone) (file-stream-read-float file)))
+    (("keyboard-enabled?") (set-enable-keyboard! obj (file-stream-read-symbol file)))
+    (("mouse-enabled?") (set! (-> obj mouse-enabled?) (file-stream-read-symbol file)))
+    (("mouse-camera?") (set! (-> obj mouse-camera?) (file-stream-read-symbol file)))
+    (("mouse-xsens") (set! (-> obj mouse-xsens) (file-stream-read-float file)))
+    (("mouse-ysens") (set! (-> obj mouse-ysens) (file-stream-read-float file)))
+    (("mouse-movement?") (set! (-> obj mouse-movement?) (file-stream-read-symbol file)))
+
     (("ps2-read-speed?") (set! (-> obj ps2-read-speed?) (file-stream-read-symbol file)))
     (("ps2-parts?") (set! (-> obj ps2-parts?) (file-stream-read-symbol file)))
     (("ps2-music?") (set! (-> obj ps2-music?) (file-stream-read-symbol file)))
@@ -743,10 +767,16 @@
   (format file "  (lod-force-ocean ~D)~%" (-> obj lod-force-ocean))
   (format file "  (lod-force-actor ~D)~%" (-> obj lod-force-actor))
 
-  ;; TODO - the rest
+  (format file "  (ignore-controller-win-unfocused? ~A)~%" (-> obj ignore-controller-win-unfocused?))
   (format file "  (controller-hp-led? ~A)~%" (-> obj controller-hp-led?))
   (format file "  (controller-eco-led? ~A)~%" (-> obj controller-eco-led?))
   (format file "  (stick-deadzone ~f)~%" (-> obj stick-deadzone))
+  (format file "  (keyboard-enabled? ~A)~%" (-> obj keyboard-enabled?))
+  (format file "  (mouse-enabled? ~A)~%" (-> obj mouse-enabled?))
+  (format file "  (mouse-camera? ~A)~%" (-> obj mouse-camera?))
+  (format file "  (mouse-xsens ~f)~%" (-> obj mouse-xsens))
+  (format file "  (mouse-ysens ~f)~%" (-> obj mouse-ysens))
+  (format file "  (mouse-movement? ~A)~%" (-> obj mouse-movement?))
 
   (format file "  (ps2-read-speed? ~A)~%" (-> obj ps2-read-speed?))
   (format file "  (ps2-parts? ~A)~%" (-> obj ps2-parts?))
@@ -848,6 +878,8 @@
     (set-defaults! obj)
     ;; if saved settings are corrupted or not found, the object will be fully reset to use all defaults
     (load-settings obj)
+    ;; any post-operations that need to be done after loading
+    (update-mouse-controls! obj)
     obj))
 
 

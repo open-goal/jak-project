@@ -241,8 +241,7 @@ void KeyboardDevice::process_event(const SDL_Event& event,
 
 MouseDevice::MouseDevice(std::shared_ptr<game_settings::InputSettings> settings) {
   m_settings = settings;
-  // https://wiki.libsdl.org/SDL2/SDL_SetRelativeMouseMode
-  SDL_SetRelativeMouseMode(sdl_util::sdl_bool(m_enable_mouse_motion_controls));
+  enable_relative_mode(m_control_camera);
 }
 
 void MouseDevice::process_event(const SDL_Event& event,
@@ -290,7 +289,7 @@ void MouseDevice::process_event(const SDL_Event& event,
       }
     }
 
-    if (m_enable_mouse_motion_controls) {
+    if (m_control_movement) {
       // WoW style mouse movement, if you have both buttons held down, you will move forward
       const auto mouse_state = SDL_GetMouseState(NULL, NULL);
       if (event.type == SDL_MOUSEBUTTONDOWN &&
@@ -316,13 +315,28 @@ void MouseDevice::process_event(const SDL_Event& event,
     // https://wiki.libsdl.org/SDL2/SDL_MouseMotionEvent
     m_xcoord = event.motion.x;
     m_ycoord = event.motion.y;
-    if (m_enable_mouse_motion_controls) {
+    if (m_control_camera) {
       const auto xadjust = std::clamp(127 + int(float(event.motion.xrel) * m_xsens), 0, 255);
       const auto yadjust = std::clamp(127 + int(float(event.motion.yrel) * m_ysens), 0, 255);
       data->analog_data.at(2) = xadjust;
       data->analog_data.at(3) = yadjust;
     }
   }
+}
+
+void MouseDevice::enable_relative_mode(const bool enable) {
+  // https://wiki.libsdl.org/SDL2/SDL_SetRelativeMouseMode
+  SDL_SetRelativeMouseMode(sdl_util::sdl_bool(enable));
+}
+
+void MouseDevice::enable_camera_control(const bool enable) {
+  m_control_camera = enable;
+  enable_relative_mode(m_control_camera);
+}
+
+void MouseDevice::set_camera_sens(const float xsens, const float ysens) {
+  m_xsens = xsens;
+  m_ysens = ysens;
 }
 
 InputManager::InputManager() {
@@ -393,7 +407,7 @@ void InputManager::refresh_device_list() {
       }
     }
   }
-  if (!m_available_controllers.empty()) {
+  if (m_available_controllers.empty()) {
     lg::warn(
         "No active game controllers could be found or loaded successfully - inputs will not work!");
   }
@@ -528,6 +542,17 @@ void InputManager::set_controller_for_port(const int controller_id, const int po
   }
 }
 
+bool InputManager::controller_has_led(const int port) {
+  if (m_controller_port_mapping.find(0) == m_controller_port_mapping.end()) {
+    return false;
+  }
+  const auto id = m_controller_port_mapping.at(port);
+  if (id >= m_available_controllers.size()) {
+    return false;
+  }
+  return m_available_controllers.at(id)->has_led();
+}
+
 void InputManager::set_controller_led(const int port, const u8 red, const u8 green, const u8 blue) {
   if (m_controller_port_mapping.find(0) == m_controller_port_mapping.end()) {
     return;
@@ -541,18 +566,27 @@ void InputManager::set_controller_led(const int port, const u8 red, const u8 gre
 
 void InputManager::enable_keyboard(const bool enabled) {
   m_keyboard_enabled = enabled;
-  if (!enabled) {
+  if (!m_keyboard_enabled) {
     // Reset inputs as this device won't be able to again!
-    m_data.clear();
+    for (auto& [port, data] : m_data) {
+      data->clear();
+    }
   }
 }
 
-void InputManager::enable_mouse(const bool enabled) {
+void InputManager::enable_mouse(const bool enabled,
+                                const bool control_camera,
+                                const bool control_movement) {
   m_mouse_enabled = enabled;
-  if (!enabled) {
+  if (!m_mouse_enabled) {
     // Reset inputs as this device won't be able to again!
-    m_data.clear();
+    for (auto& [port, data] : m_data) {
+      data->clear();
+    }
   }
+  // Switch relevant flags over related to the mouse
+  m_mouse.enable_camera_control(enabled && control_camera);
+  m_mouse.enable_movement_control(enabled && control_movement);
 }
 
 void InputManager::set_wait_for_bind(const InputDeviceType device_type,
@@ -564,4 +598,8 @@ void InputManager::set_wait_for_bind(const InputDeviceType device_type,
   m_waiting_for_bind->pad_idx = input_idx;
   m_waiting_for_bind->for_analog = for_analog;
   m_waiting_for_bind->for_analog_minimum = for_minimum_analog;
+}
+
+void InputManager::set_camera_sens(const float xsens, const float ysens) {
+  m_mouse.set_camera_sens(xsens, ysens);
 }
