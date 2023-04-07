@@ -168,15 +168,6 @@ void Sprite3::opengl_setup_distort() {
 void Sprite3::render_distorter(DmaFollower& dma,
                                SharedRenderState* render_state,
                                ScopedProfilerNode& prof) {
-  // Skip to distorter DMA
-  m_direct.reset_state();
-  while (dma.current_tag().qwc != 7) {
-    auto direct_data = dma.read_and_advance();
-    m_direct.render_vif(direct_data.vif0(), direct_data.vif1(), direct_data.data,
-                        direct_data.size_bytes, render_state, prof);
-  }
-  m_direct.flush_pending(render_state, prof);
-
   // Read DMA
   {
     auto prof_node = prof.make_scoped_child("dma");

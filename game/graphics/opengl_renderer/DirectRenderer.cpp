@@ -1134,6 +1134,53 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         m_prim_building.building_idx = 0;
       }
     } break;
+
+    case GsPrim::Kind::LINE_STRIP: {
+      if (m_prim_building.building_idx == 2) {
+        m_prim_building.building_idx = 0;
+      }
+
+      if (m_prim_building.tri_strip_startup < 2) {
+        m_prim_building.tri_strip_startup++;
+      }
+      if (m_prim_building.tri_strip_startup >= 2) {
+        if (advance) {
+          math::Vector<double, 3> pt0 = m_prim_building.building_vert[0].xyz().cast<double>();
+          math::Vector<double, 3> pt1 = m_prim_building.building_vert[1].xyz().cast<double>();
+          auto normal = (pt1 - pt0).normalized().cross(math::Vector<double, 3>{0, 0, 1});
+
+          double line_width = (1 << 19);
+          //        debug_print_vtx(m_prim_building.building_vert[0]);
+          //        debug_print_vtx(m_prim_building.building_vert[1]);
+
+          math::Vector<double, 3> a = pt0 + normal * line_width;
+          math::Vector<double, 3> b = pt1 + normal * line_width;
+          math::Vector<double, 3> c = pt0 - normal * line_width;
+          math::Vector<double, 3> d = pt1 - normal * line_width;
+          math::Vector<u32, 4> ai{a.x(), a.y(), a.z(), 0};
+          math::Vector<u32, 4> bi{b.x(), b.y(), b.z(), 0};
+          math::Vector<u32, 4> ci{c.x(), c.y(), c.z(), 0};
+          math::Vector<u32, 4> di{d.x(), d.y(), d.z(), 0};
+
+          // ACB:
+          m_prim_buffer.push(m_prim_building.building_rgba[0], ai, {}, 0, false, false, false,
+                             false);
+          m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, 0, false, false, false,
+                             false);
+          m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, 0, false, false, false,
+                             false);
+          // b c d
+          m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, 0, false, false, false,
+                             false);
+          m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, 0, false, false, false,
+                             false);
+          m_prim_buffer.push(m_prim_building.building_rgba[1], di, {}, 0, false, false, false,
+                             false);
+          //
+        }
+      }
+    } break;
+
     default:
       ASSERT_MSG(false, fmt::format("prim type {} is unsupported in {}.", (int)m_prim_building.kind,
                                     name_and_id()));
