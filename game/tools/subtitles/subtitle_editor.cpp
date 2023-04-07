@@ -47,7 +47,7 @@ void SubtitleEditor::repl_play_hint(const std::string_view& hint_name) {
   // repl_set_continue_point("village1-hut");
   // TODO - move into water fountain
   m_repl.eval(
-      fmt::format("(level-hint-spawn (game-text-id zero) \"{}\" (the-as entity #f) *entity-pool* "
+      fmt::format("(level-hint-spawn (text-id zero) \"{}\" (the-as entity #f) *entity-pool* "
                   "(game-task none))",
                   hint_name));
 }
