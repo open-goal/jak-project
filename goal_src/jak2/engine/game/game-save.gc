@@ -673,7 +673,7 @@
                                                                                                             (set! (-> (the-as (pointer float) (+ a0-95 (* a1-94 4))) 0) (-> obj game-score a1-94))
                                                                                                             )
                                                                                                           (let ((s4-6 (the-as object (+ a0-95 (logand -16 (+ (* v1-153 4) 15))))))
-                                                                                                            ((method-of-object *bigmap* bigmap-method-13))
+                                                                                                            (bigmap-method-13 *bigmap*)
                                                                                                             (let ((v1-161 (-> *bigmap* compressed-next-index)))
                                                                                                               (let ((a0-97 (-> (the-as (inline-array game-save-tag) s4-6) 0)))
                                                                                                                 (set! (-> a0-97 elt-type) (game-save-elt bigmap-data))
@@ -698,7 +698,7 @@
                                                                                                                     (dotimes (a1-105 v1-165)
                                                                                                                       (if (-> *bigmap* compressed-masks a1-105)
                                                                                                                           (set! (-> (the-as (pointer uint32) (+ a0-100 (* a1-105 4))) 0)
-                                                                                                                                (- (-> *bigmap* compressed-masks a1-105) (-> *bigmap* compressed-data))
+                                                                                                                                (the-as uint (&- (-> *bigmap* compressed-masks a1-105) (the-as uint (-> *bigmap* compressed-data))))
                                                                                                                                 )
                                                                                                                           (set! (-> (the-as (pointer int32) (+ a0-100 (* a1-105 4))) 0) -1)
                                                                                                                           )
@@ -1384,8 +1384,8 @@
               (dotimes (a1-63 v1-107)
                 (let ((a2-27 (-> (the-as (inline-array game-save-tag) s4-0) 1 user-object a1-63)))
                   (if (< (the-as int a2-27) 0)
-                      (set! (-> *bigmap* compressed-masks a1-63) (the-as uint #f))
-                      (set! (-> *bigmap* compressed-masks a1-63) (the-as uint (+ a0-120 (the-as uint a2-27))))
+                      (set! (-> *bigmap* compressed-masks a1-63) (the-as (pointer int8) #f))
+                      (set! (-> *bigmap* compressed-masks a1-63) (the-as (pointer int8) (+ a0-120 (the-as uint a2-27))))
                       )
                   )
                 )
@@ -1644,21 +1644,12 @@
   )
 
 
-;; WARN: Failed store: (s.w! (+ v1-45 8) 0) at op 192
-;; WARN: Failed store: (s.w! (+ v1-45 12) 0) at op 193
+;; ERROR: Failed store: (s.w! (+ v1-45 8) 0) at op 192
 (defbehavior auto-save-post auto-save ()
   (when (and (= *cheat-mode* 'debug) (cpad-hold? 0 l3))
-    (let ((gp-0 (new
-                  'stack
-                  'font-context
-                  *font-default-matrix*
-                  32
-                  320
-                  0.0
-                  (font-color default)
-                  (font-flags shadow kerning)
-                  )
-                )
+    (let ((gp-0
+            (new 'stack 'font-context *font-default-matrix* 32 320 0.0 (font-color default) (font-flags shadow kerning))
+            )
           )
       (let ((v1-5 gp-0))
         (set! (-> v1-5 width) (the float 440))
@@ -1672,17 +1663,9 @@
       )
     )
   (when (and (= (-> self mode) 'auto-save) (not (and (-> self next-state) (= (-> self next-state name) 'done))))
-    (let ((gp-1 (new
-                  'stack
-                  'font-context
-                  *font-default-matrix*
-                  20
-                  80
-                  0.0
-                  (font-color default)
-                  (font-flags shadow kerning)
-                  )
-                )
+    (let ((gp-1
+            (new 'stack 'font-context *font-default-matrix* 20 80 0.0 (font-color default) (font-flags shadow kerning))
+            )
           )
       (let ((v1-17 gp-1))
         (set! (-> v1-17 scale) 0.8)
