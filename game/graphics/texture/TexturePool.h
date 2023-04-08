@@ -10,7 +10,7 @@
 #include "common/common_types.h"
 #include "common/util/Serializer.h"
 #include "common/util/SmallVector.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "game/graphics/texture/TextureConverter.h"
 

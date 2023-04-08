@@ -35,7 +35,6 @@
 #include "game/kernel/jak1/klisten.h"
 #include "game/kernel/jak1/kscheme.h"
 #include "game/kernel/jak1/ksound.h"
-#include "game/kernel/svnrev.h"
 #include "game/sce/deci2.h"
 #include "game/sce/libcdvd_ee.h"
 #include "game/sce/libdma.h"
@@ -653,7 +652,7 @@ void InitMachine_PCPort() {
       make_string_from_c(user_dir_path.string().c_str());
   auto settings_path = file_util::get_user_settings_dir(g_game_version);
   intern_from_c("*pc-settings-folder*")->value = make_string_from_c(settings_path.string().c_str());
-  intern_from_c("*pc-settings-built-sha*")->value = make_string_from_c(GIT_VERSION);
+  intern_from_c("*pc-settings-built-sha*")->value = make_string_from_c(build_revision().c_str());
 }
 
 /*!

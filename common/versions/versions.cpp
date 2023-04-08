@@ -1,6 +1,7 @@
 #include "versions.h"
 
 #include "common/util/Assert.h"
+#include "common/versions/revision.h"
 
 #include "third-party/fmt/core.h"
 #include "third-party/fmt/format.h"
@@ -30,6 +31,27 @@ std::string version_to_game_name(GameVersion v) {
   }
 }
 
+std::string version_to_game_name_external(GameVersion v) {
+  switch (v) {
+    case GameVersion::Jak1:
+      return "Jak 1";
+    case GameVersion::Jak2:
+      return "Jak 2";
+    default:
+      ASSERT_MSG(false, fmt::format("no game_name for version: {} found", fmt::underlying(v)));
+  }
+}
+
 std::vector<std::string> valid_game_version_names() {
   return {game_version_names[GameVersion::Jak1], game_version_names[GameVersion::Jak2]};
+}
+
+std::string build_revision() {
+  if (BUILT_TAG != "") {
+    return BUILT_TAG;
+  }
+  if (BUILT_SHA != "") {
+    return BUILT_SHA;
+  }
+  return "Unknown Revision";
 }
