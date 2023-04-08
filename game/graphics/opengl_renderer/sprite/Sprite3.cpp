@@ -135,7 +135,10 @@ void Sprite3::opengl_setup_normal() {
  * This should get the dma chain immediately after the call to sprite-draw-distorters.
  * It ends right before the sprite-add-matrix-data for the 3d's
  */
-void Sprite3::handle_sprite_frame_setup(DmaFollower& dma, GameVersion version) {
+void Sprite3::handle_sprite_frame_setup(DmaFollower& dma,
+                                        GameVersion version,
+                                        SharedRenderState* render_state,
+                                        ScopedProfilerNode& prof) {
   // first is some direct data
   auto direct_data = dma.read_and_advance();
   ASSERT(direct_data.size_bytes == 3 * 16);
@@ -146,6 +149,7 @@ void Sprite3::handle_sprite_frame_setup(DmaFollower& dma, GameVersion version) {
   // next is the "frame data"
   switch (version) {
     case GameVersion::Jak1: {
+      render_state->shaders[ShaderId::SPRITE3].activate();
       auto frame_data = dma.read_and_advance();
       ASSERT(frame_data.size_bytes == (int)sizeof(SpriteFrameDataJak1));  // very cool
       ASSERT(frame_data.vifcode0().kind == VifCode::Kind::STCYCL);
@@ -161,6 +165,17 @@ void Sprite3::handle_sprite_frame_setup(DmaFollower& dma, GameVersion version) {
       m_frame_data.from_jak1(jak1_data);
     } break;
     case GameVersion::Jak2: {
+      // in jak 2, the DirectRenderer DMA comes right before the actual sprite data(?)
+      // TODO might be different when distorter is running
+      m_direct.reset_state();
+      while (dma.current_tag().qwc != (int)sizeof(SpriteFrameData) / 16) {
+        auto pre_frame_data = dma.read_and_advance();
+        m_direct.render_vif(pre_frame_data.vif0(), pre_frame_data.vif1(), pre_frame_data.data,
+                            pre_frame_data.size_bytes, render_state, prof);
+      }
+      m_direct.flush_pending(render_state, prof);
+
+      render_state->shaders[ShaderId::SPRITE3].activate();
       auto frame_data = dma.read_and_advance();
       ASSERT(frame_data.size_bytes == (int)sizeof(SpriteFrameData));  // very cool
       ASSERT(frame_data.vifcode0().kind == VifCode::Kind::STCYCL);
@@ -387,8 +402,7 @@ void Sprite3::render_jak2(DmaFollower& dma,
   }
 
   // next, the normal sprite stuff
-  render_state->shaders[ShaderId::SPRITE3].activate();
-  handle_sprite_frame_setup(dma, render_state->version);
+  handle_sprite_frame_setup(dma, render_state->version, render_state, prof);
 
   // 3d sprites
   render_3d(dma);
@@ -454,16 +468,25 @@ void Sprite3::render_jak1(DmaFollower& dma,
     return;
   }
 
+  {
+    // Some DirectRenderer DMA is sent before everything else from the progress menu
+    m_direct.reset_state();
+    while (dma.current_tag().qwc != 7) {
+      auto direct_data = dma.read_and_advance();
+      m_direct.render_vif(direct_data.vif0(), direct_data.vif1(), direct_data.data,
+                          direct_data.size_bytes, render_state, prof);
+    }
+    m_direct.flush_pending(render_state, prof);
+  }
+
   // First is the distorter
   {
     auto child = prof.make_scoped_child("distorter");
     render_distorter(dma, render_state, child);
   }
 
-  render_state->shaders[ShaderId::SPRITE3].activate();
-
   // next, sprite frame setup.
-  handle_sprite_frame_setup(dma, render_state->version);
+  handle_sprite_frame_setup(dma, render_state->version, render_state, prof);
 
   // 3d sprites
   render_3d(dma);

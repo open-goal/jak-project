@@ -5916,7 +5916,7 @@
   )
 
 (declare-type engine basic)
-(declare-type game-text-id uint32)
+(declare-type text-id uint32)
 (deftype level (basic)
   ((name              symbol  :offset-assert 4)
    (load-name         string   :offset-assert 8)
@@ -6021,7 +6021,7 @@
     (debug-print-region-splitbox (_type_ vector object) none 20) ;; (vis-load (_type_) uint 20)
     (get-art-group-by-name (_type_ string) art-group 21) ;; (unused-21 (_type_) none 21)
     (level-method-22 (_type_ symbol) int 22) ;; (birth (_type_) _type_ 22)
-    (lookup-text (_type_ game-text-id symbol) string 23) ;; (level-status-set! (_type_ symbol) _type_ 23)
+    (lookup-text (_type_ text-id symbol) string 23) ;; (level-status-set! (_type_ symbol) _type_ 23)
     (level-method-24 () none 24)
     (birth (_type_) _type_ 25) ;; (init-vis (_type_) int 25)
     (level-status-update! (_type_ symbol) _type_ 26)
@@ -6646,8 +6646,8 @@
 ;; text-id-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; +++text-id-h:game-text-id
-(defenum game-text-id
+;; +++text-id-h:text-id
+(defenum text-id
   :type uint32
   :bitfield #f
   (null 0)
@@ -7031,7 +7031,7 @@
   (text-x30f #x30f)
   (progress-unknown-continue #x310)
 )
-;; ---text-id-h:game-text-id
+;; ---text-id-h:text-id
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; text-h                         ;;
@@ -7039,7 +7039,7 @@
 
 
 (deftype game-text (structure)
-  ((id   game-text-id  :offset-assert 0) ;; guessed by decompiler
+  ((id   text-id  :offset-assert 0) ;; guessed by decompiler
    (text string        :offset-assert 4) ;; guessed by decompiler
    )
   :pack-me
@@ -7060,7 +7060,7 @@
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-    (lookup-text! (_type_ game-text-id symbol) string 9)
+    (lookup-text! (_type_ text-id symbol) string 9)
     )
   )
 
@@ -9809,8 +9809,8 @@
   ((mask task-manager-mask)
    (level symbol)
    (manager handle)
-   (fail-message game-text-id)
-   (retry-message game-text-id)
+   (fail-message text-id)
+   (retry-message text-id)
    (intro-scene string)
    (resolution-scene string)
    (resolution-scene-continue string)
@@ -9857,7 +9857,7 @@
    (skill-count uint16)
    (suck-death-count uint8)
    (add game-task-node-command)
-   (description game-text-id)
+   (description text-id)
    )
   :flag-assert         #xe0000004c
   (:methods
@@ -9872,7 +9872,7 @@
 
 (deftype game-task-info (basic)
   ((name                string   :offset-assert 4)
-   (text-name           game-text-id  :offset-assert 8)
+   (text-name           text-id  :offset-assert 8)
    (pre-play-node       game-task-node  :offset-assert 12)
    (kiosk-play-node     game-task-node  :offset-assert 14)
    (pre-play-continue   string   :offset-assert 16)
@@ -15451,7 +15451,7 @@
 
 
 (deftype scene (art-group)
-  ((mask-to-clear    uint32           :offset-assert 32)
+  ((mask-to-clear    process-mask      :offset-assert 32)
    (entity           string            :offset-assert 36)
    (art-group        string            :offset-assert 40)
    (anim             string            :offset-assert 44)
@@ -17744,7 +17744,7 @@
   ((task              game-task-control       :offset-assert 204)
    (ambient           ambient-control :inline :offset-assert 208)
    (neck-joint-index  int32                   :offset-assert 224)
-   (talk-message      game-text-id            :offset-assert 228) ;; guessed by decompiler
+   (talk-message      text-id            :offset-assert 228) ;; guessed by decompiler
    (bounce-away       symbol                  :offset-assert 232) ;; guessed by decompiler
    (will-talk         symbol                  :offset-assert 236) ;; guessed by decompiler
    (look-at-me        symbol                  :offset-assert 240)
@@ -21905,7 +21905,7 @@
   )
 
 (deftype menu-option (basic)
-  ((name  game-text-id    :offset-assert 4)
+  ((name  text-id    :offset-assert 4)
    (scale symbol     :offset-assert 8)
    (unknown function :offset-assert 12)
    ;; This is gross if im correct
@@ -30449,7 +30449,7 @@
    (fail-continue  basic   :offset-assert 8)
    (reset-delay    uint32  :offset-assert 12)
    (task           game-task   :offset-assert 16)
-   (fail-message   game-text-id  :offset-assert 20)
+   (fail-message   text-id  :offset-assert 20)
    )
   :method-count-assert 9
   :size-assert         #x18
@@ -30725,8 +30725,8 @@
 (define-extern *missions-options* "List of [[menu-missions-option]]" menu-option-list)
 (define-extern *highscores-options* "List of [[menu-highscores-option]]" menu-option-list)
 (define-extern *secret-options* menu-option-list)
-(define-extern *language-name-remap* (array game-text-id))
-(define-extern *stereo-mode-name-remap* (array  game-text-id))
+(define-extern *language-name-remap* (array text-id))
+(define-extern *stereo-mode-name-remap* (array  text-id))
 (define-extern *hud-ring-graphic-remap* (array uint64)) ;; these are probably bitfields of some kind
 (define-extern *hud-ring-kiosk-graphic-remap* (array uint64))
 (define-extern *hud-ring-demo-graphic-remap* (array uint64))
@@ -30865,7 +30865,7 @@
 (define-extern end-scissor-scene (function hud-box float none))
 (define-extern begin-scissor-level (function hud-box none))
 (define-extern end-scissor-level (function hud-box float none))
-(define-extern print-language-name (function game-text-id font-context int symbol none))
+(define-extern print-language-name (function text-id font-context int symbol none))
 (define-extern unlocked-secret-menu? (function game-secrets symbol))
 (define-extern memcard-unlocked-secrets? (function symbol game-secrets))
 (define-extern num-unlocked-secret?
@@ -30880,9 +30880,9 @@
 (define-extern get-level-icon-id-03 "TODO - Icon id enum perhaps?" (function int texture-id))
 (define-extern get-level-icon-id-04 "TODO - Icon id enum perhaps?" (function int texture-id))
 (define-extern draw-decoration (function menu-option font-context float int symbol float pointer))
-(define-extern draw-missions-decoration (function menu-missions-option font-context float game-text-id pointer))
-(define-extern draw-sound-options-decoration (function menu-slider-option font-context float symbol game-text-id pointer))
-(define-extern draw-decoration-secrets (function menu-option font-context float game-text-id pointer))
+(define-extern draw-missions-decoration (function menu-missions-option font-context float text-id pointer))
+(define-extern draw-sound-options-decoration (function menu-slider-option font-context float symbol text-id pointer))
+(define-extern draw-decoration-secrets (function menu-option font-context float text-id pointer))
 (define-extern draw-decoration-load-save (function menu-option font-context float int pointer))
 (define-extern sort-task-node-result (function int none))
 (define-extern find-mission-text-at-index (function int game-task-node-info))
@@ -30893,8 +30893,8 @@
 (define-extern eval-highscore (function print-highscore-obj int))
 (define-extern str-print-time (function float string))
 (define-extern print-highscore (function print-highscore-obj float))
-(define-extern get-highscore-text "TODO - takes an enum?" (function int game-text-id))
-(define-extern get-highscore-text-sub "TODO - takes an enum?" (function int game-text-id))
+(define-extern get-highscore-text "TODO - takes an enum?" (function int text-id))
+(define-extern get-highscore-text-sub "TODO - takes an enum?" (function int text-id))
 (define-extern get-highscore-icon "TODO - Icon id enum perhaps?" (function int uint))
 (define-extern get-highscore-type "TODO - takes an enum?" (function int symbol))
 (define-extern highscore-available? (function int symbol))
@@ -45620,7 +45620,7 @@
     (game () _type_ :state 25)
     (idle () _type_ :state 26)
     (idle-training () _type_ :state 27)
-    (render-text (_type_ game-text-id) float 28)
+    (render-text (_type_ text-id) float 28)
     (hoverboard-training-manager-method-29 (_type_) none 29)
     (hoverboard-training-manager-method-30 (_type_) none 30)
     )
@@ -47115,7 +47115,7 @@
     (training-manager-method-27 (_type_ (array tpath-info)) symbol 27)
     (training-manager-method-28 (_type_) none 28)
     (training-manager-method-29 (_type_ vector) vector 29)
-    (render-text (_type_ game-text-id) float 30)
+    (render-text (_type_ text-id) float 30)
     (training-manager-method-31 (_type_) none 31)
     (training-manager-method-32 (_type_) none 32)
     )

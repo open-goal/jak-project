@@ -29,66 +29,42 @@
 
 ;; definition for function draw-percent-bar
 ;; WARN: Return type mismatch int vs none.
+;; ERROR: Failed store: (s.w! (+ v1-8 8) 0) at op 39
 (defun draw-percent-bar ((arg0 int) (arg1 int) (arg2 float) (arg3 rgba))
-  (let* ((s2-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (gp-0 (-> s2-0 base))
-         )
+  (with-dma-buffer-add-bucket ((s2-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id particles)
+                               )
     (draw-sprite2d-xy s2-0 arg0 arg1 255 14 (new 'static 'rgba :a (-> arg3 a)))
     (draw-sprite2d-xy s2-0 arg0 (+ arg1 2) (the int (* 255.0 arg2)) 10 arg3)
-    (let ((a3-3 (-> s2-0 base)))
-      (let ((v1-8 (the-as object (-> s2-0 base))))
-        (set! (-> (the-as dma-packet v1-8) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-8) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-8) vif1) (new 'static 'vif-tag))
-        (set! (-> s2-0 base) (&+ (the-as pointer v1-8) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id particles)
-        gp-0
-        (the-as (pointer dma-tag) a3-3)
-        )
-      )
     )
   0
   (none)
   )
 
 ;; definition for function draw-highlight
+;; ERROR: Failed store: (s.w! (+ v1-6 8) 0) at op 45
 (defun draw-highlight ((arg0 int) (arg1 int) (arg2 float))
-  (let* ((s3-0 (if (= (get-aspect-ratio) 'aspect4x3)
-                   70
-                   79
-                   )
-               )
-         (a3-0 (if (= (get-aspect-ratio) 'aspect4x3)
-                   374
-                   355
-                   )
-               )
-         (s2-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (gp-2 (-> s2-0 base))
-         )
-    (draw-sprite2d-xy
-      s2-0
-      s3-0
-      arg0
-      a3-0
-      arg1
-      (new 'static 'rgba :r #x40 :g #x80 :b #x80 :a (the int (* 64.0 arg2)))
-      )
-    (let ((a3-1 (-> s2-0 base)))
-      (let ((v1-6 (the-as object (-> s2-0 base))))
-        (set! (-> (the-as dma-packet v1-6) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-6) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-6) vif1) (new 'static 'vif-tag))
-        (set! (-> s2-0 base) (&+ (the-as pointer v1-6) 16))
+  (let ((s3-0 (if (= (get-aspect-ratio) 'aspect4x3)
+                  70
+                  79
+                  )
+              )
+        (a3-0 (if (= (get-aspect-ratio) 'aspect4x3)
+                  374
+                  355
+                  )
+              )
         )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id progress)
-        gp-2
-        (the-as (pointer dma-tag) a3-1)
+    (with-dma-buffer-add-bucket ((s2-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                 (bucket-id progress)
+                                 )
+      (draw-sprite2d-xy
+        s2-0
+        s3-0
+        arg0
+        a3-0
+        arg1
+        (new 'static 'rgba :r #x40 :g #x80 :b #x80 :a (the int (* 64.0 arg2)))
         )
       )
     )
@@ -118,7 +94,7 @@
     )
   (if (< (mod (-> self clock frame-counter) 300) 210)
       (print-game-text
-        (lookup-text! *common-text* (game-text-id progress-memcard-loading-data) #f)
+        (lookup-text! *common-text* (text-id progress-memcard-loading-data) #f)
         arg0
         #f
         44
@@ -164,7 +140,7 @@
               )
           (set! sv-16 "~C~S")
           (set! sv-32 163)
-          (let ((a3-0 (lookup-text! *common-text* (game-text-id progress-next) #f)))
+          (let ((a3-0 (lookup-text! *common-text* (text-id progress-next) #f)))
             (s1-0 s0-0 sv-16 sv-32 a3-0)
             )
           )
@@ -178,7 +154,7 @@
         )
       (+! (-> arg1 origin x) (the float s3-0))
       (let ((s5-1 print-game-text))
-        (format (clear *temp-string*) "~S~C" (lookup-text! *common-text* (game-text-id progress-next) #f) 161)
+        (format (clear *temp-string*) "~S~C" (lookup-text! *common-text* (text-id progress-next) #f) 161)
         (s5-1 *temp-string* arg1 #f 44 (bucket-id progress))
         )
       )
@@ -281,6 +257,7 @@
 
 ;; definition for function begin-scissor
 ;; WARN: Return type mismatch int vs none.
+;; ERROR: Failed store: (s.w! (+ v1-23 8) 0) at op 71
 (defun begin-scissor ((arg0 hud-box) (arg1 progress))
   (cond
     ((or (= (-> arg1 current) 'bigmap) (= (-> arg1 next) 'bigmap))
@@ -302,24 +279,10 @@
       (set! (-> arg0 max y) 329.0)
       )
     )
-  (let* ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (s5-1 (-> s4-0 base))
-         )
+  (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
     (setup-scissor arg0 s4-0)
-    (let ((a3-0 (-> s4-0 base)))
-      (let ((v1-23 (the-as object (-> s4-0 base))))
-        (set! (-> (the-as dma-packet v1-23) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-23) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-23) vif1) (new 'static 'vif-tag))
-        (set! (-> s4-0 base) (&+ (the-as pointer v1-23) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id progress)
-        s5-1
-        (the-as (pointer dma-tag) a3-0)
-        )
-      )
     )
   0
   (none)
@@ -327,25 +290,12 @@
 
 ;; definition for function end-scissor
 ;; WARN: Return type mismatch int vs none.
+;; ERROR: Failed store: (s.w! (+ v1-7 8) 0) at op 17
 (defun end-scissor ((arg0 hud-box) (arg1 float))
-  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (gp-0 (-> s5-0 base))
-         )
+  (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
     (restore-scissor arg0 s5-0)
-    (let ((a3-0 (-> s5-0 base)))
-      (let ((v1-7 (the-as object (-> s5-0 base))))
-        (set! (-> (the-as dma-packet v1-7) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-7) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-7) vif1) (new 'static 'vif-tag))
-        (set! (-> s5-0 base) (&+ (the-as pointer v1-7) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id progress)
-        gp-0
-        (the-as (pointer dma-tag) a3-0)
-        )
-      )
     )
   0
   (none)
@@ -353,6 +303,7 @@
 
 ;; definition for function begin-scissor-secret
 ;; WARN: Return type mismatch int vs none.
+;; ERROR: Failed store: (s.w! (+ v1-17 8) 0) at op 50
 (defun begin-scissor-secret ((arg0 hud-box) (arg1 progress))
   (cond
     ((= (get-aspect-ratio) 'aspect16x9)
@@ -368,24 +319,10 @@
       (set! (-> arg0 max y) 304.0)
       )
     )
-  (let* ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (s5-1 (-> s4-0 base))
-         )
+  (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
     (setup-scissor arg0 s4-0)
-    (let ((a3-0 (-> s4-0 base)))
-      (let ((v1-17 (the-as object (-> s4-0 base))))
-        (set! (-> (the-as dma-packet v1-17) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-17) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-17) vif1) (new 'static 'vif-tag))
-        (set! (-> s4-0 base) (&+ (the-as pointer v1-17) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id progress)
-        s5-1
-        (the-as (pointer dma-tag) a3-0)
-        )
-      )
     )
   0
   (none)
@@ -393,25 +330,12 @@
 
 ;; definition for function end-scissor-secret
 ;; WARN: Return type mismatch int vs none.
+;; ERROR: Failed store: (s.w! (+ v1-7 8) 0) at op 17
 (defun end-scissor-secret ((arg0 hud-box) (arg1 float))
-  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (gp-0 (-> s5-0 base))
-         )
+  (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
     (restore-scissor arg0 s5-0)
-    (let ((a3-0 (-> s5-0 base)))
-      (let ((v1-7 (the-as object (-> s5-0 base))))
-        (set! (-> (the-as dma-packet v1-7) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-7) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-7) vif1) (new 'static 'vif-tag))
-        (set! (-> s5-0 base) (&+ (the-as pointer v1-7) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id progress)
-        gp-0
-        (the-as (pointer dma-tag) a3-0)
-        )
-      )
     )
   0
   (none)
@@ -419,6 +343,7 @@
 
 ;; definition for function begin-scissor-missions
 ;; WARN: Return type mismatch int vs none.
+;; ERROR: Failed store: (s.w! (+ v1-17 8) 0) at op 50
 (defun begin-scissor-missions ((arg0 hud-box) (arg1 float))
   (cond
     ((= (get-aspect-ratio) 'aspect16x9)
@@ -434,24 +359,10 @@
       (set! (-> arg0 max y) 305.0)
       )
     )
-  (let* ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (s5-1 (-> s4-0 base))
-         )
+  (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
     (setup-scissor arg0 s4-0)
-    (let ((a3-0 (-> s4-0 base)))
-      (let ((v1-17 (the-as object (-> s4-0 base))))
-        (set! (-> (the-as dma-packet v1-17) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-17) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-17) vif1) (new 'static 'vif-tag))
-        (set! (-> s4-0 base) (&+ (the-as pointer v1-17) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id progress)
-        s5-1
-        (the-as (pointer dma-tag) a3-0)
-        )
-      )
     )
   0
   (none)
@@ -459,25 +370,12 @@
 
 ;; definition for function end-scissor-missions
 ;; WARN: Return type mismatch int vs none.
+;; ERROR: Failed store: (s.w! (+ v1-7 8) 0) at op 17
 (defun end-scissor-missions ((arg0 hud-box) (arg1 float))
-  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (gp-0 (-> s5-0 base))
-         )
+  (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
     (restore-scissor arg0 s5-0)
-    (let ((a3-0 (-> s5-0 base)))
-      (let ((v1-7 (the-as object (-> s5-0 base))))
-        (set! (-> (the-as dma-packet v1-7) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-7) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-7) vif1) (new 'static 'vif-tag))
-        (set! (-> s5-0 base) (&+ (the-as pointer v1-7) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id progress)
-        gp-0
-        (the-as (pointer dma-tag) a3-0)
-        )
-      )
     )
   0
   (none)
@@ -485,6 +383,7 @@
 
 ;; definition for function begin-scissor-scene
 ;; WARN: Return type mismatch int vs none.
+;; ERROR: Failed store: (s.w! (+ v1-17 8) 0) at op 50
 (defun begin-scissor-scene ((arg0 hud-box))
   (cond
     ((= (get-aspect-ratio) 'aspect16x9)
@@ -500,24 +399,10 @@
       (set! (-> arg0 max y) 295.0)
       )
     )
-  (let* ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (s5-1 (-> s4-0 base))
-         )
+  (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
     (setup-scissor arg0 s4-0)
-    (let ((a3-0 (-> s4-0 base)))
-      (let ((v1-17 (the-as object (-> s4-0 base))))
-        (set! (-> (the-as dma-packet v1-17) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-17) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-17) vif1) (new 'static 'vif-tag))
-        (set! (-> s4-0 base) (&+ (the-as pointer v1-17) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id progress)
-        s5-1
-        (the-as (pointer dma-tag) a3-0)
-        )
-      )
     )
   0
   (none)
@@ -525,25 +410,12 @@
 
 ;; definition for function end-scissor-scene
 ;; WARN: Return type mismatch int vs none.
+;; ERROR: Failed store: (s.w! (+ v1-7 8) 0) at op 17
 (defun end-scissor-scene ((arg0 hud-box) (arg1 float))
-  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (gp-0 (-> s5-0 base))
-         )
+  (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
     (restore-scissor arg0 s5-0)
-    (let ((a3-0 (-> s5-0 base)))
-      (let ((v1-7 (the-as object (-> s5-0 base))))
-        (set! (-> (the-as dma-packet v1-7) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-7) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-7) vif1) (new 'static 'vif-tag))
-        (set! (-> s5-0 base) (&+ (the-as pointer v1-7) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id progress)
-        gp-0
-        (the-as (pointer dma-tag) a3-0)
-        )
-      )
     )
   0
   (none)
@@ -551,6 +423,7 @@
 
 ;; definition for function begin-scissor-level
 ;; WARN: Return type mismatch int vs none.
+;; ERROR: Failed store: (s.w! (+ v1-17 8) 0) at op 50
 (defun begin-scissor-level ((arg0 hud-box))
   (cond
     ((= (get-aspect-ratio) 'aspect16x9)
@@ -566,24 +439,10 @@
       (set! (-> arg0 max y) 295.0)
       )
     )
-  (let* ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (s5-1 (-> s4-0 base))
-         )
+  (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
     (setup-scissor arg0 s4-0)
-    (let ((a3-0 (-> s4-0 base)))
-      (let ((v1-17 (the-as object (-> s4-0 base))))
-        (set! (-> (the-as dma-packet v1-17) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-17) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-17) vif1) (new 'static 'vif-tag))
-        (set! (-> s4-0 base) (&+ (the-as pointer v1-17) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id progress)
-        s5-1
-        (the-as (pointer dma-tag) a3-0)
-        )
-      )
     )
   0
   (none)
@@ -591,25 +450,12 @@
 
 ;; definition for function end-scissor-level
 ;; WARN: Return type mismatch int vs none.
+;; ERROR: Failed store: (s.w! (+ v1-7 8) 0) at op 17
 (defun end-scissor-level ((arg0 hud-box) (arg1 float))
-  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (gp-0 (-> s5-0 base))
-         )
+  (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
     (restore-scissor arg0 s5-0)
-    (let ((a3-0 (-> s5-0 base)))
-      (let ((v1-7 (the-as object (-> s5-0 base))))
-        (set! (-> (the-as dma-packet v1-7) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-7) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-7) vif1) (new 'static 'vif-tag))
-        (set! (-> s5-0 base) (&+ (the-as pointer v1-7) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id progress)
-        gp-0
-        (the-as (pointer dma-tag) a3-0)
-        )
-      )
     )
   0
   (none)
@@ -617,7 +463,7 @@
 
 ;; definition for function print-language-name
 ;; WARN: Return type mismatch int vs none.
-(defun print-language-name ((arg0 game-text-id) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defun print-language-name ((arg0 text-id) (arg1 font-context) (arg2 int) (arg3 symbol))
   (let ((s5-0 (if arg3
                   arg2
                   (- arg2)
@@ -739,8 +585,8 @@
      (format
        (clear *temp-string*)
        "~33L~S~32L ~S"
-       (lookup-text! *common-text* (game-text-id progress-yes) #f)
-       (lookup-text! *common-text* (game-text-id progress-no) #f)
+       (lookup-text! *common-text* (text-id progress-yes) #f)
+       (lookup-text! *common-text* (text-id progress-no) #f)
        )
      (set! a0-5 *temp-string*)
      )
@@ -748,8 +594,8 @@
       (format
         (clear *temp-string*)
         "~32L~S ~33L~S~1L"
-        (lookup-text! *common-text* (game-text-id progress-yes) #f)
-        (lookup-text! *common-text* (game-text-id progress-no) #f)
+        (lookup-text! *common-text* (text-id progress-yes) #f)
+        (lookup-text! *common-text* (text-id progress-no) #f)
         )
       (set! a0-5 *temp-string*)
       )
@@ -768,8 +614,8 @@
      (format
        (clear *temp-string*)
        "~33L~S~32L ~S"
-       (lookup-text! *common-text* (game-text-id progress-memcard-continue?) #f)
-       (lookup-text! *common-text* (game-text-id progress-unknown-retry?) #f)
+       (lookup-text! *common-text* (text-id progress-memcard-continue?) #f)
+       (lookup-text! *common-text* (text-id progress-unknown-retry?) #f)
        )
      (set! a0-5 *temp-string*)
      )
@@ -777,8 +623,8 @@
       (format
         (clear *temp-string*)
         "~32L~S ~33L~S~1L"
-        (lookup-text! *common-text* (game-text-id progress-memcard-continue?) #f)
-        (lookup-text! *common-text* (game-text-id progress-unknown-retry?) #f)
+        (lookup-text! *common-text* (text-id progress-memcard-continue?) #f)
+        (lookup-text! *common-text* (text-id progress-unknown-retry?) #f)
         )
       (set! a0-5 *temp-string*)
       )
@@ -819,8 +665,8 @@
                  (format
                    (clear *temp-string*)
                    "~33L~S~32L ~S"
-                   (lookup-text! *common-text* (game-text-id progress-on) #f)
-                   (lookup-text! *common-text* (game-text-id progress-off) #f)
+                   (lookup-text! *common-text* (text-id progress-on) #f)
+                   (lookup-text! *common-text* (text-id progress-off) #f)
                    )
                  (set! a0-8 *temp-string*)
                  )
@@ -828,8 +674,8 @@
                   (format
                     (clear *temp-string*)
                     "~32L~S ~33L~S~1L"
-                    (lookup-text! *common-text* (game-text-id progress-on) #f)
-                    (lookup-text! *common-text* (game-text-id progress-off) #f)
+                    (lookup-text! *common-text* (text-id progress-on) #f)
+                    (lookup-text! *common-text* (text-id progress-off) #f)
                     )
                   (set! a0-8 *temp-string*)
                   )
@@ -843,8 +689,8 @@
                     )
                 (set! sv-16 (lookup-text! *common-text* (-> obj name) #f))
                 (let ((a3-4 (if (-> s3-0 0)
-                                (lookup-text! *common-text* (game-text-id progress-on) #f)
-                                (lookup-text! *common-text* (game-text-id progress-off) #f)
+                                (lookup-text! *common-text* (text-id progress-on) #f)
+                                (lookup-text! *common-text* (text-id progress-off) #f)
                                 )
                             )
                       )
@@ -880,8 +726,8 @@
                  (format
                    (clear *temp-string*)
                    "~33L~S~32L ~S"
-                   (lookup-text! *common-text* (game-text-id progress-yes) #f)
-                   (lookup-text! *common-text* (game-text-id progress-no) #f)
+                   (lookup-text! *common-text* (text-id progress-yes) #f)
+                   (lookup-text! *common-text* (text-id progress-no) #f)
                    )
                  (set! a0-8 *temp-string*)
                  )
@@ -889,8 +735,8 @@
                   (format
                     (clear *temp-string*)
                     "~32L~S ~33L~S~1L"
-                    (lookup-text! *common-text* (game-text-id progress-yes) #f)
-                    (lookup-text! *common-text* (game-text-id progress-no) #f)
+                    (lookup-text! *common-text* (text-id progress-yes) #f)
+                    (lookup-text! *common-text* (text-id progress-no) #f)
                     )
                   (set! a0-8 *temp-string*)
                   )
@@ -948,8 +794,8 @@
             (format
               (clear *temp-string*)
               "~33L~S ~35L~S~1L"
-              (lookup-text! *common-text* (game-text-id progress-refresh-50hz) #f)
-              (lookup-text! *common-text* (game-text-id progress-refresh-60hz) #f)
+              (lookup-text! *common-text* (text-id progress-refresh-50hz) #f)
+              (lookup-text! *common-text* (text-id progress-refresh-60hz) #f)
               )
             (set! s2-0 *temp-string*)
             )
@@ -957,8 +803,8 @@
              (format
                (clear *temp-string*)
                "~35L~S~33L ~S"
-               (lookup-text! *common-text* (game-text-id progress-refresh-50hz) #f)
-               (lookup-text! *common-text* (game-text-id progress-refresh-60hz) #f)
+               (lookup-text! *common-text* (text-id progress-refresh-50hz) #f)
+               (lookup-text! *common-text* (text-id progress-refresh-60hz) #f)
                )
              (set! s2-0 *temp-string*)
              )
@@ -990,8 +836,8 @@
                (format
                  (clear *temp-string*)
                  "~1L~S~35L ~S"
-                 (lookup-text! *common-text* (game-text-id progress-refresh-50hz) #f)
-                 (lookup-text! *common-text* (game-text-id progress-refresh-60hz) #f)
+                 (lookup-text! *common-text* (text-id progress-refresh-50hz) #f)
+                 (lookup-text! *common-text* (text-id progress-refresh-60hz) #f)
                  )
                (set! s2-0 *temp-string*)
                )
@@ -999,8 +845,8 @@
                 (format
                   (clear *temp-string*)
                   "~35L~S ~1L~S~1L"
-                  (lookup-text! *common-text* (game-text-id progress-refresh-50hz) #f)
-                  (lookup-text! *common-text* (game-text-id progress-refresh-60hz) #f)
+                  (lookup-text! *common-text* (text-id progress-refresh-50hz) #f)
+                  (lookup-text! *common-text* (text-id progress-refresh-60hz) #f)
                   )
                 (set! s2-0 *temp-string*)
                 )
@@ -1045,11 +891,11 @@
         )
       (set! (-> arg1 origin y) (+ 8.0 (-> arg1 origin y)))
       (cond
-        ((= (-> obj name) (game-text-id progress-main-secrets-scrapbook))
+        ((= (-> obj name) (text-id progress-main-secrets-scrapbook))
          (cond
            ((logtest? s5-0 (game-secrets scrap-book-1))
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-main-secrets-scrapbook) #f)
+              (lookup-text! *common-text* (text-id progress-main-secrets-scrapbook) #f)
               arg1
               #f
               44
@@ -1064,11 +910,11 @@
              )
            )
          )
-        ((= (-> obj name) (game-text-id progress-main-secrets-mega-scrapbook))
+        ((= (-> obj name) (text-id progress-main-secrets-mega-scrapbook))
          (cond
            ((logtest? s5-0 (game-secrets scrap-book-2))
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-main-secrets-mega-scrapbook) #f)
+              (lookup-text! *common-text* (text-id progress-main-secrets-mega-scrapbook) #f)
               arg1
               #f
               44
@@ -1083,11 +929,11 @@
              )
            )
          )
-        ((= (-> obj name) (game-text-id progress-main-secrets-scrapbook-3))
+        ((= (-> obj name) (text-id progress-main-secrets-scrapbook-3))
          (cond
            ((logtest? s5-0 (game-secrets scrap-book-3))
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-main-secrets-scrapbook-3) #f)
+              (lookup-text! *common-text* (text-id progress-main-secrets-scrapbook-3) #f)
               arg1
               #f
               44
@@ -1102,11 +948,11 @@
              )
            )
          )
-        ((= (-> obj name) (game-text-id progress-main-secrets-sceneplayer-1))
+        ((= (-> obj name) (text-id progress-main-secrets-sceneplayer-1))
          (cond
            ((logtest? s5-0 (game-secrets scene-player-1))
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-main-secrets-sceneplayer-1) #f)
+              (lookup-text! *common-text* (text-id progress-main-secrets-sceneplayer-1) #f)
               arg1
               #f
               44
@@ -1121,11 +967,11 @@
              )
            )
          )
-        ((= (-> obj name) (game-text-id progress-main-secrets-sceneplayer-2))
+        ((= (-> obj name) (text-id progress-main-secrets-sceneplayer-2))
          (cond
            ((logtest? s5-0 (game-secrets scene-player-2))
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-main-secrets-sceneplayer-2) #f)
+              (lookup-text! *common-text* (text-id progress-main-secrets-sceneplayer-2) #f)
               arg1
               #f
               44
@@ -1140,11 +986,11 @@
              )
            )
          )
-        ((= (-> obj name) (game-text-id progress-main-secrets-sceneplayer-3))
+        ((= (-> obj name) (text-id progress-main-secrets-sceneplayer-3))
          (cond
            ((logtest? s5-0 (game-secrets scene-player-3))
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-main-secrets-sceneplayer-3) #f)
+              (lookup-text! *common-text* (text-id progress-main-secrets-sceneplayer-3) #f)
               arg1
               #f
               44
@@ -1159,11 +1005,11 @@
              )
            )
          )
-        ((= (-> obj name) (game-text-id progress-main-secrets-hero-mode))
+        ((= (-> obj name) (text-id progress-main-secrets-hero-mode))
          (cond
            ((logtest? s5-0 (game-secrets hero-mode))
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-main-secrets-hero-mode) #f)
+              (lookup-text! *common-text* (text-id progress-main-secrets-hero-mode) #f)
               arg1
               #f
               44
@@ -1178,11 +1024,11 @@
              )
            )
          )
-        ((= (-> obj name) (game-text-id progress-main-secrets-levelselect))
+        ((= (-> obj name) (text-id progress-main-secrets-levelselect))
          (cond
            ((logtest? s5-0 (game-secrets level-select))
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-main-secrets-levelselect) #f)
+              (lookup-text! *common-text* (text-id progress-main-secrets-levelselect) #f)
               arg1
               #f
               44
@@ -1248,7 +1094,7 @@
                                   )
           )
     (cond
-      ((= (-> obj name) (game-text-id progress-root-show-map))
+      ((= (-> obj name) (text-id progress-root-show-map))
        (when (= (-> *setting-control* user-default language) (language-enum french))
          (let ((v1-18 arg1))
            (set! (-> v1-18 scale) 0.7)
@@ -1268,7 +1114,7 @@
          (cond
            ((zero? v1-23)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-pumping-station) #f)
+              (lookup-text! *common-text* (text-id progress-locations-pumping-station) #f)
               arg1
               #f
               44
@@ -1277,7 +1123,7 @@
             )
            ((= v1-23 1)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-landing-pad) #f)
+              (lookup-text! *common-text* (text-id progress-locations-landing-pad) #f)
               arg1
               #f
               44
@@ -1286,7 +1132,7 @@
             )
            ((= v1-23 2)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-weapons-factory) #f)
+              (lookup-text! *common-text* (text-id progress-locations-weapons-factory) #f)
               arg1
               #f
               44
@@ -1295,7 +1141,7 @@
             )
            ((= v1-23 3)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-dig) #f)
+              (lookup-text! *common-text* (text-id progress-locations-dig) #f)
               arg1
               #f
               44
@@ -1304,7 +1150,7 @@
             )
            ((= v1-23 4)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-dig) #f)
+              (lookup-text! *common-text* (text-id progress-locations-dig) #f)
               arg1
               #f
               44
@@ -1313,7 +1159,7 @@
             )
            ((= v1-23 5)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-drill-platform) #f)
+              (lookup-text! *common-text* (text-id progress-locations-drill-platform) #f)
               arg1
               #f
               44
@@ -1322,7 +1168,7 @@
             )
            ((= v1-23 6)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-haven-forest) #f)
+              (lookup-text! *common-text* (text-id progress-locations-haven-forest) #f)
               arg1
               #f
               44
@@ -1331,7 +1177,7 @@
             )
            ((= v1-23 7)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-fortress) #f)
+              (lookup-text! *common-text* (text-id progress-locations-fortress) #f)
               arg1
               #f
               44
@@ -1340,7 +1186,7 @@
             )
            ((= v1-23 8)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-mountain-temple) #f)
+              (lookup-text! *common-text* (text-id progress-locations-mountain-temple) #f)
               arg1
               #f
               44
@@ -1349,7 +1195,7 @@
             )
            ((= v1-23 9)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-nest) #f)
+              (lookup-text! *common-text* (text-id progress-locations-nest) #f)
               arg1
               #f
               44
@@ -1358,7 +1204,7 @@
             )
            ((= v1-23 11)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-palace-roof) #f)
+              (lookup-text! *common-text* (text-id progress-locations-palace-roof) #f)
               arg1
               #f
               44
@@ -1367,7 +1213,7 @@
             )
            ((= v1-23 12)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-palace) #f)
+              (lookup-text! *common-text* (text-id progress-locations-palace) #f)
               arg1
               #f
               44
@@ -1376,7 +1222,7 @@
             )
            ((= v1-23 13)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-dead-town) #f)
+              (lookup-text! *common-text* (text-id progress-locations-dead-town) #f)
               arg1
               #f
               44
@@ -1385,7 +1231,7 @@
             )
            ((= v1-23 14)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-sewer) #f)
+              (lookup-text! *common-text* (text-id progress-locations-sewer) #f)
               arg1
               #f
               44
@@ -1394,7 +1240,7 @@
             )
            ((= v1-23 15)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-sewer) #f)
+              (lookup-text! *common-text* (text-id progress-locations-sewer) #f)
               arg1
               #f
               44
@@ -1403,7 +1249,7 @@
             )
            ((= v1-23 16)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-sewer) #f)
+              (lookup-text! *common-text* (text-id progress-locations-sewer) #f)
               arg1
               #f
               44
@@ -1412,7 +1258,7 @@
             )
            ((= v1-23 17)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-strip-mine) #f)
+              (lookup-text! *common-text* (text-id progress-locations-strip-mine) #f)
               arg1
               #f
               44
@@ -1421,7 +1267,7 @@
             )
            ((= v1-23 18)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-mars-tomb) #f)
+              (lookup-text! *common-text* (text-id progress-locations-mars-tomb) #f)
               arg1
               #f
               44
@@ -1430,7 +1276,7 @@
             )
            ((= v1-23 19)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-underport) #f)
+              (lookup-text! *common-text* (text-id progress-locations-underport) #f)
               arg1
               #f
               44
@@ -1439,7 +1285,7 @@
             )
            ((= v1-23 20)
             (print-game-text
-              (lookup-text! *common-text* (game-text-id progress-locations-haven-city) #f)
+              (lookup-text! *common-text* (text-id progress-locations-haven-city) #f)
               arg1
               #f
               44
@@ -1459,29 +1305,16 @@
   )
 
 ;; definition for function draw-savegame-box
+;; ERROR: Failed store: (s.w! (+ v1-7 8) 0) at op 26
 (defun draw-savegame-box ((arg0 menu-option) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
   (set! (-> arg0 box 0 min x) arg1)
   (set! (-> arg0 box 0 max x) arg2)
   (set! (-> arg0 box 0 min y) arg3)
   (set! (-> arg0 box 0 max y) arg4)
-  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (gp-0 (-> s5-0 base))
-         )
+  (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
     ((method-of-type hud-box draw-box-prim-only) (the-as hud-box (-> arg0 box)) s5-0)
-    (let ((a3-1 (-> s5-0 base)))
-      (let ((v1-7 (the-as object (-> s5-0 base))))
-        (set! (-> (the-as dma-packet v1-7) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-7) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-7) vif1) (new 'static 'vif-tag))
-        (set! (-> s5-0 base) (&+ (the-as pointer v1-7) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id progress)
-        gp-0
-        (the-as (pointer dma-tag) a3-1)
-        )
-      )
     )
   )
 
@@ -1747,6 +1580,7 @@
 
 ;; definition for function draw-decoration
 ;; INFO: Used lq/sq
+;; ERROR: Failed store: (s.w! (+ v1-41 8) 0) at op 177
 (defun draw-decoration ((arg0 menu-option) (arg1 font-context) (arg2 float) (arg3 int) (arg4 symbol) (arg5 float))
   (local-vars
     (sv-16 symbol)
@@ -1822,7 +1656,7 @@
       (let* ((a0-3 *common-text*)
              (t9-2 (method-of-object a0-3 lookup-text!))
              (a2-1 #f)
-             (a0-4 (t9-2 a0-3 (the-as game-text-id sv-96) a2-1))
+             (a0-4 (t9-2 a0-3 (the-as text-id sv-96) a2-1))
              (a1-2 arg1)
              (a2-2 #f)
              (a3-1 44)
@@ -1842,9 +1676,9 @@
           (the float (+ s5-0 s2-0))
           )
         )
-      (let* ((s0-1 (-> *display* frames (-> *display* on-screen) global-buf))
-             (s1-1 (-> s0-1 base))
-             )
+      (with-dma-buffer-add-bucket ((s0-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                                   (bucket-id particles)
+                                   )
         (draw-sprite2d-xy
           s0-1
           gp-0
@@ -1853,20 +1687,6 @@
           s2-0
           (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a (the int (* 64.0 arg2)))
           )
-        (let ((a3-5 (-> s0-1 base)))
-          (let ((v1-41 (the-as object (-> s0-1 base))))
-            (set! (-> (the-as dma-packet v1-41) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-            (set! (-> (the-as dma-packet v1-41) vif0) (new 'static 'vif-tag))
-            (set! (-> (the-as dma-packet v1-41) vif1) (new 'static 'vif-tag))
-            (set! (-> s0-1 base) (&+ (the-as pointer v1-41) 16))
-            )
-          (dma-bucket-insert-tag
-            (-> *display* frames (-> *display* on-screen) bucket-group)
-            (bucket-id particles)
-            s1-1
-            (the-as (pointer dma-tag) a3-5)
-            )
-          )
         )
       )
     )
@@ -1874,7 +1694,8 @@
 
 ;; definition for function draw-missions-decoration
 ;; INFO: Used lq/sq
-(defun draw-missions-decoration ((arg0 menu-missions-option) (arg1 font-context) (arg2 float) (arg3 game-text-id))
+;; ERROR: Failed store: (s.w! (+ v1-28 8) 0) at op 138
+(defun draw-missions-decoration ((arg0 menu-missions-option) (arg1 font-context) (arg2 float) (arg3 text-id))
   (local-vars
     (sv-16 int)
     (sv-32 (function string font-context symbol int bucket-id float))
@@ -1931,9 +1752,9 @@
         (the float (+ s5-0 s3-0))
         (the float (+ s5-0 s3-0))
         )
-      (let* ((s0-1 (-> *display* frames (-> *display* on-screen) global-buf))
-             (s1-1 (-> s0-1 base))
-             )
+      (with-dma-buffer-add-bucket ((s0-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                                   (bucket-id particles)
+                                   )
         (draw-sprite2d-xy
           s0-1
           gp-0
@@ -1942,20 +1763,6 @@
           s3-0
           (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a (the int (* 64.0 s2-0)))
           )
-        (let ((a3-5 (-> s0-1 base)))
-          (let ((v1-28 (the-as object (-> s0-1 base))))
-            (set! (-> (the-as dma-packet v1-28) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-            (set! (-> (the-as dma-packet v1-28) vif0) (new 'static 'vif-tag))
-            (set! (-> (the-as dma-packet v1-28) vif1) (new 'static 'vif-tag))
-            (set! (-> s0-1 base) (&+ (the-as pointer v1-28) 16))
-            )
-          (dma-bucket-insert-tag
-            (-> *display* frames (-> *display* on-screen) bucket-group)
-            (bucket-id particles)
-            s1-1
-            (the-as (pointer dma-tag) a3-5)
-            )
-          )
         )
       )
     )
@@ -1963,7 +1770,8 @@
 
 ;; definition for function draw-sound-options-decoration
 ;; INFO: Used lq/sq
-(defun draw-sound-options-decoration ((arg0 menu-slider-option) (arg1 font-context) (arg2 float) (arg3 symbol) (arg4 game-text-id))
+;; ERROR: Failed store: (s.w! (+ v1-34 8) 0) at op 152
+(defun draw-sound-options-decoration ((arg0 menu-slider-option) (arg1 font-context) (arg2 float) (arg3 symbol) (arg4 text-id))
   (local-vars
     (sv-16 font-context)
     (sv-32 int)
@@ -2013,7 +1821,7 @@
         (let* ((a0-4 *common-text*)
                (t9-1 (method-of-object a0-4 lookup-text!))
                (a2-1 #f)
-               (a0-5 (t9-1 a0-4 (the-as game-text-id sv-64) a2-1))
+               (a0-5 (t9-1 a0-4 (the-as text-id sv-64) a2-1))
                (a1-2 sv-16)
                (a2-2 #f)
                (a3-1 44)
@@ -2033,9 +1841,9 @@
               (the float (+ s5-0 s3-0))
               )
             )
-        (let* ((s0-1 (-> *display* frames (-> *display* on-screen) global-buf))
-               (s1-1 (-> s0-1 base))
-               )
+        (with-dma-buffer-add-bucket ((s0-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                                     (bucket-id particles)
+                                     )
           (draw-sprite2d-xy
             s0-1
             gp-0
@@ -2043,20 +1851,6 @@
             s4-0
             s3-0
             (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a (the int (* 64.0 s2-0)))
-            )
-          (let ((a3-5 (-> s0-1 base)))
-            (let ((v1-34 (the-as object (-> s0-1 base))))
-              (set! (-> (the-as dma-packet v1-34) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-              (set! (-> (the-as dma-packet v1-34) vif0) (new 'static 'vif-tag))
-              (set! (-> (the-as dma-packet v1-34) vif1) (new 'static 'vif-tag))
-              (set! (-> s0-1 base) (&+ (the-as pointer v1-34) 16))
-              )
-            (dma-bucket-insert-tag
-              (-> *display* frames (-> *display* on-screen) bucket-group)
-              (bucket-id particles)
-              s1-1
-              (the-as (pointer dma-tag) a3-5)
-              )
             )
           )
         )
@@ -2066,7 +1860,8 @@
 
 ;; definition for function draw-decoration-secrets
 ;; INFO: Used lq/sq
-(defun draw-decoration-secrets ((arg0 menu-option) (arg1 font-context) (arg2 float) (arg3 game-text-id))
+;; ERROR: Failed store: (s.w! (+ v1-30 8) 0) at op 140
+(defun draw-decoration-secrets ((arg0 menu-option) (arg1 font-context) (arg2 float) (arg3 text-id))
   (local-vars
     (sv-16 int)
     (sv-32 (function string font-context symbol int bucket-id float))
@@ -2125,9 +1920,9 @@
         (the float (+ s5-0 s3-0))
         (the float (+ s5-0 s3-0))
         )
-      (let* ((s0-1 (-> *display* frames (-> *display* on-screen) global-buf))
-             (s1-1 (-> s0-1 base))
-             )
+      (with-dma-buffer-add-bucket ((s0-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                                   (bucket-id particles)
+                                   )
         (draw-sprite2d-xy
           s0-1
           gp-0
@@ -2136,20 +1931,6 @@
           s3-0
           (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a (the int (* 64.0 s2-0)))
           )
-        (let ((a3-5 (-> s0-1 base)))
-          (let ((v1-30 (the-as object (-> s0-1 base))))
-            (set! (-> (the-as dma-packet v1-30) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-            (set! (-> (the-as dma-packet v1-30) vif0) (new 'static 'vif-tag))
-            (set! (-> (the-as dma-packet v1-30) vif1) (new 'static 'vif-tag))
-            (set! (-> s0-1 base) (&+ (the-as pointer v1-30) 16))
-            )
-          (dma-bucket-insert-tag
-            (-> *display* frames (-> *display* on-screen) bucket-group)
-            (bucket-id particles)
-            s1-1
-            (the-as (pointer dma-tag) a3-5)
-            )
-          )
         )
       )
     )
@@ -2157,6 +1938,7 @@
 
 ;; definition for function draw-decoration-load-save
 ;; INFO: Used lq/sq
+;; ERROR: Failed store: (s.w! (+ v1-45 8) 0) at op 174
 (defun draw-decoration-load-save ((arg0 menu-option) (arg1 font-context) (arg2 float) (arg3 int))
   (local-vars
     (sv-16 int)
@@ -2221,7 +2003,7 @@
         (let* ((a0-8 *common-text*)
                (t9-1 (method-of-object a0-8 lookup-text!))
                (a2-1 #f)
-               (a0-9 (t9-1 a0-8 (the-as game-text-id sv-64) a2-1))
+               (a0-9 (t9-1 a0-8 (the-as text-id sv-64) a2-1))
                (a2-2 #f)
                (a3-1 44)
                (t0-0 320)
@@ -2237,9 +2019,9 @@
           (the float s5-0)
           (the float s5-0)
           )
-        (let* ((s0-1 (-> *display* frames (-> *display* on-screen) global-buf))
-               (s1-1 (-> s0-1 base))
-               )
+        (with-dma-buffer-add-bucket ((s0-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                                     (bucket-id particles)
+                                     )
           (draw-sprite2d-xy
             s0-1
             gp-0
@@ -2247,20 +2029,6 @@
             s3-0
             s2-0
             (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a (the int (* 64.0 s4-0)))
-            )
-          (let ((a3-5 (-> s0-1 base)))
-            (let ((v1-45 (the-as object (-> s0-1 base))))
-              (set! (-> (the-as dma-packet v1-45) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-              (set! (-> (the-as dma-packet v1-45) vif0) (new 'static 'vif-tag))
-              (set! (-> (the-as dma-packet v1-45) vif1) (new 'static 'vif-tag))
-              (set! (-> s0-1 base) (&+ (the-as pointer v1-45) 16))
-              )
-            (dma-bucket-insert-tag
-              (-> *display* frames (-> *display* on-screen) bucket-group)
-              (bucket-id particles)
-              s1-1
-              (the-as (pointer dma-tag) a3-5)
-              )
             )
           )
         )
@@ -2361,6 +2129,7 @@
 ;; WARN: Stack slot offset 36 signed mismatch
 ;; WARN: Stack slot offset 16 signed mismatch
 ;; WARN: Return type mismatch int vs none.
+;; ERROR: Failed store: (s.w! (+ v1-95 8) 0) at op 334
 (defmethod menu-option-method-10 menu-memcard-slot-option ((obj menu-memcard-slot-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars
     (v0-74 pointer)
@@ -2489,9 +2258,9 @@
                    (the float sv-72)
                    (the float (+ sv-72 (* sv-88 arg2)))
                    )
-                 (let* ((s1-0 (-> *display* frames (-> *display* on-screen) global-buf))
-                        (s2-4 (-> s1-0 base))
-                        )
+                 (with-dma-buffer-add-bucket ((s1-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                              (bucket-id particles)
+                                              )
                    (draw-sprite2d-xy
                      s1-0
                      sv-64
@@ -2499,20 +2268,6 @@
                      sv-80
                      sv-88
                      (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a (the int (* 64.0 sv-16)))
-                     )
-                   (let ((a3-14 (-> s1-0 base)))
-                     (let ((v1-95 (the-as object (-> s1-0 base))))
-                       (set! (-> (the-as dma-packet v1-95) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                       (set! (-> (the-as dma-packet v1-95) vif0) (new 'static 'vif-tag))
-                       (set! (-> (the-as dma-packet v1-95) vif1) (new 'static 'vif-tag))
-                       (set! (-> s1-0 base) (&+ (the-as pointer v1-95) 16))
-                       )
-                     (dma-bucket-insert-tag
-                       (-> *display* frames (-> *display* on-screen) bucket-group)
-                       (bucket-id particles)
-                       s2-4
-                       (the-as (pointer dma-tag) a3-14)
-                       )
                      )
                    )
                  )
@@ -2563,9 +2318,9 @@
                    (the float sv-72)
                    (the float (+ sv-72 (* sv-88 arg2)))
                    )
-                 (let* ((s1-1 (-> *display* frames (-> *display* on-screen) global-buf))
-                        (s2-5 (-> s1-1 base))
-                        )
+                 (with-dma-buffer-add-bucket ((s1-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                                              (bucket-id particles)
+                                              )
                    (draw-sprite2d-xy
                      s1-1
                      sv-64
@@ -2573,20 +2328,6 @@
                      sv-80
                      sv-88
                      (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a (the int (* 64.0 sv-16)))
-                     )
-                   (let ((a3-32 (-> s1-1 base)))
-                     (let ((v1-164 (the-as object (-> s1-1 base))))
-                       (set! (-> (the-as dma-packet v1-164) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                       (set! (-> (the-as dma-packet v1-164) vif0) (new 'static 'vif-tag))
-                       (set! (-> (the-as dma-packet v1-164) vif1) (new 'static 'vif-tag))
-                       (set! (-> s1-1 base) (&+ (the-as pointer v1-164) 16))
-                       )
-                     (dma-bucket-insert-tag
-                       (-> *display* frames (-> *display* on-screen) bucket-group)
-                       (bucket-id particles)
-                       s2-5
-                       (the-as (pointer dma-tag) a3-32)
-                       )
                      )
                    )
                  )
@@ -2624,7 +2365,7 @@
                        (s0-0 (clear *temp-string*))
                        )
                    (set! sv-96 "~S ~D")
-                   (let ((a2-28 (lookup-text! *common-text* (game-text-id progress-unknown-game) #f))
+                   (let ((a2-28 (lookup-text! *common-text* (text-id progress-unknown-game) #f))
                          (a3-33 (+ arg2 1))
                          )
                      (s1-2 s0-0 sv-96 a2-28 a3-33)
@@ -2695,27 +2436,13 @@
                    (set! (-> obj sprites 4 scale-x) 1.0)
                    (set! (-> obj sprites 4 scale-y) 1.0)
                    (set-hud-piece-position! (-> obj sprites 4) (+ sv-40 sv-56) (+ sv-48 64))
-                   (let* ((s1-7 (-> *display* frames (-> *display* on-screen) global-buf))
-                          (s2-9 (-> s1-7 base))
-                          )
+                   (with-dma-buffer-add-bucket ((s1-7 (-> *display* frames (-> *display* on-screen) global-buf))
+                                                (bucket-id progress)
+                                                )
                      (draw (-> obj sprites 1) s1-7 (-> *level* default-level))
                      (draw (-> obj sprites 2) s1-7 (-> *level* default-level))
                      (draw (-> obj sprites 3) s1-7 (-> *level* default-level))
                      (draw (-> obj sprites 4) s1-7 (-> *level* default-level))
-                     (let ((a3-35 (-> s1-7 base)))
-                       (let ((v1-237 (the-as object (-> s1-7 base))))
-                         (set! (-> (the-as dma-packet v1-237) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                         (set! (-> (the-as dma-packet v1-237) vif0) (new 'static 'vif-tag))
-                         (set! (-> (the-as dma-packet v1-237) vif1) (new 'static 'vif-tag))
-                         (set! (-> s1-7 base) (&+ (the-as pointer v1-237) 16))
-                         )
-                       (dma-bucket-insert-tag
-                         (-> *display* frames (-> *display* on-screen) bucket-group)
-                         (bucket-id progress)
-                         s2-9
-                         (the-as (pointer dma-tag) a3-35)
-                         )
-                       )
                      )
                    (let ((v1-245 arg1))
                      (set! (-> v1-245 scale) 0.6)
@@ -2728,24 +2455,10 @@
                    (set! (-> obj sprites 0 scale-y) 0.7)
                    (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x4 :page #xc93)))
                    (set-hud-piece-position! (the-as hud-sprite (-> obj sprites)) 265 263)
-                   (let* ((s1-8 (-> *display* frames (-> *display* on-screen) global-buf))
-                          (s2-10 (-> s1-8 base))
-                          )
+                   (with-dma-buffer-add-bucket ((s1-8 (-> *display* frames (-> *display* on-screen) global-buf))
+                                                (bucket-id progress)
+                                                )
                      ((method-of-type hud-sprite draw) (the-as hud-sprite (-> obj sprites)) s1-8 (-> *level* default-level))
-                     (let ((a3-36 (-> s1-8 base)))
-                       (let ((v1-260 (the-as object (-> s1-8 base))))
-                         (set! (-> (the-as dma-packet v1-260) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                         (set! (-> (the-as dma-packet v1-260) vif0) (new 'static 'vif-tag))
-                         (set! (-> (the-as dma-packet v1-260) vif1) (new 'static 'vif-tag))
-                         (set! (-> s1-8 base) (&+ (the-as pointer v1-260) 16))
-                         )
-                       (dma-bucket-insert-tag
-                         (-> *display* frames (-> *display* on-screen) bucket-group)
-                         (bucket-id progress)
-                         s2-10
-                         (the-as (pointer dma-tag) a3-36)
-                         )
-                       )
                      )
                    (set! (-> arg1 origin y) (+ 1.0 (-> arg1 origin y)))
                    (set! (-> arg1 origin x) (+ 28.0 (-> arg1 origin x)))
@@ -2761,24 +2474,10 @@
                      )
                    (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x6 :page #xc93)))
                    (set-hud-piece-position! (the-as hud-sprite (-> obj sprites)) 368 263)
-                   (let* ((s1-10 (-> *display* frames (-> *display* on-screen) global-buf))
-                          (s2-12 (-> s1-10 base))
-                          )
+                   (with-dma-buffer-add-bucket ((s1-10 (-> *display* frames (-> *display* on-screen) global-buf))
+                                                (bucket-id progress)
+                                                )
                      ((method-of-type hud-sprite draw) (the-as hud-sprite (-> obj sprites)) s1-10 (-> *level* default-level))
-                     (let ((a3-39 (-> s1-10 base)))
-                       (let ((v1-285 (the-as object (-> s1-10 base))))
-                         (set! (-> (the-as dma-packet v1-285) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                         (set! (-> (the-as dma-packet v1-285) vif0) (new 'static 'vif-tag))
-                         (set! (-> (the-as dma-packet v1-285) vif1) (new 'static 'vif-tag))
-                         (set! (-> s1-10 base) (&+ (the-as pointer v1-285) 16))
-                         )
-                       (dma-bucket-insert-tag
-                         (-> *display* frames (-> *display* on-screen) bucket-group)
-                         (bucket-id progress)
-                         s2-12
-                         (the-as (pointer dma-tag) a3-39)
-                         )
-                       )
                      )
                    (set! (-> arg1 origin x) (+ 100.0 (-> arg1 origin x)))
                    (let ((s2-13 print-game-text))
@@ -2787,24 +2486,10 @@
                      )
                    (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x5 :page #xc93)))
                    (set-hud-piece-position! (the-as hud-sprite (-> obj sprites)) 368 289)
-                   (let* ((s1-12 (-> *display* frames (-> *display* on-screen) global-buf))
-                          (s2-14 (-> s1-12 base))
-                          )
+                   (with-dma-buffer-add-bucket ((s1-12 (-> *display* frames (-> *display* on-screen) global-buf))
+                                                (bucket-id progress)
+                                                )
                      ((method-of-type hud-sprite draw) (the-as hud-sprite (-> obj sprites)) s1-12 (-> *level* default-level))
-                     (let ((a3-41 (-> s1-12 base)))
-                       (let ((v1-304 (the-as object (-> s1-12 base))))
-                         (set! (-> (the-as dma-packet v1-304) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                         (set! (-> (the-as dma-packet v1-304) vif0) (new 'static 'vif-tag))
-                         (set! (-> (the-as dma-packet v1-304) vif1) (new 'static 'vif-tag))
-                         (set! (-> s1-12 base) (&+ (the-as pointer v1-304) 16))
-                         )
-                       (dma-bucket-insert-tag
-                         (-> *display* frames (-> *display* on-screen) bucket-group)
-                         (bucket-id progress)
-                         s2-14
-                         (the-as (pointer dma-tag) a3-41)
-                         )
-                       )
                      )
                    (set! (-> arg1 origin y) (+ 28.0 (-> arg1 origin y)))
                    (let ((s2-15 print-game-text))
@@ -2815,24 +2500,10 @@
                    (set! (-> obj sprites 0 scale-y) 0.6)
                    (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x82 :page #xc93)))
                    (set-hud-piece-position! (the-as hud-sprite (-> obj sprites)) 253 290)
-                   (let* ((s1-14 (-> *display* frames (-> *display* on-screen) global-buf))
-                          (s2-16 (-> s1-14 base))
-                          )
+                   (with-dma-buffer-add-bucket ((s1-14 (-> *display* frames (-> *display* on-screen) global-buf))
+                                                (bucket-id progress)
+                                                )
                      ((method-of-type hud-sprite draw) (the-as hud-sprite (-> obj sprites)) s1-14 (-> *level* default-level))
-                     (let ((a3-43 (-> s1-14 base)))
-                       (let ((v1-325 (the-as object (-> s1-14 base))))
-                         (set! (-> (the-as dma-packet v1-325) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                         (set! (-> (the-as dma-packet v1-325) vif0) (new 'static 'vif-tag))
-                         (set! (-> (the-as dma-packet v1-325) vif1) (new 'static 'vif-tag))
-                         (set! (-> s1-14 base) (&+ (the-as pointer v1-325) 16))
-                         )
-                       (dma-bucket-insert-tag
-                         (-> *display* frames (-> *display* on-screen) bucket-group)
-                         (bucket-id progress)
-                         s2-16
-                         (the-as (pointer dma-tag) a3-43)
-                         )
-                       )
                      )
                    (set! (-> arg1 origin x) (+ -100.0 (-> arg1 origin x)))
                    (let ((s2-17 print-game-text))
@@ -2869,7 +2540,7 @@
                                            )
                    )
                (print-game-text
-                 (lookup-text! *common-text* (game-text-id progress-slot-empty) #f)
+                 (lookup-text! *common-text* (text-id progress-slot-empty) #f)
                  arg1
                  #f
                  44
@@ -2935,7 +2606,7 @@
            (set! a1-1 418)
            )
           )
-        (print-game-text (lookup-text! *common-text* (the-as game-text-id a1-1) #f) arg1 #f 44 (bucket-id progress))
+        (print-game-text (lookup-text! *common-text* (the-as text-id a1-1) #f) arg1 #f 44 (bucket-id progress))
         )
       )
     (set! (-> arg1 origin y) (+ 45.0 (-> arg1 origin y)))
@@ -2946,7 +2617,7 @@
       (set! (-> a0-16 color) (font-color #7efbfb))
       )
     (let ((s5-2 print-game-text))
-      (format (clear *temp-string*) (lookup-text! *common-text* (game-text-id progress-memcard-dont-remove) #f) 1)
+      (format (clear *temp-string*) (lookup-text! *common-text* (text-id progress-memcard-dont-remove) #f) 1)
       (s5-2 *temp-string* arg1 #f 44 (bucket-id progress))
       )
     0
@@ -2986,7 +2657,7 @@
          )
         )
       (let ((s3-0 print-game-text))
-        (format (clear *temp-string*) (lookup-text! *common-text* (the-as game-text-id s4-0) #f) 1)
+        (format (clear *temp-string*) (lookup-text! *common-text* (the-as text-id s4-0) #f) 1)
         (s3-0 *temp-string* arg1 #f 44 (bucket-id progress))
         )
       )
@@ -2997,7 +2668,7 @@
     (let ((s4-1 print-game-text))
       (format
         (clear *temp-string*)
-        (lookup-text! *common-text* (game-text-id progress-memcard-space-requirement) #f)
+        (lookup-text! *common-text* (text-id progress-memcard-space-requirement) #f)
         (if *progress-save-info*
             (-> *progress-save-info* mem-required)
             0
@@ -3014,7 +2685,7 @@
             (!= (-> *progress-state* starting-state) 'no-memory-card)
             )
        (print-game-text
-         (lookup-text! *common-text* (game-text-id progress-memcard-insert-card-with-space-to-save) #f)
+         (lookup-text! *common-text* (text-id progress-memcard-insert-card-with-space-to-save) #f)
          arg1
          #f
          44
@@ -3026,7 +2697,7 @@
          )
        (draw-highlight (the int (+ 30.0 (-> arg1 origin y))) 24 (-> arg1 alpha))
        (print-game-text
-         (lookup-text! *common-text* (game-text-id progress-unknown-continue) #f)
+         (lookup-text! *common-text* (text-id progress-unknown-continue) #f)
          arg1
          #f
          44
@@ -3071,7 +2742,7 @@
   (let ((s5-0 409))
     (progress-method-28 arg0 'select-save)
     (let ((s4-0 print-game-text))
-      (format (clear *temp-string*) (lookup-text! *common-text* (the-as game-text-id s5-0) #f) 1)
+      (format (clear *temp-string*) (lookup-text! *common-text* (the-as text-id s5-0) #f) 1)
       (s4-0 *temp-string* arg1 #f 44 (bucket-id progress))
       )
     )
@@ -3084,7 +2755,7 @@
     )
   (draw-highlight (the int (-> arg1 origin y)) 24 (-> arg1 alpha))
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-unknown-continue) #f)
+    (lookup-text! *common-text* (text-id progress-unknown-continue) #f)
     arg1
     #f
     44
@@ -3118,7 +2789,7 @@
   (let ((s5-0 print-game-text))
     (format
       (clear *temp-string*)
-      (lookup-text! *common-text* (game-text-id progress-memcard-insert-card-with-jak2) #f)
+      (lookup-text! *common-text* (text-id progress-memcard-insert-card-with-jak2) #f)
       1
       )
     (s5-0 *temp-string* arg1 #f 44 (bucket-id progress))
@@ -3132,7 +2803,7 @@
     )
   (draw-highlight (the int (+ 17.0 (-> arg1 origin y))) 24 (-> arg1 alpha))
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-memcard-go-back?) #f)
+    (lookup-text! *common-text* (text-id progress-memcard-go-back?) #f)
     arg1
     #f
     44
@@ -3176,7 +2847,7 @@
        )
       )
     (let ((s4-0 print-game-text))
-      (format (clear *temp-string*) (lookup-text! *common-text* (the-as game-text-id s5-0) #f) 1)
+      (format (clear *temp-string*) (lookup-text! *common-text* (the-as text-id s5-0) #f) 1)
       (s4-0 *temp-string* arg1 #f 44 (bucket-id progress))
       )
     )
@@ -3187,7 +2858,7 @@
   (let ((s5-1 print-game-text))
     (format
       (clear *temp-string*)
-      (lookup-text! *common-text* (game-text-id progress-memcard-check-and-try-again) #f)
+      (lookup-text! *common-text* (text-id progress-memcard-check-and-try-again) #f)
       1
       )
     (s5-1 *temp-string* arg1 #f 44 (bucket-id progress))
@@ -3201,7 +2872,7 @@
     )
   (draw-highlight (the int (+ 9.0 (-> arg1 origin y))) 24 (-> arg1 alpha))
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-unknown-continue) #f)
+    (lookup-text! *common-text* (text-id progress-unknown-continue) #f)
     arg1
     #f
     44
@@ -3233,7 +2904,7 @@
     (set! (-> v1-7 height) (the float 25))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-memcard-error-while-saving) #f)
+    (lookup-text! *common-text* (text-id progress-memcard-error-while-saving) #f)
     arg1
     #f
     44
@@ -3244,7 +2915,7 @@
     (set! (-> v1-10 height) (the float 60))
     )
   (let ((s5-1 print-game-text))
-    (format (clear *temp-string*) (lookup-text! *common-text* (game-text-id progress-memcard-check) #f) 1)
+    (format (clear *temp-string*) (lookup-text! *common-text* (text-id progress-memcard-check) #f) 1)
     (s5-1 *temp-string* arg1 #f 44 (bucket-id progress))
     )
   (set! (-> arg1 origin y) (+ 60.0 (-> arg1 origin y)))
@@ -3252,7 +2923,7 @@
     (set! (-> v1-13 height) (the float 45))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-autosave-disabled) #f)
+    (lookup-text! *common-text* (text-id progress-autosave-disabled) #f)
     arg1
     #f
     44
@@ -3263,7 +2934,7 @@
     (set! (-> v1-16 height) (the float 95))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-autosave-reenabling-info) #f)
+    (lookup-text! *common-text* (text-id progress-autosave-reenabling-info) #f)
     arg1
     #f
     44
@@ -3278,7 +2949,7 @@
     )
   (draw-highlight (the int (-> arg1 origin y)) 22 (-> arg1 alpha))
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-unknown-continue) #f)
+    (lookup-text! *common-text* (text-id progress-unknown-continue) #f)
     arg1
     #f
     44
@@ -3310,12 +2981,12 @@
     (set! (-> v1-7 height) (the float 70))
     )
   (let ((s5-0 print-game-text))
-    (format (clear *temp-string*) (lookup-text! *common-text* (game-text-id progress-memcard-was-removed) #f) 1)
+    (format (clear *temp-string*) (lookup-text! *common-text* (text-id progress-memcard-was-removed) #f) 1)
     (s5-0 *temp-string* arg1 #f 44 (bucket-id progress))
     )
   (set! (-> arg1 origin y) (+ 65.0 (-> arg1 origin y)))
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-autosave-disabled) #f)
+    (lookup-text! *common-text* (text-id progress-autosave-disabled) #f)
     arg1
     #f
     44
@@ -3326,7 +2997,7 @@
     (set! (-> v1-12 height) (the float 90))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-autosave-reenabling-info) #f)
+    (lookup-text! *common-text* (text-id progress-autosave-reenabling-info) #f)
     arg1
     #f
     44
@@ -3341,7 +3012,7 @@
     )
   (draw-highlight (the int (+ 5.0 (-> arg1 origin y))) 24 (-> arg1 alpha))
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-unknown-continue) #f)
+    (lookup-text! *common-text* (text-id progress-unknown-continue) #f)
     arg1
     #f
     44
@@ -3373,7 +3044,7 @@
     (set! (-> v1-7 height) (the float 35))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-disc-removed-notice) #f)
+    (lookup-text! *common-text* (text-id progress-disc-removed-notice) #f)
     arg1
     #f
     44
@@ -3384,7 +3055,7 @@
     (set! (-> v1-10 height) (the float 85))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-disc-removed-prompt) #f)
+    (lookup-text! *common-text* (text-id progress-disc-removed-prompt) #f)
     arg1
     #f
     44
@@ -3400,7 +3071,7 @@
       )
     (draw-highlight (the int (+ 12.0 (-> arg1 origin y))) 24 (-> arg1 alpha))
     (print-game-text
-      (lookup-text! *common-text* (game-text-id progress-unknown-continue) #f)
+      (lookup-text! *common-text* (text-id progress-unknown-continue) #f)
       arg1
       #f
       44
@@ -3433,7 +3104,7 @@
     (set! (-> v1-7 height) (the float 35))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-disc-read-error) #f)
+    (lookup-text! *common-text* (text-id progress-disc-read-error) #f)
     arg1
     #f
     44
@@ -3444,7 +3115,7 @@
     (set! (-> v1-10 height) (the float 85))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-disc-read-error-prompt) #f)
+    (lookup-text! *common-text* (text-id progress-disc-read-error-prompt) #f)
     arg1
     #f
     44
@@ -3459,7 +3130,7 @@
     )
   (draw-highlight (the int (+ 12.0 (-> arg1 origin y))) 24 (-> arg1 alpha))
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-unknown-continue) #f)
+    (lookup-text! *common-text* (text-id progress-unknown-continue) #f)
     arg1
     #f
     44
@@ -3471,6 +3142,7 @@
 
 ;; definition for method 10 of type menu-icon-info-option
 ;; WARN: Return type mismatch int vs none.
+;; ERROR: Failed store: (s.w! (+ v1-16 8) 0) at op 72
 (defmethod menu-option-method-10 menu-icon-info-option ((obj menu-icon-info-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (let ((a0-1 arg1))
@@ -3492,24 +3164,10 @@
   (set! (-> obj sprites 0 pos z) #xffffff)
   (set! (-> obj sprites 0 pos w) 0)
   (set-hud-piece-position! (the-as hud-sprite (-> obj sprites)) 240 160)
-  (let* ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (s4-1 (-> s3-0 base))
-         )
+  (with-dma-buffer-add-bucket ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
     ((method-of-type hud-sprite draw) (the-as hud-sprite (-> obj sprites)) s3-0 (-> *level* default-level))
-    (let ((a3-1 (-> s3-0 base)))
-      (let ((v1-16 (the-as object (-> s3-0 base))))
-        (set! (-> (the-as dma-packet v1-16) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-16) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-16) vif1) (new 'static 'vif-tag))
-        (set! (-> s3-0 base) (&+ (the-as pointer v1-16) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id progress)
-        s4-1
-        (the-as (pointer dma-tag) a3-1)
-        )
-      )
     )
   (let ((a0-16 arg1))
     (set! (-> a0-16 flags) (font-flags kerning middle left large))
@@ -3523,7 +3181,7 @@
     (set! (-> v1-28 height) (the float 85))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-autosave-explanation) #f)
+    (lookup-text! *common-text* (text-id progress-autosave-explanation) #f)
     arg1
     #f
     44
@@ -3534,7 +3192,7 @@
     (set! (-> v1-31 height) (the float 95))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-autosave-dont-remove) #f)
+    (lookup-text! *common-text* (text-id progress-autosave-dont-remove) #f)
     arg1
     #f
     44
@@ -3549,7 +3207,7 @@
     )
   (draw-highlight (the int (+ 12.0 (-> arg1 origin y))) 24 (-> arg1 alpha))
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-unknown-continue) #f)
+    (lookup-text! *common-text* (text-id progress-unknown-continue) #f)
     arg1
     #f
     44
@@ -3581,7 +3239,7 @@
     (set! (-> v1-7 height) (the float 85))
     )
   (let ((s4-0 print-game-text))
-    (format (clear *temp-string*) (lookup-text! *common-text* (game-text-id progress-memcard-unformatted) #f) 1)
+    (format (clear *temp-string*) (lookup-text! *common-text* (text-id progress-memcard-unformatted) #f) 1)
     (s4-0 *temp-string* arg1 #f 44 (bucket-id progress))
     )
   (set! (-> arg1 origin y) (+ 95.0 (-> arg1 origin y)))
@@ -3589,7 +3247,7 @@
     (set! (-> v1-10 height) (the float 85))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-memcard-formatting-required-notice) #f)
+    (lookup-text! *common-text* (text-id progress-memcard-formatting-required-notice) #f)
     arg1
     #f
     44
@@ -3601,7 +3259,7 @@
     )
   (draw-highlight (the int (-> arg1 origin y)) 44 (-> arg1 alpha))
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-memcard-format-prompt) #f)
+    (lookup-text! *common-text* (text-id progress-memcard-format-prompt) #f)
     arg1
     #f
     44
@@ -3635,7 +3293,7 @@
     (set! (-> v1-7 height) (the float 85))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-memcard-overwrite-warning) #f)
+    (lookup-text! *common-text* (text-id progress-memcard-overwrite-warning) #f)
     arg1
     #f
     44
@@ -3646,7 +3304,7 @@
     (set! (-> v1-10 height) (the float 45))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-memcard-overwrite-confirm) #f)
+    (lookup-text! *common-text* (text-id progress-memcard-overwrite-confirm) #f)
     arg1
     #f
     44
@@ -3681,7 +3339,7 @@
     (set! (-> v1-7 height) (the float 90))
     )
   (let ((s4-0 print-game-text))
-    (format (clear *temp-string*) (lookup-text! *common-text* (game-text-id progress-memcard-no-jak2-found) #f) 1)
+    (format (clear *temp-string*) (lookup-text! *common-text* (text-id progress-memcard-no-jak2-found) #f) 1)
     (s4-0 *temp-string* arg1 #f 44 (bucket-id progress))
     )
   (set! (-> arg1 origin y) (+ 95.0 (-> arg1 origin y)))
@@ -3689,7 +3347,7 @@
     (set! (-> v1-10 height) (the float 60))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-memcard-create-jak2-file?) #f)
+    (lookup-text! *common-text* (text-id progress-memcard-create-jak2-file?) #f)
     arg1
     #f
     44
@@ -3724,7 +3382,7 @@
     (set! (-> v1-7 height) (the float 45))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-graphics-60hz-change-notice) #f)
+    (lookup-text! *common-text* (text-id progress-graphics-60hz-change-notice) #f)
     arg1
     #f
     44
@@ -3735,7 +3393,7 @@
     (set! (-> v1-10 height) (the float 95))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-graphics-progressivescan-warning-1) #f)
+    (lookup-text! *common-text* (text-id progress-graphics-progressivescan-warning-1) #f)
     arg1
     #f
     44
@@ -3746,7 +3404,7 @@
     (set! (-> v1-13 height) (the float 55))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-graphics-progressivescan-warning-2) #f)
+    (lookup-text! *common-text* (text-id progress-graphics-progressivescan-warning-2) #f)
     arg1
     #f
     44
@@ -3757,7 +3415,7 @@
     (set! (-> v1-16 height) (the float 30))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-memcard-continue?) #f)
+    (lookup-text! *common-text* (text-id progress-memcard-continue?) #f)
     arg1
     #f
     44
@@ -3792,7 +3450,7 @@
     (set! (-> v1-7 height) (the float 50))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-graphics-60hz-change-complete) #f)
+    (lookup-text! *common-text* (text-id progress-graphics-60hz-change-complete) #f)
     arg1
     #f
     44
@@ -3803,7 +3461,7 @@
     (set! (-> v1-10 height) (the float 50))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-graphics-mode-revert?) #f)
+    (lookup-text! *common-text* (text-id progress-graphics-mode-revert?) #f)
     arg1
     #f
     44
@@ -3838,7 +3496,7 @@
     (set! (-> v1-7 height) (the float 50))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-graphics-progressivescan-change-notice) #f)
+    (lookup-text! *common-text* (text-id progress-graphics-progressivescan-change-notice) #f)
     arg1
     #f
     44
@@ -3849,7 +3507,7 @@
     (set! (-> v1-10 height) (the float 90))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-graphics-progressivescan-warning-1) #f)
+    (lookup-text! *common-text* (text-id progress-graphics-progressivescan-warning-1) #f)
     arg1
     #f
     44
@@ -3860,7 +3518,7 @@
     (set! (-> v1-13 height) (the float 75))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-graphics-progressivescan-warning-2) #f)
+    (lookup-text! *common-text* (text-id progress-graphics-progressivescan-warning-2) #f)
     arg1
     #f
     44
@@ -3871,7 +3529,7 @@
     (set! (-> v1-16 height) (the float 30))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-memcard-continue?) #f)
+    (lookup-text! *common-text* (text-id progress-memcard-continue?) #f)
     arg1
     #f
     44
@@ -3906,7 +3564,7 @@
     (set! (-> v1-7 height) (the float 80))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-graphics-progressivescan-change-complete) #f)
+    (lookup-text! *common-text* (text-id progress-graphics-progressivescan-change-complete) #f)
     arg1
     #f
     44
@@ -3917,7 +3575,7 @@
     (set! (-> v1-10 height) (the float 75))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-graphics-mode-revert?) #f)
+    (lookup-text! *common-text* (text-id progress-graphics-mode-revert?) #f)
     arg1
     #f
     44
@@ -3952,7 +3610,7 @@
     (set! (-> v1-7 height) (the float 70))
     )
   (print-game-text
-    (lookup-text! *common-text* (game-text-id progress-quit-game-confirm) #f)
+    (lookup-text! *common-text* (text-id progress-quit-game-confirm) #f)
     arg1
     #f
     44
@@ -4208,7 +3866,7 @@
         (set! sv-48 0)
         (while (< sv-48 s4-0)
           (set! sv-64 print-game-text)
-          (let ((a0-4 (lookup-text! *common-text* (the-as game-text-id (-> s2-0 sv-48 text)) #f))
+          (let ((a0-4 (lookup-text! *common-text* (the-as text-id (-> s2-0 sv-48 text)) #f))
                 (a1-16 arg1)
                 (a2-4 #t)
                 (a3-3 44)
@@ -4221,7 +3879,7 @@
         (let ((s0-1 (- s0-0 (the int f28-0)))
               (f28-1 (cond
                        ((< (-> arg0 sliding-height) 0.0)
-                        (set! sv-112 (lookup-text! *common-text* (the-as game-text-id (-> s2-0 s4-0 text)) #f))
+                        (set! sv-112 (lookup-text! *common-text* (the-as text-id (-> s2-0 s4-0 text)) #f))
                         0.0
                         (set! sv-80 print-game-text)
                         (set! sv-96 format)
@@ -4241,7 +3899,7 @@
                           )
                         )
                        (else
-                         (set! sv-160 (lookup-text! *common-text* (the-as game-text-id (-> s2-0 (+ s4-0 -1) text)) #f))
+                         (set! sv-160 (lookup-text! *common-text* (the-as text-id (-> s2-0 (+ s4-0 -1) text)) #f))
                          0.0
                          (set! sv-128 print-game-text)
                          (set! sv-144 format)
@@ -4266,7 +3924,7 @@
           (set! (-> arg1 origin y) (the float (+ s0-1 (the int f28-1))))
           (while (< s3-0 (length s2-0))
             (set! sv-176 print-game-text)
-            (let* ((a0-14 (lookup-text! *common-text* (the-as game-text-id (-> s2-0 s3-0 text)) #f))
+            (let* ((a0-14 (lookup-text! *common-text* (the-as text-id (-> s2-0 s3-0 text)) #f))
                    (a1-24 arg1)
                    (a2-12 #t)
                    (a3-6 44)
@@ -4293,7 +3951,7 @@
                 )
               )
             (set! sv-224 print-game-text)
-            (let ((a0-23 (lookup-text! *common-text* (the-as game-text-id (-> s2-0 s3-0 text)) #f))
+            (let ((a0-23 (lookup-text! *common-text* (the-as text-id (-> s2-0 s3-0 text)) #f))
                   (a1-28 arg1)
                   (a2-16 #f)
                   (a3-7 44)
@@ -4581,8 +4239,8 @@
       )
   (set! (-> arg1 alpha) sv-16)
   (set! (-> *game-info* mission-list 0) sv-264)
-  (set! (-> sv-264 description) (game-text-id progress-unknown-kjanskd))
-  (set! (-> sv-268 description) (game-text-id progress-unknown-oi1un23i13))
+  (set! (-> sv-264 description) (text-id progress-unknown-kjanskd))
+  (set! (-> sv-268 description) (text-id progress-unknown-oi1un23i13))
   (while (< sv-24 (length (-> *game-info* sub-task-list)))
     (let ((v1-26 (find-mission-text-at-index sv-24))
           (a0-15 (-> *game-info* mission-list))
@@ -4613,10 +4271,10 @@
   (let ((v1-40 (-> obj page-index)))
     (cond
       ((zero? v1-40)
-       (draw-missions-decoration obj arg1 sv-16 (game-text-id progress-root-missions))
+       (draw-missions-decoration obj arg1 sv-16 (text-id progress-root-missions))
        )
       ((= v1-40 1)
-       (draw-missions-decoration obj arg1 sv-16 (game-text-id progress-root-missions))
+       (draw-missions-decoration obj arg1 sv-16 (text-id progress-root-missions))
        )
       )
     )
@@ -4731,8 +4389,8 @@
                      (format (clear *temp-string*) "~S" (lookup-text!
                                                           *common-text*
                                                           (if (logtest? (-> s4-6 flags) (game-task-node-flag closed))
-                                                              (game-text-id progress-missions-icon-completed)
-                                                              (game-text-id progress-missions-icon-todo)
+                                                              (text-id progress-missions-icon-completed)
+                                                              (text-id progress-missions-icon-todo)
                                                               )
                                                           #f
                                                           )
@@ -4769,7 +4427,7 @@
       )
     (if (zero? (-> *progress-state* total-num-tasks))
         (print-game-text
-          (lookup-text! *common-text* (game-text-id progress-missions-none) #f)
+          (lookup-text! *common-text* (text-id progress-missions-none) #f)
           arg1
           #f
           44
@@ -4810,7 +4468,7 @@
               )
             )
           (print-game-text
-            (lookup-text! *common-text* (game-text-id progress-secrets-go-to-title-screen) #f)
+            (lookup-text! *common-text* (text-id progress-secrets-go-to-title-screen) #f)
             arg2
             #f
             44
@@ -4884,7 +4542,7 @@
                                      )
              )
          (let ((s5-2 print-game-text))
-           (format (clear *temp-string*) "~S" (lookup-text! *common-text* (game-text-id progress-on) #f))
+           (format (clear *temp-string*) "~S" (lookup-text! *common-text* (text-id progress-on) #f))
            (s5-2 *temp-string* arg2 #f 44 (bucket-id progress))
            )
          )
@@ -4896,7 +4554,7 @@
                                      )
              )
          (let ((s5-4 print-game-text))
-           (format (clear *temp-string*) "~S" (lookup-text! *common-text* (game-text-id progress-off) #f))
+           (format (clear *temp-string*) "~S" (lookup-text! *common-text* (text-id progress-off) #f))
            (s5-4 *temp-string* arg2 #f 44 (bucket-id progress))
            )
          )
@@ -4921,7 +4579,7 @@
            (set! (-> a0-61 flags) (font-flags kerning right large))
            )
          (let ((s5-6 print-game-text))
-           (format (clear *temp-string*) "~S" (lookup-text! *common-text* (game-text-id progress-secrets-unlocked) #f))
+           (format (clear *temp-string*) "~S" (lookup-text! *common-text* (text-id progress-secrets-unlocked) #f))
            (s5-6 *temp-string* arg2 #f 44 (bucket-id progress))
            )
          (let ((v0-15 (the-as object arg2)))
@@ -5236,6 +4894,7 @@
 ;; WARN: Stack slot offset 112 signed mismatch
 ;; WARN: Stack slot offset 108 signed mismatch
 ;; WARN: Return type mismatch int vs none.
+;; ERROR: Failed store: (s.w! (+ v1-42 8) 0) at op 138
 (defmethod menu-option-method-10 menu-secret-option ((obj menu-secret-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars
     (sv-16 float)
@@ -5298,24 +4957,10 @@
       (set! (-> obj sprites 0 pos z) #xffffff)
       (set! (-> obj sprites 0 pos w) 0)
       (set-hud-piece-position! (the-as hud-sprite (-> obj sprites)) 100 128)
-      (let* ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
-             (s4-0 (-> s3-0 base))
-             )
+      (with-dma-buffer-add-bucket ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                   (bucket-id progress)
+                                   )
         ((method-of-type hud-sprite draw) (the-as hud-sprite (-> obj sprites)) s3-0 (-> *level* default-level))
-        (let ((a3-1 (-> s3-0 base)))
-          (let ((v1-42 (the-as object (-> s3-0 base))))
-            (set! (-> (the-as dma-packet v1-42) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-            (set! (-> (the-as dma-packet v1-42) vif0) (new 'static 'vif-tag))
-            (set! (-> (the-as dma-packet v1-42) vif1) (new 'static 'vif-tag))
-            (set! (-> s3-0 base) (&+ (the-as pointer v1-42) 16))
-            )
-          (dma-bucket-insert-tag
-            (-> *display* frames (-> *display* on-screen) bucket-group)
-            (bucket-id progress)
-            s4-0
-            (the-as (pointer dma-tag) a3-1)
-            )
-          )
         )
       (set! (-> arg1 alpha) sv-16)
       (let ((a0-21 arg1))
@@ -5341,7 +4986,7 @@
             (a2-4 sv-16)
             (a3-2 339)
             )
-        (t9-5 a0-24 a1-4 a2-4 (the-as game-text-id a3-2))
+        (t9-5 a0-24 a1-4 a2-4 (the-as text-id a3-2))
         )
       (let ((v1-58 arg1))
         (set! (-> v1-58 scale) 0.45)
@@ -5376,7 +5021,7 @@
           (clear *temp-string*)
           "x~D ~S"
           sv-24
-          (lookup-text! *common-text* (game-text-id progress-secrets-orb-label) #f)
+          (lookup-text! *common-text* (text-id progress-secrets-orb-label) #f)
           )
         (s4-1 *temp-string* arg1 #f 44 (bucket-id progress))
         )
@@ -5498,33 +5143,21 @@
   )
 
 ;; definition for function draw-highscore-icon
+;; ERROR: Failed store: (s.w! (+ v1-8 8) 0) at op 37
 (defun draw-highscore-icon ((arg0 menu-highscores-option) (arg1 uint) (arg2 int) (arg3 int) (arg4 float))
   (set! (-> arg0 sprites 0 tex) (lookup-texture-by-id (the-as texture-id arg1)))
   (set! (-> arg0 sprites 0 scale-x) arg4)
   (set! (-> arg0 sprites 0 scale-y) arg4)
   (set-hud-piece-position! (the-as hud-sprite (-> arg0 sprites)) arg2 arg3)
-  (let* ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf))
-         (gp-1 (-> s4-1 base))
-         )
+  (with-dma-buffer-add-bucket ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
     ((method-of-type hud-sprite draw) (the-as hud-sprite (-> arg0 sprites)) s4-1 (-> *level* default-level))
-    (let ((a3-1 (-> s4-1 base)))
-      (let ((v1-8 (the-as object (-> s4-1 base))))
-        (set! (-> (the-as dma-packet v1-8) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-8) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-8) vif1) (new 'static 'vif-tag))
-        (set! (-> s4-1 base) (&+ (the-as pointer v1-8) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id progress)
-        gp-1
-        (the-as (pointer dma-tag) a3-1)
-        )
-      )
     )
   )
 
 ;; definition for function draw-highscore-cup
+;; ERROR: Failed store: (s.w! (+ v1-20 8) 0) at op 75
 (defun draw-highscore-cup ((arg0 texture-page) (arg1 int) (arg2 int) (arg3 int) (arg4 float) (arg5 float))
   "First int is an enum"
   (let ((a0-1 (the-as uint #xc9300300)))
@@ -5553,24 +5186,10 @@
       (set! (-> arg0 pad 12) (the-as uint arg4))
       (set! (-> arg0 pad 13) (the-as uint arg4))
       (set-hud-piece-position! (the-as hud-sprite (&-> arg0 pad 3)) arg2 arg3)
-      (let* ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf))
-             (s5-1 (-> s4-1 base))
-             )
+      (with-dma-buffer-add-bucket ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                                   (bucket-id progress)
+                                   )
         ((method-of-type hud-sprite draw) (the-as hud-sprite (&-> arg0 pad 3)) s4-1 (-> *level* default-level))
-        (let ((a3-1 (-> s4-1 base)))
-          (let ((v1-20 (the-as object (-> s4-1 base))))
-            (set! (-> (the-as dma-packet v1-20) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-            (set! (-> (the-as dma-packet v1-20) vif0) (new 'static 'vif-tag))
-            (set! (-> (the-as dma-packet v1-20) vif1) (new 'static 'vif-tag))
-            (set! (-> s4-1 base) (&+ (the-as pointer v1-20) 16))
-            )
-          (dma-bucket-insert-tag
-            (-> *display* frames (-> *display* on-screen) bucket-group)
-            (bucket-id progress)
-            s5-1
-            (the-as (pointer dma-tag) a3-1)
-            )
-          )
         )
       )
     )
@@ -5706,7 +5325,7 @@
     (cond
       ((zero? v1-8)
        (let ((gp-1 print-game-text))
-         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (game-text-id progress-highscores-1st) #f))
+         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (text-id progress-highscores-1st) #f))
          (gp-1 *temp-string* sv-16 #f 44 (bucket-id progress))
          )
        (if (not (-> sv-40 previous))
@@ -5726,7 +5345,7 @@
          )
        (set! (-> sv-16 origin y) (+ 23.0 (-> sv-16 origin y)))
        (let ((gp-3 print-game-text))
-         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (game-text-id progress-highscores-2nd) #f))
+         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (text-id progress-highscores-2nd) #f))
          (gp-3 *temp-string* sv-16 #f 44 (bucket-id progress))
          )
        (if (not (-> sv-40 previous))
@@ -5746,7 +5365,7 @@
          )
        (set! (-> sv-16 origin y) (+ 20.0 (-> sv-16 origin y)))
        (let ((gp-5 print-game-text))
-         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (game-text-id progress-highscores-3rd) #f))
+         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (text-id progress-highscores-3rd) #f))
          (gp-5 *temp-string* sv-16 #f 44 (bucket-id progress))
          )
        (if (not (-> sv-40 previous))
@@ -5766,7 +5385,7 @@
          )
        (set! (-> sv-16 origin y) (+ 15.0 (-> sv-16 origin y)))
        (let ((gp-7 print-game-text))
-         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (game-text-id progress-highscores-4th) #f))
+         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (text-id progress-highscores-4th) #f))
          (gp-7 *temp-string* sv-16 #f 44 (bucket-id progress))
          )
        (if (not (-> sv-40 previous))
@@ -5783,7 +5402,7 @@
       ((= v1-8 4)
        (set! (-> sv-16 origin y) (+ 12.0 (-> sv-16 origin y)))
        (let ((gp-9 print-game-text))
-         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (game-text-id progress-highscores-5th) #f))
+         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (text-id progress-highscores-5th) #f))
          (gp-9 *temp-string* sv-16 #f 44 (bucket-id progress))
          )
        (if (not (-> sv-40 previous))
@@ -5800,7 +5419,7 @@
       ((= v1-8 5)
        (set! (-> sv-16 origin y) (+ 12.0 (-> sv-16 origin y)))
        (let ((gp-11 print-game-text))
-         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (game-text-id progress-highscores-6th) #f))
+         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (text-id progress-highscores-6th) #f))
          (gp-11 *temp-string* sv-16 #f 44 (bucket-id progress))
          )
        (if (not (-> sv-40 previous))
@@ -5817,7 +5436,7 @@
       ((= v1-8 6)
        (set! (-> sv-16 origin y) (+ 12.0 (-> sv-16 origin y)))
        (let ((gp-13 print-game-text))
-         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (game-text-id progress-highscores-7th) #f))
+         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (text-id progress-highscores-7th) #f))
          (gp-13 *temp-string* sv-16 #f 44 (bucket-id progress))
          )
        (if (not (-> sv-40 previous))
@@ -5834,7 +5453,7 @@
       ((= v1-8 7)
        (set! (-> sv-16 origin y) (+ 12.0 (-> sv-16 origin y)))
        (let ((gp-15 print-game-text))
-         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (game-text-id progress-highscores-8th) #f))
+         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (text-id progress-highscores-8th) #f))
          (gp-15 *temp-string* sv-16 #f 44 (bucket-id progress))
          )
        (if (not (-> sv-40 previous))
@@ -5872,7 +5491,7 @@
   )
 
 ;; definition for function get-highscore-text
-;; WARN: Return type mismatch int vs game-text-id.
+;; WARN: Return type mismatch int vs text-id.
 (defun get-highscore-text ((arg0 int))
   "TODO - takes an enum?"
   (let ((v0-0 319))
@@ -5925,12 +5544,12 @@
          )
         )
       )
-    (the-as game-text-id v0-0)
+    (the-as text-id v0-0)
     )
   )
 
 ;; definition for function get-highscore-text-sub
-;; WARN: Return type mismatch int vs game-text-id.
+;; WARN: Return type mismatch int vs text-id.
 (defun get-highscore-text-sub ((arg0 int))
   "TODO - takes an enum?"
   (let ((v0-0 320))
@@ -5983,7 +5602,7 @@
          )
         )
       )
-    (the-as game-text-id v0-0)
+    (the-as text-id v0-0)
     )
   )
 
@@ -6757,8 +6376,8 @@
              (format
                (clear *temp-string*)
                "~33L~S~35L ~S"
-               (lookup-text! *common-text* (game-text-id progress-on) #f)
-               (lookup-text! *common-text* (game-text-id progress-off) #f)
+               (lookup-text! *common-text* (text-id progress-on) #f)
+               (lookup-text! *common-text* (text-id progress-off) #f)
                )
              (set! a0-10 *temp-string*)
              )
@@ -6766,8 +6385,8 @@
              (format
                (clear *temp-string*)
                "~35L~S ~33L~S~1L"
-               (lookup-text! *common-text* (game-text-id progress-on) #f)
-               (lookup-text! *common-text* (game-text-id progress-off) #f)
+               (lookup-text! *common-text* (text-id progress-on) #f)
+               (lookup-text! *common-text* (text-id progress-off) #f)
                )
              (set! a0-10 *temp-string*)
              )
@@ -6795,8 +6414,8 @@
               (format
                 (clear *temp-string*)
                 "~1L~S~35L ~S"
-                (lookup-text! *common-text* (game-text-id progress-on) #f)
-                (lookup-text! *common-text* (game-text-id progress-off) #f)
+                (lookup-text! *common-text* (text-id progress-on) #f)
+                (lookup-text! *common-text* (text-id progress-off) #f)
                 )
               (set! a0-10 *temp-string*)
               )
@@ -6804,8 +6423,8 @@
               (format
                 (clear *temp-string*)
                 "~35L~S ~1L~S~1L"
-                (lookup-text! *common-text* (game-text-id progress-on) #f)
-                (lookup-text! *common-text* (game-text-id progress-off) #f)
+                (lookup-text! *common-text* (text-id progress-on) #f)
+                (lookup-text! *common-text* (text-id progress-off) #f)
                 )
               (set! a0-10 *temp-string*)
               )
@@ -6847,8 +6466,8 @@
              (format
                (clear *temp-string*)
                "~33L~S~35L ~S"
-               (lookup-text! *common-text* (game-text-id progress-on) #f)
-               (lookup-text! *common-text* (game-text-id progress-off) #f)
+               (lookup-text! *common-text* (text-id progress-on) #f)
+               (lookup-text! *common-text* (text-id progress-off) #f)
                )
              (set! a0-11 *temp-string*)
              )
@@ -6856,8 +6475,8 @@
              (format
                (clear *temp-string*)
                "~35L~S ~33L~S~1L"
-               (lookup-text! *common-text* (game-text-id progress-on) #f)
-               (lookup-text! *common-text* (game-text-id progress-off) #f)
+               (lookup-text! *common-text* (text-id progress-on) #f)
+               (lookup-text! *common-text* (text-id progress-off) #f)
                )
              (set! a0-11 *temp-string*)
              )
@@ -6885,8 +6504,8 @@
               (format
                 (clear *temp-string*)
                 "~1L~S~35L ~S"
-                (lookup-text! *common-text* (game-text-id progress-on) #f)
-                (lookup-text! *common-text* (game-text-id progress-off) #f)
+                (lookup-text! *common-text* (text-id progress-on) #f)
+                (lookup-text! *common-text* (text-id progress-off) #f)
                 )
               (set! a0-11 *temp-string*)
               )
@@ -6894,8 +6513,8 @@
               (format
                 (clear *temp-string*)
                 "~35L~S ~1L~S~1L"
-                (lookup-text! *common-text* (game-text-id progress-on) #f)
-                (lookup-text! *common-text* (game-text-id progress-off) #f)
+                (lookup-text! *common-text* (text-id progress-on) #f)
+                (lookup-text! *common-text* (text-id progress-off) #f)
                 )
               (set! a0-11 *temp-string*)
               )
@@ -7244,8 +6863,8 @@
             (format
               (clear *temp-string*)
               "~33L~S~35L ~S"
-              (lookup-text! *common-text* (game-text-id progress-aspect-4x3) #f)
-              (lookup-text! *common-text* (game-text-id progress-aspect-16x9) #f)
+              (lookup-text! *common-text* (text-id progress-aspect-4x3) #f)
+              (lookup-text! *common-text* (text-id progress-aspect-16x9) #f)
               )
             (set! a0-12 *temp-string*)
             )
@@ -7253,8 +6872,8 @@
              (format
                (clear *temp-string*)
                "~35L~S ~33L~S~1L"
-               (lookup-text! *common-text* (game-text-id progress-aspect-4x3) #f)
-               (lookup-text! *common-text* (game-text-id progress-aspect-16x9) #f)
+               (lookup-text! *common-text* (text-id progress-aspect-4x3) #f)
+               (lookup-text! *common-text* (text-id progress-aspect-16x9) #f)
                )
              (set! a0-12 *temp-string*)
              )
@@ -7287,8 +6906,8 @@
              (format
                (clear *temp-string*)
                "~1L~S~35L ~S"
-               (lookup-text! *common-text* (game-text-id progress-aspect-4x3) #f)
-               (lookup-text! *common-text* (game-text-id progress-aspect-16x9) #f)
+               (lookup-text! *common-text* (text-id progress-aspect-4x3) #f)
+               (lookup-text! *common-text* (text-id progress-aspect-16x9) #f)
                )
              (set! a0-12 *temp-string*)
              )
@@ -7296,8 +6915,8 @@
               (format
                 (clear *temp-string*)
                 "~35L~S ~1L~S~1L"
-                (lookup-text! *common-text* (game-text-id progress-aspect-4x3) #f)
-                (lookup-text! *common-text* (game-text-id progress-aspect-16x9) #f)
+                (lookup-text! *common-text* (text-id progress-aspect-4x3) #f)
+                (lookup-text! *common-text* (text-id progress-aspect-16x9) #f)
                 )
               (set! a0-12 *temp-string*)
               )
@@ -7353,8 +6972,8 @@
              (format
                (clear *temp-string*)
                "~33L~S~35L ~S"
-               (lookup-text! *common-text* (game-text-id progress-on) #f)
-               (lookup-text! *common-text* (game-text-id progress-off) #f)
+               (lookup-text! *common-text* (text-id progress-on) #f)
+               (lookup-text! *common-text* (text-id progress-off) #f)
                )
              (set! a0-11 *temp-string*)
              )
@@ -7362,8 +6981,8 @@
              (format
                (clear *temp-string*)
                "~35L~S ~33L~S~1L"
-               (lookup-text! *common-text* (game-text-id progress-on) #f)
-               (lookup-text! *common-text* (game-text-id progress-off) #f)
+               (lookup-text! *common-text* (text-id progress-on) #f)
+               (lookup-text! *common-text* (text-id progress-off) #f)
                )
              (set! a0-11 *temp-string*)
              )
@@ -7396,8 +7015,8 @@
               (format
                 (clear *temp-string*)
                 "~1L~S~35L ~S"
-                (lookup-text! *common-text* (game-text-id progress-on) #f)
-                (lookup-text! *common-text* (game-text-id progress-off) #f)
+                (lookup-text! *common-text* (text-id progress-on) #f)
+                (lookup-text! *common-text* (text-id progress-off) #f)
                 )
               (set! a0-11 *temp-string*)
               )
@@ -7405,8 +7024,8 @@
               (format
                 (clear *temp-string*)
                 "~35L~S ~1L~S~1L"
-                (lookup-text! *common-text* (game-text-id progress-on) #f)
-                (lookup-text! *common-text* (game-text-id progress-off) #f)
+                (lookup-text! *common-text* (text-id progress-on) #f)
+                (lookup-text! *common-text* (text-id progress-off) #f)
                 )
               (set! a0-11 *temp-string*)
               )
@@ -7473,7 +7092,7 @@
            (clear *temp-string*)
            "~33L~C~34L~S~33L~C"
            163
-           (lookup-text! *common-text* (game-text-id progress-move-dpad) #f)
+           (lookup-text! *common-text* (text-id progress-move-dpad) #f)
            161
            )
          (s5-2 *temp-string* arg1 #f 44 (bucket-id progress))
@@ -7502,7 +7121,7 @@
          (set! (-> v1-37 scale) 0.5)
          )
        (print-game-text
-         (lookup-text! *common-text* (game-text-id progress-unknown-square-to-reset) #f)
+         (lookup-text! *common-text* (text-id progress-unknown-square-to-reset) #f)
          arg1
          #f
          44
@@ -7564,8 +7183,8 @@
                   (format
                     (clear *temp-string*)
                     "~33L~S~32L ~S"
-                    (lookup-text! *common-text* (game-text-id progress-yes) #f)
-                    (lookup-text! *common-text* (game-text-id progress-no) #f)
+                    (lookup-text! *common-text* (text-id progress-yes) #f)
+                    (lookup-text! *common-text* (text-id progress-no) #f)
                     )
                   (set! a0-11 *temp-string*)
                   )
@@ -7573,8 +7192,8 @@
                    (format
                      (clear *temp-string*)
                      "~32L~S ~33L~S~1L"
-                     (lookup-text! *common-text* (game-text-id progress-yes) #f)
-                     (lookup-text! *common-text* (game-text-id progress-no) #f)
+                     (lookup-text! *common-text* (text-id progress-yes) #f)
+                     (lookup-text! *common-text* (text-id progress-no) #f)
                      )
                    (set! a0-11 *temp-string*)
                    )
@@ -7629,8 +7248,8 @@
                   (format
                     (clear *temp-string*)
                     "~33L~S~32L ~S"
-                    (lookup-text! *common-text* (game-text-id progress-yes) #f)
-                    (lookup-text! *common-text* (game-text-id progress-no) #f)
+                    (lookup-text! *common-text* (text-id progress-yes) #f)
+                    (lookup-text! *common-text* (text-id progress-no) #f)
                     )
                   (set! a0-12 *temp-string*)
                   )
@@ -7638,8 +7257,8 @@
                    (format
                      (clear *temp-string*)
                      "~32L~S ~33L~S~1L"
-                     (lookup-text! *common-text* (game-text-id progress-yes) #f)
-                     (lookup-text! *common-text* (game-text-id progress-no) #f)
+                     (lookup-text! *common-text* (text-id progress-yes) #f)
+                     (lookup-text! *common-text* (text-id progress-no) #f)
                      )
                    (set! a0-12 *temp-string*)
                    )
@@ -8035,7 +7654,7 @@
                       )
                     )
                   (if (zero? gp-0)
-                      (draw-sound-options-decoration obj s5-0 f30-0 (the-as symbol 285) (the-as game-text-id #f))
+                      (draw-sound-options-decoration obj s5-0 f30-0 (the-as symbol 285) (the-as text-id #f))
                       )
                   )
                 )
@@ -8157,6 +7776,7 @@
 ;; definition for method 10 of type menu-sub-menu-option
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
+;; ERROR: Failed store: (s.w! (+ v1-87 8) 0) at op 335
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 349]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 361]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 417]
@@ -8219,7 +7839,7 @@
           )
         )
       (if (and (and (= arg2 (-> arg0 option-index)) (!= 298 (-> obj name)))
-               (not (and (= (-> obj name) (game-text-id progress-root-secrets))
+               (not (and (= (-> obj name) (text-id progress-root-secrets))
                          (= *title* (-> arg0 current-options))
                          (not (memcard-unlocked-secrets? #f))
                          (= (-> arg0 option-index) 3)
@@ -8231,7 +7851,7 @@
       (cond
         ((= *save-options-title* (-> arg0 current-options))
          (cond
-           ((= (-> obj name) (game-text-id progress-continue-without-saving))
+           ((= (-> obj name) (text-id progress-continue-without-saving))
             (cond
               ((= arg2 (-> arg0 option-index))
                (let ((v1-39 arg1))
@@ -8314,9 +7934,9 @@
                   (the float s2-4)
                   (the float (+ s2-4 (* s1-1 arg2)))
                   )
-                (let* ((s0-3 (-> *display* frames (-> *display* on-screen) global-buf))
-                       (gp-1 (-> s0-3 base))
-                       )
+                (with-dma-buffer-add-bucket ((s0-3 (-> *display* frames (-> *display* on-screen) global-buf))
+                                             (bucket-id particles)
+                                             )
                   (draw-sprite2d-xy
                     s0-3
                     s4-1
@@ -8324,20 +7944,6 @@
                     s3-1
                     (+ s1-1 8)
                     (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a (the int (* 64.0 f30-0)))
-                    )
-                  (let ((a3-7 (-> s0-3 base)))
-                    (let ((v1-87 (the-as object (-> s0-3 base))))
-                      (set! (-> (the-as dma-packet v1-87) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                      (set! (-> (the-as dma-packet v1-87) vif0) (new 'static 'vif-tag))
-                      (set! (-> (the-as dma-packet v1-87) vif1) (new 'static 'vif-tag))
-                      (set! (-> s0-3 base) (&+ (the-as pointer v1-87) 16))
-                      )
-                    (dma-bucket-insert-tag
-                      (-> *display* frames (-> *display* on-screen) bucket-group)
-                      (bucket-id particles)
-                      gp-1
-                      (the-as (pointer dma-tag) a3-7)
-                      )
                     )
                   )
                 )
@@ -8357,7 +7963,7 @@
         ((and (= *title* (-> arg0 current-options)) (= 339 (-> obj name)) (memcard-unlocked-secrets? #f))
          (print-game-text (lookup-text! *common-text* (-> obj name) #f) arg1 #f 44 (bucket-id progress))
          )
-        ((!= (-> obj name) (game-text-id progress-root-secrets))
+        ((!= (-> obj name) (text-id progress-root-secrets))
          (print-game-text (lookup-text! *common-text* (-> obj name) #f) arg1 #f 44 (bucket-id progress))
          )
         )
@@ -8366,3 +7972,7 @@
   0
   (none)
   )
+
+
+
+
