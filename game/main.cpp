@@ -13,7 +13,7 @@
 #include "common/util/FileUtil.h"
 #include "common/util/os.h"
 #include "common/util/unicode_util.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "game/common/game_common_types.h"
 
@@ -81,60 +81,8 @@ std::string game_arg_documentation() {
 int main(int argc, char** argv) {
   ArgumentGuard u8_guard(argc, argv);
 
-  // TODO - this is a temporary shim to convert the old arg format
-  // into the new
-  //
-  // This is needed to avoid a coupled release with the launcher and
-  // can be removed after one release cycle
-  //
-  // Normal users launch gk with _no_ args
-  //
-  // Only handling args the launcher provides, all others can be changed
-  // in this repo at the time of merge.
-  std::vector<const char*> adjusted_argv_vals;
-  std::vector<const char*> adjusted_argv_vals_passthru;
-  for (int i = 0; i < argc; i++) {
-    const auto& val = std::string(argv[i]);
-    // Handle all args that aren't passed through
-    if (val == "-proj-path") {
-      adjusted_argv_vals.push_back("--proj-path");
-      i++;
-      if (i > argc) {
-        return 1;
-      }
-      adjusted_argv_vals.push_back(argv[i]);
-    } else if (val == "--") {
-      // if we hit a '--' then break out, args will be matched but they are already in the new
-      // format
-      break;
-    } else if (val == "-boot") {
-      // now handle all the ones that get passed to the game
-      adjusted_argv_vals_passthru.push_back("-boot");
-    } else if (val == "-fakeiso") {
-      adjusted_argv_vals_passthru.push_back("-fakeiso");
-    } else if (val == "-debug") {
-      adjusted_argv_vals_passthru.push_back("-debug");
-    }
-  }
-
-  std::vector<const char*> new_argv;
-  if (!adjusted_argv_vals.empty() || !adjusted_argv_vals_passthru.empty()) {
-    new_argv.push_back(argv[0]);
-    for (const auto& arg : adjusted_argv_vals) {
-      new_argv.push_back(arg);
-    }
-    if (!adjusted_argv_vals_passthru.empty()) {
-      new_argv.push_back("--");
-      for (const auto& arg : adjusted_argv_vals_passthru) {
-        new_argv.push_back(arg);
-      }
-    }
-    argv = (char**)new_argv.data();
-    argc = new_argv.size();
-  }
-  // --- END temporary shim
-
   // CLI flags
+  bool show_version = false;
   std::string game_name = "jak1";
   bool verbose_logging = false;
   bool disable_avx2 = false;
@@ -144,6 +92,7 @@ int main(int argc, char** argv) {
   fs::path project_path_override;
   std::vector<std::string> game_args;
   CLI::App app{"OpenGOAL Game Runtime"};
+  app.add_flag("--version", show_version, "Display the built revision");
   app.add_option("-g,--game", game_name, "The game name: 'jak1' or 'jak2'");
   app.add_flag("-v,--verbose", verbose_logging, "Enable verbose logging on stdout");
   app.add_flag(
@@ -159,6 +108,11 @@ int main(int argc, char** argv) {
                  "Remaining arguments (after '--') that are passed-through to the game itself");
   app.allow_extras();
   CLI11_PARSE(app, argc, argv);
+
+  if (show_version) {
+    lg::print(build_revision());
+    return 0;
+  }
 
   // Create struct with all non-kmachine handled args to pass to the runtime
   GameLaunchOptions game_options;
