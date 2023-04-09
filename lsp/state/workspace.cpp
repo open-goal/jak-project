@@ -89,8 +89,25 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
         m_tracked_all_types_files[file.m_all_types_uri].parse_type_system();
       }
     }
+  } else if (language_id == "opengoal") {
+    // TODO - assuming jak 2 for now
+    auto game_version = GameVersion::Jak2;
+    if (m_compiler_instances.find(game_version) == m_compiler_instances.end()) {
+      // TODO - not safe, this asserts
+      lg::debug(
+          "first time encountering a OpenGOAL file for game version - {}, initializing a compiler",
+          version_to_game_name(game_version));
+      if (!file_util::setup_project_path(std::nullopt)) {
+        lg::debug("unable to setup project path, not initializing a compiler");
+        return;
+      }
+      m_compiler_instances.emplace(game_version, std::make_unique<Compiler>(game_version));
+      // TODO - if this fails, annotate some errors?
+      m_compiler_instances.at(game_version)->run_front_end_on_string("(make-group \"all-code\")");
+    }
+    // TODO - otherwise, just `ml` the file instead of rebuilding the entire thing
+    // TODO - if the file fails to `ml`, annotate some errors
   }
-  // TODO - only supporting IR files currently!
 }
 
 void Workspace::update_tracked_file(const LSPSpec::DocumentUri& file_uri,

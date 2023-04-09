@@ -10,6 +10,7 @@
 #include "lsp/protocol/common_types.h"
 #include "lsp/protocol/document_diagnostics.h"
 #include "lsp/protocol/document_symbols.h"
+#include <goalc/compiler/Compiler.h>
 
 class WorkspaceIRFile {
  public:
@@ -77,4 +78,13 @@ class Workspace {
   bool m_initialized = false;
   std::unordered_map<LSPSpec::DocumentUri, WorkspaceIRFile> m_tracked_ir_files = {};
   std::unordered_map<LSPSpec::DocumentUri, WorkspaceAllTypesFile> m_tracked_all_types_files = {};
+
+  // TODO:
+  // OpenGOAL is still incredibly tightly coupled to the jak projects as a language
+  // 
+  // In the future, information like GameVersion should just be within the project file
+  // and then we can track projects instead of games
+  //
+  // Until that decoupling happens, things like this will remain fairly clunky.
+  std::unordered_map<GameVersion, std::unique_ptr<Compiler>> m_compiler_instances;
 };
