@@ -25,7 +25,7 @@ Compiler::Compiler(GameVersion version,
       m_goos(user_profile),
       m_debugger(&m_listener, &m_goos.reader, version),
       m_repl(std::move(repl)),
-      m_make(user_profile) {
+      m_make(m_repl->repl_config, user_profile) {
   m_listener.add_debugger(&m_debugger);
   m_listener.set_default_port(version);
   m_ts.add_builtin_types(m_version);
