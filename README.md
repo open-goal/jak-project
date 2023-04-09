@@ -299,11 +299,11 @@ Run the following to build the game:
 g > (mi)
 ```
 
-> IMPORTANT NOTE! If you're not using the black label version, you may hit issues trying to run `(mi)` in this step. An example error might include something like:
+> IMPORTANT NOTE! If you're not using the non-default version of the game, you may hit issues trying to run `(mi)` in this step. An example error might include something like:
 >
 > `Input file iso_data/jak1/MUS/TWEAKVAL.MUS does not exist.`
 >
-> This is because other version paths are not currently accounted for in the build. A quick workaround is to rename both your `decompiler_out` and `iso_data` folders to use the black label naming, for example changing `decompiler_out/jak1_pal` to `decompiler_out/jak1` and `iso_data/jak1_pal` to `iso_data/jak1`, then running `(mi)` again.
+> This is because the decompiler inputs/outputs using the `gameName` JSON field in the decompiler config. For example if you are using Jak 1 PAL, it will assume `iso_data/jak1_pal` and `decompiler_out/jak1_pal`.  Therefore, you can inform the REPL/compiler of this via the `gameVersionFolder` config field described [here](./goal_src/user/README.md)
 
 #### Run the Game
 
