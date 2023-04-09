@@ -15,7 +15,7 @@ struct MakeStep {
 
 class MakeSystem {
  public:
-  MakeSystem(const REPL::Config& repl_config, const std::string& username = "#f");
+  MakeSystem(const std::optional<REPL::Config> repl_config, const std::string& username = "#f");
   void load_project_file(const std::string& file_path);
 
   goos::Object handle_defstep(const goos::Object& obj,
@@ -89,7 +89,7 @@ class MakeSystem {
 
   goos::Interpreter m_goos;
 
-  REPL::Config m_repl_config;
+  std::optional<REPL::Config> m_repl_config;
 
   std::unordered_map<std::string, std::shared_ptr<MakeStep>> m_output_to_step;
   std::unordered_map<std::string, std::shared_ptr<Tool>> m_tools;

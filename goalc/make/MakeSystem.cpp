@@ -38,8 +38,8 @@ std::string MakeStep::print() const {
   return result;
 }
 
-MakeSystem::MakeSystem(const REPL::Config& repl_config, const std::string& username)
-    : m_repl_config(repl_config), m_goos(username) {
+MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config, const std::string& username)
+    : m_goos(username), m_repl_config(repl_config) {
   m_goos.register_form("defstep", [=](const goos::Object& obj, goos::Arguments& args,
                                       const std::shared_ptr<goos::EnvironmentObject>& env) {
     return handle_defstep(obj, args, env);
@@ -309,7 +309,11 @@ goos::Object MakeSystem::handle_get_game_version_folder(
     const std::shared_ptr<goos::EnvironmentObject>& env) {
   m_goos.eval_args(&args, env);
   va_check(form, args, {}, {});
-  return goos::StringObject::make_new(m_repl_config.game_name_folder);
+  if (m_repl_config) {
+    return goos::StringObject::make_new(m_repl_config->game_version_folder);
+  } else {
+    return goos::StringObject::make_new("");
+  }
 }
 
 void MakeSystem::get_dependencies(const std::string& master_target,

@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
   // the compiler may throw an exception if it fails to load its standard library.
   try {
     compiler = std::make_unique<Compiler>(
-        game_version, username,
+        game_version, std::make_optional(repl_config), username,
         std::make_unique<REPL::Wrapper>(username, repl_config, startup_file));
     // Start nREPL Server if it spun up successfully
     if (repl_server_ok) {
@@ -143,7 +143,7 @@ int main(int argc, char** argv) {
           compiler->save_repl_history();
         }
         compiler = std::make_unique<Compiler>(
-            game_version, username,
+            game_version, std::make_optional(repl_config), username,
             std::make_unique<REPL::Wrapper>(username, repl_config, startup_file));
         status = ReplStatus::OK;
       }
