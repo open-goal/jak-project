@@ -13,15 +13,25 @@
 (cond
   ;; extractor can override everything by providing *use-iso-data-path*
   (*use-iso-data-path*
-    (map-path! "$ISO" (string-append *iso-data* "/")))
+   (map-path! "$ISO" (string-append *iso-data* "/")))
+  ;; if the user's repl-config has a game version folder, use that
+  ((> (string-length (get-game-version-folder)) 0)
+   (map-path! "$ISO" (string-append "iso_data/" (get-game-version-folder) "/")))
+  ;; otherwise, default to jak2
   (#t
-    (map-path! "$ISO" "iso_data/jak2/")))
+   (map-path! "$ISO" "iso_data/jak2/")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Inputs from decompiler
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(map-path! "$DECOMP" "decompiler_out/jak2/")
+(cond
+  ;; if the user's repl-config has a game version folder, use that
+  ((> (string-length (get-game-version-folder)) 0)
+   (map-path! "$DECOMP" (string-append "decompiler_out/" (get-game-version-folder) "/")))
+  ;; otherwise, default to jak2
+  (#t
+   (map-path! "$DECOMP" "decompiler_out/jak2/")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Output
