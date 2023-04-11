@@ -58,7 +58,7 @@ We do not distribute any assets from the game - you must use your own legitimate
 
 ## Project Description
 
-This project is to port Jak 1 (NTSC, "black label" version) to PC. Over 98% of this game is written in GOAL, a custom Lisp language developed by Naughty Dog. Our strategy is:
+This project is to port the original Jak and Daxter and Jak II to PC. Over 98% of the games are written in GOAL, a custom Lisp language developed by Naughty Dog. Our strategy is:
 - decompile the original game code into human-readable GOAL code
 - develop our own compiler for GOAL and recompile game code for x86-64
 - create a tool to extract game assets into formats that can be easily viewed or modified
@@ -76,7 +76,7 @@ We support both Linux and Windows on x86-64.
 
 ### Current Status
 
-Jak 1 is largely playable from start to finish with a handful of bugs that are continually being ironed out.
+Jak 1 is largely playable from start to finish with a handful of bugs that are continually being ironed out. Jak 2 is in development.
 
 ![](./docs/img/promosmall1.png)
 ![](./docs/img/promosmall2.png)
