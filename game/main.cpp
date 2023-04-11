@@ -222,10 +222,13 @@ int main(int argc, char** argv) {
 
   while (true) {
     if (force_debug_next_time) {
+      // I'd like to check and not add duplicates, unfortunately since the game
+      // cares about ordering...that's likely error prone if the user passed args in the wrong order
+      // ie. -debug -boot (we'd skip adding things, but the order would be wrong).
       game_args.push_back("-boot");
       game_args.push_back("-debug");
       force_debug_next_time = false;
-      arg_ptrs.clear();
+      arg_ptrs = {""};  // see above for rationale
       for (auto& str : game_args) {
         arg_ptrs.push_back(str.data());
       }
