@@ -560,6 +560,20 @@
     (set! (-> s5-0 y) 0.0)
     (vector-normalize! s5-0 1.0)
     (quaternion-set! (-> obj root-override2 quat) 0.0 (-> s5-0 x) 0.0 (+ 1.0 (-> s5-0 z)))
+
+    ;; modified for PC:
+    ;; this code is doing a clever way to go from heading vector to quaternion, but it doesn't handle the case where
+    ;; the heading is exactly pointing along -z. So we do this manually
+    ;; There's two possible theories for how this worked on ps2:
+    ;; - it was just wrong, but instead of giving nans, it just points the guard in the wrong direction
+    ;; - the code that generates the heading on PS2 can't generate (0, 0, -1) exactly.
+    ;;    (this was the case for punch glitch - the trig function acos couldn't reach 1.0 exactly with PS2
+    ;;     float rounding rules).
+    (when (and (= (-> s5-0 x) 0.0)
+               (= (+ 1.0 (-> s5-0 z)) 0.0) ;; actually the condition that causes problems
+               )
+      (quaternion-set! (-> obj root-override2 quat) 0.0 1.0 0.0 0.0)
+      )
     )
   (quaternion-normalize! (-> obj root-override2 quat))
   0
