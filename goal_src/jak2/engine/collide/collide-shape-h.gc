@@ -671,3 +671,21 @@
         )
 
 (define-perm *collide-rider-pool* collide-rider-pool (new 'global 'collide-rider-pool))
+
+(defmacro normalized-heading-to-quaternion! (quat heading)
+  "Modified for PC. This does a clever trick, but it doesn't work if the heading is exactly
+   [0, 0, -1] because this tries to normalize a quaternion that's all 0's.
+   I think that, on ps2, something prevents the heading from being exactly 0, 0, -1,
+   but this doesn't happen on PC. A similar thing happened with Jak 1's punch glitch,
+   where some trig functions were slightly off from returning exactly 0.0 and 1.0 on ps2
+   rounding only."
+  `(begin
+     (if (and (= (-> ,heading x) 0.0)
+              (= (+ 1.0 (-> ,heading z)) 0.0)
+              )
+         (quaternion-set! ,quat 0.0 1.0 0.0 0.0)
+         (quaternion-set! ,quat 0.0 (-> ,heading x) 0.0 (+ 1.0 (-> ,heading z)))
+         )
+     (quaternion-normalize! ,quat)
+     )
+  )
