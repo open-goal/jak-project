@@ -8,19 +8,52 @@
 
 #include "third-party/SDL/include/SDL.h"
 
+InputModifiers::InputModifiers(const u16 sdl_mod_state) {
+  need_shift = sdl_mod_state & KMOD_SHIFT;
+  need_alt = sdl_mod_state & KMOD_ALT;
+  need_ctrl = sdl_mod_state & KMOD_CTRL;
+  need_meta = sdl_mod_state & KMOD_GUI;
+}
+
+bool InputModifiers::has_necessary_modifiers(const u16 key_modifiers) const {
+  if (need_alt && ((key_modifiers & KMOD_ALT) == 0)) {
+    return false;
+  }
+  if (need_ctrl && ((key_modifiers & KMOD_CTRL) == 0)) {
+    return false;
+  }
+  if (need_meta && ((key_modifiers & KMOD_GUI) == 0)) {
+    return false;
+  }
+  if (need_shift && ((key_modifiers & KMOD_SHIFT) == 0)) {
+    return false;
+  }
+  return true;
+}
+
+void to_json(json& j, const InputModifiers& obj) {
+  j = json{{"need_shift", obj.need_shift},
+           {"need_ctrl", obj.need_ctrl},
+           {"need_meta", obj.need_meta},
+           {"need_alt", obj.need_alt}};
+}
+void from_json(const json& j, InputModifiers& obj) {
+  json_safe_deserialize(need_shift);
+  json_safe_deserialize(need_ctrl);
+  json_safe_deserialize(need_meta);
+  json_safe_deserialize(need_alt);
+}
+
 void to_json(json& j, const InputBinding& obj) {
-  j = json{{"pad_data_index", obj.pad_data_index}, {"minimum_in_range", obj.minimum_in_range},
-           {"need_shift", obj.need_shift},         {"need_ctrl", obj.need_ctrl},
-           {"need_meta", obj.need_meta},           {"need_alt", obj.need_alt}};
+  j = json{{"pad_data_index", obj.pad_data_index},
+           {"minimum_in_range", obj.minimum_in_range},
+           {"modifiers", obj.modifiers}};
 }
 
 void from_json(const json& j, InputBinding& obj) {
   json_safe_deserialize(pad_data_index);
   json_safe_deserialize(minimum_in_range);
-  json_safe_deserialize(need_shift);
-  json_safe_deserialize(need_ctrl);
-  json_safe_deserialize(need_meta);
-  json_safe_deserialize(need_alt);
+  json_safe_deserialize(modifiers);
 }
 
 void to_json(json& j, const InputBindingGroups& obj) {
@@ -111,11 +144,22 @@ std::vector<InputBindingInfo> InputBindingGroups::lookup_analog_binds(PadData::A
   std::vector<InputBindingInfo> entry = {};
   for (const auto& [sdl_code, binds] : analog_axii) {
     for (const auto& bind : binds) {
-      if (bind.pad_data_index != idx || (only_minimum_binds && !bind.minimum_in_range)) {
+      if (bind.pad_data_index != idx || bind.minimum_in_range != only_minimum_binds) {
         continue;
       }
       InputBindingInfo new_info;
-      new_info.host_name = "TODO";
+      new_info.sdl_idx = sdl_code;
+      new_info.pad_idx = bind.pad_data_index;
+      new_info.analog_button = false;
+      new_info.modifiers = bind.modifiers;
+      switch (device_type) {
+        case KEYBOARD:
+          new_info.host_name = sdl_util::get_keyboard_button_name(sdl_code, new_info.modifiers);
+          break;
+        default:
+          new_info.host_name = "TODO - NON-KB ANALOG BIND LOOKUP";
+          break;
+      }
       entry.push_back(new_info);
     }
   }
@@ -141,15 +185,16 @@ std::vector<InputBindingInfo> InputBindingGroups::lookup_button_binds(PadData::B
       new_info.sdl_idx = sdl_code;
       new_info.pad_idx = bind.pad_data_index;
       new_info.analog_button = false;
+      new_info.modifiers = bind.modifiers;
       switch (device_type) {
-        case 0:
+        case CONTROLLER:
           new_info.host_name = sdl_util::get_controller_button_name(sdl_code);
           break;
-        case 1:
-          new_info.host_name = sdl_util::get_keyboard_button_name(sdl_code);
+        case KEYBOARD:
+          new_info.host_name = sdl_util::get_keyboard_button_name(sdl_code, new_info.modifiers);
           break;
-        case 2:
-          new_info.host_name = sdl_util::get_mouse_button_name(sdl_code);
+        case MOUSE:
+          new_info.host_name = sdl_util::get_mouse_button_name(sdl_code, new_info.modifiers);
           break;
       }
       entry.push_back(new_info);
@@ -164,15 +209,16 @@ std::vector<InputBindingInfo> InputBindingGroups::lookup_button_binds(PadData::B
       new_info.sdl_idx = sdl_code;
       new_info.pad_idx = bind.pad_data_index;
       new_info.analog_button = true;
+      new_info.modifiers = bind.modifiers;
       switch (device_type) {
         case 0:
           new_info.host_name = sdl_util::get_controller_axis_name(sdl_code);
           break;
         case 1:
-          new_info.host_name = sdl_util::get_keyboard_button_name(sdl_code);
+          new_info.host_name = sdl_util::get_keyboard_button_name(sdl_code, new_info.modifiers);
           break;
         case 2:
-          new_info.host_name = sdl_util::get_mouse_button_name(sdl_code);
+          new_info.host_name = sdl_util::get_mouse_button_name(sdl_code, new_info.modifiers);
           break;
       }
       entry.push_back(new_info);
@@ -182,19 +228,25 @@ std::vector<InputBindingInfo> InputBindingGroups::lookup_button_binds(PadData::B
   return entry;
 }
 
-void InputBindingGroups::assign_analog_bind(u32 sdl_idx, InputBindAssignmentMeta& bind_meta) {
+void InputBindingGroups::assign_analog_bind(u32 sdl_idx,
+                                            InputBindAssignmentMeta& bind_meta,
+                                            const std::optional<InputModifiers> modifiers) {
   // Find out if the PS2 input is already bound, if it is we will do a swap so no input is ever left
   // unmapped
-  const auto current_binds = lookup_analog_binds((PadData::AnalogIndex)bind_meta.pad_idx);
+  // TODO - does this swap properly two opposite ends of the analog (ie. W and S)
+  const auto current_binds =
+      lookup_analog_binds((PadData::AnalogIndex)bind_meta.pad_idx, bind_meta.for_analog_minimum);
   if (analog_axii.find(sdl_idx) != analog_axii.end()) {
     const auto existing_binds = analog_axii.at(sdl_idx);
-    analog_axii[sdl_idx] = {InputBinding((PadData::AnalogIndex)bind_meta.pad_idx)};
-    if (!current_binds.empty()) {
-      // there was a current bind, so swap
+    analog_axii[sdl_idx] = {InputBinding((PadData::AnalogIndex)bind_meta.pad_idx,
+                                         bind_meta.for_analog_minimum, modifiers)};
+    // there already a bind, so swap (as long as it's not the same key)
+    if (!current_binds.empty() && current_binds.front().sdl_idx != sdl_idx) {
       analog_axii[current_binds.front().sdl_idx] = existing_binds;
     }
   } else {
-    analog_axii[sdl_idx] = {InputBinding((PadData::AnalogIndex)bind_meta.pad_idx)};
+    analog_axii[sdl_idx] = {InputBinding((PadData::AnalogIndex)bind_meta.pad_idx,
+                                         bind_meta.for_analog_minimum, modifiers)};
   }
 
   // Invalidate lookup cache
@@ -204,19 +256,20 @@ void InputBindingGroups::assign_analog_bind(u32 sdl_idx, InputBindAssignmentMeta
 
 void InputBindingGroups::assign_button_bind(u32 sdl_idx,
                                             InputBindAssignmentMeta& bind_meta,
-                                            const bool analog_button) {
+                                            const bool analog_button,
+                                            const std::optional<InputModifiers> modifiers) {
   // Find out if the PS2 input is already bound, if it is we will do a swap so no input is ever left
   // unmapped
   const auto current_binds = lookup_button_binds((PadData::ButtonIndex)bind_meta.pad_idx);
   if (buttons.find(sdl_idx) != buttons.end()) {
     const auto existing_binds = buttons.at(sdl_idx);
     if (analog_button) {
-      button_axii[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx)};
+      button_axii[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
     } else {
-      buttons[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx)};
+      buttons[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
     }
-    if (!current_binds.empty()) {
-      // there already a bind, so swap
+    // there already a bind, so swap (as long as it's not the same key)
+    if (!current_binds.empty() && current_binds.front().sdl_idx != sdl_idx) {
       if (current_binds.front().analog_button) {
         button_axii[current_binds.front().sdl_idx] = existing_binds;
       } else {
@@ -225,9 +278,9 @@ void InputBindingGroups::assign_button_bind(u32 sdl_idx,
     }
   } else {
     if (analog_button) {
-      button_axii[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx)};
+      button_axii[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
     } else {
-      buttons[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx)};
+      buttons[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
     }
   }
 
@@ -236,36 +289,10 @@ void InputBindingGroups::assign_button_bind(u32 sdl_idx,
   bind_meta.assigned = true;
 }
 
-namespace input_bindings {
-
-bool has_necessary_modifiers(const bool need_alt,
-                             const bool need_ctrl,
-                             const bool need_meta,
-                             const bool need_shift,
-                             const u16 key_modifiers) {
-  // https://wiki.libsdl.org/SDL2/SDL_Keymod
-  if (need_alt && ((key_modifiers & KMOD_ALT) == 0)) {
-    return false;
-  }
-  if (need_ctrl && ((key_modifiers & KMOD_CTRL) == 0)) {
-    return false;
-  }
-  if (need_meta && ((key_modifiers & KMOD_GUI) == 0)) {
-    return false;
-  }
-  if (need_shift && ((key_modifiers & KMOD_SHIFT) == 0)) {
-    return false;
-  }
-  return true;
+void InputBindingGroups::set_bindings(const InputBindingGroups binds) {
+  analog_axii = binds.analog_axii;
+  button_axii = binds.button_axii;
+  buttons = binds.buttons;
+  m_analog_lookup.clear();
+  m_button_lookup.clear();
 }
-
-bool has_necessary_modifiers(const CommandBinding& bind, const u16 key_modifiers) {
-  return has_necessary_modifiers(bind.need_alt, bind.need_ctrl, bind.need_meta, bind.need_shift,
-                                 key_modifiers);
-}
-
-bool has_necessary_modifiers(const InputBinding& bind, const u16 key_modifiers) {
-  return has_necessary_modifiers(bind.need_alt, bind.need_ctrl, bind.need_meta, bind.need_shift,
-                                 key_modifiers);
-}
-}  // namespace input_bindings

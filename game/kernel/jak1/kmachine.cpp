@@ -600,8 +600,16 @@ u64 get_controller_name(u32 id) {
   return make_string_from_c(str_util::to_upper(name).c_str());
 }
 
-u64 get_current_bind(s32 port, s32 device_type, u32 buttons, s32 input_idx) {
-  const auto name = Gfx::get_current_bind(port, device_type, buttons != s7.offset, input_idx);
+u64 get_current_bind(s32 bind_assignment_info) {
+  auto info = bind_assignment_info ? Ptr<BindAssignmentInfo>(bind_assignment_info).c() : NULL;
+  auto port = (int)info->port;
+  auto device_type = (int)info->device_type;
+  auto for_button = info->buttons != s7.offset;
+  auto input_idx = (int)info->input_idx;
+  auto analog_min_range = info->analog_min_range != s7.offset;
+
+  const auto name =
+      Gfx::get_current_bind(port, device_type, for_button, input_idx, analog_min_range);
   // TODO - translate for empty and such
   if (name.empty()) {
     return s7.offset;

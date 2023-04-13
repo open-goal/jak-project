@@ -4,11 +4,13 @@
 #include <algorithm>
 #include <array>
 #include <functional>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
 
 #include "common/common_types.h"
+#include "common/log/log.h"
 #include "common/util/json_util.h"
 
 /// A simple abstraction around the PS2 controller data with some convenience functions for
@@ -99,6 +101,34 @@ struct PadData {
   std::pair<bool, u8> cross() const { return {button_data.at(ButtonIndex::CROSS), 255}; };
   std::pair<bool, u8> square() const { return {button_data.at(ButtonIndex::SQUARE), 255}; };
 
+  // Analog Simulation Tracking
+  // There exists a flaw with the described analog tracking approach described above, and that has
+  // to do with imprecise analog drift / fluctuating numbers.
+  //
+  // If you switch between a keyboard and a controller, sometimes the controllers analog stick can
+  // oscillate between values triggering frivolous events.  This impacts the usage of the
+  // alternative input device such as the keyboard or mouse
+  //
+  // To solve this, we keep track of if the user is actively using the keyboard or mouse to
+  // manipulate the analog values and if they are, we can ignore controller analog inputs.  Once all
+  // inputs are released the controller input can resume.
+ private:
+  int analog_sim_tracker = 0;
+
+ public:
+  bool analogs_being_simulated() { return analog_sim_tracker > 0; }
+  void update_analog_sim_tracker(bool released) {
+    // TODO - on first update, clear analog data (get rid of controller influence)
+    if (released) {
+      analog_sim_tracker--;
+    } else {
+      analog_sim_tracker++;
+    }
+    if (analog_sim_tracker < 0) {
+      analog_sim_tracker = 0;
+    }
+  }
+
   void clear() {
     for (int i = 0; i < button_data.size(); i++) {
       button_data[i] = 0;
@@ -106,15 +136,34 @@ struct PadData {
     for (int i = 0; i < analog_data.size(); i++) {
       analog_data[i] = ANALOG_NEUTRAL;
     }
+    analog_sim_tracker = 0;
   }
 };
 
 // order of pressure sensitive buttons in memory (not the same as their bit order...).
 extern const std::vector<PadData::ButtonIndex> PAD_DATA_PRESSURE_INDEX_ORDER;
 
+// https://wiki.libsdl.org/SDL2/SDL_Keymod
+struct InputModifiers {
+  InputModifiers() = default;
+  InputModifiers(const u16 sdl_mod_state);
+
+  bool need_shift = false;
+  bool need_ctrl = false;
+  bool need_meta = false;  // aka GUI / windows key
+  bool need_alt = false;
+
+  bool has_necessary_modifiers(const u16 key_modifiers) const;
+};
+
+void to_json(json& j, const InputModifiers& obj);
+void from_json(const json& j, InputModifiers& obj);
+
 /// Contains all information needed when processing a host input (ie. from SDL)
 /// For example -- for a keyboard binding it informs us what modifiers need to be hit at the same
-/// time, etc <para> All bindings _must_ provide the PS2 button/analog index they map to
+/// time, etc
+///
+/// All bindings _must_ provide the PS2 button/analog index they map to
 ///
 /// There is also a special case for binary inputs mapping to the analog sticks.  In such a
 /// situation both keys will be modifying the same underlying value, but one will mutate the value
@@ -126,25 +175,40 @@ extern const std::vector<PadData::ButtonIndex> PAD_DATA_PRESSURE_INDEX_ORDER;
 struct InputBinding {
   InputBinding() = default;
   InputBinding(int index) : pad_data_index(index){};
+  InputBinding(int index, const std::optional<InputModifiers> _modifiers) : pad_data_index(index) {
+    if (_modifiers) {
+      modifiers = _modifiers.value();
+    }
+  };
   InputBinding(int index, bool _minimum_in_range)
       : pad_data_index(index), minimum_in_range(_minimum_in_range){};
+  InputBinding(int index, bool _minimum_in_range, const std::optional<InputModifiers> _modifiers)
+      : pad_data_index(index), minimum_in_range(_minimum_in_range) {
+    if (_modifiers) {
+      modifiers = _modifiers.value();
+    }
+  };
 
   /// Corresponds to PadData::AnalogIndex or PadData::ButtonIndex
   int pad_data_index;
 
   /// If considered pressed, it will invert the value (ie, left/right on an analog stick)
   bool minimum_in_range = false;
-  // https://wiki.libsdl.org/SDL2/SDL_Keymod
-  bool need_shift = false;
-  bool need_ctrl = false;
-  bool need_meta = false;  // aka GUI / windows key
-  bool need_alt = false;
+  InputModifiers modifiers;
 };
 
 void to_json(json& j, const InputBinding& obj);
 void from_json(const json& j, InputBinding& obj);
 
 enum InputDeviceType { CONTROLLER = 0, KEYBOARD = 1, MOUSE = 2 };
+
+struct InputBindingInfo {
+  s32 sdl_idx;
+  u32 pad_idx;
+  std::string host_name;
+  bool analog_button;
+  InputModifiers modifiers;
+};
 
 // Contains all info related to the current binding we are waiting for
 // so the relevant device can successfully apply it
@@ -154,17 +218,22 @@ struct InputBindAssignmentMeta {
   bool for_analog = false;
   bool for_analog_minimum = false;
 
+  // For only rebinding keyboards, we have to know what keys were originally bound to the
+  // confirmation buttons this is because the user has to hit said key to initiate waiting for the
+  // new assignment
+  //
+  // For most input sources this doesn't matter because we listen for the DOWN event, but in order
+  // to allow modifiers as binds (ie. Shift for X) we have to listen to UP events as well (only for
+  // the modifiers)
+  //
+  // TLDR - we ignore the first UP event if it was bound to a confirmation key.  Additionally, this
+  // depends on the game as Jak 1 treats X or O as a confirm key...
+  std::vector<InputBindingInfo> keyboard_confirmation_binds = {};
+  bool seen_confirm_up = false;
+
+  // Indicates the binding has been received, assigned, and we can proceed.
   bool assigned = false;
 };
-
-struct InputBindingInfo {
-  s32 sdl_idx;
-  u32 pad_idx;
-  std::string host_name;
-  bool analog_button;
-};
-
-// TODO - change u32 to s32
 
 struct InputBindingGroups {
   InputBindingGroups() = default;
@@ -177,7 +246,7 @@ struct InputBindingGroups {
         button_axii(_button_axii),
         buttons(_buttons){};
 
-  // TODO - eventually make these private (when implementing re-mapping)
+  // TODO - make these private
   InputDeviceType device_type;
   std::unordered_map<u32, std::vector<InputBinding>> analog_axii;
   std::unordered_map<u32, std::vector<InputBinding>> button_axii;
@@ -187,10 +256,15 @@ struct InputBindingGroups {
                                                     bool only_minimum_binds = false);
   std::vector<InputBindingInfo> lookup_button_binds(PadData::ButtonIndex idx);
 
-  void assign_analog_bind(u32 sdl_idx, InputBindAssignmentMeta& bind_meta);
+  void assign_analog_bind(u32 sdl_idx,
+                          InputBindAssignmentMeta& bind_meta,
+                          const std::optional<InputModifiers> modifiers = {});
   void assign_button_bind(u32 sdl_idx,
                           InputBindAssignmentMeta& bind_meta,
-                          const bool analog_button = false);
+                          const bool analog_button = false,
+                          const std::optional<InputModifiers> modifiers = {});
+
+  void set_bindings(const InputBindingGroups binds);
 
  private:
   typedef std::pair<int, bool> BindCacheKey;
@@ -235,11 +309,7 @@ struct CommandBinding {
       : host_key(_host_key), command(_command){};
   u32 host_key;
   std::function<void()> command;
-  // https://wiki.libsdl.org/SDL2/SDL_Keymod
-  bool need_shift = false;
-  bool need_ctrl = false;
-  bool need_meta = false;  // aka GUI / windows key
-  bool need_alt = false;
+  InputModifiers modifiers;
 };
 
 struct CommandBindingGroups {
@@ -247,8 +317,3 @@ struct CommandBindingGroups {
   std::unordered_map<u32, std::vector<CommandBinding>> keyboard_binds;
   std::unordered_map<u32, std::vector<CommandBinding>> mouse_binds;
 };
-
-namespace input_bindings {
-bool has_necessary_modifiers(const CommandBinding& bind, const u16 key_modifiers);
-bool has_necessary_modifiers(const InputBinding& bind, const u16 key_modifiers);
-}  // namespace input_bindings

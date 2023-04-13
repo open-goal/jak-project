@@ -8,98 +8,13 @@
 
 #include "common/common_types.h"
 
+#include "devices/game_controller.h"
+#include "devices/keyboard.h"
+#include "devices/mouse.h"
 #include "game/system/hid/input_bindings.h"
 #include <game/settings/settings.h>
 
 #include "third-party/SDL/include/SDL.h"
-
-// A distinct input device.  Only those devices that are "active" should be read
-class InputDevice {
- protected:
-  bool m_loaded = false;
-  std::shared_ptr<game_settings::InputSettings> m_settings;
-
- public:
-  virtual ~InputDevice(){};
-
-  virtual void process_event(const SDL_Event& event,
-                             const CommandBindingGroups& commands,
-                             std::shared_ptr<PadData> data,
-                             std::optional<InputBindAssignmentMeta>& bind_assignment) = 0;
-  virtual void close_device() = 0;
-  bool is_loaded() const { return m_loaded; };
-};
-
-// https://wiki.libsdl.org/SDL2/CategoryGameController
-class GameController : public InputDevice {
- public:
-  GameController(int sdl_device_id, std::shared_ptr<game_settings::InputSettings> settings);
-  ~GameController() { close_device(); }
-
-  void process_event(const SDL_Event& event,
-                     const CommandBindingGroups& commands,
-                     std::shared_ptr<PadData> data,
-                     std::optional<InputBindAssignmentMeta>& bind_assignment) override;
-  void close_device() override;
-  int update_rumble(const u8 low_rumble, const u8 high_rumble);
-  std::string get_name() const { return m_device_name; }
-  bool has_led() { return m_has_led; }
-  void set_led(const u8 red, const u8 green, const u8 blue);
-  std::string get_guid() { return m_guid; }
-
- private:
-  int m_sdl_instance_id = -1;
-  SDL_GameController* m_device_handle;
-  std::string m_device_name = "";
-  bool m_has_led;
-  std::string m_guid = "";
-};
-
-class KeyboardDevice : public InputDevice {
- public:
-  KeyboardDevice(){};
-  KeyboardDevice(std::shared_ptr<game_settings::InputSettings> settings);
-  ~KeyboardDevice() {}
-
-  void process_event(const SDL_Event& event,
-                     const CommandBindingGroups& commands,
-                     std::shared_ptr<PadData> data,
-                     std::optional<InputBindAssignmentMeta>& bind_assignment) override;
-  void close_device() override{
-      // there is nothing to close
-  };
-};
-
-class MouseDevice : public InputDevice {
- public:
-  MouseDevice(){};
-  MouseDevice(std::shared_ptr<game_settings::InputSettings> settings);
-  ~MouseDevice() {}
-
-  void process_event(const SDL_Event& event,
-                     const CommandBindingGroups& commands,
-                     std::shared_ptr<PadData> data,
-                     std::optional<InputBindAssignmentMeta>& bind_assignment) override;
-  void close_device() override{
-      // there is nothing to close
-  };
-
-  void enable_relative_mode(const bool enable);
-  void enable_camera_control(const bool enable);
-  void enable_movement_control(const bool enable) { m_control_movement = enable; }
-  std::pair<int, int> get_mouse_pos() const { return {m_xcoord, m_ycoord}; }
-  void set_camera_sens(const float xsens, const float ysens);
-
- private:
-  int m_xcoord = 0;
-  int m_ycoord = 0;
-
-  bool m_control_camera = false;
-  bool m_control_movement = false;
-  bool m_was_moving_with_mouse = false;
-  float m_xsens = -15.0;
-  float m_ysens = 10.0;
-};
 
 /// Central class that:
 /// - keeps track of available input devices
@@ -112,6 +27,7 @@ class InputManager {
 
   // Propagate and handle the SDL event, ignored it if it's not relevant
   void process_sdl_event(const SDL_Event& event, const bool ignore_kb_mouse);
+  // TODO - organize the functions here
   void refresh_device_list();
   void ignore_background_controller_events(const bool ignore);
 
@@ -126,7 +42,8 @@ class InputManager {
   std::string get_current_bind(const int port,
                                const InputDeviceType device_type,
                                const bool buttons,
-                               const int input_idx);
+                               const int input_idx,
+                               const bool analog_for_minimum);
   bool controller_has_led(const int port);
   void set_controller_for_port(const int controller_id, const int port);
   void set_controller_led(const int port, const u8 red, const u8 green, const u8 blue);
@@ -139,6 +56,7 @@ class InputManager {
                          const int input_idx);
   void stop_waiting_for_bind() { m_waiting_for_bind = std::nullopt; }
   void set_camera_sens(const float xsens, const float ysens);
+  void reset_input_bindings_to_defaults(const int port, const InputDeviceType device_type);
 
  private:
   std::shared_ptr<game_settings::InputSettings> m_settings;
@@ -157,9 +75,6 @@ class InputManager {
   MouseDevice m_mouse;
   /// A mapping between port numbers and the controller index. Connect as many controllers as
   /// you want.
-  /// TODO - when saving controller settings, it'd be wise to use the device GUID or w/e -- instead
-  /// of this id that way if they are connected in a different order, we can still reconstruct the
-  /// correct mapping
   std::unordered_map<int, int> m_controller_port_mapping;
   /// The port that the keyboard and mouse will be used for PadData
   int m_keyboard_and_mouse_port = 0;

@@ -179,11 +179,12 @@ std::string get_controller_name(const int id) {
 std::string get_current_bind(const int port,
                              const int device_type,
                              const bool buttons,
-                             const int input_idx) {
+                             const int input_idx,
+                             const bool analog_for_minimum) {
   if (Display::GetMainDisplay()) {
     // TODO - return something that lets the runtime use a translatable string if unset
     return Display::GetMainDisplay()->get_input_manager()->get_current_bind(
-        port, (InputDeviceType)device_type, buttons, input_idx);
+        port, (InputDeviceType)device_type, buttons, input_idx, analog_for_minimum);
   }
   // TODO - return something that lets the runtime use a translatable string
   return "UNKNOWN";
@@ -225,6 +226,7 @@ bool current_controller_has_led() {
   if (Display::GetMainDisplay()) {
     return Display::GetMainDisplay()->get_input_manager()->controller_has_led(0);
   }
+  return false;
 }
 
 void set_controller_led(const int port, const u8 red, const u8 green, const u8 blue) {
@@ -238,6 +240,7 @@ bool get_waiting_for_bind() {
   if (Display::GetMainDisplay()) {
     return Display::GetMainDisplay()->get_input_manager()->get_waiting_for_bind();
   }
+  return false;
 }
 
 void set_wait_for_bind(const InputDeviceType device_type,
@@ -259,17 +262,15 @@ void stop_waiting_for_bind() {
 u64 get_window_width() {
   if (Display::GetMainDisplay()) {
     return Display::GetMainDisplay()->get_display_manager()->get_window_width();
-  } else {
-    return 0;
   }
+  return 0;
 }
 
 u64 get_window_height() {
   if (Display::GetMainDisplay()) {
     return Display::GetMainDisplay()->get_display_manager()->get_window_height();
-  } else {
-    return 0;
   }
+  return 0;
 }
 
 void set_fullscreen_display(u64 display_id) {

@@ -132,7 +132,8 @@ std::string get_controller_name(const int id);
 std::string get_current_bind(const int port,
                              const int device_type,
                              const bool buttons,
-                             const int input_idx);
+                             const int input_idx,
+                             const bool analog_for_minimum);
 void set_controller_id_for_port(const int id, const int port);
 void set_keyboard_enabled(const bool enabled);
 void set_mouse_enabled(const bool enabled, const bool control_camera, const bool control_movement);

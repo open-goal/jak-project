@@ -255,9 +255,16 @@
   (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id input-opts-mouse-opts) :scale #t :param3 (game-option-menu mouse-options)
     :option-disabled-func (lambda () (not (-> *pc-settings* mouse-enabled?))))
   (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id input-opts-reassign-binds) :scale #t :param3 (game-option-menu reassign-binds-options))
+  (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id input-opts-auto-hide-cursor) :scale #t
+    ;; :on-change (lambda ((val object))
+    ;;             (let ((val-sym (the-as symbol val)))
+    ;;               (set-enable-keyboard! *pc-settings* val-sym)
+    ;;               (none)))
+                  )
   (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)))
 
 (define *misc-options* (new 'static 'boxed-array :type game-option
+    (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id money-starburst) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id discord-rpc) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id cutscene-skips) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id speedrunner-mode) :scale #t)
@@ -265,9 +272,8 @@
     )
   )
 
-;; TODO - add back to misc, since this menu is actually dead code
+;; TODO - this menu isn't used anywhere right now, should probably be removed
 (define *accessibility-options* (new 'static 'boxed-array :type game-option
-  "This menu is not rendered anywhere right now"
   (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id money-starburst) :scale #t)
   (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)))
 
@@ -705,11 +711,12 @@
   (add-back-option)
   *temp-options*)
 
-(define *analog-bind-names* (new 'static 'boxed-array :type string "L LEFT" "L RIGHT" "L UP" "L DOWN" "R LEFT" "R RIGHT" "R UP" "R DOWN"))
+(define *analog-bind-names* (new 'static 'boxed-array :type string "L ANALOG LEFT" "L ANALOG RIGHT" "L ANALOG UP" "L ANALOG DOWN" "R ANALOG LEFT" "R ANALOG RIGHT" "R ANALOG UP" "R ANALOG DOWN"))
 
 (define *button-bind-names* (new 'static 'boxed-array :type string "SELECT" "L3" "R3" "START"
   "DPAD UP" "DPAD RIGHT" "DPAD DOWN" "DPAD LEFT" "L2" "R2" "L1" "R1" "TRIANGLE" "CIRCLE" "CROSS" "SQUARE"))
 
+;; TODO - make a common function for these dynamic menus instead of the duplication / macros
 (defun build-binding-reassignment-options ((screen progress-screen))
   "Dynamically creates menu options for reassigning bindings for controllers/mice/keyboard"
   (set! (-> *temp-options* length) 0)
@@ -720,22 +727,50 @@
     ;; Add analog bindings
     (dotimes (i 4)
       ;; two for each direction (low/high)
-      ;; (add-bind-reassignment-option (game-text-id input-opts-generic-controller) i)
+      (let ((option (-> *temp-options* (length *temp-options*))))
+        (format 0 "BLERG~%")
+        (set! (-> option bind-info port) 0)
+        (format 0 "BLERG!~%")
+        ;; only for keyboards
+        (set! (-> option bind-info device-type) 1)
+        (set! (-> option bind-info for-buttons?) #f)
+        (set! (-> option bind-info input-idx) i)
+        (set! (-> option bind-info analog-min-range?) #t)
+
+        (set! (-> option option-type) (game-option-type binding-assignment))
+        (set! (-> option name-override) (-> *analog-bind-names* (* i 2)))
+        (set! (-> option scale) #t)
+        (1+! (-> *temp-options* length))
+        )
+      (let ((option (-> *temp-options* (length *temp-options*))))
+        (set! (-> option bind-info port) 0)
+        ;; only for keyboards
+        (set! (-> option bind-info device-type) 1)
+        (set! (-> option bind-info for-buttons?) #f)
+        (set! (-> option bind-info input-idx) i)
+        (set! (-> option bind-info analog-min-range?) #f)
+
+        (set! (-> option option-type) (game-option-type binding-assignment))
+        (set! (-> option name-override) (-> *analog-bind-names* (+ 1 (* i 2))))
+        (set! (-> option scale) #t)
+        (1+! (-> *temp-options* length))
+        )
       ))
   ;; Add Button bindings
   (dotimes (i 16)
-    ;; TODO - make a function for these instead of the duplication / macros
     (let ((option (-> *temp-options* (length *temp-options*))))
-      (set! (-> option bind-port) 0)
+      (set! (-> option bind-info port) 0)
       (case screen
         (((progress-screen controller-binds))
-          (set! (-> option bind-device-type) 0))
+          (set! (-> option bind-info device-type) 0))
         (((progress-screen keyboard-binds))
-          (set! (-> option bind-device-type) 1))
+          (set! (-> option bind-info device-type) 1))
         (((progress-screen mouse-binds))
-          (set! (-> option bind-device-type) 2)))
-      (set! (-> option bind-buttons?) #t)
-      (set! (-> option bind-input-idx) i)
+          (set! (-> option bind-info device-type) 2)))
+      (set! (-> option bind-info for-buttons?) #t)
+      (set! (-> option bind-info input-idx) i)
+      (set! (-> option bind-info analog-min-range?) #f)
+
       (set! (-> option option-type) (game-option-type binding-assignment))
       (set! (-> option name-override) (-> *button-bind-names* i))
       (set! (-> option scale) #t)
@@ -980,9 +1015,10 @@
   (set! (-> *graphic-options-no-frame-rate-pc* 2 value-to-modify) (&-> *pc-settings* vsync?))
   (set! (-> *graphic-options-no-frame-rate-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
 
-  (set! (-> *misc-options* 0 value-to-modify) (&-> *pc-settings* discord-rpc?))
-  (set! (-> *misc-options* 1 value-to-modify) (&-> *pc-settings* skip-movies?))
-  (set! (-> *misc-options* 2 value-to-modify) (&-> *pc-settings* speedrunner-mode?))
+  (set! (-> *misc-options* 0 value-to-modify) (&-> *pc-settings* money-starburst?))
+  (set! (-> *misc-options* 1 value-to-modify) (&-> *pc-settings* discord-rpc?))
+  (set! (-> *misc-options* 2 value-to-modify) (&-> *pc-settings* skip-movies?))
+  (set! (-> *misc-options* 3 value-to-modify) (&-> *pc-settings* speedrunner-mode?))
 
   (set! (-> *camera-options* 0 value-to-modify) (&-> *pc-settings* first-camera-h-inverted?))
   (set! (-> *camera-options* 1 value-to-modify) (&-> *pc-settings* first-camera-v-inverted?))
@@ -1003,6 +1039,7 @@
 
   (set! (-> *input-options* 2 value-to-modify) (&-> *pc-settings* keyboard-enabled?))
   (set! (-> *input-options* 3 value-to-modify) (&-> *pc-settings* mouse-enabled?))
+  (set! (-> *input-options* 6 value-to-modify) (&-> *pc-settings* mouse-enabled?)) ;; TODO
 
   (set! (-> *accessibility-options* 0 value-to-modify) (&-> *pc-settings* money-starburst?))
 
@@ -1680,10 +1717,10 @@
                  (((game-option-type binding-assignment))
                   (set! *progress-pad-timeout* (-> *display* real-frame-counter))
                   ;; Inform the C++ side to start listening for input
-                  (pc-set-waiting-for-bind! (-> options (-> obj option-index) bind-device-type)
-                                            (not (-> options (-> obj option-index) bind-buttons?))
-                                            (not (-> options (-> obj option-index) bind-buttons?)) ;; TODO - need more info to inform this
-                                            (-> options (-> obj option-index) bind-input-idx))
+                  (pc-set-waiting-for-bind! (-> options (-> obj option-index) bind-info device-type)
+                                            (not (-> options (-> obj option-index) bind-info for-buttons?))
+                                            (not (-> options (-> obj option-index) bind-info for-buttons?))
+                                            (-> options (-> obj option-index) bind-info input-idx))
                   )
                  (((game-option-type cheat-toggle))
                   (set! (-> *progress-state* on-off-backup) (logtest? (-> *pc-settings* cheats) (ash 1 (the int (-> options (-> obj option-index) param1)))))
@@ -2257,7 +2294,6 @@
                     ;; display timeout in seconds
                     (let ((time-left (the int (+ 11.0 (* (/ 1.0 TICKS_PER_SECOND) (* -1.0 (- (-> *display* real-frame-counter) *progress-pad-timeout*)))))))
                       ;; if the timeout is over, unselect the option
-                      ;; TODO - also unselect if they provide a bind (play a different sound)
                       (when (<= time-left 0)
                         (set! (-> obj selected-option) #f)
                         (sound-play "menu-stats")
@@ -2324,10 +2360,7 @@
                     )
                   (((game-option-type binding-assignment))
                     (set! option-str
-                          (string-format "~S" (pc-get-current-bind (-> options index bind-port)
-                                                                   (-> options index bind-device-type)
-                                                                   (-> options index bind-buttons?)
-                                                                   (-> options index bind-input-idx))))
+                          (string-format "~S" (pc-get-current-bind (-> options index bind-info))))
                     )
                   (((game-option-type display-mode)
                     (game-option-type msaa)
@@ -2442,12 +2475,9 @@
                     )
                     (((game-option-type binding-assignment))
                      ;; binding assignment options show their input + the current binding
-                     (set! option-str (string-format "~S: ~10L~S~0L" (-> options index name-override)
-                                                              (pc-get-current-bind (-> options index bind-port)
-                                                                                   (-> options index bind-device-type)
-                                                                                   (-> options index bind-buttons?)
-                                                                                   (-> options index bind-input-idx))))
-                     )
+                     (set! option-str (string-format "~S: ~10L~S~0L"
+                                                     (-> options index name-override)
+                                                     (pc-get-current-bind (-> options index bind-info)))))
                     (((game-option-type cheat-toggle))
                       (cond
                         ((not (logtest? (-> *pc-settings* cheats-known) (ash 1 (the int (-> options index param1)))))

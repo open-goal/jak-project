@@ -23,29 +23,54 @@ SDL_bool sdl_bool(const bool val) {
 bool from_sdl_bool(const SDL_bool val) {
   return val == SDL_TRUE ? true : false;
 }
-std::string get_mouse_button_name(const int sdl_mouse_button_id) {
+std::vector<std::string> get_modifier_strings(InputModifiers modifiers) {
+  std::vector<std::string> result = {};
+  if (modifiers.need_ctrl) {
+    result.push_back("ctrl");
+  }
+  if (modifiers.need_shift) {
+    result.push_back("shift");
+  }
+  if (modifiers.need_alt) {
+    result.push_back("alt");
+  }
+  if (modifiers.need_meta) {
+    result.push_back("meta");
+  }
+  return result;
+}
+std::string get_mouse_button_name(const int sdl_mouse_button_id, InputModifiers modifiers) {
+  std::string result = "";
   switch (sdl_mouse_button_id) {
     case SDL_BUTTON_LEFT:
-      return "LEFT MOUSE";
+      result = "LEFT MOUSE";
     case SDL_BUTTON_MIDDLE:
-      return "MIDDLE MOUSE";
+      result = "MIDDLE MOUSE";
     case SDL_BUTTON_RIGHT:
-      return "RIGHT MOUSE";
+      result = "RIGHT MOUSE";
     case SDL_BUTTON_X1:
-      return "MOUSE 4";
+      result = "MOUSE 4";
     case SDL_BUTTON_X2:
-      return "MOUSE 5";
+      result = "MOUSE 5";
     default:
-      return "unknown";
+      result = "";
   }
+  if (result.empty()) {
+    return "unknown";
+  }
+  auto tokens = get_modifier_strings(modifiers);
+  tokens.push_back(result);
+  return fmt::to_string(fmt::join(tokens, " + "));
 }
-// TODO - handle modifiers nicely
-std::string get_keyboard_button_name(const int sdl_key_code) {
+
+std::string get_keyboard_button_name(const int sdl_key_code, InputModifiers modifiers) {
   const auto result = SDL_GetKeyName((SDL_KeyCode)sdl_key_code);
   if (!result) {
     return "Unknown";
   }
-  return result;
+  auto tokens = get_modifier_strings(modifiers);
+  tokens.push_back(result);
+  return fmt::to_string(fmt::join(tokens, " + "));
 }
 std::string get_controller_button_name(const int sdl_button_id) {
   const auto result = SDL_GameControllerGetStringForButton((SDL_GameControllerButton)sdl_button_id);
@@ -60,5 +85,10 @@ std::string get_controller_axis_name(const int sdl_axis_id) {
     return "Unknown";
   }
   return result;
+}
+bool is_modifier_key(const SDL_Keycode key_code) {
+  return key_code == SDLK_LSHIFT || key_code == SDLK_RSHIFT || key_code == SDLK_LALT ||
+         key_code == SDLK_RALT || key_code == SDLK_LCTRL || key_code == SDLK_RCTRL ||
+         key_code == SDLK_LGUI || key_code == SDLK_RGUI;
 }
 }  // namespace sdl_util

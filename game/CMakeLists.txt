@@ -171,6 +171,9 @@ set(RUNTIME_SOURCE
         sce/stubs.cpp
         settings/settings.cpp
         system/Deci2Server.cpp
+        system/hid/devices/game_controller.cpp
+        system/hid/devices/keyboard.cpp
+        system/hid/devices/mouse.cpp
         system/hid/display_manager.cpp
         system/hid/input_bindings.cpp
         system/hid/input_manager.cpp

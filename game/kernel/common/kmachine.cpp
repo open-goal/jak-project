@@ -650,7 +650,8 @@ void init_common_pc_port_functions(
                         (void*)ignore_background_controller_events);
   make_func_symbol_func("pc-current-controller-has-led?", (void*)current_controller_has_led);
   make_func_symbol_func("pc-set-controller-led!", (void*)Gfx::set_controller_led);
-  make_func_symbol_func("pc-get-waiting-for-bind", (void*)get_waiting_for_bind);
+  make_func_symbol_func("pc-get-waiting-for-bind",
+                        (void*)get_waiting_for_bind);  // TODO change naming of this
   make_func_symbol_func("pc-set-waiting-for-bind!", (void*)set_waiting_for_bind);
   make_func_symbol_func("pc-stop-waiting-for-bind!", (void*)Gfx::stop_waiting_for_bind);
 

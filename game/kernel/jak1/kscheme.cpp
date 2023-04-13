@@ -514,7 +514,8 @@ Ptr<Function> make_zero_func() {
  * name. This effectively creates a global GOAL function with the given name which calls the given C
  * function.
  *
- * This work on both Linux and Windows, but only supports up to 6 arguments.
+ * This work on both Linux and Windows, but only supports up to 6 arguments on linux and 4 args on
+ * windows.
  */
 Ptr<Function> make_function_symbol_from_c(const char* name, void* f) {
   auto sym = intern_from_c(name);
