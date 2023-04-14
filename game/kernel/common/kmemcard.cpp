@@ -21,7 +21,7 @@
 
 #include "third-party/fmt/core.h"
 
-static constexpr bool memcard_debug = true;
+static constexpr bool memcard_debug = false;
 
 using McCallbackFunc = void (*)(s32);
 
