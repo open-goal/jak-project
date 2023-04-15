@@ -303,7 +303,7 @@ ShrubProtoInfo extract_proto(const shrub_types::PrototypeBucketShrub& proto,
 
       bool alpha_tpage_flag = false;
       if (version > GameVersion::Jak1) {
-        alpha_tpage_flag = proto.flags & 0x2;  // tpage-alpha
+        alpha_tpage_flag = proto.flags & 0x4;  // tpage-alpha
       }
       draw.settings = adgif_to_draw_mode(ag, tdb, map, count, alpha_tpage_flag);
     }
