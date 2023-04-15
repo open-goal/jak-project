@@ -52,9 +52,6 @@ GameController::GameController(int sdl_device_id,
   m_loaded = true;
 }
 
-// TODO - hide cursor if game controller receives a button event / keyboard
-// show cursor if mouse moves (and mouse movement is disabled)
-
 void GameController::process_event(const SDL_Event& event,
                                    const CommandBindingGroups& commands,
                                    std::shared_ptr<PadData> data,

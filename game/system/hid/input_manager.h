@@ -26,7 +26,7 @@ class InputManager {
   ~InputManager();
 
   // Propagate and handle the SDL event, ignored it if it's not relevant
-  void process_sdl_event(const SDL_Event& event, const bool ignore_kb_mouse);
+  void process_sdl_event(const SDL_Event& event);
   // TODO - organize the functions here
   void refresh_device_list();
   void ignore_background_controller_events(const bool ignore);
@@ -57,6 +57,8 @@ class InputManager {
   void stop_waiting_for_bind() { m_waiting_for_bind = std::nullopt; }
   void set_camera_sens(const float xsens, const float ysens);
   void reset_input_bindings_to_defaults(const int port, const InputDeviceType device_type);
+  void set_auto_hide_mouse(const bool auto_hide_mouse);
+  void clear_inputs();
 
  private:
   std::shared_ptr<game_settings::InputSettings> m_settings;
@@ -83,6 +85,9 @@ class InputManager {
 
   bool m_keyboard_enabled = true;
   bool m_mouse_enabled = false;
+  bool m_auto_hide_mouse = true;
+  bool m_mouse_currently_hidden = false;
+  void hide_cursor(const bool hide_cursor);
 
   bool m_ignore_background_controller_events = false;
 

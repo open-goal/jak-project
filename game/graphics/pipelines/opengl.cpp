@@ -132,6 +132,7 @@ static void init_imgui(SDL_Window* window, SDL_GLContext gl_context, std::string
   g_gfx_data->imgui_filename = file_util::get_file_path({"imgui.ini"});
   g_gfx_data->imgui_log_filename = file_util::get_file_path({"imgui_log.txt"});
   ImGuiIO& io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;  // We manage the mouse cursor!
   if (!Gfx::g_debug_settings.monospaced_font) {
     std::string font_path =
         (file_util::get_jak_project_dir() / "game" / "assets" / "fonts" / "Roboto-Medium.ttf")
@@ -367,7 +368,7 @@ void GLDisplay::process_sdl_events() {
     }
 
     {
-      auto p = scoped_prof("video-manager-sdl");
+      auto p = scoped_prof("sdl-display-manager");
       m_display_manager->process_sdl_event(evt);
     }
 
@@ -381,9 +382,15 @@ void GLDisplay::process_sdl_events() {
     ImGuiIO& io = ImGui::GetIO();
     {
       auto p = scoped_prof("sdl-input-monitor");
-      m_input_manager->process_sdl_event(evt, !io.WantCaptureMouse && !io.WantCaptureKeyboard);
+      // If the user is currently interacting with an ImGUI text field or button
+      // keep it simple and ignore all input events
+      if (!io.WantCaptureMouse && !io.WantCaptureKeyboard) {
+        m_input_manager->process_sdl_event(evt);
+      } else {
+        // If we are ignoring events, make sure the pad data is cleared to avoid odd behaviour
+        m_input_manager->clear_inputs();
+      }
     }
-    // TODO - if we ignore kb/mouse -- reset and poll the GameController
   }
 }
 

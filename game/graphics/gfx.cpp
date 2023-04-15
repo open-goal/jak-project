@@ -192,33 +192,32 @@ std::string get_current_bind(const int port,
 
 void set_controller_id_for_port(const int id, const int port) {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_input_manager()->set_controller_for_port(id, port);
+    Display::GetMainDisplay()->get_input_manager()->set_controller_for_port(id, port);
   }
 }
 
 void set_keyboard_enabled(const bool enabled) {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_input_manager()->enable_keyboard(enabled);
+    Display::GetMainDisplay()->get_input_manager()->enable_keyboard(enabled);
   }
 }
 
 void set_mouse_enabled(const bool enabled, const bool control_camera, const bool control_movement) {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_input_manager()->enable_mouse(enabled, control_camera,
-                                                                        control_movement);
+    Display::GetMainDisplay()->get_input_manager()->enable_mouse(enabled, control_camera,
+                                                                 control_movement);
   }
 }
 
 void set_mouse_camera_sens(const float xsens, const float ysens) {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_input_manager()->set_camera_sens(xsens, ysens);
+    Display::GetMainDisplay()->get_input_manager()->set_camera_sens(xsens, ysens);
   }
 }
 
 void Gfx::ignore_background_controller_events(const bool ignore) {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_input_manager()->ignore_background_controller_events(
-        ignore);
+    Display::GetMainDisplay()->get_input_manager()->ignore_background_controller_events(ignore);
   }
 }
 
@@ -231,8 +230,7 @@ bool current_controller_has_led() {
 
 void set_controller_led(const int port, const u8 red, const u8 green, const u8 blue) {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_input_manager()->set_controller_led(port, red, green,
-                                                                              blue);
+    Display::GetMainDisplay()->get_input_manager()->set_controller_led(port, red, green, blue);
   }
 }
 
@@ -248,7 +246,7 @@ void set_wait_for_bind(const InputDeviceType device_type,
                        const bool for_minimum_analog,
                        const const int input_idx) {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_input_manager()->set_wait_for_bind(
+    Display::GetMainDisplay()->get_input_manager()->set_wait_for_bind(
         device_type, for_analog, for_minimum_analog, input_idx);
   }
 }
@@ -256,6 +254,13 @@ void set_wait_for_bind(const InputDeviceType device_type,
 void stop_waiting_for_bind() {
   if (Display::GetMainDisplay()) {
     return Display::GetMainDisplay()->get_input_manager()->stop_waiting_for_bind();
+  }
+}
+
+void reset_input_bindings_to_defaults(const int port, const InputDeviceType device_type) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_input_manager()->reset_input_bindings_to_defaults(port,
+                                                                                     device_type);
   }
 }
 

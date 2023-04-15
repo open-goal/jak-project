@@ -147,6 +147,7 @@ void set_wait_for_bind(const InputDeviceType device_type,
                        const bool for_minimum_analog,
                        const int input_idx);
 void stop_waiting_for_bind();
+void reset_input_bindings_to_defaults(const int port, const InputDeviceType device_type);
 
 // VideoMonitor usages
 u64 get_window_width();

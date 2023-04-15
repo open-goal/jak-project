@@ -39,6 +39,7 @@ InputManager::InputManager() {
   m_command_binds = CommandBindingGroups();
   refresh_device_list();
   ignore_background_controller_events(false);
+  hide_cursor(m_auto_hide_mouse);
 }
 
 InputManager::~InputManager() {
@@ -88,6 +89,8 @@ void InputManager::refresh_device_list() {
   if (m_available_controllers.empty()) {
     lg::warn(
         "No active game controllers could be found or loaded successfully - inputs will not work!");
+  } else {
+    lg::info("Found {} controllers", m_available_controllers.size());
   }
 }
 
@@ -97,7 +100,19 @@ void InputManager::ignore_background_controller_events(const bool ignore) {
   SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, ignore ? "0" : "1");
 }
 
-void InputManager::process_sdl_event(const SDL_Event& event, const bool ignore_kb_mouse) {
+void InputManager::hide_cursor(const bool hide_cursor) {
+  if (hide_cursor == m_mouse_currently_hidden) {
+    return;
+  }
+  auto ok = SDL_ShowCursor(hide_cursor ? SDL_DISABLE : SDL_ENABLE);
+  if (ok < 0) {
+    sdl_util::log_error("Unable to show/hide mouse cursor");
+  } else {
+    m_mouse_currently_hidden = hide_cursor;
+  }
+}
+
+void InputManager::process_sdl_event(const SDL_Event& event) {
   // Detect controller connections and disconnects
   if (sdl_util::is_any_event_type(event.type,
                                   {SDL_CONTROLLERDEVICEADDED, SDL_CONTROLLERDEVICEREMOVED})) {
@@ -105,7 +120,7 @@ void InputManager::process_sdl_event(const SDL_Event& event, const bool ignore_k
     refresh_device_list();
   }
 
-  if (ignore_kb_mouse && m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
+  if (m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
     if (m_keyboard_enabled) {
       m_keyboard.process_event(event, m_command_binds, m_data.at(m_keyboard_and_mouse_port),
                                m_waiting_for_bind);
@@ -128,6 +143,15 @@ void InputManager::process_sdl_event(const SDL_Event& event, const bool ignore_k
   // Clear the binding assignment if we got one
   if (m_waiting_for_bind && m_waiting_for_bind->assigned) {
     stop_waiting_for_bind();
+  }
+
+  // Adjust mouse cursor visibility
+  if (m_auto_hide_mouse) {
+    if (event.type == SDL_MOUSEMOTION) {
+      hide_cursor(false);
+    } else if (event.type == SDL_KEYDOWN || event.type == SDL_CONTROLLERBUTTONDOWN) {
+      hide_cursor(true);
+    }
   }
 }
 
@@ -216,9 +240,9 @@ std::string InputManager::get_current_bind(const int port,
 }
 
 void InputManager::set_controller_for_port(const int controller_id, const int port) {
-  // Reset inputs as this device won't be able to be read from again!
-  m_data.clear();
   if (controller_id < m_available_controllers.size()) {
+    // Reset inputs as this device won't be able to be read from again!
+    clear_inputs();
     auto& controller = m_available_controllers.at(controller_id);
     m_controller_port_mapping[port] = controller_id;
     m_settings->controller_port_mapping[controller->get_guid()] = port;
@@ -252,9 +276,7 @@ void InputManager::enable_keyboard(const bool enabled) {
   m_keyboard_enabled = enabled;
   if (!m_keyboard_enabled) {
     // Reset inputs as this device won't be able to be read from again!
-    for (auto& [port, data] : m_data) {
-      data->clear();
-    }
+    clear_inputs();
   }
 }
 
@@ -264,9 +286,7 @@ void InputManager::enable_mouse(const bool enabled,
   m_mouse_enabled = enabled;
   if (!m_mouse_enabled) {
     // Reset inputs as this device won't be able to be read from again!
-    for (auto& [port, data] : m_data) {
-      data->clear();
-    }
+    clear_inputs();
   }
   // Switch relevant flags over related to the mouse
   m_mouse.enable_camera_control(enabled && control_camera);
@@ -303,6 +323,7 @@ void InputManager::reset_input_bindings_to_defaults(const int port,
     case InputDeviceType::CONTROLLER:
       if (m_controller_port_mapping.find(port) != m_controller_port_mapping.end() &&
           m_controller_port_mapping.at(port) < m_available_controllers.size()) {
+        // TODO - assumption here
         m_settings->controller_binds
             .at(m_available_controllers.at(m_controller_port_mapping.at(port))->get_guid())
             .set_bindings(DEFAULT_CONTROLLER_BINDS);
@@ -314,5 +335,19 @@ void InputManager::reset_input_bindings_to_defaults(const int port,
     case InputDeviceType::MOUSE:
       m_settings->mouse_binds.set_bindings(DEFAULT_MOUSE_BINDS);
       break;
+  }
+}
+
+void InputManager::set_auto_hide_mouse(const bool auto_hide_mouse) {
+  m_auto_hide_mouse = auto_hide_mouse;
+  if (!auto_hide_mouse) {
+    hide_cursor(false);
+  }
+}
+
+void InputManager::clear_inputs() {
+  // Reset inputs as this device won't be able to be read from again!
+  for (auto& [port, data] : m_data) {
+    data->clear();
   }
 }

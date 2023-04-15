@@ -248,6 +248,7 @@
    (mouse-xsens float)
    (mouse-ysens float)
    (mouse-movement? symbol)
+   (auto-hide-cursor? symbol)
 
    ;; audio settings
    (audio-latency-ms int16) ;; audio latency in milliseconds
@@ -311,6 +312,9 @@
   (:methods
     (new (symbol type) _type_)
     (set-defaults! (_type_) none)
+    (set-defaults-input! (_type_) none)
+    (set-defaults-controller! (_type_) none)
+    (set-defaults-mouse! (_type_) none)
     (update (_type_) none)
     (update-from-os (_type_) none)
     (update-to-os (_type_) none)
@@ -364,6 +368,29 @@
 ;;;; resets
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defmethod set-defaults-input! pc-settings ((obj pc-settings))
+  "Set default general input settings"
+  (set! (-> obj keyboard-enabled?) #t)
+  (set! (-> obj mouse-enabled?) #f)
+  (set! (-> obj auto-hide-cursor?) #t)
+  (none))
+
+(defmethod set-defaults-controller! pc-settings ((obj pc-settings))
+  "Set default controller settings"
+  (set! (-> obj ignore-controller-win-unfocused?) #f)
+  (set! (-> obj controller-hp-led?) #f)
+  (set! (-> obj controller-eco-led?) #f)
+  (set! (-> obj stick-deadzone) 0.3)
+  (none))
+
+(defmethod set-defaults-mouse! pc-settings ((obj pc-settings))
+  "Set default mouse settings"
+  (set! (-> obj mouse-camera?) #f)
+  (set! (-> obj mouse-xsens) -15.0)
+  (set! (-> obj mouse-ysens) 10.0)
+  (set! (-> obj mouse-movement?) #f)
+  (none))
+
 (defmethod set-defaults! pc-settings ((obj pc-settings))
   "Set default settings for the object that aren't handled by the file reading,
    this is intended to be called upon object creation.
@@ -393,16 +420,9 @@
   (set! (-> obj aspect-ratio-auto?) #t)
   ;; audio
   ;; input
-  (set! (-> obj ignore-controller-win-unfocused?) #f)
-  (set! (-> obj controller-hp-led?) #f)
-  (set! (-> obj controller-eco-led?) #f)
-  (set! (-> obj stick-deadzone) 0.3)
-  (set! (-> obj keyboard-enabled?) #t)
-  (set! (-> obj mouse-enabled?) #f)
-  (set! (-> obj mouse-camera?) #f)
-  (set! (-> obj mouse-xsens) -15.0)
-  (set! (-> obj mouse-ysens) 10.0)
-  (set! (-> obj mouse-movement?) #f)
+  (set-defaults-input! obj)
+  (set-defaults-controller! obj)
+  (set-defaults-mouse! obj)
   ;; ps2
   ;; misc
   ;; extra

@@ -19,6 +19,7 @@
 #include "game/sce/libscf.h"
 #include "game/sce/sif_ee.h"
 #include "game/system/vm/vm.h"
+#include <game/graphics/display.h>
 
 /*!
  * Where does OVERLORD load its data from?
@@ -650,10 +651,16 @@ void init_common_pc_port_functions(
                         (void*)ignore_background_controller_events);
   make_func_symbol_func("pc-current-controller-has-led?", (void*)current_controller_has_led);
   make_func_symbol_func("pc-set-controller-led!", (void*)Gfx::set_controller_led);
-  make_func_symbol_func("pc-get-waiting-for-bind",
-                        (void*)get_waiting_for_bind);  // TODO change naming of this
+  make_func_symbol_func("pc-waiting-for-bind?", (void*)get_waiting_for_bind);
   make_func_symbol_func("pc-set-waiting-for-bind!", (void*)set_waiting_for_bind);
   make_func_symbol_func("pc-stop-waiting-for-bind!", (void*)Gfx::stop_waiting_for_bind);
+  make_func_symbol_func("pc-reset-bindings-to-defaults!",
+                        (void*)Gfx::reset_input_bindings_to_defaults);
+  make_func_symbol_func("pc-set-auto-hide-cursor!", [](u32 val) {
+    if (Display::GetMainDisplay()) {
+      Display::GetMainDisplay()->get_input_manager()->set_auto_hide_mouse(symbol_to_bool(val));
+    }
+  });
 
   // graphics things
   make_func_symbol_func("pc-set-letterbox", (void*)Gfx::set_letterbox);
