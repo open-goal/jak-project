@@ -45,7 +45,8 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
                                       const GLchar* message,
                                       const void* /*userParam*/) {
   if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
-    lg::debug("OpenGL notification 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
+    lg::debug("[{}] OpenGL notification 0x{:X} S{:X} T{:X}: {}", g_current_render, id, source, type,
+              message);
   } else if (severity == GL_DEBUG_SEVERITY_LOW) {
     lg::info("[{}] OpenGL message 0x{:X} S{:X} T{:X}: {}", g_current_render, id, source, type,
              message);
@@ -62,7 +63,9 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
 OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
                                std::shared_ptr<Loader> loader,
                                GameVersion version)
-    : m_render_state(texture_pool, loader, version), m_version(version) {
+    : m_render_state(texture_pool, loader, version),
+      m_collide_renderer(version),
+      m_version(version) {
   // setup OpenGL errors
   glEnable(GL_DEBUG_OUTPUT);
   glDebugMessageCallback(opengl_error_callback, nullptr);
