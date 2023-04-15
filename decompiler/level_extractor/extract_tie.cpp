@@ -2550,6 +2550,9 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
 
     //    bool using_wind = true;  // hack, for testing
     bool using_wind = proto.stiffness != 0.f;
+    if (version == GameVersion::Jak2) {
+      using_wind = false;  // disable wind on jak 2 for now - not supported in GOAL or C++ yet.
+    }
 
     bool using_envmap = info.uses_envmap;
     ASSERT(using_envmap == proto.envmap_adgif.has_value());

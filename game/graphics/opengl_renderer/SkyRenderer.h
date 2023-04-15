@@ -19,6 +19,7 @@ class SkyBlendHandler : public BucketRenderer {
                   std::shared_ptr<SkyBlendCPU> shared_cpu_blender);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
+  void init_shaders(ShaderLibrary& shaders) override;
 
  private:
   void handle_sky_copies(DmaFollower& dma,

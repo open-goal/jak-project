@@ -12,8 +12,8 @@
 (deftype com-airlock (process-drawable)
   ((child-override        basic          :offset         24)
    (root-override         collide-shape  :offset        128)
-   (level-name            string         :offset-assert 200)
-   (open-test             symbol         :offset-assert 204)
+   (level-name            pair           :offset-assert 200)
+   (open-test             pair           :offset-assert 204)
    (were-behind?          symbol         :offset-assert 208)
    (inner?                symbol         :offset-assert 212)
    (sound-behind?         symbol         :offset-assert 216)
@@ -106,17 +106,17 @@
         (res-lump-float (-> obj entity) 'idle-distance :default (+ 143360.0 (-> obj open-distance)))
         )
   (set! (-> obj y-height) (res-lump-data (-> obj entity) 'height vector))
-  (set! (-> obj level-name) (res-lump-struct (-> obj entity) 'on-notice string))
+  (set! (-> obj level-name) (res-lump-struct (-> obj entity) 'on-notice pair))
   (set! (-> obj open-test)
-        (the-as symbol ((method-of-type res-lump get-property-struct)
-                        (-> obj entity)
-                        'open-test
-                        'interp
-                        -1000000000.0
-                        (the-as structure '(not (or (scene-player?) (focus-test? *target* grabbed))))
-                        (the-as (pointer res-tag) #f)
-                        *res-static-buf*
-                        )
+        (the-as pair ((method-of-type res-lump get-property-struct)
+                      (-> obj entity)
+                      'open-test
+                      'interp
+                      -1000000000.0
+                      (the-as structure '(not (or (scene-player?) (focus-test? *target* grabbed))))
+                      (the-as (pointer res-tag) #f)
+                      *res-static-buf*
+                      )
                 )
         )
   (set! (-> obj sound-gear) #f)
@@ -172,15 +172,15 @@
 ;; WARN: Return type mismatch object vs symbol.
 (defmethod want-cross-airlock? com-airlock ((obj com-airlock))
   (local-vars (a0-12 entity-actor))
-  (let* ((s4-0 (target-pos 0))
-         (f30-0 (check-crossing-distance obj s4-0 #t))
+  (let* ((tgt (target-pos 0))
+         (f30-0 (check-crossing-distance obj tgt #t))
          (s5-0 (>= (-> obj latch-open-time) (-> self clock frame-counter)))
          )
     (the-as
       symbol
-      (and (or s5-0 (< (vector-vector-xz-distance (-> obj root-override trans) s4-0) (-> obj active-distance)))
-           (or s5-0 (not (-> obj y-height)) (and (>= (-> s4-0 y) (- (-> obj root-override trans y) (-> obj y-height y)))
-                                                 (< (-> s4-0 y) (+ (-> obj root-override trans y) (-> obj y-height x)))
+      (and (or s5-0 (< (vector-vector-xz-distance (-> obj root-override trans) tgt) (-> obj active-distance)))
+           (or s5-0 (not (-> obj y-height)) (and (>= (-> tgt y) (- (-> obj root-override trans y) (-> obj y-height y)))
+                                                 (< (-> tgt y) (+ (-> obj root-override trans y) (-> obj y-height x)))
                                                  )
                )
            (begin
@@ -200,7 +200,7 @@
                                       )
                                     (logtest? (-> a0-12 extra perm status) (entity-perm-status subtask-complete))
                                     )
-                                (and (script-eval (the-as pair (-> obj open-test))) (-> *setting-control* user-current airlock))
+                                (and (script-eval (-> obj open-test)) (-> *setting-control* user-current airlock))
                                 )
                            )
                       s5-0
@@ -221,59 +221,59 @@
     )
   )
 
-(defmethod destination-loaded? com-airlock ((obj com-airlock) (arg0 symbol))
-  (let ((gp-1 (script-eval (the-as pair (-> obj level-name))))
-        (s4-0 #f)
+(defmethod destination-loaded? com-airlock ((obj com-airlock) (display? symbol))
+  (let ((level-list (the-as pair (script-eval (-> obj level-name))))
+        (borrow-lev-name #f)
         )
     (cond
-      ((not gp-1)
-       (if arg0
+      ((not (the-as object level-list))
+       (if display?
            'unknown
            #f
            )
        )
-      (arg0
-        (let* ((s3-0 gp-1)
-               (s2-0 (car s3-0))
+      (display?
+        (let* ((level-list-iter level-list)
+               (lev-name (car (the-as object level-list-iter)))
                )
-          (while (not (null? s3-0))
-            (let ((v1-4 (level-status *level* (the-as symbol s2-0))))
+          (while (not (null? (the-as object level-list-iter)))
+            (let ((v1-4 (level-status *level* (the-as symbol lev-name))))
               (if (not (or (= v1-4 'loaded) (= v1-4 'active)))
                   (return #f)
                   )
               )
-            (if (= s2-0 'ctywide)
-                (set! s4-0 (-> ctywide borrow-level 1))
+            (if (= lev-name 'ctywide)
+                (set! borrow-lev-name (-> ctywide borrow-level 1))
                 )
-            (set! s3-0 (cdr s3-0))
-            (set! s2-0 (car (the-as pair s3-0)))
+            (set! level-list-iter (cdr (the-as object level-list-iter)))
+            (set! lev-name (car level-list-iter))
             )
           )
-        (when s4-0
-          (let ((v1-17 (level-status *level* s4-0)))
+        (when borrow-lev-name
+          (let ((v1-17 (level-status *level* borrow-lev-name)))
             (if (not (or (= v1-17 'loaded) (= v1-17 'active)))
                 (return #f)
                 )
             )
           )
-        (if (!= arg0 'display)
+        (if (!= display? 'display)
             (return #t)
             )
-        (let ((a1-7 (car gp-1)))
-          (while (not (null? gp-1))
+        (let ((a1-7 (car (the-as object level-list))))
+          (while (not (null? (the-as object level-list)))
             (let ((v1-26 (level-get *level* (the-as symbol a1-7))))
               (if (not (and v1-26 (= (-> v1-26 status) 'active) (-> v1-26 display?)))
                   (return #f)
                   )
               )
-            (set! gp-1 (cdr gp-1))
-            (set! a1-7 (car (the-as pair gp-1)))
+            (set! level-list (cdr (the-as object level-list)))
+            (set! a1-7 (car level-list))
             )
           )
         #t
         )
       (else
-        (let* ((v1-33 gp-1)
+        (let* ((v1-33 (the-as object level-list))
                (a0-11 (car v1-33))
                )
           (while (not (null? v1-33))
@@ -412,6 +412,7 @@
       )
     )
   :enter (behavior ((arg0 symbol))
+    (#when PC_PORT (set! (-> self clock) (-> self parent 0 clock)))
     (set! (-> self visible-move?) #f)
     (none)
     )
@@ -616,6 +617,7 @@
   :virtual #t
   :event (-> (method-of-type com-airlock close) event)
   :enter (behavior ((arg0 symbol))
+    (#when PC_PORT (set! (-> self clock) *airlock-clock*))
     (set! (-> self visible-move?) #f)
     (none)
     )

@@ -19,14 +19,16 @@
 using namespace goos;
 
 Compiler::Compiler(GameVersion version,
+                   const std::optional<REPL::Config> repl_config,
                    const std::string& user_profile,
                    std::unique_ptr<REPL::Wrapper> repl)
     : m_version(version),
       m_goos(user_profile),
       m_debugger(&m_listener, &m_goos.reader, version),
       m_repl(std::move(repl)),
-      m_make(user_profile) {
+      m_make(repl_config, user_profile) {
   m_listener.add_debugger(&m_debugger);
+  m_listener.set_default_port(version);
   m_ts.add_builtin_types(m_version);
   m_global_env = std::make_unique<GlobalEnv>();
   m_none = std::make_unique<None>(m_ts.make_typespec("none"));

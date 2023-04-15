@@ -42,7 +42,7 @@
   :flag-assert         #x4c014001a8
   (:methods
     (initialize-collision (_type_) collide-shape-moving :replace 47)
-    (dummy-53 (_type_ vector) symbol :replace 53)
+    (double-lurker-method-53 (_type_ vector) symbol :replace 53)
     )
   (:states
     double-lurker-both-knocked-back
@@ -239,18 +239,18 @@
         )
 
 (defstate double-lurker-top-on-shoulders (double-lurker-top)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (let ((v1-1 (-> self fall-dest))
-             (a0-4 (-> (the-as vector (-> arg3 param 0)) quad))
+             (a0-4 (-> (the-as vector (-> event param 0)) quad))
              )
          (set! (-> v1-1 quad) a0-4)
-         (go double-lurker-top-knocked-down a0-4 (the-as vector arg1) (the-as vector arg2))
+         (go double-lurker-top-knocked-down a0-4 (the-as vector arg1) (the-as vector event-type))
          )
        )
       (('instant-death)
-       (let ((v1-3 (the-as object (-> arg3 param 0))))
+       (let ((v1-3 (the-as object (-> event param 0))))
          (quaternion-axis-angle!
            (-> self collide-info quat)
            0.0
@@ -293,20 +293,20 @@
   )
 
 (defstate double-lurker-top-knocked-down (double-lurker-top)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch)
        (send-event
-         arg0
+         proc
          'shove
-         (-> arg3 param 0)
+         (-> event param 0)
          (static-attack-info ((shove-up (meters 3)) (shove-back (meters 2))))
          )
        )
       )
     )
   :code (behavior ((arg0 object) (arg1 vector) (arg2 vector))
-    (dummy-51 self)
+    (nav-enemy-method-51 self)
     (let ((v1-3 (-> self draw shadow-ctrl)))
       (logclear! (-> v1-3 settings flags) (shadow-flags disable-draw))
       )
@@ -332,7 +332,7 @@
       )
     (logior! (-> self collide-info nav-flags) (nav-flags navf0))
     (logclear! (-> self collide-info nav-flags) (nav-flags navf1))
-    (TODO-RENAME-27 (-> self nav))
+    (nav-control-method-27 (-> self nav))
     (go double-lurker-top-resume)
     (none)
     )
@@ -345,7 +345,7 @@
       ((not *target*)
        (go-virtual nav-enemy-idle)
        )
-      ((TODO-RENAME-46 self (-> self nav-info notice-distance))
+      ((target-in-range? self (-> self nav-info notice-distance))
        (go-virtual nav-enemy-chase)
        )
       ((and (and *target* (>= (-> self enemy-info idle-distance)
@@ -396,10 +396,10 @@
     )
   )
 
-(defmethod dummy-51 double-lurker-top ((obj double-lurker-top))
+(defmethod nav-enemy-method-51 double-lurker-top ((obj double-lurker-top))
   (restore-collide-with-as (-> obj collide-info))
   (logior! (-> obj collide-info nav-flags) (nav-flags navf0))
-  (TODO-RENAME-27 (-> obj nav))
+  (nav-control-method-27 (-> obj nav))
   (none)
   )
 
@@ -473,10 +473,10 @@
   (none)
   )
 
-(defmethod TODO-RENAME-48 double-lurker-top ((obj double-lurker-top))
+(defmethod nav-enemy-method-48 double-lurker-top ((obj double-lurker-top))
   (initialize-skeleton obj *double-lurker-top-sg* '())
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
-  (TODO-RENAME-45 obj *double-lurker-top-nav-enemy-info*)
+  (init-defaults! obj *double-lurker-top-nav-enemy-info*)
   (let ((v1-5 (-> obj parent-process)))
     (set! (-> obj collide-info trans quad) (-> v1-5 0 collide-info trans quad))
     (set-vector! (-> obj collide-info scale) 1.0 1.0 1.0 1.0)
@@ -489,7 +489,7 @@
 (defbehavior double-lurker-top-init-by-other double-lurker-top ((arg0 entity) (arg1 double-lurker) (arg2 symbol) (arg3 vector))
   (initialize-collision self)
   (set! (-> self entity) (-> arg1 entity))
-  (TODO-RENAME-48 self)
+  (nav-enemy-method-48 self)
   (set! (-> self collide-info trans quad) (-> arg3 quad))
   (cond
     (arg2
@@ -507,7 +507,7 @@
       (ja :group! double-lurker-idle-ja :num! min)
       (transform-post)
       (move-to-ground (-> self collide-info) 40960.0 40960.0 #t (collide-kind background))
-      (dummy-51 self)
+      (nav-enemy-method-51 self)
       (go double-lurker-top-resume)
       )
     )
@@ -521,7 +521,7 @@
   (case arg2
     (('touch)
      (set! (-> self touch-time) (-> *display* base-frame-counter))
-     (dummy-44 self arg0 arg3)
+     (touch-handler self arg0 arg3)
      )
     (('attack)
      (when (= (-> arg0 type) target)
@@ -540,7 +540,7 @@
                        (-> arg3 param 0)
                        (static-attack-info ((shove-up (meters 3)) (shove-back (meters 2))))
                        )
-                 (increment-success-for-hint (game-text-id sunken-double-lurker-hint))
+                 (increment-success-for-hint (text-id sunken-double-lurker-hint))
                  (go double-lurker-buddy-was-hit)
                  (return #f)
                  v0-0
@@ -561,7 +561,7 @@
                              )
                            )
                   (level-hint-spawn
-                    (game-text-id sunken-double-lurker-hint)
+                    (text-id sunken-double-lurker-hint)
                     "sksp0127"
                     (the-as entity #f)
                     *entity-pool*
@@ -577,7 +577,7 @@
           )
          (else
            (nav-enemy-set-hit-from-direction arg0)
-           (dummy-43 self arg0 arg3)
+           (attack-handler self arg0 arg3)
            )
          )
        )
@@ -603,7 +603,7 @@
       ((not *target*)
        (go-virtual nav-enemy-idle)
        )
-      ((TODO-RENAME-46 self (-> self nav-info notice-distance))
+      ((target-in-range? self (-> self nav-info notice-distance))
        (go-virtual nav-enemy-chase)
        )
       ((and (and *target* (>= (-> self enemy-info idle-distance)
@@ -647,7 +647,7 @@
   :virtual #t
   :event double-lurker-default-event-handler
   :enter (behavior ()
-    (start-hint-timer (game-text-id sunken-double-lurker-hint))
+    (start-hint-timer (text-id sunken-double-lurker-hint))
     (let ((t9-1 (-> (method-of-type nav-enemy nav-enemy-notice) enter)))
       (if t9-1
           (t9-1)
@@ -725,83 +725,15 @@
             (.svf (&-> v1-7 quad) vf1)
             )
           (let ((gp-0 #f))
-            (TODO-RENAME-28
-              (-> self nav)
-              (collide-kind
-                background
-                cak-1
-                cak-2
-                cak-3
-                target
-                water
-                powerup
-                crate
-                enemy
-                wall-object
-                projectile
-                ground-object
-                target-attack
-                mother-spider
-                cak-14
-                blue-eco-suck
-                unknown-16
-                unknown-17
-                unknown-18
-                unknown-19
-                unknown-20
-                unknown-21
-                unknown-22
-                unknown-23
-                unknown-24
-                unknown-25
-                unknown-26
-                unknown-27
-                unknown-28
-                unknown-29
-                unknown-30
-                unknown-31
-                unknown-32
-                unknown-33
-                unknown-34
-                unknown-35
-                unknown-36
-                unknown-37
-                unknown-38
-                unknown-39
-                unknown-40
-                unknown-41
-                unknown-42
-                unknown-43
-                unknown-44
-                unknown-45
-                unknown-46
-                unknown-47
-                unknown-48
-                unknown-49
-                unknown-50
-                unknown-51
-                unknown-52
-                unknown-53
-                unknown-54
-                unknown-55
-                unknown-56
-                unknown-57
-                unknown-58
-                unknown-59
-                unknown-60
-                unknown-61
-                unknown-62
-                unknown-63
-                )
-              )
+            (nav-control-method-28 (-> self nav) (the-as collide-kind -1))
             (let ((a2-1 (new 'stack-no-clear 'check-vector-collision-with-nav-spheres-info)))
-              (if (>= (dummy-23 (-> self nav) (-> self nav travel) a2-1) 0.0)
+              (if (>= (nav-control-method-23 (-> self nav) (-> self nav travel) a2-1) 0.0)
                   (set! gp-0 #t)
                   )
               )
             (when (not gp-0)
               (let ((s5-0 (new 'stack 'clip-travel-vector-to-mesh-return-info)))
-                (dummy-24 (-> self nav) (* 1.2 f30-0) s5-0)
+                (nav-control-method-24 (-> self nav) (* 1.2 f30-0) s5-0)
                 (if (-> s5-0 found-boundary)
                     (set! gp-0 #t)
                     )
@@ -824,7 +756,7 @@
         (-> self nav-info hover-if-no-ground)
         #f
         )
-      (TODO-RENAME-27 (-> self nav))
+      (nav-control-method-27 (-> self nav))
       (none)
       )
     )
@@ -841,78 +773,12 @@
   :post (the-as (function none :behavior double-lurker) nav-enemy-simple-post)
   )
 
-(defmethod dummy-52 double-lurker ((obj double-lurker) (arg0 vector))
-  (TODO-RENAME-28 (-> obj nav) (collide-kind
-                                 background
-                                 cak-1
-                                 cak-2
-                                 cak-3
-                                 target
-                                 water
-                                 powerup
-                                 crate
-                                 enemy
-                                 wall-object
-                                 projectile
-                                 ground-object
-                                 target-attack
-                                 mother-spider
-                                 cak-14
-                                 blue-eco-suck
-                                 unknown-16
-                                 unknown-17
-                                 unknown-18
-                                 unknown-19
-                                 unknown-20
-                                 unknown-21
-                                 unknown-22
-                                 unknown-23
-                                 unknown-24
-                                 unknown-25
-                                 unknown-26
-                                 unknown-27
-                                 unknown-28
-                                 unknown-29
-                                 unknown-30
-                                 unknown-31
-                                 unknown-32
-                                 unknown-33
-                                 unknown-34
-                                 unknown-35
-                                 unknown-36
-                                 unknown-37
-                                 unknown-38
-                                 unknown-39
-                                 unknown-40
-                                 unknown-41
-                                 unknown-42
-                                 unknown-43
-                                 unknown-44
-                                 unknown-45
-                                 unknown-46
-                                 unknown-47
-                                 unknown-48
-                                 unknown-49
-                                 unknown-50
-                                 unknown-51
-                                 unknown-52
-                                 unknown-53
-                                 unknown-54
-                                 unknown-55
-                                 unknown-56
-                                 unknown-57
-                                 unknown-58
-                                 unknown-59
-                                 unknown-60
-                                 unknown-61
-                                 unknown-62
-                                 unknown-63
-                                 )
-                  )
+(defmethod nav-enemy-method-52 double-lurker ((obj double-lurker) (arg0 vector))
+  (nav-control-method-28 (-> obj nav) (the-as collide-kind -1))
   (let ((a1-2 (new 'stack-no-clear 'vector)))
     (vector-float*! a1-2 (-> obj hit-from-dir) 22937.602)
     (vector+! a1-2 a1-2 (-> obj collide-info trans))
-    (dummy-13 (-> obj nav) a1-2 (-> obj hit-from-dir))
+    (nav-control-method-13 (-> obj nav) a1-2 (-> obj hit-from-dir))
     )
   (when (>= (vector-xz-length (-> obj nav travel)) 18841.602)
     (vector+! arg0 (-> obj collide-info trans) (-> obj nav travel))
@@ -949,13 +815,13 @@
       (set! (-> v1-2 user-int8 2) 1)
       )
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (if (dummy-52 self gp-0)
+      (if (nav-enemy-method-52 self gp-0)
           (send-event (handle->process (-> self buddy-handle)) 'trigger gp-0)
           (send-event (handle->process (-> self buddy-handle)) 'instant-death (-> self hit-from-dir))
           )
       )
-    (dummy-51 self)
-    (TODO-RENAME-49 self *double-lurker-nav-enemy-info*)
+    (nav-enemy-method-51 self)
+    (init-jm! self *double-lurker-nav-enemy-info*)
     (go double-lurker-break-apart)
     (none)
     )
@@ -1006,83 +872,15 @@
             (.svf (&-> v1-7 quad) vf1)
             )
           (let ((gp-0 #f))
-            (TODO-RENAME-28
-              (-> self nav)
-              (collide-kind
-                background
-                cak-1
-                cak-2
-                cak-3
-                target
-                water
-                powerup
-                crate
-                enemy
-                wall-object
-                projectile
-                ground-object
-                target-attack
-                mother-spider
-                cak-14
-                blue-eco-suck
-                unknown-16
-                unknown-17
-                unknown-18
-                unknown-19
-                unknown-20
-                unknown-21
-                unknown-22
-                unknown-23
-                unknown-24
-                unknown-25
-                unknown-26
-                unknown-27
-                unknown-28
-                unknown-29
-                unknown-30
-                unknown-31
-                unknown-32
-                unknown-33
-                unknown-34
-                unknown-35
-                unknown-36
-                unknown-37
-                unknown-38
-                unknown-39
-                unknown-40
-                unknown-41
-                unknown-42
-                unknown-43
-                unknown-44
-                unknown-45
-                unknown-46
-                unknown-47
-                unknown-48
-                unknown-49
-                unknown-50
-                unknown-51
-                unknown-52
-                unknown-53
-                unknown-54
-                unknown-55
-                unknown-56
-                unknown-57
-                unknown-58
-                unknown-59
-                unknown-60
-                unknown-61
-                unknown-62
-                unknown-63
-                )
-              )
+            (nav-control-method-28 (-> self nav) (the-as collide-kind -1))
             (let ((a2-1 (new 'stack-no-clear 'check-vector-collision-with-nav-spheres-info)))
-              (if (>= (dummy-23 (-> self nav) (-> self nav travel) a2-1) 0.0)
+              (if (>= (nav-control-method-23 (-> self nav) (-> self nav travel) a2-1) 0.0)
                   (set! gp-0 #t)
                   )
               )
             (when (not gp-0)
               (let ((s5-0 (new 'stack 'clip-travel-vector-to-mesh-return-info)))
-                (dummy-24 (-> self nav) (* 1.2 f30-0) s5-0)
+                (nav-control-method-24 (-> self nav) (* 1.2 f30-0) s5-0)
                 (if (-> s5-0 found-boundary)
                     (set! gp-0 #t)
                     )
@@ -1105,7 +903,7 @@
         (-> self nav-info hover-if-no-ground)
         #f
         )
-      (TODO-RENAME-27 (-> self nav))
+      (nav-control-method-27 (-> self nav))
       (none)
       )
     )
@@ -1133,14 +931,14 @@
     )
   )
 
-(defmethod dummy-53 double-lurker ((obj double-lurker) (arg0 vector))
+(defmethod double-lurker-method-53 double-lurker ((obj double-lurker) (arg0 vector))
   (let* ((s3-0 (-> obj path curve num-cverts))
          (s4-0 (rand-vu-int-count s3-0))
          )
     (while (nonzero? s3-0)
       (+! s3-0 -1)
       (eval-path-curve-div! (-> obj path) arg0 (the float s4-0) 'interp)
-      (if (not (TODO-RENAME-50 obj arg0))
+      (if (not (nav-enemy-method-50 obj arg0))
           (return #t)
           )
       )
@@ -1241,7 +1039,7 @@
     )
   )
 
-(defmethod dummy-51 double-lurker ((obj double-lurker))
+(defmethod nav-enemy-method-51 double-lurker ((obj double-lurker))
   (let ((v1-1 (-> obj collide-info root-prim)))
     (let ((a0-1 0))
       (dotimes (a1-0 3)
@@ -1266,7 +1064,7 @@
   (none)
   )
 
-(defmethod TODO-RENAME-48 double-lurker ((obj double-lurker))
+(defmethod nav-enemy-method-48 double-lurker ((obj double-lurker))
   (set! (-> obj buddy-handle) (the-as handle #f))
   (process-drawable-from-entity! obj (-> obj entity))
   (set! (-> obj align) (new 'process 'align-control obj))
@@ -1288,7 +1086,7 @@
       (set! (-> obj buddy-on-shoulders?) #f)
       )
     )
-  (TODO-RENAME-45 obj *double-lurker-when-both-nav-enemy-info*)
+  (init-defaults! obj *double-lurker-when-both-nav-enemy-info*)
   (set! (-> obj neck up) (the-as uint 1))
   (set! (-> obj neck nose) (the-as uint 2))
   (set! (-> obj neck ear) (the-as uint 0))
@@ -1296,7 +1094,7 @@
   (when (not (-> obj buddy-dead?))
     (let ((s5-0 (new 'stack-no-clear 'vector)))
       (when (not (-> obj buddy-on-shoulders?))
-        (when (not (dummy-53 obj s5-0))
+        (when (not (double-lurker-method-53 obj s5-0))
           (set! (-> obj buddy-on-shoulders?) #t)
           (let ((v1-29 (-> obj entity extra perm)))
             (logior! (-> v1-29 status) (entity-perm-status user-set-from-cstage))
@@ -1316,22 +1114,18 @@
       )
     )
   (when (and (not (-> obj dead?)) (not (-> obj buddy-on-shoulders?)))
-    (dummy-51 obj)
-    (TODO-RENAME-49 obj *double-lurker-nav-enemy-info*)
+    (nav-enemy-method-51 obj)
+    (init-jm! obj *double-lurker-nav-enemy-info*)
     )
   (none)
   )
 
 (defmethod init-from-entity! double-lurker ((obj double-lurker) (arg0 entity-actor))
   (initialize-collision obj)
-  (TODO-RENAME-48 obj)
+  (nav-enemy-method-48 obj)
   (if (-> obj dead?)
       (go double-lurker-waiting-to-die)
       (go (method-of-object obj nav-enemy-idle))
       )
   (none)
   )
-
-
-
-

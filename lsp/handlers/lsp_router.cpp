@@ -64,7 +64,7 @@ std::optional<std::vector<std::string>> LSPRouter::route_message(
     const MessageBuffer& message_buffer,
     AppState& appstate) {
   const json& body = message_buffer.body();
-  auto& method = body["method"];
+  const auto method = body.at("method").get<std::string>();
 
   // If the workspace has not yet been initialized but the client sends a
   // message that doesn't have method "initialize" then we'll return an error
@@ -76,7 +76,7 @@ std::optional<std::vector<std::string>> LSPRouter::route_message(
   }
 
   // Exit early if we can't handle the route
-  if (m_routes.count(method) == 0) {
+  if (m_routes.find(method) == m_routes.end()) {
     lg::warn("Method not supported '{}'", method);
     auto error = {make_response(
         error_resp(ErrorCodes::MethodNotFound, fmt::format("Method '{}' not supported", method)))};
@@ -84,7 +84,7 @@ std::optional<std::vector<std::string>> LSPRouter::route_message(
   }
 
   try {
-    auto route = m_routes[method];
+    auto& route = m_routes.at(method);
     std::vector<json> resp_bodies;
     // Handle the request/notificiation
     switch (route.m_route_type) {

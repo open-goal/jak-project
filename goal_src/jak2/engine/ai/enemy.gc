@@ -456,7 +456,7 @@
                                 (a3-1 (+ (-> v1-13 attack-id) 1))
                                 )
                            (set! (-> v1-13 attack-id) a3-1)
-                           (if (t9-2 a0-5 a1-3 (the-as uint a2-3) a3-1)
+                           (if (t9-2 a0-5 a1-3 a2-3 a3-1)
                                (return 0)
                                )
                            )
@@ -633,7 +633,7 @@
     )
   )
 
-(defmethod enemy-method-104 enemy ((obj enemy) (arg0 process) (arg1 uint) (arg2 uint))
+(defmethod enemy-method-104 enemy ((obj enemy) (arg0 process) (arg1 touching-shapes-entry) (arg2 uint))
   (let ((v1-1 (-> obj enemy-info attack-damage)))
     (if (and (logtest? (-> *game-info* secrets) (game-secrets hero-mode)) (= v1-1 1))
         (set! v1-1 2)
@@ -642,7 +642,7 @@
       (set! (-> a1-2 from) (process->ppointer self))
       (set! (-> a1-2 num-params) 2)
       (set! (-> a1-2 message) 'attack)
-      (set! (-> a1-2 param 0) arg1)
+      (set! (-> a1-2 param 0) (the-as uint arg1))
       (let ((a0-10 (new 'static 'attack-info :mask (attack-info-mask mode shove-back shove-up id damage knock))))
         (set! (-> a0-10 id) arg2)
         (set! (-> a0-10 shove-back) (-> obj enemy-info attack-shove-back))
@@ -1621,9 +1621,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch none vs object.
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 17]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 28]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 37]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 89]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 105]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 202]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 211]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 274]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 346]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 407]
@@ -1658,7 +1660,7 @@ This commonly includes things such as:
          (and (not (logtest? (enemy-flag multi-focus) (-> obj enemy-flags))) (nonzero? (-> obj hit-points)))
          )
         ((= arg2 'touch)
-         (enemy-method-75 obj arg0 (the-as touching-shapes-entry arg3))
+         (enemy-method-75 obj arg0 arg3)
          )
         ((= arg2 'touched)
          (when (logtest? (-> obj enemy-flags) (enemy-flag attackable-backup))
@@ -1753,7 +1755,7 @@ This commonly includes things such as:
                 )
                (else
                  (set! (-> obj incoming attack-id) (-> (the-as attack-info s2-0) id))
-                 (enemy-method-75 obj arg0 (the-as touching-shapes-entry arg3))
+                 (enemy-method-75 obj arg0 arg3)
                  )
                )
              )
@@ -2050,28 +2052,27 @@ This commonly includes things such as:
   (find-offending-process-focusable arg0 arg1)
   )
 
-;; WARN: Return type mismatch object vs none.
-(defmethod enemy-method-75 enemy ((obj enemy) (arg0 process) (arg1 touching-shapes-entry))
-  (let* ((s4-0 (-> arg1 handle1))
+(defmethod enemy-method-75 enemy ((obj enemy) (arg0 process) (arg1 event-message-block))
+  (let* ((touch-entry (the-as touching-shapes-entry (-> arg1 param 0)))
          (s2-0 arg0)
          (s3-0 (if (type? s2-0 process-focusable)
                    (the-as process-focusable s2-0)
                    )
                )
          )
-    (when (and s4-0 s3-0)
+    (when (and (the-as uint touch-entry) s3-0)
       (cond
         ((and (focus-test? obj dangerous)
               (and s3-0 (not (logtest? (-> s3-0 focus-status) (focus-status disable dead ignore grabbed))))
               ((method-of-type touching-shapes-entry prims-touching-action?)
-               (the-as touching-shapes-entry s4-0)
+               touch-entry
                (-> obj root-override2)
                (collide-action deadly)
                (collide-action)
                )
               )
          (let ((a3-2 (if ((method-of-type touching-shapes-entry prims-touching-action?)
-                          (the-as touching-shapes-entry s4-0)
+                          touch-entry
                           (-> obj root-override2)
                           (collide-action persistent-attack)
                           (collide-action)
@@ -2081,25 +2082,24 @@ This commonly includes things such as:
                          )
                      )
                )
-           (enemy-method-104 obj arg0 (the-as uint s4-0) a3-2)
+           (enemy-method-104 obj arg0 touch-entry a3-2)
            )
          )
         ((and ((method-of-type touching-shapes-entry prims-touching-action?)
-               (the-as touching-shapes-entry s4-0)
+               touch-entry
                (-> obj root-override2)
                (collide-action no-standon)
                (collide-action)
                )
               (not (logtest? (-> obj root-override2 penetrated-by) (-> s3-0 root-override penetrate-using)))
               )
-         (if (send-shoves (-> obj root-override2) arg0 (the-as touching-shapes-entry s4-0) 0.7 6144.0 16384.0)
+         (if (send-shoves (-> obj root-override2) arg0 touch-entry 0.7 6144.0 16384.0)
              (send-event obj 'bouncing-off arg0)
              )
          )
         )
       )
     )
-  (none)
   )
 
 (defmethod enemy-method-76 enemy ((obj enemy) (arg0 process) (arg1 event-message-block))
@@ -2129,7 +2129,7 @@ This commonly includes things such as:
                           )
                       )
                 )
-            (enemy-method-104 obj arg0 s4-0 a3-2)
+            (enemy-method-104 obj arg0 (the-as touching-shapes-entry s4-0) a3-2)
             )
           )
         )

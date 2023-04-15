@@ -5,52 +5,53 @@
 ;; name in dgo: stats-h
 ;; dgos: GAME, ENGINE
 
-;; definition of type tr-stat
+;; DECOMP BEGINS
+
 (deftype tr-stat (structure)
-  ((groups    uint16  :offset-assert 0)
-   (fragments uint16  :offset-assert 2)
-   (tris      uint32  :offset-assert 4)
-   (dverts    uint32  :offset-assert 8)
-   (instances uint16  :offset-assert 12)
-   (pad       uint16  :offset-assert 14)
+  ((groups    uint16  :offset-assert   0)
+   (fragments uint16  :offset-assert   2)
+   (tris      uint32  :offset-assert   4)
+   (dverts    uint32  :offset-assert   8)
+   (instances uint16  :offset-assert  12)
+   (pad       uint16  :offset-assert  14)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
 
-;; definition of type merc-global-stats
+
 (deftype merc-global-stats (structure)
-  ((merc      tr-stat :inline :offset-assert 0)
-   (mercneric tr-stat :inline :offset-assert 16)
+  ((merc      tr-stat :inline :offset-assert   0)
+   (mercneric tr-stat :inline :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
 
-;; definition of type perf-stat
+
 (deftype perf-stat (structure)
-  ((frame-number   uint32  :offset-assert 0)
-   (count          uint32  :offset-assert 4)
-   (cycles         uint32  :offset-assert 8)
-   (instructions   uint32  :offset-assert 12)
-   (icache         uint32  :offset-assert 16)
-   (dcache         uint32  :offset-assert 20)
-   (select         uint32  :offset-assert 24)
-   (ctrl           uint32  :offset-assert 28)
-   (accum0         uint32  :offset-assert 32)
-   (accum1         uint32  :offset-assert 36)
-   (to-vu0-waits   uint32  :offset-assert 40)
-   (to-spr-waits   uint32  :offset-assert 44)
-   (from-spr-waits uint32  :offset-assert 48)
+  ((frame-number   uint32  :offset-assert   0)
+   (count          uint32  :offset-assert   4)
+   (cycles         uint32  :offset-assert   8)
+   (instructions   uint32  :offset-assert  12)
+   (icache         uint32  :offset-assert  16)
+   (dcache         uint32  :offset-assert  20)
+   (select         uint32  :offset-assert  24)
+   (ctrl           uint32  :offset-assert  28)
+   (accum0         uint32  :offset-assert  32)
+   (accum1         uint32  :offset-assert  36)
+   (to-vu0-waits   uint32  :offset-assert  40)
+   (to-spr-waits   uint32  :offset-assert  44)
+   (from-spr-waits uint32  :offset-assert  48)
    )
   :pack-me
   :method-count-assert 14
   :size-assert         #x34
   :flag-assert         #xe00000034
   (:methods
-    (dummy-9 (_type_) none 9)
+    (perf-stat-method-9 (_type_) none 9)
     (print-to-stream (_type_ string basic) none 10)
     (reset! (_type_) none 11)
     (read! (_type_) none 12)
@@ -58,15 +59,15 @@
     )
   )
 
-;; definition of type perf-stat-array
+
 (deftype perf-stat-array (inline-array-class)
-  ((data perf-stat :inline :dynamic :offset-assert  16))
+  ((data perf-stat :inline :dynamic :offset-assert  16)
+   )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
 
-;; failed to figure out what this is:
 (set! (-> perf-stat-array heap-base) (the-as uint 52))
 
 (define *pc-perf-stat-counter* (the-as uint 0))
@@ -120,14 +121,14 @@
 
 (defmethod update-wait-stats perf-stat ((obj perf-stat) (arg0 uint) (arg1 uint) (arg2 uint))
   (when (nonzero? (-> obj ctrl))
-   (set! (-> obj to-vu0-waits) (+ (-> obj to-vu0-waits) arg0))
-   (set! (-> obj to-spr-waits) (+ (-> obj to-spr-waits) arg1))
-   (set! (-> obj from-spr-waits) (+ (-> obj from-spr-waits) arg2))
-   )
+    (+! (-> obj to-vu0-waits) arg0)
+    (+! (-> obj to-spr-waits) arg1)
+    (+! (-> obj from-spr-waits) arg2)
+    )
+  0
   (none)
   )
 
-;; failed to figure out what this is:
 (when (not *debug-segment*)
   (set! (-> perf-stat method-table 11) nothing)
   (set! (-> perf-stat method-table 12) nothing)

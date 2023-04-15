@@ -539,7 +539,7 @@
 ;; WARN: Return type mismatch entity-actor vs none.
 (defmethod debug-print entity-actor ((obj entity-actor) (arg0 symbol) (arg1 type))
   (let ((s4-0 (-> obj etype)))
-    (when (or (not arg1) (and s4-0 (valid? s4-0 type #f #f 0) (type-type? s4-0 arg1)))
+    (when (or (not arg1) (and s4-0 (valid? s4-0 type (the-as string #f) #f 0) (type-type? s4-0 arg1)))
       (format #t "~5D  #x~8X  ~-26S" (-> obj extra vis-id) obj (res-lump-struct obj 'name structure))
       (let ((t9-4 format)
             (a0-5 #t)
@@ -1605,7 +1605,7 @@
        )
       ((begin
          (set! (-> s4-0 type) s5-0)
-         (and s5-0 (valid? s5-0 type #f #f 0) (valid? (method-of-object s4-0 init-from-entity!) function #f #f 0))
+         (and s5-0 (valid? s5-0 type (the-as string #f) #f 0) (valid? (method-of-object s4-0 init-from-entity!) function (the-as string #f) #f 0))
          )
        (init-entity s4-0 obj (the-as process s5-0))
        )
@@ -2241,6 +2241,14 @@
                               (not (logtest? (-> sv-48 perm status) (entity-perm-status bit-9 bit-10)))
                               (not (logtest? (-> sv-48 kill-mask) sv-32))
                               (or (-> s4-1 vis-info 0) (< (vector-vector-distance (-> sv-48 trans) sv-16) (-> sv-48 vis-dist)))
+                              ;; PC port note : added this extra check to fix level types being used after deloaded because of bad entity placement
+                              (#if PC_PORT
+                                  (or (not (type-type? (-> sv-48 entity type) entity-actor)) (and (valid? (-> (the-as entity-actor (-> sv-48 entity)) etype) type "entity-type-check etype" #f *stdcon*)
+                                                                                                  (valid? (-> (the-as entity-actor (-> sv-48 entity)) etype symbol) symbol "entity-type-check symbol" #f *stdcon*)
+                                                                                                  (valid? (-> (the-as entity-actor (-> sv-48 entity)) etype symbol value) type "entity-type-check value" #f *stdcon*)
+                                                                                                  (= (-> (the-as entity-actor (-> sv-48 entity)) etype) (-> (the-as entity-actor (-> sv-48 entity)) etype symbol value))
+                                                                                                  ))
+                                  #f)
                               )
                          (when (not (or (-> sv-48 process) (logtest? (-> sv-48 perm status) (entity-perm-status bit-0 dead)) s0-0))
                            (birth! (-> sv-48 entity))

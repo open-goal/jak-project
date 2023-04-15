@@ -15,6 +15,7 @@
 
 extern u8* g_ee_main_mem;
 extern GameVersion g_game_version;
+extern int g_server_port;
 
 RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const char** argv);
 

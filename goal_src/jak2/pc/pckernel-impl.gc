@@ -22,9 +22,16 @@
 ;; The Jak 2 version of the pc-settings object.
 (deftype pc-settings-jak2 (pc-settings)
   (
+   (fast-airlock? symbol)
+   (fast-elevator? symbol)
+
    ;; debug
    (jetboard-trick-text? symbol) ;; enable rendering jetboard trick combo during minigame
 	 )
+  
+  (:methods
+    (eligible-for-fast-elevator? (_type_ process) symbol)
+    )
   )
 
 (define *pc-settings* (the pc-settings-jak2 #f))
@@ -48,11 +55,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+(defmethod reset-ps2 pc-settings-jak2 ((obj pc-settings-jak2))
+  "Set the default ps2 settings"
+
+  ((method-of-type pc-settings reset-ps2) obj)
+  (set! (-> obj ps2-parts?) #t)
+  (none))
+
 (defmethod reset-misc pc-settings-jak2 ((obj pc-settings-jak2))
   "Set the default misc settings"
 
   ((method-of-type pc-settings reset-misc) obj)
   (set! (-> obj jetboard-trick-text?) #t)
+
+  (set! (-> obj fast-airlock?) #t)
+  (set! (-> obj fast-elevator?) #t)
   (none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

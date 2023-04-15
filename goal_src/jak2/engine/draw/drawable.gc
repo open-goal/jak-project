@@ -5,6 +5,8 @@
 ;; name in dgo: drawable
 ;; dgos: ENGINE, GAME
 
+(define-extern draw-vortex (function none))
+
 ;; DECOMP BEGINS
 
 (defmacro spr-work ()
@@ -1398,7 +1400,7 @@
   (local-vars (a0-96 int) (a0-98 int))
   (with-pp
     (when *slow-frame-rate*
-      (dotimes (v1-2 #xc35000)
+      (dotimes (v1-2 12800000)
         (nop!)
         (nop!)
         (nop!)
@@ -1458,7 +1460,7 @@
     ;; draw the sky
     (with-profiler 'sky *profile-sky-color*
       (if (-> *sky-work* draw-vortex)
-          (format 0 "no vortex.~%");(draw-vortex)
+          (draw-vortex)
           (draw *sky-work*)
           )
       (flush-cache 0)
@@ -1743,6 +1745,11 @@
   (tick! (-> arg0 bg-clock))
   (set! (-> arg0 bg-clock frame-counter) (the-as time-frame (mod (-> arg0 bg-clock frame-counter) #x69780)))
   (tick! (-> arg0 part-clock))
+  (with-pc
+    (if (-> *pc-settings* fast-airlock?)
+        (update-rates! *airlock-clock* (* *airlock-speed* (-> arg0 entity-clock clock-ratio)))
+        (update-rates! *airlock-clock* (-> arg0 entity-clock clock-ratio)))
+    (tick! *airlock-clock*))
 
   ; (when (and (nonzero? *screen-shot-work*) (!= (-> *screen-shot-work* count) -1))
   ;   (let ((v1-43 (-> *screen-shot-work* size)))

@@ -37,7 +37,10 @@ class Sprite3 : public BucketRenderer {
   void distort_draw_instanced(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void distort_draw_common(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void distort_setup_framebuffer_dims(SharedRenderState* render_state);
-  void handle_sprite_frame_setup(DmaFollower& dma, GameVersion version);
+  void handle_sprite_frame_setup(DmaFollower& dma,
+                                 GameVersion version,
+                                 SharedRenderState* render_state,
+                                 ScopedProfilerNode& prof);
   void render_3d(DmaFollower& dma);
   void render_2d_group0(DmaFollower& dma,
                         SharedRenderState* render_state,
@@ -163,6 +166,7 @@ class Sprite3 : public BucketRenderer {
 
   bool m_enable_distort_instancing = true;
   bool m_enable_culling = true;
+  bool m_enable_glow = true;
 
   bool m_2d_enable = true;
   bool m_3d_enable = true;

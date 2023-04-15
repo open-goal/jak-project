@@ -119,7 +119,7 @@
       (eval-path-curve-div! (-> self path) s3-0 f30-0 'interp)
       (+! (-> s3-0 y) (-> self align align trans y))
       (move-to-point! (-> self root-override) s3-0)
-      (TODO-RENAME-12 (-> self path) s3-0 f30-0)
+      (path-control-method-12 (-> self path) s3-0 f30-0)
       )
     (if arg4
         (set-heading-vec-clear-roll-pitch! (-> self root-override) s3-0)
@@ -182,27 +182,25 @@
   )
 
 (defstate pelican-circle (pelican)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as
-        object
-        (cond
-          ((= v1-0 'dive)
-           (let ((v0-0 (the-as structure #t)))
-             (set! (-> self state-object) (the-as symbol v0-0))
-             v0-0
-             )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('dive)
+         (let ((v0-0 (the-as structure #t)))
+           (set! (-> self state-object) (the-as symbol v0-0))
+           v0-0
            )
-          ((= v1-0 'fuel-cell)
-           (handle->process (-> self fuel-cell))
+         )
+        (('fuel-cell)
+         (handle->process (-> self fuel-cell))
+         )
+        (('position)
+         (set! (-> self path-pos) (the-as float (-> event param 0)))
+         (let ((a1-3 (path-control-method-12 (-> self path) (new 'stack-no-clear 'vector) (-> self path-pos))))
+           (set-heading-vec! (-> self root-override) a1-3)
            )
-          ((= v1-0 'position)
-           (set! (-> self path-pos) (the-as float (-> arg3 param 0)))
-           (let ((a1-3 (TODO-RENAME-12 (-> self path) (new 'stack-no-clear 'vector) (-> self path-pos))))
-             (set-heading-vec! (-> self root-override) a1-3)
-             )
-           )
-          )
+         )
         )
       )
     )
@@ -320,18 +318,16 @@
   )
 
 (defstate pelican-dive (pelican)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (cond
-                       ((= v1-0 'got-cell?)
-                        (-> self state-object)
-                        )
-                       ((= v1-0 'fuel-cell)
-                        (handle->process (-> self fuel-cell))
-                        )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('got-cell?)
+                      (-> self state-object)
+                      )
+                     (('fuel-cell)
+                      (handle->process (-> self fuel-cell))
+                      )
+                     )
+            )
     )
   :enter (behavior ((arg0 path-control) (arg1 curve-control) (arg2 time-frame))
     (init! (-> self query) (the-as string #f) 40 150 25 #t (the-as string #f))
@@ -354,7 +350,7 @@
     (set! (-> self path-max) (the float (+ (-> self path curve num-cverts) -1)))
     (set! (-> self path-speed) (/ (* 300.0 (-> self path-max)) (the float (-> *PELICAN-bank* dive-time))))
     (let ((gp-1 (new 'stack-no-clear 'vector)))
-      (TODO-RENAME-12 (-> self path) gp-1 (-> self path-pos))
+      (path-control-method-12 (-> self path) gp-1 (-> self path-pos))
       (set-heading-vec! (-> self root-override) gp-1)
       )
     (set! (-> self draw force-lod) 0)
@@ -383,7 +379,7 @@
       (ja-blend-eval)
       (let ((gp-1 (handle->process (-> self fuel-cell))))
         (when (and gp-1 (>= (-> self path-pos) 3.8) (not (send-event gp-1 'query 'grab)))
-          (level-hint-spawn (game-text-id zero) (the-as string #f) (-> self entity) *entity-pool* (game-task none))
+          (level-hint-spawn (text-id zero) (the-as string #f) (-> self entity) *entity-pool* (game-task none))
           (send-event gp-1 'grab self)
           (send-event gp-1 'draw #f)
           (send-event gp-1 'event-hook #f)
@@ -437,54 +433,53 @@
   )
 
 (defstate pelican-wait-at-nest (pelican)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as
-        object
-        (cond
-          ((= v1-0 'attack)
-           (case (-> arg3 param 1)
-             (('explode)
-              (let ((a0-2 (handle->process (-> self fuel-cell))))
-                (if a0-2
-                    (send-event a0-2 'trans (-> self root-override trans))
-                    )
-                )
-              (go pelican-explode #f)
-              #f
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('attack)
+         (case (-> event param 1)
+           (('explode)
+            (let ((a0-2 (handle->process (-> self fuel-cell))))
+              (if a0-2
+                  (send-event a0-2 'trans (-> self root-override trans))
+                  )
               )
-             (else
-               (let* ((gp-0 arg0)
-                      (v1-13 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable))
-                                 gp-0
-                                 )
-                             )
-                      (f30-0 8192.0)
-                      (gp-1 (-> self root-override))
-                      (s4-0 (-> (the-as process-drawable v1-13) root trans))
-                      )
-                 (if (< f30-0
-                        (fabs
-                          (deg-diff (y-angle gp-1) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s4-0 (-> gp-1 trans))))
-                          )
+            (go pelican-explode #f)
+            #f
+            )
+           (else
+             (let* ((gp-0 proc)
+                    (v1-13 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable))
+                               gp-0
+                               )
+                           )
+                    (f30-0 8192.0)
+                    (gp-1 (-> self root-override))
+                    (s4-0 (-> (the-as process-drawable v1-13) root trans))
+                    )
+               (if (< f30-0
+                      (fabs
+                        (deg-diff (y-angle gp-1) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s4-0 (-> gp-1 trans))))
                         )
-                     (go pelican-spit)
-                     )
-                 )
+                      )
+                   (go pelican-spit)
+                   )
                )
              )
            )
-          ((= v1-0 'touch)
-           (send-shove-back
-             (-> self root-override)
-             arg0
-             (the-as touching-shapes-entry (-> arg3 param 0))
-             0.7
-             6144.0
-             16384.0
-             )
-           )
-          )
+         )
+        (('touch)
+         (the-as object (send-shove-back
+                          (-> self root-override)
+                          proc
+                          (the-as touching-shapes-entry (-> event param 0))
+                          0.7
+                          6144.0
+                          16384.0
+                          )
+                 )
+         )
         )
       )
     )
@@ -500,7 +495,7 @@
                                        )
             )
       )
-    (TODO-RENAME-12 (-> self path) (-> self path-vector) (-> self path-pos))
+    (path-control-method-12 (-> self path) (-> self path-vector) (-> self path-pos))
     (when arg0
       (move-to-point! (-> self root-override) (-> self state-vector))
       (set-heading-vec! (-> self root-override) (-> self path-vector))
@@ -657,7 +652,7 @@
           (suspend)
           )
         (level-hint-spawn
-          (game-text-id beach-pelican-quick-get-cell)
+          (text-id beach-pelican-quick-get-cell)
           "sksp0027"
           (the-as entity #f)
           *entity-pool*
@@ -915,11 +910,10 @@
                    )
                  )
            )
-       (set! (-> obj fuel-cell) (the-as handle (if s5-2
-                                                   (ppointer->handle s5-2)
-                                                   (the-as int #f)
-                                                   )
-                                        )
+       (set! (-> obj fuel-cell) (if s5-2
+                                    (ppointer->handle s5-2)
+                                    (the-as handle #f)
+                                    )
              )
        (when s5-2
          (send-event
@@ -942,7 +936,3 @@
     )
   (none)
   )
-
-
-
-

@@ -10,7 +10,7 @@
   "darkjak-highres-ag.go"
   "oracle-roof-banner-b-ag.go"
   "oracle-roof-banner-ag.go"
-  "door-ag.go"
+  "oracle-door-ag.go"
   "oracle-wall-banner-ag.go"
   "particleman-ag.go"
   "oracle.go"

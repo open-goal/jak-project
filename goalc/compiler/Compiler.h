@@ -40,6 +40,7 @@ struct CompilationOptions {
 class Compiler {
  public:
   Compiler(GameVersion version,
+           const std::optional<REPL::Config> repl_config = {},
            const std::string& user_profile = "#f",
            std::unique_ptr<REPL::Wrapper> repl = nullptr);
   ~Compiler();

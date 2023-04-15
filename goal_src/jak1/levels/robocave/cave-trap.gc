@@ -22,7 +22,7 @@
   :size-assert         #xe0
   :flag-assert         #x15007000e0
   (:methods
-    (TODO-RENAME-20 (_type_) symbol 20)
+    (cave-trap-method-20 (_type_) symbol 20)
     )
   (:states
     cave-trap-active
@@ -46,9 +46,9 @@
 
 
 (defstate spider-vent-idle (spider-vent)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 object))
-    (case arg2
+    (case event-type
       (('can-spawn?)
        (return (>= (- (-> *display* base-frame-counter) (-> self last-spawn-time)) (seconds 1)))
        v0-0
@@ -113,7 +113,7 @@
   )
 
 
-(defmethod TODO-RENAME-20 cave-trap ((obj cave-trap))
+(defmethod cave-trap-method-20 cave-trap ((obj cave-trap))
   (set! (-> obj last-spawn-time) (-> *display* base-frame-counter))
   (set! (-> obj spawn-delay) (rand-vu-int-range (seconds 0.1) (seconds 0.5)))
   (let ((s5-0 (new 'stack-no-clear 'spawn-baby-spider-work)))
@@ -226,7 +226,7 @@
           (when (>= 274432.0 f0-0)
             (when (or (>= 188416.0 f0-0) (send-event *target* 'query 'powerup (pickup-type eco-yellow)))
               (level-hint-spawn
-                (game-text-id cave-trap-nest-hint)
+                (text-id cave-trap-nest-hint)
                 "sksp0341"
                 (the-as entity #f)
                 *entity-pool*
@@ -269,7 +269,7 @@
         (if (and (< (-> self spider-count) 8)
                  (>= (- (-> *display* base-frame-counter) (-> self last-spawn-time)) (-> self spawn-delay))
                  )
-            (TODO-RENAME-20 self)
+            (cave-trap-method-20 self)
             )
         )
       (else
@@ -328,7 +328,7 @@
   (set! (-> obj path) (new 'process 'path-control obj 'path 0.0))
   (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
   (let ((s4-1 (entity-actor-count arg0 'alt-actor)))
-    (set! (-> obj alt-actors) (the-as (array entity-actor) (new 'process 'boxed-array entity-actor s4-1)))
+    (set! (-> obj alt-actors) (new 'process 'boxed-array entity-actor s4-1))
     (dotimes (s3-1 s4-1)
       (set! (-> obj alt-actors s3-1) (entity-actor-lookup arg0 'alt-actor s3-1))
       )
@@ -336,7 +336,3 @@
   (go cave-trap-idle)
   (none)
   )
-
-
-
-

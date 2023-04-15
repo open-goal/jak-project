@@ -20,11 +20,13 @@ Additionally, you can provide a `repl-config.json` to set various REPL settings,
 {
   "numConnectToTargetAttempts": 1,
   "jak1": {
+    "gameVersionFolder": "jak1_pal", // corresponds with your "gameName" in the decomp config, "jak1" by default
     "asmFileSearchDirs": [
       "goal_src/jak1"
     ]
   },
   "jak2": {
+    "gameVersionFolder": "jak2_pal", // corresponds with your "gameName" in the decomp config, "jak2" by default
     "asmFileSearchDirs": [
       "goal_src/jak2"
     ]

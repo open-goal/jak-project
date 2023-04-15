@@ -11,6 +11,7 @@ uniform float fog_min;
 uniform float fog_max;
 layout (binding = 10) uniform sampler1D tex_T1; // note, sampled in the vertex shader on purpose.
 uniform int decal;
+uniform float fog_hack_threshold;
 
 out vec4 fragment_color;
 out vec3 tex_coord;
@@ -63,18 +64,21 @@ void main() {
     transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
     gl_Position = transformed;
 
+    // time of day lookup
+    fragment_color = texelFetch(tex_T1, time_of_day_index, 0);
+    // color adjustment
+    fragment_color *= 2;
+    fragment_color.a *= 2;
+
     if (decal == 1) {
-        fragment_color = vec4(1.0, 1.0, 1.0, 1.0);
-    } else {
-        // time of day lookup
-        fragment_color = texelFetch(tex_T1, time_of_day_index, 0);
-        // color adjustment
-        fragment_color *= 2;
-        fragment_color.a *= 2;
+        // tfrag/tie always use TCC=RGB, so even with decal, alpha comes from fragment.
+        fragment_color.xyz = vec3(1.0, 1.0, 1.0);
     }
 
     // fog hack
-    if (fragment_color.r < 0.005 && fragment_color.g < 0.005 && fragment_color.b < 0.005) {
+    if (fragment_color.r < fog_hack_threshold &&
+        fragment_color.g < fog_hack_threshold &&
+        fragment_color.b < fog_hack_threshold) {
         fogginess = 0;
     }
     

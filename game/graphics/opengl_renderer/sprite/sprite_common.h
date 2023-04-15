@@ -201,10 +201,11 @@ struct SpriteHud2DPacket {
  * The layout of VU1 code memory
  */
 enum SpriteProgMem {
-  Init = 0,            // the sprite initialization program. runs once per frame.
-  Sprites2dGrp0 = 3,   // world space 2d sprites
-  Sprites2dHud = 109,  // hud sprites
-  Sprites3d = 211      // 3d sprites
+  Init = 0,                 // the sprite initialization program. runs once per frame.
+  Sprites2dGrp0 = 3,        // world space 2d sprites
+  Sprites2dHud_Jak1 = 109,  // hud sprites
+  Sprites2dHud_Jak2 = 115,
+  Sprites3d = 211  // 3d sprites
 };
 
 static_assert(offsetof(SpriteFrameData, hmge_scale) == 256);

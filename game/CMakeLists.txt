@@ -53,7 +53,6 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/sprite/Sprite3_Distort.cpp
         graphics/opengl_renderer/sprite/Sprite3_Glow.cpp
         graphics/opengl_renderer/sprite/Sprite3.cpp
-        graphics/opengl_renderer/sprite/SpriteRenderer.cpp
         graphics/opengl_renderer/TextureUploadHandler.cpp
         graphics/opengl_renderer/VisDataHandler.cpp
         graphics/pipelines/opengl.cpp
@@ -143,6 +142,7 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/spatial_hash.cpp
         mips2c/jak2_functions/squid.cpp
         mips2c/jak2_functions/texture.cpp
+        mips2c/jak2_functions/vortex.cpp
         mips2c/mips2c_table.cpp
         overlord/dma.cpp
         overlord/fake_iso.cpp

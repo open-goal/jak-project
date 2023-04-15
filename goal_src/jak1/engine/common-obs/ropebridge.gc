@@ -505,7 +505,7 @@
     (set-to-rest-state (_type_) none 25)
     (add-collision-meshes (_type_) none 26)
     (do-integration (_type_) none 27)
-    (dummy-28 (_type_) none 28)
+    (ropebridge-method-28 (_type_) none 28)
     )
   (:states
     ropebridge-idle
@@ -550,20 +550,20 @@
               )
 
 (defstate ropebridge-idle (ropebridge)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (let ((f0-0 -1.0))
       (cond
-        ((= arg2 'bonk)
+        ((= event-type 'bonk)
          (when (>= (- (-> *display* base-frame-counter) (-> self bonk-time-stamp)) (seconds 0.2))
            (set! (-> self bonk-time-stamp) (-> *display* base-frame-counter))
-           (set! f0-0 (the-as float (-> arg3 param 1)))
+           (set! f0-0 (the-as float (-> event param 1)))
            (if (>= f0-0 (-> self tuning rider-bonk-max))
                (set! f0-0 (-> self tuning rider-bonk-max))
                )
            )
          )
-        ((and (= arg2 'attack) (= (-> arg3 param 1) 'flop))
-         (let ((v1-17 (-> arg3 param 2)))
+        ((and (= event-type 'attack) (= (-> event param 1) 'flop))
+         (let ((v1-17 (-> event param 2)))
            (when (!= v1-17 (-> self player-attack-id))
              (set! (-> self player-attack-id) v1-17)
              (set! (-> self attack-flop-time-stamp) (-> *display* base-frame-counter))
@@ -574,13 +574,13 @@
         )
       (the-as
         object
-        (when (and (>= f0-0 (-> self tuning rider-bonk-min)) (-> arg3 param 0))
+        (when (and (>= f0-0 (-> self tuning rider-bonk-min)) (-> event param 0))
           (set! (-> self agitated-time-stamp) (-> *display* base-frame-counter))
           (let* ((f30-0 (/ (* (- f0-0 (-> self tuning rider-bonk-min)) (-> self tuning rider-bonk-force))
                            (- (-> self tuning rider-bonk-max) (-> self tuning rider-bonk-min))
                            )
                         )
-                 (gp-0 (the-as object (-> arg3 param 0)))
+                 (gp-0 (the-as object (-> event param 0)))
                  (a0-7 (-> (the-as touching-shapes-entry gp-0) head))
                  (s4-0 (-> self root-override))
                  (s5-0 (get-touched-prim a0-7 s4-0 (the-as touching-shapes-entry gp-0)))
@@ -641,7 +641,7 @@
     )
   )
 
-;; WARN: Expression building failed: Function (method 20 ropebridge) has a return type of none, but the expression builder found a return statement.
+;; WARN: Function (method 20 ropebridge) has a return type of none, but the expression builder found a return statement.
 (defmethod set-vel-from-impact ropebridge ((obj ropebridge) (arg0 uint) (arg1 vector) (arg2 int) (arg3 float))
   (loop
     (let ((f0-2 (fabs (- (-> arg1 z) (-> obj spring-point (the-as int arg0) local-pos z)))))
@@ -708,7 +708,7 @@
   (none)
   )
 
-;; WARN: Expression building failed: Function (method 22 ropebridge) has a return type of none, but the expression builder found a return statement.
+;; WARN: Function (method 22 ropebridge) has a return type of none, but the expression builder found a return statement.
 (defmethod set-vel-from-rider ropebridge ((obj ropebridge) (arg0 uint) (arg1 vector) (arg2 int))
   (loop
     (let ((f0-0 (vector-vector-distance arg1 (the-as vector (-> obj spring-point (the-as int arg0))))))
@@ -983,7 +983,7 @@
   )
 
 (defmethod run-logic? ropebridge ((obj ropebridge))
-  (or (zero? (logand (-> obj mask) (process-mask actor-pause)))
+  (or (not (logtest? (-> obj mask) (process-mask actor-pause)))
       (< (- (-> *display* base-frame-counter) (-> obj agitated-time-stamp)) (seconds 5))
       (or (>= (-> obj sleep-dist) (vector-vector-distance (-> obj root-override trans) (math-camera-pos)))
           (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
@@ -992,7 +992,7 @@
       )
   )
 
-(defmethod dummy-28 ropebridge ((obj ropebridge))
+(defmethod ropebridge-method-28 ropebridge ((obj ropebridge))
   0
   (none)
   )
@@ -1064,7 +1064,3 @@
   (go ropebridge-idle)
   (none)
   )
-
-
-
-

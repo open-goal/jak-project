@@ -115,7 +115,11 @@ int LabelDB::get_index_by_name(const std::string& name) const {
   return m_labels_by_name.at(name);
 }
 
-bool LabelDB::label_exists_by_name(const std::string& name) const {
-  return m_labels_by_name.count(name) != 0;
+bool LabelDB::label_info_known_by_name(const std::string& name) const {
+  auto it = m_labels_by_name.find(name);
+  if (it == m_labels_by_name.end()) {
+    return false;
+  }
+  return lookup(it->second).known;
 }
 }  // namespace decompiler

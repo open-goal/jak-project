@@ -227,7 +227,7 @@
 (define-extern *trace-list* pair)
 (define-extern print-tree-bitmask (function int int symbol))
 (define-extern breakpoint-range-set! (function uint uint uint int))
-(define-extern valid? (function object type symbol symbol object symbol))
+(define-extern valid? (function object type string symbol object symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gstring-h                      ;;
@@ -5916,7 +5916,7 @@
   )
 
 (declare-type engine basic)
-(declare-type game-text-id uint32)
+(declare-type text-id uint32)
 (deftype level (basic)
   ((name              symbol  :offset-assert 4)
    (load-name         string   :offset-assert 8)
@@ -6021,7 +6021,7 @@
     (debug-print-region-splitbox (_type_ vector object) none 20) ;; (vis-load (_type_) uint 20)
     (get-art-group-by-name (_type_ string) art-group 21) ;; (unused-21 (_type_) none 21)
     (level-method-22 (_type_ symbol) int 22) ;; (birth (_type_) _type_ 22)
-    (lookup-text (_type_ game-text-id symbol) string 23) ;; (level-status-set! (_type_ symbol) _type_ 23)
+    (lookup-text (_type_ text-id symbol) string 23) ;; (level-status-set! (_type_ symbol) _type_ 23)
     (level-method-24 () none 24)
     (birth (_type_) _type_ 25) ;; (init-vis (_type_) int 25)
     (level-status-update! (_type_ symbol) _type_ 26)
@@ -6607,7 +6607,7 @@
    (param-int32 int32 4 :offset 16)
    (param-int64 int64 2 :offset 16)
    (param-float float 4 :offset 16)
-   (param-quat int128 :offset 16)
+   (param-quat uint128 :offset 16)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -6646,8 +6646,8 @@
 ;; text-id-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; +++text-id-h:game-text-id
-(defenum game-text-id
+;; +++text-id-h:text-id
+(defenum text-id
   :type uint32
   :bitfield #f
   (null 0)
@@ -7031,7 +7031,7 @@
   (text-x30f #x30f)
   (progress-unknown-continue #x310)
 )
-;; ---text-id-h:game-text-id
+;; ---text-id-h:text-id
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; text-h                         ;;
@@ -7039,7 +7039,7 @@
 
 
 (deftype game-text (structure)
-  ((id   game-text-id  :offset-assert 0) ;; guessed by decompiler
+  ((id   text-id  :offset-assert 0) ;; guessed by decompiler
    (text string        :offset-assert 4) ;; guessed by decompiler
    )
   :pack-me
@@ -7060,7 +7060,7 @@
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-    (lookup-text! (_type_ game-text-id symbol) string 9)
+    (lookup-text! (_type_ text-id symbol) string 9)
     )
   )
 
@@ -7611,13 +7611,13 @@
    (fill-flag             symbol                           :offset-assert 16)
    (bigmap-index          uint32                           :offset-assert 20)
    (bigmap-image          external-art-buffer              :offset-assert 24)
-   (tpage                 basic                            :offset-assert 28)
-   (progress-minimap      basic                            :offset-assert 32)
+   (tpage                 external-art-buffer              :offset-assert 28)
+   (progress-minimap      texture-page                     :offset-assert 32)
    (mask-index            uint32                           :offset-assert 36)
    (bit-mask              bigmap-bit-mask                  :offset-assert 40)
    (compressed-next-index uint32                           :offset-assert 44)
    (max-next-index        uint32                           :offset-assert 48)
-   (compressed-masks      uint32                  20       :offset-assert 52) ;; just a guess...
+   (compressed-masks      (pointer int8)          20       :offset-assert 52) ;; just a guess...
    (compressed-data       uint32                           :offset-assert 132)
    (layer-index           uint32                           :offset-assert 136)
    (layer-mask            bigmap-layer-mask                :offset-assert 140)
@@ -7642,8 +7642,8 @@
    (scroll                vector                   :inline :offset-assert 320)
    (pos                   vector4w                 :inline :offset-assert 336)
    (color                 vector4w                 :inline :offset-assert 352)
-   (corner                vector4w              4  :inline :offset-assert 368)
-   (auto-save-icon-flag   basic                            :offset-assert 432)
+   (corner                vector                4  :inline :offset-assert 368)
+   (auto-save-icon-flag   symbol                           :offset-assert 432)
    )
   :method-count-assert 28
   :size-assert         #x1b4
@@ -7652,23 +7652,23 @@
     (new (symbol type) _type_ 0)
     (initialize (_type_) none 9) ;; some sort of init?
     (update (_type_) none 10)
-    (bigmap-method-11 (_type_ int int int int) none 11)
-    (bigmap-method-12 () none 12)
-    (bigmap-method-13 () none 13)
+    (bigmap-method-11 (_type_ int int int int) int 11)
+    (bigmap-method-12 (_type_) int 12)
+    (bigmap-method-13 (_type_) int 13)
     (bigmap-method-14 (_type_) none 14)
-    (bigmap-method-15 () none 15)
-    (bigmap-method-16 () none 16)
-    (bigmap-method-17 () none 17)
-    (bigmap-method-18 () none 18)
-    (bigmap-method-19 () none 19)
-    (bigmap-method-20 () none 20)
-    (bigmap-method-21 () none 21)
-    (bigmap-method-22 () none 22)
-    (bigmap-method-23 () none 23)
-    (bigmap-method-24 () none 24)
-    (bigmap-method-25 () none 25)
-    (bigmap-method-26 () none 26)
-    (bigmap-method-27 () none 27)
+    (bigmap-method-15 (_type_) int 15)
+    (dump-to-file (_type_) file-stream 16)
+    (bigmap-method-17 (_type_ vector) int 17)
+    (bigmap-method-18 (_type_) int 18)
+    (bigmap-method-19 (_type_) int 19)
+    (bigmap-method-20 (_type_) int 20)
+    (bigmap-method-21 (_type_ int int) int 21)
+    (bigmap-method-22 (_type_ dma-buffer (pointer uint32) int int int int) none 22)
+    (bigmap-method-23 (_type_) none 23)
+    (bigmap-method-24 (_type_ dma-buffer) none 24)
+    (bigmap-method-25 (_type_ dma-buffer) none 25)
+    (bigmap-method-26 (_type_ dma-buffer int int int int) none 26)
+    (bigmap-method-27 (_type_ dma-buffer connection-minimap) int 27)
     )
   )
 
@@ -9809,8 +9809,8 @@
   ((mask task-manager-mask)
    (level symbol)
    (manager handle)
-   (fail-message game-text-id)
-   (retry-message game-text-id)
+   (fail-message text-id)
+   (retry-message text-id)
    (intro-scene string)
    (resolution-scene string)
    (resolution-scene-continue string)
@@ -9857,7 +9857,7 @@
    (skill-count uint16)
    (suck-death-count uint8)
    (add game-task-node-command)
-   (description game-text-id)
+   (description text-id)
    )
   :flag-assert         #xe0000004c
   (:methods
@@ -9872,7 +9872,7 @@
 
 (deftype game-task-info (basic)
   ((name                string   :offset-assert 4)
-   (text-name           game-text-id  :offset-assert 8)
+   (text-name           text-id  :offset-assert 8)
    (pre-play-node       game-task-node  :offset-assert 12)
    (kiosk-play-node     game-task-node  :offset-assert 14)
    (pre-play-continue   string   :offset-assert 16)
@@ -15451,7 +15451,7 @@
 
 
 (deftype scene (art-group)
-  ((mask-to-clear    uint32           :offset-assert 32)
+  ((mask-to-clear    process-mask      :offset-assert 32)
    (entity           string            :offset-assert 36)
    (art-group        string            :offset-assert 40)
    (anim             string            :offset-assert 44)
@@ -17744,7 +17744,7 @@
   ((task              game-task-control       :offset-assert 204)
    (ambient           ambient-control :inline :offset-assert 208)
    (neck-joint-index  int32                   :offset-assert 224)
-   (talk-message      game-text-id            :offset-assert 228) ;; guessed by decompiler
+   (talk-message      text-id            :offset-assert 228) ;; guessed by decompiler
    (bounce-away       symbol                  :offset-assert 232) ;; guessed by decompiler
    (will-talk         symbol                  :offset-assert 236) ;; guessed by decompiler
    (look-at-me        symbol                  :offset-assert 240)
@@ -21905,7 +21905,7 @@
   )
 
 (deftype menu-option (basic)
-  ((name  game-text-id    :offset-assert 4)
+  ((name  text-id    :offset-assert 4)
    (scale symbol     :offset-assert 8)
    (unknown function :offset-assert 12)
    ;; This is gross if im correct
@@ -24817,10 +24817,10 @@
   :flag-assert         #x900000004
   )
 
-(define-extern unpack-comp-rle (function (pointer int8) (pointer int8) none))
+(define-extern unpack-comp-rle (function (pointer int8) (pointer int8) (pointer int8)))
 (define-extern unpack-comp-huf (function (pointer uint8) (pointer uint8) uint huf-dictionary-node none))
 (define-extern unpack-comp-lzo (function (pointer uint8) (pointer uint8) none))
-(define-extern pack-comp-rle (function (pointer uint8) (pointer uint8) int int none))
+(define-extern pack-comp-rle (function (pointer uint8) (pointer uint8) int int (pointer uint8)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; background                     ;;
@@ -30449,7 +30449,7 @@
    (fail-continue  basic   :offset-assert 8)
    (reset-delay    uint32  :offset-assert 12)
    (task           game-task   :offset-assert 16)
-   (fail-message   game-text-id  :offset-assert 20)
+   (fail-message   text-id  :offset-assert 20)
    )
   :method-count-assert 9
   :size-assert         #x18
@@ -30725,8 +30725,8 @@
 (define-extern *missions-options* "List of [[menu-missions-option]]" menu-option-list)
 (define-extern *highscores-options* "List of [[menu-highscores-option]]" menu-option-list)
 (define-extern *secret-options* menu-option-list)
-(define-extern *language-name-remap* (array game-text-id))
-(define-extern *stereo-mode-name-remap* (array  game-text-id))
+(define-extern *language-name-remap* (array text-id))
+(define-extern *stereo-mode-name-remap* (array  text-id))
 (define-extern *hud-ring-graphic-remap* (array uint64)) ;; these are probably bitfields of some kind
 (define-extern *hud-ring-kiosk-graphic-remap* (array uint64))
 (define-extern *hud-ring-demo-graphic-remap* (array uint64))
@@ -30865,7 +30865,7 @@
 (define-extern end-scissor-scene (function hud-box float none))
 (define-extern begin-scissor-level (function hud-box none))
 (define-extern end-scissor-level (function hud-box float none))
-(define-extern print-language-name (function game-text-id font-context int symbol none))
+(define-extern print-language-name (function text-id font-context int symbol none))
 (define-extern unlocked-secret-menu? (function game-secrets symbol))
 (define-extern memcard-unlocked-secrets? (function symbol game-secrets))
 (define-extern num-unlocked-secret?
@@ -30880,9 +30880,9 @@
 (define-extern get-level-icon-id-03 "TODO - Icon id enum perhaps?" (function int texture-id))
 (define-extern get-level-icon-id-04 "TODO - Icon id enum perhaps?" (function int texture-id))
 (define-extern draw-decoration (function menu-option font-context float int symbol float pointer))
-(define-extern draw-missions-decoration (function menu-missions-option font-context float game-text-id pointer))
-(define-extern draw-sound-options-decoration (function menu-slider-option font-context float symbol game-text-id pointer))
-(define-extern draw-decoration-secrets (function menu-option font-context float game-text-id pointer))
+(define-extern draw-missions-decoration (function menu-missions-option font-context float text-id pointer))
+(define-extern draw-sound-options-decoration (function menu-slider-option font-context float symbol text-id pointer))
+(define-extern draw-decoration-secrets (function menu-option font-context float text-id pointer))
 (define-extern draw-decoration-load-save (function menu-option font-context float int pointer))
 (define-extern sort-task-node-result (function int none))
 (define-extern find-mission-text-at-index (function int game-task-node-info))
@@ -30893,8 +30893,8 @@
 (define-extern eval-highscore (function print-highscore-obj int))
 (define-extern str-print-time (function float string))
 (define-extern print-highscore (function print-highscore-obj float))
-(define-extern get-highscore-text "TODO - takes an enum?" (function int game-text-id))
-(define-extern get-highscore-text-sub "TODO - takes an enum?" (function int game-text-id))
+(define-extern get-highscore-text "TODO - takes an enum?" (function int text-id))
+(define-extern get-highscore-text-sub "TODO - takes an enum?" (function int text-id))
 (define-extern get-highscore-icon "TODO - Icon id enum perhaps?" (function int uint))
 (define-extern get-highscore-type "TODO - takes an enum?" (function int symbol))
 (define-extern highscore-available? (function int symbol))
@@ -30990,10 +30990,10 @@
 ;; bigmap                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *circle-mask-1x1-meter* array)
-;; (define-extern *circle-mask-2x2-meters* array)
-;; (define-extern *image-mask-table* object)
-;; (define-extern *map-save-ptr* object)
+(define-extern *circle-mask-1x1-meter* (array uint32))
+(define-extern *circle-mask-2x2-meters* (array uint16))
+(define-extern *image-mask-table* (pointer int64))
+(define-extern *map-save-ptr* (pointer uint64))
 (define-extern *bigmap* bigmap)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -32287,8 +32287,8 @@
 (deftype com-airlock (process-drawable)
   ((child-override        basic    :offset 24) ;; what is this!
    (root-override         collide-shape    :offset 128 :score 999)
-   (level-name            string   :offset-assert 200)
-   (open-test             symbol   :offset-assert 204)
+   (level-name            pair     :offset-assert 200)
+   (open-test             pair     :offset-assert 204)
    (were-behind?          symbol   :offset-assert 208)
    (inner?                symbol   :offset-assert 212)
    (sound-behind?         symbol   :offset-assert 216)
@@ -32921,7 +32921,7 @@
       "Handles various events for the enemy
        @TODO - unsure if there is a pattern for the events and this should have a more specific name"
       (_type_ process int symbol event-message-block) object 74)
-    (enemy-method-75 (_type_ process touching-shapes-entry) none 75)
+    (enemy-method-75 (_type_ process event-message-block) object 75)
     (enemy-method-76 (_type_ process event-message-block) symbol 76)
     (enemy-method-77 (_type_ (pointer float)) symbol 77)
     (enemy-method-78 (_type_ (pointer float)) symbol 78)
@@ -32959,7 +32959,7 @@
     (enemy-method-101 (_type_) none 101)
     (enemy-method-102 (_type_) symbol 102)
     (enemy-method-103 (_type_) collide-spec 103)
-    (enemy-method-104 (_type_ process uint uint) symbol :behavior process 104)
+    (enemy-method-104 (_type_ process touching-shapes-entry uint) symbol :behavior process 104)
     (enemy-method-105 (_type_ process) enemy-flag 105)
     (enemy-method-106 (_type_ process object int attack-info) none :behavior enemy 106)
     (get-enemy-target
@@ -34974,8 +34974,8 @@
     (flags int64 :offset-assert 128)
     (master-enable int64 :offset-assert 136)
     (mode int64 :offset-assert 144)
-    (sign symbol :offset-assert 152)
-    (parts basic 1 :offset-assert 156)
+    (sign (array object) :offset-assert 152)
+    (parts sparticle-launch-control 1 :offset-assert 156)
     (state-time time-frame :offset-assert 160)
     (mat matrix :inline :offset-assert 176)
   )
@@ -34984,8 +34984,8 @@
   :flag-assert         #x11007000f0
   (:methods
     (idle () _type_ :state 14)
-    (neon-baron-method-15 () none 15)
-    (neon-baron-method-16 () none 16)
+    (spawn-parts (_type_) none 15)
+    (update-mode (_type_) none 16)
     )
   )
 
@@ -34998,7 +34998,7 @@
 
 (define-extern *baron-neon-skull* (array object))
 (define-extern *city-baron-group-ids* (array int32))
-(define-extern *neon-baron-flashing-acc* (pointer int32))
+(define-extern *neon-baron-flashing-acc* (pointer uint32))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; palace-ocean                   ;;
@@ -38780,10 +38780,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern sort-vortex-data function)
-;; (define-extern init-vortex-regs function)
+(define-extern init-vortex-regs (function none))
 ;; (define-extern draw-large-polygon-vortex function)
-;; (define-extern render-vortex-quad function)
-;; (define-extern update-vortex-data function)
+(define-extern render-vortex-quad (function vortex-vertex dma-buffer vector none))
+(define-extern update-vortex-data (function float none))
 (define-extern draw-vortex (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -41733,47 +41733,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctyindb-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; shuttle                        ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; (declare-type citizen nav-enemy)
-;; (declare-type citizen-norm citizen)
-;; (deftype citizen-rebel (citizen-norm)
-;;   ((nav-mesh-aid uint32         :offset-assert 1056)
-;;    (done?        basic          :offset-assert 1060)
-;;    (task-node    uint16         :offset-assert 1064)
-;;    (end-pos      vector :inline :offset-assert 1068)
-;;    (index        uint32         :offset-assert 1084)
-;;    (gui-id       uint32         :offset-assert 1088)
-;;    )
-;;   :method-count-assert 219
-;;   :size-assert         #x448
-;;   :flag-assert         #xdb03d00448
-;;   (:methods
-;;     )
-;;   )
-
-;; (deftype city-shuttle-info (structure)
-;;   ((pos         vector :inline :offset-assert 0)
-;;    (level       basic          :offset-assert 16)
-;;    (nav-mesh-id uint32         :offset-assert 20)
-;;    (time        time-frame         :offset-assert 24)
-;;    )
-;;   :method-count-assert 9
-;;   :size-assert         #x20
-;;   :flag-assert         #x900000020
-;;   )
-
-;; (define-extern *citizen-rebel-global-info* civilian-global-info)
-;; (define-extern *citizen-rebel-nav-enemy-info* nav-enemy-info)
-;; ;; (define-extern shuttle-init function)
-;; ;; (define-extern shuttle-cleanup function)
-;; ;; (define-extern shuttle-update function)
-;; ;; (define-extern *city-shuttle-info* array)
-;; ;; (define-extern *city-burning-bush-shuttle-1-info* array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; fordumpa-texture               ;;
@@ -45661,7 +45620,7 @@
     (game () _type_ :state 25)
     (idle () _type_ :state 26)
     (idle-training () _type_ :state 27)
-    (render-text (_type_ game-text-id) float 28)
+    (render-text (_type_ text-id) float 28)
     (hoverboard-training-manager-method-29 (_type_) none 29)
     (hoverboard-training-manager-method-30 (_type_) none 30)
     )
@@ -47156,7 +47115,7 @@
     (training-manager-method-27 (_type_ (array tpath-info)) symbol 27)
     (training-manager-method-28 (_type_) none 28)
     (training-manager-method-29 (_type_ vector) vector 29)
-    (render-text (_type_ game-text-id) float 30)
+    (render-text (_type_ text-id) float 30)
     (training-manager-method-31 (_type_) none 31)
     (training-manager-method-32 (_type_) none 32)
     )
@@ -50475,6 +50434,7 @@
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
+  :pack-me
   )
 
 (deftype race-mesh-hash-cell (structure)
@@ -50516,9 +50476,9 @@
   :size-assert         #x1c
   :flag-assert         #x140000001c
   (:methods
-    (race-mesh-method-9 (_type_ int int rgba rgba) none 9)
-    (race-mesh-method-10 (_type_ int int) symbol 10)
-    (race-mesh-method-11 (_type_ int) none 11)
+    (debug-draw-path (_type_ int int rgba rgba) none 9)
+    (debug-draw-path-from-history (_type_ int int) symbol 10)
+    (debug-draw-slice (_type_ int) none 11)
     (debug-draw-edges (_type_) none 12)
     (race-mesh-method-13 (_type_ race-mesh-slice-query) none 13)
     (race-mesh-method-14 (_type_ race-mesh-slice-query) none 14)
@@ -51225,6 +51185,14 @@
    )
   )
 
+(deftype mystery-traffic-object-spawn-params-2 (structure)
+  "(anon-function 5 helldog)"
+  ((params traffic-object-spawn-params :inline)
+   (vec vector :inline)
+   (something-else int64)
+   )
+  )
+
 (define-extern *paddywagon-constants* rigid-body-vehicle-constants)
 (define-extern pw-iter-seg-new-dir-level  (function pw-iter-seg nav-segment none))
 (define-extern choose-next-branch-no-exit-level (function vehicle-controller paddywagon nav-branch))
@@ -51424,6 +51392,46 @@
     (citizen-enemy-method-202 (_type_) none 202)
     )
   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; shuttle                        ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; this block was moved
+
+(deftype citizen-rebel (citizen-norm)
+  ((nav-mesh-aid actor-id       :offset-assert 1060)
+   (done?        symbol         :offset-assert 1064)
+   (task-node    uint16         :offset-assert 1068)
+   (end-pos      vector :inline :offset-assert 1072)
+   (index        uint32         :offset-assert 1088)
+   (gui-id       uint32         :offset-assert 1092)
+   )
+  :method-count-assert 219
+  :size-assert         #x448
+  :flag-assert         #xdb03d00448
+  (:methods
+    )
+  )
+
+(deftype city-shuttle-info (structure)
+  ((pos         vector :inline :offset-assert 0)
+   (level       symbol         :offset-assert 16)
+   (nav-mesh-id uint32         :offset-assert 20)
+   (time        time-frame     :offset-assert 24)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(define-extern *citizen-rebel-global-info* civilian-global-info)
+(define-extern *citizen-rebel-nav-enemy-info* nav-enemy-info)
+(define-extern shuttle-init (function task-manager (array city-shuttle-info) none))
+(define-extern shuttle-cleanup (function task-manager none))
+(define-extern shuttle-update (function task-manager (array city-shuttle-info) uint none))
+(define-extern *city-shuttle-info* (array city-shuttle-info))
+(define-extern *city-burning-bush-shuttle-1-info* (array city-shuttle-info))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

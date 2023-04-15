@@ -838,7 +838,7 @@
          )
     (format (clear *temp-string*) "skel-~S" arg0)
     (let ((s4-1 (s3-0 s4-0 *temp-string* (the-as (pointer uint32) #f))))
-      (if (and (nonzero? s4-1) (valid? s4-1 skeleton-group #f #f 0))
+      (if (and (nonzero? s4-1) (valid? s4-1 skeleton-group (the-as string #f) #f 0))
           (initialize-skeleton obj (the-as skeleton-group s4-1) (the-as pair 0))
           (go process-drawable-art-error arg0)
           )
@@ -1203,8 +1203,6 @@
   0
   )
 
-;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
-;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
 (defmethod update-anim-data joint-control ((obj joint-control))
   (local-vars (s7-0 none) (ra-0 int))
   (let ((s5-0 (+ (-> obj active-channels) (-> obj float-channels))))
@@ -1217,11 +1215,8 @@
             (let ((s2-0 (-> s3-0 frame-group)))
               (when (not (and s2-0 (nonzero? s2-0) (= (logand (the-as int s2-0) 7) 4) (= (-> s2-0 type) art-joint-anim)))
                 (go process-drawable-art-error "joint-anim")
-                (break!)
-                ;; (.lw ra-0 return-from-thread s7-0)
-                ;; (.jr ra-0)
-                ;; (nop!)
-                ;; 0
+                (abandon-thread)
+                0
                 )
               (when (nonzero? (-> s2-0 frames flags))
                 (cond
@@ -1246,8 +1241,6 @@
   (none)
   )
 
-;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
-;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
 (defmethod evaluate-joint-control process-drawable ((obj process-drawable))
   (local-vars (s1-0 joint-control-channel) (s2-0 int) (s4-0 uint) (s7-0 none) (ra-0 int))
   (with-pp
@@ -1287,11 +1280,8 @@
             (let ((s0-0 (-> s1-0 frame-group)))
               (when (not (and s0-0 (nonzero? s0-0) (= (logand (the-as int s0-0) 7) 4) (= (-> s0-0 type) art-joint-anim)))
                 (go process-drawable-art-error "joint-anim")
-                (break!)
-                ;; (.lw ra-0 return-from-thread s7-0)
-                ;; (.jr ra-0)
-                ;; (nop!)
-                ;; 0
+                (abandon-thread)
+                0
                 )
               (when (nonzero? (-> s0-0 frames flags))
                 (cond
@@ -1924,7 +1914,7 @@
       (let ((s3-0 (-> arg0 node-list data s4-0)))
         (when (-> s3-0 geo)
           (cond
-            ((valid? (-> s3-0 geo) drawable (the-as symbol "cspace geo") #t *valid-con*)
+            ((valid? (-> s3-0 geo) drawable "cspace geo" #t *valid-con*)
              )
             (else
               (format *valid-con* "ERROR: ~A has an invalid geo ~A~%" s3-0 (-> s3-0 geo))
@@ -1950,7 +1940,7 @@
           (cond
             ((logtest? (-> s2-0 command) (joint-control-command joint-control-command-4))
              )
-            ((valid? (-> s2-0 frame-group) art-joint-anim (the-as symbol "joint-control frame-group") #t *valid-con*)
+            ((valid? (-> s2-0 frame-group) art-joint-anim "joint-control frame-group" #t *valid-con*)
              (when (not (and (>= (the int (-> s2-0 frame-num)) 0)
                              (< (the int (-> s2-0 frame-num)) (the-as int (-> s2-0 frame-group frames num-frames)))
                              )

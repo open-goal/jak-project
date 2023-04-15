@@ -75,8 +75,8 @@
 
    ;; the name of the spool-anim
    (name  string        :offset 8)
-   ;; the game-text-id if this is for a hint
-   (id    game-text-id  :offset 12)
+   ;; the text-id if this is for a hint
+   (id    text-id  :offset 12)
    ;; the 8-character name for an ambient or hint
    (hash  uint64        :offset 8)
 
@@ -96,7 +96,7 @@
 
   (:methods
     (get-scene-by-name (_type_ pc-subtitle-channel string) subtitle-text)
-    (get-scene-by-text-id (_type_ pc-subtitle-channel game-text-id) subtitle-text)
+    (get-scene-by-text-id (_type_ pc-subtitle-channel text-id) subtitle-text)
     )
   )
 
@@ -141,11 +141,11 @@
    (bank-backup subtitle-bank :inline) ;; debug backup.
 
    (state-time time-frame) ;; a timestamp, used for notices
-   (notice-id  game-text-id) ;; what notice text to display at the top of the screen
+   (notice-id  text-id) ;; what notice text to display at the top of the screen
 
    (    spool-name string)
    (old-spool-name string)
-   (text-id game-text-id)
+   (text-id text-id)
    (cur-channel pc-subtitle-channel)
 
    ;; debug things
@@ -204,7 +204,7 @@
 
   (the subtitle-text #f))
 
-(defmethod get-scene-by-text-id subtitle-text-info ((obj subtitle-text-info) (kind pc-subtitle-channel) (id game-text-id))
+(defmethod get-scene-by-text-id subtitle-text-info ((obj subtitle-text-info) (kind pc-subtitle-channel) (id text-id))
   "get a subtitle scene info with the corresponding name. #f = none found"
 
   ;; invalid kind so return invalid scene.
@@ -653,7 +653,7 @@
                (!= (-> self old-spool-name) (-> self spool-name))
                (string= (-> self spool-name) "sage-intro-sequence-a"))
           (set-state-time)
-          (set! (-> self notice-id) (game-text-id subtitle-hint))
+          (set! (-> self notice-id) (text-id subtitle-hint))
           )
 
     ;; get a subtitle info that matches our current status
@@ -671,8 +671,8 @@
                 (not! (-> *pc-settings* subtitles?))
                 (set-state-time)
                 (if (-> *pc-settings* subtitles?)
-                    (set! (-> self notice-id) (game-text-id subtitle-enabled))
-                    (set! (-> self notice-id) (game-text-id subtitle-disabled))
+                    (set! (-> self notice-id) (text-id subtitle-enabled))
+                    (set! (-> self notice-id) (text-id subtitle-disabled))
                     )
                 )
             ;; find out position in the scene.
@@ -734,7 +734,7 @@
       ((!= *master-mode* 'game)
        )
       ((and (< (time-passed) (seconds 5))
-            (= (-> self notice-id) (game-text-id subtitle-hint)))
+            (= (-> self notice-id) (text-id subtitle-hint)))
         (when (not (-> *pc-settings* subtitles?))
           (set-scale! (-> self font) (* (-> *SUBTITLE-bank* scale) 1.5))
           (print-game-subtitle (lookup-text! *common-text* (-> self notice-id) #f) (-> self font) #f 128 22)

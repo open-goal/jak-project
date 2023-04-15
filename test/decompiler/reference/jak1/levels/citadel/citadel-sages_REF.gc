@@ -29,8 +29,8 @@
   :size-assert         #x17c
   :flag-assert         #x160110017c
   (:methods
-    (dummy-20 (_type_) none 20)
-    (dummy-21 (_type_) none 21)
+    (citb-sagecage-method-20 (_type_) none 20)
+    (citb-sagecage-method-21 (_type_) none 21)
     )
   (:states
     citb-sagecage-idle
@@ -106,27 +106,27 @@
 ;; failed to figure out what this is:
 (defstate citb-sagecage-idle (citb-sagecage)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (local-vars (v0-3 none))
+    (local-vars (v0-3 basic))
     (the-as object (case event-type
                      (('disable-bars)
                       (stop! (-> self sound))
                       (sound-play "sagecage-off")
                       (set! (-> self bars-on) #f)
-                      (citb-sagecage-update-collision)
+                      (the-as basic (citb-sagecage-update-collision))
                       )
                      (('enable-bars)
                       (set! (-> self bars-on) #t)
-                      (citb-sagecage-update-collision)
+                      (the-as basic (citb-sagecage-update-collision))
                       )
                      (('start-cloning)
-                      (set! v0-3 (the-as none #t))
+                      (set! v0-3 #t)
                       (set! (-> self cloning) (the-as symbol v0-3))
                       v0-3
                       )
                      (('stop-cloning)
                       (set! (-> self cloning) #f)
                       (let ((v1-7 (-> self skel root-channel 0)))
-                        (set! v0-3 (the-as none (-> self draw art-group data 3)))
+                        (set! v0-3 (-> self draw art-group data 3))
                         (set! (-> v1-7 frame-group) (the-as art-joint-anim v0-3))
                         )
                       v0-3
@@ -173,7 +173,7 @@
 
 ;; definition for method 20 of type citb-sagecage
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-20 citb-sagecage ((obj citb-sagecage))
+(defmethod citb-sagecage-method-20 citb-sagecage ((obj citb-sagecage))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -200,7 +200,7 @@
 
 ;; definition for method 21 of type citb-sagecage
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-21 citb-sagecage ((obj citb-sagecage))
+(defmethod citb-sagecage-method-21 citb-sagecage ((obj citb-sagecage))
   (initialize-skeleton obj *citb-sagecage-sg* '())
   (logior! (-> obj skel status) (janim-status inited))
   (set! (-> obj root-override pause-adjust-distance) 409600.0)
@@ -238,11 +238,11 @@
 ;; definition for function citb-sagecage-init-by-other
 ;; INFO: Return type mismatch object vs none.
 (defbehavior citb-sagecage-init-by-other citb-sagecage ((arg0 citb-sage))
-  (dummy-20 self)
+  (citb-sagecage-method-20 self)
   (mem-copy! (the-as pointer (-> self root-override trans)) (the-as pointer (-> arg0 root-override trans)) 16)
   (mem-copy! (the-as pointer (-> self root-override quat)) (the-as pointer (-> arg0 root-override quat)) 16)
   (mem-copy! (the-as pointer (-> self root-override scale)) (the-as pointer (-> arg0 root-override scale)) 16)
-  (dummy-21 self)
+  (citb-sagecage-method-21 self)
   (go citb-sagecage-idle)
   (none)
   )
@@ -396,14 +396,14 @@
 ;; definition for method 45 of type citb-sage
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs symbol.
-(defmethod dummy-45 citb-sage ((obj citb-sage))
+(defmethod process-taskable-method-45 citb-sage ((obj citb-sage))
   (set! (-> obj spawn-pos quad) (-> obj root-override trans quad))
   (the-as symbol 0)
   )
 
 ;; definition for method 42 of type citb-sage
 ;; INFO: Return type mismatch object vs none.
-(defmethod dummy-42 citb-sage ((obj citb-sage))
+(defmethod process-taskable-method-42 citb-sage ((obj citb-sage))
   (if (not (should-display? obj))
       (go (method-of-object obj hidden))
       (go (method-of-object obj idle))
@@ -464,7 +464,7 @@
   (vector-! (-> self dir) (-> self target-pos) (-> self spawn-pos))
   (set! (-> self rot-y) (vector-y-angle (-> self dir)))
   (set! (-> self rot-x) (- 16384.0 (vector-x-angle (-> self dir))))
-  (dummy-45 self)
+  (process-taskable-method-45 self)
   (spawn (-> self part) (-> self spawn-pos))
   (spawn (-> self part-impact) (-> self target-pos))
   )
@@ -532,7 +532,7 @@
 
 ;; definition for method 52 of type red-sagecage
 ;; INFO: Return type mismatch shadow-flags vs none.
-(defmethod dummy-52 red-sagecage ((obj red-sagecage))
+(defmethod process-taskable-method-52 red-sagecage ((obj red-sagecage))
   (let ((v1-1 (-> obj draw shadow-ctrl)))
     (when v1-1
       (let ((a0-1 v1-1))
@@ -575,7 +575,7 @@
 
 ;; definition for method 45 of type red-sagecage
 ;; INFO: Return type mismatch int vs symbol.
-(defmethod dummy-45 red-sagecage ((obj red-sagecage))
+(defmethod process-taskable-method-45 red-sagecage ((obj red-sagecage))
   (set! (-> *part-id-table* 2455 init-specs 14 initial-valuef) (-> obj rot-y))
   (set! (-> *part-id-table* 2455 init-specs 13 initial-valuef) (-> obj rot-x))
   (set! (-> *part-id-table* 2457 init-specs 14 initial-valuef) (-> obj rot-y))
@@ -612,11 +612,11 @@
   )
 
 ;; definition for method 43 of type red-sagecage
-(defmethod TODO-RENAME-43 red-sagecage ((obj red-sagecage))
+(defmethod process-taskable-method-43 red-sagecage ((obj red-sagecage))
   (if (-> obj beam-on)
       (return #f)
       )
-  (when (TODO-RENAME-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
+  (when (ambient-control-method-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
     (let ((f0-2 (rand-float-gen)))
       (cond
         ((< 0.6666667 f0-2)
@@ -635,11 +635,11 @@
 
 ;; definition for method 11 of type red-sagecage
 (defmethod init-from-entity! red-sagecage ((obj red-sagecage) (arg0 entity-actor))
-  (dummy-40 obj arg0 *redsage-sg* 3 33 (new 'static 'vector :w 8192.0) 5)
+  (process-taskable-method-40 obj arg0 *redsage-sg* 3 33 (new 'static 'vector :w 8192.0) 5)
   (set! (-> obj tasks) (get-task-control (-> obj entity extra perm task)))
   (play-reminder obj)
   (set! (-> obj sound-flava) (music-flava sage-red))
-  (dummy-42 obj)
+  (process-taskable-method-42 obj)
   (none)
   )
 
@@ -662,7 +662,7 @@
 
 ;; definition for method 52 of type blue-sagecage
 ;; INFO: Return type mismatch shadow-flags vs none.
-(defmethod dummy-52 blue-sagecage ((obj blue-sagecage))
+(defmethod process-taskable-method-52 blue-sagecage ((obj blue-sagecage))
   (let ((v1-1 (-> obj draw shadow-ctrl)))
     (when v1-1
       (let ((a0-1 v1-1))
@@ -705,7 +705,7 @@
 
 ;; definition for method 45 of type blue-sagecage
 ;; INFO: Return type mismatch int vs symbol.
-(defmethod dummy-45 blue-sagecage ((obj blue-sagecage))
+(defmethod process-taskable-method-45 blue-sagecage ((obj blue-sagecage))
   (set! (-> *part-id-table* 2448 init-specs 14 initial-valuef) (-> obj rot-y))
   (set! (-> *part-id-table* 2448 init-specs 13 initial-valuef) (-> obj rot-x))
   (set! (-> *part-id-table* 2450 init-specs 14 initial-valuef) (-> obj rot-y))
@@ -747,11 +747,11 @@
   )
 
 ;; definition for method 43 of type blue-sagecage
-(defmethod TODO-RENAME-43 blue-sagecage ((obj blue-sagecage))
+(defmethod process-taskable-method-43 blue-sagecage ((obj blue-sagecage))
   (if (-> obj beam-on)
       (return #f)
       )
-  (when (TODO-RENAME-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
+  (when (ambient-control-method-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
     (let ((f0-2 (rand-float-gen)))
       (cond
         ((< 0.6666667 f0-2)
@@ -770,11 +770,11 @@
 
 ;; definition for method 11 of type blue-sagecage
 (defmethod init-from-entity! blue-sagecage ((obj blue-sagecage) (arg0 entity-actor))
-  (dummy-40 obj arg0 *bluesage-sg* 3 54 (new 'static 'vector :w 8192.0) 5)
+  (process-taskable-method-40 obj arg0 *bluesage-sg* 3 54 (new 'static 'vector :w 8192.0) 5)
   (set! (-> obj tasks) (get-task-control (-> obj entity extra perm task)))
   (play-reminder obj)
   (set! (-> obj sound-flava) (music-flava sage-blue))
-  (dummy-42 obj)
+  (process-taskable-method-42 obj)
   (none)
   )
 
@@ -797,7 +797,7 @@
 
 ;; definition for method 52 of type yellow-sagecage
 ;; INFO: Return type mismatch shadow-flags vs none.
-(defmethod dummy-52 yellow-sagecage ((obj yellow-sagecage))
+(defmethod process-taskable-method-52 yellow-sagecage ((obj yellow-sagecage))
   (let ((v1-1 (-> obj draw shadow-ctrl)))
     (when v1-1
       (let ((a0-1 v1-1))
@@ -840,7 +840,7 @@
 
 ;; definition for method 45 of type yellow-sagecage
 ;; INFO: Return type mismatch int vs symbol.
-(defmethod dummy-45 yellow-sagecage ((obj yellow-sagecage))
+(defmethod process-taskable-method-45 yellow-sagecage ((obj yellow-sagecage))
   (set! (-> *part-id-table* 2462 init-specs 14 initial-valuef) (-> obj rot-y))
   (set! (-> *part-id-table* 2462 init-specs 13 initial-valuef) (-> obj rot-x))
   (set! (-> *part-id-table* 2464 init-specs 14 initial-valuef) (-> obj rot-y))
@@ -877,11 +877,11 @@
   )
 
 ;; definition for method 43 of type yellow-sagecage
-(defmethod TODO-RENAME-43 yellow-sagecage ((obj yellow-sagecage))
+(defmethod process-taskable-method-43 yellow-sagecage ((obj yellow-sagecage))
   (if (-> obj beam-on)
       (return #f)
       )
-  (when (TODO-RENAME-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
+  (when (ambient-control-method-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
     (let ((f0-2 (rand-float-gen)))
       (cond
         ((< 0.6666667 f0-2)
@@ -900,11 +900,11 @@
 
 ;; definition for method 11 of type yellow-sagecage
 (defmethod init-from-entity! yellow-sagecage ((obj yellow-sagecage) (arg0 entity-actor))
-  (dummy-40 obj arg0 *yellowsage-sg* 3 50 (new 'static 'vector :w 8192.0) 5)
+  (process-taskable-method-40 obj arg0 *yellowsage-sg* 3 50 (new 'static 'vector :w 8192.0) 5)
   (set! (-> obj tasks) (get-task-control (-> obj entity extra perm task)))
   (play-reminder obj)
   (set! (-> obj sound-flava) (music-flava sage-yellow))
-  (dummy-42 obj)
+  (process-taskable-method-42 obj)
   (none)
   )
 
@@ -937,7 +937,7 @@
 
 ;; definition for method 45 of type green-sagecage
 ;; INFO: Return type mismatch int vs symbol.
-(defmethod dummy-45 green-sagecage ((obj green-sagecage))
+(defmethod process-taskable-method-45 green-sagecage ((obj green-sagecage))
   (set! (-> *part-id-table* 2469 init-specs 14 initial-valuef) (-> obj rot-y))
   (set! (-> *part-id-table* 2469 init-specs 13 initial-valuef) (-> obj rot-x))
   (set! (-> *part-id-table* 2471 init-specs 14 initial-valuef) (-> obj rot-y))
@@ -1263,7 +1263,7 @@
 
 ;; definition for method 11 of type green-sagecage
 (defmethod init-from-entity! green-sagecage ((obj green-sagecage) (arg0 entity-actor))
-  (dummy-40 obj arg0 *green-sagecage-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
+  (process-taskable-method-40 obj arg0 *green-sagecage-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
   (set! (-> obj tasks) (get-task-control (-> obj entity extra perm task)))
   (play-reminder obj)
   (set! (-> obj evilbro) (the-as handle #f))
@@ -1280,6 +1280,6 @@
       )
     )
   (set! (-> obj sound-flava) (music-flava sage))
-  (dummy-42 obj)
+  (process-taskable-method-42 obj)
   (none)
   )
