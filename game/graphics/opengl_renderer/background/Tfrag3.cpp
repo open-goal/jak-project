@@ -40,6 +40,10 @@ Tfrag3::~Tfrag3() {
   glDeleteVertexArrays(1, &m_debug_vao);
 }
 
+void Tfrag3::init_shaders(ShaderLibrary& shaders) {
+  m_uniforms.decal = glGetUniformLocation(shaders[ShaderId::TFRAG3].id(), "decal");
+}
+
 void Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kinds,
                          const LevelData* loader_data) {
   const auto* lev_data = loader_data->level.get();
@@ -188,15 +192,25 @@ void Tfrag3::render_tree(int geom,
     return;
   }
   auto& tree = m_cached_trees.at(geom).at(settings.tree_idx);
+  const auto* itimes = settings.itimes;
+
+  if (tree.freeze_itimes) {
+    itimes = tree.itimes_debug;
+  } else {
+    for (int i = 0; i < 4; i++) {
+      tree.itimes_debug[i] = settings.itimes[i];
+    }
+  }
+
   ASSERT(tree.kind != tfrag3::TFragmentTreeKind::INVALID);
 
   if (m_color_result.size() < tree.colors->size()) {
     m_color_result.resize(tree.colors->size());
   }
   if (m_use_fast_time_of_day) {
-    interp_time_of_day_fast(settings.itimes, tree.tod_cache, m_color_result.data());
+    interp_time_of_day_fast(itimes, tree.tod_cache, m_color_result.data());
   } else {
-    interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
+    interp_time_of_day_slow(itimes, *tree.colors, m_color_result.data());
   }
   glActiveTexture(GL_TEXTURE10);
   glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
@@ -249,6 +263,7 @@ void Tfrag3::render_tree(int geom,
     ASSERT(m_textures);
     glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
     auto double_draw = setup_tfrag_shader(render_state, draw.mode, ShaderId::TFRAG3);
+    glUniform1i(m_uniforms.decal, draw.mode.get_decal() ? 1 : 0);
     tree.tris_this_frame += draw.num_triangles;
     tree.draws_this_frame++;
 
@@ -347,7 +362,12 @@ void Tfrag3::draw_debug_window() {
     ImGui::Checkbox("cull debug (slow)", &tree.cull_debug);
     ImGui::PopID();
     if (tree.rendered_this_frame) {
+      ImGui::Checkbox("freeze itimes", &tree.freeze_itimes);
       ImGui::Text("  tris: %d draws: %d", tree.tris_this_frame, tree.draws_this_frame);
+      for (int j = 0; j < 4; j++) {
+        ImGui::Text(" itimes[%d] 0x%x 0x%x 0x%x 0x%x", j, tree.itimes_debug[j][0],
+                    tree.itimes_debug[j][1], tree.itimes_debug[j][2], tree.itimes_debug[j][3]);
+      }
     }
   }
 }

@@ -538,6 +538,9 @@ void GlowRenderer::draw_probes(SharedRenderState* render_state,
   glBindVertexArray(m_ogl.vao);
   glEnable(GL_PRIMITIVE_RESTART);
   glPrimitiveRestartIndex(UINT32_MAX);
+  GLint old_viewport[4];
+  glGetIntegerv(GL_VIEWPORT, old_viewport);
+  glViewport(0, 0, m_ogl.probe_fbo_w, m_ogl.probe_fbo_h);
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
   glBufferData(GL_ARRAY_BUFFER, m_next_vertex * sizeof(Vertex), m_vertex_buffer.data(),
                GL_STREAM_DRAW);
@@ -554,6 +557,7 @@ void GlowRenderer::draw_probes(SharedRenderState* render_state,
   glDepthFunc(GL_GEQUAL);
   glDrawElements(GL_TRIANGLE_STRIP, idx_end - idx_start, GL_UNSIGNED_INT,
                  (void*)(idx_start * sizeof(u32)));
+  glViewport(old_viewport[0], old_viewport[1], old_viewport[2], old_viewport[3]);
 }
 
 /*!

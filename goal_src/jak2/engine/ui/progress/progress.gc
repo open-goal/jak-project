@@ -64,7 +64,7 @@
   )
 
 
-(define *progress-stack* (the-as (pointer uint8) (malloc 'global #x3800)))
+(define *progress-stack* (the-as (pointer uint8) (malloc 'global DPROCESS_STACK_SIZE)))
 
 (define *progress-process* (the-as (pointer progress) #f))
 
@@ -460,11 +460,11 @@
         (*progress-process*
           (deactivate (-> *progress-process* 0))
           (set! (-> *blit-displays-work* menu-mode) (the-as basic #t))
-          (set! *progress-process* (process-spawn progress arg1 :to arg0 :stack (&-> *progress-stack* 14336)))
+          (set! *progress-process* (process-spawn progress arg1 :to arg0 :stack (&-> *progress-stack* DPROCESS_STACK_SIZE)))
           (set-master-mode 'progress)
           )
         (else
-          (set! *progress-process* (process-spawn progress arg1 :to arg0 :stack (&-> *progress-stack* 14336)))
+          (set! *progress-process* (process-spawn progress arg1 :to arg0 :stack (&-> *progress-stack* DPROCESS_STACK_SIZE)))
           (set-master-mode 'progress)
           )
         )
@@ -1520,7 +1520,7 @@
                 (symbol->string (-> self current))
                 )
               )
-            (case (-> self current)
+            (case (-> self next) ;; patched to next instead of current because we save synchronously
               (('saving)
                (cond
                  ((= (-> self state-stack 0) 'title)
@@ -1625,7 +1625,7 @@
                (set-next-state self 'insufficient-space 0)
                )
               (else
-                (case (-> self current)
+                (case (-> self next) ;; patched to next instead of current because we save synchronously
                   (('formatting 'format-card)
                    (set-next-state self 'error-formatting 0)
                    )
