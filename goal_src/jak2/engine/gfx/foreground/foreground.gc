@@ -681,7 +681,6 @@
         (dotimes (i 128) (set! (-> transferred-matrices i) 0))
 
         (let ((merc-ctrl (-> dc lod-set lod (-> dc cur-lod) geo)))
-
           ;; loop to: grab matrices and populate flags
           (dotimes (effect-idx (-> merc-ctrl header effect-count))
 
@@ -794,9 +793,11 @@
     ;; look for uses.
     (dotimes (i (-> mctrl header effect-count))
       ;;(format 0 "effect ~d, texture ~d~%" i (-> mctrl effect i texture-index))
-      (set! (-> use-flags (-> mctrl effect i texture-index)) 1)
-      (when (logtest? (-> (-> dc lod-set lod (-> dc cur-lod) geo) effect i effect-bits) (effect-bits ripple texscroll))
-        (set! has-ripple-or-texscroll #t)
+      (when (= 0 (-> *foreground* merc-bucket-info effect i merc-path))
+        (set! (-> use-flags (-> mctrl effect i texture-index)) 1)
+        (when (logtest? (-> (-> dc lod-set lod (-> dc cur-lod) geo) effect i effect-bits) (effect-bits ripple texscroll))
+          (set! has-ripple-or-texscroll #t)
+          )
         )
       )
 
@@ -1190,7 +1191,11 @@
                           )
                         )
 
-                      ;; massive hack use merc for everything..
+                      ;; reassign for PC. For the most part, we reassign everything to merc. The exceptions are:
+                      ;; - "warp" effect is on: this special effect isn't supported by PC merc
+                      ;; - "death" effect is on: this requires the renderer to return transformed vertices.
+                      ;; - "force-mercneric" is on: this is used rarely, and on stuff that doesn't seem to have
+                      ;; - ripple query?
                       (when (or (nonzero? (-> (scratchpad-object foreground-work) regs mercneric-used))
                                 (nonzero? (-> (scratchpad-object foreground-work) regs emerc-used))
                                 )
@@ -1198,7 +1203,20 @@
                         (set! (-> (scratchpad-object foreground-work) regs emerc-used) 0)
                         (set! (-> (scratchpad-object foreground-work) regs merc-used) 1)
                         (dotimes (effect-idx (the-as int (-> geo header effect-count)))
-                          (set! (-> bucket-info effect effect-idx merc-path) 0)
+                          (cond
+                            ((or (logtest? (-> geo effect effect-idx effect-bits) (effect-bits cross-fade))
+                                 (logtest? (-> geo effect effect-idx effect-bits) (effect-bits force-mercneric))
+                                 (nonzero? (-> dc death-timer))
+                                 )
+                              (format *stdcon* "[fg] ~S to generic~%" (-> dc process name))
+                              (set! (-> bucket-info effect effect-idx merc-path) 2)
+                              (set! (-> (scratchpad-object foreground-work) regs mercneric-used) 1)
+                             )
+                            (else
+                              (set! (-> bucket-info effect effect-idx merc-path) 0)
+                              )
+                            )
+
                           (when (logtest? (-> geo effect effect-idx effect-usage) 1)
                             (set! (-> bucket-info effect effect-idx ignore-alpha) 1)
                             )
