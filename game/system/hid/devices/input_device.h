@@ -2,8 +2,8 @@
 
 #include <optional>
 
+#include "game/settings/settings.h"
 #include "game/system/hid/input_bindings.h"
-#include <game/settings/settings.h>
 
 #include "third-party/SDL/include/SDL.h"
 

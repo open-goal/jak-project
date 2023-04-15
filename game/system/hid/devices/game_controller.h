@@ -25,8 +25,4 @@ class GameController : public InputDevice {
   std::string m_device_name = "";
   bool m_has_led;
   std::string m_guid = "";
-
-  // Tracking this here instead of in the mouse class because it's
-  // really only manipulated by controller events in the first place
-  bool m_cursor_hidden = false;
 };

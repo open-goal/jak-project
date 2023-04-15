@@ -38,10 +38,10 @@ void to_json(json& j, const InputModifiers& obj) {
            {"need_alt", obj.need_alt}};
 }
 void from_json(const json& j, InputModifiers& obj) {
-  json_safe_deserialize(need_shift);
-  json_safe_deserialize(need_ctrl);
-  json_safe_deserialize(need_meta);
-  json_safe_deserialize(need_alt);
+  json_deserialize_if_exists(need_shift);
+  json_deserialize_if_exists(need_ctrl);
+  json_deserialize_if_exists(need_meta);
+  json_deserialize_if_exists(need_alt);
 }
 
 void to_json(json& j, const InputBinding& obj) {
@@ -51,9 +51,9 @@ void to_json(json& j, const InputBinding& obj) {
 }
 
 void from_json(const json& j, InputBinding& obj) {
-  json_safe_deserialize(pad_data_index);
-  json_safe_deserialize(minimum_in_range);
-  json_safe_deserialize(modifiers);
+  json_deserialize_if_exists(pad_data_index);
+  json_deserialize_if_exists(minimum_in_range);
+  json_deserialize_if_exists(modifiers);
 }
 
 void to_json(json& j, const InputBindingGroups& obj) {
@@ -64,10 +64,10 @@ void to_json(json& j, const InputBindingGroups& obj) {
 }
 
 void from_json(const json& j, InputBindingGroups& obj) {
-  json_safe_deserialize(device_type);
-  json_safe_deserialize(analog_axii);
-  json_safe_deserialize(button_axii);
-  json_safe_deserialize(buttons);
+  json_deserialize_if_exists(device_type);
+  json_deserialize_if_exists(analog_axii);
+  json_deserialize_if_exists(button_axii);
+  json_deserialize_if_exists(buttons);
 }
 
 const std::vector<PadData::ButtonIndex> PAD_DATA_PRESSURE_INDEX_ORDER = {
@@ -148,13 +148,9 @@ std::vector<InputBindingInfo> InputBindingGroups::lookup_analog_binds(PadData::A
         continue;
       }
       InputBindingInfo new_info;
-      new_info.sdl_idx = sdl_code;
-      new_info.pad_idx = bind.pad_data_index;
-      new_info.analog_button = false;
-      new_info.modifiers = bind.modifiers;
       switch (device_type) {
         case KEYBOARD:
-          new_info.host_name = sdl_util::get_keyboard_button_name(sdl_code, new_info.modifiers);
+          new_info = InputBindingInfo(bind, device_type, sdl_code);
           break;
         default:
           new_info.host_name = "TODO - NON-KB ANALOG BIND LOOKUP";
@@ -174,29 +170,13 @@ std::vector<InputBindingInfo> InputBindingGroups::lookup_button_binds(PadData::B
   }
 
   // Didn't find it, let's construct the cache entry
-  // TODO - clean this up, duplication
   std::vector<InputBindingInfo> entry = {};
   for (const auto& [sdl_code, binds] : buttons) {
     for (const auto& bind : binds) {
       if (bind.pad_data_index != idx) {
         continue;
       }
-      InputBindingInfo new_info;
-      new_info.sdl_idx = sdl_code;
-      new_info.pad_idx = bind.pad_data_index;
-      new_info.analog_button = false;
-      new_info.modifiers = bind.modifiers;
-      switch (device_type) {
-        case CONTROLLER:
-          new_info.host_name = sdl_util::get_controller_button_name(sdl_code);
-          break;
-        case KEYBOARD:
-          new_info.host_name = sdl_util::get_keyboard_button_name(sdl_code, new_info.modifiers);
-          break;
-        case MOUSE:
-          new_info.host_name = sdl_util::get_mouse_button_name(sdl_code, new_info.modifiers);
-          break;
-      }
+      InputBindingInfo new_info(bind, device_type, sdl_code);
       entry.push_back(new_info);
     }
   }
@@ -205,22 +185,7 @@ std::vector<InputBindingInfo> InputBindingGroups::lookup_button_binds(PadData::B
       if (bind.pad_data_index != idx) {
         continue;
       }
-      InputBindingInfo new_info;
-      new_info.sdl_idx = sdl_code;
-      new_info.pad_idx = bind.pad_data_index;
-      new_info.analog_button = true;
-      new_info.modifiers = bind.modifiers;
-      switch (device_type) {
-        case 0:
-          new_info.host_name = sdl_util::get_controller_axis_name(sdl_code);
-          break;
-        case 1:
-          new_info.host_name = sdl_util::get_keyboard_button_name(sdl_code, new_info.modifiers);
-          break;
-        case 2:
-          new_info.host_name = sdl_util::get_mouse_button_name(sdl_code, new_info.modifiers);
-          break;
-      }
+      InputBindingInfo new_info(bind, device_type, sdl_code);
       entry.push_back(new_info);
     }
   }
@@ -233,7 +198,6 @@ void InputBindingGroups::assign_analog_bind(u32 sdl_idx,
                                             const std::optional<InputModifiers> modifiers) {
   // Find out if the PS2 input is already bound, if it is we will do a swap so no input is ever left
   // unmapped
-  // TODO - does this swap properly two opposite ends of the analog (ie. W and S)
   const auto current_binds =
       lookup_analog_binds((PadData::AnalogIndex)bind_meta.pad_idx, bind_meta.for_analog_minimum);
   if (analog_axii.find(sdl_idx) != analog_axii.end()) {
@@ -295,4 +259,24 @@ void InputBindingGroups::set_bindings(const InputBindingGroups binds) {
   buttons = binds.buttons;
   m_analog_lookup.clear();
   m_button_lookup.clear();
+}
+
+InputBindingInfo::InputBindingInfo(const InputBinding bind,
+                                   const InputDeviceType device_type,
+                                   const s32 sdl_code) {
+  sdl_idx = sdl_code;
+  pad_idx = bind.pad_data_index;
+  analog_button = false;
+  modifiers = bind.modifiers;
+  switch (device_type) {
+    case CONTROLLER:
+      host_name = sdl_util::get_controller_button_name(sdl_code);
+      break;
+    case KEYBOARD:
+      host_name = sdl_util::get_keyboard_button_name(sdl_code, modifiers);
+      break;
+    case MOUSE:
+      host_name = sdl_util::get_mouse_button_name(sdl_code, modifiers);
+      break;
+  }
 }

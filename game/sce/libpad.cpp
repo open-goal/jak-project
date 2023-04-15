@@ -2,6 +2,7 @@
 
 #include "common/util/Assert.h"
 
+#include "game/graphics/display.h"
 #include "game/graphics/gfx.h"
 #include "game/kernel/common/kernel_types.h"
 #include "game/system/hid/input_bindings.h"
@@ -65,7 +66,11 @@ int scePadRead(int port, int /*slot*/, u8* rdata) {
 
   cpad->status = 0x70 /* (dualshock2) */ | (20 / 2); /* (dualshock2 data size) */
 
-  const auto& pad_data = Gfx::get_current_frames_pad_data(port);
+  std::optional<std::shared_ptr<PadData>> pad_data = std::nullopt;
+  if (Display::GetMainDisplay()) {
+    pad_data = Display::GetMainDisplay()->get_input_manager()->get_current_data(port);
+  }
+
   if (pad_data) {
     std::tie(cpad->rightx, cpad->righty) = pad_data.value()->analog_right();
     std::tie(cpad->leftx, cpad->lefty) = pad_data.value()->analog_left();
@@ -89,7 +94,10 @@ int scePadSetActDirect(int port, int /*slot*/, const u8* data) {
   // offsets are set by scePadSetActAlign, but we already know the game uses 0 for big motor and 1
   // for small motor
   // also, the "slow" motor corresponds to the "large" motor on the PS2
-  return Gfx::update_rumble(port, data[1], data[0]);
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_input_manager()->update_rumble(port, data[1], data[0]);
+  }
+  return 0;
 }
 
 int scePadSetActAlign(int /*port*/, int /*slot*/, const u8* /*data*/) {

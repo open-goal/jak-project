@@ -112,7 +112,9 @@ void InputManager::hide_cursor(const bool hide_cursor) {
   }
 }
 
-void InputManager::process_sdl_event(const SDL_Event& event) {
+void InputManager::process_sdl_event(const SDL_Event& event,
+                                     const bool ignore_mouse,
+                                     const bool ignore_kb) {
   // Detect controller connections and disconnects
   if (sdl_util::is_any_event_type(event.type,
                                   {SDL_CONTROLLERDEVICEADDED, SDL_CONTROLLERDEVICEREMOVED})) {
@@ -120,12 +122,19 @@ void InputManager::process_sdl_event(const SDL_Event& event) {
     refresh_device_list();
   }
 
+  if (!m_ignored_device_last_frame && (ignore_mouse || ignore_kb)) {
+    clear_inputs();
+    m_ignored_device_last_frame = true;
+  } else if (m_ignored_device_last_frame && !ignore_mouse && !ignore_kb) {
+    m_ignored_device_last_frame = false;
+  }
+
   if (m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
-    if (m_keyboard_enabled) {
+    if (!ignore_kb && m_keyboard_enabled) {
       m_keyboard.process_event(event, m_command_binds, m_data.at(m_keyboard_and_mouse_port),
                                m_waiting_for_bind);
     }
-    if (m_mouse_enabled) {
+    if (!ignore_mouse && m_mouse_enabled) {
       m_mouse.process_event(event, m_command_binds, m_data.at(m_keyboard_and_mouse_port),
                             m_waiting_for_bind);
     }
@@ -280,9 +289,9 @@ void InputManager::enable_keyboard(const bool enabled) {
   }
 }
 
-void InputManager::enable_mouse(const bool enabled,
-                                const bool control_camera,
-                                const bool control_movement) {
+void InputManager::update_mouse_options(const bool enabled,
+                                        const bool control_camera,
+                                        const bool control_movement) {
   m_mouse_enabled = enabled;
   if (!m_mouse_enabled) {
     // Reset inputs as this device won't be able to be read from again!

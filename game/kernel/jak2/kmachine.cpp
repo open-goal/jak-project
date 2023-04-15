@@ -7,8 +7,10 @@
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
+#include <common/util/string_util.h>
 
 #include "game/external/discord.h"
+#include "game/graphics/display.h"
 #include "game/graphics/jak2_texture_remap.h"
 #include "game/kernel/common/Symbol4.h"
 #include "game/kernel/common/fileio.h"
@@ -436,15 +438,23 @@ u32 MouseGetData(u32 _mouse) {
   mouse->status = 1;
   mouse->button0 = 0;
 
-  const auto [xpos, ypos] = Gfx::get_mouse_pos();
+  s32 xpos = 0;
+  s32 ypos = 0;
+  if (Display::GetMainDisplay()) {
+    std::tie(xpos, ypos) = Display::GetMainDisplay()->get_input_manager()->get_mouse_pos();
+  }
 
   // NOTE - ignoring speed and setting position directly
   // the game assumes resolutions, so this makes it a lot easier to make it actually
   // line up with the mouse cursor
 
   // TODO - probably factor in scaling as well
-  auto win_width = Gfx::get_window_width();
-  auto win_height = Gfx::get_window_height();
+  auto win_width = 0;
+  auto win_height = 0;
+  if (Display::GetMainDisplay()) {
+    win_width = Display::GetMainDisplay()->get_display_manager()->get_window_width();
+    win_height = Display::GetMainDisplay()->get_display_manager()->get_window_height();
+  }
 
   // These are used to calculate the speed at which to move the mouse to it's new coordinates
   // zero'd out so they are ignored and don't impact the position we are about to set
@@ -503,22 +513,11 @@ u64 get_os() {
   return intern_from_c("windows").offset;
 #elif __linux__
   return intern_from_c("linux").offset;
+#elif __APPLE__
+  return intern_from_c("darwin").offset;
 #else
   return s7.offset;
 #endif
-}
-
-void pc_set_levels(u32 lev_list) {
-  std::vector<std::string> levels;
-  for (int i = 0; i < LEVEL_MAX; i++) {
-    u32 lev = *Ptr<u32>(lev_list + i * 4);
-    std::string ls = Ptr<String>(lev).c()->data();
-    if (ls != "none" && ls != "#f" && ls != "") {
-      levels.push_back(ls);
-    }
-  }
-
-  Gfx::set_levels(levels);
 }
 
 void update_discord_rpc(u32 discord_info) {
@@ -594,40 +593,75 @@ void update_discord_rpc(u32 discord_info) {
   }
 }
 
-u32 get_fullscreen() {
-  switch (Gfx::get_window_display_mode()) {
-    default:
-    case WindowDisplayMode::Windowed:
-      return intern_from_c("windowed").offset;
-    case WindowDisplayMode::Borderless:
-      return intern_from_c("borderless").offset;
-    case WindowDisplayMode::Fullscreen:
-      return intern_from_c("fullscreen").offset;
-  }
-}
-
-void set_fullscreen(u32 symptr) {
-  if (symptr == intern_from_c("windowed").offset || symptr == s7.offset) {
-    Gfx::set_window_display_mode(WindowDisplayMode::Windowed);
-  } else if (symptr == intern_from_c("borderless").offset) {
-    Gfx::set_window_display_mode(WindowDisplayMode::Borderless);
-  } else if (symptr == intern_from_c("fullscreen").offset) {
-    Gfx::set_window_display_mode(WindowDisplayMode::Fullscreen);
-  }
-}
-
 void InitMachine_PCPort() {
   // PC Port added functions
   init_common_pc_port_functions(make_function_symbol_from_c);
 
-  make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
+  make_function_symbol_from_c(
+      "__pc-set-levels", (void*)[](u32 lev_list) {
+        if (!Gfx::GetCurrentRenderer()) {
+          return;
+        }
+        std::vector<std::string> levels;
+        for (int i = 0; i < LEVEL_MAX; i++) {
+          u32 lev = *Ptr<u32>(lev_list + i * 4);
+          std::string ls = Ptr<String>(lev).c()->data();
+          if (ls != "none" && ls != "#f" && ls != "") {
+            levels.push_back(ls);
+          }
+        }
+
+        Gfx::GetCurrentRenderer()->set_levels(levels);
+      });
   make_function_symbol_from_c("__pc-get-tex-remap", (void*)lookup_jak2_texture_dest_offset);
 
-  // os stuff
+  // Returns the name of the display with the given id or #f if not found / empty
+  make_function_symbol_from_c(
+      "pc-get-display-name", (void*)[](u32 id)->u64 {
+        std::string name = "";
+        if (Display::GetMainDisplay()) {
+          name = Display::GetMainDisplay()->get_display_manager()->get_connected_display_name(id);
+        }
+        if (name.empty()) {
+          return s7.offset;
+        }
+        return make_string_from_c(str_util::to_upper(name).c_str());
+      });
+  make_function_symbol_from_c(
+      "pc-get-display-mode", (void*)[]() {
+        auto display_mode = WindowDisplayMode::Windowed;
+        if (Display::GetMainDisplay()) {
+          display_mode =
+              Display::GetMainDisplay()->get_display_manager()->get_window_display_mode();
+        }
+        switch (display_mode) {
+          default:
+          case WindowDisplayMode::Windowed:
+            return intern_from_c("windowed").offset;
+          case WindowDisplayMode::Borderless:
+            return intern_from_c("borderless").offset;
+          case WindowDisplayMode::Fullscreen:
+            return intern_from_c("fullscreen").offset;
+        }
+      });
   make_function_symbol_from_c("pc-get-os", (void*)get_os);
-  make_function_symbol_from_c("pc-get-fullscreen", (void*)get_fullscreen);
 
-  make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
+  make_function_symbol_from_c(
+      "pc-set-display-mode", (void*)[](u32 symptr) {
+        if (!Display::GetMainDisplay()) {
+          return;
+        }
+        if (symptr == intern_from_c("windowed").offset || symptr == s7.offset) {
+          Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
+              WindowDisplayMode::Windowed);
+        } else if (symptr == intern_from_c("borderless").offset) {
+          Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
+              WindowDisplayMode::Borderless);
+        } else if (symptr == intern_from_c("fullscreen").offset) {
+          Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
+              WindowDisplayMode::Fullscreen);
+        }
+      });
 
   // discord rich presence
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);

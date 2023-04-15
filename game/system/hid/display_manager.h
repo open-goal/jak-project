@@ -4,7 +4,7 @@
 #include <string>
 #include <unordered_map>
 
-#include <game/settings/settings.h>
+#include "game/settings/settings.h"
 
 #include "third-party/SDL/include/SDL.h"
 
@@ -13,9 +13,11 @@ TODO:
   - hiDPI support, see https://wiki.libsdl.org/SDL2/SDL_GetRendererOutputSize
 */
 
-enum WindowDisplayMode { Windowed = 0, Fullscreen = 1, Borderless = 2 };
+enum class WindowDisplayMode { Windowed = 0, Fullscreen = 1, Borderless = 2 };
 
-enum WindowState { Minimized, Maximized, Restored };
+enum class WindowState { Minimized, Maximized, Restored };
+
+enum class Orientation { Landscape, LandscapeFlipped, Portrait, PortraitFlipped, Unknown };
 
 /// https://wiki.libsdl.org/SDL2/SDL_DisplayMode
 struct DisplayMode {
@@ -25,6 +27,7 @@ struct DisplayMode {
   int screen_height;
   /// refresh rate (in Hz), or 0 for unspecified
   int refresh_rate;
+  Orientation orientation;
 };
 
 /// Monitors and handles all SDL events related to monitors and the window position
@@ -55,7 +58,7 @@ class DisplayManager {
   // Mutators
   void set_window_resizable(bool resizable);
   void set_window_size(int width, int height);
-  void set_window_position();
+  void initialize_window_position_from_settings();
   void set_window_display_mode(WindowDisplayMode mode);
   void set_fullscreen_display_id(int display_id);
 

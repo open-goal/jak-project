@@ -89,10 +89,6 @@ void GameController::process_event(const SDL_Event& event,
 
       // and analog triggers
       for (const auto& bind : binds.button_axii.at(event.caxis.axis)) {
-        // TODO - probably want some kind of a deadzone here too so the slightest touch doesn't
-        // trigger it (though how does that work for controllers with buttons instead!)
-        //
-        // TODO - test with switch controller
         data->button_data.at(bind.pad_data_index) = event.caxis.value > 0;
       }
     }

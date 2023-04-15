@@ -111,68 +111,13 @@ u32 Init(GameVersion version);
 void Loop(std::function<bool()> f);
 u32 Exit();
 
-// TODO - think of a better system to call into the C++ runtime than having to add a global function
-// in `Gfx` pretty verbose and clunky
-
 u32 vsync();
 void register_vsync_callback(std::function<void()> f);
 void clear_vsync_callback();
 u32 sync_path();
-void send_chain(const void* data, u32 offset);
-void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr);
-void texture_relocate(u32 destination, u32 source, u32 format);
-void set_levels(const std::vector<std::string>& levels);
-
-// InputMonitor usages
-std::optional<std::shared_ptr<PadData>> get_current_frames_pad_data(const int port);
-int update_rumble(const int port, const u8 low_intensity, const u8 high_intensity);
-std::pair<s32, s32> get_mouse_pos();
-int get_controller_count();
-std::string get_controller_name(const int id);
-std::string get_current_bind(const int port,
-                             const int device_type,
-                             const bool buttons,
-                             const int input_idx,
-                             const bool analog_for_minimum);
-void set_controller_id_for_port(const int id, const int port);
-void set_keyboard_enabled(const bool enabled);
-void set_mouse_enabled(const bool enabled, const bool control_camera, const bool control_movement);
-void set_mouse_camera_sens(const float xsens, const float ysens);
-void ignore_background_controller_events(const bool ignore);
-bool current_controller_has_led();
-void set_controller_led(const int port, const u8 red, const u8 green, const u8 blue);
-bool get_waiting_for_bind();
-void set_wait_for_bind(const InputDeviceType device_type,
-                       const bool for_analog,
-                       const bool for_minimum_analog,
-                       const int input_idx);
-void stop_waiting_for_bind();
-void reset_input_bindings_to_defaults(const int port, const InputDeviceType device_type);
-
-// VideoMonitor usages
-u64 get_window_width();
-u64 get_window_height();
-void set_fullscreen_display(u64 display_id);
-void set_window_size(u64 width, u64 hheight);
-void get_window_scale(float* x, float* y);
-int get_connected_display_count();
-std::string get_connected_display_name(int id);
-int get_active_display_refresh_rate();
-void get_active_display_size(s32* w, s32* h);
-void set_window_resizable(bool resizable);
-WindowDisplayMode get_window_display_mode();
-void set_window_display_mode(WindowDisplayMode mode);
-
-// Global Settings Related
-void set_game_resolution(int w, int h);
-void set_msaa(int samples);
-void set_frame_rate(int rate);
-void set_vsync(bool vsync);
-void set_letterbox(int w, int h);
 
 // matching enum in kernel-defs.gc !!
 enum class RendererTreeType { NONE = 0, TFRAG3 = 1, TIE3 = 2, INVALID };
-void SetLod(RendererTreeType tree, int lod);
 bool CollisionRendererGetMask(GfxGlobalSettings::CollisionRendererMode mode, int mask_id);
 void CollisionRendererSetMask(GfxGlobalSettings::CollisionRendererMode mode, int mask_id);
 void CollisionRendererClearMask(GfxGlobalSettings::CollisionRendererMode mode, int mask_id);

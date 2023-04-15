@@ -208,6 +208,9 @@ struct InputBindingInfo {
   std::string host_name;
   bool analog_button;
   InputModifiers modifiers;
+
+  InputBindingInfo() = default;
+  InputBindingInfo(const InputBinding bind, const InputDeviceType device_type, const s32 sdl_code);
 };
 
 // Contains all info related to the current binding we are waiting for

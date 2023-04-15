@@ -59,5 +59,3 @@ void to_json(json& j, const InputSettings& obj);
 void from_json(const json& j, InputSettings& obj);
 
 }  // namespace game_settings
-
-// TODO - controller settings

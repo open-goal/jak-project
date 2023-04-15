@@ -5,13 +5,14 @@
 #include "third-party/fmt/core.h"
 #include "third-party/fmt/format.h"
 
-DisplayManager::DisplayManager(SDL_Window* window) : m_window(window) {
+DisplayManager::DisplayManager(SDL_Window* window)
+    : m_window(window), m_selected_fullscreen_display_id(0) {
   update_curr_display_info();
   update_video_modes();
   // Load display settings from a file
   m_display_settings = game_settings::DisplaySettings();
   // Adjust window / monitor position
-  set_window_position();
+  initialize_window_position_from_settings();
 }
 
 DisplayManager::~DisplayManager() {
@@ -62,8 +63,7 @@ void DisplayManager::process_sdl_event(const SDL_Event& event) {
         update_video_modes();
         break;
       case SDL_DISPLAYEVENT_ORIENTATION:
-        // TODO - do i have to invert width/height?
-        // TODO - set a flag so the runtime can show portrait/landscape tailored resolutions
+        update_video_modes();
         break;
     }
   }
@@ -105,8 +105,7 @@ void DisplayManager::set_window_size(int width, int height) {
   SDL_SetWindowSize(m_window, width, height);
 }
 
-// TODO - probably rename appropriately
-void DisplayManager::set_window_position() {
+void DisplayManager::initialize_window_position_from_settings() {
   // Check that the display id is still valid
   if (m_current_display_modes.find(m_display_settings.display_id) ==
       m_current_display_modes.end()) {
@@ -116,16 +115,24 @@ void DisplayManager::set_window_position() {
   }
 
   SDL_Rect rect;
-  // TODO - error handlking
-  SDL_GetDisplayBounds(m_display_settings.display_id, &rect);
-  if (m_display_settings.window_xpos <= rect.x ||
-      m_display_settings.window_xpos + 50 >= rect.x + rect.w) {
-    m_display_settings.window_xpos = rect.x + 50;
+  const auto ok = SDL_GetDisplayBounds(m_display_settings.display_id, &rect);
+  if (ok < 0) {
+    sdl_util::log_error(fmt::format("unable to get display bounds for display id {}",
+                                    m_display_settings.display_id));
+  } else {
+    // Adjust the settings if they are out of bounds
+    if (m_display_settings.window_xpos <= rect.x ||
+        m_display_settings.window_xpos + 50 >= rect.x + rect.w) {
+      m_display_settings.window_xpos = rect.x + 50;
+      m_display_settings.save_settings();
+    }
+    if (m_display_settings.window_ypos <= rect.y ||
+        m_display_settings.window_ypos + 50 > rect.y + rect.h) {
+      m_display_settings.window_ypos = rect.y + 50;
+      m_display_settings.save_settings();
+    }
   }
-  if (m_display_settings.window_ypos <= rect.y ||
-      m_display_settings.window_ypos + 50 > rect.y + rect.h) {
-    m_display_settings.window_ypos = rect.y + 50;
-  }
+
   SDL_SetWindowPosition(m_window, m_display_settings.window_xpos, m_display_settings.window_ypos);
 }
 
@@ -137,6 +144,8 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
       result = SDL_SetWindowFullscreen(m_window, 0);
       if (result == 0) {
         SDL_SetWindowSize(m_window, m_window_width, m_window_height);
+      } else {
+        sdl_util::log_error("unable to change window to windowed mode");
       }
       break;
     case WindowDisplayMode::Fullscreen:
@@ -145,16 +154,24 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
       result = SDL_SetWindowFullscreen(m_window, 0);
       if (result == 0) {
         SDL_Rect rect;
-        // TODO -error handlking
-        SDL_GetDisplayBounds(m_selected_fullscreen_display_id, &rect);
-        // 2. move it to the right monitor (a bit away from the edge)
-        SDL_SetWindowPosition(m_window, rect.x + 50, rect.y + 50);
-        // 3. fullscreen it!
-        if (result == 0) {
+        result = SDL_GetDisplayBounds(m_selected_fullscreen_display_id, &rect);
+        if (result < 0) {
+          sdl_util::log_error(fmt::format("unable to get display bounds for display id {}",
+                                          m_selected_fullscreen_display_id));
+        } else {
+          // 2. move it to the right monitor (a bit away from the edge)
+          SDL_SetWindowPosition(m_window, rect.x + 50, rect.y + 50);
+          // 3. fullscreen it!
           result = SDL_SetWindowFullscreen(m_window, mode == WindowDisplayMode::Fullscreen
                                                          ? SDL_WINDOW_FULLSCREEN
                                                          : SDL_WINDOW_FULLSCREEN_DESKTOP);
+          if (result < 0) {
+            sdl_util::log_error("unable to switch window fullscreen or borderless fullscreen");
+          }
         }
+      } else {
+        sdl_util::log_error(
+            "unable to switch window to windowed mode in order to change fullscreen modes");
       }
       break;
   }
@@ -209,7 +226,27 @@ void DisplayManager::update_video_modes() {
           fmt::format("couldn't retrieve current display mode for display id {}", display_id));
       continue;
     }
-    DisplayMode new_mode = {curr_mode.format, curr_mode.w, curr_mode.h, curr_mode.refresh_rate};
+    auto display_orient = SDL_GetDisplayOrientation(display_id);
+    Orientation orient = Orientation::Unknown;
+    switch (display_orient) {
+      case SDL_ORIENTATION_LANDSCAPE:
+        orient = Orientation::Landscape;
+        break;
+      case SDL_ORIENTATION_LANDSCAPE_FLIPPED:
+        orient = Orientation::LandscapeFlipped;
+        break;
+      case SDL_ORIENTATION_PORTRAIT:
+        orient = Orientation::Portrait;
+        break;
+      case SDL_ORIENTATION_PORTRAIT_FLIPPED:
+        orient = Orientation::PortraitFlipped;
+        break;
+      default:
+        orient = Orientation::Unknown;
+    }
+
+    DisplayMode new_mode = {curr_mode.format, curr_mode.w, curr_mode.h, curr_mode.refresh_rate,
+                            orient};
     m_current_display_modes[display_id] = new_mode;
   }
 }

@@ -16,6 +16,7 @@
 #include "common/util/string_util.h"
 
 #include "game/external/discord.h"
+#include "game/graphics/display.h"
 #include "game/graphics/gfx.h"
 #include "game/graphics/sceGraphicsInterface.h"
 #include "game/kernel/common/fileio.h"
@@ -386,28 +387,6 @@ int ShutdownMachine() {
   return 0;
 }
 
-// todo, these could probably be moved to common
-
-/*!
- * Called from the game thread at each frame to tell the PC rendering code which levels to start
- * loading. The loader internally handles locking.
- */
-void pc_set_levels(u32 l0, u32 l1) {
-  std::string l0s = Ptr<String>(l0).c()->data();
-  std::string l1s = Ptr<String>(l1).c()->data();
-
-  std::vector<std::string> levels;
-  if (l0s != "none" && l0s != "#f") {
-    levels.push_back(l0s);
-  }
-
-  if (l1s != "none" && l1s != "#f") {
-    levels.push_back(l1s);
-  }
-
-  Gfx::set_levels(levels);
-}
-
 /*!
  * Open a file-stream.  Name is a GOAL string. Mode is a GOAL symbol.  Use 'read for readonly
  * and anything else for write only.
@@ -448,6 +427,8 @@ u64 get_os() {
   return intern_from_c("windows").offset;
 #elif __linux__
   return intern_from_c("linux").offset;
+#elif __APPLE__
+  return intern_from_c("darwin").offset;
 #else
   return s7.offset;
 #endif
@@ -558,80 +539,121 @@ void update_discord_rpc(u32 discord_info) {
   }
 }
 
-u32 get_display_mode() {
-  switch (Gfx::get_window_display_mode()) {
-    default:
-    case WindowDisplayMode::Windowed:
-      return intern_from_c("windowed").offset;
-    case WindowDisplayMode::Borderless:
-      return intern_from_c("borderless").offset;
-    case WindowDisplayMode::Fullscreen:
-      return intern_from_c("fullscreen").offset;
-  }
-}
-
-void set_display_mode(u32 symptr) {
-  if (symptr == intern_from_c("windowed").offset || symptr == s7.offset) {
-    Gfx::set_window_display_mode(WindowDisplayMode::Windowed);
-  } else if (symptr == intern_from_c("borderless").offset) {
-    Gfx::set_window_display_mode(WindowDisplayMode::Borderless);
-  } else if (symptr == intern_from_c("fullscreen").offset) {
-    Gfx::set_window_display_mode(WindowDisplayMode::Fullscreen);
-  }
-}
-
-/// Returns the name of the display with the given id
-/// or #f if not found / empty
-u64 get_display_name(u32 id) {
-  const auto name = Gfx::get_connected_display_name(id);
-  if (name.empty()) {
-    return s7.offset;
-  }
-  return make_string_from_c(str_util::to_upper(name).c_str());
-}
-
-/// Returns the name of the display with the given id
-/// or #f if not found / empty
-u64 get_controller_name(u32 id) {
-  const auto name = Gfx::get_controller_name(id);
-  if (name.empty()) {
-    return s7.offset;
-  }
-  return make_string_from_c(str_util::to_upper(name).c_str());
-}
-
-u64 get_current_bind(s32 bind_assignment_info) {
-  auto info = bind_assignment_info ? Ptr<BindAssignmentInfo>(bind_assignment_info).c() : NULL;
-  auto port = (int)info->port;
-  auto device_type = (int)info->device_type;
-  auto for_button = info->buttons != s7.offset;
-  auto input_idx = (int)info->input_idx;
-  auto analog_min_range = info->analog_min_range != s7.offset;
-
-  const auto name =
-      Gfx::get_current_bind(port, device_type, for_button, input_idx, analog_min_range);
-  // TODO - translate for empty and such
-  if (name.empty()) {
-    return s7.offset;
-  }
-  return make_string_from_c(str_util::to_upper(name).c_str());
-}
-
 void InitMachine_PCPort() {
+  // TODO - more of these can be removed from here if we pass more function pointers (intern_from_c,
+  // make_string_from_c)
+
   // PC Port added functions
   init_common_pc_port_functions(make_function_symbol_from_c);
 
   // Game specific functions
-  // TODO - more of these can be removed from here if we pass more function pointers
-  make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
+  // Called from the game thread at each frame to tell the PC rendering code which levels to start
+  // loading. The loader internally handles locking.
+  make_function_symbol_from_c(
+      "__pc-set-levels", (void*)[](u32 l0, u32 l1) {
+        if (!Gfx::GetCurrentRenderer()) {
+          return;
+        }
+        std::string l0s = Ptr<String>(l0).c()->data();
+        std::string l1s = Ptr<String>(l1).c()->data();
 
-  make_function_symbol_from_c("pc-get-controller-name", (void*)get_controller_name);
-  make_function_symbol_from_c("pc-get-current-bind", (void*)get_current_bind);
-  make_function_symbol_from_c("pc-get-display-name", (void*)get_display_name);
-  make_function_symbol_from_c("pc-get-display-mode", (void*)get_display_mode);
+        std::vector<std::string> levels;
+        if (l0s != "none" && l0s != "#f") {
+          levels.push_back(l0s);
+        }
+
+        if (l1s != "none" && l1s != "#f") {
+          levels.push_back(l1s);
+        }
+
+        Gfx::GetCurrentRenderer()->set_levels(levels);
+      });
+
+  // Returns the name of the display with the given id or #f if not found / empty
+  make_function_symbol_from_c(
+      "pc-get-controller-name", (void*)[](u32 id)->u64 {
+        std::string name = "";
+        if (Display::GetMainDisplay()) {
+          name = Display::GetMainDisplay()->get_input_manager()->get_controller_name(id);
+        }
+        if (name.empty()) {
+          return s7.offset;
+        }
+        return make_string_from_c(str_util::to_upper(name).c_str());
+      });
+
+  make_function_symbol_from_c(
+      "pc-get-current-bind", (void*)[](s32 bind_assignment_info)->u64 {
+        if (!Display::GetMainDisplay()) {
+          // TODO - return something that lets the runtime use a translatable string if unset
+          return make_string_from_c(str_util::to_upper("unknown").c_str());
+        }
+
+        auto info = bind_assignment_info ? Ptr<BindAssignmentInfo>(bind_assignment_info).c() : NULL;
+        auto port = (int)info->port;
+        auto device_type = (int)info->device_type;
+        auto for_button = info->buttons != s7.offset;
+        auto input_idx = (int)info->input_idx;
+        auto analog_min_range = info->analog_min_range != s7.offset;
+
+        if (Display::GetMainDisplay()) {
+          auto name = Display::GetMainDisplay()->get_input_manager()->get_current_bind(
+              port, (InputDeviceType)device_type, for_button, input_idx, analog_min_range);
+          if (name.empty()) {
+            return s7.offset;
+          }
+          // TODO - return something that lets the runtime use a translatable string if unset
+          return make_string_from_c(str_util::to_upper(name).c_str());
+        }
+      });
+
+  // Returns the name of the display with the given id or #f if not found / empty
+  make_function_symbol_from_c(
+      "pc-get-display-name", (void*)[](u32 id)->u64 {
+        std::string name = "";
+        if (Display::GetMainDisplay()) {
+          name = Display::GetMainDisplay()->get_display_manager()->get_connected_display_name(id);
+        }
+        if (name.empty()) {
+          return s7.offset;
+        }
+        return make_string_from_c(str_util::to_upper(name).c_str());
+      });
+  make_function_symbol_from_c(
+      "pc-get-display-mode", (void*)[]() {
+        auto display_mode = WindowDisplayMode::Windowed;
+        if (Display::GetMainDisplay()) {
+          display_mode =
+              Display::GetMainDisplay()->get_display_manager()->get_window_display_mode();
+        }
+        switch (display_mode) {
+          default:
+          case WindowDisplayMode::Windowed:
+            return intern_from_c("windowed").offset;
+          case WindowDisplayMode::Borderless:
+            return intern_from_c("borderless").offset;
+          case WindowDisplayMode::Fullscreen:
+            return intern_from_c("fullscreen").offset;
+        }
+      });
   make_function_symbol_from_c("pc-get-os", (void*)get_os);
 
-  make_function_symbol_from_c("pc-set-display-mode", (void*)set_display_mode);
+  make_function_symbol_from_c(
+      "pc-set-display-mode", (void*)[](u32 symptr) {
+        if (!Display::GetMainDisplay()) {
+          return;
+        }
+        if (symptr == intern_from_c("windowed").offset || symptr == s7.offset) {
+          Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
+              WindowDisplayMode::Windowed);
+        } else if (symptr == intern_from_c("borderless").offset) {
+          Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
+              WindowDisplayMode::Borderless);
+        } else if (symptr == intern_from_c("fullscreen").offset) {
+          Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
+              WindowDisplayMode::Fullscreen);
+        }
+      });
 
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
 

@@ -396,14 +396,10 @@ void GLDisplay::process_sdl_events() {
     ImGuiIO& io = ImGui::GetIO();
     {
       auto p = scoped_prof("sdl-input-monitor");
-      // If the user is currently interacting with an ImGUI text field or button
-      // keep it simple and ignore all input events
-      if (!io.WantCaptureMouse && !io.WantCaptureKeyboard) {
-        m_input_manager->process_sdl_event(evt);
-      } else {
-        // If we are ignoring events, make sure the pad data is cleared to avoid odd behaviour
-        m_input_manager->clear_inputs();
-      }
+      // Ignore relevant inputs from the window if ImGUI is capturing them
+      // On the first frame, this will clear any current inputs in an attempt to reduce unexpected
+      // behaviour
+      m_input_manager->process_sdl_event(evt, io.WantCaptureMouse, io.WantCaptureKeyboard);
     }
   }
 }

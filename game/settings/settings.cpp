@@ -20,15 +20,15 @@ void to_json(json& j, const DebugSettings& obj) {
 }
 
 void from_json(const json& j, DebugSettings& obj) {
-  json_safe_deserialize(version);
-  json_safe_deserialize(show_imgui);
-  json_safe_deserialize(imgui_font_size);
-  json_safe_deserialize(monospaced_font);
-  json_safe_deserialize(alternate_style);
-  json_safe_deserialize(ignore_hide_imgui);
-  json_safe_deserialize(text_filters);
-  json_safe_deserialize(text_check_range);
-  json_safe_deserialize(text_max_range);
+  json_deserialize_if_exists(version);
+  json_deserialize_if_exists(show_imgui);
+  json_deserialize_if_exists(imgui_font_size);
+  json_deserialize_if_exists(monospaced_font);
+  json_deserialize_if_exists(alternate_style);
+  json_deserialize_if_exists(ignore_hide_imgui);
+  json_deserialize_if_exists(text_filters);
+  json_deserialize_if_exists(text_check_range);
+  json_deserialize_if_exists(text_max_range);
 }
 
 DebugSettings::DebugSettings() {
@@ -61,10 +61,10 @@ void to_json(json& j, const DisplaySettings& obj) {
            {"window_ypos", obj.window_ypos}};
 }
 void from_json(const json& j, DisplaySettings& obj) {
-  json_safe_deserialize(version);
-  json_safe_deserialize(display_id);
-  json_safe_deserialize(window_xpos);
-  json_safe_deserialize(window_ypos);
+  json_deserialize_if_exists(version);
+  json_deserialize_if_exists(display_id);
+  json_deserialize_if_exists(window_xpos);
+  json_deserialize_if_exists(window_ypos);
 }
 
 DisplaySettings::DisplaySettings() {
@@ -99,9 +99,9 @@ void to_json(json& j, const InputSettings& obj) {
 }
 
 void from_json(const json& j, InputSettings& obj) {
-  json_safe_deserialize(version);
-  json_safe_deserialize(controller_port_mapping);
-  json_safe_deserialize(controller_binds);
+  json_deserialize_if_exists(version);
+  json_deserialize_if_exists(controller_port_mapping);
+  json_deserialize_if_exists(controller_binds);
   if (j.contains("keyboard_binds")) {
     j.at("keyboard_binds").get_to(obj.keyboard_binds);
   } else {

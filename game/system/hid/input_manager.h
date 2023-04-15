@@ -11,8 +11,8 @@
 #include "devices/game_controller.h"
 #include "devices/keyboard.h"
 #include "devices/mouse.h"
+#include "game/settings/settings.h"
 #include "game/system/hid/input_bindings.h"
-#include <game/settings/settings.h>
 
 #include "third-party/SDL/include/SDL.h"
 
@@ -26,7 +26,7 @@ class InputManager {
   ~InputManager();
 
   // Propagate and handle the SDL event, ignored it if it's not relevant
-  void process_sdl_event(const SDL_Event& event);
+  void process_sdl_event(const SDL_Event& event, const bool ignore_mouse, const bool ignore_kb);
   // TODO - organize the functions here
   void refresh_device_list();
   void ignore_background_controller_events(const bool ignore);
@@ -48,7 +48,9 @@ class InputManager {
   void set_controller_for_port(const int controller_id, const int port);
   void set_controller_led(const int port, const u8 red, const u8 green, const u8 blue);
   void enable_keyboard(const bool enabled);
-  void enable_mouse(const bool enabled, const bool control_camera, const bool control_movement);
+  void update_mouse_options(const bool enabled,
+                            const bool control_camera,
+                            const bool control_movement);
   bool get_waiting_for_bind() const { return m_waiting_for_bind.has_value(); }
   void set_wait_for_bind(const InputDeviceType device_type,
                          const bool for_analog,
@@ -82,6 +84,8 @@ class InputManager {
   int m_keyboard_and_mouse_port = 0;
   /// Collection of arbitrary commands to run on user actions
   CommandBindingGroups m_command_binds;
+
+  bool m_ignored_device_last_frame = false;
 
   bool m_keyboard_enabled = true;
   bool m_mouse_enabled = false;
