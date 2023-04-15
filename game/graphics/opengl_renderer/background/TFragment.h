@@ -43,6 +43,7 @@ class TFragment : public BucketRenderer {
             int level_id);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
+  void init_shaders(ShaderLibrary& shaders) override;
 
  private:
   void handle_initialization(DmaFollower& dma);
