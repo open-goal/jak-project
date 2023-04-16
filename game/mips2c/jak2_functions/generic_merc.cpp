@@ -1,7 +1,6 @@
 
 //--------------------------MIPS2C---------------------
 // clang-format off
-#include <unistd.h>
 
 #include "game/mips2c/mips2c_private.h"
 #include "game/kernel/jak2/kscheme.h"

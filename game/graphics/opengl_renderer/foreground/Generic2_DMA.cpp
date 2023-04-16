@@ -450,7 +450,7 @@ void Generic2::process_dma_jak2(DmaFollower& dma, u32 next_bucket) {
   while (is_nop_zero(vif_transfer)) {
     vif_transfer = dma.read_and_advance();
   }
-  
+
   while (!is_jak2_end(vif_transfer)) {
     if (continued_fragment) {
       ASSERT(vif_transfer.vifcode0().kind == VifCode::Kind::NOP);
