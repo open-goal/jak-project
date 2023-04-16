@@ -2405,9 +2405,14 @@
                         )
                     )
                   (((game-option-type binding-assignment))
-                    (set! option-str
-                          (string-format "~S" (pc-get-current-bind (-> options index bind-info))))
-                    )
+                    (let ((bind (pc-get-current-bind (-> options index bind-info))))
+                      (cond
+                       ((= bind #f)
+                        (set! option-str (string-format "~S" (lookup-text! *common-text* (text-id input-opts-binds-unset) #f))))
+                       ((string= bind "unknown")
+                        (set! option-str (string-format "~S" (lookup-text! *common-text* (text-id input-opts-binds-unknown) #f))))
+                       (else
+                        (set! option-str (string-format "~S" bind))))))
                   (((game-option-type display-mode)
                     (game-option-type msaa)
                     (game-option-type lod-bg)
@@ -2522,9 +2527,20 @@
                     )
                     (((game-option-type binding-assignment))
                      ;; binding assignment options show their input + the current binding
-                     (set! option-str (string-format "~S: ~10L~S~0L"
-                                                     (-> options index name-override)
-                                                     (pc-get-current-bind (-> options index bind-info)))))
+                     (let ((bind (pc-get-current-bind (-> options index bind-info))))
+                      (cond
+                       ((= bind #f)
+                        (set! option-str (string-format "~S: ~10L~S~0L"
+                                                        (-> options index name-override)
+                                                        (lookup-text! *common-text* (text-id input-opts-binds-unset) #f))))
+                       ((string= bind "unknown")
+                        (set! option-str (string-format "~S: ~10L~S~0L"
+                                                        (-> options index name-override)
+                                                        (lookup-text! *common-text* (text-id input-opts-binds-unknown) #f))))
+                       (else
+                        (set! option-str (string-format "~S: ~10L~S~0L"
+                                         (-> options index name-override)
+                                         bind))))))
                     (((game-option-type cheat-toggle))
                       (cond
                         ((not (logtest? (-> *pc-settings* cheats-known) (ash 1 (the int (-> options index param1)))))

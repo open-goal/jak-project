@@ -627,7 +627,6 @@ void init_common_pc_port_functions(
           if (name.empty()) {
             return s7.offset;
           }
-          // TODO - return something that lets the runtime use a translatable string if unset
           return g_pc_port_funcs.make_string_from_c(str_util::to_upper(name).c_str());
         }
         // TODO - return something that lets the runtime use a translatable string if unknown

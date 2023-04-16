@@ -230,8 +230,10 @@ std::string InputManager::get_current_bind(const int port,
   switch (device_type) {
     case InputDeviceType::CONTROLLER:
       if (m_controller_port_mapping.find(port) != m_controller_port_mapping.end() &&
-          m_controller_port_mapping.at(port) < m_available_controllers.size()) {
-        // TODO - some assumptions here to clean up (that the guid is there)
+          m_controller_port_mapping.at(port) < m_available_controllers.size() &&
+          m_settings->controller_binds.find(
+              m_available_controllers.at(m_controller_port_mapping.at(port))->get_guid()) !=
+              m_settings->controller_binds.end()) {
         binding_info =
             m_settings->controller_binds
                 .at(m_available_controllers.at(m_controller_port_mapping.at(port))->get_guid())
@@ -252,7 +254,7 @@ std::string InputManager::get_current_bind(const int port,
       break;
   }
   if (binding_info.empty()) {
-    return "unset";
+    return "";
   }
   return binding_info.front().host_name;
 }
@@ -344,8 +346,10 @@ void InputManager::reset_input_bindings_to_defaults(const int port,
   switch (device_type) {
     case InputDeviceType::CONTROLLER:
       if (m_controller_port_mapping.find(port) != m_controller_port_mapping.end() &&
-          m_controller_port_mapping.at(port) < m_available_controllers.size()) {
-        // TODO - assumption here
+          m_controller_port_mapping.at(port) < m_available_controllers.size() &&
+          m_settings->controller_binds.find(
+              m_available_controllers.at(m_controller_port_mapping.at(port))->get_guid()) !=
+              m_settings->controller_binds.end()) {
         m_settings->controller_binds
             .at(m_available_controllers.at(m_controller_port_mapping.at(port))->get_guid())
             .set_bindings(DEFAULT_CONTROLLER_BINDS);
