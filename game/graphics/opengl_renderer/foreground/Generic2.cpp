@@ -80,13 +80,14 @@ void Generic2::render_in_mode(DmaFollower& dma,
     auto p = prof.make_scoped_child("dma");
     switch (mode) {
       case Mode::NORMAL:
-        process_dma(dma, render_state->next_bucket);
+        if (render_state->version == GameVersion::Jak1) {
+          process_dma_jak1(dma, render_state->next_bucket);
+        } else {
+          process_dma_jak2(dma, render_state->next_bucket);
+        }
         break;
       case Mode::LIGHTNING:
         process_dma_lightning(dma, render_state->next_bucket);
-        break;
-      case Mode::WARP:
-        process_dma_warp(dma, render_state->next_bucket);
         break;
       default:
         ASSERT_NOT_REACHED();
@@ -99,7 +100,6 @@ void Generic2::render_in_mode(DmaFollower& dma,
     auto p = prof.make_scoped_child("setup");
     switch (mode) {
       case Mode::NORMAL:
-      case Mode::WARP:
         setup_draws(true);
         break;
       case Mode::LIGHTNING:

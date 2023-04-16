@@ -2339,7 +2339,6 @@ u64 execute(void* ctxt) {
   c->lwu(t9, 7464, v1);                             // lwu t9, 7464(v1)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  printf("gp on call to generic_prepare_dma_single is 0x%lx\n", c->gprs[gp].du64[0]);
   // c->jalr(call_addr);                               // jalr ra, t9
   generic_prepare_dma_single::execute_real(c);
   c->ld(v1, 0, gp);                                 // ld v1, 0(gp)
@@ -2412,7 +2411,6 @@ u64 execute(void* ctxt) {
   // c->sw(a3, 0, a2);                                 // sw a3, 0(a2)
   spad_from_dma_no_sadr_off(cache.fake_scratchpad_data, madr, sadr, qwc);
   // nop                                            // sll r0, r0, 0
-  fmt::print("storing back 1 {}\n", c->sgpr64(a0));
   c->sw(a0, 60, at);                                // sw a0, 60(at)
   c->gprs[a0].du64[0] = 0;                          // or a0, r0, r0
   c->xori(v0, v1, 4608);                            // xori v0, v1, 4608

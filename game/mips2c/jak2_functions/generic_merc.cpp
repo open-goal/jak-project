@@ -3230,17 +3230,17 @@ u64 execute(void* ctxt) {
   c->lui(a2, 4096);                                 // lui a2, 4096
   c->lwu(a1, 60, at);                               // lwu a1, 60(at)
   c->ori(a2, a2, 53248);                            // ori a2, a2, 53248
-  c->lw(t1, 0, a2);                                 // lw t1, 0(a2)
+  // c->lw(t1, 0, a2);                                 // lw t1, 0(a2)
   // nop                                            // sll r0, r0, 0
   c->daddiu(t0, at, 92);                            // daddiu t0, at, 92
   c->andi(a3, a3, 16383);                           // andi a3, a3, 16383
   c->andi(t1, t1, 256);                             // andi t1, t1, 256
   // nop                                            // sll r0, r0, 0
-  bc = c->sgpr64(t1) == 0;                          // beq t1, r0, L59
-  // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_76;}                          // branch non-likely
-
-  c->mov64(t1, a2);                                 // or t1, a2, r0
+//  bc = c->sgpr64(t1) == 0;                          // beq t1, r0, L59
+//  // nop                                            // sll r0, r0, 0
+//  if (bc) {goto block_76;}                          // branch non-likely
+//
+//  c->mov64(t1, a2);                                 // or t1, a2, r0
   // nop                                            // sll r0, r0, 0
 
   block_74:
@@ -3306,41 +3306,45 @@ u64 execute(void* ctxt) {
   c->lui(a2, 4096);                                 // lui a2, 4096
   c->lwu(a1, 60, at);                               // lwu a1, 60(at)
   c->ori(a2, a2, 53248);                            // ori a2, a2, 53248
-  c->lw(t1, 0, a2);                                 // lw t1, 0(a2)
+  // c->lw(t1, 0, a2);                                 // lw t1, 0(a2)
   // nop                                            // sll r0, r0, 0
   c->daddiu(t0, at, 92);                            // daddiu t0, at, 92
   c->andi(a3, a3, 16383);                           // andi a3, a3, 16383
   c->andi(t1, t1, 256);                             // andi t1, t1, 256
   // nop                                            // sll r0, r0, 0
-  bc = c->sgpr64(t1) == 0;                          // beq t1, r0, L62
-  // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_81;}                          // branch non-likely
-
-  c->mov64(t1, a2);                                 // or t1, a2, r0
-  // nop                                            // sll r0, r0, 0
-
-  block_79:
-  c->lw(t2, 0, t0);                                 // lw t2, 0(t0)
-  // nop                                            // sll r0, r0, 0
-  c->lw(t3, 0, t1);                                 // lw t3, 0(t1)
-  // nop                                            // sll r0, r0, 0
-  c->andi(t3, t3, 256);                             // andi t3, t3, 256
-  c->daddiu(t2, t2, 1);                             // daddiu t2, t2, 1
-  bc = c->sgpr64(t3) != 0;                          // bne t3, r0, L61
-  c->sw(t2, 0, t0);                                 // sw t2, 0(t0)
-  if (bc) {goto block_79;}                          // branch non-likely
-
-  c->gprs[t0].du64[0] = 0;                          // or t0, r0, r0
+//  bc = c->sgpr64(t1) == 0;                          // beq t1, r0, L62
+//  // nop                                            // sll r0, r0, 0
+//  if (bc) {goto block_81;}                          // branch non-likely
+//
+//  c->mov64(t1, a2);                                 // or t1, a2, r0
+//  // nop                                            // sll r0, r0, 0
+//
+//  block_79:
+//  c->lw(t2, 0, t0);                                 // lw t2, 0(t0)
+//  // nop                                            // sll r0, r0, 0
+//  c->lw(t3, 0, t1);                                 // lw t3, 0(t1)
+//  // nop                                            // sll r0, r0, 0
+//  c->andi(t3, t3, 256);                             // andi t3, t3, 256
+//  c->daddiu(t2, t2, 1);                             // daddiu t2, t2, 1
+//  bc = c->sgpr64(t3) != 0;                          // bne t3, r0, L61
+//  c->sw(t2, 0, t0);                                 // sw t2, 0(t0)
+//  if (bc) {goto block_79;}                          // branch non-likely
+//
+//  c->gprs[t0].du64[0] = 0;                          // or t0, r0, r0
 
   block_81:
   c->dsll(t0, a0, 4);                               // dsll t0, a0, 4
-  c->sw(a3, 128, a2);                               // sw a3, 128(a2)
+  // c->sw(a3, 128, a2);                               // sw a3, 128(a2)
+  sadr = c->sgpr64(a3);
   // nop                                            // sll r0, r0, 0
-  c->sw(a1, 16, a2);                                // sw a1, 16(a2)
+  // c->sw(a1, 16, a2);                                // sw a1, 16(a2)
+  madr = c->sgpr64(a1);
   c->addiu(a3, r0, 256);                            // addiu a3, r0, 256
-  c->sw(a0, 32, a2);                                // sw a0, 32(a2)
+  // c->sw(a0, 32, a2);                                // sw a0, 32(a2)
+  qwc = c->sgpr64(a0);
   c->daddu(a0, a1, t0);                             // daddu a0, a1, t0
-  c->sw(a3, 0, a2);                                 // sw a3, 0(a2)
+  // c->sw(a3, 0, a2);                                 // sw a3, 0(a2)
+  spad_from_dma_no_sadr_off(cache.fake_scratchpad_data, madr, sadr, qwc);
   // nop                                            // sll r0, r0, 0
   c->sw(a0, 60, at);                                // sw a0, 60(at)
   c->gprs[a0].du64[0] = 0;                          // or a0, r0, r0

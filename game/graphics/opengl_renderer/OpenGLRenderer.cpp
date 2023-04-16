@@ -155,6 +155,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
     init_bucket_renderer<Merc2>(
         fmt::format("merc-l{}-pris", i), BucketCategory::MERC,
         GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_PRIS, BucketId::MERC_L1_PRIS, i));
+    init_bucket_renderer<Generic2>(
+        fmt::format("gmerc-l{}-pris", i), BucketCategory::GENERIC,
+        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_PRIS, BucketId::GMERC_L1_PRIS, i));
 
     init_bucket_renderer<TextureUploadHandler>(
         fmt::format("tex-l{}-pris2", i), BucketCategory::TEX,

@@ -312,7 +312,7 @@ u32 Generic2::handle_fragments_after_unpack_v4_32(const u8* data,
   return off;
 }
 
-void Generic2::process_dma(DmaFollower& dma, u32 next_bucket) {
+void Generic2::process_dma_jak1(DmaFollower& dma, u32 next_bucket) {
   reset_buffers();
 
   // handle the stuff at the beginning.
@@ -396,7 +396,7 @@ bool is_jak2_end(const DmaTransfer& xf) {
          xf.vifcode1().kind == VifCode::Kind::DIRECT;
 }
 
-void Generic2::process_dma_warp(DmaFollower& dma, u32 next_bucket) {
+void Generic2::process_dma_jak2(DmaFollower& dma, u32 next_bucket) {
   reset_buffers();
   auto first_data = dma.read_and_advance();
 
@@ -440,8 +440,6 @@ void Generic2::process_dma_warp(DmaFollower& dma, u32 next_bucket) {
   }
 
   //  0: NOP NOP
-  auto another_nop = dma.read_and_advance();
-  ASSERT(is_nop_zero(another_nop));
 
   // loop over "fragments"
   // each "fragment" consists of a series of uploads, followed by a MSCAL VIFCODE that runs
@@ -449,6 +447,10 @@ void Generic2::process_dma_warp(DmaFollower& dma, u32 next_bucket) {
   Fragment* continued_fragment = nullptr;
 
   auto vif_transfer = dma.read_and_advance();
+  while (is_nop_zero(vif_transfer)) {
+    vif_transfer = dma.read_and_advance();
+  }
+  
   while (!is_jak2_end(vif_transfer)) {
     if (continued_fragment) {
       ASSERT(vif_transfer.vifcode0().kind == VifCode::Kind::NOP);
@@ -506,6 +508,9 @@ void Generic2::process_dma_warp(DmaFollower& dma, u32 next_bucket) {
       }
     }
     vif_transfer = dma.read_and_advance();
+    while (is_nop_zero(vif_transfer)) {
+      vif_transfer = dma.read_and_advance();
+    }
   }
 
   // ending:
