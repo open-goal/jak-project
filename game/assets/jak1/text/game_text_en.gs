@@ -437,6 +437,8 @@
 (#x1524 "ALL CUTSCENES"
         "ALL CUTSCENES")
 
+;; Custom Level Text: 1600-1800
+
 ;; -----------------
 ;; test (DO NOT TRANSLATE)
 
