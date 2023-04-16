@@ -139,6 +139,7 @@ void CollideMeshRenderer::render(SharedRenderState* render_state, ScopedProfiler
   glUniform1f(glGetUniformLocation(shader, "fog_constant"), settings.fog.x());
   glUniform1f(glGetUniformLocation(shader, "fog_min"), settings.fog.y());
   glUniform1f(glGetUniformLocation(shader, "fog_max"), settings.fog.z());
+  glUniform1i(glGetUniformLocation(shader, "version"), (GLint)render_state->version);
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_GEQUAL);
   glEnable(GL_BLEND);

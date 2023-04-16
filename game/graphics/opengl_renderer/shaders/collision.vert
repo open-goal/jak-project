@@ -13,6 +13,7 @@ uniform float fog_min;
 uniform float fog_max;
 uniform int wireframe;
 uniform int mode;
+uniform int version;
 
 out vec4 fragment_color;
 
@@ -29,9 +30,9 @@ const int MODE_MODE = 1;
 const int MODE_EVENT = 2;
 const int MODE_MATERIAL = 3;
 
-uint pat_get_mode(uint p) { return (p >> 3) & 0x7; }
-uint pat_get_material(uint p) { return (p >> 6) & 0x3f; }
-uint pat_get_event(uint p) { return (p >> 14) & 0x3f; }
+uint pat_get_mode(uint p) { return version == 2 ? (p >> 7) & 0x7 : (p >> 3) & 0x7; }
+uint pat_get_material(uint p) { return version == 2 ? (p >> 10) & 0x3f : (p >> 6) & 0x3f; }
+uint pat_get_event(uint p) { return version == 2 ? (p >> 18) & 0x3f : (p >> 14) & 0x3f; }
 
 bool logtest(uint a, uint b) { return (a & b) != 0; }
 bool logtesta(uint a, uint b) { return (a & b) == b; }
