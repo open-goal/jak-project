@@ -98,8 +98,7 @@ void GameController::process_event(const SDL_Event& event,
 
     // https://wiki.libsdl.org/SDL2/SDL_GameControllerButton
     if (event.cbutton.button <= SDL_CONTROLLER_BUTTON_INVALID ||
-        event.cbutton.button >= SDL_CONTROLLER_BUTTON_MAX ||
-        binds.buttons.find(event.cbutton.button) == binds.buttons.end()) {
+        event.cbutton.button >= SDL_CONTROLLER_BUTTON_MAX) {
       return;
     }
 
@@ -109,6 +108,10 @@ void GameController::process_event(const SDL_Event& event,
           !bind_assignment->for_analog) {
         binds.assign_button_bind(event.cbutton.button, bind_assignment.value());
       }
+      return;
+    }
+
+    if (binds.buttons.find(event.cbutton.button) == binds.buttons.end()) {
       return;
     }
 

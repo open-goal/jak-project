@@ -92,6 +92,7 @@ void DisplaySettings::save_settings() {
 
 void to_json(json& j, const InputSettings& obj) {
   j = json{{"version", obj.version},
+           {"last_selected_controller_guid", obj.last_selected_controller_guid},
            {"controller_port_mapping", obj.controller_port_mapping},
            {"controller_binds", obj.controller_binds},
            {"keyboard_binds", obj.keyboard_binds},
@@ -100,6 +101,7 @@ void to_json(json& j, const InputSettings& obj) {
 
 void from_json(const json& j, InputSettings& obj) {
   json_deserialize_if_exists(version);
+  json_deserialize_if_exists(last_selected_controller_guid);
   json_deserialize_if_exists(controller_port_mapping);
   json_deserialize_if_exists(controller_binds);
   if (j.contains("keyboard_binds")) {
@@ -117,7 +119,7 @@ void from_json(const json& j, InputSettings& obj) {
 InputSettings::InputSettings() {
   try {
     std::string file_path =
-        (file_util::get_user_settings_dir(g_game_version) / "display-settings.json").string();
+        (file_util::get_user_settings_dir(g_game_version) / "input-settings.json").string();
     if (!file_util::file_exists(file_path)) {
       return;
     }

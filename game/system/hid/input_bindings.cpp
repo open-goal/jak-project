@@ -212,6 +212,27 @@ void InputBindingGroups::assign_analog_bind(u32 sdl_idx,
     analog_axii[sdl_idx] = {InputBinding((PadData::AnalogIndex)bind_meta.pad_idx,
                                          bind_meta.for_analog_minimum, modifiers)};
   }
+  // The underlying data structures support multiple binds for the same input, but the UX doesn't
+  // so we have to wipe out any shared bindings after an assignment
+  for (auto it = analog_axii.begin(); it != analog_axii.end();) {
+    if (it->first == sdl_idx) {
+      it++;
+      continue;
+    }
+    bool found_match = false;
+    for (const auto& bind : it->second) {
+      if (bind.pad_data_index != bind_meta.pad_idx ||
+          bind.minimum_in_range != bind_meta.for_analog_minimum) {
+        continue;
+      }
+      it = analog_axii.erase(it);
+      found_match = true;
+      break;
+    }
+    if (!found_match) {
+      it++;
+    }
+  }
 
   // Invalidate lookup cache
   m_analog_lookup.clear();
@@ -245,6 +266,44 @@ void InputBindingGroups::assign_button_bind(u32 sdl_idx,
       button_axii[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
     } else {
       buttons[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
+    }
+  }
+  // The underlying data structures support multiple binds for the same input, but the UX doesn't
+  // so we have to wipe out any shared bindings after an assignment
+  for (auto it = buttons.begin(); it != buttons.end();) {
+    if (it->first == sdl_idx) {
+      it++;
+      continue;
+    }
+    bool found_match = false;
+    for (const auto& bind : it->second) {
+      if (bind.pad_data_index != bind_meta.pad_idx) {
+        continue;
+      }
+      it = buttons.erase(it);
+      found_match = true;
+      break;
+    }
+    if (!found_match) {
+      it++;
+    }
+  }
+  for (auto it = button_axii.begin(); it != button_axii.end();) {
+    if (it->first == sdl_idx) {
+      it++;
+      continue;
+    }
+    bool found_match = false;
+    for (const auto& bind : it->second) {
+      if (bind.pad_data_index != bind_meta.pad_idx) {
+        continue;
+      }
+      it = button_axii.erase(it);
+      found_match = true;
+      break;
+    }
+    if (!found_match) {
+      it++;
     }
   }
 

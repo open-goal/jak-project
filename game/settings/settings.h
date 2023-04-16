@@ -47,6 +47,8 @@ struct InputSettings {
 
   std::string version = "1.0";
 
+  // NOTE - assumes only port 0
+  std::string last_selected_controller_guid = "";
   std::unordered_map<std::string, int> controller_port_mapping;
   std::unordered_map<std::string, InputBindingGroups> controller_binds;
   InputBindingGroups keyboard_binds;

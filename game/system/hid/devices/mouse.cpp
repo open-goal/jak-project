@@ -56,12 +56,13 @@ void MouseDevice::process_event(const SDL_Event& event,
     if (m_control_movement) {
       // WoW style mouse movement, if you have both buttons held down, you will move forward
       const auto mouse_state = SDL_GetMouseState(NULL, NULL);
-      if (event.type == SDL_MOUSEBUTTONDOWN &&
+      if (!m_was_moving_with_mouse && event.type == SDL_MOUSEBUTTONDOWN &&
           (mouse_state & SDL_BUTTON_LMASK && mouse_state & SDL_BUTTON_RMASK)) {
         data->analog_data.at(1) += -127;
         m_was_moving_with_mouse = true;
         data->update_analog_sim_tracker(false);
-      } else if (m_was_moving_with_mouse) {
+      } else if (m_was_moving_with_mouse && event.type == SDL_MOUSEBUTTONUP &&
+                 ((mouse_state & SDL_BUTTON_LMASK) == 0 || (mouse_state & SDL_BUTTON_RMASK) == 0)) {
         data->analog_data.at(1) += 127;
         m_was_moving_with_mouse = false;
         data->update_analog_sim_tracker(true);

@@ -1682,10 +1682,20 @@
                )
               ;; TODO - might be able to simplify this with the new on-change func
               ((= (-> options (-> obj option-index) option-type) (game-option-type controller))
-               ;; monitor button
                (let ((controller-id (the int (-> options (-> obj option-index) param1))))
                  ;; NOTE - for now, we only manage port 0 in the progress menu
                  (pc-set-controller! controller-id 0)
+                 )
+               (cpad-clear! 0 x)
+               (cpad-clear! 0 circle)
+               (sound-play "cursor-options")
+               (set! (-> obj next-display-state) (progress-screen invalid))
+               (commit-to-file *pc-settings*)
+               )
+              ((= (-> options (-> obj option-index) option-type) (game-option-type monitor))
+               ;; monitor button
+               (let ((monitor (the int (-> options (-> obj option-index) param1))))
+                 (set-monitor! *pc-settings* monitor)
                  )
                (cpad-clear! 0 x)
                (cpad-clear! 0 circle)
@@ -1753,7 +1763,7 @@
                   ;; Inform the C++ side to start listening for input
                   (pc-set-waiting-for-bind! (-> options (-> obj option-index) bind-info device-type)
                                             (not (-> options (-> obj option-index) bind-info for-buttons?))
-                                            (not (-> options (-> obj option-index) bind-info for-buttons?))
+                                            (-> options (-> obj option-index) bind-info analog-min-range?)
                                             (-> options (-> obj option-index) bind-info input-idx))
                   )
                  (((game-option-type cheat-toggle))

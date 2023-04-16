@@ -70,6 +70,23 @@ struct BindAssignmentInfo {
   u32 analog_min_range;
 };
 
+struct InternFromCInfo {
+  u32 offset;
+  u32 value;
+};
+
+// Holds function references to game specific functions for setting up common PC Port functions
+// this is needed because the handlers for the functions are stateless
+// and using the functions via the handler's capture lists requires templating nonsense
+struct CommonPCPortFunctionWrappers {
+  std::function<InternFromCInfo(const char*)> intern_from_c;
+  std::function<u64(const char*)> make_string_from_c;
+};
+
+extern CommonPCPortFunctionWrappers g_pc_port_funcs;
+
 /// Initializes all common PC Port functions for all Jak games
 void init_common_pc_port_functions(
-    std::function<Ptr<Function>(const char*, void*)> make_func_symbol_func);
+    std::function<Ptr<Function>(const char*, void*)> make_func_symbol_func,
+    std::function<InternFromCInfo(const char*)> intern_from_c_func,
+    std::function<u64(const char*)> make_string_from_c_func);

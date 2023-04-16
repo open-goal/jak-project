@@ -505,21 +505,6 @@ u64 kopen(u64 fs, u64 name, u64 mode) {
  * PC port functions START
  */
 
-/*!
- * Return the current OS as a symbol. Actually returns what it was compiled for!
- */
-u64 get_os() {
-#ifdef _WIN32
-  return intern_from_c("windows").offset;
-#elif __linux__
-  return intern_from_c("linux").offset;
-#elif __APPLE__
-  return intern_from_c("darwin").offset;
-#else
-  return s7.offset;
-#endif
-}
-
 void update_discord_rpc(u32 discord_info) {
   if (gDiscordRpcEnabled) {
     DiscordRichPresence rpc;
@@ -595,7 +580,15 @@ void update_discord_rpc(u32 discord_info) {
 
 void InitMachine_PCPort() {
   // PC Port added functions
-  init_common_pc_port_functions(make_function_symbol_from_c);
+  init_common_pc_port_functions(
+      make_function_symbol_from_c,
+      [](const char* name) {
+        const auto result = intern_from_c(name);
+        InternFromCInfo info{};
+        info.offset = result.offset;
+        return info;
+      },
+      make_string_from_c);
 
   make_function_symbol_from_c(
       "__pc-set-levels", (void*)[](u32 lev_list) {
@@ -614,54 +607,6 @@ void InitMachine_PCPort() {
         Gfx::GetCurrentRenderer()->set_levels(levels);
       });
   make_function_symbol_from_c("__pc-get-tex-remap", (void*)lookup_jak2_texture_dest_offset);
-
-  // Returns the name of the display with the given id or #f if not found / empty
-  make_function_symbol_from_c(
-      "pc-get-display-name", (void*)[](u32 id)->u64 {
-        std::string name = "";
-        if (Display::GetMainDisplay()) {
-          name = Display::GetMainDisplay()->get_display_manager()->get_connected_display_name(id);
-        }
-        if (name.empty()) {
-          return s7.offset;
-        }
-        return make_string_from_c(str_util::to_upper(name).c_str());
-      });
-  make_function_symbol_from_c(
-      "pc-get-display-mode", (void*)[]() {
-        auto display_mode = WindowDisplayMode::Windowed;
-        if (Display::GetMainDisplay()) {
-          display_mode =
-              Display::GetMainDisplay()->get_display_manager()->get_window_display_mode();
-        }
-        switch (display_mode) {
-          default:
-          case WindowDisplayMode::Windowed:
-            return intern_from_c("windowed").offset;
-          case WindowDisplayMode::Borderless:
-            return intern_from_c("borderless").offset;
-          case WindowDisplayMode::Fullscreen:
-            return intern_from_c("fullscreen").offset;
-        }
-      });
-  make_function_symbol_from_c("pc-get-os", (void*)get_os);
-
-  make_function_symbol_from_c(
-      "pc-set-display-mode", (void*)[](u32 symptr) {
-        if (!Display::GetMainDisplay()) {
-          return;
-        }
-        if (symptr == intern_from_c("windowed").offset || symptr == s7.offset) {
-          Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
-              WindowDisplayMode::Windowed);
-        } else if (symptr == intern_from_c("borderless").offset) {
-          Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
-              WindowDisplayMode::Borderless);
-        } else if (symptr == intern_from_c("fullscreen").offset) {
-          Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
-              WindowDisplayMode::Fullscreen);
-        }
-      });
 
   // discord rich presence
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);

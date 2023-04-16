@@ -15,6 +15,11 @@ void KeyboardDevice::process_event(const SDL_Event& event,
     if (key_event.repeat != 0) {
       return;
     }
+    if (m_ignore_key_on_keyup && m_ignore_key_on_keyup.value() == key_event.keysym.sym &&
+        event.type == SDL_KEYUP) {
+      m_ignore_key_on_keyup = std::nullopt;
+      return;
+    }
 
     auto& binds = m_settings->keyboard_binds;
 
@@ -23,9 +28,11 @@ void KeyboardDevice::process_event(const SDL_Event& event,
       if (bind_assignment->device_type != InputDeviceType::KEYBOARD) {
         return;
       }
+
       // A normal key down event (a new key was pressed) and it's not a modifier
       if (event.type == SDL_KEYDOWN && !sdl_util::is_modifier_key(key_event.keysym.sym)) {
         if (bind_assignment->for_analog) {
+          m_ignore_key_on_keyup = key_event.keysym.sym;
           binds.assign_analog_bind(key_event.keysym.sym, bind_assignment.value(),
                                    InputModifiers(key_event.keysym.mod));
         } else {

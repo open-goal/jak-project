@@ -71,8 +71,6 @@ void InputManager::refresh_device_list() {
           m_settings->controller_port_mapping.end()) {
         // Though it's possible for a user to assign multiple controllers to the same port, so the
         // last one wins
-        // TODO - however we could remember the last one they explicitly set and that could take
-        // priority
         m_controller_port_mapping[m_settings->controller_port_mapping.at(controller->get_guid())] =
             i;
       } else {
@@ -83,6 +81,17 @@ void InputManager::refresh_device_list() {
       // Allocate a PadData if this is a new port
       if (m_data.find(i) == m_data.end()) {
         m_data[i] = std::make_shared<PadData>();
+      }
+    }
+    // If the controller that was last selected to be port 0 is around, prioritize it
+    if (!m_settings->last_selected_controller_guid.empty()) {
+      for (int i = 0; i < m_available_controllers.size(); i++) {
+        const auto& controller_guid = m_available_controllers.at(i)->get_guid();
+        if (controller_guid == m_settings->last_selected_controller_guid) {
+          m_controller_port_mapping[0] = i;
+          m_settings->controller_port_mapping[controller_guid] = 0;
+          break;
+        }
       }
     }
   }
@@ -255,6 +264,10 @@ void InputManager::set_controller_for_port(const int controller_id, const int po
     auto& controller = m_available_controllers.at(controller_id);
     m_controller_port_mapping[port] = controller_id;
     m_settings->controller_port_mapping[controller->get_guid()] = port;
+    // NOTE - only tracking port 0 for now
+    if (port == 0) {
+      m_settings->last_selected_controller_guid = controller->get_guid();
+    }
     m_settings->save_settings();
   }
 }

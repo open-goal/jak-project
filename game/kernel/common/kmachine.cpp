@@ -411,11 +411,17 @@ u64 pc_filter_debug_string(u32 str_ptr, u32 dist_ptr) {
   return bool_to_symbol(false);
 }
 
+CommonPCPortFunctionWrappers g_pc_port_funcs;
+
 /// Initializes all functions that are common across all game versions
 /// These functions have the same implementation and do not use any game specific functions (other
 /// than the one to create a function in the first place)
 void init_common_pc_port_functions(
-    std::function<Ptr<Function>(const char*, void*)> make_func_symbol_func) {
+    std::function<Ptr<Function>(const char*, void*)> make_func_symbol_func,
+    std::function<InternFromCInfo(const char*)> intern_from_c_func,
+    std::function<u64(const char*)> make_string_from_c_func) {
+  g_pc_port_funcs.intern_from_c = intern_from_c_func;
+  g_pc_port_funcs.make_string_from_c = make_string_from_c_func;
   // Get a 300MHz timer value. Called from EE thread
   make_func_symbol_func(
       "__read-ee-timer", (void*)[]()->u64 {
@@ -455,7 +461,51 @@ void init_common_pc_port_functions(
       });
 
   // -- DISPLAY RELATED --
-
+  // Returns the name of the display with the given id or #f if not found / empty
+  make_func_symbol_func(
+      "pc-get-display-name", (void*)[](u32 id)->u64 {
+        std::string name = "";
+        if (Display::GetMainDisplay()) {
+          name = Display::GetMainDisplay()->get_display_manager()->get_connected_display_name(id);
+        }
+        if (name.empty()) {
+          return s7.offset;
+        }
+        return g_pc_port_funcs.make_string_from_c(str_util::to_upper(name).c_str());
+      });
+  make_func_symbol_func(
+      "pc-get-display-mode", (void*)[]() {
+        auto display_mode = WindowDisplayMode::Windowed;
+        if (Display::GetMainDisplay()) {
+          display_mode =
+              Display::GetMainDisplay()->get_display_manager()->get_window_display_mode();
+        }
+        switch (display_mode) {
+          default:
+          case WindowDisplayMode::Windowed:
+            return g_pc_port_funcs.intern_from_c("windowed").offset;
+          case WindowDisplayMode::Borderless:
+            return g_pc_port_funcs.intern_from_c("borderless").offset;
+          case WindowDisplayMode::Fullscreen:
+            return g_pc_port_funcs.intern_from_c("fullscreen").offset;
+        }
+      });
+  make_func_symbol_func(
+      "pc-set-display-mode", (void*)[](u32 symptr) {
+        if (!Display::GetMainDisplay()) {
+          return;
+        }
+        if (symptr == g_pc_port_funcs.intern_from_c("windowed").offset || symptr == s7.offset) {
+          Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
+              WindowDisplayMode::Windowed);
+        } else if (symptr == g_pc_port_funcs.intern_from_c("borderless").offset) {
+          Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
+              WindowDisplayMode::Borderless);
+        } else if (symptr == g_pc_port_funcs.intern_from_c("fullscreen").offset) {
+          Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
+              WindowDisplayMode::Fullscreen);
+        }
+      });
   make_func_symbol_func(
       "pc-get-display-count", (void*)[]() {
         if (Display::GetMainDisplay()) {
@@ -476,7 +526,7 @@ void init_common_pc_port_functions(
           }
         }
         if (h_ptr) {
-          auto h_out = Ptr<u32>(w_ptr).c();
+          auto h_out = Ptr<u32>(h_ptr).c();
           if (h_out) {
             *h_out = Display::GetMainDisplay()->get_display_manager()->get_screen_height();
           }
@@ -543,7 +593,46 @@ void init_common_pc_port_functions(
         }
       });
 
-  // input stuff
+  // -- INPUT RELATED --
+  // Returns the name of the display with the given id or #f if not found / empty
+  make_func_symbol_func(
+      "pc-get-controller-name", (void*)[](u32 id)->u64 {
+        std::string name = "";
+        if (Display::GetMainDisplay()) {
+          name = Display::GetMainDisplay()->get_input_manager()->get_controller_name(id);
+        }
+        if (name.empty()) {
+          return s7.offset;
+        }
+        return g_pc_port_funcs.make_string_from_c(str_util::to_upper(name).c_str());
+      });
+
+  make_func_symbol_func(
+      "pc-get-current-bind", (void*)[](s32 bind_assignment_info)->u64 {
+        if (!Display::GetMainDisplay()) {
+          // TODO - return something that lets the runtime use a translatable string if unknown
+          return g_pc_port_funcs.make_string_from_c(str_util::to_upper("unknown").c_str());
+        }
+
+        auto info = bind_assignment_info ? Ptr<BindAssignmentInfo>(bind_assignment_info).c() : NULL;
+        auto port = (int)info->port;
+        auto device_type = (int)info->device_type;
+        auto for_button = info->buttons != s7.offset;
+        auto input_idx = (int)info->input_idx;
+        auto analog_min_range = info->analog_min_range != s7.offset;
+
+        if (Display::GetMainDisplay()) {
+          auto name = Display::GetMainDisplay()->get_input_manager()->get_current_bind(
+              port, (InputDeviceType)device_type, for_button, input_idx, analog_min_range);
+          if (name.empty()) {
+            return s7.offset;
+          }
+          // TODO - return something that lets the runtime use a translatable string if unset
+          return g_pc_port_funcs.make_string_from_c(str_util::to_upper(name).c_str());
+        }
+        // TODO - return something that lets the runtime use a translatable string if unknown
+        return g_pc_port_funcs.make_string_from_c(str_util::to_upper("unknown").c_str());
+      });
   make_func_symbol_func(
       "pc-get-controller-count", (void*)[]() {
         if (Display::GetMainDisplay()) {
@@ -707,8 +796,20 @@ void init_common_pc_port_functions(
             break;
         }
       });
-
-  // other
+  // -- OTHER --
+  // Return the current OS as a symbol. Actually returns what it was compiled for!
+  make_func_symbol_func(
+      "pc-get-os", (void*)[]() {
+#ifdef _WIN32
+        return g_pc_port_funcs.intern_from_c("windows").offset;
+#elif __linux__
+  return g_pc_port_funcs.intern_from_c("linux").offset;
+#elif __APPLE__
+  return g_pc_port_funcs.intern_from_c("darwin").offset;
+#else
+  return s7.offset;
+#endif
+      });
   make_func_symbol_func(
       "pc-get-unix-timestamp", (void*)[]() { return std::time(nullptr); });
 

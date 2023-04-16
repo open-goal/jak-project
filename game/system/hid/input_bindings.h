@@ -118,7 +118,6 @@ struct PadData {
  public:
   bool analogs_being_simulated() { return analog_sim_tracker > 0; }
   void update_analog_sim_tracker(bool released) {
-    // TODO - on first update, clear analog data (get rid of controller influence)
     if (released) {
       analog_sim_tracker--;
     } else {
@@ -133,6 +132,10 @@ struct PadData {
     for (int i = 0; i < button_data.size(); i++) {
       button_data[i] = 0;
     }
+    clear_analogs();
+  }
+
+  void clear_analogs() {
     for (int i = 0; i < analog_data.size(); i++) {
       analog_data[i] = ANALOG_NEUTRAL;
     }
