@@ -220,6 +220,22 @@ namespace method_53_squid { extern void link(); }
 namespace init_vortex_regs { extern void link(); }
 namespace draw_large_polygon_vortex { extern void link(); }
 namespace render_vortex_quad { extern void link(); }
+namespace shadow_execute { extern void link(); }
+namespace shadow_add_double_edges { extern void link(); }
+namespace shadow_add_double_tris { extern void link(); }
+namespace shadow_add_single_tris { extern void link(); }
+namespace shadow_add_single_edges { extern void link(); }
+namespace shadow_add_facing_single_tris { extern void link(); }
+namespace shadow_add_verts { extern void link(); }
+namespace shadow_find_double_edges { extern void link(); }
+namespace shadow_find_facing_double_tris { extern void link(); }
+namespace shadow_find_single_edges { extern void link(); }
+namespace shadow_find_facing_single_tris { extern void link(); }
+namespace shadow_init_vars { extern void link(); }
+namespace shadow_scissor_top { extern void link(); }
+namespace shadow_scissor_edges { extern void link(); }
+namespace shadow_calc_dual_verts { extern void link(); }
+namespace shadow_xform_verts { extern void link(); }
 
 }
 // clang-format on
@@ -369,7 +385,16 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
      {"squid-setup", {jak2::method_53_squid::link}},
      {"vortex",
       {jak2::init_vortex_regs::link, jak2::draw_large_polygon_vortex::link,
-       jak2::render_vortex_quad::link}}}};
+       jak2::render_vortex_quad::link}},
+     {"shadow-cpu",
+      {jak2::shadow_execute::link, jak2::shadow_add_double_edges::link,
+       jak2::shadow_add_double_tris::link, jak2::shadow_add_single_tris::link,
+       jak2::shadow_add_single_edges::link, jak2::shadow_add_facing_single_tris::link,
+       jak2::shadow_add_verts::link, jak2::shadow_find_double_edges::link,
+       jak2::shadow_find_facing_double_tris::link, jak2::shadow_find_single_edges::link,
+       jak2::shadow_find_facing_single_tris::link, jak2::shadow_init_vars::link,
+       jak2::shadow_scissor_top::link, jak2::shadow_scissor_edges::link,
+       jak2::shadow_calc_dual_verts::link, jak2::shadow_xform_verts::link}}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});
