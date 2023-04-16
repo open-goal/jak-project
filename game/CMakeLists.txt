@@ -91,6 +91,8 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/debug.cpp
         mips2c/jak2_functions/font.cpp
         mips2c/jak2_functions/foreground.cpp
+        mips2c/jak2_functions/generic_merc.cpp
+        mips2c/jak2_functions/generic_effect.cpp
         mips2c/jak2_functions/joint.cpp
         mips2c/jak2_functions/lights.cpp
         mips2c/jak2_functions/nav_control.cpp
@@ -151,6 +153,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/BucketRenderer.cpp
         graphics/opengl_renderer/CollideMeshRenderer.cpp
         graphics/opengl_renderer/debug_gui.cpp
+        graphics/opengl_renderer/DepthCue.cpp
         graphics/opengl_renderer/DirectRenderer.cpp
         graphics/opengl_renderer/DirectRenderer2.cpp
         graphics/opengl_renderer/EyeRenderer.cpp
@@ -168,7 +171,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/SkyRenderer.cpp
         graphics/opengl_renderer/TextureUploadHandler.cpp
         graphics/opengl_renderer/VisDataHandler.cpp
-        graphics/opengl_renderer/DepthCue.cpp
+        graphics/opengl_renderer/Warp.cpp
         graphics/texture/jak1_tpage_dir.cpp
         graphics/texture/jak2_tpage_dir.cpp
         graphics/texture/TextureConverter.cpp

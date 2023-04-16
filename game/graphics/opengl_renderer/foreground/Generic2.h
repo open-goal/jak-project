@@ -16,6 +16,7 @@ class Generic2 : public BucketRenderer {
   enum class Mode {
     NORMAL,
     LIGHTNING,
+    WARP
   };
 
   void render_in_mode(DmaFollower& dma,
@@ -47,6 +48,7 @@ class Generic2 : public BucketRenderer {
   void process_matrices();
   void process_dma(DmaFollower& dma, u32 next_bucket);
   void process_dma_lightning(DmaFollower& dma, u32 next_bucket);
+  void process_dma_warp(DmaFollower& dma, u32 next_bucket);
   void setup_draws(bool enable_at);
   void do_draws(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void do_draws_for_alpha(SharedRenderState* render_state,

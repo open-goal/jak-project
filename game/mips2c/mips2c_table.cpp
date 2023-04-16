@@ -220,6 +220,24 @@ namespace method_53_squid { extern void link(); }
 namespace init_vortex_regs { extern void link(); }
 namespace draw_large_polygon_vortex { extern void link(); }
 namespace render_vortex_quad { extern void link(); }
+namespace foreground_generic_merc { extern void link(); }
+namespace generic_merc_init_asm { extern void link(); }
+namespace mercneric_convert { extern void link(); }
+namespace high_speed_reject { extern void link(); }
+namespace generic_translucent { extern void link(); }
+namespace generic_merc_query { extern void link(); }
+namespace generic_merc_death { extern void link(); }
+namespace generic_merc_execute_asm { extern void link(); }
+namespace generic_merc_do_chain { extern void link(); }
+namespace generic_light_proc { extern void link(); }
+namespace generic_envmap_proc { extern void link(); }
+namespace generic_prepare_dma_double { extern void link(); }
+namespace generic_prepare_dma_single { extern void link(); }
+namespace generic_warp_source_proc { extern void link(); }
+namespace generic_warp_dest_proc { extern void link(); }
+namespace generic_warp_dest { extern void link(); }
+namespace generic_warp_envmap_dest { extern void link(); }
+namespace generic_no_light_proc { extern void link(); }
 
 }
 // clang-format on
@@ -350,7 +368,9 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak2::method_10_collide_cache_prim::link, jak2::method_17_collide_cache::link,
        jak2::method_9_collide_puss_work::link, jak2::method_10_collide_puss_work::link}},
      {"bones", {jak2::bones_mtx_calc::link}},
-     {"foreground", {jak2::foreground_check_longest_edge_asm::link, jak2::foreground_merc::link}},
+     {"foreground",
+      {jak2::foreground_check_longest_edge_asm::link, jak2::foreground_merc::link,
+       jak2::foreground_generic_merc::link}},
      {"lights",
       {jak2::add_light_sphere_to_light_group::link, jak2::light_hash_add_items::link,
        jak2::light_hash_count_items::link, jak2::light_hash_get_bucket_index::link}},
@@ -369,7 +389,18 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
      {"squid-setup", {jak2::method_53_squid::link}},
      {"vortex",
       {jak2::init_vortex_regs::link, jak2::draw_large_polygon_vortex::link,
-       jak2::render_vortex_quad::link}}}};
+       jak2::render_vortex_quad::link}},
+     {"generic-merc",
+      {jak2::generic_merc_init_asm::link, jak2::mercneric_convert::link,
+       jak2::high_speed_reject::link, jak2::generic_translucent::link,
+       jak2::generic_merc_query::link, jak2::generic_merc_death::link,
+       jak2::generic_merc_execute_asm::link, jak2::generic_merc_do_chain::link}},
+     {"generic-effect",
+      {jak2::generic_light_proc::link, jak2::generic_envmap_proc::link,
+       jak2::generic_prepare_dma_double::link, jak2::generic_prepare_dma_single::link,
+       jak2::generic_warp_source_proc::link, jak2::generic_warp_dest_proc::link,
+       jak2::generic_warp_dest::link, jak2::generic_warp_envmap_dest::link,
+       jak2::generic_no_light_proc::link}}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});
