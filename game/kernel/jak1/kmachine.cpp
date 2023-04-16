@@ -524,6 +524,25 @@ void update_discord_rpc(u32 discord_info) {
   }
 }
 
+void pc_set_levels(u32 l0, u32 l1) {
+  if (!Gfx::GetCurrentRenderer()) {
+    return;
+  }
+  std::string l0s = Ptr<String>(l0).c()->data();
+  std::string l1s = Ptr<String>(l1).c()->data();
+
+  std::vector<std::string> levels;
+  if (l0s != "none" && l0s != "#f") {
+    levels.push_back(l0s);
+  }
+
+  if (l1s != "none" && l1s != "#f") {
+    levels.push_back(l1s);
+  }
+
+  Gfx::GetCurrentRenderer()->set_levels(levels);
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
   init_common_pc_port_functions(
@@ -539,25 +558,7 @@ void InitMachine_PCPort() {
   // Game specific functions
   // Called from the game thread at each frame to tell the PC rendering code which levels to start
   // loading. The loader internally handles locking.
-  make_function_symbol_from_c(
-      "__pc-set-levels", (void*)[](u32 l0, u32 l1) {
-        if (!Gfx::GetCurrentRenderer()) {
-          return;
-        }
-        std::string l0s = Ptr<String>(l0).c()->data();
-        std::string l1s = Ptr<String>(l1).c()->data();
-
-        std::vector<std::string> levels;
-        if (l0s != "none" && l0s != "#f") {
-          levels.push_back(l0s);
-        }
-
-        if (l1s != "none" && l1s != "#f") {
-          levels.push_back(l1s);
-        }
-
-        Gfx::GetCurrentRenderer()->set_levels(levels);
-      });
+  make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
 
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
 

@@ -578,6 +578,22 @@ void update_discord_rpc(u32 discord_info) {
   }
 }
 
+void pc_set_levels(u32 lev_list) {
+  if (!Gfx::GetCurrentRenderer()) {
+    return;
+  }
+  std::vector<std::string> levels;
+  for (int i = 0; i < LEVEL_MAX; i++) {
+    u32 lev = *Ptr<u32>(lev_list + i * 4);
+    std::string ls = Ptr<String>(lev).c()->data();
+    if (ls != "none" && ls != "#f" && ls != "") {
+      levels.push_back(ls);
+    }
+  }
+
+  Gfx::GetCurrentRenderer()->set_levels(levels);
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
   init_common_pc_port_functions(
@@ -590,22 +606,7 @@ void InitMachine_PCPort() {
       },
       make_string_from_c);
 
-  make_function_symbol_from_c(
-      "__pc-set-levels", (void*)[](u32 lev_list) {
-        if (!Gfx::GetCurrentRenderer()) {
-          return;
-        }
-        std::vector<std::string> levels;
-        for (int i = 0; i < LEVEL_MAX; i++) {
-          u32 lev = *Ptr<u32>(lev_list + i * 4);
-          std::string ls = Ptr<String>(lev).c()->data();
-          if (ls != "none" && ls != "#f" && ls != "") {
-            levels.push_back(ls);
-          }
-        }
-
-        Gfx::GetCurrentRenderer()->set_levels(levels);
-      });
+  make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
   make_function_symbol_from_c("__pc-get-tex-remap", (void*)lookup_jak2_texture_dest_offset);
 
   // discord rich presence

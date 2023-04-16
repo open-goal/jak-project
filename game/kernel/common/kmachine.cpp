@@ -413,6 +413,384 @@ u64 pc_filter_debug_string(u32 str_ptr, u32 dist_ptr) {
 
 CommonPCPortFunctionWrappers g_pc_port_funcs;
 
+u64 read_ee_timer() {
+  u64 ns = ee_clock_timer.getNs();
+  return (ns * 3) / 10;
+}
+
+void pc_memmove(u32 dst, u32 src, u32 size) {
+  memmove(Ptr<u8>(dst).c(), Ptr<u8>(src).c(), size);
+}
+
+void send_gfx_dma_chain(u32 bank, u32 chain) {
+  if (Gfx::GetCurrentRenderer()) {
+    Gfx::GetCurrentRenderer()->send_chain(g_ee_main_mem, chain);
+  }
+}
+
+void pc_texture_upload_now(u32 page, u32 mode) {
+  if (Gfx::GetCurrentRenderer()) {
+    Gfx::GetCurrentRenderer()->texture_upload_now(Ptr<u8>(page).c(), mode, s7.offset);
+  }
+}
+
+void pc_texture_relocate(u32 dst, u32 src, u32 format) {
+  if (Gfx::GetCurrentRenderer()) {
+    Gfx::GetCurrentRenderer()->texture_relocate(dst, src, format);
+  }
+}
+
+u64 pc_get_mips2c(u32 name) {
+  const char* n = Ptr<String>(name).c()->data();
+  return Mips2C::gLinkedFunctionTable.get(n);
+}
+
+u64 pc_get_display_name(u32 id) {
+  std::string name = "";
+  if (Display::GetMainDisplay()) {
+    name = Display::GetMainDisplay()->get_display_manager()->get_connected_display_name(id);
+  }
+  if (name.empty()) {
+    return s7.offset;
+  }
+  return g_pc_port_funcs.make_string_from_c(str_util::to_upper(name).c_str());
+}
+
+u32 pc_get_display_mode() {
+  auto display_mode = WindowDisplayMode::Windowed;
+  if (Display::GetMainDisplay()) {
+    display_mode = Display::GetMainDisplay()->get_display_manager()->get_window_display_mode();
+  }
+  switch (display_mode) {
+    case WindowDisplayMode::Borderless:
+      return g_pc_port_funcs.intern_from_c("borderless").offset;
+    case WindowDisplayMode::Fullscreen:
+      return g_pc_port_funcs.intern_from_c("fullscreen").offset;
+    default:
+    case WindowDisplayMode::Windowed:
+      return g_pc_port_funcs.intern_from_c("windowed").offset;
+  }
+}
+
+void pc_set_display_mode(u32 symptr) {
+  if (!Display::GetMainDisplay()) {
+    return;
+  }
+  if (symptr == g_pc_port_funcs.intern_from_c("windowed").offset || symptr == s7.offset) {
+    Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
+        WindowDisplayMode::Windowed);
+  } else if (symptr == g_pc_port_funcs.intern_from_c("borderless").offset) {
+    Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
+        WindowDisplayMode::Borderless);
+  } else if (symptr == g_pc_port_funcs.intern_from_c("fullscreen").offset) {
+    Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
+        WindowDisplayMode::Fullscreen);
+  }
+}
+
+u64 pc_get_display_count() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_display_manager()->num_connected_displays();
+  }
+  return 0;
+}
+
+void pc_get_active_display_size(u32 w_ptr, u32 h_ptr) {
+  if (!Display::GetMainDisplay()) {
+    return;
+  }
+  if (w_ptr) {
+    auto w_out = Ptr<u32>(w_ptr).c();
+    if (w_out) {
+      *w_out = Display::GetMainDisplay()->get_display_manager()->get_screen_width();
+    }
+  }
+  if (h_ptr) {
+    auto h_out = Ptr<u32>(h_ptr).c();
+    if (h_out) {
+      *h_out = Display::GetMainDisplay()->get_display_manager()->get_screen_height();
+    }
+  }
+}
+
+s64 pc_get_active_display_refresh_rate() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_display_manager()->get_active_display_refresh_rate();
+  }
+  return 0;
+}
+
+void pc_get_window_size(u32 w_ptr, u32 h_ptr) {
+  if (!Display::GetMainDisplay()) {
+    return;
+  }
+  if (w_ptr) {
+    auto w = Ptr<u32>(w_ptr).c();
+    if (w) {
+      *w = Display::GetMainDisplay()->get_display_manager()->get_window_width();
+    }
+  }
+  if (h_ptr) {
+    auto h = Ptr<u32>(h_ptr).c();
+    if (h) {
+      *h = Display::GetMainDisplay()->get_display_manager()->get_window_height();
+    }
+  }
+}
+
+void pc_get_window_scale(u32 x_ptr, u32 y_ptr) {
+  if (!Display::GetMainDisplay()) {
+    return;
+  }
+  if (x_ptr) {
+    auto x = Ptr<float>(x_ptr).c();
+    if (x) {
+      *x = Display::GetMainDisplay()->get_display_manager()->get_window_scale_x();
+    }
+  }
+  if (y_ptr) {
+    auto y = Ptr<float>(y_ptr).c();
+    if (y) {
+      *y = Display::GetMainDisplay()->get_display_manager()->get_window_scale_y();
+    }
+  }
+}
+
+void pc_get_fullscreen_display(u64 display_id) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_display_manager()->set_fullscreen_display_id(display_id);
+  }
+}
+
+void pc_set_window_size(u64 width, u64 height) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_display_manager()->set_window_size(width, height);
+  }
+}
+
+u64 pc_get_controller_name(u32 id) {
+  std::string name = "";
+  if (Display::GetMainDisplay()) {
+    name = Display::GetMainDisplay()->get_input_manager()->get_controller_name(id);
+  }
+  if (name.empty()) {
+    return s7.offset;
+  }
+  return g_pc_port_funcs.make_string_from_c(str_util::to_upper(name).c_str());
+}
+
+u64 pc_get_current_bind(s32 bind_assignment_info) {
+  if (!Display::GetMainDisplay()) {
+    // TODO - return something that lets the runtime use a translatable string if unknown
+    return g_pc_port_funcs.make_string_from_c(str_util::to_upper("unknown").c_str());
+  }
+
+  auto info = bind_assignment_info ? Ptr<BindAssignmentInfo>(bind_assignment_info).c() : NULL;
+  auto port = (int)info->port;
+  auto device_type = (int)info->device_type;
+  auto for_button = info->buttons != s7.offset;
+  auto input_idx = (int)info->input_idx;
+  auto analog_min_range = info->analog_min_range != s7.offset;
+
+  if (Display::GetMainDisplay()) {
+    auto name = Display::GetMainDisplay()->get_input_manager()->get_current_bind(
+        port, (InputDeviceType)device_type, for_button, input_idx, analog_min_range);
+    if (name.empty()) {
+      return s7.offset;
+    }
+    return g_pc_port_funcs.make_string_from_c(str_util::to_upper(name).c_str());
+  }
+  // TODO - return something that lets the runtime use a translatable string if unknown
+  return g_pc_port_funcs.make_string_from_c(str_util::to_upper("unknown").c_str());
+}
+
+u64 pc_get_controller_count() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_input_manager()->get_num_controllers();
+  }
+  return 0;
+}
+
+void pc_get_controller(u32 controller_id, u32 port) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_input_manager()->set_controller_for_port(controller_id, port);
+  }
+}
+
+void pc_set_keyboard_enabled(u32 sym_val) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_input_manager()->enable_keyboard(symbol_to_bool(sym_val));
+  }
+}
+
+void pc_set_mouse_options(u32 enabled, u32 control_camera, u32 control_movement) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_input_manager()->update_mouse_options(
+        symbol_to_bool(enabled), symbol_to_bool(control_camera), symbol_to_bool(control_movement));
+  }
+}
+
+void pc_set_mouse_camera_sens(u32 xsens, u32 ysens) {
+  float xsens_val;
+  memcpy(&xsens_val, &xsens, 4);
+  float ysens_val;
+  memcpy(&ysens_val, &ysens, 4);
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_input_manager()->set_camera_sens(xsens_val, ysens_val);
+  }
+}
+
+void pc_ignore_background_controller_events(u32 sym_val) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_input_manager()->ignore_background_controller_events(
+        symbol_to_bool(sym_val));
+  }
+}
+
+u64 pc_current_controller_has_led() {
+  if (Display::GetMainDisplay()) {
+    return bool_to_symbol(Display::GetMainDisplay()->get_input_manager()->controller_has_led(0));
+  }
+  return bool_to_symbol(false);
+}
+
+void pc_set_controller_led(const int port, const u8 red, const u8 green, const u8 blue) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_input_manager()->set_controller_led(port, red, green, blue);
+  }
+}
+
+u64 pc_waiting_for_bind() {
+  if (Display::GetMainDisplay()) {
+    return bool_to_symbol(Display::GetMainDisplay()->get_input_manager()->get_waiting_for_bind());
+  }
+  return bool_to_symbol(false);
+}
+
+void pc_set_waiting_for_bind(InputDeviceType device_type,
+                             u32 for_analog,
+                             u32 for_minimum_analog,
+                             s32 input_idx) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_input_manager()->set_wait_for_bind(
+        device_type, symbol_to_bool(for_analog), symbol_to_bool(for_minimum_analog), input_idx);
+  }
+}
+
+void pc_stop_waiting_for_bind() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_input_manager()->stop_waiting_for_bind();
+  }
+}
+
+void pc_reset_bindings_to_defaults(const int port, const InputDeviceType device_type) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_input_manager()->reset_input_bindings_to_defaults(port,
+                                                                                     device_type);
+  }
+}
+
+void pc_set_auto_hide_cursor(u32 val) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_input_manager()->set_auto_hide_mouse(symbol_to_bool(val));
+  }
+}
+
+void pc_set_vsync(u32 sym_val) {
+  Gfx::g_global_settings.vsync = symbol_to_bool(sym_val);
+}
+
+void pc_set_msaa(int samples) {
+  Gfx::g_global_settings.msaa_samples = samples;
+}
+
+void pc_set_frame_rate(int rate) {
+  Gfx::g_global_settings.target_fps = rate;
+}
+
+void pc_set_game_resolution(int w, int h) {
+  Gfx::g_global_settings.game_res_w = w;
+  Gfx::g_global_settings.game_res_h = h;
+}
+
+void pc_set_letterbox(int w, int h) {
+  Gfx::g_global_settings.lbox_w = w;
+  Gfx::g_global_settings.lbox_h = h;
+}
+
+void pc_renderer_tree_set_lod(Gfx::RendererTreeType tree, int lod) {
+  switch (tree) {
+    case Gfx::RendererTreeType::TFRAG3:
+      Gfx::g_global_settings.lod_tfrag = lod;
+      break;
+    case Gfx::RendererTreeType::TIE3:
+      Gfx::g_global_settings.lod_tie = lod;
+      break;
+    default:
+      lg::error("Invalid tree {} specified for SetLod ({})", fmt::underlying(tree), lod);
+      break;
+  }
+}
+
+void pc_set_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask, u32 symptr) {
+  if (!symbol_to_bool(symptr)) {
+    Gfx::CollisionRendererSetMask(mode, mask);
+  } else {
+    Gfx::CollisionRendererClearMask(mode, mask);
+  }
+}
+
+u32 pc_get_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask) {
+  return Gfx::CollisionRendererGetMask(mode, mask) ? s7.offset + true_symbol_offset(g_game_version)
+                                                   : s7.offset;
+}
+
+void pc_set_collision_wireframe(u32 symptr) {
+  Gfx::g_global_settings.collision_wireframe = symbol_to_bool(symptr);
+}
+
+void pc_set_collision(u32 symptr) {
+  Gfx::g_global_settings.collision_enable = symbol_to_bool(symptr);
+}
+
+void pc_set_gfx_hack(u64 which, u32 symptr) {
+  switch (which) {
+    case 0:  // no tex
+      Gfx::g_global_settings.hack_no_tex = symbol_to_bool(symptr);
+      break;
+  }
+}
+
+u32 pc_get_os() {
+#ifdef _WIN32
+  return g_pc_port_funcs.intern_from_c("windows").offset;
+#elif __linux__
+  return g_pc_port_funcs.intern_from_c("linux").offset;
+#elif __APPLE__
+  return g_pc_port_funcs.intern_from_c("darwin").offset;
+#else
+  return s7.offset;
+#endif
+}
+
+time_t pc_get_unix_timestamp() {
+  return std::time(nullptr);
+}
+
+u64 pc_filepath_exists(u32 filepath) {
+  auto filepath_str = std::string(Ptr<String>(filepath).c()->data());
+  return bool_to_symbol(fs::exists(filepath_str));
+}
+
+u64 pc_mkdir_filepath(u32 filepath) {
+  auto filepath_str = std::string(Ptr<String>(filepath).c()->data());
+  return bool_to_symbol(file_util::create_dir_if_needed_for_file(filepath_str));
+}
+
+void pc_prof(u32 name, ProfNode::Kind kind) {
+  prof().event(Ptr<String>(name).c()->data(), kind);
+}
+
 /// Initializes all functions that are common across all game versions
 /// These functions have the same implementation and do not use any game specific functions (other
 /// than the one to create a function in the first place)
@@ -423,415 +801,83 @@ void init_common_pc_port_functions(
   g_pc_port_funcs.intern_from_c = intern_from_c_func;
   g_pc_port_funcs.make_string_from_c = make_string_from_c_func;
   // Get a 300MHz timer value. Called from EE thread
-  make_func_symbol_func(
-      "__read-ee-timer", (void*)[]()->u64 {
-        u64 ns = ee_clock_timer.getNs();
-        return (ns * 3) / 10;
-      });
+  make_func_symbol_func("__read-ee-timer", (void*)read_ee_timer);
   // Do a fast memory copy.
-  make_func_symbol_func(
-      "__mem-move",
-      (void*)[](u32 dst, u32 src, u32 size) { memmove(Ptr<u8>(dst).c(), Ptr<u8>(src).c(), size); });
+  make_func_symbol_func("__mem-move", (void*)pc_memmove);
   // Called from game thread to submit rendering DMA chain.
-  make_func_symbol_func(
-      "__send-gfx-dma-chain", (void*)[](u32 /*bank*/, u32 chain) {
-        if (Gfx::GetCurrentRenderer()) {
-          Gfx::GetCurrentRenderer()->send_chain(g_ee_main_mem, chain);
-        }
-      });
+  make_func_symbol_func("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
   // Called from game thread to upload a texture outside of the main DMA chain.
-  make_func_symbol_func(
-      "__pc-texture-upload-now", (void*)[](u32 page, u32 mode) {
-        if (Gfx::GetCurrentRenderer()) {
-          Gfx::GetCurrentRenderer()->texture_upload_now(Ptr<u8>(page).c(), mode, s7.offset);
-        }
-      });
-  make_func_symbol_func(
-      "__pc-texture-relocate", (void*)[](u32 dst, u32 src, u32 format) {
-        if (Gfx::GetCurrentRenderer()) {
-          Gfx::GetCurrentRenderer()->texture_relocate(dst, src, format);
-        }
-      });
+  make_func_symbol_func("__pc-texture-upload-now", (void*)pc_texture_upload_now);
+  make_func_symbol_func("__pc-texture-relocate", (void*)pc_texture_relocate);
   // Called from the game thread at initialization. The game thread is the only one to touch the
   // mips2c function table (through the linker and ugh this function), so no locking is needed.
-  make_func_symbol_func(
-      "__pc-get-mips2c", (void*)[](u32 name)->u64 {
-        const char* n = Ptr<String>(name).c()->data();
-        return Mips2C::gLinkedFunctionTable.get(n);
-      });
+  make_func_symbol_func("__pc-get-mips2c", (void*)pc_get_mips2c);
 
   // -- DISPLAY RELATED --
   // Returns the name of the display with the given id or #f if not found / empty
-  make_func_symbol_func(
-      "pc-get-display-name", (void*)[](u32 id)->u64 {
-        std::string name = "";
-        if (Display::GetMainDisplay()) {
-          name = Display::GetMainDisplay()->get_display_manager()->get_connected_display_name(id);
-        }
-        if (name.empty()) {
-          return s7.offset;
-        }
-        return g_pc_port_funcs.make_string_from_c(str_util::to_upper(name).c_str());
-      });
-  make_func_symbol_func(
-      "pc-get-display-mode", (void*)[]() {
-        auto display_mode = WindowDisplayMode::Windowed;
-        if (Display::GetMainDisplay()) {
-          display_mode =
-              Display::GetMainDisplay()->get_display_manager()->get_window_display_mode();
-        }
-        switch (display_mode) {
-          default:
-          case WindowDisplayMode::Windowed:
-            return g_pc_port_funcs.intern_from_c("windowed").offset;
-          case WindowDisplayMode::Borderless:
-            return g_pc_port_funcs.intern_from_c("borderless").offset;
-          case WindowDisplayMode::Fullscreen:
-            return g_pc_port_funcs.intern_from_c("fullscreen").offset;
-        }
-      });
-  make_func_symbol_func(
-      "pc-set-display-mode", (void*)[](u32 symptr) {
-        if (!Display::GetMainDisplay()) {
-          return;
-        }
-        if (symptr == g_pc_port_funcs.intern_from_c("windowed").offset || symptr == s7.offset) {
-          Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
-              WindowDisplayMode::Windowed);
-        } else if (symptr == g_pc_port_funcs.intern_from_c("borderless").offset) {
-          Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
-              WindowDisplayMode::Borderless);
-        } else if (symptr == g_pc_port_funcs.intern_from_c("fullscreen").offset) {
-          Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
-              WindowDisplayMode::Fullscreen);
-        }
-      });
-  make_func_symbol_func(
-      "pc-get-display-count", (void*)[]() {
-        if (Display::GetMainDisplay()) {
-          return Display::GetMainDisplay()->get_display_manager()->num_connected_displays();
-        }
-        return 0;
-      });
+  make_func_symbol_func("pc-get-display-name", (void*)pc_get_display_name);
+  make_func_symbol_func("pc-get-display-mode", (void*)pc_get_display_mode);
+  make_func_symbol_func("pc-set-display-mode", (void*)pc_set_display_mode);
+  make_func_symbol_func("pc-get-display-count", (void*)pc_get_display_count);
   // Returns resolution of the monitor's current display mode
-  make_func_symbol_func(
-      "pc-get-active-display-size", (void*)[](u32 w_ptr, u32 h_ptr) {
-        if (!Display::GetMainDisplay()) {
-          return;
-        }
-        if (w_ptr) {
-          auto w_out = Ptr<u32>(w_ptr).c();
-          if (w_out) {
-            *w_out = Display::GetMainDisplay()->get_display_manager()->get_screen_width();
-          }
-        }
-        if (h_ptr) {
-          auto h_out = Ptr<u32>(h_ptr).c();
-          if (h_out) {
-            *h_out = Display::GetMainDisplay()->get_display_manager()->get_screen_height();
-          }
-        }
-      });
+  make_func_symbol_func("pc-get-active-display-size", (void*)pc_get_active_display_size);
   // Returns the current refresh rate of the currently selected monitor's display mode.
-  make_func_symbol_func(
-      "pc-get-active-display-refresh-rate", (void*)[]()->s64 {
-        if (Display::GetMainDisplay()) {
-          return Display::GetMainDisplay()
-              ->get_display_manager()
-              ->get_active_display_refresh_rate();
-        }
-        return 0;
-      });
+  make_func_symbol_func("pc-get-active-display-refresh-rate",
+                        (void*)pc_get_active_display_refresh_rate);
   // Returns size of window. Called from game thread
-  make_func_symbol_func(
-      "pc-get-window-size", (void*)[](u32 w_ptr, u32 h_ptr) {
-        if (!Display::GetMainDisplay()) {
-          return;
-        }
-        if (w_ptr) {
-          auto w = Ptr<u32>(w_ptr).c();
-          if (w) {
-            *w = Display::GetMainDisplay()->get_display_manager()->get_window_width();
-          }
-        }
-        if (h_ptr) {
-          auto h = Ptr<u32>(h_ptr).c();
-          if (h) {
-            *h = Display::GetMainDisplay()->get_display_manager()->get_window_height();
-          }
-        }
-      });
+  make_func_symbol_func("pc-get-window-size", (void*)pc_get_window_size);
   // Returns scale of window. This is for DPI stuff.
-  make_func_symbol_func(
-      "pc-get-window-scale", (void*)[](u32 x_ptr, u32 y_ptr) {
-        if (!Display::GetMainDisplay()) {
-          return;
-        }
-        if (x_ptr) {
-          auto x = Ptr<float>(x_ptr).c();
-          if (x) {
-            *x = Display::GetMainDisplay()->get_display_manager()->get_window_scale_x();
-          }
-        }
-        if (y_ptr) {
-          auto y = Ptr<float>(y_ptr).c();
-          if (y) {
-            *y = Display::GetMainDisplay()->get_display_manager()->get_window_scale_y();
-          }
-        }
-      });
-  make_func_symbol_func(
-      "pc-set-fullscreen-display", (void*)[](u64 display_id) {
-        if (Display::GetMainDisplay()) {
-          Display::GetMainDisplay()->get_display_manager()->set_fullscreen_display_id(display_id);
-        }
-      });
-  make_func_symbol_func(
-      "pc-set-window-size", (void*)[](u64 width, u64 height) {
-        if (Display::GetMainDisplay()) {
-          Display::GetMainDisplay()->get_display_manager()->set_window_size(width, height);
-        }
-      });
+  make_func_symbol_func("pc-get-window-scale", (void*)pc_get_window_scale);
+  make_func_symbol_func("pc-set-fullscreen-display", (void*)pc_get_fullscreen_display);
+  make_func_symbol_func("pc-set-window-size", (void*)pc_set_window_size);
 
   // -- INPUT RELATED --
   // Returns the name of the display with the given id or #f if not found / empty
-  make_func_symbol_func(
-      "pc-get-controller-name", (void*)[](u32 id)->u64 {
-        std::string name = "";
-        if (Display::GetMainDisplay()) {
-          name = Display::GetMainDisplay()->get_input_manager()->get_controller_name(id);
-        }
-        if (name.empty()) {
-          return s7.offset;
-        }
-        return g_pc_port_funcs.make_string_from_c(str_util::to_upper(name).c_str());
-      });
-
-  make_func_symbol_func(
-      "pc-get-current-bind", (void*)[](s32 bind_assignment_info)->u64 {
-        if (!Display::GetMainDisplay()) {
-          // TODO - return something that lets the runtime use a translatable string if unknown
-          return g_pc_port_funcs.make_string_from_c(str_util::to_upper("unknown").c_str());
-        }
-
-        auto info = bind_assignment_info ? Ptr<BindAssignmentInfo>(bind_assignment_info).c() : NULL;
-        auto port = (int)info->port;
-        auto device_type = (int)info->device_type;
-        auto for_button = info->buttons != s7.offset;
-        auto input_idx = (int)info->input_idx;
-        auto analog_min_range = info->analog_min_range != s7.offset;
-
-        if (Display::GetMainDisplay()) {
-          auto name = Display::GetMainDisplay()->get_input_manager()->get_current_bind(
-              port, (InputDeviceType)device_type, for_button, input_idx, analog_min_range);
-          if (name.empty()) {
-            return s7.offset;
-          }
-          return g_pc_port_funcs.make_string_from_c(str_util::to_upper(name).c_str());
-        }
-        // TODO - return something that lets the runtime use a translatable string if unknown
-        return g_pc_port_funcs.make_string_from_c(str_util::to_upper("unknown").c_str());
-      });
-  make_func_symbol_func(
-      "pc-get-controller-count", (void*)[]() {
-        if (Display::GetMainDisplay()) {
-          return Display::GetMainDisplay()->get_input_manager()->get_num_controllers();
-        }
-        return 0;
-      });
-  make_func_symbol_func(
-      "pc-set-controller!", (void*)[](int controller_id, int port) {
-        if (Display::GetMainDisplay()) {
-          Display::GetMainDisplay()->get_input_manager()->set_controller_for_port(controller_id,
-                                                                                  port);
-        }
-      });
-  make_func_symbol_func(
-      "pc-set-keyboard-enabled!", (void*)[](u32 sym_val) {
-        if (Display::GetMainDisplay()) {
-          Display::GetMainDisplay()->get_input_manager()->enable_keyboard(symbol_to_bool(sym_val));
-        }
-      });
-  make_func_symbol_func(
-      "pc-set-mouse-enabled!", (void*)[](u32 enabled, u32 control_camera, u32 control_movement) {
-        if (Display::GetMainDisplay()) {
-          Display::GetMainDisplay()->get_input_manager()->update_mouse_options(
-              symbol_to_bool(enabled), symbol_to_bool(control_camera),
-              symbol_to_bool(control_movement));
-        }
-      });
-  make_func_symbol_func(
-      "pc-set-mouse-camera-sens!", (void*)[](u32 xsens, u32 ysens) {
-        float xsens_val;
-        memcpy(&xsens_val, &xsens, 4);
-        float ysens_val;
-        memcpy(&ysens_val, &ysens, 4);
-        if (Display::GetMainDisplay()) {
-          Display::GetMainDisplay()->get_input_manager()->set_camera_sens(xsens_val, ysens_val);
-        }
-      });
-  make_func_symbol_func(
-      "pc-ignore-background-controller-events!", (void*)[](u32 sym_val) {
-        if (Display::GetMainDisplay()) {
-          Display::GetMainDisplay()->get_input_manager()->ignore_background_controller_events(
-              symbol_to_bool(sym_val));
-        }
-      });
-  make_func_symbol_func(
-      "pc-current-controller-has-led?", (void*)[]() {
-        if (Display::GetMainDisplay()) {
-          return bool_to_symbol(
-              Display::GetMainDisplay()->get_input_manager()->controller_has_led(0));
-        }
-        return bool_to_symbol(false);
-      });
-  make_func_symbol_func(
-      "pc-set-controller-led!",
-      (void*)[](const int port, const u8 red, const u8 green, const u8 blue) {
-        if (Display::GetMainDisplay()) {
-          Display::GetMainDisplay()->get_input_manager()->set_controller_led(port, red, green,
-                                                                             blue);
-        }
-      });
-  make_func_symbol_func(
-      "pc-waiting-for-bind?", (void*)[]() {
-        if (Display::GetMainDisplay()) {
-          return bool_to_symbol(
-              Display::GetMainDisplay()->get_input_manager()->get_waiting_for_bind());
-        }
-        return bool_to_symbol(false);
-      });
-  make_func_symbol_func(
-      "pc-set-waiting-for-bind!", (void*)[](InputDeviceType device_type, u32 for_analog,
-                                            u32 for_minimum_analog, s32 input_idx) {
-        if (Display::GetMainDisplay()) {
-          Display::GetMainDisplay()->get_input_manager()->set_wait_for_bind(
-              device_type, symbol_to_bool(for_analog), symbol_to_bool(for_minimum_analog),
-              input_idx);
-        }
-      });
-  make_func_symbol_func(
-      "pc-stop-waiting-for-bind!", (void*)[]() {
-        if (Display::GetMainDisplay()) {
-          return Display::GetMainDisplay()->get_input_manager()->stop_waiting_for_bind();
-        }
-      });
-  make_func_symbol_func(
-      "pc-reset-bindings-to-defaults!",
-      (void*)[](const int port, const InputDeviceType device_type) {
-        if (Display::GetMainDisplay()) {
-          Display::GetMainDisplay()->get_input_manager()->reset_input_bindings_to_defaults(
-              port, device_type);
-        }
-      });
-  make_func_symbol_func(
-      "pc-set-auto-hide-cursor!", (void*)[](u32 val) {
-        if (Display::GetMainDisplay()) {
-          Display::GetMainDisplay()->get_input_manager()->set_auto_hide_mouse(symbol_to_bool(val));
-        }
-      });
+  make_func_symbol_func("pc-get-controller-name", (void*)pc_get_controller_name);
+  make_func_symbol_func("pc-get-current-bind", (void*)pc_get_current_bind);
+  make_func_symbol_func("pc-get-controller-count", (void*)pc_get_controller_count);
+  make_func_symbol_func("pc-set-controller!", (void*)pc_get_controller);
+  make_func_symbol_func("pc-set-keyboard-enabled!", (void*)pc_set_keyboard_enabled);
+  make_func_symbol_func("pc-set-mouse-options!", (void*)pc_set_mouse_options);
+  make_func_symbol_func("pc-set-mouse-camera-sens!", (void*)pc_set_mouse_camera_sens);
+  make_func_symbol_func("pc-ignore-background-controller-events!",
+                        (void*)pc_ignore_background_controller_events);
+  make_func_symbol_func("pc-current-controller-has-led?", (void*)pc_current_controller_has_led);
+  make_func_symbol_func("pc-set-controller-led!", (void*)pc_set_controller_led);
+  make_func_symbol_func("pc-waiting-for-bind?", (void*)pc_waiting_for_bind);
+  make_func_symbol_func("pc-set-waiting-for-bind!", (void*)pc_set_waiting_for_bind);
+  make_func_symbol_func("pc-stop-waiting-for-bind!", (void*)pc_stop_waiting_for_bind);
+  make_func_symbol_func("pc-reset-bindings-to-defaults!", (void*)pc_reset_bindings_to_defaults);
+  make_func_symbol_func("pc-set-auto-hide-cursor!", (void*)pc_set_auto_hide_cursor);
 
   // graphics things
-  make_func_symbol_func(
-      "pc-set-vsync",
-      (void*)[](u32 sym_val) { Gfx::g_global_settings.vsync = symbol_to_bool(sym_val); });
-  make_func_symbol_func(
-      "pc-set-msaa", (void*)[](int samples) { Gfx::g_global_settings.msaa_samples = samples; });
-  make_func_symbol_func(
-      "pc-set-frame-rate", (void*)[](int rate) { Gfx::g_global_settings.target_fps = rate; });
-  make_func_symbol_func(
-      "pc-set-game-resolution", (void*)[](int w, int h) {
-        Gfx::g_global_settings.game_res_w = w;
-        Gfx::g_global_settings.game_res_h = h;
-      });
-  make_func_symbol_func(
-      "pc-set-letterbox", (void*)[](int w, int h) {
-        Gfx::g_global_settings.lbox_w = w;
-        Gfx::g_global_settings.lbox_h = h;
-      });
-  make_func_symbol_func(
-      "pc-renderer-tree-set-lod", (void*)[](Gfx::RendererTreeType tree, int lod) {
-        switch (tree) {
-          case Gfx::RendererTreeType::TFRAG3:
-            Gfx::g_global_settings.lod_tfrag = lod;
-            break;
-          case Gfx::RendererTreeType::TIE3:
-            Gfx::g_global_settings.lod_tie = lod;
-            break;
-          default:
-            lg::error("Invalid tree {} specified for SetLod ({})", fmt::underlying(tree), lod);
-            break;
-        }
-      });
+  make_func_symbol_func("pc-set-vsync", (void*)pc_set_vsync);
+  make_func_symbol_func("pc-set-msaa", (void*)pc_set_msaa);
+  make_func_symbol_func("pc-set-frame-rate", (void*)pc_set_frame_rate);
+  make_func_symbol_func("pc-set-game-resolution", (void*)pc_set_game_resolution);
+  make_func_symbol_func("pc-set-letterbox", (void*)pc_set_letterbox);
+  make_func_symbol_func("pc-renderer-tree-set-lod", (void*)pc_renderer_tree_set_lod);
   make_func_symbol_func("pc-set-collision-mode", (void*)Gfx::CollisionRendererSetMode);
-  make_func_symbol_func(
-      "pc-set-collision-mask",
-      (void*)[](GfxGlobalSettings::CollisionRendererMode mode, int mask, u32 symptr) {
-        if (!symbol_to_bool(symptr)) {
-          Gfx::CollisionRendererSetMask(mode, mask);
-        } else {
-          Gfx::CollisionRendererClearMask(mode, mask);
-        }
-      });
-  make_func_symbol_func(
-      "pc-get-collision-mask",
-      (void*)[](GfxGlobalSettings::CollisionRendererMode mode, int mask)->u32 {
-        return Gfx::CollisionRendererGetMask(mode, mask)
-                   ? s7.offset + true_symbol_offset(g_game_version)
-                   : s7.offset;
-      });
-  make_func_symbol_func(
-      "pc-set-collision-wireframe", (void*)[](u32 symptr) {
-        Gfx::g_global_settings.collision_wireframe = symbol_to_bool(symptr);
-      });
-  make_func_symbol_func(
-      "pc-set-collision",
-      (void*)[](u32 symptr) { Gfx::g_global_settings.collision_enable = symbol_to_bool(symptr); });
-  make_func_symbol_func(
-      "pc-set-gfx-hack", (void*)[](u64 which, u32 symptr) {
-        switch (which) {
-          case 0:  // no tex
-            Gfx::g_global_settings.hack_no_tex = symbol_to_bool(symptr);
-            break;
-        }
-      });
+  make_func_symbol_func("pc-set-collision-mask", (void*)pc_set_collision_mask);
+  make_func_symbol_func("pc-get-collision-mask", (void*)pc_get_collision_mask);
+  make_func_symbol_func("pc-set-collision-wireframe", (void*)pc_set_collision_wireframe);
+  make_func_symbol_func("pc-set-collision", (void*)pc_set_collision);
+  make_func_symbol_func("pc-set-gfx-hack", (void*)pc_set_gfx_hack);
+
   // -- OTHER --
   // Return the current OS as a symbol. Actually returns what it was compiled for!
-  make_func_symbol_func(
-      "pc-get-os", (void*)[]() {
-#ifdef _WIN32
-        return g_pc_port_funcs.intern_from_c("windows").offset;
-#elif __linux__
-  return g_pc_port_funcs.intern_from_c("linux").offset;
-#elif __APPLE__
-  return g_pc_port_funcs.intern_from_c("darwin").offset;
-#else
-  return s7.offset;
-#endif
-      });
-  make_func_symbol_func(
-      "pc-get-unix-timestamp", (void*)[]() { return std::time(nullptr); });
+  make_func_symbol_func("pc-get-os", (void*)pc_get_os);
+  make_func_symbol_func("pc-get-unix-timestamp", (void*)pc_get_unix_timestamp);
 
   // file related functions
-  make_func_symbol_func(
-      "pc-filepath-exists?", (void*)[](u32 filepath) {
-        auto filepath_str = std::string(Ptr<String>(filepath).c()->data());
-        return bool_to_symbol(fs::exists(filepath_str));
-      });
-  make_func_symbol_func(
-      "pc-mkdir-file-path", (void*)[](u32 filepath) {
-        auto filepath_str = std::string(Ptr<String>(filepath).c()->data());
-        return bool_to_symbol(file_util::create_dir_if_needed_for_file(filepath_str));
-      });
+  make_func_symbol_func("pc-filepath-exists?", (void*)pc_filepath_exists);
+  make_func_symbol_func("pc-mkdir-file-path", (void*)pc_mkdir_filepath);
 
   // discord rich presence
   make_func_symbol_func("pc-discord-rpc-set", (void*)set_discord_rpc);
 
   // profiler
-  make_func_symbol_func(
-      "pc-prof", (void*)[](u32 name, ProfNode::Kind kind) {
-        prof().event(Ptr<String>(name).c()->data(), kind);
-      });
+  make_func_symbol_func("pc-prof", (void*)pc_prof);
 
   // debugging tools
   make_func_symbol_func("pc-filter-debug-string?", (void*)pc_filter_debug_string);
