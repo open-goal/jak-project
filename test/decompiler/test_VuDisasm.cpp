@@ -30,6 +30,20 @@ std::string get_expected(const std::string& name) {
 }
 }  // namespace
 
+TEST(VuDisasm, ShadowVu0_Jak2) {
+  auto data = get_test_data("jak2/shadow-vu0");
+  VuDisassembler disasm(VuDisassembler::VuKind::VU0);
+  auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/shadow-vu0"));
+}
+
+TEST(VuDisasm, ShadowVu1_Jak2) {
+  auto data = get_test_data("jak2/shadow-vu1");
+  VuDisassembler disasm(VuDisassembler::VuKind::VU1);
+  auto prog = disasm.disassemble(data.data(), data.size() * 4, false);
+  EXPECT_EQ(disasm.to_string(prog), get_expected("jak2/shadow-vu1"));
+}
+
 TEST(VuDisasm, OceanTexture_Jak2) {
   auto data = get_test_data("jak2/ocean-texture");
   VuDisassembler disasm(VuDisassembler::VuKind::VU1);
