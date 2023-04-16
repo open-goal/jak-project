@@ -672,16 +672,13 @@
          (f0-3 f1-5)
          (f30-0 (* f1-5 (-> gp-0 global-scale)))
          )
-    ; (when (-> arg0 ripple query)
-      (format 0 "Saw a ripple query. We thought this was unused in jak 2.~%")
-    ;   (break!)
-    ;   )
     (set! (-> gp-0 faded-scale) f30-0)
     (let ((f1-8 (/ f30-0 (* 128.0 (-> arg1 header xyz-scale)))))
       0
       (let ((v1-5 (-> (scratchpad-object foreground-work) regs num-bones)))
         ;;(.sll v1-6 v1-5 7)
         (set! v1-6 (shl v1-5 7))
+        )
 
       (let ((a0-1 (scratchpad-object foreground-work)))
         ;;(.addu t0-0 arg2 v1-6)
@@ -1277,28 +1274,32 @@
                       (when (or (nonzero? (-> (scratchpad-object foreground-work) regs mercneric-used))
                                 (nonzero? (-> (scratchpad-object foreground-work) regs emerc-used))
                                 )
-                        (set! (-> (scratchpad-object foreground-work) regs mercneric-used) 0)
-                        (set! (-> (scratchpad-object foreground-work) regs emerc-used) 0)
-                        (set! (-> (scratchpad-object foreground-work) regs merc-used) 1)
-                        (dotimes (effect-idx (the-as int (-> geo header effect-count)))
-                          (cond
-                            ((or (logtest? (-> geo effect effect-idx effect-bits) (effect-bits cross-fade))
-                                 (logtest? (-> geo effect effect-idx effect-bits) (effect-bits force-mercneric))
-                                 (nonzero? (-> dc death-timer))
-                                 )
-                              ;; (format *stdcon* "[fg] ~S to generic~%" (-> dc process name))
-                              (set! (-> bucket-info effect effect-idx merc-path) 2)
-                              (set! (-> (scratchpad-object foreground-work) regs mercneric-used) 1)
-                             )
-                            (else
-                              (set! (-> bucket-info effect effect-idx merc-path) 0)
+
+                        ;; technically we should use generic for ripple query, but the only user is dark eco,
+                        ;; which doesn't actually do anything with the result of the query.
+                        (when #t ;;(not (and (-> dc ripple) (-> dc ripple query)))
+                          (set! (-> (scratchpad-object foreground-work) regs mercneric-used) 0)
+                          (set! (-> (scratchpad-object foreground-work) regs emerc-used) 0)
+                          (set! (-> (scratchpad-object foreground-work) regs merc-used) 1)
+                          (dotimes (effect-idx (the-as int (-> geo header effect-count)))
+                            (cond
+                              ((or (logtest? (-> geo effect effect-idx effect-bits) (effect-bits cross-fade))
+                                   (logtest? (-> geo effect effect-idx effect-bits) (effect-bits force-mercneric))
+                                   (nonzero? (-> dc death-timer))
+                                   )
+                               ;; (format *stdcon* "[fg] ~S to generic~%" (-> dc process name))
+                               (set! (-> bucket-info effect effect-idx merc-path) 2)
+                               (set! (-> (scratchpad-object foreground-work) regs mercneric-used) 1)
+                               )
+                              (else
+                                (set! (-> bucket-info effect effect-idx merc-path) 0)
+                                )
+                              )
+
+                            (when (logtest? (-> geo effect effect-idx effect-usage) 1)
+                              (set! (-> bucket-info effect effect-idx ignore-alpha) 1)
                               )
                             )
-
-                          (when (logtest? (-> geo effect effect-idx effect-usage) 1)
-                            (set! (-> bucket-info effect effect-idx ignore-alpha) 1)
-                            )
-
                           )
                         )
 
