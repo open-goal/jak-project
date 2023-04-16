@@ -150,3 +150,14 @@ class SkipRenderer : public BucketRenderer {
   bool empty() const override { return true; }
   void draw_debug_window() override {}
 };
+
+/*!
+ * Renderer that ignores and prints all DMA transfers.
+ */
+class PrintRenderer : public BucketRenderer {
+ public:
+  PrintRenderer(const std::string& name, int my_id);
+  void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
+  bool empty() const override { return true; }
+  void draw_debug_window() override {}
+};
