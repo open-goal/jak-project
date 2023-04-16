@@ -13,6 +13,7 @@
 #include "game/graphics/opengl_renderer/SkyRenderer.h"
 #include "game/graphics/opengl_renderer/TextureUploadHandler.h"
 #include "game/graphics/opengl_renderer/VisDataHandler.h"
+#include "game/graphics/opengl_renderer/Warp.h"
 #include "game/graphics/opengl_renderer/background/Shrub.h"
 #include "game/graphics/opengl_renderer/background/TFragment.h"
 #include "game/graphics/opengl_renderer/background/Tie3.h"
@@ -154,6 +155,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
     init_bucket_renderer<Merc2>(
         fmt::format("merc-l{}-pris", i), BucketCategory::MERC,
         GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_PRIS, BucketId::MERC_L1_PRIS, i));
+    init_bucket_renderer<Generic2>(
+        fmt::format("gmerc-l{}-pris", i), BucketCategory::GENERIC,
+        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_PRIS, BucketId::GMERC_L1_PRIS, i));
 
     init_bucket_renderer<TextureUploadHandler>(
         fmt::format("tex-l{}-pris2", i), BucketCategory::TEX,
@@ -207,6 +211,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<LightningRenderer>("effects", BucketCategory::OTHER, BucketId::EFFECTS);
   init_bucket_renderer<TextureUploadHandler>("tex-all-warp", BucketCategory::TEX,
                                              BucketId::TEX_ALL_WARP);
+  init_bucket_renderer<Warp>("warp", BucketCategory::GENERIC, BucketId::GMERC_WARP);
   init_bucket_renderer<DirectRenderer>("debug-no-zbuf1", BucketCategory::OTHER,
                                        BucketId::DEBUG_NO_ZBUF1, 0x8000);
   init_bucket_renderer<TextureUploadHandler>("tex-all-map", BucketCategory::TEX,

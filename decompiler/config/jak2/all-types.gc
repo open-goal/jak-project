@@ -3919,6 +3919,14 @@
   :flag-assert #x900000008
   )
 
+;; hack - added for warp.
+(deftype gs-uv2 (uint64)
+  ((u  int16 :offset 0  :size 16) ;; Q4 fixed point
+   (v  int16 :offset 16 :size 16) ;; Q4 fixed point
+   )
+  :flag-assert #x900000008
+  )
+
 ;; the GS's ST register sets the S and T values of the vertex texture coordinates.
 ;; The value Q is specified by the RGBAQ register.
 (deftype gs-st (uint64)
@@ -4999,7 +5007,8 @@
 
 (declare-type adgif-shader structure)
 (deftype shader-ptr (uint32)
-  ((shader uint32 :offset 8 :size 24))
+  ((first-8 uint8 :offset 0 :size 8) ;; added
+   (shader uint32 :offset 8 :size 24))
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -11803,12 +11812,12 @@
   :type uint8
   :bitfield #t
   (texscroll 0)
-  (no-fade-out 1)
+  (no-fade-out 1) ;; translucent.
   (ripple 2)
   (emerc 3) ;; envmap??
   (ignore-tod-for-envmap-tint 4) ;; color thing
   (force-mercneric 5) ;; some mercneric-only effect
-  (cross-fade 6)
+  (cross-fade 6) ;; WARP?
   (ignore-alpha 7)
   )
 
@@ -11922,7 +11931,7 @@
    (use-isometric          uint8                        :offset 41)
    (use-attached-shader    uint8                        :offset 42)
    (display-triangles      uint8                        :offset 43)
-   (death-vertex-skip      uint16                       :offset 44)
+   (death-vertex-skip      uint16                       :offset 44) ;; 172
    (death-start-vertex     uint16                       :offset 46)
    (death-effect           uint32                       :offset 48)
    (use-translucent        uint8                        :offset 52)
@@ -24445,8 +24454,8 @@
 (define-extern foreground-wrapup (function none))
 (define-extern *default-shadow-settings* shadow-settings)
 (define-extern foreground-shadow (function draw-control (inline-array pris-mtx) pointer pointer))
-(define-extern foreground-generic-merc-death (function object object none))
-(define-extern foreground-generic-merc-add-fragments (function object object object none))
+(define-extern foreground-generic-merc-death (function draw-control generic-merc-ctrl none))
+(define-extern foreground-generic-merc-add-fragments (function merc-effect pointer mercneric-chain pointer))
 (define-extern foreground-generic-merc (function draw-control pointer int pointer))
 (define-extern foreground-merc (function draw-control (inline-array pris-mtx) pointer int int object pointer))
 (define-extern foreground-emerc (function draw-control (inline-array pris-mtx) pointer object int int pointer))
@@ -24460,7 +24469,7 @@
 ;; generic-vu0                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern generic-vu0-block object) ;; vu-function
+(define-extern generic-vu0-block vu-function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; generic-vu1                    ;;
@@ -24480,14 +24489,14 @@
 ;; generic-effect                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *target-lock* object) ;; symbol
+(define-extern *target-lock* object) ;; symbol
 (define-extern *generic-consts* generic-consts)
-;; (define-extern generic-work-init function) ;; (function generic-dma-foreground-sink none)
-;; (define-extern generic-upload-vu0 function) ;; (function none)
+(define-extern generic-work-init (function generic-bucket-state none))
+(define-extern generic-upload-vu0 (function none))
 (define-extern upload-vu0-program (function vu-function pointer none))
-;; (define-extern generic-initialize-without-sync function)
-;; (define-extern generic-initialize function) ;; (function generic-dma-foreground-sink matrix vu-lights none)
-;; (define-extern generic-wrapup function) ;; (function generic-dma-foreground-sink none)
+(define-extern generic-initialize-without-sync (function matrix vu-lights none))
+(define-extern generic-initialize (function generic-bucket-state matrix vu-lights none))
+(define-extern generic-wrapup (function generic-bucket-state none))
 ;; (define-extern generic-dma-from-spr function) ;; function
 ;; (define-extern generic-light-proc function) ;; function
 ;; (define-extern generic-envmap-proc function) ;; function
@@ -24505,9 +24514,9 @@
 ;; (define-extern generic-copy-vtx-dclr-dtex function) ;; function
 ;; (define-extern generic-none function) ;; function
 ;; (define-extern generic-none-dma-wait function) ;; function
-;; (define-extern *warp-data* object)
-;; (define-extern generic-warp-source-proc function)
-;; (define-extern generic-warp-source function)
+(define-extern *warp-data* object)
+(define-extern generic-warp-source-proc (function none))
+(define-extern generic-warp-source (function gsf-buffer none))
 ;; (define-extern generic-warp-dest-proc function)
 ;; (define-extern generic-warp-dest function)
 ;; (define-extern generic-warp-envmap-dest function)
@@ -24518,31 +24527,30 @@
 ;; generic-merc                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype invinitdata (structure)
   ((count     uint8   :offset-assert 0)
    (init-data uint8   :offset-assert 1)
    (init-addr uint16  :offset-assert 2)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-;; (define-extern mercneric-vu0-block object) ;; vu-function
-;; (define-extern *inv-init-table* object) ;; (inline-array invinitdata)
-;; (define-extern generic-merc-init-asm function) ;; (function none)
+(define-extern mercneric-vu0-block vu-function)
+(define-extern *inv-init-table* (inline-array invinitdata))
+(define-extern generic-merc-init-asm (function none))
 ;; (define-extern mercneric-matrix-asm function) ;; function
 ;; (define-extern mercneric-shader-asm function) ;; function
 ;; (define-extern mercneric-bittable-asm function) ;; function
 ;; (define-extern mercneric-convert function) ;; function
 ;; (define-extern high-speed-reject function) ;; (function none)
-;; (define-extern generic-translucent function)
+(define-extern generic-translucent (function gsf-buffer none))
 ;; (define-extern generic-merc-query function)
 ;; (define-extern generic-merc-death function)
 ;; (define-extern generic-merc-execute-asm function) ;; (function none)
-;; (define-extern generic-merc-do-chain function)
+(define-extern generic-merc-do-chain (function mercneric-chain dma-buffer pointer))
 (define-extern generic-merc-execute-all (function dma-buffer none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
