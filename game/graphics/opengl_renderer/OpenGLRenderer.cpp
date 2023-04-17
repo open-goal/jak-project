@@ -923,7 +923,8 @@ void OpenGLRenderer::dispatch_buckets_jak2(DmaFollower dma,
     m_category_times[(int)m_bucket_categories[bucket_id]] += bucket_prof.get_elapsed_time();
 
     // hack to draw the collision mesh in the middle the drawing
-    if (bucket_id + 1 == (int)jak2::BucketId::TEX_L0_ALPHA && Gfx::g_global_settings.collision_enable) {
+    if (bucket_id + 1 == (int)jak2::BucketId::TEX_L0_ALPHA &&
+        Gfx::g_global_settings.collision_enable) {
       auto p = prof.make_scoped_child("collision-draw");
       m_collide_renderer.render(&m_render_state, p);
     }
