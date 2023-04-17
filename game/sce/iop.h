@@ -76,7 +76,7 @@ struct MbxParam {
 struct ThreadParam {
   u32 attr;
   u32 option;
-  void* entry;
+  u32 (*entry)();
   int stackSize;
   int initPriority;
 
@@ -94,6 +94,7 @@ struct SemaParam {
 // void PS2_RegisterIOP(IOP *iop);
 int QueryTotalFreeMemSize();
 void* AllocSysMemory(int type, unsigned long size, void* addr);
+void* AllocScratchPad(int mode);
 
 int GetThreadId();
 void CpuDisableIntr();

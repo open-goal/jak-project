@@ -10,16 +10,6 @@ void srpc_init_globals();
 extern const char* gLanguage;
 extern s32 gVAG_Id;
 
-constexpr int MUSIC_TWEAK_COUNT = 32;
-
-struct MusicTweaks {
-  u32 TweakCount;
-
-  struct {
-    char MusicName[12];
-    s32 VolumeAdjust;
-  } MusicTweak[MUSIC_TWEAK_COUNT];
-};
 
 enum class Jak1SoundCommand : u16 {
   LOAD_BANK = 0,
@@ -246,9 +236,6 @@ struct SoundIopInfo {
   u32 times_seq;
   u8 pad[10];  // pad up to transfer size
 };
-
-extern MusicTweaks gMusicTweakInfo;
-extern s32 gMusicTweak;
 
 u32 Thread_Loader();
 u32 Thread_Player();

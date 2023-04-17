@@ -3,10 +3,8 @@
 #include <cstdio>
 #include <cstring>
 
-#include "iso.h"
 #include "iso_api.h"
 #include "ramdisk.h"
-#include "sbank.h"
 
 #include "common/log/log.h"
 #include "common/util/Assert.h"
@@ -16,9 +14,12 @@
 #include "game/common/loader_rpc_types.h"
 #include "game/common/player_rpc_types.h"
 #include "game/graphics/gfx.h"
+#include "game/overlord/common/iso.h"
+#include "game/overlord/common/sbank.h"
+#include "game/overlord/common/soundcommon.h"
 #include "game/overlord/common/srpc.h"
 #include "game/overlord/common/ssound.h"
-#include "game/overlord/jak1/soundcommon.h"
+#include "game/overlord/jak1/iso.h"
 #include "game/runtime.h"
 #include "game/sce/iop.h"
 #include "game/sound/sndshim.h"
@@ -29,7 +30,6 @@
 using namespace iop;
 
 namespace jak1 {
-MusicTweaks gMusicTweakInfo;
 constexpr int SRPC_MESSAGE_SIZE = 0x50;
 static uint8_t gLoaderBuf[SRPC_MESSAGE_SIZE];
 static uint8_t gPlayerBuf[SRPC_MESSAGE_SIZE * 128];
@@ -37,7 +37,6 @@ int32_t gSoundEnable = 1;
 static u32 gInfoEE = 0;  // EE address where we should send info on each frame.
 s16 gFlava;
 static s32 gMusic;
-s32 gMusicTweak = 0x80;
 s32 gMusicPause = 0;
 u32 gFreeMem = 0;
 u32 gFrameNum = 0;
@@ -52,7 +51,6 @@ static const char* languages[] = {"ENG", "FRE", "GER", "SPA", "ITA", "JAP", "UKE
 const char* gLanguage = nullptr;
 
 void srpc_init_globals() {
-  memset((void*)&gMusicTweakInfo, 0, sizeof(gMusicTweakInfo));
   memset((void*)gLoaderBuf, 0, sizeof(gLoaderBuf));
   memset((void*)gPlayerBuf, 0, sizeof(gPlayerBuf));
   gSoundEnable = 1;

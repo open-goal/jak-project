@@ -4,6 +4,8 @@
 
 #include "common/common_types.h"
 
+#include "game/overlord/common/isocommon.h"
+
 namespace jak1 {
 void iso_queue_init_globals();
 void InitBuffers();

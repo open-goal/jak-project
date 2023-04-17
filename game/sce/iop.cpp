@@ -83,6 +83,16 @@ void* AllocSysMemory(int type, unsigned long size, void* addr) {
 }
 
 /*!
+ * Allocate the 1 kB scratchpad memory. On PS2, this would give you a pointer to the actual
+ * scratchpad of the IOP, but this is just normal memory.
+ */
+void* AllocScratchPad(int mode) {
+  ASSERT(mode == 0);
+  constexpr int kScratchpadSize = 1024;
+  return iop->iop_alloc(kScratchpadSize);
+}
+
+/*!
  * Create a new thread
  */
 s32 CreateThread(ThreadParam* param) {

@@ -2,7 +2,6 @@
 
 #include "common/common_types.h"
 
-namespace jak1 {
 struct SoundRecord {
   char name[16];
   u32 fallof_params;
@@ -38,4 +37,3 @@ SoundBank* AllocateBank();
 SoundBank* AllocateBankName(const char* name);
 s32 LookupSoundIndex(const char* name, SoundBank** bank_out);
 SoundBank* LookupBank(const char* name);
-}  // namespace jak1

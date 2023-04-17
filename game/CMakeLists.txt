@@ -108,22 +108,31 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/merc_blend_shape.cpp
         mips2c/jak2_functions/ripple.cpp
         mips2c/jak2_functions/squid.cpp
+        overlord/common/dma.cpp
+        overlord/common/iso.cpp
+        overlord/common/iso_api.cpp
+        overlord/common/isocommon.cpp
+        overlord/common/overlord.cpp
+        overlord/common/sbank.cpp
+        overlord/common/soundcommon.cpp
         overlord/common/srpc.cpp
+        overlord/common/fake_iso.cpp
         overlord/common/ssound.cpp
         overlord/jak1/dma.cpp
         overlord/jak1/fake_iso.cpp
         overlord/jak1/iso.cpp
         overlord/jak1/iso_api.cpp
-        overlord/jak1/iso_cd.cpp
         overlord/jak1/iso_queue.cpp
         overlord/jak1/isocommon.cpp
         overlord/jak1/overlord.cpp
         overlord/jak1/ramdisk.cpp
-        overlord/jak1/sbank.cpp
-        overlord/jak1/soundcommon.cpp
         overlord/jak1/srpc.cpp
         overlord/jak1/ssound.cpp
         overlord/jak1/stream.cpp
+        overlord/jak2/iso.cpp
+        overlord/jak2/iso_queue.cpp
+        overlord/jak2/overlord.cpp
+        overlord/jak2/stream.cpp
         graphics/gfx.cpp
         graphics/jak2_texture_remap.cpp
         graphics/display.cpp

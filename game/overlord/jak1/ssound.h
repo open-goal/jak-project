@@ -1,7 +1,7 @@
 #pragma once
 
-#include "sbank.h"
-
+#include "game/overlord/common/sbank.h"
+#include "game/overlord/common/ssound.h"
 #include "game/sce/iop.h"
 
 namespace jak1 {
@@ -17,12 +17,6 @@ extern VolumePair gPanTable[361];
 extern u32 gStreamSRAM;
 extern u32 gTrapSRAM;
 extern u8 gMirrorMode;
-
-struct Vec3w {
-  s32 x;
-  s32 y;
-  s32 z;
-};
 
 struct SoundParams {
   u16 mask;

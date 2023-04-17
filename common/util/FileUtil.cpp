@@ -373,6 +373,19 @@ std::string convert_to_unix_path_separators(const std::string& path) {
 #endif
 }
 
+/*!
+ * Convert an animation name to ISO name.
+ * The animation name is a bunch of dash separated words.
+ * The resulting ISO name has the same first two chars as the animation name, and one char from each
+ * remaining word. Once there are no more words but remaining chars in the ISO name, the ith extra
+ * char is the i+1 th char of the last word. A word ending in a number (or just a number) is turned
+ * into the number. The word "resolution" becomes z. The word "accept" becomes y. The word "reject"
+ * becomes n. Other words become the first char of the word. The result is uppercased and the file
+ * extension is STR Examples (animation name and disc file name, not ISO name):
+ *  green-sagecage-outro-beat-boss-enough-cells -> GRSOBBEC.STR
+ *  swamp-tetherrock-swamprockexplode-4 -> SWTS4.STR
+ *  minershort-resolution-1-orbs -> MIZ1ORBS.STR
+ */
 void ISONameFromAnimationName(char* dst, const char* src) {
   // The Animation Name is a bunch of words separated by dashes
 
@@ -457,6 +470,15 @@ void ISONameFromAnimationName(char* dst, const char* src) {
   strcpy(dst + 8, "STR");
 }
 
+/*!
+ * Convert file name to "ISO Name"
+ * ISO names are upper case and 12 bytes long.
+ * xxxxxxxxyyy0
+ *
+ * x - uppercase letter of file name, or space
+ * y - uppercase letter of file extension, or space
+ * 0 - null terminator (\0, not the character zero)
+ */
 void MakeISOName(char* dst, const char* src) {
   int i = 0;
   const char* src_ptr = src;

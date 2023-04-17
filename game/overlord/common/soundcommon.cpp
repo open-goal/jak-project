@@ -11,7 +11,6 @@
 // TODO atoi
 // TODO ReadBankSoundNames
 
-namespace jak1 {
 void ReadBankSoundInfo(SoundBank* bank, SoundBank* unk, s32 unk2) {
   (void)bank;
   (void)unk;
@@ -43,4 +42,3 @@ void PrintBankInfo(SoundBank* bank) {
            bank->sound[i].fallof_params >> 28);
   }
 }
-}  // namespace jak1

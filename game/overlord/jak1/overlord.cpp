@@ -2,14 +2,13 @@
 
 #include <cstring>
 
-#include "iso.h"
 #include "ramdisk.h"
-#include "sbank.h"
 #include "srpc.h"
 #include "ssound.h"
 
 #include "common/util/Assert.h"
 
+#include "game/overlord/common/iso.h"
 #include "game/sce/iop.h"
 
 using namespace iop;
@@ -47,7 +46,7 @@ int start_overlord(int argc, const char* const* argv) {
   thread_param.initPriority = 98;
   thread_param.stackSize = 0x800;
   thread_param.option = 0;
-  thread_param.entry = (void*)Thread_Server;
+  thread_param.entry = Thread_Server;
   strcpy(thread_param.name, "Server");  // added
   auto thread_server = CreateThread(&thread_param);
   if (thread_server <= 0) {
@@ -58,7 +57,7 @@ int start_overlord(int argc, const char* const* argv) {
   thread_param.initPriority = 96;
   thread_param.stackSize = 0x800;
   thread_param.option = 0;
-  thread_param.entry = (void*)Thread_Player;
+  thread_param.entry = Thread_Player;
   strcpy(thread_param.name, "Player");  // added
   auto thread_player = CreateThread(&thread_param);
   if (thread_player <= 0) {
@@ -69,14 +68,14 @@ int start_overlord(int argc, const char* const* argv) {
   thread_param.initPriority = 99;
   thread_param.stackSize = 0x1000;
   thread_param.option = 0;
-  thread_param.entry = (void*)Thread_Loader;
+  thread_param.entry = Thread_Loader;
   strcpy(thread_param.name, "Loader");  // added for debug
   auto thread_loader = CreateThread(&thread_param);
   if (thread_loader <= 0) {
     return 1;
   }
 
-  InitISOFS(argv[1], argv[2]);
+  InitISOFS(argv[1], argv[2], GameVersion::Jak1);
   StartThread(thread_server, 0);
 
   StartThread(thread_player, 0);
@@ -84,13 +83,14 @@ int start_overlord(int argc, const char* const* argv) {
   return 0;
 }
 
-static void call_start() {
+static u32 call_start() {
   start_overlord(gargc, gargv);
   *init_complete = true;
 
   while (true) {
     SleepThread();
   }
+  return 0;
 }
 
 int start_overlord_wrapper(int argc, const char* const* argv, bool* signal) {
@@ -105,7 +105,7 @@ int start_overlord_wrapper(int argc, const char* const* argv, bool* signal) {
   param.stackSize = 0x800;
   param.option = 0;
   strcpy(param.name, "start");  // added for debug
-  param.entry = (void*)call_start;
+  param.entry = call_start;
 
   auto start_thread = CreateThread(&param);
   StartThread(start_thread, 0);
@@ -113,11 +113,4 @@ int start_overlord_wrapper(int argc, const char* const* argv, bool* signal) {
   return 0;
 }
 
-/*!
- * Loop endlessly and never return.
- */
-void ExitIOP() {
-  while (true) {
-  }
-}
 }  // namespace jak1

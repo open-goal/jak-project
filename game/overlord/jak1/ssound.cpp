@@ -5,6 +5,7 @@
 
 #include "common/util/Assert.h"
 
+#include "game/overlord/common/srpc.h"
 #include "game/overlord/common/ssound.h"
 #include "game/overlord/jak1/iso.h"
 #include "game/overlord/jak1/srpc.h"

@@ -47,18 +47,21 @@
 #include "game/kernel/jak2/kboot.h"
 #include "game/kernel/jak2/klisten.h"
 #include "game/kernel/jak2/kscheme.h"
+#include "game/overlord/common/fake_iso.h"
+#include "game/overlord/common/iso.h"
+#include "game/overlord/common/sbank.h"
+#include "game/overlord/common/srpc.h"
 #include "game/overlord/common/ssound.h"
 #include "game/overlord/jak1/dma.h"
-#include "game/overlord/jak1/fake_iso.h"
 #include "game/overlord/jak1/iso.h"
-#include "game/overlord/jak1/iso_cd.h"
 #include "game/overlord/jak1/iso_queue.h"
 #include "game/overlord/jak1/overlord.h"
 #include "game/overlord/jak1/ramdisk.h"
-#include "game/overlord/jak1/sbank.h"
 #include "game/overlord/jak1/srpc.h"
 #include "game/overlord/jak1/ssound.h"
 #include "game/overlord/jak1/stream.h"
+#include "game/overlord/jak2/iso_queue.h"
+#include "game/overlord/jak2/stream.h"
 #include "game/system/Deci2Server.h"
 #include "game/system/iop_thread.h"
 #include "game/system/vm/dmac.h"
@@ -221,19 +224,22 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
   Gfx::register_vsync_callback([&iop]() { iop.kernel.signal_vblank(); });
 
   jak1::dma_init_globals();
+  iso_init_globals();
   jak1::iso_init_globals();
-  jak1::fake_iso_init_globals();
+  fake_iso_init_globals();
   // iso_api
-  jak1::iso_cd_init_globals();
   jak1::iso_queue_init_globals();
+  jak2::iso_queue_init_globals();
   // isocommon
   // overlord
   jak1::ramdisk_init_globals();
-  jak1::sbank_init_globals();
+  sbank_init_globals();
   // soundcommon
   jak1::srpc_init_globals();
+  srpc_init_globals();
   ssound_init_globals();
   jak1::stream_init_globals();
+  jak2::stream_init_globals();
 
   iface.initialization_complete();
 
