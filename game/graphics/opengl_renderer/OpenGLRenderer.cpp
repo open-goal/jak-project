@@ -1017,7 +1017,7 @@ void OpenGLRenderer::do_pcrtc_effects(float alp,
     );
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
-  if (alp < 1 && m_version != GameVersion::Jak2) {  // TODO: enable blackout on jak 2.
+  if (alp < 1) {
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
