@@ -172,6 +172,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
     init_bucket_renderer<Merc2>(
         fmt::format("merc-l{}-water", i), BucketCategory::MERC,
         GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_WATER, BucketId::MERC_L1_WATER, i));
+    init_bucket_renderer<Generic2>(
+        fmt::format("gmerc-l{}-water", i), BucketCategory::GENERIC,
+        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_WATER, BucketId::GMERC_L1_WATER, i));
     init_bucket_renderer<TFragment>(
         fmt::format("tfrag-w-l{}-alpha", i), BucketCategory::TFRAG,
         GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_W_L0_WATER, BucketId::TFRAG_W_L1_WATER, i),
