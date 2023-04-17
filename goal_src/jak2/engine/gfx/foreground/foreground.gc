@@ -1269,8 +1269,10 @@
                       ;; reassign for PC. For the most part, we reassign everything to merc. The exceptions are:
                       ;; - "warp" effect is on: this special effect isn't supported by PC merc
                       ;; - "death" effect is on: this requires the renderer to return transformed vertices.
-                      ;; - "force-mercneric" is on: this is used rarely, and on stuff that doesn't seem to have
-                      ;; - ripple query?
+                      ;; - using the warp bucket. - there's no merc warp bucket, so we have to use generic here.
+                      ;; NOTE: we don't listen to force-mercneric because I believe we handle this case correctly
+                      ;; in extract_merc.cpp by checking the trans bit. This can be enabled, but texture uploads
+                      ;; for at least water aren't hooked up to the PC texture system.
                       (when (or (nonzero? (-> (scratchpad-object foreground-work) regs mercneric-used))
                                 (nonzero? (-> (scratchpad-object foreground-work) regs emerc-used))
                                 )
@@ -1285,9 +1287,19 @@
                             (cond
                               ((or (logtest? (-> geo effect effect-idx effect-bits) (effect-bits cross-fade))
                                    (logtest? (-> geo effect effect-idx effect-bits) (effect-bits force-mercneric))
+                                   (= (-> geo effect effect-idx texture-index) (tpage-category warp))
                                    (nonzero? (-> dc death-timer))
                                    )
-                               ;; (format *stdcon* "[fg] ~S to generic~%" (-> dc process name))
+
+                               ; (if (logtest? (-> geo effect effect-idx effect-bits) (effect-bits cross-fade))
+                               ;     (format *stdcon* "[fg] ~S to generic 1~%" (-> dc process name))
+                               ;   )
+                               ; (if (= (-> geo effect effect-idx texture-index) (tpage-category warp))
+                               ;     (format *stdcon* "[fg] ~S to generic 2~%" (-> dc process name))
+                               ;   )
+                               ; (if (nonzero? (-> dc death-timer))
+                               ;     (format *stdcon* "[fg] ~S to generic 3~%" (-> dc process name))
+                               ;   )
                                (set! (-> bucket-info effect effect-idx merc-path) 2)
                                (set! (-> (scratchpad-object foreground-work) regs mercneric-used) 1)
                                )
