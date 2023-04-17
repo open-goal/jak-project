@@ -8,14 +8,19 @@ class ShadowRenderer : public BucketRenderer {
   ShadowRenderer(const std::string& name, int my_id);
   ~ShadowRenderer();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
+  void render_jak1(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void render_jak2(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void draw_debug_window() override;
 
  private:
   void run_mscal_vu2c(u16 imm);
+  void run_mscal_vu2c_jak2(u16 imm);
   void xgkick(u16 imm);
-  void run_mscal10_vu2c();
+  void run_mscal10_vu2c();  // identical in jak 2
   void handle_jalr_to_end_block(u16 val, u32& first_flag, u32& second_flag);
   void handle_bal52();
+  void handle_bal52_jak2();
+  void handle_bal53();
   void draw(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   Vf m_vu_data[1024];

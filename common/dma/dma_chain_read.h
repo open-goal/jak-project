@@ -106,6 +106,17 @@ class DmaFollower {
     return result;
   }
 
+  DmaTransfer advance_and_print_dma(DmaFollower& dma) {
+    auto data = dma.read_and_advance();
+    printf(
+        "dma transfer:\n%ssize: %d\nvif0: %s, data: %d\nvif1: %s, data: %d, imm: "
+        "%d\n\n",
+        dma.current_tag().print().c_str(), data.size_bytes, data.vifcode0().print().c_str(),
+        data.vif0(), data.vifcode1().print().c_str(), data.vifcode1().num,
+        data.vifcode1().immediate);
+    return data;
+  }
+
   DmaTag current_tag() const { return DmaTag(read_val<u64>(m_tag_offset)); }
   u32 current_tag_vif0() const { return read_val<u32>(m_tag_offset + 8); }
   u32 current_tag_vif1() const { return read_val<u32>(m_tag_offset + 12); }

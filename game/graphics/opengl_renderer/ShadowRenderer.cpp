@@ -174,6 +174,188 @@ void ShadowRenderer::xgkick(u16 imm) {
 void ShadowRenderer::render(DmaFollower& dma,
                             SharedRenderState* render_state,
                             ScopedProfilerNode& prof) {
+  // skip if disabled
+  if (!m_enabled) {
+    while (dma.current_tag_offset() != render_state->next_bucket) {
+      dma.read_and_advance();
+    }
+    return;
+  }
+
+  switch (render_state->version) {
+    case GameVersion::Jak1:
+      render_jak1(dma, render_state, prof);
+      break;
+    case GameVersion::Jak2:
+      render_jak2(dma, render_state, prof);
+      break;
+  }
+}
+
+void ShadowRenderer::render_jak2(DmaFollower& dma,
+                                 SharedRenderState* render_state,
+                                 ScopedProfilerNode& prof) {
+  if (!m_enabled) {
+    while (dma.current_tag_offset() != render_state->next_bucket) {
+      dma.read_and_advance();
+    }
+    return;
+  }
+
+  m_next_vertex = 0;
+  m_next_back_index = 0;
+  m_next_front_index = 0;
+
+  // jump to bucket
+  auto data0 = dma.read_and_advance();
+  ASSERT(data0.vif1() == 0 || data0.vifcode1().kind == VifCode::Kind::NOP);
+  ASSERT(data0.vif0() == 0 || data0.vifcode0().kind == VifCode::Kind::MARK);
+  ASSERT(data0.size_bytes == 0);
+
+  // see if bucket is empty or not
+  if (dma.current_tag_offset() == render_state->next_bucket) {
+    // fmt::print("shadow: early exit!\n");
+    return;
+  }
+
+  {
+    // constants
+    auto constants = dma.read_and_advance();
+    auto v0 = constants.vifcode0();
+    auto v1 = constants.vifcode1();
+    ASSERT(v0.kind == VifCode::Kind::STCYCL);
+    ASSERT(v0.immediate == 0x404);
+    ASSERT(v1.kind == VifCode::Kind::UNPACK_V4_32);
+    ASSERT(v1.immediate == Vu1Data::CONSTANTS);
+    ASSERT(v1.num == 13);
+    memcpy(m_vu_data + v1.immediate, constants.data, v1.num * 16);
+  }
+
+  {
+    // gif constants
+    auto constants = dma.read_and_advance();
+    auto v0 = constants.vifcode0();
+    auto v1 = constants.vifcode1();
+    ASSERT(v0.kind == VifCode::Kind::STCYCL);
+    ASSERT(v0.immediate == 0x404);
+    ASSERT(v1.kind == VifCode::Kind::UNPACK_V4_32);
+    ASSERT(v1.immediate == Vu1Data::GIF_CONSTANTS);
+    ASSERT(v1.num == 4);
+    memcpy(m_vu_data + v1.immediate, constants.data, v1.num * 16);
+  }
+
+  {
+    // matrix constants
+    auto constants = dma.read_and_advance();
+    auto v0 = constants.vifcode0();
+    auto v1 = constants.vifcode1();
+    ASSERT(v0.kind == VifCode::Kind::STCYCL);
+    ASSERT(v0.immediate == 0x404);
+    ASSERT(v1.kind == VifCode::Kind::UNPACK_V4_32);
+    ASSERT(v1.immediate == Vu1Data::MATRIX);
+    ASSERT(v1.num == 4);
+    memcpy(m_vu_data + v1.immediate, constants.data, v1.num * 16);
+  }
+
+  {
+    // exec 10
+    auto mscal = dma.read_and_advance();
+    ASSERT(mscal.vifcode1().kind == VifCode::Kind::FLUSHE);
+    ASSERT(mscal.vifcode0().kind == VifCode::Kind::MSCALF);
+    ASSERT(mscal.vifcode0().immediate == Vu1Code::INIT);
+    run_mscal10_vu2c();
+  }
+
+  {
+    // init gs direct
+    dma.read_and_advance();
+  }
+
+  // TODO not sure where this one comes from, maybe the invert buf?
+  dma.read_and_advance();
+
+  // TODO ugly hack
+  while (1) {
+    auto next = dma.read_and_advance();
+    auto v1 = next.vifcode1();
+    // TODO check if unpack is different for FLUSHA + UNPACK_V4_32
+    if (next.vifcode0().kind == VifCode::Kind::FLUSHA &&
+        next.vifcode1().kind == VifCode::Kind::UNPACK_V4_32) {
+      auto up = next.vifcode1();
+      VifCodeUnpack unpack(up);
+      ASSERT(!unpack.use_tops_flag);
+      ASSERT((u32)unpack.addr_qw + up.num < 1024);
+      memcpy(m_vu_data + unpack.addr_qw, next.data, up.num * 16);
+      ASSERT(up.num * 16 == next.size_bytes);
+    }
+    if (next.vifcode0().kind == VifCode::Kind::FLUSH &&
+        next.vifcode1().kind == VifCode::Kind::UNPACK_V4_32) {
+      auto up = next.vifcode1();
+      VifCodeUnpack unpack(up);
+      ASSERT(!unpack.use_tops_flag);
+      ASSERT((u32)unpack.addr_qw + up.num < 1024);
+      memcpy(m_vu_data + unpack.addr_qw, next.data, up.num * 16);
+      ASSERT(up.num * 16 == next.size_bytes);
+    } else if (next.vifcode0().kind == VifCode::Kind::NOP &&
+               next.vifcode1().kind == VifCode::Kind::UNPACK_V4_32) {
+      auto up = next.vifcode1();
+      VifCodeUnpack unpack(up);
+      ASSERT(!unpack.use_tops_flag);
+      ASSERT((u32)unpack.addr_qw + up.num < 1024);
+      memcpy(m_vu_data + unpack.addr_qw, next.data, up.num * 16);
+      ASSERT(up.num * 16 == next.size_bytes);
+    } else if (next.vifcode0().kind == VifCode::Kind::NOP &&
+               next.vifcode1().kind == VifCode::Kind::UNPACK_V4_8) {
+      auto up = VifCodeUnpack(v1);
+      ASSERT(!up.use_tops_flag);
+      ASSERT(up.is_unsigned);
+      u16 addr = up.addr_qw;
+      ASSERT(addr + v1.num <= 1024);
+
+      u32 temp[4];
+      for (u32 i = 0; i < v1.num; i++) {
+        for (u32 j = 0; j < 4; j++) {
+          temp[j] = next.data[4 * i + j];
+        }
+        memcpy(m_vu_data + addr + i, temp, 16);
+      }
+
+      u32 offset = 4 * v1.num;
+      ASSERT(offset + 16 == next.size_bytes);
+
+      u32 after[4];
+      memcpy(&after, next.data + offset, 16);
+      ASSERT(after[0] == 0);
+      ASSERT(after[1] == 0);
+      ASSERT(after[2] == 0);
+      VifCode mscal(after[3]);
+      ASSERT(mscal.kind == VifCode::Kind::MSCALF);
+      // TODO use jak 2 version once it works
+      run_mscal_vu2c /*_jak2*/ (mscal.immediate);
+      // TODO probably don't need all these
+    } else if ((next.vifcode0().kind == VifCode::Kind::NOP &&
+                next.vifcode1().kind == VifCode::Kind::FLUSHA) ||
+               (next.vifcode0().kind == VifCode::Kind::FLUSHA &&
+                next.vifcode1().kind == VifCode::Kind::DIRECT) ||
+               (next.vifcode0().kind == VifCode::Kind::NOP &&
+                next.vifcode1().kind == VifCode::Kind::NOP)) {
+      break;
+    } else {
+      ASSERT_MSG(false, fmt::format("{} {}", next.vifcode0().print(), next.vifcode1().print()));
+    }
+  }
+
+  while (dma.current_tag_offset() != render_state->next_bucket) {
+    dma.read_and_advance();
+  }
+  ASSERT(dma.current_tag_offset() == render_state->next_bucket);
+
+  draw(render_state, prof);
+}
+
+void ShadowRenderer::render_jak1(DmaFollower& dma,
+                                 SharedRenderState* render_state,
+                                 ScopedProfilerNode& prof) {
   if (!m_enabled) {
     while (dma.current_tag_offset() != render_state->next_bucket) {
       dma.read_and_advance();

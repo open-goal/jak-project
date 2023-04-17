@@ -78,15 +78,6 @@ void OceanMidAndFar::render_jak1(DmaFollower& dma,
   m_direct.set_mipmap(false);
 }
 
-void advance_and_print_dma(DmaFollower& dma) {
-  auto data = dma.read_and_advance();
-  printf(
-      "dma transfer:\n%ssize: %d\nvif0: %s, data: %d\nvif1: %s, data: %d, imm: "
-      "%d\n\n",
-      dma.current_tag().print().c_str(), data.size_bytes, data.vifcode0().print().c_str(),
-      data.vif0(), data.vifcode1().print().c_str(), data.vifcode1().num, data.vifcode1().immediate);
-}
-
 void OceanMidAndFar::render_jak2(DmaFollower& dma,
                                  SharedRenderState* render_state,
                                  ScopedProfilerNode& prof) {
