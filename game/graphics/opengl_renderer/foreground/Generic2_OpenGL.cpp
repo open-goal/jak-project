@@ -80,6 +80,7 @@ void Generic2::init_shaders(ShaderLibrary& shaders) {
   m_ogl.fog_consts = glGetUniformLocation(id, "fog_constants");
   m_ogl.hvdf_offset = glGetUniformLocation(id, "hvdf_offset");
   m_ogl.gfx_hack_no_tex = glGetUniformLocation(id, "gfx_hack_no_tex");
+  m_ogl.warp_sample_mode = glGetUniformLocation(id, "warp_sample_mode");
 }
 
 void Generic2::opengl_bind_and_setup_proj(SharedRenderState* render_state) {
@@ -255,6 +256,12 @@ void Generic2::setup_opengl_tex(u16 unit,
   } else {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  }
+
+  if (render_state->version == GameVersion::Jak2 && tbp_to_lookup == 1216) {
+    glUniform1ui(m_ogl.warp_sample_mode, 1);
+  } else {
+    glUniform1ui(m_ogl.warp_sample_mode, 0);
   }
 }
 
