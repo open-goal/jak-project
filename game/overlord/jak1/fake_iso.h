@@ -11,12 +11,9 @@
  * should work.
  */
 
-#ifndef JAK_V2_FAKE_ISO_H
-#define JAK_V2_FAKE_ISO_H
-
 #include "isocommon.h"
 
+namespace jak1 {
 void fake_iso_init_globals();
 extern IsoFs fake_iso;
-
-#endif  // JAK_V2_FAKE_ISO_H
+}  // namespace jak1

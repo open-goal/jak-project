@@ -5,13 +5,15 @@
 
 #include "common/util/Assert.h"
 
-#include "game/overlord/iso.h"
-#include "game/overlord/srpc.h"
+#include "game/overlord/common/ssound.h"
+#include "game/overlord/jak1/iso.h"
+#include "game/overlord/jak1/srpc.h"
 #include "game/runtime.h"
 #include "game/sound/sndshim.h"
 
 using namespace iop;
 
+namespace jak1 {
 Sound gSounds[64];
 Curve gCurve[16];
 VolumePair gPanTable[361];
@@ -21,7 +23,6 @@ Vec3w gCamTrans;
 s32 gCamAngle;
 
 s32 gMusicVol = 0x400;
-s32 gMusicFade = 0;
 s32 gMusicFadeDir = 0;
 
 u32 gStreamSRAM = 0;
@@ -563,3 +564,4 @@ static void* SndMemAlloc() {
   return nullptr;
 }
 static void SndMemFree(void* /*ptr*/) {}
+}  // namespace jak1

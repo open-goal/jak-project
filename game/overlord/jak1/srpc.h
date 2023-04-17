@@ -4,6 +4,7 @@
 
 #include "common/common_types.h"
 
+namespace jak1 {
 void srpc_init_globals();
 
 extern const char* gLanguage;
@@ -254,5 +255,4 @@ u32 Thread_Player();
 
 s32 VBlank_Handler(void*);
 
-// added for PC port
-extern u32 gMusicFadeHack;
+}  // namespace jak1

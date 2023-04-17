@@ -28,15 +28,16 @@
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
 
-#include "game/overlord/sbank.h"
-#include "game/overlord/soundcommon.h"
-#include "game/overlord/srpc.h"
+#include "game/overlord/jak1/sbank.h"
+#include "game/overlord/jak1/soundcommon.h"
+#include "game/overlord/jak1/srpc.h"
 #include "game/runtime.h"
 #include "game/sce/iop.h"
 #include "game/sound/sndshim.h"
 
 using namespace iop;
 
+namespace jak1 {
 IsoFs fake_iso;
 
 /*!
@@ -436,7 +437,7 @@ void LoadMusicTweaks() {
     gMusicTweakInfo.TweakCount = 0;
   }
 }
-
+}  // namespace jak1
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
 #elif defined(__clang__)

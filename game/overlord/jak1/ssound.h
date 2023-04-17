@@ -1,18 +1,16 @@
 #pragma once
-#ifndef JAK_V2_SSOUND_H
-#define JAK_V2_SSOUND_H
 
 #include "sbank.h"
 
 #include "game/sce/iop.h"
 
+namespace jak1 {
 struct VolumePair {
   s16 left;
   s16 right;
 };
 
 extern s32 gSema;
-extern s32 gMusicFade;
 extern s32 gMusicFadeDir;
 extern s32 gMusicVol;
 extern VolumePair gPanTable[361];
@@ -71,5 +69,4 @@ s32 GetVolume(Sound* sound);
 s32 GetPan(Sound* sound);
 s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 fo_max);
 s32 CalculateAngle(Vec3w* trans);
-
-#endif  // JAK_V2_SSOUND_H
+}  // namespace jak1

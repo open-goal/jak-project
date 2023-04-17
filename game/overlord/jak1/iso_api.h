@@ -2,6 +2,7 @@
 
 #include "isocommon.h"
 
+namespace jak1 {
 struct SoundBank;
 struct VagDirEntry;
 
@@ -23,3 +24,5 @@ void SetDialogVolume(s32 volume);
 void StopVAGStream(VagDirEntry* vag, u32 unk);
 void PauseVAGStream();
 void UnpauseVAGStream();
+
+}  // namespace jak1

@@ -12,15 +12,16 @@
 
 #include "game/common/play_rpc_types.h"
 #include "game/common/str_rpc_types.h"
-#include "game/overlord/iso.h"
-#include "game/overlord/iso_api.h"
-#include "game/overlord/isocommon.h"
-#include "game/overlord/srpc.h"
+#include "game/overlord/jak1/iso.h"
+#include "game/overlord/jak1/iso_api.h"
+#include "game/overlord/jak1/isocommon.h"
+#include "game/overlord/jak1/srpc.h"
 #include "game/runtime.h"
 #include "game/sce/iop.h"
 
 using namespace iop;
 
+namespace jak1 {
 static RPC_Str_Cmd_Jak1 sSTRBufJak1;
 static RPC_Str_Cmd_Jak2 sSTRBufJak2;
 static RPC_Play_Cmd_Jak1 sPLAYBufJak1[2];
@@ -372,3 +373,4 @@ void* RPC_PLAY_jak2([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
 
   return _cmd;
 }
+}  // namespace jak1

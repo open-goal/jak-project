@@ -47,17 +47,18 @@
 #include "game/kernel/jak2/kboot.h"
 #include "game/kernel/jak2/klisten.h"
 #include "game/kernel/jak2/kscheme.h"
-#include "game/overlord/dma.h"
-#include "game/overlord/fake_iso.h"
-#include "game/overlord/iso.h"
-#include "game/overlord/iso_cd.h"
-#include "game/overlord/iso_queue.h"
-#include "game/overlord/overlord.h"
-#include "game/overlord/ramdisk.h"
-#include "game/overlord/sbank.h"
-#include "game/overlord/srpc.h"
-#include "game/overlord/ssound.h"
-#include "game/overlord/stream.h"
+#include "game/overlord/common/ssound.h"
+#include "game/overlord/jak1/dma.h"
+#include "game/overlord/jak1/fake_iso.h"
+#include "game/overlord/jak1/iso.h"
+#include "game/overlord/jak1/iso_cd.h"
+#include "game/overlord/jak1/iso_queue.h"
+#include "game/overlord/jak1/overlord.h"
+#include "game/overlord/jak1/ramdisk.h"
+#include "game/overlord/jak1/sbank.h"
+#include "game/overlord/jak1/srpc.h"
+#include "game/overlord/jak1/ssound.h"
+#include "game/overlord/jak1/stream.h"
 #include "game/system/Deci2Server.h"
 #include "game/system/iop_thread.h"
 #include "game/system/vm/dmac.h"
@@ -211,7 +212,7 @@ void ee_runner(SystemThreadInterface& iface) {
 /*!
  * SystemThread function for running the IOP (separate I/O Processor)
  */
-void iop_runner(SystemThreadInterface& iface) {
+void iop_runner(SystemThreadInterface& iface, GameVersion version) {
   IOP iop;
   lg::debug("[IOP] Restart!");
   iop.reset_allocator();
@@ -219,21 +220,20 @@ void iop_runner(SystemThreadInterface& iface) {
   iop::LIBRARY_register(&iop);
   Gfx::register_vsync_callback([&iop]() { iop.kernel.signal_vblank(); });
 
-  // todo!
-  dma_init_globals();
-  iso_init_globals();
-  fake_iso_init_globals();
+  jak1::dma_init_globals();
+  jak1::iso_init_globals();
+  jak1::fake_iso_init_globals();
   // iso_api
-  iso_cd_init_globals();
-  iso_queue_init_globals();
+  jak1::iso_cd_init_globals();
+  jak1::iso_queue_init_globals();
   // isocommon
   // overlord
-  ramdisk_init_globals();
-  sbank_init_globals();
+  jak1::ramdisk_init_globals();
+  jak1::sbank_init_globals();
   // soundcommon
-  srpc_init_globals();
-  // ssound
-  stream_init_globals();
+  jak1::srpc_init_globals();
+  ssound_init_globals();
+  jak1::stream_init_globals();
 
   iface.initialization_complete();
 
@@ -251,7 +251,16 @@ void iop_runner(SystemThreadInterface& iface) {
   // init
 
   bool complete = false;
-  start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);  // todo!
+  switch (version) {
+    case GameVersion::Jak1:
+      jak1::start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);
+      break;
+    case GameVersion::Jak2:
+      // TODO
+      break;
+    default:
+      ASSERT_NOT_REACHED();
+  }
   while (complete == false) {
     iop.wait_run_iop(iop.kernel.dispatch());
   }
@@ -275,8 +284,6 @@ void iop_runner(SystemThreadInterface& iface) {
  */
 void null_runner(SystemThreadInterface& iface) {
   iface.initialization_complete();
-
-  return;
 }
 
 /*!
@@ -303,8 +310,6 @@ void dmac_runner(SystemThreadInterface& iface) {
   }
 
   VM::unsubscribe_component();
-
-  return;
 }
 
 /*!
@@ -346,7 +351,7 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
   auto& vm_dmac_thread = tm.create_thread("VM-DMAC");
 
   // step 3: start the EE!
-  iop_thread.start(iop_runner);
+  iop_thread.start([=](SystemThreadInterface& sti) { iop_runner(sti, g_game_version); });
   deci_thread.start(deci2_runner);
   ee_thread.start(ee_runner);
   if (VM::use) {

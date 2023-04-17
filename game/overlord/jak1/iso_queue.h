@@ -4,6 +4,7 @@
 
 #include "common/common_types.h"
 
+namespace jak1 {
 void iso_queue_init_globals();
 void InitBuffers();
 IsoBufferHeader* AllocateBuffer(uint32_t size);
@@ -18,3 +19,4 @@ IsoBufferHeader* TryAllocateBuffer(uint32_t size);
 VagCommand* GetVAGCommand();
 void FreeVAGCommand(VagCommand* cmd);
 void ReleaseMessage(IsoMessage* cmd);
+}  // namespace jak1

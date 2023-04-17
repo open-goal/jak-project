@@ -20,7 +20,7 @@
 #include "common/util/Assert.h"
 
 #include "game/common/dgo_rpc_types.h"
-#include "game/overlord/srpc.h"
+#include "game/overlord/jak1/srpc.h"
 #include "game/runtime.h"
 #include "game/sce/iop.h"
 #include "game/sound/sdshim.h"
@@ -28,6 +28,7 @@
 
 using namespace iop;
 
+namespace jak1 {
 u32 ISOThread();
 u32 DGOThread();
 u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer_header);
@@ -1521,3 +1522,4 @@ s32 GetVAGStreamPos() {
 static void VAG_MarkLoopEnd(void* data, u32 size) {
   ((u8*)data)[size - 15] = 3;
 }
+}  // namespace jak1

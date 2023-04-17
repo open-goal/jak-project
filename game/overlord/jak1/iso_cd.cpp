@@ -24,6 +24,8 @@
 // other copy if it reading the first copy encounters errors.  The DUP filesystem is unused.
 
 using namespace iop;
+
+namespace jak1 {
 typedef int (*mmode_func)(int);
 
 // Drive State
@@ -988,3 +990,4 @@ void CD_WaitReturn() {
   } while (!CheckDiskID());
   gNoCD = 0;
 }
+}  // namespace jak1

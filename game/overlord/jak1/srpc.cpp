@@ -16,7 +16,9 @@
 #include "game/common/loader_rpc_types.h"
 #include "game/common/player_rpc_types.h"
 #include "game/graphics/gfx.h"
-#include "game/overlord/soundcommon.h"
+#include "game/overlord/common/srpc.h"
+#include "game/overlord/common/ssound.h"
+#include "game/overlord/jak1/soundcommon.h"
 #include "game/runtime.h"
 #include "game/sce/iop.h"
 #include "game/sound/sndshim.h"
@@ -26,6 +28,7 @@
 
 using namespace iop;
 
+namespace jak1 {
 MusicTweaks gMusicTweakInfo;
 constexpr int SRPC_MESSAGE_SIZE = 0x50;
 static uint8_t gLoaderBuf[SRPC_MESSAGE_SIZE];
@@ -39,9 +42,6 @@ s32 gMusicPause = 0;
 u32 gFreeMem = 0;
 u32 gFrameNum = 0;
 u8 gFPS = 60;
-
-// added
-u32 gMusicFadeHack = 0;
 
 static SoundIopInfo info;
 
@@ -914,3 +914,4 @@ s32 VBlank_Handler(void*) {
 
   return 1;
 }
+}  // namespace jak1

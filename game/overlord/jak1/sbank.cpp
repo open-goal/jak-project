@@ -8,6 +8,7 @@
 
 #include "game/runtime.h"
 
+namespace jak1 {
 static constexpr int N_BANKS = 6;
 
 SoundBank gCommonBank;
@@ -151,3 +152,4 @@ void ReloadBankInfo() {
     }
   }
 }
+}  // namespace jak1

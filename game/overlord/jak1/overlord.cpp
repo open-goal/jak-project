@@ -14,6 +14,7 @@
 
 using namespace iop;
 
+namespace jak1 {
 static s32 gargc;
 static const char* const* gargv;
 static bool* init_complete;
@@ -119,3 +120,4 @@ void ExitIOP() {
   while (true) {
   }
 }
+}  // namespace jak1

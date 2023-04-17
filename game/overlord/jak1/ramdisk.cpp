@@ -22,6 +22,7 @@
 // Note - the RAMDISK code supports having multiple files, but it appears only one file can ever be
 // used at a time.
 
+namespace jak1 {
 constexpr int RAMDISK_SIZE = 0xcac00;               // Memory size of RAMDISK
 constexpr int RAMDISK_MAX_FILES = 16;               // Maximum number of files to store in RAMDISK.
 constexpr int RAMDISK_RETURN_BUFFER_SIZE = 0x2000;  // Maximum size of an individual RAMDISK read
@@ -192,3 +193,4 @@ void* RPC_Ramdisk(unsigned int fno, void* data, int size) {
   }
   return nullptr;
 }
+}  // namespace jak1

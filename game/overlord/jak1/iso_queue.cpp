@@ -12,6 +12,7 @@
 
 using namespace iop;
 
+namespace jak1 {
 constexpr int N_BUFFERS = 4;
 constexpr int N_STR_BUFFERS = 1;
 constexpr int N_VAG_CMDS = 64;
@@ -367,3 +368,4 @@ void FreeVAGCommand(VagCommand* cmd) {
     printf("[OVERLORD] Invalid FreeVAGCommand!\n");
   }
 }
+}  // namespace jak1

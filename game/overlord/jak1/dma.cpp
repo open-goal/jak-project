@@ -17,6 +17,7 @@
 
 using namespace iop;
 
+namespace jak1 {
 u32 dmaid;          // ID of in-progress DMA. 0 if no DMA in progress
 sceSifDmaData cmd;  // DMA settings
 u32 strobe;         // ?? mysterious sound DMA flag.
@@ -111,3 +112,4 @@ bool DMA_SendToSPUAndSync(void* src_addr, u32 size, u32 dst_addr) {
   snd_FreeSPUDMA(channel);
   return transferred >= size_aligned;
 }
+}  // namespace jak1

@@ -6,15 +6,12 @@
  * Also called "Server".
  */
 
-#ifndef JAK_RAMDISK_H
-#define JAK_RAMDISK_H
-
 #include "common/common_types.h"
 
+namespace jak1 {
 extern u32 gMemFreeAtStart;
 
 void ramdisk_init_globals();
 void InitRamdisk();
 u32 Thread_Server();
-
-#endif  // JAK_RAMDISK_H
+}  // namespace jak1

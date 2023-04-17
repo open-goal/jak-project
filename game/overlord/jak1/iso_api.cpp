@@ -6,11 +6,12 @@
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 
-#include "game/overlord/srpc.h"
+#include "game/overlord/jak1/srpc.h"
 #include "game/sce/iop.h"
 
 using namespace iop;
 
+namespace jak1 {
 /*!
  * Load a File to IOP memory (blocking)
  */
@@ -199,3 +200,4 @@ void UnpauseVAGStream() {
   cmd->thread_id = 0;
   SendMbx(iso_mbx, cmd);
 }
+}  // namespace jak1

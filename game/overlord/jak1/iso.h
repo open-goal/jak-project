@@ -10,6 +10,7 @@
 
 #include "common/common_types.h"
 
+namespace jak1 {
 extern s32 gFakeVAGClockPaused;
 extern s32 gFakeVAGClockRunning;
 extern s32 gFakeVAGClock;
@@ -40,3 +41,4 @@ u32 InitISOFS(const char* fs_mode, const char* loading_screen);
 VagDirEntry* FindVAGFile(const char* name);
 s32 GetVAGStreamPos();
 void SetVAGVol();
+}  // namespace jak1

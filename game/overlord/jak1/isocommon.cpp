@@ -10,6 +10,7 @@
 #include "common/common_types.h"
 #include "common/util/Assert.h"
 
+namespace jak1 {
 /*!
  * Convert file name to "ISO Name"
  * ISO names are upper case and 12 bytes long.
@@ -201,3 +202,4 @@ void ISONameFromAnimationName(char* dst, const char* src) {
   // append file extension
   strcpy(dst + 8, "STR");
 }
+}  // namespace jak1

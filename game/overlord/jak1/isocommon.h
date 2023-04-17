@@ -5,17 +5,15 @@
  * Common ISO utilities.
  */
 
-#ifndef JAK_V2_ISOCOMMON_H
-#define JAK_V2_ISOCOMMON_H
-
 #include <string>
 
 #include "common/common_types.h"
 #include "common/link_types.h"
 
 #include "game/common/overlord_common.h"
-#include "game/overlord/ssound.h"
+#include "game/overlord/jak1/ssound.h"
 
+namespace jak1 {
 constexpr int PRI_STACK_LENGTH = 4;  // number of queued commands per priority
 constexpr int N_PRIORITIES = 4;      // number of priorities
 
@@ -219,5 +217,4 @@ extern s32 iso_mbx;
 
 void MakeISOName(char* dst, const char* src);
 void ISONameFromAnimationName(char* dst, const char* src);
-
-#endif  // JAK_V2_ISOCOMMON_H
+}  // namespace jak1
