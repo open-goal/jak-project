@@ -26,5 +26,671 @@
 (define-extern stack-frame type)
 (define-extern global kheap)
 (define-extern kheap type)
+(define-extern pointer type)
 
 (define-extern #t symbol)
+(define-extern #f symbol)
+
+;; some types we need.
+(declare-type sparticle-launch-group basic)
+(declare-type lightning-spec basic)
+(declare-type sparticle-launcher basic)
+(declare-type state basic)
+(declare-type res-lump basic)
+
+;; kernel types
+(defenum link-flag
+    :bitfield #t
+    :type int32
+    (output-load-msg 0)
+    (output-load-true-msg 1)
+    (execute-login 2)
+    (print-login 3)
+    (force-debug 4)
+    (fast-link 5)
+    )
+
+(defenum language-enum
+  :type int64
+  (english)
+  (french)
+  (german)
+  (spanish)
+  (italian)
+  (japanese)
+  (korean)
+  (uk-english)
+  )
+
+(define-extern *debug-segment* symbol)
+(define-extern nothing (function none))
+(define-extern _format (function _varargs_ object))
+(define-extern method-set! (function type int object none)) ;; may actually return function.
+(define-extern malloc (function symbol int pointer))
+(define-extern kmemopen (function kheap string none))
+(define-extern kmemclose (function none))
+(define-extern dgo-load (function string kheap link-flag int none))
+(define-extern *listener-function* (function object))
+(define-extern *enable-method-set* int)
+
+(declare-type cpad-info basic)
+(declare-type mouse-info basic)
+(define-extern cpad-open (function cpad-info int cpad-info))
+(define-extern cpad-get-data (function cpad-info cpad-info))
+(define-extern scf-get-territory (function int)) ;; not actually a scf function...
+(define-extern mouse-get-data (function mouse-info none))
+(define-extern file-stream-open (function file-stream string symbol file-stream))
+(define-extern file-stream-close (function file-stream file-stream))
+(define-extern file-stream-length (function file-stream int))
+(define-extern file-stream-seek (function file-stream int int int))
+(define-extern file-stream-read (function file-stream pointer int int))
+(define-extern file-stream-write (function file-stream pointer uint uint))
+(define-extern reset-path (function none))
+(define-extern flush-cache (function int none))
+(define-extern gs-store-image (function object object object))
+(define-extern sync-path (function int int int))
+(define-extern file-stream-write (function file-stream pointer uint uint))
+(define-extern file-stream-close (function file-stream file-stream))
+(define-extern new-dynamic-structure (function symbol type int structure))
+(define-extern kernel-shutdown (function none))
+(define-extern scf-get-timeout (function int))
+(define-extern scf-get-inactive-timeout (function int))
+(define-extern syncv (function int int))
+(define-extern string->symbol (function string symbol))
+(define-extern link-begin (function pointer (pointer uint8) int kheap link-flag int))
+(define-extern link-resume (function int))
+(define-extern link-reset (function none))
+(define-extern kset-language (function language-enum int))
+(define-extern reset-graph (function int int int int none))
+
+(declare-type sql-result basic)
+(define-extern sql-query (function string sql-result))
+
+(define-extern loading-level kheap)
+(define-extern dma-sync (function pointer int int int))
+(define-extern unload (function string none))
+
+
+
+(defenum kmalloc-flags
+  :bitfield #t
+  (align-16    4)
+  (align-64    6)
+  (align-256   8)
+  (memset     12)
+  (top        13)
+  )
+
+(define-extern kmalloc (function kheap int kmalloc-flags string pointer))
+
+(define-extern *kernel-boot-message* symbol)
+(define-extern *kernel-boot-art-group* string)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; gcommon                        ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype vec4s (uint128)
+  ((x float :offset 0)
+   (y float :offset 32)
+   (z float :offset 64)
+   (w float :offset 96))
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype vector (structure)
+  ((data float   4 :score -1 :offset-assert 0)
+   (x    float     :offset 0)
+   (y    float     :offset 4)
+   (z    float     :offset 8)
+   (w    float     :offset 12)
+   (quad uint128   :offset 0 :score -1)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype bfloat (basic)
+  ((data float  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype inline-array-class (basic)
+  ((length           int32  :offset-assert 4)
+   (allocated-length int32  :offset-assert 8)
+   ;; this is 16-byte aligned.
+   ;; children of inline-array-class should define their own data which overlays this one.
+   (_data            uint8  :score -50 :dynamic :offset 16)
+   )
+  (:methods
+    (new (symbol type int) _type_ 0))
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(define-extern identity (function object object))
+(define-extern 1/ (function float float))
+(define-extern + (function int int int))
+(define-extern - (function int int int))
+(define-extern * (function int int int))
+(define-extern / (function int int int))
+(define-extern ash (function int int int))
+(define-extern mod (function int int int))
+(define-extern rem (function int int int))
+(define-extern abs (function int int))
+(define-extern min (function int int int))
+(define-extern max (function int int int))
+(define-extern logior (function int int int))
+(define-extern logand (function int int int))
+(define-extern lognor (function int int int))
+(define-extern logxor (function int int int))
+(define-extern lognot (function int int))
+(define-extern false-func (function symbol))
+(define-extern true-func (function symbol))
+(define-extern format (function _varargs_ object))
+(define-extern basic-type? (function basic type symbol))
+(define-extern type-type? (function type type symbol))
+(define-extern type? (function object type symbol))
+(define-extern find-parent-method (function type int function))
+(define-extern ref (function object int object))
+(define-extern last (function object object))
+(define-extern member (function object object object))
+(define-extern nmember (function basic object object))
+(define-extern assoc (function object object object))
+(define-extern assoce (function object object object))
+(define-extern nassoc (function string object object))
+(define-extern nassoce  (function string object object))
+(define-extern append! (function object object object))
+(define-extern delete! (function object object pair))
+(define-extern delete-car! (function object object object))
+(define-extern insert-cons! (function object object pair))
+(define-extern sort (function pair (function object object object) pair))
+(define-extern mem-copy! (function pointer pointer int pointer))
+(define-extern qmem-copy<-! (function pointer pointer int pointer))
+(define-extern qmem-copy->! (function pointer pointer int pointer))
+(define-extern mem-set32! (function pointer int int pointer))
+(define-extern mem-or! (function pointer pointer int pointer))
+(define-extern quad-copy! (function pointer pointer int none))
+(define-extern fact (function int int))
+(define-extern *print-column* binteger)
+(define-extern print (function object object))
+(define-extern printl (function object object))
+(define-extern inspect (function object object))
+(define-extern mem-print (function (pointer uint32) int symbol))
+(define-extern *trace-list* pair)
+(define-extern print-tree-bitmask (function int int symbol))
+(define-extern breakpoint-range-set! (function uint uint uint int))
+(define-extern valid? (function object type string symbol object symbol))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; gstring-h                      ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; gkernel-h                      ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(declare-type process-tree basic)
+(declare-type process process-tree)
+(declare-type thread basic)
+(declare-type cpu-thread thread)
+(declare-type clock basic)
+(declare-type res-lump basic)
+(declare-type entity res-lump)
+(declare-type entity-actor entity)
+(declare-type event-message-block structure)
+(declare-type level basic)
+
+(defenum process-mask
+  :type uint32
+  :bitfield #t
+  (execute 0)
+  (freeze 1)
+  (pause 2)
+  (menu 3)
+  (progress 4)
+  (actor-pause 5)
+  (sleep 6)
+  (sleep-code 7)
+  (process-tree 8)
+  (heap-shrunk 9)
+  (going 10)
+  (kernel-run 11)
+  (no-kill 12)
+  (movie 13)
+  (dark-effect 14)
+  (target 15)
+  (sidekick 16)
+  (crate 17)
+  (bit18 18) ;; unused?
+  (enemy 19)
+  (camera 20)
+  (platform 21)
+  (ambient 22)
+  (entity 23)
+  (projectile 24)
+  (bot 25)
+  (collectable 26)
+  (death 27)
+  (no-track 28)
+  (guard 29)
+  (vehicle 30)
+  (civilian 31)
+  )
+(deftype process-tree (basic)
+  ((name string :offset-assert 4)
+   (mask process-mask :offset-assert 8)
+   (clock clock :offset-assert 12)
+   (parent (pointer process-tree) :offset-assert 16)
+   (brother (pointer process-tree) :offset-assert 20)
+   (child (pointer process-tree) :offset-assert 24)
+   (ppointer (pointer process) :offset-assert 28)
+   (self process-tree :offset-assert 32)
+   )
+  (:methods
+    (new (symbol type string) _type_ 0)
+    (activate (_type_ process-tree basic pointer) process-tree 9)
+    (deactivate  (_type_) none 10)
+    (init-from-entity!
+      "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+       This commonly includes things such as:
+       - stack size
+       - collision information
+       - loading the skeleton group / bones
+       - sounds"
+      (_type_ entity-actor) none 11)
+    (run-logic? (_type_) symbol 12)
+    (process-tree-method-13 () none 13)
+    )
+  :size-assert #x24
+  :method-count-assert 14
+  :no-runtime-type
+  )
+
+(deftype kernel-context (basic)
+  ((prevent-from-run   process-mask  :offset-assert 4) ;; guessed by decompiler
+   (require-for-run    process-mask  :offset-assert 8) ;; guessed by decompiler
+   (allow-to-run       process-mask  :offset-assert 12) ;; guessed by decompiler
+   (next-pid           int32         :offset-assert 16)
+   (fast-stack-top     pointer       :offset-assert 20) ;; guessed by decompiler
+   (current-process    process       :offset-assert 24) ;; guessed by decompiler
+   (relocating-process basic         :offset-assert 28)
+   (relocating-min     int32         :offset-assert 32)
+   (relocating-max     int32         :offset-assert 36)
+   (relocating-offset  int32         :offset-assert 40)
+   (relocating-level   level         :offset-assert 44) ;; guessing here
+   (low-memory-message symbol        :offset-assert 48) ;; guessed by decompiler
+   (login-object       basic         :offset-assert 52)
+   )
+  :method-count-assert 9
+  :size-assert         #x38
+  :flag-assert         #x900000038
+  ;; field relocating-level uses ~A with a signed load
+  )
+
+(deftype time-frame (int64)
+  ()
+  :flag-assert #x900000008
+  )
+
+
+(deftype clock (basic)
+  ((index                      int32          :offset-assert   4) ;; which clock we are, in *display*
+   (mask                       process-mask   :offset-assert   8) ;; mask for ticking
+   (clock-ratio                float          :offset-assert  12) ;; how fast to run. 1.0 = realtime.
+   (accum                      float          :offset-assert  16) ;; fractional time for frame-counter (time-frame units)
+   (integral-accum             float          :offset-assert  20) ;; fractional time for integral (time-frame untis)
+   (frame-counter              time-frame     :offset-assert  24) ;; how much time has gone by since reset (time-frame units)
+   (old-frame-counter          time-frame     :offset-assert  32) ;; the frame-counter on the last engine iteration
+   (integral-frame-counter     uint64         :offset-assert  40) ;; how many vsyncs have gone by since reset
+   (old-integral-frame-counter uint64         :offset-assert  48) ;; the integral-frame-counter on the last engine iteration
+   (sparticle-data             vector :inline :offset-assert  64) ;; sparticle timescale info
+   (seconds-per-frame          float          :offset-assert  80) ;; how many seconds (not time-frames) should go by in 1 vsync
+   (frames-per-second          float          :offset-assert  84) ;; inverse of above
+   (time-adjust-ratio          float          :offset-assert  88) ;; 1, if the game runs at 60fps NTSC with clock-ratio = 1.
+   )
+  :method-count-assert 15
+  :size-assert         #x5c
+  :flag-assert         #xf0000005c
+  (:methods
+    (new (symbol type int) _type_ 0)
+    (update-rates! (_type_ float) float 9)
+    (advance-by! (_type_ float) clock 10)
+    (tick! (_type_) clock 11)
+    (save! (_type_ (pointer uint64)) int 12)
+    (load! (_type_ (pointer uint64)) int 13)
+    (reset! (_type_) none 14)
+    )
+  )
+
+
+(deftype thread (basic)
+  ((name         symbol                      :offset-assert 4)
+   (process      process                     :offset-assert 8) ;; guessed by decompiler
+   (previous     thread                      :offset-assert 12) ;; guessed by decompiler
+   (suspend-hook (function cpu-thread none)  :offset-assert 16) ;; guessed by decompiler
+   (resume-hook  (function cpu-thread none)  :offset-assert 20) ;; guessed by decompiler
+   (pc           pointer                     :offset-assert 24) ;; guessed by decompiler
+   (sp           pointer                     :offset-assert 28) ;; guessed by decompiler
+   (stack-top    pointer                     :offset-assert 32) ;; guessed by decompiler
+   (stack-size   int32                       :offset-assert 36)
+   )
+  :method-count-assert 12
+  :size-assert         #x28
+  :flag-assert         #xc00000028
+  (:methods
+    (stack-size-set! (_type_ int) none 9)
+    (thread-suspend (_type_) none 10)
+    (thread-resume (_type_) none 11)
+    )
+  )
+
+
+;; modified for x86.
+(deftype cpu-thread (thread)
+  ((rreg  uint64 7       :offset-assert 40)
+   (freg float 8)
+
+   ;; old values:
+   ;; (rreg  uint64 8        :offset-assert 40) ;; guessed by decompiler
+   ;; (freg  float  6        :offset-assert 104) ;; guessed by decompiler
+   (stack uint8  :dynamic :offset-assert 128) ;; guessed by decompiler
+   )
+  :method-count-assert 12
+  :size-assert         #x80
+  :flag-assert         #xc00000080
+  (:methods
+     (new (symbol type process symbol int pointer) _type_ 0)
+    )
+  )
+
+
+
+(deftype dead-pool (process-tree)
+  ()
+  :method-count-assert 16
+  :size-assert         #x24
+  :flag-assert         #x1000000024
+  ;; Failed to read fields.
+  (:methods
+    (new (symbol type int int string) _type_ 0)
+    (get-process (_type_ type int) process 14)
+    (return-process (_type_ process) none 15)
+    )
+  )
+
+
+(deftype dead-pool-heap-rec (structure)
+  ((process process             :offset-assert 0) ;; guessed by decompiler
+   (prev    dead-pool-heap-rec  :offset-assert 4)
+   (next    dead-pool-heap-rec  :offset-assert 8)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+
+(deftype dead-pool-heap (dead-pool)
+  ((allocated-length   int32                       :offset-assert 36)
+   (compact-time       uint32                      :offset-assert 40)
+   (compact-count-targ uint32                      :offset-assert 44)
+   (compact-count      uint32                      :offset-assert 48)
+   (fill-percent       float                       :offset-assert 52)
+   (first-gap          dead-pool-heap-rec          :offset-assert 56)
+   (first-shrink       dead-pool-heap-rec          :offset-assert 60)
+   (heap               kheap              :inline  :offset-assert 64)
+   (alive-list         dead-pool-heap-rec :inline  :offset-assert 80)
+   (last               dead-pool-heap-rec :offset #x54  :offset-assert 84)
+   (dead-list          dead-pool-heap-rec :inline  :offset-assert 92)
+   (process-list       dead-pool-heap-rec :inline :dynamic :offset-assert 104)
+   )
+  :method-count-assert 28
+  :size-assert         #x68
+  :flag-assert         #x1c00000068
+  ;; Failed to read fields.
+  (:methods
+    (new (symbol type string int int) _type_ 0)
+    (init (_type_ symbol int) none 16)
+    (compact (dead-pool-heap int) none 17)
+    (shrink-heap (dead-pool-heap process) dead-pool-heap 18)
+    (churn (dead-pool-heap int) none 19)
+    (memory-used (_type_) int 20)
+    (memory-total (_type_) int 21)
+    (memory-free (dead-pool-heap) int 22)
+    (compact-time (dead-pool-heap) uint 23)
+    (gap-size (dead-pool-heap dead-pool-heap-rec) int 24)
+    (gap-location (dead-pool-heap dead-pool-heap-rec) pointer 25)
+    (find-gap (dead-pool-heap dead-pool-heap-rec) dead-pool-heap-rec 26)
+    (find-gap-by-size (dead-pool-heap int) dead-pool-heap-rec 27)
+    )
+  )
+
+(deftype stack-frame (basic)
+  ((name symbol :offset 4)
+   (next stack-frame :offset 8) ;; which way does this point?
+   )
+  :size-assert #xc
+  :method-count-assert 9
+  :flag-assert #x90000000c
+  )
+
+;; a "catch" frame is a frame that can be "thrown" to.
+;; the "throw" is a nonlocal control flow back to the state before the "catch" block.
+(deftype catch-frame (stack-frame)
+  ((sp   int32     :offset-assert  12)
+   (ra   int32     :offset-assert  16)
+   ; (freg float   6 :offset-assert  20)
+   ; (rreg uint128 8 :offset-assert  48)
+   ;; In OpenGOAL, we swap a rreg for 4 more fregs.
+   (freg float 10 :offset-assert 20) ;; only use 8
+   (rreg uint128 7)                  ;; only use 5
+   )
+  :method-count-assert 9
+  :size-assert         #xb0
+  :flag-assert         #x9000000b0
+  (:methods
+    (new (symbol type symbol function (pointer uint64)) object 0)
+    )
+  )
+
+(deftype protect-frame (stack-frame)
+  ((exit (function none)  :offset-assert 12) ;; guessed by decompiler
+   )
+  (:methods
+    (new (symbol type (function none)) protect-frame)
+    )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(deftype handle (uint64)
+  ((process (pointer process) :offset 0)
+   (pid int32 :offset 32)
+   (u64 uint64 :offset 0)
+   )
+  :flag-assert #x900000008
+  )
+
+(deftype state (protect-frame)
+  ((code  function                                                  :offset-assert 16) ;; guessed by decompiler
+   (trans (function none)                                           :offset-assert 20) ;; guessed by decompiler
+   (post  function                                                  :offset-assert 24) ;; guessed by decompiler
+   (enter function                                                  :offset-assert 28) ;; guessed by decompiler
+   (event (function process int symbol event-message-block object)  :offset-assert 32) ;; guessed by decompiler
+   )
+  (:methods
+    (new (symbol type symbol function
+          (function none)
+          function
+          (function none)
+          (function process int symbol event-message-block object)) _type_ 0)
+    )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+(deftype event-message-block (structure)
+  ((to-handle handle)
+   (to (pointer process) :offset 0) ;; overlays process field of handle
+   (form-handle handle :offset-assert 8)
+   (from (pointer process) :offset 8)
+   (param uint64 6)
+   (message symbol)
+   (num-params int32)
+   )
+  :method-count-assert 9
+  :size-assert         #x48
+  :flag-assert         #x900000048
+  ;; Failed to read fields.
+  )
+
+
+
+(deftype event-message-block-array (inline-array-class)
+  ((data event-message-block :inline :dynamic :offset-assert 16)
+   )
+  :method-count-assert 10
+  :size-assert         #x10
+  :flag-assert         #xa00000010
+  (:methods
+    (send-all! (_type_) none 9)
+    )
+  )
+
+
+(deftype process (process-tree)
+  ((pool dead-pool)
+   (status symbol :offset-assert 40)
+   (pid int32)
+   (main-thread cpu-thread :offset-assert 48)
+   (top-thread cpu-thread :offset-assert 52)
+   (entity entity-actor :offset-assert 56)
+   (level level :offset-assert 60)
+   (state state :offset-assert 64)
+   (next-state state :offset-assert 68)
+   (trans-hook function :offset-assert 72)
+   (post-hook function :offset-assert 76)
+   (event-hook (function process int symbol event-message-block object) :offset-assert 80)
+   (allocated-length int32 :offset-assert 84)
+   (pad-unknown-0 uint32 2) ;; had to rename this unfortunately, there is a type that uses this same name "vehicle"
+   (heap-base pointer :offset-assert 96)
+   (heap-top pointer :offset-assert 100)
+   (heap-cur pointer :offset-assert 104)
+   (stack-frame-top stack-frame :offset-assert 108)
+   (connection-list connectable :inline :offset-assert 112)
+   (stack uint8 :dynamic :offset-assert 128 :score -1)
+   )
+  (:methods
+    (new (symbol type string int) _type_ 0)
+    )
+  (:states
+    dead-state
+    empty-state)
+  :size-assert #x80
+  :method-count-assert 14
+  :no-runtime-type ;; already defined by kscheme. Don't do it again.
+  )
+
+(deftype sql-result (basic)
+  ((len int32 :offset-assert 4)
+   (allocated-length  uint32 :offset-assert 8)
+   (error  symbol :offset-assert 12)
+   (data   string :dynamic :offset-assert 16) ;; are these actually symbols, or are they strings (in the GOAL code they are treated as strings atleast)
+   )
+   (:methods (new (symbol type uint) _type_ 0))
+   :method-count-assert 9
+   :size-assert #x10
+  )
+
+(define-extern *sql-result* sql-result)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; gkernel                        ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-extern *kernel-version* binteger)
+(define-extern *irx-version* binteger)
+(define-extern *kernel-boot-mode* symbol)
+(define-extern *kernel-boot-level* symbol)
+(define-extern *deci-count* int)
+(define-extern *last-loado-length* int)
+(define-extern *last-loado-global-usage* int)
+(define-extern *last-loado-debug-usage* int)
+(define-extern *kernel-packages* pair)
+(define-extern load-package (function string kheap pair))
+(define-extern unload-package (function string pair))
+(define-extern *kernel-context* kernel-context)
+(define-extern *dram-stack* (pointer uint8))
+(define-extern *null-kernel-context* kernel-context)
+(define-extern remove-exit (function none :behavior process))
+(define-extern stream<-process-mask (function object process-mask process-mask))
+(define-extern *master-mode* symbol)
+(define-extern *pause-lock* symbol)
+(define-extern inspect-process-heap (function process symbol))
+(define-extern return-from-thread (function none))
+(define-extern return-from-thread-dead (function none))
+(define-extern reset-and-call (function thread function object))
+(define-extern method-state (function type basic state))
+(define-extern *global-search-name* basic)
+(define-extern *global-search-count* int)
+(define-extern process-by-name (function string process-tree process))
+(define-extern process-not-name (function string process-tree process))
+(define-extern process-count (function process-tree int))
+(define-extern kill-by-name (function string process-tree symbol))
+(define-extern kill-by-type (function type process-tree symbol))
+(define-extern kill-not-name (function string process-tree symbol))
+(define-extern kill-not-type (function type process-tree symbol))
+(define-extern iterate-process-tree (function process-tree (function object object) kernel-context object))
+(define-extern execute-process-tree (function process-tree (function object object) kernel-context object))
+(define-extern search-process-tree (function process-tree (function process-tree object) process-tree))
+(define-extern kernel-dispatcher (function object))
+(define-extern sync-dispatcher (function object))
+(define-extern inspect-process-tree (function process-tree int int symbol process-tree))
+(define-extern throw-dispatch (function catch-frame object none))
+(define-extern throw (function symbol object int))
+(define-extern previous-brother (function process-tree object))
+(define-extern change-parent (function process-tree process-tree process-tree))
+(define-extern change-brother (function process-tree process-tree object))
+(define-extern change-to-last-brother (function process-tree process-tree))
+(define-extern run-function-in-process (function process function object object object object object object object))
+(define-extern set-to-run-bootstrap (function none))
+(define-extern set-to-run (function cpu-thread function object object object object object object pointer))
+(define-extern entity-deactivate-handler (function process entity-actor none))
+(define-extern *listener-process* process)
+(define-extern *null-process* process)
+(define-extern *vis-boot* symbol)
+(define-extern *kernel-clock* clock)
+(define-extern *16k-dead-pool* dead-pool)
+(define-extern *8k-dead-pool* dead-pool)
+(define-extern *4k-dead-pool* dead-pool)
+(define-extern *target-dead-pool* dead-pool)
+(define-extern *camera-dead-pool* dead-pool)
+(define-extern *camera-master-dead-pool* dead-pool)
+(define-extern *debug-dead-pool* dead-pool-heap)
+(define-extern *nk-dead-pool* dead-pool-heap)
+(define-extern *default-dead-pool* dead-pool)
+(define-extern *pickup-dead-pool* dead-pool)
+(define-extern *city-dead-pool* dead-pool-heap)
+(define-extern *dead-pool-list* pair)
+(define-extern *active-pool* process-tree)
+(define-extern *display-pool* process-tree) ;; process-tree
+(define-extern *camera-pool* process-tree) ;; process-tree
+(define-extern *target-pool* process-tree) ;; process-tree
+(define-extern *entity-pool* process-tree) ;; process-tree
+(define-extern *mid-pool* process-tree)
+(define-extern *pusher-pool* process-tree)
+(define-extern *bg-pool* process-tree)
+(define-extern *default-pool* process-tree) ;; process-tree
