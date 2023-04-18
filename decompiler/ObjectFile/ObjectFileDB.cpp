@@ -251,6 +251,10 @@ void ObjectFileDB::load_map_file(const std::string& map_data) {
     for (auto& dgo : dgo_names) {
       auto kv = dgo_obj_name_map[dgo].find(game_name_with_ag);
       if (kv != dgo_obj_name_map[dgo].end()) {
+        if (version() == GameVersion::Jak3 &&
+            (game_name_with_ag == "collectables" || game_name_with_ag == "blocking-plane")) {
+          continue;
+        }
         lg::error("Object {} in dgo {} occurs more than one time.", game_name_with_ag, dgo);
         ASSERT(false);
       }
@@ -609,7 +613,8 @@ void ObjectFileDB::write_disassembly(const fs::path& output_dir,
   std::string asm_functions;
 
   for_each_obj([&](ObjectFileData& obj) {
-    if ((obj.obj_version == 3 && disassemble_code) || (obj.obj_version != 3 && disassemble_data)) {
+    if (((obj.obj_version == 3 || obj.obj_version == 5) && disassemble_code) ||
+        (obj.obj_version != 3 && disassemble_data)) {
       auto file_text = obj.linked_data.print_disassembly(print_hex);
       asm_functions += obj.linked_data.print_asm_function_disassembly(obj.to_unique_name());
       auto file_name = output_dir / (obj.to_unique_name() + ".asm");
