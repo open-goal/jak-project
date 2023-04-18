@@ -331,6 +331,14 @@ FieldPrint get_field_print(const std::string& str) {
     field_print.format = 'X';
 
     ASSERT(idx == (int)str.size());
+  } else if (fmt1 == '#' && peek(4) == ':') {  // #x~X : (enum
+    // next();
+    // std::string expect_end = " ";
+    // for (char i : expect_end) {
+    //   char c = next();
+    //   ASSERT(i == c);
+    // }
+    field_print.format = 'X';
   } else if (fmt1 == '#' && peek(0) == 'x') {  // #x~X~%
     next();
     std::string expect_end = "~X~%";
@@ -985,6 +993,11 @@ int detect(int idx, Function& function, LinkedObjectFile& file, TypeInspectorRes
     ASSERT_MSG(false, "bad sstr");
   }
 
+  // hack to ignore format print from enum->string
+  if (sstr == ")~%") {
+    return idx;
+  }
+
   auto info = get_field_print(*sstr);
 
   auto& first_get_op = function.ir2.atomic_ops->ops.at(idx);
@@ -1096,6 +1109,12 @@ std::string inspect_inspect_method(Function& inspect_method,
                                    object_file_meta);
   }
   while (idx < int(inspect_method.ir2.atomic_ops->ops.size()) - 2 && idx != -1) {
+    // skip over non-format calls in inspects
+    auto sstr = inspect_method.ir2.atomic_ops->ops.at(idx)->to_string(inspect_method.ir2.env);
+    if (sstr.substr(sstr.size() - 7) != "format)") {
+      idx++;
+      continue;
+    }
     idx = detect(idx, inspect_method, file, &result);
   }
 
