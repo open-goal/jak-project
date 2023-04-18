@@ -159,6 +159,7 @@ constexpr int true_symbol_offset(GameVersion version) {
     case GameVersion::Jak1:
       return jak1_symbols::FIX_SYM_TRUE;
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       return jak2_symbols::FIX_SYM_TRUE;
   }
 }
@@ -168,6 +169,7 @@ constexpr int empty_pair_offset_from_s7(GameVersion version) {
     case GameVersion::Jak1:
       return jak1_symbols::FIX_SYM_EMPTY_PAIR;
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       // minus 1 for the symbol table pointer's offset.
       return jak2_symbols::S7_OFF_FIX_SYM_EMPTY_PAIR;
   }
