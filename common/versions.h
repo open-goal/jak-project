@@ -42,7 +42,7 @@ constexpr int KERNEL_VERSION_MINOR = 0;
 constexpr int IRX_VERSION_MAJOR = 2;
 constexpr int IRX_VERSION_MINOR = 0;
 
-enum class GameVersion { Jak1 = 1, Jak2 = 2 };
+enum class GameVersion { Jak1 = 1, Jak2 = 2, Jak3 = 3 };
 
 template <typename T>
 struct PerGameVersion {
