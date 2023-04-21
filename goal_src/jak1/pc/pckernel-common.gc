@@ -50,14 +50,15 @@
 
 (defmethod set-display-mode! pc-settings ((obj pc-settings) (mode symbol))
   "sets the game's display mode"
-  ;; change the display mode.
-  (set! (-> obj display-mode) mode)
-  ;; if windowed mode, set the size properly
-  (when (= (-> obj display-mode) 'windowed)
-    (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height))))
-
-  ;; set fullscreen to what we want
-  (pc-set-display-mode (-> obj display-mode))
+  ;; no-op if the display mode hasn't actually changed
+  (when (!= mode (-> obj display-mode))
+    ;; change the display mode.
+    (set! (-> obj display-mode) mode)
+    ;; if windowed mode, set the size properly
+    (when (= (-> obj display-mode) 'windowed)
+      (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height))))
+    ;; set fullscreen to what we want
+    (pc-set-display-mode (-> obj display-mode)))
   0)
 
 (defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int))
