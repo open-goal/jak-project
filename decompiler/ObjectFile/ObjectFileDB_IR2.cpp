@@ -1143,7 +1143,7 @@ bool ObjectFileDB::lookup_function_type(const FunctionName& name,
 std::string ObjectFileDB::ir2_final_out(ObjectFileData& data,
                                         const std::vector<std::string>& imports,
                                         const std::unordered_set<std::string>& skip_functions) {
-  if (data.obj_version == 3) {
+  if (data.obj_version == 3 || (data.obj_version == 5 && data.linked_data.has_any_functions())) {
     std::string result;
     result += ";;-*-Lisp-*-\n";
     result += "(in-package goal)\n\n";
