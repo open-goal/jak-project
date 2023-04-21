@@ -3,7 +3,7 @@
 
 #include <algorithm>
 
-#include <common/global_profiler/GlobalProfiler.h>
+#include "common/global_profiler/GlobalProfiler.h"
 
 #include "game/graphics/gfx.h"
 #include "game/kernel/svnrev.h"
