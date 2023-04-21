@@ -24,6 +24,7 @@
 #include "runtime.h"
 
 #include "common/cross_os_debug/xdbg.h"
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/goal_constants.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
@@ -321,36 +322,51 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
   g_game_version = game_options.game_version;
   g_server_port = game_options.server_port;
 
-  // set up discord stuff
-  gStartTime = time(nullptr);
-  init_discord_rpc();
+  prof().instant_event("ROOT");
+  {
+    auto p = scoped_prof("startup::exec_runtime::init_discord_rpc");
+    // set up discord stuff
+    gStartTime = time(nullptr);
+    init_discord_rpc();
+  }
 
   // initialize graphics first - the EE code will upload textures during boot and we
   // want the graphics system to catch them.
-  if (enable_display) {
-    Gfx::Init(g_game_version);
+  {
+    auto p = scoped_prof("startup::exec_runtime::init_gfx");
+    if (enable_display) {
+      Gfx::Init(g_game_version);
+    }
   }
 
   // step 1: sce library prep
-  iop::LIBRARY_INIT();
-  ee::LIBRARY_INIT_sceCd();
-  ee::LIBRARY_INIT_sceDeci2();
-  ee::LIBRARY_INIT_sceSif();
+  {
+    auto p = scoped_prof("startup::exec_runtime::library_prep");
+    iop::LIBRARY_INIT();
+    ee::LIBRARY_INIT_sceCd();
+    ee::LIBRARY_INIT_sceDeci2();
+    ee::LIBRARY_INIT_sceSif();
+  }
 
   // step 2: system prep
+  prof().begin_event("startup::exec_runtime::system_prep");
   VM::vm_prepare();  // our fake ps2 VM needs to be prepared
   SystemThreadManager tm;
   auto& deci_thread = tm.create_thread("DMP");
   auto& iop_thread = tm.create_thread("IOP");
   auto& ee_thread = tm.create_thread("EE");
   auto& vm_dmac_thread = tm.create_thread("VM-DMAC");
+  prof().end_event();
 
   // step 3: start the EE!
-  iop_thread.start(iop_runner);
-  deci_thread.start(deci2_runner);
-  ee_thread.start(ee_runner);
-  if (VM::use) {
-    vm_dmac_thread.start(dmac_runner);
+  {
+    auto p = scoped_prof("startup::exec_runtime::start_ee");
+    iop_thread.start(iop_runner);
+    deci_thread.start(deci2_runner);
+    ee_thread.start(ee_runner);
+    if (VM::use) {
+      vm_dmac_thread.start(dmac_runner);
+    }
   }
 
   // step 4: wait for EE to signal a shutdown. meanwhile, run video loop on main thread.

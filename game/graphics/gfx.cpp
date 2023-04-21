@@ -11,6 +11,7 @@
 
 #include "display.h"
 
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
@@ -52,22 +53,32 @@ const GfxRendererModule* GetCurrentRenderer() {
 
 u32 Init(GameVersion version) {
   lg::info("GFX Init");
+  prof().instant_event("ROOT");
 
   g_debug_settings = game_settings::DebugSettings();
-  g_global_settings.renderer = GetRenderer(GfxPipeline::OpenGL);
+  {
+    auto p = scoped_prof("startup::gfx::get_renderer");
+    g_global_settings.renderer = GetRenderer(GfxPipeline::OpenGL);
+  }
 
-  if (GetCurrentRenderer()->init(g_global_settings)) {
-    lg::error("Gfx::Init error");
-    return 1;
+  {
+    auto p = scoped_prof("startup::gfx::init_current_renderer");
+    if (GetCurrentRenderer()->init(g_global_settings)) {
+      lg::error("Gfx::Init error");
+      return 1;
+    }
   }
 
   if (g_main_thread_id != std::this_thread::get_id()) {
     lg::error("Ran Gfx::Init outside main thread. Init display elsewhere?");
   } else {
-    // TODO - make this not hardcoded to always be "work in progress"
-    Display::InitMainDisplay(640, 480,
-                             fmt::format("OpenGOAL - Work in Progress - {}", GIT_VERSION).c_str(),
-                             g_global_settings, version);
+    {
+      auto p = scoped_prof("startup::gfx::init_main_display");
+      // TODO - make this not hardcoded to always be "work in progress"
+      Display::InitMainDisplay(640, 480,
+                               fmt::format("OpenGOAL - Work in Progress - {}", GIT_VERSION).c_str(),
+                               g_global_settings, version);
+    }
   }
 
   return 0;

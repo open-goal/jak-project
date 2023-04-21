@@ -89,30 +89,41 @@ std::unique_ptr<GraphicsData> g_gfx_data;
 
 static bool gl_inited = false;
 static int gl_init(GfxGlobalSettings& settings) {
+  prof().instant_event("ROOT");
   // Initialize SDL
-  if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC) != 0) {
-    sdl_util::log_error("Could not initialize SDL, exiting");
-    return 1;
+  {
+    auto p = scoped_prof("startup::sdl::init_sdl");
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC) != 0) {
+      sdl_util::log_error("Could not initialize SDL, exiting");
+      return 1;
+    }
   }
 
-  SDL_version compiled;
-  SDL_VERSION(&compiled);
-  SDL_version linked;
-  SDL_GetVersion(&linked);
-  lg::info("SDL Initialized, compiled with version - {}.{}.{} | linked with version - {}.{}.{}",
-           compiled.major, compiled.minor, compiled.patch, linked.major, linked.minor,
-           linked.patch);
-
-  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-  if (settings.debug) {
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
-  } else {
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+  {
+    auto p = scoped_prof("startup::sdl::get_version_info");
+    SDL_version compiled;
+    SDL_VERSION(&compiled);
+    SDL_version linked;
+    SDL_GetVersion(&linked);
+    lg::info("SDL Initialized, compiled with version - {}.{}.{} | linked with version - {}.{}.{}",
+             compiled.major, compiled.minor, compiled.patch, linked.major, linked.minor,
+             linked.patch);
   }
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-  SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+
+  {
+    auto p = scoped_prof("startup::sdl::set_gl_attributes");
+
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    if (settings.debug) {
+      SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
+    } else {
+      SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+    }
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+  }
 
   return 0;
 }
@@ -203,20 +214,23 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
     }
   }
 
-  {
-    auto p = scoped_prof("startup::sdl::glad_init");
-    if (!gl_inited) {
+  if (!gl_inited) {
+    {
+      auto p = scoped_prof("startup::sdl::glad_init");
       gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress);
       if (!gladLoadGL()) {
         lg::error("GL init fail");
         return NULL;
       }
-      g_gfx_data = std::make_unique<GraphicsData>(game_version);
-      gl_inited = true;
-      const char* gl_version = (const char*)glGetString(GL_VERSION);
-      lg::info("OpenGL initialized - v{}.{} | Renderer: {}", GLVersion.major, GLVersion.minor,
-               gl_version);
     }
+    {
+      auto p = scoped_prof("startup::sdl::gfx_data_init");
+      g_gfx_data = std::make_unique<GraphicsData>(game_version);
+    }
+    gl_inited = true;
+    const char* gl_version = (const char*)glGetString(GL_VERSION);
+    lg::info("OpenGL initialized - v{}.{} | Renderer: {}", GLVersion.major, GLVersion.minor,
+             gl_version);
   }
 
   {
