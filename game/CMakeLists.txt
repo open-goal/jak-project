@@ -129,9 +129,12 @@ set(RUNTIME_SOURCE
         overlord/jak1/srpc.cpp
         overlord/jak1/ssound.cpp
         overlord/jak1/stream.cpp
+        overlord/jak2/dma.cpp
         overlord/jak2/iso.cpp
+        overlord/jak2/iso_cd.cpp
         overlord/jak2/iso_queue.cpp
         overlord/jak2/overlord.cpp
+        overlord/jak2/pages.cpp
         overlord/jak2/stream.cpp
         graphics/gfx.cpp
         graphics/jak2_texture_remap.cpp

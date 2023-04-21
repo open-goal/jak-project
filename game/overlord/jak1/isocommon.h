@@ -24,15 +24,15 @@ constexpr int N_PRIORITIES = 4;      // number of priorities
 constexpr int BUFFER_PAGE_SIZE = 0xc000;      // size in bytes of normal read buffer
 constexpr int STR_BUFFER_DATA_SIZE = 0x6000;  // size in bytes of vag read buffer
 
-constexpr int LOAD_SOUND_BANK = 0x300;           // Command to load a sound bank
-constexpr int LOAD_MUSIC = 0x380;                // Command to load music
-constexpr int QUEUE_VAG_STREAM = 0x400;          // Command to load a vag stream
-constexpr int PLAY_VAG_STREAM = 0x401;           // Command to play a vag stream
-constexpr int STOP_VAG_STREAM = 0x402;           // Command to stop a vag stream
-constexpr int PAUSE_VAG_STREAM = 0x403;          // Command to pause a vag stream
-constexpr int CONTINUE_VAG_STREAM = 0x404;       // Command to continue a vag stream
-constexpr int SET_VAG_VOLUME = 0x405;            // Command to set the volume of vag playback
-constexpr int SET_DIALOG_VOLUME = 0x406;         // Command to set the volume of vag playback
+constexpr int LOAD_SOUND_BANK = 0x300;      // Command to load a sound bank
+constexpr int LOAD_MUSIC = 0x380;           // Command to load music
+constexpr int QUEUE_VAG_STREAM = 0x400;     // Command to load a vag stream
+constexpr int PLAY_VAG_STREAM = 0x401;      // Command to play a vag stream
+constexpr int STOP_VAG_STREAM = 0x402;      // Command to stop a vag stream
+constexpr int PAUSE_VAG_STREAM = 0x403;     // Command to pause a vag stream
+constexpr int CONTINUE_VAG_STREAM = 0x404;  // Command to continue a vag stream
+constexpr int SET_VAG_VOLUME = 0x405;       // Command to set the volume of vag playback
+constexpr int SET_DIALOG_VOLUME = 0x406;    // Command to set the volume of vag playback
 /*!
  * Command to do something.
  */
@@ -75,5 +75,4 @@ struct PriStackEntry {
   void reset();
 };
 
-void ISONameFromAnimationName(char* dst, const char* src);
 }  // namespace jak1

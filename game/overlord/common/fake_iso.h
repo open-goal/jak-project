@@ -14,4 +14,9 @@
 #include "isocommon.h"
 
 void fake_iso_init_globals();
+int fake_iso_FS_Init();
+const char* get_file_path(FileRecord* fr);
+FileRecord* FS_Find(const char* name);
+FileRecord* FS_FindIN(const char* iso_name);
+uint32_t FS_GetLength(FileRecord* fr);
 extern IsoFs fake_iso;

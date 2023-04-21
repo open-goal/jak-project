@@ -1,5 +1,4 @@
-#ifndef SNDSHIM_H_
-#define SNDSHIM_H_
+
 #pragma once
 #include "common/common_types.h"
 
@@ -72,5 +71,3 @@ s32 snd_GetSoundUserData(s32 block_handle,
                          char* sound_name,
                          SFXUserData* dst);
 void snd_SetSoundReg(s32 sound_handle, s32 which, u8 val);
-
-#endif  // SNDSHIM_H_

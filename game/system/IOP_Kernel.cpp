@@ -384,21 +384,4 @@ void IOP_Kernel::rpc_loop(iop::sceSifQueueData* qd) {
   }
 }
 
-void IOP_Kernel::read_disc_sectors(u32 sector, u32 sectors, void* buffer) {
-  if (!iso_disc_file) {
-    iso_disc_file = file_util::open_file("./disc.iso", "rb");
-  }
 
-  ASSERT(iso_disc_file);
-  if (fseek(iso_disc_file, sector * 0x800, SEEK_SET)) {
-    ASSERT(false);
-  }
-  auto rv = fread(buffer, sectors * 0x800, 1, iso_disc_file);
-  ASSERT(rv == 1);
-}
-
-IOP_Kernel::~IOP_Kernel() {
-  if (iso_disc_file) {
-    fclose(iso_disc_file);
-  }
-}

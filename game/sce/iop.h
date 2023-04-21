@@ -20,7 +20,7 @@
 #define SCECdComplete 0x02
 #define SCECdNotReady 0x06
 #define KE_OK 0
-#define KE_SEMA_ZERO -419
+#define KE_SEMA_ZERO (-419)
 #define KE_SEMA_OVF -420
 #define KE_MBOX_NOMSG -424
 #define KE_WAIT_DELETE -425
@@ -118,7 +118,6 @@ void sceSifRegisterRpc(sceSifServeData* serve,
                        sceSifQueueData* qd);
 void sceSifRpcLoop(sceSifQueueData* pd);
 
-int sceCdRead(uint32_t logical_sector, uint32_t sectors, void* buf, sceCdRMode* mode);
 int sceCdSync(int mode);
 int sceCdGetError();
 int sceCdGetDiskType();

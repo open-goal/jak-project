@@ -62,6 +62,7 @@
 #include "game/overlord/jak1/stream.h"
 #include "game/overlord/jak2/iso_queue.h"
 #include "game/overlord/jak2/stream.h"
+#include "game/overlord/jak2/iso_cd.h"
 #include "game/system/Deci2Server.h"
 #include "game/system/iop_thread.h"
 #include "game/system/vm/dmac.h"
@@ -240,6 +241,7 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
   ssound_init_globals();
   jak1::stream_init_globals();
   jak2::stream_init_globals();
+  jak2::iso_cd_init_globals();
 
   iface.initialization_complete();
 

@@ -35,7 +35,7 @@ int start_overlord(int argc, const char* const* argv) {
 //
 //  if (false) {
 //    ThreadParam param;
-//    param.entry = (void*)Thread_Server;
+//    param.entry = Thread_Server;
 //    param.attr = TH_C;
 //    param.initPriority = 0x7a;
 //    param.stackSize = 0x800;
@@ -47,9 +47,7 @@ int start_overlord(int argc, const char* const* argv) {
 //    }
 //  }
 //
-//
-//
-//  param.entry = (void*)Thread_Player;
+//  param.entry = Thread_Player;
 //  param.attr = TH_C;
 //  param.initPriority = 100;
 //  param.stackSize = 0x800;
@@ -60,7 +58,7 @@ int start_overlord(int argc, const char* const* argv) {
 //    return 1;
 //  }
 //
-//  param.entry = (void*)Thread_Loader;
+//  param.entry = Thread_Loader;
 //  param.attr = 0x73;
 //  param.initPriority = TH_C;
 //  param.stackSize = 0x1000;
@@ -76,7 +74,7 @@ int start_overlord(int argc, const char* const* argv) {
 //  StartThread(thread_player, 0);
 //  StartThread(thread_loader, 0);
 //  printf("IOP: =========After inits=============\n");
-//  // removed memory printing code
+  // removed memory printing code
 
   return 0;
 }

@@ -7,8 +7,8 @@
 
 #include "common/log/log.h"
 #include "common/util/Assert.h"
-#include "game/overlord/common/iso.h"
 
+#include "game/overlord/jak1/iso.h"
 #include "game/sce/iop.h"
 
 using namespace iop;

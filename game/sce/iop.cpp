@@ -150,12 +150,6 @@ void sceSifRpcLoop(sceSifQueueData* pd) {
   iop->kernel.rpc_loop(pd);
 }
 
-int sceCdRead(uint32_t logical_sector, uint32_t sectors, void* buf, sceCdRMode* mode) {
-  (void)mode;
-  iop->kernel.read_disc_sectors(logical_sector, sectors, buf);
-  return 1;
-}
-
 int sceCdSync(int mode) {
   (void)mode;
   return 0;

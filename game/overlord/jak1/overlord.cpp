@@ -8,7 +8,7 @@
 
 #include "common/util/Assert.h"
 
-#include "game/overlord/common/iso.h"
+#include "game/overlord/jak1/iso.h"
 #include "game/sce/iop.h"
 
 using namespace iop;
@@ -75,7 +75,7 @@ int start_overlord(int argc, const char* const* argv) {
     return 1;
   }
 
-  InitISOFS(argv[1], argv[2], GameVersion::Jak1);
+  InitISOFS(argv[1], argv[2]);
   StartThread(thread_server, 0);
 
   StartThread(thread_player, 0);

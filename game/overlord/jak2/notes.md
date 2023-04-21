@@ -7,35 +7,7 @@ ExitIOP
 
 
 ### iso_cd.c
-hoping to avoid porting this and just use fakeiso instead.
-note that the FileRecord type is a bit different between 1 and 2, but it may not matter
-
-IsoCdPagesCallBack
-ReadDirectory
-DecodeDUP
-LoadMusicTweaks
-LoadDiscID
-FS_Init
-FS_Open
-DecompressBlock
-FS_PageBeginRead
-FS_LoadSoundBank
-FS_LoadMusic
-CD_WaitReturn
-FS_Find
-FS_FindIN
-FS_GetLength
-FS_OpenWad
-FS_Close
-FS_SyncRead
-FS_StoreSoundBankInIOP
-FS_LoadSoundBankFromIOP
-FS_LoadSoundBankFromEE
-FS_PollDrive
-CdReturn
-DoCdReadPages
-CheckPagesReady
-
+was ported. calling cd callbacks is a little sus.
 
 ## ramdisk.c
 ramdisk is believed unused, we will try without it for now
@@ -90,6 +62,8 @@ EeDmaIntr
   Not ported yet, just calls iSignalSema on the ee dma semaphore. Don't think we need this.
 
 ### iso.c
+Note that jak 2 drops the chained buffer system from jak 1 and uses the "pages" system instead.
+
 InitISOFS
 IsoQueueVagStream
 IsoPlayVagStream

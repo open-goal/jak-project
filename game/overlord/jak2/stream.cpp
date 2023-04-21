@@ -69,83 +69,85 @@ u32 PLAYThread() {
  * The STR RPC handler.
  */
 void* RPC_STR(unsigned int fno, void* _cmd, int y) {
-  (void)fno;
-  (void)y;
-  auto* cmd = (RPC_Str_Cmd_Jak2*)_cmd;
-  if (cmd->section < 0) {
-    // it's _not_ a stream file. So we just treat it like a normal load.
+  //  (void)fno;
+  //  (void)y;
+  //  auto* cmd = (RPC_Str_Cmd_Jak2*)_cmd;
+  //  if (cmd->section < 0) {
+  //    // it's _not_ a stream file. So we just treat it like a normal load.
+  //
+  //    // find the file with the given name
+  //    auto file_record = isofs->find(cmd->basename);
+  //    if (file_record == nullptr) {
+  //      // file not found!
+  //      printf("[OVERLORD STR] Failed to find file %s for loading.\n", cmd->basename);
+  //      cmd->result = STR_RPC_RESULT_ERROR;
+  //    } else {
+  //      // load directly to the EE
+  //      cmd->maxlen = LoadISOFileToEE(file_record, cmd->address, cmd->maxlen);
+  //      if (cmd->maxlen) {
+  //        // successful load!
+  //        cmd->result = STR_RPC_RESULT_DONE;
+  //      } else {
+  //        // there was an error loading.
+  //        cmd->result = STR_RPC_RESULT_ERROR;
+  //      }
+  //    }
+  //  } else {
+  //    // it's a chunked file. These are only animations - these have a separate naming scheme.
+  //    char animation_iso_name[128];
+  //    file_util::ISONameFromAnimationName(animation_iso_name, cmd->basename);
+  //    auto file_record = isofs->find_in(animation_iso_name);
+  //
+  //    if (!file_record) {
+  //      // didn't find the file
+  //      printf("[OVERLORD STR] Failed to find animation %s (%s)\n", cmd->basename,
+  //             animation_iso_name);
+  //      cmd->result = STR_RPC_RESULT_ERROR;
+  //    } else {
+  //      // found it! See if we've cached this animation's header.
+  //      int cache_entry = 0;
+  //      int oldest = INT32_MAX;
+  //      int oldest_idx = -1;
+  //      while (cache_entry < STR_INDEX_CACHE_SIZE && sCache[cache_entry].fr != file_record) {
+  //        sCache[cache_entry].countdown--;
+  //        if (sCache[cache_entry].countdown < oldest) {
+  //          oldest_idx = cache_entry;
+  //          oldest = sCache[cache_entry].countdown;
+  //        }
+  //        cache_entry++;
+  //      }
+  //
+  //      if (cache_entry == STR_INDEX_CACHE_SIZE) {
+  //        // cache miss, we need to load the header to the header cache on the IOP
+  //        cache_entry = oldest_idx;
+  //        sCache[oldest_idx].fr = file_record;
+  //        sCache[oldest_idx].countdown = INT32_MAX - 1;
+  //        if (!LoadISOFileToIOP(file_record, &sCache[oldest_idx].header, sizeof(StrFileHeaderJ2)))
+  //        {
+  //          printf("[OVERLORD STR] Failed to load chunk file header for animation %s\n",
+  //                 cmd->basename);
+  //          cmd->result = 1;
+  //          return cmd;
+  //        }
+  //      }
+  //
+  //      // load data, using the cached header to find the location of the chunk.
+  //      if (!LoadISOFileChunkToEE(file_record, cmd->address,
+  //                                sCache[cache_entry].header.sizes[cmd->section],
+  //                                sCache[cache_entry].header.sectors[cmd->section])) {
+  //        printf("[OVERLORD STR] Failed to load chunk %d for animation %s\n", cmd->section,
+  //               cmd->basename);
+  //        cmd->result = 1;
+  //      } else {
+  //        // successful load!
+  //        cmd->maxlen = sCache[cache_entry].header.sizes[cmd->section];
+  //        cmd->result = 0;
+  //      }
+  //    }
+  //  }
 
-    // find the file with the given name
-    auto file_record = isofs->find(cmd->basename);
-    if (file_record == nullptr) {
-      // file not found!
-      printf("[OVERLORD STR] Failed to find file %s for loading.\n", cmd->basename);
-      cmd->result = STR_RPC_RESULT_ERROR;
-    } else {
-      // load directly to the EE
-      cmd->maxlen = LoadISOFileToEE(file_record, cmd->address, cmd->maxlen);
-      if (cmd->maxlen) {
-        // successful load!
-        cmd->result = STR_RPC_RESULT_DONE;
-      } else {
-        // there was an error loading.
-        cmd->result = STR_RPC_RESULT_ERROR;
-      }
-    }
-  } else {
-    // it's a chunked file. These are only animations - these have a separate naming scheme.
-    char animation_iso_name[128];
-    file_util::ISONameFromAnimationName(animation_iso_name, cmd->basename);
-    auto file_record = isofs->find_in(animation_iso_name);
-
-    if (!file_record) {
-      // didn't find the file
-      printf("[OVERLORD STR] Failed to find animation %s (%s)\n", cmd->basename,
-             animation_iso_name);
-      cmd->result = STR_RPC_RESULT_ERROR;
-    } else {
-      // found it! See if we've cached this animation's header.
-      int cache_entry = 0;
-      int oldest = INT32_MAX;
-      int oldest_idx = -1;
-      while (cache_entry < STR_INDEX_CACHE_SIZE && sCache[cache_entry].fr != file_record) {
-        sCache[cache_entry].countdown--;
-        if (sCache[cache_entry].countdown < oldest) {
-          oldest_idx = cache_entry;
-          oldest = sCache[cache_entry].countdown;
-        }
-        cache_entry++;
-      }
-
-      if (cache_entry == STR_INDEX_CACHE_SIZE) {
-        // cache miss, we need to load the header to the header cache on the IOP
-        cache_entry = oldest_idx;
-        sCache[oldest_idx].fr = file_record;
-        sCache[oldest_idx].countdown = INT32_MAX - 1;
-        if (!LoadISOFileToIOP(file_record, &sCache[oldest_idx].header, sizeof(StrFileHeaderJ2))) {
-          printf("[OVERLORD STR] Failed to load chunk file header for animation %s\n",
-                 cmd->basename);
-          cmd->result = 1;
-          return cmd;
-        }
-      }
-
-      // load data, using the cached header to find the location of the chunk.
-      if (!LoadISOFileChunkToEE(file_record, cmd->address,
-                                sCache[cache_entry].header.sizes[cmd->section],
-                                sCache[cache_entry].header.sectors[cmd->section])) {
-        printf("[OVERLORD STR] Failed to load chunk %d for animation %s\n", cmd->section,
-               cmd->basename);
-        cmd->result = 1;
-      } else {
-        // successful load!
-        cmd->maxlen = sCache[cache_entry].header.sizes[cmd->section];
-        cmd->result = 0;
-      }
-    }
-  }
-
-  return cmd;
+  //  return cmd;
+  return nullptr;
 }
 
 /*!

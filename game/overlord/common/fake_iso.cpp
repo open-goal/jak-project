@@ -45,20 +45,13 @@ static FileRecord sFiles[MAX_ISO_FILES];           //! List of "FileRecords" for
 u32 fake_iso_entry_count;                          //! Total count of fake iso files
 static LoadStackEntry* sReadInfo;                  // LoadStackEntry for currently reading file
 
-static int FS_Init(u8* buffer);
-static FileRecord* FS_Find(const char* name);
-static FileRecord* FS_FindIN(const char* iso_name);
-static uint32_t FS_GetLength(FileRecord* fr);
 static LoadStackEntry* FS_Open(FileRecord* fr, int32_t offset);
 static LoadStackEntry* FS_OpenWad(FileRecord* fr, int32_t offset);
 static void FS_Close(LoadStackEntry* fd);
 static uint32_t FS_BeginRead(LoadStackEntry* fd, void* buffer, int32_t len);
 static uint32_t FS_SyncRead();
-static uint32_t FS_LoadSoundBank(char*, void*);
-static uint32_t FS_LoadMusic(char*, void*);
-
-static uint32_t FS_LoadSoundBank2(char*, void*);
-static uint32_t FS_LoadMusic2(char*, void*);
+static uint32_t FS_LoadSoundBank(char*, SoundBank*);
+static uint32_t FS_LoadMusic(char*, s32*);
 
 static void FS_PollDrive();
 static void LoadMusicTweaks();
@@ -71,7 +64,7 @@ void fake_iso_init_globals() {
   fake_iso_entry_count = 0;
 
   // init API struct
-  fake_iso.init = FS_Init;
+  fake_iso.init = fake_iso_FS_Init;
   fake_iso.find = FS_Find;
   fake_iso.find_in = FS_FindIN;
   fake_iso.get_length = FS_GetLength;
@@ -81,14 +74,8 @@ void fake_iso_init_globals() {
   fake_iso.begin_read = FS_BeginRead;
   fake_iso.sync_read = FS_SyncRead;
   fake_iso.poll_drive = FS_PollDrive;
-
-  if (g_game_version == GameVersion::Jak1) {
-    fake_iso.load_sound_bank = FS_LoadSoundBank;
-    fake_iso.load_music = FS_LoadMusic;
-  } else {
-    fake_iso.load_sound_bank = FS_LoadSoundBank2;
-    fake_iso.load_music = FS_LoadMusic2;
-  }
+  fake_iso.load_sound_bank = FS_LoadSoundBank;
+  fake_iso.load_music = FS_LoadMusic;
 
   sReadInfo = nullptr;
 }
@@ -96,9 +83,7 @@ void fake_iso_init_globals() {
 /*!
  * Initialize the file system.
  */
-int FS_Init(u8* buffer) {
-  (void)buffer;
-
+int fake_iso_FS_Init() {
   for (const auto& f : fs::directory_iterator(file_util::get_jak_project_dir() / "out" /
                                               game_version_names[g_game_version] / "iso")) {
     if (f.is_regular_file()) {
@@ -160,7 +145,7 @@ FileRecord* FS_FindIN(const char* iso_name) {
 /*!
  * Build a full file path for a FileRecord.
  */
-static const char* get_file_path(FileRecord* fr) {
+const char* get_file_path(FileRecord* fr) {
   ASSERT(fr->location < fake_iso_entry_count);
   static char path_buffer[1024];
   strcpy(path_buffer, file_util::get_jak_project_dir().string().c_str());
@@ -200,16 +185,6 @@ LoadStackEntry* FS_Open(FileRecord* fr, int32_t offset) {
       selected->fr = fr;
       selected->location = 0;
 
-      // in jak 2, this took a mode.
-      // mode 0 and 1 behave the same and check for blzo
-      // mode 2 will assume no blzo
-      // other modes will read uninitialized memory, so likely not needed.
-      // we don't use the blzo compression, so just ignore this
-
-      selected->uncompressed_size = fr->size;
-      selected->uses_blzo = 0;
-      selected->unk = 0;
-
       if (offset != -1) {
         selected->location += offset;
       }
@@ -234,10 +209,6 @@ LoadStackEntry* FS_OpenWad(FileRecord* fr, int32_t offset) {
       selected = sLoadStack + i;
       selected->fr = fr;
       selected->location = offset;
-      // jak2
-      selected->uses_blzo = 0;
-      selected->unk = 0;
-      selected->uncompressed_size = 0;  // weird, but that's what they did.
       return selected;
     }
   }
@@ -334,8 +305,7 @@ uint32_t FS_SyncRead() {
  */
 void FS_PollDrive() {}
 
-uint32_t FS_LoadMusic(char* name, void* buffer) {
-  s32* bank_handle = (s32*)buffer;
+uint32_t FS_LoadMusic(char* name, s32* bank_handle) {
   char namebuf[16];
   strcpy(namebuf, name);
   namebuf[8] = 0;
@@ -350,8 +320,7 @@ uint32_t FS_LoadMusic(char* name, void* buffer) {
   return 0;
 }
 
-uint32_t FS_LoadSoundBank(char* name, void* buffer) {
-  SoundBank* bank = (SoundBank*)buffer;
+uint32_t FS_LoadSoundBank(char* name, SoundBank* bank) {
   char namebuf[16];
 
   int offset = 10 * 2048;
@@ -371,61 +340,12 @@ uint32_t FS_LoadSoundBank(char* name, void* buffer) {
   }
 
   auto fp = file_util::open_file(get_file_path(file), "rb");
-  fread(buffer, offset, 1, fp);
+  fread(bank, offset, 1, fp);
   fclose(fp);
 
   s32 handle = snd_BankLoadEx(get_file_path(file), offset, 0, 0);
   snd_ResolveBankXREFS();
   PrintBankInfo(bank);
-  bank->bank_handle = handle;
-
-  return 0;
-}
-
-uint32_t FS_LoadMusic2(char* name, void* buffer) {
-  FileRecord* file = nullptr;
-  u32* bank_handle = (u32*)buffer;
-  char namebuf[16];
-  char isoname[16];
-  u32 handle;
-
-  strncpy(namebuf, name, 12);
-  namebuf[8] = 0;
-  strcat(namebuf, ".mus");
-
-  MakeISOName(isoname, namebuf);
-
-  file = FS_FindIN(isoname);
-  if (!file) {
-    return 6;
-  }
-
-  handle = snd_BankLoadEx(get_file_path(file), 0, 0xcfcc0, 0x61a80);
-  snd_ResolveBankXREFS();
-  *bank_handle = handle;
-
-  return 0;
-}
-
-uint32_t FS_LoadSoundBank2(char* name, void* buffer) {
-  SoundBank* bank = (SoundBank*)buffer;
-  FileRecord* file = nullptr;
-  char namebuf[16];
-  char isoname[16];
-  u32 handle;
-
-  strncpy(namebuf, name, 12);
-  namebuf[8] = 0;
-  strcat(namebuf, ".sbk");
-
-  MakeISOName(isoname, namebuf);
-  file = FS_FindIN(isoname);
-  if (!file) {
-    return 6;
-  }
-
-  handle = snd_BankLoadEx(get_file_path(file), 0, bank->spu_loc, bank->spu_size);
-  snd_ResolveBankXREFS();
   bank->bank_handle = handle;
 
   return 0;

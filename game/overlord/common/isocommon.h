@@ -19,8 +19,9 @@ constexpr int LOAD_TO_EE_CMD_ID = 0x100;         // command to load file to ee
 constexpr int LOAD_TO_IOP_CMD_ID = 0x101;        // command to load to iop
 constexpr int LOAD_TO_EE_OFFSET_CMD_ID = 0x102;  // command to load file to ee with offset.
 
-constexpr int LOAD_DGO_CMD_ID = 0x200;           // command to load DGO
+constexpr int LOAD_DGO_CMD_ID = 0x200;  // command to load DGO
 
+struct SoundBank;
 
 /*!
  * Record for file. There is one for each file in the FS, and pointers to each FileRecord act as
@@ -40,16 +41,13 @@ struct FileRecord {
 struct LoadStackEntry {
   FileRecord* fr;
   uint32_t location;           // sectors.
-  uint32_t uses_blzo;          // added in jak 2
-  uint32_t unk;                // added in jak 2
-  uint32_t uncompressed_size;  // added in jak 2
 };
 
 /*!
  * API to access files. There are debug modes + reading from an ISO filesystem.
  */
 struct IsoFs {
-  int (*init)(u8*);                                         // 0
+  int (*init)();                                            // 0
   FileRecord* (*find)(const char*);                         // 4
   FileRecord* (*find_in)(const char*);                      // 8
   uint32_t (*get_length)(FileRecord*);                      // c
@@ -58,8 +56,8 @@ struct IsoFs {
   void (*close)(LoadStackEntry*);                           // 18
   uint32_t (*begin_read)(LoadStackEntry*, void*, int32_t);  // 1c
   uint32_t (*sync_read)();                                  // 20
-  uint32_t (*load_sound_bank)(char*, void*);                // 24
-  uint32_t (*load_music)(char*, void*);
+  uint32_t (*load_sound_bank)(char*, SoundBank*);           // 24
+  uint32_t (*load_music)(char*, s32*);
   void (*poll_drive)();
 };
 

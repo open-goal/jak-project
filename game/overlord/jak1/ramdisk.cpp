@@ -13,8 +13,8 @@
 #include "common/util/Assert.h"
 
 #include "game/common/ramdisk_rpc_types.h"
-#include "game/overlord/common/iso.h"
-#include "game/overlord/common/iso_api.h"
+#include "game/overlord/jak1/iso.h"
+#include "game/overlord/jak1/iso_api.h"
 #include "game/runtime.h"
 #include "game/sce/iop.h"
 
