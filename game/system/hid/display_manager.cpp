@@ -202,6 +202,7 @@ void DisplayManager::update_curr_display_info() {
     sdl_util::log_error("could not retrieve current window's display index");
   }
   SDL_GL_GetDrawableSize(m_window, &m_window_width, &m_window_height);
+  SDL_GetWindowPosition(m_window, &m_window_xpos, &m_window_ypos);
   // Update the scale of the display as well
   // TODO - figure out how to do this on SDL
   // https://github.com/libsdl-org/SDL/commit/ab81a559f43abc0858c96788f8e00bbb352287e8
