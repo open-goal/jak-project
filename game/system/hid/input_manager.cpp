@@ -15,9 +15,9 @@
 
 #include "third-party/imgui/imgui.h"
 
-InputManager::InputManager() {
-  // Load user settings
-  m_settings = std::make_shared<game_settings::InputSettings>(game_settings::InputSettings());
+InputManager::InputManager()
+    // Load user settings
+    : m_settings(std::make_shared<game_settings::InputSettings>(game_settings::InputSettings())) {
   // Update to latest controller DB file
   std::string mapping_path =
       (file_util::get_jak_project_dir() / "game" / "assets" / "sdl_controller_db.txt").string();

@@ -312,7 +312,7 @@ void InputBindingGroups::assign_button_bind(u32 sdl_idx,
   bind_meta.assigned = true;
 }
 
-void InputBindingGroups::set_bindings(const InputBindingGroups binds) {
+void InputBindingGroups::set_bindings(const InputBindingGroups& binds) {
   analog_axii = binds.analog_axii;
   button_axii = binds.button_axii;
   buttons = binds.buttons;
@@ -322,11 +322,9 @@ void InputBindingGroups::set_bindings(const InputBindingGroups binds) {
 
 InputBindingInfo::InputBindingInfo(const InputBinding bind,
                                    const InputDeviceType device_type,
-                                   const s32 sdl_code) {
-  sdl_idx = sdl_code;
-  pad_idx = bind.pad_data_index;
+                                   const s32 sdl_code)
+    : sdl_idx(sdl_code), pad_idx(bind.pad_data_index), modifiers(bind.modifiers) {
   analog_button = false;
-  modifiers = bind.modifiers;
   switch (device_type) {
     case CONTROLLER:
       host_name = sdl_util::get_controller_button_name(sdl_code);

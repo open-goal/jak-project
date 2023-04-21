@@ -72,13 +72,13 @@ class DisplayManager {
   // to explicitly define which monitor the game should be fullscreened with
   int m_selected_fullscreen_display_id;
 
-  int m_window_xpos;
-  int m_window_ypos;
-  int m_window_width;
-  int m_window_height;
-  float m_window_scale_x;
-  float m_window_scale_y;
-  WindowState m_window_state;
+  int m_window_xpos = 0;
+  int m_window_ypos = 0;
+  int m_window_width = 0;
+  int m_window_height = 0;
+  float m_window_scale_x = 1.0;
+  float m_window_scale_y = 1.0;
+  WindowState m_window_state = WindowState::Restored;
 
   // The currently set display mode for each display
   // There is no reason to keep track of all display modes for all monitors

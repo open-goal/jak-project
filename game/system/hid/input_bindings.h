@@ -270,7 +270,7 @@ struct InputBindingGroups {
                           const bool analog_button = false,
                           const std::optional<InputModifiers> modifiers = {});
 
-  void set_bindings(const InputBindingGroups binds);
+  void set_bindings(const InputBindingGroups& binds);
 
  private:
   typedef std::pair<int, bool> BindCacheKey;

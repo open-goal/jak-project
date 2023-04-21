@@ -122,7 +122,9 @@ static void gl_exit() {
   gl_inited = false;
 }
 
-static void init_imgui(SDL_Window* window, SDL_GLContext gl_context, std::string glsl_version) {
+static void init_imgui(SDL_Window* window,
+                       SDL_GLContext gl_context,
+                       const std::string& glsl_version) {
   // check that version of the library is okay
   IMGUI_CHECKVERSION();
 
@@ -254,10 +256,11 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
 }
 
 GLDisplay::GLDisplay(SDL_Window* window, SDL_GLContext gl_context, bool is_main)
-    : m_window(window), m_gl_context(gl_context) {
+    : m_window(window),
+      m_gl_context(gl_context),
+      m_input_manager(std::make_shared<InputManager>()),
+      m_display_manager(std::make_shared<DisplayManager>(window)) {
   m_main = is_main;
-  m_input_manager = std::make_shared<InputManager>();
-  m_display_manager = std::make_shared<DisplayManager>(m_window);
 
   // Register commands
   m_input_manager->register_command(CommandBinding::Source::KEYBOARD,

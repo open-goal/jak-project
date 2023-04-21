@@ -3,12 +3,13 @@
 
 #include <algorithm>
 
+#include <common/global_profiler/GlobalProfiler.h>
+
 #include "game/graphics/gfx.h"
 #include "game/kernel/svnrev.h"
 
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_style.h"
-#include <common/global_profiler/GlobalProfiler.h>
 
 void FrameTimeRecorder::finish_frame() {
   m_frame_times[m_idx++] = m_compute_timer.getMs();
