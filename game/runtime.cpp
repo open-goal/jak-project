@@ -361,7 +361,7 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
     } catch (std::exception& e) {
       lg::error("Exception thrown from graphics loop: {}\n", e.what());
       lg::error("Everything will crash now. good luck\n");
-      throw e;
+      throw;
     }
   }
 

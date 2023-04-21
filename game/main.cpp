@@ -14,6 +14,7 @@
 #include "common/util/os.h"
 #include "common/util/unicode_util.h"
 #include "common/versions.h"
+#include <common/global_profiler/GlobalProfiler.h>
 
 #include "game/common/game_common_types.h"
 
@@ -140,6 +141,7 @@ int main(int argc, char** argv) {
   bool disable_avx2 = false;
   bool disable_display = false;
   bool disable_debug_vm = false;
+  bool enable_profiling = false;
   int port_number = -1;
   fs::path project_path_override;
   std::vector<std::string> game_args;
@@ -152,6 +154,7 @@ int main(int argc, char** argv) {
   app.add_flag("--no-avx2", verbose_logging, "Disable AVX2 for testing");
   app.add_flag("--no-display", disable_display, "Disable video display");
   app.add_flag("--no-vm", disable_debug_vm, "Disable debug PS2 VM (defaulted to on)");
+  app.add_flag("--profile", enable_profiling, "Enables profiling immediately from startup");
   app.add_option("--proj-path", project_path_override,
                  "Specify the location of the 'data/' folder");
   app.footer(game_arg_documentation());
@@ -159,6 +162,8 @@ int main(int argc, char** argv) {
                  "Remaining arguments (after '--') that are passed-through to the game itself");
   app.allow_extras();
   CLI11_PARSE(app, argc, argv);
+
+  prof().set_enable(enable_profiling);
 
   // Create struct with all non-kmachine handled args to pass to the runtime
   GameLaunchOptions game_options;

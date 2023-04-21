@@ -8,6 +8,7 @@
 
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_style.h"
+#include <common/global_profiler/GlobalProfiler.h>
 
 void FrameTimeRecorder::finish_frame() {
   m_frame_times[m_idx++] = m_compute_timer.getMs();
@@ -148,7 +149,9 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
     }
 
     if (ImGui::BeginMenu("Event Profiler")) {
-      ImGui::Checkbox("Record", &record_events);
+      if (ImGui::Checkbox("Record", &record_events)) {
+        prof().set_enable(record_events);
+      }
       ImGui::MenuItem("Dump to file", nullptr, &dump_events);
       ImGui::EndMenu();
     }

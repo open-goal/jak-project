@@ -170,65 +170,85 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
                                                    GameVersion game_version,
                                                    bool is_main) {
   // Setup the window
+  prof().instant_event("ROOT");
+  prof().begin_event("startup::sdl::create_window");
   // TODO - SDL2 doesn't seem to support HDR (and neither does windows)
   //   Related -
   //   https://answers.microsoft.com/en-us/windows/forum/all/hdr-monitor-low-brightness-after-exiting-full/999f7ee9-7ba3-4f9c-b812-bbeb9ff8dcc1
   SDL_Window* window =
       SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height,
                        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+  prof().end_event();
   if (!window) {
     sdl_util::log_error("gl_make_display failed - Could not create display window");
     return NULL;
   }
 
   // Make an OpenGL Context
+  prof().begin_event("startup::sdl::create_context");
   SDL_GLContext gl_context = SDL_GL_CreateContext(window);
+  prof().end_event();
   if (!gl_context) {
     sdl_util::log_error("gl_make_display failed - Could not create OpenGL Context");
     return NULL;
   }
-  if (SDL_GL_MakeCurrent(window, gl_context) != 0) {
-    sdl_util::log_error("gl_make_display failed - Could not associated context with window");
-    return NULL;
-  }
 
-  if (!gl_inited) {
-    gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress);
-    if (!gladLoadGL()) {
-      lg::error("GL init fail");
+  {
+    auto p = scoped_prof("startup::sdl::assign_context");
+    if (SDL_GL_MakeCurrent(window, gl_context) != 0) {
+      sdl_util::log_error("gl_make_display failed - Could not associated context with window");
       return NULL;
     }
-    g_gfx_data = std::make_unique<GraphicsData>(game_version);
-    gl_inited = true;
-    const char* gl_version = (const char*)glGetString(GL_VERSION);
-    lg::info("OpenGL initialized - v{}.{} | Renderer: {}", GLVersion.major, GLVersion.minor,
-             gl_version);
   }
 
-  // Setup Window Icon
-  // TODO - hiDPI icon
-  // https://sourcegraph.com/github.com/dfranx/SHADERed/-/blob/main.cpp?L422:24&subtree=true
-  int icon_width;
-  int icon_height;
-  std::string image_path =
-      (file_util::get_jak_project_dir() / "game" / "assets" / "appicon.png").string();
-  auto icon_data =
-      stbi_load(image_path.c_str(), &icon_width, &icon_height, nullptr, STBI_rgb_alpha);
-  if (icon_data) {
-    SDL_Surface* icon_surf = SDL_CreateRGBSurfaceWithFormatFrom(
-        (void*)icon_data, icon_width, icon_height, 32, 4 * icon_width, SDL_PIXELFORMAT_RGBA32);
-    SDL_SetWindowIcon(window, icon_surf);
-    SDL_FreeSurface(icon_surf);
-    stbi_image_free(icon_data);
-  } else {
-    lg::error("Could not load icon for OpenGL window");
+  {
+    auto p = scoped_prof("startup::sdl::glad_init");
+    if (!gl_inited) {
+      gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress);
+      if (!gladLoadGL()) {
+        lg::error("GL init fail");
+        return NULL;
+      }
+      g_gfx_data = std::make_unique<GraphicsData>(game_version);
+      gl_inited = true;
+      const char* gl_version = (const char*)glGetString(GL_VERSION);
+      lg::info("OpenGL initialized - v{}.{} | Renderer: {}", GLVersion.major, GLVersion.minor,
+               gl_version);
+    }
   }
 
+  {
+    auto p = scoped_prof("startup::sdl::window_extras");
+    // Setup Window Icon
+    // TODO - hiDPI icon
+    // https://sourcegraph.com/github.com/dfranx/SHADERed/-/blob/main.cpp?L422:24&subtree=true
+    int icon_width;
+    int icon_height;
+    std::string image_path =
+        (file_util::get_jak_project_dir() / "game" / "assets" / "appicon.png").string();
+    auto icon_data =
+        stbi_load(image_path.c_str(), &icon_width, &icon_height, nullptr, STBI_rgb_alpha);
+    if (icon_data) {
+      SDL_Surface* icon_surf = SDL_CreateRGBSurfaceWithFormatFrom(
+          (void*)icon_data, icon_width, icon_height, 32, 4 * icon_width, SDL_PIXELFORMAT_RGBA32);
+      SDL_SetWindowIcon(window, icon_surf);
+      SDL_FreeSurface(icon_surf);
+      stbi_image_free(icon_data);
+    } else {
+      lg::error("Could not load icon for OpenGL window");
+    }
+  }
+
+  prof().begin_event("startup::sdl::create_GLDisplay");
   auto display = std::make_shared<GLDisplay>(window, gl_context, is_main);
   display->set_imgui_visible(Gfx::g_debug_settings.show_imgui);
+  prof().end_event();
 
-  // setup imgui
-  init_imgui(window, gl_context, "#version 430");
+  {
+    auto p = scoped_prof("startup::sdl::init_imgui");
+    // setup imgui
+    init_imgui(window, gl_context, "#version 430");
+  }
 
   return std::static_pointer_cast<GfxDisplay>(display);
 }
@@ -357,21 +377,16 @@ void update_global_profiler() {
     prof().set_enable(false);
     g_gfx_data->debug_gui.dump_events = false;
 
-    auto dir_path = file_util::get_jak_project_dir() / "profile_data";
-    fs::create_directories(dir_path);
+    // TODO - the file rotation code had an infinite loop here if it couldn't find anything
+    // matching the format
+    //
+    // Does the existing log rotation code have that problem?
 
-    if (fs::exists(dir_path / "prof.json")) {
-      int file_index = 1;
-      auto file_path = dir_path / fmt::format("prof{}.json", file_index);
-      while (!fs::exists(file_path)) {
-        file_path = dir_path / fmt::format("prof{}.json", ++file_index);
-      }
-      prof().dump_to_json(file_path.string());
-    } else {
-      prof().dump_to_json((dir_path / "prof.json").string());
-    }
+    auto file_path = file_util::get_jak_project_dir() / "profile_data" /
+                     fmt::format("prof-{}.json", str_util::current_local_timestamp_no_colons());
+    file_util::create_dir_if_needed_for_file(file_path);
+    prof().dump_to_json(file_path.string());
   }
-  prof().set_enable(g_gfx_data->debug_gui.record_events);
 }
 
 void GLDisplay::process_sdl_events() {
