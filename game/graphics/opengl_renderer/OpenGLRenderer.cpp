@@ -13,6 +13,7 @@
 #include "game/graphics/opengl_renderer/SkyRenderer.h"
 #include "game/graphics/opengl_renderer/TextureUploadHandler.h"
 #include "game/graphics/opengl_renderer/VisDataHandler.h"
+#include "game/graphics/opengl_renderer/Warp.h"
 #include "game/graphics/opengl_renderer/background/Shrub.h"
 #include "game/graphics/opengl_renderer/background/TFragment.h"
 #include "game/graphics/opengl_renderer/background/Tie3.h"
@@ -45,7 +46,8 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
                                       const GLchar* message,
                                       const void* /*userParam*/) {
   if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
-    lg::debug("OpenGL notification 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
+    lg::debug("[{}] OpenGL notification 0x{:X} S{:X} T{:X}: {}", g_current_render, id, source, type,
+              message);
   } else if (severity == GL_DEBUG_SEVERITY_LOW) {
     lg::info("[{}] OpenGL message 0x{:X} S{:X} T{:X}: {}", g_current_render, id, source, type,
              message);
@@ -62,7 +64,9 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
 OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
                                std::shared_ptr<Loader> loader,
                                GameVersion version)
-    : m_render_state(texture_pool, loader, version), m_version(version) {
+    : m_render_state(texture_pool, loader, version),
+      m_collide_renderer(version),
+      m_version(version) {
   // setup OpenGL errors
   glEnable(GL_DEBUG_OUTPUT);
   glDebugMessageCallback(opengl_error_callback, nullptr);
@@ -154,6 +158,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
     init_bucket_renderer<Merc2>(
         fmt::format("merc-l{}-pris", i), BucketCategory::MERC,
         GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_PRIS, BucketId::MERC_L1_PRIS, i));
+    init_bucket_renderer<Generic2>(
+        fmt::format("gmerc-l{}-pris", i), BucketCategory::GENERIC,
+        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_PRIS, BucketId::GMERC_L1_PRIS, i));
 
     init_bucket_renderer<TextureUploadHandler>(
         fmt::format("tex-l{}-pris2", i), BucketCategory::TEX,
@@ -168,6 +175,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
     init_bucket_renderer<Merc2>(
         fmt::format("merc-l{}-water", i), BucketCategory::MERC,
         GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_WATER, BucketId::MERC_L1_WATER, i));
+    init_bucket_renderer<Generic2>(
+        fmt::format("gmerc-l{}-water", i), BucketCategory::GENERIC,
+        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_WATER, BucketId::GMERC_L1_WATER, i));
     init_bucket_renderer<TFragment>(
         fmt::format("tfrag-w-l{}-alpha", i), BucketCategory::TFRAG,
         GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_W_L0_WATER, BucketId::TFRAG_W_L1_WATER, i),
@@ -207,6 +217,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<LightningRenderer>("effects", BucketCategory::OTHER, BucketId::EFFECTS);
   init_bucket_renderer<TextureUploadHandler>("tex-all-warp", BucketCategory::TEX,
                                              BucketId::TEX_ALL_WARP);
+  init_bucket_renderer<Warp>("warp", BucketCategory::GENERIC, BucketId::GMERC_WARP);
   init_bucket_renderer<DirectRenderer>("debug-no-zbuf1", BucketCategory::OTHER,
                                        BucketId::DEBUG_NO_ZBUF1, 0x8000);
   init_bucket_renderer<TextureUploadHandler>("tex-all-map", BucketCategory::TEX,
@@ -918,6 +929,13 @@ void OpenGLRenderer::dispatch_buckets_jak2(DmaFollower dma,
     m_render_state.next_bucket += 16;
     vif_interrupt_callback(bucket_id + 1);
     m_category_times[(int)m_bucket_categories[bucket_id]] += bucket_prof.get_elapsed_time();
+
+    // hack to draw the collision mesh in the middle the drawing
+    if (bucket_id + 1 == (int)jak2::BucketId::TEX_L0_ALPHA &&
+        Gfx::g_global_settings.collision_enable) {
+      auto p = prof.make_scoped_child("collision-draw");
+      m_collide_renderer.render(&m_render_state, p);
+    }
   }
   vif_interrupt_callback(m_bucket_renderers.size());
 

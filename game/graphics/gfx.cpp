@@ -315,7 +315,8 @@ u32 Init(GameVersion version) {
     if (g_game_version == GameVersion::Jak2) {
       title += " - Work in Progress";
     }
-    title += fmt::format(" - {} - {}", version_to_game_name_external(g_game_version), build_revision());
+    title +=
+        fmt::format(" - {} - {}", version_to_game_name_external(g_game_version), build_revision());
     Display::InitMainDisplay(640, 480, title.c_str(), g_settings, version);
   }
 

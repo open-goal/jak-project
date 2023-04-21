@@ -1202,8 +1202,14 @@
                     (set! (-> pp clock) (-> sv-16 clock))
 
                     ;; draw!
-                    (if (or (= lod-idx (-> dc cur-lod)) (logtest? (-> dc status) (draw-control-status lod-set)))
-                        (foreground-draw dc dma-buf dist-w)
+                    ;; PC port note : we ALWAYS disable the envmap hack when a process-drawable has warp effect enabled
+                    (when (or (= lod-idx (-> dc cur-lod)) (logtest? (-> dc status) (draw-control-status lod-set)))
+                        (protect ((-> *pc-settings* force-envmap?))
+                          (dotimes (eff-i (-> dc mgeo header effect-count))
+                            (if (logtest? (effect-bits cross-fade) (-> dc mgeo effect eff-i effect-bits))
+                              (false! (-> *pc-settings* force-envmap?))))
+                          (foreground-draw dc dma-buf dist-w)
+                          )
                         )
                     )
 
@@ -1387,7 +1393,7 @@
     (bones-init gp-0)
     (bones-mtx-calc-execute)
     ;; generic-merc/shadow have VU0/CPU parts that need bones, run them here.
-    ;;(generic-merc-execute-all gp-0)
+    (generic-merc-execute-all gp-0)
     ;;(shadow-execute-all gp-0)
     )
   (lightning-draw-all)
@@ -1745,7 +1751,10 @@
   (tick! (-> arg0 bg-clock))
   (set! (-> arg0 bg-clock frame-counter) (the-as time-frame (mod (-> arg0 bg-clock frame-counter) #x69780)))
   (tick! (-> arg0 part-clock))
-  (#when PC_PORT
+  (with-pc
+    (if (-> *pc-settings* fast-airlock?)
+        (update-rates! *airlock-clock* (* *airlock-speed* (-> arg0 entity-clock clock-ratio)))
+        (update-rates! *airlock-clock* (-> arg0 entity-clock clock-ratio)))
     (tick! *airlock-clock*))
 
   ; (when (and (nonzero? *screen-shot-work*) (!= (-> *screen-shot-work* count) -1))

@@ -10,6 +10,7 @@ uniform mat4 camera;
 uniform float fog_constant;
 uniform float fog_min;
 uniform float fog_max;
+uniform int decal;
 layout (binding = 10) uniform sampler1D tex_T1; // note, sampled in the vertex shader on purpose.
 
 out vec4 fragment_color;
@@ -71,6 +72,10 @@ void main() {
     // combine
     fragment_color *= tod_color * 4;
     fragment_color.a *= 2;
+
+    if (decal == 1) {
+        fragment_color.xyz = vec3(1.0, 1.0, 1.0);
+    }
 
     tex_coord = tex_coord_in;
     tex_coord.xy /= 4096;

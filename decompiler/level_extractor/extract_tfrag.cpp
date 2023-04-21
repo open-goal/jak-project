@@ -1911,7 +1911,13 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
           update_mode_from_test1(val, mode);
           break;
         case GsRegisterAddress::TEX0_1:
-          // ASSERT(val == 0); HACK jak 2 sets this.
+          ASSERT(val == 0 || val == 0x8'0000'0000);
+          if (val == 0x8'0000'0000) {
+            mode.set_decal(true);
+          } else {
+            mode.set_decal(false);
+          }
+          mode.set_tcc(false);
           break;
         case GsRegisterAddress::TEX1_1:
           ASSERT(val == 0x120);  // some flag

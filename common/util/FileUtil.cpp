@@ -144,9 +144,9 @@ bool setup_project_path(std::optional<fs::path> project_path_override) {
   }
 
   if (project_path_override) {
-    gFilePathInfo.path_to_data = *project_path_override;
+    gFilePathInfo.path_to_data = fs::absolute(project_path_override.value());
     gFilePathInfo.initialized = true;
-    lg::info("Using explicitly set project path: {}", project_path_override->string());
+    lg::info("Using explicitly set project path: {}", gFilePathInfo.path_to_data.string());
     return true;
   }
 

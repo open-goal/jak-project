@@ -181,8 +181,8 @@ struct MercExtraInfo {
 };
 
 constexpr int kTextureScrollEffectBit = 1;
-constexpr int kTransEffectBitJak1 = 2;  // so far only confirmed for jak 1
-constexpr int kRippleEffectBit = 4;     // true in jak 1 and jak 2
+constexpr int kTransEffectBit = 2;   // true in 1 and 2
+constexpr int kRippleEffectBit = 4;  // true in jak 1 and jak 2
 
 struct MercEffect {
   //((frag-geo         merc-fragment          :offset-assert 0) ;; ?

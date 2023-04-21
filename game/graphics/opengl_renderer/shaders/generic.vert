@@ -11,6 +11,7 @@ uniform vec4 scale;
 uniform float mat_23;
 uniform float mat_33;
 uniform vec4 hvdf_offset;
+uniform uint warp_sample_mode;
 
 out vec2 tex_coord;
 
@@ -18,6 +19,9 @@ out vec4 fragment_color;
 out float fog;
 
 out flat uvec2 tex_info;
+
+const float warp_off = 1.f - (416.f/512.f);
+const float warp_mult = 512.f/416.f;
 
 void main() {
     // lq.xy vf22, 0(vi10)          texture load?
@@ -50,7 +54,11 @@ void main() {
 
     // itof12.xyz vf18, vf22        texture int to float
     // vu.vf18.itof12(Mask::xyz, vu.vf22);
-    tex_coord = tex_coord_in / 4096.f; // TODO, more and wrong.
+    tex_coord = tex_coord_in / 4096.f;
+
+    if (warp_sample_mode == 1) {
+        tex_coord = vec2(tex_coord.x, (1.0f - tex_coord.y - warp_off) * warp_mult);
+    }
 
     // mul.xyz vf12, vf12, Q        persepective divide
     // gen.vtx_p0.mul(Mask::xyz, gen.vtx_p0, vu.Q);

@@ -58,7 +58,7 @@ We do not distribute any assets from the game - you must use your own legitimate
 
 ## Project Description
 
-This project is to port Jak 1 (NTSC, "black label" version) to PC. Over 98% of this game is written in GOAL, a custom Lisp language developed by Naughty Dog. Our strategy is:
+This project is to port the original Jak and Daxter and Jak II to PC. Over 98% of the games are written in GOAL, a custom Lisp language developed by Naughty Dog. Our strategy is:
 - decompile the original game code into human-readable GOAL code
 - develop our own compiler for GOAL and recompile game code for x86-64
 - create a tool to extract game assets into formats that can be easily viewed or modified
@@ -76,7 +76,7 @@ We support both Linux and Windows on x86-64.
 
 ### Current Status
 
-Jak 1 is largely playable from start to finish with a handful of bugs that are continually being ironed out.
+Jak 1 is largely playable from start to finish with a handful of bugs that are continually being ironed out. Jak 2 is in development.
 
 ![](./docs/img/promosmall1.png)
 ![](./docs/img/promosmall2.png)
@@ -299,11 +299,11 @@ Run the following to build the game:
 g > (mi)
 ```
 
-> IMPORTANT NOTE! If you're not using the black label version, you may hit issues trying to run `(mi)` in this step. An example error might include something like:
+> IMPORTANT NOTE! If you're not using the non-default version of the game, you may hit issues trying to run `(mi)` in this step. An example error might include something like:
 >
 > `Input file iso_data/jak1/MUS/TWEAKVAL.MUS does not exist.`
 >
-> This is because other version paths are not currently accounted for in the build. A quick workaround is to rename both your `decompiler_out` and `iso_data` folders to use the black label naming, for example changing `decompiler_out/jak1_pal` to `decompiler_out/jak1` and `iso_data/jak1_pal` to `iso_data/jak1`, then running `(mi)` again.
+> This is because the decompiler inputs/outputs using the `gameName` JSON field in the decompiler config. For example if you are using Jak 1 PAL, it will assume `iso_data/jak1_pal` and `decompiler_out/jak1_pal`.  Therefore, you can inform the REPL/compiler of this via the `gameVersionFolder` config field described [here](./goal_src/user/README.md)
 
 #### Run the Game
 

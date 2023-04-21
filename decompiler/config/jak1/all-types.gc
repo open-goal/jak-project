@@ -862,7 +862,7 @@
   (max 116)
   )
 
-(defenum game-text-id
+(defenum text-id
   :type uint32
   :bitfield #f
 ;; GAME-TEXT-ID ENUM BEGINS
@@ -6217,7 +6217,7 @@
 ;; - Types
 
 (deftype game-text (structure)
-  ((id   game-text-id  :offset-assert 0)
+  ((id   text-id  :offset-assert 0)
    (text string  :offset-assert 4)
    )
   :pack-me
@@ -6236,7 +6236,7 @@
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-    (lookup-text! (_type_ game-text-id symbol) string 9)
+    (lookup-text! (_type_ text-id symbol) string 9)
     )
   )
 
@@ -6909,7 +6909,7 @@
   )
 
 (deftype level-hint (process)
-  ((text-id-to-display game-text-id    :offset-assert 112)
+  ((text-id-to-display text-id    :offset-assert 112)
    (sound-to-play      string    :offset-assert 116)
    (trans              vector    :offset-assert 120)
    (sound-id           sound-id  :offset-assert 124)
@@ -6957,7 +6957,7 @@
 
 (deftype level-hint-control (structure)
   ((delay-before-playing        time-frame  :offset-assert 0)
-   (id                          game-text-id  :offset-assert 8)
+   (id                          text-id  :offset-assert 8)
    (num-attempts-before-playing int8    :offset-assert 12)
    (num-success-before-killing  int8    :offset-assert 13)
    (num-attempts                int8    :offset-assert 14)
@@ -9846,12 +9846,12 @@
     (get-continue-by-name (_type_ string) continue-point 18)
     (set-continue! (_type_ basic) continue-point 19)
     (buzzer-count (_type_ game-task) int 20)
-    (seen-text? (_type_ game-text-id) symbol 21)
-    (mark-text-as-seen (_type_ game-text-id) none 22)
+    (seen-text? (_type_ text-id) symbol 21)
+    (mark-text-as-seen (_type_ text-id) none 22)
     (got-buzzer? (_type_ game-task int) symbol 23)
     (save-game! (_type_ game-save string) none 24)
     (load-game! (_type_ game-save) game-save 25)
-    (clear-text-seen! (_type_ game-text-id) none 26)
+    (clear-text-seen! (_type_ text-id) none 26)
     (get-death-count (_type_ symbol) int 27)
     (get-health-percent-lost (_type_ symbol) float 28)
     )
@@ -15719,7 +15719,7 @@
 
 (deftype task-info-data (basic)
   ((task-id                  game-task     :offset-assert 4)
-   (task-name                game-text-id  4 :offset-assert 8)
+   (task-name                text-id  4 :offset-assert 8)
    (text-index-when-resolved int32     :offset-assert 24)
    )
   :method-count-assert 9
@@ -15728,7 +15728,7 @@
   )
 
 (deftype level-tasks-info (basic)
-  ((level-name-id     game-text-id    :offset-assert 4)
+  ((level-name-id     text-id    :offset-assert 4)
    (text-group-index  int32     :offset-assert 8)
    (nb-of-tasks       int32     :offset-assert 12)
    (buzzer-task-index int32     :offset-assert 16)
@@ -15845,7 +15845,7 @@
 
 (deftype game-option (basic)
   ((option-type     game-option-type  :offset-assert   8)
-   (name            game-text-id      :offset-assert  16)
+   (name            text-id      :offset-assert  16)
    (scale           symbol            :offset-assert  20)
    (param1          float             :offset-assert  24)
    (param2          float             :offset-assert  28)
@@ -18231,7 +18231,7 @@
    (blend-on-exit        art-joint-anim          :offset-assert 280)
    (camera               handle                  :offset-assert 288)
    (will-talk            symbol                   :offset-assert 296)
-   (talk-message         game-text-id                  :offset-assert 300)
+   (talk-message         text-id                  :offset-assert 300)
    (last-talk            time-frame                  :offset-assert 304)
    (bounce-away          symbol                   :offset-assert 312)
    (ambient              ambient-control :inline :offset-assert 320)
@@ -18298,7 +18298,7 @@
 ;; - Functions
 
 (define-extern get-task-control (function game-task task-control))
-(define-extern level-hint-spawn (function game-text-id string entity process-tree game-task none))
+(define-extern level-hint-spawn (function text-id string entity process-tree game-task none))
 (define-extern get-game-count (function int count-info))
 (define-extern activate-orb-all (function int int))
 (define-extern close-specific-task! (function game-task task-status game-task))
@@ -20549,10 +20549,10 @@
 
 ;; - Functions
 
-(define-extern find-hint-control-index (function game-text-id int))
-(define-extern start-hint-timer (function game-text-id none))
-(define-extern increment-success-for-hint (function game-text-id none))
-(define-extern can-hint-be-played? (function game-text-id entity string symbol))
+(define-extern find-hint-control-index (function text-id int))
+(define-extern start-hint-timer (function text-id none))
+(define-extern increment-success-for-hint (function text-id none))
+(define-extern can-hint-be-played? (function text-id entity string symbol))
 (define-extern update-task-hints (function none))
 
 ;; - Symbols
@@ -20600,7 +20600,7 @@
 (define-extern ambient-type-music (function drawable-ambient vector none))
 (define-extern level-hint-task-process (function entity uint128 string int))
 (define-extern bottom-hud-hidden? (function symbol))
-(define-extern level-hint-init-by-other (function game-text-id string entity none :behavior level-hint))
+(define-extern level-hint-init-by-other (function text-id string entity none :behavior level-hint))
 (define-extern voicebox-spawn (function process vector (pointer process)))
 (define-extern hide-bottom-hud (function none))
 (define-extern ambient-hint-init-by-other (function string vector symbol none :behavior level-hint))
@@ -22315,7 +22315,7 @@
 (define-extern *save-options* (array game-option))
 (define-extern *save-options-title* (array game-option))
 (define-extern *options-remap* (array (array game-option)))
-(define-extern *language-name-remap* (array game-text-id))
+(define-extern *language-name-remap* (array text-id))
 (define-extern *task-egg-starting-x* (array int32))
 (define-extern *game-counts* game-count-info)
 (define-extern *level-task-data-remap* (array int32))
