@@ -11,5 +11,5 @@ add_executable(lsp
   protocol/hover.cpp
   state/data/mips_instruction.cpp)
 
-target_link_libraries(lsp common decomp)
+target_link_libraries(lsp common decomp tree-sitter)
 

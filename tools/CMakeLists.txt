@@ -15,3 +15,7 @@ target_link_libraries(memory_dump_tool common decomp)
 add_executable(type_searcher
         type_searcher/main.cpp)
 target_link_libraries(type_searcher common decomp)
+
+add_executable(formatter
+        formatter/main.cpp)
+target_link_libraries(formatter common tree-sitter)
