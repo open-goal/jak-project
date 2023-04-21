@@ -55,6 +55,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/sprite/Sprite3.cpp
         graphics/opengl_renderer/TextureUploadHandler.cpp
         graphics/opengl_renderer/VisDataHandler.cpp
+        graphics/opengl_renderer/Warp.cpp
         graphics/pipelines/opengl.cpp
         graphics/sceGraphicsInterface.cpp
         graphics/texture/jak1_tpage_dir.cpp
@@ -128,6 +129,8 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/debug.cpp
         mips2c/jak2_functions/font.cpp
         mips2c/jak2_functions/foreground.cpp
+        mips2c/jak2_functions/generic_effect.cpp
+        mips2c/jak2_functions/generic_merc.cpp
         mips2c/jak2_functions/joint.cpp
         mips2c/jak2_functions/lights.cpp
         mips2c/jak2_functions/merc_blend_shape.cpp

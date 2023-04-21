@@ -704,7 +704,7 @@ void GlowRenderer::draw_sprites(SharedRenderState* render_state, ScopedProfilerN
     const auto& record = m_sprite_records[i];
     auto tex = render_state->texture_pool->lookup(record.tbp);
     if (!tex) {
-      fmt::print("Failed to find texture at {}, using random", record.tbp);
+      fmt::print("Failed to find texture at {}, using random (glow)", record.tbp);
       tex = render_state->texture_pool->get_placeholder_texture();
     }
     glActiveTexture(GL_TEXTURE0);

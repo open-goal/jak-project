@@ -324,15 +324,9 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state, int unit
   }
 
   if (!tex) {
-    // TODO Add back
-    if (state.texture_base_ptr >= 8160 && state.texture_base_ptr <= 8600) {
-      lg::warn("Failed to find texture at {}, using random (eye zone)", state.texture_base_ptr);
-      tex = render_state->texture_pool->get_placeholder_texture();
-    } else {
-      // lg::warn("Failed to find texture at {}, using random (direct: {})", state.texture_base_ptr,
-      //          name_and_id());
-      tex = render_state->texture_pool->get_placeholder_texture();
-    }
+    lg::warn("Failed to find texture at {}, using random (direct: {})", state.texture_base_ptr,
+             name_and_id());
+    tex = render_state->texture_pool->get_placeholder_texture();
   }
   ASSERT(tex);
 
