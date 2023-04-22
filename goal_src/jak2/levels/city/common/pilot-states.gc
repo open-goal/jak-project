@@ -240,7 +240,7 @@
   )
 
 (defbehavior target-pilot-signal-ready target ()
-  (when (not (logtest? (-> self focus-status) (focus-status pilot-riding)))
+  (when (not (focus-test? self pilot-riding))
     (logior! (-> self focus-status) (focus-status pilot-riding))
     (send-event (handle->process (-> self pilot vehicle)) 'pilot-on (-> self pilot seat-index))
     )
@@ -522,7 +522,7 @@
     (case event-type
       (('end-mode)
        (cond
-         ((logtest? (-> self focus-status) (focus-status pilot-riding))
+         ((focus-test? self pilot-riding)
           (go target-pilot-get-off)
           )
          (else
@@ -549,7 +549,7 @@
          (ja-channel-set! 0)
          (go target-falling #f)
          )
-        ((logtest? (-> (the-as vehicle gp-0) focus-status) (focus-status dead))
+        ((focus-test? (the-as vehicle gp-0) dead)
          (go target-pilot-get-off)
          )
         (else

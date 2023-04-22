@@ -42,7 +42,7 @@
   :size-assert         #xc8
   :flag-assert         #x16006000c8
   (:methods
-    (TODO-RENAME-20 (_type_ vector vector) symbol 20)
+    (yeti-method-20 (_type_ vector vector) symbol 20)
     (aggro? (_type_ vector) symbol 21)
     )
   (:states
@@ -270,7 +270,7 @@
       (suspend)
       (ja :num! (seek! max 0.5))
       )
-    (if (TODO-RENAME-46 self (-> self nav-info notice-distance))
+    (if (target-in-range? self (-> self nav-info notice-distance))
         (go-virtual nav-enemy-chase)
         (go-virtual nav-enemy-idle)
         )
@@ -531,10 +531,10 @@
   (none)
   )
 
-(defmethod TODO-RENAME-48 yeti-slave ((obj yeti-slave))
+(defmethod nav-enemy-method-48 yeti-slave ((obj yeti-slave))
   (initialize-skeleton obj *yeti-sg* '())
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
-  (TODO-RENAME-45 obj *yeti-nav-enemy-info*)
+  (init-defaults! obj *yeti-nav-enemy-info*)
   (set! (-> obj neck up) (the-as uint 0))
   (set! (-> obj neck nose) (the-as uint 1))
   (set! (-> obj neck ear) (the-as uint 2))
@@ -565,7 +565,7 @@
   (vector-identity! (-> self collide-info scale))
   (forward-up->quaternion (-> self collide-info quat) arg3 *up-vector*)
   (set! (-> self entity) (-> arg1 entity))
-  (TODO-RENAME-48 self)
+  (nav-enemy-method-48 self)
   (if arg4
       (go-virtual nav-enemy-idle)
       (go yeti-slave-appear-jump-up)
@@ -592,7 +592,7 @@
   #t
   )
 
-(defmethod TODO-RENAME-20 yeti ((obj yeti) (arg0 vector) (arg1 vector))
+(defmethod yeti-method-20 yeti ((obj yeti) (arg0 vector) (arg1 vector))
   (let ((s3-0 (-> obj path curve num-cverts)))
     (if (<= s3-0 0)
         (return #f)
@@ -654,7 +654,7 @@
         (let ((s5-0 (new 'stack-no-clear 'vector))
               (s4-0 (new 'stack-no-clear 'vector))
               )
-          (if (not (TODO-RENAME-20 self s5-0 s4-0))
+          (if (not (yeti-method-20 self s5-0 s4-0))
               (go yeti-idle)
               )
           (process-spawn yeti-slave (-> self entity) self s5-0 s4-0 #t :to self)
@@ -692,7 +692,7 @@
             (let ((gp-0 (new 'stack-no-clear 'vector))
                   (s5-0 (new 'stack-no-clear 'vector))
                   )
-              (when (TODO-RENAME-20 self gp-0 s5-0)
+              (when (yeti-method-20 self gp-0 s5-0)
                 (process-spawn yeti-slave (-> self entity) self gp-0 s5-0 #f :to self)
                 (set! (-> self spawn-delay) 0)
                 0
@@ -722,7 +722,3 @@
       )
   (none)
   )
-
-
-
-

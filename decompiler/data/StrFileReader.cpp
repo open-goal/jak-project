@@ -13,8 +13,23 @@
 #include "game/common/overlord_common.h"
 #include "game/common/str_rpc_types.h"
 
+#include "third-party/fmt/format.h"
+
 namespace decompiler {
-StrFileReader::StrFileReader(const fs::path& file_path) {
+StrFileReader::StrFileReader(const fs::path& file_path, GameVersion version) : m_version(version) {
+  switch (version) {
+    case GameVersion::Jak1:
+      init_jak1(file_path);
+      break;
+    case GameVersion::Jak2:
+      init_jak2(file_path);
+      break;
+    default:
+      throw std::runtime_error("[StrFileReader] NYI game version");
+  }
+}
+
+void StrFileReader::init_jak1(const fs::path& file_path) {
   auto data = file_util::read_binary_file(file_path);
   ASSERT(data.size() >= SECTOR_SIZE);      // must have at least the header sector
   ASSERT(data.size() % SECTOR_SIZE == 0);  // should be multiple of the sector size.
@@ -59,6 +74,49 @@ StrFileReader::StrFileReader(const fs::path& file_path) {
   // check nothing stored in the padding.
   for (auto x : header->pad) {
     ASSERT(x == 0);
+  }
+}
+
+void StrFileReader::init_jak2(const fs::path& file_path) {
+  auto data = file_util::read_binary_file(file_path);
+  ASSERT(data.size() >= SECTOR_SIZE);      // must have at least the header sector
+  ASSERT(data.size() % SECTOR_SIZE == 0);  // should be multiple of the sector size.
+  int end_sector = int(data.size()) / SECTOR_SIZE;
+
+  auto* header = (StrFileHeaderJ2*)data.data();
+
+  bool got_zero = false;
+  for (int i = 0; i < SECTOR_TABLE_SIZE_J2; i++) {
+    // the chunk is from sector to next_sector
+    int sector = header->sectors[i];
+    // assume this chunk continues to the end...
+    int next_sector = end_sector;
+    // unless there's another chunk.
+    if (i + 1 < SECTOR_TABLE_SIZE_J2 && header->sectors[i + 1]) {
+      next_sector = header->sectors[i + 1];
+    }
+    if (sector) {
+      ASSERT(!got_zero);             // shouldn't have a non-zero after a zero!
+      ASSERT(next_sector > sector);  // should have a positive size.
+      ASSERT(next_sector * SECTOR_SIZE <= int(data.size()));  // check for overflowing the file
+      // get chunk data.
+      std::vector<u8> chunk;
+      chunk.insert(chunk.end(), data.begin() + sector * SECTOR_SIZE,
+                   data.begin() + next_sector * SECTOR_SIZE);
+      m_chunks.emplace_back(std::move(chunk));
+    } else {
+      got_zero = true;
+    }
+  }
+
+  // check our sizes are accurate. Will make sure that we include all data, as our m_chunks
+  // are sized assuming they are packed in order and dense (sectors);
+  for (int i = 0; i < SECTOR_TABLE_SIZE_J2; i++) {
+    if (header->sectors[i]) {
+      ASSERT(header->sizes[i] == m_chunks.at(i).size());
+    } else {
+      ASSERT(header->sizes[i] == 0);
+    }
   }
 }
 
@@ -138,7 +196,7 @@ std::string StrFileReader::get_full_name(const std::string& short_name) const {
   bool done_first = false;
 
   // this string is part of the file info struct and the stuff after it is the file name.
-  const std::string file_info_string = "/src/next/data/art-group6/";
+  const auto& file_info_string = get_file_info_string();
 
   // it should occur in each chunk.
   int chunk_id = 0;
@@ -150,7 +208,7 @@ std::string StrFileReader::get_full_name(const std::string& short_name) const {
     if (find_string_in_data(chunk.data(), int(chunk.size()), file_info_string, &offset)) {
       offset += file_info_string.length();
     } else {
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("did not find string '{}'", file_info_string));
     }
 
     // extract the name info as a "name" + "chunk id" + "-ag.go" format.

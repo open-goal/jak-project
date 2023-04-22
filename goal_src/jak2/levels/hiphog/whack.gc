@@ -114,6 +114,50 @@
     )
   )
 
+(defun birth-func-whack-score ((arg0 sparticle-system)
+                      (arg1 sparticle-cpuinfo)
+                      (arg2 sprite-vec-data-3d)
+                      (arg3 sparticle-launcher)
+                      (arg4 sparticle-launch-state)
+                      )
+  (let ((v1-0 (the-as (array int32) (-> arg1 user-float))))
+    (when (nonzero? v1-0)
+      (+ (-> v1-0 length) -3)
+      (let* ((a0-4 (-> v1-0 0))
+             (v1-2 (-> v1-0 (+ (mod
+                                 (the int (/ (-> *game-info* score) (cond
+                                                                      ((= a0-4 1)
+                                                                       10.0
+                                                                       )
+                                                                      ((= a0-4 2)
+                                                                       100.0
+                                                                       )
+                                                                      ((= a0-4 3)
+                                                                       1000.0
+                                                                       )
+                                                                      (else
+                                                                        1.0
+                                                                        )
+                                                                      )
+                                             )
+                                      )
+                                 10
+                                 )
+                               3
+                               )
+                       )
+                   )
+             )
+        (if (nonzero? v1-2)
+            (particle-adgif-callback (-> arg1 adgif) (the-as texture-id v1-2))
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
 (defpart 3337
   :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x49 :page #x3e6))
     (sp-func spt-birth-func 'birth-func-whack-score)
@@ -1390,14 +1434,14 @@
                       )
         )
 
-(defskelgroup skel-hip-mole hip-mole 0 3
-              ((1 (meters 999999)))
+(defskelgroup skel-hip-mole hip-mole hip-mole-lod0-jg hip-mole-up-ja
+              ((hip-mole-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 1 0 1.5)
               :origin-joint-index 3
               )
 
-(defskelgroup skel-big-bopper big-bopper 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-big-bopper big-bopper big-bopper-lod0-jg big-bopper-idle-ja
+              ((big-bopper-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 2)
               :origin-joint-index 3
               )
@@ -2115,7 +2159,7 @@
         )
       (send-event (handle->process (-> self hud-goal)) 'hide-and-die)
       (remove-setting! 'entity-name)
-      (if (and *target* (logtest? (-> *target* focus-status) (focus-status grabbed)))
+      (if (and *target* (focus-test? *target* grabbed))
           (process-release? *target*)
           )
       (send-event *target* 'draw #t)

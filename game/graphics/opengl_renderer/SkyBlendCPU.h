@@ -14,7 +14,7 @@ class SkyBlendCPU {
   SkyBlendStats do_sky_blends(DmaFollower& dma,
                               SharedRenderState* render_state,
                               ScopedProfilerNode& prof);
-  void init_textures(TexturePool& tex_pool);
+  void init_textures(TexturePool& tex_pool, GameVersion version);
 
  private:
   static constexpr int m_sizes[2] = {32, 64};

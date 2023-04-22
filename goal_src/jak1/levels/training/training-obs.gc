@@ -35,8 +35,8 @@
                                     )
         )
 
-(defmethod TODO-RENAME-22 training-water ((obj training-water))
-  (let ((t9-0 (method-of-type water-anim TODO-RENAME-22)))
+(defmethod water-vol-method-22 training-water ((obj training-water))
+  (let ((t9-0 (method-of-type water-anim water-vol-method-22)))
     (t9-0 obj)
     )
   (let ((v1-2 (new 'process 'ripple-control)))
@@ -87,14 +87,14 @@
                  (-> *setting-control* current play-hints)
                  (and (< 0.0 (-> *setting-control* current dialog-volume))
                       (let ((a0-3 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
-                        (or (not a0-3) (zero? (logand (-> a0-3 extra perm status) (entity-perm-status dead))))
+                        (or (not a0-3) (not (logtest? (-> a0-3 extra perm status) (entity-perm-status dead))))
                         )
                       )
                  )
         (when (!= (-> self index) 6)
           (while (and *target*
                       (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
-                      (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                      (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                       )
             (suspend)
             )
@@ -140,18 +140,12 @@
           (let ((v1-61 (-> self index)))
             (cond
               ((zero? v1-61)
-               (level-hint-spawn
-                 (game-text-id training-money)
-                 "asstvb41"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
+               (level-hint-spawn (text-id training-money) "asstvb41" (the-as entity #f) *entity-pool* (game-task none))
                (process-spawn pov-camera (-> self entity extra trans) *training-cam-sg* "orbcam" 0 #f '() :to self)
                )
               ((= v1-61 1)
                (level-hint-spawn
-                 (game-text-id training-fuel-cell)
+                 (text-id training-fuel-cell)
                  "asstvb42"
                  (the-as entity #f)
                  *entity-pool*
@@ -161,7 +155,7 @@
                )
               ((= v1-61 2)
                (level-hint-spawn
-                 (game-text-id training-eco-blue)
+                 (text-id training-eco-blue)
                  "sagevb22"
                  (the-as entity #f)
                  *entity-pool*
@@ -171,7 +165,7 @@
                )
               ((= v1-61 3)
                (level-hint-spawn
-                 (game-text-id training-precursor-door)
+                 (text-id training-precursor-door)
                  "sagevb24"
                  (the-as entity #f)
                  *entity-pool*
@@ -181,7 +175,7 @@
                )
               ((= v1-61 4)
                (level-hint-spawn
-                 (game-text-id training-blue-eco-vent)
+                 (text-id training-blue-eco-vent)
                  "asstvb48"
                  (the-as entity #f)
                  *entity-pool*
@@ -191,7 +185,7 @@
                )
               ((= v1-61 5)
                (level-hint-spawn
-                 (game-text-id training-eco-green)
+                 (text-id training-eco-green)
                  "sagevb21"
                  (the-as entity #f)
                  *entity-pool*
@@ -201,9 +195,9 @@
                )
               ((= v1-61 6)
                (when (not (task-complete? *game-info* (game-task training-climb)))
-                 (clear-text-seen! *game-info* (game-text-id training-double-jump))
+                 (clear-text-seen! *game-info* (text-id training-double-jump))
                  (level-hint-spawn
-                   (game-text-id training-double-jump)
+                   (text-id training-double-jump)
                    "sagevb27"
                    (the-as entity #f)
                    *entity-pool*
@@ -270,17 +264,17 @@
 
 (defmethod init-from-entity! tra-pontoon ((obj tra-pontoon) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
-  (TODO-RENAME-30 obj)
+  (rigid-body-platform-method-30 obj)
   (process-drawable-from-entity! obj arg0)
-  (TODO-RENAME-31 obj)
+  (rigid-body-platform-method-31 obj)
   (go (method-of-object obj rigid-body-platform-idle))
   0
   (none)
   )
 
-(defmethod TODO-RENAME-23 tra-pontoon ((obj tra-pontoon) (arg0 float))
+(defmethod rigid-body-platform-method-23 tra-pontoon ((obj tra-pontoon) (arg0 float))
   ((the-as (function rigid-body-platform float none) (find-parent-method tra-pontoon 23)) obj arg0)
-  (TODO-RENAME-27 obj (-> obj anchor-point))
+  (rigid-body-platform-method-27 obj (-> obj anchor-point))
   0
   (none)
   )
@@ -316,7 +310,7 @@
               :bounds (static-spherem 0 0 0 5)
               )
 
-(defmethod TODO-RENAME-30 tra-pontoon ((obj tra-pontoon))
+(defmethod rigid-body-platform-method-30 tra-pontoon ((obj tra-pontoon))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -341,9 +335,9 @@
   (none)
   )
 
-(defmethod TODO-RENAME-31 tra-pontoon ((obj tra-pontoon))
+(defmethod rigid-body-platform-method-31 tra-pontoon ((obj tra-pontoon))
   (initialize-skeleton obj *tra-pontoon-sg* '())
-  (TODO-RENAME-29 obj *tra-pontoon-constants*)
+  (rigid-body-platform-method-29 obj *tra-pontoon-constants*)
   (set! (-> obj float-height-offset) 6144.0)
   (set! (-> obj root-overlay nav-radius) 20480.0)
   (let ((v1-6 (-> obj control-point-array data)))
@@ -390,7 +384,7 @@
               :bounds (static-spherem 0 0 0 8)
               )
 
-(defmethod TODO-RENAME-24 tra-iris-door ((obj tra-iris-door))
+(defmethod eco-door-method-24 tra-iris-door ((obj tra-iris-door))
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
@@ -409,7 +403,7 @@
   (none)
   )
 
-(defmethod TODO-RENAME-25 tra-iris-door ((obj tra-iris-door))
+(defmethod eco-door-method-25 tra-iris-door ((obj tra-iris-door))
   (initialize-skeleton obj *tra-iris-door-sg* '())
   (set! (-> obj open-distance) 32768.0)
   (set! (-> obj close-distance) 49152.0)
@@ -420,7 +414,7 @@
 
 (defpartgroup group-scarecrow-explode
   :id 143
-  :duration 15
+  :duration (seconds 0.05)
   :bounds (static-bspherem 0 0 0 1)
   :parts ((sp-item 2912) (sp-item 2913) (sp-item 2914) (sp-item 2915) (sp-item 2916))
   )
@@ -568,14 +562,14 @@
 
 (defpartgroup group-scarecrow-joint-explode
   :id 144
-  :duration 15
+  :duration (seconds 0.05)
   :bounds (static-bspherem 0 0 0 1)
   :parts ((sp-item 2912))
   )
 
 (defpartgroup group-scarecrow-hit
   :id 145
-  :duration 15
+  :duration (seconds 0.05)
   :bounds (static-bspherem 0 0 0 1)
   :parts ((sp-item 2913))
   )
@@ -624,98 +618,97 @@
 
 (defstate idle (scarecrow-a)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as
-        object
-        (cond
-          ((= v1-0 'attack)
-           (let* ((s3-0 (-> arg3 param 2))
-                  (s4-0 (get-task-control (game-task training-gimmie)))
-                  (v1-2 (get-reminder s4-0 0))
-                  )
-             (when (!= s3-0 (-> self incomming-attack-id))
-               (set! (-> self incomming-attack-id) s3-0)
-               (cond
-                 ((= (-> self type) scarecrow-b)
-                  )
-                 ((and (= (-> arg3 param 1) 'spin) (zero? v1-2))
-                  (save-reminder s4-0 1 0)
-                  1
-                  )
-                 ((and (= (-> arg3 param 1) 'punch) (= v1-2 1))
-                  (save-reminder s4-0 2 0)
-                  2
-                  )
-                 ((zero? v1-2)
-                  )
-                 ((= v1-2 1)
-                  )
-                 )
-               (let* ((s4-1 arg0)
-                      (v1-14 (if (and (nonzero? s4-1) (type-type? (-> s4-1 type) process-drawable))
-                                 s4-1
-                                 )
-                             )
-                      (f30-0
-                        (cond
-                          (v1-14
-                            (let ((s4-2 (-> self root-override))
-                                  (s2-0 (-> (the-as process-drawable v1-14) root trans))
-                                  )
-                              (deg-diff (y-angle s4-2) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s2-0 (-> s4-2 trans))))
-                              )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('attack)
+         (let* ((s3-0 (-> event param 2))
+                (s4-0 (get-task-control (game-task training-gimmie)))
+                (v1-2 (get-reminder s4-0 0))
+                )
+           (when (!= s3-0 (-> self incomming-attack-id))
+             (set! (-> self incomming-attack-id) s3-0)
+             (cond
+               ((= (-> self type) scarecrow-b)
+                )
+               ((and (= (-> event param 1) 'spin) (zero? v1-2))
+                (save-reminder s4-0 1 0)
+                1
+                )
+               ((and (= (-> event param 1) 'punch) (= v1-2 1))
+                (save-reminder s4-0 2 0)
+                2
+                )
+               ((zero? v1-2)
+                )
+               ((= v1-2 1)
+                )
+               )
+             (let* ((s4-1 proc)
+                    (v1-14 (if (and (nonzero? s4-1) (type-type? (-> s4-1 type) process-drawable))
+                               s4-1
+                               )
+                           )
+                    (f30-0
+                      (cond
+                        (v1-14
+                          (let ((s4-2 (-> self root-override))
+                                (s2-0 (-> (the-as process-drawable v1-14) root trans))
+                                )
+                            (deg-diff (y-angle s4-2) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s2-0 (-> s4-2 trans))))
                             )
-                          (else
-                            0.0
-                            )
+                          )
+                        (else
+                          0.0
                           )
                         )
-                      (a0-24 ((method-of-type touching-shapes-entry prims-touching?)
-                              (the-as touching-shapes-entry (-> arg3 param 0))
-                              (the-as collide-shape-moving (-> self root-override))
-                              (the-as uint -1)
-                              )
-                             )
                       )
-                 (go-virtual
-                   hit
-                   f30-0
-                   (if a0-24
-                       (get-middle-of-bsphere-overlap a0-24 (-> self intersection))
-                       (target-pos 0)
-                       )
-                   (the-as
-                     symbol
-                     (and ((method-of-type touching-shapes-entry prims-touching?)
-                           (the-as touching-shapes-entry (-> arg3 param 0))
-                           (the-as collide-shape-moving (-> self root-override))
-                           (the-as uint 2)
+                    (a0-24 ((method-of-type touching-shapes-entry prims-touching?)
+                            (the-as touching-shapes-entry (-> event param 0))
+                            (the-as collide-shape-moving (-> self root-override))
+                            (the-as uint -1)
+                            )
                            )
-                          (or (= (-> self type) scarecrow-a)
-                              (and (= (-> arg0 type) target)
-                                   (logtest? (-> (the-as target arg0) control unknown-surface00 flags) (surface-flags jump))
-                                   (zero? (logand (-> (the-as target arg0) control status) (cshape-moving-flags onsurf)))
-                                   )
-                              )
-                          )
+                    )
+               (go-virtual
+                 hit
+                 f30-0
+                 (if a0-24
+                     (get-middle-of-bsphere-overlap a0-24 (-> self intersection))
+                     (target-pos 0)
                      )
+                 (the-as
+                   symbol
+                   (and ((method-of-type touching-shapes-entry prims-touching?)
+                         (the-as touching-shapes-entry (-> event param 0))
+                         (the-as collide-shape-moving (-> self root-override))
+                         (the-as uint 2)
+                         )
+                        (or (= (-> self type) scarecrow-a)
+                            (and (= (-> proc type) target)
+                                 (logtest? (-> (the-as target proc) control unknown-surface00 flags) (surface-flags jump))
+                                 (not (logtest? (-> (the-as target proc) control status) (cshape-moving-flags onsurf)))
+                                 )
+                            )
+                        )
                    )
                  )
                )
              )
            )
-          ((= v1-0 'touch)
-           (send-shove-back
-             (-> self root-override)
-             arg0
-             (the-as touching-shapes-entry (-> arg3 param 0))
-             0.7
-             6144.0
-             16384.0
-             )
-           )
-          )
+         )
+        (('touch)
+         (the-as object (send-shove-back
+                          (-> self root-override)
+                          proc
+                          (the-as touching-shapes-entry (-> event param 0))
+                          0.7
+                          6144.0
+                          16384.0
+                          )
+                 )
+         )
         )
       )
     )
@@ -743,7 +736,7 @@
   :virtual #t
   :code (behavior ((arg0 float) (arg1 vector) (arg2 symbol))
     (when (not arg2)
-      (dummy-10 (-> self skel effect) 'group-scarecrow-hit 4.0 -1)
+      (effect-control-method-10 (-> self skel effect) 'group-scarecrow-hit 4.0 -1)
       (ja-channel-push! 1 (seconds 0.07))
       (cond
         ((< (fabs arg0) 8192.0)
@@ -771,9 +764,9 @@
       (go-virtual idle)
       )
     (clear-collide-with-as (-> self root-override))
-    (dummy-10 (-> self skel effect) 'group-scarecrow-joint-explode 12.0 -1)
-    (dummy-10 (-> self skel effect) 'group-scarecrow-joint-explode 20.0 -1)
-    (dummy-10 (-> self skel effect) 'group-scarecrow-explode 4.0 -1)
+    (effect-control-method-10 (-> self skel effect) 'group-scarecrow-joint-explode 12.0 -1)
+    (effect-control-method-10 (-> self skel effect) 'group-scarecrow-joint-explode 20.0 -1)
+    (effect-control-method-10 (-> self skel effect) 'group-scarecrow-explode 4.0 -1)
     (sound-play "break-dummy")
     (ja-channel-set! 0)
     (let ((s5-2 (new 'stack 'joint-exploder-tuning 1)))
@@ -881,7 +874,7 @@
   :virtual #t
   :code (behavior ((arg0 float) (arg1 vector) (arg2 symbol))
     (when (not arg2)
-      (dummy-10 (-> self skel effect) 'group-scarecrow-hit 4.0 -1)
+      (effect-control-method-10 (-> self skel effect) 'group-scarecrow-hit 4.0 -1)
       (ja-channel-push! 1 (seconds 0.07))
       (cond
         ((< (fabs arg0) 8192.0)
@@ -909,9 +902,9 @@
       (go-virtual idle)
       )
     (clear-collide-with-as (-> self root-override))
-    (dummy-10 (-> self skel effect) 'group-scarecrow-joint-explode 12.0 -1)
-    (dummy-10 (-> self skel effect) 'group-scarecrow-joint-explode 21.0 -1)
-    (dummy-10 (-> self skel effect) 'group-scarecrow-explode 4.0 -1)
+    (effect-control-method-10 (-> self skel effect) 'group-scarecrow-joint-explode 12.0 -1)
+    (effect-control-method-10 (-> self skel effect) 'group-scarecrow-joint-explode 21.0 -1)
+    (effect-control-method-10 (-> self skel effect) 'group-scarecrow-explode 4.0 -1)
     (sound-play "break-dummy")
     (ja-channel-set! 0)
     (let ((s5-2 (new 'stack 'joint-exploder-tuning 1)))
@@ -998,7 +991,3 @@
   (go (method-of-object obj idle))
   (none)
   )
-
-
-
-

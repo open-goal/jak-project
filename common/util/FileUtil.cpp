@@ -129,6 +129,7 @@ std::optional<std::string> try_get_jak_project_path() {
 
 std::optional<fs::path> try_get_data_dir() {
   fs::path my_path = get_current_executable_path();
+  lg::info("Current executable directory - {}", my_path.string());
   auto data_dir = my_path.parent_path() / "data";
   if (fs::exists(data_dir) && fs::is_directory(data_dir)) {
     return std::make_optional(data_dir);
@@ -143,9 +144,9 @@ bool setup_project_path(std::optional<fs::path> project_path_override) {
   }
 
   if (project_path_override) {
-    gFilePathInfo.path_to_data = *project_path_override;
+    gFilePathInfo.path_to_data = fs::absolute(project_path_override.value());
     gFilePathInfo.initialized = true;
-    lg::info("Using explicitly set project path: {}", project_path_override->string());
+    lg::info("Using explicitly set project path: {}", gFilePathInfo.path_to_data.string());
     return true;
   }
 
@@ -213,6 +214,12 @@ void write_binary_file(const fs::path& name, const void* data, size_t size) {
     throw std::runtime_error("couldn't open file " + name.string());
   }
 
+  if (size == 0) {
+    // nothing to write, just 'touch' the file
+    fclose(fp);
+    return;
+  }
+
   if (fwrite(data, size, 1, fp) != 1) {
     fclose(fp);
     throw std::runtime_error("couldn't write file " + name.string());
@@ -273,6 +280,10 @@ std::vector<uint8_t> read_binary_file(const fs::path& path) {
                              " cannot be opened: " + std::string(strerror(errno)));
   fseek(fp, 0, SEEK_END);
   auto len = ftell(fp);
+  if (len == 0) {
+    fclose(fp);
+    return {};
+  }
   rewind(fp);
 
   std::vector<uint8_t> data;
@@ -398,11 +409,16 @@ void ISONameFromAnimationName(char* dst, const char* src) {
 
         // some special case words map to special letters (likely to avoid animation name conflicts)
         if (next_ptr - src_ptr == 10 && !memcmp(src_ptr, "resolution", 10)) {
+          // NOTE : jak 2 also allows "res" here but that doesn't work properly.
           char_to_add = 'z';
         } else if (next_ptr - src_ptr == 6 && !memcmp(src_ptr, "accept", 6)) {
           char_to_add = 'y';
         } else if (next_ptr - src_ptr == 6 && !memcmp(src_ptr, "reject", 6)) {
           char_to_add = 'n';
+        } else if (next_ptr - src_ptr == 5 && !memcmp(src_ptr, "keira", 5)) {
+          // NOTE : this was added in jak 2. it's safe to use in jak 1 since she was referred to as
+          // "assistant" there
+          char_to_add = 'i';
         } else {
           // not a special case, just take the first letter.
           char_to_add = *src_ptr;
@@ -585,12 +601,16 @@ std::vector<fs::path> find_directories_in_dir(const fs::path& base_dir) {
 }
 
 void copy_file(const fs::path& src, const fs::path& dst) {
-  if (src == dst) {
-    lg::error("Failed to copy_file {}, source and destination are the same\n", src.string());
-    throw std::runtime_error("Failed to copy_file");
+  // Check that the src path exists
+  if (!fs::exists(src)) {
+    throw std::runtime_error(fmt::format("Cannot copy '{}', path does not exist", src.string()));
   }
-  auto data = read_binary_file(src);
-  write_binary_file(dst, data.data(), data.size());
+  // Ensure the directory can be copied into
+  if (!fs::exists(dst.parent_path()) && !create_dir_if_needed_for_file(dst)) {
+    throw std::runtime_error(fmt::format(
+        "Cannot copy '{}', couldn't make directory to copy into '{}'", src.string(), dst.string()));
+  }
+  fs::copy_file(src, dst, fs::copy_options::overwrite_existing);
 }
 
 }  // namespace file_util

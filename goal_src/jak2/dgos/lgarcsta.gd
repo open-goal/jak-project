@@ -6,6 +6,6 @@
   "samos-highres-ag.go"
   "tess-highres-ag.go"
   "ashelin-highres-ag.go"
-  "gold-key-ag.go"
+  "sew-gold-key-ag.go"
   "lgarcsta.go"
  ))

@@ -34,6 +34,10 @@ SkyBlendHandler::SkyBlendHandler(const std::string& name,
                        true,
                        level_id) {}
 
+void SkyBlendHandler::init_shaders(ShaderLibrary& shaders) {
+  m_tfrag_renderer.init_shaders(shaders);
+}
+
 void SkyBlendHandler::handle_sky_copies(DmaFollower& dma,
                                         SharedRenderState* render_state,
                                         ScopedProfilerNode& prof) {

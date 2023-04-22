@@ -32,16 +32,18 @@ goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
   if (!hint.array_size.has_value()) {
     // if we don't have an array size, treat it as just a normal type.
     if (hint.is_value) {
-      throw std::runtime_error(fmt::format(
-          "Label {} was marked as a value, but is being decompiled as a reference.", hint.name));
+      throw std::runtime_error(
+          fmt::format("Label {} was marked as a value, but is being decompiled as a reference (1).",
+                      hint.name));
     }
     return decompile_at_label(type, label, labels, words, ts, file, version);
   }
 
   if (type.base_type() == "pointer") {
     if (hint.is_value) {
-      throw std::runtime_error(fmt::format(
-          "Label {} was marked as a value, but is being decompiled as a reference.", hint.name));
+      throw std::runtime_error(
+          fmt::format("Label {} was marked as a value, but is being decompiled as a reference (2).",
+                      hint.name));
     }
     auto field_type_info = ts.lookup_type(type.get_single_arg());
     if (field_type_info->is_reference()) {
@@ -52,11 +54,20 @@ goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
       auto stride = field_type_info->get_size_in_memory();
 
       int word_count = ((stride * (*hint.array_size)) + 3) / 4;
-      std::vector<LinkedWord> obj_words;
-      obj_words.insert(obj_words.begin(),
-                       words.at(label.target_segment).begin() + (label.offset / 4),
-                       words.at(label.target_segment).begin() + (label.offset / 4) + word_count);
+      int max_word = words.at(label.target_segment).size();
+      int start_word = label.offset / 4;
+      if (start_word + word_count > max_word) {
+        throw std::runtime_error(
+            fmt::format("Decompiling array of {} values of type {} would go past the end of the "
+                        "file. The file has {} words, the array starts at word {}, and has length "
+                        "{} words, which would make it end at {}",
+                        *hint.array_size, type.get_single_arg().print(), max_word, start_word,
+                        word_count, start_word + word_count));
+      }
 
+      std::vector<LinkedWord> obj_words;
+      obj_words.insert(obj_words.begin(), words.at(label.target_segment).begin() + start_word,
+                       words.at(label.target_segment).begin() + start_word + word_count);
       return decompile_value_array(type.get_single_arg(), field_type_info, *hint.array_size, stride,
                                    0, obj_words, ts);
     }
@@ -64,8 +75,9 @@ goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
 
   if (type.base_type() == "inline-array") {
     if (hint.is_value) {
-      throw std::runtime_error(fmt::format(
-          "Label {} was marked as a value, but is being decompiled as a reference.", hint.name));
+      throw std::runtime_error(
+          fmt::format("Label {} was marked as a value, but is being decompiled as a reference (3).",
+                      hint.name));
     }
     auto field_type_info = ts.lookup_type(type.get_single_arg());
     if (!field_type_info->is_reference()) {
@@ -218,7 +230,8 @@ goos::Object decompile_at_label(const TypeSpec& type,
     }
   } catch (std::exception& ex) {
     throw std::runtime_error(
-        fmt::format("Unable to 'decompile_at_label' {}, Reason: {}", label.name, ex.what()));
+        fmt::format("Unable to 'decompile_at_label' {} (using type {}), Reason: {}", label.name,
+                    type.print(), ex.what()));
   }
 
   throw std::runtime_error(fmt::format(
@@ -1726,7 +1739,7 @@ goos::Object decompile_boxed_array(const TypeSpec& type,
         const auto& elt_label = labels.at(word.label_id());
         if (content_type == TypeSpec("object")) {
           // if there is a type hint for the label, no need to guess!
-          if (file->label_db->label_exists_by_name(elt_label.name)) {
+          if (file->label_db->label_info_known_by_name(elt_label.name)) {
             result.push_back(decompile_at_label_with_hint(file->label_db->lookup(elt_label.name),
                                                           elt_label, labels, words, ts, file,
                                                           version));

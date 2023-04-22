@@ -31,10 +31,7 @@ def get_gsrc_path_from_filename(game_name, file_name):
   return path
 
 def get_alltypes_path_from_game(game_name):
-  if game_name == "jak1":
-    return "./decompiler/config/all-types.gc"
-  else:
-    return "./decompiler/config/jak2/all-types.gc"
+  return "./decompiler/config/{}/all-types.gc".format(game_name)
 
 def get_ref_path_from_filename(game_name, file_name, ref_folder):
   file_list = get_file_list(game_name)

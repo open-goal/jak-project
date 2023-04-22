@@ -59,7 +59,7 @@
   *plat-eco-finalboss-lit-sg*
   )
 
-(defmethod dummy-26 plat-eco-finalboss ((obj plat-eco-finalboss))
+(defmethod baseplat-method-26 plat-eco-finalboss ((obj plat-eco-finalboss))
   (set! (-> obj force-dest) -1.0)
   (set! (-> obj targ-dest) -1.0)
   (set! (-> obj dest) 0.0)
@@ -71,14 +71,11 @@
 
 (defstate plat-path-active (plat-eco-finalboss)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('target)
        (process-entity-status! self (entity-perm-status complete) #t)
-       (let ((f0-0 (the-as float (-> arg3 param 0))))
-         (set! (-> self force-dest) f0-0)
-         f0-0
-         )
+       (set! (-> self force-dest) (the-as float (-> event param 0)))
        )
       (('ridden 'edge-grabbed)
        (if (>= (- (-> *display* base-frame-counter) (-> self touch-time)) (seconds 2))
@@ -100,7 +97,7 @@
        #f
        )
       (else
-        (plat-event arg0 arg1 arg2 arg3)
+        (plat-event proc arg1 event-type event)
         )
       )
     )
@@ -272,7 +269,7 @@
     )
   )
 
-(defmethod dummy-45 sage-finalboss ((obj sage-finalboss))
+(defmethod process-taskable-method-45 sage-finalboss ((obj sage-finalboss))
   (let ((s5-0 (entity-by-name "assistant-lavatube-end-3")))
     (the-as
       symbol
@@ -394,7 +391,7 @@
        (set-yaw-angle-clear-roll-pitch! (-> obj root-override) 0.0)
        (close-current! (-> obj tasks))
        (play-reminder obj)
-       (dummy-45 obj)
+       (process-taskable-method-45 obj)
        (set! (-> obj kick-the-credits) #t)
        (set! (-> obj robotplat)
              (ppointer->handle
@@ -448,7 +445,7 @@
      (when arg0
        (set-yaw-angle-clear-roll-pitch! (-> obj root-override) -13116.667)
        (close-current! (-> obj tasks))
-       (dummy-45 obj)
+       (process-taskable-method-45 obj)
        (send-event *camera* 'teleport)
        (set-setting! 'allow-progress #f 0.0 0)
        )
@@ -496,7 +493,7 @@
      (when arg0
        (set-yaw-angle-clear-roll-pitch! (-> obj root-override) -13116.667)
        (close-current! (-> obj tasks))
-       (dummy-45 obj)
+       (process-taskable-method-45 obj)
        (set! (-> obj left-door) (the-as entity-actor (entity-by-name "power-left-2")))
        (set! (-> obj right-door) (the-as entity-actor (entity-by-name "power-right-2")))
        (set-setting! 'allow-progress #f 0.0 0)
@@ -568,28 +565,22 @@
 
 (defstate play-anim (sage-finalboss)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('fade)
-       (let ((f0-0 1.0))
-         (set! (-> self credit-fade) f0-0)
-         f0-0
-         )
+       (set! (-> self credit-fade) 1.0)
        )
       (('flash)
-       (let ((f0-1 1.9921875))
-         (set! (-> self palette-val) f0-1)
-         f0-1
-         )
+       (set! (-> self palette-val) 1.9921875)
        )
       (('activate-particle)
        (let ((v0-0 (the-as object #t)))
-         (set! (-> self particle (-> arg3 param 0) active) (the-as symbol v0-0))
+         (set! (-> self particle (-> event param 0) active) (the-as symbol v0-0))
          v0-0
          )
        )
       (('deactivate-particle)
-       (set! (-> self particle (-> arg3 param 0) active) #f)
+       (set! (-> self particle (-> event param 0) active) #f)
        #f
        )
       )
@@ -600,15 +591,6 @@
     (none)
     )
   :exit (behavior ()
-    (#when PC_PORT
-      (when (and (= (get-response (-> self query)) 'no) (or (not (= *cheat-mode* 'debug)) (not (cpad-hold? 0 r1))))
-        (case (current-status (-> self tasks))
-          (((task-status need-reminder-a))
-            (close-specific-task! (game-task finalboss-movies) (task-status need-reminder-a))
-            (set! (-> self kick-the-credits) #t)
-            )
-          ))
-      )
     (when (= (current-status (-> self tasks)) (task-status invalid))
       (cond
         ((not (-> self credits-played))
@@ -1027,7 +1009,7 @@
   )
 
 (defmethod init-from-entity! sage-finalboss ((obj sage-finalboss) (arg0 entity-actor))
-  (dummy-40 obj arg0 *sage-finalboss-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
+  (process-taskable-method-40 obj arg0 *sage-finalboss-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
   (set! (-> obj tasks) (get-task-control (game-task finalboss-movies)))
   (set! (-> obj redsage) (the-as handle #f))
   (set! (-> obj bluesage) (the-as handle #f))
@@ -1066,7 +1048,3 @@
       )
   (none)
   )
-
-
-
-

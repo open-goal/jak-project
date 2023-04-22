@@ -142,7 +142,7 @@
         (set! (-> obj last-update-time) s5-0)
         (let ((v1-8 *target*))
           (cond
-            ((and v1-8 (logtest? (focus-status mech) (-> v1-8 focus-status)))
+            ((and v1-8 (focus-test? v1-8 mech))
              (let ((s4-0 (-> v1-8 manipy 0 node-list data 3)))
                (dotimes (s3-0 6)
                  (let ((s2-0 (-> obj holds s3-0)))
@@ -180,10 +180,7 @@
   (with-pp
     (grunt-mech-info-method-10 obj)
     (let ((v1-2 *target*))
-      (when (and v1-2
-                 (logtest? (focus-status mech) (-> v1-2 focus-status))
-                 (zero? (logand (-> v1-2 focus-status) (focus-status dead ignore)))
-                 )
+      (when (and v1-2 (focus-test? v1-2 mech) (not (logtest? (-> v1-2 focus-status) (focus-status dead ignore))))
         (let ((v1-8 (-> obj holds arg0)))
           (when (and (!= (-> v1-8 grunt-handle) #f) (= (handle->process (-> v1-8 grunt-handle)) arg1))
             (set! (-> v1-8 timeout) (the-as uint (+ (-> pp clock frame-counter) (seconds 0.5))))
@@ -351,7 +348,7 @@
     (let ((gp-0 (get-enemy-target obj)))
       (when gp-0
         (cond
-          ((logtest? (focus-status mech) (-> gp-0 focus-status))
+          ((focus-test? gp-0 mech)
            (let ((v1-4 (get-trans gp-0 0))
                  (a1-2 (new 'stack-no-clear 'vector))
                  )
@@ -539,7 +536,7 @@
 (defmethod grunt-mech-method-192 grunt-mech ((obj grunt-mech))
   (do-navigation-to-destination (-> obj nav state) (-> obj root-override2 trans))
   (let ((a1-1 *target*))
-    (if (or (not a1-1) (zero? (logand (focus-status mech) (-> a1-1 focus-status))))
+    (if (or (not a1-1) (not (logtest? (focus-status mech) (-> a1-1 focus-status))))
         (return #t)
         )
     )
@@ -898,7 +895,7 @@
           (let ((v1-33 (get-enemy-target self)))
             (when v1-33
               (cond
-                ((logtest? (focus-status mech) (-> v1-33 focus-status))
+                ((focus-test? v1-33 mech)
                  (when (>= (-> self clock frame-counter) (-> self state-timeout))
                    (nav-enemy-method-161 self)
                    (go-hostile self)

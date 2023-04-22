@@ -115,7 +115,7 @@
         (('change-mode)
          (case (-> arg3 param 0)
            (('grab)
-            (when (not (logtest? (-> self focus-status) (focus-status dead)))
+            (when (not (focus-test? self dead))
               (if (not (-> arg3 param 1))
                   #t
                   (go target-grab 'stance)
@@ -245,7 +245,7 @@
           )
         )
     (cond
-      ((logtest? (-> self focus-status) (focus-status pilot-riding))
+      ((focus-test? self pilot-riding)
        (case (-> self gun gun-type)
          (((pickup-type eco-yellow))
           (push-anim-to-targ
@@ -384,11 +384,11 @@
     (set! (-> self gun active?) #f)
     (cond
       ((and (not (logtest? (surface-flag gun-fast-exit) (-> self control current-surface flags)))
-            (zero? (logand (-> self focus-status) (focus-status dead)))
+            (not (logtest? (-> self focus-status) (focus-status dead)))
             )
        (sound-play "gun-putaway")
        (cond
-         ((logtest? (-> self focus-status) (focus-status pilot-riding))
+         ((focus-test? self pilot-riding)
           (case (-> self gun gun-type)
             (((pickup-type eco-yellow))
              (push-anim-to-targ
@@ -723,7 +723,7 @@
       (quat<-gun! (the-as quaternion (-> self gun top-anim-twist-targ)) (the-as quaternion arg0))
       (set! (-> self skel top-anim frame-post-blend) 0.1333333)
       (cond
-        ((logtest? (-> self focus-status) (focus-status pilot-riding))
+        ((focus-test? self pilot-riding)
          (let ((v1-164 arg0))
            (cond
              ((and (= s5-0 (pickup-type eco-red)) (= v1-164 4))
@@ -1087,8 +1087,8 @@
 ;; WARN: Return type mismatch int vs none.
 (defun target-gun-marking-menu ((arg0 target))
   (when (and (not (paused?))
-             (not (and (logtest? (focus-status dark) (-> arg0 focus-status)) (nonzero? (-> arg0 darkjak))))
-             (zero? (logand (-> arg0 focus-status) (focus-status grabbed)))
+             (not (and (focus-test? arg0 dark) (nonzero? (-> arg0 darkjak))))
+             (not (logtest? (-> arg0 focus-status) (focus-status grabbed)))
              )
     (let ((s5-0 (the-as int (-> arg0 gun using-gun-type))))
       (cond
@@ -1109,9 +1109,7 @@
                  (and (logtest? (the-as game-feature (ash 1 (+ s5-0 5)))
                                 (logand (-> arg0 game features) (-> *setting-control* user-current features))
                                 )
-                      (or (not (logtest? (focus-status pilot) (-> arg0 focus-status)))
-                          (and (nonzero? (-> arg0 pilot)) (-> arg0 pilot gun?))
-                          )
+                      (or (not (focus-test? arg0 pilot)) (and (nonzero? (-> arg0 pilot)) (-> arg0 pilot gun?)))
                       (begin
                         (set! (-> arg0 gun using-gun-type) (the-as pickup-type s5-0))
                         (and s5-0
@@ -1154,17 +1152,15 @@
     (let ((s5-0 (new 'stack-no-clear 'vector)))
       (let ((s4-0 (-> self gun track-dir)))
         (set! (-> s4-0 quad)
-              (-> (the-as
-                    vector
-                    (if (and (or (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
-                                 (logtest? (surface-flag gun-strafe) (-> self control current-surface flags))
-                                 )
-                             (not (and (logtest? (focus-status dark) (-> self focus-status)) (nonzero? (-> self darkjak))))
-                             )
-                        (-> self gun fire-dir)
-                        (-> self control to-target-pt-xz)
-                        )
-                    )
+              (-> (the-as vector (if (and (or (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
+                                              (logtest? (surface-flag gun-strafe) (-> self control current-surface flags))
+                                              )
+                                          (not (and (focus-test? self dark) (nonzero? (-> self darkjak))))
+                                          )
+                                     (-> self gun fire-dir)
+                                     (-> self control to-target-pt-xz)
+                                     )
+                          )
                   quad
                   )
               )
@@ -1199,7 +1195,7 @@
   (let ((gp-0 (the-as basic #f)))
     (when (and (or (< (- (-> self clock frame-counter) (-> self control time-of-last-nonzero-input)) (seconds 0.2))
                    (and (logtest? (-> self control mod-surface flags) (surface-flag air))
-                        (zero? (logand (-> self control status) (collide-status on-surface)))
+                        (not (logtest? (-> self control status) (collide-status on-surface)))
                         )
                    (or (logtest? (surface-flag gun-direct) (-> self control current-surface flags))
                        (= (-> self gun gun-type) (pickup-type eco-dark))
@@ -1225,7 +1221,7 @@
                  )
            )
           ((or (and (logtest? (-> self control mod-surface flags) (surface-flag air))
-                    (zero? (logand (-> self control status) (collide-status on-surface)))
+                    (not (logtest? (-> self control status) (collide-status on-surface)))
                     )
                (logtest? (surface-flag gun-direct) (-> self control current-surface flags))
                )
@@ -1292,9 +1288,7 @@
         (let ((s5-1 (handle->process (-> self gun track-target 0 handle))))
           (cond
             ((or (not s5-1)
-                 (or (and (logtest? (-> (the-as process-focusable s5-1) focus-status) (focus-status dead))
-                          (zero? (-> self gun track-target-hold-time))
-                          )
+                 (or (and (focus-test? (the-as process-focusable s5-1) dead) (zero? (-> self gun track-target-hold-time)))
                      (and (not (and (nonzero? (-> self gun track-target-hold-time))
                                     (< (-> self clock frame-counter) (-> self gun track-target-hold-time))
                                     )
@@ -1313,7 +1307,7 @@
                                )
                           )
                      (and (or (and (logtest? (-> self control mod-surface flags) (surface-flag air))
-                                   (zero? (logand (-> self control status) (collide-status on-surface)))
+                                   (not (logtest? (-> self control status) (collide-status on-surface)))
                                    )
                               (logtest? (surface-flag gun-direct) (-> self control current-surface flags))
                               )
@@ -1421,7 +1415,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defbehavior target-top-anim-base-mode target ((arg0 int))
   (cond
-    ((logtest? (-> self focus-status) (focus-status pilot-riding))
+    ((focus-test? self pilot-riding)
      (case (-> self gun gun-type)
        (((pickup-type eco-yellow))
         (push-anim-to-targ
@@ -1548,7 +1542,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defbehavior target-gun-joint-pre0 target ()
-  (if (!= (zero? (logand (-> self game features) (game-feature gun))) (not (-> self gun gun)))
+  (if (!= (not (logtest? (-> self game features) (game-feature gun))) (not (-> self gun gun)))
       (target-gun-setup (logtest? (-> self game features) (game-feature gun)))
       )
   (if (and (>= (- (-> self clock frame-counter) (-> self gun combo-window-start)) (seconds 0.7))
@@ -1559,7 +1553,7 @@
   (cond
     ((and (cpad-pressed? (-> self control cpad number) r1)
           (< (- (-> self clock frame-counter) (-> self gun combo-window-start)) (seconds 0.7))
-          (not (logtest? (focus-status mech dark) (-> self focus-status)))
+          (not (focus-test? self mech dark))
           (not (logtest? (surface-flag gun-off) (-> self control current-surface flags)))
           (not (logtest? (state-flags prevent-gun) (-> self state-flags)))
           (zero? (-> self gun track-target-hold-time))
@@ -1661,12 +1655,12 @@
         (cond
           ((or (and (not (logtest? (-> self control status) (collide-status on-surface)))
                     (or (and (logtest? (-> self control mod-surface flags) (surface-flag air))
-                             (zero? (logand (-> self control status) (collide-status on-surface)))
+                             (not (logtest? (-> self control status) (collide-status on-surface)))
                              )
                         (< 2048.0 (target-height-above-ground))
                         )
                     )
-               (logtest? (-> self focus-status) (focus-status edge-grab))
+               (focus-test? self edge-grab)
                (-> *setting-control* user-current doorway)
                )
            (if (!= (-> self control duck-gun-tube-transision) 0.0)
@@ -1710,7 +1704,7 @@
        )
      (target-gun-find-track)
      (cond
-       ((and (= (-> self gun gun-type) (pickup-type eco-blue)) (zero? (logand (-> self gun track?) 1)))
+       ((and (= (-> self gun gun-type) (pickup-type eco-blue)) (not (logtest? (-> self gun track?) 1)))
         (let ((f0-8 (vector-vector-distance (-> self gun fire-point) (-> self gun laser-hit-point))))
           (cond
             ((< f0-8 122880.0)
@@ -1757,7 +1751,7 @@
                  )
             (and (logtest? (-> self gun track?) 1) (logtest? (-> self gun track?) 4))
             (or (logtest? (surface-flag gun-strafe) (-> self control current-surface flags))
-                (logtest? (-> self focus-status) (focus-status pilot-riding))
+                (focus-test? self pilot-riding)
                 )
             )
         (seek! (-> self upper-body twist z) 0.0 (* 65536.0 (-> self clock seconds-per-frame)))
@@ -1766,7 +1760,7 @@
         (seek! (-> self upper-body twist z) 0.0 (* 16384.0 (-> self clock seconds-per-frame)))
         )
        ((and (< 0.0 (-> self control turn-to-magnitude))
-             (zero? (logand (-> self control current-surface flags) (surface-flag duck)))
+             (not (logtest? (-> self control current-surface flags) (surface-flag duck)))
              )
         (let* ((f0-28 (deg-diff (y-angle (-> self control)) (vector-y-angle (-> self control to-target-pt-xz))))
                (f0-30 (fmax -5461.3335 (fmin 5461.3335 f0-28)))
@@ -1844,7 +1838,7 @@
            (set! (-> self gun upper-body twist-speed-x) 0.6)
            )
           ((and (or (and (logtest? (-> self control mod-surface flags) (surface-flag air))
-                         (zero? (logand (-> self control status) (collide-status on-surface)))
+                         (not (logtest? (-> self control status) (collide-status on-surface)))
                          )
                     (logtest? (surface-flag gun-direct) (-> self control current-surface flags))
                     )
@@ -1923,7 +1917,7 @@
   (local-vars (gp-0 art-element))
   (target-gun-joint-pre0)
   (cond
-    ((logtest? (-> self focus-status) (focus-status pilot-riding))
+    ((focus-test? self pilot-riding)
      (let ((v1-3 (-> self gun gun-type)))
        (set! (-> self skel top-anim base-anim) (cond
                                                  ((= v1-3 (pickup-type eco-yellow))
@@ -2118,16 +2112,16 @@
     (matrix-lerp! gp-0 a1-0 a2-0 (-> self gun gun-daxter))
     (matrix->transformq (-> self gun gun-pos) gp-0)
     (set! (-> self gun gun-pos scale quad) (-> self control scale quad))
-    (when (and (using-gun? self) (and (logtest? (-> self focus-status) (focus-status edge-grab))
-                                      (let ((v1-18 (ja-group)))
-                                        (and v1-18 (or (= v1-18 (-> self draw art-group data 27))
-                                                       (= v1-18 (-> self draw art-group data 35))
-                                                       (= v1-18 (-> self draw art-group data 33))
-                                                       (= v1-18 (-> self draw art-group data 34))
-                                                       )
-                                             )
-                                        )
-                                      )
+    (when (and (using-gun? self)
+               (and (focus-test? self edge-grab) (let ((v1-18 (ja-group)))
+                                                   (and v1-18 (or (= v1-18 (-> self draw art-group data 27))
+                                                                  (= v1-18 (-> self draw art-group data 35))
+                                                                  (= v1-18 (-> self draw art-group data 33))
+                                                                  (= v1-18 (-> self draw art-group data 34))
+                                                                  )
+                                                        )
+                                                   )
+                    )
                )
       (let ((s4-0 (new 'static 'vector :y 491.52 :w 1.0))
             (a1-5 (new 'static 'vector :x -16384.0 :z -16384.0 :w 1.0))
@@ -2154,7 +2148,7 @@
 (defbehavior target-gun-joint-points target ()
   (when (-> self gun gun)
     (set! (-> self gun gun-daxter)
-          (if (and (logtest? (-> self focus-status) (focus-status pilot-riding))
+          (if (and (focus-test? self pilot-riding)
                    (nonzero? (-> self skel float-channels))
                    (= (-> (get-channel (-> self skel top-anim) (the-as int (+ (-> self skel float-channels) -1))) frame-interp 1)
                       1.0
@@ -2264,8 +2258,8 @@
            (set! (-> self gun active-time) (-> self clock frame-counter))
            )
        (set! (-> self gun laser-active?)
-             (zero? (logand (surface-flag gun-inactive gun-hide gun-off laser-hide) (-> self control current-surface flags))
-                    )
+             (not (logtest? (surface-flag gun-inactive gun-hide gun-off laser-hide) (-> self control current-surface flags))
+                  )
              )
        (when (and (not (and (not (logtest? (surface-flag gun-inactive gun-hide gun-off) (-> self control current-surface flags)))
                             (>= (- (-> self clock frame-counter) (-> self gun gun-get-on-time)) (seconds 0.1))
@@ -2323,7 +2317,7 @@
                                  )
                                (and (not (cpad-hold? (-> self control cpad number) r1))
                                     (not (logtest? (surface-flag gun-inactive) (-> self control current-surface flags)))
-                                    (zero? (logand (-> self focus-status) (focus-status grabbed)))
+                                    (not (logtest? (-> self focus-status) (focus-status grabbed)))
                                     )
                                )
                           (-> self gun put-away?)
@@ -2332,7 +2326,7 @@
                                          (logand (-> self game features) (-> *setting-control* user-current features))
                                          )
                                )
-                          (logtest? (focus-status dead dark) (-> self focus-status))
+                          (focus-test? self dead dark)
                           (-> self board latch?)
                           )
                       )
@@ -2352,7 +2346,7 @@
                       )
                   )
                 )
-           (target-gun-end-mode (zero? (logand (surface-flag gun-hide) (-> self control current-surface flags))))
+           (target-gun-end-mode (not (logtest? (surface-flag gun-hide) (-> self control current-surface flags))))
            )
        )
       (else
@@ -2381,7 +2375,7 @@
          (case (-> gp-0 gun-type)
            (((pickup-type eco-blue))
             (cond
-              ((logtest? (-> self focus-status) (focus-status pilot-riding))
+              ((focus-test? self pilot-riding)
                (let ((v1-15 (get-channel (-> self skel top-anim) 0)))
                  (when (not (or (= (-> self skel top-anim frame-group) (-> self draw art-group data 206))
                                 (and v1-15 (= (-> v1-15 frame-group) (-> self draw art-group data 206)))
@@ -2448,7 +2442,7 @@
             )
            (((pickup-type eco-yellow))
             (cond
-              ((logtest? (-> self focus-status) (focus-status pilot-riding))
+              ((focus-test? self pilot-riding)
                (push-anim-to-targ
                  (-> self skel top-anim)
                  (the-as art-joint-anim (-> self draw art-group data 223))
@@ -2496,7 +2490,7 @@
                          )
                   )
               (cond
-                ((logtest? (-> self focus-status) (focus-status pilot-riding))
+                ((focus-test? self pilot-riding)
                  (push-anim-to-targ
                    (-> self skel top-anim)
                    (the-as art-joint-anim (-> self draw art-group data 222))
@@ -2583,7 +2577,7 @@
             (target-gun-fire-red)
             )
            (((pickup-type eco-dark))
-            (if (logtest? (-> self focus-status) (focus-status pilot-riding))
+            (if (focus-test? self pilot-riding)
                 (push-anim-to-targ
                   (-> self skel top-anim)
                   (the-as art-joint-anim (-> self draw art-group data 224))
@@ -2639,7 +2633,7 @@
   (when (using-gun? self)
     (let ((gp-0 (-> self gun)))
       (cond
-        ((and (logtest? (-> self focus-status) (focus-status pilot-riding)) (nonzero? (-> self skel float-channels)))
+        ((and (focus-test? self pilot-riding) (nonzero? (-> self skel float-channels)))
          (set! (-> self skel top-anim interp-select 0) (the-as uint #x800000))
          (set! (-> self skel top-anim interp-select 1) (the-as uint 0))
          0
@@ -2650,8 +2644,7 @@
           0
           )
         )
-      (if (not (or (logtest? (-> self focus-status) (focus-status in-head)) (= (-> self gun gun-type) (pickup-type eco-red)))
-               )
+      (if (not (or (focus-test? self in-head) (= (-> self gun gun-type) (pickup-type eco-red))))
           (gun-info-method-9 gp-0)
           )
       (if (and (logtest? (surface-flag spin) (-> self control current-surface flags))
@@ -2763,7 +2756,7 @@
              (set! (-> self gun top-anim-blue-cycle) f0-24)
              (push-anim-to-targ
                (-> self skel top-anim)
-               (the-as art-joint-anim (if (logtest? (-> self focus-status) (focus-status pilot-riding))
+               (the-as art-joint-anim (if (focus-test? self pilot-riding)
                                           (-> self draw art-group data 206)
                                           (-> self draw art-group data 257)
                                           )

@@ -465,7 +465,7 @@
           (gp-0 (new 'stack-no-clear 'matrix))
           )
       (let ((s4-0 (new 'stack-no-clear 'vector)))
-        (TODO-RENAME-14 (-> self path) s5-0 f30-0)
+        (path-control-method-14 (-> self path) s5-0 f30-0)
         (set! (-> s4-0 quad) (-> self down value quad))
         (set! (-> s4-0 y) -1.0)
         (vector-normalize! s4-0 1.0)
@@ -528,26 +528,26 @@
   )
 
 (defstate darkecobarrel-mover-move (darkecobarrel-mover)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch 'attack)
        (cond
-         ((= arg0 *target*)
-          (let ((s5-0 (-> arg3 param 0)))
+         ((= proc *target*)
+          (let ((s5-0 (-> event param 0)))
             (if (and s5-0
                      ((method-of-type touching-shapes-entry prims-touching?)
                       (the-as touching-shapes-entry s5-0)
                       (-> self root-override)
                       (the-as uint 1)
                       )
-                     (send-event arg0 'attack-invinc s5-0 (static-attack-info ((mode 'death))))
+                     (send-event proc 'attack-invinc s5-0 (static-attack-info ((mode 'death))))
                      )
                 (go darkecobarrel-mover-die)
                 )
             )
           )
          ((>= arg1 2)
-          (case (-> arg3 param 1)
+          (case (-> event param 1)
             (('eco-yellow)
              (+! (-> self hits) 1)
              (cond
@@ -555,8 +555,8 @@
                 (go darkecobarrel-mover-die)
                 )
                (else
-                 (let ((v1-17 (if (and (nonzero? arg0) (type-type? (-> arg0 type) process-drawable))
-                                  arg0
+                 (let ((v1-17 (if (and (nonzero? proc) (type-type? (-> proc type) process-drawable))
+                                  proc
                                   )
                               )
                        (gp-1 (new 'stack-no-clear 'vector))
@@ -574,10 +574,9 @@
                        )
                      (else
                        (set! (-> self leak (+ (-> self hits) -1) offset quad) (-> self root-override trans quad))
-                       (let ((f0-1 (+ -49152.0 (-> self leak (+ (-> self hits) -1) offset y))))
-                         (set! (-> self leak (+ (-> self hits) -1) offset y) f0-1)
-                         f0-1
-                         )
+                       (set! (-> self leak (+ (-> self hits) -1) offset y)
+                             (+ -49152.0 (-> self leak (+ (-> self hits) -1) offset y))
+                             )
                        )
                      )
                    )
@@ -735,9 +734,7 @@
   (let ((s5-1 (res-lump-data arg0 'delay pointer :tag-ptr (& sv-16))))
     (cond
       (s5-1
-        (set! (-> obj spawn-array)
-              (the-as (array int64) (new 'process 'boxed-array time-frame (the-as int (-> sv-16 elt-count))))
-              )
+        (set! (-> obj spawn-array) (new 'process 'boxed-array time-frame (the-as int (-> sv-16 elt-count))))
         (dotimes (v1-12 (the-as int (-> sv-16 elt-count)))
           (set! (-> obj spawn-array v1-12)
                 (the int (* (fabs (-> obj speed)) (-> (the-as (pointer float) (&+ s5-1 (* v1-12 4))))))
@@ -745,7 +742,7 @@
           )
         )
       (else
-        (set! (-> obj spawn-array) (the-as (array int64) (new 'process 'boxed-array time-frame 4)))
+        (set! (-> obj spawn-array) (new 'process 'boxed-array time-frame 4))
         (set! (-> obj spawn-array 0) (the int (* 45056.0 (fabs (-> obj speed)))))
         (set! (-> obj spawn-array 1) (the int (* 90112.0 (fabs (-> obj speed)))))
         (set! (-> obj spawn-array 2) (the int (* 45056.0 (fabs (-> obj speed)))))
@@ -1050,10 +1047,10 @@
 
 (defstate idle (chainmine)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack 'touch)
-       (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'deadly))))
+       (send-event proc 'attack (-> event param 0) (static-attack-info ((mode 'deadly))))
        (go-virtual die)
        )
       )
@@ -1126,7 +1123,7 @@
 
 (defpartgroup group-lavaballoon
   :id 543
-  :duration 5
+  :duration (seconds 0.017)
   :bounds (static-bspherem 0 0 0 15)
   :parts ((sp-item 1987) (sp-item 1988) (sp-item 1989))
   )
@@ -1218,16 +1215,16 @@
 
 (defstate idle (lavaballoon)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack)
-       (send-event arg0 'heat -10.0)
+       (send-event proc 'heat -10.0)
        (go-virtual die)
        )
       )
     )
   :trans (behavior ()
-    (when (zero? (logand (-> self path flags) (path-control-flag not-found)))
+    (when (not (logtest? (-> self path flags) (path-control-flag not-found)))
       (let ((f0-4 (* 0.5 (+ 1.0 (sin (* (-> self move-per-tick) (the float (-> *display* base-frame-counter))))))))
         (eval-path-curve! (-> self path) (-> self root-override trans) f0-4 'interp)
         )
@@ -1266,7 +1263,7 @@
   (set! (-> obj root-override pause-adjust-distance) 122880.0)
   (set! (-> obj path) (new 'process 'path-control obj 'path 0.0))
   (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-  (when (zero? (logand (-> obj path flags) (path-control-flag not-found)))
+  (when (not (logtest? (-> obj path flags) (path-control-flag not-found)))
     (let ((f30-0 (res-lump-float (-> obj entity) 'speed :default 12288.0)))
       (set! (-> obj move-per-tick) (* 32768.0 (/ 1.0 (* 300.0 (path-distance (-> obj path)))) f30-0))
       )
@@ -1309,8 +1306,8 @@
     )
   )
 
-(defmethod TODO-RENAME-22 lavatube-lava ((obj lavatube-lava))
-  (let ((t9-0 (method-of-type water-anim TODO-RENAME-22)))
+(defmethod water-vol-method-22 lavatube-lava ((obj lavatube-lava))
+  (let ((t9-0 (method-of-type water-anim water-vol-method-22)))
     (t9-0 obj)
     )
   (let ((v1-2 (new 'process 'ripple-control)))
@@ -1362,7 +1359,3 @@
   (go lavayellowtarp-idle)
   (none)
   )
-
-
-
-

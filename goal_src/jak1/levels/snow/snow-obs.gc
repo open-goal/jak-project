@@ -152,7 +152,7 @@
 
 (defpartgroup group-snow-yellow-eco-room-activate
   :id 511
-  :duration 900
+  :duration (seconds 3)
   :bounds (static-bspherem 0 -6 0 8)
   :parts ((sp-item 1994) (sp-item 1994) (sp-item 1995 :flags (bit1) :period 1200 :length 15))
   )
@@ -289,19 +289,19 @@
   )
 
 (defstate snow-eggtop-idle-up (snow-eggtop)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'notify)
-                       (case (-> arg3 param 0)
-                         (('pickup)
-                          (if (type-type? (-> arg0 type) fuel-cell)
-                              (save-reminder (get-task-control (-> self entity extra perm task)) 1 4)
-                              )
-                          )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('notify)
+                      (case (-> event param 0)
+                        (('pickup)
+                         (if (type-type? (-> proc type) fuel-cell)
+                             (save-reminder (get-task-control (-> self entity extra perm task)) 1 4)
+                             )
                          )
-                       )
-              )
-      )
+                        )
+                      )
+                     )
+            )
     )
   :trans (behavior ()
     (if (and (not (-> self child)) (task-complete? *game-info* (-> self entity extra perm task)))
@@ -324,18 +324,18 @@
   )
 
 (defstate snow-eggtop-activate (snow-eggtop)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('notify)
-       (when (= (-> arg0 type) snowcam)
+       (when (= (-> proc type) snowcam)
          (cond
-           ((= (-> arg3 param 0) 'die)
+           ((= (-> event param 0) 'die)
             (if *target*
                 (set! (-> *target* control trans y) (+ 1024.0 (-> *target* control trans y)))
                 )
             (go snow-eggtop-idle-down)
             )
-           ((= (-> arg3 param 0) 'cut)
+           ((= (-> event param 0) 'cut)
             (stop! (-> self sound))
             (set! (-> self play-sound?) #f)
             #f
@@ -397,7 +397,7 @@
       (ja :num! (seek!))
       )
     (level-hint-spawn
-      (game-text-id snow-eggtop-resolution)
+      (text-id snow-eggtop-resolution)
       "sksp0360"
       (the-as entity #f)
       *entity-pool*
@@ -523,14 +523,14 @@
               )
 
 (defstate snowpusher-idle (snowpusher)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'touch)
-                       (send-event arg0 'no-look-around (seconds 1.5))
-                       #f
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('touch)
+                      (send-event proc 'no-look-around (seconds 1.5))
+                      #f
+                      )
+                     )
+            )
     )
   :code (behavior ()
     (let ((gp-0 #f))
@@ -645,14 +645,14 @@
               )
 
 (defstate snow-spatula-idle (snow-spatula)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'bonk)
-                       (dummy-22 self)
-                       (sound-play "snow-spat-short" :vol 75 :pitch 0.75)
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('bonk)
+                      (baseplat-method-22 self)
+                      (sound-play "snow-spat-short" :vol 75 :pitch 0.75)
+                      )
+                     )
+            )
     )
   :trans (the-as (function none :behavior snow-spatula) plat-trans)
   :code (behavior ()
@@ -721,7 +721,7 @@
   (logior! (-> obj skel status) (janim-status inited))
   (load-params! (-> obj sync) obj (the-as uint 1500) 0.0 0.15 0.15)
   (quaternion->matrix (-> obj startmat) (-> obj root-override quat))
-  (dummy-21 obj)
+  (baseplat-method-21 obj)
   (go snow-spatula-idle)
   (none)
   )
@@ -917,8 +917,8 @@
   )
 
 (defstate snow-fort-gate-idle-closed (snow-fort-gate)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('notice)
        (go snow-fort-gate-activate)
        )
@@ -926,13 +926,7 @@
     )
   :trans (behavior ()
     (when (and *target* (>= 61440.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
-      (level-hint-spawn
-        (game-text-id snow-fort-hint)
-        "sksp0345"
-        (the-as entity #f)
-        *entity-pool*
-        (game-task none)
-        )
+      (level-hint-spawn (text-id snow-fort-hint) "sksp0345" (the-as entity #f) *entity-pool* (game-task none))
       (close-specific-task! (game-task snow-fort) (task-status need-hint))
       )
     (none)
@@ -1103,7 +1097,7 @@
   :size-assert         #xb0
   :flag-assert         #x15004000b0
   (:methods
-    (TODO-RENAME-20 (_type_) none 20)
+    (snow-gears-method-20 (_type_) none 20)
     )
   (:states
     snow-gears-activate
@@ -1186,7 +1180,7 @@
   :init-specs ((sp-flt spt-fade-a -0.14222223))
   )
 
-(defmethod TODO-RENAME-20 snow-gears ((obj snow-gears))
+(defmethod snow-gears-method-20 snow-gears ((obj snow-gears))
   (let ((a1-0 (new 'stack-no-clear 'vector)))
     (set! (-> a1-0 quad) (-> obj root trans quad))
     (set! (-> a1-0 y) (+ 61440.0 (-> a1-0 y)))
@@ -1196,8 +1190,8 @@
   )
 
 (defstate snow-gears-idle (snow-gears)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('notice)
        (logclear! (-> self mask) (process-mask actor-pause))
        (process-entity-status! self (entity-perm-status bit-3) #t)
@@ -1218,7 +1212,7 @@
 
 (defstate snow-gears-activate (snow-gears)
   :trans (behavior ()
-    (TODO-RENAME-20 self)
+    (snow-gears-method-20 self)
     (none)
     )
   :code (behavior ()
@@ -1252,7 +1246,7 @@
     (none)
     )
   :trans (behavior ()
-    (TODO-RENAME-20 self)
+    (snow-gears-method-20 self)
     (none)
     )
   :code (behavior ()
@@ -1372,7 +1366,7 @@
     (local-vars (v1-1 symbol))
     (until v1-1
       (suspend)
-      (set! v1-1 (or (not *target*) (zero? (logand (-> *target* state-flags) (state-flags grabbed)))))
+      (set! v1-1 (or (not *target*) (not (logtest? (-> *target* state-flags) (state-flags grabbed)))))
       )
     (sound-play "prec-button1" :pitch -1)
     (let ((gp-1 (get-process *default-dead-pool* snowcam #x4000)))
@@ -1532,8 +1526,8 @@
               )
 
 (defstate snow-log-wait-for-master (snow-log)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (go snow-log-activate)
        )
@@ -1575,8 +1569,8 @@
   )
 
 (defstate snow-log-hidden (snow-log)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (logclear! (-> self mask) (process-mask actor-pause))
        (process-entity-status! self (entity-perm-status bit-3) #t)
@@ -1860,7 +1854,3 @@
       )
   (none)
   )
-
-
-
-

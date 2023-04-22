@@ -71,8 +71,8 @@
   "Were we attacked by the player?"
   (the-as
     symbol
-    (and (and arg0 (zero? (logand (-> arg0 focus-status) (focus-status disable dead ignore grabbed))))
-         (or (and (logtest? (process-mask enemy) (-> arg0 mask)) (zero? (logand (bot-flags bf26) (-> obj bot-flags))))
+    (and (and arg0 (not (logtest? (-> arg0 focus-status) (focus-status disable dead ignore grabbed))))
+         (or (and (logtest? (process-mask enemy) (-> arg0 mask)) (not (logtest? (bot-flags bf26) (-> obj bot-flags))))
              (and (logtest? (-> arg0 mask) (process-mask target)) (logtest? (-> obj bot-flags) (bot-flags attacked)))
              )
          )
@@ -377,7 +377,7 @@
     (none)
     )
   :trans (behavior ()
-    (if (logtest? (-> self focus-status) (focus-status grabbed))
+    (if (focus-test? self grabbed)
         (go-virtual waiting-close)
         )
     (let ((a0-1 (handle->process (-> self focus handle))))
@@ -553,7 +553,7 @@
                       (with-pp
                         (if (not (and (logtest? (-> arg1 bot-task-bits) 1)
                                       *target*
-                                      (zero? (logand (-> *target* focus-status) (focus-status dead in-air edge-grab)))
+                                      (not (logtest? (-> *target* focus-status) (focus-status dead in-air edge-grab)))
                                       )
                                  )
                             (set! (-> arg1 waypoint-time0) (-> pp clock frame-counter))
@@ -1584,7 +1584,7 @@
                             (when (send-event arg1 'jump 5 (-> arg1 sig5-course spots 28))
                               (let ((s5-1 (-> arg1 actor-group 0 data 6 actor)))
                                 (when (and (not (channel-active? arg1 (the-as uint 0)))
-                                           (or (not s5-1) (zero? (logand (-> s5-1 extra perm status) (entity-perm-status subtask-complete))))
+                                           (or (not s5-1) (not (logtest? (-> s5-1 extra perm status) (entity-perm-status subtask-complete))))
                                            )
                                   (let ((s5-2 18))
                                     (case (get-rand-int arg1 3)
@@ -1646,7 +1646,7 @@
                             )
                         (when (and (not (logtest? (-> arg1 waypoint-bits) 2))
                                    (>= (- (-> pp clock frame-counter) (-> arg1 waypoint-time0)) (seconds 0.5))
-                                   (zero? (logand (-> arg1 focus-status) (focus-status in-air)))
+                                   (not (logtest? (-> arg1 focus-status) (focus-status in-air)))
                                    )
                           (logior! (-> arg1 waypoint-bits) 2)
                           (logior! (-> arg1 enemy-flags) (enemy-flag enable-on-active checking-water))
@@ -1748,7 +1748,7 @@
                       (with-pp
                         (when (and (not (logtest? (-> arg1 waypoint-bits) 1))
                                    (>= (- (-> pp clock frame-counter) (-> arg1 waypoint-time0)) (seconds 0.5))
-                                   (zero? (logand (-> arg1 focus-status) (focus-status in-air)))
+                                   (not (logtest? (-> arg1 focus-status) (focus-status in-air)))
                                    )
                           (logior! (-> arg1 waypoint-bits) 1)
                           (logior! (-> arg1 enemy-flags) (enemy-flag enable-on-active checking-water))

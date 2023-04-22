@@ -104,6 +104,8 @@ ShaderLibrary::ShaderLibrary(GameVersion version) {
   at(ShaderId::GLOW_PROBE_READ_DEBUG) = {"glow_probe_read_debug", version};
   at(ShaderId::GLOW_PROBE_DOWNSAMPLE) = {"glow_probe_downsample", version};
   at(ShaderId::GLOW_DRAW) = {"glow_draw", version};
+  at(ShaderId::ETIE_BASE) = {"etie_base", version};
+  at(ShaderId::ETIE) = {"etie", version};
 
   for (auto& shader : m_shaders) {
     ASSERT_MSG(shader.okay(), "error compiling shader");

@@ -533,7 +533,7 @@
          (let ((v1-7 (-> arg3 param 0)))
            (cond
              ((= v1-7 'grab)
-              (when (not (logtest? (-> self focus-status) (focus-status dead)))
+              (when (not (focus-test? self dead))
                 (if (not (-> arg3 param 1))
                     #t
                     (go target-mech-grab)
@@ -739,7 +739,7 @@
            )
          )
         (('shove)
-         (when (not (logtest? (-> self focus-status) (focus-status dead hit)))
+         (when (not (focus-test? self dead hit))
            (mem-copy! (the-as pointer (-> self attack-info-rec)) (the-as pointer (-> arg3 param 1)) 160)
            (when (not (logtest? (-> self attack-info-rec mask) (attack-info-mask attacker)))
              (set! (-> self attack-info-rec attacker) (process->handle arg0))
@@ -823,12 +823,12 @@
                         )
                       'bounce
                       )
-                   (zero? (logand (-> self focus-status) (focus-status dead hit)))
+                   (not (logtest? (-> self focus-status) (focus-status dead hit)))
                    )
           (set! (-> self control last-trans-any-surf quad) (-> self control trans quad))
           (target-timed-invulnerable (seconds 0.1) self 1)
           (cond
-            ((logtest? (focus-status carry) (-> self focus-status))
+            ((focus-test? self carry)
              enter-state
              (let ((a0-19 (-> *TARGET-bank* mech-carry-jump-height-min))
                    (a1-8 (-> *TARGET-bank* mech-carry-jump-height-max))
@@ -1704,7 +1704,7 @@
           )
         (cond
           ((and (logtest? (-> self control mod-surface flags) (surface-flag air))
-                (zero? (logand (-> self control status) (collide-status on-surface)))
+                (not (logtest? (-> self control status) (collide-status on-surface)))
                 )
            (add-thrust)
            )

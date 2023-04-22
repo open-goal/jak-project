@@ -93,8 +93,8 @@
   )
 
 (defstate cavecrystal-idle (cavecrystal)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack)
        (go cavecrystal-active)
        )
@@ -103,7 +103,7 @@
   :trans (behavior ()
     (if (and *target* (>= 40960.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
         (level-hint-spawn
-          (game-text-id darkcave-light-hint)
+          (text-id darkcave-light-hint)
           "sksp0333"
           (the-as entity #f)
           *entity-pool*
@@ -122,24 +122,24 @@
   )
 
 (defstate cavecrystal-active (cavecrystal)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'attack)
-                       (let ((v1-1 (-> arg3 param 2)))
-                         (cond
-                           ((!= v1-1 (-> self player-attack-id))
-                            (set! (-> self player-attack-id) v1-1)
-                            (set! (-> self activated-time) (-> *display* game-frame-counter))
-                            #t
-                            )
-                           (else
-                             #f
-                             )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('attack)
+                      (let ((v1-1 (-> event param 2)))
+                        (cond
+                          ((!= v1-1 (-> self player-attack-id))
+                           (set! (-> self player-attack-id) v1-1)
+                           (set! (-> self activated-time) (-> *display* game-frame-counter))
+                           #t
                            )
-                         )
-                       )
-              )
-      )
+                          (else
+                            #f
+                            )
+                          )
+                        )
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
@@ -177,11 +177,11 @@
           (set! (-> s5-1 w) 0.0)
           )
         )
-      (TODO-RENAME-9 *cavecrystal-light-control* (-> self crystal-id) (-> self glow-u) self)
+      (cavecrystal-light-control-method-9 *cavecrystal-light-control* (-> self crystal-id) (-> self glow-u) self)
       (update-connected-crystals! self)
       (when (>= 0.0 f30-0)
         (level-hint-spawn
-          (game-text-id darkcave-light-end)
+          (text-id darkcave-light-end)
           "sksp0332"
           (the-as entity #f)
           *entity-pool*
@@ -258,14 +258,10 @@
     )
   (ja-post)
   (update-transforms! (-> obj root-override))
-  (TODO-RENAME-9 *cavecrystal-light-control* (-> obj crystal-id) 0.0 obj)
+  (cavecrystal-light-control-method-9 *cavecrystal-light-control* (-> obj crystal-id) 0.0 obj)
   (set! (-> obj sound)
         (new 'process 'ambient-sound (static-sound-spec "crystal-on" :fo-max 80) (-> obj root-override trans))
         )
   (go cavecrystal-idle)
   (none)
   )
-
-
-
-

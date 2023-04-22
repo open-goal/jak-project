@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "third-party/discord-rpc/include/discord_rpc.h"
 

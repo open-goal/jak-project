@@ -93,6 +93,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch object vs touching-shapes-entry.
 (defmethod get-shapes-entry touching-list ((obj touching-list) (shape1 collide-shape) (shape2 collide-shape))
   (let ((entry (the-as touching-shapes-entry (-> obj touching-shapes))))
     (let ((v1-0 (the-as touching-shapes-entry #f)))
@@ -147,6 +148,8 @@
   :flag-assert         #x900000008
   )
 
+
+;; WARN: Function (method 9 touching-list) has a return type of none, but the expression builder found a return statement.
 (defmethod add-touching-prims touching-list ((obj touching-list)
                                            (arg0 collide-shape-prim)
                                            (arg1 collide-shape-prim)
@@ -394,13 +397,14 @@
   (the-as touching-prims-entry #f)
   )
 
+;; WARN: Return type mismatch touching-prims-entry vs basic.
 (defmethod prims-touching-action? touching-shapes-entry ((obj touching-shapes-entry) (arg0 collide-shape) (arg1 collide-action) (arg2 collide-action))
   (cond
     ((= (-> obj cshape1) arg0)
      (let ((v1-1 (-> obj head)))
        (while v1-1
          (let ((a0-1 (-> v1-1 prim1 cprim)))
-           (if (and (logtest? arg1 (-> a0-1 prim-core action)) (zero? (logand arg2 (-> a0-1 prim-core action))))
+           (if (and (logtest? arg1 (-> a0-1 prim-core action)) (not (logtest? arg2 (-> a0-1 prim-core action))))
                (return (the-as basic v1-1))
                )
            )
@@ -412,7 +416,7 @@
      (let ((v1-4 (-> obj head)))
        (while v1-4
          (let ((a0-5 (-> v1-4 prim2 cprim)))
-           (if (and (logtest? arg1 (-> a0-5 prim-core action)) (zero? (logand arg2 (-> a0-5 prim-core action))))
+           (if (and (logtest? arg1 (-> a0-5 prim-core action)) (not (logtest? arg2 (-> a0-5 prim-core action))))
                (return (the-as basic v1-4))
                )
            )
@@ -504,7 +508,3 @@
     )
   arg0
   )
-
-
-
-

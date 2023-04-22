@@ -510,6 +510,22 @@
     )
   )
 
+(defmacro abandon-thread ()
+  ;; abandon this one too.
+  ;; NOTE - this is different from GOAL.
+  ;; GOAL installs this as the return address for this function and returns normally.
+  ;; but we don't because I don't have an easy way to find where to stick this.
+  ;; I can't see how this makes a difference, as all non-main threads seem
+  ;; temporary, but if this turns out to be false, we will need to change this.
+  `(rlet ((temp)
+        (off :reg r15 :type uint :reset-here #t))
+    (.mov temp return-from-thread) ;; could probably just call this...
+    (.add temp off)
+    (.push temp)
+    (.ret)
+    )
+  )
+
 (defun reset-and-call ((obj thread) (func function))
   "Make the given thread the top thread, reset the stack, and call the function.
   Sets up a return trampoline so when the function returns it will return to the
@@ -2222,6 +2238,9 @@
              (shrink-heap (the dead-pool-heap (-> pp pool)) pp)
              )
            )
+          (('dead)
+           ;; died in init, this is fine.
+           )
           (else
            (format 0 "GOT UNKNOWN INIT: ~A~%" (-> pp status))
            )
@@ -2388,13 +2407,7 @@
         ;; then go back to the kernel dispatcher immediately.
         ((= (-> *kernel-context* current-process) obj)
          (set! (-> obj status) 'dead)
-         (let ((temp (the uint return-from-thread)))
-           (rlet ((off :reg r15 :type uint))
-                 (+! temp off)
-                 (.push temp)
-                 (.ret)
-                 )
-           )
+         (abandon-thread)
          )
         ;; if you deactivated yourself while initializing, we should go back to
         ;; the place where initialize was called in another process, not all the way back to the kernel.

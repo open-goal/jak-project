@@ -20,13 +20,13 @@
 (define *CAM_POINT_WATCH-bank* (new 'static 'cam-point-watch-bank :speed 1600.0 :rot-speed (degrees 0.6)))
 
 (defstate cam-point-watch (camera-slave)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('teleport)
        #f
        )
       (else
-        (cam-standard-event-handler arg0 arg1 arg2 arg3)
+        (cam-standard-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -297,9 +297,9 @@
           )
       (when *display-load-boundaries*
         (when (and (!= arg3 1)
-                   (zero? (logand (-> *cpad-list* cpads 1 button0-abs 0) (pad-buttons x)))
-                   (zero? (logand (-> *cpad-list* cpads 1 button0-abs 0) (pad-buttons r1)))
-                   (zero? (logand (-> *cpad-list* cpads 1 button0-abs 0) (pad-buttons r2)))
+                   (not (cpad-hold? 1 x))
+                   (not (cpad-hold? 1 r1))
+                   (not (logtest? (-> *cpad-list* cpads 1 button0-abs 0) (pad-buttons r2)))
                    )
           (+! f28-14 (analog-input (the-as int (-> *cpad-list* cpads 1 leftx)) 128.0 48.0 110.0 -1.0))
           (+! f30-14 (analog-input (the-as int (-> *cpad-list* cpads 1 lefty)) 128.0 48.0 110.0 -1.0))
@@ -390,13 +390,13 @@
   )
 
 (defstate cam-free-floating (camera-slave)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('teleport)
        #f
        )
       (else
-        (cam-standard-event-handler arg0 arg1 arg2 arg3)
+        (cam-standard-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -469,13 +469,13 @@
 (set! (-> *camera-orbit-info* orbit-off y) 4096.0)
 
 (defstate cam-orbit (camera-slave)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('teleport)
        #f
        )
       (else
-        (cam-standard-event-handler arg0 arg1 arg2 arg3)
+        (cam-standard-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -589,7 +589,3 @@
     (none)
     )
   )
-
-
-
-

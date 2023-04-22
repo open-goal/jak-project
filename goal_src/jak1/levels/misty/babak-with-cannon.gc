@@ -277,7 +277,7 @@ nav-enemy-default-event-handler
       )
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
     (nav-enemy-execute-jump)
-    (let ((a1-6 (dummy-16 (-> self nav) (-> self jump-dest))))
+    (let ((a1-6 (nav-control-method-16 (-> self nav) (-> self jump-dest))))
       (set-current-poly! (-> self nav) a1-6)
       )
     (go-virtual nav-enemy-jump-land)
@@ -408,19 +408,15 @@ nav-enemy-default-event-handler
 (defmethod init-from-entity! babak-with-cannon ((obj babak-with-cannon) (arg0 entity-actor))
   (initialize-collision obj)
   (process-drawable-from-entity! obj arg0)
-  (TODO-RENAME-48 obj)
+  (nav-enemy-method-48 obj)
   (set! (-> obj distance) (res-lump-float arg0 'distance :default 163840.0))
   (set! (-> obj cannon-ent) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
   (logclear! (-> obj mask) (process-mask actor-pause))
   (if (or (not (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete))))
-          (zero? (logand (-> obj enemy-info options) (fact-options has-power-cell)))
+          (not (logtest? (-> obj enemy-info options) (fact-options has-power-cell)))
           )
       (go (method-of-object obj nav-enemy-idle))
       )
   (go (method-of-object obj nav-enemy-fuel-cell))
   (none)
   )
-
-
-
-

@@ -229,11 +229,11 @@
   )
 
 (defstate snow-button-up-idle (snow-button)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-2 object))
-    (case arg2
+    (case event-type
       (('touch 'attack 'bonk)
-       (when (and (= (-> arg0 type) target)
+       (when (and (= (-> proc type) target)
                   (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-14))
                   (>= 10649.6 (vector-vector-xz-distance (-> self root-override trans) (target-pos 0)))
                   )
@@ -260,9 +260,9 @@
   )
 
 (defstate snow-button-activate (snow-button)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 object))
-    (case arg2
+    (case event-type
       (('untrigger)
        (go snow-button-deactivate)
        )
@@ -327,9 +327,9 @@
   )
 
 (defstate snow-button-deactivate (snow-button)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (local-vars (v0-0 symbol))
-    (case arg2
+    (case event-type
       (('query)
        (return (the-as object #f))
        v0-0
@@ -430,8 +430,8 @@
   (none)
   )
 
-(defmethod dummy-26 flutflut-plat ((obj flutflut-plat))
-  (let ((t9-0 (method-of-type plat dummy-26)))
+(defmethod baseplat-method-26 flutflut-plat ((obj flutflut-plat))
+  (let ((t9-0 (method-of-type plat baseplat-method-26)))
     (t9-0 obj)
     )
   (if (zero? (-> obj link))
@@ -446,7 +446,7 @@
         )
     )
   (set! (-> obj has-path?)
-        (and (zero? (logand (-> obj path flags) (path-control-flag not-found))) (> (-> obj sync period) 0))
+        (and (not (logtest? (-> obj path flags) (path-control-flag not-found))) (> (-> obj sync period) 0))
         )
   (when (nonzero? (-> obj plat-type))
     (cond
@@ -491,8 +491,8 @@
 
 (defstate plat-startup (flutflut-plat)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (when (or (!= (-> self plat-type) 1)
                  (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
@@ -538,8 +538,8 @@
   )
 
 (defstate flutflut-plat-hidden-idle (flutflut-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (logclear! (-> self mask) (process-mask actor-pause))
        (go flutflut-plat-appear)
@@ -565,13 +565,13 @@
   )
 
 (defstate flutflut-plat-appear (flutflut-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (if (or (= v1-0 'bonk) (= v1-0 'bounce))
-                         (dummy-22 self)
-                         )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('bonk 'bounce)
+                      (the-as symbol (baseplat-method-22 self))
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -611,7 +611,7 @@
       (quaternion-slerp! (-> self root-override quat) (-> self appear-quat-bottom) (-> self appear-quat-top) f30-0)
       (set-vector! (-> self draw color-mult) f30-0 f30-0 f30-0 1.0)
       (when (>= f30-0 1.0)
-        (dummy-22 self)
+        (baseplat-method-22 self)
         (rider-post)
         (cond
           ((= (-> self plat-type) 1)
@@ -632,7 +632,7 @@
           )
         )
       )
-    (dummy-20 self)
+    (baseplat-method-20 self)
     (none)
     )
   :code (the-as (function none :behavior flutflut-plat) anim-loop)
@@ -641,18 +641,16 @@
 
 (defstate plat-idle (flutflut-plat)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (cond
-                       ((or (= v1-0 'bonk) (= v1-0 'bounce))
-                        (dummy-22 self)
-                        )
-                       ((= v1-0 'untrigger)
-                        (go flutflut-plat-hide)
-                        )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('bonk 'bounce)
+                      (the-as object (baseplat-method-22 self))
+                      )
+                     (('untrigger)
+                      (go flutflut-plat-hide)
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (let ((t9-0 (-> (method-of-type plat plat-idle) enter)))
@@ -687,18 +685,16 @@
 
 (defstate plat-path-active (flutflut-plat)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (cond
-                       ((or (= v1-0 'bonk) (= v1-0 'bounce))
-                        (dummy-22 self)
-                        )
-                       ((= v1-0 'untrigger)
-                        (go flutflut-plat-hide)
-                        )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('bonk 'bounce)
+                      (the-as object (baseplat-method-22 self))
+                      )
+                     (('untrigger)
+                      (go flutflut-plat-hide)
+                      )
+                     )
+            )
     )
   :enter (behavior ((arg0 plat))
     (let ((t9-0 (-> (method-of-type plat plat-path-active) enter)))
@@ -725,13 +721,13 @@
   )
 
 (defstate flutflut-plat-hide (flutflut-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (if (= v1-0 'bonk)
-                         (dummy-22 self)
-                         )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('bonk)
+                      (the-as symbol (baseplat-method-22 self))
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -775,7 +771,7 @@
         (go flutflut-plat-hidden-idle)
         )
       )
-    (dummy-20 self)
+    (baseplat-method-20 self)
     (none)
     )
   :code (the-as (function none :behavior flutflut-plat) anim-loop)
@@ -783,25 +779,23 @@
   )
 
 (defstate elevator-idle-at-cave (flutflut-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as
-        object
-        (cond
-          ((= v1-0 'bonk)
-           (dummy-22 self)
-           )
-          ((= v1-0 'bounce)
-           (if (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
-               (dummy-22 self)
-               )
-           )
-          ((= v1-0 'ridden)
-           (if (or (not *target*) (zero? (logand (-> *target* control root-prim prim-core action) (collide-action ca-14))))
-               (go elevator-travel-to-fort)
-               )
-           )
-          )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('bonk)
+         (the-as object (baseplat-method-22 self))
+         )
+        (('bounce)
+         (if (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
+             (the-as object (baseplat-method-22 self))
+             )
+         )
+        (('ridden)
+         (if (or (not *target*) (not (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-14))))
+             (go elevator-travel-to-fort)
+             )
+         )
         )
       )
     )
@@ -812,7 +806,7 @@
     )
   :trans (behavior ()
     (plat-trans)
-    (dummy-20 self)
+    (baseplat-method-20 self)
     (none)
     )
   :code (the-as (function none :behavior flutflut-plat) anim-loop)
@@ -820,24 +814,24 @@
   )
 
 (defstate elevator-travel-to-fort (flutflut-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (if (or (= v1-0 'bonk) (= v1-0 'bounce))
-                         (dummy-22 self)
-                         )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('bonk 'bounce)
+                      (the-as symbol (baseplat-method-22 self))
+                      )
+                     )
+            )
     )
   :trans (behavior ()
     (when (= (-> self path-pos) 1.0)
-      (dummy-22 self)
+      (baseplat-method-22 self)
       (go elevator-idle-at-fort)
       )
     ;; PAL patch here
     (seek! (-> self path-pos) 1.0 (* 0.16 (-> *display* seconds-per-frame)))
     (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
     (plat-trans)
-    (dummy-20 self)
+    (baseplat-method-20 self)
     (none)
     )
   :code (the-as (function none :behavior flutflut-plat) anim-loop)
@@ -845,13 +839,13 @@
   )
 
 (defstate elevator-idle-at-fort (flutflut-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (if (or (= v1-0 'bonk) (= v1-0 'bounce))
-                         (dummy-22 self)
-                         )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('bonk 'bounce)
+                      (the-as symbol (baseplat-method-22 self))
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (set! (-> self path-pos) 1.0)
@@ -862,7 +856,7 @@
     (when *target*
       (if (and (>= 798720.0 (-> (target-pos 0) y))
                (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
-                         (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                         (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                          )
                     )
                )
@@ -870,7 +864,7 @@
           )
       )
     (plat-trans)
-    (dummy-20 self)
+    (baseplat-method-20 self)
     (none)
     )
   :code (the-as (function none :behavior flutflut-plat) anim-loop)
@@ -878,24 +872,24 @@
   )
 
 (defstate elevator-travel-to-cave (flutflut-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (if (or (= v1-0 'bonk) (= v1-0 'bounce))
-                         (dummy-22 self)
-                         )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('bonk 'bounce)
+                      (the-as symbol (baseplat-method-22 self))
+                      )
+                     )
+            )
     )
   :trans (behavior ()
     (when (= (-> self path-pos) 0.0)
-      (dummy-22 self)
+      (baseplat-method-22 self)
       (go elevator-idle-at-cave)
       )
     ;; PAL patch here
     (seek! (-> self path-pos) 0.0 (* 0.16 (-> *display* seconds-per-frame)))
     (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
     (plat-trans)
-    (dummy-20 self)
+    (baseplat-method-20 self)
     (none)
     )
   :code (the-as (function none :behavior flutflut-plat) anim-loop)
@@ -933,14 +927,14 @@
   *flutflut-plat-small-sg*
   )
 
-(defmethod TODO-RENAME-25 flutflut-plat-small ((obj flutflut-plat-small))
+(defmethod baseplat-method-25 flutflut-plat-small ((obj flutflut-plat-small))
   (let ((v0-0 (create-launch-control (-> *part-group-id-table* 516) obj)))
     (set! (-> obj part) v0-0)
     (the-as sparticle-launch-group v0-0)
     )
   )
 
-(defmethod dummy-20 flutflut-plat-small ((obj flutflut-plat-small))
+(defmethod baseplat-method-20 flutflut-plat-small ((obj flutflut-plat-small))
   (when (nonzero? (-> obj part))
     (set! (-> *part-id-table* 2087 init-specs 12 initial-valuef) (-> obj part-ry))
     (set! (-> *part-id-table* 2088 init-specs 17 initial-valuef) (-> obj part-ry))
@@ -949,15 +943,15 @@
   (none)
   )
 
-(defmethod dummy-26 flutflut-plat-small ((obj flutflut-plat-small))
-  (let ((t9-0 (method-of-type flutflut-plat dummy-26)))
+(defmethod baseplat-method-26 flutflut-plat-small ((obj flutflut-plat-small))
+  (let ((t9-0 (method-of-type flutflut-plat baseplat-method-26)))
     (t9-0 obj)
     )
   (set! (-> obj part-ry) (+ 16384.0 (quaternion-y-angle (-> obj root-override quat))))
   (none)
   )
 
-(defmethod dummy-24 flutflut-plat-small ((obj flutflut-plat-small))
+(defmethod baseplat-method-24 flutflut-plat-small ((obj flutflut-plat-small))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -986,14 +980,14 @@
   *flutflut-plat-med-sg*
   )
 
-(defmethod TODO-RENAME-25 flutflut-plat-med ((obj flutflut-plat-med))
+(defmethod baseplat-method-25 flutflut-plat-med ((obj flutflut-plat-med))
   (let ((v0-0 (create-launch-control (-> *part-group-id-table* 517) obj)))
     (set! (-> obj part) v0-0)
     (the-as sparticle-launch-group v0-0)
     )
   )
 
-(defmethod dummy-24 flutflut-plat-med ((obj flutflut-plat-med))
+(defmethod baseplat-method-24 flutflut-plat-med ((obj flutflut-plat-med))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -1022,14 +1016,14 @@
   *flutflut-plat-large-sg*
   )
 
-(defmethod TODO-RENAME-25 flutflut-plat-large ((obj flutflut-plat-large))
+(defmethod baseplat-method-25 flutflut-plat-large ((obj flutflut-plat-large))
   (let ((v0-0 (create-launch-control (-> *part-group-id-table* 518) obj)))
     (set! (-> obj part) v0-0)
     (the-as sparticle-launch-group v0-0)
     )
   )
 
-(defmethod dummy-20 flutflut-plat-large ((obj flutflut-plat-large))
+(defmethod baseplat-method-20 flutflut-plat-large ((obj flutflut-plat-large))
   (when (nonzero? (-> obj part))
     (set! (-> *part-id-table* 2091 init-specs 12 initial-valuef) (-> obj part-ry))
     (set! (-> *part-id-table* 2092 init-specs 17 initial-valuef) (-> obj part-ry))
@@ -1038,15 +1032,15 @@
   (none)
   )
 
-(defmethod dummy-26 flutflut-plat-large ((obj flutflut-plat-large))
-  (let ((t9-0 (method-of-type flutflut-plat dummy-26)))
+(defmethod baseplat-method-26 flutflut-plat-large ((obj flutflut-plat-large))
+  (let ((t9-0 (method-of-type flutflut-plat baseplat-method-26)))
     (t9-0 obj)
     )
   (set! (-> obj part-ry) (+ 16384.0 (quaternion-y-angle (-> obj root-override quat))))
   (none)
   )
 
-(defmethod dummy-24 flutflut-plat-large ((obj flutflut-plat-large))
+(defmethod baseplat-method-24 flutflut-plat-large ((obj flutflut-plat-large))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -1070,7 +1064,3 @@
   0
   (none)
   )
-
-
-
-

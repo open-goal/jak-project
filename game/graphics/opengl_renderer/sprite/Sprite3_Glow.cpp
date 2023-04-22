@@ -213,10 +213,13 @@ void Sprite3::glow_dma_and_draw(DmaFollower& dma,
     ASSERT(vecdata_xfer.size_bytes == 4 * 16);
     ASSERT(shader_xfer.size_bytes == 5 * 16);
 
-    auto* out = m_glow_renderer.alloc_sprite();
-    if (!glow_math(&consts, vecdata_xfer.data, shader_xfer.data, out)) {
-      m_glow_renderer.cancel_sprite();
+    if (m_enable_glow) {
+      auto* out = m_glow_renderer.alloc_sprite();
+      if (!glow_math(&consts, vecdata_xfer.data, shader_xfer.data, out)) {
+        m_glow_renderer.cancel_sprite();
+      }
     }
+
     control_xfer = dma.read_and_advance();
     while (control_xfer.size_bytes == 0 && control_xfer.vifcode0().kind == VifCode::Kind::NOP &&
            control_xfer.vifcode1().kind == VifCode::Kind::NOP) {

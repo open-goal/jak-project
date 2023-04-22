@@ -60,8 +60,8 @@
                                    )
         )
 
-(defmethod TODO-RENAME-22 villagec-lava ((obj villagec-lava))
-  (let ((t9-0 (method-of-type water-anim TODO-RENAME-22)))
+(defmethod water-vol-method-22 villagec-lava ((obj villagec-lava))
+  (let ((t9-0 (method-of-type water-anim water-vol-method-22)))
     (t9-0 obj)
     )
   (let ((v1-2 (new 'process 'ripple-control)))
@@ -172,7 +172,7 @@
              )
             ((and (< (the int (-> *game-info* fuel)) (+ s3-0 2)) (< (the int (-> *game-info* fuel)) 71) (not s4-1))
              (level-hint-spawn
-               (game-text-id gondola-need-cells)
+               (text-id gondola-need-cells)
                "asstvb75"
                (the-as entity #f)
                *entity-pool*
@@ -181,7 +181,7 @@
              )
             (else
               (level-hint-spawn
-                (game-text-id gondola-enough-cells)
+                (text-id gondola-enough-cells)
                 "asstvb76"
                 (the-as entity #f)
                 *entity-pool*
@@ -219,7 +219,7 @@
                 )
               (when (and (< (vector-vector-xz-distance s5-1 (-> *target* control trans)) 18432.0)
                          (and (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
-                                        (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                                        (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                                         )
                                    )
                               (and (< (+ -40960.0 (-> s5-1 y)) (-> *target* control trans y))
@@ -244,7 +244,7 @@
                     (set! (-> v1-60 height) (the float 80))
                     )
                   (set! (-> s5-2 flags) (font-flags shadow kerning large))
-                  (print-game-text (lookup-text! *common-text* (game-text-id press-to-use) #f) s5-2 #f 128 22)
+                  (print-game-text (lookup-text! *common-text* (text-id press-to-use) #f) s5-2 #f 128 22)
                   )
                 (when (and (cpad-pressed? 0 circle) (process-grab? *target*))
                   (if arg0
@@ -419,10 +419,10 @@
 
 (defstate idle (pistons)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('update)
-       (go-virtual active (process->handle arg0) #f)
+       (go-virtual active (process->handle proc) #f)
        )
       )
     )
@@ -494,17 +494,17 @@
 
 (defstate idle (gondolacables)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'update)
-                       (process-entity-status! self (entity-perm-status complete) #t)
-                       (let ((v0-0 1))
-                         (set! (-> self draw mgeo effect 0 effect-bits) (the-as uint v0-0))
-                         v0-0
-                         )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('update)
+                      (process-entity-status! self (entity-perm-status complete) #t)
+                      (let ((v0-0 1))
+                        (set! (-> self draw mgeo effect 0 effect-bits) (the-as uint v0-0))
+                        v0-0
+                        )
+                      )
+                     )
+            )
     )
   :code (behavior ()
     (loop
@@ -535,7 +535,3 @@
   (go (method-of-object obj idle))
   (none)
   )
-
-
-
-

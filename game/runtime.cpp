@@ -27,7 +27,7 @@
 #include "common/goal_constants.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "game/discord.h"
 #include "game/graphics/gfx.h"
@@ -71,11 +71,12 @@
 u8* g_ee_main_mem = nullptr;
 std::thread::id g_main_thread_id = std::thread::id();
 GameVersion g_game_version = GameVersion::Jak1;
+int g_server_port = DECI2_PORT;
 
 namespace {
 
 int g_argc = 0;
-char** g_argv = nullptr;
+const char** g_argv = nullptr;
 
 /*!
  * SystemThread function for running the DECI2 communication with the GOAL compiler.
@@ -86,7 +87,7 @@ void deci2_runner(SystemThreadInterface& iface) {
   std::function<bool()> shutdown_callback = [&]() { return iface.get_want_exit(); };
 
   // create and register server
-  Deci2Server server(shutdown_callback, DECI2_PORT);
+  Deci2Server server(shutdown_callback, DECI2_PORT - 1 + (int)g_game_version);
   ee::LIBRARY_sceDeci2_register(&server);
 
   // now its ok to continue with initialization
@@ -310,25 +311,15 @@ void dmac_runner(SystemThreadInterface& iface) {
  * Main function to launch the runtime.
  * GOAL kernel arguments are currently ignored.
  */
-RuntimeExitStatus exec_runtime(int argc, char** argv) {
+RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const char** argv) {
   g_argc = argc;
   g_argv = argv;
   g_main_thread_id = std::this_thread::get_id();
 
-  // parse opengoal arguments
-  g_game_version = GameVersion::Jak1;
-  bool enable_display = true;
-  for (int i = 1; i < argc; i++) {
-    if (std::string("-nodisplay") == argv[i]) {  // disable video display
-      enable_display = false;
-    } else if (std::string("-vm") == argv[i]) {  // enable debug ps2 VM
-      VM::use = true;
-    } else if (std::string("-novm") == argv[i]) {  // disable debug ps2 VM
-      VM::use = false;
-    } else if (std::string("-jak2") == argv[i]) {
-      g_game_version = GameVersion::Jak2;
-    }
-  }
+  bool enable_display = !game_options.disable_display;
+  VM::use = !game_options.disable_debug_vm;
+  g_game_version = game_options.game_version;
+  g_server_port = game_options.server_port;
 
   // set up discord stuff
   gStartTime = time(nullptr);

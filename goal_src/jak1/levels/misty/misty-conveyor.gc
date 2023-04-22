@@ -18,8 +18,8 @@
 
 (defpartgroup group-keg-bounce
   :id 197
-  :duration 10
-  :linger-duration 600
+  :duration (seconds 0.035)
+  :linger-duration (seconds 2)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 12)
   :parts ((sp-item 2014 :fade-after (meters 100) :falloff-to (meters 100)))
@@ -135,27 +135,27 @@
   )
 
 (defbehavior keg-event-handler keg ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-    (the-as object (when (or (= v1-0 'touch) (= v1-0 'attack))
-                     (when (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
-                       (sound-play "icrate-break")
-                       (process-spawn
-                         part-tracker
-                         :init part-tracker-init
-                         (-> *part-group-id-table* 71)
-                         20
-                         #f
-                         #f
-                         #f
-                         (-> self root-override trans)
-                         :to *entity-pool*
-                         )
-                       (sound-stop (-> self sound-id))
-                       (deactivate self)
-                       )
-                     )
-            )
-    )
+  (the-as object (case arg2
+                   (('touch 'attack)
+                    (when (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+                      (sound-play "icrate-break")
+                      (process-spawn
+                        part-tracker
+                        :init part-tracker-init
+                        (-> *part-group-id-table* 71)
+                        20
+                        #f
+                        #f
+                        #f
+                        (-> self root-override trans)
+                        :to *entity-pool*
+                        )
+                      (sound-stop (-> self sound-id))
+                      (deactivate self)
+                      )
+                    )
+                   )
+          )
   )
 
 (defbehavior keg-post keg ()
@@ -172,8 +172,8 @@
   )
 
 (defstate keg-on-paddle (keg)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('detach)
        (go keg-paddle-to-path)
        )
@@ -206,7 +206,7 @@
               )
             (s4-0 (quaternion-copy! (new-stack-quaternion0) (-> self root-override quat)))
             (s3-0 (new-stack-quaternion0))
-            (a1-3 (TODO-RENAME-12 (-> (the-as process-drawable (-> self parent 0)) path) (new-stack-vector0) 0.0))
+            (a1-3 (path-control-method-12 (-> (the-as process-drawable (-> self parent 0)) path) (new-stack-vector0) 0.0))
             (f30-0 45.0)
             )
         0.0
@@ -268,7 +268,7 @@
                   sv-112
                   'interp
                   )
-                (TODO-RENAME-12 (-> (the-as keg-conveyor-paddle (-> self parent 0)) path) gp-0 sv-112)
+                (path-control-method-12 (-> (the-as keg-conveyor-paddle (-> self parent 0)) path) gp-0 sv-112)
                 (seek-toward-heading-vec! (-> self root-override) gp-0 131072.0 (seconds 0.1))
                 (set! (-> self root-override trans quad) (-> self path-position quad))
                 (when (= (-> self keg-behavior) 1)
@@ -350,7 +350,7 @@
 (defstate keg-in-chute (keg)
   :event keg-event-handler
   :code (behavior ()
-    (let ((gp-0 (TODO-RENAME-12
+    (let ((gp-0 (path-control-method-12
                   (-> (the-as process-drawable (-> self parent 0)) path)
                   (new-stack-vector0)
                   (the float (+ (-> (the-as process-drawable (-> self parent 0)) path curve num-cverts) -1))
@@ -441,7 +441,7 @@
   (set! (-> self keg-behavior) arg1)
   (logclear! (-> self mask) (process-mask actor-pause enemy))
   (let ((gp-1 (new-stack-vector0)))
-    (TODO-RENAME-12 (-> (the-as process-drawable (-> self parent 0)) path) gp-1 0.0)
+    (path-control-method-12 (-> (the-as process-drawable (-> self parent 0)) path) gp-1 0.0)
     (set-heading-vec! (-> self root-override) gp-1)
     )
   (set! (-> self sound-id) (new-sound-id))
@@ -457,9 +457,7 @@
   (process-spawn keg arg0 1 :to arg0)
   )
 
-(define *keg-conveyor-keg-spawn-table*
-  (the-as (array int8) (new 'static 'boxed-array :type int8 1 2 1 1 2 1))
-  )
+(define *keg-conveyor-keg-spawn-table* (new 'static 'boxed-array :type int8 1 2 1 1 2 1))
 
 (defstate keg-conveyor-idle (keg-conveyor)
   :code (behavior ()
@@ -582,7 +580,7 @@
     )
   )
 
-;; WARN: Expression building failed: Function (method 11 keg-conveyor) has a return type of none, but the expression builder found a return statement.
+;; WARN: Function (method 11 keg-conveyor) has a return type of none, but the expression builder found a return statement.
 (defmethod init-from-entity! keg-conveyor ((obj keg-conveyor) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask enemy death) (-> obj mask)))
   (set! (-> obj root) (new 'process 'trsqv))
@@ -598,7 +596,7 @@
   (set! (-> obj pivot) (new 'process 'joint-mod-spinner obj 4 (new 'static 'vector :x 1.0 :w 1.0) 65536.0))
   (let ((s5-1 (new-stack-vector0)))
     (let ((s4-0 (new-stack-matrix0)))
-      (TODO-RENAME-12 (-> obj path) s5-1 0.0)
+      (path-control-method-12 (-> obj path) s5-1 0.0)
       (set-heading-vec! (-> obj root) s5-1)
       (quaternion->matrix s4-0 (-> obj root quat))
       (set-vector! s5-1 -4096.0 -3072.0 -1433.6 1.0)
@@ -610,7 +608,3 @@
   (go keg-conveyor-idle)
   (none)
   )
-
-
-
-

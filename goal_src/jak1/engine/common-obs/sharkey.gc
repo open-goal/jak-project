@@ -11,8 +11,8 @@
 
 (defpartgroup group-sharkey-splash
   :id 106
-  :duration 120
-  :linger-duration 780
+  :duration (seconds 0.4)
+  :linger-duration (seconds 2.6)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 -12 0 14)
   :parts ((sp-item 124 :flags (is-3d) :period 900 :length 63)
@@ -63,18 +63,18 @@
               :bounds (static-spherem 0 0 0 6)
               )
 
-(defmethod dummy-44 sharkey ((obj sharkey) (arg0 process) (arg1 event-message-block))
+(defmethod touch-handler sharkey ((obj sharkey) (arg0 process) (arg1 event-message-block))
   (the-as object #t)
   )
 
-(defmethod dummy-43 sharkey ((obj sharkey) (arg0 process) (arg1 event-message-block))
+(defmethod attack-handler sharkey ((obj sharkey) (arg0 process) (arg1 event-message-block))
   (the-as object #t)
   )
 
 nav-enemy-default-event-handler
 
 (defmethod run-logic? sharkey ((obj sharkey))
-  (or (zero? (logand (-> obj mask) (process-mask actor-pause)))
+  (or (not (logtest? (-> obj mask) (process-mask actor-pause)))
       (or (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj collide-info pause-adjust-distance))
               (vector-vector-distance (-> obj collide-info trans) (math-camera-pos))
               )
@@ -84,8 +84,8 @@ nav-enemy-default-event-handler
       )
   )
 
-(defmethod dummy-40 sharkey ((obj sharkey))
-  (dummy-11 (-> obj nav) (-> obj nav target-pos))
+(defmethod nav-enemy-method-40 sharkey ((obj sharkey))
+  (nav-control-method-11 (-> obj nav) (-> obj nav target-pos))
   (let* ((f0-0 (vector-vector-xz-distance (-> obj collide-info trans) (-> obj nav target-pos)))
          (f30-0 (/ (- (fmin (-> obj y-max) (-> obj nav target-pos y)) (-> obj collide-info trans y)) f0-0))
          )
@@ -95,7 +95,7 @@ nav-enemy-default-event-handler
   (none)
   )
 
-(defmethod TODO-RENAME-37 sharkey ((obj sharkey))
+(defmethod nav-enemy-method-37 sharkey ((obj sharkey))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (when (< 8192.0 (vector-length (-> obj nav travel)))
       (vector-normalize-copy! s5-0 (-> obj nav travel) 1.0)
@@ -108,7 +108,7 @@ nav-enemy-default-event-handler
   (none)
   )
 
-(defmethod dummy-41 sharkey ((obj sharkey))
+(defmethod nav-enemy-method-41 sharkey ((obj sharkey))
   (let* ((f0-1 (- (-> obj target-speed) (-> obj momentum-speed)))
          (f1-3 (fmin (* (-> obj acceleration) (-> *display* seconds-per-frame)) (fabs f0-1)))
          )
@@ -138,12 +138,12 @@ nav-enemy-default-event-handler
            )
       (set-vector! (-> obj draw color-mult) f0-2 f0-2 f0-2 1.0)
       )
-    (dummy-10 (-> obj water))
+    (water-control-method-10 (-> obj water))
     (let ((f28-0 (-> obj collide-info trans y)))
       (when (or (and (< f30-0 f28-0) (>= f30-0 (-> obj last-y))) (and (>= f30-0 f28-0) (< f30-0 (-> obj last-y))))
         (set! (-> s5-0 quad) (-> obj collide-info trans quad))
         (set! (-> s5-0 y) f30-0)
-        (dummy-13 (-> obj water) 1.0 s5-0 1 (-> obj collide-info transv))
+        (create-splash (-> obj water) 1.0 s5-0 1 (-> obj collide-info transv))
         )
       (set! (-> obj last-y) f28-0)
       )
@@ -205,10 +205,7 @@ nav-enemy-default-event-handler
     )
   (set! (-> self collide-info trans quad) (-> self spawn-point quad))
   (forward-up->quaternion (-> self collide-info quat) (-> self dir) *up-vector*)
-  (let ((f0-6 0.0))
-    (set! (-> self momentum-speed) f0-6)
-    f0-6
-    )
+  (set! (-> self momentum-speed) 0.0)
   )
 
 (defstate nav-enemy-idle (sharkey)
@@ -239,11 +236,11 @@ nav-enemy-default-event-handler
            )
        )
       ((sharkey-notice-player?)
-       (when (zero? (logand (-> self nav-enemy-flags) (nav-enemy-flags navenmf0)))
+       (when (not (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf0)))
          (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf0))
          (set! (-> self notice-time) (-> *display* base-frame-counter))
          )
-       (let ((a0-4 (dummy-16 (-> self nav) (-> *target* control trans))))
+       (let ((a0-4 (nav-control-method-16 (-> self nav) (-> *target* control trans))))
          (when (or (and a0-4 (logtest? (-> a0-4 pat) 2))
                    (and (logtest? (-> self draw status) (draw-status hidden))
                         (>= (- (-> *display* base-frame-counter) (-> self notice-time)) (-> self reaction-time))
@@ -271,7 +268,7 @@ nav-enemy-default-event-handler
       (ja :num! (loop! (-> self anim-speed)))
       (seek! (-> self anim-speed) 1.0 0.05)
       (seek! (-> self collide-info trans y) (-> self y-min) (* (-> self y-speed) (-> *display* seconds-per-frame)))
-      (dummy-10 (-> self water))
+      (water-control-method-10 (-> self water))
       (ja-post)
       (suspend)
       )
@@ -551,7 +548,7 @@ nav-enemy-default-event-handler
     nav-enemy-default-event-handler
     )
   :trans (behavior ()
-    (if (TODO-RENAME-46 self (-> self nav-info notice-distance))
+    (if (target-in-range? self (-> self nav-info notice-distance))
         (go-virtual nav-enemy-chase)
         )
     (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
@@ -670,7 +667,7 @@ nav-enemy-default-event-handler
     )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *sharkey-sg* '())
-  (TODO-RENAME-45 obj *sharkey-nav-enemy-info*)
+  (init-defaults! obj *sharkey-nav-enemy-info*)
   (logclear! (-> obj mask) (process-mask actor-pause))
   (set! (-> obj water) (new 'process 'water-control obj 3 12288.0 8192.0 2048.0))
   (set! (-> obj water flags) (water-flags wt01 wt22 wt23))
@@ -696,7 +693,3 @@ nav-enemy-default-event-handler
   (go (method-of-object obj nav-enemy-idle))
   (none)
   )
-
-
-
-

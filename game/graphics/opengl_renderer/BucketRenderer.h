@@ -45,10 +45,20 @@ struct SharedRenderState {
 
   void reset();
   bool has_pc_data = false;
-  LevelVis occlusion_vis[6];
+
+  // limit is arbitrary so let's go ham in case we want more levels in the future
+  LevelVis occlusion_vis[32];
 
   math::Vector4f camera_planes[4];
+
+  // including transformation, rotation, perspective
   math::Vector4f camera_matrix[4];
+
+  // including transformation, rotation
+  math::Vector4f camera_no_persp[4];
+
+  // just the perspective
+  math::Vector4f camera_persp[4];
   math::Vector4f camera_hvdf_off;
   math::Vector4f camera_fog;
   math::Vector4f camera_pos;
@@ -78,6 +88,7 @@ struct SharedRenderState {
   int bucket_for_vis_copy = 0;
   int num_vis_to_copy = 0;
   GameVersion version;
+  u64 frame_idx = 0;
 };
 
 /*!

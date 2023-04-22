@@ -12,7 +12,7 @@
 #include "Instruction.h"
 #include "ObjectFileData.h"
 
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "goalc/debugger/DebugInfo.h"
 

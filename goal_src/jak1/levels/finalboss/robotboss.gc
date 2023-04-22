@@ -47,7 +47,7 @@
        (robotboss-cut-cam-exit)
        )
       ((or (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
-                (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                 )
            (-> self skip-cut)
            )
@@ -359,10 +359,7 @@
   (local-vars (v0-0 object))
   (case arg2
     (('flash)
-     (let ((f0-1 (* 0.0078125 (the-as float (-> arg3 param 0)))))
-       (set! (-> self palette-val) f0-1)
-       f0-1
-       )
+     (set! (-> self palette-val) (* 0.0078125 (the-as float (-> arg3 param 0))))
      )
     (('bomb-done)
      (set! (-> self des-cam-entity) #f)
@@ -395,46 +392,41 @@
   )
 
 (defbehavior robotboss-handler robotboss ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-    (the-as object (cond
-                     ((= v1-0 'flash)
-                      (let ((f0-1 (* 0.0078125 (the-as float (-> arg3 param 0)))))
-                        (set! (-> self palette-val) f0-1)
-                        f0-1
-                        )
-                      )
-                     ((= v1-0 'attack)
-                      (when (>= arg1 2)
-                        (case (-> arg3 param 1)
-                          (('eco-yellow)
-                           (let ((a0-5 (-> arg3 param 0)))
-                             (when (and a0-5 ((method-of-type touching-shapes-entry prims-touching?)
-                                              (the-as touching-shapes-entry a0-5)
-                                              (-> self root-override)
-                                              (the-as uint (-> self vulnerable))
-                                              )
-                                        )
-                               (when (> (-> self hits-to-go) 0)
-                                 (set! (-> self took-hit) #t)
-                                 (let ((v0-0 (the-as number (+ (-> self hits-to-go) -1))))
-                                   (set! (-> self hits-to-go) (the-as int v0-0))
-                                   v0-0
-                                   )
+  (the-as object (case arg2
+                   (('flash)
+                    (set! (-> self palette-val) (* 0.0078125 (the-as float (-> arg3 param 0))))
+                    )
+                   (('attack)
+                    (when (>= arg1 2)
+                      (case (-> arg3 param 1)
+                        (('eco-yellow)
+                         (let ((a0-5 (-> arg3 param 0)))
+                           (when (and a0-5 ((method-of-type touching-shapes-entry prims-touching?)
+                                            (the-as touching-shapes-entry a0-5)
+                                            (-> self root-override)
+                                            (the-as uint (-> self vulnerable))
+                                            )
+                                      )
+                             (when (> (-> self hits-to-go) 0)
+                               (set! (-> self took-hit) #t)
+                               (let ((v0-0 (the-as number (+ (-> self hits-to-go) -1))))
+                                 (set! (-> self hits-to-go) (the-as int v0-0))
+                                 v0-0
                                  )
                                )
                              )
                            )
-                          )
+                         )
                         )
                       )
-                     )
-            )
-    )
+                    )
+                   )
+          )
   )
 
 (defstate robotboss-yellow-dark-bomb-wait (robotboss)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (let ((v1-0 event-type))
       (the-as object (cond
                        ((= v1-0 'white-eco-picked-up)
                         (close-specific-task! (game-task finalboss-movies) (task-status unknown))
@@ -455,10 +447,10 @@
                             )
                           )
                         (cleanup-for-death self)
-                        (deactivate self)
+                        (the-as object (deactivate self))
                         )
                        (else
-                         (robotboss-bomb-handler arg0 arg1 arg2 arg3)
+                         (robotboss-bomb-handler proc arg1 event-type event)
                          )
                        )
               )
@@ -912,8 +904,8 @@
   )
 
 (defstate robotboss-yellow-wait (robotboss)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('hit-jak)
        (let ((f0-2 (rand-float-gen)))
          (cond
@@ -941,7 +933,7 @@
          )
        )
       (else
-        (robotboss-handler arg0 arg1 arg2 arg3)
+        (robotboss-handler proc arg1 event-type event)
         )
       )
     )
@@ -1487,8 +1479,8 @@
   )
 
 (defstate robotboss-red-wait (robotboss)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('hit-jak)
        (let ((f0-2 (rand-float-gen)))
          (cond
@@ -1516,7 +1508,7 @@
          )
        )
       (else
-        (robotboss-handler arg0 arg1 arg2 arg3)
+        (robotboss-handler proc arg1 event-type event)
         )
       )
     )
@@ -1939,8 +1931,8 @@
   )
 
 (defstate robotboss-green-wait (robotboss)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (ja-channel-push! 1 (seconds 0.2))
        (ja :group! robotboss-green-roar-ja)
@@ -1998,7 +1990,7 @@
          )
        )
       (else
-        (robotboss-handler arg0 arg1 arg2 arg3)
+        (robotboss-handler proc arg1 event-type event)
         )
       )
     )
@@ -2352,10 +2344,10 @@
        (when (and arg1 (nonzero? (-> self looping-sound 0)))
          (update! (-> self looping-sound 0))
          (when (and *target*
-                    (zero? (logand (-> *target* state-flags)
+                    (not (logtest? (-> *target* state-flags)
                                    (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
                                    )
-                           )
+                         )
                     )
            (let ((t2-0 (new 'stack-no-clear 'collide-tri-result))
                  (a2-0 (new 'stack-no-clear 'vector))
@@ -2391,10 +2383,10 @@
        (when (and arg1 (nonzero? (-> self looping-sound 1)))
          (update! (-> self looping-sound 1))
          (if (and *target*
-                  (zero? (logand (-> *target* state-flags)
+                  (not (logtest? (-> *target* state-flags)
                                  (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
                                  )
-                         )
+                       )
                   (>= 8192.0 (vector-vector-distance gp-0 (target-pos 0)))
                   )
              (send-event *target* 'attack #f (static-attack-info ((shove-up (meters 2.5)) (shove-back (meters 7.5)))))
@@ -2628,7 +2620,13 @@
       )
     (robotboss-blue-beam 8 #t)
     (robotboss-blue-beam 9 #f)
-    (when (TODO-RENAME-10 (-> self ambient) (new 'stack-no-clear 'vector) (seconds 10) (the-as float 327680.0) self)
+    (when (ambient-control-method-10
+            (-> self ambient)
+            (new 'stack-no-clear 'vector)
+            (seconds 10)
+            (the-as float 327680.0)
+            self
+            )
       (let ((f0-2 (rand-float-gen)))
         (cond
           ((< 0.8 f0-2)
@@ -2944,7 +2942,7 @@
   (set! (-> obj blue-smoke) #f)
   (set! (-> obj red-smoke) #f)
   (set! (-> obj yellow-smoke) #f)
-  (dummy-9 (-> obj ambient))
+  (ambient-control-method-9 (-> obj ambient))
   (set! (-> obj yellow-gun) (new 'process 'joint-mod (joint-mod-handler-mode flex-blend) obj 16))
   (set-vector! (-> obj yellow-gun twist-max) 8192.0 8192.0 0.0 1.0)
   (set! (-> obj yellow-gun up) (the-as uint 1))
@@ -2970,7 +2968,3 @@
   (go robotboss-blue-wait)
   (none)
   )
-
-
-
-

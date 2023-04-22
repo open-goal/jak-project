@@ -1,5 +1,28 @@
+function(write_revision_h)
+    find_package(Git)
+    set(GIT_SHORT_SHA "")
+    set(GIT_TAG "")
+    if(NOT GIT_FOUND)
+      MESSAGE(STATUS "write_revision_h(): git was not found")
+    endif()
+    MESSAGE(STATUS "write_revision_h(): ${CMAKE_SOURCE_DIR}")
+    if (GIT_FOUND AND EXISTS ${CMAKE_SOURCE_DIR}/.git)
+        MESSAGE(STATUS "Git found, using it to get revision info")
+        EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+                OUTPUT_VARIABLE GIT_SHORT_SHA
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+        EXECUTE_PROCESS(WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} COMMAND ${GIT_EXECUTABLE} tag --points-at HEAD
+                OUTPUT_VARIABLE GIT_TAG
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET)
+    endif()
+    file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/versions/revision.h "#define BUILT_TAG \"${GIT_TAG}\"\n#define BUILT_SHA \"${GIT_SHORT_SHA}\"\n")
+endfunction()
+
+write_revision_h()
+
 add_library(common
-        versions.cpp
+        versions/versions.cpp
         audio/audio_formats.cpp
         cross_os_debug/xdbg.cpp
         cross_sockets/XSocket.cpp
@@ -53,7 +76,7 @@ add_library(common
         util/print_float.cpp
         util/FrameLimiter.cpp
         util/unicode_util.cpp
-        util/term_util.cpp)
+        util/term_util.cpp  )
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)
 

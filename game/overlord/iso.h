@@ -27,6 +27,12 @@ struct VagDir {
   VagDirEntry vag[VAG_COUNT];
 };
 
+static constexpr int VAG_COUNT_JAK2 = 2728;
+struct VagDirJak2 {
+  u32 count;
+  VagDirEntry vag[VAG_COUNT_JAK2];
+};
+
 void iso_init_globals();
 FileRecord* FindISOFile(const char* name);
 u32 GetISOFileLength(FileRecord* f);

@@ -161,5 +161,6 @@ class OpenGLRenderer {
     Fbo* render_fbo = nullptr;  // the selected fbo from the three above to use for rendering
   } m_fbo_state;
 
+  std::unique_ptr<BucketRenderer> m_jak2_eye_renderer;
   GameVersion m_version;
 };
