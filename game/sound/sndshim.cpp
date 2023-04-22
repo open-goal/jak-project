@@ -60,6 +60,10 @@ u32 snd_SRAMMalloc(u32 size) {
   return 0;
 }
 
+void snd_SRAMMarkUsed(u32 addr, u32 size) {
+  // hope this doesn't matter...
+}
+
 void snd_SetMixerMode(s32 channel_mode, s32 reverb_mode) {}
 
 void snd_SetGroupVoiceRange(s32 group, s32 min, s32 max) {}

@@ -96,6 +96,12 @@ void IOP_Kernel::WakeupThread(s32 id) {
   threads.at(id).state = IopThread::State::Ready;
 }
 
+void IOP_Kernel::iWakeupThread(s32 id) {
+  ASSERT(id > 0);
+  std::scoped_lock lock(wakeup_mtx);
+  wakeup_queue.push(id);
+}
+
 s32 IOP_Kernel::WaitSema(s32 id) {
   auto& sema = semas.at(id);
   if (sema.count > 0) {
@@ -243,12 +249,6 @@ void IOP_Kernel::processWakeups() {
  * Run the next IOP thread.
  */
 time_stamp IOP_Kernel::dispatch() {
-  // Check vblank interrupt
-  if (vblank_handler != nullptr && vblank_recieved) {
-    vblank_handler(nullptr);
-    vblank_recieved = false;
-  }
-
   // Update thread states
   updateDelay();
   processWakeups();
@@ -256,9 +256,15 @@ time_stamp IOP_Kernel::dispatch() {
   // Run until all threads are idle
   IopThread* next = schedNext();
   while (next != nullptr) {
+    // Check vblank interrupt
+    if (vblank_handler != nullptr && vblank_recieved) {
+      vblank_handler(nullptr);
+      vblank_recieved = false;
+    }
     // printf("[IOP Kernel] Dispatch %s (%d)\n", next->name.c_str(), next->thID);
     runThread(next);
     updateDelay();
+    processWakeups();
     next = schedNext();
     // printf("[IOP Kernel] back to kernel!\n");
   }
@@ -333,10 +339,7 @@ void IOP_Kernel::sif_rpc(s32 rpcChannel,
   rec->cmd.started = false;
   rec->cmd.finished = false;
 
-  {
-    std::scoped_lock lock(wakeup_mtx);
-    wakeup_queue.push(rec->thread_to_wake);
-  }
+  iWakeupThread(rec->thread_to_wake);
 
   sif_mtx.unlock();
 }
@@ -383,5 +386,3 @@ void IOP_Kernel::rpc_loop(iop::sceSifQueueData* qd) {
     SleepThread();
   }
 }
-
-

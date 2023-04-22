@@ -21,6 +21,7 @@ int snd_LockVoiceAllocator(bool block);
 void snd_UnlockVoiceAllocator();
 s32 snd_ExternVoiceAlloc(s32 vol_group, s32 priority);
 u32 snd_SRAMMalloc(u32 size);
+void snd_SRAMMarkUsed(u32 addr, u32 size);
 void snd_SetMixerMode(s32 channel_mode, s32 reverb_mode);
 void snd_SetGroupVoiceRange(s32 group, s32 min, s32 max);
 void snd_SetReverbDepth(s32 core, s32 left, s32 right);

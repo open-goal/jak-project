@@ -34,13 +34,14 @@ struct Page {
 struct PageList {
   u32 page_count;
   u32 page_size;
-  //
+  u32 sector_per_page;  // round down
   u32 free_pages;
-  // ?
+  u8* page_memory;
   Page* pages;
 };
 
 constexpr int MAX_PAGES_IN_POOL = 0x12;
+void InitPagedMemory(PageList* pool, int page_count, int page_size);
 Page* AllocPagesBytes(PageList* page_list, u32 size_bytes);
 Page* AllocPages(PageList* page_list, u32 num_pages);
 Page* FreePagesList(PageList* page_list, Page* pages);

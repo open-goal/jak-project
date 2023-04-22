@@ -23,7 +23,7 @@ int start_overlord(int argc, const char* const* argv) {
   printf("IOP: =========Startup===(%x)====\n", 0);
   // removed memory prints.
 
-  ScratchPadMemory = AllocScratchPad(0);
+  ScratchPadMemory = (u8*)AllocScratchPad(0);
   // removed allocation check code.
 
 //  InitBanks();

@@ -5,7 +5,53 @@
 
 #include "common/util/Assert.h"
 
+#include "game/overlord/jak2/iso_queue.h"
+#include "game/sce/iop.h"
+
+using namespace iop;
 namespace jak2 {
+
+void InitPagedMemory(PageList* pool, int page_count, int page_size) {
+  // this is such a hack...
+  // we assume that we're allocated on the scratchpad, and can jump bump the pointer again.
+  pool->pages = (Page*)(pool + 1);
+  pool->page_count = page_count;
+  pool->page_size = page_size;
+  ScratchPadMemory = ScratchPadMemory + page_count * sizeof(Page);
+  int fixed_page_size = page_size;
+  if (page_size < 0) {
+    fixed_page_size = page_size + 0x7ff;
+  }
+  pool->sector_per_page = fixed_page_size >> 0xb;
+  pool->free_pages = page_count;
+  pool->page_memory = nullptr;
+  uintptr_t addr = (uintptr_t)AllocSysMemory(0, page_count * page_size + 0x100, nullptr);
+  addr += 0x3f;
+  addr &= ~uintptr_t(63);
+  u8* mem = (u8*)addr;
+  if (mem == 0) {
+    printf("======================================================================\n");
+    printf("IOP: pages InitPagedMemory: no memory for pages\n");
+    printf("======================================================================\n");
+    ASSERT_NOT_REACHED();
+  }
+  Page* page = pool->pages;
+  pool->page_memory = mem;
+  if (0 < page_count) {
+    for (int i = 0; i < page_count; i++) {
+      page->state = PageState::FREE;
+      page->buffer = mem;
+      page->maybe_page_id = i;
+      page->free_pages = 0;
+      page->ptr = mem + page_size - 1;
+      page->next = nullptr;
+      page->prev = nullptr;
+      page->end_page_first_only = nullptr;
+      page++;
+      mem += page_size;
+    }
+  }
+}
 
 /*!
  * Allocate a list of pages that contain at least size_bytes in total.
@@ -94,6 +140,38 @@ Page* FreePagesList(PageList* page_list, Page* pages) {
 }
 
 /*!
+ * Free the "top" page (the first one)
+ */
+Page* StepTopPage(PageList* param_1, Page* top_page) {
+  Page* result = nullptr;
+
+  if (top_page) {
+    // if we're first, shouldn't have a prev.
+    if (top_page->prev) {
+      printf("======================================================================\n");
+      printf("IOP: pages StepTopPage: Page %d is not top of list\n", top_page->maybe_page_id);
+      printf("======================================================================\n");
+      ASSERT_NOT_REACHED();
+    }
+
+    // new top page
+    result = top_page->next;
+    if (result) {
+      // set up new top page.
+      result->free_pages = top_page->free_pages + -1;
+      result->prev = nullptr;
+      result->end_page_first_only = top_page->end_page_first_only;
+    }
+
+    // return to pool
+    top_page->next = nullptr;
+    top_page->state = PageState::FREE;
+    param_1->free_pages = param_1->free_pages + 1;
+  }
+  return result;
+}
+
+/*!
  * Copy bytes from pages
  */
 void FromPagesCopy(const Page* page, const u8* page_ptr, u8* dest, int bytes_to_copy) {
@@ -101,7 +179,6 @@ void FromPagesCopy(const Page* page, const u8* page_ptr, u8* dest, int bytes_to_
 
   const auto* page_data_end = page->ptr;
   do {
-
     auto n_this_time = (page_data_end - page_ptr) + 1;
     do {
       while (true) {

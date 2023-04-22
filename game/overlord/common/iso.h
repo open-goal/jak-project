@@ -28,3 +28,6 @@ using VagDir = VagDirJak2;
 constexpr PerGameVersion<size_t> VAG_DIR_FILE_SIZE = {sizeof(VagDirJak1), sizeof(VagDirJak2)};
 
 void iso_init_globals();
+u32 LookMbx(s32 mbx);
+void WaitMbx(s32 mbx);
+extern VagDir gVagDir;

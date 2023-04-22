@@ -19,4 +19,5 @@ const char* get_file_path(FileRecord* fr);
 FileRecord* FS_Find(const char* name);
 FileRecord* FS_FindIN(const char* iso_name);
 uint32_t FS_GetLength(FileRecord* fr);
-extern IsoFs fake_iso;
+void LoadMusicTweaks();
+extern u32 fake_iso_entry_count;

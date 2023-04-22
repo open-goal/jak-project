@@ -1,6 +1,9 @@
+#pragma once
 
+#include "common/common_types.h"
 
-#ifndef JAK_DMA_H
-#define JAK_DMA_H
+namespace jak2 {
 
-#endif  // JAK_DMA_H
+void dma_init_globals();
+
+}

@@ -55,11 +55,6 @@ s32 SubBufferToRead = 0;
 /// Flag that can be set to 1 once reading pages is done.
 s32* ReadPagesDoneFlag = nullptr;
 
-/// The data structure containing all memory pages.
-PageList* SpMemoryBuffers = nullptr;
-
-/// The main buffer used for reading data and doing blzo decompression.
-LargeBuffer* SpLargeBuffer = nullptr;
 
 /// LoadStackEntry for currently reading file
 static LoadStackEntry* sReadInfo;
@@ -71,6 +66,16 @@ s32 SubBuffersFlags = 0;
 void* sMode = nullptr;
 
 static LoadStackEntry sLoadStack[MAX_OPEN_FILES];  //! List of all files that are "open"
+
+IsoFs iso_cd;
+
+int FS_Init();
+LoadStackEntry* FS_Open(FileRecord* file_record, int offset, OpenMode mode);
+LoadStackEntry* FS_OpenWad(FileRecord* fr, int offset);
+void FS_Close(LoadStackEntry* lse);
+int FS_PageBeginRead(LoadStackEntry* lse, Buffer* buffer);
+uint32_t FS_LoadSoundBank(char* name, SoundBank* buffer);
+uint32_t FS_LoadMusic(char* name, u32* buffer);
 
 void iso_cd_init_globals() {
   ReadPagesCurrentPage = nullptr;
@@ -86,11 +91,21 @@ void iso_cd_init_globals() {
   ReadPagesDoneFlag = nullptr;
   ReadPagesPagePool = nullptr;
   SpLargeBuffer = nullptr;
-  SpMemoryBuffers = nullptr;
   SubBuffersFlags = 0;
   StopPluginStreams = 0;
   memset(sLoadStack, 0, sizeof(sLoadStack));
   sReadInfo = nullptr;
+
+  iso_cd.init = FS_Init;
+  iso_cd.find = FS_Find;
+  iso_cd.find_in = FS_FindIN;
+  iso_cd.get_length = FS_GetLength;
+  iso_cd.open = FS_Open;
+  iso_cd.open_wad = FS_OpenWad;
+  iso_cd.close = FS_Close;
+  iso_cd.page_begin_read = FS_PageBeginRead;
+  iso_cd.load_sound_bank = FS_LoadSoundBank;
+  iso_cd.load_music = FS_LoadMusic;
 }
 
 ///////////////////////////
@@ -584,7 +599,7 @@ int FS_PageBeginRead(LoadStackEntry* lse, Buffer* buffer) {
     // wait for read to finish
     while (-1 < SubBufferToRead) {
       DelayThread(1000);
-      do_cd_callback(); // added, to make progress. TODO remove sleep avoe.
+      do_cd_callback();  // added, to make progress. TODO remove sleep avoe.
     }
 
     // update stats.
@@ -622,9 +637,8 @@ uint32_t FS_LoadSoundBank(char* name, SoundBank* buffer) {
   return CMD_STATUS_DONE;
 }
 
-uint32_t FS_LoadMusic(char* name, void* buffer) {
+uint32_t FS_LoadMusic(char* name, u32* bank_handle) {
   FileRecord* file = nullptr;
-  u32* bank_handle = (u32*)buffer;
   char namebuf[16];
   char isoname[16];
   u32 handle;
@@ -715,6 +729,5 @@ u32 FS_SyncRead() {
 // DoCdReadPages: inlined
 
 // CheckPagesReady: inline/not used
-
 
 }  // namespace jak2

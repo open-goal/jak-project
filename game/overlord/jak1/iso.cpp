@@ -21,6 +21,7 @@
 #include "game/overlord/common/fake_iso.h"
 #include "game/overlord/common/iso.h"
 #include "game/overlord/jak1/dma.h"
+#include "game/overlord/jak1/fake_iso.h"
 #include "game/overlord/jak1/srpc.h"
 #include "game/runtime.h"
 #include "game/sce/iop.h"
@@ -71,7 +72,6 @@ s32 iso_thread;
 s32 dgo_thread;
 s32 str_thread;
 s32 play_thread;
-VagDir gVagDir;
 static RPC_Dgo_Cmd sRPCBuff[1];
 DgoCommand sLoadDGO;  // renamed from scmd to sLoadDGO in Jak 2
 
@@ -86,7 +86,6 @@ void iso_init_globals() {
   dgo_thread = 0;
   str_thread = 0;
   play_thread = 0;
-  memset(&gVagDir, 0, sizeof(gVagDir));
   memset(sRPCBuff, 0, sizeof(sRPCBuff));
   memset(&sLoadDGO, 0, sizeof(DgoCommand));
 }
@@ -103,25 +102,6 @@ static u8 VAG_SilentLoop[0x60] = {
     0x0, LOOP_END | LOOP_REPEAT,   0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
 };
 // clang-format on
-
-/*!
- * Does the messagebox have a message in it?
- */
-u32 LookMbx(s32 mbx) {
-  MsgPacket* msg_packet;
-  return PollMbx((&msg_packet), mbx) != KE_MBOX_NOMSG;
-}
-
-/*!
- * Wait for a messagebox to have a message. This is inefficient and polls with a 100 us wait.
- * This is stupid because the IOP does have much better syncronization primitives so you don't have
- * to do this.
- */
-void WaitMbx(s32 mbx) {
-  while (!LookMbx(mbx)) {
-    DelayThread(100);
-  }
-}
 
 /*!
  * Find a file by name.  Return nullptr if it fails.

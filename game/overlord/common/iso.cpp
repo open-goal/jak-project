@@ -18,8 +18,29 @@
 
 using namespace iop;
 
+VagDir gVagDir;
 
 
 void iso_init_globals() {
+  memset(&gVagDir, 0, sizeof(gVagDir));
+}
 
+
+/*!
+ * Does the messagebox have a message in it?
+ */
+u32 LookMbx(s32 mbx) {
+  MsgPacket* msg_packet;
+  return PollMbx((&msg_packet), mbx) != KE_MBOX_NOMSG;
+}
+
+/*!
+ * Wait for a messagebox to have a message. This is inefficient and polls with a 100 us wait.
+ * This is stupid because the IOP does have much better syncronization primitives so you don't have
+ * to do this.
+ */
+void WaitMbx(s32 mbx) {
+  while (!LookMbx(mbx)) {
+    DelayThread(100);
+  }
 }
