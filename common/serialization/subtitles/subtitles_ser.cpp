@@ -216,7 +216,6 @@ void parse_text_json(const nlohmann::json& json,
   }
   const GameTextFontBank* font = get_font_bank(file_info.text_version);
   // Parse the file
-  int i = 0;
   for (const auto& [text_id, text_value] : json.items()) {
     if (!text_value.is_string()) {
       throw std::runtime_error(fmt::format("Non string provided for text id #x{}", text_id));
