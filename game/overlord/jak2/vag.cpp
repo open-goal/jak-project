@@ -4,6 +4,7 @@
 
 #include "common/util/Assert.h"
 
+#include "game/overlord/jak2/iso_queue.h"
 #include "game/sound/sdshim.h"
 
 namespace jak2 {
@@ -24,6 +25,10 @@ enum VolumeCategory {
 };
 int MasterVolume[17];
 
+List PluginStreamsList;
+List LfoList;
+List EEPlayList;
+
 void vag_init_globals() {
   memset(VagCmds, 0, sizeof(VagCmds));
   memset(StreamSRAM, 0, sizeof(StreamSRAM));
@@ -32,6 +37,10 @@ void vag_init_globals() {
   memset(VagCmdsPriList, 0, sizeof(VagCmdsPriList));
   memset(VagCmdsPriCounter, 0, sizeof(VagCmdsPriCounter));
   memset(gPanTable, 0, sizeof(gPanTable));
+  memset(&PluginStreamsList, 0, sizeof(PluginStreamsList));
+  memset(&LfoList, 0, sizeof(LfoList));
+  memset(&EEPlayList, 0, sizeof(EEPlayList));
+
 
   for (auto& x : MasterVolume) {
     x = 0x400;  // check!!!
@@ -183,7 +192,195 @@ VagCmd* SmartAllocVagCmd(VagCmd* cmd) {
 }
 
 void TerminateVAG(VagCmd* cmd, int param_2) {
-  ASSERT_NOT_REACHED();
+  int* piVar1;
+  int iVar2;
+  uint uVar3;
+  VagCmd* pRVar4;
+  VagCmd* pRVar5;
+  VagStrListNode vag_node;
+  LfoListNode lfo_node;
+  // undefined4 auStack32 [2];
+
+  if (param_2 == 1) {
+    // CpuSuspendIntr(auStack32);
+  }
+  pRVar4 = cmd->stereo_sibling;
+  strncpy(vag_node.name, cmd->name, 0x30);
+  vag_node.id = cmd->id;
+  cmd->status_bytes[BYTE7_SCANNED] = '\0';
+  if (cmd->status_bytes[BYTE5] != '\0') {
+    pRVar5 = cmd->stereo_sibling;
+    PauseVAG(cmd, 0);
+    if (cmd->status_bytes[BYTE5] != '\0') {
+      uVar3 = 1 << (cmd->voice >> 1 & 0x1fU);
+      if (pRVar5 != 0x0) {
+        uVar3 = uVar3 | 1 << (pRVar5->voice >> 1 & 0x1fU);
+      }
+      sceSdSetSwitch(*(ushort*)&cmd->voice & 1 | 0x1600, uVar3);
+    }
+    //    iVar2 = 0x18;
+    //    piVar1 = &(cmd->header).unk_24;
+    //    do {
+    //      *(undefined *)(piVar1 + 0x34) = 0;
+    //      iVar2 = iVar2 + -1;
+    //      piVar1 = (int *)((int)piVar1 + -1);
+    //    } while (-1 < iVar2);
+    for (auto& x : cmd->status_bytes) {
+      x = 0;
+    }
+    cmd->vol_multiplier = 0;
+    cmd->unk_256_pitch2 = 0;
+    cmd->id = 0;
+    cmd->plugin_id = 0;
+    (cmd->header).unk_24 = 0;
+    cmd->unk_136 = 0;
+    cmd->unk_140 = 0;
+    cmd->pitch1 = 0;
+    (cmd->header).callback = NullCallback;
+    cmd->unk_180 = 0;
+    cmd->unk_184 = 0;
+    cmd->unk_188 = 0;
+    cmd->unk_192 = 0;
+  }
+  ReleaseMessage(&cmd->header, 0);
+  VagCmdsPriList[cmd->priority].cmds[cmd->idx_in_cmd_arr] = 0x0;
+  if (VagCmdsPriCounter[cmd->priority] < 1) {
+    printf("IOP: ======================================================================\n");
+    printf("IOP: vag RemoveVagCmd: VagCmdsPriCounter[%d] is zero\n", cmd->priority);
+    printf("IOP: ======================================================================\n");
+  } else {
+    VagCmdsPriCounter[cmd->priority] = VagCmdsPriCounter[cmd->priority] + -1;
+  }
+  //  iVar2 = 0x18;
+  //  piVar1 = &(cmd->header).unk_24;
+  VagCmdsPriCounter[0] = VagCmdsPriCounter[0] + 1;
+  for (auto& x : cmd->status_bytes) {
+    x = 0;
+  }
+  //  do {
+  //    *(undefined*)(piVar1 + 0x34) = 0;
+  //    iVar2 = iVar2 + -1;
+  //    piVar1 = (int*)((int)piVar1 + -1);
+  //  } while (-1 < iVar2);
+  cmd->status_bytes[BYTE1] = '\0';
+  cmd->status_bytes[PAUSED] = '\x01';
+  cmd->status_bytes[BYTE7_SCANNED] = '\0';
+  cmd->unk_180 = 0;
+  cmd->unk_184 = 0;
+  cmd->unk_188 = 0;
+  cmd->unk_192 = 0;
+  SetVagStreamName(cmd, 0, 0);
+  cmd->name[0] = '\0';
+  iVar2 = ActiveVagStreams;
+  cmd->unk_60 = 1;
+  cmd->unk_264 = 0x4000;
+  (cmd->header).callback = NullCallback;
+  cmd->unk_140 = 0;
+  cmd->pitch1 = 0;
+  cmd->unk_40 = 0;
+  cmd->unk_44_ptr = nullptr;
+  cmd->unk_196 = 0;
+  cmd->unk_200 = 0;
+  cmd->unk_204 = 0;
+  cmd->unk_240_flag0 = 0;
+  cmd->xfer_size = 0;
+  cmd->unk_248 = 0;
+  cmd->unk_260 = 0;
+  cmd->unk_268 = 0;
+  cmd->vol_multiplier = 0;
+  cmd->unk_256_pitch2 = 0;
+  cmd->id = 0;
+  cmd->plugin_id = 0;
+  cmd->unk_136 = 0;
+  cmd->priority = 0;
+  cmd->unk_288 = 0;
+  cmd->unk_292 = 0;
+  cmd->unk_296 = 0;
+  (cmd->header).callback_buffer = (Buffer*)0x0;
+  (cmd->header).unk_24 = 0;
+  (cmd->header).lse = (LoadStackEntry*)0x0;
+  cmd->dma_iop_mem_ptr = (uint8_t*)0x0;
+  cmd->chan = -1;
+  cmd->unk_236 = 0;
+  if (0 < iVar2) {
+    ActiveVagStreams = iVar2 + -1;
+  }
+  if (pRVar4 != 0x0) {
+    pRVar4->status_bytes[BYTE7_SCANNED] = '\0';
+    VagCmdsPriList[pRVar4->priority].cmds[pRVar4->idx_in_cmd_arr] = 0x0;
+    if (VagCmdsPriCounter[pRVar4->priority] < 1) {
+      printf("IOP: ======================================================================\n");
+      printf("IOP: vag RemoveVagCmd: VagCmdsPriCounter[%d] is zero\n", pRVar4->priority);
+      printf("IOP: ======================================================================\n");
+    } else {
+      VagCmdsPriCounter[pRVar4->priority] = VagCmdsPriCounter[pRVar4->priority] + -1;
+    }
+    iVar2 = 0x18;
+    piVar1 = &(pRVar4->header).unk_24;
+    VagCmdsPriCounter[0] = VagCmdsPriCounter[0] + 1;
+    for (auto& x : cmd->status_bytes) {
+      x = 0;
+    }
+    //    do {
+    //      *(undefined*)(piVar1 + 0x34) = 0;
+    //      iVar2 = iVar2 + -1;
+    //      piVar1 = (int*)((int)piVar1 + -1);
+    //    } while (-1 < iVar2);
+    pRVar4->status_bytes[BYTE1] = '\0';
+    pRVar4->status_bytes[PAUSED] = '\x01';
+    pRVar4->status_bytes[BYTE7_SCANNED] = '\0';
+    pRVar4->unk_180 = 0;
+    pRVar4->unk_184 = 0;
+    pRVar4->unk_188 = 0;
+    pRVar4->unk_192 = 0;
+    SetVagStreamName(pRVar4, 0, 0);
+    pRVar4->name[0] = '\0';
+    iVar2 = ActiveVagStreams;
+    pRVar4->unk_60 = 1;
+    pRVar4->unk_264 = 0x4000;
+    (pRVar4->header).callback = NullCallback;
+    pRVar4->unk_140 = 0;
+    pRVar4->pitch1 = 0;
+    pRVar4->unk_40 = 0;
+    pRVar4->unk_44_ptr = nullptr;
+    pRVar4->unk_196 = 0;
+    pRVar4->unk_200 = 0;
+    pRVar4->unk_204 = 0;
+    pRVar4->unk_240_flag0 = 0;
+    pRVar4->xfer_size = 0;
+    pRVar4->unk_248 = 0;
+    pRVar4->unk_260 = 0;
+    pRVar4->unk_268 = 0;
+    pRVar4->vol_multiplier = 0;
+    pRVar4->unk_256_pitch2 = 0;
+    pRVar4->id = 0;
+    pRVar4->plugin_id = 0;
+    pRVar4->unk_136 = 0;
+    pRVar4->priority = 0;
+    pRVar4->unk_288 = 0;
+    pRVar4->unk_292 = 0;
+    pRVar4->unk_296 = 0;
+    (pRVar4->header).callback_buffer = (Buffer*)0x0;
+    (pRVar4->header).unk_24 = 0;
+    (pRVar4->header).lse = (LoadStackEntry*)0x0;
+    pRVar4->dma_iop_mem_ptr = (uint8_t*)0x0;
+    pRVar4->chan = -1;
+    pRVar4->unk_236 = 0;
+    if (0 < iVar2) {
+      ActiveVagStreams = iVar2 + -1;
+    }
+  }
+  if (cmd->unk_136) {
+    RemoveVagStreamFromList(&vag_node, &PluginStreamsList);
+    lfo_node.id = cmd->id;
+    lfo_node.plugin_id = cmd->plugin_id;
+    RemoveLfoStreamFromList(&lfo_node, &LfoList);
+  }
+  RemoveVagStreamFromList(&vag_node, (List*)EEPlayList);
+  if (param_2 == 1) {
+    // CpuResumeIntr(auStack32[0]);
+  }
+  // return;
 }
 
 void PauseVAG(VagCmd* cmd, int param_2) {
@@ -642,7 +839,7 @@ void VAG_MarkLoopStart(int8_t* param_1) {
   param_1[0x11] = 2;
 }
 
-uint CalculateVAGPitch(uint param_1, int param_2) {
+int CalculateVAGPitch(int param_1, int param_2) {
   if (param_2 != 0) {
     if (param_2 < 1) {
       param_1 = (param_1 * 0x5f4) / (0x5f4U - param_2);

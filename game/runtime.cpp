@@ -231,6 +231,7 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
   Gfx::register_vsync_callback([&iop]() { iop.kernel.signal_vblank(); });
 
   jak1::dma_init_globals();
+  jak2::dma_init_globals();
 
   iso_init_globals();
   jak1::iso_init_globals();

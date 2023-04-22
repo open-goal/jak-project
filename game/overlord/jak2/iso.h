@@ -24,7 +24,7 @@ struct Buffer {
   u8* decomp_buffer;
   int decompressed_size;
   Buffer* next;
-  int unk_12;
+  u8* unk_12;
   int data_buffer_idx;
   int use_mode;
   PageList* plist;
@@ -80,6 +80,8 @@ extern IsoFs* isofs;
 extern LargeBuffer* SpLargeBuffer;
 
 struct CmdHeader {
+  int unk_0;
+  int unk_4;
   int cmd_kind;
   int status;
   int mbx_to_reply;
@@ -98,6 +100,10 @@ struct CmdLoadSingleIop {
   int length_to_copy;
 };
 
+struct VagCmd;
+
 int NullCallback(CmdHeader* cmd, Buffer* buff);
+u32 InitISOFS();
+void IsoStopVagStream(VagCmd* param_1, int param_2);
 
 }  // namespace jak2

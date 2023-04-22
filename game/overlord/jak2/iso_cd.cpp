@@ -9,6 +9,7 @@
 #include "game/overlord/common/fake_iso.h"
 #include "game/overlord/common/isocommon.h"
 #include "game/overlord/common/sbank.h"
+#include "game/overlord/jak2/iso_queue.h"
 #include "game/sce/iop.h"
 #include "game/sound/sndshim.h"
 
@@ -54,7 +55,6 @@ s32 SubBufferToRead = 0;
 
 /// Flag that can be set to 1 once reading pages is done.
 s32* ReadPagesDoneFlag = nullptr;
-
 
 /// LoadStackEntry for currently reading file
 static LoadStackEntry* sReadInfo;

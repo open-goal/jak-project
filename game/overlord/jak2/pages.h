@@ -46,4 +46,5 @@ Page* AllocPagesBytes(PageList* page_list, u32 size_bytes);
 Page* AllocPages(PageList* page_list, u32 num_pages);
 Page* FreePagesList(PageList* page_list, Page* pages);
 void FromPagesCopy(const Page* page, const u8* page_ptr, u8* dest, int bytes_to_copy);
+Page* StepTopPage(PageList* param_1, Page* top_page);
 }  // namespace jak2

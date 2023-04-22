@@ -3,8 +3,12 @@
 #include <cstdio>
 #include <cstring>
 
+#include "game/overlord/common/sbank.h"
+#include "game/overlord/jak1/ramdisk.h"
+#include "game/overlord/jak2/iso.h"
 #include "game/overlord/jak2/iso_queue.h"
 #include "game/sce/iop.h"
+
 namespace jak2 {
 using namespace iop;
 
@@ -26,54 +30,51 @@ int start_overlord(int argc, const char* const* argv) {
   ScratchPadMemory = (u8*)AllocScratchPad(0);
   // removed allocation check code.
 
-//  InitBanks();
-//  InitSound();
-//  // InitRamdisk(); // ramdisk believed unused.
-//  RegisterVblankHandler(0, 0x20, VBlank_Handler, 0);
-//
-//  // ramdisk believed unused.
-//
-//  if (false) {
-//    ThreadParam param;
-//    param.entry = Thread_Server;
-//    param.attr = TH_C;
-//    param.initPriority = 0x7a;
-//    param.stackSize = 0x800;
-//    param.option = 0;
-//    strcpy(param.name, "Server");  // added
-//    auto thread_server = CreateThread(&param);
-//    if (thread_server <= 0) {
-//      return 1;
-//    }
-//  }
-//
-//  param.entry = Thread_Player;
-//  param.attr = TH_C;
-//  param.initPriority = 100;
-//  param.stackSize = 0x800;
-//  param.option = 0;
-//  strcpy(param.name, "Player");  // added
-//  auto thread_player = CreateThread(&param);
-//  if (thread_player <= 0) {
-//    return 1;
-//  }
-//
-//  param.entry = Thread_Loader;
-//  param.attr = 0x73;
-//  param.initPriority = TH_C;
-//  param.stackSize = 0x1000;
-//  param.option = 0;
-//  SndPlayThread = thread_player;
-//  auto thread_loader = CreateThread(&param);
-//  if (thread_loader <= 0) {
-//    return 1;
-//  }
-//
-//  InitISOFS(argv[1], argv[2]);
-//  StartThread(thread_server, 0);
-//  StartThread(thread_player, 0);
-//  StartThread(thread_loader, 0);
-//  printf("IOP: =========After inits=============\n");
+  InitBanks();
+  InitSound();
+  jak1::InitRamdisk();  // ramdisk believed unused.
+  RegisterVblankHandler(0, 0x20, VBlank_Handler, 0);
+
+  // ramdisk believed unused.
+  ThreadParam param;
+  param.entry = jak1::Thread_Server;
+  param.attr = TH_C;
+  param.initPriority = 0x7a;
+  param.stackSize = 0x800;
+  param.option = 0;
+  strcpy(param.name, "Server");  // added
+  auto thread_server = CreateThread(&param);
+  if (thread_server <= 0) {
+    return 1;
+  }
+
+  param.entry = Thread_Player;
+  param.attr = TH_C;
+  param.initPriority = 100;
+  param.stackSize = 0x800;
+  param.option = 0;
+  strcpy(param.name, "Player");  // added
+  auto thread_player = CreateThread(&param);
+  if (thread_player <= 0) {
+    return 1;
+  }
+
+  param.entry = Thread_Loader;
+  param.attr = 0x73;
+  param.initPriority = TH_C;
+  param.stackSize = 0x1000;
+  param.option = 0;
+  SndPlayThread = thread_player;
+  auto thread_loader = CreateThread(&param);
+  if (thread_loader <= 0) {
+    return 1;
+  }
+
+  InitISOFS(/*argv[1], argv[2]*/);
+  StartThread(thread_server, 0);
+  StartThread(thread_player, 0);
+  StartThread(thread_loader, 0);
+  printf("IOP: =========After inits=============\n");
   // removed memory printing code
 
   return 0;
