@@ -1,7 +1,8 @@
 ;; "project file" for subtitles make tool.
 ;; it's very simple... a list of (action args...)
-;; currently the only action available is 'file'
-;; and it takes 1 argument: input filename.
+;; There is one supported action:
+;; - file (A path to a GOAL data file)
+;;   - the same arguments are provided within the file itself
 
 (subtitle
   (file "game/assets/jak1/subtitle/game_subtitle_en.gd")

@@ -144,29 +144,37 @@ void compile_subtitle(GameSubtitleDB& db, const std::string& output_prefix) {
 }
 }  // namespace
 
+#include "common/util/json_util.h"
+
 /*!
  * Read a game text description file and generate GOAL objects.
  */
-void compile_game_text(const std::vector<std::string>& filenames,
+void compile_game_text(const std::vector<GameTextDefinitionFile>& files,
                        GameTextDB& db,
                        const std::string& output_prefix) {
   goos::Reader reader;
-  for (auto& filename : filenames) {
-    lg::print("[Build Game Text] {}\n", filename.c_str());
-    auto code = reader.read_from_file({filename});
-    parse_text(code, db);
+  for (auto& file : files) {
+    lg::print("[Build Game Text] {}\n", file.file_path.c_str());
+    if (file.format == GameTextDefinitionFile::Format::GOAL) {
+      auto code = reader.read_from_file({file.file_path});
+      parse_text(code, db, file);
+    } else if (file.format == GameTextDefinitionFile::Format::JSON) {
+      auto file_path = file_util::get_jak_project_dir() / file.file_path;
+      auto json = parse_commented_json(file_util::read_text_file(file_path), file.file_path);
+      parse_text_json(json, db, file);
+    }
   }
   compile_text(db, output_prefix);
 }
 
-void compile_game_subtitle(const std::vector<std::string>& filenames,
+void compile_game_subtitle(const std::vector<GameTextDefinitionFile>& files,
                            GameSubtitleDB& db,
                            const std::string& output_prefix) {
   goos::Reader reader;
-  for (auto& filename : filenames) {
-    lg::print("[Build Game Subtitle] {}\n", filename.c_str());
-    auto code = reader.read_from_file({filename});
-    parse_subtitle(code, db, filename);
+  for (auto& file : files) {
+    lg::print("[Build Game Subtitle] {}\n", file.file_path.c_str());
+    auto code = reader.read_from_file({file.file_path});
+    parse_subtitle(code, db, file.file_path);
   }
   compile_subtitle(db, output_prefix);
 }

@@ -142,21 +142,22 @@ bool TextTool::needs_run(const ToolInput& task, const PathMap& path_map) {
   }
 
   std::vector<std::string> deps;
-  open_text_project("text", task.input.at(0), deps);
-  for (auto& dep : deps) {
-    dep = path_map.apply_remaps(dep);
+  std::vector<GameTextDefinitionFile> files;
+  open_text_project("text", task.input.at(0), files);
+  for (auto& file : files) {
+    deps.push_back(path_map.apply_remaps(file.file_path));
   }
   return Tool::needs_run({task.input, deps, task.output, task.arg}, path_map);
 }
 
 bool TextTool::run(const ToolInput& task, const PathMap& path_map) {
   GameTextDB db;
-  std::vector<std::string> inputs;
-  open_text_project("text", task.input.at(0), inputs);
-  for (auto& in : inputs) {
-    in = path_map.apply_remaps(in);
+  std::vector<GameTextDefinitionFile> files;
+  open_text_project("text", task.input.at(0), files);
+  for (auto& file : files) {
+    file.file_path = path_map.apply_remaps(file.file_path);
   }
-  compile_game_text(inputs, db, path_map.output_prefix);
+  compile_game_text(files, db, path_map.output_prefix);
   return true;
 }
 
@@ -174,9 +175,10 @@ bool SubtitleTool::needs_run(const ToolInput& task, const PathMap& path_map) {
   }
 
   std::vector<std::string> deps;
-  open_text_project("subtitle", task.input.at(0), deps);
-  for (auto& dep : deps) {
-    dep = path_map.apply_remaps(dep);
+  std::vector<GameTextDefinitionFile> files;
+  open_text_project("subtitle", task.input.at(0), files);
+  for (auto& file : files) {
+    deps.push_back(path_map.apply_remaps(file.file_path));
   }
   return Tool::needs_run({task.input, deps, task.output, task.arg}, path_map);
 }
@@ -185,12 +187,12 @@ bool SubtitleTool::run(const ToolInput& task, const PathMap& path_map) {
   GameSubtitleDB db;
   db.m_subtitle_groups = std::make_unique<GameSubtitleGroups>();
   db.m_subtitle_groups->hydrate_from_asset_file();
-  std::vector<std::string> inputs;
-  open_text_project("subtitle", task.input.at(0), inputs);
-  for (auto& in : inputs) {
-    in = path_map.apply_remaps(in);
+  std::vector<GameTextDefinitionFile> files;
+  open_text_project("subtitle", task.input.at(0), files);
+  for (auto& file : files) {
+    file.file_path = path_map.apply_remaps(file.file_path);
   }
-  compile_game_subtitle(inputs, db, path_map.output_prefix);
+  compile_game_subtitle(files, db, path_map.output_prefix);
   return true;
 }
 
