@@ -8,7 +8,7 @@
 
 #include "common/common_types.h"
 #include "common/util/FileUtil.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/data/game_text.h"

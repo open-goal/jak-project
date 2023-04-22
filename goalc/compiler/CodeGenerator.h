@@ -9,7 +9,7 @@
 
 #include "Env.h"
 
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "goalc/emitter/ObjectGenerator.h"
 

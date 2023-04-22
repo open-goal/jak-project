@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/common_types.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 constexpr s32 BINTEGER_OFFSET = 0;
 constexpr s32 PAIR_OFFSET = 2;
