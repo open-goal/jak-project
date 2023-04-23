@@ -36,14 +36,13 @@ static uint8_t gPlayerBuf[SRPC_MESSAGE_SIZE * 128];
 static u32 gInfoEE = 0;  // EE address where we should send info on each frame.
 s16 gFlava;
 u32 gFreeMem = 0;
-u32 gFrameNum = 0;
 
 static SoundIopInfo info;
 
 s32 gVAG_Id = 0;  // TODO probably doesn't belong here.
 
 // english, french, germain, spanish, italian, japanese, uk.
-static const char* languages[] = {"ENG", "FRE", "GER", "SPA", "ITA", "JAP", "UKE"};
+const char* languages[] = {"ENG", "FRE", "GER", "SPA", "ITA", "JAP", "UKE"};
 
 void srpc_init_globals() {
   memset((void*)gLoaderBuf, 0, sizeof(gLoaderBuf));
@@ -71,9 +70,6 @@ u32 Thread_Player() {
 }
 
 void* RPC_Loader(unsigned int fno, void* data, int size);
-void* RPC_Loader2(unsigned int fno, void* data, int size);
-
-PerGameVersion<void* (*)(unsigned int, void*, int)> RPC_Loader_Func = {RPC_Loader, RPC_Loader2};
 
 u32 Thread_Loader() {
   sceSifQueueData dq;
@@ -83,8 +79,8 @@ u32 Thread_Loader() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, LOADER_RPC_ID[g_game_version], RPC_Loader_Func[g_game_version],
-                    gLoaderBuf, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, LOADER_RPC_ID[g_game_version], RPC_Loader, gLoaderBuf, nullptr, nullptr,
+                    &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
@@ -441,104 +437,6 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
       cmd++;
     }
   }
-  return nullptr;
-}
-
-static void UnLoadMusic(s32* handle) {
-  gMusicFadeDir = -1;
-  while (gMusicFade)
-    DelayThread(1000);
-  snd_UnloadBank(*handle);
-  snd_ResolveBankXREFS();
-  *handle = 0;
-}
-
-void* RPC_Loader2(unsigned int /*fno*/, void* data, int size) {
-  int n_messages = size / SRPC_MESSAGE_SIZE;
-  SoundRpcCommand* cmd = (SoundRpcCommand*)(data);
-  if (!gSoundEnable) {
-    return nullptr;
-  }
-
-  while (n_messages > 0) {
-    switch (cmd->j2command) {
-      case Jak2SoundCommand::load_bank: {
-        if (LookupBank(cmd->load_bank.bank_name)) {
-          break;
-        }
-
-        auto bank = AllocateBankName(cmd->load_bank.bank_name);
-        if (bank == nullptr) {
-          break;
-        }
-
-        strncpy(bank->name, cmd->load_bank.bank_name, 16);
-        bank->in_use = true;
-        bank->unk4 = 0;
-        LoadSoundBank(cmd->load_bank.bank_name, bank);
-      } break;
-      case Jak2SoundCommand::load_music: {
-        while (WaitSema(gSema))
-          ;
-        if (gMusic) {
-          UnLoadMusic(&gMusic);
-        }
-        LoadMusic(cmd->load_bank.bank_name, &gMusic);
-        SignalSema(gSema);
-      } break;
-      case Jak2SoundCommand::unload_bank: {
-        auto bank = LookupBank(cmd->load_bank.bank_name);
-        if (!bank) {
-          break;
-        }
-        auto handle = bank->bank_handle;
-        if (!bank->unk4) {
-          bank->in_use = false;
-        }
-        bank->in_use = false;
-        snd_UnloadBank(handle);
-        snd_ResolveBankXREFS();
-      } break;
-      case Jak2SoundCommand::get_irx_version: {
-        cmd->irx_version.major = 4;
-        cmd->irx_version.minor = 0;
-        gInfoEE = cmd->irx_version.ee_addr;
-        return data;
-      } break;
-      case Jak2SoundCommand::set_language: {
-        gLanguage = languages[cmd->set_language.langauge_id];
-      } break;
-      case Jak2SoundCommand::list_sounds: {
-        // Not present in real jak2 overlord
-        PrintActiveSounds();
-      } break;
-      case Jak2SoundCommand::unload_music: {
-        while (WaitSema(gSema))
-          ;
-        if (gMusic) {
-          UnLoadMusic(&gMusic);
-        }
-        SignalSema(gSema);
-      } break;
-      case Jak2SoundCommand::set_stereo_mode: {
-        s32 mode = cmd->stereo_mode.stereo_mode;
-        if (mode == 0) {
-          snd_SetPlayBackMode(1);
-        } else if (mode == 1) {
-          snd_SetPlayBackMode(2);
-        } else if (mode == 2) {
-          snd_SetPlayBackMode(0);
-        }
-      } break;
-      default:
-        ASSERT_MSG(false, fmt::format("Unhandled RPC Loader command {}",
-                                      magic_enum::enum_name(cmd->j2command)));
-    }
-
-    n_messages--;
-    cmd++;
-  }
-
   return nullptr;
 }
 

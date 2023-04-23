@@ -9,9 +9,11 @@
 #include "game/overlord/common/dma.h"
 #include "game/overlord/common/iso.h"
 #include "game/overlord/common/srpc.h"
+#include "game/overlord/jak2/iso_api.h"
 #include "game/overlord/jak2/iso_cd.h"
 #include "game/overlord/jak2/iso_queue.h"
 #include "game/overlord/jak2/spustreams.h"
+#include "game/overlord/jak2/srpc.h"
 #include "game/overlord/jak2/ssound.h"
 #include "game/overlord/jak2/stream.h"
 #include "game/overlord/jak2/streamlist.h"
@@ -160,7 +162,7 @@ u32 InitISOFS() {
 
   FileRecord* vagdir_file = FindISOFile("VAGDIR.AYB");
   if (vagdir_file) {
-    LoadISOFileToIOP(vagdir_file, (u8*)&gVagDir, VAG_DIR_FILE_SIZE[g_game_version]);
+    LoadISOFileToIOP(vagdir_file, (u8*)&gVagDir, sizeof(gVagDir));
   } else {
     printf("IOP: ======================================================================\n");
     printf("IOP : iso InitISOFS : cannot load VAG directory\n");
@@ -1144,23 +1146,6 @@ void CancelDGO(RPC_Dgo_Cmd* param_1) {
     }
     sLoadDgo.header.cmd_kind = 0;
   }
-}
-
-int LoadISOFileToIOP(FileRecord* fr, uint8_t* dest, int length) {
-  CmdLoadSingleIop cmd;
-  cmd.header.cmd_kind = LOAD_TO_IOP_CMD_ID;
-  cmd.header.mbx_to_reply = 0;
-  cmd.header.thread_id = GetThreadId();
-  cmd.file_record = fr;
-  cmd.dest_addr = dest;
-  cmd.length = length;
-  SendMbx(iso_mbx, &cmd);
-  SleepThread();
-  int result = 0;
-  if (cmd.header.status == 0) {
-    result = cmd.length_to_copy;
-  }
-  return result;
 }
 
 void InitDriver() {

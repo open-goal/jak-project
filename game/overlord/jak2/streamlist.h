@@ -44,4 +44,8 @@ void RemoveVagStreamFromList(VagStrListNode* param_1, List* param_2);
 void EmptyVagStreamList(List* param_1);
 VagStrListNode* InsertVagStreamInList(VagStrListNode* param_1, List* param_2);
 VagStrListNode* FindVagStreamInList(VagStrListNode* param_1, List* param_2);
+void QueueNewStreamsFromList(List* list);
+bool InitVagStreamList(List* param_1, u32 param_2, char* param_3);
+u32 StreamListThread();
+void RemoveLfoStreamFromList(void*, void*);
 }  // namespace jak2

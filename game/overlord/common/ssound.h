@@ -7,6 +7,11 @@ extern s32 gMusicFade;
 extern s32 gSema;
 extern s32 gMusicFadeDir;
 
+struct VolumePair {
+  s16 left;
+  s16 right;
+};
+
 struct Vec3w {
   s32 x;
   s32 y;
@@ -65,3 +70,5 @@ s32 CalculateAngle(Vec3w* trans);
 void KillSoundsInGroup(u8 group);
 void UpdateLocation(Sound* sound);
 void UpdateAutoVol(Sound* sound, s32 ticks);
+void PrintActiveSounds();
+void SetCurve(s32 curve, s32 fallof, s32 ease);

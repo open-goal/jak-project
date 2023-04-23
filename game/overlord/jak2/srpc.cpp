@@ -3,17 +3,29 @@
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 
+#include "game/common/loader_rpc_types.h"
+#include "game/common/player_rpc_types.h"
 #include "game/overlord/common/soundcommon.h"
 #include "game/overlord/common/srpc.h"
 #include "game/overlord/common/ssound.h"
+#include "game/overlord/jak2/iso_api.h"
 #include "game/overlord/jak2/spustreams.h"
 #include "game/overlord/jak2/ssound.h"
 #include "game/overlord/jak2/vag.h"
+#include "game/runtime.h"
 #include "game/sce/iop.h"
 #include "game/sound/sndshim.h"
 
 using namespace iop;
 namespace jak2 {
+
+// korean inserted
+static const char* languages[] = {"ENG", "FRE", "GER", "SPA", "ITA", "JAP", "KOR", "UKE"};
+static u32 gInfoEE = 0;
+static u32 IopTicks = 0;
+static SoundIopInfo info;
+static uint8_t gPlayerBuf[0x50 * 128];
+static uint8_t gLoaderBuf[0x50];
 
 void srpc_init_globals() {}
 
@@ -347,4 +359,266 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
 
   return nullptr;
 }
+
+void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
+  constexpr int kMsgSize = 0x50;
+  static_assert(sizeof(SoundRpcCommand) == kMsgSize);
+  int n_messages = size / kMsgSize;
+  SoundRpcCommand* cmd = (SoundRpcCommand*)(data);
+  if (!gSoundEnable) {
+    return nullptr;
+  }
+
+  while (n_messages > 0) {
+    switch (cmd->j2command) {
+      case Jak2SoundCommand::load_bank: {
+        if (LookupBank(cmd->load_bank.bank_name)) {
+          break;
+        }
+
+        auto bank = AllocateBankName(cmd->load_bank.bank_name);
+        if (bank == nullptr) {
+          break;
+        }
+
+        strncpy(bank->name, cmd->load_bank.bank_name, 16);
+        bank->in_use = true;
+        bank->unk4 = 0;
+        LoadSoundBank(cmd->load_bank.bank_name, bank);
+      } break;
+      case Jak2SoundCommand::load_music: {
+        while (WaitSema(gSema))
+          ;
+        if (gMusic) {
+          UnLoadMusic(&gMusic);
+        }
+        LoadMusic(cmd->load_bank.bank_name, &gMusic);
+        SignalSema(gSema);
+      } break;
+      case Jak2SoundCommand::unload_bank: {
+        auto bank = LookupBank(cmd->load_bank.bank_name);
+        if (!bank) {
+          break;
+        }
+        auto handle = bank->bank_handle;
+        if (!bank->unk4) {
+          bank->in_use = false;
+        }
+        bank->in_use = false;
+        snd_UnloadBank(handle);
+        snd_ResolveBankXREFS();
+      } break;
+      case Jak2SoundCommand::get_irx_version: {
+        cmd->irx_version.major = 4;
+        cmd->irx_version.minor = 0;
+        gInfoEE = cmd->irx_version.ee_addr;
+        return data;
+      } break;
+      case Jak2SoundCommand::set_language: {
+        gLanguage = languages[cmd->set_language.langauge_id];
+      } break;
+      case Jak2SoundCommand::list_sounds: {
+        // Not present in real jak2 overlord
+        PrintActiveSounds();
+      } break;
+      case Jak2SoundCommand::unload_music: {
+        while (WaitSema(gSema))
+          ;
+        if (gMusic) {
+          UnLoadMusic(&gMusic);
+        }
+        SignalSema(gSema);
+      } break;
+      case Jak2SoundCommand::set_stereo_mode: {
+        s32 mode = cmd->stereo_mode.stereo_mode;
+        if (mode == 0) {
+          snd_SetPlayBackMode(1);
+        } else if (mode == 1) {
+          snd_SetPlayBackMode(2);
+        } else if (mode == 2) {
+          snd_SetPlayBackMode(0);
+        }
+      } break;
+      default:
+        ASSERT_MSG(false, fmt::format("Unhandled RPC Loader command {}", int(cmd->j2command)));
+    }
+
+    n_messages--;
+    cmd++;
+  }
+
+  return nullptr;
+}
+
+int VBlank_Handler(void*) {
+  bool bVar1;
+  int iVar2;
+  int iVar3;
+  uint8_t uVar4;
+  uint uVar5;
+  int* piVar6;
+  uint uVar7;
+  int* status_ptr;
+  int* pos_ptr;
+  int* id_ptr;
+  // EEInfo *local_38;
+  // int local_34;
+  // undefined4 local_30;
+  // undefined4 local_2c;
+
+  IopTicks = IopTicks + 1;
+  if (gSoundEnable == 0) {
+    return 1;
+  }
+  iWakeupThread(StreamThread);
+  if (gMusicFadeDir < 0) {
+    gMusicFade = gMusicFade + -0x200;
+    if (-1 < gMusicFade)
+      goto LAB_00008d9c;
+    gMusicFade = 0;
+  } else {
+    if ((gMusicFadeDir < 1) || (gMusicFade = gMusicFade + 0x400, gMusicFade < 0x10001))
+      goto LAB_00008d9c;
+    gMusicFade = 0x10000;
+  }
+  gMusicFadeDir = 0;
+LAB_00008d9c:
+  if (gInfoEE != 0) {
+    gFrameNum = gFrameNum + 1;
+    // instant dma
+    //    if (dmaid != 0) {
+    //      iVar2 = sceSifDmaStat();
+    //      if (-1 < iVar2) {
+    //        return 1;
+    //      }
+    //      dmaid = 0;
+    //    }
+    status_ptr = info.stream_status;
+    id_ptr = info.stream_id;
+    pos_ptr = info.stream_position;
+
+    for (int i = 0; i < 4; i++) {
+      u32 status_bits = 0;
+      u32 pos;
+      for (int j = 0; j < 24; j++) {
+        if (VagCmds[i].status_bytes[j]) {
+          status_bits |= (1 << j);
+        }
+      }
+      if (VagCmds[i].unk_232) {
+        status_bits |= (1 << 24);
+      }
+
+      if (VagCmds[i].byte6 && VagCmds[i].byte2 == 0) {
+        VagCmds[i].unk_192 += CalculateVAGPitch(0x400, VagCmds[i].unk_256_pitch2) / gFPS;
+      }
+
+      if (VagCmds[i].byte1 == 0 && VagCmds[i].byte5) {
+        pos = 0;
+      } else {
+        pos = VagCmds[i].unk_200;
+      }
+
+      info.stream_status[i] = status_bits;
+      info.stream_position[i] = pos;
+      info.stream_id[i] = VagCmds[i].id;
+    }
+
+    info.iop_ticks = IsoThreadCounter;
+    info.frame = gFrameNum;
+    info.freemem = 100 /*gFreeMem*/;
+    info.freemem2 = QueryTotalFreeMemSize();
+    info.nocd = 0 /*gNoCD*/;
+    info.dirtycd = 0 /*gDirtyCD*/;
+    info.diskspeed[0] = 0 /*gDiskSpeed*/;
+    info.diskspeed[1] = 0 /*DAT_00013488*/;
+    info.lastspeed = 0 /*gLastSpeed*/;
+    info.dupseg = 0 /*gDupSeg*/;
+    iVar2 = 1;
+    do {
+      iVar3 = snd_GetVoiceStatus(iVar2);
+      uVar4 = '\0';
+      if (iVar3 == 1) {
+        uVar4 = 0xff;
+      }
+      info.chinfo[iVar2] = uVar4;
+      bVar1 = iVar2 < 0x30;
+      iVar2 = iVar2 + 1;
+    } while (bVar1);
+    LookupSound(0x29a);  // lol idk
+
+    /*
+    local_38 = &info;
+    local_30 = 0x250;
+    local_2c = 0;
+    local_34 = gInfoEE;
+    dmaid = sceSifSetDma(&local_38,1);
+     */
+
+    sceSifDmaData dma;
+    dma.data = &info;
+    dma.addr = (void*)(uintptr_t)gInfoEE;
+    dma.size = 0x250;
+    dma.mode = 0;
+    /*dmaid =*/sceSifSetDma(&dma, 1);
+  }
+  return 1;
+}
+
+u32 Thread_Player() {
+  sceSifQueueData dq;
+  sceSifServeData serve;
+
+  // set up RPC
+  CpuDisableIntr();
+  sceSifInitRpc(0);
+  sceSifSetRpcQueue(&dq, GetThreadId());
+  sceSifRegisterRpc(&serve, PLAYER_RPC_ID[g_game_version], RPC_Player, gPlayerBuf, nullptr, nullptr,
+                    &dq);
+  CpuEnableIntr();
+  sceSifRpcLoop(&dq);
+  return 0;
+}
+
+u32 Thread_Loader() {
+  sceSifQueueData dq;
+  sceSifServeData serve;
+
+  // set up RPC
+  CpuDisableIntr();
+  sceSifInitRpc(0);
+  sceSifSetRpcQueue(&dq, GetThreadId());
+  sceSifRegisterRpc(&serve, LOADER_RPC_ID[g_game_version], RPC_Loader, gLoaderBuf, nullptr, nullptr,
+                    &dq);
+  CpuEnableIntr();
+  sceSifRpcLoop(&dq);
+  return 0;
+}
+
+void SetVagStreamName(VagCmd* param_1, int param_2, int param_3) {
+  // undefined4 local_18 [2];
+
+  if (param_3 == 1) {
+    // CpuSuspendIntr(local_18);
+  }
+  if (param_2 == 0) {
+    info.stream_name[param_1->idx_in_cmd_arr].dat[0] = '\0';
+  } else {
+    strncpy(info.stream_name[param_1->idx_in_cmd_arr].dat, param_1->name, 0x30);
+  }
+  if (param_3 == 1) {
+    // CpuResumeIntr(local_18[0]);
+  }
+}
+
+void SetVagName(int param_1, char* param_2, int param_3) {
+  //  CpuSuspendIntr(local_18);
+  if (param_3 == 0) {
+    info.stream_name[param_1].dat[0] = '\0';
+  } else {
+    strncpy(info.stream_name[param_1].dat, param_2, 0x30);
+  }
+  // CpuResumeIntr(local_18[0]);
+}
+
 }  // namespace jak2

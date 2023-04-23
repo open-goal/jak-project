@@ -1,5 +1,6 @@
 #pragma once
 #include "common/common_types.h"
+
 #include "game/overlord/common/ssound.h"
 
 // added for PC port
@@ -121,5 +122,5 @@ extern s32 gMusicPause;
 extern s32 gSoundInUse;
 extern u8 gFPS;
 extern const char* gLanguage;
-
+extern u32 gFrameNum;
 void srpc_init_globals();

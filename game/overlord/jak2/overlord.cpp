@@ -7,6 +7,8 @@
 #include "game/overlord/jak1/ramdisk.h"
 #include "game/overlord/jak2/iso.h"
 #include "game/overlord/jak2/iso_queue.h"
+#include "game/overlord/jak2/srpc.h"
+#include "game/overlord/jak2/ssound.h"
 #include "game/sce/iop.h"
 
 namespace jak2 {
@@ -31,7 +33,7 @@ int start_overlord(int argc, const char* const* argv) {
   // removed allocation check code.
 
   InitBanks();
-  InitSound();
+  InitSound_overlord();
   jak1::InitRamdisk();  // ramdisk believed unused.
   RegisterVblankHandler(0, 0x20, VBlank_Handler, 0);
 

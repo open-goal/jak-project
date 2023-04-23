@@ -49,9 +49,9 @@ struct VagCmd {
   int unk_180;              // 180
   int unk_184;              // 184
   int unk_188;              // 188
-  int unk_192;              // 192
+  int unk_192;              // 192 pitch ramping stuff maybe
   int unk_196;              // 196
-  int unk_200;              // 200
+  int unk_200;              // 200 pos
   int unk_204;              // 204
   union {
     u8 status_bytes[24];  // 208

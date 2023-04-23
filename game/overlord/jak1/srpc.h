@@ -9,7 +9,6 @@
 namespace jak1 {
 void srpc_init_globals();
 
-extern const char* gLanguage;
 extern s32 gVAG_Id;
 
 enum class Jak1SoundCommand : u16 {

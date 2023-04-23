@@ -11,6 +11,7 @@ s32 gMusic = 0;
 s32 gMusicPause = 0;
 s32 gSoundInUse = 0;
 u8 gFPS = 60;
+u32 gFrameNum = 0;
 const char* gLanguage = nullptr;
 
 void srpc_init_globals() {

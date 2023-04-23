@@ -52,6 +52,7 @@ u32 gPlayPos;
 
 static VagCommand vag_cmd;
 VagCommand* gVAGCMD = nullptr;
+VagDir gVagDir;
 s32 gDialogVolume = 0;
 s32 gFakeVAGClockPaused = 0;
 s32 gFakeVAGClockRunning = 0;
@@ -227,7 +228,7 @@ u32 InitISOFS(const char* fs_mode, const char* loading_screen) {
   // LOAD VAGDIR file
   FileRecord* vagdir_file = FindISOFile("VAGDIR.AYB");
   if (vagdir_file) {
-    LoadISOFileToIOP(vagdir_file, &gVagDir, VAG_DIR_FILE_SIZE[g_game_version]);
+    LoadISOFileToIOP(vagdir_file, &gVagDir, sizeof(gVagDir));
   } else {
     printf("IOP: ======================================================================\n");
     printf("IOP : iso InitISOFS : cannot load VAG directory\n");

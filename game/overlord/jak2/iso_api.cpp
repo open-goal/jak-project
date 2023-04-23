@@ -9,6 +9,7 @@
 #include "game/overlord/jak2/streamlist.h"
 #include "game/overlord/jak2/vag.h"
 #include "game/sce/iop.h"
+#include "game/sound/sndshim.h"
 
 using namespace iop;
 
@@ -96,7 +97,7 @@ void QueueVAGStream(VagStrListNode* param_1) {
       iVar2 = iVar2 + 1;
       pbVar4 = (local_20 + iVar2);
     } while (iVar2 < 0xc);
-    cmd.vag_dir_entry = FindVAGFile((int*)local_20);
+    cmd.vag_dir_entry = FindVAGFile(local_20);
     strcpy(local_20, "VAGWAD     ");
     //    local_20._0_4_ = 0x57474156;
     //    local_20._4_4_ = 0x20204441;
@@ -142,7 +143,7 @@ int LoadISOFileToIOP(FileRecord* fr, uint8_t* addr, int len) {
   return iVar1;
 }
 
-int LoadISOFileToEE(FileRecord* param_1, uint8_t* param_2, int param_3) {
+int LoadISOFileToEE(FileRecord* param_1, uint32_t param_2, int param_3) {
   int iVar1;
   CmdLoadSingleIop auStack88;
 
@@ -150,7 +151,7 @@ int LoadISOFileToEE(FileRecord* param_1, uint8_t* param_2, int param_3) {
   auStack88.header.mbx_to_reply = 0;
   auStack88.header.thread_id = GetThreadId();
   auStack88.file_record = param_1;
-  auStack88.dest_addr = param_2;
+  auStack88.dest_addr = (u8*)(u64)param_2;
   auStack88.length = param_3;
   SendMbx(iso_mbx, &auStack88);
   SleepThread();
@@ -161,7 +162,7 @@ int LoadISOFileToEE(FileRecord* param_1, uint8_t* param_2, int param_3) {
   return iVar1;
 }
 
-int LoadISOFileChunkToEE(FileRecord* param_1, uint8_t* param_2, int param_3, int param_4) {
+int LoadISOFileChunkToEE(FileRecord* param_1, uint32_t param_2, int param_3, int param_4) {
   int iVar1;
   CmdLoadSingleIop auStack96;
 
@@ -169,7 +170,7 @@ int LoadISOFileChunkToEE(FileRecord* param_1, uint8_t* param_2, int param_3, int
   auStack96.header.mbx_to_reply = 0;
   auStack96.header.thread_id = GetThreadId();
   auStack96.file_record = param_1;
-  auStack96.dest_addr = param_2;
+  auStack96.dest_addr = (u8*)(u64)param_2;
   auStack96.length = param_3;
   auStack96.offset = param_4;
   SendMbx(iso_mbx, &auStack96);
@@ -216,6 +217,50 @@ void SetDialogVolume(int param_1) {
   (inasdf->header).thread_id = 0;
   inasdf->vol_multiplier = param_1;
   SendMbx(iso_mbx, inasdf);
+}
+
+void LoadSoundBank(char* param_1, SoundBank* param_2) {
+  CmdLoadSoundBank auStack80;
+  auStack80.header.cmd_kind = 0x300;
+  auStack80.header.mbx_to_reply = 0;
+  auStack80.header.thread_id = GetThreadId();
+  strncpy(auStack80.bank_name, param_1, 0x10);
+  auStack80.bank = param_2;
+  SendMbx(iso_mbx, &auStack80);
+  SleepThread();
+}
+
+void LoadMusic(char* param_1, s32* param_2) {
+  CmdLoadMusic auStack88;
+
+  auStack88.header.cmd_kind = 0x380;
+  auStack88.header.mbx_to_reply = 0;
+  auStack88.header.thread_id = GetThreadId();
+  strncpy(auStack88.name, param_1, 0x10);
+  auStack88.handle = param_2;
+  SendMbx(iso_mbx, &auStack88);
+  SleepThread();
+
+  for (u32 i = 0; i < gMusicTweakInfo.TweakCount; i++) {
+    if (!strcmp(gMusicTweakInfo.MusicTweak[i].MusicName, param_1)) {
+      gMusicTweak = gMusicTweakInfo.MusicTweak[i].VolumeAdjust;
+      return;
+    }
+  }
+
+  gMusicTweak = 0x80;
+}
+
+void UnLoadMusic(s32* param_1) {
+  gMusicFadeDir = -1;
+  if (gMusicFade != 0) {
+    do {
+      DelayThread(1000);
+    } while (gMusicFade != 0);
+  }
+  snd_UnloadBank(*param_1);
+  snd_ResolveBankXREFS();
+  *param_1 = 0;
 }
 
 }  // namespace jak2

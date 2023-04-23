@@ -10,6 +10,7 @@
 #include "game/overlord/common/iso_api.h"
 #include "game/overlord/common/isocommon.h"
 #include "game/overlord/jak2/iso.h"
+#include "game/overlord/jak2/iso_api.h"
 #include "game/overlord/jak2/streamlist.h"
 #include "game/overlord/jak2/vag.h"
 #include "game/runtime.h"
@@ -19,7 +20,7 @@ using namespace iop;
 
 namespace jak2 {
 static RPC_Str_Cmd_Jak2 sSTRBuf;
-static RPC_Play_Cmd_Jak2 sPLAYBuf[2]; // called sRPCBuf2
+static RPC_Play_Cmd_Jak2 sPLAYBuf[2];  // called sRPCBuf2
 
 struct CacheEntry {
   FileRecord* fr = nullptr;
@@ -34,7 +35,6 @@ void stream_init_globals() {
   memset(&sSTRBuf, 0, sizeof(RPC_Str_Cmd_Jak2));
   memset(&sPLAYBuf, 0, sizeof(RPC_Play_Cmd_Jak2) * 2);
 }
-
 
 /*!
  * The STR RPC handler.
@@ -91,7 +91,8 @@ void* RPC_STR(unsigned int fno, void* _cmd, int y) {
         cache_entry = oldest_idx;
         sCache[oldest_idx].fr = file_record;
         sCache[oldest_idx].countdown = INT32_MAX - 1;
-        if (!LoadISOFileToIOP(file_record, &sCache[oldest_idx].header, sizeof(StrFileHeaderJ2))) {
+        if (!LoadISOFileToIOP(file_record, (u8*)&sCache[oldest_idx].header,
+                              sizeof(StrFileHeaderJ2))) {
           printf("[OVERLORD STR] Failed to load chunk file header for animation %s\n",
                  cmd->basename);
           cmd->result = 1;

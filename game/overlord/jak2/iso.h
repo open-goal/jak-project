@@ -8,6 +8,8 @@
 namespace jak2 {
 void iso_init_globals();
 u32 ISOThread();
+extern u32 IsoThreadCounter;
+
 
 struct LoadStackEntry {
   FileRecord* fr;
@@ -46,7 +48,7 @@ struct IsoFs {
   int (*page_begin_read)(LoadStackEntry*, Buffer*);     // 1c
   uint32_t (*sync_read)();                              // 20
   uint32_t (*load_sound_bank)(char*, SoundBank*);       // 24
-  uint32_t (*load_music)(char*, u32*);
+  uint32_t (*load_music)(char*, s32*);
   // void (*poll_drive)();
 };
 
@@ -146,7 +148,13 @@ struct CmdLoadSoundBank {
 struct CmdLoadMusic {
   CmdHeader header;
   char name[16];
-  u32* handle;
+  s32* handle;
+};
+
+struct VagDirEntry {
+  char name[8];
+  u32 offset;
+  u32 flag;
 };
 
 struct VagCmd;
@@ -159,11 +167,6 @@ void IsoPlayVagStream(VagCmd* param_1, int param_2);
 VagDirEntry* FindVAGFile(const char* name);
 void IsoQueueVagStream(VagCmd* cmd, int param_2);
 
-struct VagDirEntry {
-  char name[8];
-  u32 offset;
-  u32 flag;
-};
 static constexpr int VAG_COUNT = 2728;
 struct VagDir {
   u32 count;

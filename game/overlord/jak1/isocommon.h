@@ -14,10 +14,11 @@
 #include "game/overlord/common/isocommon.h"
 #include "game/overlord/jak1/ssound.h"
 
-struct VagDirEntry;
 struct SoundBank;
 
 namespace jak1 {
+struct VagDirEntry;
+
 constexpr int PRI_STACK_LENGTH = 4;  // number of queued commands per priority
 constexpr int N_PRIORITIES = 4;      // number of priorities
 
@@ -34,13 +35,12 @@ constexpr int CONTINUE_VAG_STREAM = 0x404;  // Command to continue a vag stream
 constexpr int SET_VAG_VOLUME = 0x405;       // Command to set the volume of vag playback
 constexpr int SET_DIALOG_VOLUME = 0x406;    // Command to set the volume of vag playback
 
-
 /*!
  * Record for an open file.
  */
 struct LoadStackEntry {
   FileRecord* fr;
-  uint32_t location;           // sectors.
+  uint32_t location;  // sectors.
 };
 
 /*!

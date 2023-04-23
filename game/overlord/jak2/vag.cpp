@@ -5,8 +5,10 @@
 #include "common/util/Assert.h"
 
 #include "game/overlord/jak2/iso_queue.h"
-#include "game/overlord/jak2/streamlist.h"
 #include "game/overlord/jak2/spustreams.h"
+#include "game/overlord/jak2/srpc.h"
+#include "game/overlord/jak2/ssound.h"
+#include "game/overlord/jak2/streamlist.h"
 #include "game/sound/sdshim.h"
 
 namespace jak2 {
@@ -20,7 +22,8 @@ int StreamVoice[N_VAG_CMDS];
 VagCmdPriListEntry VagCmdsPriList[11];
 int VagCmdsPriCounter[11];
 int ActiveVagStreams;
-s16 gPanTable[724];
+
+void CalculateVAGVolumes(VagCmd* cmd, int* l_out, int* r_out);
 
 enum VolumeCategory {
   DIALOGUE = 2,  // VAG streams. Copied "dialogue" name from jak 1.
@@ -34,7 +37,6 @@ void vag_init_globals() {
   memset(StreamVoice, 0, sizeof(StreamVoice));
   memset(VagCmdsPriList, 0, sizeof(VagCmdsPriList));
   memset(VagCmdsPriCounter, 0, sizeof(VagCmdsPriCounter));
-  memset(gPanTable, 0, sizeof(gPanTable));
 
   for (auto& x : MasterVolume) {
     x = 0x400;  // check!!!
@@ -91,8 +93,8 @@ void InitVagCmds() {
     // puVar5[-0x28] = iVar6;
     cmd.idx_in_cmd_arr = cmd_idx;
     // iVar6 = iVar6 + 1;
-    cmd.file_record = nullptr;                           // puVar5[-0x3f] = 0;
-    cmd.vag_dir_entry = nullptr;                 // puVar5[-0x3e] = 0;
+    cmd.file_record = nullptr;                // puVar5[-0x3f] = 0;
+    cmd.vag_dir_entry = nullptr;              // puVar5[-0x3e] = 0;
     cmd.status_bytes[VagCmdByte::BYTE1] = 0;  // *(undefined*)((int)puVar5 + -0x53) = 0;
     cmd.vol_multiplier = 0;                   // puVar5[-5] = 0;
     cmd.unk_256_pitch2 = 0;                   // puVar5[-9] = 0;
@@ -880,13 +882,14 @@ void CalculateVAGVolumes(VagCmd* cmd, int* l_out, int* r_out) {
     *r_out = vol;
   } else {
     int fo_vol =
-        CalculateFalloffVolume(cmd->vec3, (uint)(cmd->vol_multiplier * MasterVolume[2]) >> 10,
-                               cmd->fo_curve, cmd->fo_min, cmd->fo_max);
-    int angle = CalculateAngle(cmd->vec3);
+        CalculateFallofVolume(&cmd->vec3, (uint)(cmd->vol_multiplier * MasterVolume[2]) >> 10,
+                              cmd->fo_curve, cmd->fo_min, cmd->fo_max);
+    int angle = CalculateAngle(&cmd->vec3);
     int uVar4 = 0x276 - angle;
     int uVar3 = (uVar4 >> 3) / 0x2d;
-    *l_out = (uint)(gPanTable[uVar3 * -0x2d0 + uVar4 * 2] * fo_vol) >> 10;
-    *r_out = (uint)(gPanTable[uVar3 * -0x2d0 + uVar4 * 2 + 1] * fo_vol) >> 10;
+    auto* pan = (s16*)gPanTable;
+    *l_out = (uint)(pan[uVar3 * -0x2d0 + uVar4 * 2] * fo_vol) >> 10;
+    *r_out = (uint)(pan[uVar3 * -0x2d0 + uVar4 * 2 + 1] * fo_vol) >> 10;
     if (0x3fff < *l_out) {
       *l_out = 0x3fff;
     }

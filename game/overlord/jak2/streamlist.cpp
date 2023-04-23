@@ -26,6 +26,10 @@ void init_globals_streamlist() {
   memset(&EEStreamsList, 0, sizeof(EEStreamsList));
 }
 
+// TODO
+void CheckLfoList(void*) {}
+void RemoveLfoStreamFromList(void*, void*) {}
+
 VagStrListNode* InsertVagStreamInList(VagStrListNode* param_1, List* param_2) {
   int iVar1;
   u32 uVar2;
@@ -53,7 +57,7 @@ VagStrListNode* InsertVagStreamInList(VagStrListNode* param_1, List* param_2) {
   pVVar6 = (VagStrListNode*)0x0;
   if (pVVar5 == (VagStrListNode*)0x0) {
     printf("IOP: ======================================================================\n");
-    printf("IOP: streamlist InsertVagStreamInList: no free spot in list %s\n", param_2);
+    printf("IOP: streamlist InsertVagStreamInList: no free spot in list %s\n", param_2->name);
     printf("IOP: ======================================================================\n");
   } else {
     uVar2 = 0;
@@ -274,9 +278,7 @@ code_r0x0000f058:
   goto joined_r0x0000f00c;
 }
 
-void StreamListThread()
-
-{
+u32 StreamListThread() {
   int iVar1;
   int iVar2;
   VagStrListNode* pVVar3;
@@ -415,6 +417,7 @@ void StreamListThread()
     CheckLfoList(&LfoList);
     SignalSema(LfoList.sema);
   } while (true);
+  return 0;
 }
 
 bool InitVagStreamList(List* param_1, u32 param_2, char* param_3) {

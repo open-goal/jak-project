@@ -2,11 +2,10 @@
 
 #include "game/overlord/common/isocommon.h"
 #include "game/overlord/common/ssound.h"
-struct VagDirEntry;
 struct SoundBank;
 
 namespace jak1 {
-
+struct VagDirEntry;
 void LoadSoundBank(const char* bank_name, SoundBank* bank);
 void LoadMusic(const char* music_name, s32* bank);
 

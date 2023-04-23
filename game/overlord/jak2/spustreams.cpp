@@ -968,7 +968,7 @@ void WakeSpuStreamsUp() {
   iWakeupThread(StreamsThread);
 }
 
-uint GetSpuRamAddress(VagCmd* param_1) {
+u32 GetSpuRamAddress(VagCmd* param_1) {
   bool bVar1;
   uint uVar2;
   uint uVar3;
