@@ -1,9 +1,9 @@
 #include "formatter.h"
 
-#include <common/util/FileUtil.h>
+#include "common/util/FileUtil.h"
+#include "common/util/string_util.h"
 
 #include "tree_sitter/api.h"
-#include <common/util/string_util.h>
 
 #include "third-party/fmt/core.h"
 

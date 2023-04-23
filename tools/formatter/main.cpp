@@ -6,6 +6,7 @@
 
 #include <queue>
 
+#include "common/formatter/formatter.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
@@ -18,7 +19,6 @@
 #include "third-party/CLI11.hpp"
 #include "third-party/fmt/core.h"
 #include "third-party/json.hpp"
-#include <common/formatter/formatter.h>
 
 int main(int argc, char** argv) {
   ArgumentGuard u8_guard(argc, argv);
