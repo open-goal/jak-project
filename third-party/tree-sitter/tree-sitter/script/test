@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+
+set -e
+
+function usage {
+  cat <<-EOF
+USAGE
+
+  $0 [-adDg] [-s SEED] [-l LANGUAGE] [-e EXAMPLE] [-t TRIAL]
+
+OPTIONS
+
+  -h  Print this message
+
+  -a  Compile C code with the Clang static analyzer
+
+  -e  Run only the corpus tests whose name contain the given string
+
+  -i  Run the given number of iterations of randomized tests (default 10)
+
+  -s  Set the seed used to control random behavior
+
+  -d  Print parsing log to stderr
+
+  -D  Generate an SVG graph of parsing logs
+
+  -g  Run the tests with a debugger
+
+EOF
+}
+
+export RUST_BACKTRACE=full
+
+mode=normal
+test_flags=""
+
+while getopts "adDghl:e:s:i:" option; do
+  case ${option} in
+    h)
+      usage
+      exit
+      ;;
+    a)
+      export RUSTFLAGS="-Z sanitizer=address"
+      # Specify a `--target` explicitly. For some reason, this is required for
+      # address sanitizer support.
+      toolchain=$(rustup show active-toolchain)
+      toolchain_regex='(stable|beta|nightly)-([_a-z0-9-]+).*'
+      if [[ $toolchain =~ $toolchain_regex ]]; then
+        release=${BASH_REMATCH[1]}
+        current_target=${BASH_REMATCH[2]}
+      else
+        echo "Failed to parse toolchain '${toolchain}'"
+      fi
+      test_flags="${test_flags} --target ${current_target}"
+      ;;
+    e)
+      export TREE_SITTER_EXAMPLE=${OPTARG}
+      ;;
+    s)
+      export TREE_SITTER_SEED=${OPTARG}
+      ;;
+    i)
+      export TREE_SITTER_ITERATIONS=${OPTARG}
+      ;;
+    d)
+      export TREE_SITTER_LOG=1
+      ;;
+    D)
+      export TREE_SITTER_LOG_GRAPHS=1
+      ;;
+    g)
+      mode=debug
+      ;;
+  esac
+done
+
+shift $(expr $OPTIND - 1)
+
+if [[ "${mode}" == "debug" ]]; then
+  test_binary=$(
+    cargo test $test_flags --no-run --message-format=json 2> /dev/null |\
+    jq -rs 'map(select(.target.name == "tree-sitter-cli" and .executable))[0].executable'
+  )
+  lldb "${test_binary}" -- $1
+else
+  cargo test $test_flags $1 -- --nocapture
+fi
