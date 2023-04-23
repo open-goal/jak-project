@@ -16,8 +16,6 @@ uniform mat4 perspective_matrix;
 
 uniform vec4 fade;
 
-const float SCISSOR_ADJUST = HEIGHT_SCALE * 512.0/448.0;
-
 // output
 out vec3 vtx_color;
 out vec2 vtx_st;
@@ -106,9 +104,7 @@ void main() {
 
       // this is required to make jak 1's envmapping look right
       // otherwise it behaves like the envmap texture is mirrored.
-      // TODO: see if this is right for jak 2 or not.
-      // It _might_ make sense that this exists because we skip the multiply by Q
-      // below, and Q is negative (no idea how that works out with clamp).
+      // this is because we flip vtx_pos above with a negative sign.
       st_mod.x = 1 - vf10.x;
       st_mod.y = 1 - vf10.y;
 
@@ -123,7 +119,7 @@ void main() {
     transformed.x /= (256);
     transformed.y /= -(128);
     transformed.xyz *= transformed.w;
-    transformed.y *= SCISSOR_ADJUST;
+    transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
     gl_Position = transformed;
 
 

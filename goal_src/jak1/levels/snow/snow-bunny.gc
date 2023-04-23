@@ -36,12 +36,12 @@
   :size-assert         #x200
   :flag-assert         #x4d01900200
   (:methods
-    (dummy-51 (_type_ vector vector) symbol :replace 51)
-    (dummy-52 (_type_) symbol :replace 52)
-    (dummy-54 (_type_) symbol :replace 54)
-    (dummy-57 (_type_) symbol :replace 57)
-    (dummy-60 (_type_) none :replace 60)
-    (dummy-76 (_type_ symbol) none 76)
+    (snow-bunny-method-51 (_type_ vector vector) symbol :replace 51)
+    (snow-bunny-method-52 (_type_) symbol :replace 52)
+    (snow-bunny-method-54 (_type_) symbol :replace 54)
+    (snow-bunny-method-57 (_type_) symbol :replace 57)
+    (snow-bunny-method-60 (_type_) none :replace 60)
+    (snow-bunny-method-76 (_type_ symbol) none 76)
     )
   )
 
@@ -131,7 +131,7 @@
     )
   )
 
-(defmethod dummy-76 snow-bunny ((obj snow-bunny) (arg0 symbol))
+(defmethod snow-bunny-method-76 snow-bunny ((obj snow-bunny) (arg0 symbol))
   (let ((f0-0 -4096.0))
     (if arg0
         (set! f0-0 -20480.0)
@@ -191,15 +191,15 @@
   (none)
   )
 
-(defmethod dummy-60 snow-bunny ((obj snow-bunny))
+(defmethod snow-bunny-method-60 snow-bunny ((obj snow-bunny))
   (initialize-skeleton obj *snow-bunny-sg* '())
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
   (none)
   )
 
-(defmethod TODO-RENAME-48 snow-bunny ((obj snow-bunny))
-  (dummy-60 obj)
-  (TODO-RENAME-45 obj *snow-bunny-nav-enemy-info*)
+(defmethod nav-enemy-method-48 snow-bunny ((obj snow-bunny))
+  (snow-bunny-method-60 obj)
+  (init-defaults! obj *snow-bunny-nav-enemy-info*)
   (logclear! (-> obj draw shadow-ctrl settings flags) (shadow-flags shdf03))
   (cond
     ((zero? (res-lump-value (-> obj entity) 'mode uint128))
@@ -228,17 +228,17 @@
 (defmethod init-from-entity! snow-bunny ((obj snow-bunny) (arg0 entity-actor))
   (initialize-collision obj)
   (process-drawable-from-entity! obj arg0)
-  (TODO-RENAME-48 obj)
+  (nav-enemy-method-48 obj)
   (if (<= (-> obj path curve num-cverts) 0)
       (go process-drawable-art-error "no path")
       )
   (set! *snow-bunny* (the-as (pointer snow-bunny) (process->ppointer obj)))
-  (TODO-RENAME-59 obj)
+  (nav-enemy-method-59 obj)
   (none)
   )
 
-(defmethod dummy-58 snow-bunny ((obj snow-bunny))
-  (if (zero? (logand (-> *target* state-flags) (state-flags dangerous)))
+(defmethod nav-enemy-method-58 snow-bunny ((obj snow-bunny))
+  (if (not (logtest? (-> *target* state-flags) (state-flags dangerous)))
       (set! (-> obj last-nondangerous-time) (-> *display* base-frame-counter))
       )
   (none)
@@ -284,8 +284,8 @@
   (none)
   )
 
-(defmethod dummy-57 snow-bunny ((obj snow-bunny))
-  (if (or (not *target*) (zero? (logand (-> *target* state-flags) (state-flags dangerous))))
+(defmethod snow-bunny-method-57 snow-bunny ((obj snow-bunny))
+  (if (or (not *target*) (not (logtest? (-> *target* state-flags) (state-flags dangerous))))
       (return #f)
       )
   (let ((f0-0 (vector-vector-xz-distance (target-pos 0) (-> obj collide-info trans))))
@@ -324,7 +324,7 @@
 (defstate nav-enemy-idle (snow-bunny)
   :virtual #t
   :enter (behavior ()
-    (dummy-76 self #f)
+    (snow-bunny-method-76 self #f)
     (let ((t9-1 (-> (method-of-type nav-enemy nav-enemy-idle) enter)))
       (if t9-1
           (t9-1)
@@ -370,7 +370,7 @@
             ((< (-> self nav-info notice-distance) f0-0)
              (go-virtual snow-bunny-patrol-idle)
              )
-            ((TODO-RENAME-46 self (-> self nav-info notice-distance))
+            ((target-in-range? self (-> self nav-info notice-distance))
              (go-virtual nav-enemy-notice)
              )
             (else
@@ -392,7 +392,7 @@
   :event snow-bunny-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (dummy-76 self #f)
+    (snow-bunny-method-76 self #f)
     (set! (-> self nav flags) (logior (nav-control-flags navcf19) (-> self nav flags)))
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
@@ -400,7 +400,7 @@
     (none)
     )
   :trans (behavior ()
-    (if (dummy-57 self)
+    (if (snow-bunny-method-57 self)
         (go-virtual snow-bunny-defend)
         )
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
@@ -416,13 +416,13 @@
          )
         )
       )
-    (dummy-58 self)
+    (nav-enemy-method-58 self)
     (none)
     )
   :code (behavior ()
     (let ((gp-0 (nav-enemy-rnd-int-count 3)))
       (when (and (not (-> self patrol-hop-failed?)) (zero? gp-0))
-        (if (dummy-53 self)
+        (if (nav-enemy-method-53 self)
             (go-virtual snow-bunny-patrol-hop)
             )
         )
@@ -441,7 +441,7 @@
             )
           (cond
             ((zero? gp-2)
-             (if (dummy-53 self)
+             (if (nav-enemy-method-53 self)
                  (go-virtual snow-bunny-patrol-hop)
                  )
              )
@@ -457,7 +457,7 @@
   :post (the-as (function none :behavior snow-bunny) nav-enemy-simple-post)
   )
 
-(defmethod dummy-51 snow-bunny ((obj snow-bunny) (arg0 vector) (arg1 vector))
+(defmethod snow-bunny-method-51 snow-bunny ((obj snow-bunny) (arg0 vector) (arg1 vector))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (let* ((s4-0 (new 'stack-no-clear 'collide-tri-result))
            (f0-0 (-> obj gnd-popup))
@@ -487,7 +487,7 @@
   #t
   )
 
-(defmethod dummy-53 snow-bunny ((obj snow-bunny))
+(defmethod nav-enemy-method-53 snow-bunny ((obj snow-bunny))
   (let* ((s4-0 (-> obj path curve num-cverts))
          (s2-0 (nav-enemy-rnd-int-count s4-0))
          (s5-0 (new 'stack-no-clear 'vector))
@@ -496,7 +496,7 @@
       (eval-path-curve-div! (-> obj path) s5-0 (the float s2-0) 'interp)
       (let ((f30-0 (vector-vector-xz-distance s5-0 (-> obj collide-info trans))))
         (when (>= f30-0 6144.0)
-          (when (dummy-51 obj s5-0 s5-0)
+          (when (snow-bunny-method-51 obj s5-0 s5-0)
             (set! (-> obj final-dest quad) (-> s5-0 quad))
             (set! (-> obj halfway-dist) (* 0.5 f30-0))
             (set! (-> obj base-hop-dist) (rand-vu-float-range 6144.0 22118.4))
@@ -510,7 +510,7 @@
   #f
   )
 
-(defmethod dummy-54 snow-bunny ((obj snow-bunny))
+(defmethod snow-bunny-method-54 snow-bunny ((obj snow-bunny))
   (local-vars (sv-48 (function float float)))
   (set! (-> obj using-jump-event?) #f)
   (let* ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> obj final-dest) (-> obj collide-info trans)))
@@ -557,7 +557,7 @@
       )
     )
   (set! (-> obj got-jump-event?) #f)
-  (dummy-11 (-> obj nav) (-> obj nav target-pos))
+  (nav-control-method-11 (-> obj nav) (-> obj nav target-pos))
   (cond
     ((-> obj got-jump-event?)
      (set! (-> obj nav target-pos quad) (-> obj jump-event-dest quad))
@@ -570,7 +570,7 @@
             )
         (let ((a2-2 (-> obj nav target-pos)))
           (vector+! a2-2 (-> obj collide-info trans) s5-2)
-          (if (not (dummy-51 obj a2-2 a2-2))
+          (if (not (snow-bunny-method-51 obj a2-2 a2-2))
               (return #f)
               )
           )
@@ -585,16 +585,16 @@
   :event snow-bunny-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (when (not (dummy-54 self))
+    (when (not (snow-bunny-method-54 self))
       (set! (-> self patrol-hop-failed?) #t)
       (go-virtual snow-bunny-patrol-idle)
       )
-    (if (dummy-57 self)
+    (if (snow-bunny-method-57 self)
         (go-virtual snow-bunny-defend)
         )
     (set-jump-height-factor! self 0)
     (snow-bunny-initialize-jump (-> self nav target-pos))
-    (dummy-76 self #t)
+    (snow-bunny-method-76 self #t)
     (set! (-> self rotate-speed) 728177.75)
     (set! (-> self turn-time) (seconds 0.1))
     (none)
@@ -605,13 +605,13 @@
     (none)
     )
   :trans (behavior ()
-    (dummy-58 self)
+    (nav-enemy-method-58 self)
     (none)
     )
   :code (behavior ()
     (snow-bunny-execute-jump)
     (if (-> self using-jump-event?)
-        (set-current-poly! (-> self nav) (dummy-16 (-> self nav) (-> self collide-info trans)))
+        (set-current-poly! (-> self nav) (nav-control-method-16 (-> self nav) (-> self collide-info trans)))
         )
     (if (or (zero? (nav-enemy-rnd-int-count (-> self patrol-rand-distraction)))
             (>= 40.96 (vector-vector-distance (-> self final-dest) (-> self collide-info trans)))
@@ -634,13 +634,13 @@
         (go-virtual nav-enemy-chase)
         )
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
-    (dummy-76 self #t)
+    (snow-bunny-method-76 self #t)
     (set-vector! (-> self collide-info transv) 0.0 (nav-enemy-rnd-float-range 102400.0 131072.0) 0.0 1.0)
     (none)
     )
   :exit (the-as (function none :behavior snow-bunny) #f)
   :trans (behavior ()
-    (dummy-58 self)
+    (nav-enemy-method-58 self)
     (none)
     )
   :code (behavior ()
@@ -702,7 +702,7 @@
   :post (the-as (function none :behavior snow-bunny) #f)
   )
 
-(defmethod dummy-52 snow-bunny ((obj snow-bunny))
+(defmethod snow-bunny-method-52 snow-bunny ((obj snow-bunny))
   (local-vars (sv-48 (function float float)))
   (set! (-> obj using-jump-event?) #f)
   (if (not *target*)
@@ -710,7 +710,7 @@
       )
   (let ((s4-0 (-> obj final-dest)))
     (set! (-> s4-0 quad) (-> (target-pos 0) quad))
-    (if (not (dummy-51 obj s4-0 s4-0))
+    (if (not (snow-bunny-method-51 obj s4-0 s4-0))
         (return #f)
         )
     (set! (-> obj base-hop-dist) (rand-vu-float-range 18022.4 22118.4))
@@ -747,7 +747,7 @@
       )
     )
   (set! (-> obj got-jump-event?) #f)
-  (dummy-11 (-> obj nav) (-> obj nav target-pos))
+  (nav-control-method-11 (-> obj nav) (-> obj nav target-pos))
   (cond
     ((-> obj got-jump-event?)
      (set! (-> obj nav target-pos quad) (-> obj jump-event-dest quad))
@@ -760,7 +760,7 @@
             )
         (let ((a2-3 (-> obj nav target-pos)))
           (vector+! a2-3 (-> obj collide-info trans) s5-3)
-          (if (not (dummy-51 obj a2-3 a2-3))
+          (if (not (snow-bunny-method-51 obj a2-3 a2-3))
               (return #f)
               )
           )
@@ -779,19 +779,19 @@
     (if (or (not *target*) (logtest? (-> *target* state-flags) (state-flags do-not-notice)))
         (go-virtual nav-enemy-patrol)
         )
-    (if (not (TODO-RENAME-46 self (-> self nav-info stop-chase-distance)))
+    (if (not (target-in-range? self (-> self nav-info stop-chase-distance)))
         (go-virtual nav-enemy-patrol)
         )
-    (if (dummy-57 self)
+    (if (snow-bunny-method-57 self)
         (go-virtual snow-bunny-defend)
         )
-    (when (not (dummy-52 self))
+    (when (not (snow-bunny-method-52 self))
       (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
       (go-virtual nav-enemy-notice)
       )
     (set-jump-height-factor! self 1)
     (snow-bunny-initialize-jump (-> self nav target-pos))
-    (dummy-76 self #t)
+    (snow-bunny-method-76 self #t)
     (set! (-> self rotate-speed) 728177.75)
     (set! (-> self turn-time) (seconds 0.1))
     (none)
@@ -802,16 +802,16 @@
     (none)
     )
   :trans (behavior ()
-    (if (dummy-57 self)
+    (if (snow-bunny-method-57 self)
         (set! (-> self should-retreat?) #t)
         )
-    (dummy-58 self)
+    (nav-enemy-method-58 self)
     (none)
     )
   :code (behavior ()
     (snow-bunny-execute-jump)
     (if (-> self using-jump-event?)
-        (set-current-poly! (-> self nav) (dummy-16 (-> self nav) (-> self collide-info trans)))
+        (set-current-poly! (-> self nav) (nav-control-method-16 (-> self nav) (-> self collide-info trans)))
         )
     (if (-> self should-retreat?)
         (go-virtual snow-bunny-defend)
@@ -846,7 +846,7 @@
   )
 
 
-(defmethod dummy-55 snow-bunny ((obj snow-bunny))
+(defmethod nav-enemy-method-55 snow-bunny ((obj snow-bunny))
   (set! (-> obj using-jump-event?) #f)
   (if (not *target*)
       (return #f)
@@ -854,74 +854,8 @@
   (let ((s5-0 (new 'stack-no-clear 'snow-bunny-retreat-work)))
     (set! (-> s5-0 found-best) #f)
     (let ((s4-0 (-> obj nav)))
-      (TODO-RENAME-27 s4-0)
-      (TODO-RENAME-28 s4-0 (collide-kind
-                             background
-                             cak-1
-                             cak-2
-                             cak-3
-                             target
-                             water
-                             powerup
-                             crate
-                             enemy
-                             wall-object
-                             projectile
-                             ground-object
-                             target-attack
-                             mother-spider
-                             cak-14
-                             blue-eco-suck
-                             unknown-16
-                             unknown-17
-                             unknown-18
-                             unknown-19
-                             unknown-20
-                             unknown-21
-                             unknown-22
-                             unknown-23
-                             unknown-24
-                             unknown-25
-                             unknown-26
-                             unknown-27
-                             unknown-28
-                             unknown-29
-                             unknown-30
-                             unknown-31
-                             unknown-32
-                             unknown-33
-                             unknown-34
-                             unknown-35
-                             unknown-36
-                             unknown-37
-                             unknown-38
-                             unknown-39
-                             unknown-40
-                             unknown-41
-                             unknown-42
-                             unknown-43
-                             unknown-44
-                             unknown-45
-                             unknown-46
-                             unknown-47
-                             unknown-48
-                             unknown-49
-                             unknown-50
-                             unknown-51
-                             unknown-52
-                             unknown-53
-                             unknown-54
-                             unknown-55
-                             unknown-56
-                             unknown-57
-                             unknown-58
-                             unknown-59
-                             unknown-60
-                             unknown-61
-                             unknown-62
-                             unknown-63
-                             )
-                      )
+      (nav-control-method-27 s4-0)
+      (nav-control-method-28 s4-0 (the-as collide-kind -1))
       )
     (let ((s4-1 (target-pos 0)))
       (vector-! (-> s5-0 away-vec) (-> obj collide-info trans) s4-1)
@@ -985,10 +919,10 @@
             )
           (set! (-> obj nav target-pos quad) (-> obj final-dest quad))
           (set! (-> obj got-jump-event?) #f)
-          (dummy-13 (-> obj nav) (-> obj nav target-pos) (-> obj nav old-travel))
+          (nav-control-method-13 (-> obj nav) (-> obj nav target-pos) (-> obj nav old-travel))
           (when (< (vector-xz-length (-> obj nav travel)) 204.8)
             (let ((s1-4 (new 'stack-no-clear 'nav-gap-info)))
-              (when (TODO-RENAME-12 (-> obj nav) s1-4)
+              (when (nav-control-method-12 (-> obj nav) s1-4)
                 (set! (-> obj got-jump-event?) #t)
                 (set! (-> obj jump-event-dest quad) (-> s1-4 dest quad))
                 )
@@ -1009,7 +943,7 @@
                 (when (>= f30-2 409.6)
                   (let ((s1-5 (-> obj nav target-pos)))
                     (vector+! s1-5 (-> obj collide-info trans) s0-0)
-                    (when (dummy-51 obj s1-5 s1-5)
+                    (when (snow-bunny-method-51 obj s1-5 s1-5)
                       (if (>= f30-2 (+ -409.6 (-> obj base-hop-dist)))
                           (return #t)
                           )
@@ -1054,20 +988,20 @@
       (when (or (>= (-> *display* base-frame-counter) (-> self retreat-timeout-time)) (not v1-8))
         (if (or (not *target*)
                 (logtest? (-> *target* state-flags) (state-flags do-not-notice))
-                (not (TODO-RENAME-46 self (-> self nav-info stop-chase-distance)))
+                (not (target-in-range? self (-> self nav-info stop-chase-distance)))
                 )
             (go-virtual nav-enemy-patrol)
             (go-virtual snow-bunny-chase-hop)
             )
         )
       )
-    (when (not (dummy-55 self))
+    (when (not (nav-enemy-method-55 self))
       (set-vector! (-> self nav travel) 0.0 0.0 0.0 1.0)
       (set! (-> self nav target-pos quad) (-> self collide-info trans quad))
       )
     (set-jump-height-factor! self 2)
     (snow-bunny-initialize-jump (-> self nav target-pos))
-    (dummy-76 self #t)
+    (snow-bunny-method-76 self #t)
     (set! (-> self rotate-speed) 728177.75)
     (set! (-> self turn-time) (seconds 0.1))
     (none)
@@ -1078,13 +1012,13 @@
     (none)
     )
   :trans (behavior ()
-    (dummy-58 self)
+    (nav-enemy-method-58 self)
     (none)
     )
   :code (behavior ()
     (snow-bunny-execute-jump)
     (if (-> self using-jump-event?)
-        (set-current-poly! (-> self nav) (dummy-16 (-> self nav) (-> self collide-info trans)))
+        (set-current-poly! (-> self nav) (nav-control-method-16 (-> self nav) (-> self collide-info trans)))
         )
     (go-virtual snow-bunny-retreat-hop)
     (none)
@@ -1097,14 +1031,14 @@
   :event snow-bunny-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (dummy-76 self #f)
+    (snow-bunny-method-76 self #f)
     (none)
     )
   :trans (behavior ()
     (if (not *target*)
         (go-virtual nav-enemy-patrol)
         )
-    (dummy-58 self)
+    (nav-enemy-method-58 self)
     (let ((f0-0 (vector-vector-xz-distance (target-pos 0) (-> self collide-info trans))))
       (if (< 73728.0 f0-0)
           (go-virtual snow-bunny-chase-hop)
@@ -1114,7 +1048,7 @@
         (go-virtual snow-bunny-chase-hop)
         )
     (if (and (logtest? (-> *target* state-flags) (state-flags dangerous))
-             (not (TODO-RENAME-46 self (-> self nav-info notice-distance)))
+             (not (target-in-range? self (-> self nav-info notice-distance)))
              )
         (go-virtual snow-bunny-retreat-hop)
         )
@@ -1140,7 +1074,7 @@
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set-vector! (-> self collide-info transv) 0.0 0.0 0.0 1.0)
-    (dummy-76 self #t)
+    (snow-bunny-method-76 self #t)
     (none)
     )
   :trans (behavior ()
@@ -1177,7 +1111,3 @@
     )
   :post (the-as (function none :behavior snow-bunny) nav-enemy-simple-post)
   )
-
-
-
-

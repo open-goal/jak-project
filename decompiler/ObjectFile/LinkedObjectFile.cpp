@@ -276,6 +276,10 @@ std::string LinkedObjectFile::print_words() {
 
       auto& word = words_by_seg[seg][i];
       append_word_to_string(result, word);
+
+      if (word.kind() == LinkedWord::TYPE_PTR && word.symbol_name() == "string") {
+        result += "; " + get_goal_string(seg, i) + "\n";
+      }
     }
   }
 

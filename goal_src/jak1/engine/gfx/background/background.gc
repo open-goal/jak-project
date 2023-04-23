@@ -181,6 +181,8 @@
     )
   )
 
+(define *use-etie* #t)
+
 (defun finish-background ()
   "Complete the background drawing.
   This function should run after the background engine has executed.
@@ -509,31 +511,33 @@
           )
 
       ;; TIE Generic
-      (dotimes (gp-2 (-> *background-work* tie-tree-count))
-        (when (nonzero? (-> *background-work* tie-generic gp-2))
-          ;; send to the generic foreground with tfrag textures bucket for this level
-          (let* ((s5-4 (-> *background-work* tie-levels gp-2 tfrag-tex-foreground-sink-group generic-sink))
-                 (s3-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
-                 (s4-3 (-> s3-1 base))
-                 )
-            (generic-tie-execute s5-4 s3-1 (-> *background-work* tie-generic gp-2))
-            (let ((a3-0 (-> s3-1 base)))
-              (let ((v1-219 (the-as object (-> s3-1 base))))
-                (set! (-> (the-as dma-packet v1-219) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                (set! (-> (the-as dma-packet v1-219) vif0) (new 'static 'vif-tag))
-                (set! (-> (the-as dma-packet v1-219) vif1) (new 'static 'vif-tag))
-                (set! (-> s3-1 base) (&+ (the-as pointer v1-219) 16))
-                )
-              (dma-bucket-insert-tag
-                (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                (-> s5-4 bucket)
-                s4-3
-                (the-as (pointer dma-tag) a3-0)
+      (when (not *use-etie*)
+        (dotimes (gp-2 (-> *background-work* tie-tree-count))
+          (when (nonzero? (-> *background-work* tie-generic gp-2))
+            ;; send to the generic foreground with tfrag textures bucket for this level
+            (let* ((s5-4 (-> *background-work* tie-levels gp-2 tfrag-tex-foreground-sink-group generic-sink))
+                   (s3-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
+                   (s4-3 (-> s3-1 base))
+                   )
+              (generic-tie-execute s5-4 s3-1 (-> *background-work* tie-generic gp-2))
+              (let ((a3-0 (-> s3-1 base)))
+                (let ((v1-219 (the-as object (-> s3-1 base))))
+                  (set! (-> (the-as dma-packet v1-219) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+                  (set! (-> (the-as dma-packet v1-219) vif0) (new 'static 'vif-tag))
+                  (set! (-> (the-as dma-packet v1-219) vif1) (new 'static 'vif-tag))
+                  (set! (-> s3-1 base) (&+ (the-as pointer v1-219) 16))
+                  )
+                (dma-bucket-insert-tag
+                  (-> *display* frames (-> *display* on-screen) frame bucket-group)
+                  (-> s5-4 bucket)
+                  s4-3
+                  (the-as (pointer dma-tag) a3-0)
+                  )
                 )
               )
             )
           )
-        )
+       )
       )
 
     )

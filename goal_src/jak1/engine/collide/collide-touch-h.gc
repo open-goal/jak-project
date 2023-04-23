@@ -16,6 +16,8 @@
 
 (defconstant TOUCHING_LIST_LENGTH 32)
 
+;; DECOMP BEGINS
+
 ;; A record of a primitive which is touching another, possibly including the triangle that is involved.
 (deftype touching-prim (structure)
   ((cprim    collide-shape-prim         :offset-assert   0)
@@ -29,11 +31,11 @@
 
 ;; A record of two primitives which are touching.
 (deftype touching-prims-entry (structure)
-  ((next       touching-prims-entry         :offset-assert 0)
-   (prev       touching-prims-entry         :offset-assert 4)
-   (allocated? symbol                        :offset-assert 8)
-   (u          float                        :offset-assert 12)
-   (prim1      touching-prim        :inline :offset-assert 16)
+  ((next       touching-prims-entry         :offset-assert   0)
+   (prev       touching-prims-entry         :offset-assert   4)
+   (allocated? symbol                       :offset-assert   8)
+   (u          float                        :offset-assert  12)
+   (prim1      touching-prim        :inline :offset-assert  16)
    (prim2      touching-prim        :inline :offset-assert 128)
    )
   :method-count-assert 13
@@ -41,7 +43,7 @@
   :flag-assert         #xd000000e4
   (:methods
     (get-touched-prim (_type_ trsqv touching-shapes-entry) collide-shape-prim 9)
-    (dummy-10 () none 10)
+    (touching-prims-entry-method-10 () none 10)
     (get-middle-of-bsphere-overlap (_type_ vector) vector 11)
     (get-touched-tri (_type_ collide-shape touching-shapes-entry) collide-tri-result 12)
     )
@@ -49,8 +51,8 @@
 
 ;; A pool of up to 64 touching primitives. There is a linked list of freed entries.
 (deftype touching-prims-entry-pool (structure)
-  ((head  touching-prims-entry    :offset-assert 0)
-   (nodes touching-prims-entry 64 :inline :offset-assert 16)
+  ((head  touching-prims-entry            :offset-assert   0)
+   (nodes touching-prims-entry 64 :inline :offset-assert  16)
    )
   :method-count-assert 13
   :size-assert         #x3c10
@@ -104,22 +106,22 @@
 ;; two collide shapes which are touching.
 ;; This stores a list of primitive pairs which are touching.
 (deftype touching-shapes-entry (structure)
-  ((cshape1   collide-shape                 :offset-assert 0)
-   (cshape2   collide-shape                 :offset-assert 4)
-   (resolve-u int8                  :offset-assert 8)
-   (head      touching-prims-entry  :offset-assert 12)
+  ((cshape1   collide-shape         :offset-assert   0)
+   (cshape2   collide-shape         :offset-assert   4)
+   (resolve-u int8                  :offset-assert   8)
+   (head      touching-prims-entry  :offset-assert  12)
    )
   :allow-misaligned
   :method-count-assert 18
   :size-assert         #x10
   :flag-assert         #x1200000010
   (:methods
-    (dummy-9 (_type_) none 9)
+    (touching-shapes-entry-method-9 (_type_) none 9)
     (get-touched-shape (_type_ collide-shape) collide-shape 10)
-    (dummy-11 () none 11)
-    (prims-touching? (_type_ collide-shape-moving uint) touching-prims-entry 12) ; this one!
+    (touching-shapes-entry-method-11 () none 11)
+    (prims-touching? (_type_ collide-shape-moving uint) touching-prims-entry 12)
     (prims-touching-action? (_type_ collide-shape collide-action collide-action) touching-prims-entry 13)
-    (dummy-14 () none 14)
+    (touching-shapes-entry-method-14 () none 14)
     (free-touching-prims-list (_type_) symbol 15)
     (get-head (_type_) touching-prims-entry 16)
     (get-next (_type_ touching-prims-entry) touching-prims-entry 17)
@@ -128,9 +130,9 @@
 
 ;; A list of (up to) TOUCHING_LIST_LENGTH pairs of colliding shapes
 (deftype touching-list (structure)
-  ((num-touching-shapes int32      :offset-assert 0)
-   (resolve-u           int8       :offset-assert 4)
-   (touching-shapes     touching-shapes-entry TOUCHING_LIST_LENGTH :inline :offset-assert 8)
+  ((num-touching-shapes int32                                              :offset-assert   0)
+   (resolve-u           int8                                               :offset-assert   4)
+   (touching-shapes     touching-shapes-entry TOUCHING_LIST_LENGTH :inline :offset-assert   8)
    )
   :method-count-assert 15
   :size-assert         #x208
@@ -138,7 +140,7 @@
   (:methods
     (new (symbol type) _type_ 0)
     (add-touching-prims (_type_ collide-shape-prim collide-shape-prim float collide-tri-result collide-tri-result) none 9)
-    (dummy-10 () none 10)
+    (touching-list-method-10 () none 10)
     (update-from-step-size (_type_ float) none 11)
     (send-events-for-touching-shapes (_type_) none 12)
     (get-shapes-entry (_type_ collide-shape collide-shape) touching-shapes-entry 13)
@@ -176,4 +178,3 @@
 
 ;; and a list of up to TOUCHING_LIST_LENGTH shape pairs
 (define-perm *touching-list* touching-list (new 'global 'touching-list))
-

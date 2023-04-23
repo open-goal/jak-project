@@ -5,16 +5,18 @@
 ;; name in dgo: display-h
 ;; dgos: ENGINE, GAME
 
-;; DECOMP BEGINS
+#|@file
+At any point in time, there are 3 frames in progress:
+- one frame is fully rendered and being drawn on the screen.
+  this frame just sits in the frame buffer, and isn't tracked by the display system.
+- one frame is being rendered
+  (frame buffer is being written to by GS, VU1 sending tris to GS, VIF1 feeding VU1)
+  this frame needs a DMA buffer that is full, and being read by VIF1
+- one frame is being set up. The engine is running gameplay code and generating DMA data
+  this frame also needs a DMA buffer, which is being filled up.
+|#
 
-;; At any point in time, there are 3 frames in progress:
-;; - one frame is fully rendered and being drawn on the screen.
-;;   this frame just sits in the frame buffer, and isn't tracked by the display system.
-;; - one frame is being rendered
-;;   (frame buffer is being written to by GS, VU1 sending tris to GS, VIF1 feeding VU1)
-;;   this frame needs a DMA buffer that is full, and being read by VIF1
-;; - one frame is being set up. The engine is running gameplay code and generating DMA data
-;;   this frame also needs a DMA buffer, which is being filled up.
+;; DECOMP BEGINS
 
 ;; per-frame DMA buffers, timing, and profiling info.
 (deftype display-frame (basic)
@@ -57,7 +59,7 @@
   ((on-screen            int32                :offset-assert   4) ;; frame index (0 or 1)
    (last-screen          int32                :offset-assert   8) ;; frame index (0 or 1)
    (frames               display-frame     2  :offset-assert  12) ;; per-frame dma/timing
-   (bgcolor              uint64               :offset-assert  24) ;; GS setting
+   (bgcolor              gs-bgcolor           :offset-assert  24) ;; GS setting
    (pmode                gs-pmode             :offset-assert  32) ;; GS setting
    (clock                clock             13 :offset-assert  40)
    (session-clock        clock                :offset         40)
@@ -129,3 +131,23 @@
 (defmacro current-frame ()
   `(-> *display* frames (-> *display* on-screen))
   )
+
+(defmacro current-time ()
+  `(-> *display* base-frame-counter)
+  )
+
+(defmacro integral-current-time ()
+  `(-> *display* integral-frame-counter)
+  )
+
+(defmacro real-current-time ()
+  `(-> *display* real-frame-counter)
+  )
+
+
+;; debug stuff really
+(defmacro get-screen-x (frac)
+  `(the int (* ,frac 512)))
+
+(defmacro get-screen-y (frac)
+  `(the int (* ,frac 416)))

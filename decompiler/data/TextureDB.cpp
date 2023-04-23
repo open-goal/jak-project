@@ -16,7 +16,9 @@ void TextureDB::add_texture(u32 tpage,
                             u16 h,
                             const std::string& tex_name,
                             const std::string& tpage_name,
-                            const std::vector<std::string>& level_names) {
+                            const std::vector<std::string>& level_names,
+                            u32 num_mips,
+                            u32 dest) {
   auto existing_tpage_name = tpage_names.find(tpage);
   if (existing_tpage_name == tpage_names.end()) {
     tpage_names[tpage] = tpage_name;
@@ -32,6 +34,8 @@ void TextureDB::add_texture(u32 tpage,
     ASSERT(existing_tex->second.h == h);
     ASSERT(existing_tex->second.rgba_bytes == data);
     ASSERT(existing_tex->second.page == tpage);
+    ASSERT(existing_tex->second.num_mips == num_mips);
+    ASSERT(existing_tex->second.dest == dest);
   } else {
     auto& new_tex = textures[combo_id];
     new_tex.rgba_bytes = data;
@@ -39,6 +43,8 @@ void TextureDB::add_texture(u32 tpage,
     new_tex.w = w;
     new_tex.h = h;
     new_tex.page = tpage;
+    new_tex.num_mips = num_mips;
+    new_tex.dest = dest;
   }
   for (const auto& level_name : level_names) {
     texture_ids_per_level[level_name].insert(combo_id);
@@ -64,5 +70,73 @@ void TextureDB::replace_textures(const fs::path& path) {
       stbi_image_free(data);
     }
   }
+}
+
+/*!
+ * Generate a table of offsets
+ */
+std::string TextureDB::generate_texture_dest_adjustment_table() const {
+  // group textures by page
+  std::map<u32, std::vector<u32>> textures_by_page;
+  for (const auto& [texture_id, texture] : textures) {
+    textures_by_page[texture.page].push_back(texture_id);
+  }
+
+  std::string result = "{\n";
+  // loop over pages (this overlap trick only applies within a page)
+  for (const auto& [tpage, texture_ids_in_page] : textures_by_page) {
+    // organize by tbp offset
+    std::map<u32, std::vector<u32>> textures_by_tbp_offset;
+    std::set<u32> all_used_tbp_offsets;
+    u32 max_tbp_offset = 0;
+    for (auto tid : texture_ids_in_page) {
+      u32 tbp = textures.at(tid).dest;
+      textures_by_tbp_offset[tbp].push_back(tid);
+      all_used_tbp_offsets.insert(tbp);
+      max_tbp_offset = std::max(max_tbp_offset, tbp);
+    }
+
+    // find tbp's with overlaps:
+    bool needs_remap = false;
+    for (const auto& [tbp, tex_ids] : textures_by_tbp_offset) {
+      if (tex_ids.size() > 1) {
+        needs_remap = true;
+        break;
+      }
+    }
+
+    if (needs_remap) {
+      result += fmt::format("{{{},{{\n", tpage);
+      for (const auto& [tbp, tex_ids] : textures_by_tbp_offset) {
+        if (tex_ids.size() > 1) {
+          int offset = 1;
+          for (size_t id_id = 1; id_id < tex_ids.size(); id_id++) {
+            auto id = tex_ids[id_id];
+
+            bool ok = false;
+            int tries = 50;
+            // make sure we don't overlap again.
+            while (!ok && tries > 0) {
+              tries--;
+              if (!all_used_tbp_offsets.count(tbp + offset)) {
+                ok = true;
+                break;
+              }
+              offset++;
+            }
+
+            ASSERT(ok);
+            all_used_tbp_offsets.insert(tbp + offset);
+            result += fmt::format("{{{}, {}}},", id & 0xffff, offset);
+            offset++;
+          }
+        }
+      }
+      result.pop_back();
+      result += "}},\n";
+    }
+  }
+  result += "}\n";
+  return result;
 }
 }  // namespace decompiler

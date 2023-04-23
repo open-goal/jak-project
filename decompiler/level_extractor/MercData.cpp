@@ -8,7 +8,12 @@
 #include "third-party/fmt/core.h"
 
 namespace decompiler {
-void MercCtrlHeader::from_ref(TypedRef tr, const DecompilerTypeSystem& dts) {
+
+void MercEyeCtrl::from_ref(TypedRef tr, const DecompilerTypeSystem& dts) {
+  eye_slot = read_plain_data_field<s8>(tr, "eye-slot", dts);
+}
+
+void MercCtrlHeader::from_ref(TypedRef tr, const DecompilerTypeSystem& dts, GameVersion) {
   st_magic = read_plain_data_field<u32>(tr, "st-magic", dts);
   xyz_scale = read_plain_data_field<float>(tr, "xyz-scale", dts);
   st_out_a = read_plain_data_field<u32>(tr, "st-out-a", dts);
@@ -35,7 +40,14 @@ void MercCtrlHeader::from_ref(TypedRef tr, const DecompilerTypeSystem& dts) {
   cross_copy_count = read_plain_data_field<u16>(tr, "cross-copy-count", dts);
   num_verts = read_plain_data_field<u16>(tr, "num-verts", dts);
   longest_edge = read_plain_data_field<float>(tr, "longest-edge", dts);
-  // todo masksk
+  auto fr = get_field_ref(tr, "eye-ctrl", dts);
+  const auto& word = fr.data->words_by_seg.at(fr.seg).at(fr.byte_offset / 4);
+  if (word.kind() == LinkedWord::PTR) {
+    eye_ctrl.emplace();
+    eye_ctrl->from_ref(TypedRef(deref_label(fr), dts.ts.lookup_type("merc-eye-ctrl")), dts);
+  }
+
+  // todo masks
   envmap_tint = read_plain_data_field<u32>(tr, "envmap-tint", dts);
   needs_clip = read_plain_data_field<u8>(tr, "needs-clip", dts);
   use_isometric = read_plain_data_field<u8>(tr, "use-isometric", dts);
@@ -415,18 +427,19 @@ std::string MercEffect::print() {
   return result;
 }
 
-void MercCtrl::from_ref(TypedRef tr, const DecompilerTypeSystem& dts) {
+void MercCtrl::from_ref(TypedRef tr, const DecompilerTypeSystem& dts, GameVersion version) {
   name = read_string_field(tr, "name", dts, false);
   num_joints = read_plain_data_field<s32>(tr, "num-joints", dts);
   auto merc_ctrl_header_ref =
       TypedRef(get_field_ref(tr, "header", dts), dts.ts.lookup_type("merc-ctrl-header"));
-  header.from_ref(merc_ctrl_header_ref, dts);
+  header.from_ref(merc_ctrl_header_ref, dts, version);
 
   auto eff_ref = TypedRef(get_field_ref(tr, "effect", dts), dts.ts.lookup_type("merc-effect"));
   for (u32 i = 0; i < header.effect_count; i++) {
     effects.emplace_back().from_ref(eff_ref, dts, header);
     eff_ref.ref.byte_offset += 32;  //
   }
+
   // debug_print_blerc();
 }
 

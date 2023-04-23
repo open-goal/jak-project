@@ -90,8 +90,8 @@
   )
 
 (defstate billy-snack-idle (billy-snack)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('eat)
        (go billy-snack-eat)
        )
@@ -447,7 +447,7 @@
     )
   )
 
-(defmethod dummy-38 billy ((obj billy))
+(defmethod process-taskable-method-38 billy ((obj billy))
   (case (current-status (-> obj tasks))
     (((task-status need-reminder-a) (task-status need-reminder))
      (go (method-of-object obj query))
@@ -474,33 +474,33 @@
   )
 
 (defstate billy-done (billy)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'billy-rat-needs-destination)
-                       (let* ((gp-0 arg0)
-                              (v1-2 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) billy-rat))
-                                        gp-0
-                                        )
-                                    )
-                              )
-                         (when v1-2
-                           (set! (-> (the-as billy-rat v1-2) dest-type) (the-as uint 1))
-                           (get-random-point (-> self path-waypts) (-> (the-as billy-rat v1-2) destination))
-                           )
-                         )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('billy-rat-needs-destination)
+                      (let* ((gp-0 proc)
+                             (v1-2 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) billy-rat))
+                                       gp-0
+                                       )
+                                   )
+                             )
+                        (when v1-2
+                          (set! (-> (the-as billy-rat v1-2) dest-type) (the-as uint 1))
+                          (get-random-point (-> self path-waypts) (-> (the-as billy-rat v1-2) destination))
+                          )
+                        )
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (init!
       (-> self query)
-      (lookup-text! *common-text* (game-text-id play-again?) #f)
+      (lookup-text! *common-text* (text-id play-again?) #f)
       40
       150
       30
       #f
-      (lookup-text! *common-text* (game-text-id quit) #f)
+      (lookup-text! *common-text* (text-id quit) #f)
       )
     (ja-channel-set! 1)
     (ja :group! (get-art-elem self))
@@ -761,8 +761,8 @@
   )
 
 (defstate billy-playing (billy)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('billy-rat-die)
        (+! (-> self num-rats) -1)
        (let* ((f0-2 (rand-float-gen))
@@ -794,7 +794,7 @@
          )
        )
       (('billy-rat-needs-destination)
-       (let* ((s5-0 arg0)
+       (let* ((s5-0 proc)
               (gp-0 (if (and (nonzero? s5-0) (type-type? (-> s5-0 type) billy-rat))
                         (the-as billy-rat s5-0)
                         )
@@ -869,10 +869,7 @@
                      (+! (-> (the-as billy-snack s5-1) num-rats) 1)
                      (set! (-> gp-0 dest-type) (the-as uint 2))
                      (set! (-> gp-0 destination quad) (-> (the-as billy-snack s5-1) root trans quad))
-                     (let ((f0-8 (+ 6799.36 (-> gp-0 destination x))))
-                       (set! (-> gp-0 destination x) f0-8)
-                       f0-8
-                       )
+                     (set! (-> gp-0 destination x) (+ 6799.36 (-> gp-0 destination x)))
                      )
                    )
                  )
@@ -887,7 +884,7 @@
     (add-setting! 'music 'danger 0.0 0)
     (ja-channel-set! 0)
     (clear-collide-with-as (-> self root-override))
-    (init! (-> self query) (the-as string #f) 40 150 25 #t (lookup-text! *common-text* (game-text-id quit) #f))
+    (init! (-> self query) (the-as string #f) 40 150 25 #t (lookup-text! *common-text* (text-id quit) #f))
     (set! (-> self wave-start-time) (-> *display* base-frame-counter))
     (set! (-> self num-snacks) 0)
     (set! (-> self num-rats) 0)
@@ -987,8 +984,8 @@
     )
   )
 
-(defmethod TODO-RENAME-43 billy ((obj billy))
-  (when (TODO-RENAME-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
+(defmethod process-taskable-method-43 billy ((obj billy))
+  (when (ambient-control-method-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
     (let ((f30-0 (rand-float-gen)))
       (cond
         ((< 0.9411765 f30-0)
@@ -1074,7 +1071,7 @@
         (countdown (gp-1 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-10)))) 5))
           (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
-            (TODO-RENAME-43 self)
+            (process-taskable-method-43 self)
             (suspend)
             (ja :num! (seek!))
             )
@@ -1095,12 +1092,12 @@
 (defmethod target-above-threshold? billy ((obj billy))
   (the-as
     symbol
-    (and *target* (zero? (logand (-> *target* control root-prim prim-core action) (collide-action ca-14))))
+    (and *target* (not (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-14))))
     )
   )
 
 (defmethod init-from-entity! billy ((obj billy) (arg0 entity-actor))
-  (dummy-40 obj arg0 *billy-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
+  (process-taskable-method-40 obj arg0 *billy-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
   (set! (-> obj tasks) (get-task-control (game-task swamp-billy)))
   (dotimes (s5-0 3)
     (let ((v1-3 (new 'process 'curve-control obj 'path (the float s5-0))))
@@ -1114,10 +1111,6 @@
         )
   (send-event (handle->process (-> obj farthy)) 'center-joint 3)
   (send-event (handle->process (-> obj farthy)) 'anim-mode 'clone-anim)
-  (dummy-42 obj)
+  (process-taskable-method-42 obj)
   (none)
   )
-
-
-
-

@@ -6,6 +6,6 @@
   "tpage-1023.go"
   "tpage-1648.go"
   "com-airlock-outer-ag.go"
-  "door-ag.go"
+  "oracle-door-ag.go"
   "ctyslumc-vis.go"
  ))

@@ -6,7 +6,8 @@
 #include <vector>
 
 #include "common/common_types.h"
-#include "common/versions.h"
+#include "common/math/Vector.h"
+#include "common/versions/versions.h"
 
 #include "decompiler/level_extractor/common_formats.h"
 #include "decompiler/util/goal_data_reader.h"
@@ -406,6 +407,10 @@ struct TieFragment : public Drawable {
 
   std::string debug_label_name;
 
+  std::vector<s8> normals;  // jak 2
+
+  std::vector<u8> generic_data;  // jak 1
+
   // todo, lots more
 };
 
@@ -479,7 +484,9 @@ struct PrototypeBucketTie {
 
   TimeOfDayPalette time_of_day;
 
-  // todo envmap shader
+  bool has_envmap_shader = false;
+  u8 envmap_shader[5 * 16];
+  math::Vector<u8, 4> jak2_tint_color;  // jak 2 only
   // todo collide-frag
   DrawableInlineArrayCollideFragment collide_frag;
   // todo tie-colors
@@ -820,6 +827,9 @@ struct BspHeader {
   //      (texture-remap-table (pointer uint64) :offset-assert 52)
   //  (texture-remap-table-len int32 :offset-assert 56)
   std::vector<TextureRemap> texture_remap_table;
+
+  static constexpr int kNumTextureFlags = 10;
+  u16 texture_flags[kNumTextureFlags];  // jak 2 only
   //
   //  (texture-ids (pointer texture-id) :offset-assert 60)
   //  (texture-page-count int32 :offset-assert 64)

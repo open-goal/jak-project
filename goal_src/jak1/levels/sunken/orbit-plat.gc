@@ -21,7 +21,7 @@
   :size-assert         #xb4
   :flag-assert         #x15005000b4
   (:methods
-    (dummy-20 (_type_ vector vector) none 20)
+    (orbit-plat-bottom-method-20 (_type_ vector vector) none 20)
     )
   (:states
     orbit-plat-bottom-idle
@@ -48,8 +48,8 @@
   :size-assert         #x118
   :flag-assert         #x1d00b00118
   (:methods
-    (dummy-27 (_type_) symbol 27)
-    (dummy-28 (_type_) symbol 28)
+    (orbit-plat-method-27 (_type_) symbol 27)
+    (orbit-plat-method-28 (_type_) symbol 28)
     )
   (:states
     orbit-plat-idle
@@ -140,7 +140,7 @@
     )
   )
 
-(defmethod dummy-20 orbit-plat-bottom ((obj orbit-plat-bottom) (arg0 vector) (arg1 vector))
+(defmethod orbit-plat-bottom-method-20 orbit-plat-bottom ((obj orbit-plat-bottom) (arg0 vector) (arg1 vector))
   (let* ((s5-1 (vector-! (new 'stack-no-clear 'vector) arg1 arg0))
          (f30-0 (vector-length s5-1))
          )
@@ -215,7 +215,7 @@
                           (vector+*! s5-0 gp-1 s4-0 26624.0)
                           (vector+*! gp-1 gp-1 s4-0 8192.0)
                           )
-                        (dummy-20 self gp-1 s5-0)
+                        (orbit-plat-bottom-method-20 self gp-1 s5-0)
                         )
                       )
                     )
@@ -265,41 +265,39 @@
   )
 
 (defstate orbit-plat-idle (orbit-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (cond
-                       ((= v1-0 'bonk)
-                        (dummy-22 self)
-                        )
-                       ((= v1-0 'go)
-                        (go orbit-plat-rotating)
-                        )
-                       ((= v1-0 'query-reset)
-                        (if (not (-> self is-reset?))
-                            (go orbit-plat-reset)
-                            )
-                        (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-                          (set! (-> a1-1 from) self)
-                          (set! (-> a1-1 num-params) 0)
-                          (set! (-> a1-1 message) 'reset)
-                          (let ((t9-3 send-event-function)
-                                (v1-8 (-> self other))
-                                )
-                            (t9-3
-                              (if v1-8
-                                  (-> v1-8 extra process)
-                                  )
-                              a1-1
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('bonk)
+                      (the-as object (baseplat-method-22 self))
+                      )
+                     (('go)
+                      (go orbit-plat-rotating)
+                      )
+                     (('query-reset)
+                      (if (not (-> self is-reset?))
+                          (go orbit-plat-reset)
+                          )
+                      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                        (set! (-> a1-1 from) self)
+                        (set! (-> a1-1 num-params) 0)
+                        (set! (-> a1-1 message) 'reset)
+                        (let ((t9-3 send-event-function)
+                              (v1-8 (-> self other))
                               )
+                          (t9-3
+                            (if v1-8
+                                (-> v1-8 extra process)
+                                )
+                            a1-1
                             )
                           )
                         )
-                       ((= v1-0 'reset)
-                        (go orbit-plat-reset)
-                        )
-                       )
-              )
-      )
+                      )
+                     (('reset)
+                      (go orbit-plat-reset)
+                      )
+                     )
+            )
     )
   :trans (the-as (function none :behavior orbit-plat) plat-trans)
   :code (behavior ()
@@ -358,7 +356,7 @@
   :post (the-as (function none :behavior orbit-plat) plat-post)
   )
 
-(defmethod dummy-28 orbit-plat ((obj orbit-plat))
+(defmethod orbit-plat-method-28 orbit-plat ((obj orbit-plat))
   (when (>= (- (-> *display* base-frame-counter) (-> obj state-time)) (the int (* 300.0 (-> obj timeout))))
     (cond
       (*target*
@@ -379,25 +377,23 @@
   )
 
 (defstate orbit-plat-still (orbit-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (cond
-                       ((= v1-0 'bonk)
-                        (dummy-22 self)
-                        )
-                       ((= v1-0 'go)
-                        (go orbit-plat-rotating)
-                        )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('bonk)
+                      (the-as object (baseplat-method-22 self))
+                      )
+                     (('go)
+                      (go orbit-plat-rotating)
+                      )
+                     )
+            )
     )
   :trans (the-as (function none :behavior orbit-plat) plat-trans)
   :code (behavior ()
     (set! (-> self plat-status) (the-as uint 0))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (ja-no-eval :num! (seek! 0.0))
-    (until (dummy-28 self)
+    (until (orbit-plat-method-28 self)
       (when (nonzero? (-> self root-override riders num-riders))
         (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-1 from) self)
@@ -484,7 +480,7 @@
 (defun get-nav-point! ((arg0 vector) (arg1 orbit-plat) (arg2 vector) (arg3 float))
   (set! (-> arg1 nav target-pos quad) (-> arg2 quad))
   (logclear! (-> arg1 nav flags) (nav-control-flags navcf19))
-  (dummy-11 (-> arg1 nav) (-> arg1 nav target-pos))
+  (nav-control-method-11 (-> arg1 nav) (-> arg1 nav target-pos))
   (let ((f0-0 (vector-length (-> arg1 nav travel))))
     (if (< arg3 f0-0)
         (set! f0-0 arg3)
@@ -498,18 +494,16 @@
   )
 
 (defstate orbit-plat-rotating (orbit-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (cond
-                       ((= v1-0 'bonk)
-                        (dummy-22 self)
-                        )
-                       ((= v1-0 'stop)
-                        (go orbit-plat-still)
-                        )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('bonk)
+                      (the-as object (baseplat-method-22 self))
+                      )
+                     (('stop)
+                      (go orbit-plat-still)
+                      )
+                     )
+            )
     )
   :trans (the-as (function none :behavior orbit-plat) plat-trans)
   :code (behavior ()
@@ -540,7 +534,7 @@
           (label cfg-3)
           (dotimes (s4-0 2)
             (get-rotate-point! s5-0 gp-0 (-> self basetrans) (the-as vector f30-0) (-> self rot-dir) 40960.0)
-            (b! (not (dummy-16 (-> self nav) s5-0)) cfg-6 :delay (empty-form))
+            (b! (not (nav-control-method-16 (-> self nav) s5-0)) cfg-6 :delay (empty-form))
             (set! (-> self basetrans quad) (-> s5-0 quad))
             (b! #t cfg-9 :delay (nop!))
             (label cfg-6)
@@ -561,7 +555,7 @@
   )
 
 ;; WARN: disable def twice: 132. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod dummy-27 orbit-plat ((obj orbit-plat))
+(defmethod orbit-plat-method-27 orbit-plat ((obj orbit-plat))
   (local-vars (v0-11 object))
   (let* ((v1-0 (-> obj other))
          (s5-0 (if v1-0
@@ -620,13 +614,13 @@
                 (let ((f30-2 (vector-length a0-7)))
                   (get-rotate-point! s5-1 s4-0 (-> obj basetrans) (the-as vector f30-2) (-> obj rot-dir) 40960.0)
                   (cond
-                    ((dummy-16 (-> obj nav) s5-1)
+                    ((nav-control-method-16 (-> obj nav) s5-1)
                      (set! (-> obj basetrans quad) (-> s5-1 quad))
                      )
                     (else
                       (set! (-> obj rot-dir) (- (-> obj rot-dir)))
                       (get-rotate-point! s5-1 s4-0 (-> obj basetrans) (the-as vector f30-2) (-> obj rot-dir) 40960.0)
-                      (if (dummy-16 (-> obj nav) s5-1)
+                      (if (nav-control-method-16 (-> obj nav) s5-1)
                           (set! (-> obj basetrans quad) (-> s5-1 quad))
                           )
                       )
@@ -661,10 +655,10 @@
                  (vector-! s5-2 s5-2 s4-1)
                  (vector-normalize! s5-2 (-> obj reset-length))
                  (vector+! s5-2 s5-2 s4-1)
-                 (when (not (dummy-16 (-> obj nav) s5-2))
+                 (when (not (nav-control-method-16 (-> obj nav) s5-2))
                    (logclear! (-> obj nav flags) (nav-control-flags navcf19))
                    (get-rotate-point! s5-2 s4-1 (-> obj basetrans) (the-as vector (-> obj reset-length)) 0.0 40960.0)
-                   (when (not (dummy-16 (-> obj nav) s5-2))
+                   (when (not (nav-control-method-16 (-> obj nav) s5-2))
                      (get-rotate-point!
                        s5-2
                        s4-1
@@ -673,7 +667,7 @@
                        (-> obj rot-dir)
                        40960.0
                        )
-                     (when (not (dummy-16 (-> obj nav) s5-2))
+                     (when (not (nav-control-method-16 (-> obj nav) s5-2))
                        (set! (-> obj rot-dir) (- (-> obj rot-dir)))
                        (get-rotate-point!
                          s5-2
@@ -699,10 +693,7 @@
           (let ((s5-3 (new 'stack-no-clear 'vector)))
             (set! (-> s5-3 quad) (-> obj basetrans quad))
             (get-nav-point! (-> obj basetrans) obj (-> obj reset-trans) 40960.0)
-            (let ((f0-29 (-> s5-3 y)))
-              (set! (-> obj basetrans y) f0-29)
-              f0-29
-              )
+            (set! (-> obj basetrans y) (-> s5-3 y))
             )
           )
         )
@@ -711,26 +702,24 @@
   )
 
 (defstate orbit-plat-reset (orbit-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (cond
-                       ((= v1-0 'bonk)
-                        (dummy-22 self)
-                        )
-                       ((= v1-0 'go)
-                        (go orbit-plat-rotating)
-                        )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('bonk)
+                      (the-as object (baseplat-method-22 self))
+                      )
+                     (('go)
+                      (go orbit-plat-rotating)
+                      )
+                     )
+            )
     )
   :trans (the-as (function none :behavior orbit-plat) plat-trans)
   :code (behavior ()
     (set! (-> self plat-status) (the-as uint 3))
     (logclear! (-> self nav flags) (nav-control-flags navcf19))
     (ja-no-eval :num! (seek! 0.0))
-    (while (zero? (logand (nav-control-flags navcf19) (-> self nav flags)))
-      (dummy-27 self)
+    (while (not (logtest? (nav-control-flags navcf19) (-> self nav flags)))
+      (orbit-plat-method-27 self)
       (when (nonzero? (-> self root-override riders num-riders))
         (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-1 from) self)
@@ -821,7 +810,7 @@
     )
   (ja-post)
   (update-transforms! (-> obj root-override))
-  (dummy-21 obj)
+  (baseplat-method-21 obj)
   (set! (-> obj nav) (new 'process 'nav-control (-> obj root-override) 16 40960.0))
   (logior! (-> obj nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
   (set! (-> obj nav gap-event) 'blocked)
@@ -837,7 +826,3 @@
   (go orbit-plat-wait-for-other)
   (none)
   )
-
-
-
-

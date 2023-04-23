@@ -21,12 +21,12 @@
   :size-assert         #x30
   :flag-assert         #xa00000030
   (:methods
-    (TODO-RENAME-9 (_type_ vector float) vector 9)
+    (swamp-bat-idle-path-method-9 (_type_ vector float) vector 9)
     )
   )
 
 
-(defmethod TODO-RENAME-9 swamp-bat-idle-path ((obj swamp-bat-idle-path) (arg0 vector) (arg1 float))
+(defmethod swamp-bat-idle-path-method-9 swamp-bat-idle-path ((obj swamp-bat-idle-path) (arg0 vector) (arg1 float))
   (let ((f30-0 (* 65536.0 arg1)))
     (set! (-> arg0 quad) (-> obj origin quad))
     (vector+*! arg0 arg0 (-> obj x-axis) (cos f30-0))
@@ -89,7 +89,7 @@
   :size-assert         #x118
   :flag-assert         #x1500b00118
   (:methods
-    (dummy-20 (_type_) float 20)
+    (swamp-bat-slave-method-20 (_type_) float 20)
     )
   (:states
     (swamp-bat-slave-die handle)
@@ -109,7 +109,13 @@
      (go swamp-bat-slave-die (process->handle arg0))
      )
     (('touch)
-     (level-hint-spawn (game-text-id swamp-bat-duck-hint) "sksp0156" (the-as entity #f) *entity-pool* (game-task none))
+     (level-hint-spawn
+       (text-id swamp-bat-duck-hint)
+       "sksp0156"
+       (the-as entity #f)
+       *entity-pool*
+       (game-task none)
+       )
      (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
      )
     (('launch)
@@ -126,7 +132,7 @@ swamp-bat-slave-event-handler
   (transform-post)
   )
 
-(defmethod dummy-20 swamp-bat-slave ((obj swamp-bat-slave))
+(defmethod swamp-bat-slave-method-20 swamp-bat-slave ((obj swamp-bat-slave))
   (* (get-current-phase (-> obj sync)) (-> obj path-point-count))
   )
 
@@ -135,11 +141,11 @@ swamp-bat-slave-event-handler
         (s5-0 (new-stack-vector0))
         (gp-0 (new-stack-vector0))
         (s4-0 (new-stack-vector0))
-        (f30-0 (dummy-20 self))
+        (f30-0 (swamp-bat-slave-method-20 self))
         (s3-0 (new 'static 'vector :y 1.0 :w 1.0))
         )
     (eval-path-curve-div! s2-0 s5-0 f30-0 'interp)
-    (TODO-RENAME-12 s2-0 gp-0 f30-0)
+    (path-control-method-12 s2-0 gp-0 f30-0)
     (vector-cross! s4-0 gp-0 s3-0)
     (vector-normalize! s4-0 1.0)
     (let ((f0-4 (fmax
@@ -182,10 +188,9 @@ swamp-bat-slave-event-handler
     )
   (set! (-> self idle-path y-axis w) 1.0)
   (vector+! (-> self idle-position) (the-as vector (-> self idle-path)) (-> self idle-path x-axis))
-  (let ((f0-8 (the float (+ (-> self parent-process 0 path-list (-> self path-select) curve num-cverts) -1))))
-    (set! (-> self path-point-count) f0-8)
-    f0-8
-    )
+  (set! (-> self path-point-count)
+        (the float (+ (-> self parent-process 0 path-list (-> self path-select) curve num-cverts) -1))
+        )
   )
 
 (defstate swamp-bat-slave-idle (swamp-bat-slave)
@@ -200,9 +205,12 @@ swamp-bat-slave-event-handler
       (let ((s4-0 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> self root-override quat)))
             (gp-0 (new-stack-quaternion0))
             )
-        (let ((s2-0
-                (TODO-RENAME-12 (-> self parent-process 0 path-list (-> self path-select)) (new 'stack-no-clear 'vector) 0.1)
-                )
+        (let ((s2-0 (path-control-method-12
+                      (-> self parent-process 0 path-list (-> self path-select))
+                      (new 'stack-no-clear 'vector)
+                      0.1
+                      )
+                    )
               )
           0
           (let* ((f0-0 300.0)
@@ -305,7 +313,7 @@ swamp-bat-slave-event-handler
     (ja-channel-push! 1 (seconds 0.1))
     (ja :group! swamp-bat-swoop-ja)
     (loop
-      (if (>= (dummy-20 self) 2.0)
+      (if (>= (swamp-bat-slave-method-20 self) 2.0)
           (go swamp-bat-slave-strafe)
           )
       (ja :num! (loop!))
@@ -323,7 +331,7 @@ swamp-bat-slave-event-handler
     (ja-channel-push! 1 (seconds 0.1))
     (ja :group! swamp-bat-strafe-ja)
     (loop
-      (if (>= (dummy-20 self) 6.0)
+      (if (>= (swamp-bat-slave-method-20 self) 6.0)
           (go swamp-bat-slave-return)
           )
       (ja :num! (loop!))
@@ -344,7 +352,7 @@ swamp-bat-slave-event-handler
           (gp-0 #t)
           )
       (loop
-        (let ((f28-0 (dummy-20 self)))
+        (let ((f28-0 (swamp-bat-slave-method-20 self)))
           (if (>= f28-0 f30-0)
               (go swamp-bat-slave-idle)
               )
@@ -467,15 +475,12 @@ swamp-bat-slave-event-handler
     (__assert-zero-lim-range-int arg0 (-> self path-count) "path-index" "(-> self path-count)")
     )
   (let* ((s5-0 (-> self path-list arg0))
-         (gp-1 (TODO-RENAME-12 s5-0 (-> self path-select-plane arg0) 5.0))
+         (gp-1 (path-control-method-12 s5-0 (-> self path-select-plane arg0) 5.0))
          (s5-1 (eval-path-curve-div! s5-0 (new 'stack-no-clear 'vector) 5.0 'interp))
          )
     (set! (-> gp-1 y) 0.0)
     (vector-normalize! gp-1 1.0)
-    (let ((f0-3 (- (vector-dot s5-1 gp-1))))
-      (set! (-> gp-1 w) f0-3)
-      f0-3
-      )
+    (set! (-> gp-1 w) (- (vector-dot s5-1 gp-1)))
     )
   )
 
@@ -532,7 +537,9 @@ swamp-bat-slave-event-handler
           (deactivate self)
           )
         (swamp-bat-update-path)
-        (if (or (dummy-10 (-> self vol) (target-pos 5)) (not (swamp-bat-check-slave-paths-match? (-> self path-select))))
+        (if (or (point-in-vol? (-> self vol) (target-pos 5))
+                (not (swamp-bat-check-slave-paths-match? (-> self path-select)))
+                )
             (go swamp-bat-launch-slaves)
             )
         )
@@ -628,7 +635,3 @@ swamp-bat-slave-event-handler
   (go swamp-bat-idle)
   (none)
   )
-
-
-
-

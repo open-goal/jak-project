@@ -217,7 +217,7 @@
   "Kill a suppression box, and inform the traffic manager by setting duration to 0."
   (when (!= (-> obj id) -1)
     (let ((s5-0 (-> obj duration)))
-      (set! (-> obj duration) (the-as uint 0))
+      (set! (-> obj duration) 0)
       (send-event *traffic-manager* 'update-suppression-box obj)
       (set! (-> obj duration) s5-0)
       )
@@ -283,7 +283,7 @@ The param object is updated with the ID of the box and can be later used with up
              (s4-1 (logior (-> s5-0 flags) (traffic-suppression-box-flags tfsb1)))
              )
         (mem-copy! (the-as pointer (-> s5-0 bbox)) (the-as pointer (-> arg0 bbox)) 32)
-        (set! (-> s5-0 duration) (-> arg0 duration))
+        (set! (-> s5-0 duration) (the-as uint (-> arg0 duration)))
         (set! (-> s5-0 flags) s4-1)
         )
       )
@@ -320,7 +320,7 @@ The param object is updated with the ID of the box and can be later used with up
       (let ((a1-1 (-> s4-0 object-type-info-array (-> obj active-object-type-list s3-0)))
             (a0-2 (handle->process (-> obj active-object-list s3-0)))
             )
-        (if (not (logtest? (-> (the-as process-focusable a0-2) focus-status) (focus-status inactive)))
+        (if (not (focus-test? (the-as process-focusable a0-2) inactive))
             (arg0 (the-as process-focusable a0-2) a1-1)
             )
         )
@@ -339,7 +339,7 @@ The param object is updated with the ID of the box and can be later used with up
           (let ((a1-1 (-> s3-0 object-type-info-array a0-1))
                 (a0-3 (handle->process (-> obj active-object-list s2-0)))
                 )
-            (if (not (logtest? (-> (the-as process-focusable a0-3) focus-status) (focus-status inactive)))
+            (if (not (focus-test? (the-as process-focusable a0-3) inactive))
                 (arg1 (the-as process-focusable a0-3) a1-1)
                 )
             )
@@ -454,7 +454,7 @@ Process is recycled and moved to reserved, if it deactivates."
            (v1-5 (the-as object #t))
            )
       (when s1-0
-        (when (not (logtest? (-> (the-as process-focusable s1-0) focus-status) (focus-status inactive)))
+        (when (not (focus-test? (the-as process-focusable s1-0) inactive))
           (if arg1
               (set! gp-0 'traffic-off-force)
               )
@@ -584,10 +584,10 @@ Process is recycled and moved to reserved, if it deactivates."
     (when (and (> (-> v1-2 inactive-count) 0)
                (> (-> v1-2 reserve-count) 0)
                (< (-> v1-2 active-count) (-> v1-2 target-count))
-               (logtest? (-> v1-2 flags) 4)
-               (logtest? (-> v1-2 flags) 8)
-               (or (not (logtest? (-> v1-2 flags) 1))
-                   (zero? (logand (-> obj traffic alert-state flags) (traffic-alert-flag alert-ending)))
+               (logtest? (-> v1-2 flags) (traffic-type-flags trtflags-2))
+               (logtest? (-> v1-2 flags) (traffic-type-flags trtflags-3))
+               (or (not (logtest? (-> v1-2 flags) (traffic-type-flags trtflags-0)))
+                   (not (logtest? (-> obj traffic alert-state flags) (traffic-alert-flag alert-ending)))
                    )
                )
       (let ((s4-0 (new 'stack-no-clear 'mystery-traffic-object-spawn-params)))
@@ -726,7 +726,7 @@ Process is recycled and moved to reserved, if it deactivates."
   (let ((v1-4 (-> obj inactive-object-array)))
     (dotimes (a0-5 21)
       (let ((a1-3 (-> obj object-type-info-array a0-5)))
-        (set! (-> a1-3 flags) (the-as uint 6))
+        (set! (-> a1-3 flags) (traffic-type-flags trtflags-1 trtflags-2))
         (set! (-> a1-3 inactive-count) 0)
         (set! (-> a1-3 active-count) 0)
         (set! (-> a1-3 target-count) 20)
@@ -739,7 +739,7 @@ Process is recycled and moved to reserved, if it deactivates."
       )
     )
   (set! (-> obj object-type-info-array 6 guard-type) (the-as uint 0))
-  (set! (-> obj object-type-info-array 20 level) (the-as level 'ctywide))
+  (set! (-> obj object-type-info-array 20 level) 'ctywide)
   (let ((v1-8 11))
     (dotimes (a0-6 10)
       (set! (-> obj object-type-info-array v1-8 tracker-index) (the-as uint 0))
@@ -782,7 +782,7 @@ Process is recycled and moved to reserved, if it deactivates."
   (dotimes (s5-2 (-> *level* length))
     (let ((a1-12 (-> *level* level s5-2)))
       (if (= (-> a1-12 status) 'active)
-          (level-loaded obj a1-12)
+          (level-link obj a1-12)
           )
       )
     )
@@ -797,7 +797,7 @@ Process is recycled and moved to reserved, if it deactivates."
   (none)
   )
 
-(defmethod level-loaded traffic-engine ((obj traffic-engine) (arg0 level))
+(defmethod level-link traffic-engine ((obj traffic-engine) (arg0 level))
   "Call after loading a level to patch the data in the bsp"
   (format #t "traffic-engine: level birth ~S~%" (-> arg0 nickname))
   (cond
@@ -929,7 +929,7 @@ Process is recycled and moved to reserved, if it deactivates."
   (none)
   )
 
-(defmethod level-killed traffic-engine ((obj traffic-engine) (arg0 level))
+(defmethod level-unlink traffic-engine ((obj traffic-engine) (arg0 level))
   "Call after removing a level. Kills processes and unlinks nav"
   (let ((s4-0 (-> arg0 bsp city-level-info nav-graph)))
     (dotimes (v1-2 2)
@@ -1140,7 +1140,7 @@ Process is recycled and moved to reserved, if it deactivates."
                 sv-84
                 (if (< (-> sv-20 user-count) (-> sv-20 max-user-count))
                     (font-color yellow-#f3f300)
-                    (font-color precursor-#ec3b00)
+                    (font-color red)
                     )
                 (the-as vector2h #f)
                 )
@@ -1170,11 +1170,11 @@ Process is recycled and moved to reserved, if it deactivates."
   (none)
   )
 
-(defmethod sphere-in-loaded-city-infos? traffic-engine ((obj traffic-engine) (arg0 int) (arg1 vector))
+(defmethod sphere-in-loaded-city-infos? traffic-engine ((obj traffic-engine) (arg0 vector) (arg1 int))
   (dotimes (s3-0 2)
     (let ((v1-3 (-> obj level-data-array s3-0)))
       (when (nonzero? (-> v1-3 city-info))
-        (if (sphere-in-grid? (-> v1-3 city-info) arg0 (the-as int arg1))
+        (if (sphere-in-grid? (-> v1-3 city-info) arg0 arg1)
             (return #t)
             )
         )
@@ -1185,7 +1185,7 @@ Process is recycled and moved to reserved, if it deactivates."
 
 (defmethod can-dest-be-used? traffic-engine ((obj traffic-engine) (arg0 nav-branch))
   (let ((v1-0 (-> arg0 src-node)))
-    (or (logtest? (-> arg0 flags) 1)
+    (or (logtest? (-> arg0 flags) (nav-branch-flags nabflags-0))
         (logtest? (-> v1-0 flags) (nav-node-flag-byte blocked))
         (not (-> arg0 dest-node))
         (>= (-> arg0 user-count) (-> arg0 max-user-count))
@@ -1294,44 +1294,44 @@ Process is recycled and moved to reserved, if it deactivates."
           (let ((v1-1 (-> obj danger-sphere-array)))
             (set! (-> v1-1 0 handle) (process->handle s5-0))
             (let ((a0-4 (-> s5-0 focus-status))
-                  (f0-0 0.0)
-                  (f1-0 0.0)
-                  (f3-0 1.0)
-                  (f2-0 0.0)
+                  (notify-radius 0.0)
+                  (danger-radius 0.0)
+                  (decay-rate 1.0)
+                  (danger-level 0.0)
                   )
               (cond
                 ((logtest? (focus-status mech dark shooting) a0-4)
-                 (set! f0-0 245760.0)
-                 (set! f1-0 163840.0)
-                 (set! f2-0 1.0)
-                 (set! f3-0 0.0)
+                 (set! notify-radius 245760.0)
+                 (set! danger-radius 163840.0)
+                 (set! danger-level 1.0)
+                 (set! decay-rate 0.0)
                  )
                 ((logtest? (focus-status gun) a0-4)
-                 (set! f0-0 102400.0)
-                 (set! f1-0 61440.0)
-                 (set! f2-0 0.5)
-                 (set! f3-0 0.5)
+                 (set! notify-radius 102400.0)
+                 (set! danger-radius 61440.0)
+                 (set! danger-level 0.5)
+                 (set! decay-rate 0.5)
                  )
                 ((logtest? (focus-status board pilot) a0-4)
-                 (set! f0-0 40960.0)
-                 (set! f1-0 24576.0)
-                 (set! f2-0 0.5)
+                 (set! notify-radius 40960.0)
+                 (set! danger-radius 24576.0)
+                 (set! danger-level 0.5)
                  )
                 ((logtest? a0-4 (focus-status dangerous))
-                 (set! f0-0 61440.0)
-                 (set! f1-0 40960.0)
-                 (set! f3-0 0.0)
-                 (set! f2-0 0.5)
+                 (set! notify-radius 61440.0)
+                 (set! danger-radius 40960.0)
+                 (set! decay-rate 0.0)
+                 (set! danger-level 0.5)
                  )
                 (else
-                  (set! f3-0 1.5)
+                  (set! decay-rate 1.5)
                   )
                 )
-              (set! (-> v1-1 0 decay-rate) (* 0.1 f3-0))
-              (when (< (-> v1-1 0 danger-level) f2-0)
-                (set! (-> v1-1 0 danger-level) f2-0)
-                (set! (-> v1-1 0 sphere r) f1-0)
-                (set! (-> v1-1 0 notify-radius) f0-0)
+              (set! (-> v1-1 0 decay-rate) (* 0.1 decay-rate))
+              (when (< (-> v1-1 0 danger-level) danger-level)
+                (set! (-> v1-1 0 danger-level) danger-level)
+                (set! (-> v1-1 0 sphere r) danger-radius)
+                (set! (-> v1-1 0 notify-radius) notify-radius)
                 )
               )
             (let ((f0-1 (-> v1-1 0 sphere r)))
@@ -1456,7 +1456,7 @@ Process is recycled and moved to reserved, if it deactivates."
     )
   )
 
-(defmethod per-frame-danger-update traffic-engine ((obj traffic-engine))
+(defmethod update-danger traffic-engine ((obj traffic-engine))
   "see what's dangerous and make people avoid it."
   (update-danger-from-target obj)
   (dotimes (s5-0 (-> obj danger-sphere-count))
@@ -1528,7 +1528,7 @@ Process is recycled and moved to reserved, if it deactivates."
         (.add.x.vf vf5 vf4 vf6 :mask #b111)
         (.svf (&-> a0-2 quad) vf5)
         )
-      (set! (-> a1-1 duration) (the-as uint 1500))
+      (set! (-> a1-1 duration) (seconds 5))
       (new-suppression-box obj a1-1)
       )
     (let ((v1-5 (-> obj danger-sphere-count)))
@@ -1564,8 +1564,8 @@ Process is recycled and moved to reserved, if it deactivates."
   (none)
   )
 
-(defmethod per-frame-activate-deactivate traffic-engine ((obj traffic-engine))
-  "per-frame activate and deactivate processes."
+(defmethod update-traffic-amount traffic-engine ((obj traffic-engine))
+  "kills inactive traffic and spawns more if needed."
   (local-vars (sv-48 int) (sv-64 nav-segment))
   (set! (-> obj object-hash object-count) 0)
   (let* ((v1-1 (-> obj object-hash))
@@ -1591,7 +1591,7 @@ Process is recycled and moved to reserved, if it deactivates."
     (let ((a2-0 *target*))
       (when a2-0
         (cond
-          ((logtest? (focus-status pilot) (-> a2-0 focus-status))
+          ((focus-test? a2-0 pilot)
            (when (nonzero? (-> a2-0 pilot))
              (let ((a2-1 (handle->process (-> a2-0 pilot vehicle))))
                (when a2-1
@@ -1614,7 +1614,7 @@ Process is recycled and moved to reserved, if it deactivates."
         (cond
           (s3-0
             (cond
-              ((logtest? (-> (the-as vehicle s3-0) focus-status) (focus-status inactive))
+              ((focus-test? (the-as vehicle s3-0) inactive)
                (deactivate-object (-> obj citizen-tracker-array) (the-as int s4-0) #f)
                )
               ((begin
@@ -1622,7 +1622,7 @@ Process is recycled and moved to reserved, if it deactivates."
                    (set! (-> s5-0 quad) (-> v1-33 trans quad))
                    (set! (-> s5-0 w) (-> v1-33 root-prim prim-core world-sphere w))
                    )
-                 (sphere-in-loaded-city-infos? obj (the-as int s5-0) (the-as vector 0))
+                 (sphere-in-loaded-city-infos? obj s5-0 0)
                  )
                (set! (-> (the-as vehicle s3-0) traffic-hash-id)
                      (spatial-hash-method-39 (-> obj object-hash) s5-0 (the-as hash-object-info s3-0))
@@ -1644,7 +1644,7 @@ Process is recycled and moved to reserved, if it deactivates."
         (cond
           (s3-1
             (cond
-              ((logtest? (-> (the-as process-focusable s3-1) focus-status) (focus-status inactive))
+              ((focus-test? (the-as process-focusable s3-1) inactive)
                (deactivate-object (-> obj vehicle-tracker-array) (the-as int s4-1) #f)
                )
               ((begin
@@ -1652,7 +1652,7 @@ Process is recycled and moved to reserved, if it deactivates."
                    (set! (-> s5-0 quad) (-> v1-54 trans quad))
                    (set! (-> s5-0 w) (-> v1-54 root-prim prim-core world-sphere w))
                    )
-                 (sphere-in-loaded-city-infos? obj (the-as int s5-0) (the-as vector 1))
+                 (sphere-in-loaded-city-infos? obj s5-0 1)
                  )
                (spatial-hash-method-39 (-> obj object-hash) s5-0 (the-as hash-object-info s3-1))
                )
@@ -1682,7 +1682,7 @@ Process is recycled and moved to reserved, if it deactivates."
               (let ((f30-0 10000000000000000000000000000000000000.0))
                 (dotimes (s1-0 (the-as int (-> s4-2 active-cell-count)))
                   (let ((s0-0 (-> s4-2 active-cell-list s1-0)))
-                    (when (and (logtest? (-> s0-0 flags) (ash 1 s3-3)) (zero? (logand (-> s0-0 flags) (vis-cell-flag suppress))))
+                    (when (and (logtest? (-> s0-0 flags) (ash 1 s3-3)) (not (logtest? (-> s0-0 flags) (vis-cell-flag suppress))))
                       (set! sv-48 0)
                       (while (< sv-48 (-> s0-0 incoming-segment-count))
                         (set! sv-64 (-> s0-0 segment-array sv-48))
@@ -1730,7 +1730,7 @@ Process is recycled and moved to reserved, if it deactivates."
 
 (defmethod update-traffic traffic-engine ((obj traffic-engine))
   (update-sync-from-frame-counter obj)
-  (per-frame-suppressor-update obj)
+  (update-suppressor obj)
   (let ((s5-0 (new 'stack-no-clear 'bounding-box)))
     (set-vector!
       (-> s5-0 min)
@@ -1757,11 +1757,11 @@ Process is recycled and moved to reserved, if it deactivates."
       )
     (update-grid-for-objects-in-box (-> obj object-hash) 253 (-> s5-0 min) (-> s5-0 max))
     )
-  (per-frame-activate-deactivate obj)
+  (update-traffic-amount obj)
   (set! (-> obj alert-state guard-aim-count) 0)
-  (per-frame-alert-update obj)
-  (per-frame-guard-update obj)
-  (per-frame-danger-update obj)
+  (update-alert-state obj)
+  (update-guards obj)
+  (update-danger obj)
   0
   (none)
   )
@@ -2052,7 +2052,7 @@ Process is recycled and moved to reserved, if it deactivates."
                                    )
                                )
                          )
-                    (when (and s2-0 (not (logtest? (-> s2-0 focus-status) (focus-status disable dead inactive))) (!= arg0 s2-0))
+                    (when (and s2-0 (not (focus-test? s2-0 disable dead inactive)) (!= arg0 s2-0))
                       (let ((f0-0 (vector-vector-xz-distance (-> arg0 root trans) (-> s2-0 root-override trans))))
                         (when (or (not gp-0) (< f0-0 f30-0))
                           (set! gp-0 s2-0)
@@ -2084,7 +2084,7 @@ Process is recycled and moved to reserved, if it deactivates."
                                      )
                                  )
                            )
-                      (when (and s2-1 (not (logtest? (-> s2-1 focus-status) (focus-status disable dead inactive))) (!= arg0 s2-1))
+                      (when (and s2-1 (not (focus-test? s2-1 disable dead inactive)) (!= arg0 s2-1))
                         (let ((f0-1 (vector-vector-xz-distance (-> arg0 root trans) (-> s2-1 root-override trans))))
                           (when (or (not gp-0) (< f0-1 f30-0))
                             (set! gp-0 s2-1)
@@ -2115,7 +2115,7 @@ Process is recycled and moved to reserved, if it deactivates."
                                      )
                                  )
                            )
-                      (when (and s2-2 (not (logtest? (-> s2-2 focus-status) (focus-status disable dead inactive))) (!= arg0 s2-2))
+                      (when (and s2-2 (not (focus-test? s2-2 disable dead inactive)) (!= arg0 s2-2))
                         (let ((f0-2 (vector-vector-xz-distance (-> arg0 root trans) (-> s2-2 root-override trans))))
                           (when (or (not gp-0) (< f0-2 f30-0))
                             (set! gp-0 s2-2)
@@ -2142,7 +2142,7 @@ Process is recycled and moved to reserved, if it deactivates."
 (defmethod traffic-engine-method-49 traffic-engine ((obj traffic-engine) (los vector) (arg2 int) (target-status traffic-target-status))
   (local-vars
     (guards (pointer crimson-guard))
-    (guard-dists (pointer float))
+    (guard-target-dists (pointer float))
     (guard-idx int)
     (sv-208 int)
     (sv-216 float)
@@ -2191,18 +2191,18 @@ Process is recycled and moved to reserved, if it deactivates."
              )
            (when (update-guard-status-spots target-pos)
              (set! guards (new 'stack-no-clear 'array 'crimson-guard 16))
-             (set! guard-dists (new 'stack-no-clear 'array 'float 16))
+             (set! guard-target-dists (new 'stack-no-clear 'array 'float 16))
              (set! guard-idx 0)
              (dotimes (guard-count (the-as int (-> obj vehicle-tracker-array active-object-count)))
                (case (-> obj vehicle-tracker-array active-object-type-list guard-count)
                  (((traffic-type crimson-guard-1))
                   (let ((guard (handle->process (-> obj vehicle-tracker-array active-object-list guard-count))))
                     (when (and guard
-                               (not (logtest? (-> (the-as process-focusable guard) focus-status) (focus-status dead inactive)))
+                               (not (focus-test? (the-as process-focusable guard) dead inactive))
                                (= (-> (the-as crimson-guard guard) traffic-target-status handle) (-> target-status handle))
                                )
                       (set! (-> guards guard-idx) (the-as crimson-guard guard))
-                      (set! (-> guard-dists guard-idx)
+                      (set! (-> guard-target-dists guard-idx)
                             (vector-vector-distance (-> (the-as crimson-guard guard) root-override2 trans) target-pos)
                             )
                       (set! guard-idx (+ guard-idx 1))
@@ -2216,14 +2216,14 @@ Process is recycled and moved to reserved, if it deactivates."
                (while a0-35
                  (set! a0-35 #f)
                  (dotimes (v1-77 (+ guard-idx -1))
-                   (when (< (-> guard-dists (+ v1-77 1)) (-> guard-dists v1-77))
+                   (when (< (-> guard-target-dists (+ v1-77 1)) (-> guard-target-dists v1-77))
                      (let ((a0-38 (-> guards v1-77))
-                           (f0-2 (-> guard-dists v1-77))
+                           (f0-2 (-> guard-target-dists v1-77))
                            )
                        (set! (-> guards v1-77) (-> guards (+ v1-77 1)))
                        (set! (-> guards (+ v1-77 1)) a0-38)
-                       (set! (-> guard-dists v1-77) (-> guard-dists (+ v1-77 1)))
-                       (set! (-> guard-dists (+ v1-77 1)) f0-2)
+                       (set! (-> guard-target-dists v1-77) (-> guard-target-dists (+ v1-77 1)))
+                       (set! (-> guard-target-dists (+ v1-77 1)) f0-2)
                        )
                      (set! a0-35 #t)
                      )
@@ -2285,7 +2285,7 @@ Process is recycled and moved to reserved, if it deactivates."
     )
   )
 
-(defmethod set-alert-duration traffic-engine ((obj traffic-engine) (arg0 int))
+(defmethod set-alert-duration traffic-engine ((obj traffic-engine) (arg0 time-frame))
   (set! (-> obj alert-state duration) (the-as uint arg0))
   0
   (none)
@@ -2330,54 +2330,256 @@ Process is recycled and moved to reserved, if it deactivates."
   (none)
   )
 
-(define *alert-level-settings* (new 'static 'traffic-alert-state-settings
-                                 :ped-tazer (new 'static 'traffic-guard-type-settings
-                                   :target-count 5
-                                   :inaccuracy 0.5
-                                   :acquire-delay #x12c
-                                   :shot-delay #x4b
-                                   :burst-delay #x258
-                                   :shot-count 1
+(define *alert-level-settings* (new 'static 'inline-array traffic-alert-state-settings 5
+                                 (new 'static 'traffic-alert-state-settings
+                                   :ped-tazer (new 'static 'traffic-guard-type-settings
+                                     :target-count 5
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x258
+                                     :shot-count 1
+                                     )
+                                   :ped-rifle (new 'static 'traffic-guard-type-settings
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x258
+                                     :shot-count 2
+                                     :rand-shot-count 1
+                                     )
+                                   :ped-grenade (new 'static 'traffic-guard-type-settings
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x258
+                                     :shot-count 1
+                                     )
+                                   :ped-roboguard (new 'static 'traffic-guard-type-settings
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x258
+                                     :shot-count 1
+                                     )
+                                   :bike-turret (new 'static 'traffic-guard-type-settings
+                                     :target-count 1
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x5dc
+                                     :shot-count 2
+                                     :rand-shot-count 1
+                                     )
+                                   :hellcat-turret (new 'static 'traffic-guard-type-settings
+                                     :target-count 1
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x5dc
+                                     :shot-count 2
+                                     :rand-shot-count 1
+                                     )
                                    )
-                                 :ped-rifle (new 'static 'traffic-guard-type-settings
-                                   :inaccuracy 0.5
-                                   :acquire-delay #x12c
-                                   :shot-delay #x4b
-                                   :burst-delay #x258
-                                   :shot-count 2
-                                   :rand-shot-count 1
+                                 (new 'static 'traffic-alert-state-settings
+                                   :ped-tazer (new 'static 'traffic-guard-type-settings
+                                     :target-count 5
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x258
+                                     :shot-count 1
+                                     )
+                                   :ped-rifle (new 'static 'traffic-guard-type-settings
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x258
+                                     :shot-count 2
+                                     :rand-shot-count 1
+                                     )
+                                   :ped-grenade (new 'static 'traffic-guard-type-settings
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x258
+                                     :shot-count 1
+                                     )
+                                   :ped-roboguard (new 'static 'traffic-guard-type-settings
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x258
+                                     :shot-count 1
+                                     )
+                                   :bike-turret (new 'static 'traffic-guard-type-settings
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x5dc
+                                     :shot-count 2
+                                     :rand-shot-count 1
+                                     )
+                                   :hellcat-turret (new 'static 'traffic-guard-type-settings
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x5dc
+                                     :shot-count 2
+                                     :rand-shot-count 1
+                                     )
                                    )
-                                 :ped-grenade (new 'static 'traffic-guard-type-settings
-                                   :inaccuracy 0.5
-                                   :acquire-delay #x12c
-                                   :shot-delay #x4b
-                                   :burst-delay #x258
-                                   :shot-count 1
+                                 (new 'static 'traffic-alert-state-settings
+                                   :ped-tazer (new 'static 'traffic-guard-type-settings
+                                     :target-count 3
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x258
+                                     :shot-count 1
+                                     )
+                                   :ped-rifle (new 'static 'traffic-guard-type-settings
+                                     :target-count 4
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x258
+                                     :shot-count 2
+                                     :rand-shot-count 1
+                                     )
+                                   :ped-grenade (new 'static 'traffic-guard-type-settings
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x258
+                                     :shot-count 1
+                                     )
+                                   :ped-roboguard (new 'static 'traffic-guard-type-settings
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x258
+                                     :shot-count 1
+                                     )
+                                   :bike-turret (new 'static 'traffic-guard-type-settings
+                                     :target-count 2
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x5dc
+                                     :shot-count 2
+                                     :rand-shot-count 1
+                                     )
+                                   :hellcat-turret (new 'static 'traffic-guard-type-settings
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x5dc
+                                     :shot-count 2
+                                     :rand-shot-count 1
+                                     )
                                    )
-                                 :ped-roboguard (new 'static 'traffic-guard-type-settings
-                                   :inaccuracy 0.5
-                                   :acquire-delay #x12c
-                                   :shot-delay #x4b
-                                   :burst-delay #x258
-                                   :shot-count 1
+                                 (new 'static 'traffic-alert-state-settings
+                                   :ped-tazer (new 'static 'traffic-guard-type-settings
+                                     :target-count 2
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x258
+                                     :shot-count 1
+                                     )
+                                   :ped-rifle (new 'static 'traffic-guard-type-settings
+                                     :target-count #x7
+                                     :inaccuracy 0.25
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x258
+                                     :shot-count 2
+                                     :rand-shot-count 1
+                                     )
+                                   :ped-grenade (new 'static 'traffic-guard-type-settings
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x258
+                                     :shot-count 1
+                                     )
+                                   :ped-roboguard (new 'static 'traffic-guard-type-settings
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x258
+                                     :shot-count 1
+                                     )
+                                   :bike-turret (new 'static 'traffic-guard-type-settings
+                                     :target-count 3
+                                     :inaccuracy 0.25
+                                     :acquire-delay #xe1
+                                     :shot-delay #x4b
+                                     :burst-delay #x4b0
+                                     :shot-count 2
+                                     :rand-shot-count 1
+                                     )
+                                   :hellcat-turret (new 'static 'traffic-guard-type-settings
+                                     :target-count 2
+                                     :inaccuracy 0.25
+                                     :acquire-delay #xe1
+                                     :shot-delay #x4b
+                                     :burst-delay #x4b0
+                                     :shot-count 2
+                                     :rand-shot-count 1
+                                     )
                                    )
-                                 :bike-turret (new 'static 'traffic-guard-type-settings
-                                   :target-count 1
-                                   :inaccuracy 0.5
-                                   :acquire-delay #x12c
-                                   :shot-delay #x4b
-                                   :burst-delay #x5dc
-                                   :shot-count 2
-                                   :rand-shot-count 1
-                                   )
-                                 :hellcat-turret (new 'static 'traffic-guard-type-settings
-                                   :target-count 1
-                                   :inaccuracy 0.5
-                                   :acquire-delay #x12c
-                                   :shot-delay #x4b
-                                   :burst-delay #x5dc
-                                   :shot-count 2
-                                   :rand-shot-count 1
+                                 (new 'static 'traffic-alert-state-settings
+                                   :ped-tazer (new 'static 'traffic-guard-type-settings
+                                     :target-count 2
+                                     :inaccuracy 0.125
+                                     :acquire-delay #x96
+                                     :shot-delay #x4b
+                                     :burst-delay #x258
+                                     :shot-count 1
+                                     )
+                                   :ped-rifle (new 'static 'traffic-guard-type-settings
+                                     :target-count #x7
+                                     :inaccuracy 0.125
+                                     :acquire-delay #x96
+                                     :shot-delay #x2d
+                                     :burst-delay #x258
+                                     :shot-count 2
+                                     :rand-shot-count 2
+                                     )
+                                   :ped-grenade (new 'static 'traffic-guard-type-settings
+                                     :inaccuracy 0.125
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x384
+                                     :shot-count 1
+                                     )
+                                   :ped-roboguard (new 'static 'traffic-guard-type-settings
+                                     :inaccuracy 0.5
+                                     :acquire-delay #x12c
+                                     :shot-delay #x4b
+                                     :burst-delay #x258
+                                     :shot-count 1
+                                     )
+                                   :bike-turret (new 'static 'traffic-guard-type-settings
+                                     :target-count 3
+                                     :inaccuracy 0.125
+                                     :acquire-delay #x96
+                                     :shot-delay #x4b
+                                     :burst-delay #x384
+                                     :shot-count 2
+                                     :rand-shot-count 2
+                                     )
+                                   :hellcat-turret (new 'static 'traffic-guard-type-settings
+                                     :target-count 2
+                                     :inaccuracy 0.125
+                                     :acquire-delay #x96
+                                     :shot-delay #x4b
+                                     :burst-delay #x384
+                                     :shot-count 2
+                                     :rand-shot-count 2
+                                     )
                                    )
                                  )
         )
@@ -2397,7 +2599,7 @@ Process is recycled and moved to reserved, if it deactivates."
   (-> obj alert-state guard-type-info-array arg0 change-to-type)
   )
 
-(defmethod per-frame-guard-update traffic-engine ((obj traffic-engine))
+(defmethod update-guards traffic-engine ((obj traffic-engine))
   (dotimes (v1-0 6)
     (set! (-> obj alert-state guard-type-info-array v1-0 count) 0)
     )
@@ -2412,7 +2614,7 @@ Process is recycled and moved to reserved, if it deactivates."
           (((traffic-type guard-bike) (traffic-type hellcat))
            (let ((a3-6 (handle->process (-> obj citizen-tracker-array active-object-list a2-0))))
              (when (and a3-6
-                        (not (logtest? (-> (the-as vehicle a3-6) focus-status) (focus-status dead inactive)))
+                        (not (focus-test? (the-as vehicle a3-6) dead inactive))
                         (logtest? (rigid-body-object-flag alert) (-> (the-as vehicle a3-6) flags))
                         )
                (let ((t0-13 (-> (the-as vehicle a3-6) info-override guard-type)))
@@ -2455,7 +2657,7 @@ Process is recycled and moved to reserved, if it deactivates."
           (case (-> obj vehicle-tracker-array active-object-type-list s1-0)
             (((traffic-type crimson-guard-1))
              (let ((s0-0 (handle->process (-> obj vehicle-tracker-array active-object-list s1-0))))
-               (when (and s0-0 (zero? (logand (-> (the-as crimson-guard s0-0) focus-status) (focus-status dead inactive))))
+               (when (and s0-0 (not (logtest? (-> (the-as crimson-guard s0-0) focus-status) (focus-status dead inactive))))
                  (when (and (logtest? (-> (the-as crimson-guard s0-0) flags) (citizen-flag in-pursuit))
                             (logtest? (-> (the-as crimson-guard s0-0) flags) (citizen-flag target-in-sight))
                             )
@@ -2468,7 +2670,7 @@ Process is recycled and moved to reserved, if it deactivates."
                          (set! s5-0 (the-as crimson-guard s0-0))
                          )
                        (if (and (< 327680.0 f0-3)
-                                (zero? (logand (-> obj alert-state flags) (traffic-alert-flag disable-pursuit-control)))
+                                (not (logtest? (-> obj alert-state flags) (traffic-alert-flag disable-pursuit-control)))
                                 )
                            (send-event (the-as crimson-guard s0-0) 'end-pursuit)
                            )
@@ -2528,7 +2730,7 @@ Process is recycled and moved to reserved, if it deactivates."
   (none)
   )
 
-(defmethod per-frame-alert-update traffic-engine ((obj traffic-engine))
+(defmethod update-alert-state traffic-engine ((obj traffic-engine))
   (with-pp
     (if (and (logtest? (-> obj alert-state flags) (traffic-alert-flag target-jak)) *target*)
         (set! (-> obj alert-state target-status-array 0 handle) (process->handle *target*))
@@ -2536,7 +2738,7 @@ Process is recycled and moved to reserved, if it deactivates."
     (when #t
       (mem-copy!
         (the-as pointer (-> obj alert-state settings))
-        (the-as pointer (+ (the-as uint *alert-level-settings*) (* (the-as uint 96) (-> obj alert-state level))))
+        (the-as pointer (-> *alert-level-settings* (-> obj alert-state level)))
         96
         )
       (dotimes (v1-10 6)
@@ -2547,7 +2749,7 @@ Process is recycled and moved to reserved, if it deactivates."
                 (fmax 0.0 (fmin 1.0 (* (-> a1-3 inaccuracy) (-> obj alert-state guard-inaccuracy-factor))))
                 )
           (when *target*
-            (when (logtest? (focus-status pilot) (-> *target* focus-status))
+            (when (focus-test? *target* pilot)
               (set! (-> a1-3 acquire-delay) (the-as uint (the int (* 0.75 (the float (-> a1-3 acquire-delay))))))
               (set! (-> a1-3 shot-delay) (the-as uint (the int (* 0.6 (the float (-> a1-3 shot-delay))))))
               (set! (-> a1-3 burst-delay) (the-as uint (the int (* 0.8 (the float (-> a1-3 burst-delay))))))
@@ -2691,7 +2893,7 @@ Process is recycled and moved to reserved, if it deactivates."
                 *target*
                 )
            (for-all-active-processes obj (lambda ((arg0 process-focusable) (arg1 traffic-object-type-info))
-                                           (if (logtest? (-> arg1 flags) 1)
+                                           (if (logtest? (-> arg1 flags) (traffic-type-flags trtflags-0))
                                                (send-event arg0 'alert-begin *target*)
                                                )
                                            (none)
@@ -2701,7 +2903,7 @@ Process is recycled and moved to reserved, if it deactivates."
        )
       (else
         (for-all-active-processes obj (lambda ((arg0 process-focusable) (arg1 traffic-object-type-info))
-                                        (if (logtest? (-> arg1 flags) 1)
+                                        (if (logtest? (-> arg1 flags) (traffic-type-flags trtflags-0))
                                             (send-event arg0 'alert-end)
                                             )
                                         (none)
@@ -2728,54 +2930,56 @@ Process is recycled and moved to reserved, if it deactivates."
     (logclear! (-> v1-6 0 flags) (traffic-target-flag force-visible))
     )
   (set-target-level obj 1.0)
-  (set-alert-duration obj 9000)
+  (set-alert-duration obj (seconds 30))
   (set-max-alert-level obj 4)
   (let ((v1-13 42))
     (dotimes (a0-7 21)
       (let ((a1-6 (-> obj object-type-info-array a0-7)))
-        (set! (-> a1-6 flags) (the-as uint 6))
+        (set! (-> a1-6 flags) (traffic-type-flags trtflags-1 trtflags-2))
         (set! (-> a1-6 reserve-count) (the-as uint (max 1000 (min #xfde8 (* 1000 (-> a1-6 want-count))))))
         (set! (-> a1-6 killed-count) (the-as uint 0))
         (set! (-> a1-6 parking-spot-prob)
-              (the-as uint (if (and (zero? (-> a1-6 tracker-index)) (zero? (logand (-> a1-6 flags) 1)))
-                               v1-13
-                               0
-                               )
-                      )
+              (the-as
+                uint
+                (if (and (zero? (-> a1-6 tracker-index)) (not (logtest? (-> a1-6 flags) (traffic-type-flags trtflags-0))))
+                    v1-13
+                    0
+                    )
+                )
               )
         )
       )
     )
   (let ((v1-16 (-> obj object-type-info-array 6)))
-    (logior! (-> v1-16 flags) 1)
+    (logior! (-> v1-16 flags) (traffic-type-flags trtflags-0))
     )
   (let ((v1-17 (-> obj object-type-info-array 7)))
-    (logior! (-> v1-17 flags) 1)
+    (logior! (-> v1-17 flags) (traffic-type-flags trtflags-0))
     )
   (let ((v1-18 (-> obj object-type-info-array 18)))
-    (logior! (-> v1-18 flags) 1)
+    (logior! (-> v1-18 flags) (traffic-type-flags trtflags-0))
     )
   (let ((v1-19 (-> obj object-type-info-array 19)))
-    (logior! (-> v1-19 flags) 1)
+    (logior! (-> v1-19 flags) (traffic-type-flags trtflags-0))
     )
   (let ((v1-20 (-> obj object-type-info-array 20)))
-    (logior! (-> v1-20 flags) 1)
+    (logior! (-> v1-20 flags) (traffic-type-flags trtflags-0))
     )
   (let ((v1-21 (-> obj object-type-info-array 5)))
     (set! (-> v1-21 target-count) 0)
-    (set! (-> v1-21 flags) (logand -7 (-> v1-21 flags)))
+    (logclear! (-> v1-21 flags) (traffic-type-flags trtflags-1 trtflags-2))
     )
   (let ((v1-22 (-> obj object-type-info-array 3)))
     (set! (-> v1-22 target-count) 0)
-    (set! (-> v1-22 flags) (logand -5 (-> v1-22 flags)))
+    (logclear! (-> v1-22 flags) (traffic-type-flags trtflags-2))
     )
   (let ((v1-23 (-> obj object-type-info-array 4)))
     (set! (-> v1-23 target-count) 0)
-    (set! (-> v1-23 flags) (logand -5 (-> v1-23 flags)))
+    (logclear! (-> v1-23 flags) (traffic-type-flags trtflags-2))
     )
   (let ((v1-24 (-> obj object-type-info-array 17)))
     (set! (-> v1-24 target-count) 0)
-    (set! (-> v1-24 flags) (logand -7 (-> v1-24 flags)))
+    (logclear! (-> v1-24 flags) (traffic-type-flags trtflags-1 trtflags-2))
     )
   (dotimes (v1-25 6)
     (let ((a0-28 (-> obj alert-state guard-type-info-array v1-25)))
@@ -2808,7 +3012,7 @@ Process is recycled and moved to reserved, if it deactivates."
     (let ((v1-3 (handle->process (-> obj citizen-tracker-array active-object-list s4-0))))
       (when v1-3
         (cond
-          ((logtest? (-> (the-as process-focusable v1-3) focus-status) (focus-status inactive))
+          ((focus-test? (the-as process-focusable v1-3) inactive)
            (deactivate-object (-> obj citizen-tracker-array) (the-as int s4-0) #f)
            )
           ((begin (set! v1-6 (-> (the-as vehicle v1-3) controller branch)) (and v1-6 (nonzero? v1-6)))
@@ -2839,8 +3043,8 @@ Process is recycled and moved to reserved, if it deactivates."
 (defmethod set-object-auto-activate traffic-engine ((obj traffic-engine) (arg0 int) (arg1 object))
   (let ((v1-2 (-> obj object-type-info-array arg0)))
     (if arg1
-        (logior! (-> v1-2 flags) 4)
-        (set! (-> v1-2 flags) (logand -5 (-> v1-2 flags)))
+        (logior! (-> v1-2 flags) (traffic-type-flags trtflags-2))
+        (logclear! (-> v1-2 flags) (traffic-type-flags trtflags-2))
         )
     )
   0
@@ -2903,7 +3107,9 @@ Process is recycled and moved to reserved, if it deactivates."
           )
       (while (< (the-as uint s5-0) (the-as uint 21))
         (let ((s2-0 (-> obj object-type-info-array s5-0)))
-          (when (and (logtest? (-> s2-0 flags) 8) (= (level-status *level* (the-as symbol (-> s2-0 level))) 'active))
+          (when (and (logtest? (-> s2-0 flags) (traffic-type-flags trtflags-3))
+                     (= (level-status *level* (-> s2-0 level)) 'active)
+                     )
             (+! s3-0 (-> s2-0 parking-spot-prob))
             (b! (>= (the-as uint s3-0) (the-as uint s4-0)) cfg-10)
             )
@@ -2948,7 +3154,7 @@ Process is recycled and moved to reserved, if it deactivates."
   (none)
   )
 
-(defmethod per-frame-suppressor-update traffic-engine ((obj traffic-engine))
+(defmethod update-suppressor traffic-engine ((obj traffic-engine))
   (let ((v1-3 (- (-> *display* game-clock frame-counter) (-> *display* game-clock old-frame-counter))))
     (dotimes (a1-3 16)
       (let ((a2-2 (-> obj suppressor array a1-3)))
@@ -3005,12 +3211,12 @@ Process is recycled and moved to reserved, if it deactivates."
       )
   )
 
-(defmethod sphere-in-grid? city-level-info ((obj city-level-info) (arg0 int) (arg1 int))
+(defmethod sphere-in-grid? city-level-info ((obj city-level-info) (arg0 vector) (arg1 int))
   (let ((gp-0 #f))
     (let ((s3-0 (new 'stack-no-clear 'vis-grid-box))
           (s2-0 (new 'stack-no-clear 'vis-grid-box))
           )
-      (lookup-box-for-sphere (-> obj grid-info) s2-0 (the-as vector arg0))
+      (lookup-box-for-sphere (-> obj grid-info) s2-0 arg0)
       (set! (-> s3-0 min y) (-> s2-0 min y))
       (let ((v1-6 (+ (- 1 (-> s2-0 min y)) (-> s2-0 max y))))
         (b! #t cfg-13 :delay (nop!))
@@ -3215,9 +3421,9 @@ Process is recycled and moved to reserved, if it deactivates."
       )
     )
   (let ((s5-0 (math-camera-pos))
-        (f30-0 81920.0)
-        (f28-0 819200.0)
-        (f26-0 491520.0)
+        (f30-0 (meters 20))
+        (f28-0 (meters 2000))
+        (f26-0 (meters 1200))
         )
     (dotimes (s4-0 (the-as int (-> obj city-info cell-count)))
       (let ((s3-0 (-> obj city-info cell-array s4-0)))

@@ -11,7 +11,7 @@
 #include "common/util/os.h"
 #include "common/util/set_util.h"
 #include "common/util/unicode_util.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "ObjectFile/ObjectFileDB.h"
 #include "decompiler/data/TextureDB.h"
@@ -21,28 +21,43 @@
 #include "third-party/CLI11.hpp"
 #include "third-party/json.hpp"
 
+template <typename... Args>
+static void mem_log(const std::string& format, Args&&... args) {
+#ifndef _WIN32
+  lg::info("[Mem] " + format, std::forward<Args>(args)...);
+#endif
+}
+
 int main(int argc, char** argv) {
   ArgumentGuard u8_guard(argc, argv);
 
   if (!file_util::setup_project_path(std::nullopt)) {
+    lg::error("Unable to setup project path");
     return 1;
   }
-  lg::set_file(file_util::get_file_path({"log/decompiler.txt"}));
-  lg::set_file_level(lg::level::info);
-  lg::set_stdout_level(lg::level::info);
-  lg::set_flush_level(lg::level::info);
-  lg::initialize();
+
+  try {
+    lg::set_file(file_util::get_file_path({"log", "decompiler.log"}));
+    lg::set_file_level(lg::level::info);
+    lg::set_stdout_level(lg::level::info);
+    lg::set_flush_level(lg::level::info);
+    lg::initialize();
+  } catch (const std::exception& e) {
+    lg::error("Failed to setup logging: {}", e.what());
+    return 1;
+  }
 
   fs::path config_path;
   fs::path in_folder;
   fs::path out_folder;
 
+  std::string config_game_version = "";
   std::string config_override = "{}";
 
   CLI::App app{"OpenGOAL Decompiler"};
   app.add_option("config-path", config_path,
                  "Path to the decompiler config .jsonc file. ie. "
-                 "./decompiler/config/jak1_ntsc_black_label.jsonc")
+                 "./decompiler/config/jak1/jak1_config.jsonc")
       ->required();
   app.add_option("in-folder", in_folder,
                  "The path containing the iso_data folders. ie. ./iso_data/. Assumes the "
@@ -51,6 +66,10 @@ int main(int argc, char** argv) {
   app.add_option("out-folder", out_folder,
                  "The path for where the decompiler should place it's outputs. Assumes the "
                  "'gameName' from the config as a sub-directory")
+      ->required();
+
+  app.add_option("--version", config_game_version,
+                 "The name of the game version to update the config with, ie. ntsc_v2")
       ->required();
   app.add_option("--config-override", config_override,
                  "JSON provided will be merged with the specified config, use to override options");
@@ -62,11 +81,14 @@ int main(int argc, char** argv) {
 
   Config config;
   try {
-    config = read_config_file(config_path, config_override);
+    config = read_config_file(config_path, config_game_version, config_override);
   } catch (const std::exception& e) {
     lg::error("Failed to parse config: {}", e.what());
     return 1;
   }
+
+  // these options imply read_spools
+  config.read_spools |= config.process_subtitle_text || config.process_subtitle_images;
 
   // Check if any banned objects are also in the allowed objects list
   // if so, throw an error as this can be a confusing situation
@@ -100,11 +122,11 @@ int main(int argc, char** argv) {
 
   Timer decomp_timer;
 
-  lg::info("[Mem] Top of main: {} MB\n", get_peak_rss() / (1024 * 1024));
+  mem_log("Top of main: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   init_opcode_info();
 
-  lg::info("[Mem] After init: {} MB\n", get_peak_rss() / (1024 * 1024));
+  mem_log("After init: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   std::vector<fs::path> dgos, objs, strs;
   for (const auto& dgo_name : config.dgo_names) {
@@ -119,7 +141,7 @@ int main(int argc, char** argv) {
     strs.push_back(in_folder / str_name);
   }
 
-  lg::info("[Mem] After config read: {} MB", get_peak_rss() / (1024 * 1024));
+  mem_log("After config read: {} MB", get_peak_rss() / (1024 * 1024));
 
   // build file database
   lg::info("Setting up object file DB...");
@@ -140,7 +162,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  lg::info("[Mem] After DB setup: {} MB", get_peak_rss() / (1024 * 1024));
+  mem_log("After DB setup: {} MB", get_peak_rss() / (1024 * 1024));
 
   // write out DGO file info
   file_util::write_text_file(out_folder / "dgo.txt", db.generate_dgo_listing());
@@ -157,10 +179,10 @@ int main(int argc, char** argv) {
 
   // process files (required for all analysis)
   db.process_link_data(config);
-  lg::info("[Mem] After link data: {} MB", get_peak_rss() / (1024 * 1024));
+  mem_log("After link data: {} MB", get_peak_rss() / (1024 * 1024));
   db.find_code(config);
   db.process_labels();
-  lg::info("[Mem] After code: {} MB", get_peak_rss() / (1024 * 1024));
+  mem_log("After code: {} MB", get_peak_rss() / (1024 * 1024));
 
   // top level decompile (do this before printing asm so we get function names)
   if (config.find_functions) {
@@ -204,7 +226,7 @@ int main(int argc, char** argv) {
                              config.hacks.types_with_bad_inspect_methods);
   }
 
-  lg::info("[Mem] After decomp: {} MB", get_peak_rss() / (1024 * 1024));
+  mem_log("After decomp: {} MB", get_peak_rss() / (1024 * 1024));
 
   // write out all symbols
   file_util::write_text_file(out_folder / "all-syms.gc", db.dts.dump_symbol_types());
@@ -230,7 +252,17 @@ int main(int argc, char** argv) {
     }
   }
 
-  lg::info("[Mem] After text: {} MB", get_peak_rss() / (1024 * 1024));
+  mem_log("After text: {} MB", get_peak_rss() / (1024 * 1024));
+
+  if (config.process_subtitle_text || config.process_subtitle_images) {
+    auto result = db.process_all_spool_subtitles(
+        config, config.process_subtitle_images ? out_folder / "assets" / "subtitle-images" : "");
+    if (!result.empty()) {
+      file_util::write_text_file(out_folder / "assets" / "game_subs.txt", result);
+    }
+  }
+
+  mem_log("After spool handling: {} MB", get_peak_rss() / (1024 * 1024));
 
   decompiler::TextureDB tex_db;
   if (config.process_tpages || config.levels_extract) {
@@ -239,10 +271,13 @@ int main(int argc, char** argv) {
     auto result = db.process_tpages(tex_db, textures_out);
     if (!result.empty() && config.process_tpages) {
       file_util::write_text_file(textures_out / "tpage-dir.txt", result);
+      file_util::write_text_file(textures_out / "tex-remap.txt",
+                                 tex_db.generate_texture_dest_adjustment_table());
     }
   }
 
-  lg::info("[Mem] After textures: {} MB", get_peak_rss() / (1024 * 1024));
+  mem_log("After textures: {} MB", get_peak_rss() / (1024 * 1024));
+
   auto replacements_path = file_util::get_jak_project_dir() / "texture_replacements";
   if (fs::exists(replacements_path)) {
     tex_db.replace_textures(replacements_path);
@@ -263,7 +298,7 @@ int main(int argc, char** argv) {
                        config.rip_levels, config.extract_collision, level_out_path);
   }
 
-  lg::info("[Mem] After extraction: {} MB", get_peak_rss() / (1024 * 1024));
+  mem_log("After extraction: {} MB", get_peak_rss() / (1024 * 1024));
 
   if (!config.audio_dir_file_name.empty()) {
     auto streaming_audio_in = in_folder / "VAG";

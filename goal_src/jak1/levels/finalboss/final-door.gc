@@ -29,7 +29,7 @@
   :flag-assert         #x17004000b0
   (:methods
     (idle () _type_ :state 20)
-    (dummy-21 (_type_) none 21)
+    (final-door-method-21 (_type_) none 21)
     (open (symbol) _type_ :state 22)
     )
   )
@@ -52,8 +52,8 @@
 
 (defstate idle (final-door)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('open)
        (go-virtual open #f)
        )
@@ -70,24 +70,24 @@
 
 (defstate open (final-door)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'brightness)
-                       (let ((f0-0 (the-as float (-> arg3 param 0)))
-                             (f1-0 (the-as float (-> arg3 param 1)))
-                             )
-                         (set-vector! (-> self draw color-mult) f0-0 f0-0 f0-0 f0-0)
-                         (let ((v0-0 (-> self draw color-emissive)))
-                           (set! (-> v0-0 x) f1-0)
-                           (set! (-> v0-0 y) f1-0)
-                           (set! (-> v0-0 z) f1-0)
-                           (set! (-> v0-0 w) f1-0)
-                           v0-0
-                           )
-                         )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('brightness)
+                      (let ((f0-0 (the-as float (-> event param 0)))
+                            (f1-0 (the-as float (-> event param 1)))
+                            )
+                        (set-vector! (-> self draw color-mult) f0-0 f0-0 f0-0 f0-0)
+                        (let ((v0-0 (-> self draw color-emissive)))
+                          (set! (-> v0-0 x) f1-0)
+                          (set! (-> v0-0 y) f1-0)
+                          (set! (-> v0-0 z) f1-0)
+                          (set! (-> v0-0 w) f1-0)
+                          v0-0
+                          )
+                        )
+                      )
+                     )
+            )
     )
   :code (behavior ((arg0 symbol))
     (case (-> self type)
@@ -137,7 +137,7 @@
     (set! (-> obj root) s4-0)
     )
   (process-drawable-from-entity! obj arg0)
-  (dummy-21 obj)
+  (final-door-method-21 obj)
   (go (method-of-object obj idle))
   (none)
   )
@@ -166,7 +166,7 @@
     (ja-post)
     (loop
       (if (and (and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-               (and (zero? (logand (-> *target* state-flags) (state-flags grabbed)))
+               (and (not (logtest? (-> *target* state-flags) (state-flags grabbed)))
                     (and (>= (-> *game-info* fuel) 100.0)
                          (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
                          (= (get-task-status (game-task finalboss-movies)) (task-status need-reward-speech))
@@ -188,13 +188,13 @@
     )
   )
 
-(defmethod dummy-21 power-left ((obj power-left))
+(defmethod final-door-method-21 power-left ((obj power-left))
   (initialize-skeleton obj *power-left-sg* '())
   0
   (none)
   )
 
-(defmethod dummy-21 power-right ((obj power-right))
+(defmethod final-door-method-21 power-right ((obj power-right))
   (initialize-skeleton obj *power-right-sg* '())
   0
   (none)
@@ -211,7 +211,7 @@
   :size-assert         #xd4
   :flag-assert         #x17007000d4
   (:methods
-    (dummy-20 () none 20)
+    (powercellalt-method-20 () none 20)
     (jump () _type_ :state 21)
     (idle () _type_ :state 22)
     )
@@ -305,8 +305,8 @@
   )
 
 (defstate target-final-door (target)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    ((-> target-grab event) arg0 arg1 arg2 arg3)
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    ((-> target-grab event) proc arg1 event-type event)
     )
   :enter (behavior ((arg0 basic) (arg1 handle))
     (send-event *camera* 'change-to-entity-by-name "camera-403")
@@ -416,7 +416,3 @@
     )
   :post target-no-stick-post
   )
-
-
-
-

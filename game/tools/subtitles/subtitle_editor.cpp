@@ -47,7 +47,7 @@ void SubtitleEditor::repl_play_hint(const std::string_view& hint_name) {
   // repl_set_continue_point("village1-hut");
   // TODO - move into water fountain
   m_repl.eval(
-      fmt::format("(level-hint-spawn (game-text-id zero) \"{}\" (the-as entity #f) *entity-pool* "
+      fmt::format("(level-hint-spawn (text-id zero) \"{}\" (the-as entity #f) *entity-pool* "
                   "(game-task none))",
                   hint_name));
 }
@@ -645,8 +645,8 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
     } else if (linetext.empty() || subtitleLine.offscreen) {
       ImGui::PopStyleColor();
     }
-    auto newtext = font->convert_utf8_to_game_with_escape(linetext);
-    auto newspkr = font->convert_utf8_to_game_with_escape(linespkr);
+    auto newtext = font->convert_utf8_to_game(linetext, true);
+    auto newspkr = font->convert_utf8_to_game(linespkr, true);
     subtitleLine.line = newtext;
     subtitleLine.speaker = newspkr;
   }
@@ -669,10 +669,9 @@ void SubtitleEditor::draw_new_cutscene_line_form() {
     if (ImGui::Button("Add Text Entry")) {
       auto font = get_font_bank(
           parse_text_only_version(m_subtitle_db.m_banks[m_current_language]->file_path));
-      m_current_scene->add_line(m_current_scene_frame,
-                                font->convert_utf8_to_game_with_escape(m_current_scene_text),
-                                font->convert_utf8_to_game_with_escape(m_current_scene_speaker),
-                                m_current_scene_offscreen);
+      m_current_scene->add_line(
+          m_current_scene_frame, font->convert_utf8_to_game(m_current_scene_text, true),
+          font->convert_utf8_to_game(m_current_scene_speaker, true), m_current_scene_offscreen);
     }
   }
   if (m_current_scene_frame < 0) {

@@ -736,6 +736,7 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
     event_handler_hack = function.guessed_name.is_event_handler() ||
                          function.guessed_name.to_string() == "target-generic-event-handler" ||
                          function.guessed_name.to_string() == "target-standard-event-handler" ||
+                         function.guessed_name.to_string() == "target-board-handler" ||
                          function.guessed_name.to_string() == "(method 74 pegasus)" ||
                          function.guessed_name.to_string() == "(method 74 crimson-guard-level)" ||
                          function.guessed_name.to_string() == "widow-handler" ||
@@ -743,6 +744,11 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
                          function.guessed_name.to_string() == "water-anim-event-handler" ||
                          function.guessed_name.to_string() == "(method 74 civilian)" ||
                          function.guessed_name.to_string() == "(method 74 crimson-guard)";
+  }
+
+  if (function.ir2.env.version == GameVersion::Jak1) {
+    event_handler_hack = function.guessed_name.is_event_handler() ||
+                         function.guessed_name.to_string() == "target-generic-event-handler";
   }
 
   for (int block_id = 0; block_id < int(blocks.size()); block_id++) {

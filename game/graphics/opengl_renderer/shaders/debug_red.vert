@@ -9,6 +9,6 @@ out vec4 fragment_color;
 void main() {
   gl_Position = vec4((position_in.x - 0.5) * 16., -(position_in.y - 0.5) * 32, position_in.z * 2 - 1., 1.0);
   // scissoring area adjust
-  gl_Position.y *= 512.0/448.0;
+  gl_Position.y *= SCISSOR_ADJUST;
   fragment_color = vec4(1.0, 0, 0, 0.7);
 }

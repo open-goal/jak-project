@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "third-party/json.hpp"
 
@@ -31,6 +31,7 @@ struct Config {
   Config(GameVersion _game_version) : game_version(_game_version){};
 
   // this is the default REPL configuration
+  std::string game_version_folder;
   int target_connect_attempts = 30;
   std::vector<std::string> asm_file_search_dirs = {};
   bool append_keybinds = true;

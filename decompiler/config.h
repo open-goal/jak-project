@@ -8,7 +8,7 @@
 
 #include "common/common_types.h"
 #include "common/util/FileUtil.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/data/game_text.h"
@@ -112,10 +112,13 @@ struct Config {
   bool process_game_text = false;
   bool process_game_count = false;
   bool process_art_groups = false;
+  bool process_subtitle_text = false;
+  bool process_subtitle_images = false;
   bool dump_art_group_info = false;
   bool rip_levels = false;
   bool extract_collision = false;
   bool find_functions = false;
+  bool read_spools = false;
 
   bool write_hex_near_instructions = false;
   bool hexdump_code = false;
@@ -169,6 +172,7 @@ struct Config {
 };
 
 Config read_config_file(const fs::path& path_to_config_file,
+                        const std::string& config_game_version,
                         const std::string& override_json = "{}");
 
 }  // namespace decompiler

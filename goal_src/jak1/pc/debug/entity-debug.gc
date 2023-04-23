@@ -7,7 +7,20 @@
 
 |#
 
+(declare-file (debug))
+
 (define *debug-temp-string* (new 'debug 'string 4096 (the string #f)))
+
+(defmethod set-entity! entity-debug-inspect ((obj entity-debug-inspect) (e entity))
+  "set the entity to inspect"
+
+  (set! (-> obj entity) e)
+  (unless e
+    (set! *display-actor-anim* (the string #f)))
+  (set! (-> obj scroll-y) 0)
+
+  e
+  )
 
 ;; custom entity functions for pc port
 (defun-debug entity-inspect-draw ((inspect-info entity-debug-inspect))
@@ -78,7 +91,7 @@
           )
         ;; text id (can be hint ambient)
         ((and (= (-> e tag i name) 'text-id) (= (-> e tag i elt-count) 1) (= (-> e tag i elt-type) int32))
-          (format *debug-temp-string* " (game-text-id ~S)" (game-text-id->string (-> (the (pointer game-text-id) data) 0)))
+          (format *debug-temp-string* " (text-id ~S)" (text-id->string (-> (the (pointer text-id) data) 0)))
           )
         ;; eco-info, like in vents, crates, or collectables in general
         ((and (= (-> e tag i name) 'eco-info) (= (-> e tag i elt-count) 2) (= (-> e tag i elt-type) int32))

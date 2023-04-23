@@ -39,13 +39,17 @@
 (cond
   ;; extractor can override everything by providing *use-iso-data-path*
   (*use-iso-data-path*
-    (map-path! "$ISO" (string-append *iso-data* "/")))
+   (map-path! "$ISO" (string-append *iso-data* "/")))
   ;; user-specific places to put $ISO
+  ;; TODO - remove?
   ((user? dass)
-    (map-path! "$ISO" "iso_data/jak1_us2/"))
-  ;; for normal people, just use jak1.
+   (map-path! "$ISO" "iso_data/jak1_us2/"))
+  ;; if the user's repl-config has a game version folder, use that
+  ((> (string-length (get-game-version-folder)) 0)
+   (map-path! "$ISO" (string-append "iso_data/" (get-game-version-folder) "/")))
+  ;; otherwise, default to jak1
   (#t
-    (map-path! "$ISO" "iso_data/jak1/")))
+   (map-path! "$ISO" "iso_data/jak1/")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Inputs from decompiler
@@ -53,10 +57,15 @@
 
 (cond
   ;; user-specific places to put $ISO
+  ;; TODO - remove?
   ((user? dass)
-    (map-path! "$DECOMP" "decompiler_out/jak1_us2/"))
+   (map-path! "$DECOMP" "decompiler_out/jak1_us2/"))
+  ;; if the user's repl-config has a game version folder, use that
+  ((> (string-length (get-game-version-folder)) 0)
+   (map-path! "$DECOMP" (string-append "decompiler_out/" (get-game-version-folder) "/")))
+  ;; otherwise, default to jak1
   (#t
-    (map-path! "$DECOMP" "decompiler_out/jak1/")))
+   (map-path! "$DECOMP" "decompiler_out/jak1/")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Output
@@ -1915,7 +1924,16 @@
  "game/task/hint-control.gc"
  "entity/ambient.gc"
  "debug/assert.gc"
- "common-obs/generic-obs.gc"
+ )
+
+(goal-src "engine/common-obs/generic-obs.gc" "pc-anim-util" "assert")
+
+(goal-src-sequence
+ ;; prefix
+ "engine/"
+
+ :deps
+ ("$OUT/obj/generic-obs.o")
  "target/target-util.gc"
  "target/target-part.gc"
  "target/collide-reaction-target.gc"
@@ -2045,14 +2063,18 @@
 (goal-src "pc/features/autosplit.gc" "autosplit-h" "task-control-h" "progress-static")
 (goal-src "pc/features/speedruns.gc" "speedruns-h" "autosplit-h")
 (goal-src "pc/pckernel-h.gc" "dma-buffer")
+(goal-src "pc/pckernel-impl.gc" "pckernel-h")
 (goal-src "pc/util/pc-anim-util.gc" "target-h")
-(goal-src "pc/pckernel.gc" "pc-anim-util" "settings" "video" "target-h" "autosplit-h" "speedruns-h")
+(goal-src "pc/pckernel-common.gc" "pckernel-impl" "pc-anim-util" "settings" "video" "target-h" "autosplit-h" "speedruns-h")
+(goal-src "pc/pckernel.gc" "pckernel-common")
 (goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
 (goal-src "pc/hud-classes-pc.gc" "pckernel" "hud" "battlecontroller" "generic-obs")
 (goal-src "pc/debug/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")
 (goal-src "pc/debug/entity-debug.gc" "debug" "main-h" "entity" "pckernel" "font")
 (goal-src "pc/debug/default-menu-pc.gc" "anim-tester-x" "part-tester" "entity-debug")
+(goal-src "pc/debug/pc-debug-common.gc" "pckernel-impl" "entity-h" "game-info-h" "level-h" "settings-h" "gsound-h" "target-util")
+(goal-src "pc/debug/pc-debug-methods.gc" "pc-debug-common")
 
 (group-list "all-code"
   `(,@(reverse *all-gc*))

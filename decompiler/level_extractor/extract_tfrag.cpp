@@ -1825,7 +1825,8 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
 
 void process_draw_mode(std::vector<TFragDraw>& all_draws,
                        const std::vector<level_tools::TextureRemap>& map,
-                       tfrag3::TFragmentTreeKind tree_kind) {
+                       tfrag3::TFragmentTreeKind tree_kind,
+                       bool disable_atest_for_normal_tfrag) {
   // set up the draw mode based on the code in background.gc and tfrag-methods.gc
   DrawMode mode;
   mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
@@ -1838,13 +1839,24 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
   switch (tree_kind) {
     case tfrag3::TFragmentTreeKind::NORMAL:
     case tfrag3::TFragmentTreeKind::LOWRES:
-      mode.enable_at();                                  // :ate #x1
-      mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);  // :atst (gs-atest greater-equal)
-      mode.set_aref(0x26);                               // :aref #x26
-      mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
-      mode.enable_zt();                            // :zte #x1
-      mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
-      mode.disable_ab();
+      if (disable_atest_for_normal_tfrag) {
+        mode.enable_at();                                  // :ate #x1
+        mode.set_alpha_test(DrawMode::AlphaTest::ALWAYS);  // :atst (gs-atest greater-equal)
+        mode.set_aref(0x0);                                // :aref #x26
+        mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+        mode.enable_zt();                            // :zte #x1
+        mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
+        mode.disable_ab();
+      } else {
+        mode.enable_at();                                  // :ate #x1
+        mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);  // :atst (gs-atest greater-equal)
+        mode.set_aref(0x26);                               // :aref #x26
+        mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+        mode.enable_zt();                            // :zte #x1
+        mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
+        mode.disable_ab();
+      }
+
       break;
     case tfrag3::TFragmentTreeKind::TRANS:
     case tfrag3::TFragmentTreeKind::LOWRES_TRANS:
@@ -1899,7 +1911,13 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
           update_mode_from_test1(val, mode);
           break;
         case GsRegisterAddress::TEX0_1:
-          // ASSERT(val == 0); HACK jak 2 sets this.
+          ASSERT(val == 0 || val == 0x8'0000'0000);
+          if (val == 0x8'0000'0000) {
+            mode.set_decal(true);
+          } else {
+            mode.set_decal(false);
+          }
+          mode.set_tcc(false);
           break;
         case GsRegisterAddress::TEX1_1:
           ASSERT(val == 0x120);  // some flag
@@ -2070,9 +2088,8 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
           vtx.z = vert.pre_cam_trans_pos.z();
           vtx.s = vert.stq.x();
           vtx.t = vert.stq.y();
-          vtx.q_unused = vert.stq.z();
-          // if this is true, we can remove a divide in the shader
-          ASSERT(vtx.q_unused == 1.f);
+          // because this is true, we can remove a divide in the shader
+          ASSERT(vert.stq.z() == 1.f);
           vtx.color_index = vert.rgba / 4;
           // ASSERT((vert.rgba >> 2) < 1024); spider cave has 2048?
           ASSERT((vert.rgba & 3) == 0);
@@ -2098,7 +2115,8 @@ void emulate_tfrags(int geom,
                     const TextureDB& tdb,
                     const std::vector<std::pair<int, int>>& expected_missing_textures,
                     bool dump_level,
-                    const std::string& level_name) {
+                    const std::string& level_name,
+                    bool disable_alpha_test_in_normal) {
   TFragExtractStats stats;
 
   std::vector<u8> vu_mem;
@@ -2114,7 +2132,7 @@ void emulate_tfrags(int geom,
     all_draws.insert(all_draws.end(), draws.begin(), draws.end());
   }
 
-  process_draw_mode(all_draws, map, tree_out.kind);
+  process_draw_mode(all_draws, map, tree_out.kind, disable_alpha_test_in_normal);
   auto groups = make_draw_groups(all_draws);
 
   make_tfrag3_data(groups, tree_out, vertices, level_out.textures, tdb, expected_missing_textures,
@@ -2161,7 +2179,8 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
                    const std::vector<std::pair<int, int>>& expected_missing_textures,
                    tfrag3::Level& out,
                    bool dump_level,
-                   const std::string& level_name) {
+                   const std::string& level_name,
+                   bool disable_atest_in_normal) {
   // go through 3 lods(?)
   for (int geom = 0; geom < GEOM_MAX; ++geom) {
     tfrag3::TfragTree this_tree;
@@ -2224,7 +2243,8 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
 
     std::vector<tfrag3::PreloadedVertex> vertices;
     emulate_tfrags(geom, as_tfrag_array->tfragments, debug_name, map, out, this_tree, vertices,
-                   tex_db, expected_missing_textures, dump_level, level_name);
+                   tex_db, expected_missing_textures, dump_level, level_name,
+                   disable_atest_in_normal);
     pack_tfrag_vertices(&this_tree.packed_vertices, vertices);
     extract_time_of_day(tree, this_tree);
 

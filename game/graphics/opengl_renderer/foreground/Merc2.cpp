@@ -2,6 +2,7 @@
 
 #include "common/global_profiler/GlobalProfiler.h"
 
+#include "game/graphics/opengl_renderer/EyeRenderer.h"
 #include "game/graphics/opengl_renderer/background/background_common.h"
 
 #include "third-party/imgui/imgui.h"
@@ -214,6 +215,13 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   memcpy(&current_lights, input_data, sizeof(VuLights));
   input_data += sizeof(VuLights);
 
+  u64 uses_water = 0;
+  if (render_state->version == GameVersion::Jak1) {
+    // jak 1 figures out water at runtime sadly
+    memcpy(&uses_water, input_data, 8);
+    input_data += 16;
+  }
+
   // Next part is the matrix slot string. The game sends us a bunch of bone matrices,
   // but they may not be in order, or include all bones. The matrix slot string tells
   // us which bones go where. (the game doesn't go in order because it follows the merc format)
@@ -235,13 +243,20 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   input_data += 128 + 16 * i;
 
   // Next part is some flags
-  auto* flags = (const u32*)input_data;
-  int num_effects = flags[0];  // mostly just a sanity check
+  struct PcMercFlags {
+    u64 enable_mask;
+    u64 ignore_alpha_mask;
+    u8 effect_count;
+    u8 bitflags;
+  };
+  auto* flags = (const PcMercFlags*)input_data;
+  int num_effects = flags->effect_count;  // mostly just a sanity check
   ASSERT(num_effects < kMaxEffect);
-  u32 current_ignore_alpha_bits = flags[1];   // shader settings
-  u32 current_effect_enable_bits = flags[2];  // mask for game to disable an effect
-  bool model_uses_mod = flags[3];             // if we should update vertices from game.
-  input_data += 16;
+  u64 current_ignore_alpha_bits = flags->ignore_alpha_mask;  // shader settings
+  u64 current_effect_enable_bits = flags->enable_mask;       // mask for game to disable an effect
+  bool model_uses_mod = flags->bitflags & 1;  // if we should update vertices from game.
+  bool model_disables_fog = (flags->bitflags & 2);
+  input_data += 32;
 
   // Next is "fade data", indicating the color/intensity of envmap effect
   u8 fade_buffer[4 * kMaxEffect];
@@ -340,15 +355,19 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
 
             // loop over vertices in the fragment and unpack
             for (u32 w = my_u4_count / 4; w < (my_l4_count / 4) - 2; w += 3) {
-              // just want positions for now.
+              // positions
               u32 q0w = 0x4b010000 + frag[w * 4 + (0 * 4) + 3];
               u32 q1w = 0x4b010000 + frag[w * 4 + (1 * 4) + 3];
               u32 q2w = 0x4b010000 + frag[w * 4 + (2 * 4) + 3];
 
-              // and maybe normals
+              // normals
               u32 q0z = 0x47800000 + frag[w * 4 + (0 * 4) + 2];
               u32 q1z = 0x47800000 + frag[w * 4 + (1 * 4) + 2];
               u32 q2z = 0x47800000 + frag[w * 4 + (2 * 4) + 2];
+
+              // uvs
+              u32 q2x = model->st_vif_add + frag[w * 4 + (2 * 4) + 0];
+              u32 q2y = model->st_vif_add + frag[w * 4 + (2 * 4) + 1];
 
               auto* pos_array = m_mod_vtx_unpack_temp[vidx].pos;
               memcpy(&pos_array[0], &q0w, 4);
@@ -368,6 +387,13 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
               nrm_array[0] += -65537;
               nrm_array[1] += -65537;
               nrm_array[2] += -65537;
+
+              auto* uv_array = m_mod_vtx_unpack_temp[vidx].uv;
+              memcpy(&uv_array[0], &q2x, 4);
+              memcpy(&uv_array[1], &q2y, 4);
+              uv_array[0] += model->st_magic;
+              uv_array[1] += model->st_magic;
+
               vidx++;
             }
           }
@@ -394,6 +420,8 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
           u32 addr = effect.mod.vertex_lump4_addr[vi];
           if (addr < vidx) {
             memcpy(&m_mod_vtx_temp[vi], &m_mod_vtx_unpack_temp[addr], 32);
+            m_mod_vtx_temp[vi].st[0] = m_mod_vtx_unpack_temp[addr].uv[0];
+            m_mod_vtx_temp[vi].st[1] = m_mod_vtx_unpack_temp[addr].uv[1];
           }
         }
       }
@@ -453,7 +481,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   // loop over effects, creating draws for each
   for (size_t ei = 0; ei < model->effects.size(); ei++) {
     // game has disabled it?
-    if (!(current_effect_enable_bits & (1 << ei))) {
+    if (!(current_effect_enable_bits & (1ull << ei))) {
       continue;
     }
 
@@ -462,7 +490,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
       continue;
     }
 
-    u8 ignore_alpha = (current_ignore_alpha_bits & (1 << ei));
+    bool ignore_alpha = !!(current_ignore_alpha_bits & (1ull << ei));
     auto& effect = model->effects[ei];
 
     bool should_envmap = effect.has_envmap;
@@ -473,24 +501,29 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
 
       // do fixed draws:
       for (auto& fdraw : effect.mod.fix_draw) {
-        alloc_normal_draw(fdraw, ignore_alpha, lev_bucket, first_bone, lights);
+        alloc_normal_draw(fdraw, ignore_alpha, lev_bucket, first_bone, lights, uses_water,
+                          model_disables_fog);
         if (should_envmap) {
           try_alloc_envmap_draw(fdraw, effect.envmap_mode, effect.envmap_texture, lev_bucket,
-                                fade_buffer + 4 * ei, first_bone, lights);
+                                fade_buffer + 4 * ei, first_bone, lights, uses_water);
         }
       }
 
       // do mod draws
       for (auto& mdraw : effect.mod.mod_draw) {
-        auto n = alloc_normal_draw(mdraw, ignore_alpha, lev_bucket, first_bone, lights);
+        auto n = alloc_normal_draw(mdraw, ignore_alpha, lev_bucket, first_bone, lights, uses_water,
+                                   model_disables_fog);
         // modify the draw, set the mod flag and point it to the opengl buffer
         n->flags |= MOD_VTX;
         n->mod_vtx_buffer = mod_opengl_buffers[ei];
         if (should_envmap) {
-          auto e = try_alloc_envmap_draw(mdraw, effect.envmap_mode, effect.envmap_texture,
-                                         lev_bucket, fade_buffer + 4 * ei, first_bone, lights);
-          e->flags |= MOD_VTX;
-          e->mod_vtx_buffer = mod_opengl_buffers[ei];
+          auto e =
+              try_alloc_envmap_draw(mdraw, effect.envmap_mode, effect.envmap_texture, lev_bucket,
+                                    fade_buffer + 4 * ei, first_bone, lights, uses_water);
+          if (e) {
+            e->flags |= MOD_VTX;
+            e->mod_vtx_buffer = mod_opengl_buffers[ei];
+          }
         }
       }
     } else {
@@ -498,9 +531,10 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
       for (auto& draw : effect.all_draws) {
         if (should_envmap) {
           try_alloc_envmap_draw(draw, effect.envmap_mode, effect.envmap_texture, lev_bucket,
-                                fade_buffer + 4 * ei, first_bone, lights);
+                                fade_buffer + 4 * ei, first_bone, lights, uses_water);
         }
-        alloc_normal_draw(draw, ignore_alpha, lev_bucket, first_bone, lights);
+        alloc_normal_draw(draw, ignore_alpha, lev_bucket, first_bone, lights, uses_water,
+                          model_disables_fog);
       }
     }
   }
@@ -877,7 +911,8 @@ Merc2::Draw* Merc2::try_alloc_envmap_draw(const tfrag3::MercDraw& mdraw,
                                           LevelDrawBucket* lev_bucket,
                                           const u8* fade,
                                           u32 first_bone,
-                                          u32 lights) {
+                                          u32 lights,
+                                          bool jak1_water_mode) {
   bool nonzero_fade = false;
   for (int i = 0; i < 4; i++) {
     if (fade[i]) {
@@ -894,6 +929,10 @@ Merc2::Draw* Merc2::try_alloc_envmap_draw(const tfrag3::MercDraw& mdraw,
   draw->first_index = mdraw.first_index;
   draw->index_count = mdraw.index_count;
   draw->mode = envmap_mode;
+  if (jak1_water_mode) {
+    draw->mode.enable_ab();
+    draw->mode.disable_depth_write();
+  }
   draw->texture = envmap_texture;
   draw->first_bone = first_bone;
   draw->light_idx = lights;
@@ -908,13 +947,25 @@ Merc2::Draw* Merc2::alloc_normal_draw(const tfrag3::MercDraw& mdraw,
                                       bool ignore_alpha,
                                       LevelDrawBucket* lev_bucket,
                                       u32 first_bone,
-                                      u32 lights) {
+                                      u32 lights,
+                                      bool jak1_water_mode,
+                                      bool disable_fog) {
   Draw* draw = &lev_bucket->draws[lev_bucket->next_free_draw++];
   draw->flags = 0;
   draw->first_index = mdraw.first_index;
   draw->index_count = mdraw.index_count;
   draw->mode = mdraw.mode;
-  draw->texture = mdraw.tree_tex_id;
+  if (jak1_water_mode) {
+    draw->mode.set_ab(true);
+    draw->mode.disable_depth_write();
+  }
+
+  if (disable_fog) {
+    draw->mode.set_fog(false);
+    // but don't toggle it the other way?
+  }
+
+  draw->texture = mdraw.eye_id == 0xff ? mdraw.tree_tex_id : (0xffffff00 | mdraw.eye_id);
   draw->first_bone = first_bone;
   draw->light_idx = lights;
   draw->num_triangles = mdraw.num_triangles;
@@ -1025,11 +1076,14 @@ void Merc2::do_draws(const Draw* draw_array,
                      const Uniforms& uniforms,
                      ScopedProfilerNode& prof,
                      bool set_fade,
-                     SharedRenderState*) {
+                     SharedRenderState* render_state) {
   glBindVertexArray(m_vao);
   int last_tex = -1;
   int last_light = -1;
   bool normal_vtx_buffer_bound = true;
+
+  bool fog_on = true;
+
   for (u32 di = 0; di < num_draws; di++) {
     auto& draw = draw_array[di];
     if (draw.flags & MOD_VTX) {
@@ -1046,9 +1100,28 @@ void Merc2::do_draws(const Draw* draw_array,
       }
     }
     glUniform1i(uniforms.ignore_alpha, draw.flags & DrawFlags::IGNORE_ALPHA);
+
+    if (fog_on && !draw.mode.get_fog_enable()) {
+      // on -> off
+      glUniform4f(uniforms.fog_color, render_state->fog_color[0] / 255.f,
+                  render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f, 0);
+      fog_on = false;
+    } else if (!fog_on && draw.mode.get_fog_enable()) {
+      glUniform4f(uniforms.fog_color, render_state->fog_color[0] / 255.f,
+                  render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
+                  render_state->fog_intensity / 255);
+      fog_on = true;
+    }
+    bool use_mipmaps_for_filtering = true;
     if ((int)draw.texture != last_tex) {
       if (draw.texture < lev->textures.size()) {
         glBindTexture(GL_TEXTURE_2D, lev->textures.at(draw.texture));
+      } else if ((draw.texture & 0xffffff00) == 0xffffff00) {
+        auto maybe_eye = render_state->eye_renderer->lookup_eye_texture(draw.texture & 0xff);
+        if (maybe_eye) {
+          glBindTexture(GL_TEXTURE_2D, *maybe_eye);
+        }
+        use_mipmaps_for_filtering = false;
       } else {
         fmt::print("Invalid draw.texture is {}, would have crashed.\n", draw.texture);
       }
@@ -1065,7 +1138,7 @@ void Merc2::do_draws(const Draw* draw_array,
       set_uniform(uniforms.light_ambient, m_lights_buffer[draw.light_idx].ambient);
       last_light = draw.light_idx;
     }
-    setup_opengl_from_draw_mode(draw.mode, GL_TEXTURE0, true);
+    setup_opengl_from_draw_mode(draw.mode, GL_TEXTURE0, use_mipmaps_for_filtering);
 
     glUniform1i(uniforms.decal, draw.mode.get_decal());
 

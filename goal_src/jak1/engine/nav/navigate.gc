@@ -234,11 +234,11 @@
   (vector+! arg1 arg1 (-> obj origin))
   )
 
-(define *edge-vert0-table* (the-as (array int8) (new 'static 'boxed-array :type int8 1 2 0)))
+(define *edge-vert0-table* (new 'static 'boxed-array :type int8 1 2 0))
 
-(define *edge-vert1-table* (the-as (array int8) (new 'static 'boxed-array :type int8 2 0 1)))
+(define *edge-vert1-table* (new 'static 'boxed-array :type int8 2 0 1))
 
-(define *edge-mask-table* (the-as (array int8) (new 'static 'boxed-array :type int8 1 2 4)))
+(define *edge-mask-table* (new 'static 'boxed-array :type int8 1 2 4))
 
 (defun inc-mod3 ((arg0 int))
   (local-vars (v0-1 int) (v1-1 int))
@@ -381,7 +381,7 @@
          (vf9 :class vf)
          )
     (let ((t0-0 (-> arg0 poly arg1)))
-      (when (zero? (logand (-> t0-0 pat) 1))
+      (when (not (logtest? (-> t0-0 pat) 1))
         (let ((v1-5 (-> arg0 vertex (-> t0-0 vertex 0)))
               (a1-5 (-> arg0 vertex (-> t0-0 vertex 1)))
               (a0-2 (-> arg0 vertex (-> t0-0 vertex 2)))
@@ -740,6 +740,7 @@
     )
   )
 
+;; ERROR: Failed load: (set! vf3 (l.vf a0-4)) at op 42
 (defmethod is-in-mesh? nav-mesh ((obj nav-mesh) (arg0 vector) (arg1 float) (arg2 meters))
   (local-vars (v1-10 int))
   (rlet ((vf1 :class vf)
@@ -758,7 +759,7 @@
           (countdown (s1-0 (-> obj poly-count))
             (set! *debug-traverse* (+ *debug-traverse* 1))
             (let ((a0-3 (-> obj poly s1-0)))
-              (when (zero? (logand (-> a0-3 pat) 1))
+              (when (not (logtest? (-> a0-3 pat) 1))
                 (nop!)
                 (let ((v1-8 (the-as object (-> obj vertex))))
                   (nop!)
@@ -871,7 +872,7 @@
               )
           )
         (cond
-          ((and (-> arg0 next-poly) (zero? (logand (-> arg0 next-poly pat) 1)))
+          ((and (-> arg0 next-poly) (not (logtest? (-> arg0 next-poly pat) 1)))
            (set! (-> arg0 current-poly) (-> arg0 next-poly))
            )
           (else
@@ -983,7 +984,7 @@
 
 (define *nav-update-route-table-route-count* 0)
 
-(defmethod dummy-18 nav-mesh ((obj nav-mesh) (arg0 int) (arg1 vector) (arg2 int) (arg3 (pointer int8)) (arg4 int))
+(defmethod nav-mesh-method-18 nav-mesh ((obj nav-mesh) (arg0 int) (arg1 vector) (arg2 int) (arg3 (pointer int8)) (arg4 int))
   (local-vars (sv-32 int) (sv-48 uint))
   (set! (-> arg3 arg2) 1)
   (nav-mesh-update-route-table obj arg0 arg2 (the-as uint 3))
@@ -998,7 +999,7 @@
         (set! sv-48 (-> (the-as nav-poly (+ sv-32 (the-as int s1-1))) adj-poly 0))
         (when (and (!= sv-48 255) (!= 1 (-> (the-as (pointer uint8) (&+ arg3 sv-48)))))
           (set! (-> arg3 sv-48) 1)
-          (when (zero? (logand (-> obj poly sv-48 pat) 1))
+          (when (not (logtest? (-> obj poly sv-48 pat) 1))
             (let ((v0-3 (= (nav-mesh-lookup-route obj arg0 (the-as int sv-48)) 3)))
               (when (not v0-3)
                 (tri-centroid-local obj s1-1 s0-0)
@@ -1007,7 +1008,7 @@
                 )
               (when v0-3
                 (let* ((a0-16 obj)
-                       (t9-5 (method-of-object a0-16 dummy-18))
+                       (t9-5 (method-of-object a0-16 nav-mesh-method-18))
                        (a1-7 arg0)
                        (a2-6 arg1)
                        (t0-1 arg3)
@@ -1038,15 +1039,15 @@
         (set! *nav-update-route-table-route-count* 0)
         (countdown (s3-0 (-> obj poly-count))
           (let ((s2-0 (-> obj poly s3-0)))
-            (when (zero? (logand (-> s2-0 pat) 1))
+            (when (not (logtest? (-> s2-0 pat) 1))
               (tri-centroid-local obj s2-0 s5-0)
               (mem-set32! s4-0 64 0)
               (set! (-> s4-0 s3-0) 1)
               (dotimes (s1-0 3)
                 (let ((a3-0 (-> s2-0 adj-poly s1-0)))
                   (when (!= a3-0 255)
-                    (if (zero? (logand (-> obj poly a3-0 pat) 1))
-                        (dummy-18 obj s3-0 s5-0 (the-as int a3-0) s4-0 0)
+                    (if (not (logtest? (-> obj poly a3-0 pat) 1))
+                        (nav-mesh-method-18 obj s3-0 s5-0 (the-as int a3-0) s4-0 0)
                         )
                     )
                   )
@@ -1180,7 +1181,7 @@
     (let ((f30-0 10000000000000000000000000000000000000.0))
       (countdown (s1-0 (-> obj poly-count))
         (let ((s0-0 (-> obj poly s1-0)))
-          (when (zero? (logand (-> s0-0 pat) 1))
+          (when (not (logtest? (-> s0-0 pat) 1))
             (set! (-> s2-0 0 quad) (-> obj vertex (-> s0-0 vertex 0) quad))
             (set! (-> s2-0 1 quad) (-> obj vertex (-> s0-0 vertex 1) quad))
             (set! (-> s2-0 2 quad) (-> obj vertex (-> s0-0 vertex 2) quad))
@@ -1456,16 +1457,13 @@
     (when (< arg3 f0-2)
       (let ((f0-3 (/ arg3 f0-2)))
         (set! (-> arg0 x) (* (-> arg0 x) f0-3))
-        (let ((f0-4 (* (-> arg0 z) f0-3)))
-          (set! (-> arg0 z) f0-4)
-          f0-4
-          )
+        (set! (-> arg0 z) (* (-> arg0 z) f0-3))
         )
       )
     )
   )
 
-(defmethod dummy-23 nav-mesh ((obj nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 nav-route-portal))
+(defmethod nav-mesh-method-23 nav-mesh ((obj nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 nav-route-portal))
   (local-vars (v1-32 int) (a0-14 int) (a0-17 int) (a1-10 int) (sv-16 nav-vertex))
   (let ((s1-0 (-> obj vertex))
         (s0-0 -1)
@@ -1627,8 +1625,8 @@
             (-> s5-0 bounds w)
             (new 'static 'rgba :r #xff :g #xff :a #x20)
             )
-          (add-debug-vector #t (bucket-id debug-no-zbuf) (-> s5-0 origin) *x-vector* (meters 1.0) *color-red*)
-          (add-debug-vector #t (bucket-id debug-no-zbuf) (-> s5-0 origin) *z-vector* (meters 1.0) *color-blue*)
+          (add-debug-vector #t (bucket-id debug-no-zbuf) (-> s5-0 origin) *x-vector* (meters 1) *color-red*)
+          (add-debug-vector #t (bucket-id debug-no-zbuf) (-> s5-0 origin) *z-vector* (meters 1) *color-blue*)
           (when (logtest? (-> obj flags) (nav-control-flags navcf2))
             (dotimes (s3-0 (-> s5-0 vertex-count))
               (add-debug-x
@@ -1687,27 +1685,26 @@
           (when (logtest? (-> obj flags) (nav-control-flags navcf3))
             (dotimes (s3-2 (-> s5-0 poly-count))
               (let ((s2-1 (-> s5-0 poly s3-2)))
-                (debug-draw-poly s5-0 s2-1 (the-as rgba (cond
-                                                          ((logtest? (-> s2-1 pat) 1)
-                                                           #x40808000
-                                                           )
-                                                          ((logtest? (-> s2-1 pat) 2)
-                                                           #x4080ff00
-                                                           )
-                                                          ((logtest? (-> s2-1 pat) 4)
-                                                           (the-as int (the-as uint #x8040ff00))
-                                                           )
-                                                          ((logtest? (-> s2-1 pat) 8)
-                                                           (the-as int (the-as uint #xff408000))
-                                                           )
-                                                          ((logtest? (-> s2-1 pat) 16)
-                                                           (the-as int (the-as uint #xff408000))
-                                                           )
-                                                          (else
-                                                            (the-as int (the-as uint #x80ff8000))
-                                                            )
-                                                          )
-                                                   )
+                (debug-draw-poly s5-0 s2-1 (cond
+                                             ((logtest? (-> s2-1 pat) 1)
+                                              (new 'static 'rgba :g #x80 :b #x80 :a #x40)
+                                              )
+                                             ((logtest? (-> s2-1 pat) 2)
+                                              (new 'static 'rgba :g #xff :b #x80 :a #x40)
+                                              )
+                                             ((logtest? (-> s2-1 pat) 4)
+                                              (new 'static 'rgba :g #xff :b #x40 :a #x80)
+                                              )
+                                             ((logtest? (-> s2-1 pat) 8)
+                                              (new 'static 'rgba :g #x80 :b #x40 :a #xff)
+                                              )
+                                             ((logtest? (-> s2-1 pat) 16)
+                                              (new 'static 'rgba :g #x80 :b #x40 :a #xff)
+                                              )
+                                             (else
+                                               (new 'static 'rgba :g #x80 :b #xff :a #x80)
+                                               )
+                                             )
                                  )
                 (when (logtest? (-> obj flags) (nav-control-flags navcf4))
                   (let ((s1-1 add-debug-text-3d)
@@ -1884,7 +1881,7 @@
   (none)
   )
 
-(defmethod dummy-30 nav-control ((obj nav-control) (arg0 vector) (arg1 vector) (arg2 vector))
+(defmethod nav-control-method-30 nav-control ((obj nav-control) (arg0 vector) (arg1 vector) (arg2 vector))
   (let ((s5-0 (the-as sphere #f)))
     (let ((f30-0 -0.000001))
       (countdown (s1-0 (-> obj num-spheres))
@@ -1969,7 +1966,7 @@
   (none)
   )
 
-(defmethod TODO-RENAME-28 nav-control ((obj nav-control) (arg0 collide-kind))
+(defmethod nav-control-method-28 nav-control ((obj nav-control) (arg0 collide-kind))
   (local-vars
     (sv-32 nav-control)
     (sv-48 sphere)
@@ -1985,7 +1982,9 @@
         )
     (when (and *target*
                (or (logtest? (-> obj flags) (nav-control-flags navcf11))
-                   (logtest? (-> *target* state-flags) (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying))
+                   (logtest? (-> *target* state-flags)
+                             (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
+                             )
                    )
                )
       (let ((s2-0 obj)
@@ -2059,7 +2058,7 @@
            )
       (while (!= v1-71 (-> s4-0 alive-list-end))
         (let ((s0-3 (the-as collide-shape (-> (the-as connection v1-71) param3))))
-          (when (not (or (= s0-3 (-> obj shape)) (zero? (logand arg0 (-> s0-3 root-prim prim-core collide-as)))))
+          (when (not (or (= s0-3 (-> obj shape)) (not (logtest? arg0 (-> s0-3 root-prim prim-core collide-as)))))
             (let ((s1-3 obj))
               (set! sv-112 s3-0)
               (when (logtest? (-> s0-3 nav-flags) (nav-flags navf0))
@@ -2117,10 +2116,10 @@
   (none)
   )
 
-(defmethod dummy-35 nav-control ((obj nav-control) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 float))
+(defmethod nav-control-method-35 nav-control ((obj nav-control) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 float))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
     (vector-! v1-0 arg1 (-> obj mesh origin))
-    (TODO-ASM-32 obj arg0 v1-0 arg2 arg3 arg4)
+    (nav-control-method-32 obj arg0 v1-0 arg2 arg3 arg4)
     )
   (none)
   )
@@ -2224,7 +2223,7 @@
     (let ((s1-0 (new 'stack-no-clear 'vector)))
       (vector-float*! s1-0 arg1 arg2)
       (dotimes (s0-0 arg3)
-        (when (zero? (logand arg5 (ash 1 s0-0)))
+        (when (not (logtest? arg5 (ash 1 s0-0)))
           (let* ((v1-7 (-> arg4 s0-0))
                  (f0-2 (ray-circle-intersect arg0 s1-0 v1-7 (-> v1-7 w)))
                  )
@@ -2258,7 +2257,7 @@
     )
   )
 
-(defmethod TODO-ASM-32 nav-control ((obj nav-control) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 float))
+(defmethod nav-control-method-32 nav-control ((obj nav-control) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 float))
   (local-vars (v0-3 symbol) (v1-38 int) (a0-29 int) (a3-7 int) (sv-208 sphere))
   (let ((gp-0 (new 'stack-no-clear 'nav-control-cfs-work)))
     (set! (-> gp-0 in-dir quad) (-> arg2 quad))
@@ -2412,7 +2411,7 @@
   v0-3
   )
 
-(defmethod dummy-23 nav-control ((obj nav-control) (arg0 vector) (arg1 check-vector-collision-with-nav-spheres-info))
+(defmethod nav-control-method-23 nav-control ((obj nav-control) (arg0 vector) (arg1 check-vector-collision-with-nav-spheres-info))
   (let ((s2-1 (vector-! (new 'stack-no-clear 'vector) (-> obj shape trans) (-> obj mesh origin)))
         (f30-0 -1.0)
         )
@@ -2453,9 +2452,9 @@
     )
   )
 
-(defmethod TODO-RENAME-33 nav-control ((obj nav-control) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 float))
+(defmethod nav-control-method-33 nav-control ((obj nav-control) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 float))
   (let ((f30-0 (vector-xz-length (-> obj travel))))
-    (when (TODO-ASM-32 obj arg0 arg1 arg2 arg3 f30-0)
+    (when (nav-control-method-32 obj arg0 arg1 arg2 arg3 f30-0)
       (set! (-> obj blocked-travel quad) (-> obj travel quad))
       (let ((f0-0 (vector-xz-length (-> obj travel))))
         (when (and (>= f30-0 f0-0) (< f0-0 204.8))
@@ -2484,7 +2483,7 @@
 
 (define *test-ray-dest-pos* (new 'static 'vector :x -722887.7 :y 9532.475 :z -958862.25 :w 1.0))
 
-(defmethod dummy-19 nav-control ((obj nav-control) (arg0 vector) (arg1 collide-shape-moving) (arg2 vector) (arg3 float))
+(defmethod nav-control-method-19 nav-control ((obj nav-control) (arg0 vector) (arg1 collide-shape-moving) (arg2 vector) (arg3 float))
   (local-vars (sv-48 float))
   (let ((f30-0 (* arg3 (-> *display* seconds-per-frame)))
         (s0-0 arg1)
@@ -2507,9 +2506,9 @@
             (logclear! (-> obj flags) (nav-control-flags navcf21))
             (vector+! arg0 (-> arg1 trans) s2-1)
             )
-          (when (or (not (dummy-16 obj arg0))
+          (when (or (not (nav-control-method-16 obj arg0))
                     (logtest? (nav-control-flags navcf17) (-> obj flags))
-                    (zero? (logand (-> obj flags) (nav-control-flags navcf10)))
+                    (not (logtest? (-> obj flags) (nav-control-flags navcf10)))
                     )
             (set! (-> obj flags) (logior (nav-control-flags navcf21) (-> obj flags)))
             (vector-! (-> obj travel) arg2 (-> arg1 trans))
@@ -2522,7 +2521,7 @@
   (none)
   )
 
-(defmethod dummy-16 nav-control ((obj nav-control) (arg0 vector))
+(defmethod nav-control-method-16 nav-control ((obj nav-control) (arg0 vector))
   (find-poly-fast
     (-> obj mesh)
     (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj mesh origin))
@@ -2530,7 +2529,7 @@
     )
   )
 
-(defmethod TODO-RENAME-21 nav-control ((obj nav-control) (arg0 vector))
+(defmethod nav-control-method-21 nav-control ((obj nav-control) (arg0 vector))
   (find-poly-fast
     (-> obj mesh)
     (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj mesh origin))
@@ -2538,7 +2537,7 @@
     )
   )
 
-(defmethod TODO-RENAME-22 nav-control ((obj nav-control) (arg0 vector) (arg1 float))
+(defmethod nav-control-method-22 nav-control ((obj nav-control) (arg0 vector) (arg1 float))
   (the-as symbol (and (find-poly-fast
                         (-> obj mesh)
                         (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj mesh origin))
@@ -2559,12 +2558,12 @@
     )
   )
 
-(defmethod TODO-RENAME-26 nav-control ((obj nav-control))
+(defmethod nav-control-method-26 nav-control ((obj nav-control))
   0
   (none)
   )
 
-(defmethod TODO-RENAME-27 nav-control ((obj nav-control))
+(defmethod nav-control-method-27 nav-control ((obj nav-control))
   (local-vars (v1-7 symbol))
   (cond
     ((-> obj current-poly)
@@ -2605,19 +2604,19 @@
       (set! (-> obj current-poly) (find-poly obj (-> obj shape trans)))
       )
     )
-  (TODO-RENAME-26 obj)
+  (nav-control-method-26 obj)
   0
   (none)
   )
 
-(defmethod TODO-RENAME-16 nav-mesh ((obj nav-mesh)
-                                  (arg0 vector)
-                                  (arg1 nav-poly)
-                                  (arg2 vector)
-                                  (arg3 symbol)
-                                  (arg4 float)
-                                  (arg5 clip-travel-vector-to-mesh-return-info)
-                                  )
+(defmethod nav-mesh-method-16 nav-mesh ((obj nav-mesh)
+                                      (arg0 vector)
+                                      (arg1 nav-poly)
+                                      (arg2 vector)
+                                      (arg3 symbol)
+                                      (arg4 float)
+                                      (arg5 clip-travel-vector-to-mesh-return-info)
+                                      )
   (local-vars (v1-10 symbol) (sv-96 symbol) (sv-112 int) (sv-128 int))
   (when arg5
     (set! (-> arg5 found-boundary) #f)
@@ -2703,15 +2702,15 @@
   (none)
   )
 
-(defmethod dummy-24 nav-control ((obj nav-control) (arg0 float) (arg1 clip-travel-vector-to-mesh-return-info))
+(defmethod nav-control-method-24 nav-control ((obj nav-control) (arg0 float) (arg1 clip-travel-vector-to-mesh-return-info))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
     (vector-! v1-0 (-> obj shape trans) (-> obj mesh origin))
-    (TODO-RENAME-16
+    (nav-mesh-method-16
       (-> obj mesh)
       v1-0
       (-> obj current-poly)
       (-> obj travel)
-      (zero? (logand (-> obj flags) (nav-control-flags navcf12)))
+      (not (logtest? (-> obj flags) (nav-control-flags navcf12)))
       arg0
       arg1
       )
@@ -2824,7 +2823,7 @@
     )
   )
 
-(defmethod dummy-13 nav-control ((obj nav-control) (arg0 vector) (arg1 vector))
+(defmethod nav-control-method-13 nav-control ((obj nav-control) (arg0 vector) (arg1 vector))
   (local-vars
     (sv-80 vector)
     (sv-84 vector)
@@ -2911,14 +2910,14 @@
         )
       )
     )
-  (TODO-RENAME-33 obj (-> obj travel) sv-84 (-> obj travel) arg1 40960.0)
+  (nav-control-method-33 obj (-> obj travel) sv-84 (-> obj travel) arg1 40960.0)
   (let ((s5-1 (new 'stack-no-clear 'clip-travel-vector-to-mesh-return-info)))
-    (TODO-RENAME-16
+    (nav-mesh-method-16
       (-> obj mesh)
       sv-84
       sv-88
       (-> obj travel)
-      (zero? (logand (-> obj flags) (nav-control-flags navcf12)))
+      (not (logtest? (-> obj flags) (nav-control-flags navcf12)))
       204.8
       s5-1
       )
@@ -2934,7 +2933,7 @@
   (-> obj travel)
   )
 
-(defmethod TODO-RENAME-12 nav-control ((obj nav-control) (arg0 nav-gap-info))
+(defmethod nav-control-method-12 nav-control ((obj nav-control) (arg0 nav-gap-info))
   (when (and (-> obj next-poly) (logtest? (-> obj next-poly pat) 1))
     (let ((s4-0 (-> obj next-poly))
           (s3-1 (vector-! (new 'stack-no-clear 'vector) (-> obj shape trans) (-> obj mesh origin)))
@@ -2955,82 +2954,16 @@
     )
   )
 
-(defmethod dummy-11 nav-control ((obj nav-control) (arg0 vector))
+(defmethod nav-control-method-11 nav-control ((obj nav-control) (arg0 vector))
   (set! (-> obj old-travel quad) (-> obj travel quad))
   (-> obj block-count)
   (seek! (-> obj block-count) 0.0 0.016666668)
   (logclear! (-> obj flags) (nav-control-flags navcf9 navcf17 navcf18 navcf19))
-  (TODO-RENAME-27 obj)
+  (nav-control-method-27 obj)
   (if (logtest? (-> obj flags) (nav-control-flags navcf8))
-      (TODO-RENAME-28 obj (collide-kind
-                            background
-                            cak-1
-                            cak-2
-                            cak-3
-                            target
-                            water
-                            powerup
-                            crate
-                            enemy
-                            wall-object
-                            projectile
-                            ground-object
-                            target-attack
-                            mother-spider
-                            cak-14
-                            blue-eco-suck
-                            unknown-16
-                            unknown-17
-                            unknown-18
-                            unknown-19
-                            unknown-20
-                            unknown-21
-                            unknown-22
-                            unknown-23
-                            unknown-24
-                            unknown-25
-                            unknown-26
-                            unknown-27
-                            unknown-28
-                            unknown-29
-                            unknown-30
-                            unknown-31
-                            unknown-32
-                            unknown-33
-                            unknown-34
-                            unknown-35
-                            unknown-36
-                            unknown-37
-                            unknown-38
-                            unknown-39
-                            unknown-40
-                            unknown-41
-                            unknown-42
-                            unknown-43
-                            unknown-44
-                            unknown-45
-                            unknown-46
-                            unknown-47
-                            unknown-48
-                            unknown-49
-                            unknown-50
-                            unknown-51
-                            unknown-52
-                            unknown-53
-                            unknown-54
-                            unknown-55
-                            unknown-56
-                            unknown-57
-                            unknown-58
-                            unknown-59
-                            unknown-60
-                            unknown-61
-                            unknown-62
-                            unknown-63
-                            )
-                      )
+      (nav-control-method-28 obj (the-as collide-kind -1))
       )
-  (dummy-13 obj arg0 (-> obj old-travel))
+  (nav-control-method-13 obj arg0 (-> obj old-travel))
   (-> obj mesh)
   (vector-! (new 'stack-no-clear 'vector) (-> obj shape trans) (-> obj mesh origin))
   (let ((s5-1 (new 'stack-no-clear 'nav-gap-info)))
@@ -3040,7 +2973,7 @@
          )
         ((-> obj next-poly)
          (cond
-           ((TODO-RENAME-12 obj s5-1)
+           ((nav-control-method-12 obj s5-1)
             (set! (-> obj next-poly) #f)
             (send-event
               (the-as process-tree (-> obj process))
@@ -3069,7 +3002,3 @@
   0
   (none)
   )
-
-
-
-

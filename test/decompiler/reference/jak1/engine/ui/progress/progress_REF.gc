@@ -199,7 +199,7 @@
       (when (not (or (= tasks #f) (= (-> *game-info* level-opened i) 1)))
         (cond
           ((!= *kernel-boot-message* 'play)
-           (if (= (-> tasks level-name-id) (game-text-id misty-level-name))
+           (if (= (-> tasks level-name-id) (text-id misty-level-name))
                (set! (-> *game-info* level-opened i) (the-as uint 1))
                )
            )
@@ -307,7 +307,7 @@
   (dotimes (s5-0 (length *level-task-data*))
     (let ((s4-0 (-> *level-task-data* s5-0)))
       (when (!= s4-0 #f)
-        (when (or (= *kernel-boot-message* 'play) (= (-> s4-0 level-name-id) (game-text-id misty-level-name)))
+        (when (or (= *kernel-boot-message* 'play) (= (-> s4-0 level-name-id) (text-id misty-level-name)))
           (dotimes (s3-0 (-> s4-0 nb-of-tasks))
             (if (= (get-task-status (-> s4-0 task-info s3-0 task-id)) (task-status invalid))
                 (set! current-cells (+ current-cells 1))
@@ -1583,7 +1583,7 @@
                  (when v1-157
                    (let ((f30-0 100.0))
                      (case (-> s5-0 (-> obj option-index) name)
-                       (((game-text-id music-volume) (game-text-id speech-volume))
+                       (((text-id music-volume) (text-id speech-volume))
                         (set! f30-0 (-> (the-as (pointer float) (-> s5-0 (-> obj option-index) value-to-modify))))
                         )
                        )
@@ -1680,7 +1680,7 @@
                  (when v1-263
                    (let ((f30-1 100.0))
                      (case (-> s5-0 (-> obj option-index) name)
-                       (((game-text-id music-volume) (game-text-id speech-volume))
+                       (((text-id music-volume) (text-id speech-volume))
                         (set! f30-1 (-> (the-as (pointer float) (-> s5-0 (-> obj option-index) value-to-modify))))
                         )
                        )
@@ -1765,11 +1765,11 @@
                )
               ((= (-> s5-0 (-> obj option-index) option-type) (game-option-type button))
                (cond
-                 ((= (-> s5-0 (-> obj option-index) name) (game-text-id exit-demo))
+                 ((= (-> s5-0 (-> obj option-index) name) (text-id exit-demo))
                   (set! *master-exit* 'force)
                   (set-master-mode 'game)
                   )
-                 ((= (-> s5-0 (-> obj option-index) name) (game-text-id back))
+                 ((= (-> s5-0 (-> obj option-index) name) (text-id back))
                   (if (= (-> obj display-state) (progress-screen settings))
                       (sound-play "menu-stats")
                       (sound-play "cursor-options")
@@ -1940,7 +1940,7 @@
 ;; failed to figure out what this is:
 (defstate progress-normal (progress)
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (local-vars (v0-0 none))
+    (local-vars (v0-0 object))
     (the-as object (case event-type
                      (('go-away)
                       (go progress-going-out)
@@ -1958,10 +1958,10 @@
                                  (initialize! *game-info* 'game (the-as game-save #f) "intro-start")
                                  (set! (-> *setting-control* default auto-save) gp-1)
                                  )
-                               (set-master-mode 'game)
+                               (the-as object (set-master-mode 'game))
                                )
                               (else
-                                (set! v0-0 (the-as none -1))
+                                (set! v0-0 -1)
                                 (set! (-> self next-display-state) (the-as progress-screen v0-0))
                                 v0-0
                                 )
@@ -1969,18 +1969,18 @@
                             )
                            (((progress-screen memcard-formatting))
                             (set! (-> self force-transition) #t)
-                            (set! v0-0 (the-as none 15))
+                            (set! v0-0 15)
                             (set! (-> self next-display-state) (the-as progress-screen v0-0))
                             v0-0
                             )
                            (((progress-screen memcard-creating))
                             (cond
                               ((= (-> self display-state-stack 0) (progress-screen title))
-                               (set! v0-0 (the-as none 18))
+                               (set! v0-0 18)
                                (set! (-> self next-display-state) (the-as progress-screen v0-0))
                                )
                               (else
-                                (set! v0-0 (the-as none 17))
+                                (set! v0-0 17)
                                 (set! (-> self next-display-state) (the-as progress-screen v0-0))
                                 )
                               )
@@ -2061,29 +2061,29 @@
                            )
                          (case (-> event param 1)
                            ((14)
-                            (set! v0-0 (the-as none 7))
+                            (set! v0-0 7)
                             (set! (-> self next-display-state) (the-as progress-screen v0-0))
                             v0-0
                             )
                            (else
                              (case (-> self display-state)
                                (((progress-screen memcard-formatting))
-                                (set! v0-0 (the-as none 24))
+                                (set! v0-0 24)
                                 (set! (-> self next-display-state) (the-as progress-screen v0-0))
                                 v0-0
                                 )
                                (((progress-screen memcard-creating))
-                                (set! v0-0 (the-as none 25))
+                                (set! v0-0 25)
                                 (set! (-> self next-display-state) (the-as progress-screen v0-0))
                                 v0-0
                                 )
                                (((progress-screen memcard-saving))
-                                (set! v0-0 (the-as none 21))
+                                (set! v0-0 21)
                                 (set! (-> self next-display-state) (the-as progress-screen v0-0))
                                 v0-0
                                 )
                                (((progress-screen memcard-loading))
-                                (set! v0-0 (the-as none 20))
+                                (set! v0-0 20)
                                 (set! (-> self next-display-state) (the-as progress-screen v0-0))
                                 v0-0
                                 )

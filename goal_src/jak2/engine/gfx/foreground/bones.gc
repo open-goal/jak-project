@@ -5,33 +5,34 @@
 ;; name in dgo: bones
 ;; dgos: ENGINE, GAME
 
-;; DECOMP BEGINS
+#|@file
+bones, joints, cspace, matrix, joint-anim-frames...
+
+The "joints" define the structure of the skeleton, just storing a bind pose, and parent info. These don't change,
+and are loaded as part of the skeleton. The actual joint objects are stored in the art-joint-geo.
+
+The "do-joint-math" method of process-drawable is responsible for computing the joint-anim-frame and the bones.
+The "cspace" system is used to compute bones from joint-anim-frames.
+The "joint-anim-frame" is a list of transformqs for the relative transform between bones.
+The "bones" are the world space transform of each 'bone'
+
+The "do-joint-math" function does:
+ - call the generate-frame-function callback to generate a joint-anim-frame (does the joint anim decompress/blending)
+ - call the prebind-function which can modify the relative transforms (eg: joint-mods)
+ - walk the tree of joints, computing bones using the cspace
+ - call the postbind-function, for other effects.
+
+The "bones" system creates matrices for foreground renderers from bones/joints.
+The inputs are bones/joints, and the output is pris-mtx, which is a 4x4 "t-mtx" for transforming, and a 3x3 (stored in 3 vec4's)
+n-mtx for rotating normals.
+
+all matrices are calculated at once, and shared between merc/emerc/gmerc/shadow
+this is done by a linked list of "bone calculations", which is stashed in the dma buffer.
+|#
 
 ;; todo check bad reference.
 
-
-;; bones, joints, cspace, matrix, joint-anim-frames...
-
-;; The "joints" define the structure of the skeleton, just storing a bind pose, and parent info. These don't change,
-;; and are loaded as part of the skeleton. The actual joint objects are stored in the art-joint-geo.
-
-;; The "do-joint-math" method of process-drawable is responsible for computing the joint-anim-frame and the bones.
-;; The "cspace" system is used to compute bones from joint-anim-frames.
-;; The "joint-anim-frame" is a list of transformqs for the relative transform between bones.
-;; The "bones" are the world space transform of each 'bone'
-
-;; The "do-joint-math" function does:
-;;  - call the generate-frame-function callback to generate a joint-anim-frame (does the joint anim decompress/blending)
-;;  - call the prebind-function which can modify the relative transforms (eg: joint-mods)
-;;  - walk the tree of joints, computing bones using the cspace
-;;  - call the postbind-function, for other effects.
-
-;; The "bones" system creates matrices for foreground renderers from bones/joints.
-;; The inputs are bones/joints, and the output is pris-mtx, which is a 4x4 "t-mtx" for transforming, and a 3x3 (stored in 3 vec4's)
-;; n-mtx for rotating normals.
-
-;; all matrices are calculated at once, and shared between merc/emerc/gmerc/shadow
-;; this is done by a linked list of "bone calculations", which is stashed in the dma buffer.
+;; DECOMP BEGINS
 
 ;; list node for pending bone calculations. These are terminated by 0's.
 (deftype bone-calculation-list (structure)

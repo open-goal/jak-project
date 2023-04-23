@@ -1,0 +1,641 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type hosehead-fake-spawn-info
+(deftype hosehead-fake-spawn-info (basic)
+  ((id        int32              :offset-assert   4)
+   (walk-dist float              :offset-assert   8)
+   (handle    handle             :offset-assert  16)
+   (trans     vector     :inline :offset-assert  32)
+   (quat      quaternion :inline :offset-assert  48)
+   (trans-x   float              :offset         32)
+   (trans-y   float              :offset         36)
+   (trans-z   float              :offset         40)
+   (trans-w   float              :offset         44)
+   (quat-x    float              :offset         48)
+   (quat-y    float              :offset         52)
+   (quat-z    float              :offset         56)
+   (quat-w    float              :offset         60)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+;; definition for method 3 of type hosehead-fake-spawn-info
+(defmethod inspect hosehead-fake-spawn-info ((obj hosehead-fake-spawn-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tid: ~D~%" (-> obj id))
+  (format #t "~1Twalk-dist: ~f~%" (-> obj walk-dist))
+  (format #t "~1Thandle: ~D~%" (-> obj handle))
+  (format #t "~1Ttrans: #<vector @ #x~X>~%" (-> obj trans))
+  (format #t "~1Tquat: #<quaternion @ #x~X>~%" (-> obj quat))
+  (format #t "~1Ttrans-x: ~f~%" (-> obj trans x))
+  (format #t "~1Ttrans-y: ~f~%" (-> obj trans y))
+  (format #t "~1Ttrans-z: ~f~%" (-> obj trans z))
+  (format #t "~1Ttrans-w: ~f~%" (-> obj trans w))
+  (format #t "~1Tquat-x: ~f~%" (-> obj quat x))
+  (format #t "~1Tquat-y: ~f~%" (-> obj quat y))
+  (format #t "~1Tquat-z: ~f~%" (-> obj quat z))
+  (format #t "~1Tquat-w: ~f~%" (-> obj quat w))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type hosehead-fake
+(deftype hosehead-fake (process-drawable)
+  ((info      hosehead-fake-spawn-info         :offset-assert 200)
+   (id        int32                            :offset-assert 204)
+   (walk-dest vector                   :inline :offset-assert 208)
+   )
+  :heap-base #x60
+  :method-count-assert 25
+  :size-assert         #xe0
+  :flag-assert         #x19006000e0
+  (:methods
+    (die-fast () _type_ :state 20)
+    (idle () _type_ :state 21)
+    (walk () _type_ :state 22)
+    (debug-draw (_type_) none 23)
+    (print-def (_type_) none 24)
+    )
+  )
+
+;; definition for method 3 of type hosehead-fake
+(defmethod inspect hosehead-fake ((obj hosehead-fake))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tinfo: ~A~%" (-> obj info))
+  (format #t "~2Tid: ~D~%" (-> obj id))
+  (format #t "~2Twalk-dest: #<vector @ #x~X>~%" (-> obj walk-dest))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 24 of type hosehead-fake
+;; WARN: Return type mismatch int vs none.
+(defmethod print-def hosehead-fake ((obj hosehead-fake))
+  (let ((s5-0 (-> obj root)))
+    (format #t "~%")
+    (format #t "(def-hosehead-fake~%")
+    (format #t "   :id ~d~%" (-> obj id))
+    (format #t "   :trans-x ~M~%" (-> s5-0 trans x))
+    (format #t "   :trans-y ~M~%" (-> s5-0 trans y))
+    (format #t "   :trans-z ~M~%" (-> s5-0 trans z))
+    (format #t "   :quat-x ~f~%" (-> s5-0 quat x))
+    (format #t "   :quat-y ~f~%" (-> s5-0 quat y))
+    (format #t "   :quat-z ~f~%" (-> s5-0 quat z))
+    (format #t "   :quat-w ~f~%" (-> s5-0 quat w))
+    )
+  (let ((a0-11 (-> obj info)))
+    (when a0-11
+      (let ((f0-7 (-> a0-11 walk-dist)))
+        (if (!= f0-7 0.0)
+            (format #t "   :walk-dist ~M~%" f0-7)
+            )
+        )
+      )
+    )
+  (format #t "   )~%~%")
+  0
+  (none)
+  )
+
+;; definition for method 23 of type hosehead-fake
+;; WARN: Return type mismatch symbol vs none.
+(defmethod debug-draw hosehead-fake ((obj hosehead-fake))
+  (let ((a2-0 (-> obj info)))
+    (when a2-0
+      (if (!= (-> a2-0 walk-dist) 0.0)
+          (add-debug-line
+            #t
+            (bucket-id debug-no-zbuf1)
+            (-> a2-0 trans)
+            (-> obj walk-dest)
+            (new 'static 'rgba :r #xff :g #xff :a #x80)
+            #f
+            (the-as rgba -1)
+            )
+          )
+      )
+    )
+  (none)
+  )
+
+;; definition for function hosehead-fake-event-handler
+;; INFO: Used lq/sq
+(defbehavior hosehead-fake-event-handler hosehead-fake ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('walk)
+     (if (not (and (-> self next-state) (= (-> self next-state name) 'walk)))
+         (go-virtual walk)
+         )
+     )
+    (('die-fast)
+     (go-virtual die-fast)
+     )
+    (('set-trans)
+     (set! (-> self root trans quad) (-> (the-as vector (-> arg3 param 0)) quad))
+     (print-def self)
+     #t
+     )
+    (('pull)
+     (let ((s5-0 (new 'stack-no-clear 'vector)))
+       (vector-! s5-0 (math-camera-pos) (-> self root trans))
+       (vector-normalize! s5-0 (the-as float (-> arg3 param 0)))
+       (vector+! (-> self root trans) (-> self root trans) s5-0)
+       )
+     (print-def self)
+     #t
+     )
+    (('back)
+     (let ((s5-1 (new 'stack-no-clear 'vector)))
+       (vector-z-quaternion! s5-1 (-> self root quat))
+       (vector+float*! (-> self root trans) (-> self root trans) s5-1 (- (the-as float (-> arg3 param 0))))
+       )
+     (print-def self)
+     #t
+     )
+    (('orient)
+     (let ((s4-2 (new 'stack-no-clear 'vector))
+           (s5-2 (new 'stack-no-clear 'vector))
+           (gp-1 (new 'stack-no-clear 'quaternion))
+           )
+       (vector-! s4-2 (math-camera-pos) (-> self root trans))
+       (vector-normalize! s4-2 1.0)
+       (vector-y-quaternion! s5-2 (-> self root quat))
+       (vector-normalize! s5-2 1.0)
+       (quaternion-from-two-vectors! gp-1 s5-2 s4-2)
+       (quaternion-normalize! gp-1)
+       (quaternion*! (-> self root quat) gp-1 (-> self root quat))
+       )
+     (quaternion-normalize! (-> self root quat))
+     (print-def self)
+     #t
+     )
+    (('rotate)
+     (let ((f30-0 (the-as float (-> arg3 param 0)))
+           (s4-3 (new 'stack-no-clear 'vector))
+           (gp-2 (new 'stack-no-clear 'quaternion))
+           )
+       (vector-! s4-3 (math-camera-pos) (-> self root trans))
+       (vector-normalize! s4-3 1.0)
+       (quaternion-vector-angle! gp-2 s4-3 f30-0)
+       (quaternion-normalize! gp-2)
+       (quaternion*! (-> self root quat) gp-2 (-> self root quat))
+       )
+     (quaternion-normalize! (-> self root quat))
+     (print-def self)
+     #t
+     )
+    (('print-def)
+     (print-def self)
+     #t
+     )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (hosehead-fake)
+  :virtual #t
+  :event hosehead-fake-event-handler
+  :code (behavior ()
+    (until #f
+      (let ((v1-0 (rand-vu-int-count 7)))
+        (cond
+          ((zero? v1-0)
+           (let ((v1-3 (ja-group)))
+             (if (not (and v1-3 (= v1-3 (-> self draw art-group data 15))))
+                 (ja-channel-push! 1 (seconds 0.17))
+                 )
+             )
+           (ja-no-eval :group! (-> self draw art-group data 15)
+                       :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 15)) frames num-frames) -1)))
+                       :frame-num 0.0
+                       )
+           (until (ja-done? 0)
+             (suspend)
+             (ja :num! (seek!))
+             )
+           )
+          ((= v1-0 1)
+           (let ((v1-34 (ja-group)))
+             (if (not (and v1-34 (= v1-34 (-> self draw art-group data 15))))
+                 (ja-channel-push! 1 (seconds 0.17))
+                 )
+             )
+           (ja-no-eval :group! (-> self draw art-group data 37)
+                       :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 37)) frames num-frames) -1)))
+                       :frame-num 0.0
+                       )
+           (until (ja-done? 0)
+             (suspend)
+             (ja :num! (seek!))
+             )
+           )
+          ((= v1-0 2)
+           (ja-channel-push! 1 (seconds 0.17))
+           (ja-no-eval :group! (-> self draw art-group data 13)
+                       :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 13)) frames num-frames) -1)))
+                       :frame-num 0.0
+                       )
+           (until (ja-done? 0)
+             (suspend)
+             (ja :num! (seek!))
+             )
+           )
+          ((= v1-0 3)
+           (ja-channel-push! 1 (seconds 0.17))
+           (ja-no-eval :group! (-> self draw art-group data 14)
+                       :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 14)) frames num-frames) -1)))
+                       :frame-num 0.0
+                       )
+           (until (ja-done? 0)
+             (suspend)
+             (ja :num! (seek!))
+             )
+           )
+          ((= v1-0 4)
+           (ja-channel-push! 1 (seconds 0.17))
+           (ja-no-eval :group! (-> self draw art-group data 21)
+                       :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 21)) frames num-frames) -1)))
+                       :frame-num 0.0
+                       )
+           (until (ja-done? 0)
+             (suspend)
+             (ja :num! (seek!))
+             )
+           )
+          ((= v1-0 5)
+           (ja-channel-push! 1 (seconds 0.17))
+           (ja-no-eval :group! (-> self draw art-group data 35)
+                       :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 35)) frames num-frames) -1)))
+                       :frame-num 0.0
+                       )
+           (until (ja-done? 0)
+             (suspend)
+             (ja :num! (seek!))
+             )
+           )
+          (else
+            (ja-channel-push! 1 (seconds 0.17))
+            (ja-no-eval :group! (-> self draw art-group data 10)
+                        :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 10)) frames num-frames) -1)))
+                        :frame-num 0.0
+                        )
+            (until (ja-done? 0)
+              (suspend)
+              (ja :num! (seek!))
+              )
+            )
+          )
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (ja-post)
+    0
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate walk (hosehead-fake)
+  :virtual #t
+  :event hosehead-fake-event-handler
+  :trans (behavior ()
+    (vector-seek-3d-smooth!
+      (-> self root trans)
+      (-> self walk-dest)
+      (* 24576.0 (-> self clock seconds-per-frame))
+      0.8
+      )
+    (let ((f0-2 409.6))
+      (if (>= (* f0-2 f0-2) (vector-vector-distance-squared (-> self root trans) (-> self walk-dest)))
+          (go-virtual idle)
+          )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (let ((gp-0 (-> self draw art-group data (if (zero? (rand-vu-int-count 2))
+                                                 17
+                                                 36
+                                                 )
+                    )
+                )
+          )
+      (until #f
+        (ja-no-eval :group! gp-0
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)))
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    #f
+    (none)
+    )
+  :post (-> (method-of-type hosehead-fake idle) post)
+  )
+
+;; failed to figure out what this is:
+(defstate die-fast (hosehead-fake)
+  :virtual #t
+  :code (the-as (function none :behavior hosehead-fake) nothing)
+  )
+
+;; definition for function hosehead-fake-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior hosehead-fake-init-by-other hosehead-fake ((arg0 int) (arg1 vector) (arg2 hosehead-fake-spawn-info) (arg3 level))
+  (set! (-> self level) arg3)
+  (set! (-> self info) arg2)
+  (set! (-> self id) arg0)
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self root trans quad) (-> arg1 quad))
+  (vector-identity! (-> self root scale))
+  (quaternion-identity! (-> self root quat))
+  (when arg2
+    (set! (-> self root trans quad) (-> arg2 trans quad))
+    (quaternion-copy! (-> self root quat) (-> arg2 quat))
+    (let ((f30-0 (-> arg2 walk-dist)))
+      (when (!= f30-0 0.0)
+        (vector-z-quaternion! (-> self walk-dest) (-> arg2 quat))
+        (vector+float*! (-> self walk-dest) (-> self root trans) (-> self walk-dest) f30-0)
+        (add-debug-line
+          #t
+          (bucket-id debug-no-zbuf1)
+          (-> self root trans)
+          (-> self walk-dest)
+          (new 'static 'rgba :r #xff :g #xff :a #x80)
+          #f
+          (the-as rgba -1)
+          )
+        )
+      )
+    )
+  (logclear! (-> self mask) (process-mask actor-pause))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-hosehead" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> self draw light-index) (the-as uint 10))
+  (ja-channel-push! 1 0)
+  (ja :group! (-> self draw art-group data 5) :num! min)
+  (ja-post)
+  (set! (-> self event-hook) hosehead-fake-event-handler)
+  (go-virtual idle)
+  (none)
+  )
+
+;; definition for symbol *hosehead-fakes*, type (array hosehead-fake-spawn-info)
+(define *hosehead-fakes* (new 'static 'boxed-array :type hosehead-fake-spawn-info
+                           (new 'static 'hosehead-fake-spawn-info
+                             :trans (new 'static 'vector :x 5678842.5 :y -217158.45 :z 1979005.8 :w 1.0)
+                             :quat (new 'static 'quaternion :x 0.6518 :y -0.2702 :z 0.656 :w 0.2675)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 1
+                             :trans (new 'static 'vector :x 5728939.0 :y -222885.06 :z 1974092.1 :w 1.0)
+                             :quat (new 'static 'quaternion :x -0.4076 :y 0.0839 :z 0.8975 :w 0.1454)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 2
+                             :walk-dist 53248.0
+                             :trans (new 'static 'vector :x 5663590.5 :y -141536.05 :z 2029176.0 :w 1.0)
+                             :quat (new 'static 'quaternion :x 0.911 :y -0.1158 :z 0.384 :w 0.0955)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 3
+                             :walk-dist 81920.0
+                             :trans (new 'static 'vector :x 5704388.5 :y -114039.195 :z 2012859.1 :w 1.0)
+                             :quat (new 'static 'quaternion :x 0.749 :y -0.0788 :z 0.6559 :w 0.049)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 4
+                             :walk-dist 20480.0
+                             :trans (new 'static 'vector :x 5726517.0 :y -236245.81 :z 2093489.8 :w 1.0)
+                             :quat (new 'static 'quaternion :x 0.6097 :y -0.7552 :z 0.1993 :w 0.1333)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 5
+                             :trans (new 'static 'vector :x 5664768.0 :y -202342.4 :z 1930035.2 :w 1.0)
+                             :quat (new 'static 'quaternion :x 0.2735 :y 0.554 :z -0.6939 :w -0.3696)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 6
+                             :trans (new 'static 'vector :x 5679513.0 :y -215040.0 :z 1941094.0 :w 1.0)
+                             :quat (new 'static 'quaternion :x 0.8631 :y 0.1529 :z 0.2031 :w 0.4362)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 7
+                             :walk-dist 43008.0
+                             :trans (new 'static 'vector :x 5628446.5 :y -99764.63 :z 1857006.8 :w 1.0)
+                             :quat (new 'static 'quaternion :x 0.505 :y -0.049 :z 0.8609 :w 0.0367)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 8
+                             :walk-dist 69632.0
+                             :trans (new 'static 'vector :x 5643792.5 :y -233852.52 :z 1748155.6 :w 1.0)
+                             :quat (new 'static 'quaternion :x -0.1524 :y 0.6612 :z 0.7302 :w -0.0791)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 9
+                             :walk-dist 65536.0
+                             :trans (new 'static 'vector :x 5666418.5 :y -252694.12 :z 1744954.1 :w 1.0)
+                             :quat (new 'static 'quaternion :x -0.172 :y -0.6894 :z -0.6927 :w -0.123)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 10
+                             :walk-dist 36864.0
+                             :trans (new 'static 'vector :x 5628476.0 :y -109839.56 :z 1910929.0 :w 1.0)
+                             :quat (new 'static 'quaternion :x 0.698 :y -0.0015 :z 0.7119 :w 0.0736)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 11
+                             :walk-dist 81920.0
+                             :trans (new 'static 'vector :x 5833523.0 :y -199475.2 :z 2007859.2 :w 1.0)
+                             :quat (new 'static 'quaternion :x -0.519 :y 0.4671 :z -0.5138 :w -0.4983)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 12
+                             :walk-dist 98304.0
+                             :trans (new 'static 'vector :x 5693849.0 :y -115507.2 :z 1807974.0 :w 1.0)
+                             :quat (new 'static 'quaternion :x -0.0318 :y 0.0551 :z -0.9942 :w -0.0856)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 13
+                             :walk-dist 90112.0
+                             :trans (new 'static 'vector :x 5718087.5 :y -224038.5 :z 2149007.0 :w 1.0)
+                             :quat (new 'static 'quaternion :x 0.9585 :y 0.0652 :z -0.2699 :w 0.064)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 14
+                             :walk-dist 65536.0
+                             :trans (new 'static 'vector :x 5713436.5 :y -224158.11 :z 2119506.8 :w 1.0)
+                             :quat (new 'static 'quaternion :x -0.9886 :y 0.0465 :z 0.1411 :w -0.0172)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 15
+                             :walk-dist 73728.0
+                             :trans (new 'static 'vector :x 5797493.0 :y -179024.28 :z 2049062.1 :w 1.0)
+                             :quat (new 'static 'quaternion :x 0.0026 :y -0.6802 :z 0.7305 :w -0.059)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 16
+                             :trans (new 'static 'vector :x 5658384.0 :y -193543.78 :z 2073792.5 :w 1.0)
+                             :quat (new 'static 'quaternion :x -0.2079 :y 0.6769 :z -0.6822 :w 0.1816)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 17
+                             :trans (new 'static 'vector :x 5722092.0 :y -198297.19 :z 2068448.0 :w 1.0)
+                             :quat (new 'static 'quaternion :x 0.0559 :y 0.703 :z -0.7063 :w -0.0602)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 18
+                             :trans (new 'static 'vector :x 5754631.0 :y -244932.61 :z 2067026.4 :w 1.0)
+                             :quat (new 'static 'quaternion :x 0.1375 :y 0.7027 :z -0.6869 :w -0.1235)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 19
+                             :walk-dist 73728.0
+                             :trans (new 'static 'vector :x 5595425.0 :y -120254.875 :z 1805678.1 :w 1.0)
+                             :quat (new 'static 'quaternion :w 1.0)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 20
+                             :walk-dist 98304.0
+                             :trans (new 'static 'vector :x 5730753.5 :y -234004.89 :z 1749681.8 :w 1.0)
+                             :quat (new 'static 'quaternion :x -0.0098 :y 0.7492 :z 0.661 :w 0.0383)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 21
+                             :trans (new 'static 'vector :x 5726065.5 :y -235126.78 :z 1945400.9 :w 1.0)
+                             :quat (new 'static 'quaternion :x 0.6532 :y -0.547 :z -0.486 :w 0.1942)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 22
+                             :walk-dist 122880.0
+                             :trans (new 'static 'vector :x 5831300.5 :y -174276.2 :z 1950330.0 :w 1.0)
+                             :quat (new 'static 'quaternion :x -0.5453 :y 0.5332 :z -0.4571 :w -0.4574)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 23
+                             :walk-dist 65536.0
+                             :trans (new 'static 'vector :x 5851339.0 :y -223385.19 :z 1967798.6 :w 1.0)
+                             :quat (new 'static 'quaternion :x 0.4711 :y -0.3999 :z 0.5393 :w 0.5719)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 24
+                             :walk-dist 57344.0
+                             :trans (new 'static 'vector :x 5851293.0 :y -213435.19 :z 2033788.1 :w 1.0)
+                             :quat (new 'static 'quaternion :x 0.5201 :y -0.5092 :z 0.502 :w 0.4669)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 25
+                             :walk-dist 122880.0
+                             :trans (new 'static 'vector :x 5847904.5 :y -123728.28 :z 2034134.6 :w 1.0)
+                             :quat (new 'static 'quaternion :x 0.4617 :y -0.5266 :z 0.54 :w 0.4667)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 26
+                             :trans (new 'static 'vector :x 5775598.5 :y -139814.5 :z 2056641.4 :w 1.0)
+                             :quat (new 'static 'quaternion :x -0.5915 :y 0.6882 :z -0.3098 :w -0.2836)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 27
+                             :trans (new 'static 'vector :x 5823801.0 :y -166091.16 :z 2008900.9 :w 1.0)
+                             :quat (new 'static 'quaternion :x -0.8589 :y 0.4489 :z -0.2255 :w -0.099)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 28
+                             :trans (new 'static 'vector :x 5791225.5 :y -119005.59 :z 2027605.2 :w 1.0)
+                             :quat (new 'static 'quaternion :x -0.0117 :y 0.3823 :z -0.9236 :w -0.0246)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 29
+                             :walk-dist 81920.0
+                             :trans (new 'static 'vector :x 5785310.5 :y -206772.22 :z 2058204.0 :w 1.0)
+                             :quat (new 'static 'quaternion :x -0.4632 :y 0.4655 :z -0.5367 :w -0.5296)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 30
+                             :trans (new 'static 'vector :x 5757910.5 :y -99062.58 :z 2036759.8 :w 1.0)
+                             :quat (new 'static 'quaternion :x 0.4682 :y -0.0373 :z 0.8808 :w 0.0586)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 31
+                             :trans (new 'static 'vector :x 5794064.5 :y -157177.45 :z 2043525.5 :w 1.0)
+                             :quat (new 'static 'quaternion :x 0.4622 :y 0.3437 :z -0.7818 :w -0.2386)
+                             )
+                           (new 'static 'hosehead-fake-spawn-info
+                             :id 32
+                             :trans (new 'static 'vector :x 5773038.0 :y -176942.69 :z 2061055.6 :w 1.0)
+                             :quat (new 'static 'quaternion :x -0.6552 :y 0.5667 :z -0.4994 :w 0.0003)
+                             )
+                           )
+        )
+
+;; definition for function spawn-hosehead-fakes
+;; WARN: Return type mismatch symbol vs none.
+(defun spawn-hosehead-fakes ()
+  (let ((gp-0 *hosehead-fakes*)
+        (s5-0 (ppointer->process (-> *setting-control* user-current movie)))
+        )
+    (cond
+      (s5-0
+        (let ((s4-0 (level-get *level* 'sewesc)))
+          (countdown (s3-0 (-> gp-0 length))
+            (let ((s2-0 (-> gp-0 s3-0)))
+              (set! (-> s2-0 handle)
+                    (ppointer->handle (process-spawn hosehead-fake (-> s2-0 id) (-> s2-0 trans) s2-0 s4-0 :to s5-0))
+                    )
+              )
+            )
+          )
+        )
+      (else
+        (countdown (v1-14 (-> gp-0 length))
+          (set! (-> gp-0 v1-14 handle) (the-as handle #f))
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for function hosehead-fake-trigger
+(defun hosehead-fake-trigger ((arg0 int))
+  (let ((a1-0 *hosehead-fakes*))
+    (countdown (a2-0 (-> a1-0 length))
+      (let ((v1-2 (-> a1-0 a2-0)))
+        (when (= (-> v1-2 id) arg0)
+          (send-event (handle->process (-> v1-2 handle)) 'walk)
+          (return #t)
+          )
+        )
+      )
+    )
+  #f
+  )
+
+
+
+

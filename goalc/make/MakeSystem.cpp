@@ -38,7 +38,8 @@ std::string MakeStep::print() const {
   return result;
 }
 
-MakeSystem::MakeSystem(const std::string& username) : m_goos(username) {
+MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config, const std::string& username)
+    : m_goos(username), m_repl_config(repl_config) {
   m_goos.register_form("defstep", [=](const goos::Object& obj, goos::Arguments& args,
                                       const std::shared_ptr<goos::EnvironmentObject>& env) {
     return handle_defstep(obj, args, env);
@@ -74,6 +75,17 @@ MakeSystem::MakeSystem(const std::string& username) : m_goos(username) {
                        [=](const goos::Object& obj, goos::Arguments& args,
                            const std::shared_ptr<goos::EnvironmentObject>& env) {
                          return handle_set_gsrc_folder(obj, args, env);
+                       });
+
+  m_goos.register_form("get-gsrc-folder", [=](const goos::Object& obj, goos::Arguments& args,
+                                              const std::shared_ptr<goos::EnvironmentObject>& env) {
+    return handle_get_gsrc_folder(obj, args, env);
+  });
+
+  m_goos.register_form("get-game-version-folder",
+                       [=](const goos::Object& obj, goos::Arguments& args,
+                           const std::shared_ptr<goos::EnvironmentObject>& env) {
+                         return handle_get_game_version_folder(obj, args, env);
                        });
 
   m_goos.set_global_variable_to_symbol("ASSETS", "#t");
@@ -209,27 +221,12 @@ goos::Object MakeSystem::handle_get_gsrc_path(const goos::Object& form,
                                               goos::Arguments& args,
                                               const std::shared_ptr<goos::EnvironmentObject>& env) {
   if (m_gsrc_folder.empty()) {
-    throw std::runtime_error("`set-gsrc-folder!` was not called before a `get-src-path`");
+    throw std::runtime_error("`set-gsrc-folder!` was not called before a `get-gsrc-path`");
   }
   m_goos.eval_args(&args, env);
   va_check(form, args, {goos::ObjectType::STRING}, {});
 
   const auto& file_name = args.unnamed.at(0).as_string()->data;
-
-  // Keep things fast by scanning the gsrc directory _once_ on the first call
-  if (m_gsrc_files.empty()) {
-    auto folder = file_util::get_file_path(m_gsrc_folder);
-    auto src_files = file_util::find_files_recursively(folder, std::regex(".*\\.gc"));
-
-    for (const auto& path : src_files) {
-      auto name = file_util::base_name_no_ext(path.u8string());
-      auto gsrc_path =
-          file_util::convert_to_unix_path_separators(file_util::split_path_at(path, m_gsrc_folder));
-      // TODO - this is only "safe" because the current OpenGOAL system requires globally unique
-      // file names
-      m_gsrc_files.emplace(name, gsrc_path);
-    }
-  }
 
   if (m_gsrc_files.count(file_name) != 0) {
     return goos::StringObject::make_new(m_gsrc_files.at(file_name));
@@ -271,7 +268,52 @@ goos::Object MakeSystem::handle_set_gsrc_folder(
 
   const auto& folder = args.unnamed.at(0).as_string()->data;
   m_gsrc_folder = str_util::split(folder, '/');
-  return goos::Object::make_empty_list();
+  m_gsrc_files.clear();
+
+  auto folder_scan = file_util::get_file_path(m_gsrc_folder);
+  auto src_files = file_util::find_files_recursively(folder_scan, std::regex(".*\\.gc"));
+
+  for (const auto& path : src_files) {
+    auto name = file_util::base_name_no_ext(path.u8string());
+    auto gsrc_path =
+        file_util::convert_to_unix_path_separators(file_util::split_path_at(path, m_gsrc_folder));
+    // TODO - this is only "safe" because the current OpenGOAL system requires globally unique
+    // file names
+    m_gsrc_files.emplace(name, gsrc_path);
+  }
+
+  return args.unnamed.at(0);
+}
+
+goos::Object MakeSystem::handle_get_gsrc_folder(
+    const goos::Object& form,
+    goos::Arguments& args,
+    const std::shared_ptr<goos::EnvironmentObject>& env) {
+  m_goos.eval_args(&args, env);
+  va_check(form, args, {}, {});
+
+  std::string out;
+  int idx = 0;
+  for (const auto& part : m_gsrc_folder) {
+    if (idx++ > 0) {
+      out += '/';
+    }
+    out += part;
+  }
+  return goos::StringObject::make_new(out);
+}
+
+goos::Object MakeSystem::handle_get_game_version_folder(
+    const goos::Object& form,
+    goos::Arguments& args,
+    const std::shared_ptr<goos::EnvironmentObject>& env) {
+  m_goos.eval_args(&args, env);
+  va_check(form, args, {}, {});
+  if (m_repl_config) {
+    return goos::StringObject::make_new(m_repl_config->game_version_folder);
+  } else {
+    return goos::StringObject::make_new("");
+  }
 }
 
 void MakeSystem::get_dependencies(const std::string& master_target,

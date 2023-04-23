@@ -29,8 +29,10 @@
   "dma-buffer.o"
   "dma-bucket.o"
   "dma-disasm.o"
-  "pad.o"
   "pckernel-h.o" ;; added
+  "pckernel-impl.o" ;; added
+  "pc-debug-common.o" ;; added
+  "pad.o"
   "gs.o"
   "display-h.o"
   "geometry.o"
@@ -231,7 +233,6 @@
   "game-info.o"
   "game-task.o"
   "game-save.o"
-  "pckernel.o" ;; added
   "settings.o"
   "autosplit-h.o" ;; added
   "autosplit.o" ;; added
@@ -247,6 +248,7 @@
   "sky-data.o"
   "sky-tng.o"
   "load-state.o"
+  "pc-debug-methods.o" ;; added
   "level-info.o"
   "level.o"
   "text.o"
@@ -330,6 +332,7 @@
   "prototype.o"
   "main-collide.o"
   "video.o"
+  "pckernel-common.o" ;; added
   "pckernel.o" ;; added
   "main.o"
   "collide-cache.o"
@@ -376,6 +379,8 @@
   "nav-graph-editor.o"
   "sampler.o"
   "default-menu.o"
+  "anim-tester-x.o" ;; added
+  "default-menu-pc.o" ;; added
   "dir-tpages.go"
   "tpage-11.go"
   "tpage-31.go"
@@ -442,4 +447,5 @@
   "battle.o"
   "elec-gate.o"
   "cty-guard-turret-button.o"
+  "entity-debug.o" ;; added
  ))

@@ -12,7 +12,7 @@
   :duration (seconds 0.267)
   :flags (use-local-clock unk-6)
   :bounds (static-bspherem 0 0 0 8)
-  :rotate ((degrees 4) (degrees 0) (degrees 0))
+  :rotate ((degrees 90) (degrees 0) (degrees 0))
   :parts ((sp-item 586 :flags (is-3d launch-asap bit7)) (sp-item 587 :flags (launch-asap)) (sp-item 588 :flags (bit7)))
   )
 
@@ -133,7 +133,7 @@
   :linger-duration (seconds 2)
   :flags (unk-4 unk-6)
   :bounds (static-bspherem 0 0 0 12)
-  :rotate ((degrees 8) (degrees 0) (degrees 0))
+  :rotate ((degrees 180) (degrees 0) (degrees 0))
   :parts ((sp-item 591 :flags (bit6 bit7))
     (sp-item 592 :flags (bit6 bit7))
     (sp-item 593 :flags (bit7))
@@ -148,7 +148,7 @@
   :linger-duration (seconds 2)
   :flags (unk-4 unk-6)
   :bounds (static-bspherem 0 0 0 12)
-  :rotate ((degrees 8) (degrees 0) (degrees 0))
+  :rotate ((degrees 180) (degrees 0) (degrees 0))
   :parts ((sp-item 595 :fade-after (meters 120) :falloff-to (meters 90) :flags (bit7))
     (sp-item 596 :fade-after (meters 120) :falloff-to (meters 90) :flags (bit7))
     (sp-item 597 :flags (bit6 bit7))
@@ -523,32 +523,25 @@
 
 ;; definition for method 25 of type warp-gate
 (defmethod handle-notice warp-gate ((obj warp-gate))
-  (with-pp
-    (let ((s5-0 (eval!
-                  (new 'stack 'script-context (the-as basic (process->ppointer pp)) pp (the-as vector #f))
-                  (-> obj on-notice)
-                  )
-                )
-          )
-      (cond
-        ((= s5-0 'hide)
-         (logior! (-> obj draw status) (draw-control-status no-draw))
-         (set! (-> obj continue) #f)
-         )
-        (s5-0
-          (logclear! (-> obj draw status) (draw-control-status no-draw))
-          (set! (-> obj continue) (get-continue-by-name *game-info* (the-as string (car s5-0))))
-          (set! (-> obj on-activate) (the-as pair (car (cdr s5-0))))
-          (set! (-> obj wait-for) (the-as pair (car (cdr (cdr s5-0)))))
-          (set! (-> obj on-close) (the-as pair (car (cdr (cdr (cdr s5-0))))))
-          )
-        (else
-          (set! (-> obj continue) #f)
-          )
+  (let ((s5-0 (script-eval (-> obj on-notice))))
+    (cond
+      ((= s5-0 'hide)
+       (logior! (-> obj draw status) (draw-control-status no-draw))
+       (set! (-> obj continue) #f)
+       )
+      (s5-0
+        (logclear! (-> obj draw status) (draw-control-status no-draw))
+        (set! (-> obj continue) (get-continue-by-name *game-info* (the-as string (car s5-0))))
+        (set! (-> obj on-activate) (the-as pair (car (cdr s5-0))))
+        (set! (-> obj wait-for) (the-as pair (car (cdr (cdr s5-0)))))
+        (set! (-> obj on-close) (the-as pair (car (cdr (cdr (cdr s5-0))))))
+        )
+      (else
+        (set! (-> obj continue) #f)
         )
       )
-    (-> obj continue)
     )
+  (-> obj continue)
   )
 
 ;; failed to figure out what this is:
@@ -588,12 +581,11 @@
       (handle-notice self)
       (when (and (and *target*
                       (and (>= (-> self distance) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-                           (zero? (logand (focus-status teleporting) (-> *target* focus-status)))
+                           (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
                            )
                       )
                  (and (-> self continue)
-                      (not (logtest? (focus-status in-head edge-grab pole flut tube board pilot mech indax) (-> *target* focus-status))
-                           )
+                      (not (focus-test? *target* in-head edge-grab pole flut tube board pilot mech indax))
                       (-> *setting-control* user-current airlock)
                       (not (-> *setting-control* user-current hint))
                       )
@@ -617,21 +609,10 @@
           (if (and (cpad-pressed? 0 triangle) (process-grab? *target* #f))
               (go-virtual use (-> self continue))
               )
-          (eval!
-            (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f))
-            (-> self on-close)
-            )
-          (let ((gp-0 (new
-                        'stack
-                        'font-context
-                        *font-default-matrix*
-                        32
-                        320
-                        0.0
-                        (font-color default-#cddbcd)
-                        (font-flags shadow kerning)
-                        )
-                      )
+          (script-eval (-> self on-close))
+          (let ((gp-0
+                  (new 'stack 'font-context *font-default-matrix* 32 320 0.0 (font-color default) (font-flags shadow kerning))
+                  )
                 )
             (let ((v1-51 gp-0))
               (set! (-> v1-51 width) (the float 340))
@@ -643,7 +624,7 @@
               (set! (-> v1-53 scale) 0.9)
               )
             (set! (-> gp-0 flags) (font-flags shadow kerning large))
-            (print-game-text (lookup-text! *common-text* (game-text-id text-x182) #f) gp-0 #f 44 (bucket-id progress))
+            (print-game-text (lookup-text! *common-text* (text-id text-x182) #f) gp-0 #f 44 (bucket-id progress))
             )
           )
         )
@@ -725,10 +706,7 @@
       (set! (-> s5-0 param 3) (the-as uint (process->handle self)))
       (send-event-function *target* s5-0)
       )
-    (eval!
-      (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f))
-      (-> self on-activate)
-      )
+    (script-eval (-> self on-activate))
     (while (begin
              (set! v1-38 (when (-> self wait-for)
                            (let* ((s5-1 (-> self wait-for))
@@ -765,7 +743,7 @@
       )
     (while (and *target*
                 (and (>= 81920.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-                     (zero? (logand (focus-status teleporting) (-> *target* focus-status)))
+                     (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
                      )
                 )
       (suspend)
@@ -1363,10 +1341,7 @@ This commonly includes things such as:
     (apply-settings *setting-control*)
     (sound-stop (-> self hover-sound))
     (set! (-> self hover-sound) (new 'static 'sound-id))
-    (eval!
-      (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f))
-      (-> self on-activate)
-      )
+    (script-eval (-> self on-activate))
     (sleep-code)
     (none)
     )
@@ -1377,7 +1352,7 @@ This commonly includes things such as:
                    :name "city-air-train-in-caspad"
                    :extra #f
                    :info #f
-                   :mask-to-clear #x1282000
+                   :mask-to-clear (process-mask movie enemy platform projectile)
                    :entity "scene-stage-87"
                    :art-group "scenecamera"
                    :anim "city-air-train-in-caspad"
@@ -1502,7 +1477,7 @@ This commonly includes things such as:
                    :name "city-air-train-in-nest"
                    :extra #f
                    :info #f
-                   :mask-to-clear #x1282000
+                   :mask-to-clear (process-mask movie enemy platform projectile)
                    :entity "scene-stage-87"
                    :art-group "scenecamera"
                    :anim "city-air-train-in-nest"
@@ -1627,7 +1602,7 @@ This commonly includes things such as:
                    :name "city-air-train-out"
                    :extra #f
                    :info #f
-                   :mask-to-clear #x1282000
+                   :mask-to-clear (process-mask movie enemy platform projectile)
                    :entity "scene-stage-87"
                    :art-group "scenecamera"
                    :anim "city-air-train-out"
@@ -1753,7 +1728,7 @@ This commonly includes things such as:
     :name "city-ashelin-drop-off"
     :extra #f
     :info #f
-    :mask-to-clear #x1282000
+    :mask-to-clear (process-mask movie enemy platform projectile)
     :entity "scene-stage-87"
     :art-group "scenecamera"
     :anim "city-ashelin-drop-off"
@@ -1920,7 +1895,7 @@ This commonly includes things such as:
                    :name "caspad-air-train-in"
                    :extra #f
                    :info #f
-                   :mask-to-clear #x1282000
+                   :mask-to-clear (process-mask movie enemy platform projectile)
                    :entity "air-train-3"
                    :art-group "scenecamera"
                    :anim "caspad-air-train-in"
@@ -2068,7 +2043,7 @@ This commonly includes things such as:
                    :name "caspad-air-train-out"
                    :extra #f
                    :info #f
-                   :mask-to-clear #x1282000
+                   :mask-to-clear (process-mask movie enemy platform projectile)
                    :entity "air-train-3"
                    :art-group "scenecamera"
                    :anim "caspad-air-train-out"
@@ -2217,7 +2192,7 @@ This commonly includes things such as:
                    :name "nest-air-train-in"
                    :extra #f
                    :info #f
-                   :mask-to-clear #x1282000
+                   :mask-to-clear (process-mask movie enemy platform projectile)
                    :entity "scene-stage-90"
                    :art-group "scenecamera"
                    :anim "nest-air-train-in"
@@ -2364,7 +2339,7 @@ This commonly includes things such as:
                    :name "nest-air-train-out"
                    :extra #f
                    :info #f
-                   :mask-to-clear #x1282000
+                   :mask-to-clear (process-mask movie enemy platform projectile)
                    :entity "scene-stage-90"
                    :art-group "scenecamera"
                    :anim "nest-air-train-out"

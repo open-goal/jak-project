@@ -13,8 +13,13 @@ struct TfragPcPortData {
   math::Vector4f hvdf_off;
   math::Vector4f fog;
   math::Vector4f cam_trans;
+
+  math::Vector4f camera_rot[4];
+  math::Vector4f camera_perspective[4];
+
   char level_name[16];
 };
+static_assert(sizeof(TfragPcPortData) == 16 * 24);
 
 // inputs to background renderers.
 struct TfragRenderSettings {

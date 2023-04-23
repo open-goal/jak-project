@@ -92,7 +92,7 @@
                  (set! (-> v1-13 vector quad) (-> s4-1 quad))
                  (set! (-> v1-13 shove-back) (-> self shove-vec z))
                  (set! (-> v1-13 shove-up) (-> self shove-vec y))
-                 (set! (-> v1-13 control) (if (logtest? (focus-status board) (-> gp-0 focus-status))
+                 (set! (-> v1-13 control) (if (focus-test? gp-0 board)
                                               1.0
                                               0.0
                                               )
@@ -1148,8 +1148,7 @@ This commonly includes things such as:
   )
 
 (defmethod draw-laser-sight grenade ((obj grenade))
-  "TODO - confirm If applicable, draw the laser sight particles
-:virtual"
+  "TODO - confirm If applicable, draw the laser sight particles"
   (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
     (when gp-0
       (let ((t9-1 (method-of-type part-tracker activate)))
@@ -1416,8 +1415,7 @@ This commonly includes things such as:
   )
 
 (defmethod init-proj-settings! grenade ((obj grenade))
-  "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc
-:virtual"
+  "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (with-pp
     (initialize-skeleton
       obj
@@ -1518,7 +1516,7 @@ This commonly includes things such as:
     (set! (-> self hud-timer) (ppointer->handle (process-spawn hud-timer :init hud-init-by-other :to *target*)))
     (set! (-> self hud-counter) (ppointer->handle (process-spawn hud-plasmite :init hud-init-by-other :to self)))
     (while (or (< (- (-> self clock frame-counter) (-> self start-time)) (-> self total-time))
-               (and *target* (logtest? (-> *target* focus-status) (focus-status in-air)))
+               (and *target* (focus-test? *target* in-air))
                )
       (let ((v1-18 (the-as int (- (-> self total-time) (- (-> self clock frame-counter) (-> self start-time))))))
         (if (< (the-as time-frame v1-18) 0)

@@ -109,7 +109,7 @@
     )
   )
 
-(defmethod dummy-20 ram ((obj ram))
+(defmethod ram-method-20 ram ((obj ram))
   (let ((gp-0 (-> obj part)))
     (when (nonzero? gp-0)
       (let ((a2-0 (-> obj node-list data 8 bone transform))
@@ -124,7 +124,7 @@
     )
   )
 
-(defmethod dummy-21 ram ((obj ram))
+(defmethod ram-method-21 ram ((obj ram))
   (let ((gp-0 (-> obj part2)))
     (let ((s3-0 (new 'stack-no-clear 'vector))
           (s4-0 (new 'stack-no-clear 'vector))
@@ -155,7 +155,7 @@
     )
   )
 
-(defmethod dummy-22 ram ((obj ram))
+(defmethod ram-method-22 ram ((obj ram))
   (process-entity-status! obj (entity-perm-status complete) #t)
   (let ((v1-0 (alt-actor-list-subtask-incomplete-count obj)))
     (cond
@@ -180,18 +180,18 @@
   )
 
 (defstate ram-idle (ram)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch 'attack)
        (if ((method-of-type touching-shapes-entry prims-touching?)
-            (the-as touching-shapes-entry (-> arg3 param 0))
+            (the-as touching-shapes-entry (-> event param 0))
             (-> self root-override)
             (the-as uint 1)
             )
            (send-event
-             arg0
+             proc
              'attack
-             (-> arg3 param 0)
+             (-> event param 0)
              (static-attack-info ((shove-up (meters 0.5)) (shove-back (meters 2))))
              )
            )
@@ -227,10 +227,10 @@
           (let ((f30-0 (ja-aframe-num 0)))
             (when (and (not gp-1) (>= f30-0 61.0))
               (set! gp-1 #t)
-              (dummy-20 self)
+              (ram-method-20 self)
               )
             (if (and (>= f30-0 62.0) (< f30-0 97.0))
-                (dummy-21 self)
+                (ram-method-21 self)
                 )
             )
           (suspend)
@@ -255,11 +255,11 @@
   )
 
 (defstate ram-fun-idle (ram)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('notify)
-       (when (= (-> arg0 type) ram-boss)
-         (if (dummy-22 self)
+       (when (= (-> proc type) ram-boss)
+         (if (ram-method-22 self)
              (go ram-give-fuel-cell)
              )
          )
@@ -287,10 +287,10 @@
   )
 
 (defstate ram-give-fuel-cell (ram)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('notify)
-       (if (and (= (-> arg0 type) snowcam) (= (-> arg3 param 0) 'die))
+       (if (and (= (-> proc type) snowcam) (= (-> event param 0) 'die))
            (go ram-fun-idle)
            )
        )
@@ -473,7 +473,3 @@
     )
   (none)
   )
-
-
-
-

@@ -19,7 +19,7 @@
   "water-anim-nest-dark-eco-ag.go"
   "gun-buoy-ag.go"
   "transport-ag.go"
-  "switch-ag.go"
+  "cas-switch-ag.go"
   "air-train-ag.go"
   "piston-ag.go"
   "nest-vis.go"

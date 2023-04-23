@@ -134,7 +134,7 @@
 
 (defpartgroup group-quicksandlurker-pre-missile
   :id 199
-  :duration 5
+  :duration (seconds 0.017)
   :bounds (static-bspherem 0 0 0 3)
   :parts ((sp-item 2483))
   )
@@ -168,7 +168,7 @@
 
 (defpartgroup group-quicksandlurker-missile-impact
   :id 200
-  :duration 10
+  :duration (seconds 0.035)
   :bounds (static-bspherem 0 0 0 3)
   :parts ((sp-item 2484) (sp-item 2485) (sp-item 2486))
   )
@@ -242,7 +242,7 @@
 
 (defpartgroup group-quicksandlurker-hide
   :id 201
-  :duration 900
+  :duration (seconds 3)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 -12 0 14)
   :parts ((sp-item 124 :flags (is-3d) :period 900 :length 63)
@@ -266,7 +266,7 @@
 
 (defpartgroup group-quicksandlurker-popup
   :id 202
-  :duration 900
+  :duration (seconds 3)
   :flags (use-local-clock)
   :bounds (static-bspherem 0 -12 0 14)
   :parts ((sp-item 124 :flags (is-3d) :period 900 :length 63)
@@ -303,26 +303,26 @@
 
 
 (defstate quicksandlurker-missile-idle (quicksandlurker-missile)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touched)
        (when (cond
-               ((= (-> arg0 type) target)
-                (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'explode))))
+               ((= (-> proc type) target)
+                (send-event proc 'attack (-> event param 0) (static-attack-info ((mode 'explode))))
                 )
                (else
                  (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
                    (set! (-> a1-4 from) self)
                    (set! (-> a1-4 num-params) 4)
                    (set! (-> a1-4 message) 'attack)
-                   (set! (-> a1-4 param 0) (-> arg3 param 0))
+                   (set! (-> a1-4 param 0) (-> event param 0))
                    (set! (-> a1-4 param 1) (the-as uint 'explode))
                    (let ((v1-12 (+ *global-attack-id* 1)))
                      (set! *global-attack-id* v1-12)
                      (set! (-> a1-4 param 2) (the-as uint v1-12))
                      )
                    (set! (-> a1-4 param 3) (the-as uint 0))
-                   (send-event-function arg0 a1-4)
+                   (send-event-function proc a1-4)
                    )
                  )
                )
@@ -490,7 +490,7 @@
 ;; ERROR: function has no type analysis. Cannot decompile.
 
 (defun intersects-nav-mesh? ((arg0 nav-control) (arg1 vector))
-  (if (dummy-16 arg0 arg1)
+  (if (nav-control-method-16 arg0 arg1)
       #t
       )
   )
@@ -509,12 +509,9 @@
 
 (defun inc-angle ((arg0 (pointer float)) (arg1 float))
   (+! (-> arg0 0) arg1)
-  (when (< 65536.0 (-> arg0 0))
-    (let ((f0-4 (+ -65536.0 (-> arg0 0))))
-      (set! (-> arg0 0) f0-4)
-      f0-4
+  (if (< 65536.0 (-> arg0 0))
+      (set! (-> arg0 0) (+ -65536.0 (-> arg0 0)))
       )
-    )
   )
 
 (defbehavior quicksandlurker-post quicksandlurker ()
@@ -556,7 +553,7 @@
     (let ((a0-2 (-> self nav))
           (a1-1 (-> *target* control trans))
           )
-      (when (if (dummy-16 a0-2 a1-1)
+      (when (if (nav-control-method-16 a0-2 a1-1)
                 #t
                 )
         (if (< (- (-> *target* control trans y) (-> self original-position y)) 0.0)
@@ -804,7 +801,7 @@
           (a1-0 (-> *target* control trans))
           )
       (cond
-        ((or (if (dummy-16 a0-0 a1-0)
+        ((or (if (nav-control-method-16 a0-0 a1-0)
                  #t
                  )
              (and *target* (>= 16384.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
@@ -949,7 +946,3 @@
   (go quicksandlurker-idle)
   (none)
   )
-
-
-
-

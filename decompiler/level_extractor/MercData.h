@@ -7,10 +7,17 @@
 #include "common/common_types.h"
 #include "common/dma/gs.h"
 #include "common/math/Vector.h"
+#include "common/versions/versions.h"
 
 #include "decompiler/util/goal_data_reader.h"
 
 namespace decompiler {
+
+struct MercEyeCtrl {
+  s8 eye_slot;
+  // there's more...
+  void from_ref(TypedRef tr, const DecompilerTypeSystem& dts);
+};
 
 /*!
  * per-ctrl information. the first qw is uploaded to vu1
@@ -42,7 +49,7 @@ struct MercCtrlHeader {
   u16 cross_copy_count;
   u16 num_verts;
   float longest_edge;
-  // todo (eye-ctrl               merc-eye-ctrl    :offset-assert 64)
+  std::optional<MercEyeCtrl> eye_ctrl;
   u32 masks[3];
   // (dummy-bytes            uint8       48 :offset 32)
   u32 envmap_tint;
@@ -57,7 +64,7 @@ struct MercCtrlHeader {
   u8 use_translucent;
   u8 display_this_fragment;
 
-  void from_ref(TypedRef tr, const DecompilerTypeSystem& dts);
+  void from_ref(TypedRef tr, const DecompilerTypeSystem& dts, GameVersion version);
   std::string print() const;
 };
 
@@ -173,6 +180,8 @@ struct MercExtraInfo {
   std::optional<MercShader> shader;
 };
 
+constexpr int kTextureScrollEffectBit = 1;
+constexpr int kTransEffectBit = 2;   // true in 1 and 2
 constexpr int kRippleEffectBit = 4;  // true in jak 1 and jak 2
 
 struct MercEffect {
@@ -206,7 +215,7 @@ struct MercCtrl {
   MercCtrlHeader header;
   std::vector<MercEffect> effects;
 
-  void from_ref(TypedRef tr, const DecompilerTypeSystem& dts);
+  void from_ref(TypedRef tr, const DecompilerTypeSystem& dts, GameVersion version);
   void debug_print_blerc();
   std::string print();
 };

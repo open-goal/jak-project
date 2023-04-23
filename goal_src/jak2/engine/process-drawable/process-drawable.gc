@@ -7,6 +7,22 @@
 
 (declare-type fuel-cell basic) ;; TODO!!
 
+(#when PC_PORT
+
+(define *display-bones* #f)
+(define *display-joint-names* #f)
+
+(defun draw-joint-spheres ((arg0 process-drawable))
+  (dotimes (s5-0 (-> arg0 node-list length))
+    (let ((a2-0 (vector<-cspace! (new-stack-vector0) (-> arg0 node-list data s5-0))))
+      (add-debug-sphere #t (bucket-id debug2) a2-0 (meters 0.2) (new 'static 'rgba :g #xff :a #x40))
+      (#when PC_PORT
+          (add-debug-text-sphere (!= (-> arg0 node-list data s5-0 joint) #f) (bucket-id debug2) a2-0 (meters 0.1) (the string (-> arg0 node-list data s5-0 joint name)) (static-rgba 0 #xff 0 #x40)))
+      )
+    )
+  #f
+  )
+
 (defun-debug draw-bone-lines ((obj process-drawable))
   "Added in PC port to debug bones"
   (dotimes (i (-> obj node-list length))
@@ -19,7 +35,7 @@
         )
       )
     )
-  )
+  ))
 
 ;; DECOMP BEGINS
 
@@ -452,7 +468,12 @@
           )
         )
       )
-    ; (draw-bone-lines (-> obj process))
+  (#when PC_PORT (when *debug-segment*
+    (if *display-bones*
+      (draw-bone-lines (the-as process-drawable (-> obj process))))
+    (if *display-joint-names*
+      (draw-joint-spheres (the-as process-drawable (-> obj process))))
+    ))
     0
     (none)
     )
@@ -502,7 +523,7 @@
         (dotimes (s0-0 3)
           (set! sv-64 add-debug-vector)
           (set! sv-80 #t)
-          (set! sv-96 318)
+          (set! sv-96 (the-as int (bucket-id debug-no-zbuf1)))
           (set! sv-112 s3-0)
           (let ((a3-0
                   (vector-normalize-copy! (new 'stack-no-clear 'vector) (the-as vector (+ (the-as uint s1-0) (* s0-0 16))) 1.0)
@@ -615,7 +636,7 @@
           (when s5-1
             (let ((s4-0 add-debug-text-3d)
                   (s3-0 #t)
-                  (s2-0 318)
+                  (s2-0 (bucket-id debug-no-zbuf1))
                   )
               (format (clear *temp-string*) "~2j~s error for ~s" arg0 (-> self name))
               (s4-0
@@ -623,7 +644,7 @@
                 (the-as bucket-id s2-0)
                 *temp-string*
                 (the-as vector s5-1)
-                (font-color precursor-#ec3b00)
+                (font-color red)
                 (the-as vector2h #f)
                 )
               )
@@ -759,8 +780,8 @@
          (let ((s4-0 v0-3))
            (let ((s3-1 (-> s3-0 art-group)))
              (cond
-               ((>= (the-as int (-> arg0 janim)) 0)
-                (when (or (>= (the-as int (-> arg0 janim)) (-> s3-1 length))
+               ((>= (-> arg0 janim) 0)
+                (when (or (>= (-> arg0 janim) (-> s3-1 length))
                           (begin (set! v1-14 (-> s3-1 data (-> arg0 janim))) (not v1-14))
                           (!= (-> v1-14 type) art-joint-anim)
                           )
@@ -817,7 +838,7 @@
          )
     (format (clear *temp-string*) "skel-~S" arg0)
     (let ((s4-1 (s3-0 s4-0 *temp-string* (the-as (pointer uint32) #f))))
-      (if (and (nonzero? s4-1) (valid? s4-1 skeleton-group #f #f 0))
+      (if (and (nonzero? s4-1) (valid? s4-1 skeleton-group (the-as string #f) #f 0))
           (initialize-skeleton obj (the-as skeleton-group s4-1) (the-as pair 0))
           (go process-drawable-art-error arg0)
           )
@@ -1182,8 +1203,6 @@
   0
   )
 
-;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
-;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
 (defmethod update-anim-data joint-control ((obj joint-control))
   (local-vars (s7-0 none) (ra-0 int))
   (let ((s5-0 (+ (-> obj active-channels) (-> obj float-channels))))
@@ -1196,11 +1215,8 @@
             (let ((s2-0 (-> s3-0 frame-group)))
               (when (not (and s2-0 (nonzero? s2-0) (= (logand (the-as int s2-0) 7) 4) (= (-> s2-0 type) art-joint-anim)))
                 (go process-drawable-art-error "joint-anim")
-                (break!)
-                ;; (.lw ra-0 return-from-thread s7-0)
-                ;; (.jr ra-0)
-                ;; (nop!)
-                ;; 0
+                (abandon-thread)
+                0
                 )
               (when (nonzero? (-> s2-0 frames flags))
                 (cond
@@ -1225,8 +1241,6 @@
   (none)
   )
 
-;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
-;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
 (defmethod evaluate-joint-control process-drawable ((obj process-drawable))
   (local-vars (s1-0 joint-control-channel) (s2-0 int) (s4-0 uint) (s7-0 none) (ra-0 int))
   (with-pp
@@ -1266,11 +1280,8 @@
             (let ((s0-0 (-> s1-0 frame-group)))
               (when (not (and s0-0 (nonzero? s0-0) (= (logand (the-as int s0-0) 7) 4) (= (-> s0-0 type) art-joint-anim)))
                 (go process-drawable-art-error "joint-anim")
-                (break!)
-                ;; (.lw ra-0 return-from-thread s7-0)
-                ;; (.jr ra-0)
-                ;; (nop!)
-                ;; 0
+                (abandon-thread)
+                0
                 )
               (when (nonzero? (-> s0-0 frames flags))
                 (cond
@@ -1777,7 +1788,7 @@
   )
 
 (defbehavior process-drawable-delay-player process-drawable ((arg0 time-frame))
-  (while (and *target* (logtest? (-> *target* focus-status) (focus-status in-air)))
+  (while (and *target* (focus-test? *target* in-air))
     (suspend)
     )
   (set! (-> self state-time) (-> self clock frame-counter))
@@ -1903,7 +1914,7 @@
       (let ((s3-0 (-> arg0 node-list data s4-0)))
         (when (-> s3-0 geo)
           (cond
-            ((valid? (-> s3-0 geo) drawable (the-as symbol "cspace geo") #t *valid-con*)
+            ((valid? (-> s3-0 geo) drawable "cspace geo" #t *valid-con*)
              )
             (else
               (format *valid-con* "ERROR: ~A has an invalid geo ~A~%" s3-0 (-> s3-0 geo))
@@ -1929,7 +1940,7 @@
           (cond
             ((logtest? (-> s2-0 command) (joint-control-command joint-control-command-4))
              )
-            ((valid? (-> s2-0 frame-group) art-joint-anim (the-as symbol "joint-control frame-group") #t *valid-con*)
+            ((valid? (-> s2-0 frame-group) art-joint-anim "joint-control frame-group" #t *valid-con*)
              (when (not (and (>= (the int (-> s2-0 frame-num)) 0)
                              (< (the int (-> s2-0 frame-num)) (the-as int (-> s2-0 frame-group frames num-frames)))
                              )

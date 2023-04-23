@@ -34,4 +34,5 @@
   "battle.o"
   "elec-gate.o"
   "cty-guard-turret-button.o"
+  "entity-debug.o" ;; added
  ))

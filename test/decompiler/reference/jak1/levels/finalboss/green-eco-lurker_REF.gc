@@ -15,7 +15,7 @@
   :size-assert         #x1d8
   :flag-assert         #x4c017001d8
   (:methods
-    (dummy-51 (_type_ vector) symbol :replace 51)
+    (green-eco-lurker-method-51 (_type_ vector) symbol :replace 51)
     )
   (:states
     green-eco-lurker-appear
@@ -325,7 +325,7 @@
   )
 
 ;; definition for method 43 of type green-eco-lurker
-(defmethod dummy-43 green-eco-lurker ((obj green-eco-lurker) (arg0 process) (arg1 event-message-block))
+(defmethod attack-handler green-eco-lurker ((obj green-eco-lurker) (arg0 process) (arg1 event-message-block))
   (cond
     ((= (-> arg0 type) target)
      (if (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic)
@@ -335,7 +335,7 @@
      )
     (else
       (nav-enemy-set-hit-from-direction arg0)
-      ((method-of-type nav-enemy dummy-43) obj arg0 arg1)
+      ((method-of-type nav-enemy attack-handler) obj arg0 arg1)
       )
     )
   )
@@ -356,7 +356,7 @@
   )
 
 ;; definition for method 44 of type green-eco-lurker
-(defmethod dummy-44 green-eco-lurker ((obj green-eco-lurker) (arg0 process) (arg1 event-message-block))
+(defmethod touch-handler green-eco-lurker ((obj green-eco-lurker) (arg0 process) (arg1 event-message-block))
   (when (and (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf6))
              ((method-of-type touching-shapes-entry prims-touching?)
               (the-as touching-shapes-entry (-> arg1 param 0))
@@ -387,13 +387,13 @@
 
 ;; definition for method 51 of type green-eco-lurker
 ;; INFO: Used lq/sq
-(defmethod dummy-51 green-eco-lurker ((obj green-eco-lurker) (arg0 vector))
+(defmethod green-eco-lurker-method-51 green-eco-lurker ((obj green-eco-lurker) (arg0 vector))
   (when (or (not *target*) (>= (vector-vector-xz-distance arg0 (target-pos 0)) 36864.0))
     (let ((v1-3 (new 'stack-no-clear 'vector)))
       (set! (-> v1-3 quad) (-> arg0 quad))
       (set! (-> v1-3 w) (-> obj collide-info root-prim local-sphere w))
       )
-    (if (not (TODO-RENAME-50 obj arg0))
+    (if (not (nav-enemy-method-50 obj arg0))
         (return #t)
         )
     )
@@ -401,7 +401,7 @@
   )
 
 ;; definition for method 52 of type green-eco-lurker
-(defmethod dummy-52 green-eco-lurker ((obj green-eco-lurker) (arg0 vector))
+(defmethod nav-enemy-method-52 green-eco-lurker ((obj green-eco-lurker) (arg0 vector))
   (let ((s4-0 (-> obj path curve num-cverts)))
     (when (> s4-0 0)
       (let ((s2-0 (nav-enemy-rnd-int-count s4-0))
@@ -409,7 +409,7 @@
             )
         (while (> s3-0 0)
           (eval-path-curve-div! (-> obj path) arg0 (the float s2-0) 'interp)
-          (if (dummy-51 obj arg0)
+          (if (green-eco-lurker-method-51 obj arg0)
               (return #t)
               )
           (set! s2-0 (mod (+ s2-0 1) s4-0))
@@ -447,7 +447,7 @@
     (none)
     )
   :trans (behavior ()
-    (if (dummy-52 self (-> self appear-dest))
+    (if (nav-enemy-method-52 self (-> self appear-dest))
         (go green-eco-lurker-appear)
         )
     (none)
@@ -463,7 +463,7 @@
 
 ;; definition for method 53 of type green-eco-lurker
 ;; INFO: Return type mismatch int vs symbol.
-(defmethod dummy-53 green-eco-lurker ((obj green-eco-lurker))
+(defmethod nav-enemy-method-53 green-eco-lurker ((obj green-eco-lurker))
   (the-as symbol (cond
                    ((and (-> obj draw shadow)
                          (zero? (-> obj draw cur-lod))
@@ -547,7 +547,7 @@
       (set! (-> self played-sound?) #t)
       (sound-play "blob-jump" :pitch (nav-enemy-rnd-float-range -0.5 0.5))
       )
-    (dummy-53 self)
+    (nav-enemy-method-53 self)
     0
     (none)
     )
@@ -798,11 +798,11 @@
 
 ;; definition for method 48 of type green-eco-lurker
 ;; INFO: Return type mismatch int vs none.
-(defmethod TODO-RENAME-48 green-eco-lurker ((obj green-eco-lurker))
+(defmethod nav-enemy-method-48 green-eco-lurker ((obj green-eco-lurker))
   (initialize-skeleton obj *green-eco-lurker-sg* '())
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
   (logclear! (-> obj collide-info nav-flags) (nav-flags navf0))
-  (TODO-RENAME-45 obj *green-eco-lurker-nav-enemy-info*)
+  (init-defaults! obj *green-eco-lurker-nav-enemy-info*)
   (logior! (-> obj draw shadow-ctrl settings flags) (shadow-flags shdf02))
   (set! (-> obj neck up) (the-as uint 0))
   (set! (-> obj neck nose) (the-as uint 1))
@@ -820,7 +820,7 @@
   (vector-identity! (-> self collide-info scale))
   (quaternion-identity! (-> self collide-info quat))
   (set! (-> self entity) (-> arg1 entity))
-  (TODO-RENAME-48 self)
+  (nav-enemy-method-48 self)
   (logclear! (-> self mask) (process-mask actor-pause))
   (go green-eco-lurker-wait-to-appear)
   (none)

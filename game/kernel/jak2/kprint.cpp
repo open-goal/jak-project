@@ -93,7 +93,7 @@ s32 format_impl_jak2(uint64_t* args) {
   // read goal binteger
   if (print_column.offset) {
     // added the if check so we can format even if the kernel didn't load right.
-    indentation = (*print_column) >> 3;
+    indentation = (*(print_column - 1)) >> 3;
   }
 
   // which arg we're on
@@ -123,7 +123,7 @@ s32 format_impl_jak2(uint64_t* args) {
       }
 
       // read arguments
-      while ((u8)(format_ptr[1] - '0') < 10 ||  // number 0 to 10
+      while ((u8)(format_ptr[1] - '0') < 10 ||  // number 0 to 9
              format_ptr[1] == ',' ||            // comma
              format_ptr[1] == '\'' ||           // quote
              format_ptr[1] == '`' ||            // backtick
@@ -539,8 +539,11 @@ s32 format_impl_jak2(uint64_t* args) {
     // we'd get these eventually in ClearPending, but for some reason they flush these here.
     // This is nicer because we may crash in between here and flushing the print buffer.
     if (DiskBoot) {
-      printf("%s", PrintPendingLocal3);
-      fflush(stdout);
+      // It's actually really annoying when debugging though so we disable it then
+      if (!MasterDebug) {
+        printf("%s", PrintPendingLocal3);
+        fflush(stdout);
+      }
       PrintPending = make_ptr(PrintPendingLocal2).cast<u8>();
     }
 

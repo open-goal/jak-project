@@ -90,7 +90,72 @@
     :default-hit-points 4
     :gnd-collide-with (collide-spec backgnd)
     :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
-    :penetrate-knocked #xffffffffffffffff
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-giant
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      penetrate-33
+      penetrate-34
+      penetrate-35
+      penetrate-36
+      penetrate-37
+      penetrate-38
+      penetrate-39
+      penetrate-40
+      penetrate-41
+      penetrate-42
+      penetrate-43
+      penetrate-44
+      penetrate-45
+      penetrate-46
+      penetrate-47
+      penetrate-48
+      penetrate-49
+      penetrate-50
+      penetrate-51
+      penetrate-52
+      penetrate-53
+      penetrate-54
+      penetrate-55
+      penetrate-56
+      penetrate-57
+      penetrate-58
+      penetrate-59
+      penetrate-60
+      penetrate-61
+      penetrate-62
+      penetrate-63
+      )
     :movement-gravity (meters -100)
     :friction 0.6
     :attack-shove-back (meters 6)
@@ -401,7 +466,7 @@
   (let ((t9-0 (method-of-type nav-enemy in-aggro-range?)))
     (and (t9-0 obj arg0 arg1)
          (or (not (logtest? (-> obj fact-info-override enemy-options) (enemy-option user8)))
-             (and (not (logtest? (-> arg0 focus-status) (focus-status in-air)))
+             (and (not (focus-test? arg0 in-air))
                   (>= 4096.0 (fabs (- (-> (get-trans arg0 0) y) (-> obj root-override2 trans y))))
                   )
              )
@@ -542,10 +607,7 @@
       (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
       (let ((gp-0 (-> self on-notice)))
         (if gp-0
-            (eval!
-              (new 'stack 'script-context (the-as basic (process->ppointer self)) self (-> self root-override2 trans))
-              (the-as pair gp-0)
-              )
+            (script-eval (the-as pair gp-0) :vector (-> self root-override2 trans))
             )
         )
       )
@@ -681,7 +743,7 @@
           ((and (< f0-3 20480.0)
                 (and (< (fabs (- (-> s5-0 y) (-> self root-override2 trans y))) 6144.0)
                      gp-0
-                     (zero? (logand (-> (the-as process-focusable gp-0) focus-status) (focus-status disable dead ignore grabbed)))
+                     (not (logtest? (-> (the-as process-focusable gp-0) focus-status) (focus-status disable dead ignore grabbed)))
                      )
                 )
            (go-virtual spin-attack)
@@ -1138,7 +1200,7 @@
           (if (and (< f30-0 20480.0)
                    (and (< (fabs (- (-> s5-0 y) (-> self root-override2 trans y))) 6144.0)
                         gp-0
-                        (zero? (logand (-> (the-as process-focusable gp-0) focus-status) (focus-status disable dead ignore grabbed)))
+                        (not (logtest? (-> (the-as process-focusable gp-0) focus-status) (focus-status disable dead ignore grabbed)))
                         )
                    )
               (go-virtual spin-attack)

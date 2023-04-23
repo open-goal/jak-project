@@ -45,10 +45,9 @@ struct McHeader {
   u32 magic;
   u8 preview_data[64];
   u8 data[944];
-  u32 unk1_repeated;
+  u32 save_count2;
 };
 static_assert(sizeof(McHeader) == 0x400, "McHeader size");
-constexpr s32 BANK_TOTAL_SIZE = BANK_SIZE + sizeof(McHeader) * 2;
 
 static McHeader header;
 
@@ -68,13 +67,42 @@ void mc_print(const std::string& str, Args&&... args) {
   }
 }
 
-const char* filename[12] = {
+const char* filename_jak1[12] = {
     "BASCUS-97124AYBABTU!",           "BASCUS-97124AYBABTU!/icon.sys",
     "BASCUS-97124AYBABTU!/icon.ico",  "BASCUS-97124AYBABTU!/BASCUS-97124AYBABTU!",
     "BASCUS-97124AYBABTU!/bank0.bin", "BASCUS-97124AYBABTU!/bank1.bin",
     "BASCUS-97124AYBABTU!/bank2.bin", "BASCUS-97124AYBABTU!/bank3.bin",
     "BASCUS-97124AYBABTU!/bank4.bin", "BASCUS-97124AYBABTU!/bank5.bin",
     "BASCUS-97124AYBABTU!/bank6.bin", "BASCUS-97124AYBABTU!/bank7.bin"};
+
+const char* filename_jak2[12] = {
+    "BASCUS-97265AYBABTU!",           "BASCUS-97265AYBABTU!/icon.sys",
+    "BASCUS-97265AYBABTU!/icon.ico",  "BASCUS-97265AYBABTU!/BASCUS-97265AYBABTU!",
+    "BASCUS-97265AYBABTU!/bank0.bin", "BASCUS-97265AYBABTU!/bank1.bin",
+    "BASCUS-97265AYBABTU!/bank2.bin", "BASCUS-97265AYBABTU!/bank3.bin",
+    "BASCUS-97265AYBABTU!/bank4.bin", "BASCUS-97265AYBABTU!/bank5.bin",
+    "BASCUS-97265AYBABTU!/bank6.bin", "BASCUS-97265AYBABTU!/bank7.bin"};
+
+const char* mc_get_filename_no_dir(GameVersion version, int ndx) {
+  const char** filenames = nullptr;
+  switch (version) {
+    case GameVersion::Jak1:
+      filenames = filename_jak1;
+      break;
+    case GameVersion::Jak2:
+      filenames = filename_jak2;
+      break;
+  }
+  return filenames[ndx];
+}
+
+inline fs::path mc_get_filename(GameVersion version, int ndx) {
+  return file_util::get_user_memcard_dir(version) / mc_get_filename_no_dir(version, ndx);
+}
+
+int mc_get_total_bank_size(GameVersion version) {
+  return BANK_SIZE[g_game_version] + sizeof(McHeader) * 2;
+}
 
 void kmemcard_init_globals() {
   // next = 0;
@@ -116,8 +144,8 @@ u32 mc_checksum(Ptr<u8> data, s32 size) {
  * PC port function that returns whether a given bank ID's file exists or not.
  */
 bool file_is_present(int id, int bank = 0) {
-  auto bankname = file_util::get_user_memcard_dir(g_game_version) / filename[4 + id * 2 + bank];
-  if (!fs::exists(bankname) || fs::file_size(bankname) < BANK_TOTAL_SIZE) {
+  auto bankname = mc_get_filename(g_game_version, 4 + id * 2 + bank);
+  if (!fs::exists(bankname) || fs::file_size(bankname) < mc_get_total_bank_size(g_game_version)) {
     // file doesn't exist, or size is bad. we do not want to open files that will crash on read!
     return false;
   }
@@ -146,14 +174,13 @@ void pc_update_card() {
   // int highest_save_count = 0;
   mc_last_file = -1;
   for (s32 file = 0; file < 4; file++) {
-    auto bankname = file_util::get_user_memcard_dir(g_game_version) / filename[4 + file * 2];
+    auto bankname = mc_get_filename(g_game_version, 4 + file * 2);
     mc_files[file].present = file_is_present(file);
     if (mc_files[file].present) {
       auto bankdata = file_util::read_binary_file(bankname.string());
       auto header1 = reinterpret_cast<McHeader*>(bankdata.data());
       if (file_is_present(file, 1)) {
-        auto bankname2 =
-            file_util::get_user_memcard_dir(g_game_version) / filename[1 + 4 + file * 2];
+        auto bankname2 = mc_get_filename(g_game_version, 1 + 4 + file * 2);
         auto bankdata2 = file_util::read_binary_file(bankname2.string());
         auto header2 = reinterpret_cast<McHeader*>(bankdata2.data());
 
@@ -190,7 +217,7 @@ void pc_game_save_synch() {
   Timer mc_timer;
   mc_timer.start();
   pc_update_card();
-  auto path = file_util::get_user_memcard_dir(g_game_version) / filename[0];
+  auto path = mc_get_filename(g_game_version, 0);
   file_util::create_dir_if_needed_for_file(path.string());
 
   // cd_reprobe_save //
@@ -211,9 +238,8 @@ void pc_game_save_synch() {
 
   // file*2 + p4 is the bank (2 banks per file, p4 is 0 or 1 to select the bank)
   // 4 is the first bank file
-  mc_print("open {} for saving", filename[op.param2 * 2 + 4 + p4]);
-  auto save_path =
-      file_util::get_user_memcard_dir(g_game_version) / filename[op.param2 * 2 + 4 + p4];
+  mc_print("open {} for saving", mc_get_filename_no_dir(g_game_version, op.param2 * 2 + 4 + p4));
+  auto save_path = mc_get_filename(g_game_version, op.param2 * 2 + 4 + p4);
   file_util::create_dir_if_needed_for_file(save_path.string());
   auto fd = file_util::open_file(save_path.string().c_str(), "wb");
   mc_print("synchronous save file open took {:.2f}ms\n", mc_timer.getMs());
@@ -222,14 +248,14 @@ void pc_game_save_synch() {
     mc_print("save file opened, writing header...");
     memset(&header, 0, sizeof(McHeader));
     header.save_count = p2;
-    header.checksum = mc_checksum(op.data_ptr, BANK_SIZE);
+    header.checksum = mc_checksum(op.data_ptr, BANK_SIZE[g_game_version]);
     header.magic = MEM_CARD_MAGIC;
-    header.unk1_repeated = p2;
+    header.save_count2 = p2;
     memcpy(header.preview_data, op.data_ptr2.c(), 64);
     if (fwrite(&header, sizeof(McHeader), 1, fd) == 1) {
       // cb_savedheader //
       mc_print("save file writing main data");
-      if (fwrite(op.data_ptr.c(), BANK_SIZE, 1, fd) == 1) {
+      if (fwrite(op.data_ptr.c(), BANK_SIZE[g_game_version], 1, fd) == 1) {
         // cb_saveddata //
         mc_print("save file writing footer");
         if (fwrite(&header, sizeof(McHeader), 1, fd) == 1) {
@@ -275,7 +301,7 @@ void pc_game_save_synch() {
 void pc_game_load_open_file(FILE* fd) {
   if (fd) {
     // cb_openedload //
-    size_t read_size = BANK_TOTAL_SIZE;
+    size_t read_size = mc_get_total_bank_size(g_game_version);
     mc_print("reading save file...");
     if (fread(op.data_ptr.c() + p2 * read_size, read_size, 1, fd) == 1) {
       // cb_readload //
@@ -283,12 +309,11 @@ void pc_game_load_open_file(FILE* fd) {
       if (fclose(fd) == 0) {
         // cb_closedload //
         // added : check if aux bank exists
-        if (p2 < 1 && fs::exists(file_util::get_user_memcard_dir(g_game_version) /
-                                 filename[op.param2 * 2 + 4 + p2 + 1])) {
+        if (p2 < 1 && fs::exists(mc_get_filename(g_game_version, op.param2 * 2 + 4 + p2 + 1))) {
           p2++;
-          mc_print("reading next save bank {}", filename[op.param2 * 2 + 4 + p2]);
-          auto new_bankname =
-              file_util::get_user_memcard_dir(g_game_version) / filename[op.param2 * 2 + 4 + p2];
+          mc_print("reading next save bank {}",
+                   mc_get_filename_no_dir(g_game_version, op.param2 * 2 + 4 + p2));
+          auto new_bankname = mc_get_filename(g_game_version, op.param2 * 2 + 4 + p2);
           auto new_fd = file_util::open_file(new_bankname.string().c_str(), "rb");
           pc_game_load_open_file(new_fd);
         } else {
@@ -298,26 +323,27 @@ void pc_game_load_open_file(FILE* fd) {
           bool ok[2];
 
           headers[0] = (McHeader*)(op.data_ptr.c());
-          footers[0] = (McHeader*)(op.data_ptr.c() + sizeof(McHeader) + BANK_SIZE);
-          headers[1] = (McHeader*)(op.data_ptr.c() + BANK_TOTAL_SIZE);
-          footers[1] =
-              (McHeader*)(op.data_ptr.c() + BANK_TOTAL_SIZE + sizeof(McHeader) + BANK_SIZE);
-          static_assert(BANK_TOTAL_SIZE * 2 == 0x21000, "save layout");
+          footers[0] = (McHeader*)(op.data_ptr.c() + sizeof(McHeader) + BANK_SIZE[g_game_version]);
+          headers[1] = (McHeader*)(op.data_ptr.c() + mc_get_total_bank_size(g_game_version));
+          footers[1] = (McHeader*)(op.data_ptr.c() + mc_get_total_bank_size(g_game_version) +
+                                   sizeof(McHeader) + BANK_SIZE[g_game_version]);
+          // static_assert(mc_get_total_bank_size(g_game_version) * 2 == 0x21000, "save layout");
           ok[0] = true;
           ok[1] = p2 == 1;
 
           for (int idx = 0; idx < 2; idx++) {
             u32 expected_save_count = headers[idx]->save_count;
-            if (headers[idx]->unk1_repeated == expected_save_count &&
+            if (headers[idx]->save_count2 == expected_save_count &&
                 footers[idx]->save_count == expected_save_count &&
-                footers[idx]->unk1_repeated == expected_save_count) {
+                footers[idx]->save_count2 == expected_save_count) {
               // save count is okay!
               if (headers[idx]->magic == MEM_CARD_MAGIC && footers[idx]->magic == MEM_CARD_MAGIC) {
                 // magic numbers okay!
                 if (headers[idx]->checksum == footers[idx]->checksum) {
                   // checksum
                   auto expected_checksum = headers[idx]->checksum;
-                  if (mc_checksum(make_u8_ptr(headers[idx] + 1), BANK_SIZE) != expected_checksum) {
+                  if (mc_checksum(make_u8_ptr(headers[idx] + 1), BANK_SIZE[g_game_version]) !=
+                      expected_checksum) {
                     mc_print("failed checksum");
                     ok[idx] = false;
                   }
@@ -341,9 +367,9 @@ void pc_game_load_open_file(FILE* fd) {
           if (!ok[0] && !ok[1]) {
             // no good data.
             if (headers[0]->save_count == 0 && headers[0]->checksum == 0 &&
-                headers[0]->magic == 0 && headers[0]->unk1_repeated == 0 &&
+                headers[0]->magic == 0 && headers[0]->save_count2 == 0 &&
                 headers[1]->save_count == 0 && headers[1]->checksum == 0 &&
-                headers[1]->magic == 0 && headers[1]->unk1_repeated == 0) {
+                headers[1]->magic == 0 && headers[1]->save_count2 == 0) {
               // this is a fresh file that you tried to load from...
               mc_print("new game result");
               op.operation = MemoryCardOperationKind::NO_OP;
@@ -368,8 +394,10 @@ void pc_game_load_open_file(FILE* fd) {
 
             mc_print(fmt::format("loading bank {}", bank));
             u32 current_save_count = headers[bank]->save_count;
-            memmove(op.data_ptr.c(), op.data_ptr.c() + bank * BANK_TOTAL_SIZE + sizeof(McHeader),
-                    BANK_SIZE);
+            memmove(
+                op.data_ptr.c(),
+                op.data_ptr.c() + bank * mc_get_total_bank_size(g_game_version) + sizeof(McHeader),
+                BANK_SIZE[g_game_version]);
             mc_last_file = op.param2;
             mc_files[op.param2].most_recent_save_count = current_save_count;
             mc_files[op.param2].last_saved_bank = bank;
@@ -403,9 +431,9 @@ void pc_game_load_synch() {
 
   // cb_reprobe_load //
   p2 = 0;
-  mc_print("opening save file {}", filename[op.param2 * 2 + 4]);
+  mc_print("opening save file {}", mc_get_filename_no_dir(g_game_version, op.param2 * 2 + 4));
 
-  auto path = file_util::get_user_memcard_dir(g_game_version) / filename[op.param2 * 2 + 4];
+  auto path = mc_get_filename(g_game_version, op.param2 * 2 + 4);
   auto fd = file_util::open_file(path.string().c_str(), "rb");
   pc_game_load_open_file(fd);
 
@@ -656,14 +684,14 @@ void MC_get_status(s32 /*slot*/, Ptr<mc_slot_info> info) {
     info->files[i].present = 0;
   }
   info->last_file = 0xffffffff;
-  info->mem_required = SAVE_SIZE;
+  info->mem_required = SAVE_SIZE[g_game_version];
   info->mem_actual = 0;
 
   pc_update_card();
   info->known = 1;
   info->handle = PC_MEM_CARD_HANDLE;
   info->formatted = 1;
-  info->mem_actual = SAVE_SIZE;  // idk TODO does this matter?
+  info->mem_actual = SAVE_SIZE[g_game_version];  // idk TODO does this matter?
   info->initted = 1;
   // copy over the preview data.
   for (s32 file = 0; file < 4; file++) {

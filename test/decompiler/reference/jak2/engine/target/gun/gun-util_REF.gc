@@ -509,14 +509,13 @@
   :virtual #t
   :trans (behavior ()
     (let ((v1-0 (-> self parent)))
-      (if (not (logtest? (-> (the-as target (if v1-0
-                                                (the-as target (-> v1-0 0 self))
-                                                )
-                                     )
-                             focus-status
-                             )
-                         (focus-status in-head)
+      (if (not (focus-test?
+                 (the-as target (if v1-0
+                                    (the-as target (-> v1-0 0 self))
+                                    )
                          )
+                 in-head
+                 )
                )
           (go-virtual idle)
           )
@@ -540,7 +539,7 @@
     (set! (-> self gun-type) (the-as pickup-type (-> (the-as target (-> self parent 0)) game gun-type)))
     (let ((a0-0 (ppointer->process (-> self parent))))
       (cond
-        ((logtest? (-> (the-as target a0-0) focus-status) (focus-status in-head))
+        ((focus-test? (the-as target a0-0) in-head)
          (go-virtual hidden)
          )
         ((nonzero? (-> (the-as target (-> self parent 0)) gun gun-type))
@@ -599,14 +598,13 @@
           (a0-1 (-> self parent))
           )
       (cond
-        ((logtest? (-> (the-as target (if a0-1
-                                          (the-as target (-> a0-1 0 self))
-                                          )
-                               )
-                       focus-status
-                       )
-                   (focus-status in-head)
+        ((focus-test?
+           (the-as target (if a0-1
+                              (the-as target (-> a0-1 0 self))
+                              )
                    )
+           in-head
+           )
          (go-virtual hidden)
          )
         ((and (= (-> (the-as target (-> self parent 0)) gun gun-type) (pickup-type none))
@@ -994,7 +992,7 @@
       )
     (ja-channel-set! 0)
     (ja-post)
-    (while (logtest? (-> (the-as target (-> self parent 0)) focus-status) (focus-status dead))
+    (while (focus-test? (the-as target (-> self parent 0)) dead)
       (suspend)
       )
     (go-virtual idle)

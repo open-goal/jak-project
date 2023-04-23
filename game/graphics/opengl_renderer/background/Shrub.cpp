@@ -10,6 +10,10 @@ Shrub::~Shrub() {
   discard_tree_cache();
 }
 
+void Shrub::init_shaders(ShaderLibrary& shaders) {
+  m_uniforms.decal = glGetUniformLocation(shaders[ShaderId::SHRUB].id(), "decal");
+}
+
 void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
   if (!m_enabled) {
     while (dma.current_tag_offset() != render_state->next_bucket) {
@@ -166,13 +170,24 @@ bool Shrub::setup_for_level(const std::string& level, SharedRenderState* render_
   // make sure we have the level data.
   Timer tfrag3_setup_timer;
   auto lev_data = render_state->loader->get_tfrag3_level(level);
-  if (!lev_data || (m_has_level && lev_data->load_id != m_load_id)) {
+
+  if (!lev_data) {
+    // not loaded
     m_has_level = false;
     m_textures = nullptr;
     m_level_name = "";
     discard_tree_cache();
     return false;
   }
+
+  if (m_has_level && lev_data->load_id != m_load_id) {
+    m_has_level = false;
+    m_textures = nullptr;
+    m_level_name = "";
+    discard_tree_cache();
+    return setup_for_level(level, render_state);
+  }
+
   m_textures = &lev_data->textures;
   m_load_id = lev_data->load_id;
 
@@ -286,6 +301,8 @@ void Shrub::render_tree(int idx,
       glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
       last_texture = draw.tree_tex_id;
     }
+
+    glUniform1i(m_uniforms.decal, draw.mode.get_decal() ? 1 : 0);
 
     auto double_draw = setup_tfrag_shader(render_state, draw.mode, ShaderId::SHRUB);
 
