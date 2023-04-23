@@ -182,6 +182,11 @@ include_directories(third-party/SQLiteCpp/include)
 add_subdirectory(third-party/SQLiteCpp)
 string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
+# build tree-sitter parser
+include_directories(third-party/tree-sitter/tree-sitter/lib/include)
+include_directories(third-party/tree-sitter/tree-sitter-opengoal/include)
+add_subdirectory(third-party/tree-sitter EXCLUDE_FROM_ALL)
+
 # build common library
 add_subdirectory(common)
 
@@ -190,11 +195,6 @@ add_subdirectory(decompiler)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${THIRDPARTY_IGNORED_WARNINGS} ")
 add_subdirectory(third-party/cubeb EXCLUDE_FROM_ALL)
-
-# build tree-sitter parser
-include_directories(third-party/tree-sitter/tree-sitter/lib/include)
-include_directories(third-party/tree-sitter/tree-sitter-opengoal/include)
-add_subdirectory(third-party/tree-sitter EXCLUDE_FROM_ALL)
 
 # build LSP
 add_subdirectory(lsp)
