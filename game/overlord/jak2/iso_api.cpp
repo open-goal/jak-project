@@ -42,9 +42,7 @@ void EEVagAndVagwad(char* name, VagCmd* cmd) {
     int iVar3 = 0;
     char* pbVar4 = name_buff;
     do {
-      if (*pbVar4 - 0x61 < 0x1a) {
-        *pbVar4 = *pbVar4 - 0x20;
-      }
+      *pbVar4 = ::toupper(*pbVar4);
       iVar3 = iVar3 + 1;
       pbVar4 = (name_buff + iVar3);
     } while (iVar3 < 8);

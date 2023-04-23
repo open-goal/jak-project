@@ -43,10 +43,10 @@ void InitSound_overlord() {
   snd_StartSoundSystem();
 
   // there's a bunch of stuff that we don't use.
-  StreamVoice[0] = 1;
-  StreamVoice[1] = 2;
-  StreamVoice[2] = 3;
-  StreamVoice[3] = 4;  // TODO idk what im doing.
+  StreamVoice[0] = 0;
+  StreamVoice[1] = 1;
+  StreamVoice[2] = 2;
+  StreamVoice[3] = 3;  // TODO idk what im doing.
 
   for (int i = 0; i < 91; i++) {
     s16 opposing_front = static_cast<s16>(((i * 0x33ff) / 0x5a) + 0xc00);

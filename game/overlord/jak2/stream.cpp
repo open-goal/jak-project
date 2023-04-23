@@ -116,8 +116,8 @@ void* RPC_STR(unsigned int fno, void* _cmd, int y) {
   }
 
   // don't remember why we changed this...
-  //  return cmd;
-  return nullptr;
+    return cmd;
+  //return nullptr;
 }
 
 void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
@@ -146,9 +146,11 @@ void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
   auto* cmd_iter = (RPC_Play_Cmd_Jak2*)_cmd;
 
   for (int i = 0; i < n_messages; i++) {
+    printf("RPC_PLAY message %d\n", i);
     auto cmd_result = cmd_iter->result;
 
     if (cmd_result == 1) {
+      printf("removing everything...\n");
       for (int s = 0; s < 4; s++) {
         if (cmd_iter->names[s].chars[0]) {
           strncpy(list_node.name, cmd_iter->names[s].chars, 0x30);
@@ -165,6 +167,8 @@ void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
     } else {
       iVar5 = 9;
       if (cmd_result == 2) {
+        printf("  adding to streams list...\n");
+
         // uVar7 = 0;
         // iVar6 = 0x20;
         WaitSema(EEStreamsList.sema);
@@ -237,6 +241,7 @@ void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
         SignalSema(EEStreamsList.sema);
       } else if (cmd_result == 0) {
         iVar5 = 9;
+        printf("  adding to play list...\n");
 
         for (int s = 0; s < 4; s++) {
           if (cmd_iter->names[s].chars[0] && cmd_iter->id[s]) {
@@ -248,11 +253,14 @@ void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
             list_node.prio = iVar5;
             pRVar2 = FindThisVagStream(cmd_iter->names[s].chars, cmd_iter->id[s]);
             if ((pRVar2 == 0x0) || (pRVar2->byte4 == '\0')) {
+              printf(" didn't exist, looks like it needs to be added!\n");
               WaitSema(EEPlayList.sema);
               iVar3 = (VagStrListNode*)FindVagStreamInList(&list_node, &EEPlayList);
               if (iVar3 == (VagStrListNode*)0x0) {
+                printf("node also doesn't exist, adding it!\n");
                 iVar4 = (VagStrListNode*)InsertVagStreamInList(&list_node, &EEPlayList);
-                strncpy(iVar4->name, list_node.name, 0x30);
+
+
                 iVar4->id = list_node.id;
                 iVar4->prio = list_node.prio;
                 iVar4->unk_72 = list_node.unk_72;
@@ -260,6 +268,10 @@ void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
                 iVar4->unk_80 = 0;
                 iVar4->unk_92 = 0;
                 iVar4->unk_68 = list_node.unk_68;
+                strncpy(iVar4->name, list_node.name, 0x30);
+                printf("NAME: %s\n", iVar4->name);
+                printf("prio: %d\n", iVar4->prio);
+                printf("68: %d\n", iVar4->unk_68);
               }
               SignalSema(EEPlayList.sema);
             }
@@ -337,11 +349,11 @@ u32 STRThread() {
   sceSifRpcLoop(&dq);
   return 0;
 }
-
+sceSifServeData* gserve = nullptr;
 u32 PLAYThread() {
   sceSifQueueData dq;
   sceSifServeData serve;
-
+  gserve = &serve;
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());

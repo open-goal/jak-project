@@ -3,13 +3,14 @@
 #include <cstring>
 
 #include "common/common_types.h"
+#include "common/util/Assert.h"
 
 #include "game/sound/common/voice.h"
 
 #include "third-party/fmt/core.h"
 
-std::shared_ptr<snd::voice> voice;
-u8 spu_memory[0x15160];
+std::shared_ptr<snd::voice> voices[4];
+u8 spu_memory[0x15160 * 10];
 
 static sceSdTransIntrHandler trans_handler[2] = {nullptr, nullptr};
 static void* userdata[2] = {nullptr, nullptr};
@@ -19,7 +20,13 @@ u32 sceSdGetSwitch(u32 entry) {
   return 0;
 }
 
+snd::voice* voice_from_entry(u32 entry) {
+  u32 it = entry & 3;
+  return voices[it].get();
+}
+
 u32 sceSdGetAddr(u32 entry) {
+  auto* voice = voice_from_entry(entry);
   if (!voice) {
     return 0;
   }
@@ -28,15 +35,21 @@ u32 sceSdGetAddr(u32 entry) {
   // u32 reg = entry & ~0x3f;
 
   // Only ever used for getting NAX
-
+  // ASSERT_NOT_REACHED();
   return voice->get_nax() << 1;
 }
 
 void sceSdSetSwitch(u32 entry, u32 value) {
   // we can ignore this, only used for vmix
+  u32 reg = entry & ~0x3f;
+  switch(reg) {
+    case 0x1500:
+      voice_from_entry(entry)->key_on();
+  }
 }
 
 void sceSdSetAddr(u32 entry, u32 value) {
+  auto* voice = voice_from_entry(entry);
   if (!voice) {
     return;
   }
@@ -51,10 +64,15 @@ void sceSdSetAddr(u32 entry, u32 value) {
     case SD_VA_LSAX: {
       voice->set_lsa(value >> 1);
     } break;
+    default:
+      printf("unknown 0x%x\n", reg);
+      ASSERT_NOT_REACHED();
+      break;
   }
 }
 
 void sceSdSetParam(u32 entry, u32 value) {
+  auto* voice = voice_from_entry(entry);
   if (!voice) {
     return;
   }
@@ -89,9 +107,12 @@ void sceSdSetTransIntrHandler(s32 channel, sceSdTransIntrHandler handler, void* 
 }
 
 u32 sceSdVoiceTrans(s32 channel, s32 mode, void* iop_addr, u32 spu_addr, u32 size) {
+  for (auto& voice : voices) {
+    voice->debug = true;
+  }
   memcpy(&spu_memory[spu_addr], iop_addr, size);
   if (trans_handler[channel] != nullptr) {
-    trans_handler[channel](channel, userdata);
+    // trans_handler[channel](channel, userdata);
   }
   return size;
 }

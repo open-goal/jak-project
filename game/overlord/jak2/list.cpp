@@ -19,9 +19,9 @@ bool InitList(List* head, u32 elt_count, int elt_size) {
   head->elt_count = elt_count;
   buf_ptr = (ListNode*)AllocSysMemory(0, elt_count * elt_size, 0);
   head->buffer = (u8*)buf_ptr;
-  if (buf_ptr) {
+  if (!buf_ptr) {
     printf("IOP: ======================================================================\n");
-    printf("IOP: list InitList: no memory for list %s\n", head);
+    printf("IOP: list InitList: no memory for list %s\n", head->name);
     printf("IOP: ======================================================================\n");
     ASSERT_NOT_REACHED();
   }
@@ -57,7 +57,7 @@ bool InitList(List* head, u32 elt_count, int elt_size) {
   head->sema = iVar1;
   if (iVar1 < 0) {
     printf("IOP: ======================================================================\n");
-    printf("IOP: list InitList: can\'t create semaphore for list %s\n", head);
+    printf("IOP: list InitList: can\'t create semaphore for list %s\n", head->name);
     printf("IOP: ======================================================================\n");
     ASSERT_NOT_REACHED();
   }

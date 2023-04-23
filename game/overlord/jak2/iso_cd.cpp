@@ -3,7 +3,9 @@
 #include <cstdio>
 #include <cstring>
 
+#include "common/log/log.h"
 #include "common/util/Assert.h"
+#include "common/util/FileUtil.h"
 
 #include "game/common/overlord_common.h"
 #include "game/overlord/common/fake_iso.h"
@@ -76,6 +78,7 @@ void FS_Close(LoadStackEntry* lse);
 int FS_PageBeginRead(LoadStackEntry* lse, Buffer* buffer);
 uint32_t FS_LoadSoundBank(char* name, SoundBank* buffer);
 uint32_t FS_LoadMusic(char* name, s32* buffer);
+u32 FS_SyncRead();
 
 void iso_cd_init_globals() {
   ReadPagesCurrentPage = nullptr;
@@ -106,6 +109,7 @@ void iso_cd_init_globals() {
   iso_cd.page_begin_read = FS_PageBeginRead;
   iso_cd.load_sound_bank = FS_LoadSoundBank;
   iso_cd.load_music = FS_LoadMusic;
+  iso_cd.sync_read = FS_SyncRead;
 }
 
 ///////////////////////////
@@ -116,6 +120,7 @@ struct FakeCd {
   int offset_into_file = 0;
   FILE* fp = nullptr;
   void (*callback)(int) = nullptr;
+  FileRecord* last_fr = nullptr;
 } gFakeCd;
 
 auto sceCdCallback(void (*callback)(int)) {
@@ -126,11 +131,14 @@ auto sceCdCallback(void (*callback)(int)) {
 
 int sceCdRead(int lsn, int num_sectors, void* dest, void* mode) {
   (void)mode;
+  // printf("sceCdRead %d, %d -> %p\n", lsn, num_sectors, dest);
   ASSERT(gFakeCd.fp);
   if (fseek(gFakeCd.fp, lsn * SECTOR_SIZE, SEEK_SET)) {
     ASSERT_MSG(false, "Failed to fseek");
   }
-  if (fread(dest, num_sectors * SECTOR_SIZE, 1, gFakeCd.fp) != 1) {
+  if (fread(dest, num_sectors * SECTOR_SIZE, 1, gFakeCd.fp) < 0) {
+    printf("dest is %p, num_sectors %d, lsn %d\n", dest, num_sectors, lsn);
+    printf("err: %s\n", strerror(errno));
     ASSERT_MSG(false, "Failed to fread");
   }
   ASSERT(gFakeCd.callback);
@@ -173,7 +181,7 @@ void IsoCdPagesCallback(int done) {
 
       // ???
       if (ReadPagesCurrentPage->state == PageState::ALLOCATED_EMPTY) {
-        ReadPagesCurrentPage->state = PageState::ALLOCATED_EMPTY;
+        ReadPagesCurrentPage->state = PageState::ALLOCATED_FILLED;
       }
 
       // advance to the next page.
@@ -585,6 +593,24 @@ int FS_PageBeginRead(LoadStackEntry* lse, Buffer* buffer) {
     }
 
     // start a read!
+    if (gFakeCd.last_fr != lse->fr) {
+      const char* path = get_file_path(lse->fr);
+      FILE* fp = file_util::open_file(path, "rb");
+      if (!fp) {
+        lg::error("[OVERLORD] fake iso could not open the file \"{}\"", path);
+      } else {
+        // printf("PAGE READING %s\n", path);
+      }
+      ASSERT(fp);
+
+      if (gFakeCd.fp) {
+        fclose(gFakeCd.fp);
+      }
+      gFakeCd.fp = fp;
+      gFakeCd.last_fr = lse->fr;
+    }
+
+
     while (true) {
       PreviousCallBack = nullptr;
       PreviousCallBack = sceCdCallback(IsoCdPagesCallback);
@@ -598,7 +624,7 @@ int FS_PageBeginRead(LoadStackEntry* lse, Buffer* buffer) {
 
     // wait for read to finish
     while (-1 < SubBufferToRead) {
-      DelayThread(1000);
+      // DelayThread(1000);
       do_cd_callback();  // added, to make progress. TODO remove sleep avoe.
     }
 

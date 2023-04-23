@@ -377,6 +377,7 @@ void ReleaseMessage(CmdHeader* param_1, int param_2) {
   int iVar4;
   int iVar5;
   PriStackEntry* pPVar6;
+  printf("release %x\n", param_1->cmd_kind);
   // undefined4 local_18 [2];
 
   pBVar1 = param_1->callback_buffer;
@@ -535,7 +536,8 @@ CmdHeader* GetMessage() {
       do {
         pCVar1 = *ppCVar3;
         if ((((pCVar1->lse != (LoadStackEntry*)0x0) && (pCVar1->status == -1)) &&
-             (pCVar1->unk_24 != 0)) &&
+             (pCVar1->unk_24 != 0)
+             ) &&
             ((pCVar1->callback_buffer == (Buffer*)0x0 ||
               (pCVar1->callback_buffer->next == (Buffer*)0x0)))) {
           return pCVar1;
@@ -587,6 +589,7 @@ void ProcessMessageData() {
             if (iVar1 == -1)
               goto LAB_00007308;
           }
+
           ReleaseMessage(pCVar2, 1);
           ReturnMessage(pCVar2);
           iVar6 = iVar6 + 1;
@@ -607,6 +610,8 @@ void ProcessMessageData() {
 }
 
 void ReturnMessage(CmdHeader* param_1) {
+  printf("return %x\n", param_1->cmd_kind);
+
   if (param_1->mbx_to_reply == 0) {
     if (param_1->thread_id == 0) {
       FreeVAGCommand((VagCmd*)param_1);

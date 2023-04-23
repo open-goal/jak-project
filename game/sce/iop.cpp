@@ -88,7 +88,7 @@ void* AllocSysMemory(int type, unsigned long size, void* addr) {
  */
 void* AllocScratchPad(int mode) {
   ASSERT(mode == 0);
-  constexpr int kScratchpadSize = 1024;
+  constexpr int kScratchpadSize = 1024 * 16;
   return iop->iop_alloc(kScratchpadSize);
 }
 

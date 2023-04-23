@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 
 #include "game/overlord/jak2/iso_queue.h"
@@ -372,6 +373,8 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
     lfo_node.plugin_id = cmd->plugin_id;
     RemoveLfoStreamFromList(&lfo_node, &LfoList);
   }
+  printf("termina removing %s (2)\n", vag_node.name);
+
   RemoveVagStreamFromList(&vag_node, &EEPlayList);
   if (param_2 == 1) {
     // CpuResumeIntr(auStack32[0]);
@@ -537,7 +540,17 @@ void RestartVag(VagCmd* param_1, int param_2, int param_3) {
 
 void SetVAGVol(VagCmd* cmd, int param_2) {
   // unk136 structure access...
-  ASSERT_NOT_REACHED();
+  static int i = 0;
+  i++;
+  if (i < 100) {
+    lg::error("ignoring volume");
+  }
+
+  sceSdSetParam(0 | SD_VP_VOLL, 16000);
+  sceSdSetParam(0 | SD_VP_VOLR, 16000);
+//  sceSdSetParam(0 | SD_VP_ADSR1, 0xf);
+//  sceSdSetParam(0 | SD_VP_ADSR2, 0x1fc0);
+  // ASSERT_NOT_REACHED();
 }
 
 void SetVagStreamsNoStart(int param_1, int param_2) {
@@ -863,8 +876,34 @@ void UnPauseVagStreams() {
   }
 }
 
-void SetAllVagsVol(int vol) {
-  ASSERT_NOT_REACHED();  // needs 136...
+void SetAllVagsVol(int param_1)
+
+{
+  int iVar1;
+  VagCmd* cmd;
+
+  cmd = VagCmds;
+  if (param_1 < 0) {
+    iVar1 = 0;
+    do {
+      SetVAGVol(cmd, 1);
+      iVar1 = iVar1 + 1;
+      cmd = cmd + 1;
+    } while (iVar1 < 4);
+  } else {
+    iVar1 = 0;
+    do {
+      if (cmd->unk_136) {
+        ASSERT_NOT_REACHED();
+        //        if (*(char *)((int)cmd->unk_136 + 0x17) == param_1) {
+        //          SetVAGVol(cmd,1);
+        //        }
+        cmd = cmd + 1;
+      }
+      iVar1 = iVar1 + 1;
+    } while (iVar1 < 4);
+  }
+  return;
 }
 
 void CalculateVAGVolumes(VagCmd* cmd, int* l_out, int* r_out) {

@@ -24,7 +24,7 @@
 using namespace iop;
 
 namespace jak2 {
-
+void spu_dma_hack();
 u32 DGOThread();
 FileRecord* FindISOFile(const char* name);
 int LoadISOFileToIOP(FileRecord* fr, uint8_t* dest, int length);
@@ -88,6 +88,7 @@ u32 InitISOFS() {
   mbx_param.attr = 0;
   mbx_param.option = 0;
   dgo_mbx = CreateMbx(&mbx_param);
+  printf("dgo mbx is %d\n", dgo_mbx);
   if (dgo_mbx < 1) {
     printf("IOP: ======================================================================\n");
     printf("IOP: iso InitISOFS: Cannot create DGO mbx\n");
@@ -163,6 +164,11 @@ u32 InitISOFS() {
   FileRecord* vagdir_file = FindISOFile("VAGDIR.AYB");
   if (vagdir_file) {
     LoadISOFileToIOP(vagdir_file, (u8*)&gVagDir, sizeof(gVagDir));
+
+    // massive hack: disable stereo
+    //    for (auto& e : gVagDir.vag) {
+    //      e.flag = 0;
+    //    }
   } else {
     printf("IOP: ======================================================================\n");
     printf("IOP : iso InitISOFS : cannot load VAG directory\n");
@@ -181,6 +187,8 @@ u32 InitISOFS() {
 }
 
 void IsoQueueVagStream(VagCmd* cmd, int param_2) {
+  printf("------ Iso QUEU VAG STREAM!!!! %s\n", cmd->name);
+
   int iVar1;
   VagCmd* puVar3;
   VagCmd* pRVar2;
@@ -192,6 +200,11 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
   int iVar7;
   int iVar8;
   VagCmd* pVVar11;
+
+  // HACK
+  if (!cmd->vag_dir_entry) {
+    return;
+  }
 
   if (param_2 == 1) {
     // CpuSuspendIntr(local_20);
@@ -333,6 +346,9 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
   puVar3->unk_180 = 0;
   puVar3->unk_184 = 0;
   puVar3->unk_192 = 0;
+  printf("check for 6 1: %p\n", pLVar5);
+  // puVar3->status_bytes[BYTE6] = '\x01'; // HAKC
+
   if (pLVar5 == (LoadStackEntry*)0x0) {
     puVar3->status_bytes[BYTE6] = '\x01';
   } else {
@@ -348,6 +364,7 @@ LAB_000049dc:
 }
 
 void IsoPlayVagStream(VagCmd* param_1, int param_2) {
+  printf("------ Iso Play VAG STREAM!!!! %s\n", param_1->name);
   VagCmd* iVar1;
   LoadStackEntry* pLVar1;
   VagCmd* pVVar1;
@@ -391,6 +408,7 @@ void IsoPlayVagStream(VagCmd* param_1, int param_2) {
       iVar1->unk_180 = 0;
       iVar1->unk_184 = 0;
       iVar1->unk_192 = 0;
+
       if (pLVar1 == (LoadStackEntry*)0x0) {
         iVar1->status_bytes[BYTE6] = '\x01';
       } else {
@@ -428,11 +446,20 @@ u32 ISOThread() {
   VagStrListNode* pLVar14;
   // char* pcVar15;
   CmdLoadSingleIop* local_30;
+
+  int pri = 0;
+  int i;
   // undefined4 local_2c;
 
+  printf("------- ISOThread starting up\n");
+  printf("InitBuffer\n");
   InitBuffers();
+  printf("InitVagCmds\n");
   InitVagCmds();
+  printf("InitSpuStreamsThread\n");
   InitSpuStreamsThread();
+
+  printf("init driver\n");
   pBVar3 = AllocateBuffer(1, 0x0, 1);
   iVar4 = (isofs->init)(/*pBVar3->unk_12*/);
   if (iVar4 == 0) {
@@ -440,7 +467,12 @@ u32 ISOThread() {
   }
   SendMbx(sync_mbx, &_not_on_stack_sync);
   FreeBuffer(pBVar3, 1);
+
+  printf("ISOThread loop starting.\n");
   do {
+
+    spu_dma_hack();
+
     IsoThreadCounter = IsoThreadCounter + 1;
     // iVar4 = PollMbx(&local_30, iso_mbx);
     iVar4 = PollMbx((MsgPacket**)(&local_30), iso_mbx);
@@ -452,6 +484,7 @@ u32 ISOThread() {
 
     if (iVar4 == 0) {
       iVar4 = (local_30->header).cmd_kind;
+      // printf("isothread processing %x\n", iVar4);
       (local_30->header).callback_buffer = (Buffer*)0x0;
       (local_30->header).unk_24 = 1;
       (local_30->header).callback = NullCallback;
@@ -599,11 +632,32 @@ u32 ISOThread() {
 
   LAB_00005144:
     pBVar3 = (Buffer*)0x0;
+    pri = 0;
+
+    //    for (auto& p : gPriStack) {
+    //      if (p.count) {
+    //        printf("pri: %d %d\n", pri, p.count);
+    //        for (i = 0; i < p.count; i++) {
+    //          printf("  got %x (%s)\n", p.entries[i]->cmd_kind, p.names[i].c_str());
+    //          printf(" b0: %p\n", p.entries[i]->callback_buffer);
+    //          if (p.entries[i]->callback_buffer) {
+    //            printf(" b1: %p\n", p.entries[i]->callback_buffer->next);
+    //          }
+    //          printf("lse %p, status %d unk24 %d\n", p.entries[i]->lse, p.entries[i]->status,
+    //                 p.entries[i]->unk_24);
+    //        }
+    //      }
+    //      pri++;
+    //    }
+
     pRVar7 = (VagCmd*)GetMessage();
+
     if (pRVar7 == 0x0) {
     LAB_00005208:;
       // (isofs->poll_drive)();
     } else {
+      printf("isothread processing %x\n", pRVar7->header.cmd_kind);
+
       u32 uVar13 = 1;
       if ((pRVar7->header).callback == ProcessVAGData) {
         if (pRVar7->xfer_size != 0) {
@@ -678,13 +732,15 @@ u32 ISOThread() {
     // pcVar15 = VagCmds[0].name;
     auto* cmd_iter = VagCmds;
     do {
-      if ((((cmd_iter->byte11 == '\0') && (cmd_iter->byte6 == '\0')) && (cmd_iter->id != 0)) ||
+      if ((((cmd_iter->byte11 == '\0') && (cmd_iter->byte7 == '\0')) && (cmd_iter->id != 0)) ||
           ((StopPluginStreams == 1 && (cmd_iter->unk_136) != 0x0))) {
         // CpuSuspendIntr(&local_2c);
         bVar1 = false;
         if (cmd_iter->id == 0) {
           if (cmd_iter->name[0] != '\0') {
             while (pRVar10 = FindVagStreamName(pRVar7->name), pRVar10 != 0x0) {
+              printf("terminate from Isothread 1\n");
+
               TerminateVAG(pRVar10, 0);
               bVar1 = true;
             }
@@ -692,6 +748,8 @@ u32 ISOThread() {
         } else {
           pRVar10 = FindThisVagStream(cmd_iter->name, cmd_iter->id);
           if (pRVar10 != 0x0) {
+            printf("terminate from Isothread 2\n");
+
             TerminateVAG(pRVar10, 0);
             bVar1 = true;
           }
@@ -805,7 +863,7 @@ int RunDGOStateMachine(CmdHeader* param_1_in, Buffer* param_2) {
           }
         LAB_000058c4:
           if (param_1->objects_loaded + 1 < (param_1->dgo_header).object_count) {
-            if (LookMbx(sync_mbx))
+            if (!LookMbx(sync_mbx))
               goto LAB_000059b4;
             if (param_1->want_abort != 0)
               goto LAB_00005988;
@@ -826,7 +884,7 @@ int RunDGOStateMachine(CmdHeader* param_1_in, Buffer* param_2) {
         }
         break;
       case DgoState::Read_Last_Obj:
-        if (LookMbx(sync_mbx))
+        if (!LookMbx(sync_mbx))
           goto LAB_000059b4;
         if (param_1->want_abort == 0)
           goto LAB_00005990;
@@ -926,9 +984,9 @@ int RunDGOStateMachine(CmdHeader* param_1_in, Buffer* param_2) {
 void LoadDGO(RPC_Dgo_Cmd* param_1) {
   FileRecord* iVar1;
   int iVar2;
-
   iVar1 = (isofs->find)(param_1->name);
   if (iVar1 == 0) {
+    printf("overlord couldn't find dgo\n");
     param_1->result = 1;
   } else {
     CancelDGO(0);
@@ -1041,6 +1099,8 @@ void IsoStopVagStream(VagCmd* param_1, int param_2) {
   if (param_1->id == 0) {
     if (param_1->name[0] != '\0') {
       while (pRVar2 = FindVagStreamName(param_1->name), pRVar2 != 0x0) {
+        printf("terminate from IsoStop 1");
+
         TerminateVAG(pRVar2, 0);
         bVar1 = true;
       }
@@ -1048,6 +1108,7 @@ void IsoStopVagStream(VagCmd* param_1, int param_2) {
   } else {
     pRVar2 = FindThisVagStream(param_1->name, param_1->id);
     if (pRVar2 != 0x0) {
+      printf("terminate from IsoStop 2");
       TerminateVAG(pRVar2, 0);
       bVar1 = true;
     }
@@ -1137,6 +1198,7 @@ void CancelDGO(RPC_Dgo_Cmd* param_1) {
   // undefined auStack24 [8];
 
   if (sLoadDgo.header.cmd_kind != 0) {
+    printf("--------------- case!\n");
     sLoadDgo.want_abort = 1;
     SendMbx(sync_mbx, nullptr);  // was some stack addr...
     WaitMbx(dgo_mbx);
@@ -1145,6 +1207,8 @@ void CancelDGO(RPC_Dgo_Cmd* param_1) {
       param_1->result = 3;
     }
     sLoadDgo.header.cmd_kind = 0;
+  } else {
+    printf(" another\n");
   }
 }
 

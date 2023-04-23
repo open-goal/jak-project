@@ -521,6 +521,7 @@ LAB_00008d9c:
 
       info.stream_status[i] = status_bits;
       info.stream_position[i] = pos;
+      // printf("positions: %d\n", pos);
       info.stream_id[i] = VagCmds[i].id;
     }
 

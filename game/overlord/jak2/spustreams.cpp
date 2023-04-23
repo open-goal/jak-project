@@ -21,6 +21,7 @@ void spusstreams_init_globals() {
 }
 
 int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
+  printf("processing vag data!\n");
   VagCmd* param_1 = (VagCmd*)param_1_in;
   int iVar1;
   int iVar2;
@@ -32,23 +33,35 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
   // undefined4 local_18[2];
 
   if (param_1->status_bytes[BYTE6] != '\0') {
+    printf("faile1\n");
     return -1;
   }
   if (param_1->status_bytes[BYTE11] != '\0') {
+    printf("faile2\n");
     return -1;
   }
   if (param_1->unk_260 != 0) {
+    printf("faile3\n");
     param_2->decompressed_size = 0;
     return -1;
   }
   if (param_1->unk_60 != 1) {
+    printf("faile4\n");
     return -1;
   }
   // CpuSuspendIntr(local_18);
   CheckForIsoPageBoundaryCrossing(param_2);
+  // added this check
+  if (!param_2->page) {
+    return -1;
+  }
+
   iVar2 = (int)param_2->page->state;
-  if ((iVar2 != 6) && (iVar2 != 4))
+  if ((iVar2 != 6) && (iVar2 != 4)) {
+    printf("faile5\n");
     goto LAB_0000fecc;
+  }
+
   param_2->page->state = PageState::SIX;
   pRVar7 = param_1->stereo_sibling;
   iVar2 = 0x2000;
@@ -56,6 +69,7 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
     iVar2 = 0x4000;
   }
   uVar3 = param_1->unk_240_flag0;
+  printf("flag is %d\n", uVar3);
   if (uVar3 == 0) {
     piVar6 = (int*)param_2->decomp_buffer;
     if ((*piVar6 != 0x70474156) && (*piVar6 != 0x56414770)) {
@@ -109,7 +123,9 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
       goto LAB_0000fecc;
     param_1->unk_196 = 0;
     param_1->unk_200 = 0;
-    pRVar7->unk_200 = 0;
+    if (pRVar7) { // added
+      pRVar7->unk_200 = 0;
+    }
   LAB_0000fbdc:
     iVar2 = 0x2000;
     if (pRVar7 != 0x0) {
@@ -224,7 +240,10 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
     param_1->xfer_size = iVar4;
     param_2->decompressed_size = param_2->decompressed_size - iVar2;
   }
+
   param_1->unk_240_flag0 = param_1->unk_240_flag0 + 1;
+  printf("--------------- increment flag thing %d\n", param_1->unk_240_flag0);
+
 LAB_0000fecc:
   // CpuResumeIntr(local_18[0]);
   return -1;
@@ -859,6 +878,7 @@ u32 CheckVagStreamsProgress() {
     // piVar3 = &VagCmds[0].byte9;
     auto* cmd_iter = VagCmds;
     do {
+      // printf("bytes; %d %d %d\n", cmd_iter->byte1 , cmd_iter->byte4, cmd_iter->byte6  );
       if (((cmd_iter->byte1 != '\0') || ((cmd_iter->byte4 != '\0' && (cmd_iter->byte6 != '\0')))) ||
           ((cmd_iter->header.unk_24 == 1 && (cmd_iter->id != 0)))) {
         iVar1 = CheckVAGStreamProgress(pRVar2);
@@ -884,6 +904,7 @@ u32 CheckVagStreamsProgress() {
               PauseVAG(pRVar2, 0);
               strncpy(VStack200.name, pRVar2->name, 0x30);
               VStack200.id = cmd_iter->id;
+              printf("spustreams removing %s (1)\n", VStack200.name);
               RemoveVagStreamFromList(&VStack200, &PluginStreamsList);
               RemoveVagStreamFromList(&VStack200, &EEPlayList);
               LStack96.id = cmd_iter->id;
@@ -936,6 +957,7 @@ void StopVagStream(VagCmd* param_1, int param_2) {
     strncpy(VStack184.name, param_1->name, 0x30);
     VStack184.id = param_1->id;
     RemoveVagStreamFromList(&VStack184, &PluginStreamsList);
+    printf("spustreams removing %s (2)\n", VStack184.name);
     RemoveVagStreamFromList(&VStack184, &EEPlayList);
     LStack80.id = param_1->id;
     LStack80.plugin_id = param_1->plugin_id;
@@ -985,6 +1007,7 @@ u32 GetSpuRamAddress(VagCmd* param_1) {
       uVar2 = sceSdGetAddr(uVar6);
       uVar3 = sceSdGetAddr(uVar6);
       uVar4 = sceSdGetAddr(uVar6);
+      printf("got nax: %d\n", uVar3);
       if ((uVar2 == uVar3) ||
           ((uVar3 != uVar4 && (bVar1 = uVar2 == uVar4, uVar4 = uVar5, bVar1)))) {
         uVar4 = uVar2;

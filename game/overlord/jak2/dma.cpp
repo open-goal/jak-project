@@ -9,13 +9,15 @@ namespace jak2 {
 s32 SpuDmaStatus = 0;
 VagCmd* DmaVagCmd;
 VagCmd* DmaStereoVagCmd;
+int pending_dma = 0;
+
 void dma_init_globals() {
   SpuDmaStatus = 0;
   DmaVagCmd = 0;
   DmaStereoVagCmd = 0;
 }
 
-int SpuDmaIntr(int param_1, void*) {
+int SpuDmaIntr(int, void*) {
   //  int* piVar1;
   //  int* piVar2;
   //  RealVagCmd* pRVar3;
@@ -57,9 +59,12 @@ int SpuDmaIntr(int param_1, void*) {
         iop_ptr = DmaStereoVagCmd->dma_iop_mem_ptr;
         spu_addr = DmaStereoVagCmd->spu_stream_mem_addr + 0x2000;
       }
-      sceSdVoiceTrans((int)chan, 0, iop_ptr, spu_addr, DmaStereoVagCmd->xfer_size);
+
+      int old_xfer = DmaStereoVagCmd->xfer_size;
       DmaStereoVagCmd->xfer_size = 0;
       DmaStereoVagCmd->dma_iop_mem_ptr = nullptr;
+      pending_dma = 1;
+      sceSdVoiceTrans((int)chan, 0, iop_ptr, spu_addr, old_xfer);
       return 0;
     }
     if ((DmaVagCmd->unk_240_flag0 & 1U) == 0) {
@@ -75,6 +80,7 @@ int SpuDmaIntr(int param_1, void*) {
     if (!DmaStereoVagCmd) {
       DmaVagCmd->unk_64 = 0;
       sceSdSetAddr(((s16)DmaVagCmd->voice) | 0x2040, DmaVagCmd->spu_stream_mem_addr + 0x30);
+      printf("-------------- start adrs\n");
       sceSdSetParam(*(ushort*)&DmaVagCmd->voice | 0x300, 0xf);
       sceSdSetParam(*(ushort*)&DmaVagCmd->voice | 0x400, 0x1fc0);
       sceSdSetParam(*(ushort*)&DmaVagCmd->voice | 0x200, pitch);
@@ -82,6 +88,8 @@ int SpuDmaIntr(int param_1, void*) {
     } else {
       DmaVagCmd->unk_64 = 0;
       DmaStereoVagCmd->unk_64 = 0;
+      printf("-------------- start adrs (stereo)\n");
+
       sceSdSetAddr(*(ushort*)&DmaVagCmd->voice | 0x2040, DmaVagCmd->spu_stream_mem_addr + 0x30);
       sceSdSetAddr(*(ushort*)&DmaStereoVagCmd->voice | 0x2040,
                    DmaStereoVagCmd->spu_stream_mem_addr + 0x30);
@@ -119,6 +127,8 @@ int SpuDmaIntr(int param_1, void*) {
     UnPauseVAG(DmaVagCmd, 0);
   hack:;
   }
+
+  printf("restoring unk60\n");
   DmaVagCmd->unk_60 = 1;
   if (DmaStereoVagCmd) {
     DmaStereoVagCmd->unk_60 = 1;
@@ -127,12 +137,19 @@ int SpuDmaIntr(int param_1, void*) {
   DmaStereoVagCmd = nullptr;
 
 cleanup:
-  sceSdSetTransIntrHandler(param_1, nullptr, nullptr);
-  if (-1 < param_1) {
-    snd_FreeSPUDMA(param_1);
-  }
+//  sceSdSetTransIntrHandler(param_1, nullptr, nullptr);
+//  if (-1 < param_1) {
+//    snd_FreeSPUDMA(param_1);
+//  }
   SpuDmaStatus = 0;
   return 0;
+}
+
+void spu_dma_hack() {
+  if (pending_dma) {
+    SpuDmaIntr(0, nullptr);
+    pending_dma = 0;
+  }
 }
 
 bool DMA_SendToSPUAndSync(uint8_t* iop_mem,
@@ -140,6 +157,7 @@ bool DMA_SendToSPUAndSync(uint8_t* iop_mem,
                           int spu_addr,
                           VagCmd* cmd,
                           int disable_intr) {
+  printf("spudma\n");
   // if (disable_intr == 1) {
   // CpuSuspendIntr(local_28);
   //}
@@ -149,6 +167,7 @@ bool DMA_SendToSPUAndSync(uint8_t* iop_mem,
     DmaVagCmd = cmd;
     if (cmd) {
       auto* sibling = cmd->stereo_sibling;
+      printf("setting unk60 to 0...\n");
       cmd->unk_60 = 0;
       DmaStereoVagCmd = sibling;
       if (sibling) {
@@ -160,6 +179,7 @@ bool DMA_SendToSPUAndSync(uint8_t* iop_mem,
     }
     SpuDmaStatus = 1;
     sceSdSetTransIntrHandler(chan, SpuDmaIntr, 0);
+    pending_dma = 1;
     int sz = sceSdVoiceTrans((int)(short)chan, 0, iop_mem, spu_addr, size_one_side);
     // if (disable_intr == 1) {
     // CpuResumeIntr(local_28[0]);

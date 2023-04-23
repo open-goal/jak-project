@@ -14,6 +14,8 @@
 namespace jak2 {
 using namespace iop;
 
+u8* ScratchPadMemoryBase;
+
 namespace {
 // believed unused global
 s32 SndPlayThread;
@@ -30,6 +32,7 @@ int start_overlord(int argc, const char* const* argv) {
   // removed memory prints.
 
   ScratchPadMemory = (u8*)AllocScratchPad(0);
+  ScratchPadMemoryBase = ScratchPadMemory;
   // removed allocation check code.
 
   InitBanks();

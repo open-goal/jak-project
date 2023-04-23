@@ -64,6 +64,7 @@
 #include "game/overlord/jak2/dma.h"
 #include "game/overlord/jak2/iso_cd.h"
 #include "game/overlord/jak2/iso_queue.h"
+#include "game/overlord/jak2/overlord.h"
 #include "game/overlord/jak2/spustreams.h"
 #include "game/overlord/jak2/srpc.h"
 #include "game/overlord/jak2/ssound.h"
@@ -288,7 +289,7 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
       jak1::start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);
       break;
     case GameVersion::Jak2:
-      // TODO
+      jak2::start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);
       break;
     default:
       ASSERT_NOT_REACHED();
