@@ -1859,7 +1859,11 @@
             ;; the "lag ratio" of the frame that was just drawn.
             (last-dog (fmax 1.0 (fmin 4.0 (-> *display* dog-ratio))))
             )
-        (set! (-> arg0 frames just-rendered-frame run-time) (the-as time-frame (the int frame-duration)))
+        ;; store the amount of ticks that the frame took.
+        ;; PC PORT NOTE : the originaly game reads this field in places to check if frames are taking too long and avoid doing potentially laggy things.
+        ;; those numbers are hardcoded for 60fps, they would be a pain to adjust, and the effects in the pc port are negligible.
+        ;; so, we just pretend frames rendered in planck time.
+        (set! (-> arg0 frames just-rendered-frame run-time) (#if PC_PORT 0 (the int frame-duration)))
 
         ;; next, we'll compute this "lag" ratio (will become dog-ratio of the next frame).
         ;; higher numbers = game running slower = bigger timesteps
@@ -1986,10 +1990,10 @@
         ;; measure time again, after waiting/vsyncing.
         (let ((time-after-vsync (timer1-time)))
           (+! (-> arg0 total-run-time)
-              (the-as time-frame (sar (- (shl time-after-vsync 48) (the-as uint just-rendered-frame-start-time)) 48))
+              (sar (- (shl time-after-vsync 48) (the-as uint just-rendered-frame-start-time)) 48)
               )
           ;; and use this as the start time for the frame we're about to render.
-          (set! (-> arg0 frames frame-to-render start-time) (the-as time-frame time-after-vsync))
+          (set! (-> arg0 frames frame-to-render start-time) (the-as int time-after-vsync))
           )
         ;; while nothing is drawing, update GS/video/magic stuff.
         ;; (set-graphics-mode)
