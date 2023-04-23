@@ -1,6 +1,6 @@
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "goalc/compiler/Compiler.h"
 

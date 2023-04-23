@@ -17,7 +17,7 @@
 
 #include "common/goal_constants.h"
 #include "common/type_system/TypeSystem.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "goalc/debugger/DebugInfo.h"
 

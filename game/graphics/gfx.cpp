@@ -18,7 +18,6 @@
 
 #include "game/common/file_paths.h"
 #include "game/kernel/common/kscheme.h"
-#include "game/kernel/svnrev.h"
 #include "game/runtime.h"
 #include "game/system/newpad.h"
 #include "pipelines/opengl.h"
@@ -312,9 +311,13 @@ u32 Init(GameVersion version) {
   if (g_main_thread_id != std::this_thread::get_id()) {
     lg::error("Ran Gfx::Init outside main thread. Init display elsewhere?");
   } else {
-    Display::InitMainDisplay(640, 480,
-                             fmt::format("OpenGOAL - Work in Progress - {}", GIT_VERSION).c_str(),
-                             g_settings, version);
+    std::string title = "OpenGOAL";
+    if (g_game_version == GameVersion::Jak2) {
+      title += " - Work in Progress";
+    }
+    title +=
+        fmt::format(" - {} - {}", version_to_game_name_external(g_game_version), build_revision());
+    Display::InitMainDisplay(640, 480, title.c_str(), g_settings, version);
   }
 
   return 0;
