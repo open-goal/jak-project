@@ -32,3 +32,5 @@ u32 LookMbx(s32 mbx);
 void WaitMbx(s32 mbx);
 extern VagDir gVagDir;
 extern u8 VAG_SilentLoop[0x60];
+
+VagDirEntry* FindVAGFile(const char* name);

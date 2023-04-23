@@ -3,7 +3,7 @@
 #include "common/common_types.h"
 
 namespace jak2 {
-enum class PageState { FREE = 0, ALLOCATED_EMPTY = 3, ALLOCATED_FILLED = 4 };
+enum class PageState { FREE = 0, ALLOCATED_EMPTY = 3, ALLOCATED_FILLED = 4, SIX = 6 };
 
 /*!
  * A linked list of pages associated with a single read.

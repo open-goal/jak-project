@@ -10,7 +10,6 @@ struct VolumePair {
   s16 right;
 };
 
-extern s32 gSema;
 extern s32 gMusicFadeDir;
 extern s32 gMusicVol;
 extern VolumePair gPanTable[361];

@@ -65,6 +65,8 @@
 #include "game/overlord/jak2/iso_cd.h"
 #include "game/overlord/jak2/iso_queue.h"
 #include "game/overlord/jak2/spustreams.h"
+#include "game/overlord/jak2/srpc.h"
+#include "game/overlord/jak2/ssound.h"
 #include "game/overlord/jak2/stream.h"
 #include "game/overlord/jak2/vag.h"
 #include "game/system/Deci2Server.h"
@@ -253,8 +255,10 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
 
   // soundcommon
   jak1::srpc_init_globals();
+  jak2::srpc_init_globals();
   srpc_init_globals();
   ssound_init_globals();
+  jak2::ssound_init_globals();
 
   jak1::stream_init_globals();
   jak2::stream_init_globals();

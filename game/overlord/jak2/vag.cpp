@@ -28,6 +28,8 @@ int MasterVolume[17];
 List PluginStreamsList;
 List LfoList;
 List EEPlayList;
+List RequestedStreamsList;
+List NewStreamsList;
 
 void vag_init_globals() {
   memset(VagCmds, 0, sizeof(VagCmds));
@@ -40,7 +42,6 @@ void vag_init_globals() {
   memset(&PluginStreamsList, 0, sizeof(PluginStreamsList));
   memset(&LfoList, 0, sizeof(LfoList));
   memset(&EEPlayList, 0, sizeof(EEPlayList));
-
 
   for (auto& x : MasterVolume) {
     x = 0x400;  // check!!!
@@ -483,9 +484,7 @@ void UnPauseVAG(VagCmd* param_1, int param_2) {
   }
 }
 
-void RestartVag(VagCmd* param_1, int param_2, int param_3)
-
-{
+void RestartVag(VagCmd* param_1, int param_2, int param_3) {
   //  ushort uVar1;
   //  int iVar2;
   //  RealVagCmd *stereo_sibling;

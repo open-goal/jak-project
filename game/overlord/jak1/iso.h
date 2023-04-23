@@ -26,7 +26,6 @@ s32 GetVAGStreamPos();
 void SetVAGVol();
 u32 ISOThread();
 u32 InitISOFS(const char* fs_mode, const char* loading_screen);
-VagDirEntry* FindVAGFile(const char* name);
 void InitDriver(u8* buffer);
 FileRecord* FindISOFile(const char* name);
 u32 GetISOFileLength(FileRecord* f);

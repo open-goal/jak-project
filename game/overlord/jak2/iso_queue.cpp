@@ -8,6 +8,7 @@
 #include "game/overlord/common/iso.h"
 #include "game/overlord/jak2/dma.h"
 #include "game/overlord/jak2/iso.h"
+#include "game/overlord/jak2/spustreams.h"
 #include "game/overlord/jak2/vag.h"
 #include "game/sce/iop.h"
 #include "game/sound/sndshim.h"
@@ -34,17 +35,9 @@ int vag_cmd_cnt = 0;
 VagCmd vag_cmds[16];
 u32 vag_cmd_used = 0;
 u32 max_vag_cmd_cnt = 0;
-constexpr int PRI_STACK_LENGTH = 8;  // number of queued commands per priority
-constexpr int N_PRIORITIES = 4;      // number of queued commands per priority
 
-struct PriStackEntry {
-  CmdHeader* entries[PRI_STACK_LENGTH];
-  std::string names[PRI_STACK_LENGTH];  // my addition for debug
-  int count;
-};
-PriStackEntry gPriStack[4];
+PriStackEntry gPriStack[N_PRIORITIES];
 
-void FreeBuffer(Buffer* param_1, int param_2);
 void ReturnMessage(CmdHeader* param_1);
 void FreeVAGCommand(VagCmd* param_1);
 
@@ -222,9 +215,7 @@ u32 AllocDataBuffer(u32* param_1, u32 param_2) {
   return uVar3;
 }
 
-Buffer* AllocateBuffer(int param_1, VagCmd* param_2, int param_3)
-
-{
+Buffer* AllocateBuffer(int param_1, VagCmd* param_2, int param_3) {
   PageList** ppPVar1;
   int* piVar2;
   int iVar3;
@@ -528,7 +519,7 @@ LAB_0000711c:
   goto LAB_00007088;
 }
 
-CmdHeader* GetMessage(void) {
+CmdHeader* GetMessage() {
   CmdHeader* pCVar1;
   int iVar2;
   CmdHeader** ppCVar3;
@@ -561,7 +552,7 @@ CmdHeader* GetMessage(void) {
   } while (true);
 }
 
-void ProcessMessageData(void) {
+void ProcessMessageData() {
   int iVar1;
   CmdHeader* pCVar2;
   Buffer* pBVar3;

@@ -44,8 +44,8 @@ struct IsoFs {
   LoadStackEntry* (*open_wad)(FileRecord*, int32_t);    // 14
   void (*close)(LoadStackEntry*);                       // 18
   int (*page_begin_read)(LoadStackEntry*, Buffer*);     // 1c
-  // uint32_t (*sync_read)();                                // 20
-  uint32_t (*load_sound_bank)(char*, SoundBank*);  // 24
+  uint32_t (*sync_read)();                              // 20
+  uint32_t (*load_sound_bank)(char*, SoundBank*);       // 24
   uint32_t (*load_music)(char*, u32*);
   // void (*poll_drive)();
 };
@@ -98,6 +98,55 @@ struct CmdLoadSingleIop {
   u8* dest_addr;
   int length;
   int length_to_copy;
+  int maybe_offset;
+  u8* ptr;
+  int unk_64;
+};
+
+/*!
+ * DGO Load State Machine states.
+ */
+enum class DgoState {
+  Init = 0,
+  Read_Header = 1,
+  Finish_Obj = 2,
+  Read_Last_Obj = 3,
+  Read_Obj_Header = 4,
+  Read_Obj_data = 5,
+  Finish_Dgo = 6,
+  Finish_Obj_NoDoubleBuffer = 7,  // jak 2 only
+};
+
+struct CmdDgo {
+  CmdHeader header;
+  FileRecord* fr;      // 0x28, DGO file that's open
+  u8* buffer1;         // 0x2c, first EE buffer
+  u8* buffer2;         // 0x30, second EE buffer
+  u8* buffer_heaptop;  // 0x34, top of the heap
+
+  DgoHeader dgo_header;    // 0x38, current DGO's header
+  ObjectHeader obj_header;  // 0x78, current obj's header
+
+  u8* ee_dest_buffer;         // 0xb8, where we are currently loading to on ee
+  u32 bytes_processed;        // 0xbc, how many bytes processed in the current state
+  u32 objects_loaded;         // 0xc0, completed object count
+  DgoState dgo_state;         // 0xc4, state machine state
+  u32 finished_first_object;  // 0xc8, have we finished loading the first object?
+  u32 buffer_toggle;          // 0xcc, which buffer to load into (top, buffer1, buffer2)
+  u8* selected_buffer;        // 0xd0, most recently completed load destination
+  u32 want_abort;             // 0xd4, should we quit?
+};
+
+struct CmdLoadSoundBank {
+  CmdHeader header;
+  char bank_name[16];
+  SoundBank* bank;
+};
+
+struct CmdLoadMusic {
+  CmdHeader header;
+  char name[16];
+  u32* handle;
 };
 
 struct VagCmd;
@@ -105,5 +154,6 @@ struct VagCmd;
 int NullCallback(CmdHeader* cmd, Buffer* buff);
 u32 InitISOFS();
 void IsoStopVagStream(VagCmd* param_1, int param_2);
+void ProcessMessageData();
 
 }  // namespace jak2

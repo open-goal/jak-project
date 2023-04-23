@@ -8,7 +8,6 @@
 #include "game/overlord/common/srpc.h"
 #include "game/overlord/common/ssound.h"
 #include "game/overlord/jak1/iso.h"
-#include "game/overlord/jak1/srpc.h"
 #include "game/runtime.h"
 #include "game/sound/sndshim.h"
 
@@ -31,7 +30,6 @@ u32 gTrapSRAM = 0;
 
 u8 gMirrorMode = 0;
 
-s32 gSema;
 
 static u32 sLastTick;
 static s32 sqrt_table[256] = {

@@ -56,3 +56,19 @@ void WaitMbx(s32 mbx) {
     DelayThread(100);
   }
 }
+
+/*!
+ * Find VAG file by "name", where name is 8 bytes (chars with spaces at the end, treated as two
+ * s32's). Returns pointer to name in the VAGDIR file data.
+ */
+VagDirEntry* FindVAGFile(const char* name) {
+  VagDirEntry* entry = gVagDir.vag;
+  for (u32 idx = 0; idx < gVagDir.count; idx++) {
+    // check if matching name
+    if (memcmp(entry->name, name, 8) == 0) {
+      return entry;
+    }
+    entry++;
+  }
+  return nullptr;
+}

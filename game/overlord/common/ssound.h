@@ -2,6 +2,7 @@
 #include "common/common_types.h"
 
 extern s32 gMusicFade;
+extern s32 gSema;
 
 struct Vec3w {
   s32 x;

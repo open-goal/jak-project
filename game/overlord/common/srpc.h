@@ -17,5 +17,9 @@ struct MusicTweaks {
 
 extern s32 gMusicTweak;
 extern MusicTweaks gMusicTweakInfo;
+extern int32_t gSoundEnable;
+extern s32 gMusic;
+extern s32 gMusicPause;
+extern s32 gSoundInUse;
 
 void srpc_init_globals();

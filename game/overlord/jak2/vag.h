@@ -52,28 +52,56 @@ struct VagCmd {
   int unk_196;              // 196
   int unk_200;              // 200
   int unk_204;              // 204
-  u8 status_bytes[24];      // 208
-  u8 unk_232;               // 232 wtf is this
-  int unk_236;              // 236
-  int unk_240_flag0;        // 240
-  int xfer_size;            // 244
-  int unk_248;              // 248
-  int pitch1;               // 252
-  int unk_256_pitch2;       // 256
-  int unk_260;              // 260
-  int unk_264;              // 264 (init to 0x4000)
-  int unk_268;              // 268
-  int vol_multiplier;       // 272
-  int id;                   // 276
-  int plugin_id;            // 280
-  int priority;             // 284
-  int unk_288;              // 288
-  int unk_292;              // 292
-  int unk_296;              // 296
-  Vec3w vec3;               // 300
-  int fo_min;               // 312 (init to 5)
-  int fo_max;               // 316 (init to 316)
-  int fo_curve;             // 320 (init to 1)
+  union {
+    u8 status_bytes[24];  // 208
+    struct {
+      u8 byte0;
+      u8 byte1;
+      u8 byte2;
+      u8 byte3;
+      u8 byte4;
+      u8 byte5;
+      u8 byte6;
+      u8 byte7;
+      u8 byte8;
+      u8 byte9;
+      u8 byte10;
+      u8 byte11;
+      u8 byte12;
+      u8 byte13;
+      u8 byte14;
+      u8 byte15;
+      u8 byte16;
+      u8 byte17;
+      u8 byte18;
+      u8 byte19;
+      u8 byte20;
+      u8 byte21;
+      u8 byte22;
+      u8 byte23;
+    };
+  };
+  u8 unk_232;          // 232 wtf is this
+  int unk_236;         // 236
+  int unk_240_flag0;   // 240
+  int xfer_size;       // 244
+  int unk_248;         // 248
+  int pitch1;          // 252
+  int unk_256_pitch2;  // 256
+  int unk_260;         // 260
+  int unk_264;         // 264 (init to 0x4000)
+  int unk_268;         // 268
+  int vol_multiplier;  // 272
+  int id;              // 276
+  int plugin_id;       // 280
+  int priority;        // 284
+  int unk_288;         // 288
+  int unk_292;         // 292
+  int unk_296;         // 296
+  Vec3w vec3;          // 300
+  int fo_min;          // 312 (init to 5)
+  int fo_max;          // 316 (init to 316)
+  int fo_curve;        // 320 (init to 1)
 };
 
 struct VagCmdPriListEntry {
@@ -114,6 +142,14 @@ extern int StreamSRAM[N_VAG_CMDS];
 extern int TrapSRAM[N_VAG_CMDS];
 extern int StreamVoice[N_VAG_CMDS];
 
+extern List PluginStreamsList;
+extern List LfoList;
+extern List EEPlayList;
+extern List RequestedStreamsList;
+extern List NewStreamsList;
+extern int ActiveVagStreams;
+extern int MasterVolume[17];
+
 void vag_init_globals();
 
 VagCmd* FindThisVagStream(const char* name, int id);
@@ -130,5 +166,14 @@ VagCmd* FindVagStreamName(const char* name);
 void TerminateVAG(VagCmd* cmd, int param_2);
 void PauseVAG(VagCmd* cmd, int param_2);
 int AnyVagRunning();
-
+void InitVagCmds();
+void VAG_MarkLoopEnd(int8_t* data, int offset);
+void VAG_MarkLoopStart(int8_t* param_1);
+void RestartVag(VagCmd* param_1, int param_2, int param_3);
+void SetVagStreamsNoStart(int param_1, int param_2);
+void PauseVagStreams();
+void UnPauseVagStreams();
+VagCmd* FindVagStreamId(int id);
+void SetVAGVol(VagCmd* cmd, int param_2);
+void SetAllVagsVol(int vol);
 }  // namespace jak2

@@ -136,6 +136,8 @@ set(RUNTIME_SOURCE
         overlord/jak2/overlord.cpp
         overlord/jak2/pages.cpp
         overlord/jak2/list.cpp
+        overlord/jak2/ssound.cpp
+        overlord/jak2/srpc.cpp
         overlord/jak2/stream.cpp
         overlord/jak2/vag.cpp
         overlord/jak2/spustreams.cpp
