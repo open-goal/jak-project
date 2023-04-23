@@ -248,6 +248,9 @@
 (cgo-file "lgarcsta.gd" common-dep)
 (cgo-file "lracebb.gd" common-dep)
 (cgo-file "ltentob.gd" common-dep)
+(cgo-file "skatepar.gd" common-dep)
+(cgo-file "island1.gd" common-dep)
+(cgo-file "wasall.gd" common-dep)
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ANIMATIONS
