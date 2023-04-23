@@ -17,7 +17,7 @@
 
 #include "common/common_types.h"
 #include "common/cross_os_debug/xdbg.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "goalc/listener/MemoryMap.h"
 

@@ -10,7 +10,7 @@
 
 #include "common/log/log.h"
 #include "common/util/Assert.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "game/common/game_common_types.h"
 #include "game/common/loader_rpc_types.h"

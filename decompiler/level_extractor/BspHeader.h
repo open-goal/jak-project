@@ -7,7 +7,7 @@
 
 #include "common/common_types.h"
 #include "common/math/Vector.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "decompiler/level_extractor/common_formats.h"
 #include "decompiler/util/goal_data_reader.h"

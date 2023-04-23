@@ -1,6 +1,6 @@
 #include "FileInfo.h"
 
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "goalc/data_compiler/DataObjectGenerator.h"
 

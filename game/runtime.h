@@ -8,7 +8,7 @@
 #include <thread>
 
 #include "common/common_types.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "game/common/game_common_types.h"
 #include "game/kernel/common/kboot.h"
