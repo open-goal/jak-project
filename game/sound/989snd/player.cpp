@@ -4,7 +4,7 @@
 
 #include <fstream>
 
-#include <third-party/fmt/core.h>
+#include "third-party/fmt/core.h"
 
 #ifdef _WIN32
 #include <combaseapi.h>

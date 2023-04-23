@@ -9,6 +9,7 @@
 
 #include "runtime.h"
 
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/os.h"
