@@ -19,6 +19,7 @@ Buffer* AllocateBuffer(int param_1, VagCmd* param_2, int param_3);
 void UnqueueMessage(CmdHeader* param_1, int param_2);
 void ReturnMessage(CmdHeader* param_1);
 CmdHeader* GetMessage();
+VagCmd* GetVAGCommand();
 
 constexpr int N_PRIORITIES = 4;      // number of queued commands per priority
 constexpr int PRI_STACK_LENGTH = 8;  // number of queued commands per priority

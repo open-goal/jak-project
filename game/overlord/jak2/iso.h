@@ -98,7 +98,7 @@ struct CmdLoadSingleIop {
   u8* dest_addr;
   int length;
   int length_to_copy;
-  int maybe_offset;
+  int offset;
   u8* ptr;
   int unk_64;
 };
@@ -124,7 +124,7 @@ struct CmdDgo {
   u8* buffer2;         // 0x30, second EE buffer
   u8* buffer_heaptop;  // 0x34, top of the heap
 
-  DgoHeader dgo_header;    // 0x38, current DGO's header
+  DgoHeader dgo_header;     // 0x38, current DGO's header
   ObjectHeader obj_header;  // 0x78, current obj's header
 
   u8* ee_dest_buffer;         // 0xb8, where we are currently loading to on ee
@@ -155,5 +155,21 @@ int NullCallback(CmdHeader* cmd, Buffer* buff);
 u32 InitISOFS();
 void IsoStopVagStream(VagCmd* param_1, int param_2);
 void ProcessMessageData();
+void IsoPlayVagStream(VagCmd* param_1, int param_2);
+VagDirEntry* FindVAGFile(const char* name);
+void IsoQueueVagStream(VagCmd* cmd, int param_2);
+
+struct VagDirEntry {
+  char name[8];
+  u32 offset;
+  u32 flag;
+};
+static constexpr int VAG_COUNT = 2728;
+struct VagDir {
+  u32 count;
+  VagDirEntry vag[VAG_COUNT];
+};
+extern VagDir gVagDir;
+extern s32 iso_mbx;
 
 }  // namespace jak2

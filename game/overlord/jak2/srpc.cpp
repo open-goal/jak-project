@@ -1,15 +1,21 @@
 #include "srpc.h"
 
+#include "common/log/log.h"
+#include "common/util/Assert.h"
+
+#include "game/overlord/common/soundcommon.h"
 #include "game/overlord/common/srpc.h"
 #include "game/overlord/common/ssound.h"
+#include "game/overlord/jak2/spustreams.h"
+#include "game/overlord/jak2/ssound.h"
+#include "game/overlord/jak2/vag.h"
 #include "game/sce/iop.h"
+#include "game/sound/sndshim.h"
 
 using namespace iop;
 namespace jak2 {
 
-void srpc_init_globals() {
-
-}
+void srpc_init_globals() {}
 
 void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
   if (!gSoundEnable) {
@@ -31,7 +37,6 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
         }
       }
     }
-
     SignalSema(gSema);
   }
 
@@ -41,7 +46,9 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
     snd_SetSoundVolPan(music->sound_handle, 0x7FFFFFFF, 0);
   }
 
-  int n_messages = size / SRPC_MESSAGE_SIZE;
+  constexpr int kMsgSize = 0x50;
+  static_assert(sizeof(SoundRpcCommand) == kMsgSize);
+  int n_messages = size / kMsgSize;
   SoundRpcCommand* cmd = (SoundRpcCommand*)(data);
   if (!gSoundEnable) {
     return nullptr;
@@ -151,6 +158,11 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
         Sound* sound = LookupSound(cmd->sound_id.sound_id);
         if (sound != nullptr) {
           snd_PauseSound(sound->sound_handle);
+        } else {
+          auto* vs = FindVagStreamId(cmd->sound_id.sound_id);
+          if (vs) {
+            PauseVAG(vs, 1);
+          }
         }
         // TODO vag
       } break;
@@ -158,6 +170,11 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
         Sound* sound = LookupSound(cmd->sound_id.sound_id);
         if (sound != nullptr) {
           snd_StopSound(sound->sound_handle);
+        } else {
+          auto* vs = FindVagStreamId(cmd->sound_id.sound_id);
+          if (vs) {
+            StopVagStream(vs, 1);
+          }
         }
         // TODO vag
       } break;
@@ -165,6 +182,11 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
         Sound* sound = LookupSound(cmd->sound_id.sound_id);
         if (sound != nullptr) {
           snd_ContinueSound(sound->sound_handle);
+        } else {
+          auto* vs = FindVagStreamId(cmd->sound_id.sound_id);
+          if (vs) {
+            UnPauseVAG(vs, 1);
+          }
         }
         // TODO vag
       } break;
@@ -231,6 +253,11 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             sound->params.reg[2] = cmd->param.parms.reg[2];
             snd_SetSoundReg(sound->sound_handle, 2, cmd->param.parms.reg[2]);
           }
+        } else {
+          auto* vs = FindVagStreamId(cmd->param.sound_id);
+          if (vs) {
+            SetVAGStreamPitch(cmd->param.sound_id, cmd->param.parms.bend);  // is this really bend?
+          }
         }
         // TODO vag
       } break;
@@ -240,11 +267,15 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
         for (int i = 0; i < 32; i++) {
           if (((group >> i) & 1) != 0) {
             if (i == 1) {
-              gMusicVol = cmd->master_volume.volume;
+              // gMusicVol = cmd->master_volume.volume;
+              MasterVolume[1] = cmd->master_volume.volume;
             } else if (i == 2) {
+              MasterVolume[2] = cmd->master_volume.volume;
               SetDialogVolume(cmd->master_volume.volume);
             } else {
+              MasterVolume[i] = cmd->master_volume.volume;
               snd_SetMasterVolume(i, cmd->master_volume.volume);
+              SetAllVagsVol(i);
             }
           }
         }
@@ -255,11 +286,23 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           gMusicPause = 1;
         }
         if (cmd->group.group & 4) {
-          // TODO vag
+          PauseVagStreams();
         }
       } break;
       case Jak2SoundCommand::stop_group: {
         KillSoundsInGroup(cmd->group.group);
+        if (cmd->group.group & 4) {
+          VagCmd local_178;
+          local_178.header.cmd_kind = 0x402;
+          local_178.header.mbx_to_reply = 0;
+          local_178.header.thread_id = 0;
+          local_178.vag_dir_entry = nullptr;
+          local_178.name[0] = '\0';
+          local_178.unk_136 = 0;
+          local_178.id = 0;
+          local_178.priority = 0;
+          StopVagStream(&local_178, 1);
+        }
       } break;
       case Jak2SoundCommand::continue_group: {
         snd_ContinueAllSoundsInGroup(cmd->group.group);
@@ -267,7 +310,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           gMusicPause = 0;
         }
         if (cmd->group.group & 4) {
-          // TODO vag
+          UnPauseVagStreams();
         }
       } break;
       case Jak2SoundCommand::set_midi_reg: {
@@ -295,8 +338,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
         gFPS = cmd->fps.fps;
       } break;
       default:
-        ASSERT_MSG(false, fmt::format("Unhandled RPC Player command {}",
-                                      magic_enum::enum_name(cmd->j2command)));
+        ASSERT_MSG(false, fmt::format("Unhandled RPC Player command {}", int(cmd->j2command)));
     }
 
     n_messages--;

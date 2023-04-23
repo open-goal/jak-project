@@ -132,10 +132,13 @@ set(RUNTIME_SOURCE
         overlord/jak2/dma.cpp
         overlord/jak2/iso.cpp
         overlord/jak2/iso_cd.cpp
+        overlord/jak2/iso_api.cpp
         overlord/jak2/iso_queue.cpp
         overlord/jak2/overlord.cpp
         overlord/jak2/pages.cpp
         overlord/jak2/list.cpp
+        overlord/jak2/streamlist.cpp
+        overlord/jak2/streamlfo.cpp
         overlord/jak2/ssound.cpp
         overlord/jak2/srpc.cpp
         overlord/jak2/stream.cpp

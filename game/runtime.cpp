@@ -68,6 +68,7 @@
 #include "game/overlord/jak2/srpc.h"
 #include "game/overlord/jak2/ssound.h"
 #include "game/overlord/jak2/stream.h"
+#include "game/overlord/jak2/streamlist.h"
 #include "game/overlord/jak2/vag.h"
 #include "game/system/Deci2Server.h"
 #include "game/system/iop_thread.h"
@@ -195,6 +196,8 @@ void ee_runner(SystemThreadInterface& iface) {
   jak2::klisten_init_globals();
 
   jak2::vag_init_globals();
+
+  jak2::init_globals_streamlist();
 
   kmemcard_init_globals();
   kprint_init_globals_common();

@@ -37,7 +37,6 @@ static u32 gInfoEE = 0;  // EE address where we should send info on each frame.
 s16 gFlava;
 u32 gFreeMem = 0;
 u32 gFrameNum = 0;
-u8 gFPS = 60;
 
 static SoundIopInfo info;
 
@@ -45,7 +44,6 @@ s32 gVAG_Id = 0;  // TODO probably doesn't belong here.
 
 // english, french, germain, spanish, italian, japanese, uk.
 static const char* languages[] = {"ENG", "FRE", "GER", "SPA", "ITA", "JAP", "UKE"};
-const char* gLanguage = nullptr;
 
 void srpc_init_globals() {
   memset((void*)gLoaderBuf, 0, sizeof(gLoaderBuf));

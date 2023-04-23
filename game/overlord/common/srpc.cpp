@@ -10,6 +10,8 @@ int32_t gSoundEnable = 1;
 s32 gMusic = 0;
 s32 gMusicPause = 0;
 s32 gSoundInUse = 0;
+u8 gFPS = 60;
+const char* gLanguage = nullptr;
 
 void srpc_init_globals() {
   gMusicFadeHack = 0;
@@ -19,3 +21,4 @@ void srpc_init_globals() {
   gSoundInUse = 0;
   memset((void*)&gMusicTweakInfo, 0, sizeof(gMusicTweakInfo));
 }
+

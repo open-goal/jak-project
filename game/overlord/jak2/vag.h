@@ -2,6 +2,7 @@
 
 #include "common/common_types.h"
 
+#include "game/overlord/common/iso.h"
 #include "game/overlord/common/ssound.h"
 #include "game/overlord/jak2/iso.h"
 #include "game/overlord/jak2/list.h"
@@ -29,13 +30,13 @@ enum VagCmdByte {
 };
 
 struct VagCmd {
-  CmdHeader header;        // 0 to ??
-  FileRecord* unk_40;      // 40
-  u8* unk_44_ptr;          // 44
-  VagCmd* stereo_sibling;  // 48
-  u8* dma_iop_mem_ptr;     // 52
-  int chan;                // 56
-  int unk_60;              // 60 (thought it was started, but init to 1)
+  CmdHeader header;            // 0 to ??
+  FileRecord* file_record;     // 40
+  VagDirEntry* vag_dir_entry;  // 44
+  VagCmd* stereo_sibling;      // 48
+  u8* dma_iop_mem_ptr;         // 52
+  int chan;                    // 56
+  int unk_60;                  // 60 (thought it was started, but init to 1)
   int unk_64;
   char name[48];            // 68
   int spu_stream_mem_addr;  // 120
@@ -108,45 +109,12 @@ struct VagCmdPriListEntry {
   VagCmd* cmds[4];
 };
 
-struct VagStrListNode {
-  ListNode list;
-  char name[48];
-  int unk_60;
-  int id;
-  int unk_68;
-  int unk_72;
-  int unk_76;
-  int unk_80;
-  int unk_84;
-  int unk_88;
-  int unk_92;
-  int unk_96;
-  int unk_100;
-};
-
-struct LfoListNode {
-  ListNode list;
-  int unk_12;
-  int unk_16;
-  int unk_20;
-  int unk_24;
-  int unk_28;
-  int unk_32;
-  int id;
-  int plugin_id;
-};
-
 constexpr int N_VAG_CMDS = 4;
 extern VagCmd VagCmds[N_VAG_CMDS];
 extern int StreamSRAM[N_VAG_CMDS];
 extern int TrapSRAM[N_VAG_CMDS];
 extern int StreamVoice[N_VAG_CMDS];
 
-extern List PluginStreamsList;
-extern List LfoList;
-extern List EEPlayList;
-extern List RequestedStreamsList;
-extern List NewStreamsList;
 extern int ActiveVagStreams;
 extern int MasterVolume[17];
 
@@ -176,4 +144,5 @@ void UnPauseVagStreams();
 VagCmd* FindVagStreamId(int id);
 void SetVAGVol(VagCmd* cmd, int param_2);
 void SetAllVagsVol(int vol);
+void SetVagStreamsNotScanned();
 }  // namespace jak2

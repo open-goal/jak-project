@@ -7,6 +7,7 @@
 #include "game/overlord/jak2/iso.h"
 #include "game/overlord/jak2/iso_queue.h"
 #include "game/overlord/jak2/vag.h"
+#include "game/overlord/jak2/streamlist.h"
 #include "game/sce/iop.h"
 #include "game/sound/sdshim.h"
 

@@ -18,8 +18,6 @@
 
 using namespace iop;
 
-VagDir gVagDir;
-
 static constexpr s32 LOOP_END = 1;
 static constexpr s32 LOOP_REPEAT = 2;
 static constexpr s32 LOOP_START = 4;
@@ -35,7 +33,7 @@ u8 VAG_SilentLoop[0x60] = {
 // clang-format on
 
 void iso_init_globals() {
-  memset(&gVagDir, 0, sizeof(gVagDir));
+  // memset(&gVagDir, 0, sizeof(gVagDir));
 }
 
 /*!
@@ -57,18 +55,3 @@ void WaitMbx(s32 mbx) {
   }
 }
 
-/*!
- * Find VAG file by "name", where name is 8 bytes (chars with spaces at the end, treated as two
- * s32's). Returns pointer to name in the VAGDIR file data.
- */
-VagDirEntry* FindVAGFile(const char* name) {
-  VagDirEntry* entry = gVagDir.vag;
-  for (u32 idx = 0; idx < gVagDir.count; idx++) {
-    // check if matching name
-    if (memcmp(entry->name, name, 8) == 0) {
-      return entry;
-    }
-    entry++;
-  }
-  return nullptr;
-}

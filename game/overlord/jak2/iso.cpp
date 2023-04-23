@@ -14,6 +14,7 @@
 #include "game/overlord/jak2/spustreams.h"
 #include "game/overlord/jak2/ssound.h"
 #include "game/overlord/jak2/stream.h"
+#include "game/overlord/jak2/streamlist.h"
 #include "game/overlord/jak2/vag.h"
 #include "game/runtime.h"
 #include "game/sce/iop.h"
@@ -46,6 +47,7 @@ int ext_resume = 0;
 
 CmdDgo sLoadDgo;  // renamed from scmd to sLoadDGO in Jak 2
 static RPC_Dgo_Cmd sRPCBuff[1];
+VagDir gVagDir;
 
 void iso_init_globals() {
   iso_init_flag = 0;
@@ -193,7 +195,7 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
     // CpuSuspendIntr(local_20);
   }
   pVVar11 = nullptr;
-  if ((cmd->id == 0) || (((cmd->unk_44_ptr[3] & 1U) != 0 &&
+  if ((cmd->id == 0) || (((cmd->vag_dir_entry->flag & 1U) != 0 &&
                           (iVar1 = HowManyBelowThisPriority(cmd->priority, 0), iVar1 < 2))))
     goto LAB_000049dc;
   puVar3 = FindThisVagStream(cmd->name, cmd->id);
@@ -235,8 +237,8 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
     puVar3->header.callback = cmd->header.callback;
     puVar3->header.lse = cmd->header.lse;
 
-    puVar3->unk_40 = cmd->unk_40;
-    puVar3->unk_44_ptr = cmd->unk_44_ptr;
+    puVar3->file_record = cmd->file_record;
+    puVar3->vag_dir_entry = cmd->vag_dir_entry;
     strncpy(puVar3->name, cmd->name, 0x30);
     puVar3->unk_196 = cmd->unk_196;
     puVar3->unk_240_flag0 = cmd->unk_240_flag0;
@@ -259,7 +261,7 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
     puVar3->vec3.z = cmd->vec3.z;
     InitVAGCmd(puVar3, 1);
     puVar3->status_bytes[BYTE7_SCANNED] = '\x01';
-    if ((puVar3->unk_44_ptr[3] & 1U) != 0) {
+    if ((puVar3->vag_dir_entry->flag & 1U) != 0) {
       pVVar11 = SmartAllocVagCmd(cmd);
       if (!pVVar11) {
         puVar3->status_bytes[BYTE7_SCANNED] = '\0';
@@ -277,7 +279,7 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
         strncpy(pVVar11->name, "Stereo", 0x30);
         pVVar11->id = ~puVar3->id;
         pVVar11->status_bytes[BYTE7_SCANNED] = '\x01';
-        pVVar11->unk_44_ptr = puVar3->unk_44_ptr;
+        pVVar11->vag_dir_entry = puVar3->vag_dir_entry;
       }
     }
     if (puVar3 == 0x0)
@@ -287,17 +289,17 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
       puVar3->status_bytes[BYTE7_SCANNED] = '\0';
       RemoveVagCmd(puVar3, 0);
       FreeVagCmd(puVar3, 0);
-      if ((puVar3->unk_44_ptr[3] & 1U) != 0) {
+      if ((puVar3->vag_dir_entry->flag & 1U) != 0) {
         pVVar11->status_bytes[BYTE7_SCANNED] = '\0';
         RemoveVagCmd(pVVar11, 0);
         FreeVagCmd(pVVar11, 0);
       }
       ReleaseMessage(&puVar3->header, 0);
     } else {
-      if (puVar3->unk_44_ptr == 0x0) {
+      if (puVar3->vag_dir_entry == 0x0) {
         (puVar3->header).lse = (LoadStackEntry*)0x0;
       } else {
-        pLVar5 = (isofs->open_wad)(puVar3->unk_40, puVar3->unk_44_ptr[2]);
+        pLVar5 = (isofs->open_wad)(puVar3->file_record, puVar3->vag_dir_entry->offset);
         (puVar3->header).lse = pLVar5;
       }
       if (cmd->unk_288 != 0) {
@@ -421,7 +423,7 @@ u32 ISOThread() {
   int iVar11;
   FileRecord* pFVar12;
   // undefined4 uVar13;
-  ListNode* pLVar14;
+  VagStrListNode* pLVar14;
   // char* pcVar15;
   CmdLoadSingleIop* local_30;
   // undefined4 local_2c;
@@ -457,7 +459,7 @@ u32 ISOThread() {
         if (iVar4 != 0) {
           if ((inasdf->header).cmd_kind == 0x102) {
             pFVar12 = inasdf->file_record;
-            iVar4 = inasdf->maybe_offset;
+            iVar4 = inasdf->offset;
           } else {
             iVar4 = -1;
             pFVar12 = inasdf->file_record;
@@ -580,7 +582,7 @@ u32 ISOThread() {
             if (pages == (Page*)0x0)
               goto LAB_00004f28;
             SetBufferMem(pages->buffer, SpMemoryBuffers->page_size);
-            iVar4 = inasdf->maybe_offset;
+            iVar4 = inasdf->offset;
             // pcVar6 = (code*)isofs->load_music;
             iVar4 = isofs->load_music(in_music->name, in_music->handle);
             goto LAB_00004f6c;
@@ -660,12 +662,12 @@ u32 ISOThread() {
     if (RequestedStreamsList.unk2_init0 == 1) {
       QueueNewStreamsFromList(&RequestedStreamsList);
       iVar4 = 0;
-      pLVar14 = NewStreamsList.next;
+      pLVar14 = (VagStrListNode*)NewStreamsList.next;
       do {
-        if (pLVar14[5].prev != (ListNode*)0x0) {
+        if (pLVar14->id != 0x0) {
           QueueVAGStream(pLVar14);
         }
-        pLVar14 = pLVar14->next;
+        pLVar14 = (VagStrListNode*)pLVar14->list.next;
         iVar4 = iVar4 + 1;
       } while (iVar4 < 4);
     }
@@ -1193,7 +1195,22 @@ void SetVagClock(VagCmd* param_1, int param_2) {
   if (param_2 == 1) {
     // CpuResumeIntr(local_18[0]);
   }
-  return;
+}
+
+/*!
+ * Find VAG file by "name", where name is 8 bytes (chars with spaces at the end, treated as two
+ * s32's). Returns pointer to name in the VAGDIR file data.
+ */
+VagDirEntry* FindVAGFile(const char* name) {
+  VagDirEntry* entry = gVagDir.vag;
+  for (u32 idx = 0; idx < gVagDir.count; idx++) {
+    // check if matching name
+    if (memcmp(entry->name, name, 8) == 0) {
+      return entry;
+    }
+    entry++;
+  }
+  return nullptr;
 }
 
 }  // namespace jak2

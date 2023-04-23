@@ -6,6 +6,7 @@ namespace jak2 {
 struct ListNode;
 
 struct List {
+  char name[8];
   int sema;              // 12
   int maybe_any_in_use;  // 16
   int elt_count;         // 20
@@ -20,4 +21,6 @@ struct ListNode {
   ListNode* prev;
   int in_use;
 };
+
+bool InitList(List* head, u32 elt_count, int elt_size);
 }  // namespace jak2

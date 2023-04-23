@@ -5,6 +5,8 @@
 #include "common/util/Assert.h"
 
 #include "game/overlord/jak2/iso_queue.h"
+#include "game/overlord/jak2/streamlist.h"
+#include "game/overlord/jak2/spustreams.h"
 #include "game/sound/sdshim.h"
 
 namespace jak2 {
@@ -25,12 +27,6 @@ enum VolumeCategory {
 };
 int MasterVolume[17];
 
-List PluginStreamsList;
-List LfoList;
-List EEPlayList;
-List RequestedStreamsList;
-List NewStreamsList;
-
 void vag_init_globals() {
   memset(VagCmds, 0, sizeof(VagCmds));
   memset(StreamSRAM, 0, sizeof(StreamSRAM));
@@ -39,9 +35,6 @@ void vag_init_globals() {
   memset(VagCmdsPriList, 0, sizeof(VagCmdsPriList));
   memset(VagCmdsPriCounter, 0, sizeof(VagCmdsPriCounter));
   memset(gPanTable, 0, sizeof(gPanTable));
-  memset(&PluginStreamsList, 0, sizeof(PluginStreamsList));
-  memset(&LfoList, 0, sizeof(LfoList));
-  memset(&EEPlayList, 0, sizeof(EEPlayList));
 
   for (auto& x : MasterVolume) {
     x = 0x400;  // check!!!
@@ -98,8 +91,8 @@ void InitVagCmds() {
     // puVar5[-0x28] = iVar6;
     cmd.idx_in_cmd_arr = cmd_idx;
     // iVar6 = iVar6 + 1;
-    cmd.unk_40 = 0;                           // puVar5[-0x3f] = 0;
-    cmd.unk_44_ptr = nullptr;                 // puVar5[-0x3e] = 0;
+    cmd.file_record = nullptr;                           // puVar5[-0x3f] = 0;
+    cmd.vag_dir_entry = nullptr;                 // puVar5[-0x3e] = 0;
     cmd.status_bytes[VagCmdByte::BYTE1] = 0;  // *(undefined*)((int)puVar5 + -0x53) = 0;
     cmd.vol_multiplier = 0;                   // puVar5[-5] = 0;
     cmd.unk_256_pitch2 = 0;                   // puVar5[-9] = 0;
@@ -278,8 +271,8 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
   (cmd->header).callback = NullCallback;
   cmd->unk_140 = 0;
   cmd->pitch1 = 0;
-  cmd->unk_40 = 0;
-  cmd->unk_44_ptr = nullptr;
+  cmd->file_record = nullptr;
+  cmd->vag_dir_entry = nullptr;
   cmd->unk_196 = 0;
   cmd->unk_200 = 0;
   cmd->unk_204 = 0;
@@ -342,8 +335,8 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
     (pRVar4->header).callback = NullCallback;
     pRVar4->unk_140 = 0;
     pRVar4->pitch1 = 0;
-    pRVar4->unk_40 = 0;
-    pRVar4->unk_44_ptr = nullptr;
+    pRVar4->file_record = nullptr;
+    pRVar4->vag_dir_entry = nullptr;
     pRVar4->unk_196 = 0;
     pRVar4->unk_200 = 0;
     pRVar4->unk_204 = 0;
@@ -377,7 +370,7 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
     lfo_node.plugin_id = cmd->plugin_id;
     RemoveLfoStreamFromList(&lfo_node, &LfoList);
   }
-  RemoveVagStreamFromList(&vag_node, (List*)EEPlayList);
+  RemoveVagStreamFromList(&vag_node, &EEPlayList);
   if (param_2 == 1) {
     // CpuResumeIntr(auStack32[0]);
   }
@@ -725,8 +718,8 @@ void FreeVagCmd(VagCmd* cmd, int param_2) {
   (cmd->header).callback = NullCallback;
   cmd->unk_140 = 0;
   cmd->pitch1 = 0;
-  cmd->unk_40 = 0;
-  cmd->unk_44_ptr = nullptr;
+  cmd->file_record = nullptr;
+  cmd->vag_dir_entry = nullptr;
   cmd->unk_196 = 0;
   cmd->unk_200 = 0;
   cmd->unk_204 = 0;
