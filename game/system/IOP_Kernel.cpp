@@ -9,6 +9,10 @@
 
 using namespace std::chrono;
 
+namespace jak2{
+void spu_dma_hack();
+}
+
 /*
 ** wrap thread entry points to ensure they don't return into libco
 */
@@ -262,6 +266,7 @@ time_stamp IOP_Kernel::dispatch() {
       vblank_recieved = false;
     }
     // printf("[IOP Kernel] Dispatch %s (%d)\n", next->name.c_str(), next->thID);
+    jak2::spu_dma_hack();
     runThread(next);
     updateDelay();
     processWakeups();

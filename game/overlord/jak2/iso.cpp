@@ -187,7 +187,7 @@ u32 InitISOFS() {
 }
 
 void IsoQueueVagStream(VagCmd* cmd, int param_2) {
-  printf("------ Iso QUEU VAG STREAM!!!! %s\n", cmd->name);
+  // printf("------ Iso QUEU VAG STREAM!!!! %s\n", cmd->name);
 
   int iVar1;
   VagCmd* puVar3;
@@ -656,7 +656,7 @@ u32 ISOThread() {
     LAB_00005208:;
       // (isofs->poll_drive)();
     } else {
-      printf("isothread processing %x\n", pRVar7->header.cmd_kind);
+      // printf("isothread processing %x\n", pRVar7->header.cmd_kind);
 
       u32 uVar13 = 1;
       if ((pRVar7->header).callback == ProcessVAGData) {

@@ -33,6 +33,7 @@ u32 sceSdGetAddr(u32 entry) {
   // u32 core = entry & 1;
   // u32 voice->id = (entry >> 1) & 0x1f;
   // u32 reg = entry & ~0x3f;
+  // printf("nax getting for %x %d %d\n", entry, entry & 3, voice->get_nax());
 
   // Only ever used for getting NAX
   // ASSERT_NOT_REACHED();
@@ -42,11 +43,23 @@ u32 sceSdGetAddr(u32 entry) {
 void sceSdSetSwitch(u32 entry, u32 value) {
   // we can ignore this, only used for vmix
   u32 reg = entry & ~0x3f;
-  switch(reg) {
+  switch (reg) {
     case 0x1500:
-      voice_from_entry(entry)->key_on();
+      printf("key on: %d (%x)\n", entry & 3, entry);
+      voice_from_entry(entry)->key_on_and_debug();
+      voice_from_entry(entry + 1)->key_on_and_debug();
+      break;
+    case 0x1600:
+      printf("key OOF: %d (%x)\n", entry & 3, entry);
+      voice_from_entry(entry)->key_off();
+      break;
   }
 }
+
+void sceSdkey_on_jak2_voice(int id) {
+  voice_from_entry(id)->key_on_and_debug();
+}
+
 
 void sceSdSetAddr(u32 entry, u32 value) {
   auto* voice = voice_from_entry(entry);
@@ -59,6 +72,7 @@ void sceSdSetAddr(u32 entry, u32 value) {
 
   switch (reg) {
     case SD_VA_SSA: {
+      printf("setting ssa for %x (%d) to %d\n", entry, entry & 3, value >> 1);
       voice->set_ssa(value >> 1);
     } break;
     case SD_VA_LSAX: {
@@ -107,12 +121,9 @@ void sceSdSetTransIntrHandler(s32 channel, sceSdTransIntrHandler handler, void* 
 }
 
 u32 sceSdVoiceTrans(s32 channel, s32 mode, void* iop_addr, u32 spu_addr, u32 size) {
-  for (auto& voice : voices) {
-    voice->debug = true;
-  }
   memcpy(&spu_memory[spu_addr], iop_addr, size);
   if (trans_handler[channel] != nullptr) {
-    // trans_handler[channel](channel, userdata);
+    trans_handler[channel](channel, userdata);
   }
   return size;
 }

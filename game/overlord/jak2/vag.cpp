@@ -548,6 +548,15 @@ void SetVAGVol(VagCmd* cmd, int param_2) {
 
   sceSdSetParam(0 | SD_VP_VOLL, 16000);
   sceSdSetParam(0 | SD_VP_VOLR, 16000);
+
+  sceSdSetParam(1 | SD_VP_VOLL, 16000);
+  sceSdSetParam(1 | SD_VP_VOLR, 16000);
+
+  sceSdSetParam(2 | SD_VP_VOLL, 16000);
+  sceSdSetParam(2 | SD_VP_VOLR, 16000);
+
+  sceSdSetParam(3 | SD_VP_VOLL, 16000);
+  sceSdSetParam(3 | SD_VP_VOLR, 16000);
 //  sceSdSetParam(0 | SD_VP_ADSR1, 0xf);
 //  sceSdSetParam(0 | SD_VP_ADSR2, 0x1fc0);
   // ASSERT_NOT_REACHED();

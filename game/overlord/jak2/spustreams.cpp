@@ -21,7 +21,7 @@ void spusstreams_init_globals() {
 }
 
 int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
-  printf("processing vag data!\n");
+   printf("processing vag data!\n");
   VagCmd* param_1 = (VagCmd*)param_1_in;
   int iVar1;
   int iVar2;
@@ -33,32 +33,33 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
   // undefined4 local_18[2];
 
   if (param_1->status_bytes[BYTE6] != '\0') {
-    printf("faile1\n");
+    printf("ProcessVAG didn't want the data: byte 6 is set\n");
     return -1;
   }
   if (param_1->status_bytes[BYTE11] != '\0') {
-    printf("faile2\n");
+    printf("ProcessVAG didn't want the data: byte 11 is set\n");
     return -1;
   }
   if (param_1->unk_260 != 0) {
-    printf("faile3\n");
+    printf("ProcessVAG didn't want the data: unk_260 is set, indicating INVALID data.\n");
     param_2->decompressed_size = 0;
     return -1;
   }
   if (param_1->unk_60 != 1) {
-    printf("faile4\n");
+    printf("ProcessVAG didn't want the data: looks like DMA doesn't need it\n");
     return -1;
   }
   // CpuSuspendIntr(local_18);
   CheckForIsoPageBoundaryCrossing(param_2);
   // added this check
   if (!param_2->page) {
+    printf("ProcessVAG didn't want the data: the buffer has no page (added check)\n");
     return -1;
   }
 
   iVar2 = (int)param_2->page->state;
   if ((iVar2 != 6) && (iVar2 != 4)) {
-    printf("faile5\n");
+    printf("ProcessVAG didn't want the data: the buffer isn't full.\n");
     goto LAB_0000fecc;
   }
 

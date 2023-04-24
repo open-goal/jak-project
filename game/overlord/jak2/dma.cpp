@@ -10,6 +10,7 @@ s32 SpuDmaStatus = 0;
 VagCmd* DmaVagCmd;
 VagCmd* DmaStereoVagCmd;
 int pending_dma = 0;
+constexpr int kDmaDelay = 10;
 
 void dma_init_globals() {
   SpuDmaStatus = 0;
@@ -29,6 +30,7 @@ int SpuDmaIntr(int, void*) {
   //  int iVar9;
   //  short chan;
 
+  printf("dma\n");
   if (SpuDmaStatus != 1) {
     return 0;
   }
@@ -63,7 +65,9 @@ int SpuDmaIntr(int, void*) {
       int old_xfer = DmaStereoVagCmd->xfer_size;
       DmaStereoVagCmd->xfer_size = 0;
       DmaStereoVagCmd->dma_iop_mem_ptr = nullptr;
-      pending_dma = 1;
+      pending_dma = kDmaDelay;
+      printf("stereo chain case: %d (side %d, size %d, dest %d)\n", DmaStereoVagCmd->xfer_size,
+             DmaStereoVagCmd->unk_240_flag0 & 1U, old_xfer, spu_addr);
       sceSdVoiceTrans((int)chan, 0, iop_ptr, spu_addr, old_xfer);
       return 0;
     }
@@ -75,7 +79,9 @@ int SpuDmaIntr(int, void*) {
       DmaStereoVagCmd->status_bytes[BYTE18] = 1;
     }
   }
+
   if (DmaVagCmd->unk_240_flag0 == 1) {
+    printf("dma interrupt starting the stream...\n");
     int pitch = CalculateVAGPitch(DmaVagCmd->pitch1, DmaVagCmd->unk_256_pitch2);
     if (!DmaStereoVagCmd) {
       DmaVagCmd->unk_64 = 0;
@@ -85,6 +91,7 @@ int SpuDmaIntr(int, void*) {
       sceSdSetParam(*(ushort*)&DmaVagCmd->voice | 0x400, 0x1fc0);
       sceSdSetParam(*(ushort*)&DmaVagCmd->voice | 0x200, pitch);
       uVar7 = 1 << (DmaVagCmd->voice >> 1 & 0x1fU);
+      sceSdkey_on_jak2_voice(DmaVagCmd->voice);
     } else {
       DmaVagCmd->unk_64 = 0;
       DmaStereoVagCmd->unk_64 = 0;
@@ -100,10 +107,15 @@ int SpuDmaIntr(int, void*) {
       sceSdSetParam(*(ushort*)&DmaVagCmd->voice | 0x200, pitch);
       sceSdSetParam(*(ushort*)&DmaStereoVagCmd->voice | 0x200, pitch);
       uVar7 = 1 << (DmaVagCmd->voice >> 1 & 0x1fU) | 1 << (DmaStereoVagCmd->voice >> 1 & 0x1fU);
+
+      sceSdkey_on_jak2_voice(DmaVagCmd->voice);
+      sceSdkey_on_jak2_voice(DmaStereoVagCmd->voice);
+
     }
     uVar6 = *(ushort*)&DmaVagCmd->voice & 1 | 0x1500;
   LAB_00003eb0:
-    sceSdSetSwitch(uVar6, uVar7);
+    ;
+    // sceSdSetSwitch(uVar6, uVar7);
   } else if (DmaVagCmd->unk_240_flag0 == 2) {
     DmaVagCmd->status_bytes[BYTE1] = 1;
     if (DmaStereoVagCmd) {
@@ -137,18 +149,20 @@ int SpuDmaIntr(int, void*) {
   DmaStereoVagCmd = nullptr;
 
 cleanup:
-//  sceSdSetTransIntrHandler(param_1, nullptr, nullptr);
-//  if (-1 < param_1) {
-//    snd_FreeSPUDMA(param_1);
-//  }
+  //  sceSdSetTransIntrHandler(param_1, nullptr, nullptr);
+  //  if (-1 < param_1) {
+  //    snd_FreeSPUDMA(param_1);
+  //  }
   SpuDmaStatus = 0;
   return 0;
 }
 
 void spu_dma_hack() {
   if (pending_dma) {
-    SpuDmaIntr(0, nullptr);
-    pending_dma = 0;
+    pending_dma--;
+    if (!pending_dma) {
+      SpuDmaIntr(0, nullptr);
+    }
   }
 }
 
@@ -178,8 +192,13 @@ bool DMA_SendToSPUAndSync(uint8_t* iop_mem,
       }
     }
     SpuDmaStatus = 1;
-    sceSdSetTransIntrHandler(chan, SpuDmaIntr, 0);
-    pending_dma = 1;
+
+    // note: I've bypassed the way the dma interrupts work for jak 2.
+    // here, the interrupt handler set is removed, and we instead set a pending_dma flag.
+    // the actual interrupt will be run from iso.cpp, in the isothread loop.
+    // sceSdSetTransIntrHandler(chan, SpuDmaIntr, 0);
+    pending_dma = kDmaDelay;  // added
+    printf("DMA starting from SendToSPUAndSync to %d (sz %d)\n", spu_addr, size_one_side);
     int sz = sceSdVoiceTrans((int)(short)chan, 0, iop_mem, spu_addr, size_one_side);
     // if (disable_intr == 1) {
     // CpuResumeIntr(local_28[0]);

@@ -610,7 +610,7 @@ void ProcessMessageData() {
 }
 
 void ReturnMessage(CmdHeader* param_1) {
-  printf("return %x\n", param_1->cmd_kind);
+  // printf("return %x\n", param_1->cmd_kind);
 
   if (param_1->mbx_to_reply == 0) {
     if (param_1->thread_id == 0) {
