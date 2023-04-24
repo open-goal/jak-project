@@ -141,16 +141,18 @@ void format_code(const std::string& source,
 
 std::string formatter::format_code(const std::string& source) {
   // Create a parser.
-  TSParser* parser = ts_parser_new();
+  std::shared_ptr<TSParser> parser(ts_parser_new(), TreeSitterParserDeleter());
 
   // Set the parser's language (JSON in this case).
-  ts_parser_set_language(parser, tree_sitter_opengoal());
+  ts_parser_set_language(parser.get(), tree_sitter_opengoal());
 
   // Build a syntax tree based on source code stored in a string.
-  TSTree* tree = ts_parser_parse_string(parser, NULL, source.c_str(), source.length());
+  std::shared_ptr<TSTree> tree(
+      ts_parser_parse_string(parser.get(), NULL, source.c_str(), source.length()),
+      TreeSitterTreeDeleter());
 
   // Get the root node of the syntax tree.
-  TSNode root_node = ts_tree_root_node(tree);
+  TSNode root_node = ts_tree_root_node(tree.get());
 
   std::string output = "";
   format_code(source, root_node, output, "", 0);
