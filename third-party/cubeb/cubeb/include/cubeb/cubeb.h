@@ -8,6 +8,8 @@
 #define CUBEB_c2f983e9_c96f_e71c_72c3_bbf62992a382
 
 #include "cubeb_export.h"
+// #include "third-party/cubeb/include/cubeb_export.h"
+
 #include <stdint.h>
 #include <stdlib.h>
 

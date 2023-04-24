@@ -26,7 +26,7 @@ enum class Mask {
   xyzw = 15
 };
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 #define REALLY_INLINE __attribute__((always_inline))
 #else
 #define REALLY_INLINE __forceinline
