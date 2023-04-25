@@ -1,5 +1,6 @@
 #include <cfloat>
 
+#include "common/goos/PrettyPrinter.h"
 #include "common/util/BitUtils.h"
 
 #include "goalc/compiler/Compiler.h"
@@ -479,10 +480,20 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
     }
 
     case MATH_FLOAT: {
-      auto a = first_val->to_fpr(form, env);
-      auto b = to_math_type(form, compile_error_guard(args.unnamed.at(1), env), math_type, env)
-                   ->to_fpr(form, env);
-      return compile_floating_point_division(form, first_type, a, b, env);
+      const auto& divisor = args.unnamed.at(1);
+      // in original GOAL, immediate divisions were turned into inverse multiplications
+      if (divisor.is_float() && !divisor.is_float(0)) {
+        // TODO eventually this should be smarter somehow
+        auto as_inverse_mult =
+            pretty_print::build_list({pretty_print::to_symbol("*"), args.unnamed.at(0),
+                                      goos::Object::make_float(1.0 / divisor.as_float())});
+        return compile_mul(as_inverse_mult, as_inverse_mult.as_pair()->cdr, env);
+      } else {
+        auto a = first_val->to_fpr(form, env);
+        auto b = to_math_type(form, compile_error_guard(divisor, env), math_type, env)
+                     ->to_fpr(form, env);
+        return compile_floating_point_division(form, first_type, a, b, env);
+      }
     }
 
     case MATH_INVALID:
