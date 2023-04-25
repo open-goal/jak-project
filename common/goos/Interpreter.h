@@ -212,6 +212,9 @@ class Interpreter {
   Object eval_string_split(const Object& form,
                            Arguments& args,
                            const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_string_substr(const Object& form,
+                            Arguments& args,
+                            const std::shared_ptr<EnvironmentObject>& env);
   Object eval_ash(const Object& form,
                   Arguments& args,
                   const std::shared_ptr<EnvironmentObject>& env);

@@ -141,6 +141,16 @@
          (cons (first lst) (filter pred (cdr lst))))
         (#t (filter pred (cdr lst)))))
 
+(desfun member (x a)
+  (if (null? a)
+      #f
+      (if (eq? (car a) x)
+          a
+          (member x (cdr a))
+          )
+      )
+	)
+
 (desfun assoc (x a)
   (if (null? a)
       '()
@@ -150,6 +160,28 @@
           )
       )
 	)
+
+(desfun assocn (x a)
+  (let ((i -1)
+        (iter a))
+    (while (not (null? iter))
+      (inc! i)
+      (if (eq? (car iter) x)
+          (return i))
+      (set! iter (cdr iter)))
+    i)
+  )
+
+(desfun nth (n a)
+  (let ((i -1)
+        (iter a))
+    (while (not (null? iter))
+      (inc! i)
+      (if (eq? i n)
+          (return (car iter)))
+      (set! iter (cdr iter)))
+    #f)
+  )
 
 (desfun list (&rest items)
   (apply (lambda (x) x) items)
