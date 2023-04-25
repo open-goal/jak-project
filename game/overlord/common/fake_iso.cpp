@@ -41,7 +41,6 @@ FakeIsoEntry fake_iso_entries[MAX_ISO_FILES];  //! List of all known files
 static FileRecord sFiles[MAX_ISO_FILES];       //! List of "FileRecords" for IsoFs API consumers
 u32 fake_iso_entry_count;                      //! Total count of fake iso files
 
-
 void fake_iso_init_globals() {
   // init file lists
   memset(fake_iso_entries, 0, sizeof(fake_iso_entries));

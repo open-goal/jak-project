@@ -1,5 +1,3 @@
 #pragma once
 
-namespace jak2 {
-
-}
+namespace jak2 {}

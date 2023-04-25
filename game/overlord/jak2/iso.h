@@ -10,7 +10,6 @@ void iso_init_globals();
 u32 ISOThread();
 extern u32 IsoThreadCounter;
 
-
 struct LoadStackEntry {
   FileRecord* fr;
   int cd_offset;  // location in cd (sector). In OpenGOAL, it's just relative to the start of the

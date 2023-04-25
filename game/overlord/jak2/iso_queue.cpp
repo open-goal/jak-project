@@ -536,8 +536,7 @@ CmdHeader* GetMessage() {
       do {
         pCVar1 = *ppCVar3;
         if ((((pCVar1->lse != (LoadStackEntry*)0x0) && (pCVar1->status == -1)) &&
-             (pCVar1->unk_24 != 0)
-             ) &&
+             (pCVar1->unk_24 != 0)) &&
             ((pCVar1->callback_buffer == (Buffer*)0x0 ||
               (pCVar1->callback_buffer->next == (Buffer*)0x0)))) {
           return pCVar1;

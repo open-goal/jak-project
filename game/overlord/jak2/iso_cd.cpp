@@ -610,7 +610,6 @@ int FS_PageBeginRead(LoadStackEntry* lse, Buffer* buffer) {
       gFakeCd.last_fr = lse->fr;
     }
 
-
     while (true) {
       PreviousCallBack = nullptr;
       PreviousCallBack = sceCdCallback(IsoCdPagesCallback);

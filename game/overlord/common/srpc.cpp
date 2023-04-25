@@ -22,4 +22,3 @@ void srpc_init_globals() {
   gSoundInUse = 0;
   memset((void*)&gMusicTweakInfo, 0, sizeof(gMusicTweakInfo));
 }
-

@@ -6,8 +6,8 @@
 #include "game/overlord/jak2/dma.h"
 #include "game/overlord/jak2/iso.h"
 #include "game/overlord/jak2/iso_queue.h"
-#include "game/overlord/jak2/vag.h"
 #include "game/overlord/jak2/streamlist.h"
+#include "game/overlord/jak2/vag.h"
 #include "game/sce/iop.h"
 #include "game/sound/sdshim.h"
 
@@ -21,7 +21,7 @@ void spusstreams_init_globals() {
 }
 
 int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
-   printf("processing vag data!\n");
+  printf("processing vag data!\n");
   VagCmd* param_1 = (VagCmd*)param_1_in;
   int iVar1;
   int iVar2;
@@ -124,7 +124,7 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
       goto LAB_0000fecc;
     param_1->unk_196 = 0;
     param_1->unk_200 = 0;
-    if (pRVar7) { // added
+    if (pRVar7) {  // added
       pRVar7->unk_200 = 0;
     }
   LAB_0000fbdc:

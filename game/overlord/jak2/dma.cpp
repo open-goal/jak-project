@@ -110,11 +110,9 @@ int SpuDmaIntr(int, void*) {
 
       sceSdkey_on_jak2_voice(DmaVagCmd->voice);
       sceSdkey_on_jak2_voice(DmaStereoVagCmd->voice);
-
     }
     uVar6 = *(u16*)&DmaVagCmd->voice & 1 | 0x1500;
-  LAB_00003eb0:
-    ;
+  LAB_00003eb0:;
     // sceSdSetSwitch(uVar6, uVar7);
   } else if (DmaVagCmd->unk_240_flag0 == 2) {
     DmaVagCmd->status_bytes[BYTE1] = 1;

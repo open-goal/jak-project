@@ -54,4 +54,3 @@ void WaitMbx(s32 mbx) {
     DelayThread(100);
   }
 }
-

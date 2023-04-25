@@ -470,7 +470,6 @@ u32 ISOThread() {
 
   printf("ISOThread loop starting.\n");
   do {
-
     spu_dma_hack();
 
     IsoThreadCounter = IsoThreadCounter + 1;

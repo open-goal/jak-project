@@ -1,6 +1,5 @@
 #include "isocommon.h"
 
-
 void MakeISOName(char* dst, const char* src) {
   int i = 0;
   const char* src_ptr = src;
@@ -48,4 +47,3 @@ void MakeISOName(char* dst, const char* src) {
   }
   *dst_ptr = 0;
 }
-

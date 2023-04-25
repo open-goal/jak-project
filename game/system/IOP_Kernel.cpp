@@ -9,7 +9,7 @@
 
 using namespace std::chrono;
 
-namespace jak2{
+namespace jak2 {
 void spu_dma_hack();
 }
 

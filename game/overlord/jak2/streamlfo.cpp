@@ -1,5 +1,3 @@
 
 #include "streamlfo.h"
-namespace jak2 {
-
-}
+namespace jak2 {}
