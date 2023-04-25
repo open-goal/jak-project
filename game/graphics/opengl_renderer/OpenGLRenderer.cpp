@@ -122,6 +122,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
     init_bucket_renderer<Merc2>(
         fmt::format("merc-l{}-tfrag", i), BucketCategory::MERC,
         GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_TFRAG, BucketId::MERC_L1_TFRAG, i));
+    init_bucket_renderer<Generic2>(
+        fmt::format("gmerc-l{}-tfrag", i), BucketCategory::MERC,
+        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_TFRAG, BucketId::GMERC_L1_TFRAG, i));
 
     init_bucket_renderer<TextureUploadHandler>(
         fmt::format("tex-l{}-shrub", i), BucketCategory::TEX,
@@ -132,6 +135,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
     init_bucket_renderer<Merc2>(
         fmt::format("merc-l{}-shrub", i), BucketCategory::MERC,
         GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_SHRUB, BucketId::MERC_L1_SHRUB, i));
+    init_bucket_renderer<Generic2>(
+        fmt::format("gmerc-l{}-shrub", i), BucketCategory::MERC,
+        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_SHRUB, BucketId::GMERC_L1_SHRUB, i));
 
     init_bucket_renderer<TextureUploadHandler>(
         fmt::format("tex-l{}-alpha", i), BucketCategory::TEX,
@@ -151,6 +157,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
     init_bucket_renderer<Merc2>(
         fmt::format("merc-l{}-alpha", i), BucketCategory::MERC,
         GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_ALPHA, BucketId::MERC_L1_ALPHA, i));
+    init_bucket_renderer<Generic2>(
+        fmt::format("gmerc-l{}-alpha", i), BucketCategory::GENERIC,
+        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_ALPHA, BucketId::GMERC_L1_ALPHA, i));
 
     init_bucket_renderer<TextureUploadHandler>(
         fmt::format("tex-l{}-pris", i), BucketCategory::TEX,
@@ -168,6 +177,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
     init_bucket_renderer<Merc2>(
         fmt::format("merc-l{}-pris2", i), BucketCategory::MERC,
         GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_PRIS2, BucketId::MERC_L1_PRIS2, i));
+    init_bucket_renderer<Generic2>(
+        fmt::format("gmerc-l{}-pris2", i), BucketCategory::GENERIC,
+        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_PRIS2, BucketId::GMERC_L1_PRIS2, i));
 
     init_bucket_renderer<TextureUploadHandler>(
         fmt::format("tex-l{}-water", i), BucketCategory::TEX,

@@ -31,7 +31,6 @@
 #include "game/kernel/jak2/kmalloc.h"
 #include "game/kernel/jak2/kscheme.h"
 #include "game/kernel/jak2/ksound.h"
-#include "game/kernel/svnrev.h"
 #include "game/sce/libdma.h"
 #include "game/sce/libgraph.h"
 #include "game/sce/sif_ee.h"
@@ -691,7 +690,7 @@ void InitMachine_PCPort() {
   auto settings_path = file_util::get_user_settings_dir(g_game_version);
   intern_from_c("*pc-settings-folder*")->value() =
       make_string_from_c(settings_path.string().c_str());
-  intern_from_c("*pc-settings-built-sha*")->value() = make_string_from_c(GIT_VERSION);
+  intern_from_c("*pc-settings-built-sha*")->value() = make_string_from_c(build_revision().c_str());
 }
 
 /*!

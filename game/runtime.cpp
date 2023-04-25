@@ -27,7 +27,7 @@
 #include "common/goal_constants.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "game/discord.h"
 #include "game/graphics/gfx.h"
