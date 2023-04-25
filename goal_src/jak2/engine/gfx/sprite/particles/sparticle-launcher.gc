@@ -33,7 +33,7 @@
 
 (define *part-group-id-table* (new 'global 'boxed-array sparticle-launch-group 1408))
 
-(define *sp-temp* 0)
+(define *sp-temp* 0.0)
 
 (kmemclose)
 
@@ -96,13 +96,13 @@
   0
   )
 
-;(def-mips2c sp-init-fields! (function object (inline-array sp-field-init-spec) sp-field-id sp-field-id symbol object))
-(defun sp-init-fields! ((arg0 (pointer float)) (arg1 (inline-array sp-field-init-spec)) (arg2 sp-field-id) (arg3 sp-field-id) (write-missing-fields symbol))
+(def-mips2c sp-init-fields! (function object (inline-array sp-field-init-spec) sp-field-id sp-field-id symbol object))
+#|(defun sp-init-fields! ((arg0 (pointer float)) (arg1 (inline-array sp-field-init-spec)) (arg2 sp-field-id) (arg3 sp-field-id) (write-missing-fields symbol))
   (1+! arg2)
   (let ((cur-spec arg1)
         (cur-field (-> arg1 0 field)))
       (while (< cur-field arg2)
-        (set! cur-spec (&-> cur-spec 1))
+        (&+! cur-spec 16)
         (set! cur-field (-> cur-spec 0 field))
         )
       (if (>= arg2 arg3)
@@ -120,17 +120,17 @@
           (else
             (case (-> cur-spec 0 flags)
               (((sp-flag float))
-                (if (= range 0.0)
+                (if (= (-> cur-spec 0 random-range) 0)
                     (set! (-> arg0) (-> cur-spec 0 initial-valuef))
                     (set! (-> arg0) (+ (-> cur-spec 0 initial-valuef) (* (-> cur-spec 0 random-multf) (* (rand-vu) (-> cur-spec 0 random-rangef))))))
                 )
               (((sp-flag float-int-rand))
-                (if (= range 0.0)
+                (if (= (-> cur-spec 0 random-range) 0)
                     (set! (-> arg0) (-> cur-spec 0 initial-valuef))
                     (set! (-> arg0) (+ (-> cur-spec 0 initial-valuef) (* (-> cur-spec 0 random-multf) (the int (* (rand-vu) (1+ (-> cur-spec 0 random-range))))))))
                 )
               (((sp-flag float-store))
-                (if (= range 0.0)
+                (if (= (-> cur-spec 0 random-range) 0)
                     (set! (-> arg0) (-> cur-spec 0 initial-valuef))
                     (set! (-> arg0) (+ (-> cur-spec 0 initial-valuef) (* (-> cur-spec 0 random-multf) (* (rand-vu) (-> cur-spec 0 random-rangef))))))
                 (set! *sp-temp* (-> arg0))
@@ -139,7 +139,7 @@
                 (set! (-> arg0) (-> arg0 (-> cur-spec 0 initial-value)))
                 )
               (((sp-flag symbol))
-                (set! (-> arg0) (-> cur-spec 0 sym value))
+                (set! (-> arg0) (the-as float (-> cur-spec 0 sym value)))
                 )
               (((sp-flag launcher))
                 (set! (-> arg0) (the-as float (-> *part-id-table* (-> cur-spec 0 initial-value))))
@@ -148,8 +148,8 @@
                 (set! (-> arg0) (the-as float (-> cur-spec 0 object)))
                 )
               (else
-                (if (= range 0.0)
-                    (set! (-> arg0) (-> cur-spec 0 initial-value))
+                (if (= (-> cur-spec 0 random-range) 0)
+                    (set! (-> arg0) (-> cur-spec 0 initial-valuef))
                     (set! (-> arg0) (the-as float (+ (-> cur-spec 0 initial-value) (* (-> cur-spec 0 random-mult) (the int (* (rand-vu) (-> cur-spec 0 random-range))))))))
                 )
               )
@@ -157,9 +157,9 @@
           )
         (1+! arg2)
         (&+! arg0 4)
-        (set! cur-spec (&-> cur-spec 1)))
+        (&+! cur-spec 16))
       )
-  )
+  )|#
 
 (deftype sp-queued-launch-particles (structure)
   ((sp-system   sparticle-system           :offset-assert   0)
