@@ -238,6 +238,7 @@ namespace generic_warp_dest_proc { extern void link(); }
 namespace generic_warp_dest { extern void link(); }
 namespace generic_warp_envmap_dest { extern void link(); }
 namespace generic_no_light_proc { extern void link(); }
+namespace foreground_draw_hud { extern void link(); }
 
 }
 // clang-format on
@@ -370,7 +371,7 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
      {"bones", {jak2::bones_mtx_calc::link}},
      {"foreground",
       {jak2::foreground_check_longest_edge_asm::link, jak2::foreground_merc::link,
-       jak2::foreground_generic_merc::link}},
+       jak2::foreground_generic_merc::link, jak2::foreground_draw_hud::link}},
      {"lights",
       {jak2::add_light_sphere_to_light_group::link, jak2::light_hash_add_items::link,
        jak2::light_hash_count_items::link, jak2::light_hash_get_bucket_index::link}},
