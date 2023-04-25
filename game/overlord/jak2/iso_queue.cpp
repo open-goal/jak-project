@@ -140,10 +140,10 @@ void InitBuffers() {
 
 u32 AllocDataBuffer(u32* param_1, u32 param_2) {
   bool bVar1;
-  uint uVar2;
-  uint uVar3;
+  u32 uVar2;
+  u32 uVar3;
   int iVar4;
-  uint uVar5;
+  u32 uVar5;
 
   uVar5 = 0xffffffff;
   bVar1 = false;
@@ -331,7 +331,7 @@ void FreeBuffer(Buffer* param_1, int param_2) {
   Buffer* pBVar1;
   Page* pPVar2;
   int iVar3;
-  uint uVar4;
+  u32 uVar4;
   // if (param_2 == 1) {
   // CpuSuspendIntr(local_18);
   //}
@@ -625,7 +625,7 @@ void ReturnMessage(CmdHeader* param_1) {
 
 VagCmd* GetVAGCommand() {
   int iVar1;
-  uint uVar2;
+  u32 uVar2;
   VagCmd* pRVar3;
 
   do {
@@ -656,7 +656,7 @@ VagCmd* GetVAGCommand() {
 
 void FreeVAGCommand(VagCmd* param_1) {
   int iVar1;
-  uint uVar2;
+  u32 uVar2;
 
   // uVar2 = (param_1 + -0x17e50) * 0x781948b1 >> 2;
   // kinda sus
@@ -691,7 +691,7 @@ uint8_t* CheckForIsoPageBoundaryCrossing(Buffer* param_1) {
   return param_1->decomp_buffer;
 }
 
-void FreeDataBuffer(uint* param_1, uint param_2) {
+void FreeDataBuffer(u32* param_1, u32 param_2) {
   if (param_1 == &BuffersAlloc) {
     BuffersAlloc = BuffersAlloc & ~(1 << (param_2 & 0x1f));
     AllocdBuffersCount = AllocdBuffersCount + -1;

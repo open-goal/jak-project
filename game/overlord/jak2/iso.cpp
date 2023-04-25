@@ -218,7 +218,7 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
     puVar3 = SmartAllocVagCmd(cmd);
     if (!puVar3)
       goto LAB_000049dc;
-    if ((*(uint*)&puVar3->status_bytes[BYTE4] & 0xffff00) != 0) {
+    if ((*(u32*)&puVar3->status_bytes[BYTE4] & 0xffff00) != 0) {
       IsoStopVagStream(puVar3, 0);
     }
     //    pRVar3 = cmd;
@@ -285,7 +285,7 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
         FreeVagCmd(puVar3, 0);
         puVar3 = 0x0;
       } else {
-        if ((*(uint*)&pVVar11->status_bytes[BYTE4] & 0xffff00) != 0) {
+        if ((*(u32*)&pVVar11->status_bytes[BYTE4] & 0xffff00) != 0) {
           IsoStopVagStream(pVVar11, 0);
         }
         pVVar11->status_bytes[BYTE11] = '\x01';
@@ -390,7 +390,7 @@ void IsoPlayVagStream(VagCmd* param_1, int param_2) {
         } else {
           UnPauseVAG(iVar1, 0);
         }
-        if ((uint)param_1->priority < 3) {
+        if ((u32)param_1->priority < 3) {
           SetNewVagCmdPri(param_1, 7, 0);
         }
       }
@@ -575,7 +575,7 @@ u32 ISOThread() {
                 if (iVar4 != 0) {
                   PauseVagStreams();
                 }
-                ext_resume = (uint)(iVar4 != 0);
+                ext_resume = (u32)(iVar4 != 0);
                 ext_pause = 1;
               }
             } else if (iVar4 == 0x404) {
@@ -1048,7 +1048,7 @@ int CopyData(CmdLoadSingleIop* param_1, Buffer* param_2, int param_3) {
         param_2->decompressed_size = param_2->decompressed_size - __n;
         CheckForIsoPageBoundaryCrossing(param_2);
         pPVar2 = param_2->page;
-        if ((uint)param_1->length_to_copy <= (uint)param_1->unk_64) {
+        if ((u32)param_1->length_to_copy <= (u32)param_1->unk_64) {
           if (pPVar2 != (Page*)0x0) {
             pPVar2->state = PageState::SIX;
             pPVar2 = (Page*)StepTopPage(param_2->plist, pPVar2);
@@ -1061,7 +1061,7 @@ int CopyData(CmdLoadSingleIop* param_1, Buffer* param_2, int param_3) {
           break;
       }
     }
-    if ((uint)param_1->length_to_copy <= (uint)param_1->unk_64) {
+    if ((u32)param_1->length_to_copy <= (u32)param_1->unk_64) {
       return 0;
     }
   }

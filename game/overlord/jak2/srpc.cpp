@@ -457,9 +457,9 @@ int VBlank_Handler(void*) {
   int iVar2;
   int iVar3;
   uint8_t uVar4;
-  uint uVar5;
+  u32 uVar5;
   int* piVar6;
-  uint uVar7;
+  u32 uVar7;
   int* status_ptr;
   int* pos_ptr;
   int* id_ptr;

@@ -191,7 +191,7 @@ VagCmd* SmartAllocVagCmd(VagCmd* cmd) {
 void TerminateVAG(VagCmd* cmd, int param_2) {
   int* piVar1;
   int iVar2;
-  uint uVar3;
+  u32 uVar3;
   VagCmd* pRVar4;
   VagCmd* pRVar5;
   VagStrListNode vag_node;
@@ -486,7 +486,7 @@ void RestartVag(VagCmd* param_1, int param_2, int param_3) {
   //  ushort uVar1;
   //  int iVar2;
   //  RealVagCmd *stereo_sibling;
-  //  uint uVar4;
+  //  u32 uVar4;
   //  int iVar5;
   //  undefined4 local_30;
   //  undefined2 local_2c [2];
@@ -551,14 +551,14 @@ void sceSdProcBatch(sceSdBatch* b, int, int n) {
 }
 
 void SetVAGVol(VagCmd* cmd, int param_2) {
-  uint uVar1;
-  uint uVar3;
+  u32 uVar1;
+  u32 uVar3;
   int iVar4;
   int iVar5;
   VagCmd* stereo_cmd;
   sceSdBatch batch[6];
-  uint local_28;
-  uint local_24;
+  u32 local_28;
+  u32 local_24;
   // undefined4 local_20 [2];
 
   if (cmd == 0x0) {
@@ -577,7 +577,7 @@ void SetVAGVol(VagCmd* cmd, int param_2) {
   stereo_cmd = cmd->stereo_sibling;
   if (pvVar2 == 0) {
     if (cmd->unk_296 == 0) {
-      local_28 = (uint)(cmd->vol_multiplier * MasterVolume[2]) >> 6;
+      local_28 = (u32)(cmd->vol_multiplier * MasterVolume[2]) >> 6;
       local_24 = local_28;
       if (0x3fff < local_28) {
         local_28 = 0x3fff;
@@ -585,7 +585,7 @@ void SetVAGVol(VagCmd* cmd, int param_2) {
       }
       goto LAB_0000a258;
     }
-    iVar4 = CalculateFallofVolume(&cmd->vec3, (uint)(cmd->vol_multiplier * MasterVolume[2]) >> 10,
+    iVar4 = CalculateFallofVolume(&cmd->vec3, (u32)(cmd->vol_multiplier * MasterVolume[2]) >> 10,
                                   cmd->fo_curve, cmd->fo_min, cmd->fo_max);
     iVar5 = CalculateAngle(&cmd->vec3);
     uVar3 = 0x276 - iVar5;
@@ -596,7 +596,7 @@ void SetVAGVol(VagCmd* cmd, int param_2) {
     ASSERT_NOT_REACHED();
     //    uVar3 = cmd->unk_176 + 0x5a;
     //    uVar1 = (uVar3 >> 3) / 0x2d;
-    //    local_24 = (((uint)(cmd->vol_multiplier * MasterVolume[*(char *)((int)pvVar2 + 0x17)]) >>
+    //    local_24 = (((u32)(cmd->vol_multiplier * MasterVolume[*(char *)((int)pvVar2 + 0x17)]) >>
     //    10) *
     //                (int)*(short *)((int)pvVar2 + 0x10) >> 10) * 0x3fff >> 10;
     //    local_28 = (int)gPanTable[uVar1 * -0x2d0 + uVar3 * 2] * local_24;
@@ -634,13 +634,13 @@ LAB_0000a258:
     batch[4].value = cmd->pitch1;
     if (iVar4 != 0) {
       if (iVar4 < 1) {
-        batch[4].value = (uint)(batch[4].value * 0x5f4) / (0x5f4U - iVar4);
+        batch[4].value = (u32)(batch[4].value * 0x5f4) / (0x5f4U - iVar4);
         if (0x5f4U - iVar4 == 0) {
           ASSERT_NOT_REACHED();
           // trap(0x1c00);
         }
       } else {
-        batch[4].value = (uint)(batch[4].value * (iVar4 + 0x5f4)) / 0x5f4;
+        batch[4].value = (u32)(batch[4].value * (iVar4 + 0x5f4)) / 0x5f4;
       }
     }
     iVar4 = 5;
@@ -922,7 +922,7 @@ int HowManyBelowThisPriority(int pri, int disable_intr) {
 void StopVAG(VagCmd* cmd, int param_2) {
   //  int *piVar1;
   //  int iVar2;
-  //  uint uVar3;
+  //  u32 uVar3;
   //  RealVagCmd *sibling;
   //  undefined4 local_20 [2];
 
@@ -1031,11 +1031,11 @@ void SetAllVagsVol(int param_1)
 void CalculateVAGVolumes(VagCmd* cmd, int* l_out, int* r_out) {
   // int iVar1;
   //  int iVar2;
-  // uint uVar3;
-  uint uVar4;
+  // u32 uVar3;
+  u32 uVar4;
 
   if (cmd->unk_296 == 0) {
-    uint vol = (uint)(cmd->vol_multiplier * MasterVolume[VolumeCategory::DIALOGUE]) >> 6;
+    u32 vol = (u32)(cmd->vol_multiplier * MasterVolume[VolumeCategory::DIALOGUE]) >> 6;
     if (0x3fff < vol) {
       vol = 0x3fff;
     }
@@ -1043,14 +1043,14 @@ void CalculateVAGVolumes(VagCmd* cmd, int* l_out, int* r_out) {
     *r_out = vol;
   } else {
     int fo_vol =
-        CalculateFallofVolume(&cmd->vec3, (uint)(cmd->vol_multiplier * MasterVolume[2]) >> 10,
+        CalculateFallofVolume(&cmd->vec3, (u32)(cmd->vol_multiplier * MasterVolume[2]) >> 10,
                               cmd->fo_curve, cmd->fo_min, cmd->fo_max);
     int angle = CalculateAngle(&cmd->vec3);
     int uVar4 = 0x276 - angle;
     int uVar3 = (uVar4 >> 3) / 0x2d;
     auto* pan = (s16*)gPanTable;
-    *l_out = (uint)(pan[uVar3 * -0x2d0 + uVar4 * 2] * fo_vol) >> 10;
-    *r_out = (uint)(pan[uVar3 * -0x2d0 + uVar4 * 2 + 1] * fo_vol) >> 10;
+    *l_out = (u32)(pan[uVar3 * -0x2d0 + uVar4 * 2] * fo_vol) >> 10;
+    *r_out = (u32)(pan[uVar3 * -0x2d0 + uVar4 * 2 + 1] * fo_vol) >> 10;
     if (0x3fff < *l_out) {
       *l_out = 0x3fff;
     }

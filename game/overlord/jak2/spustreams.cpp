@@ -254,15 +254,15 @@ int GetVAGStreamPos(VagCmd* param_1)
 
 {
   bool bVar1;
-  uint uVar2;
-  uint uVar3;
-  uint uVar4;
-  uint uVar5;
+  u32 uVar2;
+  u32 uVar3;
+  u32 uVar4;
+  u32 uVar5;
   int iVar6;
   VagCmd* pRVar7;
-  uint uVar8;
-  uint uVar9;
-  uint uVar10;
+  u32 uVar8;
+  u32 uVar9;
+  u32 uVar10;
 
   pRVar7 = param_1->stereo_sibling;
   if (param_1->id == 0) {
@@ -574,7 +574,7 @@ int GetVAGStreamPos(VagCmd* param_1)
     if (uVar9 == 0) {
       uVar10 = 0;
     } else {
-      uVar10 = (uint)(param_1->unk_188 * 0x1c0) / uVar9;
+      uVar10 = (u32)(param_1->unk_188 * 0x1c0) / uVar9;
       if (uVar9 == 0) {
         // trap(0x1c00);
         ASSERT_NOT_REACHED();
@@ -587,7 +587,7 @@ int GetVAGStreamPos(VagCmd* param_1)
     if (uVar9 == 0) {
       uVar10 = 0;
     } else {
-      uVar10 = (uint)(pRVar7->unk_188 * 0x1c0) / uVar9;
+      uVar10 = (u32)(pRVar7->unk_188 * 0x1c0) / uVar9;
       if (uVar9 == 0) {
         // trap(0x1c00);
         ASSERT_NOT_REACHED();
@@ -748,7 +748,7 @@ switchD_000108fc_caseD_1:
   if (uVar8 == 0) {
     uVar9 = 0;
   } else {
-    uVar9 = (uint)(param_1->unk_188 * 0x1c0) / uVar8;
+    uVar9 = (u32)(param_1->unk_188 * 0x1c0) / uVar8;
     if (uVar8 == 0) {
       // trap(0x1c00);
       ASSERT_NOT_REACHED();
@@ -762,8 +762,8 @@ switchD_000108fc_caseD_1:
 
 int CheckVAGStreamProgress(VagCmd* param_1) {
   int uVar1;
-  uint uVar2;
-  uint uVar3;
+  u32 uVar2;
+  u32 uVar3;
   VagCmd* pRVar4;
   // undefined4 local_18 [2];
 
@@ -791,7 +791,7 @@ int CheckVAGStreamProgress(VagCmd* param_1) {
     uVar1 = 0;
     if ((uVar3 & 0xfffffff0) < uVar2) {
       // CpuSuspendIntr(local_18);
-      if ((param_1->unk_268 == 0) && (uVar3 < (uint)param_1->unk_264)) {
+      if ((param_1->unk_268 == 0) && (uVar3 < (u32)param_1->unk_264)) {
         sceSdSetAddr(*(ushort*)&param_1->voice | 0x2140,
                      param_1->spu_stream_mem_addr + param_1->unk_264);
         param_1->unk_268 = 1;
@@ -993,12 +993,12 @@ void WakeSpuStreamsUp() {
 
 u32 GetSpuRamAddress(VagCmd* param_1) {
   bool bVar1;
-  uint uVar2;
-  uint uVar3;
-  uint uVar4;
-  uint uVar5;
-  uint uVar6;
-  uint uVar7;
+  u32 uVar2;
+  u32 uVar3;
+  u32 uVar4;
+  u32 uVar5;
+  u32 uVar6;
+  u32 uVar7;
 
   uVar7 = param_1->spu_stream_mem_addr;
   uVar6 = param_1->voice & 0xffffU | 0x2240;
@@ -1019,7 +1019,7 @@ u32 GetSpuRamAddress(VagCmd* param_1) {
   return uVar4;
 }
 
-uint bswap(uint param_1) {
+u32 bswap(u32 param_1) {
   return param_1 >> 0x18 | (int)param_1 >> 8 & 0xff00U | (param_1 & 0xff00) << 8 | param_1 << 0x18;
 }
 
