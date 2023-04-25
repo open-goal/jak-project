@@ -24,7 +24,7 @@ int SpuDmaIntr(int, void*) {
   //  RealVagCmd* pRVar3;
   //  RealVagCmd* pRVar4;
   //  undefined2 uVar5;
-  //  ushort uVar6;
+  //  u16 uVar6;
   //  uint uVar7;
   //  uint8_t* puVar8;
   //  int iVar9;
@@ -87,9 +87,9 @@ int SpuDmaIntr(int, void*) {
       DmaVagCmd->unk_64 = 0;
       sceSdSetAddr(((s16)DmaVagCmd->voice) | 0x2040, DmaVagCmd->spu_stream_mem_addr + 0x30);
       printf("-------------- start adrs\n");
-      sceSdSetParam(*(ushort*)&DmaVagCmd->voice | 0x300, 0xf);
-      sceSdSetParam(*(ushort*)&DmaVagCmd->voice | 0x400, 0x1fc0);
-      sceSdSetParam(*(ushort*)&DmaVagCmd->voice | 0x200, pitch);
+      sceSdSetParam(*(u16*)&DmaVagCmd->voice | 0x300, 0xf);
+      sceSdSetParam(*(u16*)&DmaVagCmd->voice | 0x400, 0x1fc0);
+      sceSdSetParam(*(u16*)&DmaVagCmd->voice | 0x200, pitch);
       uVar7 = 1 << (DmaVagCmd->voice >> 1 & 0x1fU);
       sceSdkey_on_jak2_voice(DmaVagCmd->voice);
     } else {
@@ -97,22 +97,22 @@ int SpuDmaIntr(int, void*) {
       DmaStereoVagCmd->unk_64 = 0;
       printf("-------------- start adrs (stereo)\n");
 
-      sceSdSetAddr(*(ushort*)&DmaVagCmd->voice | 0x2040, DmaVagCmd->spu_stream_mem_addr + 0x30);
-      sceSdSetAddr(*(ushort*)&DmaStereoVagCmd->voice | 0x2040,
+      sceSdSetAddr(*(u16*)&DmaVagCmd->voice | 0x2040, DmaVagCmd->spu_stream_mem_addr + 0x30);
+      sceSdSetAddr(*(u16*)&DmaStereoVagCmd->voice | 0x2040,
                    DmaStereoVagCmd->spu_stream_mem_addr + 0x30);
-      sceSdSetParam(*(ushort*)&DmaVagCmd->voice | 0x300, 0xf);
-      sceSdSetParam(*(ushort*)&DmaStereoVagCmd->voice | 0x300, 0xf);
-      sceSdSetParam(*(ushort*)&DmaVagCmd->voice | 0x400, 0x1fc0);
-      sceSdSetParam(*(ushort*)&DmaStereoVagCmd->voice | 0x400, 0x1fc0);
-      sceSdSetParam(*(ushort*)&DmaVagCmd->voice | 0x200, pitch);
-      sceSdSetParam(*(ushort*)&DmaStereoVagCmd->voice | 0x200, pitch);
+      sceSdSetParam(*(u16*)&DmaVagCmd->voice | 0x300, 0xf);
+      sceSdSetParam(*(u16*)&DmaStereoVagCmd->voice | 0x300, 0xf);
+      sceSdSetParam(*(u16*)&DmaVagCmd->voice | 0x400, 0x1fc0);
+      sceSdSetParam(*(u16*)&DmaStereoVagCmd->voice | 0x400, 0x1fc0);
+      sceSdSetParam(*(u16*)&DmaVagCmd->voice | 0x200, pitch);
+      sceSdSetParam(*(u16*)&DmaStereoVagCmd->voice | 0x200, pitch);
       uVar7 = 1 << (DmaVagCmd->voice >> 1 & 0x1fU) | 1 << (DmaStereoVagCmd->voice >> 1 & 0x1fU);
 
       sceSdkey_on_jak2_voice(DmaVagCmd->voice);
       sceSdkey_on_jak2_voice(DmaStereoVagCmd->voice);
 
     }
-    uVar6 = *(ushort*)&DmaVagCmd->voice & 1 | 0x1500;
+    uVar6 = *(u16*)&DmaVagCmd->voice & 1 | 0x1500;
   LAB_00003eb0:
     ;
     // sceSdSetSwitch(uVar6, uVar7);
@@ -123,14 +123,14 @@ int SpuDmaIntr(int, void*) {
     }
     if (DmaVagCmd->status_bytes[PAUSED]) {
       if (!DmaStereoVagCmd) {
-        sceSdSetParam(*(ushort*)&DmaVagCmd->voice | 0x200, 0);
+        sceSdSetParam(*(u16*)&DmaVagCmd->voice | 0x200, 0);
         uVar7 = 1 << (DmaVagCmd->voice >> 1 & 0x1fU);
       } else {
-        sceSdSetParam(*(ushort*)&DmaStereoVagCmd->voice | 0x200, 0);
-        sceSdSetParam(*(ushort*)&DmaVagCmd->voice | 0x200, 0);
+        sceSdSetParam(*(u16*)&DmaStereoVagCmd->voice | 0x200, 0);
+        sceSdSetParam(*(u16*)&DmaVagCmd->voice | 0x200, 0);
         uVar7 = 1 << (DmaVagCmd->voice >> 1 & 0x1fU) | 1 << (DmaStereoVagCmd->voice >> 1 & 0x1fU);
       }
-      uVar6 = *(ushort*)&DmaVagCmd->voice & 1 | 0x1600;
+      uVar6 = *(u16*)&DmaVagCmd->voice & 1 | 0x1600;
       // goto LAB_00003eb0;
       sceSdSetSwitch(uVar6, uVar7);
       goto hack;

@@ -213,7 +213,7 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
       if (pRVar5 != 0x0) {
         uVar3 = uVar3 | 1 << (pRVar5->voice >> 1 & 0x1fU);
       }
-      sceSdSetSwitch(*(ushort*)&cmd->voice & 1 | 0x1600, uVar3);
+      sceSdSetSwitch(*(u16*)&cmd->voice & 1 | 0x1600, uVar3);
     }
     //    iVar2 = 0x18;
     //    piVar1 = &(cmd->header).unk_24;
@@ -483,7 +483,7 @@ void UnPauseVAG(VagCmd* param_1, int param_2) {
 }
 
 void RestartVag(VagCmd* param_1, int param_2, int param_3) {
-  //  ushort uVar1;
+  //  u16 uVar1;
   //  int iVar2;
   //  RealVagCmd *stereo_sibling;
   //  u32 uVar4;
@@ -511,7 +511,7 @@ void RestartVag(VagCmd* param_1, int param_2, int param_3) {
     int other_voice;
     int sram_addr;
     if (!stereo_sibling) {
-      other_voice = *(ushort*)&param_1->voice;
+      other_voice = *(u16*)&param_1->voice;
       sram_addr = param_1->spu_stream_mem_addr;
     } else {
       sceSdSetParam(((u16)stereo_sibling->voice), 0);
@@ -614,8 +614,8 @@ LAB_0000a258:
   if (stereo_cmd == (VagCmd*)0x0) {
     batch[0].entry = *(uint16_t*)&cmd->voice;
     iVar4 = 2;
-    batch[1].entry = *(ushort*)&cmd->voice | 0x100;
-    batch[2].entry = *(ushort*)&cmd->voice | 0x200;
+    batch[1].entry = *(u16*)&cmd->voice | 0x100;
+    batch[2].entry = *(u16*)&cmd->voice | 0x200;
     iVar5 = cmd->unk_256_pitch2;
     uVar1 = cmd->pitch1;
     printf("cmd's pitch is %d, %d\n", cmd->pitch1, cmd->unk_256_pitch2);
@@ -625,11 +625,11 @@ LAB_0000a258:
     batch[1].entry = *(uint16_t*)&stereo_cmd->voice;
     batch[1].value = 0;
     batch[2].value = 0;
-    batch[2].entry = *(ushort*)&cmd->voice | 0x100;
+    batch[2].entry = *(u16*)&cmd->voice | 0x100;
     batch[3].func = 1;
-    batch[3].entry = *(ushort*)&stereo_cmd->voice | 0x100;
+    batch[3].entry = *(u16*)&stereo_cmd->voice | 0x100;
     batch[4].func = 1;
-    batch[4].entry = *(ushort*)&cmd->voice | 0x200;
+    batch[4].entry = *(u16*)&cmd->voice | 0x200;
     iVar4 = cmd->unk_256_pitch2;
     batch[4].value = cmd->pitch1;
     if (iVar4 != 0) {
@@ -645,7 +645,7 @@ LAB_0000a258:
     }
     iVar4 = 5;
     batch[5].func = 1;
-    batch[5].entry = *(ushort*)&stereo_cmd->voice | 0x200;
+    batch[5].entry = *(u16*)&stereo_cmd->voice | 0x200;
     iVar5 = cmd->unk_256_pitch2;
     uVar1 = cmd->pitch1;
     batch[3].value = local_24;

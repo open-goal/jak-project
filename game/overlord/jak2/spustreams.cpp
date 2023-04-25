@@ -421,8 +421,8 @@ int GetVAGStreamPos(VagCmd* param_1)
         } else {
           if ((param_1->byte20 == '\0') && (pRVar7->byte20 == '\0')) {
             // CpuSuspendIntr(local_30);
-            sceSdSetAddr(*(ushort*)&param_1->voice | 0x2140, param_1->spu_stream_mem_addr + 0x2000);
-            sceSdSetAddr(*(ushort*)&pRVar7->voice | 0x2140, pRVar7->spu_stream_mem_addr + 0x2000);
+            sceSdSetAddr(*(u16*)&param_1->voice | 0x2140, param_1->spu_stream_mem_addr + 0x2000);
+            sceSdSetAddr(*(u16*)&pRVar7->voice | 0x2140, pRVar7->spu_stream_mem_addr + 0x2000);
             param_1->byte15 = '\x01';
             param_1->byte14 = '\0';
             param_1->byte13 = '\0';
@@ -455,8 +455,8 @@ int GetVAGStreamPos(VagCmd* param_1)
         if ((param_1->byte22 == '\0') || (pRVar7->byte22 == '\0'))
           goto switchD_000102c4_caseD_1;
         // CpuSuspendIntr(local_30);
-        sceSdSetAddr(*(ushort*)&param_1->voice | 0x2140, param_1->spu_trap_mem_addr);
-        sceSdSetAddr(*(ushort*)&pRVar7->voice | 0x2140, pRVar7->spu_trap_mem_addr);
+        sceSdSetAddr(*(u16*)&param_1->voice | 0x2140, param_1->spu_trap_mem_addr);
+        sceSdSetAddr(*(u16*)&pRVar7->voice | 0x2140, pRVar7->spu_trap_mem_addr);
         param_1->byte13 = '\x01';
         param_1->byte14 = '\0';
         param_1->byte15 = '\0';
@@ -489,8 +489,8 @@ int GetVAGStreamPos(VagCmd* param_1)
         } else {
           if ((param_1->byte20 == '\0') && (pRVar7->byte20 == '\0')) {
             // CpuSuspendIntr(local_30);
-            sceSdSetAddr(*(ushort*)&param_1->voice | 0x2140, param_1->spu_stream_mem_addr);
-            sceSdSetAddr(*(ushort*)&pRVar7->voice | 0x2140, pRVar7->spu_stream_mem_addr);
+            sceSdSetAddr(*(u16*)&param_1->voice | 0x2140, param_1->spu_stream_mem_addr);
+            sceSdSetAddr(*(u16*)&pRVar7->voice | 0x2140, pRVar7->spu_stream_mem_addr);
             param_1->byte14 = '\x01';
             param_1->byte15 = '\0';
             param_1->byte13 = '\0';
@@ -511,8 +511,8 @@ int GetVAGStreamPos(VagCmd* param_1)
           if ((param_1->byte21 == '\0') || (pRVar7->byte21 == '\0'))
             goto switchD_000102c4_caseD_1;
           // CpuSuspendIntr(local_30);
-          sceSdSetAddr(*(ushort*)&param_1->voice | 0x2140, param_1->spu_trap_mem_addr);
-          sceSdSetAddr(*(ushort*)&pRVar7->voice | 0x2140, pRVar7->spu_trap_mem_addr);
+          sceSdSetAddr(*(u16*)&param_1->voice | 0x2140, param_1->spu_trap_mem_addr);
+          sceSdSetAddr(*(u16*)&pRVar7->voice | 0x2140, pRVar7->spu_trap_mem_addr);
           param_1->byte13 = '\x01';
           param_1->byte14 = '\0';
           param_1->byte15 = '\0';
@@ -638,7 +638,7 @@ LAB_00010860:
         }
       } else if (param_1->byte20 == '\0') {
         // CpuSuspendIntr(local_30);
-        sceSdSetAddr(*(ushort*)&param_1->voice | 0x2140, param_1->spu_stream_mem_addr + 0x2000);
+        sceSdSetAddr(*(u16*)&param_1->voice | 0x2140, param_1->spu_stream_mem_addr + 0x2000);
         param_1->byte15 = '\x01';
         param_1->byte14 = '\0';
         param_1->byte13 = '\0';
@@ -662,7 +662,7 @@ LAB_00010860:
       if (param_1->byte22 == '\0')
         goto switchD_000108fc_caseD_1;
       // CpuSuspendIntr(local_30);
-      sceSdSetAddr(*(ushort*)&param_1->voice | 0x2140, param_1->spu_trap_mem_addr);
+      sceSdSetAddr(*(u16*)&param_1->voice | 0x2140, param_1->spu_trap_mem_addr);
       param_1->byte13 = '\x01';
       param_1->byte14 = '\0';
       param_1->byte15 = '\0';
@@ -686,7 +686,7 @@ LAB_00010860:
       }
       if (param_1->byte20 == '\0') {
         // CpuSuspendIntr(local_30);
-        sceSdSetAddr(*(ushort*)&param_1->voice | 0x2140, param_1->spu_stream_mem_addr);
+        sceSdSetAddr(*(u16*)&param_1->voice | 0x2140, param_1->spu_stream_mem_addr);
         param_1->byte14 = '\x01';
         param_1->byte15 = '\0';
         param_1->byte13 = '\0';
@@ -700,7 +700,7 @@ LAB_00010860:
         if (param_1->byte21 == '\0')
           goto switchD_000108fc_caseD_1;
         // CpuSuspendIntr(local_30);
-        sceSdSetAddr(*(ushort*)&param_1->voice | 0x2140, param_1->spu_trap_mem_addr);
+        sceSdSetAddr(*(u16*)&param_1->voice | 0x2140, param_1->spu_trap_mem_addr);
         param_1->byte13 = '\x01';
         param_1->byte14 = '\0';
         param_1->byte15 = '\0';
@@ -792,11 +792,11 @@ int CheckVAGStreamProgress(VagCmd* param_1) {
     if ((uVar3 & 0xfffffff0) < uVar2) {
       // CpuSuspendIntr(local_18);
       if ((param_1->unk_268 == 0) && (uVar3 < (u32)param_1->unk_264)) {
-        sceSdSetAddr(*(ushort*)&param_1->voice | 0x2140,
+        sceSdSetAddr(*(u16*)&param_1->voice | 0x2140,
                      param_1->spu_stream_mem_addr + param_1->unk_264);
         param_1->unk_268 = 1;
         if (pRVar4 != 0x0) {
-          sceSdSetAddr(*(ushort*)&pRVar4->voice | 0x2140,
+          sceSdSetAddr(*(u16*)&pRVar4->voice | 0x2140,
                        pRVar4->spu_stream_mem_addr + param_1->unk_264);
           pRVar4->unk_268 = 1;
         }
