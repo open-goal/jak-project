@@ -18,7 +18,6 @@
 ;; og:ignore-form:sparticle-motion-blur
 ;; og:ignore-form:birth-func-texture-group
 ;; og:ignore-form:sparticle-launcher-method-10
-(define-extern sp-init-fields! (function object (inline-array sp-field-init-spec) sp-field-id sp-field-id symbol object)) ;; TODO - mips2c
 
 (define-extern particle-adgif (function adgif-shader texture-id none)) ;; TODO - particle-adgif atomic ops, MIPS2C
 (define-extern sp-launch-particles-var (function sparticle-system sparticle-launcher matrix sparticle-launch-state sparticle-launch-control float none)) ;; TODO - mips2c
@@ -96,23 +95,22 @@
   0
   )
 
-(def-mips2c sp-init-fields! (function object (inline-array sp-field-init-spec) sp-field-id sp-field-id symbol object))
-#|(defun sp-init-fields! ((arg0 (pointer float)) (arg1 (inline-array sp-field-init-spec)) (arg2 sp-field-id) (arg3 sp-field-id) (write-missing-fields symbol))
+;(def-mips2c sp-init-fields! (function object (inline-array sp-field-init-spec) sp-field-id sp-field-id symbol object))
+(defun sp-init-fields! ((arg0 (pointer float)) (arg1 (inline-array sp-field-init-spec)) (arg2 sp-field-id) (arg3 sp-field-id) (write-missing-fields symbol))
   (1+! arg2)
-  (let ((cur-spec arg1)
-        (cur-field (-> arg1 0 field)))
-      (while (< cur-field arg2)
+  (let ((cur-spec arg1))
+      (while (< (-> cur-spec 0 field) arg2)
         (&+! cur-spec 16)
-        (set! cur-field (-> cur-spec 0 field))
         )
       (if (>= arg2 arg3)
           (return 0))
-      (while (!= arg2 arg3)
-        (set! cur-field (-> cur-spec 0 field))
+      (until (= arg2 arg3)
         (cond
-          ((!= cur-field arg2)
+          ((!= (-> cur-spec 0 field) arg2)
             (if write-missing-fields
                 (set! (-> arg0) 0.0))
+            ;; reduce by 16 because it will be incremented by 16 right after but we don't want to advance field
+            (&+! cur-spec -16)
             )
           ((= arg2 (sp-field-id spt-sound))
             (set! (-> arg0) (-> cur-spec 0 initial-valuef))
@@ -158,8 +156,8 @@
         (1+! arg2)
         (&+! arg0 4)
         (&+! cur-spec 16))
-      )
-  )|#
+      cur-spec)
+  )
 
 (deftype sp-queued-launch-particles (structure)
   ((sp-system   sparticle-system           :offset-assert   0)
