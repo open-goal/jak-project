@@ -3,8 +3,8 @@
 #include <string>
 #include <unordered_map>
 
-#include <decompiler/ObjectFile/ObjectFileDB.h>
 #include "decompiler/Function/Function.h"
+#include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 
 namespace decompiler {

@@ -20,4 +20,5 @@ std::string diff(const std::string& lhs, const std::string& rhs);
 std::vector<std::string> split(const ::std::string& str, char delimiter = '\n');
 std::string join(const std::vector<std::string>& strs, const std::string& join_with);
 std::vector<std::string> regex_get_capture_groups(const std::string& str, const std::string& regex);
+bool replace(std::string& str, const std::string& from, const std::string& to);
 }  // namespace str_util
