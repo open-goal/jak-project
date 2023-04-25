@@ -268,7 +268,9 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
         } else {
           auto* vs = FindVagStreamId(cmd->param.sound_id);
           if (vs) {
-            SetVAGStreamPitch(cmd->param.sound_id, cmd->param.parms.bend);  // is this really bend?
+            if (mask & 0x2) {
+              SetVAGStreamPitch(cmd->param.sound_id, cmd->param.parms.pitch_mod);
+            }
           }
         }
         // TODO vag

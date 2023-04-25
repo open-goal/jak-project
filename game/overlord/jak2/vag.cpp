@@ -538,28 +538,141 @@ void RestartVag(VagCmd* param_1, int param_2, int param_3) {
   //}
 }
 
-void SetVAGVol(VagCmd* cmd, int param_2) {
-  // unk136 structure access...
-  static int i = 0;
-  i++;
-  if (i < 100) {
-    lg::error("ignoring volume");
+struct sceSdBatch {
+  u32 entry;
+  u32 value;
+  u32 func;
+};
+
+void sceSdProcBatch(sceSdBatch* b, int, int n) {
+  for (int i = 0; i < n; i++) {
+    sceSdSetParam(b[i].entry, b[i].value);
   }
+}
 
-  sceSdSetParam(0 | SD_VP_VOLL, 16000);
-  sceSdSetParam(0 | SD_VP_VOLR, 16000);
+void SetVAGVol(VagCmd* cmd, int param_2) {
+  uint uVar1;
+  uint uVar3;
+  int iVar4;
+  int iVar5;
+  VagCmd* stereo_cmd;
+  sceSdBatch batch[6];
+  uint local_28;
+  uint local_24;
+  // undefined4 local_20 [2];
 
-  sceSdSetParam(1 | SD_VP_VOLL, 16000);
-  sceSdSetParam(1 | SD_VP_VOLR, 16000);
-
-  sceSdSetParam(2 | SD_VP_VOLL, 16000);
-  sceSdSetParam(2 | SD_VP_VOLR, 16000);
-
-  sceSdSetParam(3 | SD_VP_VOLL, 16000);
-  sceSdSetParam(3 | SD_VP_VOLR, 16000);
-//  sceSdSetParam(0 | SD_VP_ADSR1, 0xf);
-//  sceSdSetParam(0 | SD_VP_ADSR2, 0x1fc0);
-  // ASSERT_NOT_REACHED();
+  if (cmd == 0x0) {
+    return;
+  }
+  if (cmd->byte4 == '\0') {
+    return;
+  }
+  if (cmd->byte2 != '\0') {
+    return;
+  }
+  if (cmd->byte11 != '\0') {
+    return;
+  }
+  auto pvVar2 = cmd->unk_136;
+  stereo_cmd = cmd->stereo_sibling;
+  if (pvVar2 == 0) {
+    if (cmd->unk_296 == 0) {
+      local_28 = (uint)(cmd->vol_multiplier * MasterVolume[2]) >> 6;
+      local_24 = local_28;
+      if (0x3fff < local_28) {
+        local_28 = 0x3fff;
+        local_24 = local_28;
+      }
+      goto LAB_0000a258;
+    }
+    iVar4 = CalculateFallofVolume(&cmd->vec3, (uint)(cmd->vol_multiplier * MasterVolume[2]) >> 10,
+                                  cmd->fo_curve, cmd->fo_min, cmd->fo_max);
+    iVar5 = CalculateAngle(&cmd->vec3);
+    uVar3 = 0x276 - iVar5;
+    uVar1 = (uVar3 >> 3) / 0x2d;
+    local_28 = ((s16*)gPanTable)[uVar1 * -0x2d0 + uVar3 * 2] * iVar4;
+    local_24 = ((s16*)gPanTable)[uVar1 * -0x2d0 + uVar3 * 2 + 1] * iVar4;
+  } else {
+    ASSERT_NOT_REACHED();
+    //    uVar3 = cmd->unk_176 + 0x5a;
+    //    uVar1 = (uVar3 >> 3) / 0x2d;
+    //    local_24 = (((uint)(cmd->vol_multiplier * MasterVolume[*(char *)((int)pvVar2 + 0x17)]) >>
+    //    10) *
+    //                (int)*(short *)((int)pvVar2 + 0x10) >> 10) * 0x3fff >> 10;
+    //    local_28 = (int)gPanTable[uVar1 * -0x2d0 + uVar3 * 2] * local_24;
+    //    local_24 = (int)gPanTable[uVar1 * -0x2d0 + uVar3 * 2 + 1] * local_24;
+  }
+  local_28 = local_28 >> 10;
+  local_24 = local_24 >> 10;
+  if (0x3fff < local_28) {
+    local_28 = 0x3fff;
+  }
+  if (0x3fff < local_24) {
+    local_24 = 0x3fff;
+  }
+LAB_0000a258:
+  if (stereo_cmd == (VagCmd*)0x0) {
+    batch[0].entry = *(uint16_t*)&cmd->voice;
+    iVar4 = 2;
+    batch[1].entry = *(ushort*)&cmd->voice | 0x100;
+    batch[2].entry = *(ushort*)&cmd->voice | 0x200;
+    iVar5 = cmd->unk_256_pitch2;
+    uVar1 = cmd->pitch1;
+    printf("cmd's pitch is %d, %d\n", cmd->pitch1, cmd->unk_256_pitch2);
+    batch[1].value = local_24;
+  } else {
+    batch[0].entry = *(uint16_t*)&cmd->voice;
+    batch[1].entry = *(uint16_t*)&stereo_cmd->voice;
+    batch[1].value = 0;
+    batch[2].value = 0;
+    batch[2].entry = *(ushort*)&cmd->voice | 0x100;
+    batch[3].func = 1;
+    batch[3].entry = *(ushort*)&stereo_cmd->voice | 0x100;
+    batch[4].func = 1;
+    batch[4].entry = *(ushort*)&cmd->voice | 0x200;
+    iVar4 = cmd->unk_256_pitch2;
+    batch[4].value = cmd->pitch1;
+    if (iVar4 != 0) {
+      if (iVar4 < 1) {
+        batch[4].value = (uint)(batch[4].value * 0x5f4) / (0x5f4U - iVar4);
+        if (0x5f4U - iVar4 == 0) {
+          ASSERT_NOT_REACHED();
+          // trap(0x1c00);
+        }
+      } else {
+        batch[4].value = (uint)(batch[4].value * (iVar4 + 0x5f4)) / 0x5f4;
+      }
+    }
+    iVar4 = 5;
+    batch[5].func = 1;
+    batch[5].entry = *(ushort*)&stereo_cmd->voice | 0x200;
+    iVar5 = cmd->unk_256_pitch2;
+    uVar1 = cmd->pitch1;
+    batch[3].value = local_24;
+  }
+  if (iVar5 != 0) {
+    if (iVar5 < 1) {
+      uVar1 = (uVar1 * 0x5f4) / (0x5f4U - iVar5);
+      if (0x5f4U - iVar5 == 0) {
+        ASSERT_NOT_REACHED();
+        // trap(0x1c00);
+      }
+    } else {
+      uVar1 = (uVar1 * (iVar5 + 0x5f4)) / 0x5f4;
+    }
+  }
+  batch[2].func = 1;
+  batch[1].func = 1;
+  batch[0].value = local_28;
+  batch[0].func = 1;
+  batch[iVar4].value = uVar1;
+  if (param_2 == 1) {
+    // CpuSuspendIntr(local_20);
+    sceSdProcBatch(batch, 0, iVar4 + 1);
+    // CpuResumeIntr(local_20[0]);
+  } else {
+    sceSdProcBatch(batch, 0, iVar4 + 1);
+  }
 }
 
 void SetVagStreamsNoStart(int param_1, int param_2) {
