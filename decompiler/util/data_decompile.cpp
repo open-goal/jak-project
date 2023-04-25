@@ -12,7 +12,6 @@
 #include "decompiler/IR2/Form.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/analysis/final_output.h"
-#include "decompiler/util/sparticle_decompile.h"
 
 #include "third-party/fmt/core.h"
 
@@ -981,16 +980,6 @@ goos::Object decompile_structure(const TypeSpec& type,
   // some structures we want to decompile to fancy macros instead of a raw static definiton
   // temp hack!!
   if (use_fancy_macros && file) {
-    if (file->version == GameVersion::Jak1) {
-      if (type == TypeSpec("sp-field-init-spec")) {
-        ASSERT(file->version == GameVersion::Jak1);  // need to update enums
-        return decompile_sparticle_field_init(type, label, labels, words, ts, file, version);
-      }
-      if (type == TypeSpec("sparticle-group-item")) {
-        ASSERT(file->version == GameVersion::Jak1);  // need to update enums
-        return decompile_sparticle_group_item(type, label, labels, words, ts, file);
-      }
-    }
     if (type == TypeSpec("sound-spec")) {
       return decompile_sound_spec(type, label, labels, words, ts, file, version);
     }

@@ -3254,11 +3254,11 @@ goos::Object DefpartgroupElement::to_form_internal(const Env& env) const {
     }
 
     if (period) {
-      result += fmt::format(" :period {}", period);
+      result += fmt::format(" :period (seconds {})", seconds_to_string(period));
     }
 
     if (length) {
-      result += fmt::format(" :length {}", length);
+      result += fmt::format(" :length (seconds {})", seconds_to_string(length));
     }
 
     if (offset) {
