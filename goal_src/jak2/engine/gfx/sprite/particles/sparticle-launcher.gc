@@ -95,7 +95,7 @@
   0
   )
 
-;(def-mips2c sp-init-fields! (function object (inline-array sp-field-init-spec) sp-field-id sp-field-id symbol object))
+;(def-mips2c sp-init-fields! (function (pointer float) (inline-array sp-field-init-spec) sp-field-id sp-field-id symbol (inline-array sp-field-init-spec)))
 (defun sp-init-fields! ((arg0 (pointer float)) (arg1 (inline-array sp-field-init-spec)) (arg2 sp-field-id) (arg3 sp-field-id) (write-missing-fields symbol))
   (1+! arg2)
   (let ((cur-spec arg1))
@@ -103,7 +103,7 @@
         (&+! cur-spec 16)
         )
       (if (>= arg2 arg3)
-          (return 0))
+          (return cur-spec))
       (until (= arg2 arg3)
         (cond
           ((!= (-> cur-spec 0 field) arg2)
@@ -314,7 +314,13 @@
         (s5-0 (new 'stack-no-clear 'matrix))
         )
     (let ((s0-0 (new 'stack-no-clear 'vector)))
-      (sp-init-fields! (-> s2-0 vector) arg2 (sp-field-id launch-fields-start) (sp-field-id launch-fields-end) #t)
+      (sp-init-fields!
+        (the-as (pointer float) (-> s2-0 vector))
+        arg2
+        (sp-field-id launch-fields-start)
+        (sp-field-id launch-fields-end)
+        #t
+        )
       (matrix-rotate-xyz! s5-0 (the-as vector (-> s2-0 vector)))
       (vector3s-matrix*! (the-as vector3s (-> arg1 vel-sxvel)) (the-as vector3s (-> arg1 vel-sxvel)) s5-0)
       (matrix-rotate-xyz! s5-0 (-> s2-0 vector 1))
@@ -479,23 +485,16 @@
           (return 0)
           )
       (let* ((a1-2 (-> arg1 init-specs 0))
-             (a1-3
-               (sp-init-fields!
-                 (-> s5-0 vector)
-                 (the-as (inline-array sp-field-init-spec) a1-2)
-                 (sp-field-id sprite-fields-start)
-                 (sp-field-id sprite-fields-end)
-                 #t
-                 )
-               )
+             (a1-3 (sp-init-fields!
+                     (the-as (pointer float) (-> s5-0 vector))
+                     (the-as (inline-array sp-field-init-spec) a1-2)
+                     (sp-field-id sprite-fields-start)
+                     (sp-field-id sprite-fields-end)
+                     #t
+                     )
+                   )
              )
-        (sp-init-fields!
-          (&-> gp-0 omega)
-          (the-as (inline-array sp-field-init-spec) a1-3)
-          (sp-field-id cpu-fields-start)
-          (sp-field-id cpu-fields-end)
-          #t
-          )
+        (sp-init-fields! (&-> gp-0 omega) a1-3 (sp-field-id cpu-fields-start) (sp-field-id cpu-fields-end) #t)
         )
       (set! (-> s5-0 vector 1 y) 0.0)
       (set! (-> s5-0 vector 1 z) (the float (sar (shl (the int (-> s5-0 vector 1 z)) 48) 48)))
@@ -603,23 +602,16 @@
          (set! (-> arg2 fade x) 99999.0)
          (set! (-> arg2 fade y) 99999.0)
          (set! (-> arg2 fade z) 99999.0)
-         (let ((a1-2
-                 (sp-init-fields!
-                   (-> arg3 x-y-z-sx)
-                   (the-as (inline-array sp-field-init-spec) a1-1)
-                   (sp-field-id sprite-fields-start)
-                   (sp-field-id sprite-fields-end)
-                   #f
-                   )
-                 )
+         (let ((a1-2 (sp-init-fields!
+                       (the-as (pointer float) (-> arg3 x-y-z-sx))
+                       (the-as (inline-array sp-field-init-spec) a1-1)
+                       (sp-field-id sprite-fields-start)
+                       (sp-field-id sprite-fields-end)
+                       #f
+                       )
+                     )
                )
-           (sp-init-fields!
-             (&-> arg2 omega)
-             (the-as (inline-array sp-field-init-spec) a1-2)
-             (sp-field-id cpu-fields-start)
-             (sp-field-id cpu-fields-end)
-             #f
-             )
+           (sp-init-fields! (&-> arg2 omega) a1-2 (sp-field-id cpu-fields-start) (sp-field-id cpu-fields-end) #f)
            )
          (logior! (-> arg2 flags) s4-0)
          (let ((v1-18 (-> *time-of-day-context* current-prt-color)))
@@ -651,23 +643,16 @@
          )
        )
       (else
-        (let ((a1-3
-                (sp-init-fields!
-                  (-> arg3 x-y-z-sx)
-                  (the-as (inline-array sp-field-init-spec) a1-1)
-                  (sp-field-id sprite-fields-start)
-                  (sp-field-id sprite-fields-end)
-                  #f
-                  )
-                )
+        (let ((a1-3 (sp-init-fields!
+                      (the-as (pointer float) (-> arg3 x-y-z-sx))
+                      (the-as (inline-array sp-field-init-spec) a1-1)
+                      (sp-field-id sprite-fields-start)
+                      (sp-field-id sprite-fields-end)
+                      #f
+                      )
+                    )
               )
-          (sp-init-fields!
-            (&-> arg2 omega)
-            (the-as (inline-array sp-field-init-spec) a1-3)
-            (sp-field-id cpu-fields-start)
-            (sp-field-id cpu-fields-end)
-            #f
-            )
+          (sp-init-fields! (&-> arg2 omega) a1-3 (sp-field-id cpu-fields-start) (sp-field-id cpu-fields-end) #f)
           )
         )
       )
