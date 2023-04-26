@@ -12,42 +12,17 @@
 (defun start-speedrun ((category speedrun-category))
   ;; randomize game id so the autosplitter knows to restart
   (update-autosplit-jak2-new-game)
-  ;; disable hints
-  ;;(set! (-> *setting-control* default play-hints) #f)
   ;; turn on speedrun verification display and flip flag for setting up speedrun after initialize!
   (set! (-> *speedrun-info* should-display?) #t)
-  (set! (-> *speedrun-info* needs-post-blackout-setup?) #t)
   ;; start new game with specified checkpoint, if any (otherwise we're resetting current category)
-  (if category
-    (set! (-> *speedrun-info* category) category)
-    )
-  (case (-> *speedrun-info* category)
-    (((speedrun-category full-game))
-      ;; spawn at the warp gate checkpoint
-      (initialize! *game-info* 'game (the-as game-save #f) "game-start")
-      )
-    (else
-      ;; If no category matches do something crazy so we notice to fix it.
-      (initialize! *game-info* 'game (the-as game-save #f) "citadel-entrance")
-      )
-    )
-  ;; ensure `force actors` is not enabled
-  ;; (set! (-> *pc-settings* force-actors?) #f)
-
-  ;; force FPS to `60`
-  ;; (set-frame-rate! *pc-settings* 60)
-
-  ;; enable auto saving by default
-  ;;(set! (-> *setting-control* default auto-save) #t)
+  (when category
+    (set! (-> *speedrun-info* category) category))
+  ;; TODO - ensure any required settings are enabled
   (none)
   )
 
+;; TODO - fix me
 (define post-blackout? #f)
-(set! post-blackout? 
-;;(and (-> *speedrun-info* needs-post-blackout-setup?) (>= (-> *display* clock frame-counter) (-> *game-info* blackout-time)))
-;; placeholder for the original logic that needs modifications to work with Jak 2
-#f
-)
 
 (defun setup-speedrun-post-blackout ()
   (when post-blackout?
