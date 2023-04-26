@@ -212,6 +212,8 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-shrub", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_SHRUB);
   init_bucket_renderer<Merc2>("merc-lcom-shrub", BucketCategory::MERC, BucketId::MERC_LCOM_SHRUB);
+  init_bucket_renderer<Generic2>("gmerc-lcom-tfrag", BucketCategory::GENERIC,
+                                 BucketId::GMERC_LCOM_TFRAG);
   // 220
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-pris", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_PRIS);
