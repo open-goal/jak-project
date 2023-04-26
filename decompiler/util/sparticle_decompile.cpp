@@ -677,8 +677,14 @@ goos::Object decompile_sparticle_field_init(const std::vector<decompiler::Linked
     result = decompile_sparticle_func(words, flag_name);
   } else if (flag_name == "object") {
     // static data
-    return pretty_print::build_list(pretty_print::to_symbol(fmt::format(":{}", field_name.substr(4))),
-                                    pretty_print::to_symbol(":data"), sound_spec);
+    if (field_info.kind == FieldKind::SOUND_SPEC) {
+      return pretty_print::build_list(
+          pretty_print::to_symbol(fmt::format(":{}", field_name.substr(4))), sound_spec);
+    } else {
+      return pretty_print::build_list(
+          pretty_print::to_symbol(fmt::format(":{}", field_name.substr(4))),
+          pretty_print::to_symbol(":data"), sound_spec);
+    }
   } else {
     // let's handle things on a more specific level now
     switch (field_info.kind) {
