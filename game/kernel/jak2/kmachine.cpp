@@ -677,6 +677,9 @@ void InitMachine_PCPort() {
   // debugging tools
   make_function_symbol_from_c("pc-filter-debug-string?", (void*)pc_filter_debug_string);
 
+  // other
+  make_function_symbol_from_c("pc-rand", (void*)pc_rand);
+
   // init ps2 VM
   if (VM::use) {
     make_function_symbol_from_c("vm-ptr", (void*)VM::get_vm_ptr);
