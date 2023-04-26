@@ -420,7 +420,7 @@ u32 StreamListThread() {
   return 0;
 }
 
-bool InitVagStreamList(List* param_1, u32 param_2, char* param_3) {
+bool InitVagStreamList(List* param_1, u32 param_2, const char* param_3) {
   // uint8_t* piVar1;
   u32 uVar1;
   VagStrListNode* pLVar3;

@@ -37,6 +37,7 @@ u32 vag_cmd_used = 0;
 u32 max_vag_cmd_cnt = 0;
 
 PriStackEntry gPriStack[N_PRIORITIES];
+std::string gPriEntryNames[N_PRIORITIES][PRI_STACK_LENGTH];  // my addition for debug
 
 void ReturnMessage(CmdHeader* param_1);
 void FreeVAGCommand(VagCmd* param_1);
@@ -440,7 +441,7 @@ LAB_00006da0:
 void DisplayQueue() {
   for (int pri = 0; pri < N_PRIORITIES; pri++) {
     for (int cmd = 0; cmd < (int)gPriStack[pri].count; cmd++) {
-      lg::debug("  PRI {} elt {} {} @ #x{:X}", pri, cmd, gPriStack[pri].names[cmd],
+      lg::debug("  PRI {} elt {} {} @ #x{:X}", pri, cmd, gPriEntryNames[pri][cmd],
                 (u64)gPriStack[pri].entries[cmd]);
     }
   }
@@ -460,7 +461,7 @@ int QueueMessage(CmdHeader* param_1, int param_2, const char* param_3, int param
     uVar1 = 0;
   } else {
     gPriStack[param_2].entries[gPriStack[param_2].count] = param_1;
-    gPriStack[param_2].names[gPriStack[param_2].count] = param_3;
+    gPriEntryNames[param_2][gPriStack[param_2].count] = param_3;
 
     gPriStack[param_2].count = gPriStack[param_2].count + 1;
     if (param_4 == 1) {

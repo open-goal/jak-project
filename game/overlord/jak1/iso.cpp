@@ -678,7 +678,7 @@ u32 ISOThread() {
               gFakeVAGClockRunning = true;
               gFakeVAGClockPaused = 0;
             }
-            gVAG_Id = in_progress_vag_command->sound_id;
+            gVAG_Id = in_progress_vag_command ? in_progress_vag_command->sound_id : 1;
           }
           ReturnMessage(cmd);
         } break;

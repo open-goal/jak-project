@@ -26,10 +26,10 @@ constexpr int PRI_STACK_LENGTH = 8;  // number of queued commands per priority
 
 struct PriStackEntry {
   CmdHeader* entries[PRI_STACK_LENGTH];
-  std::string names[PRI_STACK_LENGTH];  // my addition for debug
   int count;
 };
 
+extern std::string gPriEntryNames[N_PRIORITIES][PRI_STACK_LENGTH];  // my addition for debug
 extern PriStackEntry gPriStack[N_PRIORITIES];
 
 }  // namespace jak2
