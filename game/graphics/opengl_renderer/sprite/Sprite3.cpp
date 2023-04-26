@@ -584,7 +584,7 @@ void Sprite3::flush_sprites(SharedRenderState* render_state,
     tex = render_state->texture_pool->lookup(tbp);
 
     if (!tex) {
-      lg::warn("Failed to find texture at {}, using random", tbp);
+      lg::warn("Failed to find texture at {}, using random (sprite)", tbp);
       tex = render_state->texture_pool->get_placeholder_texture();
     }
     ASSERT(tex);

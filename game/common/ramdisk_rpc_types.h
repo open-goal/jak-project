@@ -6,7 +6,7 @@
  */
 
 #include "common/common_types.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 constexpr PerGameVersion<int> RAMDISK_RPC_ID(0xdeb3, 0xfab2);
 constexpr int RAMDISK_RPC_CHANNEL = 2;

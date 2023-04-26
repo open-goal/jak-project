@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 /*!
  * @file symbols.h
