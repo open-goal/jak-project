@@ -122,6 +122,15 @@ bool SubtitleEditor::is_scene_in_current_lang(const std::string& scene_name) {
 void SubtitleEditor::draw_window() {
   ImGui::Begin("Subtitle Editor");
 
+  if (!db_loaded) {
+    if (ImGui::Button("Load Subtitles")) {
+      m_subtitle_db = load_subtitle_project(g_game_version);
+      db_loaded = true;
+    }
+    ImGui::End();
+    return;
+  }
+
   if (ImGui::Button("Save Changes")) {
     m_files_saved_successfully = std::make_optional(write_subtitle_db_to_files(m_subtitle_db));
     repl_rebuild_text();
