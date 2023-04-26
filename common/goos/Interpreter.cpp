@@ -1712,8 +1712,8 @@ Object Interpreter::eval_string_split(const Object& form,
 }
 
 Object Interpreter::eval_string_substr(const Object& form,
-                                      Arguments& args,
-                                      const std::shared_ptr<EnvironmentObject>& env) {
+                                       Arguments& args,
+                                       const std::shared_ptr<EnvironmentObject>& env) {
   (void)env;
   vararg_check(form, args, {ObjectType::STRING, ObjectType::INTEGER, ObjectType::INTEGER}, {});
   auto& str = args.unnamed.at(0).as_string()->data;
