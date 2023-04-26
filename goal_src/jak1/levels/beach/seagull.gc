@@ -21,17 +21,17 @@
   )
 
 (defpart 665
-  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
-    (sp-flt spt-num 1.0)
-    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
-    (sp-copy-from-other spt-scale-y -4)
-    (sp-flt spt-r 128.0)
-    (sp-flt spt-b 128.0)
-    (sp-rnd-flt spt-a 64.0 64.0 1.0)
-    (sp-flt spt-vel-y (meters 0.4))
-    (sp-flt spt-accel-y -819.2)
-    (sp-int spt-timer 1500)
-    (sp-cpuinfo-flags bit2 bit3)
+  :init-specs ((:texture (new 'static 'texture-id :index #xf :page #x2))
+    (:num 1.0)
+    (:scale-x (meters 1) (meters 1))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:b 128.0)
+    (:a 64.0 64.0)
+    (:vel-y (meters 0.4))
+    (:accel-y (meters -0.2))
+    (:timer (seconds 5))
+    (:flags (bit2 bit3))
     )
   )
 
@@ -187,10 +187,7 @@
     )
   )
 
-(defskelgroup *seagull-sg* seagull seagull-lod0-jg seagull-idle-ja
-              ((seagull-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 2)
-              )
+(defskelgroup *seagull-sg* seagull 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 2))
 
 (defmethod seagull-method-25 seagull ((obj seagull) (arg0 float))
   (let ((f1-1 (the float (sar (shl (the int (- arg0 (-> obj heading))) 48) 48)))
@@ -309,7 +306,7 @@
       )
     (let ((f0-28 (+ (* (-> s5-0 x) (-> s5-0 x)) (* (-> s5-0 z) (-> s5-0 z)))))
       (set! (-> obj angletan) (/ (- (-> s5-0 y)) (sqrtf f0-28)))
-      (set! (-> obj target-dist) (* DISPLAY_FPS_RATIO (sqrtf (+ f0-28 (* (-> s5-0 y) (-> s5-0 y)))))) ;; changed for high fps
+      (set! (-> obj target-dist) (sqrtf (+ f0-28 (* (-> s5-0 y) (-> s5-0 y)))))
       )
     )
   0
@@ -377,7 +374,7 @@
     (move-to-ground (-> self root-override) 40960.0 40960.0 #t (collide-kind background))
     (update-transforms! (-> self root-override))
     (clear-collide-with-as (-> self root-override))
-    (ja :group! seagull-idle-ja :num! (identity (ja-aframe 0.0 0)))
+    (ja :group! (-> self draw art-group data 2) :num! (identity (ja-aframe 0.0 0)))
     (loop
       (let* ((f30-0 4.0)
              (v1-14 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
@@ -1210,40 +1207,16 @@
       )
     (case (-> obj targetnum)
       ((1)
-       (level-hint-spawn
-         (text-id sidekick-seagulls1)
-         "sksp0020"
-         (the-as entity #f)
-         *entity-pool*
-         (game-task none)
-         )
+       (level-hint-spawn (text-id sidekick-seagulls1) "sksp0020" (the-as entity #f) *entity-pool* (game-task none))
        )
       ((2)
-       (level-hint-spawn
-         (text-id sidekick-seagulls2)
-         "sksp0022"
-         (the-as entity #f)
-         *entity-pool*
-         (game-task none)
-         )
+       (level-hint-spawn (text-id sidekick-seagulls2) "sksp0022" (the-as entity #f) *entity-pool* (game-task none))
        )
       ((3)
-       (level-hint-spawn
-         (text-id sidekick-seagulls3)
-         "sksp0023"
-         (the-as entity #f)
-         *entity-pool*
-         (game-task none)
-         )
+       (level-hint-spawn (text-id sidekick-seagulls3) "sksp0023" (the-as entity #f) *entity-pool* (game-task none))
        )
       ((4)
-       (level-hint-spawn
-         (text-id sidekick-seagulls4)
-         "sksp0024"
-         (the-as entity #f)
-         *entity-pool*
-         (game-task none)
-         )
+       (level-hint-spawn (text-id sidekick-seagulls4) "sksp0024" (the-as entity #f) *entity-pool* (game-task none))
        )
       )
     (let ((v1-16 (-> obj entity extra perm)))
