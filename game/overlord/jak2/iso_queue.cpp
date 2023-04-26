@@ -318,8 +318,10 @@ Buffer* AllocateBuffer(int param_1, VagCmd* param_2, int param_3) {
       goto LAB_00006a28;
     }
   }
-  FreeBuffer(pBVar7, 0);
-  pBVar7 = (Buffer*)0x0;
+  if (pBVar7) {
+    FreeBuffer(pBVar7, 0);
+    pBVar7 = (Buffer*)0x0;
+  }
 LAB_00006a44:
   // if (param_3 == 1) {
   // CpuResumeIntr(local_28[0]);
