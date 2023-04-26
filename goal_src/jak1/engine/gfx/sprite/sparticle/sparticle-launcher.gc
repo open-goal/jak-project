@@ -127,9 +127,63 @@
 ;; particle init
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern sp-init-fields! (function object (inline-array sp-field-init-spec) sp-field-id sp-field-id  symbol object))
-(define sp-init-fields! (the (function object (inline-array sp-field-init-spec) sp-field-id sp-field-id  symbol object) 
-                             (__pc-get-mips2c "sp-init-fields!")))
+;; this was rewritten from assembly
+(defun sp-init-fields! ((arg0 (pointer float)) (arg1 (inline-array sp-field-init-spec)) (arg2 sp-field-id) (arg3 sp-field-id) (write-missing-fields symbol))
+  (1+! arg2)
+  (let ((cur-spec arg1))
+      (while (< (-> cur-spec 0 field) arg2)
+        (&+! cur-spec 16)
+        )
+      (if (>= arg2 arg3)
+          (return cur-spec))
+      (until (= arg2 arg3)
+        (cond
+          ((!= (-> cur-spec 0 field) arg2)
+            (if write-missing-fields
+                (set! (-> arg0) 0.0))
+            ;; reduce by 16 because it will be incremented by 16 right after but we don't want to advance field
+            (&+! cur-spec -16)
+            )
+          ((= arg2 (sp-field-id spt-sound))
+            (set! (-> arg0) (-> cur-spec 0 initial-valuef))
+            )
+          (else
+            (case (-> cur-spec 0 flags)
+              (((sp-flag float))
+                (if (= (-> cur-spec 0 random-range) 0)
+                    (set! (-> arg0) (-> cur-spec 0 initial-valuef))
+                    (set! (-> arg0) (+ (-> cur-spec 0 initial-valuef) (* (-> cur-spec 0 random-multf) (* (rand-vu) (-> cur-spec 0 random-rangef))))))
+                )
+              (((sp-flag float-int-rand))
+                (if (= (-> cur-spec 0 random-range) 0)
+                    (set! (-> arg0) (-> cur-spec 0 initial-valuef))
+                    (set! (-> arg0) (+ (-> cur-spec 0 initial-valuef) (* (-> cur-spec 0 random-multf) (the int (* (rand-vu) (1+ (-> cur-spec 0 random-range))))))))
+                )
+              (((sp-flag copy-from-other))
+                (set! (-> arg0) (-> arg0 (-> cur-spec 0 initial-value)))
+                )
+              (((sp-flag symbol))
+                (set! (-> arg0) (the-as float (-> cur-spec 0 sym value)))
+                )
+              (((sp-flag launcher))
+                (set! (-> arg0) (the-as float (-> *part-id-table* (-> cur-spec 0 initial-value))))
+                )
+              (((sp-flag object))
+                (set! (-> arg0) (the-as float (-> cur-spec 0 pntr)))
+                )
+              (else
+                (if (= (-> cur-spec 0 random-range) 0)
+                    (set! (-> arg0) (-> cur-spec 0 initial-valuef))
+                    (set! (-> arg0) (the-as float (+ (-> cur-spec 0 initial-value) (* (-> cur-spec 0 random-mult) (the int (* (rand-vu) (-> cur-spec 0 random-range))))))))
+                )
+              )
+            )
+          )
+        (1+! arg2)
+        (&+! arg0 4)
+        (&+! cur-spec 16))
+      cur-spec)
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; launch queue
