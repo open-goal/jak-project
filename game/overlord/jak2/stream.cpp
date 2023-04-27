@@ -150,7 +150,7 @@ void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
     auto cmd_result = cmd_iter->result;
 
     if (cmd_result == 1) {
-      // printf("removing everything...\n");
+      printf("removing everything...\n");
       for (int s = 0; s < 4; s++) {
         if (cmd_iter->names[s].chars[0]) {
           strncpy(list_node.name, cmd_iter->names[s].chars, 0x30);
@@ -167,8 +167,6 @@ void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
     } else {
       iVar5 = 9;
       if (cmd_result == 2) {
-        // printf("  adding to streams list...\n");
-
         // uVar7 = 0;
         // iVar6 = 0x20;
         WaitSema(EEStreamsList.sema);
@@ -176,6 +174,8 @@ void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
 
         for (int s = 0; s < 4; s++) {
           if (cmd_iter->names[s].chars[0] && cmd_iter->id[s]) {
+            // printf("got queue command %d: %s %d\n", s, cmd_iter->names[s].chars,
+            // cmd_iter->id[s]);
             strncpy(list_node.name, cmd_iter->names[s].chars, 0x30);
             list_node.id = cmd_iter->id[s];
             list_node.unk_76 = cmd_iter->address & 1 << (s & 0x1f) & 0xf;
@@ -245,6 +245,7 @@ void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
 
         for (int s = 0; s < 4; s++) {
           if (cmd_iter->names[s].chars[0] && cmd_iter->id[s]) {
+            printf("playing %d %s %d\n", s, cmd_iter->names[s].chars, cmd_iter->id[s]);
             // __src = (char*)((int)cmd_iter->id + iVar10 + -0x10);
             strncpy(list_node.name, cmd_iter->names[s].chars, 0x30);
             list_node.id = cmd_iter->id[s];

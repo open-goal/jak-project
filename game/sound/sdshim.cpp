@@ -60,6 +60,10 @@ void sceSdkey_on_jak2_voice(int id) {
   voice_from_entry(id)->key_on_and_debug();
 }
 
+void sceSdkey_off_jak2_voice(int id) {
+  voice_from_entry(id)->key_off();
+}
+
 void sceSdSetAddr(u32 entry, u32 value) {
   auto* voice = voice_from_entry(entry);
   if (!voice) {

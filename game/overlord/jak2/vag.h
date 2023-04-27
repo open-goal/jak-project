@@ -30,29 +30,29 @@ enum VagCmdByte {
 };
 
 struct VagCmd {
-  CmdHeader header;            // 0 to ??
-  FileRecord* file_record;     // 40
-  VagDirEntry* vag_dir_entry;  // 44
-  VagCmd* stereo_sibling;      // 48
-  u8* dma_iop_mem_ptr;         // 52
-  int chan;                    // 56
-  int unk_60;                  // 60 (thought it was started, but init to 1)
-  int unk_64;
-  char name[48];            // 68
-  int spu_stream_mem_addr;  // 120
-  int spu_trap_mem_addr;    // 124
-  int voice;                // 128
-  int idx_in_cmd_arr;       // 132 (index in VagCmds)
-  int unk_136;              // 136
-  int unk_140;              // 140
-  int unk_176;              // 176
-  int unk_180;              // 180
-  int unk_184;              // 184
-  int unk_188;              // 188
-  int unk_192;              // 192 pitch ramping stuff maybe
-  int unk_196;              // 196
-  int unk_200;              // 200 pos
-  int unk_204;              // 204
+  CmdHeader header;               // 0 to ??
+  FileRecord* file_record;        // 40
+  VagDirEntry* vag_dir_entry;     // 44
+  VagCmd* stereo_sibling;         // 48
+  u8* dma_iop_mem_ptr;            // 52
+  int dma_chan;                   // 56 - which spu dma channel to use. Not needed for PC.
+  int safe_to_change_dma_fields;  // 60 - set to 0 when DMA is processing data from this command.
+  int spu_addr_to_start_playing;  // 64 - address to use when starting stream.
+  char name[48];                  // 68
+  int spu_stream_dma_mem_addr;    // 120 - address we should DMA to (or just DMA'd to)
+  int spu_trap_mem_addr;          // 124
+  int voice;                      // 128
+  int idx_in_cmd_arr;             // 132 (index in VagCmds)
+  int unk_136;                    // 136
+  int unk_140;                    // 140
+  int unk_176;                    // 176
+  int unk_180;                    // 180
+  int unk_184;                    // 184
+  int unk_188;                    // 188
+  int unk_192;                    // 192 pitch ramping stuff maybe
+  int unk_196;                    // 196
+  int unk_200;                    // 200 pos
+  int unk_204;                    // 204
   union {
     u8 status_bytes[24];  // 208
     struct {
@@ -82,27 +82,27 @@ struct VagCmd {
       u8 byte23;
     };
   };
-  u8 unk_232;          // 232 wtf is this
-  int unk_236;         // 236
-  int unk_240_flag0;   // 240
-  int xfer_size;       // 244
-  int unk_248;         // 248
-  int pitch1;          // 252
-  int unk_256_pitch2;  // 256
-  int unk_260;         // 260
-  int unk_264;         // 264 (init to 0x4000)
-  int unk_268;         // 268
-  int vol_multiplier;  // 272
-  int id;              // 276
-  int plugin_id;       // 280
-  int priority;        // 284
-  int unk_288;         // 288
-  int unk_292;         // 292
-  int unk_296;         // 296
-  Vec3w vec3;          // 300
-  int fo_min;          // 312 (init to 5)
-  int fo_max;          // 316 (init to 316)
-  int fo_curve;        // 320 (init to 1)
+  u8 unk_232;                // 232 wtf is this
+  int unk_236;               // 236
+  int num_processed_chunks;  // 240 (where "processed" means that they were added to dma command)
+  int xfer_size;             // 244
+  int unk_248;               // 248
+  int pitch1;                // 252
+  int unk_256_pitch2;        // 256
+  int unk_260;               // 260
+  int unk_264;               // 264 (init to 0x4000)
+  int unk_268;               // 268
+  int vol_multiplier;        // 272
+  int id;                    // 276
+  int plugin_id;             // 280
+  int priority;              // 284
+  int unk_288;               // 288
+  int unk_292;               // 292
+  int unk_296;               // 296
+  Vec3w vec3;                // 300
+  int fo_min;                // 312 (init to 5)
+  int fo_max;                // 316 (init to 316)
+  int fo_curve;              // 320 (init to 1)
 };
 
 struct VagCmdPriListEntry {

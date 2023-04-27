@@ -187,7 +187,7 @@ u32 InitISOFS() {
 }
 
 void IsoQueueVagStream(VagCmd* cmd, int param_2) {
-  // printf("------ Iso QUEU VAG STREAM!!!! %s\n", cmd->name);
+  printf("------ Iso QUEUE VAG STREAM!!!! %s (%d)\n", cmd->name, cmd->id);
 
   int iVar1;
   VagCmd* puVar3;
@@ -214,10 +214,15 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
                           (iVar1 = HowManyBelowThisPriority(cmd->priority, 0), iVar1 < 2))))
     goto LAB_000049dc;
   puVar3 = FindThisVagStream(cmd->name, cmd->id);
+  if (puVar3) {
+    printf("found it already: %s %d\n", puVar3->name, puVar3->id);
+  }
   if (!puVar3) {
     puVar3 = SmartAllocVagCmd(cmd);
     if (!puVar3)
       goto LAB_000049dc;
+    printf("allocate smart: %s %d\n", puVar3->name, puVar3->id);
+
     if ((*(u32*)&puVar3->status_bytes[BYTE4] & 0xffff00) != 0) {
       IsoStopVagStream(puVar3, 0);
     }
@@ -256,7 +261,7 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
     puVar3->vag_dir_entry = cmd->vag_dir_entry;
     strncpy(puVar3->name, cmd->name, 0x30);
     puVar3->unk_196 = cmd->unk_196;
-    puVar3->unk_240_flag0 = cmd->unk_240_flag0;
+    puVar3->num_processed_chunks = cmd->num_processed_chunks;
     puVar3->xfer_size = cmd->xfer_size;
     puVar3->unk_248 = cmd->unk_248;
     puVar3->unk_260 = cmd->unk_260;
@@ -265,6 +270,8 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
     puVar3->vol_multiplier = cmd->vol_multiplier;
     puVar3->unk_256_pitch2 = cmd->unk_256_pitch2;
     puVar3->id = cmd->id;
+    printf("update our stuff now: %s %d\n", puVar3->name, puVar3->id);
+
     puVar3->plugin_id = cmd->plugin_id;
     puVar3->unk_136 = cmd->unk_136;
     puVar3->unk_176 = cmd->unk_176;

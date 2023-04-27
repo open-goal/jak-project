@@ -42,7 +42,7 @@ int SpuDmaIntr(int, void*) {
   int uVar6;
 
   if (!DmaStereoVagCmd) {
-    if ((DmaVagCmd->unk_240_flag0 & 1U) == 0) {
+    if ((DmaVagCmd->num_processed_chunks & 1U) == 0) {
       DmaVagCmd->status_bytes[BYTE19] = 1;
     } else {
       DmaVagCmd->status_bytes[BYTE18] = 1;
@@ -52,14 +52,14 @@ int SpuDmaIntr(int, void*) {
       s16 chan;
       u8* iop_ptr;
       int spu_addr;
-      if ((DmaStereoVagCmd->unk_240_flag0 & 1U) == 0) {
-        chan = DmaVagCmd->chan;
+      if ((DmaStereoVagCmd->num_processed_chunks & 1U) == 0) {
+        chan = DmaVagCmd->dma_chan;
         iop_ptr = DmaStereoVagCmd->dma_iop_mem_ptr;
-        spu_addr = DmaStereoVagCmd->spu_stream_mem_addr;
+        spu_addr = DmaStereoVagCmd->spu_stream_dma_mem_addr;
       } else {
-        chan = DmaVagCmd->chan;
+        chan = DmaVagCmd->dma_chan;
         iop_ptr = DmaStereoVagCmd->dma_iop_mem_ptr;
-        spu_addr = DmaStereoVagCmd->spu_stream_mem_addr + 0x2000;
+        spu_addr = DmaStereoVagCmd->spu_stream_dma_mem_addr + 0x2000;
       }
 
       int old_xfer = DmaStereoVagCmd->xfer_size;
@@ -67,11 +67,11 @@ int SpuDmaIntr(int, void*) {
       DmaStereoVagCmd->dma_iop_mem_ptr = nullptr;
       pending_dma = kDmaDelay;
       printf("stereo chain case: %d (side %d, size %d, dest %d)\n", DmaStereoVagCmd->xfer_size,
-             DmaStereoVagCmd->unk_240_flag0 & 1U, old_xfer, spu_addr);
+             DmaStereoVagCmd->num_processed_chunks & 1U, old_xfer, spu_addr);
       sceSdVoiceTrans((int)chan, 0, iop_ptr, spu_addr, old_xfer);
       return 0;
     }
-    if ((DmaVagCmd->unk_240_flag0 & 1U) == 0) {
+    if ((DmaVagCmd->num_processed_chunks & 1U) == 0) {
       DmaVagCmd->status_bytes[BYTE19] = 1;
       DmaStereoVagCmd->status_bytes[BYTE19] = 1;
     } else {
@@ -80,12 +80,12 @@ int SpuDmaIntr(int, void*) {
     }
   }
 
-  if (DmaVagCmd->unk_240_flag0 == 1) {
+  if (DmaVagCmd->num_processed_chunks == 1) {
     printf("dma interrupt starting the stream...\n");
     int pitch = CalculateVAGPitch(DmaVagCmd->pitch1, DmaVagCmd->unk_256_pitch2);
     if (!DmaStereoVagCmd) {
-      DmaVagCmd->unk_64 = 0;
-      sceSdSetAddr(((s16)DmaVagCmd->voice) | 0x2040, DmaVagCmd->spu_stream_mem_addr + 0x30);
+      DmaVagCmd->spu_addr_to_start_playing = 0;
+      sceSdSetAddr(((s16)DmaVagCmd->voice) | 0x2040, DmaVagCmd->spu_stream_dma_mem_addr + 0x30);
       printf("-------------- start adrs\n");
       sceSdSetParam(*(u16*)&DmaVagCmd->voice | 0x300, 0xf);
       sceSdSetParam(*(u16*)&DmaVagCmd->voice | 0x400, 0x1fc0);
@@ -93,13 +93,13 @@ int SpuDmaIntr(int, void*) {
       uVar7 = 1 << (DmaVagCmd->voice >> 1 & 0x1fU);
       sceSdkey_on_jak2_voice(DmaVagCmd->voice);
     } else {
-      DmaVagCmd->unk_64 = 0;
-      DmaStereoVagCmd->unk_64 = 0;
+      DmaVagCmd->spu_addr_to_start_playing = 0;
+      DmaStereoVagCmd->spu_addr_to_start_playing = 0;
       printf("-------------- start adrs (stereo)\n");
 
-      sceSdSetAddr(*(u16*)&DmaVagCmd->voice | 0x2040, DmaVagCmd->spu_stream_mem_addr + 0x30);
+      sceSdSetAddr(*(u16*)&DmaVagCmd->voice | 0x2040, DmaVagCmd->spu_stream_dma_mem_addr + 0x30);
       sceSdSetAddr(*(u16*)&DmaStereoVagCmd->voice | 0x2040,
-                   DmaStereoVagCmd->spu_stream_mem_addr + 0x30);
+                   DmaStereoVagCmd->spu_stream_dma_mem_addr + 0x30);
       sceSdSetParam(*(u16*)&DmaVagCmd->voice | 0x300, 0xf);
       sceSdSetParam(*(u16*)&DmaStereoVagCmd->voice | 0x300, 0xf);
       sceSdSetParam(*(u16*)&DmaVagCmd->voice | 0x400, 0x1fc0);
@@ -114,7 +114,7 @@ int SpuDmaIntr(int, void*) {
     uVar6 = *(u16*)&DmaVagCmd->voice & 1 | 0x1500;
   LAB_00003eb0:;
     // sceSdSetSwitch(uVar6, uVar7);
-  } else if (DmaVagCmd->unk_240_flag0 == 2) {
+  } else if (DmaVagCmd->num_processed_chunks == 2) {
     DmaVagCmd->status_bytes[BYTE1] = 1;
     if (DmaStereoVagCmd) {
       DmaStereoVagCmd->status_bytes[BYTE1] = 1;
@@ -130,7 +130,8 @@ int SpuDmaIntr(int, void*) {
       }
       uVar6 = *(u16*)&DmaVagCmd->voice & 1 | 0x1600;
       // goto LAB_00003eb0;
-      sceSdSetSwitch(uVar6, uVar7);
+      // sceSdSetSwitch(uVar6, uVar7);
+      sceSdkey_off_jak2_voice(DmaVagCmd->voice);
       goto hack;
     }
     DmaVagCmd->status_bytes[PAUSED] = 1;
@@ -138,10 +139,10 @@ int SpuDmaIntr(int, void*) {
   hack:;
   }
 
-  printf("restoring unk60\n");
-  DmaVagCmd->unk_60 = 1;
+  // now that we're done, mark it as not in use and remove from DmaVagCmd.
+  DmaVagCmd->safe_to_change_dma_fields = 1;
   if (DmaStereoVagCmd) {
-    DmaStereoVagCmd->unk_60 = 1;
+    DmaStereoVagCmd->safe_to_change_dma_fields = 1;
   }
   DmaVagCmd = nullptr;
   DmaStereoVagCmd = nullptr;
@@ -179,14 +180,14 @@ bool DMA_SendToSPUAndSync(uint8_t* iop_mem,
     DmaVagCmd = cmd;
     if (cmd) {
       auto* sibling = cmd->stereo_sibling;
-      printf("setting unk60 to 0...\n");
-      cmd->unk_60 = 0;
+      // mark as in-use by dma.
+      cmd->safe_to_change_dma_fields = 0;
       DmaStereoVagCmd = sibling;
       if (sibling) {
         sibling->dma_iop_mem_ptr = iop_mem + size_one_side;
         sibling->xfer_size = size_one_side;
-        sibling->unk_240_flag0 = cmd->unk_240_flag0;
-        cmd->chan = chan;
+        sibling->num_processed_chunks = cmd->num_processed_chunks;
+        cmd->dma_chan = chan;
       }
     }
     SpuDmaStatus = 1;
@@ -214,9 +215,9 @@ bool DMA_SendToSPUAndSync(uint8_t* iop_mem,
 
 void DmaCancelThisVagCmd(VagCmd* param_1) {
   if (DmaVagCmd == param_1) {
-    sceSdSetTransIntrHandler(DmaVagCmd->chan, nullptr, nullptr);
-    if (-1 < DmaVagCmd->chan) {
-      snd_FreeSPUDMA(DmaVagCmd->chan);
+    sceSdSetTransIntrHandler(DmaVagCmd->dma_chan, nullptr, nullptr);
+    if (-1 < DmaVagCmd->dma_chan) {
+      snd_FreeSPUDMA(DmaVagCmd->dma_chan);
     }
     DmaVagCmd = nullptr;
     DmaStereoVagCmd = nullptr;

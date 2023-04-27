@@ -64,8 +64,8 @@ void InitVagCmds() {
     cmd.unk_192 = 0;                           // puVar5[-0x19] = 0;
     cmd.status_bytes[VagCmdByte::BYTE5] = 0;   // *(undefined*)((int)puVar5 + -0x4f) = 0;
     cmd.status_bytes[VagCmdByte::BYTE6] = 0;   // *(undefined*)((int)puVar5 + -0x4e) = 0;
-    cmd.unk_240_flag0 = 0;                     // puVar5[-0xd] = 0;
-    cmd.unk_60 = 1;                            // puVar5[-0x3a] = 1;
+    cmd.num_processed_chunks = 0;              // puVar5[-0xd] = 0;
+    cmd.safe_to_change_dma_fields = 1;         // puVar5[-0x3a] = 1;
     cmd.xfer_size = 0;                         // puVar5[-0xc] = 0;
     cmd.unk_248 = 0;                           // puVar5[-0xb] = 0;
     cmd.unk_260 = 0;                           // puVar5[-8] = 0;
@@ -77,7 +77,7 @@ void InitVagCmds() {
     cmd.header.lse = nullptr;                  // puVar5[-0x40] = 0;
     cmd.stereo_sibling = nullptr;              // puVar5[-0x3d] = 0;
     cmd.dma_iop_mem_ptr = nullptr;             // puVar5[-0x3c] = 0;
-    cmd.chan = -1;                             // puVar5[-0x3b] = 0xffffffff;
+    cmd.dma_chan = -1;                         // puVar5[-0x3b] = 0xffffffff;
     cmd.unk_256_pitch2 = 0;                    // puVar5[-9] = 0;
     cmd.unk_296 = 0;                           // puVar5[1] = 0;
     cmd.vec3.x = 0;                            // puVar5[2] = 0;
@@ -87,7 +87,7 @@ void InitVagCmds() {
     cmd.fo_max = 0x1e;                         // puVar5[6] = 0x1e;
     cmd.fo_curve = 1;                          // puVar5[7] = 1;
     // puVar5[-0x2b] = *(undefined4*)(StreamSRAM + cmd_idx * 4);
-    cmd.spu_stream_mem_addr = StreamSRAM[cmd_idx];
+    cmd.spu_stream_dma_mem_addr = StreamSRAM[cmd_idx];
     // puVar5[-0x2a] = *(undefined4*)(TrapSRAM + cmd_idx * 4);
     cmd.spu_trap_mem_addr = TrapSRAM[cmd_idx];
     // pRVar7 = pRVar7 + 1;
@@ -213,7 +213,11 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
       if (pRVar5 != 0x0) {
         uVar3 = uVar3 | 1 << (pRVar5->voice >> 1 & 0x1fU);
       }
-      sceSdSetSwitch(*(u16*)&cmd->voice & 1 | 0x1600, uVar3);
+      // sceSdSetSwitch(*(u16*)&cmd->voice & 1 | 0x1600, uVar3);
+      sceSdkey_off_jak2_voice(cmd->voice);
+      if (cmd->stereo_sibling) {
+        sceSdkey_off_jak2_voice(cmd->stereo_sibling->voice);
+      }
     }
     //    iVar2 = 0x18;
     //    piVar1 = &(cmd->header).unk_24;
@@ -269,7 +273,7 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
   SetVagStreamName(cmd, 0, 0);
   cmd->name[0] = '\0';
   iVar2 = ActiveVagStreams;
-  cmd->unk_60 = 1;
+  cmd->safe_to_change_dma_fields = 1;
   cmd->unk_264 = 0x4000;
   (cmd->header).callback = NullCallback;
   cmd->unk_140 = 0;
@@ -279,7 +283,7 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
   cmd->unk_196 = 0;
   cmd->unk_200 = 0;
   cmd->unk_204 = 0;
-  cmd->unk_240_flag0 = 0;
+  cmd->num_processed_chunks = 0;
   cmd->xfer_size = 0;
   cmd->unk_248 = 0;
   cmd->unk_260 = 0;
@@ -297,7 +301,7 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
   (cmd->header).unk_24 = 0;
   (cmd->header).lse = (LoadStackEntry*)0x0;
   cmd->dma_iop_mem_ptr = (uint8_t*)0x0;
-  cmd->chan = -1;
+  cmd->dma_chan = -1;
   cmd->unk_236 = 0;
   if (0 < iVar2) {
     ActiveVagStreams = iVar2 + -1;
@@ -333,7 +337,7 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
     SetVagStreamName(pRVar4, 0, 0);
     pRVar4->name[0] = '\0';
     iVar2 = ActiveVagStreams;
-    pRVar4->unk_60 = 1;
+    pRVar4->safe_to_change_dma_fields = 1;
     pRVar4->unk_264 = 0x4000;
     (pRVar4->header).callback = NullCallback;
     pRVar4->unk_140 = 0;
@@ -343,7 +347,7 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
     pRVar4->unk_196 = 0;
     pRVar4->unk_200 = 0;
     pRVar4->unk_204 = 0;
-    pRVar4->unk_240_flag0 = 0;
+    pRVar4->num_processed_chunks = 0;
     pRVar4->xfer_size = 0;
     pRVar4->unk_248 = 0;
     pRVar4->unk_260 = 0;
@@ -361,7 +365,7 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
     (pRVar4->header).unk_24 = 0;
     (pRVar4->header).lse = (LoadStackEntry*)0x0;
     pRVar4->dma_iop_mem_ptr = (uint8_t*)0x0;
-    pRVar4->chan = -1;
+    pRVar4->dma_chan = -1;
     pRVar4->unk_236 = 0;
     if (0 < iVar2) {
       ActiveVagStreams = iVar2 + -1;
@@ -396,11 +400,12 @@ void PauseVAG(VagCmd* cmd, int param_2) {
         }
         sceSdSetParam(((u16)cmd->voice) | SD_VP_PITCH, 0);
         // TODO: ignored, whatever this is
-        sceSdSetSwitch((((s16)cmd->voice) & 1) | 0x1600, 1 << (cmd->voice >> 1 & 0x1fU));
+        // sceSdSetSwitch((((s16)cmd->voice) & 1) | 0x1600, 1 << (cmd->voice >> 1 & 0x1fU));
+        sceSdkey_off_jak2_voice(cmd->voice);
         if (cmd->status_bytes[BYTE5] == '\0') {
-          cmd->unk_64 = 0;
+          cmd->spu_addr_to_start_playing = 0;
         } else {
-          cmd->unk_64 = GetSpuRamAddress(cmd);
+          cmd->spu_addr_to_start_playing = GetSpuRamAddress(cmd);
         }
         cmd->status_bytes[VagCmdByte::PAUSED] = 1;
       } else {
@@ -412,16 +417,20 @@ void PauseVAG(VagCmd* cmd, int param_2) {
         }
         sceSdSetParam(((u16)stereo_cmd->voice) | SD_VP_PITCH, 0);
         sceSdSetParam(((u16)cmd->voice) | SD_VP_PITCH, 0);
-        sceSdSetSwitch(((u16)cmd->voice & 1) | 0x1600,
-                       1 << (cmd->voice >> 1 & 0x1fU) | 1 << (stereo_cmd->voice >> 1 & 0x1fU));
+        // sceSdSetSwitch(((u16)cmd->voice & 1) | 0x1600,
+        //            1 << (cmd->voice >> 1 & 0x1fU) | 1 << (stereo_cmd->voice >> 1 & 0x1fU));
+        sceSdkey_off_jak2_voice(cmd->voice);
+        sceSdkey_off_jak2_voice(stereo_cmd->voice);
+
         if (cmd->status_bytes[BYTE5] == '\0') {
-          cmd->unk_64 = 0;
-          stereo_cmd->unk_64 = 0;
+          cmd->spu_addr_to_start_playing = 0;
+          stereo_cmd->spu_addr_to_start_playing = 0;
         } else {
           int ram_addr = GetSpuRamAddress(cmd);
-          cmd->unk_64 = ram_addr & 0xfffffff8;
-          stereo_cmd->unk_64 = ((ram_addr & 0xfffffff8) - cmd->spu_stream_mem_addr) +
-                               stereo_cmd->spu_stream_mem_addr;
+          cmd->spu_addr_to_start_playing = ram_addr & 0xfffffff8;
+          stereo_cmd->spu_addr_to_start_playing =
+              ((ram_addr & 0xfffffff8) - cmd->spu_stream_dma_mem_addr) +
+              stereo_cmd->spu_stream_dma_mem_addr;
         }
         cmd->status_bytes[VagCmdByte::PAUSED] = 1;
         stereo_cmd->status_bytes[VagCmdByte::PAUSED] = 1;
@@ -447,10 +456,11 @@ void UnPauseVAG(VagCmd* param_1, int param_2) {
         if (param_1->status_bytes[BYTE1] != '\0') {
           int voice = param_1->voice;
           sceSdSetParam(((u16)param_1->voice) | 0x200, pitch_reuslt);
-          if (param_1->unk_64 != 0) {
-            sceSdSetAddr(((u16)param_1->voice) | 0x2040, param_1->unk_64);
+          if (param_1->spu_addr_to_start_playing != 0) {
+            sceSdSetAddr(((u16)param_1->voice) | 0x2040, param_1->spu_addr_to_start_playing);
           }
-          sceSdSetSwitch(((u16)param_1->voice & 1) | 0x1500, 1 << (voice >> 1 & 0x1fU));
+          // sceSdSetSwitch(((u16)param_1->voice & 1) | 0x1500, 1 << (voice >> 1 & 0x1fU));
+          sceSdkey_on_jak2_voice(param_1->voice);
           sceSdSetParam(((u16)param_1->voice), vol_l);
           sceSdSetParam(((u16)param_1->voice) | 0x100, vol_r);
         }
@@ -461,12 +471,15 @@ void UnPauseVAG(VagCmd* param_1, int param_2) {
           int stereo_voice = stereo_cmd->voice;
           sceSdSetParam(((u16)param_1->voice) | 0x200, pitch_reuslt);
           sceSdSetParam(((u16)stereo_cmd->voice) | 0x200, pitch_reuslt);
-          if (param_1->unk_64 != 0) {
-            sceSdSetAddr(((u16)param_1->voice) | 0x2040, param_1->unk_64);
-            sceSdSetAddr(((u16)stereo_cmd->voice) | 0x2040, stereo_cmd->unk_64);
+          if (param_1->spu_addr_to_start_playing != 0) {
+            sceSdSetAddr(((u16)param_1->voice) | 0x2040, param_1->spu_addr_to_start_playing);
+            sceSdSetAddr(((u16)stereo_cmd->voice) | 0x2040, stereo_cmd->spu_addr_to_start_playing);
           }
-          sceSdSetSwitch(((u16)param_1->voice & 1) | 0x1500,
-                         1 << (voice >> 1 & 0x1fU) | 1 << (stereo_voice >> 1 & 0x1fU));
+          sceSdkey_on_jak2_voice(param_1->voice);
+          sceSdkey_on_jak2_voice(stereo_cmd->voice);
+
+          //          sceSdSetSwitch(((u16)param_1->voice & 1) | 0x1500,
+          //                         1 << (voice >> 1 & 0x1fU) | 1 << (stereo_voice >> 1 & 0x1fU));
           sceSdSetParam(((u16)param_1->voice), vol_l);
           sceSdSetParam(((u16)stereo_cmd->voice), 0);
           sceSdSetParam(((u16)param_1->voice) | 0x100, 0);
@@ -504,7 +517,11 @@ void RestartVag(VagCmd* param_1, int param_2, int param_3) {
     if (stereo_sibling) {
       voice = voice | 1 << (stereo_sibling->voice >> 1 & 0x1fU);
     }
-    sceSdSetSwitch(((u16)param_1->voice & 1) | 0x1600, voice);
+    // sceSdSetSwitch(((u16)param_1->voice & 1) | 0x1600, voice);
+    sceSdkey_off_jak2_voice(param_1->voice);
+    if (stereo_sibling) {
+      sceSdkey_off_jak2_voice(stereo_sibling->voice);
+    }
     sceSdSetParam(((u16)param_1->voice), 0);
     sceSdSetParam(((u16)param_1->voice) | 0x100, 0);
 
@@ -512,16 +529,21 @@ void RestartVag(VagCmd* param_1, int param_2, int param_3) {
     int sram_addr;
     if (!stereo_sibling) {
       other_voice = *(u16*)&param_1->voice;
-      sram_addr = param_1->spu_stream_mem_addr;
+      sram_addr = param_1->spu_stream_dma_mem_addr;
     } else {
       sceSdSetParam(((u16)stereo_sibling->voice), 0);
       sceSdSetParam(((u16)stereo_sibling->voice) | 0x100, 0);
-      sceSdSetAddr(((u16)param_1->voice) | 0x2040, param_1->spu_stream_mem_addr + sram_offset);
+      sceSdSetAddr(((u16)param_1->voice) | 0x2040, param_1->spu_stream_dma_mem_addr + sram_offset);
       other_voice = ((u16)stereo_sibling->voice);
-      sram_addr = stereo_sibling->spu_stream_mem_addr;
+      sram_addr = stereo_sibling->spu_stream_dma_mem_addr;
     }
     sceSdSetAddr(other_voice | 0x2040, sram_addr + sram_offset);
-    sceSdSetSwitch(((u16)param_1->voice & 1) | 0x1500, voice);
+    // sceSdSetSwitch(((u16)param_1->voice & 1) | 0x1500, voice);
+    sceSdkey_on_jak2_voice(param_1->voice);
+    if (stereo_sibling) {
+      sceSdkey_on_jak2_voice(stereo_sibling->voice);
+    }
+
     if (!stereo_sibling) {
       sceSdSetParam(((u16)param_1->voice), vol_l);
       other_voice = ((u16)param_1->voice);
@@ -618,7 +640,7 @@ LAB_0000a258:
     batch[2].entry = *(u16*)&cmd->voice | 0x200;
     iVar5 = cmd->unk_256_pitch2;
     uVar1 = cmd->pitch1;
-    printf("cmd's pitch is %d, %d\n", cmd->pitch1, cmd->unk_256_pitch2);
+    // printf("cmd's pitch is %d, %d\n", cmd->pitch1, cmd->unk_256_pitch2);
     batch[1].value = local_24;
   } else {
     batch[0].entry = *(uint16_t*)&cmd->voice;
@@ -697,7 +719,7 @@ void InitVAGCmd(VagCmd* param_1, int param_2) {
   param_1->status_bytes[VagCmdByte::PAUSED] = param_2 ? 1 : 0;
   param_1->unk_264 = 0x4000;
   (param_1->header).callback = NullCallback;
-  param_1->chan = -1;
+  param_1->dma_chan = -1;
   param_1->fo_min = 5;
   param_1->unk_196 = 0;
   param_1->unk_200 = 0;
@@ -708,8 +730,8 @@ void InitVAGCmd(VagCmd* param_1, int param_2) {
   param_1->unk_192 = 0;
   param_1->status_bytes[VagCmdByte::BYTE5] = '\0';
   param_1->status_bytes[VagCmdByte::BYTE5] = '\0';
-  param_1->unk_240_flag0 = 0;
-  param_1->unk_60 = 1;
+  param_1->num_processed_chunks = 0;
+  param_1->safe_to_change_dma_fields = 1;
   param_1->xfer_size = 0;
   param_1->unk_248 = 0;
   param_1->unk_260 = 0;
@@ -815,10 +837,7 @@ VagCmd* FindVagStreamName(const char* name) {
  */
 VagCmd* FindThisVagStream(const char* name, int id) {
   for (auto& cmd : VagCmds) {
-    if (strcmp(cmd.name, name) == 0) {
-      return &cmd;
-    }
-    if (cmd.id == id) {
+    if (strcmp(cmd.name, name) == 0 && cmd.id == id) {
       return &cmd;
     }
   }
@@ -860,8 +879,8 @@ void FreeVagCmd(VagCmd* cmd, int param_2) {
   cmd->unk_196 = 0;
   cmd->unk_200 = 0;
   cmd->unk_204 = 0;
-  cmd->unk_240_flag0 = 0;
-  cmd->unk_60 = 1;
+  cmd->num_processed_chunks = 0;
+  cmd->safe_to_change_dma_fields = 1;
   cmd->xfer_size = 0;
   cmd->unk_248 = 0;
   cmd->unk_260 = 0;
@@ -879,7 +898,7 @@ void FreeVagCmd(VagCmd* cmd, int param_2) {
   (cmd->header).unk_24 = 0;
   (cmd->header).lse = nullptr;
   cmd->dma_iop_mem_ptr = (uint8_t*)0x0;
-  cmd->chan = -1;
+  cmd->dma_chan = -1;
   cmd->unk_236 = 0;
   if (0 < ActiveVagStreams) {
     ActiveVagStreams--;
@@ -936,7 +955,11 @@ void StopVAG(VagCmd* cmd, int param_2) {
     if (sibling) {
       val = val | 1 << (sibling->voice >> 1 & 0x1fU);
     }
-    sceSdSetSwitch(u16(cmd->voice) & 1 | 0x1600, val);
+    // sceSdSetSwitch(u16(cmd->voice) & 1 | 0x1600, val);
+    sceSdkey_off_jak2_voice(cmd->voice);
+    if (sibling) {
+      sceSdkey_off_jak2_voice(sibling->voice);
+    }
   }
   for (auto& x : cmd->status_bytes) {
     x = 0;

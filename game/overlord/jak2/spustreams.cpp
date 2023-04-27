@@ -45,8 +45,7 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
     param_2->decompressed_size = 0;
     return -1;
   }
-  if (param_1->unk_60 != 1) {
-    printf("ProcessVAG didn't want the data: looks like DMA doesn't need it\n");
+  if (!param_1->safe_to_change_dma_fields) {
     return -1;
   }
   // CpuSuspendIntr(local_18);
@@ -69,8 +68,7 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
   if (pRVar7 != 0x0) {
     iVar2 = 0x4000;
   }
-  uVar3 = param_1->unk_240_flag0;
-  printf("flag is %d\n", uVar3);
+  uVar3 = param_1->num_processed_chunks;
   if (uVar3 == 0) {
     piVar6 = (int*)param_2->decomp_buffer;
     if ((*piVar6 != 0x70474156) && (*piVar6 != 0x56414770)) {
@@ -118,7 +116,7 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
         pRVar7->unk_264 = param_1->unk_264;
       }
     }
-    iVar2 = DMA_SendToSPUAndSync(param_2->decomp_buffer, 0x2000, param_1->spu_stream_mem_addr,
+    iVar2 = DMA_SendToSPUAndSync(param_2->decomp_buffer, 0x2000, param_1->spu_stream_dma_mem_addr,
                                  param_1, 0);
     if (iVar2 == 0)
       goto LAB_0000fecc;
@@ -164,7 +162,7 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
         }
       }
       iVar2 = DMA_SendToSPUAndSync(param_2->decomp_buffer, 0x2000,
-                                   param_1->spu_stream_mem_addr + 0x2000, param_1, 0);
+                                   param_1->spu_stream_dma_mem_addr + 0x2000, param_1, 0);
       if (iVar2 == 0)
         goto LAB_0000fecc;
       (param_1->header).unk_24 = 0;
@@ -194,7 +192,7 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
         }
       }
       iVar2 = DMA_SendToSPUAndSync(param_2->decomp_buffer, 0x2000,
-                                   param_1->spu_stream_mem_addr + 0x2000, param_1, 0);
+                                   param_1->spu_stream_dma_mem_addr + 0x2000, param_1, 0);
       if (iVar2 == 0)
         goto LAB_0000fecc;
       (param_1->header).unk_24 = 0;
@@ -222,7 +220,7 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
         pRVar7->unk_264 = param_1->unk_264;
       }
     }
-    iVar2 = DMA_SendToSPUAndSync(param_2->decomp_buffer, 0x2000, param_1->spu_stream_mem_addr,
+    iVar2 = DMA_SendToSPUAndSync(param_2->decomp_buffer, 0x2000, param_1->spu_stream_dma_mem_addr,
                                  param_1, 0);
     if (iVar2 == 0)
       goto LAB_0000fecc;
@@ -242,8 +240,7 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
     param_2->decompressed_size = param_2->decompressed_size - iVar2;
   }
 
-  param_1->unk_240_flag0 = param_1->unk_240_flag0 + 1;
-  printf("--------------- increment flag thing %d\n", param_1->unk_240_flag0);
+  param_1->num_processed_chunks++;
 
 LAB_0000fecc:
   // CpuResumeIntr(local_18[0]);
@@ -294,7 +291,7 @@ int GetVAGStreamPos(VagCmd* param_1)
     return 0;
   }
   // CpuSuspendIntr(local_30);
-  uVar9 = param_1->spu_stream_mem_addr;
+  uVar9 = param_1->spu_stream_dma_mem_addr;
   uVar8 = param_1->voice & 0xffffU | 0x2240;
   do {
     uVar10 = 0;
@@ -309,11 +306,11 @@ int GetVAGStreamPos(VagCmd* param_1)
       uVar10 = uVar4;
     } while (uVar4 == 0);
   } while ((uVar4 < uVar9) || (uVar9 + 0x4040 <= uVar4));
-  uVar4 = uVar4 - param_1->spu_stream_mem_addr;
+  uVar4 = uVar4 - param_1->spu_stream_dma_mem_addr;
   if (pRVar7 == 0x0) {
     uVar8 = 0;
   } else {
-    uVar10 = pRVar7->spu_stream_mem_addr;
+    uVar10 = pRVar7->spu_stream_dma_mem_addr;
     uVar9 = pRVar7->voice & 0xffffU | 0x2240;
     do {
       uVar2 = 0;
@@ -328,7 +325,7 @@ int GetVAGStreamPos(VagCmd* param_1)
         uVar2 = uVar8;
       } while (uVar8 == 0);
     } while ((uVar8 < uVar10) || (uVar10 + 0x4040 <= uVar8));
-    uVar8 = uVar8 - pRVar7->spu_stream_mem_addr;
+    uVar8 = uVar8 - pRVar7->spu_stream_dma_mem_addr;
   }
   // CpuResumeIntr(local_30[0]);
   if (pRVar7 != 0x0) {
@@ -340,8 +337,8 @@ int GetVAGStreamPos(VagCmd* param_1)
       }
       if (4 < iVar6) {
         PauseVAG(param_1, 1);
-        uVar4 = param_1->unk_64 - param_1->spu_stream_mem_addr;
-        uVar8 = pRVar7->unk_64 - pRVar7->spu_stream_mem_addr;
+        uVar4 = param_1->spu_addr_to_start_playing - param_1->spu_stream_dma_mem_addr;
+        uVar8 = pRVar7->spu_addr_to_start_playing - pRVar7->spu_stream_dma_mem_addr;
         UnPauseVAG(param_1, 1);
       }
     }
@@ -421,8 +418,8 @@ int GetVAGStreamPos(VagCmd* param_1)
         } else {
           if ((param_1->byte20 == '\0') && (pRVar7->byte20 == '\0')) {
             // CpuSuspendIntr(local_30);
-            sceSdSetAddr(*(u16*)&param_1->voice | 0x2140, param_1->spu_stream_mem_addr + 0x2000);
-            sceSdSetAddr(*(u16*)&pRVar7->voice | 0x2140, pRVar7->spu_stream_mem_addr + 0x2000);
+            sceSdSetAddr(*(u16*)&param_1->voice | 0x2140, param_1->spu_stream_dma_mem_addr + 0x2000);
+            sceSdSetAddr(*(u16*)&pRVar7->voice | 0x2140, pRVar7->spu_stream_dma_mem_addr + 0x2000);
             param_1->byte15 = '\x01';
             param_1->byte14 = '\0';
             param_1->byte13 = '\0';
@@ -489,8 +486,8 @@ int GetVAGStreamPos(VagCmd* param_1)
         } else {
           if ((param_1->byte20 == '\0') && (pRVar7->byte20 == '\0')) {
             // CpuSuspendIntr(local_30);
-            sceSdSetAddr(*(u16*)&param_1->voice | 0x2140, param_1->spu_stream_mem_addr);
-            sceSdSetAddr(*(u16*)&pRVar7->voice | 0x2140, pRVar7->spu_stream_mem_addr);
+            sceSdSetAddr(*(u16*)&param_1->voice | 0x2140, param_1->spu_stream_dma_mem_addr);
+            sceSdSetAddr(*(u16*)&pRVar7->voice | 0x2140, pRVar7->spu_stream_dma_mem_addr);
             param_1->byte14 = '\x01';
             param_1->byte15 = '\0';
             param_1->byte13 = '\0';
@@ -638,7 +635,7 @@ LAB_00010860:
         }
       } else if (param_1->byte20 == '\0') {
         // CpuSuspendIntr(local_30);
-        sceSdSetAddr(*(u16*)&param_1->voice | 0x2140, param_1->spu_stream_mem_addr + 0x2000);
+        sceSdSetAddr(*(u16*)&param_1->voice | 0x2140, param_1->spu_stream_dma_mem_addr + 0x2000);
         param_1->byte15 = '\x01';
         param_1->byte14 = '\0';
         param_1->byte13 = '\0';
@@ -686,7 +683,7 @@ LAB_00010860:
       }
       if (param_1->byte20 == '\0') {
         // CpuSuspendIntr(local_30);
-        sceSdSetAddr(*(u16*)&param_1->voice | 0x2140, param_1->spu_stream_mem_addr);
+        sceSdSetAddr(*(u16*)&param_1->voice | 0x2140, param_1->spu_stream_dma_mem_addr);
         param_1->byte14 = '\x01';
         param_1->byte15 = '\0';
         param_1->byte13 = '\0';
@@ -793,11 +790,11 @@ int CheckVAGStreamProgress(VagCmd* param_1) {
       // CpuSuspendIntr(local_18);
       if ((param_1->unk_268 == 0) && (uVar3 < (u32)param_1->unk_264)) {
         sceSdSetAddr(*(u16*)&param_1->voice | 0x2140,
-                     param_1->spu_stream_mem_addr + param_1->unk_264);
+                     param_1->spu_stream_dma_mem_addr + param_1->unk_264);
         param_1->unk_268 = 1;
         if (pRVar4 != 0x0) {
           sceSdSetAddr(*(u16*)&pRVar4->voice | 0x2140,
-                       pRVar4->spu_stream_mem_addr + param_1->unk_264);
+                       pRVar4->spu_stream_dma_mem_addr + param_1->unk_264);
           pRVar4->unk_268 = 1;
         }
       }
@@ -809,16 +806,16 @@ int CheckVAGStreamProgress(VagCmd* param_1) {
   LAB_00010d58:
     uVar1 = 1;
     if ((((param_1->byte1 != '\0') && (uVar1 = 1, (param_1->header).unk_24 == 0)) &&
-         (param_1->unk_60 == 1)) &&
+         param_1->safe_to_change_dma_fields) &&
         (uVar1 = 1, param_1->unk_268 == 0)) {
       if (uVar3 < 0x2000) {
         uVar1 = 1;
-        if ((param_1->unk_240_flag0 & 1U) != 0) {
+        if ((param_1->num_processed_chunks & 1U) != 0) {
           (param_1->header).unk_24 = 1;
         }
       } else {
         uVar1 = 1;
-        if ((param_1->unk_240_flag0 & 1U) == 0) {
+        if ((param_1->num_processed_chunks & 1U) == 0) {
           (param_1->header).unk_24 = 1;
         }
       }
@@ -853,13 +850,13 @@ u32 CheckVagStreamsProgress() {
                   ((pRVar2->header).callback == ProcessVAGData)) {
                 iVar1 = ProcessVAGData(&pRVar2->header, pBVar4);
                 (pRVar2->header).status = iVar1;
-                if ((pBVar4->decompressed_size == 0) && (pRVar2->unk_60 == 1)) {
+                if ((pBVar4->decompressed_size == 0) && pRVar2->safe_to_change_dma_fields == 1) {
                   (pRVar2->header).callback_buffer = pBVar4->next;
                   FreeBuffer(pBVar4, 1);
                 }
                 if ((pRVar2->header).status == -1)
                   goto LAB_00010f30;
-                if (pRVar2->unk_60 == 1) {
+                if (pRVar2->safe_to_change_dma_fields) {
                   ReleaseMessage((CmdHeader*)pRVar2, 1);
                 }
               }
@@ -1000,7 +997,7 @@ u32 GetSpuRamAddress(VagCmd* param_1) {
   u32 uVar6;
   u32 uVar7;
 
-  uVar7 = param_1->spu_stream_mem_addr;
+  uVar7 = param_1->spu_stream_dma_mem_addr;
   uVar6 = param_1->voice & 0xffffU | 0x2240;
   do {
     uVar5 = 0;
@@ -1008,7 +1005,7 @@ u32 GetSpuRamAddress(VagCmd* param_1) {
       uVar2 = sceSdGetAddr(uVar6);
       uVar3 = sceSdGetAddr(uVar6);
       uVar4 = sceSdGetAddr(uVar6);
-      printf("got nax: %d\n", uVar3);
+      // printf("got nax: %d\n", uVar3);
       if ((uVar2 == uVar3) ||
           ((uVar3 != uVar4 && (bVar1 = uVar2 == uVar4, uVar4 = uVar5, bVar1)))) {
         uVar4 = uVar2;
@@ -1042,13 +1039,13 @@ void ProcessStreamData(void) {
               ((pRVar2->header).callback == ProcessVAGData)) {
             iVar1 = ProcessVAGData(&pRVar2->header, pBVar3);
             (pRVar2->header).status = iVar1;
-            if ((pBVar3->decompressed_size == 0) && (pRVar2->unk_60 == 1)) {
+            if ((pBVar3->decompressed_size == 0) && pRVar2->safe_to_change_dma_fields) {
               (pRVar2->header).callback_buffer = pBVar3->next;
               FreeBuffer(pBVar3, 1);
             }
             if ((pRVar2->header).status == -1)
               goto LAB_0001151c;
-            if (pRVar2->unk_60 == 1) {
+            if (pRVar2->safe_to_change_dma_fields) {
               ReleaseMessage((CmdHeader*)pRVar2, 1);
             }
           }

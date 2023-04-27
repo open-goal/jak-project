@@ -307,7 +307,7 @@ std::string GameTextFontBank::convert_game_to_utf8(const char* in) const {
     in++;
   }
   replace_to_utf8(temp);
-  for (int i = 0; i < temp.length(); ++i) {
+  for (size_t i = 0; i < temp.length(); ++i) {
     auto c = temp.at(i);
     if (c == '\n') {
       result += "\\n";
