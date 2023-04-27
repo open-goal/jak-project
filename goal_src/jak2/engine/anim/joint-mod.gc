@@ -18,6 +18,14 @@
 (define-extern joint-mod-joint-set*-handler (function cspace transformq none :behavior process))
 (define-extern joint-mod-joint-set*-world-handler (function cspace transformq none :behavior process))
 
+(defmacro is-nan-hack (flt)
+  `(and (< 0.0 ,flt) (< ,flt 0.0))
+  )
+
+(defmacro is-nan-vector? (vec)
+  `(and (is-nan-hack (-> ,vec x)) (is-nan-hack (-> ,vec y)) (is-nan-hack (-> ,vec z)))
+  )
+
 ;; DECOMP BEGINS
 
 ;; WARN: Return type mismatch matrix vs none.
@@ -752,6 +760,11 @@
 (define last-try-to-look-at-data (new 'global 'try-to-look-at-info))
 
 (defmethod look-at! joint-mod ((obj joint-mod) (arg0 vector) (arg1 symbol) (arg2 process))
+  ;; added: on drill platform, the ginsu that ambush you have invalid bones before they actually get out of their ambush state,
+  ;; but jak is still trying to look at them, so we early return if arg0 is NaN.
+  (if (is-nan-vector? arg0)
+    (return #f)
+    )
   (when (= arg1 'attacking)
     (let* ((s2-0 arg2)
            (s1-0 (if (type? s2-0 process-drawable)
