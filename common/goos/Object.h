@@ -309,6 +309,8 @@ class Object {
   bool is_macro() const { return type == ObjectType::MACRO; }
   bool is_string_hash_table() const { return type == ObjectType::STRING_HASH_TABLE; }
 
+  bool is_power_of_2_float() const;
+
   bool operator==(const Object& other) const;
   bool operator!=(const Object& other) const { return !((*this) == other); }
 };
