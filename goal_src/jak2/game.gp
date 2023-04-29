@@ -295,7 +295,7 @@
 ;; MUSIC
 ;;;;;;;;;;;;;;;;;;;;;
 
-(copy-vag-files "ENG")
+(copy-vag-files "ENG" "FRE" "GER" "ITA" "JAP" "KOR" "SPA")
 
 (copy-sbk-files
   "ASHTAN1" "ASHTAN2" "ATOLL1" "ATOLL2" "ATOLL3" "ATOLL4"

@@ -39,7 +39,7 @@ bool run_tests(fs::path file_path) {
   const auto contents = str_util::split(file_util::read_text_file(file_path));
   std::vector<TestDefinition> tests;
   TestDefinition curr_test;
-  int i = 0;
+  size_t i = 0;
   while (i < contents.size()) {
     const auto& line = contents.at(i);
     if (line == "===") {

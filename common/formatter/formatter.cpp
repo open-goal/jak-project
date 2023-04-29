@@ -34,6 +34,7 @@ void walk_tree(TSTreeCursor* cursor, std::string& output, const std::string& sou
       uint32_t start = ts_node_start_byte(curr_node);
       uint32_t end = ts_node_end_byte(curr_node);
       const char* type = ts_node_type(curr_node);
+      (void)type;
       // TODO - if it's a string literal, take out any newlines and reflow the string to the
       // line-length
       const auto contents = source_code.substr(start, end - start);
@@ -109,7 +110,7 @@ void format_code(const std::string& source,
     return;
   }
   const std::string curr_node_type = ts_node_type(curr_node);
-  for (int i = 0; i < ts_node_child_count(curr_node); i++) {
+  for (size_t i = 0; i < ts_node_child_count(curr_node); i++) {
     auto child_node = ts_node_child(curr_node, i);
     // If we are opening a list, peek at the first element in the list
     // this is so we can properly handle indentation based on different forms
