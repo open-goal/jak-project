@@ -23,7 +23,6 @@ class voice {
   s16_output run();
 
   void key_on();
-  void key_on_and_debug();
 
   void key_off();
 
@@ -114,7 +113,5 @@ class voice {
 
   ADSR m_ADSR{};
   VolumePair m_Volume{};
-
-  bool m_debug = false;
 };
 }  // namespace snd

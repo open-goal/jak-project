@@ -71,9 +71,6 @@ void voice::DecodeSamples() {
 
     m_NAX++;
   }
-  if (m_debug) {
-    //     printf("nax: %d\n", m_NAX);
-  }
 }
 
 void voice::UpdateBlockHeader() {
@@ -100,16 +97,6 @@ void voice::key_on() {
   m_DecodeBuf.Reset();
   m_CustomLoop = false;
   // Console.WriteLn("SPU[%d]:VOICE[%d] Key On, SSA %08x", m_SPU.m_Id, m_Id, m_SSA);
-  if (m_debug) {
-    printf("key-on nax: %d\n", m_NAX);
-    fmt::print("Key On {} {} {} {:x}\n", (void*)m_sample, m_Volume.left.Get(), m_Volume.right.Get(),
-               m_ADSR.m_Reg.bits);
-  }
-}
-
-void voice::key_on_and_debug() {
-  m_debug = true;
-  key_on();
 }
 
 void voice::key_off() {

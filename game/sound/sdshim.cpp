@@ -33,10 +33,8 @@ u32 sceSdGetAddr(u32 entry) {
   // u32 core = entry & 1;
   // u32 voice->id = (entry >> 1) & 0x1f;
   // u32 reg = entry & ~0x3f;
-  // printf("nax getting for %x %d %d\n", entry, entry & 3, voice->get_nax());
 
   // Only ever used for getting NAX
-  // ASSERT_NOT_REACHED();
   return voice->get_nax() << 1;
 }
 
@@ -45,8 +43,8 @@ void sceSdSetSwitch(u32 entry, u32 /*value*/) {
   u32 reg = entry & ~0x3f;
   switch (reg) {
     case 0x1500:
-      voice_from_entry(entry)->key_on_and_debug();
-      voice_from_entry(entry + 1)->key_on_and_debug();
+      voice_from_entry(entry)->key_on();
+      voice_from_entry(entry + 1)->key_on();
       break;
     case 0x1600:
       voice_from_entry(entry)->key_off();
@@ -55,7 +53,7 @@ void sceSdSetSwitch(u32 entry, u32 /*value*/) {
 }
 
 void sceSdkey_on_jak2_voice(int id) {
-  voice_from_entry(id)->key_on_and_debug();
+  voice_from_entry(id)->key_on();
 }
 
 void sceSdkey_off_jak2_voice(int id) {
