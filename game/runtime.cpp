@@ -24,6 +24,7 @@
 #include "runtime.h"
 
 #include "common/cross_os_debug/xdbg.h"
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/goal_constants.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
@@ -229,6 +230,8 @@ void ee_runner(SystemThreadInterface& iface) {
  * SystemThread function for running the IOP (separate I/O Processor)
  */
 void iop_runner(SystemThreadInterface& iface, GameVersion version) {
+  prof().root_event();
+  prof().begin_event("iop-init");
   IOP iop;
   lg::debug("[IOP] Restart!");
   iop.reset_allocator();
@@ -267,11 +270,14 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
   jak1::stream_init_globals();
   jak2::stream_init_globals();
   jak2::iso_cd_init_globals();
-
+  prof().end_event();
   iface.initialization_complete();
 
   lg::debug("[IOP] Wait for OVERLORD to start...");
-  iop.wait_for_overlord_start_cmd();
+  {
+    auto p = scoped_prof("iop-wait-for-ee");
+    iop.wait_for_overlord_start_cmd();
+  }
   if (iop.status == IOP_OVERLORD_INIT) {
     lg::debug("[IOP] Run!");
   } else {
@@ -284,18 +290,32 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
   // init
 
   bool complete = false;
-  switch (version) {
-    case GameVersion::Jak1:
-      jak1::start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);
-      break;
-    case GameVersion::Jak2:
-      jak2::start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);
-      break;
-    default:
-      ASSERT_NOT_REACHED();
+  {
+    auto p = scoped_prof("overlord-start");
+    switch (version) {
+      case GameVersion::Jak1:
+        jak1::start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);
+        break;
+      case GameVersion::Jak2:
+        jak2::start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);
+        break;
+      default:
+        ASSERT_NOT_REACHED();
+    }
   }
-  while (complete == false) {
-    iop.wait_run_iop(iop.kernel.dispatch());
+
+  {
+    auto p = scoped_prof("overlord-wait-for-init");
+    while (complete == false) {
+      prof().root_event();
+      auto pp = scoped_prof("iop-iter");
+      iop.kernel.dispatch();
+      // auto wait_duration = iop.kernel.dispatch();
+      {
+        // auto ppp = scoped_prof("iop-kernel-wait");
+        // iop.wait_run_iop(wait_duration);
+      }
+    }
   }
 
   // unblock the EE, the overlord is set up!
@@ -303,9 +323,16 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
 
   // IOP Kernel loop
   while (!iface.get_want_exit() && !iop.want_exit) {
+    prof().root_event();
     // The IOP scheduler informs us of how many microseconds are left until it has something to do.
     // So we can wait for that long or until something else needs it to wake up.
-    iop.wait_run_iop(iop.kernel.dispatch());
+    auto pp = scoped_prof("iop-iter");
+    auto wait_duration = iop.kernel.dispatch();
+    if (wait_duration &&
+        *wait_duration - std::chrono::steady_clock::now() > std::chrono::microseconds(100)) {
+      auto ppp = scoped_prof("iop-kernel-wait");
+      iop.wait_run_iop(*wait_duration);
+    }
   }
 
   Gfx::clear_vsync_callback();
@@ -350,6 +377,8 @@ void dmac_runner(SystemThreadInterface& iface) {
  * GOAL kernel arguments are currently ignored.
  */
 RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const char** argv) {
+  prof().set_enable(true);
+  prof().root_event();
   g_argc = argc;
   g_argv = argv;
   g_main_thread_id = std::this_thread::get_id();
@@ -361,19 +390,26 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
 
   // set up discord stuff
   gStartTime = time(nullptr);
-  init_discord_rpc();
+  {
+    auto p = scoped_prof("init-discord");
+    init_discord_rpc();
+  }
 
   // initialize graphics first - the EE code will upload textures during boot and we
   // want the graphics system to catch them.
   if (enable_display) {
+    auto p = scoped_prof("init-gfx");
     Gfx::Init(g_game_version);
   }
 
   // step 1: sce library prep
-  iop::LIBRARY_INIT();
-  ee::LIBRARY_INIT_sceCd();
-  ee::LIBRARY_INIT_sceDeci2();
-  ee::LIBRARY_INIT_sceSif();
+  {
+    auto p = scoped_prof("init-library");
+    iop::LIBRARY_INIT();
+    ee::LIBRARY_INIT_sceCd();
+    ee::LIBRARY_INIT_sceDeci2();
+    ee::LIBRARY_INIT_sceSif();
+  }
 
   // step 2: system prep
   VM::vm_prepare();  // our fake ps2 VM needs to be prepared
@@ -384,10 +420,20 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
   auto& vm_dmac_thread = tm.create_thread("VM-DMAC");
 
   // step 3: start the EE!
-  iop_thread.start([=](SystemThreadInterface& sti) { iop_runner(sti, g_game_version); });
-  deci_thread.start(deci2_runner);
-  ee_thread.start(ee_runner);
+  {
+    auto p = scoped_prof("iop-start");
+    iop_thread.start([=](SystemThreadInterface& sti) { iop_runner(sti, g_game_version); });
+  }
+  {
+    auto p = scoped_prof("deci-start");
+    deci_thread.start(deci2_runner);
+  }
+  {
+    auto p = scoped_prof("ee-start");
+    ee_thread.start(ee_runner);
+  }
   if (VM::use) {
+    auto p = scoped_prof("dmac-start");
     vm_dmac_thread.start(dmac_runner);
   }
 

@@ -197,6 +197,10 @@ s32 PollMbx(MsgPacket** recvmsg, int mbxid) {
   return iop->kernel.PollMbx((void**)recvmsg, mbxid);
 }
 
+s32 PeekMbx(s32 mbx) {
+  return iop->kernel.PeekMbx(mbx);
+}
+
 static int now = 0;
 
 void GetSystemTime(SysClock* time) {

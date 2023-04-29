@@ -11,6 +11,7 @@
 
 #include "display.h"
 
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
@@ -326,6 +327,7 @@ u32 Init(GameVersion version) {
 void Loop(std::function<bool()> f) {
   lg::info("GFX Loop");
   while (f()) {
+    auto p = scoped_prof("gfx loop");
     // check if we have a display
     if (Display::GetMainDisplay()) {
       // lg::debug("run display");

@@ -9,6 +9,7 @@
 #include <thread>
 #include <utility>
 #include <vector>
+#include <optional>
 
 #include "common/common_types.h"
 #include "common/util/Assert.h"
@@ -108,7 +109,7 @@ class IOP_Kernel {
   void SleepThread();
   void WakeupThread(s32 id);
   void iWakeupThread(s32 id);
-  time_stamp dispatch();
+  std::optional<time_stamp> dispatch();
   void set_rpc_queue(iop::sceSifQueueData* qd, u32 thread);
   void rpc_loop(iop::sceSifQueueData* qd);
   void shutdown();
@@ -148,6 +149,10 @@ class IOP_Kernel {
     }
 
     return gotSomething ? KE_OK : KE_MBOX_NOMSG;
+  }
+
+  s32 PeekMbx(s32 mbx) {
+    return !mbxs[mbx].empty();
   }
 
   /*!
@@ -193,7 +198,7 @@ class IOP_Kernel {
   void processWakeups();
 
   IopThread* schedNext();
-  time_stamp nextWakeup();
+  std::optional<time_stamp> nextWakeup();
 
   s32 (*vblank_handler)(void*);
   std::atomic_bool vblank_recieved = false;

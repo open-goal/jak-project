@@ -774,7 +774,9 @@ u32 ISOThread() {
     SignalSema(RequestedStreamsList.sema);
     RequestedStreamsList.unk2_init0 = 0;
     if (pBVar3 == (Buffer*)0x0) {
-      DelayThread(1000);
+      if (!PeekMbx(iso_mbx) && !GetMessage()) {
+        DelayThread(1000);
+      }
     }
   } while (true);
 }

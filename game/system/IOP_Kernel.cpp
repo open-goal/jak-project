@@ -204,7 +204,8 @@ void IOP_Kernel::updateDelay() {
   }
 }
 
-time_stamp IOP_Kernel::nextWakeup() {
+std::optional<time_stamp> IOP_Kernel::nextWakeup() {
+  bool found_ready = false;
   time_stamp lowest = time_point_cast<microseconds>(steady_clock::now()) + microseconds(1000);
 
   for (auto& t : threads) {
@@ -213,9 +214,17 @@ time_stamp IOP_Kernel::nextWakeup() {
         lowest = t.resumeTime;
       }
     }
+
+    if (t.state == IopThread::State::Ready) {
+      found_ready = true;
+    }
   }
 
-  return lowest;
+  if (found_ready) {
+    return {};
+  } else {
+    return lowest;
+  }
 }
 
 /*!
@@ -252,7 +261,7 @@ void IOP_Kernel::processWakeups() {
 /*!
  * Run the next IOP thread.
  */
-time_stamp IOP_Kernel::dispatch() {
+std::optional<time_stamp> IOP_Kernel::dispatch() {
   // Update thread states
   updateDelay();
   processWakeups();

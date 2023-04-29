@@ -130,6 +130,7 @@ u32 sceSifSetDma(sceSifDmaData* sdd, int len);
 
 s32 SendMbx(int mbxid, void* sendmsg);
 s32 PollMbx(MsgPacket** recvmsg, int mbxid);
+s32 PeekMbx(s32 mbx);
 s32 CreateMbx(MbxParam* param);
 
 void GetSystemTime(SysClock* time);
