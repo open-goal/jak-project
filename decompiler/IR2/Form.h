@@ -1770,8 +1770,8 @@ class DefpartElement : public FormElement {
       u16 field_id;
       u16 flags;
       std::vector<LinkedWord> data;
-      goos::Object sound_spec;
-      goos::Object userdata;  // backup
+      goos::Object sound_spec;  // any static object actually
+      goos::Object userdata;    // backup
 
       bool is_sp_end(GameVersion version) const {
         switch (version) {

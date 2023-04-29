@@ -86,3 +86,4 @@ void send_gfx_dma_chain(u32 /*bank*/, u32 chain);
 void pc_texture_upload_now(u32 page, u32 mode);
 void pc_texture_relocate(u32 dst, u32 src, u32 format);
 u64 pc_filter_debug_string(u32 str_ptr, u32 distance);
+u32 pc_rand();
