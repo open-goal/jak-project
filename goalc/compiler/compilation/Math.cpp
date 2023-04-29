@@ -373,11 +373,12 @@ Val* Compiler::compile_floating_point_division(const goos::Object& form,
                                                const TypeSpec& result_type,
                                                RegVal* a,
                                                RegVal* b,
-                                               Env* env) {
+                                               Env* env,
+                                               bool imm_divisor) {
   constexpr bool use_accurate = true;
   auto result = env->make_fpr(result_type);
 
-  if (use_accurate) {
+  if (use_accurate && !imm_divisor) {
     auto fenv = env->function_env();
     auto end_label = fenv->alloc_unnamed_label();
     end_label->func = fenv;
@@ -404,8 +405,9 @@ Val* Compiler::compile_floating_point_division(const goos::Object& form,
     branch_ir_ref->mark_as_resolved();
     branch_ir_ref->label.idx = fenv->code().size();
 
+    // code for dividing by zero
     auto flt_max = compile_integer(0x7f7fffff, env)->to_gpr(form, env);
-    auto mask = compile_integer(0xf0000000, env)->to_gpr(form, env);
+    auto mask = compile_integer(0x80000000, env)->to_gpr(form, env);
     auto temp_int = env->make_gpr(result_type);
     env->emit_ir<IR_RegSet>(form, temp_int, a);
     env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::AND_64, temp_int, mask);
@@ -482,17 +484,19 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
     case MATH_FLOAT: {
       const auto& divisor = args.unnamed.at(1);
       // in original GOAL, immediate divisions were turned into inverse multiplications
-      if (divisor.is_float() && !divisor.is_float(0)) {
+      if (divisor.is_float() && !divisor.is_float(0) && divisor.is_power_of_2_float()) {
         // TODO eventually this should be smarter somehow
-        auto as_inverse_mult =
-            pretty_print::build_list({pretty_print::to_symbol("*"), args.unnamed.at(0),
-                                      goos::Object::make_float(1.0 / divisor.as_float())});
-        return compile_mul(as_inverse_mult, as_inverse_mult.as_pair()->cdr, env);
+        return compile_mul(
+            form,
+            pretty_print::build_list(
+                {goos::Object::make_float(1.0 / divisor.as_float()), args.unnamed.at(0)}),
+            env);
       } else {
         auto a = first_val->to_fpr(form, env);
         auto b = to_math_type(form, compile_error_guard(divisor, env), math_type, env)
                      ->to_fpr(form, env);
-        return compile_floating_point_division(form, first_type, a, b, env);
+        return compile_floating_point_division(form, first_type, a, b, env,
+                                               divisor.is_float() && !divisor.is_float(0));
       }
     }
 

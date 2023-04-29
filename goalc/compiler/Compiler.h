@@ -339,7 +339,8 @@ class Compiler {
                                        const TypeSpec& result_type,
                                        RegVal* a,
                                        RegVal* b,
-                                       Env* env);
+                                       Env* env,
+                                       bool imm_divisor);
 
   Val* compile_format_string(const goos::Object& form,
                              Env* env,
