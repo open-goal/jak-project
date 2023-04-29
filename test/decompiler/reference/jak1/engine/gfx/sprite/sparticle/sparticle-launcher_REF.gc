@@ -339,7 +339,7 @@
 
 ;; definition for function sp-init-fields!
 ;; INFO: function output is handled by mips2c
-(def-mips2c sp-init-fields! (function object (inline-array sp-field-init-spec) sp-field-id sp-field-id symbol object))
+(def-mips2c sp-init-fields! (function (pointer float) (inline-array sp-field-init-spec) sp-field-id sp-field-id symbol (inline-array sp-field-init-spec)))
 
 ;; definition of type sp-queued-launch-particles
 (deftype sp-queued-launch-particles (structure)
@@ -471,7 +471,7 @@
           (s3-0 (new 'stack-no-clear 'vector))
           )
       (sp-init-fields!
-        (-> s5-0 launchrot)
+        (the-as (pointer float) (-> s5-0 launchrot))
         arg2
         (sp-field-id launch-fields-start)
         (sp-field-id launch-fields-end)
@@ -620,23 +620,16 @@
           (return 0)
           )
       (let* ((a1-2 (-> arg1 init-specs 0))
-             (a1-3
-               (sp-init-fields!
-                 (&-> s5-0 x)
-                 (the-as (inline-array sp-field-init-spec) a1-2)
-                 (sp-field-id sprite-fields-start)
-                 (sp-field-id sprite-fields-end)
-                 #t
-                 )
-               )
+             (a1-3 (sp-init-fields!
+                     (&-> s5-0 x)
+                     (the-as (inline-array sp-field-init-spec) a1-2)
+                     (sp-field-id sprite-fields-start)
+                     (sp-field-id sprite-fields-end)
+                     #t
+                     )
+                   )
              )
-        (sp-init-fields!
-          (&-> gp-0 omega)
-          (the-as (inline-array sp-field-init-spec) a1-3)
-          (sp-field-id cpu-fields-start)
-          (sp-field-id cpu-fields-end)
-          #t
-          )
+        (sp-init-fields! (&-> gp-0 omega) a1-3 (sp-field-id cpu-fields-start) (sp-field-id cpu-fields-end) #t)
         )
       (set! (-> s5-0 matrix) 0)
       (set! (-> s5-0 rot) (the float (sar (shl (the int (-> s5-0 rot)) 48) 48)))
@@ -743,23 +736,16 @@
          (set! (-> arg2 fade x) 99999.0)
          (set! (-> arg2 fade y) 99999.0)
          (set! (-> arg2 fade z) 99999.0)
-         (let ((a1-2
-                 (sp-init-fields!
-                   (-> arg3 x-y-z-sx)
-                   (the-as (inline-array sp-field-init-spec) a1-1)
-                   (sp-field-id sprite-fields-start)
-                   (sp-field-id sprite-fields-end)
-                   #f
-                   )
-                 )
+         (let ((a1-2 (sp-init-fields!
+                       (the-as (pointer float) (-> arg3 x-y-z-sx))
+                       (the-as (inline-array sp-field-init-spec) a1-1)
+                       (sp-field-id sprite-fields-start)
+                       (sp-field-id sprite-fields-end)
+                       #f
+                       )
+                     )
                )
-           (sp-init-fields!
-             (&-> arg2 omega)
-             (the-as (inline-array sp-field-init-spec) a1-2)
-             (sp-field-id cpu-fields-start)
-             (sp-field-id cpu-fields-end)
-             #f
-             )
+           (sp-init-fields! (&-> arg2 omega) a1-2 (sp-field-id cpu-fields-start) (sp-field-id cpu-fields-end) #f)
            )
          (logior! (-> arg2 flags) s4-0)
          (if (logtest? (-> arg2 flags) (sp-cpuinfo-flag level1))
@@ -795,23 +781,16 @@
          )
        )
       (else
-        (let ((a1-3
-                (sp-init-fields!
-                  (-> arg3 x-y-z-sx)
-                  (the-as (inline-array sp-field-init-spec) a1-1)
-                  (sp-field-id sprite-fields-start)
-                  (sp-field-id sprite-fields-end)
-                  #f
-                  )
-                )
+        (let ((a1-3 (sp-init-fields!
+                      (the-as (pointer float) (-> arg3 x-y-z-sx))
+                      (the-as (inline-array sp-field-init-spec) a1-1)
+                      (sp-field-id sprite-fields-start)
+                      (sp-field-id sprite-fields-end)
+                      #f
+                      )
+                    )
               )
-          (sp-init-fields!
-            (&-> arg2 omega)
-            (the-as (inline-array sp-field-init-spec) a1-3)
-            (sp-field-id cpu-fields-start)
-            (sp-field-id cpu-fields-end)
-            #f
-            )
+          (sp-init-fields! (&-> arg2 omega) a1-3 (sp-field-id cpu-fields-start) (sp-field-id cpu-fields-end) #f)
           )
         )
       )
@@ -1347,3 +1326,7 @@
   0
   (none)
   )
+
+
+
+

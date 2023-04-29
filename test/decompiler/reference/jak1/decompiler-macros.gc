@@ -429,7 +429,7 @@
       (set! *defstate-type-stack* '())
       ;; check for default handlers
       (let ((default-handlers (assoc defstate-type *default-state-handlers*)))
-          (when (not (null? default-handlers))
+          (when default-handlers
               ;;(fmt #t "found default-handlers for {}: {}\n" defstate-type default-handlers)
               ;; event
               (set! default-handlers (cadr default-handlers))
@@ -509,10 +509,10 @@
                            &key (post #f))
   (let ((old (assoc proc *default-state-handlers*))
         (new (list proc (list event enter trans exit code post))))
-      (if (null? old)
+      (if (not old)
           (append!! *default-state-handlers* new) ;; add new set of default handlers
           (dolist (hnd *default-state-handlers*)  ;; replace old handlers with new ones
-            (if (eq? (car hnd) old)
+            (when (eq? (car hnd) old)
               (set-car! hnd new)
               )
             )
@@ -671,117 +671,6 @@
         )
   )
 
-(defmacro sp-tex (field-name tex-id)
-  `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-name) :tex ,tex-id)
-  )
-
-(defmacro sp-rnd-flt (field-name val range mult)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id ,field-name)
-        :initial-valuef ,val
-        :random-rangef ,range
-        :random-multf ,mult
-        :flags (sp-flag float-with-rand)
-        )
-  )
-
-(defmacro sp-flt (field-name val)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id ,field-name)
-        :initial-valuef ,val
-        :random-rangef 0.0
-        :random-multf 1.0
-        :flags (sp-flag float-with-rand)
-        )
-  )
-
-(defmacro sp-int (field-name val)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id ,field-name)
-        :initial-value ,val
-        :random-range 0
-        :random-mult 1
-        )
-  )
-
-(defmacro sp-int-plain-rnd (field-name val range mult)
-  "For when we use plain integer, but set the randoms."
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id ,field-name)
-        :initial-value ,val
-        :random-range ,range
-        :random-mult ,mult
-        )
-  )
-
-(defmacro sp-rnd-int (field-name val range mult)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id ,field-name)
-        :initial-value ,val
-        :random-range ,range
-        :random-multf ,mult
-        :flags (sp-flag int-with-rand)
-        )
-  )
-
-
-(defmacro sp-rnd-int-flt (field-name val range mult)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id ,field-name)
-        :initial-valuef ,val
-        :random-range ,range
-        :random-multf ,mult
-        :flags (sp-flag int-with-rand)
-        )
-  )
-
-(defmacro sp-cpuinfo-flags (&rest flags)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id spt-flags)
-        :initial-value (sp-cpuinfo-flag ,@flags)
-        :random-mult 1
-        )
-  )
-
-(defmacro sp-launcher-by-id (field-name val)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id ,field-name)
-        :initial-value ,val
-        :flags (sp-flag part-by-id)
-        )
-  )
-
-(defmacro sp-func (field-name val)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id ,field-name)
-        :sym ,val
-        :flags (sp-flag from-pointer)
-        )
-  )
-
-(defmacro sp-sound (sound)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id spt-sound)
-        :sound ,sound
-        :flags (sp-flag plain-v2)
-        )
-  )
-
-(defmacro sp-end ()
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id spt-end)
-        )
-  )
-
-(defmacro sp-copy-from-other (field-name offset)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id ,field-name)
-        :initial-value ,offset
-        :random-mult 1
-        :flags (sp-flag copy-from-other-field)
-        )
-  )
-
 (defmacro defpartgroup (name &key id &key parts &key (duration 3000) &key (linger-duration 1500) &key (flags ()) &key bounds)
   "define a new part group. defines a constant with the name of the group and the value of the group's ID"
   `(begin
@@ -804,14 +693,149 @@
   `(-> *part-group-id-table* ,id)
   )
 
+(seval (begin
+(define *sparticle-fields* '())
+(doenum (name val 'sp-field-id)
+  (append!! *sparticle-fields* (list (if (string-starts-with? (symbol->string name) "spt-")
+                                         (string-substr (symbol->string name) 4 0)
+                                         (symbol->string name))
+                                     val name (member name '(spt-vel-x
+                                                             spt-vel-y
+                                                             spt-vel-z
+                                                             spt-scalevel-x
+                                                             spt-scalevel-y
+                                                             spt-rotvel-x
+                                                             spt-rotvel-y
+                                                             spt-rotvel-z
+                                                             spt-fade-r
+                                                             spt-fade-g
+                                                             spt-fade-b
+                                                             spt-fade-a
+                                                             spt-accel-x
+                                                             spt-accel-y
+                                                             spt-accel-z))))
+  )
+;; you cannot define these fields ever.
+(define *sparticle-fields-banned* '(misc-fields-start
+                                    misc-fields-end
+                                    sprite-fields-start
+                                    sprite-fields-end
+                                    cpu-fields-start
+                                    cpu-fields-end
+                                    launch-fields-start
+                                    launch-fields-end
+                                    end
+                                    ))
+))
 (defmacro defpart (id &key (init-specs ()))
   "define a new sparticle-launcher"
-  `(set! (-> *part-id-table* ,id)
-      (new 'static 'sparticle-launcher
-          :init-specs (new 'static 'inline-array sp-field-init-spec ,(1+ (length init-specs))
-                  ,@init-specs
-                  (sp-end)
-                  )))
+
+  (let ((last-field-id -1))
+    `(set! (-> *part-id-table* ,id)
+        (new 'static 'sparticle-launcher
+            :init-specs (new 'static 'inline-array sp-field-init-spec ,(1+ (length init-specs))
+                    ,@(apply (lambda (x)
+                    (let* ((head (symbol->string (car x)))
+                          (params (cdr x))
+                          (field-name (string-substr head 1 0))
+                          (field (assoc field-name *sparticle-fields*)))
+                      (when (not field)
+                        (fmt #t "unknown sparticle field {}\n" x))
+                      (when (neq? (string-ref head 0) #\:)
+                        (fmt #t "invalid sparticle field {}\n" x))
+                      (when (member (string->symbol field-name) *sparticle-fields-banned*)
+                        (fmt #t "you cannot use sparticle field {}\n" field-name))
+                    (let* ((field-id (cadr field))
+                          (field-enum-name (caddr field))
+                          (vel? (and #f (cadddr field)))
+                          (param-float? (lambda (p) (or (float? p) (and (pair? p) (eq? 'meters (car p))) (and (pair? p) (eq? 'degrees (car p))))))
+                          (param-int? (lambda (p) (or (integer? p) (and (pair? p) (eq? 'seconds (car p))))))
+                          (param-symbol? (lambda (p) (and (pair? p) (eq? 'quote (car p)))))
+                          (param-count (length params)))
+                      (when (>= last-field-id field-id)
+                        (fmt #t "field {} must come after field {}, not before\n" field-name (car (nth last-field-id *sparticle-fields*))))
+                      (set! last-field-id field-id)
+                      (cond
+                        ((eq? field-name "flags")
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :initial-value (sp-cpuinfo-flag ,@(car params)) :random-mult 1)
+                          )
+                        ((eq? field-name "texture")
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :tex ,(car params) :flags (sp-flag int))
+                          )
+                        ((eq? field-name "next-launcher")
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :initial-value ,(car params) :flags (sp-flag launcher))
+                          )
+                        ((eq? field-name "sound")
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :sound ,(car params) :flags (sp-flag object))
+                          )
+                        ((and (= 2 param-count) (symbol? (car params)) (eq? (symbol->string (car params)) ":copy"))
+                          (let* ((other-field (assoc (symbol->string (cadr (member (string->symbol ":copy") params))) *sparticle-fields*))
+                                (other-field-id (cadr other-field)))
+                            (when (>= other-field-id field-id)
+                              (fmt #t "warning copying to sparticle field {} - you can only copy from fields before this one!\n" field-name))
+                            `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag copy-from-other)
+                                                              :initial-value ,(- other-field-id field-id) :random-mult 1)
+                            )
+                          )
+                        ((and (= 2 param-count) (symbol? (car params)) (eq? (symbol->string (car params)) ":data"))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag object)
+                                                            :pntr (the-as pointer ,(cadr (member (string->symbol ":data") params))))
+                          )
+                        ((and (= 1 param-count) (param-symbol? (first params)))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag symbol)
+                                                            :sym ,(first params))
+                          )
+                        ((and (= 1 param-count) (param-float? (first params)))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag float)
+                                                            :initial-valuef ,(if vel? `(/ ,(first params) 60.0) (first params))
+                                                            :random-rangef 0.0
+                                                            :random-multf 1.0)
+                          )
+                        ((and (= 2 param-count) (param-float? (first params)) (param-float? (second params)))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag float)
+                                                            :initial-valuef ,(if vel? `(/ ,(first params) 60.0) (first params))
+                                                            :random-rangef ,(if vel? `(/ ,(second params) 60.0) (second params))
+                                                            :random-multf 1.0)
+                          )
+                        ((and (= 3 param-count) (param-float? (first params)) (param-float? (second params)) (param-float? (third params)))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag float)
+                                                            :initial-valuef ,(if vel? `(/ ,(first params) 60.0) (first params))
+                                                            :random-rangef ,(second params)
+                                                            :random-multf ,(if vel? `(/ ,(third params) 60.0) (third params)))
+                          )
+                        ((and (= 3 param-count) (param-float? (first params)) (param-int? (second params)) (param-float? (third params)))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag float-int-rand)
+                                                            :initial-valuef ,(if vel? `(/ ,(first params) 60.0) (first params))
+                                                            :random-range ,(second params)
+                                                            :random-multf ,(if vel? `(/ ,(third params) 60.0) (third params)))
+                          )
+                        ((and (= 1 param-count) (param-int? (first params)))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag int)
+                                                            :initial-value ,(first params)
+                                                            :random-range 0
+                                                            :random-mult 1)
+                          )
+                        ((and (= 2 param-count) (param-int? (first params)) (param-int? (second params)))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag int)
+                                                            :initial-value ,(first params)
+                                                            :random-range ,(second params)
+                                                            :random-mult 1)
+                          )
+                        ((and (= 3 param-count) (param-int? (first params)) (param-int? (second params)) (param-int? (third params)))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag int)
+                                                            :initial-value ,(first params)
+                                                            :random-range ,(second params)
+                                                            :random-mult ,(third params))
+                          )
+                        (#t
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id spt-end))
+                          )
+                        )
+                      ))
+                    ) init-specs)
+                    (new 'static 'sp-field-init-spec :field (sp-field-id spt-end))
+                    )))
+    )
   )
 
 (defmacro cmove-#f-zero (dest condition src)

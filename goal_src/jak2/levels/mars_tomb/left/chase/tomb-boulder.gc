@@ -12,26 +12,26 @@
 (defpartgroup group-tomb-boulder-roll :id 739 :bounds (static-bspherem 0 0 0 40) :parts ((sp-item 3282)))
 
 (defpart 3282
-  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #xc))
-    (sp-flt spt-num 2.0)
-    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
-    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-copy-from-other spt-scale-y -4)
-    (sp-flt spt-r 128.0)
-    (sp-rnd-flt spt-g 96.0 32.0 1.0)
-    (sp-rnd-flt spt-b 64.0 32.0 1.0)
-    (sp-rnd-flt spt-a 16.0 32.0 1.0)
-    (sp-rnd-flt spt-vel-y (meters 0.08) (meters 0.026666667) 1.0)
-    (sp-flt spt-scalevel-x (meters 0.0033333334))
-    (sp-rnd-flt spt-rotvel-z (degrees -0.2) (degrees 0.4) 1.0)
-    (sp-copy-from-other spt-scalevel-y -4)
-    (sp-flt spt-fade-a -0.16)
-    (sp-flt spt-accel-y -1.3653333)
-    (sp-flt spt-friction 0.95)
-    (sp-int spt-timer 300)
-    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-12)
-    (sp-rnd-flt spt-conerot-x (degrees 80.0) (degrees 10.0) 1.0)
-    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+    (:num 2.0)
+    (:scale-x (meters 1) (meters 1))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 96.0 32.0)
+    (:b 64.0 32.0)
+    (:a 16.0 32.0)
+    (:vel-y (meters 0.08) (meters 0.026666667))
+    (:scalevel-x (meters 0.0033333334))
+    (:rotvel-z (degrees -0.2) (degrees 0.4))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.16)
+    (:accel-y (meters -0.00033333333))
+    (:friction 0.95)
+    (:timer (seconds 1))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-12))
+    (:conerot-x (degrees 80) (degrees 10))
+    (:conerot-y (degrees 0) (degrees 360))
     )
   )
 
@@ -54,46 +54,46 @@
     )
   )
 
-(defskelgroup skel-tomb-boulder tomb-boulder 0 -1
-              ((1 (meters 999999)))
+(defskelgroup skel-tomb-boulder tomb-boulder tomb-boulder-lod0-jg -1
+              ((tomb-boulder-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 7)
               :origin-joint-index 4
               )
 
-(defskelgroup skel-tomb-spider tomb-boulder 38 -1
-              ((39 (meters 999999)))
+(defskelgroup skel-tomb-spider tomb-boulder tomb-boulder-spider-lod0-jg -1
+              ((tomb-boulder-spider-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 2 0 50)
-              :shadow 40
+              :shadow tomb-boulder-spider-shadow-mg
               :origin-joint-index 3
               :shadow-joint-index 3
               )
 
-(defskelgroup skel-tomb-boulder-explode tomb-boulder 9 -1
-              ((10 (meters 999999)))
+(defskelgroup skel-tomb-boulder-explode tomb-boulder tomb-boulder-explode-lod0-jg -1
+              ((tomb-boulder-explode-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 200)
               :origin-joint-index 3
               )
 
-(defskelgroup skel-tomb-boulder-stop tomb-boulder 15 -1
-              ((16 (meters 999999)))
+(defskelgroup skel-tomb-boulder-stop tomb-boulder tomb-boulder-stop-lod0-jg -1
+              ((tomb-boulder-stop-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 200)
               :origin-joint-index 7
               )
 
-(defskelgroup skel-tomb-boulder-pillar tomb-boulder 24 -1
-              ((25 (meters 999999)))
+(defskelgroup skel-tomb-boulder-pillar tomb-boulder tomb-boulder-pillar-lod0-jg -1
+              ((tomb-boulder-pillar-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 15 0 30)
               :origin-joint-index 3
               )
 
-(defskelgroup skel-tomb-boulder-stick tomb-boulder 48 50
-              ((49 (meters 999999)))
+(defskelgroup skel-tomb-boulder-stick tomb-boulder tomb-boulder-stick-lod0-jg tomb-boulder-stick-idle-ja
+              ((tomb-boulder-stick-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 3.5)
               :origin-joint-index 3
               )
 
-(defskelgroup skel-tomb-boulder-wing-door tomb-boulder 52 54
-              ((53 (meters 999999)))
+(defskelgroup skel-tomb-boulder-wing-door tomb-boulder tomb-boulder-wing-door-lod0-jg tomb-boulder-wing-door-idle-ja
+              ((tomb-boulder-wing-door-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 -10 0 20)
               :origin-joint-index 3
               )
@@ -415,7 +415,7 @@
     (cond
       ((or (not *target*)
            *scene-player*
-           (logtest? (focus-status teleporting) (-> *target* focus-status))
+           (focus-test? *target* teleporting)
            (task-node-closed? (game-task-node tomb-poles-boulder))
            )
        )
@@ -483,13 +483,13 @@
           (set! (-> v1-9 prim-core collide-with) (-> self root-override backup-collide-with))
           )
         (ja-channel-set! 1)
-        (ja :group! (-> self draw art-group data 2))
+        (ja :group! tomb-boulder-idle-ja)
         (transform-post)
         (until #f
           (when (and (not *scene-player*)
                      *target*
                      (and (>= 81920.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-                          (zero? (logand (focus-status teleporting) (-> *target* focus-status)))
+                          (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
                           )
                      )
             (let ((gp-2 (ppointer->handle (process-spawn scene-player :init scene-player-init "tomb-boulder-start" #t #f))))
@@ -803,7 +803,7 @@
        (remove-setting! 'music)
        (task-node-close! (game-task-node tomb-poles-boulder))
        (auto-save-user)
-       (if (and *target* (zero? (logand (-> *target* focus-status) (focus-status dead))))
+       (if (and *target* (not (logtest? (-> *target* focus-status) (focus-status dead))))
            (start 'play (get-continue-by-name *game-info* "tomb-boulder-end"))
            )
        (logior! (-> self mask) (process-mask sleep))
@@ -935,15 +935,12 @@
        (sound-continue (the-as sound-id (-> self gui-id)))
        )
       )
-    (set! (-> (the-as vector (&-> self stack 208)) quad) (-> self trans 0 quad))
+    (set! (-> (the-as vector (-> self trans 1)) quad) (-> self trans 0 quad))
     (if (< (-> self mode) (the-as uint 10))
         (vector<-cspace! (the-as vector (-> self trans)) (-> self node-list data (-> self draw origin-joint-index)))
         (vector<-cspace! (the-as vector (-> self trans)) (-> self spider 0 node-list data 3))
         )
-    (let ((s4-1
-            (vector-! (new 'stack-no-clear 'vector) (the-as vector (-> self trans)) (the-as vector (&-> self stack 208)))
-            )
-          )
+    (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) (the-as vector (-> self trans)) (-> self trans 1))))
       (case (-> self mode)
         ((11)
          (vector-normalize-copy! (-> self dir) s4-1 1.0)
@@ -1055,7 +1052,7 @@
                    )
                  )
           )
-      (if (and *target* (logtest? (-> *target* focus-status) (focus-status dead)))
+      (if (and *target* (focus-test? *target* dead))
           (set! f30-3 0.5)
           )
       (when (or (< (vector-vector-distance (the-as vector (-> self trans)) (camera-pos)) 36864.0)
@@ -1097,6 +1094,12 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! tomb-boulder ((obj tomb-boulder) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (stack-size-set! (-> obj main-thread) 512)
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -1146,7 +1149,7 @@
     :name "tomb-boulder-start"
     :extra #f
     :info #f
-    :mask-to-clear #x1282000
+    :mask-to-clear (process-mask movie enemy platform projectile)
     :entity "scene-stage-46"
     :art-group "scenecamera"
     :anim "tomb-boulder-start"
@@ -1244,8 +1247,8 @@
     )
   )
 
-(defskelgroup skel-spider-eyes spider-eyes 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-spider-eyes spider-eyes spider-eyes-lod0-jg spider-eyes-idle-ja
+              ((spider-eyes-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 5)
               :origin-joint-index 3
               )
@@ -1332,7 +1335,7 @@
                    :name "tomb-spider-scare"
                    :extra #f
                    :info #f
-                   :mask-to-clear #x1282000
+                   :mask-to-clear (process-mask movie enemy platform projectile)
                    :entity "scene-stage-46"
                    :art-group "scenecamera"
                    :anim "tomb-spider-scare"

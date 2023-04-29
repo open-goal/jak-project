@@ -88,6 +88,7 @@ Interpreter::Interpreter(const std::string& username) {
                    {"string-starts-with?", &Interpreter::eval_string_starts_with},
                    {"string-ends-with?", &Interpreter::eval_string_ends_with},
                    {"string-split", &Interpreter::eval_string_split},
+                   {"string-substr", &Interpreter::eval_string_substr},
                    {"ash", &Interpreter::eval_ash},
                    {"symbol->string", &Interpreter::eval_symbol_to_string},
                    {"string->symbol", &Interpreter::eval_string_to_symbol},
@@ -1708,6 +1709,18 @@ Object Interpreter::eval_string_split(const Object& form,
   auto& delim = args.unnamed.at(1).as_string()->data;
 
   return pretty_print::build_list(str_util::split(str, delim.at(0)));
+}
+
+Object Interpreter::eval_string_substr(const Object& form,
+                                       Arguments& args,
+                                       const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {ObjectType::STRING, ObjectType::INTEGER, ObjectType::INTEGER}, {});
+  auto& str = args.unnamed.at(0).as_string()->data;
+  auto off = args.unnamed.at(1).as_int();
+  auto len = args.unnamed.at(2).as_int();
+
+  return StringObject::make_new(len != 0 ? str.substr(off, len) : str.substr(off));
 }
 
 Object Interpreter::eval_ash(const Object& form,

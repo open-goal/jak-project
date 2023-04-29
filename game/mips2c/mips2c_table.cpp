@@ -19,7 +19,6 @@ namespace Mips2C {
 
 namespace jak1 {
 namespace draw_string { extern void link(); }
-namespace sp_init_fields { extern void link(); }
 namespace particle_adgif { extern void link(); }
 namespace sp_launch_particles_var { extern void link(); }
 namespace sp_process_block_3d { extern void link(); }
@@ -130,7 +129,6 @@ namespace render_boundary_quad { extern void link(); }
 namespace set_sky_vf27 { extern void link(); }
 namespace set_sky_vf23_value { extern void link(); }
 namespace draw_boundary_polygon { extern void link(); }
-namespace sp_init_fields { extern void link(); }
 namespace particle_adgif { extern void link(); }
 namespace sp_launch_particles_var { extern void link(); }
 namespace sparticle_motion_blur { extern void link(); }
@@ -248,9 +246,7 @@ Rng gRng;
 PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2CLinkCallbacks = {
     //////// JAK 1
     {{"font", {jak1::draw_string::link}},
-     {"sparticle-launcher",
-      {jak1::sp_init_fields::link, jak1::particle_adgif::link,
-       jak1::sp_launch_particles_var::link}},
+     {"sparticle-launcher", {jak1::particle_adgif::link, jak1::sp_launch_particles_var::link}},
      {"sparticle", {jak1::sp_process_block_3d::link, jak1::sp_process_block_2d::link}},
      {"texture", {jak1::adgif_shader_texture_with_update::link}},
      {"sky-tng",
@@ -326,7 +322,7 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak2::render_boundary_quad::link, jak2::render_boundary_tri::link, jak2::set_sky_vf27::link,
        jak2::draw_boundary_polygon::link}},
      {"sparticle-launcher",
-      {jak2::sp_init_fields::link, jak2::particle_adgif::link, jak2::sp_launch_particles_var::link,
+      {jak2::particle_adgif::link, jak2::sp_launch_particles_var::link,
        jak2::sparticle_motion_blur::link}},
      {"sparticle", {jak2::sp_process_block_2d::link, jak2::sp_process_block_3d::link}},
      {"sky-tng",
