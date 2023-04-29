@@ -304,13 +304,7 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
     auto p = scoped_prof("overlord-wait-for-init");
     while (complete == false) {
       prof().root_event();
-      auto pp = scoped_prof("iop-iter");
       iop.kernel.dispatch();
-      // auto wait_duration = iop.kernel.dispatch();
-      {
-        // auto ppp = scoped_prof("iop-kernel-wait");
-        // iop.wait_run_iop(wait_duration);
-      }
     }
   }
 
@@ -322,11 +316,9 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
     prof().root_event();
     // The IOP scheduler informs us of how many microseconds are left until it has something to do.
     // So we can wait for that long or until something else needs it to wake up.
-    auto pp = scoped_prof("iop-iter");
     auto wait_duration = iop.kernel.dispatch();
     if (wait_duration &&
         *wait_duration - std::chrono::steady_clock::now() > std::chrono::microseconds(100)) {
-      auto ppp = scoped_prof("iop-kernel-wait");
       iop.wait_run_iop(*wait_duration);
     }
   }
@@ -373,7 +365,6 @@ void dmac_runner(SystemThreadInterface& iface) {
  * GOAL kernel arguments are currently ignored.
  */
 RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const char** argv) {
-  prof().set_enable(true);
   prof().root_event();
   g_argc = argc;
   g_argv = argv;
