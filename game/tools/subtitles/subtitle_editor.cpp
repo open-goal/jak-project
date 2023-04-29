@@ -7,13 +7,14 @@
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
 
+#include "game/runtime.h"
+
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_stdlib.h"
 
 SubtitleEditor::SubtitleEditor() : m_repl(8181) {
   update_subtitle_editor_db();
-  m_subtitle_db = load_subtitle_project();
   m_filter = m_filter_placeholder;
   m_filter_hints = m_filter_placeholder;
 }
@@ -44,8 +45,6 @@ std::string SubtitleEditor::repl_get_process_string(const std::string_view& enti
 
 void SubtitleEditor::repl_play_hint(const std::string_view& hint_name) {
   repl_reset_game();
-  // repl_set_continue_point("village1-hut");
-  // TODO - move into water fountain
   m_repl.eval(
       fmt::format("(level-hint-spawn (text-id zero) \"{}\" (the-as entity #f) *entity-pool* "
                   "(game-task none))",
@@ -122,6 +121,15 @@ bool SubtitleEditor::is_scene_in_current_lang(const std::string& scene_name) {
 
 void SubtitleEditor::draw_window() {
   ImGui::Begin("Subtitle Editor");
+
+  if (!db_loaded) {
+    if (ImGui::Button("Load Subtitles")) {
+      m_subtitle_db = load_subtitle_project(g_game_version);
+      db_loaded = true;
+    }
+    ImGui::End();
+    return;
+  }
 
   if (ImGui::Button("Save Changes")) {
     m_files_saved_successfully = std::make_optional(write_subtitle_db_to_files(m_subtitle_db));
@@ -604,51 +612,54 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
   }
   auto font =
       get_font_bank(parse_text_only_version(m_subtitle_db.m_banks[m_current_language]->file_path));
-  for (size_t i = 0; i < scene.m_lines.size(); i++) {
-    auto& subtitleLine = scene.m_lines.at(i);
-    auto linetext = font->convert_game_to_utf8(subtitleLine.line.c_str());
-    auto linespkr = font->convert_game_to_utf8(subtitleLine.speaker.c_str());
+  int i = 0;
+  for (auto subtitleLine = scene.m_lines.begin(); subtitleLine != scene.m_lines.end();) {
+    auto linetext = font->convert_game_to_utf8(subtitleLine->line.c_str());
+    auto linespkr = font->convert_game_to_utf8(subtitleLine->speaker.c_str());
     std::string summary;
     if (linetext.empty()) {
-      summary = fmt::format("[{}] Clear Screen", subtitleLine.frame);
+      summary = fmt::format("[{}] Clear Screen", subtitleLine->frame);
     } else if (linetext.length() >= 30) {
       summary =
-          fmt::format("[{}] {} - '{}...'", subtitleLine.frame, linespkr, linetext.substr(0, 30));
+          fmt::format("[{}] {} - '{}...'", subtitleLine->frame, linespkr, linetext.substr(0, 30));
     } else {
-      summary = fmt::format("[{}] {} - '{}'", subtitleLine.frame, linespkr, linetext.substr(0, 30));
+      summary =
+          fmt::format("[{}] {} - '{}'", subtitleLine->frame, linespkr, linetext.substr(0, 30));
     }
     if (linetext.empty()) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
-    } else if (subtitleLine.offscreen) {
+    } else if (subtitleLine->offscreen) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_offscreen_text_color);
     }
     if (ImGui::TreeNode(fmt::format("{}", i).c_str(), "%s", summary.c_str())) {
-      if (linetext.empty() || subtitleLine.offscreen) {
+      if (linetext.empty() || subtitleLine->offscreen) {
         ImGui::PopStyleColor();
       }
-      ImGui::InputInt("Starting Frame", &subtitleLine.frame,
+      ImGui::InputInt("Starting Frame", &subtitleLine->frame,
                       ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
       ImGui::InputText("Speaker", &linespkr);
       ImGui::InputText("Text", &linetext);
-      ImGui::Checkbox("Offscreen?", &subtitleLine.offscreen);
-      // TODO - deleting while iterating is a bad pattern, especially with imgui's declarative
-      // style
-      // disabling this for now, it's not working in it's current state.
-      // if (scene.m_lines.size() > 1) {  // prevent creating an empty scene
-      //  ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
-      //  if (ImGui::Button("Remove Line")) {
-      //    scene.m_lines.erase(scene.m_lines.begin() + i);
-      //  }
-      //  ImGui::PopStyleColor();
-      //}
+      ImGui::Checkbox("Offscreen?", &subtitleLine->offscreen);
+      if (scene.m_lines.size() > 1) {  // prevent creating an empty scene
+        ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
+        if (ImGui::Button("Remove")) {
+          subtitleLine = scene.m_lines.erase(subtitleLine);
+          ImGui::PopStyleColor();
+          ImGui::TreePop();
+          continue;
+        }
+        ImGui::PopStyleColor();
+      }
       ImGui::TreePop();
-    } else if (linetext.empty() || subtitleLine.offscreen) {
+    } else if (linetext.empty() || subtitleLine->offscreen) {
       ImGui::PopStyleColor();
     }
     auto newtext = font->convert_utf8_to_game(linetext, true);
     auto newspkr = font->convert_utf8_to_game(linespkr, true);
-    subtitleLine.line = newtext;
-    subtitleLine.speaker = newspkr;
+    subtitleLine->line = newtext;
+    subtitleLine->speaker = newspkr;
+    i++;
+    subtitleLine++;
   }
 }
 
