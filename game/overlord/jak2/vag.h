@@ -10,12 +10,11 @@
 namespace jak2 {
 
 enum VagCmdByte {
-  BYTE1 = 1,   // init to 0 (playing?)
-  PAUSED = 2,  // init to 1 (paused?)
-  BYTE4 = 4,   // streaming?
-  BYTE5 = 5,   // init to 0 (maybe something to do with setting sdsetswitch stuff.
-  BYTE6 = 6,   // init to 0
-  BYTE7_SCANNED = 7,
+  // BYTE1 = 1,   // init to 0 (playing?)
+  // PAUSED = 2,  // init to 1 (paused?)
+  BYTE4 = 4,  // streaming?
+  BYTE5 = 5,  // init to 0 (maybe something to do with setting sdsetswitch stuff.
+  BYTE6 = 6,  // init to 0
   // 8
   // 9
   BYTE10 = 10,  // 10
@@ -24,8 +23,6 @@ enum VagCmdByte {
   // 13
   // 14
   // 15
-  BYTE18 = 18,          // set in spudma if unk_240 set and no stero
-  BYTE19 = 19,          // set in spudma if unk_240 unset and no stero
   BYTE23_NOSTART = 23,  // start??
 };
 
@@ -57,13 +54,13 @@ struct VagCmd {
     u8 status_bytes[24];  // 208
     struct {
       u8 byte0;
-      u8 byte1;
-      u8 byte2;
+      u8 sb_playing;
+      u8 sb_paused;
       u8 byte3;
       u8 byte4;
       u8 byte5;
       u8 byte6;
-      u8 byte7;
+      u8 sb_scanned;
       u8 byte8;
       u8 byte9;
       u8 byte10;
@@ -74,8 +71,8 @@ struct VagCmd {
       u8 byte15;
       u8 byte16;
       u8 byte17;
-      u8 byte18;
-      u8 byte19;
+      u8 sb_odd_buffer_dma_complete;
+      u8 sb_even_buffer_dma_complete;  // set when even buffer's spu dma finishes
       u8 byte20;
       u8 byte21;
       u8 byte22;

@@ -357,7 +357,7 @@ LoadStackEntry* FS_Open(FileRecord* file_record, int offset, OpenMode mode) {
     auto page_size = SpLargeBuffer->page_list->page_size;
 
     // make sure we have enough pages.
-    if (blzo_pages->free_pages <
+    if ((u32)blzo_pages->free_pages <
         ((SpLargeBuffer->blzo_buffer_size_bytes + page_size) - 1) / page_size) {
       printf("IOP: ======================================================================\n");
       page_size = SpLargeBuffer->page_list->page_size;
@@ -415,7 +415,7 @@ LoadStackEntry* FS_Open(FileRecord* file_record, int offset, OpenMode mode) {
   return load_stack_entry;
 }
 
-int DecompressBlock(u8* input, u8* output) {
+int DecompressBlock(u8* /*input*/, u8* output) {
   int size_out = -1;
   int decomp_return_code = -1;
 
@@ -535,7 +535,7 @@ int FS_PageBeginRead(LoadStackEntry* lse, Buffer* buffer) {
     ASSERT_NOT_REACHED_MSG("no blzo for u");
   } else {
     if ((lse->size_after_decompression != 0) &&
-        (lse->size_after_decompression <= lse->read_bytes)) {
+        (lse->size_after_decompression <= (u32)lse->read_bytes)) {
       // _sectors = 0;
       // read past the end already.
       // not entirely sure why this is "in progress"...

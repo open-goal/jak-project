@@ -35,8 +35,6 @@ void EEVagAndVagwad(char* name, VagCmd* cmd) {
     memcpy(name_buff, name, name_len);
   } else {
     memcpy(name_buff, name, 8);
-    // name_buff._0_4_ = *(int*)name;
-    // name_buff._4_4_ = *(int*)((int)name + 4);
   }
   {
     int iVar3 = 0;
@@ -51,8 +49,6 @@ void EEVagAndVagwad(char* name, VagCmd* cmd) {
 LAB_0000cc60:
   cmd->vag_dir_entry = FindVAGFile(name_buff);
   memcpy(name_buff, "VAGWAD  ", 8);
-  // name_buff._0_4_ = 0x57474156;
-  // name_buff._4_4_ = 0x20204441;
   strncpy(name_buff + 8, gLanguage, 4);
   cmd->file_record = (isofs->find_in)(name_buff);
 }
@@ -74,9 +70,6 @@ void QueueVAGStream(VagStrListNode* param_1) {
   } else {
     pcVar3 = param_1->name;
     strcpy(local_20, "           ");
-    //    local_20._0_4_ = 0x20202020;
-    //    local_20._4_4_ = 0x20202020;
-    //    local_20._8_4_ = 0x202020;
     pbVar4 = local_20;
     do {
       bVar1 = *pcVar3;
@@ -97,9 +90,6 @@ void QueueVAGStream(VagStrListNode* param_1) {
     } while (iVar2 < 0xc);
     cmd.vag_dir_entry = FindVAGFile(local_20);
     strcpy(local_20, "VAGWAD     ");
-    //    local_20._0_4_ = 0x57474156;
-    //    local_20._4_4_ = 0x20204441;
-    //    local_20._8_4_ = 0x202020;
     strncpy(local_20 + 8, gLanguage, 3);
     cmd.file_record = (isofs->find_in)(local_20);
     cmd.vol_multiplier = param_1->vol_multiplier;

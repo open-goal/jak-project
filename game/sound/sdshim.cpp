@@ -40,17 +40,15 @@ u32 sceSdGetAddr(u32 entry) {
   return voice->get_nax() << 1;
 }
 
-void sceSdSetSwitch(u32 entry, u32 value) {
+void sceSdSetSwitch(u32 entry, u32 /*value*/) {
   // we can ignore this, only used for vmix
   u32 reg = entry & ~0x3f;
   switch (reg) {
     case 0x1500:
-      printf("key on: %d (%x)\n", entry & 3, entry);
       voice_from_entry(entry)->key_on_and_debug();
       voice_from_entry(entry + 1)->key_on_and_debug();
       break;
     case 0x1600:
-      printf("key OOF: %d (%x)\n", entry & 3, entry);
       voice_from_entry(entry)->key_off();
       break;
   }
@@ -75,7 +73,6 @@ void sceSdSetAddr(u32 entry, u32 value) {
 
   switch (reg) {
     case SD_VA_SSA: {
-      printf("setting ssa for %x (%d) to %d\n", entry, entry & 3, value >> 1);
       voice->set_ssa(value >> 1);
     } break;
     case SD_VA_LSAX: {

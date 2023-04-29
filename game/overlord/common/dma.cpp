@@ -5,7 +5,7 @@
 using namespace iop;
 
 // note that jak 1 and 2 have different implementations, but we make them both instant.
-// jak 2 has a dma semaphore, but we're going to ignore that.
+// jak 2 has an EE dma semaphore, but we're going to ignore that.
 
 /*!
  * Wait for an ongoing DMA transfer to finish.

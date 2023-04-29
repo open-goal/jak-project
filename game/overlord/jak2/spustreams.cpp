@@ -21,7 +21,6 @@ void spusstreams_init_globals() {
 }
 
 int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
-  printf("processing vag data!\n");
   VagCmd* param_1 = (VagCmd*)param_1_in;
   int iVar1;
   int iVar2;
@@ -33,15 +32,15 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
   // undefined4 local_18[2];
 
   if (param_1->status_bytes[BYTE6] != '\0') {
-    printf("ProcessVAG didn't want the data: byte 6 is set\n");
+    // printf("ProcessVAG didn't want the data: byte 6 is set\n");
     return -1;
   }
   if (param_1->status_bytes[BYTE11] != '\0') {
-    printf("ProcessVAG didn't want the data: byte 11 is set\n");
+    // printf("ProcessVAG didn't want the data: byte 11 is set\n");
     return -1;
   }
   if (param_1->unk_260 != 0) {
-    printf("ProcessVAG didn't want the data: unk_260 is set, indicating INVALID data.\n");
+    // printf("ProcessVAG didn't want the data: unk_260 is set, indicating INVALID data.\n");
     param_2->decompressed_size = 0;
     return -1;
   }
@@ -52,13 +51,13 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
   CheckForIsoPageBoundaryCrossing(param_2);
   // added this check
   if (!param_2->page) {
-    printf("ProcessVAG didn't want the data: the buffer has no page (added check)\n");
+    // printf("ProcessVAG didn't want the data: the buffer has no page (added check)\n");
     return -1;
   }
 
   iVar2 = (int)param_2->page->state;
   if ((iVar2 != 6) && (iVar2 != 4)) {
-    printf("ProcessVAG didn't want the data: the buffer isn't full.\n");
+    // printf("ProcessVAG didn't want the data: the buffer isn't full.\n");
     goto LAB_0000fecc;
   }
 
@@ -84,9 +83,9 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
       uVar3 = param_1->unk_248;
       uVar5 = param_1->xfer_size;
       param_1->unk_248 =
-          uVar3 >> 0x18 | (int)uVar3 >> 8 & 0xff00U | (uVar3 & 0xff00) << 8 | uVar3 << 0x18;
+          uVar3 >> 0x18 | ((int)uVar3 >> 8 & 0xff00U) | (uVar3 & 0xff00) << 8 | uVar3 << 0x18;
       param_1->xfer_size =
-          uVar5 >> 0x18 | (int)uVar5 >> 8 & 0xff00U | (uVar5 & 0xff00) << 8 | uVar5 << 0x18;
+          uVar5 >> 0x18 | ((int)uVar5 >> 8 & 0xff00U) | (uVar5 & 0xff00) << 8 | uVar5 << 0x18;
     }
     if (pRVar7 != 0x0) {
       pRVar7->unk_248 = piVar6[4];
@@ -247,9 +246,7 @@ LAB_0000fecc:
   return -1;
 }
 
-int GetVAGStreamPos(VagCmd* param_1)
-
-{
+int GetVAGStreamPos(VagCmd* param_1) {
   bool bVar1;
   u32 uVar2;
   u32 uVar3;
@@ -278,7 +275,7 @@ int GetVAGStreamPos(VagCmd* param_1)
     pRVar7->unk_200 = pRVar7->unk_192;
     return 0;
   }
-  if (((param_1->byte4 == '\0') || (param_1->byte1 == '\0')) || (param_1->byte2 != '\0')) {
+  if (((param_1->byte4 == '\0') || (param_1->sb_playing == '\0')) || (param_1->sb_paused != '\0')) {
     param_1->unk_200 = param_1->unk_180;
     if (pRVar7 == 0x0) {
       return 0;
@@ -292,7 +289,7 @@ int GetVAGStreamPos(VagCmd* param_1)
   }
   // CpuSuspendIntr(local_30);
   uVar9 = param_1->spu_stream_dma_mem_addr;
-  uVar8 = param_1->voice & 0xffffU | 0x2240;
+  uVar8 = (param_1->voice & 0xffffU) | 0x2240;
   do {
     uVar10 = 0;
     do {
@@ -311,7 +308,7 @@ int GetVAGStreamPos(VagCmd* param_1)
     uVar8 = 0;
   } else {
     uVar10 = pRVar7->spu_stream_dma_mem_addr;
-    uVar9 = pRVar7->voice & 0xffffU | 0x2240;
+    uVar9 = (pRVar7->voice & 0xffffU) | 0x2240;
     do {
       uVar2 = 0;
       do {
@@ -395,16 +392,17 @@ int GetVAGStreamPos(VagCmd* param_1)
     // CpuResumeIntr(local_30[0]);
     switch (param_1->unk_236) {
       case 0:
-        if ((((param_1->byte18 == '\0') || (param_1->byte21 == '\0')) ||
-             (pRVar7->byte18 == '\0')) ||
+        if ((((param_1->sb_odd_buffer_dma_complete == '\0') || (param_1->byte21 == '\0')) ||
+             (pRVar7->sb_odd_buffer_dma_complete == '\0')) ||
             (pRVar7->byte21 == '\0'))
           goto switchD_000102c4_caseD_1;
-        param_1->byte18 = '\0';
-        pRVar7->byte18 = '\0';
+        param_1->sb_odd_buffer_dma_complete = '\0';
+        pRVar7->sb_odd_buffer_dma_complete = '\0';
         param_1->unk_236 = 2;
         pRVar7->unk_236 = 2;
       case 2:
-        if ((param_1->byte19 == '\0') || (pRVar7->byte19 == '\0')) {
+        if ((param_1->sb_even_buffer_dma_complete == '\0') ||
+            (pRVar7->sb_even_buffer_dma_complete == '\0')) {
           if ((param_1->byte20 == '\0') && (pRVar7->byte20 == '\0'))
             goto switchD_000102c4_caseD_1;
           uVar4 = 0x2000;
@@ -418,7 +416,8 @@ int GetVAGStreamPos(VagCmd* param_1)
         } else {
           if ((param_1->byte20 == '\0') && (pRVar7->byte20 == '\0')) {
             // CpuSuspendIntr(local_30);
-            sceSdSetAddr(*(u16*)&param_1->voice | 0x2140, param_1->spu_stream_dma_mem_addr + 0x2000);
+            sceSdSetAddr(*(u16*)&param_1->voice | 0x2140,
+                         param_1->spu_stream_dma_mem_addr + 0x2000);
             sceSdSetAddr(*(u16*)&pRVar7->voice | 0x2140, pRVar7->spu_stream_dma_mem_addr + 0x2000);
             param_1->byte15 = '\x01';
             param_1->byte14 = '\0';
@@ -460,20 +459,22 @@ int GetVAGStreamPos(VagCmd* param_1)
         pRVar7->byte13 = '\x01';
         pRVar7->byte14 = '\0';
         pRVar7->byte15 = '\0';
-        param_1->byte19 = '\0';
-        pRVar7->byte19 = '\0';
+        param_1->sb_even_buffer_dma_complete = '\0';
+        pRVar7->sb_even_buffer_dma_complete = '\0';
         iVar6 = 5;
         goto LAB_000106d4;
       case 4:
         uVar4 = param_1->unk_196;
         uVar8 = pRVar7->unk_196;
-        if ((param_1->byte19 == '\0') || (pRVar7->byte19 == '\0'))
+        if ((param_1->sb_even_buffer_dma_complete == '\0') ||
+            (pRVar7->sb_even_buffer_dma_complete == '\0'))
           goto switchD_000102c4_caseD_1;
         RestartVag(param_1, 1, 1);
         iVar6 = 9;
         break;
       case 5:
-        if ((param_1->byte18 == '\0') || (pRVar7->byte18 == '\0')) {
+        if ((param_1->sb_odd_buffer_dma_complete == '\0') ||
+            (pRVar7->sb_odd_buffer_dma_complete == '\0')) {
           if (param_1->byte20 == '\0')
             goto switchD_000102c4_caseD_1;
           uVar4 = 0x4000;
@@ -516,8 +517,8 @@ int GetVAGStreamPos(VagCmd* param_1)
           pRVar7->byte13 = '\x01';
           pRVar7->byte14 = '\0';
           pRVar7->byte15 = '\0';
-          param_1->byte18 = '\0';
-          pRVar7->byte18 = '\0';
+          param_1->sb_odd_buffer_dma_complete = '\0';
+          pRVar7->sb_odd_buffer_dma_complete = '\0';
           iVar6 = 2;
           goto LAB_000106d4;
         }
@@ -529,7 +530,8 @@ int GetVAGStreamPos(VagCmd* param_1)
       case 7:
         uVar8 = param_1->unk_196;
         uVar4 = uVar8;
-        if ((param_1->byte18 == '\0') || (pRVar7->byte18 == '\0'))
+        if ((param_1->sb_odd_buffer_dma_complete == '\0') ||
+            (pRVar7->sb_odd_buffer_dma_complete == '\0'))
           goto switchD_000102c4_caseD_1;
         RestartVag(param_1, 0, 1);
         iVar6 = 8;
@@ -619,12 +621,12 @@ LAB_00010860:
   }
   switch (param_1->unk_236) {
     case 0:
-      if ((param_1->byte18 == '\0') || (param_1->byte21 == '\0'))
+      if ((param_1->sb_odd_buffer_dma_complete == '\0') || (param_1->byte21 == '\0'))
         goto switchD_000108fc_caseD_1;
-      param_1->byte18 = '\0';
+      param_1->sb_odd_buffer_dma_complete = '\0';
       param_1->unk_236 = 2;
     case 2:
-      if (param_1->byte19 == '\0') {
+      if (param_1->sb_even_buffer_dma_complete == '\0') {
         if (param_1->byte20 != '\0') {
           uVar4 = 0x2000;
           param_1->byte17 = '\x01';
@@ -663,16 +665,16 @@ LAB_00010860:
       param_1->byte13 = '\x01';
       param_1->byte14 = '\0';
       param_1->byte15 = '\0';
-      param_1->byte19 = '\0';
+      param_1->sb_even_buffer_dma_complete = '\0';
       iVar6 = 5;
       goto LAB_00010b30;
     case 4:
       uVar4 = param_1->unk_196;
-      if (param_1->byte19 == '\0')
+      if (param_1->sb_even_buffer_dma_complete == '\0')
         goto switchD_000108fc_caseD_1;
       goto LAB_00010a1c;
     case 5:
-      if (param_1->byte18 == '\0') {
+      if (param_1->sb_odd_buffer_dma_complete == '\0') {
         if (param_1->byte20 == '\0')
           goto switchD_000108fc_caseD_1;
         uVar4 = 0x4000;
@@ -701,7 +703,7 @@ LAB_00010860:
         param_1->byte13 = '\x01';
         param_1->byte14 = '\0';
         param_1->byte15 = '\0';
-        param_1->byte18 = '\0';
+        param_1->sb_odd_buffer_dma_complete = '\0';
         iVar6 = 2;
         goto LAB_00010b30;
       }
@@ -709,7 +711,7 @@ LAB_00010860:
       break;
     case 7:
       uVar4 = param_1->unk_196;
-      if (param_1->byte18 == '\0')
+      if (param_1->sb_odd_buffer_dma_complete == '\0')
         goto switchD_000108fc_caseD_1;
       break;
     case 8:
@@ -770,10 +772,10 @@ int CheckVAGStreamProgress(VagCmd* param_1) {
   if (param_1->unk_260 != 0) {
     return 0;
   }
-  if (param_1->byte1 == '\0') {
+  if (param_1->sb_playing == '\0') {
     return 1;
   }
-  if (param_1->byte2 != '\0') {
+  if (param_1->sb_paused != '\0') {
     return 1;
   }
   uVar2 = param_1->unk_264;
@@ -805,7 +807,7 @@ int CheckVAGStreamProgress(VagCmd* param_1) {
   } else {
   LAB_00010d58:
     uVar1 = 1;
-    if ((((param_1->byte1 != '\0') && (uVar1 = 1, (param_1->header).unk_24 == 0)) &&
+    if ((((param_1->sb_playing != '\0') && (uVar1 = 1, (param_1->header).unk_24 == 0)) &&
          param_1->safe_to_change_dma_fields) &&
         (uVar1 = 1, param_1->unk_268 == 0)) {
       if (uVar3 < 0x2000) {
@@ -876,8 +878,8 @@ u32 CheckVagStreamsProgress() {
     // piVar3 = &VagCmds[0].byte9;
     auto* cmd_iter = VagCmds;
     do {
-      // printf("bytes; %d %d %d\n", cmd_iter->byte1 , cmd_iter->byte4, cmd_iter->byte6  );
-      if (((cmd_iter->byte1 != '\0') || ((cmd_iter->byte4 != '\0' && (cmd_iter->byte6 != '\0')))) ||
+      if (((cmd_iter->sb_playing != '\0') ||
+           ((cmd_iter->byte4 != '\0' && (cmd_iter->byte6 != '\0')))) ||
           ((cmd_iter->header.unk_24 == 1 && (cmd_iter->id != 0)))) {
         iVar1 = CheckVAGStreamProgress(pRVar2);
         if (iVar1 == 0) {
@@ -885,9 +887,9 @@ u32 CheckVagStreamsProgress() {
             // CpuSuspendIntr(local_30);
             cmd = cmd_iter->stereo_sibling;
             // piVar3[-8] = '\0';
-            cmd_iter->byte1 = 0;
+            cmd_iter->sb_playing = 0;
             if (cmd != 0x0) {
-              cmd->byte1 = '\0';
+              cmd->sb_playing = '\0';
             }
             if (cmd_iter->unk_136 == 0) {
               PauseVAG(pRVar2, 0);
@@ -902,7 +904,6 @@ u32 CheckVagStreamsProgress() {
               PauseVAG(pRVar2, 0);
               strncpy(VStack200.name, pRVar2->name, 0x30);
               VStack200.id = cmd_iter->id;
-              printf("spustreams removing %s (1)\n", VStack200.name);
               RemoveVagStreamFromList(&VStack200, &PluginStreamsList);
               RemoveVagStreamFromList(&VStack200, &EEPlayList);
               LStack96.id = cmd_iter->id;
@@ -939,9 +940,9 @@ void StopVagStream(VagCmd* param_1, int param_2) {
     // CpuSuspendIntr(local_20);
   }
   cmd = param_1->stereo_sibling;
-  param_1->byte1 = '\0';
+  param_1->sb_playing = '\0';
   if (cmd != 0x0) {
-    cmd->byte1 = '\0';
+    cmd->sb_playing = '\0';
   }
   if (param_1->unk_136 == 0) {
     PauseVAG(param_1, 0);
@@ -955,7 +956,6 @@ void StopVagStream(VagCmd* param_1, int param_2) {
     strncpy(VStack184.name, param_1->name, 0x30);
     VStack184.id = param_1->id;
     RemoveVagStreamFromList(&VStack184, &PluginStreamsList);
-    printf("spustreams removing %s (2)\n", VStack184.name);
     RemoveVagStreamFromList(&VStack184, &EEPlayList);
     LStack80.id = param_1->id;
     LStack80.plugin_id = param_1->plugin_id;
@@ -998,7 +998,7 @@ u32 GetSpuRamAddress(VagCmd* param_1) {
   u32 uVar7;
 
   uVar7 = param_1->spu_stream_dma_mem_addr;
-  uVar6 = param_1->voice & 0xffffU | 0x2240;
+  uVar6 = (param_1->voice & 0xffffU) | 0x2240;
   do {
     uVar5 = 0;
     do {
@@ -1017,7 +1017,8 @@ u32 GetSpuRamAddress(VagCmd* param_1) {
 }
 
 u32 bswap(u32 param_1) {
-  return param_1 >> 0x18 | (int)param_1 >> 8 & 0xff00U | (param_1 & 0xff00) << 8 | param_1 << 0x18;
+  return param_1 >> 0x18 | ((int)param_1 >> 8 & 0xff00U) | (param_1 & 0xff00) << 8 |
+         param_1 << 0x18;
 }
 
 void ProcessStreamData(void) {

@@ -532,7 +532,7 @@ std::string decompile_sparticle_launcher_by_id(const std::vector<LinkedWord>& wo
 
 std::string decompile_sparticle_flags(const std::vector<LinkedWord>& words,
                                       const TypeSystem& ts,
-                                      const std::string& field_name,
+                                      const std::string& /*field_name*/,
                                       const std::string& flag_name) {
   assert_spec_flag_int_no_rand(words, flag_name);
 

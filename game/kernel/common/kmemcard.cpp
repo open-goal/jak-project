@@ -145,7 +145,8 @@ u32 mc_checksum(Ptr<u8> data, s32 size) {
  */
 bool file_is_present(int id, int bank = 0) {
   auto bankname = mc_get_filename(g_game_version, 4 + id * 2 + bank);
-  if (!fs::exists(bankname) || int(fs::file_size(bankname)) < mc_get_total_bank_size(g_game_version)) {
+  if (!fs::exists(bankname) ||
+      int(fs::file_size(bankname)) < mc_get_total_bank_size(g_game_version)) {
     // file doesn't exist, or size is bad. we do not want to open files that will crash on read!
     return false;
   }

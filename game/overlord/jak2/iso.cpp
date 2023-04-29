@@ -51,7 +51,11 @@ CmdDgo sLoadDgo;  // renamed from scmd to sLoadDGO in Jak 2
 static RPC_Dgo_Cmd sRPCBuff[1];
 VagDir gVagDir;
 
+/// The main buffer used for reading data and doing blzo decompression.
+LargeBuffer* SpLargeBuffer = nullptr;
+
 void iso_init_globals() {
+  isofs = nullptr;
   iso_init_flag = 0;
   iso_mbx = 0;
   dgo_mbx = 0;
@@ -62,11 +66,18 @@ void iso_init_globals() {
   play_thread = 0;
   ext_pause = 0;
   ext_resume = 0;
+  memset(&sLoadDgo, 0, sizeof(sLoadDgo));
+  memset(&gVagDir, 0, sizeof(gVagDir));
+  memset(sRPCBuff, 0, sizeof(RPC_Dgo_Cmd));
+  SpLargeBuffer = nullptr;
 }
 
-/// The main buffer used for reading data and doing blzo decompression.
-LargeBuffer* SpLargeBuffer = nullptr;
+// The "ISO Thread" is responsible managing "messages" - both starting reads for messages that need
+// data, and calling callbacks on messages that have pending data.
 
+/*!
+ * Set up messageboxes/threads for the ISO thread.
+ */
 u32 InitISOFS() {
   isofs = &iso_cd;
   iso_init_flag = 1;
@@ -88,7 +99,6 @@ u32 InitISOFS() {
   mbx_param.attr = 0;
   mbx_param.option = 0;
   dgo_mbx = CreateMbx(&mbx_param);
-  printf("dgo mbx is %d\n", dgo_mbx);
   if (dgo_mbx < 1) {
     printf("IOP: ======================================================================\n");
     printf("IOP: iso InitISOFS: Cannot create DGO mbx\n");
@@ -164,11 +174,6 @@ u32 InitISOFS() {
   FileRecord* vagdir_file = FindISOFile("VAGDIR.AYB");
   if (vagdir_file) {
     LoadISOFileToIOP(vagdir_file, (u8*)&gVagDir, sizeof(gVagDir));
-
-    // massive hack: disable stereo
-    //    for (auto& e : gVagDir.vag) {
-    //      e.flag = 0;
-    //    }
   } else {
     printf("IOP: ======================================================================\n");
     printf("IOP : iso InitISOFS : cannot load VAG directory\n");
@@ -187,181 +192,166 @@ u32 InitISOFS() {
 }
 
 void IsoQueueVagStream(VagCmd* cmd, int param_2) {
-  printf("------ Iso QUEUE VAG STREAM!!!! %s (%d)\n", cmd->name, cmd->id);
-
   int iVar1;
-  VagCmd* puVar3;
-  VagCmd* pRVar2;
-  // VagCmd* pRVar3;
+  VagCmd* new_cmd;
   LoadStackEntry* pLVar5;
-  VagCmd* pVVar8;
-  // VagCmd* pRVar6;
   VagCmd* pVVar7;
-  int iVar7;
-  int iVar8;
-  VagCmd* pVVar11;
+  VagCmd* new_stereo_cmd;
 
   // HACK
   if (!cmd->vag_dir_entry) {
+    printf("IsoQueueVagStream: no entry for %s\n", cmd->name);
     return;
   }
 
   if (param_2 == 1) {
     // CpuSuspendIntr(local_20);
   }
-  pVVar11 = nullptr;
+  new_stereo_cmd = nullptr;
+
+  // allocate/find a vag cmd to hold this stream command. We don't own the incoming command.
   if ((cmd->id == 0) || (((cmd->vag_dir_entry->flag & 1U) != 0 &&
                           (iVar1 = HowManyBelowThisPriority(cmd->priority, 0), iVar1 < 2))))
     goto LAB_000049dc;
-  puVar3 = FindThisVagStream(cmd->name, cmd->id);
-  if (puVar3) {
-    printf("found it already: %s %d\n", puVar3->name, puVar3->id);
-  }
-  if (!puVar3) {
-    puVar3 = SmartAllocVagCmd(cmd);
-    if (!puVar3)
+  new_cmd = FindThisVagStream(cmd->name, cmd->id);
+  if (!new_cmd) {
+    new_cmd = SmartAllocVagCmd(cmd);
+    if (!new_cmd)
       goto LAB_000049dc;
-    printf("allocate smart: %s %d\n", puVar3->name, puVar3->id);
 
-    if ((*(u32*)&puVar3->status_bytes[BYTE4] & 0xffff00) != 0) {
-      IsoStopVagStream(puVar3, 0);
+    if ((*(u32*)&new_cmd->status_bytes[BYTE4] & 0xffff00) != 0) {
+      IsoStopVagStream(new_cmd, 0);
     }
-    //    pRVar3 = cmd;
-    //    pRVar6 = puVar3;
-    //    do {
-    //      pVVar8 = pRVar6;
-    //      pRVar2 = pRVar3;
-    //      iVar1 = (pRVar2->header).unk_4;
-    //      iVar7 = (pRVar2->header).cmd_kind;
-    //      iVar8 = (pRVar2->header).status;
-    //      (pVVar8->header).unk_0 = (pRVar2->header).unk_0;
-    //      (pVVar8->header).unk_4 = iVar1;
-    //      (pVVar8->header).cmd_kind = iVar7;
-    //      (pVVar8->header).status = iVar8;
-    //      pRVar3 = (RealVagCmd*)&(pRVar2->header).mbx_to_reply;
-    //      pRVar6 = (RealVagCmd*)&(pVVar8->header).mbx_to_reply;
-    //    } while (pRVar3 != (RealVagCmd*)&(cmd->header).callback);
-    //    *(int*)pRVar6 = *(int*)pRVar3;
-    // iVar1 = (pRVar2->header).thread_id;
-    //(pVVar8->header).thread_id = iVar1;
-    puVar3->header.unk_0 = cmd->header.unk_0;
-    puVar3->header.unk_4 = cmd->header.unk_4;
-    puVar3->header.cmd_kind = cmd->header.cmd_kind;
-    puVar3->header.status = cmd->header.status;
 
-    puVar3->header.mbx_to_reply = cmd->header.mbx_to_reply;
-    puVar3->header.thread_id = cmd->header.thread_id;
-    puVar3->header.unk_24 = cmd->header.unk_24;
-    puVar3->header.callback_buffer = cmd->header.callback_buffer;
+    // copy data from the other command to us.
+    new_cmd->header.unk_0 = cmd->header.unk_0;
+    new_cmd->header.unk_4 = cmd->header.unk_4;
+    new_cmd->header.cmd_kind = cmd->header.cmd_kind;
+    new_cmd->header.status = cmd->header.status;
 
-    puVar3->header.callback = cmd->header.callback;
-    puVar3->header.lse = cmd->header.lse;
+    new_cmd->header.mbx_to_reply = cmd->header.mbx_to_reply;
+    new_cmd->header.thread_id = cmd->header.thread_id;
+    new_cmd->header.unk_24 = cmd->header.unk_24;
+    new_cmd->header.callback_buffer = cmd->header.callback_buffer;
 
-    puVar3->file_record = cmd->file_record;
-    puVar3->vag_dir_entry = cmd->vag_dir_entry;
-    strncpy(puVar3->name, cmd->name, 0x30);
-    puVar3->unk_196 = cmd->unk_196;
-    puVar3->num_processed_chunks = cmd->num_processed_chunks;
-    puVar3->xfer_size = cmd->xfer_size;
-    puVar3->unk_248 = cmd->unk_248;
-    puVar3->unk_260 = cmd->unk_260;
-    puVar3->unk_264 = cmd->unk_264;
-    puVar3->unk_268 = cmd->unk_268;
-    puVar3->vol_multiplier = cmd->vol_multiplier;
-    puVar3->unk_256_pitch2 = cmd->unk_256_pitch2;
-    puVar3->id = cmd->id;
-    printf("update our stuff now: %s %d\n", puVar3->name, puVar3->id);
+    new_cmd->header.callback = cmd->header.callback;
+    new_cmd->header.lse = cmd->header.lse;
 
-    puVar3->plugin_id = cmd->plugin_id;
-    puVar3->unk_136 = cmd->unk_136;
-    puVar3->unk_176 = cmd->unk_176;
-    puVar3->unk_288 = cmd->unk_288;
-    puVar3->unk_292 = cmd->unk_292;
-    puVar3->unk_296 = cmd->unk_296;
-    puVar3->vec3.x = cmd->vec3.x;
-    puVar3->vec3.y = cmd->vec3.y;
-    puVar3->vec3.z = cmd->vec3.z;
-    InitVAGCmd(puVar3, 1);
-    puVar3->status_bytes[BYTE7_SCANNED] = '\x01';
-    if ((puVar3->vag_dir_entry->flag & 1U) != 0) {
-      pVVar11 = SmartAllocVagCmd(cmd);
-      if (!pVVar11) {
-        puVar3->status_bytes[BYTE7_SCANNED] = '\0';
-        ReleaseMessage(&puVar3->header, 0);
-        RemoveVagCmd(puVar3, 0);
-        FreeVagCmd(puVar3, 0);
-        puVar3 = 0x0;
+    new_cmd->file_record = cmd->file_record;
+    new_cmd->vag_dir_entry = cmd->vag_dir_entry;
+    strncpy(new_cmd->name, cmd->name, 0x30);
+    new_cmd->unk_196 = cmd->unk_196;
+    new_cmd->num_processed_chunks = cmd->num_processed_chunks;
+    new_cmd->xfer_size = cmd->xfer_size;
+    new_cmd->unk_248 = cmd->unk_248;
+    new_cmd->unk_260 = cmd->unk_260;
+    new_cmd->unk_264 = cmd->unk_264;
+    new_cmd->unk_268 = cmd->unk_268;
+    new_cmd->vol_multiplier = cmd->vol_multiplier;
+    new_cmd->unk_256_pitch2 = cmd->unk_256_pitch2;
+    new_cmd->id = cmd->id;
+
+    new_cmd->plugin_id = cmd->plugin_id;
+    new_cmd->unk_136 = cmd->unk_136;
+    new_cmd->unk_176 = cmd->unk_176;
+    new_cmd->unk_288 = cmd->unk_288;
+    new_cmd->unk_292 = cmd->unk_292;
+    new_cmd->unk_296 = cmd->unk_296;
+    new_cmd->vec3.x = cmd->vec3.x;
+    new_cmd->vec3.y = cmd->vec3.y;
+    new_cmd->vec3.z = cmd->vec3.z;
+    InitVAGCmd(new_cmd, 1);
+    new_cmd->sb_scanned = true;
+
+    // check for stereo
+    if ((new_cmd->vag_dir_entry->flag & 1U) != 0) {
+      // try allocating it
+      new_stereo_cmd = SmartAllocVagCmd(cmd);
+      if (!new_stereo_cmd) {
+        // no room for stereo, give up
+        new_cmd->sb_scanned = false;
+        ReleaseMessage(&new_cmd->header, 0);
+        RemoveVagCmd(new_cmd, 0);
+        FreeVagCmd(new_cmd, 0);
+        new_cmd = nullptr;
       } else {
-        if ((*(u32*)&pVVar11->status_bytes[BYTE4] & 0xffff00) != 0) {
-          IsoStopVagStream(pVVar11, 0);
+        // set up stereo command.
+        if ((*(u32*)&new_stereo_cmd->status_bytes[BYTE4] & 0xffff00) != 0) {
+          IsoStopVagStream(new_stereo_cmd, 0);
         }
-        pVVar11->status_bytes[BYTE11] = '\x01';
-        puVar3->stereo_sibling = pVVar11;
-        pVVar11->stereo_sibling = puVar3;
-        strncpy(pVVar11->name, "Stereo", 0x30);
-        pVVar11->id = ~puVar3->id;
-        pVVar11->status_bytes[BYTE7_SCANNED] = '\x01';
-        pVVar11->vag_dir_entry = puVar3->vag_dir_entry;
+        new_stereo_cmd->status_bytes[BYTE11] = true;
+        new_cmd->stereo_sibling = new_stereo_cmd;
+        new_stereo_cmd->stereo_sibling = new_cmd;
+        strncpy(new_stereo_cmd->name, "Stereo", 0x30);
+        new_stereo_cmd->id = ~new_cmd->id;
+        new_stereo_cmd->sb_scanned = true;
+        new_stereo_cmd->vag_dir_entry = new_cmd->vag_dir_entry;
       }
     }
-    if (puVar3 == 0x0)
+    if (new_cmd == nullptr)
       goto LAB_000049dc;
-    iVar1 = QueueMessage(&puVar3->header, 3, "QueueVAGStream", 0);
+
+    // queue the command.
+    iVar1 = QueueMessage(&new_cmd->header, 3, "QueueVAGStream", 0);
     if (iVar1 == 0) {
-      puVar3->status_bytes[BYTE7_SCANNED] = '\0';
-      RemoveVagCmd(puVar3, 0);
-      FreeVagCmd(puVar3, 0);
-      if ((puVar3->vag_dir_entry->flag & 1U) != 0) {
-        pVVar11->status_bytes[BYTE7_SCANNED] = '\0';
-        RemoveVagCmd(pVVar11, 0);
-        FreeVagCmd(pVVar11, 0);
+      // queue failed, give up.
+      new_cmd->sb_scanned = false;
+      RemoveVagCmd(new_cmd, 0);
+      FreeVagCmd(new_cmd, 0);
+      if ((new_cmd->vag_dir_entry->flag & 1U) != 0) {
+        new_stereo_cmd->sb_scanned = false;
+        RemoveVagCmd(new_stereo_cmd, 0);
+        FreeVagCmd(new_stereo_cmd, 0);
       }
-      ReleaseMessage(&puVar3->header, 0);
+      ReleaseMessage(&new_cmd->header, 0);
     } else {
-      if (puVar3->vag_dir_entry == 0x0) {
-        (puVar3->header).lse = (LoadStackEntry*)0x0;
+      // queue succeeded! open the file
+      if (new_cmd->vag_dir_entry == nullptr) {
+        (new_cmd->header).lse = nullptr;
       } else {
-        pLVar5 = (isofs->open_wad)(puVar3->file_record, puVar3->vag_dir_entry->offset);
-        (puVar3->header).lse = pLVar5;
+        pLVar5 = (isofs->open_wad)(new_cmd->file_record, new_cmd->vag_dir_entry->offset);
+        (new_cmd->header).lse = pLVar5;
       }
       if (cmd->unk_288 != 0) {
-        puVar3->status_bytes[BYTE10] = '\x01';
+        new_cmd->status_bytes[BYTE10] = true;
       }
       if (cmd->unk_292 != 0) {
-        puVar3->unk_232 = '\x01';
+        new_cmd->unk_232 = true;
       }
-      puVar3->status_bytes[PAUSED] = '\x01';
-      SetNewVagCmdPri(puVar3, cmd->priority, 0);
-      if (pVVar11 != 0x0) {
-        pVVar11->status_bytes[BYTE7_SCANNED] = '\x01';
-        pVVar11->status_bytes[PAUSED] = '\x01';
-        SetNewVagCmdPri(pVVar11, 10, 0);
+      new_cmd->sb_paused = true;
+
+      // set up name/priority
+      SetNewVagCmdPri(new_cmd, cmd->priority, 0);
+      if (new_stereo_cmd != nullptr) {
+        new_stereo_cmd->sb_scanned = true;
+        new_stereo_cmd->sb_paused = true;
+        SetNewVagCmdPri(new_stereo_cmd, 10, 0);
       }
-      SetVagStreamName(puVar3, 0x30, 0);
-      if (pVVar11 != 0x0) {
-        SetVagStreamName(pVVar11, 0x30, 0);
+      SetVagStreamName(new_cmd, 0x30, 0);
+      if (new_stereo_cmd != nullptr) {
+        SetVagStreamName(new_stereo_cmd, 0x30, 0);
       }
-      (puVar3->header).status = -1;
-      (puVar3->header).callback = ProcessVAGData;
+
+      // set up buffer
+      (new_cmd->header).status = -1;
+      (new_cmd->header).callback = ProcessVAGData;
     }
-    if (puVar3 == 0x0)
+    if (new_cmd == nullptr)
       goto LAB_000049dc;
   }
-  pLVar5 = (puVar3->header).lse;
-  pVVar7 = puVar3->stereo_sibling;
-  puVar3->unk_188 = 0;
-  puVar3->unk_180 = 0;
-  puVar3->unk_184 = 0;
-  puVar3->unk_192 = 0;
-  printf("check for 6 1: %p\n", pLVar5);
-  // puVar3->status_bytes[BYTE6] = '\x01'; // HAKC
+  pLVar5 = (new_cmd->header).lse;
+  pVVar7 = new_cmd->stereo_sibling;
+  new_cmd->unk_188 = 0;
+  new_cmd->unk_180 = 0;
+  new_cmd->unk_184 = 0;
+  new_cmd->unk_192 = 0;
 
-  if (pLVar5 == (LoadStackEntry*)0x0) {
-    puVar3->status_bytes[BYTE6] = '\x01';
+  if (pLVar5 == nullptr) {
+    new_cmd->status_bytes[BYTE6] = true;
   } else {
-    puVar3->status_bytes[BYTE5] = '\x01';
-    if (pVVar7 != 0x0) {
-      pVVar7->status_bytes[BYTE5] = '\x01';
+    new_cmd->status_bytes[BYTE5] = true;
+    if (pVVar7 != nullptr) {
+      pVVar7->status_bytes[BYTE5] = true;
     }
   }
 LAB_000049dc:
@@ -371,7 +361,6 @@ LAB_000049dc:
 }
 
 void IsoPlayVagStream(VagCmd* param_1, int param_2) {
-  printf("------ Iso Play VAG STREAM!!!! %s\n", param_1->name);
   VagCmd* iVar1;
   LoadStackEntry* pLVar1;
   VagCmd* pVVar1;
@@ -382,17 +371,17 @@ void IsoPlayVagStream(VagCmd* param_1, int param_2) {
   }
   pRVar2 = param_1->stereo_sibling;
   iVar1 = FindThisVagStream(param_1->name, param_1->id);
-  if (iVar1 != 0x0) {
-    if (iVar1->status_bytes[BYTE4] == '\0') {
+  if (iVar1 != nullptr) {
+    if (iVar1->status_bytes[BYTE4] == false) {
       iVar1->vol_multiplier = param_1->vol_multiplier;
-      if (iVar1->status_bytes[PAUSED] != '\0') {
+      if (iVar1->sb_paused != false) {
         if (ext_pause != 0) {
           ext_resume = 1;
         }
-        if (iVar1->status_bytes[BYTE1] == '\0') {
-          iVar1->status_bytes[PAUSED] = '\0';
-          if (pRVar2 != 0x0) {
-            pRVar2->status_bytes[PAUSED] = '\0';
+        if (iVar1->sb_playing == false) {
+          iVar1->sb_paused = false;
+          if (pRVar2 != nullptr) {
+            pRVar2->sb_paused = false;
           }
         } else {
           UnPauseVAG(iVar1, 0);
@@ -401,14 +390,14 @@ void IsoPlayVagStream(VagCmd* param_1, int param_2) {
           SetNewVagCmdPri(param_1, 7, 0);
         }
       }
-      iVar1->status_bytes[BYTE4] = '\x01';
-      if (pRVar2 != 0x0) {
-        pRVar2->status_bytes[BYTE4] = '\x01';
+      iVar1->status_bytes[BYTE4] = true;
+      if (pRVar2 != nullptr) {
+        pRVar2->status_bytes[BYTE4] = true;
       }
     } else {
-      iVar1 = 0x0;
+      iVar1 = nullptr;
     }
-    if (iVar1 != 0x0) {
+    if (iVar1 != nullptr) {
       pLVar1 = (iVar1->header).lse;
       pVVar1 = iVar1->stereo_sibling;
       iVar1->unk_188 = 0;
@@ -416,12 +405,12 @@ void IsoPlayVagStream(VagCmd* param_1, int param_2) {
       iVar1->unk_184 = 0;
       iVar1->unk_192 = 0;
 
-      if (pLVar1 == (LoadStackEntry*)0x0) {
-        iVar1->status_bytes[BYTE6] = '\x01';
+      if (pLVar1 == nullptr) {
+        iVar1->status_bytes[BYTE6] = true;
       } else {
-        iVar1->status_bytes[BYTE5] = '\x01';
-        if (pVVar1 != 0x0) {
-          pVVar1->status_bytes[BYTE5] = '\x01';
+        iVar1->status_bytes[BYTE5] = true;
+        if (pVVar1 != nullptr) {
+          pVVar1->status_bytes[BYTE5] = true;
         }
       }
     }
@@ -436,38 +425,25 @@ u32 IsoThreadCounter = 0;
 
 u32 ISOThread() {
   bool bVar1;
-  // IsoCd *pIVar2;
   CmdLoadSingleIop* inasdf;
   Buffer* pBVar3;
   int iVar4;
   LoadStackEntry* pLVar5;
   Page* pages;
-  // code *pcVar6;
   VagCmd* pRVar7;
   Buffer* pBVar8;
   Buffer* pBVar9;
   VagCmd* pRVar10;
   int iVar11;
   FileRecord* pFVar12;
-  // undefined4 uVar13;
   VagStrListNode* pLVar14;
-  // char* pcVar15;
   CmdLoadSingleIop* local_30;
 
-  int pri = 0;
-  int i;
-  // undefined4 local_2c;
-
-  printf("------- ISOThread starting up\n");
-  printf("InitBuffer\n");
   InitBuffers();
-  printf("InitVagCmds\n");
   InitVagCmds();
-  printf("InitSpuStreamsThread\n");
   InitSpuStreamsThread();
 
-  printf("init driver\n");
-  pBVar3 = AllocateBuffer(1, 0x0, 1);
+  pBVar3 = AllocateBuffer(1, nullptr, 1);
   iVar4 = (isofs->init)(/*pBVar3->unk_12*/);
   if (iVar4 == 0) {
     iso_init_flag = 0;
@@ -475,7 +451,6 @@ u32 ISOThread() {
   SendMbx(sync_mbx, &_not_on_stack_sync);
   FreeBuffer(pBVar3, 1);
 
-  printf("ISOThread loop starting.\n");
   do {
     spu_dma_hack();
 
@@ -490,11 +465,10 @@ u32 ISOThread() {
 
     if (iVar4 == 0) {
       iVar4 = (local_30->header).cmd_kind;
-      // printf("isothread processing %x\n", iVar4);
-      (local_30->header).callback_buffer = (Buffer*)0x0;
+      (local_30->header).callback_buffer = (Buffer*)nullptr;
       (local_30->header).unk_24 = 1;
       (local_30->header).callback = NullCallback;
-      (local_30->header).lse = (LoadStackEntry*)0x0;
+      (local_30->header).lse = (LoadStackEntry*)nullptr;
       if (iVar4 - 0x100U < 3) {
         iVar4 = QueueMessage(&local_30->header, 2, "LoadSingle", 1);
         if (iVar4 != 0) {
@@ -507,7 +481,7 @@ u32 ISOThread() {
           }
           pLVar5 = (isofs->open)(pFVar12, iVar4, OpenMode::KNOWN_NOT_BLZO);
           (inasdf->header).lse = pLVar5;
-          if ((inasdf->header).lse == (LoadStackEntry*)0x0) {
+          if ((inasdf->header).lse == (LoadStackEntry*)nullptr) {
             (inasdf->header).status = 6;
             UnqueueMessage(&inasdf->header, 1);
           LAB_00005120:
@@ -544,7 +518,7 @@ u32 ISOThread() {
         if (iVar4 != 0) {
           pLVar5 = (LoadStackEntry*)(isofs->open)(in_dgo->fr, -1, OpenMode::MODE1);
           (in_dgo->header).lse = pLVar5;
-          if (pLVar5 != (LoadStackEntry*)0x0) {
+          if (pLVar5 != (LoadStackEntry*)nullptr) {
             in_dgo->dgo_state = DgoState::Init;
             (in_dgo->header).callback = RunDGOStateMachine;
             goto LAB_00004e50;
@@ -557,7 +531,7 @@ u32 ISOThread() {
           gSoundInUse = gSoundInUse + 1;
           if (gSoundEnable != 0) {
             pages = (Page*)AllocPages(SpMemoryBuffers, 1);
-            if (pages == (Page*)0x0) {
+            if (pages == (Page*)nullptr) {
             LAB_00004f28:
               SendMbx(iso_mbx, inasdf);
             } else {
@@ -595,13 +569,13 @@ u32 ISOThread() {
               SetVagStreamsNoStart(0, 1);
             } else if (iVar4 == 0x405) {
               pRVar7 = FindVagStreamId(in_vag->id);
-              if (pRVar7 != 0x0) {
+              if (pRVar7 != nullptr) {
                 pRVar7->vol_multiplier = in_vag->vol_multiplier;
                 SetVAGVol(pRVar7, 1);
               }
             } else if (iVar4 == 0x406) {
               pRVar7 = FindVagStreamId(in_vag->id);
-              if (pRVar7 != 0x0) {
+              if (pRVar7 != nullptr) {
                 pRVar7->unk_256_pitch2 = in_vag->unk_256_pitch2;
                 SetVAGVol(pRVar7, 1);
               }
@@ -620,7 +594,7 @@ u32 ISOThread() {
           gSoundInUse = gSoundInUse + 1;
           if (gSoundEnable != 0) {
             pages = (Page*)AllocPages(SpMemoryBuffers, 1);
-            if (pages == (Page*)0x0)
+            if (pages == (Page*)nullptr)
               goto LAB_00004f28;
             SetBufferMem(pages->buffer, SpMemoryBuffers->page_size);
             iVar4 = inasdf->offset;
@@ -637,33 +611,13 @@ u32 ISOThread() {
     }
 
   LAB_00005144:
-    pBVar3 = (Buffer*)0x0;
-    pri = 0;
-
-    //    for (auto& p : gPriStack) {
-    //      if (p.count) {
-    //        printf("pri: %d %d\n", pri, p.count);
-    //        for (i = 0; i < p.count; i++) {
-    //          printf("  got %x (%s)\n", p.entries[i]->cmd_kind, p.names[i].c_str());
-    //          printf(" b0: %p\n", p.entries[i]->callback_buffer);
-    //          if (p.entries[i]->callback_buffer) {
-    //            printf(" b1: %p\n", p.entries[i]->callback_buffer->next);
-    //          }
-    //          printf("lse %p, status %d unk24 %d\n", p.entries[i]->lse, p.entries[i]->status,
-    //                 p.entries[i]->unk_24);
-    //        }
-    //      }
-    //      pri++;
-    //    }
-
+    pBVar3 = (Buffer*)nullptr;
     pRVar7 = (VagCmd*)GetMessage();
 
-    if (pRVar7 == 0x0) {
+    if (pRVar7 == nullptr) {
     LAB_00005208:;
       // (isofs->poll_drive)();
     } else {
-      // printf("isothread processing %x\n", pRVar7->header.cmd_kind);
-
       u32 uVar13 = 1;
       if ((pRVar7->header).callback == ProcessVAGData) {
         if (pRVar7->xfer_size != 0) {
@@ -673,7 +627,7 @@ u32 ISOThread() {
         }
         // no idea what happens here.. i think this is a bug and the callback_buffer == 0 should
         // flip.
-        if (((pRVar7->header).callback_buffer == (Buffer*)0x0) &&
+        if (((pRVar7->header).callback_buffer == (Buffer*)nullptr) &&
             (uVar13 = 2, /*DAT_00000008 == 0*/ true))
           goto LAB_000051b0;
         if (pRVar7->xfer_size != 0)
@@ -682,42 +636,42 @@ u32 ISOThread() {
       LAB_000051b0:
         pBVar3 = AllocateBuffer(uVar13, pRVar7, 1);
       }
-      if (pBVar3 == (Buffer*)0x0) {
+      if (pBVar3 == (Buffer*)nullptr) {
       LAB_000051fc:
-        pRVar7 = 0x0;
+        pRVar7 = nullptr;
       } else {
         iVar4 = (isofs->page_begin_read)((pRVar7->header).lse, pBVar3);
         (pRVar7->header).status = iVar4;
         if (iVar4 != -1) {
           FreeBuffer(pBVar3, 1);
-          pBVar3 = (Buffer*)0x0;
+          pBVar3 = (Buffer*)nullptr;
           goto LAB_000051fc;
         }
       }
-      if (pRVar7 == 0x0)
+      if (pRVar7 == nullptr)
         goto LAB_00005208;
     }
     ProcessMessageData();
-    if (pBVar3 != (Buffer*)0x0) {
+    if (pBVar3 != (Buffer*)nullptr) {
       iVar4 = (isofs->sync_read)(/*pBVar3*/);
       if (iVar4 == 8) {
         FreeBuffer(pBVar3, 1);
-        pBVar3 = (Buffer*)0x0;
+        pBVar3 = (Buffer*)nullptr;
       } else {
         (pRVar7->header).status = iVar4;
         pBVar3->decomp_buffer = (uint8_t*)pBVar3->unk_12;
         pBVar8 = (pRVar7->header).callback_buffer;
-        if (pBVar8 == (Buffer*)0x0) {
+        if (pBVar8 == (Buffer*)nullptr) {
           (pRVar7->header).callback_buffer = pBVar3;
         } else {
           pBVar9 = pBVar8->next;
-          while (pBVar9 != (Buffer*)0x0) {
+          while (pBVar9 != (Buffer*)nullptr) {
             pBVar8 = pBVar8->next;
             pBVar9 = pBVar8->next;
           }
           pBVar8->next = pBVar3;
         }
-        pBVar3 = (Buffer*)0x0;
+        pBVar3 = (Buffer*)nullptr;
       }
     }
     WaitSema(RequestedStreamsList.sema);
@@ -726,7 +680,7 @@ u32 ISOThread() {
       iVar4 = 0;
       pLVar14 = (VagStrListNode*)NewStreamsList.next;
       do {
-        if (pLVar14->id != 0x0) {
+        if (pLVar14->id != 0) {
           QueueVAGStream(pLVar14);
         }
         pLVar14 = (VagStrListNode*)pLVar14->list.next;
@@ -738,24 +692,21 @@ u32 ISOThread() {
     // pcVar15 = VagCmds[0].name;
     auto* cmd_iter = VagCmds;
     do {
-      if ((((cmd_iter->byte11 == '\0') && (cmd_iter->byte7 == '\0')) && (cmd_iter->id != 0)) ||
-          ((StopPluginStreams == 1 && (cmd_iter->unk_136) != 0x0))) {
+      if ((((cmd_iter->byte11 == false) && (cmd_iter->sb_scanned == false)) &&
+           (cmd_iter->id != 0)) ||
+          ((StopPluginStreams == 1 && (cmd_iter->unk_136) != 0))) {
         // CpuSuspendIntr(&local_2c);
         bVar1 = false;
         if (cmd_iter->id == 0) {
-          if (cmd_iter->name[0] != '\0') {
-            while (pRVar10 = FindVagStreamName(pRVar7->name), pRVar10 != 0x0) {
-              printf("terminate from Isothread 1\n");
-
+          if (cmd_iter->name[0] != false) {
+            while (pRVar10 = FindVagStreamName(pRVar7->name), pRVar10 != nullptr) {
               TerminateVAG(pRVar10, 0);
               bVar1 = true;
             }
           }
         } else {
           pRVar10 = FindThisVagStream(cmd_iter->name, cmd_iter->id);
-          if (pRVar10 != 0x0) {
-            printf("terminate from Isothread 2\n");
-
+          if (pRVar10 != nullptr) {
             TerminateVAG(pRVar10, 0);
             bVar1 = true;
           }
@@ -773,8 +724,17 @@ u32 ISOThread() {
     } while (iVar4 < 4);
     SignalSema(RequestedStreamsList.sema);
     RequestedStreamsList.unk2_init0 = 0;
-    if (pBVar3 == (Buffer*)0x0) {
-      if (!PeekMbx(iso_mbx) && !GetMessage()) {
+    if (pBVar3 == (Buffer*)nullptr) {
+      bool should_sleep = true;
+      if (PeekMbx(iso_mbx)) {
+        should_sleep = false;
+      }
+      auto* msg = GetMessage();
+      if (msg && msg->callback != ProcessVAGData) {
+        should_sleep = false;
+      }
+
+      if (should_sleep) {
         DelayThread(1000);
       }
     }
@@ -791,9 +751,6 @@ int RunDGOStateMachine(CmdHeader* param_1_in, Buffer* param_2) {
   size_t sVar5;
   size_t bytes_left;
   uint8_t* unprocessed_data;
-  //  undefined auStack56[4];
-  //  undefined auStack52[4];
-  //  undefined auStack48[4];
   int return_value;
 
   return_value = -1;
@@ -967,7 +924,7 @@ int RunDGOStateMachine(CmdHeader* param_1_in, Buffer* param_2) {
         return_value = 0;
       LAB_000059b4:
         if ((return_value == 0) || (bytes_left == 0)) {
-          param_2->decomp_buffer = (uint8_t*)0x0;
+          param_2->decomp_buffer = (uint8_t*)nullptr;
           param_2->decompressed_size = 0;
         } else {
           param_2->decomp_buffer = unprocessed_data;
@@ -991,19 +948,18 @@ int RunDGOStateMachine(CmdHeader* param_1_in, Buffer* param_2) {
 
 void LoadDGO(RPC_Dgo_Cmd* param_1) {
   FileRecord* iVar1;
-  int iVar2;
   iVar1 = (isofs->find)(param_1->name);
   if (iVar1 == 0) {
-    printf("overlord couldn't find dgo\n");
+    printf("overlord couldn't find dgo: %s\n", param_1->name);
     param_1->result = 1;
   } else {
     CancelDGO(0);
     sLoadDgo.header.cmd_kind = 0x200;
     sLoadDgo.header.thread_id = 0;
     sLoadDgo.header.mbx_to_reply = dgo_mbx;
-    sLoadDgo.buffer1 = (uint8_t*)param_1->buffer1;
-    sLoadDgo.buffer2 = (uint8_t*)param_1->buffer2;
-    sLoadDgo.buffer_heaptop = (uint8_t*)param_1->buffer_heap_top;
+    sLoadDgo.buffer1 = (uint8_t*)(u64)param_1->buffer1;
+    sLoadDgo.buffer2 = (uint8_t*)(u64)param_1->buffer2;
+    sLoadDgo.buffer_heaptop = (uint8_t*)(u64)param_1->buffer_heap_top;
     sLoadDgo.fr = iVar1;
     SendMbx(iso_mbx, &sLoadDgo);
 
@@ -1028,36 +984,36 @@ void LoadDGO(RPC_Dgo_Cmd* param_1) {
 int CopyData(CmdLoadSingleIop* param_1, Buffer* param_2, int param_3) {
   size_t sVar1;
   Page* pPVar2;
-  uint8_t* __src;
-  size_t __n;
+  uint8_t* src;
+  size_t n;
 
   pPVar2 = param_2->page;
   if (param_2->decompressed_size != 0) {
-    __n = param_1->length_to_copy - param_1->unk_64;
-    if (pPVar2 != (Page*)0x0) {
-      while (0 < (int)__n) {
-        __n = param_1->length_to_copy - param_1->unk_64;
-        if (param_2->decompressed_size < (int)__n) {
-          __n = param_2->decompressed_size;
+    n = param_1->length_to_copy - param_1->unk_64;
+    if (pPVar2 != (Page*)nullptr) {
+      while (0 < (int)n) {
+        n = param_1->length_to_copy - param_1->unk_64;
+        if (param_2->decompressed_size < (int)n) {
+          n = param_2->decompressed_size;
         }
-        __src = param_2->decomp_buffer;
-        sVar1 = (pPVar2->ptr - __src) + 1;
-        if ((int)sVar1 < (int)__n) {
-          __n = sVar1;
+        src = param_2->decomp_buffer;
+        sVar1 = (pPVar2->ptr - src) + 1;
+        if ((int)sVar1 < (int)n) {
+          n = sVar1;
         }
         if (param_3 == 0) {
-          DMA_SendToEE(__src, __n, param_1->ptr);
+          DMA_SendToEE(src, n, param_1->ptr);
         } else if (param_3 == 1) {
-          memcpy(param_1->ptr, __src, __n);
+          memcpy(param_1->ptr, src, n);
         }
-        param_1->ptr = param_1->ptr + __n;
-        param_1->unk_64 = param_1->unk_64 + __n;
-        param_2->decomp_buffer = param_2->decomp_buffer + __n;
-        param_2->decompressed_size = param_2->decompressed_size - __n;
+        param_1->ptr = param_1->ptr + n;
+        param_1->unk_64 = param_1->unk_64 + n;
+        param_2->decomp_buffer = param_2->decomp_buffer + n;
+        param_2->decompressed_size = param_2->decompressed_size - n;
         CheckForIsoPageBoundaryCrossing(param_2);
         pPVar2 = param_2->page;
         if ((u32)param_1->length_to_copy <= (u32)param_1->unk_64) {
-          if (pPVar2 != (Page*)0x0) {
+          if (pPVar2 != (Page*)nullptr) {
             pPVar2->state = PageState::SIX;
             pPVar2 = (Page*)StepTopPage(param_2->plist, pPVar2);
             param_2->page = pPVar2;
@@ -1065,7 +1021,7 @@ int CopyData(CmdLoadSingleIop* param_1, Buffer* param_2, int param_3) {
           }
           break;
         }
-        if (pPVar2 == (Page*)0x0)
+        if (pPVar2 == (Page*)nullptr)
           break;
       }
     }
@@ -1105,8 +1061,8 @@ void IsoStopVagStream(VagCmd* param_1, int param_2) {
   }
   bVar1 = false;
   if (param_1->id == 0) {
-    if (param_1->name[0] != '\0') {
-      while (pRVar2 = FindVagStreamName(param_1->name), pRVar2 != 0x0) {
+    if (param_1->name[0] != false) {
+      while (pRVar2 = FindVagStreamName(param_1->name), pRVar2 != nullptr) {
         printf("terminate from IsoStop 1");
 
         TerminateVAG(pRVar2, 0);
@@ -1115,7 +1071,7 @@ void IsoStopVagStream(VagCmd* param_1, int param_2) {
     }
   } else {
     pRVar2 = FindThisVagStream(param_1->name, param_1->id);
-    if (pRVar2 != 0x0) {
+    if (pRVar2 != nullptr) {
       printf("terminate from IsoStop 2");
       TerminateVAG(pRVar2, 0);
       bVar1 = true;
@@ -1169,19 +1125,13 @@ void* RPC_DGO(unsigned int param_1, void* param_2, int) {
 }
 
 void LoadNextDGO(RPC_Dgo_Cmd* param_1) {
-  // undefined4 uVar1;  //
-  int iVar2;
-  //  undefined auStack32 [8];
-  //  undefined auStack24 [8];
-
   if (sLoadDgo.header.cmd_kind == 0) {
     param_1->result = 1;
   } else {
-    sLoadDgo.buffer_heaptop = (uint8_t*)param_1->buffer_heap_top;
-    sLoadDgo.buffer1 = (uint8_t*)param_1->buffer1;
-    sLoadDgo.buffer2 = (uint8_t*)param_1->buffer2;
-    int a;
-    SendMbx(sync_mbx, nullptr /*&a*/);
+    sLoadDgo.buffer_heaptop = (uint8_t*)(u64)param_1->buffer_heap_top;
+    sLoadDgo.buffer1 = (uint8_t*)(u64)param_1->buffer1;
+    sLoadDgo.buffer2 = (uint8_t*)(u64)param_1->buffer2;
+    SendMbx(sync_mbx, nullptr /*&a*/);  // no idea why they put an address here..
     WaitMbx(dgo_mbx);
 
     if (sLoadDgo.header.status == -1) {
@@ -1200,23 +1150,15 @@ void LoadNextDGO(RPC_Dgo_Cmd* param_1) {
 }
 
 void CancelDGO(RPC_Dgo_Cmd* param_1) {
-  // undefined4 uVar1;
-  int iVar2;
-  // undefined auStack32 [8];
-  // undefined auStack24 [8];
-
   if (sLoadDgo.header.cmd_kind != 0) {
-    printf("--------------- case!\n");
     sLoadDgo.want_abort = 1;
     SendMbx(sync_mbx, nullptr);  // was some stack addr...
     WaitMbx(dgo_mbx);
 
-    if (param_1 != (RPC_Dgo_Cmd*)0x0) {
+    if (param_1 != (RPC_Dgo_Cmd*)nullptr) {
       param_1->result = 3;
     }
     sLoadDgo.header.cmd_kind = 0;
-  } else {
-    printf(" another\n");
   }
 }
 
@@ -1241,12 +1183,12 @@ void SetVagClock(VagCmd* param_1, int param_2) {
   param_1->unk_180 = 0;
   param_1->unk_184 = 0;
   param_1->unk_192 = 0;
-  if (pLVar1 == (LoadStackEntry*)0x0) {
-    param_1->byte6 = '\x01';
+  if (pLVar1 == (LoadStackEntry*)nullptr) {
+    param_1->byte6 = true;
   } else {
-    param_1->byte5 = '\x01';
-    if (param_1->stereo_sibling != (VagCmd*)0x0) {
-      param_1->stereo_sibling->byte5 = '\x01';
+    param_1->byte5 = true;
+    if (param_1->stereo_sibling != (VagCmd*)nullptr) {
+      param_1->stereo_sibling->byte5 = true;
     }
   }
   if (param_2 == 1) {

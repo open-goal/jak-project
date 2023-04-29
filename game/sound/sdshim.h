@@ -30,4 +30,3 @@ void sceSdSetTransIntrHandler(s32 channel, sceSdTransIntrHandler, void* data);
 u32 sceSdVoiceTrans(s32 channel, s32 mode, void* iop_addr, u32 spu_addr, u32 size);
 void sceSdkey_on_jak2_voice(int id);
 void sceSdkey_off_jak2_voice(int id);
-

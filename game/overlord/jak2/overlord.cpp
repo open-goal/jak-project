@@ -25,7 +25,7 @@ s32 SndPlayThread;
  * Entry point for the overlord. This runs InitISOFS, registers the vblank handler, and starts up
  * the threads. It returns and assumes that the IOP kernel runs the threads.
  */
-int start_overlord(int argc, const char* const* argv) {
+int start_overlord(int, const char* const*) {
   sceSifInit();
   sceSifInitRpc(0);
   printf("IOP: =========Startup===(%x)====\n", 0);

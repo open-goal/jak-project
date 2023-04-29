@@ -457,16 +457,6 @@ int VBlank_Handler(void*) {
   int iVar2;
   int iVar3;
   uint8_t uVar4;
-  u32 uVar5;
-  int* piVar6;
-  u32 uVar7;
-  int* status_ptr;
-  int* pos_ptr;
-  int* id_ptr;
-  // EEInfo *local_38;
-  // int local_34;
-  // undefined4 local_30;
-  // undefined4 local_2c;
 
   IopTicks = IopTicks + 1;
   if (gSoundEnable == 0) {
@@ -495,9 +485,6 @@ LAB_00008d9c:
     //      }
     //      dmaid = 0;
     //    }
-    status_ptr = info.stream_status;
-    id_ptr = info.stream_id;
-    pos_ptr = info.stream_position;
 
     for (int i = 0; i < 4; i++) {
       u32 status_bits = 0;
@@ -511,11 +498,11 @@ LAB_00008d9c:
         status_bits |= (1 << 24);
       }
 
-      if (VagCmds[i].byte6 && VagCmds[i].byte2 == 0) {
+      if (VagCmds[i].byte6 && VagCmds[i].sb_paused == 0) {
         VagCmds[i].unk_192 += CalculateVAGPitch(0x400, VagCmds[i].unk_256_pitch2) / gFPS;
       }
 
-      if (VagCmds[i].byte1 == 0 && VagCmds[i].byte5) {
+      if (VagCmds[i].sb_playing == 0 && VagCmds[i].byte5) {
         pos = 0;
       } else {
         pos = VagCmds[i].unk_200;

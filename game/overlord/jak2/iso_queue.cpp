@@ -216,7 +216,7 @@ u32 AllocDataBuffer(u32* param_1, u32 param_2) {
   return uVar3;
 }
 
-Buffer* AllocateBuffer(int param_1, VagCmd* param_2, int param_3) {
+Buffer* AllocateBuffer(int param_1, VagCmd* param_2, int /*param_3*/) {
   PageList** ppPVar1;
   int* piVar2;
   int iVar3;
@@ -267,10 +267,6 @@ Buffer* AllocateBuffer(int param_1, VagCmd* param_2, int param_3) {
       if (iVar4 == 0) {
         ASSERT_NOT_REACHED();
         // trap(0x1c00);
-      }
-      if ((iVar4 == -1) && (iVar3 == -0x80000000)) {
-        // trap(0x1800);
-        ASSERT_NOT_REACHED();
       }
       if (pBVar6 == (Buffer*)0x0) {
         iVar5 = 0;
@@ -330,7 +326,7 @@ LAB_00006a44:
   return pBVar7;
 }
 
-void FreeBuffer(Buffer* param_1, int param_2) {
+void FreeBuffer(Buffer* param_1, int /*param_2*/) {
   Buffer* pBVar1;
   Page* pPVar2;
   int iVar3;
@@ -380,8 +376,6 @@ void ReleaseMessage(CmdHeader* param_1, int param_2) {
   int iVar4;
   int iVar5;
   PriStackEntry* pPVar6;
-  printf("release %x\n", param_1->cmd_kind);
-  // undefined4 local_18 [2];
 
   pBVar1 = param_1->callback_buffer;
   while (pBVar1 != (Buffer*)0x0) {
@@ -612,8 +606,6 @@ void ProcessMessageData() {
 }
 
 void ReturnMessage(CmdHeader* param_1) {
-  // printf("return %x\n", param_1->cmd_kind);
-
   if (param_1->mbx_to_reply == 0) {
     if (param_1->thread_id == 0) {
       FreeVAGCommand((VagCmd*)param_1);
@@ -643,7 +635,7 @@ VagCmd* GetVAGCommand() {
       if (((int)vag_cmd_used >> (uVar2 & 0x1f) & 1U) == 0) {
         vag_cmd_used = vag_cmd_used | 1 << (uVar2 & 0x1f);
         vag_cmd_cnt = vag_cmd_cnt + 1;
-        if (max_vag_cmd_cnt < vag_cmd_cnt) {
+        if ((int)max_vag_cmd_cnt < vag_cmd_cnt) {
           max_vag_cmd_cnt = vag_cmd_cnt;
         }
         SignalSema(sSema);

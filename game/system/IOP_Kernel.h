@@ -4,12 +4,12 @@
 #include <condition_variable>
 #include <list>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <string>
 #include <thread>
 #include <utility>
 #include <vector>
-#include <optional>
 
 #include "common/common_types.h"
 #include "common/util/Assert.h"
@@ -151,9 +151,7 @@ class IOP_Kernel {
     return gotSomething ? KE_OK : KE_MBOX_NOMSG;
   }
 
-  s32 PeekMbx(s32 mbx) {
-    return !mbxs[mbx].empty();
-  }
+  s32 PeekMbx(s32 mbx) { return !mbxs[mbx].empty(); }
 
   /*!
    * Push something into a mbx

@@ -39,7 +39,7 @@ void stream_init_globals() {
 /*!
  * The STR RPC handler.
  */
-void* RPC_STR(unsigned int fno, void* _cmd, int y) {
+void* RPC_STR(unsigned int /*fno*/, void* _cmd, int /*y*/) {
   auto* cmd = (RPC_Str_Cmd_Jak2*)_cmd;
   if (cmd->section < 0) {
     // it's _not_ a stream file. So we just treat it like a normal load.
@@ -150,7 +150,6 @@ void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
     auto cmd_result = cmd_iter->result;
 
     if (cmd_result == 1) {
-      printf("removing everything...\n");
       for (int s = 0; s < 4; s++) {
         if (cmd_iter->names[s].chars[0]) {
           strncpy(list_node.name, cmd_iter->names[s].chars, 0x30);
@@ -241,11 +240,9 @@ void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
         SignalSema(EEStreamsList.sema);
       } else if (cmd_result == 0) {
         iVar5 = 9;
-        printf("  adding to play list...\n");
 
         for (int s = 0; s < 4; s++) {
           if (cmd_iter->names[s].chars[0] && cmd_iter->id[s]) {
-            printf("playing %d %s %d\n", s, cmd_iter->names[s].chars, cmd_iter->id[s]);
             // __src = (char*)((int)cmd_iter->id + iVar10 + -0x10);
             strncpy(list_node.name, cmd_iter->names[s].chars, 0x30);
             list_node.id = cmd_iter->id[s];
@@ -269,9 +266,6 @@ void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
                 iVar4->unk_92 = 0;
                 iVar4->unk_68 = list_node.unk_68;
                 strncpy(iVar4->name, list_node.name, 0x30);
-                printf("NAME: %s\n", iVar4->name);
-                printf("prio: %d\n", iVar4->prio);
-                printf("68: %d\n", iVar4->unk_68);
               }
               SignalSema(EEPlayList.sema);
             }

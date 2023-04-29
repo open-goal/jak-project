@@ -139,7 +139,7 @@ void SetEarTrans(Vec3w* ear_trans0, Vec3w* ear_trans1, Vec3w* cam_trans, s32 cam
     if (cmd->unk_136 == 0x0) {
     LAB_0000c388:
       SetVAGVol(cmd, 1);
-    } else if ((cmd->byte7 == '\0') || (cmd->byte8 != '\0')) {
+    } else if ((cmd->sb_scanned == '\0') || (cmd->byte8 != '\0')) {
       if (cmd->byte20 == '\0') {
         if ((u32)cmd->vol_multiplier < 0x11) {
           cmd->vol_multiplier = 0;

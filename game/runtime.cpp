@@ -248,15 +248,12 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
 
   fake_iso_init_globals();
   jak1::fake_iso_init_globals();
+  jak2::iso_cd_init_globals();
 
-  // iso_api
   jak1::iso_queue_init_globals();
   jak2::iso_queue_init_globals();
 
-  // isocommon
-
   jak2::spusstreams_init_globals();
-  // overlord
   jak1::ramdisk_init_globals();
   sbank_init_globals();
 
@@ -269,7 +266,6 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
 
   jak1::stream_init_globals();
   jak2::stream_init_globals();
-  jak2::iso_cd_init_globals();
   prof().end_event();
   iface.initialization_complete();
 

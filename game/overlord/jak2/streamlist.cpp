@@ -179,9 +179,9 @@ void QueueNewStreamsFromList(List* list) {
       InsertVagStreamInList(pVVar5, &NewStreamsList);
       uVar6 = uVar6 + 1;
     } else {
-      pRVar3->byte7 = '\x01';
+      pRVar3->sb_scanned = '\x01';
       if (pRVar3->stereo_sibling != 0x0) {
-        pRVar3->stereo_sibling->byte7 = '\x01';
+        pRVar3->stereo_sibling->sb_scanned = '\x01';
       }
       if (pVVar5->prio == pRVar3->priority) {
       LAB_0000ef9c:
@@ -242,7 +242,7 @@ joined_r0x0000f00c:
   }
   goto LAB_0000f144;
 code_r0x0000f058:
-  if (((pRVar1->byte1 != '\0') || (pRVar1->byte6 != '\0')) && (pRVar1->byte23 == '\0')) {
+  if (((pRVar1->sb_playing != '\0') || (pRVar1->byte6 != '\0')) && (pRVar1->byte23 == '\0')) {
     IsoPlayVagStream(pRVar1, 1);
     uVar5 = 0;
     uVar6 = param_1->elt_count;
