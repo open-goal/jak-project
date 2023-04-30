@@ -97,9 +97,8 @@ void voice::key_on() {
   m_DecodeBuf.Reset();
   m_CustomLoop = false;
   // Console.WriteLn("SPU[%d]:VOICE[%d] Key On, SSA %08x", m_SPU.m_Id, m_Id, m_SSA);
-  // fmt::print("Key On {} {} {} {:x}\n",(void*)m_sample, m_Volume.left.Get(), m_Volume.right.Get(),
-  // m_ADSR.m_Reg.bits);
 }
+
 void voice::key_off() {
   m_ADSR.Release();
   // fmt::print("Key Off\n");

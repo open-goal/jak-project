@@ -522,7 +522,7 @@ void open_text_project(const std::string& kind,
   });
 }
 
-GameSubtitleDB load_subtitle_project() {
+GameSubtitleDB load_subtitle_project(GameVersion game_version) {
   // Load the subtitle files
   GameSubtitleDB db;
   db.m_subtitle_groups = std::make_unique<GameSubtitleGroups>();
@@ -530,8 +530,9 @@ GameSubtitleDB load_subtitle_project() {
   try {
     goos::Reader reader;
     std::vector<GameTextDefinitionFile> files;
-    std::string subtitle_project =
-        (file_util::get_jak_project_dir() / "game" / "assets" / "game_subtitle.gp").string();
+    std::string subtitle_project = (file_util::get_jak_project_dir() / "game" / "assets" /
+                                    version_to_game_name(game_version) / "game_subtitle.gp")
+                                       .string();
     open_text_project("subtitle", subtitle_project, files);
     for (auto& file : files) {
       if (file.format != GameTextDefinitionFile::Format::GOAL) {

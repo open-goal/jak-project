@@ -13,6 +13,7 @@
 #include "common/util/Assert.h"
 #include "common/util/FontUtils.h"
 #include "common/util/json_util.h"
+#include "common/versions/versions.h"
 
 struct GameTextDefinitionFile {
   enum class Format { GOAL, JSON };
@@ -205,4 +206,4 @@ GameTextVersion parse_text_only_version(const goos::Object& data);
 void open_text_project(const std::string& kind,
                        const std::string& filename,
                        std::vector<GameTextDefinitionFile>& inputs);
-GameSubtitleDB load_subtitle_project();
+GameSubtitleDB load_subtitle_project(GameVersion game_version);

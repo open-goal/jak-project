@@ -1,5 +1,7 @@
 #include "kmachine.h"
 
+#include <random>
+
 #include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
@@ -578,4 +580,9 @@ u64 pc_filter_debug_string(u32 str_ptr, u32 dist_ptr) {
     }
   }
   return s7.offset;
+}
+
+std::mt19937 extra_random_generator;
+u32 pc_rand() {
+  return (u32)extra_random_generator();
 }

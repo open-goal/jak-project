@@ -1,0 +1,171 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type water-control
+(deftype water-control (basic)
+  ((flags             water-flags                :offset-assert   4)
+   (process           process-drawable           :offset-assert   8)
+   (joint-index       int32                      :offset-assert  12)
+   (top-y-offset      float                      :offset-assert  16)
+   (ripple-size       meters                     :offset-assert  20)
+   (enter-water-time  time-frame                 :offset-assert  24)
+   (wade-time         time-frame                 :offset-assert  32)
+   (on-water-time     time-frame                 :offset-assert  40)
+   (enter-swim-time   time-frame                 :offset-assert  48)
+   (swim-time         time-frame                 :offset-assert  56)
+   (base-height       meters                     :offset-assert  64)
+   (wade-height       meters                     :offset-assert  68)
+   (swim-height       meters                     :offset-assert  72)
+   (surface-height    meters                     :offset-assert  76)
+   (bottom-height     meters                     :offset-assert  80)
+   (height            meters                     :offset-assert  84)
+   (height-offset     float            4         :offset-assert  88)
+   (real-ocean-offset meters                     :offset         88)
+   (ocean-offset      meters                     :offset         92)
+   (bob-offset        meters                     :offset         96)
+   (align-offset      meters                     :offset        100)
+   (swim-depth        meters                     :offset-assert 104)
+   (bob               smush-control    :inline   :offset-assert 112)
+   (volume            handle                     :offset-assert 144)
+   (bottom            vector           2 :inline :offset-assert 160)
+   (top               vector           2 :inline :offset-assert 192)
+   (enter-water-pos   vector           :inline   :offset-assert 224)
+   (drip-old-pos      vector           :inline   :offset-assert 240)
+   (drip-joint-index  int32                      :offset-assert 256)
+   (drip-wetness      float                      :offset-assert 260)
+   (drip-time         time-frame                 :offset-assert 264)
+   (drip-speed        float                      :offset-assert 272)
+   (drip-height       meters                     :offset-assert 276)
+   (drip-mult         float                      :offset-assert 280)
+   )
+  :method-count-assert 17
+  :size-assert         #x11c
+  :flag-assert         #x110000011c
+  (:methods
+    (new (symbol type process int float float float) _type_ 0)
+    (water-control-method-9 (_type_) none 9)
+    (water-control-method-10 (_type_) none 10)
+    (start-bobbing! (_type_ float int int) none 11)
+    (distance-from-surface (_type_) float 12)
+    (create-splash (_type_ float vector int vector) none 13)
+    (display-water-marks? (_type_) symbol 14)
+    (water-control-method-15 (_type_) none 15)
+    (water-control-method-16 (_type_) none 16)
+    )
+  )
+
+;; definition for method 3 of type water-control
+(defmethod inspect water-control ((obj water-control))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tflags: #x~X~%" (-> obj flags))
+  (format #t "~Tprocess: ~A~%" (-> obj process))
+  (format #t "~Tjoint-index: ~D~%" (-> obj joint-index))
+  (format #t "~Ttop-y-offset: ~f~%" (-> obj top-y-offset))
+  (format #t "~Tripple-size: (meters ~m)~%" (-> obj ripple-size))
+  (format #t "~Tenter-water-time: ~D~%" (-> obj enter-water-time))
+  (format #t "~Twade-time: ~D~%" (-> obj wade-time))
+  (format #t "~Ton-water-time: ~D~%" (-> obj on-water-time))
+  (format #t "~Tenter-swim-time: ~D~%" (-> obj enter-swim-time))
+  (format #t "~Tswim-time: ~D~%" (-> obj swim-time))
+  (format #t "~Tbase-height: (meters ~m)~%" (-> obj base-height))
+  (format #t "~Twade-height: (meters ~m)~%" (-> obj wade-height))
+  (format #t "~Tswim-height: (meters ~m)~%" (-> obj swim-height))
+  (format #t "~Tsurface-height: (meters ~m)~%" (-> obj surface-height))
+  (format #t "~Tbottom-height: (meters ~m)~%" (-> obj bottom-height))
+  (format #t "~Theight: (meters ~m)~%" (-> obj height))
+  (format #t "~Theight-offset[4] @ #x~X~%" (-> obj height-offset))
+  (format #t "~Treal-ocean-offset: (meters ~m)~%" (-> obj real-ocean-offset))
+  (format #t "~Tocean-offset: (meters ~m)~%" (-> obj ocean-offset))
+  (format #t "~Tbob-offset: (meters ~m)~%" (-> obj bob-offset))
+  (format #t "~Talign-offset: (meters ~m)~%" (-> obj align-offset))
+  (format #t "~Tswim-depth: (meters ~m)~%" (-> obj swim-depth))
+  (format #t "~Tbob: #<smush-control @ #x~X>~%" (-> obj bob))
+  (format #t "~Tvolume: ~D~%" (-> obj volume))
+  (format #t "~Tbottom[2] @ #x~X~%" (-> obj bottom))
+  (format #t "~Ttop[2] @ #x~X~%" (-> obj top))
+  (format #t "~Tenter-water-pos: ~`vector`P~%" (-> obj enter-water-pos))
+  (format #t "~Tdrip-old-pos: ~`vector`P~%" (-> obj drip-old-pos))
+  (format #t "~Tdrip-joint-index: ~D~%" (-> obj drip-joint-index))
+  (format #t "~Tdrip-wetness: ~f~%" (-> obj drip-wetness))
+  (format #t "~Tdrip-time: ~D~%" (-> obj drip-time))
+  (format #t "~Tdrip-speed: ~f~%" (-> obj drip-speed))
+  (format #t "~Tdrip-height: (meters ~m)~%" (-> obj drip-height))
+  (format #t "~Tdrip-mult: ~f~%" (-> obj drip-mult))
+  obj
+  )
+
+;; definition for method 14 of type water-control
+(defmethod display-water-marks? water-control ((obj water-control))
+  (and *display-water-marks* (logtest? (-> obj flags) (water-flags wt00)))
+  )
+
+;; definition for method 0 of type water-control
+(defmethod new water-control ((allocation symbol) (type-to-make type) (arg0 process) (arg1 int) (arg2 float) (arg3 float) (arg4 float))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 process) (the-as process-drawable arg0))
+    (set! (-> v0-0 joint-index) arg1)
+    (set! (-> v0-0 wade-height) arg4)
+    (set! (-> v0-0 swim-height) arg3)
+    (set! (-> v0-0 bottom-height) 32768.0)
+    (set! (-> v0-0 ripple-size) 1638.4)
+    (set! (-> v0-0 volume) (the-as handle #f))
+    (set! (-> v0-0 drip-mult) 1.0)
+    (set! (-> v0-0 top-y-offset) arg2)
+    v0-0
+    )
+  )
+
+;; definition for method 12 of type water-control
+(defmethod distance-from-surface water-control ((obj water-control))
+  (- (-> obj top 0 y) (-> obj height))
+  )
+
+;; definition of type water-vol
+(deftype water-vol (process-drawable)
+  ((water-height  meters       :offset-assert 176)
+   (wade-height   meters       :offset-assert 180)
+   (swim-height   meters       :offset-assert 184)
+   (bottom-height meters       :offset-assert 188)
+   (attack-event  symbol       :offset-assert 192)
+   (target        handle       :offset-assert 200)
+   (flags         water-flags  :offset-assert 208)
+   )
+  :heap-base #x70
+  :method-count-assert 30
+  :size-assert         #xd4
+  :flag-assert         #x1e007000d4
+  (:methods
+    (water-vol-idle () _type_ :state 20)
+    (water-vol-startup () _type_ :state 21)
+    (water-vol-method-22 (_type_) none 22)
+    (reset-root! (_type_) none 23)
+    (set-stack-size! (_type_) none 24)
+    (water-vol-method-25 (_type_) none 25)
+    (update! (_type_) none 26)
+    (on-exit-water (_type_) none 27)
+    (get-ripple-height (_type_ vector) float 28)
+    (init! (_type_) none 29)
+    )
+  )
+
+;; definition for method 3 of type water-vol
+(defmethod inspect water-vol ((obj water-vol))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Twater-height: (meters ~m)~%" (-> obj water-height))
+  (format #t "~T~Twade-height: (meters ~m)~%" (-> obj wade-height))
+  (format #t "~T~Tswim-height: (meters ~m)~%" (-> obj swim-height))
+  (format #t "~T~Tbottom-height: (meters ~m)~%" (-> obj bottom-height))
+  (format #t "~T~Tattack-event: ~A~%" (-> obj attack-event))
+  (format #t "~T~Ttarget: ~D~%" (-> obj target))
+  (format #t "~T~Tflags: #x~X~%" (-> obj flags))
+  obj
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+

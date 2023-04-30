@@ -3254,11 +3254,11 @@ goos::Object DefpartgroupElement::to_form_internal(const Env& env) const {
     }
 
     if (period) {
-      result += fmt::format(" :period {}", period);
+      result += fmt::format(" :period (seconds {})", seconds_to_string(period));
     }
 
     if (length) {
-      result += fmt::format(" :length {}", length);
+      result += fmt::format(" :length (seconds {})", seconds_to_string(length));
     }
 
     if (offset) {
@@ -3315,7 +3315,8 @@ goos::Object DefpartElement::to_form_internal(const Env& env) const {
       // sp-end
       break;
     }
-    item_forms.push_back(decompile_sparticle_field_init(e, env.dts->ts, env.version));
+    item_forms.push_back(decompile_sparticle_field_init(e.data, e.field_id, e.flags, e.sound_spec,
+                                                        e.userdata, env.dts->ts, env.version));
   }
   if (!item_forms.empty()) {
     forms.push_back(pretty_print::to_symbol(":init-specs"));
