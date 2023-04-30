@@ -31,6 +31,7 @@ class Interpreter {
                    const std::shared_ptr<EnvironmentObject>& env,
                    Object* result);
   Arguments get_args(const Object& form, const Object& rest, const ArgumentSpec& spec);
+  Arguments get_args_no_named(const Object& form, const Object& rest, const ArgumentSpec& spec);
   void set_args_in_env(const Object& form,
                        const Arguments& args,
                        const ArgumentSpec& arg_spec,
