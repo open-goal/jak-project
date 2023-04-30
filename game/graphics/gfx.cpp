@@ -251,23 +251,38 @@ void LoadSettings() {
   // TODO - make this game specific as well
   auto controller_settings_filename =
       file_util::get_user_config_dir() / "controller" / "controller-settings.json";
-  if (fs::exists(controller_settings_filename)) {
-    LoadPeripheralSettings(controller_settings_filename);
-    lg::info("Loaded controller configuration file.");
-  } else {
-    SavePeripheralSettings();
+  try {
+    if (fs::exists(controller_settings_filename)) {
+      LoadPeripheralSettings(controller_settings_filename);
+      lg::info("Loaded controller configuration file.");
+    } else {
+      lg::info(
+          "Couldn't find $USER/controller/controller-settings.json creating new controller "
+          "settings "
+          "file.");
+      SavePeripheralSettings();
+    }
+  } catch (std::exception& e) {
     lg::info(
-        "Couldn't find $USER/controller/controller-settings.json creating new controller settings "
-        "file.");
+        "Unable to load $USER/controller/controller-settings.json successfully, re-initializing "
+        "it");
+    SavePeripheralSettings();
   }
+
   // load debug settings
   auto debug_settings_filename =
       file_util::get_user_misc_dir(g_game_version) / "debug-settings.json";
-  if (fs::exists(debug_settings_filename)) {
-    g_debug_settings.load_settings(debug_settings_filename);
-    lg::info("Loaded debug settings file.");
-  } else {
-    lg::info("Couldn't find $USER/misc/debug-settings.json creating new controller settings file.");
+  try {
+    if (fs::exists(debug_settings_filename)) {
+      g_debug_settings.load_settings(debug_settings_filename);
+      lg::info("Loaded debug settings file.");
+    } else {
+      lg::info(
+          "Couldn't find $USER/misc/debug-settings.json creating new controller settings file.");
+      g_debug_settings.save_settings();
+    }
+  } catch (std::exception& e) {
+    lg::info("Unable to load $USER/misc/debug-settings.json successfully, re-initializing it");
     g_debug_settings.save_settings();
   }
 }
