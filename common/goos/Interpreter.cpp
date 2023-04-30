@@ -331,7 +331,9 @@ Arguments Interpreter::get_args(const Object& form, const Object& rest, const Ar
 /*!
  * Same as get_args, but named :key arguments are not parsed.
  */
-Arguments Interpreter::get_args_no_named(const Object& form, const Object& rest, const ArgumentSpec& spec) {
+Arguments Interpreter::get_args_no_named(const Object& form,
+                                         const Object& rest,
+                                         const ArgumentSpec& spec) {
   Arguments args;
 
   // Check expected key args, which should be none
