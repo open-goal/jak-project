@@ -45,7 +45,7 @@ std::string get_string(const goos::Object& x) {
  * Each entry should be (id "line for 1st language" "line for 2nd language" ...)
  * This adds the text line to each of the specified languages.
  */
-void parse_text(const goos::Object& data, GameTextDB& db) {
+void parse_text(const goos::Object& data, GameTextDB& db, const GameTextDefinitionFile& file_info) {
   const GameTextFontBank* font = nullptr;
   std::vector<std::shared_ptr<GameTextBank>> banks;
   std::string possible_group_name;
@@ -186,6 +186,42 @@ void parse_text(const goos::Object& data, GameTextDB& db) {
   });
   if (banks.size() == 0) {
     throw std::runtime_error("At least one language must be set.");
+  }
+}
+
+void parse_text_json(const nlohmann::json& json,
+                     GameTextDB& db,
+                     const GameTextDefinitionFile& file_info) {
+  // Verify we have all data that we need
+  if (!file_info.group_name.has_value()) {
+    throw std::runtime_error(
+        fmt::format("Can't parse {}, did not provide group_name", file_info.file_path));
+  }
+  if (file_info.language_id == -1) {
+    throw std::runtime_error(
+        fmt::format("Can't parse {}, did not provide language_id", file_info.file_path));
+  }
+  if (file_info.text_version.empty()) {
+    throw std::runtime_error(
+        fmt::format("Can't parse {}, did not provide text_version", file_info.file_path));
+  }
+  // Init Settings
+  std::shared_ptr<GameTextBank> bank;
+  if (!db.bank_exists(file_info.group_name.value(), file_info.language_id)) {
+    // database has no lang in this group yet
+    bank = db.add_bank(file_info.group_name.value(),
+                       std::make_shared<GameTextBank>(file_info.language_id));
+  } else {
+    bank = db.bank_by_id(file_info.group_name.value(), file_info.language_id);
+  }
+  const GameTextFontBank* font = get_font_bank(file_info.text_version);
+  // Parse the file
+  for (const auto& [text_id, text_value] : json.items()) {
+    if (!text_value.is_string()) {
+      throw std::runtime_error(fmt::format("Non string provided for text id #x{}", text_id));
+    }
+    auto line = font->convert_utf8_to_game(text_value);
+    bank->set_line(std::stoi(text_id, nullptr, 16), line);
   }
 }
 
@@ -441,10 +477,9 @@ void GameSubtitleGroups::add_scene(const std::string& group_name, const std::str
   }
 }
 
-// TODO - why not just return the inputs instead of passing in an empty one?
 void open_text_project(const std::string& kind,
                        const std::string& filename,
-                       std::vector<std::string>& inputs) {
+                       std::vector<GameTextDefinitionFile>& text_files) {
   goos::Reader reader;
   auto& proj = reader.read_from_file({filename}).as_pair()->cdr.as_pair()->car;
   if (!proj.is_pair() || !proj.as_pair()->car.is_symbol() ||
@@ -454,11 +489,30 @@ void open_text_project(const std::string& kind,
 
   goos::for_each_in_list(proj.as_pair()->cdr, [&](const goos::Object& o) {
     if (o.is_pair() && o.as_pair()->cdr.is_pair()) {
-      auto& action = o.as_pair()->car.as_symbol()->name;
+      auto args = o.as_pair();
+      auto& action = args->car.as_symbol()->name;
+      args = args->cdr.as_pair();
 
       if (action == "file") {
-        auto& in = o.as_pair()->cdr.as_pair()->car.as_string()->data;
-        inputs.push_back(in);
+        auto& file_path = args->car.as_string()->data;
+        auto new_file = GameTextDefinitionFile();
+        new_file.format = GameTextDefinitionFile::Format::GOAL;
+        new_file.file_path = file_path;
+        text_files.push_back(new_file);
+      } else if (action == "file-json") {
+        auto& language_id = args->car.as_int();
+        args = args->cdr.as_pair();
+        auto& file_path = args->car.as_string()->data;
+        args = args->cdr.as_pair();
+        auto& text_version = args->car.as_symbol()->name;
+        args = args->cdr.as_pair();
+        std::optional<std::string> group_name = std::nullopt;
+        // Optional
+        if (!args->car.is_empty_list()) {
+          group_name = args->car.as_string()->data;
+        }
+        text_files.push_back({GameTextDefinitionFile::Format::JSON, file_path, (int)language_id,
+                              text_version, group_name});
       } else {
         throw std::runtime_error(fmt::format("unknown action {} in {} project", action, kind));
       }
@@ -475,14 +529,17 @@ GameSubtitleDB load_subtitle_project(GameVersion game_version) {
   db.m_subtitle_groups->hydrate_from_asset_file();
   try {
     goos::Reader reader;
-    std::vector<std::string> inputs;
+    std::vector<GameTextDefinitionFile> files;
     std::string subtitle_project = (file_util::get_jak_project_dir() / "game" / "assets" /
                                     version_to_game_name(game_version) / "game_subtitle.gp")
                                        .string();
-    open_text_project("subtitle", subtitle_project, inputs);
-    for (auto& filename : inputs) {
-      auto code = reader.read_from_file({filename});
-      parse_subtitle(code, db, filename);
+    open_text_project("subtitle", subtitle_project, files);
+    for (auto& file : files) {
+      if (file.format != GameTextDefinitionFile::Format::GOAL) {
+        continue;  // non-GOAL formats are not supported for subtitles
+      }
+      auto code = reader.read_from_file({file.file_path});
+      parse_subtitle(code, db, file.file_path);
     }
   } catch (std::runtime_error& e) {
     lg::error("error loading subtitle project: {}", e.what());

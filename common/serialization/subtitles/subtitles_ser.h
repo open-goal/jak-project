@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -11,7 +12,17 @@
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/FontUtils.h"
+#include "common/util/json_util.h"
 #include "common/versions/versions.h"
+
+struct GameTextDefinitionFile {
+  enum class Format { GOAL, JSON };
+  Format format;
+  std::string file_path = "";
+  int language_id = -1;
+  std::string text_version = "";
+  std::optional<std::string> group_name = std::nullopt;
+};
 
 /*!
  * The text bank contains all lines (accessed with an ID) for a language.
@@ -183,7 +194,10 @@ class GameSubtitleDB {
 
 // TODO add docstrings
 
-void parse_text(const goos::Object& data, GameTextDB& db);
+void parse_text(const goos::Object& data, GameTextDB& db, const GameTextDefinitionFile& file_info);
+void parse_text_json(const nlohmann::json& json,
+                     GameTextDB& db,
+                     const GameTextDefinitionFile& file_info);
 void parse_subtitle(const goos::Object& data, GameSubtitleDB& db, const std::string& file_path);
 
 GameTextVersion parse_text_only_version(const std::string& filename);
@@ -191,5 +205,5 @@ GameTextVersion parse_text_only_version(const goos::Object& data);
 
 void open_text_project(const std::string& kind,
                        const std::string& filename,
-                       std::vector<std::string>& inputs);
+                       std::vector<GameTextDefinitionFile>& inputs);
 GameSubtitleDB load_subtitle_project(GameVersion game_version);
