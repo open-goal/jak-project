@@ -200,7 +200,7 @@
   (let ((v0-0 (cond
                 ((-> parent-process top-thread)
                  ;; this is just a temporary thread, throw the thread on the bottom of the stack
-                 (the cpu-thread (&+ stack-top (- PROCESS_STACK_SIZE *gtype-basic-offset*)))
+                 (the cpu-thread (&+ stack-top (- PROCESS_STACK_SIZE) *gtype-basic-offset*))
                  )
                 (else
                   ;; this is the main thread, allocate it from the process heap.
@@ -2434,13 +2434,10 @@
 (kmemopen global "process-buffers")
 
 ;; set up the listener process to run functions sent from the REPL.
-(let ((v0-43 (new 'global 'process "listener" 2048)))
-  (set! *listener-process* v0-43)
-  (let ((gp-0 v0-43))
-    (set! (-> gp-0 status) 'ready)
-    (set! (-> gp-0 pid) 1)
-    (set! (-> gp-0 main-thread) (new 'process 'cpu-thread gp-0 'main 256 (&-> *dram-stack* 14336)))
-    )
+(let ((obj (define *listener-process* (new 'global 'process "listener" 2048))))
+  (set! (-> obj status) 'ready)
+  (set! (-> obj pid) 1)
+  (set! (-> obj main-thread) (new 'process 'cpu-thread obj 'main 256 *kernel-dram-stack*))
   )
 
 ;; an always dead process used as a placeholder
