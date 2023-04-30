@@ -329,6 +329,48 @@ Arguments Interpreter::get_args(const Object& form, const Object& rest, const Ar
 }
 
 /*!
+ * Same as get_args, but named :key arguments are not parsed.
+ */
+Arguments Interpreter::get_args_no_named(const Object& form,
+                                         const Object& rest,
+                                         const ArgumentSpec& spec) {
+  Arguments args;
+
+  // Check expected key args, which should be none
+  if (!spec.named.empty()) {
+    throw_eval_error(form, "key arguments were expected in get_args_no_named");
+  }
+
+  // loop over forms in list
+  Object current = rest;
+  while (!current.is_empty_list()) {
+    auto arg = current.as_pair()->car;
+
+    // not a keyword. Add to unnamed or rest, depending on what we expect
+    if (spec.varargs || args.unnamed.size() < spec.unnamed.size()) {
+      args.unnamed.push_back(arg);
+    } else {
+      args.rest.push_back(arg);
+    }
+    current = current.as_pair()->cdr;
+  }
+
+  // Check argument size, if spec defines it
+  if (!spec.varargs) {
+    if (args.unnamed.size() < spec.unnamed.size()) {
+      throw_eval_error(form, "didn't get enough arguments");
+    }
+    ASSERT(args.unnamed.size() == spec.unnamed.size());
+
+    if (!args.rest.empty() && spec.rest.empty()) {
+      throw_eval_error(form, "got too many arguments");
+    }
+  }
+
+  return args;
+}
+
+/*!
  * Evaluate arguments in-place in the given environment.
  * Evaluation order is:
  *  - unnamed, in order of appearance
@@ -768,8 +810,10 @@ Object Interpreter::eval_quote(const Object& form,
                                const Object& rest,
                                const std::shared_ptr<EnvironmentObject>& env) {
   (void)env;
-  auto args = get_args(form, rest, make_varargs());
-  vararg_check(form, args, {{}}, {});
+  auto args = get_args_no_named(form, rest, make_varargs());
+  if (args.unnamed.size() != 1) {
+    throw_eval_error(form, "invalid number of arguments to quote");
+  }
   return args.unnamed.front();
 }
 
