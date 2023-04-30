@@ -7,9 +7,6 @@
 
 ;; DECOMP BEGINS
 
-;; added for PC port: ratio for warp effect interp and size
-(define *underb-ratio* 0.5)
-
 (deftype under-warp (process-drawable)
   ((interp float  :offset-assert 200)
    )
@@ -87,14 +84,11 @@
           (s5-0 (new 'stack-no-clear 'vector))
           (gp-0 (new 'stack-no-clear 'vector))
           (f30-0 4096.0)
-          (ratio (* (-> *pc-settings* aspect-ratio-scale) 0.5))
+          (ratio (- 1.0 (/ 0.5 (-> *pc-settings* aspect-ratio-scale))))
           )
       ;; changed for PC port: resize warp effect based on aspect ratio
-      (set! *underb-ratio* ratio)
-      ;; clamp interp if aspect ratio is too wide, effect becomes too subtle past 0.93 and completely stops at 1.0
-      (set! (-> obj interp) (if (> ratio 0.93) 0.93 ratio))
-      (let ((f0-4 (* 0.00013563369 (tan (* *underb-ratio* (-> *math-camera* fov))) f30-0)))
-        (set-vector! (-> obj root scale) f0-4 f0-4 f0-4 1.0)
+      (let ((f0-4 (* 0.00013563369 (tan (* 0.5 (-> *math-camera* fov))) f30-0)))
+        (set-vector! (-> obj root scale) (* f0-4 (if (-> *pc-settings* use-vis?) 1.0 (-> *pc-settings* aspect-ratio-scale))) f0-4 f0-4 1.0)
         )
       (set! (-> gp-0 quad) (-> (camera-pos) quad))
       (vector-normalize-copy! s5-0 (-> s3-0 vector 2) 1.0)
@@ -127,7 +121,7 @@
     (the-as skeleton-group (art-group-get-by-name *level* "skel-under-warp" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> self interp) *underb-ratio*) ;; changed for PC port
+  (set! (-> self interp) 0.5)
   (ja-channel-push! 2 (seconds 0.3))
   (ja-no-eval :group! (-> self draw art-group data 2) :num! (loop!))
   (let ((gp-2 (-> self skel root-channel 1)))
