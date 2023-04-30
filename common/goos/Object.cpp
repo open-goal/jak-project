@@ -204,7 +204,7 @@ Object build_list(std::vector<Object>&& objects) {
 
   Object result;
   result.type = ObjectType::PAIR;
-  result.heap_obj = head;
+  result.heap_obj = std::move(head);
   return result;
 }
 
