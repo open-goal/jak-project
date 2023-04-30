@@ -198,11 +198,11 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
   VagCmd* pVVar7;
   VagCmd* new_stereo_cmd;
 
-  // HACK
-  if (!cmd->vag_dir_entry) {
-    printf("IsoQueueVagStream: no entry for %s\n", cmd->name);
-    return;
-  }
+  // we added a few null checks on vag_dir_entry.
+  // as far as I can tell, it's "okay" that some animations (like Jak's idle animation)
+  // don't have a corresponding audio. There's checks later on in this function that skip
+  // trying to open the VAG file when this happens, but the stereo/mono checks don't have this
+  // check. So we added them.
 
   if (param_2 == 1) {
     // CpuSuspendIntr(local_20);
@@ -210,8 +210,9 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
   new_stereo_cmd = nullptr;
 
   // allocate/find a vag cmd to hold this stream command. We don't own the incoming command.
-  if ((cmd->id == 0) || (((cmd->vag_dir_entry->flag & 1U) != 0 &&
-                          (iVar1 = HowManyBelowThisPriority(cmd->priority, 0), iVar1 < 2))))
+  if ((cmd->id == 0) ||
+      (((cmd->vag_dir_entry && cmd->vag_dir_entry->flag & 1U) != 0 &&  // added null check
+        (iVar1 = HowManyBelowThisPriority(cmd->priority, 0), iVar1 < 2))))
     goto LAB_000049dc;
   new_cmd = FindThisVagStream(cmd->name, cmd->id);
   if (!new_cmd) {
@@ -264,7 +265,7 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
     new_cmd->sb_scanned = true;
 
     // check for stereo
-    if ((new_cmd->vag_dir_entry->flag & 1U) != 0) {
+    if (cmd->vag_dir_entry && (new_cmd->vag_dir_entry->flag & 1U) != 0) {  // added null check
       // try allocating it
       new_stereo_cmd = SmartAllocVagCmd(cmd);
       if (!new_stereo_cmd) {
@@ -298,7 +299,7 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
       new_cmd->sb_scanned = false;
       RemoveVagCmd(new_cmd, 0);
       FreeVagCmd(new_cmd, 0);
-      if ((new_cmd->vag_dir_entry->flag & 1U) != 0) {
+      if (cmd->vag_dir_entry && (new_cmd->vag_dir_entry->flag & 1U) != 0) {  // added null check
         new_stereo_cmd->sb_scanned = false;
         RemoveVagCmd(new_stereo_cmd, 0);
         FreeVagCmd(new_stereo_cmd, 0);
