@@ -355,6 +355,7 @@ void InitIOP() {
   }
   printf("InitIOP OK\n");
 }
+AutoSplitterBlock gAutoSplitterBlock;
 
 int InitMachine() {
   // heap_start = malloc(0x10);
@@ -615,6 +616,11 @@ void set_fullscreen(u32 symptr, s64 screen) {
   }
 }
 
+void init_autosplit_struct() {
+  gAutoSplitterBlock.pointer_to_symbol =
+      (u64)g_ee_main_mem + (u64)intern_from_c("*autosplit-info-jak2*")->value();
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
 
@@ -626,6 +632,8 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
   make_function_symbol_from_c("__pc-get-tex-remap", (void*)lookup_jak2_texture_dest_offset);
+  make_function_symbol_from_c("pc-get-unix-timestamp", (void*)get_unix_timestamp);
+  make_function_symbol_from_c("pc-init-autosplitter-struct", (void*)init_autosplit_struct);
 
   // pad stuff
   make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);

@@ -86,7 +86,7 @@ Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Objec
   va_check(form, args, {goos::ObjectType::SYMBOL}, {{"files", {true, goos::ObjectType::PAIR}}});
 
   // list of files per text version.
-  std::vector<std::string> inputs;
+  std::vector<GameTextDefinitionFile> inputs;
 
   // what kind of text file?
   const auto kind = symbol_string(args.unnamed.at(0));
