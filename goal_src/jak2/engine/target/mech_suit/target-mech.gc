@@ -5,30 +5,9 @@
 ;; name in dgo: target-mech
 ;; dgos: DRILLMTN, UNB, RUI
 
-(define-extern target-mech-stance (state target))
-(define-extern target-mech-walk (state target))
 (define-extern target-mech-punch-pick (function symbol int :behavior target))
-(define-extern target-mech-punch (state target))
-(define-extern target-mech-falling (state symbol target))
-(define-extern target-mech-jump (state float float surface target))
-(define-extern target-mech-hit-ground (state symbol target))
-(define-extern target-mech-hit (state symbol attack-info target))
-(define-extern target-mech-death (state symbol target))
 (define-extern target-mech-carry-update (function none :behavior target))
 (define-extern target-mech-carry-post (function none :behavior target))
-(define-extern target-mech-carry-pickup (state target))
-(define-extern target-mech-carry-drop (state target))
-(define-extern target-mech-carry-stance (state target))
-(define-extern target-mech-carry-walk (state target))
-(define-extern target-mech-carry-drag (state target))
-(define-extern target-mech-carry-falling (state target))
-(define-extern target-mech-carry-hit-ground (state symbol target))
-(define-extern target-mech-carry-jump (state float float target))
-(define-extern target-mech-carry-throw (state target))
-(define-extern target-mech-get-on (state handle target))
-(define-extern target-mech-get-off (state target))
-(define-extern target-mech-grab (state target))
-(define-extern target-mech-clone-anim (state handle target))
 
 ;; DECOMP BEGINS
 
@@ -532,8 +511,9 @@
     (else
       (case arg2
         (('end-mode)
-         enter-state
-         (process->handle arg0)
+         ;; TODO - https://github.com/open-goal/jak-project/issues/2502 causes a decomp error in `mech-states` if handle arg is added
+         ;; enter-state
+         ;; (process->handle arg0)
          (go target-mech-get-off)
          )
         (('change-mode)
@@ -548,8 +528,9 @@
                 )
               )
              ((= v1-7 'normal)
-              enter-state
-              (process->handle arg0)
+              ;; TODO - https://github.com/open-goal/jak-project/issues/2502 causes a decomp error in `mech-states` if handle arg is added
+              ;; enter-state
+              ;; (process->handle arg0)
               (go target-mech-get-off)
               )
              ((begin (set! a0-18 'falling) (= v1-7 a0-18))
@@ -832,16 +813,13 @@
                    )
           (set! (-> self control last-trans-any-surf quad) (-> self control trans quad))
           (target-timed-invulnerable (seconds 0.1) self 1)
-          (cond
-            ((focus-test? self carry)
-             enter-state
-             (let ((a0-19 (-> *TARGET-bank* mech-carry-jump-height-min))
-                   (a1-8 (-> *TARGET-bank* mech-carry-jump-height-max))
-                   )
-               (go target-mech-carry-jump a0-19 a1-8)
-               )
-             )
-            (else
+          (if (focus-test? self carry)
+              (go
+                target-mech-carry-jump
+                (-> *TARGET-bank* mech-carry-jump-height-min)
+                (-> *TARGET-bank* mech-carry-jump-height-max)
+                #f
+                )
               (go
                 target-mech-jump
                 (-> *TARGET-bank* mech-jump-height-min)
@@ -849,7 +827,6 @@
                 (the-as surface #f)
                 )
               )
-            )
           )
         #f
         )
