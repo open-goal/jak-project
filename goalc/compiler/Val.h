@@ -131,10 +131,11 @@ class SymbolValueVal : public Val {
  */
 class LambdaVal : public Val {
  public:
-  explicit LambdaVal(TypeSpec ts) : Val(std::move(ts)) {}
+  explicit LambdaVal(TypeSpec ts, bool immediate) : Val(std::move(ts)), is_immediate(immediate) {}
   std::string print() const override { return "lambda-" + lambda.debug_name; }
   FunctionEnv* func = nullptr;
   Lambda lambda;
+  bool is_immediate = false;
   RegVal* to_reg(const goos::Object& form, Env* fe) override;
 };
 
