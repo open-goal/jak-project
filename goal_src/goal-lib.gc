@@ -211,14 +211,14 @@
 
 ;; Bind vars in body
 (defmacro let (bindings &rest body)
-  `((lambda :inline-only #t ,(apply first bindings) ,@body)
+  `((lambda :immediate #t ,(apply first bindings) ,@body)
     ,@(apply second bindings)))
 
 ;; Let, but recursive, allowing you to define variables in terms of others.
 (defmacro let* (bindings &rest body)
   (if (null? bindings)
     `(begin ,@body)
-    `((lambda :inline-only #t (,(caar bindings))
+    `((lambda :immediate #t (,(caar bindings))
         (let* ,(cdr bindings) ,@body))
       ,(car (cdar bindings))
       )
@@ -229,7 +229,7 @@
 (defmacro mlet* (bindings &rest body)
   (if (null? bindings)
     `(begin ,@body)
-    `((lambda :inline-only #t (,(caar bindings))
+    `((lambda :immediate #t (,(caar bindings))
         (mlet* ,(cdr bindings) ,@body))
       ,(car (cdar bindings))
       )
@@ -503,7 +503,7 @@
   `(let ((,(car bindings) ,(cadr bindings)))
       (while (not (null? ,(car bindings)))
         ,@body
-        
+
         (set! ,(car bindings) (cdr ,(car bindings)))
         )
       )
