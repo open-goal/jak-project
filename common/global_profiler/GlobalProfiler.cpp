@@ -59,6 +59,10 @@ void GlobalProfiler::instant_event(const char* name) {
   event(name, ProfNode::INSTANT);
 }
 
+void GlobalProfiler::root_event() {
+  instant_event("ROOT");
+}
+
 void GlobalProfiler::begin_event(const char* name) {
   event(name, ProfNode::BEGIN);
 }

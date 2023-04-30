@@ -96,6 +96,12 @@ void IOP_Kernel::WakeupThread(s32 id) {
   threads.at(id).state = IopThread::State::Ready;
 }
 
+void IOP_Kernel::iWakeupThread(s32 id) {
+  ASSERT(id > 0);
+  std::scoped_lock lock(wakeup_mtx);
+  wakeup_queue.push(id);
+}
+
 s32 IOP_Kernel::WaitSema(s32 id) {
   auto& sema = semas.at(id);
   if (sema.count > 0) {
@@ -194,7 +200,8 @@ void IOP_Kernel::updateDelay() {
   }
 }
 
-time_stamp IOP_Kernel::nextWakeup() {
+std::optional<time_stamp> IOP_Kernel::nextWakeup() {
+  bool found_ready = false;
   time_stamp lowest = time_point_cast<microseconds>(steady_clock::now()) + microseconds(1000);
 
   for (auto& t : threads) {
@@ -203,9 +210,17 @@ time_stamp IOP_Kernel::nextWakeup() {
         lowest = t.resumeTime;
       }
     }
+
+    if (t.state == IopThread::State::Ready) {
+      found_ready = true;
+    }
   }
 
-  return lowest;
+  if (found_ready) {
+    return {};
+  } else {
+    return lowest;
+  }
 }
 
 /*!
@@ -242,13 +257,7 @@ void IOP_Kernel::processWakeups() {
 /*!
  * Run the next IOP thread.
  */
-time_stamp IOP_Kernel::dispatch() {
-  // Check vblank interrupt
-  if (vblank_handler != nullptr && vblank_recieved) {
-    vblank_handler(nullptr);
-    vblank_recieved = false;
-  }
-
+std::optional<time_stamp> IOP_Kernel::dispatch() {
   // Update thread states
   updateDelay();
   processWakeups();
@@ -256,9 +265,15 @@ time_stamp IOP_Kernel::dispatch() {
   // Run until all threads are idle
   IopThread* next = schedNext();
   while (next != nullptr) {
+    // Check vblank interrupt
+    if (vblank_handler != nullptr && vblank_recieved) {
+      vblank_handler(nullptr);
+      vblank_recieved = false;
+    }
     // printf("[IOP Kernel] Dispatch %s (%d)\n", next->name.c_str(), next->thID);
     runThread(next);
     updateDelay();
+    processWakeups();
     next = schedNext();
     // printf("[IOP Kernel] back to kernel!\n");
   }
@@ -333,10 +348,7 @@ void IOP_Kernel::sif_rpc(s32 rpcChannel,
   rec->cmd.started = false;
   rec->cmd.finished = false;
 
-  {
-    std::scoped_lock lock(wakeup_mtx);
-    wakeup_queue.push(rec->thread_to_wake);
-  }
+  iWakeupThread(rec->thread_to_wake);
 
   sif_mtx.unlock();
 }
@@ -381,24 +393,5 @@ void IOP_Kernel::rpc_loop(iop::sceSifQueueData* qd) {
     }
 
     SleepThread();
-  }
-}
-
-void IOP_Kernel::read_disc_sectors(u32 sector, u32 sectors, void* buffer) {
-  if (!iso_disc_file) {
-    iso_disc_file = file_util::open_file("./disc.iso", "rb");
-  }
-
-  ASSERT(iso_disc_file);
-  if (fseek(iso_disc_file, sector * 0x800, SEEK_SET)) {
-    ASSERT(false);
-  }
-  auto rv = fread(buffer, sectors * 0x800, 1, iso_disc_file);
-  ASSERT(rv == 1);
-}
-
-IOP_Kernel::~IOP_Kernel() {
-  if (iso_disc_file) {
-    fclose(iso_disc_file);
   }
 }

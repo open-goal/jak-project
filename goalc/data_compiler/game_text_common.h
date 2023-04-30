@@ -9,9 +9,9 @@
 #include "common/util/Assert.h"
 #include "common/util/FontUtils.h"
 
-void compile_game_text(const std::vector<std::string>& filenames,
+void compile_game_text(const std::vector<GameTextDefinitionFile>& filenames,
                        GameTextDB& db,
                        const std::string& output_prefix);
-void compile_game_subtitle(const std::vector<std::string>& filenames,
+void compile_game_subtitle(const std::vector<GameTextDefinitionFile>& filenames,
                            GameSubtitleDB& db,
                            const std::string& output_prefix);
