@@ -157,13 +157,6 @@ set(RUNTIME_SOURCE
         overlord/common/soundcommon.cpp
         overlord/common/srpc.cpp
         overlord/common/ssound.cpp
-        overlord/dma.cpp
-        overlord/fake_iso.cpp
-        overlord/iso_api.cpp
-        overlord/iso_cd.cpp
-        overlord/iso_queue.cpp
-        overlord/iso.cpp
-        overlord/isocommon.cpp
         overlord/jak1/dma.cpp
         overlord/jak1/fake_iso.cpp
         overlord/jak1/iso_api.cpp
@@ -190,13 +183,6 @@ set(RUNTIME_SOURCE
         overlord/jak2/streamlfo.cpp
         overlord/jak2/streamlist.cpp
         overlord/jak2/vag.cpp
-        overlord/overlord.cpp
-        overlord/ramdisk.cpp
-        overlord/sbank.cpp
-        overlord/soundcommon.cpp
-        overlord/srpc.cpp
-        overlord/ssound.cpp
-        overlord/stream.cpp
         runtime.cpp
         sce/deci2.cpp
         sce/iop.cpp

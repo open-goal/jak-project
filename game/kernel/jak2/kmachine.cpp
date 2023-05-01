@@ -613,7 +613,6 @@ void InitMachine_PCPort() {
 
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
   make_function_symbol_from_c("__pc-get-tex-remap", (void*)lookup_jak2_texture_dest_offset);
-  make_function_symbol_from_c("pc-get-unix-timestamp", (void*)get_unix_timestamp);
   make_function_symbol_from_c("pc-init-autosplitter-struct", (void*)init_autosplit_struct);
 
   // discord rich presence

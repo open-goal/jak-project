@@ -79,7 +79,7 @@ u32 Init(GameVersion version) {
       }
       title += fmt::format(" - {} - {}", version_to_game_name_external(g_game_version),
                            build_revision());
-      Display::InitMainDisplay(640, 480, title.c_str(), g_settings, version);
+      Display::InitMainDisplay(640, 480, title.c_str(), g_global_settings, version);
     }
   }
 
