@@ -289,6 +289,27 @@ void Sprite3::render_2d_group0(DmaFollower& dma,
   }
 }
 
+/*!
+ * Run the pre-sprite directrenderer.
+ */
+bool Sprite3::render_direct(DmaFollower& dma,
+                            SharedRenderState* render_state,
+                            ScopedProfilerNode& prof) {
+  m_direct.reset_state();
+  while (dma.current_tag().qwc != 7 && dma.current_tag_offset() != render_state->next_bucket) {
+    auto direct_data = dma.read_and_advance();
+    m_direct.render_vif(direct_data.vif0(), direct_data.vif1(), direct_data.data,
+                        direct_data.size_bytes, render_state, prof);
+  }
+  m_direct.flush_pending(render_state, prof);
+
+  // if sprites are off, after all the directrenderer dma, there is nothing left and we must exit
+  if (dma.current_tag_offset() == render_state->next_bucket) {
+    return true;
+  }
+  return false;
+}
+
 void Sprite3::render_fake_shadow(DmaFollower& dma) {
   // TODO
   // nop + flushe
@@ -391,15 +412,12 @@ void Sprite3::render_jak2(DmaFollower& dma,
     return;
   }
 
+  // Before anything else, some directrenderer DMA might have been sent
   {
-    // Some DirectRenderer DMA is sent before everything else from the progress menu
-    m_direct.reset_state();
-    while (dma.current_tag().qwc != 7) {
-      auto direct_data = dma.read_and_advance();
-      m_direct.render_vif(direct_data.vif0(), direct_data.vif1(), direct_data.data,
-                          direct_data.size_bytes, render_state, prof);
+    auto child = prof.make_scoped_child("direct");
+    if (render_direct(dma, render_state, child)) {
+      return;
     }
-    m_direct.flush_pending(render_state, prof);
   }
 
   // First is the distorter
@@ -475,15 +493,12 @@ void Sprite3::render_jak1(DmaFollower& dma,
     return;
   }
 
+  // Before anything else, some directrenderer DMA might have been sent
   {
-    // Some DirectRenderer DMA is sent before everything else from the progress menu
-    m_direct.reset_state();
-    while (dma.current_tag().qwc != 7) {
-      auto direct_data = dma.read_and_advance();
-      m_direct.render_vif(direct_data.vif0(), direct_data.vif1(), direct_data.data,
-                          direct_data.size_bytes, render_state, prof);
+    auto child = prof.make_scoped_child("direct");
+    if (render_direct(dma, render_state, child)) {
+      return;
     }
-    m_direct.flush_pending(render_state, prof);
   }
 
   // First is the distorter

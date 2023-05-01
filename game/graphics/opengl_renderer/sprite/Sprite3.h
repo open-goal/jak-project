@@ -28,6 +28,7 @@ class Sprite3 : public BucketRenderer {
   void opengl_setup_normal();
   void opengl_setup_distort();
 
+  bool render_direct(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void render_distorter(DmaFollower& dma,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
