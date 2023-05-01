@@ -192,6 +192,7 @@ int main(int argc, char** argv) {
     // run the runtime in a loop so we can reset the game and have it restart cleanly
     lg::info("OpenGOAL Runtime {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
     try {
+      MasterExit = RuntimeExitStatus::RUNNING;
       auto exit_status = exec_runtime(game_options, arg_ptrs.size(), arg_ptrs.data());
       switch (exit_status) {
         case RuntimeExitStatus::EXIT:
