@@ -151,7 +151,7 @@ across the screen. The resolution of the circle is defined by the number of "tur
   (none)
   )
 
-(define sprite-distort-vu1-block (new 'static 'vu-function :length 63 :qlength 32))
+(define sprite-distort-vu1-block (new 'static 'vu-function))
 
 ;; Sets up GS registers, adds a reference to *sprite-distorter-sine-tables*, and loads the VU program.
 (defun sprite-init-distorter ((dma-buff dma-buffer))
@@ -210,6 +210,24 @@ across the screen. The resolution of the circle is defined by the number of "tur
     (set! (-> (the-as (pointer gs-alpha) a1-4) 10) (new 'static 'gs-alpha :b #x1 :d #x1))
     (set! (-> (the-as (pointer gs-reg64) a1-4) 11) (gs-reg64 alpha-1))
     (set! (-> v1-2 base) (&+ a1-4 96))
+    )
+  ;; send current aspect used by the sine tables (PC only)
+  (#when PC_PORT
+    (let ((packet (the-as dma-packet (-> dma-buff base))))
+      (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 1))
+      (set! (-> packet vif0) (new 'static 'vif-tag))
+      (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
+      (&+! (-> dma-buff base) 16)
+      )
+    (let ((aspect-vec (the-as vector (-> dma-buff base))))
+      (set-vector! aspect-vec 
+                   (-> *sprite-distorter-sine-tables* aspx) 
+                   (-> *sprite-distorter-sine-tables* aspy)
+                   0.0
+                   0.0
+                   )
+      (&+! (-> dma-buff base) 16)
+      )
     )
   (let* ((v1-3 dma-buff)
          (a1-6 (the-as object (-> v1-3 base)))
