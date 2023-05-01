@@ -3361,19 +3361,6 @@
   :flag-assert         #x900000010
   )
 
-(deftype dma-gif-packet (structure)
-  ((dma-vif dma-packet :inline :offset-assert 0)
-   (gif     uint64     2       :offset-assert 16 :score -1)
-   ;; added these two
-   (gif0    uint64 :offset 16)
-   (gif1    uint64 :offset 24)
-   (quad    uint128    2       :offset        0)
-   )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
-  )
-
 
 (deftype dma-buffer (basic)
   ((allocated-length int32     :offset-assert 4)
@@ -4307,18 +4294,18 @@
   )
 
 
-; (deftype dma-gif-packet (structure)
-;   ((dma-vif dma-packet :inline :offset-assert 0)
-;    (gif     uint64     2       :offset-assert 16)
-;    ;; added these two
-;    (gif0    gif-tag64 :offset 16 :score 1)
-;    (gif1    gif-tag-regs :offset 24 :score 1)
-;    (quad    uint128    2       :offset        0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x20
-;   :flag-assert         #x900000020
-;   )
+(deftype dma-gif-packet (structure)
+  ((dma-vif dma-packet :inline :offset-assert 0)
+   (gif     uint64     2       :offset-assert 16)
+   ;; added these two
+   (gif0    gif-tag64 :offset 16 :score 1)
+   (gif1    gif-tag-regs :offset 24 :score 1)
+   (quad    uint128    2       :offset        0)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
 
 
 (deftype gif-packet (basic)
@@ -7672,7 +7659,7 @@
     (bigmap-method-19 (_type_) int 19)
     (bigmap-method-20 (_type_) int 20)
     (bigmap-method-21 (_type_ int int) int 21)
-    (bigmap-method-22 (_type_ dma-buffer (pointer uint32) int int int int) none 22)
+    (bigmap-method-22 (_type_ dma-buffer (pointer uint32) int int int gs-psm) none 22)
     (bigmap-method-23 (_type_) none 23)
     (bigmap-method-24 (_type_ dma-buffer) none 24)
     (bigmap-method-25 (_type_ dma-buffer) none 25)
@@ -8145,12 +8132,12 @@
    (color                    vector4w       :inline :offset-assert 160)
    (line-color               uint64                 :offset-assert 176)
    (scan-colors              vector4w 15 :inline    :offset-assert 192) ;; guesss
-   (menu-mode                basic                  :offset-assert 432)
-   (screen-copied            basic                  :offset-assert 436)
-   (vu1-enable-user-menu     uint64                 :offset-assert 440)
+   (menu-mode                symbol                 :offset-assert 432)
+   (screen-copied            symbol                 :offset-assert 436)
+   (vu1-enable-user-menu     vu1-renderer-mask      :offset-assert 440)
    (texture-enable-user-menu uint32                 :offset-assert 448)
    (count-down               uint32                 :offset-assert 452)
-   (horizontal-flip-flag     basic                  :offset-assert 456)
+   (horizontal-flip-flag     symbol                 :offset-assert 456)
    (scan-alpha               float                  :offset-assert 460)
    (scanline                 uint32                 :offset-assert 464)
    (progress-interp          float                  :offset-assert 468)
@@ -24781,10 +24768,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *blit-displays-work* blit-displays-work)
-;; (define-extern blit-disp-slow function)
-;; (define-extern blur-disp function)
-;; (define-extern filter-disp function)
-;; (define-extern hflip-disp function)
+(define-extern blit-disp-slow (function dma-buffer int int int pointer))
+(define-extern blur-disp (function dma-buffer int int int symbol))
+(define-extern filter-disp (function dma-buffer vector symbol))
+(define-extern hflip-disp (function dma-buffer object))
 (define-extern blit-displays (function none))
 (define-extern draw-color-bars (function none))
 (define-extern draw-raw-image (function bucket-id art-group int int level int none))
