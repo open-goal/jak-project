@@ -32,7 +32,6 @@
 
 namespace {
 std::string g_current_render;
-
 }
 
 /*!

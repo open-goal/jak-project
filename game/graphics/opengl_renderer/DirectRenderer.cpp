@@ -9,6 +9,10 @@
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 
+DirectRenderer::ScissorState DirectRenderer::m_scissor;
+
+constexpr PerGameVersion<int> game_height(448, 416);
+
 DirectRenderer::DirectRenderer(const std::string& name, int my_id, int batch_size)
     : BucketRenderer(name, my_id), m_prim_buffer(batch_size) {
   glGenBuffers(1, &m_ogl.vertex_buffer);
@@ -48,7 +52,7 @@ DirectRenderer::DirectRenderer(const std::string& name, int my_id, int batch_siz
 
   glEnableVertexAttribArray(3);
   glVertexAttribIPointer(
-      3,                                 // location 0 in the shader
+      3,                                 // location 3 in the shader
       4,                                 // 3 floats per vert
       GL_UNSIGNED_BYTE,                  // floats
       sizeof(Vertex),                    //
@@ -62,6 +66,15 @@ DirectRenderer::DirectRenderer(const std::string& name, int my_id, int batch_siz
       GL_UNSIGNED_BYTE,                // floats
       sizeof(Vertex),                  //
       (void*)offsetof(Vertex, use_uv)  // offset in array (why is this a pointer...)
+  );
+
+  glEnableVertexAttribArray(5);
+  glVertexAttribPointer(5,                                // location 5 in the shader
+                        4,                                // 4 floats per vert
+                        GL_FLOAT,                         // floats
+                        GL_FALSE,                         // normalized, ignored,
+                        sizeof(Vertex),                   //
+                        (void*)offsetof(Vertex, scissor)  // offset in array
   );
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
@@ -228,6 +241,15 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
   glBufferData(GL_ARRAY_BUFFER, m_prim_buffer.vert_count * sizeof(Vertex),
                m_prim_buffer.vertices.data(), GL_STREAM_DRAW);
+
+  GLint current_shader;
+  GLint viewport_size[4];
+  glGetIntegerv(GL_CURRENT_PROGRAM, &current_shader);
+  glGetIntegerv(GL_VIEWPORT, viewport_size);
+  glUniform1i(glGetUniformLocation(current_shader, "scissor_enable"),
+              m_scissor_enable && !m_offscreen_mode);
+  glUniform4f(glGetUniformLocation(current_shader, "game_sizes"), 512.0f,
+              game_height[render_state->version], viewport_size[2], viewport_size[3]);
 
   int draw_count = 0;
   glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
@@ -703,18 +725,15 @@ void DirectRenderer::handle_ad(const u8* data,
     case GsRegisterAddress::FRAME_1:
       handle_frame(value, render_state, prof);
       break;
-    case GsRegisterAddress::RGBAQ:
-      // shadow scissor does this?
-      {
-        m_prim_building.rgba_reg[0] = data[0];
-        m_prim_building.rgba_reg[1] = data[1];
-        m_prim_building.rgba_reg[2] = data[2];
-        m_prim_building.rgba_reg[3] = data[3];
-        memcpy(&m_prim_building.Q, data + 4, 4);
-      }
-      break;
+    case GsRegisterAddress::RGBAQ: {  // shadow scissor does this?
+      m_prim_building.rgba_reg[0] = data[0];
+      m_prim_building.rgba_reg[1] = data[1];
+      m_prim_building.rgba_reg[2] = data[2];
+      m_prim_building.rgba_reg[3] = data[3];
+      memcpy(&m_prim_building.Q, data + 4, 4);
+    } break;
     case GsRegisterAddress::SCISSOR_1:
-      // fmt::print("ignoring scissor\n");
+      handle_scissor(value);
       break;
     case GsRegisterAddress::XYOFFSET_1:
       ASSERT(render_state->version == GameVersion::Jak2);  // hardcoded jak 2 scissor vals in handle
@@ -1018,6 +1037,9 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
   bool fge = m_prim_gl_state.fogging_enable;
   bool use_uv = m_prim_gl_state.use_uv;
 
+  math::Vector<float, 4> scissor(m_scissor.scax0, m_scissor.scax1, m_scissor.scay0,
+                                 m_scissor.scay1);
+
   switch (m_prim_building.kind) {
     case GsPrim::Kind::SPRITE: {
       if (m_prim_building.building_idx == 2) {
@@ -1042,12 +1064,18 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         auto& corner3_rgba = corner2_rgba;
         auto& corner4_rgba = corner2_rgba;
 
-        m_prim_buffer.push(corner1_rgba, corner1_vert, corner1_stq, 0, tcc, decal, fge, use_uv);
-        m_prim_buffer.push(corner3_rgba, corner3_vert, corner3_stq, 0, tcc, decal, fge, use_uv);
-        m_prim_buffer.push(corner2_rgba, corner2_vert, corner2_stq, 0, tcc, decal, fge, use_uv);
-        m_prim_buffer.push(corner2_rgba, corner2_vert, corner2_stq, 0, tcc, decal, fge, use_uv);
-        m_prim_buffer.push(corner4_rgba, corner4_vert, corner4_stq, 0, tcc, decal, fge, use_uv);
-        m_prim_buffer.push(corner1_rgba, corner1_vert, corner1_stq, 0, tcc, decal, fge, use_uv);
+        m_prim_buffer.push(corner1_rgba, corner1_vert, corner1_stq, scissor, 0, tcc, decal, fge,
+                           use_uv);
+        m_prim_buffer.push(corner3_rgba, corner3_vert, corner3_stq, scissor, 0, tcc, decal, fge,
+                           use_uv);
+        m_prim_buffer.push(corner2_rgba, corner2_vert, corner2_stq, scissor, 0, tcc, decal, fge,
+                           use_uv);
+        m_prim_buffer.push(corner2_rgba, corner2_vert, corner2_stq, scissor, 0, tcc, decal, fge,
+                           use_uv);
+        m_prim_buffer.push(corner4_rgba, corner4_vert, corner4_stq, scissor, 0, tcc, decal, fge,
+                           use_uv);
+        m_prim_buffer.push(corner1_rgba, corner1_vert, corner1_stq, scissor, 0, tcc, decal, fge,
+                           use_uv);
         m_prim_building.building_idx = 0;
       }
     } break;
@@ -1063,7 +1091,8 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         if (advance) {
           for (int i = 0; i < 3; i++) {
             m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                               m_prim_building.building_stq[i], tex_unit, tcc, decal, fge, use_uv);
+                               m_prim_building.building_stq[i], scissor, tex_unit, tcc, decal, fge,
+                               use_uv);
           }
         }
       }
@@ -1075,7 +1104,8 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         m_prim_building.building_idx = 0;
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_stq[i], tex_unit, tcc, decal, fge, use_uv);
+                             m_prim_building.building_stq[i], scissor, tex_unit, tcc, decal, fge,
+                             use_uv);
         }
       }
       break;
@@ -1091,7 +1121,8 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         }
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_stq[i], tex_unit, tcc, decal, fge, use_uv);
+                             m_prim_building.building_stq[i], scissor, tex_unit, tcc, decal, fge,
+                             use_uv);
         }
       }
     } break;
@@ -1116,13 +1147,19 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         math::Vector<u32, 4> di{d.x(), d.y(), d.z(), 0};
 
         // ACB:
-        m_prim_buffer.push(m_prim_building.building_rgba[0], ai, {}, 0, false, false, false, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, 0, false, false, false, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, 0, false, false, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[0], ai, {}, scissor, 0, false, false,
+                           false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, scissor, 0, false, false,
+                           false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, scissor, 0, false, false,
+                           false, false);
         // b c d
-        m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, 0, false, false, false, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, 0, false, false, false, false);
-        m_prim_buffer.push(m_prim_building.building_rgba[1], di, {}, 0, false, false, false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, scissor, 0, false, false,
+                           false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, scissor, 0, false, false,
+                           false, false);
+        m_prim_buffer.push(m_prim_building.building_rgba[1], di, {}, scissor, 0, false, false,
+                           false, false);
         //
 
         m_prim_building.building_idx = 0;
@@ -1157,18 +1194,24 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
           math::Vector<u32, 4> di{d.x(), d.y(), d.z(), 0};
 
           // ACB:
-          m_prim_buffer.push(m_prim_building.building_rgba[0], ai, {}, 0, false, false, false,
+          m_prim_buffer.push(m_prim_building.building_rgba[0], ai, {}, scissor, 0, false, false,
+                             false,
                              false);
-          m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, 0, false, false, false,
+          m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, scissor, 0, false, false,
+                             false,
                              false);
-          m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, 0, false, false, false,
+          m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, scissor, 0, false, false,
+                             false,
                              false);
           // b c d
-          m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, 0, false, false, false,
+          m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, scissor, 0, false, false,
+                             false,
                              false);
-          m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, 0, false, false, false,
+          m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, scissor, 0, false, false,
+                             false,
                              false);
-          m_prim_buffer.push(m_prim_building.building_rgba[1], di, {}, 0, false, false, false,
+          m_prim_buffer.push(m_prim_building.building_rgba[1], di, {}, scissor, 0, false, false,
+                             false,
                              false);
           //
         }
@@ -1237,7 +1280,8 @@ DirectRenderer::PrimitiveBuffer::PrimitiveBuffer(int max_triangles) {
 
 void DirectRenderer::PrimitiveBuffer::push(const math::Vector<u8, 4>& rgba,
                                            const math::Vector<u32, 4>& vert,
-                                           const math::Vector<float, 3>& st,
+                                           const math::Vector<float, 3>& stq,
+                                           const math::Vector<float, 4>& scissor,
                                            int unit,
                                            bool tcc,
                                            bool decal,
@@ -1251,11 +1295,12 @@ void DirectRenderer::PrimitiveBuffer::push(const math::Vector<u8, 4>& rgba,
   v.xyzf[1] += y_off;
   v.xyzf[2] = (float)vert[2] / (float)0xffffff;
   v.xyzf[3] = (float)vert[3];
-  v.stq = st;
+  v.stq = stq;
   v.tex_unit = unit;
   v.tcc = tcc;
   v.decal = decal;
   v.fog_enable = fog_enable;
   v.use_uv = use_uv;
+  v.scissor = scissor;
   vert_count++;
 }
