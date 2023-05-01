@@ -18,7 +18,6 @@
 ;; og:ignore-form:sparticle-motion-blur
 ;; og:ignore-form:birth-func-texture-group
 ;; og:ignore-form:sparticle-launcher-method-10
-(define-extern sp-init-fields! (function object (inline-array sp-field-init-spec) sp-field-id sp-field-id symbol object)) ;; TODO - mips2c
 
 (define-extern particle-adgif (function adgif-shader texture-id none)) ;; TODO - particle-adgif atomic ops, MIPS2C
 (define-extern sp-launch-particles-var (function sparticle-system sparticle-launcher matrix sparticle-launch-state sparticle-launch-control float none)) ;; TODO - mips2c
@@ -33,7 +32,7 @@
 
 (define *part-group-id-table* (new 'global 'boxed-array sparticle-launch-group 1408))
 
-(define *sp-temp* 0)
+(define *sp-temp* 0.0)
 
 (kmemclose)
 
@@ -96,7 +95,69 @@
   0
   )
 
-(def-mips2c sp-init-fields! (function object (inline-array sp-field-init-spec) sp-field-id sp-field-id symbol object))
+;; this was rewritten from assembly
+(defun sp-init-fields! ((arg0 (pointer float)) (arg1 (inline-array sp-field-init-spec)) (arg2 sp-field-id) (arg3 sp-field-id) (write-missing-fields symbol))
+  (1+! arg2)
+  (let ((cur-spec arg1))
+      (while (< (-> cur-spec 0 field) arg2)
+        (&+! cur-spec 16)
+        )
+      (if (>= arg2 arg3)
+          (return cur-spec))
+      (until (= arg2 arg3)
+        (cond
+          ((!= (-> cur-spec 0 field) arg2)
+            (if write-missing-fields
+                (set! (-> arg0) 0.0))
+            ;; reduce by 16 because it will be incremented by 16 right after but we don't want to advance field
+            (&+! cur-spec -16)
+            )
+          ((= arg2 (sp-field-id spt-sound))
+            (set! (-> arg0) (-> cur-spec 0 initial-valuef))
+            )
+          (else
+            (case (-> cur-spec 0 flags)
+              (((sp-flag float))
+                (if (= (-> cur-spec 0 random-range) 0)
+                    (set! (-> arg0) (-> cur-spec 0 initial-valuef))
+                    (set! (-> arg0) (+ (-> cur-spec 0 initial-valuef) (* (-> cur-spec 0 random-multf) (* (rand-vu) (-> cur-spec 0 random-rangef))))))
+                )
+              (((sp-flag float-int-rand))
+                (if (= (-> cur-spec 0 random-range) 0)
+                    (set! (-> arg0) (-> cur-spec 0 initial-valuef))
+                    (set! (-> arg0) (+ (-> cur-spec 0 initial-valuef) (* (-> cur-spec 0 random-multf) (the int (* (rand-vu) (1+ (-> cur-spec 0 random-range))))))))
+                )
+              (((sp-flag float-store))
+                (if (= (-> cur-spec 0 random-range) 0)
+                    (set! (-> arg0) (-> cur-spec 0 initial-valuef))
+                    (set! (-> arg0) (+ (-> cur-spec 0 initial-valuef) (* (-> cur-spec 0 random-multf) (* (rand-vu) (-> cur-spec 0 random-rangef))))))
+                (set! *sp-temp* (-> arg0))
+                )
+              (((sp-flag copy-from-other))
+                (set! (-> arg0) (-> arg0 (-> cur-spec 0 initial-value)))
+                )
+              (((sp-flag symbol))
+                (set! (-> arg0) (the-as float (-> cur-spec 0 sym value)))
+                )
+              (((sp-flag launcher))
+                (set! (-> arg0) (the-as float (-> *part-id-table* (-> cur-spec 0 initial-value))))
+                )
+              (((sp-flag object))
+                (set! (-> arg0) (the-as float (-> cur-spec 0 object)))
+                )
+              (else
+                (if (= (-> cur-spec 0 random-range) 0)
+                    (set! (-> arg0) (-> cur-spec 0 initial-valuef))
+                    (set! (-> arg0) (the-as float (+ (-> cur-spec 0 initial-value) (* (-> cur-spec 0 random-mult) (the int (* (rand-vu) (-> cur-spec 0 random-range))))))))
+                )
+              )
+            )
+          )
+        (1+! arg2)
+        (&+! arg0 4)
+        (&+! cur-spec 16))
+      cur-spec)
+  )
 
 (deftype sp-queued-launch-particles (structure)
   ((sp-system   sparticle-system           :offset-assert   0)
@@ -253,7 +314,13 @@
         (s5-0 (new 'stack-no-clear 'matrix))
         )
     (let ((s0-0 (new 'stack-no-clear 'vector)))
-      (sp-init-fields! (-> s2-0 vector) arg2 (sp-field-id launch-fields-start) (sp-field-id launch-fields-end) #t)
+      (sp-init-fields!
+        (the-as (pointer float) (-> s2-0 vector))
+        arg2
+        (sp-field-id launch-fields-start)
+        (sp-field-id launch-fields-end)
+        #t
+        )
       (matrix-rotate-xyz! s5-0 (the-as vector (-> s2-0 vector)))
       (vector3s-matrix*! (the-as vector3s (-> arg1 vel-sxvel)) (the-as vector3s (-> arg1 vel-sxvel)) s5-0)
       (matrix-rotate-xyz! s5-0 (-> s2-0 vector 1))
@@ -418,23 +485,16 @@
           (return 0)
           )
       (let* ((a1-2 (-> arg1 init-specs 0))
-             (a1-3
-               (sp-init-fields!
-                 (-> s5-0 vector)
-                 (the-as (inline-array sp-field-init-spec) a1-2)
-                 (sp-field-id sprite-fields-start)
-                 (sp-field-id sprite-fields-end)
-                 #t
-                 )
-               )
+             (a1-3 (sp-init-fields!
+                     (the-as (pointer float) (-> s5-0 vector))
+                     (the-as (inline-array sp-field-init-spec) a1-2)
+                     (sp-field-id sprite-fields-start)
+                     (sp-field-id sprite-fields-end)
+                     #t
+                     )
+                   )
              )
-        (sp-init-fields!
-          (&-> gp-0 omega)
-          (the-as (inline-array sp-field-init-spec) a1-3)
-          (sp-field-id cpu-fields-start)
-          (sp-field-id cpu-fields-end)
-          #t
-          )
+        (sp-init-fields! (&-> gp-0 omega) a1-3 (sp-field-id cpu-fields-start) (sp-field-id cpu-fields-end) #t)
         )
       (set! (-> s5-0 vector 1 y) 0.0)
       (set! (-> s5-0 vector 1 z) (the float (sar (shl (the int (-> s5-0 vector 1 z)) 48) 48)))
@@ -542,23 +602,16 @@
          (set! (-> arg2 fade x) 99999.0)
          (set! (-> arg2 fade y) 99999.0)
          (set! (-> arg2 fade z) 99999.0)
-         (let ((a1-2
-                 (sp-init-fields!
-                   (-> arg3 x-y-z-sx)
-                   (the-as (inline-array sp-field-init-spec) a1-1)
-                   (sp-field-id sprite-fields-start)
-                   (sp-field-id sprite-fields-end)
-                   #f
-                   )
-                 )
+         (let ((a1-2 (sp-init-fields!
+                       (the-as (pointer float) (-> arg3 x-y-z-sx))
+                       (the-as (inline-array sp-field-init-spec) a1-1)
+                       (sp-field-id sprite-fields-start)
+                       (sp-field-id sprite-fields-end)
+                       #f
+                       )
+                     )
                )
-           (sp-init-fields!
-             (&-> arg2 omega)
-             (the-as (inline-array sp-field-init-spec) a1-2)
-             (sp-field-id cpu-fields-start)
-             (sp-field-id cpu-fields-end)
-             #f
-             )
+           (sp-init-fields! (&-> arg2 omega) a1-2 (sp-field-id cpu-fields-start) (sp-field-id cpu-fields-end) #f)
            )
          (logior! (-> arg2 flags) s4-0)
          (let ((v1-18 (-> *time-of-day-context* current-prt-color)))
@@ -590,23 +643,16 @@
          )
        )
       (else
-        (let ((a1-3
-                (sp-init-fields!
-                  (-> arg3 x-y-z-sx)
-                  (the-as (inline-array sp-field-init-spec) a1-1)
-                  (sp-field-id sprite-fields-start)
-                  (sp-field-id sprite-fields-end)
-                  #f
-                  )
-                )
+        (let ((a1-3 (sp-init-fields!
+                      (the-as (pointer float) (-> arg3 x-y-z-sx))
+                      (the-as (inline-array sp-field-init-spec) a1-1)
+                      (sp-field-id sprite-fields-start)
+                      (sp-field-id sprite-fields-end)
+                      #f
+                      )
+                    )
               )
-          (sp-init-fields!
-            (&-> arg2 omega)
-            (the-as (inline-array sp-field-init-spec) a1-3)
-            (sp-field-id cpu-fields-start)
-            (sp-field-id cpu-fields-end)
-            #f
-            )
+          (sp-init-fields! (&-> arg2 omega) a1-3 (sp-field-id cpu-fields-start) (sp-field-id cpu-fields-end) #f)
           )
         )
       )
@@ -1976,7 +2022,7 @@
         )
     )
   (let ((v1-3 (get-field-spec-by-id obj (sp-field-id spt-userdata))))
-    (when (and v1-3 (= (-> v1-3 flags) (sp-flag plain-v2)))
+    (when (and v1-3 (= (-> v1-3 flags) (sp-flag object)))
       (let ((gp-1 (the-as object (-> v1-3 initial-valuef))))
         (when (and (= (logand (the-as int gp-1) 7) 4)
                    (type? (the-as float gp-1) array)

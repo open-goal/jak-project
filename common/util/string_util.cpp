@@ -96,6 +96,14 @@ std::vector<std::string> regex_get_capture_groups(const std::string& str,
   return groups;
 }
 
+bool replace(std::string& str, const std::string& from, const std::string& to) {
+  size_t start_pos = str.find(from);
+  if (start_pos == std::string::npos)
+    return false;
+  str.replace(start_pos, from.length(), to);
+  return true;
+}
+
 std::string current_local_timestamp() {
   std::time_t now = std::time(nullptr);
   std::tm local_time = *std::localtime(&now);

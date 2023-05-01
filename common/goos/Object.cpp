@@ -41,6 +41,7 @@
 #include "Object.h"
 
 #include <cinttypes>
+#include <cstring>
 
 #include "common/util/FileUtil.h"
 #include "common/util/print_float.h"
@@ -203,8 +204,21 @@ Object build_list(std::vector<Object>&& objects) {
 
   Object result;
   result.type = ObjectType::PAIR;
-  result.heap_obj = head;
+  result.heap_obj = std::move(head);
   return result;
+}
+
+/*!
+ * Is this a float object that's a power of two?
+ * NOTE: assumes 64-bit float.
+ */
+bool Object::is_power_of_2_float() const {
+  FloatType val = as_float();
+  u64 val_i = -1;
+  memcpy(&val_i, &val, sizeof(val));
+  u64 mantissa = val_i & ((1LL << 52) - 1);
+  u64 exponent = (val_i >> 52) & ((1LL << 11) - 1);
+  return mantissa == 0 && exponent != 0 && exponent != ((1LL << 11) - 1);
 }
 
 /*!

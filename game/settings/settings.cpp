@@ -44,6 +44,7 @@ DebugSettings::DebugSettings() {
   } catch (std::exception& e) {
     // do nothing
     lg::error("Error encountered when attempting to load debug settings {}", e.what());
+    // TODO - make sure a bad debug-settings.json is fine, check others below as well
   }
 }
 

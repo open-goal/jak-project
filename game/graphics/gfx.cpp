@@ -20,7 +20,6 @@
 #include "game/common/file_paths.h"
 #include "game/kernel/common/kmachine.h"
 #include "game/kernel/common/kscheme.h"
-#include "game/kernel/svnrev.h"
 #include "game/runtime.h"
 #include "pipelines/opengl.h"
 
@@ -74,10 +73,13 @@ u32 Init(GameVersion version) {
   } else {
     {
       auto p = scoped_prof("startup::gfx::init_main_display");
-      // TODO - make this not hardcoded to always be "work in progress"
-      Display::InitMainDisplay(640, 480,
-                               fmt::format("OpenGOAL - Work in Progress - {}", GIT_VERSION).c_str(),
-                               g_global_settings, version);
+      std::string title = "OpenGOAL";
+      if (g_game_version == GameVersion::Jak2) {
+        title += " - Work in Progress";
+      }
+      title += fmt::format(" - {} - {}", version_to_game_name_external(g_game_version),
+                           build_revision());
+      Display::InitMainDisplay(640, 480, title.c_str(), g_settings, version);
     }
   }
 
@@ -87,6 +89,7 @@ u32 Init(GameVersion version) {
 void Loop(std::function<bool()> f) {
   lg::info("GFX Loop");
   while (f()) {
+    auto p = scoped_prof("gfx loop");
     // check if we have a display
     if (Display::GetMainDisplay()) {
       Display::GetMainDisplay()->render();

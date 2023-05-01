@@ -23,6 +23,7 @@ class voice {
   s16_output run();
 
   void key_on();
+
   void key_off();
 
   bool dead() {

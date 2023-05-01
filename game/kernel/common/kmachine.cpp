@@ -1,5 +1,7 @@
 #include "kmachine.h"
 
+#include <random>
+
 #include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
@@ -791,6 +793,11 @@ void pc_prof(u32 name, ProfNode::Kind kind) {
   prof().event(Ptr<String>(name).c()->data(), kind);
 }
 
+std::mt19937 extra_random_generator;
+u32 pc_rand() {
+  return (u32)extra_random_generator();
+}
+
 /// Initializes all functions that are common across all game versions
 /// These functions have the same implementation and do not use any game specific functions (other
 /// than the one to create a function in the first place)
@@ -878,6 +885,9 @@ void init_common_pc_port_functions(
 
   // profiler
   make_func_symbol_func("pc-prof", (void*)pc_prof);
+
+  // RNG
+  make_func_symbol_func("pc-rand", (void*)pc_rand);
 
   // debugging tools
   make_func_symbol_func("pc-filter-debug-string?", (void*)pc_filter_debug_string);
