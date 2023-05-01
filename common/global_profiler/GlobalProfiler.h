@@ -24,6 +24,7 @@ class GlobalProfiler {
   void clear();
   void set_enable(bool en);
   void dump_to_json(const std::string& path);
+  void root_event();
 
  private:
   std::atomic_bool m_enabled = false;

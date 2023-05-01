@@ -1658,7 +1658,7 @@ struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*
 } cache;
 
-u64 execute(void* ctxt) {
+u64 execute(void*) {
   ASSERT(false);
   return 0;
 }
@@ -2149,7 +2149,7 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
+  // u32 call_addr = 0;
   c->daddiu(sp, sp, -96);                           // daddiu sp, sp, -96
   c->sd(ra, 12432, at);                             // sd ra, 12432(at)
   c->sq(s2, 12448, at);                             // sq s2, 12448(at)
@@ -2599,7 +2599,7 @@ u64 execute(void* ctxt) {
 
   // c->gprs[t0].du64[0] = 0;                          // or t0, r0, r0
 
-  block_10:
+  // block_10:
   c->dsll(t0, a0, 4);                               // dsll t0, a0, 4
   // c->sw(a3, 128, a2);                               // sw a3, 128(a2)
   sadr = c->sgpr64(a3);

@@ -9,6 +9,7 @@
 
 #include "runtime.h"
 
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/os.h"
@@ -87,7 +88,7 @@ int main(int argc, char** argv) {
   bool verbose_logging = false;
   bool disable_avx2 = false;
   bool disable_display = false;
-  bool disable_debug_vm = false;
+  bool enable_debug_vm = false;
   int port_number = -1;
   fs::path project_path_override;
   std::vector<std::string> game_args;
@@ -100,7 +101,7 @@ int main(int argc, char** argv) {
       "Specify port number for listener connection (default is 8112 for Jak 1 and 8113 for Jak 2)");
   app.add_flag("--no-avx2", verbose_logging, "Disable AVX2 for testing");
   app.add_flag("--no-display", disable_display, "Disable video display");
-  app.add_flag("--no-vm", disable_debug_vm, "Disable debug PS2 VM (defaulted to on)");
+  app.add_flag("--vm", enable_debug_vm, "Enable debug PS2 VM (defaulted to off)");
   app.add_option("--proj-path", project_path_override,
                  "Specify the location of the 'data/' folder");
   app.footer(game_arg_documentation());
@@ -116,7 +117,7 @@ int main(int argc, char** argv) {
 
   // Create struct with all non-kmachine handled args to pass to the runtime
   GameLaunchOptions game_options;
-  game_options.disable_debug_vm = disable_debug_vm;
+  game_options.disable_debug_vm = !enable_debug_vm;
   game_options.disable_display = disable_display;
   game_options.game_version = game_name_to_version(game_name);
   game_options.server_port =
@@ -191,6 +192,7 @@ int main(int argc, char** argv) {
     // run the runtime in a loop so we can reset the game and have it restart cleanly
     lg::info("OpenGOAL Runtime {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
     try {
+      MasterExit = RuntimeExitStatus::RUNNING;
       auto exit_status = exec_runtime(game_options, arg_ptrs.size(), arg_ptrs.data());
       switch (exit_status) {
         case RuntimeExitStatus::EXIT:
