@@ -571,6 +571,12 @@ void DirectRenderer::render_gif(const u8* data,
     ASSERT(size >= 16);
   }
 
+  if (m_blit_buf_state.expect == 5) {
+    ASSERT(m_blit_buf_state.qwc * 16 == size);
+    m_blit_buf_state.expect = 0;
+    return;
+  }
+
   bool eop = false;
 
   u32 offset = 0;
@@ -580,6 +586,7 @@ void DirectRenderer::render_gif(const u8* data,
     }
     GifTag tag(data + offset);
     offset += 16;
+    eop = tag.eop();
 
     // unpack registers.
     // faster to do it once outside of the nloop loop.
@@ -652,11 +659,17 @@ void DirectRenderer::render_gif(const u8* data,
           offset += 8;  // PACKED = quadwords
         }
       }
-    } else {
-      ASSERT(false);  // format not packed or reglist.
-    }
+    } else if (format == GifTag::Format::IMAGE) {
+      ASSERT(m_blit_buf_state.expect == 4);
+      m_blit_buf_state.expect++;
 
-    eop = tag.eop();
+      // dont support non-eop image transfers yet
+      ASSERT(eop);
+      // in IMAGE mode this is the amount of 2x64-bit (1 qword) we will transfer
+      m_blit_buf_state.qwc = tag.nloop();
+    } else {
+      ASSERT(false);  // format not packed or reglist or image
+    }
   }
 
   if (size != UINT32_MAX) {
@@ -742,6 +755,22 @@ void DirectRenderer::handle_ad(const u8* data,
     case GsRegisterAddress::COLCLAMP:
       ASSERT(value == 1);
       break;
+    case GsRegisterAddress::BITBLTBUF:
+      ASSERT(false);
+      handle_bitbltbuf(value);
+      break;
+    case GsRegisterAddress::TRXPOS:
+      ASSERT(false);
+      handle_trxpos(value);
+      break;
+    case GsRegisterAddress::TRXREG:
+      ASSERT(false);
+      handle_trxreg(value);
+      break;
+    case GsRegisterAddress::TRXDIR:
+      ASSERT(false);
+      handle_trxdir(value & 0x3, render_state, prof);
+      break;
     default:
       ASSERT_MSG(false, fmt::format("Address {} is not supported", register_address_name(addr)));
   }
@@ -749,12 +778,92 @@ void DirectRenderer::handle_ad(const u8* data,
 
 void DirectRenderer::handle_frame(u64, SharedRenderState*, ScopedProfilerNode&) {}
 
+void DirectRenderer::handle_scissor(u64 val) {
+  m_scissor.scax0 = (val >> 0) & 0x7ff;
+  m_scissor.scax1 = (val >> 16) & 0x7ff;
+  m_scissor.scay0 = (val >> 32) & 0x7ff;
+  m_scissor.scay1 = (val >> 48) & 0x7ff;
+  m_scissor_enable = true;
+}
+
 void DirectRenderer::handle_xyoffset(u64 val) {
   GsXYOffset xyo(val);
   // :ofx #x7000 :ofy #x7300
   float scale = -65536;
   m_prim_buffer.x_off = scale * ((s32)xyo.ofx() - 0x7000) / float(UINT32_MAX);
   m_prim_buffer.y_off = scale * ((s32)xyo.ofy() - 0x7300) / float(UINT32_MAX);
+}
+
+void DirectRenderer::handle_bitbltbuf(u64 val) {
+  ASSERT(m_blit_buf_state.expect == 0);
+  m_blit_buf_state.expect++;
+
+  m_blit_buf_state.sbp = (val >> 0) & 0x3fff;
+  m_blit_buf_state.sbw = (val >> 16) & 0x3f;
+  m_blit_buf_state.spsm = (val >> 24) & 0x3f;
+  m_blit_buf_state.dbp = (val >> 32) & 0x3fff;
+  m_blit_buf_state.dbw = (val >> 48) & 0x3f;
+  m_blit_buf_state.dpsm = (val >> 56) & 0x3f;
+}
+
+void DirectRenderer::handle_trxpos(u64 val) {
+  ASSERT(m_blit_buf_state.expect == 1);
+  m_blit_buf_state.expect++;
+
+  m_blit_buf_state.ssax = (val >> 0) & 0x7ff;
+  m_blit_buf_state.ssay = (val >> 16) & 0x7ff;
+  m_blit_buf_state.dsax = (val >> 32) & 0x7ff;
+  m_blit_buf_state.dsay = (val >> 48) & 0x7ff;
+  m_blit_buf_state.pixel_dir = (val >> 59) & 0x3;
+}
+
+void DirectRenderer::handle_trxreg(u64 val) {
+  ASSERT(m_blit_buf_state.expect == 2);
+  m_blit_buf_state.expect++;
+
+  m_blit_buf_state.width = (val >> 0) & 0xfff;
+  m_blit_buf_state.height = (val >> 32) & 0xfff;
+}
+
+void DirectRenderer::handle_trxdir(u64 dir,
+                                   SharedRenderState* render_state,
+                                   ScopedProfilerNode& prof) {
+  ASSERT(m_blit_buf_state.expect == 3);
+  m_blit_buf_state.expect++;
+
+  auto get_tex_func = [&render_state](const std::string& name, u16 tbp) {
+    auto result = render_state->texture_pool->lookup(tbp);
+    if (!result) {
+      fmt::print("{} tbp {} not found\n", name, tbp);
+    } else {
+      fmt::print("{} tbp {} found\n", name, tbp);
+    }
+    return result;
+  };
+  fmt::print("GS TEXTURE COPY --\n");
+  fmt::print("src w/psm: {}/{} dst w/psm: {}/{}\n", m_blit_buf_state.sbw, m_blit_buf_state.spsm,
+             m_blit_buf_state.dbw, m_blit_buf_state.dpsm);
+  switch (dir) {
+    case 0: {  // host->local
+      fmt::print("-- FROM EE\n");
+      auto dst_tex = get_tex_func("dst", m_blit_buf_state.dbp);
+      // ASSERT_MSG(false, "nyi trxdir host->local");
+    } break;
+    case 1: {  // local->host
+      fmt::print("-- FROM GS\n");
+      auto src_tex = get_tex_func("src", m_blit_buf_state.sbp);
+      // ASSERT_MSG(false, "nyi trxdir local->host");
+    } break;
+    case 2: {  // local->local
+      fmt::print("-- GS <-> GS\n");
+      auto src_tex = get_tex_func("src", m_blit_buf_state.sbp);
+      auto dst_tex = get_tex_func("dst", m_blit_buf_state.dbp);
+    } break;
+    case 3:  // disable
+      fmt::print("-- HUH???\n");
+      ASSERT_MSG(false, "nyi trxdir disable");
+      break;
+  }
 }
 
 void DirectRenderer::handle_tex1_1(u64 val) {

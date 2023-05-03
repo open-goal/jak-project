@@ -97,6 +97,10 @@ class DirectRenderer : public BucketRenderer {
   void handle_tex1_1(u64 val);
   void handle_texa(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_xyoffset(u64 val);
+  void handle_bitbltbuf(u64 val);
+  void handle_trxpos(u64 val);
+  void handle_trxreg(u64 val);
+  void handle_trxdir(u64 dir, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_xyzf2_common(u32 x,
                            u32 y,
                            u32 z,
@@ -255,6 +259,26 @@ class DirectRenderer : public BucketRenderer {
   } m_scissor;
   // however the toggle for it is per-bucket
   bool m_scissor_enable = false;
+
+  struct BufferBlitState {
+    // used to keep track of blit progress
+    u8 expect = 0;
+
+    // blit buffer source+dest settings
+    u16 sbp = 0, dbp = 0;
+    u8 sbw = 0, dbw = 0;
+    u8 spsm = 0, dpsm = 0;
+    // transfer pos
+    u16 ssax = 0, dsax = 0;
+    u16 ssay = 0, dsay = 0;
+    // transfer region
+    u16 width = 0, height = 0;
+    // transfer dir
+    u8 pixel_dir = 0;
+
+    // gif IMAGE transfer size
+    u16 qwc = 0;
+  } m_blit_buf_state;
 
   struct {
     GLuint vertex_buffer;
