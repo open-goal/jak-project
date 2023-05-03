@@ -2283,7 +2283,10 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
         (mr_dmatag_hdr.maps.ints.at(1) & ~0x7000ffff)) {
       return nullptr;
     }
-    ASSERT(dma_qwc > 0);
+    if (!(dma_qwc >= 1 && dma_qwc <= 17)) {
+      lg::error("rewrite_dma_buffer_add_gs_set: bad qwc {}", dma_qwc);
+      return nullptr;
+    }
     // check vifcode
     flusha = set_dmatag_vif0->op()->value().is_int(19ULL << 24);
     auto vif1_elt = let_dmatag_vif1->entries().at(0).src->try_as_element<SimpleExpressionElement>();
@@ -2465,6 +2468,43 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
       error = true;
       return (s64)0;
     };
+    auto get_src_form = [&](FormPool& pool, FormElement* elt, const std::string& ptr_name,
+                            int offset) -> Form* {
+      auto as_set = dynamic_cast<SetFormFormElement*>(elt);
+      if (as_set) {
+        auto mr_set = match(
+            Matcher::set(
+                Matcher::deref(Matcher::cast("(pointer int64)", Matcher::any_reg(0)), false, {}),
+                Matcher::any_integer(1)),
+            as_set);
+        if (!mr_set.matched || !var_name_equal(env, gsregs_ptr, mr_set.maps.regs.at(0))) {
+          return nullptr;
+        }
+        return as_set->src();
+      }
+      auto as_store = dynamic_cast<StoreElement*>(elt);
+      if (as_store) {
+        if (!check_vifcode_set(as_store, ptr_name, 8, offset)) {
+          return nullptr;
+        }
+        return pool.form<SimpleAtomElement>(as_store->op()->value());
+      }
+      auto as_let = dynamic_cast<LetElement*>(elt);
+      if (as_let) {
+        if (as_let->entries().size() != 1 || as_let->body()->size() != 1) {
+          return nullptr;
+        }
+        auto store_in_let = dynamic_cast<StoreElement*>(as_let->body()->at(0));
+        if (!store_in_let || !check_vifcode_set(store_in_let, ptr_name, 8, offset) ||
+            !store_in_let->op()->value().is_var() ||
+            !var_name_equal(env, env.get_variable_name(as_let->entries().at(0).dest),
+                            store_in_let->op()->value().var())) {
+          return nullptr;
+        }
+        return as_let->entries().at(0).src;
+      }
+      return nullptr;
+    };
     const static std::unordered_map<std::string, std::string> reg_id_to_def_map = {
         // enum name, struct name
         {"prim", "gs-prim"},
@@ -2511,14 +2551,25 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
     };
     const static std::unordered_set<std::string> reg_id_to_int_map = {
         "texflush",
+        "pabe",
     };
-    for (int i = 0; i < let2->body()->size() - 1; i += 2) {
+    for (int i = 0; i < let2->body()->size() - 1 && !error; i += 2) {
       auto reg_val = get_int_from_form(let2->body()->at(i), gsregs_ptr, i * 8);
+      bool bad_val = error;
+      error = false;
       auto reg_id = get_int_from_form(let2->body()->at(i + 1), gsregs_ptr, i * 8 + 8);
       auto reg_name =
           decompiler::decompile_int_enum_from_int(TypeSpec("gs-reg"), env.dts->ts, reg_id);
       auto name_head = GenericOperator::make_function(pool.form<ConstantTokenElement>(reg_name));
-      if (const auto& it = reg_id_to_def_map.find(reg_name); it != reg_id_to_def_map.end()) {
+      if (error) {
+      } else if (bad_val) {
+        auto reg_val_form = get_src_form(pool, let2->body()->at(i), gsregs_ptr, i * 8);
+        if (reg_val_form) {
+          args.push_back(pool.form<GenericElement>(name_head, reg_val_form));
+        } else {
+          error = true;
+        }
+      } else if (const auto& it = reg_id_to_def_map.find(reg_name); it != reg_id_to_def_map.end()) {
         auto spec = TypeSpec(it->second);
         args.push_back(pool.form<GenericElement>(
             name_head,
@@ -2911,7 +2962,7 @@ LetStats insert_lets(const Function& func,
   top_level_form->apply_form([&](Form* f) {
     auto& form_elts = f->elts();
     for (size_t i = 0; i < form_elts.size(); ++i) {
-      if (i + 2 < int(form_elts.size()) && dynamic_cast<LetElement*>(form_elts[i]) &&
+      if (i + 2 < form_elts.size() && dynamic_cast<LetElement*>(form_elts[i]) &&
           dynamic_cast<LetElement*>(form_elts[i + 1]) &&
           dynamic_cast<LetElement*>(form_elts[i + 2])) {
         auto rw = rewrite_let_sequence(
