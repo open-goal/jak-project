@@ -62,6 +62,7 @@ void BlitDisplays::render(DmaFollower& dma,
 
             m_gpu_tex->w = w;
             m_gpu_tex->h = h;
+            render_state->texture_pool->move_existing_to_vram(m_gpu_tex, m_tbp);
           } else {
             lg::error("no valid back buffer to blit!");
           }
