@@ -510,9 +510,8 @@ void open_text_project(const std::string& kind,
         group_name = args->car.as_string()->data;
         args = args->cdr.as_pair()->car.as_pair();
         goos::for_each_in_list(args->cdr.as_pair()->car, [&](const goos::Object& o) {
-          text_files.push_back({GameTextDefinitionFile::Format::JSON,
-                                o.as_string()->data, (int)language_id,
-                                text_version, group_name});
+          text_files.push_back({GameTextDefinitionFile::Format::JSON, o.as_string()->data,
+                                (int)language_id, text_version, group_name});
         });
       } else {
         throw std::runtime_error(fmt::format("unknown action {} in {} project", action, kind));
