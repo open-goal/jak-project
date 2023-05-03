@@ -2561,15 +2561,26 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
       auto reg_name =
           decompiler::decompile_int_enum_from_int(TypeSpec("gs-reg"), env.dts->ts, reg_id);
       auto name_head = GenericOperator::make_function(pool.form<ConstantTokenElement>(reg_name));
+      const auto& it = reg_id_to_def_map.find(reg_name);
       if (error) {
       } else if (bad_val) {
         auto reg_val_form = get_src_form(pool, let2->body()->at(i), gsregs_ptr, i * 8);
         if (reg_val_form) {
-          args.push_back(pool.form<GenericElement>(name_head, reg_val_form));
+          if (it != reg_id_to_def_map.end()) {
+            auto spec = TypeSpec(it->second);
+            auto as_bitfield = decompiler::cast_to_bitfield(
+                dynamic_cast<BitFieldType*>(env.dts->ts.lookup_type(spec)), spec, pool, env,
+                reg_val_form);
+            auto as_cast = as_bitfield->try_as_element<CastElement>();
+            args.push_back(
+                pool.form<GenericElement>(name_head, as_cast ? as_cast->source() : as_bitfield));
+          } else {
+            args.push_back(pool.form<GenericElement>(name_head, reg_val_form));
+          }
         } else {
           error = true;
         }
-      } else if (const auto& it = reg_id_to_def_map.find(reg_name); it != reg_id_to_def_map.end()) {
+      } else if (it != reg_id_to_def_map.end()) {
         auto spec = TypeSpec(it->second);
         args.push_back(pool.form<GenericElement>(
             name_head,
