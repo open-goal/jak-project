@@ -2157,7 +2157,8 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
   }
 
   auto elt = pool.alloc_element<WithDmaBufferAddBucketElement>(
-      buf_reg, buf_src, mr_bucket_add_tag_func.maps.forms.at(1), body);
+      buf_reg, buf_src, mr_bucket_add_tag_func.maps.forms.at(1),
+      pool.alloc_sequence_form(nullptr, body));
   elt->parent_form = in->parent_form;
   return elt;
 }
