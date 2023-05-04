@@ -204,6 +204,7 @@ class ObjectFileDB {
   // void ir2_store_current_forms(int seg);
   void ir2_build_expressions(int seg, const Config& config, ObjectFileData& data);
   void ir2_insert_lets(int seg, ObjectFileData& data);
+  void ir2_add_store_errors(int seg, ObjectFileData& data);
   void ir2_rewrite_inline_asm_instructions(int seg, ObjectFileData& data);
   void ir2_insert_anonymous_functions(int seg, ObjectFileData& data);
   void ir2_symbol_definition_map(ObjectFileData& data);
