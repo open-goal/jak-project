@@ -2206,7 +2206,8 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
   auto let2 = in.at(2);
 
   // there are three lets and they all have the same format for the entries
-  if (let0->entries().size() != 2 || let2->entries().size() != 2 || let2->entries().size() != 2) {
+  if (let0->entries().size() != 2 || let1->entries().size() != 2 || let2->entries().size() != 2 ||
+      let0->body()->size() != 4 || let1->body()->size() != 3) {
     return nullptr;
   }
 
@@ -2259,9 +2260,30 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
     auto dmatag_ptr = env.get_variable_name(let0->entries().at(1).dest);
     auto set_dmatag_hdr = dynamic_cast<SetFormFormElement*>(let0->body()->at(0));
     auto set_dmatag_vif0 = dynamic_cast<StoreElement*>(let0->body()->at(1));
+    auto let_dmatag_vif0 = dynamic_cast<LetElement*>(let0->body()->at(1));
     auto let_dmatag_vif1 = dynamic_cast<LetElement*>(let0->body()->at(2));
     auto set_dmatag_push = dynamic_cast<SetFormFormElement*>(let0->body()->at(3));
-    if (!set_dmatag_hdr || !set_dmatag_vif0 || !let_dmatag_vif1 || !set_dmatag_push ||
+    if (!let_dmatag_vif0 && !set_dmatag_vif0) {
+      return nullptr;
+    }
+    u32 vif0 = 0;
+    if (let_dmatag_vif0 && let_dmatag_vif0->entries().size() == 1 &&
+        let_dmatag_vif0->body()->size() == 1) {
+      auto vif0_elt =
+          let_dmatag_vif0->entries().at(0).src->try_as_element<SimpleExpressionElement>();
+      if (!vif0_elt || !vif0_elt->expr().is_identity() || !vif0_elt->expr().get_arg(0).is_int()) {
+        return nullptr;
+      }
+      vif0 = vif0_elt->expr().get_arg(0).get_int();
+      set_dmatag_vif0 = dynamic_cast<StoreElement*>(let_dmatag_vif0->body()->at(0));
+    } else {
+      if (!check_vifcode_set(set_dmatag_vif0, dmatag_ptr, 4, 8)) {
+        return nullptr;
+      }
+      vif0 = set_dmatag_vif0->op()->value().get_int();
+    }
+
+    if (!set_dmatag_hdr || !let_dmatag_vif1 || !set_dmatag_push ||
         let_dmatag_vif1->entries().size() != 1 || let_dmatag_vif1->body()->size() != 1) {
       return nullptr;
     }
@@ -2288,11 +2310,9 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
       return nullptr;
     }
     // check vifcode
-    flusha = set_dmatag_vif0->op()->value().is_int(19ULL << 24);
+    flusha = vif0 == 19ULL << 24;
     auto vif1_elt = let_dmatag_vif1->entries().at(0).src->try_as_element<SimpleExpressionElement>();
-    if (!check_vifcode_set(set_dmatag_vif0, dmatag_ptr, 4, 8) ||
-        !check_vifcode_set(set_dmatag_vif1, dmatag_ptr, 4, 12) ||
-        (!set_dmatag_vif0->op()->value().is_int(0) && !flusha) ||
+    if (!check_vifcode_set(set_dmatag_vif1, dmatag_ptr, 4, 12) || (!vif0 && !flusha) ||
         !set_dmatag_vif1->op()->value().is_var() || !vif1_elt || !vif1_elt->expr().is_identity() ||
         !vif1_elt->expr().get_arg(0).is_int()) {
       return nullptr;
@@ -2405,7 +2425,7 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
     auto set_gsregs_push =
         dynamic_cast<SetFormFormElement*>(let2->body()->at(let2->body()->size() - 1));
     // check dma buffer base set
-    if ((let2->body()->size() % 2 == 0) ||
+    if (let2->body()->size() != (dma_qwc - 1) * 2 + 1 ||
         !match_buf_push(set_gsregs_push, gsregs_buf, gsregs_ptr, 16 * (dma_qwc - 1))) {
       return nullptr;
     }
@@ -2415,7 +2435,10 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
       if (as_set) {
         auto mr_set = match(
             Matcher::set(
-                Matcher::deref(Matcher::cast("(pointer int64)", Matcher::any_reg(0)), false, {}),
+                Matcher::deref(
+                    Matcher::match_or({Matcher::cast("(pointer int64)", Matcher::any_reg(0)),
+                                       Matcher::cast("(pointer uint64)", Matcher::any_reg(0))}),
+                    false, {}),
                 Matcher::any_integer(1)),
             as_set);
         if (!mr_set.matched || !var_name_equal(env, gsregs_ptr, mr_set.maps.regs.at(0))) {
@@ -2474,8 +2497,11 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
       if (as_set) {
         auto mr_set = match(
             Matcher::set(
-                Matcher::deref(Matcher::cast("(pointer int64)", Matcher::any_reg(0)), false, {}),
-                Matcher::any_integer(1)),
+                Matcher::deref(
+                    Matcher::match_or({Matcher::cast("(pointer int64)", Matcher::any_reg(0)),
+                                       Matcher::cast("(pointer uint64)", Matcher::any_reg(0))}),
+                    false, {}),
+                Matcher::any()),
             as_set);
         if (!mr_set.matched || !var_name_equal(env, gsregs_ptr, mr_set.maps.regs.at(0))) {
           return nullptr;
