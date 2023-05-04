@@ -221,7 +221,9 @@ void parse_text_json(const nlohmann::json& json,
       throw std::runtime_error(fmt::format("Non string provided for text id #x{}", text_id));
     }
     auto line = font->convert_utf8_to_game(text_value);
-    bank->set_line(std::stoi(text_id, nullptr, 16), line);
+    auto line_id = std::stoi(text_id, nullptr, 16);
+    // TODO - lint duplicate line definitions across text files
+    bank->set_line(line_id, line);
   }
 }
 
@@ -502,17 +504,15 @@ void open_text_project(const std::string& kind,
       } else if (action == "file-json") {
         auto& language_id = args->car.as_int();
         args = args->cdr.as_pair();
-        auto& file_path = args->car.as_string()->data;
-        args = args->cdr.as_pair();
         auto& text_version = args->car.as_symbol()->name;
         args = args->cdr.as_pair();
         std::optional<std::string> group_name = std::nullopt;
-        // Optional
-        if (!args->car.is_empty_list()) {
-          group_name = args->car.as_string()->data;
-        }
-        text_files.push_back({GameTextDefinitionFile::Format::JSON, file_path, (int)language_id,
-                              text_version, group_name});
+        group_name = args->car.as_string()->data;
+        args = args->cdr.as_pair()->car.as_pair();
+        goos::for_each_in_list(args->cdr.as_pair()->car, [&](const goos::Object& o) {
+          text_files.push_back({GameTextDefinitionFile::Format::JSON, o.as_string()->data,
+                                (int)language_id, text_version, group_name});
+        });
       } else {
         throw std::runtime_error(fmt::format("unknown action {} in {} project", action, kind));
       }
