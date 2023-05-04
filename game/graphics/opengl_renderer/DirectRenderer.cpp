@@ -1304,24 +1304,18 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
 
           // ACB:
           m_prim_buffer.push(m_prim_building.building_rgba[0], ai, {}, scissor, 0, false, false,
-                             false,
-                             false);
+                             false, false);
           m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, scissor, 0, false, false,
-                             false,
-                             false);
+                             false, false);
           m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, scissor, 0, false, false,
-                             false,
-                             false);
+                             false, false);
           // b c d
           m_prim_buffer.push(m_prim_building.building_rgba[1], bi, {}, scissor, 0, false, false,
-                             false,
-                             false);
+                             false, false);
           m_prim_buffer.push(m_prim_building.building_rgba[0], ci, {}, scissor, 0, false, false,
-                             false,
-                             false);
+                             false, false);
           m_prim_buffer.push(m_prim_building.building_rgba[1], di, {}, scissor, 0, false, false,
-                             false,
-                             false);
+                             false, false);
           //
         }
       }

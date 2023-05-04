@@ -4,6 +4,7 @@
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 
+#include "game/graphics/opengl_renderer/BlitDisplays.h"
 #include "game/graphics/opengl_renderer/DepthCue.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
@@ -14,7 +15,6 @@
 #include "game/graphics/opengl_renderer/TextureUploadHandler.h"
 #include "game/graphics/opengl_renderer/VisDataHandler.h"
 #include "game/graphics/opengl_renderer/Warp.h"
-#include "game/graphics/opengl_renderer/BlitDisplays.h"
 #include "game/graphics/opengl_renderer/background/Shrub.h"
 #include "game/graphics/opengl_renderer/background/TFragment.h"
 #include "game/graphics/opengl_renderer/background/Tie3.h"

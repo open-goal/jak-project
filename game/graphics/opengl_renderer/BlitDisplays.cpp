@@ -2,11 +2,10 @@
 
 #include "common/log/log.h"
 
-#include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/opengl_renderer/OpenGLRenderer.h"
+#include "game/graphics/pipelines/opengl.h"
 
-BlitDisplays::BlitDisplays(const std::string& name, int my_id)
-    : BucketRenderer(name, my_id) {}
+BlitDisplays::BlitDisplays(const std::string& name, int my_id) : BucketRenderer(name, my_id) {}
 
 void BlitDisplays::init_textures(TexturePool& texture_pool, GameVersion version) {
   // set up target texture
@@ -55,7 +54,7 @@ void BlitDisplays::render(DmaFollower& dma,
 
             glBindTexture(GL_TEXTURE_2D, my_tex_id);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-            
+
             glBindFramebuffer(GL_READ_FRAMEBUFFER, back->fbo_id);
             glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 0, 0, w, h, 0);
             glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
