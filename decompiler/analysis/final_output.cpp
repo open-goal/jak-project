@@ -239,6 +239,17 @@ std::string careful_function_to_string(
   auto& env = func->ir2.env;
 
   std::string result;
+
+  if (!func->warnings.has_errors()) {
+    // print warning about failed store, but only if decompilation passes without any major errors
+    func->ir2.top_form->apply([&env](FormElement* f) {
+      auto as_store = dynamic_cast<StoreElement*>(f);
+      if (as_store) {
+        env.func->warnings.error("Failed store: {} at op {}", as_store->to_string(env),
+                                 as_store->op()->op_id());
+      }
+    });
+  }
   if (func->warnings.has_warnings()) {
     result += func->warnings.get_warning_text(true);
   }

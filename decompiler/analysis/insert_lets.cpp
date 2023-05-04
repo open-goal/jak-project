@@ -2224,6 +2224,8 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
   auto mr_buf_base1 = match(dma_buf_base_matcher, let1->entries().at(1).src);
   auto mr_buf_base2 = match(dma_buf_base_matcher, let2->entries().at(1).src);
   if (!mr_buf_base0.matched || !mr_buf_base1.matched || !mr_buf_base2.matched) {
+    lg::error("rewrite_dma_buffer_add_gs_set: bad (-> dma-buf base) matches {} {} {}",
+              mr_buf_base0.matched, mr_buf_base1.matched, mr_buf_base2.matched);
     return nullptr;
   }
 
@@ -2264,6 +2266,7 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
     auto let_dmatag_vif1 = dynamic_cast<LetElement*>(let0->body()->at(2));
     auto set_dmatag_push = dynamic_cast<SetFormFormElement*>(let0->body()->at(3));
     if (!let_dmatag_vif0 && !set_dmatag_vif0) {
+      lg::error("rewrite_dma_buffer_add_gs_set: bad vif0");
       return nullptr;
     }
     u32 vif0 = 0;
@@ -2272,12 +2275,14 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
       auto vif0_elt =
           let_dmatag_vif0->entries().at(0).src->try_as_element<SimpleExpressionElement>();
       if (!vif0_elt || !vif0_elt->expr().is_identity() || !vif0_elt->expr().get_arg(0).is_int()) {
+        lg::error("rewrite_dma_buffer_add_gs_set: bad vif0 let");
         return nullptr;
       }
       vif0 = vif0_elt->expr().get_arg(0).get_int();
       set_dmatag_vif0 = dynamic_cast<StoreElement*>(let_dmatag_vif0->body()->at(0));
     } else {
       if (!check_vifcode_set(set_dmatag_vif0, dmatag_ptr, 4, 8)) {
+        lg::error("rewrite_dma_buffer_add_gs_set: bad vif0 set");
         return nullptr;
       }
       vif0 = set_dmatag_vif0->op()->value().get_int();
@@ -2285,10 +2290,12 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
 
     if (!set_dmatag_hdr || !let_dmatag_vif1 || !set_dmatag_push ||
         let_dmatag_vif1->entries().size() != 1 || let_dmatag_vif1->body()->size() != 1) {
+      lg::error("rewrite_dma_buffer_add_gs_set: bad vif1 let");
       return nullptr;
     }
     auto set_dmatag_vif1 = dynamic_cast<StoreElement*>(let_dmatag_vif1->body()->at(0));
     if (!set_dmatag_vif1) {
+      lg::error("rewrite_dma_buffer_add_gs_set: bad vif1 set");
       return nullptr;
     }
     // check dmatag now
@@ -2298,11 +2305,13 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
                   Matcher::any_integer(1)),
               set_dmatag_hdr);
     if (!mr_dmatag_hdr.matched || !var_name_equal(env, dmatag_ptr, mr_dmatag_hdr.maps.regs.at(0))) {
+      lg::error("rewrite_dma_buffer_add_gs_set: bad dmatag set");
       return nullptr;
     }
     dma_qwc = mr_dmatag_hdr.maps.ints.at(1) & 0xffff;
     if (((mr_dmatag_hdr.maps.ints.at(1) >> 28) & 0x7) != 1 ||
         (mr_dmatag_hdr.maps.ints.at(1) & ~0x7000ffff)) {
+      lg::error("rewrite_dma_buffer_add_gs_set: bad dmatag");
       return nullptr;
     }
     if (!(dma_qwc >= 1 && dma_qwc <= 17)) {
@@ -2312,18 +2321,21 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
     // check vifcode
     flusha = vif0 == 19ULL << 24;
     auto vif1_elt = let_dmatag_vif1->entries().at(0).src->try_as_element<SimpleExpressionElement>();
-    if (!check_vifcode_set(set_dmatag_vif1, dmatag_ptr, 4, 12) || (!vif0 && !flusha) ||
+    if (!check_vifcode_set(set_dmatag_vif1, dmatag_ptr, 4, 12) || (vif0 && !flusha) ||
         !set_dmatag_vif1->op()->value().is_var() || !vif1_elt || !vif1_elt->expr().is_identity() ||
         !vif1_elt->expr().get_arg(0).is_int()) {
+      lg::error("rewrite_dma_buffer_add_gs_set: bad vif1");
       return nullptr;
     }
     u32 vif1 = vif1_elt->expr().get_arg(0).get_int();
     if (((vif1 >> 24) & 0x7f) != 80 || (vif1 & ~0x7f00ffff) || ((vif1 & 0xffff) != dma_qwc)) {
+      lg::error("rewrite_dma_buffer_add_gs_set: bad vif1 vifcode");
       return nullptr;
     }
 
     // check dma buffer base set
     if (!match_buf_push(set_dmatag_push, dmatag_buf, dmatag_ptr, 16)) {
+      lg::error("rewrite_dma_buffer_add_gs_set: dma base set 1");
       return nullptr;
     }
   }
@@ -2375,6 +2387,7 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
     }
     // check dma buffer base set
     if (!match_buf_push(set_giftag_push, giftag_buf, giftag_ptr, 16)) {
+      lg::error("rewrite_dma_buffer_add_gs_set: dma base set 2");
       return nullptr;
     }
   }
@@ -2427,6 +2440,7 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
     // check dma buffer base set
     if (let2->body()->size() != (dma_qwc - 1) * 2 + 1 ||
         !match_buf_push(set_gsregs_push, gsregs_buf, gsregs_ptr, 16 * (dma_qwc - 1))) {
+      lg::error("rewrite_dma_buffer_add_gs_set: dma base set 3");
       return nullptr;
     }
     bool error = false;
@@ -2578,6 +2592,8 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
     const static std::unordered_set<std::string> reg_id_to_int_map = {
         "texflush",
         "pabe",
+        "fba-1",
+        "fba-2",
     };
     for (int i = 0; i < let2->body()->size() - 1 && !error; i += 2) {
       auto reg_val = get_int_from_form(let2->body()->at(i), gsregs_ptr, i * 8);

@@ -428,57 +428,32 @@ vf31: cam 0 (premultiplied by hmge)
          )
 
     ;; set up for sky DMA:
-    (let* ((v1-0 arg0)
-           (a0-1 (the-as dma-packet (-> v1-0 base)))
-           )
-      (set! (-> a0-1 dma) (new 'static 'dma-tag :qwc #x7 :id (dma-tag-id cnt)))
-      (set! (-> a0-1 vif0) (new 'static 'vif-tag))
-      (set! (-> a0-1 vif1) (new 'static 'vif-tag :imm #x7 :cmd (vif-cmd direct) :msk #x1))
-      (set! (-> v1-0 base) (the-as pointer (&+ a0-1 16)))
-      )
-    (let* ((v1-1 arg0)
-           (a0-3 (the-as gs-gif-tag (-> v1-1 base)))
-           )
-      (set! (-> a0-3 tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x6))
-      (set! (-> a0-3 regs) GIF_REGS_ALL_AD)
-      (set! (-> v1-1 base) (the-as pointer (&+ a0-3 16)))
-      )
-    (let* ((s4-0 arg0)
-           (s3-0 (-> s4-0 base))
-           )
-      (set! (-> (the-as (pointer gs-test) s3-0) 0) (new 'static 'gs-test
-                                                     :ate #x1
-                                                     :atst (gs-atest greater-equal)
-                                                     :aref #x50
-                                                     :afail #x1
-                                                     :zte #x1
-                                                     :ztst (gs-ztest greater-equal)
-                                                     )
-            )
-      (set! (-> (the-as (pointer gs-reg64) s3-0) 1) (gs-reg64 test-1))
-      (set! (-> (the-as (pointer gs-tex0) s3-0) 2) (new 'static 'gs-tex0
-                                                     :tbp0 #x100
-                                                     :tbw #x2
-                                                     :psm #x1b
-                                                     :tcc #x1
-                                                     :cbp #x300
-                                                     :cld #x1
-                                                     :th (log2 128)
-                                                     :tw (log2 128)
-                                                     )
-            )
-      (set! (-> (the-as (pointer gs-reg64) s3-0) 3) (gs-reg64 tex0-1))
-      (set! (-> (the-as (pointer gs-tex1) s3-0) 4) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
-      (set! (-> (the-as (pointer gs-reg64) s3-0) 5) (gs-reg64 tex1-1))
-      (set! (-> (the-as (pointer gs-clamp) s3-0) 6) (new 'static 'gs-clamp))
-      (set! (-> (the-as (pointer gs-reg64) s3-0) 7) (gs-reg64 clamp-1))
-      (set! (-> (the-as (pointer gs-alpha) s3-0) 8) (new 'static 'gs-alpha :b #x1 :d #x1))
-      (set! (-> (the-as (pointer gs-reg64) s3-0) 9) (gs-reg64 alpha-1))
-      (set! (-> (the-as (pointer uint64) s3-0) 10) (the-as uint 0))
-      (set! (-> (the-as (pointer gs-reg64) s3-0) 11) (gs-reg64 texflush))
-      (set! (-> s4-0 base) (&+ s3-0 96))
-      )
-
+    (dma-buffer-add-gs-set arg0
+                           (test-1 (new 'static 'gs-test
+                                     :ate #x1
+                                     :atst (gs-atest greater-equal)
+                                     :aref #x50
+                                     :afail #x1
+                                     :zte #x1
+                                     :ztst (gs-ztest greater-equal)
+                                     )
+                                   )
+                           (tex0-1 (new 'static 'gs-tex0
+                                     :tbp0 #x100
+                                     :tbw #x2
+                                     :psm #x1b
+                                     :tcc #x1
+                                     :cbp #x300
+                                     :cld #x1
+                                     :th (log2 128)
+                                     :tw (log2 128)
+                                     )
+                                   )
+                           (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+                           (clamp-1 (new 'static 'gs-clamp))
+                           (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
+                           (texflush 0)
+                           )
     ;; set regs for large polygon renderer
     ;(init-regs-for-large-polygon-draw obj) ;; hack hack hack hack hack!
     ;;(.lvf vf27 (&-> obj giftag-roof quad))
@@ -619,28 +594,7 @@ vf31: cam 0 (premultiplied by hmge)
 
   ;; set up dma
   (rlet ((vf27 :class vf))
-    (let* ((v1-0 arg0)
-           (a0-1 (the-as object (-> v1-0 base)))
-           )
-      (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-      (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag))
-      (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-      (set! (-> v1-0 base) (the-as pointer (&+ (the-as dma-packet a0-1) 16)))
-      )
-    (let* ((v1-1 arg0)
-           (a0-3 (the-as object (-> v1-1 base)))
-           )
-      (set! (-> (the-as gs-gif-tag a0-3) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-      (set! (-> (the-as gs-gif-tag a0-3) regs) GIF_REGS_ALL_AD)
-      (set! (-> v1-1 base) (&+ (the-as pointer a0-3) 16))
-      )
-    (let* ((v1-2 arg0)
-           (a0-5 (-> v1-2 base))
-           )
-      (set! (-> (the-as (pointer gs-alpha) a0-5) 0) (new 'static 'gs-alpha :b #x1 :d #x1))
-      (set! (-> (the-as (pointer gs-reg64) a0-5) 1) (gs-reg64 alpha-1))
-      (set! (-> v1-2 base) (&+ a0-5 16))
-      )
+    (dma-buffer-add-gs-set arg0 (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)))
     ;; set up polygon regs
     (init-regs-for-large-polygon-draw obj)
     ;(.lvf vf27 (&-> obj giftag-haze quad))
@@ -711,34 +665,11 @@ vf31: cam 0 (premultiplied by hmge)
   "Draw the roof of the sky box. Uses large-polygon renderer."
   (rlet ((vf27 :class vf))
     ;; GS setup
-    (let* ((v1-0 arg0)
-           (a0-1 (the-as object (-> v1-0 base)))
-           )
-      (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt)))
-      (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag))
-      (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1))
-      (set! (-> v1-0 base) (the-as pointer (&+ (the-as dma-packet a0-1) 16)))
-      )
-    (let* ((v1-1 arg0)
-           (a0-3 (the-as object (-> v1-1 base)))
-           )
-      (set! (-> (the-as gs-gif-tag a0-3) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x3))
-      (set! (-> (the-as gs-gif-tag a0-3) regs) GIF_REGS_ALL_AD)
-      (set! (-> v1-1 base) (&+ (the-as pointer a0-3) 16))
-      )
-    (let* ((v1-2 arg0)
-           (a0-5 (-> v1-2 base))
-           )
-      (set! (-> (the-as (pointer gs-zbuf) a0-5) 0) (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24)))
-      (set! (-> (the-as (pointer gs-reg64) a0-5) 1) (gs-reg64 zbuf-1))
-      (set! (-> (the-as (pointer gs-test) a0-5) 2)
-            (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest always))
-            )
-      (set! (-> (the-as (pointer gs-reg64) a0-5) 3) (gs-reg64 test-1))
-      (set! (-> (the-as (pointer gs-alpha) a0-5) 4) (new 'static 'gs-alpha :b #x1 :d #x1))
-      (set! (-> (the-as (pointer gs-reg64) a0-5) 5) (gs-reg64 alpha-1))
-      (set! (-> v1-2 base) (&+ a0-5 48))
-      )
+    (dma-buffer-add-gs-set arg0
+                           (zbuf-1 (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24)))
+                           (test-1 (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest always)))
+                           (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
+                           )
     ;; large polygon reg setup
     (init-regs-for-large-polygon-draw obj)
     ; (.lvf vf27 (&-> obj giftag-base quad))
@@ -766,30 +697,9 @@ vf31: cam 0 (premultiplied by hmge)
 (defmethod draw-base sky-work ((obj sky-work) (arg0 dma-buffer))
   "Draw the base of the sky box. Uses large-polygon renderer."
   (rlet ((vf27 :class vf))
-    (let* ((v1-0 arg0)
-           (a1-1 (the-as dma-packet (-> v1-0 base)))
-           )
-      (set! (-> a1-1 dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-      (set! (-> a1-1 vif0) (new 'static 'vif-tag))
-      (set! (-> a1-1 vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-      (set! (-> v1-0 base) (the-as pointer (&+ a1-1 16)))
-      )
-    (let* ((v1-1 arg0)
-           (a1-3 (the-as gs-gif-tag (-> v1-1 base)))
-           )
-      (set! (-> a1-3 tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-      (set! (-> a1-3 regs) GIF_REGS_ALL_AD)
-      (set! (-> v1-1 base) (the-as pointer (&+ a1-3 16)))
-      )
-    (let* ((v1-2 arg0)
-           (a1-5 (-> v1-2 base))
-           )
-      (set! (-> (the-as (pointer gs-test) a1-5) 0)
-            (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest always))
-            )
-      (set! (-> (the-as (pointer gs-reg64) a1-5) 1) (gs-reg64 test-1))
-      (set! (-> v1-2 base) (&+ a1-5 16))
-      )
+    (dma-buffer-add-gs-set arg0
+                           (test-1 (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest always)))
+                           )
     (let ((s5-0 (the-as object (-> arg0 base))))
       (&+! (-> arg0 base) 16)
       ;(.lvf vf27 (&-> obj giftag-base quad))
@@ -812,61 +722,34 @@ vf31: cam 0 (premultiplied by hmge)
 
 (defmethod draw-fog sky-work ((obj sky-work) (arg0 dma-buffer))
   (let ((s4-0 (-> *sky-texture-anim-array* array-data 8 tex)))
-    (when s4-0
-      (let* ((v1-3 arg0)
-             (a0-1 (the-as dma-packet (-> v1-3 base)))
-             )
-        (set! (-> a0-1 dma) (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt)))
-        (set! (-> a0-1 vif0) (new 'static 'vif-tag))
-        (set! (-> a0-1 vif1) (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1))
-        (set! (-> v1-3 base) (the-as pointer (&+ a0-1 16)))
+    (if s4-0
+        (dma-buffer-add-gs-set arg0
+                               (tex0-1 (new 'static 'gs-tex0
+                                         :tcc #x1
+                                         :cld #x1
+                                         :psm (the-as int (-> s4-0 psm))
+                                         :cpsm (-> s4-0 clutpsm)
+                                         :cbp (-> s4-0 clutdest)
+                                         :th (log2 (-> s4-0 h))
+                                         :tw (log2 (-> s4-0 w))
+                                         :tbw (-> s4-0 width 0)
+                                         :tbp0 (-> s4-0 dest 0)
+                                         )
+                                       )
+                               (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+                               (test-1 (new 'static 'gs-test
+                                         :ate #x1
+                                         :atst (gs-atest greater-equal)
+                                         :aref #x70
+                                         :afail #x3
+                                         :zte #x1
+                                         :ztst (gs-ztest greater-equal)
+                                         )
+                                       )
+                               (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
+                               (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
+                               )
         )
-      (let* ((v1-4 arg0)
-             (a0-3 (the-as gs-gif-tag (-> v1-4 base)))
-             )
-        (set! (-> a0-3 tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x5))
-        (set! (-> a0-3 regs) GIF_REGS_ALL_AD)
-        (set! (-> v1-4 base) (the-as pointer (the-as gs-gif-tag (&+ a0-3 16))))
-        )
-      (let* ((s3-0 arg0)
-             (s2-0 (-> s3-0 base))
-             )
-        (set! (-> (the-as (pointer gs-tex0) s2-0) 0)
-              (new 'static 'gs-tex0
-                :tcc #x1
-                :cld #x1
-                :psm (the-as int (-> s4-0 psm))
-                :cpsm (-> s4-0 clutpsm)
-                :cbp (-> s4-0 clutdest)
-                :th (log2 (-> s4-0 h))
-                :tw (log2 (-> s4-0 w))
-                :tbw (-> s4-0 width 0)
-                :tbp0 (-> s4-0 dest 0)
-                )
-              )
-        (set! (-> (the-as (pointer gs-reg64) s2-0) 1) (gs-reg64 tex0-1))
-        (set! (-> (the-as (pointer gs-tex1) s2-0) 2) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
-        (set! (-> (the-as (pointer gs-reg64) s2-0) 3) (gs-reg64 tex1-1))
-        (set! (-> (the-as (pointer gs-test) s2-0) 4)
-              (new 'static 'gs-test
-                :ate #x1
-                :atst (gs-atest greater-equal)
-                :aref #x70
-                :afail #x3
-                :zte #x1
-                :ztst (gs-ztest greater-equal)
-                )
-              )
-        (set! (-> (the-as (pointer gs-reg64) s2-0) 5) (gs-reg64 test-1))
-        (set! (-> (the-as (pointer gs-clamp) s2-0) 6)
-              (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp))
-              )
-        (set! (-> (the-as (pointer gs-reg64) s2-0) 7) (gs-reg64 clamp-1))
-        (set! (-> (the-as (pointer gs-alpha) s2-0) 8) (new 'static 'gs-alpha :b #x1 :d #x1))
-        (set! (-> (the-as (pointer gs-reg64) s2-0) 9) (gs-reg64 alpha-1))
-        (set! (-> s3-0 base) (&+ s2-0 80))
-        )
-      )
     )
   (let* ((v1-26 (the-as (inline-array qword) (-> arg0 base)))
          (f0-0 (-> *fog-texture-work* min-corner y))
