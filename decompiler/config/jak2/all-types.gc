@@ -3913,8 +3913,8 @@
 
 ;; the GS's UV register specifies the texel coordinate (UV) values of the vertex.
 (deftype gs-uv (uint64)
-  ((u  uint16 :offset 0  :size 14) ;; Q4 fixed point
-   (v  uint16 :offset 16 :size 14) ;; Q4 fixed point
+  ((u  uint16 :offset 0  :size 16) ;; Q4 fixed point
+   (v  uint16 :offset 16 :size 16) ;; Q4 fixed point
    )
   :flag-assert #x900000008
   )
@@ -3985,7 +3985,7 @@
    (spsm  uint8  :offset 24 :size 6)
    (dbp   uint16 :offset 32 :size 14)
    (dbw   uint8  :offset 48 :size 6)
-   (dpsm  uint8  :offset 56 :size 6)
+   (dpsm  gs-psm :offset 56 :size 6)
    )
   :flag-assert #x900000008
   )
@@ -7672,7 +7672,7 @@
     (bigmap-method-19 (_type_) int 19)
     (bigmap-method-20 (_type_) int 20)
     (bigmap-method-21 (_type_ int int) int 21)
-    (bigmap-method-22 (_type_ dma-buffer (pointer uint32) int int int int) none 22)
+    (bigmap-method-22 (_type_ dma-buffer (pointer uint32) int int int gs-psm) none 22)
     (bigmap-method-23 (_type_) none 23)
     (bigmap-method-24 (_type_ dma-buffer) none 24)
     (bigmap-method-25 (_type_ dma-buffer) none 25)
@@ -7999,8 +7999,9 @@
 ;; capture                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern gs-set-default-store-image (function gs-store-image-packet int int int int int int int int))
+(define-extern gs-set-default-store-image (function gs-store-image-packet int int gs-psm int int int int int))
 (define-extern store-image (function screen-shot-work int))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; memory-usage-h                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -8145,12 +8146,12 @@
    (color                    vector4w       :inline :offset-assert 160)
    (line-color               uint64                 :offset-assert 176)
    (scan-colors              vector4w 15 :inline    :offset-assert 192) ;; guesss
-   (menu-mode                basic                  :offset-assert 432)
-   (screen-copied            basic                  :offset-assert 436)
-   (vu1-enable-user-menu     uint64                 :offset-assert 440)
+   (menu-mode                symbol                 :offset-assert 432)
+   (screen-copied            symbol                 :offset-assert 436)
+   (vu1-enable-user-menu     vu1-renderer-mask      :offset-assert 440)
    (texture-enable-user-menu uint32                 :offset-assert 448)
    (count-down               uint32                 :offset-assert 452)
-   (horizontal-flip-flag     basic                  :offset-assert 456)
+   (horizontal-flip-flag     symbol                 :offset-assert 456)
    (scan-alpha               float                  :offset-assert 460)
    (scanline                 uint32                 :offset-assert 464)
    (progress-interp          float                  :offset-assert 468)
@@ -10956,9 +10957,8 @@
     (add-colors! (_type_ vector ocean-vertex) none 17)
     (ocean-method-18 "Unused" (_type_ (pointer ocean-colors) (pointer ocean-colors)) none 18) ;; args are guesses
     (init-buffer!
-    "Initialize [[ocean]] DMA buffer.
-    @returns Pointer to the next DMA buffer"
-    (_type_ dma-buffer) pointer 19)
+    "Initialize [[ocean]] DMA buffer."
+    (_type_ dma-buffer) none 19)
     (end-buffer! (_type_ dma-buffer) none 20)
     (set-corners! (_type_ float float) float 21)
     (ocean-near-add-call (_type_ dma-buffer int) none 22) ;; start ocean-near
@@ -11020,7 +11020,7 @@
     (draw-ocean-texture (_type_ dma-buffer int) none 78)
     (ocean-method-79 (_type_ dma-buffer) none 79)
     (ocean-method-80 (_type_ (pointer rgba)) none 80)
-    (ocean-method-81 (_type_ dma-buffer) none 81)
+    (ocean-method-81 (_type_ dma-buffer) int 81)
     (draw-envmap-debug (_type_ dma-buffer) none 82)
     (ocean-method-83 (_type_ dma-buffer float) none 83)
     (ocean-method-84 (_type_ dma-buffer sky-upload-data vector4w float) none 84)
@@ -24781,10 +24781,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *blit-displays-work* blit-displays-work)
-;; (define-extern blit-disp-slow function)
-;; (define-extern blur-disp function)
-;; (define-extern filter-disp function)
-;; (define-extern hflip-disp function)
+(define-extern blit-disp-slow (function dma-buffer int int int pointer))
+(define-extern blur-disp (function dma-buffer int int int symbol))
+(define-extern filter-disp (function dma-buffer vector symbol))
+(define-extern hflip-disp (function dma-buffer object))
 (define-extern blit-displays (function none))
 (define-extern draw-color-bars (function none))
 (define-extern draw-raw-image (function bucket-id art-group int int level int none))
@@ -30547,7 +30547,7 @@
 (define-extern scene-decode-continue (function basic continue-point))
 (define-extern scene-lookup "TODO - basic can be a string or a scene" (function basic scene))
 (define-extern *subtitle-work* subtitle-work)
-(define-extern draw-subtitle-image (function subtitle-image font-context pointer))
+(define-extern draw-subtitle-image (function subtitle-image font-context none))
 (define-extern process-drawable-draw-subtitles (function none :behavior process-drawable))
 (define-extern scene-player-init "`object` arg can be an `(array scene)`, `pair of scene` or a `scene`" (function object symbol string none :behavior scene-player))
 

@@ -18,6 +18,7 @@ Shader::Shader(const std::string& shader_name, GameVersion version) : m_name(sha
 
   vert_src = std::regex_replace(vert_src, std::regex("HEIGHT_SCALE"), height_scale);
   vert_src = std::regex_replace(vert_src, std::regex("SCISSOR_HEIGHT"), scissor_height);
+  frag_src = std::regex_replace(frag_src, std::regex("SCISSOR_HEIGHT"), scissor_height);
   vert_src = std::regex_replace(vert_src, std::regex("SCISSOR_ADJUST"), "(" + scissor_adjust + ")");
 
   m_vert_shader = glCreateShader(GL_VERTEX_SHADER);

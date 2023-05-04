@@ -194,6 +194,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/TextureUploadHandler.cpp
         graphics/opengl_renderer/VisDataHandler.cpp
         graphics/opengl_renderer/Warp.cpp
+        graphics/opengl_renderer/BlitDisplays.cpp
         graphics/texture/jak1_tpage_dir.cpp
         graphics/texture/jak2_tpage_dir.cpp
         graphics/texture/TextureConverter.cpp

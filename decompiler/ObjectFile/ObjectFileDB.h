@@ -77,11 +77,12 @@ struct LetRewriteStats {
   int rand_float_gen = 0;
   int set_let = 0;
   int with_dma_buf_add_bucket = 0;
+  int dma_buffer_add_gs_set = 0;
 
   int total() const {
     return dotimes + countdown + abs + abs2 + unused + ja + case_no_else + case_with_else +
            set_vector + set_vector2 + send_event + font_context_meth + proc_new + attack_info +
-           vector_dot + rand_float_gen + set_let + with_dma_buf_add_bucket;
+           vector_dot + rand_float_gen + set_let + with_dma_buf_add_bucket + dma_buffer_add_gs_set;
   }
 
   std::string print() const {
@@ -106,6 +107,7 @@ struct LetRewriteStats {
     out += fmt::format("  rand_float_gen: {}\n", rand_float_gen);
     out += fmt::format("  set_let: {}\n", set_let);
     out += fmt::format("  with_dma_buf_add_bucket: {}\n", with_dma_buf_add_bucket);
+    out += fmt::format("  dma_buffer_add_gs_set: {}\n", dma_buffer_add_gs_set);
     return out;
   }
 
@@ -201,6 +203,7 @@ class ObjectFileDB {
   // void ir2_store_current_forms(int seg);
   void ir2_build_expressions(int seg, const Config& config, ObjectFileData& data);
   void ir2_insert_lets(int seg, ObjectFileData& data);
+  void ir2_add_store_errors(int seg, ObjectFileData& data);
   void ir2_rewrite_inline_asm_instructions(int seg, ObjectFileData& data);
   void ir2_insert_anonymous_functions(int seg, ObjectFileData& data);
   void ir2_symbol_definition_map(ObjectFileData& data);
