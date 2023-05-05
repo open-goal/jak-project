@@ -5,11 +5,15 @@ out vec4 color;
 in vec4 fragment_color;
 in vec3 tex_coord;
 in flat uint use_uv;
+in vec4 gs_scissor;
 uniform float alpha_reject;
 uniform float color_mult;
 uniform float alpha_mult;
 uniform float alpha_sub;
 uniform float ta0;
+uniform int scissor_enable;
+// game width, game height, viewport width, viewport height
+uniform vec4 game_sizes;
 
 uniform vec4 fog_color;
 
@@ -63,6 +67,19 @@ vec4 sample_tex_px(vec2 coordf, uint unit) {
 }
 
 void main() {
+    if (scissor_enable == 1) {
+        float x = gl_FragCoord.x;
+        float y = gl_FragCoord.y;
+        float w = (game_sizes.z / game_sizes.x);
+        float h = (game_sizes.w / game_sizes.y);
+        float scax0 = gs_scissor.x * w + 0.5;
+        float scax1 = gs_scissor.y * w + 0.5;
+        float scay0 = (game_sizes.y - gs_scissor.w) * h + 0.5;
+        float scay1 = (game_sizes.y - gs_scissor.z) * h + 0.5;
+        if (x < scax0 || x > scax1) discard;
+        if (y < scay0 || y > scay1) discard;
+    }
+
     vec4 T0;
     if (use_uv == 1) {
         T0 = sample_tex_px(tex_coord.xy, tex_info.x);

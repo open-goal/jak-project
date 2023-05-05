@@ -1364,7 +1364,207 @@
        )
   )
 
+(defmacro gs-reg-list (&rest reg-ids)
+  "Generate a giftag register descriptor list from reg-ids."
+
+  (let ((reg-count (length reg-ids)))
+    (when (> (length reg-ids) 16)
+      (ferror "too many regs passed to gs-reg-list")
+      )
+    (let ((list-to-splice '())
+          (cur-lst reg-ids)
+          (i -1))
+
+        ;; this is questionable.
+        (while (and (not (null? cur-lst)) (< i 15))
+          (push! list-to-splice (cons 'gif-reg-id (cons (car cur-lst) '())))
+          (push! list-to-splice (string->symbol-format ":regs{}" (inc! i)))
+          (pop! cur-lst)
+          )
+
+        `(new 'static 'gif-tag-regs
+            ,@list-to-splice
+            )
+        )
+  #| ;; the opengoal compiler does not have enough constant propagation for this for now
+    (let ((i -1))
+
+      `(the-as gif-tag-regs (logior ,@(apply (lambda (x)
+          `(shl (the-as uint (gif-reg-id ,x)) ,(* 4 (inc! i)))
+                ) reg-ids)
+              ))
+
+      )|#
+    )
+  )
+
 ;; dma-buffer
+
+(defmacro dma-buffer-add-base-type (buf pkt dma-type &rest body)
+  "Base macro for adding stuff to a dma-buffer. Don't use this directly!"
+
+  (with-gensyms (dma-buf)
+    `(let* ((,dma-buf ,buf)
+            (,pkt (the-as ,dma-type (-> ,dma-buf base))))
+
+          ,@body
+
+          (set! (-> ,dma-buf base) (&+ (the-as pointer ,pkt) (size-of ,dma-type)))
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-base-data (buf data-type forms)
+  "Base macro for adding data words to a dma-buffer.
+   Each form in forms is converted into data-type and added to the buffer. NO TYPE CHECKING is performed, so be careful!"
+
+  (with-gensyms (dma-buf ptr)
+    `(let* ((,dma-buf ,buf)
+            (,ptr (the-as (pointer ,data-type) (-> ,dma-buf base))))
+
+          ,@(apply-i (lambda (x i) `(set! (-> ,ptr ,i) (the-as ,data-type ,x))) forms)
+
+          (set! (-> ,dma-buf base) (&+ (the-as pointer ,ptr) (* ,(length forms) (size-of ,data-type))))
+
+        )
+    )
+  )
+
+
+(defmacro dma-buffer-add-cnt-vif2 (buf qwc vif0 vif1)
+  "Add a dma-packet to a dma-buffer.
+   The packet is made up of a 'cnt' DMAtag (transfer qwc qwords of data after the tag and continue from after that point)
+    and includes two vif-tags for vifcode, or something else if needed."
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt dma-packet
+
+        (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc ,qwc))
+
+        (set! (-> ,pkt vif0) ,vif0)
+        (set! (-> ,pkt vif1) ,vif1)
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-ref-vif2 (buf qwc addr vif0 vif1)
+  "Add a dma-packet to a dma-buffer.
+   The packet is made up of a 'cnt' DMAtag (transfer qwc qwords of data at addr and continue from after the tag)
+    and includes two vif-tags for vifcode, or something else if needed."
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt dma-packet
+
+        (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id ref) :qwc ,qwc :addr (the-as int ,addr)))
+
+        (set! (-> ,pkt vif0) ,vif0)
+        (set! (-> ,pkt vif1) ,vif1)
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-ret (buf)
+  "Add a dma-packet to a dma-buffer. This packet simply does a DMA 'return' "
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt dma-packet
+
+        (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id ret) :qwc 0))
+
+        (set! (-> ,pkt vif0) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+        (set! (-> ,pkt vif1) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-gif-tag (buf giftag gifregs)
+  "Add a giftag to a dma-buffer."
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt gs-gif-tag
+
+        (set! (-> ,pkt tag) ,giftag)
+
+        (set! (-> ,pkt regs) ,gifregs)
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-uint64 (buf &rest body)
+  "Add 64-bit words to a dma-buffer. See dma-buffer-add-base-data"
+
+  `(dma-buffer-add-base-data ,buf uint64 ,body)
+  )
+
+(defmacro dma-buffer-add-uint128 (buf &rest body)
+  "Add 128-bit words to a dma-buffer. See dma-buffer-add-base-data"
+
+  `(dma-buffer-add-base-data ,buf uint128 ,body)
+  )
+
+(defmacro dma-buffer-add-gs-set-flusha (buf &rest reg-list)
+  "Add a gif cnt dma packet to a dma-buffer for setting GS registers. Up to 16 can be set at once.
+   The packet runs the flusha command which waits for GIF transfer to end and VU1 microprogram to stop.
+   reg-list is a list of pairs where the car is the register name and the cadr is the value to be set for that register."
+
+  (let ((reg-count (length reg-list))
+        (qwc (+ (length reg-list) 1))
+        (reg-names (apply first reg-list))
+        (reg-datas (apply second reg-list))
+        )
+    `(begin
+      ;; dma tag
+      (dma-buffer-add-cnt-vif2 ,buf ,qwc
+                              (new 'static 'vif-tag :cmd (vif-cmd flusha))
+                              (new 'static 'vif-tag :cmd (vif-cmd direct) :imm ,qwc)
+                              )
+
+      ;; gif tag for editing gs regs
+      (dma-buffer-add-gif-tag ,buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :nreg ,reg-count)
+                                   (gs-reg-list a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d)
+                                   )
+
+      ;; gs regs
+      (dma-buffer-add-uint64 ,buf
+          ,@(apply2 (lambda (x) x) (lambda (x) `(gs-reg64 ,x)) reg-datas reg-names)
+          )
+      )
+    )
+  )
+
+(defmacro dma-buffer-add-gs-set (buf &rest reg-list)
+  "Add a gif cnt dma packet to a dma-buffer for setting GS registers. Up to 16 can be set at once.
+   reg-list is a list of pairs where the car is the register name and the cadr is the value to be set for that register."
+
+  (let ((reg-count (length reg-list))
+        (qwc (+ (length reg-list) 1))
+        (reg-names (apply first reg-list))
+        (reg-datas (apply second reg-list))
+        )
+    `(begin
+      ;; dma tag
+      (dma-buffer-add-cnt-vif2 ,buf ,qwc
+                              (new 'static 'vif-tag :cmd (vif-cmd nop))
+                              (new 'static 'vif-tag :cmd (vif-cmd direct) :imm ,qwc)
+                              )
+
+      ;; gif tag for editing gs regs
+      (dma-buffer-add-gif-tag ,buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :nreg ,reg-count)
+                                   (gs-reg-list a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d)
+                                   )
+
+      ;; gs regs
+      (dma-buffer-add-uint64 ,buf
+          ,@(apply2 (lambda (x) x) (lambda (x) `(gs-reg64 ,x)) reg-datas reg-names)
+          )
+      )
+    )
+  )
 
 (defmacro with-dma-bucket (bindings &rest body)
   "Start a new dma-bucket in body that will be finished at the end.

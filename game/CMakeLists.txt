@@ -15,6 +15,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/background/Tfrag3.cpp
         graphics/opengl_renderer/background/TFragment.cpp
         graphics/opengl_renderer/background/Tie3.cpp
+        graphics/opengl_renderer/BlitDisplays.cpp
         graphics/opengl_renderer/BucketRenderer.cpp
         graphics/opengl_renderer/CollideMeshRenderer.cpp
         graphics/opengl_renderer/debug_gui.cpp
