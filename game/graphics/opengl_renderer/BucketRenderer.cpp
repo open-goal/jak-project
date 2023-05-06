@@ -78,11 +78,12 @@ void PrintRenderer::render(DmaFollower& dma,
   // print the entire chain
   fmt::print("START {} DMA!!!!!!!\n", m_name);
   while (dma.current_tag_offset() != render_state->next_bucket) {
+    auto dmatag = dma.current_tag();
     auto data = dma.read_and_advance();
     printf(
         "dma transfer %d:\n%ssize: %d\nvif0: %s, data: %d\nvif1: %s, data: %d, imm: "
         "%d\n\n",
-        transfers, dma.current_tag().print().c_str(), data.size_bytes,
+        transfers, dmatag.print().c_str(), data.size_bytes,
         data.vifcode0().print().c_str(), data.vif0(), data.vifcode1().print().c_str(),
         data.vifcode1().num, data.vifcode1().immediate);
     transfers++;

@@ -159,6 +159,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/foreground/Generic2_DMA.cpp
         graphics/opengl_renderer/foreground/Generic2_Build.cpp
         graphics/opengl_renderer/foreground/Generic2_OpenGL.cpp
+        graphics/opengl_renderer/foreground/Shadow2.cpp
         graphics/opengl_renderer/sprite/GlowRenderer.cpp
         graphics/opengl_renderer/sprite/Sprite3.cpp
         graphics/opengl_renderer/sprite/Sprite3_Distort.cpp
