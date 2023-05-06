@@ -38,7 +38,7 @@ std::string get_string(const goos::Object& x) {
 }
 
 /*!
- * Parse a game text file.
+ * Parse a game text file (GOAL format).
  * Information is added to the game text database.
  *
  * The file should begin with (language-id x y z...) with the given language IDs.
@@ -189,6 +189,34 @@ void parse_text(const goos::Object& data, GameTextDB& db, const GameTextDefiniti
   }
 }
 
+/*!
+ * Parse a game text file (JSON format).
+ * Information is added to the game text database.
+ *
+ * Each ID-based entry should follow this format:
+ *    <text_id>: <text_value>
+ * For example, for (display #x1043) you would add this entry:
+ *    "1043": "DISPLAY"
+ *
+ * Additionally you can override credits with the special "_credits" key:
+ *    "_credits": {
+ *      "begin": "0b00",
+ *      "lines": [
+ *        "JAK AND DAXTER: CREDITS LINE 1",
+ *        "CREDITS LINE 2",
+ *        "CREDITS LINE 3",
+ *        ...
+ *      ]
+ *    }
+ * 
+ * The "begin" entry is the ID (x0b00) for the first line of the credits,
+ *  which you can get/verify from the extracted assets in
+ *  jak-project/decompiler_out/jak1/assets/game_text.txt
+ * 
+ * Note that this overwrites the original credits line-by-line, i.e. if
+ *  you provide only one entry in "lines", that will overwrite the first
+ *  line of the credits and everything after will remain unchanged.
+ */
 void parse_text_json(const nlohmann::json& json,
                      GameTextDB& db,
                      const GameTextDefinitionFile& file_info) {
@@ -217,13 +245,36 @@ void parse_text_json(const nlohmann::json& json,
   const GameTextFontBank* font = get_font_bank(file_info.text_version);
   // Parse the file
   for (const auto& [text_id, text_value] : json.items()) {
-    if (!text_value.is_string()) {
-      throw std::runtime_error(fmt::format("Non string provided for text id #x{}", text_id));
+    if (text_id == "_credits") {
+       // Special parsing for credits text block
+      if (!text_value.is_object()) {
+         throw std::runtime_error("Must provide object for credits text!");
+      }
+      if (text_value.find("begin") == text_value.end() || !text_value["begin"].is_string()) {
+        throw std::runtime_error("Must provide 'begin' value for credits text!");
+      }
+      if (text_value.find("lines") == text_value.end() || !text_value["lines"].is_array()) {
+        throw std::runtime_error("Must provide 'lines' value for credits text!");
+      }
+      auto credits_line_id = std::stoi(std::string(text_value["begin"]), nullptr, 16);
+      for (const auto& [idx, raw_line] : text_value["lines"].items()) {
+        if (!raw_line.is_string()) {
+          throw std::runtime_error(fmt::format(
+              "Non string provided for line {} / text id #x{} of _credits", idx, credits_line_id));
+        }
+        auto line = font->convert_utf8_to_game(raw_line);
+        bank->set_line(credits_line_id++, line);
+      }
+    } else {
+      // Parsing any other id-based text
+      if (!text_value.is_string()) {
+         throw std::runtime_error(fmt::format("Non string provided for text id #x{}", text_id));
+      }
+      auto line = font->convert_utf8_to_game(text_value);
+      auto line_id = std::stoi(text_id, nullptr, 16);
+      // TODO - lint duplicate line definitions across text files
+      bank->set_line(line_id, line);
     }
-    auto line = font->convert_utf8_to_game(text_value);
-    auto line_id = std::stoi(text_id, nullptr, 16);
-    // TODO - lint duplicate line definitions across text files
-    bank->set_line(line_id, line);
   }
 }
 
