@@ -220,9 +220,7 @@ void Shadow2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
   draw_buffers(render_state, prof, frame_constants);
   auto transfers = 0;
   while (dma.current_tag_offset() != render_state->next_bucket) {
-    auto dmatag = dma.current_tag();
     auto data = dma.read_and_advance();
-
     if (data.size_bytes == 560) {
       memcpy(m_color, data.data + 8 * 3, 4);
     }
@@ -378,7 +376,7 @@ const u8* Shadow2::add_wall_quads(const u8* byte_data,
     int side_control = *byte_data++;
 
     const int bonus = *byte_data++;  // unused, but not zero?
-    // ASSERT(bonus == 1);              // idk
+    (void)bonus;
 
     // due to unpackv4-8 alignment, they inserted up to 3 dummy tris at the end. let's just skip.
     if (!vertex_addrs[0] && !vertex_addrs[1]) {
@@ -449,10 +447,10 @@ void Shadow2::draw_buffers(SharedRenderState* render_state,
   glStencilMask(0xFF);
 
   u32 clear_vertices = m_vertex_buffer_used;
-  m_vertex_buffer[m_vertex_buffer_used++] = ShadowVertex{math::Vector3f(0.3, 0.3, 0)};
-  m_vertex_buffer[m_vertex_buffer_used++] = ShadowVertex{math::Vector3f(0.3, 0.7, 0)};
-  m_vertex_buffer[m_vertex_buffer_used++] = ShadowVertex{math::Vector3f(0.7, 0.3, 0)};
-  m_vertex_buffer[m_vertex_buffer_used++] = ShadowVertex{math::Vector3f(0.7, 0.7, 0)};
+  m_vertex_buffer[m_vertex_buffer_used++] = ShadowVertex{math::Vector3f(0.3, 0.3, 0), 0};
+  m_vertex_buffer[m_vertex_buffer_used++] = ShadowVertex{math::Vector3f(0.3, 0.7, 0), 0};
+  m_vertex_buffer[m_vertex_buffer_used++] = ShadowVertex{math::Vector3f(0.7, 0.3, 0), 0};
+  m_vertex_buffer[m_vertex_buffer_used++] = ShadowVertex{math::Vector3f(0.7, 0.7, 0), 0};
   m_front_index_buffer[m_front_index_buffer_used++] = clear_vertices;
   m_front_index_buffer[m_front_index_buffer_used++] = clear_vertices + 1;
   m_front_index_buffer[m_front_index_buffer_used++] = clear_vertices + 2;

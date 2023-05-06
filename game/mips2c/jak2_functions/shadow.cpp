@@ -218,7 +218,6 @@ namespace shadow_xform_verts {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   c->lw(v1, 68, a1);                                // lw v1, 68(a1)
   // nop                                            // sll r0, r0, 0
@@ -381,7 +380,6 @@ namespace shadow_calc_dual_verts {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   c->lw(v1, 16, a1);                                // lw v1, 16(a1)
   // nop                                            // sll r0, r0, 0
@@ -594,7 +592,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   get_fake_spad_addr2(v1, cache.fake_scratchpad_data, 0, c);// lui v1, 28672
   c->lw(a3, 44, a1);                                // lw a3, 44(a1)
   // nop                                            // sll r0, r0, 0
@@ -684,7 +681,6 @@ namespace shadow_scissor_top {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   c->lw(a2, 44, a1);                                // lw a2, 44(a1)
   // nop                                            // sll r0, r0, 0
@@ -766,8 +762,6 @@ struct Cache {
 
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
-  u32 call_addr = 0;
   c->load_symbol2(v1, cache.math_camera);           // lw v1, *math-camera*(s7)
   c->mov64(v1, v1);                                 // or v1, v1, r0
   c->lqc2(vf7, 364, v1);                            // lqc2 vf7, 364(v1)
@@ -833,7 +827,6 @@ namespace shadow_find_facing_single_tris {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -64);                           // daddiu sp, sp, -64
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sq(s4, 16, sp);                                // sq s4, 16(sp)
@@ -1140,7 +1133,6 @@ namespace shadow_find_single_edges {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->lw(a2, 16, a1);                                // lw a2, 16(a1)
   c->lh(a3, 14, a0);                                // lh a3, 14(a0)
   c->mov64(v1, a2);                                 // or v1, a2, r0
@@ -1243,7 +1235,6 @@ namespace shadow_find_facing_double_tris {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->lh(a2, 16, a0);                                // lh a2, 16(a0)
@@ -1528,7 +1519,6 @@ namespace shadow_find_double_edges {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->lw(a2, 16, a1);                                // lw a2, 16(a1)
   c->lh(a3, 18, a0);                                // lh a3, 18(a0)
   c->mov64(v1, a2);                                 // or v1, a2, r0
@@ -1641,7 +1631,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->load_symbol2(v1, cache.shadow_data);           // lw v1, *shadow-data*(s7)
   c->mov64(v1, v1);                                 // or v1, v1, r0
   c->lh(a0, 8, a0);                                 // lh a0, 8(a0)
@@ -1831,7 +1820,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->load_symbol2(v1, cache.shadow_data);           // lw v1, *shadow-data*(s7)
   c->mov64(a3, v1);                                 // or a3, v1, r0
   c->lw(v1, 20, a1);                                // lw v1, 20(a1)
@@ -1913,7 +1901,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->load_symbol2(v1, cache.shadow_data);           // lw v1, *shadow-data*(s7)
   c->mov64(a3, v1);                                 // or a3, v1, r0
   c->lw(v1, 24, a1);                                // lw v1, 24(a1)
@@ -1999,7 +1986,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->load_symbol2(v1, cache.shadow_data);           // lw v1, *shadow-data*(s7)
   c->mov64(a3, v1);                                 // or a3, v1, r0
   c->lh(a1, 12, a0);                                // lh a1, 12(a0)
@@ -2081,7 +2067,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->load_symbol2(v1, cache.shadow_data);           // lw v1, *shadow-data*(s7)
   c->mov64(a3, v1);                                 // or a3, v1, r0
   c->lh(v1, 16, a0);                                // lh v1, 16(a0)
@@ -2161,7 +2146,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->load_symbol2(v1, cache.shadow_data);           // lw v1, *shadow-data*(s7)
   c->mov64(a3, v1);                                 // or a3, v1, r0
   c->lw(v1, 28, a1);                                // lw v1, 28(a1)
@@ -2468,7 +2452,7 @@ block_16:
     goto block_20;
   }
 
-block_18:
+// block_18:
   c->load_symbol2(t9, cache.camera_pos);            // lw t9, camera-pos(s7)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
@@ -2545,7 +2529,7 @@ block_23:
     goto block_27;
   }
 
-block_25:
+// block_25:
   c->lwc1(f2, 124, s3);                             // lwc1 f2, 124(s3)
   cop1_bc = c->fprs[f1] < c->fprs[f2];              // c.lt.s f1, f2
   bc = cop1_bc;                                     // bc1t L36

@@ -15,31 +15,6 @@ class Shadow2 : public BucketRenderer {
   void init_shaders(ShaderLibrary& shaders) override;
 
  private:
-  /*
-TAG: 0x00000000 cnt  qwc 0x0073
-size: 1840
-vif0: FLUSH, data: 285212672
-vif1: UNPACK-V4-32: 115 addr: 4 us: false tops: false, data: 115, imm: 4
-
-dma transfer 1:
-TAG: 0x00000000 cnt  qwc 0x0073
-size: 1840
-vif0: NOP, data: 0
-vif1: UNPACK-V4-32: 115 addr: 174 us: false tops: false, data: 115, imm: 174
-
-dma transfer 2:
-TAG: 0x00000000 cnt  qwc 0x0019
-size: 400
-vif0: NOP, data: 0
-vif1: UNPACK-V4-8: 96 addr: 344 us: true tops: false, data: 96, imm: 16728
-
-dma transfer 3:
-TAG: 0x00000000 cnt  qwc 0x001e
-size: 480
-vif0: NOP, data: 0
-vif1: UNPACK-V4-8: 116 addr: 600 us: true tops: false, data: 116, imm: 16984
-   */
-
   struct ShadowVu1Constants {
     math::Vector4f hmgescale;
     math::Vector4f invhscale;
@@ -79,7 +54,7 @@ vif1: UNPACK-V4-8: 116 addr: 600 us: true tops: false, data: 116, imm: 16984
 
   struct ShadowVertex {
     math::Vector3f pos;
-    math::Vector<u8, 4> rgba;
+    u32 pad = 0;
   };
   static_assert(sizeof(ShadowVertex) == 16);
 
@@ -103,30 +78,6 @@ vif1: UNPACK-V4-8: 116 addr: 600 us: true tops: false, data: 116, imm: 16984
   size_t m_front_index_buffer_used = 0;
   size_t m_back_index_buffer_used = 0;
   bool m_debug_draw_volume = false;
-
-  // memory layout
-  // 0 - 4    camera
-  // 4 - 119  upload4
-
-  // 174 - 289 upload174
-
-  // 344 - ??  upload344
-
-  // 600 - ?? upload 600
-
-  // 880   hmgescale
-  // 881   invhscale
-  // 882   texoffset
-  // 883   texscale
-  // 884   hvdfoff
-  // 885   fog
-  // 886   clrs[0]
-  // 887   clrs[1]
-
-  // 940   mystery[0]
-  // 941   mystery[1]
-  // 942   mystery[2]
-  // 943   mystery[3]
 
   void reset_buffers();
   void buffer_from_mscal2(const InputData& input);
