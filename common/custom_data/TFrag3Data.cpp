@@ -173,23 +173,30 @@ std::array<math::Vector3f, 3> tie_normal_transform_v2(const std::array<math::Vec
   // sqc2 vf12, -80(t8)
 }
 
+u32 pack_to_gl_normal(s16 nx, s16 ny, s16 nz) {
+  ASSERT(nx >= -512 && nx <= 511);
+  ASSERT(ny >= -512 && ny <= 511);
+  ASSERT(nz >= -512 && nz <= 511);
+  return (nx & 0x3ff) | ((ny & 0x3ff) << 10) | ((nz & 0x3ff) << 20);
+}
+
 /*!
  * Unpack tie normal by transforming and converting to s16 for OpenGL.
  */
-math::Vector<s16, 3> unpack_tie_normal(const std::array<math::Vector3f, 3>& mat,
-                                       s8 nx,
-                                       s8 ny,
-                                       s8 nz) {
+u32 unpack_tie_normal(const std::array<math::Vector3f, 3>& mat, s8 nx, s8 ny, s8 nz) {
   // rotate the normal
   math::Vector3f nrm = math::Vector3f::zero();
   nrm += mat[0] * nx;
   nrm += mat[1] * ny;
   nrm += mat[2] * nz;
   // convert to s16 for OpenGL renderer
-  nrm *= 0.0078125;      // number from EE asm
-  nrm *= 256.f * 128.f;  // for normalize s16 -> float conversion by OpenGL.
+  // nrm /= 0x100;  // number from EE asm
+  // nrm *= 0x200;  // for normalized s10 -> float conversion by OpenGL.
+  nrm *= 2;  // for normalized s10 -> float conversion by OpenGL.
 
-  return nrm.cast<s16>();
+  auto as_int = nrm.cast<s16>();
+
+  return pack_to_gl_normal(as_int.x(), as_int.y(), as_int.z());
 }
 
 void TieTree::unpack() {
@@ -206,9 +213,7 @@ void TieTree::unpack() {
         vtx.z = proto_vtx.z;
         vtx.s = proto_vtx.s;
         vtx.t = proto_vtx.t;
-        vtx.nx = proto_vtx.nx << 8;
-        vtx.ny = proto_vtx.ny << 8;
-        vtx.nz = proto_vtx.nz << 8;
+        vtx.nor = pack_to_gl_normal(proto_vtx.nx << 1, proto_vtx.ny << 1, proto_vtx.nz << 1);
         vtx.r = proto_vtx.r;
         vtx.g = proto_vtx.g;
         vtx.b = proto_vtx.b;
@@ -229,10 +234,7 @@ void TieTree::unpack() {
         vtx.z = temp.z();
         vtx.s = proto_vtx.s;
         vtx.t = proto_vtx.t;
-        auto nrm = unpack_tie_normal(nmat, proto_vtx.nx, proto_vtx.ny, proto_vtx.nz);
-        vtx.nx = nrm.x();
-        vtx.ny = nrm.y();
-        vtx.nz = nrm.z();
+        vtx.nor = unpack_tie_normal(nmat, proto_vtx.nx, proto_vtx.ny, proto_vtx.nz);
         vtx.r = proto_vtx.r;
         vtx.g = proto_vtx.g;
         vtx.b = proto_vtx.b;

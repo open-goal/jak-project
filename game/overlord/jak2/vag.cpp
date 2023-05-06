@@ -377,7 +377,7 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
     lfo_node.plugin_id = cmd->plugin_id;
     RemoveLfoStreamFromList(&lfo_node, &LfoList);
   }
-  printf("termina removing %s (2)\n", vag_node.name);
+  // printf("termina removing %s (2)\n", vag_node.name);
 
   RemoveVagStreamFromList(&vag_node, &EEPlayList);
   if (param_2 == 1) {
