@@ -254,7 +254,8 @@ void parse_text_json(const nlohmann::json& json,
       }
     } else {
       // Unexpected value type
-      throw std::runtime_error(fmt::format("Must provide string or array for text id #x{}", text_id));
+      throw std::runtime_error(
+          fmt::format("Must provide string or array for text id #x{}", text_id));
     }
   }
 }
