@@ -76,8 +76,8 @@ int scePadRead(int port, int /*slot*/, u8* rdata) {
     std::tie(cpad->leftx, cpad->lefty) = pad_data.value()->analog_left();
 
     // pressure sensitivity. ignore for now.
-    for (int i = 0; i < 12; ++i) {
-      cpad->abutton[1] =
+    for (int i = 0; i < PAD_DATA_PRESSURE_INDEX_ORDER.size(); i++) {
+      cpad->abutton[i] =
           pad_data.value()->button_data.at(PAD_DATA_PRESSURE_INDEX_ORDER.at(i)) * 255;
     }
 
