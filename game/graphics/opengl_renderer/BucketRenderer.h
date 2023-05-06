@@ -94,6 +94,8 @@ struct SharedRenderState {
   int num_vis_to_copy = 0;
   GameVersion version;
   u64 frame_idx = 0;
+
+  bool stencil_dirty = false;
 };
 
 /*!

@@ -83,9 +83,9 @@ void PrintRenderer::render(DmaFollower& dma,
     printf(
         "dma transfer %d:\n%ssize: %d\nvif0: %s, data: %d\nvif1: %s, data: %d, imm: "
         "%d\n\n",
-        transfers, dmatag.print().c_str(), data.size_bytes,
-        data.vifcode0().print().c_str(), data.vif0(), data.vifcode1().print().c_str(),
-        data.vifcode1().num, data.vifcode1().immediate);
+        transfers, dmatag.print().c_str(), data.size_bytes, data.vifcode0().print().c_str(),
+        data.vif0(), data.vifcode1().print().c_str(), data.vifcode1().num,
+        data.vifcode1().immediate);
     transfers++;
   }
   printf("transfers: %d\n\n", transfers);

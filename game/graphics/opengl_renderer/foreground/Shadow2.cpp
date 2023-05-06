@@ -123,27 +123,26 @@ void Shadow2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
 
   // loop over fragments.
   while (true) {
-    if (dma.current_tag().qwc == 0x73) {
+    if (dma.current_tag_vifcode0().kind == VifCode::Kind::FLUSH &&
+        dma.current_tag_vifcode1().kind == VifCode::Kind::UNPACK_V4_32) {
       InputData input;
 
       // first upload
       auto upload0 = dma.read_and_advance();
-      ASSERT(upload0.size_bytes == 115 * 16);
       ASSERT(upload0.vifcode0().kind == VifCode::Kind::FLUSH);
       auto up0_vif1 = upload0.vifcode1();
       ASSERT(up0_vif1.kind == VifCode::Kind::UNPACK_V4_32);
       ASSERT(up0_vif1.immediate == 4);
-      ASSERT(up0_vif1.num == 115);
+      ASSERT(up0_vif1.num * 16 == upload0.size_bytes);
       input.upload_4 = upload0.data;
 
       // upload
       auto upload1 = dma.read_and_advance();
-      ASSERT(upload1.size_bytes == 115 * 16);
       ASSERT(upload1.vif0() == 0);
       auto up1_vif1 = upload1.vifcode1();
       ASSERT(up1_vif1.kind == VifCode::Kind::UNPACK_V4_32);
       ASSERT(up1_vif1.immediate == 174);
-      ASSERT(up1_vif1.num == 115);
+      ASSERT(up1_vif1.num * 16 == upload1.size_bytes);
       input.upload_174 = upload1.data;
 
       auto upload2 = dma.read_and_advance();
@@ -166,10 +165,19 @@ void Shadow2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
         ASSERT(after[2] == 0);
         VifCode mscal(after[3]);
         ASSERT(mscal.kind == VifCode::Kind::MSCALF);
-        ASSERT(mscal.immediate == 2);
         input.size_344 = 4 * v1.num;
         input.upload_8s_344 = upload2.data;
-        buffer_from_mscal2(input);
+        switch (mscal.immediate) {
+          case 2:
+            buffer_from_mscal2(input);
+            break;
+          case 6:
+            buffer_from_mscal6(input);
+            break;
+          default:
+            printf("mscal %d\n", mscal.immediate);
+            ASSERT_NOT_REACHED();
+        }
       }
 
       auto upload3 = dma.read_and_advance();
@@ -201,6 +209,9 @@ void Shadow2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
       dma.read_and_advance();
       dma.read_and_advance();
       dma.read_and_advance();
+    } else if (dma.current_tag_vif0() == 0 &&
+               dma.current_tag_vifcode1().kind == VifCode::Kind::FLUSHA) {
+      dma.read_and_advance();
     } else {
       break;
     }
@@ -208,38 +219,34 @@ void Shadow2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
 
   draw_buffers(render_state, prof, frame_constants);
   auto transfers = 0;
-  // print the entire chain
-  fmt::print("START {} DMA!!!!!!!\n", m_name);
   while (dma.current_tag_offset() != render_state->next_bucket) {
     auto dmatag = dma.current_tag();
     auto data = dma.read_and_advance();
-    printf(
-        "dma transfer %d:\n%ssize: %d\nvif0: %s, data: %d\nvif1: %s, data: %d, imm: "
-        "%d\n\n",
-        transfers, dmatag.print().c_str(), data.size_bytes, data.vifcode0().print().c_str(),
-        data.vif0(), data.vifcode1().print().c_str(), data.vifcode1().num,
-        data.vifcode1().immediate);
+
+    if (data.size_bytes == 560) {
+      memcpy(m_color, data.data + 8 * 3, 4);
+    }
     transfers++;
   }
-  printf("transfers: %d\n\n", transfers);
+  ASSERT(transfers < 7);
 }
 
 void Shadow2::buffer_from_mscal2(const InputData& in) {
   // draw top caps.
-  const u8* end_byte_data_ptr = add_cap_tris(in.upload_8s_344, in.upload_4);
-
-  // vif unpack would pad this with 0's to the nearest qw...
-  if (end_byte_data_ptr >= in.upload_8s_344 + in.size_344) {
-    ASSERT(end_byte_data_ptr == in.upload_8s_344 + in.size_344);
-    return;
-  }
+  add_cap_tris(in.upload_8s_344, in.upload_4, false);
 
   // draw bottom caps.
-  add_cap_tris(in.upload_8s_344, in.upload_174);
+  add_cap_tris(in.upload_8s_344, in.upload_174, true);
 }
 
 void Shadow2::buffer_from_mscal4(const InputData& in) {
   add_wall_quads(in.upload_8s_600, in.upload_4, in.upload_174);
+}
+
+void Shadow2::buffer_from_mscal6(const InputData& in) {
+  // draw top caps.
+  add_flippable_tris(in.upload_8s_344, in.upload_4, false);
+  add_flippable_tris(in.upload_8s_344, in.upload_174, true);
 }
 
 Shadow2::ShadowVertex* Shadow2::alloc_verts(int n) {
@@ -263,7 +270,7 @@ u32* Shadow2::alloc_inds(int n, bool front) {
   }
 }
 
-const u8* Shadow2::add_cap_tris(const u8* byte_data, const u8* vertex_data) {
+const u8* Shadow2::add_cap_tris(const u8* byte_data, const u8* vertex_data, bool flip) {
   const int num_single_tris = *byte_data++;
   for (int i = 0; i < 3; i++) {
     int v = *byte_data++;
@@ -286,8 +293,60 @@ const u8* Shadow2::add_cap_tris(const u8* byte_data, const u8* vertex_data) {
     // load vertices (to vf17, vf18, vf19)
     const int opengl_vertex_idx = m_vertex_buffer_used;
     auto* vertex_rt_camera = alloc_verts(3);
+    if (flip) {
+      memcpy(vertex_rt_camera[0].pos.data(), vertex_data + 16 * vertex_addrs[0], 12);
+      memcpy(vertex_rt_camera[1].pos.data(), vertex_data + 16 * vertex_addrs[2], 12);
+      memcpy(vertex_rt_camera[2].pos.data(), vertex_data + 16 * vertex_addrs[1], 12);
+    } else {
+      for (int j = 0; j < 3; j++) {
+        memcpy(vertex_rt_camera[j].pos.data(), vertex_data + 16 * vertex_addrs[j], 12);
+      }
+    }
+
+    const math::Vector3f v1_v0_rt_camera = vertex_rt_camera[1].pos - vertex_rt_camera[0].pos;
+    const math::Vector3f v2_v0_rt_camera = vertex_rt_camera[2].pos - vertex_rt_camera[0].pos;
+    const math::Vector3f tri_normal = v1_v0_rt_camera.cross(v2_v0_rt_camera);
+    const float normal_dot_eye = tri_normal.dot(vertex_rt_camera[0].pos);
+    auto* idx_buffer = alloc_inds(4, normal_dot_eye > 0);
     for (int j = 0; j < 3; j++) {
-      memcpy(vertex_rt_camera[j].pos.data(), vertex_data + 16 * vertex_addrs[j], 12);
+      idx_buffer[j] = opengl_vertex_idx + j;
+    }
+    idx_buffer[3] = UINT32_MAX;
+  }
+  return byte_data;
+}
+
+const u8* Shadow2::add_flippable_tris(const u8* byte_data, const u8* vertex_data, bool flip) {
+  const int num_single_tris = *byte_data++;
+  for (int i = 0; i < 3; i++) {
+    int v = *byte_data++;
+    ASSERT(v == 0);
+  }
+  for (int i = 0; i < num_single_tris; i++) {
+    int vertex_addrs[3];
+    vertex_addrs[0] = *byte_data++;  // vi04
+    vertex_addrs[1] = *byte_data++;  // vi05
+    vertex_addrs[2] = *byte_data++;  // vi06
+    const int flip_flag = *byte_data++;
+
+    // due to unpackv4-8 alignment, they inserted up to 3 dummy tris at the end. let's just skip.
+    if (!vertex_addrs[0] && !vertex_addrs[1] && !vertex_addrs[2]) {
+      ASSERT(i + 4 >= num_single_tris);
+      continue;
+    }
+
+    // load vertices (to vf17, vf18, vf19)
+    const int opengl_vertex_idx = m_vertex_buffer_used;
+    auto* vertex_rt_camera = alloc_verts(3);
+    if ((flip ^ flip_flag) == 0) {
+      memcpy(vertex_rt_camera[0].pos.data(), vertex_data + 16 * vertex_addrs[0], 12);
+      memcpy(vertex_rt_camera[1].pos.data(), vertex_data + 16 * vertex_addrs[2], 12);
+      memcpy(vertex_rt_camera[2].pos.data(), vertex_data + 16 * vertex_addrs[1], 12);
+
+    } else {
+      for (int j = 0; j < 3; j++) {
+        memcpy(vertex_rt_camera[j].pos.data(), vertex_data + 16 * vertex_addrs[j], 12);
+      }
     }
 
     const math::Vector3f v1_v0_rt_camera = vertex_rt_camera[1].pos - vertex_rt_camera[0].pos;
@@ -369,6 +428,12 @@ void Shadow2::draw_buffers(SharedRenderState* render_state,
     return;
   }
 
+  if (render_state->stencil_dirty) {
+    glClearStencil(0);
+    glClear(GL_STENCIL_BUFFER_BIT);
+  }
+  render_state->stencil_dirty = true;
+
   render_state->shaders.at(ShaderId::SHADOW2).activate();
 
   // uniforms:
@@ -430,7 +495,6 @@ void Shadow2::draw_buffers(SharedRenderState* render_state,
     glPrimitiveRestartIndex(UINT32_MAX);
     glDrawElements(GL_TRIANGLE_STRIP, (m_front_index_buffer_used - 6), GL_UNSIGNED_INT, nullptr);
 
-
     if (m_debug_draw_volume) {
       glDisable(GL_BLEND);
       glUniform4f(m_ogl.uniforms.color, 0., 0.0, 0., 0.5);
@@ -474,18 +538,48 @@ void Shadow2::draw_buffers(SharedRenderState* render_state,
   // finally, draw shadow.
   glUniform1i(m_ogl.uniforms.clear_mode, 1);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ogl.index_buffer[0]);
-  glUniform4f(m_ogl.uniforms.color, 0.13, 0.13, 0.13, 0.5);
-  glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-  // glStencilFunc(GL_GREATER, 0, 0);
   glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
   glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
   glDepthFunc(GL_ALWAYS);
 
   glEnable(GL_BLEND);
-  glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
   glBlendFuncSeparate(GL_ONE, GL_ONE, GL_ONE, GL_ZERO);
-  glDrawElements(GL_TRIANGLE_STRIP, 6, GL_UNSIGNED_INT,
-                 (void*)(sizeof(u32) * (m_front_index_buffer_used - 6)));
+
+  bool have_darken = false;
+  bool have_lighten = false;
+  bool lighten_channel[3] = {false, false, false};
+  bool darken_channel[3] = {false, false, false};
+  for (int i = 0; i < 3; i++) {
+    if (m_color[i] > 128) {
+      have_lighten = true;
+      lighten_channel[i] = true;
+    } else if (m_color[i] < 128) {
+      have_darken = true;
+      darken_channel[i] = true;
+    }
+  }
+
+  if (have_darken) {
+    glColorMask(darken_channel[0], darken_channel[1], darken_channel[2], false);
+    glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
+    glUniform4f(m_ogl.uniforms.color, (128 - m_color[0]) / 128.f, (128 - m_color[1]) / 128.f,
+                (128 - m_color[2]) / 128.f, 0);
+    glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
+    glDrawElements(GL_TRIANGLE_STRIP, 6, GL_UNSIGNED_INT,
+                   (void*)(sizeof(u32) * (m_front_index_buffer_used - 6)));
+  }
+
+  if (have_lighten) {
+    glColorMask(lighten_channel[0], lighten_channel[1], lighten_channel[2], false);
+    glUniform4f(m_ogl.uniforms.color, (m_color[0] - 128) / 256.f, (m_color[1] - 128) / 256.f,
+                (m_color[2] - 128) / 256.f, 0);
+    glBlendEquation(GL_FUNC_ADD);
+    glDrawElements(GL_TRIANGLE_STRIP, 6, GL_UNSIGNED_INT,
+                   (void*)(sizeof(u32) * (m_front_index_buffer_used - 6)));
+  }
+
+  glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
   prof.add_draw_call();
   prof.add_tri(2);
   glBlendEquation(GL_FUNC_ADD);

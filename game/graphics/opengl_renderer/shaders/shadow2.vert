@@ -21,7 +21,9 @@ void main() {
     transformed -= perspective_x * position_in.x;
     transformed -= perspective_y * position_in.y;
     transformed -= perspective_z * position_in.z;
-    transformed.xyz *= fog / transformed.w;;
+    transformed.xyz *= fog / transformed.w;
+
+
     transformed.xyz += hvdf_offset.xyz;
     transformed.xy -= (2048.);
     transformed.z /= (8388608);

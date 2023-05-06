@@ -130,12 +130,15 @@ vif1: UNPACK-V4-8: 116 addr: 600 us: true tops: false, data: 116, imm: 16984
 
   void reset_buffers();
   void buffer_from_mscal2(const InputData& input);
-  const u8* add_cap_tris(const u8* byte_data, const u8* vertex_data);
-  const u8* add_wall_quads(const u8* byte_data, const u8* vertex_data_0, const u8* vertex_data_1);
   void buffer_from_mscal4(const InputData& input);
+  void buffer_from_mscal6(const InputData& input);
+  const u8* add_cap_tris(const u8* byte_data, const u8* vertex_data, bool flip);
+  const u8* add_wall_quads(const u8* byte_data, const u8* vertex_data_0, const u8* vertex_data_1);
+  const u8* add_flippable_tris(const u8* byte_data, const u8* vertex_data, bool flip);
   ShadowVertex* alloc_verts(int n);
   u32* alloc_inds(int n, bool front);
   void draw_buffers(SharedRenderState* render_state,
                     ScopedProfilerNode& prof,
                     const FrameConstants& constants);
+  u8 m_color[4] = {0, 0, 0, 0};
 };

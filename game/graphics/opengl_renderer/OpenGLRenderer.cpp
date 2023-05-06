@@ -849,6 +849,7 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   // letterboxing
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   glDisable(GL_BLEND);
+  m_render_state.stencil_dirty = false;
 
   // setup the draw region to letterbox later
   m_render_state.draw_region_w = settings.draw_region_width;
