@@ -208,11 +208,11 @@ void parse_text(const goos::Object& data, GameTextDB& db, const GameTextDefiniti
  *        ...
  *      ]
  *    }
- * 
+ *
  * The "begin" entry is the ID (x0b00) for the first line of the credits,
  *  which you can get/verify from the extracted assets in
  *  jak-project/decompiler_out/jak1/assets/game_text.txt
- * 
+ *
  * Note that this overwrites the original credits line-by-line, i.e. if
  *  you provide only one entry in "lines", that will overwrite the first
  *  line of the credits and everything after will remain unchanged.
@@ -246,9 +246,9 @@ void parse_text_json(const nlohmann::json& json,
   // Parse the file
   for (const auto& [text_id, text_value] : json.items()) {
     if (text_id == "_credits") {
-       // Special parsing for credits text block
+      // Special parsing for credits text block
       if (!text_value.is_object()) {
-         throw std::runtime_error("Must provide object for credits text!");
+        throw std::runtime_error("Must provide object for credits text!");
       }
       if (text_value.find("begin") == text_value.end() || !text_value["begin"].is_string()) {
         throw std::runtime_error("Must provide 'begin' value for credits text!");
@@ -268,7 +268,7 @@ void parse_text_json(const nlohmann::json& json,
     } else {
       // Parsing any other id-based text
       if (!text_value.is_string()) {
-         throw std::runtime_error(fmt::format("Non string provided for text id #x{}", text_id));
+        throw std::runtime_error(fmt::format("Non string provided for text id #x{}", text_id));
       }
       auto line = font->convert_utf8_to_game(text_value);
       auto line_id = std::stoi(text_id, nullptr, 16);
