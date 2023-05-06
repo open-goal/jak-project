@@ -84,9 +84,11 @@
           (s5-0 (new 'stack-no-clear 'vector))
           (gp-0 (new 'stack-no-clear 'vector))
           (f30-0 4096.0)
+          (ratio (- 1.0 (/ 0.5 (-> *pc-settings* aspect-ratio-scale))))
           )
+      ;; changed for PC port: resize warp effect based on aspect ratio
       (let ((f0-4 (* 0.00013563369 (tan (* 0.5 (-> *math-camera* fov))) f30-0)))
-        (set-vector! (-> obj root scale) f0-4 f0-4 f0-4 1.0)
+        (set-vector! (-> obj root scale) (* f0-4 (if (-> *pc-settings* use-vis?) 1.0 (-> *pc-settings* aspect-ratio-scale))) f0-4 f0-4 1.0)
         )
       (set! (-> gp-0 quad) (-> (camera-pos) quad))
       (vector-normalize-copy! s5-0 (-> s3-0 vector 2) 1.0)
@@ -893,8 +895,7 @@
     )
   :trans (behavior ()
     (when (and (zero? (-> self state-time))
-               ;; TODO remove when gui-control works
-               ;; (= (get-status *gui-control* (the-as sound-id (-> self spooled-sound-id))) (gui-status ready))
+               (= (get-status *gui-control* (the-as sound-id (-> self spooled-sound-id))) (gui-status ready))
                )
       (set! (-> self state-time) (-> self clock frame-counter))
       (set! (-> self last-reminder-time) (-> self clock frame-counter))
@@ -1000,8 +1001,7 @@
     )
   :trans (behavior ()
     (when (and (zero? (-> self state-time))
-               ;; TODO this always returns false?
-               ;; (= (get-status *gui-control* (the-as sound-id (-> self spooled-sound-id))) (gui-status ready))
+               (= (get-status *gui-control* (the-as sound-id (-> self spooled-sound-id))) (gui-status ready))
                )
       (set! (-> self state-time) (-> self clock frame-counter))
       (set! (-> self last-reminder-time) (-> self clock frame-counter))

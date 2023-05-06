@@ -1770,8 +1770,8 @@ class DefpartElement : public FormElement {
       u16 field_id;
       u16 flags;
       std::vector<LinkedWord> data;
-      goos::Object sound_spec;
-      goos::Object userdata;  // backup
+      goos::Object sound_spec;  // any static object actually
+      goos::Object userdata;    // backup
 
       bool is_sp_end(GameVersion version) const {
         switch (version) {
@@ -1811,7 +1811,7 @@ class WithDmaBufferAddBucketElement : public FormElement {
   WithDmaBufferAddBucketElement(RegisterAccess dma_buf,
                                 Form* dma_buf_val,
                                 Form* bucket,
-                                const std::vector<FormElement*>& body);
+                                Form* body);
 
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
@@ -1829,7 +1829,7 @@ class WithDmaBufferAddBucketElement : public FormElement {
   RegisterAccess m_dma_buf;
   Form* m_dma_buf_val;
   Form* m_bucket;
-  std::vector<FormElement*> m_body;
+  Form* m_body;
 };
 
 class ResLumpMacroElement : public FormElement {

@@ -1,12 +1,10 @@
 #pragma once
 
-#ifndef JAK_IOP_KERNEL_H
-#define JAK_IOP_KERNEL_H
-
 #include <atomic>
 #include <condition_variable>
 #include <list>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <string>
 #include <thread>
@@ -104,15 +102,14 @@ class IOP_Kernel {
     kernel_thread = co_active();
   }
 
-  ~IOP_Kernel();
-
   s32 CreateThread(std::string n, void (*f)(), u32 priority);
   s32 ExitThread();
   void StartThread(s32 id);
   void DelayThread(u32 usec);
   void SleepThread();
   void WakeupThread(s32 id);
-  time_stamp dispatch();
+  void iWakeupThread(s32 id);
+  std::optional<time_stamp> dispatch();
   void set_rpc_queue(iop::sceSifQueueData* qd, u32 thread);
   void rpc_loop(iop::sceSifQueueData* qd);
   void shutdown();
@@ -154,6 +151,8 @@ class IOP_Kernel {
     return gotSomething ? KE_OK : KE_MBOX_NOMSG;
   }
 
+  s32 PeekMbx(s32 mbx) { return !mbxs[mbx].empty(); }
+
   /*!
    * Push something into a mbx
    */
@@ -180,7 +179,6 @@ class IOP_Kernel {
 
   void signal_vblank() { vblank_recieved = true; };
 
-  void read_disc_sectors(u32 sector, u32 sectors, void* buffer);
   bool sif_busy(u32 id);
 
   void sif_rpc(s32 rpcChannel,
@@ -198,7 +196,7 @@ class IOP_Kernel {
   void processWakeups();
 
   IopThread* schedNext();
-  time_stamp nextWakeup();
+  std::optional<time_stamp> nextWakeup();
 
   s32 (*vblank_handler)(void*);
   std::atomic_bool vblank_recieved = false;
@@ -212,8 +210,5 @@ class IOP_Kernel {
   std::vector<Semaphore> semas;
   std::queue<int> wakeup_queue;
   bool mainThreadSleep = false;
-  FILE* iso_disc_file = nullptr;
   std::mutex sif_mtx, wakeup_mtx;
 };
-
-#endif  // JAK_IOP_KERNEL_H

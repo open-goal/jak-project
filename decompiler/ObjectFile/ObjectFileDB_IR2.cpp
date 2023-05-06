@@ -175,6 +175,8 @@ void ObjectFileDB::ir2_do_segment_analysis_phase2(int seg,
   ir2_rewrite_inline_asm_instructions(seg, data);
 
   ir2_insert_lets(seg, data);
+
+  ir2_add_store_errors(seg, data);
 }
 
 void ObjectFileDB::ir2_setup_labels(const Config& config, ObjectFileData& data) {
@@ -713,6 +715,22 @@ void ObjectFileDB::ir2_insert_lets(int seg, ObjectFileData& data) {
         lg::warn(err);
         func.warnings.error(err);
       }
+    }
+  });
+}
+
+void ObjectFileDB::ir2_add_store_errors(int seg, ObjectFileData& data) {
+  for_each_function_in_seg_in_obj(seg, data, [&](Function& func) {
+    if (func.ir2.expressions_succeeded && !func.warnings.has_errors()) {
+      // print warning about failed store, but only if decompilation passes without any major
+      // errors
+      func.ir2.top_form->apply([&](FormElement* f) {
+        auto as_store = dynamic_cast<StoreElement*>(f);
+        if (as_store) {
+          func.warnings.error("Failed store: {} at op {}", as_store->to_string(func.ir2.env),
+                              as_store->op()->op_id());
+        }
+      });
     }
   });
 }

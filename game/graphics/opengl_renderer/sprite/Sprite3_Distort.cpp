@@ -12,7 +12,7 @@ bool looks_like_distort_frame_data(const DmaFollower& dma) {
 }
 
 constexpr int SPRITE_RENDERER_MAX_DISTORT_SPRITES =
-    256 * 10;  // size of sprite-aux-list in GOAL code * SPRITE_MAX_AMOUNT_MULT
+    256 * 12;  // size of sprite-aux-list in GOAL code * SPRITE_MAX_AMOUNT_MULT
 }  // namespace
 
 void Sprite3::opengl_setup_distort() {
@@ -171,7 +171,7 @@ void Sprite3::render_distorter(DmaFollower& dma,
   // Read DMA
   {
     auto prof_node = prof.make_scoped_child("dma");
-    distort_dma(dma, prof_node);
+    distort_dma(render_state->version, dma, prof_node);
   }
 
   if (!m_enabled || !m_distort_enable) {
@@ -203,7 +203,23 @@ void Sprite3::render_distorter(DmaFollower& dma,
 /*!
  * Reads all sprite distort related DMA packets.
  */
-void Sprite3::distort_dma(DmaFollower& dma, ScopedProfilerNode& /*prof*/) {
+void Sprite3::distort_dma(GameVersion version, DmaFollower& dma, ScopedProfilerNode& /*prof*/) {
+  // set the expected values per game version first
+  int expect_zbp, expect_th;
+  switch (version) {
+    case GameVersion::Jak1:
+      expect_zbp = 0x1c0;
+      expect_th = 8;
+      break;
+    case GameVersion::Jak2:
+      expect_zbp = 0x130;
+      expect_th = 9;
+      break;
+    default:
+      ASSERT(false);
+      return;
+  }
+
   // First should be the GS setup
   auto sprite_distorter_direct_setup = dma.read_and_advance();
   ASSERT(sprite_distorter_direct_setup.vifcode0().kind == VifCode::Kind::NOP);
@@ -213,22 +229,22 @@ void Sprite3::distort_dma(DmaFollower& dma, ScopedProfilerNode& /*prof*/) {
 
   auto gif_tag = m_sprite_distorter_setup.gif_tag;
   ASSERT(gif_tag.nloop() == 1);
-  ASSERT(gif_tag.eop() == 1);
+  ASSERT(gif_tag.eop() == true);
   ASSERT(gif_tag.nreg() == 6);
   ASSERT(gif_tag.reg(0) == GifTag::RegisterDescriptor::AD);
 
   auto zbuf1 = m_sprite_distorter_setup.zbuf;
-  ASSERT(zbuf1.zbp() == 0x1c0);
+  ASSERT(zbuf1.zbp() == expect_zbp);
   ASSERT(zbuf1.zmsk() == true);
   ASSERT(zbuf1.psm() == TextureFormat::PSMZ24);
 
   auto tex0 = m_sprite_distorter_setup.tex0;
   ASSERT(tex0.tbw() == 8);
   ASSERT(tex0.tw() == 9);
-  ASSERT(tex0.th() == 8);
+  ASSERT(tex0.th() == expect_th);
 
   auto tex1 = m_sprite_distorter_setup.tex1;
-  ASSERT(tex1.mmag() == true);
+  ASSERT(tex1.mmag() == 1);
   ASSERT(tex1.mmin() == 1);
 
   auto alpha = m_sprite_distorter_setup.alpha;

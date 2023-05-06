@@ -21,6 +21,7 @@ void main() {
     // correct xy scale
     transformed.x /= (256);
     transformed.y /= -(128);
+    transformed.y *= HEIGHT_SCALE;
 
     gl_Position = transformed;
 }
