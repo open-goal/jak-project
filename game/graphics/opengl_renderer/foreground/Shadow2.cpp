@@ -122,84 +122,91 @@ void Shadow2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
   }
 
   // loop over fragments.
-  while (dma.current_tag().qwc == 0x73) {
-    InputData input;
+  while (true) {
+    if (dma.current_tag().qwc == 0x73) {
+      InputData input;
 
-    // first upload
-    auto upload0 = dma.read_and_advance();
-    ASSERT(upload0.size_bytes == 115 * 16);
-    ASSERT(upload0.vifcode0().kind == VifCode::Kind::FLUSH);
-    auto up0_vif1 = upload0.vifcode1();
-    ASSERT(up0_vif1.kind == VifCode::Kind::UNPACK_V4_32);
-    ASSERT(up0_vif1.immediate == 4);
-    ASSERT(up0_vif1.num == 115);
-    input.upload_4 = upload0.data;
+      // first upload
+      auto upload0 = dma.read_and_advance();
+      ASSERT(upload0.size_bytes == 115 * 16);
+      ASSERT(upload0.vifcode0().kind == VifCode::Kind::FLUSH);
+      auto up0_vif1 = upload0.vifcode1();
+      ASSERT(up0_vif1.kind == VifCode::Kind::UNPACK_V4_32);
+      ASSERT(up0_vif1.immediate == 4);
+      ASSERT(up0_vif1.num == 115);
+      input.upload_4 = upload0.data;
 
-    // upload
-    auto upload1 = dma.read_and_advance();
-    ASSERT(upload1.size_bytes == 115 * 16);
-    ASSERT(upload1.vif0() == 0);
-    auto up1_vif1 = upload1.vifcode1();
-    ASSERT(up1_vif1.kind == VifCode::Kind::UNPACK_V4_32);
-    ASSERT(up1_vif1.immediate == 174);
-    ASSERT(up1_vif1.num == 115);
-    input.upload_174 = upload1.data;
+      // upload
+      auto upload1 = dma.read_and_advance();
+      ASSERT(upload1.size_bytes == 115 * 16);
+      ASSERT(upload1.vif0() == 0);
+      auto up1_vif1 = upload1.vifcode1();
+      ASSERT(up1_vif1.kind == VifCode::Kind::UNPACK_V4_32);
+      ASSERT(up1_vif1.immediate == 174);
+      ASSERT(up1_vif1.num == 115);
+      input.upload_174 = upload1.data;
 
-    auto upload2 = dma.read_and_advance();
-    {
-      ASSERT(upload2.vif0() == 0);
-      auto v1 = upload2.vifcode1();
-      ASSERT(v1.kind == VifCode::Kind::UNPACK_V4_8);
-      auto up = VifCodeUnpack(v1);
-      ASSERT(!up.use_tops_flag);
-      ASSERT(up.is_unsigned);
-      u16 addr = up.addr_qw;
-      ASSERT(addr == 344);
-      u32 offset = 4 * v1.num;
-      ASSERT(offset + 16 == upload2.size_bytes);
+      auto upload2 = dma.read_and_advance();
+      {
+        ASSERT(upload2.vif0() == 0);
+        auto v1 = upload2.vifcode1();
+        ASSERT(v1.kind == VifCode::Kind::UNPACK_V4_8);
+        auto up = VifCodeUnpack(v1);
+        ASSERT(!up.use_tops_flag);
+        ASSERT(up.is_unsigned);
+        u16 addr = up.addr_qw;
+        ASSERT(addr == 344);
+        u32 offset = 4 * v1.num;
+        ASSERT(offset + 16 == upload2.size_bytes);
 
-      u32 after[4];
-      memcpy(&after, upload2.data + offset, 16);
-      ASSERT(after[0] == 0);
-      ASSERT(after[1] == 0);
-      ASSERT(after[2] == 0);
-      VifCode mscal(after[3]);
-      ASSERT(mscal.kind == VifCode::Kind::MSCALF);
-      ASSERT(mscal.immediate == 2);
-      input.size_344 = 4 * v1.num;
-      input.upload_8s_344 = upload2.data;
-      buffer_from_mscal2(input);
-    }
+        u32 after[4];
+        memcpy(&after, upload2.data + offset, 16);
+        ASSERT(after[0] == 0);
+        ASSERT(after[1] == 0);
+        ASSERT(after[2] == 0);
+        VifCode mscal(after[3]);
+        ASSERT(mscal.kind == VifCode::Kind::MSCALF);
+        ASSERT(mscal.immediate == 2);
+        input.size_344 = 4 * v1.num;
+        input.upload_8s_344 = upload2.data;
+        buffer_from_mscal2(input);
+      }
 
-    auto upload3 = dma.read_and_advance();
-    {
-      ASSERT(upload3.vif0() == 0);
-      auto v1 = upload3.vifcode1();
-      ASSERT(v1.kind == VifCode::Kind::UNPACK_V4_8);
-      auto up = VifCodeUnpack(v1);
-      ASSERT(!up.use_tops_flag);
-      ASSERT(up.is_unsigned);
-      u16 addr = up.addr_qw;
-      ASSERT(addr == 600);
-      u32 offset = 4 * v1.num;
-      ASSERT(offset + 16 == upload3.size_bytes);
+      auto upload3 = dma.read_and_advance();
+      {
+        ASSERT(upload3.vif0() == 0);
+        auto v1 = upload3.vifcode1();
+        ASSERT(v1.kind == VifCode::Kind::UNPACK_V4_8);
+        auto up = VifCodeUnpack(v1);
+        ASSERT(!up.use_tops_flag);
+        ASSERT(up.is_unsigned);
+        u16 addr = up.addr_qw;
+        ASSERT(addr == 600);
+        u32 offset = 4 * v1.num;
+        ASSERT(offset + 16 == upload3.size_bytes);
 
-      u32 after[4];
-      memcpy(&after, upload3.data + offset, 16);
-      ASSERT(after[0] == 0);
-      ASSERT(after[1] == 0);
-      ASSERT(after[2] == 0);
-      VifCode mscal(after[3]);
-      ASSERT(mscal.kind == VifCode::Kind::MSCALF);
-      ASSERT(mscal.immediate == 4);
-      input.size_600 = 4 * v1.num;
-      input.upload_8s_600 = upload3.data;
-      buffer_from_mscal4(input);
+        u32 after[4];
+        memcpy(&after, upload3.data + offset, 16);
+        ASSERT(after[0] == 0);
+        ASSERT(after[1] == 0);
+        ASSERT(after[2] == 0);
+        VifCode mscal(after[3]);
+        ASSERT(mscal.kind == VifCode::Kind::MSCALF);
+        ASSERT(mscal.immediate == 4);
+        input.size_600 = 4 * v1.num;
+        input.upload_8s_600 = upload3.data;
+        buffer_from_mscal4(input);
+      }
+    } else if (dma.current_tag().qwc == 0x19) {
+      dma.read_and_advance();
+      dma.read_and_advance();
+      dma.read_and_advance();
+    } else {
+      break;
     }
   }
 
   draw_buffers(render_state, prof, frame_constants);
-
   auto transfers = 0;
   // print the entire chain
   fmt::print("START {} DMA!!!!!!!\n", m_name);
@@ -231,7 +238,9 @@ void Shadow2::buffer_from_mscal2(const InputData& in) {
   add_cap_tris(in.upload_8s_344, in.upload_174);
 }
 
-void Shadow2::buffer_from_mscal4(const InputData& in) {}
+void Shadow2::buffer_from_mscal4(const InputData& in) {
+  add_wall_quads(in.upload_8s_600, in.upload_4, in.upload_174);
+}
 
 Shadow2::ShadowVertex* Shadow2::alloc_verts(int n) {
   auto* result = &m_vertex_buffer[m_vertex_buffer_used];
@@ -241,7 +250,7 @@ Shadow2::ShadowVertex* Shadow2::alloc_verts(int n) {
 }
 
 u32* Shadow2::alloc_inds(int n, bool front) {
-  if (front) {
+  if (!front) {
     auto* result = &m_front_index_buffer[m_front_index_buffer_used];
     m_front_index_buffer_used += n;
     ASSERT(m_front_index_buffer_used <= m_front_index_buffer.size());
@@ -294,6 +303,59 @@ const u8* Shadow2::add_cap_tris(const u8* byte_data, const u8* vertex_data) {
   return byte_data;
 }
 
+const u8* Shadow2::add_wall_quads(const u8* byte_data,
+                                  const u8* vertex_data_0,
+                                  const u8* vertex_data_1) {
+  const int num_quads = *byte_data++;
+  for (int i = 0; i < 3; i++) {
+    int v = *byte_data++;
+    ASSERT(v == 0);
+  }
+
+  for (int i = 0; i < num_quads; i++) {
+    int vertex_addrs[2];
+    vertex_addrs[0] = *byte_data++;  // vi04
+    vertex_addrs[1] = *byte_data++;  // vi05
+    int side_control = *byte_data++;
+
+    const int bonus = *byte_data++;  // unused, but not zero?
+    // ASSERT(bonus == 1);              // idk
+
+    // due to unpackv4-8 alignment, they inserted up to 3 dummy tris at the end. let's just skip.
+    if (!vertex_addrs[0] && !vertex_addrs[1]) {
+      ASSERT(i + 4 >= num_quads);
+      continue;
+    }
+
+    const int opengl_vertex_idx = m_vertex_buffer_used;
+    auto* vertex_rt_camera = alloc_verts(4);
+
+    if (side_control == 0) {
+      memcpy(vertex_rt_camera[0].pos.data(), vertex_data_0 + 16 * vertex_addrs[1], 12);
+      memcpy(vertex_rt_camera[1].pos.data(), vertex_data_0 + 16 * vertex_addrs[0], 12);
+      memcpy(vertex_rt_camera[2].pos.data(), vertex_data_1 + 16 * vertex_addrs[0], 12);
+      memcpy(vertex_rt_camera[3].pos.data(), vertex_data_1 + 16 * vertex_addrs[1], 12);
+    } else {
+      memcpy(vertex_rt_camera[0].pos.data(), vertex_data_0 + 16 * vertex_addrs[0], 12);
+      memcpy(vertex_rt_camera[1].pos.data(), vertex_data_0 + 16 * vertex_addrs[1], 12);
+      memcpy(vertex_rt_camera[2].pos.data(), vertex_data_1 + 16 * vertex_addrs[1], 12);
+      memcpy(vertex_rt_camera[3].pos.data(), vertex_data_1 + 16 * vertex_addrs[0], 12);
+    }
+
+    const math::Vector3f v1_v0_rt_camera = vertex_rt_camera[1].pos - vertex_rt_camera[0].pos;
+    const math::Vector3f v2_v0_rt_camera = vertex_rt_camera[2].pos - vertex_rt_camera[0].pos;
+    const math::Vector3f tri_normal = v1_v0_rt_camera.cross(v2_v0_rt_camera);
+    const float normal_dot_eye = tri_normal.dot(vertex_rt_camera[0].pos);
+    auto* idx_buffer = alloc_inds(5, normal_dot_eye > 0);
+    idx_buffer[0] = opengl_vertex_idx + 1;
+    idx_buffer[1] = opengl_vertex_idx + 0;
+    idx_buffer[2] = opengl_vertex_idx + 2;
+    idx_buffer[3] = opengl_vertex_idx + 3;
+    idx_buffer[4] = UINT32_MAX;
+  }
+  return byte_data;
+}
+
 namespace {
 void set_uniform(GLint id, const math::Vector4f& value) {
   glUniform4f(id, value[0], value[1], value[2], value[3]);
@@ -330,8 +392,8 @@ void Shadow2::draw_buffers(SharedRenderState* render_state,
   m_front_index_buffer[m_front_index_buffer_used++] = clear_vertices + 1;
   m_front_index_buffer[m_front_index_buffer_used++] = clear_vertices + 2;
   m_front_index_buffer[m_front_index_buffer_used++] = clear_vertices + 3;
-  m_front_index_buffer[m_front_index_buffer_used++] = clear_vertices + 2;
-  m_front_index_buffer[m_front_index_buffer_used++] = clear_vertices + 1;
+  m_front_index_buffer[m_front_index_buffer_used++] = UINT32_MAX;
+  m_front_index_buffer[m_front_index_buffer_used++] = UINT32_MAX;
 
   glBindVertexArray(m_ogl.vao);
   glEnable(GL_PRIMITIVE_RESTART);
@@ -367,6 +429,7 @@ void Shadow2::draw_buffers(SharedRenderState* render_state,
     glEnable(GL_PRIMITIVE_RESTART);
     glPrimitiveRestartIndex(UINT32_MAX);
     glDrawElements(GL_TRIANGLE_STRIP, (m_front_index_buffer_used - 6), GL_UNSIGNED_INT, nullptr);
+
 
     if (m_debug_draw_volume) {
       glDisable(GL_BLEND);
