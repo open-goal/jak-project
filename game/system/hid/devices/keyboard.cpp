@@ -9,7 +9,11 @@ KeyboardDevice::KeyboardDevice(std::shared_ptr<game_settings::InputSettings> set
 void KeyboardDevice::process_event(const SDL_Event& event,
                                    const CommandBindingGroups& commands,
                                    std::shared_ptr<PadData> data,
-                                   std::optional<InputBindAssignmentMeta>& bind_assignment) {
+                                   std::optional<InputBindAssignmentMeta>& bind_assignment,
+                                   bool ignore_inputs) {
+  if (ignore_inputs) {
+    return;
+  }
   if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
     const auto key_event = event.key;
     if (key_event.repeat != 0) {

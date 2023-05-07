@@ -82,7 +82,7 @@ int scePadRead(int port, int /*slot*/, u8* rdata) {
     }
 
     cpad->button0 = 0;
-    for (int i = 0; i < 16; ++i) {
+    for (int i = 0; i < pad_data.value()->button_data.size(); i++) {
       cpad->button0 |= pad_data.value()->button_data.at(i) << i;
     }
   }

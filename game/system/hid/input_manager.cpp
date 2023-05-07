@@ -139,14 +139,10 @@ void InputManager::process_sdl_event(const SDL_Event& event,
   }
 
   if (m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
-    if (!ignore_kb && m_keyboard_enabled) {
-      m_keyboard.process_event(event, m_command_binds, m_data.at(m_keyboard_and_mouse_port),
-                               m_waiting_for_bind);
-    }
-    if (!ignore_mouse && m_mouse_enabled) {
-      m_mouse.process_event(event, m_command_binds, m_data.at(m_keyboard_and_mouse_port),
-                            m_waiting_for_bind);
-    }
+    m_keyboard.process_event(event, m_command_binds, m_data.at(m_keyboard_and_mouse_port),
+                             m_waiting_for_bind, ignore_kb || !m_keyboard_enabled);
+    m_mouse.process_event(event, m_command_binds, m_data.at(m_keyboard_and_mouse_port),
+                          m_waiting_for_bind, ignore_mouse || !m_mouse_enabled);
   }
 
   // Send event to active controller device

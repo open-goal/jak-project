@@ -11,7 +11,8 @@ class MouseDevice : public InputDevice {
   void process_event(const SDL_Event& event,
                      const CommandBindingGroups& commands,
                      std::shared_ptr<PadData> data,
-                     std::optional<InputBindAssignmentMeta>& bind_assignment) override;
+                     std::optional<InputBindAssignmentMeta>& bind_assignment,
+                     bool ignore_inputs = false) override;
   void close_device() override{
       // there is nothing to close
   };

@@ -11,7 +11,8 @@ class GameController : public InputDevice {
   void process_event(const SDL_Event& event,
                      const CommandBindingGroups& commands,
                      std::shared_ptr<PadData> data,
-                     std::optional<InputBindAssignmentMeta>& bind_assignment) override;
+                     std::optional<InputBindAssignmentMeta>& bind_assignment,
+                     bool ignore_inputs = false) override;
   void close_device() override;
   int update_rumble(const u8 low_rumble, const u8 high_rumble);
   std::string get_name() const { return m_device_name; }

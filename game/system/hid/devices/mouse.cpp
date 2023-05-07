@@ -10,10 +10,29 @@ MouseDevice::MouseDevice(std::shared_ptr<game_settings::InputSettings> settings)
 void MouseDevice::process_event(const SDL_Event& event,
                                 const CommandBindingGroups& commands,
                                 std::shared_ptr<PadData> data,
-                                std::optional<InputBindAssignmentMeta>& bind_assignment) {
-  // Mouse Button Events
-  // https://wiki.libsdl.org/SDL2/SDL_MouseButtonEvent
-  if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
+                                std::optional<InputBindAssignmentMeta>& bind_assignment,
+                                bool ignore_inputs) {
+  if (event.type == SDL_MOUSEMOTION) {
+    // https://wiki.libsdl.org/SDL2/SDL_MouseMotionEvent
+    m_xcoord = event.motion.x;
+    m_ycoord = event.motion.y;
+    if (ignore_inputs) {
+      // We still want to keep track of the cursor location even if we aren't using it for inputs
+      // return early
+      return;
+    }
+    if (m_control_camera) {
+      const auto xadjust = std::clamp(127 + int(float(event.motion.xrel) * m_xsens), 0, 255);
+      const auto yadjust = std::clamp(127 + int(float(event.motion.yrel) * m_ysens), 0, 255);
+      data->analog_data.at(2) = xadjust;
+      data->analog_data.at(3) = yadjust;
+    }
+  } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
+    // Mouse Button Events
+    // https://wiki.libsdl.org/SDL2/SDL_MouseButtonEvent
+    if (ignore_inputs) {
+      return;
+    }
     const auto button_event = event.button;
     auto& binds = m_settings->mouse_binds;
 
@@ -77,16 +96,6 @@ void MouseDevice::process_event(const SDL_Event& event,
           command.command();
         }
       }
-    }
-  } else if (event.type == SDL_MOUSEMOTION) {
-    // https://wiki.libsdl.org/SDL2/SDL_MouseMotionEvent
-    m_xcoord = event.motion.x;
-    m_ycoord = event.motion.y;
-    if (m_control_camera) {
-      const auto xadjust = std::clamp(127 + int(float(event.motion.xrel) * m_xsens), 0, 255);
-      const auto yadjust = std::clamp(127 + int(float(event.motion.yrel) * m_ysens), 0, 255);
-      data->analog_data.at(2) = xadjust;
-      data->analog_data.at(3) = yadjust;
     }
   }
 }
