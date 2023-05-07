@@ -1,20 +1,13 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: shadow-cpu.gc
-;; name in dgo: shadow-cpu
-;; dgos: ENGINE, GAME
-
-(define-extern shadow-vu1-patch-consts (function symbol int none))
-(define-extern shadow-vu1-init-buffer (function dma-buffer int none))
-
-;; DECOMP BEGINS
-
+;; definition for method 5 of type shadow-geo
 ;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of shadow-geo ((obj shadow-geo))
   (the-as int (* (-> obj total-qwc) 16))
   )
 
+;; definition for method 8 of type shadow-geo
 (defmethod mem-usage shadow-geo ((obj shadow-geo) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 111 (-> arg0 length)))
   (set! (-> arg0 data 110 name) "shadow-geo")
@@ -26,6 +19,7 @@
   obj
   )
 
+;; definition for symbol *shadow-data*, type shadow-data
 (define *shadow-data* (new 'static 'shadow-data
                         :dma-unpack-template (new 'static 'dma-packet
                           :dma (new 'static 'dma-tag :id (dma-tag-id cnt))
@@ -37,6 +31,8 @@
                         )
         )
 
+;; definition for function shadow-invert-z-buf
+;; WARN: Return type mismatch int vs none.
 (defun shadow-invert-z-buf ((arg0 dma-buffer))
   (let ((v1-0 (-> arg0 base)))
     (let* ((a1-0 arg0)
@@ -126,6 +122,7 @@
   (none)
   )
 
+;; definition for function shadow-make-invert-buf
 ;; WARN: Return type mismatch pointer vs none.
 (defun shadow-make-invert-buf ()
   (let ((gp-0 *shadow-dma-buf*))
@@ -144,10 +141,13 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (shadow-make-invert-buf)
 
+;; definition for symbol *shadow-dma-invert-call*, type pointer
 (define *shadow-dma-invert-call* (the-as pointer #f))
 
+;; definition for function shadow-dma-init
 ;; WARN: Return type mismatch dma-buffer vs none.
 (defun shadow-dma-init ((arg0 dma-buffer))
   (-> *display* on-screen)
@@ -324,6 +324,7 @@
   (none)
   )
 
+;; definition for function shadow-dma-end
 ;; WARN: Return type mismatch dma-buffer vs none.
 (defun shadow-dma-end ((arg0 dma-buffer) (arg1 gs-rgbaq) (arg2 symbol) (arg3 int))
   (-> *display* on-screen)
@@ -491,6 +492,7 @@
   (none)
   )
 
+;; definition of type shadow-stats
 (deftype shadow-stats (structure)
   ((num-single-tris  uint32  :offset-assert   0)
    (num-double-tris  uint32  :offset-assert   4)
@@ -504,7 +506,24 @@
   :flag-assert         #x900000014
   )
 
+;; definition for method 3 of type shadow-stats
+(defmethod inspect shadow-stats ((obj shadow-stats))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'shadow-stats)
+  (format #t "~1Tnum-single-tris: ~D~%" (-> obj num-single-tris))
+  (format #t "~1Tnum-double-tris: ~D~%" (-> obj num-double-tris))
+  (format #t "~1Tnum-single-edges: ~D~%" (-> obj num-single-edges))
+  (format #t "~1Tnum-double-edges: ~D~%" (-> obj num-double-edges))
+  (format #t "~1Tnum-fragments: ~D~%" (-> obj num-fragments))
+  (format #t "~1Tnum-objects: ~D~%" (-> obj num-objects))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type shadow-dcache
 (deftype shadow-dcache (structure)
   ((vtx-table              uint32                :offset-assert   0)
    (single-edge-table      uint32                :offset-assert   4)
@@ -533,39 +552,103 @@
   :flag-assert         #x9000000b0
   )
 
+;; definition for method 3 of type shadow-dcache
+(defmethod inspect shadow-dcache ((obj shadow-dcache))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'shadow-dcache)
+  (format #t "~1Tvtx-table: #x~X~%" (-> obj vtx-table))
+  (format #t "~1Tsingle-edge-table: #x~X~%" (-> obj single-edge-table))
+  (format #t "~1Tdouble-edge-table: #x~X~%" (-> obj double-edge-table))
+  (format #t "~1Tdouble-tri-table: #x~X~%" (-> obj double-tri-table))
+  (format #t "~1Tdcache-top: #x~X~%" (-> obj dcache-top))
+  (format #t "~1Tnum-facing-single-tris: ~D~%" (-> obj num-facing-single-tris))
+  (format #t "~1Tnum-single-edges: ~D~%" (-> obj num-single-edges))
+  (format #t "~1Tnum-double-edges: ~D~%" (-> obj num-double-edges))
+  (format #t "~1Tsingle-tri-list: #x~X~%" (-> obj single-tri-list))
+  (format #t "~1Tsingle-edge-list: #x~X~%" (-> obj single-edge-list))
+  (format #t "~1Tdouble-edge-list: #x~X~%" (-> obj double-edge-list))
+  (format #t "~1Tptr-dual-verts: #x~X~%" (-> obj ptr-dual-verts))
+  (format #t "~1Tstats: #<shadow-stats @ #x~X>~%" (-> obj stats))
+  (format #t "~1Tfrag-qwc: ~D~%" (-> obj frag-qwc))
+  (format #t "~1Tcenter: #<vector @ #x~X>~%" (-> obj center))
+  (format #t "~1Tplane: #<vector @ #x~X>~%" (-> obj plane))
+  (format #t "~1Ttop-plane: #<vector @ #x~X>~%" (-> obj top-plane))
+  (format #t "~1Tnear-plane: #<vector @ #x~X>~%" (-> obj near-plane))
+  (format #t "~1Tlight-dir: #<vector @ #x~X>~%" (-> obj light-dir))
+  (format #t "~1Tvtx-min: #<vector @ #x~X>~%" (-> obj vtx-min))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
 
+;; definition for symbol shadow-vu0-block, type vu-function
 (define shadow-vu0-block (new 'static 'vu-function :length 88 :qlength 44))
 
+;; definition for function shadow-xform-verts
+;; INFO: function output is handled by mips2c
 (def-mips2c shadow-xform-verts function)
 
+;; definition for function shadow-calc-dual-verts
+;; INFO: function output is handled by mips2c
 (def-mips2c shadow-calc-dual-verts function)
 
+;; definition for function shadow-scissor-edges
+;; INFO: function output is handled by mips2c
 (def-mips2c shadow-scissor-edges function)
 
+;; definition for function shadow-scissor-top
+;; INFO: function output is handled by mips2c
 (def-mips2c shadow-scissor-top function)
 
+;; definition for function shadow-init-vars
+;; INFO: function output is handled by mips2c
 (def-mips2c shadow-init-vars function)
 
+;; definition for function shadow-find-facing-single-tris
+;; INFO: function output is handled by mips2c
 (def-mips2c shadow-find-facing-single-tris function)
 
+;; definition for function shadow-find-single-edges
+;; INFO: function output is handled by mips2c
 (def-mips2c shadow-find-single-edges function)
 
+;; definition for function shadow-find-facing-double-tris
+;; INFO: function output is handled by mips2c
 (def-mips2c shadow-find-facing-double-tris function)
 
+;; definition for function shadow-find-double-edges
+;; INFO: function output is handled by mips2c
 (def-mips2c shadow-find-double-edges function)
 
+;; definition for function shadow-add-verts
+;; INFO: function output is handled by mips2c
 (def-mips2c shadow-add-verts function)
 
+;; definition for function shadow-add-facing-single-tris
+;; INFO: function output is handled by mips2c
 (def-mips2c shadow-add-facing-single-tris function)
 
+;; definition for function shadow-add-single-edges
+;; INFO: function output is handled by mips2c
 (def-mips2c shadow-add-single-edges function)
 
+;; definition for function shadow-add-single-tris
+;; INFO: function output is handled by mips2c
 (def-mips2c shadow-add-single-tris function)
 
+;; definition for function shadow-add-double-tris
+;; INFO: function output is handled by mips2c
 (def-mips2c shadow-add-double-tris function)
 
+;; definition for function shadow-add-double-edges
+;; INFO: function output is handled by mips2c
 (def-mips2c shadow-add-double-edges function)
 
+;; definition for method 14 of type shadow-control
+;; WARN: Return type mismatch int vs none.
 (defmethod shadow-control-method-14 shadow-control ((obj shadow-control) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float) (arg4 float))
   (let ((gp-0 (-> obj settings)))
     (let ((s4-0 (-> gp-0 shadow-dir)))
@@ -590,6 +673,7 @@
   (none)
   )
 
+;; definition for function debug-draw-settings
 ;; WARN: Return type mismatch symbol vs none.
 (defun debug-draw-settings ((arg0 matrix))
   (let ((v1-0 (-> arg0 vector 1))
@@ -630,32 +714,38 @@
   (none)
   )
 
+;; definition for function shadow-execute
+;; INFO: function output is handled by mips2c
 (def-mips2c shadow-execute (function shadow-dma-packet pointer pointer))
 
+;; definition for function shadow-vu0-upload
+;; WARN: Return type mismatch int vs none.
+;; ERROR: Failed store: (s.d! (+ (the-as dma-packet a0-5) 8) 0) at op 17
 (defun shadow-vu0-upload ()
-  (#unless PC_PORT
-    (let ((gp-0 *vu0-dma-list*))
-      (let ((v1-0 gp-0))
-        (set! (-> v1-0 base) (-> v1-0 data))
-        (set! (-> v1-0 end) (&-> v1-0 data-buffer (-> v1-0 allocated-length)))
-        )
-      (dma-buffer-add-vu-function gp-0 shadow-vu0-block 0)
-      (let* ((v1-1 gp-0)
-            (a0-5 (the-as object (-> v1-1 base)))
-            )
-        (set! (-> (the-as dma-packet a0-5) dma) (new 'static 'dma-tag :id (dma-tag-id end)))
-        (s.d! (+ (the-as dma-packet a0-5) 8) 0)
-        (set! (-> v1-1 base) (&+ (the-as pointer a0-5) 16))
-        )
-      (.sync.l)
-      (dma-buffer-send-chain (the-as dma-bank-source #x10008000) gp-0)
+  (let ((gp-0 *vu0-dma-list*))
+    (let ((v1-0 gp-0))
+      (set! (-> v1-0 base) (-> v1-0 data))
+      (set! (-> v1-0 end) (&-> v1-0 data-buffer (-> v1-0 allocated-length)))
       )
+    (dma-buffer-add-vu-function gp-0 shadow-vu0-block 0)
+    (let* ((v1-1 gp-0)
+           (a0-5 (the-as object (-> v1-1 base)))
+           )
+      (set! (-> (the-as dma-packet a0-5) dma) (new 'static 'dma-tag :id (dma-tag-id end)))
+      (s.d! (+ (the-as dma-packet a0-5) 8) 0)
+      (set! (-> v1-1 base) (&+ (the-as pointer a0-5) 16))
+      )
+    (.sync.l)
+    (dma-buffer-send-chain (the-as dma-bank-source #x10008000) gp-0)
     )
   0
   (none)
   )
 
+;; definition for function shadow-execute-all
+;; WARN: Return type mismatch int vs none.
 ;; ERROR: Failed store: (s.h! (+ v1-24 18) 0) at op 58
+;; ERROR: Failed store: (s.h! (+ v1-24 16) 0) at op 59
 (defun shadow-execute-all ((arg0 dma-buffer))
   (when *debug-segment*
     (let ((gp-0 (-> *display* frames (-> *display* on-screen) profile-array data 0))
@@ -686,14 +776,13 @@
         (set! (-> v1-24 single-edge-table) (the-as uint 0))
         (set! (-> v1-24 double-edge-table) (the-as uint 0))
         (set! (-> v1-24 double-tri-table) (the-as uint 0))
-        ; (s.h! (+ v1-24 18) 0)
-        ; (s.h! (+ v1-24 16) 0)
-        (set! (-> v1-24 dcache-top) (the-as uint 0))
+        (s.h! (+ v1-24 18) 0)
+        (s.h! (+ v1-24 16) 0)
         )
       0
       (let ((v1-26 #f))
-        (dotimes (a0-10 2)
-          (if (nonzero? (-> gp-1 bucket a0-10 first))
+        (dotimes (a0-11 2)
+          (if (nonzero? (-> gp-1 bucket a0-11 first))
               (set! v1-26 #t)
               )
           )
@@ -710,29 +799,28 @@
                                                  (bucket-id shadow2)
                                                  )
                                              )
-                  (set! (-> (scratchpad-object shadow-dcache) ptr-dual-verts) (the-as uint 0))
+                  (set! (-> (the-as shadow-dcache #x70000000) ptr-dual-verts) (the-as uint 0))
                   (shadow-vu1-init-buffer s3-1 s5-1)
                   (flush-cache 0)
                   (shadow-dma-init s3-1)
                   (set! (-> s3-1 base) (shadow-execute (the-as shadow-dma-packet s1-0) (-> s3-1 base)))
-                  (let ((a2-1 (nonzero? (-> (scratchpad-object shadow-dcache) ptr-dual-verts))))
-                    (let ((a1-9 (logior (shl #x3f800000 32) (shr (shl (the-as int (the-as uint32 (-> s2-0 shadow-color))) 32) 32))))
-                      (let ((v1-42 (-> *time-of-day-context* current-shadow-color)))
-                        (if (zero? s5-1)
-                            (set! a1-9
-                                  (logior (logand (logior (logand (logior (logand a1-9 -256) (shr (shl (the int (* 128.0 (-> v1-42 x))) 56) 56)) -65281)
-                                                          (shr (shl (the int (* 128.0 (-> v1-42 y))) 56) 48)
-                                                          )
-                                                  -16711681
-                                                  )
-                                          (shr (shl (the int (* 128.0 (-> v1-42 z))) 56) 40)
-                                          )
-                                  )
-                            )
+                  (let ((a2-1 (nonzero? (-> (the-as shadow-dcache #x70000000) ptr-dual-verts)))
+                        (a1-9 (logior (shl #x3f800000 32) (shr (shl (the-as int (the-as uint32 (-> s2-0 shadow-color))) 32) 32)))
                         )
-                      ;; modified in pc port so we don't have to do the crazy z buffer flipping stuff.
-                      (shadow-dma-end s3-1 (the-as gs-rgbaq a1-9) #f #|a2-1|# s5-1)
+                    (let ((v1-42 (-> *time-of-day-context* current-shadow-color)))
+                      (if (zero? s5-1)
+                          (set! a1-9
+                                (logior (logand (logior (logand (logior (logand a1-9 -256) (shr (shl (the int (* 128.0 (-> v1-42 x))) 56) 56)) -65281)
+                                                        (shr (shl (the int (* 128.0 (-> v1-42 y))) 56) 48)
+                                                        )
+                                                -16711681
+                                                )
+                                        (shr (shl (the int (* 128.0 (-> v1-42 z))) 56) 40)
+                                        )
+                                )
+                          )
                       )
+                    (shadow-dma-end s3-1 (the-as gs-rgbaq a1-9) a2-1 s5-1)
                     )
                   )
                 )
@@ -754,13 +842,12 @@
                2
                )
             )
-        (+! (-> v1-59 dverts) ;; manually patched
-            (+ (* (the-as uint 6) (-> gp-2 stats num-single-tris))
-              (* (the-as uint 6) (-> gp-2 stats num-double-tris))
-              (* (-> gp-2 stats num-single-edges) 4)
-              (* (-> gp-2 stats num-double-edges) 4)
+        (+! (-> v1-59 dverts)
+            (* (the-as uint 6) (-> gp-2 stats num-single-tris))
+            (* (the-as uint 6) (-> gp-2 stats num-double-tris))
+            (* (-> gp-2 stats num-single-edges) 4)
+            (* (-> gp-2 stats num-double-edges) 4)
             )
-          )
         )
       (when #f
         (format *stdcon* "~%~%~%~%#single tris : ~4d~%" (-> gp-2 stats num-single-tris))
@@ -790,6 +877,9 @@
   (none)
   )
 
+;; definition for method 13 of type shadow-control
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod shadow-control-method-13 shadow-control ((obj shadow-control) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
   (with-pp
     (let ((s4-0 (new 'stack-no-clear 'collide-query)))

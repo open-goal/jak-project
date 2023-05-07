@@ -108,6 +108,7 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/merc_blend_shape.cpp
         mips2c/jak2_functions/ripple.cpp
         mips2c/jak2_functions/squid.cpp
+        mips2c/jak2_functions/shadow.cpp
         overlord/common/dma.cpp
         overlord/common/iso.cpp
         overlord/common/iso_api.cpp
@@ -158,6 +159,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/foreground/Generic2_DMA.cpp
         graphics/opengl_renderer/foreground/Generic2_Build.cpp
         graphics/opengl_renderer/foreground/Generic2_OpenGL.cpp
+        graphics/opengl_renderer/foreground/Shadow2.cpp
         graphics/opengl_renderer/sprite/GlowRenderer.cpp
         graphics/opengl_renderer/sprite/Sprite3.cpp
         graphics/opengl_renderer/sprite/Sprite3_Distort.cpp
