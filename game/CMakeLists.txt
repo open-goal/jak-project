@@ -29,6 +29,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/foreground/Generic2_OpenGL.cpp
         graphics/opengl_renderer/foreground/Generic2.cpp
         graphics/opengl_renderer/foreground/Merc2.cpp
+        graphics/opengl_renderer/foreground/Shadow2.cpp
         graphics/opengl_renderer/LightningRenderer.cpp
         graphics/opengl_renderer/loader/Loader.cpp
         graphics/opengl_renderer/loader/LoaderStages.cpp
@@ -140,6 +141,7 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/ocean_vu0.cpp
         mips2c/jak2_functions/ocean.cpp
         mips2c/jak2_functions/ripple.cpp
+        mips2c/jak2_functions/shadow.cpp
         mips2c/jak2_functions/sky.cpp
         mips2c/jak2_functions/sparticle_launcher.cpp
         mips2c/jak2_functions/sparticle.cpp
@@ -210,7 +212,8 @@ set(RUNTIME_SOURCE
         system/vm/dmac.cpp
         system/vm/vm.cpp
         tools/filter_menu/filter_menu.cpp
-        tools/subtitles/subtitle_editor.cpp)
+        tools/subtitles/subtitle_editor.cpp
+        )
 
 add_subdirectory(sound)
 

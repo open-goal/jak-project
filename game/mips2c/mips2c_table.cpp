@@ -237,7 +237,22 @@ namespace generic_warp_dest { extern void link(); }
 namespace generic_warp_envmap_dest { extern void link(); }
 namespace generic_no_light_proc { extern void link(); }
 namespace foreground_draw_hud { extern void link(); }
-
+namespace shadow_execute { extern void link(); }
+namespace shadow_add_double_edges { extern void link(); }
+namespace shadow_add_double_tris { extern void link(); }
+namespace shadow_add_single_tris { extern void link(); }
+namespace shadow_add_single_edges { extern void link(); }
+namespace shadow_add_facing_single_tris { extern void link(); }
+namespace shadow_add_verts { extern void link(); }
+namespace shadow_find_double_edges { extern void link(); }
+namespace shadow_find_facing_double_tris { extern void link(); }
+namespace shadow_find_single_edges { extern void link(); }
+namespace shadow_find_facing_single_tris { extern void link(); }
+namespace shadow_init_vars { extern void link(); }
+namespace shadow_scissor_top { extern void link(); }
+namespace shadow_scissor_edges { extern void link(); }
+namespace shadow_calc_dual_verts { extern void link(); }
+namespace shadow_xform_verts { extern void link(); }
 }
 // clang-format on
 
@@ -397,7 +412,16 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak2::generic_prepare_dma_double::link, jak2::generic_prepare_dma_single::link,
        jak2::generic_warp_source_proc::link, jak2::generic_warp_dest_proc::link,
        jak2::generic_warp_dest::link, jak2::generic_warp_envmap_dest::link,
-       jak2::generic_no_light_proc::link}}}};
+       jak2::generic_no_light_proc::link}},
+     {"shadow-cpu",
+      {jak2::shadow_execute::link, jak2::shadow_add_double_edges::link,
+       jak2::shadow_add_double_tris::link, jak2::shadow_add_single_tris::link,
+       jak2::shadow_add_single_edges::link, jak2::shadow_add_facing_single_tris::link,
+       jak2::shadow_add_verts::link, jak2::shadow_find_double_edges::link,
+       jak2::shadow_find_facing_double_tris::link, jak2::shadow_find_single_edges::link,
+       jak2::shadow_find_facing_single_tris::link, jak2::shadow_init_vars::link,
+       jak2::shadow_scissor_top::link, jak2::shadow_scissor_edges::link,
+       jak2::shadow_calc_dual_verts::link, jak2::shadow_xform_verts::link}}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

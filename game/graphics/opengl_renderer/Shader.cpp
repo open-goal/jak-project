@@ -107,6 +107,7 @@ ShaderLibrary::ShaderLibrary(GameVersion version) {
   at(ShaderId::GLOW_DRAW) = {"glow_draw", version};
   at(ShaderId::ETIE_BASE) = {"etie_base", version};
   at(ShaderId::ETIE) = {"etie", version};
+  at(ShaderId::SHADOW2) = {"shadow2", version};
 
   for (auto& shader : m_shaders) {
     ASSERT_MSG(shader.okay(), "error compiling shader");

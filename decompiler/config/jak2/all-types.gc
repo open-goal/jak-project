@@ -12567,12 +12567,14 @@
   :flag-assert         #x9000025b0
   )
 
+(declare-type shadow-vu1-constants structure)
+
 (deftype shadow-bucket (structure)
-  ((first        uint32  :offset-assert 0)
-   (next         uint32  :offset-assert 4)
+  ((first        pointer  :offset-assert 0)
+   (next         pointer  :offset-assert 4)
    (bucket-id    int32   :offset-assert 8)
    (shadow-color rgba    :offset-assert 12)
-   (constants    basic   :offset-assert 16)
+   (constants    shadow-vu1-constants   :offset-assert 16)
    )
   :allow-misaligned
   :method-count-assert 9
@@ -12702,9 +12704,9 @@
   )
 
 (define-extern *shadow-globals* shadow-globals)
-(define-extern *shadow* object) ;; symbol
-(define-extern *shadow-object* object)
-(define-extern *shadow-debug* object)
+(define-extern *shadow* symbol) ;; symbol
+(define-extern *shadow-object* symbol)
+(define-extern *shadow-debug* symbol)
 (define-extern *shadow-dma-buf* dma-buffer)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -24582,7 +24584,6 @@
 ;; shadow-cpu                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype shadow-stats (structure)
   ((num-single-tris  uint32  :offset-assert 0)
    (num-double-tris  uint32  :offset-assert 4)
@@ -24595,9 +24596,7 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype shadow-dcache (structure)
   ((vtx-table              uint32                :offset-assert 0)
    (single-edge-table      uint32                :offset-assert 4)
@@ -24625,40 +24624,38 @@
   :size-assert         #xb0
   :flag-assert         #x9000000b0
   )
-|#
 
-;; (define-extern *shadow-data* object) ;; shadow-data
-;; (define-extern shadow-invert-z-buf function)
-;; (define-extern shadow-make-invert-buf function)
-;; (define-extern *shadow-dma-invert-call* object)
-;; (define-extern shadow-dma-init function) ;; (function dma-buffer none)
-;; (define-extern shadow-dma-end function) ;; (function dma-buffer none)
-;; (define-extern shadow-vu0-block object) ;; vu-function
-;; (define-extern shadow-xform-verts function) ;; function
-;; (define-extern shadow-calc-dual-verts function) ;; function
-;; (define-extern shadow-scissor-edges function) ;; function
-;; (define-extern shadow-scissor-top function) ;; function
-;; (define-extern shadow-init-vars function) ;; function
-;; (define-extern shadow-find-facing-single-tris function) ;; function
-;; (define-extern shadow-find-single-edges function) ;; function
-;; (define-extern shadow-find-facing-double-tris function) ;; function
-;; (define-extern shadow-find-double-edges function) ;; function
-;; (define-extern shadow-add-verts function) ;; function
-;; (define-extern shadow-add-facing-single-tris function) ;; function
-;; (define-extern shadow-add-single-edges function) ;; function
-;; (define-extern shadow-add-single-tris function)
-;; (define-extern shadow-add-double-tris function) ;; function
-;; (define-extern shadow-add-double-edges function) ;; function
-;; (define-extern debug-draw-settings function)
-;; (define-extern shadow-execute function) ;; (function shadow-dma-packet pointer pointer)
-;; (define-extern shadow-vu0-upload function) ;; (function none)
+(define-extern *shadow-data* shadow-data)
+(define-extern shadow-invert-z-buf (function dma-buffer none))
+(define-extern shadow-make-invert-buf (function none))
+(define-extern *shadow-dma-invert-call* pointer)
+(define-extern shadow-dma-init (function dma-buffer none))
+(define-extern shadow-dma-end (function dma-buffer gs-rgbaq symbol int none))
+(define-extern shadow-vu0-block vu-function)
+(define-extern shadow-xform-verts function)
+(define-extern shadow-calc-dual-verts function)
+(define-extern shadow-scissor-edges function)
+(define-extern shadow-scissor-top function)
+(define-extern shadow-init-vars function)
+(define-extern shadow-find-facing-single-tris function)
+(define-extern shadow-find-single-edges function)
+(define-extern shadow-find-facing-double-tris function)
+(define-extern shadow-find-double-edges function)
+(define-extern shadow-add-verts function)
+(define-extern shadow-add-facing-single-tris function)
+(define-extern shadow-add-single-edges function)
+(define-extern shadow-add-single-tris function)
+(define-extern shadow-add-double-tris function)
+(define-extern shadow-add-double-edges function)
+(define-extern debug-draw-settings (function matrix none))
+(define-extern shadow-execute (function shadow-dma-packet pointer pointer))
+(define-extern shadow-vu0-upload (function none))
 (define-extern shadow-execute-all (function dma-buffer none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; shadow-vu1                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype shadow-vu1-constants (structure)
   ((hmgescale vector     :inline :offset-assert 0)
    (invhscale vector     :inline :offset-assert 16)
@@ -24666,7 +24663,7 @@
    (texscale  vector     :inline :offset-assert 48)
    (hvdfoff   vector     :inline :offset-assert 64)
    (fog       vector     :inline :offset-assert 80)
-   (clrs      vector     2       :offset-assert 96) ;; guessed by decompiler
+   (clrs      vector   2 :inline :offset-assert 96) ;; guessed by decompiler
    (adgif     gs-gif-tag :inline :offset-assert 128)
    (texflush  gs-adcmd   :inline :offset-assert 144) ;; ad-cmd :inline
    (flush     gs-adcmd   :inline :offset-assert 160) ;; ad-cmd :inline
@@ -24677,9 +24674,7 @@
   :size-assert         #xd0
   :flag-assert         #x9000000d0
   )
-|#
 
-#|
 (deftype shadow-vu1-data (structure)
   ((adgif     gs-gif-tag :inline :offset-assert 0)
    (ad        gs-adcmd   :inline :offset-assert 16)
@@ -24688,20 +24683,19 @@
    (quadgif   gs-gif-tag :inline :offset-assert 64)
    (texoffset vector     :inline :offset-assert 80)
    (texscale  vector     :inline :offset-assert 96)
-   (clrs      UNKNOWN    2       :offset-assert 112)
+   (clrs      qword    2 :inline :offset-assert 112)
    )
   :method-count-assert 9
   :size-assert         #x90
   :flag-assert         #x900000090
   )
-|#
 
-;; (define-extern *shadow-vu1-data* object)
-;; (define-extern shadow-vu1-block object) ;; vu-function
-;; (define-extern shadow-vu1-add-constants function) ;; (function dma-buffer none)
-;; (define-extern shadow-vu1-patch-consts function)
-;; (define-extern shadow-vu1-add-matrix function) ;; (function dma-buffer math-camera none)
-;; (define-extern shadow-vu1-init-buffer function) ;; (function dma-buffer none)
+(define-extern *shadow-vu1-data* shadow-vu1-data)
+(define-extern shadow-vu1-block vu-function)
+(define-extern shadow-vu1-add-constants (function dma-buffer int none))
+(define-extern shadow-vu1-patch-consts (function symbol int none))
+(define-extern shadow-vu1-add-matrix (function dma-buffer math-camera none))
+(define-extern shadow-vu1-init-buffer (function dma-buffer int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; warp                           ;;

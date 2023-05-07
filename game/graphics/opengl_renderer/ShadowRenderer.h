@@ -13,7 +13,7 @@ class ShadowRenderer : public BucketRenderer {
  private:
   void run_mscal_vu2c(u16 imm);
   void xgkick(u16 imm);
-  void run_mscal10_vu2c();
+  void run_mscal10_vu2c();  // identical in jak 2
   void handle_jalr_to_end_block(u16 val, u32& first_flag, u32& second_flag);
   void handle_bal52();
   void draw(SharedRenderState* render_state, ScopedProfilerNode& prof);
