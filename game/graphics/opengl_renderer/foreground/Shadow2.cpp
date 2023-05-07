@@ -121,102 +121,93 @@ void Shadow2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
     dma.read_and_advance();
   }
 
-  // loop over fragments.
+  // loop over uploads
+  InputData current_input;
+  bool have_color = false;
   while (true) {
-    if (dma.current_tag_vifcode0().kind == VifCode::Kind::FLUSH &&
-        dma.current_tag_vifcode1().kind == VifCode::Kind::UNPACK_V4_32) {
-      InputData input;
-
-      // first upload
-      auto upload0 = dma.read_and_advance();
-      ASSERT(upload0.vifcode0().kind == VifCode::Kind::FLUSH);
-      auto up0_vif1 = upload0.vifcode1();
-      ASSERT(up0_vif1.kind == VifCode::Kind::UNPACK_V4_32);
-      ASSERT(up0_vif1.immediate == 4);
-      ASSERT(up0_vif1.num * 16 == upload0.size_bytes);
-      input.upload_4 = upload0.data;
-
-      // upload
-      auto upload1 = dma.read_and_advance();
-      ASSERT(upload1.vif0() == 0);
-      auto up1_vif1 = upload1.vifcode1();
-      ASSERT(up1_vif1.kind == VifCode::Kind::UNPACK_V4_32);
-      ASSERT(up1_vif1.immediate == 174);
-      ASSERT(up1_vif1.num * 16 == upload1.size_bytes);
-      input.upload_174 = upload1.data;
-
-      auto upload2 = dma.read_and_advance();
-      {
-        ASSERT(upload2.vif0() == 0);
-        auto v1 = upload2.vifcode1();
-        ASSERT(v1.kind == VifCode::Kind::UNPACK_V4_8);
-        auto up = VifCodeUnpack(v1);
-        ASSERT(!up.use_tops_flag);
-        ASSERT(up.is_unsigned);
-        u16 addr = up.addr_qw;
-        ASSERT(addr == 344);
-        u32 offset = 4 * v1.num;
-        ASSERT(offset + 16 == upload2.size_bytes);
-
-        u32 after[4];
-        memcpy(&after, upload2.data + offset, 16);
-        ASSERT(after[0] == 0);
-        ASSERT(after[1] == 0);
-        ASSERT(after[2] == 0);
-        VifCode mscal(after[3]);
-        ASSERT(mscal.kind == VifCode::Kind::MSCALF);
-        input.size_344 = 4 * v1.num;
-        input.upload_8s_344 = upload2.data;
-        switch (mscal.immediate) {
-          case 2:
-            buffer_from_mscal2(input);
-            break;
-          case 6:
-            buffer_from_mscal6(input);
-            break;
-          default:
-            printf("mscal %d\n", mscal.immediate);
-            ASSERT_NOT_REACHED();
-        }
-      }
-
-      auto upload3 = dma.read_and_advance();
-      {
-        ASSERT(upload3.vif0() == 0);
-        auto v1 = upload3.vifcode1();
-        ASSERT(v1.kind == VifCode::Kind::UNPACK_V4_8);
-        auto up = VifCodeUnpack(v1);
-        ASSERT(!up.use_tops_flag);
-        ASSERT(up.is_unsigned);
-        u16 addr = up.addr_qw;
-        ASSERT(addr == 600);
-        u32 offset = 4 * v1.num;
-        ASSERT(offset + 16 == upload3.size_bytes);
-
-        u32 after[4];
-        memcpy(&after, upload3.data + offset, 16);
-        ASSERT(after[0] == 0);
-        ASSERT(after[1] == 0);
-        ASSERT(after[2] == 0);
-        VifCode mscal(after[3]);
-        ASSERT(mscal.kind == VifCode::Kind::MSCALF);
-        ASSERT(mscal.immediate == 4);
-        input.size_600 = 4 * v1.num;
-        input.upload_8s_600 = upload3.data;
-        buffer_from_mscal4(input);
-      }
-    } else if (dma.current_tag().qwc == 0x19) {
-      dma.read_and_advance();
-      dma.read_and_advance();
-      dma.read_and_advance();
-    } else if (dma.current_tag_vif0() == 0 &&
-               dma.current_tag_vifcode1().kind == VifCode::Kind::FLUSHA) {
-      dma.read_and_advance();
-    } else {
+    if (dma.current_tag_offset() == render_state->next_bucket) {
       break;
+    }
+    auto transfer = dma.read_and_advance();
+    auto vif0 = transfer.vifcode0();
+    auto vif1 = transfer.vifcode1();
+
+    if (vif1.kind == VifCode::Kind::UNPACK_V4_32) {
+      ASSERT(vif0.kind == VifCode::Kind::FLUSH || vif0.kind == VifCode::Kind::NOP);
+      ASSERT(vif1.num * 16 == transfer.size_bytes);  // no extra data
+      int addr = vif1.immediate;
+      switch (addr) {
+        case kTopVertexDataAddr:
+          current_input.top_vertex_data = transfer.data;
+          break;
+        case kBottomVertexDataAddr:
+          current_input.bottom_vertex_data = transfer.data;
+          break;
+        default:
+          ASSERT_NOT_REACHED_MSG(fmt::format("Unknown address for transfer: {}\n", addr));
+      }
+    } else if (vif1.kind == VifCode::Kind::UNPACK_V4_8) {
+      ASSERT(vif0.kind == VifCode::Kind::FLUSH || vif0.kind == VifCode::Kind::NOP);
+      auto up = VifCodeUnpack(vif1);
+      ASSERT(!up.use_tops_flag);
+      ASSERT(up.is_unsigned);
+      u16 addr = up.addr_qw;
+
+      u32 offset = 4 * vif1.num;
+      ASSERT(offset + 16 == transfer.size_bytes);
+
+      u32 after[4];
+      memcpy(&after, transfer.data + offset, 16);
+      ASSERT(after[0] == 0);
+      ASSERT(after[1] == 0);
+      ASSERT(after[2] == 0);
+      VifCode mscal(after[3]);
+      ASSERT(mscal.kind == VifCode::Kind::MSCALF);
+
+      switch (addr) {
+        case kCapIndexDataAddr:
+          current_input.cap_index_data_size = 4 * vif1.num;
+          current_input.cap_index_data = transfer.data;
+          break;
+        case kWallIndexDataAddr:
+          current_input.wall_index_data_size = 4 * vif1.num;
+          current_input.wall_index_data = transfer.data;
+          break;
+        default:
+          ASSERT_NOT_REACHED_MSG(fmt::format("Unknown address for transfer: {}\n", addr));
+      }
+
+      switch (mscal.immediate) {
+        case 2:
+          buffer_from_mscal2(current_input);
+          break;
+        case 4:
+          buffer_from_mscal4(current_input);
+          break;
+        case 6:
+          buffer_from_mscal6(current_input);
+          break;
+        default:
+          printf("mscal %d\n", mscal.immediate);
+          ASSERT_NOT_REACHED();
+      }
+    } else if (vif0.kind == VifCode::Kind::FLUSHA && vif1.kind == VifCode::Kind::DIRECT) {
+      if (transfer.size_bytes == 560) {
+        have_color = true;
+        memcpy(m_color, transfer.data + 8 * 3, 4);
+      }
+      // ignore
+    } else if (vif0.kind == VifCode::Kind::NOP && vif1.kind == VifCode::Kind::NOP) {
+      // ignore
+    }
+
+    else {
+      fmt::print("unhandled transfer in shadow2\n{} bytes\n{}\n{}\n", transfer.size_bytes,
+                 vif0.print(), vif1.print());
     }
   }
 
+  ASSERT(have_color);
   draw_buffers(render_state, prof, frame_constants);
   auto transfers = 0;
   while (dma.current_tag_offset() != render_state->next_bucket) {
@@ -231,20 +222,20 @@ void Shadow2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
 
 void Shadow2::buffer_from_mscal2(const InputData& in) {
   // draw top caps.
-  add_cap_tris(in.upload_8s_344, in.upload_4, false);
+  add_cap_tris(in.cap_index_data, in.top_vertex_data, false);
 
   // draw bottom caps.
-  add_cap_tris(in.upload_8s_344, in.upload_174, true);
+  add_cap_tris(in.cap_index_data, in.bottom_vertex_data, true);
 }
 
 void Shadow2::buffer_from_mscal4(const InputData& in) {
-  add_wall_quads(in.upload_8s_600, in.upload_4, in.upload_174);
+  add_wall_quads(in.wall_index_data, in.top_vertex_data, in.bottom_vertex_data);
 }
 
 void Shadow2::buffer_from_mscal6(const InputData& in) {
   // draw top caps.
-  add_flippable_tris(in.upload_8s_344, in.upload_4, false);
-  add_flippable_tris(in.upload_8s_344, in.upload_174, true);
+  add_flippable_tris(in.cap_index_data, in.top_vertex_data, false);
+  add_flippable_tris(in.cap_index_data, in.bottom_vertex_data, true);
 }
 
 Shadow2::ShadowVertex* Shadow2::alloc_verts(int n) {
@@ -560,8 +551,8 @@ void Shadow2::draw_buffers(SharedRenderState* render_state,
   if (have_darken) {
     glColorMask(darken_channel[0], darken_channel[1], darken_channel[2], false);
     glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
-    glUniform4f(m_ogl.uniforms.color, (128 - m_color[0]) / 128.f, (128 - m_color[1]) / 128.f,
-                (128 - m_color[2]) / 128.f, 0);
+    glUniform4f(m_ogl.uniforms.color, (128 - m_color[0]) / 256.f, (128 - m_color[1]) / 256.f,
+                (128 - m_color[2]) / 256.f, 0);
     glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
     glDrawElements(GL_TRIANGLE_STRIP, 6, GL_UNSIGNED_INT,
                    (void*)(sizeof(u32) * (m_front_index_buffer_used - 6)));

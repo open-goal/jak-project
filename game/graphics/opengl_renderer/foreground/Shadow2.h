@@ -40,16 +40,18 @@ class Shadow2 : public BucketRenderer {
     CameraMatrix camera;           // 0
   };
 
+  static constexpr int kTopVertexDataAddr = 4;
+  static constexpr int kBottomVertexDataAddr = 174;
+  static constexpr int kCapIndexDataAddr = 344;
+  static constexpr int kWallIndexDataAddr = 600;
+
   struct InputData {
-    const u8* upload_4 = nullptr;       // always 115
-    const u8* upload_174 = nullptr;     // always 115
-    const u8* upload_8s_344 = nullptr;  // addr list?
-    size_t size_344 = 0;
-
-    // MSCAL 2
-
-    const u8* upload_8s_600 = nullptr;
-    size_t size_600 = 0;
+    const u8* top_vertex_data = nullptr;     // always 115
+    const u8* bottom_vertex_data = nullptr;  // always 115
+    const u8* cap_index_data = nullptr;
+    size_t cap_index_data_size = 0;
+    const u8* wall_index_data = nullptr;
+    size_t wall_index_data_size = 0;
   };
 
   struct ShadowVertex {
