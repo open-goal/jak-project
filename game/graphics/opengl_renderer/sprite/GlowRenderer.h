@@ -8,7 +8,7 @@ class GlowRenderer {
   SpriteGlowOutput* alloc_sprite();
   void cancel_sprite();
 
-  void flush(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void flush(SharedRenderState* render_state, ScopedProfilerNode& prof, bool update_depth_blit);
   void draw_debug_window();
 
   // Vertex can hold all possible values for all passes. The total number of vertices is very small

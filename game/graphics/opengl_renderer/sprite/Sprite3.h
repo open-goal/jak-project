@@ -68,9 +68,26 @@ class Sprite3 : public BucketRenderer {
   void flush_sprites(SharedRenderState* render_state, ScopedProfilerNode& prof, bool double_draw);
 
   GlowRenderer m_glow_renderer;
+  enum GlowFlushMode { SINGLE = 0, ALWAYS = 1, AUTO = 2 };
+  int m_glow_flush_mode = SINGLE;
   void glow_dma_and_draw(DmaFollower& dma,
                          SharedRenderState* render_state,
                          ScopedProfilerNode& prof);
+  void glow_single_flush(DmaFollower& dma,
+                         DmaTransfer xfer,
+                         const SpriteGlowConsts& consts,
+                         SharedRenderState* render_state,
+                         ScopedProfilerNode& prof);
+  void glow_always_flush(DmaFollower& dma,
+                         DmaTransfer xfer,
+                         const SpriteGlowConsts& consts,
+                         SharedRenderState* render_state,
+                         ScopedProfilerNode& prof);
+  void glow_auto_flush(DmaFollower& dma,
+                       DmaTransfer xfer,
+                       const SpriteGlowConsts& consts,
+                       SharedRenderState* render_state,
+                       ScopedProfilerNode& prof);
 
   struct SpriteDistorterSetup {
     GifTag gif_tag;
@@ -164,6 +181,8 @@ class Sprite3 : public BucketRenderer {
     int count_2d_grp0 = 0;
     int blocks_2d_grp1 = 0;
     int count_2d_grp1 = 0;
+    int count_glow = 0;
+    int glow_flushes = 0;
   } m_debug_stats;
 
   bool m_enable_distort_instancing = true;

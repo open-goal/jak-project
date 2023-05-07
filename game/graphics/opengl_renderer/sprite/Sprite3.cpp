@@ -556,6 +556,7 @@ void Sprite3::draw_debug_window() {
               m_debug_stats.count_2d_grp0);
   ImGui::Text("2D Group 1 (HUD) blocks: %d sprites: %d", m_debug_stats.blocks_2d_grp1,
               m_debug_stats.count_2d_grp1);
+  ImGui::Text("Glow: %d sprites, %d flush", m_debug_stats.count_glow, m_debug_stats.glow_flushes);
   ImGui::Checkbox("Culling", &m_enable_culling);
   ImGui::Checkbox("2d", &m_2d_enable);
   ImGui::Checkbox("Glow", &m_enable_glow);
@@ -564,6 +565,9 @@ void Sprite3::draw_debug_window() {
   ImGui::Checkbox("Distort", &m_distort_enable);
   ImGui::Checkbox("Distort instancing", &m_enable_distort_instancing);
   ImGui::Separator();
+
+  const char* names[] = {"once", "always", "auto"};
+  ImGui::ListBox("Glow flush mode", &m_glow_flush_mode, names, 3);
   m_glow_renderer.draw_debug_window();
 }
 

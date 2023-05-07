@@ -169,6 +169,174 @@ bool glow_math(const SpriteGlowConsts* consts,
   return true;
 }
 
+void Sprite3::glow_always_flush(DmaFollower& dma,
+                                DmaTransfer xfer,
+                                const SpriteGlowConsts& consts,
+                                SharedRenderState* render_state,
+                                ScopedProfilerNode& prof) {
+  bool needs_blit = true;
+  while (xfer.size_bytes == 16) {
+    auto vecdata_xfer = dma.read_and_advance();
+    auto shader_xfer = dma.read_and_advance();
+    auto call = dma.read_and_advance();
+    (void)call;
+
+    u32 num_sprites;
+    memcpy(&num_sprites, xfer.data, 4);
+    ASSERT(num_sprites == 1);  // always, for whatever reason.
+
+    ASSERT(vecdata_xfer.size_bytes == 4 * 16);
+    ASSERT(shader_xfer.size_bytes == 5 * 16);
+
+    if (m_enable_glow) {
+      auto* out = m_glow_renderer.alloc_sprite();
+      if (!glow_math(&consts, vecdata_xfer.data, shader_xfer.data, out)) {
+        m_glow_renderer.cancel_sprite();
+      } else {
+        m_debug_stats.count_glow++;
+        m_debug_stats.glow_flushes++;
+        m_glow_renderer.flush(render_state, prof, needs_blit);
+        needs_blit = false;
+      }
+    }
+
+    xfer = dma.read_and_advance();
+    while (xfer.size_bytes == 0 && xfer.vifcode0().kind == VifCode::Kind::NOP &&
+           xfer.vifcode1().kind == VifCode::Kind::NOP) {
+      xfer = dma.read_and_advance();
+    }
+  }
+}
+
+bool overlap_test(const SpriteGlowOutput& a, const SpriteGlowOutput& b) {
+  if (a.first_clear_pos[0].x() > b.first_clear_pos[1].x() ||
+      b.first_clear_pos[0].x() > a.first_clear_pos[1].x() ||
+      a.first_clear_pos[0].y() > b.first_clear_pos[1].y() ||
+      b.first_clear_pos[0].y() > a.first_clear_pos[1].y()) {
+    return false;
+  } else {
+    return true;
+  }
+}
+
+struct Bucket {
+  std::vector<SpriteGlowOutput> sprites;
+};
+
+struct SpriteDivider {
+  void add_sprite(const SpriteGlowOutput& spr);
+  std::vector<Bucket> buckets;
+};
+
+void SpriteDivider::add_sprite(const SpriteGlowOutput& spr) {
+  bool added_to_existing = false;
+
+  for (auto& bucket : buckets) {
+
+    bool fail = false;
+    for (auto& s : bucket.sprites) {
+      if (overlap_test(s, spr)) {
+        fail = true;
+        break;
+      }
+    }
+    if (fail) {
+      continue;
+    }
+
+    bucket.sprites.push_back(spr);
+    return;
+  }
+
+  if (!added_to_existing) {
+    buckets.push_back({{spr}});
+  }
+}
+
+void Sprite3::glow_auto_flush(DmaFollower& dma,
+                              DmaTransfer xfer,
+                              const SpriteGlowConsts& consts,
+                              SharedRenderState* render_state,
+                              ScopedProfilerNode& prof) {
+  SpriteDivider divider;
+  while (xfer.size_bytes == 16) {
+    auto vecdata_xfer = dma.read_and_advance();
+    auto shader_xfer = dma.read_and_advance();
+    auto call = dma.read_and_advance();
+    (void)call;
+
+    u32 num_sprites;
+    memcpy(&num_sprites, xfer.data, 4);
+    ASSERT(num_sprites == 1);  // always, for whatever reason.
+
+    ASSERT(vecdata_xfer.size_bytes == 4 * 16);
+    ASSERT(shader_xfer.size_bytes == 5 * 16);
+
+    if (m_enable_glow) {
+      SpriteGlowOutput out;
+      if (!glow_math(&consts, vecdata_xfer.data, shader_xfer.data, &out)) {
+      } else {
+        m_debug_stats.count_glow++;
+        divider.add_sprite(out);
+      }
+    }
+
+    xfer = dma.read_and_advance();
+    while (xfer.size_bytes == 0 && xfer.vifcode0().kind == VifCode::Kind::NOP &&
+           xfer.vifcode1().kind == VifCode::Kind::NOP) {
+      xfer = dma.read_and_advance();
+    }
+  }
+
+  bool blit = true;
+  for (auto& bucket : divider.buckets) {
+    m_debug_stats.glow_flushes++;
+    for (auto& s : bucket.sprites) {
+      *m_glow_renderer.alloc_sprite() = s;
+    }
+    m_glow_renderer.flush(render_state, prof, blit);
+    blit = false;
+  }
+}
+
+void Sprite3::glow_single_flush(DmaFollower& dma,
+                                DmaTransfer xfer,
+                                const SpriteGlowConsts& consts,
+                                SharedRenderState* render_state,
+                                ScopedProfilerNode& prof) {
+  while (xfer.size_bytes == 16) {
+    auto vecdata_xfer = dma.read_and_advance();
+    auto shader_xfer = dma.read_and_advance();
+    auto call = dma.read_and_advance();
+    (void)call;
+
+    u32 num_sprites;
+    memcpy(&num_sprites, xfer.data, 4);
+    ASSERT(num_sprites == 1);  // always, for whatever reason.
+
+    ASSERT(vecdata_xfer.size_bytes == 4 * 16);
+    ASSERT(shader_xfer.size_bytes == 5 * 16);
+
+    if (m_enable_glow) {
+      auto* out = m_glow_renderer.alloc_sprite();
+      if (!glow_math(&consts, vecdata_xfer.data, shader_xfer.data, out)) {
+        m_glow_renderer.cancel_sprite();
+      } else {
+        m_debug_stats.count_glow++;
+      }
+    }
+
+    xfer = dma.read_and_advance();
+    while (xfer.size_bytes == 0 && xfer.vifcode0().kind == VifCode::Kind::NOP &&
+           xfer.vifcode1().kind == VifCode::Kind::NOP) {
+      xfer = dma.read_and_advance();
+    }
+  }
+
+  m_debug_stats.glow_flushes++;
+  m_glow_renderer.flush(render_state, prof, true);
+}
+
 /*!
  * Handle glow dma and draw glow sprites using GlowRenderer
  */
@@ -200,32 +368,18 @@ void Sprite3::glow_dma_and_draw(DmaFollower& dma,
          control_xfer.vifcode1().kind == VifCode::Kind::NOP) {
     control_xfer = dma.read_and_advance();
   }
-  while (control_xfer.size_bytes == 16) {
-    auto vecdata_xfer = dma.read_and_advance();
-    auto shader_xfer = dma.read_and_advance();
-    auto call = dma.read_and_advance();
-    (void)call;
 
-    u32 num_sprites;
-    memcpy(&num_sprites, control_xfer.data, 4);
-    ASSERT(num_sprites == 1);  // always, for whatever reason.
-
-    ASSERT(vecdata_xfer.size_bytes == 4 * 16);
-    ASSERT(shader_xfer.size_bytes == 5 * 16);
-
-    if (m_enable_glow) {
-      auto* out = m_glow_renderer.alloc_sprite();
-      if (!glow_math(&consts, vecdata_xfer.data, shader_xfer.data, out)) {
-        m_glow_renderer.cancel_sprite();
-      }
-    }
-
-    control_xfer = dma.read_and_advance();
-    while (control_xfer.size_bytes == 0 && control_xfer.vifcode0().kind == VifCode::Kind::NOP &&
-           control_xfer.vifcode1().kind == VifCode::Kind::NOP) {
-      control_xfer = dma.read_and_advance();
-    }
+  switch (m_glow_flush_mode) {
+    case SINGLE:
+      glow_single_flush(dma, control_xfer, consts, render_state, prof);
+      break;
+    case ALWAYS:
+      glow_always_flush(dma, control_xfer, consts, render_state, prof);
+      break;
+    case AUTO:
+      glow_auto_flush(dma, control_xfer, consts, render_state, prof);
+      break;
+    default:
+      ASSERT_NOT_REACHED();
   }
-
-  m_glow_renderer.flush(render_state, prof);
 }

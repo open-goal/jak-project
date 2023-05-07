@@ -617,7 +617,9 @@ void GlowRenderer::debug_draw_probe_copies(SharedRenderState* render_state,
 /*!
  * Draw all pending sprites.
  */
-void GlowRenderer::flush(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+void GlowRenderer::flush(SharedRenderState* render_state,
+                         ScopedProfilerNode& prof,
+                         bool update_depth_blit) {
   m_debug.num_sprites = m_next_sprite;
   if (!m_next_sprite) {
     // no sprites submitted.
@@ -626,7 +628,9 @@ void GlowRenderer::flush(SharedRenderState* render_state, ScopedProfilerNode& pr
 
   // copy depth from framebuffer to a temporary buffer
   // (this is a bit wasteful)
-  blit_depth(render_state);
+  if (update_depth_blit) {
+    blit_depth(render_state);
+  }
 
   // generate vertex/index data for probes
   u32 probe_idx_start = m_next_index;
