@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -1430,6 +1430,7 @@ RAWINPUT_HandleStatePacket(SDL_Joystick *joystick, Uint8 *data, int size)
         (1 << SDL_CONTROLLER_BUTTON_DPAD_DOWN) | (1 << SDL_CONTROLLER_BUTTON_DPAD_LEFT),
         (1 << SDL_CONTROLLER_BUTTON_DPAD_LEFT),
         (1 << SDL_CONTROLLER_BUTTON_DPAD_UP) | (1 << SDL_CONTROLLER_BUTTON_DPAD_LEFT),
+        0,
     };
     Uint64 match_state = ctx->match_state;
     /* Update match_state with button bit, then fall through */
@@ -1473,6 +1474,7 @@ RAWINPUT_HandleStatePacket(SDL_Joystick *joystick, Uint8 *data, int size)
     for (i = 0; i < nhats; ++i) {
         HIDP_DATA *item = GetData(ctx->hat_indices[i], ctx->data, data_length);
         if (item) {
+            Uint8 hat = SDL_HAT_CENTERED;
             const Uint8 hat_states[] = {
                 SDL_HAT_CENTERED,
                 SDL_HAT_UP,
@@ -1483,6 +1485,7 @@ RAWINPUT_HandleStatePacket(SDL_Joystick *joystick, Uint8 *data, int size)
                 SDL_HAT_DOWN | SDL_HAT_LEFT,
                 SDL_HAT_LEFT,
                 SDL_HAT_UP | SDL_HAT_LEFT,
+                SDL_HAT_CENTERED,
             };
             ULONG state = item->RawValue;
 
@@ -1490,8 +1493,9 @@ RAWINPUT_HandleStatePacket(SDL_Joystick *joystick, Uint8 *data, int size)
 #ifdef SDL_JOYSTICK_RAWINPUT_MATCHING
                 match_state = (match_state & ~HAT_MASK) | hat_map[state];
 #endif
-                SDL_PrivateJoystickHat(joystick, i, hat_states[state]);
+                hat = hat_states[state];
             }
+            SDL_PrivateJoystickHat(joystick, i, hat);
         }
     }
 

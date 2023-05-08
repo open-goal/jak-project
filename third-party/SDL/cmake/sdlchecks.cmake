@@ -949,7 +949,6 @@ macro(CheckPTHREAD)
       list(APPEND SDL_CFLAGS ${PTHREAD_CFLAGS})
 
       check_c_source_compiles("
-        #define _GNU_SOURCE 1
         #include <pthread.h>
         int main(int argc, char **argv) {
           pthread_mutexattr_t attr;
@@ -960,7 +959,6 @@ macro(CheckPTHREAD)
         set(SDL_THREAD_PTHREAD_RECURSIVE_MUTEX 1)
       else()
         check_c_source_compiles("
-            #define _GNU_SOURCE 1
             #include <pthread.h>
             int main(int argc, char **argv) {
               pthread_mutexattr_t attr;
@@ -991,10 +989,13 @@ macro(CheckPTHREAD)
       check_include_files("pthread_np.h" HAVE_PTHREAD_NP_H)
       if (HAVE_PTHREAD_H)
         check_c_source_compiles("
-            #define _GNU_SOURCE 1
             #include <pthread.h>
             int main(int argc, char **argv) {
-              pthread_setname_np(pthread_self(), \"\");
+              #ifdef __APPLE__
+              pthread_setname_np(\"\");
+              #else
+              pthread_setname_np(pthread_self(),\"\");
+              #endif
               return 0;
             }" HAVE_PTHREAD_SETNAME_NP)
         if (HAVE_PTHREAD_NP_H)

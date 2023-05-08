@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -411,7 +411,7 @@ static HRESULT STDMETHODCALLTYPE IEventHandler_CRawGameControllerVtbl_InvokeRemo
     SDL_LockJoysticks();
 
     /* Can we get delayed calls to InvokeRemoved() after WGI_JoystickQuit()? */
-    if (SDL_JoysticksQuitting() || !SDL_JoysticksInitialized()) {
+    if (!SDL_JoysticksInitialized()) {
         SDL_UnlockJoysticks();
         return S_OK;
     }

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -150,6 +150,7 @@ typedef struct {
     Uint8 led_blue;
     Uint16 last_timestamp;
     Uint64 timestamp;
+    Uint16 valid_crc_packets; /* wrapping counter */
     PS4StatePacket_t last_state;
 } SDL_DriverPS4_Context;
 
@@ -830,7 +831,7 @@ HIDAPI_DriverPS4_SetJoystickSensorsEnabled(SDL_HIDAPI_Device *device, SDL_Joysti
 }
 
 static void
-HIDAPI_DriverPS4_HandleStatePacket(SDL_Joystick *joystick, SDL_hid_device *dev, SDL_DriverPS4_Context *ctx, PS4StatePacket_t *packet)
+HIDAPI_DriverPS4_HandleStatePacket(SDL_Joystick *joystick, SDL_hid_device *dev, SDL_DriverPS4_Context *ctx, PS4StatePacket_t *packet, int size)
 {
     static const float TOUCHPAD_SCALEX = 1.0f / 1920;
     static const float TOUCHPAD_SCALEY = 1.0f / 920;    /* This is noted as being 944 resolution, but 920 feels better */
@@ -933,7 +934,7 @@ HIDAPI_DriverPS4_HandleStatePacket(SDL_Joystick *joystick, SDL_hid_device *dev, 
     axis = ((int)packet->ucRightJoystickY * 257) - 32768;
     SDL_PrivateJoystickAxis(joystick, SDL_CONTROLLER_AXIS_RIGHTY, axis);
 
-    if (ctx->device->is_bluetooth && ctx->official_controller) {
+    if (size > 9 && ctx->device->is_bluetooth && ctx->official_controller) {
         if (packet->ucBatteryLevel & 0x10) {
             SDL_PrivateJoystickBatteryLevel(joystick, SDL_JOYSTICK_POWER_WIRED);
         } else {
@@ -951,7 +952,7 @@ HIDAPI_DriverPS4_HandleStatePacket(SDL_Joystick *joystick, SDL_hid_device *dev, 
         }
     }
 
-    if (ctx->report_touchpad) {
+    if (size > 9 && ctx->report_touchpad) {
         touchpad_state = ((packet->ucTouchpadCounter1 & 0x80) == 0) ? SDL_PRESSED : SDL_RELEASED;
         touchpad_x = packet->rgucTouchpadData1[0] | (((int)packet->rgucTouchpadData1[1] & 0x0F) << 8);
         touchpad_y = (packet->rgucTouchpadData1[1] >> 4) | ((int)packet->rgucTouchpadData1[2] << 4);
@@ -963,7 +964,7 @@ HIDAPI_DriverPS4_HandleStatePacket(SDL_Joystick *joystick, SDL_hid_device *dev, 
         SDL_PrivateJoystickTouchpad(joystick, 0, 1, touchpad_state, touchpad_x * TOUCHPAD_SCALEX, touchpad_y * TOUCHPAD_SCALEY, touchpad_state ? 1.0f : 0.0f);
     }
 
-    if (ctx->report_sensors) {
+    if (size > 9 && ctx->report_sensors) {
         Uint16 timestamp;
         Uint64 timestamp_us;
         float data[3];
@@ -1022,6 +1023,11 @@ HIDAPI_DriverPS4_IsPacketValid(SDL_DriverPS4_Context *ctx, Uint8 *data, int size
 {
     switch (data[0]) {
     case k_EPS4ReportIdUsbState:
+        if (size == 10) {
+            /* This is non-enhanced mode, this packet is fine */
+            return SDL_TRUE;
+        }
+
         /* In the case of a DS4 USB dongle, bit[2] of byte 31 indicates if a DS4 is actually connected (indicated by '0').
          * For non-dongle, this bit is always 0 (connected).
 		 * This is usually the ID over USB, but the DS4v2 that started shipping with the PS4 Slim will also send this
@@ -1041,7 +1047,18 @@ HIDAPI_DriverPS4_IsPacketValid(SDL_DriverPS4_Context *ctx, Uint8 *data, int size
     case k_EPS4ReportIdBluetoothState8:
     case k_EPS4ReportIdBluetoothState9:
         /* Bluetooth state packets have two additional bytes at the beginning, the first notes if HID data is present */
-        if (size >= 78 && (data[1] & 0x80) && VerifyCRC(data, 78)) {
+        if (size >= 78 && (data[1] & 0x80)) {
+            if (VerifyCRC(data, 78)) {
+                ++ctx->valid_crc_packets;
+            } else {
+                if (ctx->valid_crc_packets > 0) {
+                    --ctx->valid_crc_packets;
+                }
+                if (ctx->valid_crc_packets >= 3) {
+                    /* We're generally getting valid CRC, but failed one */
+                    return SDL_FALSE;
+                }
+            }
             return SDL_TRUE;
         }
         break;
@@ -1082,7 +1099,7 @@ HIDAPI_DriverPS4_UpdateDevice(SDL_HIDAPI_Device *device)
 
         switch (data[0]) {
         case k_EPS4ReportIdUsbState:
-            HIDAPI_DriverPS4_HandleStatePacket(joystick, device->dev, ctx, (PS4StatePacket_t *)&data[1]);
+            HIDAPI_DriverPS4_HandleStatePacket(joystick, device->dev, ctx, (PS4StatePacket_t *)&data[1], size - 1);
             break;
         case k_EPS4ReportIdBluetoothState1:
         case k_EPS4ReportIdBluetoothState2:
@@ -1098,7 +1115,7 @@ HIDAPI_DriverPS4_UpdateDevice(SDL_HIDAPI_Device *device)
                 HIDAPI_DriverPS4_SetEnhancedMode(device, joystick);
             }
             /* Bluetooth state packets have two additional bytes at the beginning, the first notes if HID is present */
-            HIDAPI_DriverPS4_HandleStatePacket(joystick, device->dev, ctx, (PS4StatePacket_t*)&data[3]);
+            HIDAPI_DriverPS4_HandleStatePacket(joystick, device->dev, ctx, (PS4StatePacket_t *)&data[3], size - 3);
             break;
         default:
 #ifdef DEBUG_JOYSTICK

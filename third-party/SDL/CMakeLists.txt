@@ -86,7 +86,7 @@ endif()
 # See docs/release_checklist.md
 set(SDL_MAJOR_VERSION 2)
 set(SDL_MINOR_VERSION 26)
-set(SDL_MICRO_VERSION 2)
+set(SDL_MICRO_VERSION 5)
 set(SDL_VERSION "${SDL_MAJOR_VERSION}.${SDL_MINOR_VERSION}.${SDL_MICRO_VERSION}")
 
 # Set defaults preventing destination file conflicts
@@ -255,7 +255,6 @@ endif()
 
 # Compiler info
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-  message(STATUS "AHHHHH CLANG!")
   set(USE_CLANG TRUE)
   set(OPT_DEF_ASM TRUE)
   # Visual Studio 2019 v16.2 added support for Clang/LLVM.
@@ -336,6 +335,8 @@ set(SDL_CFLAGS )
 if(WINDOWS)
   set(CMAKE_SHARED_LIBRARY_PREFIX "")
 endif()
+
+set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -D_GNU_SOURCE=1")
 
 # Emscripten toolchain has a nonempty default value for this, and the checks
 # in this file need to change that, so remember the original value, and
@@ -527,26 +528,6 @@ dep_option(SDL_TESTS           "Build the test directory" OFF SDL_TEST OFF)
 set_option(SDL_INSTALL_TESTS   "Install test-cases" OFF)
 
 set(HAVE_STATIC_PIC "${SDL_STATIC_PIC}")
-
-if(SDL_WERROR)
-  if(MSVC)
-    cmake_push_check_state(RESET)
-    check_c_compiler_flag(/WX HAVE_WX)
-    if(HAVE_WX)
-      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /WX")
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /WX")
-    endif()
-  elseif(USE_GCC OR USE_CLANG)
-    cmake_push_check_state(RESET)
-    check_c_compiler_flag(-Werror HAVE_WERROR)
-    if(HAVE_WERROR)
-      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
-      set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS} -Werror")
-    endif()
-    cmake_pop_check_state()
-  endif()
-endif()
 
 if(SDL_HIDAPI)
   if(HIDAPI_ONLY_LIBUSB)
@@ -1068,7 +1049,8 @@ if(SDL_LIBC)
     check_library_exists(m pow "" HAVE_LIBM)
     if(HAVE_LIBM)
       set(CMAKE_REQUIRED_LIBRARIES m)
-      foreach(_FN
+    endif()
+    foreach(_FN
               atan atan2 atanf atan2f ceil ceilf copysign copysignf cos cosf
               exp expf fabs fabsf floor floorf fmod fmodf log logf log10 log10f
               lround lroundf pow powf round roundf scalbn scalbnf sin sinf sqrt
@@ -1076,7 +1058,8 @@ if(SDL_LIBC)
         string(TOUPPER ${_FN} _UPPER)
         set(_HAVEVAR "HAVE_${_UPPER}")
         check_symbol_exists("${_FN}" "math.h" ${_HAVEVAR})
-      endforeach()
+    endforeach()
+    if(HAVE_LIBM)
       set(CMAKE_REQUIRED_LIBRARIES)
       if(NOT VITA)
         list(APPEND EXTRA_LIBS m)
@@ -2927,6 +2910,26 @@ if(NOT SDLMAIN_SOURCES)
   file(GLOB SDLMAIN_SOURCES ${SDL2_SOURCE_DIR}/src/main/dummy/*.c)
 endif()
 
+if(SDL_WERROR)
+  if(MSVC)
+    cmake_push_check_state(RESET)
+    check_c_compiler_flag(/WX HAVE_WX)
+    if(HAVE_WX)
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /WX")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /WX")
+    endif()
+  elseif(USE_GCC OR USE_CLANG)
+    cmake_push_check_state(RESET)
+    check_c_compiler_flag(-Werror HAVE_WERROR)
+    if(HAVE_WERROR)
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+      set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS} -Werror")
+    endif()
+    cmake_pop_check_state()
+  endif()
+endif()
+
 # Append the -MMD -MT flags
 # if(DEPENDENCY_TRACKING)
 #   if(COMPILER_IS_GNUCC)
@@ -3065,6 +3068,9 @@ if(SDL_STATIC AND SDL_SHARED AND NOT sdl_static_libname STREQUAL "SDL2")
   message(STATUS "\"pkg-config --static --libs sdl2\" will return invalid information")
 endif()
 
+# MESSAGE(STATUS "SDL_LIBS: ${SDL_LIBS}")
+# MESSAGE(STATUS "SDL_STATIC_LIBS: ${SDL_STATIC_LIBS}")
+
 configure_file("${SDL2_SOURCE_DIR}/sdl2.pc.in"
   "${SDL2_BINARY_DIR}/sdl2.pc" @ONLY)
 configure_file("${SDL2_SOURCE_DIR}/sdl2-config.in"
@@ -3159,9 +3165,8 @@ add_custom_target(sdl_headers_copy
     DEPENDS ${SDL_GENERATED_HEADERS})
 
 ##### Info output #####
-
 message(STATUS "")
-message(STATUS "SDL2 was configured with the following options: ${CMAKE_C_COMPILER_ID}")
+message(STATUS "SDL2 was configured with the following options:")
 message(STATUS "")
 message(STATUS "Platform: ${CMAKE_SYSTEM}")
 message(STATUS "64-bit:   ${ARCH_64}")
@@ -3266,7 +3271,7 @@ endif()
 if(APPLE)
   foreach(SOURCE_FILE ${SOURCE_FILES})
     get_filename_component(FILE_EXTENSION ${SOURCE_FILE} EXT)
-    if(FILE_EXTENSION STREQUAL "m")
+    if(FILE_EXTENSION STREQUAL ".m")
       set_property(SOURCE ${SOURCE_FILE} APPEND_STRING PROPERTY COMPILE_FLAGS " -x objective-c")
     endif()
   endforeach()

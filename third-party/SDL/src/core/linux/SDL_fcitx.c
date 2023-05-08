@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -283,7 +283,8 @@ static SDL_bool
 FcitxCreateInputContext(SDL_DBusContext* dbus, const char *appname, char **ic_path) {
     const char *program = "program";
     SDL_bool retval = SDL_FALSE;
-    if (dbus->session_conn) {
+
+    if (dbus && dbus->session_conn) {
         DBusMessage *msg = dbus->message_new_method_call(FCITX_DBUS_SERVICE, FCITX_IM_DBUS_PATH, FCITX_IM_DBUS_INTERFACE, "CreateInputContext");
         if (msg) {
             DBusMessage *reply = NULL;

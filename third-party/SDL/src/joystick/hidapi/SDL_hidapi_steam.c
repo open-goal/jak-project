@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -37,11 +37,9 @@
 
 #include <stdint.h>
 
-typedef enum
-{
-    false,
-    true
-} bool;
+#define bool SDL_bool
+#define true SDL_TRUE
+#define false SDL_FALSE
 
 typedef uint32_t uint32;
 typedef uint64_t uint64;
