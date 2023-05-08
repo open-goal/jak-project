@@ -93,6 +93,13 @@ int DisplayManager::get_screen_height() {
   return 480;
 }
 
+Resolution DisplayManager::get_resolution(int id) {
+  if (id < m_available_resolutions.size()) {
+    return m_available_resolutions.at(id);
+  }
+  return {0, 0, 0.0};
+}
+
 void DisplayManager::set_window_resizable(bool resizable) {
   if (m_window) {
     SDL_SetWindowResizable(m_window, resizable ? SDL_TRUE : SDL_FALSE);
@@ -100,8 +107,6 @@ void DisplayManager::set_window_resizable(bool resizable) {
 }
 
 void DisplayManager::set_window_size(int width, int height) {
-  m_window_width = width;
-  m_window_height = height;
   SDL_SetWindowSize(m_window, width, height);
 }
 
@@ -159,8 +164,13 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
           sdl_util::log_error(fmt::format("unable to get display bounds for display id {}",
                                           m_selected_fullscreen_display_id));
         } else {
-          // 2. move it to the right monitor (a bit away from the edge)
-          SDL_SetWindowPosition(m_window, rect.x + 50, rect.y + 50);
+          // 2. move it to the right monitor
+          SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED);
+          if (mode == WindowDisplayMode::Fullscreen) {
+            // if fullscreen, we have to resize the window to take up the full resolution
+            const auto& largest_res = m_available_resolutions.front();
+            set_window_size(largest_res.width, largest_res.height);
+          }
           // 3. fullscreen it!
           result = SDL_SetWindowFullscreen(m_window, mode == WindowDisplayMode::Fullscreen
                                                          ? SDL_WINDOW_FULLSCREEN
@@ -219,8 +229,8 @@ void DisplayManager::update_video_modes() {
 
   m_current_display_modes.clear();
 
+  SDL_DisplayMode curr_mode;
   for (int display_id = 0; display_id < num_displays; display_id++) {
-    SDL_DisplayMode curr_mode;
     const auto success = SDL_GetCurrentDisplayMode(display_id, &curr_mode);
     if (success != 0) {
       sdl_util::log_error(
@@ -250,6 +260,37 @@ void DisplayManager::update_video_modes() {
                             orient};
     m_current_display_modes[display_id] = new_mode;
   }
+  update_resolutions();
+}
+
+void DisplayManager::update_resolutions() {
+  // Enumerate display's display modes to get the resolutions
+  auto num_display_modes = SDL_GetNumDisplayModes(m_active_display_id);
+  SDL_DisplayMode curr_mode;
+  for (int i = 0; i < num_display_modes; i++) {
+    auto ok = SDL_GetDisplayMode(m_active_display_id, i, &curr_mode);
+    if (ok != 0) {
+      sdl_util::log_error(fmt::format("unable to get display mode for display {}, index {}",
+                                      m_active_display_id, i));
+      continue;
+    }
+    Resolution new_res = {curr_mode.w, curr_mode.h,
+                          static_cast<float>(curr_mode.w) / static_cast<float>(curr_mode.h)};
+    m_available_resolutions.push_back(new_res);
+  }
+
+  // Sort by area
+  std::sort(m_available_resolutions.begin(), m_available_resolutions.end(),
+            [](const Resolution& a, const Resolution& b) -> bool {
+              return a.width * a.height > b.width * b.height;
+            });
+
+  // Remove duplicate resolutions
+  auto last = std::unique(m_available_resolutions.begin(), m_available_resolutions.end(),
+                          [](const Resolution& a, const Resolution& b) -> bool {
+                            return (a.width == b.width && a.height == b.height);
+                          });
+  m_available_resolutions.erase(last, m_available_resolutions.end());
 }
 
 std::string DisplayManager::get_connected_display_name(int id) {

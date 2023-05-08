@@ -570,6 +570,27 @@ void pc_set_window_size(u64 width, u64 height) {
   }
 }
 
+s64 pc_get_num_resolutions() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_display_manager()->get_num_resolutions();
+  }
+  return 0;
+}
+
+void pc_get_resolution(u32 id, u32 w_ptr, u32 h_ptr) {
+  if (Display::GetMainDisplay()) {
+    auto res = Display::GetMainDisplay()->get_display_manager()->get_resolution(id);
+    auto w = Ptr<u32>(w_ptr).c();
+    if (w) {
+      *w = res.width;
+    }
+    auto h = Ptr<u32>(h_ptr).c();
+    if (h) {
+      *h = res.height;
+    }
+  }
+}
+
 u64 pc_get_controller_name(u32 id) {
   std::string name = "";
   if (Display::GetMainDisplay()) {
@@ -837,6 +858,8 @@ void init_common_pc_port_functions(
   make_func_symbol_func("pc-get-window-scale", (void*)pc_get_window_scale);
   make_func_symbol_func("pc-set-fullscreen-display", (void*)pc_get_fullscreen_display);
   make_func_symbol_func("pc-set-window-size", (void*)pc_set_window_size);
+  make_func_symbol_func("pc-get-num-resolutions", (void*)pc_get_num_resolutions);
+  make_func_symbol_func("pc-get-resolution", (void*)pc_get_resolution);
 
   // -- INPUT RELATED --
   // Returns the name of the display with the given id or #f if not found / empty

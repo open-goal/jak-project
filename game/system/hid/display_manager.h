@@ -30,6 +30,13 @@ struct DisplayMode {
   Orientation orientation;
 };
 
+// Describes an available resolution
+struct Resolution {
+  int width;
+  int height;
+  float aspect_ratio;
+};
+
 /// Monitors and handles all SDL events related to monitors and the window position
 /// Stores related info for other parts of the application to use
 /// Manages display related operations and querying
@@ -54,6 +61,8 @@ class DisplayManager {
   int get_screen_width();
   int get_screen_height();
   WindowDisplayMode get_window_display_mode() { return m_window_display_mode; }
+  Resolution get_resolution(int id);
+  int get_num_resolutions() { return m_available_resolutions.size(); }
 
   // Mutators
   void set_window_resizable(bool resizable);
@@ -86,7 +95,9 @@ class DisplayManager {
   //
   // ie. allowing someone to set 150fps on a monitor set to 60hz is not correct
   std::unordered_map<int, DisplayMode> m_current_display_modes;
+  std::vector<Resolution> m_available_resolutions;
 
   void update_curr_display_info();
   void update_video_modes();
+  void update_resolutions();
 };
