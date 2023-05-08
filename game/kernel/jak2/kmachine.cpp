@@ -708,8 +708,12 @@ void InitMachine_PCPort() {
  * PC port functions END
  */
 
-void PutDisplayEnv(u32 /*ptr*/) {
-  ASSERT(false);
+void PutDisplayEnv(u32 alp) {
+  // we can mostly ignore this, except for one value that sets the 'blackout' amount.
+  auto* renderer = Gfx::GetCurrentRenderer();
+  if (renderer) {
+    renderer->set_pmode_alp(alp / 255.f);
+  }
 }
 
 u32 sceGsSyncV(u32 mode) {

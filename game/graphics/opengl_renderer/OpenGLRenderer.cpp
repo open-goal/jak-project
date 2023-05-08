@@ -20,6 +20,7 @@
 #include "game/graphics/opengl_renderer/background/Tie3.h"
 #include "game/graphics/opengl_renderer/foreground/Generic2.h"
 #include "game/graphics/opengl_renderer/foreground/Merc2.h"
+#include "game/graphics/opengl_renderer/foreground/Shadow2.h"
 #include "game/graphics/opengl_renderer/ocean/OceanMidAndFar.h"
 #include "game/graphics/opengl_renderer/ocean/OceanNear.h"
 #include "game/graphics/opengl_renderer/sprite/Sprite3.h"
@@ -215,6 +216,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<Merc2>("merc-lcom-shrub", BucketCategory::MERC, BucketId::MERC_LCOM_SHRUB);
   init_bucket_renderer<Generic2>("gmerc-lcom-tfrag", BucketCategory::GENERIC,
                                  BucketId::GMERC_LCOM_TFRAG);
+  init_bucket_renderer<Shadow2>("shadow", BucketCategory::OTHER, BucketId::SHADOW);
   // 220
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-pris", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_PRIS);
@@ -229,6 +231,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-all-sprite", BucketCategory::TEX,
                                              BucketId::TEX_ALL_SPRITE);
   init_bucket_renderer<Sprite3>("particles", BucketCategory::SPRITE, BucketId::PARTICLES);
+  init_bucket_renderer<Shadow2>("shadow2", BucketCategory::OTHER, BucketId::SHADOW2);
   init_bucket_renderer<LightningRenderer>("effects", BucketCategory::OTHER, BucketId::EFFECTS);
   init_bucket_renderer<TextureUploadHandler>("tex-all-warp", BucketCategory::TEX,
                                              BucketId::TEX_ALL_WARP);
@@ -846,6 +849,7 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   // letterboxing
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   glDisable(GL_BLEND);
+  m_render_state.stencil_dirty = false;
 
   // setup the draw region to letterbox later
   m_render_state.draw_region_w = settings.draw_region_width;
@@ -1088,7 +1092,7 @@ void OpenGLRenderer::do_pcrtc_effects(float alp,
     );
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
-  if (alp < 1 && m_version != GameVersion::Jak2) {  // TODO: enable blackout on jak 2.
+  if (alp < 1) {
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);

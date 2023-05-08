@@ -94,6 +94,8 @@ struct SharedRenderState {
   int num_vis_to_copy = 0;
   GameVersion version;
   u64 frame_idx = 0;
+
+  bool stencil_dirty = false;
 };
 
 /*!
@@ -151,6 +153,17 @@ class EmptyBucketRenderer : public BucketRenderer {
 class SkipRenderer : public BucketRenderer {
  public:
   SkipRenderer(const std::string& name, int my_id);
+  void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
+  bool empty() const override { return true; }
+  void draw_debug_window() override {}
+};
+
+/*!
+ * Renderer that ignores and prints all DMA transfers.
+ */
+class PrintRenderer : public BucketRenderer {
+ public:
+  PrintRenderer(const std::string& name, int my_id);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   bool empty() const override { return true; }
   void draw_debug_window() override {}
