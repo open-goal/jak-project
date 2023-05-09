@@ -586,20 +586,26 @@
       (set! (-> option option-type) (game-option-type button))
       (set! (-> option name) (text-id back))
       (set! (-> option scale) #t)
+      (1+! (-> *temp-options* length))))
 
-      (1+! (-> *temp-options* length))
-      )
-  )
+(defmacro add-message-option (text)
+  "adds an option that isn't selectable but displays some text"
+  `(let ((option (-> *temp-options* (length *temp-options*))))
+    (set! (-> option option-type) (game-option-type button))
+    (set! (-> option option-disabled-func) (lambda () #t))
+    (set! (-> option name) ,text)
+    (set! (-> option scale) #t)
+    (1+! (-> *temp-options* length))))
 
 (defmacro add-resolution-option (x y)
   "add a resolution button to *temp-options* with specified size"
   `(let ((option (-> *temp-options* (length *temp-options*))))
       (set! (-> option option-type) (game-option-type resolution))
+      (set! (-> option option-disabled-func) #f)
       (set! (-> option name) (text-id resolution-fmt))
       (set! (-> option param1) (the float ,x))
       (set! (-> option param2) (the float ,y))
       (set! (-> option scale) #t)
-
       (1+! (-> *temp-options* length))))
 
 (defun build-resolution-options ()
@@ -608,8 +614,8 @@
   (let ((window-width 0)
         (window-height 0)
         (window-aspect-ratio 0.0)
-        (num-resolutions (pc-get-num-resolutions)))
-    ;; TODO - handle the situation where we get none with a nice string
+        (num-resolutions (pc-get-num-resolutions))
+        (num-resolutions-added 0))
     (when (> num-resolutions 0)
       (pc-get-window-size (the-as (pointer int32) (& window-width)) (the-as (pointer int32) (& window-height)))
       (set! window-aspect-ratio (/ (the float window-width) (the float window-height)))
@@ -622,12 +628,17 @@
           ;; Ignore those that aren't relevant to the current window's aspect ratio
           ;; we only do this when we aren't in windowed mode, because in windowed mode
           ;; you are using the resolution menu to change it...so it doesn't make sense to base it on the size
-          (when (or (= (pc-get-display-mode) 'windowed) (< (fabs (- window-aspect-ratio res-aspect-ratio)) 0.1))
-            (add-resolution-option res-width res-height))))))
-    ;; TODO - should we add the ntsc/pal options...?
-    ;; (when (!= display-mode 'windowed)
-    ;;     (add-resolution-option 512 224)
-    ;;     (add-resolution-option 512 448))
+          ;;
+          ;; Additionally, always show the PS2 resolutions or else they are never going to be seen due to the aspect ratio difference
+          (when (or (= (pc-get-display-mode) 'windowed)
+                    (and (= res-width 512) (or (= res-height 448) (= res-height 224)))
+                    (< (fabs (- window-aspect-ratio res-aspect-ratio)) 0.1))
+            (add-resolution-option res-width res-height)
+            (1+! num-resolutions-added)))))
+    ;; If all we displayed was the PS2 resolutions, inform them they have a weird aspect ratio
+    (when (< num-resolutions-added 3)
+      (add-message-option (text-id progress-no-resolution-options)))
+      )
     (add-back-option))
 
 (defun build-flava-player-options ((mus-idx int))
@@ -2226,6 +2237,7 @@
                 )
             ;; Check if the option should be disabled
             (when (and (nonzero? (-> options index option-disabled-func))
+                       (!= (-> options index option-disabled-func) #f)
                        ((-> options index option-disabled-func)))
                   (set! locked? #t))
             (case (-> options index option-type)

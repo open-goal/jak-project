@@ -158,26 +158,23 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
       // 1. exit fullscreen
       result = SDL_SetWindowFullscreen(m_window, 0);
       if (result == 0) {
-        SDL_Rect rect;
-        result = SDL_GetDisplayBounds(m_selected_fullscreen_display_id, &rect);
+        // 2. move it to the right monitor
+        SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED);
+        if (mode == WindowDisplayMode::Fullscreen) {
+          update_video_modes();
+          // If fullscreen, we have to resize the window to take up the full resolution
+          //
+          // Some people are weird and don't use the monitor's maximum supported resolution
+          // in which case, we use what the user actually has selected. TODO - TEST THIS
+          const auto& display_res = m_current_display_modes.at(m_selected_fullscreen_display_id);
+          set_window_size(display_res.screen_width, display_res.screen_height);
+        }
+        // 3. fullscreen it!
+        result = SDL_SetWindowFullscreen(m_window, mode == WindowDisplayMode::Fullscreen
+                                                       ? SDL_WINDOW_FULLSCREEN
+                                                       : SDL_WINDOW_FULLSCREEN_DESKTOP);
         if (result < 0) {
-          sdl_util::log_error(fmt::format("unable to get display bounds for display id {}",
-                                          m_selected_fullscreen_display_id));
-        } else {
-          // 2. move it to the right monitor
-          SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED);
-          if (mode == WindowDisplayMode::Fullscreen) {
-            // if fullscreen, we have to resize the window to take up the full resolution
-            const auto& largest_res = m_available_resolutions.front();
-            set_window_size(largest_res.width, largest_res.height);
-          }
-          // 3. fullscreen it!
-          result = SDL_SetWindowFullscreen(m_window, mode == WindowDisplayMode::Fullscreen
-                                                         ? SDL_WINDOW_FULLSCREEN
-                                                         : SDL_WINDOW_FULLSCREEN_DESKTOP);
-          if (result < 0) {
-            sdl_util::log_error("unable to switch window fullscreen or borderless fullscreen");
-          }
+          sdl_util::log_error("unable to switch window fullscreen or borderless fullscreen");
         }
       } else {
         sdl_util::log_error(
@@ -278,6 +275,9 @@ void DisplayManager::update_resolutions() {
                           static_cast<float>(curr_mode.w) / static_cast<float>(curr_mode.h)};
     m_available_resolutions.push_back(new_res);
   }
+  // Add original NTSC/PAL options for weird people that want to act like they are on a PS2?
+  m_available_resolutions.push_back({512, 448, static_cast<float>(512) / static_cast<float>(448)});
+  m_available_resolutions.push_back({512, 224, static_cast<float>(512) / static_cast<float>(224)});
 
   // Sort by area
   std::sort(m_available_resolutions.begin(), m_available_resolutions.end(),
