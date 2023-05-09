@@ -105,20 +105,14 @@ void from_json(const json& j, InputSettings& obj) {
   json_deserialize_if_exists(last_selected_controller_guid);
   json_deserialize_if_exists(controller_port_mapping);
   json_deserialize_if_exists(controller_binds);
-  if (j.contains("keyboard_binds")) {
-    j.at("keyboard_binds").get_to(obj.keyboard_binds);
-  } else {
-    obj.keyboard_binds = DEFAULT_KEYBOARD_BINDS;
-  }
-  if (j.contains("mouse_binds")) {
-    j.at("mouse_binds").get_to(obj.mouse_binds);
-  } else {
-    obj.mouse_binds = DEFAULT_MOUSE_BINDS;
-  }
+  json_deserialize_if_exists(keyboard_binds);
+  json_deserialize_if_exists(mouse_binds);
 }
 
 InputSettings::InputSettings() {
   try {
+    keyboard_binds = DEFAULT_KEYBOARD_BINDS;
+    mouse_binds = DEFAULT_MOUSE_BINDS;
     std::string file_path =
         (file_util::get_user_settings_dir(g_game_version) / "input-settings.json").string();
     if (!file_util::file_exists(file_path)) {
