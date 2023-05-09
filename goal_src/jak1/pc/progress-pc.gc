@@ -524,49 +524,12 @@
 
 (define-perm *temp-options-alloced* symbol #f)
 
-(define *resolutions* (new 'static 'boxed-array :type int32
-    640 720 768 800 900 960 1080))
-
 ;; this is to avoid changing the value of *temp-options* or reallocating the options when reloading file
 (unless *temp-options-alloced*
 (define *temp-options* (new 'static 'boxed-array :type game-option :length 200 :allocated-length 200))
 (dotimes (i (-> *temp-options* length))
   (set! (-> *temp-options* i) (new 'global 'game-option)))
 (true! *temp-options-alloced*))
-
-
-(defun find-highest-resolution ()
-
-  (let ((sx 0) (sy 0) (found #f) (mult GAME_MIN_RES_MULT) (lastr 0) (hir 0) (lor 0))
-    (pc-get-active-display-size (the (pointer int32) (& sx)) (the (pointer int32) (& sy)))
-    (if (> sy sx)
-        (set! sy sx))
-
-    (until found
-
-      (dotimes (i (-> *resolutions* length))
-        (let ((thisr (the int (* mult (the float (-> *resolutions* i))))))
-        (cond
-          ((< sy thisr)
-           (if (zero? i)
-               (*! mult 0.5))
-           (set! i (-> *resolutions* length))
-           (true! found)
-           )
-          (else
-           (set! lastr thisr))
-          )
-        ))
-
-      (if (not found)
-          (*! mult 2))
-
-      )
-    (set! hir lastr)
-    mult
-    )
-
-  )
 
 (defmacro add-flava-player-option (text-id flava)
   "add a music player w/ flava button to *temp-options* with specified size"
@@ -635,9 +598,9 @@
                     (< (fabs (- window-aspect-ratio res-aspect-ratio)) 0.1))
             (add-resolution-option res-width res-height)
             (1+! num-resolutions-added)))))
-    ;; If all we displayed was the PS2 resolutions, inform them they have a weird aspect ratio
+    ;; If all we displayed was the 2 PS2 resolutions, inform them they have a weird aspect ratio
     (when (< num-resolutions-added 3)
-      (add-message-option (text-id progress-no-resolution-options)))
+      (add-message-option (text-id progress-no-other-resolution-options)))
       )
     (add-back-option))
 

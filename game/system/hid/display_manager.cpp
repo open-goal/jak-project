@@ -159,7 +159,8 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
       result = SDL_SetWindowFullscreen(m_window, 0);
       if (result == 0) {
         // 2. move it to the right monitor
-        SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED);
+        // TODO - this doesn't handle monitor switching test that again
+        SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
         if (mode == WindowDisplayMode::Fullscreen) {
           update_video_modes();
           // If fullscreen, we have to resize the window to take up the full resolution
