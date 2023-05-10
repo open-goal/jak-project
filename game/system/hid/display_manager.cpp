@@ -158,24 +158,30 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
       // 1. exit fullscreen
       result = SDL_SetWindowFullscreen(m_window, 0);
       if (result == 0) {
-        // 2. move it to the right monitor
-        // TODO - this doesn't handle monitor switching test that again
-        SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-        if (mode == WindowDisplayMode::Fullscreen) {
-          update_video_modes();
-          // If fullscreen, we have to resize the window to take up the full resolution
-          //
-          // Some people are weird and don't use the monitor's maximum supported resolution
-          // in which case, we use what the user actually has selected. TODO - TEST THIS
-          const auto& display_res = m_current_display_modes.at(m_selected_fullscreen_display_id);
-          set_window_size(display_res.screen_width, display_res.screen_height);
-        }
-        // 3. fullscreen it!
-        result = SDL_SetWindowFullscreen(m_window, mode == WindowDisplayMode::Fullscreen
-                                                       ? SDL_WINDOW_FULLSCREEN
-                                                       : SDL_WINDOW_FULLSCREEN_DESKTOP);
+        SDL_Rect display_bounds;
+        result = SDL_GetDisplayBounds(m_selected_fullscreen_display_id, &display_bounds);
         if (result < 0) {
-          sdl_util::log_error("unable to switch window fullscreen or borderless fullscreen");
+          sdl_util::log_error(fmt::format("unable to get display bounds for display id {}",
+                                          m_selected_fullscreen_display_id));
+        } else {
+          // 2. move it to the right monitor
+          SDL_SetWindowPosition(m_window, display_bounds.x + 50, display_bounds.y + 50);
+          if (mode == WindowDisplayMode::Fullscreen) {
+            update_video_modes();
+            // If fullscreen, we have to resize the window to take up the full resolution
+            //
+            // Some people are weird and don't use the monitor's maximum supported resolution
+            // in which case, we use what the user actually has selected.
+            const auto& display_res = m_current_display_modes.at(m_selected_fullscreen_display_id);
+            set_window_size(display_res.screen_width, display_res.screen_height);
+          }
+          // 3. fullscreen it!
+          result = SDL_SetWindowFullscreen(m_window, mode == WindowDisplayMode::Fullscreen
+                                                         ? SDL_WINDOW_FULLSCREEN
+                                                         : SDL_WINDOW_FULLSCREEN_DESKTOP);
+          if (result < 0) {
+            sdl_util::log_error("unable to switch window fullscreen or borderless fullscreen");
+          }
         }
       } else {
         sdl_util::log_error(
