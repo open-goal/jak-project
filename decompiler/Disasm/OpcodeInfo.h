@@ -5,6 +5,7 @@
  * Decoding info for each opcode.
  */
 
+#include <cstdint>
 #include <string>
 
 namespace decompiler {
