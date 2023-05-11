@@ -522,6 +522,84 @@ void open_text_project(const std::string& kind,
   });
 }
 
+void to_json(json& j, const SubtitleCutsceneLineMetadata& obj) {
+  j = json{{"frame", obj.frame},
+           {"offscreen", obj.offscreen},
+           {"speaker", obj.speaker},
+           {"clear", obj.clear}};
+}
+void from_json(const json& j, SubtitleCutsceneLineMetadata& obj) {
+  json_deserialize_if_exists(frame);
+  json_deserialize_if_exists(offscreen);
+  json_deserialize_if_exists(speaker);
+  json_deserialize_if_exists(clear);
+}
+void to_json(json& j, const SubtitleHintLineMetadata& obj) {
+  j = json{{"frame", obj.frame}, {"speaker", obj.speaker}};
+}
+void from_json(const json& j, SubtitleHintLineMetadata& obj) {
+  json_deserialize_if_exists(frame);
+  json_deserialize_if_exists(speaker);
+}
+void to_json(json& j, const SubtitleHintMetadata& obj) {
+  j = json{{"id", obj.id}, {"lines", obj.lines}};
+}
+void from_json(const json& j, SubtitleHintMetadata& obj) {
+  json_deserialize_if_exists(id);
+  json_deserialize_if_exists(lines);
+}
+void to_json(json& j, const SubtitleMetadataFile& obj) {
+  j = json{{"cutscenes", obj.cutscenes}, {"hints", obj.hints}};
+}
+
+void from_json(const json& j, SubtitleMetadataFile& obj) {
+  json_deserialize_if_exists(cutscenes);
+  json_deserialize_if_exists(hints);
+}
+void to_json(json& j, const SubtitleFile& obj) {
+  j = json{{"speakers", obj.speakers}, {"cutscenes", obj.cutscenes}, {"hints", obj.hints}};
+}
+void from_json(const json& j, SubtitleFile& obj) {
+  json_deserialize_if_exists(speakers);
+  json_deserialize_if_exists(cutscenes);
+  json_deserialize_if_exists(hints);
+}
+
+SubtitleMetadataFile dump_bank_as_json(std::shared_ptr<GameSubtitleBank> bank) {
+  auto meta_file = SubtitleMetadataFile();
+  for (const auto& [scene_name, scene_info] : bank->m_scenes) {
+    if (scene_info.m_kind == SubtitleSceneKind::Movie) {
+      std::vector<SubtitleCutsceneLineMetadata> lines;
+      for (const auto& line : scene_info.m_lines) {
+        auto line_meta = SubtitleCutsceneLineMetadata();
+        line_meta.frame = line.frame;
+        if (line.line.empty()) {
+          line_meta.clear = true;
+        } else {
+          line_meta.offscreen = line.offscreen;
+          line_meta.speaker = line.speaker;
+        }
+        lines.push_back(line_meta);
+      }
+      meta_file.cutscenes[scene_name] = lines;
+    } else if (scene_info.m_kind == SubtitleSceneKind::Hint ||
+               scene_info.m_kind == SubtitleSceneKind::HintNamed) {
+      SubtitleHintMetadata hint;
+      hint.id = fmt::format("{:x}", scene_info.m_id);
+      std::vector<SubtitleHintLineMetadata> lines;
+      for (const auto& line : scene_info.m_lines) {
+        auto line_meta = SubtitleHintLineMetadata();
+        line_meta.frame = line.frame;
+        line_meta.speaker = line.speaker;
+        lines.push_back(line_meta);
+      }
+      hint.lines = lines;
+      meta_file.hints[scene_name] = hint;
+    }
+  }
+  return meta_file;
+}
+
 GameSubtitleDB load_subtitle_project(GameVersion game_version) {
   // Load the subtitle files
   GameSubtitleDB db;
@@ -544,6 +622,23 @@ GameSubtitleDB load_subtitle_project(GameVersion game_version) {
   } catch (std::runtime_error& e) {
     lg::error("error loading subtitle project: {}", e.what());
   }
+
+  // Dump new JSON format (uncomment if you need to)
+  for (const auto& [language_id, bank] : db.m_banks) {
+    auto meta_file = dump_bank_as_json();
+    std::string dump_path =
+        (file_util::get_jak_project_dir() / "game" / "assets" / version_to_game_name(game_version) /
+         "subtitle" / fmt::format("subtitle_meta_{}.json", language_id))
+            .string();
+    json data = meta_file;
+    try {
+      std::string str = data.dump(2);
+      file_util::write_text_file(dump_path, str);
+    } catch (std::exception& ex) {
+      lg::error(ex.what());
+    }
+  }
+
   return db;
 }
 

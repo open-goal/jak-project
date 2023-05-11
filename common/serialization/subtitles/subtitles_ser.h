@@ -15,6 +15,47 @@
 #include "common/util/json_util.h"
 #include "common/versions/versions.h"
 
+struct SubtitleCutsceneLineMetadata {
+  // Always required
+  int frame;
+  // Actual lines
+  bool offscreen;
+  std::string speaker;
+  // Clear entries
+  bool clear;
+};
+void to_json(json& j, const SubtitleCutsceneLineMetadata& obj);
+void from_json(const json& j, SubtitleCutsceneLineMetadata& obj);
+
+struct SubtitleHintLineMetadata {
+  int frame;
+  std::string speaker;
+};
+void to_json(json& j, const SubtitleHintLineMetadata& obj);
+void from_json(const json& j, SubtitleHintLineMetadata& obj);
+
+struct SubtitleHintMetadata {
+  std::string id;  // hex
+  std::vector<SubtitleHintLineMetadata> lines;
+};
+void to_json(json& j, const SubtitleHintMetadata& obj);
+void from_json(const json& j, SubtitleHintMetadata& obj);
+
+struct SubtitleMetadataFile {
+  std::unordered_map<std::string, std::vector<SubtitleCutsceneLineMetadata>> cutscenes;
+  std::unordered_map<std::string, SubtitleHintMetadata> hints;
+};
+void to_json(json& j, const SubtitleMetadataFile& obj);
+void from_json(const json& j, SubtitleMetadataFile& obj);
+
+struct SubtitleFile {
+  std::unordered_map<std::string, std::string> speakers;
+  std::unordered_map<std::string, std::vector<std::string>> cutscenes;
+  std::unordered_map<std::string, std::vector<std::string>> hints;
+};
+void to_json(json& j, const SubtitleFile& obj);
+void from_json(const json& j, SubtitleFile& obj);
+
 struct GameTextDefinitionFile {
   enum class Format { GOAL, JSON };
   Format format;
