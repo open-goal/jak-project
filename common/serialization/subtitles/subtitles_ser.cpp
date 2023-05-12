@@ -565,7 +565,7 @@ void from_json(const json& j, SubtitleFile& obj) {
   json_deserialize_if_exists(hints);
 }
 
-SubtitleMetadataFile dump_bank_as_json(std::shared_ptr<GameSubtitleBank> bank) {
+SubtitleMetadataFile dump_bank_as_meta_json(std::shared_ptr<GameSubtitleBank> bank) {
   auto meta_file = SubtitleMetadataFile();
   for (const auto& [scene_name, scene_info] : bank->m_scenes) {
     if (scene_info.m_kind == SubtitleSceneKind::Movie) {
@@ -600,6 +600,40 @@ SubtitleMetadataFile dump_bank_as_json(std::shared_ptr<GameSubtitleBank> bank) {
   return meta_file;
 }
 
+SubtitleFile dump_bank_as_json(std::shared_ptr<GameSubtitleBank> bank,
+                               std::unordered_map<std::string, std::string> speaker_lookup) {
+  SubtitleFile file;
+  file.speakers = speaker_lookup;
+  auto font = get_font_bank(parse_text_only_version(bank->file_path));
+  // Figure out speakers
+  for (const auto& [scene_name, scene_info] : bank->m_scenes) {
+    for (const auto& line : scene_info.m_lines) {
+      if (line.line.empty()) {
+        continue;
+      }
+      auto line_speaker = font->convert_game_to_utf8(line.speaker.c_str());
+      bool new_speaker = true;
+      for (const auto& [speaker, speaker_localized] : file.speakers) {
+        if (line_speaker == speaker_localized) {
+          new_speaker = false;
+          break;
+        }
+      }
+      if (new_speaker) {
+        // if the speaker is in the english speaker map, append it
+        if (speaker_lookup.find(line_speaker) != speaker_lookup.end()) {
+          file.speakers[line_speaker] = line_speaker;
+        } else {
+          // otherwise, go figure it out manually, most names are the same so this isn't worth
+          // writing code for
+          file.speakers[fmt::format("unknown-{}", scene_info.m_name)] = line_speaker;
+        }
+      }
+    }
+  }
+  return file;
+}
+
 GameSubtitleDB load_subtitle_project(GameVersion game_version) {
   // Load the subtitle files
   GameSubtitleDB db;
@@ -623,14 +657,38 @@ GameSubtitleDB load_subtitle_project(GameVersion game_version) {
     lg::error("error loading subtitle project: {}", e.what());
   }
 
-  // Dump new JSON format (uncomment if you need to)
+  // Dump new JSON format (uncomment if you need it)
+  auto speaker_json = parse_commented_json(
+      file_util::read_text_file((file_util::get_jak_project_dir() / "game" / "assets" /
+                                 version_to_game_name(game_version) / "subtitle" /
+                                 "_speaker_lookup.jsonc")),
+      "_speaker_lookup.jsonc");
+  auto speaker_lookup =
+      speaker_json
+          .get<std::unordered_map<std::string, std::unordered_map<std::string, std::string>>>();
+
   for (const auto& [language_id, bank] : db.m_banks) {
-    auto meta_file = dump_bank_as_json();
+    auto meta_file = dump_bank_as_meta_json(bank);
     std::string dump_path =
         (file_util::get_jak_project_dir() / "game" / "assets" / version_to_game_name(game_version) /
-         "subtitle" / fmt::format("subtitle_meta_{}.json", language_id))
+         "subtitle" / fmt::format("subtitles_meta_{}.json", language_id))
             .string();
     json data = meta_file;
+    try {
+      std::string str = data.dump(2);
+      file_util::write_text_file(dump_path, str);
+    } catch (std::exception& ex) {
+      lg::error(ex.what());
+    }
+    // Now dump the actual subtitles
+    // TODO - figure out how to handle splitting/merging lines, for now we'll just log cutscenes
+    // with differing line counts from english
+    auto subtitle_file = dump_bank_as_json(bank, speaker_lookup.at(fmt::format("{}", language_id)));
+    dump_path =
+        (file_util::get_jak_project_dir() / "game" / "assets" / version_to_game_name(game_version) /
+         "subtitle" / fmt::format("subtitles_{}.json", language_id))
+            .string();
+    data = subtitle_file;
     try {
       std::string str = data.dump(2);
       file_util::write_text_file(dump_path, str);

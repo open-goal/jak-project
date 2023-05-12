@@ -1959,7 +1959,7 @@
   )
 
 ("minershort-introduction-orbs"
-  (15 "WILLARD" "HÉ GORDY, JE CROIS QU'ON A DE LA VISITE !")
+  (15 "MINER" "HÉ GORDY, JE CROIS QU'ON A DE LA VISITE !")
   (151)
   (154 "GORDY" "TU CROIS WILLARD ?")
   (207 "GORDY" "BIEN LE BONJOUR ! EN BALADE ? BAH, NOUS AUSSI !")
