@@ -601,6 +601,7 @@ SubtitleMetadataFile dump_bank_as_meta_json(std::shared_ptr<GameSubtitleBank> ba
 }
 
 SubtitleFile dump_bank_as_json(std::shared_ptr<GameSubtitleBank> bank,
+                               std::shared_ptr<GameSubtitleBank> base_bank,
                                std::unordered_map<std::string, std::string> speaker_lookup) {
   SubtitleFile file;
   file.speakers = speaker_lookup;
@@ -631,6 +632,53 @@ SubtitleFile dump_bank_as_json(std::shared_ptr<GameSubtitleBank> bank,
       }
     }
   }
+  // Hints
+  for (const auto& [scene_name, scene_info] : bank->m_scenes) {
+    if (scene_info.m_kind == SubtitleSceneKind::Hint ||
+        scene_info.m_kind == SubtitleSceneKind::HintNamed) {
+      // Check if the number of hints in the translated language match that of the base language
+      if (base_bank->m_scenes.find(scene_name) == base_bank->m_scenes.end()) {
+        lg::warn("scene not found in base language - {}:{}", bank->m_lang_id, scene_name);
+      } else {
+        if (scene_info.m_lines.size() > base_bank->m_scenes.at(scene_name).m_lines.size()) {
+          lg::info("hint - translation has more lines than base - {}:{}", bank->m_lang_id,
+                   scene_name);
+        }
+        file.hints[scene_name] = {};
+        for (const auto& scene_line : scene_info.m_lines) {
+          if (scene_line.line.empty()) {
+            continue;
+          }
+          auto line_utf8 = font->convert_game_to_utf8(scene_line.line.c_str());
+          file.hints[scene_name].push_back(line_utf8);
+        }
+      }
+    }
+  }
+
+  // Cutscenes
+  for (const auto& [scene_name, scene_info] : bank->m_scenes) {
+    if (scene_info.m_kind == SubtitleSceneKind::Movie) {
+      // Check if the number of hints in the translated language match that of the base language
+      if (base_bank->m_scenes.find(scene_name) == base_bank->m_scenes.end()) {
+        lg::warn("scene not found in base language - {}:{}", bank->m_lang_id, scene_name);
+      } else {
+        if (scene_info.m_lines.size() > base_bank->m_scenes.at(scene_name).m_lines.size()) {
+          lg::info("cutscene - translation has more lines than base - {}:{}", bank->m_lang_id,
+                   scene_name);
+        }
+        file.cutscenes[scene_name] = {};
+        for (const auto& scene_line : scene_info.m_lines) {
+          if (scene_line.line.empty()) {
+            continue;
+          }
+          auto line_utf8 = font->convert_game_to_utf8(scene_line.line.c_str());
+          file.cutscenes[scene_name].push_back(line_utf8);
+        }
+      }
+    }
+  }
+
   return file;
 }
 
@@ -683,7 +731,8 @@ GameSubtitleDB load_subtitle_project(GameVersion game_version) {
     // Now dump the actual subtitles
     // TODO - figure out how to handle splitting/merging lines, for now we'll just log cutscenes
     // with differing line counts from english
-    auto subtitle_file = dump_bank_as_json(bank, speaker_lookup.at(fmt::format("{}", language_id)));
+    auto subtitle_file = dump_bank_as_json(bank, db.m_banks.at(0),
+                                           speaker_lookup.at(fmt::format("{}", language_id)));
     dump_path =
         (file_util::get_jak_project_dir() / "game" / "assets" / version_to_game_name(game_version) /
          "subtitle" / fmt::format("subtitles_{}.json", language_id))
