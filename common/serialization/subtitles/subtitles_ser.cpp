@@ -379,6 +379,86 @@ void parse_subtitle(const goos::Object& data, GameSubtitleDB& db, const std::str
   }
 }
 
+void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& file_info) {
+  // TODO - some validation
+  // Init Settings
+  std::shared_ptr<GameSubtitleBank> bank;
+  if (!db.bank_exists(file_info.language_id)) {
+    // database has no lang yet
+    bank = db.add_bank(std::make_shared<GameSubtitleBank>(file_info.language_id));
+  } else {
+    bank = db.bank_by_id(file_info.language_id);
+  }
+  const GameTextFontBank* font = get_font_bank(file_info.text_version);
+  // Parse the file
+  // TODO - support base files
+  SubtitleMetadataFile meta_file;
+  SubtitleFile lines_file;
+  try {
+    meta_file = parse_commented_json(file_util::read_text_file(file_info.meta_path), "TODO");
+    lines_file = parse_commented_json(file_util::read_text_file(file_info.lines_path), "TODO");
+  } catch (std::exception& e) {
+    // TODO - a decent error
+  }
+  // Iterate through the metadata file as blank lines are no omitted from the lines file now
+  // Cutscenes First
+  for (const auto& [cutscene_name, cutscene_lines] : meta_file.cutscenes) {
+    GameSubtitleSceneInfo scene(SubtitleSceneKind::Movie);
+    scene.set_name(cutscene_name);
+    // Iterate the lines, grab the actual text from the lines file if it's not a clear screen entry
+    int line_idx = 0;
+    for (const auto& line : cutscene_lines) {
+      if (line.clear) {
+        scene.add_clear_entry(line.frame);
+      } else {
+        // TODO - assumptions going on here
+        scene.add_line(
+            line.frame,
+            font->convert_utf8_to_game(lines_file.cutscenes.at(cutscene_name).at(line_idx)),
+            font->convert_utf8_to_game(lines_file.speakers.at(line.speaker)), line.offscreen);
+        line_idx++;
+      }
+    }
+    // TODO - add scene, can't we just use an emplace here?
+    if (!bank->scene_exists(scene.name())) {
+      bank->add_scene(scene);
+    } else {
+      auto& old_scene = bank->scene_by_name(scene.name());
+      old_scene.from_other_scene(scene);
+    }
+  }
+  // Now hints
+  for (const auto& [hint_name, hint_info] : meta_file.hints) {
+    GameSubtitleSceneInfo scene(SubtitleSceneKind::Hint);
+    scene.set_name(hint_name);
+    if (hint_info.id == "0") {
+      scene.m_kind = SubtitleSceneKind::HintNamed;
+    } else {
+      scene.set_id(std::stoi(hint_info.id, nullptr, 16));
+    }
+    // Iterate the lines, grab the actual text from the lines file if it's not a clear screen entry
+    int line_idx = 0;
+    for (const auto& line : hint_info.lines) {
+      if (line.clear) {
+        scene.add_clear_entry(line.frame);
+      } else {
+        // TODO - assumptions going on here
+        scene.add_line(line.frame,
+                       font->convert_utf8_to_game(lines_file.hints.at(hint_name).at(line_idx)),
+                       font->convert_utf8_to_game(lines_file.speakers.at(line.speaker)), true);
+        line_idx++;
+      }
+    }
+    // TODO - add scene, can't we just use an emplace here?
+    if (!bank->scene_exists(scene.name())) {
+      bank->add_scene(scene);
+    } else {
+      auto& old_scene = bank->scene_by_name(scene.name());
+      old_scene.from_other_scene(scene);
+    }
+  }
+}
+
 GameTextVersion parse_text_only_version(const std::string& filename) {
   goos::Reader reader;
   return parse_text_only_version(reader.read_from_file({filename}));
@@ -522,6 +602,58 @@ void open_text_project(const std::string& kind,
   });
 }
 
+void open_subtitle_project(const std::string& kind,
+                           const std::string& filename,
+                           std::vector<GameSubtitleDefinitionFile>& subtitle_files) {
+  goos::Reader reader;
+  auto& proj = reader.read_from_file({filename}).as_pair()->cdr.as_pair()->car;
+  if (!proj.is_pair() || !proj.as_pair()->car.is_symbol() ||
+      proj.as_pair()->car.as_symbol()->name != kind) {
+    throw std::runtime_error(fmt::format("invalid {} project", kind));
+  }
+
+  goos::for_each_in_list(proj.as_pair()->cdr, [&](const goos::Object& o) {
+    if (o.is_pair() && o.as_pair()->cdr.is_pair()) {
+      auto args = o.as_pair();
+      auto& action = args->car.as_symbol()->name;
+      args = args->cdr.as_pair();
+
+      if (action == "file") {
+        auto& file_path = args->car.as_string()->data;
+        auto new_file = GameSubtitleDefinitionFile();
+        new_file.format = GameSubtitleDefinitionFile::Format::GOAL;
+        new_file.lines_path = file_path;
+        subtitle_files.push_back(new_file);
+      } else if (action == "file-json") {
+        auto new_file = GameSubtitleDefinitionFile();
+        new_file.format = GameSubtitleDefinitionFile::Format::JSON;
+        while (true) {
+          const auto& kwarg = args->car.as_symbol()->name;
+          args = args->cdr.as_pair();
+          if (kwarg == ":language-id") {
+            new_file.language_id = args->car.as_int();
+          } else if (kwarg == ":text-version") {
+            new_file.text_version = args->car.as_string()->data;
+          } else if (kwarg == ":lines") {
+            new_file.lines_path = args->car.as_string()->data;
+          } else if (kwarg == ":meta") {
+            new_file.meta_path = args->car.as_string()->data;
+          }
+          if (args->cdr.is_empty_list()) {
+            break;
+          }
+          args = args->cdr.as_pair();
+        }
+        subtitle_files.push_back(new_file);
+      } else {
+        throw std::runtime_error(fmt::format("unknown action {} in {} project", action, kind));
+      }
+    } else {
+      throw std::runtime_error(fmt::format("invalid entry in {} project", kind));
+    }
+  });
+}
+
 void to_json(json& j, const SubtitleCutsceneLineMetadata& obj) {
   j = json{{"frame", obj.frame},
            {"offscreen", obj.offscreen},
@@ -535,11 +667,12 @@ void from_json(const json& j, SubtitleCutsceneLineMetadata& obj) {
   json_deserialize_if_exists(clear);
 }
 void to_json(json& j, const SubtitleHintLineMetadata& obj) {
-  j = json{{"frame", obj.frame}, {"speaker", obj.speaker}};
+  j = json{{"frame", obj.frame}, {"speaker", obj.speaker}, {"clear", obj.clear}};
 }
 void from_json(const json& j, SubtitleHintLineMetadata& obj) {
   json_deserialize_if_exists(frame);
   json_deserialize_if_exists(speaker);
+  json_deserialize_if_exists(clear);
 }
 void to_json(json& j, const SubtitleHintMetadata& obj) {
   j = json{{"id", obj.id}, {"lines", obj.lines}};
@@ -565,6 +698,7 @@ void from_json(const json& j, SubtitleFile& obj) {
   json_deserialize_if_exists(hints);
 }
 
+// TODO -- TEMPORARY CODE FOR MIGRATION -- REMOVE LATER
 SubtitleMetadataFile dump_bank_as_meta_json(
     std::shared_ptr<GameSubtitleBank> bank,
     std::unordered_map<std::string, std::string> speaker_lookup) {
@@ -599,13 +733,17 @@ SubtitleMetadataFile dump_bank_as_meta_json(
       for (const auto& line : scene_info.m_lines) {
         auto line_meta = SubtitleHintLineMetadata();
         line_meta.frame = line.frame;
-        auto line_speaker = font->convert_game_to_utf8(line.speaker.c_str());
-        for (const auto& [speaker, speaker_localized] : speaker_lookup) {
-          if (line_speaker == speaker_localized) {
-            line_speaker = speaker;
+        if (line.line.empty()) {
+          line_meta.clear = true;
+        } else {
+          auto line_speaker = font->convert_game_to_utf8(line.speaker.c_str());
+          for (const auto& [speaker, speaker_localized] : speaker_lookup) {
+            if (line_speaker == speaker_localized) {
+              line_speaker = speaker;
+            }
           }
+          line_meta.speaker = line_speaker;
         }
-        line_meta.speaker = line_speaker;
         lines.push_back(line_meta);
       }
       hint.lines = lines;
@@ -615,6 +753,7 @@ SubtitleMetadataFile dump_bank_as_meta_json(
   return meta_file;
 }
 
+// TODO -- TEMPORARY CODE FOR MIGRATION -- REMOVE LATER
 SubtitleFile dump_bank_as_json(std::shared_ptr<GameSubtitleBank> bank,
                                std::shared_ptr<GameSubtitleBank> base_bank,
                                std::unordered_map<std::string, std::string> speaker_lookup) {
@@ -721,6 +860,7 @@ GameSubtitleDB load_subtitle_project(GameVersion game_version) {
   }
 
   // Dump new JSON format (uncomment if you need it)
+  // TODO -- TEMPORARY CODE FOR MIGRATION -- REMOVE LATER
   auto speaker_json = parse_commented_json(
       file_util::read_text_file((file_util::get_jak_project_dir() / "game" / "assets" /
                                  version_to_game_name(game_version) / "subtitle" /
@@ -731,8 +871,8 @@ GameSubtitleDB load_subtitle_project(GameVersion game_version) {
           .get<std::unordered_map<std::string, std::unordered_map<std::string, std::string>>>();
 
   std::vector<std::string> locale_lookup = {"en-US", "fr-FR", "de-DE", "es-ES", "it-IT",
-                                            "jp-JP", "en-GB", "",      "",      "",
-                                            "",      "",      "",      "pt-BR"};
+                                            "jp-JP", "en-GB", "pt-PT", "fi-FI", "sv-SE",
+                                            "da-DK", "no-NO", "nl-NL", "pt-BR", "hu-HU"};
 
   for (const auto& [language_id, bank] : db.m_banks) {
     auto meta_file =

@@ -6,17 +6,17 @@
 
 (subtitle
   (file "game/assets/jak1/subtitle/game_subtitle_en.gd")
+  ;; (file-json
+  ;;   :language-id 0
+  ;;   :text-version "jak1-v2"
+  ;;   :lines "game/assets/jak1/subtitle/subtitle_lines_en-US.json"
+  ;;   :meta "game/assets/jak1/subtitle/subtitle_meta_en-US.json")
   (file "game/assets/jak1/subtitle/game_subtitle_fr.gd")
   (file "game/assets/jak1/subtitle/game_subtitle_en-uk.gd")
   (file "game/assets/jak1/subtitle/game_subtitle_de.gd")
   (file "game/assets/jak1/subtitle/game_subtitle_es.gd")
   (file "game/assets/jak1/subtitle/game_subtitle_ptbr.gd")
   (file "game/assets/jak1/subtitle/game_subtitle_it.gd")
-  ;; (file-json
-  ;;   :language-id 0
-  ;;   :text-version 'jak1-v2
-  ;;   :lines "game/assets/jak1/subtitle/subtitle_lines_en-US.json"
-  ;;   :meta "game/assets/jak1/subtitle/subtitle_meta_en-US.json")
   ;; (file-json
   ;;   :language-id 1
   ;;   :text-version 'jak1-v2

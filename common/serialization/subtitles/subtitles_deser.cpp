@@ -10,6 +10,7 @@
 #include "third-party/fmt/ranges.h"
 #include "third-party/json.hpp"
 
+// TODO - this can be be massively reduced now
 bool write_subtitle_db_to_files(const GameSubtitleDB& db) {
   // Write the subtitles out
   std::vector<int> completed_banks = {};
