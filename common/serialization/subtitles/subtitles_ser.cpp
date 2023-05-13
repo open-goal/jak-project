@@ -719,7 +719,7 @@ GameSubtitleDB load_subtitle_project(GameVersion game_version) {
     auto meta_file = dump_bank_as_meta_json(bank);
     std::string dump_path =
         (file_util::get_jak_project_dir() / "game" / "assets" / version_to_game_name(game_version) /
-         "subtitle" / fmt::format("subtitles_meta_{}.json", language_id))
+         "subtitle" / fmt::format("subtitle_meta_{}.json", language_id))
             .string();
     json data = meta_file;
     try {
@@ -735,7 +735,7 @@ GameSubtitleDB load_subtitle_project(GameVersion game_version) {
                                            speaker_lookup.at(fmt::format("{}", language_id)));
     dump_path =
         (file_util::get_jak_project_dir() / "game" / "assets" / version_to_game_name(game_version) /
-         "subtitle" / fmt::format("subtitles_{}.json", language_id))
+         "subtitle" / fmt::format("subtitle_{}.json", language_id))
             .string();
     data = subtitle_file;
     try {
