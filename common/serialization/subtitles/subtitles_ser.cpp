@@ -391,12 +391,46 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
   }
   const GameTextFontBank* font = get_font_bank(file_info.text_version);
   // Parse the file
-  // TODO - support base files
   SubtitleMetadataFile meta_file;
   SubtitleFile lines_file;
   try {
-    meta_file = parse_commented_json(file_util::read_text_file(file_info.meta_path), "TODO");
-    lines_file = parse_commented_json(file_util::read_text_file(file_info.lines_path), "TODO");
+    // If we have a base file defined, load that and merge it
+    if (file_info.meta_base_path) {
+      auto base_data =
+          parse_commented_json(file_util::read_text_file(file_util::get_jak_project_dir() /
+                                                         file_info.meta_base_path.value()),
+                               "TODO");
+      auto data = parse_commented_json(
+          file_util::read_text_file(file_util::get_jak_project_dir() / file_info.meta_path),
+          "TODO");
+      base_data.at("cutscenes").update(data.at("cutscenes"));
+      base_data.at("hints").update(data.at("hints"));
+      meta_file = base_data;
+
+    } else {
+      meta_file = parse_commented_json(
+          file_util::read_text_file(file_util::get_jak_project_dir() / file_info.meta_path),
+          "TODO");
+    }
+    if (file_info.lines_base_path) {
+      auto base_data =
+          parse_commented_json(file_util::read_text_file(file_util::get_jak_project_dir() /
+                                                         file_info.lines_base_path.value()),
+                               "TODO");
+
+      auto data = parse_commented_json(
+          file_util::read_text_file(file_util::get_jak_project_dir() / file_info.lines_path),
+          "TODO");
+      base_data.at("cutscenes").update(data.at("cutscenes"));
+      base_data.at("hints").update(data.at("hints"));
+      base_data.at("speakers").update(data.at("speakers"));
+      auto test = base_data.dump();
+      lines_file = base_data;
+    } else {
+      lines_file = parse_commented_json(
+          file_util::read_text_file(file_util::get_jak_project_dir() / file_info.lines_path),
+          "TODO");
+    }
   } catch (std::exception& e) {
     // TODO - a decent error
   }
@@ -412,10 +446,15 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
         scene.add_clear_entry(line.frame);
       } else {
         // TODO - assumptions going on here
-        scene.add_line(
-            line.frame,
-            font->convert_utf8_to_game(lines_file.cutscenes.at(cutscene_name).at(line_idx)),
-            font->convert_utf8_to_game(lines_file.speakers.at(line.speaker)), line.offscreen);
+        if (lines_file.cutscenes.find(cutscene_name) == lines_file.cutscenes.end() ||
+            lines_file.cutscenes.at(cutscene_name).size() < line_idx) {
+          lg::warn("Couldn't find {} in line file, or line list is too small!", cutscene_name);
+        } else {
+          scene.add_line(
+              line.frame,
+              font->convert_utf8_to_game(lines_file.cutscenes.at(cutscene_name).at(line_idx)),
+              font->convert_utf8_to_game(lines_file.speakers.at(line.speaker)), line.offscreen);
+        }
         line_idx++;
       }
     }
@@ -638,6 +677,10 @@ void open_subtitle_project(const std::string& kind,
             new_file.lines_path = args->car.as_string()->data;
           } else if (kwarg == ":meta") {
             new_file.meta_path = args->car.as_string()->data;
+          } else if (kwarg == ":lines-base") {
+            new_file.lines_base_path = args->car.as_string()->data;
+          } else if (kwarg == ":meta-base") {
+            new_file.meta_base_path = args->car.as_string()->data;
           }
           if (args->cdr.is_empty_list()) {
             break;

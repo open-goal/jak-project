@@ -8,6 +8,7 @@
 
 import os
 import json
+import shutil
 
 def clean_lines(lines):
   new_lines = []
@@ -30,6 +31,12 @@ with open("./subtitle_lines_en-US.json", "r", encoding="utf-8") as f:
     english_lines["hints"][name] = clean_lines(info)
 with open("./subtitle_lines_en-US.json", "w", encoding="utf-8") as line_file:
   json.dump(english_lines, line_file, indent=2, ensure_ascii=False)
+
+# I'm lazy, uncomment this to make the other language base files
+locales = ["jp-JP", "hu-HU", "da-DK", "fi-FI", "nl-NL", "no-NO", "pt-PT", "sv-SE"]
+for locale in locales:
+  # duplicate the english files with the locale
+  shutil.copy("./subtitle_meta_en-US.json", "./subtitle_meta_" + locale + ".json")
 
 # Now, let's iterate through all the other files and remove any near-top level duplication.
 # this is a very similar strategy to the cast file cleanup effort.
@@ -100,4 +107,6 @@ for f in os.listdir("./"):
     with open(f, "w", encoding="utf-8") as line_file:
       json.dump(new_lines, line_file, indent=2, ensure_ascii=False)
 
-
+# Lines get copied after because we actually don't want duplication to be removed (it needs to be translated!)
+for locale in locales:
+  shutil.copy("./subtitle_lines_en-US.json", "./subtitle_lines_" + locale + ".json")

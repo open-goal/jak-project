@@ -178,6 +178,7 @@ void compile_game_subtitle(const std::vector<GameSubtitleDefinitionFile>& files,
       parse_subtitle(code, db, file.lines_path);
     } else if (file.format == GameSubtitleDefinitionFile::Format::JSON) {
       lg::print("[Build Game Subtitle] JSON {}:{}\n", file.lines_path, file.meta_path);
+      parse_subtitle_json(db, file);
     }
   }
   compile_subtitle(db, output_prefix);
