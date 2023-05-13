@@ -904,48 +904,50 @@ GameSubtitleDB load_subtitle_project(GameVersion game_version) {
 
   // Dump new JSON format (uncomment if you need it)
   // TODO -- TEMPORARY CODE FOR MIGRATION -- REMOVE LATER
-  auto speaker_json = parse_commented_json(
-      file_util::read_text_file((file_util::get_jak_project_dir() / "game" / "assets" /
-                                 version_to_game_name(game_version) / "subtitle" /
-                                 "_speaker_lookup.jsonc")),
-      "_speaker_lookup.jsonc");
-  auto speaker_lookup =
-      speaker_json
-          .get<std::unordered_map<std::string, std::unordered_map<std::string, std::string>>>();
+  // auto speaker_json = parse_commented_json(
+  //    file_util::read_text_file((file_util::get_jak_project_dir() / "game" / "assets" /
+  //                               version_to_game_name(game_version) / "subtitle" /
+  //                               "_speaker_lookup.jsonc")),
+  //    "_speaker_lookup.jsonc");
+  // auto speaker_lookup =
+  //    speaker_json
+  //        .get<std::unordered_map<std::string, std::unordered_map<std::string, std::string>>>();
 
-  std::vector<std::string> locale_lookup = {"en-US", "fr-FR", "de-DE", "es-ES", "it-IT",
-                                            "jp-JP", "en-GB", "pt-PT", "fi-FI", "sv-SE",
-                                            "da-DK", "no-NO", "nl-NL", "pt-BR", "hu-HU"};
+  // std::vector<std::string> locale_lookup = {"en-US", "fr-FR", "de-DE", "es-ES", "it-IT",
+  //                                           "jp-JP", "en-GB", "pt-PT", "fi-FI", "sv-SE",
+  //                                           "da-DK", "no-NO", "nl-NL", "pt-BR", "hu-HU"};
 
-  for (const auto& [language_id, bank] : db.m_banks) {
-    auto meta_file =
-        dump_bank_as_meta_json(bank, speaker_lookup.at(fmt::format("{}", language_id)));
-    std::string dump_path =
-        (file_util::get_jak_project_dir() / "game" / "assets" / version_to_game_name(game_version) /
-         "subtitle" / fmt::format("subtitle_meta_{}.json", locale_lookup.at(language_id)))
-            .string();
-    json data = meta_file;
-    try {
-      std::string str = data.dump(2);
-      file_util::write_text_file(dump_path, str);
-    } catch (std::exception& ex) {
-      lg::error(ex.what());
-    }
-    // Now dump the actual subtitles
-    auto subtitle_file = dump_bank_as_json(bank, db.m_banks.at(0),
-                                           speaker_lookup.at(fmt::format("{}", language_id)));
-    dump_path =
-        (file_util::get_jak_project_dir() / "game" / "assets" / version_to_game_name(game_version) /
-         "subtitle" / fmt::format("subtitle_lines_{}.json", locale_lookup.at(language_id)))
-            .string();
-    data = subtitle_file;
-    try {
-      std::string str = data.dump(2);
-      file_util::write_text_file(dump_path, str);
-    } catch (std::exception& ex) {
-      lg::error(ex.what());
-    }
-  }
+  // for (const auto& [language_id, bank] : db.m_banks) {
+  //   auto meta_file =
+  //       dump_bank_as_meta_json(bank, speaker_lookup.at(fmt::format("{}", language_id)));
+  //   std::string dump_path =
+  //       (file_util::get_jak_project_dir() / "game" / "assets" /
+  //       version_to_game_name(game_version) /
+  //        "subtitle" / fmt::format("subtitle_meta_{}.json", locale_lookup.at(language_id)))
+  //           .string();
+  //   json data = meta_file;
+  //   try {
+  //     std::string str = data.dump(2);
+  //     file_util::write_text_file(dump_path, str);
+  //   } catch (std::exception& ex) {
+  //     lg::error(ex.what());
+  //   }
+  //   // Now dump the actual subtitles
+  //   auto subtitle_file = dump_bank_as_json(bank, db.m_banks.at(0),
+  //                                          speaker_lookup.at(fmt::format("{}", language_id)));
+  //   dump_path =
+  //       (file_util::get_jak_project_dir() / "game" / "assets" /
+  //       version_to_game_name(game_version) /
+  //        "subtitle" / fmt::format("subtitle_lines_{}.json", locale_lookup.at(language_id)))
+  //           .string();
+  //   data = subtitle_file;
+  //   try {
+  //     std::string str = data.dump(2);
+  //     file_util::write_text_file(dump_path, str);
+  //   } catch (std::exception& ex) {
+  //     lg::error(ex.what());
+  //   }
+  // }
 
   return db;
 }
