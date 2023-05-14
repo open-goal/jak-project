@@ -251,11 +251,11 @@ void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
             list_node.prio = iVar5;
             pRVar2 = FindThisVagStream(cmd_iter->names[s].chars, cmd_iter->id[s]);
             if ((pRVar2 == 0x0) || (pRVar2->byte4 == '\0')) {
-              printf(" didn't exist, looks like it needs to be added!\n");
+              // printf(" didn't exist, looks like it needs to be added!\n");
               WaitSema(EEPlayList.sema);
               iVar3 = (VagStrListNode*)FindVagStreamInList(&list_node, &EEPlayList);
               if (iVar3 == (VagStrListNode*)0x0) {
-                printf("node also doesn't exist, adding it!\n");
+                // printf("node also doesn't exist, adding it!\n");
                 iVar4 = (VagStrListNode*)InsertVagStreamInList(&list_node, &EEPlayList);
 
                 iVar4->id = list_node.id;

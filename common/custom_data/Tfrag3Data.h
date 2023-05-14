@@ -73,22 +73,23 @@ struct MemoryUsageTracker {
   void add(MemoryUsageCategory category, u32 size_bytes) { data[category] += size_bytes; }
 };
 
-constexpr int TFRAG3_VERSION = 34;
+constexpr int TFRAG3_VERSION = 35;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
   // the vertex position
   float x = 0, y = 0, z = 0;
+  // envmap tint color, not used in == or hash.
+  u8 r = 0, g = 0, b = 0, a = 0;
   // texture coordinates
   float s = 0, t = 0;
 
-  u8 r = 0, g = 0, b = 0, a = 0;  // envmap tint color, not used in == or hash.
+  // not used in == or hash!!
+  // note that this is a 10-bit 3-element field packed into 32-bits.
+  u32 nor = 0;
 
   // color table index
   u16 color_index = 0;
-
-  // not used in == or hash!!
-  s16 nx = 0, ny = 0, nz = 0;
 
   struct hash {
     std::size_t operator()(const PreloadedVertex& x) const;

@@ -9,9 +9,6 @@
 the sprite renderer draw 2D or 3D sprites
 |#
 
-;; TODO: glow is commented out.
-;; TODO: distort is commented out.
-
 (defenum sprite-aux-type
   :bitfield #f
   :type uint32
@@ -37,20 +34,9 @@ the sprite renderer draw 2D or 3D sprites
   :flag-assert         #x900000010
   )
 
-(defmethod inspect sprite-header ((obj sprite-header))
-  (when (not obj)
-    (set! obj obj)
-    (goto cfg-4)
-    )
-  (format #t "[~8x] ~A~%" obj 'sprite-header)
-  (format #t "~1Theader[1] @ #x~X~%" (-> obj header))
-  (format #t "~1Tnum-sprites: ~D~%" (-> obj num-sprites))
-  (label cfg-4)
-  obj
-  )
 
 (defun sprite-setup-header ((hdr sprite-header) (num-sprites int))
-    "Setup a sprite-header for the given number of sprites"
+  "Setup a sprite-header for the given number of sprites"
   (set! (-> hdr num-sprites) num-sprites)
   (none)
   )
@@ -69,16 +55,6 @@ the sprite renderer draw 2D or 3D sprites
   :flag-assert         #x9000004c0
   )
 
-(defmethod inspect sprite-hvdf-data ((obj sprite-hvdf-data))
-  (when (not obj)
-    (set! obj obj)
-    (goto cfg-4)
-    )
-  (format #t "[~8x] ~A~%" obj 'sprite-hvdf-data)
-  (format #t "~1Tdata[76] @ #x~X~%" (-> obj data))
-  (label cfg-4)
-  obj
-  )
 
 ;; Each byte indicates if the corresponding entry in
 ;; sprite-hvdf-data is allocated or not.
@@ -88,17 +64,6 @@ the sprite renderer draw 2D or 3D sprites
   :method-count-assert 9
   :size-assert         #x4c
   :flag-assert         #x90000004c
-  )
-
-(defmethod inspect sprite-hvdf-control ((obj sprite-hvdf-control))
-  (when (not obj)
-    (set! obj obj)
-    (goto cfg-4)
-    )
-  (format #t "[~8x] ~A~%" obj 'sprite-hvdf-control)
-  (format #t "~1Talloc[76] @ #x~X~%" (-> obj alloc))
-  (label cfg-4)
-  obj
   )
 
 (define *sprite-hvdf-data* (new 'global 'sprite-hvdf-data))
@@ -154,16 +119,6 @@ the sprite renderer draw 2D or 3D sprites
     (set! (-> v0-0 entry) 0)
     v0-0
     )
-  )
-
-(defmethod inspect sprite-aux-list ((obj sprite-aux-list))
-  (format #t "[~X] sprite-aux-list:~%" obj)
-  (format #t "~Tnum-entries: ~D~%" (-> obj num-entries))
-  (format #t "~Tentry: ~D~%" (-> obj entry))
-  (dotimes (s5-0 (-> obj entry))
-    (format #t "~T~D : ~X~%" s5-0 (-> obj data s5-0))
-    )
-  (the-as sprite-aux-list #f)
   )
 
 (define *sprite-aux-list* (new 'global 'sprite-aux-list 256))
@@ -426,7 +381,7 @@ the sprite renderer draw 2D or 3D sprites
   (none)
   )
 
-(define sprite-vu1-block (new 'static 'vu-function :length 0 :qlength 0))
+(define sprite-vu1-block (new 'static 'vu-function))
 
 ;;;;;;;;;;;;;;;;;;
 ;; sprite-arrays
@@ -475,8 +430,8 @@ the sprite renderer draw 2D or 3D sprites
     )
 
   (let* ((sprite-count (+ group-0-size group-1-size))
-         (vec-data-size (* 3 sprite-count))
-         (adgif-data-size (* 5 sprite-count))
+         (vec-data-size (* 3 sprite-count)) ;; 3 quadwords of vec-data per sprite
+         (adgif-data-size (* 5 sprite-count)) ;; 5 quadwords of adgif data per sprite
          (v0-0 (object-new
                  allocation
                  type-to-make
@@ -596,9 +551,9 @@ the sprite renderer draw 2D or 3D sprites
          (set! (-> a1-10 base) (&+ (the-as pointer pkt2) 16))
          )
        (let ((mtx2 (the-as matrix (-> dma-buff base)))
-             (f1-0 (-> *math-camera* perspective data 0))
-             (f2-0 (-> *math-camera* perspective data 5))
-             (f0-1 (* -1.9996 (-> *math-camera* perspective data 0)))
+             (f1-0 (-> *math-camera* perspective vector 0 x))
+             (f2-0 (-> *math-camera* perspective vector 1 y))
+             (f0-1 (* -1.9996 (-> *math-camera* perspective vector 0 x)))
              )
          (set-vector! (the-as vector (&+ (the-as pointer mtx2) 0)) f0-1 0.0 0.0 0.0)
          (set-vector! (the-as vector (&+ (the-as pointer mtx2) 16)) 0.0 (- (* (/ f2-0 f1-0) f0-1)) 0.0 0.0)
@@ -828,53 +783,29 @@ the sprite renderer draw 2D or 3D sprites
   "Main sprite draw function."
   ;; start of our DMA for all the sprite data
   (let ((dma-mem-begin (-> *display* frames (-> *display* on-screen) global-buf base)))
-    ;; draw in global-buf
-    (let* ((dma-buff (-> *display* frames (-> *display* on-screen) global-buf))
-           (dma-bucket-begin (-> dma-buff base))
-           )
+    (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) global-buf))
+                                 (bucket-id particles)
+                                 )
 
       ;; run the distorters
-      ; (when (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1))
-      ;   (sprite-init-distorter dma-buff)
-      ;   (sprite-draw-distorters dma-buff)
-      ;   )
+      (when (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1))
+        (sprite-init-distorter dma-buff)
+        (sprite-draw-distorters dma-buff)
+        )
 
       ;; first packet - set up the GS registers
-      (let* ((v1-17 dma-buff)
-             (pkt1 (the-as dma-packet (-> v1-17 base)))
-             )
-        (set! (-> pkt1 dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id cnt)))
-        (set! (-> pkt1 vif0) (new 'static 'vif-tag))
-        (set! (-> pkt1 vif1) (new 'static 'vif-tag :imm #x3 :cmd (vif-cmd direct) :msk #x1))
-        (set! (-> v1-17 base) (&+ (the-as pointer pkt1) 16))
-        )
-      (let* ((v1-18 dma-buff)
-             (giftag (the-as gs-gif-tag (-> v1-18 base)))
-             )
-        (set! (-> giftag tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x2))
-        (set! (-> giftag regs) GIF_REGS_ALL_AD)
-        (set! (-> v1-18 base) (the-as pointer (&+ giftag 16)))
-        )
-      (let* ((v1-19 dma-buff)
-             (a0-10 (-> v1-19 base))
-             )
-        (set! (-> (the-as (pointer gs-test) a0-10) 0)
-              (new 'static 'gs-test
-                :ate #x1
-                :atst (gs-atest greater-equal)
-                :aref #x26
-                :afail #x1
-                :zte #x1
-                :ztst (gs-ztest greater-equal)
-                )
-              )
-        (set! (-> (the-as (pointer gs-reg64) a0-10) 1) (gs-reg64 test-1))
-        (set! (-> (the-as (pointer gs-clamp) a0-10) 2)
-              (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp))
-              )
-        (set! (-> (the-as (pointer gs-reg64) a0-10) 3) (gs-reg64 clamp-1))
-        (set! (-> v1-19 base) (&+ a0-10 32))
-        )
+      (dma-buffer-add-gs-set dma-buff
+                             (test-1 (new 'static 'gs-test
+                                       :ate #x1
+                                       :atst (gs-atest greater-equal)
+                                       :aref #x26
+                                       :afail #x1
+                                       :zte #x1
+                                       :ztst (gs-ztest greater-equal)
+                                       )
+                                     )
+                             (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
+                             )
 
       ;; load the VU1 code
       (dma-buffer-add-vu-function dma-buff sprite-vu1-block 1)
@@ -958,20 +889,6 @@ the sprite renderer draw 2D or 3D sprites
         (set! (-> pkt6 vif0) (new 'static 'vif-tag))
         (set! (-> pkt6 vif1) (new 'static 'vif-tag :cmd (vif-cmd flushe) :msk #x1))
         (set! (-> v1-26 base) (&+ (the-as pointer pkt6) 16))
-        )
-      (let ((a3-0 (-> dma-buff base)))
-        (let ((pkt7 (the-as dma-packet (-> dma-buff base))))
-          (set! (-> pkt7 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-          (set! (-> pkt7 vif0) (new 'static 'vif-tag))
-          (set! (-> pkt7 vif1) (new 'static 'vif-tag))
-          (set! (-> dma-buff base) (&+ (the-as pointer pkt7) 16))
-          )
-        (dma-bucket-insert-tag
-          (-> *display* frames (-> *display* on-screen) bucket-group)
-          (bucket-id particles)
-          dma-bucket-begin
-          (the-as (pointer dma-tag) a3-0)
-          )
         )
       )
 

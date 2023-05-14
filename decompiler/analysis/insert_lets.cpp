@@ -2,6 +2,7 @@
 #include <array>
 #include <limits>
 #include <tuple>
+#include <unordered_set>
 
 #include "common/log/log.h"
 #include "common/util/Assert.h"
@@ -2015,13 +2016,15 @@ FormElement* rewrite_multi_let_as_vector_dot(LetElement* in, const Env& env, For
   return in;
 }
 
+// matches (-> <any> base)
+const static auto dma_buf_base_matcher =
+    Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("base")});
+
 FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, FormPool& pool) {
   if (in->entries().size() != 2) {
     return nullptr;
   }
 
-  static auto dma_buf_base_matcher =
-      Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("base")});
   // dma buffer part can be anything, really.
   auto buf_reg = in->entries().at(0).dest;
   auto buf_dst = env.get_variable_name(buf_reg);
@@ -2154,7 +2157,8 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
   }
 
   auto elt = pool.alloc_element<WithDmaBufferAddBucketElement>(
-      buf_reg, buf_src, mr_bucket_add_tag_func.maps.forms.at(1), body);
+      buf_reg, buf_src, mr_bucket_add_tag_func.maps.forms.at(1),
+      pool.alloc_sequence_form(nullptr, body));
   elt->parent_form = in->parent_form;
   return elt;
 }
@@ -2192,6 +2196,470 @@ FormElement* rewrite_multi_let(LetElement* in,
   }
 
   return in;
+}
+
+FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
+                                           const Env& env,
+                                           FormPool& pool) {
+  auto let0 = in.at(0);
+  auto let1 = in.at(1);
+  auto let2 = in.at(2);
+
+  // there are three lets and they all have the same format for the entries
+  if (let0->entries().size() != 2 || let1->entries().size() != 2 || let2->entries().size() != 2 ||
+      let0->body()->size() != 4 || let1->body()->size() != 3) {
+    return nullptr;
+  }
+
+  // (let* ((v1-0 arg0)
+  //        (a0-2 (-> v1-0 base))
+  //        )
+  auto buf = let0->entries().at(0).src;
+  if (auto temp = buf->to_form(env); temp != let1->entries().at(0).src->to_form(env) ||
+                                     temp != let2->entries().at(0).src->to_form(env)) {
+    lg::error("rewrite_dma_buffer_add_gs_set: dma buffer mismatch");
+    return nullptr;
+  }
+  auto mr_buf_base0 = match(dma_buf_base_matcher, let0->entries().at(1).src);
+  auto mr_buf_base1 = match(dma_buf_base_matcher, let1->entries().at(1).src);
+  auto mr_buf_base2 = match(dma_buf_base_matcher, let2->entries().at(1).src);
+  if (!mr_buf_base0.matched || !mr_buf_base1.matched || !mr_buf_base2.matched) {
+    lg::error("rewrite_dma_buffer_add_gs_set: bad (-> dma-buf base) matches {} {} {}",
+              mr_buf_base0.matched, mr_buf_base1.matched, mr_buf_base2.matched);
+    return nullptr;
+  }
+
+  // LET DMATAG
+  // (set! (-> (the-as (pointer int64) a0-2)) #x10000007)
+  // (s.w! (+ a0-2 8) 0)
+  // (let ((a1-2 #x50000007))
+  //   (s.w! (+ a0-2 12) a1-2)
+  //   )
+  // (set! (-> v1-0 base) (&+ a0-2 16))
+  u16 dma_qwc = 0;
+  bool flusha = false;
+  auto check_vifcode_set = [&](StoreElement* store, const std::string& varname, int size,
+                               int addr) {
+    return store->op()->kind() == StoreOp::Kind::INTEGER && store->op()->store_size() == size &&
+           // store->op()->value().is_int(0) &&
+           store->op()->addr().kind() == SimpleExpression::Kind::ADD &&
+           store->op()->addr().args() == 2 && store->op()->addr().get_arg(0).is_var() &&
+           store->op()->addr().get_arg(1).is_int(addr) &&
+           var_name_equal(env, varname, store->op()->addr().get_arg(0).var());
+  };
+  const auto match_buf_push = [&env](FormElement* elt, const std::string& reg_buf,
+                                     const std::string& reg_base, int amt) {
+    auto mr = match(Matcher::set(Matcher::deref(Matcher::any_reg(0), false,
+                                                {DerefTokenMatcher::string("base")}),
+                                 Matcher::op_fixed(FixedOperatorKind::ADDITION_PTR,
+                                                   {Matcher::any_reg(1), Matcher::integer(amt)})),
+                    elt);
+    return mr.matched && var_name_equal(env, reg_buf, mr.maps.regs.at(0)) &&
+           var_name_equal(env, reg_base, mr.maps.regs.at(1));
+  };
+  {
+    auto dmatag_buf = env.get_variable_name(let0->entries().at(0).dest);
+    auto dmatag_ptr = env.get_variable_name(let0->entries().at(1).dest);
+    auto set_dmatag_hdr = dynamic_cast<SetFormFormElement*>(let0->body()->at(0));
+    auto set_dmatag_vif0 = dynamic_cast<StoreElement*>(let0->body()->at(1));
+    auto let_dmatag_vif0 = dynamic_cast<LetElement*>(let0->body()->at(1));
+    auto let_dmatag_vif1 = dynamic_cast<LetElement*>(let0->body()->at(2));
+    auto set_dmatag_push = dynamic_cast<SetFormFormElement*>(let0->body()->at(3));
+    if (!let_dmatag_vif0 && !set_dmatag_vif0) {
+      lg::error("rewrite_dma_buffer_add_gs_set: bad vif0");
+      return nullptr;
+    }
+    u32 vif0 = 0;
+    if (let_dmatag_vif0 && let_dmatag_vif0->entries().size() == 1 &&
+        let_dmatag_vif0->body()->size() == 1) {
+      auto vif0_elt =
+          let_dmatag_vif0->entries().at(0).src->try_as_element<SimpleExpressionElement>();
+      if (!vif0_elt || !vif0_elt->expr().is_identity() || !vif0_elt->expr().get_arg(0).is_int()) {
+        lg::error("rewrite_dma_buffer_add_gs_set: bad vif0 let");
+        return nullptr;
+      }
+      vif0 = vif0_elt->expr().get_arg(0).get_int();
+      set_dmatag_vif0 = dynamic_cast<StoreElement*>(let_dmatag_vif0->body()->at(0));
+    } else {
+      if (!check_vifcode_set(set_dmatag_vif0, dmatag_ptr, 4, 8)) {
+        lg::error("rewrite_dma_buffer_add_gs_set: bad vif0 set");
+        return nullptr;
+      }
+      vif0 = set_dmatag_vif0->op()->value().get_int();
+    }
+
+    if (!set_dmatag_hdr || !let_dmatag_vif1 || !set_dmatag_push ||
+        let_dmatag_vif1->entries().size() != 1 || let_dmatag_vif1->body()->size() != 1) {
+      lg::error("rewrite_dma_buffer_add_gs_set: bad vif1 let");
+      return nullptr;
+    }
+    auto set_dmatag_vif1 = dynamic_cast<StoreElement*>(let_dmatag_vif1->body()->at(0));
+    if (!set_dmatag_vif1) {
+      lg::error("rewrite_dma_buffer_add_gs_set: bad vif1 set");
+      return nullptr;
+    }
+    // check dmatag now
+    auto mr_dmatag_hdr =
+        match(Matcher::set(
+                  Matcher::deref(Matcher::cast("(pointer int64)", Matcher::any_reg(0)), false, {}),
+                  Matcher::any_integer(1)),
+              set_dmatag_hdr);
+    if (!mr_dmatag_hdr.matched || !var_name_equal(env, dmatag_ptr, mr_dmatag_hdr.maps.regs.at(0))) {
+      lg::error("rewrite_dma_buffer_add_gs_set: bad dmatag set");
+      return nullptr;
+    }
+    dma_qwc = mr_dmatag_hdr.maps.ints.at(1) & 0xffff;
+    if (((mr_dmatag_hdr.maps.ints.at(1) >> 28) & 0x7) != 1 ||
+        (mr_dmatag_hdr.maps.ints.at(1) & ~0x7000ffff)) {
+      lg::error("rewrite_dma_buffer_add_gs_set: bad dmatag");
+      return nullptr;
+    }
+    if (!(dma_qwc >= 1 && dma_qwc <= 17)) {
+      lg::error("rewrite_dma_buffer_add_gs_set: bad qwc {}", dma_qwc);
+      return nullptr;
+    }
+    // check vifcode
+    flusha = vif0 == 19ULL << 24;
+    auto vif1_elt = let_dmatag_vif1->entries().at(0).src->try_as_element<SimpleExpressionElement>();
+    if (!check_vifcode_set(set_dmatag_vif1, dmatag_ptr, 4, 12) || (vif0 && !flusha) ||
+        !set_dmatag_vif1->op()->value().is_var() || !vif1_elt || !vif1_elt->expr().is_identity() ||
+        !vif1_elt->expr().get_arg(0).is_int()) {
+      lg::error("rewrite_dma_buffer_add_gs_set: bad vif1");
+      return nullptr;
+    }
+    u32 vif1 = vif1_elt->expr().get_arg(0).get_int();
+    if (((vif1 >> 24) & 0x7f) != 80 || (vif1 & ~0x7f00ffff) || ((vif1 & 0xffff) != dma_qwc)) {
+      lg::error("rewrite_dma_buffer_add_gs_set: bad vif1 vifcode");
+      return nullptr;
+    }
+
+    // check dma buffer base set
+    if (!match_buf_push(set_dmatag_push, dmatag_buf, dmatag_ptr, 16)) {
+      lg::error("rewrite_dma_buffer_add_gs_set: dma base set 1");
+      return nullptr;
+    }
+  }
+
+  // LET GIFTAG
+  // (let* ((v1-1 arg0)
+  //        (a0-4 (-> v1-1 base))
+  //        )
+  //   (set! (-> (the-as (pointer uint64) a0-4)) (make-u128 0 (the-as uint #x6000000000008001)))
+  //   (let ((a1-6 (the-as uint #xeeeeeeeeeeeeeeee)))
+  //     (s.d! (+ a0-4 8) a1-6)
+  //     )
+  //   (set! (-> v1-1 base) (&+ a0-4 16))
+  //   )
+  {
+    auto giftag_buf = env.get_variable_name(let1->entries().at(0).dest);
+    auto giftag_ptr = env.get_variable_name(let1->entries().at(1).dest);
+    auto set_giftag_hdr = dynamic_cast<SetFormFormElement*>(let1->body()->at(0));
+    auto let_giftag_regs = dynamic_cast<LetElement*>(let1->body()->at(1));
+    auto set_giftag_push = dynamic_cast<SetFormFormElement*>(let1->body()->at(2));
+    if (!set_giftag_hdr || !let_giftag_regs || !set_giftag_push ||
+        let_giftag_regs->entries().size() != 1 || let_giftag_regs->body()->size() != 1) {
+      return nullptr;
+    }
+    auto set_giftag_regs = dynamic_cast<StoreElement*>(let_giftag_regs->body()->at(0));
+    if (!set_giftag_regs) {
+      return nullptr;
+    }
+    // check giftag now
+    auto mr_giftag_hdr =
+        match(Matcher::set(
+                  Matcher::deref(Matcher::cast("(pointer uint64)", Matcher::any_reg(0)), false, {}),
+                  Matcher::op_fixed(
+                      FixedOperatorKind::PCPYLD,
+                      {Matcher::integer(0), Matcher::cast("uint", Matcher::any_integer(1))})),
+              set_giftag_hdr);
+    if (!mr_giftag_hdr.matched || (mr_giftag_hdr.maps.ints.at(1) & 0x0fffffffffffffff) != 0x8001 ||
+        ((mr_giftag_hdr.maps.ints.at(1) >> 60) & 0xf) != dma_qwc - 1 ||
+        !var_name_equal(env, giftag_ptr, mr_giftag_hdr.maps.regs.at(0))) {
+      return nullptr;
+    }
+    auto giftag_regs_elt = let_giftag_regs->entries().at(0).src->try_as_element<CastElement>();
+    if (!check_vifcode_set(set_giftag_regs, giftag_ptr, 8, 8) || !giftag_regs_elt) {
+      return nullptr;
+    }
+    auto giftag_regs_atom = giftag_regs_elt->source()->try_as_element<SimpleAtomElement>();
+    if (!giftag_regs_atom || !giftag_regs_atom->atom().is_int(0xeeeeeeeeeeeeeeee)) {
+      return nullptr;
+    }
+    // check dma buffer base set
+    if (!match_buf_push(set_giftag_push, giftag_buf, giftag_ptr, 16)) {
+      lg::error("rewrite_dma_buffer_add_gs_set: dma base set 2");
+      return nullptr;
+    }
+  }
+
+  // start building args
+  std::vector<Form*> args;
+  args.push_back(buf);
+
+  // LET GS REGS
+  // (let* ((v1-2 arg0)
+  //        (a0-6 (-> v1-2 base))
+  //        )
+  //   (set! (-> (the-as (pointer int64) a0-6)) #x33001)
+  //   (let ((a1-8 71))
+  //     (s.d! (+ a0-6 8) a1-8)
+  //     )
+  //   (s.d! (+ a0-6 16) 0)
+  //   (let ((a1-9 66))
+  //     (s.d! (+ a0-6 24) a1-9)
+  //     )
+  //   (let ((a1-10 (the-as uint #x664023300)))
+  //     (s.d! (+ a0-6 32) a1-10)
+  //     )
+  //   (let ((a1-11 6))
+  //     (s.d! (+ a0-6 40) a1-11)
+  //     )
+  //   (let ((a1-12 96))
+  //     (s.d! (+ a0-6 48) a1-12)
+  //     )
+  //   (let ((a1-13 20))
+  //     (s.d! (+ a0-6 56) a1-13)
+  //     )
+  //   (let ((a1-14 5))
+  //     (s.d! (+ a0-6 64) a1-14)
+  //     )
+  //   (let ((a1-15 8))
+  //     (s.d! (+ a0-6 72) a1-15)
+  //     )
+  //   (s.d! (+ a0-6 80) 0)
+  //   (let ((a1-16 63))
+  //     (s.d! (+ a0-6 88) a1-16)
+  //     )
+  //   (set! (-> v1-2 base) (&+ a0-6 96))
+  //   )
+  {
+    auto gsregs_buf = env.get_variable_name(let2->entries().at(0).dest);
+    auto gsregs_ptr = env.get_variable_name(let2->entries().at(1).dest);
+    auto set_gsregs_push =
+        dynamic_cast<SetFormFormElement*>(let2->body()->at(let2->body()->size() - 1));
+    // check dma buffer base set
+    if (let2->body()->size() != (dma_qwc - 1) * 2 + 1 ||
+        !match_buf_push(set_gsregs_push, gsregs_buf, gsregs_ptr, 16 * (dma_qwc - 1))) {
+      lg::error("rewrite_dma_buffer_add_gs_set: dma base set 3");
+      return nullptr;
+    }
+    bool error = false;
+    auto get_int_from_form = [&](FormElement* elt, const std::string& ptr_name, int offset) {
+      auto as_set = dynamic_cast<SetFormFormElement*>(elt);
+      if (as_set) {
+        auto mr_set = match(
+            Matcher::set(
+                Matcher::deref(
+                    Matcher::match_or({Matcher::cast("(pointer int64)", Matcher::any_reg(0)),
+                                       Matcher::cast("(pointer uint64)", Matcher::any_reg(0))}),
+                    false, {}),
+                Matcher::any_integer(1)),
+            as_set);
+        if (!mr_set.matched || !var_name_equal(env, gsregs_ptr, mr_set.maps.regs.at(0))) {
+          error = true;
+          return (s64)0;
+        }
+        return mr_set.maps.ints.at(1);
+      }
+      auto as_store = dynamic_cast<StoreElement*>(elt);
+      if (as_store) {
+        if (!as_store->op()->value().is_int() ||
+            !check_vifcode_set(as_store, ptr_name, 8, offset)) {
+          error = true;
+          return (s64)0;
+        }
+        return as_store->op()->value().get_int();
+      }
+      auto as_let = dynamic_cast<LetElement*>(elt);
+      if (as_let) {
+        if (as_let->entries().size() != 1 || as_let->body()->size() != 1) {
+          error = true;
+          return (s64)0;
+        }
+        auto store_in_let = dynamic_cast<StoreElement*>(as_let->body()->at(0));
+        if (!store_in_let || !check_vifcode_set(store_in_let, ptr_name, 8, offset) ||
+            !store_in_let->op()->value().is_var() ||
+            !var_name_equal(env, env.get_variable_name(as_let->entries().at(0).dest),
+                            store_in_let->op()->value().var())) {
+          error = true;
+          return (s64)0;
+        }
+        auto val_as_cast = as_let->entries().at(0).src->try_as_element<CastElement>();
+        if (val_as_cast) {
+          auto as_atom = val_as_cast->source()->try_as_element<SimpleAtomElement>();
+          if (!as_atom || !as_atom->atom().is_int()) {
+            error = true;
+            return (s64)0;
+          }
+          return as_atom->atom().get_int();
+        }
+        auto val_as_expr = as_let->entries().at(0).src->try_as_element<SimpleExpressionElement>();
+        if (val_as_expr) {
+          if (!val_as_expr->expr().is_identity() || !val_as_expr->expr().get_arg(0).is_int()) {
+            error = true;
+            return (s64)0;
+          }
+          return val_as_expr->expr().get_arg(0).get_int();
+        }
+      }
+      error = true;
+      return (s64)0;
+    };
+    auto get_src_form = [&](FormPool& pool, FormElement* elt, const std::string& ptr_name,
+                            int offset) -> Form* {
+      auto as_set = dynamic_cast<SetFormFormElement*>(elt);
+      if (as_set) {
+        auto mr_set = match(
+            Matcher::set(
+                Matcher::deref(
+                    Matcher::match_or({Matcher::cast("(pointer int64)", Matcher::any_reg(0)),
+                                       Matcher::cast("(pointer uint64)", Matcher::any_reg(0))}),
+                    false, {}),
+                Matcher::any()),
+            as_set);
+        if (!mr_set.matched || !var_name_equal(env, gsregs_ptr, mr_set.maps.regs.at(0))) {
+          return nullptr;
+        }
+        return as_set->src();
+      }
+      auto as_store = dynamic_cast<StoreElement*>(elt);
+      if (as_store) {
+        if (!check_vifcode_set(as_store, ptr_name, 8, offset)) {
+          return nullptr;
+        }
+        return pool.form<SimpleAtomElement>(as_store->op()->value());
+      }
+      auto as_let = dynamic_cast<LetElement*>(elt);
+      if (as_let) {
+        if (as_let->entries().size() != 1 || as_let->body()->size() != 1) {
+          return nullptr;
+        }
+        auto store_in_let = dynamic_cast<StoreElement*>(as_let->body()->at(0));
+        if (!store_in_let || !check_vifcode_set(store_in_let, ptr_name, 8, offset) ||
+            !store_in_let->op()->value().is_var() ||
+            !var_name_equal(env, env.get_variable_name(as_let->entries().at(0).dest),
+                            store_in_let->op()->value().var())) {
+          return nullptr;
+        }
+        return as_let->entries().at(0).src;
+      }
+      return nullptr;
+    };
+    const static std::unordered_map<std::string, std::string> reg_id_to_def_map = {
+        // enum name, struct name
+        {"prim", "gs-prim"},
+        {"st", "gs-st"},
+        {"uv", "gs-uv"},
+        {"rgbaq", "gs-rgbaq"},
+        {"fog", "gs-fog"},
+        {"fogcol", "gs-fogcol"},
+        {"miptbp1-1", "gs-miptbp"},
+        {"miptbp1-2", "gs-miptbp"},
+        {"miptbp2-1", "gs-miptbp"},
+        {"miptbp2-2", "gs-miptbp"},
+        {"texclut", "gs-texclut"},
+        {"tex0-1", "gs-tex0"},
+        {"tex0-2", "gs-tex0"},
+        {"tex1-1", "gs-tex1"},
+        {"tex1-2", "gs-tex1"},
+        {"clamp-1", "gs-clamp"},
+        {"clamp-2", "gs-clamp"},
+        {"texa", "gs-texa"},
+        {"xyoffset-1", "gs-xy-offset"},
+        {"xyoffset-2", "gs-xy-offset"},
+        {"prmodecont", "gs-prmode-cont"},
+        {"clamp-1", "gs-clamp"},
+        {"clamp-2", "gs-clamp"},
+        {"test-1", "gs-test"},
+        {"test-2", "gs-test"},
+        {"frame-1", "gs-frame"},
+        {"frame-2", "gs-frame"},
+        {"scissor-1", "gs-scissor"},
+        {"scissor-2", "gs-scissor"},
+        {"zbuf-1", "gs-zbuf"},
+        {"zbuf-2", "gs-zbuf"},
+        {"alpha-1", "gs-alpha"},
+        {"alpha-2", "gs-alpha"},
+        {"dthe", "gs-dthe"},
+        {"colclamp", "gs-color-clamp"},
+        {"xyzf3", "gs-xyzf"},
+        {"xyz3", "gs-xyz"},
+        {"bitbltbuf", "gs-bitbltbuf"},
+        {"trxpos", "gs-trxpos"},
+        {"trxreg", "gs-trxreg"},
+        {"trxdir", "gs-trxdir"},
+    };
+    const static std::unordered_set<std::string> reg_id_to_int_map = {
+        "texflush",
+        "pabe",
+        "fba-1",
+        "fba-2",
+    };
+    for (int i = 0; i < let2->body()->size() - 1 && !error; i += 2) {
+      auto reg_val = get_int_from_form(let2->body()->at(i), gsregs_ptr, i * 8);
+      bool bad_val = error;
+      error = false;
+      auto reg_id = get_int_from_form(let2->body()->at(i + 1), gsregs_ptr, i * 8 + 8);
+      auto reg_name =
+          decompiler::decompile_int_enum_from_int(TypeSpec("gs-reg"), env.dts->ts, reg_id);
+      auto name_head = GenericOperator::make_function(pool.form<ConstantTokenElement>(reg_name));
+      const auto& it = reg_id_to_def_map.find(reg_name);
+      if (error) {
+      } else if (bad_val) {
+        auto reg_val_form = get_src_form(pool, let2->body()->at(i), gsregs_ptr, i * 8);
+        if (reg_val_form) {
+          if (it != reg_id_to_def_map.end()) {
+            auto spec = TypeSpec(it->second);
+            auto as_bitfield = decompiler::cast_to_bitfield(
+                dynamic_cast<BitFieldType*>(env.dts->ts.lookup_type(spec)), spec, pool, env,
+                reg_val_form);
+            auto as_cast = as_bitfield->try_as_element<CastElement>();
+            args.push_back(
+                pool.form<GenericElement>(name_head, as_cast ? as_cast->source() : as_bitfield));
+          } else {
+            args.push_back(pool.form<GenericElement>(name_head, reg_val_form));
+          }
+        } else {
+          error = true;
+        }
+      } else if (it != reg_id_to_def_map.end()) {
+        auto spec = TypeSpec(it->second);
+        args.push_back(pool.form<GenericElement>(
+            name_head,
+            pool.form<BitfieldStaticDefElement>(
+                spec, decompiler::decompile_bitfield_from_int(spec, env.dts->ts, reg_val), pool)));
+      } else if (const auto& it = reg_id_to_int_map.find(reg_name); it != reg_id_to_int_map.end()) {
+        args.push_back(pool.form<GenericElement>(
+            name_head, pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(reg_val))));
+      } else {
+        lg::error("unhandled gs-reg {}", reg_name);
+        error = true;
+      }
+    }
+    if (error) {
+      return nullptr;
+    }
+  }
+
+  return pool.alloc_element<GenericElement>(
+      GenericOperator::make_function(pool.form<ConstantTokenElement>(
+          flusha ? "dma-buffer-add-gs-set-flusha" : "dma-buffer-add-gs-set")),
+      args);
+}
+
+FormElement* rewrite_let_sequence(const std::vector<LetElement*>& in,
+                                  const Env& env,
+                                  FormPool& pool,
+                                  LetRewriteStats& stats) {
+  if (in.size() == 3) {
+    auto as_dma_buffer_add_gs_set = rewrite_dma_buffer_add_gs_set(in, env, pool);
+    if (as_dma_buffer_add_gs_set) {
+      stats.dma_buffer_add_gs_set++;
+      return as_dma_buffer_add_gs_set;
+    }
+  }
+
+  return nullptr;
 }
 
 Form* insert_cast_for_let(RegisterAccess dst,
@@ -2542,6 +3010,27 @@ LetStats insert_lets(const Function& func,
       }
     });
   }
+
+  // Part 10: rewrite let sequences
+  top_level_form->apply_form([&](Form* f) {
+    auto& form_elts = f->elts();
+    for (size_t i = 0; i < form_elts.size(); ++i) {
+      if (i + 2 < form_elts.size() && dynamic_cast<LetElement*>(form_elts[i]) &&
+          dynamic_cast<LetElement*>(form_elts[i + 1]) &&
+          dynamic_cast<LetElement*>(form_elts[i + 2])) {
+        auto rw = rewrite_let_sequence(
+            {dynamic_cast<LetElement*>(form_elts[i]), dynamic_cast<LetElement*>(form_elts[i + 1]),
+             dynamic_cast<LetElement*>(form_elts[i + 2])},
+            env, pool, let_rewrite_stats);
+        if (rw) {
+          form_elts.erase(form_elts.begin() + i + 2);
+          form_elts.erase(form_elts.begin() + i + 1);
+          form_elts.at(i) = rw;
+          rw->parent_form = f;
+        }
+      }
+    }
+  });
 
   return stats;
 }

@@ -4,6 +4,7 @@
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 
+#include "game/graphics/opengl_renderer/BlitDisplays.h"
 #include "game/graphics/opengl_renderer/DepthCue.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
@@ -19,6 +20,7 @@
 #include "game/graphics/opengl_renderer/background/Tie3.h"
 #include "game/graphics/opengl_renderer/foreground/Generic2.h"
 #include "game/graphics/opengl_renderer/foreground/Merc2.h"
+#include "game/graphics/opengl_renderer/foreground/Shadow2.h"
 #include "game/graphics/opengl_renderer/ocean/OceanMidAndFar.h"
 #include "game/graphics/opengl_renderer/ocean/OceanNear.h"
 #include "game/graphics/opengl_renderer/sprite/Sprite3.h"
@@ -32,7 +34,6 @@
 
 namespace {
 std::string g_current_render;
-
 }
 
 /*!
@@ -97,6 +98,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
 
   // 0
   init_bucket_renderer<VisDataHandler>("vis", BucketCategory::OTHER, BucketId::BUCKET_2);
+  init_bucket_renderer<BlitDisplays>("blit", BucketCategory::OTHER, BucketId::BUCKET_3);
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-sky-pre", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_SKY_PRE);
   init_bucket_renderer<DirectRenderer>("sky-draw", BucketCategory::OTHER, BucketId::SKY_DRAW, 1024);
@@ -214,6 +216,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<Merc2>("merc-lcom-shrub", BucketCategory::MERC, BucketId::MERC_LCOM_SHRUB);
   init_bucket_renderer<Generic2>("gmerc-lcom-tfrag", BucketCategory::GENERIC,
                                  BucketId::GMERC_LCOM_TFRAG);
+  init_bucket_renderer<Shadow2>("shadow", BucketCategory::OTHER, BucketId::SHADOW);
   // 220
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-pris", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_PRIS);
@@ -228,6 +231,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-all-sprite", BucketCategory::TEX,
                                              BucketId::TEX_ALL_SPRITE);
   init_bucket_renderer<Sprite3>("particles", BucketCategory::SPRITE, BucketId::PARTICLES);
+  init_bucket_renderer<Shadow2>("shadow2", BucketCategory::OTHER, BucketId::SHADOW2);
   init_bucket_renderer<LightningRenderer>("effects", BucketCategory::OTHER, BucketId::EFFECTS);
   init_bucket_renderer<TextureUploadHandler>("tex-all-warp", BucketCategory::TEX,
                                              BucketId::TEX_ALL_WARP);
@@ -492,6 +496,125 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
   m_render_state.loader->load_common(*m_render_state.texture_pool, "GAME");
 }
 
+namespace {
+Fbo make_fbo(int w, int h, int msaa, bool make_zbuf_and_stencil) {
+  Fbo result;
+  bool use_multisample = msaa > 1;
+
+  // make framebuffer object
+  glGenFramebuffers(1, &result.fbo_id);
+  glBindFramebuffer(GL_FRAMEBUFFER, result.fbo_id);
+  result.valid = true;
+
+  // make texture that will hold the colors of the framebuffer
+  GLuint tex;
+  glGenTextures(1, &tex);
+  result.tex_id = tex;
+  glActiveTexture(GL_TEXTURE0);
+  if (use_multisample) {
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, tex);
+    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, msaa, GL_RGBA8, w, h, GL_TRUE);
+  } else {
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+  }
+  // make depth and stencil buffers that will hold the... depth and stencil buffers
+  if (make_zbuf_and_stencil) {
+    GLuint zbuf;
+    glGenRenderbuffers(1, &zbuf);
+    result.zbuf_stencil_id = zbuf;
+    glBindRenderbuffer(GL_RENDERBUFFER, zbuf);
+    if (use_multisample) {
+      glRenderbufferStorageMultisample(GL_RENDERBUFFER, msaa, GL_DEPTH24_STENCIL8, w, h);
+    } else {
+      glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
+    }
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, zbuf);
+  }
+  // attach texture to framebuffer as target for colors
+
+  if (use_multisample) {
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, tex, 0);
+  } else {
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+  }
+
+  GLenum render_targets[1] = {GL_COLOR_ATTACHMENT0};
+  glDrawBuffers(1, render_targets);
+  auto status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+  if (status != GL_FRAMEBUFFER_COMPLETE) {
+    lg::error("Failed to setup framebuffer: {} {} {} {}\n", w, h, msaa, make_zbuf_and_stencil);
+    switch (status) {
+      case GL_FRAMEBUFFER_UNDEFINED:
+        printf("GL_FRAMEBUFFER_UNDEFINED\n");
+        break;
+      case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+        printf("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT\n");
+        break;
+      case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+        printf("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT\n");
+        break;
+      case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+        printf("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER\n");
+        break;
+      case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
+        printf("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER\n");
+        break;
+      case GL_FRAMEBUFFER_UNSUPPORTED:
+        printf("GL_FRAMEBUFFER_UNSUPPORTED\n");
+        break;
+      case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+        printf("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE\n");
+        break;
+      case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
+        printf("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS\n");
+        break;
+    }
+    ASSERT(false);
+  }
+
+  result.multisample_count = msaa;
+  result.multisampled = use_multisample;
+  result.is_window = false;
+  result.width = w;
+  result.height = h;
+
+  return result;
+}
+}  // namespace
+
+void OpenGLRenderer::blit_display() {
+  auto& back = m_fbo_state.resources.back_buffer;
+  if (!back.valid || !back.matches(*m_fbo_state.render_fbo)) {
+    back.clear();
+    back = make_fbo(m_fbo_state.render_fbo->width, m_fbo_state.render_fbo->height, 1, false);
+  }
+
+  Fbo* window_blit_src = nullptr;
+  if (m_fbo_state.resources.resolve_buffer.valid) {
+    // since this is called after do_pcrtc_effects, the resolve buffer is already made
+    window_blit_src = &m_fbo_state.resources.resolve_buffer;
+  } else {
+    window_blit_src = m_fbo_state.render_fbo;
+  }
+
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, window_blit_src->fbo_id);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, back.fbo_id);
+  glBlitFramebuffer(0,                        // srcX0
+                    0,                        // srcY0
+                    window_blit_src->width,   // srcX1
+                    window_blit_src->height,  // srcY1
+                    0,                        // dstX0
+                    0,                        // dstY0
+                    back.width,               // dstX1
+                    back.height,              // dstY1
+                    GL_COLOR_BUFFER_BIT,      // mask
+                    GL_LINEAR                 // filter
+  );
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 /*!
  * Main render function. This is called from the gfx loop with the chain passed from the game.
  */
@@ -533,6 +656,12 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     if (settings.gpu_sync) {
       glFinish();
     }
+  }
+
+  // blit framebuffer so that it can be used as a texture by the game later
+  {
+    auto prof = m_profiler.root()->make_scoped_child("blit-display");
+    blit_display();
   }
 
   m_last_pmode_alp = settings.pmode_alp_register;
@@ -636,94 +765,6 @@ void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::End();
 }
 
-namespace {
-Fbo make_fbo(int w, int h, int msaa, bool make_zbuf_and_stencil) {
-  Fbo result;
-  bool use_multisample = msaa > 1;
-
-  // make framebuffer object
-  glGenFramebuffers(1, &result.fbo_id);
-  glBindFramebuffer(GL_FRAMEBUFFER, result.fbo_id);
-  result.valid = true;
-
-  // make texture that will hold the colors of the framebuffer
-  GLuint tex;
-  glGenTextures(1, &tex);
-  result.tex_id = tex;
-  glActiveTexture(GL_TEXTURE0);
-  if (use_multisample) {
-    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, tex);
-    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, msaa, GL_RGBA8, w, h, GL_TRUE);
-  } else {
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-  }
-  // make depth and stencil buffers that will hold the... depth and stencil buffers
-  if (make_zbuf_and_stencil) {
-    GLuint zbuf;
-    glGenRenderbuffers(1, &zbuf);
-    result.zbuf_stencil_id = zbuf;
-    glBindRenderbuffer(GL_RENDERBUFFER, zbuf);
-    if (use_multisample) {
-      glRenderbufferStorageMultisample(GL_RENDERBUFFER, msaa, GL_DEPTH24_STENCIL8, w, h);
-    } else {
-      glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
-    }
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, zbuf);
-  }
-  // attach texture to framebuffer as target for colors
-
-  if (use_multisample) {
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, tex, 0);
-  } else {
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
-  }
-
-  GLenum render_targets[1] = {GL_COLOR_ATTACHMENT0};
-  glDrawBuffers(1, render_targets);
-  auto status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-
-  if (status != GL_FRAMEBUFFER_COMPLETE) {
-    lg::error("Failed to setup framebuffer: {} {} {} {}\n", w, h, msaa, make_zbuf_and_stencil);
-    switch (status) {
-      case GL_FRAMEBUFFER_UNDEFINED:
-        printf("GL_FRAMEBUFFER_UNDEFINED\n");
-        break;
-      case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-        printf("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT\n");
-        break;
-      case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-        printf("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT\n");
-        break;
-      case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
-        printf("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER\n");
-        break;
-      case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
-        printf("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER\n");
-        break;
-      case GL_FRAMEBUFFER_UNSUPPORTED:
-        printf("GL_FRAMEBUFFER_UNSUPPORTED\n");
-        break;
-      case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
-        printf("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE\n");
-        break;
-      case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
-        printf("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS\n");
-        break;
-    }
-    ASSERT(false);
-  }
-
-  result.multisample_count = msaa;
-  result.multisampled = use_multisample;
-  result.is_window = false;
-  result.width = w;
-  result.height = h;
-
-  return result;
-}
-}  // namespace
-
 /*!
  * Pre-render frame setup.
  */
@@ -808,6 +849,7 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   // letterboxing
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   glDisable(GL_BLEND);
+  m_render_state.stencil_dirty = false;
 
   // setup the draw region to letterbox later
   m_render_state.draw_region_w = settings.draw_region_width;
@@ -826,6 +868,7 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   }
 
   m_render_state.render_fb = m_fbo_state.render_fbo->fbo_id;
+  m_render_state.back_fbo = &m_fbo_state.resources.back_buffer;
 
   if (m_render_state.draw_region_w <= 0 || m_render_state.draw_region_h <= 0) {
     // trying to draw to 0 size region... opengl doesn't like this.
@@ -1049,7 +1092,7 @@ void OpenGLRenderer::do_pcrtc_effects(float alp,
     );
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
-  if (alp < 1 && m_version != GameVersion::Jak2) {  // TODO: enable blackout on jak 2.
+  if (alp < 1) {
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
