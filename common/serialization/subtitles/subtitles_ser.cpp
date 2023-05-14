@@ -256,10 +256,8 @@ void parse_subtitle(const goos::Object& data, GameSubtitleDB& db, const std::str
           if (!db.bank_exists(lang)) {
             // database has no lang yet
             banks[lang] = db.add_bank(std::make_shared<GameSubtitleBank>(lang));
-            banks[lang]->file_path = file_path;
           } else {
             banks[lang] = db.bank_by_id(lang);
-            banks[lang]->file_path = file_path;
           }
         });
       } else if (head.is_symbol("text-version")) {
@@ -271,7 +269,6 @@ void parse_subtitle(const goos::Object& data, GameSubtitleDB& db, const std::str
         if (!ver_name.is_symbol()) {
           throw std::runtime_error("invalid text version entry");
         }
-
         font = get_font_bank(ver_name.as_symbol()->name);
       }
 
@@ -306,8 +303,6 @@ void parse_subtitle(const goos::Object& data, GameSubtitleDB& db, const std::str
           id = head.as_int();
         }
         scene.set_id(id);
-        scene.m_sorting_group = db.m_subtitle_groups->find_group(scene.name());
-        scene.m_sorting_group_idx = db.m_subtitle_groups->find_group_index(scene.m_sorting_group);
 
         for_each_in_list(entries, [&](const goos::Object& entry) {
           if (entry.is_pair()) {
@@ -389,6 +384,8 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
   } else {
     bank = db.bank_by_id(file_info.language_id);
   }
+  bank->m_text_verison = file_info.text_version;
+  bank->m_file_path = file_info.lines_path;
   const GameTextFontBank* font = get_font_bank(file_info.text_version);
   // Parse the file
   SubtitleMetadataFile meta_file;
@@ -439,11 +436,10 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
   // Iterate through the metadata file as blank lines are no omitted from the lines file now
   // Cutscenes First
   for (const auto& [cutscene_name, cutscene_lines] : meta_file.cutscenes) {
-    lg::info(cutscene_name);
     GameSubtitleSceneInfo scene(SubtitleSceneKind::Movie);
     scene.set_name(cutscene_name);
-    /*scene.m_sorting_group = db.m_subtitle_groups->find_group(cutscene_name);
-    scene.m_sorting_group_idx = db.m_subtitle_groups->find_group_index(scene.m_sorting_group);*/
+    scene.m_sorting_group = db.m_subtitle_groups->find_group(cutscene_name);
+    scene.m_sorting_group_idx = db.m_subtitle_groups->find_group_index(scene.m_sorting_group);
     // Iterate the lines, grab the actual text from the lines file if it's not a clear screen entry
     int line_idx = 0;
     for (const auto& line : cutscene_lines) {
@@ -458,6 +454,9 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
               "be resolved {}!",
               file_info.language_id, cutscene_name, line.speaker);
         } else {
+          // NOTE - the convert_utf8_to_game function is really really slow (about 80-90% of the
+          // time loading the subtitle files)
+          // TODO - improve that as a follow up sometime in the future
           scene.add_line(
               line.frame,
               font->convert_utf8_to_game(lines_file.cutscenes.at(cutscene_name).at(line_idx)),
@@ -476,7 +475,6 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
   }
   // Now hints
   for (const auto& [hint_name, hint_info] : meta_file.hints) {
-    lg::info(hint_name);
     GameSubtitleSceneInfo scene(SubtitleSceneKind::Hint);
     scene.set_name(hint_name);
     /*scene.m_sorting_group = db.m_subtitle_groups->find_group(hint_name);
@@ -500,6 +498,9 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
               "be resolved {}!",
               file_info.language_id, hint_name, line.speaker);
         } else {
+          // NOTE - the convert_utf8_to_game function is really really slow (about 80-90% of the
+          // time loading the subtitle files)
+          // TODO - improve that as a follow up sometime in the future
           scene.add_line(line.frame,
                          font->convert_utf8_to_game(lines_file.hints.at(hint_name).at(line_idx)),
                          font->convert_utf8_to_game(lines_file.speakers.at(line.speaker)), true);
@@ -765,7 +766,7 @@ SubtitleMetadataFile dump_bank_as_meta_json(
     std::shared_ptr<GameSubtitleBank> bank,
     std::unordered_map<std::string, std::string> speaker_lookup) {
   auto meta_file = SubtitleMetadataFile();
-  auto font = get_font_bank(parse_text_only_version(bank->file_path));
+  auto font = get_font_bank("jak1-v2");
   for (const auto& [scene_name, scene_info] : bank->m_scenes) {
     if (scene_info.m_kind == SubtitleSceneKind::Movie) {
       std::vector<SubtitleCutsceneLineMetadata> lines;
@@ -821,7 +822,7 @@ SubtitleFile dump_bank_as_json(std::shared_ptr<GameSubtitleBank> bank,
                                std::unordered_map<std::string, std::string> speaker_lookup) {
   SubtitleFile file;
   file.speakers = speaker_lookup;
-  auto font = get_font_bank(parse_text_only_version(bank->file_path));
+  auto font = get_font_bank("jak1-v2");
   // Figure out speakers
   for (const auto& [scene_name, scene_info] : bank->m_scenes) {
     for (const auto& line : scene_info.m_lines) {

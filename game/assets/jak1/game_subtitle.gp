@@ -1,8 +1,4 @@
 ;; "project file" for subtitles make tool.
-;; it's very simple... a list of (action args...)
-;; There is one supported action:
-;; - file (A path to a GOAL data file)
-;;   - the same arguments are provided within the file itself
 
 (subtitle
   (file-json
