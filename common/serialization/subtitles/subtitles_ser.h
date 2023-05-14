@@ -207,7 +207,7 @@ class GameSubtitleBank {
   }
 
   int m_lang_id;
-  std::string m_text_verison;
+  std::string m_text_version;
   std::string m_file_path;
   std::map<std::string, GameSubtitleSceneInfo> m_scenes;
 };

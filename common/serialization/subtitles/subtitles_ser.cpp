@@ -384,7 +384,7 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
   } else {
     bank = db.bank_by_id(file_info.language_id);
   }
-  bank->m_text_verison = file_info.text_version;
+  bank->m_text_version = file_info.text_version;
   bank->m_file_path = file_info.lines_path;
   const GameTextFontBank* font = get_font_bank(file_info.text_version);
   // Parse the file
@@ -761,7 +761,6 @@ void from_json(const json& j, SubtitleFile& obj) {
   json_deserialize_if_exists(hints);
 }
 
-// TODO -- TEMPORARY CODE FOR MIGRATION -- REMOVE LATER
 SubtitleMetadataFile dump_bank_as_meta_json(
     std::shared_ptr<GameSubtitleBank> bank,
     std::unordered_map<std::string, std::string> speaker_lookup) {
@@ -816,7 +815,6 @@ SubtitleMetadataFile dump_bank_as_meta_json(
   return meta_file;
 }
 
-// TODO -- TEMPORARY CODE FOR MIGRATION -- REMOVE LATER
 SubtitleFile dump_bank_as_json(std::shared_ptr<GameSubtitleBank> bank,
                                std::shared_ptr<GameSubtitleBank> base_bank,
                                std::unordered_map<std::string, std::string> speaker_lookup) {

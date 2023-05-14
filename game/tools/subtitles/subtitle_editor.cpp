@@ -132,7 +132,8 @@ void SubtitleEditor::draw_window() {
   }
 
   if (ImGui::Button("Save Changes")) {
-    m_files_saved_successfully = std::make_optional(write_subtitle_db_to_files(m_subtitle_db));
+    m_files_saved_successfully =
+        std::make_optional(write_subtitle_db_to_files(m_subtitle_db, g_game_version));
     repl_rebuild_text();
   }
   if (m_files_saved_successfully.has_value()) {
@@ -610,7 +611,7 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
   if (current_scene) {
     draw_new_cutscene_line_form();
   }
-  auto font = get_font_bank(m_subtitle_db.m_banks[m_current_language]->m_text_verison);
+  auto font = get_font_bank(m_subtitle_db.m_banks[m_current_language]->m_text_version);
   int i = 0;
   for (auto subtitleLine = scene.m_lines.begin(); subtitleLine != scene.m_lines.end();) {
     auto linetext = font->convert_game_to_utf8(subtitleLine->line.c_str());
