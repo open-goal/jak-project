@@ -119,6 +119,8 @@ class ShadowRenderer : public BucketRenderer {
   u32 m_next_front_index = 0;
   u32 m_next_back_index = 0;
 
+  math::Vector4f m_color;
+
   struct {
     // index is front, back
     GLuint vertex_buffer, index_buffer[2], vao;

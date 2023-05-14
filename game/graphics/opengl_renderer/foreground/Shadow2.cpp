@@ -63,7 +63,6 @@ void Shadow2::reset_buffers() {
 }
 
 void Shadow2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  reset_buffers();
   // jump to bucket
   dma.read_and_advance();
 
@@ -78,6 +77,8 @@ void Shadow2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
     // nothing
     return;
   }
+
+  reset_buffers();
 
   // shadow-vu1-constants
   ASSERT(maybe_constants.size_bytes >= sizeof(ShadowVu1Constants));
@@ -550,7 +551,6 @@ void Shadow2::draw_buffers(SharedRenderState* render_state,
 
   if (have_darken) {
     glColorMask(darken_channel[0], darken_channel[1], darken_channel[2], false);
-    glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
     glUniform4f(m_ogl.uniforms.color, (128 - m_color[0]) / 256.f, (128 - m_color[1]) / 256.f,
                 (128 - m_color[2]) / 256.f, 0);
     glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
