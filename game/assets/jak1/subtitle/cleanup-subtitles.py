@@ -33,7 +33,7 @@ with open("./subtitle_lines_en-US.json", "w", encoding="utf-8") as line_file:
   json.dump(english_lines, line_file, indent=2, ensure_ascii=False)
 
 # I'm lazy, uncomment this to make the other language base files
-locales = ["jp-JP", "hu-HU", "da-DK", "fi-FI", "nl-NL", "no-NO", "pt-PT", "sv-SE"]
+locales = ["jp-JP", "hu-HU", "da-DK", "fi-FI", "nl-NL", "no-NO", "pt-PT", "sv-SE", "ca-ES", "is-IS"]
 for locale in locales:
   # duplicate the english files with the locale
   shutil.copy("./subtitle_meta_en-US.json", "./subtitle_meta_" + locale + ".json")
