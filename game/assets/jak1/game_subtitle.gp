@@ -100,7 +100,7 @@
     :lines "game/assets/jak1/subtitle/subtitle_lines_pt-BR.json"
     :lines-base "game/assets/jak1/subtitle/subtitle_lines_en-US.json"
     :meta "game/assets/jak1/subtitle/subtitle_meta_pt-BR.json"
-    :meta-base "game/assets/jak1/subtitle/subtitle_meta_en-ES.json") ;; Timings for pt-BR seem to be copied from es-ES
+    :meta-base "game/assets/jak1/subtitle/subtitle_meta_en-US.json")
   (file-json
     :language-id 14
     :text-version "jak1-v2"

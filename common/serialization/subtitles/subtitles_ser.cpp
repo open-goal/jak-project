@@ -399,10 +399,10 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
       auto base_data =
           parse_commented_json(file_util::read_text_file(file_util::get_jak_project_dir() /
                                                          file_info.meta_base_path.value()),
-                               "TODO");
+                               "subtitle_meta_base_path");
       auto data = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.meta_path),
-          "TODO");
+          "subtitle_meta_path");
       base_data.at("cutscenes").update(data.at("cutscenes"));
       base_data.at("hints").update(data.at("hints"));
       meta_file = base_data;
@@ -410,17 +410,17 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
     } else {
       meta_file = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.meta_path),
-          "TODO");
+          "subtitle_meta_path");
     }
     if (file_info.lines_base_path) {
       auto base_data =
           parse_commented_json(file_util::read_text_file(file_util::get_jak_project_dir() /
                                                          file_info.lines_base_path.value()),
-                               "TODO");
+                               "subtitle_line_base_path");
 
       auto data = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.lines_path),
-          "TODO");
+          "subtitle_line_path");
       base_data.at("cutscenes").update(data.at("cutscenes"));
       base_data.at("hints").update(data.at("hints"));
       base_data.at("speakers").update(data.at("speakers"));
@@ -429,26 +429,34 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
     } else {
       lines_file = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.lines_path),
-          "TODO");
+          "subtitle_line_path");
     }
   } catch (std::exception& e) {
-    // TODO - a decent error
+    lg::error("Unable to parse subtitle json entry, couldn't successfully load files - {}",
+              e.what());
+    throw;
   }
   // Iterate through the metadata file as blank lines are no omitted from the lines file now
   // Cutscenes First
   for (const auto& [cutscene_name, cutscene_lines] : meta_file.cutscenes) {
+    lg::info(cutscene_name);
     GameSubtitleSceneInfo scene(SubtitleSceneKind::Movie);
     scene.set_name(cutscene_name);
+    /*scene.m_sorting_group = db.m_subtitle_groups->find_group(cutscene_name);
+    scene.m_sorting_group_idx = db.m_subtitle_groups->find_group_index(scene.m_sorting_group);*/
     // Iterate the lines, grab the actual text from the lines file if it's not a clear screen entry
     int line_idx = 0;
     for (const auto& line : cutscene_lines) {
       if (line.clear) {
         scene.add_clear_entry(line.frame);
       } else {
-        // TODO - assumptions going on here
-        if (lines_file.cutscenes.find(cutscene_name) == lines_file.cutscenes.end() ||
+        if (lines_file.speakers.find(line.speaker) == lines_file.speakers.end() ||
+            lines_file.cutscenes.find(cutscene_name) == lines_file.cutscenes.end() ||
             lines_file.cutscenes.at(cutscene_name).size() < line_idx) {
-          lg::warn("Couldn't find {} in line file, or line list is too small!", cutscene_name);
+          lg::warn(
+              "{} Couldn't find {} in line file, or line list is too small, or speaker could not "
+              "be resolved {}!",
+              file_info.language_id, cutscene_name, line.speaker);
         } else {
           scene.add_line(
               line.frame,
@@ -468,8 +476,11 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
   }
   // Now hints
   for (const auto& [hint_name, hint_info] : meta_file.hints) {
+    lg::info(hint_name);
     GameSubtitleSceneInfo scene(SubtitleSceneKind::Hint);
     scene.set_name(hint_name);
+    /*scene.m_sorting_group = db.m_subtitle_groups->find_group(hint_name);
+    scene.m_sorting_group_idx = db.m_subtitle_groups->find_group_index(scene.m_sorting_group);*/
     if (hint_info.id == "0") {
       scene.m_kind = SubtitleSceneKind::HintNamed;
     } else {
@@ -481,10 +492,18 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
       if (line.clear) {
         scene.add_clear_entry(line.frame);
       } else {
-        // TODO - assumptions going on here
-        scene.add_line(line.frame,
-                       font->convert_utf8_to_game(lines_file.hints.at(hint_name).at(line_idx)),
-                       font->convert_utf8_to_game(lines_file.speakers.at(line.speaker)), true);
+        if (lines_file.speakers.find(line.speaker) == lines_file.speakers.end() ||
+            lines_file.hints.find(hint_name) == lines_file.hints.end() ||
+            lines_file.hints.at(hint_name).size() < line_idx) {
+          lg::warn(
+              "{} Couldn't find {} in line file, or line list is too small, or speaker could not "
+              "be resolved {}!",
+              file_info.language_id, hint_name, line.speaker);
+        } else {
+          scene.add_line(line.frame,
+                         font->convert_utf8_to_game(lines_file.hints.at(hint_name).at(line_idx)),
+                         font->convert_utf8_to_game(lines_file.speakers.at(line.speaker)), true);
+        }
         line_idx++;
       }
     }
@@ -886,17 +905,18 @@ GameSubtitleDB load_subtitle_project(GameVersion game_version) {
   db.m_subtitle_groups->hydrate_from_asset_file();
   try {
     goos::Reader reader;
-    std::vector<GameTextDefinitionFile> files;
+    std::vector<GameSubtitleDefinitionFile> files;
     std::string subtitle_project = (file_util::get_jak_project_dir() / "game" / "assets" /
                                     version_to_game_name(game_version) / "game_subtitle.gp")
                                        .string();
-    open_text_project("subtitle", subtitle_project, files);
+    open_subtitle_project("subtitle", subtitle_project, files);
     for (auto& file : files) {
-      if (file.format != GameTextDefinitionFile::Format::GOAL) {
-        continue;  // non-GOAL formats are not supported for subtitles
+      if (file.format == GameSubtitleDefinitionFile::Format::GOAL) {
+        auto code = reader.read_from_file({file.lines_path});
+        parse_subtitle(code, db, file.lines_path);
+      } else if (file.format == GameSubtitleDefinitionFile::Format::JSON) {
+        parse_subtitle_json(db, file);
       }
-      auto code = reader.read_from_file({file.file_path});
-      parse_subtitle(code, db, file.file_path);
     }
   } catch (std::runtime_error& e) {
     lg::error("error loading subtitle project: {}", e.what());
@@ -915,7 +935,8 @@ GameSubtitleDB load_subtitle_project(GameVersion game_version) {
 
   // std::vector<std::string> locale_lookup = {"en-US", "fr-FR", "de-DE", "es-ES", "it-IT",
   //                                           "jp-JP", "en-GB", "pt-PT", "fi-FI", "sv-SE",
-  //                                           "da-DK", "no-NO", "nl-NL", "pt-BR", "hu-HU"};
+  //                                           "da-DK", "no-NO", "nl-NL", "pt-BR", "hu-HU", "ca-ES",
+  //                                           "is-IS"};
 
   // for (const auto& [language_id, bank] : db.m_banks) {
   //   auto meta_file =
@@ -951,5 +972,3 @@ GameSubtitleDB load_subtitle_project(GameVersion game_version) {
 
   return db;
 }
-
-// TODO - write a deserializer, the compiler still can do the compiling!

@@ -196,7 +196,7 @@ void SubtitleEditor::draw_window() {
       if (ImGui::Button("Add Scene")) {
         GameSubtitleSceneInfo newScene(SubtitleSceneKind::Movie);
         newScene.m_name = m_new_scene_name;
-        newScene.m_id = 0;  // TODO - id is always zero, bug in subtitles.cpp?
+        newScene.m_id = 0; // id's are only used for non-named hints
         newScene.m_sorting_group = m_new_scene_group;
         m_subtitle_db.m_banks.at(m_current_language)->add_scene(newScene);
         m_subtitle_db.m_subtitle_groups->add_scene(newScene.m_sorting_group, newScene.m_name);
