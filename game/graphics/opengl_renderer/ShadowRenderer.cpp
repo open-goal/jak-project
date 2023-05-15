@@ -110,7 +110,7 @@ void ShadowRenderer::xgkick(u16 imm) {
               for (int i = 0; i < 4; i++) {
                 rgba[i] = data[offset + i * 4];
               }
-              // fmt::print("rgbap: {} {} {} {}\n", rgba[0], rgba[1], rgba[2], rgba[3]);
+              // fmt::print("rgbaq: {} {} {} {}\n", rgba[0], rgba[1], rgba[2], rgba[3]);
               break;
             case GifTag::RegisterDescriptor::XYZF2:
               // handle_xyzf2_packed(data + offset, render_state, prof);
@@ -302,10 +302,20 @@ void ShadowRenderer::render(DmaFollower& dma,
       run_mscal_vu2c(mscal.immediate);
     } else if (next.vifcode0().kind == VifCode::Kind::FLUSHA &&
                next.vifcode1().kind == VifCode::Kind::DIRECT) {
+      // there's 4 direct transfers to set up various registers.
+      // we only care about the one that has the color value.
+      auto xfer1 = dma.read_and_advance();
       dma.read_and_advance();
       dma.read_and_advance();
-      dma.read_and_advance();
-
+      auto r = *(xfer1.data + 24);
+      auto g = *(xfer1.data + 25);
+      auto b = *(xfer1.data + 26);
+      auto a = *(xfer1.data + 27);
+      m_color.x() = r / 255.0f;
+      m_color.y() = g / 255.0f;
+      m_color.z() = b / 255.0f;
+      m_color.w() = a / 128.0f;
+      fmt::print("rgba: {} {} {} {}\n", r, g, b, a);
     } else {
       ASSERT_MSG(false, fmt::format("{} {}", next.vifcode0().print(), next.vifcode1().print()));
     }
@@ -349,7 +359,6 @@ void ShadowRenderer::draw(SharedRenderState* render_state, ScopedProfilerNode& p
   glDepthMask(GL_FALSE);  // no depth writes.
   if (m_debug_draw_volume) {
     glEnable(GL_BLEND);
-    glBlendEquation(GL_FUNC_ADD);
     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
   } else {
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);  // no color writes.
@@ -361,7 +370,7 @@ void ShadowRenderer::draw(SharedRenderState* render_state, ScopedProfilerNode& p
 
   {
     glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"),
-                0., 0.4, 0., 0.5);
+                0.0f, 128.0f / 256, 0.0f, 127.0f / 256);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ogl.index_buffer[0]);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_next_front_index * sizeof(u32), m_front_indices,
                  GL_STREAM_DRAW);
@@ -372,8 +381,8 @@ void ShadowRenderer::draw(SharedRenderState* render_state, ScopedProfilerNode& p
     if (m_debug_draw_volume) {
       glDisable(GL_BLEND);
       glUniform4f(
-          glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"), 0.,
-          0.0, 0., 0.5);
+          glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"), 0.0f,
+          0.0f, 0.0f, 0.5f);
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
       glDrawElements(GL_TRIANGLES, (m_next_front_index - 6), GL_UNSIGNED_INT, nullptr);
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -385,7 +394,7 @@ void ShadowRenderer::draw(SharedRenderState* render_state, ScopedProfilerNode& p
 
   {
     glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"),
-                0.4, 0.0, 0., 0.5);
+                128.0f / 256, 0.0f, 0.0f, 130.0f / 256);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ogl.index_buffer[1]);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_next_back_index * sizeof(u32), m_back_indices,
                  GL_STREAM_DRAW);
@@ -397,8 +406,8 @@ void ShadowRenderer::draw(SharedRenderState* render_state, ScopedProfilerNode& p
     if (m_debug_draw_volume) {
       glDisable(GL_BLEND);
       glUniform4f(
-          glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"), 0.,
-          0.0, 0., 0.5);
+          glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"), 0.0f,
+          0.0f, 0.0f, 0.5f);
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
       glDrawElements(GL_TRIANGLES, (m_next_back_index - 0), GL_UNSIGNED_INT, nullptr);
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -412,20 +421,20 @@ void ShadowRenderer::draw(SharedRenderState* render_state, ScopedProfilerNode& p
   // finally, draw shadow.
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ogl.index_buffer[0]);
   glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"),
-              0.13, 0.13, 0.13, 0.5);
-  glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+              m_color.x(), m_color.y(), m_color.z(), m_color.w());
+  glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
   // glStencilFunc(GL_GREATER, 0, 0);
   glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
   glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
   glDepthFunc(GL_ALWAYS);
 
   glEnable(GL_BLEND);
-  glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
-  glBlendFuncSeparate(GL_ONE, GL_ONE, GL_ONE, GL_ZERO);
+  glBlendEquation(GL_FUNC_ADD);
+  glBlendFuncSeparate(GL_DST_COLOR, GL_ZERO, GL_ONE, GL_ZERO);
   glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(sizeof(u32) * (m_next_front_index - 6)));
+  glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
   prof.add_draw_call();
   prof.add_tri(2);
-  glBlendEquation(GL_FUNC_ADD);
   glDepthMask(GL_TRUE);
 
   glDisable(GL_STENCIL_TEST);
