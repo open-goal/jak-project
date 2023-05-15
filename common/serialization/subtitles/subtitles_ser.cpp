@@ -38,7 +38,7 @@ std::string get_string(const goos::Object& x) {
 }
 
 /*!
- * Parse a game text file.
+ * Parse a game text file (GOAL format).
  * Information is added to the game text database.
  *
  * The file should begin with (language-id x y z...) with the given language IDs.
@@ -189,6 +189,24 @@ void parse_text(const goos::Object& data, GameTextDB& db, const GameTextDefiniti
   }
 }
 
+/*!
+ * Parse a game text file (JSON format).
+ * Information is added to the game text database.
+ *
+ * Each single text entry should follow this format:
+ *    <text_id>: <text_value>
+ * For example, for (display #x1043) you would add this entry:
+ *    "1043": "DISPLAY"
+ *
+ * You can also set multiple sequential lines starting from an initial text_id:
+ *    <text_id>: [<text_value_1>, <text_value_2>, etc]
+ * For example, Jak 1 credits start at #x0b00, so this would override the first 3 lines:
+ *    "0b00": [
+ *      "JAK AND DAXTER: CREDITS LINE 1",
+ *      "CREDITS LINE 2",
+ *      "CREDITS LINE 3"
+ *    ]
+ */
 void parse_text_json(const nlohmann::json& json,
                      GameTextDB& db,
                      const GameTextDefinitionFile& file_info) {
@@ -217,13 +235,28 @@ void parse_text_json(const nlohmann::json& json,
   const GameTextFontBank* font = get_font_bank(file_info.text_version);
   // Parse the file
   for (const auto& [text_id, text_value] : json.items()) {
-    if (!text_value.is_string()) {
-      throw std::runtime_error(fmt::format("Non string provided for text id #x{}", text_id));
-    }
-    auto line = font->convert_utf8_to_game(text_value);
     auto line_id = std::stoi(text_id, nullptr, 16);
-    // TODO - lint duplicate line definitions across text files
-    bank->set_line(line_id, line);
+    if (text_value.is_string()) {
+      // single line replacement
+      auto line = font->convert_utf8_to_game(text_value);
+      // TODO - lint duplicate line definitions across text files
+      bank->set_line(line_id, line);
+    } else if (text_value.is_array()) {
+      // multi-line replacement starting from line_id
+      //  (e.g. for Jak 1 credits, start from x0b00)
+      for (const auto& [idx, raw_line] : text_value.items()) {
+        if (!raw_line.is_string()) {
+          throw std::runtime_error(fmt::format(
+              "Non string provided for line {} / text id #x{} of _credits", idx, line_id));
+        }
+        auto line = font->convert_utf8_to_game(raw_line);
+        bank->set_line(line_id++, line);  // increment line_id
+      }
+    } else {
+      // Unexpected value type
+      throw std::runtime_error(
+          fmt::format("Must provide string or array for text id #x{}", text_id));
+    }
   }
 }
 
