@@ -489,18 +489,31 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
 
     int size = 64 - step.amount;
     int start_bit = end_bit - size;
+    bool neg = false;
     if (start_bit < 0) {
-      throw std::runtime_error("Bad bitfield start bit");
+      // throw std::runtime_error("push_step: Bad bitfield start bit");
+      size += start_bit;
+      start_bit = 0;
+      neg = true;
     }
 
     auto type = ts.lookup_type(m_type);
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
     ASSERT(as_bitfield);
     auto field = find_field(ts, as_bitfield, start_bit, size, is_unsigned);
-    auto result =
+    auto deref =
         pool.alloc_element<DerefElement>(m_base, false, DerefToken::make_field_name(field.name()));
-    result->inline_nested();
-    return result;
+    deref->inline_nested();
+    if (neg) {
+      ASSERT(is_unsigned);
+      auto result = pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::SHL),
+          pool.form<CastElement>(TypeSpec("int"), pool.alloc_single_form(nullptr, deref)),
+          pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(64 - step.amount)));
+      return result;
+    } else {
+      return deref;
+    }
   }
 
   if (m_steps.empty() && step.kind == BitfieldManip::Kind::LOGAND_WITH_CONSTANT_INT) {
