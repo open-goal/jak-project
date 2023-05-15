@@ -5,6 +5,6 @@ in vec2 st;
 uniform sampler2D tex_T0;
 
 void main() {
-    color = texture(tex_T0, st);
-    color.w *= 2;
+  color = texture(tex_T0, st);
+  color.w *= 2;
 }

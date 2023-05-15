@@ -8,6 +8,6 @@ uniform sampler2D tex;
 out vec4 out_color;
 
 void main() {
-    // sample texture
-    out_color = fragment_color * texture(tex, tex_coord);
+  // sample texture
+  out_color = fragment_color * texture(tex, tex_coord);
 }
