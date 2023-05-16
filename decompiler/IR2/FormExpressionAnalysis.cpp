@@ -3307,7 +3307,40 @@ void FunctionCallElement::update_from_stack(const Env& env,
             ASSERT(head_obj.is_symbol("get-art-by-name-method"));
             head = pool.form<ConstantTokenElement>("get-art-by-name");
           } else {
-            if (head_obj.is_symbol() &&
+            if (head_obj.is_symbol("set-subtask-hook!")) {
+              // change the integer argument to a constant.
+              auto arg2o = arg_forms.at(2)->to_form(env);
+              if (arg2o.is_int()) {
+                std::string temp("");
+                switch (arg2o.as_int()) {
+                  case 0:
+                    temp = "TASK_MANAGER_INIT_HOOK";
+                    break;
+                  case 1:
+                    temp = "TASK_MANAGER_CLEANUP_HOOK";
+                    break;
+                  case 2:
+                    temp = "TASK_MANAGER_UPDATE_HOOK";
+                    break;
+                  case 3:
+                    temp = "TASK_MANAGER_CODE_HOOK";
+                    break;
+                  case 4:
+                    temp = "TASK_MANAGER_COMPLETE_HOOK";
+                    break;
+                  case 5:
+                    temp = "TASK_MANAGER_FAIL_HOOK";
+                    break;
+                  case 6:
+                    temp = "TASK_MANAGER_EVENT_HOOK";
+                    break;
+                }
+                if (!temp.empty()) {
+                  arg_forms.at(2) = pool.alloc_single_element_form<ConstantTokenElement>(
+                      arg_forms.at(2)->parent_element, temp);
+                }
+              }
+            } else if (head_obj.is_symbol() &&
                 tp_type.method_from_type().base_type() == "setting-control" &&
                 arg_forms.at(0)->to_form(env).is_symbol("*setting-control*") &&
                 arg_forms.size() > 1) {
@@ -3834,6 +3867,17 @@ void DerefElement::update_from_stack(const Env& env,
   if (as_art) {
     result->push_back(as_art);
     return;
+  }
+
+  auto as_simple_expr = m_base->try_as_element<SimpleExpressionElement>();
+  if (env.version == GameVersion::Jak2 && as_simple_expr && as_simple_expr->expr().is_identity() &&
+      as_simple_expr->expr().get_arg(0).is_sym_val() &&
+      as_simple_expr->expr().get_arg(0).get_str() == "*game-info*" && m_tokens.size() >= 2 &&
+      m_tokens.at(0).is_field_name("sub-task-list") && m_tokens.at(1).is_int()) {
+    m_tokens.at(1) = DerefToken::make_int_expr(pool.form<ConstantTokenElement>(
+        fmt::format("(game-task-node {})",
+                    decompiler::decompile_int_enum_from_int(TypeSpec("game-task-node"), env.dts->ts,
+                                                            m_tokens.at(1).int_constant()))));
   }
 
   result->push_back(this);
