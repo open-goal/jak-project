@@ -2,6 +2,7 @@
 
 #include "common/log/log.h"
 #include "common/util/Assert.h"
+#include "common/util/BinaryReader.h"
 #include "common/util/FileUtil.h"
 
 #include "game/overlord/common/fake_iso.h"
@@ -215,9 +216,24 @@ uint32_t FS_LoadMusic(char* name, s32* bank_handle) {
   return 0;
 }
 
+// original overlord uses good old fread into a struct instance
+// lets use BinaryReader instead
+static void parseSoundBank(BinaryReader data, SoundBank& bank) {
+  bank.name = data.read<std::array<char, 16>>();
+  bank.bank_handle = data.read<u32>();
+  bank.sound_count = data.read<u32>();
+  bank.sound.resize(bank.sound_count);
+
+  for (auto& snd : bank.sound) {
+    snd.name = data.read<std::array<char, 16>>();
+    snd.fallof_params = data.read<u32>();
+  }
+}
+
 uint32_t FS_LoadSoundBank(char* name, SoundBank* bank) {
   char namebuf[16];
 
+  // sector size of sound name list
   int offset = 10 * 2048;
   if (bank->sound_count == 101) {
     offset = 1 * 2048;
@@ -234,9 +250,12 @@ uint32_t FS_LoadSoundBank(char* name, SoundBank* bank) {
       return 0;
   }
 
-  auto fp = file_util::open_file(get_file_path(file), "rb");
-  fread(bank, offset, 1, fp);
-  fclose(fp);
+  // auto fp = file_util::open_file(get_file_path(file), "rb");
+  // fread(bank, offset, 1, fp);
+  // fclose(fp);
+
+  auto data = file_util::read_binary_file(fs::path(get_file_path(file)));
+  parseSoundBank(BinaryReader(data), *bank);
 
   s32 handle = snd_BankLoadEx(get_file_path(file), offset, 0, 0);
   snd_ResolveBankXREFS();
