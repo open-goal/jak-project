@@ -242,15 +242,15 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                              BucketId::TEX_ALL_MAP);
   // 320
   init_bucket_renderer<ProgressRenderer>("progress", BucketCategory::OTHER, BucketId::PROGRESS,
-                                         0x8000);
+                                         0x1000);
   init_bucket_renderer<DirectRenderer>("screen-filter", BucketCategory::OTHER,
                                        BucketId::SCREEN_FILTER, 256);
   init_bucket_renderer<DirectRenderer>("subtitle", BucketCategory::OTHER, BucketId::SUBTITLE,
-                                       0x8000);
+                                       0x1000);
   init_bucket_renderer<DirectRenderer>("debug2", BucketCategory::OTHER, BucketId::DEBUG2, 0x8000);
   init_bucket_renderer<DirectRenderer>("debug-no-zbuf2", BucketCategory::OTHER,
                                        BucketId::DEBUG_NO_ZBUF2, 0x8000);
-  init_bucket_renderer<DirectRenderer>("debug3", BucketCategory::OTHER, BucketId::DEBUG3, 0x1000);
+  init_bucket_renderer<DirectRenderer>("debug3", BucketCategory::OTHER, BucketId::DEBUG3, 0x2000);
 
   auto eye_renderer = std::make_unique<EyeRenderer>("eyes", 0);
   m_render_state.eye_renderer = eye_renderer.get();
@@ -259,7 +259,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     if (!m_bucket_renderers[i]) {
-      init_bucket_renderer<EmptyBucketRenderer>(fmt::format("bucket{}", i), BucketCategory::OTHER,
+      init_bucket_renderer<EmptyBucketRenderer>(fmt::format("bucket-{}", i), BucketCategory::OTHER,
                                                 i);
     }
 
@@ -353,6 +353,8 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
   // 22 : SHRUB_BILLBOARD_LEVEL0
   // 23 : SHRUB_TRANS_LEVEL0
   // 24 : SHRUB_GENERIC_LEVEL0
+  init_bucket_renderer<Generic2>("l0-shrub-generic", BucketCategory::GENERIC,
+                                 BucketId::SHRUB_GENERIC_LEVEL0);
 
   //-----------------------
   // LEVEL 1 shrub texture
@@ -366,7 +368,7 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
   // 28 : SHRUB_BILLBOARD_LEVEL1
   // 29 : SHRUB_TRANS_LEVEL1
   // 30 : SHRUB_GENERIC_LEVEL1
-  init_bucket_renderer<Generic2>("mystery-generic", BucketCategory::GENERIC,
+  init_bucket_renderer<Generic2>("l1-shrub-generic", BucketCategory::GENERIC,
                                  BucketId::SHRUB_GENERIC_LEVEL1);
 
   //-----------------------
@@ -484,7 +486,7 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     if (!m_bucket_renderers[i]) {
-      init_bucket_renderer<EmptyBucketRenderer>(fmt::format("bucket{}", i), BucketCategory::OTHER,
+      init_bucket_renderer<EmptyBucketRenderer>(fmt::format("bucket-{}", i), BucketCategory::OTHER,
                                                 (BucketId)i);
     }
 

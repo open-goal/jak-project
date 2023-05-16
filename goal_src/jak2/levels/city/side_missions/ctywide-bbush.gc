@@ -1426,119 +1426,115 @@
 
 (set-subtask-hook!
   *game-info*
-  259
-  0
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (set-setting! 'minimap 'clear 0 32)
-      (set-setting! 'airlock #f 0 0)
-      (set-setting! 'exclusive-task #f 0 (-> self node-info task))
-      (let ((s5-0 *traffic-manager*)
-            (gp-0 (new 'stack 'traffic-object-spawn-params))
-            )
-        (set! (-> gp-0 position quad) (-> *bb-ring-info* (-> self info index) start-pos quad))
-        (quaternion-axis-angle! (-> gp-0 rotation) 0.0 1.0 0.0 (-> *bb-ring-info* (-> self info index) rotation))
-        (set! (-> gp-0 object-type) (traffic-type bikea))
-        (set! (-> gp-0 behavior) (the-as uint 0))
-        (set! (-> gp-0 id) (the-as uint 0))
-        (set! (-> gp-0 proc) #f)
-        (send-event s5-0 'spawn-object gp-0)
-        (if (-> gp-0 proc)
-            (set! (-> self slave 1) (process->handle (-> gp-0 proc)))
-            )
-        )
-      (set! (-> self start-time) 0)
-      (set! (-> self sub-state) (the-as uint 0))
-      (set! (-> self count) 0)
-      (set! (-> self max-count) (-> *bb-ring-info* (-> self info index) rings length))
-      (none)
+  (game-task-node city-burning-bush-ring-1-resolution)
+  TASK_MANAGER_INIT_HOOK
+  (lambda :behavior task-manager
+    ()
+    (set-setting! 'minimap 'clear 0.0 (minimap-flag task-graph))
+    (set-setting! 'airlock #f 0.0 0)
+    (set-setting! 'exclusive-task #f 0.0 (-> self node-info task))
+    (let ((s5-0 *traffic-manager*)
+          (gp-0 (new 'stack 'traffic-object-spawn-params))
+          )
+      (set! (-> gp-0 position quad) (-> *bb-ring-info* (-> self info index) start-pos quad))
+      (quaternion-axis-angle! (-> gp-0 rotation) 0.0 1.0 0.0 (-> *bb-ring-info* (-> self info index) rotation))
+      (set! (-> gp-0 object-type) (traffic-type bikea))
+      (set! (-> gp-0 behavior) (the-as uint 0))
+      (set! (-> gp-0 id) (the-as uint 0))
+      (set! (-> gp-0 proc) #f)
+      (send-event s5-0 'spawn-object gp-0)
+      (if (-> gp-0 proc)
+          (set! (-> self slave 1) (process->handle (-> gp-0 proc)))
+          )
       )
+    (set! (-> self start-time) 0)
+    (set! (-> self sub-state) (the-as uint 0))
+    (set! (-> self count) 0)
+    (set! (-> self max-count) (-> *bb-ring-info* (-> self info index) rings length))
+    (none)
     )
   )
 
 (set-subtask-hook!
   *game-info*
-  259
-  1
-  (the-as
-    (function object)
-    (lambda :behavior task-manager () (send-event *traffic-manager* 'restore-default-settings) (none))
-    )
+  (game-task-node city-burning-bush-ring-1-resolution)
+  TASK_MANAGER_CLEANUP_HOOK
+  (lambda :behavior task-manager () (send-event *traffic-manager* 'restore-default-settings) (none))
   )
 
 (set-subtask-hook!
   *game-info*
-  259
-  2
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (check-time self)
-      (cond
-        ((and (handle->process (-> self slave 0))
-              (-> self slave 0 process 0 next-state)
-              (= (-> self slave 0 process 0 next-state name) 'idle)
-              )
-         )
-        (else
-          (let ((v1-15 (-> self sub-state)))
-            (cond
-              ((< v1-15 (the-as uint (-> self max-count)))
-               (let* ((a1-2 (-> *bb-ring-info* (-> self info index) rings v1-15))
-                      (a0-14 (race-ring-spawn self a1-2))
-                      )
-                 (when a0-14
-                   (set! (-> self slave 0) (process->handle a0-14))
-                   (set! (-> self time-limit) (the-as time-frame (if (zero? (-> self sub-state))
-                                                                     4500
-                                                                     (the-as int (-> *bb-ring-info* (-> self info index) time))
-                                                                     )
-                                                      )
-                         )
-                   (set! (-> self start-time) (-> self clock frame-counter))
-                   (+! (-> self sub-state) 1)
-                   )
+  (game-task-node city-burning-bush-ring-1-resolution)
+  TASK_MANAGER_UPDATE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (check-time self)
+    (cond
+      ((and (handle->process (-> self slave 0))
+            (-> self slave 0 process 0 next-state)
+            (= (-> self slave 0 process 0 next-state name) 'idle)
+            )
+       )
+      (else
+        (let ((v1-15 (-> self sub-state)))
+          (cond
+            ((< v1-15 (the-as uint (-> self max-count)))
+             (let* ((a1-2 (-> *bb-ring-info* (-> self info index) rings v1-15))
+                    (a0-14 (race-ring-spawn self a1-2))
+                    )
+               (when a0-14
+                 (set! (-> self slave 0) (process->handle a0-14))
+                 (set! (-> self time-limit) (the-as time-frame (if (zero? (-> self sub-state))
+                                                                   4500
+                                                                   (the-as int (-> *bb-ring-info* (-> self info index) time))
+                                                                   )
+                                                    )
+                       )
+                 (set! (-> self start-time) (-> self clock frame-counter))
+                 (+! (-> self sub-state) 1)
                  )
                )
-              (else
-                (go-virtual complete)
-                )
+             )
+            (else
+              (go-virtual complete)
               )
             )
           )
         )
-      (none)
       )
+    (none)
     )
   )
 
 (set-subtask-hook!
   *game-info*
-  259
-  3
-  (the-as (function object) (lambda :behavior task-manager
-                              ()
-                              (while (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 5))
-                                (suspend)
-                                )
-                              (none)
-                              )
-          )
+  (game-task-node city-burning-bush-ring-1-resolution)
+  TASK_MANAGER_CODE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (while (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 5))
+      (suspend)
+      )
+    (none)
+    )
   )
 
 (set-subtask-hook!
   *game-info*
-  259
-  4
-  (the-as (function object) (lambda :behavior task-manager () (close! (-> self node-info) 'event) (none)))
+  (game-task-node city-burning-bush-ring-1-resolution)
+  TASK_MANAGER_COMPLETE_HOOK
+  (lambda :behavior task-manager () (close! (-> self node-info) 'event) (none))
   )
 
-(copy-hooks! (-> *game-info* sub-task-list 273) (-> *game-info* sub-task-list 259))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-ring-2-resolution))
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-ring-1-resolution))
+  )
 
-(copy-hooks! (-> *game-info* sub-task-list 293) (-> *game-info* sub-task-list 259))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-ring-3-resolution))
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-ring-1-resolution))
+  )
 
 (defpartgroup group-bush-collect
   :id 1056
@@ -2530,185 +2526,173 @@ This commonly includes things such as:
 
 (set-subtask-hook!
   *game-info*
-  269
-  1
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (let ((v1-4 (-> *bb-collection-info* (-> self info index))))
-        (dotimes (a0-1 (-> v1-4 colls length))
-          (when (and (-> v1-4 colls a0-1 minimap) (nonzero? (-> v1-4 colls a0-1 minimap)))
-            (logior! (-> v1-4 colls a0-1 minimap flags) (minimap-flag fade-out))
-            (set! (-> v1-4 colls a0-1 minimap) #f)
-            )
+  (game-task-node city-burning-bush-collection-1-resolution)
+  TASK_MANAGER_CLEANUP_HOOK
+  (lambda :behavior task-manager
+    ()
+    (let ((v1-4 (-> *bb-collection-info* (-> self info index))))
+      (dotimes (a0-1 (-> v1-4 colls length))
+        (when (and (-> v1-4 colls a0-1 minimap) (nonzero? (-> v1-4 colls a0-1 minimap)))
+          (logior! (-> v1-4 colls a0-1 minimap flags) (minimap-flag fade-out))
+          (set! (-> v1-4 colls a0-1 minimap) #f)
           )
         )
-      (none)
       )
+    (none)
     )
   )
 
 (set-subtask-hook!
   *game-info*
-  269
-  0
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (set-setting! 'airlock #f 0 0)
-      (set-setting! 'exclusive-task #f 0 (-> self node-info task))
-      (let ((gp-0 (-> *bb-collection-info* (-> self info index))))
-        (let ((v1-9 (-> gp-0 user-data)))
-          (cond
-            ((zero? v1-9)
-             (set! (-> self hud-counter)
-                   (ppointer->handle (process-spawn hud-homing-beacon :init hud-init-by-other :to *target*))
-                   )
-             )
-            ((= v1-9 1)
-             (set! (-> self hud-counter)
-                   (ppointer->handle (process-spawn hud-dark-eco-pickup :init hud-init-by-other :to *target*))
-                   )
-             )
-            ((= v1-9 2)
-             (set! (-> self hud-counter)
-                   (ppointer->handle (process-spawn hud-green-eco-pickup :init hud-init-by-other :to *target*))
-                   )
-             )
-            )
+  (game-task-node city-burning-bush-collection-1-resolution)
+  TASK_MANAGER_INIT_HOOK
+  (lambda :behavior task-manager
+    ()
+    (set-setting! 'airlock #f 0.0 0)
+    (set-setting! 'exclusive-task #f 0.0 (-> self node-info task))
+    (let ((gp-0 (-> *bb-collection-info* (-> self info index))))
+      (let ((v1-9 (-> gp-0 user-data)))
+        (cond
+          ((zero? v1-9)
+           (set! (-> self hud-counter)
+                 (ppointer->handle (process-spawn hud-homing-beacon :init hud-init-by-other :to *target*))
+                 )
+           )
+          ((= v1-9 1)
+           (set! (-> self hud-counter)
+                 (ppointer->handle (process-spawn hud-dark-eco-pickup :init hud-init-by-other :to *target*))
+                 )
+           )
+          ((= v1-9 2)
+           (set! (-> self hud-counter)
+                 (ppointer->handle (process-spawn hud-green-eco-pickup :init hud-init-by-other :to *target*))
+                 )
+           )
           )
-        (dotimes (s5-3 (-> gp-0 colls length))
-          (let ((v1-32 (-> gp-0 user-data)))
-            (cond
-              ((zero? v1-32)
+        )
+      (dotimes (s5-3 (-> gp-0 colls length))
+        (let ((v1-32 (-> gp-0 user-data)))
+          (cond
+            ((zero? v1-32)
+             (set! (-> gp-0 colls s5-3 handle)
+                   (ppointer->handle (bush-collect-homing-beacon-spawn self (-> gp-0 colls s5-3 pos)))
+                   )
+             (set! (-> gp-0 colls s5-3 minimap) (add-icon!
+                                                  *minimap*
+                                                  (handle->process (-> gp-0 colls s5-3 handle))
+                                                  (the-as uint 16)
+                                                  (the-as int #f)
+                                                  (the-as vector #t)
+                                                  0
+                                                  )
+                   )
+             )
+            ((= v1-32 1)
+             (let ((t1-3 (new 'stack 'fact-info self (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc)))
+                   )
+               (new 'stack-no-clear 'vector)
+               (set! (-> t1-3 options) (logior (actor-option fade-out no-distance-check-fadeout) (-> t1-3 options)))
+               (set! (-> t1-3 fade-time) (-> gp-0 time))
                (set! (-> gp-0 colls s5-3 handle)
-                     (ppointer->handle (bush-collect-homing-beacon-spawn self (-> gp-0 colls s5-3 pos)))
-                     )
-               (set! (-> gp-0 colls s5-3 minimap) (add-icon!
-                                                    *minimap*
-                                                    (handle->process (-> gp-0 colls s5-3 handle))
-                                                    (the-as uint 16)
-                                                    (the-as int #f)
-                                                    (the-as vector #t)
-                                                    0
-                                                    )
-                     )
-               )
-              ((= v1-32 1)
-               (let ((t1-3 (new 'stack 'fact-info self (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc)))
-                     )
-                 (new 'stack-no-clear 'vector)
-                 (set! (-> t1-3 options) (logior (actor-option fade-out no-distance-check-fadeout) (-> t1-3 options)))
-                 (set! (-> t1-3 fade-time) (-> gp-0 time))
-                 (set! (-> gp-0 colls s5-3 handle)
-                       (ppointer->handle
-                         (birth-pickup-at-point (-> gp-0 colls s5-3 pos) (pickup-type eco-pill-dark) 1.0 #t self t1-3)
-                         )
+                     (ppointer->handle
+                       (birth-pickup-at-point (-> gp-0 colls s5-3 pos) (pickup-type eco-pill-dark) 1.0 #t self t1-3)
                        )
-                 )
-               (set! (-> gp-0 colls s5-3 minimap) (add-icon!
-                                                    *minimap*
-                                                    (handle->process (-> gp-0 colls s5-3 handle))
-                                                    (the-as uint 16)
-                                                    (the-as int #f)
-                                                    (the-as vector #t)
-                                                    0
-                                                    )
                      )
                )
-              ((= v1-32 2)
-               (let ((t1-5 (new 'stack 'fact-info self (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc)))
-                     )
-                 (new 'stack-no-clear 'vector)
-                 (set! (-> t1-5 options) (logior (actor-option fade-out no-distance-check-fadeout) (-> t1-5 options)))
-                 (set! (-> t1-5 fade-time) (-> gp-0 time))
-                 (set! (-> gp-0 colls s5-3 handle)
-                       (ppointer->handle
-                         (birth-pickup-at-point (-> gp-0 colls s5-3 pos) (pickup-type eco-pill-green) 1.0 #t self t1-5)
-                         )
+             (set! (-> gp-0 colls s5-3 minimap) (add-icon!
+                                                  *minimap*
+                                                  (handle->process (-> gp-0 colls s5-3 handle))
+                                                  (the-as uint 16)
+                                                  (the-as int #f)
+                                                  (the-as vector #t)
+                                                  0
+                                                  )
+                   )
+             )
+            ((= v1-32 2)
+             (let ((t1-5 (new 'stack 'fact-info self (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc)))
+                   )
+               (new 'stack-no-clear 'vector)
+               (set! (-> t1-5 options) (logior (actor-option fade-out no-distance-check-fadeout) (-> t1-5 options)))
+               (set! (-> t1-5 fade-time) (-> gp-0 time))
+               (set! (-> gp-0 colls s5-3 handle)
+                     (ppointer->handle
+                       (birth-pickup-at-point (-> gp-0 colls s5-3 pos) (pickup-type eco-pill-green) 1.0 #t self t1-5)
                        )
-                 )
-               (set! (-> gp-0 colls s5-3 minimap) (add-icon!
-                                                    *minimap*
-                                                    (handle->process (-> gp-0 colls s5-3 handle))
-                                                    (the-as uint 16)
-                                                    (the-as int #f)
-                                                    (the-as vector #t)
-                                                    0
-                                                    )
                      )
                )
-              (else
-                (set! (-> gp-0 colls s5-3 handle) (ppointer->handle (bush-collect-spawn self (-> gp-0 colls s5-3 pos))))
-                (set! (-> gp-0 colls s5-3 minimap) #f)
-                )
-              )
-            )
-          )
-        (set! (-> self start-time) (-> self clock frame-counter))
-        (set! (-> self time-limit) (-> gp-0 time))
-        )
-      (none)
-      )
-    )
-  )
-
-(set-subtask-hook!
-  *game-info*
-  269
-  2
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (check-time self)
-      (let ((a0-2 (-> *bb-collection-info* (-> self info index)))
-            (v1-6 0)
-            )
-        (dotimes (a1-0 (-> a0-2 colls length))
-          (cond
-            ((and (nonzero? (-> a0-2 colls a1-0 handle)) (handle->process (-> a0-2 colls a1-0 handle)))
-             (+! v1-6 1)
+             (set! (-> gp-0 colls s5-3 minimap) (add-icon!
+                                                  *minimap*
+                                                  (handle->process (-> gp-0 colls s5-3 handle))
+                                                  (the-as uint 16)
+                                                  (the-as int #f)
+                                                  (the-as vector #t)
+                                                  0
+                                                  )
+                   )
              )
             (else
-              (when (-> a0-2 colls a1-0 minimap)
-                (logior! (-> a0-2 colls a1-0 minimap flags) (minimap-flag fade-out))
-                (set! (-> a0-2 colls a1-0 minimap) #f)
-                )
+              (set! (-> gp-0 colls s5-3 handle) (ppointer->handle (bush-collect-spawn self (-> gp-0 colls s5-3 pos))))
+              (set! (-> gp-0 colls s5-3 minimap) #f)
               )
             )
           )
-        (set! (-> *game-info* counter) (the float v1-6))
-        (if (zero? v1-6)
-            (go-virtual complete)
-            )
         )
-      (none)
+      (set! (-> self start-time) (-> self clock frame-counter))
+      (set! (-> self time-limit) (-> gp-0 time))
       )
+    (none)
     )
   )
 
 (set-subtask-hook!
   *game-info*
-  269
-  3
-  (the-as
-    (function object)
-    (lambda :behavior task-manager () (set! (-> self state-time) (-> self clock frame-counter)) (none))
+  (game-task-node city-burning-bush-collection-1-resolution)
+  TASK_MANAGER_UPDATE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (check-time self)
+    (let ((a0-2 (-> *bb-collection-info* (-> self info index)))
+          (v1-6 0)
+          )
+      (dotimes (a1-0 (-> a0-2 colls length))
+        (cond
+          ((and (nonzero? (-> a0-2 colls a1-0 handle)) (handle->process (-> a0-2 colls a1-0 handle)))
+           (+! v1-6 1)
+           )
+          (else
+            (when (-> a0-2 colls a1-0 minimap)
+              (logior! (-> a0-2 colls a1-0 minimap flags) (minimap-flag fade-out))
+              (set! (-> a0-2 colls a1-0 minimap) #f)
+              )
+            )
+          )
+        )
+      (set! (-> *game-info* counter) (the float v1-6))
+      (if (zero? v1-6)
+          (go-virtual complete)
+          )
+      )
+    (none)
     )
   )
 
-;; PC PORT NOTE : added complete hook for collection bbush tasks where we wait for the hud to die first
-(set-subtask-hook! *game-info* 269 4
-  (lambda :behavior task-manager ()
-    (while (handle->process (-> self hud-counter))
-      (suspend))))
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-burning-bush-collection-1-resolution)
+  TASK_MANAGER_CODE_HOOK
+  (lambda :behavior task-manager () (set! (-> self state-time) (-> self clock frame-counter)) (none))
+  )
 
-(copy-hooks! (-> *game-info* sub-task-list 287) (-> *game-info* sub-task-list 269))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-collection-2-resolution))
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-collection-1-resolution))
+  )
 
-(copy-hooks! (-> *game-info* sub-task-list 305) (-> *game-info* sub-task-list 269))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-collection-3-resolution))
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-collection-1-resolution))
+  )
 
 (deftype burning-bush-get-on-info (structure)
   ((trans        vector     :inline :offset-assert   0)
@@ -2835,63 +2819,65 @@ This commonly includes things such as:
 
 (set-subtask-hook!
   *game-info*
-  261
-  0
-  (the-as (function object) (lambda :behavior task-manager
-                              ()
-                              (set-setting! 'airlock #f 0 0)
-                              (set-setting! 'exclusive-task #f 0 (-> self node-info task))
-                              (none)
-                              )
-          )
-  )
-
-(set-subtask-hook! *game-info* 261 2 (the-as (function object) (lambda :behavior task-manager () (none))))
-
-(set-subtask-hook!
-  *game-info*
-  261
-  1
-  (the-as (function object) (lambda :behavior task-manager
-                              ()
-                              (let ((a0-1 (handle->process (-> self slave 0))))
-                                (if a0-1
-                                    (deactivate a0-1)
-                                    )
-                                )
-                              (none)
-                              )
-          )
-  )
-
-(set-subtask-hook!
-  *game-info*
-  261
-  4
-  (the-as (function object) (lambda :behavior task-manager () (close! (-> self node-info) 'event) (none)))
-  )
-
-(set-subtask-hook!
-  *game-info*
-  261
-  5
-  (the-as (function object) (lambda :behavior task-manager
-                              ()
-                              (if (and *target* (focus-test? *target* grabbed))
-                                  (process-release? *target*)
-                                  )
-                              (none)
-                              )
-          )
-  )
-
-(set-subtask-hook!
-  *game-info*
-  261
-  3
+  (game-task-node city-burning-bush-get-to-1-resolution)
+  TASK_MANAGER_INIT_HOOK
   (lambda :behavior task-manager
     ()
-    (set-setting! 'minimap 'clear 0 128)
+    (set-setting! 'airlock #f 0.0 0)
+    (set-setting! 'exclusive-task #f 0.0 (-> self node-info task))
+    (none)
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-burning-bush-get-to-1-resolution)
+  TASK_MANAGER_UPDATE_HOOK
+  (lambda :behavior task-manager () (none))
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-burning-bush-get-to-1-resolution)
+  TASK_MANAGER_CLEANUP_HOOK
+  (lambda :behavior task-manager
+    ()
+    (let ((a0-1 (handle->process (-> self slave 0))))
+      (if a0-1
+          (deactivate a0-1)
+          )
+      )
+    (none)
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-burning-bush-get-to-1-resolution)
+  TASK_MANAGER_COMPLETE_HOOK
+  (lambda :behavior task-manager () (close! (-> self node-info) 'event) (none))
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-burning-bush-get-to-1-resolution)
+  TASK_MANAGER_FAIL_HOOK
+  (lambda :behavior task-manager
+    ()
+    (if (and *target* (focus-test? *target* grabbed))
+        (process-release? *target*)
+        )
+    (none)
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-burning-bush-get-to-1-resolution)
+  TASK_MANAGER_CODE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (set-setting! 'minimap 'clear 0.0 (minimap-flag minimap))
     (while (not (process-grab? *target* #f))
       (suspend)
       )
@@ -2916,8 +2902,8 @@ This commonly includes things such as:
           )
     (suspend)
     (send-event (handle->process (-> self slave 0)) 'get-notify self)
-    (set-setting! 'interp-time 'abs 0 0)
-    (set-setting! 'mode-name 'cam-fixed 0 0)
+    (set-setting! 'interp-time 'abs 0.0 0)
+    (set-setting! 'mode-name 'cam-fixed 0.0 0)
     (set! (-> *ACTOR-bank* birth-max) 1000)
     (suspend)
     (let ((gp-0 (new 'stack 'transformq)))
@@ -2969,54 +2955,95 @@ This commonly includes things such as:
 
 (set-subtask-hook!
   *game-info*
-  261
-  6
-  (the-as (function object) (lambda :behavior task-manager
-                              ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-                              (case arg2
-                                (('notify)
-                                 (case (-> arg3 param 0)
-                                   (('pickup)
-                                    (go-virtual complete)
-                                    )
-                                   (('die)
-                                    (go-virtual fail)
-                                    )
-                                   )
-                                 )
-                                )
-                              (none)
-                              )
+  (game-task-node city-burning-bush-get-to-1-resolution)
+  TASK_MANAGER_EVENT_HOOK
+  (lambda :behavior task-manager
+    ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('notify)
+       (case (-> arg3 param 0)
+         (('pickup)
+          (go-virtual complete)
           )
+         (('die)
+          (go-virtual fail)
+          )
+         )
+       )
+      )
+    (none)
+    )
   )
 
-(copy-hooks! (-> *game-info* sub-task-list 263) (-> *game-info* sub-task-list 261))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-2-resolution))
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-1-resolution))
+  )
 
-(copy-hooks! (-> *game-info* sub-task-list 265) (-> *game-info* sub-task-list 261))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-3-resolution))
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-1-resolution))
+  )
 
-(copy-hooks! (-> *game-info* sub-task-list 267) (-> *game-info* sub-task-list 261))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-4-resolution))
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-1-resolution))
+  )
 
-(copy-hooks! (-> *game-info* sub-task-list 275) (-> *game-info* sub-task-list 261))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-5-resolution))
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-1-resolution))
+  )
 
-(copy-hooks! (-> *game-info* sub-task-list 277) (-> *game-info* sub-task-list 261))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-6-resolution))
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-1-resolution))
+  )
 
-(copy-hooks! (-> *game-info* sub-task-list 281) (-> *game-info* sub-task-list 261))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-7-resolution))
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-1-resolution))
+  )
 
-(copy-hooks! (-> *game-info* sub-task-list 283) (-> *game-info* sub-task-list 261))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-8-resolution))
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-1-resolution))
+  )
 
-(copy-hooks! (-> *game-info* sub-task-list 285) (-> *game-info* sub-task-list 261))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-9-resolution))
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-1-resolution))
+  )
 
-(copy-hooks! (-> *game-info* sub-task-list 289) (-> *game-info* sub-task-list 261))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-10-resolution))
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-1-resolution))
+  )
 
-(copy-hooks! (-> *game-info* sub-task-list 291) (-> *game-info* sub-task-list 261))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-11-resolution))
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-1-resolution))
+  )
 
-(copy-hooks! (-> *game-info* sub-task-list 295) (-> *game-info* sub-task-list 261))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-12-resolution))
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-1-resolution))
+  )
 
-(copy-hooks! (-> *game-info* sub-task-list 299) (-> *game-info* sub-task-list 261))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-13-resolution))
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-1-resolution))
+  )
 
-(copy-hooks! (-> *game-info* sub-task-list 301) (-> *game-info* sub-task-list 261))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-14-resolution))
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-1-resolution))
+  )
 
-(copy-hooks! (-> *game-info* sub-task-list 303) (-> *game-info* sub-task-list 261))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-15-resolution))
+  (-> *game-info* sub-task-list (game-task-node city-burning-bush-get-to-1-resolution))
+  )
 
 (defmethod draw hud-homing-beacon ((obj hud-homing-beacon))
   (set-hud-piece-position!

@@ -78,6 +78,7 @@ ShaderLibrary::ShaderLibrary(GameVersion version) {
   at(ShaderId::SOLID_COLOR) = {"solid_color", version};
   at(ShaderId::DIRECT_BASIC) = {"direct_basic", version};
   at(ShaderId::DIRECT_BASIC_TEXTURED) = {"direct_basic_textured", version};
+  at(ShaderId::DIRECT_BASIC_TEXTURED_MULTI_UNIT) = {"direct_basic_textured_multi_unit", version};
   at(ShaderId::DEBUG_RED) = {"debug_red", version};
   at(ShaderId::SPRITE) = {"sprite_3d", version};
   at(ShaderId::SKY) = {"sky", version};

@@ -132,7 +132,7 @@
      (let ((gp-0 (-> arg3 param 0)))
        (set! (-> *game-info* counter) (the float (-> self cpanel-count)))
        (spawn-hud-panel self (the-as symbol gp-0))
-       (set-setting! 'music #f 0 0)
+       (set-setting! 'music #f 0.0 0)
        (if (not gp-0)
            (set! (-> self exited?) #t)
            )
@@ -201,13 +201,13 @@
     (task-node-close! (game-task-node drill-mech-smash-consoles))
     (set! (-> self alarm-sound-id) (sound-play "drill-alarm"))
     (persist-with-delay *setting-control* 'ignore-target (seconds 8) 'ignore-target #t 0.0 0)
-    (set-setting! 'music 'danger10 0 0)
+    (set-setting! 'music 'danger10 0.0 0)
     (set! (-> self state-time) (-> self clock frame-counter))
     (until (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1))
       (suspend)
       )
     (talker-spawn-func (-> *talker-speech* 183) *entity-pool* (target-pos 0) (the-as region #f))
-    (set-setting! 'pilot #f 0 0)
+    (set-setting! 'pilot #f 0.0 0)
     (let ((v1-20 *target*))
       (if v1-20
           (send-event (handle->process (-> v1-20 mech hud 0)) 'hide-and-die)
@@ -280,8 +280,8 @@
   :event drill-mech-master-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> self clock frame-counter))
-    (set-setting! 'allow-pause #f 0 0)
-    (set-setting! 'allow-progress #f 0 0)
+    (set-setting! 'allow-pause #f 0.0 0)
+    (set-setting! 'allow-progress #f 0.0 0)
     (none)
     )
   :exit (behavior ()
@@ -427,7 +427,7 @@
      (set! (-> self total-countdown-time) (seconds 75))
      (task-node-close! (game-task-node drill-mech-smash-consoles))
      (set! (-> self alarm-sound-id) (sound-play "drill-alarm"))
-     (set-setting! 'music 'danger10 0 0)
+     (set-setting! 'music 'danger10 0.0 0)
      (go-virtual hostile)
      )
     (else
@@ -440,42 +440,37 @@
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  203
-  6
-  (the-as (function object) (lambda :behavior task-manager
-                              ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-                              (case arg2
-                                (('hud-cpanel)
-                                 (let ((v1-1 (new 'stack-no-clear 'event-message-block)))
-                                   (set! (-> v1-1 from) (process->ppointer arg0))
-                                   (set! (-> v1-1 num-params) arg1)
-                                   (set! (-> v1-1 message) arg2)
-                                   (set! (-> v1-1 param 0) (-> arg3 param 0))
-                                   (set! (-> v1-1 param 1) (-> arg3 param 1))
-                                   (set! (-> v1-1 param 2) (-> arg3 param 2))
-                                   (set! (-> v1-1 param 3) (-> arg3 param 3))
-                                   (set! (-> v1-1 param 4) (-> arg3 param 4))
-                                   (set! (-> v1-1 param 5) (-> arg3 param 5))
-                                   (send-event-function (handle->process (-> self slave 0)) v1-1)
-                                   )
-                                 )
-                                )
-                              )
-          )
+  (game-task-node drill-mech-started-smashing)
+  TASK_MANAGER_EVENT_HOOK
+  (lambda :behavior task-manager
+    ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('hud-cpanel)
+       (let ((v1-1 (new 'stack-no-clear 'event-message-block)))
+         (set! (-> v1-1 from) (process->ppointer arg0))
+         (set! (-> v1-1 num-params) arg1)
+         (set! (-> v1-1 message) arg2)
+         (set! (-> v1-1 param 0) (-> arg3 param 0))
+         (set! (-> v1-1 param 1) (-> arg3 param 1))
+         (set! (-> v1-1 param 2) (-> arg3 param 2))
+         (set! (-> v1-1 param 3) (-> arg3 param 3))
+         (set! (-> v1-1 param 4) (-> arg3 param 4))
+         (set! (-> v1-1 param 5) (-> arg3 param 5))
+         (send-event-function (handle->process (-> self slave 0)) v1-1)
+         )
+       )
+      )
+    )
   )
 
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  203
-  0
+  (game-task-node drill-mech-started-smashing)
+  TASK_MANAGER_INIT_HOOK
   (lambda :behavior task-manager () (let ((v0-3 (ppointer->handle (process-spawn drill-mech-master :to self))))
                                       (set! (-> self slave 0) (the-as handle v0-3))
                                       (the-as object v0-3)
                                       )
                                  )
   )
-
-
-
-

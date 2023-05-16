@@ -875,7 +875,7 @@ This commonly includes things such as:
                         (cond
                           ((send-event proc 'grenade (-> self speed))
                            (if (-> self camera-name)
-                               (set-setting! 'entity-name (-> self camera-name) 0 -1)
+                               (set-setting! 'entity-name (-> self camera-name) 0.0 -1)
                                )
                            )
                           ((>= (- (-> self clock frame-counter) (-> self enter-time)) (seconds 3))
@@ -1636,15 +1636,15 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  115
-  0
+  (game-task-node strip-grenade-explode)
+  TASK_MANAGER_INIT_HOOK
   (lambda :behavior task-manager
     ()
-    (set-setting! 'music 'danger10 0 0)
+    (set-setting! 'music 'danger10 0.0 0)
     (set! (-> *game-info* controller 0) (process->handle self))
     (set! (-> self entity) (the-as entity-actor (entity-by-name "grenade-point-1")))
     (set! (-> self actor-group 0) (res-lump-struct (-> self entity) 'actor-groups (pointer entity-actor)))
-    (set-setting! 'allow-continue #f 0 0)
+    (set-setting! 'allow-continue #f 0.0 0)
     (when (-> self actor-group 0)
       (dotimes (gp-0 (the-as int (-> self actor-group 0 0)))
         (let ((s5-0 (-> (&+ (-> self actor-group 0) (* gp-0 8)) 3)))
@@ -1665,8 +1665,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  115
-  3
+  (game-task-node strip-grenade-explode)
+  TASK_MANAGER_CODE_HOOK
   (lambda :behavior task-manager
     ()
     (local-vars (sv-16 object))
@@ -1759,30 +1759,29 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  115
-  5
-  (the-as (function object) (lambda :behavior task-manager
-                              ()
-                              (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-                                (set! (-> a1-0 from) (process->ppointer self))
-                                (set! (-> a1-0 num-params) 2)
-                                (set! (-> a1-0 message) 'attack-invinc)
-                                (set! (-> a1-0 param 0) (the-as uint #f))
-                                (let ((v1-3 (new 'static 'attack-info :mask (attack-info-mask mode id))))
-                                  (let* ((a0-1 *game-info*)
-                                         (a2-1 (+ (-> a0-1 attack-id) 1))
-                                         )
-                                    (set! (-> a0-1 attack-id) a2-1)
-                                    (set! (-> v1-3 id) a2-1)
-                                    )
-                                  (set! (-> v1-3 mode) 'big-explosion)
-                                  (set! (-> a1-0 param 1) (the-as uint v1-3))
-                                  )
-                                (send-event-function *target* a1-0)
-                                )
-                              (none)
-                              )
+  (game-task-node strip-grenade-explode)
+  TASK_MANAGER_FAIL_HOOK
+  (lambda :behavior task-manager
+    ()
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 2)
+      (set! (-> a1-0 message) 'attack-invinc)
+      (set! (-> a1-0 param 0) (the-as uint #f))
+      (let ((v1-3 (new 'static 'attack-info :mask (attack-info-mask mode id))))
+        (let* ((a0-1 *game-info*)
+               (a2-1 (+ (-> a0-1 attack-id) 1))
+               )
+          (set! (-> a0-1 attack-id) a2-1)
+          (set! (-> v1-3 id) a2-1)
           )
+        (set! (-> v1-3 mode) 'big-explosion)
+        (set! (-> a1-0 param 1) (the-as uint v1-3))
+        )
+      (send-event-function *target* a1-0)
+      )
+    (none)
+    )
   )
 
 ;; definition of type drill-plat
@@ -1976,26 +1975,23 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  45
-  3
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
-        (set! (-> gp-0 pos quad) (-> self info end-sphere quad))
-        (quaternion-identity! (-> gp-0 quat))
-        (set! (-> gp-0 flags) (task-arrow-flags))
-        (set! (-> gp-0 map-icon) (the-as uint 15))
-        (set! (-> self arrow) (process->handle (task-arrow-spawn gp-0 (the-as task-arrow self))))
-        )
-      (while (>= (vector-vector-distance (target-pos 0) (-> self info end-sphere)) (-> self info end-sphere r))
-        (suspend)
-        )
-      (send-event (handle->process (-> self arrow)) 'leave)
-      (sleep-code)
-      (none)
+  (game-task-node strip-rescue-battle)
+  TASK_MANAGER_CODE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
+      (set! (-> gp-0 pos quad) (-> self info end-sphere quad))
+      (quaternion-identity! (-> gp-0 quat))
+      (set! (-> gp-0 flags) (task-arrow-flags))
+      (set! (-> gp-0 map-icon) (the-as uint 15))
+      (set! (-> self arrow) (process->handle (task-arrow-spawn gp-0 (the-as task-arrow self))))
       )
+    (while (>= (vector-vector-distance (target-pos 0) (-> self info end-sphere)) (-> self info end-sphere r))
+      (suspend)
+      )
+    (send-event (handle->process (-> self arrow)) 'leave)
+    (sleep-code)
+    (none)
     )
   )
 

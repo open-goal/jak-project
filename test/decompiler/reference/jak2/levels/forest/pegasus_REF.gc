@@ -1093,7 +1093,7 @@ The faster it's moving the fast it flaps it's wings, etc
       )
     (set! (-> self state-time) (-> self clock frame-counter))
     (set! (-> self far-time) (-> self clock frame-counter))
-    (set-setting! 'sound-mode #f 0 1)
+    (set-setting! 'sound-mode #f 0.0 1)
     (none)
     )
   :exit (behavior ()
@@ -1154,7 +1154,7 @@ The faster it's moving the fast it flaps it's wings, etc
       )
     (set! (-> self near-timer) 3000)
     (set! (-> self far-time) (-> self clock frame-counter))
-    (set-setting! 'sound-mode #f 0 1)
+    (set-setting! 'sound-mode #f 0.0 1)
     (none)
     )
   :exit (behavior ()
@@ -1246,7 +1246,7 @@ The faster it's moving the fast it flaps it's wings, etc
           (t9-0)
           )
       )
-    (set-setting! 'sound-mode #f 0 1)
+    (set-setting! 'sound-mode #f 0.0 1)
     (none)
     )
   :exit (behavior ()
@@ -1494,8 +1494,8 @@ The faster it's moving the fast it flaps it's wings, etc
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  107
-  0
+  (game-task-node forest-scouts-pegasus)
+  TASK_MANAGER_INIT_HOOK
   (lambda :behavior task-manager
     ()
     (set! (-> *game-info* controller 0) (process->handle self))
@@ -1521,49 +1521,43 @@ The faster it's moving the fast it flaps it's wings, etc
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  107
-  3
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (local-vars (data int))
-      (set! (-> self start-time) (-> self clock frame-counter))
-      (set! (-> self hud-timer) (ppointer->handle (process-spawn hud-pegasus :init hud-init-by-other :to self)))
-      (while (> (-> self data-int32 0) 0)
-        (set! data (-> self data-int32 1))
-        (when (-> self actor-group 0)
-          (dotimes (actor-group (the-as int (-> self actor-group 0 0)))
-            (let ((actor (-> (&+ (-> self actor-group 0) (* actor-group 8)) 3)))
-              (if (and actor (logtest? (-> actor extra perm status) (entity-perm-status subtask-complete)))
-                  (set! data (+ data -1))
-                  )
-              )
+  (game-task-node forest-scouts-pegasus)
+  TASK_MANAGER_CODE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (local-vars (data int))
+    (set! (-> self start-time) (-> self clock frame-counter))
+    (set! (-> self hud-timer) (ppointer->handle (process-spawn hud-pegasus :init hud-init-by-other :to self)))
+    (while (> (-> self data-int32 0) 0)
+      (set! data (-> self data-int32 1))
+      (when (-> self actor-group 0)
+        (dotimes (actor-group (the-as int (-> self actor-group 0 0)))
+          (let ((actor (-> (&+ (-> self actor-group 0) (* actor-group 8)) 3)))
+            (if (and actor (logtest? (-> actor extra perm status) (entity-perm-status subtask-complete)))
+                (set! data (+ data -1))
+                )
             )
           )
-        (let ((_data data))
-          (set! (-> self data-int32 0) _data)
-          (set! (-> *game-info* counter) (the float _data))
-          )
-        (suspend)
         )
-      (go-virtual complete)
-      (none)
+      (let ((_data data))
+        (set! (-> self data-int32 0) _data)
+        (set! (-> *game-info* counter) (the float _data))
+        )
+      (suspend)
       )
+    (go-virtual complete)
+    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  107
-  4
-  (the-as
-    (function object)
-    (lambda ()
-      (task-node-close! (game-task-node forest-scouts-resolution))
-      (talker-spawn-func (-> *talker-speech* 90) *entity-pool* (target-pos 0) (the-as region #f))
-      (none)
-      )
+  (game-task-node forest-scouts-pegasus)
+  TASK_MANAGER_COMPLETE_HOOK
+  (lambda ()
+    (task-node-close! (game-task-node forest-scouts-resolution))
+    (talker-spawn-func (-> *talker-speech* 90) *entity-pool* (target-pos 0) (the-as region #f))
+    (none)
     )
   )

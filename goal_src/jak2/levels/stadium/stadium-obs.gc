@@ -886,7 +886,7 @@ This commonly includes things such as:
       (set! (-> a1-0 num-params) 0)
       (set! (-> a1-0 message) 'complete)
       (let ((t9-0 send-event-function)
-            (v1-4 (-> *game-info* sub-task-list 237))
+            (v1-4 (-> *game-info* sub-task-list (game-task-node city-defend-stadium-resolution)))
             )
         (t9-0
           (handle->process (if (-> v1-4 info)
@@ -1777,7 +1777,8 @@ This commonly includes things such as:
           )
         (set! (-> s4-0 y) 0.0)
         (vector-normalize! s4-0 1.0)
-        (normalized-heading-to-quaternion! s5-0 s4-0) ;; changed to avoid NaN issue
+        (quaternion-set! s5-0 0.0 (-> s4-0 x) 0.0 (+ 1.0 (-> s4-0 z)))
+        (quaternion-normalize! s5-0)
         (quaternion-slerp!
           (-> self root-override2 quat)
           (-> self root-override2 quat)
@@ -2011,7 +2012,7 @@ This commonly includes things such as:
       (set! (-> a1-21 num-params) 0)
       (set! (-> a1-21 message) 'fail)
       (let ((t9-11 send-event-function)
-            (v1-73 (-> *game-info* sub-task-list 237))
+            (v1-73 (-> *game-info* sub-task-list (game-task-node city-defend-stadium-resolution)))
             )
         (t9-11
           (handle->process (if (-> v1-73 info)
@@ -3147,174 +3148,156 @@ This commonly includes things such as:
 
 (set-subtask-hook!
   *game-info*
-  237
-  0
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (set-setting! 'border-mode #f 0 0)
-      (while (!= (level-status *level* 'stadblmp) 'active)
-        (suspend)
-        )
-      (set-setting! 'minimap 'clear 0 32)
-      (set-setting! 'exclusive-task #f 0 (-> self node-info task))
-      (set-setting! 'music 'danger6 0 0)
-      (want-force-vis *load-state* 'stadblmp #t)
-      (let ((gp-1 *traffic-manager*))
-        (send-event gp-1 'set-object-target-count 11 0)
-        (send-event gp-1 'set-object-target-count 12 0)
-        (send-event gp-1 'set-object-target-count 13 0)
-        (send-event gp-1 'set-object-target-count 14 0)
-        (send-event gp-1 'set-object-target-count 15 0)
-        (send-event gp-1 'set-object-target-count 16 0)
-        (send-event gp-1 'set-object-target-count 0 0)
-        (send-event gp-1 'set-object-target-count 1 0)
-        (send-event gp-1 'set-object-target-count 2 0)
-        (send-event gp-1 'set-object-target-count 6 0)
-        (send-event gp-1 'set-object-target-count 7 0)
-        (send-event gp-1 'set-object-target-count 8 0)
-        (send-event gp-1 'set-object-target-count 9 0)
-        (send-event gp-1 'set-object-target-count 10 0)
-        (send-event gp-1 'set-object-target-count 18 0)
-        (send-event gp-1 'set-object-target-count 19 0)
-        (send-event gp-1 'deactivate-by-type 11)
-        (send-event gp-1 'deactivate-by-type 12)
-        (send-event gp-1 'deactivate-by-type 13)
-        (send-event gp-1 'deactivate-by-type 14)
-        (send-event gp-1 'deactivate-by-type 15)
-        (send-event gp-1 'deactivate-by-type 16)
-        (send-event gp-1 'deactivate-by-type 0)
-        (send-event gp-1 'deactivate-by-type 1)
-        (send-event gp-1 'deactivate-by-type 2)
-        (send-event gp-1 'deactivate-by-type 6)
-        (send-event gp-1 'deactivate-by-type 7)
-        (send-event gp-1 'deactivate-by-type 8)
-        (send-event gp-1 'deactivate-by-type 9)
-        (send-event gp-1 'deactivate-by-type 10)
-        (send-event gp-1 'deactivate-by-type 18)
-        (send-event gp-1 'deactivate-by-type 19)
-        (send-event gp-1 'set-guard-target-level 0)
-        )
-      (let ((v1-177 (entity-by-name "parking-spot-48")))
-        (if v1-177
-            (logior! (-> v1-177 extra perm status) (entity-perm-status bit-9))
-            )
-        )
-      (let ((v1-179 (entity-by-name "parking-spot-49")))
-        (if v1-179
-            (logior! (-> v1-179 extra perm status) (entity-perm-status bit-9))
-            )
-        )
-      (set! (-> self slave 0)
-            (process->handle (the-as process (ppointer->process (process-spawn stad-keira :to self))))
-            )
-      (set! (-> self slave 1)
-            (process->handle (the-as process (ppointer->process (process-spawn stad-brutter :to self))))
-            )
-      (none)
+  (game-task-node city-defend-stadium-resolution)
+  TASK_MANAGER_INIT_HOOK
+  (lambda :behavior task-manager
+    ()
+    (set-setting! 'border-mode #f 0.0 0)
+    (while (!= (level-status *level* 'stadblmp) 'active)
+      (suspend)
       )
+    (set-setting! 'minimap 'clear 0.0 (minimap-flag task-graph))
+    (set-setting! 'exclusive-task #f 0.0 (-> self node-info task))
+    (set-setting! 'music 'danger6 0.0 0)
+    (want-force-vis *load-state* 'stadblmp #t)
+    (let ((gp-1 *traffic-manager*))
+      (send-event gp-1 'set-object-target-count 11 0)
+      (send-event gp-1 'set-object-target-count 12 0)
+      (send-event gp-1 'set-object-target-count 13 0)
+      (send-event gp-1 'set-object-target-count 14 0)
+      (send-event gp-1 'set-object-target-count 15 0)
+      (send-event gp-1 'set-object-target-count 16 0)
+      (send-event gp-1 'set-object-target-count 0 0)
+      (send-event gp-1 'set-object-target-count 1 0)
+      (send-event gp-1 'set-object-target-count 2 0)
+      (send-event gp-1 'set-object-target-count 6 0)
+      (send-event gp-1 'set-object-target-count 7 0)
+      (send-event gp-1 'set-object-target-count 8 0)
+      (send-event gp-1 'set-object-target-count 9 0)
+      (send-event gp-1 'set-object-target-count 10 0)
+      (send-event gp-1 'set-object-target-count 18 0)
+      (send-event gp-1 'set-object-target-count 19 0)
+      (send-event gp-1 'deactivate-by-type 11)
+      (send-event gp-1 'deactivate-by-type 12)
+      (send-event gp-1 'deactivate-by-type 13)
+      (send-event gp-1 'deactivate-by-type 14)
+      (send-event gp-1 'deactivate-by-type 15)
+      (send-event gp-1 'deactivate-by-type 16)
+      (send-event gp-1 'deactivate-by-type 0)
+      (send-event gp-1 'deactivate-by-type 1)
+      (send-event gp-1 'deactivate-by-type 2)
+      (send-event gp-1 'deactivate-by-type 6)
+      (send-event gp-1 'deactivate-by-type 7)
+      (send-event gp-1 'deactivate-by-type 8)
+      (send-event gp-1 'deactivate-by-type 9)
+      (send-event gp-1 'deactivate-by-type 10)
+      (send-event gp-1 'deactivate-by-type 18)
+      (send-event gp-1 'deactivate-by-type 19)
+      (send-event gp-1 'set-guard-target-level 0)
+      )
+    (let ((v1-177 (entity-by-name "parking-spot-48")))
+      (if v1-177
+          (logior! (-> v1-177 extra perm status) (entity-perm-status bit-9))
+          )
+      )
+    (let ((v1-179 (entity-by-name "parking-spot-49")))
+      (if v1-179
+          (logior! (-> v1-179 extra perm status) (entity-perm-status bit-9))
+          )
+      )
+    (set! (-> self slave 0)
+          (process->handle (the-as process (ppointer->process (process-spawn stad-keira :to self))))
+          )
+    (set! (-> self slave 1)
+          (process->handle (the-as process (ppointer->process (process-spawn stad-brutter :to self))))
+          )
+    (none)
     )
   )
 
 (set-subtask-hook!
   *game-info*
-  237
-  2
-  (the-as (function object) (lambda :behavior task-manager
-                              ()
-                              (let ((a0-0 *suppress-stadium*))
-                                (let ((v1-0 (-> a0-0 bbox)))
-                                  (set! (-> v1-0 min x) 373227.53)
-                                  (set! (-> v1-0 min y) -204800.0)
-                                  (set! (-> v1-0 min z) -3276800.0)
-                                  (set! (-> v1-0 min w) 1.0)
-                                  )
-                                (set-vector! (-> a0-0 bbox max) 1482301.5 204800.0 -1228800.0 1.0)
-                                (set! (-> a0-0 duration) (seconds 604800))
-                                (create-or-update-suppression-box a0-0)
-                                )
-                              (none)
-                              )
-          )
-  )
-
-(set-subtask-hook!
-  *game-info*
-  237
-  4
-  (the-as (function object) (lambda :behavior task-manager
-                              ()
-                              (dotimes (gp-0 2)
-                                (send-event (handle->process (-> self slave gp-0)) 'die)
-                                )
-                              (let ((gp-1 (-> (process-by-name "battle-58" *active-pool*) child)))
-                                (while gp-1
-                                  (send-event (ppointer->process gp-1) 'die-fast)
-                                  (set! gp-1 (-> gp-1 0 brother))
-                                  )
-                                )
-                              (let ((gp-2 (-> (process-by-name "battle-59" *active-pool*) child)))
-                                (while gp-2
-                                  (send-event (ppointer->process gp-2) 'die-fast)
-                                  (set! gp-2 (-> gp-2 0 brother))
-                                  )
-                                )
-                              (let ((gp-3 (-> (process-by-name "battle-60" *active-pool*) child)))
-                                (while gp-3
-                                  (send-event (ppointer->process gp-3) 'die-fast)
-                                  (set! gp-3 (-> gp-3 0 brother))
-                                  )
-                                )
-                              (none)
-                              )
-          )
-  )
-
-(set-subtask-hook!
-  *game-info*
-  237
-  1
-  (the-as (function object) (lambda :behavior task-manager
-                              ()
-                              (remove-setting! 'border-mode)
-                              (send-event *traffic-manager* 'restore-default-settings)
-                              (none)
-                              )
-          )
-  )
-
-;; jp patch
-(set-subtask-hook!
-  *game-info*
-  236
-  0
-  (the-as
-    (function object)
-    (lambda :behavior task-manager () (task-close! "stadium-burning-bush-race-board-introduction") (none))
+  (game-task-node city-defend-stadium-resolution)
+  TASK_MANAGER_UPDATE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (let ((a0-0 *suppress-stadium*))
+      (let ((v1-0 (-> a0-0 bbox)))
+        (set! (-> v1-0 min x) 373227.53)
+        (set! (-> v1-0 min y) -204800.0)
+        (set! (-> v1-0 min z) -3276800.0)
+        (set! (-> v1-0 min w) 1.0)
+        )
+      (set-vector! (-> a0-0 bbox max) 1482301.5 204800.0 -1228800.0 1.0)
+      (set! (-> a0-0 duration) (seconds 604800))
+      (create-or-update-suppression-box a0-0)
+      )
+    (none)
     )
   )
 
 (set-subtask-hook!
   *game-info*
-  236
-  2
-  (the-as (function object) (lambda :behavior task-manager
-                              ()
-                              (let ((a0-0 *suppress-stadium*))
-                                (let ((v1-0 (-> a0-0 bbox)))
-                                  (set! (-> v1-0 min x) 373227.53)
-                                  (set! (-> v1-0 min y) -204800.0)
-                                  (set! (-> v1-0 min z) -3276800.0)
-                                  (set! (-> v1-0 min w) 1.0)
-                                  )
-                                (set-vector! (-> a0-0 bbox max) 1482301.5 204800.0 -1228800.0 1.0)
-                                (set! (-> a0-0 duration) (seconds 604800))
-                                (create-or-update-suppression-box a0-0)
-                                )
-                              (none)
-                              )
-          )
+  (game-task-node city-defend-stadium-resolution)
+  TASK_MANAGER_COMPLETE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (dotimes (gp-0 2)
+      (send-event (handle->process (-> self slave gp-0)) 'die)
+      )
+    (let ((gp-1 (-> (process-by-name "battle-58" *active-pool*) child)))
+      (while gp-1
+        (send-event (ppointer->process gp-1) 'die-fast)
+        (set! gp-1 (-> gp-1 0 brother))
+        )
+      )
+    (let ((gp-2 (-> (process-by-name "battle-59" *active-pool*) child)))
+      (while gp-2
+        (send-event (ppointer->process gp-2) 'die-fast)
+        (set! gp-2 (-> gp-2 0 brother))
+        )
+      )
+    (let ((gp-3 (-> (process-by-name "battle-60" *active-pool*) child)))
+      (while gp-3
+        (send-event (ppointer->process gp-3) 'die-fast)
+        (set! gp-3 (-> gp-3 0 brother))
+        )
+      )
+    (none)
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-defend-stadium-resolution)
+  TASK_MANAGER_CLEANUP_HOOK
+  (lambda :behavior task-manager
+    ()
+    (remove-setting! 'border-mode)
+    (send-event *traffic-manager* 'restore-default-settings)
+    (none)
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-defend-stadium-introduction)
+  TASK_MANAGER_UPDATE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (let ((a0-0 *suppress-stadium*))
+      (let ((v1-0 (-> a0-0 bbox)))
+        (set! (-> v1-0 min x) 373227.53)
+        (set! (-> v1-0 min y) -204800.0)
+        (set! (-> v1-0 min z) -3276800.0)
+        (set! (-> v1-0 min w) 1.0)
+        )
+      (set-vector! (-> a0-0 bbox max) 1482301.5 204800.0 -1228800.0 1.0)
+      (set! (-> a0-0 duration) (seconds 604800))
+      (create-or-update-suppression-box a0-0)
+      )
+    (none)
+    )
   )
 
 (defmethod draw hud-samos-old ((obj hud-samos-old))

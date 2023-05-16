@@ -42,40 +42,41 @@
   )
 
 (deftype sound-iop-info (structure)
-  ((frame           uint32                  :offset-assert   0)
-   (strpos          int32                   :offset-assert   4)
-   (str-id          uint32                  :offset-assert   8)
-   (str-id-sign     int32                   :offset          8)
-   (freemem         uint32                  :offset-assert  12)
-   (chinfo          uint8         48        :offset-assert  16)
-   (freemem2        uint32                  :offset-assert  64)
-   (nocd            uint32                  :offset-assert  68)
-   (dirtycd         uint32                  :offset-assert  72)
-   (diskspeed       uint32        2         :offset-assert  76)
-   (lastspeed       uint32                  :offset-assert  84)
-   (dupseg          int32                   :offset-assert  88)
-   (times           int32         41        :offset-assert  92)
-   (times-seq       uint32                  :offset-assert 256)
-   (iop-ticks       uint32                  :offset-assert 260)
-   (stream-position uint32        4         :offset        272)
-   (stream-status   stream-status 4         :offset-assert 288)
+  ((frame           uint32                      :offset-assert   0)
+   (strpos          int32                       :offset-assert   4)
+   (str-id          uint32                      :offset-assert   8)
+   (str-id-sign     int32                       :offset          8)
+   (freemem         uint32                      :offset-assert  12)
+   (chinfo          uint8             48        :offset-assert  16)
+   (freemem2        uint32                      :offset-assert  64)
+   (nocd            uint32                      :offset-assert  68)
+   (dirtycd         uint32                      :offset-assert  72)
+   (diskspeed       uint32            2         :offset-assert  76)
+   (lastspeed       uint32                      :offset-assert  84)
+   (dupseg          int32                       :offset-assert  88)
+   (times           int32             41        :offset-assert  92)
+   (times-seq       uint32                      :offset-assert 256)
+   (iop-ticks       uint32                      :offset-assert 260)
+   (stream-position uint32            4         :offset        272)
+   (stream-status   stream-status     4         :offset-assert 288)
    (stream-name     sound-stream-name 4 :inline :offset-assert 304)
-   (stream-id       sound-id      4         :offset-assert 496)
-   (stream-id-int32 int32         4         :overlay-at stream-id)
-   (music-register  uint8         17        :offset-assert 512)
-   (music-excite    int8                    :offset        528)
-   (ramdisk-name    uint8         48        :offset-assert 529)
+   (stream-id       sound-id          4         :offset-assert 496)
+   (stream-id-int32 int32             4         :offset        496)
+   (music-register  uint8             17        :offset-assert 512)
+   (music-excite    int8                        :offset        528)
+   (ramdisk-name    uint8             48        :offset-assert 529)
    )
   :method-count-assert 9
   :size-assert         #x241
   :flag-assert         #x900000241
   )
 
+
 (define *sound-iop-info* (new 'global 'sound-iop-info))
 
 (defun str-is-playing? ()
   (countdown (v1-0 4)
-    (if (and (>= (-> *sound-iop-info* stream-id v1-0) 0)
+    (if (and (>= (the-as uint (-> *sound-iop-info* stream-id v1-0)) 0)
              (logtest? (-> *sound-iop-info* stream-status v1-0) (stream-status ststatus-four))
              )
         (return #t)
@@ -361,6 +362,7 @@
     )
   )
 
+;; WARN: Return type mismatch uint128 vs sound-name.
 (defun string->sound-name ((arg0 string))
   (let ((v1-0 (new 'stack-no-clear 'qword)))
     (set! (-> v1-0 quad) (the-as uint128 0))
@@ -408,17 +410,10 @@
   0
   )
 
-(defmacro sound-play (name &key (id (new-sound-id))
-                           &key (vol 100.0) &key (pitch 0) &key (bend 0)
-                           &key (group sfx)
-                           &key (position #t))
-  `(sound-play-by-name (static-sound-name ,name) ,id (the int (* (/ 1024.0 100.0) ,vol)) (the int (* 1524.0 ,pitch)) ,bend (sound-group ,group) ,position)
-  )
-
 (defbehavior sound-play-by-name process-drawable ((arg0 sound-name) (arg1 sound-id) (arg2 int) (arg3 int) (arg4 int) (arg5 sound-group) (arg6 object))
-  (local-vars (sv-16 sound-group))
   "Last arg can by a symbol with value [[#t]], in which case it will pull `trans` [[vector]] off the current [[process-drawable]]
-   otherwise, an explicit [[vector]] can be provided"
+otherwise, an explicit [[vector]] can be provided"
+  (local-vars (sv-16 sound-group))
   (set! sv-16 arg5)
   (let ((s4-0 arg6))
     (when *sound-player-enable*
@@ -556,14 +551,15 @@
   )
 
 (defun sound-volume-off ()
-  (set-setting! 'music-volume 'abs 0 0)
-  (set-setting! 'sfx-volume 'abs 0 0)
-  (set-setting! 'ambient-volume 'abs 0 0)
+  (set-setting! 'music-volume 'abs 0.0 0)
+  (set-setting! 'sfx-volume 'abs 0.0 0)
+  (set-setting! 'ambient-volume 'abs 0.0 0)
   0
   )
 
 (define *ambient-spec* (new 'static 'sound-spec))
 
+;; WARN: Return type mismatch object vs ambient-sound.
 (defmethod new ambient-sound ((allocation symbol) (type-to-make type) (arg0 basic) (arg1 vector))
   (local-vars
     (sv-16 sound-spec)
@@ -911,7 +907,6 @@
   0
   )
 
-;; definition for function ear-trans
 (defun ear-trans ((arg0 int))
   (cond
     ((or (movie?) *external-cam-mode*)
@@ -929,7 +924,11 @@
 (defun-debug make-sqrt-table ()
   (format #t "static int sqrt_table[256] =~%{~%")
   (dotimes (gp-0 256)
-    (let* ((f0-2 (sqrtf (* 16777216.0 (the float gp-0)))) (a2-0 (the int (+ 0.5 f0-2)))) (format #t "~D,~%" a2-0))
+    (let* ((f0-2 (sqrtf (* 16777216.0 (the float gp-0))))
+           (a2-0 (the int (+ 0.5 f0-2)))
+           )
+      (format #t "~D,~%" a2-0)
+      )
     )
   (format #t "};~%")
   0
@@ -956,8 +955,6 @@
     )
   )
 
-
-
 (defun loader-test-command ((arg0 sound-command) (arg1 uint))
   (let ((v1-1 (the-as sound-rpc-test-cmd (add-element *sound-loader-rpc*))))
     (set! (-> v1-1 command) arg0)
@@ -974,7 +971,7 @@
   (let ((gp-0 (new 'stack-no-clear 'inline-array 'vector 2)))
     (vector-! (-> gp-0 0) (target-pos 0) arg0)
     (if *target*
-        (vector-! (-> gp-0 1) arg1 (-> *target* root transv))
+        (vector-! (-> gp-0 1) arg1 (-> *target* control transv))
         (set! (-> gp-0 1 quad) (-> arg1 quad))
         )
     (vector-normalize! (-> gp-0 0) 1.0)
