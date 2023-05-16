@@ -1566,18 +1566,17 @@
   *game-info*
   (game-task-node city-shuttle-shuttle)
   TASK_MANAGER_EVENT_HOOK
-  (the-as (function object) (lambda :behavior task-manager
-                              ((arg0 citizen-rebel) (arg1 object) (arg2 symbol))
-                              (case arg2
-                                (('task-done)
-                                 (format #t "task-done~%")
-                                 (set! (-> self sub-state) (+ (-> arg0 index) 2))
-                                 (set! (-> *game-info* counter) (+ -1.0 (-> *game-info* counter)))
-                                 )
-                                )
-                              (none)
-                              )
-          )
+  (lambda :behavior task-manager
+    ((arg0 citizen-rebel) (arg1 object) (arg2 symbol))
+    (case arg2
+      (('task-done)
+       (format #t "task-done~%")
+       (set! (-> self sub-state) (+ (-> arg0 index) 2))
+       (set! (-> *game-info* counter) (+ -1.0 (-> *game-info* counter)))
+       )
+      )
+    (none)
+    )
   )
 
 ;; failed to figure out what this is:
@@ -1585,20 +1584,17 @@
   *game-info*
   (game-task-node city-shuttle-shuttle)
   TASK_MANAGER_INIT_HOOK
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (set-setting! 'exclusive-task #f 0 (-> self node-info task))
-      (set! (-> self begin-pos quad) (-> (new 'static 'vector :x 4698112.0 :y 40960.0 :z 81920.0 :w 1.0) quad))
-      (let ((v1-4 (entity-by-name "parking-spot-8")))
-        (if v1-4
-            (logior! (-> v1-4 extra perm status) (entity-perm-status bit-9))
-            )
-        )
-      (shuttle-init self *city-shuttle-info*)
-      (none)
+  (lambda :behavior task-manager
+    ()
+    (set-setting! 'exclusive-task #f 0 (-> self node-info task))
+    (set! (-> self begin-pos quad) (-> (new 'static 'vector :x 4698112.0 :y 40960.0 :z 81920.0 :w 1.0) quad))
+    (let ((v1-4 (entity-by-name "parking-spot-8")))
+      (if v1-4
+          (logior! (-> v1-4 extra perm status) (entity-perm-status bit-9))
+          )
       )
+    (shuttle-init self *city-shuttle-info*)
+    (none)
     )
   )
 
@@ -1607,28 +1603,16 @@
   *game-info*
   (game-task-node city-shuttle-shuttle)
   TASK_MANAGER_CLEANUP_HOOK
-  (the-as (function object) (lambda :behavior task-manager
-                              ()
-                              (let ((t9-0 shuttle-cleanup)
-                                    (a0-0 self)
-                                    )
-                                *city-shuttle-info*
-                                (t9-0 a0-0)
-                                )
-                              (send-event *traffic-manager* 'restore-default-settings)
-                              (none)
-                              )
+  (lambda :behavior task-manager
+    ()
+    (let ((t9-0 shuttle-cleanup)
+          (a0-0 self)
           )
-  )
-
-;; failed to figure out what this is:
-(set-subtask-hook!
-  *game-info*
-  (game-task-node city-shuttle-shuttle)
-  TASK_MANAGER_UPDATE_HOOK
-  (the-as
-    (function object)
-    (lambda :behavior task-manager () (shuttle-update self *city-shuttle-info* (the-as uint 95)) (none))
+      *city-shuttle-info*
+      (t9-0 a0-0)
+      )
+    (send-event *traffic-manager* 'restore-default-settings)
+    (none)
     )
   )
 
@@ -1636,28 +1620,33 @@
 (set-subtask-hook!
   *game-info*
   (game-task-node city-shuttle-shuttle)
+  TASK_MANAGER_UPDATE_HOOK
+  (lambda :behavior task-manager () (shuttle-update self *city-shuttle-info* (the-as uint 95)) (none))
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-shuttle-shuttle)
   TASK_MANAGER_CODE_HOOK
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (set! (-> self hud-counter) (ppointer->handle (process-spawn hud-citizen :init hud-init-by-other :to self)))
-      (send-event *traffic-manager* 'set-target-level #x3f400000)
-      (send-event *traffic-manager* 'set-guard-target-count-range 4 0 1)
-      (send-event *traffic-manager* 'set-guard-target-count-range 5 0 1)
-      (send-event *traffic-manager* 'set-guard-target-count-range 0 0 2)
-      (send-event *traffic-manager* 'set-guard-target-count-range 1 0 3)
-      (while (zero? (-> self sub-state))
-        (suspend)
-        )
-      (set! (-> self state-time) (-> self clock frame-counter))
-      (while (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 5))
-        (suspend)
-        )
-      (send-event *traffic-manager* 'set-alert-level 2)
-      (send-event *traffic-manager* 'set-alert-duration #xa4cb80)
-      (none)
+  (lambda :behavior task-manager
+    ()
+    (set! (-> self hud-counter) (ppointer->handle (process-spawn hud-citizen :init hud-init-by-other :to self)))
+    (send-event *traffic-manager* 'set-target-level #x3f400000)
+    (send-event *traffic-manager* 'set-guard-target-count-range 4 0 1)
+    (send-event *traffic-manager* 'set-guard-target-count-range 5 0 1)
+    (send-event *traffic-manager* 'set-guard-target-count-range 0 0 2)
+    (send-event *traffic-manager* 'set-guard-target-count-range 1 0 3)
+    (while (zero? (-> self sub-state))
+      (suspend)
       )
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (while (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 5))
+      (suspend)
+      )
+    (send-event *traffic-manager* 'set-alert-level 2)
+    (send-event *traffic-manager* 'set-alert-duration #xa4cb80)
+    (none)
     )
   )
 
@@ -1666,10 +1655,7 @@
   *game-info*
   (game-task-node city-shuttle-shuttle)
   TASK_MANAGER_FAIL_HOOK
-  (the-as
-    (function object)
-    (lambda :behavior task-manager () (send-event (handle->process (-> self arrow)) 'die) (none))
-    )
+  (lambda :behavior task-manager () (send-event (handle->process (-> self arrow)) 'die) (none))
   )
 
 ;; failed to figure out what this is:
@@ -1677,35 +1663,32 @@
   *game-info*
   (game-task-node city-shuttle-shuttle)
   TASK_MANAGER_COMPLETE_HOOK
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (set! (-> self state-time) (-> self clock frame-counter))
-      (talker-spawn-func (-> *talker-speech* 97) *entity-pool* (target-pos 0) (the-as region #f))
-      (let ((gp-1 (-> self clock frame-counter)))
-        (until #f
-          (let ((v1-4 0))
-            (dotimes (a0-2 4)
-              (let ((a1-5 (handle->process (-> self slave (* a0-2 2)))))
-                (if (or (not a1-5) (and (-> a1-5 next-state) (= (-> a1-5 next-state name) 'inactive)))
-                    (+! v1-4 1)
-                    )
-                )
+  (lambda :behavior task-manager
+    ()
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (talker-spawn-func (-> *talker-speech* 97) *entity-pool* (target-pos 0) (the-as region #f))
+    (let ((gp-1 (-> self clock frame-counter)))
+      (until #f
+        (let ((v1-4 0))
+          (dotimes (a0-2 4)
+            (let ((a1-5 (handle->process (-> self slave (* a0-2 2)))))
+              (if (or (not a1-5) (and (-> a1-5 next-state) (= (-> a1-5 next-state name) 'inactive)))
+                  (+! v1-4 1)
+                  )
               )
-            (if (or (>= v1-4 4) (>= (- (-> self clock frame-counter) gp-1) (seconds 10)))
-                (goto cfg-23)
-                )
             )
-          (suspend)
-          0
+          (if (or (>= v1-4 4) (>= (- (-> self clock frame-counter) gp-1) (seconds 10)))
+              (goto cfg-23)
+              )
           )
+        (suspend)
+        0
         )
-      #f
-      (label cfg-23)
-      (task-node-close! (game-task-node city-shuttle-resolution))
-      (none)
       )
+    #f
+    (label cfg-23)
+    (task-node-close! (game-task-node city-shuttle-resolution))
+    (none)
     )
   )
 
@@ -1768,18 +1751,17 @@
   *game-info*
   (game-task-node city-burning-bush-shuttle-1-resolution)
   TASK_MANAGER_EVENT_HOOK
-  (the-as (function object) (lambda :behavior task-manager
-                              ((arg0 citizen-rebel) (arg1 object) (arg2 symbol))
-                              (case arg2
-                                (('task-done)
-                                 (format #t "task-done~%")
-                                 (set! (-> self sub-state) (+ (-> arg0 index) 2))
-                                 (set! (-> *game-info* counter) (+ -1.0 (-> *game-info* counter)))
-                                 )
-                                )
-                              (none)
-                              )
-          )
+  (lambda :behavior task-manager
+    ((arg0 citizen-rebel) (arg1 object) (arg2 symbol))
+    (case arg2
+      (('task-done)
+       (format #t "task-done~%")
+       (set! (-> self sub-state) (+ (-> arg0 index) 2))
+       (set! (-> *game-info* counter) (+ -1.0 (-> *game-info* counter)))
+       )
+      )
+    (none)
+    )
   )
 
 ;; failed to figure out what this is:
@@ -1787,16 +1769,13 @@
   *game-info*
   (game-task-node city-burning-bush-shuttle-1-resolution)
   TASK_MANAGER_INIT_HOOK
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (set-setting! 'airlock #f 0 0)
-      (set-setting! 'exclusive-task #f 0 (-> self node-info task))
-      (set! (-> self begin-pos quad) (-> (new 'static 'vector :x -687390.75 :y 40960.0 :z 3479224.2 :w 1.0) quad))
-      (shuttle-init self *city-burning-bush-shuttle-1-info*)
-      (none)
-      )
+  (lambda :behavior task-manager
+    ()
+    (set-setting! 'airlock #f 0 0)
+    (set-setting! 'exclusive-task #f 0 (-> self node-info task))
+    (set! (-> self begin-pos quad) (-> (new 'static 'vector :x -687390.75 :y 40960.0 :z 3479224.2 :w 1.0) quad))
+    (shuttle-init self *city-burning-bush-shuttle-1-info*)
+    (none)
     )
   )
 
@@ -1805,18 +1784,17 @@
   *game-info*
   (game-task-node city-burning-bush-shuttle-1-resolution)
   TASK_MANAGER_CLEANUP_HOOK
-  (the-as (function object) (lambda :behavior task-manager
-                              ()
-                              (let ((t9-0 shuttle-cleanup)
-                                    (a0-0 self)
-                                    )
-                                *city-burning-bush-shuttle-1-info*
-                                (t9-0 a0-0)
-                                )
-                              (send-event *traffic-manager* 'restore-default-settings)
-                              (none)
-                              )
+  (lambda :behavior task-manager
+    ()
+    (let ((t9-0 shuttle-cleanup)
+          (a0-0 self)
           )
+      *city-burning-bush-shuttle-1-info*
+      (t9-0 a0-0)
+      )
+    (send-event *traffic-manager* 'restore-default-settings)
+    (none)
+    )
   )
 
 ;; failed to figure out what this is:
@@ -1835,27 +1813,24 @@
   *game-info*
   (game-task-node city-burning-bush-shuttle-1-resolution)
   TASK_MANAGER_CODE_HOOK
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (set! (-> self hud-counter) (ppointer->handle (process-spawn hud-citizen :init hud-init-by-other :to self)))
-      (send-event *traffic-manager* 'set-target-level #x3f400000)
-      (send-event *traffic-manager* 'set-guard-target-count-range 4 0 1)
-      (send-event *traffic-manager* 'set-guard-target-count-range 5 0 1)
-      (send-event *traffic-manager* 'set-guard-target-count-range 0 0 2)
-      (send-event *traffic-manager* 'set-guard-target-count-range 1 0 3)
-      (while (zero? (-> self sub-state))
-        (suspend)
-        )
-      (set! (-> self state-time) (-> self clock frame-counter))
-      (while (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 5))
-        (suspend)
-        )
-      (send-event *traffic-manager* 'set-alert-level 2)
-      (send-event *traffic-manager* 'set-alert-duration #xa4cb80)
-      (none)
+  (lambda :behavior task-manager
+    ()
+    (set! (-> self hud-counter) (ppointer->handle (process-spawn hud-citizen :init hud-init-by-other :to self)))
+    (send-event *traffic-manager* 'set-target-level #x3f400000)
+    (send-event *traffic-manager* 'set-guard-target-count-range 4 0 1)
+    (send-event *traffic-manager* 'set-guard-target-count-range 5 0 1)
+    (send-event *traffic-manager* 'set-guard-target-count-range 0 0 2)
+    (send-event *traffic-manager* 'set-guard-target-count-range 1 0 3)
+    (while (zero? (-> self sub-state))
+      (suspend)
       )
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (while (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 5))
+      (suspend)
+      )
+    (send-event *traffic-manager* 'set-alert-level 2)
+    (send-event *traffic-manager* 'set-alert-duration #xa4cb80)
+    (none)
     )
   )
 
@@ -1864,10 +1839,7 @@
   *game-info*
   (game-task-node city-burning-bush-shuttle-1-resolution)
   TASK_MANAGER_FAIL_HOOK
-  (the-as
-    (function object)
-    (lambda :behavior task-manager () (send-event (handle->process (-> self arrow)) 'die) (none))
-    )
+  (lambda :behavior task-manager () (send-event (handle->process (-> self arrow)) 'die) (none))
   )
 
 ;; failed to figure out what this is:
@@ -1875,31 +1847,28 @@
   *game-info*
   (game-task-node city-burning-bush-shuttle-1-resolution)
   TASK_MANAGER_COMPLETE_HOOK
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (set! (-> self state-time) (-> self clock frame-counter))
-      (until #f
-        (let ((v1-2 0))
-          (dotimes (a0-0 4)
-            (let ((a1-4 (handle->process (-> self slave (* a0-0 2)))))
-              (if (and a1-4 (-> a1-4 next-state) (= (-> a1-4 next-state name) 'inactive))
-                  (+! v1-2 1)
-                  )
-              )
+  (lambda :behavior task-manager
+    ()
+    (set! (-> self state-time) (-> self clock frame-counter))
+    (until #f
+      (let ((v1-2 0))
+        (dotimes (a0-0 4)
+          (let ((a1-4 (handle->process (-> self slave (* a0-0 2)))))
+            (if (and a1-4 (-> a1-4 next-state) (= (-> a1-4 next-state name) 'inactive))
+                (+! v1-2 1)
+                )
             )
-          (if (= v1-2 4)
-              (goto cfg-20)
-              )
           )
-        (suspend)
-        0
+        (if (= v1-2 4)
+            (goto cfg-20)
+            )
         )
-      #f
-      (label cfg-20)
-      (task-node-close! (game-task-node city-burning-bush-shuttle-1-resolution))
-      (none)
+      (suspend)
+      0
       )
+    #f
+    (label cfg-20)
+    (task-node-close! (game-task-node city-burning-bush-shuttle-1-resolution))
+    (none)
     )
   )
