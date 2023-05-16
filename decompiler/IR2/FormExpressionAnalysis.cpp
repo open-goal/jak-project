@@ -3311,33 +3311,15 @@ void FunctionCallElement::update_from_stack(const Env& env,
               // change the integer argument to a constant.
               auto arg2o = arg_forms.at(2)->to_form(env);
               if (arg2o.is_int()) {
-                std::string temp("");
-                switch (arg2o.as_int()) {
-                  case 0:
-                    temp = "TASK_MANAGER_INIT_HOOK";
-                    break;
-                  case 1:
-                    temp = "TASK_MANAGER_CLEANUP_HOOK";
-                    break;
-                  case 2:
-                    temp = "TASK_MANAGER_UPDATE_HOOK";
-                    break;
-                  case 3:
-                    temp = "TASK_MANAGER_CODE_HOOK";
-                    break;
-                  case 4:
-                    temp = "TASK_MANAGER_COMPLETE_HOOK";
-                    break;
-                  case 5:
-                    temp = "TASK_MANAGER_FAIL_HOOK";
-                    break;
-                  case 6:
-                    temp = "TASK_MANAGER_EVENT_HOOK";
-                    break;
-                }
-                if (!temp.empty()) {
+                int hook = arg2o.as_int();
+                static const std::vector<std::string> hook_names = {
+                    "TASK_MANAGER_INIT_HOOK",     "TASK_MANAGER_CLEANUP_HOOK",
+                    "TASK_MANAGER_UPDATE_HOOK",   "TASK_MANAGER_CODE_HOOK",
+                    "TASK_MANAGER_COMPLETE_HOOK", "TASK_MANAGER_FAIL_HOOK",
+                    "TASK_MANAGER_EVENT_HOOK"};
+                if (hook >= 0 && hook < hook_names.size()) {
                   arg_forms.at(2) = pool.alloc_single_element_form<ConstantTokenElement>(
-                      arg_forms.at(2)->parent_element, temp);
+                      arg_forms.at(2)->parent_element, hook_names.at(hook));
                 }
               }
             } else if (head_obj.is_symbol() &&
