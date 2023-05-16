@@ -3323,9 +3323,9 @@ void FunctionCallElement::update_from_stack(const Env& env,
                 }
               }
             } else if (head_obj.is_symbol() &&
-                tp_type.method_from_type().base_type() == "setting-control" &&
-                arg_forms.at(0)->to_form(env).is_symbol("*setting-control*") &&
-                arg_forms.size() > 1) {
+                       tp_type.method_from_type().base_type() == "setting-control" &&
+                       arg_forms.at(0)->to_form(env).is_symbol("*setting-control*") &&
+                       arg_forms.size() > 1) {
               auto arg1_reg = get_form_reg_acc(arg_forms.at(1));
               if (arg1_reg && arg1_reg->reg().is_s6()) {
                 std::string new_head;
