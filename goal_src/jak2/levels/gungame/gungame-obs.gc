@@ -202,7 +202,7 @@ This commonly includes things such as:
   (cond
     ((= (-> (level-get-target-inside *level*) name) 'gungame)
      (when (or (zero? (-> obj in-out)) (= (-> obj in-out) 1))
-       (set-setting! 'minimap 'clear 0 128)
+       (set-setting! 'minimap 'clear 0.0 (minimap-flag minimap))
        (set! (-> obj in-out) (the-as uint 2))
        )
      )
@@ -1166,7 +1166,7 @@ This commonly includes things such as:
          (set! (-> self training-goal) 4000.0)
          (set! (-> self training?) #t)
          )
-       (set-setting! 'features 'clear 0 896)
+       (set-setting! 'features 'clear 0.0 (game-feature gun-red gun-blue gun-dark))
        (if (!= (-> *game-info* gun-type) 1)
            (send-event *target* 'change-mode 'gun #f 1)
            )
@@ -1182,7 +1182,7 @@ This commonly includes things such as:
          (set! (-> self training-goal) 3000.0)
          (set! (-> self training?) #t)
          )
-       (set-setting! 'features 'clear 0 832)
+       (set-setting! 'features 'clear 0.0 (game-feature gun-yellow gun-blue gun-dark))
        (if (!= (-> *game-info* gun-type) 2)
            (send-event *target* 'change-mode 'gun #f 2)
            )
@@ -1193,7 +1193,7 @@ This commonly includes things such as:
        (set! (-> self task-silver) (the-as uint 101))
        (set! (-> self task-bronze) (the-as uint 100))
        (set! (-> *game-info* goal) 4000.0)
-       (set-setting! 'features 'clear 0 704)
+       (set-setting! 'features 'clear 0.0 (game-feature gun-yellow gun-red gun-dark))
        (if (!= (-> *game-info* gun-type) 3)
            (send-event *target* 'change-mode 'gun #f 3)
            )
@@ -1715,8 +1715,15 @@ This commonly includes things such as:
               )
             )
            (else
-             (set! (-> *game-info* sub-task-list 76 death-count)
-                   (the-as uint (seekl (the-as int (-> *game-info* sub-task-list 76 death-count)) #xffff 1))
+             (set! (-> *game-info* sub-task-list (game-task-node city-yellow-gun-training-resolution) death-count)
+                   (the-as
+                     uint
+                     (seekl
+                       (the-as int (-> *game-info* sub-task-list (game-task-node city-yellow-gun-training-resolution) death-count))
+                       #xffff
+                       1
+                       )
+                     )
                    )
              (let ((v1-28 (rand-vu-int-count 4)))
                (cond
@@ -1778,8 +1785,15 @@ This commonly includes things such as:
               )
             )
            (else
-             (set! (-> *game-info* sub-task-list 28 death-count)
-                   (the-as uint (seekl (the-as int (-> *game-info* sub-task-list 28 death-count)) #xffff 1))
+             (set! (-> *game-info* sub-task-list (game-task-node city-red-gun-training-resolution) death-count)
+                   (the-as
+                     uint
+                     (seekl
+                       (the-as int (-> *game-info* sub-task-list (game-task-node city-red-gun-training-resolution) death-count))
+                       #xffff
+                       1
+                       )
+                     )
                    )
              (let ((v1-46 (rand-vu-int-count 4)))
                (cond
@@ -2173,7 +2187,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 res-tag))
-  (set-setting! 'darkjak #f 0 0)
+  (set-setting! 'darkjak #f 0.0 0)
   (set! sv-16 (new 'static 'res-tag))
   (let ((v1-3 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-16))))
     (cond
@@ -2205,7 +2219,7 @@ This commonly includes things such as:
   (training-manager-method-27 obj *blue-training-path-global-info*)
   (training-manager-method-27 obj *peace-training-path-global-info*)
   (training-manager-method-22 obj #f)
-  (set-setting! 'speech-control #f 0 0)
+  (set-setting! 'speech-control #f 0.0 0)
   (go (method-of-object obj wait))
   (none)
   )
@@ -2509,8 +2523,8 @@ This commonly includes things such as:
 
 (set-subtask-hook!
   *game-info*
-  43
-  0
+  (game-task-node sewer-enemy-resolution)
+  TASK_MANAGER_INIT_HOOK
   (lambda :behavior task-manager
     ()
     (let ((s5-0 (new 'static 'fact-info :pickup-type (pickup-type gun-yellow) :pickup-spawn-amount 1.0))
@@ -2539,8 +2553,8 @@ This commonly includes things such as:
 
 (set-subtask-hook!
   *game-info*
-  43
-  2
+  (game-task-node sewer-enemy-resolution)
+  TASK_MANAGER_UPDATE_HOOK
   (lambda :behavior task-manager () (the-as object (gui-control-method-12
                                                      *gui-control*
                                                      self
@@ -2557,8 +2571,8 @@ This commonly includes things such as:
 
 (set-subtask-hook!
   *game-info*
-  177
-  0
+  (game-task-node sewer-escort-get-gun)
+  TASK_MANAGER_INIT_HOOK
   (lambda :behavior task-manager
     ()
     (let ((s5-0 (new 'static 'fact-info :pickup-type (pickup-type gun-dark) :pickup-spawn-amount 1.0))
@@ -2587,8 +2601,8 @@ This commonly includes things such as:
 
 (set-subtask-hook!
   *game-info*
-  177
-  2
+  (game-task-node sewer-escort-get-gun)
+  TASK_MANAGER_UPDATE_HOOK
   (lambda :behavior task-manager () (the-as object (gui-control-method-12
                                                      *gui-control*
                                                      self

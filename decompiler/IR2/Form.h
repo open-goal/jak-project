@@ -1240,6 +1240,7 @@ class DerefToken {
     return m_kind == Kind::FIELD_NAME && m_name == name;
   }
 
+  bool is_int() const { return m_kind == Kind::INTEGER_CONSTANT; }
   bool is_int(int x) const { return m_kind == Kind::INTEGER_CONSTANT && m_int_constant == x; }
 
   bool is_expr() const { return m_kind == Kind::INTEGER_EXPRESSION; }
