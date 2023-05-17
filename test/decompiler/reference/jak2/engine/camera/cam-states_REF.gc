@@ -540,7 +540,7 @@
     (none)
     )
   :code (behavior ()
-    (let ((gp-0 (-> self clock frame-counter)))
+    (let ((gp-0 (current-time)))
       (until #f
         (when (not (paused?))
           (let ((s4-0 (vector-reset! (new-stack-vector0)))
@@ -586,10 +586,10 @@
               )
             (cond
               ((and (= (-> s4-0 x) 0.0) (= (-> s4-0 y) 0.0))
-               (set! gp-0 (-> self clock frame-counter))
+               (set! gp-0 (current-time))
                )
               (else
-                (let ((v1-39 (min 10 (max 1 (- (-> self clock frame-counter) gp-0)))))
+                (let ((v1-39 (min 10 (max 1 (- (current-time) gp-0)))))
                   (vector-float*! s4-0 s4-0 (* 0.1 (the float v1-39)))
                   )
                 )
@@ -2222,8 +2222,8 @@
                         )
                       (set! (-> self los-last-pos quad) (-> self good-point quad))
                       (when *display-cam-los-debug*
-                        (format 0 "going because u(~f) > 0 frame ~D~%" f30-2 (-> self clock frame-counter))
-                        (format *stdcon* " going because u(~f) > 0 frame ~D~%" f30-2 (-> self clock frame-counter))
+                        (format 0 "going because u(~f) > 0 frame ~D~%" f30-2 (current-time))
+                        (format *stdcon* " going because u(~f) > 0 frame ~D~%" f30-2 (current-time))
                         )
                       (logior! (-> self options) (cam-slave-options-u32 GOTO_GOOD_POINT))
                       )
@@ -2476,9 +2476,7 @@
     (if (-> self have-phony-joystick)
         (set! f28-0 (* 0.05 (-> self phony-joystick-y)))
         )
-    (if (and (-> *camera* being-attacked)
-             (< (- (-> self clock frame-counter) (-> *camera* attack-start)) (seconds 0.25))
-             )
+    (if (and (-> *camera* being-attacked) (< (- (current-time) (-> *camera* attack-start)) (seconds 0.25)))
         (set! f28-0 0.05)
         )
     (when (logtest? (cam-slave-options-u32 GUN_CAM) (-> self options))
@@ -2722,7 +2720,7 @@
                  )
                (vector-flatten! s5-3 s5-3 (-> *camera* local-down))
                )
-             ((< (- (-> self clock frame-counter) (the-as int (-> self butt-timer))) 0)
+             ((< (- (current-time) (the-as int (-> self butt-timer))) 0)
               (vector-flatten! s5-3 (-> self butt-vector) (-> *camera* local-down))
               )
              (else
@@ -3102,7 +3100,7 @@
         object
         (cond
           ((= v1-0 'get-behind)
-           (set! (-> self butt-timer) (the-as uint (+ (-> self clock frame-counter) (seconds 0.25))))
+           (set! (-> self butt-timer) (the-as uint (+ (current-time) (seconds 0.25))))
            (set! (-> self butt-seek) (the-as basic #t))
            (set! v0-0 (-> self butt-vector))
            (set! (-> (the-as vector v0-0) quad) (-> (the-as vector (-> event param 0)) quad))

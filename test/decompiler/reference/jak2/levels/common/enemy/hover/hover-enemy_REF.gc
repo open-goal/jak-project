@@ -474,7 +474,7 @@
     (if (logtest? (-> self path flags) (path-control-flag not-found))
         (go process-drawable-art-error "no path")
         )
-    (set! (-> self scale-timer) (the-as uint (-> self clock frame-counter)))
+    (set! (-> self scale-timer) (the-as uint (current-time)))
     (cond
       ((not (logtest? (-> self fact-info-override enemy-options) (enemy-option user0)))
        (logclear! (-> self enemy-flags) (enemy-flag enable-on-active))
@@ -530,7 +530,7 @@
       )
     (hover-enemy-method-144 self)
     (hover-nav-control-method-18 (-> self hover) (-> self path) -1 -1)
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :exit (behavior ()
@@ -561,7 +561,7 @@
   :post (behavior ()
     (local-vars (v1-19 enemy-flag))
     (when (not (logtest? (-> self fact-info-override enemy-options) (enemy-option user0)))
-      (let ((f0-1 (the float (- (-> self clock frame-counter) (the-as int (-> self scale-timer)))))
+      (let ((f0-1 (the float (- (current-time) (the-as int (-> self scale-timer)))))
             (f1-0 1200.0)
             )
         (when (< f0-1 f1-0)
@@ -671,7 +671,7 @@
       )
     (if (and (nonzero? (-> self hit-points))
              (zero? (-> self fated-time))
-             (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.5))
+             (>= (- (current-time) (-> self state-time)) (seconds 0.5))
              (< (-> self root-override2 trans y) (- (-> self knocked-start-level) (-> self knocked-fall-dist)))
              )
         (go-virtual knocked-recover)
@@ -742,14 +742,14 @@
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
       (('touch 'touched 'attack)
-       (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.5))
+       (if (>= (- (current-time) (-> self state-time)) (seconds 0.5))
            (go-virtual flying-death-explode)
            )
        )
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (dispose! self)
     (stop-looking-at-target! self)
     (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
@@ -801,14 +801,14 @@
     (set! (-> self hover speed) 0.2)
     (set! (-> self flying-death-spin) 0.0)
     (enemy-method-103 self)
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :trans (behavior ()
     (if (or (logtest? (-> self root-override2 status)
                       (collide-status touch-surface touch-wall touch-ceiling touch-actor impact-surface touch-background)
                       )
-            (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 4))
+            (>= (- (current-time) (-> self state-time)) (seconds 4))
             )
         (go-virtual flying-death-explode)
         )
@@ -1109,7 +1109,3 @@
 
 ;; failed to figure out what this is:
 0
-
-
-
-

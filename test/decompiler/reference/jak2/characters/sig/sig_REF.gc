@@ -260,122 +260,120 @@
 
 ;; definition for method 97 of type sig
 (defmethod enemy-method-97 sig ((obj sig))
-  (with-pp
-    (let* ((s5-0 (handle->process (-> obj attacker-handle)))
-           (s4-0 (if (type? s5-0 process-focusable)
-                     s5-0
-                     )
-                 )
+  (let* ((s5-0 (handle->process (-> obj attacker-handle)))
+         (s4-0 (if (type? s5-0 process-focusable)
+                   s5-0
+                   )
+               )
+         )
+    (when s4-0
+      (cond
+        ((= (-> s4-0 type) target)
+         (when (or (not (logtest? (-> obj bot-flags) (bot-flags attacked)))
+                   (>= (- (current-time) (-> obj attacker-time)) (seconds 1.5))
+                   )
+           (if (logtest? (-> obj bot-flags) (bot-flags attacked))
+               (reset-attacker! obj)
+               )
+           (set! s4-0 (the-as process #f))
+           (set! (-> obj attacker-handle) (the-as handle #f))
            )
-      (when s4-0
-        (cond
-          ((= (-> s4-0 type) target)
-           (when (or (not (logtest? (-> obj bot-flags) (bot-flags attacked)))
-                     (>= (- (-> pp clock frame-counter) (-> obj attacker-time)) (seconds 1.5))
+         )
+        (else
+          (when (>= (- (current-time) (-> obj attacker-time)) (seconds 6))
+            (set! s4-0 (the-as process #f))
+            (set! (-> obj attacker-handle) (the-as handle #f))
+            )
+          )
+        )
+      )
+    (let ((v1-23 (-> obj focus-mode))
+          (s5-1 (the-as process #f))
+          )
+      (cond
+        ((zero? v1-23)
+         (cond
+           (s4-0
+             (if (or (not (logtest? (bot-flags bf19) (-> obj bot-flags)))
+                     (>= 16384.0
+                         (vector-vector-xz-distance (-> obj root-override2 trans) (get-trans (the-as process-focusable s4-0) 3))
+                         )
                      )
-             (if (logtest? (-> obj bot-flags) (bot-flags attacked))
-                 (reset-attacker! obj)
+                 (set! s5-1 s4-0)
                  )
-             (set! s4-0 (the-as process #f))
-             (set! (-> obj attacker-handle) (the-as handle #f))
+             )
+           (else
+             (when (not (logtest? (bot-flags bf19) (-> obj bot-flags)))
+               (set! s5-1 (select-focus! obj))
+               (cond
+                 (s5-1
+                   (empty)
+                   )
+                 (else
+                   (let ((s4-1 (handle->process (-> obj poi-handle))))
+                     (set! s5-1 (if (type? s4-1 process-focusable)
+                                    s4-1
+                                    )
+                           )
+                     )
+                   (if s5-1
+                       (empty)
+                       (set! s5-1 *target*)
+                       )
+                   )
+                 )
+               )
              )
            )
-          (else
-            (when (>= (- (-> pp clock frame-counter) (-> obj attacker-time)) (seconds 6))
-              (set! s4-0 (the-as process #f))
-              (set! (-> obj attacker-handle) (the-as handle #f))
+         )
+        ((= v1-23 1)
+         (cond
+           (s4-0
+             (if (or (not (logtest? (bot-flags bf19) (-> obj bot-flags)))
+                     (>= 16384.0
+                         (vector-vector-xz-distance (-> obj root-override2 trans) (get-trans (the-as process-focusable s4-0) 3))
+                         )
+                     )
+                 (set! s5-1 s4-0)
+                 )
+             )
+           (else
+             (when (not (logtest? (bot-flags bf19) (-> obj bot-flags)))
+               (let ((s4-2 (handle->process (-> obj poi-handle))))
+                 (set! s5-1 (if (type? s4-2 process-focusable)
+                                s4-2
+                                )
+                       )
+                 )
+               (cond
+                 (s5-1
+                   (empty)
+                   )
+                 ((begin (set! s5-1 (select-focus! obj)) s5-1)
+                  (empty)
+                  )
+                 (else
+                   (set! s5-1 *target*)
+                   )
+                 )
+               )
+             )
+           )
+         )
+        )
+      (cond
+        (s5-1
+          (try-update-focus (-> obj focus) (the-as process-focusable s5-1) obj)
+          (if (and (logtest? (-> obj bot-flags) (bot-flags attacked)) (!= (-> (the-as process-focusable s5-1) type) target))
+              (logclear! (-> obj bot-flags) (bot-flags attacked))
               )
-            )
+          )
+        (else
+          (clear-focused (-> obj focus))
+          (logclear! (-> obj bot-flags) (bot-flags attacked))
           )
         )
-      (let ((v1-23 (-> obj focus-mode))
-            (s5-1 (the-as process #f))
-            )
-        (cond
-          ((zero? v1-23)
-           (cond
-             (s4-0
-               (if (or (not (logtest? (bot-flags bf19) (-> obj bot-flags)))
-                       (>= 16384.0
-                           (vector-vector-xz-distance (-> obj root-override2 trans) (get-trans (the-as process-focusable s4-0) 3))
-                           )
-                       )
-                   (set! s5-1 s4-0)
-                   )
-               )
-             (else
-               (when (not (logtest? (bot-flags bf19) (-> obj bot-flags)))
-                 (set! s5-1 (select-focus! obj))
-                 (cond
-                   (s5-1
-                     (empty)
-                     )
-                   (else
-                     (let ((s4-1 (handle->process (-> obj poi-handle))))
-                       (set! s5-1 (if (type? s4-1 process-focusable)
-                                      s4-1
-                                      )
-                             )
-                       )
-                     (if s5-1
-                         (empty)
-                         (set! s5-1 *target*)
-                         )
-                     )
-                   )
-                 )
-               )
-             )
-           )
-          ((= v1-23 1)
-           (cond
-             (s4-0
-               (if (or (not (logtest? (bot-flags bf19) (-> obj bot-flags)))
-                       (>= 16384.0
-                           (vector-vector-xz-distance (-> obj root-override2 trans) (get-trans (the-as process-focusable s4-0) 3))
-                           )
-                       )
-                   (set! s5-1 s4-0)
-                   )
-               )
-             (else
-               (when (not (logtest? (bot-flags bf19) (-> obj bot-flags)))
-                 (let ((s4-2 (handle->process (-> obj poi-handle))))
-                   (set! s5-1 (if (type? s4-2 process-focusable)
-                                  s4-2
-                                  )
-                         )
-                   )
-                 (cond
-                   (s5-1
-                     (empty)
-                     )
-                   ((begin (set! s5-1 (select-focus! obj)) s5-1)
-                    (empty)
-                    )
-                   (else
-                     (set! s5-1 *target*)
-                     )
-                   )
-                 )
-               )
-             )
-           )
-          )
-        (cond
-          (s5-1
-            (try-update-focus (-> obj focus) (the-as process-focusable s5-1) obj)
-            (if (and (logtest? (-> obj bot-flags) (bot-flags attacked)) (!= (-> (the-as process-focusable s5-1) type) target))
-                (logclear! (-> obj bot-flags) (bot-flags attacked))
-                )
-            )
-          (else
-            (clear-focused (-> obj focus))
-            (logclear! (-> obj bot-flags) (bot-flags attacked))
-            )
-          )
-        s5-1
-        )
+      s5-1
       )
     )
   )
@@ -416,68 +414,64 @@
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
-  (with-pp
-    (let ((v1-2 (-> obj skel top-anim frame-group)))
-      (cond
-        ((>= (- (-> pp clock frame-counter) (-> obj danger-time)) (seconds 2))
-         (cond
-           ((not v1-2)
-            (set! (-> obj skel top-anim base-anim) (-> obj draw art-group data 42))
+  (let ((v1-2 (-> obj skel top-anim frame-group)))
+    (cond
+      ((>= (- (current-time) (-> obj danger-time)) (seconds 2))
+       (cond
+         ((not v1-2)
+          (set! (-> obj skel top-anim base-anim) (-> obj draw art-group data 42))
+          )
+         ((= v1-2 (-> obj draw art-group data 44))
+          (push-anim-to-targ
+            (-> obj skel top-anim)
+            (the-as art-joint-anim (-> obj draw art-group data 46))
+            0.0
+            0
+            0
+            1.0
+            0.0
+            #f
             )
-           ((= v1-2 (-> obj draw art-group data 44))
-            (push-anim-to-targ
-              (-> obj skel top-anim)
-              (the-as art-joint-anim (-> obj draw art-group data 46))
-              0.0
-              0
-              0
-              1.0
-              0.0
-              #f
-              )
-            (set! (-> obj skel top-anim base-anim) (-> obj draw art-group data 42))
-            )
-           )
+          (set! (-> obj skel top-anim base-anim) (-> obj draw art-group data 42))
+          )
          )
-        (else
-          (cond
-            ((not v1-2)
-             (set! (-> obj skel top-anim base-anim) (-> obj draw art-group data 44))
+       )
+      (else
+        (cond
+          ((not v1-2)
+           (set! (-> obj skel top-anim base-anim) (-> obj draw art-group data 44))
+           )
+          ((= v1-2 (-> obj draw art-group data 42))
+           (push-anim-to-targ
+             (-> obj skel top-anim)
+             (the-as art-joint-anim (-> obj draw art-group data 43))
+             0.0
+             0
+             0
+             1.0
+             0.0
+             #f
              )
-            ((= v1-2 (-> obj draw art-group data 42))
-             (push-anim-to-targ
-               (-> obj skel top-anim)
-               (the-as art-joint-anim (-> obj draw art-group data 43))
-               0.0
-               0
-               0
-               1.0
-               0.0
-               #f
-               )
-             (set! (-> obj skel top-anim base-anim) (-> obj draw art-group data 44))
-             )
-            )
+           (set! (-> obj skel top-anim base-anim) (-> obj draw art-group data 44))
+           )
           )
         )
       )
-    (let ((t9-2 (method-of-type bot track-target!)))
-      (t9-2 obj)
-      )
-    (when (logtest? (-> obj bot-flags) (bot-flags too-far-fail))
-      (let ((f0-0 (vector-vector-distance (-> obj root-override2 trans) (target-pos 0))))
-        (when (or (>= f0-0 491520.0)
-                  (and (>= f0-0 102400.0) (>= (- (-> pp clock frame-counter) (-> obj last-draw-time)) (seconds 10)))
-                  )
-          (process-entity-status! obj (entity-perm-status no-kill) #f)
-          (cleanup-for-death obj)
-          (go (method-of-object obj die-fast))
-          )
-        )
-      )
-    (sig-plasma-method-14 (-> obj plasma) obj)
-    (none)
     )
+  (let ((t9-2 (method-of-type bot track-target!)))
+    (t9-2 obj)
+    )
+  (when (logtest? (-> obj bot-flags) (bot-flags too-far-fail))
+    (let ((f0-0 (vector-vector-distance (-> obj root-override2 trans) (target-pos 0))))
+      (when (or (>= f0-0 491520.0) (and (>= f0-0 102400.0) (>= (- (current-time) (-> obj last-draw-time)) (seconds 10))))
+        (process-entity-status! obj (entity-perm-status no-kill) #f)
+        (cleanup-for-death obj)
+        (go (method-of-object obj die-fast))
+        )
+      )
+    )
+  (sig-plasma-method-14 (-> obj plasma) obj)
+  (none)
   )
 
 ;; definition for method 213 of type sig

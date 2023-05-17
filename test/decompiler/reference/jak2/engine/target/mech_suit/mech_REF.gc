@@ -168,7 +168,7 @@
     (let ((f30-0 20480.0))
       (until #f
         (when (and (logtest? (-> self draw status) (draw-control-status on-screen))
-                   (>= (- (-> self clock frame-counter) (-> self probe-time)) (seconds 1))
+                   (>= (- (current-time) (-> self probe-time)) (seconds 1))
                    )
           (move-to-ground
             (-> self root-override)
@@ -177,7 +177,7 @@
             #t
             (collide-spec backgnd obstacle hit-by-player-list hit-by-others-list pusher)
             )
-          (set! (-> self probe-time) (-> self clock frame-counter))
+          (set! (-> self probe-time) (current-time))
           )
         (when (and (and *target*
                         (and (>= f30-0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
@@ -296,8 +296,8 @@
       (mech-method-24 self)
       (suspend)
       )
-    (let ((s5-0 (-> self clock frame-counter)))
-      (until (>= (- (-> self clock frame-counter) s5-0) (seconds 1))
+    (let ((s5-0 (current-time)))
+      (until (>= (- (current-time) s5-0) (seconds 1))
         (mech-method-24 self)
         (suspend)
         )
@@ -466,7 +466,7 @@ This commonly includes things such as:
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
       (('look-at-point)
-       (set! (-> self state-time) (-> self clock frame-counter))
+       (set! (-> self state-time) (current-time))
        (go-virtual active)
        )
       )
@@ -501,7 +501,7 @@ This commonly includes things such as:
   :virtual #t
   :event (-> (method-of-type mech-target idle) event)
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :trans (behavior ()
@@ -511,7 +511,7 @@ This commonly includes things such as:
                      )
                  (not (logtest? (focus-status mech) (-> *target* focus-status)))
                  )
-             (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 10))
+             (>= (- (current-time) (-> self state-time)) (seconds 10))
              )
         (go-virtual idle)
         )
