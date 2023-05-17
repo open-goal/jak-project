@@ -711,6 +711,97 @@
       )
   )
 
+
+(define *vag-play-menu* (the debug-menu #f))
+(define *vag-list* (alloc-vagdir-names 'debug))
+(define *vag-player* (the (pointer process) #f))
+
+(defun dm-vag-play-pick-func ((vag string))
+  (if *vag-player*
+      (return #f))
+  (set! *vag-player* (process-spawn-function process :to *display-pool*
+                          (lambda :behavior process ((vag string))
+
+                              ;; restore these settings when we're done
+                              (protect (*display-art-control* (-> *debug-menu-context* is-hidden) *gui-kick-str*)
+                              (true! *display-art-control*) ;; force this on
+                              (true! (-> *debug-menu-context* is-hidden)) ;; hide debug menu
+                              (true! *gui-kick-str*) ;; force gui control to play streams
+                              (sound-group-continue (sound-group dialog dialog2)) ;; unpause dialog
+                              (set-setting! 'music-volume 'abs 0.0 0) ;; mute music
+                              (set-setting! 'sfx-volume 'abs 0.0 0) ;; mute sfx
+                              (set-setting! 'ambient-volume 'abs 0.0 0) ;; mute ambient
+                              (set-setting! 'dialog-volume 'abs 1.0 0) ;; max dialog
+                              (apply-settings *setting-control*) ;; apply settings now
+
+                              (let ((id (add-process *gui-control* self (gui-channel alert) (gui-action play) vag -99.0 0)))
+
+                                (while (= (gui-status pending) (get-status *gui-control* id))
+                                  (suspend))
+
+                                (until (or (zero? id) (let ((status (get-status *gui-control* id)))
+                                                            (not (or (= status (gui-status ready)) (= status (gui-status active))))
+                                                            ))
+                                  (when (cpad-pressed? 0 triangle)
+                                      (stop-str *gui-control* (lookup-gui-connection *gui-control* self (gui-channel alert) vag id)))
+                                  (suspend))
+                                )
+
+                              (sound-group-pause (sound-group dialog dialog2)) ;; re-pause dialog
+                              (remove-setting! 'music-volume)
+                              (remove-setting! 'sfx-volume)
+                              (remove-setting! 'ambient-volume)
+                              (remove-setting! 'dialog-volume)
+                              (apply-settings *setting-control*)
+
+                              (set! *vag-player* #f)
+                            )) vag))
+  #t)
+
+(defun build-vag-list ((menu debug-menu))
+  "Fill the region pick menu"
+
+  ;; clear old list
+  (debug-menu-remove-all-items menu)
+
+  ;; make a temp string to copy the vag name to for each button
+  (let ((temp-name *temp-string*))
+
+      ;; make button for each vag
+      (dotimes (i (-> *vag-list* -1))
+
+        ;; write the vag name (64 bits) into the string directly and add a null character
+        (set! (-> (the (pointer int64) (-> temp-name data))) (-> *vag-list* i))
+        (set! (-> temp-name data 8) 0)
+
+        ;; copy into a new string
+        (let ((vag-name (new 'debug 'string 0 temp-name)))
+            (debug-menu-append-item menu (new-dm-func vag-name vag-name dm-vag-play-pick-func)))
+        )
+      )
+
+  (set! (-> menu items) (sort (-> menu items) debug-menu-node<?))
+  )
+
+(defun debug-menu-make-vag-menu ((ctx debug-menu-context))
+  (let ((vag-menu (new 'debug 'debug-menu ctx "Vag menu")))
+      (let ((play-menu (new 'debug 'debug-menu ctx "Play Vag menu")))
+        (set! *vag-play-menu* play-menu)
+        (debug-menu-append-item vag-menu (new-dm-submenu "Play" play-menu))
+        )
+      (debug-menu-append-item vag-menu (new-dm-bool "subtitle" #f
+                                            (lambda (arg (msg debug-menu-msg))
+                                              (if (= msg (debug-menu-msg press))
+                                                  (not! (-> *setting-control* user-default subtitle)))
+                                              (-> *setting-control* user-default subtitle))))
+      ;; pick channel
+
+      (build-vag-list *vag-play-menu*)
+
+      (new-dm-submenu "Vag" vag-menu)
+      )
+  )
+
 (defun dm-set-msaa-pick-func ((msaa int) (msg debug-menu-msg))
   (when (= msg (debug-menu-msg press)) (set! (-> *pc-settings* gfx-msaa) (/ msaa 8)))
   (= (-> *pc-settings* gfx-msaa) (/ msaa 8)))
@@ -720,6 +811,7 @@
   (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-part-menu *debug-menu-context*))
   (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-entity-menu *debug-menu-context*))
   (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-regions-menu *debug-menu-context*))
+  (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-vag-menu *debug-menu-context*))
 
   (debug-menu-append-item (-> *debug-menu-context* root-menu)
     (debug-menu-make-from-template *debug-menu-context*
