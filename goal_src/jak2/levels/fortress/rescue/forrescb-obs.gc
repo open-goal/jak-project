@@ -490,7 +490,7 @@ This commonly includes things such as:
     )
   :trans (behavior ()
     (set-forrescb-electricity-scale! 1.0 0)
-    (when (>= (-> self clock frame-counter) (-> self next-spawn-time))
+    (when (>= (current-time) (-> self next-spawn-time))
       (process-spawn
         fort-elec-belt-inst
         (-> self init-quat)
@@ -509,32 +509,30 @@ This commonly includes things such as:
 
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod fort-elec-belt-method-15 fort-elec-belt ((obj fort-elec-belt))
-  (with-pp
-    (let* ((f28-0 (total-distance (-> obj path)))
-           (s5-0 (-> obj sync))
-           (f26-0 81.92)
-           (a0-3 (- (-> pp clock frame-counter) (get-timeframe-offset! s5-0 0)))
-           (v1-6 (-> s5-0 period))
-           (f30-0 (/ (* f26-0 (the float a0-3)) f28-0))
-           (f28-1 (/ (* f26-0 (the float v1-6)) f28-0))
-           )
-      (while (>= 1.0 f30-0)
-        (if (>= f30-0 0.0)
-            (process-spawn
-              fort-elec-belt-inst
-              (-> obj init-quat)
-              f30-0
-              (-> obj path-du)
-              (-> obj l-spec)
-              (-> obj attack-id)
-              :to obj
-              )
+  (let* ((f28-0 (total-distance (-> obj path)))
+         (s5-0 (-> obj sync))
+         (f26-0 81.92)
+         (a0-3 (- (current-time) (get-timeframe-offset! s5-0 0)))
+         (v1-6 (-> s5-0 period))
+         (f30-0 (/ (* f26-0 (the float a0-3)) f28-0))
+         (f28-1 (/ (* f26-0 (the float v1-6)) f28-0))
+         )
+    (while (>= 1.0 f30-0)
+      (if (>= f30-0 0.0)
+          (process-spawn
+            fort-elec-belt-inst
+            (-> obj init-quat)
+            f30-0
+            (-> obj path-du)
+            (-> obj l-spec)
+            (-> obj attack-id)
+            :to obj
             )
-        (+! f30-0 f28-1)
-        )
+          )
+      (+! f30-0 f28-1)
       )
-    (none)
     )
+  (none)
   )
 
 ;; WARN: Return type mismatch process vs fort-elec-belt.
