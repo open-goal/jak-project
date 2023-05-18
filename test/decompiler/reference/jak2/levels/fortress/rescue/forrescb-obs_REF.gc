@@ -550,7 +550,7 @@ This commonly includes things such as:
     )
   :trans (behavior ()
     (set-forrescb-electricity-scale! 1.0 0)
-    (when (>= (-> self clock frame-counter) (-> self next-spawn-time))
+    (when (>= (current-time) (-> self next-spawn-time))
       (process-spawn
         fort-elec-belt-inst
         (-> self init-quat)
@@ -570,32 +570,30 @@ This commonly includes things such as:
 ;; definition for method 15 of type fort-elec-belt
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod fort-elec-belt-method-15 fort-elec-belt ((obj fort-elec-belt))
-  (with-pp
-    (let* ((f28-0 (total-distance (-> obj path)))
-           (s5-0 (-> obj sync))
-           (f26-0 81.92)
-           (a0-3 (- (-> pp clock frame-counter) (get-timeframe-offset! s5-0 0)))
-           (v1-6 (-> s5-0 period))
-           (f30-0 (/ (* f26-0 (the float a0-3)) f28-0))
-           (f28-1 (/ (* f26-0 (the float v1-6)) f28-0))
-           )
-      (while (>= 1.0 f30-0)
-        (if (>= f30-0 0.0)
-            (process-spawn
-              fort-elec-belt-inst
-              (-> obj init-quat)
-              f30-0
-              (-> obj path-du)
-              (-> obj l-spec)
-              (-> obj attack-id)
-              :to obj
-              )
+  (let* ((f28-0 (total-distance (-> obj path)))
+         (s5-0 (-> obj sync))
+         (f26-0 81.92)
+         (a0-3 (- (current-time) (get-timeframe-offset! s5-0 0)))
+         (v1-6 (-> s5-0 period))
+         (f30-0 (/ (* f26-0 (the float a0-3)) f28-0))
+         (f28-1 (/ (* f26-0 (the float v1-6)) f28-0))
+         )
+    (while (>= 1.0 f30-0)
+      (if (>= f30-0 0.0)
+          (process-spawn
+            fort-elec-belt-inst
+            (-> obj init-quat)
+            f30-0
+            (-> obj path-du)
+            (-> obj l-spec)
+            (-> obj attack-id)
+            :to obj
             )
-        (+! f30-0 f28-1)
-        )
+          )
+      (+! f30-0 f28-1)
       )
-    (none)
     )
+  (none)
   )
 
 ;; definition for method 7 of type fort-elec-belt
@@ -688,7 +686,6 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type fort-conveyor
-;; INFO: this function exists in multiple non-identical object files
 (defmethod inspect fort-conveyor ((obj fort-conveyor))
   (when (not obj)
     (set! obj obj)
@@ -708,14 +705,12 @@ This commonly includes things such as:
               )
 
 ;; definition for method 22 of type fort-conveyor
-;; INFO: this function exists in multiple non-identical object files
 (defmethod get-art-group fort-conveyor ((obj fort-conveyor))
   "@returns The respective [[art-group]] for the [[conveyor]]"
   (art-group-get-by-name *level* "skel-fort-conveyor" (the-as (pointer uint32) #f))
   )
 
 ;; definition for method 23 of type fort-conveyor
-;; INFO: this function exists in multiple non-identical object files
 ;; WARN: Return type mismatch collide-shape-moving vs none.
 (defmethod reset-root! fort-conveyor ((obj fort-conveyor))
   "Re-initializes the `root` [[trsqv]]"
@@ -746,7 +741,6 @@ This commonly includes things such as:
   )
 
 ;; definition for method 24 of type fort-conveyor
-;; INFO: this function exists in multiple non-identical object files
 ;; WARN: Return type mismatch vector vs none.
 (defmethod init! fort-conveyor ((obj fort-conveyor))
   "Initializes defaults for things like the `speed` and `belt-radius`"
@@ -760,7 +754,6 @@ This commonly includes things such as:
   )
 
 ;; definition for method 25 of type fort-conveyor
-;; INFO: this function exists in multiple non-identical object files
 (defmethod set-and-get-ambient-sound! fort-conveyor ((obj fort-conveyor))
   "So long as [[actor-option::16]] is not set, fetch the [[ambient-sound]] for the [[conveyor]]
 and return it as well.  Otherwise, set it to `0`"

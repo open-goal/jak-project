@@ -1256,9 +1256,7 @@ This commonly includes things such as:
             )
           )
     (set! (-> self root-override trans y)
-          (+ (-> self current-y-position)
-             (* 4096.0 (* 2.0 (sin (+ 16384.0 (* 45.511112 (the float (-> self clock frame-counter)))))))
-             )
+          (+ (-> self current-y-position) (* 4096.0 (* 2.0 (sin (+ 16384.0 (* 45.511112 (the float (current-time))))))))
           )
     (drill-barons-ship-method-22 self)
     (transform-post)
@@ -1379,9 +1377,7 @@ This commonly includes things such as:
         )
       )
     (set! (-> self root-override trans y)
-          (+ (-> self current-y-position)
-             (* 4096.0 (* 2.0 (sin (+ 16384.0 (* 45.511112 (the float (-> self clock frame-counter)))))))
-             )
+          (+ (-> self current-y-position) (* 4096.0 (* 2.0 (sin (+ 16384.0 (* 45.511112 (the float (current-time))))))))
           )
     (drill-barons-ship-method-22 self)
     (+! (-> self x-offset-angle) (* 0.7 (-> self clock time-adjust-ratio)))
@@ -1395,9 +1391,9 @@ This commonly includes things such as:
     (quaternion-rotate-local-x!
       (-> obj root-override quat)
       (-> obj init-quat)
-      (* 182.04445 (sin (* 36.40889 (the float (-> pp clock frame-counter)))))
+      (* 182.04445 (sin (* 36.40889 (the float (current-time)))))
       )
-    (let ((f30-2 (* 182.04445 (* 5.0 (sin (* 45.511112 (the float (-> pp clock frame-counter))))))))
+    (let ((f30-2 (* 182.04445 (* 5.0 (sin (* 45.511112 (the float (current-time))))))))
       (when (!= (-> obj rock-angle) 0.0)
         (+! f30-2 (* 182.04445 (* 20.0
                                   (if (= (-> obj pass) 1)
@@ -1421,10 +1417,10 @@ This commonly includes things such as:
       (quaternion-rotate-local-z! (-> obj root-override quat) (-> obj root-override quat) f30-2)
       )
     (set! (-> obj root-override trans z)
-          (+ (* 4096.0 (* 30.0 (cos (* 45.511112 (the float (-> pp clock frame-counter)))))) (if (= (-> obj pass) 1)
-                                                                                                 -1433600.0
-                                                                                                 -1433600.0
-                                                                                                 )
+          (+ (* 4096.0 (* 30.0 (cos (* 45.511112 (the float (current-time)))))) (if (= (-> obj pass) 1)
+                                                                                    -1433600.0
+                                                                                    -1433600.0
+                                                                                    )
              )
           )
     (if *target*
@@ -1445,59 +1441,57 @@ This commonly includes things such as:
   )
 
 (defmethod drill-barons-ship-turret-method-24 drill-barons-ship-turret ((obj drill-barons-ship-turret))
-  (with-pp
-    (vector<-cspace!
-      (-> obj root-override trans)
-      (-> (the-as drill-barons-ship (-> obj parent 0)) node-list data (-> obj info joint-idx))
-      )
-    (let ((a2-1 (quaternion-axis-angle! (new 'stack-no-clear 'quaternion) 0.0 1.0 0.0 (-> obj info init-y-angle))))
-      (quaternion*!
-        (-> obj root-override quat)
-        (-> (the-as drill-barons-ship (-> obj parent 0)) root-override quat)
-        a2-1
-        )
-      )
-    (when (-> obj jmod)
-      (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> obj root-override trans)))
-            (s3-0 (quaternion->matrix (new-stack-matrix0) (-> obj root-override quat)))
-            )
-        (vector-normalize! s5-1 1.0)
-        (let* ((s4-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s3-0 vector 1) 1.0))
-               (s3-1 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s3-0 vector 2) 1.0))
-               (a0-13 (vector-normalize! (vector-flatten! (new 'stack-no-clear 'vector) s5-1 s4-0) 1.0))
-               (f30-0 (vector-y-angle a0-13))
-               (f0-1 (vector-y-angle s3-1))
-               (f0-5 (fmax
-                       (fmin (+ (deg-diff f0-1 f30-0) (* 182.04445 (-> obj error-y-angle))) (-> obj info twist-y-max))
-                       (- (-> obj info twist-y-max))
-                       )
-                     )
-               )
-          (quaternion-axis-angle! (the-as quaternion (-> obj jmod twist)) 0.0 1.0 0.0 f0-5)
-          )
-        )
-      (if (-> obj jmod-left)
-          (quaternion-axis-angle!
-            (the-as quaternion (-> obj jmod-left twist))
-            0.0
-            0.0
-            1.0
-            (* 182.04445 (* -3.0 (the float (-> pp clock frame-counter))))
-            )
-          )
-      (if (-> obj jmod-right)
-          (quaternion-axis-angle!
-            (the-as quaternion (-> obj jmod-right twist))
-            0.0
-            0.0
-            1.0
-            (* 182.04445 (* 3.0 (the float (-> pp clock frame-counter))))
-            )
-          )
-      )
-    0
-    (none)
+  (vector<-cspace!
+    (-> obj root-override trans)
+    (-> (the-as drill-barons-ship (-> obj parent 0)) node-list data (-> obj info joint-idx))
     )
+  (let ((a2-1 (quaternion-axis-angle! (new 'stack-no-clear 'quaternion) 0.0 1.0 0.0 (-> obj info init-y-angle))))
+    (quaternion*!
+      (-> obj root-override quat)
+      (-> (the-as drill-barons-ship (-> obj parent 0)) root-override quat)
+      a2-1
+      )
+    )
+  (when (-> obj jmod)
+    (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> obj root-override trans)))
+          (s3-0 (quaternion->matrix (new-stack-matrix0) (-> obj root-override quat)))
+          )
+      (vector-normalize! s5-1 1.0)
+      (let* ((s4-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s3-0 vector 1) 1.0))
+             (s3-1 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s3-0 vector 2) 1.0))
+             (a0-13 (vector-normalize! (vector-flatten! (new 'stack-no-clear 'vector) s5-1 s4-0) 1.0))
+             (f30-0 (vector-y-angle a0-13))
+             (f0-1 (vector-y-angle s3-1))
+             (f0-5 (fmax
+                     (fmin (+ (deg-diff f0-1 f30-0) (* 182.04445 (-> obj error-y-angle))) (-> obj info twist-y-max))
+                     (- (-> obj info twist-y-max))
+                     )
+                   )
+             )
+        (quaternion-axis-angle! (the-as quaternion (-> obj jmod twist)) 0.0 1.0 0.0 f0-5)
+        )
+      )
+    (if (-> obj jmod-left)
+        (quaternion-axis-angle!
+          (the-as quaternion (-> obj jmod-left twist))
+          0.0
+          0.0
+          1.0
+          (* 182.04445 (* -3.0 (the float (current-time))))
+          )
+        )
+    (if (-> obj jmod-right)
+        (quaternion-axis-angle!
+          (the-as quaternion (-> obj jmod-right twist))
+          0.0
+          0.0
+          1.0
+          (* 182.04445 (* 3.0 (the float (current-time))))
+          )
+        )
+    )
+  0
+  (none)
   )
 
 (defstate dead (drill-barons-ship-turret)
@@ -1508,7 +1502,7 @@ This commonly includes things such as:
       (set! (-> v1-1 prim-core collide-with) (collide-spec))
       )
     0
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :trans (behavior ()
@@ -1776,7 +1770,7 @@ This commonly includes things such as:
       )
     )
   :enter (behavior ()
-    (set! (-> self shot-timer) (-> self clock frame-counter))
+    (set! (-> self shot-timer) (current-time))
     (set! (-> self shot-counter) 0)
     (set! (-> self error-y-angle) (if (< 25.0 (rand-vu-float-range 0.0 50.0))
                                       -15.0
@@ -1901,7 +1895,7 @@ This commonly includes things such as:
              )
         (go-virtual idle)
         )
-    (when (and (= (-> self anim-frame) 1.0) (>= (- (-> self clock frame-counter) (-> self shot-timer)) (seconds 0.2)))
+    (when (and (= (-> self anim-frame) 1.0) (>= (- (current-time) (-> self shot-timer)) (seconds 0.2)))
       (let ((gp-0 (new 'stack-no-clear 'projectile-init-by-other-params)))
         (cond
           ((-> self jmod)
@@ -1988,7 +1982,7 @@ This commonly includes things such as:
         )
       (sound-play "ship-gun1-fire")
       (+! (-> self shot-counter) 1)
-      (set! (-> self shot-timer) (-> self clock frame-counter))
+      (set! (-> self shot-timer) (current-time))
       (seek! (-> self error-y-angle) (-> self error-y-angle-dest) (-> self clock time-adjust-ratio))
       (if (= (-> self error-y-angle) (-> self error-y-angle-dest))
           (set! (-> self info next-to-shoot) #f)

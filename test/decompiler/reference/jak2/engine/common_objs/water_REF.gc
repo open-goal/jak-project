@@ -799,7 +799,7 @@
            (and (>= (-> obj height) (-> obj bottom 0 y)) (logtest? (water-flags touch-water) (-> s5-0 flags)))
            )
          (if (logtest? (-> (the-as collide-shape-moving (-> obj process control)) status) (collide-status on-water))
-             (set! (-> obj on-water-time) (-> pp clock frame-counter))
+             (set! (-> obj on-water-time) (current-time))
              )
          (when (not (logtest? (-> obj flags) (water-flags dark-eco lava)))
            (set! (-> obj drip-wetness) 1.0)
@@ -821,9 +821,7 @@
                 )
               (set! (-> obj flags) (logior (water-flags break-surface) (-> obj flags)))
               (set! (-> s3-0 y) (+ 40.96 (-> obj surface-height)))
-              (when (and (not (handle->process (-> obj ripple)))
-                         (>= (+ (-> pp clock frame-counter) (seconds -1.5)) (-> obj enter-water-time))
-                         )
+              (when (and (not (handle->process (-> obj ripple))) (>= (+ (current-time) (seconds -1.5)) (-> obj enter-water-time)))
                 (let* ((s1-0 (get-process *default-dead-pool* manipy #x4000))
                        (s2-0
                          (when s1-0
@@ -952,7 +950,7 @@
                       )
                  (when (< (-> s3-1 y) (-> obj surface-height))
                    (set! (-> *part-id-table* 502 init-specs 16 initial-valuef) (-> obj surface-height))
-                   (let ((f0-72 (lerp-scale 12.0 0.4 (the float (- (-> pp clock frame-counter) (-> obj enter-water-time))) 0.0 600.0))
+                   (let ((f0-72 (lerp-scale 12.0 0.4 (the float (- (current-time) (-> obj enter-water-time))) 0.0 600.0))
                          (f1-26 0.00012207031)
                          (v1-222 (-> obj process control transv))
                          )
@@ -992,7 +990,7 @@
                               s3-2
                               )
                           )
-                  (v1-237 (and v1-236 (< (- (-> pp clock frame-counter) (-> v1-236 last-time-on-surface)) (seconds 0.5))))
+                  (v1-237 (and v1-236 (< (- (current-time) (-> v1-236 last-time-on-surface)) (seconds 0.5))))
                   )
              (if (and (logtest? (-> obj flags) (water-flags swim-ground))
                       (and v1-237
@@ -1018,7 +1016,7 @@
                                )
                            (< f0-84 (sqrtf (+ (* (-> a0-112 x) (-> a0-112 x)) (* (-> a0-112 z) (-> a0-112 z)))))
                            )
-                         (< (+ (-> pp clock frame-counter) (seconds -0.2)) (-> obj enter-water-time))
+                         (< (+ (current-time) (seconds -0.2)) (-> obj enter-water-time))
                          (or (>= (+ (- 204.8 (fmin 6144.0 (+ (-> obj ocean-offset) (-> obj bob-offset) (-> obj align-offset)))) f30-1)
                                  (-> obj bottom 0 y)
                                  )
@@ -1026,11 +1024,11 @@
                              )
                          )
                      )
-                (set! (-> obj swim-time) (-> pp clock frame-counter))
+                (set! (-> obj swim-time) (current-time))
                 (send-event (-> obj process) 'swim)
                 (set! (-> obj flags) (logior (water-flags swimming) (-> obj flags)))
                 (if (not (logtest? (water-flags swimming) s4-0))
-                    (set! (-> obj enter-swim-time) (-> pp clock frame-counter))
+                    (set! (-> obj enter-swim-time) (current-time))
                     )
                 (cond
                   ((and (logtest? (-> obj flags) (water-flags swim-ground))
@@ -1064,13 +1062,13 @@
                ((begin
                   (set! v1-237
                         (and (logtest? (-> obj flags) (water-flags can-wade))
-                             (or (not (!= (-> obj bob amp) 0.0)) (>= (- (-> pp clock frame-counter) (-> obj swim-time)) (seconds 0.05)))
+                             (or (not (!= (-> obj bob amp) 0.0)) (>= (- (current-time) (-> obj swim-time)) (seconds 0.05)))
                              (and (>= (- (-> obj height) (-> obj wade-height)) (-> obj bottom 0 y)) v1-237)
                              )
                         )
                   v1-237
                   )
-                (set! (-> obj wade-time) (-> pp clock frame-counter))
+                (set! (-> obj wade-time) (current-time))
                 (send-event (-> obj process) 'wade)
                 (set! (-> obj flags) (logior (water-flags wading) (-> obj flags)))
                 )
@@ -1203,7 +1201,7 @@
              (t9-35 a0-208 a1-61 a2-22 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
              )
            )
-         (set! (-> obj drip-time) (-> pp clock frame-counter))
+         (set! (-> obj drip-time) (current-time))
          (logclear! (-> obj flags) (water-flags spawn-drip))
          (seek! (-> obj drip-wetness) 0.0 (* 0.001 (-> obj drip-speed)))
          (set! (-> obj drip-speed) (* 1.05 (-> obj drip-speed)))
@@ -1211,9 +1209,7 @@
              (set! (-> obj drip-height) 0.0)
              )
          )
-        ((>= (- (-> pp clock frame-counter)
-                (the-as time-frame (the int (/ (the float (-> obj drip-time)) (-> obj drip-mult))))
-                )
+        ((>= (- (current-time) (the-as time-frame (the int (/ (the float (-> obj drip-time)) (-> obj drip-mult)))))
              (the int (-> obj drip-speed))
              )
          (let* ((s5-1 (rand-vu-int-range 3 (+ (-> obj process node-list length) -1)))
@@ -1337,7 +1333,7 @@
   (with-pp
     (set! (-> obj flags) (logior (water-flags touch-water) (-> obj flags)))
     (logclear! (-> obj flags) (water-flags jump-out))
-    (set! (-> obj enter-water-time) (-> pp clock frame-counter))
+    (set! (-> obj enter-water-time) (current-time))
     (set-vector! (-> obj enter-water-pos) (-> obj bottom 0 x) (-> obj surface-height) (-> obj bottom 0 z) 1.0)
     (when (and (logtest? (water-flags part-splash) (-> obj flags)) (logtest? (water-flags part-water) (-> obj flags)))
       (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
@@ -1474,41 +1470,39 @@
 ;; definition for method 13 of type water-control
 ;; WARN: Return type mismatch int vs none.
 (defmethod spawn-ripples water-control ((obj water-control) (arg0 float) (arg1 vector) (arg2 int) (arg3 vector) (arg4 symbol))
-  (with-pp
-    (when (and (logtest? (water-flags part-splash) (-> obj flags)) (logtest? (water-flags part-water) (-> obj flags)))
-      (let ((s4-1 (vector+float*! (new 'stack-no-clear 'vector) arg1 arg3 0.05)))
-        (set! (-> s4-1 y) (+ 40.96 (-> obj surface-height)))
-        (if (>= (- (-> pp clock frame-counter) (-> obj distort-time)) (seconds 0.1))
-            (splash-spawn arg0 s4-1 arg2)
-            )
-        (when (and arg4 (>= (- (-> pp clock frame-counter) (-> obj distort-time)) (seconds 0.3)))
-          (set! (-> obj distort-time) (-> pp clock frame-counter))
-          (let ((s3-1 (process-spawn
-                        manipy
-                        :init manipy-init
-                        s4-1
-                        (-> obj process entity)
-                        (art-group-get-by-name *level* "skel-generic-ripples" (the-as (pointer uint32) #f))
-                        #f
-                        0
-                        :to (-> obj process)
-                        )
+  (when (and (logtest? (water-flags part-splash) (-> obj flags)) (logtest? (water-flags part-water) (-> obj flags)))
+    (let ((s4-1 (vector+float*! (new 'stack-no-clear 'vector) arg1 arg3 0.05)))
+      (set! (-> s4-1 y) (+ 40.96 (-> obj surface-height)))
+      (if (>= (- (current-time) (-> obj distort-time)) (seconds 0.1))
+          (splash-spawn arg0 s4-1 arg2)
+          )
+      (when (and arg4 (>= (- (current-time) (-> obj distort-time)) (seconds 0.3)))
+        (set! (-> obj distort-time) (current-time))
+        (let ((s3-1 (process-spawn
+                      manipy
+                      :init manipy-init
+                      s4-1
+                      (-> obj process entity)
+                      (art-group-get-by-name *level* "skel-generic-ripples" (the-as (pointer uint32) #f))
+                      #f
+                      0
+                      :to (-> obj process)
                       )
-                )
-            (when s3-1
-              (send-event (ppointer->process s3-1) 'anim-mode 'play1)
-              (send-event (ppointer->process s3-1) 'anim "idle")
-              (let ((f0-4 (fmax 0.6 (fmin 1.0 (* 2.0 arg0)))))
-                (set-vector! (-> (the-as process-drawable (-> s3-1 0)) root scale) f0-4 0.5 f0-4 1.0)
-                )
+                    )
+              )
+          (when s3-1
+            (send-event (ppointer->process s3-1) 'anim-mode 'play1)
+            (send-event (ppointer->process s3-1) 'anim "idle")
+            (let ((f0-4 (fmax 0.6 (fmin 1.0 (* 2.0 arg0)))))
+              (set-vector! (-> (the-as process-drawable (-> s3-1 0)) root scale) f0-4 0.5 f0-4 1.0)
               )
             )
           )
         )
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 ;; definition for function water-info<-region

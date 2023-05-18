@@ -858,8 +858,8 @@ This commonly includes things such as:
           )
         )
       )
-    (let ((gp-2 (-> self clock frame-counter)))
-      (until (>= (- (-> self clock frame-counter) gp-2) (seconds 0.5))
+    (let ((gp-2 (current-time)))
+      (until (>= (- (current-time) gp-2) (seconds 0.5))
         (suspend)
         )
       )
@@ -1396,9 +1396,9 @@ This commonly includes things such as:
       )
     (if (-> self ridden?)
         (set! (-> self ridden?) #f)
-        (set! (-> self not-ridden-timer) (-> self clock frame-counter))
+        (set! (-> self not-ridden-timer) (current-time))
         )
-    (if (>= (- (-> self clock frame-counter) (-> self not-ridden-timer)) (seconds 0.4))
+    (if (>= (- (current-time) (-> self not-ridden-timer)) (seconds 0.4))
         (go-virtual swing-down)
         )
     (none)
@@ -1421,7 +1421,7 @@ This commonly includes things such as:
           (t9-0)
           )
       )
-    (if (>= (- (-> self clock frame-counter) (-> self not-ridden-timer)) (seconds 2))
+    (if (>= (- (current-time) (-> self not-ridden-timer)) (seconds 2))
         (send-event self 'trigger)
         )
     (none)
@@ -1434,12 +1434,10 @@ This commonly includes things such as:
 
 (defmethod set-flipped-state drill-drop-plat ((obj drill-drop-plat))
   "Set the state of the platform."
-  (with-pp
-    (set! (-> obj not-ridden-timer) (-> pp clock frame-counter))
-    (go (method-of-object obj up))
-    0
-    (none)
-    )
+  (set! (-> obj not-ridden-timer) (current-time))
+  (go (method-of-object obj up))
+  0
+  (none)
   )
 
 (defmethod init-plat-collision! drill-drop-plat ((obj drill-drop-plat))

@@ -1403,13 +1403,13 @@ For example for an elevator pre-compute the distance between the first and last 
     (none)
     )
   :code (behavior ()
-    (set! (-> self wiggle-time) (+ (-> self clock frame-counter) (seconds -10)))
+    (set! (-> self wiggle-time) (+ (current-time) (seconds -10)))
     (set! (-> self wiggle-angle) 0.0)
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (until #f
         (ja :num! (loop! f30-0))
-        (when (>= (- (-> self clock frame-counter) (-> self wiggle-time)) (seconds 1))
-          (set! (-> self wiggle-time) (-> self clock frame-counter))
+        (when (>= (- (current-time) (-> self wiggle-time)) (seconds 1))
+          (set! (-> self wiggle-time) (current-time))
           (krew-boss-clone-method-180 self)
           )
         (suspend)
@@ -2332,37 +2332,35 @@ For example for an elevator pre-compute the distance between the first and last 
 (defmethod general-event-handler krew-boss ((obj krew-boss) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
-  (with-pp
-    (case arg2
-      (('track)
-       (cond
-         ((-> arg3 param 0)
-          (if (logtest? (-> obj enemy-flags) (enemy-flag enable-on-active))
-              #t
-              'abort
-              )
-          )
-         (else
-           (logtest? (-> obj enemy-flags) (enemy-flag enable-on-active))
-           )
-         )
-       )
-      (('notify)
-       (case (-> arg3 param 0)
-         (('hit)
-          (krew-hits-jak-speech obj)
-          (set! (-> obj next-shooting-frame) 100)
-          (set! (-> obj spawn-charge) #t)
-          (let ((v0-0 (the-as object (-> pp clock frame-counter))))
-            (set! (-> obj state-time) (the-as time-frame v0-0))
-            v0-0
+  (case arg2
+    (('track)
+     (cond
+       ((-> arg3 param 0)
+        (if (logtest? (-> obj enemy-flags) (enemy-flag enable-on-active))
+            #t
+            'abort
             )
-          )
+        )
+       (else
+         (logtest? (-> obj enemy-flags) (enemy-flag enable-on-active))
          )
        )
-      (else
-        ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+     )
+    (('notify)
+     (case (-> arg3 param 0)
+       (('hit)
+        (krew-hits-jak-speech obj)
+        (set! (-> obj next-shooting-frame) 100)
+        (set! (-> obj spawn-charge) #t)
+        (let ((v0-0 (the-as object (current-time))))
+          (set! (-> obj state-time) (the-as time-frame v0-0))
+          v0-0
+          )
         )
+       )
+     )
+    (else
+      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
       )
     )
   )
@@ -2678,26 +2676,24 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; definition for method 56 of type krew-boss
 (defmethod damage-amount-from-attack krew-boss ((obj krew-boss) (arg0 process) (arg1 event-message-block))
   "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
-  (with-pp
-    (let ((v1-0 (get-penetrate-using-from-attack-event (the-as process-drawable arg0) arg1)))
-      (cond
-        ((or (logtest? (penetrate jak-blue-shot) v1-0) (logtest? (penetrate jak-dark-shot) v1-0))
-         (cond
-           ((>= (- (-> pp clock frame-counter) (-> obj last-damage-time)) (seconds 5))
-            (set! (-> obj last-damage-time) (-> pp clock frame-counter))
-            5
-            )
-           (else
-             0
-             )
-           )
-         )
-        ((logtest? (penetrate dark-bomb) v1-0)
-         20
-         )
-        (else
+  (let ((v1-0 (get-penetrate-using-from-attack-event (the-as process-drawable arg0) arg1)))
+    (cond
+      ((or (logtest? (penetrate jak-blue-shot) v1-0) (logtest? (penetrate jak-dark-shot) v1-0))
+       (cond
+         ((>= (- (current-time) (-> obj last-damage-time)) (seconds 5))
+          (set! (-> obj last-damage-time) (current-time))
           5
           )
+         (else
+           0
+           )
+         )
+       )
+      ((logtest? (penetrate dark-bomb) v1-0)
+       20
+       )
+      (else
+        5
         )
       )
     )
@@ -2841,7 +2837,7 @@ For example for an elevator pre-compute the distance between the first and last 
     (set! (-> self spawn-charge) #t)
     (set! (-> self enemy-flags) (the-as enemy-flag (logxor (shl 256 32) (the-as int (-> self enemy-flags)))))
     (set! (-> self enemy-flags) (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag enemy-flag41))))
-    (set! (-> self starting-time) (-> self clock frame-counter))
+    (set! (-> self starting-time) (current-time))
     (when (not (handle->process (-> self hud-handle)))
       (set! (-> self hud-handle) (ppointer->handle (process-spawn hud-krew-boss :init hud-init-by-other :to self)))
       (krew-comes-in-speech self)
@@ -2865,7 +2861,7 @@ For example for an elevator pre-compute the distance between the first and last 
           )
       )
     (if (or (!= (-> self focus aware) 3) (not (get-enemy-target self)))
-        (set! (-> self starting-time) (-> self clock frame-counter))
+        (set! (-> self starting-time) (current-time))
         )
     (when (= (-> self next-shooting-frame) 200)
       (cond
@@ -2906,7 +2902,7 @@ For example for an elevator pre-compute the distance between the first and last 
            )
          )
         (else
-          (set! (-> self state-time) (-> self clock frame-counter))
+          (set! (-> self state-time) (current-time))
           )
         )
       )
@@ -2973,7 +2969,7 @@ For example for an elevator pre-compute the distance between the first and last 
         )
       )
     (let ((gp-2 (the int (* 300.0 (- 3.0 (* 0.5 (+ -1.0 (the float (-> self gameplay-pass)))))))))
-      (when (and (-> self spawn-charge) (>= (- (-> self clock frame-counter) (-> self state-time)) (+ gp-2 -300)))
+      (when (and (-> self spawn-charge) (>= (- (current-time) (-> self state-time)) (+ gp-2 -300)))
         (process-spawn
           part-tracker
           :init part-tracker-init
@@ -2987,7 +2983,7 @@ For example for an elevator pre-compute the distance between the first and last 
           )
         (set! (-> self spawn-charge) #f)
         )
-      (when (and (= (-> self next-shooting-frame) 100) (>= (- (-> self clock frame-counter) (-> self state-time)) gp-2))
+      (when (and (= (-> self next-shooting-frame) 100) (>= (- (current-time) (-> self state-time)) gp-2))
         (set! (-> self next-shooting-frame) 0)
         (ja :chan 1 :num-func num-func-identity :frame-num 0.0)
         )
@@ -3003,7 +2999,7 @@ For example for an elevator pre-compute the distance between the first and last 
         ((= (-> self next-shooting-frame) 20)
          (set! (-> self next-shooting-frame) 100)
          (set! (-> self spawn-charge) #t)
-         (set! (-> self state-time) (-> self clock frame-counter))
+         (set! (-> self state-time) (current-time))
          )
         (else
           (+! (-> self next-shooting-frame) 5)

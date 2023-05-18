@@ -155,7 +155,7 @@
            (vf2 :class vf)
            )
       (init-vf0-vector)
-      (let ((f28-0 (/ (the float (- (-> pp clock frame-counter) (-> arg0 traj-timer))) (-> arg0 traj-duration)))
+      (let ((f28-0 (/ (the float (- (current-time) (-> arg0 traj-timer))) (-> arg0 traj-duration)))
             (s5-0 (new 'stack-no-clear 'vector))
             )
         (let ((f30-0 (compute-time-until-apex (-> arg0 traj))))
@@ -306,28 +306,26 @@
 ;; definition for method 31 of type squid-grenade
 (defmethod init-proj-settings! squid-grenade ((obj squid-grenade))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  (with-pp
-    (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 1120) obj))
-    (set! (-> obj attack-mode) 'squid-grenade)
-    (set! (-> obj max-speed) 655360.0)
-    (set! (-> obj move) squid-grenade-move)
-    (set! (-> obj timeout) (seconds 5))
-    (set! (-> obj stop-speed) 4.096)
-    (set! (-> obj fly-sound) (new-sound-id))
-    (set! (-> obj traj-timer) (-> pp clock frame-counter))
-    (vector+! (-> obj traj-dest) (-> obj root-override trans) (-> obj root-override transv))
-    (set! (-> obj traj-duration)
-          (fmax 600.0 (* 0.0018310547 (vector-vector-xz-distance (-> obj root-override trans) (-> obj traj-dest))))
-          )
-    (+! (-> obj traj-duration) (* 75.0 (rand-vu)))
-    (let ((f0-8 32768.0))
-      (if (< (-> obj root-override trans y) (-> obj traj-dest y))
-          (+! f0-8 (- (-> obj traj-dest y) (-> obj root-override trans y)))
-          )
-      (setup-from-to-duration-and-height! (-> obj traj) (-> obj root-override trans) (-> obj traj-dest) 1.0 f0-8)
-      )
-    (none)
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 1120) obj))
+  (set! (-> obj attack-mode) 'squid-grenade)
+  (set! (-> obj max-speed) 655360.0)
+  (set! (-> obj move) squid-grenade-move)
+  (set! (-> obj timeout) (seconds 5))
+  (set! (-> obj stop-speed) 4.096)
+  (set! (-> obj fly-sound) (new-sound-id))
+  (set! (-> obj traj-timer) (current-time))
+  (vector+! (-> obj traj-dest) (-> obj root-override trans) (-> obj root-override transv))
+  (set! (-> obj traj-duration)
+        (fmax 600.0 (* 0.0018310547 (vector-vector-xz-distance (-> obj root-override trans) (-> obj traj-dest))))
+        )
+  (+! (-> obj traj-duration) (* 75.0 (rand-vu)))
+  (let ((f0-8 32768.0))
+    (if (< (-> obj root-override trans y) (-> obj traj-dest y))
+        (+! f0-8 (- (-> obj traj-dest y) (-> obj root-override trans y)))
+        )
+    (setup-from-to-duration-and-height! (-> obj traj) (-> obj root-override trans) (-> obj traj-dest) 1.0 f0-8)
     )
+  (none)
   )
 
 ;; definition for function squid-whirlwind-move
@@ -340,12 +338,8 @@
     (* 819.2 (-> self clock time-adjust-ratio))
     )
   (let ((gp-0 (new 'stack-no-clear 'vector)))
-    (let ((f30-0
-            (lerp-scale 12288.0 32768.0 (the float (- (-> self clock frame-counter) (-> self state-time))) 0.0 900.0)
-            )
-          (f28-0
-            (lerp-scale 1024.0 4096.0 (the float (- (-> self clock frame-counter) (-> self state-time))) 0.0 900.0)
-            )
+    (let ((f30-0 (lerp-scale 12288.0 32768.0 (the float (- (current-time) (-> self state-time))) 0.0 900.0))
+          (f28-0 (lerp-scale 1024.0 4096.0 (the float (- (current-time) (-> self state-time))) 0.0 900.0))
           )
       (vector-! (-> self root transv) (-> self root trans) (-> self center))
       (set-vector! gp-0 (- (-> self root transv z)) 0.0 (-> self root transv x) 1.0)
@@ -405,7 +399,7 @@
 (defstate idle (squid-whirlwind)
   :virtual #t
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (set! (-> self duration) (the-as time-frame (+ (the int (* 150.0 (rand-vu))) 1050)))
     (none)
     )
@@ -419,7 +413,7 @@
       (set! (-> a1-2 y) (+ 2048.0 (-> a1-2 y)))
       (spawn (-> self part) a1-2)
       )
-    (when (or (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self duration))
+    (when (or (>= (- (current-time) (-> self state-time)) (-> self duration))
               (let ((f0-3 (vector-vector-xz-distance-squared (target-pos 0) (-> self root trans)))
                     (f1-1 12288.0)
                     )
@@ -573,7 +567,3 @@
   0
   (none)
   )
-
-
-
-

@@ -1538,11 +1538,11 @@
        )
       )
     (logior! (-> self flags) (fail-mission-flags famflags-1))
-    (set! (-> self grabbed-time) (-> self clock frame-counter))
+    (set! (-> self grabbed-time) (current-time))
     (when (not (logtest? (-> self flags) (fail-mission-flags famflags-3)))
       (when (not (logtest? (-> self flags) (fail-mission-flags famflags-5)))
-        (while (< (- (-> self clock frame-counter) (-> self grabbed-time)) (seconds 1.5))
-          (let ((f30-0 (lerp-scale 0.0 1.0 (the float (- (-> self clock frame-counter) (-> self grabbed-time))) 0.0 450.0)))
+        (while (< (- (current-time) (-> self grabbed-time)) (seconds 1.5))
+          (let ((f30-0 (lerp-scale 0.0 1.0 (the float (- (current-time) (-> self grabbed-time))) 0.0 450.0)))
             (set-filter-color!
               (lerp-scale 1.0 1.25 f30-0 0.0 1.0)
               (lerp-scale 1.0 0.875 f30-0 0.0 1.0)
@@ -1565,7 +1565,7 @@
       (((fail-mission-message fammsg-0))
        (until #f
          (when (or (and (logtest? (-> self flags) (fail-mission-flags famflags-0))
-                        (>= (- (-> self clock frame-counter) (-> self grabbed-time)) (the-as time-frame (-> self reset-delay)))
+                        (>= (- (current-time) (-> self grabbed-time)) (the-as time-frame (-> self reset-delay)))
                         )
                    (or (logtest? (pad-buttons confirm) (-> *cpad-list* cpads 0 button0-rel 0))
                        (logtest? (-> self flags) (fail-mission-flags famflags-3))
@@ -1658,9 +1658,9 @@
     )
   :code (behavior ()
     (local-vars (a1-10 basic))
-    (let ((gp-0 (-> self clock frame-counter)))
-      (until (>= (- (-> self clock frame-counter) gp-0) (seconds 1))
-        (let ((f30-0 (lerp-scale 1.0 0.0 (the float (- (-> self clock frame-counter) gp-0)) 0.0 270.0)))
+    (let ((gp-0 (current-time)))
+      (until (>= (- (current-time) gp-0) (seconds 1))
+        (let ((f30-0 (lerp-scale 1.0 0.0 (the float (- (current-time) gp-0)) 0.0 270.0)))
           (when *sound-player-enable*
             (let ((v1-6 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
               (set! (-> v1-6 command) (sound-command set-param))
@@ -1671,7 +1671,7 @@
               )
             )
           )
-        (let ((f30-1 (lerp-scale 1.0 0.0 (the float (- (-> self clock frame-counter) gp-0)) 0.0 300.0)))
+        (let ((f30-1 (lerp-scale 1.0 0.0 (the float (- (current-time) gp-0)) 0.0 300.0)))
           (set-filter-color!
             (lerp-scale 1.0 1.25 f30-1 0.0 1.0)
             (lerp-scale 1.0 0.875 f30-1 0.0 1.0)
@@ -1826,7 +1826,7 @@
   (set! (-> self lev-name) arg1)
   (add-setting! 'task arg0 0.0 0)
   (add-setting! 'task-manager (process->ppointer self) 0.0 0)
-  (set! (-> self intro-time) (-> self clock frame-counter))
+  (set! (-> self intro-time) (current-time))
   (set! (-> self fail-on-death?) (not (logtest? (-> arg0 flags) (game-task-node-flag no-fail-on-death))))
   (when arg1
     (let* ((v1-15 (level-get *level* arg1))
@@ -1852,29 +1852,27 @@
   )
 
 (defmethod check-time task-manager ((obj task-manager))
-  (with-pp
-    (when (nonzero? (-> obj start-time))
-      (let ((v1-3 (handle->process (-> obj hud-timer))))
-        (if (and *target* (not v1-3))
-            (set! (-> obj hud-timer) (ppointer->handle (process-spawn hud-timer :init hud-init-by-other :to *target*)))
-            )
+  (when (nonzero? (-> obj start-time))
+    (let ((v1-3 (handle->process (-> obj hud-timer))))
+      (if (and *target* (not v1-3))
+          (set! (-> obj hud-timer) (ppointer->handle (process-spawn hud-timer :init hud-init-by-other :to *target*)))
+          )
+      )
+    (let ((v1-15 (- (-> obj time-limit) (- (current-time) (-> obj start-time)))))
+      (let ((a0-15 *game-info*))
+        (set! (-> a0-15 timer) v1-15)
+        (set! (-> a0-15 timer-flash) (< v1-15 (seconds 10)))
         )
-      (let ((v1-15 (- (-> obj time-limit) (- (-> pp clock frame-counter) (-> obj start-time)))))
-        (let ((a0-15 *game-info*))
-          (set! (-> a0-15 timer) v1-15)
-          (set! (-> a0-15 timer-flash) (< v1-15 (seconds 10)))
-          )
-        (when (< v1-15 0)
-          (if *debug-segment*
-              (format #t "task failed:  ran out of time~%")
-              )
-          (send-event (handle->process (-> obj hud-timer)) 'hide-and-die)
-          (go (method-of-object obj fail))
-          )
+      (when (< v1-15 0)
+        (if *debug-segment*
+            (format #t "task failed:  ran out of time~%")
+            )
+        (send-event (handle->process (-> obj hud-timer)) 'hide-and-die)
+        (go (method-of-object obj fail))
         )
       )
-    0
     )
+  0
   )
 
 (defmethod initialize! task-manager ((obj task-manager))
@@ -2033,28 +2031,26 @@
 
 ;; WARN: Return type mismatch object vs symbol.
 (defmethod task-manager-method-22 task-manager ((obj task-manager))
-  (with-pp
-    (the-as
-      symbol
-      (and (or (not (logtest? (-> obj node-info flags) (game-task-node-flag city-wait)))
-               (let ((a0-2 (level-get-target-inside *level*)))
-                 (cond
-                   ((not (and a0-2 (logtest? (-> a0-2 info level-flags) 1)))
-                    (set! (-> obj intro-time) (-> pp clock frame-counter))
-                    #f
-                    )
-                   (else
-                     #t
-                     )
+  (the-as
+    symbol
+    (and (or (not (logtest? (-> obj node-info flags) (game-task-node-flag city-wait)))
+             (let ((a0-2 (level-get-target-inside *level*)))
+               (cond
+                 ((not (and a0-2 (logtest? (-> a0-2 info level-flags) 1)))
+                  (set! (-> obj intro-time) (current-time))
+                  #f
+                  )
+                 (else
+                   #t
                    )
                  )
                )
-           (or (zero? (-> obj info intro-delay))
-               (>= (- (-> pp clock frame-counter) (-> obj intro-time)) (the-as time-frame (-> obj info intro-delay)))
-               )
-           (and *target* (not (logtest? (focus-status dead teleporting) (-> *target* focus-status))))
-           )
-      )
+             )
+         (or (zero? (-> obj info intro-delay))
+             (>= (- (current-time) (-> obj intro-time)) (the-as time-frame (-> obj info intro-delay)))
+             )
+         (and *target* (not (logtest? (focus-status dead teleporting) (-> *target* focus-status))))
+         )
     )
   )
 
@@ -2153,7 +2149,7 @@
           (t9-3)
           )
       )
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (when (logtest? (-> self info mask) (task-manager-mask resolution-scene))
       (let ((gp-2 (ppointer->handle (process-spawn
                                       scene-player

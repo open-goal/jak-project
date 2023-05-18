@@ -77,7 +77,7 @@
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (set! (-> self first-time?) #f)
     (if (logtest? (-> self mode) (fma-sphere-mode kill-once))
         (send-event *traffic-manager* 'kill-traffic-sphere (-> self sphere))
@@ -92,7 +92,7 @@
            )
       (init-vf0-vector)
       (let ((v1-0 (-> self duration)))
-        (if (and (nonzero? v1-0) (>= (- (-> self clock frame-counter) (-> self state-time)) v1-0))
+        (if (and (nonzero? v1-0) (>= (- (current-time) (-> self state-time)) v1-0))
             (go empty-state)
             )
         )
@@ -154,6 +154,7 @@
   :code (the-as (function none :behavior fma-sphere) sleep-code)
   )
 
+;; WARN: Return type mismatch object vs none.
 (defbehavior fma-sphere-init-by-other fma-sphere ((arg0 fma-sphere-mode) (arg1 process-drawable) (arg2 int) (arg3 time-frame) (arg4 vector) (arg5 vector))
   (set! (-> self mode) arg0)
   (set! (-> self first-time?) #t)

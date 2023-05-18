@@ -841,167 +841,163 @@
   )
 
 (defmethod debug-draw minimap ((obj minimap))
-  (with-pp
-    (when *trail-graph*
-      (dotimes (s5-0 6)
-        (let ((s4-0 (-> obj trail s5-0)))
-          (when (and (-> s4-0 used-by)
-                     (>= (-> s4-0 node-count) 0)
-                     (< (- (-> pp clock frame-counter) (the-as int (-> s4-0 last-updated))) (seconds 5))
-                     )
-            (let* ((a3-0 (target-pos 0))
-                   (v1-12 s5-0)
-                   (t1-0 (cond
-                           ((zero? v1-12)
-                            *color-green*
-                            )
-                           ((= v1-12 1)
-                            *color-blue*
-                            )
-                           ((= v1-12 2)
-                            *color-white*
-                            )
-                           ((= v1-12 3)
-                            *color-red*
-                            )
-                           (else
-                             *color-magenta*
-                             )
+  (when *trail-graph*
+    (dotimes (s5-0 6)
+      (let ((s4-0 (-> obj trail s5-0)))
+        (when (and (-> s4-0 used-by)
+                   (>= (-> s4-0 node-count) 0)
+                   (< (- (current-time) (the-as int (-> s4-0 last-updated))) (seconds 5))
+                   )
+          (let* ((a3-0 (target-pos 0))
+                 (v1-12 s5-0)
+                 (t1-0 (cond
+                         ((zero? v1-12)
+                          *color-green*
+                          )
+                         ((= v1-12 1)
+                          *color-blue*
+                          )
+                         ((= v1-12 2)
+                          *color-white*
+                          )
+                         ((= v1-12 3)
+                          *color-red*
+                          )
+                         (else
+                           *color-magenta*
                            )
                          )
-                   )
-              (debug-draw-path
-                *trail-graph*
-                (-> s4-0 node-count)
-                (-> s4-0 node-id)
-                a3-0
-                (-> s4-0 cached-info orig-goal-pos)
-                t1-0
-                (* 1024.0 (the float s5-0))
-                )
+                       )
+                 )
+            (debug-draw-path
+              *trail-graph*
+              (-> s4-0 node-count)
+              (-> s4-0 node-id)
+              a3-0
+              (-> s4-0 cached-info orig-goal-pos)
+              t1-0
+              (* 1024.0 (the float s5-0))
               )
             )
           )
         )
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 ;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
 (defmethod update-trails minimap ((obj minimap))
   "Main function to do trail search per-frame"
-  (with-pp
-    (let ((s5-0 *trail-graph*))
-      (when s5-0
-        (.mtc0 Count 0)
-        (let ((v1-1 0))
-          (while (< (the-as uint v1-1) (the-as uint #x605a))
-            (let ((v1-2 (-> s5-0 mode)))
-              (cond
-                ((= v1-2 1)
-                 (run-until-done-or-timeout s5-0 #x605a)
-                 )
-                ((zero? v1-2)
-                 (let ((v1-5 -1))
-                   (let ((a0-5 0))
-                     (countdown (a1-1 6)
-                       (let* ((a2-3 (-> obj trail a1-1))
-                              (a3-0 (-> a2-3 used-by))
-                              )
-                         (when (and a3-0 (and (< 0.0 (-> a3-0 alpha)) (or (< v1-5 0) (< (the-as int (-> a2-3 last-updated)) a0-5))))
-                           (set! v1-5 a1-1)
-                           (set! a0-5 (the-as int (-> a2-3 last-updated)))
-                           )
-                         )
-                       )
-                     (let ((a1-5 (-> pp clock frame-counter)))
-                       (if (or (< v1-5 0) (= a0-5 a1-5))
-                           (goto cfg-68)
-                           )
-                       )
-                     )
-                   (let ((s4-0 (-> obj trail v1-5))
-                         (s3-0 (the-as object #f))
-                         )
-                     (let* ((v1-9 (-> s4-0 used-by))
-                            (s2-0 (-> v1-9 position))
+  (let ((s5-0 *trail-graph*))
+    (when s5-0
+      (.mtc0 Count 0)
+      (let ((v1-1 0))
+        (while (< (the-as uint v1-1) (the-as uint #x605a))
+          (let ((v1-2 (-> s5-0 mode)))
+            (cond
+              ((= v1-2 1)
+               (run-until-done-or-timeout s5-0 #x605a)
+               )
+              ((zero? v1-2)
+               (let ((v1-5 -1))
+                 (let ((a0-5 0))
+                   (countdown (a1-1 6)
+                     (let* ((a2-3 (-> obj trail a1-1))
+                            (a3-0 (-> a2-3 used-by))
                             )
-                       (set! s3-0 (cond
-                                    ((= s2-0 #t)
-                                     (let* ((s2-1 (handle->process (-> v1-9 handle)))
-                                            (v1-13 (if (type? s2-1 process-drawable)
-                                                       s2-1
-                                                       )
-                                                   )
-                                            )
-                                       (if v1-13
-                                           (set! s3-0 (-> (the-as process-drawable v1-13) root trans))
-                                           )
-                                       )
-                                     s3-0
+                       (when (and a3-0 (and (< 0.0 (-> a3-0 alpha)) (or (< v1-5 0) (< (the-as int (-> a2-3 last-updated)) a0-5))))
+                         (set! v1-5 a1-1)
+                         (set! a0-5 (the-as int (-> a2-3 last-updated)))
+                         )
+                       )
+                     )
+                   (let ((a1-5 (current-time)))
+                     (if (or (< v1-5 0) (= a0-5 a1-5))
+                         (goto cfg-68)
+                         )
+                     )
+                   )
+                 (let ((s4-0 (-> obj trail v1-5))
+                       (s3-0 (the-as object #f))
+                       )
+                   (let* ((v1-9 (-> s4-0 used-by))
+                          (s2-0 (-> v1-9 position))
+                          )
+                     (set! s3-0 (cond
+                                  ((= s2-0 #t)
+                                   (let* ((s2-1 (handle->process (-> v1-9 handle)))
+                                          (v1-13 (if (type? s2-1 process-drawable)
+                                                     s2-1
+                                                     )
+                                                 )
+                                          )
+                                     (if v1-13
+                                         (set! s3-0 (-> (the-as process-drawable v1-13) root trans))
+                                         )
                                      )
-                                    ((and (= (logand (the-as int s2-0) 7) 4) (= (-> (the-as basic s2-0) type) entity-actor))
-                                     (let* ((v1-19 s2-0)
-                                            (s3-1 (if v1-19
-                                                      (-> (the-as entity-actor v1-19) extra process)
-                                                      )
-                                                  )
-                                            (v1-21 (if (type? s3-1 process-drawable)
-                                                       s3-1
-                                                       )
-                                                   )
-                                            )
-                                       (if v1-21
-                                           (set! s3-0 (-> (the-as process-drawable v1-21) root trans))
-                                           (set! s3-0 (-> (the-as entity-actor s2-0) extra trans))
-                                           )
-                                       )
-                                     s3-0
+                                   s3-0
+                                   )
+                                  ((and (= (logand (the-as int s2-0) 7) 4) (= (-> (the-as basic s2-0) type) entity-actor))
+                                   (let* ((v1-19 s2-0)
+                                          (s3-1 (if v1-19
+                                                    (-> (the-as entity-actor v1-19) extra process)
+                                                    )
+                                                )
+                                          (v1-21 (if (type? s3-1 process-drawable)
+                                                     s3-1
+                                                     )
+                                                 )
+                                          )
+                                     (if v1-21
+                                         (set! s3-0 (-> (the-as process-drawable v1-21) root trans))
+                                         (set! s3-0 (-> (the-as entity-actor s2-0) extra trans))
+                                         )
                                      )
-                                    (else
-                                      s2-0
-                                      )
+                                   s3-0
+                                   )
+                                  (else
+                                    s2-0
                                     )
-                             )
-                       )
-                     (when s3-0
-                       (do-search! s5-0 (target-pos 0) (the-as vector s3-0) (-> s4-0 cached-info))
-                       (set! (-> s4-0 search-id) (-> s5-0 search-id))
-                       )
+                                  )
+                           )
+                     )
+                   (when s3-0
+                     (do-search! s5-0 (target-pos 0) (the-as vector s3-0) (-> s4-0 cached-info))
+                     (set! (-> s4-0 search-id) (-> s5-0 search-id))
                      )
                    )
                  )
-                ((or (= v1-2 3) (= v1-2 2))
-                 (countdown (v1-33 6)
-                   (let ((s4-1 (-> obj trail v1-33)))
-                     (when (and (= (-> s4-1 search-id) (-> s5-0 search-id)) (-> s4-1 used-by))
-                       (set! (-> s4-1 node-count)
-                             (get-path-to-root s5-0 (-> s4-1 node-id) 64 (&-> s4-1 goal-node-id) (&-> s4-1 node-path-dist))
-                             )
-                       (set! (-> s4-1 last-updated) (the-as uint (-> pp clock frame-counter)))
-                       (goto cfg-64)
-                       )
+               )
+              ((or (= v1-2 3) (= v1-2 2))
+               (countdown (v1-33 6)
+                 (let ((s4-1 (-> obj trail v1-33)))
+                   (when (and (= (-> s4-1 search-id) (-> s5-0 search-id)) (-> s4-1 used-by))
+                     (set! (-> s4-1 node-count)
+                           (get-path-to-root s5-0 (-> s4-1 node-id) 64 (&-> s4-1 goal-node-id) (&-> s4-1 node-path-dist))
+                           )
+                     (set! (-> s4-1 last-updated) (the-as uint (current-time)))
+                     (goto cfg-64)
                      )
                    )
-                 (label cfg-64)
-                 (reset-search-state s5-0)
                  )
-                )
+               (label cfg-64)
+               (reset-search-state s5-0)
+               )
               )
+            )
              ;; added in PC port: they timed stuff, we just allow it to run a fixed number of iterations.
             (+! v1-1 100)
             (.mfc0 v1-1 Count)
-            )
           )
-        (label cfg-68)
-        0
         )
+      (label cfg-68)
+      0
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 (defmethod get-trail-for-connection minimap ((obj minimap) (arg0 connection-minimap) (arg1 symbol))
@@ -1159,7 +1155,7 @@
                (let ((f30-0 1.0))
                  (when (logtest? (-> s3-0 class flags) (minimap-flag trail))
                    (let ((v1-26 (get-trail-for-connection *minimap* s3-0 #f)))
-                     (if (or (not v1-26) (>= (- (-> pp clock frame-counter) (the-as int (-> v1-26 last-updated))) (seconds 5)))
+                     (if (or (not v1-26) (>= (- (current-time) (the-as int (-> v1-26 last-updated))) (seconds 5)))
                          (set! f30-0 0.0001)
                          )
                      )
@@ -2332,7 +2328,7 @@
                         (set! s2-0 #t)
                         (set! (-> arg1 edge-ry) -131072.0)
                         )
-                       ((>= (- (-> pp clock frame-counter) (the-as int (-> a2-2 last-updated))) (seconds 5))
+                       ((>= (- (current-time) (the-as int (-> a2-2 last-updated))) (seconds 5))
                         (set! s2-0 #t)
                         (set! (-> arg1 edge-ry) -131072.0)
                         )

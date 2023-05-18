@@ -1962,7 +1962,7 @@
         (set! (-> event-msg-block message) 'path)
         (set! (-> event-msg-block param 0) (-> obj path-num))
         (let ((path (the-as path-control (send-event-function (handle->process (-> obj train-man)) event-msg-block)))
-              (f30-0 (* 0.0033333334 (the float (- (-> pp clock frame-counter) (-> obj state-time)))))
+              (f30-0 (* 0.0033333334 (the float (- (current-time) (-> obj state-time)))))
               )
           (if (not path)
               (return #f)
@@ -2000,7 +2000,7 @@
              (when (>= f30-0 (-> curr-path-command 0 time))
                (set! (-> obj current) (the-as (inline-array tpath-control-frame) (-> obj current 1)))
                (set! (-> obj first-time-command) #t)
-               (set! (-> obj state-time) (-> pp clock frame-counter))
+               (set! (-> obj state-time) (current-time))
                )
              (return #t)
              ret
@@ -2015,7 +2015,7 @@
              (when (>= f30-0 (-> curr-path-command 0 time))
                (set! (-> obj current) (the-as (inline-array tpath-control-frame) (-> obj current 1)))
                (set! (-> obj first-time-command) #t)
-               (set! (-> obj state-time) (-> pp clock frame-counter))
+               (set! (-> obj state-time) (current-time))
                )
              (return #t)
              ret
@@ -2050,7 +2050,7 @@
                (set! (-> obj current) (the-as (inline-array tpath-control-frame) (-> obj current 1)))
                (set! (-> obj inout-percent) 1.0)
                (set! (-> obj first-time-command) #t)
-               (set! (-> obj state-time) (-> pp clock frame-counter))
+               (set! (-> obj state-time) (current-time))
                )
              (return #t)
              ret
@@ -2116,10 +2116,8 @@
                      )
                (sound-play-by-spec s4-7 (-> obj move-sound) (-> obj root-override trans))
                )
-             (when (< (-> obj next-spark) (-> pp clock frame-counter))
-               (set! (-> obj next-spark)
-                     (the-as int (+ (-> pp clock frame-counter) (the int (* 300.0 (rand-vu-float-range 0.0 0.3)))))
-                     )
+             (when (< (-> obj next-spark) (current-time))
+               (set! (-> obj next-spark) (the-as int (+ (current-time) (the int (* 300.0 (rand-vu-float-range 0.0 0.3))))))
                (spawn (-> obj part) (-> obj root-override trans))
                )
              (set! (-> obj first-time-command) #f)
@@ -2133,7 +2131,7 @@
                (set! (-> obj current) (the-as (inline-array tpath-control-frame) (-> obj current 1)))
                (set! (-> obj path-pos) (* 0.007843138 (the float (-> curr-path-command 0 path-pos))))
                (set! (-> obj first-time-command) #t)
-               (set! (-> obj state-time) (-> pp clock frame-counter))
+               (set! (-> obj state-time) (current-time))
                )
              (return #t)
              ret
@@ -2148,7 +2146,7 @@
                        )
                (set! (-> obj current) (the-as (inline-array tpath-control-frame) (-> obj current 1)))
                (set! (-> obj first-time-command) #t)
-               (set! (-> obj state-time) (-> pp clock frame-counter))
+               (set! (-> obj state-time) (current-time))
                )
              (return #t)
              ret
@@ -2189,7 +2187,7 @@
       object
       (case event-type
         (('combo)
-         (set! (-> self last-combo-time) (-> self clock frame-counter))
+         (set! (-> self last-combo-time) (current-time))
          #t
          )
         (('track)
@@ -2247,7 +2245,7 @@
                       )
                      (else
                        (if (and (logtest? (process-mask projectile) (-> proc-draw mask))
-                                (< (- (-> self clock frame-counter) (-> self last-combo-time)) (seconds 1))
+                                (< (- (current-time) (-> self last-combo-time)) (seconds 1))
                                 )
                            (send-event (ppointer->process (-> self parent)) 'combo)
                            )
@@ -2267,7 +2265,7 @@
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (set! (-> self inout-percent) 1.0)
     (set! (-> self y-offset) 0.0)
     (set! (-> self rot-y-offset) 0.0)
