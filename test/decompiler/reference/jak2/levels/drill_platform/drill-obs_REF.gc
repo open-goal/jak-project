@@ -129,7 +129,7 @@
 and translate the platform via the `smush`
 @see [[smush-control]]"
   (activate! (-> obj smush) -1.0 24 120 1.0 1.0 (-> self clock))
-  (set! (-> obj bounce-time) (-> self clock frame-counter))
+  (set! (-> obj bounce-time) (current-time))
   (set! (-> obj bouncing) #t)
   (logclear! (-> obj mask) (process-mask sleep))
   (logclear! (-> obj mask) (process-mask sleep-code))
@@ -184,7 +184,7 @@ and translate the platform via the `smush`
 (defstate falling (drill-plat-falling)
   :virtual #t
   :trans (behavior ()
-    (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.4))
+    (if (>= (- (current-time) (-> self state-time)) (seconds 0.4))
         (logclear! (-> self root-override root-prim prim-core action) (collide-action rideable))
         )
     (drill-plat-falling-trans)
@@ -821,7 +821,7 @@ For example for an elevator pre-compute the distance between the first and last 
                 )
            (when gp-0
              (when (or (focus-test? (the-as process-focusable gp-0) mech)
-                       (>= (- (-> self clock frame-counter) (-> self no-collision-timer))
+                       (>= (- (current-time) (-> self no-collision-timer))
                            (the-as time-frame (-> *TARGET-bank* hit-invulnerable-timeout))
                            )
                        )
@@ -865,7 +865,7 @@ For example for an elevator pre-compute the distance between the first and last 
                              (set! (-> a1-10 param 1) (the-as uint v1-32))
                              )
                            (when (send-event-function gp-0 a1-10)
-                             (let ((v0-0 (-> self clock frame-counter)))
+                             (let ((v0-0 (current-time)))
                                (set! (-> self no-collision-timer) v0-0)
                                v0-0
                                )
@@ -1250,21 +1250,19 @@ This commonly includes things such as:
 ;; definition for method 40 of type drill-switch
 (defmethod set-switch-color drill-switch ((obj drill-switch) (arg0 symbol))
   "Set the switch color based on its state."
-  (with-pp
-    (when (or arg0 (not (logtest? (-> pp clock frame-counter) 64)))
-      (let ((s4-0 (new 'stack-no-clear 'vector)))
-        (vector<-cspace+vector! s4-0 (-> obj node-list data 4) (new 'static 'vector :y 6963.2 :w 1.0))
-        (spawn
-          (if arg0
-              (-> obj green-part)
-              (-> obj part)
-              )
-          s4-0
-          )
+  (when (or arg0 (not (logtest? (current-time) 64)))
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (vector<-cspace+vector! s4-0 (-> obj node-list data 4) (new 'static 'vector :y 6963.2 :w 1.0))
+      (spawn
+        (if arg0
+            (-> obj green-part)
+            (-> obj part)
+            )
+        s4-0
         )
       )
-    (none)
     )
+  (none)
   )
 
 ;; definition for method 34 of type drill-switch
@@ -1423,7 +1421,7 @@ This commonly includes things such as:
        (sleep-code)
        )
       (else
-        (until (>= (- (-> self clock frame-counter) (-> self state-time)) (the int (* 300.0 (-> self timeout))))
+        (until (>= (- (current-time) (-> self state-time)) (the int (* 300.0 (-> self timeout))))
           (suspend)
           )
         (send-event! self (-> self event-going-up))
@@ -1652,11 +1650,11 @@ This commonly includes things such as:
 (defstate drill-laser-idle (drill-laser)
   :virtual #t
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :trans (behavior ()
-    (let* ((f0-2 (+ (* 0.0033333334 (the float (- (-> self clock frame-counter) (-> self state-time))))
+    (let* ((f0-2 (+ (* 0.0033333334 (the float (- (current-time) (-> self state-time))))
                     (* (-> self offset) (+ (-> self speed) (-> self pause)))
                     )
                  )

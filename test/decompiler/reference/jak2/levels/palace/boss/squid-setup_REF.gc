@@ -1518,7 +1518,7 @@
 ;; WARN: Return type mismatch vector vs none.
 (defbehavior squid-increment-shield squid ((arg0 float))
   (set! (-> self shield-hit-points) (fmin 1.0 (fmax 0.0 (+ (-> self shield-hit-points) arg0))))
-  (set! (-> self shield-timer) (+ (-> self clock frame-counter) (seconds -0.125)))
+  (set! (-> self shield-timer) (+ (current-time) (seconds -0.125)))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (cond
       ((< (-> self shield-hit-points) 0.5)
@@ -1728,7 +1728,7 @@
             (squid-take-hit (the-as touching-shapes-entry (-> arg3 param 0)) (the-as attack-info (-> arg3 param 1)) #f)
             )
           )
-         ((>= (- (-> self clock frame-counter) (-> self invincible-timer)) (seconds 3))
+         ((>= (- (current-time) (-> self invincible-timer)) (seconds 3))
           (cond
             ((and (= (-> self shield-hit-points) 0.0)
                   (not (and (-> self next-state) (= (-> self next-state name) 'recharge)))
@@ -1742,7 +1742,7 @@
               )
             )
           (squid-take-hit (the-as touching-shapes-entry (-> arg3 param 0)) (the-as attack-info (-> arg3 param 1)) #t)
-          (set! (-> self invincible-timer) (-> self clock frame-counter))
+          (set! (-> self invincible-timer) (current-time))
           (squid-check-hit-points)
           )
          ((or (!= (-> self shield-hit-points) 0.0) (and (-> self next-state) (= (-> self next-state name) 'recharge)))
@@ -2396,23 +2396,21 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-traj-towards-vec squid ((obj squid) (src vector) (arg2 vector) (dest vector))
   "Set up the [[trajectory]] towards `dest`."
-  (with-pp
-    (set! (-> obj traj-timer) (-> pp clock frame-counter))
-    (set! (-> obj traj-src quad) (-> src quad))
-    (set! (-> obj traj-dest quad) (-> dest quad))
-    (set! (-> obj traj-duration) (* 0.00091552734 (vector-vector-xz-distance arg2 dest)))
-    (set! (-> obj traj-duration) (fmax 480.0 (-> obj traj-duration)))
-    (let ((f0-4 49152.0))
-      (if (< (-> arg2 y) (-> dest y))
-          (+! f0-4 (- (-> dest y) (-> arg2 y)))
-          )
-      (setup-from-to-duration-and-height! (-> obj traj) arg2 dest 1.0 f0-4)
-      )
-    (set! (-> obj residual-accumulator-1) 1.0)
-    (set! (-> obj residual-accumulator-2) 0.0)
-    0
-    (none)
+  (set! (-> obj traj-timer) (current-time))
+  (set! (-> obj traj-src quad) (-> src quad))
+  (set! (-> obj traj-dest quad) (-> dest quad))
+  (set! (-> obj traj-duration) (* 0.00091552734 (vector-vector-xz-distance arg2 dest)))
+  (set! (-> obj traj-duration) (fmax 480.0 (-> obj traj-duration)))
+  (let ((f0-4 49152.0))
+    (if (< (-> arg2 y) (-> dest y))
+        (+! f0-4 (- (-> dest y) (-> arg2 y)))
+        )
+    (setup-from-to-duration-and-height! (-> obj traj) arg2 dest 1.0 f0-4)
     )
+  (set! (-> obj residual-accumulator-1) 1.0)
+  (set! (-> obj residual-accumulator-2) 0.0)
+  0
+  (none)
   )
 
 ;; definition for method 47 of type squid
@@ -2423,225 +2421,221 @@ This commonly includes things such as:
 ;; definition for method 48 of type squid
 ;; INFO: Used lq/sq
 (defmethod squid-method-48 squid ((obj squid))
-  (with-pp
-    (when (< 0.00001 (-> obj residual-accumulator-1))
-      (set! (-> obj residual-accumulator-1) (* 0.95 (-> obj residual-accumulator-1)))
-      (+! (-> obj residual-accumulator-2) (-> obj residual-accumulator-1))
-      )
-    (let* ((f28-0 ((method-of-type trajectory compute-time-until-apex)
-                   (the-as trajectory (&-> (the-as squid-grenade (-> obj self)) ignore-handle))
-                   )
-                  )
-           (s3-0 (compute-trans-at-time (-> obj traj) f28-0 (new 'stack-no-clear 'vector)))
-           (s5-0 (new 'stack-no-clear 'vector))
-           (s4-0 (new 'stack-no-clear 'vector))
-           (f30-0 (/ (the float (- (-> pp clock frame-counter) (-> obj traj-timer))) (-> obj traj-duration)))
-           )
-      (let ((f26-0 (float-sin-clamp obj f30-0)))
-        (when (and (-> obj can-play-squid-boost) (< 0.125 f30-0))
-          (set! (-> obj can-play-squid-boost) #f)
-          (sound-play "squid-boost")
-          )
-        (cond
-          ((< f26-0 1.0)
-           (compute-trans-at-time (-> obj traj) f26-0 s5-0)
-           (set! (-> s4-0 quad) (-> obj traj-src quad))
-           (+! (-> s4-0 y) (* 204.8 (the float (- (-> pp clock frame-counter) (-> obj traj-timer))) (/ f26-0 f30-0)))
-           (vector+float*! s4-0 s4-0 (-> obj residual-velocity) (-> obj residual-accumulator-2))
-           (vector-lerp! s5-0 s4-0 s5-0 f26-0)
-           (cond
-             ((< f28-0 f26-0)
-              (let ((f28-1 (/ (- f26-0 f28-0) (- 1.0 f28-0))))
-                (vector-lerp! s4-0 s3-0 (-> obj traj-dest) f28-1)
-                (vector-lerp! s5-0 s5-0 s4-0 f28-1)
+  (when (< 0.00001 (-> obj residual-accumulator-1))
+    (set! (-> obj residual-accumulator-1) (* 0.95 (-> obj residual-accumulator-1)))
+    (+! (-> obj residual-accumulator-2) (-> obj residual-accumulator-1))
+    )
+  (let* ((f28-0 ((method-of-type trajectory compute-time-until-apex)
+                 (the-as trajectory (&-> (the-as squid-grenade (-> obj self)) ignore-handle))
+                 )
                 )
-              (squid-method-43 obj (squid-method-42 obj (new 'stack-no-clear 'vector)) 1092.2667 0.05)
-              (vector-! s4-0 (-> obj traj-dest) (-> obj trans))
-              (vector-normalize! s4-0 1.75)
-              (dotimes (s3-2 6)
-                (send-event (handle->process (-> obj tentacles s3-2)) 'set-gravity s4-0)
-                )
+         (s3-0 (compute-trans-at-time (-> obj traj) f28-0 (new 'stack-no-clear 'vector)))
+         (s5-0 (new 'stack-no-clear 'vector))
+         (s4-0 (new 'stack-no-clear 'vector))
+         (f30-0 (/ (the float (- (current-time) (-> obj traj-timer))) (-> obj traj-duration)))
+         )
+    (let ((f26-0 (float-sin-clamp obj f30-0)))
+      (when (and (-> obj can-play-squid-boost) (< 0.125 f30-0))
+        (set! (-> obj can-play-squid-boost) #f)
+        (sound-play "squid-boost")
+        )
+      (cond
+        ((< f26-0 1.0)
+         (compute-trans-at-time (-> obj traj) f26-0 s5-0)
+         (set! (-> s4-0 quad) (-> obj traj-src quad))
+         (+! (-> s4-0 y) (* 204.8 (the float (- (current-time) (-> obj traj-timer))) (/ f26-0 f30-0)))
+         (vector+float*! s4-0 s4-0 (-> obj residual-velocity) (-> obj residual-accumulator-2))
+         (vector-lerp! s5-0 s4-0 s5-0 f26-0)
+         (cond
+           ((< f28-0 f26-0)
+            (let ((f28-1 (/ (- f26-0 f28-0) (- 1.0 f28-0))))
+              (vector-lerp! s4-0 s3-0 (-> obj traj-dest) f28-1)
+              (vector-lerp! s5-0 s5-0 s4-0 f28-1)
               )
-             (else
-               (squid-method-43 obj (-> obj traj-dest) 546.13336 0.005)
-               )
-             )
-           (set! (-> obj trans quad) (-> s5-0 quad))
-           )
-          (else
-            (dotimes (s5-1 6)
-              (send-event (handle->process (-> obj tentacles s5-1)) 'set-gravity-slow (new 'static 'vector :y -1.0))
+            (squid-method-43 obj (squid-method-42 obj (new 'stack-no-clear 'vector)) 1092.2667 0.05)
+            (vector-! s4-0 (-> obj traj-dest) (-> obj trans))
+            (vector-normalize! s4-0 1.75)
+            (dotimes (s3-2 6)
+              (send-event (handle->process (-> obj tentacles s3-2)) 'set-gravity s4-0)
               )
-            (set! (-> obj trans quad) (-> obj traj-dest quad))
             )
+           (else
+             (squid-method-43 obj (-> obj traj-dest) 546.13336 0.005)
+             )
+           )
+         (set! (-> obj trans quad) (-> s5-0 quad))
+         )
+        (else
+          (dotimes (s5-1 6)
+            (send-event (handle->process (-> obj tentacles s5-1)) 'set-gravity-slow (new 'static 'vector :y -1.0))
+            )
+          (set! (-> obj trans quad) (-> obj traj-dest quad))
           )
         )
-      f30-0
       )
+    f30-0
     )
   )
 
 ;; definition for method 49 of type squid
 ;; WARN: Return type mismatch int vs none.
 (defmethod setup-part-engine squid ((obj squid) (arg0 symbol))
-  (with-pp
-    (when (>= (- (-> pp clock frame-counter) (-> obj blink-time)) 0)
-      (set! (-> obj blink-mask) 0)
-      (dotimes (s5-0 10)
-        (let* ((f30-0 0.5)
-               (v1-6 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-               (v1-7 (the-as number (logior #x3f800000 v1-6)))
-               )
-          (if (< f30-0 (+ -1.0 (the-as float v1-7)))
-              (logior! (-> obj blink-mask) (ash 1 s5-0))
-              )
-          )
-        )
-      (set! (-> obj blink-time) (+ (-> pp clock frame-counter) (the int (* 300.0 (rand-vu-float-range 0.25 0.75)))))
-      (set! arg0 #t)
-      )
-    (when arg0
-      (remove-from-process *part-engine* obj)
-      (add-connection
-        *part-engine*
-        obj
-        5
-        obj
-        4790
-        (new 'static 'vector :x -5906.432 :y 3317.76 :z -409.6 :w 819200.0)
-        )
-      (add-connection
-        *part-engine*
-        obj
-        5
-        obj
-        4790
-        (new 'static 'vector :x 5906.432 :y 3317.76 :z -409.6 :w 819200.0)
-        )
-      (add-connection *part-engine* obj 6 obj 4791 (new 'static 'vector :y 3366.912 :w 819200.0))
-      (add-connection *part-engine* obj 13 obj 4791 (new 'static 'vector :y 11993.088 :z 5255.168 :w 819200.0))
-      (add-connection
-        *part-engine*
-        obj
-        5
-        obj
-        4792
-        (new 'static 'vector :x 5439.488 :y -1794.048 :z 11444.224 :w 819200.0)
-        )
-      (add-connection
-        *part-engine*
-        obj
-        5
-        obj
-        4792
-        (new 'static 'vector :x -5439.488 :y -1794.048 :z 11444.224 :w 819200.0)
-        )
-      (let ((s5-2 (-> obj blink-mask)))
-        (if (logtest? s5-2 1)
-            (add-connection
-              *part-engine*
-              obj
-              5
-              obj
-              4793
-              (new 'static 'vector :x -4128.768 :y 2355.2 :z 3653.632 :w 819200.0)
-              )
-            )
-        (if (logtest? s5-2 2)
-            (add-connection
-              *part-engine*
-              obj
-              5
-              obj
-              4793
-              (new 'static 'vector :x -4554.752 :y 2449.408 :z 2359.296 :w 819200.0)
-              )
-            )
-        (if (logtest? s5-2 4)
-            (add-connection
-              *part-engine*
-              obj
-              5
-              obj
-              4793
-              (new 'static 'vector :x -4386.816 :y 2191.36 :z 528.384 :w 819200.0)
-              )
-            )
-        (if (logtest? s5-2 8)
-            (add-connection
-              *part-engine*
-              obj
-              5
-              obj
-              4793
-              (new 'static 'vector :x -5832.704 :y 2945.024 :z 1691.648 :w 819200.0)
-              )
-            )
-        (if (logtest? s5-2 16)
-            (add-connection
-              *part-engine*
-              obj
-              5
-              obj
-              4793
-              (new 'static 'vector :x -5861.376 :y 2920.448 :z 1118.208 :w 819200.0)
-              )
-            )
-        (if (logtest? s5-2 32)
-            (add-connection
-              *part-engine*
-              obj
-              5
-              obj
-              4793
-              (new 'static 'vector :x 4128.768 :y 2355.2 :z 3653.632 :w 819200.0)
-              )
-            )
-        (if (logtest? s5-2 64)
-            (add-connection
-              *part-engine*
-              obj
-              5
-              obj
-              4793
-              (new 'static 'vector :x 4554.752 :y 2449.408 :z 2359.296 :w 819200.0)
-              )
-            )
-        (if (logtest? s5-2 128)
-            (add-connection
-              *part-engine*
-              obj
-              5
-              obj
-              4793
-              (new 'static 'vector :x 4386.816 :y 2191.36 :z -528.384 :w 819200.0)
-              )
-            )
-        (if (logtest? s5-2 256)
-            (add-connection
-              *part-engine*
-              obj
-              5
-              obj
-              4793
-              (new 'static 'vector :x 5832.704 :y 2945.024 :z 1691.648 :w 819200.0)
-              )
-            )
-        (if (logtest? s5-2 512)
-            (add-connection
-              *part-engine*
-              obj
-              5
-              obj
-              4793
-              (new 'static 'vector :x 5861.376 :y 2920.448 :z 1118.208 :w 819200.0)
-              )
+  (when (>= (- (current-time) (-> obj blink-time)) 0)
+    (set! (-> obj blink-mask) 0)
+    (dotimes (s5-0 10)
+      (let* ((f30-0 0.5)
+             (v1-6 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+             (v1-7 (the-as number (logior #x3f800000 v1-6)))
+             )
+        (if (< f30-0 (+ -1.0 (the-as float v1-7)))
+            (logior! (-> obj blink-mask) (ash 1 s5-0))
             )
         )
       )
-    0
-    (none)
+    (set! (-> obj blink-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 0.25 0.75)))))
+    (set! arg0 #t)
     )
+  (when arg0
+    (remove-from-process *part-engine* obj)
+    (add-connection
+      *part-engine*
+      obj
+      5
+      obj
+      4790
+      (new 'static 'vector :x -5906.432 :y 3317.76 :z -409.6 :w 819200.0)
+      )
+    (add-connection
+      *part-engine*
+      obj
+      5
+      obj
+      4790
+      (new 'static 'vector :x 5906.432 :y 3317.76 :z -409.6 :w 819200.0)
+      )
+    (add-connection *part-engine* obj 6 obj 4791 (new 'static 'vector :y 3366.912 :w 819200.0))
+    (add-connection *part-engine* obj 13 obj 4791 (new 'static 'vector :y 11993.088 :z 5255.168 :w 819200.0))
+    (add-connection
+      *part-engine*
+      obj
+      5
+      obj
+      4792
+      (new 'static 'vector :x 5439.488 :y -1794.048 :z 11444.224 :w 819200.0)
+      )
+    (add-connection
+      *part-engine*
+      obj
+      5
+      obj
+      4792
+      (new 'static 'vector :x -5439.488 :y -1794.048 :z 11444.224 :w 819200.0)
+      )
+    (let ((s5-2 (-> obj blink-mask)))
+      (if (logtest? s5-2 1)
+          (add-connection
+            *part-engine*
+            obj
+            5
+            obj
+            4793
+            (new 'static 'vector :x -4128.768 :y 2355.2 :z 3653.632 :w 819200.0)
+            )
+          )
+      (if (logtest? s5-2 2)
+          (add-connection
+            *part-engine*
+            obj
+            5
+            obj
+            4793
+            (new 'static 'vector :x -4554.752 :y 2449.408 :z 2359.296 :w 819200.0)
+            )
+          )
+      (if (logtest? s5-2 4)
+          (add-connection
+            *part-engine*
+            obj
+            5
+            obj
+            4793
+            (new 'static 'vector :x -4386.816 :y 2191.36 :z 528.384 :w 819200.0)
+            )
+          )
+      (if (logtest? s5-2 8)
+          (add-connection
+            *part-engine*
+            obj
+            5
+            obj
+            4793
+            (new 'static 'vector :x -5832.704 :y 2945.024 :z 1691.648 :w 819200.0)
+            )
+          )
+      (if (logtest? s5-2 16)
+          (add-connection
+            *part-engine*
+            obj
+            5
+            obj
+            4793
+            (new 'static 'vector :x -5861.376 :y 2920.448 :z 1118.208 :w 819200.0)
+            )
+          )
+      (if (logtest? s5-2 32)
+          (add-connection
+            *part-engine*
+            obj
+            5
+            obj
+            4793
+            (new 'static 'vector :x 4128.768 :y 2355.2 :z 3653.632 :w 819200.0)
+            )
+          )
+      (if (logtest? s5-2 64)
+          (add-connection
+            *part-engine*
+            obj
+            5
+            obj
+            4793
+            (new 'static 'vector :x 4554.752 :y 2449.408 :z 2359.296 :w 819200.0)
+            )
+          )
+      (if (logtest? s5-2 128)
+          (add-connection
+            *part-engine*
+            obj
+            5
+            obj
+            4793
+            (new 'static 'vector :x 4386.816 :y 2191.36 :z -528.384 :w 819200.0)
+            )
+          )
+      (if (logtest? s5-2 256)
+          (add-connection
+            *part-engine*
+            obj
+            5
+            obj
+            4793
+            (new 'static 'vector :x 5832.704 :y 2945.024 :z 1691.648 :w 819200.0)
+            )
+          )
+      (if (logtest? s5-2 512)
+          (add-connection
+            *part-engine*
+            obj
+            5
+            obj
+            4793
+            (new 'static 'vector :x 5861.376 :y 2920.448 :z 1118.208 :w 819200.0)
+            )
+          )
+      )
+    )
+  0
+  (none)
   )
 
 ;; definition for method 50 of type squid
@@ -2797,7 +2791,7 @@ This commonly includes things such as:
       )
     (when (-> obj rush-sound-playing)
       (cond
-        ((or (zero? (-> obj rush-end-time)) (< (- (-> pp clock frame-counter) (-> obj rush-end-time)) (seconds 0.1)))
+        ((or (zero? (-> obj rush-end-time)) (< (- (current-time) (-> obj rush-end-time)) (seconds 0.1)))
          (the-as int (sound-play "squid-rush" :id (-> obj rush-sound) :position (-> obj root-override trans)))
          )
         (else
@@ -2831,12 +2825,8 @@ This commonly includes things such as:
            )
          )
         (else
-          (let* ((f0-23
-                   (fmin 1.0 (* 0.0011111111 (the float (- (-> pp clock frame-counter) (the-as time-frame (-> obj jet-pitch))))))
-                   )
-                 (f28-2
-                   (fmin 1.0 (* 0.006666667 (the float (- (-> pp clock frame-counter) (the-as time-frame (-> obj jet-volume))))))
-                   )
+          (let* ((f0-23 (fmin 1.0 (* 0.0011111111 (the float (- (current-time) (the-as time-frame (-> obj jet-pitch)))))))
+                 (f28-2 (fmin 1.0 (* 0.006666667 (the float (- (current-time) (the-as time-frame (-> obj jet-volume)))))))
                  (f30-6 (* 0.2 (- 1.0 f0-23) (sin (* 32768.0 f0-23))))
                  (f0-31 (+ 1.0 (* 5.0 (- 1.0 f28-2) (sin (* 32768.0 f30-6)))))
                  )
@@ -2889,10 +2879,7 @@ This commonly includes things such as:
         )
       )
     (when (not (and (-> obj next-state) (= (-> obj next-state name) 'recharge)))
-      (let ((v1-249
-              (the int (lerp-scale 0.0 128.0 (the float (- (-> pp clock frame-counter) (-> obj shield-timer))) 0.0 600.0))
-              )
-            )
+      (let ((v1-249 (the int (lerp-scale 0.0 128.0 (the float (- (current-time) (-> obj shield-timer))) 0.0 600.0))))
         (cond
           ((< 0.0 (-> obj shield-hit-points))
            (set! s5-9 (min 100 v1-249))
@@ -2964,7 +2951,7 @@ This commonly includes things such as:
       (dotimes (s4-11 6)
         (send-event (handle->process (-> obj tentacles s4-11)) 'set-fade s5-9)
         )
-      (let* ((f0-56 (lerp-scale 0.5 0.0 (the float (- (-> pp clock frame-counter) (-> obj shield-timer))) 0.0 75.0))
+      (let* ((f0-56 (lerp-scale 0.5 0.0 (the float (- (current-time) (-> obj shield-timer))) 0.0 75.0))
              (a0-147
                (vector-float*! (new 'stack-no-clear 'vector) (-> obj shield-color) (if (< 0.0 (-> obj shield-hit-points))
                                                                                        f0-56

@@ -70,7 +70,7 @@
 ;; definition for method 10 of type chain-physics
 ;; WARN: Return type mismatch int vs none.
 (defmethod turn-off chain-physics ((obj chain-physics) (arg0 time-frame))
-  (set! (-> obj turn-off-start) (-> self clock frame-counter))
+  (set! (-> obj turn-off-start) (current-time))
   (set! (-> obj turn-off-duration) arg0)
   0
   (none)
@@ -135,11 +135,9 @@
                     0.0
                     (fmin
                       1.0
-                      (parameter-ease-sin-clamp (- 1.0 (/ (the float (- (-> self clock frame-counter) (-> obj turn-off-start)))
-                                                          (the float (-> obj turn-off-duration))
-                                                          )
-                                                   )
-                                                )
+                      (parameter-ease-sin-clamp
+                        (- 1.0 (/ (the float (- (current-time) (-> obj turn-off-start))) (the float (-> obj turn-off-duration))))
+                        )
                       )
                     )
                   )

@@ -412,23 +412,21 @@
 (defmethod general-event-handler predator ((obj predator) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
-  (with-pp
-    (case arg2
-      (('attack)
-       (set! (-> obj shock-effect-end) (the-as uint (+ (-> pp clock frame-counter) (seconds 1))))
-       ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+  (case arg2
+    (('attack)
+     (set! (-> obj shock-effect-end) (the-as uint (+ (current-time) (seconds 1))))
+     ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+     )
+    (('death-end)
+     (when (nonzero? (-> obj ambient-sound-id))
+       (sound-stop (-> obj ambient-sound-id))
+       (set! (-> obj ambient-sound-id) (new 'static 'sound-id))
+       0
        )
-      (('death-end)
-       (when (nonzero? (-> obj ambient-sound-id))
-         (sound-stop (-> obj ambient-sound-id))
-         (set! (-> obj ambient-sound-id) (new 'static 'sound-id))
-         0
-         )
-       ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
-       )
-      (else
-        ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
-        )
+     ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+     )
+    (else
+      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
       )
     )
   )
@@ -852,9 +850,9 @@
     (if (< 245760.0 (vector-vector-distance (-> obj root-override2 trans) (camera-pos)))
         (setup-masks (-> obj draw) 0 8)
         )
-    (when (< (-> pp clock frame-counter) (the-as time-frame (-> obj shock-effect-end)))
-      (when (>= (- (-> pp clock frame-counter) (-> obj shock-effect-time)) (seconds 0.04))
-        (set! (-> obj shock-effect-time) (-> pp clock frame-counter))
+    (when (< (current-time) (the-as time-frame (-> obj shock-effect-end)))
+      (when (>= (- (current-time) (-> obj shock-effect-time)) (seconds 0.04))
+        (set! (-> obj shock-effect-time) (current-time))
         (process-drawable-shock-skel-effect
           obj
           (-> *lightning-spec-id-table* 18)
@@ -1063,14 +1061,14 @@
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior predator) enemy-event-handler)
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
       )
     0
     (set! (-> self next-change)
-          (the-as uint (+ (-> self clock frame-counter) (the int (* 300.0 (rand-vu-float-range 2.0 5.0)))))
+          (the-as uint (+ (current-time) (the int (* 300.0 (rand-vu-float-range 2.0 5.0)))))
           )
     (none)
     )
@@ -1096,7 +1094,7 @@
             )
         )
       )
-    (if (< (the-as time-frame (-> self next-change)) (-> self clock frame-counter))
+    (if (< (the-as time-frame (-> self next-change)) (current-time))
         (go-virtual hide)
         )
     (none)
@@ -1139,7 +1137,7 @@
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior predator) enemy-event-handler)
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (nav-enemy-method-166 self)
     (let ((v1-4 self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-4 enemy-flags)))
@@ -1165,7 +1163,7 @@
                )
             (go-virtual hostile)
             )
-        (if (and (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.5))
+        (if (and (>= (- (current-time) (-> self state-time)) (seconds 0.5))
                  (check-los? (-> self los) 0)
                  (not (logtest? (-> self draw status) (draw-control-status on-screen)))
                  )
@@ -1182,7 +1180,7 @@
       (set! (-> a0-12 target-post quad) (-> v1-30 quad))
       )
     0
-    (if (and (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.5))
+    (if (and (>= (- (current-time) (-> self state-time)) (seconds 0.5))
              (logtest? (-> self nav state flags) (nav-state-flag at-target))
              )
         (go-virtual hidden)
@@ -1219,9 +1217,9 @@
           )
       )
     (set! (-> self want-stop) #f)
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (set! (-> self next-change)
-          (the-as uint (+ (-> self clock frame-counter) (the int (* 300.0 (rand-vu-float-range 4.0 8.0)))))
+          (the-as uint (+ (current-time) (the int (* 300.0 (rand-vu-float-range 4.0 8.0)))))
           )
     (if (zero? (get-rand-int self 3))
         (sound-play "pred-talk")
@@ -1234,7 +1232,7 @@
           (t9-0)
           )
       )
-    (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 5))
+    (if (>= (- (current-time) (-> self state-time)) (seconds 5))
         (go-virtual hide)
         )
     (let ((gp-0 (handle->process (-> self focus handle))))
@@ -1242,7 +1240,7 @@
           (go-virtual active)
           )
       (when (get-enemy-target self)
-        (when (and gp-0 (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self reaction-time)))
+        (when (and gp-0 (>= (- (current-time) (-> self state-time)) (-> self reaction-time)))
           (let ((f0-0
                   (vector-vector-xz-distance (get-trans (the-as process-focusable gp-0) 0) (-> self root-override2 trans))
                   )

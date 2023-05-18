@@ -299,101 +299,99 @@
 
 ;; definition for method 97 of type ashelin
 (defmethod enemy-method-97 ashelin ((obj ashelin))
-  (with-pp
-    (let* ((s5-0 (handle->process (-> obj attacker-handle)))
-           (v1-3 (if (type? s5-0 process-focusable)
-                     s5-0
-                     )
-                 )
+  (let* ((s5-0 (handle->process (-> obj attacker-handle)))
+         (v1-3 (if (type? s5-0 process-focusable)
+                   s5-0
+                   )
+               )
+         )
+    (when v1-3
+      (cond
+        ((= (-> v1-3 type) target)
+         (when (or (not (logtest? (-> obj bot-flags) (bot-flags attacked)))
+                   (>= (- (current-time) (-> obj attacker-time)) (seconds 5))
+                   )
+           (if (logtest? (-> obj bot-flags) (bot-flags attacked))
+               (reset-attacker! obj)
+               )
+           (set! v1-3 (the-as process #f))
+           (set! (-> obj attacker-handle) (the-as handle #f))
            )
-      (when v1-3
-        (cond
-          ((= (-> v1-3 type) target)
-           (when (or (not (logtest? (-> obj bot-flags) (bot-flags attacked)))
-                     (>= (- (-> pp clock frame-counter) (-> obj attacker-time)) (seconds 5))
-                     )
-             (if (logtest? (-> obj bot-flags) (bot-flags attacked))
-                 (reset-attacker! obj)
-                 )
-             (set! v1-3 (the-as process #f))
-             (set! (-> obj attacker-handle) (the-as handle #f))
-             )
-           )
-          (else
-            (when (>= (- (-> pp clock frame-counter) (-> obj attacker-time)) (seconds 2.5))
-              (set! v1-3 (the-as process #f))
-              (set! (-> obj attacker-handle) (the-as handle #f))
-              )
+         )
+        (else
+          (when (>= (- (current-time) (-> obj attacker-time)) (seconds 2.5))
+            (set! v1-3 (the-as process #f))
+            (set! (-> obj attacker-handle) (the-as handle #f))
             )
           )
         )
-      (let ((a0-21 (-> obj focus-mode))
-            (s5-1 (the-as process #f))
-            )
-        (cond
-          ((zero? a0-21)
-           (cond
-             (v1-3
-               (set! s5-1 v1-3)
-               )
-             ((begin (set! s5-1 (select-focus! obj)) s5-1)
-              (empty)
-              )
-             (else
-               (let ((s4-0 (handle->process (-> obj poi-handle))))
-                 (set! s5-1 (if (type? s4-0 process-focusable)
-                                s4-0
-                                )
-                       )
-                 )
-               (if s5-1
-                   (empty)
-                   (set! s5-1 *target*)
-                   )
-               )
-             )
-           )
-          ((= a0-21 1)
-           (cond
-             (v1-3
-               (set! s5-1 v1-3)
-               )
-             (else
-               (let ((s4-1 (handle->process (-> obj poi-handle))))
-                 (set! s5-1 (if (type? s4-1 process-focusable)
-                                s4-1
-                                )
-                       )
-                 )
-               (cond
-                 (s5-1
-                   (empty)
-                   )
-                 ((begin (set! s5-1 (select-focus! obj)) s5-1)
-                  (empty)
-                  )
-                 (else
-                   (set! s5-1 *target*)
-                   )
-                 )
-               )
-             )
-           )
+      )
+    (let ((a0-21 (-> obj focus-mode))
+          (s5-1 (the-as process #f))
           )
-        (cond
-          (s5-1
-            (try-update-focus (-> obj focus) (the-as process-focusable s5-1) obj)
-            (if (and (logtest? (-> obj bot-flags) (bot-flags attacked)) (!= (-> s5-1 type) target))
-                (logclear! (-> obj bot-flags) (bot-flags attacked))
+      (cond
+        ((zero? a0-21)
+         (cond
+           (v1-3
+             (set! s5-1 v1-3)
+             )
+           ((begin (set! s5-1 (select-focus! obj)) s5-1)
+            (empty)
+            )
+           (else
+             (let ((s4-0 (handle->process (-> obj poi-handle))))
+               (set! s5-1 (if (type? s4-0 process-focusable)
+                              s4-0
+                              )
+                     )
+               )
+             (if s5-1
+                 (empty)
+                 (set! s5-1 *target*)
+                 )
+             )
+           )
+         )
+        ((= a0-21 1)
+         (cond
+           (v1-3
+             (set! s5-1 v1-3)
+             )
+           (else
+             (let ((s4-1 (handle->process (-> obj poi-handle))))
+               (set! s5-1 (if (type? s4-1 process-focusable)
+                              s4-1
+                              )
+                     )
+               )
+             (cond
+               (s5-1
+                 (empty)
+                 )
+               ((begin (set! s5-1 (select-focus! obj)) s5-1)
+                (empty)
                 )
-            )
-          (else
-            (clear-focused (-> obj focus))
-            (logclear! (-> obj bot-flags) (bot-flags attacked))
-            )
-          )
-        s5-1
+               (else
+                 (set! s5-1 *target*)
+                 )
+               )
+             )
+           )
+         )
         )
+      (cond
+        (s5-1
+          (try-update-focus (-> obj focus) (the-as process-focusable s5-1) obj)
+          (if (and (logtest? (-> obj bot-flags) (bot-flags attacked)) (!= (-> s5-1 type) target))
+              (logclear! (-> obj bot-flags) (bot-flags attacked))
+              )
+          )
+        (else
+          (clear-focused (-> obj focus))
+          (logclear! (-> obj bot-flags) (bot-flags attacked))
+          )
+        )
+      s5-1
       )
     )
   )
@@ -527,11 +525,9 @@
 
 ;; definition for method 235 of type ashelin
 (defmethod ashelin-method-235 ashelin ((obj ashelin) (arg0 symbol))
-  (with-pp
-    (and (>= (- (-> pp clock frame-counter) (-> obj last-fire-time)) (seconds 1))
-         (and (>= 8556.089 (fabs (-> obj focus-info ry-diff))) (ashelin-method-238 obj arg0 #t))
-         )
-    )
+  (and (>= (- (current-time) (-> obj last-fire-time)) (seconds 1))
+       (and (>= 8556.089 (fabs (-> obj focus-info ry-diff))) (ashelin-method-238 obj arg0 #t))
+       )
   )
 
 ;; definition for method 243 of type ashelin
@@ -786,31 +782,29 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch (pointer process) vs none.
 (defmethod fire-projectile ashelin ((obj ashelin) (arg0 vector))
-  (with-pp
-    (set! (-> obj last-fire-time) (-> pp clock frame-counter))
-    (+! (-> obj fired-gun-count) 1)
-    (let ((s4-0 (new 'stack-no-clear 'projectile-init-by-other-params)))
-      (set! (-> s4-0 ent) (-> obj entity))
-      (set! (-> s4-0 charge) 1.0)
-      (set! (-> s4-0 options) (projectile-options account-for-target-velocity proj-options-8000))
-      (set! (-> s4-0 notify-handle) (process->handle obj))
-      (set! (-> s4-0 owner-handle) (the-as handle #f))
-      (set! (-> s4-0 ignore-handle) (process->handle obj))
-      (let* ((v1-13 *game-info*)
-             (a0-10 (+ (-> v1-13 attack-id) 1))
-             )
-        (set! (-> v1-13 attack-id) a0-10)
-        (set! (-> s4-0 attack-id) a0-10)
-        )
-      (set! (-> s4-0 timeout) (seconds 4))
-      (vector<-cspace! (-> s4-0 pos) (-> obj node-list data 22))
-      (set! (-> s4-0 vel quad) (-> arg0 quad))
-      (vector-! (-> s4-0 vel) (-> s4-0 vel) (-> s4-0 pos))
-      (vector-normalize! (-> s4-0 vel) 307200.0)
-      (spawn-projectile ashelin-shot s4-0 obj *default-dead-pool*)
+  (set! (-> obj last-fire-time) (current-time))
+  (+! (-> obj fired-gun-count) 1)
+  (let ((s4-0 (new 'stack-no-clear 'projectile-init-by-other-params)))
+    (set! (-> s4-0 ent) (-> obj entity))
+    (set! (-> s4-0 charge) 1.0)
+    (set! (-> s4-0 options) (projectile-options account-for-target-velocity proj-options-8000))
+    (set! (-> s4-0 notify-handle) (process->handle obj))
+    (set! (-> s4-0 owner-handle) (the-as handle #f))
+    (set! (-> s4-0 ignore-handle) (process->handle obj))
+    (let* ((v1-13 *game-info*)
+           (a0-10 (+ (-> v1-13 attack-id) 1))
+           )
+      (set! (-> v1-13 attack-id) a0-10)
+      (set! (-> s4-0 attack-id) a0-10)
       )
-    (none)
+    (set! (-> s4-0 timeout) (seconds 4))
+    (vector<-cspace! (-> s4-0 pos) (-> obj node-list data 22))
+    (set! (-> s4-0 vel quad) (-> arg0 quad))
+    (vector-! (-> s4-0 vel) (-> s4-0 vel) (-> s4-0 pos))
+    (vector-normalize! (-> s4-0 vel) 307200.0)
+    (spawn-projectile ashelin-shot s4-0 obj *default-dead-pool*)
     )
+  (none)
   )
 
 ;; definition for method 249 of type ashelin
@@ -1409,38 +1403,30 @@
 
 ;; definition for method 245 of type ashelin
 (defmethod ashelin-method-245 ashelin ((obj ashelin))
-  (with-pp
-    (when (and (not (channel-active? obj (the-as uint 0)))
-               (>= (-> pp clock frame-counter) (-> obj victory-speech-time))
-               )
-      (let ((s5-0 (bot-speech-list-method-9
-                    (-> obj ash-course victory-speeches)
-                    obj
-                    (-> obj ash-course speeches)
-                    (speech-flags)
-                    )
+  (when (and (not (channel-active? obj (the-as uint 0))) (>= (current-time) (-> obj victory-speech-time)))
+    (let ((s5-0 (bot-speech-list-method-9
+                  (-> obj ash-course victory-speeches)
+                  obj
+                  (-> obj ash-course speeches)
+                  (speech-flags)
                   )
-            )
-        (when (>= s5-0 0)
-          (set! (-> obj victory-speech-time)
-                (the-as time-frame (+ (get-rand-int-range obj 1200 2100) (-> pp clock frame-counter)))
                 )
-          (play-speech obj s5-0)
           )
+      (when (>= s5-0 0)
+        (set! (-> obj victory-speech-time) (the-as time-frame (+ (get-rand-int-range obj 1200 2100) (current-time))))
+        (play-speech obj s5-0)
         )
       )
-    (none)
     )
+  (none)
   )
 
 ;; definition for method 136 of type ashelin
 (defmethod enemy-method-136 ashelin ((obj ashelin))
-  (with-pp
-    (when (>= (- (-> pp clock frame-counter) (-> obj hit-focus-time)) (seconds 2))
-      (let ((v0-0 (logclear (-> obj enemy-flags) (enemy-flag look-at-focus))))
-        (set! (-> obj enemy-flags) v0-0)
-        v0-0
-        )
+  (when (>= (- (current-time) (-> obj hit-focus-time)) (seconds 2))
+    (let ((v0-0 (logclear (-> obj enemy-flags) (enemy-flag look-at-focus))))
+      (set! (-> obj enemy-flags) v0-0)
+      v0-0
       )
     )
   )
@@ -1505,7 +1491,3 @@
   0
   (none)
   )
-
-
-
-

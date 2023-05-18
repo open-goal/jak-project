@@ -56,10 +56,10 @@
             (let ((s4-0 (handle->process (-> obj request handle))))
               (when s4-0
                 (when (or (and (>= (-> obj request priority) 0.0)
-                               (>= (- (-> pp clock frame-counter) (-> obj end-time)) (the-as time-frame (-> s5-1 delay)))
+                               (>= (- (current-time) (-> obj end-time)) (the-as time-frame (-> s5-1 delay)))
                                )
-                          (and (>= (- (-> pp clock frame-counter) (-> obj end-time)) (the-as time-frame (-> s5-1 delay)))
-                               (>= (- (-> pp clock frame-counter) (-> obj end-time)) (the-as time-frame (-> obj delay)))
+                          (and (>= (- (current-time) (-> obj end-time)) (the-as time-frame (-> s5-1 delay)))
+                               (>= (- (current-time) (-> obj end-time)) (the-as time-frame (-> obj delay)))
                                )
                           )
                   (let ((s3-0 (-> s5-1 list length))
@@ -86,7 +86,7 @@
                       (set! (-> s5-1 play-index) v1-44)
                       (let ((s3-1 (-> s5-1 list v1-44)))
                         (mem-copy! (the-as pointer (-> obj last-request)) (the-as pointer (-> obj request)) 21)
-                        (set! (-> obj start-time) (-> pp clock frame-counter))
+                        (set! (-> obj start-time) (current-time))
                         (set! (-> obj delay)
                               (the-as uint (rand-vu-int-range (the-as int (-> s5-1 min-delay)) (the-as int (-> s5-1 max-delay))))
                               )
@@ -107,7 +107,7 @@
           )
         )
       )
-    (set! (-> obj update-time) (-> pp clock frame-counter))
+    (set! (-> obj update-time) (current-time))
     (when (nonzero? (-> obj id))
       (let ((s4-1 (handle->process (-> obj last-request handle))))
         (cond
@@ -153,7 +153,7 @@
         )
       (case (get-status *gui-control* (-> obj id))
         (((gui-status pending))
-         (when (>= (- (-> pp clock frame-counter) (-> obj start-time)) (seconds 1))
+         (when (>= (- (current-time) (-> obj start-time)) (seconds 1))
            (set-action!
              *gui-control*
              (gui-action stop)
@@ -183,27 +183,25 @@
 ;; definition for method 9 of type speech-channel
 ;; WARN: Return type mismatch int vs none.
 (defmethod speech-channel-method-9 speech-channel ((obj speech-channel) (arg0 process-drawable) (arg1 speech-type))
-  (with-pp
-    (let ((f0-0 (vector-vector-distance-squared (-> arg0 root trans) (-> obj target-pos)))
-          (f1-0 245760.0)
-          )
-      (when (< f0-0 (* f1-0 f1-0))
-        (let* ((f1-3 -1.0)
-               (f2-0 409600.0)
-               (f0-2 (+ (* f0-0 (/ f1-3 (* f2-0 f2-0))) (the float (-> obj speech-table arg1 priority))))
-               )
-          (when (< (-> obj request priority) f0-2)
-            (set! (-> obj request priority) f0-2)
-            (set! (-> obj request handle) (process->handle arg0))
-            (set! (-> obj request speech-type) arg1)
-            (set! (-> obj request time) (-> pp clock frame-counter))
-            )
+  (let ((f0-0 (vector-vector-distance-squared (-> arg0 root trans) (-> obj target-pos)))
+        (f1-0 245760.0)
+        )
+    (when (< f0-0 (* f1-0 f1-0))
+      (let* ((f1-3 -1.0)
+             (f2-0 409600.0)
+             (f0-2 (+ (* f0-0 (/ f1-3 (* f2-0 f2-0))) (the float (-> obj speech-table arg1 priority))))
+             )
+        (when (< (-> obj request priority) f0-2)
+          (set! (-> obj request priority) f0-2)
+          (set! (-> obj request handle) (process->handle arg0))
+          (set! (-> obj request speech-type) arg1)
+          (set! (-> obj request time) (current-time))
           )
         )
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 ;; definition for method 10 of type speech-channel
