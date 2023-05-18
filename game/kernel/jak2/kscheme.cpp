@@ -80,9 +80,9 @@ u64 alloc_from_heap(u32 heap_symbol, u32 type, s32 size, u32 pp) {
   auto heap_ptr = Ptr<Symbol4<Ptr<kheapinfo>>>(heap_symbol)->value();
 
   s32 aligned_size = ((size + 0xf) / 0x10) * 0x10;
-  if ((((heap_symbol == s7.offset + FIX_SYM_GLOBAL_HEAP) ||
-        (heap_symbol == s7.offset + FIX_SYM_DEBUG)) ||
-       (heap_symbol == s7.offset + FIX_SYM_LOADING_LEVEL)) ||
+  if ((heap_symbol == s7.offset + FIX_SYM_GLOBAL_HEAP) ||
+      (heap_symbol == s7.offset + FIX_SYM_DEBUG) ||
+      (heap_symbol == s7.offset + FIX_SYM_LOADING_LEVEL) ||
       (heap_symbol == s7.offset + FIX_SYM_PROCESS_LEVEL_HEAP)) {
     if (!type) {  // no type given, just call it a global-object
       return kmalloc(heap_ptr, size, KMALLOC_MEMSET, "global-object").offset;
