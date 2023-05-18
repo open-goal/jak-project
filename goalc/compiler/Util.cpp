@@ -171,12 +171,9 @@ goos::Arguments Compiler::get_va(const goos::Object& form, const goos::Object& r
  * Parse arguments into a goos::Arguments format.
  */
 goos::Arguments Compiler::get_va_no_named(const goos::Object& form, const goos::Object& rest) {
+  (void)form;
   goos::Arguments args;
-
-  std::string err;
-  if (!goos::get_va_no_named(rest, &err, &args)) {
-    throw_compiler_error(form, err);
-  }
+  goos::get_va_no_named(rest, &args);
   return args;
 }
 

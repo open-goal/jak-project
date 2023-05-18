@@ -3320,7 +3320,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
                     "TASK_MANAGER_UPDATE_HOOK",   "TASK_MANAGER_CODE_HOOK",
                     "TASK_MANAGER_COMPLETE_HOOK", "TASK_MANAGER_FAIL_HOOK",
                     "TASK_MANAGER_EVENT_HOOK"};
-                if (hook >= 0 && hook < hook_names.size()) {
+                if (hook >= 0 && hook < (int)hook_names.size()) {
                   arg_forms.at(2) = pool.alloc_single_element_form<ConstantTokenElement>(
                       arg_forms.at(2)->parent_element, hook_names.at(hook));
                 }
