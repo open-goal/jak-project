@@ -639,7 +639,7 @@ u32 alloc_vagdir_names(u32 heap_sym) {
       memcpy(&vagname_val, vagname_temp, 8);
       *(alloced_heap + i * 8) = vagname_val;
     }
-    return alloced_heap.offset;  
+    return alloced_heap.offset;
   }
   return s7.offset;
 }
