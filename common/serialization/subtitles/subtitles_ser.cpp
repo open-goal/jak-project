@@ -442,9 +442,11 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
     scene.m_sorting_group_idx = db.m_subtitle_groups->find_group_index(scene.m_sorting_group);
     // Iterate the lines, grab the actual text from the lines file if it's not a clear screen entry
     int line_idx = 0;
+    int lines_added = 0;
     for (const auto& line : cutscene_lines) {
       if (line.clear) {
         scene.add_clear_entry(line.frame);
+        lines_added++;
       } else {
         if (lines_file.speakers.find(line.speaker) == lines_file.speakers.end() ||
             lines_file.cutscenes.find(cutscene_name) == lines_file.cutscenes.end() ||
@@ -461,10 +463,19 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
               line.frame,
               font->convert_utf8_to_game(lines_file.cutscenes.at(cutscene_name).at(line_idx)),
               font->convert_utf8_to_game(lines_file.speakers.at(line.speaker)), line.offscreen);
+          lines_added++;
         }
         line_idx++;
       }
     }
+    // Verify we added the amount of lines we expected to
+    if (lines_added != cutscene_lines.size()) {
+      throw std::runtime_error(
+          fmt::format("Cutscene: '{}' has a mismatch in metadata lines vs text lines. Expected {} "
+                      "only added {} lines",
+                      cutscene_name, cutscene_lines.size(), lines_added));
+    }
+
     // TODO - add scene, can't we just use an emplace here?
     if (!bank->scene_exists(scene.name())) {
       bank->add_scene(scene);
@@ -486,9 +497,11 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
     }
     // Iterate the lines, grab the actual text from the lines file if it's not a clear screen entry
     int line_idx = 0;
+    int lines_added = 0;
     for (const auto& line : hint_info.lines) {
       if (line.clear) {
         scene.add_clear_entry(line.frame);
+        lines_added++;
       } else {
         if (lines_file.speakers.find(line.speaker) == lines_file.speakers.end() ||
             lines_file.hints.find(hint_name) == lines_file.hints.end() ||
@@ -504,10 +517,19 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
           scene.add_line(line.frame,
                          font->convert_utf8_to_game(lines_file.hints.at(hint_name).at(line_idx)),
                          font->convert_utf8_to_game(lines_file.speakers.at(line.speaker)), true);
+          lines_added++;
         }
         line_idx++;
       }
     }
+    // Verify we added the amount of lines we expected to
+    if (lines_added != hint_info.lines.size()) {
+      throw std::runtime_error(
+          fmt::format("Hint: '{}' has a mismatch in metadata lines vs text lines. Expected {} "
+                      "only added {} lines",
+                      hint_name, hint_info.lines.size(), lines_added));
+    }
+
     // TODO - add scene, can't we just use an emplace here?
     if (!bank->scene_exists(scene.name())) {
       bank->add_scene(scene);
@@ -761,6 +783,7 @@ void from_json(const json& j, SubtitleFile& obj) {
   json_deserialize_if_exists(hints);
 }
 
+// TODO - temporary code for migration
 SubtitleMetadataFile dump_bank_as_meta_json(
     std::shared_ptr<GameSubtitleBank> bank,
     std::unordered_map<std::string, std::string> speaker_lookup) {
@@ -815,6 +838,7 @@ SubtitleMetadataFile dump_bank_as_meta_json(
   return meta_file;
 }
 
+// TODO - temporary code for migration
 SubtitleFile dump_bank_as_json(std::shared_ptr<GameSubtitleBank> bank,
                                std::shared_ptr<GameSubtitleBank> base_bank,
                                std::unordered_map<std::string, std::string> speaker_lookup) {
