@@ -371,7 +371,7 @@
     (cond
       ((handle->process (-> self part-track))
        (if (-> self keep-part-track-alive)
-           (set! (-> (the-as part-tracker (-> self part-track process 0)) start-time) (-> self clock frame-counter))
+           (set! (-> (the-as part-tracker (-> self part-track process 0)) start-time) (current-time))
            )
        )
       (else
@@ -1490,7 +1490,7 @@
                                                                    )
                                                     )
                        )
-                 (set! (-> self start-time) (-> self clock frame-counter))
+                 (set! (-> self start-time) (current-time))
                  (+! (-> self sub-state) 1)
                  )
                )
@@ -1512,7 +1512,7 @@
   TASK_MANAGER_CODE_HOOK
   (lambda :behavior task-manager
     ()
-    (while (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 5))
+    (while (< (- (current-time) (-> self state-time)) (seconds 5))
       (suspend)
       )
     (none)
@@ -1702,7 +1702,7 @@
     (none)
     )
   :trans (behavior ()
-    (let ((f30-0 (+ (* 0.0033333334 (the float (-> self clock frame-counter))) (* 0.1 (the float (-> self pid))))))
+    (let ((f30-0 (+ (* 0.0033333334 (the float (current-time))) (* 0.1 (the float (-> self pid))))))
       (when (< (-> self beep-time) f30-0)
         (sound-play "homeing-beep")
         (set! (-> self beep-time) (+ 1.0 f30-0))
@@ -2638,7 +2638,7 @@ This commonly includes things such as:
             )
           )
         )
-      (set! (-> self start-time) (-> self clock frame-counter))
+      (set! (-> self start-time) (current-time))
       (set! (-> self time-limit) (-> gp-0 time))
       )
     (none)
@@ -2681,7 +2681,7 @@ This commonly includes things such as:
   *game-info*
   (game-task-node city-burning-bush-collection-1-resolution)
   TASK_MANAGER_CODE_HOOK
-  (lambda :behavior task-manager () (set! (-> self state-time) (-> self clock frame-counter)) (none))
+  (lambda :behavior task-manager () (set! (-> self state-time) (current-time)) (none))
   )
 
 (copy-hooks!
@@ -2896,7 +2896,7 @@ This commonly includes things such as:
               )
             )
       )
-    (set! (-> self start-time) (-> self clock frame-counter))
+    (set! (-> self start-time) (current-time))
     (set! (-> self time-limit)
           (the-as time-frame (the int (+ 300.0 (-> *burning-bush-get-on-info* (-> self info index) time))))
           )
@@ -2932,8 +2932,8 @@ This commonly includes things such as:
         )
       (send-event *camera* 'teleport-to-transformq gp-0)
       )
-    (let ((gp-1 (-> self clock frame-counter)))
-      (until (>= (- (-> self clock frame-counter) gp-1) (seconds 3))
+    (let ((gp-1 (current-time)))
+      (until (>= (- (current-time) gp-1) (seconds 3))
         (suspend)
         )
       )
