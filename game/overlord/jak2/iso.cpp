@@ -192,7 +192,6 @@ u32 InitISOFS() {
 }
 
 void IsoQueueVagStream(VagCmd* cmd, int param_2) {
-  int iVar1;
   VagCmd* new_cmd;
   LoadStackEntry* pLVar5;
   VagCmd* pVVar7;
@@ -212,7 +211,7 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
   // allocate/find a vag cmd to hold this stream command. We don't own the incoming command.
   if ((cmd->id == 0) ||
       (((cmd->vag_dir_entry && cmd->vag_dir_entry->flag & 1U) != 0 &&  // added null check
-        (iVar1 = HowManyBelowThisPriority(cmd->priority, 0), iVar1 < 2))))
+        (HowManyBelowThisPriority(cmd->priority, 0) < 2))))
     goto LAB_000049dc;
   new_cmd = FindThisVagStream(cmd->name, cmd->id);
   if (!new_cmd) {
@@ -293,8 +292,7 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
       goto LAB_000049dc;
 
     // queue the command.
-    iVar1 = QueueMessage(&new_cmd->header, 3, "QueueVAGStream", 0);
-    if (iVar1 == 0) {
+    if (QueueMessage(&new_cmd->header, 3, "QueueVAGStream", 0) == 0) {
       // queue failed, give up.
       new_cmd->sb_scanned = false;
       RemoveVagCmd(new_cmd, 0);
