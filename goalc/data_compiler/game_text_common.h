@@ -12,6 +12,6 @@
 void compile_game_text(const std::vector<GameTextDefinitionFile>& filenames,
                        GameTextDB& db,
                        const std::string& output_prefix);
-void compile_game_subtitle(const std::vector<GameTextDefinitionFile>& filenames,
+void compile_game_subtitle(const std::vector<GameSubtitleDefinitionFile>& filenames,
                            GameSubtitleDB& db,
                            const std::string& output_prefix);

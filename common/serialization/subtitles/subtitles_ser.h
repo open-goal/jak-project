@@ -15,13 +15,67 @@
 #include "common/util/json_util.h"
 #include "common/versions/versions.h"
 
+struct SubtitleCutsceneLineMetadata {
+  // Always required
+  int frame;
+  // Actual lines
+  bool offscreen;
+  std::string speaker;
+  // Clear entries
+  bool clear;
+};
+void to_json(json& j, const SubtitleCutsceneLineMetadata& obj);
+void from_json(const json& j, SubtitleCutsceneLineMetadata& obj);
+
+struct SubtitleHintLineMetadata {
+  int frame;
+  std::string speaker;
+  // Clear entries
+  bool clear;
+};
+void to_json(json& j, const SubtitleHintLineMetadata& obj);
+void from_json(const json& j, SubtitleHintLineMetadata& obj);
+
+struct SubtitleHintMetadata {
+  std::string id;  // hex
+  std::vector<SubtitleHintLineMetadata> lines;
+};
+void to_json(json& j, const SubtitleHintMetadata& obj);
+void from_json(const json& j, SubtitleHintMetadata& obj);
+
+struct SubtitleMetadataFile {
+  std::unordered_map<std::string, std::vector<SubtitleCutsceneLineMetadata>> cutscenes;
+  std::unordered_map<std::string, SubtitleHintMetadata> hints;
+};
+void to_json(json& j, const SubtitleMetadataFile& obj);
+void from_json(const json& j, SubtitleMetadataFile& obj);
+
+struct SubtitleFile {
+  std::unordered_map<std::string, std::string> speakers;
+  std::unordered_map<std::string, std::vector<std::string>> cutscenes;
+  std::unordered_map<std::string, std::vector<std::string>> hints;
+};
+void to_json(json& j, const SubtitleFile& obj);
+void from_json(const json& j, SubtitleFile& obj);
+
 struct GameTextDefinitionFile {
   enum class Format { GOAL, JSON };
   Format format;
   std::string file_path = "";
   int language_id = -1;
-  std::string text_version = "";
+  std::string text_version = "jak1-v2";
   std::optional<std::string> group_name = std::nullopt;
+};
+
+struct GameSubtitleDefinitionFile {
+  enum class Format { GOAL, JSON };
+  Format format;
+  int language_id = -1;
+  std::string text_version = "jak1-v2";
+  std::string lines_path = "";
+  std::optional<std::string> lines_base_path = std::nullopt;
+  std::string meta_path = "";
+  std::optional<std::string> meta_base_path = std::nullopt;
 };
 
 /*!
@@ -117,6 +171,13 @@ class GameSubtitleSceneInfo {
 
   void add_line(int frame, std::string line, std::string speaker, bool offscreen) {
     m_lines.emplace_back(SubtitleLine(frame, line, speaker, offscreen));
+    // TODO - sorting after every insertion is slow, sort on the add scene instead
+    std::sort(m_lines.begin(), m_lines.end());
+  }
+
+  void add_clear_entry(int frame) {
+    m_lines.emplace_back(SubtitleLine(frame, "", "", false));
+    // TODO - sorting after every insertion is slow, sort on the add scene instead
     std::sort(m_lines.begin(), m_lines.end());
   }
 
@@ -146,8 +207,8 @@ class GameSubtitleBank {
   }
 
   int m_lang_id;
-  std::string file_path;
-
+  std::string m_text_version;
+  std::string m_file_path;
   std::map<std::string, GameSubtitleSceneInfo> m_scenes;
 };
 
@@ -199,6 +260,7 @@ void parse_text_json(const nlohmann::json& json,
                      GameTextDB& db,
                      const GameTextDefinitionFile& file_info);
 void parse_subtitle(const goos::Object& data, GameSubtitleDB& db, const std::string& file_path);
+void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& file_info);
 
 GameTextVersion parse_text_only_version(const std::string& filename);
 GameTextVersion parse_text_only_version(const goos::Object& data);
@@ -206,4 +268,7 @@ GameTextVersion parse_text_only_version(const goos::Object& data);
 void open_text_project(const std::string& kind,
                        const std::string& filename,
                        std::vector<GameTextDefinitionFile>& inputs);
+void open_subtitle_project(const std::string& kind,
+                           const std::string& filename,
+                           std::vector<GameSubtitleDefinitionFile>& inputs);
 GameSubtitleDB load_subtitle_project(GameVersion game_version);
