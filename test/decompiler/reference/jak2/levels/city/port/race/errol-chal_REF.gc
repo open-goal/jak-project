@@ -884,7 +884,7 @@
                  (when (< f0-5 (* f1-0 f1-0))
                    (when (or (and (< f30-0 0.0) (>= f28-0 0.0)) (and (< f28-0 0.0) (>= f30-0 0.0)))
                      (send-event proc 'turbo-ring (-> self boost))
-                     (set! (-> self touch-time) (-> self clock frame-counter))
+                     (set! (-> self touch-time) (current-time))
                      (process-spawn
                        part-tracker
                        :init part-tracker-init
@@ -916,7 +916,7 @@
   :code (the-as (function none :behavior turbo-ring) sleep-code)
   :post (behavior ()
     (if (and (-> self player-got)
-             (>= (- (-> self clock frame-counter) (-> self touch-time)) (seconds 3))
+             (>= (- (current-time) (-> self touch-time)) (seconds 3))
              (or (not *target*)
                  (or (< 204800.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
                      (focus-test? *target* teleporting)
@@ -936,13 +936,13 @@
 (defstate die (turbo-ring)
   :virtual #t
   :code (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (let ((v1-3 (-> self root-override root-prim)))
       (set! (-> v1-3 prim-core collide-as) (collide-spec))
       (set! (-> v1-3 prim-core collide-with) (collide-spec))
       )
     0
-    (until (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 2))
+    (until (>= (- (current-time) (-> self state-time)) (seconds 2))
       (suspend)
       )
     (none)
@@ -977,26 +977,24 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod turbo-ring-method-23 turbo-ring ((obj turbo-ring))
-  (with-pp
-    (let ((s5-0 (-> obj mat)))
-      (let ((s4-0 (new 'stack-no-clear 'quaternion)))
-        (quaternion-rotate-local-y! s4-0 (-> obj root-override quat) 16384.0)
-        (quaternion->matrix s5-0 s4-0)
-        )
-      (set! (-> s5-0 trans quad) (-> obj root-override trans quad))
-      (set! (-> obj plane quad) (-> s5-0 vector 0 quad))
+  (let ((s5-0 (-> obj mat)))
+    (let ((s4-0 (new 'stack-no-clear 'quaternion)))
+      (quaternion-rotate-local-y! s4-0 (-> obj root-override quat) 16384.0)
+      (quaternion->matrix s5-0 s4-0)
       )
-    (set! (-> obj plane w) (- (vector-dot (-> obj plane) (-> obj root-override trans))))
-    (update-transforms (-> obj root-override))
-    (set! (-> obj player-got) #f)
-    (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 1058) obj))
-    (if (not (-> obj persistent))
-        (set! (-> obj minimap) (add-icon! *minimap* obj (the-as uint 15) (the-as int #f) (the-as vector #t) 0))
-        )
-    (set! (-> obj touch-time) (-> pp clock frame-counter))
-    0
-    (none)
+    (set! (-> s5-0 trans quad) (-> obj root-override trans quad))
+    (set! (-> obj plane quad) (-> s5-0 vector 0 quad))
     )
+  (set! (-> obj plane w) (- (vector-dot (-> obj plane) (-> obj root-override trans))))
+  (update-transforms (-> obj root-override))
+  (set! (-> obj player-got) #f)
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 1058) obj))
+  (if (not (-> obj persistent))
+      (set! (-> obj minimap) (add-icon! *minimap* obj (the-as uint 15) (the-as int #f) (the-as vector #t) 0))
+      )
+  (set! (-> obj touch-time) (current-time))
+  0
+  (none)
   )
 
 ;; definition for function turbo-ring-init-by-other
@@ -1374,7 +1372,7 @@
   TASK_MANAGER_CODE_HOOK
   (lambda :behavior task-manager
     ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (while (not (logtest? (-> *race-state* flags) 1))
       (let ((f0-0 (-> self begin-pos w)))
         (if (< (* f0-0 f0-0) (vector-vector-distance-squared (-> self begin-pos) (target-pos 0)))
@@ -1583,7 +1581,7 @@
   TASK_MANAGER_CODE_HOOK
   (lambda :behavior task-manager
     ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (while (not (logtest? (-> *race-state* flags) 1))
       (let ((f0-0 (-> self begin-pos w)))
         (if (< (* f0-0 f0-0) (vector-vector-distance-squared (-> self begin-pos) (target-pos 0)))

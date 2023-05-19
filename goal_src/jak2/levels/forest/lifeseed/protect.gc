@@ -437,9 +437,7 @@ This commonly includes things such as:
            (let ((f0-7 (vector-vector-xz-distance (target-pos 0) (-> s5-1 t-pos))))
              (cond
                ((and (< f0-7 327680.0) (< 204800.0 f0-7))
-                (when (and (not (handle->process (-> self slave gp-1)))
-                           (< (the int (-> self data-float gp-1)) (-> self clock frame-counter))
-                           )
+                (when (and (not (handle->process (-> self slave gp-1))) (< (the int (-> self data-float gp-1)) (current-time)))
                   (let ((s4-2 (new 'stack-no-clear 'transport-params)))
                     (let ((s3-2 (new 'stack-no-clear 'vector)))
                       (set! (-> s3-2 quad) (-> s5-1 t-pos quad))
@@ -488,7 +486,7 @@ This commonly includes things such as:
                     s5-4
                     )
                   )
-             (set! (-> self data-float gp-1) (the float (+ (-> self clock frame-counter) (seconds 20))))
+             (set! (-> self data-float gp-1) (the float (+ (current-time) (seconds 20))))
              )
          )
        )
@@ -531,8 +529,8 @@ This commonly includes things such as:
   (lambda :behavior task-manager
     ()
     (send-event (handle->process (-> self arrow)) 'leave)
-    (set! (-> self state-time) (-> self clock frame-counter))
-    (while (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 2))
+    (set! (-> self state-time) (current-time))
+    (while (< (- (current-time) (-> self state-time)) (seconds 2))
       (suspend)
       )
     (talker-spawn-func (-> *talker-speech* 185) *entity-pool* (target-pos 0) (the-as region #f))

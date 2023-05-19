@@ -1097,62 +1097,60 @@
   )
 
 (defmethod battle-method-39 battle ((obj battle) (arg0 battle-spawner) (arg1 symbol))
-  (with-pp
-    (let ((s3-0 (new 'stack-no-clear 'vector))
-          (s4-0 (new 'stack-no-clear 'quaternion))
-          (s2-0 (-> arg0 intro-path))
-          )
-      (cond
-        (s2-0
-          (let ((s1-0 0))
-            (when arg1
-              (set! s1-0 (-> arg0 ready-index))
-              (set! s1-0 (cond
-                           ((>= s1-0 0)
-                            (empty)
-                            s1-0
-                            )
-                           (else
-                             (-> arg0 attack-index)
-                             )
+  (let ((s3-0 (new 'stack-no-clear 'vector))
+        (s4-0 (new 'stack-no-clear 'quaternion))
+        (s2-0 (-> arg0 intro-path))
+        )
+    (cond
+      (s2-0
+        (let ((s1-0 0))
+          (when arg1
+            (set! s1-0 (-> arg0 ready-index))
+            (set! s1-0 (cond
+                         ((>= s1-0 0)
+                          (empty)
+                          s1-0
+                          )
+                         (else
+                           (-> arg0 attack-index)
                            )
-                    )
-              )
-            (set! (-> arg0 creature-index) s1-0)
-            (get-point-in-path! s2-0 s3-0 (the float s1-0) 'exact)
-            (let ((s0-0 (new 'stack-no-clear 'vector)))
-              (displacement-between-two-points-normalized! s2-0 s0-0 (the float s1-0))
-              (set! (-> s0-0 y) 0.0)
-              (vector-normalize! s0-0 1.0)
-              (forward-up->quaternion s4-0 s0-0 *up-vector*)
-              )
+                         )
+                  )
             )
-          )
-        (else
-          (set! (-> arg0 creature-index) 0)
-          (let ((v1-7 (-> arg0 entity)))
-            (set! (-> s3-0 quad) (-> v1-7 extra trans quad))
-            (quaternion-copy! s4-0 (-> v1-7 quat))
+          (set! (-> arg0 creature-index) s1-0)
+          (get-point-in-path! s2-0 s3-0 (the float s1-0) 'exact)
+          (let ((s0-0 (new 'stack-no-clear 'vector)))
+            (displacement-between-two-points-normalized! s2-0 s0-0 (the float s1-0))
+            (set! (-> s0-0 y) 0.0)
+            (vector-normalize! s0-0 1.0)
+            (forward-up->quaternion s4-0 s0-0 *up-vector*)
             )
           )
         )
-      (let ((s1-1 (new 'stack-no-clear 'transformq))
-            (s2-1 (!= s2-0 #f))
-            (s0-1 (battle-method-41 obj arg0))
-            )
-        (set! (-> s1-1 trans quad) (-> s3-0 quad))
-        (quaternion-copy! (-> s1-1 quat) s4-0)
-        (set! (-> s1-1 scale x) (the-as float (-> arg0 entity)))
-        (set! (-> s1-1 scale y) (the-as float #t))
-        (set! (-> s1-1 scale z) (the-as float s2-1))
-        (let ((v0-7 (battle-method-38 obj s0-1 s1-1)))
-          (when (handle->process v0-7)
-            (set! (-> arg0 creature) v0-7)
-            (set! (-> arg0 mode) (the-as uint 1))
-            (set! (-> arg0 last-spawn-time) (-> pp clock frame-counter))
-            )
-          v0-7
+      (else
+        (set! (-> arg0 creature-index) 0)
+        (let ((v1-7 (-> arg0 entity)))
+          (set! (-> s3-0 quad) (-> v1-7 extra trans quad))
+          (quaternion-copy! s4-0 (-> v1-7 quat))
           )
+        )
+      )
+    (let ((s1-1 (new 'stack-no-clear 'transformq))
+          (s2-1 (!= s2-0 #f))
+          (s0-1 (battle-method-41 obj arg0))
+          )
+      (set! (-> s1-1 trans quad) (-> s3-0 quad))
+      (quaternion-copy! (-> s1-1 quat) s4-0)
+      (set! (-> s1-1 scale x) (the-as float (-> arg0 entity)))
+      (set! (-> s1-1 scale y) (the-as float #t))
+      (set! (-> s1-1 scale z) (the-as float s2-1))
+      (let ((v0-7 (battle-method-38 obj s0-1 s1-1)))
+        (when (handle->process v0-7)
+          (set! (-> arg0 creature) v0-7)
+          (set! (-> arg0 mode) (the-as uint 1))
+          (set! (-> arg0 last-spawn-time) (current-time))
+          )
+        v0-7
         )
       )
     )
@@ -1188,10 +1186,10 @@
     (let ((v1-5 (-> arg0 noticed-attack-time)))
       (cond
         ((zero? v1-5)
-         (set! (-> arg0 noticed-attack-time) (-> self clock frame-counter))
+         (set! (-> arg0 noticed-attack-time) (current-time))
          )
         (else
-          (if (>= (- (-> self clock frame-counter) v1-5) (the-as time-frame (-> arg0 notice-attack-delay)))
+          (if (>= (- (current-time) v1-5) (the-as time-frame (-> arg0 notice-attack-delay)))
               (logior! (-> arg0 flags) 1)
               )
           )
@@ -1389,7 +1387,7 @@
   :virtual #t
   :event battle-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (let ((gp-0 (-> self on-notice)))
       (if gp-0
           (script-eval (the-as pair gp-0) :vector (-> self root trans))
@@ -1446,84 +1444,82 @@
   )
 
 (defmethod battle-method-50 battle ((obj battle))
-  (with-pp
-    (let ((s5-0 (battle-method-52 obj))
-          (v1-2 (battle-method-49 obj))
-          (a1-0 (-> obj child))
-          (a0-3 0)
-          )
-      (while a1-0
-        (+! a0-3 1)
-        (set! a1-0 (-> a1-0 0 brother))
-        (nop!)
-        (nop!)
+  (let ((s5-0 (battle-method-52 obj))
+        (v1-2 (battle-method-49 obj))
+        (a1-0 (-> obj child))
+        (a0-3 0)
         )
-      (set! (-> obj stat-child-count) (the-as uint a0-3))
-      (let ((a0-4 (+ v1-2 a0-3))
-            (v1-4 (-> obj max-count))
+    (while a1-0
+      (+! a0-3 1)
+      (set! a1-0 (-> a1-0 0 brother))
+      (nop!)
+      (nop!)
+      )
+    (set! (-> obj stat-child-count) (the-as uint a0-3))
+    (let ((a0-4 (+ v1-2 a0-3))
+          (v1-4 (-> obj max-count))
+          )
+      (when (zero? a0-4)
+        (if (or (logtest? (-> obj flags) 4) (>= (-> obj die-count) v1-4))
+            (return #t)
             )
-        (when (zero? a0-4)
-          (if (or (logtest? (-> obj flags) 4) (>= (-> obj die-count) v1-4))
-              (return #t)
+        )
+      (set! (-> obj flags) (logand -9 (-> obj flags)))
+      (cond
+        ((and (> s5-0 0) (>= s5-0 (the-as int (- v1-4 (-> obj die-count)))))
+         (let ((a1-14 (-> obj jammed-starting-time)))
+           (cond
+             ((zero? (-> obj jammed-starting-time))
+              (set! (-> obj jammed-starting-time) (current-time))
               )
+             (else
+               (if (>= (- (current-time) a1-14) (seconds 3.5))
+                   (logior! (-> obj flags) 8)
+                   )
+               )
+             )
+           )
+         )
+        (else
+          (set! (-> obj jammed-starting-time) 0)
+          0
           )
-        (set! (-> obj flags) (logand -9 (-> obj flags)))
-        (cond
-          ((and (> s5-0 0) (>= s5-0 (the-as int (- v1-4 (-> obj die-count)))))
-           (let ((a1-14 (-> obj jammed-starting-time)))
+        )
+      (cond
+        ((and (not (logtest? (-> obj flags) 4))
+              (> (-> obj spawners length) 0)
+              (< a0-4 (the-as int (-> obj info desired-alive-count)))
+              (< (-> obj count) v1-4)
+              )
+         (when (>= (- (current-time) (-> obj cant-spawn-time)) (the-as time-frame (-> obj next-spawn-delay)))
+           (let ((a1-29 (battle-method-36 obj)))
              (cond
-               ((zero? (-> obj jammed-starting-time))
-                (set! (-> obj jammed-starting-time) (-> pp clock frame-counter))
-                )
+               (a1-29
+                 (battle-method-39 obj a1-29 #f)
+                 (set! (-> obj next-spawn-delay) (the-as uint (battle-method-35 obj)))
+                 (set! (-> obj cant-spawn-time) (current-time))
+                 )
                (else
-                 (if (>= (- (-> pp clock frame-counter) a1-14) (seconds 3.5))
-                     (logior! (-> obj flags) 8)
-                     )
+                 (set! (-> obj cant-spawn-time) (current-time))
                  )
                )
              )
            )
-          (else
-            (set! (-> obj jammed-starting-time) 0)
-            0
-            )
-          )
-        (cond
-          ((and (not (logtest? (-> obj flags) 4))
-                (> (-> obj spawners length) 0)
-                (< a0-4 (the-as int (-> obj info desired-alive-count)))
-                (< (-> obj count) v1-4)
-                )
-           (when (>= (- (-> pp clock frame-counter) (-> obj cant-spawn-time)) (the-as time-frame (-> obj next-spawn-delay)))
-             (let ((a1-29 (battle-method-36 obj)))
-               (cond
-                 (a1-29
-                   (battle-method-39 obj a1-29 #f)
-                   (set! (-> obj next-spawn-delay) (the-as uint (battle-method-35 obj)))
-                   (set! (-> obj cant-spawn-time) (-> pp clock frame-counter))
-                   )
-                 (else
-                   (set! (-> obj cant-spawn-time) (-> pp clock frame-counter))
-                   )
-                 )
-               )
-             )
-           )
-          (else
-            (set! (-> obj cant-spawn-time) (-> pp clock frame-counter))
-            )
+         )
+        (else
+          (set! (-> obj cant-spawn-time) (current-time))
           )
         )
       )
-    #f
     )
+  #f
   )
 
 (defstate hostile (battle)
   :virtual #t
   :event battle-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (logior! (-> self flags) 2)
     (set! (-> self flags) (logand -9 (-> self flags)))
     (set! (-> self jammed-starting-time) 0)

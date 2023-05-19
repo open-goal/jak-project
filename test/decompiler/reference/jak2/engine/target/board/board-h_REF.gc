@@ -411,13 +411,13 @@
                     (not (logtest? (-> *cpad-list* cpads (-> self control cpad number) button0-abs 0) (pad-buttons l2)))
                     )
                 (not *pause-lock*)
-                (>= (- (-> self clock frame-counter) (-> self control time-of-last-debug-heal)) (seconds 0.1))
+                (>= (- (current-time) (-> self control time-of-last-debug-heal)) (seconds 0.1))
                 (>= (-> self control last-time-on-surface) (-> self control time-of-last-debug-float))
                 )
            (-> self board latch?)
            )
        (not (focus-test? self dead hit grabbed in-head edge-grab pole board pilot mech dark))
-       (or (zero? (-> self board)) (>= (- (-> self clock frame-counter) (-> self board board-time)) (seconds 0.5)))
+       (or (zero? (-> self board)) (>= (- (current-time) (-> self board board-time)) (seconds 0.5)))
        (not (logtest? (state-flags prevent-board) (-> self state-flags)))
        (< (-> self board board-time) (-> self control list-time-on-ground))
        (not (logtest? (surface-flag no-board) (-> self control current-surface flags)))
@@ -466,10 +466,7 @@
                   #f
                   #t
                   )
-              (begin
-                (set! (-> self board latch?) #t)
-                (>= (- (-> self clock frame-counter) (-> self gun gun-time)) (seconds 0.4))
-                )
+              (begin (set! (-> self board latch?) #t) (>= (- (current-time) (-> self gun gun-time)) (seconds 0.4)))
               )
          )
        )

@@ -132,7 +132,8 @@ void SubtitleEditor::draw_window() {
   }
 
   if (ImGui::Button("Save Changes")) {
-    m_files_saved_successfully = std::make_optional(write_subtitle_db_to_files(m_subtitle_db));
+    m_files_saved_successfully =
+        std::make_optional(write_subtitle_db_to_files(m_subtitle_db, g_game_version));
     repl_rebuild_text();
   }
   if (m_files_saved_successfully.has_value()) {
@@ -196,7 +197,7 @@ void SubtitleEditor::draw_window() {
       if (ImGui::Button("Add Scene")) {
         GameSubtitleSceneInfo newScene(SubtitleSceneKind::Movie);
         newScene.m_name = m_new_scene_name;
-        newScene.m_id = 0;  // TODO - id is always zero, bug in subtitles.cpp?
+        newScene.m_id = 0;  // id's are only used for non-named hints
         newScene.m_sorting_group = m_new_scene_group;
         m_subtitle_db.m_banks.at(m_current_language)->add_scene(newScene);
         m_subtitle_db.m_subtitle_groups->add_scene(newScene.m_sorting_group, newScene.m_name);
@@ -314,11 +315,11 @@ void SubtitleEditor::draw_edit_options() {
     if (ImGui::BeginCombo(
             "Editing Language ID",
             fmt::format("[{}] {}", m_subtitle_db.m_banks[m_current_language]->m_lang_id,
-                        m_subtitle_db.m_banks[m_current_language]->file_path)
+                        m_subtitle_db.m_banks[m_current_language]->m_file_path)
                 .c_str())) {
       for (const auto& [key, value] : m_subtitle_db.m_banks) {
         const bool isSelected = m_current_language == key;
-        if (ImGui::Selectable(fmt::format("[{}] {}", value->m_lang_id, value->file_path).c_str(),
+        if (ImGui::Selectable(fmt::format("[{}] {}", value->m_lang_id, value->m_file_path).c_str(),
                               isSelected)) {
           m_current_language = key;
         }
@@ -330,11 +331,11 @@ void SubtitleEditor::draw_edit_options() {
     }
     if (ImGui::BeginCombo("Base Language ID",
                           fmt::format("[{}] {}", m_subtitle_db.m_banks[m_base_language]->m_lang_id,
-                                      m_subtitle_db.m_banks[m_base_language]->file_path)
+                                      m_subtitle_db.m_banks[m_base_language]->m_file_path)
                               .c_str())) {
       for (const auto& [key, value] : m_subtitle_db.m_banks) {
         const bool isSelected = m_base_language == key;
-        if (ImGui::Selectable(fmt::format("[{}] {}", value->m_lang_id, value->file_path).c_str(),
+        if (ImGui::Selectable(fmt::format("[{}] {}", value->m_lang_id, value->m_file_path).c_str(),
                               isSelected)) {
           m_base_language = key;
         }
@@ -610,21 +611,20 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
   if (current_scene) {
     draw_new_cutscene_line_form();
   }
-  auto font =
-      get_font_bank(parse_text_only_version(m_subtitle_db.m_banks[m_current_language]->file_path));
+  auto font = get_font_bank(m_subtitle_db.m_banks[m_current_language]->m_text_version);
   int i = 0;
   for (auto subtitleLine = scene.m_lines.begin(); subtitleLine != scene.m_lines.end();) {
     auto linetext = font->convert_game_to_utf8(subtitleLine->line.c_str());
-    auto linespkr = font->convert_game_to_utf8(subtitleLine->speaker.c_str());
+    auto line_speaker = font->convert_game_to_utf8(subtitleLine->speaker.c_str());
     std::string summary;
     if (linetext.empty()) {
       summary = fmt::format("[{}] Clear Screen", subtitleLine->frame);
     } else if (linetext.length() >= 30) {
-      summary =
-          fmt::format("[{}] {} - '{}...'", subtitleLine->frame, linespkr, linetext.substr(0, 30));
+      summary = fmt::format("[{}] {} - '{}...'", subtitleLine->frame, line_speaker,
+                            linetext.substr(0, 30));
     } else {
       summary =
-          fmt::format("[{}] {} - '{}'", subtitleLine->frame, linespkr, linetext.substr(0, 30));
+          fmt::format("[{}] {} - '{}'", subtitleLine->frame, line_speaker, linetext.substr(0, 30));
     }
     if (linetext.empty()) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
@@ -637,7 +637,8 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
       }
       ImGui::InputInt("Starting Frame", &subtitleLine->frame,
                       ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
-      ImGui::InputText("Speaker", &linespkr);
+      // TODO - speaker dropdown instead
+      ImGui::InputText("Speaker", &line_speaker);
       ImGui::InputText("Text", &linetext);
       ImGui::Checkbox("Offscreen?", &subtitleLine->offscreen);
       if (scene.m_lines.size() > 1) {  // prevent creating an empty scene
@@ -655,7 +656,7 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
       ImGui::PopStyleColor();
     }
     auto newtext = font->convert_utf8_to_game(linetext, true);
-    auto newspkr = font->convert_utf8_to_game(linespkr, true);
+    auto newspkr = font->convert_utf8_to_game(line_speaker, true);
     subtitleLine->line = newtext;
     subtitleLine->speaker = newspkr;
     i++;
@@ -679,7 +680,7 @@ void SubtitleEditor::draw_new_cutscene_line_form() {
     rendered_text_entry_btn = true;
     if (ImGui::Button("Add Text Entry")) {
       auto font = get_font_bank(
-          parse_text_only_version(m_subtitle_db.m_banks[m_current_language]->file_path));
+          parse_text_only_version(m_subtitle_db.m_banks[m_current_language]->m_file_path));
       m_current_scene->add_line(
           m_current_scene_frame, font->convert_utf8_to_game(m_current_scene_text, true),
           font->convert_utf8_to_game(m_current_scene_speaker, true), m_current_scene_offscreen);

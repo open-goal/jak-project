@@ -3876,6 +3876,19 @@ ConstantTokenElement* DerefElement::try_as_art_const(const Env& env, FormPool& p
   return nullptr;
 }
 
+GenericElement* DerefElement::try_as_curtime(FormPool& pool) {
+  auto mr = match(Matcher::deref(Matcher::s6(), false,
+                                 {DerefTokenMatcher::string("clock"),
+                                  DerefTokenMatcher::string("frame-counter")}),
+                  this);
+  if (mr.matched) {
+    return pool.alloc_element<GenericElement>(
+        GenericOperator::make_function(pool.form<ConstantTokenElement>("current-time")));
+  }
+
+  return nullptr;
+}
+
 void DerefElement::update_from_stack(const Env& env,
                                      FormPool& pool,
                                      FormStack& stack,
@@ -3909,6 +3922,13 @@ void DerefElement::update_from_stack(const Env& env,
       m_tokens.at(0).is_field_name("sub-task-list") && m_tokens.at(1).is_int()) {
     m_tokens.at(1) = DerefToken::make_int_expr(cast_to_int_enum(
         env.dts->ts.try_enum_lookup("game-task-node"), pool, env, m_tokens.at(1).int_constant()));
+  }
+
+  // current-time macro
+  auto as_curtime = try_as_curtime(pool);
+  if (as_curtime) {
+    result->push_back(as_curtime);
+    return;
   }
 
   result->push_back(this);

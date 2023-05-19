@@ -59,3 +59,29 @@
 (define *city-info-z* 0)
 
 
+(define *debug-track-skill* #f)
+(defun debug-track-skill ()
+	"draws a line and prints the distance to every skill in every active level"
+	(let ((start-pos (target-pos 0)))
+		(dotimes (i (-> *level* length))
+			(let ((lev (-> *level* level i)))
+				(when (= (-> lev status) 'active)
+					;; actor entities
+					(let ((actors (-> lev bsp actors)))
+						(when (nonzero? actors)
+							(dotimes (ii (-> actors length))
+								(let ((e (-> actors data ii actor)))
+									(when (and (= (-> e etype symbol) 'skill) (or (not (-> e extra)) (zero? (-> e extra)) (not (logtest? (-> e extra perm status) (entity-perm-status dead)))))
+											(add-debug-line #t (bucket-id debug-no-zbuf1) start-pos (-> e trans) (new 'static 'rgba :r #xff :a #x80) #f (the-as rgba -1))
+											(format *stdcon* "~S at ~m ~m ~m (~m away)~%" (res-lump-struct e 'name string) (-> e trans x) (-> e trans y) (-> e trans z) (vector-vector-distance start-pos (-> e trans)))
+											)
+									)
+								)
+							)
+						)
+					)
+				)
+			)
+		)
+	#f)
+

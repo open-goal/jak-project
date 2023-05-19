@@ -175,10 +175,19 @@ bool SubtitleTool::needs_run(const ToolInput& task, const PathMap& path_map) {
   }
 
   std::vector<std::string> deps;
-  std::vector<GameTextDefinitionFile> files;
-  open_text_project("subtitle", task.input.at(0), files);
+  std::vector<GameSubtitleDefinitionFile> files;
+  open_subtitle_project("subtitle", task.input.at(0), files);
   for (auto& file : files) {
-    deps.push_back(path_map.apply_remaps(file.file_path));
+    deps.push_back(path_map.apply_remaps(file.lines_path));
+    if (file.format == GameSubtitleDefinitionFile::Format::JSON) {
+      deps.push_back(path_map.apply_remaps(file.meta_path));
+      if (file.lines_base_path) {
+        deps.push_back(path_map.apply_remaps(file.lines_base_path.value()));
+      }
+      if (file.meta_base_path) {
+        deps.push_back(path_map.apply_remaps(file.meta_base_path.value()));
+      }
+    }
   }
   return Tool::needs_run({task.input, deps, task.output, task.arg}, path_map);
 }
@@ -187,10 +196,19 @@ bool SubtitleTool::run(const ToolInput& task, const PathMap& path_map) {
   GameSubtitleDB db;
   db.m_subtitle_groups = std::make_unique<GameSubtitleGroups>();
   db.m_subtitle_groups->hydrate_from_asset_file();
-  std::vector<GameTextDefinitionFile> files;
-  open_text_project("subtitle", task.input.at(0), files);
+  std::vector<GameSubtitleDefinitionFile> files;
+  open_subtitle_project("subtitle", task.input.at(0), files);
   for (auto& file : files) {
-    file.file_path = path_map.apply_remaps(file.file_path);
+    file.lines_path = path_map.apply_remaps(file.lines_path);
+    if (file.format == GameSubtitleDefinitionFile::Format::JSON) {
+      file.meta_path = path_map.apply_remaps(file.meta_path);
+      if (file.lines_base_path) {
+        file.lines_base_path = path_map.apply_remaps(file.lines_base_path.value());
+      }
+      if (file.meta_base_path) {
+        file.meta_base_path = path_map.apply_remaps(file.meta_base_path.value());
+      }
+    }
   }
   compile_game_subtitle(files, db, path_map.output_prefix);
   return true;

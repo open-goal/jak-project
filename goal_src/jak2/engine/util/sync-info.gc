@@ -7,6 +7,7 @@
 
 ;; DECOMP BEGINS
 
+;; WARN: Return type mismatch object vs none.
 (defmethod initialize! sync-info ((obj sync-info) (arg0 sync-info-params))
   "Set up a sync-info from params."
   (format 0 "ERROR: Invalid call to sync-info::initialize!~%")
@@ -15,13 +16,11 @@
 
 (defmethod get-current-phase-no-mod sync-info ((obj sync-info))
   "Get the current value, with no fancy modifications."
-  (with-pp
-    (let* ((v1-0 (-> obj period))
-           (f0-1 (the float v1-0))
-           (f1-2 (+ (the float (mod (the-as uint (-> pp clock frame-counter)) v1-0)) (-> obj offset)))
-           )
-      (/ (- f1-2 (* (the float (the int (/ f1-2 f0-1))) f0-1)) f0-1)
-      )
+  (let* ((v1-0 (-> obj period))
+         (f0-1 (the float v1-0))
+         (f1-2 (+ (the float (mod (the-as uint (current-time)) v1-0)) (-> obj offset)))
+         )
+    (/ (- f1-2 (* (the float (the int (/ f1-2 f0-1))) f0-1)) f0-1)
     )
   )
 
@@ -32,19 +31,17 @@
 
 (defmethod sync-now! sync-info ((obj sync-info) (arg0 float))
   "Adjust our offset so our current phase is the given phase."
-  (with-pp
-    (let* ((a2-0 (-> obj period))
-           (f0-1 (the float a2-0))
-           (v1-0 (- arg0 (* (the float (the int (/ arg0 f0-1))) f0-1)))
-           (f1-4 (+ (the float (mod (the-as uint (-> pp clock frame-counter)) a2-0)) (-> obj offset)))
-           (f1-6 (/ (- f1-4 (* (the float (the int (/ f1-4 f0-1))) f0-1)) f0-1))
-           (f1-10 (+ (* (- v1-0 f1-6) f0-1) f0-1 (-> obj offset)))
-           )
-      (set! (-> obj offset) (- f1-10 (* (the float (the int (/ f1-10 f0-1))) f0-1)))
-      )
-    0
-    (none)
+  (let* ((a2-0 (-> obj period))
+         (f0-1 (the float a2-0))
+         (v1-0 (- arg0 (* (the float (the int (/ arg0 f0-1))) f0-1)))
+         (f1-4 (+ (the float (mod (the-as uint (current-time)) a2-0)) (-> obj offset)))
+         (f1-6 (/ (- f1-4 (* (the float (the int (/ f1-4 f0-1))) f0-1)) f0-1))
+         (f1-10 (+ (* (- v1-0 f1-6) f0-1) f0-1 (-> obj offset)))
+         )
+    (set! (-> obj offset) (- f1-10 (* (the float (the int (/ f1-10 f0-1))) f0-1)))
     )
+  0
+  (none)
   )
 
 (defmethod get-norm! sync-info ((obj sync-info) (arg0 int))
@@ -60,19 +57,18 @@
 
 (defmethod get-timeframe-offset! sync-info ((obj sync-info) (arg0 time-frame))
   "Get the difference between the given time-frame and when this sync-info is at 0."
-  (with-pp
-    (if (zero? arg0)
-        (set! arg0 (-> pp clock frame-counter))
-        )
-    (let* ((v1-4 (-> obj period))
-           (f0-1 (the float v1-4))
-           (f1-2 (+ (the float (mod arg0 (the-as time-frame v1-4))) (-> obj offset)))
-           )
-      (+ arg0 (the int (- f0-1 (* (/ (- f1-2 (* (the float (the int (/ f1-2 f0-1))) f0-1)) f0-1) f0-1))))
+  (if (zero? arg0)
+      (set! arg0 (current-time))
       )
+  (let* ((v1-4 (-> obj period))
+         (f0-1 (the float v1-4))
+         (f1-2 (+ (the float (mod arg0 (the-as time-frame v1-4))) (-> obj offset)))
+         )
+    (+ arg0 (the int (- f0-1 (* (/ (- f1-2 (* (the float (the int (/ f1-2 f0-1))) f0-1)) f0-1) f0-1))))
     )
   )
 
+;; WARN: Return type mismatch float vs none.
 (defmethod initialize! sync-linear ((obj sync-linear) (arg0 sync-info-params))
   "Set up a sync-info from params."
   (local-vars (sv-16 res-tag))
@@ -110,29 +106,27 @@
 
 (defmethod get-norm! sync-linear ((obj sync-linear) (arg0 int))
   "Get the current value, from 0 to 1."
-  (with-pp
-    (if (zero? arg0)
-        (set! arg0 (the-as int (-> pp clock frame-counter)))
-        )
-    (let* ((v1-4 (-> obj period))
-           (f0-1 (the float v1-4))
-           )
-      (cond
-        ((logtest? (-> obj sync-flags) (sync-flags pong))
-         (let* ((f1-0 2.0)
-                (f2-2 (+ (the float (mod arg0 (the-as int v1-4))) (-> obj offset)))
-                (f0-3 (* f1-0 (/ (- f2-2 (* (the float (the int (/ f2-2 f0-1))) f0-1)) f0-1)))
-                )
-           (if (>= f0-3 1.0)
-               (set! f0-3 (- 2.0 f0-3))
-               )
-           f0-3
-           )
+  (if (zero? arg0)
+      (set! arg0 (the-as int (current-time)))
+      )
+  (let* ((v1-4 (-> obj period))
+         (f0-1 (the float v1-4))
          )
-        (else
-          (let ((f1-5 (+ (the float (mod arg0 (the-as int v1-4))) (-> obj offset))))
-            (/ (- f1-5 (* (the float (the int (/ f1-5 f0-1))) f0-1)) f0-1)
-            )
+    (cond
+      ((logtest? (-> obj sync-flags) (sync-flags pong))
+       (let* ((f1-0 2.0)
+              (f2-2 (+ (the float (mod arg0 (the-as int v1-4))) (-> obj offset)))
+              (f0-3 (* f1-0 (/ (- f2-2 (* (the float (the int (/ f2-2 f0-1))) f0-1)) f0-1)))
+              )
+         (if (>= f0-3 1.0)
+             (set! f0-3 (- 2.0 f0-3))
+             )
+         f0-3
+         )
+       )
+      (else
+        (let ((f1-5 (+ (the float (mod arg0 (the-as int v1-4))) (-> obj offset))))
+          (/ (- f1-5 (* (the float (the int (/ f1-5 f0-1))) f0-1)) f0-1)
           )
         )
       )
@@ -144,6 +138,7 @@
   (* (get-norm! obj arg1) arg0)
   )
 
+;; WARN: Return type mismatch float vs none.
 (defmethod initialize! sync-eased ((obj sync-eased) (arg0 sync-info-params))
   "Set up a sync-info from params."
   (local-vars (sv-16 res-tag))
@@ -245,67 +240,65 @@
 
 (defmethod get-norm! sync-eased ((obj sync-eased) (arg0 int))
   "Get the current value, from 0 to 1."
-  (with-pp
-    (if (zero? arg0)
-        (set! arg0 (the-as int (-> pp clock frame-counter)))
-        )
-    (let* ((v1-4 (-> obj period))
-           (f3-0 (the float v1-4))
-           (f0-1 (-> obj pause-in))
-           (f2-0 (-> obj pause-out))
-           (f1-1 (* 0.5 (- f3-0 (+ f0-1 f2-0))))
+  (if (zero? arg0)
+      (set! arg0 (the-as int (current-time)))
+      )
+  (let* ((v1-4 (-> obj period))
+         (f3-0 (the float v1-4))
+         (f0-1 (-> obj pause-in))
+         (f2-0 (-> obj pause-out))
+         (f1-1 (* 0.5 (- f3-0 (+ f0-1 f2-0))))
+         )
+    (the int (+ f0-1 f2-0 f3-0))
+    (cond
+      ((logtest? (-> obj sync-flags) (sync-flags pong))
+       (let* ((f4-7 (+ (the float (mod arg0 (the-as int v1-4))) (-> obj offset)))
+              (f3-2 (- f4-7 (* (the float (the int (/ f4-7 f3-0))) f3-0)))
+              (v1-6 #f)
+              )
+         (when (>= f3-2 (+ f1-1 f0-1))
+           (set! v1-6 #t)
+           (set! f3-2 (- f3-2 (+ f1-1 f0-1)))
+           f0-1
+           (set! f0-1 f2-0)
            )
-      (the int (+ f0-1 f2-0 f3-0))
-      (cond
-        ((logtest? (-> obj sync-flags) (sync-flags pong))
-         (let* ((f4-7 (+ (the float (mod arg0 (the-as int v1-4))) (-> obj offset)))
-                (f3-2 (- f4-7 (* (the float (the int (/ f4-7 f3-0))) f3-0)))
-                (v1-6 #f)
-                )
-           (when (>= f3-2 (+ f1-1 f0-1))
-             (set! v1-6 #t)
-             (set! f3-2 (- f3-2 (+ f1-1 f0-1)))
-             f0-1
-             (set! f0-1 f2-0)
-             )
-           (cond
-             ((< f3-2 f0-1)
-              (set! f3-2 f0-1)
-              )
-             ((< (+ f0-1 f1-1) f3-2)
-              (set! f3-2 (+ f0-1 f1-1))
-              )
-             )
-           (let* ((f0-3 (/ (- f3-2 f0-1) f1-1))
-                  (f1-2 (-> obj tlo))
-                  (f0-8 (/ (cond
-                             ((< f0-3 f1-2)
-                              (* f0-3 f0-3)
-                              )
-                             ((< f0-3 (-> obj thi))
-                              (+ (* 2.0 f1-2 (- f0-3 f1-2)) (-> obj ylo))
-                              )
-                             (else
-                               (let ((f1-5 (- 1.0 f0-3)))
-                                 (- (-> obj yend) (* f1-5 f1-5 (-> obj m2)))
-                                 )
+         (cond
+           ((< f3-2 f0-1)
+            (set! f3-2 f0-1)
+            )
+           ((< (+ f0-1 f1-1) f3-2)
+            (set! f3-2 (+ f0-1 f1-1))
+            )
+           )
+         (let* ((f0-3 (/ (- f3-2 f0-1) f1-1))
+                (f1-2 (-> obj tlo))
+                (f0-8 (/ (cond
+                           ((< f0-3 f1-2)
+                            (* f0-3 f0-3)
+                            )
+                           ((< f0-3 (-> obj thi))
+                            (+ (* 2.0 f1-2 (- f0-3 f1-2)) (-> obj ylo))
+                            )
+                           (else
+                             (let ((f1-5 (- 1.0 f0-3)))
+                               (- (-> obj yend) (* f1-5 f1-5 (-> obj m2)))
                                )
                              )
-                           (-> obj yend)
                            )
-                        )
-                  )
-             (if v1-6
-                 (set! f0-8 (- 1.0 f0-8))
-                 )
-             f0-8
-             )
+                         (-> obj yend)
+                         )
+                      )
+                )
+           (if v1-6
+               (set! f0-8 (- 1.0 f0-8))
+               )
+           f0-8
            )
          )
-        (else
-          (format 0 "ERROR: <SW> Attempting to use sync-eased in unsupported non-pong mode.~%")
-          0.0
-          )
+       )
+      (else
+        (format 0 "ERROR: <SW> Attempting to use sync-eased in unsupported non-pong mode.~%")
+        0.0
         )
       )
     )
@@ -316,6 +309,7 @@
   (* (get-norm! obj arg1) arg0)
   )
 
+;; WARN: Return type mismatch float vs none.
 (defmethod initialize! sync-paused ((obj sync-paused) (arg0 sync-info-params))
   "Set up a sync-info from params."
   (local-vars (sv-16 res-tag))
@@ -379,46 +373,44 @@
 
 (defmethod get-norm! sync-paused ((obj sync-paused) (arg0 int))
   "Get the current value, from 0 to 1."
-  (with-pp
-    (if (zero? arg0)
-        (set! arg0 (the-as int (-> pp clock frame-counter)))
-        )
-    (let* ((v1-4 (-> obj period))
-           (f2-0 (the float v1-4))
-           (f0-1 (-> obj pause-in))
-           (f1-0 (-> obj pause-out))
+  (if (zero? arg0)
+      (set! arg0 (the-as int (current-time)))
+      )
+  (let* ((v1-4 (-> obj period))
+         (f2-0 (the float v1-4))
+         (f0-1 (-> obj pause-in))
+         (f1-0 (-> obj pause-out))
+         )
+    (the int (+ f0-1 f1-0 f2-0))
+    (cond
+      ((logtest? (-> obj sync-flags) (sync-flags pong))
+       (let* ((f3-5 (+ (the float (mod arg0 (the-as int v1-4))) (-> obj offset)))
+              (f3-6 (- f3-5 (* (the float (the int (/ f3-5 f2-0))) f2-0)))
+              (f2-2 (* 0.5 (- f2-0 (+ f0-1 f1-0))))
+              (v1-7 #f)
+              )
+         (when (>= f3-6 (+ f2-2 f0-1))
+           (set! v1-7 #t)
+           (set! f3-6 (- f3-6 (+ f2-2 f0-1)))
+           (set! f0-1 f1-0)
            )
-      (the int (+ f0-1 f1-0 f2-0))
-      (cond
-        ((logtest? (-> obj sync-flags) (sync-flags pong))
-         (let* ((f3-5 (+ (the float (mod arg0 (the-as int v1-4))) (-> obj offset)))
-                (f3-6 (- f3-5 (* (the float (the int (/ f3-5 f2-0))) f2-0)))
-                (f2-2 (* 0.5 (- f2-0 (+ f0-1 f1-0))))
-                (v1-7 #f)
+         (let* ((f1-1 (/ (- f3-6 f0-1) f2-2))
+                (f0-5 (fmax 0.0 (fmin 1.0 f1-1)))
                 )
-           (when (>= f3-6 (+ f2-2 f0-1))
-             (set! v1-7 #t)
-             (set! f3-6 (- f3-6 (+ f2-2 f0-1)))
-             (set! f0-1 f1-0)
-             )
-           (let* ((f1-1 (/ (- f3-6 f0-1) f2-2))
-                  (f0-5 (fmax 0.0 (fmin 1.0 f1-1)))
-                  )
-             (if v1-7
-                 (set! f0-5 (- 1.0 f0-5))
-                 )
-             f0-5
-             )
+           (if v1-7
+               (set! f0-5 (- 1.0 f0-5))
+               )
+           f0-5
            )
          )
-        (else
-          (let* ((f3-9 (+ (the float (mod arg0 (the-as int v1-4))) (-> obj offset)))
-                 (f3-10 (- f3-9 (* (the float (the int (/ f3-9 f2-0))) f2-0)))
-                 (f1-5 (- f2-0 (+ f0-1 f1-0)))
-                 (f1-6 (/ (- f3-10 f0-1) f1-5))
-                 )
-            (fmax 0.0 (fmin 1.0 f1-6))
-            )
+       )
+      (else
+        (let* ((f3-9 (+ (the float (mod arg0 (the-as int v1-4))) (-> obj offset)))
+               (f3-10 (- f3-9 (* (the float (the int (/ f3-9 f2-0))) f2-0)))
+               (f1-5 (- f2-0 (+ f0-1 f1-0)))
+               (f1-6 (/ (- f3-10 f0-1) f1-5))
+               )
+          (fmax 0.0 (fmin 1.0 f1-6))
           )
         )
       )
@@ -441,31 +433,26 @@
   )
 
 (defmethod reset! delayed-rand-float ((obj delayed-rand-float))
-  (with-pp
-    (set! (-> obj start-time) (-> pp clock frame-counter))
-    (set! (-> obj timer) (rand-vu-int-range (-> obj min-time) (-> obj max-time)))
-    (set! (-> obj value) (rand-vu-float-range (- (-> obj max-val)) (-> obj max-val)))
-    )
+  (set! (-> obj start-time) (current-time))
+  (set! (-> obj timer) (rand-vu-int-range (-> obj min-time) (-> obj max-time)))
+  (set! (-> obj value) (rand-vu-float-range (- (-> obj max-val)) (-> obj max-val)))
   )
 
 (defmethod update! delayed-rand-float ((obj delayed-rand-float))
-  (with-pp
-    (if (>= (- (-> pp clock frame-counter) (-> obj start-time)) (-> obj timer))
-        (reset! obj)
-        )
-    (-> obj value)
-    )
+  (if (>= (- (current-time) (-> obj start-time)) (-> obj timer))
+      (reset! obj)
+      )
+  (-> obj value)
   )
 
+;; WARN: Return type mismatch float vs none.
 (defmethod update-and-clear! delayed-rand-float ((obj delayed-rand-float))
-  (with-pp
-    (if (>= (- (-> pp clock frame-counter) (-> obj start-time)) (-> obj timer))
-        (reset! obj)
-        (set! (-> obj value) 0.0)
-        )
-    (-> obj value)
-    (none)
-    )
+  (if (>= (- (current-time) (-> obj start-time)) (-> obj timer))
+      (reset! obj)
+      (set! (-> obj value) 0.0)
+      )
+  (-> obj value)
+  (none)
   )
 
 (defmethod set-params! oscillating-float ((obj oscillating-float) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
@@ -547,33 +534,27 @@
   )
 
 (defmethod update-now! delayed-rand-vector ((obj delayed-rand-vector))
-  (with-pp
-    (set! (-> obj start-time) (-> pp clock frame-counter))
-    (set! (-> obj timer) (rand-vu-int-range (-> obj min-time) (-> obj max-time)))
-    (set! (-> obj value x) (rand-vu-float-range (- (-> obj xz-max)) (-> obj xz-max)))
-    (set! (-> obj value y) (rand-vu-float-range (- (-> obj y-max)) (-> obj y-max)))
-    (set! (-> obj value z) (rand-vu-float-range (- (-> obj xz-max)) (-> obj xz-max)))
-    (-> obj value)
-    )
+  (set! (-> obj start-time) (current-time))
+  (set! (-> obj timer) (rand-vu-int-range (-> obj min-time) (-> obj max-time)))
+  (set! (-> obj value x) (rand-vu-float-range (- (-> obj xz-max)) (-> obj xz-max)))
+  (set! (-> obj value y) (rand-vu-float-range (- (-> obj y-max)) (-> obj y-max)))
+  (set! (-> obj value z) (rand-vu-float-range (- (-> obj xz-max)) (-> obj xz-max)))
+  (-> obj value)
   )
 
 (defmethod update-with-delay! delayed-rand-vector ((obj delayed-rand-vector))
-  (with-pp
-    (if (>= (- (-> pp clock frame-counter) (-> obj start-time)) (-> obj timer))
-        (update-now! obj)
-        )
-    (-> obj value)
-    )
+  (if (>= (- (current-time) (-> obj start-time)) (-> obj timer))
+      (update-now! obj)
+      )
+  (-> obj value)
   )
 
 (defmethod update-with-delay-or-reset! delayed-rand-vector ((obj delayed-rand-vector))
-  (with-pp
-    (if (>= (- (-> pp clock frame-counter) (-> obj start-time)) (-> obj timer))
-        (update-now! obj)
-        (vector-reset! (-> obj value))
-        )
-    (-> obj value)
-    )
+  (if (>= (- (current-time) (-> obj start-time)) (-> obj timer))
+      (update-now! obj)
+      (vector-reset! (-> obj value))
+      )
+  (-> obj value)
   )
 
 (defmethod set-params! oscillating-vector ((obj oscillating-vector) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
@@ -620,4 +601,3 @@
     (-> obj value)
     )
   )
-
