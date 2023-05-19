@@ -1,3 +1,6 @@
+import json
+
+
 speaker_names = [
     "VIS MAN",
     "DAXTER",
@@ -108,3 +111,16 @@ with open("swedish_subs_remove_newlines.txt", "r", encoding="utf-8") as f:
 
 print(len(line_groups))
 
+with open("subtitle_lines_sv-SE.json", "r", encoding="utf-8") as f:
+  reference_file = json.load(f)
+
+for idx, group in enumerate(line_groups):
+    name = cutscenes_and_hints[idx]["name"]
+    is_hint = cutscenes_and_hints[idx]["hint"]
+    if is_hint:
+        expected_line_count = len(reference_file["hints"][name])
+    else:
+        expected_line_count = len(reference_file["cutscenes"][name])
+    if len(group) != expected_line_count:
+        print("ERROR: Expected {} lines for {} -- {}\n\n".format(expected_line_count, name, group))
+        exit(1)
