@@ -20,19 +20,14 @@
   (let ((s1-1 (process->handle arg0))
         (s2-1 (process->handle arg1))
         )
-    (let ((s0-0 (-> self clock frame-counter)))
-      (until (>= (- (-> self clock frame-counter) s0-0) (+ arg3 arg4))
+    (let ((s0-0 (current-time)))
+      (until (>= (- (current-time) s0-0) (+ arg3 arg4))
         (let ((v1-8 (or (not (handle->process s1-1)) (not (handle->process s2-1)))))
           (if v1-8
               (deactivate self)
               )
           )
-        (let* ((f0-1
-                 (fmax
-                   0.0
-                   (fmin 1.0 (/ (- (the float (- (-> self clock frame-counter) s0-0)) (the float arg3)) (the float arg4)))
-                   )
-                 )
+        (let* ((f0-1 (fmax 0.0 (fmin 1.0 (/ (- (the float (- (current-time) s0-0)) (the float arg3)) (the float arg4)))))
                (a0-18 (process-drawable-pair-random-point!
                         (the-as process-drawable (-> s1-1 process 0))
                         (the-as process-drawable (-> s2-1 process 0))
@@ -54,8 +49,8 @@
        #f
        )
       (else
-        (let ((s4-1 (-> self clock frame-counter)))
-          (until (>= (- (-> self clock frame-counter) s4-1) arg5)
+        (let ((s4-1 (current-time)))
+          (until (>= (- (current-time) s4-1) arg5)
             (let ((a0-21 (process-drawable-random-point! (the-as process-drawable (-> s2-1 process 0)) (new-stack-vector0))))
               (arg2 a0-21)
               )
@@ -743,9 +738,8 @@
   )
 
 (defbehavior target-color-effect-process target ()
-  (when (and (-> self color-effect) (>= (- (-> self clock frame-counter) (-> self color-effect-start-time))
-                                        (the-as time-frame (-> self color-effect-duration))
-                                        )
+  (when (and (-> self color-effect)
+             (>= (- (current-time) (-> self color-effect-start-time)) (the-as time-frame (-> self color-effect-duration)))
              )
     (set! (-> self color-effect) #f)
     (set-vector! (-> self draw color-mult) 1.0 1.0 1.0 1.0)
@@ -761,7 +755,7 @@
      (let ((f30-0 (lerp-scale
                     1.0
                     0.0
-                    (the float (- (-> self clock frame-counter) (-> self color-effect-start-time)))
+                    (the float (- (current-time) (-> self color-effect-start-time)))
                     (* 0.25 (the float (-> self color-effect-duration)))
                     (the float (-> self color-effect-duration))
                     )
@@ -775,7 +769,7 @@
      (let ((f30-1 (lerp-scale
                     1.0
                     0.0
-                    (the float (- (-> self clock frame-counter) (-> self color-effect-start-time)))
+                    (the float (- (current-time) (-> self color-effect-start-time)))
                     (* 0.25 (the float (-> self color-effect-duration)))
                     (the float (-> self color-effect-duration))
                     )
@@ -789,7 +783,7 @@
      (let ((f30-2 (lerp-scale
                     1.0
                     0.0
-                    (the float (- (-> self clock frame-counter) (-> self color-effect-start-time)))
+                    (the float (- (current-time) (-> self color-effect-start-time)))
                     (* 0.25 (the float (-> self color-effect-duration)))
                     (the float (-> self color-effect-duration))
                     )
@@ -803,7 +797,7 @@
      (let ((f30-3 (lerp-scale
                     1.0
                     0.0
-                    (the float (- (-> self clock frame-counter) (-> self color-effect-start-time)))
+                    (the float (- (current-time) (-> self color-effect-start-time)))
                     (* 0.25 (the float (-> self color-effect-duration)))
                     (the float (-> self color-effect-duration))
                     )
@@ -817,7 +811,7 @@
      (let ((f30-4 (lerp-scale
                     1.0
                     0.0
-                    (the float (- (-> self clock frame-counter) (-> self color-effect-start-time)))
+                    (the float (- (current-time) (-> self color-effect-start-time)))
                     (* 0.25 (the float (-> self color-effect-duration)))
                     (the float (-> self color-effect-duration))
                     )
@@ -831,7 +825,7 @@
      (let ((f30-5 (lerp-scale
                     1.0
                     0.0
-                    (the float (- (-> self clock frame-counter) (-> self color-effect-start-time)))
+                    (the float (- (current-time) (-> self color-effect-start-time)))
                     (* 0.25 (the float (-> self color-effect-duration)))
                     (the float (-> self color-effect-duration))
                     )
@@ -859,13 +853,13 @@
   (if (and (logtest? (-> self water flags) (water-flags under-water))
            (not (logtest? (-> self water flags) (water-flags swim-ground)))
            )
-      (set! (-> self control unknown-time-frame26) (-> self clock frame-counter))
-      (set! (-> self control unknown-time-frame27) (-> self clock frame-counter))
+      (set! (-> self control unknown-time-frame26) (current-time))
+      (set! (-> self control unknown-time-frame27) (current-time))
       )
   (cond
     ((and (= (-> self control ground-pat material) (pat-material ice))
           (and (>= (-> self control ctrl-xz-vel) 204.8)
-               (< (- (-> self clock frame-counter) (-> self control last-time-on-surface)) (seconds 0.05))
+               (< (- (current-time) (-> self control last-time-on-surface)) (seconds 0.05))
                )
           )
      (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 38))))
@@ -967,9 +961,9 @@
   (cond
     ((logtest? (-> self game features) (game-feature unk-game-feature-01))
      (cond
-       ((< (-> self clock frame-counter) (-> (the-as fact-info-target (-> self fact-override)) stop-time-timeout))
-        (set-setting! 'bg-a 'abs #x3e99999a 0)
-        (set-setting! 'bg-r 'abs #x3f800000 0)
+       ((< (current-time) (-> (the-as fact-info-target (-> self fact-override)) stop-time-timeout))
+        (set-setting! 'bg-a 'abs 0.3 0)
+        (set-setting! 'bg-r 'abs 1.0 0)
         (update-rates! (-> *display* entity-clock) 0.0)
         (if (zero? (mod (the-as int (-> *display* base-clock integral-frame-counter)) 60))
             (sound-play "stopwatch")
@@ -983,9 +977,7 @@
         0
         )
        ((cpad-pressed? (-> self control cpad number) r1)
-        (set! (-> (the-as fact-info-target (-> self fact-override)) stop-time-timeout)
-              (+ (-> self clock frame-counter) (seconds 5))
-              )
+        (set! (-> (the-as fact-info-target (-> self fact-override)) stop-time-timeout) (+ (current-time) (seconds 5)))
         )
        )
      )
@@ -1100,9 +1092,7 @@
     ((or (and (logtest? (-> self control mod-surface flags) (surface-flag air))
               (not (logtest? (-> self control status) (collide-status on-surface)))
               )
-         (and (focus-test? self board)
-              (< (- (-> self clock frame-counter) (-> self board unknown-time-frame00)) (seconds 0.1))
-              )
+         (and (focus-test? self board) (< (- (current-time) (-> self board unknown-time-frame00)) (seconds 0.1)))
          )
      (logior! (-> self focus-status) (focus-status in-air))
      (if (logtest? (surface-flag super) (-> self control current-surface flags))
@@ -1137,7 +1127,7 @@
       (set! (-> self focus-status) (logior (focus-status ice) (-> self focus-status)))
       (logclear! (-> self focus-status) (focus-status ice))
       )
-  (if (< (- (-> self clock frame-counter) (-> self gun fire-time)) (seconds 0.1))
+  (if (< (- (current-time) (-> self gun fire-time)) (seconds 0.1))
       (set! (-> self focus-status) (logior (focus-status shooting) (-> self focus-status)))
       (logclear! (-> self focus-status) (focus-status shooting))
       )

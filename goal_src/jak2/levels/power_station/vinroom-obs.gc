@@ -128,7 +128,7 @@
     (when (and (or (not (-> self dont-draw-outside?))
                    (>= (vector4-dot (the-as vector (-> self lightning-plane)) (math-camera-pos)) 0.0)
                    )
-               (< (the-as time-frame (-> self lightning-timer)) (-> self clock frame-counter))
+               (< (the-as time-frame (-> self lightning-timer)) (current-time))
                )
       (let ((s4-0 (new 'stack-no-clear 'matrix))
             (s3-1
@@ -166,7 +166,7 @@
           )
         (when (>= (fill-and-probe-using-line-sphere *collide-cache* s5-1) 0.0)
           (set! (-> self lightning-timer)
-                (the-as uint (+ (-> self clock frame-counter) (the int (* 300.0 (rand-vu-float-range 0.1 0.4)))))
+                (the-as uint (+ (current-time) (the int (* 300.0 (rand-vu-float-range 0.1 0.4)))))
                 )
           (let ((s4-3 (new 'stack-no-clear 'vector)))
             (set! (-> s4-3 quad) (-> s5-1 best-other-tri intersect quad))
@@ -260,7 +260,7 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 1024)
+  (stack-size-set! (-> obj main-thread) 1024) ;; added
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))

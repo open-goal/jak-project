@@ -10,124 +10,128 @@
 #include "third-party/fmt/ranges.h"
 #include "third-party/json.hpp"
 
-bool write_subtitle_db_to_files(const GameSubtitleDB& db) {
-  // Write the subtitles out
-  std::vector<int> completed_banks = {};
-  for (const auto& [id, bank] : db.m_banks) {
-    // If we've done the bank before, skip it
-    auto it = find(completed_banks.begin(), completed_banks.end(), bank->m_lang_id);
-    if (it != completed_banks.end()) {
-      continue;
-    }
-    // Check to see if this bank is shared by any other, if so do it at the same time
-    // and skip it
-    // This is basically just to deal with US/UK english in a not so hacky way
-    std::vector<int> banks = {};
-    for (const auto& [_id, _bank] : db.m_banks) {
-      if (_bank->file_path == bank->file_path) {
-        banks.push_back(_bank->m_lang_id);
-        completed_banks.push_back(_bank->m_lang_id);
+SubtitleMetadataFile dump_bank_as_meta_json(std::shared_ptr<GameSubtitleBank> bank) {
+  auto meta_file = SubtitleMetadataFile();
+  auto font = get_font_bank(bank->m_text_version);
+  for (const auto& [scene_name, scene_info] : bank->m_scenes) {
+    if (scene_info.m_kind == SubtitleSceneKind::Movie) {
+      std::vector<SubtitleCutsceneLineMetadata> lines;
+      for (const auto& line : scene_info.m_lines) {
+        auto line_meta = SubtitleCutsceneLineMetadata();
+        line_meta.frame = line.frame;
+        if (line.line.empty()) {
+          line_meta.clear = true;
+        } else {
+          auto line_speaker = font->convert_game_to_utf8(line.speaker.c_str());
+          line_meta.offscreen = line.offscreen;
+          line_meta.speaker = line_speaker;
+        }
+        lines.push_back(line_meta);
       }
-    }
-
-    std::string file_contents = "";
-    file_contents += fmt::format("(language-id {})\n", fmt::join(banks, " "));
-    auto file_ver = parse_text_only_version(bank->file_path);
-    auto font = get_font_bank(file_ver);
-    file_contents += fmt::format("(text-version {})\n", get_text_version_name(file_ver));
-
-    for (const auto& group_name : db.m_subtitle_groups->m_group_order) {
-      bool last_was_single = false;
-      file_contents +=
-          fmt::format("\n;; -----------------\n;; {}\n;; -----------------\n", group_name);
-      std::vector<GameSubtitleSceneInfo> all_scenes;
-      for (const auto& [scene_name, scene] : bank->scenes()) {
-        all_scenes.push_back(scene);
+      meta_file.cutscenes[scene_name] = lines;
+    } else if (scene_info.m_kind == SubtitleSceneKind::Hint ||
+               scene_info.m_kind == SubtitleSceneKind::HintNamed) {
+      SubtitleHintMetadata hint;
+      hint.id = fmt::format("{:x}", scene_info.m_id);
+      std::vector<SubtitleHintLineMetadata> lines;
+      for (const auto& line : scene_info.m_lines) {
+        auto line_meta = SubtitleHintLineMetadata();
+        line_meta.frame = line.frame;
+        if (line.line.empty()) {
+          line_meta.clear = true;
+        } else {
+          auto line_speaker = font->convert_game_to_utf8(line.speaker.c_str());
+          line_meta.speaker = line_speaker;
+        }
+        lines.push_back(line_meta);
       }
-      std::sort(all_scenes.begin(), all_scenes.end(),
-                [](const GameSubtitleSceneInfo& a, const GameSubtitleSceneInfo& b) {
-                  if (a.kind() != b.kind()) {
-                    return a.kind() < b.kind();
-                  }
-                  if (a.kind() == SubtitleSceneKind::Movie) {
-                    return a.name() < b.name();
-                  } else if (a.kind() == SubtitleSceneKind::HintNamed) {
-                    if (a.id() == b.id()) {
-                      return a.name() < b.name();
-                    } else {
-                      return a.id() < b.id();
-                    }
-                  } else if (a.kind() == SubtitleSceneKind::Hint) {
-                    return a.id() < b.id();
-                  }
-                  return false;
-                });
-      for (const auto& scene : all_scenes) {
-        if (scene.m_sorting_group != group_name) {
+      hint.lines = lines;
+      meta_file.hints[scene_name] = hint;
+    }
+  }
+  return meta_file;
+}
+
+SubtitleFile dump_bank_as_json(std::shared_ptr<GameSubtitleBank> bank) {
+  SubtitleFile file;
+  auto font = get_font_bank(bank->m_text_version);
+  // Figure out speakers
+  for (const auto& [scene_name, scene_info] : bank->m_scenes) {
+    for (const auto& line : scene_info.m_lines) {
+      if (line.line.empty()) {
+        continue;
+      }
+      auto line_speaker = font->convert_game_to_utf8(line.speaker.c_str());
+      file.speakers[line_speaker] = line_speaker;
+    }
+  }
+  // Hints
+  for (const auto& [scene_name, scene_info] : bank->m_scenes) {
+    if (scene_info.m_kind == SubtitleSceneKind::Hint ||
+        scene_info.m_kind == SubtitleSceneKind::HintNamed) {
+      file.hints[scene_name] = {};
+      for (const auto& scene_line : scene_info.m_lines) {
+        if (scene_line.line.empty()) {
           continue;
         }
-
-        if (last_was_single && scene.lines().size() == 1) {
-          file_contents += fmt::format("(\"{}\"", scene.name());
-        } else {
-          file_contents += fmt::format("\n(\"{}\"", scene.name());
-        }
-        if (scene.kind() == SubtitleSceneKind::Hint) {
-          file_contents += " :hint #x0";
-        } else if (scene.kind() == SubtitleSceneKind::HintNamed) {
-          file_contents += fmt::format(" :hint #x{0:x}", scene.id());
-        }
-        // more compact formatting for single-line entries
-        if (scene.lines().size() == 1) {
-          const auto& line = scene.lines().at(0);
-          if (line.line.empty()) {
-            file_contents += fmt::format(" ({})", line.frame);
-          } else {
-            file_contents += fmt::format(" ({}", line.frame);
-            if (line.offscreen && scene.kind() == SubtitleSceneKind::Movie) {
-              file_contents += " :offscreen";
-            }
-            file_contents +=
-                fmt::format(" \"{}\"", font->convert_game_to_utf8(line.speaker.c_str()));
-            file_contents += fmt::format(" \"{}\")", font->convert_game_to_utf8(line.line.c_str()));
-          }
-          file_contents += ")\n";
-          last_was_single = true;
-        } else {
-          file_contents += "\n";
-          for (auto& line : scene.lines()) {
-            // Clear screen entries
-            if (line.line.empty()) {
-              file_contents += fmt::format("  ({})\n", line.frame);
-            } else {
-              file_contents += fmt::format("  ({}", line.frame);
-              if (line.offscreen && scene.kind() == SubtitleSceneKind::Movie) {
-                file_contents += " :offscreen";
-              }
-              file_contents +=
-                  fmt::format(" \"{}\"", font->convert_game_to_utf8(line.speaker.c_str()));
-              file_contents +=
-                  fmt::format(" \"{}\")\n", font->convert_game_to_utf8(line.line.c_str()));
-            }
-          }
-          file_contents += "  )\n";
-          last_was_single = false;
-        }
+        auto line_utf8 = font->convert_game_to_utf8(scene_line.line.c_str());
+        file.hints[scene_name].push_back(line_utf8);
       }
     }
-
-    // Commit it to the file
-    std::string full_path = (file_util::get_jak_project_dir() / fs::path(bank->file_path)).string();
-    file_util::write_text_file(full_path, file_contents);
   }
 
-  // Write the subtitle group info out
-  nlohmann::json json(db.m_subtitle_groups->m_groups);
-  json[db.m_subtitle_groups->group_order_key] = nlohmann::json(db.m_subtitle_groups->m_group_order);
-  std::string file_path = (file_util::get_jak_project_dir() / "game" / "assets" / "jak1" /
-                           "subtitle" / "subtitle-groups.json")
-                              .string();
-  file_util::write_text_file(file_path, json.dump(2));
+  // Cutscenes
+  for (const auto& [scene_name, scene_info] : bank->m_scenes) {
+    if (scene_info.m_kind == SubtitleSceneKind::Movie) {
+      file.cutscenes[scene_name] = {};
+      for (const auto& scene_line : scene_info.m_lines) {
+        if (scene_line.line.empty()) {
+          continue;
+        }
+        auto line_utf8 = font->convert_game_to_utf8(scene_line.line.c_str());
+        file.cutscenes[scene_name].push_back(line_utf8);
+      }
+    }
+  }
 
+  return file;
+}
+
+const std::vector<std::string> locale_lookup = {
+    "en-US", "fr-FR", "de-DE", "es-ES", "it-IT", "jp-JP", "en-GB", "pt-PT", "fi-FI",
+    "sv-SE", "da-DK", "no-NO", "nl-NL", "pt-BR", "hu-HU", "ca-ES", "is-IS"};
+
+bool write_subtitle_db_to_files(const GameSubtitleDB& db, const GameVersion game_version) {
+  try {
+    for (const auto& [language_id, bank] : db.m_banks) {
+      auto meta_file = dump_bank_as_meta_json(bank);
+      std::string dump_path = (file_util::get_jak_project_dir() / "game" / "assets" /
+                               version_to_game_name(game_version) / "subtitle" /
+                               fmt::format("subtitle_meta_{}.json", locale_lookup.at(language_id)))
+                                  .string();
+      json data = meta_file;
+      file_util::write_text_file(dump_path, data.dump(2));
+      // Now dump the actual subtitles
+      auto subtitle_file = dump_bank_as_json(bank);
+      dump_path = (file_util::get_jak_project_dir() / "game" / "assets" /
+                   version_to_game_name(game_version) / "subtitle" /
+                   fmt::format("subtitle_lines_{}.json", locale_lookup.at(language_id)))
+                      .string();
+      data = subtitle_file;
+      file_util::write_text_file(dump_path, data.dump(2));
+    }
+    // Write the subtitle group info out
+    nlohmann::json json(db.m_subtitle_groups->m_groups);
+    json[db.m_subtitle_groups->group_order_key] =
+        nlohmann::json(db.m_subtitle_groups->m_group_order);
+    std::string file_path =
+        (file_util::get_jak_project_dir() / "game" / "assets" / version_to_game_name(game_version) /
+         "subtitle" / "subtitle-groups.json")
+            .string();
+    file_util::write_text_file(file_path, json.dump(2));
+  } catch (std::exception& ex) {
+    lg::error(ex.what());
+    return false;
+  }
   return true;
 }

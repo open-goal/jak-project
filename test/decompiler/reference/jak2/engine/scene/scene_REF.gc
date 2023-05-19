@@ -648,11 +648,11 @@
       )
     (process-entity-status! obj (entity-perm-status no-kill) #t)
     (when arg1
-      (set-setting! 'region-mode #f 0 0)
-      (set-setting! 'process-mask 'set 0 (-> gp-0 mask-to-clear))
-      (set-setting! 'sound-bank-load #f 0 0)
-      (set-setting! 'movie (process->ppointer obj) 0 0)
-      (set-setting! 'movie-name (-> gp-0 name) 0 0)
+      (set-setting! 'region-mode #f 0.0 0)
+      (set-setting! 'process-mask 'set 0.0 (-> gp-0 mask-to-clear))
+      (set-setting! 'sound-bank-load #f 0.0 0)
+      (set-setting! 'movie (process->ppointer obj) 0.0 0)
+      (set-setting! 'movie-name (-> gp-0 name) 0.0 0)
       (set-setting!
         'music-volume
         'rel
@@ -681,9 +681,9 @@
         0
         )
       (if (nonzero? (the int (-> gp-0 music-delay)))
-          (set-setting! 'sound-mode #f 0 2)
+          (set-setting! 'sound-mode #f 0.0 2)
           )
-      (set-setting! 'gem #f 0 0)
+      (set-setting! 'gem #f 0.0 0)
       (apply-settings *setting-control*)
       )
     )
@@ -747,7 +747,6 @@
 ;; definition for function draw-subtitle-image
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch pointer vs none.
-;; ERROR: Failed store: (s.w! (+ a0-7 8) 0) at op 45
 (defun draw-subtitle-image ((arg0 subtitle-image) (arg1 font-context))
   (local-vars (sv-16 pointer) (sv-32 int))
   (let ((gp-0 (-> arg0 width))
@@ -922,7 +921,7 @@
 (defstate wait (scene-player)
   :virtual #t
   :enter (behavior ((arg0 symbol))
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (when (or (-> self scene) (-> self preload-continue))
       (let ((gp-0 (scene-decode-continue (the-as basic (if (-> self scene)
                                                            (-> self scene load-point-obj)
@@ -934,7 +933,7 @@
             )
         (when gp-0
           (when (-> self scene)
-            (set-setting! 'borrow (-> self scene borrow) 0 0)
+            (set-setting! 'borrow (-> self scene borrow) 0.0 0)
             (apply-settings *setting-control*)
             )
           (cond
@@ -987,8 +986,8 @@
       (while *progress-process*
         (suspend)
         )
-      (set-setting! 'allow-progress #f 0 0)
-      (set-setting! 'bg-a-force 'abs #x3f800000 0)
+      (set-setting! 'allow-progress #f 0.0 0)
+      (set-setting! 'bg-a-force 'abs 1.0 0)
       (apply-settings *setting-control*)
       )
     (if (or (not *target*) (or (focus-test? *target* grabbed)
@@ -1013,12 +1012,12 @@
                     (and (-> *target* next-state) (= (-> *target* next-state name) 'target-flop-hit-ground))
                     )
                 (-> self scene)
-                (< (- (-> self clock frame-counter) (-> self state-time)) (-> self scene wait-air-time))
+                (< (- (current-time) (-> self state-time)) (-> self scene wait-air-time))
                 )
       (suspend)
       )
     (suspend)
-    (let ((s5-0 (-> self clock frame-counter)))
+    (let ((s5-0 (current-time)))
       (when (and *target* (not (logtest? (-> *target* focus-status) (focus-status grabbed))))
         (label cfg-44)
         (when (not (process-grab? *target* #f))
@@ -1033,7 +1032,7 @@
                       (-> *setting-control* user-current ambient)
                       )
                   )
-        (set-setting! 'allow-progress #f 0 0)
+        (set-setting! 'allow-progress #f 0.0 0)
         (apply-settings *setting-control*)
         (dotimes (s4-0 2)
           (while (or (-> *setting-control* user-current talking)
@@ -1044,18 +1043,17 @@
                               (!= (-> *setting-control* user-current movie) (process->ppointer self))
                               )
                          *progress-process*
-                         (!= (get-status *gui-control* (the-as sound-id (-> self gui-id))) 3)
+                         (!= (get-status *gui-control* (-> self gui-id)) 3)
                          )
                      )
             (suspend)
             )
           )
         (when arg0
-          (while (and (-> self scene)
-                      (not (or (>= (- (-> self clock frame-counter) s5-0) (-> self scene wait-ground-time))
-                               (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self scene wait-max-time))
-                               )
-                           )
+          (while (and (-> self scene) (not (or (>= (- (current-time) s5-0) (-> self scene wait-ground-time))
+                                               (>= (- (current-time) (-> self state-time)) (-> self scene wait-max-time))
+                                               )
+                                           )
                       )
             (suspend)
             )
@@ -1096,7 +1094,7 @@
           (when (and (zero? s5-1) (< (-> self scene-index) (-> self scene-list length)))
             (scene-player-method-24 self (-> self scene-list (-> self scene-index)) #t)
             (when (-> self scene)
-              (set-setting! 'borrow (-> self scene borrow) 0 0)
+              (set-setting! 'borrow (-> self scene borrow) 0.0 0)
               (apply-settings *setting-control*)
               )
             )
@@ -1142,11 +1140,11 @@
     (when (= (-> *game-info* demo-state) 100)
       (logclear! (-> self mask) (process-mask pause progress))
       (set-blackout-frames (seconds 0.05))
-      (set-setting! 'music-volume 'abs 0 0)
-      (set-setting! 'sfx-volume 'abs 0 0)
-      (set-setting! 'ambient-volume 'abs 0 0)
-      (set-setting! 'allow-pause #f 0 0)
-      (set-setting! 'allow-progress #f 0 0)
+      (set-setting! 'music-volume 'abs 0.0 0)
+      (set-setting! 'sfx-volume 'abs 0.0 0)
+      (set-setting! 'ambient-volume 'abs 0.0 0)
+      (set-setting! 'allow-pause #f 0.0 0)
+      (set-setting! 'allow-progress #f 0.0 0)
       (setup
         *screen-filter*
         (new 'static 'vector)
@@ -1154,8 +1152,8 @@
         (* 30.0 (-> self clock seconds-per-frame))
         (bucket-id screen-filter)
         )
-      (let ((gp-0 (-> self clock frame-counter)))
-        (until (>= (- (-> self clock frame-counter) gp-0) (seconds 0.05))
+      (let ((gp-0 (current-time)))
+        (until (>= (- (current-time) gp-0) (seconds 0.05))
           (suspend)
           )
         )
@@ -1171,7 +1169,7 @@
       (set! (-> *game-info* blackout-time) 0)
       (set! (-> *game-info* demo-state) (the-as uint 1))
       (set! (-> *setting-control* user-current bg-a-force) 0.0)
-      (set-setting! 'allow-progress #t 0 0)
+      (set-setting! 'allow-progress #t 0.0 0)
       (remove-setting! 'process-mask)
       (apply-settings *setting-control*)
       (send-event *target* 'draw #t)
@@ -1320,7 +1318,7 @@
       (suspend)
       (scene-player-method-25 self 0.0)
       (set! (-> self cur-speed) 0.0)
-      (set! (-> self scene-start-time) (-> self clock frame-counter))
+      (set! (-> self scene-start-time) (current-time))
       (ja-play-spooled-anim
         (-> self anim)
         (the-as art-joint-anim #f)
@@ -1493,10 +1491,10 @@
       )
     (when (cpad-pressed? 0 square)
       (set! (-> *setting-control* user-default subtitle) (not (-> *setting-control* user-default subtitle)))
-      (set! (-> self subtitle-change-time) (-> self clock frame-counter))
+      (set! (-> self subtitle-change-time) (current-time))
       )
-    (when (and (< (- (-> self clock frame-counter) (-> self subtitle-change-time)) (seconds 2))
-               (< (mod (- (-> self clock frame-counter) (-> self subtitle-change-time)) 300) 210)
+    (when (and (< (- (current-time) (-> self subtitle-change-time)) (seconds 2))
+               (< (mod (- (current-time) (-> self subtitle-change-time)) 300) 210)
                )
       (let ((gp-6
               (new 'stack 'font-context *font-default-matrix* 36 60 0.0 (font-color default) (font-flags shadow kerning))
@@ -1538,31 +1536,31 @@
           (cond
             ((cpad-hold? 0 r1)
              (if (cpad-pressed? 0 circle)
-                 (set! (-> self speed-press-time) (-> self clock frame-counter))
+                 (set! (-> self speed-press-time) (current-time))
                  )
              (seek!
                (-> self speed-change-speed)
                8.0
-               (* (lerp-scale 0.01 0.3 (the float (- (-> self clock frame-counter) (-> self speed-press-time))) 0.0 300.0)
+               (* (lerp-scale 0.01 0.3 (the float (- (current-time) (-> self speed-press-time))) 0.0 300.0)
                   (-> self clock time-adjust-ratio)
                   )
                )
              )
             ((cpad-hold? 0 l1)
              (if (cpad-pressed? 0 square)
-                 (set! (-> self speed-press-time) (-> self clock frame-counter))
+                 (set! (-> self speed-press-time) (current-time))
                  )
              (seek!
                (-> self speed-change-speed)
                -8.0
-               (* (lerp-scale 0.01 0.3 (the float (- (-> self clock frame-counter) (-> self speed-press-time))) 0.0 300.0)
+               (* (lerp-scale 0.01 0.3 (the float (- (current-time) (-> self speed-press-time))) 0.0 300.0)
                   (-> self clock time-adjust-ratio)
                   )
                )
              )
             ((cpad-hold? 0 x)
              (when (cpad-pressed? 0 x)
-               (set! (-> self speed-press-time) (-> self clock frame-counter))
+               (set! (-> self speed-press-time) (current-time))
                (cond
                  ((= (-> self cur-speed) 0.0)
                   (set! (-> self speed-change-speed) -1000.0)
@@ -1595,12 +1593,12 @@
                )
              (set! (-> self targ-speed) 0.0)
              (set! (-> self cur-speed) 0.0)
-             (set! (-> self speed-change-time) (-> self clock frame-counter))
+             (set! (-> self speed-change-time) (current-time))
              )
            )
           ((= (-> self speed-change-speed) -1000.0)
            (when (!= (-> self cur-speed) -1000.0)
-             (set! (-> self speed-change-time) (-> self clock frame-counter))
+             (set! (-> self speed-change-time) (current-time))
              (set! (-> self targ-speed) -1000.0)
              (set! (-> self cur-speed) -1000.0)
              (sound-pause (-> gp-7 id))
@@ -1613,7 +1611,7 @@
                     (fmin 10.0 (+ (-> self targ-speed) (* (-> self speed-change-speed) (-> self clock seconds-per-frame))))
                     )
                   )
-            (if (< (- (-> self clock frame-counter) (-> self speed-change-time)) (seconds 3))
+            (if (< (- (current-time) (-> self speed-change-time)) (seconds 3))
                 (format
                   *stdcon*
                   "id ~d speed ~f~%"
@@ -1625,8 +1623,8 @@
                   )
                 )
             (when (and gp-7 (and (!= (-> self targ-speed) (-> self cur-speed))
-                                 (< (-> self speed-change-time) (-> self clock frame-counter))
-                                 (>= (- (-> self clock frame-counter) (-> self scene-start-time)) (seconds 1))
+                                 (< (-> self speed-change-time) (current-time))
+                                 (>= (- (current-time) (-> self scene-start-time)) (seconds 1))
                                  )
                        )
               (when *sound-player-enable*
@@ -1639,7 +1637,7 @@
                   )
                 )
               (set! (-> self cur-speed) (-> self targ-speed))
-              (set! (-> self speed-change-time) (-> self clock frame-counter))
+              (set! (-> self speed-change-time) (current-time))
               )
             )
           )
@@ -1714,30 +1712,29 @@
       (set! (-> self scene) #f)
       )
     )
-  (set! (-> self gui-id) (the-as uint (add-process
-                                        *gui-control*
-                                        self
-                                        (gui-channel movie)
-                                        (gui-action play)
-                                        (the-as string (cond
-                                                         ((= (rtype-of arg0) string)
-                                                          (empty)
-                                                          arg0
-                                                          )
-                                                         (else
-                                                           "movie"
-                                                           )
-                                                         )
-                                                )
-                                        -99.0
-                                        0
-                                        )
-                                 )
+  (set! (-> self gui-id) (add-process
+                           *gui-control*
+                           self
+                           (gui-channel movie)
+                           (gui-action play)
+                           (the-as string (cond
+                                            ((= (rtype-of arg0) string)
+                                             (empty)
+                                             arg0
+                                             )
+                                            (else
+                                              "movie"
+                                              )
+                                            )
+                                   )
+                           -99.0
+                           0
+                           )
         )
   (set! *scene-player* (the-as (pointer scene-player) (process->ppointer self)))
   (set! *display-entity-errors* #f)
-  (set-setting! 'speech-control #f 0 0)
-  (set-setting! 'allow-progress #f 0 0)
+  (set-setting! 'speech-control #f 0.0 0)
+  (set-setting! 'allow-progress #f 0.0 0)
   (apply-settings *setting-control*)
   (go-virtual wait arg1)
   (none)

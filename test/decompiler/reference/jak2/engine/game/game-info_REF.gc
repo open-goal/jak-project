@@ -57,7 +57,7 @@
   )
 
 ;; definition for method 13 of type game-info
-(defmethod set-subtask-hook! game-info ((obj game-info) (arg0 int) (arg1 int) (arg2 (function object)))
+(defmethod set-subtask-hook! game-info ((obj game-info) (arg0 game-task-node) (arg1 int) (arg2 function))
   (let ((subtask (-> obj sub-task-list arg0)))
     (if (and subtask (-> subtask info))
         (set! (-> subtask info hooks arg1) arg2)
@@ -408,7 +408,7 @@
                             (set! (-> self mask) (process-mask))
                             (stop arg0)
                             (reset-actors arg1)
-                            (close! (-> *game-info* sub-task-list 1) 'event)
+                            (close! (-> *game-info* sub-task-list (game-task-node fortress-escape-start)) 'event)
                             (set-continue! *game-info* arg2 #f)
                             (when arg3
                               (load-game *game-info* arg3)
@@ -565,7 +565,7 @@
          (set! (-> a1-13 num-params) 0)
          (set! (-> a1-13 message) 'complete)
          (let ((t9-12 send-event-function)
-               (v1-71 (-> *game-info* sub-task-list 43))
+               (v1-71 (-> *game-info* sub-task-list (game-task-node sewer-enemy-resolution)))
                )
            (t9-12
              (handle->process (if (-> v1-71 info)
@@ -588,7 +588,7 @@
          (set! (-> a1-14 num-params) 0)
          (set! (-> a1-14 message) 'complete)
          (let ((t9-13 send-event-function)
-               (v1-85 (-> *game-info* sub-task-list 177))
+               (v1-85 (-> *game-info* sub-task-list (game-task-node sewer-escort-get-gun)))
                )
            (t9-13
              (handle->process (if (-> v1-85 info)
@@ -790,8 +790,8 @@
                      (set! (-> v1-9 origin z) (the float (/ (-> s3-0 z) 16)))
                      )
                    (set! (-> s5-0 flags) (font-flags shadow kerning large))
-                   (let ((s3-1 (-> self clock frame-counter)))
-                     (until (>= (- (-> self clock frame-counter) s3-1) (+ arg2 -75))
+                   (let ((s3-1 (current-time)))
+                     (until (>= (- (current-time) s3-1) (+ arg2 -75))
                        (+! (-> s5-0 origin y) (* -120.0 (-> self clock seconds-per-frame)))
                        (let ((s2-0 print-game-text))
                          (format (clear *temp-string*) "~4,,0f" arg1)
@@ -800,9 +800,9 @@
                        (suspend)
                        )
                      )
-                   (let ((s4-1 (-> self clock frame-counter)))
-                     (until (>= (- (-> self clock frame-counter) s4-1) (seconds 0.25))
-                       (set! (-> s5-0 alpha) (lerp-scale 1.0 0.0 (the float (- (-> self clock frame-counter) s4-1)) 0.0 150.0))
+                   (let ((s4-1 (current-time)))
+                     (until (>= (- (current-time) s4-1) (seconds 0.25))
+                       (set! (-> s5-0 alpha) (lerp-scale 1.0 0.0 (the float (- (current-time) s4-1)) 0.0 150.0))
                        (+! (-> s5-0 origin y) (* -120.0 (-> self clock seconds-per-frame)))
                        (let ((s3-2 print-game-text))
                          (format (clear *temp-string*) "~4,,0f" arg1)
@@ -1239,8 +1239,8 @@
          process
          (lambda :behavior process
            ((arg0 string))
-           (let ((s5-0 (-> self clock frame-counter)))
-             (until (>= (- (-> self clock frame-counter) s5-0) (seconds 10))
+           (let ((s5-0 (current-time)))
+             (until (>= (- (current-time) s5-0) (seconds 10))
                (format *stdcon* "~S~%" arg0)
                (suspend)
                )

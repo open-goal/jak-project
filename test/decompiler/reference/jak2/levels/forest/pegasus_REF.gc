@@ -216,32 +216,30 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod track-how-long-aimed-at! pegasus ((obj pegasus))
   "Updates `targetted-timer` with the `frame-counter` while Jak is aiming at the [[pegasus]]"
-  (with-pp
-    (let ((target *target*))
-      (when (and target (-> target gun active?))
-        (let ((inaccuracy-dir (new 'stack-no-clear 'vector))
-              (inaccuracy-vec (new 'stack-no-clear 'vector))
+  (let ((target *target*))
+    (when (and target (-> target gun active?))
+      (let ((inaccuracy-dir (new 'stack-no-clear 'vector))
+            (inaccuracy-vec (new 'stack-no-clear 'vector))
+            )
+        (vector-! inaccuracy-dir (-> obj root-override2 trans) (-> target gun fire-point))
+        (vector+float*!
+          inaccuracy-vec
+          (-> target gun fire-point)
+          (-> target gun fire-dir-out)
+          (vector-length inaccuracy-dir)
+          )
+        (let ((inaccuracy-mag (vector-vector-distance-squared inaccuracy-vec (-> obj root-override2 trans)))
+              (threshold 20480.0)
               )
-          (vector-! inaccuracy-dir (-> obj root-override2 trans) (-> target gun fire-point))
-          (vector+float*!
-            inaccuracy-vec
-            (-> target gun fire-point)
-            (-> target gun fire-dir-out)
-            (vector-length inaccuracy-dir)
-            )
-          (let ((inaccuracy-mag (vector-vector-distance-squared inaccuracy-vec (-> obj root-override2 trans)))
-                (threshold 20480.0)
-                )
-            (if (< inaccuracy-mag (* threshold threshold))
-                (set! (-> obj targetted-timer) (-> pp clock frame-counter))
-                )
-            )
+          (if (< inaccuracy-mag (* threshold threshold))
+              (set! (-> obj targetted-timer) (current-time))
+              )
           )
         )
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 ;; definition for method 57 of type pegasus
@@ -250,53 +248,49 @@
   "Checks a variety of criteria to determine the level of awareness the enemy is of the target.  Sets `aware` and related fields as well!
 For pegasus, it will call [[enemy::57]] only if the [[pegasus]] has been targetted for more than 5 [[seconds]]
 @returns the value from [[enemy::57]], otherwise [[enemy-aware::4]]"
-  (with-pp
-    (the-as enemy-aware (if (>= (- (-> pp clock frame-counter) (-> obj targetted-timer)) (seconds 5))
-                            (the-as int ((method-of-type enemy update-target-awareness!) obj proc focus))
-                            4
-                            )
-            )
-    )
+  (the-as enemy-aware (if (>= (- (current-time) (-> obj targetted-timer)) (seconds 5))
+                          (the-as int ((method-of-type enemy update-target-awareness!) obj proc focus))
+                          4
+                          )
+          )
   )
 
 ;; definition for method 74 of type pegasus
 (defmethod general-event-handler pegasus ((obj pegasus) (proc process) (arg2 int) (event-type symbol) (event event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
-  (with-pp
-    (case event-type
-      (('track)
-       #f
-       )
-      (('hit 'hit-knocked)
-       (cond
-         ((zero? (-> obj hit-points))
-          (logclear! (-> obj mask) (process-mask actor-pause))
-          (logclear! (-> obj focus-status) (focus-status dangerous))
-          (logclear! (-> obj enemy-flags) (enemy-flag enable-on-notice))
-          (logior! (-> obj enemy-flags) (enemy-flag chase-startup))
-          (logior! (-> obj focus-status) (focus-status hit))
-          (if (zero? (-> obj hit-points))
-              (logior! (-> obj focus-status) (focus-status dead))
-              )
-          (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
-          (enemy-method-62 obj)
-          (set! (-> obj enemy-flags) (logior (enemy-flag actor-pause-backup) (-> obj enemy-flags)))
-          (process-contact-action proc)
-          (send-event proc 'get-attack-count 1)
-          (kill-prefer-falling obj)
-          )
-         (else
-           (let ((v0-0 (the-as object (-> pp clock frame-counter))))
-             (set! (-> obj targetted-timer) (the-as time-frame v0-0))
-             v0-0
-             )
+  (case event-type
+    (('track)
+     #f
+     )
+    (('hit 'hit-knocked)
+     (cond
+       ((zero? (-> obj hit-points))
+        (logclear! (-> obj mask) (process-mask actor-pause))
+        (logclear! (-> obj focus-status) (focus-status dangerous))
+        (logclear! (-> obj enemy-flags) (enemy-flag enable-on-notice))
+        (logior! (-> obj enemy-flags) (enemy-flag chase-startup))
+        (logior! (-> obj focus-status) (focus-status hit))
+        (if (zero? (-> obj hit-points))
+            (logior! (-> obj focus-status) (focus-status dead))
+            )
+        (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
+        (enemy-method-62 obj)
+        (set! (-> obj enemy-flags) (logior (enemy-flag actor-pause-backup) (-> obj enemy-flags)))
+        (process-contact-action proc)
+        (send-event proc 'get-attack-count 1)
+        (kill-prefer-falling obj)
+        )
+       (else
+         (let ((v0-0 (the-as object (current-time))))
+           (set! (-> obj targetted-timer) (the-as time-frame v0-0))
+           v0-0
            )
          )
        )
-      (else
-        ((method-of-type enemy general-event-handler) obj proc arg2 event-type event)
-        )
+     )
+    (else
+      ((method-of-type enemy general-event-handler) obj proc arg2 event-type event)
       )
     )
   )
@@ -307,20 +301,18 @@ For pegasus, it will call [[enemy::57]] only if the [[pegasus]] has been targett
 This is why the scouts are technically killable by other means
 @returns the amount of damage taken from an attack.  Also updates the `targetted-timer`.
 @see [[*pegasus-enemy-info*]]"
-  (with-pp
-    (let ((hitpoints 1))
-      (let ((attack-info (the-as attack-info (-> arg1 param 1))))
-        (case (-> arg1 message)
-          (('attack)
-           (if (and (logtest? (-> attack-info mask) (attack-info-mask mode)) (= (-> attack-info mode) 'board))
-               (set! hitpoints (-> obj hit-points))
-               )
-           )
-          )
+  (let ((hitpoints 1))
+    (let ((attack-info (the-as attack-info (-> arg1 param 1))))
+      (case (-> arg1 message)
+        (('attack)
+         (if (and (logtest? (-> attack-info mask) (attack-info-mask mode)) (= (-> attack-info mode) 'board))
+             (set! hitpoints (-> obj hit-points))
+             )
+         )
         )
-      (set! (-> obj targetted-timer) (-> pp clock frame-counter))
-      hitpoints
       )
+    (set! (-> obj targetted-timer) (current-time))
+    hitpoints
     )
   )
 
@@ -604,7 +596,7 @@ There are many fail-safes here if something goes wrong to try to keep the pegasu
 @param explicit-y-vel Normally `0.0` but this value is used when the pegasus needs to switch direction
 @param adjust-y-offset? Normally [[#f]] which forces the movement to reflect the result of the collison query - the [[pegasus]] will stay close to the ground.  [[#t]] ignores this"
   (+! (-> self curve-position)
-      (/ (the float (* (- (-> self clock frame-counter) (-> self clock old-frame-counter)) (the int (-> self speed))))
+      (/ (the float (* (- (current-time) (-> self clock old-frame-counter)) (the int (-> self speed))))
          (total-distance (-> self path-info (-> self current-path) path-data))
          )
       )
@@ -706,7 +698,7 @@ This function also is what causes the pegasus to flip around
            (interpolant (- 1.0 (fmax 0.0 (fmin 1.0 dist-from-target))))
            (interpolated-speed (lerp min-speed max-speed interpolant))
            )
-      (if (< (- (-> self clock frame-counter) (-> self targetted-timer)) (seconds 5))
+      (if (< (- (current-time) (-> self targetted-timer)) (seconds 5))
           (set! interpolated-speed (fmax 163840.0 interpolated-speed))
           )
       (let ((movement-speed (* 0.0033333334 interpolated-speed)))
@@ -877,7 +869,7 @@ The faster it's moving the fast it flaps it's wings, etc
 (defstate stare (pegasus)
   :virtual #t
   :trans (behavior ()
-    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.1))
+    (when (>= (- (current-time) (-> self state-time)) (seconds 0.1))
       (let ((awareness (-> self focus aware)))
         (cond
           ((and (>= 1 (the-as int awareness))
@@ -925,10 +917,7 @@ The faster it's moving the fast it flaps it's wings, etc
   "Handles the flying animations and sounds
 @TODO - cleanup a bit more"
   (let ((anim-speed (pegasus-calc-anim-speed)))
-    (let ((gp-0
-            (and (-> self can-run) (< (the-as time-frame (-> self ambient-possible)) (-> self clock frame-counter)))
-            )
-          )
+    (let ((gp-0 (and (-> self can-run) (< (the-as time-frame (-> self ambient-possible)) (current-time)))))
       (let* ((min-dist (lerp-scale 61440.0 32768.0 (the float arg0) 0.0 3000.0))
              (min-speed (lerp-scale 122880.0 81920.0 (the float arg0) 0.0 3000.0))
              (s4-0 (pegasus-calc-speed min-dist 122880.0 min-speed 49152.0))
@@ -1001,7 +990,7 @@ The faster it's moving the fast it flaps it's wings, etc
                   ((let ((v1-72 (ja-group)))
                      (and v1-72 (= v1-72 pegasus-run-ja))
                      )
-                   (if (or (not (-> self can-run)) (< (the-as time-frame (-> self ambient-expire)) (-> self clock frame-counter)))
+                   (if (or (not (-> self can-run)) (< (the-as time-frame (-> self ambient-expire)) (current-time)))
                        (ja :group! pegasus-run-to-fly-ja)
                        )
                    (ja :num-func num-func-identity :frame-num 0.0)
@@ -1010,7 +999,7 @@ The faster it's moving the fast it flaps it's wings, etc
                    (ja-channel-push! 1 (seconds 0.125))
                    (ja :group! pegasus-fly-to-run-ja)
                    (ja :num-func num-func-identity :frame-num 0.0)
-                   (let* ((s5-4 (-> self clock frame-counter))
+                   (let* ((s5-4 (current-time))
                           (f30-1 300.0)
                           (f28-1 2.0)
                           (f26-0 3.0)
@@ -1091,9 +1080,9 @@ The faster it's moving the fast it flaps it's wings, etc
           (func)
           )
       )
-    (set! (-> self state-time) (-> self clock frame-counter))
-    (set! (-> self far-time) (-> self clock frame-counter))
-    (set-setting! 'sound-mode #f 0 1)
+    (set! (-> self state-time) (current-time))
+    (set! (-> self far-time) (current-time))
+    (set-setting! 'sound-mode #f 0.0 1)
     (none)
     )
   :exit (behavior ()
@@ -1117,24 +1106,22 @@ The faster it's moving the fast it flaps it's wings, etc
                  (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
                  )
             )
-       (set! (-> self state-time)
-             (the-as time-frame (max (+ (-> self clock frame-counter) (seconds -10)) (-> self state-time)))
-             )
+       (set! (-> self state-time) (the-as time-frame (max (+ (current-time) (seconds -10)) (-> self state-time))))
        )
       (else
-        (+! (-> self state-time) (* 10 (- (-> self clock frame-counter) (-> self far-time))))
-        (if (>= (-> self state-time) (-> self clock frame-counter))
+        (+! (-> self state-time) (* 10 (- (current-time) (-> self far-time))))
+        (if (>= (-> self state-time) (current-time))
             (go-virtual flee)
             )
         )
       )
-    (set! (-> self far-time) (-> self clock frame-counter))
+    (set! (-> self far-time) (current-time))
     (none)
     )
   :code (behavior ()
     (until #f
       (set! (-> self y-offset-desired) 0.0)
-      (pegasus-fly-code (the-as int (- (-> self clock frame-counter) (-> self state-time))))
+      (pegasus-fly-code (the-as int (- (current-time) (-> self state-time))))
       (suspend)
       )
     #f
@@ -1153,8 +1140,8 @@ The faster it's moving the fast it flaps it's wings, etc
           )
       )
     (set! (-> self near-timer) 3000)
-    (set! (-> self far-time) (-> self clock frame-counter))
-    (set-setting! 'sound-mode #f 0 1)
+    (set! (-> self far-time) (current-time))
+    (set-setting! 'sound-mode #f 0.0 1)
     (none)
     )
   :exit (behavior ()
@@ -1180,16 +1167,15 @@ The faster it's moving the fast it flaps it's wings, etc
                     (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
                     )
                )
-      (set! (-> self near-timer) (- (the-as time-frame (-> self near-timer))
-                                    (- (-> self clock frame-counter) (-> self clock old-frame-counter))
-                                    )
+      (set! (-> self near-timer)
+            (- (the-as time-frame (-> self near-timer)) (- (current-time) (-> self clock old-frame-counter)))
             )
       (if (<= (-> self near-timer) 0)
           (go pegasus-tired)
           )
-      (set! (-> self far-time) (-> self clock frame-counter))
+      (set! (-> self far-time) (current-time))
       )
-    (if (>= (- (-> self clock frame-counter) (-> self far-time)) (seconds 3))
+    (if (>= (- (current-time) (-> self far-time)) (seconds 3))
         (set! (-> self near-timer) (the-as int (-> self timeout)))
         )
     (none)
@@ -1246,7 +1232,7 @@ The faster it's moving the fast it flaps it's wings, etc
           (t9-0)
           )
       )
-    (set-setting! 'sound-mode #f 0 1)
+    (set-setting! 'sound-mode #f 0.0 1)
     (none)
     )
   :exit (behavior ()
@@ -1494,8 +1480,8 @@ The faster it's moving the fast it flaps it's wings, etc
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  107
-  0
+  (game-task-node forest-scouts-pegasus)
+  TASK_MANAGER_INIT_HOOK
   (lambda :behavior task-manager
     ()
     (set! (-> *game-info* controller 0) (process->handle self))
@@ -1521,49 +1507,43 @@ The faster it's moving the fast it flaps it's wings, etc
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  107
-  3
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (local-vars (data int))
-      (set! (-> self start-time) (-> self clock frame-counter))
-      (set! (-> self hud-timer) (ppointer->handle (process-spawn hud-pegasus :init hud-init-by-other :to self)))
-      (while (> (-> self data-int32 0) 0)
-        (set! data (-> self data-int32 1))
-        (when (-> self actor-group 0)
-          (dotimes (actor-group (the-as int (-> self actor-group 0 0)))
-            (let ((actor (-> (&+ (-> self actor-group 0) (* actor-group 8)) 3)))
-              (if (and actor (logtest? (-> actor extra perm status) (entity-perm-status subtask-complete)))
-                  (set! data (+ data -1))
-                  )
-              )
+  (game-task-node forest-scouts-pegasus)
+  TASK_MANAGER_CODE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (local-vars (data int))
+    (set! (-> self start-time) (current-time))
+    (set! (-> self hud-timer) (ppointer->handle (process-spawn hud-pegasus :init hud-init-by-other :to self)))
+    (while (> (-> self data-int32 0) 0)
+      (set! data (-> self data-int32 1))
+      (when (-> self actor-group 0)
+        (dotimes (actor-group (the-as int (-> self actor-group 0 0)))
+          (let ((actor (-> (&+ (-> self actor-group 0) (* actor-group 8)) 3)))
+            (if (and actor (logtest? (-> actor extra perm status) (entity-perm-status subtask-complete)))
+                (set! data (+ data -1))
+                )
             )
           )
-        (let ((_data data))
-          (set! (-> self data-int32 0) _data)
-          (set! (-> *game-info* counter) (the float _data))
-          )
-        (suspend)
         )
-      (go-virtual complete)
-      (none)
+      (let ((_data data))
+        (set! (-> self data-int32 0) _data)
+        (set! (-> *game-info* counter) (the float _data))
+        )
+      (suspend)
       )
+    (go-virtual complete)
+    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  107
-  4
-  (the-as
-    (function object)
-    (lambda ()
-      (task-node-close! (game-task-node forest-scouts-resolution))
-      (talker-spawn-func (-> *talker-speech* 90) *entity-pool* (target-pos 0) (the-as region #f))
-      (none)
-      )
+  (game-task-node forest-scouts-pegasus)
+  TASK_MANAGER_COMPLETE_HOOK
+  (lambda ()
+    (task-node-close! (game-task-node forest-scouts-resolution))
+    (talker-spawn-func (-> *talker-speech* 90) *entity-pool* (target-pos 0) (the-as region #f))
+    (none)
     )
   )

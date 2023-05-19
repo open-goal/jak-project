@@ -119,7 +119,7 @@
                  (set! (-> a1-7 param 1) (the-as uint v1-13))
                  )
                (when (send-event-function gp-0 a1-7)
-                 (set! (-> self no-collision-timer) (the-as uint (-> self clock frame-counter)))
+                 (set! (-> self no-collision-timer) (the-as uint (current-time)))
                  (let ((v1-18 (-> self root-override root-prim)))
                    (set! (-> v1-18 prim-core collide-as) (collide-spec))
                    (set! (-> v1-18 prim-core collide-with) (collide-spec))
@@ -139,7 +139,7 @@
 ;; WARN: Return type mismatch symbol vs none.
 (defbehavior strip-trans strip-hazard ()
   (when (and (nonzero? (-> self no-collision-timer))
-             (>= (- (-> self clock frame-counter) (the-as int (-> self no-collision-timer))) (seconds 0.3))
+             (>= (- (current-time) (the-as int (-> self no-collision-timer))) (seconds 0.3))
              )
     (let ((v1-7 (-> self root-override root-prim)))
       (set! (-> v1-7 prim-core collide-as) (-> self root-override backup-collide-as))
@@ -875,14 +875,14 @@ This commonly includes things such as:
                         (cond
                           ((send-event proc 'grenade (-> self speed))
                            (if (-> self camera-name)
-                               (set-setting! 'entity-name (-> self camera-name) 0 -1)
+                               (set-setting! 'entity-name (-> self camera-name) 0.0 -1)
                                )
                            )
-                          ((>= (- (-> self clock frame-counter) (-> self enter-time)) (seconds 3))
+                          ((>= (- (current-time) (-> self enter-time)) (seconds 3))
                            (talker-speech-class-method-12 (-> *talker-speech* 194) 1)
                            )
                           )
-                        (set! (-> self enter-time) (-> self clock frame-counter))
+                        (set! (-> self enter-time) (current-time))
                         )
                       #f
                       )
@@ -903,7 +903,7 @@ This commonly includes things such as:
             )
     )
   :enter (behavior ()
-    (set! (-> self lightning-time) (+ (-> self clock frame-counter) -1))
+    (set! (-> self lightning-time) (+ (current-time) -1))
     (none)
     )
   :exit (behavior ()
@@ -913,10 +913,8 @@ This commonly includes things such as:
   :code (the-as (function none :behavior grenade-point) sleep-code)
   :post (behavior ()
     (spawn (-> self part) (-> self root-override trans))
-    (when (< (-> self lightning-time) (-> self clock frame-counter))
-      (set! (-> self lightning-time)
-            (+ (-> self clock frame-counter) (the int (* 300.0 (rand-vu-float-range 0.6 1.4))))
-            )
+    (when (< (-> self lightning-time) (current-time))
+      (set! (-> self lightning-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 0.6 1.4)))))
       (let ((s5-0 (new 'stack-no-clear 'vector)))
         (set! (-> s5-0 quad) (-> self root-override trans quad))
         (let* ((gp-1 (-> self strike-table (-> self last-strike-index)))
@@ -1453,7 +1451,7 @@ This commonly includes things such as:
           (t9-0)
           )
       )
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (send-event (handle->process (-> self end-target)) 'die)
     (remove-setting! 'point-of-interest)
     (none)
@@ -1636,15 +1634,15 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  115
-  0
+  (game-task-node strip-grenade-explode)
+  TASK_MANAGER_INIT_HOOK
   (lambda :behavior task-manager
     ()
-    (set-setting! 'music 'danger10 0 0)
+    (set-setting! 'music 'danger10 0.0 0)
     (set! (-> *game-info* controller 0) (process->handle self))
     (set! (-> self entity) (the-as entity-actor (entity-by-name "grenade-point-1")))
     (set! (-> self actor-group 0) (res-lump-struct (-> self entity) 'actor-groups (pointer entity-actor)))
-    (set-setting! 'allow-continue #f 0 0)
+    (set-setting! 'allow-continue #f 0.0 0)
     (when (-> self actor-group 0)
       (dotimes (gp-0 (the-as int (-> self actor-group 0 0)))
         (let ((s5-0 (-> (&+ (-> self actor-group 0) (* gp-0 8)) 3)))
@@ -1665,19 +1663,19 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  115
-  3
+  (game-task-node strip-grenade-explode)
+  TASK_MANAGER_CODE_HOOK
   (lambda :behavior task-manager
     ()
     (local-vars (sv-16 object))
-    (set! (-> self start-time) (-> self clock frame-counter))
+    (set! (-> self start-time) (current-time))
     (set! (-> self total-time) (seconds 120))
     (set! (-> self hud-timer) (ppointer->handle (process-spawn hud-timer :init hud-init-by-other :to *target*)))
     (set! (-> self hud-counter) (ppointer->handle (process-spawn hud-plasmite :init hud-init-by-other :to self)))
-    (while (or (< (- (-> self clock frame-counter) (-> self start-time)) (-> self total-time))
+    (while (or (< (- (current-time) (-> self start-time)) (-> self total-time))
                (and *target* (focus-test? *target* in-air))
                )
-      (let ((v1-18 (the-as int (- (-> self total-time) (- (-> self clock frame-counter) (-> self start-time))))))
+      (let ((v1-18 (the-as int (- (-> self total-time) (- (current-time) (-> self start-time))))))
         (if (< (the-as time-frame v1-18) 0)
             (set! v1-18 0)
             )
@@ -1714,23 +1712,23 @@ This commonly includes things such as:
         (set! (-> self count) (the-as int sv-16))
         )
       (cond
-        ((and (>= (-> self clock frame-counter) (+ #x80e8 (-> self start-time)))
+        ((and (>= (current-time) (+ #x80e8 (-> self start-time)))
               (< (-> self state-time) (+ #x80e8 (-> self start-time)))
               )
          (talker-spawn-func (-> *talker-speech* 197) *entity-pool* (target-pos 0) (the-as region #f))
          )
-        ((and (>= (-> self clock frame-counter) (+ (-> self start-time) (seconds 90)))
+        ((and (>= (current-time) (+ (-> self start-time) (seconds 90)))
               (< (-> self state-time) (+ (-> self start-time) (seconds 90)))
               )
          (talker-spawn-func (-> *talker-speech* 196) *entity-pool* (target-pos 0) (the-as region #f))
          )
-        ((and (>= (-> self clock frame-counter) (+ (-> self start-time) (seconds 60)))
+        ((and (>= (current-time) (+ (-> self start-time) (seconds 60)))
               (< (-> self state-time) (+ (-> self start-time) (seconds 60)))
               )
          (talker-spawn-func (-> *talker-speech* 195) *entity-pool* (target-pos 0) (the-as region #f))
          )
         )
-      (set! (-> self state-time) (-> self clock frame-counter))
+      (set! (-> self state-time) (current-time))
       (set! (-> *game-info* counter) (the float (the-as int sv-16)))
       (if (>= 1 (the-as int sv-16))
           (gui-control-method-12
@@ -1759,30 +1757,29 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  115
-  5
-  (the-as (function object) (lambda :behavior task-manager
-                              ()
-                              (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-                                (set! (-> a1-0 from) (process->ppointer self))
-                                (set! (-> a1-0 num-params) 2)
-                                (set! (-> a1-0 message) 'attack-invinc)
-                                (set! (-> a1-0 param 0) (the-as uint #f))
-                                (let ((v1-3 (new 'static 'attack-info :mask (attack-info-mask mode id))))
-                                  (let* ((a0-1 *game-info*)
-                                         (a2-1 (+ (-> a0-1 attack-id) 1))
-                                         )
-                                    (set! (-> a0-1 attack-id) a2-1)
-                                    (set! (-> v1-3 id) a2-1)
-                                    )
-                                  (set! (-> v1-3 mode) 'big-explosion)
-                                  (set! (-> a1-0 param 1) (the-as uint v1-3))
-                                  )
-                                (send-event-function *target* a1-0)
-                                )
-                              (none)
-                              )
+  (game-task-node strip-grenade-explode)
+  TASK_MANAGER_FAIL_HOOK
+  (lambda :behavior task-manager
+    ()
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 2)
+      (set! (-> a1-0 message) 'attack-invinc)
+      (set! (-> a1-0 param 0) (the-as uint #f))
+      (let ((v1-3 (new 'static 'attack-info :mask (attack-info-mask mode id))))
+        (let* ((a0-1 *game-info*)
+               (a2-1 (+ (-> a0-1 attack-id) 1))
+               )
+          (set! (-> a0-1 attack-id) a2-1)
+          (set! (-> v1-3 id) a2-1)
           )
+        (set! (-> v1-3 mode) 'big-explosion)
+        (set! (-> a1-0 param 1) (the-as uint v1-3))
+        )
+      (send-event-function *target* a1-0)
+      )
+    (none)
+    )
   )
 
 ;; definition of type drill-plat
@@ -1976,26 +1973,23 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  45
-  3
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
-        (set! (-> gp-0 pos quad) (-> self info end-sphere quad))
-        (quaternion-identity! (-> gp-0 quat))
-        (set! (-> gp-0 flags) (task-arrow-flags))
-        (set! (-> gp-0 map-icon) (the-as uint 15))
-        (set! (-> self arrow) (process->handle (task-arrow-spawn gp-0 (the-as task-arrow self))))
-        )
-      (while (>= (vector-vector-distance (target-pos 0) (-> self info end-sphere)) (-> self info end-sphere r))
-        (suspend)
-        )
-      (send-event (handle->process (-> self arrow)) 'leave)
-      (sleep-code)
-      (none)
+  (game-task-node strip-rescue-battle)
+  TASK_MANAGER_CODE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
+      (set! (-> gp-0 pos quad) (-> self info end-sphere quad))
+      (quaternion-identity! (-> gp-0 quat))
+      (set! (-> gp-0 flags) (task-arrow-flags))
+      (set! (-> gp-0 map-icon) (the-as uint 15))
+      (set! (-> self arrow) (process->handle (task-arrow-spawn gp-0 (the-as task-arrow self))))
       )
+    (while (>= (vector-vector-distance (target-pos 0) (-> self info end-sphere)) (-> self info end-sphere r))
+      (suspend)
+      )
+    (send-event (handle->process (-> self arrow)) 'leave)
+    (sleep-code)
+    (none)
     )
   )
 

@@ -1230,8 +1230,8 @@
                                                   (set! (-> *setting-control* user-default music-volume) 0.0)
                                                   (set! (-> *setting-control* user-default dialog-volume) 0.0)
                                                   (set! (-> *setting-control* user-default ambient-volume) 0.0)
-                                                  (let ((s5-0 (-> pp clock frame-counter)))
-                                                    (until (>= (- (-> pp clock frame-counter) s5-0) (seconds 0.1))
+                                                  (let ((s5-0 (current-time)))
+                                                    (until (>= (- (current-time) s5-0) (seconds 0.1))
                                                       (suspend)
                                                       )
                                                     )
@@ -1349,6 +1349,8 @@
               )
             )
           )
+        (if *debug-track-skill*
+            (debug-track-skill))
         )
       (debug-draw-buffers)
       (with-dma-buffer-add-bucket ((s3-0 (-> arg0 frames (-> arg0 on-screen) debug-buf)) (bucket-id debug-no-zbuf2))
@@ -1404,7 +1406,8 @@
           )
       (let ((s2-2 (the int (-> *font-context* origin y))))
         (cond
-          ((or (movie?) (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time)))
+          ;; pc port note : the console is drawn over the letterbox so this is pointless and has been disabled
+          ((#if PC_PORT #f (or (movie?) (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))))
            (+! s2-2 56)
            )
           (*display-profile*

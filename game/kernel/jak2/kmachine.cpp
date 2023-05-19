@@ -31,6 +31,7 @@
 #include "game/kernel/jak2/kmalloc.h"
 #include "game/kernel/jak2/kscheme.h"
 #include "game/kernel/jak2/ksound.h"
+#include "game/overlord/jak2/iso.h"
 #include "game/sce/libdma.h"
 #include "game/sce/libgraph.h"
 #include "game/sce/sif_ee.h"
@@ -621,6 +622,28 @@ void init_autosplit_struct() {
       (u64)g_ee_main_mem + (u64)intern_from_c("*autosplit-info-jak2*")->value();
 }
 
+u32 alloc_vagdir_names(u32 heap_sym) {
+  auto alloced_heap = (Ptr<u64>)alloc_heap_memory(heap_sym, gVagDir.count * 8 + 8);
+  if (alloced_heap.offset) {
+    *alloced_heap = gVagDir.count;
+    // use entry -1 to get the amount
+    alloced_heap = alloced_heap + 8;
+    for (int i = 0; i < gVagDir.count; ++i) {
+      char vagname_temp[9];
+      memcpy(vagname_temp, gVagDir.vag[i].name, 8);
+      for (int j = 0; j < 8; ++j) {
+        vagname_temp[j] = tolower(vagname_temp[j]);
+      }
+      vagname_temp[8] = 0;
+      u64 vagname_val;
+      memcpy(&vagname_val, vagname_temp, 8);
+      *(alloced_heap + i * 8) = vagname_val;
+    }
+    return alloced_heap.offset;
+  }
+  return s7.offset;
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
 
@@ -684,6 +707,7 @@ void InitMachine_PCPort() {
 
   // debugging tools
   make_function_symbol_from_c("pc-filter-debug-string?", (void*)pc_filter_debug_string);
+  make_function_symbol_from_c("alloc-vagdir-names", (void*)alloc_vagdir_names);
 
   // other
   make_function_symbol_from_c("pc-rand", (void*)pc_rand);

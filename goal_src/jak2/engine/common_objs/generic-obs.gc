@@ -233,8 +233,8 @@
       (move-along-path self)
       (suspend)
       )
-    (let ((gp-1 (-> self clock frame-counter)))
-      (until (>= (- (-> self clock frame-counter) gp-1) (seconds 0.5))
+    (let ((gp-1 (current-time)))
+      (until (>= (- (current-time) gp-1) (seconds 0.5))
         (move-along-path self)
         (suspend)
         )
@@ -1083,9 +1083,9 @@ This commonly includes things such as:
             )
     )
   :code (behavior ()
-    (set! (-> self start-time) (-> self clock frame-counter))
+    (set! (-> self start-time) (current-time))
     (while (or (zero? (-> self duration))
-               (< (- (-> self clock frame-counter) (-> self start-time)) (the-as time-frame (-> self duration)))
+               (< (- (current-time) (-> self start-time)) (the-as time-frame (-> self duration)))
                )
       (if (-> self callback)
           ((-> self callback) self)
@@ -1114,8 +1114,8 @@ This commonly includes things such as:
         )
       (suspend)
       )
-    (let ((gp-1 (-> self clock frame-counter)))
-      (until (>= (- (-> self clock frame-counter) gp-1) (the-as time-frame (-> self linger-duration)))
+    (let ((gp-1 (current-time)))
+      (until (>= (- (current-time) gp-1) (the-as time-frame (-> self linger-duration)))
         (if (-> self linger-callback)
             ((-> self linger-callback) self)
             )
@@ -1236,20 +1236,18 @@ This commonly includes things such as:
   )
 
 (defun part-tracker-move-to-target ((arg0 part-tracker))
-  (with-pp
-    (let* ((a0-1 *target*)
-           (a2-0 (if (not a0-1)
-                     (-> arg0 root trans)
-                     (get-trans a0-1 3)
-                     )
-                 )
-           )
-      (vector-lerp!
-        (-> arg0 root trans)
-        (-> arg0 offset)
-        a2-0
-        (* 0.006666667 (the float (- (-> pp clock frame-counter) (-> arg0 start-time))))
-        )
+  (let* ((a0-1 *target*)
+         (a2-0 (if (not a0-1)
+                   (-> arg0 root trans)
+                   (get-trans a0-1 3)
+                   )
+               )
+         )
+    (vector-lerp!
+      (-> arg0 root trans)
+      (-> arg0 offset)
+      a2-0
+      (* 0.006666667 (the float (- (current-time) (-> arg0 start-time))))
       )
     )
   )
@@ -1421,7 +1419,7 @@ This commonly includes things such as:
   :code (behavior ()
     (set! (-> self sound) (the-as uint 0))
     (when (!= (+ (-> self lightning spec delay) (-> self lightning spec delay-rand)) 0.0)
-      (let ((gp-0 (-> self clock frame-counter))
+      (let ((gp-0 (current-time))
             (s5-0 (the int (rand-vu-float-range
                              (-> self lightning spec delay)
                              (+ (-> self lightning spec delay) (-> self lightning spec delay-rand))
@@ -1429,7 +1427,7 @@ This commonly includes things such as:
                        )
                   )
             )
-        (while (< (- (-> self clock frame-counter) gp-0) s5-0)
+        (while (< (- (current-time) gp-0) s5-0)
           (suspend)
           )
         )
@@ -1478,9 +1476,9 @@ This commonly includes things such as:
         )
       (set! (-> v1-33 state mode) (the-as lightning-mode a0-10))
       )
-    (set! (-> self start-time) (-> self clock frame-counter))
+    (set! (-> self start-time) (current-time))
     (while (or (zero? (-> self duration))
-               (< (- (-> self clock frame-counter) (-> self start-time)) (the-as time-frame (-> self duration)))
+               (< (- (current-time) (-> self start-time)) (the-as time-frame (-> self duration)))
                )
       (update self)
       (suspend)
@@ -1505,8 +1503,8 @@ This commonly includes things such as:
             )
           (set! (-> v1-47 state mode) (the-as lightning-mode a0-14))
           )
-        (set! (-> self start-time) (-> self clock frame-counter))
-        (while (< (- (-> self clock frame-counter) (-> self start-time)) (the int f30-0))
+        (set! (-> self start-time) (current-time))
+        (while (< (- (current-time) (-> self start-time)) (the int f30-0))
           (suspend)
           )
         )
@@ -2227,12 +2225,12 @@ This commonly includes things such as:
     (none)
     )
   :code (behavior ()
-    (let ((gp-0 (-> self clock frame-counter)))
+    (let ((gp-0 (current-time)))
       (until #f
         (when (not (paused?))
           (vector--float*! (-> self trans) (-> *camera* tpos-curr) (-> *camera* local-down) 28672.0)
           (send-event *camera* 'teleport)
-          (if (and (-> *camera* on-ground) (>= (- (-> self clock frame-counter) gp-0) (seconds 1)))
+          (if (and (-> *camera* on-ground) (>= (- (current-time) gp-0) (seconds 1)))
               (send-event *camera* 'change-state cam-string (seconds 0.5))
               )
           )
@@ -2291,7 +2289,7 @@ This commonly includes things such as:
     (none)
     )
   :code (behavior ()
-    (let ((gp-0 (-> self clock frame-counter)))
+    (let ((gp-0 (current-time)))
       (until #f
         (when (not (paused?))
           (let ((s4-0 (new 'stack-no-clear 'vector))
@@ -2333,7 +2331,7 @@ This commonly includes things such as:
           (set! (-> self trans x) (-> *camera* tpos-curr x))
           (set! (-> self trans z) (-> *camera* tpos-curr z))
           (vector+! (-> self trans) (-> self trans) (-> self view-flat))
-          (if (and (-> *camera* on-ground) (>= (- (-> self clock frame-counter) gp-0) (seconds 1)))
+          (if (and (-> *camera* on-ground) (>= (- (current-time) gp-0) (seconds 1)))
               (send-event *camera* 'change-state cam-string (seconds 0.5))
               )
           )
@@ -2406,7 +2404,7 @@ This commonly includes things such as:
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (when (or (= event-type 'touch) (= event-type 'attack))
-      (set! (-> self state-time) (-> self clock frame-counter))
+      (set! (-> self state-time) (current-time))
       (send-event proc 'launch (-> self spring-height) (-> self camera) (-> self dest) (-> self seek-time))
       )
     (the-as object (cond
@@ -2451,7 +2449,7 @@ This commonly includes things such as:
                                 (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
                                 )
                   )
-             (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.5))
+             (< (- (current-time) (-> self state-time)) (seconds 0.5))
              )
         (send-event *target* 'launch (-> self spring-height) (-> self camera) (-> self dest) (-> self seek-time))
         )
@@ -2680,7 +2678,7 @@ This commonly includes things such as:
       )
     )
   :code (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (while ((-> self run-function))
       (let* ((gp-0 (handle->process (-> self target)))
              (a0-4 (if (type? gp-0 process-drawable)
@@ -2736,17 +2734,18 @@ This commonly includes things such as:
           )
     (let ((v1-6 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
       (set! (-> v1-6 prim-core collide-as) (collide-spec jak enemy))
-      (set! (-> v1-6 prim-core collide-with) (collide-spec
-                                               crate
-                                               civilian
-                                               enemy
-                                               obstacle
-                                               vehicle-sphere
-                                               hit-by-player-list
-                                               hit-by-others-list
-                                               collectable
-                                               pusher
-                                               )
+      (set! (-> v1-6 prim-core collide-with)
+            (collide-spec
+              crate
+              civilian
+              enemy
+              obstacle
+              vehicle-sphere
+              hit-by-player-list
+              hit-by-others-list
+              collectable
+              pusher
+              )
             )
       (set-vector! (-> v1-6 local-sphere) 0.0 0.0 0.0 arg1)
       (set! (-> s4-0 total-prims) (the-as uint 1))
@@ -2765,10 +2764,8 @@ This commonly includes things such as:
   (set! (-> self target) (the-as handle #f))
   (set! (-> self event) #f)
   (set! (-> self callback) #f)
-  (set! (-> self run-function) (lambda :behavior touch-tracker
-                                 ()
-                                 (< (- (-> self clock frame-counter) (-> self state-time)) (-> self duration))
-                                 )
+  (set! (-> self run-function)
+        (lambda :behavior touch-tracker () (< (- (current-time) (-> self state-time)) (-> self duration)))
         )
   (set! (-> self event-hook) (-> (method-of-object self active) event))
   (go-virtual active)
@@ -2905,7 +2902,7 @@ This commonly includes things such as:
       )
     )
   :code (behavior ()
-    (set! (-> self start-time) (-> self clock frame-counter))
+    (set! (-> self start-time) (current-time))
     (update-transforms (-> self root-override))
     (let ((a1-0 (new 'stack-no-clear 'overlaps-others-params)))
       (set! (-> a1-0 options) (overlaps-others-options))
@@ -2918,14 +2915,14 @@ This commonly includes things such as:
       (set! (-> v1-9 prim-core collide-with) (collide-spec))
       )
     0
-    (while (< (- (-> self clock frame-counter) (-> self start-time)) (the-as time-frame (-> self duration)))
+    (while (< (- (current-time) (-> self start-time)) (the-as time-frame (-> self duration)))
       (let ((a1-1 (-> self root-override trans)))
         (spawn (-> self part) a1-1)
         )
       (suspend)
       )
-    (set! (-> self start-time) (-> self clock frame-counter))
-    (while (< (- (-> self clock frame-counter) (-> self start-time)) (the-as time-frame (-> self linger-duration)))
+    (set! (-> self start-time) (current-time))
+    (while (< (- (current-time) (-> self start-time)) (the-as time-frame (-> self linger-duration)))
       (suspend)
       )
     (none)

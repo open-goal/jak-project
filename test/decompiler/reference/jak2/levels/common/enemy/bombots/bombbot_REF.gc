@@ -788,7 +788,6 @@
   )
 
 ;; definition for method 3 of type ik-setup
-;; INFO: this function exists in multiple non-identical object files
 (defmethod inspect ik-setup ((obj ik-setup))
   (when (not obj)
     (set! obj obj)
@@ -977,7 +976,7 @@
               (let ((f30-0 0.4))
                 (vector-normalize! s2-0 1.0)
                 (let ((s1-0 (-> obj feet s4-0)))
-                  (let* ((f0-10 (+ (* 0.0033333334 (the float (mod (-> pp clock frame-counter) 300))) (-> s1-0 offset)))
+                  (let* ((f0-10 (+ (* 0.0033333334 (the float (mod (current-time) 300))) (-> s1-0 offset)))
                          (f28-0 (- f0-10 (* (the float (the int (/ f0-10 1.0))) 1.0)))
                          (s0-0 (new 'stack-no-clear 'vector))
                          )
@@ -2008,14 +2007,14 @@
       (init-vf0-vector)
       (when (>= (the int (* 30.0 (-> self shield-hit-points))) (-> self hit-points))
         )
-      (when (< (the-as time-frame (-> self next-target)) (-> self clock frame-counter))
+      (when (< (the-as time-frame (-> self next-target)) (current-time))
         (let ((a1-0 (new 'stack-no-clear 'vector)))
           (set! (-> a1-0 quad) (-> self root-override2 trans quad))
           (set! (-> a1-0 w) 122880.0)
           (bombbot-method-181 self a1-0)
           )
-        (set! (-> self next-target) (the-as uint (+ (-> self clock frame-counter) (seconds 2))))
-        (set! (-> self start-target) (the-as uint (-> self clock frame-counter)))
+        (set! (-> self next-target) (the-as uint (+ (current-time) (seconds 2))))
+        (set! (-> self start-target) (the-as uint (current-time)))
         )
       (let ((gp-0 (handle->process (-> self focus handle))))
         (let ((f30-0 1.0))
@@ -2031,7 +2030,7 @@
             (let ((a1-6 (-> self target-pos)))
               (let ((v1-34 (-> self start-target-pos)))
                 (let ((a0-14 (-> self start-target-vel)))
-                  (let ((a2-8 (* 0.0033333334 (the float (- (-> self clock frame-counter) (the-as int (-> self start-target)))))))
+                  (let ((a2-8 (* 0.0033333334 (the float (- (current-time) (the-as int (-> self start-target)))))))
                     (.mov vf7 a2-8)
                     )
                   (.lvf vf5 (&-> a0-14 quad))
@@ -2044,7 +2043,7 @@
               (.svf (&-> a1-6 quad) vf6)
               )
             (cond
-              ((< (the-as time-frame (+ (-> self next-target) -300)) (-> self clock frame-counter))
+              ((< (the-as time-frame (+ (-> self next-target) -300)) (current-time))
                (bombbot-method-182 self)
                )
               (else
@@ -2096,7 +2095,7 @@
             )
         )
       (if (= (vector-length (-> self root-override2 transv)) 0.0)
-          (set! (-> self state-time) (-> self clock frame-counter))
+          (set! (-> self state-time) (current-time))
           )
       (set! (-> self last-head-roty-speed) (-> self head-roty-speed))
       (set! (-> self head-roty-speed) (vector-y-angle (-> self node-list data 4 bone transform vector 2)))
@@ -2229,7 +2228,7 @@
       )
     (set! (-> self explosing) #f)
     (set! (-> self beep-time) 0)
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :trans (behavior ()
@@ -2239,28 +2238,26 @@
             )
       )
     0
-    (if (>= (- (-> self clock frame-counter) (-> self state-time)) 0)
+    (if (>= (- (current-time) (-> self state-time)) 0)
         (seek! (-> self legs-strength 0) 0.8 (* 10.0 (-> self clock seconds-per-frame)))
         )
-    (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.8))
+    (if (>= (- (current-time) (-> self state-time)) (seconds 0.8))
         (seek! (-> self legs-strength 3) 0.4 (* 10.0 (-> self clock seconds-per-frame)))
         )
-    (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1.6))
+    (if (>= (- (current-time) (-> self state-time)) (seconds 1.6))
         (seek! (-> self legs-strength 1) 0.0 (* 10.0 (-> self clock seconds-per-frame)))
         )
-    (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 2.4))
+    (if (>= (- (current-time) (-> self state-time)) (seconds 2.4))
         (seek! (-> self legs-strength 2) 0.5 (* 10.0 (-> self clock seconds-per-frame)))
         )
-    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 2.8))
+    (when (>= (- (current-time) (-> self state-time)) (seconds 2.8))
       (sound-play "bb-explode")
       (go-virtual explode)
       )
-    (when (< (-> self beep-time) (-> self clock frame-counter))
+    (when (< (-> self beep-time) (current-time))
       (sound-play "bb-beep")
       (set! (-> self beep-time)
-            (+ (-> self clock frame-counter)
-               (the int (* 0.2 (the float (- (seconds 2.8) (- (-> self clock frame-counter) (-> self state-time))))))
-               )
+            (+ (current-time) (the int (* 0.2 (the float (- (seconds 2.8) (- (current-time) (-> self state-time)))))))
             )
       )
     (none)
@@ -2295,7 +2292,7 @@
       (set! (-> self minimap) #f)
       )
     (set! (-> self explosing) #f)
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
       (set! (-> gp-0 fountain-rand-transv-lo quad) (-> self root-override2 trans quad))
       (set! (-> gp-0 duration) (seconds 3))
@@ -3226,314 +3223,290 @@
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  186
-  0
-  (the-as (function object) (lambda :behavior task-manager
-                              ()
-                              (set-setting! 'minimap 'clear 0 32)
-                              (set-setting! 'exclusive-task #f 0 (-> self node-info task))
-                              (set! (-> self data-int32 0) 0)
-                              0
-                              (none)
-                              )
-          )
-  )
-
-;; failed to figure out what this is:
-(set-subtask-hook!
-  *game-info*
-  186
-  1
-  (the-as
-    (function object)
-    (lambda :behavior task-manager () (send-event *traffic-manager* 'restore-default-settings) (none))
+  (game-task-node city-stop-bomb-bots-destroy)
+  TASK_MANAGER_INIT_HOOK
+  (lambda :behavior task-manager
+    ()
+    (set-setting! 'minimap 'clear 0.0 (minimap-flag task-graph))
+    (set-setting! 'exclusive-task #f 0.0 (-> self node-info task))
+    (set! (-> self data-int32 0) 0)
+    0
+    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  186
-  2
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (when (nonzero? (-> self data-int32 0))
-        (let ((gp-0 0))
-          (let ((s5-0 10000))
-            (dotimes (s4-0 3)
-              (let* ((s2-0 (-> self slave s4-0 process 0))
-                     (s3-0 (if (type? s2-0 bombbot)
-                               (the-as bombbot s2-0)
-                               )
-                           )
-                     )
-                (when s3-0
-                  (+! gp-0 1)
-                  (let ((v1-14
-                          (the int (* 0.000030517578 (vector-vector-xz-distance
-                                                       (-> s3-0 root-override2 trans)
-                                                       (the-as vector (-> s3-0 city-path node (+ (-> s3-0 city-path node-count) -1)))
-                                                       )
-                                      )
-                               )
-                          )
+  (game-task-node city-stop-bomb-bots-destroy)
+  TASK_MANAGER_CLEANUP_HOOK
+  (lambda :behavior task-manager () (send-event *traffic-manager* 'restore-default-settings) (none))
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-stop-bomb-bots-destroy)
+  TASK_MANAGER_UPDATE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (when (nonzero? (-> self data-int32 0))
+      (let ((gp-0 0))
+        (let ((s5-0 10000))
+          (dotimes (s4-0 3)
+            (let* ((s2-0 (-> self slave s4-0 process 0))
+                   (s3-0 (if (type? s2-0 bombbot)
+                             (the-as bombbot s2-0)
+                             )
+                         )
+                   )
+              (when s3-0
+                (+! gp-0 1)
+                (let ((v1-14
+                        (the int (* 0.000030517578 (vector-vector-xz-distance
+                                                     (-> s3-0 root-override2 trans)
+                                                     (the-as vector (-> s3-0 city-path node (+ (-> s3-0 city-path node-count) -1)))
+                                                     )
+                                    )
+                             )
                         )
-                    (if (< v1-14 s5-0)
-                        (set! s5-0 v1-14)
-                        )
-                    )
-                  (when (= (-> s3-0 current-node) (+ (-> s3-0 city-path node-count) -1))
-                    )
+                      )
+                  (if (< v1-14 s5-0)
+                      (set! s5-0 v1-14)
+                      )
+                  )
+                (when (= (-> s3-0 current-node) (+ (-> s3-0 city-path node-count) -1))
                   )
                 )
               )
-            (set! (-> self data-int32 1) s5-0)
-            (cond
-              ((< s5-0 10)
-               (set! (-> *game-info* timer) (the-as time-frame (the int (* 300.0 (the float s5-0)))))
-               (let ((v1-25 (handle->process (-> self hud-timer))))
-                 (if (and *target* (not v1-25))
-                     (set! (-> self hud-timer) (ppointer->handle (process-spawn hud-timer :init hud-init-by-other :to *target*)))
-                     )
-                 )
-               (when (zero? s5-0)
-                 (send-event (handle->process (-> self hud-timer)) 'hide-and-die)
-                 (go-virtual fail)
-                 )
-               )
-              (else
-                (if (handle->process (-> self hud-timer))
-                    (send-event (handle->process (-> self hud-timer)) 'hide-and-die)
-                    )
-                )
-              )
             )
-          (if (zero? gp-0)
-              (go-virtual complete)
-              )
-          )
-        )
-      (none)
-      )
-    )
-  )
-
-;; failed to figure out what this is:
-(set-subtask-hook!
-  *game-info*
-  186
-  3
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (while (!= (-> (level-get-target-inside *level*) name) 'ctysluma)
-        (suspend)
-        )
-      (set! (-> self data-int32 0) 1)
-      (set-setting! 'airlock #f 0 0)
-      (set-setting! 'sound-mode #f 0 1)
-      (let ((gp-1 *traffic-manager*))
-        (send-event gp-1 'set-guard-target-count-range 4 0 0)
-        (send-event gp-1 'set-guard-target-count-range 5 0 0)
-        )
-      (let ((gp-2 (new 'stack 'bombbot-spawn-params)))
-        (set! (-> gp-2 nav-mesh) (get-nav-mesh (the-as actor-id 9592)))
-        (set! (-> gp-2 position quad)
-              (-> (new 'static 'quaternion :x 4387619.0 :y 37262.54 :z 230567.11 :w 1.0) quad)
-              )
-        (quaternion-copy! (-> gp-2 quat) (new 'static 'quaternion :x 0.0006 :y -0.8345 :z -0.0013 :w -0.5509))
-        (set! (-> gp-2 path) *bombbot-path-1*)
-        (set! (-> self slave 0) (ppointer->handle (process-spawn bombbot gp-2 :to self)))
-        (set! (-> gp-2 path) *bombbot-path-2*)
-        (set! (-> self slave 1) (ppointer->handle (process-spawn bombbot gp-2 :to self)))
-        (set! (-> gp-2 path) *bombbot-path-3*)
-        (set! (-> self slave 2) (ppointer->handle (process-spawn bombbot gp-2 :to self)))
-        )
-      (none)
-      )
-    )
-  )
-
-;; failed to figure out what this is:
-(set-subtask-hook!
-  *game-info*
-  186
-  4
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (set! (-> self state-time) (-> self clock frame-counter))
-      (talker-spawn-func (-> *talker-speech* 117) *entity-pool* (target-pos 0) (the-as region #f))
-      (none)
-      )
-    )
-  )
-
-;; failed to figure out what this is:
-(set-subtask-hook!
-  *game-info*
-  186
-  5
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (when (and *target*
-                 (not (focus-test? *target* dead))
-                 (zero? (-> self data-int32 1))
-                 (nonzero? (-> self data-int32 0))
-                 )
-        (cond
-          ((= (level-status *level* 'ctysluma) 'active)
-           (set-setting! 'entity-name "camera-236" 0 0)
-           (set-setting! 'minimap 'clear 0 128)
-           (set! (-> self state-time) (-> self clock frame-counter))
-           (while (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 2))
-             (suspend)
-             )
-           (add-process *gui-control* self (gui-channel sig) (gui-action play) "bbotxplo" -99.0 0)
-           (dotimes (gp-1 3)
-             (let* ((s5-0 (-> self slave gp-1 process 0))
-                    (a0-7 (if (type? s5-0 bombbot)
-                              s5-0
-                              )
-                          )
-                    )
-               (if a0-7
-                   (send-event a0-7 'explode)
+          (set! (-> self data-int32 1) s5-0)
+          (cond
+            ((< s5-0 10)
+             (set! (-> *game-info* timer) (the-as time-frame (the int (* 300.0 (the float s5-0)))))
+             (let ((v1-25 (handle->process (-> self hud-timer))))
+               (if (and *target* (not v1-25))
+                   (set! (-> self hud-timer) (ppointer->handle (process-spawn hud-timer :init hud-init-by-other :to *target*)))
                    )
                )
+             (when (zero? s5-0)
+               (send-event (handle->process (-> self hud-timer)) 'hide-and-die)
+               (go-virtual fail)
+               )
              )
-           (set! (-> self state-time) (-> self clock frame-counter))
-           (while (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.3))
-             (suspend)
-             )
-           (setup
-             *screen-filter*
-             (new 'static 'vector :x 255.0 :y 255.0 :z 255.0)
-             (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
-             (-> self clock seconds-per-frame)
-             (bucket-id tex-all-map)
-             )
-           (while (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 1))
-             (suspend)
-             )
-           (set-setting! 'interp-time 'abs 0 0)
-           (remove-setting! 'entity-name)
+            (else
+              (if (handle->process (-> self hud-timer))
+                  (send-event (handle->process (-> self hud-timer)) 'hide-and-die)
+                  )
+              )
+            )
+          )
+        (if (zero? gp-0)
+            (go-virtual complete)
+            )
+        )
+      )
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-stop-bomb-bots-destroy)
+  TASK_MANAGER_CODE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (while (!= (-> (level-get-target-inside *level*) name) 'ctysluma)
+      (suspend)
+      )
+    (set! (-> self data-int32 0) 1)
+    (set-setting! 'airlock #f 0.0 0)
+    (set-setting! 'sound-mode #f 0.0 1)
+    (let ((gp-1 *traffic-manager*))
+      (send-event gp-1 'set-guard-target-count-range 4 0 0)
+      (send-event gp-1 'set-guard-target-count-range 5 0 0)
+      )
+    (let ((gp-2 (new 'stack 'bombbot-spawn-params)))
+      (set! (-> gp-2 nav-mesh) (get-nav-mesh (the-as actor-id 9592)))
+      (set! (-> gp-2 position quad)
+            (-> (new 'static 'quaternion :x 4387619.0 :y 37262.54 :z 230567.11 :w 1.0) quad)
+            )
+      (quaternion-copy! (-> gp-2 quat) (new 'static 'quaternion :x 0.0006 :y -0.8345 :z -0.0013 :w -0.5509))
+      (set! (-> gp-2 path) *bombbot-path-1*)
+      (set! (-> self slave 0) (ppointer->handle (process-spawn bombbot gp-2 :to self)))
+      (set! (-> gp-2 path) *bombbot-path-2*)
+      (set! (-> self slave 1) (ppointer->handle (process-spawn bombbot gp-2 :to self)))
+      (set! (-> gp-2 path) *bombbot-path-3*)
+      (set! (-> self slave 2) (ppointer->handle (process-spawn bombbot gp-2 :to self)))
+      )
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-stop-bomb-bots-destroy)
+  TASK_MANAGER_COMPLETE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (set! (-> self state-time) (current-time))
+    (talker-spawn-func (-> *talker-speech* 117) *entity-pool* (target-pos 0) (the-as region #f))
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-stop-bomb-bots-destroy)
+  TASK_MANAGER_FAIL_HOOK
+  (lambda :behavior task-manager
+    ()
+    (when (and *target*
+               (not (focus-test? *target* dead))
+               (zero? (-> self data-int32 1))
+               (nonzero? (-> self data-int32 0))
+               )
+      (cond
+        ((= (level-status *level* 'ctysluma) 'active)
+         (set-setting! 'entity-name "camera-236" 0.0 0)
+         (set-setting! 'minimap 'clear 0.0 (minimap-flag minimap))
+         (set! (-> self state-time) (current-time))
+         (while (< (- (current-time) (-> self state-time)) (seconds 2))
+           (suspend)
            )
-          (else
+         (add-process *gui-control* self (gui-channel sig) (gui-action play) "bbotxplo" -99.0 0)
+         (dotimes (gp-1 3)
+           (let* ((s5-0 (-> self slave gp-1 process 0))
+                  (a0-7 (if (type? s5-0 bombbot)
+                            s5-0
+                            )
+                        )
+                  )
+             (if a0-7
+                 (send-event a0-7 'explode)
+                 )
+             )
+           )
+         (set! (-> self state-time) (current-time))
+         (while (< (- (current-time) (-> self state-time)) (seconds 0.3))
+           (suspend)
+           )
+         (setup
+           *screen-filter*
+           (new 'static 'vector :x 255.0 :y 255.0 :z 255.0)
+           (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
+           (-> self clock seconds-per-frame)
+           (bucket-id tex-all-map)
+           )
+         (while (< (- (current-time) (-> self state-time)) (seconds 1))
+           (suspend)
+           )
+         (set-setting! 'interp-time 'abs 0.0 0)
+         (remove-setting! 'entity-name)
+         )
+        (else
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-stop-bomb-bots-destroy)
+  TASK_MANAGER_CLEANUP_HOOK
+  (lambda :behavior task-manager () (disable *screen-filter*) (none))
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-burning-bush-bombbot-1-resolution)
+  TASK_MANAGER_INIT_HOOK
+  (lambda :behavior task-manager
+    ()
+    (set-setting! 'minimap 'clear 0.0 (minimap-flag task-graph))
+    (set-setting! 'airlock #f 0.0 0)
+    (set-setting! 'exclusive-task #f 0.0 (-> self node-info task))
+    (let ((gp-0 *traffic-manager*))
+      (send-event gp-0 'set-guard-target-count-range 4 0 0)
+      (send-event gp-0 'set-guard-target-count-range 5 0 0)
+      )
+    (let ((gp-1 (new 'stack 'bombbot-spawn-params)))
+      (set! (-> gp-1 nav-mesh) (get-nav-mesh (the-as actor-id 9592)))
+      (set! (-> gp-1 position quad)
+            (-> (new 'static 'quaternion :x 4387619.0 :y 37262.54 :z 230567.11 :w 1.0) quad)
+            )
+      (quaternion-copy! (-> gp-1 quat) (new 'static 'quaternion :x 0.0006 :y -0.8345 :z -0.0013 :w -0.5509))
+      (set! (-> gp-1 path) *bombbot-path-4*)
+      (set! (-> self slave 0) (ppointer->handle (process-spawn bombbot gp-1 :to self)))
+      (set! (-> gp-1 path) *bombbot-path-5*)
+      (set! (-> self slave 1) (ppointer->handle (process-spawn bombbot gp-1 :to self)))
+      (set! (-> gp-1 path) *bombbot-path-6*)
+      (set! (-> self slave 2) (ppointer->handle (process-spawn bombbot gp-1 :to self)))
+      )
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-burning-bush-bombbot-1-resolution)
+  TASK_MANAGER_CLEANUP_HOOK
+  (lambda :behavior task-manager () (send-event *traffic-manager* 'restore-default-settings) (none))
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-burning-bush-bombbot-1-resolution)
+  TASK_MANAGER_UPDATE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (let ((gp-0 0))
+      10000
+      (dotimes (s5-0 3)
+        (let* ((s4-0 (-> self slave s5-0 process 0))
+               (v1-6 (if (type? s4-0 bombbot)
+                         (the-as bombbot s4-0)
+                         )
+                     )
+               )
+          (when v1-6
+            (+! gp-0 1)
+            (when (= (-> v1-6 current-node) (+ (-> v1-6 city-path node-count) -1))
+              (set! (-> v1-6 current-node) (the-as uint 0))
+              0
+              )
             )
           )
         )
-      (none)
-      )
-    )
-  )
-
-;; failed to figure out what this is:
-(set-subtask-hook!
-  *game-info*
-  186
-  1
-  (the-as (function object) (lambda :behavior task-manager () (disable *screen-filter*) (none)))
-  )
-
-;; failed to figure out what this is:
-(set-subtask-hook!
-  *game-info*
-  297
-  0
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (set-setting! 'minimap 'clear 0 32)
-      (set-setting! 'airlock #f 0 0)
-      (set-setting! 'exclusive-task #f 0 (-> self node-info task))
-      (let ((gp-0 *traffic-manager*))
-        (send-event gp-0 'set-guard-target-count-range 4 0 0)
-        (send-event gp-0 'set-guard-target-count-range 5 0 0)
-        )
-      (let ((gp-1 (new 'stack 'bombbot-spawn-params)))
-        (set! (-> gp-1 nav-mesh) (get-nav-mesh (the-as actor-id 9592)))
-        (set! (-> gp-1 position quad)
-              (-> (new 'static 'quaternion :x 4387619.0 :y 37262.54 :z 230567.11 :w 1.0) quad)
-              )
-        (quaternion-copy! (-> gp-1 quat) (new 'static 'quaternion :x 0.0006 :y -0.8345 :z -0.0013 :w -0.5509))
-        (set! (-> gp-1 path) *bombbot-path-4*)
-        (set! (-> self slave 0) (ppointer->handle (process-spawn bombbot gp-1 :to self)))
-        (set! (-> gp-1 path) *bombbot-path-5*)
-        (set! (-> self slave 1) (ppointer->handle (process-spawn bombbot gp-1 :to self)))
-        (set! (-> gp-1 path) *bombbot-path-6*)
-        (set! (-> self slave 2) (ppointer->handle (process-spawn bombbot gp-1 :to self)))
-        )
-      (none)
-      )
-    )
-  )
-
-;; failed to figure out what this is:
-(set-subtask-hook!
-  *game-info*
-  297
-  1
-  (the-as
-    (function object)
-    (lambda :behavior task-manager () (send-event *traffic-manager* 'restore-default-settings) (none))
-    )
-  )
-
-;; failed to figure out what this is:
-(set-subtask-hook!
-  *game-info*
-  297
-  2
-  (the-as (function object) (lambda :behavior task-manager
-                              ()
-                              (let ((gp-0 0))
-                                10000
-                                (dotimes (s5-0 3)
-                                  (let* ((s4-0 (-> self slave s5-0 process 0))
-                                         (v1-6 (if (type? s4-0 bombbot)
-                                                   (the-as bombbot s4-0)
-                                                   )
-                                               )
-                                         )
-                                    (when v1-6
-                                      (+! gp-0 1)
-                                      (when (= (-> v1-6 current-node) (+ (-> v1-6 city-path node-count) -1))
-                                        (set! (-> v1-6 current-node) (the-as uint 0))
-                                        0
-                                        )
-                                      )
-                                    )
-                                  )
-                                (if (zero? gp-0)
-                                    (go-virtual complete)
-                                    )
-                                )
-                              (none)
-                              )
+      (if (zero? gp-0)
+          (go-virtual complete)
           )
+      )
+    (none)
+    )
   )
 
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  297
-  3
-  (the-as (function object) (lambda :behavior task-manager
-                              ()
-                              (set! (-> self state-time) (-> self clock frame-counter))
-                              (until #f
-                                (suspend)
-                                )
-                              #f
-                              (none)
-                              )
-          )
+  (game-task-node city-burning-bush-bombbot-1-resolution)
+  TASK_MANAGER_CODE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (set! (-> self state-time) (current-time))
+    (until #f
+      (suspend)
+      )
+    #f
+    (none)
+    )
   )

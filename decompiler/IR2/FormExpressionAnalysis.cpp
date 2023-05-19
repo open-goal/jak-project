@@ -1,3 +1,6 @@
+#include <unordered_map>
+#include <unordered_set>
+
 #include "Form.h"
 #include "FormStack.h"
 #include "GenericElementMatcher.h"
@@ -3307,11 +3310,27 @@ void FunctionCallElement::update_from_stack(const Env& env,
             ASSERT(head_obj.is_symbol("get-art-by-name-method"));
             head = pool.form<ConstantTokenElement>("get-art-by-name");
           } else {
-            if (head_obj.is_symbol() &&
-                tp_type.method_from_type().base_type() == "setting-control" &&
-                arg_forms.at(0)->to_form(env).is_symbol("*setting-control*") &&
-                arg_forms.size() > 1) {
+            if (head_obj.is_symbol("set-subtask-hook!")) {
+              // change the integer argument to a constant.
+              auto arg2o = arg_forms.at(2)->to_form(env);
+              if (arg2o.is_int()) {
+                int hook = arg2o.as_int();
+                static const std::vector<std::string> hook_names = {
+                    "TASK_MANAGER_INIT_HOOK",     "TASK_MANAGER_CLEANUP_HOOK",
+                    "TASK_MANAGER_UPDATE_HOOK",   "TASK_MANAGER_CODE_HOOK",
+                    "TASK_MANAGER_COMPLETE_HOOK", "TASK_MANAGER_FAIL_HOOK",
+                    "TASK_MANAGER_EVENT_HOOK"};
+                if (hook >= 0 && hook < hook_names.size()) {
+                  arg_forms.at(2) = pool.alloc_single_element_form<ConstantTokenElement>(
+                      arg_forms.at(2)->parent_element, hook_names.at(hook));
+                }
+              }
+            } else if (head_obj.is_symbol() &&
+                       tp_type.method_from_type().base_type() == "setting-control" &&
+                       arg_forms.at(0)->to_form(env).is_symbol("*setting-control*") &&
+                       arg_forms.size() > 1) {
               auto arg1_reg = get_form_reg_acc(arg_forms.at(1));
+              bool has_params = true;
               if (arg1_reg && arg1_reg->reg().is_s6()) {
                 std::string new_head;
                 if (head_obj.is_symbol("add-setting")) {
@@ -3320,6 +3339,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
                   new_head = "set-setting!";
                 } else if (head_obj.is_symbol("remove-setting")) {
                   new_head = "remove-setting!";
+                  has_params = false;
                 }
                 if (!new_head.empty()) {
                   auto oldp = head->parent_element;
@@ -3327,24 +3347,70 @@ void FunctionCallElement::update_from_stack(const Env& env,
                   head->parent_element = oldp;
                   arg_forms.erase(arg_forms.begin());
                   arg_forms.erase(arg_forms.begin());
-                  if (arg_forms.size() > 3) {
+                  if (has_params) {
+                    auto argset = arg_forms.at(0)->to_string(env);
+                    argset = argset.substr(1);
+                    auto argsym = arg_forms.at(1)->to_string(env);
+                    // convert the float param
+                    if (env.version == GameVersion::Jak2) {
+                      static const std::unordered_set<std::string> use_degrees_settings = {
+                          "matrix-blend-max-angle",
+                          "fov",
+                      };
+                      static const std::unordered_set<std::string> use_meters_settings = {
+                          "string-spline-max-move",
+                          "string-spline-max-move-player",
+                          "string-spline-accel",
+                          "string-spline-accel-player",
+                          "string-max-length",
+                          "string-min-length",
+                          "string-max-height",
+                          "string-min-height",
+                          "gun-max-height",
+                          "gun-min-height",
+                          "head-offset",
+                          "foot-offset",
+                          "extra-follow-height",
+                          "target-height",
+                      };
+                      auto argf = arg_forms.at(2);
+                      arg_forms.at(2) = try_cast_simplify(argf, TypeSpec("float"), pool, env, true);
+                      if (argsym != "'rel") {
+                        if (use_degrees_settings.find(argset) != use_degrees_settings.end()) {
+                          arg_forms.at(2) = try_cast_simplify(arg_forms.at(2), TypeSpec("degrees"),
+                                                              pool, env, true);
+                        } else if (use_meters_settings.find(argset) != use_meters_settings.end()) {
+                          arg_forms.at(2) = try_cast_simplify(arg_forms.at(2), TypeSpec("meters"),
+                                                              pool, env, true);
+                        }
+                      }
+                      arg_forms.at(2)->parent_element = argf->parent_element;
+                    }
+                    // convert the int param
+                    static const std::unordered_map<std::string, std::string> use_bitenum_settings =
+                        {
+                            {"process-mask", "process-mask"},
+                            {"features", "game-feature"},
+                            {"slave-options", "cam-slave-options"},
+                            {"minimap", "minimap-flag"},
+                            {"task-mask", "task-mask"},
+                        };
+                    static const std::unordered_map<std::string, std::string> use_enum_settings = {
+                        {"sound-flava", "music-flava"},
+                        {"exclusive-task", "game-task"},
+                    };
                     auto argi = arg_forms.at(3);
                     auto argi_o = argi->to_form(env);
                     if (argi_o.is_int()) {
-                      auto argset = arg_forms.at(0)->to_string(env);
-                      if (argset == "'process-mask") {
-                        auto en = env.dts->ts.try_enum_lookup("process-mask");
+                      if (use_bitenum_settings.find(argset) != use_bitenum_settings.end()) {
+                        auto en = env.dts->ts.try_enum_lookup(use_bitenum_settings.at(argset));
                         if (en) {
-                          arg_forms.at(3) =
-                              cast_to_bitfield_enum(env.dts->ts.try_enum_lookup("process-mask"),
-                                                    pool, env, argi_o.as_int());
+                          arg_forms.at(3) = cast_to_bitfield_enum(en, pool, env, argi_o.as_int());
                         }
-                      } else if (argset == "'sound-flava") {
-                        auto en = env.dts->ts.try_enum_lookup("music-flava");
+                      } else if (use_enum_settings.find(argset) != use_enum_settings.end()) {
+                        auto en = env.dts->ts.try_enum_lookup(use_enum_settings.at(argset));
                         if (en) {
-                          arg_forms.at(3) =
-                              cast_to_int_enum(env.dts->ts.try_enum_lookup("music-flava"), pool,
-                                               env, argi_o.as_int());
+                          arg_forms.at(3) = cast_to_int_enum(en, pool, env, argi_o.as_int());
                         }
                       }
                     }
@@ -3810,6 +3876,19 @@ ConstantTokenElement* DerefElement::try_as_art_const(const Env& env, FormPool& p
   return nullptr;
 }
 
+GenericElement* DerefElement::try_as_curtime(FormPool& pool) {
+  auto mr = match(Matcher::deref(Matcher::s6(), false,
+                                 {DerefTokenMatcher::string("clock"),
+                                  DerefTokenMatcher::string("frame-counter")}),
+                  this);
+  if (mr.matched) {
+    return pool.alloc_element<GenericElement>(
+        GenericOperator::make_function(pool.form<ConstantTokenElement>("current-time")));
+  }
+
+  return nullptr;
+}
+
 void DerefElement::update_from_stack(const Env& env,
                                      FormPool& pool,
                                      FormStack& stack,
@@ -3833,6 +3912,22 @@ void DerefElement::update_from_stack(const Env& env,
   auto as_art = try_as_art_const(env, pool);
   if (as_art) {
     result->push_back(as_art);
+    return;
+  }
+
+  auto as_simple_expr = m_base->try_as_element<SimpleExpressionElement>();
+  if (env.version == GameVersion::Jak2 && as_simple_expr && as_simple_expr->expr().is_identity() &&
+      as_simple_expr->expr().get_arg(0).is_sym_val() &&
+      as_simple_expr->expr().get_arg(0).get_str() == "*game-info*" && m_tokens.size() >= 2 &&
+      m_tokens.at(0).is_field_name("sub-task-list") && m_tokens.at(1).is_int()) {
+    m_tokens.at(1) = DerefToken::make_int_expr(cast_to_int_enum(
+        env.dts->ts.try_enum_lookup("game-task-node"), pool, env, m_tokens.at(1).int_constant()));
+  }
+
+  // current-time macro
+  auto as_curtime = try_as_curtime(pool);
+  if (as_curtime) {
+    result->push_back(as_curtime);
     return;
   }
 

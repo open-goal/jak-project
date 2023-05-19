@@ -5,9 +5,7 @@
 ;; name in dgo: font-h
 ;; dgos: ENGINE, GAME
 
-
-;; TODO: figure out what's weird with set-font-color
-;; The font system draws all of the strings.
+;; The font system draws all of the text strings.
 
 ;; +++font-color
 (defenum font-color
@@ -88,6 +86,7 @@
   :flag-assert         #x9000000c0
   )
 
+
 (deftype char-color (structure)
   ((color rgba 4 :offset-assert   0)
    )
@@ -96,10 +95,15 @@
   :flag-assert         #x900000010
   )
 
+
 (define *font-default-matrix*
-  (new 'static 'matrix
-    :data (new 'static 'array float 16 1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0 -256.0 -208.0 0.0 1.0)
-    )
+  (new 'static 'matrix :vector (new 'static 'inline-array vector 4
+                                 (new 'static 'vector :x 1.0)
+                                 (new 'static 'vector :y 1.0)
+                                 (new 'static 'vector :z 1.0)
+                                 (new 'static 'vector :x -256.0 :y -208.0 :w 1.0)
+                                 )
+                       )
   )
 
 ;; font settings that can be passed to draw-string
@@ -135,6 +139,7 @@
     (set-alpha! (font-context float) font-context 20)
     )
   )
+
 
 (defmethod set-mat! font-context ((obj font-context) (arg0 matrix))
   (set! (-> obj mat) arg0)
@@ -228,10 +233,10 @@
       (set! (-> v1-6 origin w) 1.0)
       )
     (let ((v1-7 v0-0))
-      (set! (-> v1-7 width) (the float #x200))
+      (set! (-> v1-7 width) (the float 512))
       )
     (let ((v1-8 v0-0))
-      (set! (-> v1-8 height) (the float #x1a0))
+      (set! (-> v1-8 height) (the float 416))
       )
     (let ((v1-9 v0-0))
       (set! (-> v1-9 projection) 1.0)
@@ -303,6 +308,7 @@
   :flag-assert         #x900000b58
   )
 
+
 (define *font-work*
   (new 'static 'font-work
     :font-tmpl (new 'static 'dma-gif-packet
@@ -310,14 +316,42 @@
         :dma (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt))
         :vif1 (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1)
         )
-      :gif (new 'static 'array uint64 2 #x102e400000008001 #xe)
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x1
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :abe #x1)
+        :nreg #x1
+        )
+      :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d))
       )
     :char-tmpl (new 'static 'dma-gif-packet
       :dma-vif (new 'static 'dma-packet
         :dma (new 'static 'dma-tag :qwc #xe :id (dma-tag-id cnt))
         :vif1 (new 'static 'vif-tag :imm #xe :cmd (vif-cmd direct) :msk #x1)
         )
-      :gif (new 'static 'array uint64 2 #xd02e400000008001 #x412412412412e)
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x1
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :abe #x1)
+        :nreg #xd
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id a+d)
+        :regs1 (gif-reg-id st)
+        :regs2 (gif-reg-id rgbaq)
+        :regs3 (gif-reg-id xyzf2)
+        :regs4 (gif-reg-id st)
+        :regs5 (gif-reg-id rgbaq)
+        :regs6 (gif-reg-id xyzf2)
+        :regs7 (gif-reg-id st)
+        :regs8 (gif-reg-id rgbaq)
+        :regs9 (gif-reg-id xyzf2)
+        :regs10 (gif-reg-id st)
+        :regs11 (gif-reg-id rgbaq)
+        :regs12 (gif-reg-id xyzf2)
+        )
       )
     :tex1-tmpl (new 'static 'array uint64 2 #x60 #x14)
     :small-font-0-tmpl (new 'static 'array uint64 2 #x0 #x6)
@@ -382,7 +416,7 @@
         (new 'static 'vector :z 1.0)
         )
       )
-    :color-shadow (new 'static 'vector4w :data (new 'static 'array int32 4 #x0 #x0 #x0 #x80))
+    :color-shadow (new 'static 'vector4w :w #x80)
     :color-table (new 'static 'inline-array char-color 40
       (new 'static 'char-color :color (new 'static 'array rgba 4
                                         (new 'static 'rgba :r #x70 :g #x78 :b #x70 :a #x80)
@@ -673,61 +707,24 @@
   (set! (-> arg0 0) (new 'static 'gs-tex0
                       :tcc #x1
                       :cld #x1
-                      :cbp (the-as uint arg4)
+                      :cbp arg4
                       :th (+ (log2 (+ (-> arg1 h) -1)) 1)
                       :tw (log2 (-> arg1 w))
                       :tbw (-> arg1 width 0)
                       :tbp0 (/ arg2 64)
-                      :psm (the-as uint arg3)
+                      :psm arg3
                       )
         )
   (none)
   )
 
-(defun set-font-color ((arg0 int) (arg1 int) (arg2 int) (arg3 int) (arg4 int))
-  "I have no idea what is happening here."
-  (let ((v1-6 (logior (logand (l.wu (+ (+ (* (* arg1 2) 4) (* arg0 16)) (the-as int *font-work*) 2160)) -256)
-                      (shr (shl arg2 56) 56)
-                      )
-              )
-        (a2-6 (+ (+ (* (* arg1 2) 4) (* arg0 16)) (the-as int *font-work*)))
-        )
-    (s.w! (+ a2-6 2160) v1-6)
-    )
-  (let ((v1-13 (logior (logand (l.wu (+ (+ (* (* arg1 2) 4) (* arg0 16)) (the-as int *font-work*) 2160)) -65281)
-                       (shr (shl arg3 56) 48)
-                       )
-               )
-        (a2-15 (+ (+ (* (* arg1 2) 4) (* arg0 16)) (the-as int *font-work*)))
-        )
-    (s.w! (+ a2-15 2160) v1-13)
-    )
-  (let ((v1-20 (logior (logand (l.wu (+ (+ (* (* arg1 2) 4) (* arg0 16)) (the-as int *font-work*) 2160)) -16711681)
-                       (shr (shl arg4 56) 40)
-                       )
-               )
-        (a2-24 (+ (+ (* (* arg1 2) 4) (* arg0 16)) (the-as int *font-work*)))
-        )
-    (s.w! (+ a2-24 2160) v1-20)
-    )
-  (let ((v1-28
-          (logior (logand (l.wu (+ (+ (* (+ (* arg1 2) 1) 4) (* arg0 16)) (the-as int *font-work*) 2160)) -65281)
-                  (shr (shl arg3 56) 48)
-                  )
-          )
-        (a2-34 (+ (+ (* (+ (* arg1 2) 1) 4) (* arg0 16)) (the-as int *font-work*)))
-        )
-    (s.w! (+ a2-34 2160) v1-28)
-    )
-  (let ((v1-36
-          (logior (logand (l.wu (+ (+ (* (+ (* arg1 2) 1) 4) (* arg0 16)) (the-as int *font-work*) 2160)) -16711681)
-                  (shr (shl arg4 56) 40)
-                  )
-          )
-        (a0-3 (+ (+ (* (+ (* arg1 2) 1) 4) (* arg0 16)) (the-as int *font-work*)))
-        )
-    (s.w! (+ a0-3 2160) v1-36)
-    )
+(defun set-font-color ((color font-color) (vert int) (rgba-red rgba) (rgba-green rgba) (rgba-blue rgba))
+  (set! (-> *font-work* color-table color color (* vert 2) r) (-> rgba-red r))
+  (set! (-> *font-work* color-table color color (* vert 2) g) (-> rgba-green r))
+  (set! (-> *font-work* color-table color color (* vert 2) b) (-> rgba-blue r))
+  ;; missing?
+  ;; (set! (-> *font-work* color-table color (1+ (* vert 2)) r) (-> rgba-green r))
+  (set! (-> *font-work* color-table color color (1+ (* vert 2)) g) (-> rgba-green r))
+  (set! (-> *font-work* color-table color color (1+ (* vert 2)) b) (-> rgba-blue r))
   0
-  (none)
   )

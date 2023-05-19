@@ -35,11 +35,11 @@
 (deftype fail-mission-params (structure)
   ((message        fail-mission-message  :offset-assert   0)
    (flags          fail-mission-flags    :offset-assert   1)
-   (retry-continue basic                 :offset-assert   4)
-   (fail-continue  basic                 :offset-assert   8)
+   (retry-continue string                :offset-assert   4)
+   (fail-continue  string                :offset-assert   8)
    (reset-delay    uint32                :offset-assert  12)
    (task           game-task             :offset-assert  16)
-   (fail-message   text-id          :offset-assert  20)
+   (fail-message   text-id               :offset-assert  20)
    )
   :method-count-assert 9
   :size-assert         #x18
@@ -122,7 +122,7 @@
                        )
                      )
         )
-    (borrow-eval (-> *game-info* sub-task-list 1 borrow))
+    (borrow-eval (-> *game-info* sub-task-list (game-task-node fortress-escape-start) borrow))
     (let ((game-nodes (-> *game-info* sub-task-list)))
       (dotimes (i (-> game-nodes length))
         (when (nonzero? i)
@@ -1279,7 +1279,7 @@
         ((= v1-1 (game-task-action say))
          "say"
          )
-        ((= v1-1 (game-task-action shade))
+        ((= v1-1 (game-task-action trade))
          "trade"
          )
         ((= v1-1 (game-task-action menu))
@@ -1376,15 +1376,15 @@
 (deftype fail-mission (process)
   ((message        fail-mission-message  :offset-assert 128)
    (flags          fail-mission-flags    :offset-assert 129)
-   (retry-continue basic                 :offset-assert 132)
-   (fail-continue  basic                 :offset-assert 136)
+   (retry-continue string                :offset-assert 132)
+   (fail-continue  string                :offset-assert 136)
    (reset-delay    uint32                :offset-assert 140)
    (grabbed-time   time-frame            :offset-assert 144)
    (retry          symbol                :offset-assert 152)
    (task           game-task             :offset-assert 156)
-   (message-id     uint32                :offset-assert 160)
-   (fail-message   uint32                :offset-assert 164)
-   (stinger        uint32                :offset-assert 168)
+   (message-id     sound-id              :offset-assert 160)
+   (fail-message   text-id               :offset-assert 164)
+   (stinger        sound-id              :offset-assert 168)
    )
   :heap-base #x30
   :method-count-assert 17
@@ -1404,7 +1404,7 @@
 
 (defmethod print-text fail-mission ((obj fail-mission))
   (when (and (not (logtest? (-> obj flags) (fail-mission-flags famflags-6)))
-             (= (get-status *gui-control* (the-as sound-id (-> obj message-id))) (gui-status active))
+             (= (get-status *gui-control* (-> obj message-id)) (gui-status active))
              )
     (let ((gp-0 (new
                   'stack
@@ -1447,14 +1447,14 @@
           (set! (-> v1-17 height) (the float 95))
           )
         (let ((s5-1 print-game-text))
-          (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-x18a) #f) 1)
+          (format (clear *temp-string*) (lookup-text! *common-text* (text-id try-again?) #f) 1)
           (s5-1 *temp-string* gp-0 #f 44 (bucket-id progress))
           )
         (let ((v1-19 gp-0))
           (set! (-> v1-19 height) (the float 155))
           )
         (let ((s5-2 print-game-text))
-          (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-x180) #f) 1)
+          (format (clear *temp-string*) (lookup-text! *common-text* (text-id yes-no-prompt) #f) 1)
           (s5-2 *temp-string* gp-0 #f 44 (bucket-id progress))
           )
         )
@@ -1538,11 +1538,11 @@
        )
       )
     (logior! (-> self flags) (fail-mission-flags famflags-1))
-    (set! (-> self grabbed-time) (-> self clock frame-counter))
+    (set! (-> self grabbed-time) (current-time))
     (when (not (logtest? (-> self flags) (fail-mission-flags famflags-3)))
       (when (not (logtest? (-> self flags) (fail-mission-flags famflags-5)))
-        (while (< (- (-> self clock frame-counter) (-> self grabbed-time)) (seconds 1.5))
-          (let ((f30-0 (lerp-scale 0.0 1.0 (the float (- (-> self clock frame-counter) (-> self grabbed-time))) 0.0 450.0)))
+        (while (< (- (current-time) (-> self grabbed-time)) (seconds 1.5))
+          (let ((f30-0 (lerp-scale 0.0 1.0 (the float (- (current-time) (-> self grabbed-time))) 0.0 450.0)))
             (set-filter-color!
               (lerp-scale 1.0 1.25 f30-0 0.0 1.0)
               (lerp-scale 1.0 0.875 f30-0 0.0 1.0)
@@ -1565,7 +1565,7 @@
       (((fail-mission-message fammsg-0))
        (until #f
          (when (or (and (logtest? (-> self flags) (fail-mission-flags famflags-0))
-                        (>= (- (-> self clock frame-counter) (-> self grabbed-time)) (the-as time-frame (-> self reset-delay)))
+                        (>= (- (current-time) (-> self grabbed-time)) (the-as time-frame (-> self reset-delay)))
                         )
                    (or (logtest? (pad-buttons confirm) (-> *cpad-list* cpads 0 button0-rel 0))
                        (logtest? (-> self flags) (fail-mission-flags famflags-3))
@@ -1657,21 +1657,21 @@
     (none)
     )
   :code (behavior ()
-    (local-vars (a1-10 basic))
-    (let ((gp-0 (-> self clock frame-counter)))
-      (until (>= (- (-> self clock frame-counter) gp-0) (seconds 1))
-        (let ((f30-0 (lerp-scale 1.0 0.0 (the float (- (-> self clock frame-counter) gp-0)) 0.0 270.0)))
+    (local-vars (a1-10 string))
+    (let ((gp-0 (current-time)))
+      (until (>= (- (current-time) gp-0) (seconds 1))
+        (let ((f30-0 (lerp-scale 1.0 0.0 (the float (- (current-time) gp-0)) 0.0 270.0)))
           (when *sound-player-enable*
             (let ((v1-6 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
               (set! (-> v1-6 command) (sound-command set-param))
-              (set! (-> v1-6 id) (the-as sound-id (-> self stinger)))
+              (set! (-> v1-6 id) (-> self stinger))
               (set! (-> v1-6 params volume) (the int (* 1024.0 f30-0)))
               (set! (-> v1-6 params mask) (the-as uint 1))
               (-> v1-6 id)
               )
             )
           )
-        (let ((f30-1 (lerp-scale 1.0 0.0 (the float (- (-> self clock frame-counter) gp-0)) 0.0 300.0)))
+        (let ((f30-1 (lerp-scale 1.0 0.0 (the float (- (current-time) gp-0)) 0.0 300.0)))
           (set-filter-color!
             (lerp-scale 1.0 1.25 f30-1 0.0 1.0)
             (lerp-scale 1.0 0.875 f30-1 0.0 1.0)
@@ -1731,9 +1731,9 @@
   (set! (-> self fail-continue) (-> arg0 fail-continue))
   (set! (-> self reset-delay) (-> arg0 reset-delay))
   (set! (-> self task) (-> arg0 task))
-  (set! (-> self fail-message) (the-as uint (-> arg0 fail-message)))
-  (set-setting! 'allow-continue #f 0 0)
-  (set-setting! 'minimap 'clear 0 128)
+  (set! (-> self fail-message) (-> arg0 fail-message))
+  (set-setting! 'allow-continue #f 0.0 0)
+  (set-setting! 'minimap 'clear 0.0 (minimap-flag minimap))
   (set-action!
     *gui-control*
     (gui-action stop)
@@ -1757,13 +1757,13 @@
   (when (not (logtest? (-> arg0 flags) (fail-mission-flags famflags-4)))
     (if (not (and *target* (focus-test? *target* dead) (zero? (-> self message))))
         (set! (-> self stinger)
-              (the-as uint (add-process *gui-control* *target* (gui-channel background) (gui-action play) "lose1" -99.0 0))
+              (add-process *gui-control* *target* (gui-channel background) (gui-action play) "lose1" -99.0 0)
               )
         )
     )
-  (set-setting! 'music-volume 'abs 0 0)
-  (set-setting! 'sfx-volume 'abs 0 0)
-  (set-setting! 'speech-control #f 0 0)
+  (set-setting! 'music-volume 'abs 0.0 0)
+  (set-setting! 'sfx-volume 'abs 0.0 0)
+  (set-setting! 'speech-control #f 0.0 0)
   (set! (-> self clock) (-> *display* base-clock))
   (apply-settings *setting-control*)
   (if (or (not (logtest? (-> self flags) (fail-mission-flags famflags-2)))
@@ -1771,7 +1771,7 @@
           (= (-> self message) (fail-mission-message fammsg-1))
           )
       (set! (-> self message-id)
-            (the-as uint (add-process *gui-control* self (gui-channel supertitle) (gui-action play) "fail" 81920.0 0))
+            (add-process *gui-control* self (gui-channel supertitle) (gui-action play) "fail" 81920.0 0)
             )
       )
   (go-virtual idle)
@@ -1820,13 +1820,13 @@
   )
 
 (defbehavior task-manager-init-by-other task-manager ((arg0 game-task-node-info) (arg1 symbol))
-  (stack-size-set! (-> self main-thread) 4096) ;; increased from 1024
+  (stack-size-set! (-> self main-thread) 2048) ;; increased from 1024
   (add-connection *task-manager-engine* self nothing self arg0 #f)
   (set! (-> self node-info) arg0)
   (set! (-> self lev-name) arg1)
-  (add-setting! 'task arg0 0 0)
-  (add-setting! 'task-manager (process->ppointer self) 0 0)
-  (set! (-> self intro-time) (-> self clock frame-counter))
+  (add-setting! 'task arg0 0.0 0)
+  (add-setting! 'task-manager (process->ppointer self) 0.0 0)
+  (set! (-> self intro-time) (current-time))
   (set! (-> self fail-on-death?) (not (logtest? (-> arg0 flags) (game-task-node-flag no-fail-on-death))))
   (when arg1
     (let* ((v1-15 (level-get *level* arg1))
@@ -1852,29 +1852,27 @@
   )
 
 (defmethod check-time task-manager ((obj task-manager))
-  (with-pp
-    (when (nonzero? (-> obj start-time))
-      (let ((v1-3 (handle->process (-> obj hud-timer))))
-        (if (and *target* (not v1-3))
-            (set! (-> obj hud-timer) (ppointer->handle (process-spawn hud-timer :init hud-init-by-other :to *target*)))
-            )
+  (when (nonzero? (-> obj start-time))
+    (let ((v1-3 (handle->process (-> obj hud-timer))))
+      (if (and *target* (not v1-3))
+          (set! (-> obj hud-timer) (ppointer->handle (process-spawn hud-timer :init hud-init-by-other :to *target*)))
+          )
+      )
+    (let ((v1-15 (- (-> obj time-limit) (- (current-time) (-> obj start-time)))))
+      (let ((a0-15 *game-info*))
+        (set! (-> a0-15 timer) v1-15)
+        (set! (-> a0-15 timer-flash) (< v1-15 (seconds 10)))
         )
-      (let ((v1-15 (- (-> obj time-limit) (- (-> pp clock frame-counter) (-> obj start-time)))))
-        (let ((a0-15 *game-info*))
-          (set! (-> a0-15 timer) v1-15)
-          (set! (-> a0-15 timer-flash) (< v1-15 (seconds 10)))
-          )
-        (when (< v1-15 0)
-          (if *debug-segment*
-              (format #t "task failed:  ran out of time~%")
-              )
-          (send-event (handle->process (-> obj hud-timer)) 'hide-and-die)
-          (go (method-of-object obj fail))
-          )
+      (when (< v1-15 0)
+        (if *debug-segment*
+            (format #t "task failed:  ran out of time~%")
+            )
+        (send-event (handle->process (-> obj hud-timer)) 'hide-and-die)
+        (go (method-of-object obj fail))
         )
       )
-    0
     )
+  0
   )
 
 (defmethod initialize! task-manager ((obj task-manager))
@@ -2033,28 +2031,26 @@
 
 ;; WARN: Return type mismatch object vs symbol.
 (defmethod task-manager-method-22 task-manager ((obj task-manager))
-  (with-pp
-    (the-as
-      symbol
-      (and (or (not (logtest? (-> obj node-info flags) (game-task-node-flag city-wait)))
-               (let ((a0-2 (level-get-target-inside *level*)))
-                 (cond
-                   ((not (and a0-2 (logtest? (-> a0-2 info level-flags) 1)))
-                    (set! (-> obj intro-time) (-> pp clock frame-counter))
-                    #f
-                    )
-                   (else
-                     #t
-                     )
+  (the-as
+    symbol
+    (and (or (not (logtest? (-> obj node-info flags) (game-task-node-flag city-wait)))
+             (let ((a0-2 (level-get-target-inside *level*)))
+               (cond
+                 ((not (and a0-2 (logtest? (-> a0-2 info level-flags) 1)))
+                  (set! (-> obj intro-time) (current-time))
+                  #f
+                  )
+                 (else
+                   #t
                    )
                  )
                )
-           (or (zero? (-> obj info intro-delay))
-               (>= (- (-> pp clock frame-counter) (-> obj intro-time)) (the-as time-frame (-> obj info intro-delay)))
-               )
-           (and *target* (not (logtest? (focus-status dead teleporting) (-> *target* focus-status))))
-           )
-      )
+             )
+         (or (zero? (-> obj info intro-delay))
+             (>= (- (current-time) (-> obj intro-time)) (the-as time-frame (-> obj info intro-delay)))
+             )
+         (and *target* (not (logtest? (focus-status dead teleporting) (-> *target* focus-status))))
+         )
     )
   )
 
@@ -2118,6 +2114,8 @@
           (t9-0)
           )
       )
+    (#when PC_PORT
+      (set! (-> self post-hook) #f))
     (until #f
       (if *debug-segment*
           (format *stdcon* "task-manager: alive task ~A~%" (game-task->string (-> self node-info task)))
@@ -2126,6 +2124,12 @@
       )
     #f
     (none)
+    )
+  ;; PC port note : added this so we can see it during the code-hook
+  :post (behavior ()
+    (if *debug-segment*
+        (format *stdcon* "task-manager: alive in code-hook task ~A~%" (game-task->string (-> self node-info task)))
+        )
     )
   )
 
@@ -2145,7 +2149,7 @@
           (t9-3)
           )
       )
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (when (logtest? (-> self info mask) (task-manager-mask resolution-scene))
       (let ((gp-2 (ppointer->handle (process-spawn
                                       scene-player

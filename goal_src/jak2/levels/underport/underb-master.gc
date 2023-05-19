@@ -205,7 +205,7 @@
              ((-> *setting-control* user-current pilot-exit)
               (let ((a1-2 *target*))
                 (when (and a1-2 (focus-test? a1-2 mech))
-                  (set-setting! 'pilot-exit #f 0 0)
+                  (set-setting! 'pilot-exit #f 0.0 0)
                   (apply-settings *setting-control*)
                   #t
                   )
@@ -379,7 +379,7 @@
       )
     (if (or (not gp-0) (not (logtest? (-> gp-0 water flags) (water-flags under-water))))
         (set! (-> self air-charge-up?) #t)
-        (set! (-> self underwater-time) (-> self clock frame-counter))
+        (set! (-> self underwater-time) (current-time))
         )
     )
   (cond
@@ -419,8 +419,8 @@
         (else
           (when (>= 0.4 (-> self air-supply))
             (let ((v1-39 (the int (lerp-scale 90.0 300.0 (-> self air-supply) 0.0 0.4))))
-              (when (>= (- (-> self clock frame-counter) (-> self last-air-beep-time)) v1-39)
-                (set! (-> self last-air-beep-time) (-> self clock frame-counter))
+              (when (>= (- (current-time) (-> self last-air-beep-time)) v1-39)
+                (set! (-> self last-air-beep-time) (current-time))
                 (sound-play "oxygen-warning")
                 )
               )
@@ -431,9 +431,7 @@
     )
   (set! (-> *game-info* air-supply) (fmin 1.0 (-> self air-supply)))
   (if (or (and *target* (not (logtest? (focus-status mech) (-> *target* focus-status))))
-          (and (>= (-> self air-supply) 1.0)
-               (>= (- (-> self clock frame-counter) (-> self underwater-time)) (seconds 3))
-               )
+          (and (>= (-> self air-supply) 1.0) (>= (- (current-time) (-> self underwater-time)) (seconds 3)))
           )
       (spawn-air-tank-hud self #f)
       (spawn-air-tank-hud self #t)
@@ -482,7 +480,7 @@
   :virtual #t
   :event underb-master-event-handler
   :enter (behavior ()
-    (set-setting! 'entity-name "camera-239" 0 0)
+    (set-setting! 'entity-name "camera-239" 0.0 0)
     (send-event (ppointer->process *underb-master*) 'request 'under-warp #f)
     (none)
     )
@@ -527,7 +525,7 @@
   :virtual #t
   :event underb-master-event-handler
   :enter (behavior ()
-    (set-setting! 'mode-name 'cam-endlessfall 0 0)
+    (set-setting! 'mode-name 'cam-endlessfall 0.0 0)
     (none)
     )
   :exit (behavior ()
@@ -563,8 +561,8 @@
   :event underb-master-event-handler
   :enter (behavior ()
     (persist-with-delay *setting-control* 'interp-time (seconds 0.05) 'interp-time 'abs 0.0 0)
-    (set-setting! 'entity-name "camera-244" 0 0)
-    (set! (-> self big-room-timer) (-> self clock frame-counter))
+    (set-setting! 'entity-name "camera-244" 0.0 0)
+    (set! (-> self big-room-timer) (current-time))
     (send-event (ppointer->process *underb-master*) 'request 'under-warp #t)
     (none)
     )
@@ -574,7 +572,7 @@
     (none)
     )
   :trans (behavior ()
-    (if (>= (- (-> self clock frame-counter) (-> self big-room-timer)) (seconds 1))
+    (if (>= (- (current-time) (-> self big-room-timer)) (seconds 1))
         (go-virtual idle)
         )
     (none)
@@ -686,7 +684,7 @@
             )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :trans (behavior ()
@@ -709,7 +707,7 @@
                     )
                 )
               )
-         (when (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.1))
+         (when (>= (- (current-time) (-> self state-time)) (seconds 0.1))
            (let ((a0-13 (-> v1-0 0 data 0 actor)))
              (if a0-13
                  (-> a0-13 extra process)
@@ -766,7 +764,7 @@
            )
          )
         (else
-          (set! (-> self state-time) (-> self clock frame-counter))
+          (set! (-> self state-time) (current-time))
           )
         )
       )
@@ -854,8 +852,8 @@
              0
              )
            )
-         (when (>= (- (-> self clock frame-counter) (-> self last-reminder-time)) (seconds 9))
-           (set! (-> self last-reminder-time) (-> self clock frame-counter))
+         (when (>= (- (current-time) (-> self last-reminder-time)) (seconds 9))
+           (set! (-> self last-reminder-time) (current-time))
            (add-process
              *gui-control*
              self
@@ -897,12 +895,12 @@
     (when (and (zero? (-> self state-time))
                (= (get-status *gui-control* (the-as sound-id (-> self spooled-sound-id))) (gui-status ready))
                )
-      (set! (-> self state-time) (-> self clock frame-counter))
-      (set! (-> self last-reminder-time) (-> self clock frame-counter))
+      (set! (-> self state-time) (current-time))
+      (set! (-> self last-reminder-time) (current-time))
       )
     (when (nonzero? (-> self state-time))
       (when (and (>= (-> self spooled-sound-delay) 0)
-                 (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self spooled-sound-delay))
+                 (>= (- (current-time) (-> self state-time)) (-> self spooled-sound-delay))
                  )
         (set-action!
           *gui-control*
@@ -930,7 +928,7 @@
                 )
               )
             )
-          (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 2))
+          (if (>= (- (current-time) (-> self state-time)) (seconds 2))
               (spawn (-> self part) (-> self root trans))
               )
           )
@@ -961,7 +959,7 @@
     (label cfg-11)
     (let ((a3-1 (res-lump-struct (-> self entity) 'camera-name structure)))
       (if a3-1
-          (set-setting! 'entity-name a3-1 0 0)
+          (set-setting! 'entity-name a3-1 0.0 0)
           )
       )
     (until #f
@@ -1003,8 +1001,8 @@
     (when (and (zero? (-> self state-time))
                (= (get-status *gui-control* (the-as sound-id (-> self spooled-sound-id))) (gui-status ready))
                )
-      (set! (-> self state-time) (-> self clock frame-counter))
-      (set! (-> self last-reminder-time) (-> self clock frame-counter))
+      (set! (-> self state-time) (current-time))
+      (set! (-> self last-reminder-time) (current-time))
       (set-action!
         *gui-control*
         (gui-action play)
@@ -1031,7 +1029,7 @@
                 )
               )
             )
-          (if (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 1))
+          (if (< (- (current-time) (-> self state-time)) (seconds 1))
               (spawn (-> self draining-part) (-> self root trans))
               )
           )
@@ -1045,7 +1043,7 @@
       )
     (let ((a3-1 (res-lump-struct (-> self entity) 'camera-name structure)))
       (if a3-1
-          (set-setting! 'entity-name a3-1 0 0)
+          (set-setting! 'entity-name a3-1 0.0 0)
           )
       )
     (send-event (ppointer->process *underb-master*) 'request 'under-warp #f)
