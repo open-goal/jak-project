@@ -64,7 +64,7 @@ struct VagCmd {
       u8 byte8;
       u8 byte9;
       u8 byte10;
-      u8 byte11;  // is stereo secodnary
+      u8 byte11;  // is stereo secondary
       u8 byte12;
       u8 byte13;
       u8 byte14;
