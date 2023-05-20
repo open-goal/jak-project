@@ -5,6 +5,7 @@
 #include <sstream>
 
 #include "common/log/log.h"
+#include "common/util/string_util.h"
 
 #include "lsp/protocol/common_types.h"
 
@@ -54,6 +55,31 @@ void Workspace::set_initialized(bool new_value) {
   m_initialized = new_value;
 }
 
+Workspace::FileType Workspace::determine_filetype_from_languageid(const std::string& language_id) {
+  if (language_id == "opengoal") {
+    return FileType::OpenGOAL;
+  } else if (language_id == "opengoal-ir") {
+    return FileType::OpenGOALIR;
+  }
+  return FileType::Unsupported;
+}
+
+Workspace::FileType Workspace::determine_filetype_from_uri(const LSPSpec::DocumentUri& file_uri) {
+  if (str_util::ends_with(file_uri, ".gc")) {
+    return FileType::OpenGOAL;
+  } else if (str_util::ends_with(file_uri, "ir2.asm")) {
+    return FileType::OpenGOALIR;
+  }
+  return FileType::Unsupported;
+}
+
+std::optional<WorkspaceOGFile> Workspace::get_tracked_og_file(const LSPSpec::URI& file_uri) {
+  if (m_tracked_og_files.find(file_uri) == m_tracked_og_files.end()) {
+    return {};
+  }
+  return m_tracked_og_files[file_uri];
+}
+
 std::optional<WorkspaceIRFile> Workspace::get_tracked_ir_file(const LSPSpec::URI& file_uri) {
   if (m_tracked_ir_files.count(file_uri) == 0) {
     return {};
@@ -72,6 +98,29 @@ std::optional<DefinitionMetadata> Workspace::get_definition_info_from_all_types(
     return {};
   }
   return dts.symbol_metadata_map.at(symbol_name);
+}
+
+std::optional<SymbolInfo> Workspace::get_global_symbol_info(const std::string& symbol_name) {
+  // TODO -- assumptions happening here
+  auto game_version = GameVersion::Jak2;
+  const auto& compiler = m_compiler_instances[game_version].get();
+  const auto symbol_infos = compiler->lookup_exact_name_info(symbol_name);
+  if (!symbol_infos || symbol_infos->size() > 1 || symbol_infos->empty()) {
+    return {};
+  }
+  const auto& symbol = symbol_infos->at(0);
+  return symbol;
+}
+
+std::optional<TypeSpec> Workspace::get_symbol_typespec(const std::string& symbol_name) {
+  // TODO -- assumptions happening here
+  auto game_version = GameVersion::Jak2;
+  const auto& compiler = m_compiler_instances[game_version].get();
+  const auto typespec = compiler->lookup_typespec(symbol_name);
+  if (typespec) {
+    return typespec;
+  }
+  return {};
 }
 
 void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
@@ -97,7 +146,8 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
       lg::debug(
           "first time encountering a OpenGOAL file for game version - {}, initializing a compiler",
           version_to_game_name(game_version));
-      if (!file_util::setup_project_path(std::nullopt)) {
+      // TODO - hardcoded for now
+      if (!file_util::setup_project_path("C:\\Users\\xtvas\\Repos\\opengoal\\jak-project")) {
         lg::debug("unable to setup project path, not initializing a compiler");
         return;
       }
@@ -105,8 +155,9 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
       // TODO - if this fails, annotate some errors?
       m_compiler_instances.at(game_version)->run_front_end_on_string("(make-group \"all-code\")");
     }
-    // TODO - otherwise, just `ml` the file instead of rebuilding the entire thing
-    // TODO - if the file fails to `ml`, annotate some errors
+    //  TODO - otherwise, just `ml` the file instead of rebuilding the entire thing
+    //  TODO - if the file fails to `ml`, annotate some errors
+    m_tracked_og_files[file_uri] = WorkspaceOGFile(content);
   }
 }
 
@@ -148,6 +199,34 @@ void Workspace::stop_tracking_file(const LSPSpec::DocumentUri& file_uri) {
   }
 }
 
+WorkspaceOGFile::WorkspaceOGFile(const std::string& content) {
+  m_lines = str_util::split(content);
+  lg::info("Added new OG file. {} lines with {} symbols and {} diagnostics", m_lines.size(),
+           m_symbols.size(), m_diagnostics.size());
+}
+
+std::optional<std::string> WorkspaceOGFile::get_symbol_at_position(
+    const LSPSpec::Position position) const {
+  // Split the line on typical word boundaries
+  std::string line = m_lines.at(position.m_line);
+  lg::debug("og symbol @ pos - {}:{}", line, position.m_line);
+  std::smatch matches;
+  std::regex regex("[\\w\\.\\-_!<>*]+");
+  std::regex_token_iterator<std::string::iterator> rend;
+
+  std::regex_token_iterator<std::string::iterator> match(line.begin(), line.end(), regex);
+  while (match != rend) {
+    auto match_start = std::distance(line.begin(), match->first);
+    auto match_end = match_start + match->length();
+    if (position.m_character >= match_start && position.m_character <= match_end) {
+      return match->str();
+    }
+    match++;
+  }
+
+  return {};
+}
+
 WorkspaceIRFile::WorkspaceIRFile(const std::string& content) {
   // Get all lines of file
   std::string::size_type pos = 0;
@@ -168,7 +247,7 @@ WorkspaceIRFile::WorkspaceIRFile(const std::string& content) {
   find_function_symbol(m_lines.size() - 1, line);
   identify_diagnostics(m_lines.size() - 1, line);
 
-  lg::info("Added new file. {} lines with {} symbols and {} diagnostics", m_lines.size(),
+  lg::info("Added new IR file. {} lines with {} symbols and {} diagnostics", m_lines.size(),
            m_symbols.size(), m_diagnostics.size());
 }
 
@@ -290,7 +369,7 @@ void WorkspaceIRFile::identify_diagnostics(const uint32_t line_num_zero_based,
 }
 
 std::optional<std::string> WorkspaceIRFile::get_mips_instruction_at_position(
-    const LSPSpec::Position position) {
+    const LSPSpec::Position position) const {
   // Split the line on typical word boundaries
   std::string line = m_lines.at(position.m_line);
   std::smatch matches;
@@ -309,7 +388,7 @@ std::optional<std::string> WorkspaceIRFile::get_mips_instruction_at_position(
 }
 
 std::optional<std::string> WorkspaceIRFile::get_symbol_at_position(
-    const LSPSpec::Position position) {
+    const LSPSpec::Position position) const {
   // Split the line on typical word boundaries
   std::string line = m_lines.at(position.m_line);
   std::smatch matches;

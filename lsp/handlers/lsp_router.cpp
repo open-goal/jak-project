@@ -27,6 +27,11 @@ LSPRoute::LSPRoute(std::function<std::optional<json>(Workspace&, int, json)> req
     : m_route_type(LSPRouteType::REQUEST_RESPONSE), m_request_handler(request_handler) {}
 
 void LSPRouter::init_routes() {
+  m_routes["shutdown"] =
+      LSPRoute([](Workspace& workspace, int id, nlohmann::json params) -> std::optional<json> {
+        lg::info("Shutting down LSP due to explicit request");
+        exit(0);
+      });
   m_routes["initialize"] = LSPRoute(initialize_handler);
   m_routes["initialize"].m_generic_post_action = [](Workspace& workspace) {
     workspace.set_initialized(true);
@@ -39,6 +44,10 @@ void LSPRouter::init_routes() {
   m_routes["textDocument/hover"] = LSPRoute(hover_handler);
   m_routes["textDocument/definition"] = LSPRoute(go_to_definition_handler);
   m_routes["textDocument/completion"] = LSPRoute(get_completions_handler);
+  // Not Yet Supported Routes, noops
+  m_routes["$/cancelRequest"] = LSPRoute();
+  m_routes["textDocument/documentLink"] = LSPRoute();
+  m_routes["textDocument/codeLens"] = LSPRoute();
 }
 
 json error_resp(ErrorCodes error_code, const std::string& error_message) {
