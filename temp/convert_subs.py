@@ -75,6 +75,8 @@ with open("english_base.gd", "r", encoding="utf-8") as f:
     for line in lines:
         if line.startswith("(\""):
             name = line.split("(\"")[1].split("\"")[0]
+            if name == "MSH-AM08":
+                continue # this has no dialogue
             if "hint" in line:
                 cutscenes_and_hints.append({
                     "name": name,
@@ -108,6 +110,7 @@ with open("swedish_subs_remove_newlines.txt", "r", encoding="utf-8") as f:
             continue
         curr_group.append(line)
         i = i + 1
+    line_groups.append(curr_group)
 
 print(len(line_groups))
 
@@ -122,5 +125,5 @@ for idx, group in enumerate(line_groups):
     else:
         expected_line_count = len(reference_file["cutscenes"][name])
     if len(group) != expected_line_count:
-        print("ERROR: Expected {} lines for {} -- {}\n\n".format(expected_line_count, name, group))
+        print("ERROR: Expected {} lines for {}, got {} -- {}\n\n".format(expected_line_count, name, len(group), group))
         exit(1)
