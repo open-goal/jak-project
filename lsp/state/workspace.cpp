@@ -33,6 +33,7 @@ std::string url_encode(const std::string& value) {
 }
 
 LSPSpec::DocumentUri uri_from_path(fs::path path) {
+  // TODO - we have a util function for this now
   std::string path_str = path.string();
   // Replace slash type on windows
 #ifdef _WIN32
@@ -121,6 +122,23 @@ std::optional<TypeSpec> Workspace::get_symbol_typespec(const std::string& symbol
     return typespec;
   }
   return {};
+}
+
+std::optional<Docs::DefinitionLocation> Workspace::get_symbol_def_location(
+    const SymbolInfo& symbol_info) {
+  // TODO - assumptions!
+  auto game_version = GameVersion::Jak2;
+  const auto& compiler = m_compiler_instances[game_version].get();
+  std::optional<Docs::DefinitionLocation> def_loc;
+  const auto& goos_info = compiler->get_goos().reader.db.get_short_info_for(symbol_info.src_form());
+  if (goos_info) {
+    Docs::DefinitionLocation new_def_loc;
+    new_def_loc.filename = uri_from_path(goos_info->filename);
+    new_def_loc.line_idx = goos_info->line_idx_to_display;
+    new_def_loc.char_idx = goos_info->pos_in_line;
+    def_loc = new_def_loc;
+  }
+  return def_loc;
 }
 
 void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,

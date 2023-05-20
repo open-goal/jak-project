@@ -11,6 +11,7 @@
 #include "lsp/protocol/document_diagnostics.h"
 #include "lsp/protocol/document_symbols.h"
 #include <goalc/compiler/Compiler.h>
+#include "goalc/compiler/docs/DocTypes.h"
 
 class WorkspaceOGFile {
  public:
@@ -97,6 +98,7 @@ class Workspace {
       const LSPSpec::DocumentUri& all_types_uri);
   std::optional<SymbolInfo> get_global_symbol_info(const std::string& symbol_name);
    std::optional<TypeSpec> get_symbol_typespec(const std::string& symbol_name);
+   std::optional<Docs::DefinitionLocation> get_symbol_def_location(const SymbolInfo& symbol_info);
 
  private:
   bool m_initialized = false;
