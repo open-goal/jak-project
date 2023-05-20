@@ -111,7 +111,7 @@ struct CompletionItem {
   // TODO - a lot of other fields...
 };
 
-struct CompletionParams {
+struct CompletionList {
   /// This list is not complete. Further typing should result in recomputing this list.
   ///
   /// Recomputed lists have all their items replaced (not appended) in the incomplete completion
@@ -121,7 +121,7 @@ struct CompletionParams {
   std::vector<CompletionItem> m_items;
 };
 
-void to_json(json& j, const CompletionParams& obj);
-void from_json(const json& j, CompletionParams& obj);
+void to_json(json& j, const CompletionList& obj);
+void from_json(const json& j, CompletionList& obj);
 
 }  // namespace LSPSpec

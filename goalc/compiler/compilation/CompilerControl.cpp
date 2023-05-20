@@ -599,6 +599,13 @@ std::vector<SymbolInfo>* Compiler::lookup_exact_name_info(const std::string& nam
   }
 }
 
+std::optional<TypeSpec> Compiler::lookup_typespec(const std::string& symbol_name) const {
+  if (m_symbol_types.find(symbol_name) != m_symbol_types.end()) {
+    return m_symbol_types.at(symbol_name);
+  }
+  return {};
+}
+
 Val* Compiler::compile_load_project(const goos::Object& form, const goos::Object& rest, Env*) {
   auto args = get_va(form, rest);
   va_check(form, args, {goos::ObjectType::STRING}, {});

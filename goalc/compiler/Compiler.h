@@ -95,6 +95,9 @@ class Compiler {
                      std::vector<std::pair<std::string, replxx::Replxx::Color>> const& user_data);
   bool knows_object_file(const std::string& name);
   MakeSystem& make_system() { return m_make; }
+  std::set<std::string> lookup_symbol_infos_starting_with(const std::string& prefix) const;
+  std::vector<SymbolInfo>* lookup_exact_name_info(const std::string& name) const;
+  std::optional<TypeSpec> lookup_typespec(const std::string& symbol_name) const;
 
  private:
   GameVersion m_version;
@@ -126,8 +129,6 @@ class Compiler {
   } m_debug_stats;
 
   void setup_goos_forms();
-  std::set<std::string> lookup_symbol_infos_starting_with(const std::string& prefix) const;
-  std::vector<SymbolInfo>* lookup_exact_name_info(const std::string& name) const;
   bool get_true_or_false(const goos::Object& form, const goos::Object& boolean);
   bool try_getting_macro_from_goos(const goos::Object& macro_name, goos::Object* dest);
   bool expand_macro_once(const goos::Object& src, goos::Object* out, Env* env);

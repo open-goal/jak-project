@@ -35,7 +35,7 @@
 
 void setup_logging(bool verbose, std::string log_file) {
   if (!log_file.empty()) {
-    lg::set_file(log_file, false);
+    lg::set_file(log_file, false, true);
   }
   if (verbose) {
     lg::set_file_level(lg::level::debug);

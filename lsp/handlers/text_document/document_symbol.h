@@ -1,3 +1,5 @@
+#pragma once
+
 #include <optional>
 
 #include "lsp/protocol/common_types.h"
