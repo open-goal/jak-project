@@ -31,7 +31,9 @@
 
 (defconstant PC_SUBTITLE_FILE_SIZE (* 192 1024)) ;; 192K heap for subtitles. adjust later if necessary.
 (defconstant PC_SUBTITLE_FILE_NAME "subtit")
-(defconstant PC_SUBTITLE_QUEUE_SIZE 8) ;; up to 8 subtitles can be displayed at once
+(defconstant PC_SUBTITLE_QUEUE_SIZE 8) ;; up to 8 things that display subtitles can be detected at once
+(defconstant PC_SUBTITLE_QUEUE_MAX_LINES 2) ;; up to 2 lines can be queued per queueable thing
+(defconstant PC_SUBTITLE_MAX_LINES 16) ;; max subtitles that can be displayed at once: queue-size * queue-lines
 
 (defconstant PC_SUB_DBG_Y 32)
 (defconstant PC_SUB_DBG_CHECK_GROUP_SIZE 22)
@@ -171,17 +173,30 @@
                   :lines 2.0
                   ))
 
+
+(deftype subtitle2-queue-element (structure)
+  ((id    sound-id)
+   (gui   gui-connection)
+   (lines subtitle2-line 2)
+   )
+  
+  (:methods
+    (clear-line (_type_) int))
+  )
+
 ;; the subtitle2 process! it lives on the PC actor pool
 (deftype subtitle2 (process)
   (
    (font font-context) ;; the font to use for the subtitles.
    (bank-backup subtitle2-bank :inline) ;; debug backup.
 
-	 ;; store the gui id of channels with subtitles that we find
+	 ;; store the gui id of channels with subtitles that we find.
 	 ;; that way if subtitle B appears above A, it wont move back down
 	 ;; if A ends before B
-	 (queue-ids sound-id       PC_SUBTITLE_QUEUE_SIZE)
-   (queue-gui gui-connection PC_SUBTITLE_QUEUE_SIZE)
+	 (queue  subtitle2-queue-element  PC_SUBTITLE_QUEUE_SIZE :inline)
+   (lines-0  subtitle2-line  PC_SUBTITLE_MAX_LINES)
+   (lines-1  subtitle2-line  PC_SUBTITLE_MAX_LINES)
+   (line-queue-idx int8)
 
    ;; debug things
    (checking-lines?  symbol)
@@ -368,11 +383,20 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+(defmethod clear-line subtitle2-queue-element ((obj subtitle2-queue-element))
+  "make this queue element invalid"
+
+  (set! (-> obj gui) #f)
+  (set! (-> obj id) (new 'static 'sound-id))
+  (set! (-> obj lines 0) #f)
+  (set! (-> obj lines 1) #f)
+  0)
+
 (defmethod clear-queue subtitle2 ((obj subtitle2))
   "mark all slots in the gui queue as available"
 
   (dotimes (i PC_SUBTITLE_QUEUE_SIZE)
-    (false! (-> obj queue-gui i)))
+    (clear-line (-> obj queue i)))
   0)
 
 (defmethod update-gui-connections subtitle2 ((obj subtitle2))
@@ -380,18 +404,18 @@
 
   (dotimes (i PC_SUBTITLE_QUEUE_SIZE)
 
-    (let ((gui (lookup-gui-connection *gui-control* (the process #f) (gui-channel none) (the string #f) (-> obj queue-ids i))))
-      (if (or (zero? (-> obj queue-ids i))
+    (let ((gui (lookup-gui-connection *gui-control* (the process #f) (gui-channel none) (the string #f) (-> obj queue i id))))
+      (if (or (zero? (-> obj queue i id))
               (not gui)
               (!= (gui-action playing) (-> gui action)))
-          (false! (-> obj queue-gui i)))))
+          (clear-line (-> obj queue i)))))
   0)
 
 (defmethod gui-queued? subtitle2 ((obj subtitle2) (gui gui-connection))
   "return #t is the gui is in the queue"
 
   (dotimes (i PC_SUBTITLE_QUEUE_SIZE)
-    (if (= (-> gui id) (-> obj queue-ids i))
+    (if (= (-> gui id) (-> obj queue i id))
         (return #t)))
   #f)
 
@@ -399,7 +423,7 @@
   "return the first available gui queue slot"
 
   (dotimes (i PC_SUBTITLE_QUEUE_SIZE)
-    (if (not (-> obj queue-gui i))
+    (if (not (-> obj queue i gui))
         (return i)))
   (format #t "ran out of subtitle queue slots!")
   0
@@ -436,8 +460,8 @@
 
             (when (not (gui-queued? obj gui-conn))
                 (let ((slot (get-empty-queue obj)))
-                    (set! (-> obj queue-ids slot) (-> gui-conn id))
-                    (set! (-> obj queue-gui slot) gui-conn)
+                    (set! (-> obj queue slot id) (-> gui-conn id))
+                    (set! (-> obj queue slot gui) gui-conn)
                     )
                 )
             )
@@ -495,39 +519,62 @@
 
   (if (not *subtitle2-text*)
       (return 0))
+  
+  ;; check the gui queue for lines to add to the line queue
+  (let* ((new-line-queue-idx (mod (1+ (-> self line-queue-idx)) 2))
+         (line-queue-old (if (zero? (-> self line-queue-idx)) (-> self lines-0) (-> self lines-1)))
+         (line-queue (if (zero? new-line-queue-idx) (-> self lines-0) (-> self lines-1)))
+         (find-line (lambda ((queue (pointer subtitle2-line)) (line subtitle2-line))
+                        (dotimes (i PC_SUBTITLE_MAX_LINES)
+                          (if (= line (-> queue i))
+                              (return i)))
+                        -1)))
+  (set! (-> self line-queue-idx) new-line-queue-idx)
+  ;; clear the queue we're writing to first
+  (dotimes (i PC_SUBTITLE_MAX_LINES)
+    (set! (-> line-queue i) #f))
+
+  ;; do two passes - on the first one we add lines that were already being used,
+  ;; on the second pass we add new lines
+  (dotimes (q 2)
+  (dotimes (i PC_SUBTITLE_QUEUE_SIZE)
+    (when (-> self queue i gui)
+      (let ((pos (current-subtitle2-pos (-> self queue i id))))
+        (when *debug-segment*
+            (format *stdcon* "subtitle pos: ~3L~D~0L~%" pos))
+
+        (dotimes (ii PC_SUBTITLE_QUEUE_MAX_LINES)
+          (let ((scene (get-scene-by-name *subtitle2-text* (-> self queue i gui name))))
+          (when scene
+            (awhen (get-line-at-pos scene pos ii)
+              (let ((index-in-old (find-line line-queue-old it))
+                    (index-empty (find-line line-queue (the subtitle2-line #f))))
+                (cond
+                  ((and (= q 0) (!= -1 index-in-old))
+                    (set! (-> line-queue index-in-old) it))
+                  ((= q 1)
+                    (set! (-> line-queue index-empty) it))
+                  )
+                )
+              )
+            ))
+          )
+        )
+      )
+    ))
 
   (let ((cur-y (-> self font origin y)) ;; the current y for the text
         (last-height 0.0) ;; the height of the previous subtitle
-        (last-queue -1) ;; the index of the last queue slot we processed
-        (line-index 0)
+        (lines-done 0)
         )
 
-  (dotimes (i PC_SUBTITLE_QUEUE_SIZE)
-    (when (-> self queue-gui i)
-      (when (!= i last-queue)
-          (set! last-queue i)
-          (set! line-index 0))
+  (dotimes (i PC_SUBTITLE_QUEUE_MAX_LINES)
+    (when (-> line-queue i)
 
-      ;; get the adjusted position for the subtitle scene
-      (let ((pos (current-subtitle2-pos (-> self queue-ids i)))
-            (scene (get-scene-by-name *subtitle2-text* (-> self queue-gui i name))))
-        (when *debug-segment*
-            (format *stdcon* "subtitle pos: ~3L~D~0L~%" pos))
-        (when scene
-          (awhen (get-line-at-pos scene pos line-index)
-
-            (1+! line-index)
-            (when (get-line-at-pos scene pos line-index)
-                ;; there are more lines at this position... we'll try this slot again later
-                (1-! i))
-
-            (subtitle-format self it)
-            )
-          )
-        )
+      (subtitle-format self (-> line-queue i))
 
       ;; push subtitle up since we are not the first one
-      (when (nonzero? i)
+      (when (nonzero? lines-done)
         ;(-! cur-y (/ last-height 2))
         (-! cur-y (print-game-text *temp-string* (-> self font) #t 44 (bucket-id subtitle)))
         )
@@ -538,16 +585,17 @@
 
       ;; save this for later usage
       (set! last-height (print-game-text *temp-string* (-> self font) #t 44 (bucket-id subtitle)))
+      (1+! lines-done)
       )
-    ))
+    )))
   0)
 
 (defmethod debug-print-queue subtitle2 ((self subtitle2))
   "print the queue to *stdcon*"
   
   (dotimes (i PC_SUBTITLE_QUEUE_SIZE)
-    (if (-> self queue-gui i)
-        (format *stdcon* "~D: ~D ~`gui-connection`P~%" i (-> self queue-ids i) (-> self queue-gui i))))
+    (if (-> self queue i gui)
+        (format *stdcon* "~D: ~D ~`gui-connection`P~%" i (-> self queue i id) (-> self queue i gui))))
 
   0)
 
@@ -620,6 +668,11 @@
                             0 0 0.0 (font-color default) (font-flags shadow kerning left middle large)))
   (set! (-> self checking-lines?) #f)
   (clear-queue self)
+  (dotimes (i PC_SUBTITLE_MAX_LINES)
+    (set! (-> self lines-0 i) #f)
+    (set! (-> self lines-1 i) #f)
+    )
+
   (go subtitle2-process)
   )
 
