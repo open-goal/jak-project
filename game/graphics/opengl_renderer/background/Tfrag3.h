@@ -13,6 +13,7 @@ class Tfrag3 {
   Tfrag3();
   ~Tfrag3();
 
+  void init_shaders(ShaderLibrary& shaders);
   void render_all_trees(int geom,
                         const TfragRenderSettings& settings,
                         SharedRenderState* render_state,
@@ -78,7 +79,14 @@ class Tfrag3 {
     bool allowed = true;
     bool forced = false;
     bool cull_debug = false;
+
+    bool freeze_itimes = false;
+    math::Vector<s32, 4> itimes_debug[4];
   };
+
+  struct {
+    GLuint decal;
+  } m_uniforms;
 
   struct Cache {
     std::vector<u8> vis_temp;

@@ -13,10 +13,7 @@ class Generic2 : public BucketRenderer {
   ~Generic2();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
 
-  enum class Mode {
-    NORMAL,
-    LIGHTNING,
-  };
+  enum class Mode { NORMAL, LIGHTNING };
 
   void render_in_mode(DmaFollower& dma,
                       SharedRenderState* render_state,
@@ -45,8 +42,9 @@ class Generic2 : public BucketRenderer {
   void draws_to_buckets();
   void reset_buffers();
   void process_matrices();
-  void process_dma(DmaFollower& dma, u32 next_bucket);
+  void process_dma_jak1(DmaFollower& dma, u32 next_bucket);
   void process_dma_lightning(DmaFollower& dma, u32 next_bucket);
+  void process_dma_jak2(DmaFollower& dma, u32 next_bucket);
   void setup_draws(bool enable_at);
   void do_draws(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void do_draws_for_alpha(SharedRenderState* render_state,
@@ -211,5 +209,6 @@ class Generic2 : public BucketRenderer {
     GLuint alpha_reject, color_mult, fog_color, scale, mat_23, mat_32, mat_33, fog_consts,
         hvdf_offset;
     GLuint gfx_hack_no_tex;
+    GLuint warp_sample_mode;
   } m_ogl;
 };

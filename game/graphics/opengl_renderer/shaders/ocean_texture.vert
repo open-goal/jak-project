@@ -8,8 +8,8 @@ out vec4 fragment_color;
 out vec2 tex_coord;
 
 void main() {
-    // inputs are 0 - 2048.
-    gl_Position = vec4((position_in.x - 1024) / 1024, (position_in.y - 1024) / 1024, 0.5, 1.0);
-    fragment_color = vec4(rgba_in.rgb * 2, 1);
-    tex_coord = tex_coord_in;
+  // inputs are 0 - 2048.
+  gl_Position = vec4((position_in.x - 1024) / 1024, (position_in.y - 1024) / 1024, 0.5, 1.0);
+  fragment_color = vec4(rgba_in.rgb * 2, 1);
+  tex_coord = tex_coord_in;
 }

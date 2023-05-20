@@ -149,3 +149,65 @@ void FullScreenDraw::draw(const math::Vector4f& color,
   prof.add_draw_call();
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
+
+FramebufferCopier::FramebufferCopier() {
+  glGenFramebuffers(1, &m_fbo);
+  glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+
+  glGenTextures(1, &m_fbo_texture);
+  glBindTexture(GL_TEXTURE_2D, m_fbo_texture);
+
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_fbo_width, m_fbo_height, 0, GL_RGB, GL_UNSIGNED_BYTE,
+               NULL);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fbo_texture, 0);
+
+  ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+
+  glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+FramebufferCopier::~FramebufferCopier() {
+  glDeleteTextures(1, &m_fbo_texture);
+  glDeleteFramebuffers(1, &m_fbo);
+}
+
+void FramebufferCopier::copy_now(int render_fb_w,
+                                 int render_fb_h,
+                                 int render_fb_x,
+                                 int render_fb_y,
+                                 GLuint render_fb) {
+  if (m_fbo_width != render_fb_w || m_fbo_height != render_fb_h) {
+    m_fbo_width = render_fb_w;
+    m_fbo_height = render_fb_h;
+
+    glBindTexture(GL_TEXTURE_2D, m_fbo_texture);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_fbo_width, m_fbo_height, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                 NULL);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+  }
+
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, render_fb);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo);
+
+  glBlitFramebuffer(render_fb_x,                // srcX0
+                    render_fb_y,                // srcY0
+                    render_fb_x + render_fb_w,  // srcX1
+                    render_fb_y + render_fb_h,  // srcY1
+                    0,                          // dstX0
+                    0,                          // dstY0
+                    m_fbo_width,                // dstX1
+                    m_fbo_height,               // dstY1
+                    GL_COLOR_BUFFER_BIT,        // mask
+                    GL_NEAREST                  // filter
+  );
+
+  glBindFramebuffer(GL_FRAMEBUFFER, render_fb);
+}

@@ -475,11 +475,6 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
       }
     }
   }
-  // print warning about failed store, but only if decompilation passes without any major errors
-  // TODO move this elsewhere! they CAN be deleted later and this would cause false positives.
-  if (!env.func->warnings.has_errors()) {
-    env.func->warnings.error("Failed store: {} at op {}", to_string(env), m_my_idx);
-  }
   return pool.alloc_element<StoreElement>(this);
 }
 

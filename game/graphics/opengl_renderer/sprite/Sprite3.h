@@ -5,6 +5,7 @@
 
 #include "common/dma/gs.h"
 #include "common/math/Vector.h"
+#include "common/versions/versions.h"
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
@@ -27,10 +28,11 @@ class Sprite3 : public BucketRenderer {
   void opengl_setup_normal();
   void opengl_setup_distort();
 
+  bool render_direct(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void render_distorter(DmaFollower& dma,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
-  void distort_dma(DmaFollower& dma, ScopedProfilerNode& prof);
+  void distort_dma(GameVersion version, DmaFollower& dma, ScopedProfilerNode& prof);
   void distort_setup(ScopedProfilerNode& prof);
   void distort_setup_instanced(ScopedProfilerNode& prof);
   void distort_draw(SharedRenderState* render_state, ScopedProfilerNode& prof);
@@ -148,7 +150,7 @@ class Sprite3 : public BucketRenderer {
   std::vector<SpriteDistortVertex> m_sprite_distorter_vertices_instanced;
   std::map<int, std::vector<SpriteDistortInstanceData>> m_sprite_distorter_instances_by_res;
 
-  u8 m_sprite_direct_setup[3 * 16];
+  u64 m_sprite_direct_setup[3 * 16 / 8];
   SpriteFrameData m_frame_data;  // qwa: 980
   Sprite3DMatrixData m_3d_matrix_data;
   SpriteHudMatrixData m_hud_matrix_data;

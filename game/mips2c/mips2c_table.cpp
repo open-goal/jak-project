@@ -19,7 +19,6 @@ namespace Mips2C {
 
 namespace jak1 {
 namespace draw_string { extern void link(); }
-namespace sp_init_fields { extern void link(); }
 namespace particle_adgif { extern void link(); }
 namespace sp_launch_particles_var { extern void link(); }
 namespace sp_process_block_3d { extern void link(); }
@@ -130,7 +129,6 @@ namespace render_boundary_quad { extern void link(); }
 namespace set_sky_vf27 { extern void link(); }
 namespace set_sky_vf23_value { extern void link(); }
 namespace draw_boundary_polygon { extern void link(); }
-namespace sp_init_fields { extern void link(); }
 namespace particle_adgif { extern void link(); }
 namespace sp_launch_particles_var { extern void link(); }
 namespace sparticle_motion_blur { extern void link(); }
@@ -220,7 +218,41 @@ namespace method_53_squid { extern void link(); }
 namespace init_vortex_regs { extern void link(); }
 namespace draw_large_polygon_vortex { extern void link(); }
 namespace render_vortex_quad { extern void link(); }
-
+namespace foreground_generic_merc { extern void link(); }
+namespace generic_merc_init_asm { extern void link(); }
+namespace mercneric_convert { extern void link(); }
+namespace high_speed_reject { extern void link(); }
+namespace generic_translucent { extern void link(); }
+namespace generic_merc_query { extern void link(); }
+namespace generic_merc_death { extern void link(); }
+namespace generic_merc_execute_asm { extern void link(); }
+namespace generic_merc_do_chain { extern void link(); }
+namespace generic_light_proc { extern void link(); }
+namespace generic_envmap_proc { extern void link(); }
+namespace generic_prepare_dma_double { extern void link(); }
+namespace generic_prepare_dma_single { extern void link(); }
+namespace generic_warp_source_proc { extern void link(); }
+namespace generic_warp_dest_proc { extern void link(); }
+namespace generic_warp_dest { extern void link(); }
+namespace generic_warp_envmap_dest { extern void link(); }
+namespace generic_no_light_proc { extern void link(); }
+namespace foreground_draw_hud { extern void link(); }
+namespace shadow_execute { extern void link(); }
+namespace shadow_add_double_edges { extern void link(); }
+namespace shadow_add_double_tris { extern void link(); }
+namespace shadow_add_single_tris { extern void link(); }
+namespace shadow_add_single_edges { extern void link(); }
+namespace shadow_add_facing_single_tris { extern void link(); }
+namespace shadow_add_verts { extern void link(); }
+namespace shadow_find_double_edges { extern void link(); }
+namespace shadow_find_facing_double_tris { extern void link(); }
+namespace shadow_find_single_edges { extern void link(); }
+namespace shadow_find_facing_single_tris { extern void link(); }
+namespace shadow_init_vars { extern void link(); }
+namespace shadow_scissor_top { extern void link(); }
+namespace shadow_scissor_edges { extern void link(); }
+namespace shadow_calc_dual_verts { extern void link(); }
+namespace shadow_xform_verts { extern void link(); }
 }
 // clang-format on
 
@@ -229,9 +261,7 @@ Rng gRng;
 PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2CLinkCallbacks = {
     //////// JAK 1
     {{"font", {jak1::draw_string::link}},
-     {"sparticle-launcher",
-      {jak1::sp_init_fields::link, jak1::particle_adgif::link,
-       jak1::sp_launch_particles_var::link}},
+     {"sparticle-launcher", {jak1::particle_adgif::link, jak1::sp_launch_particles_var::link}},
      {"sparticle", {jak1::sp_process_block_3d::link, jak1::sp_process_block_2d::link}},
      {"texture", {jak1::adgif_shader_texture_with_update::link}},
      {"sky-tng",
@@ -307,7 +337,7 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak2::render_boundary_quad::link, jak2::render_boundary_tri::link, jak2::set_sky_vf27::link,
        jak2::draw_boundary_polygon::link}},
      {"sparticle-launcher",
-      {jak2::sp_init_fields::link, jak2::particle_adgif::link, jak2::sp_launch_particles_var::link,
+      {jak2::particle_adgif::link, jak2::sp_launch_particles_var::link,
        jak2::sparticle_motion_blur::link}},
      {"sparticle", {jak2::sp_process_block_2d::link, jak2::sp_process_block_3d::link}},
      {"sky-tng",
@@ -350,7 +380,9 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak2::method_10_collide_cache_prim::link, jak2::method_17_collide_cache::link,
        jak2::method_9_collide_puss_work::link, jak2::method_10_collide_puss_work::link}},
      {"bones", {jak2::bones_mtx_calc::link}},
-     {"foreground", {jak2::foreground_check_longest_edge_asm::link, jak2::foreground_merc::link}},
+     {"foreground",
+      {jak2::foreground_check_longest_edge_asm::link, jak2::foreground_merc::link,
+       jak2::foreground_generic_merc::link, jak2::foreground_draw_hud::link}},
      {"lights",
       {jak2::add_light_sphere_to_light_group::link, jak2::light_hash_add_items::link,
        jak2::light_hash_count_items::link, jak2::light_hash_get_bucket_index::link}},
@@ -369,7 +401,27 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
      {"squid-setup", {jak2::method_53_squid::link}},
      {"vortex",
       {jak2::init_vortex_regs::link, jak2::draw_large_polygon_vortex::link,
-       jak2::render_vortex_quad::link}}}};
+       jak2::render_vortex_quad::link}},
+     {"generic-merc",
+      {jak2::generic_merc_init_asm::link, jak2::mercneric_convert::link,
+       jak2::high_speed_reject::link, jak2::generic_translucent::link,
+       jak2::generic_merc_query::link, jak2::generic_merc_death::link,
+       jak2::generic_merc_execute_asm::link, jak2::generic_merc_do_chain::link}},
+     {"generic-effect",
+      {jak2::generic_light_proc::link, jak2::generic_envmap_proc::link,
+       jak2::generic_prepare_dma_double::link, jak2::generic_prepare_dma_single::link,
+       jak2::generic_warp_source_proc::link, jak2::generic_warp_dest_proc::link,
+       jak2::generic_warp_dest::link, jak2::generic_warp_envmap_dest::link,
+       jak2::generic_no_light_proc::link}},
+     {"shadow-cpu",
+      {jak2::shadow_execute::link, jak2::shadow_add_double_edges::link,
+       jak2::shadow_add_double_tris::link, jak2::shadow_add_single_tris::link,
+       jak2::shadow_add_single_edges::link, jak2::shadow_add_facing_single_tris::link,
+       jak2::shadow_add_verts::link, jak2::shadow_find_double_edges::link,
+       jak2::shadow_find_facing_double_tris::link, jak2::shadow_find_single_edges::link,
+       jak2::shadow_find_facing_single_tris::link, jak2::shadow_init_vars::link,
+       jak2::shadow_scissor_top::link, jak2::shadow_scissor_edges::link,
+       jak2::shadow_calc_dual_verts::link, jak2::shadow_xform_verts::link}}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

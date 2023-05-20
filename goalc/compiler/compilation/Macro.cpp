@@ -136,9 +136,11 @@ Val* Compiler::compile_gscond(const goos::Object& form, const goos::Object& rest
  * Current only supports 'thing or '(). Static lists/pairs should be added at some point.
  */
 Val* Compiler::compile_quote(const goos::Object& form, const goos::Object& rest, Env* env) {
-  auto args = get_va(form, rest);
-  va_check(form, args, {{}}, {});
-  auto thing = args.unnamed.at(0);
+  auto args = get_va_no_named(form, rest);
+  if (args.unnamed.size() != 1) {
+    throw_compiler_error(form, "invalid number of arguments to compile quote");
+  }
+  auto& thing = args.unnamed.front();
   switch (thing.type) {
     case goos::ObjectType::SYMBOL:
       return compile_get_sym_obj(thing.as_symbol()->name, env);

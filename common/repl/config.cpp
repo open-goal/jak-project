@@ -1,12 +1,13 @@
 #include "config.h"
 
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "third-party/fmt/core.h"
 
 namespace REPL {
 void to_json(json& j, const Config& obj) {
   j = json{
+      {"gameVersionFolder", obj.game_version_folder},
       {"numConnectToTargetAttempts", obj.target_connect_attempts},
       {"asmFileSearchDirs", obj.asm_file_search_dirs},
       {"keybinds", obj.keybinds},
@@ -14,6 +15,9 @@ void to_json(json& j, const Config& obj) {
 }
 
 void from_json(const json& j, Config& obj) {
+  if (j.contains("gameVersionFolder")) {
+    j.at("gameVersionFolder").get_to(obj.game_version_folder);
+  }
   if (j.contains("numConnectToTargetAttempts")) {
     j.at("numConnectToTargetAttempts").get_to(obj.target_connect_attempts);
   }

@@ -58,6 +58,8 @@ class GameTextFontBank {
 
   const EncodeInfo* find_encode_to_utf8(const char* in) const;
   const EncodeInfo* find_encode_to_game(const std::string& in, int off = 0) const;
+  const ReplaceInfo* find_replace_to_utf8(const std::string& in, int off = 0) const;
+  const ReplaceInfo* find_replace_to_game(const std::string& in, int off = 0) const;
 
   std::string replace_to_utf8(std::string& str) const;
   std::string replace_to_game(std::string& str) const;
@@ -79,8 +81,7 @@ class GameTextFontBank {
   // hacking it for now
   bool valid_char_range(const char in) const;
 
-  std::string convert_utf8_to_game_with_escape(const std::string& str) const;
-  std::string convert_utf8_to_game(std::string str) const;
+  std::string convert_utf8_to_game(std::string str, bool escape = false) const;
   std::string convert_game_to_utf8(const char* in) const;
 };
 

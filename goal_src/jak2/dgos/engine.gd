@@ -234,6 +234,10 @@
   "game-task.o"
   "game-save.o"
   "settings.o"
+  "autosplit-h.o" ;; added
+  "autosplit.o" ;; added
+  "speedruns-h.o" ;; added
+  "speedruns.o" ;; added
   "mood-tables.o"
   "mood-tables2.o"
   "mood.o"

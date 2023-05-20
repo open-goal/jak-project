@@ -5,7 +5,7 @@
 #include "common/goos/Object.h"
 #include "common/type_system/TypeSpec.h"
 #include "common/type_system/TypeSystem.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "decompiler/Disasm/DecompilerLabel.h"
 #include "decompiler/IR2/LabelDB.h"

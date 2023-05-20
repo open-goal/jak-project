@@ -113,7 +113,7 @@
   :virtual #t
   :event metalkor-egg-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :trans (behavior ()
@@ -140,7 +140,7 @@
             ((< f0-0 (* f1-0 f1-0))
              (go-virtual idle)
              )
-            ((>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 4))
+            ((>= (- (current-time) (-> self state-time)) (seconds 4))
              (go-virtual hatch)
              )
             (else
@@ -226,11 +226,11 @@
   :virtual #t
   :event metalkor-egg-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :trans (behavior ()
-    (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 3))
+    (if (>= (- (current-time) (-> self state-time)) (seconds 3))
         (go-virtual hatch)
         )
     (let ((v1-9 (ja-group)))
@@ -557,7 +557,7 @@
 
 ;; definition for function ik-adjust
 (defbehavior ik-adjust metalkor-legs ()
-  (let* ((f0-1 (* 0.0033333334 (the float (- (-> self clock frame-counter) (-> self state-time)))))
+  (let* ((f0-1 (* 0.0033333334 (the float (- (current-time) (-> self state-time)))))
          (f0-2 (* 9102.223 f0-1))
          (f0-3 (- f0-2 (* (the float (the int (/ f0-2 65536.0))) 65536.0)))
          (f0-4 (sin f0-3))
@@ -710,7 +710,7 @@
   :virtual #t
   :event metalkor-legs-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (dotimes (gp-0 6)
       (enable-set! (-> self joint-ik gp-0) #t)
       ((method-of-type cam-float-seeker init) (the-as cam-float-seeker (-> self foot-locks gp-0)) 0.0 0.1 0.3 0.9)
@@ -1425,7 +1425,7 @@
                      (set! (-> a1-14 param 1) (the-as uint v1-47))
                      )
                    (when (send-event-function proc a1-14)
-                     (set! (-> self no-collision-timer) (-> self clock frame-counter))
+                     (set! (-> self no-collision-timer) (current-time))
                      (let ((v1-52 (-> self root-override root-prim)))
                        (set! (-> v1-52 prim-core collide-as) (collide-spec))
                        (set! (-> v1-52 prim-core collide-with) (collide-spec))
@@ -1442,12 +1442,12 @@
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (set-params! (-> self egg-toss-joint-angle) 0.0 0.05 0.3 0.9)
     (none)
     )
   :trans (behavior ()
-    (when (>= (- (-> self clock frame-counter) (-> self no-collision-timer)) (seconds 0.1))
+    (when (>= (- (current-time) (-> self no-collision-timer)) (seconds 0.1))
       (let ((v1-5 (-> self root-override root-prim)))
         (set! (-> v1-5 prim-core collide-as) (-> self root-override backup-collide-as))
         (set! (-> v1-5 prim-core collide-with) (-> self root-override backup-collide-with))
@@ -1826,7 +1826,7 @@ This commonly includes things such as:
     (set! (-> self chain joint-length) (* 12288.0 (-> self root scale y)))
     (set! (-> self root scale y) 1.0)
     (initialize-chain-joints (-> self chain))
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (let* ((f30-0 0.9)
            (f28-0 0.2)
            (v1-12 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
@@ -1854,7 +1854,7 @@ This commonly includes things such as:
     (quaternion-normalize! (-> self root quat))
     (update (-> self chain) self)
     (cond
-      ((< (- (-> self clock frame-counter) (-> self state-time)) (seconds 1))
+      ((< (- (current-time) (-> self state-time)) (seconds 1))
        )
       ((let ((v1-13 (ja-group)))
          (and v1-13 (= v1-13 (-> self draw art-group data 53)))
@@ -2663,7 +2663,3 @@ This commonly includes things such as:
   :code (the-as (function none :behavior metalkor-bomb) sleep-code)
   :post (the-as (function none :behavior metalkor-bomb) ja-post)
   )
-
-
-
-

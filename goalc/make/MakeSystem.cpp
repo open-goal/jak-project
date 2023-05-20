@@ -38,7 +38,8 @@ std::string MakeStep::print() const {
   return result;
 }
 
-MakeSystem::MakeSystem(const std::string& username) : m_goos(username) {
+MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config, const std::string& username)
+    : m_goos(username), m_repl_config(repl_config) {
   m_goos.register_form("defstep", [=](const goos::Object& obj, goos::Arguments& args,
                                       const std::shared_ptr<goos::EnvironmentObject>& env) {
     return handle_defstep(obj, args, env);
@@ -80,6 +81,12 @@ MakeSystem::MakeSystem(const std::string& username) : m_goos(username) {
                                               const std::shared_ptr<goos::EnvironmentObject>& env) {
     return handle_get_gsrc_folder(obj, args, env);
   });
+
+  m_goos.register_form("get-game-version-folder",
+                       [=](const goos::Object& obj, goos::Arguments& args,
+                           const std::shared_ptr<goos::EnvironmentObject>& env) {
+                         return handle_get_game_version_folder(obj, args, env);
+                       });
 
   m_goos.set_global_variable_to_symbol("ASSETS", "#t");
 
@@ -294,6 +301,19 @@ goos::Object MakeSystem::handle_get_gsrc_folder(
     out += part;
   }
   return goos::StringObject::make_new(out);
+}
+
+goos::Object MakeSystem::handle_get_game_version_folder(
+    const goos::Object& form,
+    goos::Arguments& args,
+    const std::shared_ptr<goos::EnvironmentObject>& env) {
+  m_goos.eval_args(&args, env);
+  va_check(form, args, {}, {});
+  if (m_repl_config) {
+    return goos::StringObject::make_new(m_repl_config->game_version_folder);
+  } else {
+    return goos::StringObject::make_new("");
+  }
 }
 
 void MakeSystem::get_dependencies(const std::string& master_target,

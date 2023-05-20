@@ -57,3 +57,21 @@ class FullScreenDraw {
   GLuint m_vao;
   GLuint m_vertex_buffer;
 };
+
+class FramebufferCopier {
+ public:
+  FramebufferCopier();
+  ~FramebufferCopier();
+  FramebufferCopier(const FramebufferCopier&) = delete;
+  FramebufferCopier& operator=(const FramebufferCopier&) = delete;
+  void copy_now(int render_fb_w,
+                int render_fb_h,
+                int render_fb_x,
+                int render_fb_y,
+                GLuint render_fb);
+  u64 texture() const { return m_fbo_texture; }
+
+ private:
+  GLuint m_fbo = 0, m_fbo_texture = 0;
+  int m_fbo_width = 640, m_fbo_height = 480;
+};

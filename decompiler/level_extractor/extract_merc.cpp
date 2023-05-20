@@ -885,7 +885,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
       can_be_modified = true;
     }
 
-    if (version == GameVersion::Jak1 && (input_effect.effect_bits & kTransEffectBitJak1)) {
+    if (input_effect.effect_bits & kTransEffectBit) {
       use_alpha_blend = true;
     }
 

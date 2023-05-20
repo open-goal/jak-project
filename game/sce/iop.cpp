@@ -83,6 +83,16 @@ void* AllocSysMemory(int type, unsigned long size, void* addr) {
 }
 
 /*!
+ * Allocate the 1 kB scratchpad memory. On PS2, this would give you a pointer to the actual
+ * scratchpad of the IOP, but this is just normal memory.
+ */
+void* AllocScratchPad(int mode) {
+  ASSERT(mode == 0);
+  constexpr int kScratchpadSize = 1024 * 16;
+  return iop->iop_alloc(kScratchpadSize);
+}
+
+/*!
  * Create a new thread
  */
 s32 CreateThread(ThreadParam* param) {
@@ -140,12 +150,6 @@ void sceSifRpcLoop(sceSifQueueData* pd) {
   iop->kernel.rpc_loop(pd);
 }
 
-int sceCdRead(uint32_t logical_sector, uint32_t sectors, void* buf, sceCdRMode* mode) {
-  (void)mode;
-  iop->kernel.read_disc_sectors(logical_sector, sectors, buf);
-  return 1;
-}
-
 int sceCdSync(int mode) {
   (void)mode;
   return 0;
@@ -193,6 +197,10 @@ s32 PollMbx(MsgPacket** recvmsg, int mbxid) {
   return iop->kernel.PollMbx((void**)recvmsg, mbxid);
 }
 
+s32 PeekMbx(s32 mbx) {
+  return iop->kernel.PeekMbx(mbx);
+}
+
 static int now = 0;
 
 void GetSystemTime(SysClock* time) {
@@ -223,6 +231,11 @@ s32 PollSema(s32 sema) {
 
 s32 WakeupThread(s32 thid) {
   iop->kernel.WakeupThread(thid);
+  return 0;
+}
+
+s32 iWakeupThread(s32 thid) {
+  iop->kernel.iWakeupThread(thid);
   return 0;
 }
 

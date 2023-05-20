@@ -315,13 +315,14 @@ void TexturePool::draw_debug_window() {
   int total_displayed_textures = 0;
   int total_uploaded_textures = 0;
   ImGui::InputText("texture search", m_regex_input, sizeof(m_regex_input));
-  std::regex regex(m_regex_input[0] ? m_regex_input : ".*");
+  bool use_regex = m_regex_input[0];
+  std::regex regex(use_regex ? m_regex_input : ".*");
 
   for (size_t i = 0; i < m_textures.size(); i++) {
     auto& record = m_textures[i];
     total_textures++;
     if (record.source) {
-      if (std::regex_search(get_debug_texture_name(record.source->tex_id), regex)) {
+      if (!use_regex || std::regex_search(get_debug_texture_name(record.source->tex_id), regex)) {
         ImGui::PushID(id++);
         draw_debug_for_tex(get_debug_texture_name(record.source->tex_id), record.source, i);
         ImGui::PopID();
@@ -350,7 +351,7 @@ void TexturePool::draw_debug_for_tex(const std::string& name, GpuTexture* tex, u
   } else {
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8, 0.8, 0.3, 1.0));
   }
-  if (ImGui::TreeNode(fmt::format("{} {}", name, slot).c_str())) {
+  if (ImGui::TreeNode(fmt::format("{}) {}", slot, name).c_str())) {
     ImGui::Text("P: %s sz: %d x %d", get_debug_texture_name(tex->tex_id).c_str(), tex->w, tex->h);
     if (!tex->is_placeholder) {
       ImGui::Image((void*)tex->gpu_textures.at(0).gl, ImVec2(tex->w, tex->h));

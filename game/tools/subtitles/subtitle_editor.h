@@ -46,6 +46,8 @@ class SubtitleEditor {
   void draw_all_hint_groups();
   void draw_all_hints(std::string group_name, bool base_cutscenes);
 
+  bool db_loaded = false;
+
   GameSubtitleDB m_subtitle_db;
   std::map<std::string, SubtitleEditorDB::Entry> m_db = {};
   GameSubtitleSceneInfo* m_current_scene = nullptr;

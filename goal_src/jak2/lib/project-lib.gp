@@ -50,7 +50,7 @@
     )
   )
 
-;; TODO - deps should probably just treated as a proper list to refactor duplication 
+;; TODO - deps should probably just treated as a proper list to refactor duplication
 (defmacro goal-src-sequence (prefix &key (deps '()) &rest sequence)
   "Add a sequence of GOAL files (each depending on the previous) in the given directory,
    with all depending on the given deps."
@@ -224,7 +224,7 @@
       `(begin
         ;; macros can't return nothing, so these macros assume they will be given a non-empty list
         (when (not (null? '(,@gsrc-seq-args)))
-          (goal-src-sequence "" :deps ,deps ,@gsrc-seq-args))
+          (goal-src-sequence "" :deps ,(eval deps) ,@gsrc-seq-args))
         (when (not (null? '(,@textures)))
           (copy-textures ,@textures))
         (when (not (null? '(,@gos)))

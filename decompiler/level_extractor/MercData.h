@@ -7,7 +7,7 @@
 #include "common/common_types.h"
 #include "common/dma/gs.h"
 #include "common/math/Vector.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "decompiler/util/goal_data_reader.h"
 
@@ -181,8 +181,8 @@ struct MercExtraInfo {
 };
 
 constexpr int kTextureScrollEffectBit = 1;
-constexpr int kTransEffectBitJak1 = 2;  // so far only confirmed for jak 1
-constexpr int kRippleEffectBit = 4;     // true in jak 1 and jak 2
+constexpr int kTransEffectBit = 2;   // true in 1 and 2
+constexpr int kRippleEffectBit = 4;  // true in jak 1 and jak 2
 
 struct MercEffect {
   //((frag-geo         merc-fragment          :offset-assert 0) ;; ?

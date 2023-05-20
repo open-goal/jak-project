@@ -11,7 +11,7 @@
 
 #include "common/common_types.h"
 #include "common/util/FileUtil.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "game/kernel/common/kboot.h"
 #include "game/system/newpad.h"

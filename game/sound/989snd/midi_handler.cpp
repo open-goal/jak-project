@@ -7,7 +7,8 @@
 #include "common/log/log.h"
 
 #include "game/sound/989snd/util.h"
-#include <third-party/fmt/core.h>
+
+#include "third-party/fmt/core.h"
 
 namespace snd {
 /*

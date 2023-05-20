@@ -353,30 +353,9 @@
     (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
                                  (-> obj bucket)
                                  )
-      (let ((v1-7 s4-0))
-        (let ((a0-2 (the-as object (-> v1-7 base))))
-          (set! (-> (the-as dma-packet a0-2) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-          (set! (-> (the-as dma-packet a0-2) vif0) (new 'static 'vif-tag))
-          (set! (-> (the-as dma-packet a0-2) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-          (set! (-> v1-7 base) (&+ (the-as pointer a0-2) 16))
-          )
-        )
-      (let ((v1-8 s4-0))
-        (let ((a0-4 (the-as object (-> v1-8 base))))
-          (set! (-> (the-as gs-gif-tag a0-4) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-          (set! (-> (the-as gs-gif-tag a0-4) regs) GIF_REGS_ALL_AD)
-          (set! (-> v1-8 base) (&+ (the-as pointer a0-4) 16))
-          )
-        )
-      (let ((v1-9 s4-0))
-        (let ((a0-6 (-> v1-9 base)))
-          (set! (-> (the-as (pointer gs-test) a0-6) 0)
-                (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
-                )
-          (set! (-> (the-as (pointer gs-reg64) a0-6) 1) (gs-reg64 test-1))
-          (set! (-> v1-9 base) (&+ a0-6 16))
-          )
-        )
+      (dma-buffer-add-gs-set s4-0
+                             (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
+                             )
       (let ((t1-0 (new 'static 'rgba
                     :r (the int (-> obj color x))
                     :g (the int (-> obj color y))
@@ -1251,8 +1230,8 @@
                                                   (set! (-> *setting-control* user-default music-volume) 0.0)
                                                   (set! (-> *setting-control* user-default dialog-volume) 0.0)
                                                   (set! (-> *setting-control* user-default ambient-volume) 0.0)
-                                                  (let ((s5-0 (-> pp clock frame-counter)))
-                                                    (until (>= (- (-> pp clock frame-counter) s5-0) (seconds 0.1))
+                                                  (let ((s5-0 (current-time)))
+                                                    (until (>= (- (current-time) s5-0) (seconds 0.1))
                                                       (suspend)
                                                       )
                                                     )
@@ -1370,6 +1349,8 @@
               )
             )
           )
+        (if *debug-track-skill*
+            (debug-track-skill))
         )
       (debug-draw-buffers)
       (with-dma-buffer-add-bucket ((s3-0 (-> arg0 frames (-> arg0 on-screen) debug-buf)) (bucket-id debug-no-zbuf2))
@@ -1425,7 +1406,8 @@
           )
       (let ((s2-2 (the int (-> *font-context* origin y))))
         (cond
-          ((or (movie?) (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time)))
+          ;; pc port note : the console is drawn over the letterbox so this is pointless and has been disabled
+          ((#if PC_PORT #f (or (movie?) (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))))
            (+! s2-2 56)
            )
           (*display-profile*
@@ -1590,6 +1572,9 @@
           )
       )
 
+    ;; send alp to C++ for blackout
+    (put-display-env (-> *display* pmode alp))
+
     ;; blackout drawing
     (when (-> *setting-control* user-current render)
       (if (< (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
@@ -1599,7 +1584,7 @@
       )
 
     ;; generate DMA data for doing the main blit
-    ; (blit-displays)
+    (blit-displays)
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; END of normal frame
@@ -1685,7 +1670,8 @@
     (level-update *level*)
 
     ;; do some memory card operations, check auto-save
-    ; (mc-run)
+    (mc-run)
+    ;; for the same reasons as jak 1, we do not run this.
     ; (auto-save-check)
     (none)
     )
@@ -1735,8 +1721,8 @@
     ;   )
     (suspend)
     (set! (-> *setting-control* user-default bg-a) 0.0)
-    (set! (-> gp-1 frames 0 start-time) (the-as time-frame (timer-count (the-as timer-bank #x10000800))))
-    (set! (-> gp-1 frames 1 start-time) (the-as time-frame (timer-count (the-as timer-bank #x10000800))))
+    (set! (-> gp-1 frames 0 start-time) (the-as int (timer-count (the-as timer-bank #x10000800))))
+    (set! (-> gp-1 frames 1 start-time) (the-as int (timer-count (the-as timer-bank #x10000800))))
     (set! (-> gp-1 dog-ratio) 1.0)
     (while *run*
       (display-loop-main gp-1)

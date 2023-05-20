@@ -13,6 +13,8 @@ class Shrub : public BucketRenderer {
  public:
   Shrub(const std::string& name, int my_id);
   ~Shrub();
+  void init_shaders(ShaderLibrary& shaders) override;
+
   bool setup_for_level(const std::string& level, SharedRenderState* render_state);
   void render_all_trees(const TfragRenderSettings& settings,
                         SharedRenderState* render_state,
@@ -52,6 +54,10 @@ class Shrub : public BucketRenderer {
       Filtered<float> tree_time;
     } perf;
   };
+
+  struct {
+    GLuint decal;
+  } m_uniforms;
 
   std::vector<Tree> m_trees;
   std::string m_level_name;

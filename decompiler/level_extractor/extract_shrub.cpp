@@ -142,7 +142,8 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
 DrawSettings adgif_to_draw_mode(const AdGifData& ad,
                                 const TextureDB& tdb,
                                 const std::vector<level_tools::TextureRemap>& map,
-                                int count) {
+                                int count,
+                                bool alpha_tpage_flag) {
   // initialize draw mode
   DrawMode current_mode;
   current_mode.set_at(true);
@@ -155,13 +156,25 @@ DrawSettings adgif_to_draw_mode(const AdGifData& ad,
   current_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_SRC_SRC_SRC);
   current_mode.enable_fog();
 
+  if (alpha_tpage_flag) {
+    current_mode.set_alpha_test(DrawMode::AlphaTest::NEVER);
+    current_mode.set_aref(0);
+    current_mode.set_alpha_fail(GsTest::AlphaFail::FB_ONLY);
+  }
+
   // ADGIF 0
   bool weird = (u8)ad.tex0_addr != (u32)GsRegisterAddress::TEX0_1;
   if (weird) {
     lg::info("----------------  WEIRD: 0x{:x}", ad.tex0_addr);
     lg::info("i have {} verts", count);
   } else {
-    ASSERT(ad.tex0_data == 0 || ad.tex0_data == 0x800000000);  // note: decal?? todo
+    if (ad.tex0_data == 0) {
+      current_mode.set_decal(false);
+    } else if (ad.tex0_data == 0x8'0000'0000) {
+      current_mode.set_decal(true);
+    } else {
+      ASSERT(false);
+    }
   }
 
   // tw/th
@@ -241,7 +254,8 @@ DrawSettings adgif_to_draw_mode(const AdGifData& ad,
 
 ShrubProtoInfo extract_proto(const shrub_types::PrototypeBucketShrub& proto,
                              const TextureDB& tdb,
-                             const std::vector<level_tools::TextureRemap>& map) {
+                             const std::vector<level_tools::TextureRemap>& map,
+                             GameVersion version) {
   ShrubProtoInfo result;
   for (int frag_idx = 0; frag_idx < proto.generic_geom.length; frag_idx++) {
     auto& frag_out = result.frags.emplace_back();
@@ -287,7 +301,11 @@ ShrubProtoInfo extract_proto(const shrub_types::PrototypeBucketShrub& proto,
         ASSERT(3 * (vert_idx + draw.start_vtx_idx) + 3 <= frag.col.size());
       }
 
-      draw.settings = adgif_to_draw_mode(ag, tdb, map, count);
+      bool alpha_tpage_flag = false;
+      if (version > GameVersion::Jak1) {
+        alpha_tpage_flag = proto.flags & 0x4;  // tpage-alpha
+      }
+      draw.settings = adgif_to_draw_mode(ag, tdb, map, count, alpha_tpage_flag);
     }
 
     ASSERT(frag.vtx_cnt * 3 * sizeof(u16) <= frag.vtx.size());
@@ -550,12 +568,13 @@ void extract_shrub(const shrub_types::DrawableTreeInstanceShrub* tree,
                    const TextureDB& tex_db,
                    const std::vector<std::pair<int, int>>& /*expected_missing_textures*/,
                    tfrag3::Level& out,
-                   bool dump_level) {
+                   bool dump_level,
+                   GameVersion version) {
   auto& tree_out = out.shrub_trees.emplace_back();
   auto& protos = tree->info.prototype_inline_array_shrub;
   std::vector<ShrubProtoInfo> proto_info;
   for (auto& proto : protos.data) {
-    proto_info.push_back(extract_proto(proto, tex_db, map));
+    proto_info.push_back(extract_proto(proto, tex_db, map, version));
   }
 
   for (auto& arr : tree->discovered_arrays) {

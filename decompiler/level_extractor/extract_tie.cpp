@@ -718,7 +718,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         }
       }
 
-      if (version > GameVersion::Jak1) {
+      if (proto.has_envmap_shader && version > GameVersion::Jak1) {
         frag_info.envmap_tint_color = jak2_tint_color;
       }
 

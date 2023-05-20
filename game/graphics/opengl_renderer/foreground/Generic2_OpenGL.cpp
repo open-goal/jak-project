@@ -80,6 +80,7 @@ void Generic2::init_shaders(ShaderLibrary& shaders) {
   m_ogl.fog_consts = glGetUniformLocation(id, "fog_constants");
   m_ogl.hvdf_offset = glGetUniformLocation(id, "hvdf_offset");
   m_ogl.gfx_hack_no_tex = glGetUniformLocation(id, "gfx_hack_no_tex");
+  m_ogl.warp_sample_mode = glGetUniformLocation(id, "warp_sample_mode");
 }
 
 void Generic2::opengl_bind_and_setup_proj(SharedRenderState* render_state) {
@@ -223,15 +224,9 @@ void Generic2::setup_opengl_tex(u16 unit,
   }
 
   if (!tex) {
-    // TODO Add back
-    if (tbp_to_lookup >= 8160 && tbp_to_lookup <= 8600) {
-      lg::warn("Failed to find texture at {}, using random (eye zone)", tbp_to_lookup);
-      tex = render_state->texture_pool->get_placeholder_texture();
-    } else {
-      lg::warn("Failed to find texture at {}, using random (generic2: {})", tbp_to_lookup,
-               name_and_id());
-      tex = render_state->texture_pool->get_placeholder_texture();
-    }
+    lg::warn("Failed to find texture at {}, using random (generic2: {})", tbp_to_lookup,
+             name_and_id());
+    tex = render_state->texture_pool->get_placeholder_texture();
   }
 
   glActiveTexture(GL_TEXTURE0 + unit);
@@ -256,6 +251,15 @@ void Generic2::setup_opengl_tex(u16 unit,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   }
+
+  if (render_state->version == GameVersion::Jak2 && tbp_to_lookup == 1216) {
+    glUniform1ui(m_ogl.warp_sample_mode, 1);
+    // warp shader uses region clamp, which isn't supported by DrawMode.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  } else {
+    glUniform1ui(m_ogl.warp_sample_mode, 0);
+  }
 }
 
 void Generic2::do_draws_for_alpha(SharedRenderState* render_state,
@@ -269,9 +273,6 @@ void Generic2::do_draws_for_alpha(SharedRenderState* render_state,
       setup_opengl_for_draw_mode(first.mode, first.fix, render_state);
       setup_opengl_tex(0, first.tbp, first.mode.get_filt_enable(), first.mode.get_clamp_s_enable(),
                        first.mode.get_clamp_t_enable(), render_state);
-      // if (alpha == DrawMode::AlphaBlend::SRC_0_DST_DST) {
-      //  glBindTexture(GL_TEXTURE_2D, render_state->texture_pool->get_placeholder_texture());
-      // }
       glDrawElements(GL_TRIANGLE_STRIP, bucket.idx_count, GL_UNSIGNED_INT,
                      (void*)(sizeof(u32) * bucket.idx_idx));
       prof.add_draw_call();

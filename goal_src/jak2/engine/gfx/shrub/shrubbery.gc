@@ -10,9 +10,6 @@
 
 ;; DECOMP BEGINS
 
-;;-*-Lisp-*-
-(in-package goal)
-
 (defmethod login billboard ((obj billboard))
   "Set up the billboard adgif shader"
   (adgif-shader-login (-> obj flat))
@@ -126,16 +123,6 @@
   obj
   )
 
-(defmethod inspect prototype-shrubbery ((obj prototype-shrubbery))
-  "Inspect all prototypes in a prototype array."
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tlength: ~D~%" (-> obj length))
-  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
-  (dotimes (s5-0 (-> obj length))
-    (format #t "~T  [~D] ~A~%" s5-0 (-> obj data s5-0))
-    )
-  obj
-  )
 
 (defmethod mem-usage prototype-shrubbery ((obj prototype-shrubbery) (arg0 memory-usage-block) (arg1 int))
   "Compute memory usage of all prototypes in a prototype array."
@@ -247,7 +234,7 @@
   obj
   )
 
-(define shrub-vu1-block (new 'static 'vu-function :length #x26a :qlength #x135))
+(define shrub-vu1-block (new 'static 'vu-function))
 
 (defun shrub-num-tris ((shrub shrubbery))
   "Get the number of triangles in a shrubbery fragment."
@@ -409,7 +396,7 @@
     ;; upload the data
     (set! (-> a3-0 dma) (new 'static 'dma-tag
                           :id (dma-tag-id ref)
-                          :addr (the-as int (-> shrub obj))
+                          :addr (-> shrub obj)
                           :qwc (+ (-> shrub obj-qwc) (-> shrub vtx-qwc) (-> shrub col-qwc) (-> shrub stq-qwc))
                           )
           )
@@ -605,7 +592,7 @@
                 (while (nonzero? s2-0)
                   (+! s2-0 -1)
                   (let ((a0-15 (* (shrub-num-tris (the-as shrubbery s3-0)) s4-0))
-                        (v1-26 (* (the-as uint (-> (the-as shrubbery s3-0) header data 2)) s4-0))
+                        (v1-26 (* (-> (the-as shrubbery s3-0) header data 2) s4-0))
                         )
                     (+! (-> *terrain-stats* shrub tris) a0-15)
                     (+! (-> *terrain-stats* shrub dverts) v1-26)
@@ -630,7 +617,7 @@
                 (while (nonzero? s2-1)
                   (+! s2-1 -1)
                   (let ((a0-28 (* (shrub-num-tris (the-as shrubbery s3-1)) s4-1))
-                        (v1-44 (* (the-as uint (-> (the-as shrubbery s3-1) header data 2)) s4-1))
+                        (v1-44 (* (-> (the-as shrubbery s3-1) header data 2) s4-1))
                         )
                     (+! (-> *terrain-stats* trans-shrub tris) a0-28)
                     (+! (-> *terrain-stats* trans-shrub dverts) v1-44)
@@ -667,16 +654,6 @@
   :flag-assert         #x900000650
   )
 
-(defmethod inspect dma-test ((obj dma-test))
-  (when (not obj)
-    (set! obj obj)
-    (goto cfg-4)
-    )
-  (format #t "[~8x] ~A~%" obj 'dma-test)
-  (format #t "~1Tdata[101] @ #x~X~%" (-> obj data))
-  (label cfg-4)
-  obj
-  )
 
 (define *dma-test* (new 'global 'dma-test))
 
@@ -689,17 +666,6 @@
   :flag-assert         #x900000020
   )
 
-(defmethod inspect dma-test-work ((obj dma-test-work))
-  (when (not obj)
-    (set! obj obj)
-    (goto cfg-4)
-    )
-  (format #t "[~8x] ~A~%" obj 'dma-test-work)
-  (format #t "~1Tupload: #<dma-packet @ #x~X>~%" (-> obj upload))
-  (format #t "~1Tend: #<dma-packet @ #x~X>~%" (-> obj end))
-  (label cfg-4)
-  obj
-  )
 
 (define *dma-test-work*
   (new 'static 'dma-test-work

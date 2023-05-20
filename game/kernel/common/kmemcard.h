@@ -11,8 +11,8 @@
 
 void kmemcard_init_globals();
 
-constexpr s32 SAVE_SIZE = 691;  // likely different between versions! 692 on PAL/JPN
-constexpr s32 BANK_SIZE = 0x10000;
+constexpr PerGameVersion<s32> SAVE_SIZE(692, 1204);  // 691 for jak 1 v1
+constexpr PerGameVersion<s32> BANK_SIZE(0x10000, 0x20000);
 
 // each card can be in one of these states:
 enum class MemoryCardState : u32 {

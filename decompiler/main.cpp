@@ -11,7 +11,7 @@
 #include "common/util/os.h"
 #include "common/util/set_util.h"
 #include "common/util/unicode_util.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "ObjectFile/ObjectFileDB.h"
 #include "decompiler/data/TextureDB.h"

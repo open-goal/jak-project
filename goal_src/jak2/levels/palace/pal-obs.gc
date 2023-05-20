@@ -192,7 +192,7 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 1024)
+  (stack-size-set! (-> obj main-thread) 1024) ;; added
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
@@ -796,7 +796,7 @@ This commonly includes things such as:
 (defstate idle (palent-turret)
   :virtual #t
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :exit (behavior ()
@@ -806,13 +806,13 @@ This commonly includes things such as:
   :trans (behavior ()
     (cond
       ((not (task-node-closed? (game-task-node palace-sneak-in-meeting)))
-       (set! (-> self state-time) (-> self clock frame-counter))
+       (set! (-> self state-time) (current-time))
        )
       (else
         (let* ((f0-0 65536.0)
                (f1-0 -0.5)
                (f2-0 0.16666667)
-               (f3-1 (* 0.0033333334 (the float (- (-> self clock frame-counter) (-> self state-time)))))
+               (f3-1 (* 0.0033333334 (the float (- (current-time) (-> self state-time)))))
                (f30-0 (* f0-0 (+ f1-0 (* f2-0 (- f3-1 (* (the float (the int (/ f3-1 6.0))) 6.0))))))
                (s4-0 (-> self node-list data 5 bone transform))
                (s5-0 (matrix->trans s4-0 (new 'stack-no-clear 'vector)))
@@ -822,7 +822,7 @@ This commonly includes things such as:
           (let ((f0-2 (* 5097.2446 (sin f30-0))))
             (quaternion-rotate-local-y! (-> self root-override quat) (-> self entity quat) f0-2)
             )
-          (when (< (the-as time-frame (-> self next-shoot)) (-> self clock frame-counter))
+          (when (< (the-as time-frame (-> self next-shoot)) (current-time))
             (set-palent-turret-flash! 1.0)
             (let ((a1-2 (new 'stack-no-clear 'projectile-init-by-other-params)))
               (set! (-> a1-2 ent) (-> self entity))
@@ -842,7 +842,7 @@ This commonly includes things such as:
               (set! (-> a1-2 vel quad) (-> gp-0 quad))
               (spawn-projectile palent-turret-shot a1-2 self *default-dead-pool*)
               )
-            (set! (-> self next-shoot) (the-as uint (+ (-> self clock frame-counter) (seconds 0.1))))
+            (set! (-> self next-shoot) (the-as uint (+ (current-time) (seconds 0.1))))
             )
           )
         )

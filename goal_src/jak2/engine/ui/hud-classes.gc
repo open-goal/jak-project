@@ -9,14 +9,6 @@
 
 (defglobalconstant SKIP_MINIMAP_DRAW #f)
 
-;; WARN: Failed store: (s.w! (+ v1-35 8) 0) at op 135
-;; WARN: Failed store: (s.w! (+ v1-35 12) 0) at op 136
-;; WARN: Failed store: (s.w! (+ v1-61 8) 0) at op 213
-;; WARN: Failed store: (s.w! (+ v1-61 12) 0) at op 214
-;; WARN: Failed store: (s.w! (+ v1-86 8) 0) at op 292
-;; WARN: Failed store: (s.w! (+ v1-86 12) 0) at op 293
-;; WARN: Failed store: (s.w! (+ v1-111 8) 0) at op 371
-;; WARN: Failed store: (s.w! (+ v1-111 12) 0) at op 372
 (defmethod draw hud-map ((obj hud-map))
   (set-hud-piece-position!
     (-> obj sprites 1)
@@ -415,11 +407,9 @@
   (set! (-> obj values 2 target) (mod (the int (+ 0.5 (-> *target* game eco-pill-dark))) 100))
   (set! (-> obj values 3 target) (the-as int (-> *target* fact-override eco-pill-dark-pickup-time)))
   (if (and (or (and (zero? (-> obj values 2 target)) (!= (-> *target* game eco-pill-dark) 0.0))
-               (logtest? (focus-status dark) (-> *target* focus-status))
+               (focus-test? *target* dark)
                )
-           (and (not (logtest? (focus-status indax) (-> *target* focus-status)))
-                (-> *setting-control* user-current darkjak)
-                )
+           (and (not (focus-test? *target* indax)) (-> *setting-control* user-current darkjak))
            )
       (set! (-> obj values 2 target) 100)
       )
@@ -446,13 +436,13 @@
 
 (defmethod draw hud-skullgem ((obj hud-skullgem))
   (set-hud-piece-position!
-    (the-as hud-sprite (&-> obj stack 2764))
+    (the-as hud-sprite (-> obj icons 0 pos))
     (the int (+ 60.0 (* -130.0 (-> obj offset))))
     150
     )
   (set-as-offset-from!
     (the-as hud-sprite (-> obj sprites))
-    (the-as vector4w (&-> obj stack 2764))
+    (the-as vector4w (-> obj icons 0 pos))
     (if (= (-> *setting-control* user-default aspect-ratio) 'aspect4x3)
         -27
         -35
@@ -465,7 +455,7 @@
                                        )
         )
   (format (clear (-> obj strings 0 text)) "~D" (-> obj values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (&-> obj stack 2764)) 0 45)
+  (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (-> obj icons 0 pos)) 0 45)
   ((method-of-type hud draw) obj)
   0
   (none)
@@ -498,13 +488,13 @@
 
 (defmethod draw hud-skill ((obj hud-skill))
   (set-hud-piece-position!
-    (the-as hud-sprite (&-> obj stack 2764))
+    (the-as hud-sprite (-> obj icons 0 pos))
     (the int (+ 60.0 (* -130.0 (-> obj offset))))
     270
     )
   (set-as-offset-from!
     (the-as hud-sprite (-> obj sprites))
-    (the-as vector4w (&-> obj stack 2764))
+    (the-as vector4w (-> obj icons 0 pos))
     (if (= (-> *setting-control* user-default aspect-ratio) 'aspect4x3)
         -19
         -25
@@ -517,7 +507,7 @@
                                        )
         )
   (format (clear (-> obj strings 0 text)) "~D" (-> obj values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (&-> obj stack 2764)) 0 -5)
+  (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (-> obj icons 0 pos)) 0 -5)
   (when (not (paused?))
     (let ((s5-1 (new 'stack-no-clear 'quaternion)))
       (quaternion-axis-angle! s5-1 0.0 1.0 0.0 364.0889)
@@ -766,7 +756,7 @@
         (s4-0 (clear (-> obj strings 1 text)))
         (s3-0 "~S")
         )
-    (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-x277) #f))
+    (format (clear *temp-string*) (lookup-text! *common-text* (text-id miss) #f))
     (s5-1 s4-0 s3-0 *temp-string*)
     )
   (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (-> obj sprites)) 0 -8)
@@ -1048,7 +1038,7 @@
 
 (defmethod update-values hud-gun ((obj hud-gun))
   (cond
-    ((logtest? (focus-status gun) (-> *target* focus-status))
+    ((focus-test? *target* gun)
      (set! (-> obj values 0 target) (the-as int (-> *target* gun gun-type)))
      (set! (-> obj values 1 target) (the int (get-gun-ammo (-> *target* fact-override))))
      (logclear! (-> obj flags) (hud-flags disable))

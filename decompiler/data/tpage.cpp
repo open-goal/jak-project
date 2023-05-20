@@ -18,7 +18,7 @@
 
 #include "common/texture/texture_conversion.h"
 #include "common/util/FileUtil.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 

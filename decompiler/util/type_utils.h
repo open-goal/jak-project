@@ -1,7 +1,7 @@
 #pragma once
 #include "common/goal_constants.h"
 #include "common/type_system/TypeSpec.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 namespace decompiler {
 

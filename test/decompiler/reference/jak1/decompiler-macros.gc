@@ -429,7 +429,7 @@
       (set! *defstate-type-stack* '())
       ;; check for default handlers
       (let ((default-handlers (assoc defstate-type *default-state-handlers*)))
-          (when (not (null? default-handlers))
+          (when default-handlers
               ;;(fmt #t "found default-handlers for {}: {}\n" defstate-type default-handlers)
               ;; event
               (set! default-handlers (cadr default-handlers))
@@ -509,10 +509,10 @@
                            &key (post #f))
   (let ((old (assoc proc *default-state-handlers*))
         (new (list proc (list event enter trans exit code post))))
-      (if (null? old)
+      (if (not old)
           (append!! *default-state-handlers* new) ;; add new set of default handlers
           (dolist (hnd *default-state-handlers*)  ;; replace old handlers with new ones
-            (if (eq? (car hnd) old)
+            (when (eq? (car hnd) old)
               (set-car! hnd new)
               )
             )
@@ -671,117 +671,6 @@
         )
   )
 
-(defmacro sp-tex (field-name tex-id)
-  `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-name) :tex ,tex-id)
-  )
-
-(defmacro sp-rnd-flt (field-name val range mult)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id ,field-name)
-        :initial-valuef ,val
-        :random-rangef ,range
-        :random-multf ,mult
-        :flags (sp-flag float-with-rand)
-        )
-  )
-
-(defmacro sp-flt (field-name val)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id ,field-name)
-        :initial-valuef ,val
-        :random-rangef 0.0
-        :random-multf 1.0
-        :flags (sp-flag float-with-rand)
-        )
-  )
-
-(defmacro sp-int (field-name val)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id ,field-name)
-        :initial-value ,val
-        :random-range 0
-        :random-mult 1
-        )
-  )
-
-(defmacro sp-int-plain-rnd (field-name val range mult)
-  "For when we use plain integer, but set the randoms."
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id ,field-name)
-        :initial-value ,val
-        :random-range ,range
-        :random-mult ,mult
-        )
-  )
-
-(defmacro sp-rnd-int (field-name val range mult)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id ,field-name)
-        :initial-value ,val
-        :random-range ,range
-        :random-multf ,mult
-        :flags (sp-flag int-with-rand)
-        )
-  )
-
-
-(defmacro sp-rnd-int-flt (field-name val range mult)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id ,field-name)
-        :initial-valuef ,val
-        :random-range ,range
-        :random-multf ,mult
-        :flags (sp-flag int-with-rand)
-        )
-  )
-
-(defmacro sp-cpuinfo-flags (&rest flags)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id spt-flags)
-        :initial-value (sp-cpuinfo-flag ,@flags)
-        :random-mult 1
-        )
-  )
-
-(defmacro sp-launcher-by-id (field-name val)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id ,field-name)
-        :initial-value ,val
-        :flags (sp-flag part-by-id)
-        )
-  )
-
-(defmacro sp-func (field-name val)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id ,field-name)
-        :sym ,val
-        :flags (sp-flag from-pointer)
-        )
-  )
-
-(defmacro sp-sound (sound)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id spt-sound)
-        :sound ,sound
-        :flags (sp-flag plain-v2)
-        )
-  )
-
-(defmacro sp-end ()
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id spt-end)
-        )
-  )
-
-(defmacro sp-copy-from-other (field-name offset)
-  `(new 'static 'sp-field-init-spec
-        :field (sp-field-id ,field-name)
-        :initial-value ,offset
-        :random-mult 1
-        :flags (sp-flag copy-from-other-field)
-        )
-  )
-
 (defmacro defpartgroup (name &key id &key parts &key (duration 3000) &key (linger-duration 1500) &key (flags ()) &key bounds)
   "define a new part group. defines a constant with the name of the group and the value of the group's ID"
   `(begin
@@ -804,14 +693,178 @@
   `(-> *part-group-id-table* ,id)
   )
 
+(desfun param-float? (p)
+         (or (float? p) (and (pair? p) (eq? 'meters (car p))) (and (pair? p) (eq? 'degrees (car p))))
+         )
+
+(desfun param-int? (p)
+         (or (integer? p) (and (pair? p) (eq? 'seconds (car p))))
+         )
+
+(desfun param-symbol? (p)
+         (and (pair? p) (eq? 'quote (car p)))
+         )
+
+(seval (begin
+(define *sparticle-fields* (make-string-hash-table))
+(doenum (name val 'sp-field-id)
+  (hash-table-set!
+    *sparticle-fields*
+    (if (string-starts-with? (symbol->string name) "spt-")
+        (string->symbol (string-substr (symbol->string name) 4 0))
+        name)
+    (list
+      val name (member name '(spt-vel-x
+                              spt-vel-y
+                              spt-vel-z
+                              spt-scalevel-x
+                              spt-scalevel-y
+                              spt-rotvel-x
+                              spt-rotvel-y
+                              spt-rotvel-z
+                              spt-fade-r
+                              spt-fade-g
+                              spt-fade-b
+                              spt-fade-a
+                              spt-accel-x
+                              spt-accel-y
+                              spt-accel-z))
+      )
+    )
+  )
+;; you cannot define these fields ever.
+(define *sparticle-fields-banned* '(misc-fields-start
+                                    misc-fields-end
+                                    sprite-fields-start
+                                    sprite-fields-end
+                                    cpu-fields-start
+                                    cpu-fields-end
+                                    launch-fields-start
+                                    launch-fields-end
+                                    end
+                                    ))
+))
+
+;; the last field ID defined, to make sure that fields are defined in order.
+(seval (define *last-field-id* -1))
+
+(desfun process-init-spec (x)
+  (let* ((head (symbol->string (car x)))
+                          (params (cdr x))
+                          (field-name (string->symbol (string-substr head 1 0)))
+                          (field-lookup (hash-table-try-ref *sparticle-fields* field-name))
+                          (field (cdr field-lookup))
+                          (store? (member ':store params))
+                          (param-count (if store? (1- (length params)) (length params)))
+                          )
+                      (when (not (car field-lookup))
+                        (fmt #t "unknown sparticle field {}\n" x))
+                      (when (neq? (string-ref head 0) #\:)
+                        (fmt #t "invalid sparticle field {}\n" x))
+                      ; (when (member field-name *sparticle-fields-banned*)
+                      ;   (fmt #t "you cannot use sparticle field {}\n" field-name))
+                    (let ((field-id (car field))
+                          (field-enum-name (cadr field))
+                          (vel? (and #f (caddr field)))
+                          (param0 (and (>= param-count 1) (first params)))
+                          (param1 (and (>= param-count 2) (second params)))
+                          (param2 (and (>= param-count 3) (third params))))
+                      (when (>= *last-field-id* field-id)
+                        (fmt #t "field {} must come after field {}, not before\n" field-name (car (nth *last-field-id* *sparticle-fields*)))
+                        )
+                      (set! *last-field-id* field-id)
+                      (cond
+                        ((eq? field-name 'flags)
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :initial-value (sp-cpuinfo-flag ,@param0) :random-mult 1)
+                          )
+                        ((eq? field-name 'texture)
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :tex ,param0 :flags (sp-flag int))
+                          )
+                        ((eq? field-name 'next-launcher)
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :initial-value ,param0 :flags (sp-flag launcher))
+                          )
+                        ((eq? field-name 'sound)
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :sound ,param0 :flags (sp-flag object))
+                          )
+                        ((and (= 2 param-count) (symbol? param0) (eq? param0 ':copy))
+                          (let* ((other-field-lookup (hash-table-try-ref *sparticle-fields* (cadr (member ':copy params))))
+                                 (other-field (cdr other-field-lookup))
+                                 (other-field-id (car other-field)))
+                            (when (>= other-field-id field-id)
+                             (fmt #t "warning copying to sparticle field {} from {} - you can only copy from fields before this one!\n" field-name (cadr other-field))                             )
+                            `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag copy-from-other)
+                                                              :initial-value ,(- other-field-id field-id) :random-mult 1)
+                            )
+                          )
+                        ((and (= 2 param-count) (symbol? param0) (eq? param0 ':data))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag object)
+                                                            :object ,(cadr (member ':data params)))
+                          )
+                        ((and (= 1 param-count) (param-symbol? param0))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag symbol)
+                                                            :sym ,param0)
+                          )
+                        ((and (= 1 param-count) (param-float? param0))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag ,(if store? 'float-store 'float))
+                                                            :initial-valuef ,(if vel? `(/ ,param0 60.0) param0)
+                                                            :random-rangef 0.0
+                                                            :random-multf 1.0)
+                          )
+                        ((and (= 2 param-count) (param-float? param0) (param-float? param1))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag ,(if store? 'float-store 'float))
+                                                            :initial-valuef ,(if vel? `(/ ,param0 60.0) param0)
+                                                            :random-rangef ,(if vel? `(/ ,param1 60.0) param1)
+                                                            :random-multf 1.0)
+                          )
+                        ((and (= 3 param-count) (param-float? param0) (param-float? param1) (param-float? param2))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag ,(if store? 'float-store 'float))
+                                                            :initial-valuef ,(if vel? `(/ ,param0 60.0) param0)
+                                                            :random-rangef ,param1
+                                                            :random-multf ,(if vel? `(/ ,param2 60.0) param2))
+                          )
+                        ((and (= 3 param-count) (param-float? param0) (param-int? param1) (param-float? param2))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag float-int-rand)
+                                                            :initial-valuef ,(if vel? `(/ ,param0 60.0) param0)
+                                                            :random-range ,param1
+                                                            :random-multf ,(if vel? `(/ ,param2 60.0) param2))
+                          )
+                        ((and (= 1 param-count) (param-int? param0))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag int)
+                                                            :initial-value ,param0
+                                                            :random-range 0
+                                                            :random-mult 1)
+                          )
+                        ((and (= 2 param-count) (param-int? param0) (param-int? param1))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag int)
+                                                            :initial-value ,param0
+                                                            :random-range ,param1
+                                                            :random-mult 1)
+                          )
+                        ((and (= 3 param-count) (param-int? param0) (param-int? param1) (param-int? param2))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag int)
+                                                            :initial-value ,param0
+                                                            :random-range ,param1
+                                                            :random-mult ,param2)
+                          )
+                        (#t
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id spt-end))
+                          )
+                        )
+                      )
+                    )
+  )
+
 (defmacro defpart (id &key (init-specs ()))
   "define a new sparticle-launcher"
-  `(set! (-> *part-id-table* ,id)
-      (new 'static 'sparticle-launcher
-          :init-specs (new 'static 'inline-array sp-field-init-spec ,(1+ (length init-specs))
-                  ,@init-specs
-                  (sp-end)
-                  )))
+  (begin
+    (set! *last-field-id* -1)
+    `(set! (-> *part-id-table* ,id)
+        (new 'static 'sparticle-launcher
+            :init-specs (new 'static 'inline-array sp-field-init-spec ,(1+ (length init-specs))
+                    ,@(apply process-init-spec init-specs)
+                    (new 'static 'sp-field-init-spec :field (sp-field-id spt-end))
+                    )))
+    )
   )
 
 (defmacro cmove-#f-zero (dest condition src)
@@ -1311,7 +1364,207 @@
        )
   )
 
+(defmacro gs-reg-list (&rest reg-ids)
+  "Generate a giftag register descriptor list from reg-ids."
+
+  (let ((reg-count (length reg-ids)))
+    (when (> (length reg-ids) 16)
+      (ferror "too many regs passed to gs-reg-list")
+      )
+    (let ((list-to-splice '())
+          (cur-lst reg-ids)
+          (i -1))
+
+        ;; this is questionable.
+        (while (and (not (null? cur-lst)) (< i 15))
+          (push! list-to-splice (cons 'gif-reg-id (cons (car cur-lst) '())))
+          (push! list-to-splice (string->symbol-format ":regs{}" (inc! i)))
+          (pop! cur-lst)
+          )
+
+        `(new 'static 'gif-tag-regs
+            ,@list-to-splice
+            )
+        )
+  #| ;; the opengoal compiler does not have enough constant propagation for this for now
+    (let ((i -1))
+
+      `(the-as gif-tag-regs (logior ,@(apply (lambda (x)
+          `(shl (the-as uint (gif-reg-id ,x)) ,(* 4 (inc! i)))
+                ) reg-ids)
+              ))
+
+      )|#
+    )
+  )
+
 ;; dma-buffer
+
+(defmacro dma-buffer-add-base-type (buf pkt dma-type &rest body)
+  "Base macro for adding stuff to a dma-buffer. Don't use this directly!"
+
+  (with-gensyms (dma-buf)
+    `(let* ((,dma-buf ,buf)
+            (,pkt (the-as ,dma-type (-> ,dma-buf base))))
+
+          ,@body
+
+          (set! (-> ,dma-buf base) (&+ (the-as pointer ,pkt) (size-of ,dma-type)))
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-base-data (buf data-type forms)
+  "Base macro for adding data words to a dma-buffer.
+   Each form in forms is converted into data-type and added to the buffer. NO TYPE CHECKING is performed, so be careful!"
+
+  (with-gensyms (dma-buf ptr)
+    `(let* ((,dma-buf ,buf)
+            (,ptr (the-as (pointer ,data-type) (-> ,dma-buf base))))
+
+          ,@(apply-i (lambda (x i) `(set! (-> ,ptr ,i) (the-as ,data-type ,x))) forms)
+
+          (set! (-> ,dma-buf base) (&+ (the-as pointer ,ptr) (* ,(length forms) (size-of ,data-type))))
+
+        )
+    )
+  )
+
+
+(defmacro dma-buffer-add-cnt-vif2 (buf qwc vif0 vif1)
+  "Add a dma-packet to a dma-buffer.
+   The packet is made up of a 'cnt' DMAtag (transfer qwc qwords of data after the tag and continue from after that point)
+    and includes two vif-tags for vifcode, or something else if needed."
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt dma-packet
+
+        (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc ,qwc))
+
+        (set! (-> ,pkt vif0) ,vif0)
+        (set! (-> ,pkt vif1) ,vif1)
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-ref-vif2 (buf qwc addr vif0 vif1)
+  "Add a dma-packet to a dma-buffer.
+   The packet is made up of a 'cnt' DMAtag (transfer qwc qwords of data at addr and continue from after the tag)
+    and includes two vif-tags for vifcode, or something else if needed."
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt dma-packet
+
+        (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id ref) :qwc ,qwc :addr (the-as int ,addr)))
+
+        (set! (-> ,pkt vif0) ,vif0)
+        (set! (-> ,pkt vif1) ,vif1)
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-ret (buf)
+  "Add a dma-packet to a dma-buffer. This packet simply does a DMA 'return' "
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt dma-packet
+
+        (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id ret) :qwc 0))
+
+        (set! (-> ,pkt vif0) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+        (set! (-> ,pkt vif1) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-gif-tag (buf giftag gifregs)
+  "Add a giftag to a dma-buffer."
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt gs-gif-tag
+
+        (set! (-> ,pkt tag) ,giftag)
+
+        (set! (-> ,pkt regs) ,gifregs)
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-uint64 (buf &rest body)
+  "Add 64-bit words to a dma-buffer. See dma-buffer-add-base-data"
+
+  `(dma-buffer-add-base-data ,buf uint64 ,body)
+  )
+
+(defmacro dma-buffer-add-uint128 (buf &rest body)
+  "Add 128-bit words to a dma-buffer. See dma-buffer-add-base-data"
+
+  `(dma-buffer-add-base-data ,buf uint128 ,body)
+  )
+
+(defmacro dma-buffer-add-gs-set-flusha (buf &rest reg-list)
+  "Add a gif cnt dma packet to a dma-buffer for setting GS registers. Up to 16 can be set at once.
+   The packet runs the flusha command which waits for GIF transfer to end and VU1 microprogram to stop.
+   reg-list is a list of pairs where the car is the register name and the cadr is the value to be set for that register."
+
+  (let ((reg-count (length reg-list))
+        (qwc (+ (length reg-list) 1))
+        (reg-names (apply first reg-list))
+        (reg-datas (apply second reg-list))
+        )
+    `(begin
+      ;; dma tag
+      (dma-buffer-add-cnt-vif2 ,buf ,qwc
+                              (new 'static 'vif-tag :cmd (vif-cmd flusha))
+                              (new 'static 'vif-tag :cmd (vif-cmd direct) :imm ,qwc)
+                              )
+
+      ;; gif tag for editing gs regs
+      (dma-buffer-add-gif-tag ,buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :nreg ,reg-count)
+                                   (gs-reg-list a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d)
+                                   )
+
+      ;; gs regs
+      (dma-buffer-add-uint64 ,buf
+          ,@(apply2 (lambda (x) x) (lambda (x) `(gs-reg64 ,x)) reg-datas reg-names)
+          )
+      )
+    )
+  )
+
+(defmacro dma-buffer-add-gs-set (buf &rest reg-list)
+  "Add a gif cnt dma packet to a dma-buffer for setting GS registers. Up to 16 can be set at once.
+   reg-list is a list of pairs where the car is the register name and the cadr is the value to be set for that register."
+
+  (let ((reg-count (length reg-list))
+        (qwc (+ (length reg-list) 1))
+        (reg-names (apply first reg-list))
+        (reg-datas (apply second reg-list))
+        )
+    `(begin
+      ;; dma tag
+      (dma-buffer-add-cnt-vif2 ,buf ,qwc
+                              (new 'static 'vif-tag :cmd (vif-cmd nop))
+                              (new 'static 'vif-tag :cmd (vif-cmd direct) :imm ,qwc)
+                              )
+
+      ;; gif tag for editing gs regs
+      (dma-buffer-add-gif-tag ,buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :nreg ,reg-count)
+                                   (gs-reg-list a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d)
+                                   )
+
+      ;; gs regs
+      (dma-buffer-add-uint64 ,buf
+          ,@(apply2 (lambda (x) x) (lambda (x) `(gs-reg64 ,x)) reg-datas reg-names)
+          )
+      )
+    )
+  )
 
 (defmacro with-dma-bucket (bindings &rest body)
   "Start a new dma-bucket in body that will be finished at the end.

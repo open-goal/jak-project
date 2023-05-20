@@ -1076,6 +1076,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PMULTH:
     case InstructionKind::PMADDH:
     case InstructionKind::PADDH:
+    case InstructionKind::PSUBH:
     case InstructionKind::PMINH:
     case InstructionKind::MOVZ:
     case InstructionKind::MULT3:

@@ -5,66 +5,114 @@
 ;; name in dgo: blit-displays
 ;; dgos: ENGINE, GAME
 
-(define *blit-displays-work* (new 'static 'blit-displays-work
-                               :adgif-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x1000000000008005 #xe)
-                                 )
-                               :sprite-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x51 :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x51 :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x508b400000008010 #x53531)
-                                 )
-                               :sprite-slow-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x508b400000008001 #x53531)
-                                 )
-                               :line-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x41 :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x41 :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x2020c00000008020 #x55)
-                                 )
-                               :scan-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x4c :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x4c :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x5020c0000000800f #x55551)
-                                 )
-                               :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
-                               :line-color #x3f80000000000000
-                               :scan-colors (new 'static 'inline-array vector4w 15
-                                 (new 'static 'vector4w :y 1 :z 1)
-                                 (new 'static 'vector4w :y 1 :z 1)
-                                 (new 'static 'vector4w :y 1 :z 1)
-                                 (new 'static 'vector4w :y 1 :z 1)
-                                 (new 'static 'vector4w :x 1 :y 3 :z 2)
-                                 (new 'static 'vector4w :x 1 :y 4 :z 3)
-                                 (new 'static 'vector4w :x 2 :y 6 :z 5)
-                                 (new 'static 'vector4w :x 3 :y 8 :z 7)
-                                 (new 'static 'vector4w :x 5 :y 11 :z 10)
-                                 (new 'static 'vector4w :x 6 :y 14 :z 13)
-                                 (new 'static 'vector4w :x 9 :y 20 :z 17)
-                                 (new 'static 'vector4w :x 13 :y 27 :z 21)
-                                 (new 'static 'vector4w :x 17 :y 36 :z 24)
-                                 (new 'static 'vector4w :x 22 :y 45 :z 28)
-                                 (new 'static 'vector4w :x 32 :y 63 :z 32)
-                                 )
-                               :menu-mode #f
-                               :screen-copied #f
-                               :horizontal-flip-flag #f
-                               )
+(define *blit-displays-work*
+  (new 'static 'blit-displays-work
+    :adgif-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
         )
+      :gif0 (new 'static 'gif-tag64 :nloop #x5 :eop #x1 :nreg #x1)
+      :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d))
+      )
+    :sprite-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x51 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x51 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x10
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :fst #x1)
+        :nreg #x5
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id rgbaq)
+        :regs1 (gif-reg-id uv)
+        :regs2 (gif-reg-id xyz2)
+        :regs3 (gif-reg-id uv)
+        :regs4 (gif-reg-id xyz2)
+        )
+      )
+    :sprite-slow-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x1
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :fst #x1)
+        :nreg #x5
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id rgbaq)
+        :regs1 (gif-reg-id uv)
+        :regs2 (gif-reg-id xyz2)
+        :regs3 (gif-reg-id uv)
+        :regs4 (gif-reg-id xyz2)
+        )
+      )
+    :line-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x41 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x41 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x20
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type line) :abe #x1)
+        :nreg #x2
+        )
+      :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id xyz2) :regs1 (gif-reg-id xyz2))
+      )
+    :scan-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x4c :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x4c :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #xf
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type line) :abe #x1)
+        :nreg #x5
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id rgbaq)
+        :regs1 (gif-reg-id xyz2)
+        :regs2 (gif-reg-id xyz2)
+        :regs3 (gif-reg-id xyz2)
+        :regs4 (gif-reg-id xyz2)
+        )
+      )
+    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+    :line-color #x3f80000000000000
+    :scan-colors (new 'static 'inline-array vector4w 15
+      (new 'static 'vector4w :y 1 :z 1)
+      (new 'static 'vector4w :y 1 :z 1)
+      (new 'static 'vector4w :y 1 :z 1)
+      (new 'static 'vector4w :y 1 :z 1)
+      (new 'static 'vector4w :x 1 :y 3 :z 2)
+      (new 'static 'vector4w :x 1 :y 4 :z 3)
+      (new 'static 'vector4w :x 2 :y 6 :z 5)
+      (new 'static 'vector4w :x 3 :y 8 :z 7)
+      (new 'static 'vector4w :x 5 :y 11 :z 10)
+      (new 'static 'vector4w :x 6 :y 14 :z 13)
+      (new 'static 'vector4w :x 9 :y 20 :z 17)
+      (new 'static 'vector4w :x 13 :y 27 :z 21)
+      (new 'static 'vector4w :x 17 :y 36 :z 24)
+      (new 'static 'vector4w :x 22 :y 45 :z 28)
+      (new 'static 'vector4w :x 32 :y 63 :z 32)
+      )
+    :menu-mode #f
+    :screen-copied #f
+    :horizontal-flip-flag #f
+    )
+  )
 
 ;; hack
 
@@ -73,6 +121,61 @@
   (none)
   )
 
+
+;; not the real thing. just a temp hack.
+(defun blit-displays ()
+  (local-vars (v1-182 uint) (v1-183 int))
+  (let ((gp-0 *blit-displays-work*))
+    (when (zero? (-> gp-0 count-down))
+      (cond
+        ((and (-> gp-0 menu-mode) (not (-> gp-0 screen-copied)))
+          (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                      (bucket-id bucket-3)
+                                      )
+            (fx-copy-buf s4-0)
+            )
+          (set! (-> gp-0 vu1-enable-user-menu) (-> *display* vu1-enable-user-menu))
+          (set! (-> *display* vu1-enable-user-menu) (vu1-renderer-mask merc)) ;;(vu1-renderer-mask generic))
+          (set! (-> *display* vu1-enable-user) (vu1-renderer-mask merc)) ;;(vu1-renderer-mask generic))
+          (set! (-> gp-0 texture-enable-user-menu) (the-as uint (-> *texture-pool* texture-enable-user-menu)))
+          (set! (-> *texture-pool* texture-enable-user-menu) (texture-enable-mask shrub water map))
+          (set! (-> *texture-pool* texture-enable-user) (texture-enable-mask shrub water map))
+          (set! (-> gp-0 count-down) (the-as uint 3))
+          (set! (-> gp-0 screen-copied) #t)
+          (set! (-> gp-0 progress-interp) 0.0)
+          (set! (-> gp-0 progress-interp-dest) 1.0)
+          (set! (-> gp-0 progress-interp-speed) 0.033333335)
+         )
+        ((and (not (-> gp-0 menu-mode)) (-> gp-0 screen-copied))
+          (set! (-> *display* vu1-enable-user-menu) (-> gp-0 vu1-enable-user-menu))
+          (set! (-> *texture-pool* texture-enable-user-menu)
+                (the-as texture-enable-mask (-> gp-0 texture-enable-user-menu))
+                )
+          (set! (-> gp-0 count-down) (the-as uint 3))
+          (set! (-> gp-0 screen-copied) #f)
+         )
+        )
+      )
+    (when (and (-> *setting-control* user-current render) (>= (the-as uint 1) (-> gp-0 count-down)))
+      (when (and (-> gp-0 horizontal-flip-flag) (not (-> gp-0 menu-mode)))
+        )
+      )
+    (let ((a1-23 (-> *time-of-day-context* filter)))
+      (when (and (or (!= (-> a1-23 x) 1.0) (!= (-> a1-23 y) 1.0) (!= (-> a1-23 z) 1.0)) (not (-> gp-0 menu-mode)))
+        )
+      )
+    (cond
+      ((and (-> *setting-control* user-current render) (zero? (-> gp-0 count-down)))
+       )
+      (else
+        )
+      )
+    (if (nonzero? (-> gp-0 count-down))
+        (+! (-> gp-0 count-down) -1)
+        )
+    )
+  (none)
+  )
 
 ;; DECOMP BEGINS
 

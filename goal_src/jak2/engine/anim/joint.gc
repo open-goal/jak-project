@@ -35,14 +35,17 @@
   (-> obj length)
   )
 
+;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of joint-anim-matrix ((obj joint-anim-matrix))
   (the-as int (+ (-> joint-anim-matrix size) (* (-> obj length) 64)))
   )
 
+;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of joint-anim-transformq ((obj joint-anim-transformq))
   (the-as int (+ (-> joint-anim-transformq size) (* 48 (-> obj length))))
   )
 
+;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of joint-anim-drawable ((obj joint-anim-drawable))
   (the-as int (+ (-> joint-anim-drawable size) (* (-> obj length) 4)))
   )
@@ -149,6 +152,7 @@
   obj
   )
 
+;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of joint-control ((obj joint-control))
   (the-as int (+ (-> obj type size) (* (-> obj allocated-length) 64)))
   )
@@ -264,6 +268,7 @@
   #f
   )
 
+;; WARN: Return type mismatch symbol vs basic.
 (defmethod get-art-by-name-method art ((obj art) (arg0 string) (arg1 type))
   (the-as basic #f)
   )
@@ -273,6 +278,7 @@
   `(the-as ,type (get-art-by-name-method ,obj ,name ,type))
   )
 
+;; WARN: Return type mismatch symbol vs int.
 (defmethod get-art-idx-by-name-method art ((obj art) (arg0 string) (arg1 type))
   (the-as int #f)
   )
@@ -334,6 +340,7 @@
   obj
   )
 
+;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of art-joint-anim ((obj art-joint-anim))
   (the-as int (+ (-> art size) (* (-> obj length) 4)))
   )
@@ -361,6 +368,7 @@
        )
   )
 
+;; WARN: Return type mismatch art-element vs basic.
 (defmethod get-art-by-name-method art-group ((obj art-group) (arg0 string) (arg1 type))
   (cond
     (arg1
@@ -441,6 +449,7 @@
   obj
   )
 
+;; WARN: Return type mismatch art-group vs none.
 (defmethod relocate art-group ((obj art-group) (arg0 kheap) (arg1 (pointer uint8)))
   (let ((s4-0 (clear *temp-string*)))
     (string<-charp s4-0 arg1)
@@ -506,6 +515,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of art-mesh-geo ((obj art-mesh-geo))
   (the-as int (+ (-> art size) (* (-> obj length) 4)))
   )
@@ -547,10 +557,12 @@
   obj
   )
 
+;; WARN: Return type mismatch uint vs int.
 (defmethod asize-of art-joint-geo ((obj art-joint-geo))
   (the-as int (+ (-> art size) (* (-> obj length) 4)))
   )
 
+;; WARN: Return type mismatch joint vs basic.
 (defmethod get-art-by-name-method art-joint-geo ((obj art-joint-geo) (arg0 string) (arg1 type))
   (cond
     (arg1
@@ -612,7 +624,7 @@
 
 (defbehavior joint-control-channel-eval process ((arg0 joint-control-channel))
   (let ((f0-3 ((-> arg0 num-func) arg0 (-> arg0 param 0) (-> arg0 param 1) (-> arg0 param 2))))
-    (set! (-> arg0 eval-time) (the-as uint (-> self clock frame-counter)))
+    (set! (-> arg0 eval-time) (the-as uint (current-time)))
     f0-3
     )
   )
@@ -620,7 +632,7 @@
 (defbehavior joint-control-channel-eval! process ((arg0 joint-control-channel) (arg1 (function joint-control-channel float float float float)))
   (set! (-> arg0 num-func) arg1)
   (let ((f0-3 (arg1 arg0 (-> arg0 param 0) (-> arg0 param 1) (-> arg0 param 2))))
-    (set! (-> arg0 eval-time) (the-as uint (-> self clock frame-counter)))
+    (set! (-> arg0 eval-time) (the-as uint (current-time)))
     f0-3
     )
   )
@@ -629,21 +641,19 @@
                                  (arg1 art-joint-anim)
                                  (arg2 (function joint-control-channel float float float float))
                                  )
-  (with-pp
-    (set! (-> arg0 num-func) arg2)
-    (cond
-      ((= (-> arg0 command) (joint-control-command stack))
-       )
-      (else
-        (if arg1
-            (set! (-> arg0 frame-group) arg1)
-            )
-        (arg2 arg0 (-> arg0 param 0) (-> arg0 param 1) (-> arg0 param 2))
-        (set! (-> arg0 eval-time) (the-as uint (-> pp clock frame-counter)))
-        )
+  (set! (-> arg0 num-func) arg2)
+  (cond
+    ((= (-> arg0 command) (joint-control-command stack))
+     )
+    (else
+      (if arg1
+          (set! (-> arg0 frame-group) arg1)
+          )
+      (arg2 arg0 (-> arg0 param 0) (-> arg0 param 1) (-> arg0 param 2))
+      (set! (-> arg0 eval-time) (the-as uint (current-time)))
       )
-    0
     )
+  0
   )
 
 (defun joint-control-channel-group! ((arg0 joint-control-channel)
@@ -683,6 +693,8 @@
   arg0
   )
 
+;; WARN: Return type mismatch symbol vs object.
+;; WARN: Using new Jak 2 rtype-of
 (defun joint-control-remap! ((arg0 joint-control) (arg1 art-group) (arg2 art-group) (arg3 pair) (arg4 int) (arg5 string))
   (local-vars
     (sv-16 int)
@@ -762,6 +774,7 @@
   (the-as object sv-24)
   )
 
+;; ERROR: Failed load: (set! vf2 (l.vf (the-as int a2-1))) at op 46
 (defun flatten-joint-control-to-spr ((arg0 joint-control))
   (rlet ((vf1 :class vf)
          (vf10 :class vf)
@@ -938,12 +951,13 @@
     )
   )
 
+;; WARN: Return type mismatch object vs matrix.
 (defun matrix-from-joint-anim-frame ((arg0 joint-anim-compressed-control) (arg1 int) (arg2 int))
   (let ((v1-1 (the-as object (-> arg0 fixed data)))
         (v0-0 (the-as object (-> arg0 data arg2 data)))
         )
     (cond
-      ((zero? (logand (-> arg0 fixed hdr matrix-bits) 1))
+      ((not (logtest? (-> arg0 fixed hdr matrix-bits) 1))
        (set! v1-1 (cond
                     ((zero? arg1)
                      (return (the-as matrix v1-1))
@@ -962,7 +976,7 @@
         (set! v0-0 (-> (the-as (inline-array vector) v0-0) 4))
         )
       )
-    (if (zero? (logand (-> arg0 fixed hdr matrix-bits) 2))
+    (if (not (logtest? (-> arg0 fixed hdr matrix-bits) 2))
         (return (the-as matrix v1-1))
         )
     (the-as matrix v0-0)
@@ -982,14 +996,14 @@
       (cond
         ((= (the float (the int f0-1)) f0-1)
          (let* ((a2-3 (matrix-from-joint-anim-frame (-> s4-0 frames) s5-0 (the int f30-0)))
-                (v1-7 (-> a2-3 vector 0 quad))
-                (a0-3 (-> a2-3 vector 1 quad))
-                (a1-3 (-> a2-3 vector 2 quad))
+                (v1-7 (-> a2-3 quad 0))
+                (a0-3 (-> a2-3 quad 1))
+                (a1-3 (-> a2-3 quad 2))
                 (a2-4 (-> a2-3 trans quad))
                 )
-           (set! (-> arg0 vector 0 quad) v1-7)
-           (set! (-> arg0 vector 1 quad) a0-3)
-           (set! (-> arg0 vector 2 quad) a1-3)
+           (set! (-> arg0 quad 0) v1-7)
+           (set! (-> arg0 quad 1) a0-3)
+           (set! (-> arg0 quad 2) a1-3)
            (set! (-> arg0 trans quad) a2-4)
            )
          arg0
@@ -1029,6 +1043,7 @@
     )
   )
 
+;; WARN: Return type mismatch (inline-array matrix) vs matrix.
 (defun matrix-from-control! ((arg0 matrix-stack) (arg1 joint) (arg2 joint-control) (arg3 symbol))
   (set! (-> arg0 top) (the-as matrix (-> arg0 data)))
   (dotimes (s2-0 (the-as int (+ (-> arg2 active-channels) (-> arg2 float-channels))))
@@ -1048,14 +1063,14 @@
          (set! (-> arg0 top) (the-as matrix (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0))))
          (let* ((v1-9 (the-as object (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0))))
                 (a3-1 (-> arg0 top))
-                (a0-8 (-> a3-1 vector 0 quad))
-                (a1-6 (-> a3-1 vector 1 quad))
-                (a2-2 (-> a3-1 vector 2 quad))
+                (a0-8 (-> a3-1 quad 0))
+                (a1-6 (-> a3-1 quad 1))
+                (a2-2 (-> a3-1 quad 2))
                 (a3-2 (-> a3-1 trans quad))
                 )
-           (set! (-> (the-as matrix v1-9) vector 0 quad) a0-8)
-           (set! (-> (the-as matrix v1-9) vector 1 quad) a1-6)
-           (set! (-> (the-as matrix v1-9) vector 2 quad) a2-2)
+           (set! (-> (the-as matrix v1-9) quad 0) a0-8)
+           (set! (-> (the-as matrix v1-9) quad 1) a1-6)
+           (set! (-> (the-as matrix v1-9) quad 2) a2-2)
            (set! (-> (the-as matrix v1-9) trans quad) a3-2)
            )
          )
@@ -1088,11 +1103,10 @@
   (the-as matrix (-> arg0 data))
   )
 
-
 (defmethod reset-and-assign-geo! cspace ((obj cspace) (arg0 drawable))
   (set! (-> obj parent) #f)
   (set! (-> obj joint) #f)
-  (set! (-> obj geo) (the-as drawable arg0))
+  (set! (-> obj geo) arg0)
   (set! (-> obj param0) #f)
   (set! (-> obj param1) #f)
   (set! (-> obj param2) #f)
@@ -1111,14 +1125,14 @@
 (defun cspace<-cspace! ((arg0 cspace) (arg1 cspace))
   (let ((v0-0 (-> arg0 bone transform)))
     (let* ((a2-0 (-> arg1 bone transform))
-           (v1-2 (-> a2-0 vector 0 quad))
-           (a0-1 (-> a2-0 vector 1 quad))
-           (a1-1 (-> a2-0 vector 2 quad))
+           (v1-2 (-> a2-0 quad 0))
+           (a0-1 (-> a2-0 quad 1))
+           (a1-1 (-> a2-0 quad 2))
            (a2-1 (-> a2-0 trans quad))
            )
-      (set! (-> v0-0 vector 0 quad) v1-2)
-      (set! (-> v0-0 vector 1 quad) a0-1)
-      (set! (-> v0-0 vector 2 quad) a1-1)
+      (set! (-> v0-0 quad 0) v1-2)
+      (set! (-> v0-0 quad 1) a0-1)
+      (set! (-> v0-0 quad 2) a1-1)
       (set! (-> v0-0 trans quad) a2-1)
       )
     v0-0
@@ -1128,14 +1142,14 @@
 (defun cspace<-cspace-normalized! ((arg0 cspace) (arg1 cspace))
   (let ((gp-0 (-> arg0 bone transform)))
     (let* ((a2-0 (-> arg1 bone transform))
-           (v1-2 (-> a2-0 vector 0 quad))
-           (a0-1 (-> a2-0 vector 1 quad))
-           (a1-1 (-> a2-0 vector 2 quad))
+           (v1-2 (-> a2-0 quad 0))
+           (a0-1 (-> a2-0 quad 1))
+           (a1-1 (-> a2-0 quad 2))
            (a2-1 (-> a2-0 trans quad))
            )
-      (set! (-> gp-0 vector 0 quad) v1-2)
-      (set! (-> gp-0 vector 1 quad) a0-1)
-      (set! (-> gp-0 vector 2 quad) a1-1)
+      (set! (-> gp-0 quad 0) v1-2)
+      (set! (-> gp-0 quad 1) a0-1)
+      (set! (-> gp-0 quad 2) a1-1)
       (set! (-> gp-0 trans quad) a2-1)
       )
     (vector-normalize! (the-as vector (-> gp-0 vector)) 1.0)
@@ -1148,14 +1162,14 @@
 (defun cspace<-parent-joint! ((arg0 cspace) (arg1 (pointer process-drawable)) (arg2 int))
   (let ((v0-0 (-> arg0 bone transform)))
     (let* ((a2-1 (-> arg1 0 node-list data arg2 bone transform))
-           (v1-5 (-> a2-1 vector 0 quad))
-           (a0-2 (-> a2-1 vector 1 quad))
-           (a1-1 (-> a2-1 vector 2 quad))
+           (v1-5 (-> a2-1 quad 0))
+           (a0-2 (-> a2-1 quad 1))
+           (a1-1 (-> a2-1 quad 2))
            (a2-2 (-> a2-1 trans quad))
            )
-      (set! (-> v0-0 vector 0 quad) v1-5)
-      (set! (-> v0-0 vector 1 quad) a0-2)
-      (set! (-> v0-0 vector 2 quad) a1-1)
+      (set! (-> v0-0 quad 0) v1-5)
+      (set! (-> v0-0 quad 1) a0-2)
+      (set! (-> v0-0 quad 2) a1-1)
       (set! (-> v0-0 trans quad) a2-2)
       )
     v0-0
@@ -1206,14 +1220,14 @@
   (let ((v1-2 (matrix-from-control! (scratchpad-object matrix-stack :offset 64) (-> arg0 joint) arg1 'no-push))
         (v0-1 (-> arg0 bone transform))
         )
-    (let ((a0-4 (-> v1-2 vector 0 quad))
-          (a1-2 (-> v1-2 vector 1 quad))
-          (a2-1 (-> v1-2 vector 2 quad))
+    (let ((a0-4 (-> v1-2 quad 0))
+          (a1-2 (-> v1-2 quad 1))
+          (a2-1 (-> v1-2 quad 2))
           (v1-3 (-> v1-2 trans quad))
           )
-      (set! (-> v0-1 vector 0 quad) a0-4)
-      (set! (-> v0-1 vector 1 quad) a1-2)
-      (set! (-> v0-1 vector 2 quad) a2-1)
+      (set! (-> v0-1 quad 0) a0-4)
+      (set! (-> v0-1 quad 1) a1-2)
+      (set! (-> v0-1 quad 2) a2-1)
       (set! (-> v0-1 trans quad) v1-3)
       )
     v0-1
@@ -1223,14 +1237,14 @@
 (defun cspace<-matrix-joint! ((arg0 cspace) (arg1 matrix))
   (let ((v0-0 (-> arg0 bone transform)))
     (let* ((a2-0 arg1)
-           (v1-1 (-> a2-0 vector 0 quad))
-           (a0-1 (-> a2-0 vector 1 quad))
-           (a1-1 (-> a2-0 vector 2 quad))
+           (v1-1 (-> a2-0 quad 0))
+           (a0-1 (-> a2-0 quad 1))
+           (a1-1 (-> a2-0 quad 2))
            (a2-1 (-> a2-0 trans quad))
            )
-      (set! (-> v0-0 vector 0 quad) v1-1)
-      (set! (-> v0-0 vector 1 quad) a0-1)
-      (set! (-> v0-0 vector 2 quad) a1-1)
+      (set! (-> v0-0 quad 0) v1-1)
+      (set! (-> v0-0 quad 1) a0-1)
+      (set! (-> v0-0 quad 2) a1-1)
       (set! (-> v0-0 trans quad) a2-1)
       )
     v0-0
@@ -1255,14 +1269,14 @@
     (let ((v0-0 (-> arg0 bone transform)))
       (let ((v1-1 arg1))
         (let ((a0-3 (-> arg0 parent bone transform)))
-          (.lvf vf10 (&-> v1-1 vector 0 quad))
-          (.lvf vf14 (&-> a0-3 vector 0 quad))
-          (.lvf vf15 (&-> a0-3 vector 1 quad))
-          (.lvf vf16 (&-> a0-3 vector 2 quad))
+          (.lvf vf10 (&-> v1-1 quad 0))
+          (.lvf vf14 (&-> a0-3 quad 0))
+          (.lvf vf15 (&-> a0-3 quad 1))
+          (.lvf vf16 (&-> a0-3 quad 2))
           (.lvf vf17 (&-> a0-3 trans quad))
           )
-        (.lvf vf11 (&-> v1-1 vector 1 quad))
-        (.lvf vf12 (&-> v1-1 vector 2 quad))
+        (.lvf vf11 (&-> v1-1 quad 1))
+        (.lvf vf12 (&-> v1-1 quad 2))
         (.lvf vf13 (&-> v1-1 trans quad))
         )
       (.mul.x.vf acc vf14 vf10)
@@ -1281,9 +1295,9 @@
       (.add.mul.y.vf acc vf15 vf13 acc)
       (.add.mul.z.vf acc vf16 vf13 acc)
       (.add.mul.w.vf vf21 vf17 vf13 acc)
-      (.svf (&-> v0-0 vector 0 quad) vf18)
-      (.svf (&-> v0-0 vector 1 quad) vf19)
-      (.svf (&-> v0-0 vector 2 quad) vf20)
+      (.svf (&-> v0-0 quad 0) vf18)
+      (.svf (&-> v0-0 quad 1) vf19)
+      (.svf (&-> v0-0 quad 2) vf20)
       (.svf (&-> v0-0 trans quad) vf21)
       v0-0
       )
@@ -1324,14 +1338,14 @@
     (let ((v0-0 (-> arg0 bone transform)))
       (let ((v1-1 arg1))
         (let ((a0-3 (-> arg0 parent bone transform)))
-          (.lvf vf10 (&-> v1-1 vector 0 quad))
-          (.lvf vf14 (&-> a0-3 vector 0 quad))
-          (.lvf vf15 (&-> a0-3 vector 1 quad))
-          (.lvf vf16 (&-> a0-3 vector 2 quad))
+          (.lvf vf10 (&-> v1-1 quad 0))
+          (.lvf vf14 (&-> a0-3 quad 0))
+          (.lvf vf15 (&-> a0-3 quad 1))
+          (.lvf vf16 (&-> a0-3 quad 2))
           (.lvf vf17 (&-> a0-3 trans quad))
           )
-        (.lvf vf11 (&-> v1-1 vector 1 quad))
-        (.lvf vf12 (&-> v1-1 vector 2 quad))
+        (.lvf vf11 (&-> v1-1 quad 1))
+        (.lvf vf12 (&-> v1-1 quad 2))
         (.lvf vf13 (&-> v1-1 trans quad))
         )
       (.sub.vf vf31 vf0 vf0)
@@ -1352,9 +1366,9 @@
       (.add.mul.y.vf acc vf15 vf13 acc)
       (.add.mul.z.vf acc vf16 vf13 acc)
       (.add.mul.w.vf vf21 vf17 vf13 acc)
-      (.svf (&-> v0-0 vector 0 quad) vf18)
-      (.svf (&-> v0-0 vector 1 quad) vf19)
-      (.svf (&-> v0-0 vector 2 quad) vf20)
+      (.svf (&-> v0-0 quad 0) vf18)
+      (.svf (&-> v0-0 quad 1) vf19)
+      (.svf (&-> v0-0 quad 2) vf20)
       (.svf (&-> v0-0 trans quad) vf21)
       v0-0
       )
@@ -1370,9 +1384,9 @@
     (init-vf0-vector)
     (let ((v1-1 (-> arg0 bone transform)))
       (.sub.vf vf31 vf0 vf0)
-      (.lvf vf30 (&-> v1-1 vector 0 quad))
+      (.lvf vf30 (&-> v1-1 quad 0))
       (.sub.vf vf30 vf31 vf30)
-      (.svf (&-> v1-1 vector 0 quad) vf30)
+      (.svf (&-> v1-1 quad 0) vf30)
       )
     (.mov v1-2 vf30)
     0
@@ -1557,14 +1571,14 @@
         (when (logtest? a0-8 1)
           (let* ((a2-7 (-> arg0 matrices a1-5))
                  (t2-0 (-> v1-9 matrices a1-5))
-                 (a3-3 (-> t2-0 vector 0 quad))
-                 (t0-0 (-> t2-0 vector 1 quad))
-                 (t1-0 (-> t2-0 vector 2 quad))
+                 (a3-3 (-> t2-0 quad 0))
+                 (t0-0 (-> t2-0 quad 1))
+                 (t1-0 (-> t2-0 quad 2))
                  (t2-1 (-> t2-0 trans quad))
                  )
-            (set! (-> a2-7 vector 0 quad) a3-3)
-            (set! (-> a2-7 vector 1 quad) t0-0)
-            (set! (-> a2-7 vector 2 quad) t1-0)
+            (set! (-> a2-7 quad 0) a3-3)
+            (set! (-> a2-7 quad 1) t0-0)
+            (set! (-> a2-7 quad 2) t1-0)
             (set! (-> a2-7 trans quad) t2-1)
             )
           )
@@ -1576,11 +1590,11 @@
             (let* ((a3-9 (-> arg0 data a2-9))
                    (t2-2 (-> v1-9 data a2-9))
                    (t0-4 (-> t2-2 trans quad))
-                   (t1-1 (-> t2-2 quat vec quad))
+                   (t1-1 (-> t2-2 quat quad))
                    (t2-3 (-> t2-2 scale quad))
                    )
               (set! (-> a3-9 trans quad) t0-4)
-              (set! (-> a3-9 quat vec quad) t1-1)
+              (set! (-> a3-9 quat quad) t1-1)
               (set! (-> a3-9 scale quad) t2-3)
               )
             )
@@ -1596,11 +1610,11 @@
           (let* ((a3-15 (-> arg0 data (+ a2-10 62)))
                  (t2-4 (-> v1-9 data (+ a2-10 62)))
                  (t0-9 (-> t2-4 trans quad))
-                 (t1-3 (-> t2-4 quat vec quad))
+                 (t1-3 (-> t2-4 quat quad))
                  (t2-5 (-> t2-4 scale quad))
                  )
             (set! (-> a3-15 trans quad) t0-9)
-            (set! (-> a3-15 quat vec quad) t1-3)
+            (set! (-> a3-15 quat quad) t1-3)
             (set! (-> a3-15 scale quad) t2-5)
             )
           )
@@ -1757,7 +1771,7 @@
       (set! (-> v1-15 comp-data) (the-as uint (-> s5-0 fixed)))
       )
     (let ((s4-1 (kmalloc (-> obj kheap) (the-as int s3-0) (kmalloc-flags) "malloc")))
-      (unpack-comp-lzo (the (pointer uint8) s4-1) (the (pointer uint8) (-> s5-0 fixed)))
+      (unpack-comp-lzo (the-as (pointer uint8) s4-1) (the-as (pointer uint8) (-> s5-0 fixed)))
       (set! (-> s5-0 flags) (logand -2 (-> s5-0 flags)))
       (logior! (-> s5-0 flags) 2)
       (set! (-> s5-0 fixed) (the-as joint-anim-compressed-fixed s4-1))
@@ -1792,5 +1806,7 @@
   )
 
 (kmemopen global "anim-manager")
+
 (define *anim-manager* (new 'global 'art-joint-anim-manager #x30000))
+
 (kmemclose)

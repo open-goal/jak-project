@@ -11,6 +11,7 @@
 
 #include "display.h"
 
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
@@ -18,7 +19,6 @@
 
 #include "game/common/file_paths.h"
 #include "game/kernel/common/kscheme.h"
-#include "game/kernel/svnrev.h"
 #include "game/runtime.h"
 #include "game/system/newpad.h"
 #include "pipelines/opengl.h"
@@ -251,23 +251,38 @@ void LoadSettings() {
   // TODO - make this game specific as well
   auto controller_settings_filename =
       file_util::get_user_config_dir() / "controller" / "controller-settings.json";
-  if (fs::exists(controller_settings_filename)) {
-    LoadPeripheralSettings(controller_settings_filename);
-    lg::info("Loaded controller configuration file.");
-  } else {
-    SavePeripheralSettings();
+  try {
+    if (fs::exists(controller_settings_filename)) {
+      LoadPeripheralSettings(controller_settings_filename);
+      lg::info("Loaded controller configuration file.");
+    } else {
+      lg::info(
+          "Couldn't find $USER/controller/controller-settings.json creating new controller "
+          "settings "
+          "file.");
+      SavePeripheralSettings();
+    }
+  } catch (std::exception& e) {
     lg::info(
-        "Couldn't find $USER/controller/controller-settings.json creating new controller settings "
-        "file.");
+        "Unable to load $USER/controller/controller-settings.json successfully, re-initializing "
+        "it");
+    SavePeripheralSettings();
   }
+
   // load debug settings
   auto debug_settings_filename =
       file_util::get_user_misc_dir(g_game_version) / "debug-settings.json";
-  if (fs::exists(debug_settings_filename)) {
-    g_debug_settings.load_settings(debug_settings_filename);
-    lg::info("Loaded debug settings file.");
-  } else {
-    lg::info("Couldn't find $USER/misc/debug-settings.json creating new controller settings file.");
+  try {
+    if (fs::exists(debug_settings_filename)) {
+      g_debug_settings.load_settings(debug_settings_filename);
+      lg::info("Loaded debug settings file.");
+    } else {
+      lg::info(
+          "Couldn't find $USER/misc/debug-settings.json creating new controller settings file.");
+      g_debug_settings.save_settings();
+    }
+  } catch (std::exception& e) {
+    lg::info("Unable to load $USER/misc/debug-settings.json successfully, re-initializing it");
     g_debug_settings.save_settings();
   }
 }
@@ -312,9 +327,13 @@ u32 Init(GameVersion version) {
   if (g_main_thread_id != std::this_thread::get_id()) {
     lg::error("Ran Gfx::Init outside main thread. Init display elsewhere?");
   } else {
-    Display::InitMainDisplay(640, 480,
-                             fmt::format("OpenGOAL - Work in Progress - {}", GIT_VERSION).c_str(),
-                             g_settings, version);
+    std::string title = "OpenGOAL";
+    if (g_game_version == GameVersion::Jak2) {
+      title += " - Work in Progress";
+    }
+    title +=
+        fmt::format(" - {} - {}", version_to_game_name_external(g_game_version), build_revision());
+    Display::InitMainDisplay(640, 480, title.c_str(), g_settings, version);
   }
 
   return 0;
@@ -323,6 +342,7 @@ u32 Init(GameVersion version) {
 void Loop(std::function<bool()> f) {
   lg::info("GFX Loop");
   while (f()) {
+    auto p = scoped_prof("gfx loop");
     // check if we have a display
     if (Display::GetMainDisplay()) {
       // lg::debug("run display");

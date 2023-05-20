@@ -40,6 +40,7 @@ struct CompilationOptions {
 class Compiler {
  public:
   Compiler(GameVersion version,
+           const std::optional<REPL::Config> repl_config = {},
            const std::string& user_profile = "#f",
            std::unique_ptr<REPL::Wrapper> repl = nullptr);
   ~Compiler();
@@ -211,6 +212,7 @@ class Compiler {
                         const std::function<void(const goos::Object&)>& f);
 
   goos::Arguments get_va(const goos::Object& form, const goos::Object& rest);
+  goos::Arguments get_va_no_named(const goos::Object& form, const goos::Object& rest);
   void va_check(const goos::Object& form,
                 const goos::Arguments& args,
                 const std::vector<std::optional<goos::ObjectType>>& unnamed,
@@ -338,7 +340,8 @@ class Compiler {
                                        const TypeSpec& result_type,
                                        RegVal* a,
                                        RegVal* b,
-                                       Env* env);
+                                       Env* env,
+                                       bool imm_divisor);
 
   Val* compile_format_string(const goos::Object& form,
                              Env* env,
