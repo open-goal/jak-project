@@ -8,7 +8,8 @@ speaker_names = [
     "GAMMAL MAN",
     "KVINNA",
     "ORAKEL",
-    "BONDE," "FLUT FLUT",
+    "BONDE,",
+    "FLUT FLUT",
     "???",
     "BILLY",
     "FÅGEL SKÅDARE",
@@ -45,6 +46,18 @@ def starts_with_speaker(line):
     for speaker in speaker_names:
         if line.startswith(speaker):
             return True
+
+def remove_speaker_from_line(line):
+    found_speaker = False
+    for speaker in speaker_names:
+        if line.startswith(speaker):
+            found_speaker = True
+            line = line[len(speaker):]
+            break
+    if found_speaker:
+        return line
+    print("Couldn't find speaker in line: {}".format(line))
+    exit(1)
 
 # with open("swedish_subs.txt", "r", encoding="utf-8") as f:
 #     lines = f.readlines()
@@ -127,3 +140,31 @@ for idx, group in enumerate(line_groups):
     if len(group) != expected_line_count:
         print("ERROR: Expected {} lines for {}, got {} -- {}\n\n".format(expected_line_count, name, len(group), group))
         exit(1)
+    # Actually convert to the new format
+    for line in group:
+        # Every line should start with a speaker name, remove it
+        cleaned_line = remove_speaker_from_line(line).strip()
+        # Skip missed translations
+        if "MISSED" in cleaned_line:
+            print(cleaned_line)
+            break
+        if is_hint:
+            if name not in subtitle_file["hints"]:
+                subtitle_file["hints"][name] = []
+            subtitle_file["hints"][name].append(cleaned_line)
+        else:
+            if name not in subtitle_file["cutscenes"]:
+                subtitle_file["cutscenes"][name] = []
+            subtitle_file["cutscenes"][name].append(cleaned_line)
+
+print(len(subtitle_file["cutscenes"]))
+print(len(subtitle_file["hints"]))
+
+# Now update and write out the reference file
+for name, lines in subtitle_file["cutscenes"].items():
+    reference_file["cutscenes"][name] = lines
+for name, lines in subtitle_file["hints"].items():
+    reference_file["hints"][name] = lines
+
+with open("subtitle_lines_sv-SE-new.json", "w", encoding="utf-8") as f:
+    json.dump(reference_file, f, indent=2, ensure_ascii=False)
