@@ -75,7 +75,8 @@ void OceanTexture::init_textures(TexturePool& pool, GameVersion version) {
 
 void OceanTexture::draw_debug_window() {
   if (m_tex0_gpu) {
-    ImGui::Image((void*)m_tex0_gpu->gpu_textures.at(0).gl, ImVec2(m_tex0_gpu->w, m_tex0_gpu->h));
+    ImGui::Image((void*)(u64)m_tex0_gpu->gpu_textures.at(0).gl,
+                 ImVec2(m_tex0_gpu->w, m_tex0_gpu->h));
   }
 }
 

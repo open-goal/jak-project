@@ -131,12 +131,14 @@ int SpuDmaIntr(int, void*) {
       } else {
         sceSdSetParam((u16)DmaStereoVagCmd->voice | 0x200, 0);
         sceSdSetParam((u16)DmaVagCmd->voice | 0x200, 0);
+        sceSdkey_off_jak2_voice(DmaStereoVagCmd->voice);
       }
       sceSdkey_off_jak2_voice(DmaVagCmd->voice);
       goto hack;
     }
 
     // mark as paused manually and unpause to start playback.
+    printf("start playing from dma unpause\n");
     DmaVagCmd->sb_paused = 1;
     UnPauseVAG(DmaVagCmd, 0);
   hack:;

@@ -205,7 +205,7 @@ void Sprite3::render_distorter(DmaFollower& dma,
  */
 void Sprite3::distort_dma(GameVersion version, DmaFollower& dma, ScopedProfilerNode& /*prof*/) {
   // set the expected values per game version first
-  int expect_zbp, expect_th;
+  u32 expect_zbp, expect_th;
   switch (version) {
     case GameVersion::Jak1:
       expect_zbp = 0x1c0;

@@ -34,7 +34,7 @@ void BlitDisplays::init_textures(TexturePool& texture_pool, GameVersion version)
 
 void BlitDisplays::render(DmaFollower& dma,
                           SharedRenderState* render_state,
-                          ScopedProfilerNode& prof) {
+                          ScopedProfilerNode& /*prof*/) {
   auto back = render_state->back_fbo;
   bool valid = back && back->valid;
 
