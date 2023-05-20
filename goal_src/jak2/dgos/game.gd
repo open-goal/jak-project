@@ -334,6 +334,7 @@
   "video.o"
   "pckernel-common.o" ;; added
   "pckernel.o" ;; added
+  "subtitle2.o" ;; added
   "main.o"
   "collide-cache.o"
   "collide-debug.o"
