@@ -11,13 +11,13 @@ uniform float alpha_min;
 uniform float alpha_max;
 
 void main() {
-    vec4 T0 = texture(tex_T0, tex_coord.xy);
-    if (tex_info.y == 0) {
-        T0.w = 1.0;
-    }
-    color = fragment_color * T0;
+  vec4 T0 = texture(tex_T0, tex_coord.xy);
+  if (tex_info.y == 0) {
+    T0.w = 1.0;
+  }
+  color = fragment_color * T0;
 
-    if (color.a < alpha_min || color.a > alpha_max) {
-        discard;
-    }
+  if (color.a < alpha_min || color.a > alpha_max) {
+    discard;
+  }
 }

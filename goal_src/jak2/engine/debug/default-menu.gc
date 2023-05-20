@@ -4280,34 +4280,30 @@
              "Clear map"
              #f
              ,(lambda ()
-                (let ((v1-1
-                        (process-spawn-function
-                          process
-                          (lambda () (with-pp
-                                       (set-master-mode 'game)
-                                       (let ((gp-0 (-> pp clock frame-counter)))
-                                         (until (>= (- (-> pp clock frame-counter) gp-0) (seconds 0.3))
-                                           (suspend)
-                                           )
-                                         )
-                                       (until #f
-                                         (format *stdcon* "press x clear map, press circle cancel~%")
-                                         (cond
-                                           ((cpad-pressed? 0 x)
-                                            (initialize *bigmap*)
-                                            (return #f)
-                                            )
-                                           ((cpad-pressed? 0 circle)
-                                            (return #f)
-                                            )
-                                           )
-                                         (suspend)
-                                         )
-                                       #f
-                                       )
-                                  )
-                          )
-                        )
+                (let ((v1-1 (process-spawn-function process (lambda ()
+                                                              (set-master-mode 'game)
+                                                              (let ((gp-0 (current-time)))
+                                                                (until (>= (- (current-time) gp-0) (seconds 0.3))
+                                                                  (suspend)
+                                                                  )
+                                                                )
+                                                              (until #f
+                                                                (format *stdcon* "press x clear map, press circle cancel~%")
+                                                                (cond
+                                                                  ((cpad-pressed? 0 x)
+                                                                   (initialize *bigmap*)
+                                                                   (return #f)
+                                                                   )
+                                                                  ((cpad-pressed? 0 circle)
+                                                                   (return #f)
+                                                                   )
+                                                                  )
+                                                                (suspend)
+                                                                )
+                                                              #f
+                                                              )
+                                                    )
+                            )
                       )
                   (when v1-1
                     (let ((v0-3 (logclear (-> v1-1 0 mask) (process-mask menu))))

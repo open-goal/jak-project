@@ -531,98 +531,92 @@
 ;; definition for method 31 of type drill-control-panel
 (defmethod spawn-shock-part drill-control-panel ((obj drill-control-panel))
   "Spawn shock particles."
-  (with-pp
-    (let ((v1-0 (-> obj id)))
-      (cond
-        ((or (zero? v1-0) (= v1-0 1))
-         (set! (-> *part-id-table* 1852 init-specs 2 initial-valuef) (* 4096.0 (rand-vu-float-range -4.0 4.0)))
-         (set! (-> *part-id-table* 1852 init-specs 3 initial-valuef) (* 4096.0 (rand-vu-float-range -2.0 2.0)))
-         (set! (-> *part-id-table* 1852 init-specs 4 initial-valuef) (* 4096.0 (rand-vu-float-range 1.0 3.0)))
-         (when (= (-> obj id) 1)
-           (set! (-> *part-id-table* 1870 init-specs 3 initial-valuef) 8192.0)
-           (set! (-> *part-id-table* 1869 init-specs 3 initial-valuef) 8192.0)
-           (set! (-> *part-id-table* 1871 init-specs 2 initial-valuef) 8192.0)
-           (set! (-> *part-id-table* 1872 init-specs 2 initial-valuef) 8192.0)
-           (set! (-> *part-id-table* 1873 init-specs 2 initial-valuef) 8192.0)
-           (when (>= (-> pp clock frame-counter) (-> obj next-warn-time))
-             (set! (-> obj next-warn-time)
-                   (+ (-> pp clock frame-counter) (the int (* 300.0 (rand-vu-float-range 1.0 2.0))))
-                   )
-             (set! (-> *part-id-table* 1851 init-specs 4 initial-valuef) -4096.0)
-             (set! (-> *part-id-table* 1851 init-specs 24 initial-valuef) (* 182.04445 (rand-vu-float-range -45.0 45.0)))
-             (set! (-> *part-id-table* 1851 init-specs 25 initial-valuef) (* 182.04445 (rand-vu-float-range 0.0 45.0)))
-             (set! (-> *part-id-table* 1851 init-specs 2 initial-valuef) (* 4096.0 (rand-vu-float-range -3.0 3.0)))
-             (set! (-> *part-id-table* 1851 init-specs 3 initial-valuef) (* 4096.0 (rand-vu-float-range -1.0 3.0)))
-             )
+  (let ((v1-0 (-> obj id)))
+    (cond
+      ((or (zero? v1-0) (= v1-0 1))
+       (set! (-> *part-id-table* 1852 init-specs 2 initial-valuef) (* 4096.0 (rand-vu-float-range -4.0 4.0)))
+       (set! (-> *part-id-table* 1852 init-specs 3 initial-valuef) (* 4096.0 (rand-vu-float-range -2.0 2.0)))
+       (set! (-> *part-id-table* 1852 init-specs 4 initial-valuef) (* 4096.0 (rand-vu-float-range 1.0 3.0)))
+       (when (= (-> obj id) 1)
+         (set! (-> *part-id-table* 1870 init-specs 3 initial-valuef) 8192.0)
+         (set! (-> *part-id-table* 1869 init-specs 3 initial-valuef) 8192.0)
+         (set! (-> *part-id-table* 1871 init-specs 2 initial-valuef) 8192.0)
+         (set! (-> *part-id-table* 1872 init-specs 2 initial-valuef) 8192.0)
+         (set! (-> *part-id-table* 1873 init-specs 2 initial-valuef) 8192.0)
+         (when (>= (current-time) (-> obj next-warn-time))
+           (set! (-> obj next-warn-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 1.0 2.0)))))
+           (set! (-> *part-id-table* 1851 init-specs 4 initial-valuef) -4096.0)
+           (set! (-> *part-id-table* 1851 init-specs 24 initial-valuef) (* 182.04445 (rand-vu-float-range -45.0 45.0)))
+           (set! (-> *part-id-table* 1851 init-specs 25 initial-valuef) (* 182.04445 (rand-vu-float-range 0.0 45.0)))
+           (set! (-> *part-id-table* 1851 init-specs 2 initial-valuef) (* 4096.0 (rand-vu-float-range -3.0 3.0)))
+           (set! (-> *part-id-table* 1851 init-specs 3 initial-valuef) (* 4096.0 (rand-vu-float-range -1.0 3.0)))
            )
-         (spawn-with-cspace (-> obj debris-part) (-> obj node-list data 18))
          )
-        (else
-          (case (-> obj id)
-            ((3 5 7 8)
-             (if (zero? (rand-vu-int-count 2))
-                 (process-drawable-shock-effect
-                   obj
-                   (new 'static 'lightning-spec
-                     :name #f
-                     :flags (lightning-spec-flags lsf0)
-                     :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
-                     :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
-                     :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
-                     :fade-start-factor 0.2
-                     :texture (new 'static 'texture-id :index #x83 :page #xc)
-                     :reduction 0.42
-                     :num-points 16
-                     :box-size 16384.0
-                     :merge-factor 0.5
-                     :merge-count 2
-                     :radius 2048.0
-                     :duration 30.0
-                     :sound (static-sound-spec "shock" :volume 50.0)
-                     )
-                   lightning-probe-callback
-                   (-> *part-id-table* 166)
-                   12
-                   0
-                   12288.0
+       (spawn-with-cspace (-> obj debris-part) (-> obj node-list data 18))
+       )
+      (else
+        (case (-> obj id)
+          ((3 5 7 8)
+           (if (zero? (rand-vu-int-count 2))
+               (process-drawable-shock-effect
+                 obj
+                 (new 'static 'lightning-spec
+                   :name #f
+                   :flags (lightning-spec-flags lsf0)
+                   :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                   :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                   :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                   :fade-start-factor 0.2
+                   :texture (new 'static 'texture-id :index #x83 :page #xc)
+                   :reduction 0.42
+                   :num-points 16
+                   :box-size 16384.0
+                   :merge-factor 0.5
+                   :merge-count 2
+                   :radius 2048.0
+                   :duration 30.0
+                   :sound (static-sound-spec "shock" :volume 50.0)
                    )
+                 lightning-probe-callback
+                 (-> *part-id-table* 166)
+                 12
+                 0
+                 12288.0
                  )
-             )
-            (else
-              0
-              )
+               )
+           )
+          (else
+            0
             )
-          (set! (-> *part-id-table* 1852 init-specs 2 initial-valuef) (* 4096.0 (rand-vu-float-range -1.0 3.0)))
-          (set! (-> *part-id-table* 1852 init-specs 3 initial-valuef) (* 4096.0 (rand-vu-float-range -0.5 3.0)))
-          (set! (-> *part-id-table* 1852 init-specs 4 initial-valuef) (* 4096.0 (rand-vu-float-range -1.0 -1.25)))
-          (set! (-> *part-id-table* 1870 init-specs 3 initial-valuef) -6144.0)
-          (set! (-> *part-id-table* 1869 init-specs 3 initial-valuef) -6144.0)
-          (set! (-> *part-id-table* 1871 init-specs 2 initial-valuef) -6144.0)
-          (set! (-> *part-id-table* 1872 init-specs 2 initial-valuef) -6144.0)
-          (set! (-> *part-id-table* 1873 init-specs 2 initial-valuef) -6144.0)
-          (when (>= (-> pp clock frame-counter) (-> obj next-warn-time))
-            (set! (-> obj next-warn-time)
-                  (+ (-> pp clock frame-counter) (the int (* 300.0 (rand-vu-float-range 1.5 3.0))))
-                  )
-            (set! (-> *part-id-table* 1851 init-specs 4 initial-valuef) 4096.0)
-            (set! (-> *part-id-table* 1879 init-specs 23 initial-valuef) (* 182.04445 (rand-vu-float-range -30.0 30.0)))
-            (set! (-> *part-id-table* 1879 init-specs 2 initial-valuef) (* 4096.0 (rand-vu-float-range -1.5 1.5)))
-            (set! (-> *part-id-table* 1879 init-specs 3 initial-valuef) (* 4096.0 (rand-vu-float-range -1.0 3.0)))
-            )
-          (spawn-with-cspace (-> obj debris-part) (-> obj node-list data 12))
           )
+        (set! (-> *part-id-table* 1852 init-specs 2 initial-valuef) (* 4096.0 (rand-vu-float-range -1.0 3.0)))
+        (set! (-> *part-id-table* 1852 init-specs 3 initial-valuef) (* 4096.0 (rand-vu-float-range -0.5 3.0)))
+        (set! (-> *part-id-table* 1852 init-specs 4 initial-valuef) (* 4096.0 (rand-vu-float-range -1.0 -1.25)))
+        (set! (-> *part-id-table* 1870 init-specs 3 initial-valuef) -6144.0)
+        (set! (-> *part-id-table* 1869 init-specs 3 initial-valuef) -6144.0)
+        (set! (-> *part-id-table* 1871 init-specs 2 initial-valuef) -6144.0)
+        (set! (-> *part-id-table* 1872 init-specs 2 initial-valuef) -6144.0)
+        (set! (-> *part-id-table* 1873 init-specs 2 initial-valuef) -6144.0)
+        (when (>= (current-time) (-> obj next-warn-time))
+          (set! (-> obj next-warn-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 1.5 3.0)))))
+          (set! (-> *part-id-table* 1851 init-specs 4 initial-valuef) 4096.0)
+          (set! (-> *part-id-table* 1879 init-specs 23 initial-valuef) (* 182.04445 (rand-vu-float-range -30.0 30.0)))
+          (set! (-> *part-id-table* 1879 init-specs 2 initial-valuef) (* 4096.0 (rand-vu-float-range -1.5 1.5)))
+          (set! (-> *part-id-table* 1879 init-specs 3 initial-valuef) (* 4096.0 (rand-vu-float-range -1.0 3.0)))
+          )
+        (spawn-with-cspace (-> obj debris-part) (-> obj node-list data 12))
         )
       )
-    (none)
     )
+  (none)
   )
 
 ;; failed to figure out what this is:
 (defstate hit (drill-control-panel)
   :virtual #t
   :enter (behavior ((arg0 symbol))
-    (set! (-> self state-time) (-> self clock frame-counter))
-    (set! (-> self next-warn-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
+    (set! (-> self next-warn-time) (current-time))
     (process-entity-status! self (entity-perm-status bit-12) #t)
     (set! (-> self draw force-lod) 0)
     (logior! (-> self focus-status) (focus-status disable dead ignore))
@@ -633,7 +627,7 @@
     (none)
     )
   :trans (behavior ()
-    (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1))
+    (if (>= (- (current-time) (-> self state-time)) (seconds 1))
         (spawn-shock-part self)
         )
     (none)

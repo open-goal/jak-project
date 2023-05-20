@@ -202,7 +202,7 @@ This commonly includes things such as:
   (cond
     ((= (-> (level-get-target-inside *level*) name) 'gungame)
      (when (or (zero? (-> obj in-out)) (= (-> obj in-out) 1))
-       (set-setting! 'minimap 'clear 0 128)
+       (set-setting! 'minimap 'clear 0.0 (minimap-flag minimap))
        (set! (-> obj in-out) (the-as uint 2))
        )
      )
@@ -221,7 +221,7 @@ This commonly includes things such as:
   )
 
 (defmethod render-text training-manager ((obj training-manager) (arg0 text-id))
-  (when #t ;; TODO - disabled until sound is working (= (get-status *gui-control* (-> obj gui-id)) (gui-status active))
+  (when (= (get-status *gui-control* (-> obj gui-id)) (gui-status active))
     (let ((s5-1
             (new 'stack 'font-context *font-default-matrix* 32 290 0.0 (font-color default) (font-flags shadow kerning))
             )
@@ -276,10 +276,9 @@ This commonly includes things such as:
     (set! (-> self last-sound-id)
           (add-process *gui-control* self (gui-channel sig) (gui-action play) "sigc003" -99.0 0)
           )
-    ;; TODO - disable until sound is ready
-    ;; (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
-    ;;   (suspend)
-    ;;   )
+    (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
+      (suspend)
+      )
     (until (cpad-pressed? 0 r1)
       (render-text self (text-id gungame-tutorial-fire-button))
       (suspend)
@@ -296,10 +295,9 @@ This commonly includes things such as:
     (set! (-> self last-sound-id)
           (add-process *gui-control* self (gui-channel sig) (gui-action play) "sigc007" -99.0 0)
           )
-    ;; TODO - disable until sound is ready
-    ;; (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
-    ;;   (suspend)
-    ;;   )
+    (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
+      (suspend)
+      )
     (when *target*
       (while (focus-test? *target* gun)
         (render-text self (text-id gungame-tutorial-put-red-away))
@@ -312,10 +310,9 @@ This commonly includes things such as:
     (set! (-> self last-sound-id)
           (add-process *gui-control* self (gui-channel sig) (gui-action play) "sigc009" -99.0 0)
           )
-    ;; TODO - disable until sound is ready
-    ;; (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
-    ;;   (suspend)
-    ;;   )
+    (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
+      (suspend)
+      )
     (while (or (not *target*) (not (logtest? (focus-status gun) (-> *target* focus-status))))
       (render-text self (text-id gungame-tutorial-take-red-out))
       (suspend)
@@ -326,10 +323,9 @@ This commonly includes things such as:
     (set! (-> self last-sound-id)
           (add-process *gui-control* self (gui-channel sig) (gui-action play) "sigc011" -99.0 0)
           )
-    ;; TODO - disable until sound is ready
-    ;; (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
-    ;;   (suspend)
-    ;;   )
+    (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
+      (suspend)
+      )
     (when (nonzero? (training-manager-method-26 self))
       (set! (-> self last-sound-id)
             (add-process *gui-control* self (gui-channel sig) (gui-action play) "sigc012" -99.0 0)
@@ -347,10 +343,9 @@ This commonly includes things such as:
     (set! (-> self last-sound-id)
           (add-process *gui-control* self (gui-channel sig) (gui-action play) "sigc014" -99.0 0)
           )
-    ;; TODO - disable until sound is ready
-    ;; (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
-    ;;   (suspend)
-    ;;   )
+    (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
+      (suspend)
+      )
     (task-node-close! (game-task-node city-red-gun-training-introduction))
     (go-virtual red-training)
     (none)
@@ -451,7 +446,7 @@ This commonly includes things such as:
             )
           )
         )
-      (set! (-> self start-time) (+ (-> self clock frame-counter) (seconds 1)))
+      (set! (-> self start-time) (+ (current-time) (seconds 1)))
       )
     (if (task-node-open? (game-task-node city-yellow-gun-training-introduction))
         (go-virtual yellow-training-intro)
@@ -501,7 +496,7 @@ This commonly includes things such as:
            )
          )
         (else
-          (when (< (-> self start-time) (-> self clock frame-counter))
+          (when (< (-> self start-time) (current-time))
             (set! (-> self course) *red-training-path-global-info*)
             (set! (-> self end-door) (the-as uint 1))
             (training-manager-method-24 self)
@@ -570,7 +565,7 @@ This commonly includes things such as:
                   )
                 )
               )
-            (set! (-> self start-time) (+ (-> self clock frame-counter) (seconds 1)))
+            (set! (-> self start-time) (+ (current-time) (seconds 1)))
             )
           )
         )
@@ -622,7 +617,7 @@ This commonly includes things such as:
            )
          )
         (else
-          (when (< (-> self start-time) (-> self clock frame-counter))
+          (when (< (-> self start-time) (current-time))
             (set! (-> self end-door) (the-as uint 0))
             (set! (-> self course) *yellow-training-path-global-info*)
             (training-manager-method-24 self)
@@ -698,7 +693,7 @@ This commonly includes things such as:
                    )
                  )
                )
-             (set! (-> self start-time) (+ (-> self clock frame-counter) (seconds 1)))
+             (set! (-> self start-time) (+ (current-time) (seconds 1)))
              )
             ((let ((a1-6 (new 'stack-no-clear 'event-message-block)))
                (set! (-> a1-6 from) (process->ppointer self))
@@ -740,7 +735,7 @@ This commonly includes things such as:
                    )
                  )
                )
-             (set! (-> self start-time) (+ (-> self clock frame-counter) (seconds 1)))
+             (set! (-> self start-time) (+ (current-time) (seconds 1)))
              )
             )
           )
@@ -788,7 +783,7 @@ This commonly includes things such as:
                )
              )
            )
-         (set! (-> self start-time) (+ (-> self clock frame-counter) (seconds 1)))
+         (set! (-> self start-time) (+ (current-time) (seconds 1)))
          )
         ((and (logtest? (-> *game-info* secrets) (game-secrets gungame-dark))
               (let ((a1-12 (new 'stack-no-clear 'event-message-block)))
@@ -830,7 +825,7 @@ This commonly includes things such as:
                )
              )
            )
-         (set! (-> self start-time) (+ (-> self clock frame-counter) (seconds 1)))
+         (set! (-> self start-time) (+ (current-time) (seconds 1)))
          )
         )
       )
@@ -908,7 +903,7 @@ This commonly includes things such as:
       (label cfg-30)
       (b! #t cfg-33 :delay (nop!))
       (label cfg-31)
-      (if (< (-> self start-time) (-> self clock frame-counter))
+      (if (< (-> self start-time) (current-time))
           (go-virtual course)
           )
       (label cfg-33)
@@ -1004,10 +999,9 @@ This commonly includes things such as:
     (set! (-> self last-sound-id)
           (add-process *gui-control* self (gui-channel sig) (gui-action play) "sigc017" -99.0 0)
           )
-    ;; TODO - disable until sound is ready
-    ;; (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
-    ;;   (suspend)
-    ;;   )
+    (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
+      (suspend)
+      )
     (let ((gp-2 (-> *game-info* gun-type)))
       (until (!= gp-2 (-> *game-info* gun-type))
         (render-text self (text-id gungame-tutorial-switch-to-yellow))
@@ -1020,10 +1014,9 @@ This commonly includes things such as:
     (set! (-> self last-sound-id)
           (add-process *gui-control* self (gui-channel sig) (gui-action play) "sigc075" -99.0 0)
           )
-    ;; TODO - disable until sound is ready
-    ;; (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
-    ;;   (suspend)
-    ;;   )
+    (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
+      (suspend)
+      )
     (set! (-> self combo-done?) #f)
     (until #f
       (let ((gp-3 *yellow-training-path-combo-info*))
@@ -1048,10 +1041,9 @@ This commonly includes things such as:
          (set! (-> self last-sound-id)
                (add-process *gui-control* self (gui-channel sig) (gui-action play) "sigc080" -99.0 0)
                )
-        ;; TODO - disable until sound is ready
-        ;;  (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
-        ;;    (suspend)
-        ;;    )
+         (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
+           (suspend)
+           )
          #t
          (goto cfg-61)
          )
@@ -1059,10 +1051,9 @@ This commonly includes things such as:
           (set! (-> self last-sound-id)
                 (add-process *gui-control* self (gui-channel sig) (gui-action play) "sigc077" -99.0 0)
                 )
-          ;; TODO - disable until sound is ready
-          ;; (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
-          ;;   (suspend)
-          ;;   )
+          (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
+            (suspend)
+            )
           )
         )
       )
@@ -1074,10 +1065,9 @@ This commonly includes things such as:
     (set! (-> self last-sound-id)
           (add-process *gui-control* self (gui-channel sig) (gui-action play) "sigc022" -99.0 0)
           )
-    ;; TODO - disable until sound is ready
-    ;; (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
-    ;;   (suspend)
-    ;;   )
+    (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
+      (suspend)
+      )
     (task-node-close! (game-task-node city-yellow-gun-training-introduction))
     (go yellow-training)
     (none)
@@ -1140,7 +1130,7 @@ This commonly includes things such as:
   :enter (behavior ()
     (set! (-> self hud-score) (ppointer->handle (process-spawn hud-big-score :init hud-init-by-other :to self)))
     (set! (-> self hud-goal) (ppointer->handle (process-spawn hud-goal :init hud-init-by-other :to self)))
-    (set! (-> self start-time) (+ (-> self clock frame-counter) (seconds 2)))
+    (set! (-> self start-time) (+ (current-time) (seconds 2)))
     (set! (-> self first-enemy-shown?) #f)
     (set! (-> self first-citizen-shown?) #f)
     (set! (-> self open-end?) #t)
@@ -1176,7 +1166,7 @@ This commonly includes things such as:
          (set! (-> self training-goal) 4000.0)
          (set! (-> self training?) #t)
          )
-       (set-setting! 'features 'clear 0 896)
+       (set-setting! 'features 'clear 0.0 (game-feature gun-red gun-blue gun-dark))
        (if (!= (-> *game-info* gun-type) 1)
            (send-event *target* 'change-mode 'gun #f 1)
            )
@@ -1192,7 +1182,7 @@ This commonly includes things such as:
          (set! (-> self training-goal) 3000.0)
          (set! (-> self training?) #t)
          )
-       (set-setting! 'features 'clear 0 832)
+       (set-setting! 'features 'clear 0.0 (game-feature gun-yellow gun-blue gun-dark))
        (if (!= (-> *game-info* gun-type) 2)
            (send-event *target* 'change-mode 'gun #f 2)
            )
@@ -1203,7 +1193,7 @@ This commonly includes things such as:
        (set! (-> self task-silver) (the-as uint 101))
        (set! (-> self task-bronze) (the-as uint 100))
        (set! (-> *game-info* goal) 4000.0)
-       (set-setting! 'features 'clear 0 704)
+       (set-setting! 'features 'clear 0.0 (game-feature gun-yellow gun-red gun-dark))
        (if (!= (-> *game-info* gun-type) 3)
            (send-event *target* 'change-mode 'gun #f 3)
            )
@@ -1436,7 +1426,7 @@ This commonly includes things such as:
     (training-manager-method-32 self)
     (training-manager-method-31 self)
     (when (-> self open-end?)
-      (let ((f30-0 (* 0.0033333334 (the float (- (-> self clock frame-counter) (-> self start-time))))))
+      (let ((f30-0 (* 0.0033333334 (the float (- (current-time) (-> self start-time))))))
         (when (and (handle->process (-> self voicebox))
                    (or (and (task-node-closed? (game-task-node city-red-gun-training-try-once)) (< 1.0 f30-0))
                        (and (task-node-open? (game-task-node city-red-gun-training-try-once)) (< 15.0 f30-0))
@@ -1725,8 +1715,15 @@ This commonly includes things such as:
               )
             )
            (else
-             (set! (-> *game-info* sub-task-list 76 death-count)
-                   (the-as uint (seekl (the-as int (-> *game-info* sub-task-list 76 death-count)) #xffff 1))
+             (set! (-> *game-info* sub-task-list (game-task-node city-yellow-gun-training-resolution) death-count)
+                   (the-as
+                     uint
+                     (seekl
+                       (the-as int (-> *game-info* sub-task-list (game-task-node city-yellow-gun-training-resolution) death-count))
+                       #xffff
+                       1
+                       )
+                     )
                    )
              (let ((v1-28 (rand-vu-int-count 4)))
                (cond
@@ -1788,8 +1785,15 @@ This commonly includes things such as:
               )
             )
            (else
-             (set! (-> *game-info* sub-task-list 28 death-count)
-                   (the-as uint (seekl (the-as int (-> *game-info* sub-task-list 28 death-count)) #xffff 1))
+             (set! (-> *game-info* sub-task-list (game-task-node city-red-gun-training-resolution) death-count)
+                   (the-as
+                     uint
+                     (seekl
+                       (the-as int (-> *game-info* sub-task-list (game-task-node city-red-gun-training-resolution) death-count))
+                       #xffff
+                       1
+                       )
+                     )
                    )
              (let ((v1-46 (rand-vu-int-count 4)))
                (cond
@@ -1834,10 +1838,9 @@ This commonly includes things such as:
     (none)
     )
   :code (behavior ()
-    ;; TODO - disable until sound is ready
-    ;; (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
-    ;;   (suspend)
-    ;;   )
+    (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
+      (suspend)
+      )
     (when (> (-> self egg-count) 0)
       (let* ((gp-0 (handle->process (-> self voicebox)))
              (v1-8 (if (type? gp-0 process-drawable)
@@ -1857,8 +1860,8 @@ This commonly includes things such as:
           t1-0
           )
         )
-      (let ((gp-1 (-> self clock frame-counter)))
-        (until (>= (- (-> self clock frame-counter) gp-1) (seconds 1))
+      (let ((gp-1 (current-time)))
+        (until (>= (- (current-time) gp-1) (seconds 1))
           (suspend)
           )
         )
@@ -2184,7 +2187,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 res-tag))
-  (set-setting! 'darkjak #f 0 0)
+  (set-setting! 'darkjak #f 0.0 0)
   (set! sv-16 (new 'static 'res-tag))
   (let ((v1-3 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-16))))
     (cond
@@ -2216,7 +2219,7 @@ This commonly includes things such as:
   (training-manager-method-27 obj *blue-training-path-global-info*)
   (training-manager-method-27 obj *peace-training-path-global-info*)
   (training-manager-method-22 obj #f)
-  (set-setting! 'speech-control #f 0 0)
+  (set-setting! 'speech-control #f 0.0 0)
   (go (method-of-object obj wait))
   (none)
   )
@@ -2306,8 +2309,8 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (sound-play "gungame-door")
-    (let ((gp-1 (-> self clock frame-counter)))
-      (until (>= (- (-> self clock frame-counter) gp-1) (seconds 0.2))
+    (let ((gp-1 (current-time)))
+      (until (>= (- (current-time) gp-1) (seconds 0.2))
         (suspend)
         (suspend)
         )
@@ -2520,8 +2523,8 @@ This commonly includes things such as:
 
 (set-subtask-hook!
   *game-info*
-  43
-  0
+  (game-task-node sewer-enemy-resolution)
+  TASK_MANAGER_INIT_HOOK
   (lambda :behavior task-manager
     ()
     (let ((s5-0 (new 'static 'fact-info :pickup-type (pickup-type gun-yellow) :pickup-spawn-amount 1.0))
@@ -2550,8 +2553,8 @@ This commonly includes things such as:
 
 (set-subtask-hook!
   *game-info*
-  43
-  2
+  (game-task-node sewer-enemy-resolution)
+  TASK_MANAGER_UPDATE_HOOK
   (lambda :behavior task-manager () (the-as object (gui-control-method-12
                                                      *gui-control*
                                                      self
@@ -2568,8 +2571,8 @@ This commonly includes things such as:
 
 (set-subtask-hook!
   *game-info*
-  177
-  0
+  (game-task-node sewer-escort-get-gun)
+  TASK_MANAGER_INIT_HOOK
   (lambda :behavior task-manager
     ()
     (let ((s5-0 (new 'static 'fact-info :pickup-type (pickup-type gun-dark) :pickup-spawn-amount 1.0))
@@ -2598,8 +2601,8 @@ This commonly includes things such as:
 
 (set-subtask-hook!
   *game-info*
-  177
-  2
+  (game-task-node sewer-escort-get-gun)
+  TASK_MANAGER_UPDATE_HOOK
   (lambda :behavior task-manager () (the-as object (gui-control-method-12
                                                      *gui-control*
                                                      self
@@ -2622,97 +2625,94 @@ This commonly includes things such as:
   )
 
 (defpart 2330
-  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xbb :page #xc))
-    (sp-flt spt-num 1.0)
-    (sp-rnd-flt spt-scale-x (meters 0.4) (meters 0.1) 1.0)
-    (sp-flt spt-rot-x 204.8)
-    (sp-copy-from-other spt-scale-y -4)
-    (sp-flt spt-r 255.0)
-    (sp-rnd-flt spt-g 32.0 8.0 1.0)
-    (sp-copy-from-other spt-b -1)
-    (sp-rnd-flt spt-a 48.0 16.0 1.0)
-    (sp-flt spt-rotvel-z (degrees 0.3))
-    (sp-int spt-timer 5)
-    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow)
-    (sp-flt spt-userdata 1.0)
-    (sp-flt spt-rotate-y (degrees 0.0))
+  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+    (:num 1.0)
+    (:scale-x (meters 0.4) (meters 0.1))
+    (:rot-x (degrees 1.125))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 32.0 8.0)
+    (:b :copy g)
+    (:a 48.0 16.0)
+    (:rotvel-z (degrees 0.3))
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 1.0)
+    (:rotate-y (degrees 0))
     )
   )
 
 (defpart 2329
-  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xbb :page #xc))
-    (sp-flt spt-num 1.0)
-    (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.05) 1.0)
-    (sp-flt spt-rot-x 204.8)
-    (sp-copy-from-other spt-scale-y -4)
-    (sp-flt spt-r 255.0)
-    (sp-flt spt-g 128.0)
-    (sp-copy-from-other spt-b -1)
-    (sp-rnd-flt spt-a 64.0 32.0 1.0)
-    (sp-flt spt-rotvel-z (degrees 0.3))
-    (sp-int spt-timer 5)
-    (sp-cpuinfo-flags sp-cpuinfo-flag-2 glow)
-    (sp-flt spt-userdata 1.0)
-    (sp-flt spt-rotate-y (degrees 0.0))
+  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+    (:num 1.0)
+    (:scale-x (meters 0.1) (meters 0.05))
+    (:rot-x (degrees 1.125))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 128.0)
+    (:b :copy g)
+    (:a 64.0 32.0)
+    (:rotvel-z (degrees 0.3))
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 glow))
+    (:userdata 1.0)
+    (:rotate-y (degrees 0))
     )
   )
 
 (defpart 2331
-  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4c :page #xc))
-    (sp-flt spt-num 3.0)
-    (sp-flt spt-z (meters 8))
-    (sp-rnd-flt spt-scale-x (meters 0.025) (meters 0.005) 1.0)
-    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 3600.0) 1.0)
-    (sp-flt spt-scale-y (meters 20))
-    (sp-flt spt-r 255.0)
-    (sp-copy-from-other spt-g -1)
-    (sp-copy-from-other spt-b -1)
-    (sp-rnd-flt spt-a 20.0 8.0 1.0)
-    (sp-int spt-timer 5)
-    (sp-cpuinfo-flags sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14 left-multiply-quat)
-    (new 'static 'sp-field-init-spec
-      :field (sp-field-id spt-userdata)
-      :flags (sp-flag plain-v2)
-      :object (new 'static 'boxed-array :type int32
-        10
-        1
-        0
-        #xc04c00
-        #xc04d00
-        #xc04e00
-        #xc04f00
-        #xc05000
-        #xc05100
-        #xc05200
-        #xc05300
-        #xc05400
-        #xc05500
-        #xc05600
-        #xc05700
-        #xc05800
-        #xc05900
-        #xc05a00
-        #xc05b00
-        #xc05c00
-        #xc05d00
-        #xc05e00
-        #xc05f00
-        #xc06000
-        #xc06100
-        #xc06200
-        #xc06300
-        #xc06400
-        #xc06500
-        #xc06600
-        #xc06700
-        #xc06800
-        #xc06900
-        #xc06a00
-        #xc06b00
-        )
-      )
-    (sp-func spt-func 'sparticle-texture-animate)
-    (sp-flt spt-rotate-y (degrees 0.0))
+  :init-specs ((:texture (new 'static 'texture-id :index #x4c :page #xc))
+    (:num 3.0)
+    (:z (meters 8))
+    (:scale-x (meters 0.025) (meters 0.005))
+    (:rot-z (degrees 0) (degrees 3600))
+    (:scale-y (meters 20))
+    (:r 255.0)
+    (:g :copy r)
+    (:b :copy g)
+    (:a 20.0 8.0)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14 left-multiply-quat))
+    (:userdata :data (new 'static 'boxed-array :type int32
+                       10
+                       1
+                       0
+                       #xc04c00
+                       #xc04d00
+                       #xc04e00
+                       #xc04f00
+                       #xc05000
+                       #xc05100
+                       #xc05200
+                       #xc05300
+                       #xc05400
+                       #xc05500
+                       #xc05600
+                       #xc05700
+                       #xc05800
+                       #xc05900
+                       #xc05a00
+                       #xc05b00
+                       #xc05c00
+                       #xc05d00
+                       #xc05e00
+                       #xc05f00
+                       #xc06000
+                       #xc06100
+                       #xc06200
+                       #xc06300
+                       #xc06400
+                       #xc06500
+                       #xc06600
+                       #xc06700
+                       #xc06800
+                       #xc06900
+                       #xc06a00
+                       #xc06b00
+                       )
+               )
+    (:func 'sparticle-texture-animate)
+    (:rotate-y (degrees 0))
     )
   )
 

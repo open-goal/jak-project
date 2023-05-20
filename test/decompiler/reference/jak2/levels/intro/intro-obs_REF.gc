@@ -72,9 +72,7 @@
     (if (= (-> self path-u) 1.0)
         (go-virtual die)
         )
-    (when (>= (- (-> self clock frame-counter) (the-as int (-> self flit-timer)))
-              (the-as time-frame (-> self flit-interval))
-              )
+    (when (>= (- (current-time) (the-as int (-> self flit-timer))) (the-as time-frame (-> self flit-interval)))
       (let ((f28-0 (rand-vu-float-range -1.0 1.0))
             (f30-0 (rand-vu-float-range -1.0 1.0))
             (f0-1 (rand-vu-float-range 0.2 0.6))
@@ -84,7 +82,7 @@
         (set! (-> self flit-factor) 0.0)
         (set! (-> self flit-interval) (the-as uint (the int (* 300.0 f0-1))))
         )
-      (set! (-> self flit-timer) (the-as uint (-> self clock frame-counter)))
+      (set! (-> self flit-timer) (the-as uint (current-time)))
       )
     (none)
     )
@@ -272,7 +270,7 @@ This commonly includes things such as:
   (set! (-> self path-u) 0.0)
   (set! (-> self path-du) (rand-vu-float-range 0.15 0.32))
   (set! (-> self z-rot) 0.0)
-  (set! (-> self flit-timer) (the-as uint (-> self clock frame-counter)))
+  (set! (-> self flit-timer) (the-as uint (current-time)))
   (set! (-> self flit-interval) (the-as uint 0))
   (vector-reset! (-> self flit-prev-offset))
   (vector-reset! (-> self flit-next-offset))
@@ -370,9 +368,9 @@ This commonly includes things such as:
             )
           )
         (let ((s5-1 (the int (* 300.0 (rand-vu-float-range 0.03 0.08))))
-              (s4-0 (-> self clock frame-counter))
+              (s4-0 (current-time))
               )
-          (until (>= (- (-> self clock frame-counter) s4-0) s5-1)
+          (until (>= (- (current-time) s4-0) s5-1)
             (suspend)
             )
           )
@@ -521,7 +519,3 @@ This commonly includes things such as:
   (go (method-of-object obj idle))
   (none)
   )
-
-
-
-

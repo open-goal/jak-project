@@ -273,7 +273,7 @@ Val* Compiler::generate_inspector_for_structure_type(const goos::Object& form,
 
   // add this function to the object file
   auto fe = env->function_env();
-  auto method = fe->alloc_val<LambdaVal>(m_ts.make_typespec("function"));
+  auto method = fe->alloc_val<LambdaVal>(m_ts.make_typespec("function"), false);
   method->func = method_env.get();
   auto obj_env_inspect = method_env->file_env();
   obj_env_inspect->add_function(std::move(method_env));
@@ -344,7 +344,7 @@ Val* Compiler::generate_inspector_for_bitfield_type(const goos::Object& form,
 
   // add this function to the object file
   auto fe = env->function_env();
-  auto method = fe->alloc_val<LambdaVal>(m_ts.make_typespec("function"));
+  auto method = fe->alloc_val<LambdaVal>(m_ts.make_typespec("function"), false);
   method->func = method_env.get();
   auto obj_env_inspect = method_env->file_env();
   obj_env_inspect->add_function(std::move(method_env));
@@ -450,7 +450,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     throw_compiler_error(form, "Method type must be a symbol, got {}", method_name.print());
   }
 
-  auto place = fe->alloc_val<LambdaVal>(get_none()->type());
+  auto place = fe->alloc_val<LambdaVal>(get_none()->type(), false);
   auto& lambda = place->lambda;
   auto lambda_ts = m_ts.make_typespec("function");
 

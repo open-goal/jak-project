@@ -50,7 +50,10 @@ decomp_config_version_map = {
   },
   "jak2": {
     "ntscv1": "ntsc_v1",
-    "pal": "pal"
+    "ntscv2": "ntsc_v2",
+    "pal": "pal",
+    "ntscjp": "jp",
+    "ntscko": "kor"
   }
 }
 

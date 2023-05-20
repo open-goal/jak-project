@@ -11,7 +11,8 @@
 #include "common/log/log.h"
 
 #include "sfxblock2.h"
-#include <third-party/fmt/core.h>
+
+#include "third-party/fmt/core.h"
 
 namespace snd {
 enum chunk : u32 { bank, samples, midi };

@@ -360,7 +360,7 @@
           (v1-6 (jellyfish-method-161
                   self
                   (new 'stack-no-clear 'vector)
-                  (get-norm! (-> self sync) (the-as int (+ (-> self clock frame-counter) (seconds 1))))
+                  (get-norm! (-> self sync) (the-as int (+ (current-time) (seconds 1))))
                   )
                 )
           (s5-2 (new 'stack-no-clear 'vector))
@@ -434,7 +434,7 @@
   :trans (behavior ()
     (local-vars (gp-0 vector))
     (seek! (-> self tentacle-blend) 1.0 (-> self clock seconds-per-frame))
-    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.1))
+    (when (>= (- (current-time) (-> self state-time)) (seconds 0.1))
       (let ((v1-4 (-> self focus aware)))
         (cond
           ((>= 1 (the-as int v1-4))
@@ -445,13 +445,13 @@
            )
           )
         )
-      (if (and (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 2))
+      (if (and (>= (- (current-time) (-> self state-time)) (seconds 2))
                (not (jellyfish-method-164 self (the-as process-focusable #f)))
                )
           (go-virtual active)
           )
       (if (and (not *jellyfish-mech-reserved*)
-               (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1))
+               (>= (- (current-time) (-> self state-time)) (seconds 1))
                (jellyfish-method-163 self (the-as process-focusable #f))
                (begin
                  (set! gp-0 (jellyfish-method-161 self (new 'stack-no-clear 'vector) (-> self path-stare-u)))
@@ -541,7 +541,7 @@
       (the-as vector #t)
       )
     (logior! (-> self focus-status) (focus-status dangerous))
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :exit (behavior ()
@@ -655,7 +655,7 @@
     (let ((gp-0 *target*))
       (cond
         ((not (jellyfish-method-163 self gp-0))
-         (set! (-> self last-attack-time) (-> self clock frame-counter))
+         (set! (-> self last-attack-time) (current-time))
          (go-virtual active)
          )
         (else
@@ -775,7 +775,7 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (set! (-> self last-attack-time) (-> self clock frame-counter))
+    (set! (-> self last-attack-time) (current-time))
     (go-virtual active)
     (none)
     )
@@ -804,7 +804,7 @@
     (dispose! self)
     (logclear! (-> self focus-status) (focus-status dangerous))
     (enemy-method-52 self (-> self root-override2 transv))
-    (let ((gp-0 (-> self clock frame-counter)))
+    (let ((gp-0 (current-time)))
       (ja-no-eval :group! jellyfish-die-ja
                   :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-die-ja) frames num-frames) -1)))
                   :frame-num 0.0
@@ -814,7 +814,7 @@
               (f0-4 (ja-aframe-num 0))
               )
           (when (and (= s5-0 jellyfish-die-ja) (>= f0-4 0.0) (>= 0.5 f0-4))
-            (when (>= (- (-> self clock frame-counter) gp-0) (seconds 0.05))
+            (when (>= (- (current-time) gp-0) (seconds 0.05))
               (process-drawable-shock-skel-effect
                 self
                 (-> *lightning-spec-id-table* 5)
@@ -824,7 +824,7 @@
                 -1
                 -1
                 )
-              (set! gp-0 (-> self clock frame-counter))
+              (set! gp-0 (current-time))
               )
             )
           )
@@ -1262,168 +1262,166 @@
 
 (defmethod init-enemy! jellyfish ((obj jellyfish))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
-  (with-pp
-    (hover-enemy-method-149 obj)
-    (init-enemy-behaviour-and-stats! obj (hover-enemy-method-150 obj))
-    (hover-enemy-method-155 obj)
-    (set-vector! (-> obj offset) 0.0 6144.0 61440.0 1.0)
-    (set! (-> obj knocked-fall-dist) 0.0)
-    (let ((v1-8 (-> obj neck)))
-      (set! (-> v1-8 up) (the-as uint 1))
-      (set! (-> v1-8 nose) (the-as uint 2))
-      (set! (-> v1-8 ear) (the-as uint 0))
-      (set! (-> v1-8 twist-speed-x) 0.05)
-      (set! (-> v1-8 twist-speed-y) 0.06)
-      (set! (-> v1-8 max-dist) 122880.0)
-      )
-    (set! (-> obj root-override2 dynam gravity y) 40960.0)
-    (set! (-> obj root-override2 dynam gravity-length) 40960.0)
-    (set! (-> obj root-override2 dynam gravity-max) 40960.0)
-    (logclear! (-> obj mask) (process-mask actor-pause))
-    (logclear! (-> obj enemy-flags) (enemy-flag notice))
-    (new-source! (-> obj los) obj (seconds 1) (collide-spec backgnd enemy obstacle hit-by-others-list))
-    (set! (-> obj last-fire-time) (-> pp clock frame-counter))
-    (set! (-> obj last-attack-time) 0)
-    (set! (-> obj sound-id) (the-as uint (new-sound-id)))
-    (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (-> obj entity) #f))
-    (set! (-> obj path-player-u) 0.0)
-    (set! (-> obj path-my-u) 0.0)
-    (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-    (set! (-> obj path-y-offset) (res-lump-float (-> obj entity) 'y-offset))
-    (let ((a1-4 (new 'stack-no-clear 'sync-info-params)))
-      (let ((v1-32 0))
-        (if #t
-            (set! v1-32 (logior v1-32 1))
-            )
-        (set! (-> a1-4 sync-type) 'sync-eased)
-        (set! (-> a1-4 sync-flags) (the-as sync-flags v1-32))
-        )
-      (set! (-> a1-4 period) (the-as uint 6000))
-      (set! (-> a1-4 entity) (-> obj entity))
-      (set! (-> a1-4 percent) 0.0)
-      (set! (-> a1-4 ease-in) 0.15)
-      (set! (-> a1-4 ease-out) 0.15)
-      (set! (-> a1-4 pause-in) 0.0)
-      (set! (-> a1-4 pause-out) 0.0)
-      (initialize! (-> obj sync) a1-4)
-      )
-    (add-connection
-      *part-engine*
-      obj
-      36
-      obj
-      318
-      (new 'static 'vector :x 1187.84 :y -3112.96 :z 1392.64 :w 163840.0)
-      )
-    (add-connection
-      *part-engine*
-      obj
-      36
-      obj
-      318
-      (new 'static 'vector :x -1187.84 :y -3112.96 :z 1392.64 :w 163840.0)
-      )
-    (add-connection *part-engine* obj 36 obj 743 (new 'static 'vector :y 1433.6 :z 1228.8 :w 163840.0))
-    (dotimes (s5-1 5)
-      (set! (-> obj tentacles s5-1) (new 'process 'jellyfish-chain-physics))
-      )
-    (chain-physics-initialize obj (-> obj tentacles 0) 10 4096.0 *jellyfish-mainvein-chain-setup*)
-    (chain-physics-initialize obj (-> obj tentacles 1) 16 4096.0 *jellyfish-lfront-chain-setup*)
-    (chain-physics-initialize obj (-> obj tentacles 2) 21 4096.0 *jellyfish-rfront-chain-setup*)
-    (chain-physics-initialize obj (-> obj tentacles 3) 26 4096.0 *jellyfish-lrear-chain-setup*)
-    (chain-physics-initialize obj (-> obj tentacles 4) 31 4096.0 *jellyfish-rrear-chain-setup*)
-    (set! (-> obj tentacles 2 negate-y) #t)
-    (set! (-> obj tentacles 4 negate-y) #t)
-    (let ((a0-35 (-> obj skel root-channel 0)))
-      (set! (-> a0-35 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
-      (set! (-> a0-35 frame-num) 0.0)
-      (joint-control-channel-group! a0-35 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-identity)
-      )
-    (ja-post)
-    (dotimes (s5-2 5)
-      (initialize-chain-joints (-> obj tentacles s5-2))
-      )
-    (let ((a1-15 (-> obj node-list data 16))
-          (v1-68
-            (new 'static 'jellyfish-joint-mod-tentacle-info
-              :axis (new 'static 'vector :z 1.0 :w 1.0)
-              :angle 3094.7556
-              :offset 30.0
-              )
-            )
-          )
-      (set! (-> a1-15 param0) jellyfish-joint-mod-tentacle)
-      (set! (-> a1-15 param1) obj)
-      (set! (-> a1-15 param2) (the-as basic v1-68))
-      )
-    (let ((a1-16 (-> obj node-list data 21))
-          (v1-70
-            (new 'static 'jellyfish-joint-mod-tentacle-info
-              :axis (new 'static 'vector :z 1.0 :w 1.0)
-              :angle 3094.7556
-              :offset 30.0
-              )
-            )
-          )
-      (set! (-> a1-16 param0) jellyfish-joint-mod-tentacle)
-      (set! (-> a1-16 param1) obj)
-      (set! (-> a1-16 param2) (the-as basic v1-70))
-      )
-    (let ((a1-17 (-> obj node-list data 26))
-          (v1-72
-            (new 'static 'jellyfish-joint-mod-tentacle-info
-              :axis (new 'static 'vector :z 1.0 :w 1.0)
-              :angle 4369.067
-              :offset 45.0
-              )
-            )
-          )
-      (set! (-> a1-17 param0) jellyfish-joint-mod-tentacle)
-      (set! (-> a1-17 param1) obj)
-      (set! (-> a1-17 param2) (the-as basic v1-72))
-      )
-    (let ((a1-18 (-> obj node-list data 31))
-          (v1-74
-            (new 'static 'jellyfish-joint-mod-tentacle-info
-              :axis (new 'static 'vector :z 1.0 :w 1.0)
-              :angle 4369.067
-              :offset 45.0
-              )
-            )
-          )
-      (set! (-> a1-18 param0) jellyfish-joint-mod-tentacle)
-      (set! (-> a1-18 param1) obj)
-      (set! (-> a1-18 param2) (the-as basic v1-74))
-      )
-    (let ((a1-19 (-> obj node-list data 10))
-          (v1-76
-            (new 'static 'jellyfish-joint-mod-tentacle-info :axis (new 'static 'vector :x 1.0 :w 1.0) :angle 2730.6667)
-            )
-          )
-      (set! (-> a1-19 param0) jellyfish-joint-mod-tentacle)
-      (set! (-> a1-19 param1) obj)
-      (set! (-> a1-19 param2) (the-as basic v1-76))
-      )
-    (set! (-> obj tentacles-initialized) #f)
-    (set! (-> obj tentacle-clock) 0.0)
-    (set! (-> obj tentacle-blend) 1.0)
-    (add-connection
-      *part-engine*
-      obj
-      36
-      obj
-      318
-      (new 'static 'vector :x 1966.08 :y -1843.2 :z 2129.92 :w 163840.0)
-      )
-    (add-connection
-      *part-engine*
-      obj
-      36
-      obj
-      318
-      (new 'static 'vector :x -1966.08 :y -1843.2 :z 2129.92 :w 163840.0)
-      )
-    0
-    (none)
+  (hover-enemy-method-149 obj)
+  (init-enemy-behaviour-and-stats! obj (hover-enemy-method-150 obj))
+  (hover-enemy-method-155 obj)
+  (set-vector! (-> obj offset) 0.0 6144.0 61440.0 1.0)
+  (set! (-> obj knocked-fall-dist) 0.0)
+  (let ((v1-8 (-> obj neck)))
+    (set! (-> v1-8 up) (the-as uint 1))
+    (set! (-> v1-8 nose) (the-as uint 2))
+    (set! (-> v1-8 ear) (the-as uint 0))
+    (set! (-> v1-8 twist-speed-x) 0.05)
+    (set! (-> v1-8 twist-speed-y) 0.06)
+    (set! (-> v1-8 max-dist) 122880.0)
     )
+  (set! (-> obj root-override2 dynam gravity y) 40960.0)
+  (set! (-> obj root-override2 dynam gravity-length) 40960.0)
+  (set! (-> obj root-override2 dynam gravity-max) 40960.0)
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (logclear! (-> obj enemy-flags) (enemy-flag notice))
+  (new-source! (-> obj los) obj (seconds 1) (collide-spec backgnd enemy obstacle hit-by-others-list))
+  (set! (-> obj last-fire-time) (current-time))
+  (set! (-> obj last-attack-time) 0)
+  (set! (-> obj sound-id) (the-as uint (new-sound-id)))
+  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (-> obj entity) #f))
+  (set! (-> obj path-player-u) 0.0)
+  (set! (-> obj path-my-u) 0.0)
+  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> obj path-y-offset) (res-lump-float (-> obj entity) 'y-offset))
+  (let ((a1-4 (new 'stack-no-clear 'sync-info-params)))
+    (let ((v1-32 0))
+      (if #t
+          (set! v1-32 (logior v1-32 1))
+          )
+      (set! (-> a1-4 sync-type) 'sync-eased)
+      (set! (-> a1-4 sync-flags) (the-as sync-flags v1-32))
+      )
+    (set! (-> a1-4 period) (the-as uint 6000))
+    (set! (-> a1-4 entity) (-> obj entity))
+    (set! (-> a1-4 percent) 0.0)
+    (set! (-> a1-4 ease-in) 0.15)
+    (set! (-> a1-4 ease-out) 0.15)
+    (set! (-> a1-4 pause-in) 0.0)
+    (set! (-> a1-4 pause-out) 0.0)
+    (initialize! (-> obj sync) a1-4)
+    )
+  (add-connection
+    *part-engine*
+    obj
+    36
+    obj
+    318
+    (new 'static 'vector :x 1187.84 :y -3112.96 :z 1392.64 :w 163840.0)
+    )
+  (add-connection
+    *part-engine*
+    obj
+    36
+    obj
+    318
+    (new 'static 'vector :x -1187.84 :y -3112.96 :z 1392.64 :w 163840.0)
+    )
+  (add-connection *part-engine* obj 36 obj 743 (new 'static 'vector :y 1433.6 :z 1228.8 :w 163840.0))
+  (dotimes (s5-1 5)
+    (set! (-> obj tentacles s5-1) (new 'process 'jellyfish-chain-physics))
+    )
+  (chain-physics-initialize obj (-> obj tentacles 0) 10 4096.0 *jellyfish-mainvein-chain-setup*)
+  (chain-physics-initialize obj (-> obj tentacles 1) 16 4096.0 *jellyfish-lfront-chain-setup*)
+  (chain-physics-initialize obj (-> obj tentacles 2) 21 4096.0 *jellyfish-rfront-chain-setup*)
+  (chain-physics-initialize obj (-> obj tentacles 3) 26 4096.0 *jellyfish-lrear-chain-setup*)
+  (chain-physics-initialize obj (-> obj tentacles 4) 31 4096.0 *jellyfish-rrear-chain-setup*)
+  (set! (-> obj tentacles 2 negate-y) #t)
+  (set! (-> obj tentacles 4 negate-y) #t)
+  (let ((a0-35 (-> obj skel root-channel 0)))
+    (set! (-> a0-35 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+    (set! (-> a0-35 frame-num) 0.0)
+    (joint-control-channel-group! a0-35 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-identity)
+    )
+  (ja-post)
+  (dotimes (s5-2 5)
+    (initialize-chain-joints (-> obj tentacles s5-2))
+    )
+  (let ((a1-15 (-> obj node-list data 16))
+        (v1-68
+          (new 'static 'jellyfish-joint-mod-tentacle-info
+            :axis (new 'static 'vector :z 1.0 :w 1.0)
+            :angle 3094.7556
+            :offset 30.0
+            )
+          )
+        )
+    (set! (-> a1-15 param0) jellyfish-joint-mod-tentacle)
+    (set! (-> a1-15 param1) obj)
+    (set! (-> a1-15 param2) (the-as basic v1-68))
+    )
+  (let ((a1-16 (-> obj node-list data 21))
+        (v1-70
+          (new 'static 'jellyfish-joint-mod-tentacle-info
+            :axis (new 'static 'vector :z 1.0 :w 1.0)
+            :angle 3094.7556
+            :offset 30.0
+            )
+          )
+        )
+    (set! (-> a1-16 param0) jellyfish-joint-mod-tentacle)
+    (set! (-> a1-16 param1) obj)
+    (set! (-> a1-16 param2) (the-as basic v1-70))
+    )
+  (let ((a1-17 (-> obj node-list data 26))
+        (v1-72
+          (new 'static 'jellyfish-joint-mod-tentacle-info
+            :axis (new 'static 'vector :z 1.0 :w 1.0)
+            :angle 4369.067
+            :offset 45.0
+            )
+          )
+        )
+    (set! (-> a1-17 param0) jellyfish-joint-mod-tentacle)
+    (set! (-> a1-17 param1) obj)
+    (set! (-> a1-17 param2) (the-as basic v1-72))
+    )
+  (let ((a1-18 (-> obj node-list data 31))
+        (v1-74
+          (new 'static 'jellyfish-joint-mod-tentacle-info
+            :axis (new 'static 'vector :z 1.0 :w 1.0)
+            :angle 4369.067
+            :offset 45.0
+            )
+          )
+        )
+    (set! (-> a1-18 param0) jellyfish-joint-mod-tentacle)
+    (set! (-> a1-18 param1) obj)
+    (set! (-> a1-18 param2) (the-as basic v1-74))
+    )
+  (let ((a1-19 (-> obj node-list data 10))
+        (v1-76
+          (new 'static 'jellyfish-joint-mod-tentacle-info :axis (new 'static 'vector :x 1.0 :w 1.0) :angle 2730.6667)
+          )
+        )
+    (set! (-> a1-19 param0) jellyfish-joint-mod-tentacle)
+    (set! (-> a1-19 param1) obj)
+    (set! (-> a1-19 param2) (the-as basic v1-76))
+    )
+  (set! (-> obj tentacles-initialized) #f)
+  (set! (-> obj tentacle-clock) 0.0)
+  (set! (-> obj tentacle-blend) 1.0)
+  (add-connection
+    *part-engine*
+    obj
+    36
+    obj
+    318
+    (new 'static 'vector :x 1966.08 :y -1843.2 :z 2129.92 :w 163840.0)
+    )
+  (add-connection
+    *part-engine*
+    obj
+    36
+    obj
+    318
+    (new 'static 'vector :x -1966.08 :y -1843.2 :z 2129.92 :w 163840.0)
+    )
+  0
+  (none)
   )

@@ -234,7 +234,7 @@
 (defstate idle (prsn-hang-cell)
   :virtual #t
   :code (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (let* ((f0-2 (* (/ 1.0 (-> self path-du)) (-> self path-u)))
            (f0-3 (- f0-2 (* (the float (the int (/ f0-2 1.0))) 1.0)))
            )
@@ -251,7 +251,7 @@
     (seek! (-> self path-u) 1.0 (* (-> self path-du) (-> self clock seconds-per-frame)))
     (when (>= (-> self path-u) 1.0)
       (set! (-> self path-u) 0.0)
-      (set! (-> self state-time) (-> self clock frame-counter))
+      (set! (-> self state-time) (current-time))
       )
     (get-point-at-percent-along-path! (-> self path) (-> self root trans) (-> self path-u) 'interp)
     (ja-post)
@@ -267,42 +267,40 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (with-pp
-    (set! (-> obj root) (new 'process 'trsqv))
-    (process-drawable-from-entity! obj arg0)
-    (initialize-skeleton
-      obj
-      (the-as skeleton-group (art-group-get-by-name *level* "skel-prsn-hang-cell" (the-as (pointer uint32) #f)))
-      (the-as pair 0)
-      )
-    (logclear! (-> obj mask) (process-mask actor-pause))
-    (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #f))
-    (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-    (set! (-> obj path-du) 0.01)
-    (let ((f0-2 (* 300.0 (/ 1.0 (-> obj path-du))))
-          (f1-3 (the float (-> pp clock frame-counter)))
-          )
-      (set! (-> obj path-u) (/ (- f1-3 (* (the float (the int (/ f1-3 f0-2))) f0-2)) f0-2))
-      )
-    (let* ((f30-0 (-> obj path-u))
-           (f28-0 8.0)
-           (f26-0 (/ 1.0 f28-0))
-           )
-      (dotimes (s5-2 (+ (the int f28-0) -1))
-        (+! f30-0 f26-0)
-        (process-spawn
-          prsn-hang-cell
-          (if (>= f30-0 1.0)
-              (+ -1.0 f30-0)
-              f30-0
-              )
-          :to obj
-          )
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-prsn-hang-cell" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #f))
+  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> obj path-du) 0.01)
+  (let ((f0-2 (* 300.0 (/ 1.0 (-> obj path-du))))
+        (f1-3 (the float (current-time)))
+        )
+    (set! (-> obj path-u) (/ (- f1-3 (* (the float (the int (/ f1-3 f0-2))) f0-2)) f0-2))
+    )
+  (let* ((f30-0 (-> obj path-u))
+         (f28-0 8.0)
+         (f26-0 (/ 1.0 f28-0))
+         )
+    (dotimes (s5-2 (+ (the int f28-0) -1))
+      (+! f30-0 f26-0)
+      (process-spawn
+        prsn-hang-cell
+        (if (>= f30-0 1.0)
+            (+ -1.0 f30-0)
+            f30-0
+            )
+        :to obj
         )
       )
-    (go (method-of-object obj idle))
-    (none)
     )
+  (go (method-of-object obj idle))
+  (none)
   )
 
 ;; WARN: Return type mismatch object vs none.

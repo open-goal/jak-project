@@ -42,40 +42,41 @@
   )
 
 (deftype sound-iop-info (structure)
-  ((frame           uint32                  :offset-assert   0)
-   (strpos          int32                   :offset-assert   4)
-   (str-id          uint32                  :offset-assert   8)
-   (str-id-sign     int32                   :offset          8)
-   (freemem         uint32                  :offset-assert  12)
-   (chinfo          uint8         48        :offset-assert  16)
-   (freemem2        uint32                  :offset-assert  64)
-   (nocd            uint32                  :offset-assert  68)
-   (dirtycd         uint32                  :offset-assert  72)
-   (diskspeed       uint32        2         :offset-assert  76)
-   (lastspeed       uint32                  :offset-assert  84)
-   (dupseg          int32                   :offset-assert  88)
-   (times           int32         41        :offset-assert  92)
-   (times-seq       uint32                  :offset-assert 256)
-   (iop-ticks       uint32                  :offset-assert 260)
-   (stream-position uint32        4         :offset        272)
-   (stream-status   stream-status 4         :offset-assert 288)
+  ((frame           uint32                      :offset-assert   0)
+   (strpos          int32                       :offset-assert   4)
+   (str-id          uint32                      :offset-assert   8)
+   (str-id-sign     int32                       :offset          8)
+   (freemem         uint32                      :offset-assert  12)
+   (chinfo          uint8             48        :offset-assert  16)
+   (freemem2        uint32                      :offset-assert  64)
+   (nocd            uint32                      :offset-assert  68)
+   (dirtycd         uint32                      :offset-assert  72)
+   (diskspeed       uint32            2         :offset-assert  76)
+   (lastspeed       uint32                      :offset-assert  84)
+   (dupseg          int32                       :offset-assert  88)
+   (times           int32             41        :offset-assert  92)
+   (times-seq       uint32                      :offset-assert 256)
+   (iop-ticks       uint32                      :offset-assert 260)
+   (stream-position uint32            4         :offset        272)
+   (stream-status   stream-status     4         :offset-assert 288)
    (stream-name     sound-stream-name 4 :inline :offset-assert 304)
-   (stream-id       sound-id      4         :offset-assert 496)
-   (stream-id-int32 int32         4         :overlay-at stream-id)
-   (music-register  uint8         17        :offset-assert 512)
-   (music-excite    int8                    :offset        528)
-   (ramdisk-name    uint8         48        :offset-assert 529)
+   (stream-id       sound-id          4         :offset-assert 496)
+   (stream-id-int32 int32             4         :offset        496)
+   (music-register  uint8             17        :offset-assert 512)
+   (music-excite    int8                        :offset        528)
+   (ramdisk-name    uint8             48        :offset-assert 529)
    )
   :method-count-assert 9
   :size-assert         #x241
   :flag-assert         #x900000241
   )
 
+
 (define *sound-iop-info* (new 'global 'sound-iop-info))
 
 (defun str-is-playing? ()
   (countdown (v1-0 4)
-    (if (and (>= (-> *sound-iop-info* stream-id v1-0) 0)
+    (if (and (>= (the-as uint (-> *sound-iop-info* stream-id v1-0)) 0)
              (logtest? (-> *sound-iop-info* stream-status v1-0) (stream-status ststatus-four))
              )
         (return #t)
@@ -361,6 +362,7 @@
     )
   )
 
+;; WARN: Return type mismatch uint128 vs sound-name.
 (defun string->sound-name ((arg0 string))
   (let ((v1-0 (new 'stack-no-clear 'qword)))
     (set! (-> v1-0 quad) (the-as uint128 0))
@@ -408,17 +410,10 @@
   0
   )
 
-(defmacro sound-play (name &key (id (new-sound-id))
-                           &key (vol 100.0) &key (pitch 0) &key (bend 0)
-                           &key (group sfx)
-                           &key (position #t))
-  `(sound-play-by-name (static-sound-name ,name) ,id (the int (* (/ 1024.0 100.0) ,vol)) (the int (* 1524.0 ,pitch)) ,bend (sound-group ,group) ,position)
-  )
-
 (defbehavior sound-play-by-name process-drawable ((arg0 sound-name) (arg1 sound-id) (arg2 int) (arg3 int) (arg4 int) (arg5 sound-group) (arg6 object))
-  (local-vars (sv-16 sound-group))
   "Last arg can by a symbol with value [[#t]], in which case it will pull `trans` [[vector]] off the current [[process-drawable]]
-   otherwise, an explicit [[vector]] can be provided"
+otherwise, an explicit [[vector]] can be provided"
+  (local-vars (sv-16 sound-group))
   (set! sv-16 arg5)
   (let ((s4-0 arg6))
     (when *sound-player-enable*
@@ -556,14 +551,15 @@
   )
 
 (defun sound-volume-off ()
-  (set-setting! 'music-volume 'abs 0 0)
-  (set-setting! 'sfx-volume 'abs 0 0)
-  (set-setting! 'ambient-volume 'abs 0 0)
+  (set-setting! 'music-volume 'abs 0.0 0)
+  (set-setting! 'sfx-volume 'abs 0.0 0)
+  (set-setting! 'ambient-volume 'abs 0.0 0)
   0
   )
 
 (define *ambient-spec* (new 'static 'sound-spec))
 
+;; WARN: Return type mismatch object vs ambient-sound.
 (defmethod new ambient-sound ((allocation symbol) (type-to-make type) (arg0 basic) (arg1 vector))
   (local-vars
     (sv-16 sound-spec)
@@ -676,10 +672,10 @@
         )
     (cond
       ((-> obj spec)
-       (when (or (< (-> obj time-base) 0) (>= (-> pp clock frame-counter) (-> obj play-time)))
+       (when (or (< (-> obj time-base) 0) (>= (current-time) (-> obj play-time)))
          (when (>= (-> obj time-base) 0)
            (set! (-> obj play-time)
-                 (+ (-> pp clock frame-counter) (-> obj time-base) (rand-vu-int-count (the-as int (-> obj time-random))))
+                 (+ (current-time) (-> obj time-base) (rand-vu-int-count (the-as int (-> obj time-random))))
                  )
            (set! (-> obj playing-id) (new-sound-id))
            )
@@ -701,7 +697,7 @@
                  )
              )
            (when (and *debug-effect-control* (>= (-> obj time-base) 0))
-             (format #t "(~5D) effect sound ~A ~G " (-> pp clock frame-counter) (-> pp name) (&-> s5-1 sound-name))
+             (format #t "(~5D) effect sound ~A ~G " (current-time) (-> pp name) (&-> s5-1 sound-name))
              (format
                #t
                "volume: ~f  pitch-mod: ~f~%"
@@ -735,7 +731,7 @@
              )
        )
       (else
-        (when (>= (-> pp clock frame-counter) (-> obj play-time))
+        (when (>= (current-time) (-> obj play-time))
           (set! (-> obj playing-id)
                 (sound-play-by-name
                   (-> obj name)
@@ -748,7 +744,7 @@
                   )
                 )
           (set! (-> obj play-time)
-                (+ (-> pp clock frame-counter) (-> obj time-base) (rand-vu-int-count (the-as int (-> obj time-random))))
+                (+ (current-time) (-> obj time-base) (rand-vu-int-count (the-as int (-> obj time-random))))
                 )
           )
         )
@@ -911,7 +907,6 @@
   0
   )
 
-;; definition for function ear-trans
 (defun ear-trans ((arg0 int))
   (cond
     ((or (movie?) *external-cam-mode*)
@@ -929,7 +924,11 @@
 (defun-debug make-sqrt-table ()
   (format #t "static int sqrt_table[256] =~%{~%")
   (dotimes (gp-0 256)
-    (let* ((f0-2 (sqrtf (* 16777216.0 (the float gp-0)))) (a2-0 (the int (+ 0.5 f0-2)))) (format #t "~D,~%" a2-0))
+    (let* ((f0-2 (sqrtf (* 16777216.0 (the float gp-0))))
+           (a2-0 (the int (+ 0.5 f0-2)))
+           )
+      (format #t "~D,~%" a2-0)
+      )
     )
   (format #t "};~%")
   0
@@ -956,8 +955,6 @@
     )
   )
 
-
-
 (defun loader-test-command ((arg0 sound-command) (arg1 uint))
   (let ((v1-1 (the-as sound-rpc-test-cmd (add-element *sound-loader-rpc*))))
     (set! (-> v1-1 command) arg0)
@@ -974,7 +971,7 @@
   (let ((gp-0 (new 'stack-no-clear 'inline-array 'vector 2)))
     (vector-! (-> gp-0 0) (target-pos 0) arg0)
     (if *target*
-        (vector-! (-> gp-0 1) arg1 (-> *target* root transv))
+        (vector-! (-> gp-0 1) arg1 (-> *target* control transv))
         (set! (-> gp-0 1 quad) (-> arg1 quad))
         )
     (vector-normalize! (-> gp-0 0) 1.0)
@@ -987,32 +984,31 @@
 (defun sound-bank-reload ()
   (process-spawn-function
     process
-    (lambda () (with-pp
-                 (let ((gp-0 (new 'static 'boxed-array :type symbol :length 0 :allocated-length 3)))
-                   (dotimes (v1-0 3)
-                     (set! (-> gp-0 v1-0) (the-as symbol (-> *level* sound-bank v1-0)))
-                     )
-                   (let ((a1-3 (new 'stack-no-clear 'array 'symbol 4)))
-                     (set! (-> a1-3 2) 'empty2)
-                     (set! (-> a1-3 1) 'empty1)
-                     (set! (-> a1-3 0) 'empty0)
-                     (want-sound-banks *load-state* a1-3)
-                     )
-                   (let ((s5-0 (-> pp clock frame-counter)))
-                     (until (>= (- (-> pp clock frame-counter) s5-0) (seconds 1))
-                       (suspend)
-                       )
-                     )
-                   (let ((a1-4 (new 'stack-no-clear 'array 'symbol 4)))
-                     (set! (-> a1-4 2) (-> gp-0 2))
-                     (set! (-> a1-4 1) (-> gp-0 1))
-                     (set! (-> a1-4 0) (-> gp-0 0))
-                     (want-sound-banks *load-state* a1-4)
-                     )
-                   )
-                 (none)
-                 )
+    (lambda ()
+      (let ((gp-0 (new 'static 'boxed-array :type symbol :length 0 :allocated-length 3)))
+        (dotimes (v1-0 3)
+          (set! (-> gp-0 v1-0) (the-as symbol (-> *level* sound-bank v1-0)))
+          )
+        (let ((a1-3 (new 'stack-no-clear 'array 'symbol 4)))
+          (set! (-> a1-3 2) 'empty2)
+          (set! (-> a1-3 1) 'empty1)
+          (set! (-> a1-3 0) 'empty0)
+          (want-sound-banks *load-state* a1-3)
+          )
+        (let ((s5-0 (current-time)))
+          (until (>= (- (current-time) s5-0) (seconds 1))
+            (suspend)
             )
+          )
+        (let ((a1-4 (new 'stack-no-clear 'array 'symbol 4)))
+          (set! (-> a1-4 2) (-> gp-0 2))
+          (set! (-> a1-4 1) (-> gp-0 1))
+          (set! (-> a1-4 0) (-> gp-0 0))
+          (want-sound-banks *load-state* a1-4)
+          )
+        )
+      (none)
+      )
     :to *display-pool*
     )
   0

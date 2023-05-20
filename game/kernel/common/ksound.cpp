@@ -2,7 +2,7 @@
 
 #include "common/common_types.h"
 
-#include "game/overlord/srpc.h"
+#include "game/overlord/common/srpc.h"
 #include "game/sound/989snd/ame_handler.h"
 
 /*!

@@ -4,7 +4,7 @@
 #include "common/util/DgoReader.h"
 #include "common/util/FileUtil.h"
 #include "common/util/unicode_util.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 namespace {
 int run(int argc, char** argv) {

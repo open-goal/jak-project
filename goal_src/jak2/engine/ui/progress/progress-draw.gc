@@ -7,8 +7,9 @@
 
 ;; DECOMP BEGINS
 
+;; WARN: Return type mismatch int vs font-color.
 (defbehavior progress-selected progress ((arg0 int))
-  (let ((gp-0 33))
+  (let ((color (font-color #7ffcfc)))
     (cond
       ((< 4 (the-as int (logand (-> self clock integral-frame-counter) 7)))
        (set! (-> *progress-state* color-flash-counter) 1)
@@ -20,19 +21,42 @@
       )
     (cond
       ((zero? (-> *progress-state* color-flash-counter))
-       (set-font-color gp-0 0 64 128 128)
-       (set-font-color gp-0 1 64 128 128)
+       (set-font-color
+         (the-as font-color color)
+         0
+         (new 'static 'rgba :r #x40)
+         (new 'static 'rgba :r #x80)
+         (new 'static 'rgba :r #x80)
+         )
+       (set-font-color
+         (the-as font-color color)
+         1
+         (new 'static 'rgba :r #x40)
+         (new 'static 'rgba :r #x80)
+         (new 'static 'rgba :r #x80)
+         )
        )
       (else
-        (set-font-color gp-0 0 255 255 255)
-        (set-font-color gp-0 1 255 255 255)
+        (set-font-color
+          (the-as font-color color)
+          0
+          (new 'static 'rgba :r #xff)
+          (new 'static 'rgba :r #xff)
+          (new 'static 'rgba :r #xff)
+          )
+        (set-font-color
+          (the-as font-color color)
+          1
+          (new 'static 'rgba :r #xff)
+          (new 'static 'rgba :r #xff)
+          (new 'static 'rgba :r #xff)
+          )
         )
       )
-    gp-0
+    (the-as font-color color)
     )
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-8 8) 0) at op 39
 (defun draw-percent-bar ((arg0 int) (arg1 int) (arg2 float) (arg3 rgba))
   (with-dma-buffer-add-bucket ((s2-0 (-> *display* frames (-> *display* on-screen) global-buf))
                                (bucket-id particles)
@@ -44,7 +68,6 @@
   (none)
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-6 8) 0) at op 45
 (defun draw-highlight ((arg0 int) (arg1 int) (arg2 float))
   (let ((s3-0 (if (= (get-aspect-ratio) 'aspect4x3)
                   70
@@ -93,7 +116,7 @@
   (let ((a0-5 arg0))
     (set! (-> a0-5 flags) (font-flags kerning middle large))
     )
-  (if (< (mod (-> self clock frame-counter) 300) 210)
+  (if (< (mod (current-time) 300) 210)
       (print-game-text
         (lookup-text! *common-text* (text-id progress-memcard-loading-data) #f)
         arg0
@@ -126,7 +149,7 @@
       (set! (-> a0-1 flags) (font-flags kerning large))
       )
     (let ((s2-0 arg1))
-      (set! (-> s2-0 color) (the-as font-color (progress-selected 200)))
+      (set! (-> s2-0 color) (progress-selected 200))
       )
     (let ((v1-15 arg1))
       (set! (-> v1-15 scale) 0.6)
@@ -250,7 +273,6 @@
   (none)
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-23 8) 0) at op 71
 (defun begin-scissor ((arg0 hud-box) (arg1 progress))
   (cond
     ((or (= (-> arg1 current) 'bigmap) (= (-> arg1 next) 'bigmap))
@@ -278,10 +300,8 @@
     (setup-scissor arg0 s4-0)
     )
   0
-  (none)
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-7 8) 0) at op 17
 (defun end-scissor ((arg0 hud-box) (arg1 float))
   (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
                                (bucket-id progress)
@@ -289,10 +309,8 @@
     (restore-scissor arg0 s5-0)
     )
   0
-  (none)
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-17 8) 0) at op 50
 (defun begin-scissor-secret ((arg0 hud-box) (arg1 progress))
   (cond
     ((= (get-aspect-ratio) 'aspect16x9)
@@ -314,10 +332,8 @@
     (setup-scissor arg0 s4-0)
     )
   0
-  (none)
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-7 8) 0) at op 17
 (defun end-scissor-secret ((arg0 hud-box) (arg1 float))
   (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
                                (bucket-id progress)
@@ -325,11 +341,9 @@
     (restore-scissor arg0 s5-0)
     )
   0
-  (none)
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-17 8) 0) at op 50
-(defun begin-scissor-missions ((arg0 hud-box) (arg1 float))
+(defun begin-scissor-missions ((arg0 hud-box))
   (cond
     ((= (get-aspect-ratio) 'aspect16x9)
      (set! (-> arg0 min x) 79.0)
@@ -350,10 +364,8 @@
     (setup-scissor arg0 s4-0)
     )
   0
-  (none)
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-7 8) 0) at op 17
 (defun end-scissor-missions ((arg0 hud-box) (arg1 float))
   (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
                                (bucket-id progress)
@@ -361,10 +373,8 @@
     (restore-scissor arg0 s5-0)
     )
   0
-  (none)
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-17 8) 0) at op 50
 (defun begin-scissor-scene ((arg0 hud-box))
   (cond
     ((= (get-aspect-ratio) 'aspect16x9)
@@ -386,10 +396,8 @@
     (setup-scissor arg0 s4-0)
     )
   0
-  (none)
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-7 8) 0) at op 17
 (defun end-scissor-scene ((arg0 hud-box) (arg1 float))
   (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
                                (bucket-id progress)
@@ -397,10 +405,8 @@
     (restore-scissor arg0 s5-0)
     )
   0
-  (none)
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-17 8) 0) at op 50
 (defun begin-scissor-level ((arg0 hud-box))
   (cond
     ((= (get-aspect-ratio) 'aspect16x9)
@@ -422,10 +428,8 @@
     (setup-scissor arg0 s4-0)
     )
   0
-  (none)
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-7 8) 0) at op 17
 (defun end-scissor-level ((arg0 hud-box) (arg1 float))
   (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
                                (bucket-id progress)
@@ -433,7 +437,6 @@
     (restore-scissor arg0 s5-0)
     )
   0
-  (none)
   )
 
 (defun print-language-name ((arg0 text-id) (arg1 font-context) (arg2 int) (arg3 symbol))
@@ -446,7 +449,12 @@
     (+! (-> arg1 origin x) (the float s5-0))
     (let ((f30-0 (- 1.0 (* 0.0033333334 (the float arg2)))))
       (set! (-> arg1 alpha) f30-0)
-      (print-game-text-scaled (lookup-text! *common-text* (-> *language-name-remap* arg0) #f) f30-0 arg1 320)
+      (print-game-text-scaled
+        (lookup-text! *common-text* (-> *language-name-remap* arg0) #f)
+        f30-0
+        arg1
+        (bucket-id progress)
+        )
       )
     (set! (-> arg1 origin x) (- (-> arg1 origin x) (the float s5-0)))
     )
@@ -599,12 +607,12 @@
   (the-as pointer 0)
   )
 
-(defmethod menu-option-method-10 menu-option ((obj menu-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-option ((obj menu-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   0
   (none)
   )
 
-(defmethod menu-option-method-10 menu-on-off-option ((obj menu-on-off-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-on-off-option ((obj menu-on-off-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars (a0-8 string) (sv-16 string))
   (let ((s3-0 (if arg3
                   (&-> *progress-state* on-off-choice)
@@ -668,7 +676,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-yes-no-option ((obj menu-yes-no-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-yes-no-option ((obj menu-yes-no-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars (a0-8 string))
   (let ((s3-0 (&-> *progress-state* yes-no-choice)))
     (set! a0-8
@@ -714,7 +722,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-video-mode-option ((obj menu-video-mode-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-video-mode-option ((obj menu-video-mode-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (let ((s3-0 (&-> *progress-state* video-mode-choice))
         (f28-0 (* 2.0 (- 0.5 (-> arg0 menu-transition))))
         (f30-0 (-> arg1 origin y))
@@ -775,7 +783,7 @@
             (cond
               ((= (-> *progress-state* graphic-options-item-selected) 3)
                (let ((s2-4 arg1))
-                 (set! (-> s2-4 color) (the-as font-color (progress-selected 0)))
+                 (set! (-> s2-4 color) (progress-selected 0))
                  )
                (draw-highlight (the int (+ -9.0 (-> arg1 origin y))) 22 f28-0)
                )
@@ -824,7 +832,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-unlocked-menu-option ((obj menu-unlocked-menu-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-unlocked-menu-option ((obj menu-unlocked-menu-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (let ((s5-0 (memcard-unlocked-secrets? #t))
         (f30-0 (* 2.0 (- 0.5 (-> arg0 menu-transition))))
         )
@@ -1005,7 +1013,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-main-menu-option ((obj menu-main-menu-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-main-menu-option ((obj menu-main-menu-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (-> arg1 flags)
   (when (and (= (-> arg0 menu-transition) 0.0) (and (= (-> arg0 ring-angle) (-> arg0 ring-want-angle))
                                                     (nonzero? (-> obj name))
@@ -1257,7 +1265,6 @@
   (none)
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-7 8) 0) at op 26
 (defun draw-savegame-box ((arg0 menu-option) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
   (set! (-> arg0 box 0 min x) arg1)
   (set! (-> arg0 box 0 max x) arg2)
@@ -1526,7 +1533,6 @@
     )
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-41 8) 0) at op 177
 (defun draw-decoration ((arg0 menu-option) (arg1 font-context) (arg2 float) (arg3 int) (arg4 symbol) (arg5 float))
   (local-vars
     (sv-16 symbol)
@@ -1638,7 +1644,6 @@
     )
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-28 8) 0) at op 138
 (defun draw-missions-decoration ((arg0 menu-missions-option) (arg1 font-context) (arg2 float) (arg3 text-id))
   (local-vars
     (sv-16 int)
@@ -1683,7 +1688,7 @@
       (let ((a0-4 (lookup-text! *common-text* s0-0 #f))
             (a2-2 #f)
             (a3-1 44)
-            (t0-0 320)
+            (t0-0 (bucket-id progress))
             )
         (sv-32 a0-4 sv-48 a2-2 a3-1 (the-as bucket-id t0-0))
         )
@@ -1712,7 +1717,6 @@
     )
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-34 8) 0) at op 152
 (defun draw-sound-options-decoration ((arg0 menu-slider-option) (arg1 font-context) (arg2 float) (arg3 symbol) (arg4 text-id))
   (local-vars
     (sv-16 font-context)
@@ -1800,7 +1804,6 @@
     )
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-30 8) 0) at op 140
 (defun draw-decoration-secrets ((arg0 menu-option) (arg1 font-context) (arg2 float) (arg3 text-id))
   (local-vars
     (sv-16 int)
@@ -1876,7 +1879,6 @@
     )
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-45 8) 0) at op 174
 (defun draw-decoration-load-save ((arg0 menu-option) (arg1 font-context) (arg2 float) (arg3 int))
   (local-vars
     (sv-16 int)
@@ -1974,8 +1976,7 @@
     )
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-95 8) 0) at op 334
-(defmethod menu-option-method-10 menu-memcard-slot-option ((obj menu-memcard-slot-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-memcard-slot-option ((obj menu-memcard-slot-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars
     (v0-74 pointer)
     (sv-16 float)
@@ -2032,7 +2033,7 @@
           (else
             (let ((s2-3 arg1))
               (set! (-> s2-3 color) (if (= arg2 sv-20)
-                                        (the-as font-color (progress-selected 0))
+                                        (the-as font-color (the-as int (progress-selected 0)))
                                         (font-color #7efbfb)
                                         )
                     )
@@ -2411,64 +2412,62 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-loading-option ((obj menu-loading-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
-  (with-pp
-    (let ((f30-0 (* 2.0 (- 0.5 (-> arg0 menu-transition)))))
-      (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
-      (let ((v1-3 arg1))
-        (set! (-> v1-3 scale) 0.55)
-        )
-      (let ((s4-0 arg1))
-        (set! (-> s4-0 color) (the-as font-color (progress-selected 0)))
-        )
-      (let ((a0-3 arg1))
-        (set! (-> a0-3 flags) (font-flags kerning middle left large))
-        )
-      (set! (-> arg1 origin x) 120.0)
-      (set! (-> arg1 origin y) 110.0)
-      (let ((v1-8 arg1))
-        (set! (-> v1-8 width) (the float 270))
-        )
-      (let ((v1-9 arg1))
-        (set! (-> v1-9 height) (the float 35))
-        )
-      (if (< f30-0 0.0)
-          0.0
-          )
+(defmethod draw-option menu-loading-option ((obj menu-loading-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+  (let ((f30-0 (* 2.0 (- 0.5 (-> arg0 menu-transition)))))
+    (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
+    (let ((v1-3 arg1))
+      (set! (-> v1-3 scale) 0.55)
       )
-    (when (or (< (mod (-> pp clock frame-counter) 300) 150) (!= (-> arg0 menu-transition) 0.0))
-      (let ((a1-1 416))
-        (case (-> arg0 current)
-          (('saving)
-           (set! a1-1 415)
-           )
-          (('formatting)
-           (set! a1-1 417)
-           )
-          (('creating)
-           (set! a1-1 418)
-           )
-          )
-        (print-game-text (lookup-text! *common-text* (the-as text-id a1-1) #f) arg1 #f 44 (bucket-id progress))
+    (let ((s4-0 arg1))
+      (set! (-> s4-0 color) (progress-selected 0))
+      )
+    (let ((a0-3 arg1))
+      (set! (-> a0-3 flags) (font-flags kerning middle left large))
+      )
+    (set! (-> arg1 origin x) 120.0)
+    (set! (-> arg1 origin y) 110.0)
+    (let ((v1-8 arg1))
+      (set! (-> v1-8 width) (the float 270))
+      )
+    (let ((v1-9 arg1))
+      (set! (-> v1-9 height) (the float 35))
+      )
+    (if (< f30-0 0.0)
+        0.0
         )
-      )
-    (set! (-> arg1 origin y) (+ 45.0 (-> arg1 origin y)))
-    (let ((v1-25 arg1))
-      (set! (-> v1-25 height) (the float 160))
-      )
-    (let ((a0-16 arg1))
-      (set! (-> a0-16 color) (font-color #7efbfb))
-      )
-    (let ((s5-2 print-game-text))
-      (format (clear *temp-string*) (lookup-text! *common-text* (text-id progress-memcard-dont-remove) #f) 1)
-      (s5-2 *temp-string* arg1 #f 44 (bucket-id progress))
-      )
-    0
-    (none)
     )
+  (when (or (< (mod (current-time) 300) 150) (!= (-> arg0 menu-transition) 0.0))
+    (let ((a1-1 416))
+      (case (-> arg0 current)
+        (('saving)
+         (set! a1-1 415)
+         )
+        (('formatting)
+         (set! a1-1 417)
+         )
+        (('creating)
+         (set! a1-1 418)
+         )
+        )
+      (print-game-text (lookup-text! *common-text* (the-as text-id a1-1) #f) arg1 #f 44 (bucket-id progress))
+      )
+    )
+  (set! (-> arg1 origin y) (+ 45.0 (-> arg1 origin y)))
+  (let ((v1-25 arg1))
+    (set! (-> v1-25 height) (the float 160))
+    )
+  (let ((a0-16 arg1))
+    (set! (-> a0-16 color) (font-color #7efbfb))
+    )
+  (let ((s5-2 print-game-text))
+    (format (clear *temp-string*) (lookup-text! *common-text* (text-id progress-memcard-dont-remove) #f) 1)
+    (s5-2 *temp-string* arg1 #f 44 (bucket-id progress))
+    )
+  0
+  (none)
   )
 
-(defmethod menu-option-method-10 menu-insufficient-space-option ((obj menu-insufficient-space-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-insufficient-space-option ((obj menu-insufficient-space-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (when (!= (-> arg0 current) 'none)
     (let ((v1-3 arg1))
@@ -2534,7 +2533,7 @@
          )
        (set! (-> arg1 origin y) (+ 60.0 (-> arg1 origin y)))
        (let ((s5-2 arg1))
-         (set! (-> s5-2 color) (the-as font-color (progress-selected 0)))
+         (set! (-> s5-2 color) (progress-selected 0))
          )
        (draw-highlight (the int (+ 30.0 (-> arg1 origin y))) 24 (-> arg1 alpha))
        (print-game-text
@@ -2547,7 +2546,7 @@
        )
       (else
         (let ((s4-2 arg1))
-          (set! (-> s4-2 color) (the-as font-color (progress-selected 0)))
+          (set! (-> s4-2 color) (progress-selected 0))
           )
         (set! (-> arg1 origin y) (+ 20.0 (-> arg1 origin y)))
         (draw-highlight (the int (+ 30.0 (-> arg1 origin y))) 24 (-> arg1 alpha))
@@ -2559,7 +2558,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-secrets-insufficient-space-option ((obj menu-secrets-insufficient-space-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-secrets-insufficient-space-option ((obj menu-secrets-insufficient-space-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (let ((v1-1 arg1))
     (set! (-> v1-1 scale) 0.5)
@@ -2590,7 +2589,7 @@
     (set! (-> v1-13 height) (the float 30))
     )
   (let ((s5-1 arg1))
-    (set! (-> s5-1 color) (the-as font-color (progress-selected 0)))
+    (set! (-> s5-1 color) (progress-selected 0))
     )
   (draw-highlight (the int (-> arg1 origin y)) 24 (-> arg1 alpha))
   (print-game-text
@@ -2604,7 +2603,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-insert-card-option ((obj menu-insert-card-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-insert-card-option ((obj menu-insert-card-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (let ((v1-1 arg1))
     (set! (-> v1-1 scale) 0.5)
@@ -2636,7 +2635,7 @@
     (set! (-> v1-10 height) (the float 60))
     )
   (let ((s5-1 arg1))
-    (set! (-> s5-1 color) (the-as font-color (progress-selected 0)))
+    (set! (-> s5-1 color) (progress-selected 0))
     )
   (draw-highlight (the int (+ 17.0 (-> arg1 origin y))) 24 (-> arg1 alpha))
   (print-game-text
@@ -2650,7 +2649,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-error-loading-option ((obj menu-error-loading-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-error-loading-option ((obj menu-error-loading-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (let ((v1-1 arg1))
     (set! (-> v1-1 scale) 0.5)
@@ -2703,7 +2702,7 @@
     (set! (-> v1-19 height) (the float 45))
     )
   (let ((s5-2 arg1))
-    (set! (-> s5-2 color) (the-as font-color (progress-selected 0)))
+    (set! (-> s5-2 color) (progress-selected 0))
     )
   (draw-highlight (the int (+ 9.0 (-> arg1 origin y))) 24 (-> arg1 alpha))
   (print-game-text
@@ -2717,7 +2716,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-error-auto-saving-option ((obj menu-error-auto-saving-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-error-auto-saving-option ((obj menu-error-auto-saving-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (let ((v1-1 arg1))
     (set! (-> v1-1 scale) 0.5)
@@ -2778,7 +2777,7 @@
     (set! (-> v1-19 height) (the float 25))
     )
   (let ((s5-4 arg1))
-    (set! (-> s5-4 color) (the-as font-color (progress-selected 0)))
+    (set! (-> s5-4 color) (progress-selected 0))
     )
   (draw-highlight (the int (-> arg1 origin y)) 22 (-> arg1 alpha))
   (print-game-text
@@ -2792,7 +2791,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-card-removed-option ((obj menu-card-removed-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-card-removed-option ((obj menu-card-removed-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (let ((v1-1 arg1))
     (set! (-> v1-1 scale) 0.5)
@@ -2839,7 +2838,7 @@
     (set! (-> v1-15 height) (the float 35))
     )
   (let ((s5-3 arg1))
-    (set! (-> s5-3 color) (the-as font-color (progress-selected 0)))
+    (set! (-> s5-3 color) (progress-selected 0))
     )
   (draw-highlight (the int (+ 5.0 (-> arg1 origin y))) 24 (-> arg1 alpha))
   (print-game-text
@@ -2853,7 +2852,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-error-disc-removed-option ((obj menu-error-disc-removed-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-error-disc-removed-option ((obj menu-error-disc-removed-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (let ((a0-1 arg1))
     (set! (-> a0-1 color) (font-color #7efbfb))
@@ -2896,7 +2895,7 @@
       (set! (-> v1-14 height) (the float 50))
       )
     (let ((s5-2 arg1))
-      (set! (-> s5-2 color) (the-as font-color (progress-selected 0)))
+      (set! (-> s5-2 color) (progress-selected 0))
       )
     (draw-highlight (the int (+ 12.0 (-> arg1 origin y))) 24 (-> arg1 alpha))
     (print-game-text
@@ -2911,7 +2910,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-error-reading-option ((obj menu-error-reading-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-error-reading-option ((obj menu-error-reading-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (let ((a0-1 arg1))
     (set! (-> a0-1 color) (font-color #7efbfb))
@@ -2953,7 +2952,7 @@
     (set! (-> v1-13 height) (the float 50))
     )
   (let ((s5-2 arg1))
-    (set! (-> s5-2 color) (the-as font-color (progress-selected 0)))
+    (set! (-> s5-2 color) (progress-selected 0))
     )
   (draw-highlight (the int (+ 12.0 (-> arg1 origin y))) 24 (-> arg1 alpha))
   (print-game-text
@@ -2967,8 +2966,7 @@
   (none)
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-16 8) 0) at op 72
-(defmethod menu-option-method-10 menu-icon-info-option ((obj menu-icon-info-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-icon-info-option ((obj menu-icon-info-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (let ((a0-1 arg1))
     (set! (-> a0-1 color) (font-color #7efbfb))
@@ -3028,7 +3026,7 @@
     (set! (-> v1-34 height) (the float 50))
     )
   (let ((s5-3 arg1))
-    (set! (-> s5-3 color) (the-as font-color (progress-selected 0)))
+    (set! (-> s5-3 color) (progress-selected 0))
     )
   (draw-highlight (the int (+ 12.0 (-> arg1 origin y))) 24 (-> arg1 alpha))
   (print-game-text
@@ -3042,7 +3040,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-format-card-option ((obj menu-format-card-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-format-card-option ((obj menu-format-card-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (let ((a0-1 arg1))
     (set! (-> a0-1 color) (font-color #7efbfb))
@@ -3094,7 +3092,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-already-exists-option ((obj menu-already-exists-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-already-exists-option ((obj menu-already-exists-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (let ((a0-1 arg1))
     (set! (-> a0-1 color) (font-color #7efbfb))
@@ -3138,7 +3136,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-create-game-option ((obj menu-create-game-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-create-game-option ((obj menu-create-game-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (let ((a0-1 arg1))
     (set! (-> a0-1 color) (font-color #7efbfb))
@@ -3179,7 +3177,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-video-mode-warning-option ((obj menu-video-mode-warning-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-video-mode-warning-option ((obj menu-video-mode-warning-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (let ((a0-1 arg1))
     (set! (-> a0-1 color) (font-color #7efbfb))
@@ -3245,7 +3243,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-video-mode-ok-option ((obj menu-video-mode-ok-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-video-mode-ok-option ((obj menu-video-mode-ok-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (let ((a0-1 arg1))
     (set! (-> a0-1 color) (font-color #7efbfb))
@@ -3289,7 +3287,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-progressive-mode-warning-option ((obj menu-progressive-mode-warning-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-progressive-mode-warning-option ((obj menu-progressive-mode-warning-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (let ((a0-1 arg1))
     (set! (-> a0-1 color) (font-color #7efbfb))
@@ -3355,7 +3353,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-progressive-mode-ok-option ((obj menu-progressive-mode-ok-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-progressive-mode-ok-option ((obj menu-progressive-mode-ok-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (let ((a0-1 arg1))
     (set! (-> a0-1 color) (font-color #7efbfb))
@@ -3399,7 +3397,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-quit-option ((obj menu-quit-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-quit-option ((obj menu-quit-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
   (let ((a0-1 arg1))
     (set! (-> a0-1 color) (font-color #7efbfb))
@@ -3433,7 +3431,7 @@
   )
 
 ;; WARN: disable def twice: 147. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod menu-option-method-10 menu-select-start-option ((obj menu-select-start-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-select-start-option ((obj menu-select-start-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars
     (sv-48 int)
     (sv-64 int)
@@ -3548,8 +3546,10 @@
             ((zero? s2-0)
              (set! (-> obj real-task-index) sv-64)
              (set! sv-96 arg1)
-             (set! (-> sv-96 color) (the-as font-color (progress-selected 0)))
-             (draw-highlight (+ s0-0 47) 50 f30-0)
+             (set! (-> sv-96 color) (progress-selected 0))
+             ;; pc port note : added this check here so we dont double-draw the highlight
+             (when (< (+ s3-0 -1) 0)
+                (draw-highlight (+ s0-0 47) 50 f30-0))
              )
             (else
               (let ((a0-35 arg1))
@@ -3599,7 +3599,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-select-scene-option ((obj menu-select-scene-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-select-scene-option ((obj menu-select-scene-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars
     (sv-48 int)
     (sv-64 (function string font-context symbol int bucket-id float))
@@ -3669,7 +3669,7 @@
         (set! sv-48 0)
         (while (< sv-48 s4-0)
           (set! sv-64 print-game-text)
-          (let ((a0-4 (lookup-text! *common-text* (the-as text-id (-> s2-0 sv-48 text)) #f))
+          (let ((a0-4 (lookup-text! *common-text* (-> s2-0 sv-48 text) #f))
                 (a1-16 arg1)
                 (a2-4 #t)
                 (a3-3 44)
@@ -3682,7 +3682,7 @@
         (let ((s0-1 (- s0-0 (the int f28-0)))
               (f28-1 (cond
                        ((< (-> arg0 sliding-height) 0.0)
-                        (set! sv-112 (lookup-text! *common-text* (the-as text-id (-> s2-0 s4-0 text)) #f))
+                        (set! sv-112 (lookup-text! *common-text* (-> s2-0 s4-0 text) #f))
                         0.0
                         (set! sv-80 print-game-text)
                         (set! sv-96 format)
@@ -3702,7 +3702,7 @@
                           )
                         )
                        (else
-                         (set! sv-160 (lookup-text! *common-text* (the-as text-id (-> s2-0 (+ s4-0 -1) text)) #f))
+                         (set! sv-160 (lookup-text! *common-text* (-> s2-0 (+ s4-0 -1) text) #f))
                          0.0
                          (set! sv-128 print-game-text)
                          (set! sv-144 format)
@@ -3727,7 +3727,7 @@
           (set! (-> arg1 origin y) (the float (+ s0-1 (the int f28-1))))
           (while (< s3-0 (length s2-0))
             (set! sv-176 print-game-text)
-            (let* ((a0-14 (lookup-text! *common-text* (the-as text-id (-> s2-0 s3-0 text)) #f))
+            (let* ((a0-14 (lookup-text! *common-text* (-> s2-0 s3-0 text) #f))
                    (a1-24 arg1)
                    (a2-12 #t)
                    (a3-6 44)
@@ -3738,12 +3738,12 @@
               (cond
                 ((and (< s3-0 s4-0) (!= (-> arg0 sliding-height) 0.0))
                  (set! sv-192 arg1)
-                 (set! (-> sv-192 color) (the-as font-color (progress-selected 0)))
+                 (set! (-> sv-192 color) (progress-selected 0))
                  (draw-highlight (+ (the int f26-0) -2 s0-1) (the int f26-0) f30-0)
                  )
                 ((or (and (= s3-0 s4-0) (= (fabs (-> arg0 sliding-height)) 0.0)) (zero? s3-0))
                  (set! sv-208 arg1)
-                 (set! (-> sv-208 color) (the-as font-color (progress-selected 0)))
+                 (set! (-> sv-208 color) (progress-selected 0))
                  (draw-highlight (+ s0-1 -2) (the int f26-0) f30-0)
                  )
                 (else
@@ -3754,7 +3754,7 @@
                 )
               )
             (set! sv-224 print-game-text)
-            (let ((a0-23 (lookup-text! *common-text* (the-as text-id (-> s2-0 s3-0 text)) #f))
+            (let ((a0-23 (lookup-text! *common-text* (-> s2-0 s3-0 text) #f))
                   (a1-28 arg1)
                   (a2-16 #f)
                   (a3-7 44)
@@ -3775,7 +3775,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-bigmap-option ((obj menu-bigmap-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-bigmap-option ((obj menu-bigmap-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   0
   (none)
   )
@@ -3915,7 +3915,7 @@
     )
   )
 
-(defmethod menu-option-method-10 menu-missions-option ((obj menu-missions-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-missions-option ((obj menu-missions-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars
     (f0-50 float)
     (sv-16 float)
@@ -3961,8 +3961,8 @@
       )
   (set! (-> arg1 alpha) sv-16)
   (set! (-> *game-info* mission-list 0) sv-264)
-  (set! (-> sv-264 description) (text-id progress-unknown-kjanskd))
-  (set! (-> sv-268 description) (text-id progress-unknown-oi1un23i13))
+  (set! (-> sv-264 description) (text-id progress-missions-in-progress))
+  (set! (-> sv-268 description) (text-id progress-missions-completed))
   (while (< sv-24 (length (-> *game-info* sub-task-list)))
     (let ((v1-26 (find-mission-text-at-index sv-24))
           (a0-15 (-> *game-info* mission-list))
@@ -4000,7 +4000,7 @@
        )
       )
     )
-  (begin-scissor-missions sv-276 (the-as float arg0))
+  (begin-scissor-missions sv-276)
   (let ((a0-27 arg1))
     (set! (-> a0-27 flags) (font-flags kerning large))
     )
@@ -4163,7 +4163,7 @@
   (none)
   )
 
-;; WARN: Return type mismatch object vs pointer.
+;; WARN: Return type mismatch object vs none.
 (defun draw-secret-list ((arg0 secret-item-option) (arg1 progress) (arg2 font-context) (arg3 int) (arg4 symbol) (arg5 float))
   (let ((s4-0 (and arg4 (= arg3 1))))
     380.0
@@ -4209,7 +4209,7 @@
       (else
         (let ((s3-1 arg2))
           (set! (-> s3-1 color) (if (= arg3 1)
-                                    (the-as font-color (progress-selected 0))
+                                    (the-as font-color (the-as int (progress-selected 0)))
                                     (font-color #7efbfb)
                                     )
                 )
@@ -4240,81 +4240,77 @@
           )
         )
       )
-    (the-as
-      pointer
-      (cond
-        ((and (not s4-0) (not (logtest? (-> *game-info* purchase-secrets) (-> arg0 flag))))
-         (+! (-> arg2 origin x) (the float (if (= (get-aspect-ratio) 'aspect4x3)
-                                               50
-                                               45
-                                               )
-                                     )
-             )
-         (let ((s4-2 print-game-text))
-           (format (clear *temp-string*) "~D" (-> arg0 cost))
-           (s4-2 *temp-string* arg2 #f 44 (bucket-id progress))
+    (cond
+      ((and (not s4-0) (not (logtest? (-> *game-info* purchase-secrets) (-> arg0 flag))))
+       (+! (-> arg2 origin x) (the float (if (= (get-aspect-ratio) 'aspect4x3)
+                                             50
+                                             45
+                                             )
+                                   )
            )
+       (let ((s4-2 print-game-text))
+         (format (clear *temp-string*) "~D" (-> arg0 cost))
+         (s4-2 *temp-string* arg2 #f 44 (bucket-id progress))
          )
-        ((and (not s4-0) (= (-> arg0 can-toggle) #t) (logtest? (-> *game-info* secrets) (-> arg0 flag)))
-         (+! (-> arg2 origin x) (the float (if (= (get-aspect-ratio) 'aspect4x3)
-                                               50
-                                               45
-                                               )
-                                     )
-             )
-         (let ((s5-2 print-game-text))
-           (format (clear *temp-string*) "~S" (lookup-text! *common-text* (text-id progress-on) #f))
-           (s5-2 *temp-string* arg2 #f 44 (bucket-id progress))
+       )
+      ((and (not s4-0) (= (-> arg0 can-toggle) #t) (logtest? (-> *game-info* secrets) (-> arg0 flag)))
+       (+! (-> arg2 origin x) (the float (if (= (get-aspect-ratio) 'aspect4x3)
+                                             50
+                                             45
+                                             )
+                                   )
            )
+       (let ((s5-2 print-game-text))
+         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (text-id progress-on) #f))
+         (s5-2 *temp-string* arg2 #f 44 (bucket-id progress))
          )
-        ((and (not s4-0) (= (-> arg0 can-toggle) #t) (not (logtest? (-> *game-info* secrets) (-> arg0 flag))))
-         (+! (-> arg2 origin x) (the float (if (= (get-aspect-ratio) 'aspect4x3)
-                                               50
-                                               45
-                                               )
-                                     )
-             )
-         (let ((s5-4 print-game-text))
-           (format (clear *temp-string*) "~S" (lookup-text! *common-text* (text-id progress-off) #f))
-           (s5-4 *temp-string* arg2 #f 44 (bucket-id progress))
+       )
+      ((and (not s4-0) (= (-> arg0 can-toggle) #t) (not (logtest? (-> *game-info* secrets) (-> arg0 flag))))
+       (+! (-> arg2 origin x) (the float (if (= (get-aspect-ratio) 'aspect4x3)
+                                             50
+                                             45
+                                             )
+                                   )
            )
+       (let ((s5-4 print-game-text))
+         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (text-id progress-off) #f))
+         (s5-4 *temp-string* arg2 #f 44 (bucket-id progress))
          )
-        ((and (not s4-0) (!= (-> arg0 can-toggle) #t))
-         (let ((s3-8 80)
-               (s5-5 70)
-               (f30-3 (-> arg2 origin x))
-               )
-           (set! s3-8 (cond
-                        ((= (get-aspect-ratio) 'aspect4x3)
-                         (empty)
-                         s3-8
-                         )
-                        (else
-                          s5-5
-                          )
+       )
+      ((and (not s4-0) (!= (-> arg0 can-toggle) #t))
+       (let ((s3-8 80)
+             (s5-5 70)
+             (f30-3 (-> arg2 origin x))
+             )
+         (set! s3-8 (cond
+                      ((= (get-aspect-ratio) 'aspect4x3)
+                       (empty)
+                       s3-8
+                       )
+                      (else
+                        s5-5
                         )
-                 )
-           (set! (-> arg2 origin x) (+ f30-3 (the float s3-8)))
-           )
-         (let ((a0-61 arg2))
-           (set! (-> a0-61 flags) (font-flags kerning right large))
-           )
-         (let ((s5-6 print-game-text))
-           (format (clear *temp-string*) "~S" (lookup-text! *common-text* (text-id progress-secrets-unlocked) #f))
-           (s5-6 *temp-string* arg2 #f 44 (bucket-id progress))
-           )
-         (let ((v0-15 (the-as object arg2)))
-           (set! (-> (the-as font-context v0-15) flags) (font-flags kerning large))
-           v0-15
-           )
+                      )
+               )
+         (set! (-> arg2 origin x) (+ f30-3 (the float s3-8)))
          )
-        )
+       (let ((a0-61 arg2))
+         (set! (-> a0-61 flags) (font-flags kerning right large))
+         )
+       (let ((s5-6 print-game-text))
+         (format (clear *temp-string*) "~S" (lookup-text! *common-text* (text-id progress-secrets-unlocked) #f))
+         (s5-6 *temp-string* arg2 #f 44 (bucket-id progress))
+         )
+       (let ((v0-32 arg2))
+         (set! (-> v0-32 flags) (font-flags kerning large))
+         )
+       )
       )
     )
+  (none)
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-42 8) 0) at op 138
-(defmethod menu-option-method-10 menu-secret-option ((obj menu-secret-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-secret-option ((obj menu-secret-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars
     (sv-16 float)
     (sv-20 symbol)
@@ -4471,7 +4467,9 @@
            (draw-secret-list (-> obj secret-items (+ sv-112 -1)) sv-48 arg1 0 sv-40 sv-108)
            )
          (set! (-> arg1 origin y) (the float (+ (the int sv-108) 25 sv-128)))
-         (draw-highlight (+ sv-128 22) 22 sv-16)
+         ;; pc port note : added check so we don't double-draw the highlight
+         (when (< (+ sv-112 -1) sv-96)
+            (draw-highlight (+ sv-128 22) 22 sv-16))
          (draw-secret-list (-> obj secret-items sv-112) sv-48 arg1 1 sv-40 sv-108)
          (when (< (+ sv-112 1) sv-104)
            (set! (-> arg1 origin y) (the float (+ (the int sv-108) 50 sv-128)))
@@ -4541,7 +4539,6 @@
   )
 
 
-;; ERROR: Failed store: (s.w! (+ v1-8 8) 0) at op 37
 (defun draw-highscore-icon ((arg0 menu-highscores-option) (arg1 uint) (arg2 int) (arg3 int) (arg4 float))
   (set! (-> arg0 sprites 0 tex) (lookup-texture-by-id (the-as texture-id arg1)))
   (set! (-> arg0 sprites 0 scale-x) arg4)
@@ -4554,7 +4551,6 @@
     )
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-20 8) 0) at op 75
 (defun draw-highscore-cup ((arg0 texture-page) (arg1 int) (arg2 int) (arg3 int) (arg4 float) (arg5 float))
   "First int is an enum"
   (let ((a0-1 (the-as uint #xc9300300)))
@@ -5070,7 +5066,11 @@
          (set! v0-0 #t)
          )
         ((= v1-0 1)
-         (set! v0-0 (logtest? (-> *game-info* sub-task-list 75 flags) (game-task-node-flag closed)))
+         (set! v0-0
+               (logtest? (-> *game-info* sub-task-list (game-task-node city-yellow-gun-training-introduction) flags)
+                         (game-task-node-flag closed)
+                         )
+               )
          )
         ((= v1-0 2)
          (set! v0-0 (logtest? (-> *game-info* secrets) (game-secrets gungame-blue)))
@@ -5079,27 +5079,45 @@
          (set! v0-0 (logtest? (-> *game-info* secrets) (game-secrets gungame-dark)))
          )
         ((= v1-0 4)
-         (set! v0-0 (logtest? (-> *game-info* sub-task-list 63 flags) (game-task-node-flag closed)))
+         (set! v0-0 (logtest? (-> *game-info* sub-task-list (game-task-node stadium-board1-introduction) flags)
+                              (game-task-node-flag closed)
+                              )
+               )
          )
         ((= v1-0 5)
-         (set! v0-0 (logtest? (-> *game-info* sub-task-list 135 flags) (game-task-node-flag closed)))
+         (set! v0-0 (logtest? (-> *game-info* sub-task-list (game-task-node stadium-race-class3-introduction) flags)
+                              (game-task-node-flag closed)
+                              )
+               )
          )
         ((= v1-0 6)
-         (set! v0-0 (logtest? (-> *game-info* sub-task-list 181 flags) (game-task-node-flag closed)))
+         (set! v0-0 (logtest? (-> *game-info* sub-task-list (game-task-node stadium-race-class2-introduction) flags)
+                              (game-task-node-flag closed)
+                              )
+               )
          )
         ((= v1-0 7)
-         (set! v0-0 (logtest? (-> *game-info* sub-task-list 209 flags) (game-task-node-flag closed)))
+         (set! v0-0 (logtest? (-> *game-info* sub-task-list (game-task-node stadium-race-class1-introduction) flags)
+                              (game-task-node-flag closed)
+                              )
+               )
          )
         ((= v1-0 8)
-         (set! v0-0 (or (logtest? (-> *game-info* sub-task-list 308 flags) (game-task-node-flag closed))
-                        (open? (-> *game-info* sub-task-list 308))
-                        )
+         (set! v0-0
+               (or (logtest? (-> *game-info* sub-task-list (game-task-node city-burning-bush-race-port-introduction) flags)
+                             (game-task-node-flag closed)
+                             )
+                   (open? (-> *game-info* sub-task-list (game-task-node city-burning-bush-race-port-introduction)))
+                   )
                )
          )
         ((= v1-0 9)
-         (set! v0-0 (or (logtest? (-> *game-info* sub-task-list 306 flags) (game-task-node-flag closed))
-                        (open? (-> *game-info* sub-task-list 306))
-                        )
+         (set! v0-0
+               (or (logtest? (-> *game-info* sub-task-list (game-task-node city-burning-bush-race-errol-introduction) flags)
+                             (game-task-node-flag closed)
+                             )
+                   (open? (-> *game-info* sub-task-list (game-task-node city-burning-bush-race-errol-introduction)))
+                   )
                )
          )
         ((= v1-0 10)
@@ -5112,10 +5130,16 @@
          (set! v0-0 (logtest? (-> *game-info* secrets) (game-secrets reverse-races)))
          )
         ((= v1-0 13)
-         (set! v0-0 (logtest? (-> *game-info* sub-task-list 149 flags) (game-task-node-flag closed)))
+         (set! v0-0 (logtest? (-> *game-info* sub-task-list (game-task-node city-play-onin-game-introduction) flags)
+                              (game-task-node-flag closed)
+                              )
+               )
          )
         ((= v1-0 14)
-         (set! v0-0 (logtest? (-> *game-info* sub-task-list 224 flags) (game-task-node-flag closed)))
+         (set! v0-0 (logtest? (-> *game-info* sub-task-list (game-task-node city-whack-introduction) flags)
+                              (game-task-node-flag closed)
+                              )
+               )
          )
         )
       )
@@ -5313,7 +5337,7 @@
     )
   )
 
-(defmethod menu-option-method-10 menu-highscores-option ((obj menu-highscores-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-highscores-option ((obj menu-highscores-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars
     (sv-96 float)
     (sv-100 float)
@@ -5616,7 +5640,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-on-off-game-vibrations-option ((obj menu-on-off-game-vibrations-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-on-off-game-vibrations-option ((obj menu-on-off-game-vibrations-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars (a0-10 string))
   (let ((f30-0 (* 2.0 (- 0.5 (-> arg0 menu-transition)))))
     (if (< f30-0 0.0)
@@ -5663,7 +5687,7 @@
           (cond
             ((zero? (-> *progress-state* game-options-item-selected))
              (let ((s2-3 arg1))
-               (set! (-> s2-3 color) (the-as font-color (progress-selected 0)))
+               (set! (-> s2-3 color) (progress-selected 0))
                )
              (draw-highlight (the int (+ -1.0 (-> arg1 origin y))) 22 f30-0)
              )
@@ -5704,7 +5728,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-on-off-game-subtitles-option ((obj menu-on-off-game-subtitles-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-on-off-game-subtitles-option ((obj menu-on-off-game-subtitles-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars (a0-11 string))
   (let ((f30-0 (* 2.0 (- 0.5 (-> arg0 menu-transition)))))
     (if (< f30-0 0.0)
@@ -5751,7 +5775,7 @@
           (cond
             ((= (-> *progress-state* game-options-item-selected) 1)
              (let ((s2-3 arg1))
-               (set! (-> s2-3 color) (the-as font-color (progress-selected 0)))
+               (set! (-> s2-3 color) (progress-selected 0))
                )
              (draw-highlight (the int (+ -1.0 (-> arg1 origin y))) 22 f30-0)
              )
@@ -5792,7 +5816,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-subtitle-language-game-option ((obj menu-subtitle-language-game-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-subtitle-language-game-option ((obj menu-subtitle-language-game-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (with-pp
     (let ((f30-0 (* 2.0 (- 0.5 (-> arg0 menu-transition)))))
       (let ((v1-2 arg1))
@@ -5857,7 +5881,7 @@
              )
            (set! (-> arg1 origin x) (+ -70.0 (-> arg1 origin x)))
            (let ((s5-3 arg1))
-             (set! (-> s5-3 color) (the-as font-color (progress-selected 0)))
+             (set! (-> s5-3 color) (progress-selected 0))
              )
            (let ((v1-43 (if (and (= (scf-get-territory) 1) (zero? (-> *progress-state* game-options-subtitle-language-index)))
                             7
@@ -5878,7 +5902,7 @@
             (cond
               ((= (-> *progress-state* game-options-item-selected) 2)
                (let ((s4-4 arg1))
-                 (set! (-> s4-4 color) (the-as font-color (progress-selected 0)))
+                 (set! (-> s4-4 color) (progress-selected 0))
                  )
                (draw-highlight (the int (-> arg1 origin y)) 24 f30-0)
                )
@@ -5925,7 +5949,7 @@
     )
   )
 
-(defmethod menu-option-method-10 menu-language-game-option ((obj menu-language-game-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-language-game-option ((obj menu-language-game-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (with-pp
     (let ((f30-0 (* 2.0 (- 0.5 (-> arg0 menu-transition)))))
       (let ((v1-2 arg1))
@@ -5993,7 +6017,7 @@
              )
            (set! (-> arg1 origin x) (+ -70.0 (-> arg1 origin x)))
            (let ((s5-3 arg1))
-             (set! (-> s5-3 color) (the-as font-color (progress-selected 0)))
+             (set! (-> s5-3 color) (progress-selected 0))
              )
            (let ((v1-43 (if (and (= (scf-get-territory) 1) (zero? (-> *progress-state* game-options-language-index)))
                             7
@@ -6014,7 +6038,7 @@
             (cond
               ((= (-> *progress-state* game-options-item-selected) 3)
                (let ((s3-1 arg1))
-                 (set! (-> s3-1 color) (the-as font-color (progress-selected 0)))
+                 (set! (-> s3-1 color) (progress-selected 0))
                  )
                (draw-highlight (the int (-> arg1 origin y)) 24 f30-0)
                )
@@ -6066,7 +6090,7 @@
     )
   )
 
-(defmethod menu-option-method-10 menu-sub-menu-game-option ((obj menu-sub-menu-game-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-sub-menu-game-option ((obj menu-sub-menu-game-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (let ((f0-1 (* 2.0 (- 0.5 (-> arg0 menu-transition)))))
     395.0
     (-> arg1 origin y)
@@ -6087,7 +6111,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-aspect-ratio-option ((obj menu-aspect-ratio-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-aspect-ratio-option ((obj menu-aspect-ratio-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars (a0-12 string))
   (let ((f30-0 (* 2.0 (- 0.5 (-> arg0 menu-transition)))))
     (if (< f30-0 0.0)
@@ -6144,7 +6168,7 @@
             (cond
               ((= (-> *progress-state* graphic-options-item-selected) 1)
                (let ((s2-3 arg1))
-                 (set! (-> s2-3 color) (the-as font-color (progress-selected 0)))
+                 (set! (-> s2-3 color) (progress-selected 0))
                  )
                (draw-highlight (the int (+ -2.0 (-> arg1 origin y))) 25 f30-0)
                )
@@ -6192,12 +6216,12 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-on-off-progressive-scan-graphic-option ((obj menu-on-off-progressive-scan-graphic-option)
-                                                                            (arg0 progress)
-                                                                            (arg1 font-context)
-                                                                            (arg2 int)
-                                                                            (arg3 symbol)
-                                                                            )
+(defmethod draw-option menu-on-off-progressive-scan-graphic-option ((obj menu-on-off-progressive-scan-graphic-option)
+                                                                  (arg0 progress)
+                                                                  (arg1 font-context)
+                                                                  (arg2 int)
+                                                                  (arg3 symbol)
+                                                                  )
   (local-vars (a0-11 string))
   (let ((f30-0 (* 2.0 (- 0.5 (-> arg0 menu-transition)))))
     (if (< f30-0 0.0)
@@ -6251,7 +6275,7 @@
             (cond
               ((= (-> *progress-state* graphic-options-item-selected) 2)
                (let ((s2-3 arg1))
-                 (set! (-> s2-3 color) (the-as font-color (progress-selected 0)))
+                 (set! (-> s2-3 color) (progress-selected 0))
                  )
                (draw-highlight (the int (+ -2.0 (-> arg1 origin y))) 24 f30-0)
                )
@@ -6298,7 +6322,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-center-screen-graphic-option ((obj menu-center-screen-graphic-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-center-screen-graphic-option ((obj menu-center-screen-graphic-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (let ((f30-0 (* 2.0 (- 0.5 (-> arg0 menu-transition)))))
     (if (< f30-0 0.0)
         (set! f30-0 0.0)
@@ -6385,7 +6409,7 @@
         (cond
           ((zero? (-> *progress-state* graphic-options-item-selected))
            (let ((s4-3 arg1))
-             (set! (-> s4-3 color) (the-as font-color (progress-selected 0)))
+             (set! (-> s4-3 color) (progress-selected 0))
              )
            (draw-highlight (the int (+ -2.0 (-> arg1 origin y))) 25 f30-0)
            )
@@ -6403,7 +6427,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-restart-mission-qr-option ((obj menu-restart-mission-qr-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-restart-mission-qr-option ((obj menu-restart-mission-qr-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars (a0-11 string))
   (let ((f0-1 (* 2.0 (- 0.5 (-> arg0 menu-transition)))))
     (if (< f0-1 0.0)
@@ -6466,7 +6490,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-quit-qr-option ((obj menu-quit-qr-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-quit-qr-option ((obj menu-quit-qr-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars (a0-12 string))
   (let ((f30-0 (* 2.0 (- 0.5 (-> arg0 menu-transition)))))
     (if (< f30-0 0.0)
@@ -6540,7 +6564,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-slider-option ((obj menu-slider-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-slider-option ((obj menu-slider-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars
     (v0-42 pointer)
     (sv-16 progress)
@@ -6911,7 +6935,7 @@
   (none)
   )
 
-(defmethod menu-option-method-10 menu-stereo-mode-sound-option ((obj menu-stereo-mode-sound-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-stereo-mode-sound-option ((obj menu-stereo-mode-sound-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars (s5-0 int))
   (let ((f30-0 (* 2.0 (- 0.5 (-> arg0 menu-transition)))))
     (let ((v1-2 arg1))
@@ -6971,7 +6995,7 @@
          )
        (set! (-> arg1 origin x) (+ -70.0 (-> arg1 origin x)))
        (let ((s4-3 arg1))
-         (set! (-> s4-3 color) (the-as font-color (progress-selected 0)))
+         (set! (-> s4-3 color) (progress-selected 0))
          )
        (let ((a0-23 arg1))
          (set! (-> a0-23 flags) (font-flags kerning middle large))
@@ -7016,12 +7040,11 @@
   (none)
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-87 8) 0) at op 335
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 349]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 361]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 417]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 435]
-(defmethod menu-option-method-10 menu-sub-menu-option ((obj menu-sub-menu-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+(defmethod draw-option menu-sub-menu-option ((obj menu-sub-menu-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (local-vars (sv-16 dma-buffer))
   (let ((f30-0 (* 2.0 (- 0.5 (-> arg0 menu-transition))))
         (s2-0 (the int (+ -1.0 (-> arg1 origin y))))
@@ -7061,7 +7084,7 @@
     (when (nonzero? (-> obj name))
       (let ((s0-0 arg1))
         (set! (-> s0-0 color) (if (= arg2 (-> arg0 option-index))
-                                  (the-as font-color (progress-selected 0))
+                                  (the-as font-color (the-as int (progress-selected 0)))
                                   (font-color #7efbfb)
                                   )
               )
@@ -7069,7 +7092,7 @@
       (cond
         ((= arg2 (-> arg0 option-index))
          (let ((s0-1 arg1))
-           (set! (-> s0-1 color) (the-as font-color (progress-selected 0)))
+           (set! (-> s0-1 color) (progress-selected 0))
            )
          )
         (else

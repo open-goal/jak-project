@@ -1284,89 +1284,87 @@ Process is recycled and moved to reserved, if it deactivates."
 ;; definition for method 66 of type traffic-engine
 ;; WARN: Return type mismatch int vs none.
 (defmethod update-sync-from-frame-counter traffic-engine ((obj traffic-engine))
-  (with-pp
-    (+! (-> obj sync-clock) 1)
-    (set! (-> obj sync-mask-8) (the-as uint (ash 1 (logand (-> obj sync-clock) 7))))
-    (set! (-> obj sync-mask-16) (the-as uint (ash 1 (logand (-> obj sync-clock) 15))))
-    (set! (-> obj sync-mask-32) (the-as uint (ash 1 (logand (-> obj sync-clock) 31))))
-    (let ((v1-10 (/ (-> pp clock frame-counter) 300)))
-      (set! (-> obj sync-array 0) (the-as uint 255))
-      (let ((a1-12 (mod v1-10 20)))
-        (set! (-> obj sync-array 1) (the-as uint (cond
-                                                   ((>= 6 a1-12)
-                                                    1
-                                                    )
-                                                   ((>= 9 a1-12)
-                                                    2
-                                                    )
-                                                   ((>= 16 a1-12)
-                                                    4
-                                                    )
-                                                   (else
-                                                     8
-                                                     )
+  (+! (-> obj sync-clock) 1)
+  (set! (-> obj sync-mask-8) (the-as uint (ash 1 (logand (-> obj sync-clock) 7))))
+  (set! (-> obj sync-mask-16) (the-as uint (ash 1 (logand (-> obj sync-clock) 15))))
+  (set! (-> obj sync-mask-32) (the-as uint (ash 1 (logand (-> obj sync-clock) 31))))
+  (let ((v1-10 (/ (current-time) 300)))
+    (set! (-> obj sync-array 0) (the-as uint 255))
+    (let ((a1-12 (mod v1-10 20)))
+      (set! (-> obj sync-array 1) (the-as uint (cond
+                                                 ((>= 6 a1-12)
+                                                  1
+                                                  )
+                                                 ((>= 9 a1-12)
+                                                  2
+                                                  )
+                                                 ((>= 16 a1-12)
+                                                  4
+                                                  )
+                                                 (else
+                                                   8
                                                    )
-                                            )
-              )
-        )
-      (let ((a1-15 (mod v1-10 30)))
-        (set! (-> obj sync-array 2) (the-as uint (cond
-                                                   ((>= 6 a1-15)
-                                                    1
-                                                    )
-                                                   ((>= 9 a1-15)
-                                                    2
-                                                    )
-                                                   ((>= 16 a1-15)
-                                                    4
-                                                    )
-                                                   ((>= 19 a1-15)
-                                                    8
-                                                    )
-                                                   ((>= 26 a1-15)
-                                                    16
-                                                    )
-                                                   (else
-                                                     32
-                                                     )
-                                                   )
-                                            )
-              )
-        )
-      (let ((v1-11 (mod v1-10 40)))
-        (set! (-> obj sync-array 3) (the-as uint (cond
-                                                   ((>= 6 v1-11)
-                                                    1
-                                                    )
-                                                   ((>= 9 v1-11)
-                                                    2
-                                                    )
-                                                   ((>= 16 v1-11)
-                                                    4
-                                                    )
-                                                   ((>= 19 v1-11)
-                                                    8
-                                                    )
-                                                   ((>= 26 v1-11)
-                                                    16
-                                                    )
-                                                   ((>= 29 v1-11)
-                                                    32
-                                                    )
-                                                   ((>= 36 v1-11)
-                                                    64
-                                                    )
-                                                   (else
-                                                     128
-                                                     )
-                                                   )
-                                            )
-              )
-        )
+                                                 )
+                                          )
+            )
       )
-    0
-    (none)
+    (let ((a1-15 (mod v1-10 30)))
+      (set! (-> obj sync-array 2) (the-as uint (cond
+                                                 ((>= 6 a1-15)
+                                                  1
+                                                  )
+                                                 ((>= 9 a1-15)
+                                                  2
+                                                  )
+                                                 ((>= 16 a1-15)
+                                                  4
+                                                  )
+                                                 ((>= 19 a1-15)
+                                                  8
+                                                  )
+                                                 ((>= 26 a1-15)
+                                                  16
+                                                  )
+                                                 (else
+                                                   32
+                                                   )
+                                                 )
+                                          )
+            )
+      )
+    (let ((v1-11 (mod v1-10 40)))
+      (set! (-> obj sync-array 3) (the-as uint (cond
+                                                 ((>= 6 v1-11)
+                                                  1
+                                                  )
+                                                 ((>= 9 v1-11)
+                                                  2
+                                                  )
+                                                 ((>= 16 v1-11)
+                                                  4
+                                                  )
+                                                 ((>= 19 v1-11)
+                                                  8
+                                                  )
+                                                 ((>= 26 v1-11)
+                                                  16
+                                                  )
+                                                 ((>= 29 v1-11)
+                                                  32
+                                                  )
+                                                 ((>= 36 v1-11)
+                                                  64
+                                                  )
+                                                 (else
+                                                   128
+                                                   )
+                                                 )
+                                          )
+            )
+      )
     )
+  0
+  (none)
   )
 
 ;; definition for method 70 of type traffic-engine
@@ -1961,21 +1959,19 @@ Process is recycled and moved to reserved, if it deactivates."
 ;; definition for method 30 of type traffic-engine
 ;; WARN: Return type mismatch int vs none.
 (defmethod increase-alert-level traffic-engine ((obj traffic-engine) (arg0 int) (arg1 target))
-  (with-pp
-    (when (and (logtest? (-> obj alert-state flags) (traffic-alert-flag target-jak))
-               (logtest? (-> arg1 mask) (process-mask target))
-               )
-      (let ((v1-6 (min arg0 (the-as int (-> obj alert-state max-level)))))
-        (when #t
-          (set! (-> obj alert-state start-time) (-> pp clock frame-counter))
-          (logclear! (-> obj alert-state flags) (traffic-alert-flag alert-ending))
-          )
-        (set! (-> obj alert-state level) (the-as uint (max (the-as int (-> obj alert-state level)) v1-6)))
+  (when (and (logtest? (-> obj alert-state flags) (traffic-alert-flag target-jak))
+             (logtest? (-> arg1 mask) (process-mask target))
+             )
+    (let ((v1-6 (min arg0 (the-as int (-> obj alert-state max-level)))))
+      (when #t
+        (set! (-> obj alert-state start-time) (current-time))
+        (logclear! (-> obj alert-state flags) (traffic-alert-flag alert-ending))
         )
+      (set! (-> obj alert-state level) (the-as uint (max (the-as int (-> obj alert-state level)) v1-6)))
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 ;; definition for method 31 of type traffic-engine
@@ -1991,13 +1987,11 @@ Process is recycled and moved to reserved, if it deactivates."
 ;; definition for method 32 of type traffic-engine
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-alert-level traffic-engine ((obj traffic-engine) (arg0 int))
-  (with-pp
-    (set! (-> obj alert-state level) (the-as uint arg0))
-    (set! (-> obj alert-state start-time) (-> pp clock frame-counter))
-    (logclear! (-> obj alert-state flags) (traffic-alert-flag alert-ending))
-    0
-    (none)
-    )
+  (set! (-> obj alert-state level) (the-as uint arg0))
+  (set! (-> obj alert-state start-time) (current-time))
+  (logclear! (-> obj alert-state flags) (traffic-alert-flag alert-ending))
+  0
+  (none)
   )
 
 ;; definition for method 33 of type traffic-engine
@@ -2298,114 +2292,112 @@ Process is recycled and moved to reserved, if it deactivates."
     (sv-208 int)
     (sv-216 float)
     )
-  (with-pp
-    (logclear! (-> target-status flags) (traffic-target-flag visible-now updated))
-    (cond
-      ((= (-> obj sync-mask-16) (ash 1 (logand arg2 15)))
-       (logior! (-> target-status flags) (traffic-target-flag updated))
-       (let ((target-proc (handle->process (-> target-status handle)))
-             (target-pos (new 'stack-no-clear 'vector))
-             )
-         (when target-proc
-           (set! (-> target-pos quad) (-> (get-trans (the-as process-focusable target-proc) 3) quad))
-           (cond
-             ((= (-> (the-as process-focusable target-proc) type) target)
-              (let ((s1-1 (-> obj alert-state target-status-array)))
-                (logclear! (-> s1-1 0 flags) (traffic-target-flag visible-now updated))
-                (logior! (-> s1-1 0 flags) (traffic-target-flag updated))
-                (cond
-                  ((or (logtest? (-> s1-1 0 flags) (traffic-target-flag force-visible)) (traffic-los-clear? los target-pos))
-                   (logior! (-> s1-1 0 flags) (traffic-target-flag visible-now visible-recently visible-ever))
-                   (set! (-> s1-1 0 last-seen-time) (-> pp clock frame-counter))
-                   (set! (-> s1-1 0 position quad) (-> target-pos quad))
-                   (set! (-> s1-1 0 velocity quad) (-> (get-transv (the-as process-focusable target-proc)) quad))
-                   )
-                  (else
-                    (if (>= (- (-> pp clock frame-counter) (-> s1-1 0 last-seen-time)) (seconds 2))
-                        (logclear! (-> s1-1 0 flags) (traffic-target-flag visible-recently))
-                        )
-                    )
-                  )
-                (mem-copy! (the-as pointer target-status) (the-as pointer s1-1) 80)
-                )
-              0
-              )
-             (else
-               (logior! (-> target-status flags) (traffic-target-flag visible-now visible-recently visible-ever))
-               (set! (-> target-status last-seen-time) (-> pp clock frame-counter))
-               (set! (-> target-status position quad) (-> target-pos quad))
-               (set! (-> target-status velocity quad) (-> (get-transv (the-as process-focusable target-proc)) quad))
-               )
-             )
-           (set! (-> target-pos quad) (-> target-status position quad))
-           (when (not (update-guard-status-spots target-pos))
-             )
-           (when (update-guard-status-spots target-pos)
-             (set! guards (the-as (array crimson-guard) (new 'stack 'array crimson-guard 16)))
-             (set! guard-target-dists (the-as (array float) (new 'stack 'array float 16)))
-             (set! guard-idx 0)
-             (dotimes (guard-count (the-as int (-> obj vehicle-tracker-array active-object-count)))
-               (case (-> obj vehicle-tracker-array active-object-type-list guard-count)
-                 (((traffic-type crimson-guard-1))
-                  (let ((guard (handle->process (-> obj vehicle-tracker-array active-object-list guard-count))))
-                    (when (and guard
-                               (not (focus-test? (the-as process-focusable guard) dead inactive))
-                               (= (-> (the-as crimson-guard guard) traffic-target-status handle) (-> target-status handle))
-                               )
-                      (set! (-> guards guard-idx) (the-as crimson-guard guard))
-                      (set! (-> guard-target-dists guard-idx)
-                            (vector-vector-distance (-> (the-as crimson-guard guard) root-override2 trans) target-pos)
-                            )
-                      (set! guard-idx (+ guard-idx 1))
-                      (set! (-> (the-as crimson-guard guard) move-index) -1)
+  (logclear! (-> target-status flags) (traffic-target-flag visible-now updated))
+  (cond
+    ((= (-> obj sync-mask-16) (ash 1 (logand arg2 15)))
+     (logior! (-> target-status flags) (traffic-target-flag updated))
+     (let ((target-proc (handle->process (-> target-status handle)))
+           (target-pos (new 'stack-no-clear 'vector))
+           )
+       (when target-proc
+         (set! (-> target-pos quad) (-> (get-trans (the-as process-focusable target-proc) 3) quad))
+         (cond
+           ((= (-> (the-as process-focusable target-proc) type) target)
+            (let ((s1-1 (-> obj alert-state target-status-array)))
+              (logclear! (-> s1-1 0 flags) (traffic-target-flag visible-now updated))
+              (logior! (-> s1-1 0 flags) (traffic-target-flag updated))
+              (cond
+                ((or (logtest? (-> s1-1 0 flags) (traffic-target-flag force-visible)) (traffic-los-clear? los target-pos))
+                 (logior! (-> s1-1 0 flags) (traffic-target-flag visible-now visible-recently visible-ever))
+                 (set! (-> s1-1 0 last-seen-time) (current-time))
+                 (set! (-> s1-1 0 position quad) (-> target-pos quad))
+                 (set! (-> s1-1 0 velocity quad) (-> (get-transv (the-as process-focusable target-proc)) quad))
+                 )
+                (else
+                  (if (>= (- (current-time) (-> s1-1 0 last-seen-time)) (seconds 2))
+                      (logclear! (-> s1-1 0 flags) (traffic-target-flag visible-recently))
                       )
+                  )
+                )
+              (mem-copy! (the-as pointer target-status) (the-as pointer s1-1) 80)
+              )
+            0
+            )
+           (else
+             (logior! (-> target-status flags) (traffic-target-flag visible-now visible-recently visible-ever))
+             (set! (-> target-status last-seen-time) (current-time))
+             (set! (-> target-status position quad) (-> target-pos quad))
+             (set! (-> target-status velocity quad) (-> (get-transv (the-as process-focusable target-proc)) quad))
+             )
+           )
+         (set! (-> target-pos quad) (-> target-status position quad))
+         (when (not (update-guard-status-spots target-pos))
+           )
+         (when (update-guard-status-spots target-pos)
+           (set! guards (the-as (array crimson-guard) (new 'stack 'array crimson-guard 16)))
+           (set! guard-target-dists (the-as (array float) (new 'stack 'array float 16)))
+           (set! guard-idx 0)
+           (dotimes (guard-count (the-as int (-> obj vehicle-tracker-array active-object-count)))
+             (case (-> obj vehicle-tracker-array active-object-type-list guard-count)
+               (((traffic-type crimson-guard-1))
+                (let ((guard (handle->process (-> obj vehicle-tracker-array active-object-list guard-count))))
+                  (when (and guard
+                             (not (focus-test? (the-as process-focusable guard) dead inactive))
+                             (= (-> (the-as crimson-guard guard) traffic-target-status handle) (-> target-status handle))
+                             )
+                    (set! (-> guards guard-idx) (the-as crimson-guard guard))
+                    (set! (-> guard-target-dists guard-idx)
+                          (vector-vector-distance (-> (the-as crimson-guard guard) root-override2 trans) target-pos)
+                          )
+                    (set! guard-idx (+ guard-idx 1))
+                    (set! (-> (the-as crimson-guard guard) move-index) -1)
                     )
                   )
-                 )
+                )
                )
-             (let ((a0-35 #t))
-               (while a0-35
-                 (set! a0-35 #f)
-                 (dotimes (v1-77 (+ guard-idx -1))
-                   (when (< (-> guard-target-dists (+ v1-77 1)) (-> guard-target-dists v1-77))
-                     (let ((a0-38 (-> guards v1-77))
-                           (f0-2 (-> guard-target-dists v1-77))
-                           )
-                       (set! (-> guards v1-77) (-> guards (+ v1-77 1)))
-                       (set! (-> guards (+ v1-77 1)) a0-38)
-                       (set! (-> guard-target-dists v1-77) (-> guard-target-dists (+ v1-77 1)))
-                       (set! (-> guard-target-dists (+ v1-77 1)) f0-2)
-                       )
-                     (set! a0-35 #t)
+             )
+           (let ((a0-35 #t))
+             (while a0-35
+               (set! a0-35 #f)
+               (dotimes (v1-77 (+ guard-idx -1))
+                 (when (< (-> guard-target-dists (+ v1-77 1)) (-> guard-target-dists v1-77))
+                   (let ((a0-38 (-> guards v1-77))
+                         (f0-2 (-> guard-target-dists v1-77))
+                         )
+                     (set! (-> guards v1-77) (-> guards (+ v1-77 1)))
+                     (set! (-> guards (+ v1-77 1)) a0-38)
+                     (set! (-> guard-target-dists v1-77) (-> guard-target-dists (+ v1-77 1)))
+                     (set! (-> guard-target-dists (+ v1-77 1)) f0-2)
                      )
+                   (set! a0-35 #t)
                    )
                  )
                )
-             (dotimes (s4-1 guard-idx)
-               (let ((crimson-guard (-> (the-as (array crimson-guard) guards) s4-1)))
-                 (when (= (-> crimson-guard move-index) -1)
-                   (set! sv-208 -1)
-                   (set! sv-216 (the-as float (gpr->fpr #x7f800000)))
-                   (dotimes (s2-4 (-> *guard-target-spots* length))
-                     (when (= (-> *guard-status-spots* s2-4) 1)
-                       (let* ((a0-53 (vector+! (new 'stack-no-clear 'vector) target-pos (-> *guard-target-spots* s2-4)))
-                              (f0-4 (vector-vector-distance a0-53 (-> crimson-guard root-override2 trans)))
-                              )
-                         (when (or (= sv-208 -1) (< f0-4 sv-216))
-                           (set! sv-208 s2-4)
-                           (set! sv-216 f0-4)
-                           )
+             )
+           (dotimes (s4-1 guard-idx)
+             (let ((crimson-guard (-> (the-as (array crimson-guard) guards) s4-1)))
+               (when (= (-> crimson-guard move-index) -1)
+                 (set! sv-208 -1)
+                 (set! sv-216 (the-as float (gpr->fpr #x7f800000)))
+                 (dotimes (s2-4 (-> *guard-target-spots* length))
+                   (when (= (-> *guard-status-spots* s2-4) 1)
+                     (let* ((a0-53 (vector+! (new 'stack-no-clear 'vector) target-pos (-> *guard-target-spots* s2-4)))
+                            (f0-4 (vector-vector-distance a0-53 (-> crimson-guard root-override2 trans)))
+                            )
+                       (when (or (= sv-208 -1) (< f0-4 sv-216))
+                         (set! sv-208 s2-4)
+                         (set! sv-216 f0-4)
                          )
                        )
                      )
-                   (cond
-                     ((!= sv-208 -1)
-                      (set! (-> *guard-status-spots* sv-208) 0)
-                      (vector+! (-> crimson-guard move-position) target-pos (-> *guard-target-spots* sv-208))
-                      )
-                     (else
-                       (set! (-> crimson-guard move-position quad) (-> target-pos quad))
-                       )
+                   )
+                 (cond
+                   ((!= sv-208 -1)
+                    (set! (-> *guard-status-spots* sv-208) 0)
+                    (vector+! (-> crimson-guard move-position) target-pos (-> *guard-target-spots* sv-208))
+                    )
+                   (else
+                     (set! (-> crimson-guard move-position quad) (-> target-pos quad))
                      )
                    )
                  )
@@ -2414,26 +2406,26 @@ Process is recycled and moved to reserved, if it deactivates."
            )
          )
        )
-      (else
-        (let ((s5-1 (handle->process (-> target-status handle)))
-              (s3-3 (new 'stack-no-clear 'vector))
-              )
-          (when s5-1
-            (set! (-> s3-3 quad) (-> (get-trans (the-as process-focusable s5-1) 3) quad))
-            (cond
-              ((= (-> s5-1 type) target)
-               (mem-copy! (the-as pointer target-status) (the-as pointer (-> obj alert-state target-status-array)) 80)
-               )
-              (else
-                )
+     )
+    (else
+      (let ((s5-1 (handle->process (-> target-status handle)))
+            (s3-3 (new 'stack-no-clear 'vector))
+            )
+        (when s5-1
+          (set! (-> s3-3 quad) (-> (get-trans (the-as process-focusable s5-1) 3) quad))
+          (cond
+            ((= (-> s5-1 type) target)
+             (mem-copy! (the-as pointer target-status) (the-as pointer (-> obj alert-state target-status-array)) 80)
+             )
+            (else
               )
             )
           )
-        (logclear! (-> target-status flags) (traffic-target-flag updated))
         )
+      (logclear! (-> target-status flags) (traffic-target-flag updated))
       )
-    target-status
     )
+  target-status
   )
 
 ;; definition for method 34 of type traffic-engine
@@ -2900,191 +2892,186 @@ Process is recycled and moved to reserved, if it deactivates."
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod update-alert-state traffic-engine ((obj traffic-engine))
-  (with-pp
-    (if (and (logtest? (-> obj alert-state flags) (traffic-alert-flag target-jak)) *target*)
-        (set! (-> obj alert-state target-status-array 0 handle) (process->handle *target*))
-        )
-    (when #t
-      (mem-copy!
-        (the-as pointer (-> obj alert-state settings))
-        (the-as pointer (-> *alert-level-settings* (-> obj alert-state level)))
-        96
-        )
-      (dotimes (v1-10 6)
-        (let ((a1-3 (-> obj alert-state settings guard-settings-array v1-10))
-              (a0-10 (-> obj alert-state guard-type-info-array v1-10))
-              )
-          (set! (-> a1-3 inaccuracy)
-                (fmax 0.0 (fmin 1.0 (* (-> a1-3 inaccuracy) (-> obj alert-state guard-inaccuracy-factor))))
-                )
-          (when *target*
-            (when (focus-test? *target* pilot)
-              (set! (-> a1-3 acquire-delay) (the-as uint (the int (* 0.75 (the float (-> a1-3 acquire-delay))))))
-              (set! (-> a1-3 shot-delay) (the-as uint (the int (* 0.6 (the float (-> a1-3 shot-delay))))))
-              (set! (-> a1-3 burst-delay) (the-as uint (the int (* 0.8 (the float (-> a1-3 burst-delay))))))
-              )
+  (if (and (logtest? (-> obj alert-state flags) (traffic-alert-flag target-jak)) *target*)
+      (set! (-> obj alert-state target-status-array 0 handle) (process->handle *target*))
+      )
+  (when #t
+    (mem-copy!
+      (the-as pointer (-> obj alert-state settings))
+      (the-as pointer (-> *alert-level-settings* (-> obj alert-state level)))
+      96
+      )
+    (dotimes (v1-10 6)
+      (let ((a1-3 (-> obj alert-state settings guard-settings-array v1-10))
+            (a0-10 (-> obj alert-state guard-type-info-array v1-10))
             )
-          (set! (-> a0-10 target-count)
-                (max
-                  (min
-                    (the int (* (the float (-> a1-3 target-count)) (-> obj alert-state guard-target-level)))
-                    (-> a0-10 max-target-count)
-                    )
-                  (-> a0-10 min-target-count)
+        (set! (-> a1-3 inaccuracy)
+              (fmax 0.0 (fmin 1.0 (* (-> a1-3 inaccuracy) (-> obj alert-state guard-inaccuracy-factor))))
+              )
+        (when *target*
+          (when (focus-test? *target* pilot)
+            (set! (-> a1-3 acquire-delay) (the-as uint (the int (* 0.75 (the float (-> a1-3 acquire-delay))))))
+            (set! (-> a1-3 shot-delay) (the-as uint (the int (* 0.6 (the float (-> a1-3 shot-delay))))))
+            (set! (-> a1-3 burst-delay) (the-as uint (the int (* 0.8 (the float (-> a1-3 burst-delay))))))
+            )
+          )
+        (set! (-> a0-10 target-count)
+              (max
+                (min
+                  (the int (* (the float (-> a1-3 target-count)) (-> obj alert-state guard-target-level)))
+                  (-> a0-10 max-target-count)
                   )
+                (-> a0-10 min-target-count)
                 )
+              )
+        )
+      )
+    )
+  (dotimes (v1-13 21)
+    (let ((a1-8 (-> obj alert-state guard-type-mask-from-object-type v1-13)))
+      (when (nonzero? a1-8)
+        (let ((a2-18 0)
+              (a0-14 0)
+              )
+          (while (nonzero? a1-8)
+            (if (logtest? a1-8 1)
+                (+! a0-14 (-> obj alert-state guard-type-info-array a2-18 target-count))
+                )
+            (+! a2-18 1)
+            (set! a1-8 (shr a1-8 1))
+            )
+          (set! (-> obj object-type-info-array v1-13 target-count) a0-14)
           )
         )
       )
-    (dotimes (v1-13 21)
-      (let ((a1-8 (-> obj alert-state guard-type-mask-from-object-type v1-13)))
-        (when (nonzero? a1-8)
-          (let ((a2-18 0)
-                (a0-14 0)
-                )
-            (while (nonzero? a1-8)
-              (if (logtest? a1-8 1)
-                  (+! a0-14 (-> obj alert-state guard-type-info-array a2-18 target-count))
-                  )
-              (+! a2-18 1)
-              (set! a1-8 (shr a1-8 1))
-              )
-            (set! (-> obj object-type-info-array v1-13 target-count) a0-14)
-            )
-          )
-        )
+    )
+  (let ((s5-0 #f))
+    (when *traffic-alert-level-force*
+      (set! (-> obj alert-state level) (the-as uint 3))
+      (logclear! (-> obj alert-state flags) (traffic-alert-flag alert-ending))
+      (set! (-> obj alert-state start-time) (current-time))
       )
-    (let ((s5-0 #f))
-      (when *traffic-alert-level-force*
-        (set! (-> obj alert-state level) (the-as uint 3))
-        (logclear! (-> obj alert-state flags) (traffic-alert-flag alert-ending))
-        (set! (-> obj alert-state start-time) (-> pp clock frame-counter))
-        )
-      (when (>= (-> obj alert-state level) (the-as uint 1))
-        (set! s5-0 #t)
-        (cond
-          ((logtest? (-> obj alert-state flags) (traffic-alert-flag alert-ending))
-           (cond
-             ((> (guard-count obj) 0)
-              (set! (-> obj alert-state start-time) (-> pp clock frame-counter))
-              )
-             (else
-               (when (>= (- (-> pp clock frame-counter) (-> obj alert-state start-time)) (seconds 3))
-                 (set! s5-0 #f)
-                 (set! (-> obj alert-state level) (the-as uint 0))
-                 (logclear! (-> obj alert-state flags) (traffic-alert-flag alert-ending))
-                 )
+    (when (>= (-> obj alert-state level) (the-as uint 1))
+      (set! s5-0 #t)
+      (cond
+        ((logtest? (-> obj alert-state flags) (traffic-alert-flag alert-ending))
+         (cond
+           ((> (guard-count obj) 0)
+            (set! (-> obj alert-state start-time) (current-time))
+            )
+           (else
+             (when (>= (- (current-time) (-> obj alert-state start-time)) (seconds 3))
+               (set! s5-0 #f)
+               (set! (-> obj alert-state level) (the-as uint 0))
+               (logclear! (-> obj alert-state flags) (traffic-alert-flag alert-ending))
                )
              )
            )
-          (else
-            (let ((v1-39 (+ (- (-> obj alert-state start-time) (-> pp clock frame-counter))
-                            (the-as time-frame (-> obj alert-state duration))
-                            )
-                         )
-                  )
-              (if (and *target* (-> *target* next-state) (= (-> *target* next-state name) 'target-hide))
-                  (set! v1-39 (- v1-39 (the-as time-frame (* (- (-> pp clock frame-counter) (-> *target* state-time)) 2))))
-                  )
-              (if (> v1-39 0)
-                  0
-                  (logior! (-> obj alert-state flags) (traffic-alert-flag alert-ending))
-                  )
-              )
-            )
-          )
-        )
-      (cond
-        (s5-0
-          (when (not (logtest? (-> obj alert-state flags) (traffic-alert-flag alarm-on)))
-            (logior! (-> obj alert-state flags) (traffic-alert-flag alarm-on))
-            (set! (-> *game-info* wanted-flash) (the-as basic #t))
-            (if (= (-> *setting-control* user-current music) 'city1)
-                (set-setting! 'sound-mode #f 0 1)
-                )
-            )
-          (let ((s5-1 (new 'stack-no-clear 'vector)))
-            (set! (-> s5-1 quad) (-> (target-pos 0) quad))
-            (if (or (= (-> *setting-control* user-default music-volume) 0.0)
-                    (!= (-> *setting-control* user-current music) 'city1)
-                    )
-                (sound-play "city-alarm" :id (-> obj alert-state alarm-sound-id) :position s5-1)
-                )
-            )
-          (if #t
-              (send-alert-events obj)
-              )
-          (let ((v1-67 0))
-            (dotimes (a0-45 21)
-              (let ((a1-19 (-> obj object-type-info-array a0-45)))
-                (if #t
-                    (+! v1-67 (-> a1-19 killed-count))
-                    )
-                )
-              )
-            (if (and (>= v1-67 (the-as int (* (-> obj alert-state level) 8)))
-                     (< (-> obj alert-state level) (-> obj alert-state max-level))
-                     )
-                (set-alert-level obj (the-as int (+ (-> obj alert-state level) 1)))
-                )
-            )
-          )
+         )
         (else
-          (when (logtest? (-> obj alert-state flags) (traffic-alert-flag alarm-on))
-            (logclear! (-> obj alert-state flags) (traffic-alert-flag alarm-on))
-            (set! (-> *game-info* wanted-flash) #f)
-            (remove-setting! 'sound-mode)
-            (sound-stop (-> obj alert-state alarm-sound-id))
-            (send-alert-events obj)
-            (let ((v1-84 (-> obj alert-state target-status-array)))
-              (logclear! (-> v1-84 0 flags) (traffic-target-flag visible-now visible-recently visible-ever))
-              )
-            (dotimes (v1-85 21)
-              (set! (-> obj object-type-info-array v1-85 killed-count) (the-as uint 0))
-              0
-              )
+          (let ((v1-39
+                  (+ (- (-> obj alert-state start-time) (current-time)) (the-as time-frame (-> obj alert-state duration)))
+                  )
+                )
+            (if (and *target* (-> *target* next-state) (= (-> *target* next-state name) 'target-hide))
+                (set! v1-39 (- v1-39 (the-as time-frame (* (- (current-time) (-> *target* state-time)) 2))))
+                )
+            (if (> v1-39 0)
+                0
+                (logior! (-> obj alert-state flags) (traffic-alert-flag alert-ending))
+                )
             )
           )
         )
       )
-    0
-    (none)
+    (cond
+      (s5-0
+        (when (not (logtest? (-> obj alert-state flags) (traffic-alert-flag alarm-on)))
+          (logior! (-> obj alert-state flags) (traffic-alert-flag alarm-on))
+          (set! (-> *game-info* wanted-flash) (the-as basic #t))
+          (if (= (-> *setting-control* user-current music) 'city1)
+              (set-setting! 'sound-mode #f 0.0 1)
+              )
+          )
+        (let ((s5-1 (new 'stack-no-clear 'vector)))
+          (set! (-> s5-1 quad) (-> (target-pos 0) quad))
+          (if (or (= (-> *setting-control* user-default music-volume) 0.0)
+                  (!= (-> *setting-control* user-current music) 'city1)
+                  )
+              (sound-play "city-alarm" :id (-> obj alert-state alarm-sound-id) :position s5-1)
+              )
+          )
+        (if #t
+            (send-alert-events obj)
+            )
+        (let ((v1-67 0))
+          (dotimes (a0-45 21)
+            (let ((a1-19 (-> obj object-type-info-array a0-45)))
+              (if #t
+                  (+! v1-67 (-> a1-19 killed-count))
+                  )
+              )
+            )
+          (if (and (>= v1-67 (the-as int (* (-> obj alert-state level) 8)))
+                   (< (-> obj alert-state level) (-> obj alert-state max-level))
+                   )
+              (set-alert-level obj (the-as int (+ (-> obj alert-state level) 1)))
+              )
+          )
+        )
+      (else
+        (when (logtest? (-> obj alert-state flags) (traffic-alert-flag alarm-on))
+          (logclear! (-> obj alert-state flags) (traffic-alert-flag alarm-on))
+          (set! (-> *game-info* wanted-flash) #f)
+          (remove-setting! 'sound-mode)
+          (sound-stop (-> obj alert-state alarm-sound-id))
+          (send-alert-events obj)
+          (let ((v1-84 (-> obj alert-state target-status-array)))
+            (logclear! (-> v1-84 0 flags) (traffic-target-flag visible-now visible-recently visible-ever))
+            )
+          (dotimes (v1-85 21)
+            (set! (-> obj object-type-info-array v1-85 killed-count) (the-as uint 0))
+            0
+            )
+          )
+        )
+      )
     )
+  0
+  (none)
   )
 
 ;; definition for method 52 of type traffic-engine
 ;; WARN: Return type mismatch int vs none.
 (defmethod send-alert-events traffic-engine ((obj traffic-engine))
-  (with-pp
-    (set! (-> obj alert-state notify-time) (-> pp clock frame-counter))
-    (cond
-      ((> (-> obj alert-state level) 0)
-       (if (and (logtest? (-> obj alert-state flags) (traffic-alert-flag target-jak))
-                (not (logtest? (-> obj alert-state flags) (traffic-alert-flag alert-ending)))
-                *target*
-                )
-           (for-all-active-processes obj (lambda ((arg0 process-focusable) (arg1 traffic-object-type-info))
-                                           (if (logtest? (-> arg1 flags) (traffic-type-flags trtflags-0))
-                                               (send-event arg0 'alert-begin *target*)
-                                               )
-                                           (none)
-                                           )
-                                     )
-           )
-       )
-      (else
-        (for-all-active-processes obj (lambda ((arg0 process-focusable) (arg1 traffic-object-type-info))
-                                        (if (logtest? (-> arg1 flags) (traffic-type-flags trtflags-0))
-                                            (send-event arg0 'alert-end)
-                                            )
-                                        (none)
-                                        )
-                                  )
-        )
+  (set! (-> obj alert-state notify-time) (current-time))
+  (cond
+    ((> (-> obj alert-state level) 0)
+     (if (and (logtest? (-> obj alert-state flags) (traffic-alert-flag target-jak))
+              (not (logtest? (-> obj alert-state flags) (traffic-alert-flag alert-ending)))
+              *target*
+              )
+         (for-all-active-processes obj (lambda ((arg0 process-focusable) (arg1 traffic-object-type-info))
+                                         (if (logtest? (-> arg1 flags) (traffic-type-flags trtflags-0))
+                                             (send-event arg0 'alert-begin *target*)
+                                             )
+                                         (none)
+                                         )
+                                   )
+         )
+     )
+    (else
+      (for-all-active-processes obj (lambda ((arg0 process-focusable) (arg1 traffic-object-type-info))
+                                      (if (logtest? (-> arg1 flags) (traffic-type-flags trtflags-0))
+                                          (send-event arg0 'alert-end)
+                                          )
+                                      (none)
+                                      )
+                                )
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 ;; definition for method 29 of type traffic-engine

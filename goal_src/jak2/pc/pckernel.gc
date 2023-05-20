@@ -9,7 +9,6 @@
  |#
 
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; methods
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -29,7 +28,7 @@
     )
   )
 
-(defmethod get-game-setting! pc-settings-jak2 ((obj pc-settings-jak2) (setting symbol))
+(defmethod get-game-setting pc-settings-jak2 ((obj pc-settings-jak2) (setting symbol))
   (case setting
     (('video-mode)
       (-> *setting-control* user-default video-mode)
@@ -38,7 +37,7 @@
       (-> *setting-control* user-default aspect-ratio)
       )
     (else
-      (format #t "unknown setting  ~A to get-game-setting!" setting)
+      (format #t "unknown setting  ~A to get-game-setting" setting)
       #f)
     )
   )
@@ -47,13 +46,21 @@
   (set! (-> *setting-control* user-default language) lang)
   )
 
-(defmethod get-game-language! pc-settings-jak2 ((obj pc-settings-jak2))
+(defmethod get-game-language pc-settings-jak2 ((obj pc-settings-jak2))
   (get-current-language)
   )
 
+
+(defmethod update pc-settings-jak2 ((obj pc-settings-jak2))
+  "handle the text parsing input for the 'settings' group"
+
+  ((method-of-type pc-settings update) obj)
+
+  (set! (-> obj movie?) (and (!= #f *scene-player*) (movie?)))
+  (none))
+
 (defmethod update-discord-rpc pc-settings-jak2 ((obj pc-settings-jak2))
   "update discord rpc module"
-
   (let ((info (new 'stack 'discord-info)))
     (set! (-> info orb-count) (&-> *game-info* skill-total))
     (set! (-> info gem-count) (&-> *game-info* gem-total))
@@ -66,17 +73,15 @@
     (set! (-> info cutscene?) #f) ;; TODO - cutscenes don't work yet
     (set! (-> info time-of-day) (&-> *time-of-day-context* time))
     (set! (-> info percent-complete) (calculate-percentage *game-info*))
-
     ;; TODO - wrapping in `with-profiler` causes an error, fix it
-    (pc-discord-rpc-update info)
-    )
-  0)
+    (pc-discord-rpc-update info))
+  (none))
 
 (defmethod update-speedrun pc-settings-jak2 ((obj pc-settings-jak2))
   "update speedrun module"
-
-  #f
-  )
+  (when (-> *pc-settings* speedrunner-mode?)
+   (speedrun-mode-update))
+  (none))
 
 (defmethod update-video-hacks pc-settings-jak2 ((obj pc-settings-jak2))
   "update the graphics hacks used for the progress menu. ugh."
@@ -90,6 +95,14 @@
   "is this a valid process for a fast elevator?"
   (and (-> obj fast-elevator?) (not (or (string= (-> proc name) "drill-lift-1")
                                         (string= (-> proc name )"drill-lift-2"))))
+  )
+
+(define *airlock-speed* 1.5)
+(defmethod get-airlock-speed pc-settings-jak2 ((obj pc-settings-jak2))
+  "return the current speed modifier for airlocks"
+  (if (-> obj fast-airlock?)
+      *airlock-speed*
+      1.0)
   )
 
 

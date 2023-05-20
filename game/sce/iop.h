@@ -20,7 +20,7 @@
 #define SCECdComplete 0x02
 #define SCECdNotReady 0x06
 #define KE_OK 0
-#define KE_SEMA_ZERO -419
+#define KE_SEMA_ZERO (-419)
 #define KE_SEMA_OVF -420
 #define KE_MBOX_NOMSG -424
 #define KE_WAIT_DELETE -425
@@ -76,7 +76,7 @@ struct MbxParam {
 struct ThreadParam {
   u32 attr;
   u32 option;
-  void* entry;
+  u32 (*entry)();
   int stackSize;
   int initPriority;
 
@@ -94,6 +94,7 @@ struct SemaParam {
 // void PS2_RegisterIOP(IOP *iop);
 int QueryTotalFreeMemSize();
 void* AllocSysMemory(int type, unsigned long size, void* addr);
+void* AllocScratchPad(int mode);
 
 int GetThreadId();
 void CpuDisableIntr();
@@ -104,6 +105,7 @@ s32 CreateThread(ThreadParam* param);
 s32 ExitThread();
 s32 StartThread(s32 thid, u32 arg);
 s32 WakeupThread(s32 thid);
+s32 iWakeupThread(s32 thid);
 
 void sceSifInitRpc(int mode);
 void sceSifInitRpc(unsigned int mode);
@@ -117,7 +119,6 @@ void sceSifRegisterRpc(sceSifServeData* serve,
                        sceSifQueueData* qd);
 void sceSifRpcLoop(sceSifQueueData* pd);
 
-int sceCdRead(uint32_t logical_sector, uint32_t sectors, void* buf, sceCdRMode* mode);
 int sceCdSync(int mode);
 int sceCdGetError();
 int sceCdGetDiskType();
@@ -129,6 +130,7 @@ u32 sceSifSetDma(sceSifDmaData* sdd, int len);
 
 s32 SendMbx(int mbxid, void* sendmsg);
 s32 PollMbx(MsgPacket** recvmsg, int mbxid);
+s32 PeekMbx(s32 mbx);
 s32 CreateMbx(MbxParam* param);
 
 void GetSystemTime(SysClock* time);

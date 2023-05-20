@@ -144,80 +144,74 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  24
-  0
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (while (!= (level-status *level* 'ctysluma) 'active)
-        (suspend)
-        )
-      (let ((v1-3 (entity-by-name "parking-spot-8")))
-        (if v1-3
-            (logior! (-> v1-3 extra perm status) (entity-perm-status bit-9))
+  (game-task-node city-krew-delivery-delivery)
+  TASK_MANAGER_INIT_HOOK
+  (lambda :behavior task-manager
+    ()
+    (while (!= (level-status *level* 'ctysluma) 'active)
+      (suspend)
+      )
+    (let ((v1-3 (entity-by-name "parking-spot-8")))
+      (if v1-3
+          (logior! (-> v1-3 extra perm status) (entity-perm-status bit-9))
+          )
+      )
+    (set! (-> self end-pos quad) (-> (new 'static 'vector :x -282624.0 :y 45056.0 :z 5464064.0 :w 1.0) quad))
+    (set-setting! 'minimap 'clear 0.0 (minimap-flag task-graph))
+    (let ((gp-1 *traffic-manager*))
+      (let ((s5-0 (new 'stack 'traffic-object-spawn-params)))
+        (set! (-> s5-0 position quad) (-> (new 'static 'vector :x 4698112.0 :y 45875.2 :z 81920.0 :w 1.0) quad))
+        (quaternion-axis-angle! (-> s5-0 rotation) 0.0 1.0 0.0 32768.0)
+        (set! (-> s5-0 object-type) (traffic-type bikea))
+        (set! (-> s5-0 behavior) (the-as uint 0))
+        (set! (-> s5-0 id) (the-as uint 0))
+        (set! (-> s5-0 proc) #f)
+        (send-event gp-1 'spawn-object s5-0)
+        (when (-> s5-0 proc)
+          (set! (-> self slave 0) (process->handle (-> s5-0 proc)))
+          (let ((v1-20 (-> s5-0 proc)))
+            (set! (-> (the-as vehicle v1-20) damage-factor) 2.0)
             )
-        )
-      (set! (-> self end-pos quad) (-> (new 'static 'vector :x -282624.0 :y 45056.0 :z 5464064.0 :w 1.0) quad))
-      (set-setting! 'minimap 'clear 0 32)
-      (let ((gp-1 *traffic-manager*))
-        (let ((s5-0 (new 'stack 'traffic-object-spawn-params)))
-          (set! (-> s5-0 position quad) (-> (new 'static 'vector :x 4698112.0 :y 45875.2 :z 81920.0 :w 1.0) quad))
-          (quaternion-axis-angle! (-> s5-0 rotation) 0.0 1.0 0.0 32768.0)
-          (set! (-> s5-0 object-type) (traffic-type bikea))
-          (set! (-> s5-0 behavior) (the-as uint 0))
-          (set! (-> s5-0 id) (the-as uint 0))
-          (set! (-> s5-0 proc) #f)
-          (send-event gp-1 'spawn-object s5-0)
-          (when (-> s5-0 proc)
-            (set! (-> self slave 0) (process->handle (-> s5-0 proc)))
-            (let ((v1-20 (-> s5-0 proc)))
-              (set! (-> (the-as vehicle v1-20) damage-factor) 2.0)
-              )
-            (let ((v1-22 (krew-package-spawn (-> s5-0 proc) (-> s5-0 proc))))
-              (if v1-22
-                  (set! (-> self slave 1) (process->handle (-> v1-22 0)))
-                  )
-              )
-            )
-          (let ((s4-0 (new 'stack-no-clear 'task-arrow-params)))
-            (set! (-> s4-0 pos quad) (-> s5-0 position quad))
-            (quaternion-identity! (-> s4-0 quat))
-            (set! (-> s4-0 flags) (task-arrow-flags task-arrow-flag-03))
-            (set! (-> s4-0 map-icon) (the-as uint 15))
-            (label cfg-21)
-            (let ((a0-30 (task-arrow-spawn s4-0 (the-as task-arrow self))))
-              (when (not a0-30)
-                (format #t "waiting for task-arrow~%")
-                (suspend)
-                (goto cfg-21)
+          (let ((v1-22 (krew-package-spawn (-> s5-0 proc) (-> s5-0 proc))))
+            (if v1-22
+                (set! (-> self slave 1) (process->handle (-> v1-22 0)))
                 )
-              (set! (-> self arrow) (process->handle a0-30))
-              )
             )
           )
-        (send-event gp-1 'set-target-level #x3f800000)
-        (send-event gp-1 'set-guard-target-count-range 4 0 1)
-        (send-event gp-1 'set-guard-target-count-range 5 0 0)
+        (let ((s4-0 (new 'stack-no-clear 'task-arrow-params)))
+          (set! (-> s4-0 pos quad) (-> s5-0 position quad))
+          (quaternion-identity! (-> s4-0 quat))
+          (set! (-> s4-0 flags) (task-arrow-flags task-arrow-flag-03))
+          (set! (-> s4-0 map-icon) (the-as uint 15))
+          (label cfg-21)
+          (let ((a0-30 (task-arrow-spawn s4-0 (the-as task-arrow self))))
+            (when (not a0-30)
+              (format #t "waiting for task-arrow~%")
+              (suspend)
+              (goto cfg-21)
+              )
+            (set! (-> self arrow) (process->handle a0-30))
+            )
+          )
         )
-      (set! (-> self sub-state) (the-as uint -1))
-      (set! (-> self data-int8 0) 0)
-      (set! (-> self data-int8 1) 0)
-      0
-      (none)
+      (send-event gp-1 'set-target-level #x3f800000)
+      (send-event gp-1 'set-guard-target-count-range 4 0 1)
+      (send-event gp-1 'set-guard-target-count-range 5 0 0)
       )
+    (set! (-> self sub-state) (the-as uint -1))
+    (set! (-> self data-int8 0) 0)
+    (set! (-> self data-int8 1) 0)
+    0
+    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  24
-  1
-  (the-as
-    (function object)
-    (lambda :behavior task-manager () (send-event *traffic-manager* 'restore-default-settings) (none))
-    )
+  (game-task-node city-krew-delivery-delivery)
+  TASK_MANAGER_CLEANUP_HOOK
+  (lambda :behavior task-manager () (send-event *traffic-manager* 'restore-default-settings) (none))
   )
 
 ;; definition for function delivery-task-setup-ambush-1
@@ -369,179 +363,100 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  24
-  2
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (local-vars (a0-32 float))
-      (rlet ((acc :class vf)
-             (vf0 :class vf)
-             (vf1 :class vf)
-             (vf2 :class vf)
+  (game-task-node city-krew-delivery-delivery)
+  TASK_MANAGER_UPDATE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (local-vars (a0-32 float))
+    (rlet ((acc :class vf)
+           (vf0 :class vf)
+           (vf1 :class vf)
+           (vf2 :class vf)
+           )
+      (init-vf0-vector)
+      (let ((gp-0 (handle->process (-> self slave 0))))
+        (cond
+          ((and gp-0 (not (logtest? (-> (the-as process-focusable gp-0) focus-status) (focus-status dead))))
+           (cond
+             ((zero? (-> self data-int8 0))
+              (when (= (level-status *level* 'ctyindb) 'active)
+                (set! (-> self data-int8 0) 1)
+                (delivery-task-setup-ambush-1)
+                )
+              )
+             (else
+               (when (!= (level-status *level* 'ctyindb) 'active)
+                 (set! (-> self data-int8 0) 0)
+                 0
+                 )
+               )
              )
-        (init-vf0-vector)
-        (let ((gp-0 (handle->process (-> self slave 0))))
-          (cond
-            ((and gp-0 (not (logtest? (-> (the-as process-focusable gp-0) focus-status) (focus-status dead))))
+           (cond
+             ((zero? (-> self data-int8 1))
+              (when (= (level-status *level* 'ctyinda) 'active)
+                (set! (-> self data-int8 1) 1)
+                (delivery-task-setup-ambush-2)
+                )
+              )
+             (else
+               (when (!= (level-status *level* 'ctyinda) 'active)
+                 (set! (-> self data-int8 1) 0)
+                 0
+                 )
+               )
+             )
+           (let ((f0-0 (vector-vector-distance-squared (-> (the-as process-drawable gp-0) root trans) (target-pos 0)))
+                 (f1-0 12288.0)
+                 )
              (cond
-               ((zero? (-> self data-int8 0))
-                (when (= (level-status *level* 'ctyindb) 'active)
-                  (set! (-> self data-int8 0) 1)
-                  (delivery-task-setup-ambush-1)
+               ((and (< f0-0 (* f1-0 f1-0)) *target* (focus-test? *target* pilot))
+                (when (nonzero? (-> self sub-state))
+                  (send-event (handle->process (-> self arrow)) 'set-position (-> self end-pos))
+                  (send-event (handle->process (-> self arrow)) 'modify-flags 1 0)
+                  (send-event (handle->process (-> self arrow)) 'map-icon 8)
+                  (set! (-> self sub-state) (the-as uint 0))
+                  0
                   )
                 )
                (else
-                 (when (!= (level-status *level* 'ctyindb) 'active)
-                   (set! (-> self data-int8 0) 0)
-                   0
-                   )
-                 )
-               )
-             (cond
-               ((zero? (-> self data-int8 1))
-                (when (= (level-status *level* 'ctyinda) 'active)
-                  (set! (-> self data-int8 1) 1)
-                  (delivery-task-setup-ambush-2)
-                  )
-                )
-               (else
-                 (when (!= (level-status *level* 'ctyinda) 'active)
-                   (set! (-> self data-int8 1) 0)
-                   0
-                   )
-                 )
-               )
-             (let ((f0-0 (vector-vector-distance-squared (-> (the-as process-drawable gp-0) root trans) (target-pos 0)))
-                   (f1-0 12288.0)
-                   )
-               (cond
-                 ((and (< f0-0 (* f1-0 f1-0)) *target* (focus-test? *target* pilot))
-                  (when (nonzero? (-> self sub-state))
-                    (send-event (handle->process (-> self arrow)) 'set-position (-> self end-pos))
-                    (send-event (handle->process (-> self arrow)) 'modify-flags 1 0)
-                    (send-event (handle->process (-> self arrow)) 'map-icon 8)
-                    (set! (-> self sub-state) (the-as uint 0))
-                    0
-                    )
-                  )
-                 (else
-                   (let* ((v1-59 (new 'stack-no-clear 'inline-array 'vector 1))
-                          (f0-1 409.6)
-                          (f0-3 (* f0-1 f0-1))
-                          )
-                     (.lvf vf1 (&-> (-> (the-as process-drawable gp-0) root transv) quad))
-                     (.add.w.vf vf2 vf0 vf0 :mask #b1)
-                     (.mul.vf vf1 vf1 vf1)
-                     (.mul.x.vf acc vf2 vf1 :mask #b1)
-                     (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-                     (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
-                     (.mov a0-32 vf1)
-                     (when (>= f0-3 a0-32)
-                       (set! (-> v1-59 0 quad) (-> (the-as process-drawable gp-0) root trans quad))
-                       (set! (-> v1-59 0 y) (+ -14336.0 (-> v1-59 0 y)))
-                       (send-event (handle->process (-> self arrow)) 'set-position (-> v1-59 0))
-                       )
-                     )
-                   (when (!= (-> self sub-state) 1)
-                     (send-event (handle->process (-> self arrow)) 'modify-flags 0 1)
-                     (send-event (handle->process (-> self arrow)) 'map-icon 15)
-                     (set! (-> self sub-state) (the-as uint 1))
+                 (let* ((v1-59 (new 'stack-no-clear 'inline-array 'vector 1))
+                        (f0-1 409.6)
+                        (f0-3 (* f0-1 f0-1))
+                        )
+                   (.lvf vf1 (&-> (-> (the-as process-drawable gp-0) root transv) quad))
+                   (.add.w.vf vf2 vf0 vf0 :mask #b1)
+                   (.mul.vf vf1 vf1 vf1)
+                   (.mul.x.vf acc vf2 vf1 :mask #b1)
+                   (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+                   (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+                   (.mov a0-32 vf1)
+                   (when (>= f0-3 a0-32)
+                     (set! (-> v1-59 0 quad) (-> (the-as process-drawable gp-0) root trans quad))
+                     (set! (-> v1-59 0 y) (+ -14336.0 (-> v1-59 0 y)))
+                     (send-event (handle->process (-> self arrow)) 'set-position (-> v1-59 0))
                      )
                    )
+                 (when (!= (-> self sub-state) 1)
+                   (send-event (handle->process (-> self arrow)) 'modify-flags 0 1)
+                   (send-event (handle->process (-> self arrow)) 'map-icon 15)
+                   (set! (-> self sub-state) (the-as uint 1))
+                   )
                  )
-               )
-             (let ((f30-0 49152.0)
-                   (f0-6 (vector-vector-distance-squared (-> (the-as process-drawable gp-0) root trans) (-> self end-pos)))
-                   )
-               (if (>= (* f30-0 f30-0) f0-6)
-                   (go-virtual complete)
-                   )
                )
              )
-            (else
-              (go-virtual fail)
-              )
+           (let ((f30-0 49152.0)
+                 (f0-6 (vector-vector-distance-squared (-> (the-as process-drawable gp-0) root trans) (-> self end-pos)))
+                 )
+             (if (>= (* f30-0 f30-0) f0-6)
+                 (go-virtual complete)
+                 )
+             )
+           )
+          (else
+            (go-virtual fail)
             )
           )
-        (none)
         )
-      )
-    )
-  )
-
-;; failed to figure out what this is:
-(set-subtask-hook!
-  *game-info*
-  24
-  3
-  (the-as
-    (function object)
-    (lambda :behavior task-manager
-      ()
-      (let ((gp-0 (new 'static 'vector :x 4501504.0 :y 73728.0 :z 2338816.0 :w 204800.0))
-            (s5-0 #f)
-            )
-        (while (not s5-0)
-          (let ((v1-1 (handle->process (-> self slave 0))))
-            (when v1-1
-              (let ((f0-0 (vector-vector-distance-squared (-> (the-as process-drawable v1-1) root trans) gp-0))
-                    (f1-0 (-> gp-0 w))
-                    )
-                (set! s5-0 (< f0-0 (* f1-0 f1-0)))
-                )
-              )
-            )
-          (suspend)
-          )
-        )
-      (send-event *traffic-manager* 'set-guard-target-count-range 0 0 0)
-      (send-event *traffic-manager* 'set-guard-target-count-range 1 4 4)
-      (send-event *traffic-manager* 'set-guard-target-count-range 2 0 0)
-      (send-event *traffic-manager* 'set-guard-target-count-range 4 0 10)
-      (send-event *traffic-manager* 'set-guard-target-count-range 5 0 10)
-      (send-event *traffic-manager* 'set-alert-level 3)
-      (send-event *traffic-manager* 'set-alert-duration #xa4cb80)
-      (speech-control-method-10 *speech-control* 7 (new 'static 'speech-type-info
-                                                     :channel #x1
-                                                     :priority -2
-                                                     :min-delay #x258
-                                                     :max-delay #x4b0
-                                                     :list (new 'static 'boxed-array :type string
-                                                       "kg243a"
-                                                       "kg241a"
-                                                       "kg242a"
-                                                       "kg244a"
-                                                       "kg245a"
-                                                       "kg246a"
-                                                       "kg247a"
-                                                       "kg248a"
-                                                       "kg249a"
-                                                       "kg250a"
-                                                       "kg251a"
-                                                       "kg252a"
-                                                       )
-                                                     )
-                                )
-      (talker-spawn-func (-> *talker-speech* 49) *entity-pool* (target-pos 0) (the-as region #f))
-      (let ((gp-2 (new 'static 'vector :x 3358720.0 :y 32768.0 :z 4689920.0 :w 204800.0))
-            (s5-2 #f)
-            )
-        (while (not s5-2)
-          (let ((v1-48 (handle->process (-> self slave 0))))
-            (when v1-48
-              (let ((f0-1 (vector-vector-distance-squared (-> (the-as process-drawable v1-48) root trans) gp-2))
-                    (f1-3 (-> gp-2 w))
-                    )
-                (set! s5-2 (< f0-1 (* f1-3 f1-3)))
-                )
-              )
-            )
-          (suspend)
-          )
-        )
-      (talker-spawn-func (-> *talker-speech* 50) *entity-pool* (target-pos 0) (the-as region #f))
       (none)
       )
     )
@@ -550,21 +465,93 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (set-subtask-hook!
   *game-info*
-  24
-  4
-  (the-as (function object) (lambda :behavior task-manager
-                              ()
-                              (send-event *traffic-manager* 'decrease-alert-level 0)
-                              (send-event *traffic-manager* 'set-alert-duration 9000)
-                              (if (and *target* (focus-test? *target* pilot))
-                                  (send-event *target* 'change-mode 'normal)
-                                  )
-                              (set-setting! 'pilot #f 0 0)
-                              (set! (-> self state-time) (-> self clock frame-counter))
-                              (while (< (- (-> self clock frame-counter) (-> self state-time)) (seconds 2))
-                                (suspend)
-                                )
-                              (none)
-                              )
+  (game-task-node city-krew-delivery-delivery)
+  TASK_MANAGER_CODE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (let ((gp-0 (new 'static 'vector :x 4501504.0 :y 73728.0 :z 2338816.0 :w 204800.0))
+          (s5-0 #f)
           )
+      (while (not s5-0)
+        (let ((v1-1 (handle->process (-> self slave 0))))
+          (when v1-1
+            (let ((f0-0 (vector-vector-distance-squared (-> (the-as process-drawable v1-1) root trans) gp-0))
+                  (f1-0 (-> gp-0 w))
+                  )
+              (set! s5-0 (< f0-0 (* f1-0 f1-0)))
+              )
+            )
+          )
+        (suspend)
+        )
+      )
+    (send-event *traffic-manager* 'set-guard-target-count-range 0 0 0)
+    (send-event *traffic-manager* 'set-guard-target-count-range 1 4 4)
+    (send-event *traffic-manager* 'set-guard-target-count-range 2 0 0)
+    (send-event *traffic-manager* 'set-guard-target-count-range 4 0 10)
+    (send-event *traffic-manager* 'set-guard-target-count-range 5 0 10)
+    (send-event *traffic-manager* 'set-alert-level 3)
+    (send-event *traffic-manager* 'set-alert-duration #xa4cb80)
+    (speech-control-method-10 *speech-control* 7 (new 'static 'speech-type-info
+                                                   :channel #x1
+                                                   :priority -2
+                                                   :min-delay #x258
+                                                   :max-delay #x4b0
+                                                   :list (new 'static 'boxed-array :type string
+                                                     "kg243a"
+                                                     "kg241a"
+                                                     "kg242a"
+                                                     "kg244a"
+                                                     "kg245a"
+                                                     "kg246a"
+                                                     "kg247a"
+                                                     "kg248a"
+                                                     "kg249a"
+                                                     "kg250a"
+                                                     "kg251a"
+                                                     "kg252a"
+                                                     )
+                                                   )
+                              )
+    (talker-spawn-func (-> *talker-speech* 49) *entity-pool* (target-pos 0) (the-as region #f))
+    (let ((gp-2 (new 'static 'vector :x 3358720.0 :y 32768.0 :z 4689920.0 :w 204800.0))
+          (s5-2 #f)
+          )
+      (while (not s5-2)
+        (let ((v1-48 (handle->process (-> self slave 0))))
+          (when v1-48
+            (let ((f0-1 (vector-vector-distance-squared (-> (the-as process-drawable v1-48) root trans) gp-2))
+                  (f1-3 (-> gp-2 w))
+                  )
+              (set! s5-2 (< f0-1 (* f1-3 f1-3)))
+              )
+            )
+          )
+        (suspend)
+        )
+      )
+    (talker-spawn-func (-> *talker-speech* 50) *entity-pool* (target-pos 0) (the-as region #f))
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-krew-delivery-delivery)
+  TASK_MANAGER_COMPLETE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (send-event *traffic-manager* 'decrease-alert-level 0)
+    (send-event *traffic-manager* 'set-alert-duration 9000)
+    (if (and *target* (focus-test? *target* pilot))
+        (send-event *target* 'change-mode 'normal)
+        )
+    (set-setting! 'pilot #f 0.0 0)
+    (set! (-> self state-time) (current-time))
+    (while (< (- (current-time) (-> self state-time)) (seconds 2))
+      (suspend)
+      )
+    (none)
+    )
   )

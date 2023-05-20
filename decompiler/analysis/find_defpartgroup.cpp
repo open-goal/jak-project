@@ -177,7 +177,7 @@ L80:
     item.data.push_back(array_words.at(field_idx + 1));
     item.data.push_back(array_words.at(field_idx + 2));
     item.data.push_back(array_words.at(field_idx + 3));
-    if (item.field_id == 7) {
+    if (item.flags == 4) {
       auto& fld = car(cur_field);
       item.sound_spec = cdr(cdr(cdr(cdr(&fld))))->as_pair()->car;
     }

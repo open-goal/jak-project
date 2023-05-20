@@ -9,11 +9,12 @@
 
 #include "runtime.h"
 
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/os.h"
 #include "common/util/unicode_util.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "game/common/game_common_types.h"
 
@@ -81,69 +82,18 @@ std::string game_arg_documentation() {
 int main(int argc, char** argv) {
   ArgumentGuard u8_guard(argc, argv);
 
-  // TODO - this is a temporary shim to convert the old arg format
-  // into the new
-  //
-  // This is needed to avoid a coupled release with the launcher and
-  // can be removed after one release cycle
-  //
-  // Normal users launch gk with _no_ args
-  //
-  // Only handling args the launcher provides, all others can be changed
-  // in this repo at the time of merge.
-  std::vector<const char*> adjusted_argv_vals;
-  std::vector<const char*> adjusted_argv_vals_passthru;
-  for (int i = 0; i < argc; i++) {
-    const auto& val = std::string(argv[i]);
-    // Handle all args that aren't passed through
-    if (val == "-proj-path") {
-      adjusted_argv_vals.push_back("--proj-path");
-      i++;
-      if (i > argc) {
-        return 1;
-      }
-      adjusted_argv_vals.push_back(argv[i]);
-    } else if (val == "--") {
-      // if we hit a '--' then break out, args will be matched but they are already in the new
-      // format
-      break;
-    } else if (val == "-boot") {
-      // now handle all the ones that get passed to the game
-      adjusted_argv_vals_passthru.push_back("-boot");
-    } else if (val == "-fakeiso") {
-      adjusted_argv_vals_passthru.push_back("-fakeiso");
-    } else if (val == "-debug") {
-      adjusted_argv_vals_passthru.push_back("-debug");
-    }
-  }
-
-  std::vector<const char*> new_argv;
-  if (!adjusted_argv_vals.empty() || !adjusted_argv_vals_passthru.empty()) {
-    new_argv.push_back(argv[0]);
-    for (const auto& arg : adjusted_argv_vals) {
-      new_argv.push_back(arg);
-    }
-    if (!adjusted_argv_vals_passthru.empty()) {
-      new_argv.push_back("--");
-      for (const auto& arg : adjusted_argv_vals_passthru) {
-        new_argv.push_back(arg);
-      }
-    }
-    argv = (char**)new_argv.data();
-    argc = new_argv.size();
-  }
-  // --- END temporary shim
-
   // CLI flags
+  bool show_version = false;
   std::string game_name = "jak1";
   bool verbose_logging = false;
   bool disable_avx2 = false;
   bool disable_display = false;
-  bool disable_debug_vm = false;
+  bool enable_debug_vm = false;
   int port_number = -1;
   fs::path project_path_override;
   std::vector<std::string> game_args;
   CLI::App app{"OpenGOAL Game Runtime"};
+  app.add_flag("--version", show_version, "Display the built revision");
   app.add_option("-g,--game", game_name, "The game name: 'jak1' or 'jak2'");
   app.add_flag("-v,--verbose", verbose_logging, "Enable verbose logging on stdout");
   app.add_flag(
@@ -151,7 +101,7 @@ int main(int argc, char** argv) {
       "Specify port number for listener connection (default is 8112 for Jak 1 and 8113 for Jak 2)");
   app.add_flag("--no-avx2", verbose_logging, "Disable AVX2 for testing");
   app.add_flag("--no-display", disable_display, "Disable video display");
-  app.add_flag("--no-vm", disable_debug_vm, "Disable debug PS2 VM (defaulted to on)");
+  app.add_flag("--vm", enable_debug_vm, "Enable debug PS2 VM (defaulted to off)");
   app.add_option("--proj-path", project_path_override,
                  "Specify the location of the 'data/' folder");
   app.footer(game_arg_documentation());
@@ -160,9 +110,14 @@ int main(int argc, char** argv) {
   app.allow_extras();
   CLI11_PARSE(app, argc, argv);
 
+  if (show_version) {
+    lg::print(build_revision());
+    return 0;
+  }
+
   // Create struct with all non-kmachine handled args to pass to the runtime
   GameLaunchOptions game_options;
-  game_options.disable_debug_vm = disable_debug_vm;
+  game_options.disable_debug_vm = !enable_debug_vm;
   game_options.disable_display = disable_display;
   game_options.game_version = game_name_to_version(game_name);
   game_options.server_port =
@@ -237,6 +192,7 @@ int main(int argc, char** argv) {
     // run the runtime in a loop so we can reset the game and have it restart cleanly
     lg::info("OpenGOAL Runtime {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
     try {
+      MasterExit = RuntimeExitStatus::RUNNING;
       auto exit_status = exec_runtime(game_options, arg_ptrs.size(), arg_ptrs.data());
       switch (exit_status) {
         case RuntimeExitStatus::EXIT:

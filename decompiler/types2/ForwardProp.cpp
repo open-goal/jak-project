@@ -469,7 +469,9 @@ void types2_for_right_shift(types2::Type& type_out,
     int size = 64 - expr.get_arg(1).get_int();
     int start_bit = end_bit - size;
     if (start_bit < 0) {
-      throw std::runtime_error("Bad bitfield start bit");
+      // throw std::runtime_error("Bad bitfield start bit");
+      size += start_bit;
+      start_bit = 0;
     }
 
     auto type = dts.ts.lookup_type(arg0_type.get_bitfield_type());
