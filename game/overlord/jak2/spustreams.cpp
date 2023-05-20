@@ -247,11 +247,7 @@ LAB_0000fecc:
 }
 
 int GetVAGStreamPos(VagCmd* param_1) {
-  bool bVar1;
-  u32 uVar2;
-  u32 uVar3;
   u32 primary_dma_offset;
-  u32 uVar5;
   int iVar6;
   VagCmd* pRVar7;
   u32 secondary_dma_offset;
@@ -290,42 +286,12 @@ int GetVAGStreamPos(VagCmd* param_1) {
     return 0;
   }
   // CpuSuspendIntr(local_30);
-  uVar9 = param_1->spu_stream_dma_mem_addr;
-  secondary_dma_offset = (param_1->voice & 0xffffU) | 0x2240;
-  do {
-    uVar10 = 0;
-    do {
-      uVar2 = sceSdGetAddr(secondary_dma_offset);
-      uVar3 = sceSdGetAddr(secondary_dma_offset);
-      primary_dma_offset = sceSdGetAddr(secondary_dma_offset);
-      if ((uVar2 == uVar3) ||
-          ((uVar3 != primary_dma_offset &&
-            (bVar1 = uVar2 == primary_dma_offset, primary_dma_offset = uVar10, bVar1)))) {
-        primary_dma_offset = uVar2;
-      }
-      uVar10 = primary_dma_offset;
-    } while (primary_dma_offset == 0);
-  } while ((primary_dma_offset < uVar9) || (uVar9 + 0x4040 <= primary_dma_offset));
+  primary_dma_offset = GetSpuRamAddress(param_1);
   primary_dma_offset = primary_dma_offset - param_1->spu_stream_dma_mem_addr;
   if (pRVar7 == 0x0) {
     secondary_dma_offset = 0;
   } else {
-    uVar10 = pRVar7->spu_stream_dma_mem_addr;
-    uVar9 = (pRVar7->voice & 0xffffU) | 0x2240;
-    do {
-      uVar2 = 0;
-      do {
-        uVar3 = sceSdGetAddr(uVar9);
-        uVar5 = sceSdGetAddr(uVar9);
-        secondary_dma_offset = sceSdGetAddr(uVar9);
-        if ((uVar3 == uVar5) ||
-            ((uVar5 != secondary_dma_offset &&
-              (bVar1 = uVar3 == secondary_dma_offset, secondary_dma_offset = uVar2, bVar1)))) {
-          secondary_dma_offset = uVar3;
-        }
-        uVar2 = secondary_dma_offset;
-      } while (secondary_dma_offset == 0);
-    } while ((secondary_dma_offset < uVar10) || (uVar10 + 0x4040 <= secondary_dma_offset));
+    secondary_dma_offset = GetSpuRamAddress(pRVar7);
     secondary_dma_offset = secondary_dma_offset - pRVar7->spu_stream_dma_mem_addr;
   }
   // CpuResumeIntr(local_30[0]);
@@ -997,31 +963,12 @@ void WakeSpuStreamsUp() {
 }
 
 u32 GetSpuRamAddress(VagCmd* param_1) {
-  bool bVar1;
-  u32 uVar2;
-  u32 uVar3;
-  u32 uVar4;
-  u32 uVar5;
-  u32 uVar6;
-  u32 uVar7;
-
-  uVar7 = param_1->spu_stream_dma_mem_addr;
-  uVar6 = (param_1->voice & 0xffffU) | 0x2240;
-  do {
-    uVar5 = 0;
-    do {
-      uVar2 = sceSdGetAddr(uVar6);
-      uVar3 = sceSdGetAddr(uVar6);
-      uVar4 = sceSdGetAddr(uVar6);
-      // printf("got nax: %d\n", uVar3);
-      if ((uVar2 == uVar3) ||
-          ((uVar3 != uVar4 && (bVar1 = uVar2 == uVar4, uVar4 = uVar5, bVar1)))) {
-        uVar4 = uVar2;
-      }
-      uVar5 = uVar4;
-    } while (uVar4 == 0);
-  } while ((uVar4 < uVar7) || (uVar7 + 0x4040 <= uVar4));
-  return uVar4;
+  // this is simplified a lot from the original.
+  // they seem to sanity check if the value is reasonable or not, but the sanity check can fail
+  // if the overlord thread isn't keeping up.
+  // as far as I can tell, it's totally fine to discard these checks because our sceSdGetAddr
+  // works perfectly.
+  return sceSdGetAddr((param_1->voice & 0xffffU) | 0x2240);
 }
 
 u32 bswap(u32 param_1) {
