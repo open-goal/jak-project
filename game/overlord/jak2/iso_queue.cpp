@@ -406,55 +406,31 @@ int QueueMessage(CmdHeader* param_1, int param_2, const char* param_3, int param
   return uVar1;
 }
 
-void UnqueueMessage(CmdHeader* param_1, int param_2) {
-  int iVar1;
-  PriStackEntry* pPVar2;
-  int iVar3;
-  PriStackEntry* pPVar4;
-  int iVar5;
+void UnqueueMessage(CmdHeader* cmd, int suspend_irq) {
+  if (suspend_irq == 1) {
+    //  CpuSuspendIntr(&stat);
+  }
 
-  if (param_2 == 1) {
-    // CpuSuspendIntr(local_18);
-  }
-  iVar5 = 0;
-  pPVar4 = gPriStack;
-LAB_00007088:
-  iVar3 = 0;
-  pPVar2 = pPVar4;
-  if (pPVar4->count < 1)
-    goto LAB_0000711c;
-  do {
-    if (pPVar2->entries[0] == param_1)
-      break;
-    iVar3 = iVar3 + 1;
-    pPVar2 = (PriStackEntry*)(pPVar2->entries + 1);
-  } while (iVar3 < pPVar4->count);
-  iVar1 = pPVar4->count + -1;
-  if (pPVar4->count <= iVar3)
-    goto LAB_0000711c;
-  pPVar4->count = iVar1;
-  if (iVar3 < iVar1) {
-    do {
-      iVar5 = iVar3 + 1;
-      pPVar4->entries[iVar3] = pPVar4->entries[iVar3 + 1];
-      iVar3 = iVar5;
-    } while (iVar5 < pPVar4->count);
-  }
-  if (param_2 != 1) {
-    return;
-  }
-  goto LAB_00007138;
-LAB_0000711c:
-  iVar5 = iVar5 + 1;
-  pPVar4 = pPVar4 + 1;
-  if (3 < iVar5) {
-    if (param_2 == 1) {
-    LAB_00007138:;
-      // CpuResumeIntr(local_18[0]);
+  for (int pri = 0; pri < N_PRIORITIES; pri++) {
+    auto pse = &gPriStack[pri];
+
+    for (int idx = 0; idx < pse->count; idx++) {
+      if (pse->entries[idx] == cmd) {
+        pse->count--;
+        while (idx < pse->count) {
+          pse->entries[idx] = pse->entries[idx + 1];
+          idx++;
+        }
+
+        goto exit;
+      }
     }
-    return;
   }
-  goto LAB_00007088;
+
+exit:
+  if (suspend_irq == 1) {
+    //  CpuResumeIntr(stat);
+  }
 }
 
 CmdHeader* GetMessage() {
