@@ -91,6 +91,14 @@ int main(int argc, char** argv) {
 
       if (message_buffer.message_completed()) {
         json body = message_buffer.body();
+        // If the request doesn't have a 'method', then it's not a request
+        // skip it, but log it.  We don't depend on any requests from the client yet
+        // currently they are mostly just notifications
+        if (!body.contains("method")) {
+          lg::warn("Response received from client - {}", body.dump());
+          message_buffer.clear();
+          continue;
+        }
         auto method_name = body["method"].get<std::string>();
         lg::info(">>> Received message of method '{}'", method_name);
         auto responses = lsp_router.route_message(message_buffer, appstate);

@@ -7,9 +7,7 @@
 #include "lsp/state/workspace.h"
 #include "lsp/transport/stdio.h"
 
-#include "third-party/json.hpp"
-
-using json = nlohmann::json;
+#include "common/util/json_util.h"
 
 enum class LSPRouteType { NOOP = 0, NOTIFICATION = 1, REQUEST_RESPONSE = 2 };
 

@@ -12,6 +12,7 @@
 #include "lsp/protocol/common_types.h"
 #include "lsp/protocol/document_diagnostics.h"
 #include "lsp/protocol/document_symbols.h"
+#include "lsp/state/lsp_requester.h"
 
 class WorkspaceOGFile {
  public:
@@ -101,6 +102,7 @@ class Workspace {
   std::optional<Docs::DefinitionLocation> get_symbol_def_location(const SymbolInfo& symbol_info);
 
  private:
+  LSPRequester m_requester;
   bool m_initialized = false;
   std::unordered_map<LSPSpec::DocumentUri, WorkspaceOGFile> m_tracked_og_files = {};
   std::unordered_map<LSPSpec::DocumentUri, WorkspaceIRFile> m_tracked_ir_files = {};

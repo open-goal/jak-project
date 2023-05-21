@@ -159,6 +159,8 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
   } else if (language_id == "opengoal") {
     // TODO - assuming jak 2 for now
     auto game_version = GameVersion::Jak2;
+    // TODO - this should happen on a separate thread so the LSP is not blocking during this lengthy
+    // step
     if (m_compiler_instances.find(game_version) == m_compiler_instances.end()) {
       // TODO - not safe, this asserts
       lg::debug(
@@ -169,9 +171,11 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
         lg::debug("unable to setup project path, not initializing a compiler");
         return;
       }
+      m_requester.send_progress_create_request("indexing-jak2", "Indexing - Jak 2");
       m_compiler_instances.emplace(game_version, std::make_unique<Compiler>(game_version));
-      // TODO - if this fails, annotate some errors?
+      // TODO - if this fails, annotate some errors
       m_compiler_instances.at(game_version)->run_front_end_on_string("(make-group \"all-code\")");
+      m_requester.send_progress_finish_request("indexing-jak2", "Indexed - Jak 2");
     }
     //  TODO - otherwise, just `ml` the file instead of rebuilding the entire thing
     //  TODO - if the file fails to `ml`, annotate some errors
