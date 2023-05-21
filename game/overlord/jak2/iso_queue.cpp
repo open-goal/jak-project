@@ -20,8 +20,10 @@ namespace jak2 {
 /// The data structure containing all memory pages.
 PageList* SpMemoryBuffers = nullptr;
 u8* ScratchPadMemory = nullptr;
-constexpr int N_BUFFERS = 3 + 11;  // ??
+constexpr int N_BUFFERS = 3;
+constexpr int N_STR_BUFFERS = 8;
 static Buffer sBuffer[N_BUFFERS];
+static Buffer sStrBuffer[N_STR_BUFFERS];
 static Buffer* sFreeBuffer = nullptr;
 static Buffer* sFreeStrBuffer = nullptr;
 u32 BuffersAlloc = 0;
@@ -65,10 +67,8 @@ void InitBuffers() {
   SpMemoryBuffers = (PageList*)ScratchPadMemory;
   ScratchPadMemory += sizeof(PageList);
   InitPagedMemory(SpMemoryBuffers, 0x12, 0x8000);
-  Buffer* next_buffer = sBuffer;
-  for (int i = 0; i < 3; i++) {
-    next_buffer++;
-    sBuffer[i].next = next_buffer;
+  for (int i = 0; i < N_BUFFERS; i++) {
+    sBuffer[i].next = &sBuffer[i + 1];
     sBuffer[i].decomp_buffer = nullptr;
     sBuffer[i].decompressed_size = 0;
     sBuffer[i].unk_12 = 0;
@@ -81,30 +81,29 @@ void InitBuffers() {
     sBuffer[i].page = nullptr;
     sBuffer[i].unk_44 = 0;
   };
-  sBuffer[2].next = nullptr;
-
-  next_buffer = sBuffer + 4;
+  sBuffer[N_BUFFERS - 1].next = nullptr;
   sFreeBuffer = sBuffer;
   BuffersAlloc = 0;
-  for (int i = 0; i < 8; i++) {
-    sBuffer[i + 3].next = next_buffer;
-    next_buffer++;
-    sBuffer[i + 3].decomp_buffer = nullptr;
-    sBuffer[i + 3].decompressed_size = 0;
-    sBuffer[i + 3].unk_12 = 0;
-    sBuffer[i + 3].data_buffer_idx = -1;
-    sBuffer[i + 3].use_mode = 2;
-    sBuffer[i + 3].plist = SpMemoryBuffers;
-    sBuffer[i + 3].num_pages = 1;
-    sBuffer[i + 3].unk_32 = 2;
-    sBuffer[i + 3].free_pages = 0;
-    sBuffer[i + 3].page = nullptr;
-    sBuffer[i + 3].unk_44 = 0;
+
+  for (int i = 0; i < N_STR_BUFFERS; i++) {
+    sStrBuffer[i].next = &sStrBuffer[i + 1];
+    sStrBuffer[i].decomp_buffer = nullptr;
+    sStrBuffer[i].decompressed_size = 0;
+    sStrBuffer[i].unk_12 = 0;
+    sStrBuffer[i].data_buffer_idx = -1;
+    sStrBuffer[i].use_mode = 2;
+    sStrBuffer[i].plist = SpMemoryBuffers;
+    sStrBuffer[i].num_pages = 1;
+    sStrBuffer[i].unk_32 = 2;
+    sStrBuffer[i].free_pages = 0;
+    sStrBuffer[i].page = nullptr;
+    sStrBuffer[i].unk_44 = 0;
   };
-  sBuffer[10].next = nullptr;
-  sFreeStrBuffer = sBuffer + 3;
-  StreamSRAM[0] = 0x5040;
+  sStrBuffer[N_STR_BUFFERS - 1].next = nullptr;
+  sFreeStrBuffer = sStrBuffer;
   StrBuffersAlloc = 0;
+
+  StreamSRAM[0] = 0x5040;
   TrapSRAM[0] = 0x9040;
   snd_SRAMMarkUsed(0x5040, 0x4040);
   StreamSRAM[1] = 0x9080;
