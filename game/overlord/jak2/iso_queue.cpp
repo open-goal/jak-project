@@ -358,67 +358,18 @@ void FreeBuffer(Buffer* buf, int /*param_2*/) {
   //}
 }
 
-void ReleaseMessage(CmdHeader* param_1, int param_2) {
-  Buffer* pBVar1;
-  int iVar2;
-  PriStackEntry* pPVar3;
-  int iVar4;
-  int iVar5;
-  PriStackEntry* pPVar6;
+void ReleaseMessage(CmdHeader* cmd, int suspend_irq) {
+  while (cmd->callback_buffer != nullptr) {
+    auto cb_buf = cmd->callback_buffer;
+    cmd->callback_buffer = cb_buf->next;
+    FreeBuffer(cb_buf, suspend_irq);
+  }
 
-  pBVar1 = param_1->callback_buffer;
-  while (pBVar1 != (Buffer*)0x0) {
-    pBVar1 = param_1->callback_buffer;
-    param_1->callback_buffer = pBVar1->next;
-    FreeBuffer(pBVar1, param_2);
-    pBVar1 = param_1->callback_buffer;
+  if (cmd->lse != nullptr) {
+    isofs->close(cmd->lse);
   }
-  if (param_1->lse != (LoadStackEntry*)0x0) {
-    // (*(code*)isofs->close)();
-    isofs->close(param_1->lse);
-  }
-  // if (param_2 == 1) {
-  // CpuSuspendIntr(local_18);
-  //}
-  iVar5 = 0;
-  pPVar6 = gPriStack;
-LAB_00006d0c:
-  iVar4 = 0;
-  pPVar3 = pPVar6;
-  if (pPVar6->count < 1)
-    goto LAB_00006da0;
-  do {
-    if (pPVar3->entries[0] == param_1)
-      break;
-    iVar4 = iVar4 + 1;
-    pPVar3 = (PriStackEntry*)(pPVar3->entries + 1);
-  } while (iVar4 < pPVar6->count);
-  iVar2 = pPVar6->count + -1;
-  if (pPVar6->count <= iVar4)
-    goto LAB_00006da0;
-  pPVar6->count = iVar2;
-  if (iVar4 < iVar2) {
-    do {
-      iVar5 = iVar4 + 1;
-      pPVar6->entries[iVar4] = pPVar6->entries[iVar4 + 1];
-      iVar4 = iVar5;
-    } while (iVar5 < pPVar6->count);
-  }
-  if (param_2 != 1) {
-    return;
-  }
-  goto LAB_00006dbc;
-LAB_00006da0:
-  iVar5 = iVar5 + 1;
-  pPVar6 = pPVar6 + 1;
-  if (3 < iVar5) {
-    if (param_2 == 1) {
-    LAB_00006dbc:;
-      // CpuResumeIntr(local_18[0]);
-    }
-    return;
-  }
-  goto LAB_00006d0c;
+
+  UnqueueMessage(cmd, suspend_irq);
 }
 
 void DisplayQueue() {
