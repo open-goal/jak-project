@@ -43,6 +43,7 @@ std::string gPriEntryNames[N_PRIORITIES][PRI_STACK_LENGTH];  // my addition for 
 
 void ReturnMessage(CmdHeader* param_1);
 void FreeVAGCommand(VagCmd* param_1);
+void FreeDataBuffer(u32* param_1, u32 param_2);
 
 void iso_queue_init_globals() {
   memset(sBuffer, 0, sizeof(sBuffer));
@@ -325,43 +326,32 @@ LAB_00006a44:
   return pBVar7;
 }
 
-void FreeBuffer(Buffer* param_1, int /*param_2*/) {
-  Buffer* pBVar1;
-  Page* pPVar2;
-  int iVar3;
-  u32 uVar4;
+void FreeBuffer(Buffer* buf, int /*param_2*/) {
   // if (param_2 == 1) {
   // CpuSuspendIntr(local_18);
   //}
-  iVar3 = param_1->use_mode;
-  if (iVar3 == 1) {
-    if ((BuffersAlloc & 1 << (param_1->data_buffer_idx & 0x1fU)) != 0) {
-      pPVar2 = FreePagesList(param_1->plist, param_1->page);
-      pBVar1 = sFreeBuffer;
-      uVar4 = param_1->data_buffer_idx;
-      param_1->page = pPVar2;
-      param_1->data_buffer_idx = -1;
-      param_1->decompressed_size = 0;
-      param_1->unk_12 = 0;
-      sFreeBuffer = param_1;
-      param_1->use_mode = 0;
-      param_1->next = pBVar1;
-      BuffersAlloc = BuffersAlloc & ~(1 << (uVar4 & 0x1f));
-      AllocdBuffersCount = AllocdBuffersCount + -1;
+  if (buf->use_mode == 1) {
+    if ((BuffersAlloc & 1 << (buf->data_buffer_idx & 0x1fU)) != 0) {
+      buf->page = FreePagesList(buf->plist, buf->page);
+      FreeDataBuffer(&BuffersAlloc, buf->data_buffer_idx);
+      buf->next = sFreeBuffer;
+      buf->decompressed_size = 0;
+      buf->unk_12 = 0;
+      sFreeBuffer = buf;
+      buf->use_mode = 0;
+      buf->data_buffer_idx = -1;
     }
-  } else if (((1 < iVar3) && (iVar3 == 2)) &&
-             ((StrBuffersAlloc & 1 << (param_1->data_buffer_idx & 0x1fU)) != 0)) {
-    pPVar2 = FreePagesList(param_1->plist, param_1->page);
-    param_1->page = pPVar2;
-    param_1->decompressed_size = 0;
-    param_1->unk_12 = 0;
-    pBVar1 = param_1;
-    param_1->next = sFreeStrBuffer;
-    sFreeStrBuffer = pBVar1;
-    StrBuffersAlloc = StrBuffersAlloc & ~(1 << (param_1->data_buffer_idx & 0x1fU));
-    AllocdStrBuffersCount = AllocdStrBuffersCount + -1;
-    param_1->data_buffer_idx = -1;
-    param_1->use_mode = 0;
+  } else if (buf->use_mode == 2) {
+    if ((StrBuffersAlloc & 1 << (buf->data_buffer_idx & 0x1fU)) != 0) {
+      buf->page = FreePagesList(buf->plist, buf->page);
+      FreeDataBuffer(&StrBuffersAlloc, buf->data_buffer_idx);
+      buf->next = sFreeStrBuffer;
+      buf->decompressed_size = 0;
+      buf->unk_12 = 0;
+      sFreeStrBuffer = buf;
+      buf->use_mode = 0;
+      buf->data_buffer_idx = -1;
+    }
   }
   // if (param_2 == 1) {
   // CpuResumeIntr(local_18[0]);
@@ -684,13 +674,13 @@ uint8_t* CheckForIsoPageBoundaryCrossing(Buffer* param_1) {
   return param_1->decomp_buffer;
 }
 
-void FreeDataBuffer(u32* param_1, u32 param_2) {
+void FreeDataBuffer(u32* param_1, u32 buffer_idx) {
   if (param_1 == &BuffersAlloc) {
-    BuffersAlloc = BuffersAlloc & ~(1 << (param_2 & 0x1f));
-    AllocdBuffersCount = AllocdBuffersCount + -1;
+    BuffersAlloc &= ~(1 << (buffer_idx & 0x1f));
+    --AllocdBuffersCount;
   } else if (param_1 == &StrBuffersAlloc) {
-    AllocdStrBuffersCount = AllocdStrBuffersCount + -1;
-    StrBuffersAlloc = StrBuffersAlloc & ~(1 << (param_2 & 0x1f));
+    StrBuffersAlloc &= ~(1 << (buffer_idx & 0x1f));
+    --AllocdStrBuffersCount;
   }
 }
 
