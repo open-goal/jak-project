@@ -1,3 +1,5 @@
+#pragma once
+
 #include "common/log/log.h"
 
 #include "lsp/protocol/initialize_result.h"

@@ -5,6 +5,7 @@
 #include <sstream>
 
 #include "common/log/log.h"
+#include "common/util/string_util.h"
 
 #include "lsp/protocol/common_types.h"
 
@@ -31,16 +32,50 @@ std::string url_encode(const std::string& value) {
   return escaped.str();
 }
 
+std::string url_decode(const std::string& input) {
+  std::ostringstream decoded;
+
+  for (std::size_t i = 0; i < input.length(); ++i) {
+    if (input[i] == '%') {
+      // Check if there are enough characters remaining
+      if (i + 2 < input.length()) {
+        // Convert the next two characters after '%' into an integer value
+        std::istringstream hexStream(input.substr(i + 1, 2));
+        int hexValue = 0;
+        hexStream >> std::hex >> hexValue;
+
+        // Append the decoded character to the result
+        decoded << static_cast<char>(hexValue);
+
+        // Skip the next two characters
+        i += 2;
+      }
+    } else if (input[i] == '+') {
+      // Replace '+' with space character ' '
+      decoded << ' ';
+    } else {
+      // Append the character as is
+      decoded << input[i];
+    }
+  }
+
+  return decoded.str();
+}
+
 LSPSpec::DocumentUri uri_from_path(fs::path path) {
-  std::string path_str = path.string();
-  // Replace slash type on windows
-#ifdef _WIN32
-  std::replace(path_str.begin(), path_str.end(), '\\', '/');
-#endif
+  auto path_str = file_util::convert_to_unix_path_separators(path.string());
   // vscode works with proper URL encoded URIs for file paths
   // which means we have to roll our own...
   path_str = url_encode(path_str);
   return fmt::format("file:///{}", path_str);
+}
+
+std::string uri_to_path(LSPSpec::DocumentUri uri) {
+  auto decoded_uri = url_decode(uri);
+  if (str_util::starts_with(decoded_uri, "file:///")) {
+    decoded_uri = decoded_uri.substr(8);
+  }
+  return decoded_uri;
 }
 
 Workspace::Workspace(){};
@@ -52,6 +87,31 @@ bool Workspace::is_initialized() {
 
 void Workspace::set_initialized(bool new_value) {
   m_initialized = new_value;
+}
+
+Workspace::FileType Workspace::determine_filetype_from_languageid(const std::string& language_id) {
+  if (language_id == "opengoal") {
+    return FileType::OpenGOAL;
+  } else if (language_id == "opengoal-ir") {
+    return FileType::OpenGOALIR;
+  }
+  return FileType::Unsupported;
+}
+
+Workspace::FileType Workspace::determine_filetype_from_uri(const LSPSpec::DocumentUri& file_uri) {
+  if (str_util::ends_with(file_uri, ".gc")) {
+    return FileType::OpenGOAL;
+  } else if (str_util::ends_with(file_uri, "ir2.asm")) {
+    return FileType::OpenGOALIR;
+  }
+  return FileType::Unsupported;
+}
+
+std::optional<WorkspaceOGFile> Workspace::get_tracked_og_file(const LSPSpec::URI& file_uri) {
+  if (m_tracked_og_files.find(file_uri) == m_tracked_og_files.end()) {
+    return {};
+  }
+  return m_tracked_og_files[file_uri];
 }
 
 std::optional<WorkspaceIRFile> Workspace::get_tracked_ir_file(const LSPSpec::URI& file_uri) {
@@ -74,6 +134,77 @@ std::optional<DefinitionMetadata> Workspace::get_definition_info_from_all_types(
   return dts.symbol_metadata_map.at(symbol_name);
 }
 
+// TODO - a gross hack that should go away when the language isn't so tightly coupled to the jak
+// games
+//
+// This is bad because jak 2 now uses some code from the jak1 folder, and also wouldn't be able to
+// be determined (jak1 or jak2?) if we had a proper 'common' folder(s).
+std::optional<GameVersion> determine_game_version_from_uri(const LSPSpec::DocumentUri& uri) {
+  const auto path = uri_to_path(uri);
+  if (str_util::contains(path, "goal_src/jak1")) {
+    return GameVersion::Jak1;
+  } else if (str_util::contains(path, "goal_src/jak2")) {
+    return GameVersion::Jak2;
+  }
+  return {};
+}
+
+std::optional<SymbolInfo> Workspace::get_global_symbol_info(const WorkspaceOGFile& file,
+                                                            const std::string& symbol_name) {
+  if (m_compiler_instances.find(file.m_game_version) == m_compiler_instances.end()) {
+    lg::debug("Compiler not instantiated for game version - {}",
+              version_to_game_name(file.m_game_version));
+    return {};
+  }
+  const auto& compiler = m_compiler_instances[file.m_game_version].get();
+  const auto symbol_infos = compiler->lookup_exact_name_info(symbol_name);
+  if (!symbol_infos || symbol_infos->empty()) {
+    return {};
+  } else if (symbol_infos->size() > 1) {
+    // TODO - handle this (overriden methods is the main issue here)
+    lg::debug("Found symbol info, but found multiple infos - {}", symbol_infos->size());
+    return {};
+  }
+  const auto& symbol = symbol_infos->at(0);
+  return symbol;
+}
+
+std::optional<TypeSpec> Workspace::get_symbol_typespec(const WorkspaceOGFile& file,
+                                                       const std::string& symbol_name) {
+  if (m_compiler_instances.find(file.m_game_version) == m_compiler_instances.end()) {
+    lg::debug("Compiler not instantiated for game version - {}",
+              version_to_game_name(file.m_game_version));
+    return {};
+  }
+  const auto& compiler = m_compiler_instances[file.m_game_version].get();
+  const auto typespec = compiler->lookup_typespec(symbol_name);
+  if (typespec) {
+    return typespec;
+  }
+  return {};
+}
+
+std::optional<Docs::DefinitionLocation> Workspace::get_symbol_def_location(
+    const WorkspaceOGFile& file,
+    const SymbolInfo& symbol_info) {
+  if (m_compiler_instances.find(file.m_game_version) == m_compiler_instances.end()) {
+    lg::debug("Compiler not instantiated for game version - {}",
+              version_to_game_name(file.m_game_version));
+    return {};
+  }
+  const auto& compiler = m_compiler_instances[file.m_game_version].get();
+  std::optional<Docs::DefinitionLocation> def_loc;
+  const auto& goos_info = compiler->get_goos().reader.db.get_short_info_for(symbol_info.src_form());
+  if (goos_info) {
+    Docs::DefinitionLocation new_def_loc;
+    new_def_loc.filename = uri_from_path(goos_info->filename);
+    new_def_loc.line_idx = goos_info->line_idx_to_display;
+    new_def_loc.char_idx = goos_info->pos_in_line;
+    def_loc = new_def_loc;
+  }
+  return def_loc;
+}
+
 void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
                                     const std::string& language_id,
                                     const std::string& content) {
@@ -89,8 +220,35 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
         m_tracked_all_types_files[file.m_all_types_uri].parse_type_system();
       }
     }
+  } else if (language_id == "opengoal") {
+    auto game_version = determine_game_version_from_uri(file_uri);
+    if (!game_version) {
+      lg::debug("Could not determine game version from path - {}", file_uri);
+      return;
+    }
+    // TODO - this should happen on a separate thread so the LSP is not blocking during this lengthy
+    // step
+    if (m_compiler_instances.find(*game_version) == m_compiler_instances.end()) {
+      lg::debug(
+          "first time encountering a OpenGOAL file for game version - {}, initializing a compiler",
+          version_to_game_name(*game_version));
+      const auto project_path = file_util::try_get_project_path_from_path(uri_to_path(file_uri));
+      lg::debug("Detected project path - {}", project_path.value());
+      if (!file_util::setup_project_path(project_path)) {
+        lg::debug("unable to setup project path, not initializing a compiler");
+        return;
+      }
+      m_requester.send_progress_create_request("indexing-jak2", "Indexing - Jak 2");
+      m_compiler_instances.emplace(game_version.value(),
+                                   std::make_unique<Compiler>(game_version.value()));
+      // TODO - if this fails, annotate some errors, adjust progress
+      m_compiler_instances.at(*game_version)->run_front_end_on_string("(make-group \"all-code\")");
+      m_requester.send_progress_finish_request("indexing-jak2", "Indexed - Jak 2");
+    }
+    //  TODO - otherwise, just `ml` the file instead of rebuilding the entire thing
+    //  TODO - if the file fails to `ml`, annotate some errors
+    m_tracked_og_files[file_uri] = WorkspaceOGFile(content, *game_version);
   }
-  // TODO - only supporting IR files currently!
 }
 
 void Workspace::update_tracked_file(const LSPSpec::DocumentUri& file_uri,
@@ -131,6 +289,34 @@ void Workspace::stop_tracking_file(const LSPSpec::DocumentUri& file_uri) {
   }
 }
 
+WorkspaceOGFile::WorkspaceOGFile(const std::string& content, const GameVersion& game_version)
+    : m_game_version(game_version) {
+  m_lines = str_util::split(content);
+  lg::info("Added new OG file. {} lines with {} symbols and {} diagnostics", m_lines.size(),
+           m_symbols.size(), m_diagnostics.size());
+}
+
+std::optional<std::string> WorkspaceOGFile::get_symbol_at_position(
+    const LSPSpec::Position position) const {
+  // Split the line on typical word boundaries
+  std::string line = m_lines.at(position.m_line);
+  std::smatch matches;
+  std::regex regex("[\\w\\.\\-_!<>*?]+");
+  std::regex_token_iterator<std::string::iterator> rend;
+
+  std::regex_token_iterator<std::string::iterator> match(line.begin(), line.end(), regex);
+  while (match != rend) {
+    auto match_start = std::distance(line.begin(), match->first);
+    auto match_end = match_start + match->length();
+    if (position.m_character >= match_start && position.m_character <= match_end) {
+      return match->str();
+    }
+    match++;
+  }
+
+  return {};
+}
+
 WorkspaceIRFile::WorkspaceIRFile(const std::string& content) {
   // Get all lines of file
   std::string::size_type pos = 0;
@@ -151,7 +337,7 @@ WorkspaceIRFile::WorkspaceIRFile(const std::string& content) {
   find_function_symbol(m_lines.size() - 1, line);
   identify_diagnostics(m_lines.size() - 1, line);
 
-  lg::info("Added new file. {} lines with {} symbols and {} diagnostics", m_lines.size(),
+  lg::info("Added new IR file. {} lines with {} symbols and {} diagnostics", m_lines.size(),
            m_symbols.size(), m_diagnostics.size());
 }
 
@@ -273,7 +459,7 @@ void WorkspaceIRFile::identify_diagnostics(const uint32_t line_num_zero_based,
 }
 
 std::optional<std::string> WorkspaceIRFile::get_mips_instruction_at_position(
-    const LSPSpec::Position position) {
+    const LSPSpec::Position position) const {
   // Split the line on typical word boundaries
   std::string line = m_lines.at(position.m_line);
   std::smatch matches;
@@ -292,7 +478,7 @@ std::optional<std::string> WorkspaceIRFile::get_mips_instruction_at_position(
 }
 
 std::optional<std::string> WorkspaceIRFile::get_symbol_at_position(
-    const LSPSpec::Position position) {
+    const LSPSpec::Position position) const {
   // Split the line on typical word boundaries
   std::string line = m_lines.at(position.m_line);
   std::smatch matches;
