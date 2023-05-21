@@ -138,43 +138,36 @@ std::vector<ArgumentDocumentation> get_args_from_docstring(std::vector<GoalArg> 
   }
   auto lines = str_util::split(docstring);
   for (const auto& line : lines) {
-    if (str_util::starts_with(line, "@param")) {
+    const auto trimmed_line = str_util::ltrim(line);
+    if (str_util::starts_with(trimmed_line, "@param")) {
       // Get the info from the @param line
       const auto& tokens =
-          str_util::regex_get_capture_groups(line, "(@param.)\\s?([^\\s]*)\\s(.*)");
+          str_util::regex_get_capture_groups(trimmed_line, "(@param.)\\s?([^\\s]*)\\s(.*)");
       if (tokens.size() != 3) {
-        lg::warn("invalid docstring line - {}, skipping", line);
+        lg::warn("invalid docstring line - {}, skipping", trimmed_line);
         continue;
       }
       const auto& param_type = str_util::trim(tokens[0]);
       const auto& param_name = str_util::trim(tokens[1]);
       const auto& param_description = str_util::trim(tokens[2]);
-      // First, let's find the appropriate arg_doc -- if we can't, skip it as well!
-      std::optional<ArgumentDocumentation> find_arg_doc;
-      for (const auto& arg : arg_docs) {
+      // Locate the appropriate arg based on the name
+      for (auto& arg : arg_docs) {
         if (arg.name == param_name) {
-          find_arg_doc = arg;
+          arg.description = param_description;
+          if (param_type == "@param") {
+            // a normal arg, nothing fancy
+          } else if (param_type == "@param_") {
+            // it's unused
+            arg.is_unused = true;
+          } else if (param_type == "@param!") {
+            // the params value is mutated within the function body
+            arg.is_mutated = true;
+          } else if (param_type == "@param?") {
+            // the param is optional -- there are checks to see if it was provided or not so its
+            // safe to pass "nothing"
+            arg.is_optional = true;
+          }
         }
-      }
-      if (!find_arg_doc) {
-        lg::warn("@param name '{}', doesn't correspond with an arg name in line '{}', skipping",
-                 param_name, line);
-        continue;
-      }
-      auto& arg_doc = find_arg_doc.value();
-      arg_doc.description = param_description;
-      if (param_type == "@param") {
-        // a normal arg, nothing fancy
-      } else if (param_type == "@param_") {
-        // it's unused
-        arg_doc.is_unused = true;
-      } else if (param_type == "@param!") {
-        // the params value is mutated within the function body
-        arg_doc.is_mutated = true;
-      } else if (param_type == "@param?") {
-        // the param is optional -- there are checks to see if it was provided or not so its safe to
-        // pass "nothing"
-        arg_doc.is_optional = true;
       }
     }
   }

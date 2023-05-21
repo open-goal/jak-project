@@ -1,4 +1,4 @@
-// TODO - convert this a proper class
+// TODO - convert this to a proper class
 
 #include "third-party/json.hpp"
 
@@ -40,6 +40,7 @@ class InitializeResult {
                    {"completionProvider", completion_provider},
                    {"signatureHelpProvider", signature_help_provider},
                    {"definitionProvider", true},
+                   {"colorProvider", true},
                    {"referencesProvider", false},
                    {"documentHighlightProvider", false},
                    {"documentSymbolProvider",

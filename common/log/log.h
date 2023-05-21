@@ -40,7 +40,9 @@ void log_message(level log_level, LogTime& now, const char* message);
 void log_print(const char* message);
 }  // namespace internal
 
-void set_file(const std::string& filename, const bool should_rotate = true);
+void set_file(const std::string& filename,
+              const bool should_rotate = true,
+              const bool append = false);
 void set_flush_level(level log_level);
 void set_file_level(level log_level);
 void set_stdout_level(level log_level);

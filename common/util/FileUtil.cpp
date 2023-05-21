@@ -111,20 +111,21 @@ std::string get_current_executable_path() {
 #endif
 }
 
+std::optional<std::string> try_get_project_path_from_path(const std::string& path) {
+  std::string::size_type pos =
+      std::string(path).rfind("jak-project");  // Strip file path down to /jak-project/ directory
+  if (pos == std::string::npos) {
+    return {};
+  }
+  return std::string(path).substr(
+      0, pos + 11);  // + 12 to include "/jak-project" in the returned filepath
+}
+
 /*!
  * See if the current executable is somewhere in jak-project/. If so, return the path to jak-project
  */
 std::optional<std::string> try_get_jak_project_path() {
-  std::string my_path = get_current_executable_path();
-
-  std::string::size_type pos =
-      std::string(my_path).rfind("jak-project");  // Strip file path down to /jak-project/ directory
-  if (pos == std::string::npos) {
-    return {};
-  }
-
-  return std::make_optional(std::string(my_path).substr(
-      0, pos + 11));  // + 12 to include "/jak-project" in the returned filepath
+  return try_get_project_path_from_path(get_current_executable_path());
 }
 
 std::optional<fs::path> try_get_data_dir() {
