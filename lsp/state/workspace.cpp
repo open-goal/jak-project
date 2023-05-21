@@ -32,17 +32,50 @@ std::string url_encode(const std::string& value) {
   return escaped.str();
 }
 
+std::string url_decode(const std::string& input) {
+  std::ostringstream decoded;
+
+  for (std::size_t i = 0; i < input.length(); ++i) {
+    if (input[i] == '%') {
+      // Check if there are enough characters remaining
+      if (i + 2 < input.length()) {
+        // Convert the next two characters after '%' into an integer value
+        std::istringstream hexStream(input.substr(i + 1, 2));
+        int hexValue = 0;
+        hexStream >> std::hex >> hexValue;
+
+        // Append the decoded character to the result
+        decoded << static_cast<char>(hexValue);
+
+        // Skip the next two characters
+        i += 2;
+      }
+    } else if (input[i] == '+') {
+      // Replace '+' with space character ' '
+      decoded << ' ';
+    } else {
+      // Append the character as is
+      decoded << input[i];
+    }
+  }
+
+  return decoded.str();
+}
+
 LSPSpec::DocumentUri uri_from_path(fs::path path) {
-  // TODO - we have a util function for this now
-  std::string path_str = path.string();
-  // Replace slash type on windows
-#ifdef _WIN32
-  std::replace(path_str.begin(), path_str.end(), '\\', '/');
-#endif
+  auto path_str = file_util::convert_to_unix_path_separators(path.string());
   // vscode works with proper URL encoded URIs for file paths
   // which means we have to roll our own...
   path_str = url_encode(path_str);
   return fmt::format("file:///{}", path_str);
+}
+
+std::string uri_to_path(LSPSpec::DocumentUri uri) {
+  auto decoded_uri = url_decode(uri);
+  if (str_util::starts_with(decoded_uri, "file:///")) {
+    decoded_uri = decoded_uri.substr(8);
+  }
+  return decoded_uri;
 }
 
 Workspace::Workspace(){};
@@ -101,10 +134,29 @@ std::optional<DefinitionMetadata> Workspace::get_definition_info_from_all_types(
   return dts.symbol_metadata_map.at(symbol_name);
 }
 
-std::optional<SymbolInfo> Workspace::get_global_symbol_info(const std::string& symbol_name) {
-  // TODO -- assumptions happening here
-  auto game_version = GameVersion::Jak2;
-  const auto& compiler = m_compiler_instances[game_version].get();
+// TODO - a gross hack that should go away when the language isn't so tightly coupled to the jak
+// games
+//
+// This is bad because jak 2 now uses some code from the jak1 folder, and also wouldn't be able to
+// be determined (jak1 or jak2?) if we had a proper 'common' folder(s).
+std::optional<GameVersion> determine_game_version_from_uri(const LSPSpec::DocumentUri& uri) {
+  const auto path = uri_to_path(uri);
+  if (str_util::contains(path, "goal_src/jak1")) {
+    return GameVersion::Jak1;
+  } else if (str_util::contains(path, "goal_src/jak2")) {
+    return GameVersion::Jak2;
+  }
+  return {};
+}
+
+std::optional<SymbolInfo> Workspace::get_global_symbol_info(const WorkspaceOGFile& file,
+                                                            const std::string& symbol_name) {
+  if (m_compiler_instances.find(file.m_game_version) == m_compiler_instances.end()) {
+    lg::debug("Compiler not instantiated for game version - {}",
+              version_to_game_name(file.m_game_version));
+    return {};
+  }
+  const auto& compiler = m_compiler_instances[file.m_game_version].get();
   const auto symbol_infos = compiler->lookup_exact_name_info(symbol_name);
   if (!symbol_infos || symbol_infos->empty()) {
     return {};
@@ -117,10 +169,14 @@ std::optional<SymbolInfo> Workspace::get_global_symbol_info(const std::string& s
   return symbol;
 }
 
-std::optional<TypeSpec> Workspace::get_symbol_typespec(const std::string& symbol_name) {
-  // TODO -- assumptions happening here
-  auto game_version = GameVersion::Jak2;
-  const auto& compiler = m_compiler_instances[game_version].get();
+std::optional<TypeSpec> Workspace::get_symbol_typespec(const WorkspaceOGFile& file,
+                                                       const std::string& symbol_name) {
+  if (m_compiler_instances.find(file.m_game_version) == m_compiler_instances.end()) {
+    lg::debug("Compiler not instantiated for game version - {}",
+              version_to_game_name(file.m_game_version));
+    return {};
+  }
+  const auto& compiler = m_compiler_instances[file.m_game_version].get();
   const auto typespec = compiler->lookup_typespec(symbol_name);
   if (typespec) {
     return typespec;
@@ -129,10 +185,14 @@ std::optional<TypeSpec> Workspace::get_symbol_typespec(const std::string& symbol
 }
 
 std::optional<Docs::DefinitionLocation> Workspace::get_symbol_def_location(
+    const WorkspaceOGFile& file,
     const SymbolInfo& symbol_info) {
-  // TODO - assumptions!
-  auto game_version = GameVersion::Jak2;
-  const auto& compiler = m_compiler_instances[game_version].get();
+  if (m_compiler_instances.find(file.m_game_version) == m_compiler_instances.end()) {
+    lg::debug("Compiler not instantiated for game version - {}",
+              version_to_game_name(file.m_game_version));
+    return {};
+  }
+  const auto& compiler = m_compiler_instances[file.m_game_version].get();
   std::optional<Docs::DefinitionLocation> def_loc;
   const auto& goos_info = compiler->get_goos().reader.db.get_short_info_for(symbol_info.src_form());
   if (goos_info) {
@@ -161,29 +221,33 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
       }
     }
   } else if (language_id == "opengoal") {
-    // TODO - assuming jak 2 for now
-    auto game_version = GameVersion::Jak2;
+    auto game_version = determine_game_version_from_uri(file_uri);
+    if (!game_version) {
+      lg::debug("Could not determine game version from path - {}", file_uri);
+      return;
+    }
     // TODO - this should happen on a separate thread so the LSP is not blocking during this lengthy
     // step
-    if (m_compiler_instances.find(game_version) == m_compiler_instances.end()) {
-      // TODO - not safe, this asserts
+    if (m_compiler_instances.find(*game_version) == m_compiler_instances.end()) {
       lg::debug(
           "first time encountering a OpenGOAL file for game version - {}, initializing a compiler",
-          version_to_game_name(game_version));
-      // TODO - hardcoded for now
-      if (!file_util::setup_project_path("C:\\Users\\xtvas\\Repos\\opengoal\\jak-project")) {
+          version_to_game_name(*game_version));
+      const auto project_path = file_util::try_get_project_path_from_path(uri_to_path(file_uri));
+      lg::debug("Detected project path - {}", project_path.value());
+      if (!file_util::setup_project_path(project_path)) {
         lg::debug("unable to setup project path, not initializing a compiler");
         return;
       }
       m_requester.send_progress_create_request("indexing-jak2", "Indexing - Jak 2");
-      m_compiler_instances.emplace(game_version, std::make_unique<Compiler>(game_version));
-      // TODO - if this fails, annotate some errors
-      m_compiler_instances.at(game_version)->run_front_end_on_string("(make-group \"all-code\")");
+      m_compiler_instances.emplace(game_version.value(),
+                                   std::make_unique<Compiler>(game_version.value()));
+      // TODO - if this fails, annotate some errors, adjust progress
+      m_compiler_instances.at(*game_version)->run_front_end_on_string("(make-group \"all-code\")");
       m_requester.send_progress_finish_request("indexing-jak2", "Indexed - Jak 2");
     }
     //  TODO - otherwise, just `ml` the file instead of rebuilding the entire thing
     //  TODO - if the file fails to `ml`, annotate some errors
-    m_tracked_og_files[file_uri] = WorkspaceOGFile(content);
+    m_tracked_og_files[file_uri] = WorkspaceOGFile(content, *game_version);
   }
 }
 
@@ -225,7 +289,8 @@ void Workspace::stop_tracking_file(const LSPSpec::DocumentUri& file_uri) {
   }
 }
 
-WorkspaceOGFile::WorkspaceOGFile(const std::string& content) {
+WorkspaceOGFile::WorkspaceOGFile(const std::string& content, const GameVersion& game_version)
+    : m_game_version(game_version) {
   m_lines = str_util::split(content);
   lg::info("Added new OG file. {} lines with {} symbols and {} diagnostics", m_lines.size(),
            m_symbols.size(), m_diagnostics.size());

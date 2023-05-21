@@ -37,6 +37,7 @@ fs::path get_jak_project_dir();
 bool create_dir_if_needed(const fs::path& path);
 bool create_dir_if_needed_for_file(const std::string& path);
 bool create_dir_if_needed_for_file(const fs::path& path);
+std::optional<std::string> try_get_project_path_from_path(const std::string& path);
 bool setup_project_path(std::optional<fs::path> project_path_override);
 std::string get_file_path(const std::vector<std::string>& path);
 void write_binary_file(const std::string& name, const void* data, size_t size);

@@ -8,7 +8,7 @@
 #include "common/util/json_util.h"
 
 namespace LSPSpec {
-// TODO - eventually parse this
+
 typedef std::string URI;
 typedef std::string DocumentUri;
 

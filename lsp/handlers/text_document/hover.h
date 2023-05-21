@@ -193,7 +193,8 @@ std::optional<json> hover_handler(Workspace& workspace, int id, json raw_params)
       return {};
     }
     // TODO - there is an issue with docstrings and overridden methods
-    const auto& symbol_info = workspace.get_global_symbol_info(symbol.value());
+    const auto& symbol_info =
+        workspace.get_global_symbol_info(tracked_file.value(), symbol.value());
     if (!symbol_info) {
       lg::debug("hover - no symbol info - {}", symbol.value());
       return {};
@@ -228,14 +229,17 @@ std::optional<json> hover_handler(Workspace& workspace, int id, json raw_params)
       }
       signature += ")";
       if (symbol_info->kind() == SymbolInfo::Kind::FUNCTION &&
-          workspace.get_symbol_typespec(symbol.value())) {
-        signature += fmt::format(
-            ": {}", workspace.get_symbol_typespec(symbol.value())->last_arg().base_type());
+          workspace.get_symbol_typespec(tracked_file.value(), symbol.value())) {
+        signature +=
+            fmt::format(": {}", workspace.get_symbol_typespec(tracked_file.value(), symbol.value())
+                                    ->last_arg()
+                                    .base_type());
       } else if (symbol_info->kind() == SymbolInfo::Kind::METHOD) {
         signature += fmt::format(": {}", symbol_info->method_info().type.last_arg().base_type());
       }
-    } else if (workspace.get_symbol_typespec(symbol.value())) {
-      signature += fmt::format(": {}", workspace.get_symbol_typespec(symbol.value())->base_type());
+    } else if (workspace.get_symbol_typespec(tracked_file.value(), symbol.value())) {
+      signature += fmt::format(
+          ": {}", workspace.get_symbol_typespec(tracked_file.value(), symbol.value())->base_type());
     }
 
     std::string body = fmt::format("```opengoal\n{}\n```\n\n", signature);
@@ -256,7 +260,6 @@ std::optional<json> hover_handler(Workspace& workspace, int id, json raw_params)
       } else {
         param_line += fmt::format("*@param* `{}: {}`", arg.name, arg.type);
       }
-      // TODO - descriptions are all blank, whats going on?
       if (!arg.description.empty()) {
         param_line += fmt::format(" - {}\n\n", arg.description);
       } else {

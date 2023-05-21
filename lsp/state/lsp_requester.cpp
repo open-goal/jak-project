@@ -2,10 +2,10 @@
 
 #include <iostream>
 
-#include <common/util/string_util.h>
+#include "common/log/log.h"
+#include "common/util/string_util.h"
 
-#include <lsp/protocol/progress_report.h>
-#include <common/log/log.h>
+#include "lsp/protocol/progress_report.h"
 
 void LSPRequester::send_request(const json& params, const std::string& method) {
   json req;

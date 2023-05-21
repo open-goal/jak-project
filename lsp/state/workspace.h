@@ -17,7 +17,7 @@
 class WorkspaceOGFile {
  public:
   WorkspaceOGFile(){};
-  WorkspaceOGFile(const std::string& content);
+  WorkspaceOGFile(const std::string& content, const GameVersion& game_version);
   // TODO - make private
   int32_t version;
   // TODO - keep an AST of the file instead
@@ -97,9 +97,12 @@ class Workspace {
   std::optional<DefinitionMetadata> get_definition_info_from_all_types(
       const std::string& symbol_name,
       const LSPSpec::DocumentUri& all_types_uri);
-  std::optional<SymbolInfo> get_global_symbol_info(const std::string& symbol_name);
-  std::optional<TypeSpec> get_symbol_typespec(const std::string& symbol_name);
-  std::optional<Docs::DefinitionLocation> get_symbol_def_location(const SymbolInfo& symbol_info);
+  std::optional<SymbolInfo> get_global_symbol_info(const WorkspaceOGFile& file,
+                                                   const std::string& symbol_name);
+  std::optional<TypeSpec> get_symbol_typespec(const WorkspaceOGFile& file,
+                                              const std::string& symbol_name);
+  std::optional<Docs::DefinitionLocation> get_symbol_def_location(const WorkspaceOGFile& file,
+                                                                  const SymbolInfo& symbol_info);
 
  private:
   LSPRequester m_requester;
