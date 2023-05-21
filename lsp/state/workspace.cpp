@@ -106,7 +106,11 @@ std::optional<SymbolInfo> Workspace::get_global_symbol_info(const std::string& s
   auto game_version = GameVersion::Jak2;
   const auto& compiler = m_compiler_instances[game_version].get();
   const auto symbol_infos = compiler->lookup_exact_name_info(symbol_name);
-  if (!symbol_infos || symbol_infos->size() > 1 || symbol_infos->empty()) {
+  if (!symbol_infos || symbol_infos->empty()) {
+    return {};
+  } else if (symbol_infos->size() > 1) {
+    // TODO - handle this (overriden methods is the main issue here)
+    lg::debug("Found symbol info, but found multiple infos - {}", symbol_infos->size());
     return {};
   }
   const auto& symbol = symbol_infos->at(0);
@@ -231,9 +235,8 @@ std::optional<std::string> WorkspaceOGFile::get_symbol_at_position(
     const LSPSpec::Position position) const {
   // Split the line on typical word boundaries
   std::string line = m_lines.at(position.m_line);
-  lg::debug("og symbol @ pos - {}:{}", line, position.m_line);
   std::smatch matches;
-  std::regex regex("[\\w\\.\\-_!<>*]+");
+  std::regex regex("[\\w\\.\\-_!<>*?]+");
   std::regex_token_iterator<std::string::iterator> rend;
 
   std::regex_token_iterator<std::string::iterator> match(line.begin(), line.end(), regex);

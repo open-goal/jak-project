@@ -158,6 +158,19 @@ std::optional<LSPSpec::Hover> hover_handler_ir(Workspace& workspace,
   }
 }
 
+std::string truncate_docstring(const std::string& docstring) {
+  std::string truncated = "";
+  const auto lines = str_util::split(docstring);
+  for (const auto& line : lines) {
+    const auto trimmed_line = str_util::ltrim(line);
+    if (str_util::starts_with(trimmed_line, "@")) {
+      break;
+    }
+    truncated += trimmed_line + "\n";
+  }
+  return truncated;
+}
+
 std::optional<json> hover_handler(Workspace& workspace, int id, json raw_params) {
   auto params = raw_params.get<LSPSpec::TextDocumentPositionParams>();
   auto file_type = workspace.determine_filetype_from_uri(params.m_textDocument.m_uri);
@@ -176,10 +189,13 @@ std::optional<json> hover_handler(Workspace& workspace, int id, json raw_params)
     // TODO - replace with AST usage instead of figuring out the symbol ourselves
     const auto symbol = tracked_file->get_symbol_at_position(params.m_position);
     if (!symbol) {
+      lg::debug("hover - no symbol");
       return {};
     }
+    // TODO - there is an issue with docstrings and overridden methods
     const auto& symbol_info = workspace.get_global_symbol_info(symbol.value());
     if (!symbol_info) {
+      lg::debug("hover - no symbol info - {}", symbol.value());
       return {};
     }
     LSPSpec::MarkupContent markup;
@@ -224,6 +240,9 @@ std::optional<json> hover_handler(Workspace& workspace, int id, json raw_params)
 
     std::string body = fmt::format("```opengoal\n{}\n```\n\n", signature);
     body += "___\n\n";
+    if (!symbol_info->meta().docstring.empty()) {
+      body += truncate_docstring(symbol_info->meta().docstring) + "\n\n";
+    }
 
     // TODO - support @see/@returns/[[reference]]
     for (const auto& arg : args) {
