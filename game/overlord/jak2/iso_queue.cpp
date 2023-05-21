@@ -507,36 +507,25 @@ LAB_0000711c:
 }
 
 CmdHeader* GetMessage() {
-  CmdHeader* pCVar1;
-  int iVar2;
-  CmdHeader** ppCVar3;
-  PriStackEntry* iVar4;
-  int iVar5;
+  for (int pri = (N_PRIORITIES - 1); pri >= 0; pri--) {
+    auto pse = &gPriStack[pri];
+    int idx = pse->count;
 
-  iVar5 = 3;
-  iVar4 = gPriStack + 3;
-  do {
-    iVar2 = iVar4->count + -1;
-    if (-1 < iVar2) {
-      ppCVar3 = iVar4->entries + iVar4->count + -1;
-      do {
-        pCVar1 = *ppCVar3;
-        if ((((pCVar1->lse != (LoadStackEntry*)0x0) && (pCVar1->status == -1)) &&
-             (pCVar1->unk_24 != 0)) &&
-            ((pCVar1->callback_buffer == (Buffer*)0x0 ||
-              (pCVar1->callback_buffer->next == (Buffer*)0x0)))) {
-          return pCVar1;
+    for (idx = idx - 1; idx >= 0; idx--) {
+      auto cmd = pse->entries[idx];
+
+      if (cmd->lse && (u32)cmd->status == CMD_STATUS_IN_PROGRESS && cmd->ready_for_data) {
+        if (cmd->callback_buffer == nullptr) {
+          return cmd;
         }
-        iVar2 = iVar2 + -1;
-        ppCVar3 = ppCVar3 + -1;
-      } while (-1 < iVar2);
+        if (cmd->callback_buffer->next == nullptr) {
+          return cmd;
+        }
+      }
     }
-    iVar5 = iVar5 + -1;
-    iVar4 = iVar4 + -1;
-    if (iVar5 < 0) {
-      return (CmdHeader*)0x0;
-    }
-  } while (true);
+  }
+
+  return nullptr;
 }
 
 void ProcessMessageData() {
@@ -556,7 +545,7 @@ void ProcessMessageData() {
       ppCVar5 = iVar6->entries + iVar6->count + -1;
       do {
         pCVar2 = *ppCVar5;
-        if ((pCVar2 != (CmdHeader*)0x0) && (pCVar2->unk_24 != 0)) {
+        if ((pCVar2 != (CmdHeader*)0x0) && (pCVar2->ready_for_data != 0)) {
           iVar1 = pCVar2->status;
           if (iVar1 == -1) {
             pBVar3 = pCVar2->callback_buffer;

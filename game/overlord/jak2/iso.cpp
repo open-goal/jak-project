@@ -224,18 +224,7 @@ void IsoQueueVagStream(VagCmd* cmd, int param_2) {
     }
 
     // copy data from the other command to us.
-    new_cmd->header.unk_0 = cmd->header.unk_0;
-    new_cmd->header.unk_4 = cmd->header.unk_4;
-    new_cmd->header.cmd_kind = cmd->header.cmd_kind;
-    new_cmd->header.status = cmd->header.status;
-
-    new_cmd->header.mbx_to_reply = cmd->header.mbx_to_reply;
-    new_cmd->header.thread_id = cmd->header.thread_id;
-    new_cmd->header.unk_24 = cmd->header.unk_24;
-    new_cmd->header.callback_buffer = cmd->header.callback_buffer;
-
-    new_cmd->header.callback = cmd->header.callback;
-    new_cmd->header.lse = cmd->header.lse;
+    new_cmd->header = cmd->header;
 
     new_cmd->file_record = cmd->file_record;
     new_cmd->vag_dir_entry = cmd->vag_dir_entry;
@@ -472,7 +461,7 @@ u32 ISOThread() {
     if (iVar4 == 0) {
       iVar4 = (local_30->header).cmd_kind;
       (local_30->header).callback_buffer = (Buffer*)nullptr;
-      (local_30->header).unk_24 = 1;
+      (local_30->header).ready_for_data = 1;
       (local_30->header).callback = NullCallback;
       (local_30->header).lse = (LoadStackEntry*)nullptr;
       if (iVar4 - 0x100U < 3) {

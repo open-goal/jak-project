@@ -164,7 +164,7 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
                                    param_1->spu_stream_dma_mem_addr + 0x2000, param_1, 0);
       if (iVar2 == 0)
         goto LAB_0000fecc;
-      (param_1->header).unk_24 = 0;
+      (param_1->header).ready_for_data = 0;
       goto LAB_0000fbdc;
     }
     if ((uVar3 & 1) != 0) {
@@ -194,7 +194,7 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
                                    param_1->spu_stream_dma_mem_addr + 0x2000, param_1, 0);
       if (iVar2 == 0)
         goto LAB_0000fecc;
-      (param_1->header).unk_24 = 0;
+      (param_1->header).ready_for_data = 0;
       goto LAB_0000fbdc;
     }
     iVar4 = param_1->xfer_size;
@@ -223,7 +223,7 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
                                  param_1, 0);
     if (iVar2 == 0)
       goto LAB_0000fecc;
-    (param_1->header).unk_24 = 0;
+    (param_1->header).ready_for_data = 0;
     iVar2 = 0x2000;
     if (pRVar7 != 0x0) {
       iVar2 = 0x4000;
@@ -774,25 +774,25 @@ int CheckVAGStreamProgress(VagCmd* param_1) {
           pRVar4->unk_268 = 1;
         }
       }
-      (param_1->header).unk_24 = 0;
+      (param_1->header).ready_for_data = 0;
       // CpuResumeIntr(local_18[0]);
       uVar1 = 1;
     }
   } else {
   LAB_00010d58:
     uVar1 = 1;
-    if ((((param_1->sb_playing != '\0') && (uVar1 = 1, (param_1->header).unk_24 == 0)) &&
+    if ((((param_1->sb_playing != '\0') && (uVar1 = 1, (param_1->header).ready_for_data == 0)) &&
          param_1->safe_to_change_dma_fields) &&
         (uVar1 = 1, param_1->unk_268 == 0)) {
       if (uVar3 < 0x2000) {
         uVar1 = 1;
         if ((param_1->num_processed_chunks & 1U) != 0) {
-          (param_1->header).unk_24 = 1;
+          (param_1->header).ready_for_data = 1;
         }
       } else {
         uVar1 = 1;
         if ((param_1->num_processed_chunks & 1U) == 0) {
-          (param_1->header).unk_24 = 1;
+          (param_1->header).ready_for_data = 1;
         }
       }
     }
@@ -821,7 +821,7 @@ u32 CheckVagStreamsProgress() {
           pRVar2 = (VagCmd*)*ppCVar6;
           if (pRVar2 != 0x0) {
             if ((pRVar2->header).status == -1) {
-              if ((((pRVar2->header).unk_24 != 0) &&
+              if ((((pRVar2->header).ready_for_data != 0) &&
                    (pBVar4 = (pRVar2->header).callback_buffer, pBVar4 != (Buffer*)0x0)) &&
                   ((pRVar2->header).callback == ProcessVAGData)) {
                 iVar1 = ProcessVAGData(&pRVar2->header, pBVar4);
@@ -854,7 +854,7 @@ u32 CheckVagStreamsProgress() {
     do {
       if (((cmd_iter->sb_playing != '\0') ||
            ((cmd_iter->byte4 != '\0' && (cmd_iter->byte6 != '\0')))) ||
-          ((cmd_iter->header.unk_24 == 1 && (cmd_iter->id != 0)))) {
+          ((cmd_iter->header.ready_for_data == 1 && (cmd_iter->id != 0)))) {
         iVar1 = CheckVAGStreamProgress(pRVar2);
         if (iVar1 == 0) {
           if (cmd_iter->byte11 == '\0') {
@@ -990,7 +990,7 @@ void ProcessStreamData(void) {
       pRVar2 = (VagCmd*)*ppCVar5;
       if (pRVar2 != 0x0) {
         if ((pRVar2->header).status == -1) {
-          if ((((pRVar2->header).unk_24 != 0) &&
+          if ((((pRVar2->header).ready_for_data != 0) &&
                (pBVar3 = (pRVar2->header).callback_buffer, pBVar3 != (Buffer*)0x0)) &&
               ((pRVar2->header).callback == ProcessVAGData)) {
             iVar1 = ProcessVAGData(&pRVar2->header, pBVar3);
