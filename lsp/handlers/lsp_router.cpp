@@ -7,6 +7,7 @@
 #include "text_document/completion.h"
 #include "text_document/document_symbol.h"
 #include "text_document/document_synchronization.h"
+#include "text_document/document_color.h"
 #include "text_document/go_to.h"
 #include "text_document/hover.h"
 
@@ -44,10 +45,13 @@ void LSPRouter::init_routes() {
   m_routes["textDocument/hover"] = LSPRoute(hover_handler);
   m_routes["textDocument/definition"] = LSPRoute(go_to_definition_handler);
   m_routes["textDocument/completion"] = LSPRoute(get_completions_handler);
+  m_routes["textDocument/documentColor"] = LSPRoute(document_color_handler);
+  // TODO - m_routes["textDocument/signatureHelp"] = LSPRoute(get_completions_handler);
   // Not Yet Supported Routes, noops
   m_routes["$/cancelRequest"] = LSPRoute();
   m_routes["textDocument/documentLink"] = LSPRoute();
   m_routes["textDocument/codeLens"] = LSPRoute();
+  m_routes["textDocument/colorPresentation"] = LSPRoute();
 }
 
 json error_resp(ErrorCodes error_code, const std::string& error_message) {
