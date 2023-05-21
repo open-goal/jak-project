@@ -33,8 +33,8 @@ u32 NextBuffer = 0;
 u32 AllocdStrBuffersCount = 0;
 u32 NextStrBuffer = 0;
 int sSema = 0;
-int vag_cmd_cnt = 0;
-VagCmd vag_cmds[16];
+u32 vag_cmd_cnt = 0;
+VagCmd vag_cmds[N_VAG_CMDS];
 u32 vag_cmd_used = 0;
 u32 max_vag_cmd_cnt = 0;
 
@@ -607,71 +607,70 @@ void ReturnMessage(CmdHeader* param_1) {
 }
 
 VagCmd* GetVAGCommand() {
-  int iVar1;
-  u32 uVar2;
-  VagCmd* pRVar3;
-
-  do {
-    while (vag_cmd_cnt == 0x1f) {
+  while (true) {
+    while (vag_cmd_cnt == 31) {
       DelayThread(100);
     }
-    do {
-      iVar1 = WaitSema(sSema);
-      uVar2 = 0;
-      pRVar3 = vag_cmds;
-    } while (iVar1 != 0);
-    do {
-      if (((int)vag_cmd_used >> (uVar2 & 0x1f) & 1U) == 0) {
-        vag_cmd_used = vag_cmd_used | 1 << (uVar2 & 0x1f);
-        vag_cmd_cnt = vag_cmd_cnt + 1;
-        if ((int)max_vag_cmd_cnt < vag_cmd_cnt) {
+
+    while (WaitSema(sSema))
+      ;
+
+    for (int i = 0; i < 31; i++) {
+      // scan bits for free entry
+      if (((vag_cmd_used >> i) & 1) == 0) {
+        vag_cmd_used |= 1 << i;
+
+        vag_cmd_cnt++;
+        if (max_vag_cmd_cnt < vag_cmd_cnt) {
           max_vag_cmd_cnt = vag_cmd_cnt;
         }
+
         SignalSema(sSema);
-        return pRVar3;
+        return &vag_cmds[i];
       }
-      uVar2 = uVar2 + 1;
-      pRVar3 = pRVar3 + 1;
-    } while ((int)uVar2 < 0x1f);
-    SignalSema(sSema);
-  } while (true);
-}
+    }
 
-void FreeVAGCommand(VagCmd* param_1) {
-  int iVar1;
-  u32 uVar2;
-
-  // uVar2 = (param_1 + -0x17e50) * 0x781948b1 >> 2;
-  // kinda sus
-  uVar2 = (param_1 - vag_cmds) / sizeof(VagCmd);
-  if ((uVar2 < 0x1f) && (((int)vag_cmd_used >> (uVar2 & 0x1f) & 1U) != 0)) {
-    do {
-      iVar1 = WaitSema(sSema);
-    } while (iVar1 != 0);
-    vag_cmd_used = vag_cmd_used & ~(1 << (uVar2 & 0x1f));
-    vag_cmd_cnt = vag_cmd_cnt + -1;
     SignalSema(sSema);
   }
 }
 
-uint8_t* CheckForIsoPageBoundaryCrossing(Buffer* param_1) {
-  Page* new_page;
-  uint8_t* iVar1;
-  uint8_t* our_ptr;
-  uint8_t* page_end;
+void FreeVAGCommand(VagCmd* cmd) {
+  u32 vag_idx;
 
-  our_ptr = param_1->decomp_buffer;
-  page_end = (uint8_t*)param_1->page->ptr;
+  // get array index
+  vag_idx = (cmd - vag_cmds) / sizeof(VagCmd);
+
+  if ((vag_idx < 0x1f) && ((vag_cmd_used >> vag_idx) & 1U) != 0) {
+    while (WaitSema(sSema))
+      ;
+
+    vag_cmd_used &= ~(1 << vag_idx);
+    --vag_cmd_cnt;
+
+    SignalSema(sSema);
+  }
+}
+
+u8* CheckForIsoPageBoundaryCrossing(Buffer* buf) {
+  Page* new_page;
+  u8* new_buffer;
+  u8* our_ptr;
+  u8* page_end;
+
+  our_ptr = buf->decomp_buffer;
+  page_end = buf->page->ptr;
+
   if (page_end <= our_ptr) {
-    new_page = StepTopPage(param_1->plist, param_1->page);
-    param_1->page = new_page;
-    if (new_page != (Page*)0x0) {
-      iVar1 = new_page->buffer;
-      param_1->unk_12 = iVar1;
-      param_1->decomp_buffer = page_end + (iVar1 - (our_ptr + -1));
+    new_page = StepTopPage(buf->plist, buf->page);
+    buf->page = new_page;
+    if (new_page != nullptr) {
+      new_buffer = new_page->buffer;
+      buf->unk_12 = new_buffer;
+      buf->decomp_buffer = page_end + (new_buffer - (our_ptr + -1));
     }
   }
-  return param_1->decomp_buffer;
+
+  return buf->decomp_buffer;
 }
 
 void FreeDataBuffer(u32* param_1, u32 buffer_idx) {
