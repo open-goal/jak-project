@@ -3,11 +3,11 @@
 #include <optional>
 #include <regex>
 
+#include "goalc/compiler/docs/DocTypes.h"
 #include "lsp/protocol/common_types.h"
 #include "lsp/protocol/hover.h"
 #include "lsp/state/data/mips_instructions.h"
 #include "lsp/state/workspace.h"
-#include <goalc/compiler/docs/DocTypes.h>
 
 bool is_number(const std::string& s) {
   return !s.empty() && std::find_if(s.begin(), s.end(),
@@ -202,8 +202,13 @@ std::optional<json> hover_handler(Workspace& workspace, int id, json raw_params)
     signature += symbol.value();
     if (takes_args) {
       signature += "(";
-      for (const auto& arg : args) {
-        signature += fmt::format("{}: {}", arg.name, arg.type);
+      for (int i = 0; i < args.size(); i++) {
+        const auto& arg = args.at(i);
+        if (i == args.size() - 1) {
+          signature += fmt::format("{}: {}", arg.name, arg.type);
+        } else {
+          signature += fmt::format("{}: {}, ", arg.name, arg.type);
+        }
       }
       signature += ")";
       if (symbol_info->kind() == SymbolInfo::Kind::FUNCTION &&
@@ -211,7 +216,7 @@ std::optional<json> hover_handler(Workspace& workspace, int id, json raw_params)
         signature += fmt::format(
             ": {}", workspace.get_symbol_typespec(symbol.value())->last_arg().base_type());
       } else if (symbol_info->kind() == SymbolInfo::Kind::METHOD) {
-        signature += fmt::format(": {}", symbol_info->method_info().type.base_type());
+        signature += fmt::format(": {}", symbol_info->method_info().type.last_arg().base_type());
       }
     } else if (workspace.get_symbol_typespec(symbol.value())) {
       signature += fmt::format(": {}", workspace.get_symbol_typespec(symbol.value())->base_type());
@@ -232,12 +237,13 @@ std::optional<json> hover_handler(Workspace& workspace, int id, json raw_params)
       } else {
         param_line += fmt::format("*@param* `{}: {}`", arg.name, arg.type);
       }
+      // TODO - descriptions are all blank, whats going on?
       if (!arg.description.empty()) {
-        param_line += fmt::format(" - {}\n", arg.description);
+        param_line += fmt::format(" - {}\n\n", arg.description);
+      } else {
+        param_line += "\n\n";
       }
-      if (!param_line.empty()) {
-        body += param_line;
-      }
+      body += param_line;
     }
 
     markup.m_value = body;

@@ -72,7 +72,7 @@ enum class CompletionItemKind {
 /// Completion item tags are extra annotations that tweak the rendering of a completion item.
 enum class CompletionItemTag {
   /// Render a completion as obsolete, usually using a strike-out.
-  Deprecated  = 1
+  Deprecated = 1
 };
 
 struct CompletionItem {

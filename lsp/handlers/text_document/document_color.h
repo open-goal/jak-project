@@ -8,8 +8,8 @@
 #include "lsp/protocol/document_color.h"
 
 float hexToFloat(const std::string& hex) {
-    int value = std::stoi(hex, nullptr, 16);
-    return static_cast<float>(value) / 255.0f;
+  int value = std::stoi(hex, nullptr, 16);
+  return static_cast<float>(value) / 255.0f;
 }
 
 std::optional<LSPSpec::Color> color_hexstring_to_lsp_color(const std::string& color_name) {
@@ -25,7 +25,7 @@ std::optional<LSPSpec::Color> color_hexstring_to_lsp_color(const std::string& co
   float red = hexToFloat(red_hex);
   float green = hexToFloat(green_hex);
   float blue = hexToFloat(blue_hex);
-  
+
   return LSPSpec::Color{red, green, blue, 1.0};
 }
 

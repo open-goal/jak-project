@@ -10,7 +10,6 @@ add_executable(lsp
   protocol/document_diagnostics.cpp
   protocol/hover.cpp
   protocol/document_color.cpp
-  protocol/signature.cpp
   state/data/mips_instruction.cpp)
 
 target_link_libraries(lsp common decomp compiler tree-sitter)
