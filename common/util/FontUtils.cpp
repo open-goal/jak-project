@@ -42,6 +42,10 @@ const std::string& get_text_version_name(GameTextVersion version) {
   throw std::runtime_error(fmt::format("invalid text version {}", fmt::underlying(version)));
 }
 
+GameTextVersion get_text_version_from_name(const std::string& name) {
+  return sTextVerEnumMap.at(name);
+}
+
 GameTextFontBank::GameTextFontBank(GameTextVersion version,
                                    std::vector<EncodeInfo>* encode_info,
                                    std::vector<ReplaceInfo>* replace_info,
