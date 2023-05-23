@@ -753,6 +753,11 @@
       ;; write the vag name (64 bits) into the string directly and add a null character
       (set! (-> (the (pointer uint64) (-> *temp-string* data))) (-> *vagdir-names-list* i))
       (set! (-> *temp-string* data 8) 0)
+      (countdown (ii 8)
+        (if (!= #x20 (-> *temp-string* data ii))
+            (set! ii 0)
+            (set! (-> *temp-string* data ii) 0))
+        )
 
       ;; copy into a new string
       (set! (-> list i) (new 'debug 'string 0 *temp-string*)))
@@ -821,7 +826,7 @@
                                   (format *stdcon* "Vag: ~S <- ~S(max:~3L~D~0L) -> ~S~%" (if (> idx 0) (-> *vag-list* (1- idx)))
                                                                                          (-> *vag-list* idx) (-> *vag-max-pos-list* idx)
                                                                                          (if (< (1+ idx) (-> *vag-list* allocated-length)) (-> *vag-list* (1+ idx))))
-                                  (format *stdcon* "X to Pause and Play~%R1 and L1 for Speed, Circle Resets~%Left and Right for Prev / Next~%")
+                                  (format *stdcon* "X to Pause and Play~%R1 and L1 for Speed, Circle Resets~%Left and Right for Prev / Next~%Square for Subtitles (~A)~%" (-> *setting-control* user-default subtitle))
                                   (format *stdcon* "Speed: ~f~%" speed)
                                   (cond
                                     ((cpad-pressed? 0 triangle)
@@ -872,7 +877,8 @@
                                       (cpad-clear! 0 circle)
                                       (set! speed 0.0))
                                     ((cpad-pressed? 0 square)
-                                      (cpad-clear! 0 square))
+                                      (cpad-clear! 0 square)
+                                      (not! (-> *setting-control* user-default subtitle)))
                                     )
                                   (when (playing? id)
                                     (max! (-> *vag-max-pos-list* idx) (the int (/ (the float (current-str-pos id)) 34.133335)))

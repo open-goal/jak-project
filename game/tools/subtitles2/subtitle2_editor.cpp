@@ -272,6 +272,10 @@ void Subtitle2Editor::draw_all_scenes(bool base_cutscenes) {
       draw_subtitle_options(scene);
       ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
       if (ImGui::Button("Delete")) {
+        if (&scene == m_current_scene || name == m_current_scene_name) {
+          m_current_scene = nullptr;
+          m_current_scene_name = "";
+        }
         to_delete.insert(name);
       }
       ImGui::PopStyleColor();

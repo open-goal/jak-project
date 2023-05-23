@@ -101,7 +101,7 @@ void to_json(json& j, const Subtitle2Scene& obj) {
     to_json(l, line);
     lines.push_back(l);
   }
-  j["lines"] = lines;
+  j["lines"] = obj.lines.size() == 0 ? json::array({}) : lines;
 }
 void from_json(const json& j, Subtitle2Scene& obj) {
   for (auto& kv : j.at("lines").items()) {
@@ -111,7 +111,7 @@ void from_json(const json& j, Subtitle2Scene& obj) {
 }
 void to_json(json& j, const GameSubtitle2Bank& obj) {
   j = json{{"speakers", obj.speakers}, {"lang", obj.lang}};
-  json scenes;
+  json scenes = json::object({});
   for (const auto& [name, scene] : obj.scenes) {
     json s;
     to_json(s, scene);
