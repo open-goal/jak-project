@@ -67,6 +67,8 @@ void from_json(const json& j, GameSubtitle2Bank& obj);
 
 class GameSubtitle2DB {
  public:
+  GameSubtitle2DB(GameVersion version) : m_version(version) {}
+
   const std::map<int, std::shared_ptr<GameSubtitle2Bank>>& banks() const { return m_banks; }
 
   bool bank_exists(int id) const { return m_banks.find(id) != m_banks.end(); }
@@ -85,6 +87,11 @@ class GameSubtitle2DB {
 
   std::map<int, std::shared_ptr<GameSubtitle2Bank>> m_banks;
   std::unique_ptr<GameSubtitle2Bank> m_subtitle_groups;
+
+  GameVersion version() const { return m_version; }
+
+ private:
+  GameVersion m_version;
 };
 
 struct GameSubtitle2DefinitionFile {

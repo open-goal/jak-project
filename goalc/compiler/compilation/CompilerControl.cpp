@@ -103,6 +103,18 @@ Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Objec
     db.m_subtitle_groups = std::make_unique<GameSubtitleGroups>();
     db.m_subtitle_groups->hydrate_from_asset_file();
     compile_game_subtitle(inputs, db, m_make.compiler_output_prefix());
+  } else if (kind == "subtitle2") {
+    std::vector<GameSubtitle2DefinitionFile> inputs;
+    // open all project files specified (usually one).
+    for_each_in_list(args.named.at("files"), [this, &inputs, &form, &kind](const goos::Object& o) {
+      if (o.is_string()) {
+        open_subtitle2_project(kind, o.as_string()->data, inputs);
+      } else {
+        throw_compiler_error(form, "Invalid object {} in asm-text-file files list.", o.print());
+      }
+    });
+    GameSubtitle2DB db(m_version);
+    compile_game_subtitle2(inputs, db, m_make.compiler_output_prefix());
   } else if (kind == "text") {
     std::vector<GameTextDefinitionFile> inputs;
     // open all project files specified (usually one).

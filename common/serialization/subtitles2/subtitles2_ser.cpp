@@ -174,7 +174,7 @@ void open_subtitle2_project(const std::string& kind,
 
 GameSubtitle2DB load_subtitle2_project(GameVersion game_version) {
   // Load the subtitle files
-  GameSubtitle2DB db;
+  GameSubtitle2DB db(game_version);
   try {
     goos::Reader reader;
     std::vector<GameSubtitle2DefinitionFile> files;

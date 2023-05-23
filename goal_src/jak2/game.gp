@@ -339,6 +339,11 @@
          "$OUT/iso/7COMMON.TXT")
   )
 
+(defstep :in "game/assets/jak2/game_subtitle.gp"
+  :tool 'subtitle2
+  :out '("$OUT/iso/0SUBTI2.TXT")
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ISO Group
 ;;;;;;;;;;;;;;;;;;;;;
@@ -346,6 +351,14 @@
 
 (group-list "iso"
  `("$OUT/iso/0COMMON.TXT"
+   "$OUT/iso/1COMMON.TXT"
+   "$OUT/iso/2COMMON.TXT"
+   "$OUT/iso/3COMMON.TXT"
+   "$OUT/iso/4COMMON.TXT"
+   "$OUT/iso/5COMMON.TXT"
+   "$OUT/iso/6COMMON.TXT"
+   "$OUT/iso/7COMMON.TXT"
+   "$OUT/iso/0SUBTI2.TXT"
    "$OUT/iso/TWEAKVAL.MUS"
    "$OUT/iso/VAGDIR.AYB"
    ,@(reverse *all-vis*)
@@ -358,6 +371,13 @@
 
 (group-list "text"
  `("$OUT/iso/0COMMON.TXT"
+   "$OUT/iso/1COMMON.TXT"
+   "$OUT/iso/2COMMON.TXT"
+   "$OUT/iso/3COMMON.TXT"
+   "$OUT/iso/4COMMON.TXT"
+   "$OUT/iso/5COMMON.TXT"
+   "$OUT/iso/6COMMON.TXT"
+   "$OUT/iso/7COMMON.TXT"
    "$OUT/iso/0SUBTI2.TXT"
    )
  )
@@ -368,6 +388,8 @@
   )
 
 (group "engine"
+       "$OUT/iso/0COMMON.TXT"
+       "$OUT/iso/0SUBTI2.TXT"
        "$OUT/iso/KERNEL.CGO"
        "$OUT/iso/GAME.CGO"
        )

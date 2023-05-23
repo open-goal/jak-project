@@ -137,7 +137,7 @@
    (version int16)
    (lang    pc-subtitle-lang)
    (speaker-length  int16)
-   (speaker-names   (array string))
+   (speaker-names   (pointer string))
    (data    subtitle2-scene :inline :dynamic)
    )
 
@@ -178,7 +178,6 @@
 (deftype subtitle2-queue-element (structure)
   ((id    sound-id)
    (gui   gui-connection)
-   (lines subtitle2-line 2)
    )
   
   (:methods
@@ -389,8 +388,6 @@
 
   (set! (-> obj gui) #f)
   (set! (-> obj id) (new 'static 'sound-id))
-  (set! (-> obj lines 0) #f)
-  (set! (-> obj lines 1) #f)
   0)
 
 (defmethod clear-queue subtitle2 ((obj subtitle2))
@@ -522,15 +519,15 @@
       (return 0))
   
   ;; check the gui queue for lines to add to the line queue
-  (let* ((new-line-queue-idx (mod (1+ (-> self line-queue-idx)) 2))
-         (line-queue-old (if (zero? (-> self line-queue-idx)) (-> self lines-0) (-> self lines-1)))
-         (line-queue (if (zero? new-line-queue-idx) (-> self lines-0) (-> self lines-1)))
-         (find-line (lambda ((queue (pointer subtitle2-line)) (line subtitle2-line))
-                        (dotimes (i PC_SUBTITLE_MAX_LINES)
-                          (if (= line (-> queue i))
-                              (return i)))
-                        -1)))
-  (set! (-> self line-queue-idx) new-line-queue-idx)
+  (let ((line-queue-old (if (zero? (-> self line-queue-idx)) (-> self lines-0) (-> self lines-1)))
+        (line-queue     (if (zero? (-> self line-queue-idx)) (-> self lines-1) (-> self lines-0)))
+
+        (find-line (lambda ((queue (pointer subtitle2-line)) (line subtitle2-line))
+                       (dotimes (i PC_SUBTITLE_MAX_LINES)
+                         (if (= line (-> queue i))
+                             (return i)))
+                       -1)))
+  (set! (-> self line-queue-idx) (mod (1+ (-> self line-queue-idx)) 2))
   ;; clear the queue we're writing to first
   (dotimes (i PC_SUBTITLE_MAX_LINES)
     (set! (-> line-queue i) #f))
@@ -541,21 +538,26 @@
   (dotimes (i PC_SUBTITLE_QUEUE_SIZE)
     (when (-> self queue i gui)
       (let ((pos (current-subtitle2-pos (-> self queue i id))))
-        (when *debug-segment*
-            (format *stdcon* "subtitle pos: ~3L~D~0L~%" pos))
+        (when (and (zero? q) *debug-segment*)
+            (format *stdcon* "subtitle pos: ~3L~D~0L~%" (the int pos)))
 
         (dotimes (ii PC_SUBTITLE_QUEUE_MAX_LINES)
           (let ((scene (get-scene-by-name *subtitle2-text* (-> self queue i gui name))))
           (when scene
             (awhen (get-line-at-pos scene pos ii)
-              (let ((index-in-old (find-line line-queue-old it))
-                    (index-empty (find-line line-queue (the subtitle2-line #f))))
-                (cond
-                  ((and (= q 0) (!= -1 index-in-old))
-                    (set! (-> line-queue index-in-old) it))
-                  ((= q 1)
-                    (set! (-> line-queue index-empty) it))
-                  )
+              (case q
+                ((0)
+                  (let ((index-in-old (find-line line-queue-old it)))
+                    (if (!= -1 index-in-old)
+                        ;; this line exists in the previous frame, put it in the new queue at the same spot
+                        (set! (-> line-queue index-in-old) it))))
+                ((1)
+                  (when (= -1 (find-line line-queue it))
+                    ;; line not in the queue. find empty spot.
+                    (let ((index-empty (find-line line-queue (the subtitle2-line #f))))
+                        (if (!= -1 index-empty)
+                            (set! (-> line-queue index-empty) it)))
+                    ))
                 )
               )
             ))
@@ -594,9 +596,19 @@
 (defmethod debug-print-queue subtitle2 ((self subtitle2))
   "print the queue to *stdcon*"
   
+  (format *stdcon* "q: ~%")
   (dotimes (i PC_SUBTITLE_QUEUE_SIZE)
     (if (-> self queue i gui)
-        (format *stdcon* "~D: ~D ~`gui-connection`P~%" i (-> self queue i id) (-> self queue i gui))))
+        (format *stdcon* "~D: ~S ~3L~D~0L ~D ~`gui-connection`P~%" i
+                                                                   (-> self queue i gui name)
+                                                                   (the int (current-subtitle2-pos (-> self queue i id)))
+                                                                   (-> self queue i id)
+                                                                   (-> self queue i gui))))
+
+  (format *stdcon* "l: ~%")
+  (let ((line-queue (if (zero? (-> self line-queue-idx)) (-> self lines-0) (-> self lines-1))))
+      (dotimes (i PC_SUBTITLE_MAX_LINES)
+        (format *stdcon* "~D: ~S~%" i (-> line-queue i))))
 
   0)
 
@@ -616,7 +628,7 @@
     )
 
   :trans (behavior ()
-    ;(load-level-subtitle2-files 0)
+    (load-level-subtitle2-files 0)
 
     ;; get subtitles
     (update-gui-connections self)

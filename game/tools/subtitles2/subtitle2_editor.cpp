@@ -13,7 +13,7 @@
 static constexpr size_t LINE_DISPLAY_MAX_LEN = 38;
 
 Subtitle2Editor::Subtitle2Editor(GameVersion version)
-    : m_repl(8182), m_speaker_names(get_speaker_names(version)) {
+    : m_repl(8182), m_speaker_names(get_speaker_names(version)), m_subtitle_db(version) {
   m_filter = m_filter_placeholder;
   m_filter_hints = m_filter_placeholder;
 }
