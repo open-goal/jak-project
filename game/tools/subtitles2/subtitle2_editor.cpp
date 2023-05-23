@@ -13,7 +13,7 @@
 static constexpr size_t LINE_DISPLAY_MAX_LEN = 38;
 
 Subtitle2Editor::Subtitle2Editor(GameVersion version)
-    : m_repl(8182), m_speaker_names(get_speaker_names(version)), m_subtitle_db(version) {
+    : m_repl(8182), m_subtitle_db(version), m_speaker_names(get_speaker_names(version)) {
   m_filter = m_filter_placeholder;
   m_filter_hints = m_filter_placeholder;
 }
@@ -198,6 +198,7 @@ void Subtitle2Editor::draw_repl_options() {
 void Subtitle2Editor::draw_speaker_options() {
   if (ImGui::TreeNode("Speakers")) {
     const auto bank = m_subtitle_db.m_banks[m_current_language];
+    auto font = get_font_bank(bank->text_version);
     for (int i = 0; i < m_speaker_names.size(); ++i) {
       auto speaker_name = speaker_name_by_index(i);
       // ImGui::Text(speaker_name.c_str());
@@ -212,14 +213,14 @@ void Subtitle2Editor::draw_speaker_options() {
         }
       } else {
         // existing speaker
-        std::string input = bank->speakers.at(speaker_name);
+        std::string input = font->convert_game_to_utf8(bank->speakers.at(speaker_name).c_str());
         ImGui::InputText(speaker_name.c_str(), &input);
         if (input.empty()) {
           // speaker got deleted
           bank->speakers.erase(speaker_name);
         } else {
           // speaker got changed
-          bank->speakers.at(speaker_name) = input;
+          bank->speakers.at(speaker_name) = font->convert_utf8_to_game(input, true);
         }
       }
     }
@@ -230,6 +231,7 @@ void Subtitle2Editor::draw_speaker_options() {
 void Subtitle2Editor::draw_all_scenes(bool base_cutscenes) {
   auto& scenes =
       m_subtitle_db.m_banks.at(base_cutscenes ? m_base_language : m_current_language)->scenes;
+  std::unordered_set<std::string> to_delete;
   for (auto& [name, scene] : scenes) {
     // Don't duplicate entries
     if (base_cutscenes && is_scene_in_current_lang(name)) {
@@ -240,19 +242,22 @@ void Subtitle2Editor::draw_all_scenes(bool base_cutscenes) {
         name.find(m_filter) == std::string::npos) {
       continue;
     }
+    bool color_pushed = false;
     if (!base_cutscenes && is_current_scene) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_selected_text_color);
+      color_pushed = true;
     } else if (base_cutscenes) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
-    } else {
-      ImGui::PushStyleColor(ImGuiCol_Text, m_warning_color);
+      color_pushed = true;
     }
 
     if (ImGui::TreeNode(
             fmt::format("{}-{}", name, base_cutscenes ? m_base_language : m_current_language)
                 .c_str(),
             "%s", name.c_str())) {
-      ImGui::PopStyleColor();
+      if (color_pushed) {
+        ImGui::PopStyleColor();
+      }
       if (!base_cutscenes && !is_current_scene) {
         if (ImGui::Button("Select as Current")) {
           m_current_scene = &scene;
@@ -265,10 +270,18 @@ void Subtitle2Editor::draw_all_scenes(bool base_cutscenes) {
         }
       }
       draw_subtitle_options(scene);
+      ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
+      if (ImGui::Button("Delete")) {
+        to_delete.insert(name);
+      }
+      ImGui::PopStyleColor();
       ImGui::TreePop();
-    } else {
+    } else if (color_pushed) {
       ImGui::PopStyleColor();
     }
+  }
+  for (auto& name : to_delete) {
+    scenes.erase(name);
   }
 }
 
@@ -345,7 +358,7 @@ void Subtitle2Editor::draw_subtitle_options(Subtitle2Scene& scene, bool current_
       ImGui::Checkbox("Offscreen?", &line->offscreen);
       if (scene.lines.size() > 1) {  // prevent creating an empty scene
         ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
-        if (ImGui::Button("Remove")) {
+        if (ImGui::Button("Delete")) {
           line = scene.lines.erase(line);
           ImGui::PopStyleColor();
           ImGui::TreePop();

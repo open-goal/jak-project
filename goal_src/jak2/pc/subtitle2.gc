@@ -31,9 +31,10 @@
 
 (defconstant PC_SUBTITLE_FILE_SIZE (* 192 1024)) ;; 192K heap for subtitles. adjust later if necessary.
 (defconstant PC_SUBTITLE_FILE_NAME "subti2")
-(defconstant PC_SUBTITLE_QUEUE_SIZE 8) ;; up to 8 things that display subtitles can be detected at once
+(defconstant PC_SUBTITLE_QUEUE_SIZE 5) ;; up to 8 things that display subtitles can be detected at once
 (defconstant PC_SUBTITLE_QUEUE_MAX_LINES 2) ;; up to 2 lines can be queued per queueable thing
-(defconstant PC_SUBTITLE_MAX_LINES 16) ;; max subtitles that can be displayed at once: queue-size * queue-lines
+(defconstant PC_SUBTITLE_MAX_LINES 10) ;; max subtitles that can be displayed at once: queue-size * queue-lines
+(defconstant PC_SUBTITLE_Y_RECALC -99.0)
 
 (defconstant PC_SUB_DBG_Y 32)
 (defconstant PC_SUB_DBG_CHECK_GROUP_SIZE 22)
@@ -184,6 +185,12 @@
     (clear-line (_type_) int))
   )
 
+(deftype subtitle2-line-queue-element (structure)
+  ((line  subtitle2-line)
+   (y     float)
+   )
+  )
+
 ;; the subtitle2 process! it lives on the PC actor pool
 (deftype subtitle2 (process)
   (
@@ -193,9 +200,9 @@
    ;; store the gui id of channels with subtitles that we find.
    ;; that way if subtitle B appears above A, it wont move back down
    ;; if A ends before B
-   (queue  subtitle2-queue-element  PC_SUBTITLE_QUEUE_SIZE :inline)
-   (lines-0  subtitle2-line  PC_SUBTITLE_MAX_LINES)
-   (lines-1  subtitle2-line  PC_SUBTITLE_MAX_LINES)
+   (queue    subtitle2-queue-element       PC_SUBTITLE_QUEUE_SIZE :inline)
+   (lines-0  subtitle2-line-queue-element  PC_SUBTITLE_MAX_LINES :inline)
+   (lines-1  subtitle2-line-queue-element  PC_SUBTITLE_MAX_LINES :inline)
    (line-queue-idx int8)
 
    ;; debug things
@@ -501,9 +508,9 @@
   "setup a font for the subtitle2 subtitles."
 
   ;; set font settings.
-  (set-origin! font (the int (* (- 1.0 (-> *SUBTITLE2-bank* width)) 256))
-                    (the int (* 0.698 416)))
   (set-width! font (the int (* (-> *SUBTITLE2-bank* width) 0.91 512)))
+  (set-origin! font (the int (/ (- 512.0 (-> font width)) 2))
+                    (the int (* 0.698 416)))
   (set-height! font (the int (* (-> *SUBTITLE2-bank* lines) 44)))
   (set-scale! font (* 0.5 (-> *SUBTITLE2-bank* scale)))
   )
@@ -522,15 +529,17 @@
   (let ((line-queue-old (if (zero? (-> self line-queue-idx)) (-> self lines-0) (-> self lines-1)))
         (line-queue     (if (zero? (-> self line-queue-idx)) (-> self lines-1) (-> self lines-0)))
 
-        (find-line (lambda ((queue (pointer subtitle2-line)) (line subtitle2-line))
+        (find-line (lambda ((queue (inline-array subtitle2-line-queue-element)) (line subtitle2-line))
                        (dotimes (i PC_SUBTITLE_MAX_LINES)
-                         (if (= line (-> queue i))
+                         (if (= line (-> queue i line))
                              (return i)))
                        -1)))
   (set! (-> self line-queue-idx) (mod (1+ (-> self line-queue-idx)) 2))
   ;; clear the queue we're writing to first
   (dotimes (i PC_SUBTITLE_MAX_LINES)
-    (set! (-> line-queue i) #f))
+    (set! (-> line-queue i line) #f)
+    (set! (-> line-queue i y) PC_SUBTITLE_Y_RECALC)
+    )
 
   ;; do two passes - on the first one we add lines that were already being used,
   ;; on the second pass we add new lines
@@ -548,15 +557,16 @@
               (case q
                 ((0)
                   (let ((index-in-old (find-line line-queue-old it)))
-                    (if (!= -1 index-in-old)
+                    (when (!= -1 index-in-old)
                         ;; this line exists in the previous frame, put it in the new queue at the same spot
-                        (set! (-> line-queue index-in-old) it))))
+                        (set! (-> line-queue index-in-old line) it)
+                        (set! (-> line-queue index-in-old y) (-> line-queue-old index-in-old y)))))
                 ((1)
                   (when (= -1 (find-line line-queue it))
                     ;; line not in the queue. find empty spot.
                     (let ((index-empty (find-line line-queue (the subtitle2-line #f))))
                         (if (!= -1 index-empty)
-                            (set! (-> line-queue index-empty) it)))
+                            (set! (-> line-queue index-empty line) it)))
                     ))
                 )
               )
@@ -572,19 +582,27 @@
         )
 
   (dotimes (i PC_SUBTITLE_QUEUE_MAX_LINES)
-    (when (-> line-queue i)
+    (when (-> line-queue i line)
 
-      (subtitle-format self (-> line-queue i))
+      (subtitle-format self (-> line-queue i line))
 
       ;; push subtitle up since we are not the first one
       (when (nonzero? lines-done)
-        ;(-! cur-y (/ last-height 2))
-        (-! cur-y (print-game-text *temp-string* (-> self font) #t 44 (bucket-id subtitle)))
+        (-! cur-y (/ last-height 2))
+        (-! cur-y (/ (print-game-text *temp-string* (-> self font) #t 44 (bucket-id subtitle)) 2))
         )
 
       ;; set the current y and draw line
+      (if (= (-> line-queue i y) PC_SUBTITLE_Y_RECALC)
+          (set! (-> line-queue i y) cur-y)
+          (set! cur-y (min cur-y (-> line-queue i y))))
       (set! (-> self font origin y) cur-y)
-      (print-game-text *temp-string* (-> self font) #f 44 (bucket-id subtitle))
+
+      (when #t
+        (protect (*display-text-box*)
+        (set! *display-text-box* (or *display-text-box* PC_SUBTITLE_DEBUG))
+        (print-game-text *temp-string* (-> self font) #f 44 (bucket-id subtitle)))
+        )
 
       ;; save this for later usage
       (set! last-height (print-game-text *temp-string* (-> self font) #t 44 (bucket-id subtitle)))
@@ -608,7 +626,7 @@
   (format *stdcon* "l: ~%")
   (let ((line-queue (if (zero? (-> self line-queue-idx)) (-> self lines-0) (-> self lines-1))))
       (dotimes (i PC_SUBTITLE_MAX_LINES)
-        (format *stdcon* "~D: ~S~%" i (-> line-queue i))))
+        (format *stdcon* "~D: ~D ~S~%" i (the int (-> line-queue i y)) (aif (-> line-queue i line) (-> it text)))))
 
   0)
 
@@ -682,8 +700,10 @@
   (set! (-> self checking-lines?) #f)
   (clear-queue self)
   (dotimes (i PC_SUBTITLE_MAX_LINES)
-    (set! (-> self lines-0 i) #f)
-    (set! (-> self lines-1 i) #f)
+    (set! (-> self lines-0 i line) #f)
+    (set! (-> self lines-0 i y) PC_SUBTITLE_Y_RECALC)
+    (set! (-> self lines-1 i line) #f)
+    (set! (-> self lines-1 i y) PC_SUBTITLE_Y_RECALC)
     )
 
   (go subtitle2-process)
@@ -714,9 +734,10 @@
     (set! (-> *subtitle2-speaker-color-table* i) (-> *font-work* color-table (font-color red) color 0))
     )
   
-  (set! (-> *subtitle2-speaker-color-table* (pc-subtitle2-speaker baron)) (static-rgba #xff #x00 #x00 #x80))
-  (set! (-> *subtitle2-speaker-color-table* (pc-subtitle2-speaker samos)) (static-rgba #x00 #xff #x00 #x80))
-  (set! (-> *subtitle2-speaker-color-table* (pc-subtitle2-speaker kor)) (static-rgba #x00 #x00 #xff #x80))
+  (set! (-> *subtitle2-speaker-color-table* (pc-subtitle2-speaker computer)) (static-rgba #x60 #x60 #x60 #x80))
+  (set! (-> *subtitle2-speaker-color-table* (pc-subtitle2-speaker baron)) (static-rgba #x80 #x00 #x00 #x80))
+  (set! (-> *subtitle2-speaker-color-table* (pc-subtitle2-speaker samos)) (static-rgba #x00 #x80 #x00 #x80))
+  (set! (-> *subtitle2-speaker-color-table* (pc-subtitle2-speaker kor)) (static-rgba #x00 #x00 #x80 #x80))
   )
 
 ;; fill the subtitle speaker table
