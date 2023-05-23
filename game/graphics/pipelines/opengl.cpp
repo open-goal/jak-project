@@ -79,8 +79,8 @@ struct GraphicsData {
             file_util::get_jak_project_dir() / "out" / game_version_names[version] / "fr3",
             fr3_level_count[version])),
         ogl_renderer(texture_pool, loader, version),
-        version(version),
-        debug_gui(version) {}
+        debug_gui(version),
+        version(version) {}
 };
 
 std::unique_ptr<GraphicsData> g_gfx_data;

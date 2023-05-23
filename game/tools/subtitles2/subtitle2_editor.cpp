@@ -22,6 +22,13 @@ bool Subtitle2Editor::is_scene_in_current_lang(const std::string& scene_name) {
   return m_subtitle_db.m_banks.at(m_current_language)->scenes.count(scene_name) > 0;
 }
 
+void Subtitle2Editor::repl_rebuild_text() {
+  m_repl.eval("(make-text)");
+  // increment the language id of the in-memory text file so that it won't match the current
+  // language and the game will want to reload it asap
+  m_repl.eval("(1+! (-> *subtitle-text* lang))");
+}
+
 void Subtitle2Editor::draw_window() {
   ImGui::Begin("Subtitle2 Editor");
 
@@ -37,7 +44,7 @@ void Subtitle2Editor::draw_window() {
   if (ImGui::Button("Save Changes")) {
     m_files_saved_successfully =
         std::make_optional(write_subtitle_db_to_files(m_subtitle_db, g_game_version));
-    // repl_rebuild_text();
+    repl_rebuild_text();
   }
   if (m_files_saved_successfully.has_value()) {
     ImGui::SameLine();
@@ -303,9 +310,28 @@ void Subtitle2Editor::draw_subtitle_options(Subtitle2Scene& scene, bool current_
 }
 
 void Subtitle2Editor::draw_new_cutscene_line_form() {
+  auto font = get_font_bank(m_subtitle_db.m_banks[m_current_language]->text_version);
   ImGui::InputFloat2("Start Frame", m_current_scene_frame, "%.0f",
                      ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
-  ImGui::InputInt("Speaker", &m_current_scene_speaker);
+  const auto& speakers = m_subtitle_db.m_banks[m_current_language]->speakers;
+  if (m_current_scene_speaker >= speakers.size()) {
+    m_current_scene_speaker = speakers.size() - 1;
+  }
+
+  if (ImGui::BeginCombo("Speaker", m_current_scene_speaker < 0
+                                       ? "<invalid>"
+                                       : speakers.at(m_current_scene_speaker).c_str())) {
+    for (int i = 0; i < speakers.size(); ++i) {
+      const bool isSelected = m_current_scene_speaker == i;
+      if (ImGui::Selectable(font->convert_game_to_utf8(speakers[i].c_str()).c_str(), isSelected)) {
+        m_current_scene_speaker = i;
+      }
+      if (isSelected) {
+        ImGui::SetItemDefaultFocus();
+      }
+    }
+    ImGui::EndCombo();
+  }
   ImGui::InputText("Text", &m_current_scene_text);
   ImGui::Checkbox("Offscreen", &m_current_scene_offscreen);
   bool rendered_text_entry_btn = false;
@@ -317,7 +343,6 @@ void Subtitle2Editor::draw_new_cutscene_line_form() {
   } else {
     rendered_text_entry_btn = true;
     if (ImGui::Button("Add Text Entry")) {
-      auto font = get_font_bank(m_subtitle_db.m_banks[m_current_language]->text_version);
       m_current_scene->lines.emplace_back(m_current_scene_frame[0], m_current_scene_frame[1],
                                           font->convert_utf8_to_game(m_current_scene_text, true),
                                           m_current_scene_speaker, m_current_scene_offscreen);

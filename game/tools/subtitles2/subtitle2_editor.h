@@ -76,5 +76,7 @@ class Subtitle2Editor {
   int m_offscreen_text_color = IM_COL32(240, 242, 102, 255);
   // TODO - cycle speaker colors
 
+  void repl_rebuild_text();
+
   bool is_scene_in_current_lang(const std::string& scene_name);
 };
