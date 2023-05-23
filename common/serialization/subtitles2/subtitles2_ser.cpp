@@ -6,6 +6,54 @@
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
 
+// matches enum in `subtitle2.gc` with "none" (first) and "max" (last) removed
+const std::vector<std::string> s_speakers_jak2 = {
+    "computer",
+    "jak",
+    "darkjak",
+    "daxter",
+    "samos",
+    "keira",
+    "keira-before-class-3",
+    "kid",
+    "kor",
+    "metalkor",
+    "baron",
+    "errol",
+    "torn",
+    "tess",
+    "guard",
+    "guard-a",
+    "guard-b",
+    "krew",
+    "sig",
+    "brutter",
+    "vin",
+    "youngsamos",
+    "youngsamos-before-rescue",
+    "pecker",
+    "onin",
+    "ashelin",
+    "jinx",
+    "mog",
+    "grim",
+    "agent",
+    "citizen-male",
+    "citizen-female",
+    "oracle",
+    "precursor",
+};
+
+const std::vector<std::string> get_speaker_names(GameVersion version) {
+  switch (version) {
+    case GameVersion::Jak2:
+      return s_speakers_jak2;
+      break;
+  }
+  throw std::runtime_error(
+      fmt::format("no speakers for game version {} project", version_to_game_name(version)));
+}
+
 void parse_subtitle2_json(GameSubtitle2DB& db, const GameSubtitle2DefinitionFile& file_info) {
   // TODO - some validation
   // Init Settings

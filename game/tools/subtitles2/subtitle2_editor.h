@@ -8,31 +8,18 @@
 
 #include "third-party/imgui/imgui.h"
 
-class Subtitle2EditorDB {
- public:
-  struct Entry {
-    std::string entity_type;
-    std::string process_name;
-    std::string continue_name;
-    std::vector<double> move_to;
-    int delay_frames;
-    std::string execute_code;
-    bool move_first;
-    std::vector<std::string> requirements;
-  };
-};
-
 // TODO Later:
 // - Hints, these seem less annoying but there are a lot of them
 
 class Subtitle2Editor {
  public:
-  Subtitle2Editor();
+  Subtitle2Editor(GameVersion version);
   void draw_window();
 
  private:
   void draw_edit_options();
   void draw_repl_options();
+  void draw_speaker_options();
 
   void draw_all_scenes(bool base_cutscenes = false);
   void draw_subtitle_options(Subtitle2Scene& scene, bool current_scene = false);
@@ -41,7 +28,6 @@ class Subtitle2Editor {
   bool db_loaded = false;
 
   GameSubtitle2DB m_subtitle_db;
-  std::map<std::string, Subtitle2EditorDB::Entry> m_db = {};
   Subtitle2Scene* m_current_scene = nullptr;
   std::string m_filter;
   std::string m_filter_hints;
@@ -50,7 +36,7 @@ class Subtitle2Editor {
 
   float m_current_scene_frame[2] = {0, 0};
   std::string m_current_scene_text = "";
-  int m_current_scene_speaker = 0;
+  std::string m_current_scene_speaker = "";
   bool m_current_scene_offscreen = false;
   bool m_add_new_scene_as_current = false;
 
@@ -75,6 +61,10 @@ class Subtitle2Editor {
   ImVec4 m_warning_color = ImVec4(0.619f, 0.443f, 0.0f, 1.0f);
   int m_offscreen_text_color = IM_COL32(240, 242, 102, 255);
   // TODO - cycle speaker colors
+
+  const std::vector<std::string> m_speaker_names;
+  const std::string speaker_name_by_index(int index);
+  int speaker_index_by_name(const std::string& name);
 
   void repl_rebuild_text();
 

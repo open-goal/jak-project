@@ -145,8 +145,8 @@ class OpenGLRenderer {
   SharedRenderState m_render_state;
   Profiler m_profiler;
   SmallProfiler m_small_profiler;
-  SubtitleEditor m_subtitle_editor;
-  Subtitle2Editor m_subtitle2_editor;
+  SubtitleEditor* m_subtitle_editor = nullptr;
+  Subtitle2Editor* m_subtitle2_editor = nullptr;
   FiltersMenu m_filters_menu;
 
   std::vector<std::unique_ptr<BucketRenderer>> m_bucket_renderers;

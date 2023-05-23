@@ -357,7 +357,9 @@
  )
 
 (group-list "text"
- `("$OUT/iso/0COMMON.TXT")
+ `("$OUT/iso/0COMMON.TXT"
+   "$OUT/iso/0SUBTI2.TXT"
+   )
  )
 
 ;; used for the type consistency test.

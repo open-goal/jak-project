@@ -9,6 +9,8 @@
 #include "common/util/json_util.h"
 #include "common/versions/versions.h"
 
+const std::vector<std::string> get_speaker_names(GameVersion version);
+
 struct Subtitle2Line {
   Subtitle2Line() {}
   Subtitle2Line(float start, float end, std::string text, u16 speaker, bool offscreen)
@@ -20,6 +22,11 @@ struct Subtitle2Line {
 
   u16 speaker;
   bool offscreen;
+
+  bool operator<(const Subtitle2Line& other) const {
+    return (start < other.start) || (start == other.start && end < other.end);
+  }
+
 };
 void to_json(json& j, const Subtitle2Line& obj);
 void from_json(const json& j, Subtitle2Line& obj);
@@ -37,10 +44,10 @@ struct GameSubtitle2Bank {
 
   int lang;
 
-  GameTextVersion text_version;
+  GameTextVersion text_version = GameTextVersion::JAK2;
   std::string file_path;
 
-  std::vector<std::string> speakers;
+  std::map<std::string, std::string> speakers;
   std::map<std::string, Subtitle2Scene> scenes;
 
   bool scene_exists(const std::string& name) const { return scenes.find(name) != scenes.end(); }

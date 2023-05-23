@@ -5,9 +5,8 @@
 
 #include "third-party/json.hpp"
 
-const std::vector<std::string> locale_lookup = {
-    "en-US", "fr-FR", "de-DE", "es-ES", "it-IT", "jp-JP", "en-GB", "pt-PT", "fi-FI",
-    "sv-SE", "da-DK", "no-NO", "nl-NL", "pt-BR", "hu-HU", "ca-ES", "is-IS"};
+const std::vector<std::string> locale_lookup = {"en-US", "fr-FR", "de-DE", "es-ES",
+                                                "it-IT", "jp-JP", "ko-KR", "en-GB"};
 
 bool write_subtitle_db_to_files(const GameSubtitle2DB& db, const GameVersion game_version) {
   try {
