@@ -13,14 +13,20 @@ const std::vector<std::string> get_speaker_names(GameVersion version);
 
 struct Subtitle2Line {
   Subtitle2Line() {}
-  Subtitle2Line(float start, float end, std::string text, u16 speaker, bool offscreen)
+  Subtitle2Line(float start,
+                float end,
+                const std::string& text,
+                const std::string& speaker,
+                bool offscreen)
       : start(start), end(end), text(text), speaker(speaker), offscreen(offscreen) {}
 
   float start, end;
 
   std::string text;
 
-  u16 speaker;
+  // name in enum. saved as int later.
+  std::string speaker;
+
   bool offscreen;
 
   bool operator<(const Subtitle2Line& other) const {
