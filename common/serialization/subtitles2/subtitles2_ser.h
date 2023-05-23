@@ -38,7 +38,7 @@ void to_json(json& j, const Subtitle2Line& obj);
 void from_json(const json& j, Subtitle2Line& obj);
 
 struct Subtitle2Scene {
-  std::string name;
+  // bool merge_mode;
 
   std::vector<Subtitle2Line> lines;
 };
@@ -57,9 +57,9 @@ struct GameSubtitle2Bank {
   std::map<std::string, Subtitle2Scene> scenes;
 
   bool scene_exists(const std::string& name) const { return scenes.find(name) != scenes.end(); }
-  void add_scene(Subtitle2Scene& scene) {
-    ASSERT(!scene_exists(scene.name));
-    scenes.insert({scene.name, scene});
+  void add_scene(const std::string& name, Subtitle2Scene& scene) {
+    ASSERT(!scene_exists(name));
+    scenes.insert({name, scene});
   }
 };
 void to_json(json& j, const GameSubtitle2Bank& obj);

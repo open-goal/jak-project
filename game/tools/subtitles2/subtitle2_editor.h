@@ -29,6 +29,7 @@ class Subtitle2Editor {
 
   GameSubtitle2DB m_subtitle_db;
   Subtitle2Scene* m_current_scene = nullptr;
+  std::string m_current_scene_name = "";
   std::string m_filter;
   std::string m_filter_hints;
 

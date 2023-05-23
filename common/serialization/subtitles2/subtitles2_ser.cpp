@@ -94,7 +94,7 @@ void from_json(const json& j, Subtitle2Line& obj) {
   json_deserialize_if_exists(text);
 }
 void to_json(json& j, const Subtitle2Scene& obj) {
-  j = json{{"name", obj.name}};
+  j = json{};
   json lines;
   for (const auto& line : obj.lines) {
     json l;
@@ -104,7 +104,6 @@ void to_json(json& j, const Subtitle2Scene& obj) {
   j["lines"] = lines;
 }
 void from_json(const json& j, Subtitle2Scene& obj) {
-  json_deserialize_if_exists(name);
   for (auto& kv : j.at("lines").items()) {
     auto& line = obj.lines.emplace_back();
     from_json(kv.value(), line);

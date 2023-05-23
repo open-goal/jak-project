@@ -104,13 +104,13 @@ void Subtitle2Editor::draw_window() {
     }
     if (!is_scene_in_current_lang(m_new_scene_name) && !m_new_scene_name.empty()) {
       if (ImGui::Button("Add Scene")) {
-        Subtitle2Scene newScene;
-        newScene.name = m_new_scene_name;
-        m_subtitle_db.m_banks.at(m_current_language)->add_scene(newScene);
+        Subtitle2Scene new_scene;
+        m_subtitle_db.m_banks.at(m_current_language)->add_scene(m_new_scene_name, new_scene);
         if (m_add_new_scene_as_current) {
           auto& scenes = m_subtitle_db.m_banks.at(m_current_language)->scenes;
           auto& scene_info = scenes.at(m_new_scene_name);
           m_current_scene = &scene_info;
+          m_current_scene_name = m_new_scene_name;
         }
         m_new_scene_name = "";
       }
@@ -235,7 +235,7 @@ void Subtitle2Editor::draw_all_scenes(bool base_cutscenes) {
     if (base_cutscenes && is_scene_in_current_lang(name)) {
       continue;
     }
-    bool is_current_scene = m_current_scene && m_current_scene->name == name;
+    bool is_current_scene = m_current_scene && m_current_scene_name == name;
     if ((!m_filter.empty() && m_filter != m_filter_placeholder) &&
         name.find(m_filter) == std::string::npos) {
       continue;
@@ -256,11 +256,12 @@ void Subtitle2Editor::draw_all_scenes(bool base_cutscenes) {
       if (!base_cutscenes && !is_current_scene) {
         if (ImGui::Button("Select as Current")) {
           m_current_scene = &scene;
+          m_current_scene_name = name;
         }
       }
       if (base_cutscenes) {
         if (ImGui::Button("Copy from Base Language")) {
-          m_subtitle_db.m_banks.at(m_current_language)->add_scene(scene);
+          m_subtitle_db.m_banks.at(m_current_language)->add_scene(name, scene);
         }
       }
       draw_subtitle_options(scene);
