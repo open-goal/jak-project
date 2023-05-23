@@ -3,7 +3,7 @@
 #include <regex>
 #include <string_view>
 
-// #include "common/serialization/subtitles2/subtitles2_deser.h"
+#include "common/serialization/subtitles2/subtitles2_deser.h"
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
 
@@ -14,7 +14,6 @@
 #include "third-party/imgui/imgui_stdlib.h"
 
 Subtitle2Editor::Subtitle2Editor() : m_repl(8182) {
-  update_subtitle_editor_db();
   m_filter = m_filter_placeholder;
   m_filter_hints = m_filter_placeholder;
 }
@@ -38,7 +37,7 @@ void Subtitle2Editor::draw_window() {
   if (ImGui::Button("Save Changes")) {
     m_files_saved_successfully =
         std::make_optional(write_subtitle_db_to_files(m_subtitle_db, g_game_version));
-    repl_rebuild_text();
+    // repl_rebuild_text();
   }
   if (m_files_saved_successfully.has_value()) {
     ImGui::SameLine();
@@ -142,9 +141,6 @@ void Subtitle2Editor::draw_edit_options() {
       ImGui::EndCombo();
     }
     ImGui::Checkbox("Show missing cutscenes from base", &m_base_show_missing_cutscenes);
-    if (ImGui::Button("Update Editor DB")) {
-      update_subtitle_editor_db();
-    }
     ImGui::TreePop();
   }
 }
@@ -234,8 +230,7 @@ void Subtitle2Editor::draw_subtitle_options(Subtitle2Scene& scene, bool current_
     // Cutscenes
     if (m_db.count(scene.name) > 0) {
       if (ImGui::Button("Play Scene")) {
-        update_subtitle_editor_db();
-        repl_execute_cutscene_code(m_db.at(scene.name));
+        // repl_execute_cutscene_code(m_db.at(scene.name));
       }
       ImGui::SameLine();
       ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
@@ -310,12 +305,12 @@ void Subtitle2Editor::draw_subtitle_options(Subtitle2Scene& scene, bool current_
 void Subtitle2Editor::draw_new_cutscene_line_form() {
   ImGui::InputFloat2("Start Frame", m_current_scene_frame, "%.0f",
                      ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
-  ImGui::InputText("Speaker", &m_current_scene_speaker);
+  ImGui::InputInt("Speaker", &m_current_scene_speaker);
   ImGui::InputText("Text", &m_current_scene_text);
   ImGui::Checkbox("Offscreen", &m_current_scene_offscreen);
   bool rendered_text_entry_btn = false;
-  if (m_current_scene_frame < 0 || m_current_scene_text.empty() ||
-      m_current_scene_speaker.empty()) {
+  if (m_current_scene_frame[0] < 0 || m_current_scene_frame[1] < 0 ||
+      m_current_scene_text.empty() || m_current_scene_speaker < 0) {
     ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
     ImGui::Text("Can't add a new text entry with the current fields!");
     ImGui::PopStyleColor();
@@ -323,12 +318,12 @@ void Subtitle2Editor::draw_new_cutscene_line_form() {
     rendered_text_entry_btn = true;
     if (ImGui::Button("Add Text Entry")) {
       auto font = get_font_bank(m_subtitle_db.m_banks[m_current_language]->text_version);
-      m_current_scene->lines.emplace_back(
-          m_current_scene_frame, font->convert_utf8_to_game(m_current_scene_text, true),
-          font->convert_utf8_to_game(m_current_scene_speaker, true), m_current_scene_offscreen);
+      m_current_scene->lines.emplace_back(m_current_scene_frame[0], m_current_scene_frame[1],
+                                          font->convert_utf8_to_game(m_current_scene_text, true),
+                                          m_current_scene_speaker, m_current_scene_offscreen);
     }
   }
-  if (m_current_scene_frame < 0) {
+  if (m_current_scene_frame[0] < 0 || m_current_scene_frame[1] < 0) {
     ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
     ImGui::Text("Can't add a clear screen entry with the current fields!");
     ImGui::PopStyleColor();

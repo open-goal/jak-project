@@ -79,7 +79,8 @@ struct GraphicsData {
             file_util::get_jak_project_dir() / "out" / game_version_names[version] / "fr3",
             fr3_level_count[version])),
         ogl_renderer(texture_pool, loader, version),
-        version(version) {}
+        version(version),
+        debug_gui(version) {}
 };
 
 std::unique_ptr<GraphicsData> g_gfx_data;
@@ -462,6 +463,7 @@ void render_game_frame(int game_width,
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
     options.draw_loader_window = g_gfx_data->debug_gui.should_draw_loader_menu();
     options.draw_subtitle_editor_window = g_gfx_data->debug_gui.should_draw_subtitle_editor();
+    options.draw_subtitle2_editor_window = g_gfx_data->debug_gui.should_draw_subtitle2_editor();
     options.draw_filters_window = g_gfx_data->debug_gui.should_draw_filters_menu();
     options.save_screenshot = false;
     options.gpu_sync = g_gfx_data->debug_gui.should_gl_finish();

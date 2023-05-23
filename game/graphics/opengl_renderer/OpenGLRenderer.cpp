@@ -705,6 +705,9 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   if (settings.draw_subtitle_editor_window) {
     m_subtitle_editor.draw_window();
   }
+  if (settings.draw_subtitle2_editor_window) {
+    m_subtitle2_editor.draw_window();
+  }
 
   if (settings.draw_filters_window) {
     m_filters_menu.draw_window();

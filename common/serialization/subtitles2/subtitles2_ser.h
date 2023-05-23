@@ -10,6 +10,7 @@
 #include "common/versions/versions.h"
 
 struct Subtitle2Line {
+  Subtitle2Line() {}
   Subtitle2Line(float start, float end, std::string text, u16 speaker, bool offscreen)
       : start(start), end(end), text(text), speaker(speaker), offscreen(offscreen) {}
 
@@ -32,6 +33,8 @@ void to_json(json& j, const Subtitle2Scene& obj);
 void from_json(const json& j, Subtitle2Scene& obj);
 
 struct GameSubtitle2Bank {
+  GameSubtitle2Bank(int lang) : lang(lang) {}
+
   int lang;
 
   GameTextVersion text_version;
@@ -71,14 +74,13 @@ class GameSubtitle2DB {
   std::unique_ptr<GameSubtitle2Bank> m_subtitle_groups;
 };
 
-void parse_subtitle2_json(GameSubtitle2DB& db, const fs::path& file_path);
-
 struct GameSubtitle2DefinitionFile {
   std::string file_path = "";
   int language_id = -1;
   GameTextVersion text_version = GameTextVersion::JAK2;
 };
 
+void parse_subtitle2_json(GameSubtitle2DB& db, const GameSubtitle2DefinitionFile& file_info);
 void open_subtitle2_project(const std::string& kind,
                             const std::string& filename,
                             std::vector<GameSubtitle2DefinitionFile>& inputs);

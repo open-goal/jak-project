@@ -31,19 +31,12 @@ class Subtitle2Editor {
   void draw_window();
 
  private:
-  void update_subtitle_editor_db();
-
   void draw_edit_options();
   void draw_repl_options();
-
-  bool any_cutscenes_in_group(const std::string& group_name);
-  bool any_hints_in_group(const std::string& group_name);
 
   void draw_all_scenes(bool base_cutscenes = false);
   void draw_subtitle_options(Subtitle2Scene& scene, bool current_scene = false);
   void draw_new_cutscene_line_form();
-  void draw_all_hint_groups();
-  void draw_all_hints(std::string group_name, bool base_cutscenes);
 
   bool db_loaded = false;
 
@@ -57,7 +50,7 @@ class Subtitle2Editor {
 
   float m_current_scene_frame[2] = {0, 0};
   std::string m_current_scene_text = "";
-  std::string m_current_scene_speaker = "";
+  int m_current_scene_speaker = 0;
   bool m_current_scene_offscreen = false;
   bool m_add_new_scene_as_current = false;
 

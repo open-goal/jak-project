@@ -2,32 +2,27 @@
 
 #include "common/goos/ParseHelpers.h"
 #include "common/goos/Reader.h"
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
-
-#include "common/log/log.h"
-
 
 void parse_subtitle2_json(GameSubtitle2DB& db, const GameSubtitle2DefinitionFile& file_info) {
   // TODO - some validation
   // Init Settings
   std::shared_ptr<GameSubtitle2Bank> bank;
   try {
-
-     if (!db.bank_exists(file_info.language_id)) {
+    if (!db.bank_exists(file_info.language_id)) {
       // database has no lang yet
       bank = db.add_bank(std::make_shared<GameSubtitle2Bank>(file_info.language_id));
-    }
-    else {
+    } else {
       bank = db.bank_by_id(file_info.language_id);
     }
     bank->text_version = file_info.text_version;
     bank->file_path = file_info.file_path;
-    const GameTextFontBank* font = get_font_bank(file_info.text_version);
     // Parse the file
     auto file = parse_commented_json(
-          file_util::read_text_file(file_util::get_jak_project_dir() / file_info.file_path),
-          "subtitle2_json");
+        file_util::read_text_file(file_util::get_jak_project_dir() / file_info.file_path),
+        "subtitle2_json");
     from_json(file, *bank);
   } catch (std::exception& e) {
     lg::error("Unable to parse subtitle json entry, couldn't successfully load files - {}",
@@ -36,7 +31,7 @@ void parse_subtitle2_json(GameSubtitle2DB& db, const GameSubtitle2DefinitionFile
   }
 }
 
-void to_json(json & j, const Subtitle2Line& obj) {
+void to_json(json& j, const Subtitle2Line& obj) {
   j = json{{"start", obj.start},
            {"end", obj.end},
            {"offscreen", obj.offscreen},
@@ -51,7 +46,14 @@ void from_json(const json& j, Subtitle2Line& obj) {
   json_deserialize_if_exists(text);
 }
 void to_json(json& j, const Subtitle2Scene& obj) {
-  j = json{{"name", obj.name}, {"lines", obj.lines}};
+  j = json{{"name", obj.name}};
+  json lines;
+  for (const auto& line : obj.lines) {
+    json l;
+    to_json(l, line);
+    lines.push_back(l);
+  }
+  j["lines"] = lines;
 }
 void from_json(const json& j, Subtitle2Scene& obj) {
   json_deserialize_if_exists(name);
@@ -61,7 +63,14 @@ void from_json(const json& j, Subtitle2Scene& obj) {
   }
 }
 void to_json(json& j, const GameSubtitle2Bank& obj) {
-  j = json{{"speakers", obj.speakers}, {"scenes", obj.scenes}, {"lang", obj.lang}};
+  j = json{{"speakers", obj.speakers}, {"lang", obj.lang}};
+  json scenes;
+  for (const auto& [name, scene] : obj.scenes) {
+    json s;
+    to_json(s, scene);
+    scenes[name] = s;
+  }
+  j["scenes"] = scenes;
 }
 void from_json(const json& j, GameSubtitle2Bank& obj) {
   json_deserialize_if_exists(speakers);
