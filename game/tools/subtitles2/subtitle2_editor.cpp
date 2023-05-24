@@ -1,5 +1,7 @@
 #include "subtitle2_editor.h"
 
+#include <algorithm>
+
 #include "common/serialization/subtitles2/subtitles2_deser.h"
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
@@ -13,7 +15,7 @@
 static constexpr size_t LINE_DISPLAY_MAX_LEN = 38;
 
 Subtitle2Editor::Subtitle2Editor(GameVersion version)
-    : m_repl(8182), m_subtitle_db(version), m_speaker_names(get_speaker_names(version)) {
+    : m_subtitle_db(version), m_repl(8182), m_speaker_names(get_speaker_names(version)) {
   m_filter = m_filter_placeholder;
   m_filter_hints = m_filter_placeholder;
 }
@@ -433,6 +435,8 @@ void Subtitle2Editor::draw_new_cutscene_line_form() {
       m_current_scene->lines.emplace_back(m_current_scene_frame[0], m_current_scene_frame[1],
                                           font->convert_utf8_to_game(m_current_scene_text, true),
                                           m_current_scene_speaker, m_current_scene_offscreen);
+      // TODO - sorting after every insertion is slow, sort on the add scene instead
+      std::sort(m_current_scene->lines.begin(), m_current_scene->lines.end());
     }
   }
   ImGui::NewLine();
