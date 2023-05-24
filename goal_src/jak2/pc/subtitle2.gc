@@ -197,6 +197,7 @@
    (font font-context) ;; the font to use for the subtitles.
    (bank-backup subtitle2-bank :inline) ;; debug backup.
 
+   (gui-id sound-id)
    ;; store the gui id of channels with subtitles that we find.
    ;; that way if subtitle B appears above A, it wont move back down
    ;; if A ends before B
@@ -220,6 +221,8 @@
     (subtitle-format (_type_ subtitle2-line) string)
     (draw-subtitles (_type_) int)
     (debug-print-queue (_type_) int)
+    (start-gui (_type_) sound-id)
+    (stop-gui (_type_) sound-id)
     )
   (:states
     subtitle2-debug
@@ -441,10 +444,20 @@
 
 
 (defun subtitle-channel? ((ch gui-channel))
+  "can this channel be checked for subtitles?"
   (or (= ch (gui-channel alert))
       (= ch (gui-channel daxter))
       (= ch (gui-channel guard))
       (= ch (gui-channel sig))
+      (= ch (gui-channel citizen))
+      )
+  )
+
+(defun subtitle-bump-up? ()
+  "should subtitles be moved up?"
+  ;; have a query or message up?
+  (or (nonzero? (lookup-gui-connection-id *gui-control* (the string #f) (gui-channel query) (gui-action playing)))
+      (nonzero? (lookup-gui-connection-id *gui-control* (the string #f) (gui-channel message) (gui-action playing)))
       )
   )
 
@@ -510,7 +523,7 @@
   ;; set font settings.
   (set-width! font (the int (* (-> *SUBTITLE2-bank* width) 0.91 512)))
   (set-origin! font (the int (/ (- 512.0 (-> font width)) 2))
-                    (the int (* 0.698 416)))
+                    (the int (* (if (subtitle-bump-up?) 0.58 0.698) 416)))
   (set-height! font (the int (* (-> *SUBTITLE2-bank* lines) 44)))
   (set-scale! font (* 0.5 (-> *SUBTITLE2-bank* scale)))
   )
@@ -577,8 +590,10 @@
     ))
 
   (let ((cur-y (-> self font origin y)) ;; the current y for the text
+        (start-y (-> self font origin y)) ;; the starting y for the text
         (last-height 0.0) ;; the height of the previous subtitle
         (lines-done 0)
+        (subtitles-drawn? #f)
         )
 
   (dotimes (i PC_SUBTITLE_QUEUE_MAX_LINES)
@@ -594,21 +609,30 @@
 
       ;; set the current y and draw line
       (if (= (-> line-queue i y) PC_SUBTITLE_Y_RECALC)
-          (set! (-> line-queue i y) cur-y)
-          (set! cur-y (min cur-y (-> line-queue i y))))
+          (set! (-> line-queue i y) (- start-y cur-y))
+          (set! cur-y (min cur-y (- start-y (-> line-queue i y)))))
       (set! (-> self font origin y) cur-y)
 
       (when (-> *setting-control* user-current subtitle)
-        (protect (*display-text-box*)
-        (set! *display-text-box* (or *display-text-box* PC_SUBTITLE_DEBUG))
-        (print-game-text *temp-string* (-> self font) #f 44 (bucket-id subtitle)))
+        (true! subtitles-drawn?)
+        (if (zero? (-> self gui-id))
+            (start-gui self))
+
+        (when (= (gui-status active) (get-status *gui-control* (-> self gui-id)))
+            (protect (*display-text-box*)
+            (set! *display-text-box* (or *display-text-box* PC_SUBTITLE_DEBUG))
+            (print-game-text *temp-string* (-> self font) #f 44 (bucket-id subtitle))))
         )
 
       ;; save this for later usage
       (set! last-height (print-game-text *temp-string* (-> self font) #t 44 (bucket-id subtitle)))
       (1+! lines-done)
       )
-    )))
+    )
+  
+  (when (and (nonzero? (-> self gui-id)) (not subtitles-drawn?))
+    (stop-gui self))))
+  
   0)
 
 (defmethod debug-print-queue subtitle2 ((self subtitle2))
@@ -629,6 +653,22 @@
         (format *stdcon* "~D: ~D ~S~%" i (the int (-> line-queue i y)) (aif (-> line-queue i line) (-> it text)))))
 
   0)
+
+(defmethod start-gui subtitle2 ((self subtitle2))
+  "start gui queueing"
+  (set! (-> self gui-id) (add-process *gui-control* self (gui-channel subtitle-pc) (gui-action play) "subtitle2" -10.0 0))
+  )
+
+(defmethod stop-gui subtitle2 ((self subtitle2))
+  "stop gui queueing"
+  (set-action! *gui-control* (gui-action stop) (-> self gui-id)
+                             (gui-channel none)
+                             (gui-action none)
+                             (the-as string #f)
+                             (the-as (function gui-connection symbol) #f)
+                             (the-as process #f))
+  (set! (-> self gui-id) (new 'static 'sound-id))
+  )
 
 (defstate subtitle2-process (subtitle2)
 
@@ -669,6 +709,12 @@
     (if (and *debug-segment* PC_SUBTITLE_DEBUG)
         (debug-print-queue self))
     0)
+  
+  :exit (behavior ()
+    
+    (stop-gui self)
+
+    (none))
 
   )
 
