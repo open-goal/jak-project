@@ -82,7 +82,8 @@ void Subtitle2Editor::draw_window() {
   } else {
     ImGui::PushStyleColor(ImGuiCol_Text, m_selected_text_color);
   }
-  if (ImGui::TreeNode("Currently Selected Cutscene")) {
+  if (ImGui::TreeNode(
+          fmt::format("Currently Selected Cutscene: {}", m_current_scene_name).c_str())) {
     ImGui::PopStyleColor();
     if (m_current_scene) {
       draw_subtitle_options(*m_current_scene, true);
@@ -301,11 +302,6 @@ void Subtitle2Editor::draw_subtitle_options(Subtitle2Scene& scene, bool current_
     if (ImGui::Button("Play Scene")) {
       // repl_execute_cutscene_code(m_db.at(scene.name));
     }
-    ImGui::SameLine();
-    ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
-    ImGui::TextWrapped("You may have to click twice, load times cause issues");
-    ImGui::PopStyleColor();
-    ImGui::NewLine();
   }
   if (current_scene) {
     draw_new_cutscene_line_form();
