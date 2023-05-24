@@ -170,8 +170,8 @@
 
 (define *SUBTITLE2-bank*
     (new 'static 'subtitle2-bank
-                  :scale 1.0
-                  :width 1.0
+                  :scale 0.9
+                  :width 0.65
                   :lines 2.0
                   ))
 
@@ -415,7 +415,8 @@
     (let ((gui (lookup-gui-connection *gui-control* (the process #f) (gui-channel none) (the string #f) (-> obj queue i id))))
       (if (or (zero? (-> obj queue i id))
               (not gui)
-              (!= (gui-action playing) (-> gui action)))
+              (and (!= (gui-action playing) (-> gui action))
+                   (!= (gui-action play) (-> gui action))))
           (clear-line (-> obj queue i)))))
   0)
 
@@ -605,7 +606,7 @@
       ;; push subtitle up since we are not the first one
       (when (nonzero? lines-done)
         (-! cur-y (/ last-height 2))
-        (-! cur-y (/ (print-game-text *temp-string* (-> self font) #t 44 (bucket-id subtitle)) 2))
+        (-! cur-y (/ (print-game-text *temp-string* (-> self font) #t 44 (bucket-id debug-no-zbuf2)) 2))
         )
 
       ;; set the current y and draw line
@@ -622,11 +623,11 @@
         (when (= (gui-status active) (get-status *gui-control* (-> self gui-id)))
             (protect (*display-text-box*)
             (set! *display-text-box* (or *display-text-box* PC_SUBTITLE_DEBUG))
-            (print-game-text *temp-string* (-> self font) #f 44 (bucket-id subtitle))))
+            (print-game-text *temp-string* (-> self font) #f 44 (bucket-id debug-no-zbuf2))))
         )
 
       ;; save this for later usage
-      (set! last-height (print-game-text *temp-string* (-> self font) #t 44 (bucket-id subtitle)))
+      (set! last-height (print-game-text *temp-string* (-> self font) #t 44 (bucket-id debug-no-zbuf2)))
       (1+! lines-done)
       )
     )
