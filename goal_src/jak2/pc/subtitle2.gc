@@ -446,12 +446,7 @@
 
 (defun subtitle-channel? ((ch gui-channel))
   "can this channel be checked for subtitles?"
-  (or (= ch (gui-channel alert))
-      (= ch (gui-channel daxter))
-      (= ch (gui-channel guard))
-      (= ch (gui-channel sig))
-      (= ch (gui-channel citizen))
-      )
+  (and (>= ch (gui-channel jak)) (<= ch (gui-channel krew)))
   )
 
 (defun subtitle-bump-up? ()
@@ -523,11 +518,16 @@
   "setup a font for the subtitle2 subtitles."
 
   ;; set font settings.
+  (set-scale! font (* 0.5 (-> *SUBTITLE2-bank* scale)))
   (set-width! font (the int (* (-> *SUBTITLE2-bank* width) 0.91 512)))
   (set-origin! font (the int (/ (- 512.0 (-> font width)) 2))
                     (the int (* (if (subtitle-bump-up?) 0.58 0.698) 416)))
+  (when (and (logtest? (minimap-flag minimap) (-> *setting-control* user-current minimap))
+           (> (the int (+ (-> font width) (-> font origin x))) (get-screen-x 0.744)))
+    (let ((new-width (- (get-screen-x 0.744) (-> font origin x))))
+      (set-scale! font (* (-> font scale) (/ (the float new-width) (-> font width))))
+      (set-width! font new-width)))
   (set-height! font (the int (* (-> *SUBTITLE2-bank* lines) 44)))
-  (set-scale! font (* 0.5 (-> *SUBTITLE2-bank* scale)))
   )
 
 
