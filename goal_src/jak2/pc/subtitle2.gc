@@ -412,11 +412,14 @@
 
   (dotimes (i PC_SUBTITLE_QUEUE_SIZE)
 
-    (let ((gui (lookup-gui-connection *gui-control* (the process #f) (gui-channel none) (the string #f) (-> obj queue i id))))
+    (let ((gui (lookup-gui-connection *gui-control* (the process #f) (gui-channel none) (the string #f) (-> obj queue i id)))
+          (status (get-status *gui-control* (-> obj queue i id))))
       (if (or (zero? (-> obj queue i id))
               (not gui)
               (and (!= (gui-action playing) (-> gui action))
-                   (!= (gui-action play) (-> gui action))))
+                   (!= (gui-action play) (-> gui action)))
+              (and (!= (gui-status ready) status)
+                   (!= (gui-status active) status)))
           (clear-line (-> obj queue i)))))
   0)
 
