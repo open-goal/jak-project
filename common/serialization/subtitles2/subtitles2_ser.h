@@ -32,7 +32,6 @@ struct Subtitle2Line {
   bool operator<(const Subtitle2Line& other) const {
     return (start < other.start) || (start == other.start && end < other.end);
   }
-
 };
 void to_json(json& j, const Subtitle2Line& obj);
 void from_json(const json& j, Subtitle2Line& obj);
