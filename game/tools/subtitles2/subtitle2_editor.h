@@ -22,7 +22,9 @@ class Subtitle2Editor {
   void draw_speaker_options();
 
   void draw_all_scenes(bool base_cutscenes = false);
-  void draw_subtitle_options(Subtitle2Scene& scene, bool current_scene = false);
+  void draw_subtitle_options(Subtitle2Scene& scene,
+                             const std::string& name,
+                             bool current_scene = false);
   void draw_new_cutscene_line_form();
 
   bool db_loaded = false;
@@ -68,6 +70,7 @@ class Subtitle2Editor {
   int speaker_index_by_name(const std::string& name);
 
   void repl_rebuild_text();
+  void repl_play_vag(const std::string& name);
 
   bool is_scene_in_current_lang(const std::string& scene_name);
 };

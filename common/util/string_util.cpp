@@ -101,4 +101,12 @@ bool replace(std::string& str, const std::string& from, const std::string& to) {
   str.replace(start_pos, from.length(), to);
   return true;
 }
+
+std::string lower(const std::string& str) {
+  std::string res;
+  for (auto c : str) {
+    res.push_back(tolower(c));
+  }
+  return res;
+}
 }  // namespace str_util

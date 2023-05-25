@@ -381,6 +381,7 @@
   "sampler.o"
   "default-menu.o"
   "anim-tester-x.o" ;; added
+  "vag-player.o" ;; added
   "default-menu-pc.o" ;; added
   "dir-tpages.go"
   "tpage-11.go"

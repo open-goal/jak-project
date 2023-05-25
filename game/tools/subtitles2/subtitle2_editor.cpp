@@ -5,6 +5,7 @@
 #include "common/serialization/subtitles2/subtitles2_deser.h"
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
+#include "common/util/string_util.h"
 
 #include "game/runtime.h"
 
@@ -37,10 +38,13 @@ int Subtitle2Editor::speaker_index_by_name(const std::string& name) {
 }
 
 void Subtitle2Editor::repl_rebuild_text() {
-  m_repl.eval("(make-text)");
   // increment the language id of the in-memory text file so that it won't match the current
   // language and the game will want to reload it asap
-  m_repl.eval("(1+! (-> *subtitle2-text* lang))");
+  m_repl.eval("(begin (make-text) (1+! (-> *subtitle2-text* lang)))");
+}
+
+void Subtitle2Editor::repl_play_vag(const std::string& name) {
+  m_repl.eval(fmt::format("(vag-player-play-from-name \"{}\")", str_util::lower(name)));
 }
 
 void Subtitle2Editor::draw_window() {
@@ -86,7 +90,7 @@ void Subtitle2Editor::draw_window() {
           fmt::format("Currently Selected Cutscene: {}", m_current_scene_name).c_str())) {
     ImGui::PopStyleColor();
     if (m_current_scene) {
-      draw_subtitle_options(*m_current_scene, true);
+      draw_subtitle_options(*m_current_scene, m_current_scene_name, true);
     } else {
       ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
       ImGui::Text("Select a Scene from Below!");
@@ -203,7 +207,6 @@ void Subtitle2Editor::draw_speaker_options() {
     const auto bank = m_subtitle_db.m_banks[m_current_language];
     for (int i = 0; i < m_speaker_names.size(); ++i) {
       auto speaker_name = speaker_name_by_index(i);
-      // ImGui::Text(speaker_name.c_str());
       // ImGui::SameLine();
       if (bank->speakers.count(speaker_name) == 0) {
         // no speaker yet.
@@ -272,7 +275,7 @@ void Subtitle2Editor::draw_all_scenes(bool base_cutscenes) {
           m_subtitle_db.m_banks.at(m_current_language)->add_scene(name, scene);
         }
       }
-      draw_subtitle_options(scene);
+      draw_subtitle_options(scene, name);
       ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
       if (ImGui::Button("Delete")) {
         if (&scene == m_current_scene || name == m_current_scene_name) {
@@ -292,7 +295,9 @@ void Subtitle2Editor::draw_all_scenes(bool base_cutscenes) {
   }
 }
 
-void Subtitle2Editor::draw_subtitle_options(Subtitle2Scene& scene, bool current_scene) {
+void Subtitle2Editor::draw_subtitle_options(Subtitle2Scene& scene,
+                                            const std::string& name,
+                                            bool current_scene) {
   if (!m_repl.is_connected()) {
     ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
     ImGui::Text("REPL not connected, can't play!");
@@ -300,7 +305,7 @@ void Subtitle2Editor::draw_subtitle_options(Subtitle2Scene& scene, bool current_
   } else {
     // Cutscenes
     if (ImGui::Button("Play Scene")) {
-      // repl_execute_cutscene_code(m_db.at(scene.name));
+      repl_play_vag(name);
     }
   }
   if (current_scene) {
