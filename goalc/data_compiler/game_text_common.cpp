@@ -149,15 +149,16 @@ void compile_subtitle(GameSubtitleDB& db, const std::string& output_prefix) {
  * and OpenGOAL.
  */
 void compile_subtitle2(GameSubtitle2DB& db, const std::string& output_prefix) {
+  auto& speaker_names = get_speaker_names(db.version());
   for (const auto& [lang, bank] : db.banks()) {
+    auto font = get_font_bank(bank->text_version);
     DataObjectGenerator gen;
     gen.add_type_tag("subtitle2-text-info");                  // type
     gen.add_word((bank->scenes.size() & 0xffff) | (1 < 16));  // length (lo) + version (hi)
     // note: we add 1 because "none" isn't included
-    gen.add_word((lang & 0xffff) | ((bank->speakers.size() + 1) << 16));  // lang + speaker-length
+    gen.add_word((lang & 0xffff) | ((speaker_names.size() + 1) << 16));  // lang + speaker-length
     int speaker_array_link = gen.add_word(0);  // speaker array (dummy for now)
 
-    auto& speaker_names = get_speaker_names(db.version());
     auto speaker_index_by_name = [&speaker_names](const std::string& name) {
       for (int i = 0; i < speaker_names.size(); ++i) {
         if (speaker_names.at(i) == name) {
@@ -183,10 +184,10 @@ void compile_subtitle2(GameSubtitle2DB& db, const std::string& output_prefix) {
       array_link_sources.pop();
 
       for (auto& line : scene.lines) {
-        gen.add_word_float(line.start);                     // start frame
-        gen.add_word_float(line.end);                       // end frame
-        gen.add_ref_to_string_in_pool(line.text);           // line text
-        u16 speaker = speaker_index_by_name(line.speaker);  // speaker
+        gen.add_word_float(line.start);                                        // start frame
+        gen.add_word_float(line.end);                                          // end frame
+        gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(line.text));  // line text
+        u16 speaker = speaker_index_by_name(line.speaker);                     // speaker
         u16 flags = 0;
         flags |= line.offscreen << 0;
         gen.add_word(speaker | (flags << 16));  // speaker (lo) + flags (hi)
@@ -201,7 +202,7 @@ void compile_subtitle2(GameSubtitle2DB& db, const std::string& output_prefix) {
         // no speaker for this
         gen.add_symbol_link("#f");
       } else {
-        gen.add_ref_to_string_in_pool(bank->speakers.at(speaker_name));
+        gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(bank->speakers.at(speaker_name)));
       }
     }
 

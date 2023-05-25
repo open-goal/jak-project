@@ -201,7 +201,6 @@ void Subtitle2Editor::draw_repl_options() {
 void Subtitle2Editor::draw_speaker_options() {
   if (ImGui::TreeNode("Speakers")) {
     const auto bank = m_subtitle_db.m_banks[m_current_language];
-    auto font = get_font_bank(bank->text_version);
     for (int i = 0; i < m_speaker_names.size(); ++i) {
       auto speaker_name = speaker_name_by_index(i);
       // ImGui::Text(speaker_name.c_str());
@@ -216,14 +215,15 @@ void Subtitle2Editor::draw_speaker_options() {
         }
       } else {
         // existing speaker
-        std::string input = font->convert_game_to_utf8(bank->speakers.at(speaker_name).c_str());
-        ImGui::InputText(speaker_name.c_str(), &input);
-        if (input.empty()) {
-          // speaker got deleted
-          bank->speakers.erase(speaker_name);
-        } else {
-          // speaker got changed
-          bank->speakers.at(speaker_name) = font->convert_utf8_to_game(input, true);
+        std::string input = bank->speakers.at(speaker_name);
+        if (ImGui::InputText(speaker_name.c_str(), &input)) {
+          if (input.empty()) {
+            // speaker got deleted
+            bank->speakers.erase(speaker_name);
+          } else {
+            // speaker got changed
+            bank->speakers.at(speaker_name) = input;
+          }
         }
       }
     }
@@ -307,16 +307,12 @@ void Subtitle2Editor::draw_subtitle_options(Subtitle2Scene& scene, bool current_
     draw_new_cutscene_line_form();
   }
   const auto bank = m_subtitle_db.m_banks[m_current_language];
-  auto font = get_font_bank(m_subtitle_db.m_banks[m_current_language]->text_version);
   int i = 0;
   for (auto line = scene.lines.begin(); line != scene.lines.end();) {
     float times[2] = {line->start, line->end};
-    auto linetext = font->convert_game_to_utf8(line->text.c_str());
-    auto speaker = line->speaker;
-    bool speaker_exists = bank->speakers.count(speaker) != 0;
-    auto speaker_text =
-        !speaker_exists ? "N/A" : font->convert_game_to_utf8(bank->speakers.at(speaker).c_str());
-    std::string full_line = linetext;
+    bool speaker_exists = bank->speakers.count(line->speaker) != 0;
+    auto speaker_text = !speaker_exists ? "N/A" : bank->speakers.at(line->speaker);
+    std::string full_line = line->text;
     if (speaker_exists) {
       full_line = speaker_text + ": " + full_line;
     }
@@ -324,31 +320,28 @@ void Subtitle2Editor::draw_subtitle_options(Subtitle2Scene& scene, bool current_
                                full_line.length() <= LINE_DISPLAY_MAX_LEN
                                    ? full_line
                                    : (full_line.substr(0, LINE_DISPLAY_MAX_LEN - 3) + "..."));
-    if (linetext.empty()) {
+    if (line->text.empty()) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
     } else if (line->offscreen) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_offscreen_text_color);
     }
     if (ImGui::TreeNode(fmt::format("{}", i).c_str(), "%s", summary.c_str())) {
-      if (linetext.empty() || line->offscreen) {
+      if (line->text.empty() || line->offscreen) {
         ImGui::PopStyleColor();
       }
       ImGui::InputFloat2("Start and End Frame", times, "%.0f",
                          ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
       if (ImGui::BeginCombo("Speaker",
-                            fmt::format("{} ({})", speaker_text.c_str(), speaker).c_str())) {
+                            fmt::format("{} ({})", speaker_text.c_str(), line->speaker).c_str())) {
         for (auto& speaker_name : m_speaker_names) {
           if (bank->speakers.count(speaker_name) == 0) {
             continue;
           }
-          const bool isSelected = speaker == speaker_name;
+          const bool isSelected = line->speaker == speaker_name;
           if (ImGui::Selectable(
-                  fmt::format("{} ({})",
-                              font->convert_game_to_utf8(bank->speakers.at(speaker_name).c_str()),
-                              speaker_name)
-                      .c_str(),
+                  fmt::format("{} ({})", bank->speakers.at(speaker_name), speaker_name).c_str(),
                   isSelected)) {
-            speaker = speaker_name;
+            line->speaker = speaker_name;
           }
           if (isSelected) {
             ImGui::SetItemDefaultFocus();
@@ -356,7 +349,7 @@ void Subtitle2Editor::draw_subtitle_options(Subtitle2Scene& scene, bool current_
         }
         ImGui::EndCombo();
       }
-      ImGui::InputText("Text", &linetext);
+      ImGui::InputText("Text", &line->text);
       ImGui::Checkbox("Offscreen?", &line->offscreen);
       if (scene.lines.size() > 1) {  // prevent creating an empty scene
         ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
@@ -369,13 +362,11 @@ void Subtitle2Editor::draw_subtitle_options(Subtitle2Scene& scene, bool current_
         ImGui::PopStyleColor();
       }
       ImGui::TreePop();
-    } else if (linetext.empty() || line->offscreen) {
+    } else if (line->text.empty() || line->offscreen) {
       ImGui::PopStyleColor();
     }
     line->start = times[0];
     line->end = times[1];
-    line->text = font->convert_utf8_to_game(linetext, true);
-    line->speaker = speaker;
     i++;
     line++;
   }
@@ -383,7 +374,6 @@ void Subtitle2Editor::draw_subtitle_options(Subtitle2Scene& scene, bool current_
 
 void Subtitle2Editor::draw_new_cutscene_line_form() {
   auto bank = m_subtitle_db.m_banks[m_current_language];
-  auto font = get_font_bank(bank->text_version);
   ImGui::InputFloat2("Start and End Frame", m_current_scene_frame, "%.0f",
                      ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
   const auto& speakers = bank->speakers;
@@ -395,9 +385,7 @@ void Subtitle2Editor::draw_new_cutscene_line_form() {
   if (ImGui::BeginCombo("Speaker",
                         speakers.count(m_current_scene_speaker) == 0
                             ? "N/A"
-                            : fmt::format("{} ({})",
-                                          font->convert_game_to_utf8(
-                                              speakers.at(m_current_scene_speaker).c_str()),
+                            : fmt::format("{} ({})", speakers.at(m_current_scene_speaker),
                                           m_current_scene_speaker)
                                   .c_str())) {
     for (int i = 0; i < m_speaker_names.size(); ++i) {
@@ -406,11 +394,8 @@ void Subtitle2Editor::draw_new_cutscene_line_form() {
         continue;
       }
       const bool isSelected = m_current_scene_speaker == speaker_name;
-      if (ImGui::Selectable(
-              fmt::format("{} ({})", font->convert_game_to_utf8(speakers.at(speaker_name).c_str()),
-                          speaker_name)
-                  .c_str(),
-              isSelected)) {
+      if (ImGui::Selectable(fmt::format("{} ({})", speakers.at(speaker_name), speaker_name).c_str(),
+                            isSelected)) {
         m_current_scene_speaker = speaker_name;
       }
       if (isSelected) {
@@ -429,8 +414,8 @@ void Subtitle2Editor::draw_new_cutscene_line_form() {
   } else {
     if (ImGui::Button("Add Text Entry")) {
       m_current_scene->lines.emplace_back(m_current_scene_frame[0], m_current_scene_frame[1],
-                                          font->convert_utf8_to_game(m_current_scene_text, true),
-                                          m_current_scene_speaker, m_current_scene_offscreen);
+                                          m_current_scene_text, m_current_scene_speaker,
+                                          m_current_scene_offscreen);
       // TODO - sorting after every insertion is slow, sort on the add scene instead
       std::sort(m_current_scene->lines.begin(), m_current_scene->lines.end());
     }

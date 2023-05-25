@@ -372,9 +372,9 @@
 (defmacro reload-subtitles ()
   "rebuild and reload subtitles."
   `(begin
-      (asm-text-file subtitle2 :files ("game/assets/game_subtitle.gp"))
+      (asm-text-file subtitle2 :files ("game/assets/jak2/game_subtitle.gp"))
       (if *subtitle2-text*
-          (+! (-> *subtitle2-text* lang) (the-as pc-subtitle-lang 1)))
+          (+! (-> *subtitle2-text* lang) 1))
       (load-level-subtitle2-files 0)))
 
 (defmacro reload-text ()
@@ -500,9 +500,8 @@
     ((or (= #t (-> *pc-settings* subtitle-speaker?))
          (and (= 'auto (-> *pc-settings* subtitle-speaker?)) (subtitle2-flags? line offscreen)))
      ;; there is a speaker and we do want it.
-     (string-format "~o~S:~0L ~S" (-> *subtitle2-speaker-color-table* (-> line speaker))
-                                  (get-speaker *subtitle2-text* (-> line speaker))
-                                  (-> line text)))
+     ;; we use color 33 which gets set at runtime to any color we want
+     (string-format "~33L~S:~0L ~S" (get-speaker *subtitle2-text* (-> line speaker)) (-> line text)))
     (else
      (string-format "~S" (-> line text)))
     )
@@ -518,7 +517,9 @@
   "setup a font for the subtitle2 subtitles."
 
   ;; set font settings.
-  (set-scale! font (* 0.5 (-> *SUBTITLE2-bank* scale)))
+  (if (!= (language-enum japanese) (-> *setting-control* user-current subtitle-language))
+      (set-scale! font (* 0.5 (-> *SUBTITLE2-bank* scale)))
+      (set-scale! font (* 0.5 (-> *SUBTITLE2-bank* scale) 1.15)))
   (set-width! font (the int (* (-> *SUBTITLE2-bank* width) 0.91 512)))
   (set-origin! font (the int (/ (- 512.0 (-> font width)) 2))
                     (the int (* (if (subtitle-bump-up?) 0.58 0.698) 416)))
@@ -623,6 +624,13 @@
         (when (= (gui-status active) (get-status *gui-control* (-> self gui-id)))
             (protect (*display-text-box*)
             (set! *display-text-box* (or *display-text-box* PC_SUBTITLE_DEBUG))
+            (let ((spk-col (-> *subtitle2-speaker-color-table* (-> line-queue i line speaker))))
+              (set-font-color (font-color #7ffcfc) 0 (new 'static 'rgba :r (-> spk-col r))
+                                                     (new 'static 'rgba :r (-> spk-col g))
+                                                     (new 'static 'rgba :r (-> spk-col b)))
+              (set-font-color (font-color #7ffcfc) 1 (new 'static 'rgba :r (-> spk-col r))
+                                                     (new 'static 'rgba :r (-> spk-col g))
+                                                     (new 'static 'rgba :r (-> spk-col b))))
             (print-game-text *temp-string* (-> self font) #f 44 (bucket-id debug-no-zbuf2))))
         )
 
