@@ -90,14 +90,13 @@
   )
 (hash-table-set! *file-entry-map* "dir-tpages.go" #f)
 
-(cgo-file "engine.gd" '("$OUT/obj/gcommon.o" "$OUT/obj/gstate.o" "$OUT/obj/gstring.o" "$OUT/obj/gkernel.o"))
 (cgo-file "game.gd" '("$OUT/obj/gcommon.o" "$OUT/obj/gstate.o" "$OUT/obj/gstring.o" "$OUT/obj/gkernel.o"))
 
 ;; note: some of these dependencies are slightly wrong because cgo-file doesn't really handle
 ;; the case of a .o appearing in multiple dgos. But, if we depend on the last item in both lists, it
 ;; works out.
 
-(define common-dep '("$OUT/obj/cty-guard-turret-button.o" "$OUT/obj/default-menu.o"))
+(define common-dep '("$OUT/obj/cty-guard-turret-button.o" "$OUT/obj/default-menu-pc.o"))
 (cgo-file "cwi.gd" common-dep)
 (cgo-file "lmeetbrt.gd" common-dep)
 (cgo-file "cta.gd" common-dep)
