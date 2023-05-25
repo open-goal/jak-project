@@ -1,14 +1,5 @@
 #include "hover.h"
 
-void LSPSpec::to_json(json& j, const MarkupContent& obj) {
-  j = json{{"kind", obj.m_kind}, {"value", obj.m_value}};
-}
-
-void LSPSpec::from_json(const json& j, MarkupContent& obj) {
-  j.at("kind").get_to(obj.m_kind);
-  j.at("value").get_to(obj.m_value);
-}
-
 void LSPSpec::to_json(json& j, const Hover& obj) {
   j = json{{"contents", obj.m_contents}};
   if (obj.m_range) {

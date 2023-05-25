@@ -1,6 +1,9 @@
+#pragma once
+
 #include <optional>
 #include <regex>
 
+#include "goalc/compiler/docs/DocTypes.h"
 #include "lsp/protocol/common_types.h"
 #include "lsp/protocol/hover.h"
 #include "lsp/state/data/mips_instructions.h"
@@ -14,31 +17,25 @@ bool is_number(const std::string& s) {
 std::vector<std::string> og_method_names = {"new",      "delete", "print",    "inspect",  "length",
                                             "asize-of", "copy",   "relocate", "mem-usage"};
 
-std::optional<json> hover_handler(Workspace& workspace, int id, json params) {
-  auto converted_params = params.get<LSPSpec::TextDocumentPositionParams>();
-  auto tracked_file = workspace.get_tracked_ir_file(converted_params.m_textDocument.m_uri);
-
-  if (!tracked_file) {
-    return {};
-  }
-
+std::optional<LSPSpec::Hover> hover_handler_ir(Workspace& workspace,
+                                               const LSPSpec::TextDocumentPositionParams& params,
+                                               const WorkspaceIRFile& tracked_file) {
   // See if it's an OpenGOAL symbol or a MIPS mnemonic
-  auto symbol_name = tracked_file->get_symbol_at_position(converted_params.m_position);
-  auto token_at_pos = tracked_file->get_mips_instruction_at_position(converted_params.m_position);
+  auto symbol_name = tracked_file.get_symbol_at_position(params.m_position);
+  auto token_at_pos = tracked_file.get_mips_instruction_at_position(params.m_position);
   if (!symbol_name && !token_at_pos) {
     return {};
   }
 
-  // TODO - try specifying the range so it highlights everything, ie. `c.lt.s`
-
   LSPSpec::MarkupContent markup;
   markup.m_kind = "markdown";
 
+  // TODO - try specifying the range so it highlights everything, ie. `c.lt.s`
   // Prefer symbols
   if (symbol_name) {
     lg::debug("hover - symbol match - {}", symbol_name.value());
     auto symbol_info = workspace.get_definition_info_from_all_types(symbol_name.value(),
-                                                                    tracked_file->m_all_types_uri);
+                                                                    tracked_file.m_all_types_uri);
     if (symbol_info && symbol_info.value().docstring.has_value()) {
       std::string docstring = symbol_info.value().docstring.value();
       lg::debug("hover - symbol has docstring - {}", docstring);
@@ -58,13 +55,13 @@ std::optional<json> hover_handler(Workspace& workspace, int id, json params) {
         }
         // Get this symbols info
         auto symbol_info =
-            workspace.get_definition_info_from_all_types(name, tracked_file->m_all_types_uri);
+            workspace.get_definition_info_from_all_types(name, tracked_file.m_all_types_uri);
         if (!symbol_info) {
           symbol_replacements[name] = fmt::format("_{}_", name);
         } else {
           // Construct path
           auto symbol_uri =
-              fmt::format("{}#L{}%2C{}", tracked_file->m_all_types_uri,
+              fmt::format("{}#L{}%2C{}", tracked_file.m_all_types_uri,
                           symbol_info.value().definition_info->line_idx_to_display + 1,
                           symbol_info.value().definition_info->pos_in_line);
           symbol_replacements[name] = fmt::format("[{}]({})", name, symbol_uri);
@@ -152,6 +149,123 @@ std::optional<json> hover_handler(Workspace& workspace, int id, json params) {
         body += instr;
       }
       body += "___\n\n";
+    }
+
+    markup.m_value = body;
+    LSPSpec::Hover hover_resp;
+    hover_resp.m_contents = markup;
+    return hover_resp;
+  }
+}
+
+std::string truncate_docstring(const std::string& docstring) {
+  std::string truncated = "";
+  const auto lines = str_util::split(docstring);
+  for (const auto& line : lines) {
+    const auto trimmed_line = str_util::ltrim(line);
+    if (str_util::starts_with(trimmed_line, "@")) {
+      break;
+    }
+    truncated += trimmed_line + "\n";
+  }
+  return truncated;
+}
+
+std::optional<json> hover_handler(Workspace& workspace, int id, json raw_params) {
+  auto params = raw_params.get<LSPSpec::TextDocumentPositionParams>();
+  auto file_type = workspace.determine_filetype_from_uri(params.m_textDocument.m_uri);
+
+  if (file_type == Workspace::FileType::OpenGOALIR) {
+    auto tracked_file = workspace.get_tracked_ir_file(params.m_textDocument.m_uri);
+    if (!tracked_file) {
+      return {};
+    }
+    return hover_handler_ir(workspace, params, tracked_file.value());
+  } else if (file_type == Workspace::FileType::OpenGOAL) {
+    auto tracked_file = workspace.get_tracked_og_file(params.m_textDocument.m_uri);
+    if (!tracked_file) {
+      return {};
+    }
+    // TODO - replace with AST usage instead of figuring out the symbol ourselves
+    const auto symbol = tracked_file->get_symbol_at_position(params.m_position);
+    if (!symbol) {
+      lg::debug("hover - no symbol");
+      return {};
+    }
+    // TODO - there is an issue with docstrings and overridden methods
+    const auto& symbol_info =
+        workspace.get_global_symbol_info(tracked_file.value(), symbol.value());
+    if (!symbol_info) {
+      lg::debug("hover - no symbol info - {}", symbol.value());
+      return {};
+    }
+    LSPSpec::MarkupContent markup;
+    markup.m_kind = "markdown";
+
+    const auto args =
+        Docs::get_args_from_docstring(symbol_info->args(), symbol_info->meta().docstring);
+    std::string signature = "";
+    bool takes_args = true;
+    if (symbol_info->kind() == SymbolInfo::Kind::FUNCTION) {
+      signature += "function ";
+    } else if (symbol_info->kind() == SymbolInfo::Kind::METHOD) {
+      signature += "method ";
+    } else if (symbol_info->kind() == SymbolInfo::Kind::MACRO) {
+      signature += "macro ";
+    } else {
+      takes_args = false;
+    }
+    // TODO - others useful, probably states?
+    signature += symbol.value();
+    if (takes_args) {
+      signature += "(";
+      for (int i = 0; i < args.size(); i++) {
+        const auto& arg = args.at(i);
+        if (i == args.size() - 1) {
+          signature += fmt::format("{}: {}", arg.name, arg.type);
+        } else {
+          signature += fmt::format("{}: {}, ", arg.name, arg.type);
+        }
+      }
+      signature += ")";
+      if (symbol_info->kind() == SymbolInfo::Kind::FUNCTION &&
+          workspace.get_symbol_typespec(tracked_file.value(), symbol.value())) {
+        signature +=
+            fmt::format(": {}", workspace.get_symbol_typespec(tracked_file.value(), symbol.value())
+                                    ->last_arg()
+                                    .base_type());
+      } else if (symbol_info->kind() == SymbolInfo::Kind::METHOD) {
+        signature += fmt::format(": {}", symbol_info->method_info().type.last_arg().base_type());
+      }
+    } else if (workspace.get_symbol_typespec(tracked_file.value(), symbol.value())) {
+      signature += fmt::format(
+          ": {}", workspace.get_symbol_typespec(tracked_file.value(), symbol.value())->base_type());
+    }
+
+    std::string body = fmt::format("```opengoal\n{}\n```\n\n", signature);
+    body += "___\n\n";
+    if (!symbol_info->meta().docstring.empty()) {
+      body += truncate_docstring(symbol_info->meta().docstring) + "\n\n";
+    }
+
+    // TODO - support @see/@returns/[[reference]]
+    for (const auto& arg : args) {
+      std::string param_line = "";
+      if (arg.is_mutated) {
+        param_line += fmt::format("*@param!* `{}: {}`", arg.name, arg.type);
+      } else if (arg.is_optional) {
+        param_line += fmt::format("*@param?* `{}: {}`", arg.name, arg.type);
+      } else if (arg.is_unused) {
+        param_line += fmt::format("*@param_* `{}: {}`", arg.name, arg.type);
+      } else {
+        param_line += fmt::format("*@param* `{}: {}`", arg.name, arg.type);
+      }
+      if (!arg.description.empty()) {
+        param_line += fmt::format(" - {}\n\n", arg.description);
+      } else {
+        param_line += "\n\n";
+      }
+      body += param_line;
     }
 
     markup.m_value = body;

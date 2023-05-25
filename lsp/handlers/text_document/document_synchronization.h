@@ -1,3 +1,5 @@
+#pragma once
+
 #include <optional>
 
 #include "lsp/protocol/document_diagnostics.h"
@@ -26,18 +28,22 @@ void did_close_handler(Workspace& workspace, json raw_params) {
   workspace.stop_tracking_file(params.m_textDocument.m_uri);
 }
 
-std::optional<json> did_open_push_diagnostics(Workspace& workspace, json params) {
-  auto converted_params = params.get<LSPSpec::DidOpenTextDocumentParams>();
-  auto tracked_file = workspace.get_tracked_ir_file(converted_params.m_textDocument.m_uri);
-
-  if (!tracked_file) {
-    return {};
-  }
+std::optional<json> did_open_push_diagnostics(Workspace& workspace, json raw_params) {
+  auto params = raw_params.get<LSPSpec::DidOpenTextDocumentParams>();
+  const auto file_type =
+      workspace.determine_filetype_from_languageid(params.m_textDocument.m_languageId);
 
   LSPSpec::PublishDiagnosticParams publish_params;
-  publish_params.m_uri = converted_params.m_textDocument.m_uri;
-  publish_params.m_diagnostics = tracked_file.value().m_diagnostics;
-  publish_params.m_version = converted_params.m_textDocument.m_version;
+  publish_params.m_uri = params.m_textDocument.m_uri;
+  publish_params.m_version = params.m_textDocument.m_version;
+
+  if (file_type == Workspace::FileType::OpenGOALIR) {
+    auto tracked_file = workspace.get_tracked_ir_file(params.m_textDocument.m_uri);
+    if (!tracked_file) {
+      return {};
+    }
+    publish_params.m_diagnostics = tracked_file.value().m_diagnostics;
+  }
 
   json response;
   response["method"] = "textDocument/publishDiagnostics";
@@ -48,16 +54,20 @@ std::optional<json> did_open_push_diagnostics(Workspace& workspace, json params)
 
 std::optional<json> did_change_push_diagnostics(Workspace& workspace, json raw_params) {
   auto params = raw_params.get<LSPSpec::DidChangeTextDocumentParams>();
-  auto tracked_file = workspace.get_tracked_ir_file(params.m_textDocument.m_uri);
-
-  if (!tracked_file) {
-    return {};
-  }
+  const auto file_type = workspace.determine_filetype_from_uri(params.m_textDocument.m_uri);
 
   LSPSpec::PublishDiagnosticParams publish_params;
   publish_params.m_uri = params.m_textDocument.m_uri;
-  publish_params.m_diagnostics = tracked_file.value().m_diagnostics;
   publish_params.m_version = params.m_textDocument.m_version;
+
+  if (file_type == Workspace::FileType::OpenGOALIR) {
+    auto tracked_file = workspace.get_tracked_ir_file(params.m_textDocument.m_uri);
+
+    if (!tracked_file) {
+      return {};
+    }
+    publish_params.m_diagnostics = tracked_file.value().m_diagnostics;
+  }
 
   json response;
   response["method"] = "textDocument/publishDiagnostics";

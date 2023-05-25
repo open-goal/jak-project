@@ -75,20 +75,20 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
       param_2->decompressed_size = 0;
       goto LAB_0000fecc;
     }
-    param_1->unk_248 = piVar6[4];
+    param_1->sample_rate = piVar6[4];
     iVar2 = piVar6[3];
     param_1->unk_204 = 0;
     param_1->xfer_size = iVar2;
     if (*piVar6 == 0x70474156) {
-      uVar3 = param_1->unk_248;
+      uVar3 = param_1->sample_rate;
       uVar5 = param_1->xfer_size;
-      param_1->unk_248 =
+      param_1->sample_rate =
           uVar3 >> 0x18 | ((int)uVar3 >> 8 & 0xff00U) | (uVar3 & 0xff00) << 8 | uVar3 << 0x18;
       param_1->xfer_size =
           uVar5 >> 0x18 | ((int)uVar5 >> 8 & 0xff00U) | (uVar5 & 0xff00) << 8 | uVar5 << 0x18;
     }
     if (pRVar7 != 0x0) {
-      pRVar7->unk_248 = piVar6[4];
+      pRVar7->sample_rate = piVar6[4];
       iVar2 = piVar6[3];
       pRVar7->unk_204 = 0;
       pRVar7->xfer_size = iVar2;
@@ -97,7 +97,7 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
     iVar2 = iVar4 + 0x30;
     param_1->unk_264 = 0x4000;
     param_1->xfer_size = iVar2;
-    param_1->pitch1 = (u32)(param_1->unk_248 << 0xc) / 48000;
+    param_1->pitch1 = (u32)(param_1->sample_rate << 0xc) / 48000;
     if ((iVar2 < 0x2001) && (0x3fff < (u32)param_1->unk_264)) {
       iVar1 = 0x10;
       if (0x1f < iVar2) {
@@ -105,7 +105,7 @@ int ProcessVAGData(CmdHeader* param_1_in, Buffer* param_2) {
       }
       param_1->unk_264 = iVar1;
       if (pRVar7 != 0x0) {
-        pRVar7->unk_248 = param_1->unk_248;
+        pRVar7->sample_rate = param_1->sample_rate;
         iVar2 = param_1->xfer_size;
         pRVar7->unk_204 = 0;
         pRVar7->xfer_size = iVar2;
@@ -247,14 +247,10 @@ LAB_0000fecc:
 }
 
 int GetVAGStreamPos(VagCmd* param_1) {
-  bool bVar1;
-  u32 uVar2;
-  u32 uVar3;
-  u32 uVar4;
-  u32 uVar5;
+  u32 primary_dma_offset;
   int iVar6;
   VagCmd* pRVar7;
-  u32 uVar8;
+  u32 secondary_dma_offset;
   u32 uVar9;
   u32 uVar10;
 
@@ -283,66 +279,41 @@ int GetVAGStreamPos(VagCmd* param_1) {
     pRVar7->unk_200 = pRVar7->unk_180;
     return 0;
   }
+
+  // this is inheriting what was calculated from the primary, if we're the "Stereo" second stream.
   if (param_1->byte11 != '\0') {
     param_1->unk_200 = param_1->unk_180;
     return 0;
   }
   // CpuSuspendIntr(local_30);
-  uVar9 = param_1->spu_stream_dma_mem_addr;
-  uVar8 = (param_1->voice & 0xffffU) | 0x2240;
-  do {
-    uVar10 = 0;
-    do {
-      uVar2 = sceSdGetAddr(uVar8);
-      uVar3 = sceSdGetAddr(uVar8);
-      uVar4 = sceSdGetAddr(uVar8);
-      if ((uVar2 == uVar3) ||
-          ((uVar3 != uVar4 && (bVar1 = uVar2 == uVar4, uVar4 = uVar10, bVar1)))) {
-        uVar4 = uVar2;
-      }
-      uVar10 = uVar4;
-    } while (uVar4 == 0);
-  } while ((uVar4 < uVar9) || (uVar9 + 0x4040 <= uVar4));
-  uVar4 = uVar4 - param_1->spu_stream_dma_mem_addr;
+  primary_dma_offset = GetSpuRamAddress(param_1);
+  primary_dma_offset = primary_dma_offset - param_1->spu_stream_dma_mem_addr;
   if (pRVar7 == 0x0) {
-    uVar8 = 0;
+    secondary_dma_offset = 0;
   } else {
-    uVar10 = pRVar7->spu_stream_dma_mem_addr;
-    uVar9 = (pRVar7->voice & 0xffffU) | 0x2240;
-    do {
-      uVar2 = 0;
-      do {
-        uVar3 = sceSdGetAddr(uVar9);
-        uVar5 = sceSdGetAddr(uVar9);
-        uVar8 = sceSdGetAddr(uVar9);
-        if ((uVar3 == uVar5) ||
-            ((uVar5 != uVar8 && (bVar1 = uVar3 == uVar8, uVar8 = uVar2, bVar1)))) {
-          uVar8 = uVar3;
-        }
-        uVar2 = uVar8;
-      } while (uVar8 == 0);
-    } while ((uVar8 < uVar10) || (uVar10 + 0x4040 <= uVar8));
-    uVar8 = uVar8 - pRVar7->spu_stream_dma_mem_addr;
+    secondary_dma_offset = GetSpuRamAddress(pRVar7);
+    secondary_dma_offset = secondary_dma_offset - pRVar7->spu_stream_dma_mem_addr;
   }
   // CpuResumeIntr(local_30[0]);
   if (pRVar7 != 0x0) {
-    if ((((uVar4 < 0x4000) && (uVar8 < 0x4000)) && (param_1->byte20 == '\0')) &&
+    if ((((primary_dma_offset < 0x4000) && (secondary_dma_offset < 0x4000)) &&
+         (param_1->byte20 == '\0')) &&
         (pRVar7->byte20 == '\0')) {
-      iVar6 = (int)((uVar4 - uVar8) * 0x40000) >> 0x12;
+      iVar6 = (int)((primary_dma_offset - secondary_dma_offset) * 0x40000) >> 0x12;
       if (iVar6 < 0) {
         iVar6 = -iVar6;
       }
       if (4 < iVar6) {
         PauseVAG(param_1, 1);
-        uVar4 = param_1->spu_addr_to_start_playing - param_1->spu_stream_dma_mem_addr;
-        uVar8 = pRVar7->spu_addr_to_start_playing - pRVar7->spu_stream_dma_mem_addr;
+        primary_dma_offset = param_1->spu_addr_to_start_playing - param_1->spu_stream_dma_mem_addr;
+        secondary_dma_offset = pRVar7->spu_addr_to_start_playing - pRVar7->spu_stream_dma_mem_addr;
         UnPauseVAG(param_1, 1);
       }
     }
     if (pRVar7 == 0x0)
       goto LAB_00010860;
     // CpuSuspendIntr(local_30);
-    if ((0x4000 < uVar4) && (param_1->byte20 == '\0')) {
+    if ((0x4000 < primary_dma_offset) && (param_1->byte20 == '\0')) {
       param_1->byte20 = '\x01';
       param_1->byte21 = '\0';
       param_1->byte22 = '\0';
@@ -350,8 +321,9 @@ int GetVAGStreamPos(VagCmd* param_1) {
       pRVar7->byte21 = '\0';
       pRVar7->byte22 = '\0';
     }
-    if (uVar8 < 0x4001) {
-      if (uVar4 < 0x2000) {
+
+    if (secondary_dma_offset < 0x4001) {
+      if (primary_dma_offset < 0x2000) {
         if (param_1->byte21 == '\0') {
           iVar6 = param_1->unk_204;
           param_1->byte21 = '\x01';
@@ -366,7 +338,8 @@ int GetVAGStreamPos(VagCmd* param_1) {
         param_1->byte21 = '\0';
         goto LAB_00010234;
       }
-      if (uVar8 < 0x2000) {
+
+      if (secondary_dma_offset < 0x2000) {
         if (pRVar7->byte21 == '\0') {
           iVar6 = pRVar7->unk_204;
           pRVar7->byte21 = '\x01';
@@ -380,6 +353,7 @@ int GetVAGStreamPos(VagCmd* param_1) {
         pRVar7->byte22 = '\x01';
         pRVar7->byte21 = '\0';
         goto LAB_00010288;
+      } else {
       }
     } else if (pRVar7->byte20 == '\0') {
       param_1->byte20 = '\x01';
@@ -405,8 +379,8 @@ int GetVAGStreamPos(VagCmd* param_1) {
             (pRVar7->sb_even_buffer_dma_complete == '\0')) {
           if ((param_1->byte20 == '\0') && (pRVar7->byte20 == '\0'))
             goto switchD_000102c4_caseD_1;
-          uVar4 = 0x2000;
-          uVar8 = 0x2000;
+          primary_dma_offset = 0x2000;
+          secondary_dma_offset = 0x2000;
           param_1->byte17 = '\x01';
           param_1->byte16 = '\0';
           pRVar7->byte17 = '\x01';
@@ -432,8 +406,8 @@ int GetVAGStreamPos(VagCmd* param_1) {
             // CpuResumeIntr(local_30[0]);
             goto switchD_000102c4_caseD_1;
           }
-          uVar4 = 0x2000;
-          uVar8 = 0x2000;
+          primary_dma_offset = 0x2000;
+          secondary_dma_offset = 0x2000;
           RestartVag(param_1, 1, 1);
           iVar6 = 9;
         }
@@ -442,8 +416,8 @@ int GetVAGStreamPos(VagCmd* param_1) {
         goto switchD_000102c4_caseD_1;
       case 3:
         if ((param_1->byte20 != '\0') || (pRVar7->byte20 != '\0')) {
-          uVar4 = 0x2000;
-          uVar8 = 0x2000;
+          primary_dma_offset = 0x2000;
+          secondary_dma_offset = 0x2000;
           RestartVag(param_1, 1, 1);
           iVar6 = 9;
           break;
@@ -464,8 +438,8 @@ int GetVAGStreamPos(VagCmd* param_1) {
         iVar6 = 5;
         goto LAB_000106d4;
       case 4:
-        uVar4 = param_1->unk_196;
-        uVar8 = pRVar7->unk_196;
+        primary_dma_offset = param_1->unk_196;
+        secondary_dma_offset = pRVar7->unk_196;
         if ((param_1->sb_even_buffer_dma_complete == '\0') ||
             (pRVar7->sb_even_buffer_dma_complete == '\0'))
           goto switchD_000102c4_caseD_1;
@@ -477,8 +451,8 @@ int GetVAGStreamPos(VagCmd* param_1) {
             (pRVar7->sb_odd_buffer_dma_complete == '\0')) {
           if (param_1->byte20 == '\0')
             goto switchD_000102c4_caseD_1;
-          uVar4 = 0x4000;
-          uVar8 = 0x4000;
+          primary_dma_offset = 0x4000;
+          secondary_dma_offset = 0x4000;
           param_1->byte16 = '\x01';
           param_1->byte17 = '\0';
           pRVar7->byte16 = '\x01';
@@ -498,8 +472,8 @@ int GetVAGStreamPos(VagCmd* param_1) {
             iVar6 = 6;
             goto LAB_000106d4;
           }
-          uVar4 = 0x4000;
-          uVar8 = 0x4000;
+          primary_dma_offset = 0x4000;
+          secondary_dma_offset = 0x4000;
           RestartVag(param_1, 0, 1);
           iVar6 = 8;
         }
@@ -522,14 +496,14 @@ int GetVAGStreamPos(VagCmd* param_1) {
           iVar6 = 2;
           goto LAB_000106d4;
         }
-        uVar4 = 0x4000;
-        uVar8 = 0x4000;
+        primary_dma_offset = 0x4000;
+        secondary_dma_offset = 0x4000;
         RestartVag(param_1, 0, 1);
         iVar6 = 8;
         break;
       case 7:
-        uVar8 = param_1->unk_196;
-        uVar4 = uVar8;
+        secondary_dma_offset = param_1->unk_196;
+        primary_dma_offset = secondary_dma_offset;
         if ((param_1->sb_odd_buffer_dma_complete == '\0') ||
             (pRVar7->sb_odd_buffer_dma_complete == '\0'))
           goto switchD_000102c4_caseD_1;
@@ -538,16 +512,16 @@ int GetVAGStreamPos(VagCmd* param_1) {
         break;
       case 8:
         if ((param_1->byte21 == '\0') || (iVar6 = 6, pRVar7->byte21 == '\0')) {
-          uVar8 = param_1->unk_196;
-          uVar4 = uVar8;
+          secondary_dma_offset = param_1->unk_196;
+          primary_dma_offset = secondary_dma_offset;
           goto switchD_000102c4_caseD_1;
         }
         param_1->byte16 = '\0';
         goto LAB_00010744;
       case 9:
         if ((param_1->byte22 == '\0') || (iVar6 = 3, pRVar7->byte22 == '\0')) {
-          uVar8 = pRVar7->unk_196;
-          uVar4 = param_1->unk_196;
+          secondary_dma_offset = pRVar7->unk_196;
+          primary_dma_offset = param_1->unk_196;
           goto switchD_000102c4_caseD_1;
         }
         param_1->byte17 = '\0';
@@ -557,19 +531,19 @@ int GetVAGStreamPos(VagCmd* param_1) {
     pRVar7->unk_236 = iVar6;
   switchD_000102c4_caseD_1:
     if (param_1->unk_204 == 0) {
-      param_1->unk_188 = uVar4;
-      pRVar7->unk_188 = uVar4;
+      param_1->unk_188 = primary_dma_offset;
+      pRVar7->unk_188 = primary_dma_offset;
     } else {
-      param_1->unk_188 = uVar4 + (param_1->unk_204 + -1) * 0x2000;
-      pRVar7->unk_188 = uVar8 + (pRVar7->unk_204 + -1) * 0x2000;
-      if (0x2000 < uVar4) {
+      param_1->unk_188 = primary_dma_offset + (param_1->unk_204 + -1) * 0x2000;
+      pRVar7->unk_188 = secondary_dma_offset + (pRVar7->unk_204 + -1) * 0x2000;
+      if (0x2000 < primary_dma_offset) {
         param_1->unk_188 = param_1->unk_188 + -0x2000;
       }
-      if (0x2000 < uVar8) {
+      if (0x2000 < secondary_dma_offset) {
         pRVar7->unk_188 = pRVar7->unk_188 + -0x2000;
       }
     }
-    uVar9 = param_1->unk_248;
+    uVar9 = param_1->sample_rate;
     if (uVar9 == 0) {
       uVar10 = 0;
     } else {
@@ -581,8 +555,8 @@ int GetVAGStreamPos(VagCmd* param_1) {
     }
     param_1->unk_180 = uVar10 << 2;
     param_1->unk_200 = uVar10 << 2;
-    param_1->unk_196 = uVar4;
-    uVar9 = pRVar7->unk_248;
+    param_1->unk_196 = primary_dma_offset;
+    uVar9 = pRVar7->sample_rate;
     if (uVar9 == 0) {
       uVar10 = 0;
     } else {
@@ -594,12 +568,12 @@ int GetVAGStreamPos(VagCmd* param_1) {
     }
     pRVar7->unk_180 = uVar10 << 2;
     pRVar7->unk_200 = uVar10 << 2;
-    pRVar7->unk_196 = uVar8;
+    pRVar7->unk_196 = secondary_dma_offset;
     return 0;
   }
 LAB_00010860:
-  if (uVar4 < 0x4001) {
-    if (uVar4 < 0x2000) {
+  if (primary_dma_offset < 0x4001) {
+    if (primary_dma_offset < 0x2000) {
       if (param_1->byte21 == '\0') {
         iVar6 = param_1->unk_204;
         param_1->byte21 = '\x01';
@@ -628,7 +602,7 @@ LAB_00010860:
     case 2:
       if (param_1->sb_even_buffer_dma_complete == '\0') {
         if (param_1->byte20 != '\0') {
-          uVar4 = 0x2000;
+          primary_dma_offset = 0x2000;
           param_1->byte17 = '\x01';
           iVar6 = 4;
         LAB_00010b7c:
@@ -646,7 +620,7 @@ LAB_00010860:
         param_1->unk_236 = iVar6;
         // CpuResumeIntr(local_30[0]);
       } else {
-        uVar4 = 0x2000;
+        primary_dma_offset = 0x2000;
       LAB_00010a1c:
         RestartVag(param_1, 1, 1);
         param_1->unk_236 = 9;
@@ -655,7 +629,7 @@ LAB_00010860:
       goto switchD_000108fc_caseD_1;
     case 3:
       if (param_1->byte20 != '\0') {
-        uVar4 = 0x2000;
+        primary_dma_offset = 0x2000;
         goto LAB_00010a1c;
       }
       if (param_1->byte22 == '\0')
@@ -669,7 +643,7 @@ LAB_00010860:
       iVar6 = 5;
       goto LAB_00010b30;
     case 4:
-      uVar4 = param_1->unk_196;
+      primary_dma_offset = param_1->unk_196;
       if (param_1->sb_even_buffer_dma_complete == '\0')
         goto switchD_000108fc_caseD_1;
       goto LAB_00010a1c;
@@ -677,7 +651,7 @@ LAB_00010860:
       if (param_1->sb_odd_buffer_dma_complete == '\0') {
         if (param_1->byte20 == '\0')
           goto switchD_000108fc_caseD_1;
-        uVar4 = 0x4000;
+        primary_dma_offset = 0x4000;
         param_1->byte16 = '\x01';
         iVar6 = 7;
         param_1->byte17 = '\0';
@@ -692,7 +666,7 @@ LAB_00010860:
         iVar6 = 6;
         goto LAB_00010b30;
       }
-      uVar4 = 0x4000;
+      primary_dma_offset = 0x4000;
       break;
     case 6:
       if (param_1->byte20 == '\0') {
@@ -707,10 +681,10 @@ LAB_00010860:
         iVar6 = 2;
         goto LAB_00010b30;
       }
-      uVar4 = 0x4000;
+      primary_dma_offset = 0x4000;
       break;
     case 7:
-      uVar4 = param_1->unk_196;
+      primary_dma_offset = param_1->unk_196;
       if (param_1->sb_odd_buffer_dma_complete == '\0')
         goto switchD_000108fc_caseD_1;
       break;
@@ -718,7 +692,7 @@ LAB_00010860:
       iVar6 = 6;
       if (param_1->byte21 == '\0') {
       LAB_00010b88:
-        uVar4 = param_1->unk_196;
+        primary_dma_offset = param_1->unk_196;
         goto switchD_000108fc_caseD_1;
       }
       goto LAB_00010b7c;
@@ -735,27 +709,27 @@ LAB_00010860:
   param_1->unk_236 = 8;
 switchD_000108fc_caseD_1:
   if (param_1->unk_204 == 0) {
-    param_1->unk_188 = uVar4;
+    param_1->unk_188 = primary_dma_offset;
   } else {
-    iVar6 = uVar4 + (param_1->unk_204 + -1) * 0x2000;
+    iVar6 = primary_dma_offset + (param_1->unk_204 + -1) * 0x2000;
     param_1->unk_188 = iVar6;
-    if (0x2000 < uVar4) {
+    if (0x2000 < primary_dma_offset) {
       param_1->unk_188 = iVar6 + -0x2000;
     }
   }
-  uVar8 = param_1->unk_248;
-  if (uVar8 == 0) {
+  secondary_dma_offset = param_1->sample_rate;
+  if (secondary_dma_offset == 0) {
     uVar9 = 0;
   } else {
-    uVar9 = (u32)(param_1->unk_188 * 0x1c0) / uVar8;
-    if (uVar8 == 0) {
+    uVar9 = (u32)(param_1->unk_188 * 0x1c0) / secondary_dma_offset;
+    if (secondary_dma_offset == 0) {
       // trap(0x1c00);
       ASSERT_NOT_REACHED();
     }
   }
   param_1->unk_180 = uVar9 << 2;
   param_1->unk_200 = uVar9 << 2;
-  param_1->unk_196 = uVar4;
+  param_1->unk_196 = primary_dma_offset;
   return 0;
 }
 
@@ -989,31 +963,12 @@ void WakeSpuStreamsUp() {
 }
 
 u32 GetSpuRamAddress(VagCmd* param_1) {
-  bool bVar1;
-  u32 uVar2;
-  u32 uVar3;
-  u32 uVar4;
-  u32 uVar5;
-  u32 uVar6;
-  u32 uVar7;
-
-  uVar7 = param_1->spu_stream_dma_mem_addr;
-  uVar6 = (param_1->voice & 0xffffU) | 0x2240;
-  do {
-    uVar5 = 0;
-    do {
-      uVar2 = sceSdGetAddr(uVar6);
-      uVar3 = sceSdGetAddr(uVar6);
-      uVar4 = sceSdGetAddr(uVar6);
-      // printf("got nax: %d\n", uVar3);
-      if ((uVar2 == uVar3) ||
-          ((uVar3 != uVar4 && (bVar1 = uVar2 == uVar4, uVar4 = uVar5, bVar1)))) {
-        uVar4 = uVar2;
-      }
-      uVar5 = uVar4;
-    } while (uVar4 == 0);
-  } while ((uVar4 < uVar7) || (uVar7 + 0x4040 <= uVar4));
-  return uVar4;
+  // this is simplified a lot from the original.
+  // they seem to sanity check if the value is reasonable or not, but the sanity check can fail
+  // if the overlord thread isn't keeping up.
+  // as far as I can tell, it's totally fine to discard these checks because our sceSdGetAddr
+  // works perfectly.
+  return sceSdGetAddr((param_1->voice & 0xffffU) | 0x2240);
 }
 
 u32 bswap(u32 param_1) {

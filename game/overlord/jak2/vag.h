@@ -64,7 +64,7 @@ struct VagCmd {
       u8 byte8;
       u8 byte9;
       u8 byte10;
-      u8 byte11;
+      u8 byte11;  // is stereo secondary
       u8 byte12;
       u8 byte13;
       u8 byte14;
@@ -83,7 +83,7 @@ struct VagCmd {
   int unk_236;               // 236
   int num_processed_chunks;  // 240 (where "processed" means that they were added to dma command)
   int xfer_size;             // 244
-  int unk_248;               // 248
+  int sample_rate;           // 248
   int pitch1;                // 252
   int unk_256_pitch2;        // 256
   int unk_260;               // 260

@@ -67,7 +67,7 @@ void InitVagCmds() {
     cmd.num_processed_chunks = 0;             // puVar5[-0xd] = 0;
     cmd.safe_to_change_dma_fields = 1;        // puVar5[-0x3a] = 1;
     cmd.xfer_size = 0;                        // puVar5[-0xc] = 0;
-    cmd.unk_248 = 0;                          // puVar5[-0xb] = 0;
+    cmd.sample_rate = 0;                      // puVar5[-0xb] = 0;
     cmd.unk_260 = 0;                          // puVar5[-8] = 0;
     cmd.unk_264 = 0x4000;                     // puVar5[-7] = 0x4000;
     cmd.unk_268 = 0;                          // puVar5[-6] = 0;
@@ -285,7 +285,7 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
   cmd->unk_204 = 0;
   cmd->num_processed_chunks = 0;
   cmd->xfer_size = 0;
-  cmd->unk_248 = 0;
+  cmd->sample_rate = 0;
   cmd->unk_260 = 0;
   cmd->unk_268 = 0;
   cmd->vol_multiplier = 0;
@@ -349,7 +349,7 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
     pRVar4->unk_204 = 0;
     pRVar4->num_processed_chunks = 0;
     pRVar4->xfer_size = 0;
-    pRVar4->unk_248 = 0;
+    pRVar4->sample_rate = 0;
     pRVar4->unk_260 = 0;
     pRVar4->unk_268 = 0;
     pRVar4->vol_multiplier = 0;
@@ -730,7 +730,7 @@ void InitVAGCmd(VagCmd* param_1, int param_2) {
   param_1->num_processed_chunks = 0;
   param_1->safe_to_change_dma_fields = 1;
   param_1->xfer_size = 0;
-  param_1->unk_248 = 0;
+  param_1->sample_rate = 0;
   param_1->unk_260 = 0;
   param_1->unk_268 = 0;
   (param_1->header).callback_buffer = nullptr;
@@ -879,7 +879,7 @@ void FreeVagCmd(VagCmd* cmd, int /*param_2*/) {
   cmd->num_processed_chunks = 0;
   cmd->safe_to_change_dma_fields = 1;
   cmd->xfer_size = 0;
-  cmd->unk_248 = 0;
+  cmd->sample_rate = 0;
   cmd->unk_260 = 0;
   cmd->unk_268 = 0;
   cmd->vol_multiplier = 0;
@@ -1045,7 +1045,6 @@ void SetAllVagsVol(int param_1)
       iVar1 = iVar1 + 1;
     } while (iVar1 < 4);
   }
-  return;
 }
 
 void CalculateVAGVolumes(VagCmd* cmd, int* l_out, int* r_out) {
