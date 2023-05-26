@@ -4,6 +4,7 @@
 
 #include "game/overlord/common/isocommon.h"
 #include "game/overlord/jak2/pages.h"
+#include "game/sce/iop.h"
 
 namespace jak2 {
 void iso_init_globals();
@@ -81,13 +82,12 @@ extern IsoFs* isofs;
 extern LargeBuffer* SpLargeBuffer;
 
 struct CmdHeader {
-  int unk_0;
-  int unk_4;
+  iop::MsgPacket pkt;
   int cmd_kind;
   int status;
   int mbx_to_reply;
   int thread_id;
-  int unk_24;                            // 24 (init to 1)
+  int ready_for_data;                    // 24 (init to 1)
   Buffer* callback_buffer;               // 28
   int (*callback)(CmdHeader*, Buffer*);  // 32
   LoadStackEntry* lse;                   // 36

@@ -20,8 +20,10 @@ namespace jak2 {
 /// The data structure containing all memory pages.
 PageList* SpMemoryBuffers = nullptr;
 u8* ScratchPadMemory = nullptr;
-constexpr int N_BUFFERS = 3 + 11;  // ??
+constexpr int N_BUFFERS = 3;
+constexpr int N_STR_BUFFERS = 8;
 static Buffer sBuffer[N_BUFFERS];
+static Buffer sStrBuffer[N_STR_BUFFERS];
 static Buffer* sFreeBuffer = nullptr;
 static Buffer* sFreeStrBuffer = nullptr;
 u32 BuffersAlloc = 0;
@@ -31,8 +33,8 @@ u32 NextBuffer = 0;
 u32 AllocdStrBuffersCount = 0;
 u32 NextStrBuffer = 0;
 int sSema = 0;
-int vag_cmd_cnt = 0;
-VagCmd vag_cmds[16];
+u32 vag_cmd_cnt = 0;
+VagCmd vag_cmds[N_VAG_CMDS];
 u32 vag_cmd_used = 0;
 u32 max_vag_cmd_cnt = 0;
 
@@ -41,6 +43,7 @@ std::string gPriEntryNames[N_PRIORITIES][PRI_STACK_LENGTH];  // my addition for 
 
 void ReturnMessage(CmdHeader* param_1);
 void FreeVAGCommand(VagCmd* param_1);
+void FreeDataBuffer(u32* param_1, u32 param_2);
 
 void iso_queue_init_globals() {
   memset(sBuffer, 0, sizeof(sBuffer));
@@ -65,10 +68,8 @@ void InitBuffers() {
   SpMemoryBuffers = (PageList*)ScratchPadMemory;
   ScratchPadMemory += sizeof(PageList);
   InitPagedMemory(SpMemoryBuffers, 0x12, 0x8000);
-  Buffer* next_buffer = sBuffer;
-  for (int i = 0; i < 3; i++) {
-    next_buffer++;
-    sBuffer[i].next = next_buffer;
+  for (int i = 0; i < N_BUFFERS; i++) {
+    sBuffer[i].next = &sBuffer[i + 1];
     sBuffer[i].decomp_buffer = nullptr;
     sBuffer[i].decompressed_size = 0;
     sBuffer[i].unk_12 = 0;
@@ -81,30 +82,29 @@ void InitBuffers() {
     sBuffer[i].page = nullptr;
     sBuffer[i].unk_44 = 0;
   };
-  sBuffer[2].next = nullptr;
-
-  next_buffer = sBuffer + 4;
+  sBuffer[N_BUFFERS - 1].next = nullptr;
   sFreeBuffer = sBuffer;
   BuffersAlloc = 0;
-  for (int i = 0; i < 8; i++) {
-    sBuffer[i + 3].next = next_buffer;
-    next_buffer++;
-    sBuffer[i + 3].decomp_buffer = nullptr;
-    sBuffer[i + 3].decompressed_size = 0;
-    sBuffer[i + 3].unk_12 = 0;
-    sBuffer[i + 3].data_buffer_idx = -1;
-    sBuffer[i + 3].use_mode = 2;
-    sBuffer[i + 3].plist = SpMemoryBuffers;
-    sBuffer[i + 3].num_pages = 1;
-    sBuffer[i + 3].unk_32 = 2;
-    sBuffer[i + 3].free_pages = 0;
-    sBuffer[i + 3].page = nullptr;
-    sBuffer[i + 3].unk_44 = 0;
+
+  for (int i = 0; i < N_STR_BUFFERS; i++) {
+    sStrBuffer[i].next = &sStrBuffer[i + 1];
+    sStrBuffer[i].decomp_buffer = nullptr;
+    sStrBuffer[i].decompressed_size = 0;
+    sStrBuffer[i].unk_12 = 0;
+    sStrBuffer[i].data_buffer_idx = -1;
+    sStrBuffer[i].use_mode = 2;
+    sStrBuffer[i].plist = SpMemoryBuffers;
+    sStrBuffer[i].num_pages = 1;
+    sStrBuffer[i].unk_32 = 2;
+    sStrBuffer[i].free_pages = 0;
+    sStrBuffer[i].page = nullptr;
+    sStrBuffer[i].unk_44 = 0;
   };
-  sBuffer[10].next = nullptr;
-  sFreeStrBuffer = sBuffer + 3;
-  StreamSRAM[0] = 0x5040;
+  sStrBuffer[N_STR_BUFFERS - 1].next = nullptr;
+  sFreeStrBuffer = sStrBuffer;
   StrBuffersAlloc = 0;
+
+  StreamSRAM[0] = 0x5040;
   TrapSRAM[0] = 0x9040;
   snd_SRAMMarkUsed(0x5040, 0x4040);
   StreamSRAM[1] = 0x9080;
@@ -326,110 +326,50 @@ LAB_00006a44:
   return pBVar7;
 }
 
-void FreeBuffer(Buffer* param_1, int /*param_2*/) {
-  Buffer* pBVar1;
-  Page* pPVar2;
-  int iVar3;
-  u32 uVar4;
+void FreeBuffer(Buffer* buf, int /*param_2*/) {
   // if (param_2 == 1) {
   // CpuSuspendIntr(local_18);
   //}
-  iVar3 = param_1->use_mode;
-  if (iVar3 == 1) {
-    if ((BuffersAlloc & 1 << (param_1->data_buffer_idx & 0x1fU)) != 0) {
-      pPVar2 = FreePagesList(param_1->plist, param_1->page);
-      pBVar1 = sFreeBuffer;
-      uVar4 = param_1->data_buffer_idx;
-      param_1->page = pPVar2;
-      param_1->data_buffer_idx = -1;
-      param_1->decompressed_size = 0;
-      param_1->unk_12 = 0;
-      sFreeBuffer = param_1;
-      param_1->use_mode = 0;
-      param_1->next = pBVar1;
-      BuffersAlloc = BuffersAlloc & ~(1 << (uVar4 & 0x1f));
-      AllocdBuffersCount = AllocdBuffersCount + -1;
+  if (buf->use_mode == 1) {
+    if ((BuffersAlloc & 1 << (buf->data_buffer_idx & 0x1fU)) != 0) {
+      buf->page = FreePagesList(buf->plist, buf->page);
+      FreeDataBuffer(&BuffersAlloc, buf->data_buffer_idx);
+      buf->next = sFreeBuffer;
+      buf->decompressed_size = 0;
+      buf->unk_12 = 0;
+      sFreeBuffer = buf;
+      buf->use_mode = 0;
+      buf->data_buffer_idx = -1;
     }
-  } else if (((1 < iVar3) && (iVar3 == 2)) &&
-             ((StrBuffersAlloc & 1 << (param_1->data_buffer_idx & 0x1fU)) != 0)) {
-    pPVar2 = FreePagesList(param_1->plist, param_1->page);
-    param_1->page = pPVar2;
-    param_1->decompressed_size = 0;
-    param_1->unk_12 = 0;
-    pBVar1 = param_1;
-    param_1->next = sFreeStrBuffer;
-    sFreeStrBuffer = pBVar1;
-    StrBuffersAlloc = StrBuffersAlloc & ~(1 << (param_1->data_buffer_idx & 0x1fU));
-    AllocdStrBuffersCount = AllocdStrBuffersCount + -1;
-    param_1->data_buffer_idx = -1;
-    param_1->use_mode = 0;
+  } else if (buf->use_mode == 2) {
+    if ((StrBuffersAlloc & 1 << (buf->data_buffer_idx & 0x1fU)) != 0) {
+      buf->page = FreePagesList(buf->plist, buf->page);
+      FreeDataBuffer(&StrBuffersAlloc, buf->data_buffer_idx);
+      buf->next = sFreeStrBuffer;
+      buf->decompressed_size = 0;
+      buf->unk_12 = 0;
+      sFreeStrBuffer = buf;
+      buf->use_mode = 0;
+      buf->data_buffer_idx = -1;
+    }
   }
   // if (param_2 == 1) {
   // CpuResumeIntr(local_18[0]);
   //}
 }
 
-void ReleaseMessage(CmdHeader* param_1, int param_2) {
-  Buffer* pBVar1;
-  int iVar2;
-  PriStackEntry* pPVar3;
-  int iVar4;
-  int iVar5;
-  PriStackEntry* pPVar6;
+void ReleaseMessage(CmdHeader* cmd, int suspend_irq) {
+  while (cmd->callback_buffer != nullptr) {
+    auto cb_buf = cmd->callback_buffer;
+    cmd->callback_buffer = cb_buf->next;
+    FreeBuffer(cb_buf, suspend_irq);
+  }
 
-  pBVar1 = param_1->callback_buffer;
-  while (pBVar1 != (Buffer*)0x0) {
-    pBVar1 = param_1->callback_buffer;
-    param_1->callback_buffer = pBVar1->next;
-    FreeBuffer(pBVar1, param_2);
-    pBVar1 = param_1->callback_buffer;
+  if (cmd->lse != nullptr) {
+    isofs->close(cmd->lse);
   }
-  if (param_1->lse != (LoadStackEntry*)0x0) {
-    // (*(code*)isofs->close)();
-    isofs->close(param_1->lse);
-  }
-  // if (param_2 == 1) {
-  // CpuSuspendIntr(local_18);
-  //}
-  iVar5 = 0;
-  pPVar6 = gPriStack;
-LAB_00006d0c:
-  iVar4 = 0;
-  pPVar3 = pPVar6;
-  if (pPVar6->count < 1)
-    goto LAB_00006da0;
-  do {
-    if (pPVar3->entries[0] == param_1)
-      break;
-    iVar4 = iVar4 + 1;
-    pPVar3 = (PriStackEntry*)(pPVar3->entries + 1);
-  } while (iVar4 < pPVar6->count);
-  iVar2 = pPVar6->count + -1;
-  if (pPVar6->count <= iVar4)
-    goto LAB_00006da0;
-  pPVar6->count = iVar2;
-  if (iVar4 < iVar2) {
-    do {
-      iVar5 = iVar4 + 1;
-      pPVar6->entries[iVar4] = pPVar6->entries[iVar4 + 1];
-      iVar4 = iVar5;
-    } while (iVar5 < pPVar6->count);
-  }
-  if (param_2 != 1) {
-    return;
-  }
-  goto LAB_00006dbc;
-LAB_00006da0:
-  iVar5 = iVar5 + 1;
-  pPVar6 = pPVar6 + 1;
-  if (3 < iVar5) {
-    if (param_2 == 1) {
-    LAB_00006dbc:;
-      // CpuResumeIntr(local_18[0]);
-    }
-    return;
-  }
-  goto LAB_00006d0c;
+
+  UnqueueMessage(cmd, suspend_irq);
 }
 
 void DisplayQueue() {
@@ -466,88 +406,53 @@ int QueueMessage(CmdHeader* param_1, int param_2, const char* param_3, int param
   return uVar1;
 }
 
-void UnqueueMessage(CmdHeader* param_1, int param_2) {
-  int iVar1;
-  PriStackEntry* pPVar2;
-  int iVar3;
-  PriStackEntry* pPVar4;
-  int iVar5;
+void UnqueueMessage(CmdHeader* cmd, int suspend_irq) {
+  if (suspend_irq == 1) {
+    //  CpuSuspendIntr(&stat);
+  }
 
-  if (param_2 == 1) {
-    // CpuSuspendIntr(local_18);
-  }
-  iVar5 = 0;
-  pPVar4 = gPriStack;
-LAB_00007088:
-  iVar3 = 0;
-  pPVar2 = pPVar4;
-  if (pPVar4->count < 1)
-    goto LAB_0000711c;
-  do {
-    if (pPVar2->entries[0] == param_1)
-      break;
-    iVar3 = iVar3 + 1;
-    pPVar2 = (PriStackEntry*)(pPVar2->entries + 1);
-  } while (iVar3 < pPVar4->count);
-  iVar1 = pPVar4->count + -1;
-  if (pPVar4->count <= iVar3)
-    goto LAB_0000711c;
-  pPVar4->count = iVar1;
-  if (iVar3 < iVar1) {
-    do {
-      iVar5 = iVar3 + 1;
-      pPVar4->entries[iVar3] = pPVar4->entries[iVar3 + 1];
-      iVar3 = iVar5;
-    } while (iVar5 < pPVar4->count);
-  }
-  if (param_2 != 1) {
-    return;
-  }
-  goto LAB_00007138;
-LAB_0000711c:
-  iVar5 = iVar5 + 1;
-  pPVar4 = pPVar4 + 1;
-  if (3 < iVar5) {
-    if (param_2 == 1) {
-    LAB_00007138:;
-      // CpuResumeIntr(local_18[0]);
+  for (int pri = 0; pri < N_PRIORITIES; pri++) {
+    auto pse = &gPriStack[pri];
+
+    for (int idx = 0; idx < pse->count; idx++) {
+      if (pse->entries[idx] == cmd) {
+        pse->count--;
+        while (idx < pse->count) {
+          pse->entries[idx] = pse->entries[idx + 1];
+          idx++;
+        }
+
+        goto exit;
+      }
     }
-    return;
   }
-  goto LAB_00007088;
+
+exit:
+  if (suspend_irq == 1) {
+    //  CpuResumeIntr(stat);
+  }
 }
 
 CmdHeader* GetMessage() {
-  CmdHeader* pCVar1;
-  int iVar2;
-  CmdHeader** ppCVar3;
-  PriStackEntry* iVar4;
-  int iVar5;
+  for (int pri = (N_PRIORITIES - 1); pri >= 0; pri--) {
+    auto pse = &gPriStack[pri];
+    int idx = pse->count;
 
-  iVar5 = 3;
-  iVar4 = gPriStack + 3;
-  do {
-    iVar2 = iVar4->count + -1;
-    if (-1 < iVar2) {
-      ppCVar3 = iVar4->entries + iVar4->count + -1;
-      do {
-        pCVar1 = *ppCVar3;
-        if ((((pCVar1->lse != (LoadStackEntry*)0x0) && (pCVar1->status == -1)) &&
-             (pCVar1->unk_24 != 0)) &&
-            ((pCVar1->callback_buffer == (Buffer*)0x0 ||
-              (pCVar1->callback_buffer->next == (Buffer*)0x0)))) {
-          return pCVar1;
+    for (idx = idx - 1; idx >= 0; idx--) {
+      auto cmd = pse->entries[idx];
+
+      if (cmd->lse && (u32)cmd->status == CMD_STATUS_IN_PROGRESS && cmd->ready_for_data) {
+        if (cmd->callback_buffer == nullptr) {
+          return cmd;
         }
-        iVar2 = iVar2 + -1;
-        ppCVar3 = ppCVar3 + -1;
-      } while (-1 < iVar2);
+        if (cmd->callback_buffer->next == nullptr) {
+          return cmd;
+        }
+      }
     }
-    iVar5 = iVar5 + -1;
-    iVar4 = iVar4 + -1;
-    if (iVar5 < 0) {
-      return (CmdHeader*)0x0;
-    }
-  } while (true);
+  }
+
+  return nullptr;
 }
 
 void ProcessMessageData() {
@@ -567,7 +472,7 @@ void ProcessMessageData() {
       ppCVar5 = iVar6->entries + iVar6->count + -1;
       do {
         pCVar2 = *ppCVar5;
-        if ((pCVar2 != (CmdHeader*)0x0) && (pCVar2->unk_24 != 0)) {
+        if ((pCVar2 != (CmdHeader*)0x0) && (pCVar2->ready_for_data != 0)) {
           iVar1 = pCVar2->status;
           if (iVar1 == -1) {
             pBVar3 = pCVar2->callback_buffer;
@@ -618,80 +523,79 @@ void ReturnMessage(CmdHeader* param_1) {
 }
 
 VagCmd* GetVAGCommand() {
-  int iVar1;
-  u32 uVar2;
-  VagCmd* pRVar3;
-
-  do {
-    while (vag_cmd_cnt == 0x1f) {
+  while (true) {
+    while (vag_cmd_cnt == 31) {
       DelayThread(100);
     }
-    do {
-      iVar1 = WaitSema(sSema);
-      uVar2 = 0;
-      pRVar3 = vag_cmds;
-    } while (iVar1 != 0);
-    do {
-      if (((int)vag_cmd_used >> (uVar2 & 0x1f) & 1U) == 0) {
-        vag_cmd_used = vag_cmd_used | 1 << (uVar2 & 0x1f);
-        vag_cmd_cnt = vag_cmd_cnt + 1;
-        if ((int)max_vag_cmd_cnt < vag_cmd_cnt) {
+
+    while (WaitSema(sSema))
+      ;
+
+    for (int i = 0; i < 31; i++) {
+      // scan bits for free entry
+      if (((vag_cmd_used >> i) & 1) == 0) {
+        vag_cmd_used |= 1 << i;
+
+        vag_cmd_cnt++;
+        if (max_vag_cmd_cnt < vag_cmd_cnt) {
           max_vag_cmd_cnt = vag_cmd_cnt;
         }
+
         SignalSema(sSema);
-        return pRVar3;
+        return &vag_cmds[i];
       }
-      uVar2 = uVar2 + 1;
-      pRVar3 = pRVar3 + 1;
-    } while ((int)uVar2 < 0x1f);
-    SignalSema(sSema);
-  } while (true);
-}
+    }
 
-void FreeVAGCommand(VagCmd* param_1) {
-  int iVar1;
-  u32 uVar2;
-
-  // uVar2 = (param_1 + -0x17e50) * 0x781948b1 >> 2;
-  // kinda sus
-  uVar2 = (param_1 - vag_cmds) / sizeof(VagCmd);
-  if ((uVar2 < 0x1f) && (((int)vag_cmd_used >> (uVar2 & 0x1f) & 1U) != 0)) {
-    do {
-      iVar1 = WaitSema(sSema);
-    } while (iVar1 != 0);
-    vag_cmd_used = vag_cmd_used & ~(1 << (uVar2 & 0x1f));
-    vag_cmd_cnt = vag_cmd_cnt + -1;
     SignalSema(sSema);
   }
 }
 
-uint8_t* CheckForIsoPageBoundaryCrossing(Buffer* param_1) {
-  Page* new_page;
-  uint8_t* iVar1;
-  uint8_t* our_ptr;
-  uint8_t* page_end;
+void FreeVAGCommand(VagCmd* cmd) {
+  u32 vag_idx;
 
-  our_ptr = param_1->decomp_buffer;
-  page_end = (uint8_t*)param_1->page->ptr;
+  // get array index
+  vag_idx = (cmd - vag_cmds) / sizeof(VagCmd);
+
+  if ((vag_idx < 0x1f) && ((vag_cmd_used >> vag_idx) & 1U) != 0) {
+    while (WaitSema(sSema))
+      ;
+
+    vag_cmd_used &= ~(1 << vag_idx);
+    --vag_cmd_cnt;
+
+    SignalSema(sSema);
+  }
+}
+
+u8* CheckForIsoPageBoundaryCrossing(Buffer* buf) {
+  Page* new_page;
+  u8* new_buffer;
+  u8* our_ptr;
+  u8* page_end;
+
+  our_ptr = buf->decomp_buffer;
+  page_end = buf->page->ptr;
+
   if (page_end <= our_ptr) {
-    new_page = StepTopPage(param_1->plist, param_1->page);
-    param_1->page = new_page;
-    if (new_page != (Page*)0x0) {
-      iVar1 = new_page->buffer;
-      param_1->unk_12 = iVar1;
-      param_1->decomp_buffer = page_end + (iVar1 - (our_ptr + -1));
+    new_page = StepTopPage(buf->plist, buf->page);
+    buf->page = new_page;
+    if (new_page != nullptr) {
+      new_buffer = new_page->buffer;
+      buf->unk_12 = new_buffer;
+      buf->decomp_buffer = page_end + (new_buffer - (our_ptr + -1));
     }
   }
-  return param_1->decomp_buffer;
+
+  return buf->decomp_buffer;
 }
 
-void FreeDataBuffer(u32* param_1, u32 param_2) {
+void FreeDataBuffer(u32* param_1, u32 buffer_idx) {
   if (param_1 == &BuffersAlloc) {
-    BuffersAlloc = BuffersAlloc & ~(1 << (param_2 & 0x1f));
-    AllocdBuffersCount = AllocdBuffersCount + -1;
+    BuffersAlloc &= ~(1 << (buffer_idx & 0x1f));
+    --AllocdBuffersCount;
   } else if (param_1 == &StrBuffersAlloc) {
-    AllocdStrBuffersCount = AllocdStrBuffersCount + -1;
-    StrBuffersAlloc = StrBuffersAlloc & ~(1 << (param_2 & 0x1f));
+    StrBuffersAlloc &= ~(1 << (buffer_idx & 0x1f));
+    --AllocdStrBuffersCount;
   }
 }
 
