@@ -31,8 +31,6 @@ int main(int argc, char** argv) {
 
   lg::initialize();
 
-  // TODO - write a simple test framework for this stuff
-
   CLI::App app{"OpenGOAL Formatter"};
   app.add_flag("-c,--check", check,
                "If on, will just do a dry-run and fail if something isn't formatted correctly");

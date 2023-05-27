@@ -78,7 +78,7 @@ add_library(common
         util/Timer.cpp
         util/unicode_util.cpp
         versions/versions.cpp
-        )
+         "formatter/formatter_tree.h")
 
 target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter)
 

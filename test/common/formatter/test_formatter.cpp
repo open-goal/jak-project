@@ -92,7 +92,7 @@ bool run_tests(fs::path file_path) {
 bool find_and_run_tests() {
   // Enumerate test files
   const auto test_files = file_util::find_files_recursively(
-      file_util::get_file_path({"test/common/formatter/corpus"}), std::regex("^.*\.test$"));
+      file_util::get_file_path({"test/common/formatter/corpus"}), std::regex("^.*\.test.gc$"));
   bool failed = false;
   for (const auto& file : test_files) {
     failed = run_tests(file);

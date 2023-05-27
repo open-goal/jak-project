@@ -17,4 +17,4 @@ add_executable(lsp
 
 target_compile_definitions(lsp PRIVATE -DJSON_DIAGNOSTICS=1)
 
-target_link_libraries(lsp common decomp compiler tree-sitter)
+target_link_libraries(lsp common decomp compiler formatter tree-sitter)
