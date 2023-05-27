@@ -65,7 +65,9 @@ struct SysClock {
 };
 
 struct MsgPacket {
-  u32 dummy = 0;
+  MsgPacket* next = nullptr;
+  u8 priority;
+  u8 dummy[3];
 };
 
 struct MbxParam {
