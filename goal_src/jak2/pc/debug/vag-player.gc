@@ -131,6 +131,19 @@
 (define *vag-max-pos-list* (the (pointer int32) (malloc 'debug (* 4 (-> *vag-list* allocated-length)))))
 
 
+(defun get-vag-index-from-name ((name string))
+  "return the index of the vag with that name in the *vag-list* or -1 if not found"
+
+  ;; uppercase the string so we have a consistent name format
+  (string-upcase name *vag-temp-string*)
+  (dotimes (i (-> *vag-list* allocated-length))
+    (string-upcase (-> *vag-list* i) *vag-temp-string-2*)
+    (when (string= *vag-temp-string* *vag-temp-string-2*)
+        (return i))
+    )
+  -1)
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;  states
@@ -148,9 +161,9 @@
   :event (behavior ((from process) (argc int) (msg symbol) (block event-message-block))
     (case msg
       (('play)
-        (dotimes (i (-> *vag-list* allocated-length))
-          (when (string= (the-as string (-> block param 0)) (-> *vag-list* i))
-              (go vag-player-playing i)
+        (let ((vag-idx (get-vag-index-from-name (the-as string (-> block param 0)))))
+          (when (!= vag-idx -1)
+              (go vag-player-playing vag-idx)
               (return #t)))
         #f)
       (('play-index)
@@ -170,9 +183,9 @@
   :event (behavior ((from process) (argc int) (msg symbol) (block event-message-block))
     (case msg
       (('play)
-        (dotimes (i (-> *vag-list* allocated-length))
-          (when (string= (the-as string (-> block param 0)) (-> *vag-list* i))
-              (set! (-> self vag-index) i)
+        (let ((vag-idx (get-vag-index-from-name (the-as string (-> block param 0)))))
+          (when (!= vag-idx -1)
+              (set! (-> self vag-index) vag-idx)
               (vag-play self)
               (return #t)))
         #f)

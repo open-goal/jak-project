@@ -38,13 +38,12 @@ int Subtitle2Editor::speaker_index_by_name(const std::string& name) {
 }
 
 void Subtitle2Editor::repl_rebuild_text() {
-  // increment the language id of the in-memory text file so that it won't match the current
-  // language and the game will want to reload it asap
-  m_repl.eval("(begin (make-text) (1+! (-> *subtitle2-text* lang)))");
+  // reload subtitles immediately
+  m_repl.eval("(reload-subtitles)");
 }
 
 void Subtitle2Editor::repl_play_vag(const std::string& name) {
-  m_repl.eval(fmt::format("(vag-player-play-from-name \"{}\")", str_util::lower(name)));
+  m_repl.eval(fmt::format("(vag-player-play-from-name \"{}\")", name));
 }
 
 void Subtitle2Editor::draw_window() {

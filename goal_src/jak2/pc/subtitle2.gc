@@ -121,8 +121,6 @@
    (length int32)
    ;; line data
    (lines (inline-array subtitle2-line))
-
-
    )
   :pack-me
   :size-assert #xc  ;; compact!
@@ -180,6 +178,7 @@
   ((id    sound-id)
    (gui   gui-connection)
    )
+  :pack-me
   
   (:methods
     (clear-line (_type_) int))
@@ -189,6 +188,7 @@
   ((line  subtitle2-line)
    (y     float)
    )
+  :pack-me
   )
 
 ;; the subtitle2 process! it lives on the PC actor pool
@@ -244,6 +244,10 @@
 (define *subtitle2-text* (the subtitle2-text-info #f))
 (kheap-alloc (define *subtitle2-text-heap* (new 'global 'kheap)) PC_SUBTITLE_FILE_SIZE)
 
+;; temp strings for name look-up
+(define *vag-temp-string* (new 'global 'string 8 (the string #f)))
+(define *vag-temp-string-2* (new 'global 'string 8 (the string #f)))
+
 ;; speaker color table
 (define *subtitle2-speaker-color-table* (the (pointer rgba) (malloc 'global (* (size-of rgba) (pc-subtitle2-speaker max)))))
 
@@ -268,9 +272,12 @@
   (if (not name)
       (return (the subtitle2-scene #f)))
 
+  ;; uppercase the string so we have a consistent name format
+  (string-upcase name *vag-temp-string*)
   (dotimes (i (length obj))
     ;; name and kind matches, return that!
-    (when (string= (-> obj data i name) name)
+    (string-upcase (-> obj data i name) *vag-temp-string-2*)
+    (when (string= *vag-temp-string-2* *vag-temp-string*)
       (return (-> obj data i)))
     )
 
@@ -802,6 +809,7 @@
   (set-subtitle-speaker-color! ashelin  (static-rgba #x80 #x18 #x18 #x80))
   (set-subtitle-speaker-color! vin      (static-rgba #x38 #x80 #x80 #x80))
   (set-subtitle-speaker-color! oracle   (static-rgba #x80 #x40 #x00 #x80))
+  (set-subtitle-speaker-color! brutter  (static-rgba #x58 #x00 #x18 #x80))
   ;; temp
   (set-subtitle-speaker-color! samos    (static-rgba #x00 #x80 #x00 #x80))
   (set-subtitle-speaker-color! kor      (static-rgba #x00 #x00 #x80 #x80))
