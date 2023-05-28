@@ -153,8 +153,8 @@ void compile_subtitle2(GameSubtitle2DB& db, const std::string& output_prefix) {
   for (const auto& [lang, bank] : db.banks()) {
     auto font = get_font_bank(bank->text_version);
     DataObjectGenerator gen;
-    gen.add_type_tag("subtitle2-text-info");                  // type
-    gen.add_word((bank->scenes.size() & 0xffff) | (1 < 16));  // length (lo) + version (hi)
+    gen.add_type_tag("subtitle2-text-info");                   // type
+    gen.add_word((bank->scenes.size() & 0xffff) | (1 << 16));  // length (lo) + version (hi)
     // note: we add 1 because "none" isn't included
     gen.add_word((lang & 0xffff) | ((speaker_names.size() + 1) << 16));  // lang + speaker-length
     int speaker_array_link = gen.add_word(0);  // speaker array (dummy for now)

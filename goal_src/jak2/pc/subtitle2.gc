@@ -151,6 +151,29 @@
   `(logtest? (-> ,sub flags) (pc-subtitle2-flags ,@flags)))
 
 
+(defmethod inspect subtitle2-text-info ((obj subtitle2-text-info))
+  (if (not obj)
+      (return (the subtitle2-text-info #f)))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tversion: ~D~%" (-> obj version))
+  (format #t "~1Tlang: ~D~%" (-> obj lang))
+  (format #t "~1Tspeaker-names[~D] @ #x~x~%" (-> obj speaker-length) (-> obj speaker-names))
+  (dotimes (i (-> obj speaker-length))
+    (format #t "~2T[~D]: ~A~%" i (-> obj speaker-names i)))
+  (format #t "~1Tdata[0] @ #x~x~%" (-> obj data))
+  (dotimes (i (-> obj length))
+    (format #t "~2T--------~%")
+    (format #t "~2Tname: ~A~%" (-> obj data i name))
+    (format #t "~2Tlines[~D] @ #x~x~%" (-> obj data i length) (-> obj data i lines))
+    (dotimes (ii (-> obj data i length))
+      (format #t "~3T[~f to ~f] (#x~x)(~S) ~A~%" (-> obj data i lines ii start-frame) (-> obj data i lines ii end-frame)
+                                                 (-> obj data i lines ii flags)
+                                                 (enum->string pc-subtitle2-speaker (-> obj data i lines ii speaker))
+                                                 (-> obj data i lines ii text)))
+    )
+  obj)
+
 
 ;;;----------------------------------
 ;;  process type
@@ -273,10 +296,10 @@
       (return (the subtitle2-scene #f)))
 
   ;; uppercase the string so we have a consistent name format
-  (string-upcase name (clear *vag-temp-string*))
+  (string-upcase name *vag-temp-string*)
   (dotimes (i (length obj))
     ;; name and kind matches, return that!
-    (string-upcase (-> obj data i name) (clear *vag-temp-string-2*))
+    (string-upcase (-> obj data i name) *vag-temp-string-2*)
     (when (string= *vag-temp-string-2* *vag-temp-string*)
       (return (-> obj data i)))
     )
