@@ -78,9 +78,18 @@ bool run_tests(fs::path file_path) {
   fmt::print("{}:\n", file_util::base_name(file_path.string()));
   for (const auto& test : tests) {
     const auto formatted_result = formatter::format_code(test.input);
-    if (formatted_result != test.output) {
+    if (!formatted_result) {
+      // Unable to parse, was that expected?
+      if (test.output == "__THROWS__") {
+        fmt::print("  ✅ - {}\n", test.name);
+      } else {
+        fmt::print("  ❌ - {}\n", test.name);
+        fmt::print("Unable to Format\n");
+        test_failed = true;
+      }
+    } else if (formatted_result != test.output) {
       fmt::print("  ❌ - {}\n", test.name);
-      fmt::print("{}\n", str_util::diff(test.output, formatted_result));
+      fmt::print("{}\n", str_util::diff(test.output, formatted_result.value()));
       test_failed = true;
     } else {
       fmt::print("  ✅ - {}\n", test.name);
@@ -92,7 +101,7 @@ bool run_tests(fs::path file_path) {
 bool find_and_run_tests() {
   // Enumerate test files
   const auto test_files = file_util::find_files_recursively(
-      file_util::get_file_path({"test/common/formatter/corpus"}), std::regex("^.*\.test$"));
+      file_util::get_file_path({"test/common/formatter/corpus"}), std::regex("^.*\.test.gc$"));
   bool failed = false;
   for (const auto& file : test_files) {
     failed = run_tests(file);

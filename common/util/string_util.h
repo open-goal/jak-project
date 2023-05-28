@@ -22,4 +22,5 @@ std::string join(const std::vector<std::string>& strs, const std::string& join_w
 std::vector<std::string> regex_get_capture_groups(const std::string& str, const std::string& regex);
 bool replace(std::string& str, const std::string& from, const std::string& to);
 std::string uuid();
+std::string repeat(size_t n, const std::string& str);
 }  // namespace str_util

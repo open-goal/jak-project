@@ -8,6 +8,7 @@
 #include "text_document/document_color.h"
 #include "text_document/document_symbol.h"
 #include "text_document/document_synchronization.h"
+#include "text_document/formatting.h"
 #include "text_document/go_to.h"
 #include "text_document/hover.h"
 
@@ -46,6 +47,7 @@ void LSPRouter::init_routes() {
   m_routes["textDocument/definition"] = LSPRoute(go_to_definition_handler);
   m_routes["textDocument/completion"] = LSPRoute(get_completions_handler);
   m_routes["textDocument/documentColor"] = LSPRoute(document_color_handler);
+  m_routes["textDocument/formatting"] = LSPRoute(formatting_handler);
   // TODO - m_routes["textDocument/signatureHelp"] = LSPRoute(get_completions_handler);
   // Not Yet Supported Routes, noops
   m_routes["$/cancelRequest"] = LSPRoute();

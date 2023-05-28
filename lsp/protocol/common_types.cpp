@@ -90,3 +90,13 @@ void LSPSpec::from_json(const json& j, Color& obj) {
   json_deserialize_if_exists(blue);
   json_deserialize_if_exists(alpha);
 }
+
+void LSPSpec::to_json(json& j, const TextEdit& obj) {
+  json_serialize(range);
+  json_serialize(newText);
+}
+
+void LSPSpec::from_json(const json& j, TextEdit& obj) {
+  json_deserialize_if_exists(range);
+  json_deserialize_if_exists(newText);
+}
