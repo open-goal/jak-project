@@ -8,9 +8,9 @@
 #include "text_document/document_color.h"
 #include "text_document/document_symbol.h"
 #include "text_document/document_synchronization.h"
+#include "text_document/formatting.h"
 #include "text_document/go_to.h"
 #include "text_document/hover.h"
-#include "text_document/formatting.h"
 
 #include "third-party/fmt/core.h"
 

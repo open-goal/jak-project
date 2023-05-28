@@ -73,7 +73,11 @@ LSPSpec::DocumentUri uri_from_path(fs::path path) {
 std::string uri_to_path(LSPSpec::DocumentUri uri) {
   auto decoded_uri = url_decode(uri);
   if (str_util::starts_with(decoded_uri, "file:///")) {
+#ifdef _WIN32
     decoded_uri = decoded_uri.substr(8);
+#else
+    decoded_uri = decoded_uri.substr(7);
+#endif
   }
   return decoded_uri;
 }
