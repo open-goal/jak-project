@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include "tree_sitter/api.h"
+
 // Treesitter is fantastic for validating and parsing our code into a structured tree format without
 // whitespace so we can do that ourselves (formatting) However, the treesitter AST is a bit too
 // detailed for purposes of formatting.
@@ -26,6 +28,7 @@
 class FormatterTree {
  public:
   struct NodeMetadata {
+    bool is_root = false;
     // Whether the form had more than 1 element on the first line
     // (println
     //  "test")
@@ -37,13 +40,21 @@ class FormatterTree {
   class Node {
    public:
     std::vector<Node> refs;
+    NodeMetadata metadata;
+    // The token is optional because list nodes do not contain a token, they just contain a bunch of
+    // eventually token node refs
     std::optional<std::string> token;
-    std::optional<NodeMetadata> metadata;
 
     Node() = default;
     Node(const std::string& _token) : token(_token){};
     Node(const NodeMetadata& _metadata) : metadata(_metadata){};
   };
 
-  FormatterTree() = default;
+  FormatterTree(const std::string& source, const TSNode& root_node);
+  Node root;
+
+ private:
+  void construct_formatter_tree_recursive(const std::string& source,
+                                          TSNode curr_node,
+                                          Node& tree_node);
 };
