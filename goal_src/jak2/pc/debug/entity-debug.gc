@@ -23,6 +23,7 @@
 (defun entity-inspect-draw ((inspect-info entity-debug-inspect))
   "draw text about an entity on screen"
   
+  (mlet ((LINE_HEIGHT 15))
   (update-pad inspect-info 0)
   (let* ((e (-> inspect-info entity)) (name (res-lump-struct e 'name string)))
   (set! *debug-actor* (the string (and (type-type? (-> e type) entity-actor) (-> inspect-info show-actor-info) name)))
@@ -42,14 +43,14 @@
     )
 
   ;; start writing text
-  (let* ((begin-y (- 16 (* (-> inspect-info scroll-y) 16))) (cur-y begin-y) (y-adv 16))
+  (let* ((begin-y (- LINE_HEIGHT (* (-> inspect-info scroll-y) LINE_HEIGHT))) (cur-y begin-y) (y-adv 16))
   (with-dma-buffer-add-bucket ((debug-buf (-> (current-frame) debug-buf))
                                (bucket-id debug-no-zbuf1))
       ;; basic info, actor id, etc
       (draw-string-xy
           (string-format "~3L~A~0L ~A~%tags: ~D size: ~D aid: #x~x~%R1/L1 scroll L3 toggle display-actor-info~%--------------------" (-> e type) name (length e) (asize-of e) (-> e aid))
           debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
-      (+! cur-y (* 14 4))
+      (+! cur-y (* LINE_HEIGHT 4))
       (cond
         ((type-type? (-> e type) entity-actor)
           (let ((actor (the entity-actor e)))
@@ -57,11 +58,11 @@
             (draw-string-xy
                 (string-format "etype: ~A~%vis: ~D task: ~S" (-> actor etype) (-> actor vis-id) (game-task->string (-> actor task)))
                 debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
-            (+! cur-y (* 14 2))
-            (format *debug-temp-string* "(~S)" (begin (bit-enum->string task-mask (-> actor kill-mask) (clear *temp-string*)) *temp-string*))
+            (+! cur-y (* LINE_HEIGHT 2))
+            (format (clear *debug-temp-string*) "(~S)" (begin (bit-enum->string task-mask (-> actor kill-mask) (clear *temp-string*)) *temp-string*))
             (draw-string-xy (string-format "kill-mask: ~S" *debug-temp-string*)
                 debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
-            (+! cur-y (* 14 1))
+            (+! cur-y (* LINE_HEIGHT 1))
             )
           )
         )
@@ -77,7 +78,7 @@
       (cond
         ;; some water-height info
         ((and (= (-> e tag i name) 'water-height) (= (-> e tag i elt-count) 4) (= (-> e tag i elt-type) float))
-          (+! y-adv (* 14 1))
+          (+! y-adv (* LINE_HEIGHT 1))
           (format *debug-temp-string* "~mm ~mm ~mm~%(~S)"
                 (-> (the (pointer float) data) 0)
                 (-> (the (pointer float) data) 1)
@@ -87,7 +88,7 @@
           )
         ;; some water-height info but with 5 elts
         ((and (= (-> e tag i name) 'water-height) (= (-> e tag i elt-count) 4) (= (-> e tag i elt-type) float))
-          (+! y-adv (* 14 3))
+          (+! y-adv (* LINE_HEIGHT 3))
           (format *debug-temp-string* "~mm ~mm ~mm~%(~S)~%~mm"
                 (-> (the (pointer float) data) 0)
                 (-> (the (pointer float) data) 1)
@@ -218,24 +219,24 @@
                     'spawner-blocker-actor 'spawner-trigger-actor 'kill-actor 'fade-actor 'water-actor 'target-actor 'formation-actor)
                     (format *debug-temp-string* "~%#x~x (~S)" (-> (the (pointer uint32) data) ii)
                             (res-lump-struct (entity-by-aid (-> (the (pointer uint32) data) ii)) 'name string))
-                    (+! y-adv 14)
+                    (+! y-adv LINE_HEIGHT)
                     )
                   (('nav-mesh-actor)
                     (format *debug-temp-string* "~%#x~x (~S)" (-> (the (pointer uint32) data) ii)
                             (res-lump-struct (entity-nav-mesh-by-aid (-> (the (pointer actor-id) data) ii)) 'name string))
-                    (+! y-adv 14)
+                    (+! y-adv LINE_HEIGHT)
                     )
                   (('enemy-options)
                     (format *debug-temp-string* "~%(~S)" (begin (bit-enum->string enemy-option (-> (the (pointer uint32) data) ii) (clear *temp-string*)) *temp-string*))
-                    (+! y-adv 14)
+                    (+! y-adv LINE_HEIGHT)
                     )
                   (('kill-mask)
                     (format *debug-temp-string* "~%(~S)" (begin (bit-enum->string task-mask (-> (the (pointer uint32) data) ii) (clear *temp-string*)) *temp-string*))
-                    (+! y-adv 14)
+                    (+! y-adv LINE_HEIGHT)
                     )
                   (('elevator-flags)
                     (format *debug-temp-string* "~%(~S)" (begin (bit-enum->string elevator-flags (-> (the (pointer uint32) data) ii) (clear *temp-string*)) *temp-string*))
-                    (+! y-adv 14)
+                    (+! y-adv LINE_HEIGHT)
                     )
                   (else
                     (format *debug-temp-string* "#x~x" (-> (the (pointer uint32) data) ii))
@@ -281,10 +282,10 @@
                         )
                     )
                   )
-                (+! y-adv 14))
+                (+! y-adv LINE_HEIGHT))
               ((pair)
                 (format *debug-temp-string* "~%~A" (-> (the (pointer pair) data) 0))
-                (+! y-adv 14)
+                (+! y-adv LINE_HEIGHT)
                 )
               ((actor-group)
                 (let* ((group (-> (the (pointer actor-group) data) ii))
@@ -292,9 +293,9 @@
                   (format *debug-temp-string* "~%--- GROUP ~D: ---" ii len)
                   (dotimes (iii len)
                     (format *debug-temp-string* "~% #x~x (~S)" (-> group data iii id) (res-lump-struct (entity-by-aid (-> group data iii id)) 'name string))
-                    (+! y-adv 14))
+                    (+! y-adv LINE_HEIGHT))
                   )
-                (+! y-adv 14)
+                (+! y-adv LINE_HEIGHT)
                 )
               ;; no clue! please report this.
               (else
@@ -310,13 +311,13 @@
       ;; draw a string for each tag instead of all at once. allows using smaller strings.
       (draw-string-xy *debug-temp-string* debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
       (+! cur-y y-adv)
-      (set! y-adv 14)
+      (set! y-adv LINE_HEIGHT)
 
         ))
       ;; set max scroll based on how large the whole text was, ignore first 20 lines.
-      (set! (-> inspect-info scroll-y-max) (max 0 (+ -20 (/ (- cur-y begin-y) 14))))
+      (set! (-> inspect-info scroll-y-max) (max 0 (+ -20 (/ (- cur-y begin-y) LINE_HEIGHT))))
       
       )
-  )))
+  ))))
 
 
