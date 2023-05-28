@@ -85,8 +85,8 @@ void Subtitle2Editor::draw_window() {
   } else {
     ImGui::PushStyleColor(ImGuiCol_Text, m_selected_text_color);
   }
-  if (ImGui::TreeNode(
-          fmt::format("Currently Selected Cutscene: {}", m_current_scene_name).c_str())) {
+  if (ImGui::TreeNode("Currently Selected Cutscene")) {
+    ImGui::Text("%s", m_current_scene_name.c_str());
     ImGui::PopStyleColor();
     if (m_current_scene) {
       draw_subtitle_options(*m_current_scene, m_current_scene_name, true);
