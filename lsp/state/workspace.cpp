@@ -290,7 +290,7 @@ void Workspace::stop_tracking_file(const LSPSpec::DocumentUri& file_uri) {
 }
 
 WorkspaceOGFile::WorkspaceOGFile(const std::string& content, const GameVersion& game_version)
-    : m_game_version(game_version) {
+    : m_content(content), m_game_version(game_version) {
   m_lines = str_util::split(content);
   lg::info("Added new OG file. {} lines with {} symbols and {} diagnostics", m_lines.size(),
            m_symbols.size(), m_diagnostics.size());
