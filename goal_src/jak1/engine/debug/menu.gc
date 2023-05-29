@@ -424,21 +424,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun debug-menu-item-get-max-width ((arg0 debug-menu-item) (arg1 debug-menu))
-  "Determine the width, in pixels"
-  (local-vars (v0-1 int))
+  "Determine the width, in screen units"
   0
   (cond
-   ((= (-> arg0 type) debug-menu-item-submenu)
-    (set! v0-1 (+ (the int (get-string-length (-> arg0 name) (-> arg1 context font))) 16))
+    ((= (-> arg0 type) debug-menu-item-submenu)
+      (+ (the int (get-string-length (-> arg0 name) (-> arg1 context font))) 16)
+      )
+    ((= (-> arg0 type) debug-menu-item-var)
+      (the int (get-string-length (-> (the-as debug-menu-item-var arg0) display-str) (-> arg1 context font)))
+      )
+    (else
+      (+ (the int (get-string-length (-> arg0 name) (-> arg1 context font))) 6)
+      )
     )
-   ((= (-> arg0 type) debug-menu-item-var)
-    (set! v0-1 (the int (get-string-length (-> (the-as debug-menu-item-var arg0) display-str) (-> arg1 context font))))
-    )
-   (else
-    (set! v0-1 (+ (the int (get-string-length (-> arg0 name) (-> arg1 context font))) 6))
-    )
-   )
-  v0-1
   )
 
 (defun debug-menu-context-default-selection ((ctxt debug-menu-context) (keep-current symbol))
@@ -761,8 +759,6 @@
                                 ))
     (with-dma-buffer-add-bucket ((s3-0 (-> (current-frame) debug-buf))
                                  (bucket-id debug-no-zbuf))
-      ;; NOTE: the draw-string-adv advances too far on widescreen.
-      ;; NOTE 2: should be fixed?
       (draw-string-adv (-> item name) s3-0 s5-0)
       (draw-string-adv "..." s3-0 s5-0)
       )
