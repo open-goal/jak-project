@@ -1,3 +1,6 @@
+I just updated the daxter mod and made my own repository for misc modding that i do
+
+
 <p align="center">
   <img width="500" height="100%" src="./docs/img/logo-text-colored-new.png">
 </p>
