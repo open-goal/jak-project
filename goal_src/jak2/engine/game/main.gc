@@ -1725,6 +1725,100 @@
     (set! (-> gp-1 frames 1 start-time) (the-as int (timer-count (the-as timer-bank #x10000800))))
     (set! (-> gp-1 dog-ratio) 1.0)
     (while *run*
+          (when *target*
+        (case (-> *target* next-state name)
+          (('target-indax-attack
+            'target-indax-attack-air 
+            'target-indax-death
+            'target-indax-double-jump
+            'target-indax-falling
+            'target-indax-hit 
+            'target-indax-hit-ground 
+            'target-indax-jump 
+            'target-indax-running-attack
+            'target-indax-stance
+            'target-indax-start
+            'target-indax-trip
+            'target-indax-walk
+            ;; poles, no dax animation for them
+            'target-pole-cycle
+            'target-pole-flip-forward
+            'target-pole-flip-forward-jump
+            'target-pole-flip-up
+            'target-pole-flip-up-jump
+            ;; also used for daxter driving
+            'target-pilot-edge-grab
+            'target-pilot-get-on
+            'target-pilot-start
+            'target-pilot-stance
+            'target-pilot-get-off
+            'target-pilot-hit
+            'target-pilot-impact
+            ;; jetboard
+            'target-board-clone-anim
+            'target-board-duck-stance
+            'target-board-falling
+            'target-board-flip
+            'target-board-get-off
+            'target-board-get-on
+            'target-board-grab
+            'target-board-grenade
+            'target-board-halfpipe
+            'target-board-hit
+            'target-board-hit-ground
+            'target-board-hold
+            'target-board-jump
+            'target-board-jump-kick
+            'target-board-pegasus
+            'target-board-ride-edge
+            'target-board-stance
+            'target-board-start
+            'target-board-trickx
+            'target-board-turn-to
+            'target-board-wall-kick
+            ;; mech
+            'target-mech-carry-drag
+            'target-mech-carry-drop
+            'target-mech-carry-falling
+            'target-mech-carry-hit-ground
+            'target-mech-carry-jump
+            'target-mech-carry-pickup
+            'target-mech-carry-stance
+            'target-mech-carry-throw
+            'target-mech-carry-walk
+            'target-mech-clone-anim
+            'target-mech-death
+            'target-mech-falling
+            'target-mech-get-off
+            'target-mech-get-on
+            'target-mech-grab
+            'target-mech-hit
+            'target-mech-hit-ground
+            'target-mech-jump
+            'target-mech-punch
+            'target-mech-stance
+            'target-mech-start
+            'target-mech-walk
+            ;; turrets
+            'target-turret-get-off
+            'target-turret-get-on
+            'target-turret-stance
+            )
+            ;; do nothing
+            )
+
+          (else
+            ;; force to indax mode
+            (when (not (logtest? (-> *kernel-context* prevent-from-run) (process-mask movie)))
+              (format 0 "sending change-mode indax while in ~S next state ~S ~%" (-> *target* state name) (-> *target* next-state name))
+              (send-event *target* 'change-mode 'indax #f)
+              )
+            )
+          )
+        ;; hide jak
+        (logior! (-> *target* draw status) (draw-control-status no-draw-bounds2))
+        )
+        
       (display-loop-main gp-1)
       (with-profiler 'actors *profile-actors-color*
         (suspend)
