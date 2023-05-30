@@ -423,6 +423,22 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+(defun subtitle-channel? ((ch gui-channel))
+  "can this gui channel be checked for subtitles?"
+  (and (>= ch (gui-channel jak)) (<= ch (gui-channel krew)))
+  )
+
+(defun valid-subtitle-gui? ((gui gui-connection))
+  "is this gui connection valid for checking subtitles?"
+  (and gui  (nonzero? (-> gui id))
+            (subtitle-channel? (-> gui channel))
+            (or (= (-> gui action) (gui-action playing))
+                (= (-> gui action) (gui-action play)))
+            (let ((status (get-status *gui-control* (-> gui id))))
+            (or (= status (gui-status ready))
+                (= status (gui-status active)))))
+  )
+
 (defmethod clear-line subtitle2-queue-element ((obj subtitle2-queue-element))
   "make this queue element invalid"
 
@@ -442,14 +458,9 @@
 
   (dotimes (i PC_SUBTITLE_QUEUE_SIZE)
 
-    (let ((gui (lookup-gui-connection *gui-control* (the process #f) (gui-channel none) (the string #f) (-> obj queue i id)))
-          (status (get-status *gui-control* (-> obj queue i id))))
-      (if (or (zero? (-> obj queue i id))
-              (not gui)
-              (and (!= (gui-action playing) (-> gui action))
-                   (!= (gui-action play) (-> gui action)))
-              (and (!= (gui-status ready) status)
-                   (!= (gui-status active) status)))
+    (let ((gui (lookup-gui-connection *gui-control* (the process #f) (gui-channel none) (the string #f) (-> obj queue i id))))
+
+      (if (not (valid-subtitle-gui? gui))
           (clear-line (-> obj queue i)))))
   0)
 
@@ -477,10 +488,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defun subtitle-channel? ((ch gui-channel))
-  "can this channel be checked for subtitles?"
-  (and (>= ch (gui-channel jak)) (<= ch (gui-channel krew)))
-  )
 
 (defun subtitle-bump-up? ()
   "should subtitles be moved up?"
@@ -502,9 +509,7 @@
     (let ((next (-> current prev0)))
       (while (!= current (-> *gui-control* engine alive-list))
         (let ((gui-conn (the gui-connection current)))
-          (when (and (subtitle-channel? (-> gui-conn channel))
-                     (or (= (gui-action playing) (-> gui-conn action))
-                         (= (gui-action play) (-> gui-conn action))))
+          (when (valid-subtitle-gui? gui-conn)
 
             (when (not (gui-queued? obj gui-conn))
                 (let ((slot (get-empty-queue obj)))
@@ -555,7 +560,7 @@
       (set-scale! font (* 0.5 (-> *SUBTITLE2-bank* scale) 1.15)))
   (set-width! font (the int (* (-> *SUBTITLE2-bank* width) 0.91 512)))
   (set-origin! font (the int (/ (- 512.0 (-> font width)) 2))
-                    (the int (* (if (subtitle-bump-up?) 0.58 0.698) 416)))
+                    (the int (* (if (subtitle-bump-up?) 0.524 0.698) 416)))
   (when (and (logtest? (minimap-flag minimap) (-> *setting-control* user-current minimap))
            (> (the int (+ (-> font width) (-> font origin x))) (get-screen-x 0.744)))
     (let ((new-width (- (get-screen-x 0.744) (-> font origin x))))
