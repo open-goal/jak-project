@@ -15,67 +15,51 @@ extern "C" {
 extern const TSLanguage* tree_sitter_opengoal();
 }
 
-std::string align_form(const std::string& form, int alignment_width) {
-  const auto lines = str_util::split(form);
-  std::string aligned_form = "";
-  for (int i = 0; i < lines.size(); i++) {
-    aligned_form += str_util::repeat(alignment_width, " ") + lines.at(i);
-    if (i != lines.size() - 1) {
-      aligned_form += "\n";
-    }
-  }
-  return aligned_form;
-}
-
-std::string apply_formatting(const FormatterTree::Node& curr_node,
+std::string apply_formatting(const FormatterTreeNode& curr_node,
                              std::string output,
                              int tree_depth = 0) {
   if (!curr_node.token && curr_node.refs.empty()) {
     return output;
   }
   std::string curr_form = "";
+  // Print the token
   if (curr_node.token) {
     curr_form += curr_node.token.value();
     return curr_form;
   }
+  // TODO - this might have some issues for non-list top level elements (ie. comments)
   if (!curr_node.metadata.is_root) {
     curr_form += "(";
   }
+  // Iterate the form
   for (int i = 0; i < curr_node.refs.size(); i++) {
     const auto& ref = curr_node.refs.at(i);
-    // TODO - abstract these into formatting rules
-    if (!curr_node.metadata.is_root && curr_node.metadata.multiple_elements_first_line) {
-      if (i > 1) {
-        // TODO - kinda unsafe
-        // Trim the current form before applying a new-line
-        curr_form = str_util::rtrim(curr_form) + "\n";
-        if (ref.token) {
-          curr_form += str_util::repeat(curr_node.refs.at(0).token.value().length() + 2, " ");
-        }
-      }
-    } else if (!curr_node.metadata.is_root) {
-      if (i > 0) {
-        // Trim the current form before applying a new-line
-        curr_form = str_util::rtrim(curr_form) + "\n";
-        curr_form += str_util::repeat(tree_depth, " ");
-      }
+    // Apply indentation
+    if (!curr_node.metadata.is_root) {
+      // TODO - assuming only 1 rule per node now, but we'll need a function to find the appropriate
+      // rule eventually
+      curr_node.rules.at(0)->newline_and_indent_element(curr_form, curr_node, tree_depth, i,
+                                                        ref.token.has_value());
     }
+    // Either print the element's token, or recursively format it as well
     if (ref.token) {
       curr_form += ref.token.value() + " ";
     } else {
+      auto formatted_form = apply_formatting(ref, "", tree_depth + 1);
       if (!curr_node.metadata.is_root && curr_node.metadata.multiple_elements_first_line) {
-        // align returned form's lines with this forms lines
-        // TODO - kinda unsafe
-        curr_form += align_form(apply_formatting(ref, "", tree_depth + 1),
-                                curr_node.refs.at(0).token.value().length() + 2);
-      } else {
-        curr_form += apply_formatting(ref, "", tree_depth + 1);
+        // TODO - assuming only 1 rule per node now, but we'll need a function to find the
+        // appropriate
+        // rule eventually
+        curr_node.rules.at(0)->align_form_lines(formatted_form, curr_node);
       }
+      curr_form += formatted_form;
     }
+    // Separate top-level elements with a new-line
     if (curr_node.metadata.is_root && i < curr_node.refs.size() - 1) {
       curr_form += "\n\n";
     }
   }
+  // TODO - similar fear to issues as above
   if (!curr_node.metadata.is_root) {
     curr_form = str_util::rtrim(curr_form) + ")";
   }

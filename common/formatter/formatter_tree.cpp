@@ -23,7 +23,7 @@ std::string get_source_code(const std::string& source, const TSNode& node) {
 }
 
 FormatterTree::FormatterTree(const std::string& source, const TSNode& root_node) {
-  root = FormatterTree::Node();
+  root = FormatterTreeNode();
   root.metadata.is_root = true;
   construct_formatter_tree_recursive(source, root_node, root);
 }
@@ -31,15 +31,15 @@ FormatterTree::FormatterTree(const std::string& source, const TSNode& root_node)
 // TODO make an imperative version eventually
 void FormatterTree::construct_formatter_tree_recursive(const std::string& source,
                                                        TSNode curr_node,
-                                                       Node& tree_node) {
+                                                       FormatterTreeNode& tree_node) {
   if (ts_node_child_count(curr_node) == 0) {
-    tree_node.refs.push_back(FormatterTree::Node(get_source_code(source, curr_node)));
+    tree_node.refs.push_back(FormatterTreeNode(get_source_code(source, curr_node)));
     return;
   }
   const std::string curr_node_type = ts_node_type(curr_node);
-  FormatterTree::Node list_node;
+  FormatterTreeNode list_node;
   if (curr_node_type == "list_lit") {
-    list_node = FormatterTree::Node();
+    list_node = FormatterTreeNode();
   }
   for (size_t i = 0; i < ts_node_child_count(curr_node); i++) {
     const auto child_node = ts_node_child(curr_node, i);

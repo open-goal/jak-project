@@ -1,10 +1,15 @@
 #pragma once
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
+#include "formatting_rules.h"
+
 #include "tree_sitter/api.h"
+
+class FormattingRule;
 
 // Treesitter is fantastic for validating and parsing our code into a structured tree format without
 // whitespace so we can do that ourselves (formatting) However, the treesitter AST is a bit too
@@ -22,12 +27,9 @@
 // Pass 1 - convert the AST into a simplified FormatterTree
 // Pass 2 - use the simplified tree to output the final code
 
-// A FormatterTree has a very simple and crude tree structure where:
-// Nodes are essentially forms, which contain in-order tokens or references to nested forms
-// Nodes can have associated metadata, often related to their context in the original code
-class FormatterTree {
+class FormatterTreeNode {
  public:
-  struct NodeMetadata {
+  struct Metadata {
     bool is_root = false;
     // Whether the form had more than 1 element on the first line
     // (println
@@ -36,25 +38,30 @@ class FormatterTree {
     // (println "test")
     bool multiple_elements_first_line;
   };
+  std::vector<FormatterTreeNode> refs;
+  Metadata metadata;
+  // The token is optional because list nodes do not contain a token, they just contain a bunch of
+  // eventually token node refs
+  std::optional<std::string> token;
+  std::vector<std::shared_ptr<FormattingRule>> rules = {std::make_shared<FormattingRule>()};
 
-  class Node {
-   public:
-    std::vector<Node> refs;
-    NodeMetadata metadata;
-    // The token is optional because list nodes do not contain a token, they just contain a bunch of
-    // eventually token node refs
-    std::optional<std::string> token;
+  FormatterTreeNode() = default;
+  FormatterTreeNode(const std::string& _token) : token(_token){};
+  FormatterTreeNode(const Metadata& _metadata) : metadata(_metadata){};
+};
 
-    Node() = default;
-    Node(const std::string& _token) : token(_token){};
-    Node(const NodeMetadata& _metadata) : metadata(_metadata){};
-  };
-
+// A FormatterTree has a very simple and crude tree structure where:
+// - Nodes are essentially forms, which contain in-order tokens or references to nested forms
+// - Nodes can have associated metadata, often related to their context in the original code
+// - Nodes can also have multiple formatting rules associated with them.  Often this is the default
+// rule or based on pre-configured overrides due to the head of the form, ex. 'defun'
+class FormatterTree {
+ public:
   FormatterTree(const std::string& source, const TSNode& root_node);
-  Node root;
+  FormatterTreeNode root;
 
  private:
   void construct_formatter_tree_recursive(const std::string& source,
                                           TSNode curr_node,
-                                          Node& tree_node);
+                                          FormatterTreeNode& tree_node);
 };
