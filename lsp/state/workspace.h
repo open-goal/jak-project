@@ -21,6 +21,7 @@ class WorkspaceOGFile {
   // TODO - make private
   int32_t version;
   // TODO - keep an AST of the file instead
+  std::string m_content;
   std::vector<std::string> m_lines;
   std::vector<LSPSpec::DocumentSymbol> m_symbols;
   std::vector<LSPSpec::Diagnostic> m_diagnostics;

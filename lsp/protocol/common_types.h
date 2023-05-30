@@ -122,4 +122,15 @@ struct Color {
 };
 void to_json(json& j, const Color& obj);
 void from_json(const json& j, Color& obj);
+
+struct TextEdit {
+  // The range of the text document to be manipulated. To insert
+  // text into a document create a range where start === end.
+  Range range;
+  // The string to be inserted. For delete operations use an
+  // empty string.
+  std::string newText;
+};
+void to_json(json& j, const TextEdit& obj);
+void from_json(const json& j, TextEdit& obj);
 }  // namespace LSPSpec
