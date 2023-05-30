@@ -317,14 +317,31 @@
       (set! (-> self draw shadow-ctrl settings shadow-dir quad) v1-55)
       )
     (twist-set! (-> self barrel) (the-as float #f) (the-as float #f) (-> (the-as target gp-0) gun fire-spin))
-    (if (or (logtest? (-> (the-as target gp-0) draw status)
+        (if (or (and (logtest? (-> (the-as target gp-0) draw status)
                       (draw-control-status no-draw no-draw-temp no-draw-bounds no-draw-bounds2)
                       )
+                                       (logtest? (-> (the sidekick (ppointer->process (-> (the-as target gp-0) sidekick))) draw status)
+                      (draw-control-status no-draw no-draw-temp no-draw-bounds no-draw-bounds2)
+                      )
+                 )
             (zero? (-> (the-as target gp-0) skel active-channels))
             )
+        ;; hide if both jak and dax hidden
         (logior! (-> self draw status) (draw-control-status no-draw))
-        (logclear! (-> self draw status) (draw-control-status no-draw))
-        )
+               ;; otherwise, show/hide based on state
+        (case (-> (the-as target gp-0) state name)
+          (('target-pilot-stance
+            'target-pilot-get-off
+            'target-pilot-hit
+            'target-pilot-impact)
+            ;; only show guns while driving (dax shooting)
+            (logclear! (-> self draw status) (draw-control-status no-draw))
+            )
+          (else
+            (logior! (-> self draw status) (draw-control-status no-draw))
+            )
+          )
+      )
     (if (logtest? (-> (the-as target gp-0) draw status) (draw-control-status force-fade))
         (logior! (-> self draw status) (draw-control-status force-fade))
         (logclear! (-> self draw status) (draw-control-status force-fade))

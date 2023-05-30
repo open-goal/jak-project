@@ -448,4 +448,7 @@
   "elec-gate.o"
   "cty-guard-turret-button.o"
   "entity-debug.o" ;; added
+  ;; keep indax loaded
+  "target-indax.o"
+  "jak-indax+0-ag.go"
  ))

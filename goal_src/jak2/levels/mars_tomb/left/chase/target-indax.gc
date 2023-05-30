@@ -99,6 +99,9 @@
              ((begin (set! a0-10 'falling) (= v1-5 a0-10))
               (go target-indax-falling a0-10)
               )
+              ((or (= v1-5 'turret) (= v1-5 'board) (= v1-5 'pilot) (= v1-5 'mech))
+              (target-standard-event-handler arg0 arg1 arg2 arg3)
+              )
              )
            )
          )
@@ -456,6 +459,9 @@
   :post target-indax-post
   )
 
+
+(define *dax-highjump-factor* 1.6)
+
 (defstate target-indax-stance (target)
   :event target-indax-handler
   :enter (behavior ()
@@ -476,7 +482,7 @@
       (remove-exit)
       (go target-indax-walk)
       )
-    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+     (when (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
                                        (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
                                        )
                                (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
@@ -488,7 +494,11 @@
         (go
           target-indax-jump
           (-> *TARGET-bank* indax-jump-height-min)
-          (-> *TARGET-bank* indax-jump-height-max)
+            ;; multiply max height if holding l1, high jump hack
+          (if (cpad-hold? (-> self control cpad number) l1)
+            (* (-> *TARGET-bank* indax-jump-height-max) *dax-highjump-factor*)
+            (-> *TARGET-bank* indax-jump-height-max)
+            )
           (the-as surface #f)
           )
         )
@@ -603,7 +613,7 @@
       (remove-exit)
       (go target-indax-stance)
       )
-    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+    (when (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
                                        (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
                                        )
                                (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
@@ -974,7 +984,7 @@
     )
   :exit target-indax-exit
   :trans (behavior ()
-    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+    (when (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
                                        (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
                                        )
                                (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
@@ -986,7 +996,13 @@
         (go
           target-indax-jump
           (-> *TARGET-bank* indax-jump-height-min)
-          (-> *TARGET-bank* indax-jump-height-max)
+                    ;; multiply max height if holding l1 and not moving, high jump hack
+          (if (and (cpad-hold? (-> self control cpad number) l1)
+                   (zero? (-> *cpad-list* cpads (-> self control cpad number) stick0-speed))
+                   )
+            (* (-> *TARGET-bank* indax-jump-height-max) *dax-highjump-factor*)
+            (-> *TARGET-bank* indax-jump-height-max)
+            )
           (the-as surface #f)
           )
         )
@@ -1282,7 +1298,37 @@
     (go target-indax-stance)
     (none)
     )
-  :post target-post
+  :trans (behavior ()
+    (when (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
+                                       )
+                               (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
+                               )
+                       (pad-buttons x)
+                       )
+             (can-jump? #f)
+             )
+        (go
+          target-indax-jump
+          (-> *TARGET-bank* indax-jump-height-min)
+          (-> *TARGET-bank* indax-jump-height-max)
+          (the-as surface #f)
+          )
+        )
+    (when (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
+                                       )
+                               (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
+                               )
+                       (pad-buttons circle)
+                       )
+             (can-feet? #t)
+             )
+        (go target-indax-attack)
+        )
+    (none)
+    )
+  :post target-indax-post
   )
 
 ;; WARN: Return type mismatch float vs none.
