@@ -36,10 +36,8 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
     const auto& ref = curr_node.refs.at(i);
     // Apply indentation
     if (!curr_node.metadata.is_root) {
-      // TODO - assuming only 1 rule per node now, but we'll need a function to find the appropriate
-      // rule eventually
-      curr_node.rules.at(0)->newline_and_indent_element(curr_form, curr_node, tree_depth, i,
-                                                        ref.token.has_value());
+      curr_node.get_formatting_rule(tree_depth, i)
+          ->newline_and_indent_element(curr_form, ref, curr_node, tree_depth, i);
     }
     // Either print the element's token, or recursively format it as well
     if (ref.token) {
@@ -47,10 +45,7 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
     } else {
       auto formatted_form = apply_formatting(ref, "", tree_depth + 1);
       if (!curr_node.metadata.is_root && curr_node.metadata.multiple_elements_first_line) {
-        // TODO - assuming only 1 rule per node now, but we'll need a function to find the
-        // appropriate
-        // rule eventually
-        curr_node.rules.at(0)->align_form_lines(formatted_form, curr_node);
+        curr_node.get_formatting_rule(tree_depth, i)->align_form_lines(formatted_form, curr_node);
       }
       curr_form += formatted_form;
     }

@@ -1,5 +1,18 @@
 #include "formatter_tree.h"
 
+namespace formatter {
+const std::shared_ptr<FormattingRule> default_rule = std::make_shared<FormattingRule>();
+}
+
+std::shared_ptr<FormattingRule> FormatterTreeNode::get_formatting_rule(const int depth,
+                                                                       const int index) const {
+  // TODO - really lazy for now
+  if (!rules.empty()) {
+    return rules.at(0);
+  }
+  return formatter::default_rule;
+}
+
 // Check if the original source only has whitespace up to a new-line after it's token
 bool node_followed_by_only_whitespace(const std::string& source, const TSNode& node) {
   uint32_t pos = ts_node_end_byte(node);
@@ -40,6 +53,7 @@ void FormatterTree::construct_formatter_tree_recursive(const std::string& source
   FormatterTreeNode list_node;
   if (curr_node_type == "list_lit") {
     list_node = FormatterTreeNode();
+    // TODO - peek at the first element of the list to determine formatting rules
   }
   for (size_t i = 0; i < ts_node_child_count(curr_node); i++) {
     const auto child_node = ts_node_child(curr_node, i);

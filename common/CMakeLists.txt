@@ -35,6 +35,7 @@ add_library(common
         formatter/formatter.cpp
         formatter/formatting_rules.cpp
         formatter/formatter_tree.cpp
+        formatter/config/rule_config.cpp
         global_profiler/GlobalProfiler.cpp
         goos/Interpreter.cpp
         goos/Object.cpp
@@ -79,7 +80,8 @@ add_library(common
         util/term_util.cpp
         util/Timer.cpp
         util/unicode_util.cpp
-        versions/versions.cpp)
+        versions/versions.cpp
+)
 
 target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter)
 
