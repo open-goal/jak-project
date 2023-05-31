@@ -31,8 +31,6 @@ int main(int argc, char** argv) {
 
   lg::initialize();
 
-  // TODO - write a simple test framework for this stuff
-
   CLI::App app{"OpenGOAL Formatter"};
   app.add_flag("-c,--check", check,
                "If on, will just do a dry-run and fail if something isn't formatted correctly");
@@ -52,10 +50,10 @@ int main(int argc, char** argv) {
 
   const auto result = formatter::format_code(source_code);
 
-  if (write_newfile) {
+  if (write_newfile && result) {
     // TODO - i don't like this implementation, return a new string instead
     if (str_util::replace(file_path, ".gc", ".new.gc")) {
-      file_util::write_text_file(file_path, result);
+      file_util::write_text_file(file_path, result.value());
     }
   }
 

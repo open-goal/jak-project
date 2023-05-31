@@ -23,4 +23,5 @@ std::vector<std::string> regex_get_capture_groups(const std::string& str, const 
 bool replace(std::string& str, const std::string& from, const std::string& to);
 std::string lower(const std::string& str);
 std::string uuid();
+std::string repeat(size_t n, const std::string& str);
 }  // namespace str_util

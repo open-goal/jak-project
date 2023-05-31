@@ -49,7 +49,7 @@ class InitializeResult {
                    {"workspaceSymbolProvider", false},
                    {"codeActionProvider", false},
                    {"codeLensProvider", code_lens_provider},
-                   {"documentFormattingProvider", false},
+                   {"documentFormattingProvider", true},
                    {"documentRangeFormattingProvider", false},
                    {"documentOnTypeFormattingProvider", document_on_type_formatting_provider},
                    {"renameProvider", false},
