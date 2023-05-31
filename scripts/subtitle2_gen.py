@@ -21,7 +21,7 @@ speakers = {
     "baron": "(bf|bar|prop)[0-9]{3}$",
     "errol": "ero[0-9]{3}$",
     "torn": "(bb|tor|torn)[0-9]{3}$",
-    "tess": "tess[0-9]{3}$",
+    "tess": "(tess|tswm)[0-9]{3}$",
     "guard": "kgv?[0-9]{3}$",
     "guard-a": "kg[0-9]{3}a",
     "guard-b": "kg[0-9]{3}b",
@@ -38,8 +38,9 @@ speakers = {
     "mog": "hal[0-9]{3}$",
     "grim": "hal[0-9]{3}$",
     "agent": "agnt[0-9]{3}$",
-    "citizen-male": "cit[0-9]{3}$",
-    "citizen-female": "cit[0-9]{3}$",
+    # there's no clear pattern for what citizen line is male or female, but this seems to be the closest match
+    "citizen-male": "cit[0-9]{3}(a|b)?$",
+    "citizen-female": "cit[0-9]{3}(c|d)$",
     "oracle": "ora[0-9]{3}$",
     "precursor": "",
 }
