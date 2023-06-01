@@ -27,6 +27,7 @@ into 7 sections, which might explain the weird sizes in the center.
 (defglobalconstant NUM_LEVEL_PAGES 146)
 (defglobalconstant LEVEL_PAGE_SIZE_KB 126) ;; original value
 (defglobalconstant LEVEL_PAGE_SIZE (* LEVEL_PAGE_SIZE_KB 1024)) ;; original value
+
 (defglobalconstant LEVEL_HEAP_SIZE (* NUM_LEVEL_PAGES LEVEL_PAGE_SIZE))
 ;(defglobalconstant DEBUG_LEVEL_HEAP_MULT 1.5) ;; level heap in debug mode is 1.5x larger
 (defglobalconstant DEBUG_LEVEL_HEAP_MULT 1.1) ;; we're gonna use debug mode-style heaps but we don't actually need them at 1.5x size right now
@@ -955,7 +956,7 @@ into 7 sections, which might explain the weird sizes in the center.
               (cond
                 ;; are we using debug sized large level?
                 ((= (&- (-> *level* heap top) (the-as uint (-> *level* heap base))) DEBUG_LEVEL_HEAP_SIZE)
-                 ;; if so, everything is 1.5x bigger!
+                 ;; if so, everything is bigger!
                  (let ((v1-44 (-> obj heap)))
                    (set! (-> v1-44 base) (&+ (-> *level* heap base) (* DEBUG_LEVEL_PAGE_SIZE offset-in-level-heap)))
                    (set! (-> v1-44 current) (-> v1-44 base))
@@ -1891,7 +1892,7 @@ into 7 sections, which might explain the weird sizes in the center.
         (load-package "common" global)
         )
     (let ((s5-1 (if (and arg0 (not *debug-segment*))
-                    LEVEL_HEAP_SIZE
+                    (#if PC_PORT DEBUG_LEVEL_HEAP_SIZE LEVEL_HEAP_SIZE)
                     DEBUG_LEVEL_HEAP_SIZE
                     )
                 )
