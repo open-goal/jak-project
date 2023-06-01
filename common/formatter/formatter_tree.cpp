@@ -1,5 +1,9 @@
 #include "formatter_tree.h"
 
+#include "common/util/string_util.h"
+
+#include "config/rule_config.h"
+
 namespace formatter {
 const std::shared_ptr<FormattingRule> default_rule = std::make_shared<FormattingRule>();
 }
@@ -29,6 +33,14 @@ bool node_followed_by_only_whitespace(const std::string& source, const TSNode& n
   return true;
 }
 
+bool nodes_on_same_line(const std::string& source, const TSNode& n1, const TSNode& n2) {
+  // Get the source between the two lines, if there are any new-lines, the answer is NO
+  uint32_t start = ts_node_start_byte(n1);
+  uint32_t end = ts_node_end_byte(n2);
+  const auto code_between = source.substr(start, end - start);
+  return !str_util::contains(code_between, "\n");
+}
+
 std::string get_source_code(const std::string& source, const TSNode& node) {
   uint32_t start = ts_node_start_byte(node);
   uint32_t end = ts_node_end_byte(node);
@@ -53,7 +65,6 @@ void FormatterTree::construct_formatter_tree_recursive(const std::string& source
   FormatterTreeNode list_node;
   if (curr_node_type == "list_lit") {
     list_node = FormatterTreeNode();
-    // TODO - peek at the first element of the list to determine formatting rules
   }
   for (size_t i = 0; i < ts_node_child_count(curr_node); i++) {
     const auto child_node = ts_node_child(curr_node, i);
@@ -67,8 +78,16 @@ void FormatterTree::construct_formatter_tree_recursive(const std::string& source
       if (i == 1) {
         list_node.metadata.multiple_elements_first_line =
             !node_followed_by_only_whitespace(source, child_node);
+        // Peek at the first element of the list to determine formatting rules
+        if (formatter::opengoal_rules.find(contents) != formatter::opengoal_rules.end()) {
+          list_node.rules = formatter::opengoal_rules.at(contents);
+        }
       }
       construct_formatter_tree_recursive(source, child_node, list_node);
+      // Check if the node that was recursively added to the list was on the same line
+      auto& new_node = list_node.refs.at(list_node.refs.size() - 1);
+      new_node.metadata.was_on_first_line_of_form =
+          nodes_on_same_line(source, curr_node, child_node);
     } else {
       construct_formatter_tree_recursive(source, child_node, tree_node);
     }

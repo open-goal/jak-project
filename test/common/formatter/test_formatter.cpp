@@ -26,6 +26,7 @@ EXPECTED OUTPUT
 
 #include "gtest/gtest.h"
 
+#include "third-party/fmt/color.h"
 #include "third-party/fmt/core.h"
 
 struct TestDefinition {
@@ -75,7 +76,8 @@ bool run_tests(fs::path file_path) {
   }
   // Run the tests, report successes and failures
   bool test_failed = false;
-  fmt::print("{}:\n", file_util::base_name(file_path.string()));
+  fmt::print("{}:\n", fmt::styled(file_util::base_name(file_path.string()),
+                                  fmt::emphasis::bold | fg(fmt::color::cyan)));
   for (const auto& test : tests) {
     const auto formatted_result = formatter::format_code(test.input);
     if (!formatted_result) {
@@ -104,7 +106,12 @@ bool find_and_run_tests() {
       file_util::get_file_path({"test/common/formatter/corpus"}), std::regex("^.*\.test.gc$"));
   bool failed = false;
   for (const auto& file : test_files) {
-    failed = run_tests(file);
+    // don't fail fast, but any failure means we return false
+    if (failed) {
+      run_tests(file);
+    } else {
+      failed = run_tests(file);
+    }
   }
   return !failed;
 }
