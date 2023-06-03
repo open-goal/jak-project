@@ -458,7 +458,6 @@
   0)
 
 (defstate anim-tester-x-process (anim-tester-x)
-
   :trans (behavior ()
     (clean-art-groups)
 
@@ -473,7 +472,12 @@
     (none))
 
   :code (behavior ()
-
+    (local-vars
+        (need-update symbol)
+        (lst atx-list)
+        )
+    (set! need-update #f)
+    (set! lst #f)
     (loop
 
       (when (and (-> self cur-joint-geo) (!= (-> self cur-joint-geo) (-> self draw jgeo)))
@@ -500,6 +504,8 @@
           ;; (fill-skeleton-cache self)
           (lod-set! (-> self draw) 0)
           (ja-channel-set! 0)
+          (set! lst (-> self selected-art-group ja-list))
+
           )
 
       (cond
@@ -523,12 +529,32 @@
             )
           (compute-alignment! (-> self align))
           (align! (-> self align) (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel keep-other-velocities adjust-quat)
-                  1.0 1.0 1.0)
+                  1.0 1.0 1.0)                     
           )
         (else
           (if (!= *master-mode* 'menu)
               (format *stdcon* "~%~%no art selected~%")
               )
+          )
+        )
+
+      (when (and lst (-> lst head) (!= *master-mode* 'menu))
+        (cond
+          ((cpad-pressed? 0 left)
+            (cpad-clear! 0 left)
+            (-! (-> lst selection) 1)
+            (set! need-update #t))
+          ((cpad-pressed? 0 right)
+            (cpad-clear! 0 right)
+            (+! (-> lst selection) 1)
+            (set! need-update #t))
+          ((< (-> lst  selection) 0)
+            (set! (-> lst selection) (1- (atx-list-size lst))))
+          ((>= (-> lst selection) (atx-list-size lst))
+            (set! (-> lst selection) 0))
+          (need-update
+            ((-> lst func) (atx-list-get-by-index lst (-> lst  selection)))
+            (set! need-update #f))
           )
         )
 
