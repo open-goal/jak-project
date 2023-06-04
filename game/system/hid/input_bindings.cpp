@@ -254,7 +254,7 @@ void InputBindingGroups::assign_button_bind(u32 sdl_idx,
       buttons[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
     }
     // there already a bind, so swap (as long as it's not the same key)
-    if (!current_binds.empty() && current_binds.front().sdl_idx != (u32)sdl_idx) {
+    if (!current_binds.empty() && current_binds.front().sdl_idx != (s32)sdl_idx) {
       if (current_binds.front().analog_button) {
         button_axii[current_binds.front().sdl_idx] = existing_binds;
       } else {

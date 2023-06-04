@@ -211,7 +211,7 @@ void InputManager::register_command(const CommandBinding::Source source,
 }
 
 std::string InputManager::get_controller_name(const int controller_id) {
-  if (controller_id >= m_available_controllers.size()) {
+  if ((size_t)controller_id >= m_available_controllers.size()) {
     return "";
   }
   return m_available_controllers.at(controller_id)->get_name();

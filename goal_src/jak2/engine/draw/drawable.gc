@@ -844,6 +844,7 @@
 ;;      - does bone calcs for merc
 ;;      - does VU0/CPU stuff for generic/shadow/lightning
 
+(define-extern drill-crane type)
 
 (defun dma-add-process-drawable ((pd process-drawable) (dc draw-control) (flag symbol) (dma-buf dma-buffer))
   "Draw a normal process-drawable. Set up lighting/shadow settings, then pass on to foreground renderer."
@@ -1152,6 +1153,15 @@
                              )
                         (return #f)
                         )
+
+                    ;; the lod0 drill crane is only used in the cutscene and is missing the center part of the crane.
+                    ;; the game overrides it with force-lod set to 1. Normally, in the PC port, we ignore force lod.
+                    ;; but in this case, we should listen to it.
+                    (when (and (= (-> dc force-lod) 1)
+                               (= (-> dc process type) drill-crane)
+                               )
+                      (set! lod-idx 1)
+                      )
 
                     ;; predict texture use and set masks.
                     (let ((src-lev (-> *level* level (-> dc level-index)))
