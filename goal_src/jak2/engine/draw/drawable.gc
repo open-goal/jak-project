@@ -844,8 +844,6 @@
 ;;      - does bone calcs for merc
 ;;      - does VU0/CPU stuff for generic/shadow/lightning
 
-(define-extern drill-crane type)
-
 (defun dma-add-process-drawable ((pd process-drawable) (dc draw-control) (flag symbol) (dma-buf dma-buffer))
   "Draw a normal process-drawable. Set up lighting/shadow settings, then pass on to foreground renderer."
   (local-vars
@@ -1144,8 +1142,11 @@
                       )
                     ;; lod hacks!
                     (with-pc
-                      (if (not (-> *pc-settings* ps2-lod-dist?))
-                        (set! lod-idx (minmax (-> *pc-settings* lod-force-actor) 0 (-> dc lod-set max-lod))))
+                      (when (not (-> *pc-settings* ps2-lod-dist?))
+                        (set! lod-idx (minmax (-> *pc-settings* lod-force-actor) 0 (-> dc lod-set max-lod)))
+                        (when (> (-> dc force-lod) 0))
+                        (set! lod-idx (-> dc force-lod))
+                        )
                       )
                     (if (#if (not PC_PORT)
                              (and (< (-> dc lod-set lod lod-idx dist) dist-w) (< (-> dc force-lod) 0))
@@ -1153,15 +1154,6 @@
                              )
                         (return #f)
                         )
-
-                    ;; the lod0 drill crane is only used in the cutscene and is missing the center part of the crane.
-                    ;; the game overrides it with force-lod set to 1. Normally, in the PC port, we ignore force lod.
-                    ;; but in this case, we should listen to it.
-                    (when (and (= (-> dc force-lod) 1)
-                               (= (-> dc process type) drill-crane)
-                               )
-                      (set! lod-idx 1)
-                      )
 
                     ;; predict texture use and set masks.
                     (let ((src-lev (-> *level* level (-> dc level-index)))
