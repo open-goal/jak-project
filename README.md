@@ -270,7 +270,7 @@ task set-decomp-pal
 > At the time of writing, only Jak 1 is expected to work end-to-end!
 
 The first step is to extract your ISO file contents into the `iso_data/<game-name>` folder.  In the case of Jak 1 this is `iso_data/jak1`.
-In the case of Jak 1 this is
+In the case of Jak 2 this is
 `iso_data/jak2`
 you will need to create the folder
 
