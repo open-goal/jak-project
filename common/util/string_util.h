@@ -23,4 +23,9 @@ std::vector<std::string> regex_get_capture_groups(const std::string& str, const 
 bool replace(std::string& str, const std::string& from, const std::string& to);
 std::string uuid();
 std::string repeat(size_t n, const std::string& str);
+std::string current_local_timestamp();
+std::string current_local_timestamp_no_colons();
+std::string current_isotimestamp();
+std::string to_upper(const std::string& str);
+std::string to_lower(const std::string& str);
 }  // namespace str_util

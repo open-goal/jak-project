@@ -103,6 +103,16 @@
   (quit 34)
 
   ;; extra screens for pc port
+  ;; input options
+  (input-options)
+  (select-controller)
+  (controller-binds) ;; 0x25
+  (keyboard-binds)
+  (mouse-binds)
+  (controller-options)
+  (mouse-options)
+  (reassign-binds-options)
+
   (camera-options)
   (accessibility-options)
   (game-ps2-options)
@@ -161,9 +171,13 @@
   (button-flava)
   (cheat-toggle)
   (monitor)
+  (controller)
+  (binding-assignment)
+  (confirmation)
   )
-    )
-  )
+
+    ) ;; end of PC_PORT = #t branch for enum initialization
+  ) ;; end of PC_PORT cond
 
 (defenum game-option-menu
   :type int32
@@ -222,20 +236,26 @@
   :flag-assert         #x900000034
   )
 
-
 (deftype game-option (basic)
-  ((option-type     game-option-type  :offset-assert   8)
-   (name            text-id      :offset-assert  16)
-   (scale           symbol            :offset-assert  20)
-   (param1          float             :offset-assert  24)
-   (param2          float             :offset-assert  28)
-   (param3          game-option-menu  :offset-assert  32)
-   (value-to-modify pointer           :offset-assert  36)
-   (option-disabled-func (function symbol) :offset-assert 40) ;; added in pc port
+  ((option-type            game-option-type        :offset-assert  8)
+   (name                   text-id                 :offset-assert 16)
+   (scale                  symbol                  :offset-assert 20)
+   (param1                 float                   :offset-assert 24)
+   (param2                 float                   :offset-assert 28)
+   (param3                 game-option-menu        :offset-assert 32)
+   (value-to-modify        pointer                 :offset-assert 36)
+   ;; fields below added in pc port
+   (option-disabled-func   (function symbol)       :offset-assert 40)
+   (name-override          string                  :offset-assert 44)
+   (on-change              (function object none)  :offset-assert 48)
+   (on-confirm             (function none)         :offset-assert 52)
+   (slider-step-size       float                   :offset-assert 56)
+   (slider-show-decimal?   symbol                  :offset-assert 60)
+   (bind-info              bind-assignment-info    :inline :offset-assert 64)
    )
   :method-count-assert 9
-  :size-assert         #x2C
-  :flag-assert         #x90000002C
+  :size-assert         #x54
+  :flag-assert         #x900000054
   )
 
 

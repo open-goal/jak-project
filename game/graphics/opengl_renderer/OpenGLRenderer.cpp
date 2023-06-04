@@ -771,7 +771,7 @@ void OpenGLRenderer::draw_renderer_selection_window() {
  * Pre-render frame setup.
  */
 void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
-  // glfw controls the window framebuffer, so we just update the size:
+  // SDL controls the window framebuffer, so we just update the size:
   auto& window_fb = m_fbo_state.resources.window;
 
   bool window_resized = window_fb.width != settings.window_framebuffer_width ||
@@ -862,12 +862,6 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
       (settings.window_framebuffer_width - m_render_state.draw_region_w) / 2;
   m_render_state.draw_offset_y =
       (settings.window_framebuffer_height - m_render_state.draw_region_h) / 2;
-
-  if (settings.borderless_windows_hacks) {
-    // pretend the framebuffer is 1 pixel shorter on borderless. fullscreen issues!
-    // add one pixel of vertical letterbox on borderless to make up for extra line
-    m_render_state.draw_offset_y++;
-  }
 
   m_render_state.render_fb = m_fbo_state.render_fbo->fbo_id;
   m_render_state.back_fbo = &m_fbo_state.resources.back_buffer;
