@@ -33,7 +33,9 @@ add_library(common
         dma/dma.cpp
         dma/gs.cpp
         formatter/formatter.cpp
+        formatter/formatting_rules.cpp
         formatter/formatter_tree.cpp
+        formatter/config/rule_config.cpp
         global_profiler/GlobalProfiler.cpp
         goos/Interpreter.cpp
         goos/Object.cpp
