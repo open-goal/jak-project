@@ -6,8 +6,17 @@
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_stdlib.h"
 
+void to_json(json& j, const DebugTextFilter& obj) {
+  j = json{{"content", obj.content}, {"type", obj.type}};
+}
+
+void from_json(const json& j, DebugTextFilter& obj) {
+  j.at("content").get_to(obj.content);
+  j.at("type").get_to(obj.type);
+}
+
 // TODO:
-// - persist filters (need ability to remove option too)
+// - ability to remove individual filter
 
 FiltersMenu::FiltersMenu() {}
 
@@ -16,7 +25,7 @@ void FiltersMenu::draw_window() {
 
   ImGui::SetNextItemOpen(true);
   if (ImGui::TreeNode("Debug Text Filters")) {
-    auto& current_filters = Gfx::g_debug_settings.debug_text_filters;
+    auto& current_filters = Gfx::g_debug_settings.text_filters;
     // Iterate and display all current debug text filters
     for (size_t i = 0; i < current_filters.size(); i++) {
       std::string label = "contains?";
@@ -55,12 +64,10 @@ void FiltersMenu::draw_window() {
       current_filters.push_back(new_filter);
     }*/
 
-    if (ImGui::Checkbox("Enable Distance Check", &Gfx::g_debug_settings.debug_text_check_range)) {
-      Gfx::g_debug_settings.save_settings();
+    if (ImGui::Checkbox("Enable Distance Check", &Gfx::g_debug_settings.text_check_range)) {
     }
-    if (Gfx::g_debug_settings.debug_text_check_range) {
-      if (ImGui::SliderFloat("Max Range", &Gfx::g_debug_settings.debug_text_max_range, 0, 250)) {
-        Gfx::g_debug_settings.save_settings();
+    if (Gfx::g_debug_settings.text_check_range) {
+      if (ImGui::SliderFloat("Max Range", &Gfx::g_debug_settings.text_max_range, 0, 250)) {
       }
     }
 

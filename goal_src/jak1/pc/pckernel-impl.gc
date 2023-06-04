@@ -98,4 +98,28 @@
 
 (defun get-video-params () *video-parms*)
 
-
+(defun set-reactive-controller-led! ((current-hp float) (eco-level float) (eco-kind int))
+  ;; Apply LED color based on HP if enabled and if eco is not active
+  (when (and (= eco-level 0.0) (-> *pc-settings* controller-hp-led?))
+    (case current-hp
+      ((0.0)
+        (pc-set-controller-led! 0 255 0 0))
+      ((1.0)
+        (pc-set-controller-led! 0 255 127 0))
+      ((2.0)
+        (pc-set-controller-led! 0 255 255 0))
+      ((3.0)
+        (pc-set-controller-led! 0 0 255 0))))
+  ;; Otherwise apply LED color based on eco if enabled
+  (when (and (!= eco-level 0.0) (-> *pc-settings* controller-eco-led?))
+    (case eco-kind
+      ((2)
+        (pc-set-controller-led! 0 255 0 0))
+      ((3)
+        (pc-set-controller-led! 0 0 0 255))
+      ((1)
+        (pc-set-controller-led! 0 255 255 0))
+      ((4)
+        (pc-set-controller-led! 0 0 255 0))))
+  (none)
+)

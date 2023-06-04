@@ -190,24 +190,6 @@
   )
 
 
-;; generic device information: name and some ID
-(deftype pc-device-info (structure)
-  ((id int)
-   (name pc-cstring-64 :inline)
-   )
-  )
-
-
-;; input device information. comes with button mappings!
-(deftype pc-pad-info (structure)
-  ((device-info pc-device-info :inline)
-   (buffered? symbol)
-   (valid? symbol)
-   (mapping int 16)
-   )
-  )
-
-
 ;; All of the configuration for the PC port in GOAL. Access things from here!
 ;; Includes some methods to change parameters.
 (deftype pc-settings (basic)
@@ -239,7 +221,6 @@
    (letterbox? symbol) ;; letterbox. #f = stretched
    (vsync? symbol) ;; vsync.
    (font-scale float) ;; font scaling.
-   (window-lock? symbol) ;; whether the window can be resized by the user or not.
    (monitor int32) ;; index of which monitor to use when fullscreen or borderless
 
    ;; debug settings
@@ -249,12 +230,17 @@
    (movie? symbol)
 
    ;; device settings
-   ;(device-audio pc-device-info :inline) ;; used audio device
-   ;(device-screen pc-device-info :inline) ;; used display device
-   ;(device-gpu pc-device-info :inline) ;; used graphics device
-   ;(device-pad pc-pad-info 4 :inline) ;; used input devices, like controllers.
-   ;(device-keyboard pc-pad-info :inline) ;; keyboard input information. if nothing else, this must be usable.
+   (ignore-controller-win-unfocused? symbol)
+   (controller-hp-led? symbol)
+   (controller-eco-led? symbol)
    (stick-deadzone float) ;; analog stick deadzone. 0-1
+   (keyboard-enabled? symbol)
+   (mouse-enabled? symbol)
+   (mouse-camera? symbol)
+   (mouse-xsens float)
+   (mouse-ysens float)
+   (mouse-movement? symbol)
+   (auto-hide-cursor? symbol)
 
    ;; audio settings
    (audio-latency-ms int16) ;; audio latency in milliseconds
@@ -317,6 +303,10 @@
 
   (:methods
     (new (symbol type) _type_)
+    (set-defaults! (_type_) none)
+    (set-defaults-input! (_type_) none)
+    (set-defaults-controller! (_type_) none)
+    (set-defaults-mouse! (_type_) none)
     (update (_type_) none)
     (update-from-os (_type_) none)
     (update-to-os (_type_) none)
@@ -325,7 +315,7 @@
     (update-video-hacks (_type_) object)
     (reset (_type_) none)
     (reset-audio (_type_) none)
-    (reset-input (_type_) none)
+    (reset-input (_type_ symbol) none)
     (reset-gfx (_type_) none)
     (reset-ps2 (_type_) none)
     (reset-misc (_type_) none)
@@ -338,7 +328,6 @@
     (set-size! (_type_ int int) none)
     (set-aspect! (_type_ int int) none)
     (set-aspect-ratio! (_type_ float) none)
-    (set-window-lock! (_type_ symbol) symbol)
     (set-frame-rate! (_type_ int) int)
     (set-monitor! (_type_ int) none)
     (set-game-setting! (_type_ symbol symbol) object)
@@ -356,6 +345,9 @@
     (add-to-music-log (_type_ symbol int) int)
     (commit-to-file (_type_) none)
     (load-settings (_type_) int)
+    (set-ignore-controller-in-bg! (_type_ symbol) none)
+    (set-enable-keyboard! (_type_ symbol) none)
+    (update-mouse-controls! (_type_) none)
     )
   )
 
@@ -381,11 +373,76 @@
 ;;;; resets
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defmethod set-defaults-input! pc-settings ((obj pc-settings))
+  "Set default general input settings"
+  (set! (-> obj keyboard-enabled?) #t)
+  (set! (-> obj mouse-enabled?) #f)
+  (set! (-> obj auto-hide-cursor?) #t)
+  (none))
+
+(defmethod set-defaults-controller! pc-settings ((obj pc-settings))
+  "Set default controller settings"
+  (set! (-> obj ignore-controller-win-unfocused?) #f)
+  (set! (-> obj controller-hp-led?) #f)
+  (set! (-> obj controller-eco-led?) #f)
+  (set! (-> obj stick-deadzone) 0.3)
+  (none))
+
+(defmethod set-defaults-mouse! pc-settings ((obj pc-settings))
+  "Set default mouse settings"
+  (set! (-> obj mouse-camera?) #f)
+  (set! (-> obj mouse-xsens) -15.0)
+  (set! (-> obj mouse-ysens) 10.0)
+  (set! (-> obj mouse-movement?) #f)
+  (none))
+
+(defmethod set-defaults! pc-settings ((obj pc-settings))
+  "Set default settings for the object that aren't handled by the file reading,
+   this is intended to be called upon object creation.
+
+   This is to avoid propagating events to the runtime informing it needs to make changes on startup
+   when there really is no changes to be made.  ie. changing the window size multiple times when ultimately
+   the true value is within the file that we are about to read.
+
+   TODO - it would probably be a lot cleaner to have one struct for the file, and another for settings that
+   are manipulated at runtime so there is a clear separation of responsibilities"
+  ;; top level settings
+  (set! (-> obj user) #f)
+  (set! (-> obj debug?) #f)
+  (set! (-> obj movie?) #f)
+  (set! (-> obj aspect-custom-x) 4)
+  (set! (-> obj aspect-custom-y) 3)
+  ;; graphics
+  (set! (-> obj aspect-ratio-auto?) #t)
+  (set! (-> obj win-width) PC_BASE_WIDTH)
+  (set! (-> obj win-height) PC_BASE_HEIGHT)
+  ;; audio
+  ;; input
+  (set-defaults-input! obj)
+  (set-defaults-controller! obj)
+  (set-defaults-mouse! obj)
+  ;; ps2
+  ;; misc
+  ;; extra
+  (dotimes (i PC_SPOOL_LOG_LENGTH) (set! (-> obj scenes-seen i) 0))
+  (set! (-> obj secrets art) (pc-jak1-concept-art))
+  (set! (-> obj secrets hard-fish-hiscore) 0)
+  (set! (-> obj secrets hard-rats-hiscore) 0)
+  (set! (-> obj secrets hard-rats-hiwave) 0)
+  (set! (-> obj secrets hard-rats?) #f)
+  (set! (-> obj secrets hero-mode?) #f)
+  (set! (-> obj secrets hud-map?) #t)
+  (set! (-> obj secrets hud-counters?) #t)
+  (set! (-> obj secrets hud-watch?) #f)
+  (set! (-> obj secrets watch-12hr?) #f)
+  (none)
+)
+
 
 (defmethod reset pc-settings ((obj pc-settings))
-  "Set the default settings"
+  "Reset back to default settings"
 
-  ;(format #t "pc settings reset~%")
+  (format 0 "pc settings reset~%")
 
   (set! (-> obj version) PC_KERNEL_VERSION)
 
@@ -397,11 +454,10 @@
   (set! (-> obj aspect-custom-y) 3)
   (set! (-> obj discord-rpc?) #t)
   (set! (-> obj speedrunner-mode?) #f)
-  (set! (-> obj window-lock?) #t)
 
   (reset-gfx obj)
   (reset-audio obj)
-  (reset-input obj)
+  (reset-input obj 'all)
   (reset-ps2 obj)
   (reset-misc obj)
   (reset-extra obj)
@@ -422,7 +478,11 @@
   (set! (-> obj vsync?) #t)
   (set! (-> obj letterbox?) #t)
 
-  (pc-get-screen-size -1 (&-> obj width) (&-> obj height))
+  ;; TODO - why do we change the windowed mode twice
+  ;; - apparently done to simplify changing the resolution, consider simplifying this so
+  ;; the code is more obvious / easier to understand at first glance
+  ;; (also reduces flickering of changing between modes)
+  (pc-get-active-display-size (&-> obj width) (&-> obj height))
   (set-display-mode! obj 'borderless)
   (set! (-> obj gfx-msaa) 2) ;; 2x msaa
 
@@ -441,9 +501,10 @@
 
   (none))
 
-(defmethod reset-input pc-settings ((obj pc-settings))
+(defmethod reset-input pc-settings ((obj pc-settings) (device symbol))
   "Set the default input settings"
-
+  (set! (-> obj controller-hp-led?) #f)
+  (set! (-> obj controller-eco-led?) #f)
   (set! (-> obj stick-deadzone) 0.3)
   (none))
 
