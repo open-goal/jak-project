@@ -675,15 +675,14 @@
       (set! (-> self font origin y) cur-y)
 
       (when (-> *setting-control* user-current subtitle)
-        (true! subtitles-drawn?)
         (if (zero? (-> self gui-id))
             (start-gui self))
 
         (when (= (gui-status active) (get-status *gui-control* (-> self gui-id)))
+            (true! subtitles-drawn?)
             (protect (*display-text-box*)
             (set! *display-text-box* (or *display-text-box* PC_SUBTITLE_DEBUG))
             (set-speaker-color (-> line-queue i line speaker))
-            (true! (-> self have-subtitles?))
             (print-game-text *temp-string* (-> self font) #f 44 (bucket-id debug-no-zbuf2))))
         )
 
@@ -693,7 +692,8 @@
       )
     )
   
-  (when (and (nonzero? (-> self gui-id)) (not subtitles-drawn?))
+  (set! (-> self have-subtitles?) subtitles-drawn?)
+  (when (and (nonzero? (-> self gui-id)) (not (-> self have-subtitles?)))
     (stop-gui self))))
   
   0)
