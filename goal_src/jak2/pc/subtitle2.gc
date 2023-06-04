@@ -675,8 +675,10 @@
       (set! (-> self font origin y) cur-y)
 
       (when (-> *setting-control* user-current subtitle)
-        (if (zero? (-> self gui-id))
-            (start-gui self))
+        (set-action! *gui-control* (gui-action play) (-> self gui-id)
+                    (gui-channel none) (gui-action none) (the-as string #f) (the-as (function gui-connection symbol) #f) (the-as process #f))
+        (when (!= (gui-status active) (get-status *gui-control* (-> self gui-id)))
+            (format 0 "subtitle2 status is ~S~%" (enum->string gui-status (get-status *gui-control* (-> self gui-id)))))
 
         (when (= (gui-status active) (get-status *gui-control* (-> self gui-id)))
             (true! subtitles-drawn?)
@@ -693,8 +695,9 @@
     )
   
   (set! (-> self have-subtitles?) subtitles-drawn?)
-  (when (and (nonzero? (-> self gui-id)) (not (-> self have-subtitles?)))
-    (stop-gui self))))
+  (when (not (-> self have-subtitles?))
+    (set-action! *gui-control* (gui-action hidden) (-> self gui-id)
+                (gui-channel none) (gui-action none) (the-as string #f) (the-as (function gui-connection symbol) #f) (the-as process #f)))))
   
   0)
 
@@ -742,7 +745,7 @@
 
 (defmethod start-gui subtitle2 ((self subtitle2))
   "start gui queueing"
-  (set! (-> self gui-id) (add-process *gui-control* self (gui-channel subtitle-pc) (gui-action play) "subtitle2" -10.0 0))
+  (set! (-> self gui-id) (add-process *gui-control* self (gui-channel subtitle-pc) (gui-action hidden) "subtitle2" (meters 20) 0))
   )
 
 (defmethod stop-gui subtitle2 ((self subtitle2))
@@ -799,12 +802,6 @@
           (debug-print-queue self))
       )
     0)
-  
-  :exit (behavior ()
-    
-    (stop-gui self)
-
-    (none))
 
   )
 
@@ -827,6 +824,16 @@
   (-> obj length)
   )
 
+(defmethod deactivate subtitle2 ((self subtitle2))
+
+  (stop-gui self)
+  ;; not sure this works...
+  (if (= (ppointer->process *subtitle2*) self)
+      (set! *subtitle2* #f))
+
+  ((method-of-type process deactivate) self)
+  (none)
+  )
 
 (defbehavior subtitle2-init-by-other subtitle2 ()
   "external initializer for subtitle2 process"
@@ -845,6 +852,8 @@
   (set! (-> self have-minimap?) #f)
   (set! (-> self have-subtitles?) #f)
 
+  (start-gui self)
+
   (go subtitle2-process)
   )
 
@@ -852,15 +861,15 @@
 (defun subtitle2-stop ()
   "kill the subtitle2 process"
 
-  (kill-by-type subtitle2 *display-pool*)
-  (set! *subtitle2* (the (pointer subtitle2) #f)))
+  (if *subtitle2*
+      (deactivate (ppointer->process *subtitle2*)))
+  *subtitle2*)
 
 (defun subtitle2-start ()
   "start the subtitle2 process"
 
-  (when *subtitle2*
-    (subtitle2-stop)
-    )
+  (if *subtitle2*
+      (subtitle2-stop))
 
   (set! *subtitle2* (process-spawn subtitle2 :from *pc-dead-pool* :to *display-pool*))
   )
