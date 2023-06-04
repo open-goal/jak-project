@@ -643,7 +643,7 @@ void InitMachine_PCPort() {
 
   // debugging tools
   make_function_symbol_from_c("alloc-vagdir-names", (void*)alloc_vagdir_names);
-  
+
   // setup string constants
   auto user_dir_path = file_util::get_user_config_dir();
   intern_from_c("*pc-user-dir-base-path*")->value() =
