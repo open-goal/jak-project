@@ -1344,6 +1344,15 @@ struct ExecutionContext {
     }
   }
 
+  void vftoi0_sat(DEST mask, int dst, int src) {
+    auto s = vf_src(src);
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].ds32[i] = float_to_int_sat(s.f[i]);
+      }
+    }
+  }
+
   void mfc1(int dst, int src) {
     s32 val;
     memcpy(&val, &fprs[src], 4);
