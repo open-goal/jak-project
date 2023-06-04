@@ -7,8 +7,10 @@
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
+#include "common/util/string_util.h"
 
-#include "game/discord.h"
+#include "game/external/discord.h"
+#include "game/graphics/display.h"
 #include "game/graphics/jak2_texture_remap.h"
 #include "game/kernel/common/Symbol4.h"
 #include "game/kernel/common/fileio.h"
@@ -437,15 +439,23 @@ u32 MouseGetData(u32 _mouse) {
   mouse->status = 1;
   mouse->button0 = 0;
 
-  auto [xpos, ypos] = Gfx::get_mouse_pos();
+  s32 xpos = 0;
+  s32 ypos = 0;
+  if (Display::GetMainDisplay()) {
+    std::tie(xpos, ypos) = Display::GetMainDisplay()->get_input_manager()->get_mouse_pos();
+  }
 
   // NOTE - ignoring speed and setting position directly
   // the game assumes resolutions, so this makes it a lot easier to make it actually
   // line up with the mouse cursor
 
   // TODO - probably factor in scaling as well
-  auto win_width = Gfx::get_window_width();
-  auto win_height = Gfx::get_window_height();
+  auto win_width = 0;
+  auto win_height = 0;
+  if (Display::GetMainDisplay()) {
+    win_width = Display::GetMainDisplay()->get_display_manager()->get_window_width();
+    win_height = Display::GetMainDisplay()->get_display_manager()->get_window_height();
+  }
 
   // These are used to calculate the speed at which to move the mouse to it's new coordinates
   // zero'd out so they are ignored and don't impact the position we are about to set
@@ -456,8 +466,8 @@ u32 MouseGetData(u32 _mouse) {
   // - [-208.0, 208.0] for height
   // (then 208 or 256 is always added to them to get the final screen coordinate)
   // So just normalize the actual window's values to this range
-  double width_per = xpos / win_width;
-  double height_per = ypos / win_height;
+  double width_per = xpos / double(win_width);
+  double height_per = ypos / double(win_height);
   mouse->posx = (512.0 * width_per) - 256.0;
   mouse->posy = (416.0 * height_per) - 208.0;
   // fmt::print("Mouse - X:{}({}), Y:{}({})\n", xpos, mouse->posx, ypos, mouse->posy);
@@ -495,32 +505,6 @@ u64 kopen(u64 fs, u64 name, u64 mode) {
 /*!
  * PC port functions START
  */
-
-/*!
- * Return the current OS as a symbol. Actually returns what it was compiled for!
- */
-u64 get_os() {
-#ifdef _WIN32
-  return intern_from_c("windows").offset;
-#elif __linux__
-  return intern_from_c("linux").offset;
-#else
-  return s7.offset;
-#endif
-}
-
-void pc_set_levels(u32 lev_list) {
-  std::vector<std::string> levels;
-  for (int i = 0; i < LEVEL_MAX; i++) {
-    u32 lev = *Ptr<u32>(lev_list + i * 4);
-    std::string ls = Ptr<String>(lev).c()->data();
-    if (ls != "none" && ls != "#f" && ls != "") {
-      levels.push_back(ls);
-    }
-  }
-
-  Gfx::set_levels(levels);
-}
 
 void update_discord_rpc(u32 discord_info) {
   if (gDiscordRpcEnabled) {
@@ -595,26 +579,20 @@ void update_discord_rpc(u32 discord_info) {
   }
 }
 
-u32 get_fullscreen() {
-  switch (Gfx::get_fullscreen()) {
-    default:
-    case GfxDisplayMode::Windowed:
-      return intern_from_c("windowed").offset;
-    case GfxDisplayMode::Borderless:
-      return intern_from_c("borderless").offset;
-    case GfxDisplayMode::Fullscreen:
-      return intern_from_c("fullscreen").offset;
+void pc_set_levels(u32 lev_list) {
+  if (!Gfx::GetCurrentRenderer()) {
+    return;
   }
-}
+  std::vector<std::string> levels;
+  for (int i = 0; i < LEVEL_MAX; i++) {
+    u32 lev = *Ptr<u32>(lev_list + i * 4);
+    std::string ls = Ptr<String>(lev).c()->data();
+    if (ls != "none" && ls != "#f" && ls != "") {
+      levels.push_back(ls);
+    }
+  }
 
-void set_fullscreen(u32 symptr, s64 screen) {
-  if (symptr == intern_from_c("windowed").offset || symptr == s7.offset) {
-    Gfx::set_fullscreen(GfxDisplayMode::Windowed, screen);
-  } else if (symptr == intern_from_c("borderless").offset) {
-    Gfx::set_fullscreen(GfxDisplayMode::Borderless, screen);
-  } else if (symptr == intern_from_c("fullscreen").offset) {
-    Gfx::set_fullscreen(GfxDisplayMode::Fullscreen, screen);
-  }
+  Gfx::GetCurrentRenderer()->set_levels(levels);
 }
 
 void init_autosplit_struct() {
@@ -646,77 +624,25 @@ u32 alloc_vagdir_names(u32 heap_sym) {
 
 void InitMachine_PCPort() {
   // PC Port added functions
+  init_common_pc_port_functions(
+      make_function_symbol_from_c,
+      [](const char* name) {
+        const auto result = intern_from_c(name);
+        InternFromCInfo info{};
+        info.offset = result.offset;
+        return info;
+      },
+      make_string_from_c);
 
-  make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
-  make_function_symbol_from_c("__mem-move", (void*)c_memmove);
-  make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
-  make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
-  make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
-  make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
   make_function_symbol_from_c("__pc-get-tex-remap", (void*)lookup_jak2_texture_dest_offset);
-  make_function_symbol_from_c("pc-get-unix-timestamp", (void*)get_unix_timestamp);
   make_function_symbol_from_c("pc-init-autosplitter-struct", (void*)init_autosplit_struct);
 
-  // pad stuff
-  make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
-  make_function_symbol_from_c("pc-pad-input-map-save!", (void*)Gfx::input_mode_save);
-  make_function_symbol_from_c("pc-pad-input-mode-set", (void*)Gfx::input_mode_set);
-  make_function_symbol_from_c("pc-pad-input-pad-set", (void*)Pad::input_mode_pad_set);
-  make_function_symbol_from_c("pc-pad-input-mode-get", (void*)Pad::input_mode_get);
-  make_function_symbol_from_c("pc-pad-input-key-get", (void*)Pad::input_mode_get_key);
-  make_function_symbol_from_c("pc-pad-input-index-get", (void*)Pad::input_mode_get_index);
-
-  // os stuff
-  make_function_symbol_from_c("pc-get-os", (void*)get_os);
-  make_function_symbol_from_c("pc-get-window-size", (void*)get_window_size);
-  make_function_symbol_from_c("pc-get-window-scale", (void*)get_window_scale);
-  make_function_symbol_from_c("pc-get-fullscreen", (void*)get_fullscreen);
-  make_function_symbol_from_c("pc-get-screen-size", (void*)get_screen_size);
-  make_function_symbol_from_c("pc-get-screen-rate", (void*)get_screen_rate);
-  make_function_symbol_from_c("pc-get-screen-vmode-count", (void*)get_screen_vmode_count);
-  make_function_symbol_from_c("pc-get-monitor-count", (void*)get_monitor_count);
-  make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
-  make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
-  make_function_symbol_from_c("pc-set-frame-rate", (void*)set_frame_rate);
-  make_function_symbol_from_c("pc-set-vsync", (void*)set_vsync);
-  make_function_symbol_from_c("pc-set-window-lock", (void*)set_window_lock);
-  make_function_symbol_from_c("pc-set-game-resolution", (void*)set_game_resolution);
-  make_function_symbol_from_c("pc-set-msaa", (void*)set_msaa);
-  make_function_symbol_from_c("pc-get-unix-timestamp", (void*)get_unix_timestamp);
-
-  // graphics things
-  make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
-  make_function_symbol_from_c("pc-renderer-tree-set-lod", (void*)Gfx::SetLod);
-  make_function_symbol_from_c("pc-set-collision-mode", (void*)Gfx::CollisionRendererSetMode);
-  make_function_symbol_from_c("pc-set-collision-mask", (void*)set_collision_mask);
-  make_function_symbol_from_c("pc-get-collision-mask", (void*)get_collision_mask);
-  make_function_symbol_from_c("pc-set-collision-wireframe", (void*)set_collision_wireframe);
-  make_function_symbol_from_c("pc-set-collision", (void*)set_collision);
-
-  // file related functions
-  make_function_symbol_from_c("pc-filepath-exists?", (void*)filepath_exists);
-  make_function_symbol_from_c("pc-mkdir-file-path", (void*)mkdir_path);
-
   // discord rich presence
-  make_function_symbol_from_c("pc-discord-rpc-set", (void*)set_discord_rpc);
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
 
-  // profiler
-  make_function_symbol_from_c("pc-prof", (void*)prof_event);
-
   // debugging tools
-  make_function_symbol_from_c("pc-filter-debug-string?", (void*)pc_filter_debug_string);
   make_function_symbol_from_c("alloc-vagdir-names", (void*)alloc_vagdir_names);
-
-  // other
-  make_function_symbol_from_c("pc-rand", (void*)pc_rand);
-
-  // init ps2 VM
-  if (VM::use) {
-    make_function_symbol_from_c("vm-ptr", (void*)VM::get_vm_ptr);
-    VM::vm_init();
-  }
 
   // setup string constants
   auto user_dir_path = file_util::get_user_config_dir();

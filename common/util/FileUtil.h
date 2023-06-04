@@ -66,4 +66,5 @@ std::vector<fs::path> find_files_recursively(const fs::path& base_dir, const std
 std::vector<fs::path> find_directories_in_dir(const fs::path& base_dir);
 /// Will overwrite the destination if it exists
 void copy_file(const fs::path& src, const fs::path& dst);
+std::string make_screenshot_filepath(const GameVersion game_version, const std::string& name = "");
 }  // namespace file_util
