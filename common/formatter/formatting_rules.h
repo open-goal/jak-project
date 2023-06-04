@@ -17,13 +17,11 @@ class FormatterTreeNode;
 // consistent with code written normally
 //
 // cljfmt observations:
-// - a form that starts on the first line but spans multiple lines (it doesn't really handle this well)
-// ex.
-// (println (hello
+// - a form that starts on the first line but spans multiple lines (it doesn't really handle this
+// well) ex. (println (hello
 //           world) ye) ;; you'd expect the 'ye' to be aligned with `(h...`
-// - vector lists are treated differently from paren lists (seems to leave them inline or default indent them if they span multiple lines)
-// ex.
-// [hello world
+// - vector lists are treated differently from paren lists (seems to leave them inline or default
+// indent them if they span multiple lines) ex. [hello world
 //  what]
 
 // The default rule that is used if no other rule applies to the given form
@@ -39,12 +37,19 @@ class FormatterTreeNode;
 //          "world")
 class FormattingRule {
  public:
-  virtual void newline_and_indent_element(std::string& curr_text,
-                                          const FormatterTreeNode& node,
-                                          const FormatterTreeNode& containing_node,
-                                          const int depth,
-                                          const int index);
-  virtual void align_form_lines(std::string& text, const FormatterTreeNode& containing_node);
+  virtual void append_newline(std::string& curr_text,
+                              const FormatterTreeNode& node,
+                              const FormatterTreeNode& containing_node,
+                              const int depth,
+                              const int index);
+  virtual void indent_token(std::string& curr_text,
+                            const FormatterTreeNode& node,
+                            const FormatterTreeNode& containing_node,
+                            const int depth,
+                            const int index);
+  virtual void align_form_lines(std::string& text,
+                                const FormatterTreeNode& node,
+                                const FormatterTreeNode& containing_node);
 };
 
 // Inner indentation always indents by 2 spaces for every line after the first regardless of the
@@ -66,10 +71,17 @@ class InnerFormattingRule : public FormattingRule {
  public:
   InnerFormattingRule(int depth) : m_depth(depth){};
   InnerFormattingRule(int depth, int index) : m_depth(depth), m_index(index){};
-  void newline_and_indent_element(std::string& curr_text,
-                                  const FormatterTreeNode& node,
-                                  const FormatterTreeNode& containing_node,
-                                  const int depth,
-                                  const int index) override;
-  void align_form_lines(std::string& text, const FormatterTreeNode& containing_node) override;
+  virtual void append_newline(std::string& curr_text,
+                              const FormatterTreeNode& node,
+                              const FormatterTreeNode& containing_node,
+                              const int depth,
+                              const int index) override;
+  virtual void indent_token(std::string& curr_text,
+                            const FormatterTreeNode& node,
+                            const FormatterTreeNode& containing_node,
+                            const int depth,
+                            const int index) override;
+  void align_form_lines(std::string& text,
+                        const FormatterTreeNode& node,
+                        const FormatterTreeNode& containing_node) override;
 };

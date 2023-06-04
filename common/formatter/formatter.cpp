@@ -15,6 +15,14 @@ extern "C" {
 extern const TSLanguage* tree_sitter_opengoal();
 }
 
+// TODO - incoporate some rules from zprint
+// https://github.com/kkinnear/zprint/blob/main/doc/types/classic.md
+// as well as maybe adjust the default rules to incorporate line length
+// https://github.com/kkinnear/zprint/blob/main/doc/options/indent.md
+// TODO - block comments seem to have an issue being parsed properly, also it basically needs the
+// code for flexibly wrapping a block of code in configurable symbols (parens, block comment braces,
+// etc)
+
 std::string apply_formatting(const FormatterTreeNode& curr_node,
                              std::string output,
                              int tree_depth = 0) {
@@ -24,6 +32,9 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
   std::string curr_form = "";
   // Print the token
   if (curr_node.token) {
+    // TODO - perhaps unneeded
+    curr_node.get_formatting_rule(tree_depth, -1)
+        ->indent_token(curr_form, curr_node, curr_node, tree_depth, -1);
     curr_form += curr_node.token.value();
     return curr_form;
   }
@@ -34,24 +45,39 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
   // Iterate the form
   for (int i = 0; i < curr_node.refs.size(); i++) {
     const auto& ref = curr_node.refs.at(i);
-    // Apply indentation
+    // Append a newline if relevant
     if (!curr_node.metadata.is_root) {
       curr_node.get_formatting_rule(tree_depth, i)
-          ->newline_and_indent_element(curr_form, ref, curr_node, tree_depth, i);
+          ->append_newline(curr_form, ref, curr_node, tree_depth, i);
     }
     // Either print the element's token, or recursively format it as well
     if (ref.token) {
-      curr_form += ref.token.value() + " ";
+      curr_node.get_formatting_rule(tree_depth, i)
+          ->indent_token(curr_form, ref, curr_node, 1,
+                         i);  // TODO depth hard-coded to 1, i think this can be removed, since
+                              // forms are always done bottom-top recursively, they always act
+                              // independently as if it was the shallowest depth
+      curr_form += ref.token.value();
+      if (!curr_node.metadata.is_root) {
+        curr_form += " ";
+      }
     } else {
       auto formatted_form = apply_formatting(ref, "", tree_depth + 1);
-      if (!curr_node.metadata.is_root && curr_node.metadata.multiple_elements_first_line) {
-        curr_node.get_formatting_rule(tree_depth, i)->align_form_lines(formatted_form, curr_node);
+      if (!curr_node.metadata.is_root) {
+        curr_node.get_formatting_rule(tree_depth, i)
+            ->align_form_lines(formatted_form, ref, curr_node);
       }
       curr_form += formatted_form;
     }
     // Separate top-level elements with a new-line
+    // TODO - move this into a top-level rule
+    // TODO - temporary hack for top level comments, but need a better strategy for leaving them
+    // where they were originally
     if (curr_node.metadata.is_root && i < curr_node.refs.size() - 1) {
-      curr_form += "\n\n";
+      curr_form += "\n";
+      if (!ref.token || !str_util::starts_with(ref.token.value(), ";")) {
+        curr_form += "\n";
+      }
     }
   }
   // TODO - similar fear to issues as above

@@ -35,7 +35,7 @@ struct TestDefinition {
   std::string output;
 };
 
-bool run_tests(fs::path file_path) {
+bool run_tests(const fs::path& file_path, const bool only_important_tests) {
   // Read in the file, and run the test
   const auto contents = str_util::split(file_util::read_text_file(file_path));
   std::vector<TestDefinition> tests;
@@ -79,6 +79,9 @@ bool run_tests(fs::path file_path) {
   fmt::print("{}:\n", fmt::styled(file_util::base_name(file_path.string()),
                                   fmt::emphasis::bold | fg(fmt::color::cyan)));
   for (const auto& test : tests) {
+    if (only_important_tests && !str_util::starts_with(test.name, "!")) {
+      continue;
+    }
     const auto formatted_result = formatter::format_code(test.input);
     if (!formatted_result) {
       // Unable to parse, was that expected?
@@ -100,7 +103,7 @@ bool run_tests(fs::path file_path) {
   return test_failed;
 }
 
-bool find_and_run_tests() {
+bool find_and_run_tests(const bool only_important_tests) {
   // Enumerate test files
   const auto test_files = file_util::find_files_recursively(
       file_util::get_file_path({"test/common/formatter/corpus"}), std::regex("^.*\.test.gc$"));
@@ -108,14 +111,18 @@ bool find_and_run_tests() {
   for (const auto& file : test_files) {
     // don't fail fast, but any failure means we return false
     if (failed) {
-      run_tests(file);
+      run_tests(file, only_important_tests);
     } else {
-      failed = run_tests(file);
+      failed = run_tests(file, only_important_tests);
     }
   }
   return !failed;
 }
 
 TEST(Formatter, FormatterTests) {
-  EXPECT_TRUE(find_and_run_tests());
+  // TODO - when i get annoyed enough, make this not a manual change and pre-scan the tests to see
+  // if there are any flagged tests
+  //
+  // This is to make it easier to run an individual test when debugging
+  EXPECT_TRUE(find_and_run_tests(false));
 }

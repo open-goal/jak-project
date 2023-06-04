@@ -44,7 +44,8 @@ bool nodes_on_same_line(const std::string& source, const TSNode& n1, const TSNod
 std::string get_source_code(const std::string& source, const TSNode& node) {
   uint32_t start = ts_node_start_byte(node);
   uint32_t end = ts_node_end_byte(node);
-  return source.substr(start, end - start);
+  // TODO - comments end with a \n, this is likely a tree-sitter grammar problem
+  return str_util::rtrim(source.substr(start, end - start));
 }
 
 FormatterTree::FormatterTree(const std::string& source, const TSNode& root_node) {
