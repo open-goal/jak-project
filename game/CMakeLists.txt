@@ -6,7 +6,7 @@ set(CMAKE_ASM_NASM_SOURCE_FILE_EXTENSIONS ${CMAKE_ASM_NASM_SOURCE_FILE_EXTENSION
 set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> <INCLUDES> -f ${CMAKE_ASM_NASM_OBJECT_FORMAT} -o <OBJECT> <SOURCE>")
 set_source_files_properties(kernel/asm_funcs.asm PROPERTIES COMPILE_FLAGS "-g")
 set(RUNTIME_SOURCE
-        discord.cpp
+        external/discord.cpp
         graphics/display.cpp
         graphics/gfx.cpp
         graphics/jak2_texture_remap.cpp
@@ -197,10 +197,17 @@ set(RUNTIME_SOURCE
         sce/sif_ee_memcard.cpp
         sce/sif_ee.cpp
         sce/stubs.cpp
+        settings/settings.cpp
         system/Deci2Server.cpp
+        system/hid/devices/game_controller.cpp
+        system/hid/devices/keyboard.cpp
+        system/hid/devices/mouse.cpp
+        system/hid/display_manager.cpp
+        system/hid/input_bindings.cpp
+        system/hid/input_manager.cpp
+        system/hid/sdl_util.cpp
         system/IOP_Kernel.cpp
         system/iop_thread.cpp
-        system/newpad.cpp
         system/SystemThread.cpp
         system/vm/dmac.cpp
         system/vm/vm.cpp
@@ -213,7 +220,7 @@ add_subdirectory(sound)
 # we build the runtime as a static library.
 add_library(runtime STATIC ${RUNTIME_SOURCE} "../third-party/glad/src/glad.c")
 
-target_link_libraries(runtime common fmt glfw imgui discord-rpc sound stb_image libco SQLiteCpp)
+target_link_libraries(runtime common fmt SDL2::SDL2 imgui discord-rpc sound stb_image libco SQLiteCpp)
 if(WIN32)
     target_link_libraries(runtime mman)
 else()

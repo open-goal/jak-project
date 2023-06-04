@@ -3,6 +3,7 @@
 #include "common/common_types.h"
 
 #include "game/graphics/gfx.h"
+#include "game/kernel/common/kscheme.h"
 
 /*!
  * Where does OVERLORD load its data from?
@@ -57,33 +58,35 @@ u64 DecodeTerritory();
 u64 DecodeTimeout();
 u64 DecodeInactiveTimeout();
 void DecodeTime(u32 ptr);
-u64 read_ee_timer();
-void c_memmove(u32 dst, u32 src, u32 size);
-void set_game_resolution(s64 w, s64 h);
-void set_msaa(s64 samples);
-void get_window_size(u32 w_ptr, u32 h_ptr);
-void get_window_scale(u32 x_ptr, u32 y_ptr);
-void get_screen_size(s64 vmode_idx, u32 w_ptr, u32 h_ptr);
-s64 get_screen_rate(s64 vmode_idx);
-s64 get_screen_vmode_count();
-int get_monitor_count();
-int get_unix_timestamp();
-void mkdir_path(u32 filepath);
-u64 filepath_exists(u32 filepath);
-void prof_event(u32 name, u32 kind);
-void set_frame_rate(s64 rate);
-void set_vsync(u32 symptr);
-void set_window_lock(u32 symptr);
-void set_collision(u32 symptr);
-void set_collision_wireframe(u32 symptr);
-void set_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask, u32 symptr);
-u32 get_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask);
-void set_gfx_hack(u64 which, u32 symptr);
+
 u32 offset_of_s7();
 void vif_interrupt_callback(int bucket_id);
-u64 pc_get_mips2c(u32 name);
-void send_gfx_dma_chain(u32 /*bank*/, u32 chain);
-void pc_texture_upload_now(u32 page, u32 mode);
-void pc_texture_relocate(u32 dst, u32 src, u32 format);
-u64 pc_filter_debug_string(u32 str_ptr, u32 distance);
-u32 pc_rand();
+
+struct BindAssignmentInfo {
+  u32 port;
+  u32 device_type;
+  u32 buttons;
+  u32 input_idx;
+  u32 analog_min_range;
+};
+
+struct InternFromCInfo {
+  u32 offset;
+  u32 value;
+};
+
+// Holds function references to game specific functions for setting up common PC Port functions
+// this is needed because the handlers for the functions are stateless
+// and using the functions via the handler's capture lists requires templating nonsense
+struct CommonPCPortFunctionWrappers {
+  std::function<InternFromCInfo(const char*)> intern_from_c;
+  std::function<u64(const char*)> make_string_from_c;
+};
+
+extern CommonPCPortFunctionWrappers g_pc_port_funcs;
+
+/// Initializes all common PC Port functions for all Jak games
+void init_common_pc_port_functions(
+    std::function<Ptr<Function>(const char*, void*)> make_func_symbol_func,
+    std::function<InternFromCInfo(const char*)> intern_from_c_func,
+    std::function<u64(const char*)> make_string_from_c_func);
