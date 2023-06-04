@@ -1,7 +1,5 @@
 #pragma once
-#pragma once
 
-#include <algorithm>
 #include <array>
 #include <functional>
 #include <optional>
@@ -129,15 +127,15 @@ struct PadData {
   }
 
   void clear() {
-    for (int i = 0; i < button_data.size(); i++) {
-      button_data[i] = 0;
+    for (auto& x : button_data) {
+      x = 0;
     }
     clear_analogs();
   }
 
   void clear_analogs() {
-    for (int i = 0; i < analog_data.size(); i++) {
-      analog_data[i] = ANALOG_NEUTRAL;
+    for (auto& x : analog_data) {
+      x = ANALOG_NEUTRAL;
     }
     analog_sim_tracker = 0;
   }
