@@ -154,7 +154,20 @@ static void init_imgui(SDL_Window* window,
         (file_util::get_jak_project_dir() / "game" / "assets" / "fonts" / "Roboto-Medium.ttf")
             .string();
     if (file_util::file_exists(font_path)) {
-      io.Fonts->AddFontFromFileTTF(font_path.c_str(), Gfx::g_debug_settings.imgui_font_size);
+      static const ImWchar ranges[] = {
+          0x0020, 0x00FF,  // Basic Latin + Latin Supplement
+          0x2000, 0x206F,  // General Punctuation
+          0x3000, 0x30FF,  // CJK Symbols and Punctuations, Hiragana, Katakana
+          0x3131, 0x3163,  // Korean alphabets
+          0x31F0, 0x31FF,  // Katakana Phonetic Extensions
+          0xAC00, 0xD7A3,  // Korean characters
+          0xFF00, 0xFFEF,  // Half-width characters
+          0xFFFD, 0xFFFD,  // Invalid
+          0x4e00, 0x9FAF,  // CJK Ideograms
+          0,
+      };
+      io.Fonts->AddFontFromFileTTF(font_path.c_str(), Gfx::g_debug_settings.imgui_font_size,
+                                   nullptr, ranges);
     }
   }
 
