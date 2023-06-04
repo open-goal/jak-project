@@ -130,15 +130,15 @@ std::string get_parent_directory(const std::string& path) {
   return parent_directory;
 }
 
- std::optional<std::string> try_get_project_path_from_path(const std::string& path) {
-   std::string::size_type pos =
-       std::string(path).rfind("random-modding");  // Strip file path down to /random-modding/ directory
-   if (pos == std::string::npos) {
-     return {};
-   }
-   return std::string(path).substr(
-    0, pos + 11);  // + 12 to include "/jak-project" in the returned filepath
- }
+// std::optional<std::string> try_get_project_path_from_path(const std::string& path) {
+ //  std::string::size_type pos =
+   //    std::string(path).rfind("random-modding");  // Strip file path down to /random-modding/ directory
+ //  if (pos == std::string::npos) {
+ //    return {};
+//   }
+//   return std::string(path).substr(
+//    0, pos + 11);  // + 12 to include "/jak-project" in the returned filepath
+// }
 
 
 std::optional<std::string> try_get_project_path_from_path(const std::string& path) {
