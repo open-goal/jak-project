@@ -19,6 +19,8 @@ Subtitle2Editor::Subtitle2Editor(GameVersion version)
     : m_subtitle_db(version), m_repl(8182), m_speaker_names(get_speaker_names(version)) {
   m_filter = m_filter_placeholder;
   m_filter_hints = m_filter_placeholder;
+  m_subtitle_db = load_subtitle2_project(version);
+  db_loaded = true;
 }
 
 bool Subtitle2Editor::is_scene_in_current_lang(const std::string& scene_name) {

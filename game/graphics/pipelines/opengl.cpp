@@ -153,7 +153,7 @@ static void init_imgui(SDL_Window* window,
   if (!Gfx::g_debug_settings.monospaced_font) {
     // TODO - add or switch to Noto since it supports the entire unicode range
     std::string font_path =
-        (file_util::get_jak_project_dir() / "game" / "assets" / "fonts" / "Roboto-Medium.ttf")
+        (file_util::get_jak_project_dir() / "game" / "assets" / "fonts" / "NotoSansJP-Medium.ttf")
             .string();
     if (file_util::file_exists(font_path)) {
       static const ImWchar ranges[] = {
@@ -164,11 +164,11 @@ static void init_imgui(SDL_Window* window,
           0x3000, 0x30FF,  // CJK Symbols and Punctuations, Hiragana, Katakana
           0x3131, 0x3163,  // Korean alphabets
           0x31F0, 0x31FF,  // Katakana Phonetic Extensions
+          0x4E00, 0x9FAF,  // CJK Ideograms
           0xA640, 0xA69F,  // Cyrillic Extended-B
           0xAC00, 0xD7A3,  // Korean characters
           0xFF00, 0xFFEF,  // Half-width characters
           0xFFFD, 0xFFFD,  // Invalid
-          0x4e00, 0x9FAF,  // CJK Ideograms
           0,
       };
       io.Fonts->AddFontFromFileTTF(font_path.c_str(), Gfx::g_debug_settings.imgui_font_size,
@@ -292,8 +292,8 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
 GLDisplay::GLDisplay(SDL_Window* window, SDL_GLContext gl_context, bool is_main)
     : m_window(window),
       m_gl_context(gl_context),
-      m_input_manager(std::make_shared<InputManager>()),
-      m_display_manager(std::make_shared<DisplayManager>(window)) {
+      m_display_manager(std::make_shared<DisplayManager>(window)),
+      m_input_manager(std::make_shared<InputManager>()) {
   m_main = is_main;
 
   // Register commands
