@@ -15,67 +15,72 @@ extern "C" {
 extern const TSLanguage* tree_sitter_opengoal();
 }
 
-std::string align_form(const std::string& form, int alignment_width) {
-  const auto lines = str_util::split(form);
-  std::string aligned_form = "";
-  for (int i = 0; i < lines.size(); i++) {
-    aligned_form += str_util::repeat(alignment_width, " ") + lines.at(i);
-    if (i != lines.size() - 1) {
-      aligned_form += "\n";
-    }
-  }
-  return aligned_form;
-}
+// TODO - incoporate some rules from zprint
+// https://github.com/kkinnear/zprint/blob/main/doc/types/classic.md
+// as well as maybe adjust the default rules to incorporate line length
+// https://github.com/kkinnear/zprint/blob/main/doc/options/indent.md
+// TODO - block comments seem to have an issue being parsed properly, also it basically needs the
+// code for flexibly wrapping a block of code in configurable symbols (parens, block comment braces,
+// etc)
 
-std::string apply_formatting(const FormatterTree::Node& curr_node,
+std::string apply_formatting(const FormatterTreeNode& curr_node,
                              std::string output,
                              int tree_depth = 0) {
   if (!curr_node.token && curr_node.refs.empty()) {
     return output;
   }
   std::string curr_form = "";
+  // Print the token
   if (curr_node.token) {
+    // TODO - perhaps unneeded
+    curr_node.get_formatting_rule(tree_depth, -1)
+        ->indent_token(curr_form, curr_node, curr_node, tree_depth, -1);
     curr_form += curr_node.token.value();
     return curr_form;
   }
+  // TODO - this might have some issues for non-list top level elements (ie. comments)
   if (!curr_node.metadata.is_root) {
     curr_form += "(";
   }
+  // Iterate the form
   for (int i = 0; i < curr_node.refs.size(); i++) {
     const auto& ref = curr_node.refs.at(i);
-    // TODO - abstract these into formatting rules
-    if (!curr_node.metadata.is_root && curr_node.metadata.multiple_elements_first_line) {
-      if (i > 1) {
-        // TODO - kinda unsafe
-        // Trim the current form before applying a new-line
-        curr_form = str_util::rtrim(curr_form) + "\n";
-        if (ref.token) {
-          curr_form += str_util::repeat(curr_node.refs.at(0).token.value().length() + 2, " ");
-        }
-      }
-    } else if (!curr_node.metadata.is_root) {
-      if (i > 0) {
-        // Trim the current form before applying a new-line
-        curr_form = str_util::rtrim(curr_form) + "\n";
-        curr_form += str_util::repeat(tree_depth, " ");
-      }
+    // Append a newline if relevant
+    if (!curr_node.metadata.is_root) {
+      curr_node.get_formatting_rule(tree_depth, i)
+          ->append_newline(curr_form, ref, curr_node, tree_depth, i);
     }
+    // Either print the element's token, or recursively format it as well
     if (ref.token) {
-      curr_form += ref.token.value() + " ";
-    } else {
-      if (!curr_node.metadata.is_root && curr_node.metadata.multiple_elements_first_line) {
-        // align returned form's lines with this forms lines
-        // TODO - kinda unsafe
-        curr_form += align_form(apply_formatting(ref, "", tree_depth + 1),
-                                curr_node.refs.at(0).token.value().length() + 2);
-      } else {
-        curr_form += apply_formatting(ref, "", tree_depth + 1);
+      curr_node.get_formatting_rule(tree_depth, i)
+          ->indent_token(curr_form, ref, curr_node, 1,
+                         i);  // TODO depth hard-coded to 1, i think this can be removed, since
+                              // forms are always done bottom-top recursively, they always act
+                              // independently as if it was the shallowest depth
+      curr_form += ref.token.value();
+      if (!curr_node.metadata.is_root) {
+        curr_form += " ";
       }
+    } else {
+      auto formatted_form = apply_formatting(ref, "", tree_depth + 1);
+      if (!curr_node.metadata.is_root) {
+        curr_node.get_formatting_rule(tree_depth, i)
+            ->align_form_lines(formatted_form, ref, curr_node);
+      }
+      curr_form += formatted_form;
     }
+    // Separate top-level elements with a new-line
+    // TODO - move this into a top-level rule
+    // TODO - temporary hack for top level comments, but need a better strategy for leaving them
+    // where they were originally
     if (curr_node.metadata.is_root && i < curr_node.refs.size() - 1) {
-      curr_form += "\n\n";
+      curr_form += "\n";
+      if (!ref.token || !str_util::starts_with(ref.token.value(), ";")) {
+        curr_form += "\n";
+      }
     }
   }
+  // TODO - similar fear to issues as above
   if (!curr_node.metadata.is_root) {
     curr_form = str_util::rtrim(curr_form) + ")";
   }
