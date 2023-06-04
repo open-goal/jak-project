@@ -236,24 +236,6 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   ImGuiIO& io = ImGui::GetIO();
   io.IniFilename = g_gfx_data->imgui_filename.c_str();
   io.LogFilename = g_gfx_data->imgui_log_filename.c_str();
-  // if the font doesn't exist, use the default
-  std::string font_path = (file_util::get_jak_project_dir() / "unifont-15.0.03.ttf").string();
-  if (file_util::file_exists(font_path)) {
-    static const ImWchar ranges[] = {
-        0x0020, 0x00FF,  // Basic Latin + Latin Supplement
-        0x2000, 0x206F,  // General Punctuation
-        0x3000, 0x30FF,  // CJK Symbols and Punctuations, Hiragana, Katakana
-        0x3131, 0x3163,  // Korean alphabets
-        0x31F0, 0x31FF,  // Katakana Phonetic Extensions
-        0x4E00, 0x9FAF,  // CJK Ideograms
-        0xAC00, 0xD7A3,  // Korean characters
-        0xFF00, 0xFFEF,  // Half-width characters
-        0xFFFD, 0xFFFD,  // Invalid
-        0,
-    };
-    io.Fonts->AddFontFromFileTTF(font_path.c_str(), 16, nullptr,
-                                 ranges);  // TODO - make the font size configurable
-  }
 
   // set up to get inputs for this window
   ImGui_ImplGlfw_InitForOpenGL(window, true);
