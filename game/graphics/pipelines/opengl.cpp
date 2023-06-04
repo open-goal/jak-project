@@ -150,16 +150,20 @@ static void init_imgui(SDL_Window* window,
   ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;  // We manage the mouse cursor!
   if (!Gfx::g_debug_settings.monospaced_font) {
+    // TODO - add or switch to Noto since it supports the entire unicode range
     std::string font_path =
         (file_util::get_jak_project_dir() / "game" / "assets" / "fonts" / "Roboto-Medium.ttf")
             .string();
     if (file_util::file_exists(font_path)) {
       static const ImWchar ranges[] = {
           0x0020, 0x00FF,  // Basic Latin + Latin Supplement
+          0x0400, 0x052F,  // Cyrillic + Cyrillic Supplement
           0x2000, 0x206F,  // General Punctuation
+          0x2DE0, 0x2DFF,  // Cyrillic Extended-A
           0x3000, 0x30FF,  // CJK Symbols and Punctuations, Hiragana, Katakana
           0x3131, 0x3163,  // Korean alphabets
           0x31F0, 0x31FF,  // Katakana Phonetic Extensions
+          0xA640, 0xA69F,  // Cyrillic Extended-B
           0xAC00, 0xD7A3,  // Korean characters
           0xFF00, 0xFFEF,  // Half-width characters
           0xFFFD, 0xFFFD,  // Invalid
