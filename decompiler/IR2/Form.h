@@ -1240,6 +1240,7 @@ class DerefToken {
     return m_kind == Kind::FIELD_NAME && m_name == name;
   }
 
+  bool is_int() const { return m_kind == Kind::INTEGER_CONSTANT; }
   bool is_int(int x) const { return m_kind == Kind::INTEGER_CONSTANT && m_int_constant == x; }
 
   bool is_expr() const { return m_kind == Kind::INTEGER_EXPRESSION; }
@@ -1293,6 +1294,7 @@ class DerefElement : public FormElement {
 
  private:
   ConstantTokenElement* try_as_art_const(const Env& env, FormPool& pool);
+  GenericElement* try_as_curtime(FormPool& pool);
 
   Form* m_base = nullptr;
   bool m_is_addr_of = false;

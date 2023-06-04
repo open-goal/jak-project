@@ -138,7 +138,7 @@ void Sprite3::opengl_setup_normal() {
 void Sprite3::handle_sprite_frame_setup(DmaFollower& dma,
                                         GameVersion version,
                                         SharedRenderState* render_state,
-                                        ScopedProfilerNode& prof) {
+                                        ScopedProfilerNode& /*prof*/) {
   // first is some direct data
   auto direct_data = dma.read_and_advance();
   ASSERT(direct_data.size_bytes == 3 * 16);

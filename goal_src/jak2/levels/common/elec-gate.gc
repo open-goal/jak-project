@@ -51,8 +51,8 @@
    (part-off           sparticle-launch-control           :offset-assert 368)
    (part-spawner-left  part-spawner                       :offset-assert 372)
    (part-spawner-right part-spawner                       :offset-assert 376)
-   (on-start           basic                              :offset-assert 380)
-   (on-stop            basic                              :offset-assert 384)
+   (on-start           pair                               :offset-assert 380)
+   (on-stop            pair                               :offset-assert 384)
    (dividing-wall      elec-wall                :inline   :offset-assert 400)
    (plane              elec-wall                2 :inline :offset-assert 432)
    (wall-y             float                              :offset-assert 496)
@@ -256,7 +256,7 @@
   :enter (behavior ()
     (process-entity-status! self (entity-perm-status subtask-complete) #f)
     (if (-> self on-start)
-        (script-eval (the-as pair (-> self on-start)) :vector (-> self root trans))
+        (script-eval (-> self on-start) :vector (-> self root trans))
         )
     (dotimes (bolt-idx 5)
       (let* ((curr-bolt (-> self l-bolt bolt-idx bolt))
@@ -480,6 +480,9 @@
           (set! (-> self lightning-quality)
                 (lerp-scale 0.0 1.0 (vector-vector-distance focus-trans (-> self root trans)) 491520.0 163840.0)
                 )
+          ;; changed for PC port so lightning can always render from farther than 2 inches away...
+          (#when PC_PORT
+              (if (not (-> *pc-settings* ps2-lod-dist?)) (set! (-> self lightning-quality) 1.0)))
           )
         )
       )
@@ -635,7 +638,7 @@
     (sound-play "elec-gate-off")
     (blocking-plane-destroy)
     (if (-> self on-stop)
-        (script-eval (the-as pair (-> self on-stop)) :vector (-> self root trans))
+        (script-eval (-> self on-stop) :vector (-> self root trans))
         )
     (none)
     )
@@ -725,7 +728,9 @@
 (defmethod set-elec-scale-if-close! elec-gate ((obj elec-gate) (arg0 float))
   "If [[target]]'s position is within `80` [[meters]], set the scale to the value provided
 @see [[elec-gate::29]]"
-  (if (< (vector-vector-distance (-> obj root trans) (target-pos 0)) 327680.0)
+  ;; changed for PC port so we can render it at any distance
+  (if (#if PC_PORT (or (not (-> *pc-settings* ps2-lod-dist?)) (< (vector-vector-distance (-> obj root trans) (target-pos 0)) (meters 80)))
+                   (< (vector-vector-distance (-> obj root trans) (target-pos 0)) (meters 80)))
       (set-elec-scale! obj arg0)
       )
   0
@@ -879,8 +884,8 @@ This commonly includes things such as:
   (set! (-> obj sound)
         (new 'process 'ambient-sound (static-sound-spec "electric-gate" :fo-max 70) (-> obj root trans))
         )
-  (set! (-> obj on-start) (res-lump-struct (-> obj entity) 'on-start basic))
-  (set! (-> obj on-stop) (res-lump-struct (-> obj entity) 'on-stop basic))
+  (set! (-> obj on-start) (res-lump-struct (-> obj entity) 'on-start pair))
+  (set! (-> obj on-stop) (res-lump-struct (-> obj entity) 'on-stop pair))
   (elec-gate-method-24 obj)
   (set-palette! obj)
   (set-state! obj)

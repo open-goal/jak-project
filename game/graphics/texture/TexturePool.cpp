@@ -220,11 +220,11 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
             } else {
               slot.source->remove_slot(tex.dest[mip_idx]);
               slot.source = get_gpu_texture_for_slot(current_id, tex.dest[mip_idx]);
-              ASSERT(slot.gpu_texture != (u64)-1);
+              ASSERT(slot.gpu_texture != (GLuint)-1);
             }
           } else {
             slot.source = get_gpu_texture_for_slot(current_id, tex.dest[mip_idx]);
-            ASSERT(slot.gpu_texture != (u64)-1);
+            ASSERT(slot.gpu_texture != (GLuint)-1);
           }
         }
       }
@@ -354,7 +354,7 @@ void TexturePool::draw_debug_for_tex(const std::string& name, GpuTexture* tex, u
   if (ImGui::TreeNode(fmt::format("{}) {}", slot, name).c_str())) {
     ImGui::Text("P: %s sz: %d x %d", get_debug_texture_name(tex->tex_id).c_str(), tex->w, tex->h);
     if (!tex->is_placeholder) {
-      ImGui::Image((void*)tex->gpu_textures.at(0).gl, ImVec2(tex->w, tex->h));
+      ImGui::Image((void*)(u64)tex->gpu_textures.at(0).gl, ImVec2(tex->w, tex->h));
     } else {
       ImGui::Text("PLACEHOLDER");
     }

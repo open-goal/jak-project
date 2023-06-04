@@ -67,12 +67,12 @@ void InitVagCmds() {
     cmd.num_processed_chunks = 0;             // puVar5[-0xd] = 0;
     cmd.safe_to_change_dma_fields = 1;        // puVar5[-0x3a] = 1;
     cmd.xfer_size = 0;                        // puVar5[-0xc] = 0;
-    cmd.unk_248 = 0;                          // puVar5[-0xb] = 0;
+    cmd.sample_rate = 0;                      // puVar5[-0xb] = 0;
     cmd.unk_260 = 0;                          // puVar5[-8] = 0;
     cmd.unk_264 = 0x4000;                     // puVar5[-7] = 0x4000;
     cmd.unk_268 = 0;                          // puVar5[-6] = 0;
     cmd.header.callback_buffer = nullptr;     // puVar5[-0x42] = 0;
-    cmd.header.unk_24 = 1;                    // puVar5[-0x43] = 1;
+    cmd.header.ready_for_data = 1;            // puVar5[-0x43] = 1;
     cmd.header.callback = NullCallback;       // puVar5[-0x41] = NullCallback;
     cmd.header.lse = nullptr;                 // puVar5[-0x40] = 0;
     cmd.stereo_sibling = nullptr;             // puVar5[-0x3d] = 0;
@@ -233,7 +233,7 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
     cmd->unk_256_pitch2 = 0;
     cmd->id = 0;
     cmd->plugin_id = 0;
-    (cmd->header).unk_24 = 0;
+    (cmd->header).ready_for_data = 0;
     cmd->unk_136 = 0;
     cmd->unk_140 = 0;
     cmd->pitch1 = 0;
@@ -285,7 +285,7 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
   cmd->unk_204 = 0;
   cmd->num_processed_chunks = 0;
   cmd->xfer_size = 0;
-  cmd->unk_248 = 0;
+  cmd->sample_rate = 0;
   cmd->unk_260 = 0;
   cmd->unk_268 = 0;
   cmd->vol_multiplier = 0;
@@ -298,7 +298,7 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
   cmd->unk_292 = 0;
   cmd->unk_296 = 0;
   (cmd->header).callback_buffer = (Buffer*)0x0;
-  (cmd->header).unk_24 = 0;
+  (cmd->header).ready_for_data = 0;
   (cmd->header).lse = (LoadStackEntry*)0x0;
   cmd->dma_iop_mem_ptr = (uint8_t*)0x0;
   cmd->dma_chan = -1;
@@ -317,7 +317,7 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
       VagCmdsPriCounter[pRVar4->priority] = VagCmdsPriCounter[pRVar4->priority] + -1;
     }
     iVar2 = 0x18;
-    piVar1 = &(pRVar4->header).unk_24;
+    piVar1 = &(pRVar4->header).ready_for_data;
     VagCmdsPriCounter[0] = VagCmdsPriCounter[0] + 1;
     for (auto& x : cmd->status_bytes) {
       x = 0;
@@ -349,7 +349,7 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
     pRVar4->unk_204 = 0;
     pRVar4->num_processed_chunks = 0;
     pRVar4->xfer_size = 0;
-    pRVar4->unk_248 = 0;
+    pRVar4->sample_rate = 0;
     pRVar4->unk_260 = 0;
     pRVar4->unk_268 = 0;
     pRVar4->vol_multiplier = 0;
@@ -362,7 +362,7 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
     pRVar4->unk_292 = 0;
     pRVar4->unk_296 = 0;
     (pRVar4->header).callback_buffer = (Buffer*)0x0;
-    (pRVar4->header).unk_24 = 0;
+    (pRVar4->header).ready_for_data = 0;
     (pRVar4->header).lse = (LoadStackEntry*)0x0;
     pRVar4->dma_iop_mem_ptr = (uint8_t*)0x0;
     pRVar4->dma_chan = -1;
@@ -730,11 +730,11 @@ void InitVAGCmd(VagCmd* param_1, int param_2) {
   param_1->num_processed_chunks = 0;
   param_1->safe_to_change_dma_fields = 1;
   param_1->xfer_size = 0;
-  param_1->unk_248 = 0;
+  param_1->sample_rate = 0;
   param_1->unk_260 = 0;
   param_1->unk_268 = 0;
   (param_1->header).callback_buffer = nullptr;
-  (param_1->header).unk_24 = 1;
+  (param_1->header).ready_for_data = 1;
   (param_1->header).lse = nullptr;
   param_1->stereo_sibling = nullptr;
   param_1->dma_iop_mem_ptr = nullptr;
@@ -879,7 +879,7 @@ void FreeVagCmd(VagCmd* cmd, int /*param_2*/) {
   cmd->num_processed_chunks = 0;
   cmd->safe_to_change_dma_fields = 1;
   cmd->xfer_size = 0;
-  cmd->unk_248 = 0;
+  cmd->sample_rate = 0;
   cmd->unk_260 = 0;
   cmd->unk_268 = 0;
   cmd->vol_multiplier = 0;
@@ -892,7 +892,7 @@ void FreeVagCmd(VagCmd* cmd, int /*param_2*/) {
   cmd->unk_292 = 0;
   cmd->unk_296 = 0;
   (cmd->header).callback_buffer = nullptr;
-  (cmd->header).unk_24 = 0;
+  (cmd->header).ready_for_data = 0;
   (cmd->header).lse = nullptr;
   cmd->dma_iop_mem_ptr = (uint8_t*)0x0;
   cmd->dma_chan = -1;
@@ -966,7 +966,7 @@ void StopVAG(VagCmd* cmd, int /*param_2*/) {
   cmd->unk_256_pitch2 = 0;
   cmd->id = 0;
   cmd->plugin_id = 0;
-  (cmd->header).unk_24 = 0;
+  (cmd->header).ready_for_data = 0;
   cmd->unk_136 = 0;
   cmd->unk_140 = 0;
   cmd->pitch1 = 0;
@@ -1045,7 +1045,6 @@ void SetAllVagsVol(int param_1)
       iVar1 = iVar1 + 1;
     } while (iVar1 < 4);
   }
-  return;
 }
 
 void CalculateVAGVolumes(VagCmd* cmd, int* l_out, int* r_out) {

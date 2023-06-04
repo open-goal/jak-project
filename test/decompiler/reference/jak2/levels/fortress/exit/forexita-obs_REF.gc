@@ -84,7 +84,7 @@
     (none)
     )
   :post (behavior ()
-    (when (< (-> self sound-time) (-> self clock frame-counter))
+    (when (< (-> self sound-time) (current-time))
       (sound-stop (-> self sound-id))
       (set! (-> self sound-time) (get-timeframe-offset! (-> self sync) 0))
       )
@@ -122,7 +122,7 @@
     )
   :code (the-as (function none :behavior fort-lift-plat) sleep-code)
   :post (behavior ()
-    (when (< (-> self sound-time) (-> self clock frame-counter))
+    (when (< (-> self sound-time) (current-time))
       (sound-stop (-> self sound-id))
       (set! (-> self sound-time) (get-timeframe-offset! (-> self sync) 0))
       )
@@ -326,11 +326,11 @@ otherwise, [[plat::34]]
 (defstate pause (fort-claw)
   :virtual #t
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :trans (behavior ()
-    (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 2))
+    (if (>= (- (current-time) (-> self state-time)) (seconds 2))
         (go-virtual idle)
         )
     (none)
@@ -370,16 +370,20 @@ This commonly includes things such as:
   )
 
 ;; failed to figure out what this is:
-(set-subtask-hook! *game-info* 2 3 (lambda :behavior task-manager
-                                     ()
-                                     (until #f
-                                       (sound-play "fortress-alarm")
-                                       (let ((gp-1 (-> self clock frame-counter)))
-                                         (until (>= (- (-> self clock frame-counter) gp-1) (seconds 1))
-                                           (suspend)
-                                           )
-                                         )
-                                       )
-                                     (the-as object #f)
-                                     )
-                   )
+(set-subtask-hook!
+  *game-info*
+  (game-task-node fortress-escape-introduction)
+  TASK_MANAGER_CODE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (until #f
+      (sound-play "fortress-alarm")
+      (let ((gp-1 (current-time)))
+        (until (>= (- (current-time) gp-1) (seconds 1))
+          (suspend)
+          )
+        )
+      )
+    (the-as object #f)
+    )
+  )

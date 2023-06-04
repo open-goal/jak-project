@@ -827,7 +827,7 @@ void DirectRenderer::handle_trxreg(u64 val) {
 
 void DirectRenderer::handle_trxdir(u64 dir,
                                    SharedRenderState* render_state,
-                                   ScopedProfilerNode& prof) {
+                                   ScopedProfilerNode& /*prof*/) {
   ASSERT(m_blit_buf_state.expect == 3);
   m_blit_buf_state.expect++;
 
@@ -847,17 +847,21 @@ void DirectRenderer::handle_trxdir(u64 dir,
     case 0: {  // host->local
       fmt::print("-- FROM EE\n");
       auto dst_tex = get_tex_func("dst", m_blit_buf_state.dbp);
+      (void)dst_tex;
       // ASSERT_MSG(false, "nyi trxdir host->local");
     } break;
     case 1: {  // local->host
       fmt::print("-- FROM GS\n");
       auto src_tex = get_tex_func("src", m_blit_buf_state.sbp);
+      (void)src_tex;
       // ASSERT_MSG(false, "nyi trxdir local->host");
     } break;
     case 2: {  // local->local
       fmt::print("-- GS <-> GS\n");
       auto src_tex = get_tex_func("src", m_blit_buf_state.sbp);
       auto dst_tex = get_tex_func("dst", m_blit_buf_state.dbp);
+      (void)src_tex;
+      (void)dst_tex;
     } break;
     case 3:  // disable
       fmt::print("-- HUH???\n");

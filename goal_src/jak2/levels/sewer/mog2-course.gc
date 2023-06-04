@@ -428,36 +428,31 @@
         :nav-mesh-index 2
         :skip-to -1
         :on-set (lambda ((arg0 mog-sewer))
-          (with-pp
-            (set! (-> arg0 waypoint-time0) (-> pp clock frame-counter))
-            (set! (-> arg0 bot-flags) (logior (bot-flags bf19) (-> arg0 bot-flags)))
-            (clear-poi-and-focus! arg0)
-            (logclear! (-> arg0 focus-status) (focus-status disable))
-            (set! (-> arg0 notice-enemy-dist) 204800.0)
-            (set! (-> arg0 min-speed) 32768.0)
-            (set! (-> arg0 max-speed) 32768.0)
-            (let ((v1-12 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
-              (set! (-> v1-12 bytes 5) 1)
-              (set! (-> v1-12 bytes 6) 9)
-              (set! (-> v1-12 bytes 4) -1)
-              (set! (-> (the-as ruft-wait-spot v1-12) check-done)
-                    (the-as
-                      (function ruft-wait-spot ruffian symbol)
-                      (lambda ((arg0 object) (arg1 mog-sewer))
-                        (with-pp
-                          (when (>= (- (-> pp clock frame-counter) (-> arg1 waypoint-time0)) (seconds 2))
-                            (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
-                            (go-to-waypoint! arg1 16 #f)
-                            (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
-                            #t
+          (set! (-> arg0 waypoint-time0) (current-time))
+          (set! (-> arg0 bot-flags) (logior (bot-flags bf19) (-> arg0 bot-flags)))
+          (clear-poi-and-focus! arg0)
+          (logclear! (-> arg0 focus-status) (focus-status disable))
+          (set! (-> arg0 notice-enemy-dist) 204800.0)
+          (set! (-> arg0 min-speed) 32768.0)
+          (set! (-> arg0 max-speed) 32768.0)
+          (let ((v1-12 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-12 bytes 5) 1)
+            (set! (-> v1-12 bytes 6) 9)
+            (set! (-> v1-12 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-12) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 2))
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 16 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
                             )
-                          )
-                        )
-                      )
                     )
-              )
-            (none)
+                  )
             )
+          (none)
           )
         :on-update #f
         :on-skipping-here #f

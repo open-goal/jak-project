@@ -436,7 +436,6 @@
   )
 
 ;; definition for method 3 of type ik-setup
-;; INFO: this function exists in multiple non-identical object files
 (defmethod inspect ik-setup ((obj ik-setup))
   (when (not obj)
     (set! obj obj)
@@ -1080,7 +1079,7 @@
   :enter (-> (method-of-type nav-enemy idle) enter)
   :exit (-> (method-of-type nav-enemy idle) exit)
   :trans (behavior ()
-    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self state-timeout))
+    (when (>= (- (current-time) (-> self state-time)) (-> self state-timeout))
       (let ((a0-3 (handle->process (-> self focus handle))))
         (when a0-3
           (let ((f0-0
@@ -1127,7 +1126,7 @@
     (set! (-> self fire-beam?) #f)
     (set! (-> self allow-head) #t)
     (set! (-> self lazer-length) 0.0)
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :exit (behavior ()
@@ -1173,7 +1172,7 @@
             )
         (set! (-> self head-angle) f0-5)
         )
-      (when (>= (- (-> self clock frame-counter) (-> self state-time)) (-> self state-timeout))
+      (when (>= (- (current-time) (-> self state-time)) (-> self state-timeout))
         (let ((a0-8 (handle->process (-> self focus handle))))
           (when a0-8
             (let ((f0-6
@@ -1547,7 +1546,7 @@
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior hosehead) enemy-event-handler)
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-2 enemy-flags)))
           (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-2 enemy-flags))))
@@ -1957,9 +1956,9 @@
         (ja :num! (seek! max f30-0))
         )
       (set! (-> self fire-beam?) #t)
-      (let ((gp-0 (+ (-> self clock frame-counter) (seconds 2))))
+      (let ((gp-0 (+ (current-time) (seconds 2))))
         (until #f
-          (when (or (< gp-0 (-> self clock frame-counter)) (not (-> self fire-beam?)) (not (enemy-method-96 self 8192.0 #t)))
+          (when (or (< gp-0 (current-time)) (not (-> self fire-beam?)) (not (enemy-method-96 self 8192.0 #t)))
             (set! (-> self fire-beam?) #f)
             (set! (-> self allow-head) #f)
             (goto cfg-13)
@@ -2082,9 +2081,9 @@
           )
       )
     (nav-enemy-method-166 self)
-    (set! (-> self last-time-dist-changed) (-> self clock frame-counter))
+    (set! (-> self last-time-dist-changed) (current-time))
     (set! (-> self next-lazer-time) 0)
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :exit (behavior ()
@@ -2113,11 +2112,9 @@
          0
          )
         ((zero? (-> self next-lazer-time))
-         (set! (-> self next-lazer-time)
-               (+ (-> self clock frame-counter) (the int (* 300.0 (get-rand-float-range self 1.0 2.0))))
-               )
+         (set! (-> self next-lazer-time) (+ (current-time) (the int (* 300.0 (get-rand-float-range self 1.0 2.0)))))
          )
-        ((>= (-> self clock frame-counter) (-> self next-lazer-time))
+        ((>= (current-time) (-> self next-lazer-time))
          (if (and (enemy-method-96 self 3640.889 #t) (and (< 40960.0 f30-0) (hosehead-method-190 self)))
              (go-virtual fire)
              )

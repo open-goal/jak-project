@@ -22,6 +22,7 @@
 #include "common/goos/Reader.h"
 #include "common/util/FileUtil.h"
 #include "common/util/FontUtils.h"
+#include "common/util/json_util.h"
 
 #include "third-party/fmt/core.h"
 
@@ -144,8 +145,6 @@ void compile_subtitle(GameSubtitleDB& db, const std::string& output_prefix) {
 }
 }  // namespace
 
-#include "common/util/json_util.h"
-
 /*!
  * Read a game text description file and generate GOAL objects.
  */
@@ -154,11 +153,12 @@ void compile_game_text(const std::vector<GameTextDefinitionFile>& files,
                        const std::string& output_prefix) {
   goos::Reader reader;
   for (auto& file : files) {
-    lg::print("[Build Game Text] {}\n", file.file_path.c_str());
     if (file.format == GameTextDefinitionFile::Format::GOAL) {
+      lg::print("[Build Game Text] GOAL {}\n", file.file_path);
       auto code = reader.read_from_file({file.file_path});
       parse_text(code, db, file);
     } else if (file.format == GameTextDefinitionFile::Format::JSON) {
+      lg::print("[Build Game Text] JSON {}\n", file.file_path);
       auto file_path = file_util::get_jak_project_dir() / file.file_path;
       auto json = parse_commented_json(file_util::read_text_file(file_path), file.file_path);
       parse_text_json(json, db, file);
@@ -167,14 +167,19 @@ void compile_game_text(const std::vector<GameTextDefinitionFile>& files,
   compile_text(db, output_prefix);
 }
 
-void compile_game_subtitle(const std::vector<GameTextDefinitionFile>& files,
+void compile_game_subtitle(const std::vector<GameSubtitleDefinitionFile>& files,
                            GameSubtitleDB& db,
                            const std::string& output_prefix) {
   goos::Reader reader;
   for (auto& file : files) {
-    lg::print("[Build Game Subtitle] {}\n", file.file_path.c_str());
-    auto code = reader.read_from_file({file.file_path});
-    parse_subtitle(code, db, file.file_path);
+    if (file.format == GameSubtitleDefinitionFile::Format::GOAL) {
+      lg::print("[Build Game Subtitle] GOAL {}\n", file.lines_path);
+      auto code = reader.read_from_file({file.lines_path});
+      parse_subtitle(code, db, file.lines_path);
+    } else if (file.format == GameSubtitleDefinitionFile::Format::JSON) {
+      lg::print("[Build Game Subtitle] JSON {}:{}\n", file.lines_path, file.meta_path);
+      parse_subtitle_json(db, file);
+    }
   }
   compile_subtitle(db, output_prefix);
 }

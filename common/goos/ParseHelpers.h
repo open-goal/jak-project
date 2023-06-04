@@ -9,7 +9,7 @@
 
 namespace goos {
 bool get_va(const goos::Object& rest, std::string* err_string, goos::Arguments* result);
-bool get_va_no_named(const goos::Object& rest, std::string* err_string, goos::Arguments* result);
+void get_va_no_named(const goos::Object& rest, goos::Arguments* result);
 bool va_check(
     const goos::Arguments& args,
     const std::vector<std::optional<goos::ObjectType>>& unnamed,

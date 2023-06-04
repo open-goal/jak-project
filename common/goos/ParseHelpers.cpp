@@ -39,7 +39,7 @@ bool get_va(const goos::Object& rest, std::string* err_string, goos::Arguments* 
   return true;
 }
 
-bool get_va_no_named(const goos::Object& rest, std::string* err_string, goos::Arguments* result) {
+void get_va_no_named(const goos::Object& rest, goos::Arguments* result) {
   goos::Arguments args;
   // loop over forms in list
   goos::Object current = rest;
@@ -48,7 +48,6 @@ bool get_va_no_named(const goos::Object& rest, std::string* err_string, goos::Ar
     current = current.as_pair()->cdr;
   }
   *result = args;
-  return true;
 }
 
 bool va_check(
