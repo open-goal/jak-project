@@ -259,6 +259,9 @@ For other versions of the game, you will need to use a different `-set-decomp-<V
 
 ```sh
 task set-game-jak1
+
+task set-game-jak2
+
 task set-decomp-pal
 ```
 
