@@ -317,8 +317,7 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
     // The IOP scheduler informs us of how many microseconds are left until it has something to do.
     // So we can wait for that long or until something else needs it to wake up.
     auto wait_duration = iop.kernel.dispatch();
-    if (wait_duration &&
-        *wait_duration - std::chrono::steady_clock::now() > std::chrono::microseconds(100)) {
+    if (wait_duration) {
       iop.wait_run_iop(*wait_duration);
     }
   }
