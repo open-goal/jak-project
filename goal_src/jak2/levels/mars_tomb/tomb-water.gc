@@ -588,7 +588,9 @@ This commonly includes things such as:
           )
       )
     (when (>= (- (current-time) (-> self state-time)) (seconds 4))
-      (if (and *target* (focus-test? *target* grabbed))
+      (if (and *target* (focus-test? *target* grabbed)
+               ;; pc port note : added this check to make the beetle button not break everything!!
+               (< (vector-vector-xz-distance (-> *target* control trans) (-> self root-override trans)) (meters 10)))
           (process-release? *target*)
           )
       (if (and *target*
@@ -1839,7 +1841,7 @@ This commonly includes things such as:
 
 (deftype tomb-vibe (process-drawable)
   ((spawn-pos         vector                :inline :offset-assert 208)
-   (pat-tbl           (array handle)                :offset-assert 224)
+   (pat-tbl           (pointer int32)               :offset-assert 224)
    (pat-count         int32                         :offset-assert 228)
    (pat-index         int32                         :offset-assert 232)
    (pat-entry-index   int32                         :offset-assert 236)
@@ -1932,16 +1934,14 @@ This commonly includes things such as:
          (case (-> (the-as attack-info (-> event param 1)) mode)
            (('flop 'spin 'punch)
             (cond
-              ((and (= (-> v1-0 0) (-> (the-as (pointer int32) (+ (the-as uint (-> self pat-tbl)) (* (-> self pat-index) 4)))))
-                    (!= (-> gp-0 0) (process->handle self))
-                    )
+              ((and (= (-> v1-0 0) (-> self pat-tbl (-> self pat-index))) (!= (-> gp-0 0) (process->handle self)))
                (send-event (handle->process (-> gp-0 0)) 'interrupt)
                (send-event (handle->process (-> gp-0 0)) 'die)
                (logior! (-> self flags) 1)
                (go-virtual vibrate)
                )
               (else
-                (set! (-> v1-0 0) (-> (the-as (pointer int32) (+ (the-as uint (-> self pat-tbl)) (* (-> self pat-index) 4)))))
+                (set! (-> v1-0 0) (-> self pat-tbl (-> self pat-index)))
                 (set! (-> gp-0 0) (process->handle self))
                 (go-virtual vibrate)
                 )
@@ -2071,7 +2071,7 @@ This commonly includes things such as:
       'sound-tune
       #f
       0.0
-      (+ (-> (the-as (pointer int32) (+ (the-as uint (-> self pat-tbl)) (* (-> self pat-index) 4)))) 18)
+      (+ (-> self pat-tbl (-> self pat-index)) 18)
       )
     (let ((gp-1 (current-time)))
       (until (>= (- (current-time) gp-1) (seconds 0.2))
@@ -2227,11 +2227,11 @@ This commonly includes things such as:
     (let ((v1-26 (res-lump-data (-> obj entity) 'vibe-pattern pointer :tag-ptr (& sv-16))))
       (cond
         ((and v1-26 (nonzero? (-> sv-16 elt-count)))
-         (set! (-> obj pat-tbl) (the-as (array handle) v1-26))
+         (set! (-> obj pat-tbl) (the-as (pointer int32) v1-26))
          (set! (-> obj pat-count) (the-as int (-> sv-16 elt-count)))
          )
         (else
-          (set! (-> obj pat-tbl) #f)
+          (set! (-> obj pat-tbl) (the-as (pointer int32) #f))
           (set! (-> obj pat-count) 0)
           0
           )
