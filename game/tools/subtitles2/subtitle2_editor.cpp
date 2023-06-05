@@ -322,10 +322,7 @@ void Subtitle2Editor::draw_subtitle_options(Subtitle2Scene& scene,
     if (speaker_exists) {
       full_line = speaker_text + ": " + full_line;
     }
-    auto summary = fmt::format("[{} - {}] {}", line->start, line->end,
-                               full_line.length() <= LINE_DISPLAY_MAX_LEN
-                                   ? full_line
-                                   : (full_line.substr(0, LINE_DISPLAY_MAX_LEN - 3) + "..."));
+    auto summary = fmt::format("[{} - {}] {}", line->start, line->end, full_line);
     if (line->text.empty()) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
     } else if (line->offscreen) {

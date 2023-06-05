@@ -133,7 +133,7 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
           if (Gfx::g_debug_settings.alternate_style) {
             ImGui::applyAlternateStyle();
           } else {
-            ImGui::StyleColorsClassic();
+            ImGui::applyClassicStyle();
           }
         }
         ImGui::TreePop();
