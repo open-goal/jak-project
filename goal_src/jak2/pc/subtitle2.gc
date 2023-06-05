@@ -609,8 +609,11 @@
       (return 0))
 
   ;; set up our font to the initial parameters
-  (set! (-> self have-message?) (or (subtitle-bump-up?) (and (-> self have-message?) (-> self have-subtitles?))))
-  (set! (-> self have-minimap?) (logtest? (minimap-flag minimap) (-> *setting-control* user-current minimap)))
+  (let ((map-gui (lookup-gui-connection-id *gui-control* "hud-map" (gui-channel none) (gui-action none))))
+    (set! (-> self have-message?) (or (subtitle-bump-up?) (and (-> self have-message?) (-> self have-subtitles?))))
+    (set! (-> self have-minimap?) (and  (logtest? (minimap-flag minimap) (-> *setting-control* user-current minimap)))
+                                        map-gui (!= (gui-status pending) (get-status *gui-control* (-> map-gui id))))
+    )
   (setup-subtitle2-font (-> self font))
 
   ;; do two passes - on the first one we add lines that were already being used,
@@ -674,7 +677,7 @@
           (set! cur-y (min cur-y (- start-y (-> line-queue i y)))))
       (set! (-> self font origin y) cur-y)
 
-      (when (-> *setting-control* user-current subtitle)
+      (when (and (-> *setting-control* user-current subtitle) (or *gui-kick-str* (= *master-mode* 'game)))
         (set-action! *gui-control* (gui-action play) (-> self gui-id)
                     (gui-channel none) (gui-action none) (the-as string #f) (the-as (function gui-connection symbol) #f) (the-as process #f))
         (when (!= (gui-status active) (get-status *gui-control* (-> self gui-id)))
