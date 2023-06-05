@@ -56,10 +56,10 @@ void GameController::process_event(const SDL_Event& event,
                                    const CommandBindingGroups& commands,
                                    std::shared_ptr<PadData> data,
                                    std::optional<InputBindAssignmentMeta>& bind_assignment,
-                                   bool ignore_inputs) {
+                                   bool /*ignore_inputs*/) {
   if (event.type == SDL_CONTROLLERAXISMOTION && event.caxis.which == m_sdl_instance_id) {
     // https://wiki.libsdl.org/SDL2/SDL_GameControllerAxis
-    if (event.caxis.axis <= SDL_CONTROLLER_AXIS_INVALID ||
+    if ((int)event.caxis.axis <= SDL_CONTROLLER_AXIS_INVALID ||
         event.caxis.axis >= SDL_CONTROLLER_AXIS_MAX) {
       return;
     }
@@ -98,7 +98,7 @@ void GameController::process_event(const SDL_Event& event,
     auto& binds = m_settings->controller_binds.at(m_guid);
 
     // https://wiki.libsdl.org/SDL2/SDL_GameControllerButton
-    if (event.cbutton.button <= SDL_CONTROLLER_BUTTON_INVALID ||
+    if ((int)event.cbutton.button <= SDL_CONTROLLER_BUTTON_INVALID ||
         event.cbutton.button >= SDL_CONTROLLER_BUTTON_MAX) {
       return;
     }
