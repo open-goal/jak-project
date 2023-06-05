@@ -3,6 +3,8 @@
 #include <optional>
 #include <string>
 
+#include "formatting_rules.h"
+
 #include "tree_sitter/api.h"
 
 namespace formatter {
