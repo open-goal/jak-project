@@ -36,6 +36,7 @@ class FormatterTreeNode {
   struct Metadata {
     bool is_top_level = false;
     bool is_comment = false;
+    bool is_inline = false;
     int num_blank_lines_following = 0;
     // Whether the form had more than 1 element on the first line
     // (println

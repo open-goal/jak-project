@@ -25,11 +25,28 @@ int num_blank_lines_following_node(const std::string& source, const TSNode& node
   return num_lines;
 }
 
+// Check if the original source only has whitespace up to a new-line after it's token
+bool node_preceeded_by_only_whitespace(const std::string& source, const TSNode& node) {
+  uint32_t pos = ts_node_start_byte(node);
+  while (pos > 0) {
+    const auto& c = source.at(pos);
+    if (c == '\n') {
+      return true;
+    } else if (c == ' ' || c == '\t') {
+      pos--;
+      continue;
+    }
+    return false;
+  }
+  return true;
+}
+
 FormatterTreeNode::FormatterTreeNode(const std::string& source, const TSNode& node) {
   token = get_source_code(source, node);
   // Set any metadata based on the value of the token
   metadata.is_comment = str_util::starts_with(str_util::ltrim(token.value()), ";");
   metadata.num_blank_lines_following = num_blank_lines_following_node(source, node);
+  metadata.is_inline = !node_preceeded_by_only_whitespace(source, node);
 };
 
 std::shared_ptr<IndentationRule> FormatterTreeNode::get_formatting_rule(const int depth,

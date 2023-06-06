@@ -17,12 +17,21 @@ namespace formatter_rules {
 // - or this could be top level comments / comment blocks documenting things but not being
 // associated with a form
 //   - in this case, you want them to remain separated
+//
+// Reference - https://github.com/kkinnear/zprint/blob/main/doc/options/blank.md
 namespace blank_lines {
 void separate_by_newline(std::string& curr_text,
                          const FormatterTreeNode& containing_node,
                          const FormatterTreeNode& node,
                          const int index);
 }
+
+// TODO - nothing here yet, in the future:
+// - if/when the formatter is concerned with line length, there are implications here
+// - align consecutive comment lines
+//
+// Reference - https://github.com/kkinnear/zprint/blob/main/doc/options/comments.md
+namespace comments {}
 
 }  // namespace formatter_rules
 
@@ -57,6 +66,7 @@ void separate_by_newline(std::string& curr_text,
 //          "world")
 class IndentationRule {
  public:
+  virtual ~IndentationRule() = default;
   virtual void append_newline(std::string& curr_text,
                               const FormatterTreeNode& node,
                               const FormatterTreeNode& containing_node,

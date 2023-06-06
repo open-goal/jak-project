@@ -7,6 +7,8 @@
 
 #include "tree_sitter/api.h"
 
+// TODO:
+// - Considering _eventually_ adding line-length heuristics
 namespace formatter {
 
 struct TreeSitterParserDeleter {

@@ -8,7 +8,11 @@ void formatter_rules::blank_lines::separate_by_newline(std::string& curr_text,
                                                        const int index) {
   // We only are concerned with top level forms or elements
   // Skip the last element, no trailing new-lines (let the editors handle this!)
-  if (!containing_node.metadata.is_top_level || index >= containing_node.refs.size() - 1) {
+  // Also peek ahead to see if there was a comment on this line, if so don't separate things!
+  if (!containing_node.metadata.is_top_level || index >= containing_node.refs.size() - 1 ||
+      (containing_node.refs.size() > index &&
+       containing_node.refs.at(index + 1).metadata.is_comment &&
+       containing_node.refs.at(index + 1).metadata.is_inline)) {
     return;
   }
   curr_text += "\n";
@@ -27,7 +31,8 @@ void IndentationRule::append_newline(std::string& curr_text,
                                      const int index) {
   if (index <= 0 && !containing_node.metadata.multiple_elements_first_line ||
       index <= 1 && containing_node.metadata.multiple_elements_first_line ||
-      containing_node.metadata.is_top_level) {
+      containing_node.metadata.is_top_level ||
+      (node.metadata.is_comment && node.metadata.is_inline)) {
     return;
   }
   curr_text = str_util::rtrim(curr_text) + "\n";
