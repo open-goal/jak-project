@@ -80,12 +80,8 @@ void parse_subtitle2_json(GameSubtitle2DB& db, const GameSubtitle2DefinitionFile
 }
 
 void to_json(json& j, const Subtitle2Line& obj) {
-  j = json{{"start", obj.start},
-           {"end", obj.end},
-           {"offscreen", obj.offscreen},
-           {"merge", obj.merge},
-           {"speaker", obj.speaker},
-           {"text", obj.text}};
+  j = json{{"start", obj.start}, {"end", obj.end},         {"offscreen", obj.offscreen},
+           {"merge", obj.merge}, {"speaker", obj.speaker}, {"text", obj.text}};
 }
 void from_json(const json& j, Subtitle2Line& obj) {
   json_deserialize_if_exists(start);
