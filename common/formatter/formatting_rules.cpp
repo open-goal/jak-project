@@ -10,8 +10,7 @@ void formatter_rules::blank_lines::separate_by_newline(std::string& curr_text,
   // Skip the last element, no trailing new-lines (let the editors handle this!)
   // Also peek ahead to see if there was a comment on this line, if so don't separate things!
   if (!containing_node.metadata.is_top_level || index >= containing_node.refs.size() - 1 ||
-      (containing_node.refs.size() > index &&
-       containing_node.refs.at(index + 1).metadata.is_comment &&
+      (containing_node.refs.at(index + 1).metadata.is_comment &&
        containing_node.refs.at(index + 1).metadata.is_inline)) {
     return;
   }

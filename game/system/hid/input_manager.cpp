@@ -85,7 +85,7 @@ void InputManager::refresh_device_list() {
     }
     // If the controller that was last selected to be port 0 is around, prioritize it
     if (!m_settings->last_selected_controller_guid.empty()) {
-      for (int i = 0; i < m_available_controllers.size(); i++) {
+      for (size_t i = 0; i < m_available_controllers.size(); i++) {
         const auto& controller_guid = m_available_controllers.at(i)->get_guid();
         if (controller_guid == m_settings->last_selected_controller_guid) {
           m_controller_port_mapping[0] = i;
@@ -148,7 +148,7 @@ void InputManager::process_sdl_event(const SDL_Event& event,
   // Send event to active controller device
   // This goes last so it takes precedence
   for (const auto& [port, controller_idx] : m_controller_port_mapping) {
-    if (m_data.find(port) != m_data.end() && m_available_controllers.size() > controller_idx) {
+    if (m_data.find(port) != m_data.end() && (int)m_available_controllers.size() > controller_idx) {
       m_available_controllers.at(controller_idx)
           ->process_event(event, m_command_binds, m_data.at(port), m_waiting_for_bind);
     }
@@ -211,7 +211,7 @@ void InputManager::register_command(const CommandBinding::Source source,
 }
 
 std::string InputManager::get_controller_name(const int controller_id) {
-  if (controller_id >= m_available_controllers.size()) {
+  if ((size_t)controller_id >= m_available_controllers.size()) {
     return "";
   }
   return m_available_controllers.at(controller_id)->get_name();
@@ -226,7 +226,7 @@ std::string InputManager::get_current_bind(const int port,
   switch (device_type) {
     case InputDeviceType::CONTROLLER:
       if (m_controller_port_mapping.find(port) != m_controller_port_mapping.end() &&
-          m_controller_port_mapping.at(port) < m_available_controllers.size() &&
+          m_controller_port_mapping.at(port) < (int)m_available_controllers.size() &&
           m_settings->controller_binds.find(
               m_available_controllers.at(m_controller_port_mapping.at(port))->get_guid()) !=
               m_settings->controller_binds.end()) {
@@ -256,7 +256,7 @@ std::string InputManager::get_current_bind(const int port,
 }
 
 void InputManager::set_controller_for_port(const int controller_id, const int port) {
-  if (controller_id < m_available_controllers.size()) {
+  if (controller_id < (int)m_available_controllers.size()) {
     // Reset inputs as this device won't be able to be read from again!
     clear_inputs();
     auto& controller = m_available_controllers.at(controller_id);
@@ -275,7 +275,7 @@ bool InputManager::controller_has_led(const int port) {
     return false;
   }
   const auto id = m_controller_port_mapping.at(port);
-  if (id >= m_available_controllers.size()) {
+  if (id >= (int)m_available_controllers.size()) {
     return false;
   }
   return m_available_controllers.at(id)->has_led();
@@ -286,7 +286,7 @@ void InputManager::set_controller_led(const int port, const u8 red, const u8 gre
     return;
   }
   const auto id = m_controller_port_mapping.at(port);
-  if (id >= m_available_controllers.size()) {
+  if (id >= (int)m_available_controllers.size()) {
     return;
   }
   m_available_controllers.at(id)->set_led(red, green, blue);
@@ -342,7 +342,7 @@ void InputManager::reset_input_bindings_to_defaults(const int port,
   switch (device_type) {
     case InputDeviceType::CONTROLLER:
       if (m_controller_port_mapping.find(port) != m_controller_port_mapping.end() &&
-          m_controller_port_mapping.at(port) < m_available_controllers.size() &&
+          m_controller_port_mapping.at(port) < (int)m_available_controllers.size() &&
           m_settings->controller_binds.find(
               m_available_controllers.at(m_controller_port_mapping.at(port))->get_guid()) !=
               m_settings->controller_binds.end()) {
