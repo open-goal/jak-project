@@ -184,7 +184,6 @@ static void init_imgui(SDL_Window* window,
   }
 
   // set up to get inputs for this window
-  auto test = SDL_GetCurrentVideoDriver();
   ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
 
   // NOTE: imgui's setup calls functions that may fail intentionally, and attempts to disable error
@@ -199,7 +198,7 @@ static void init_imgui(SDL_Window* window,
 static std::shared_ptr<GfxDisplay> gl_make_display(int width,
                                                    int height,
                                                    const char* title,
-                                                   GfxGlobalSettings& settings,
+                                                   GfxGlobalSettings& /*settings*/,
                                                    GameVersion game_version,
                                                    bool is_main) {
   // Setup the window

@@ -94,7 +94,7 @@ int DisplayManager::get_screen_height() {
 }
 
 Resolution DisplayManager::get_resolution(int id) {
-  if (id < m_available_resolutions.size()) {
+  if (id < (int)m_available_resolutions.size()) {
     return m_available_resolutions.at(id);
   }
   return {0, 0, 0.0};
@@ -199,7 +199,7 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
 }
 
 void DisplayManager::set_fullscreen_display_id(int display_id) {
-  if (display_id >= m_current_display_modes.size()) {
+  if (display_id >= (int)m_current_display_modes.size()) {
     display_id = 0;
   }
   bool update_fullscreen = m_window_display_mode != WindowDisplayMode::Windowed &&

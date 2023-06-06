@@ -37,6 +37,7 @@ class FormatterTreeNode;
 //          "world")
 class FormattingRule {
  public:
+  virtual ~FormattingRule() = default;
   virtual void append_newline(std::string& curr_text,
                               const FormatterTreeNode& node,
                               const FormatterTreeNode& containing_node,

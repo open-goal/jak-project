@@ -844,7 +844,6 @@
 ;;      - does bone calcs for merc
 ;;      - does VU0/CPU stuff for generic/shadow/lightning
 
-
 (defun dma-add-process-drawable ((pd process-drawable) (dc draw-control) (flag symbol) (dma-buf dma-buffer))
   "Draw a normal process-drawable. Set up lighting/shadow settings, then pass on to foreground renderer."
   (local-vars
@@ -1143,8 +1142,12 @@
                       )
                     ;; lod hacks!
                     (with-pc
-                      (if (not (-> *pc-settings* ps2-lod-dist?))
-                        (set! lod-idx (minmax (-> *pc-settings* lod-force-actor) 0 (-> dc lod-set max-lod))))
+                      (when (not (-> *pc-settings* ps2-lod-dist?))
+                        (set! lod-idx (minmax (-> *pc-settings* lod-force-actor) 0 (-> dc lod-set max-lod)))
+                        (when (> (-> dc force-lod) -1)
+                          (set! lod-idx (-> dc force-lod))
+                          )
+                        )
                       )
                     (if (#if (not PC_PORT)
                              (and (< (-> dc lod-set lod lod-idx dist) dist-w) (< (-> dc force-lod) 0))

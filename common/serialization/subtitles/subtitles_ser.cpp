@@ -270,7 +270,9 @@ void parse_text_json(const nlohmann::json& json,
  * Each scene should be (scene-name <entry 1> <entry 2> ... )
  * This adds the subtitle to each of the specified languages.
  */
-void parse_subtitle(const goos::Object& data, GameSubtitleDB& db, const std::string& file_path) {
+void parse_subtitle(const goos::Object& data,
+                    GameSubtitleDB& db,
+                    const std::string& /*file_path*/) {
   const GameTextFontBank* font = nullptr;
   std::map<int, std::shared_ptr<GameSubtitleBank>> banks;
 
@@ -485,7 +487,7 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
       } else {
         if (lines_file.speakers.find(line.speaker) == lines_file.speakers.end() ||
             lines_file.cutscenes.find(cutscene_name) == lines_file.cutscenes.end() ||
-            lines_file.cutscenes.at(cutscene_name).size() < line_idx) {
+            int(lines_file.cutscenes.at(cutscene_name).size()) < line_idx) {
           lg::warn(
               "{} Couldn't find {} in line file, or line list is too small, or speaker could not "
               "be resolved {}!",
@@ -504,7 +506,7 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
       }
     }
     // Verify we added the amount of lines we expected to
-    if (lines_added != cutscene_lines.size()) {
+    if (lines_added != int(cutscene_lines.size())) {
       throw std::runtime_error(
           fmt::format("Cutscene: '{}' has a mismatch in metadata lines vs text lines. Expected {} "
                       "only added {} lines",
@@ -540,7 +542,7 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
       } else {
         if (lines_file.speakers.find(line.speaker) == lines_file.speakers.end() ||
             lines_file.hints.find(hint_name) == lines_file.hints.end() ||
-            lines_file.hints.at(hint_name).size() < line_idx) {
+            int(lines_file.hints.at(hint_name).size()) < line_idx) {
           lg::warn(
               "{} Couldn't find {} in line file, or line list is too small, or speaker could not "
               "be resolved {}!",
@@ -558,7 +560,7 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
       }
     }
     // Verify we added the amount of lines we expected to
-    if (lines_added != hint_info.lines.size()) {
+    if (lines_added != int(hint_info.lines.size())) {
       throw std::runtime_error(
           fmt::format("Hint: '{}' has a mismatch in metadata lines vs text lines. Expected {} "
                       "only added {} lines",
