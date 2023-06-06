@@ -67,8 +67,6 @@ class Subtitle2Editor {
   // TODO - cycle speaker colors
 
   const std::vector<std::string> m_speaker_names;
-  const std::string speaker_name_by_index(int index);
-  int speaker_index_by_name(const std::string& name);
 
   void repl_rebuild_text();
   void repl_play_vag(const std::string& name);

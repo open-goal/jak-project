@@ -28,18 +28,6 @@ bool Subtitle2Editor::is_scene_in_current_lang(const std::string& scene_name) {
   return m_subtitle_db.m_banks.at(m_current_language)->scenes.count(scene_name) > 0;
 }
 
-const std::string Subtitle2Editor::speaker_name_by_index(int index) {
-  return m_speaker_names.at(index);
-}
-int Subtitle2Editor::speaker_index_by_name(const std::string& name) {
-  for (int i = 0; i < m_speaker_names.size(); ++i) {
-    if (m_speaker_names.at(i) == name) {
-      return i + 1;
-    }
-  }
-  return 0;
-}
-
 void Subtitle2Editor::repl_rebuild_text() {
   // reload subtitles immediately
   m_repl.eval("(reload-subtitles)");
@@ -207,8 +195,7 @@ void Subtitle2Editor::draw_repl_options() {
 void Subtitle2Editor::draw_speaker_options() {
   if (ImGui::TreeNode("Speakers")) {
     const auto bank = m_subtitle_db.m_banks[m_current_language];
-    for (int i = 0; i < m_speaker_names.size(); ++i) {
-      auto speaker_name = speaker_name_by_index(i);
+    for (auto& speaker_name : m_speaker_names) {
       // ImGui::SameLine();
       if (bank->speakers.count(speaker_name) == 0) {
         // no speaker yet.
@@ -337,6 +324,13 @@ void Subtitle2Editor::draw_subtitle_options(Subtitle2Scene& scene,
                          ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
       if (ImGui::BeginCombo("Speaker",
                             fmt::format("{} ({})", speaker_text.c_str(), line->speaker).c_str())) {
+        const bool isSelected = line->speaker == "none";
+        if (ImGui::Selectable("none", isSelected)) {
+          line->speaker = "none";
+        }
+        if (isSelected) {
+          ImGui::SetItemDefaultFocus();
+        }
         for (auto& speaker_name : m_speaker_names) {
           if (bank->speakers.count(speaker_name) == 0) {
             continue;
@@ -384,19 +378,25 @@ void Subtitle2Editor::draw_new_cutscene_line_form() {
   ImGui::InputFloat2("Start and End Frame", m_current_scene_frame, "%.0f",
                      ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
   const auto& speakers = bank->speakers;
-  if (speakers.count(m_current_scene_speaker) == 0 && speakers.size() > 0) {
+  if (speakers.count(m_current_scene_speaker) == 0) {
     // pick whatever the first one it finds is
-    m_current_scene_speaker = speakers.begin()->first;
+    m_current_scene_speaker = "none";
   }
 
   if (ImGui::BeginCombo("Speaker",
-                        speakers.count(m_current_scene_speaker) == 0
-                            ? "N/A"
+                        m_current_scene_speaker == "none"
+                            ? "none"
                             : fmt::format("{} ({})", speakers.at(m_current_scene_speaker),
                                           m_current_scene_speaker)
                                   .c_str())) {
-    for (int i = 0; i < m_speaker_names.size(); ++i) {
-      auto speaker_name = speaker_name_by_index(i);
+    const bool isSelected = m_current_scene_speaker == "none";
+    if (ImGui::Selectable("none", isSelected)) {
+      m_current_scene_speaker = "none";
+    }
+    if (isSelected) {
+      ImGui::SetItemDefaultFocus();
+    }
+    for (auto& speaker_name : m_speaker_names) {
       if (speakers.count(speaker_name) == 0) {
         continue;
       }
