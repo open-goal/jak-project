@@ -2397,6 +2397,11 @@ void link() {
 #include "game/mips2c/mips2c_private.h"
 
 namespace Mips2C::jak2 {
+// main function for (parent bone, transformq) -> child bone
+// this is used to compute world-space bones, used for collision and similar.
+// This includes the weird w divisor thing
+// This does not take into account the bind pose for mesh drawing.
+// (that's handled in bones.gc, which combines this with the bind pose to get the merc/pris matrix)
 namespace cspace_parented_transformq_joint {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -2419,6 +2424,7 @@ u64 execute(void* ctxt) {
   c->lqc2(vf7, 0, t0);                              // lqc2 vf7, 0(t0)
   c->vsub_bc(DEST::z, BC::y, vf2, vf0, vf5);        // vsuby.z vf2, vf0, vf5
   c->lqc2(vf8, 16, t0);                             // lqc2 vf8, 16(t0)
+  // sets vf2.w to 0
   c->vsub_bc(DEST::w, BC::w, vf2, vf0, vf0);        // vsubw.w vf2, vf0, vf0
   c->lqc2(vf9, 32, t0);                             // lqc2 vf9, 32(t0)
   c->vsub_bc(DEST::x, BC::z, vf3, vf0, vf5);        // vsubz.x vf3, vf0, vf5
@@ -2483,9 +2489,24 @@ u64 execute(void* ctxt) {
   c->vmul_bc(DEST::xyzw, BC::x, vf2, vf2, vf1);     // vmulx.xyzw vf2, vf2, vf1
   c->vmul_bc(DEST::xyzw, BC::y, vf3, vf3, vf1);     // vmuly.xyzw vf3, vf3, vf1
   c->vmul_bc(DEST::xyzw, BC::z, vf4, vf4, vf1);     // vmulz.xyzw vf4, vf4, vf1
+  // here, f4 is 1/scale. Sometimes the scale out of the joint compression code is slightly negative
+  // this leads to mfc1 sign extending 1's into the upper 32 bits of t3 (this is weirdly how the ps2
+  // does it).
   c->mfc1(t3, f4);                                  // mfc1 t3, f4
+  // and this brings those ones into bits 96-128
   c->pcpyld(t1, t3, t1);                            // pcpyld t1, t3, t1
+  // so here, vf16.w is usually 0, except for when the scale is negative, then it's 0xffff'ffff
+  // (NaN on x86, -BIG on PS2)
   c->mov128_vf_gpr(vf16, t1);                       // qmtc2.i vf16, t1
+  // here, vf2/3/4's w's are all 0. On PS2, this always keeps them as 0.
+  // but on x86, this propagates NaNs: 0 * NaN = NaN.
+  // so:
+  c->vfs[vf16].vf.w() = 0; // PATCH to clear invalid float that will be multiplied by 0 below
+  // (this might seem weird because the multiplication sequence could have 3 instructions removed
+  //  because we know that vf2/3/4.w are all 0. But maybe this is just copy-pasted, or it didn't
+  //  really matter because it would have stalled in place of that 1 cycle instruction because
+  //  multiplication latency is 4).
+
   c->vmul(DEST::xyzw, vf2, vf2, vf16);              // vmul.xyzw vf2, vf2, vf16
   c->vmul(DEST::xyzw, vf3, vf3, vf16);              // vmul.xyzw vf3, vf3, vf16
   c->vmul(DEST::xyzw, vf4, vf4, vf16);              // vmul.xyzw vf4, vf4, vf16
