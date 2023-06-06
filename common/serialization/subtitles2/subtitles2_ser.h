@@ -17,8 +17,9 @@ struct Subtitle2Line {
                 float end,
                 const std::string& text,
                 const std::string& speaker,
-                bool offscreen)
-      : start(start), end(end), text(text), speaker(speaker), offscreen(offscreen) {}
+                bool offscreen,
+                bool merge)
+      : start(start), end(end), text(text), speaker(speaker), offscreen(offscreen), merge(merge) {}
 
   float start, end;
 
@@ -27,7 +28,7 @@ struct Subtitle2Line {
   // name in enum. saved as int later.
   std::string speaker;
 
-  bool offscreen;
+  bool offscreen, merge;
 
   bool operator<(const Subtitle2Line& other) const {
     return (start < other.start) || (start == other.start && end < other.end);

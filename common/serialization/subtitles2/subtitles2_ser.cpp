@@ -83,6 +83,7 @@ void to_json(json& j, const Subtitle2Line& obj) {
   j = json{{"start", obj.start},
            {"end", obj.end},
            {"offscreen", obj.offscreen},
+           {"merge", obj.merge},
            {"speaker", obj.speaker},
            {"text", obj.text}};
 }
@@ -90,6 +91,7 @@ void from_json(const json& j, Subtitle2Line& obj) {
   json_deserialize_if_exists(start);
   json_deserialize_if_exists(end);
   json_deserialize_if_exists(offscreen);
+  json_deserialize_if_exists(merge);
   json_deserialize_if_exists(speaker);
   json_deserialize_if_exists(text);
 }

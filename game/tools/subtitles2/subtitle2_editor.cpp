@@ -355,6 +355,9 @@ void Subtitle2Editor::draw_subtitle_options(Subtitle2Scene& scene,
       }
       ImGui::InputText("Text", &line->text);
       ImGui::Checkbox("Offscreen?", &line->offscreen);
+      ImGui::SameLine();
+      ImGui::Checkbox("Merge text?", &line->merge);
+      ImGui::NewLine();
       if (scene.lines.size() > 1) {  // prevent creating an empty scene
         ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
         if (ImGui::Button("Delete")) {
@@ -410,8 +413,11 @@ void Subtitle2Editor::draw_new_cutscene_line_form() {
   }
   ImGui::InputText("Text", &m_current_scene_text);
   ImGui::Checkbox("Offscreen?", &m_current_scene_offscreen);
+  ImGui::SameLine();
+  ImGui::Checkbox("Merge text?", &m_current_scene_merge);
+  ImGui::NewLine();
   if (m_current_scene_frame[0] < 0 || m_current_scene_frame[1] < 0 ||
-      m_current_scene_text.empty()) {
+      (m_current_scene_text.empty() && !m_current_scene_merge)) {
     ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
     ImGui::Text("Can't add a new text entry with the current fields!");
     ImGui::PopStyleColor();
@@ -419,7 +425,7 @@ void Subtitle2Editor::draw_new_cutscene_line_form() {
     if (ImGui::Button("Add Text Entry")) {
       m_current_scene->lines.emplace_back(m_current_scene_frame[0], m_current_scene_frame[1],
                                           m_current_scene_text, m_current_scene_speaker,
-                                          m_current_scene_offscreen);
+                                          m_current_scene_offscreen, m_current_scene_merge);
       // TODO - sorting after every insertion is slow, sort on the add scene instead
       std::sort(m_current_scene->lines.begin(), m_current_scene->lines.end());
     }

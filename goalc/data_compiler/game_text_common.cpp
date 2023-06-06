@@ -184,12 +184,17 @@ void compile_subtitle2(GameSubtitle2DB& db, const std::string& output_prefix) {
       array_link_sources.pop();
 
       for (auto& line : scene.lines) {
-        gen.add_word_float(line.start);                                        // start frame
-        gen.add_word_float(line.end);                                          // end frame
-        gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(line.text));  // line text
-        u16 speaker = speaker_index_by_name(line.speaker);                     // speaker
+        gen.add_word_float(line.start);  // start frame
+        gen.add_word_float(line.end);    // end frame
+        if (!line.merge) {
+          gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(line.text));  // line text
+        } else {
+          gen.add_symbol_link("#f");
+        }
+        u16 speaker = speaker_index_by_name(line.speaker);
         u16 flags = 0;
         flags |= line.offscreen << 0;
+        flags |= line.merge << 1;
         gen.add_word(speaker | (flags << 16));  // speaker (lo) + flags (hi)
       }
     }
