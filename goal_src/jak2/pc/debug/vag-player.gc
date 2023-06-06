@@ -404,8 +404,61 @@
     )
   )
 
-;; start the subtitle2 process when this file loads.
+;; start the vag-player process when this file loads.
 (vag-player-start)
 
 
+(defun scene-find-and-play ((name string))
+  "go through the scene player list to find and play the requested scene"
+
+  (vag-player-stop)
+  (cond
+    ;; hardcoded cases for the continue points
+    ((string= "intro-city-square" name)
+      (process-spawn scene-player :init scene-player-init name #t "ctyindb-intro-start"))
+    ((string= "intro-prison" name)
+      (process-spawn scene-player :init scene-player-init name #t "prison-intro-start"))
+    ((string= "outro-nest" name)
+      (set! (-> palout memory-mode) (load-buffer-mode borrow))
+      (set! (-> hiphog memory-mode) (load-buffer-mode small-center))
+      (process-spawn scene-player :init scene-player-init name #t "nestb-outro"))
+    ((string= "outro-palace" name)
+      (set! (-> palout memory-mode) (load-buffer-mode borrow))
+      (set! (-> hiphog memory-mode) (load-buffer-mode small-center))
+      (process-spawn scene-player :init scene-player-init name #t "throne-outro"))
+    ((string= "outro-hiphog" name)
+      (set! (-> hiphog memory-mode) (load-buffer-mode small-center))
+      (process-spawn scene-player :init scene-player-init name #t "hiphog-outro"))
+    ((string= "outro-port" name)
+      (set! (-> hiphog memory-mode) (load-buffer-mode small-center))
+      (process-spawn scene-player :init scene-player-init name #t "ctyport-outro"))
+    (else
+      (let* ((find-scene-in-act
+                (lambda ((scene-list (array hud-scene-info)) (name string))
+                  ;; for each scene in list
+                  (doarray (scene-info scene-list)
+                    ;; scene name matches - return that immediately
+                    (if (and (string? (-> scene-info info)) (string= (the string (-> scene-info info)) name))
+                        (return scene-info))
+                    ;; scene name didn't match, see if there is a scene playlist
+                    ;; if there is, then find our scene there
+                    (when (pair? (-> scene-info info))
+                      (let ((iter (the pair (-> scene-info info))))
+                        (while (not (null? iter))
+                          (if (and (string? (car iter)) (string= (the string (car iter)) name))
+                              (return scene-info))
+                          (set! iter (cdr iter))
+                          )
+                        )
+                      )
+                    )
+                  (the hud-scene-info #f))))
+        (awhen (or (find-scene-in-act *hud-select-scene-act1* name)
+                   (find-scene-in-act *hud-select-scene-act2* name)
+                   (find-scene-in-act *hud-select-scene-act3* name))
+          (process-spawn scene-player :init scene-player-init name #t (-> (the hud-scene-info it) continue))
+          )
+        )
+      ))
+  0)
 

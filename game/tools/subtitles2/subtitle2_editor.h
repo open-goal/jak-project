@@ -69,7 +69,7 @@ class Subtitle2Editor {
   const std::vector<std::string> m_speaker_names;
 
   void repl_rebuild_text();
-  void repl_play_vag(const std::string& name);
+  void repl_play_vag(const std::string& name, bool is_scene);
 
   bool is_scene_in_current_lang(const std::string& scene_name);
 };

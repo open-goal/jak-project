@@ -31,6 +31,8 @@
 
 (defconstant PC_SUBTITLE_Y_RECALC -99.0)
 
+(defconstant PC_SUBTITLE_DISABLE_MOVIE_MODE #f)
+
 (defconstant PC_SUB_DBG_Y 32)
 (defconstant PC_SUB_DBG_CHECK_GROUP_SIZE 22)
 (defglobalconstant PC_SUBTITLE_DEBUG #f)
@@ -55,10 +57,17 @@
   ;; invalid name so return invalid scene.
   (if (not name)
       (return (the subtitle2-scene #f)))
+  
+  ;; bounds checking
+  (when (> (length name) (-> *vag-temp-string* allocated-length))
+      (format 0 "vag temp string is too short!! wanted: ~D chars~%" (length name)))
 
   ;; uppercase the string so we have a consistent name format
   (string-upcase name *vag-temp-string*)
   (dotimes (i (length obj))
+    ;; bounds checking
+    (when (> (length (-> obj data i name)) (-> *vag-temp-string-2* allocated-length))
+        (format 0 "vag temp string is too short!! wanted: ~D chars~%" (length name)))
     ;; name and kind matches, return that!
     (string-upcase (-> obj data i name) *vag-temp-string-2*)
     (when (string= *vag-temp-string-2* *vag-temp-string*)
@@ -309,9 +318,12 @@
 (defmethod subtitle-format subtitle2 ((obj subtitle2) (line subtitle2-line))
   "format the string for a subtitle line to *temp-string*"
 
-  (if (subtitle2-flags? line merge)
-      (set! (-> line text) (-> obj movie-line)))
+  (when (subtitle2-flags? line merge)
+    (if (and (-> obj movie-mode?) (< 0 (length (-> obj movie-line))))
+        (set! (-> line text) (-> obj movie-line))
+        (set! (-> obj line-valid?) #f)))
 
+  (set! (-> obj line-valid?) #t)
   (cond
     ((= (pc-subtitle2-speaker none) (-> line speaker))
      ;; there's no speaker so who cares.
@@ -326,8 +338,10 @@
     )
   *temp-string*)
 
-(defun current-subtitle2-pos ((id sound-id))
+(defbehavior current-subtitle2-pos subtitle2 ((id sound-id))
   "get the str position for this sound id in a 30/sec measurement"
+  (if (and (-> self movie-mode?) (= id (-> self movie-gui id)))
+      (return (-> self movie-pos)))
   (let ((pos (the float (current-str-pos id))))
     (if (< pos 0.0) -1.0 (/ pos (/ 1024.0 30)))))
 
@@ -397,11 +411,11 @@
     (when (-> self queue i gui)
       (let ((pos (current-subtitle2-pos (-> self queue i id))))
         (when (and (zero? q) *debug-segment*)
-            (format *stdcon* "subtitle pos: ~3L~D~0L~%" (the int pos)))
+            (format *stdcon* "subtitle pos: ~3L~D~0L (~S)~%" (the int pos) (-> self queue i gui name)))
 
-        (dotimes (ii PC_SUBTITLE_QUEUE_MAX_LINES)
-          (let ((scene (get-scene-by-name *subtitle2-text* (-> self queue i gui name))))
-          (when scene
+        (let ((scene (get-scene-by-name *subtitle2-text* (-> self queue i gui name))))
+        (when scene
+          (dotimes (ii PC_SUBTITLE_QUEUE_MAX_LINES)
             (awhen (get-line-at-pos scene pos ii)
               (case q
                 ((0)
@@ -437,37 +451,39 @@
     (when (-> line-queue i line)
 
       (subtitle-format self (-> line-queue i line))
-      (set! this-height (print-game-text *temp-string* (-> self font) #t 44 (bucket-id debug-no-zbuf2)))
+      (when (-> self line-valid?)
 
-      ;; push subtitle up since we are not the first one
-      (when (nonzero? lines-done)
-        (-! cur-y (/ last-height 2))
-        (-! cur-y (/ this-height 2))
-        )
+        (set! this-height (print-game-text *temp-string* (-> self font) #t 44 (bucket-id debug-no-zbuf2)))
 
-      ;; set the current y, it shall not be lower than the previous line!
-      (if (= (-> line-queue i y) PC_SUBTITLE_Y_RECALC)
-          (set! (-> line-queue i y) (- start-y cur-y))
-          (set! cur-y (min cur-y (- start-y (-> line-queue i y)))))
-      (set! (-> self font origin y) cur-y)
+        ;; push subtitle up since we are not the first one
+        (when (nonzero? lines-done)
+          (-! cur-y (/ last-height 2))
+          (-! cur-y (/ this-height 2))
+          )
 
-      ;; check if we should actually draw subtitles and do it
-      (when (and (-> *setting-control* user-current subtitle) (or *gui-kick-str* (= *master-mode* 'game)))
-        (set-action! *gui-control* (gui-action play) (-> self gui-id)
-                    (gui-channel none) (gui-action none) (the-as string #f) (the-as (function gui-connection symbol) #f) (the-as process #f))
+        ;; set the current y, it shall not be lower than the previous line!
+        (if (= (-> line-queue i y) PC_SUBTITLE_Y_RECALC)
+            (set! (-> line-queue i y) (- start-y cur-y))
+            (set! cur-y (min cur-y (- start-y (-> line-queue i y)))))
+        (set! (-> self font origin y) cur-y)
 
-        (when (= (gui-status active) (get-status *gui-control* (-> self gui-id)))
-            (true! subtitles-drawn?)
-            (protect (*display-text-box*)
-            (set! *display-text-box* (or *display-text-box* PC_SUBTITLE_DEBUG))
-            (set-speaker-color (-> line-queue i line speaker))
-            (print-game-text *temp-string* (-> self font) #f 44 (bucket-id debug-no-zbuf2))))
-        )
+        ;; check if we should actually draw subtitles and do it
+        (when (and (-> *setting-control* user-current subtitle) (or *gui-kick-str* (= *master-mode* 'game)))
+          (set-action! *gui-control* (gui-action play) (-> self gui-id)
+                      (gui-channel none) (gui-action none) (the-as string #f) (the-as (function gui-connection symbol) #f) (the-as process #f))
 
-      ;; save this for later usage
-      (set! last-height this-height)
-      (1+! lines-done)
-      )
+          (when (= (gui-status active) (get-status *gui-control* (-> self gui-id)))
+              (true! subtitles-drawn?)
+              (protect (*display-text-box*)
+              (set! *display-text-box* (or *display-text-box* PC_SUBTITLE_DEBUG))
+              (set-speaker-color (-> line-queue i line speaker))
+              (print-game-text *temp-string* (-> self font) #f 44 (bucket-id debug-no-zbuf2))))
+          )
+
+        ;; save this for later usage
+        (set! last-height this-height)
+        (1+! lines-done)
+        ))
     )
   
   (set! (-> self have-subtitles?) subtitles-drawn?)
@@ -558,6 +574,7 @@
             (return #f))
 
         (set! (-> self movie-mode?) #t)
+        (set! (-> self movie-pos) (the-as float (-> block param 2)))
 
         (when (!= msg 'movie-no-subtitle)
           (copyn-charp<-string  (-> self movie-line data) (the-as string (-> block param 1))
@@ -567,13 +584,14 @@
           (set! (-> self have-subtitles?) #f)
           (setup-subtitle2-font (-> self font))
           ;; we're gonna use the same font as the movie subtitles
-          (let ((movie-font (the-as font-context (-> block param 2))))
-              (set! (-> self font origin x) (-> movie-font origin x))
-              (set! (-> self font origin y) (-> movie-font origin y))
-              (set! (-> self font scale) (-> movie-font scale))
-              (set! (-> self font width) (-> movie-font width))
-              (set! (-> self font height) (-> movie-font height))
-              ))
+          (set-origin! (-> self font) 20 290)
+          (set-width! (-> self font) 465)
+          (set-height! (-> self font) 70)
+          (set-scale! (-> self font) 0.5)
+
+          (when (= (-> *setting-control* user-current subtitle-language) (language-enum korean))
+            (set-scale! (-> self font) 0.6))
+          )
         #t)
       )
     )
@@ -626,6 +644,7 @@
           (format *stdcon* "subtitle2 movie-mode~%"))
       (set! (-> self movie-gui) #f)
       (set! (-> self movie-mode?) #f)
+      (clear (-> self movie-line))
       )
     0)
 

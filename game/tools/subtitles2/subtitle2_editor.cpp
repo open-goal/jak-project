@@ -33,8 +33,12 @@ void Subtitle2Editor::repl_rebuild_text() {
   m_repl.eval("(reload-subtitles)");
 }
 
-void Subtitle2Editor::repl_play_vag(const std::string& name) {
-  m_repl.eval(fmt::format("(vag-player-play-from-name \"{}\")", name));
+void Subtitle2Editor::repl_play_vag(const std::string& name, bool is_scene) {
+  if (is_scene) {
+    m_repl.eval(fmt::format("(scene-find-and-play \"{}\")", name));
+  } else {
+    m_repl.eval(fmt::format("(vag-player-play-from-name \"{}\")", name));
+  }
 }
 
 void Subtitle2Editor::draw_window() {
@@ -295,7 +299,7 @@ void Subtitle2Editor::draw_subtitle_options(Subtitle2Scene& scene,
   } else {
     // Cutscenes
     if (ImGui::Button("Play Scene")) {
-      repl_play_vag(name);
+      repl_play_vag(name, scene.scene);
     }
   }
   if (current_scene) {
