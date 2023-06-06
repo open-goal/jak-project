@@ -321,9 +321,8 @@
   (when (subtitle2-flags? line merge)
     (if (and (-> obj movie-mode?) (< 0 (length (-> obj movie-line))))
         (set! (-> line text) (-> obj movie-line))
-        (set! (-> obj line-valid?) #f)))
+        (return (the string #f))))
 
-  (set! (-> obj line-valid?) #t)
   (cond
     ((= (pc-subtitle2-speaker none) (-> line speaker))
      ;; there's no speaker so who cares.
@@ -448,42 +447,39 @@
         )
 
   (dotimes (i PC_SUBTITLE_QUEUE_MAX_LINES)
-    (when (-> line-queue i line)
+    (when (and (-> line-queue i line) (subtitle-format self (-> line-queue i line)))
 
-      (subtitle-format self (-> line-queue i line))
-      (when (-> self line-valid?)
+      (set! this-height (print-game-text *temp-string* (-> self font) #t 44 (bucket-id debug-no-zbuf2)))
 
-        (set! this-height (print-game-text *temp-string* (-> self font) #t 44 (bucket-id debug-no-zbuf2)))
+      ;; push subtitle up since we are not the first one
+      (when (nonzero? lines-done)
+        (-! cur-y (/ last-height 2))
+        (-! cur-y (/ this-height 2))
+        )
 
-        ;; push subtitle up since we are not the first one
-        (when (nonzero? lines-done)
-          (-! cur-y (/ last-height 2))
-          (-! cur-y (/ this-height 2))
-          )
+      ;; set the current y, it shall not be lower than the previous line!
+      (if (= (-> line-queue i y) PC_SUBTITLE_Y_RECALC)
+          (set! (-> line-queue i y) (- start-y cur-y))
+          (set! cur-y (min cur-y (- start-y (-> line-queue i y)))))
+      (set! (-> self font origin y) cur-y)
 
-        ;; set the current y, it shall not be lower than the previous line!
-        (if (= (-> line-queue i y) PC_SUBTITLE_Y_RECALC)
-            (set! (-> line-queue i y) (- start-y cur-y))
-            (set! cur-y (min cur-y (- start-y (-> line-queue i y)))))
-        (set! (-> self font origin y) cur-y)
+      ;; check if we should actually draw subtitles and do it
+      (when (and (-> *setting-control* user-current subtitle) (or *gui-kick-str* (= *master-mode* 'game)))
+        (set-action! *gui-control* (gui-action play) (-> self gui-id)
+                    (gui-channel none) (gui-action none) (the-as string #f) (the-as (function gui-connection symbol) #f) (the-as process #f))
 
-        ;; check if we should actually draw subtitles and do it
-        (when (and (-> *setting-control* user-current subtitle) (or *gui-kick-str* (= *master-mode* 'game)))
-          (set-action! *gui-control* (gui-action play) (-> self gui-id)
-                      (gui-channel none) (gui-action none) (the-as string #f) (the-as (function gui-connection symbol) #f) (the-as process #f))
+        (when (= (gui-status active) (get-status *gui-control* (-> self gui-id)))
+            (true! subtitles-drawn?)
+            (protect (*display-text-box*)
+            (set! *display-text-box* (or *display-text-box* PC_SUBTITLE_DEBUG))
+            (set-speaker-color (-> line-queue i line speaker))
+            (print-game-text *temp-string* (-> self font) #f 44 (bucket-id debug-no-zbuf2))))
+        )
 
-          (when (= (gui-status active) (get-status *gui-control* (-> self gui-id)))
-              (true! subtitles-drawn?)
-              (protect (*display-text-box*)
-              (set! *display-text-box* (or *display-text-box* PC_SUBTITLE_DEBUG))
-              (set-speaker-color (-> line-queue i line speaker))
-              (print-game-text *temp-string* (-> self font) #f 44 (bucket-id debug-no-zbuf2))))
-          )
-
-        ;; save this for later usage
-        (set! last-height this-height)
-        (1+! lines-done)
-        ))
+      ;; save this for later usage
+      (set! last-height this-height)
+      (1+! lines-done)
+      )
     )
   
   (set! (-> self have-subtitles?) subtitles-drawn?)
