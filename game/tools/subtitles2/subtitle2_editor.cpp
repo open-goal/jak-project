@@ -113,7 +113,6 @@ void Subtitle2Editor::draw_window() {
       }
       ImGui::SameLine();
       ImGui::Checkbox("Add as Current Scene", &m_add_new_scene_as_current);
-      ImGui::NewLine();
     }
 
     draw_all_scenes();
@@ -351,7 +350,6 @@ void Subtitle2Editor::draw_subtitle_options(Subtitle2Scene& scene,
       ImGui::Checkbox("Offscreen?", &line->offscreen);
       ImGui::SameLine();
       ImGui::Checkbox("Merge text?", &line->merge);
-      ImGui::NewLine();
       if (scene.lines.size() > 1) {  // prevent creating an empty scene
         ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
         if (ImGui::Button("Delete")) {
@@ -415,7 +413,6 @@ void Subtitle2Editor::draw_new_cutscene_line_form() {
   ImGui::Checkbox("Offscreen?", &m_current_scene_offscreen);
   ImGui::SameLine();
   ImGui::Checkbox("Merge text?", &m_current_scene_merge);
-  ImGui::NewLine();
   if (m_current_scene_frame[0] < 0 || m_current_scene_frame[1] < 0 ||
       (m_current_scene_text.empty() && !m_current_scene_merge)) {
     ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
