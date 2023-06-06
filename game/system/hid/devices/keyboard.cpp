@@ -19,7 +19,7 @@ void KeyboardDevice::process_event(const SDL_Event& event,
     if (key_event.repeat != 0) {
       return;
     }
-    if (m_ignore_key_on_keyup && m_ignore_key_on_keyup.value() == key_event.keysym.sym &&
+    if (m_ignore_key_on_keyup && m_ignore_key_on_keyup.value() == (u32)key_event.keysym.sym &&
         event.type == SDL_KEYUP) {
       m_ignore_key_on_keyup = std::nullopt;
       return;

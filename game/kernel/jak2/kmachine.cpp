@@ -606,7 +606,7 @@ u32 alloc_vagdir_names(u32 heap_sym) {
     *alloced_heap = gVagDir.count;
     // use entry -1 to get the amount
     alloced_heap = alloced_heap + 8;
-    for (int i = 0; i < gVagDir.count; ++i) {
+    for (size_t i = 0; i < gVagDir.count; ++i) {
       char vagname_temp[9];
       memcpy(vagname_temp, gVagDir.vag[i].name, 8);
       for (int j = 0; j < 8; ++j) {
