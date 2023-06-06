@@ -446,33 +446,37 @@ std::string write_spool_subtitles(
     file_util::create_dir_if_needed(image_out);
   }
 
-  constexpr bool as_json = false;
+  constexpr bool as_json = true;
   if constexpr (as_json) {
+    constexpr bool dump_text = false;
+    constexpr int lang = 0;
     // no line data
     bool has_spools = false;
     for (auto& [spool_name, subs] : data) {
       result += "    \"" + spool_name + "\": {\n";
+      result += "      \"scene\": true,\n";
       result += "      \"lines\": [\n";
       bool has_subs = false;
       for (auto& sub : subs) {
-        bool has_text = false;
-        for (int i = 0; i < 8; ++i) {
-          const auto& msg = sub.message[i];
-          if (msg.kind == SpoolSubtitleMessage::Kind::STRING) {
-            has_text = true;
-            break;
-          }
-        }
-        if (!has_text) {
+        const auto& msg = sub.message[lang];
+        if (msg.kind != SpoolSubtitleMessage::Kind::STRING) {
           continue;
         }
         result += "        {\n";
         result += "          \"end\": " + float_to_string(sub.end_frame) + ",\n";
-        result += "          \"merge\": true,\n";
+        if (dump_text) {
+          result += "          \"merge\": false,\n";
+        } else {
+          result += "          \"merge\": true,\n";
+        }
         result += "          \"offscreen\": false,\n";
         result += "          \"speaker\": \"none\",\n";
         result += "          \"start\": " + float_to_string(sub.start_frame) + ",\n";
-        result += "          \"text\": \"\"\n";
+        if (dump_text) {
+          result += "          \"text\": \"" + msg.text + "\"\n";
+        } else {
+          result += "          \"text\": \"\"\n";
+        }
         result += "        },\n";
         has_subs = true;
       }

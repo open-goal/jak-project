@@ -38,7 +38,7 @@ void to_json(json& j, const Subtitle2Line& obj);
 void from_json(const json& j, Subtitle2Line& obj);
 
 struct Subtitle2Scene {
-  // bool merge_mode;
+  bool scene = false;
 
   std::vector<Subtitle2Line> lines;
 };

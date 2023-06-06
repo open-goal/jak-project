@@ -78,6 +78,8 @@ void Subtitle2Editor::draw_window() {
   }
   if (ImGui::TreeNode("Currently Selected Cutscene")) {
     ImGui::Text("%s", m_current_scene_name.c_str());
+    ImGui::SameLine();
+    ImGui::Checkbox("Cutscene?", &m_current_scene->scene);
     ImGui::PopStyleColor();
     if (m_current_scene) {
       draw_subtitle_options(*m_current_scene, m_current_scene_name, true);
@@ -427,5 +429,4 @@ void Subtitle2Editor::draw_new_cutscene_line_form() {
       std::sort(m_current_scene->lines.begin(), m_current_scene->lines.end());
     }
   }
-  ImGui::NewLine();
 }
