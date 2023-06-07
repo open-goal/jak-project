@@ -9,6 +9,6 @@ namespace formatter {
 
 // TODO - populate these more
 
-const std::unordered_map<std::string, std::vector<std::shared_ptr<FormattingRule>>> opengoal_rules =
-    {{"defun", {std::make_shared<InnerFormattingRule>(1)}}};
+const std::unordered_map<std::string, std::vector<std::shared_ptr<IndentationRule>>>
+    opengoal_indentation_rules = {{"defun", {std::make_shared<InnerIndentationRule>(1)}}};
 }  // namespace formatter

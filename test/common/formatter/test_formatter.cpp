@@ -35,7 +35,7 @@ struct TestDefinition {
   std::string output;
 };
 
-bool run_tests(const fs::path& file_path, const bool only_important_tests) {
+std::vector<TestDefinition> get_test_definitions(const fs::path& file_path) {
   // Read in the file, and run the test
   const auto contents = str_util::split(file_util::read_text_file(file_path));
   std::vector<TestDefinition> tests;
@@ -74,6 +74,21 @@ bool run_tests(const fs::path& file_path, const bool only_important_tests) {
       continue;
     }
   }
+  return tests;
+}
+
+bool has_important_tests(const fs::path& file_path) {
+  const auto& tests = get_test_definitions(file_path);
+  for (const auto& test : tests) {
+    if (str_util::starts_with(test.name, "!")) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool run_tests(const fs::path& file_path, const bool only_important_tests) {
+  const auto& tests = get_test_definitions(file_path);
   // Run the tests, report successes and failures
   bool test_failed = false;
   fmt::print("{}:\n", fmt::styled(file_util::base_name(file_path.string()),
@@ -103,11 +118,19 @@ bool run_tests(const fs::path& file_path, const bool only_important_tests) {
   return test_failed;
 }
 
-bool find_and_run_tests(const bool only_important_tests) {
+bool find_and_run_tests() {
   // Enumerate test files
   const auto test_files = file_util::find_files_recursively(
       file_util::get_file_path({"test/common/formatter/corpus"}), std::regex("^.*\.test.gc$"));
   bool failed = false;
+  // First do a pass to see if any tests are meant to be prioritized for debugging
+  bool only_important_tests = false;
+  for (const auto& file : test_files) {
+    only_important_tests = has_important_tests(file);
+    if (only_important_tests) {
+      break;
+    }
+  }
   for (const auto& file : test_files) {
     // don't fail fast, but any failure means we return false
     if (failed) {
@@ -120,9 +143,5 @@ bool find_and_run_tests(const bool only_important_tests) {
 }
 
 TEST(Formatter, FormatterTests) {
-  // TODO - when i get annoyed enough, make this not a manual change and pre-scan the tests to see
-  // if there are any flagged tests
-  //
-  // This is to make it easier to run an individual test when debugging
-  EXPECT_TRUE(find_and_run_tests(false));
+  EXPECT_TRUE(find_and_run_tests());
 }
