@@ -300,6 +300,48 @@
 ;; String utilities
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun string-upcase ((in string) (out string))
+  "Uppercase the given string."
+  (let* ((in-ptr (-> in data))
+         (in-data (-> in-ptr 0))
+         (in-idx 1)
+         (out-idx 0)
+         )
+    (while (nonzero? in-data)
+      (if (and (>= in-data (the-as uint 97)) (>= (the-as uint 122) in-data))
+          (+! in-data -32)
+          )
+      (set! (-> out data out-idx) in-data)
+      (set! in-data (-> in-ptr in-idx))
+      (+! in-idx 1)
+      (+! out-idx 1)
+      )
+    (set! (-> out data out-idx) (the-as uint 0))
+    )
+  out
+  )
+
+(defun string-downcase ((in string) (out string))
+  "Lowercase the given string."
+  (let* ((in-ptr (-> in data))
+         (in-data (-> in-ptr 0))
+         (in-idx 1)
+         (out-idx 0)
+         )
+    (while (nonzero? in-data)
+      (if (and (>= in-data (the-as uint 97)) (>= (the-as uint 122) in-data))
+          (+! in-data 32)
+          )
+      (set! (-> out data out-idx) in-data)
+      (set! in-data (-> in-ptr in-idx))
+      (+! in-idx 1)
+      (+! out-idx 1)
+      )
+    (set! (-> out data out-idx) (the-as uint 0))
+    )
+  out
+  )
+
 (defun charp-basename ((charp (pointer uint8)))
   "Like basename in C"
   (let ((ptr charp))
@@ -755,8 +797,9 @@
 (define *stdcon1* (new 'global 'string 16384 (the string #f)))
 (define *stdcon* *stdcon0*)
 
-;; shared temporary string.
+;; shared temporary strings.
 (define *temp-string* (new 'global 'string 256 (the string #f)))
+(define *temp-string2* (new 'global 'string 256 (the string #f)))
 
 (defmacro string-format (&rest args)
   "Formats into *temp-string* and returns it, for in-place string formating.

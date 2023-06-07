@@ -46,17 +46,23 @@
   (unknown 15)
   )
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; updates
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod set-display-mode! pc-settings ((obj pc-settings) (mode symbol))
   "sets the game's display mode"
-  ;; change the display mode.
-  (set! (-> obj display-mode) mode)
-  ;; if windowed mode, set the size properly
-  (when (= (-> obj display-mode) 'windowed)
-    (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height))))
+  ;; no-op if the display mode hasn't actually changed
+  (when (!= mode (-> obj display-mode))
+    ;; change the display mode.
+    (set! (-> obj display-mode) mode)
+    ;; set fullscreen to what we want
+    (pc-set-display-mode (-> obj display-mode))
+    ;; if windowed mode, set the size properly
+    (when (= (-> obj display-mode) 'windowed)
+      ;; TODO - this means the user can never have a window smaller than MIN_WIDTH/HEIGHT
+      (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height)))))
   0)
 
 (defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int))
@@ -93,16 +99,11 @@
   (set! (-> obj aspect-ratio-reciprocal) (/ ASPECT_4X3 aspect))
   (none))
 
-(defmethod set-window-lock! pc-settings ((obj pc-settings) (lock symbol))
-  "set the aspect ratio used for rendering."
-  (pc-set-window-lock lock)
-  (set! (-> obj window-lock?) lock))
-
 (defmethod set-frame-rate! pc-settings ((obj pc-settings) (rate int))
   "set the target framerate."
   (pc-set-frame-rate rate)
   (if (and (!= 'fullscreen (-> obj display-mode))
-           (!= (pc-get-screen-rate -1) rate))
+           (!= (pc-get-active-display-refresh-rate) rate))
       (set! (-> obj vsync?) #f))
   (case rate
     ((50)
@@ -123,13 +124,19 @@
 
 (defmethod set-monitor! pc-settings ((obj pc-settings) (monitor int))
   "set the monitor to use when in fullscreen/borderless"
-  (set! (-> obj monitor) monitor)
+  ;; if monitor selection is out of bounds (e.g. if a monitor got disconnected),
+  ;; then default to the primary monitor
+  (cond
+    ((>= (-> obj monitor) (pc-get-display-count))
+     (format 0 "Monitor selection out of bounds, defaulting to primary monitor.~%")
+     (set! (-> obj monitor) 0))
+    (else
+     (set! (-> obj monitor) monitor)))
+  (pc-set-fullscreen-display (-> obj monitor))
   (none))
 
 (defmethod commit-to-file pc-settings ((obj pc-settings))
   "commits the current settings to the file"
-  ;; auto load settings if available
-
   (format (clear *pc-temp-string-1*) "~S/pc-settings.gc" *pc-settings-folder*)
   (pc-mkdir-file-path *pc-temp-string-1*)
   (write-to-file obj *pc-temp-string-1*)
@@ -182,6 +189,7 @@
 (defmethod update-to-os pc-settings ((obj pc-settings))
   "Update settings from GOAL to the C kernel."
 
+  ;; TODO - move the below out of this function that runs every frame
   (cond
     ((-> obj letterbox?)
      (pc-set-letterbox (-> obj lbox-width) (-> obj lbox-height))
@@ -191,40 +199,29 @@
      )
     )
 
-  ;; if monitor selection is out of bounds (e.g. if a monitor got disconnected),
-  ;; then default to the primary monitor
-  (when (>= (-> obj monitor) (pc-get-monitor-count))
-    (format 0 "Monitor selection out of bounds, defaulting to primary monitor.~%")
-    (set! (-> obj monitor) 0)
-    )
+  (pc-set-vsync (-> obj vsync?))
+  (when (!= 'fullscreen (-> obj display-mode))
+      (if (< (pc-get-active-display-refresh-rate) (-> obj target-fps))
+          (pc-set-vsync #f))
+      (pc-set-frame-rate (-> obj target-fps)))
 
-  ;; set fullscreen to what we want
-  (pc-set-fullscreen (-> obj display-mode) (-> obj monitor))
-
-  ;; set window size and fps automatically if the window lock is enabled.
-  (when (-> obj window-lock?)
-    (pc-set-vsync (-> obj vsync?))
-
-    (when (!= 'fullscreen (-> obj display-mode))
-        (if (< (pc-get-screen-rate -1) (-> obj target-fps))
-            (pc-set-vsync #f))
-        (pc-set-frame-rate (-> obj target-fps)))
-    )
   ;; do game resolution
   (if (= (-> obj display-mode) 'windowed)
       (pc-set-game-resolution (-> obj real-width) (-> obj real-height))
       (pc-set-game-resolution (-> obj width) (-> obj height)))
 
-  ;; set msaa sample rate. if invalid, just reset to 4.
+  ;; set msaa sample rate. if invalid, just reset to 2.
   (let ((valid? #f))
       (dotimes (i 31)
         (if (= (-> obj gfx-msaa) (ash 1 i))
             (true! valid?))
         )
 
-      (if (not valid?) (set! (-> obj gfx-msaa) 4))
+      (if (not valid?) (set! (-> obj gfx-msaa) 2))
       (pc-set-msaa (-> obj gfx-msaa))
       )
+
+  ;; -- end TODO
 
   (pc-discord-rpc-set (if (-> obj discord-rpc?) 1 0))
 
@@ -256,7 +253,10 @@
   `(begin
     (cpad-clear! 0 r1)
     (logxor! ,cheats-var (pc-cheats ,cheat))
-    (cheats-sound-play (logtest? ,cheats-var (pc-cheats ,cheat)))
+    (if (-> *pc-settings* speedrunner-mode?)
+      (sound-play "cursor-options")
+      (cheats-sound-play (logtest? ,cheats-var (pc-cheats ,cheat)))
+      )
     )
   )
 
@@ -413,6 +413,24 @@
 
   0)
 
+(defmethod set-ignore-controller-in-bg! pc-settings ((obj pc-settings) (val symbol))
+  "sets whether or not to ignore controller inputs if the window is in the background"
+  (set! (-> obj ignore-controller-win-unfocused?) val)
+  (pc-ignore-background-controller-events! val)
+  (none))
+
+(defmethod set-enable-keyboard! pc-settings ((obj pc-settings) (val symbol))
+  "sets whether to ignore keyboard input events"
+  (set! (-> obj keyboard-enabled?) val)
+  (pc-set-keyboard-enabled! val)
+  (none))
+
+(defmethod update-mouse-controls! pc-settings ((obj pc-settings))
+  "Uses whatever is set on the [[pc-settings]] to update the runtime on how it should interpret mouse events"
+  (pc-set-mouse-options! (-> obj mouse-enabled?) (-> obj mouse-camera?) (-> obj mouse-movement?))
+  (pc-set-mouse-camera-sens! (-> obj mouse-xsens) (-> obj mouse-ysens))
+  (pc-set-auto-hide-cursor! (-> obj auto-hide-cursor?))
+  (none))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -528,6 +546,8 @@
 
       (file-stream-seek-past-whitespace ,fs)
       (when (!= #x29 (file-stream-getc ,fs))
+        ;; NOTE - if you have a setting in the file that isn't handled (even if its valid lisp)
+        ;; this error will be thrown.
         (pc-settings-read-throw-error ,fs "invalid char, ) not found")
         )
       )
@@ -674,7 +694,19 @@
     (("game-language") (set-game-language! obj (the-as language-enum (file-stream-read-int file))))
     (("text-language") (set! (-> obj text-language) (the-as pc-subtitle-lang (file-stream-read-int file))))
     (("subtitle-speaker") (set! (-> obj subtitle-speaker?) (file-stream-read-symbol file)))
+
+    (("ignore-controller-win-unfocused?") (set-ignore-controller-in-bg! obj (file-stream-read-symbol file)))
+    (("controller-hp-led?") (set! (-> obj controller-hp-led?) (file-stream-read-symbol file)))
+    (("controller-eco-led?") (set! (-> obj controller-eco-led?) (file-stream-read-symbol file)))
     (("stick-deadzone") (set! (-> obj stick-deadzone) (file-stream-read-float file)))
+    (("keyboard-enabled?") (set-enable-keyboard! obj (file-stream-read-symbol file)))
+    (("mouse-enabled?") (set! (-> obj mouse-enabled?) (file-stream-read-symbol file)))
+    (("mouse-camera?") (set! (-> obj mouse-camera?) (file-stream-read-symbol file)))
+    (("mouse-xsens") (set! (-> obj mouse-xsens) (file-stream-read-float file)))
+    (("mouse-ysens") (set! (-> obj mouse-ysens) (file-stream-read-float file)))
+    (("mouse-movement?") (set! (-> obj mouse-movement?) (file-stream-read-symbol file)))
+    (("auto-hide-cursor?") (set! (-> obj auto-hide-cursor?) (file-stream-read-symbol file)))
+
     (("ps2-read-speed?") (set! (-> obj ps2-read-speed?) (file-stream-read-symbol file)))
     (("ps2-parts?") (set! (-> obj ps2-parts?) (file-stream-read-symbol file)))
     (("ps2-music?") (set! (-> obj ps2-music?) (file-stream-read-symbol file)))
@@ -742,7 +774,7 @@
 
 (defmethod handle-output-settings pc-settings ((obj pc-settings) (file file-stream))
   "handle the text writing output for the 'settings' group"
-  
+
   (format file "  (fps ~D)~%" (-> obj target-fps))
   (format file "  (msaa ~D)~%" (-> obj gfx-msaa))
   (format file "  (aspect-state ~A ~D ~D ~A)~%" (get-game-setting obj 'aspect-ratio)
@@ -771,7 +803,17 @@
   (format file "  (lod-force-ocean ~D)~%" (-> obj lod-force-ocean))
   (format file "  (lod-force-actor ~D)~%" (-> obj lod-force-actor))
 
+  (format file "  (ignore-controller-win-unfocused? ~A)~%" (-> obj ignore-controller-win-unfocused?))
+  (format file "  (controller-hp-led? ~A)~%" (-> obj controller-hp-led?))
+  (format file "  (controller-eco-led? ~A)~%" (-> obj controller-eco-led?))
   (format file "  (stick-deadzone ~f)~%" (-> obj stick-deadzone))
+  (format file "  (keyboard-enabled? ~A)~%" (-> obj keyboard-enabled?))
+  (format file "  (mouse-enabled? ~A)~%" (-> obj mouse-enabled?))
+  (format file "  (mouse-camera? ~A)~%" (-> obj mouse-camera?))
+  (format file "  (mouse-xsens ~f)~%" (-> obj mouse-xsens))
+  (format file "  (mouse-ysens ~f)~%" (-> obj mouse-ysens))
+  (format file "  (mouse-movement? ~A)~%" (-> obj mouse-movement?))
+  (format file "  (auto-hide-cursor? ~A)~%" (-> obj auto-hide-cursor?))
 
   (format file "  (ps2-read-speed? ~A)~%" (-> obj ps2-read-speed?))
   (format file "  (ps2-parts? ~A)~%" (-> obj ps2-parts?))
@@ -856,7 +898,6 @@
 
 (defmethod load-settings pc-settings ((obj pc-settings))
   "load"
-
   (format (clear *pc-temp-string-1*) "~S/pc-settings.gc" *pc-settings-folder*)
   (if (pc-filepath-exists? *pc-temp-string-1*)
     (begin
@@ -870,12 +911,12 @@
 (defmethod new pc-settings ((allocation symbol) (type-to-make type))
   "make a new pc-settings"
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (reset obj)
-    ;; auto load settings if available
-    ;; if saved settings are corrupted or not found, use defaults
-
+    ;; load defaults not covered by the file
+    (set-defaults! obj)
+    ;; if saved settings are corrupted or not found, the object will be fully reset to use all defaults
     (load-settings obj)
-
+    ;; any post-operations that need to be done after loading
+    (update-mouse-controls! obj)
     obj))
 
 

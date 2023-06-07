@@ -98,7 +98,8 @@
 (def-progress-carousell *carousell-frame-rate-100fps* (60fps 100fps))
 (define *carousell-frame-rate* *carousell-frame-rate-150fps*)
 
-
+;; pad remap stuff
+(define *progress-pad-timeout* (the-as time-frame 0)) ;; timeout for remap buttons
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  MENU OPTIONS
@@ -131,7 +132,7 @@
   )
 
 (define *game-options-pc* (new 'static 'boxed-array :type game-option
-    (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id vibrations) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type menu) :name (text-id input-options) :scale #t :param3 (game-option-menu input-options))
     (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id play-hints) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id subtitles) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id hinttitles) :scale #t)
@@ -139,7 +140,6 @@
     (new 'static 'game-option :option-type (game-option-type language-subtitles) :name (text-id subtitles-language) :scale #t)
     (new 'static 'game-option :option-type (game-option-type language-text) :name (text-id text-language) :scale #t)
     (new 'static 'game-option :option-type (game-option-type speaker) :name (text-id subtitles-speaker) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type menu) :name (text-id camera-options) :scale #t :param3 (game-option-menu camera-options))
     (new 'static 'game-option :option-type (game-option-type menu) :name (text-id misc-options) :scale #t :param3 (game-option-menu misc-options))
     (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)
     )
@@ -148,7 +148,8 @@
 (define *graphic-options-pc* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type menu) :name (text-id game-resolution) :scale #t :param3 (game-option-menu resolution))
     (new 'static 'game-option :option-type (game-option-type display-mode) :name (text-id display-mode) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type menu) :name (text-id display) :scale #t :param3 (game-option-menu monitor))
+    (new 'static 'game-option :option-type (game-option-type menu) :name (text-id display) :scale #t :param3 (game-option-menu monitor)
+      :option-disabled-func (lambda () (= (-> *pc-settings* display-mode) 'windowed)))
     (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id vsync) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (text-id aspect-ratio) :scale #t :param3 (game-option-menu aspect-ratio))
     (new 'static 'game-option :option-type (game-option-type msaa) :name (text-id msaa) :scale #t)
@@ -169,6 +170,116 @@
     )
   )
 
+(define *sound-options-pc* (new 'static 'boxed-array :type game-option
+  (new 'static 'game-option :option-type (game-option-type slider) :name (text-id sfx-volume) :scale #t :param1 0.0 :param2 100.0 :slider-step-size 1.0)
+  (new 'static 'game-option :option-type (game-option-type slider) :name (text-id music-volume) :scale #t :param1 0.0 :param2 100.0 :slider-step-size 1.0)
+  (new 'static 'game-option :option-type (game-option-type slider) :name (text-id speech-volume) :scale #t :param1 0.0 :param2 100.0 :slider-step-size 1.0)
+  ;(new 'static 'game-option :option-type (game-option-type on-off) :name (text-id music-fadein) :scale #t)
+  (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)))
+
+(define *camera-options* (new 'static 'boxed-array :type game-option
+  (new 'static 'game-option :option-type (game-option-type normal-inverted) :name (text-id camera-controls-first-horz) :scale #t)
+  (new 'static 'game-option :option-type (game-option-type normal-inverted) :name (text-id camera-controls-first-vert) :scale #t)
+  (new 'static 'game-option :option-type (game-option-type normal-inverted) :name (text-id camera-controls-third-horz) :scale #t)
+  (new 'static 'game-option :option-type (game-option-type normal-inverted) :name (text-id camera-controls-third-vert) :scale #t)
+  (new 'static 'game-option :option-type (game-option-type confirmation) :name (text-id restore-defaults) :scale #t
+    :on-confirm (lambda () (reset-original-camera *pc-settings*) (none)))
+  (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)))
+
+(define *controller-options* (new 'static 'boxed-array :type game-option
+  (new 'static 'game-option :option-type (game-option-type menu) :name (text-id input-opts-select-controller) :scale #t :param3 (game-option-menu select-controller))
+  (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id vibrations) :scale #t)
+  (new 'static 'game-option :option-type (game-option-type slider) :name (text-id input-opts-analog-deadzone) :scale #t :param1 0.0 :param2 1.0
+    :slider-step-size 0.01 :slider-show-decimal? #t)
+  (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id input-opts-ignore-controller-win-focus) :scale #t
+    :on-change (lambda ((val object))
+                (let ((val-sym (the-as symbol val)))
+                  (set-ignore-controller-in-bg! *pc-settings* val-sym)
+                  (none))))
+  (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id input-opts-controller-led-reflect-hp) :scale #t
+    :option-disabled-func (lambda () (not (pc-current-controller-has-led?))))
+  (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id input-opts-controller-led-reflect-eco) :scale #t
+    :option-disabled-func (lambda () (not (pc-current-controller-has-led?))))
+  (new 'static 'game-option :option-type (game-option-type confirmation) :name (text-id restore-defaults) :scale #t
+    :on-confirm (lambda ()
+                 (set-defaults-controller! *pc-settings*)
+                 (set-ignore-controller-in-bg! *pc-settings* (-> *pc-settings* ignore-controller-win-unfocused?))
+                 (none)))
+  (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)))
+
+(define *mouse-options* (new 'static 'boxed-array :type game-option
+  (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id input-opts-mouse-enable-camera) :scale #t
+    :on-change (lambda ((val object))
+                (let ((val-sym (the-as symbol val)))
+                  (set! (-> *pc-settings* mouse-camera?) val-sym)
+                  (update-mouse-controls! *pc-settings*)
+                  (none))))
+  (new 'static 'game-option :option-type (game-option-type slider) :name (text-id input-opts-mouse-horizontal-sens) :scale #t
+    :param1 -30.0 :param2 30.0 :slider-step-size 0.25 :slider-show-decimal? #t
+    :on-confirm (lambda ()
+                  (update-mouse-controls! *pc-settings*)
+                  (none))
+    :option-disabled-func (lambda () (not (-> *pc-settings* mouse-camera?))))
+  (new 'static 'game-option :option-type (game-option-type slider) :name (text-id input-opts-mouse-vertical-sens) :scale #t
+    :param1 -30.0 :param2 30.0 :slider-step-size 0.25 :slider-show-decimal? #t
+    :on-confirm (lambda ()
+                  (update-mouse-controls! *pc-settings*)
+                  (none))
+    :option-disabled-func (lambda () (not (-> *pc-settings* mouse-camera?))))
+  (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id input-opts-mouse-enable-movement) :scale #t
+    :on-change (lambda ((val object))
+                (let ((val-sym (the-as symbol val)))
+                  (set! (-> *pc-settings* mouse-movement?) val-sym)
+                  (update-mouse-controls! *pc-settings*)
+                  (none))))
+  (new 'static 'game-option :option-type (game-option-type confirmation) :name (text-id restore-defaults) :scale #t
+    :on-confirm (lambda ()
+                 (set-defaults-mouse! *pc-settings*)
+                 (update-mouse-controls! *pc-settings*)
+                 (none)))
+  (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)))
+
+(define *reassign-binds-options* (new 'static 'boxed-array :type game-option
+  (new 'static 'game-option :option-type (game-option-type menu) :name (text-id input-opts-binds-controller) :scale #t :param3 (game-option-menu controller-binds)
+    :option-disabled-func (lambda () (<= (pc-get-controller-count) 0)))
+  (new 'static 'game-option :option-type (game-option-type menu) :name (text-id input-opts-binds-keyboard) :scale #t :param3 (game-option-menu keyboard-binds)
+    :option-disabled-func (lambda () (not (-> *pc-settings* keyboard-enabled?))))
+  (new 'static 'game-option :option-type (game-option-type menu) :name (text-id input-opts-binds-mouse) :scale #t :param3 (game-option-menu mouse-binds)
+    :option-disabled-func (lambda () (not (-> *pc-settings* mouse-enabled?))))
+  (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)))
+
+(define *input-options* (new 'static 'boxed-array :type game-option
+  (new 'static 'game-option :option-type (game-option-type menu) :name (text-id camera-options) :scale #t :param3 (game-option-menu camera-options))
+  (new 'static 'game-option :option-type (game-option-type menu) :name (text-id input-opts-controller-opts) :scale #t :param3 (game-option-menu controller-options)
+    :option-disabled-func (lambda () (<= (pc-get-controller-count) 0)))
+  (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id input-opts-enable-kb) :scale #t
+    :on-change (lambda ((val object))
+                (let ((val-sym (the-as symbol val)))
+                  (set-enable-keyboard! *pc-settings* val-sym)
+                  (none))))
+  (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id input-opts-enable-mouse) :scale #t
+    :on-change (lambda ((val object))
+                (let ((val-sym (the-as symbol val)))
+                  (set! (-> *pc-settings* mouse-enabled?) val-sym)
+                  (update-mouse-controls! *pc-settings*)
+                  (none))))
+  (new 'static 'game-option :option-type (game-option-type menu) :name (text-id input-opts-mouse-opts) :scale #t :param3 (game-option-menu mouse-options)
+    :option-disabled-func (lambda () (not (-> *pc-settings* mouse-enabled?))))
+  (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id input-opts-auto-hide-cursor) :scale #t
+    :on-change (lambda ((val object))
+                (let ((val-sym (the-as symbol val)))
+                  (set! (-> *pc-settings* auto-hide-cursor?) val-sym)
+                  (update-mouse-controls! *pc-settings*)
+                  (none))))
+  (new 'static 'game-option :option-type (game-option-type menu) :name (text-id input-opts-reassign-binds) :scale #t :param3 (game-option-menu reassign-binds-options))
+  (new 'static 'game-option :option-type (game-option-type confirmation) :name (text-id restore-defaults) :scale #t
+    :on-confirm (lambda ()
+                 (set-defaults-input! *pc-settings*)
+                 (set-enable-keyboard! *pc-settings* (-> *pc-settings* keyboard-enabled?))
+                 (update-mouse-controls! *pc-settings*)
+                 (none)))
+  (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)))
+
 (define *misc-options* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id money-starburst) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id discord-rpc) :scale #t)
@@ -178,21 +289,10 @@
     )
   )
 
-(define *camera-options* (new 'static 'boxed-array :type game-option
-    (new 'static 'game-option :option-type (game-option-type normal-inverted) :name (text-id camera-controls-first-horz) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type normal-inverted) :name (text-id camera-controls-first-vert) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type normal-inverted) :name (text-id camera-controls-third-horz) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type normal-inverted) :name (text-id camera-controls-third-vert) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type button) :name (text-id restore-defaults) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)
-    )
-  )
-
+;; TODO - this menu isn't used anywhere right now, should probably be removed
 (define *accessibility-options* (new 'static 'boxed-array :type game-option
-    (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id money-starburst) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)
-    )
-  )
+  (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id money-starburst) :scale #t)
+  (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)))
 
 (define *gfx-ps2-options* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type lod-bg) :name (text-id lod-bg) :scale #t)
@@ -204,6 +304,7 @@
     )
   )
 
+;; TODO - aspect ratios are hard-coded
 (define *aspect-ratio-options* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type aspect-new) :name (text-id fit-to-screen) :scale #t)
     (new 'static 'game-option :option-type (game-option-type aspect-new) :name (text-id aspect-fmt) :param1 4.0 :param2 3.0 :scale #t)
@@ -213,15 +314,6 @@
     (new 'static 'game-option :option-type (game-option-type aspect-new) :name (text-id aspect-fmt) :param1 16.0 :param2 10.0 :scale #t)
     (new 'static 'game-option :option-type (game-option-type aspect-new) :name (text-id aspect-fmt) :param1 21.0 :param2 9.0 :scale #t)
     (new 'static 'game-option :option-type (game-option-type aspect-new) :name (text-id aspect-fmt) :param1 64.0 :param2 27.0 :scale #t)
-    (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)
-    )
-  )
-
-(define *sound-options-pc* (new 'static 'boxed-array :type game-option
-    (new 'static 'game-option :name (text-id sfx-volume) :scale #t :param1 0.0 :param2 100.0)
-    (new 'static 'game-option :name (text-id music-volume) :scale #t :param1 0.0 :param2 100.0)
-    (new 'static 'game-option :name (text-id speech-volume) :scale #t :param1 0.0 :param2 100.0)
-    ;(new 'static 'game-option :option-type (game-option-type on-off) :name (text-id music-fadein) :scale #t)
     (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)
     )
   )
@@ -365,7 +457,6 @@
   )
 
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  DATA LISTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -433,62 +524,12 @@
 
 (define-perm *temp-options-alloced* symbol #f)
 
-(define *resolutions* (new 'static 'boxed-array :type int32
-    640 720 768 800 900 960 1080))
-
 ;; this is to avoid changing the value of *temp-options* or reallocating the options when reloading file
 (unless *temp-options-alloced*
 (define *temp-options* (new 'static 'boxed-array :type game-option :length 200 :allocated-length 200))
 (dotimes (i (-> *temp-options* length))
   (set! (-> *temp-options* i) (new 'global 'game-option)))
 (true! *temp-options-alloced*))
-
-
-(defun find-highest-resolution ()
-
-  (let ((sx 0) (sy 0) (found #f) (mult GAME_MIN_RES_MULT) (lastr 0) (hir 0) (lor 0))
-    (pc-get-screen-size -1 (the (pointer int32) (& sx)) (the (pointer int32) (& sy)))
-    (if (> sy sx)
-        (set! sy sx))
-
-    (until found
-
-      (dotimes (i (-> *resolutions* length))
-        (let ((thisr (the int (* mult (the float (-> *resolutions* i))))))
-        (cond
-          ((< sy thisr)
-           (if (zero? i)
-               (*! mult 0.5))
-           (set! i (-> *resolutions* length))
-           (true! found)
-           )
-          (else
-           (set! lastr thisr))
-          )
-        ))
-
-      (if (not found)
-          (*! mult 2))
-
-      )
-    (set! hir lastr)
-    mult
-    )
-
-  )
-
-(defmacro add-resolution-option (x y)
-  "add a resolution button to *temp-options* with specified size"
-  `(let ((option (-> *temp-options* (length *temp-options*))))
-      (set! (-> option option-type) (game-option-type resolution))
-      (set! (-> option name) (text-id resolution-fmt))
-      (set! (-> option param1) (the float ,x))
-      (set! (-> option param2) (the float ,y))
-      (set! (-> option scale) #t)
-
-      (1+! (-> *temp-options* length))
-      )
-  )
 
 (defmacro add-flava-player-option (text-id flava)
   "add a music player w/ flava button to *temp-options* with specified size"
@@ -502,90 +543,66 @@
       )
   )
 
-(defmacro add-monitor-option (text-id monitor)
-  "add a display button to *temp-options* with specified size"
-  `(let ((option (-> *temp-options* (length *temp-options*))))
-      (set! (-> option option-type) (game-option-type monitor))
-      (set! (-> option name) ,text-id)
-      (set! (-> option param1) (the float ,monitor))
-      (set! (-> option scale) #t)
-
-      (1+! (-> *temp-options* length))
-      )
-  )
-
 (defmacro add-back-option ()
   "add *back-button* to *temp-options*"
   `(let ((option (-> *temp-options* (length *temp-options*))))
       (set! (-> option option-type) (game-option-type button))
       (set! (-> option name) (text-id back))
       (set! (-> option scale) #t)
+      (1+! (-> *temp-options* length))))
 
-      (1+! (-> *temp-options* length))
-      )
-  )
+(defmacro add-message-option (text)
+  "adds an option that isn't selectable but displays some text"
+  `(let ((option (-> *temp-options* (length *temp-options*))))
+    (set! (-> option option-type) (game-option-type button))
+    (set! (-> option option-disabled-func) (lambda () #t))
+    (set! (-> option name) ,text)
+    (set! (-> option scale) #t)
+    (1+! (-> *temp-options* length))))
 
-(defun build-resolution-options ((skip int) (amount int))
+(defmacro add-resolution-option (x y)
+  "add a resolution button to *temp-options* with specified size"
+  `(let ((option (-> *temp-options* (length *temp-options*))))
+      (set! (-> option option-type) (game-option-type resolution))
+      (set! (-> option option-disabled-func) #f)
+      (set! (-> option name) (text-id resolution-fmt))
+      (set! (-> option param1) (the float ,x))
+      (set! (-> option param2) (the float ,y))
+      (set! (-> option scale) #t)
+      (1+! (-> *temp-options* length))))
 
+(defun build-resolution-options ()
   (set! (-> *temp-options* length) 0)
-
-  (let* ((done? #f) (mult (find-highest-resolution)) (sx 0) (sy 0)
-        (display-mode (pc-get-fullscreen))
-        ;; hack - do not use screen resolution in windowed mode, taskbar etc. messes it up and makes it useless!
-        (skip? (= 'windowed display-mode))
-        ;; shortcut
-        ;; we reserve 3 options.
-        (max-options (+ -3 (-> *temp-options* allocated-length))))
-
-    ;; get screen size (for capping)
-    (pc-get-screen-size -1 (the (pointer int32) (& sx)) (the (pointer int32) (& sy)))
-
-    ;; extra button when fullscreen
-    (when (not skip?)
-        (add-resolution-option sx sy)
-        (set! (-> *temp-options* (1- (length *temp-options*)) name) (text-id fit-to-screen))
-        )
-
-    ;; supersampling in fullscreen and stuff. this results in way too many resolution options lol.
-    (when (!= display-mode 'windowed)
-        (*! sx 2)
-        (*! sy 2)
-        (*! mult 2)
-        )
-
-    ;; game aspect ratio
-    (let ((aspect (-> *pc-settings* aspect-ratio)))
-
-    (until (or done? (= (length *temp-options*) max-options))
-      (countdown (i (-> *resolutions* length))
-        (let* ((thisr (the int (* mult (the float (-> *resolutions* i)))))
-              (thisx (the int (* aspect (the float thisr))))
-              (thisy thisr)
-              )
-
-          (when (and (not skip?) (< (length *temp-options*) max-options)
-                     (<= thisy sy) (<= thisx sx)
-                     (= aspect (/ (the float thisx) (the float thisy)))
-                     (>= thisx PC_MIN_WIDTH) (>= thisy PC_MIN_HEIGHT))
-            (add-resolution-option thisx thisy)
-            ))
-        (false! skip?)
-        )
-
-      (if (> mult GAME_MIN_RES_MULT)
-          (/! mult 2)
-          (true! done?))
-      ))
-    ;; extra funny options
-    (when (!= display-mode 'windowed)
-        (add-resolution-option 512 224)
-        (add-resolution-option 512 448))
-
-    (add-back-option)
-    )
-
-  *temp-options*
-  )
+  ;; Enumerate the available resolutions from C++
+  (let ((window-width 0)
+        (window-height 0)
+        (window-aspect-ratio 0.0)
+        (num-resolutions (pc-get-num-resolutions))
+        (num-resolutions-added 0))
+    (when (> num-resolutions 0)
+      (pc-get-window-size (the-as (pointer int32) (& window-width)) (the-as (pointer int32) (& window-height)))
+      (set! window-aspect-ratio (/ (the float window-width) (the float window-height)))
+      (dotimes (i num-resolutions)
+        (let ((res-width 0)
+              (res-height 0)
+              (res-aspect-ratio 0.0))
+          (pc-get-resolution i (& res-width) (& res-height))
+          (set! res-aspect-ratio (/ (the float res-width) (the float res-height)))
+          ;; Ignore those that aren't relevant to the current window's aspect ratio
+          ;; we only do this when we aren't in windowed mode, because in windowed mode
+          ;; you are using the resolution menu to change it...so it doesn't make sense to base it on the size
+          ;;
+          ;; Additionally, always show the PS2 resolutions or else they are never going to be seen due to the aspect ratio difference
+          (when (or (= (pc-get-display-mode) 'windowed)
+                    (and (= res-width 512) (or (= res-height 448) (= res-height 224)))
+                    (< (fabs (- window-aspect-ratio res-aspect-ratio)) 0.1))
+            (add-resolution-option res-width res-height)
+            (1+! num-resolutions-added)))))
+    ;; If all we displayed was the 2 PS2 resolutions, inform them they have a weird aspect ratio
+    (when (< num-resolutions-added 3)
+      (add-message-option (text-id progress-no-other-resolution-options)))
+      )
+    (add-back-option))
 
 (defun build-flava-player-options ((mus-idx int))
 
@@ -601,16 +618,137 @@
   *temp-options*
   )
 
+(defmacro add-monitor-option (text-id display-id)
+  "add a display button to *temp-options* with specified size"
+  `(let ((option (-> *temp-options* (length *temp-options*)))
+         (name (pc-get-display-name ,display-id)))
+      (set! (-> option option-type) (game-option-type monitor))
+      ;; Use the name of the display if it's available
+      (if name
+        (set! (-> option name-override) name)
+        (set! (-> option name) ,text-id))
+      (set! (-> option param1) (the float ,display-id))
+      (set! (-> option scale) #t)
+
+      (1+! (-> *temp-options* length))
+      )
+  )
+
 (defun build-monitor-options ()
   (set! (-> *temp-options* length) 0)
-
-  (dotimes (i (pc-get-monitor-count))
-    (add-monitor-option (text-id display-fmt) i)
-    )
-
+  (dotimes (i (pc-get-display-count))
+    (add-monitor-option (text-id display-fmt) i))
   (add-back-option)
   *temp-options*)
 
+(defmacro add-controller-option (text-id controller-id)
+  "add a controller option to *temp-options* with specified size"
+  `(let ((option (-> *temp-options* (length *temp-options*)))
+         (name (pc-get-controller-name ,controller-id)))
+      (set! (-> option option-type) (game-option-type controller))
+      ;; Use the name of the controller if it's available
+      (if name
+        (set! (-> option name-override) name)
+        (set! (-> option name) ,text-id))
+      (set! (-> option param1) (the float ,controller-id))
+      (set! (-> option scale) #t)
+
+      (1+! (-> *temp-options* length))
+      )
+  )
+
+(defun build-controller-options ()
+  "Dynamically creates menu options for selecting your controller.
+   Will attempt to use the name of the controller, but will fallback to a generic number otherwise"
+  (set! (-> *temp-options* length) 0)
+  (dotimes (i (pc-get-controller-count))
+    (add-controller-option (text-id input-opts-generic-controller) i)
+    )
+  (add-back-option)
+  *temp-options*)
+
+(define *analog-bind-names* (new 'static 'boxed-array :type string "L ANALOG LEFT" "L ANALOG RIGHT" "L ANALOG UP" "L ANALOG DOWN" "R ANALOG LEFT" "R ANALOG RIGHT" "R ANALOG UP" "R ANALOG DOWN"))
+
+(define *button-bind-names* (new 'static 'boxed-array :type string "SELECT" "L3" "R3" "START"
+  "DPAD UP" "DPAD RIGHT" "DPAD DOWN" "DPAD LEFT" "L2" "R2" "L1" "R1" "TRIANGLE" "CIRCLE" "CROSS" "SQUARE"))
+
+;; TODO - make a common function for these dynamic menus instead of the duplication / macros
+(defun build-binding-reassignment-options ((screen progress-screen))
+  "Dynamically creates menu options for reassigning bindings for controllers/mice/keyboard"
+  (set! (-> *temp-options* length) 0)
+  ;; initialize binding options
+  ;; for controllers and mice, dont allow analog rebindings
+  ;; for keyboards, allow analog binding
+  (when (= screen (progress-screen keyboard-binds))
+    ;; Add analog bindings
+    (dotimes (i 4)
+      ;; two for each direction (low/high)
+      (let ((option (-> *temp-options* (length *temp-options*))))
+        (set! (-> option bind-info port) 0)
+        ;; only for keyboards
+        (set! (-> option bind-info device-type) 1)
+        (set! (-> option bind-info for-buttons?) #f)
+        (set! (-> option bind-info input-idx) i)
+        (set! (-> option bind-info analog-min-range?) #t)
+
+        (set! (-> option option-type) (game-option-type binding-assignment))
+        (set! (-> option name-override) (-> *analog-bind-names* (* i 2)))
+        (set! (-> option scale) #t)
+        (1+! (-> *temp-options* length))
+        )
+      (let ((option (-> *temp-options* (length *temp-options*))))
+        (set! (-> option bind-info port) 0)
+        ;; only for keyboards
+        (set! (-> option bind-info device-type) 1)
+        (set! (-> option bind-info for-buttons?) #f)
+        (set! (-> option bind-info input-idx) i)
+        (set! (-> option bind-info analog-min-range?) #f)
+
+        (set! (-> option option-type) (game-option-type binding-assignment))
+        (set! (-> option name-override) (-> *analog-bind-names* (+ 1 (* i 2))))
+        (set! (-> option scale) #t)
+        (1+! (-> *temp-options* length))
+        )
+      ))
+  ;; Add Button bindings
+  (dotimes (i 16)
+    (let ((option (-> *temp-options* (length *temp-options*))))
+      (set! (-> option bind-info port) 0)
+      (case screen
+        (((progress-screen controller-binds))
+          (set! (-> option bind-info device-type) 0))
+        (((progress-screen keyboard-binds))
+          (set! (-> option bind-info device-type) 1))
+        (((progress-screen mouse-binds))
+          (set! (-> option bind-info device-type) 2)))
+      (set! (-> option bind-info for-buttons?) #t)
+      (set! (-> option bind-info input-idx) i)
+      (set! (-> option bind-info analog-min-range?) #f)
+
+      (set! (-> option option-type) (game-option-type binding-assignment))
+      (set! (-> option name-override) (-> *button-bind-names* i))
+      (set! (-> option scale) #t)
+      (1+! (-> *temp-options* length))
+      )
+    )
+  ;; We add a restore defaults button at the bottom of each binding menu
+  (let ((option (-> *temp-options* (length *temp-options*))))
+    (set! (-> option option-type) (game-option-type confirmation))
+    (set! (-> option name) (text-id restore-defaults))
+    (set! (-> option scale) #t)
+    ;; No closures :(
+    (case screen
+     ;; NOTE - assumes only port 0
+     (((progress-screen controller-binds))
+       (set! (-> option on-confirm) (lambda () (pc-reset-bindings-to-defaults! 0 0) (none))))
+     (((progress-screen keyboard-binds))
+      (set! (-> option on-confirm) (lambda () (pc-reset-bindings-to-defaults! 0 1) (none))))
+     (((progress-screen mouse-binds))
+      (set! (-> option on-confirm) (lambda () (pc-reset-bindings-to-defaults! 0 2) (none)))))
+    (1+! (-> *temp-options* length))
+    )
+  (add-back-option)
+  *temp-options*)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -737,9 +875,9 @@
                                                             *main-options-secrets*
                                                             *main-options-pc*))
   (set! (-> *options-remap* (progress-screen game-settings)) *game-options-pc*)
-  (let ((max-refresh-rate (pc-get-screen-rate -1)))
+  (let ((max-refresh-rate (pc-get-active-display-refresh-rate)))
     (cond
-      ((or *debug-segment* (> max-refresh-rate 100))
+      ((> max-refresh-rate 100)
         (set! (-> *options-remap* (progress-screen graphic-settings)) *graphic-options-pc*)
         (set! *carousell-frame-rate* *carousell-frame-rate-150fps*)
         )
@@ -752,34 +890,43 @@
         )
       ))
 
-  (set! (-> *options-remap* (progress-screen sound-settings))           *sound-options-pc*)
-  (set! (-> *options-remap* (progress-screen memcard-no-space))         *ok-options*)
-  (set! (-> *options-remap* (progress-screen memcard-not-inserted))     *ok-options*)
-  (set! (-> *options-remap* (progress-screen memcard-not-formatted))    *ok-options*)
-  (set! (-> *options-remap* (progress-screen memcard-format))           *yes-no-options*)
-  (set! (-> *options-remap* (progress-screen memcard-data-exists))      *yes-no-options*)
-  (set! (-> *options-remap* (progress-screen memcard-insert))           *ok-options*)
-  (set! (-> *options-remap* (progress-screen load-game))                *load-options*)
-  (set! (-> *options-remap* (progress-screen save-game))                *save-options*)
-  (set! (-> *options-remap* (progress-screen save-game-title))          *save-options-title*)
-  (set! (-> *options-remap* (progress-screen memcard-error-loading))    *ok-options*)
-  (set! (-> *options-remap* (progress-screen memcard-error-saving))     *ok-options*)
-  (set! (-> *options-remap* (progress-screen memcard-error-formatting)) *ok-options*)
-  (set! (-> *options-remap* (progress-screen memcard-error-creating))   *ok-options*)
-  (set! (-> *options-remap* (progress-screen memcard-auto-save-error))  *ok-options*)
-  (set! (-> *options-remap* (progress-screen memcard-removed))          *ok-options*)
-  (set! (-> *options-remap* (progress-screen memcard-no-data))          *yes-no-options*)
-  (set! (-> *options-remap* (progress-screen title))                    *title-pc*)
-  (set! (-> *options-remap* (progress-screen settings-title))           *options*)
-  (set! (-> *options-remap* (progress-screen auto-save))                *ok-options*)
-  (set! (-> *options-remap* (progress-screen pal-change-to-60hz))       *yes-no-options*)
-  (set! (-> *options-remap* (progress-screen pal-now-60hz))             *yes-no-options*)
-  (set! (-> *options-remap* (progress-screen no-disc))                  *ok-options*)
-  (set! (-> *options-remap* (progress-screen bad-disc))                 *ok-options*)
-  (set! (-> *options-remap* (progress-screen quit))                     *yes-no-options*)
+  (set! (-> *options-remap* (progress-screen sound-settings))             *sound-options-pc*)
+  (set! (-> *options-remap* (progress-screen memcard-no-space))           *ok-options*)
+  (set! (-> *options-remap* (progress-screen memcard-not-inserted))       *ok-options*)
+  (set! (-> *options-remap* (progress-screen memcard-not-formatted))      *ok-options*)
+  (set! (-> *options-remap* (progress-screen memcard-format))             *yes-no-options*)
+  (set! (-> *options-remap* (progress-screen memcard-data-exists))        *yes-no-options*)
+  (set! (-> *options-remap* (progress-screen memcard-insert))             *ok-options*)
+  (set! (-> *options-remap* (progress-screen load-game))                  *load-options*)
+  (set! (-> *options-remap* (progress-screen save-game))                  *save-options*)
+  (set! (-> *options-remap* (progress-screen save-game-title))            *save-options-title*)
+  (set! (-> *options-remap* (progress-screen memcard-error-loading))      *ok-options*)
+  (set! (-> *options-remap* (progress-screen memcard-error-saving))       *ok-options*)
+  (set! (-> *options-remap* (progress-screen memcard-error-formatting))   *ok-options*)
+  (set! (-> *options-remap* (progress-screen memcard-error-creating))     *ok-options*)
+  (set! (-> *options-remap* (progress-screen memcard-auto-save-error))    *ok-options*)
+  (set! (-> *options-remap* (progress-screen memcard-removed))            *ok-options*)
+  (set! (-> *options-remap* (progress-screen memcard-no-data))            *yes-no-options*)
+  (set! (-> *options-remap* (progress-screen title))                      *title-pc*)
+  (set! (-> *options-remap* (progress-screen settings-title))             *options*)
+  (set! (-> *options-remap* (progress-screen auto-save))                  *ok-options*)
+  (set! (-> *options-remap* (progress-screen pal-change-to-60hz))         *yes-no-options*)
+  (set! (-> *options-remap* (progress-screen pal-now-60hz))               *yes-no-options*)
+  (set! (-> *options-remap* (progress-screen no-disc))                    *ok-options*)
+  (set! (-> *options-remap* (progress-screen bad-disc))                   *ok-options*)
+  (set! (-> *options-remap* (progress-screen quit))                       *yes-no-options*)
   ;; our screens!
   (set! (-> *options-remap* (progress-screen aspect-msg))                 *yes-no-options*)
+  (set! (-> *options-remap* (progress-screen input-options))              *input-options*)
   (set! (-> *options-remap* (progress-screen camera-options))             *camera-options*)
+  (set! (-> *options-remap* (progress-screen controller-options))         *controller-options*)
+  (set! (-> *options-remap* (progress-screen mouse-options))              *mouse-options*)
+  (set! (-> *options-remap* (progress-screen reassign-binds-options))     *reassign-binds-options*)
+  (set! (-> *options-remap* (progress-screen select-controller))          *temp-options*)
+  (set! (-> *options-remap* (progress-screen controller-binds))          *temp-options*)
+  (set! (-> *options-remap* (progress-screen keyboard-binds))          *temp-options*)
+  (set! (-> *options-remap* (progress-screen mouse-binds))          *temp-options*)
+
   (set! (-> *options-remap* (progress-screen misc-options))               *misc-options*)
   (set! (-> *options-remap* (progress-screen accessibility-options))      *accessibility-options*)
   (set! (-> *options-remap* (progress-screen gfx-ps2-options))            *gfx-ps2-options*)
@@ -788,7 +935,7 @@
   (set! (-> *options-remap* (progress-screen quit-title))                 *yes-no-options*)
   (set! (-> *options-remap* (progress-screen secrets))                    *secrets-title*)
   (set! (-> *options-remap* (progress-screen cheats))                     *cheats*)
-  (set! (-> *options-remap* (progress-screen checkpoint-select))               *checkpoint-select-options*)
+  (set! (-> *options-remap* (progress-screen checkpoint-select))          *checkpoint-select-options*)
   (set! (-> *options-remap* (progress-screen music-player))               *music-player-options*)
   (set! (-> *options-remap* (progress-screen flava-player))               *temp-options*)
   (set! (-> *options-remap* (progress-screen memcard-disable-auto-save))  *yes-no-options*)
@@ -796,8 +943,7 @@
   (set! (-> *options-remap* (progress-screen monitor))                    *temp-options*)
   (set! (-> *options-remap* (progress-screen speedrun-options))           *speedrun-options*)
   (set! (-> *options-remap* (progress-screen speedrun-il-options))        *speedrun-il-options*)
-  (set! (-> *options-remap* (progress-screen speedrun-cat-ext-options))        *speedrun-cat-ext-options*)
-
+  (set! (-> *options-remap* (progress-screen speedrun-cat-ext-options))   *speedrun-cat-ext-options*)
 
   ;; set default params
   (set! (-> *progress-state* aspect-ratio-choice) (get-aspect-ratio))
@@ -805,7 +951,6 @@
   (set! (-> *progress-state* yes-no-choice) #f)
 
   ;; set variable pointers
-  (set! (-> *game-options* 0 value-to-modify) (&-> *setting-control* default vibration))
   (set! (-> *game-options* 1 value-to-modify) (&-> *setting-control* default play-hints))
   (set! (-> *game-options* 2 value-to-modify) (&-> *setting-control* default language))
   (set! (-> *game-options-japan* 0 value-to-modify) (&-> *setting-control* default vibration))
@@ -817,8 +962,8 @@
   (set! (-> *sound-options* 1 value-to-modify) (&-> *setting-control* default music-volume))
   (set! (-> *sound-options* 2 value-to-modify) (&-> *setting-control* default dialog-volume))
   (set! (-> *yes-no-options* 0 value-to-modify) (&-> *progress-state* yes-no-choice))
+
   ;; our options!
-  (set! (-> *game-options-pc* 0 value-to-modify) (&-> *setting-control* default vibration))
   (set! (-> *game-options-pc* 1 value-to-modify) (&-> *setting-control* default play-hints))
   (set! (-> *game-options-pc* 2 value-to-modify) (&-> *pc-settings* subtitles?))
   (set! (-> *game-options-pc* 3 value-to-modify) (&-> *pc-settings* hinttitles?))
@@ -833,6 +978,7 @@
   (set! (-> *graphic-options-pc* 5 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-pc* 6 value-to-modify) (&-> *progress-carousell* int-backup))
   ;; disable changes to frame-rate while in speedrunner mode
+  ;; todo move this to the creation
   (set! (-> *graphic-options-pc* 6 option-disabled-func) (lambda () (-> *pc-settings* speedrunner-mode?)))
 
   (set! (-> *graphic-options-no-frame-rate-pc* 1 value-to-modify) (&-> *progress-carousell* int-backup))
@@ -848,6 +994,22 @@
   (set! (-> *camera-options* 1 value-to-modify) (&-> *pc-settings* first-camera-v-inverted?))
   (set! (-> *camera-options* 2 value-to-modify) (&-> *pc-settings* third-camera-h-inverted?))
   (set! (-> *camera-options* 3 value-to-modify) (&-> *pc-settings* third-camera-v-inverted?))
+
+  ;; input options
+  (set! (-> *controller-options* 1 value-to-modify) (&-> *setting-control* default vibration))
+  (set! (-> *controller-options* 2 value-to-modify) (&-> *pc-settings* stick-deadzone))
+  (set! (-> *controller-options* 3 value-to-modify) (&-> *pc-settings* ignore-controller-win-unfocused?))
+  (set! (-> *controller-options* 4 value-to-modify) (&-> *pc-settings* controller-hp-led?))
+  (set! (-> *controller-options* 5 value-to-modify) (&-> *pc-settings* controller-eco-led?))
+
+  (set! (-> *mouse-options* 0 value-to-modify) (&-> *pc-settings* mouse-camera?))
+  (set! (-> *mouse-options* 1 value-to-modify) (&-> *pc-settings* mouse-xsens))
+  (set! (-> *mouse-options* 2 value-to-modify) (&-> *pc-settings* mouse-ysens))
+  (set! (-> *mouse-options* 3 value-to-modify) (&-> *pc-settings* mouse-movement?))
+
+  (set! (-> *input-options* 2 value-to-modify) (&-> *pc-settings* keyboard-enabled?))
+  (set! (-> *input-options* 3 value-to-modify) (&-> *pc-settings* mouse-enabled?))
+  (set! (-> *input-options* 5 value-to-modify) (&-> *pc-settings* auto-hide-cursor?))
 
   (set! (-> *accessibility-options* 0 value-to-modify) (&-> *pc-settings* money-starburst?))
 
@@ -886,7 +1048,7 @@
   (case (-> obj display-state)
     (((progress-screen resolution))
       ;; TODO infinite scrolling
-      (build-resolution-options 0 0)
+      (build-resolution-options)
       )
     (((progress-screen flava-player))
       (build-flava-player-options *progress-music*)
@@ -898,6 +1060,12 @@
       )
     (((progress-screen monitor))
       (build-monitor-options)
+      )
+    (((progress-screen select-controller))
+      (build-controller-options)
+      )
+    (((progress-screen controller-binds) (progress-screen keyboard-binds) (progress-screen mouse-binds))
+      (build-binding-reassignment-options (-> obj display-state))
       )
     )
   ;; run nav code
@@ -970,13 +1138,16 @@
                    (when (not (-> (the-as (pointer uint32) (-> options (-> obj option-index) value-to-modify))))
                      ;; it was on 'off' or 'no'
                      (set! sound? #t)
-                     ;; vibrate if this toggles vibration. this doesn't actually work AND it checks the wrong field.
-                     (if (= (-> options (-> obj option-index) value-to-modify) (&-> *setting-control* current vibration))
-                         (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.3))
-                         )
+                     ;; vibrate if this toggles vibration.
+                     ;; TODO - get this working
+                     (when (= (-> options (-> obj option-index) name) (text-id vibrations))
+                      (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.3)))
                      )
-                   ;; it's on 'on' or 'yes' now
-                   (set! (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))) #t)
+                   ;; if the option has an explicit on-change function, call it
+                   (if (nonzero? (-> options (-> obj option-index) on-change))
+                    ((-> options (-> obj option-index) on-change) #t)
+                    ;; set to yes
+                    (set! (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))) #t))
                    )
                   (((game-option-type aspect-ratio))
                    (set! sound? (= (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))) 'aspect16x9))
@@ -993,6 +1164,9 @@
                    (set! (-> obj language-direction) #t)
                    (set! sound? #t)
                    )
+                  (((game-option-type confirmation))
+                   (set! sound? (!= (-> *progress-state* on-off-backup) #t))
+                   (set! (-> *progress-state* on-off-backup) #t))
                   (((game-option-type display-mode)
                     (game-option-type msaa)
                     (game-option-type lod-bg)
@@ -1028,10 +1202,11 @@
                     ;; slider is selected
                     (cond
                       ((>= (-> (the-as (pointer float) (-> options (-> obj option-index) value-to-modify)))
-                           (+ 1.0 (-> options (-> obj option-index) param1)))
+                           (+ (-> options (-> obj option-index) slider-step-size) (-> options (-> obj option-index) param1)))
                        ;; we're 1 above minimum, so reduce by 1
                        (set! (-> (the-as (pointer float) (-> options (-> obj option-index) value-to-modify)))
-                             (+ -1.0 (-> (the-as (pointer float) (-> options (-> obj option-index) value-to-modify)))))
+                             (- (-> (the-as (pointer float) (-> options (-> obj option-index) value-to-modify)))
+                                (-> options (-> obj option-index) slider-step-size)))
                        (set! sound? #t)
                        )
                       ((< (-> options (-> obj option-index) param1)
@@ -1078,8 +1253,11 @@
                     (game-option-type cheat-toggle))
                    ;; play sound if it was on 'yes' because we're going to 'no' now
                    (set! sound? (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))))
-                   ;; set to no
-                   (set! (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))) #f)
+                   ;; if the option has an explicit on-change function, call it
+                   (if (nonzero? (-> options (-> obj option-index) on-change))
+                    ((-> options (-> obj option-index) on-change) #f)
+                    ;; set to no
+                    (set! (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))) #f))
                    )
                   (((game-option-type aspect-ratio))
                    ;; same shit different toilet
@@ -1096,6 +1274,9 @@
                    (set! (-> obj language-direction) #f)
                    (set! sound? #t)
                    )
+                  (((game-option-type confirmation))
+                   (set! sound? (!= (-> *progress-state* on-off-backup) #f))
+                   (set! (-> *progress-state* on-off-backup) #f))
                   (((game-option-type display-mode)
                     (game-option-type msaa)
                     (game-option-type lod-bg)
@@ -1129,10 +1310,12 @@
                  (case (-> options (-> obj option-index) option-type)
                    (((game-option-type slider))
                     (cond
-                      ((>= (+ -1.0 (-> options (-> obj option-index) param2))
+                      ((>= (- (-> options (-> obj option-index) param2)
+                              (-> options (-> obj option-index) slider-step-size))
                            (-> (the-as (pointer float) (-> options (-> obj option-index) value-to-modify))))
                        (set! (-> (the-as (pointer float) (-> options (-> obj option-index) value-to-modify)))
-                             (+ 1.0 (-> (the-as (pointer float) (-> options (-> obj option-index) value-to-modify)))))
+                             (+ (-> options (-> obj option-index) slider-step-size)
+                                (-> (the-as (pointer float) (-> options (-> obj option-index) value-to-modify)))))
                        (set! sound? #t)
                        )
                       ((< (-> (the-as (pointer float) (-> options (-> obj option-index) value-to-modify)))
@@ -1208,7 +1391,8 @@
         ((or (cpad-pressed? 0 x) (cpad-pressed? 0 circle))
          ;; pressed x or circle. advance!
          ;; first check if the option is disabled, if so leave early and do nothing
-         (when (and (!= (-> options (-> obj option-index) option-disabled-func) 0)
+         (when (and (nonzero? (-> options (-> obj option-index) option-disabled-func))
+                    (!= (-> options (-> obj option-index) option-disabled-func) #f)
                     ((-> options (-> obj option-index) option-disabled-func)))
                (sound-play "menu-stats")
                (return #f))
@@ -1256,11 +1440,6 @@
                       (progress-reset-music-parms))
                   (load-level-text-files (-> *level-task-data* (-> obj display-level-index) text-group-index))
                   (set! (-> obj next-display-state) (progress-screen invalid))
-                  )
-                 (((text-id restore-defaults))
-                  ;; restore default camera controls
-                  (reset-original-camera *pc-settings*)
-                  (sound-play "cursor-options")
                   )
                  ;; LEVEL SELECT
                  (((text-id training-level-name))
@@ -1441,6 +1620,18 @@
                (set! (-> obj next-display-state) (progress-screen invalid))
                (commit-to-file *pc-settings*)
                )
+              ;; TODO - might be able to simplify this with the new on-change func
+              ((= (-> options (-> obj option-index) option-type) (game-option-type controller))
+               (let ((controller-id (the int (-> options (-> obj option-index) param1))))
+                 ;; NOTE - for now, we only manage port 0 in the progress menu
+                 (pc-set-controller! controller-id 0)
+                 )
+               (cpad-clear! 0 x)
+               (cpad-clear! 0 circle)
+               (sound-play "cursor-options")
+               (set! (-> obj next-display-state) (progress-screen invalid))
+               (commit-to-file *pc-settings*)
+               )
               ((= (-> options (-> obj option-index) option-type) (game-option-type monitor))
                ;; monitor button
                (let ((monitor (the int (-> options (-> obj option-index) param1))))
@@ -1505,13 +1696,23 @@
                   (set! (-> *progress-state* on-off-backup)
                         (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))))
                   )
+                 (((game-option-type confirmation))
+                  (set! (-> *progress-state* on-off-backup) #f))
+                 (((game-option-type binding-assignment))
+                  (set! *progress-pad-timeout* (-> *display* real-frame-counter))
+                  ;; Inform the C++ side to start listening for input
+                  (pc-set-waiting-for-bind! (-> options (-> obj option-index) bind-info device-type)
+                                            (not (-> options (-> obj option-index) bind-info for-buttons?))
+                                            (-> options (-> obj option-index) bind-info analog-min-range?)
+                                            (-> options (-> obj option-index) bind-info input-idx))
+                  )
                  (((game-option-type cheat-toggle))
                   (set! (-> *progress-state* on-off-backup) (logtest? (-> *pc-settings* cheats) (ash 1 (the int (-> options (-> obj option-index) param1)))))
                   (set! (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))) (-> *progress-state* on-off-backup))
                   )
                  (((game-option-type display-mode))
                   ;; display-mode just reuses language stuff
-                  (case (pc-get-fullscreen)
+                  (case (pc-get-display-mode)
                     (('windowed #f) (set! (-> *progress-carousell* int-backup) 0))
                     (('fullscreen #t) (set! (-> *progress-carousell* int-backup) 1))
                     (('borderless) (set! (-> *progress-carousell* int-backup) 2))
@@ -1601,7 +1802,11 @@
             )
            (else
              ;; an option was selected. write stuff!
-             (sound-play "start-options")
+             (if (= (-> options (-> obj option-index) option-type) (game-option-type confirmation))
+              (if (-> *progress-state* on-off-backup)
+                (sound-play "menu-stats")
+                (sound-play "cursor-options"))
+              (sound-play "start-options"))
              (set! (-> obj selected-option) #f)
              (case (-> options (-> obj option-index) option-type)
                (((game-option-type cheat-toggle))
@@ -1684,6 +1889,9 @@
                 (set-video-mode (-> *setting-control* default video-mode))
                 )
                )
+              ;; if the option has a `on-confirm` function, run it
+              (when (nonzero? (-> options (-> obj option-index) on-confirm))
+                ((-> options (-> obj option-index) on-confirm)))
               (commit-to-file *pc-settings*)
              )
            )
@@ -1986,338 +2194,400 @@
             )
           )
         (dotimes (index (length options))
-        (let ((option-str (the string #f)) ;; the option text
-              (option-x 17)
-              (option-y y-off)
-              (locked? #f)
+          (let ((option-str (the string #f)) ;; the option text
+                (option-x 17)
+                (option-y y-off)
+                (locked? #f)
+                )
+            ;; Check if the option should be disabled
+            (when (and (nonzero? (-> options index option-disabled-func))
+                       (!= (-> options index option-disabled-func) #f)
+                       ((-> options index option-disabled-func)))
+                  (set! locked? #t))
+            (case (-> options index option-type)
+              (((game-option-type yes-no))
+              ;; yes-no option. text is either '->YES<- NO' or 'YES ->NO<-', not the most robust but this option is a strange hack anyway.
+              (if (-> (the-as (pointer uint32) (-> options index value-to-modify)))
+                  (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (text-id yes) #f) (lookup-text! *common-text* (text-id no) #f)))
+                  (set! option-str (string-format "~0L~S ~30L~S" (lookup-text! *common-text* (text-id yes) #f) (lookup-text! *common-text* (text-id no) #f)))
+                  )
               )
-          ;; Check if the option should be disabled
-          (when (and (!= (-> options index option-disabled-func) 0)
-                     ((-> options index option-disabled-func)))
-                (set! locked? #t))
-          (case (-> options index option-type)
-            (((game-option-type yes-no))
-             ;; yes-no option. text is either '->YES<- NO' or 'YES ->NO<-', not the most robust but this option is a strange hack anyway.
-             (if (-> (the-as (pointer uint32) (-> options index value-to-modify)))
-                 (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (text-id yes) #f) (lookup-text! *common-text* (text-id no) #f)))
-                 (set! option-str (string-format "~0L~S ~30L~S" (lookup-text! *common-text* (text-id yes) #f) (lookup-text! *common-text* (text-id no) #f)))
-                 )
-             )
-            (((game-option-type menu) (game-option-type button))
-             ;; menu option or simple button. just draw its text!
-             (if (nonzero? (-> options index name))
-                 (set! option-str (lookup-text! *common-text* (-> options index name) #f))
-                 (set! option-str #f)
-                 )
-             ;; if autosave disabled, update text and lock it
-             (when (and (not (-> *setting-control* default auto-save))
-                      (= (text-id disable-auto-save) (-> options index name)))
-                 (set! option-str (lookup-text! *common-text* (text-id auto-save-disabled) #f))
-                 (true! locked?))
-             ;; checkpoint-select only unlocked after beating finalboss
-             (when (and (not (task-closed? (game-task finalboss-movies) (task-status need-reminder)))
-                      (= (text-id checkpoint-select) (-> options index name)))
-                 (set! option-str (lookup-text! *common-text* (text-id cheat-req-beat-game) #f))
-                 (true! locked?))
-             )
-            (((game-option-type button-music))
-             ;; a button for the music player. has the text "locked" sometimes!
-             (if (and (nonzero? (-> options index name)) (find-music-log (progress-get-music-by-index index)))
-                 (set! option-str (lookup-text! *common-text* (-> options index name) #f))
-                 (set! option-str locked-str)
-                 )
-             )
-            (((game-option-type button-flava))
-             ;; a button for the flava player. has the text "locked" sometimes!
-             (if (and (nonzero? (-> options index name)) (find-flava-log (progress-get-music-by-index *progress-music*) (the int (-> options index param1))))
-                 (set! option-str (lookup-text! *common-text* (-> options index name) #f))
-                 (set! option-str locked-str)
-                 )
-             )
-            (((game-option-type resolution) (game-option-type aspect-new))
-             ;; resolution settings
-             (set! option-str (string-format (lookup-text! *common-text* (-> options index name) #f)
-                                      (the int (-> options index param1)) (the int (-> options index param2))))
-             )
-            (((game-option-type monitor))
-              ;; monitor list
-             (set! option-str
-                   (string-format (lookup-text! *common-text* (-> options index name) #f)
-                                  (+ 1 (the int (-> options index param1)))
-                                  )
-                   )
-             )
-            (else
-             (cond
-              ((and (-> obj selected-option) (= (-> obj option-index) index))
-               ;; this option is SELECTED!
-               (set-color! font (font-color default))
-               (set! (-> font origin x) (the float (- option-x (-> obj left-x-offset))))
-               (set! (-> font origin y) (the float (+ y-off -8)))
-               (set-scale! font 0.6)
-               (print-game-text (lookup-text! *common-text* (-> options index name) #f) font #f 128 22)
-               (set! option-y (+ y-off 7))
-               (case (-> options index option-type)
-                 (((game-option-type slider))
-                  ;; draw a slider and its text.
-                  ;; this ugliness is just decompiler stuff. all it does is fade the alpha according to value.
-                  (let* ((v1-82 (the-as uint #x8000ffff))
-                         (f0-12 (* 0.01 (-> (the-as (pointer float) (-> options index value-to-modify)))))
-                         (a0-34 (logior (logand v1-82 -256) (shr (shl (the int (+ 64.0 (* 191.0 f0-12))) 56) 56)))
-                         (a3-5 (logior (logand a0-34 -65281) (shr (shl (shr (shl a0-34 56) 56) 56) 48)))
-                         )
-                    (draw-percent-bar (- 75 (-> obj left-x-offset)) (+ y-off 8) f0-12 (the-as rgba a3-5))
-                    )
-                  (set! option-str (string-format "~D" (the int (-> (the-as (pointer float) (-> options index value-to-modify))))))
-                  (set! option-x (+ (the int (* 2.5 (-> (the-as (pointer float) (-> options index value-to-modify))))) -100))
+              ;; menu option or simple button. just draw its text!
+              (((game-option-type menu) (game-option-type button))
+               (if (nonzero? (-> options index name))
+                (set! option-str (lookup-text! *common-text* (-> options index name) #f))
+                (set! option-str #f))
+              ;; if autosave disabled, update text and lock it
+              (when (and (not (-> *setting-control* default auto-save))
+                        (= (text-id disable-auto-save) (-> options index name)))
+                  (set! option-str (lookup-text! *common-text* (text-id auto-save-disabled) #f))
+                  (true! locked?))
+              ;; checkpoint-select only unlocked after beating finalboss
+              (when (and (not (task-closed? (game-task finalboss-movies) (task-status need-reminder)))
+                        (= (text-id checkpoint-select) (-> options index name)))
+                  (set! option-str (lookup-text! *common-text* (text-id cheat-req-beat-game) #f))
+                  (true! locked?))
+              )
+              (((game-option-type button-music))
+              ;; a button for the music player. has the text "locked" sometimes!
+              (if (and (nonzero? (-> options index name)) (find-music-log (progress-get-music-by-index index)))
+                  (set! option-str (lookup-text! *common-text* (-> options index name) #f))
+                  (set! option-str locked-str)
                   )
-                 (((game-option-type on-off)
-                   (game-option-type normal-inverted)
-                   (game-option-type aspect-native))
-                  ;; on-off option or some other toggle. same logic as yes-no. changed to cut down code duping.
-                  (let (
-                        (on-str (case (-> options index option-type)
-                                  (((game-option-type on-off) (game-option-type aspect-native))
-                                    (lookup-text! *common-text* (text-id on) #f))
-                                  (((game-option-type normal-inverted))
-                                    (lookup-text! *common-text* (text-id inverted) #f))
-                                  ))
-                       (off-str (case (-> options index option-type)
-                                  (((game-option-type on-off) (game-option-type aspect-native))
-                                    (lookup-text! *common-text* (text-id off) #f))
-                                  (((game-option-type normal-inverted))
-                                    (lookup-text! *common-text* (text-id normal) #f))
-                                  ))
-                        )
-                    (if (-> (the-as (pointer symbol) (-> options index value-to-modify)))
-                        (set! option-str (string-format "~30L~S~0L ~S" on-str off-str))
-                        (set! option-str (string-format "~0L~S ~30L~S" on-str off-str))
-                        )
-                    )
+              )
+              (((game-option-type button-flava))
+              ;; a button for the flava player. has the text "locked" sometimes!
+              (if (and (nonzero? (-> options index name)) (find-flava-log (progress-get-music-by-index *progress-music*) (the int (-> options index param1))))
+                  (set! option-str (lookup-text! *common-text* (-> options index name) #f))
+                  (set! option-str locked-str)
                   )
-                 (((game-option-type cheat-toggle))
-                  (if (-> (the-as (pointer symbol) (-> options index value-to-modify)))
-                      (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (text-id on) #f) (lookup-text! *common-text* (text-id off) #f)))
-                      (set! option-str (string-format "~0L~S ~30L~S" (lookup-text! *common-text* (text-id on) #f) (lookup-text! *common-text* (text-id off) #f)))
-                      )
-                  )
-                 (((game-option-type display-mode)
-                   (game-option-type msaa)
-                   (game-option-type lod-bg)
-                   (game-option-type lod-fg)
-                   (game-option-type speaker)
-                   (game-option-type frame-rate)
-                   (game-option-type language-subtitles)
-                   (game-option-type language-text)
-                   )
-                  ;; crunched down to one generic function.
-                  (progress-draw-carousell-from-string-list (-> *progress-carousell* current-carousell) font y-off (-> (the-as (pointer int) (-> options index value-to-modify))))
-                  )
-                 (((game-option-type language))
-                  ;; language carousell. who knew this could be so complicated.
-                  (let ((old-lang (-> obj language-selection))
-                        (new-lang (-> (the-as (pointer language-enum) (-> options index value-to-modify))))
-                        (max-lang 6)
-                        )
-                  (if (-> obj language-transition)
-                      (seekl! (-> obj language-x-offset) 200 (the int (* 10.0 (-> *display* time-adjust-ratio)))))
-                  (when (>= (-> obj language-x-offset) 100)
-                    (set! (-> obj language-selection) new-lang)
-                    (set! old-lang new-lang)
-                    (set! (-> obj language-transition) #f)
-                    (set! (-> obj language-x-offset) 0)
-                    )
-                  (set! (-> font origin y) (the float (+ y-off 3)))
-                  (set-color! font (font-color progress-blue))
-                  0
-                  (let ((next-lang (mod (+ old-lang 1) max-lang))
-                        (prev-lang (mod (+ max-lang -1 old-lang) max-lang))
-                        ;; these are used during the transition since it technically allows you to see 4 langs at once.
-                        (next2-lang (mod (+ old-lang 2) max-lang))
-                        (prev2-lang (mod (+ max-lang -2 old-lang) max-lang))
-                        )
-                    (cond
-                      ((-> obj language-direction)
-                       (let ((a2-22 (- 200 (+ (-> obj language-x-offset) 100))))
-                         (print-language-name prev-lang font a2-22 #f)
-                         )
-                       (set-color! font (font-color progress-blue))
-                       (let ((a2-23 (+ (-> obj language-x-offset) 100)))
-                         (cond
-                           ((< a2-23 150)
-                            (print-language-name (the int next-lang) font a2-23 #t)
-                            )
-                           (else
-                             (let ((a2-24 (- 200 (-> obj language-x-offset))))
-                               (print-language-name prev2-lang font a2-24 #f)
-                               )
-                             )
-                           )
-                         )
-                       )
-                      (else
-                        (let ((a2-25 (+ (-> obj language-x-offset) 100)))
-                          (cond
-                            ((< a2-25 150)
-                             (print-language-name prev-lang font a2-25 #f)
-                             )
-                            (else
-                              (let ((a2-26 (- 200 (-> obj language-x-offset))))
-                                (print-language-name (the int next2-lang) font a2-26 #t)
-                                )
-                              )
-                            )
-                          )
-                        (set-color! font (font-color progress-blue))
-                        (let ((a2-27 (- 200 (+ (-> obj language-x-offset) 100))))
-                          (print-language-name (the int next-lang) font a2-27 #t)
-                          )
-                        )
-                      )
-                    )
-                  (if (not (-> obj language-transition))
-                      (set-color! font (font-color progress-selected)))
-                  (print-language-name (the-as int old-lang) font (-> obj language-x-offset) (-> obj language-direction))
-                  ))
-                 (((game-option-type aspect-ratio))
-                  ;; same as on-off but checks a different symbol
-                  (if (= (-> (the-as (pointer symbol) (-> options index value-to-modify))) 'aspect4x3)
-                      (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (text-id 4x3) #f) (lookup-text! *common-text* (text-id 16x9) #f)))
-                      (set! option-str (string-format "~0L~S ~30L~S" (lookup-text! *common-text* (text-id 4x3) #f) (lookup-text! *common-text* (text-id 16x9) #f)))
-                      )
-                  )
-                 )
-               )
+              )
+              (((game-option-type resolution) (game-option-type aspect-new))
+              ;; resolution settings
+              (set! option-str (string-format (lookup-text! *common-text* (-> options index name) #f)
+                                        (the int (-> options index param1)) (the int (-> options index param2))))
+              )
+              (((game-option-type monitor))
+                ;; monitor list
+                (if (nonzero? (-> options index name-override))
+                    (set! option-str
+                          (string-format "~S (~D)"
+                                          (-> options index name-override)
+                                          (+ 1 (the int (-> options index param1)))))
+                    (set! option-str
+                          (string-format (lookup-text! *common-text* (-> options index name) #f)
+                                          (+ 1 (the int (-> options index param1))))))
+              )
+              (((game-option-type controller))
+                ;; controller list
+                (if (nonzero? (-> options index name-override))
+                    (set! option-str
+                          (string-format "~S (~D)"
+                                          (-> options index name-override)
+                                          (+ 1 (the int (-> options index param1)))))
+                    (set! option-str
+                          (string-format (lookup-text! *common-text* (-> options index name) #f)
+                                          (+ 1 (the int (-> options index param1))))))
+              )
               (else
-                ;; this option is not selected :-(
+              (cond
+                ((and (-> obj selected-option) (= (-> obj option-index) index))
+                  ;; this option is SELECTED!
+                  (set-color! font (font-color default))
+                  (set! (-> font origin x) (the float (- option-x (-> obj left-x-offset))))
+                  (set! (-> font origin y) (the float (+ y-off -8)))
+                  (set-scale! font 0.6)
+                  ;; we use the binding name for the selected text header
+                  (if (= (-> options index option-type) (game-option-type binding-assignment))
+                    ;; display timeout in seconds
+                    (let ((time-left (the int (+ 11.0 (* (/ 1.0 TICKS_PER_SECOND) (* -1.0 (- (-> *display* real-frame-counter) *progress-pad-timeout*)))))))
+                      ;; if the timeout is over, unselect the option
+                      (when (<= time-left 0)
+                        (set! (-> obj selected-option) #f)
+                        (sound-play "menu-stats")
+                        (pc-stop-waiting-for-bind!))
+                      (when (not (pc-waiting-for-bind?))
+                        (set! (-> obj selected-option) #f)
+                        (sound-play "cursor-options"))
+                      (print-game-text (string-format "~S (~4L~D~0L)" (-> options index name-override) time-left) font #f 128 22))
+                    (print-game-text (lookup-text! *common-text* (-> options index name) #f) font #f 128 22))
+                  (set! option-y (+ y-off 7))
                 (case (-> options index option-type)
-                  (((game-option-type slider)
-                    (game-option-type aspect-ratio)
-                    (game-option-type display-mode)
+                  (((game-option-type slider))
+                    ;; draw a slider and its text.
+                    ;; this ugliness is just decompiler stuff. all it does is fade the alpha according to value.
+                    (let* ((v1-82 (the-as uint #x8000ffff))
+                          ;; calculate the percentage of the bar based on the actual range, instead of assuming 0-100
+                          ;; low = param1 / high = param2
+                          ;; (actual + abs(low)) / (high + abs(low)) = percentage
+                          (percentage (/ (+ (-> (the-as (pointer float) (-> options index value-to-modify)))
+                                            (fabs (-> options index param1)))
+                                          (+ (-> options index param2)
+                                            (fabs (-> options index param1)))))
+                          (a0-34 (logior (logand v1-82 -256) (shr (shl (the int (+ 64.0 (* 191.0 percentage))) 56) 56)))
+                          (color (logior (logand a0-34 -65281) (shr (shl (shr (shl a0-34 56) 56) 56) 48)))
+                          )
+                      (draw-percent-bar (- 75 (-> obj left-x-offset)) (+ y-off 8) percentage (the-as rgba color))
+                      (set! option-x (+ (the int (* 2.5 (* 100.0 percentage)))
+                                      -100))
+                      )
+                    (if (= (-> options index slider-show-decimal?) #t)
+                        (set! option-str (string-format "~,,1f" (-> (the-as (pointer float) (-> options index value-to-modify)))))
+                        (set! option-str (string-format "~D" (the int (-> (the-as (pointer float) (-> options index value-to-modify)))))))
+                    )
+                  (((game-option-type on-off)
+                    (game-option-type normal-inverted)
+                    (game-option-type aspect-native)
+                    )
+                    ;; on-off option or some other toggle. same logic as yes-no. changed to cut down code duping.
+                    (let ((on-str (case (-> options index option-type)
+                                    (((game-option-type on-off) (game-option-type aspect-native))
+                                      (lookup-text! *common-text* (text-id on) #f))
+                                    (((game-option-type normal-inverted))
+                                      (lookup-text! *common-text* (text-id inverted) #f))))
+                          (off-str (case (-> options index option-type)
+                                    (((game-option-type on-off) (game-option-type aspect-native))
+                                      (lookup-text! *common-text* (text-id off) #f))
+                                    (((game-option-type normal-inverted))
+                                      (lookup-text! *common-text* (text-id normal) #f)))))
+                      (if (-> (the-as (pointer symbol) (-> options index value-to-modify)))
+                       (set! option-str (string-format "~30L~S~0L ~S" on-str off-str))
+                       (set! option-str (string-format "~0L~S ~30L~S" on-str off-str))))
+                    )
+                  ;; the same as yes-no, but we aren't changing an underlying value.
+                  (((game-option-type confirmation))
+                   (if (-> *progress-state* on-off-backup)
+                     (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (text-id yes) #f) (lookup-text! *common-text* (text-id no) #f)))
+                     (set! option-str (string-format "~0L~S ~30L~S" (lookup-text! *common-text* (text-id yes) #f) (lookup-text! *common-text* (text-id no) #f)))))
+                  (((game-option-type cheat-toggle))
+                    (if (-> (the-as (pointer symbol) (-> options index value-to-modify)))
+                        (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (text-id on) #f) (lookup-text! *common-text* (text-id off) #f)))
+                        (set! option-str (string-format "~0L~S ~30L~S" (lookup-text! *common-text* (text-id on) #f) (lookup-text! *common-text* (text-id off) #f)))
+                        )
+                    )
+                  (((game-option-type binding-assignment))
+                    (let ((bind (pc-get-current-bind (-> options index bind-info))))
+                      (cond
+                       ((= bind #f)
+                        (set! option-str (string-format "~S" (lookup-text! *common-text* (text-id input-opts-binds-unset) #f))))
+                       ((string= bind "unknown")
+                        (set! option-str (string-format "~S" (lookup-text! *common-text* (text-id input-opts-binds-unknown) #f))))
+                       (else
+                        (set! option-str (string-format "~S" bind))))))
+                  (((game-option-type display-mode)
                     (game-option-type msaa)
                     (game-option-type lod-bg)
                     (game-option-type lod-fg)
                     (game-option-type speaker)
                     (game-option-type frame-rate)
-                    (game-option-type normal-inverted)
+                    (game-option-type language-subtitles)
+                    (game-option-type language-text)
                     )
-                   ;; slider and aspect ratio options just show their text
-                   (set! option-str (lookup-text! *common-text* (-> options index name) #f))
-                   )
-                  (((game-option-type on-off) (game-option-type aspect-native))
-                   ;; on-off options show their text + on or off
-                   (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
-                                                        (if (-> (the-as (pointer uint32) (-> options index value-to-modify)))
-                                                            (lookup-text! *common-text* (text-id on) #f)
-                                                            (lookup-text! *common-text* (text-id off) #f)
-                                                            )))
-                   )
-                  (((game-option-type cheat-toggle))
-                    (cond
-                      ((not (logtest? (-> *pc-settings* cheats-known) (ash 1 (the int (-> options index param1)))))
-                       (true! locked?)
-                       (case (ash 1 (the int (-> options index param1)))
-                           (((pc-cheats eco-blue)
-                             (pc-cheats eco-green)
-                             (pc-cheats eco-red)
-                             (pc-cheats eco-yellow)
-                             (pc-cheats invinc)
-                             (pc-cheats huge-head)
-                             (pc-cheats mirror)
-                             (pc-cheats no-tex)
-                             )
-                             (set! option-str (lookup-text! *common-text* (text-id cheat-req-100-percent) #f)))
-                           (((pc-cheats sky)
-                             (pc-cheats sidekick-blue)
-                             (pc-cheats tunes)
-                             (pc-cheats big-head)
-                             (pc-cheats small-head)
-                             (pc-cheats big-fist)
-                             (pc-cheats big-head-npc)
-                             )
-                             (set! option-str (lookup-text! *common-text* (text-id cheat-req-beat-game) #f)))
-                           (else
-                             ;; (format 0 "weird case ~f #x~x~%" (-> options index param1) (ash 1 (the int (-> options index param1))))
-                             (set! option-str locked-str))
-                           )
-                       )
-                      (else
-                        (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
-                                                             (if (logtest? (-> *pc-settings* cheats) (ash 1 (the int (-> options index param1))))
-                                                                 (lookup-text! *common-text* (text-id on) #f)
-                                                                 (lookup-text! *common-text* (text-id off) #f)
-                                                                 )))
+                    ;; crunched down to one generic function.
+                    (progress-draw-carousell-from-string-list (-> *progress-carousell* current-carousell) font y-off (-> (the-as (pointer int) (-> options index value-to-modify))))
+                    )
+                  (((game-option-type language))
+                    ;; language carousell. who knew this could be so complicated.
+                    (let ((old-lang (-> obj language-selection))
+                          (new-lang (-> (the-as (pointer language-enum) (-> options index value-to-modify))))
+                          (max-lang 6)
+                          )
+                    (if (-> obj language-transition)
+                        (seekl! (-> obj language-x-offset) 200 (the int (* 10.0 (-> *display* time-adjust-ratio)))))
+                    (when (>= (-> obj language-x-offset) 100)
+                      (set! (-> obj language-selection) new-lang)
+                      (set! old-lang new-lang)
+                      (set! (-> obj language-transition) #f)
+                      (set! (-> obj language-x-offset) 0)
+                      )
+                    (set! (-> font origin y) (the float (+ y-off 3)))
+                    (set-color! font (font-color progress-blue))
+                    0
+                    (let ((next-lang (mod (+ old-lang 1) max-lang))
+                          (prev-lang (mod (+ max-lang -1 old-lang) max-lang))
+                          ;; these are used during the transition since it technically allows you to see 4 langs at once.
+                          (next2-lang (mod (+ old-lang 2) max-lang))
+                          (prev2-lang (mod (+ max-lang -2 old-lang) max-lang))
+                          )
+                      (cond
+                        ((-> obj language-direction)
+                        (let ((a2-22 (- 200 (+ (-> obj language-x-offset) 100))))
+                          (print-language-name prev-lang font a2-22 #f)
+                          )
+                        (set-color! font (font-color progress-blue))
+                        (let ((a2-23 (+ (-> obj language-x-offset) 100)))
+                          (cond
+                            ((< a2-23 150)
+                              (print-language-name (the int next-lang) font a2-23 #t)
+                              )
+                            (else
+                              (let ((a2-24 (- 200 (-> obj language-x-offset))))
+                                (print-language-name prev2-lang font a2-24 #f)
+                                )
+                              )
+                            )
+                          )
+                        )
+                        (else
+                          (let ((a2-25 (+ (-> obj language-x-offset) 100)))
+                            (cond
+                              ((< a2-25 150)
+                              (print-language-name prev-lang font a2-25 #f)
+                              )
+                              (else
+                                (let ((a2-26 (- 200 (-> obj language-x-offset))))
+                                  (print-language-name (the int next2-lang) font a2-26 #t)
+                                  )
+                                )
+                              )
+                            )
+                          (set-color! font (font-color progress-blue))
+                          (let ((a2-27 (- 200 (+ (-> obj language-x-offset) 100))))
+                            (print-language-name (the int next-lang) font a2-27 #t)
+                            )
+                          )
                         )
                       )
-                   )
-                  (((game-option-type language))
-                   ;; language options show their text + language name
-                   (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
-                                                        (lookup-text! *common-text* (-> *language-name-remap* (-> (the-as (pointer uint64) (-> options index value-to-modify)))) #f)))
-                   )
-                  (((game-option-type language-subtitles))
-                   (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
-                                                            (lookup-text! *common-text* (get-language-name (-> *pc-settings* subtitle-language)) #f)))
-                   )
-                  (((game-option-type language-text))
-                   (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
-                                                            (lookup-text! *common-text* (get-language-name (-> *pc-settings* text-language)) #f)))
-                   )
+                    (if (not (-> obj language-transition))
+                        (set-color! font (font-color progress-selected)))
+                    (print-language-name (the-as int old-lang) font (-> obj language-x-offset) (-> obj language-direction))
+                    ))
+                  (((game-option-type aspect-ratio))
+                    ;; same as on-off but checks a different symbol
+                    (if (= (-> (the-as (pointer symbol) (-> options index value-to-modify))) 'aspect4x3)
+                        (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (text-id 4x3) #f) (lookup-text! *common-text* (text-id 16x9) #f)))
+                        (set! option-str (string-format "~0L~S ~30L~S" (lookup-text! *common-text* (text-id 4x3) #f) (lookup-text! *common-text* (text-id 16x9) #f)))
+                        )
+                    )
                   )
                 )
-              ))
-            )
-          (when (or (<= (length options) PROGRESS_PC_PAGE_HEIGHT)
-                    (and (not (progress-scrolling?))
-                         (>= index *progress-scroll-start*)
-                         (< index *progress-scroll-end*))
-                    (and (progress-scrolling-down?)
-                         (>= index (1- *progress-scroll-start*))
-                         (< index *progress-scroll-end*))
-                    (and (progress-scrolling-up?)
-                         (>= index *progress-scroll-start*)
-                         (< index (1+ *progress-scroll-end*)))
-                    )
-          (when option-str
-            ;; draw the actual text!
-            (let ((f0-23 (-> obj transition-percentage-invert))
-                  (scroll-amt (-> *progress-scroll* transition)))
-              (cond
-                ((or (and (progress-scrolling-up?) (= index *progress-scroll-start*))
-                     (and (progress-scrolling-down?) (= index (1- *progress-scroll-end*))))
-                 )
-                ((or (and (progress-scrolling-down?) (= index (1- *progress-scroll-start*)))
-                     (and (progress-scrolling-up?) (= index *progress-scroll-end*)))
-                 (set! scroll-amt (- 1.0 scroll-amt))
-                 )
                 (else
-                 (set! scroll-amt 1.0)
-                 )
-                )
-              (set-color! font (cond
-                                 ((and (!= index (-> obj option-index))
-                                       (or locked? (= locked-str option-str)))
-                                  ;; for "locked" options!
-                                  (font-color menu-invalid))
-                                 ((and (= index (-> obj option-index))
-                                       (not (or (progress-scrolling?) (-> obj in-transition))))
-                                  (font-color progress-selected))
-                                 (else
-                                  (font-color default))
-                                 ))
-              (set! (-> font origin x) (the float (- option-x (-> obj left-x-offset))))
-              (set! (-> font origin y) (the float (the int (* (the float option-y) (if (-> options index scale)
-                                                                                        f0-23
-                                                                                        1.0
-                                                                                        )))))
-              (set-scale! font (* arg2 f0-23 scroll-amt))
-              (print-game-text option-str font #f (the int (* 128.0 f0-23 scroll-amt)) 22)
+                  ;; this option is not selected :-(
+                  (case (-> options index option-type)
+                    (((game-option-type slider)
+                      (game-option-type aspect-ratio)
+                      (game-option-type display-mode)
+                      (game-option-type msaa)
+                      (game-option-type lod-bg)
+                      (game-option-type lod-fg)
+                      (game-option-type speaker)
+                      (game-option-type frame-rate)
+                      (game-option-type normal-inverted)
+                      (game-option-type confirmation)
+                      )
+                    ;; slider and aspect ratio options just show their text
+                    (set! option-str (lookup-text! *common-text* (-> options index name) #f))
+                    )
+                    (((game-option-type on-off) (game-option-type aspect-native))
+                    ;; on-off options show their text + on or off
+                    (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
+                                                          (if (-> (the-as (pointer uint32) (-> options index value-to-modify)))
+                                                              (lookup-text! *common-text* (text-id on) #f)
+                                                              (lookup-text! *common-text* (text-id off) #f)
+                                                              )))
+                    )
+                    (((game-option-type binding-assignment))
+                     ;; binding assignment options show their input + the current binding
+                     (let ((bind (pc-get-current-bind (-> options index bind-info))))
+                      (cond
+                       ((= bind #f)
+                        (set! option-str (string-format "~S: ~10L~S~0L"
+                                                        (-> options index name-override)
+                                                        (lookup-text! *common-text* (text-id input-opts-binds-unset) #f))))
+                       ((string= bind "unknown")
+                        (set! option-str (string-format "~S: ~10L~S~0L"
+                                                        (-> options index name-override)
+                                                        (lookup-text! *common-text* (text-id input-opts-binds-unknown) #f))))
+                       (else
+                        (set! option-str (string-format "~S: ~10L~S~0L"
+                                         (-> options index name-override)
+                                         bind))))))
+                    (((game-option-type cheat-toggle))
+                      (cond
+                        ((not (logtest? (-> *pc-settings* cheats-known) (ash 1 (the int (-> options index param1)))))
+                        (true! locked?)
+                        (case (ash 1 (the int (-> options index param1)))
+                            (((pc-cheats eco-blue)
+                              (pc-cheats eco-green)
+                              (pc-cheats eco-red)
+                              (pc-cheats eco-yellow)
+                              (pc-cheats invinc)
+                              (pc-cheats huge-head)
+                              (pc-cheats mirror)
+                              (pc-cheats no-tex)
+                              )
+                              (set! option-str (lookup-text! *common-text* (text-id cheat-req-100-percent) #f)))
+                            (((pc-cheats sky)
+                              (pc-cheats sidekick-blue)
+                              (pc-cheats tunes)
+                              (pc-cheats big-head)
+                              (pc-cheats small-head)
+                              (pc-cheats big-fist)
+                              (pc-cheats big-head-npc)
+                              )
+                              (set! option-str (lookup-text! *common-text* (text-id cheat-req-beat-game) #f)))
+                            (else
+                              ;; (format 0 "weird case ~f #x~x~%" (-> options index param1) (ash 1 (the int (-> options index param1))))
+                              (set! option-str locked-str))
+                            )
+                        )
+                        (else
+                          (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
+                                                              (if (logtest? (-> *pc-settings* cheats) (ash 1 (the int (-> options index param1))))
+                                                                  (lookup-text! *common-text* (text-id on) #f)
+                                                                  (lookup-text! *common-text* (text-id off) #f)
+                                                                  )))
+                          )
+                        )
+                    )
+                    (((game-option-type language))
+                    ;; language options show their text + language name
+                    (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
+                                                          (lookup-text! *common-text* (-> *language-name-remap* (-> (the-as (pointer uint64) (-> options index value-to-modify)))) #f)))
+                    )
+                    (((game-option-type language-subtitles))
+                    (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
+                                                              (lookup-text! *common-text* (get-language-name (-> *pc-settings* subtitle-language)) #f)))
+                    )
+                    (((game-option-type language-text))
+                    (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
+                                                              (lookup-text! *common-text* (get-language-name (-> *pc-settings* text-language)) #f)))
+                    )
+                    )
+                  )
+                ))
               )
-            )
-          (+! y-off arg1)
-          (+! option-count 1)
-            )
-          ))
+            (when (or (<= (length options) PROGRESS_PC_PAGE_HEIGHT)
+                      (and (not (progress-scrolling?))
+                          (>= index *progress-scroll-start*)
+                          (< index *progress-scroll-end*))
+                      (and (progress-scrolling-down?)
+                          (>= index (1- *progress-scroll-start*))
+                          (< index *progress-scroll-end*))
+                      (and (progress-scrolling-up?)
+                          (>= index *progress-scroll-start*)
+                          (< index (1+ *progress-scroll-end*)))
+                      )
+            (when option-str
+              ;; draw the actual text!
+              (let ((f0-23 (-> obj transition-percentage-invert))
+                    (scroll-amt (-> *progress-scroll* transition)))
+                (cond
+                  ((or (and (progress-scrolling-up?) (= index *progress-scroll-start*))
+                      (and (progress-scrolling-down?) (= index (1- *progress-scroll-end*))))
+                  )
+                  ((or (and (progress-scrolling-down?) (= index (1- *progress-scroll-start*)))
+                      (and (progress-scrolling-up?) (= index *progress-scroll-end*)))
+                  (set! scroll-amt (- 1.0 scroll-amt))
+                  )
+                  (else
+                  (set! scroll-amt 1.0)
+                  )
+                  )
+                (set-color! font (cond
+                                  ((and (!= index (-> obj option-index))
+                                        (or locked? (= locked-str option-str)))
+                                    ;; for "locked" options!
+                                    (font-color menu-invalid))
+                                  ((and (= index (-> obj option-index))
+                                        (not (or (progress-scrolling?) (-> obj in-transition))))
+                                    (font-color progress-selected))
+                                  (else
+                                    (font-color default))
+                                  ))
+                (set! (-> font origin x) (the float (- option-x (-> obj left-x-offset))))
+                (set! (-> font origin y) (the float (the int (* (the float option-y) (if (-> options index scale)
+                                                                                          f0-23
+                                                                                          1.0
+                                                                                          )))))
+                (set-scale! font (* arg2 f0-23 scroll-amt))
+                (print-game-text option-str font #f (the int (* 128.0 f0-23 scroll-amt)) 22)
+                )
+              )
+            (+! y-off arg1)
+            (+! option-count 1)
+              )
+            ))
         )
       )
     )
@@ -2531,6 +2801,17 @@
          (hide-progress-icons)
          (draw-options self 115 25 0.65)
          )
+        (((progress-screen input-options)
+          (progress-screen select-controller)
+          (progress-screen controller-binds)
+          (progress-screen keyboard-binds)
+          (progress-screen mouse-binds)
+          (progress-screen controller-options)
+          (progress-screen mouse-options)
+          (progress-screen reassign-binds-options))
+         (hide-progress-icons)
+         (draw-options self 115 25 0.65)
+         )
         (((progress-screen gfx-ps2-options))
          (hide-progress-icons)
          (draw-options self 115 25 0.67)
@@ -2599,6 +2880,8 @@
          (draw-notice-screen self)
          (draw-options self 169 15 0.6)
          )
+        (else
+          (format 0 "PROGRESS - You forgot to add a `progress-screen` case to draw options!"))
         )
       (when stats?
         (let* ((v1-98 (cond ((-> self stat-transition) 0)
@@ -2808,7 +3091,3 @@
     (none)
     )
   )
-
-
-
-

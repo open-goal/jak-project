@@ -3,9 +3,12 @@
 
 #include <algorithm>
 
+#include "common/global_profiler/GlobalProfiler.h"
+
 #include "game/graphics/gfx.h"
 
 #include "third-party/imgui/imgui.h"
+#include "third-party/imgui/imgui_style.h"
 
 void FrameTimeRecorder::finish_frame() {
   m_frame_times[m_idx++] = m_compute_timer.getMs();
@@ -93,7 +96,7 @@ void OpenGlDebugGui::finish_frame() {
 
 void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
   if (ImGui::BeginMainMenuBar()) {
-    if (ImGui::BeginMenu("Windows")) {
+    if (ImGui::BeginMenu("Debugging")) {
       ImGui::MenuItem("Frame Time Plot", nullptr, &m_draw_frame_time);
       ImGui::MenuItem("Render Debug", nullptr, &m_draw_debug);
       ImGui::MenuItem("Profiler", nullptr, &m_draw_profiler);
@@ -103,35 +106,52 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
     }
 
     if (ImGui::BeginMenu("Tools")) {
+      if (ImGui::BeginMenu("Screenshot")) {
+        ImGui::MenuItem("Screenshot Next Frame!", nullptr, &m_want_screenshot);
+        ImGui::InputText("File", m_screenshot_save_name, 50);
+        ImGui::InputInt("Width", &screenshot_width);
+        ImGui::InputInt("Height", &screenshot_height);
+        ImGui::InputInt("MSAA", &screenshot_samples);
+        ImGui::Checkbox("Screenshot on f2", &screenshot_hotkey_enabled);
+        ImGui::EndMenu();
+      }
       ImGui::MenuItem("Subtitle Editor", nullptr, &m_subtitle_editor);
+      ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("Settings")) {
+      if (ImGui::TreeNode("ImGui Styling (restart required for these)")) {
+        ImGui::InputInt("Font Size", &Gfx::g_debug_settings.imgui_font_size);
+        ImGui::Checkbox("Monospaced Font", &Gfx::g_debug_settings.monospaced_font);
+        if (ImGui::Checkbox("Alternate Style", &Gfx::g_debug_settings.alternate_style)) {
+          if (Gfx::g_debug_settings.alternate_style) {
+            ImGui::applyAlternateStyle();
+          } else {
+            ImGui::StyleColorsClassic();
+          }
+        }
+        ImGui::TreePop();
+      }
+      ImGui::Checkbox("Ignore Hide ImGui Bind", &Gfx::g_debug_settings.ignore_hide_imgui);
+      if (ImGui::BeginMenu("Frame Rate")) {
+        ImGui::Checkbox("Framelimiter", &Gfx::g_global_settings.framelimiter);
+        ImGui::InputFloat("Target FPS", &target_fps_input);
+        if (ImGui::MenuItem("Apply")) {
+          Gfx::g_global_settings.target_fps = target_fps_input;
+        }
+        ImGui::Separator();
+        ImGui::Checkbox("Accurate Lag Mode", &Gfx::g_global_settings.experimental_accurate_lag);
+        ImGui::Checkbox("Sleep in Frame Limiter", &Gfx::g_global_settings.sleep_in_frame_limiter);
+        ImGui::EndMenu();
+      }
       ImGui::MenuItem("Filters", nullptr, &m_filters_menu);
       ImGui::EndMenu();
     }
 
-    if (ImGui::BeginMenu("Screenshot")) {
-      ImGui::MenuItem("Screenshot Next Frame!", nullptr, &m_want_screenshot);
-      ImGui::InputText("File", m_screenshot_save_name, 50);
-      ImGui::InputInt("Width", &screenshot_width);
-      ImGui::InputInt("Height", &screenshot_height);
-      ImGui::InputInt("MSAA", &screenshot_samples);
-      ImGui::Checkbox("Screenshot on f2", &screenshot_hotkey_enabled);
-      ImGui::EndMenu();
-    }
-
-    if (ImGui::BeginMenu("Frame Rate")) {
-      ImGui::Checkbox("Framelimiter", &Gfx::g_global_settings.framelimiter);
-      ImGui::InputFloat("Target FPS", &target_fps_input);
-      if (ImGui::MenuItem("Apply")) {
-        Gfx::g_global_settings.target_fps = target_fps_input;
-      }
-      ImGui::Separator();
-      ImGui::Checkbox("Accurate Lag Mode", &Gfx::g_global_settings.experimental_accurate_lag);
-      ImGui::Checkbox("Sleep in Frame Limiter", &Gfx::g_global_settings.sleep_in_frame_limiter);
-      ImGui::EndMenu();
-    }
-
     if (ImGui::BeginMenu("Event Profiler")) {
-      ImGui::Checkbox("Record", &record_events);
+      if (ImGui::Checkbox("Record", &record_events)) {
+        prof().set_enable(record_events);
+      }
       ImGui::MenuItem("Dump to file", nullptr, &dump_events);
       ImGui::EndMenu();
     }

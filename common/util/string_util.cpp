@@ -1,7 +1,9 @@
 #include "string_util.h"
 
+#include <iomanip>
 #include <random>
 #include <regex>
+#include <sstream>
 
 #include "common/util/diff.h"
 
@@ -27,6 +29,8 @@ std::string ltrim(const std::string& s) {
   return (start == std::string::npos) ? "" : s.substr(start);
 }
 
+// TODO - used a lot in formatting, and its slow because i bet it iterates from the start and not
+// the end
 std::string rtrim(const std::string& s) {
   size_t end = s.find_last_not_of(WHITESPACE);
   return (end == std::string::npos) ? "" : s.substr(0, end + 1);
@@ -138,5 +142,44 @@ std::string repeat(size_t n, const std::string& str) {
     ret += ret;
   ret.append(ret.c_str(), (n - (m / 2)) * period);
   return ret;
+}
+
+std::string current_local_timestamp() {
+  std::time_t now = std::time(nullptr);
+  std::tm local_time = *std::localtime(&now);
+  const std::string format = "%Y-%m-%dT%H:%M:%S";
+  std::ostringstream oss;
+  oss << std::put_time(&local_time, format.c_str());
+  return oss.str();
+}
+
+std::string current_local_timestamp_no_colons() {
+  std::time_t now = std::time(nullptr);
+  std::tm local_time = *std::localtime(&now);
+  const std::string format = "%Y-%m-%dT%H-%M-%S";
+  std::ostringstream oss;
+  oss << std::put_time(&local_time, format.c_str());
+  return oss.str();
+}
+
+std::string current_isotimestamp() {
+  std::time_t now = std::time(nullptr);
+  std::tm utc_time = *std::gmtime(&now);
+  const std::string format = "%Y-%m-%dT%H:%M:%SZ";
+  std::ostringstream oss;
+  oss << std::put_time(&utc_time, format.c_str());
+  return oss.str();
+}
+
+std::string to_upper(const std::string& str) {
+  std::string new_str(str.size(), ' ');
+  std::transform(str.begin(), str.end(), new_str.begin(), ::toupper);
+  return new_str;
+}
+
+std::string to_lower(const std::string& str) {
+  std::string new_str(str.size(), ' ');
+  std::transform(str.begin(), str.end(), new_str.begin(), ::tolower);
+  return new_str;
 }
 }  // namespace str_util

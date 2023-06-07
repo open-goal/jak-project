@@ -639,40 +639,42 @@ u64 execute(void* ctxt) {
   c->sq(s5, 96, sp);                                // sq s5, 96(sp)
   c->sq(gp, 112, sp);                               // sq gp, 112(sp)
   // nop                                            // sll r0, r0, 0
-  c->lw(v1, 40, a1);                                // lw v1, 40(a1)
+  c->lw(v1, 40, a1);                                // lw v1, 40(a1)      v1 = frag.dimension_array;
   // nop                                            // sll r0, r0, 0
-  c->lqc2(vf1, 44, a1);                             // lqc2 vf1, 44(a1)
-  c->lui(a3, 1);                                    // lui a3, 1
-  c->lqc2(vf2, 128, a2);                            // lqc2 vf2, 128(a2)
-  c->ori(a3, a3, 257);                              // ori a3, a3, 257
-  c->lqc2(vf3, 144, a2);                            // lqc2 vf3, 144(a2)
-  c->dsubu(v1, v1, a3);                             // dsubu v1, v1, a3
-  c->lqc2(vf6, 60, a1);                             // lqc2 vf6, 60(a1)
-  c->vsub(DEST::xyzw, vf2, vf2, vf1);               // vsub.xyzw vf2, vf2, vf1
-  c->lq(a3, 160, a2);                               // lq a3, 160(a2)
-  c->vsub(DEST::xyzw, vf3, vf3, vf1);               // vsub.xyzw vf3, vf3, vf1
-  c->lq(t0, 176, a2);                               // lq t0, 176(a2)
+  c->lqc2(vf1, 44, a1);                             // lqc2 vf1, 44(a1)   vf1 = frag.bbox.min
+  c->lui(a3, 1);                                    // lui a3, 1          a3 = 0x10000
+  c->lqc2(vf2, 128, a2);                            // lqc2 vf2, 128(a2)  vf2 = query.bbox.min
+  c->ori(a3, a3, 257);                              // ori a3, a3, 257    a3=0x10101
+  c->lqc2(vf3, 144, a2);                            // lqc2 vf3, 144(a2)  vf3 = query.bbox.max
+  c->dsubu(v1, v1, a3);                             // dsubu v1, v1, a3   some math on the dim array
+  c->lqc2(vf6, 60, a1);                             // lqc2 vf6, 60(a1)   vf6 = frag.axis_scale;
+  c->vsub(DEST::xyzw, vf2, vf2, vf1);               // vsub.xyzw vf2, vf2, vf1  vf2 = query.min - frag.min
+  c->lq(a3, 160, a2);                               // lq a3, 160(a2)          a3 = query.bbox.min.i
+  c->vsub(DEST::xyzw, vf3, vf3, vf1);               // vsub.xyzw vf3, vf3, vf1 vf3 = query.max - frag.min
+  c->lq(t0, 176, a2);                               // lq t0, 176(a2)          t0 = query.bbox.max.i
   c->pextlb(v1, r0, v1);                            // pextlb v1, r0, v1
-  c->lq(t1, 76, a1);                                // lq t1, 76(a1)
-  c->pextlh(v1, r0, v1);                            // pextlh v1, r0, v1
-  c->lq(t2, 92, a1);                                // lq t2, 92(a1)
-  c->pcgtw(t0, t1, t0);                             // pcgtw t0, t1, t0
-  c->vftoi0(DEST::xyzw, vf4, vf2);                  // vftoi0.xyzw vf4, vf2
-  c->pcgtw(a3, a3, t2);                             // pcgtw a3, a3, t2
-  c->vftoi0(DEST::xyzw, vf5, vf3);                  // vftoi0.xyzw vf5, vf3
-  c->por(a3, t0, a3);                               // por a3, t0, a3
-  c->vmul(DEST::xyzw, vf2, vf2, vf6);               // vmul.xyzw vf2, vf2, vf6
-  c->ppach(a3, r0, a3);                             // ppach a3, r0, a3
-  c->vmul(DEST::xyzw, vf3, vf3, vf6);               // vmul.xyzw vf3, vf3, vf6
+  c->lq(t1, 76, a1);                                // lq t1, 76(a1)           t1 = frag.bbox.min.i
+  c->pextlh(v1, r0, v1);                            // pextlh v1, r0, v1       v1 = dimensions, int.
+  c->lq(t2, 92, a1);                                // lq t2, 92(a1)           t2 = frag.bbox.max.i
+  c->pcgtw(t0, t1, t0);                             // pcgtw t0, t1, t0        check for bbox miss.
+  c->vftoi0(DEST::xyzw, vf4, vf2);                  // vftoi0.xyzw vf4, vf2    vf4 = int(q.min - f.min)
+  c->pcgtw(a3, a3, t2);                             // pcgtw a3, a3, t2        check for bbox miss.
+  c->vftoi0(DEST::xyzw, vf5, vf3);                  // vftoi0.xyzw vf5, vf3    vf5 = int(q.max - f.min)
+  c->por(a3, t0, a3);                               // por a3, t0, a3          or miss
+  c->vmul(DEST::xyzw, vf2, vf2, vf6);               // vmul.xyzw vf2, vf2, vf6  axis scale
+  c->ppach(a3, r0, a3);                             // ppach a3, r0, a3         or stuff
+  c->vmul(DEST::xyzw, vf3, vf3, vf6);               // vmul.xyzw vf3, vf3, vf6  axis scale
   c->dsll(t0, a3, 16);                              // dsll t0, a3, 16
-  c->mov128_gpr_vf(a3, vf4);                        // qmfc2.i a3, vf4
+  c->mov128_gpr_vf(a3, vf4);                        // qmfc2.i a3, vf4         a3 = int(q.min - f.min)
   bc = c->sgpr64(t0) != 0;                          // bne t0, r0, L75
-  c->mov128_gpr_vf(t0, vf5);                        // qmfc2.i t0, vf5
+  c->mov128_gpr_vf(t0, vf5);                        // qmfc2.i t0, vf5         t0 = int(q.max - f.min)
   if (bc) {goto block_17;}                          // branch non-likely
 
-  c->vftoi0(DEST::xyzw, vf2, vf2);                  // vftoi0.xyzw vf2, vf2
+  // patch because there's a totally bogus collide fragment with an axis scale of
+  // 0.00012207031, 0.00012207031, 1807931
+  c->vftoi0_sat(DEST::xyzw, vf2, vf2);              // vftoi0.xyzw vf2, vf2
   c->psraw(a3, a3, 4);                              // psraw a3, a3, 4
-  c->vftoi0(DEST::xyzw, vf3, vf3);                  // vftoi0.xyzw vf3, vf3
+  c->vftoi0_sat(DEST::xyzw, vf3, vf3);              // vftoi0.xyzw vf3, vf3
   c->psraw(t0, t0, 4);                              // psraw t0, t0, 4
   // nop                                            // sll r0, r0, 0
   c->sq(a3, 368, a2);                               // sq a3, 368(a2)

@@ -3,9 +3,14 @@
 #include <optional>
 #include <string>
 
+#include "formatting_rules.h"
+
 #include "tree_sitter/api.h"
 
+// TODO:
+// - Considering _eventually_ adding line-length heuristics
 namespace formatter {
+
 struct TreeSitterParserDeleter {
   void operator()(TSParser* ptr) const { ts_parser_delete(ptr); }
 };

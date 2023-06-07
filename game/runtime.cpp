@@ -30,7 +30,7 @@
 #include "common/util/FileUtil.h"
 #include "common/versions/versions.h"
 
-#include "game/discord.h"
+#include "game/external/discord.h"
 #include "game/graphics/gfx.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kdgo.h"
@@ -317,8 +317,7 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
     // The IOP scheduler informs us of how many microseconds are left until it has something to do.
     // So we can wait for that long or until something else needs it to wake up.
     auto wait_duration = iop.kernel.dispatch();
-    if (wait_duration &&
-        *wait_duration - std::chrono::steady_clock::now() > std::chrono::microseconds(100)) {
+    if (wait_duration) {
       iop.wait_run_iop(*wait_duration);
     }
   }
@@ -375,23 +374,25 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
   g_game_version = game_options.game_version;
   g_server_port = game_options.server_port;
 
-  // set up discord stuff
   gStartTime = time(nullptr);
+  prof().instant_event("ROOT");
   {
-    auto p = scoped_prof("init-discord");
+    auto p = scoped_prof("startup::exec_runtime::init_discord_rpc");
     init_discord_rpc();
   }
 
   // initialize graphics first - the EE code will upload textures during boot and we
   // want the graphics system to catch them.
-  if (enable_display) {
-    auto p = scoped_prof("init-gfx");
-    Gfx::Init(g_game_version);
+  {
+    auto p = scoped_prof("startup::exec_runtime::init_gfx");
+    if (enable_display) {
+      Gfx::Init(g_game_version);
+    }
   }
 
   // step 1: sce library prep
   {
-    auto p = scoped_prof("init-library");
+    auto p = scoped_prof("startup::exec_runtime::library_prep");
     iop::LIBRARY_INIT();
     ee::LIBRARY_INIT_sceCd();
     ee::LIBRARY_INIT_sceDeci2();
@@ -399,28 +400,30 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
   }
 
   // step 2: system prep
+  prof().begin_event("startup::exec_runtime::system_prep");
   VM::vm_prepare();  // our fake ps2 VM needs to be prepared
   SystemThreadManager tm;
   auto& deci_thread = tm.create_thread("DMP");
   auto& iop_thread = tm.create_thread("IOP");
   auto& ee_thread = tm.create_thread("EE");
   auto& vm_dmac_thread = tm.create_thread("VM-DMAC");
+  prof().end_event();
 
   // step 3: start the EE!
   {
-    auto p = scoped_prof("iop-start");
+    auto p = scoped_prof("startup::exec_runtime::iop-start");
     iop_thread.start([=](SystemThreadInterface& sti) { iop_runner(sti, g_game_version); });
   }
   {
-    auto p = scoped_prof("deci-start");
+    auto p = scoped_prof("startup::exec_runtime::deci-start");
     deci_thread.start(deci2_runner);
   }
   {
-    auto p = scoped_prof("ee-start");
+    auto p = scoped_prof("startup::exec_runtime::ee-start");
     ee_thread.start(ee_runner);
   }
   if (VM::use) {
-    auto p = scoped_prof("dmac-start");
+    auto p = scoped_prof("startup::exec_runtime::dmac-start");
     vm_dmac_thread.start(dmac_runner);
   }
 
@@ -430,8 +433,8 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
     try {
       Gfx::Loop([]() { return MasterExit == RuntimeExitStatus::RUNNING; });
     } catch (std::exception& e) {
-      fmt::print("Exception thrown from graphics loop: {}\n", e.what());
-      fmt::print("Everything will crash now. good luck\n");
+      lg::error("Exception thrown from graphics loop: {}\n", e.what());
+      lg::error("Everything will crash now. good luck\n");
       throw;
     }
   }
