@@ -329,7 +329,7 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
   TypeInspectorCache ti_cache;
 
   for_each_obj([&](ObjectFileData& data) {
-    if (data.obj_version == 3 || data.obj_version == 5) {
+    if (data.obj_version == 3 || (data.obj_version == 5 && data.linked_data.has_any_functions())) {
       auto& object_result = per_object.emplace_back();
       object_result.object_name = data.to_unique_name();
 
