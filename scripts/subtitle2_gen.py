@@ -59,6 +59,7 @@ def gen_json_for_speaker(speaker):
         "lines": [
             {
                 "end": 10000.0,
+                "merge": False,
                 "offscreen": True,
                 "speaker": speaker,
                 "start": 0.0,
