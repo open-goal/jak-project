@@ -2,24 +2,47 @@
 
 #include "common/util/string_util.h"
 
-void FormattingRule::append_newline(std::string& curr_text,
-                                    const FormatterTreeNode& node,
-                                    const FormatterTreeNode& containing_node,
-                                    const int depth,
-                                    const int index) {
+void formatter_rules::blank_lines::separate_by_newline(std::string& curr_text,
+                                                       const FormatterTreeNode& containing_node,
+                                                       const FormatterTreeNode& node,
+                                                       const int index) {
+  // We only are concerned with top level forms or elements
+  // Skip the last element, no trailing new-lines (let the editors handle this!)
+  // Also peek ahead to see if there was a comment on this line, if so don't separate things!
+  if (!containing_node.metadata.is_top_level || index >= containing_node.refs.size() - 1 ||
+      (containing_node.refs.at(index + 1).metadata.is_comment &&
+       containing_node.refs.at(index + 1).metadata.is_inline)) {
+    return;
+  }
+  curr_text += "\n";
+  // If it's a comment, but has no following blank lines, dont insert a blank line
+  if (node.metadata.is_comment && node.metadata.num_blank_lines_following == 0) {
+    return;
+  }
+  // Otherwise, add only 1 blank line
+  curr_text += "\n";
+}
+
+void IndentationRule::append_newline(std::string& curr_text,
+                                     const FormatterTreeNode& node,
+                                     const FormatterTreeNode& containing_node,
+                                     const int depth,
+                                     const int index) {
   if (index <= 0 && !containing_node.metadata.multiple_elements_first_line ||
-      index <= 1 && containing_node.metadata.multiple_elements_first_line) {
+      index <= 1 && containing_node.metadata.multiple_elements_first_line ||
+      containing_node.metadata.is_top_level ||
+      (node.metadata.is_comment && node.metadata.is_inline)) {
     return;
   }
   curr_text = str_util::rtrim(curr_text) + "\n";
 }
 
-void FormattingRule::indent_token(std::string& curr_text,
-                                  const FormatterTreeNode& node,
-                                  const FormatterTreeNode& containing_node,
-                                  const int depth,
-                                  const int index) {
-  if (node.metadata.is_root) {
+void IndentationRule::indent_token(std::string& curr_text,
+                                   const FormatterTreeNode& node,
+                                   const FormatterTreeNode& containing_node,
+                                   const int depth,
+                                   const int index) {
+  if (node.metadata.is_top_level) {
     return;
   }
   if (containing_node.metadata.multiple_elements_first_line) {
@@ -37,9 +60,9 @@ void FormattingRule::indent_token(std::string& curr_text,
   }
 }
 
-void FormattingRule::align_form_lines(std::string& text,
-                                      const FormatterTreeNode& node,
-                                      const FormatterTreeNode& containing_node) {
+void IndentationRule::align_form_lines(std::string& text,
+                                       const FormatterTreeNode& node,
+                                       const FormatterTreeNode& containing_node) {
   const auto lines = str_util::split(text);
   // TODO - unsafe (breaks on a list of lists)
   int alignment_width = 1;
@@ -56,11 +79,11 @@ void FormattingRule::align_form_lines(std::string& text,
   text = aligned_form;
 }
 
-void InnerFormattingRule::append_newline(std::string& curr_text,
-                                         const FormatterTreeNode& node,
-                                         const FormatterTreeNode& containing_node,
-                                         const int depth,
-                                         const int index) {
+void InnerIndentationRule::append_newline(std::string& curr_text,
+                                          const FormatterTreeNode& node,
+                                          const FormatterTreeNode& containing_node,
+                                          const int depth,
+                                          const int index) {
   if (index < 1 || (m_depth != depth || m_index && m_index.value() != index)) {
     return;
   }
@@ -69,11 +92,11 @@ void InnerFormattingRule::append_newline(std::string& curr_text,
   }
 }
 
-void InnerFormattingRule::indent_token(std::string& curr_text,
-                                       const FormatterTreeNode& node,
-                                       const FormatterTreeNode& containing_node,
-                                       const int depth,
-                                       const int index) {
+void InnerIndentationRule::indent_token(std::string& curr_text,
+                                        const FormatterTreeNode& node,
+                                        const FormatterTreeNode& containing_node,
+                                        const int depth,
+                                        const int index) {
   if (index < 1 || (m_depth != depth || m_index && m_index.value() != index)) {
     return;
   }
@@ -83,9 +106,9 @@ void InnerFormattingRule::indent_token(std::string& curr_text,
   }
 }
 
-void InnerFormattingRule::align_form_lines(std::string& text,
-                                           const FormatterTreeNode& node,
-                                           const FormatterTreeNode& containing_node) {
+void InnerIndentationRule::align_form_lines(std::string& text,
+                                            const FormatterTreeNode& node,
+                                            const FormatterTreeNode& containing_node) {
   if (node.metadata.was_on_first_line_of_form) {
     return;
   }

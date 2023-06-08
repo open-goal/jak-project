@@ -216,7 +216,7 @@
   )
 
 ;; WARN: Return type mismatch entity vs entity-actor.
-(defun entity-actor-from-level-name ((arg0 level))
+(defun entity-actor-from-level-name ((arg0 symbol))
   (let ((v0-0 (the-as entity #f)))
     (dotimes (s5-0 (-> *level* length))
       (let ((s4-0 (-> *level* level s5-0)))
@@ -1579,7 +1579,7 @@
   )
 
 ;; WARN: Return type mismatch process vs none.
-(defun init-entity ((arg0 process) (arg1 entity-actor) (arg2 process))
+(defun init-entity ((arg0 process) (arg1 entity-actor) (arg2 type))
   (activate arg0 *entity-pool* (res-lump-struct arg1 'name basic) (the-as pointer #x70004000))
   (set! (-> arg0 entity) arg1)
   (set! (-> arg0 level) (-> arg1 extra level))
@@ -1605,7 +1605,7 @@
          (set! (-> s4-0 type) s5-0)
          (and s5-0 (valid? s5-0 type (the-as string #f) #f 0) (valid? (method-of-object s4-0 init-from-entity!) function (the-as string #f) #f 0))
          )
-       (init-entity s4-0 obj (the-as process s5-0))
+       (init-entity s4-0 obj s5-0)
        )
       (else
         (when (not (birth-viewer s4-0 obj))
@@ -2229,9 +2229,15 @@
                     (dotimes (s1-1 s2-3)
                       (set! sv-48 (-> s3-4 data s1-1))
                       (cond
-                        ((and (#if PC_PORT (or (with-pc (and (-> *pc-settings* force-actors?) (not (let ((name (res-lump-struct (-> sv-48 entity) 'name string)))
-                                                                                                   (or (string= name "fort-entry-gate-11")
-                                                                                                       (string= name "com-airlock-outer-13"))))))
+                        ((and (#if PC_PORT (or (with-pc (and (-> *pc-settings* force-actors?)
+                                                             ;; ban specific entities
+                                                             (not (let ((name (res-lump-struct (-> sv-48 entity) 'name string)))
+                                                                  (or (string= name "fort-entry-gate-11")
+                                                                      (string= name "com-airlock-outer-13")
+                                                                      (string= name "com-airlock-inner-41")
+                                                                      (string= name "under-lift-4")
+                                                                      (string= name "under-locking-1")
+                                                                      (string= name "under-locking-2"))))))
                                                (is-object-visible? s4-1 (-> sv-48 vis-id)))
                                            (is-object-visible? s4-1 (-> sv-48 vis-id)))
                               (not (logtest? (-> sv-48 perm status) (entity-perm-status bit-9 bit-10)))

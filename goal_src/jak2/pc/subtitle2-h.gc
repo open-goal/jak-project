@@ -1,0 +1,355 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+
+  Code for subtitles for the PC port. A PC actor pool is provided, and the subtitle2 process lives there.
+  Jak 2 has subtitles, but only for cutscenes and only for the actual spoken text.
+  The subtitle process automatically looks for currently-playing audio in the gui control.
+  It looks for specific channels there, NOT including the movie or subtitle channel.
+
+  This updated subtitle system has a few different features than the Jak 1 subtitle system:
+  - you can have multiple playing subtitles at once. Additional subtitles are rendered above the older ones,
+    just like real subtitles. This goes for both multiple subtitles within the same scene, and also multiple scenes
+    playing at once.
+  - it can "merge" with the pre-existing subtitle system. Some code in scene.gc is changed to redirect subtitles
+    to here to do that.
+  - you supply the start AND end times as opposed to just the start time.
+  - the speaker names are color-coded.
+  Note that subtitle images are NOT supported with this! Merge mode will also NOT work with subtitle images.
+
+  Similarly to the generic text file, only one subtitles text file is loaded at once, stored in a specific
+  heap.
+
+ |#
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defconstant PC_SUBTITLE_FILE_SIZE (* 192 1024)) ;; 192K heap for subtitles. adjust later if necessary.
+(defconstant PC_SUBTITLE_FILE_NAME "subti2")
+(defconstant PC_SUBTITLE_QUEUE_SIZE 5) ;; up to 8 things that display subtitles can be detected at once
+(defconstant PC_SUBTITLE_QUEUE_MAX_LINES 2) ;; up to 2 lines can be queued per queueable thing
+(defconstant PC_SUBTITLE_MAX_LINES 10) ;; max subtitles that can be displayed at once: queue-size * queue-lines
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; types and enums
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;;;------------------------
+;;  data
+;;;------------------------
+
+
+(defenum pc-subtitle2-flags
+  :bitfield #t
+  :type uint16
+  (offscreen) ;; speaker is offscreen.
+  (merge) ;; line of text comes from movie subtitles
+  )
+
+;; the list of available speakers for subtitles
+(defenum pc-subtitle2-speaker
+  :type uint16
+  (none) ;; won't display a speaker - use this for tutorial messages etc.
+
+  (computer)
+  (jak)
+  (darkjak)
+  (daxter)
+  (samos)
+  (keira)
+  (keira-before-class-3)
+  (kid)
+  (kor)
+  (metalkor)
+  (baron)
+  (errol)
+  (torn)
+  (tess)
+  (guard)
+  (guard-a)
+  (guard-b)
+  (krew)
+  (sig)
+  (brutter)
+  (vin)
+  (youngsamos)
+  (youngsamos-before-rescue)
+  (pecker)
+  (onin)
+  (ashelin)
+  (jinx)
+  (mog)
+  (grim)
+  (agent)
+  (citizen-male)
+  (citizen-female)
+  (oracle)
+  (precursor)
+
+  (max))
+
+;; information about a single line of subtitles
+(deftype subtitle2-line (structure)
+  (
+   (start-frame  float)  ;; the first frame to show the line on
+   (end-frame    float)  ;; the last frame to show the line on
+   (text     string)     ;; the text for the subtitle2 line
+   (speaker  pc-subtitle2-speaker) ;; who the line speaker is
+   (flags    pc-subtitle2-flags)   ;; flags
+   )
+  :pack-me
+  )
+
+;; an individual entry to a subtitle2 text making up a "scene" (audio file, spool), comprised of a series of lines
+(deftype subtitle2-scene (structure)
+  (
+   ;; the name of the spool-anim or audio file
+   (name  string)
+   ;; the amount of lines
+   (length int32)
+   ;; line data
+   (lines (inline-array subtitle2-line))
+   )
+  :pack-me
+  :size-assert #xc  ;; compact!
+
+  (:methods
+    (get-line-at-pos (_type_ float int) subtitle2-line)
+    )
+  )
+
+;; the global subtitle2 text info bank
+(deftype subtitle2-text-info (basic)
+  ((length  int16)
+   (version int16)
+   (lang    pc-language)
+   (speaker-length  int16)
+   (speaker-names   (pointer string))
+   (data    subtitle2-scene :inline :dynamic)
+   )
+
+  (:methods
+    (get-speaker (_type_ pc-subtitle2-speaker) string)
+    (get-scene-by-name (_type_ string) subtitle2-scene)
+    )
+  )
+
+
+(defmacro subtitle2-flags? (sub &rest flags)
+  `(logtest? (-> ,sub flags) (pc-subtitle2-flags ,@flags)))
+
+
+(defmethod inspect subtitle2-text-info ((obj subtitle2-text-info))
+  (if (not obj)
+      (return (the subtitle2-text-info #f)))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tversion: ~D~%" (-> obj version))
+  (format #t "~1Tlang: ~D~%" (-> obj lang))
+  (format #t "~1Tspeaker-names[~D] @ #x~x~%" (-> obj speaker-length) (-> obj speaker-names))
+  (dotimes (i (-> obj speaker-length))
+    (format #t "~2T[~D]: ~A~%" i (-> obj speaker-names i)))
+  (format #t "~1Tdata[0] @ #x~x~%" (-> obj data))
+  (dotimes (i (-> obj length))
+    (format #t "~2T--------~%")
+    (format #t "~2Tname: ~A~%" (-> obj data i name))
+    (format #t "~2Tlines[~D] @ #x~x~%" (-> obj data i length) (-> obj data i lines))
+    (dotimes (ii (-> obj data i length))
+      (format #t "~3T[~f to ~f] (#x~x)(~S) ~A~%" (-> obj data i lines ii start-frame) (-> obj data i lines ii end-frame)
+                                                 (-> obj data i lines ii flags)
+                                                 (enum->string pc-subtitle2-speaker (-> obj data i lines ii speaker))
+                                                 (-> obj data i lines ii text)))
+    )
+  obj)
+
+
+;;;----------------------------------
+;;  process type
+;;;----------------------------------
+
+
+;; graphic parameters for subtitles
+(deftype subtitle2-bank (structure)
+  ((scale float)
+   (width float)
+   (lines float)
+   )
+  )
+
+(define *SUBTITLE2-bank*
+    (new 'static 'subtitle2-bank
+                  :scale 0.9
+                  :width 0.65
+                  :lines 2.0
+                  ))
+
+
+(deftype subtitle2-queue-element (structure)
+  ((id    sound-id)
+   (gui   gui-connection)
+   )
+  :pack-me
+  
+  (:methods
+    (clear-line (_type_) int))
+  )
+
+(deftype subtitle2-line-queue-element (structure)
+  ((line  subtitle2-line)
+   (y     float)
+   )
+  :pack-me
+  )
+
+;; the subtitle2 process! it lives on the PC actor pool
+(deftype subtitle2 (process)
+  (
+   (font font-context) ;; the font to use for the subtitles.
+
+   (have-message?   symbol) ;; if there is a message displaying at the bottom, move subtitles up
+   (have-minimap?   symbol) ;; if there is a minimap displaying at the bottom, shrink subtitles
+   (have-subtitles? symbol) ;; #t if we rendered any subtitles on the last frame.
+
+   (movie-mode? symbol) ;; #t if we're in movie mode
+   (movie-line  string) ;; a copy of the current movie line
+   (movie-gui   gui-connection) ;; the gui entry for the movie. we need this to put it in the gui queue
+   (movie-pos   float)
+
+   (gui-id sound-id)
+   ;; store the gui id of channels with subtitles that we find.
+   ;; that way if subtitle B appears above A, it wont move back down
+   ;; if A ends before B
+   (queue    subtitle2-queue-element       PC_SUBTITLE_QUEUE_SIZE :inline)
+   (lines-0  subtitle2-line-queue-element  PC_SUBTITLE_MAX_LINES  :inline)
+   (lines-1  subtitle2-line-queue-element  PC_SUBTITLE_MAX_LINES  :inline)
+   (line-queue-idx int8)
+   
+   ;; debug
+   (cheat-backup    symbol)
+   (checking-lines? symbol)
+   (current-debug-subtitle  subtitle2-line)
+   (current-debug-scene     int32)
+   (current-debug-line      int32)
+   )
+
+  (:methods
+    (clear-queue (_type_) int)
+    (update-gui-connections (_type_) int)
+    (get-empty-queue (_type_) int)
+    (gui-queued? (_type_ gui-connection) symbol)
+    (add-to-queue (_type_ gui-connection) gui-connection)
+    (get-active-subtitles (_type_) int)
+    (subtitle-format (_type_ subtitle2-line) string)
+    (draw-subtitles (_type_) int)
+    (debug-print-queue (_type_) int)
+    (debug-print-speakers (_type_) int)
+    (start-gui (_type_) sound-id)
+    (stop-gui (_type_) sound-id)
+    )
+  (:states
+    subtitle2-debug
+    subtitle2-debug-checking-lines)
+  )
+
+
+
+
+;;;----------------------------------------------
+;;  globals
+;;;----------------------------------------------
+
+
+;; the subtitle2 process.
+(define *subtitle2* (the (pointer subtitle2) #f))
+
+;; subtitle2 text data
+(define *subtitle2-text* (the subtitle2-text-info #f))
+(kheap-alloc (define *subtitle2-text-heap* (new 'global 'kheap)) PC_SUBTITLE_FILE_SIZE)
+
+;; temp strings for name look-up
+(define *vag-temp-string* (new 'global 'string 128 (the string #f)))
+(define *vag-temp-string-2* (new 'global 'string 128 (the string #f)))
+
+;; speaker color table
+(define *subtitle2-speaker-color-table* (the (pointer rgba) (malloc 'global (* (size-of rgba) (pc-subtitle2-speaker max)))))
+
+;; debug option
+(define *display-subtitle-speakers* #f)
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; helper functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod length subtitle2-text-info ((obj subtitle2-text-info))
+  "Get the length (number of subtitle2 scenes) in a subtitle2-text-info."
+  (-> obj length)
+  )
+
+(defmethod length subtitle2-scene ((obj subtitle2-scene))
+  "Get the length (number of subtitle2 lines) in a subtitle2-scene."
+  (-> obj length)
+  )
+
+
+(defmacro set-subtitle-speaker-color! (speaker color)
+  "macro for setting a color in *subtitle2-speaker-color-table*"
+  `(set! (-> *subtitle2-speaker-color-table* (pc-subtitle2-speaker ,speaker)) ,color))
+(defmacro set-subtitle-speaker-color<-speaker! (speaker speaker-from)
+  "macro for setting a color in *subtitle2-speaker-color-table* the same as a different speaker"
+  `(set-subtitle-speaker-color! ,speaker (-> *subtitle2-speaker-color-table* (pc-subtitle2-speaker ,speaker-from))))
+
+(defun set-subtitle-speaker-colors ()
+  "fill the subtitle speaker color table"
+
+  (dotimes (i (pc-subtitle2-speaker max))
+    (set! (-> *subtitle2-speaker-color-table* i) (-> *font-work* color-table (font-color red) color 0))
+    )
+  
+  (set-subtitle-speaker-color! computer   (static-rgba #x60 #x60 #x60 #x80))
+  (set-subtitle-speaker-color! jak        (static-rgba #x70 #x80 #x00 #x80))
+  (set-subtitle-speaker-color! darkjak    (static-rgba #x68 #x68 #x80 #x80))
+  (set-subtitle-speaker-color! samos      (static-rgba #x30 #x80 #x08 #x80))
+  (set-subtitle-speaker-color! youngsamos (static-rgba #x58 #x80 #x08 #x80))
+  (set-subtitle-speaker-color! kor        (static-rgba #x00 #x50 #x80 #x80))
+  (set-subtitle-speaker-color! torn       (static-rgba #x40 #x40 #x50 #x80))
+  (set-subtitle-speaker-color! metalkor   (static-rgba #x00 #x28 #x40 #x80))
+  (set-subtitle-speaker-color! baron      (static-rgba #x60 #x00 #x00 #x80))
+  (set-subtitle-speaker-color! errol      (static-rgba #x80 #x10 #x00 #x80))
+  (set-subtitle-speaker-color! ashelin    (static-rgba #x80 #x18 #x18 #x80))
+  (set-subtitle-speaker-color! sig        (static-rgba #x70 #x70 #x80 #x80))
+  (set-subtitle-speaker-color! vin        (static-rgba #x38 #x80 #x80 #x80))
+  (set-subtitle-speaker-color! oracle     (static-rgba #x80 #x40 #x00 #x80))
+  (set-subtitle-speaker-color! brutter    (static-rgba #x58 #x00 #x18 #x80))
+  (set-subtitle-speaker-color! guard      (static-rgba #x80 #x00 #x00 #x80))
+  (set-subtitle-speaker-color! krew       (static-rgba #x10 #x48 #x10 #x80))
+  (set-subtitle-speaker-color! keira      (static-rgba #x00 #x40 #x28 #x80))
+  (set-subtitle-speaker-color! tess       (static-rgba #x80 #x80 #x38 #x80))
+  (set-subtitle-speaker-color! pecker     (static-rgba #x80 #x80 #x00 #x80))
+  (set-subtitle-speaker-color! onin       (static-rgba #x80 #x80 #x80 #x80))
+  (set-subtitle-speaker-color! jinx       (static-rgba #x50 #x40 #x00 #x80))
+  (set-subtitle-speaker-color! mog        (static-rgba #x08 #x08 #x80 #x80))
+  (set-subtitle-speaker-color! grim       (static-rgba #x80 #x08 #x20 #x80))
+  (set-subtitle-speaker-color! precursor  (static-rgba #x00 #x60 #x80 #x80))
+  (set-subtitle-speaker-color! citizen-male   (static-rgba #x70 #x70 #x70 #x80))
+  (set-subtitle-speaker-color! citizen-female (static-rgba #x70 #x70 #x70 #x80))
+  
+  (set-subtitle-speaker-color<-speaker! kid jak)
+  (set-subtitle-speaker-color<-speaker! guard-a guard)
+  (set-subtitle-speaker-color<-speaker! guard-b guard)
+  (set-subtitle-speaker-color<-speaker! keira-before-class-3 keira)
+  (set-subtitle-speaker-color<-speaker! youngsamos-before-rescue youngsamos)
+  )
+
+
+

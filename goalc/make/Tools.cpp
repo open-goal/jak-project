@@ -214,6 +214,33 @@ bool SubtitleTool::run(const ToolInput& task, const PathMap& path_map) {
   return true;
 }
 
+Subtitle2Tool::Subtitle2Tool() : Tool("subtitle2") {}
+
+bool Subtitle2Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
+  if (task.input.size() != 1) {
+    throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
+  }
+
+  std::vector<std::string> deps;
+  std::vector<GameSubtitle2DefinitionFile> files;
+  open_subtitle2_project("subtitle2", task.input.at(0), files);
+  for (auto& file : files) {
+    deps.push_back(path_map.apply_remaps(file.file_path));
+  }
+  return Tool::needs_run({task.input, deps, task.output, task.arg}, path_map);
+}
+
+bool Subtitle2Tool::run(const ToolInput& task, const PathMap& path_map) {
+  GameSubtitle2DB db(GameVersion::Jak2);  // TODO game version param
+  std::vector<GameSubtitle2DefinitionFile> files;
+  open_subtitle2_project("subtitle2", task.input.at(0), files);
+  for (auto& file : files) {
+    file.file_path = path_map.apply_remaps(file.file_path);
+  }
+  compile_game_subtitle2(files, db, path_map.output_prefix);
+  return true;
+}
+
 BuildLevelTool::BuildLevelTool() : Tool("build-level") {}
 
 bool BuildLevelTool::needs_run(const ToolInput& task, const PathMap& path_map) {

@@ -53,6 +53,8 @@ add_library(common
         repl/util.cpp
         serialization/subtitles/subtitles_deser.cpp
         serialization/subtitles/subtitles_ser.cpp
+        serialization/subtitles2/subtitles2_deser.cpp
+        serialization/subtitles2/subtitles2_ser.cpp
         type_system/defenum.cpp
         type_system/deftype.cpp
         type_system/state.cpp

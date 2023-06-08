@@ -106,6 +106,12 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
     }
 
     if (ImGui::BeginMenu("Tools")) {
+      if (m_version == GameVersion::Jak1) {
+        ImGui::MenuItem("Subtitle Editor", nullptr, &m_subtitle_editor);
+      } else {
+        ImGui::MenuItem("Subtitle2 Editor", nullptr, &m_subtitle2_editor);
+      }
+
       if (ImGui::BeginMenu("Screenshot")) {
         ImGui::MenuItem("Screenshot Next Frame!", nullptr, &m_want_screenshot);
         ImGui::InputText("File", m_screenshot_save_name, 50);
@@ -127,7 +133,7 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
           if (Gfx::g_debug_settings.alternate_style) {
             ImGui::applyAlternateStyle();
           } else {
-            ImGui::StyleColorsClassic();
+            ImGui::applyClassicStyle();
           }
         }
         ImGui::TreePop();

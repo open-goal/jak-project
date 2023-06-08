@@ -27,6 +27,7 @@ into 7 sections, which might explain the weird sizes in the center.
 (defglobalconstant NUM_LEVEL_PAGES 146)
 (defglobalconstant LEVEL_PAGE_SIZE_KB 126) ;; original value
 (defglobalconstant LEVEL_PAGE_SIZE (* LEVEL_PAGE_SIZE_KB 1024)) ;; original value
+
 (defglobalconstant LEVEL_HEAP_SIZE (* NUM_LEVEL_PAGES LEVEL_PAGE_SIZE))
 ;(defglobalconstant DEBUG_LEVEL_HEAP_MULT 1.5) ;; level heap in debug mode is 1.5x larger
 (defglobalconstant DEBUG_LEVEL_HEAP_MULT 1.1) ;; we're gonna use debug mode-style heaps but we don't actually need them at 1.5x size right now
@@ -955,7 +956,7 @@ into 7 sections, which might explain the weird sizes in the center.
               (cond
                 ;; are we using debug sized large level?
                 ((= (&- (-> *level* heap top) (the-as uint (-> *level* heap base))) DEBUG_LEVEL_HEAP_SIZE)
-                 ;; if so, everything is 1.5x bigger!
+                 ;; if so, everything is bigger!
                  (let ((v1-44 (-> obj heap)))
                    (set! (-> v1-44 base) (&+ (-> *level* heap base) (* DEBUG_LEVEL_PAGE_SIZE offset-in-level-heap)))
                    (set! (-> v1-44 current) (-> v1-44 base))
@@ -1891,7 +1892,7 @@ into 7 sections, which might explain the weird sizes in the center.
         (load-package "common" global)
         )
     (let ((s5-1 (if (and arg0 (not *debug-segment*))
-                    LEVEL_HEAP_SIZE
+                    (#if PC_PORT DEBUG_LEVEL_HEAP_SIZE LEVEL_HEAP_SIZE)
                     DEBUG_LEVEL_HEAP_SIZE
                     )
                 )
@@ -2747,9 +2748,9 @@ into 7 sections, which might explain the weird sizes in the center.
                      (set! (-> *setting-control* user-default sound-reverb) (-> s4-1 info sound-reverb))
                      #t
                      )
-                   (or (-> *level* border?) (logtest? (-> *game-info* current-continue flags) (continue-flags cf2)))
+                   (or (-> *level* border?) (logtest? (-> *game-info* current-continue flags) (continue-flags change-continue)))
                    (or (!= (-> s4-1 name) (-> *game-info* current-continue level))
-                       (logtest? (-> *game-info* current-continue flags) (continue-flags cf2))
+                       (logtest? (-> *game-info* current-continue flags) (continue-flags change-continue))
                        )
                    (not (null? (-> s4-1 info continues)))
                    (-> *setting-control* user-current allow-continue)
@@ -2765,7 +2766,7 @@ into 7 sections, which might explain the weird sizes in the center.
                                   )
                                (string= (-> *game-info* current-continue name) (-> (the-as continue-point s1-0) name))
                                )
-                           (not (logtest? (-> (the-as continue-point s1-0) flags) (continue-flags cf2 cf3)))
+                           (not (logtest? (-> (the-as continue-point s1-0) flags) (continue-flags change-continue no-auto)))
                            )
                   (set! s3-0 (the-as continue-point s1-0))
                   (if (string= (-> *game-info* current-continue name) (-> (the-as continue-point s1-0) name))
@@ -2778,7 +2779,7 @@ into 7 sections, which might explain the weird sizes in the center.
               )
             (label cfg-59)
             (if (and (the-as continue-point s3-0)
-                     (not (logtest? (-> (the-as continue-point s3-0) flags) (continue-flags cf2 cf3)))
+                     (not (logtest? (-> (the-as continue-point s3-0) flags) (continue-flags change-continue no-auto)))
                      )
                 (set-continue! *game-info* (the-as basic s3-0) #f)
                 )
@@ -2974,9 +2975,10 @@ into 7 sections, which might explain the weird sizes in the center.
         )
       )
     )
-  (let ((v1-186 (- #x2000000 (the-as int (-> global current)))))
-    (if (and (not *debug-segment*) (< v1-186 #x10000))
-        (format *stdcon* "~3Lglobal heap fatally low at ~DK free~%~0L" (sar v1-186 10))
+  ;; pc port note : this was hardcoded to the top of EE memory (#x2000000)
+  (let ((v1-186 (&- (-> global top-base) (-> global current))))
+    (if (and (not *debug-segment*) (< v1-186 (* 64 1024)))
+        (format *stdcon* "~3Lglobal heap fatally low at ~DK free~%~0L" (/ v1-186 (* 1024 1024)))
         )
     )
 
