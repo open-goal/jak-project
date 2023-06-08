@@ -34846,7 +34846,7 @@
    (pick-spawner-max-dist             float   :offset-assert 56)
    (max-count                         uint32  :offset-assert 60)
    (desired-alive-count               uint8   :offset-assert 64)
-   (spawner-collide-with              uint32  :offset-assert 68)
+   (spawner-collide-with              collide-spec  :offset-assert 68)
    )
   :method-count-assert 9
   :size-assert         #x48
@@ -34884,15 +34884,21 @@
   :flag-assert         #x900000010
   )
 
+(defenum battle-spawner-flags
+  :bitfield #t
+  :type int64
+  (hit)
+  )
+
 (deftype battle-spawner (structure)
-  ((flags               uint64         :offset-assert 0)
+  ((flags               battle-spawner-flags  :offset-assert 0)
    (entity              entity-actor          :offset-assert 8)
    (breeds              battle-breed-array          :offset-assert 12)
    (creature-index      int8           :offset-assert 16)
    (ready-index         int8           :offset-assert 17)
    (attack-index        int8           :offset-assert 18)
    (mode                uint8          :offset-assert 19)
-   (intro-path          path-control          :offset-assert 20) ;; a guess
+   (intro-path          path-control   :offset-assert 20)
    (notice-attack-delay uint32         :offset-assert 24)
    (creature            handle         :offset-assert 32)
    (last-spawn-time     time-frame         :offset-assert 40)
@@ -34911,9 +34917,19 @@
   :flag-assert         #x900000010
   )
 
+(defenum battle-flags
+  :bitfield #t
+  :type uint8
+  (noticed)
+  (active)
+  (beaten)
+  (no-spawner-block)
+  (battle-music-set)
+  )
+
 (deftype battle (process-drawable)
   ((info                     battle-info   :offset-assert 200)
-   (flags                    uint8   :offset-assert 204)
+   (flags                    battle-flags  :offset-assert 204)
    (spawn-initial-creatures? symbol   :offset-assert 208)
    (next-spawn-delay         uint32  :offset-assert 212)
    (on-notice                basic   :offset-assert 216)
@@ -34938,34 +34954,34 @@
     (notice () _type_ :state 22)
     (hostile () _type_ :state 23)
     (beaten () _type_ :state 24)
-    (battle-method-25 (_type_ battle-spawner) symbol 25)
-    (battle-method-26 (_type_ battle-spawner) symbol 26)
-    (battle-method-27 (_type_) none 27)
-    (battle-method-28 (_type_) none 28)
-    (battle-method-29 (_type_ battle-spawner entity-actor) none 29)
-    (battle-method-30 (_type_ process) battle-spawner 30)
-    (battle-method-31 (_type_ battle-ally entity-actor) none 31)
-    (battle-method-32 (_type_ battle-spawner entity-actor) object 32) ;; TODO - gross return value...
-    (battle-method-33 (_type_) none 33)
-    (battle-method-34 (_type_) none 34)
-    (battle-method-35 (_type_) none 35)
-    (battle-method-36 (_type_) battle-spawner 36)
-    (battle-method-37 (_type_ battle-spawner) symbol 37)
-    (battle-method-38 (_type_ battle-breed transformq) handle 38)
-    (battle-method-39 (_type_ battle-spawner symbol) handle 39)
-    (battle-method-40 (_type_) none 40)
-    (battle-method-41 (_type_ battle-spawner) battle-breed 41)
-    (battle-method-42 (_type_ battle-spawner touch-tracker) symbol 42) ;; fma-sphere or touch-tracker?
-    (battle-method-43 (_type_ battle-spawner touch-tracker) symbol 43) ;; fma-sphere or touch-tracker?
-    (battle-method-44 (_type_ battle-spawner) none 44)
-    (battle-method-45 (_type_ battle-spawner touch-tracker) symbol 45) ;; fma-sphere or touch-tracker?
-    (battle-method-46 (_type_ battle-spawner) symbol 46)
-    (battle-method-47 (_type_) none 47)
-    (battle-method-48 (_type_) none 48)
-    (battle-method-49 (_type_) int :behavior battle 49)
-    (battle-method-50 (_type_) symbol 50)
-    (battle-method-51 (_type_ battle-spawner symbol) symbol :behavior battle 51)
-    (battle-method-52 (_type_) int 52)
+    (spawner-blocked? (_type_ battle-spawner) symbol 25)
+    (spawner-blocked-by-collide? (_type_ battle-spawner) symbol 26)
+    (draw-battle-marks (_type_) none 27)
+    (initialize-enemy-lists (_type_) none 28)
+    (initialize-spawner-breeds (_type_ battle-spawner entity-actor) none 29)
+    (get-spawner-for-enemy (_type_ process) battle-spawner 30)
+    (initialize-ally (_type_ battle-ally entity-actor) none 31)
+    (initialize-spawner (_type_ battle-spawner entity-actor) none 32)
+    (initialize-battle (_type_) none 33)
+    (init-go (_type_) int 34)
+    (get-spawn-delay (_type_) int 35)
+    (get-best-spawner (_type_) battle-spawner 36)
+    (spawner-free? (_type_ battle-spawner) symbol 37)
+    (spawn-from-breed (_type_ battle-breed transformq) handle 38)
+    (spawn-from-spawner (_type_ battle-spawner symbol) none 39)
+    (spawn-initial-creatures (_type_) none 40)
+    (get-random-breed (_type_ battle-spawner) battle-breed 41)
+    (spawner-hit (_type_ battle-spawner process) symbol 42)
+    (spawner-try-jump (_type_ battle-spawner enemy) symbol 43)
+    (spawner-do-jump (_type_ battle-spawner) int 44)
+    (spawner-hittable? (_type_ battle-spawner) symbol 45)
+    (spawner-in-intro? (_type_ battle-spawner) symbol 46)
+    (set-battle-music (_type_) none 47)
+    (unset-battle-music (_type_) none 48)
+    (update-allies-list (_type_) int :behavior battle 49)
+    (beaten? (_type_) symbol 50)
+    (spawner-active? (_type_ battle-spawner symbol) symbol :behavior battle 51)
+    (spawner-active-count (_type_) int 52)
     )
   )
 
