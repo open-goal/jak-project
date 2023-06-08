@@ -69,7 +69,7 @@
 (deftype progress-carousell-state (structure)
   ((int-backup int)
    (symbol-backup symbol)
-   (subtitle-backup pc-subtitle-lang)
+   (subtitle-backup pc-language)
    (aspect-native-choice symbol)
    (current-carousell (array text-id))
 
@@ -506,7 +506,7 @@
 
 
 (defmacro def-language-remap-info (name langs)
-  `(define ,name (quote ,(apply (lambda (x) `((the binteger (text-id ,x)) (the binteger (pc-subtitle-lang ,x)))) langs)))
+  `(define ,name (quote ,(apply (lambda (x) `((the binteger (text-id ,x)) (the binteger (pc-language ,x)))) langs)))
   )
 
 (def-language-remap-info *language-remap-info-pc*
@@ -756,10 +756,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defun get-language-name ((lang pc-subtitle-lang))
+(defun get-language-name ((lang pc-language))
   "get the text-id from a lang"
   (dolist (item *language-remap-info-pc*)
-    (when (= lang (the pc-subtitle-lang (/ (the int (cadr (car item))) 8)))
+    (when (= lang (the pc-language (/ (the int (cadr (car item))) 8)))
         (return (the text-id (/ (the int (car (car item))) 8))))
     )
   (text-id zero)
@@ -1862,12 +1862,12 @@
                 )
                (((game-option-type language-subtitles))
                 (let ((lang (assoc (the binteger (-> *subtitle-languages* (-> *progress-carousell* int-backup))) *language-remap-info-pc*)))
-                    (set! (-> *pc-settings* subtitle-language) (the pc-subtitle-lang (/ (the int (cadr lang)) 8)))
+                    (set! (-> *pc-settings* subtitle-language) (the pc-language (/ (the int (cadr lang)) 8)))
                     )
                 )
                (((game-option-type language-text))
                 (let ((lang (assoc (the binteger (-> *text-languages* (-> *progress-carousell* int-backup))) *language-remap-info-pc*)))
-                    (set! (-> *pc-settings* text-language) (the pc-subtitle-lang (/ (the int (cadr lang)) 8)))
+                    (set! (-> *pc-settings* text-language) (the pc-language (/ (the int (cadr lang)) 8)))
                     )
                 (if (not (-> *progress-carousell* transition))
                     (load-level-text-files (-> obj display-level-index)))

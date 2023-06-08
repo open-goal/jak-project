@@ -30,6 +30,7 @@ enum class GameTextVersion {
 extern const std::unordered_map<std::string, GameTextVersion> sTextVerEnumMap;
 
 const std::string& get_text_version_name(GameTextVersion version);
+GameTextVersion get_text_version_from_name(const std::string& name);
 
 /*!
  * What bytes a set of characters (UTF-8) correspond to. You can convert to and fro.
