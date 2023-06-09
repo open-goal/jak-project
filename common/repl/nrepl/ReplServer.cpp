@@ -13,6 +13,7 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
+#include "common/log/log.h"
 // clang-format on
 
 // TODO - basically REPL to listen and inject commands into a running REPL
@@ -30,7 +31,7 @@ ReplServer::~ReplServer() {
 
 void ReplServer::post_init() {
   // Add the listening socket to our set of sockets
-  fmt::print("[nREPL:{}:{}] awaiting connections\n", tcp_port, listening_socket);
+  lg::info("[nREPL:{}:{}] awaiting connections", tcp_port, listening_socket);
 }
 
 void ReplServer::ping_response(int socket) {
@@ -38,8 +39,8 @@ void ReplServer::ping_response(int socket) {
                                  versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
   auto resp = write_to_socket(socket, ping.c_str(), ping.size());
   if (resp == -1) {
-    fmt::print("[nREPL:{}] Client Disconnected: {}\n", tcp_port, inet_ntoa(addr.sin_addr),
-               ntohs(addr.sin_port), socket);
+    lg::warn("[nREPL:{}] Client Disconnected: {}", tcp_port, inet_ntoa(addr.sin_addr),
+             ntohs(addr.sin_port), socket);
     close_socket(socket);
     client_sockets.erase(socket);
   }
@@ -79,8 +80,8 @@ std::optional<std::string> ReplServer::get_msg() {
     if (new_socket < 0) {
       // TODO - handle error
     } else {
-      fmt::print("[nREPL:{}]: New socket connection: {}:{}:{}\n", tcp_port,
-                 inet_ntoa(addr.sin_addr), ntohs(addr.sin_port), new_socket);
+      lg::info("[nREPL:{}]: New socket connection: {}:{}:{}", tcp_port, inet_ntoa(addr.sin_addr),
+               ntohs(addr.sin_port), new_socket);
 
       // Say hello
       ping_response(new_socket);
@@ -109,8 +110,8 @@ std::optional<std::string> ReplServer::get_msg() {
         // Socket disconnected
         // TODO - add a queue of messages in the REPL::Wrapper so we can print _BEFORE_ the prompt
         // is output
-        fmt::print("[nREPL:{}] Client Disconnected: {}\n", tcp_port, inet_ntoa(addr.sin_addr),
-                   ntohs(addr.sin_port), sock);
+        lg::warn("[nREPL:{}] Client Disconnected: {}", tcp_port, inet_ntoa(addr.sin_addr),
+                 ntohs(addr.sin_port), sock);
 
         // Cleanup the socket and remove it from our set
         close_socket(sock);
@@ -121,12 +122,17 @@ std::optional<std::string> ReplServer::get_msg() {
         // get the body of the message
         int expected_size = header->length;
         int got = 0;
+        int tries = 0;
         while (got < expected_size) {
+          tries++;
+          if (tries > 100) {
+            break;
+          }
           if (got + expected_size > (int)buffer.size()) {
-            fmt::print(stderr,
-                       "[nREPL:{}]: Bad message, aborting the read.  Got :{}, Expected: {}, Buffer "
-                       "Size: {}",
-                       tcp_port, got, expected_size, buffer.size());
+            lg::error(
+                "[nREPL:{}]: Bad message, aborting the read.  Got :{}, Expected: {}, Buffer "
+                "Size: {}",
+                tcp_port, got, expected_size, buffer.size());
             return std::nullopt;
           }
           auto x = read_from_socket(sock, buffer.data() + got, expected_size - got);
@@ -142,6 +148,7 @@ std::optional<std::string> ReplServer::get_msg() {
             return std::nullopt;
           case ReplServerMessageType::EVAL:
             std::string msg(buffer.data(), header->length);
+            lg::debug("[nREPL:{}] Received Message: {}", tcp_port, msg);
             return std::make_optional(msg);
         }
       }
