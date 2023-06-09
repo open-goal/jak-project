@@ -28,6 +28,9 @@ struct DisplayMode {
   /// refresh rate (in Hz), or 0 for unspecified
   int refresh_rate;
   Orientation orientation;
+  // percentage
+  float horizontal_scaling;
+  float vertical_scaling;
 };
 
 // Describes an available resolution

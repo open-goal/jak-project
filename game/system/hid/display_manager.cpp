@@ -173,7 +173,10 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
             // Some people are weird and don't use the monitor's maximum supported resolution
             // in which case, we use what the user actually has selected.
             const auto& display_res = m_current_display_modes.at(m_selected_fullscreen_display_id);
-            set_window_size(display_res.screen_width, display_res.screen_height);
+            lg::debug("setting fullscreen resolution to {}:{} @ {} scaling",
+                      display_res.screen_width, display_res.screen_height, 1.0);
+            set_window_size(display_res.screen_width * display_res.horizontal_scaling,
+                            display_res.screen_height * display_res.vertical_scaling);
           }
           // 3. fullscreen it!
           result = SDL_SetWindowFullscreen(m_window, mode == WindowDisplayMode::Fullscreen
@@ -217,11 +220,6 @@ void DisplayManager::update_curr_display_info() {
   }
   SDL_GL_GetDrawableSize(m_window, &m_window_width, &m_window_height);
   SDL_GetWindowPosition(m_window, &m_window_xpos, &m_window_ypos);
-  // Update the scale of the display as well
-  // TODO - figure out how to do this on SDL
-  // https://github.com/libsdl-org/SDL/commit/ab81a559f43abc0858c96788f8e00bbb352287e8
-  m_window_scale_x = 1.0;
-  m_window_scale_y = 1.0;
 }
 
 void DisplayManager::update_video_modes() {
@@ -241,6 +239,7 @@ void DisplayManager::update_video_modes() {
           fmt::format("couldn't retrieve current display mode for display id {}", display_id));
       continue;
     }
+    // TODO - use this info to inform resolution options, etc
     auto display_orient = SDL_GetDisplayOrientation(display_id);
     Orientation orient = Orientation::Unknown;
     switch (display_orient) {
@@ -262,6 +261,44 @@ void DisplayManager::update_video_modes() {
 
     DisplayMode new_mode = {curr_mode.format, curr_mode.w, curr_mode.h, curr_mode.refresh_rate,
                             orient};
+    // TODO - hiDPI is probably not well supported right now
+    // https://github.com/libsdl-org/SDL/commit/ab81a559f43abc0858c96788f8e00bbb352287e8
+    // Retrieve the display's current scaling
+    // TODO - there might be better ways to do this, but I cannot figure it out
+    // on windows if you have scaling applied you get virtual resolutions back from
+    // `SDL_GetCurrentDisplayMode` There are a bunch of SDL hints that may be relevant
+    // - SDL_HINT_WINDOWS_DPI_AWARENESS
+    // - SDL_HINT_WINDOWS_DPI_SCALING
+    // There is no easy API provided by SDL to get the 'native' resolution of the monitor. The best
+    // you can do call SDL_GetRendererOutputSize on a fullscreen window, but that means flickering,
+    // we want the information in advance!
+    //
+    // Anyway, I iterate through the display's modes and assume the largest is the native resolution
+    auto num_display_modes = SDL_GetNumDisplayModes(display_id);
+    SDL_DisplayMode curr_mode;
+    Resolution native_resolution = {0, 0, 0};
+    for (int i = 0; i < num_display_modes; i++) {
+      auto ok = SDL_GetDisplayMode(m_active_display_id, i, &curr_mode);
+      if (ok != 0) {
+        sdl_util::log_error(fmt::format("unable to get display mode for display {}, index {}",
+                                        m_active_display_id, i));
+        continue;
+      }
+      if (curr_mode.w > native_resolution.width) {
+        native_resolution = {curr_mode.w, curr_mode.h,
+                             static_cast<float>(curr_mode.w) / static_cast<float>(curr_mode.h)};
+      }
+    }
+    if (native_resolution.width == 0) {
+      sdl_util::log_error(fmt::format("unable to determine scaling for display id {}", display_id));
+      new_mode.horizontal_scaling = 1.0;
+      new_mode.vertical_scaling = 1.0;
+    } else {
+      new_mode.horizontal_scaling =
+          static_cast<float>(native_resolution.width) / static_cast<float>(new_mode.screen_width);
+      new_mode.vertical_scaling =
+          static_cast<float>(native_resolution.height) / static_cast<float>(new_mode.screen_height);
+    }
     m_current_display_modes[display_id] = new_mode;
   }
   update_resolutions();
