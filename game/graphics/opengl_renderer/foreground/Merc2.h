@@ -27,6 +27,7 @@ class Merc2 : public BucketRenderer {
   };
   struct {
     std::vector<ModelDebug> model_list;
+    float blercs[32] = {0};
   } m_debug;
   enum MercDataMemory {
     LOW_MEMORY = 0,
@@ -230,4 +231,16 @@ class Merc2 : public BucketRenderer {
   size_t m_opengl_buffer_alignment = 0;
 
   void flush_draw_buckets(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void model_mod_draws(int num_effects,
+                       const tfrag3::MercModel* model,
+                       const LevelData* lev,
+                       const u8* input_data,
+                       const DmaTransfer& setup,
+                       ModBuffers* mod_opengl_buffers);
+  void model_mod_blerc_draws(int num_effects,
+                             const tfrag3::MercModel* model,
+                             const LevelData* lev,
+                             const u8* input_data,
+                             const DmaTransfer& setup,
+                             ModBuffers* mod_opengl_buffers);
 };

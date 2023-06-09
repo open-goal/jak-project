@@ -398,6 +398,12 @@ void MercDraw::serialize(Serializer& ser) {
   ser.from_ptr(&num_triangles);
 }
 
+void BlercVtxFloat::serialize(Serializer& ser) {
+  ser.from_pod_vector(&targets);
+  ser.from_ptr(&base);
+  ser.from_ptr(&dest);
+}
+
 void MercModifiableDrawGroup::serialize(Serializer& ser) {
   if (ser.is_saving()) {
     ser.save<size_t>(mod_draw.size());
@@ -420,6 +426,15 @@ void MercModifiableDrawGroup::serialize(Serializer& ser) {
   ser.from_pod_vector(&vertex_lump4_addr);
   ser.from_pod_vector(&fragment_mask);
   ser.from_ptr(&expect_vidx_end);
+
+  if (ser.is_saving()) {
+    ser.save<size_t>(blerc_debug.size());
+  } else {
+    blerc_debug.resize(ser.load<size_t>());
+  }
+  for (auto& v : blerc_debug) {
+    v.serialize(ser);
+  }
 }
 
 void MercEffect::serialize(Serializer& ser) {
@@ -537,6 +552,7 @@ void MercModifiableDrawGroup::memory_usage(MemoryUsageTracker* tracker) const {
   tracker->add(MemoryUsageCategory::MERC_MOD_DRAW_1, sizeof(MercDraw) * fix_draw.size());
   tracker->add(MemoryUsageCategory::MERC_MOD_DRAW_2, sizeof(MercDraw) * mod_draw.size());
   tracker->add(MemoryUsageCategory::MERC_MOD_TABLE, sizeof(u16) * vertex_lump4_addr.size());
+  // tracker->add(MemoryUsageCategory::BLERC, sizeof() * blerc.vertices.size());
 }
 
 void MercEffect::memory_usage(MemoryUsageTracker* tracker) const {
@@ -688,6 +704,7 @@ void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
       {"merc-mod-table", mem_use.data[tfrag3::MemoryUsageCategory::MERC_MOD_TABLE]},
       {"merc-mod-draw-1", mem_use.data[tfrag3::MemoryUsageCategory::MERC_MOD_DRAW_1]},
       {"merc-mod-draw-2", mem_use.data[tfrag3::MemoryUsageCategory::MERC_MOD_DRAW_2]},
+      {"blerc", mem_use.data[tfrag3::MemoryUsageCategory::BLERC]},
   };
   for (auto& known : known_categories) {
     total_accounted += known.second;

@@ -621,7 +621,7 @@ struct ExecutionContext {
     temp = (s32)s.ds16[7] * (s32)t.ds16[7];
     hi.du32[3] = temp;
   }
-
+  
   void pmaddh(int rd, int rs, int rt) {
     s32 temp;
 

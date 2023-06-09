@@ -103,10 +103,254 @@ Merc2::~Merc2() {
   glDeleteVertexArrays(1, &m_vao);
 }
 
+void Merc2::model_mod_blerc_draws(int num_effects,
+                                  const tfrag3::MercModel* model,
+                                  const LevelData* lev,
+                                  const u8* input_data,
+                                  const DmaTransfer& setup,
+                                  ModBuffers* mod_opengl_buffers) {
+  // loop over effects. Mod vertices are done per effect (possibly a bad idea?)
+  for (int ei = 0; ei < num_effects; ei++) {
+    const auto& effect = model->effects[ei];
+    // some effects might have no mod draw info, and no modifiable vertices
+    if (effect.mod.mod_draw.empty()) {
+      continue;
+    }
+
+    // grab opengl buffer
+    auto opengl_buffers = alloc_mod_vtx_buffer(lev);
+    mod_opengl_buffers[ei] = opengl_buffers;
+
+    // check that we have enough room for the finished thing.
+    if (effect.mod.vertices.size() > MAX_MOD_VTX) {
+      fmt::print("More mod vertices than MAX_MOD_VTX. {} > {}\n", effect.mod.vertices.size(),
+                 MAX_MOD_VTX);
+      ASSERT_NOT_REACHED();
+    }
+
+    // check that we have enough room for unpack
+    if (effect.mod.expect_vidx_end > MAX_MOD_VTX) {
+      fmt::print("More mod vertices (temp) than MAX_MOD_VTX. {} > {}\n", effect.mod.expect_vidx_end,
+                 MAX_MOD_VTX);
+      ASSERT_NOT_REACHED();
+    }
+
+    // start with the "correct" vertices from the model data:
+    memcpy(m_mod_vtx_temp.data(), effect.mod.vertices.data(),
+           sizeof(tfrag3::MercVertex) * effect.mod.vertices.size());
+
+    int i = 0;
+    for (auto& bv : effect.mod.blerc_debug) {
+      // memcpy(m_mod_vtx_unpack_temp[i++].pos, bv.base.pos.data(), 12);
+      if (bv.dest >= 0) {
+        auto& slot = m_mod_vtx_temp.at(bv.dest);
+        for (int i = 0; i < 3; i++) {
+          slot.normal[i] = bv.base.nrm[i];
+          slot.pos[i] = bv.base.pos[i];
+          for (auto& t : bv.targets) {
+            float f = m_debug.blercs[t.idx];
+            slot.pos[i] += f * t.pos[i];
+          }
+        }
+      }
+    }
+
+    //    for (u32 vi = 0; vi < effect.mod.vertices.size(); vi++) {
+    //      u32 addr = effect.mod.vertex_lump4_addr[vi];
+    //      if (addr < effect.mod.blerc_debug.size()) {
+    //        memcpy(m_mod_vtx_temp[vi].pos, &m_mod_vtx_unpack_temp[addr].pos, 12);
+    //      }
+    //    }
+
+    // memset(m_mod_vtx_temp.data(), 0, sizeof(tfrag3::MercVertex) * effect.mod.vertices.size());
+
+    // and upload to GPU
+    m_stats.num_uploads++;
+    m_stats.num_upload_bytes += effect.mod.vertices.size() * sizeof(tfrag3::MercVertex);
+    {
+      glBindBuffer(GL_ARRAY_BUFFER, opengl_buffers.vertex);
+      glBufferData(GL_ARRAY_BUFFER, effect.mod.vertices.size() * sizeof(tfrag3::MercVertex),
+                   m_mod_vtx_temp.data(), GL_DYNAMIC_DRAW);
+    }
+  }
+}
+
 // We can run into a problem where adding a PC model would overflow the
 // preallocated draw/bone buffers.
 // So we break this part into two functions:
 // - init_pc_model, which doesn't allocate bones/draws
+
+void Merc2::model_mod_draws(int num_effects,
+                            const tfrag3::MercModel* model,
+                            const LevelData* lev,
+                            const u8* input_data,
+                            const DmaTransfer& setup,
+                            ModBuffers* mod_opengl_buffers) {
+  auto p = scoped_prof("update-verts");
+
+  // loop over effects. Mod vertices are done per effect (possibly a bad idea?)
+  for (int ei = 0; ei < num_effects; ei++) {
+    const auto& effect = model->effects[ei];
+    // some effects might have no mod draw info, and no modifiable vertices
+    if (effect.mod.mod_draw.empty()) {
+      continue;
+    }
+
+    prof().begin_event("start1");
+    // grab opengl buffer
+    auto opengl_buffers = alloc_mod_vtx_buffer(lev);
+    mod_opengl_buffers[ei] = opengl_buffers;
+
+    // check that we have enough room for the finished thing.
+    if (effect.mod.vertices.size() > MAX_MOD_VTX) {
+      fmt::print("More mod vertices than MAX_MOD_VTX. {} > {}\n", effect.mod.vertices.size(),
+                 MAX_MOD_VTX);
+      ASSERT_NOT_REACHED();
+    }
+
+    // check that we have enough room for unpack
+    if (effect.mod.expect_vidx_end > MAX_MOD_VTX) {
+      fmt::print("More mod vertices (temp) than MAX_MOD_VTX. {} > {}\n", effect.mod.expect_vidx_end,
+                 MAX_MOD_VTX);
+      ASSERT_NOT_REACHED();
+    }
+
+    // start with the "correct" vertices from the model data:
+    memcpy(m_mod_vtx_temp.data(), effect.mod.vertices.data(),
+           sizeof(tfrag3::MercVertex) * effect.mod.vertices.size());
+
+    // get pointers to the fragment and fragment control data
+    u32 goal_addr;
+    memcpy(&goal_addr, input_data + 4 * ei, 4);
+    const u8* ee0 = setup.data - setup.data_offset;
+    const u8* merc_effect = ee0 + goal_addr;
+    u16 frag_cnt;
+    memcpy(&frag_cnt, merc_effect + 18, 2);
+    ASSERT(frag_cnt >= effect.mod.fragment_mask.size());
+    u32 frag_goal;
+    memcpy(&frag_goal, merc_effect, 4);
+    u32 frag_ctrl_goal;
+    memcpy(&frag_ctrl_goal, merc_effect + 4, 4);
+    const u8* frag = ee0 + frag_goal;
+    const u8* frag_ctrl = ee0 + frag_ctrl_goal;
+
+    // loop over frags
+    u32 vidx = 0;
+    // u32 st_vif_add = model->st_vif_add;
+    float xyz_scale = model->xyz_scale;
+    prof().end_event();
+    {
+      // we're going to look at data that the game may be modifying.
+      // in the original game, they didn't have any lock, but I think that the
+      // scratchpad access from the EE would effectively block the VIF1 DMA, so you'd
+      // hopefully never get a partially updated model (which causes obvious holes).
+      // this lock is not ideal, and can block the rendering thread while blerc_execute runs,
+      // which can take up to 2ms on really blerc-heavy scenes
+      std::unique_lock<std::mutex> lk(g_merc_data_mutex);
+      int frags_done = 0;
+      auto p = scoped_prof("vert-math");
+
+      // loop over fragments
+      for (u32 fi = 0; fi < effect.mod.fragment_mask.size(); fi++) {
+        frags_done++;
+        u8 mat_xfer_count = frag_ctrl[3];
+
+        // we create a mask of fragments to skip because they have no vertices.
+        // the indexing data assumes that we skip the other fragments.
+        if (effect.mod.fragment_mask[fi]) {
+          // read fragment metadata
+          u8 unsigned_four_count = frag_ctrl[0];
+          u8 lump_four_count = frag_ctrl[1];
+          u32 mm_qwc_off = frag[10];
+          float float_offsets[3];
+          memcpy(float_offsets, &frag[mm_qwc_off * 16], 12);
+          u32 my_u4_count = ((unsigned_four_count + 3) / 4) * 16;
+          u32 my_l4_count = my_u4_count + ((lump_four_count + 3) / 4) * 16;
+
+          // loop over vertices in the fragment and unpack
+          for (u32 w = my_u4_count / 4; w < (my_l4_count / 4) - 2; w += 3) {
+            // positions
+            u32 q0w = 0x4b010000 + frag[w * 4 + (0 * 4) + 3];
+            u32 q1w = 0x4b010000 + frag[w * 4 + (1 * 4) + 3];
+            u32 q2w = 0x4b010000 + frag[w * 4 + (2 * 4) + 3];
+
+            // normals
+            u32 q0z = 0x47800000 + frag[w * 4 + (0 * 4) + 2];
+            u32 q1z = 0x47800000 + frag[w * 4 + (1 * 4) + 2];
+            u32 q2z = 0x47800000 + frag[w * 4 + (2 * 4) + 2];
+
+            // uvs
+            u32 q2x = model->st_vif_add + frag[w * 4 + (2 * 4) + 0];
+            u32 q2y = model->st_vif_add + frag[w * 4 + (2 * 4) + 1];
+
+            auto* pos_array = m_mod_vtx_unpack_temp[vidx].pos;
+            memcpy(&pos_array[0], &q0w, 4);
+            memcpy(&pos_array[1], &q1w, 4);
+            memcpy(&pos_array[2], &q2w, 4);
+            pos_array[0] += float_offsets[0];
+            pos_array[1] += float_offsets[1];
+            pos_array[2] += float_offsets[2];
+            pos_array[0] *= xyz_scale;
+            pos_array[1] *= xyz_scale;
+            pos_array[2] *= xyz_scale;
+
+            auto* nrm_array = m_mod_vtx_unpack_temp[vidx].nrm;
+            memcpy(&nrm_array[0], &q0z, 4);
+            memcpy(&nrm_array[1], &q1z, 4);
+            memcpy(&nrm_array[2], &q2z, 4);
+            nrm_array[0] += -65537;
+            nrm_array[1] += -65537;
+            nrm_array[2] += -65537;
+
+            auto* uv_array = m_mod_vtx_unpack_temp[vidx].uv;
+            memcpy(&uv_array[0], &q2x, 4);
+            memcpy(&uv_array[1], &q2y, 4);
+            uv_array[0] += model->st_magic;
+            uv_array[1] += model->st_magic;
+
+            vidx++;
+          }
+        }
+
+        // next control
+        frag_ctrl += 4 + 2 * mat_xfer_count;
+
+        // next frag
+        u32 mm_qwc_count = frag[11];
+        frag += mm_qwc_count * 16;
+      }
+
+      // sanity check
+      if (effect.mod.expect_vidx_end != vidx) {
+        fmt::print("---------- BAD {}/{}\n", effect.mod.expect_vidx_end, vidx);
+        ASSERT(false);
+      }
+    }
+
+    {
+      auto pp = scoped_prof("copy");
+      // now copy the data in merc original vertex order to the output.
+      for (u32 vi = 0; vi < effect.mod.vertices.size(); vi++) {
+        u32 addr = effect.mod.vertex_lump4_addr[vi];
+        if (addr < vidx) {
+          memcpy(&m_mod_vtx_temp[vi], &m_mod_vtx_unpack_temp[addr], 32);
+          m_mod_vtx_temp[vi].st[0] = m_mod_vtx_unpack_temp[addr].uv[0];
+          m_mod_vtx_temp[vi].st[1] = m_mod_vtx_unpack_temp[addr].uv[1];
+        }
+      }
+    }
+
+    // and upload to GPU
+    m_stats.num_uploads++;
+    m_stats.num_upload_bytes += effect.mod.vertices.size() * sizeof(tfrag3::MercVertex);
+    {
+      auto pp = scoped_prof("update-verts-upload");
+      glBindBuffer(GL_ARRAY_BUFFER, opengl_buffers.vertex);
+      glBufferData(GL_ARRAY_BUFFER, effect.mod.vertices.size() * sizeof(tfrag3::MercVertex),
+                   m_mod_vtx_temp.data(), GL_DYNAMIC_DRAW);
+    }
+  }
+}
 
 /*!
  * Setup draws for a model, given the DMA data generated by the GOAL code.
@@ -267,175 +511,23 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   }
   input_data += (((num_effects * 4) + 15) / 16) * 16;
 
+  // NOTE: even if this is replaced with a flag from game, this will skip non-blerc mods
+  // on blerc things (which I think don't exist)
+  bool temp_hack_blerc = false;
+  for (auto& e : model->effects) {
+    if (!e.mod.blerc_debug.empty()) {
+      temp_hack_blerc = true;
+    }
+  }
+
   // Next is pointers to merc data, needed so we can update vertices
 
   // will hold opengl buffers for the updated vertices
   ModBuffers mod_opengl_buffers[kMaxEffect];
-  if (model_uses_mod) {  // only if we've enabled, this path is slow.
-    auto p = scoped_prof("update-verts");
-
-    // loop over effects. Mod vertices are done per effect (possibly a bad idea?)
-    for (int ei = 0; ei < num_effects; ei++) {
-      const auto& effect = model_ref->model->effects[ei];
-      // some effects might have no mod draw info, and no modifiable vertices
-      if (effect.mod.mod_draw.empty()) {
-        continue;
-      }
-
-      prof().begin_event("start1");
-      // grab opengl buffer
-      auto opengl_buffers = alloc_mod_vtx_buffer(model_ref->level);
-      mod_opengl_buffers[ei] = opengl_buffers;
-
-      // check that we have enough room for the finished thing.
-      if (effect.mod.vertices.size() > MAX_MOD_VTX) {
-        fmt::print("More mod vertices than MAX_MOD_VTX. {} > {}\n", effect.mod.vertices.size(),
-                   MAX_MOD_VTX);
-        ASSERT_NOT_REACHED();
-      }
-
-      // check that we have enough room for unpack
-      if (effect.mod.expect_vidx_end > MAX_MOD_VTX) {
-        fmt::print("More mod vertices (temp) than MAX_MOD_VTX. {} > {}\n",
-                   effect.mod.expect_vidx_end, MAX_MOD_VTX);
-        ASSERT_NOT_REACHED();
-      }
-
-      // start with the "correct" vertices from the model data:
-      memcpy(m_mod_vtx_temp.data(), effect.mod.vertices.data(),
-             sizeof(tfrag3::MercVertex) * effect.mod.vertices.size());
-
-      // get pointers to the fragment and fragment control data
-      u32 goal_addr;
-      memcpy(&goal_addr, input_data + 4 * ei, 4);
-      const u8* ee0 = setup.data - setup.data_offset;
-      const u8* merc_effect = ee0 + goal_addr;
-      u16 frag_cnt;
-      memcpy(&frag_cnt, merc_effect + 18, 2);
-      ASSERT(frag_cnt >= effect.mod.fragment_mask.size());
-      u32 frag_goal;
-      memcpy(&frag_goal, merc_effect, 4);
-      u32 frag_ctrl_goal;
-      memcpy(&frag_ctrl_goal, merc_effect + 4, 4);
-      const u8* frag = ee0 + frag_goal;
-      const u8* frag_ctrl = ee0 + frag_ctrl_goal;
-
-      // loop over frags
-      u32 vidx = 0;
-      // u32 st_vif_add = model->st_vif_add;
-      float xyz_scale = model->xyz_scale;
-      prof().end_event();
-      {
-        // we're going to look at data that the game may be modifying.
-        // in the original game, they didn't have any lock, but I think that the
-        // scratchpad access from the EE would effectively block the VIF1 DMA, so you'd
-        // hopefully never get a partially updated model (which causes obvious holes).
-        // this lock is not ideal, and can block the rendering thread while blerc_execute runs,
-        // which can take up to 2ms on really blerc-heavy scenes
-        std::unique_lock<std::mutex> lk(g_merc_data_mutex);
-        int frags_done = 0;
-        auto p = scoped_prof("vert-math");
-
-        // loop over fragments
-        for (u32 fi = 0; fi < effect.mod.fragment_mask.size(); fi++) {
-          frags_done++;
-          u8 mat_xfer_count = frag_ctrl[3];
-
-          // we create a mask of fragments to skip because they have no vertices.
-          // the indexing data assumes that we skip the other fragments.
-          if (effect.mod.fragment_mask[fi]) {
-            // read fragment metadata
-            u8 unsigned_four_count = frag_ctrl[0];
-            u8 lump_four_count = frag_ctrl[1];
-            u32 mm_qwc_off = frag[10];
-            float float_offsets[3];
-            memcpy(float_offsets, &frag[mm_qwc_off * 16], 12);
-            u32 my_u4_count = ((unsigned_four_count + 3) / 4) * 16;
-            u32 my_l4_count = my_u4_count + ((lump_four_count + 3) / 4) * 16;
-
-            // loop over vertices in the fragment and unpack
-            for (u32 w = my_u4_count / 4; w < (my_l4_count / 4) - 2; w += 3) {
-              // positions
-              u32 q0w = 0x4b010000 + frag[w * 4 + (0 * 4) + 3];
-              u32 q1w = 0x4b010000 + frag[w * 4 + (1 * 4) + 3];
-              u32 q2w = 0x4b010000 + frag[w * 4 + (2 * 4) + 3];
-
-              // normals
-              u32 q0z = 0x47800000 + frag[w * 4 + (0 * 4) + 2];
-              u32 q1z = 0x47800000 + frag[w * 4 + (1 * 4) + 2];
-              u32 q2z = 0x47800000 + frag[w * 4 + (2 * 4) + 2];
-
-              // uvs
-              u32 q2x = model->st_vif_add + frag[w * 4 + (2 * 4) + 0];
-              u32 q2y = model->st_vif_add + frag[w * 4 + (2 * 4) + 1];
-
-              auto* pos_array = m_mod_vtx_unpack_temp[vidx].pos;
-              memcpy(&pos_array[0], &q0w, 4);
-              memcpy(&pos_array[1], &q1w, 4);
-              memcpy(&pos_array[2], &q2w, 4);
-              pos_array[0] += float_offsets[0];
-              pos_array[1] += float_offsets[1];
-              pos_array[2] += float_offsets[2];
-              pos_array[0] *= xyz_scale;
-              pos_array[1] *= xyz_scale;
-              pos_array[2] *= xyz_scale;
-
-              auto* nrm_array = m_mod_vtx_unpack_temp[vidx].nrm;
-              memcpy(&nrm_array[0], &q0z, 4);
-              memcpy(&nrm_array[1], &q1z, 4);
-              memcpy(&nrm_array[2], &q2z, 4);
-              nrm_array[0] += -65537;
-              nrm_array[1] += -65537;
-              nrm_array[2] += -65537;
-
-              auto* uv_array = m_mod_vtx_unpack_temp[vidx].uv;
-              memcpy(&uv_array[0], &q2x, 4);
-              memcpy(&uv_array[1], &q2y, 4);
-              uv_array[0] += model->st_magic;
-              uv_array[1] += model->st_magic;
-
-              vidx++;
-            }
-          }
-
-          // next control
-          frag_ctrl += 4 + 2 * mat_xfer_count;
-
-          // next frag
-          u32 mm_qwc_count = frag[11];
-          frag += mm_qwc_count * 16;
-        }
-
-        // sanity check
-        if (effect.mod.expect_vidx_end != vidx) {
-          fmt::print("---------- BAD {}/{}\n", effect.mod.expect_vidx_end, vidx);
-          ASSERT(false);
-        }
-      }
-
-      {
-        auto pp = scoped_prof("copy");
-        // now copy the data in merc original vertex order to the output.
-        for (u32 vi = 0; vi < effect.mod.vertices.size(); vi++) {
-          u32 addr = effect.mod.vertex_lump4_addr[vi];
-          if (addr < vidx) {
-            memcpy(&m_mod_vtx_temp[vi], &m_mod_vtx_unpack_temp[addr], 32);
-            m_mod_vtx_temp[vi].st[0] = m_mod_vtx_unpack_temp[addr].uv[0];
-            m_mod_vtx_temp[vi].st[1] = m_mod_vtx_unpack_temp[addr].uv[1];
-          }
-        }
-      }
-
-      // and upload to GPU
-      m_stats.num_uploads++;
-      m_stats.num_upload_bytes += effect.mod.vertices.size() * sizeof(tfrag3::MercVertex);
-      {
-        auto pp = scoped_prof("update-verts-upload");
-        glBindBuffer(GL_ARRAY_BUFFER, opengl_buffers.vertex);
-        glBufferData(GL_ARRAY_BUFFER, effect.mod.vertices.size() * sizeof(tfrag3::MercVertex),
-                     m_mod_vtx_temp.data(), GL_DYNAMIC_DRAW);
-      }
-    }
+  if (temp_hack_blerc) {
+    model_mod_blerc_draws(num_effects, model, lev, input_data, setup, mod_opengl_buffers);
+  } else if (model_uses_mod) {  // only if we've enabled, this path is slow.
+    model_mod_draws(num_effects, model, lev, input_data, setup, mod_opengl_buffers);
   }
 
   // stats
@@ -494,7 +586,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
     auto& effect = model->effects[ei];
 
     bool should_envmap = effect.has_envmap;
-    bool should_mod = model_uses_mod && effect.has_mod_draw;
+    bool should_mod = (temp_hack_blerc || model_uses_mod) && effect.has_mod_draw;
 
     if (should_mod) {
       // draw as two parts, fixed and mod
@@ -556,6 +648,11 @@ void Merc2::draw_debug_window() {
   ImGui::Text("Upload kB: %d", m_stats.num_upload_bytes / 1024);
 
   ImGui::Checkbox("Debug", &m_debug_mode);
+
+  int i = 0;
+  for (auto& b : m_debug.blercs) {
+    ImGui::SliderFloat(fmt::format("blerc {}", i++).c_str(), &b, -2, 2);
+  }
 
   if (m_debug_mode) {
     for (int i = 0; i < kMaxEffect; i++) {

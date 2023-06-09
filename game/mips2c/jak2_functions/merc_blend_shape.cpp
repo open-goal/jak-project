@@ -128,6 +128,7 @@ void simplified1(BlercContext* context, u8* ee_buffer) {
 
 
   memcpy(out, data_src, total_count * 16);
+  // printf("total count %d\n", total_count);
   for (int i = 0; i < total_count * 8; i++) {
     s32 base_val = base_data_ptr[i] * 8192;  // ld t6 grabs 8 at a time
 

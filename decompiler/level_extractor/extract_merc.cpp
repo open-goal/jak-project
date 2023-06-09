@@ -1,6 +1,7 @@
 #include "extract_merc.h"
 
 #include "common/log/log.h"
+#include "common/util/BitUtils.h"
 #include "common/util/FileUtil.h"
 #include "common/util/colors.h"
 #include "common/util/string_util.h"
@@ -89,6 +90,7 @@ struct MercUnpackedVtx {
   math::Vector3f nrm;  // normal (as input to the merc math, pretty sure legnth is bogus)
   math::Vector2f st;   // texture coordinates
   math::Vector<u8, 4> rgba;
+  math::Vector3f pos_offset;  // gross.
 
   int skel_mats[3];
   float mat_weights[3];
@@ -101,6 +103,22 @@ struct MercUnpackedVtx {
 
   int flump4 = -1;
   int frag = -1;
+};
+
+struct BlercVtxIntTarget {
+  math::Vector<s8, 3> pos;
+  math::Vector<s8, 3> nrm;
+  u8 idx;
+
+  bool all_zero_data() const {
+    return pos == math::Vector<s8, 3>::zero() && nrm == math::Vector<s8, 3>::zero();
+  }
+};
+
+struct BlercVtxInt {
+  BlercVtxIntTarget base;
+  std::vector<BlercVtxIntTarget> targets;
+  u32 lump4_addr = 0;
 };
 
 /*!
@@ -119,6 +137,8 @@ struct ConvertedMercEffect {
   DrawMode envmap_mode;
   u32 envmap_texture;
   std::optional<s8> eye_slot;
+  float pos_scale = 0;
+  std::vector<BlercVtxInt> blerc_vertices_i;
 };
 
 /*!
@@ -471,6 +491,8 @@ void handle_frag(const std::string& debug_name,
 
     vtx.pos = math::Vector3f(v0.w(), v1.w(), v2.w());
     vtx.nrm = math::Vector3f(v0.z(), v1.z(), v2.z());
+    vtx.pos_offset =
+        math::Vector3f(frag.fp_header.x_add, frag.fp_header.y_add, frag.fp_header.z_add);
 
     // vtx.mat1 = 0;                           // not used like this
     vtx.dst0 = float_as_u32(v1.x()) - 371;  // xtop to output buffer offset
@@ -767,6 +789,8 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   ConvertedMercEffect result;
   result.ctrl_idx = ctrl_idx;
   result.effect_idx = effect_idx;
+  result.pos_scale = ctrl_header.xyz_scale;
+
   if (ctrl_header.eye_ctrl) {
     result.eye_slot = ctrl_header.eye_ctrl->eye_slot;
   }
@@ -1012,6 +1036,61 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     memory_buffer_toggle ^= 1;
   }
 
+  int base_blend_out = 0;
+  for (size_t i = 0; i < input_effect.blend_frag_count; i++) {
+    auto& bc = input_effect.blend_ctrl.at(i);
+    auto& bd = input_effect.blend_data.at(i);
+    int bdi = 0;
+
+    size_t original_size = result.blerc_vertices_i.size();
+    result.blerc_vertices_i.resize(original_size + bc.blend_vtx_count);
+    auto* out_vertices = &result.blerc_vertices_i[original_size];
+
+    // first, add the zero table
+    for (int vi = 0; vi < bc.blend_vtx_count; vi++) {
+      out_vertices[vi].lump4_addr = base_blend_out + vi;
+      auto& vc = out_vertices[vi].base;
+      vc.nrm.x() = bd.u8_data.at(bdi++);
+      vc.pos.x() = bd.u8_data.at(bdi++);
+
+      vc.nrm.y() = bd.u8_data.at(bdi++);
+      vc.pos.y() = bd.u8_data.at(bdi++);
+
+      vc.nrm.z() = bd.u8_data.at(bdi++);
+      vc.pos.z() = bd.u8_data.at(bdi++);
+
+    }
+    bdi = align16(bdi);
+
+    // next, add targets
+    for (size_t ti = 0; ti < bc.bt_index.size(); ti++) {
+      if (bc.bt_index[ti] == 0) {
+        continue;
+      }
+      for (int vi = 0; vi < bc.blend_vtx_count; vi++) {
+        BlercVtxIntTarget vc;
+        vc.idx = ti;
+
+        vc.nrm.x() = bd.u8_data.at(bdi++);
+        vc.pos.x() = bd.u8_data.at(bdi++);
+
+        vc.nrm.y() = bd.u8_data.at(bdi++);
+        vc.pos.y() = bd.u8_data.at(bdi++);
+
+        vc.nrm.z() = bd.u8_data.at(bdi++);
+        vc.pos.z() = bd.u8_data.at(bdi++);
+
+        if (!vc.all_zero_data()) {
+          out_vertices[vi].targets.push_back(vc);
+        }
+      }
+      bdi = align16(bdi);
+    }
+    fmt::print("sizes are: {} {}\n", bdi, bd.u8_data.size());
+    ASSERT(align16(bdi) == bd.u8_data.size());
+    base_blend_out += result.verts_per_frag.at(i);
+  }
+
   if (dump) {
     auto file_path = file_util::get_file_path(
         {"debug_out/merc", fmt::format("{}_{}.ply", debug_name, effect_idx)});
@@ -1062,6 +1141,89 @@ struct VertexSourceInfo {
   int frag;
   int flump4;
 };
+
+float magic_float_scale(u32 base_val) {
+  float a, b;
+  memcpy(&a, &base_val, 4);
+  base_val++;
+  memcpy(&b, &base_val, 4);
+  return b - a;
+}
+
+float magic_float_offset(u32 base_val) {
+  float a;
+  memcpy(&a, &base_val, 4);
+  return a;
+}
+
+using tfrag3::BlercVtxFloat;
+using tfrag3::BlercVtxFloatTarget;
+
+BlercVtxFloatTarget blerc_vertex_convert(const BlercVtxIntTarget& in,
+                                         const math::Vector<float, 3>& pos_offset,
+                                         float pos_scale,
+                                         bool is_base) {
+  BlercVtxFloatTarget result;
+
+  float pos_total_scale = magic_float_scale(0x4b010000) * pos_scale;
+  float nrm_total_scale = magic_float_scale(0x47800000);
+
+  result.pos = in.pos.cast<float>() * pos_total_scale;
+  result.nrm = in.nrm.cast<float>() * nrm_total_scale;
+  result.idx = in.idx;
+
+  if (is_base) {
+    result.pos = in.pos.cast<u8>().cast<float>() * pos_total_scale;
+    math::Vector3f post_pos_off;
+    post_pos_off.fill(magic_float_offset(0x4b010000));
+    post_pos_off += pos_offset;
+    post_pos_off *= pos_scale;
+
+    //    math::Vector3f pos_off;
+    //    pos_off.fill(magic_float_offset(0x4b010000));
+    //    pos_off += pos_offset * pos_total_scale;
+    //    fmt::print("in {}\n", in.pos.to_string_hex_byte());
+    //    fmt::print("float offset is {} + {} = {}, scale is {}\n", magic_float_offset(0x4b010000),
+    //               pos_offset[0], magic_float_offset(0x4b010000) + pos_offset[0],
+    //               magic_float_scale(0x4b010000));
+
+    math::Vector3f nrm_off;
+    nrm_off.fill(magic_float_offset(0x47800000) - 65537.f);
+
+    result.pos += post_pos_off;
+    result.nrm += nrm_off;
+
+//    u32 q0w = 0x4b010000 + (u8)in.pos.x();
+//    u32 q1w = 0x4b010000 + (u8)in.pos.y();
+//    u32 q2w = 0x4b010000 + (u8)in.pos.z();
+//    float pos_array[3];
+//    memcpy(&pos_array[0], &q0w, 4);
+//    memcpy(&pos_array[1], &q1w, 4);
+//    memcpy(&pos_array[2], &q2w, 4);
+//    pos_array[0] += pos_offset[0];
+//    pos_array[1] += pos_offset[1];
+//    pos_array[2] += pos_offset[2];
+//    pos_array[0] *= pos_scale;
+//    pos_array[1] *= pos_scale;
+//    pos_array[2] *= pos_scale;
+//    result.pos[0] = pos_array[0];
+//    result.pos[1] = pos_array[1];
+//    result.pos[2] = pos_array[2];
+
+  }
+  return result;
+}
+
+BlercVtxFloat blerc_vertex_convert(const BlercVtxInt& in,
+                                   const math::Vector<float, 3>& pos_offset,
+                                   float pos_scale) {
+  BlercVtxFloat result;
+  result.base = blerc_vertex_convert(in.base, pos_offset, pos_scale, true);
+  for (auto& t : in.targets) {
+    result.targets.push_back(blerc_vertex_convert(t, pos_offset, pos_scale, false));
+  }
+  return result;
+}
 
 void create_modifiable_vertex_data(
     const std::vector<bool>& vtx_mod_flag,
@@ -1219,8 +1381,38 @@ void create_modifiable_vertex_data(
           draw.first_index = new_first_index;
         }
 
+        const auto& og_effect = all_effects.at(mi - first_out_model).at(ei);
+
+        // blerc!
+        std::vector<s32> which_blerc_is_at_this_lump4;
+        for (size_t i = 0; i < og_effect.blerc_vertices_i.size(); i++) {
+          auto& bvi = og_effect.blerc_vertices_i[i];
+          auto& v = og_effect.vertices.at(i);
+          if (bvi.lump4_addr >= which_blerc_is_at_this_lump4.size()) {
+            which_blerc_is_at_this_lump4.resize(bvi.lump4_addr + 1, -1);
+          }
+          which_blerc_is_at_this_lump4[bvi.lump4_addr] = i;
+          effect.mod.blerc_debug.push_back(
+              blerc_vertex_convert(bvi, v.pos_offset, og_effect.pos_scale));
+        }
+
+        for (u32 vi = 0; vi < effect.mod.vertices.size(); vi++) {
+          u16 la = effect.mod.vertex_lump4_addr[vi];
+          ASSERT(la < UINT16_MAX);
+          if (la < which_blerc_is_at_this_lump4.size()) {
+            s32 bi = which_blerc_is_at_this_lump4.at(la);
+            if (bi >= 0) {
+              effect.mod.blerc_debug[bi].dest = vi;
+            }
+          }
+        }
+
+
+        // HACK REMOVE THIS
+        for (auto& x : effect.mod.fragment_mask) x = true;
+
         // splice out masked fragments, the renderer won't index them
-        const auto& frag_counts = all_effects.at(mi - first_out_model).at(ei).verts_per_frag;
+        const auto& frag_counts = og_effect.verts_per_frag;
         std::unordered_map<u32, u32> old_to_new;
         u32 old_idx = 0;
         u32 new_idx = 0;
