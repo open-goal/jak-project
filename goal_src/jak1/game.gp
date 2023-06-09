@@ -403,7 +403,11 @@
 (defstep :in "game/assets/jak1/game_subtitle.gp"
   :tool 'subtitle
   :out '("$OUT/iso/0SUBTIT.TXT"
+         "$OUT/iso/1SUBTIT.TXT"
+         "$OUT/iso/2SUBTIT.TXT"
          "$OUT/iso/3SUBTIT.TXT"
+         "$OUT/iso/4SUBTIT.TXT"
+         "$OUT/iso/5SUBTIT.TXT"
          "$OUT/iso/6SUBTIT.TXT")
   )
 

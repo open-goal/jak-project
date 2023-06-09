@@ -42,6 +42,10 @@ const std::string& get_text_version_name(GameTextVersion version) {
   throw std::runtime_error(fmt::format("invalid text version {}", fmt::underlying(version)));
 }
 
+GameTextVersion get_text_version_from_name(const std::string& name) {
+  return sTextVerEnumMap.at(name);
+}
+
 GameTextFontBank::GameTextFontBank(GameTextVersion version,
                                    std::vector<EncodeInfo>* encode_info,
                                    std::vector<ReplaceInfo>* replace_info,
@@ -105,7 +109,7 @@ const EncodeInfo* GameTextFontBank::find_encode_to_game(const std::string& in, i
 }
 
 /*!
- * Finds a remap info that best matches the byte sequence (is the longest match).
+ * Finds a remap info that best matches the character sequence (is the longest match).
  */
 const ReplaceInfo* GameTextFontBank::find_replace_to_utf8(const std::string& in, int off) const {
   const ReplaceInfo* best_info = nullptr;
@@ -113,14 +117,8 @@ const ReplaceInfo* GameTextFontBank::find_replace_to_utf8(const std::string& in,
     if (info.from.empty() || in.size() - off < info.from.size())
       continue;
 
-    bool found = true;
-    for (int i = 0; found && i < (int)info.from.size(); ++i) {
-      if (in.at(i + off) != info.from.at(i)) {
-        found = false;
-      }
-    }
-
-    if (found && (!best_info || info.to.length() > best_info->to.length())) {
+    bool found = memcmp(in.data() + off, info.from.data(), info.from.size()) == 0;
+    if (found && (!best_info || info.from.length() > best_info->from.length())) {
       best_info = &info;
     }
   }
@@ -133,16 +131,10 @@ const ReplaceInfo* GameTextFontBank::find_replace_to_utf8(const std::string& in,
 const ReplaceInfo* GameTextFontBank::find_replace_to_game(const std::string& in, int off) const {
   const ReplaceInfo* best_info = nullptr;
   for (auto& info : *m_replace_info) {
-    if (info.to.length() == 0 || in.size() - off < info.to.size())
+    if (info.to.empty() || in.size() - off < info.to.size())
       continue;
 
-    bool found = true;
-    for (int i = 0; found && i < (int)info.to.length(); ++i) {
-      if (in.at(i + off) != info.to.at(i)) {
-        found = false;
-      }
-    }
-
+    bool found = memcmp(in.data() + off, info.to.data(), info.to.size()) == 0;
     if (found && (!best_info || info.to.length() > best_info->to.length())) {
       best_info = &info;
     }
