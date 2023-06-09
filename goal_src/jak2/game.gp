@@ -391,5 +391,7 @@
        "$OUT/iso/0SUBTI2.TXT"
        "$OUT/iso/KERNEL.CGO"
        "$OUT/iso/GAME.CGO"
+       "$OUT/iso/VAGDIR.AYB"
+       "$OUT/iso/VAGWAD.ENG"
        )
 
