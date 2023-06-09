@@ -28,7 +28,14 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install NASM
-        run: choco install ${{ github.workspace }}/third-party/nasm/nasm.2.15.05.nupkg
+        # TODO - Simplify this with just the first command once choco 2.0 rolls out everywhere
+        run: |
+          $chocoVersion = choco --version
+          if ($chocoVersion.StartsWith("v2")) {
+            choco install nasm --source="${{ github.workspace }}/third-party/nasm"
+          } else {
+            choco install ${{ github.workspace }}/third-party/nasm/old/nasm.2.15.05.nupkg
+          }
 
       - name: Setup Buildcache
         uses: mikehardy/buildcache-action@v2.1.0

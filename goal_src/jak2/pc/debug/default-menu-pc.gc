@@ -463,16 +463,8 @@
     )
   )
 
-;; (defun dm-subtitle-language ((blang int) (msg debug-menu-msg))
-;;   (let ((lang (the pc-subtitle-lang (/ blang 8))))
-;;     (when (= msg (debug-menu-msg press))
-;;       (set! (-> *pc-settings* subtitle-language) lang))
-;;     (= (-> *pc-settings* subtitle-language) lang)
-;;     )
-;;   )
-;; 
 ;; (defun dm-text-language ((blang int) (msg debug-menu-msg))
-;;   (let ((lang (the pc-subtitle-lang (/ blang 8))))
+;;   (let ((lang (the pc-language (/ blang 8))))
 ;;     (when (= msg (debug-menu-msg press))
 ;;       (set! (-> *pc-settings* text-language) lang))
 ;;     (= (-> *pc-settings* text-language) lang)
@@ -712,216 +704,40 @@
   )
 
 
-(defun sort-string-array ((arr (array string)) (compare-func (function string string object)))
-  "Sort an array, using compare-func to compare elements.
-  The comparison function can return either an integer or a true/false.
-  For integers, use a positive number to represent first > second
-  Ex: (sort lst -) will sort in ascending order
-  For booleans, you must explicitly use #t and not a truthy value.
-  Ex: (sort my-list (lambda ((x int) (y int)) (< x y))) will sort ascending.
-  NOTE: if you use an integer, don't accidentally return #t"
-  (let ((sorted -1))
-    (while (nonzero? sorted)
-      (set! sorted 0)
-      (dotimes (i (1- (-> arr allocated-length)))
-          (let* ((cur (-> arr i))
-                 (next (-> arr (1+ i)))
-                 (result (compare-func cur next))
-                 )
-            (when (and (or (not result) (> (the-as int result) 0)) (!= result #t))
-              (+! sorted 1)
-              (set! (-> arr i) next)
-              (set! (-> arr (1+ i)) cur)
-              )
-            )
-        )
-      )
-    )
-  arr
-  )
-
-(define *vag-play-menu* (the debug-menu #f))
-(define *vag-player* (the (pointer process) #f))
-(define *vagdir-names-list* (alloc-vagdir-names 'debug))
-
-(defun alloc-vag-list ()
-  "allocates and returns a boxed array with all of the vag names as strings, sorted"
-  (let ((list (new 'debug 'boxed-array string (the int (-> *vagdir-names-list* -1)))))
-
-    ;; for each vag...
-    (dotimes (i (-> list allocated-length))
-      ;; write the vag name (64 bits) into the string directly and add a null character
-      (set! (-> (the (pointer uint64) (-> *temp-string* data))) (-> *vagdir-names-list* i))
-      (set! (-> *temp-string* data 8) 0)
-
-      ;; copy into a new string
-      (set! (-> list i) (new 'debug 'string 0 *temp-string*)))
-
-    ;; return the allocated, filled and sorted array
-    (sort-string-array list string<=?))
-  )
-
-(define *vag-list* (alloc-vag-list))
-(define *vag-max-pos-list* (the (pointer int32) (malloc 'debug (* 4 (-> *vag-list* allocated-length)))))
-
-
-(defun dm-vag-play-pick-func ((idx int))
-  (if *vag-player*
-      (return #f))
-  (set! *vag-player* (process-spawn-function process :to *display-pool*
-                          (lambda :behavior process ((idx int))
-
-                              ;; restore these settings when we're done
-                              (protect (*display-art-control* (-> *debug-menu-context* is-hidden) *gui-kick-str*)
-                              (true! *display-art-control*) ;; force this on
-                              (true! (-> *debug-menu-context* is-hidden)) ;; hide debug menu
-                              (true! *gui-kick-str*) ;; force gui control to play streams
-                              (sound-group-continue (sound-group dialog dialog2)) ;; unpause dialog
-                              (set-setting! 'music-volume 'abs 0.0 0) ;; mute music
-                              (set-setting! 'sfx-volume 'abs 0.0 0) ;; mute sfx
-                              (set-setting! 'ambient-volume 'abs 0.0 0) ;; mute ambient
-                              (set-setting! 'dialog-volume 'abs 1.0 0) ;; max dialog
-                              (apply-settings *setting-control*) ;; apply settings now
-
-                              (let* ((exit? #f)
-                                    (old-speed 0.0)
-                                    (speed 0.0)
-                                    (id (new 'static 'sound-id))
-                                    (stop! (lambda :behavior process ((id sound-id))
-                                                (set-action! *gui-control* (gui-action stop) id (gui-channel none) (gui-action none) (the-as string #f) (the-as (function gui-connection symbol) #f) (the-as process #f))))
-                                    (play! (lambda :behavior process ((idx int))
-                                                (add-process *gui-control* self (gui-channel alert) (gui-action play) (-> *vag-list* idx) -10.0 0)))
-                                    (playing? (lambda :behavior process ((id sound-id))
-                                                (let ((status (get-status *gui-control* id))) (or (= status (gui-status ready)) (= status (gui-status active))))))
-                                    (set-speed (lambda :behavior process ((id sound-id) (speed float))
-                                                (when *sound-player-enable*
-                                                  (let ((cmd (the-as sound-rpc-set-param (get-sound-buffer-entry))))
-                                                    (set! (-> cmd command) (sound-command set-param))
-                                                    (set! (-> cmd id) id)
-                                                    (set! (-> cmd params pitch-mod) (the int (* 1524.0 speed)))
-                                                    (set! (-> cmd params mask) (the-as uint 2))
-                                                    (-> cmd id)
-                                                    )
-                                                  ))))
-
-                                (set! id (play! idx))
-                                (while (= (gui-status pending) (get-status *gui-control* id))
-                                  (suspend))
-
-                                (until (or exit? (!= *master-mode* 'menu))
-                                  (format *stdcon* "Vag Player -- Press Triangle To Exit~%")
-                                  (cond
-                                    ((zero? id)
-                                      (format *stdcon* "No vag queued~%"))
-                                    ((not (playing? id))
-                                      (format *stdcon* "Vag not playing~%"))
-                                    (else
-                                      (format *stdcon* "Vag playing: ~3L~D~0L~%" (the int (/ (the float (current-str-pos id)) 34.133335))))
-                                    )
-                                  (format *stdcon* "Vag: ~S <- ~S(max:~3L~D~0L) -> ~S~%" (if (> idx 0) (-> *vag-list* (1- idx)))
-                                                                                         (-> *vag-list* idx) (-> *vag-max-pos-list* idx)
-                                                                                         (if (< (1+ idx) (-> *vag-list* allocated-length)) (-> *vag-list* (1+ idx))))
-                                  (format *stdcon* "X to Pause and Play~%R1 and L1 for Speed, Circle Resets~%Left and Right for Prev / Next~%")
-                                  (format *stdcon* "Speed: ~f~%" speed)
-                                  (cond
-                                    ((cpad-pressed? 0 triangle)
-                                      (cpad-clear! 0 triangle)
-                                      (stop! id)
-                                      (true! exit?))
-                                    ((cpad-pressed? 0 x)
-                                      (cpad-clear! 0 x)
-                                      (cond
-                                        ((not (playing? id))
-                                          (set! id (play! idx))
-                                          (set! old-speed 0.0))
-                                        ((= speed -1000.0)
-                                          (set! speed 0.0)
-                                          (sound-continue id)
-                                          (when *sound-player-enable*
-                                            (let ((cmd (the-as sound-rpc-set-param (get-sound-buffer-entry))))
-                                              (set! (-> cmd command) (sound-command set-param))
-                                              (set! (-> cmd id) id)
-                                              (set! (-> cmd params pitch-mod) 0)
-                                              (set! (-> cmd params mask) (the-as uint 2))
-                                              (-> cmd id)
-                                              )
-                                            )
-                                          )
-                                        (else
-                                          (set! speed -1000.0)
-                                          (sound-pause id)
-                                          )
-                                        )
-                                      )
-                                    ((and (cpad-pressed? 0 left) (> idx 0))
-                                      (cpad-clear! 0 left)
-                                      (stop! id)
-                                      (1-! idx)
-                                      (set! id (play! idx))
-                                      (set! old-speed 0.0))
-                                    ((and (cpad-pressed? 0 right) (< (1+ idx) (-> *vag-list* allocated-length)))
-                                      (cpad-clear! 0 right)
-                                      (stop! id)
-                                      (1+! idx)
-                                      (set! id (play! idx))
-                                      (set! old-speed 0.0))
-                                    ((and (cpad-hold? 0 r1 l1) (!= speed -1000.0))
-                                      (seek! speed (if (cpad-hold? 0 l1) -4.0 4.0) (* 0.5 (-> self clock seconds-per-frame)))
-                                      )
-                                    ((cpad-pressed? 0 circle)
-                                      (cpad-clear! 0 circle)
-                                      (set! speed 0.0))
-                                    ((cpad-pressed? 0 square)
-                                      (cpad-clear! 0 square))
-                                    )
-                                  (when (playing? id)
-                                    (max! (-> *vag-max-pos-list* idx) (the int (/ (the float (current-str-pos id)) 34.133335)))
-                                    (when (and (!= speed old-speed) (!= speed -1000.0))
-                                        (set-speed id speed)
-                                        (set! old-speed speed)))
-                                  (suspend))
-                                )
-
-                              (sound-group-pause (sound-group dialog dialog2)) ;; re-pause dialog
-                              (remove-setting! 'music-volume)
-                              (remove-setting! 'sfx-volume)
-                              (remove-setting! 'ambient-volume)
-                              (remove-setting! 'dialog-volume)
-                              (apply-settings *setting-control*)
-
-                              (set! *vag-player* #f)
-                            )) idx))
-  #t)
-
+(define *made-vag-list* #f)
 (defun build-vag-list ((menu debug-menu))
   "Fill the vag play menu"
+
+  (if *made-vag-list*
+      (return #f))
+  (true! *made-vag-list*)
 
   ;; clear old list
   (debug-menu-remove-all-items menu)
 
   ;; make button for each vag, we use an index
   (dotimes (i (-> *vag-list* allocated-length))
-    (debug-menu-append-item menu (new-dm-func (-> *vag-list* i) i dm-vag-play-pick-func))
+    (debug-menu-append-item menu (new-dm-func (-> *vag-list* i) i vag-player-play-from-index))
     )
 
   ;; sort by vag name - note: already sorted from before
   ;(set! (-> menu items) (sort (-> menu items) debug-menu-node<?))
-  )
+  #t)
 
+(define *vag-play-menu* (the debug-menu #f))
 (defun debug-menu-make-vag-menu ((ctx debug-menu-context))
   (let ((vag-menu (new 'debug 'debug-menu ctx "Vag menu")))
       (let ((play-menu (new 'debug 'debug-menu ctx "Play Vag menu")))
         (set! *vag-play-menu* play-menu)
         (debug-menu-append-item vag-menu (new-dm-submenu "Play" play-menu))
         )
+      (debug-menu-append-item vag-menu (new-dm-func "Make List" *vag-play-menu* build-vag-list))
       (debug-menu-append-item vag-menu (new-dm-bool "subtitle" #f
                                             (lambda (arg (msg debug-menu-msg))
                                               (if (= msg (debug-menu-msg press))
                                                   (not! (-> *setting-control* user-default subtitle)))
                                               (-> *setting-control* user-default subtitle))))
       ;; pick channel
-
-      (build-vag-list *vag-play-menu*)
 
       (new-dm-submenu "Vag" vag-menu)
       )
@@ -1012,7 +828,7 @@
   ;;           (flag "hungarian" 14 dm-text-language)
   ;;           )
          (flag "Discord RPC" #t ,(dm-lambda-boolean-flag (-> *pc-settings* discord-rpc?)))
-         (flag "SpeedRunner Mode" #t ,(dm-lambda-boolean-flag (-> *pc-settings* speedrunner-mode?)))
+         (flag "Speedrunner Mode" #t ,(dm-lambda-boolean-flag (-> *pc-settings* speedrunner-mode?)))
          (flag "Jetboard Trick String" #t ,(dm-lambda-boolean-flag (-> *pc-settings* jetboard-trick-text?)))
   ;;        (flag "Speedrunner Mode" #t ,(dm-lambda-boolean-flag (-> *pc-settings* speedrunner-mode?)))
          (menu "PS2 settings"
@@ -1075,12 +891,12 @@
     (debug-menu-make-from-template *debug-menu-context*
       '(menu "Other"
           (flag "DECI Count" *display-deci-count* dm-boolean-toggle-pick-func)
-          ;(flag "Actor graph" *display-actor-graph* dm-boolean-toggle-pick-func)
+          (flag "Actor graph" *display-actor-graph* dm-boolean-toggle-pick-func)
           (flag "Update vis outside bsp" *update-leaf-when-outside-bsp* dm-boolean-toggle-pick-func)
           ;; (flag "Pad display" *display-pad-debug* dm-boolean-toggle-pick-func)
-          (flag "Display actor bank" *display-actor-bank* dm-boolean-toggle-pick-func)
           (flag "Heap status" *display-heap-status* dm-boolean-toggle-pick-func)
-          ;; (flag "Text boxes" *display-text-box* dm-boolean-toggle-pick-func)
+          (flag "Text boxes" *display-text-box* dm-boolean-toggle-pick-func)
+          (flag "Display actor bank" *display-actor-bank* dm-boolean-toggle-pick-func)
           (float-var "Actor birth dist" #f ,(dm-lambda-meters-var (-> *ACTOR-bank* birth-dist)) 20 1 #t 0 10000 1)
           (float-var "Actor pause dist" #f ,(dm-lambda-meters-var (-> *ACTOR-bank* pause-dist)) 20 1 #t 0 10000 1)
           (flag "Display city info" *display-city-info* dm-boolean-toggle-pick-func)
