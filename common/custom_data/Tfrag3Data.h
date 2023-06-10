@@ -465,26 +465,30 @@ struct MercDraw {
   void serialize(Serializer& ser);
 };
 
-struct BlercVtxFloatTarget {
-  math::Vector3f pos;
-  math::Vector3f nrm;
-  u8 idx;
+
+struct BlercFloatData {
+  alignas(32) float v[8];
 };
 
-struct BlercVtxFloat {
-  BlercVtxFloatTarget base;
-  std::vector<BlercVtxFloatTarget> targets;
-  s32 dest = -1;
-  s32 debug_lump4 = -1;
+struct Blerc {
+  std::vector<BlercFloatData> float_data;
+  std::vector<u32> int_data;
+  static constexpr u32 kTargetIdxTerminator = UINT32_MAX;
   void serialize(Serializer& ser);
+
+  // int data, per vertex:
+  // [tgt0, tgt1, ..., terminator, dest]
+  // float data, per vertex:
+  // [base, tgt0, tgt1, ...]
 };
+
 
 struct MercModifiableDrawGroup {
   std::vector<MercVertex> vertices;
   std::vector<u16> vertex_lump4_addr;
   std::vector<MercDraw> fix_draw, mod_draw;
   std::vector<u8> fragment_mask;
-  std::vector<BlercVtxFloat> blerc_debug;
+  Blerc blerc;
   u32 expect_vidx_end = 0;
 
   void serialize(Serializer& ser);

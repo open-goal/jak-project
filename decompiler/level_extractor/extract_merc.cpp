@@ -1162,8 +1162,18 @@ float magic_float_offset(u32 base_val) {
   return a;
 }
 
-using tfrag3::BlercVtxFloat;
-using tfrag3::BlercVtxFloatTarget;
+struct BlercVtxFloatTarget {
+  math::Vector3f pos;
+  math::Vector3f nrm;
+  u8 idx;
+};
+
+struct BlercVtxFloat {
+  BlercVtxFloatTarget base;
+  std::vector<BlercVtxFloatTarget> targets;
+  s32 dest = -1;
+  s32 debug_lump4 = -1;
+};
 
 BlercVtxFloatTarget blerc_vertex_convert(const BlercVtxIntTarget& in,
                                          const math::Vector<float, 3>& pos_offset,
@@ -1202,6 +1212,35 @@ BlercVtxFloat blerc_vertex_convert(const BlercVtxInt& in, float pos_scale) {
     result.targets.push_back(blerc_vertex_convert(t, in.pos_offset, pos_scale, false));
   }
   return result;
+}
+
+tfrag3::BlercFloatData to_float_data(const math::Vector3f& pos, const math::Vector3f& nrm, float scale) {
+  tfrag3::BlercFloatData result;
+  result.v[0] = pos.x() * scale;
+  result.v[1] = pos.y() * scale;
+  result.v[2] = pos.z() * scale;
+  result.v[3] = 0;
+  result.v[4] = nrm.x() * scale;
+  result.v[5] = nrm.y() * scale;
+  result.v[6] = nrm.z() * scale;
+  result.v[7] = 0;
+  return result;
+}
+
+tfrag3::Blerc blerc_pack(const std::vector<BlercVtxFloat>& verts) {
+  tfrag3::Blerc blerc;
+  for (auto& v : verts) {
+    if (v.dest >= 0) {
+      blerc.float_data.push_back(to_float_data(v.base.pos, v.base.nrm, 1.f));
+      for (auto& t : v.targets) {
+        blerc.int_data.push_back(t.idx);
+        blerc.float_data.push_back(to_float_data(t.pos, t.nrm, 1.f / 8192.f));
+      }
+      blerc.int_data.push_back(tfrag3::Blerc::kTargetIdxTerminator);
+      blerc.int_data.push_back(v.dest);
+    }
+  }
+  return blerc;
 }
 
 void create_modifiable_vertex_data(
@@ -1364,13 +1403,14 @@ void create_modifiable_vertex_data(
 
         // blerc!
         std::vector<s32> which_blerc_is_at_this_lump4;
+        std::vector<BlercVtxFloat> blerc_floats;
         for (size_t i = 0; i < og_effect.blerc_vertices_i.size(); i++) {
           auto& bvi = og_effect.blerc_vertices_i[i];
           if (bvi.lump4_addr >= which_blerc_is_at_this_lump4.size()) {
             which_blerc_is_at_this_lump4.resize(bvi.lump4_addr + 1, -1);
           }
           which_blerc_is_at_this_lump4[bvi.lump4_addr] = i;
-          effect.mod.blerc_debug.push_back(blerc_vertex_convert(bvi, og_effect.pos_scale));
+          blerc_floats.push_back(blerc_vertex_convert(bvi, og_effect.pos_scale));
         }
 
         for (u32 vi = 0; vi < effect.mod.vertices.size(); vi++) {
@@ -1379,15 +1419,12 @@ void create_modifiable_vertex_data(
           if (la < which_blerc_is_at_this_lump4.size()) {
             s32 bi = which_blerc_is_at_this_lump4.at(la);
             if (bi >= 0) {
-              effect.mod.blerc_debug[bi].dest = vi;
-              effect.mod.blerc_debug[bi].debug_lump4 = la;
+              blerc_floats[bi].dest = vi;
+              blerc_floats[bi].debug_lump4 = la;
             }
           }
         }
-
-        // HACK REMOVE THIS
-        for (auto& x : effect.mod.fragment_mask)
-          x = true;
+        effect.mod.blerc = blerc_pack(blerc_floats);
 
         // splice out masked fragments, the renderer won't index them
         const auto& frag_counts = og_effect.verts_per_frag;

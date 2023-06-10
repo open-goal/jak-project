@@ -1,5 +1,7 @@
 #include "Merc2.h"
 
+#include <xmmintrin.h>
+
 #include "common/global_profiler/GlobalProfiler.h"
 
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
@@ -103,6 +105,42 @@ Merc2::~Merc2() {
   glDeleteVertexArrays(1, &m_vao);
 }
 
+void blerc_avx(const u32* i_data,
+               const u32* i_data_end,
+               const tfrag3::BlercFloatData* floats,
+               const float* weights,
+               tfrag3::MercVertex* out) {
+  __m128 weights_table[Merc2::kMaxBlerc];
+  for (int i = 0; i < Merc2::kMaxBlerc; i++) {
+    weights_table[i] = _mm_set1_ps(weights[i]);
+  }
+
+  while (i_data != i_data_end) {
+    __m128 pos = _mm_load_ps(floats->v);
+    __m128 nrm = _mm_load_ps(floats->v + 4);
+    floats++;
+
+    while (*i_data != tfrag3::Blerc::kTargetIdxTerminator) {
+      __m128 weight_multiplier = weights_table[*i_data];
+      __m128 posm = _mm_load_ps(floats->v);
+      __m128 nrmm = _mm_load_ps(floats->v + 4);
+      floats++;
+      posm = _mm_mul_ps(posm, weight_multiplier);
+      nrmm = _mm_mul_ps(nrmm, weight_multiplier);
+
+      pos = _mm_add_ps(pos, posm);
+      nrm = _mm_add_ps(nrm, nrmm);
+
+      i_data++;
+    }
+
+    i_data++;
+    _mm_store_ps(out[*i_data].pos, pos);
+    _mm_store_ps(out[*i_data].normal, nrm);
+    i_data++;
+  }
+}
+
 void Merc2::model_mod_blerc_draws(int num_effects,
                                   const tfrag3::MercModel* model,
                                   const LevelData* lev,
@@ -133,19 +171,11 @@ void Merc2::model_mod_blerc_draws(int num_effects,
     memcpy(m_mod_vtx_temp.data(), effect.mod.vertices.data(),
            sizeof(tfrag3::MercVertex) * effect.mod.vertices.size());
 
-    for (auto& bv : effect.mod.blerc_debug) {
-      if (bv.dest >= 0) {
-        auto& slot = m_mod_vtx_temp.at(bv.dest);
-        for (int c = 0; c < 3; c++) {
-          slot.normal[c] = bv.base.nrm[c];
-          slot.pos[c] = bv.base.pos[c];
-          for (auto& t : bv.targets) {
-            float f = blerc_weights[t.idx] / 8192.f;
-            slot.pos[c] += f * t.pos[c];
-          }
-        }
-      }
-    }
+    const auto* f_data = effect.mod.blerc.float_data.data();
+    const u32* i_data = effect.mod.blerc.int_data.data();
+    const u32* i_data_end = i_data + effect.mod.blerc.int_data.size();
+    blerc_avx(i_data, i_data_end, f_data, blerc_weights, m_mod_vtx_temp.data());
+
 
     // and upload to GPU
     m_stats.num_uploads++;

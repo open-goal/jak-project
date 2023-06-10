@@ -1131,7 +1131,7 @@
          (mctrl (-> dc mgeo))
          (buckets (-> (scratchpad-object foreground-work) grid level-buckets (-> (scratchpad-object foreground-work) draw-index-map (-> dc level-index))))
          (has-ripple-or-texscroll #f)
-         (uses-blerc (pc-merc-blend-shape (the process-drawable (-> dc process)) blerc-weights))
+         (uses-fp-blerc (and *use-fp-blerc* (pc-merc-blend-shape (the process-drawable (-> dc process)) blerc-weights)))
          )
     ;; mark all as unused, until we see a use
     (dotimes (i 7) (set! (-> use-flags i) 0))
@@ -1158,17 +1158,21 @@
           (when has-ripple-or-texscroll
             (set! vertex-update #t)
             )
-          (when uses-blerc
+          (when uses-fp-blerc
             (set! vertex-update 'blerc)
             )
-          ; (let* ((pd (the process-drawable (-> dc process)))
-          ;        (jc (-> pd skel)))
-          ;   (when (nonzero? jc)
-          ;     (when (logtest? (-> jc status) (joint-control-status blend-shape-valid))
-          ;       (set! vertex-update 'blerc)
-          ;       )
-          ;     )
-          ;   )
+
+          (unless *use-fp-blerc*
+            (let* ((pd (the process-drawable (-> dc process)))
+                   (jc (-> pd skel)))
+              (when (nonzero? jc)
+                (when (logtest? (-> jc status) (joint-control-status blend-shape-valid))
+                  (set! vertex-update #t)
+                  )
+                )
+              )
+            )
+
          ; (format 0 "~D weights: ~X~%" i blerc-weights)
 
           (set! dma-buf (pc-merc-draw-request dc dma-buf matrix-buf i vertex-update blerc-weights))

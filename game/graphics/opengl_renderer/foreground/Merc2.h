@@ -8,10 +8,10 @@ class Merc2 : public BucketRenderer {
   void draw_debug_window() override;
   void init_shaders(ShaderLibrary& shaders) override;
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
+  static constexpr int kMaxBlerc = 40;
 
  private:
   bool m_debug_mode = false;
-  static constexpr int kMaxBlerc = 40;
   struct DrawDebug {
     DrawMode mode;
     int num_tris;

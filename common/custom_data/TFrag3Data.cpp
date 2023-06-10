@@ -398,11 +398,9 @@ void MercDraw::serialize(Serializer& ser) {
   ser.from_ptr(&num_triangles);
 }
 
-void BlercVtxFloat::serialize(Serializer& ser) {
-  ser.from_pod_vector(&targets);
-  ser.from_ptr(&base);
-  ser.from_ptr(&dest);
-  ser.from_ptr(&debug_lump4);
+void Blerc::serialize(Serializer& ser) {
+  ser.from_pod_vector(&float_data);
+  ser.from_pod_vector(&int_data);
 }
 
 void MercModifiableDrawGroup::serialize(Serializer& ser) {
@@ -428,14 +426,7 @@ void MercModifiableDrawGroup::serialize(Serializer& ser) {
   ser.from_pod_vector(&fragment_mask);
   ser.from_ptr(&expect_vidx_end);
 
-  if (ser.is_saving()) {
-    ser.save<size_t>(blerc_debug.size());
-  } else {
-    blerc_debug.resize(ser.load<size_t>());
-  }
-  for (auto& v : blerc_debug) {
-    v.serialize(ser);
-  }
+  blerc.serialize(ser);
 }
 
 void MercEffect::serialize(Serializer& ser) {
