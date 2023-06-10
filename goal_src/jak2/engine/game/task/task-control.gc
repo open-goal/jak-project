@@ -700,6 +700,35 @@
   obj
   )
 
+;; added in PC port for discord rpc
+(defun get-active-mission-description ()
+  (let* ((nodes (-> *game-info* sub-task-list))
+         (level (level-get-target-inside *level*))
+         (task-level-idx (if level (-> level info task-level) 0)))
+    (dotimes (i (-> nodes length))
+      (when (nonzero? i)
+        (let ((node (-> nodes i)))
+          (when (= task-level-idx 0)
+            (return (lookup-text! *common-text* (text-id discord-rpc-not-in-mission) #f))
+            )
+          ;; TODO properly check for side missions
+          ;; (if (and (task-node-open? (the game-task-node i))
+          ;;          (>= i (the-as int (game-task-node city-burning-bush-ring-1-introduction)))
+          ;;          (<= i (the-as int (game-task-node stadium-burning-bush-race-class1-r-resolution))))
+          ;;   (return (lookup-text! *common-text* (text-id discord-rpc-in-side-mission) #f))
+          ;;   )
+          (if (and (task-node-open? (the game-task-node i))
+                   (!= (-> node description) (the text-id 0))
+                   (= (-> *task-level* task-level-idx) (-> node level)))
+            (return (lookup-text! *common-text* (-> node description) #f))
+            )
+          )
+        )
+      )
+      (lookup-text! *common-text* (text-id discord-rpc-not-in-mission) #f)
+    )
+  )
+
 (defmethod close! game-task-node-info ((obj game-task-node-info) (arg0 symbol))
   (when (not (logtest? (-> obj flags) (game-task-node-flag closed)))
     (let ((task-node-close-func

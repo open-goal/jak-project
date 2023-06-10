@@ -8,6 +8,7 @@
 
  |#
 
+(define-extern get-active-mission-description (function object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; methods
@@ -62,17 +63,18 @@
 (defmethod update-discord-rpc pc-settings-jak2 ((obj pc-settings-jak2))
   "update discord rpc module"
   (let ((info (new 'stack 'discord-info)))
-    (set! (-> info orb-count) (&-> *game-info* skill-total))
-    (set! (-> info gem-count) (&-> *game-info* gem-total))
-    (set! (-> info death-count) (&-> *game-info* total-deaths))
-    (set! (-> info status) "Playing Jak II™")
+    (set! (-> info orb-count) (-> *game-info* skill-total))
+    (set! (-> info gem-count) (-> *game-info* gem-total))
+    (set! (-> info death-count) (-> *game-info* total-deaths))
+    (set! (-> info status) (the string (get-active-mission-description)))
     ;; grab the name of the level we're in
     (if (and *level* (level-get-target-inside *level*))
       (set! (-> info level) (symbol->string (-> (level-get-target-inside *level*) name)))
       (set! (-> info level) "unknown"))
-    (set! (-> info cutscene?) #f) ;; TODO - cutscenes don't work yet
-    (set! (-> info time-of-day) (&-> *time-of-day-context* time))
+    (set! (-> info cutscene?) (movie?))
+    (set! (-> info time-of-day) (-> *time-of-day-context* time))
     (set! (-> info percent-complete) (calculate-percentage *game-info*))
+    (set! (-> info focus-status) (if *target* (-> *target* focus-status) 0))
     ;; TODO - wrapping in `with-profiler` causes an error, fix it
     (pc-discord-rpc-update info))
   (none))
