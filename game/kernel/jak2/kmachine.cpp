@@ -532,20 +532,26 @@ void update_discord_rpc(u32 discord_info) {
       float percent_completed = info->percent_completed;
       std::bitset<32> focus_status;
       focus_status = info->focus_status;
+      char* task = Ptr<String>(info->task).c()->data();
 
       // Construct the DiscordRPC Object
       const char* full_level_name =
           get_full_level_name(level_names, level_name_remap, Ptr<String>(info->level).c()->data());
       memset(&rpc, 0, sizeof(rpc));
-      // if we are in an outdoors level, use the picture for the corresponding time of day
-      if (!indoors(indoor_levels, level)) {
-        char level_with_tod[128];
-        strcpy(level_with_tod, level);
-        strcat(level_with_tod, "-");
-        strcat(level_with_tod, time_of_day_str(time));
-        strcpy(large_image_key, level_with_tod);
+      // if we have an active task, set the mission specific image for it
+      if (strcmp(task, "unknown") != 0) {
+        strcpy(large_image_key, task);
       } else {
-        strcpy(large_image_key, level);
+        // if we are in an outdoors level, use the picture for the corresponding time of day
+        if (!indoors(indoor_levels, level)) {
+          char level_with_tod[128];
+          strcpy(level_with_tod, level);
+          strcat(level_with_tod, "-");
+          strcat(level_with_tod, time_of_day_str(time));
+          strcpy(large_image_key, level_with_tod);
+        } else {
+          strcpy(large_image_key, level);
+        }
       }
       strcpy(large_image_text, full_level_name);
       if (!strcmp(full_level_name, "unknown")) {

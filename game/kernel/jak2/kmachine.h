@@ -101,6 +101,7 @@ struct DiscordInfo {
   float time_of_day;        // float
   float percent_completed;  // float
   u32 focus_status;         // uint32
+  u32 task;                 // string
 };
 // To speedup finding the auto-splitter block in GOAL memory
 // all this has is a marker for LiveSplit to find, and then the pointer
