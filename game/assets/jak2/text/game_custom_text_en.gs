@@ -11,3 +11,23 @@
   "Playing a side mission"
   "Playing a side mission"
   )
+
+(#x1102
+  "Playing Scatter Gun Training"
+  "Playing Scatter Gun Training"
+  )
+
+(#x1103
+  "Playing Blaster Training"
+  "Playing Blaster Training"
+  )
+
+(#x1104
+  "Playing Vulcan Fury Training"
+  "Playing Vulcan Fury Training"
+  )
+
+(#x1105
+  "Playing Peace Maker Training"
+  "Playing Peace Maker Training"
+  )
