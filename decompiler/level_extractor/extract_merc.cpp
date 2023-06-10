@@ -90,7 +90,6 @@ struct MercUnpackedVtx {
   math::Vector3f nrm;  // normal (as input to the merc math, pretty sure legnth is bogus)
   math::Vector2f st;   // texture coordinates
   math::Vector<u8, 4> rgba;
-  math::Vector3f pos_offset;  // gross.
 
   int skel_mats[3];
   float mat_weights[3];
@@ -119,6 +118,7 @@ struct BlercVtxInt {
   BlercVtxIntTarget base;
   std::vector<BlercVtxIntTarget> targets;
   u32 lump4_addr = 0;
+  math::Vector3f pos_offset;
 };
 
 /*!
@@ -491,8 +491,6 @@ void handle_frag(const std::string& debug_name,
 
     vtx.pos = math::Vector3f(v0.w(), v1.w(), v2.w());
     vtx.nrm = math::Vector3f(v0.z(), v1.z(), v2.z());
-    vtx.pos_offset =
-        math::Vector3f(frag.fp_header.x_add, frag.fp_header.y_add, frag.fp_header.z_add);
 
     // vtx.mat1 = 0;                           // not used like this
     vtx.dst0 = float_as_u32(v1.x()) - 371;  // xtop to output buffer offset
@@ -1037,28 +1035,37 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   }
 
   int base_blend_out = 0;
+  bool debug_me = debug_name == "daxter-lod0";
   for (size_t i = 0; i < input_effect.blend_frag_count; i++) {
     auto& bc = input_effect.blend_ctrl.at(i);
     auto& bd = input_effect.blend_data.at(i);
+    auto& f = input_effect.frag_geo.at(i).fp_header;
     int bdi = 0;
 
     size_t original_size = result.blerc_vertices_i.size();
     result.blerc_vertices_i.resize(original_size + bc.blend_vtx_count);
     auto* out_vertices = &result.blerc_vertices_i[original_size];
 
+    if (debug_me)
+      fmt::print("doing bfrag: {} (has {}, nsize {}), base {}\n", i, bc.blend_vtx_count,
+                 result.verts_per_frag.at(i), base_blend_out);
     // first, add the zero table
     for (int vi = 0; vi < bc.blend_vtx_count; vi++) {
-      out_vertices[vi].lump4_addr = base_blend_out + vi;
-      auto& vc = out_vertices[vi].base;
+      auto& out_vertex = out_vertices[vi];
+      out_vertex.lump4_addr = base_blend_out + vi;
+      out_vertex.pos_offset = math::Vector3f(f.x_add, f.y_add, f.z_add);
+      auto& vc = out_vertex.base;
       vc.nrm.x() = bd.u8_data.at(bdi++);
       vc.pos.x() = bd.u8_data.at(bdi++);
+      if (debug_me && i == 3) {
+        fmt::print(" v {} ({}): x = {}\n", vi, base_blend_out + vi, vc.pos.x());
+      }
 
       vc.nrm.y() = bd.u8_data.at(bdi++);
       vc.pos.y() = bd.u8_data.at(bdi++);
 
       vc.nrm.z() = bd.u8_data.at(bdi++);
       vc.pos.z() = bd.u8_data.at(bdi++);
-
     }
     bdi = align16(bdi);
 
@@ -1086,7 +1093,6 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
       }
       bdi = align16(bdi);
     }
-    fmt::print("sizes are: {} {}\n", bdi, bd.u8_data.size());
     ASSERT(align16(bdi) == bd.u8_data.size());
     base_blend_out += result.verts_per_frag.at(i);
   }
@@ -1164,63 +1170,36 @@ BlercVtxFloatTarget blerc_vertex_convert(const BlercVtxIntTarget& in,
                                          float pos_scale,
                                          bool is_base) {
   BlercVtxFloatTarget result;
+  result.idx = in.idx;
 
   float pos_total_scale = magic_float_scale(0x4b010000) * pos_scale;
   float nrm_total_scale = magic_float_scale(0x47800000);
 
-  result.pos = in.pos.cast<float>() * pos_total_scale;
-  result.nrm = in.nrm.cast<float>() * nrm_total_scale;
-  result.idx = in.idx;
-
   if (is_base) {
+    result.nrm = in.nrm.cast<u8>().cast<float>() * nrm_total_scale;
     result.pos = in.pos.cast<u8>().cast<float>() * pos_total_scale;
     math::Vector3f post_pos_off;
     post_pos_off.fill(magic_float_offset(0x4b010000));
     post_pos_off += pos_offset;
     post_pos_off *= pos_scale;
 
-    //    math::Vector3f pos_off;
-    //    pos_off.fill(magic_float_offset(0x4b010000));
-    //    pos_off += pos_offset * pos_total_scale;
-    //    fmt::print("in {}\n", in.pos.to_string_hex_byte());
-    //    fmt::print("float offset is {} + {} = {}, scale is {}\n", magic_float_offset(0x4b010000),
-    //               pos_offset[0], magic_float_offset(0x4b010000) + pos_offset[0],
-    //               magic_float_scale(0x4b010000));
-
     math::Vector3f nrm_off;
     nrm_off.fill(magic_float_offset(0x47800000) - 65537.f);
 
     result.pos += post_pos_off;
     result.nrm += nrm_off;
-
-//    u32 q0w = 0x4b010000 + (u8)in.pos.x();
-//    u32 q1w = 0x4b010000 + (u8)in.pos.y();
-//    u32 q2w = 0x4b010000 + (u8)in.pos.z();
-//    float pos_array[3];
-//    memcpy(&pos_array[0], &q0w, 4);
-//    memcpy(&pos_array[1], &q1w, 4);
-//    memcpy(&pos_array[2], &q2w, 4);
-//    pos_array[0] += pos_offset[0];
-//    pos_array[1] += pos_offset[1];
-//    pos_array[2] += pos_offset[2];
-//    pos_array[0] *= pos_scale;
-//    pos_array[1] *= pos_scale;
-//    pos_array[2] *= pos_scale;
-//    result.pos[0] = pos_array[0];
-//    result.pos[1] = pos_array[1];
-//    result.pos[2] = pos_array[2];
-
+  } else {
+    result.pos = in.pos.cast<float>() * pos_total_scale;
+    result.nrm = in.nrm.cast<float>() * nrm_total_scale;
   }
   return result;
 }
 
-BlercVtxFloat blerc_vertex_convert(const BlercVtxInt& in,
-                                   const math::Vector<float, 3>& pos_offset,
-                                   float pos_scale) {
+BlercVtxFloat blerc_vertex_convert(const BlercVtxInt& in, float pos_scale) {
   BlercVtxFloat result;
-  result.base = blerc_vertex_convert(in.base, pos_offset, pos_scale, true);
+  result.base = blerc_vertex_convert(in.base, in.pos_offset, pos_scale, true);
   for (auto& t : in.targets) {
-    result.targets.push_back(blerc_vertex_convert(t, pos_offset, pos_scale, false));
+    result.targets.push_back(blerc_vertex_convert(t, in.pos_offset, pos_scale, false));
   }
   return result;
 }
@@ -1387,13 +1366,11 @@ void create_modifiable_vertex_data(
         std::vector<s32> which_blerc_is_at_this_lump4;
         for (size_t i = 0; i < og_effect.blerc_vertices_i.size(); i++) {
           auto& bvi = og_effect.blerc_vertices_i[i];
-          auto& v = og_effect.vertices.at(i);
           if (bvi.lump4_addr >= which_blerc_is_at_this_lump4.size()) {
             which_blerc_is_at_this_lump4.resize(bvi.lump4_addr + 1, -1);
           }
           which_blerc_is_at_this_lump4[bvi.lump4_addr] = i;
-          effect.mod.blerc_debug.push_back(
-              blerc_vertex_convert(bvi, v.pos_offset, og_effect.pos_scale));
+          effect.mod.blerc_debug.push_back(blerc_vertex_convert(bvi, og_effect.pos_scale));
         }
 
         for (u32 vi = 0; vi < effect.mod.vertices.size(); vi++) {
@@ -1403,13 +1380,14 @@ void create_modifiable_vertex_data(
             s32 bi = which_blerc_is_at_this_lump4.at(la);
             if (bi >= 0) {
               effect.mod.blerc_debug[bi].dest = vi;
+              effect.mod.blerc_debug[bi].debug_lump4 = la;
             }
           }
         }
 
-
         // HACK REMOVE THIS
-        for (auto& x : effect.mod.fragment_mask) x = true;
+        for (auto& x : effect.mod.fragment_mask)
+          x = true;
 
         // splice out masked fragments, the renderer won't index them
         const auto& frag_counts = og_effect.verts_per_frag;

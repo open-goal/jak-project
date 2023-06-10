@@ -402,6 +402,7 @@ void BlercVtxFloat::serialize(Serializer& ser) {
   ser.from_pod_vector(&targets);
   ser.from_ptr(&base);
   ser.from_ptr(&dest);
+  ser.from_ptr(&debug_lump4);
 }
 
 void MercModifiableDrawGroup::serialize(Serializer& ser) {

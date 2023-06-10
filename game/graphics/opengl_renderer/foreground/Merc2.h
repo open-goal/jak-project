@@ -11,6 +11,7 @@ class Merc2 : public BucketRenderer {
 
  private:
   bool m_debug_mode = false;
+  static constexpr int kMaxBlerc = 40;
   struct DrawDebug {
     DrawMode mode;
     int num_tris;
@@ -242,5 +243,6 @@ class Merc2 : public BucketRenderer {
                              const LevelData* lev,
                              const u8* input_data,
                              const DmaTransfer& setup,
-                             ModBuffers* mod_opengl_buffers);
+                             ModBuffers* mod_opengl_buffers,
+                             const float* blerc_weights);
 };

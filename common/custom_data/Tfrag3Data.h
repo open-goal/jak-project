@@ -475,6 +475,7 @@ struct BlercVtxFloat {
   BlercVtxFloatTarget base;
   std::vector<BlercVtxFloatTarget> targets;
   s32 dest = -1;
+  s32 debug_lump4 = -1;
   void serialize(Serializer& ser);
 };
 

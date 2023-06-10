@@ -108,7 +108,8 @@ void Merc2::model_mod_blerc_draws(int num_effects,
                                   const LevelData* lev,
                                   const u8* input_data,
                                   const DmaTransfer& setup,
-                                  ModBuffers* mod_opengl_buffers) {
+                                  ModBuffers* mod_opengl_buffers,
+                                  const float* blerc_weights) {
   // loop over effects. Mod vertices are done per effect (possibly a bad idea?)
   for (int ei = 0; ei < num_effects; ei++) {
     const auto& effect = model->effects[ei];
@@ -128,41 +129,23 @@ void Merc2::model_mod_blerc_draws(int num_effects,
       ASSERT_NOT_REACHED();
     }
 
-    // check that we have enough room for unpack
-    if (effect.mod.expect_vidx_end > MAX_MOD_VTX) {
-      fmt::print("More mod vertices (temp) than MAX_MOD_VTX. {} > {}\n", effect.mod.expect_vidx_end,
-                 MAX_MOD_VTX);
-      ASSERT_NOT_REACHED();
-    }
-
     // start with the "correct" vertices from the model data:
     memcpy(m_mod_vtx_temp.data(), effect.mod.vertices.data(),
            sizeof(tfrag3::MercVertex) * effect.mod.vertices.size());
 
-    int i = 0;
     for (auto& bv : effect.mod.blerc_debug) {
-      // memcpy(m_mod_vtx_unpack_temp[i++].pos, bv.base.pos.data(), 12);
       if (bv.dest >= 0) {
         auto& slot = m_mod_vtx_temp.at(bv.dest);
-        for (int i = 0; i < 3; i++) {
-          slot.normal[i] = bv.base.nrm[i];
-          slot.pos[i] = bv.base.pos[i];
+        for (int c = 0; c < 3; c++) {
+          slot.normal[c] = bv.base.nrm[c];
+          slot.pos[c] = bv.base.pos[c];
           for (auto& t : bv.targets) {
-            float f = m_debug.blercs[t.idx];
-            slot.pos[i] += f * t.pos[i];
+            float f = blerc_weights[t.idx] / 8192.f;
+            slot.pos[c] += f * t.pos[c];
           }
         }
       }
     }
-
-    //    for (u32 vi = 0; vi < effect.mod.vertices.size(); vi++) {
-    //      u32 addr = effect.mod.vertex_lump4_addr[vi];
-    //      if (addr < effect.mod.blerc_debug.size()) {
-    //        memcpy(m_mod_vtx_temp[vi].pos, &m_mod_vtx_unpack_temp[addr].pos, 12);
-    //      }
-    //    }
-
-    // memset(m_mod_vtx_temp.data(), 0, sizeof(tfrag3::MercVertex) * effect.mod.vertices.size());
 
     // and upload to GPU
     m_stats.num_uploads++;
@@ -470,6 +453,14 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   // but they may not be in order, or include all bones. The matrix slot string tells
   // us which bones go where. (the game doesn't go in order because it follows the merc format)
   ShaderMercMat skel_matrix_buffer[MAX_SKEL_BONES];
+  for (auto& mat : skel_matrix_buffer) {
+    for (auto& t : mat.nmat) {
+      t.fill(9999);
+    }
+    for (auto& t : mat.tmat) {
+      t.fill(9999);
+    }
+  }
   auto* matrix_array = (const u32*)(input_data + 128);
   int i;
   for (i = 0; i < 128; i++) {
@@ -483,6 +474,11 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
     ASSERT(input_data[i] < MAX_SKEL_BONES);
     // get the matrix data
     memcpy(&skel_matrix_buffer[input_data[i]], real_addr, sizeof(MercMat));
+
+    //    if (model->name == "jakone-highres-lod0" && input_data[i] == 10) {
+    //      fmt::print("BONE: {}\n", skel_matrix_buffer[input_data[i]].nmat[0].to_string_aligned());
+    //      fmt::print("    : {}\n", skel_matrix_buffer[input_data[i]].tmat[0].to_string_aligned());
+    //    }
   }
   input_data += 128 + 16 * i;
 
@@ -500,7 +496,14 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   u64 current_effect_enable_bits = flags->enable_mask;       // mask for game to disable an effect
   bool model_uses_mod = flags->bitflags & 1;  // if we should update vertices from game.
   bool model_disables_fog = (flags->bitflags & 2);
+  bool model_uses_pc_blerc = flags->bitflags & 4;
   input_data += 32;
+
+  float blerc_weights[kMaxBlerc];
+  if (model_uses_pc_blerc) {
+    memcpy(blerc_weights, input_data, kMaxBlerc * sizeof(float));
+    input_data += kMaxBlerc * sizeof(float);
+  }
 
   // Next is "fade data", indicating the color/intensity of envmap effect
   u8 fade_buffer[4 * kMaxEffect];
@@ -513,19 +516,20 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
 
   // NOTE: even if this is replaced with a flag from game, this will skip non-blerc mods
   // on blerc things (which I think don't exist)
-  bool temp_hack_blerc = false;
-  for (auto& e : model->effects) {
-    if (!e.mod.blerc_debug.empty()) {
-      temp_hack_blerc = true;
-    }
-  }
+  //  bool temp_hack_blerc = false;
+  //  for (auto& e : model->effects) {
+  //    if (!e.mod.blerc_debug.empty()) {
+  //      temp_hack_blerc = true;
+  //    }
+  //  }
 
   // Next is pointers to merc data, needed so we can update vertices
 
   // will hold opengl buffers for the updated vertices
   ModBuffers mod_opengl_buffers[kMaxEffect];
-  if (temp_hack_blerc) {
-    model_mod_blerc_draws(num_effects, model, lev, input_data, setup, mod_opengl_buffers);
+  if (model_uses_pc_blerc) {
+    model_mod_blerc_draws(num_effects, model, lev, input_data, setup, mod_opengl_buffers,
+                          blerc_weights);
   } else if (model_uses_mod) {  // only if we've enabled, this path is slow.
     model_mod_draws(num_effects, model, lev, input_data, setup, mod_opengl_buffers);
   }
@@ -586,7 +590,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
     auto& effect = model->effects[ei];
 
     bool should_envmap = effect.has_envmap;
-    bool should_mod = (temp_hack_blerc || model_uses_mod) && effect.has_mod_draw;
+    bool should_mod = (model_uses_pc_blerc || model_uses_mod) && effect.has_mod_draw;
 
     if (should_mod) {
       // draw as two parts, fixed and mod
