@@ -446,44 +446,95 @@ std::string write_spool_subtitles(
     file_util::create_dir_if_needed(image_out);
   }
 
-  for (auto& [spool_name, subs] : data) {
-    int image_count = 0;
-    result += "(\"" + spool_name + "\"\n";
-    for (auto& sub : subs) {
-      std::string temp_for_indent = fmt::format("  (({} {}) (", float_to_string(sub.start_frame),
-                                                float_to_string(sub.end_frame));
-      auto indent = temp_for_indent.length();
-      result += temp_for_indent;
-      for (int i = 0; i < 8; ++i) {
-        const auto& msg = sub.message[i];
-        if (i > 0) {
-          result += "\n" + std::string(indent, ' ');
+  constexpr bool as_json = true;
+  if constexpr (as_json) {
+    constexpr bool dump_text = false;
+    constexpr int lang = 0;
+    // no line data
+    bool has_spools = false;
+    for (auto& [spool_name, subs] : data) {
+      result += "    \"" + spool_name + "\": {\n";
+      result += "      \"scene\": true,\n";
+      result += "      \"lines\": [\n";
+      bool has_subs = false;
+      for (auto& sub : subs) {
+        const auto& msg = sub.message[lang];
+        if (msg.kind != SpoolSubtitleMessage::Kind::STRING) {
+          continue;
         }
-        if (msg.kind == SpoolSubtitleMessage::Kind::NIL) {
-          result += "#f";
+        result += "        {\n";
+        result += "          \"end\": " + float_to_string(sub.end_frame) + ",\n";
+        if (dump_text) {
+          result += "          \"merge\": false,\n";
         } else {
-          result += "(";
-          if (msg.kind == SpoolSubtitleMessage::Kind::IMAGE) {
-            auto img_name = fmt::format("{}-{}-{}.png", spool_name, i, image_count++);
-            result += "image " + img_name;
-            if (dump_images) {
-              std::vector<u32> rgba_out;
-              rgba_out.resize(msg.w * msg.h);
-              for (int px = 0; px < (int)rgba_out.size(); ++px) {
-                int idx = px & 1 ? msg.data[px / 2] >> 4 : msg.data[px / 2] & 0xf;
-                rgba_out.at(px) = msg.palette[idx];
-              }
-              file_util::write_rgba_png(image_out / img_name, rgba_out.data(), msg.w, msg.h);
-            }
-          } else if (msg.kind == SpoolSubtitleMessage::Kind::STRING) {
-            result += "\"" + msg.text + "\"";
-          }
-          result += ")";
+          result += "          \"merge\": true,\n";
         }
+        result += "          \"offscreen\": false,\n";
+        result += "          \"speaker\": \"none\",\n";
+        result += "          \"start\": " + float_to_string(sub.start_frame) + ",\n";
+        if (dump_text) {
+          result += "          \"text\": \"" + msg.text + "\"\n";
+        } else {
+          result += "          \"text\": \"\"\n";
+        }
+        result += "        },\n";
+        has_subs = true;
       }
-      result += ")\n   )\n";
+      if (has_subs) {
+        result.pop_back();
+        result.pop_back();
+        result.push_back('\n');
+      }
+
+      result += "      ]\n";
+      result += "    },\n";
+      has_spools = true;
     }
-    result += "  )\n\n";
+    if (has_spools) {
+      result.pop_back();
+      result.pop_back();
+      result.push_back('\n');
+    }
+  } else {
+    for (auto& [spool_name, subs] : data) {
+      int image_count = 0;
+      result += "(\"" + spool_name + "\"\n";
+      for (auto& sub : subs) {
+        std::string temp_for_indent = fmt::format("  (({} {}) (", float_to_string(sub.start_frame),
+                                                  float_to_string(sub.end_frame));
+        auto indent = temp_for_indent.length();
+        result += temp_for_indent;
+        for (int i = 0; i < 8; ++i) {
+          const auto& msg = sub.message[i];
+          if (i > 0) {
+            result += "\n" + std::string(indent, ' ');
+          }
+          if (msg.kind == SpoolSubtitleMessage::Kind::NIL) {
+            result += "#f";
+          } else {
+            result += "(";
+            if (msg.kind == SpoolSubtitleMessage::Kind::IMAGE) {
+              auto img_name = fmt::format("{}-{}-{}.png", spool_name, i, image_count++);
+              result += fmt::format("image \"{}\"", img_name);
+              if (dump_images) {
+                std::vector<u32> rgba_out;
+                rgba_out.resize(msg.w * msg.h);
+                for (int px = 0; px < (int)rgba_out.size(); ++px) {
+                  int idx = px & 1 ? msg.data[px / 2] >> 4 : msg.data[px / 2] & 0xf;
+                  rgba_out.at(px) = msg.palette[idx];
+                }
+                file_util::write_rgba_png(image_out / img_name, rgba_out.data(), msg.w, msg.h);
+              }
+            } else if (msg.kind == SpoolSubtitleMessage::Kind::STRING) {
+              result += "\"" + msg.text + "\"";
+            }
+            result += ")";
+          }
+        }
+        result += ")\n   )\n";
+      }
+      result += "  )\n\n";
+    }
   }
 
   return result;

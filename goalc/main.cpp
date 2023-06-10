@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
   std::string cmd = "";
   std::string username = "#f";
   std::string game = "jak1";
-  int nrepl_port = 8181;
+  int nrepl_port = -1;
   fs::path project_path_override;
 
   // TODO - a lot of these flags could be deprecated and moved into `repl-config.json`
@@ -40,7 +40,8 @@ int main(int argc, char** argv) {
   app.add_option("-c,--cmd", cmd, "Specify a command to run, no REPL is launched in this mode");
   app.add_option("-u,--user", username,
                  "Specify the username to use for your user profile in 'goal_src/user/'");
-  app.add_option("-p,--port", nrepl_port, "Specify the nREPL port.  Defaults to 8181");
+  app.add_option("-p,--port", nrepl_port,
+                 "Specify the nREPL port.  Defaults to 8181 for Jak 1 and 8182 for Jak 2");
   app.add_flag("--user-auto", auto_find_user,
                "Attempt to automatically deduce the user, overrides '--user'");
   app.add_option("-g,--game", game, "The game name: 'jak1' or 'jak2'");
@@ -50,6 +51,17 @@ int main(int argc, char** argv) {
   CLI11_PARSE(app, argc, argv);
 
   GameVersion game_version = game_name_to_version(game);
+  if (nrepl_port == -1) {
+    switch (game_version) {
+      default:
+      case GameVersion::Jak1:
+        nrepl_port = 8181;
+        break;
+      case GameVersion::Jak2:
+        nrepl_port = 8182;
+        break;
+    }
+  }
 
   if (!project_path_override.empty()) {
     if (!fs::exists(project_path_override)) {

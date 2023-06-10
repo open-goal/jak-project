@@ -107,6 +107,14 @@ bool replace(std::string& str, const std::string& from, const std::string& to) {
   return true;
 }
 
+std::string lower(const std::string& str) {
+  std::string res;
+  for (auto c : str) {
+    res.push_back(tolower(c));
+  }
+  return res;
+}
+
 std::string uuid() {
   static std::random_device dev;
   static std::mt19937 rng(dev());

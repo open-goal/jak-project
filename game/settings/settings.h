@@ -10,10 +10,10 @@ namespace game_settings {
 struct DebugSettings {
   DebugSettings();
 
-  std::string version = "1.1";
+  std::string version = "1.2";
 
   bool show_imgui = false;
-  int imgui_font_size = 14;
+  int imgui_font_size = 16;
   bool monospaced_font = true;
   bool alternate_style = false;
   bool ignore_hide_imgui = false;

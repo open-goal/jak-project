@@ -673,6 +673,10 @@
              )
     (let ((v1-9 (-> self skel root-channel 0 frame-group)))
       (when v1-9
+        ;; send a movie-no-subtitle message so the pc subtitle system at least knows there's a movie playing
+        (#when PC_PORT
+            (if (= (-> self type) scene-player)
+                (send-event (ppointer->process *subtitle2*) 'movie-no-subtitle (-> (the scene-player self) anim name) #f (ja-aframe-num 0))))
         (let ((gp-0 (res-lump-struct (-> v1-9 extra) 'subtitle-range (array subtitle-range))))
           (when gp-0
             (let ((f30-0 (ja-aframe-num 0))
@@ -716,7 +720,12 @@
                              (set! (-> s2-0 origin y) (+ 1.0 (-> s2-0 origin y)))
                              (set! (-> s2-0 color) (font-color default))
                              (set! (-> s2-0 flags) (font-flags shadow kerning middle left large))
-                             (print-game-text (the-as string s3-0) s2-0 #f 44 (bucket-id subtitle))
+                             (#if PC_PORT
+                                  (if (or (!= (-> self type) scene-player)
+                                          (not (send-event (ppointer->process *subtitle2*) 'movie (-> (the scene-player self) anim name) s3-0 f30-0)))
+                                      (print-game-text (the-as string s3-0) s2-0 #f 44 (bucket-id subtitle)))
+
+                                  (print-game-text (the-as string s3-0) s2-0 #f 44 (bucket-id subtitle)))
                              (gui-control-method-12
                                *gui-control*
                                self
@@ -952,7 +961,7 @@
                                         (gui-action none)
                                         )
                                       )
-                               (v1-167 (get-status *gui-control* (the-as sound-id a1-26)))
+                               (v1-167 (get-status *gui-control* a1-26))
                                )
                           (not (or (= v1-167 (gui-status ready)) (= v1-167 (gui-status active))))
                           )
@@ -1178,7 +1187,7 @@
         (let ((v1-41 (scene-player-method-24 self (-> self scene-list (-> self scene-index)) #t)))
           (when v1-41
             (let ((a0-21 (scene-decode-continue (the-as basic (-> v1-41 load-point-obj)))))
-              (set! a0-24 (when (and a0-21 (logtest? (-> a0-21 flags) (continue-flags cf1)))
+              (set! a0-24 (when (and a0-21 (logtest? (-> a0-21 flags) (continue-flags scene-wait)))
                             (go-virtual wait a0-24)
                             a0-24
                             )
@@ -1487,7 +1496,7 @@
 (defbehavior scene-player-init scene-player ((arg0 object) (arg1 symbol) (arg2 string))
   "`object` arg can be an `(array scene)`, `pair of scene` or a `scene`"
   (process-entity-set! self (the-as entity #f))
-  (stack-size-set! (-> self main-thread) 1024) ;; changed from 512
+  (stack-size-set! (-> self main-thread) 768) ;; changed from 512
   (set! (-> self root) (new 'process 'trsqv))
   (case (rtype-of arg0)
     ((array)

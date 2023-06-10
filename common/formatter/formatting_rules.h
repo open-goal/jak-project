@@ -6,6 +6,35 @@
 
 class FormatterTreeNode;
 
+namespace formatter_rules {
+// The formatter will try to collapse as much space as possible in the top-level, this means
+// separating forms by a single empty blank line
+//
+// The exception is comments, top level comments will retain their following blank lines from the
+// original source
+// - this could be none, in the case where a comment is directly next to a form (like this one!)
+//   - you don't want them to be separated!
+// - or this could be top level comments / comment blocks documenting things but not being
+// associated with a form
+//   - in this case, you want them to remain separated
+//
+// Reference - https://github.com/kkinnear/zprint/blob/main/doc/options/blank.md
+namespace blank_lines {
+void separate_by_newline(std::string& curr_text,
+                         const FormatterTreeNode& containing_node,
+                         const FormatterTreeNode& node,
+                         const int index);
+}
+
+// TODO - nothing here yet, in the future:
+// - if/when the formatter is concerned with line length, there are implications here
+// - align consecutive comment lines
+//
+// Reference - https://github.com/kkinnear/zprint/blob/main/doc/options/comments.md
+namespace comments {}
+
+}  // namespace formatter_rules
+
 // Indentation rules are heavily inspired by the descriptions here
 // https://github.com/weavejester/cljfmt/blob/master/docs/INDENTS.md
 //
@@ -35,9 +64,9 @@ class FormatterTreeNode;
 // - otherwise, every element after the 2nd is on a new line and aligned to that 1st list arg.
 // (println "hello"   ; <= more than one element on first line
 //          "world")
-class FormattingRule {
+class IndentationRule {
  public:
-  virtual ~FormattingRule() = default;
+  virtual ~IndentationRule() = default;
   virtual void append_newline(std::string& curr_text,
                               const FormatterTreeNode& node,
                               const FormatterTreeNode& containing_node,
@@ -64,14 +93,14 @@ class FormattingRule {
 // (defn dismiss
 //   [name]
 //   (println "Goodbye" name))
-class InnerFormattingRule : public FormattingRule {
+class InnerIndentationRule : public IndentationRule {
  private:
   int m_depth;
   std::optional<int> m_index;
 
  public:
-  InnerFormattingRule(int depth) : m_depth(depth){};
-  InnerFormattingRule(int depth, int index) : m_depth(depth), m_index(index){};
+  InnerIndentationRule(int depth) : m_depth(depth){};
+  InnerIndentationRule(int depth, int index) : m_depth(depth), m_index(index){};
   virtual void append_newline(std::string& curr_text,
                               const FormatterTreeNode& node,
                               const FormatterTreeNode& containing_node,
