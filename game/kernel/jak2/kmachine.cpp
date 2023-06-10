@@ -534,7 +534,6 @@ void update_discord_rpc(u32 discord_info) {
       focus_status = info->focus_status;
 
       // Construct the DiscordRPC Object
-      
       const char* full_level_name =
           get_full_level_name(level_names, level_name_remap, Ptr<String>(info->level).c()->data());
       memset(&rpc, 0, sizeof(rpc));
