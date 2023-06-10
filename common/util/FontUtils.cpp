@@ -166,6 +166,34 @@ std::string GameTextFontBank::replace_to_utf8(std::string& str) const {
   return str;
 }
 
+/*!
+ * Find and delete all special encodings like <COLOR_WHITE>.
+ */
+std::string GameTextFontBank::replace_to_utf8_special(std::string& str) const {
+  std::string newstr;
+
+  for (int i = 0; i < (int)str.length();) {
+    auto remap = find_replace_to_utf8(str, i);
+    if (!remap) {
+      newstr.push_back(str.at(i));
+      i += 1;
+    } else {
+      // skip it.
+      if (remap->to.substr(0, 1) == "<") {
+        i += remap->from.length();
+      } else {
+        for (auto b : remap->to) {
+          newstr.push_back(b);
+        }
+        i += remap->from.length();
+      }
+    }
+  }
+
+  str = newstr;
+  return str;
+}
+
 std::string GameTextFontBank::replace_to_game(std::string& str) const {
   std::string newstr;
 
@@ -318,6 +346,50 @@ std::string GameTextFontBank::convert_game_to_utf8(const char* in) const {
     }
   }
   return replace_to_utf8(result);
+}
+
+/*!
+ * Same as convert_game_to_utf8, but gets rid of all special encodings like <COLOR_WHITE>.
+ */
+std::string GameTextFontBank::convert_game_to_utf8_special(const char* in) const {
+  std::string temp;
+  std::string result;
+  std::string test = in;
+  if (test.find("America") != std::string::npos) {
+    printf("");
+  }
+  while (*in) {
+    auto remap = find_encode_to_utf8(in);
+    if (remap != nullptr) {
+      temp.append(remap->chars);
+      in += remap->bytes.size() - 1;
+    } else if (valid_char_range(*in) || *in == '\n' || *in == '\t' || *in == '\\' || *in == '\"') {
+      temp.push_back(*in);
+    } else {
+      temp += fmt::format("\\c{:02x}", uint8_t(*in));
+    }
+    in++;
+  }
+  replace_to_utf8_special(temp);
+  for (size_t i = 0; i < temp.length(); ++i) {
+    auto c = temp.at(i);
+    if (c == '\n') {
+      result += "\\n";
+    } else if (c == '\t') {
+      result += "\\t";
+    } else if (c == '\\') {
+      if (i < temp.length() - 1 && temp.at(i + 1) == 'c') {
+        result.push_back(c);
+      } else {
+        result += "\\\\";
+      }
+    } else if (c == '"') {
+      result += "\\\"";
+    } else {
+      result.push_back(c);
+    }
+  }
+  return replace_to_utf8_special(result);
 }
 
 static std::vector<EncodeInfo> s_encode_info_null = {};
