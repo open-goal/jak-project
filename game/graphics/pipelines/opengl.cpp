@@ -130,7 +130,7 @@ static int gl_init(GfxGlobalSettings& settings) {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
   }
-  lg::error("gl init took {:.3f}s\n", gl_init_timer.getSeconds());
+  lg::info("gl init took {:.3f}s\n", gl_init_timer.getSeconds());
   return 0;
 }
 

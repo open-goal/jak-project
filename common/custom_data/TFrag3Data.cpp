@@ -544,7 +544,8 @@ void MercModifiableDrawGroup::memory_usage(MemoryUsageTracker* tracker) const {
   tracker->add(MemoryUsageCategory::MERC_MOD_DRAW_1, sizeof(MercDraw) * fix_draw.size());
   tracker->add(MemoryUsageCategory::MERC_MOD_DRAW_2, sizeof(MercDraw) * mod_draw.size());
   tracker->add(MemoryUsageCategory::MERC_MOD_TABLE, sizeof(u16) * vertex_lump4_addr.size());
-  // tracker->add(MemoryUsageCategory::BLERC, sizeof() * blerc.vertices.size());
+  tracker->add(MemoryUsageCategory::BLERC, sizeof(BlercFloatData) * blerc.float_data.size());
+  tracker->add(MemoryUsageCategory::BLERC, sizeof(u32) * blerc.int_data.size());
 }
 
 void MercEffect::memory_usage(MemoryUsageTracker* tracker) const {

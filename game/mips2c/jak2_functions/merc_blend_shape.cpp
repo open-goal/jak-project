@@ -7,6 +7,8 @@
 #include "game/kernel/jak2/kscheme.h"
 #include "game/mips2c/mips2c_private.h"
 
+// I've rewritten the math part in C here:
+
 struct ChunkHeader {
   s8 num_entries;  // not including this header
   s8 unk[11];
@@ -37,60 +39,7 @@ struct BlercContext {
   BlercBlock block;
   s8 dummy[7312];
 };
-/*
- * (deftype blerc-block-header (structure)
-  ((tag       generic-merc-tag :inline :offset-assert 0)
-   (vtx-count uint32                   :offset-assert 16)
-   (overlap   uint32                   :offset-assert 20)
-   (lump-dest uint32                   :offset-assert 24)
-   (lump-qwc  uint32                   :offset-assert 28)
-   )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
-  )
 
-(deftype blerc-block (structure)
-  ((output uint8              848     :offset-assert 0) ;; guessed by decompiler
-   (header blerc-block-header :inline :offset-assert 848)
-   )
-  :method-count-assert 9
-  :size-assert         #x370
-  :flag-assert         #x900000370
-  )
-
-(deftype blerc-dcache (structure)
-  ((repl-mult vector 40 :inline :offset-assert 0) ;; guessed by decompiler
-   )
-  :method-count-assert 9
-  :size-assert         #x280
-  :flag-assert         #x900000280
-  )
-
-(deftype blerc-globals (structure)
-  ((first            uint32  :offset-assert 0)
-   (next             uint32  :offset-assert 4)
-   (min-val          int16   :offset-assert 8)
-   (max-val          int16   :offset-assert 10)
-   (fragment-count   int32   :offset-assert 12)
-   (vtx-count        int32   :offset-assert 16)
-   (target-vtx-count int32   :offset-assert 20)
-   )
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
-  )
-
-(deftype blerc-context (structure)
-  ((block-a blerc-block :inline :offset-assert 0)
-   (dummy   uint8       7312    :offset-assert 880) ;; guessed by decompiler
-   (block-b blerc-block :inline :offset-assert 8192)
-   )
-  :method-count-assert 9
-  :size-assert         #x2370
-  :flag-assert         #x900002370
-  )
- */
 namespace {
 
 int og_load_skip_pattern(int in) {
@@ -107,8 +56,6 @@ void simplified1(BlercContext* context, u8* ee_buffer) {
   int overlap = context->block.header.overlap;
   u8* out = context->block.output;
 
-  // const u8* ee_buffer_overlap_region_end = ee_buffer + overlap * 16; // t9
-
   // past the first chunk
   const s8* data_src = dummy_data + stride;  // t2/t3
   S16_8* ee_s16_8 = (S16_8*)ee_buffer;
@@ -123,12 +70,10 @@ void simplified1(BlercContext* context, u8* ee_buffer) {
 
   int total_count = ((ChunkHeader*)data_src)->num_entries;  // lb s5, 0(t3)
   data_src += 16;                                           // now in s4
-  const u8* base_data_ptr = (u8*)dummy_data + 16;                // ra in asm
-  const s8* base_data_ptr_s = dummy_data + 16;                // ra in asm
-
+  const u8* base_data_ptr = (u8*)dummy_data + 16;           // ra in asm
+  const s8* base_data_ptr_s = dummy_data + 16;              // ra in asm
 
   memcpy(out, data_src, total_count * 16);
-  // printf("total count %d\n", total_count);
   for (int i = 0; i < total_count * 8; i++) {
     s32 base_val = base_data_ptr[i] * 8192;  // ld t6 grabs 8 at a time
 
@@ -143,12 +88,8 @@ void simplified1(BlercContext* context, u8* ee_buffer) {
     if (base_val > 255)
       base_val = 255;
 
-
-
-//    u8 og_val = data_src[og_load_skip_pattern(i)];
     int oo = og_load_skip_pattern(i);
     out[oo + 2] = base_val;
-//    out[i * 2 + 0] = og_val;
   }
 }
 
@@ -331,9 +272,8 @@ block_16:
   c->mov64(a2, a0);                                 // or a2, a0, r0
   c->load_symbol2(a3, cache.gsf_buffer);            // lw a3, *gsf-buffer*(s7)
 
-  blerc_c(g_ee_main_mem + c->sgpr64(a2), g_ee_main_mem + c->sgpr64(a3));
+  // blerc_c(g_ee_main_mem + c->sgpr64(a2), g_ee_main_mem + c->sgpr64(a3));
 
-  /*
   c->daddiu(t2, a2, 880);                           // daddiu t2, a2, 880
   c->lb(t1, 0, t2);                                 // lb t1, 0(t2)
   // nop                                            // sll r0, r0, 0
@@ -427,24 +367,17 @@ block_24:
   c->gprs[t5].du32[2] = c->lo.du32[3];
   c->gprs[t5].du32[3] = c->hi.du32[3];
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
-  // fmt::print("t7 before shift {:x} {:x} {:x} {:x}\n",
-  //            c->gprs[t7].du32[0], c->gprs[t7].du32[1], c->gprs[t7].du32[2], c->gprs[t7].du32[3]);
   c->psraw(t7, t7, 13);                             // psraw t7, t7, 13
-  // fmt::print("t7 after shift {:x} {:x} {:x} {:x}\n",
-     //c->gprs[t7].du32[0], c->gprs[t7].du32[1], c->gprs[t7].du32[2], c->gprs[t7].du32[3]);
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
   c->psraw(t5, t5, 13);                             // psraw t5, t5, 13
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
-//  fmt::print("pre-pinteh 0x{:x}\n", c->gprs[t7].du16[4]);
   c->pinteh(t5, t5, t7);                            // pinteh t5, t5, t7
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
   c->pminh(t3, t3, t5);                             // pminh t3, t3, t5
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
   c->pmaxh(t4, t4, t5);                             // pmaxh t4, t4, t5
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
-//  fmt::print("pre-min 0x{:x}\n", c->gprs[t5].du16[4]);
   c->pminh(t5, t5, t1);                             // pminh t5, t5, t1
-//  fmt::print("post-min 0x{:x}\n", c->gprs[t5].du16[4]);
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
   c->pmaxh(t5, t5, r0);                             // pmaxh t5, t5, r0
   c->lq(t7, 0, s4);                                 // lq t7, 0(s4)
@@ -454,26 +387,15 @@ block_24:
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
   c->pextlh(t5, t5, t7);                            // pextlh t5, t5, t7
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
-  math::Vector<u8, 16> pre;
-  {
-    memcpy(&pre, g_ee_main_mem + c->gpr_addr(t0), 16);
-  }
+  // store modified vertex
   c->sq(t5, 0, t0);                                 // sq t5, 0(t0)
-  {
-    math::Vector<u8, 16> t;
-    memcpy(&t, g_ee_main_mem + c->gpr_addr(t0), 16);
-if (t != pre) {
-  fmt::print("pre : {}\n", pre.to_string_hex_byte());
-  fmt::print("post: {}\n", t.to_string_hex_byte());
-}
-
-  }
 
   c->daddiu(t0, t0, 16);                            // daddiu t0, t0, 16
   bc = c->sgpr64(s5) != 0;                          // bne s5, r0, L50
   c->daddiu(s4, s4, 16);                            // daddiu s4, s4, 16
   if (bc) {goto block_22;}                          // branch non-likely
-  */
+  // end of blerc_c stuff
+
   c->load_symbol2(a3, cache.stats_blerc);           // lw a3, *stats-blerc*(s7)
   bc = c->sgpr64(a3) == c->sgpr64(s7);              // beq a3, s7, L53
   c->load_symbol2(a3, cache.blerc_globals);         // lw a3, *blerc-globals*(s7)

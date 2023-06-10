@@ -18,7 +18,7 @@ namespace tfrag3 {
 // - if changing any large things (vertices, vis, bvh, colors, textures) update get_memory_usage
 // - if adding a new category to the memory usage, update extract_level to print it.
 
-constexpr int TFRAG3_VERSION = 37;
+constexpr int TFRAG3_VERSION = 36;
 
 enum MemoryUsageCategory {
   TEXTURE,
@@ -438,7 +438,7 @@ struct CollisionMesh {
 // MERC
 
 struct MercVertex {
-  float pos[3];
+  alignas(32) float pos[3];
   float pad0;
 
   float normal[3];
@@ -465,11 +465,15 @@ struct MercDraw {
   void serialize(Serializer& ser);
 };
 
-
 struct BlercFloatData {
+  // [x, y, z, pad, nx, ny, nz, pad]
+  // note that this should match the layout of the merc vertex above
   alignas(32) float v[8];
 };
 
+/*!
+ * Data to modify vertices based on blend shapes.
+ */
 struct Blerc {
   std::vector<BlercFloatData> float_data;
   std::vector<u32> int_data;
@@ -477,11 +481,13 @@ struct Blerc {
   void serialize(Serializer& ser);
 
   // int data, per vertex:
-  // [tgt0, tgt1, ..., terminator, dest]
+  // [tgt0_idx, tgt1_idx, ..., terminator, dest]
   // float data, per vertex:
   // [base, tgt0, tgt1, ...]
-};
 
+  // final vertex position is:
+  // base + sum(tgtn * weights[tgtn_idx])
+};
 
 struct MercModifiableDrawGroup {
   std::vector<MercVertex> vertices;

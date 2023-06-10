@@ -28,10 +28,6 @@ GameController::GameController(int sdl_device_id,
     return;
   }
   const auto controller_guid = SDL_JoystickGetGUID(joystick);
-  if (controller_guid.data == 0) {
-    sdl_util::log_error(fmt::format("Could not get contoller guid with id: {}", sdl_device_id));
-    return;
-  }
   char guidStr[33];
   SDL_JoystickGetGUIDString(controller_guid, guidStr, sizeof(guidStr));
   m_guid = guidStr;

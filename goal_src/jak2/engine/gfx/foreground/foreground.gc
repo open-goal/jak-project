@@ -878,7 +878,12 @@
 
 
 (defun pc-merc-blend-shape ((pd process-drawable) (blerc-weights-out (pointer float)))
-  "PC implementation to get blerc weights as floats and avoid the u16 rounding."
+  "PC implementation to get blerc weights as floats and avoid the u16 rounding.
+   Returns #f if there is no blerc running, which means that we should use base positions.
+   If things work correctly, the original implementation would try to restore weights of 0
+   after the animation finishes - it leaves `blend-shape-valid` set after `blend-shape` is cleared
+   causing one more round of merc-blend-shape to run with hardcoded weights of 0.
+   "
   (when (or (not (-> pd skel))
             (zero? (-> pd skel))
             )
@@ -910,40 +915,38 @@
            )
          )
         (else
+          ;; otherwise, do the animation
           (let ((shape-anim (-> anim blend-shape-anim)))
             (when shape-anim
               (let ((mctrl (-> pd draw mgeo)))
                 (let* ((num-targets (-> mctrl header blend-target-count))
                        (frame-f (-> jc-channel frame-num))
+                       ;; round down to the integer frame
                        (frame-i (the int frame-f))
                        (frame-1-data (the (pointer uint8) (&+ shape-anim (* frame-i num-targets))))
                        )
                   (cond
+                    ;; check if there's a frame after this
                     ((< frame-i (the-as int (+ (-> anim frames num-frames) -1)))
+                     ;; there is, interpolate between them.
+                     ;; this is rewritten to use floats, but still use the same scaling as the s16 weights.
                      (let* ((frame-2-data (&+ frame-1-data num-targets))
                             (frame-2-mult (* 64.0 (- frame-f (the float frame-i))))
                             (frame-1-mult (- 64.0 frame-2-mult))
                             )
                        (set! got-weights #t)
                        (dotimes (i num-targets)
-                         (when (or (> i 40) (< i 0))
-                           (format 0 "very bad")
-                           (break!)
-                           )
+                         ;; key difference: this is floats
                          (set! (-> blerc-weights-out i)
                                (+ (* (the float (- (-> frame-1-data i) 64)) frame-1-mult)
                                   (* (the float (- (-> frame-2-data i) 64)) frame-2-mult)
                                   )
                                )
-                         ;(format 0 "set: ~D ~X~%" i (&-> blerc-weights-out i))
-                         (when (or (> i 40) (< i 0))
-                           (format 0 "very bad")
-                           (break!)
-                           )
                          )
                        )
                      )
                     (else
+                      ;; at the last frame, nothing to interpolate.
                       (set! got-weights #t)
                       (dotimes (a3-7 num-targets)
                         (set! (-> blerc-weights-out a3-7) (the float (* (+ (-> (the-as (pointer uint8) (&+ frame-1-data a3-7))) -64) 64)))
@@ -981,7 +984,10 @@
 (defun pc-merc-draw-request ((dc draw-control) (dma-buf pointer) (matrix-buf pointer) (tex-idx int) (update-verts symbol) (blercs (pointer float)))
   "Send a request to PC Merc2 to draw the given object.
    Only draws the effects which match this texture index.
-   Just places a single big dma packet, you have to patch the end yourself."
+   Just places a single big dma packet, you have to patch the end yourself.
+   If update-verts is set to #t, tell the PC renderer to use EE version of vertices.
+   If update-verts is set to 'blerc, tell the PC renderer to use the included blerc weights
+   to modify the vertices."
   (let ((start-packet (the-as dma-packet dma-buf))
         (qwc-total 0))
     (set! (-> start-packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
@@ -1085,6 +1091,7 @@
           (&+! dma-buf (* 16 2))
           (+! qwc-total 2)
 
+          ;; include blerc weights.
           (when (= update-verts 'blerc)
             (mem-copy! dma-buf blercs (* 40 4))
             (&+! dma-buf (* 40 4))
@@ -1160,6 +1167,7 @@
             (set! vertex-update 'blerc)
             )
 
+          ;; if the fp blerc is disabled, handle blerc with normal modified vertices.
           (unless *use-fp-blerc*
             (let* ((pd (the process-drawable (-> dc process)))
                    (jc (-> pd skel)))
