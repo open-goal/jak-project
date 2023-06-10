@@ -68,7 +68,7 @@ const std::vector<std::string> indoor_levels = {
     "intro",    "title",    "prison",   "forexita", "forexitb", "fordumpa", "fordumpb", "fordumpc",
     "forresca", "forrescb", "tomba",    "tombb",    "tombc",    "tombd",    "dig1",     "dig3a",
     "palshaft", "sewer",    "sewesc",   "castle",   "tombe",    "tombboss", "gungame",  "hideout",
-    "vinroom",  "under",    "onintent", "hiphog",   "casboss"};
+    "vinroom",  "under",    "onintent", "oracle",   "hiphog",   "casboss"};
 
 // time of day string to append to level name for icons
 const char* time_of_day_str(float time) {

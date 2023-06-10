@@ -539,7 +539,9 @@ void update_discord_rpc(u32 discord_info) {
           get_full_level_name(level_names, level_name_remap, Ptr<String>(info->level).c()->data());
       memset(&rpc, 0, sizeof(rpc));
       // if we have an active task, set the mission specific image for it
-      if (strcmp(task, "unknown") != 0) {
+      // also small hack to prevent oracle image from showing up while inside levels
+      // like hideout, onintent, etc.
+      if (strcmp(task, "unknown") != 0 && strcmp(task, "city-oracle") != 0) {
         strcpy(large_image_key, task);
       } else {
         // if we are in an outdoors level, use the picture for the corresponding time of day
