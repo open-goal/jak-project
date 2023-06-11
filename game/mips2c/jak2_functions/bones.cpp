@@ -64,7 +64,7 @@ void exec_mpg(ExecutionContext* c) {
   // nop                        |  mulax.w ACC, vf00, vf12        27
   c->acc.vf.mula(Mask::w, c->vf_src(vf00).vf, c->vf_src(vf12).vf.x());
   // nop                        |  madday.w ACC, vf00, vf12       28
-  c->acc.vf.madda(Mask::w, c->vfs[vf00].vf, c->vfs[vf12].vf.y());
+  c->acc.vf.madda(Mask::w, c->vf_src(vf00).vf, c->vfs[vf12].vf.y());
   // nop                        |  maddz.w vf12, vf00, vf12       29
   c->acc.vf.madd(Mask::w, c->vfs[vf12].vf, c->vf_src(vf00).vf, c->vf_src(vf12).vf.z());
   // nop                        |  mulax.xyzw ACC, vf28, vf14     30
