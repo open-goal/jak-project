@@ -160,7 +160,7 @@ void compile_subtitle2(GameSubtitle2DB& db, const std::string& output_prefix) {
     int speaker_array_link = gen.add_word(0);  // speaker array (dummy for now)
 
     auto speaker_index_by_name = [&speaker_names](const std::string& name) {
-      for (int i = 0; i < speaker_names.size(); ++i) {
+      for (int i = 0; i < (int)speaker_names.size(); ++i) {
         if (speaker_names.at(i) == name) {
           return i + 1;
         }

@@ -48,6 +48,7 @@ const std::vector<std::string> get_speaker_names(GameVersion version) {
   switch (version) {
     case GameVersion::Jak2:
       return s_speakers_jak2;
+    default:
       break;
   }
   throw std::runtime_error(

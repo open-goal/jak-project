@@ -461,6 +461,10 @@ struct alignas(16) Vf {
 struct alignas(16) Accumulator {
   float data[4];
 
+  std::string print() const {
+    return fmt::format("{} {} {} {}", data[0], data[1], data[2], data[3]);
+  }
+
   void adda(Mask mask, const Vf& a, float b) {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {

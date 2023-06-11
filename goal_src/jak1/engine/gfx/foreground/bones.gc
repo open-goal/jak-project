@@ -937,6 +937,71 @@
   `(set! (-> (the-as (pointer uint32) ,addr)) ,val)
   )
 
+(defun pc-merc-blend-shape ((pd process-drawable) (blerc-weights-out (pointer float)))
+  "PC implementation to get blerc weights as floats and avoid the u16 rounding.
+  Returns #f if there is no blerc running, which means that we should use base positions.
+  If things work correctly, the original implementation would try to restore weights of 0
+  after the animation finishes - it leaves `blend-shape-valid` set after `blend-shape` is cleared
+  causing one more round of merc-blend-shape to run with hardcoded weights of 0.
+  "
+  (when (or (not (-> pd skel))
+            (zero? (-> pd skel))
+            )
+    (return #f)
+    )
+
+  (let* ((jc-channel (-> pd skel root-channel 0))
+         (anim (-> jc-channel frame-group))
+         (got-weights #f)
+         )
+    (when (and anim
+               (> (-> pd skel active-channels) 0)
+               (zero? (-> pd draw cur-lod))
+               (logtest? (-> pd skel status) (janim-status blerc))
+               )
+      (let ((shape-anim (-> anim blerc-data)))
+        (when shape-anim
+          (let* ((mctrl (-> pd draw mgeo))
+                 (num-targets (-> mctrl header blend-target-count))
+                 (frame-f (-> jc-channel frame-num))
+                 (frame-i (the int frame-f))
+                 (frame-1-data (&+ shape-anim (* (the-as uint frame-i) num-targets)))
+                 ;(a1-5 (new 'stack-no-clear 'array 'int16 128))
+                 )
+            (let ((a2-1 (-> mctrl header blend-target-count)))
+              (cond
+                ((< frame-i (+ (-> anim data 0 length) -1))
+                 (let* ((frame-2-data (&+ frame-1-data a2-1))
+                        (frame-2-mult (* 64.0 (- frame-f (the float frame-i))))
+                        (frame-1-mult (- 64.0 frame-2-mult))
+                        )
+                   (set! got-weights #t)
+                   (dotimes (i (the-as int a2-1))
+                     (set! (-> blerc-weights-out i)
+                           (+ (* (the float (- (-> frame-1-data i) 64)) frame-1-mult)
+                              (* (the float (- (-> frame-2-data i) 64)) frame-2-mult)
+                              )
+                           )
+                     )
+                   )
+                 )
+                (else
+                  (set! got-weights #t)
+                      (dotimes (a3-7 num-targets)
+                        (set! (-> blerc-weights-out a3-7) (the float (* (+ (-> (the-as (pointer uint8) (&+ frame-1-data a3-7))) -64) 64)))
+                        )
+                  )
+                )
+              )
+            )
+
+          )
+        )
+      )
+    got-weights
+    )
+  )
+
 ;; name   (128 char, 8 qw)
 ;; lights (7 qw x 1)
 ;; matrix slot string (128 char, 8 qw)
@@ -949,6 +1014,7 @@
   :bitfield #t
   (update-verts 0)
   (disable-fog 1)
+  (pc-blerc 2)
   )
 
 (deftype pc-merc-flags (structure)
@@ -975,7 +1041,7 @@
     )
   )
 
-(defun pc-merc-draw-request ((dc draw-control) (dma-buf pointer) (matrix-buf pointer) (update-verts symbol))
+(defun pc-merc-draw-request ((dc draw-control) (dma-buf pointer) (matrix-buf pointer) (update-verts symbol) (blercs (pointer float)))
   (let ((start-packet (the-as dma-packet dma-buf))
         (qwc-total 0))
     ;; merc draw asm will check this.
@@ -1064,13 +1130,23 @@
             (set! (-> flags effect-count) (-> merc-ctrl header effect-count))
             (set! (-> flags bit-flags) (the pc-merc-bits 0))
             (when update-verts
-              (logior! (-> flags bit-flags) (pc-merc-bits update-verts))
+              (if (= update-verts 'blerc)
+                  (logior! (-> flags bit-flags) (pc-merc-bits pc-blerc))
+                  (logior! (-> flags bit-flags) (pc-merc-bits update-verts))
+                  )
               )
             (set! (-> flags enable-mask) enable-mask)
             (set! (-> flags ignore-alpha-mask) ignore-alpha-mask)
             )
           (&+! dma-buf (* 16 2))
           (+! qwc-total 2)
+
+          ;; include blerc weights.
+          (when (= update-verts 'blerc)
+            (mem-copy! dma-buf blercs (* 40 4))
+            (&+! dma-buf (* 40 4))
+            (+! qwc-total 10)
+            )
 
           ;; fades
           (let ((fades (the (pointer uint32) dma-buf)))
@@ -1118,6 +1194,9 @@
 
 ;; when set, use merc for blerc instead of generic.
 (define *blerc-hack* #t)
+
+;; when true, uses the PC float blerc implementation.
+(define *use-fp-blerc* #t)
 
 (define *texscroll-force-generic* #f)
 (define *ripple-force-generic* #f)
@@ -1336,6 +1415,7 @@
                   (pc-force-mercneric #f)
                   ;; if pc rendering code needs to update merc vertices
                   (pc-merc-vtx-update #f)
+                  (blerc-weights (new 'stack-no-clear 'array 'float 40))
                   )
               (when (logtest? (-> arg0 global-effect) (draw-effect title))
                 (set! pc-force-mercneric #t)
@@ -1415,10 +1495,20 @@
                     (when (nonzero? jc)
                       (when (logtest? (-> jc status) (janim-status blerc))
                         (if *blerc-hack*
-                            (set! pc-merc-vtx-update #t)
-                            (set! pc-force-mercneric #t)
+                            (if *use-fp-blerc*
+                                (set! pc-merc-vtx-update 'blerc) ;; C++ blerc
+                                (set! pc-merc-vtx-update #t)     ;; GOAL blerc + merc
+                                )
+                            (set! pc-force-mercneric #t)         ;; GOAL blerc + generic
                             )
                         )
+                      )
+                    )
+
+                  (when (= pc-merc-vtx-update 'blerc)
+                    (unless
+                      (pc-merc-blend-shape (the process-drawable (-> arg0 process)) blerc-weights)
+                      (set! pc-merc-vtx-update #f)
                       )
                     )
                   )
@@ -1567,7 +1657,7 @@
                         )
                       )
                     )
-                  (set! s2-0 (pc-merc-draw-request arg0 (the pointer s2-0) (the pointer matrix-data) pc-merc-vtx-update))
+                  (set! s2-0 (pc-merc-draw-request arg0 (the pointer s2-0) (the pointer matrix-data) pc-merc-vtx-update blerc-weights))
                   ; (if (nonzero? (-> *merc-bucket-info* need-mercprime-if-merc))
                   ;     (set! (-> dma-buf base) (draw-bones-merc arg0 matrix-data s2-0 32 17))
                   ;     (set! (-> dma-buf base) (draw-bones-merc arg0 matrix-data s2-0 35 20))
