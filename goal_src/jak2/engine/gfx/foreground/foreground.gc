@@ -876,11 +876,101 @@
     )
   )
 
+
+(defun pc-merc-blend-shape ((pd process-drawable) (blerc-weights-out (pointer float)))
+  "PC implementation to get blerc weights as floats and avoid the u16 rounding.
+   Returns #f if there is no blerc running, which means that we should use base positions.
+   If things work correctly, the original implementation would try to restore weights of 0
+   after the animation finishes - it leaves `blend-shape-valid` set after `blend-shape` is cleared
+   causing one more round of merc-blend-shape to run with hardcoded weights of 0.
+   "
+  (when (or (not (-> pd skel))
+            (zero? (-> pd skel))
+            )
+    (return #f)
+    )
+
+  ;; grab the currently playing animatoin
+  (let* ((jc-channel (-> pd skel root-channel 0))
+         (anim (-> jc-channel frame-group))
+         (got-weights #f)
+         )
+    (when (and anim ;; we have an anim
+               (> (-> pd skel active-channels) 0) ;; there are channels running
+               (zero? (-> pd draw cur-lod))       ;; using high lod
+               (logtest? (-> pd skel status) (joint-control-status blend-shape)) ;; blend shape is on
+               )
+      (cond
+        ;; first, see if we have an override:
+        ((and (-> pd skel override) (!= (-> pd skel override 0) 0.0))
+         ;; we do! copy from there.
+         (let* ((mctrl (-> pd draw mgeo))
+                (num-targets (-> mctrl header blend-target-count))
+                (override-array (-> pd skel override))
+                )
+           (set! got-weights #t)
+           (dotimes (i num-targets)
+             (set! (-> blerc-weights-out i) (* 8192.0 (-> override-array (+ i 1))))
+             )
+           )
+         )
+        (else
+          ;; otherwise, do the animation
+          (let ((shape-anim (-> anim blend-shape-anim)))
+            (when shape-anim
+              (let ((mctrl (-> pd draw mgeo)))
+                (let* ((num-targets (-> mctrl header blend-target-count))
+                       (frame-f (-> jc-channel frame-num))
+                       ;; round down to the integer frame
+                       (frame-i (the int frame-f))
+                       (frame-1-data (the (pointer uint8) (&+ shape-anim (* frame-i num-targets))))
+                       )
+                  (cond
+                    ;; check if there's a frame after this
+                    ((< frame-i (the-as int (+ (-> anim frames num-frames) -1)))
+                     ;; there is, interpolate between them.
+                     ;; this is rewritten to use floats, but still use the same scaling as the s16 weights.
+                     (let* ((frame-2-data (&+ frame-1-data num-targets))
+                            (frame-2-mult (* 64.0 (- frame-f (the float frame-i))))
+                            (frame-1-mult (- 64.0 frame-2-mult))
+                            )
+                       (set! got-weights #t)
+                       (dotimes (i num-targets)
+                         ;; key difference: this is floats
+                         (set! (-> blerc-weights-out i)
+                               (+ (* (the float (- (-> frame-1-data i) 64)) frame-1-mult)
+                                  (* (the float (- (-> frame-2-data i) 64)) frame-2-mult)
+                                  )
+                               )
+                         )
+                       )
+                     )
+                    (else
+                      ;; at the last frame, nothing to interpolate.
+                      (set! got-weights #t)
+                      (dotimes (a3-7 num-targets)
+                        (set! (-> blerc-weights-out a3-7) (the float (* (+ (-> (the-as (pointer uint8) (&+ frame-1-data a3-7))) -64) 64)))
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+  got-weights
+
+    )
+  )
+
 (defenum pc-merc-bits
   :type uint8
   :bitfield #t
   (update-verts 0)
   (disable-fog 1)
+  (pc-blerc 2)
   )
 
 (deftype pc-merc-flags (structure)
@@ -891,10 +981,13 @@
    )
   )
 
-(defun pc-merc-draw-request ((dc draw-control) (dma-buf pointer) (matrix-buf pointer) (tex-idx int) (update-verts symbol))
+(defun pc-merc-draw-request ((dc draw-control) (dma-buf pointer) (matrix-buf pointer) (tex-idx int) (update-verts symbol) (blercs (pointer float)))
   "Send a request to PC Merc2 to draw the given object.
    Only draws the effects which match this texture index.
-   Just places a single big dma packet, you have to patch the end yourself."
+   Just places a single big dma packet, you have to patch the end yourself.
+   If update-verts is set to #t, tell the PC renderer to use EE version of vertices.
+   If update-verts is set to 'blerc, tell the PC renderer to use the included blerc weights
+   to modify the vertices."
   (let ((start-packet (the-as dma-packet dma-buf))
         (qwc-total 0))
     (set! (-> start-packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
@@ -984,7 +1077,10 @@
             (set! (-> flags effect-count) (-> merc-ctrl header effect-count))
             (set! (-> flags bit-flags) (the pc-merc-bits 0))
             (when update-verts
-              (logior! (-> flags bit-flags) (pc-merc-bits update-verts))
+              (if (= update-verts 'blerc)
+                  (logior! (-> flags bit-flags) (pc-merc-bits pc-blerc))
+                  (logior! (-> flags bit-flags) (pc-merc-bits update-verts))
+                  )
               )
             (when (logtest? (-> dc status) (draw-control-status disable-fog))
               (logior! (-> flags bit-flags) (pc-merc-bits disable-fog))
@@ -994,6 +1090,13 @@
             )
           (&+! dma-buf (* 16 2))
           (+! qwc-total 2)
+
+          ;; include blerc weights.
+          (when (= update-verts 'blerc)
+            (mem-copy! dma-buf blercs (* 40 4))
+            (&+! dma-buf (* 40 4))
+            (+! qwc-total 10)
+            )
 
           ;; fades
           (let ((fades (the (pointer uint32) dma-buf)))
@@ -1028,11 +1131,13 @@
 
 (defun pc-draw-bones ((dc draw-control) (dma-buf pointer) (matrix-buf pointer))
   "Add a dma packet to tell the PC renderer which model we are renderering."
-  (let ((use-flags (new 'stack-no-clear 'array 'uint8 7))
-        (mctrl (-> dc mgeo))
-        (buckets (-> (scratchpad-object foreground-work) grid level-buckets (-> (scratchpad-object foreground-work) draw-index-map (-> dc level-index))))
-        (has-ripple-or-texscroll #f)
-        )
+  (let* ((use-flags (new 'stack-no-clear 'array 'uint8 7))
+         (blerc-weights (new 'stack-no-clear 'array 'float 40))
+         (mctrl (-> dc mgeo))
+         (buckets (-> (scratchpad-object foreground-work) grid level-buckets (-> (scratchpad-object foreground-work) draw-index-map (-> dc level-index))))
+         (has-ripple-or-texscroll #f)
+         (uses-fp-blerc (and *use-fp-blerc* (pc-merc-blend-shape (the process-drawable (-> dc process)) blerc-weights)))
+         )
     ;; mark all as unused, until we see a use
     (dotimes (i 7) (set! (-> use-flags i) 0))
 
@@ -1058,15 +1163,25 @@
           (when has-ripple-or-texscroll
             (set! vertex-update #t)
             )
-          (let* ((pd (the process-drawable (-> dc process)))
-                 (jc (-> pd skel)))
-            (when (nonzero? jc)
-              (when (logtest? (-> jc status) (joint-control-status blend-shape-valid))
-                (set! vertex-update #t)
+          (when uses-fp-blerc
+            (set! vertex-update 'blerc)
+            )
+
+          ;; if the fp blerc is disabled, handle blerc with normal modified vertices.
+          (unless *use-fp-blerc*
+            (let* ((pd (the process-drawable (-> dc process)))
+                   (jc (-> pd skel)))
+              (when (nonzero? jc)
+                (when (logtest? (-> jc status) (joint-control-status blend-shape-valid))
+                  (set! vertex-update #t)
+                  )
                 )
               )
             )
-          (set! dma-buf (pc-merc-draw-request dc dma-buf matrix-buf i vertex-update))
+
+         ; (format 0 "~D weights: ~X~%" i blerc-weights)
+
+          (set! dma-buf (pc-merc-draw-request dc dma-buf matrix-buf i vertex-update blerc-weights))
 
           ;; create a patch packet
           (let ((patch-packet (the-as dma-packet dma-buf)))

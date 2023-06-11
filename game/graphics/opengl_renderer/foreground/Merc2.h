@@ -8,6 +8,7 @@ class Merc2 : public BucketRenderer {
   void draw_debug_window() override;
   void init_shaders(ShaderLibrary& shaders) override;
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
+  static constexpr int kMaxBlerc = 40;
 
  private:
   bool m_debug_mode = false;
@@ -230,4 +231,15 @@ class Merc2 : public BucketRenderer {
   size_t m_opengl_buffer_alignment = 0;
 
   void flush_draw_buckets(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void model_mod_draws(int num_effects,
+                       const tfrag3::MercModel* model,
+                       const LevelData* lev,
+                       const u8* input_data,
+                       const DmaTransfer& setup,
+                       ModBuffers* mod_opengl_buffers);
+  void model_mod_blerc_draws(int num_effects,
+                             const tfrag3::MercModel* model,
+                             const LevelData* lev,
+                             ModBuffers* mod_opengl_buffers,
+                             const float* blerc_weights);
 };
