@@ -31,3 +31,8 @@
   "Playing Peace Maker Training"
   "Playing Peace Maker Training"
   )
+
+(#x1106
+  "Playing Onin's Game"
+  "Playing Onin's Game"
+  )
