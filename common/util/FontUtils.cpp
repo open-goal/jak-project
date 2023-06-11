@@ -311,9 +311,6 @@ std::string GameTextFontBank::convert_game_to_utf8(const char* in) const {
   std::string temp;
   std::string result;
   std::string test = in;
-  if (test.find("America") != std::string::npos) {
-    printf("");
-  }
   while (*in) {
     auto remap = find_encode_to_utf8(in);
     if (remap != nullptr) {
@@ -355,9 +352,6 @@ std::string GameTextFontBank::convert_game_to_utf8_special(const char* in) const
   std::string temp;
   std::string result;
   std::string test = in;
-  if (test.find("America") != std::string::npos) {
-    printf("");
-  }
   while (*in) {
     auto remap = find_encode_to_utf8(in);
     if (remap != nullptr) {
