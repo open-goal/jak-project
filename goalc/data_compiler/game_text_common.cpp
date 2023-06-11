@@ -143,6 +143,83 @@ void compile_subtitle(GameSubtitleDB& db, const std::string& output_prefix) {
         data.data(), data.size());
   }
 }
+
+/*!
+ * Write game subtitle2 data to a file. Uses the V2 object format which is identical between GOAL
+ * and OpenGOAL.
+ */
+void compile_subtitle2(GameSubtitle2DB& db, const std::string& output_prefix) {
+  auto& speaker_names = get_speaker_names(db.version());
+  for (const auto& [lang, bank] : db.banks()) {
+    auto font = get_font_bank(bank->text_version);
+    DataObjectGenerator gen;
+    gen.add_type_tag("subtitle2-text-info");                   // type
+    gen.add_word((bank->scenes.size() & 0xffff) | (1 << 16));  // length (lo) + version (hi)
+    // note: we add 1 because "none" isn't included
+    gen.add_word((lang & 0xffff) | ((speaker_names.size() + 1) << 16));  // lang + speaker-length
+    int speaker_array_link = gen.add_word(0);  // speaker array (dummy for now)
+
+    auto speaker_index_by_name = [&speaker_names](const std::string& name) {
+      for (int i = 0; i < speaker_names.size(); ++i) {
+        if (speaker_names.at(i) == name) {
+          return i + 1;
+        }
+      }
+      return 0;
+    };
+
+    // fifo queue for scene data arrays
+    std::queue<int> array_link_sources;
+    // now add all the scenes inline
+    for (auto& [name, scene] : bank->scenes) {
+      gen.add_ref_to_string_in_pool(name);  // scene name
+      gen.add_word(scene.lines.size());     // line amount
+      array_link_sources.push(gen.words());
+      gen.add_word(0);  // line array (linked later)
+    }
+    // now add all the line arrays and link them to their scene
+    for (auto& [name, scene] : bank->scenes) {
+      // link inline-array with reference from earlier
+      gen.link_word_to_word(array_link_sources.front(), gen.words());
+      array_link_sources.pop();
+
+      for (auto& line : scene.lines) {
+        gen.add_word_float(line.start);  // start frame
+        gen.add_word_float(line.end);    // end frame
+        if (!line.merge) {
+          gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(line.text));  // line text
+        } else {
+          gen.add_symbol_link("#f");
+        }
+        u16 speaker = speaker_index_by_name(line.speaker);
+        u16 flags = 0;
+        flags |= line.offscreen << 0;
+        flags |= line.merge << 1;
+        gen.add_word(speaker | (flags << 16));  // speaker (lo) + flags (hi)
+      }
+    }
+    // now write the array of strings for the speakers
+    gen.link_word_to_word(speaker_array_link, gen.words());
+    // we write #f for invalid entries, including the "none" at the start
+    gen.add_symbol_link("#f");
+    for (auto& speaker_name : speaker_names) {
+      if (bank->speakers.count(speaker_name) == 0) {
+        // no speaker for this
+        gen.add_symbol_link("#f");
+      } else {
+        gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(bank->speakers.at(speaker_name)));
+      }
+    }
+
+    auto data = gen.generate_v2();
+
+    file_util::create_dir_if_needed(file_util::get_file_path({"out", output_prefix, "iso"}));
+    file_util::write_binary_file(
+        file_util::get_file_path(
+            {"out", output_prefix, "iso", fmt::format("{}{}.TXT", lang, uppercase("subti2"))}),
+        data.data(), data.size());
+  }
+}
 }  // namespace
 
 /*!
@@ -182,4 +259,15 @@ void compile_game_subtitle(const std::vector<GameSubtitleDefinitionFile>& files,
     }
   }
   compile_subtitle(db, output_prefix);
+}
+
+void compile_game_subtitle2(const std::vector<GameSubtitle2DefinitionFile>& files,
+                            GameSubtitle2DB& db,
+                            const std::string& output_prefix) {
+  goos::Reader reader;
+  for (auto& file : files) {
+    lg::print("[Build Game Subtitle] JSON {}\n", file.file_path);
+    parse_subtitle2_json(db, file);
+  }
+  compile_subtitle2(db, output_prefix);
 }

@@ -551,7 +551,7 @@
       )
     (set! (-> s5-0 y) 0.0)
     (vector-normalize! s5-0 1.0)
-
+    
     ;; modified for PC, see comment near definition in collide-shape-h.gc
     (normalized-heading-to-quaternion! (-> obj root-override2 quat) s5-0)
     )
@@ -956,7 +956,7 @@
   )
 
 (defmethod nav-enemy-method-161 nav-enemy ((obj nav-enemy))
-  (set! (-> obj enemy-flags) (the-as enemy-flag (logclear (-> obj enemy-flags) (enemy-flag enemy-flag39))))
+  (set! (-> obj enemy-flags) (the-as enemy-flag (logclear (-> obj enemy-flags) (enemy-flag not-frustrated))))
   (set! (-> obj frustration-time) (current-time))
   (let ((v1-7 (handle->process (-> obj focus handle))))
     (if v1-7
@@ -982,7 +982,7 @@
         (when (>= (- (current-time) (-> obj frustration-time))
                   (+ (-> obj reaction-time) (-> obj enemy-info-override frustration-time))
                   )
-          (set! (-> obj enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag39) (-> obj enemy-flags))))
+          (set! (-> obj enemy-flags) (the-as enemy-flag (logior (enemy-flag not-frustrated) (-> obj enemy-flags))))
           0
           )
         )
@@ -1522,7 +1522,7 @@ This commonly includes things such as:
 (defmethod go-stare nav-enemy ((obj nav-enemy))
   (let ((s5-0 (-> obj focus aware)))
     (cond
-      ((or (and (-> obj enemy-info-override use-frustration) (logtest? (enemy-flag enemy-flag39) (-> obj enemy-flags)))
+      ((or (and (-> obj enemy-info-override use-frustration) (logtest? (enemy-flag not-frustrated) (-> obj enemy-flags)))
            (nav-enemy-method-163 obj)
            )
        (go-stare2 obj)
@@ -1542,7 +1542,7 @@ This commonly includes things such as:
   )
 
 (defmethod go-hostile nav-enemy ((obj nav-enemy))
-  (if (or (and (-> obj enemy-info-override use-frustration) (logtest? (enemy-flag enemy-flag39) (-> obj enemy-flags)))
+  (if (or (and (-> obj enemy-info-override use-frustration) (logtest? (enemy-flag not-frustrated) (-> obj enemy-flags)))
           (nav-enemy-method-163 obj)
           )
       (go-stare2 obj)
@@ -1905,7 +1905,9 @@ This commonly includes things such as:
            )
           )
         )
-      (when (and (-> self enemy-info-override use-frustration) (logtest? (enemy-flag enemy-flag39) (-> self enemy-flags)))
+      (when (and (-> self enemy-info-override use-frustration)
+                 (logtest? (enemy-flag not-frustrated) (-> self enemy-flags))
+                 )
         (if (-> self enemy-info-override use-stop-chase)
             (go-virtual stop-chase)
             (go-stare self)
@@ -2094,7 +2096,9 @@ This commonly includes things such as:
            )
           ((= gp-0 (enemy-aware enemy-aware-3))
            (if (and (get-enemy-target self)
-                    (not (and (-> self enemy-info-override use-frustration) (logtest? (enemy-flag enemy-flag39) (-> self enemy-flags)))
+                    (not (and (-> self enemy-info-override use-frustration)
+                              (logtest? (enemy-flag not-frustrated) (-> self enemy-flags))
+                              )
                          )
                     (>= (- (current-time) (-> self starting-time)) (-> self reaction-time))
                     )

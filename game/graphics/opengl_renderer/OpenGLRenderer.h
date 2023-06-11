@@ -12,6 +12,7 @@
 #include "game/graphics/opengl_renderer/opengl_utils.h"
 #include "game/tools/filter_menu/filter_menu.h"
 #include "game/tools/subtitles/subtitle_editor.h"
+#include "game/tools/subtitles2/subtitle2_editor.h"
 
 struct RenderOptions {
   bool draw_render_debug_window = false;
@@ -19,6 +20,7 @@ struct RenderOptions {
   bool draw_loader_window = false;
   bool draw_small_profiler_window = false;
   bool draw_subtitle_editor_window = false;
+  bool draw_subtitle2_editor_window = false;
   bool draw_filters_window = false;
 
   // internal rendering settings - The OpenGLRenderer will internally use this resolution/format.
@@ -140,7 +142,8 @@ class OpenGLRenderer {
   SharedRenderState m_render_state;
   Profiler m_profiler;
   SmallProfiler m_small_profiler;
-  SubtitleEditor m_subtitle_editor;
+  SubtitleEditor* m_subtitle_editor = nullptr;
+  Subtitle2Editor* m_subtitle2_editor = nullptr;
   FiltersMenu m_filters_menu;
 
   std::vector<std::unique_ptr<BucketRenderer>> m_bucket_renderers;

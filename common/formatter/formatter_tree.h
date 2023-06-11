@@ -9,7 +9,7 @@
 
 #include "tree_sitter/api.h"
 
-class FormattingRule;
+class IndentationRule;
 
 // Treesitter is fantastic for validating and parsing our code into a structured tree format without
 // whitespace so we can do that ourselves (formatting) However, the treesitter AST is a bit too
@@ -28,13 +28,16 @@ class FormattingRule;
 // Pass 2 - use the simplified tree to output the final code
 
 namespace formatter {
-extern const std::shared_ptr<FormattingRule> default_rule;
+extern const std::shared_ptr<IndentationRule> default_indentation_rule;
 }
 
 class FormatterTreeNode {
  public:
   struct Metadata {
-    bool is_root = false;
+    bool is_top_level = false;
+    bool is_comment = false;
+    bool is_inline = false;
+    int num_blank_lines_following = 0;
     // Whether the form had more than 1 element on the first line
     // (println
     //  "test")
@@ -48,15 +51,15 @@ class FormatterTreeNode {
   // The token is optional because list nodes do not contain a token, they just contain a bunch of
   // eventually token node refs
   std::optional<std::string> token;
-  std::vector<std::shared_ptr<FormattingRule>> rules = {};
+  std::vector<std::shared_ptr<IndentationRule>> rules = {};
 
   FormatterTreeNode() = default;
-  FormatterTreeNode(const std::string& _token) : token(_token){};
+  FormatterTreeNode(const std::string& source, const TSNode& node);
   FormatterTreeNode(const Metadata& _metadata) : metadata(_metadata){};
 
   // Considers the input to determine the most relevant formatting rule for the given node
   // if none are applicable, returns `formatter::default_rule`
-  std::shared_ptr<FormattingRule> get_formatting_rule(const int depth, const int index) const;
+  std::shared_ptr<IndentationRule> get_formatting_rule(const int depth, const int index) const;
 };
 
 // A FormatterTree has a very simple and crude tree structure where:

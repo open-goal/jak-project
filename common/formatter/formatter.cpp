@@ -39,17 +39,15 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
     return curr_form;
   }
   // TODO - this might have some issues for non-list top level elements (ie. comments)
-  if (!curr_node.metadata.is_root) {
+  if (!curr_node.metadata.is_top_level) {
     curr_form += "(";
   }
   // Iterate the form
   for (int i = 0; i < curr_node.refs.size(); i++) {
     const auto& ref = curr_node.refs.at(i);
-    // Append a newline if relevant
-    if (!curr_node.metadata.is_root) {
-      curr_node.get_formatting_rule(tree_depth, i)
-          ->append_newline(curr_form, ref, curr_node, tree_depth, i);
-    }
+    // Append a newline if needed
+    curr_node.get_formatting_rule(tree_depth, i)
+        ->append_newline(curr_form, ref, curr_node, tree_depth, i);
     // Either print the element's token, or recursively format it as well
     if (ref.token) {
       curr_node.get_formatting_rule(tree_depth, i)
@@ -58,30 +56,21 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
                               // forms are always done bottom-top recursively, they always act
                               // independently as if it was the shallowest depth
       curr_form += ref.token.value();
-      if (!curr_node.metadata.is_root) {
+      if (!curr_node.metadata.is_top_level) {
         curr_form += " ";
       }
     } else {
       auto formatted_form = apply_formatting(ref, "", tree_depth + 1);
-      if (!curr_node.metadata.is_root) {
+      if (!curr_node.metadata.is_top_level) {
         curr_node.get_formatting_rule(tree_depth, i)
             ->align_form_lines(formatted_form, ref, curr_node);
       }
       curr_form += formatted_form;
     }
-    // Separate top-level elements with a new-line
-    // TODO - move this into a top-level rule
-    // TODO - temporary hack for top level comments, but need a better strategy for leaving them
-    // where they were originally
-    if (curr_node.metadata.is_root && i < curr_node.refs.size() - 1) {
-      curr_form += "\n";
-      if (!ref.token || !str_util::starts_with(ref.token.value(), ";")) {
-        curr_form += "\n";
-      }
-    }
+    // Handle blank lines at the top level, skip if it's the final element
+    formatter_rules::blank_lines::separate_by_newline(curr_form, curr_node, ref, i);
   }
-  // TODO - similar fear to issues as above
-  if (!curr_node.metadata.is_root) {
+  if (!curr_node.metadata.is_top_level) {
     curr_form = str_util::rtrim(curr_form) + ")";
   }
   return curr_form;
