@@ -91,9 +91,12 @@ std::unique_ptr<GraphicsData> g_gfx_data;
 static bool gl_inited = false;
 static int gl_init(GfxGlobalSettings& settings) {
   prof().instant_event("ROOT");
+  Timer gl_init_timer;
   // Initialize SDL
   {
     auto p = scoped_prof("startup::sdl::init_sdl");
+    // remove SDL garbage from hooking signal handler.
+    SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1");
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC) != 0) {
       sdl_util::log_error("Could not initialize SDL, exiting");
       return 1;
@@ -127,7 +130,7 @@ static int gl_init(GfxGlobalSettings& settings) {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
   }
-
+  lg::info("gl init took {:.3f}s\n", gl_init_timer.getSeconds());
   return 0;
 }
 
