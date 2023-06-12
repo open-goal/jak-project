@@ -248,6 +248,20 @@
     (pc-sound-set-fade-hack fade-hack)
     )
 
+  (when (pc-current-controller-has-led?)
+    (update-led obj)
+    (format *stdcon* "led: ~,,2f ~,,2f ~,,2f (~,,2f%)~%" (-> obj controller-led-color r) (-> obj controller-led-color g) (-> obj controller-led-color b) (* 100.0 (-> obj controller-led-color a)))
+    ;; use alpha as the brightness modifier
+    (vector-float*! (-> obj controller-led-color) (-> obj controller-led-color) (-> obj controller-led-color a))
+    ;; now multiply by the brightness setting
+    (vector-float*! (-> obj controller-led-color) (-> obj controller-led-color) (-> obj controller-led-brightness))
+    ;; now use it as the controller led colors
+    (pc-set-controller-led! 0
+                            (the int (lerp-scale 0.0 255.0 (-> obj controller-led-color r) 0.0 1.0))
+                            (the int (lerp-scale 0.0 255.0 (-> obj controller-led-color g) 0.0 1.0))
+                            (the int (lerp-scale 0.0 255.0 (-> obj controller-led-color b) 0.0 1.0)))
+    )
+
   (none))
 
 ;; where we store the input progress for the cheat codes. make sure there's enough space for all cheats.
@@ -311,6 +325,17 @@
 (defmethod update-music-log pc-settings ((obj pc-settings))
   "update music log settings."
   0)
+
+(defmethod update-led pc-settings ((obj pc-settings))
+  "set the controller led color by modifying the controller-led-color vector"
+  ;; random colors for fun lol
+  (set-vector! (-> obj controller-led-color)
+                    (rand-vu)
+                    (rand-vu)
+                    (rand-vu)
+                    (rand-vu)
+                    )
+  #t)
 
 
 
@@ -707,6 +732,9 @@
     (("third-camera-v-inverted?") (set! (-> obj third-camera-v-inverted?) (file-stream-read-symbol file)))
     (("music-fadein?") (set! (-> obj music-fadein?) (file-stream-read-symbol file)))
     (("music-fadeout?") (set! (-> obj music-fadeout?) (file-stream-read-symbol file)))
+    (("controller-led-brightness") (set! (-> obj controller-led-brightness) (file-stream-read-float file)))
+    (("controller-led-min-brightness") (set! (-> obj controller-led-min-brightness) (file-stream-read-float file)))
+    (("controller-led-max-brightness") (set! (-> obj controller-led-max-brightness) (file-stream-read-float file)))
     (("panic")
       (when (file-stream-read-symbol file)
         (reset obj #t)
@@ -751,6 +779,9 @@
   (format file "  (ignore-controller-win-unfocused? ~A)~%" (-> obj ignore-controller-win-unfocused?))
   (format file "  (controller-hp-led? ~A)~%" (-> obj controller-hp-led?))
   (format file "  (controller-eco-led? ~A)~%" (-> obj controller-eco-led?))
+  (format file "  (controller-led-brightness ~f)~%" (-> obj controller-led-brightness))
+  (format file "  (controller-led-min-brightness ~f)~%" (-> obj controller-led-min-brightness))
+  (format file "  (controller-led-max-brightness ~f)~%" (-> obj controller-led-max-brightness))
   (format file "  (stick-deadzone ~f)~%" (-> obj stick-deadzone))
   (format file "  (keyboard-enabled? ~A)~%" (-> obj keyboard-enabled?))
   (format file "  (mouse-enabled? ~A)~%" (-> obj mouse-enabled?))
