@@ -24,7 +24,7 @@ const std::map<std::string, std::string> level_names = {
     {"palcab", "Palace Cable"},
     {"palroof", "Palace Roof"},
     {"throne", "Throne Room"},
-    {"palent", "Palace Entrance"},
+    {"palent", "Palace Interior"},
     {"vinroom", "Power Station"},
     {"oracle", "Oracle"},
     {"onintent", "Onin's Tent"},
@@ -62,7 +62,11 @@ const std::map<std::string, std::string> level_name_remap = {
     {"tombe", "tomb"},       {"dig1", "dig"},         {"dig3a", "dig"},
     {"drillmid", "drill"},   {"nestb", "nest"},       {"sewesc", "sewer"},
     {"garage", "stadium"},   {"casboss", "castle"},   {"introcst", "intro"},
-    {"underb", "under"}};
+    {"underb", "under"},     {"sagehut", "ruins"},    {"atollext", "atoll"},
+    {"mtnext", "mountain"},  {"consiteb", "consite"}, {"drillmtn", "drill"},
+    {"drillb", "drill"},     {"forestb", "forest"},   {"sewerb", "sewer"},
+    {"sewescb", "sewer"},
+};
 
 // levels that are not affected by time of day
 const std::vector<std::string> indoor_levels = {
