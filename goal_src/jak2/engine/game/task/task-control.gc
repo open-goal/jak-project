@@ -700,7 +700,7 @@
   obj
   )
 
-(defun get-active-mission-description ()
+(defun get-active-mission-description ((info discord-info))
   "Added in PC port to retrieve a string for the currently active mission to display in Discord."
   (let* ((nodes (-> *game-info* sub-task-list))
          (level (level-get-target-inside *level*))
@@ -726,7 +726,7 @@
                      (= (the game-task-node i) (game-task-node city-play-onin-game-post-game))
                      (task-node-open? (the game-task-node i))
                      (process-by-name "onin-game" *active-pool*))
-            (set! (-> *discord-info* task) "onin-game")
+            (set! (-> info task) "onin-game")
             (return (lookup-text! *common-text* (text-id discord-rpc-onin-game) #f))
             )
           ;; check for whack-a-metal
@@ -734,7 +734,7 @@
                      (= (the game-task-node i) (game-task-node city-whack-post-game))
                      (task-node-open? (the game-task-node i))
                      (process-by-name "whack-a-metal" *active-pool*))
-            (set! (-> *discord-info* task) "city-whack")
+            (set! (-> info task) "city-whack")
             (return (lookup-text! *common-text* (text-id discord-rpc-whack) #f))
             )
           ;; check for gungame (there is probably a better way to do this)
@@ -746,19 +746,19 @@
                 (let ((feat (-> *setting-control* user-current features)))
                   (cond
                     ((not (logtest? feat (game-feature gun-yellow gun-blue gun-dark)))
-                     (set! (-> *discord-info* task) "city-red-gun-training")
+                     (set! (-> info task) "city-red-gun-training")
                      (return (lookup-text! *common-text* (text-id discord-rpc-red-gun-training) #f))
                      )
                     ((not (logtest? feat (game-feature gun-red gun-blue gun-dark)))
-                     (set! (-> *discord-info* task) "city-yellow-gun-training")
+                     (set! (-> info task) "city-yellow-gun-training")
                      (return (lookup-text! *common-text* (text-id discord-rpc-yellow-gun-training) #f))
                      )
                     ((not (logtest? feat (game-feature gun-red gun-yellow gun-dark)))
-                     (set! (-> *discord-info* task) "city-blue-gun-training")
+                     (set! (-> info task) "city-blue-gun-training")
                      (return (lookup-text! *common-text* (text-id discord-rpc-blue-gun-training) #f))
                      )
                     (else
-                      (set! (-> *discord-info* task) "city-dark-gun-training")
+                      (set! (-> info task) "city-dark-gun-training")
                       (return (lookup-text! *common-text* (text-id discord-rpc-dark-gun-training) #f))
                       )
                     )
@@ -771,7 +771,7 @@
                      (<= i side-missions-end)
                      (task-node-open? (the game-task-node i))
                      mgr-handle)
-            (set! (-> *discord-info* task) (game-task->string (-> node task)))
+            (set! (-> info task) (game-task->string (-> node task)))
             (return (lookup-text! *common-text* (text-id discord-rpc-in-side-mission) #f))
             )
           ;; check for any other tasks
@@ -779,7 +779,7 @@
                      (task-node-open? (the game-task-node i))
                      (!= (-> node description) (the text-id 0))
                      (= (-> *task-level* task-level-idx) (-> node level)))
-            (set! (-> *discord-info* task) (game-task->string (-> node task)))
+            (set! (-> info task) (game-task->string (-> node task)))
             (return (lookup-text! *common-text* (-> node description) #f))
             )
           )

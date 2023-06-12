@@ -8,7 +8,7 @@
 
  |#
 
-(define-extern get-active-mission-description (function string))
+(define-extern get-active-mission-description (function discord-info string))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; methods
@@ -62,33 +62,34 @@
 
 (defmethod update-discord-rpc pc-settings-jak2 ((obj pc-settings-jak2))
   "update discord rpc module"
-  (set! *discord-info* (new 'stack 'discord-info))
-  (set! (-> *discord-info* orb-count) (-> *game-info* skill-total))
-  (set! (-> *discord-info* gem-count) (-> *game-info* gem-total))
-  (set! (-> *discord-info* death-count) (-> *game-info* total-deaths))
-  (set! (-> *discord-info* task) "unknown")
-  (set! (-> *discord-info* status) (get-active-mission-description))
-  ;; grab the name of the level we're in
-  (if *level*
-    (cond
-      ((= (level-status *level* 'title) 'active)
-        (set! (-> *discord-info* level) "title")
-        (set! (-> *discord-info* status) "On title screen")
-        )
-      (else
-        (if (level-get-target-inside *level*)
-          (set! (-> *discord-info* level) (symbol->string (-> (level-get-target-inside *level*) name)))
-          (set! (-> *discord-info* level) "unknown")
+  (let ((info (new 'stack 'discord-info)))
+    (set! (-> info orb-count) (-> *game-info* skill-total))
+    (set! (-> info gem-count) (-> *game-info* gem-total))
+    (set! (-> info death-count) (-> *game-info* total-deaths))
+    (set! (-> info task) "unknown")
+    (set! (-> info status) (get-active-mission-description info))
+    ;; grab the name of the level we're in
+    (if *level*
+      (cond
+        ((= (level-status *level* 'title) 'active)
+          (set! (-> info level) "title")
+          (set! (-> info status) "On title screen")
+          )
+        (else
+          (if (level-get-target-inside *level*)
+            (set! (-> info level) (symbol->string (-> (level-get-target-inside *level*) name)))
+            (set! (-> info level) "unknown")
+            )
           )
         )
       )
+    (set! (-> info cutscene?) (-> *pc-settings* movie?))
+    (set! (-> info time-of-day) (-> *time-of-day-context* time))
+    (set! (-> info percent-complete) (calculate-percentage *game-info*))
+    (set! (-> info focus-status) (if *target* (-> *target* focus-status) 0))
+    ;; TODO - wrapping in `with-profiler` causes an error, fix it
+    (pc-discord-rpc-update info)
     )
-  (set! (-> *discord-info* cutscene?) (-> *pc-settings* movie?))
-  (set! (-> *discord-info* time-of-day) (-> *time-of-day-context* time))
-  (set! (-> *discord-info* percent-complete) (calculate-percentage *game-info*))
-  (set! (-> *discord-info* focus-status) (if *target* (-> *target* focus-status) 0))
-  ;; TODO - wrapping in `with-profiler` causes an error, fix it
-  (pc-discord-rpc-update *discord-info*)
   (none))
 
 (defmethod update-speedrun pc-settings-jak2 ((obj pc-settings-jak2))
