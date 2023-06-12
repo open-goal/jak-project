@@ -21,7 +21,7 @@ const std::map<std::string, std::string> level_names = {
     {"stadiumd", "Stadium (Class 1 Race)"},
     {"skatea", "Stadium (JET-Board Course)"},
     {"palshaft", "Palace Lobby"},
-    {"palcab", "Palace Cables"},
+    {"palcab", "Palace Cable"},
     {"palroof", "Palace Roof"},
     {"throne", "Throne Room"},
     {"palent", "Palace Entrance"},
@@ -65,10 +65,10 @@ const std::map<std::string, std::string> level_name_remap = {
 
 // levels that are not affected by time of day
 const std::vector<std::string> indoor_levels = {
-    "intro",    "title",    "prison",   "forexita", "forexitb", "fordumpa", "fordumpb", "fordumpc",
-    "forresca", "forrescb", "tomba",    "tombb",    "tombc",    "tombd",    "dig1",     "dig3a",
-    "palshaft", "sewer",    "sewesc",   "castle",   "tombe",    "tombboss", "gungame",  "hideout",
-    "vinroom",  "under",    "onintent", "oracle",   "hiphog",   "casboss"};
+    "intro",    "title",    "prison", "forexita", "forexitb", "fordumpa", "fordumpb", "fordumpc",
+    "forresca", "forrescb", "tomba",  "tombb",    "tombc",    "tombd",    "dig1",     "dig3a",
+    "dig3b",    "palshaft", "sewer",  "sewesc",   "castle",   "tombe",    "tombboss", "gungame",
+    "hideout",  "vinroom",  "under",  "onintent", "oracle",   "hiphog",   "casboss"};
 
 // time of day string to append to level name for icons
 const char* time_of_day_str(float time) {
