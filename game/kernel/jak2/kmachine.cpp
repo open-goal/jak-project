@@ -522,10 +522,16 @@ void update_discord_rpc(u32 discord_info) {
       int orbs = (int)info->orb_count;
       int gems = (int)info->gem_count;
       u32 deaths = info->death_count;
-      // get rid of any encoding strings
-      std::string status =
-          get_font_bank(GameTextVersion::JAK2)
-              ->convert_game_to_utf8_special(Ptr<String>(info->status).c()->data());
+      // convert encodings
+      std::string status = get_font_bank(GameTextVersion::JAK2)
+                               ->convert_game_to_utf8(Ptr<String>(info->status).c()->data());
+
+      // get rid of special encodings like <COLOR_WHITE>
+      std::regex r("<.*?>");
+      while (std::regex_search(status, r)) {
+        status = std::regex_replace(status, r, "");
+      }
+
       char* level = Ptr<String>(info->level).c()->data();
       auto cutscene = Ptr<Symbol4<u32>>(info->cutscene)->value();
       float time = info->time_of_day;

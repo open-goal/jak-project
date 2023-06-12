@@ -63,7 +63,6 @@ class GameTextFontBank {
   const ReplaceInfo* find_replace_to_game(const std::string& in, int off = 0) const;
 
   std::string replace_to_utf8(std::string& str) const;
-  std::string replace_to_utf8_special(std::string& str) const;
   std::string replace_to_game(std::string& str) const;
   std::string encode_utf8_to_game(std::string& str) const;
 
@@ -85,7 +84,6 @@ class GameTextFontBank {
 
   std::string convert_utf8_to_game(std::string str, bool escape = false) const;
   std::string convert_game_to_utf8(const char* in) const;
-  std::string convert_game_to_utf8_special(const char* in) const;
 };
 
 extern std::map<GameTextVersion, GameTextFontBank*> g_font_banks;
