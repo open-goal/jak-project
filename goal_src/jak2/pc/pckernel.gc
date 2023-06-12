@@ -69,9 +69,24 @@
   (set! (-> *discord-info* task) "unknown")
   (set! (-> *discord-info* status) (get-active-mission-description))
   ;; grab the name of the level we're in
-  (if (and *level* (level-get-target-inside *level*))
-    (set! (-> *discord-info* level) (symbol->string (-> (level-get-target-inside *level*) name)))
-    (set! (-> *discord-info* level) "unknown"))
+  (if *level*
+    (cond
+      ((= (level-status *level* 'title) 'active)
+        (set! (-> *discord-info* level) "title")
+        (set! (-> *discord-info* status) "On title screen")
+        )
+      ((= (level-status *level* 'intro) 'active)
+        (set! (-> *discord-info* level) "intro")
+        (set! (-> *discord-info* status) "Intro")
+        )
+      (else
+        (if (level-get-target-inside *level*)
+          (set! (-> *discord-info* level) (symbol->string (-> (level-get-target-inside *level*) name)))
+          (set! (-> *discord-info* level) "unknown")
+          )
+        )
+      )
+    )
   (set! (-> *discord-info* cutscene?) (-> *pc-settings* movie?))
   (set! (-> *discord-info* time-of-day) (-> *time-of-day-context* time))
   (set! (-> *discord-info* percent-complete) (calculate-percentage *game-info*))
