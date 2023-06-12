@@ -250,7 +250,7 @@
 
   (when (pc-current-controller-has-led?)
     (update-led obj)
-    (format *stdcon* "led: ~,,2f ~,,2f ~,,2f (~,,2f%)~%" (-> obj controller-led-color r) (-> obj controller-led-color g) (-> obj controller-led-color b) (* 100.0 (-> obj controller-led-color a)))
+    ;(format *stdcon* "led: ~,,2f ~,,2f ~,,2f (~,,2f%)~%" (-> obj controller-led-color r) (-> obj controller-led-color g) (-> obj controller-led-color b) (* 100.0 (-> obj controller-led-color a)))
     ;; use alpha as the brightness modifier
     (vector-float*! (-> obj controller-led-color) (-> obj controller-led-color) (-> obj controller-led-color a))
     ;; now multiply by the brightness setting
@@ -329,12 +329,8 @@
 (defmethod update-led pc-settings ((obj pc-settings))
   "set the controller led color by modifying the controller-led-color vector"
   ;; random colors for fun lol
-  (set-vector! (-> obj controller-led-color)
-                    (rand-vu)
-                    (rand-vu)
-                    (rand-vu)
-                    (rand-vu)
-                    )
+  ;(set-vector! (-> obj controller-led-color) (rand-vu) (rand-vu) (rand-vu) 1.0)
+  (set-vector! (-> obj controller-led-color) 0.0 0.0 1.0 1.0)
   #t)
 
 
@@ -390,30 +386,6 @@
 
 )
 
-
-(defun find-music-log ((music symbol))
-  "return #t if the given music is logged into the *pc-settings*, #f otherwise."
-  (dotimes (i PC_MUSIC_LOG_LENGTH)
-    (if (= music (-> *pc-settings* secrets music i name))
-        (return #t)))
-  #f)
-
-(defun find-flava-log ((music symbol) (flava-idx int))
-  "return #t if the given music's flava is logged into the *pc-settings*, #f otherwise."
-  (dotimes (i PC_MUSIC_LOG_LENGTH)
-    (if (= music (-> *pc-settings* secrets music i name))
-        (return (logtest? (-> *pc-settings* secrets music i flava-mask) (ash 1 flava-idx)))))
-  #f)
-
-(defun-debug print-music-log ((out object))
-  "prints the *pc-settings* music log."
-
-  (dotimes (i PC_MUSIC_LOG_LENGTH)
-    (if (-> *pc-settings* secrets music i name)
-        (format out "music log ~D: ~A (f #x~x)~%" i (-> *pc-settings* secrets music i name) (-> *pc-settings* secrets music i flava-mask)))
-    )
-
-  0)
 
 (defmethod set-ignore-controller-in-bg! pc-settings ((obj pc-settings) (val symbol))
   "sets whether or not to ignore controller inputs if the window is in the background"

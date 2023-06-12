@@ -415,6 +415,30 @@
   #t)
 
 
+(defun find-music-log ((music symbol))
+  "return #t if the given music is logged into the *pc-settings*, #f otherwise."
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (if (= music (-> *pc-settings* secrets music i name))
+        (return #t)))
+  #f)
+
+(defun find-flava-log ((music symbol) (flava-idx int))
+  "return #t if the given music's flava is logged into the *pc-settings*, #f otherwise."
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (if (= music (-> *pc-settings* secrets music i name))
+        (return (logtest? (-> *pc-settings* secrets music i flava-mask) (ash 1 flava-idx)))))
+  #f)
+
+(defun-debug print-music-log ((out object))
+  "prints the *pc-settings* music log."
+
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (if (-> *pc-settings* secrets music i name)
+        (format out "music log ~D: ~A (f #x~x)~%" i (-> *pc-settings* secrets music i name) (-> *pc-settings* secrets music i flava-mask)))
+    )
+
+  0)
+
 (defmethod add-to-music-log pc-settings-jak1 ((obj pc-settings-jak1) (music symbol) (flava int))
   "add music and flava information to the music log.
    if music already exists, adds flava. if flava already exists, nothing happens."
