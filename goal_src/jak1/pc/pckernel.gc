@@ -330,7 +330,7 @@
   (set! (-> obj controller-led-color b) 1.0)
 
   (when *target*
-
+    (let ((set-no-eco-color? #t))
     (when (-> obj controller-hp-led?)
       ;; flicker led according to hp. lower hp = faster and more intense flicker
       (cond
@@ -352,13 +352,33 @@
         )
       )
 
-    ;; get remaining eco as a number from 0.0 to 1.0
+    (when (and  (-> obj controller-heat-led?)
+                (nonzero? (-> *target* racer))
+                (or (= (-> *target* current-level name) 'lavatube)
+                    (= (-> *target* current-level name) 'firecanyon)
+                    (= (-> *target* current-level name) 'citadel)))
+      (defun-extern zoomer-heat-slice-color matrix float none)
+      (defun-extern zoomer-get-heat float)
+      (defun-extern zoomer-get-heat-max float)
+      (let ((temp-mtx (new-stack-matrix0))
+            (heat (/ (zoomer-get-heat) (zoomer-get-heat-max))))
+        (zoomer-heat-slice-color temp-mtx heat)
+        (when (< 0.0 heat)
+          (set! (-> obj controller-led-color r) (/ (-> temp-mtx vector 2 x) 128.0))
+          (set! (-> obj controller-led-color g) (/ (-> temp-mtx vector 2 y) 128.0))
+          (set! (-> obj controller-led-color b) (/ (-> temp-mtx vector 2 z) 128.0))
+          (false! set-no-eco-color?))
+        )
+      )
+
     (when (-> obj controller-eco-led?)
+    ;; get remaining eco as a number from 0.0 to 1.0
     (let ((eco-remain-fac (/ (the float (- (-> *target* fact-info-target eco-timeout) (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time))))
                              (the float (-> *FACT-bank* eco-full-timeout)))))
-      (set! (-> obj controller-led-color r) 1.0)
-      (set! (-> obj controller-led-color g) 1.0)
-      (set! (-> obj controller-led-color b) 1.0)
+      (when set-no-eco-color?
+        (set! (-> obj controller-led-color r) 1.0)
+        (set! (-> obj controller-led-color g) 1.0)
+        (set! (-> obj controller-led-color b) 1.0))
       ;; dont set eco color if we don't have eco.
       (when (< 0.0 eco-remain-fac)
         ;; set color according to eco type. matches the color in the meter!
@@ -383,8 +403,6 @@
             (set! (-> obj controller-led-color g) 1.0)
             (set! (-> obj controller-led-color b) 0.25)
             )
-          (else
-            )
           )
         ;; less than 20% eco remaining, so we flash. same as eco meter.
         (when (and (< eco-remain-fac 0.2)
@@ -393,7 +411,7 @@
           )
         )
       ))
-    )
+    ))
   #t)
 
 
