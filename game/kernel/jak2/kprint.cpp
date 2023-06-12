@@ -545,7 +545,8 @@ s32 format_impl_jak2(uint64_t* args) {
         fflush(stdout);
       }
       PrintPending = make_ptr(PrintPendingLocal2).cast<u8>();
-      *PrintPendingLocal3 = 0;
+      // if we don't comment this line, our output gets cleared
+      // *PrintPendingLocal3 = 0;
     }
 
     return 0;
