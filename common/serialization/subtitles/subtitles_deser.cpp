@@ -97,38 +97,35 @@ SubtitleFile dump_bank_as_json(std::shared_ptr<GameSubtitleBank> bank) {
   return file;
 }
 
-const std::vector<std::string> locale_lookup = {
-    "en-US", "fr-FR", "de-DE", "es-ES", "it-IT", "jp-JP", "en-GB", "pt-PT", "fi-FI",
-    "sv-SE", "da-DK", "no-NO", "nl-NL", "pt-BR", "hu-HU", "ca-ES", "is-IS"};
+const std::unordered_map<GameVersion, std::vector<std::string>> locale_lookup = {
+    {GameVersion::Jak1,
+     {"en-US", "fr-FR", "de-DE", "es-ES", "it-IT", "jp-JP", "en-GB", "pt-PT", "fi-FI", "sv-SE",
+      "da-DK", "no-NO", "nl-NL", "pt-BR", "hu-HU", "ca-ES", "is-IS"}},
+    {GameVersion::Jak2, {"en-US", "fr-FR", "de-DE", "es-ES", "it-IT", "jp-JP", "ko-KR", "en-GB"}}};
+
+// v2 majorly simplifies this, (no convert to utf-8's) how is that possible?
 
 bool write_subtitle_db_to_files(const GameSubtitleDB& db, const GameVersion game_version) {
   try {
     for (const auto& [language_id, bank] : db.m_banks) {
       auto meta_file = dump_bank_as_meta_json(bank);
-      std::string dump_path = (file_util::get_jak_project_dir() / "game" / "assets" /
-                               version_to_game_name(game_version) / "subtitle" /
-                               fmt::format("subtitle_meta_{}.json", locale_lookup.at(language_id)))
-                                  .string();
+      std::string dump_path =
+          (file_util::get_jak_project_dir() / "game" / "assets" /
+           version_to_game_name(game_version) / "subtitle" /
+           fmt::format("subtitle_meta_{}.json", locale_lookup.at(game_version).at(language_id)))
+              .string();
       json data = meta_file;
       file_util::write_text_file(dump_path, data.dump(2));
       // Now dump the actual subtitles
       auto subtitle_file = dump_bank_as_json(bank);
-      dump_path = (file_util::get_jak_project_dir() / "game" / "assets" /
-                   version_to_game_name(game_version) / "subtitle" /
-                   fmt::format("subtitle_lines_{}.json", locale_lookup.at(language_id)))
-                      .string();
+      dump_path =
+          (file_util::get_jak_project_dir() / "game" / "assets" /
+           version_to_game_name(game_version) / "subtitle" /
+           fmt::format("subtitle_lines_{}.json", locale_lookup.at(game_version).at(language_id)))
+              .string();
       data = subtitle_file;
       file_util::write_text_file(dump_path, data.dump(2));
     }
-    // Write the subtitle group info out
-    nlohmann::json json(db.m_subtitle_groups->m_groups);
-    json[db.m_subtitle_groups->group_order_key] =
-        nlohmann::json(db.m_subtitle_groups->m_group_order);
-    std::string file_path =
-        (file_util::get_jak_project_dir() / "game" / "assets" / version_to_game_name(game_version) /
-         "subtitle" / "subtitle-groups.json")
-            .string();
-    file_util::write_text_file(file_path, json.dump(2));
   } catch (std::exception& ex) {
     lg::error(ex.what());
     return false;

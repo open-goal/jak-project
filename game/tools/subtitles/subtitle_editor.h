@@ -22,9 +22,6 @@ class SubtitleEditorDB {
   };
 };
 
-// TODO Later:
-// - Hints, these seem less annoying but there are a lot of them
-
 class SubtitleEditor {
  public:
   SubtitleEditor();
@@ -77,7 +74,6 @@ class SubtitleEditor {
   // bool m_base_show_lines = false;
   bool m_base_show_missing_cutscenes = true;
 
-  // TODO - let the user customize these colors
   ImVec4 m_normal_text_color = ImVec4(1.0f, 0.0f, 1.0f, 1.0f);
   int m_selected_text_color = IM_COL32(89, 227, 225, 255);
   ImVec4 m_success_text_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
@@ -85,7 +81,6 @@ class SubtitleEditor {
   ImVec4 m_disabled_text_color = ImVec4(1.0f, 1.0f, 1.0f, 0.7f);
   ImVec4 m_warning_color = ImVec4(0.619f, 0.443f, 0.0f, 1.0f);
   int m_offscreen_text_color = IM_COL32(240, 242, 102, 255);
-  // TODO - cycle speaker colors
 
   void repl_set_continue_point(const std::string_view& continue_point);
   void repl_move_jak(const double x, const double y, const double z);

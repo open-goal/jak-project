@@ -54,7 +54,7 @@ add_library(common
         serialization/subtitles/subtitles_deser.cpp
         serialization/subtitles/subtitles_ser.cpp
         serialization/subtitles2/subtitles2_deser.cpp
-        serialization/subtitles2/subtitles2_ser.cpp
+        
         type_system/defenum.cpp
         type_system/deftype.cpp
         type_system/state.cpp
@@ -82,8 +82,7 @@ add_library(common
         util/term_util.cpp
         util/Timer.cpp
         util/unicode_util.cpp
-        versions/versions.cpp
-)
+        versions/versions.cpp serialization/text/text_ser.cpp "serialization/subtitles/subtitles_v1.h")
 
 target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter)
 

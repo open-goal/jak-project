@@ -8,9 +8,6 @@
 
 #include "third-party/imgui/imgui.h"
 
-// TODO Later:
-// - Hints, these seem less annoying but there are a lot of them
-
 class Subtitle2Editor {
  public:
   Subtitle2Editor(GameVersion version);
@@ -56,7 +53,6 @@ class Subtitle2Editor {
   // bool m_base_show_lines = false;
   bool m_base_show_missing_cutscenes = true;
 
-  // TODO - let the user customize these colors
   ImVec4 m_normal_text_color = ImVec4(1.0f, 0.0f, 1.0f, 1.0f);
   int m_selected_text_color = IM_COL32(89, 227, 225, 255);
   ImVec4 m_success_text_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
@@ -64,7 +60,6 @@ class Subtitle2Editor {
   ImVec4 m_disabled_text_color = ImVec4(1.0f, 1.0f, 1.0f, 0.7f);
   ImVec4 m_warning_color = ImVec4(0.619f, 0.443f, 0.0f, 1.0f);
   int m_offscreen_text_color = IM_COL32(240, 242, 102, 255);
-  // TODO - cycle speaker colors
 
   const std::vector<std::string> m_speaker_names;
 
