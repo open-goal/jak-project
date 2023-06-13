@@ -2190,7 +2190,7 @@
     (hide () _type_ :state 20)
     (wait-for-start () _type_ :state 21)
     (active (symbol) _type_ :state 22)
-    (lose () _type_ :state 23)
+    (lose (symbol) _type_ :state 23)
     (win () _type_ :state 24)
     (onin-game-method-25 (_type_) none 25)
     (onin-game-method-26 (_type_) none 26)
@@ -2525,8 +2525,7 @@
          )
        )
       (('retry)
-       enter-state
-       (go-virtual lose)
+       (go-virtual lose #f)
        )
       )
     )
@@ -2682,9 +2681,7 @@
        (go-virtual win)
        )
       ((or (and *cheat-mode* (cpad-pressed? 0 l1)) (>= (-> self miss-count) (-> self miss-max)))
-       enter-state
-       #t
-       (go-virtual lose)
+       (go-virtual lose #t)
        )
       ((and *cheat-mode* (cpad-pressed? 0 up))
        (sound-play-by-spec (static-sound-spec "beep" :fo-curve 1) (new-sound-id) (the-as vector #t))
@@ -2742,7 +2739,7 @@
 (defstate lose (onin-game)
   :virtual #t
   :exit (-> (method-of-type onin-game active) exit)
-  :code (behavior ()
+  :code (behavior ((arg0 symbol))
     (let ((gp-0 (-> self child)))
       (while gp-0
         (if (type? (ppointer->process gp-0) onin-game-bubble)
@@ -2787,7 +2784,7 @@
                      )
                    )
              )
-        (while (nonzero? (get-status *gui-control* (the-as sound-id s5-1)))
+        (while (nonzero? (get-status *gui-control* s5-1))
           (suspend)
           )
         )
@@ -2847,7 +2844,7 @@
       (if (not (handle->process gp-4))
           (auto-save-user)
           )
-      (while (nonzero? (get-status *gui-control* (the-as sound-id s5-1)))
+      (while (nonzero? (get-status *gui-control* s5-1))
         (suspend)
         )
       (let ((s5-3 (current-time)))

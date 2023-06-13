@@ -645,7 +645,7 @@ This commonly includes things such as:
   :flag-assert         #x16008000fc
   (:methods
     (idle () _type_ :state 20)
-    (die () _type_ :state 21)
+    (die (symbol) _type_ :state 21)
     )
   )
 
@@ -890,9 +890,7 @@ This commonly includes things such as:
                       (the-as object (remove-setting! 'entity-name))
                       )
                      (('die)
-                      enter-state
-                      #t
-                      (go-virtual die)
+                      (go-virtual die #t)
                       )
                      (('kill)
                       (process-entity-status! self (entity-perm-status subtask-complete) #t)
@@ -973,7 +971,7 @@ This commonly includes things such as:
                      )
             )
     )
-  :code (behavior ()
+  :code (behavior ((arg0 symbol))
     (play-communicator-speech! (-> *talker-speech* 194))
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
     (kill-and-free-particles (-> self part))
@@ -1050,17 +1048,12 @@ This commonly includes things such as:
         )
   (update-transforms (-> obj root-override))
   (logclear! (-> obj mask) (process-mask actor-pause))
-  (cond
-    ((or (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
-         (task-complete? *game-info* (game-task strip-grenade))
-         )
-     enter-state
-     (go (method-of-object obj die))
-     )
-    (else
+  (if (or (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
+          (task-complete? *game-info* (game-task strip-grenade))
+          )
+      (go (method-of-object obj die) #f)
       (go (method-of-object obj idle))
       )
-    )
   (none)
   )
 

@@ -208,7 +208,7 @@
    (max-guard             uint32      :offset-assert 240)
    (count-guard           uint32      :offset-assert 244)
    (max-time              float       :offset-assert 248)
-   (ambient-sound-id      uint32      :offset-assert 252)
+   (ambient-sound-id      sound-id    :offset-assert 252)
    (turret                handle      :offset-assert 256)
    )
   :heap-base #x90
@@ -269,14 +269,14 @@
         )
     (set! (-> a0-3 volume) (the int (* 1024.0 f0-4)))
     (set! (-> a0-3 pitch-mod) (the int (* 1524.0 f30-0)))
-    (sound-play-by-spec a0-3 (the-as sound-id (-> obj ambient-sound-id)) (-> obj root-override trans))
+    (sound-play-by-spec a0-3 (-> obj ambient-sound-id) (-> obj root-override trans))
     )
   0
   (none)
   )
 
 (defmethod deactivate transport ((obj transport))
-  (sound-stop (the-as sound-id (-> obj ambient-sound-id)))
+  (sound-stop (-> obj ambient-sound-id))
   ((the-as (function process-drawable none) (find-parent-method transport 10)) obj)
   (none)
   )
@@ -386,7 +386,7 @@
 (defstate die-fast (transport)
   :virtual #t
   :code (behavior ()
-    (sound-stop (the-as sound-id (-> self ambient-sound-id)))
+    (sound-stop (-> self ambient-sound-id))
     (cleanup-for-death self)
     (none)
     )
@@ -550,7 +550,7 @@
             )
       (set! (-> self turret) (the-as handle #f))
       )
-  (set! (-> self ambient-sound-id) (the-as uint (new-sound-id)))
+  (set! (-> self ambient-sound-id) (new-sound-id))
   (go-virtual come-down)
   (none)
   )
