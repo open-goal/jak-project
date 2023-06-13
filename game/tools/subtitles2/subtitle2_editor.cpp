@@ -13,7 +13,7 @@
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_stdlib.h"
 
-static constexpr size_t LINE_DISPLAY_MAX_LEN = 38;
+// static constexpr size_t LINE_DISPLAY_MAX_LEN = 38;
 
 Subtitle2Editor::Subtitle2Editor(GameVersion version)
     : db_loaded(true),

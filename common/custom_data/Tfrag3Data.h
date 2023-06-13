@@ -18,6 +18,8 @@ namespace tfrag3 {
 // - if changing any large things (vertices, vis, bvh, colors, textures) update get_memory_usage
 // - if adding a new category to the memory usage, update extract_level to print it.
 
+constexpr int TFRAG3_VERSION = 36;
+
 enum MemoryUsageCategory {
   TEXTURE,
 
@@ -55,6 +57,7 @@ enum MemoryUsageCategory {
   MERC_MOD_VERT,
   MERC_MOD_IND,
   MERC_MOD_TABLE,
+  BLERC,
 
   COLLISION,
 
@@ -72,8 +75,6 @@ struct MemoryUsageTracker {
 
   void add(MemoryUsageCategory category, u32 size_bytes) { data[category] += size_bytes; }
 };
-
-constexpr int TFRAG3_VERSION = 35;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -437,7 +438,7 @@ struct CollisionMesh {
 // MERC
 
 struct MercVertex {
-  float pos[3];
+  alignas(32) float pos[3];
   float pad0;
 
   float normal[3];
@@ -464,12 +465,38 @@ struct MercDraw {
   void serialize(Serializer& ser);
 };
 
+struct BlercFloatData {
+  // [x, y, z, pad, nx, ny, nz, pad]
+  // note that this should match the layout of the merc vertex above
+  alignas(32) float v[8];
+};
+
+/*!
+ * Data to modify vertices based on blend shapes.
+ */
+struct Blerc {
+  std::vector<BlercFloatData> float_data;
+  std::vector<u32> int_data;
+  static constexpr u32 kTargetIdxTerminator = UINT32_MAX;
+  void serialize(Serializer& ser);
+
+  // int data, per vertex:
+  // [tgt0_idx, tgt1_idx, ..., terminator, dest]
+  // float data, per vertex:
+  // [base, tgt0, tgt1, ...]
+
+  // final vertex position is:
+  // base + sum(tgtn * weights[tgtn_idx])
+};
+
 struct MercModifiableDrawGroup {
   std::vector<MercVertex> vertices;
   std::vector<u16> vertex_lump4_addr;
   std::vector<MercDraw> fix_draw, mod_draw;
   std::vector<u8> fragment_mask;
+  Blerc blerc;
   u32 expect_vidx_end = 0;
+
   void serialize(Serializer& ser);
   void memory_usage(MemoryUsageTracker* tracker) const;
 };

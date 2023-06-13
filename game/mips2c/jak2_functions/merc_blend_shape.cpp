@@ -1,9 +1,105 @@
 //--------------------------MIPS2C---------------------
-// clang-format off
-#include "game/mips2c/mips2c_private.h"
-#include "game/kernel/jak2/kscheme.h"
-#include "common/global_profiler/GlobalProfiler.h"
+
 #include <mutex>
+
+#include "common/global_profiler/GlobalProfiler.h"
+
+#include "game/kernel/jak2/kscheme.h"
+#include "game/mips2c/mips2c_private.h"
+
+// I've rewritten the math part in C here:
+
+struct ChunkHeader {
+  s8 num_entries;  // not including this header
+  s8 unk[11];
+  s16 overlap_val;
+  s16 pad;
+};
+static_assert(sizeof(ChunkHeader) == 16);
+
+struct S16_8 {
+  s16 vals[8];
+};
+static_assert(sizeof(S16_8) == 16);
+
+struct BlercBlockHeader {
+  u8 tag_bytes[16];
+  u32 vtx_count;
+  u32 overlap;
+  u32 lump_dst;
+  u32 lump_qwc;
+};
+
+struct BlercBlock {
+  u8 output[848];
+  BlercBlockHeader header;
+};
+
+struct BlercContext {
+  BlercBlock block;
+  s8 dummy[7312];
+};
+
+namespace {
+
+int og_load_skip_pattern(int in) {
+  int base = (in >> 3) << 3;
+  int rem = (in & 0b111);
+  int pattern[8] = {0, 1, 4, 5, 8, 9, 12, 13};
+  return base * 2 + pattern[rem];
+}
+
+void simplified1(BlercContext* context, u8* ee_buffer) {
+  const s8* dummy_data = context->dummy;
+  const auto* first_chunk_header = (ChunkHeader*)dummy_data;
+  const int stride = (first_chunk_header->num_entries + 1) * 16;
+  int overlap = context->block.header.overlap;
+  u8* out = context->block.output;
+
+  // past the first chunk
+  const s8* data_src = dummy_data + stride;  // t2/t3
+  S16_8* ee_s16_8 = (S16_8*)ee_buffer;
+  for (int i = 0; i < overlap; i++) {
+    const auto* this_chunk = (ChunkHeader*)data_src;
+    for (int j = 0; j < 8; j++) {
+      ee_s16_8[i].vals[j] = this_chunk->overlap_val;
+    }
+
+    data_src += stride;  // next chunk
+  }
+
+  int total_count = ((ChunkHeader*)data_src)->num_entries;  // lb s5, 0(t3)
+  data_src += 16;                                           // now in s4
+  const u8* base_data_ptr = (u8*)dummy_data + 16;           // ra in asm
+  const s8* base_data_ptr_s = dummy_data + 16;              // ra in asm
+
+  memcpy(out, data_src, total_count * 16);
+  for (int i = 0; i < total_count * 8; i++) {
+    s32 base_val = base_data_ptr[i] * 8192;  // ld t6 grabs 8 at a time
+
+    for (int j = 0; j < overlap; j++) {
+      base_val += base_data_ptr_s[i + (j + 1) * stride] * ee_s16_8[j].vals[0];  // ld t5
+    }
+
+    base_val >>= 13;
+
+    if (base_val < 0)
+      base_val = 0;
+    if (base_val > 255)
+      base_val = 255;
+
+    int oo = og_load_skip_pattern(i);
+    out[oo + 2] = base_val;
+  }
+}
+
+void blerc_c(void* a, void* b) {
+  simplified1((BlercContext*)a, (u8*)b);
+}
+}  // namespace
+
+// clang-format off
+
 
 extern std::mutex g_merc_data_mutex;
 
@@ -19,6 +115,8 @@ struct Cache {
 } cache;
 
 u64 execute(void* ctxt) {
+  bool hit18 = false;
+  bool hit19 = false;
   auto pp = scoped_prof("blerc-exec");
   std::unique_lock<std::mutex> lk(g_merc_data_mutex);
   auto* c = (ExecutionContext*)ctxt;
@@ -168,10 +266,14 @@ block_13:
   // tadr here is bogus, it's reading something uploaded by the other transfer.
   spad_to_dma_blerc_chain(cache.fake_scratchpad_data, sadr, tadr);
 
+
 block_16:
   c->gprs[a1].du64[0] = 0;                          // or a1, r0, r0
   c->mov64(a2, a0);                                 // or a2, a0, r0
   c->load_symbol2(a3, cache.gsf_buffer);            // lw a3, *gsf-buffer*(s7)
+
+  // blerc_c(g_ee_main_mem + c->sgpr64(a2), g_ee_main_mem + c->sgpr64(a3));
+
   c->daddiu(t2, a2, 880);                           // daddiu t2, a2, 880
   c->lb(t1, 0, t2);                                 // lb t1, 0(t2)
   // nop                                            // sll r0, r0, 0
@@ -195,12 +297,14 @@ block_16:
 
 
 block_18:
+hit18 = true;
   c->lh(t5, 12, t2);                                // lh t5, 12(t2)
   c->daddu(t2, t2, t8);                             // daddu t2, t2, t8
   c->sq(t6, 0, t1);                                 // sq t6, 0(t1)
   c->daddiu(t1, t1, 16);                            // daddiu t1, t1, 16
 
 block_19:
+  hit19 = true;
   c->pcpyh(t5, t5);                                 // pcpyh t5, t5
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
   bc = c->sgpr64(t1) != c->sgpr64(t9);              // bne t1, t9, L47
@@ -209,8 +313,8 @@ block_19:
 
   c->dsubu(t3, t2, t8);                             // dsubu t3, t2, t8
   // nop                                            // sll r0, r0, 0
-
 block_21:
+
   c->addiu(t1, r0, 255);                            // addiu t1, r0, 255
   c->addiu(t2, r0, 8192);                           // addiu t2, r0, 8192
   c->lb(s5, 0, t3);                                 // lb s5, 0(t3)
@@ -283,11 +387,14 @@ block_24:
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
   c->pextlh(t5, t5, t7);                            // pextlh t5, t5, t7
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
+  // store modified vertex
   c->sq(t5, 0, t0);                                 // sq t5, 0(t0)
+
   c->daddiu(t0, t0, 16);                            // daddiu t0, t0, 16
   bc = c->sgpr64(s5) != 0;                          // bne s5, r0, L50
   c->daddiu(s4, s4, 16);                            // daddiu s4, s4, 16
   if (bc) {goto block_22;}                          // branch non-likely
+  // end of blerc_c stuff
 
   c->load_symbol2(a3, cache.stats_blerc);           // lw a3, *stats-blerc*(s7)
   bc = c->sgpr64(a3) == c->sgpr64(s7);              // beq a3, s7, L53
