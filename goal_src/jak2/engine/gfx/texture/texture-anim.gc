@@ -11,3 +11,136 @@
   (none)
   )
 
+
+
+;; definition for method 9 of type texture-anim-array
+(defmethod texture-anim-array-method-9 texture-anim-array ((obj texture-anim-array))
+  (dotimes (s5-0 (-> obj length))
+    (texture-anim-method-9 (-> obj array-data s5-0))
+    )
+  obj
+  )
+
+;; definition for method 10 of type texture-anim-array
+(defmethod texture-anim-array-method-10 texture-anim-array ((obj texture-anim-array))
+  (dotimes (s5-0 (-> obj length))
+    (texture-anim-method-10 (-> obj array-data s5-0))
+    )
+  obj
+  )
+
+;; definition for method 9 of type texture-anim
+;; INFO: Used lq/sq
+(defmethod texture-anim-method-9 texture-anim ((obj texture-anim))
+  (local-vars (a3-3 uint128) (sv-16 texture-page))
+  (if (logtest? (the-as int (-> obj func)) 1)
+      (set! (-> obj func) (the-as (function texture-anim int) (-> (the-as symbol (-> obj func)) value)))
+      )
+  (when (logtest? (the-as int (-> obj init-func)) 1)
+    (set! (-> obj init-func) (the-as (function texture-anim int) (-> (the-as symbol (-> obj init-func)) value)))
+    (if (-> obj init-func)
+        ((-> obj init-func) obj)
+        )
+    )
+  (when (-> obj tex-name)
+    (set! sv-16 (the-as texture-page #f))
+    (let ((a0-3 (lookup-level-texture-by-name (-> obj tex-name) (-> *level* loading-level) (& sv-16))))
+      (set! (-> obj tex) a0-3)
+      (when (and a0-3 sv-16)
+        0
+        (cond
+          ((= (-> a0-3 psm) (gs-psm mt8))
+           (let ((v1-20 (-> a0-3 clutdest)))
+             (when (!= v1-20 (* (/ (the-as int v1-20) 32) 32))
+               (let* ((v1-22 (-> sv-16 segment 2))
+                      (a1-5 (+ (-> v1-22 dest) (-> v1-22 size)))
+                      (a0-7 2048)
+                      )
+                 (set! (-> obj tex clutdest) (* (shr (+ a1-5 2047) 11) 32))
+                 (+! (-> sv-16 size) a0-7)
+                 (+! (-> v1-22 size) a0-7)
+                 )
+               )
+             )
+           )
+          ((= (-> a0-3 psm) (gs-psm ct32))
+           (let ((v1-24 (-> a0-3 dest 0)))
+             (when (!= v1-24 (* (/ (the-as int v1-24) 32) 32))
+               (let* ((v1-26 (-> sv-16 segment 2))
+                      (a1-19 (+ (-> v1-26 dest) (-> v1-26 size)))
+                      (a0-12 (shl (sar (+ (* (-> a0-3 w) (-> a0-3 h)) 2047) 11) 11))
+                      )
+                 (set! (-> obj tex dest 0) (* (shr (+ a1-19 2047) 11) 32))
+                 (+! (-> sv-16 size) a0-12)
+                 (+! (-> v1-26 size) a0-12)
+                 )
+               )
+             )
+           )
+          )
+        )
+      )
+    )
+  (dotimes (s5-0 (the-as int (-> obj num-layers)))
+    (texture-anim-layer-method-9 (-> obj data s5-0))
+    )
+  (let ((v1-34 (-> obj tex)))
+    (when v1-34
+      (dotimes (a0-15 3)
+        (set! (-> v1-34 masks data a0-15 mask quad) (the-as uint128 0))
+        )
+      (dotimes (a0-18 (the-as int (-> obj num-layers)))
+        (let ((a1-33 (-> obj data a0-18 tex)))
+          (when a1-33
+            (dotimes (a2-8 3)
+              (let ((a3-2 (-> v1-34 masks data a2-8 mask quad))
+                    (t0-2 (-> a1-33 masks data a2-8 mask quad))
+                    )
+                (.por a3-3 a3-2 t0-2)
+                )
+              (set! (-> v1-34 masks data a2-8 mask quad) a3-3)
+              )
+            )
+          )
+        )
+      )
+    )
+  obj
+  )
+
+;; definition for method 10 of type texture-anim
+(defmethod texture-anim-method-10 texture-anim ((obj texture-anim))
+  (set! (-> obj tex) #f)
+  (dotimes (s5-0 (the-as int (-> obj num-layers)))
+    (texture-anim-layer-method-10 (-> obj data s5-0))
+    )
+  obj
+  )
+
+;; definition for method 9 of type texture-anim-layer
+(defmethod texture-anim-layer-method-9 texture-anim-layer ((obj texture-anim-layer))
+  (if (logtest? (the-as int (-> obj func)) 1)
+      (set! (-> obj func) (the-as (function texture-anim-layer int) (-> (the-as symbol (-> obj func)) value)))
+      )
+  (when (logtest? (the-as int (-> obj init-func)) 1)
+    (set! (-> obj init-func)
+          (the-as (function texture-anim-layer int) (-> (the-as symbol (-> obj init-func)) value))
+          )
+    (if (-> obj init-func)
+        ((-> obj init-func) obj)
+        )
+    )
+  (if (-> obj tex-name)
+      (set! (-> obj tex)
+            (lookup-level-texture-by-name (-> obj tex-name) (-> *level* loading-level) (the-as (pointer texture-page) #f))
+            )
+      )
+  obj
+  )
+
+;; definition for method 10 of type texture-anim-layer
+(defmethod texture-anim-layer-method-10 texture-anim-layer ((obj texture-anim-layer))
+  (set! (-> obj tex) #f)
+  obj
+  )
+

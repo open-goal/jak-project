@@ -321,6 +321,155 @@
     )
   )
 
+(defmethod led-enabled? pc-settings-jak1 ((obj pc-settings-jak1))
+  "should the controller led be set?"
+  (or (-> obj controller-hp-led?)
+      (-> obj controller-eco-led?)
+      (-> obj controller-heat-led?)))
+
+(defmethod update-led pc-settings-jak1 ((obj pc-settings-jak1))
+  "set the controller led color by modifying the controller-led-color vector"
+  
+  ;; default color is just blue.
+  (set! (-> obj controller-led-color r) 0.0)
+  (set! (-> obj controller-led-color g) 0.0)
+  (set! (-> obj controller-led-color b) 1.0)
+
+  (when *target*
+    (let ((set-no-eco-color? #t))
+    (when (-> obj controller-hp-led?)
+      ;; flicker led according to hp. lower hp = faster and more intense flicker
+      (cond
+        ((= (-> *target* fact-info-target health) 0.0)
+          ;; dead. just set to minimum brightness.
+          (set! (-> obj controller-led-color a) (-> obj controller-led-min-brightness))
+          )
+        (else
+          (let ((flicker-speed (lerp-scale  2.0 0.0
+                                            (-> *target* fact-info-target health)
+                                            1.0 (-> *FACT-bank* health-max-default)))
+                (flicker-amp (lerp-scale  (- 1.0 (-> obj controller-led-min-brightness)) (- 1.0 (-> obj controller-led-max-brightness))
+                                          (-> *target* fact-info-target health)
+                                          1.0 (-> *FACT-bank* health-max-default)))
+                )
+            (set! (-> obj controller-led-color a) (- 1.0 (* flicker-amp (/ (+ 1.0 (sin (* flicker-speed (degrees (-> *display* game-frame-counter))))) 2.0))))
+            )
+          )
+        )
+      )
+
+    (when (and  (-> obj controller-heat-led?)
+                (nonzero? (-> *target* racer))
+                (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-9))
+                (or (= (-> *target* current-level name) 'lavatube)
+                    (= (-> *target* current-level name) 'firecanyon)
+                    (= (-> *target* current-level name) 'citadel)))
+      (defun-extern zoomer-heat-slice-color matrix float none)
+      (defun-extern zoomer-get-heat float)
+      (defun-extern zoomer-get-heat-max float)
+      (let ((temp-mtx (new-stack-matrix0))
+            (heat (/ (zoomer-get-heat) (zoomer-get-heat-max))))
+        (zoomer-heat-slice-color temp-mtx heat)
+        (when (< 0.0 heat)
+          (set! (-> obj controller-led-color r) (/ (-> temp-mtx vector 2 x) 128.0))
+          (set! (-> obj controller-led-color g) (/ (-> temp-mtx vector 2 y) 128.0))
+          (set! (-> obj controller-led-color b) (/ (-> temp-mtx vector 2 z) 128.0))
+          (false! set-no-eco-color?))
+        )
+      )
+
+    (when (-> obj controller-eco-led?)
+    ;; get remaining eco as a number from 0.0 to 1.0
+    (let ((eco-remain-fac (/ (the float (- (-> *target* fact-info-target eco-timeout) (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time))))
+                             (the float (-> *FACT-bank* eco-full-timeout)))))
+      (when set-no-eco-color?
+        (set! (-> obj controller-led-color r) 1.0)
+        (set! (-> obj controller-led-color g) 1.0)
+        (set! (-> obj controller-led-color b) 1.0))
+      ;; dont set eco color if we don't have eco.
+      (when (< 0.0 eco-remain-fac)
+        ;; set color according to eco type. matches the color in the meter!
+        (case (-> *target* fact-info-target eco-type)
+          (((pickup-type eco-blue))
+            (set! (-> obj controller-led-color r) 0.0)
+            (set! (-> obj controller-led-color g) 0.5)
+            (set! (-> obj controller-led-color b) 1.0)
+            )
+          (((pickup-type eco-yellow))
+            (set! (-> obj controller-led-color r) 1.0)
+            (set! (-> obj controller-led-color g) 0.75)
+            (set! (-> obj controller-led-color b) 0.0)
+            )
+          (((pickup-type eco-red))
+            (set! (-> obj controller-led-color r) 1.0)
+            (set! (-> obj controller-led-color g) 0.25)
+            (set! (-> obj controller-led-color b) 0.0)
+            )
+          (((pickup-type eco-green))
+            (set! (-> obj controller-led-color r) 0.0)
+            (set! (-> obj controller-led-color g) 1.0)
+            (set! (-> obj controller-led-color b) 0.25)
+            )
+          )
+        ;; less than 20% eco remaining, so we flash. same as eco meter.
+        (when (and (< eco-remain-fac 0.2)
+                  (zero? (logand (the int (* DISPLAY_FPS_RATIO (-> *display* integral-frame-counter))) 4)))
+          (*! (-> obj controller-led-color g) 2.0)
+          )
+        )
+      ))
+    ))
+  #t)
+
+
+(defun find-music-log ((music symbol))
+  "return #t if the given music is logged into the *pc-settings*, #f otherwise."
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (if (= music (-> *pc-settings* secrets music i name))
+        (return #t)))
+  #f)
+
+(defun find-flava-log ((music symbol) (flava-idx int))
+  "return #t if the given music's flava is logged into the *pc-settings*, #f otherwise."
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (if (= music (-> *pc-settings* secrets music i name))
+        (return (logtest? (-> *pc-settings* secrets music i flava-mask) (ash 1 flava-idx)))))
+  #f)
+
+(defun-debug print-music-log ((out object))
+  "prints the *pc-settings* music log."
+
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (if (-> *pc-settings* secrets music i name)
+        (format out "music log ~D: ~A (f #x~x)~%" i (-> *pc-settings* secrets music i name) (-> *pc-settings* secrets music i flava-mask)))
+    )
+
+  0)
+
+(defmethod add-to-music-log pc-settings-jak1 ((obj pc-settings-jak1) (music symbol) (flava int))
+  "add music and flava information to the music log.
+   if music already exists, adds flava. if flava already exists, nothing happens."
+
+  ;; go through our music log
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (cond
+      ;; an empty log entry! place the currently playing music there, and fill flava.
+      ((not (-> obj secrets music i name))
+       (set! (-> obj secrets music i name) music)
+       (set! (-> obj secrets music i flava-mask) (ash 1 flava))
+       (return 0)
+       )
+      ;; an existing log entry for the current music. fill flava.
+      ((= music (-> obj secrets music i name))
+       (logior! (-> obj secrets music i flava-mask) (ash 1 flava))
+       (return 0)
+       )
+      ;; something else. maybe the wrong entry, in which case nothing to do.
+      )
+    )
+
+  0)
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -339,6 +488,41 @@
     (("subtitles?") (set! (-> obj subtitles?) (file-stream-read-symbol file)))
     (("subtitle-language") (set! (-> obj subtitle-language) (the-as pc-language (file-stream-read-int file))))
     (("text-language") (set! (-> obj text-language) (the-as pc-language (file-stream-read-int file))))
+    (("scenes-seen")
+      (dotimes (i PC_SPOOL_LOG_LENGTH)
+        (set! (-> obj scenes-seen i) (file-stream-read-int file))
+        )
+      )
+    (("secrets")
+      (dosettings (file)
+        (case-str *pc-temp-string*
+          (("hard-rats?") (set! (-> obj secrets hard-rats?) (file-stream-read-symbol file)))
+          (("hero-mode?") (set! (-> obj secrets hero-mode?) (file-stream-read-symbol file)))
+          (("hud-map?") (set! (-> obj secrets hud-map?) (file-stream-read-symbol file)))
+          (("hud-counters?") (set! (-> obj secrets hud-counters?) (file-stream-read-symbol file)))
+          (("hud-watch?") (set! (-> obj secrets hud-watch?) (file-stream-read-symbol file)))
+          (("watch-12hr?") (set! (-> obj secrets watch-12hr?) (file-stream-read-symbol file)))
+          (("art") (set! (-> obj secrets art) (the-as pc-jak1-concept-art (file-stream-read-int file))))
+          (("hard-fish-hiscore") (set! (-> obj secrets hard-fish-hiscore) (file-stream-read-int file)))
+          (("hard-rats-hiscore") (set! (-> obj secrets hard-rats-hiscore) (file-stream-read-int file)))
+          (("hard-rats-hiwave") (set! (-> obj secrets hard-rats-hiwave) (file-stream-read-int file)))
+          (("cheats")
+            (set! (-> obj cheats-known) (the pc-cheats (file-stream-read-int file)))
+            (set! (-> obj cheats) (logand (-> obj cheats-known) (file-stream-read-int file)))
+            )
+          (("music")
+            (dotimes (i PC_MUSIC_LOG_LENGTH)
+              (when (!= #x29 (file-stream-get-next-char-ret file))
+                  (with-settings-scope (file)
+                    (set! (-> obj secrets music i name) (file-stream-read-symbol file))
+                    (set! (-> obj secrets music i flava-mask) (file-stream-read-int file))
+                    )
+                )
+              )
+            )
+          )
+        )
+      )
     )
   0)
 
@@ -352,6 +536,41 @@
   (format file "  (subtitles? ~A)~%" (-> obj subtitles?))
   (format file "  (subtitle-language ~D)~%" (-> obj subtitle-language))
   (format file "  (text-language ~D)~%" (-> obj text-language))
+
+  #|
+  (format file "  (scenes-seen")
+  (dotimes (i PC_SPOOL_LOG_LENGTH)
+    (if (zero? (mod i 16))
+      (format file "~%   ")
+      )
+    (format file " ~D" (-> obj scenes-seen i))
+    )
+  (format file "~%    )~%")
+  |#
+
+  (format file "  (secrets~%")
+  #|
+  (format file "    (art #x~X)~%" (-> obj secrets art))
+  (format file "    (hard-rats? ~A)~%" (-> obj secrets hard-rats?))
+  (format file "    (hero-mode? ~A)~%" (-> obj secrets hero-mode?))
+  (format file "    (hud-map? ~A)~%" (-> obj secrets hud-map?))
+  (format file "    (hud-counters? ~A)~%" (-> obj secrets hud-counters?))
+  (format file "    (hard-fish-hiscore ~D)~%" (-> obj secrets hard-fish-hiscore))
+  (format file "    (hard-rats-hiscore ~D)~%" (-> obj secrets hard-rats-hiscore))
+  (format file "    (hard-rats-hiwave ~D)~%" (-> obj secrets hard-rats-hiwave))
+  |#
+  (format file "    (cheats #x~x #x~x)~%" (-> obj cheats-known) (-> obj cheats))
+
+  (format file "    (music~%")
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (if (-> obj secrets music i name)
+  (format file "      (~A #x~X)~%" (-> obj secrets music i name) (-> obj secrets music i flava-mask))
+  )
+    )
+
+  (format file "      )~%")
+
+  (format file "    )~%")
   0)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

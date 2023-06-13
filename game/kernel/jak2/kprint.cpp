@@ -17,7 +17,7 @@
 namespace jak2 {
 
 void output_sql_query(char* query_name) {
-  if (MasterDebug != 0) {
+  if (MasterDebug) {
     sprintf(strend(OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader)), "sql-query \"");
 
     char* buffer_ptr = strend(OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader));
@@ -539,12 +539,14 @@ s32 format_impl_jak2(uint64_t* args) {
     // we'd get these eventually in ClearPending, but for some reason they flush these here.
     // This is nicer because we may crash in between here and flushing the print buffer.
     if (DiskBoot) {
-      // It's actually really annoying when debugging though so we disable it then
-      if (!MasterDebug) {
+      // however, we are going to disable it anyway because it spams the console and is annoying
+      if (false) {
         printf("%s", PrintPendingLocal3);
         fflush(stdout);
       }
       PrintPending = make_ptr(PrintPendingLocal2).cast<u8>();
+      // if we don't comment this line, our output gets cleared
+      // *PrintPendingLocal3 = 0;
     }
 
     return 0;
