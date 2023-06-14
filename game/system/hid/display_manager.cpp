@@ -7,6 +7,8 @@
 
 DisplayManager::DisplayManager(SDL_Window* window)
     : m_window(window), m_selected_fullscreen_display_id(0) {
+  // SDL hint to disable OS level forced scaling and allow native resolution at non 100% scales
+  SDL_SetHint("SDL_WINDOWS_DPI_SCALING", "true");
   update_curr_display_info();
   update_video_modes();
   // Load display settings from a file
