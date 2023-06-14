@@ -2469,12 +2469,12 @@ This commonly includes things such as:
   )
 
 (deftype propa (process-focusable)
-  ((sound-id           uint32  :offset-assert 204)
-   (sound-index        uint32  :offset-assert 208)
-   (handle             handle  :offset-assert 216)
-   (y-rot              float   :offset-assert 224)
-   (hit-points         int32   :offset-assert 228)
-   (incoming-attack-id uint32  :offset-assert 232)
+  ((sound-id           sound-id  :offset-assert 204)
+   (sound-index        uint32    :offset-assert 208)
+   (handle             handle    :offset-assert 216)
+   (y-rot              float     :offset-assert 224)
+   (hit-points         int32     :offset-assert 228)
+   (incoming-attack-id uint32    :offset-assert 232)
    )
   :heap-base #x70
   :method-count-assert 32
@@ -2717,8 +2717,8 @@ This commonly includes things such as:
     )
   :exit (behavior ()
     (when (nonzero? (-> self sound-id))
-      (sound-stop (the-as sound-id (-> self sound-id)))
-      (set! (-> self sound-id) (the-as uint 0))
+      (sound-stop (-> self sound-id))
+      (set! (-> self sound-id) (new 'static 'sound-id))
       0
       )
     (none)
@@ -2733,14 +2733,14 @@ This commonly includes things such as:
          (set-action!
            *gui-control*
            (gui-action stop)
-           (the-as sound-id (-> self sound-id))
+           (-> self sound-id)
            (gui-channel none)
            (gui-action none)
            (the-as string #f)
            (the-as (function gui-connection symbol) #f)
            (the-as process #f)
            )
-         (set! (-> self sound-id) (the-as uint 0))
+         (set! (-> self sound-id) (new 'static 'sound-id))
          (+! (-> self sound-index) 1)
          (when (>= (-> self sound-index) (the-as uint (-> *propa-sounds* length)))
            (set! (-> self sound-index) (the-as uint 0))
@@ -2751,16 +2751,15 @@ This commonly includes things such as:
       ((< (vector-vector-distance (camera-pos) (-> self root-override trans)) 225280.0)
        (cond
          ((zero? (-> self sound-id))
-          (set! (-> self sound-id) (the-as uint (add-process
-                                                  *gui-control*
-                                                  self
-                                                  (gui-channel alert)
-                                                  (gui-action play)
-                                                  (-> *propa-sounds* (-> self sound-index))
-                                                  -99.0
-                                                  0
-                                                  )
-                                           )
+          (set! (-> self sound-id) (add-process
+                                     *gui-control*
+                                     self
+                                     (gui-channel alert)
+                                     (gui-action play)
+                                     (-> *propa-sounds* (-> self sound-index))
+                                     -99.0
+                                     0
+                                     )
                 )
           (let ((a1-4 (new 'stack-no-clear 'vector)))
             (set! (-> a1-4 quad) (-> self root-override trans quad))
@@ -2772,7 +2771,7 @@ This commonly includes things such as:
            (when *sound-player-enable*
              (let ((gp-2 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
                (set! (-> gp-2 command) (sound-command set-param))
-               (set! (-> gp-2 id) (the-as sound-id (-> self sound-id)))
+               (set! (-> gp-2 id) (-> self sound-id))
                (set! (-> gp-2 params fo-min) 40)
                (set! (-> gp-2 params fo-max) 55)
                (set! (-> gp-2 params fo-curve) 2)
@@ -2791,8 +2790,8 @@ This commonly includes things such as:
                (-> gp-2 id)
                )
              )
-           (when (= (get-status *gui-control* (the-as sound-id (-> self sound-id))) (gui-status unknown))
-             (set! (-> self sound-id) (the-as uint 0))
+           (when (= (get-status *gui-control* (-> self sound-id)) (gui-status unknown))
+             (set! (-> self sound-id) (new 'static 'sound-id))
              (+! (-> self sound-index) 1)
              (when (>= (-> self sound-index) (the-as uint (-> *propa-sounds* length)))
                (set! (-> self sound-index) (the-as uint 0))

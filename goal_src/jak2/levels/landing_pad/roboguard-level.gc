@@ -16,7 +16,7 @@
    (turning-acc         float              :offset-assert 660)
    (speed               float              :offset-assert 664)
    (roll-attack-count   uint32             :offset-assert 668)
-   (roll-sound          uint32             :offset-assert 672)
+   (roll-sound          sound-id           :offset-assert 672)
    )
   :heap-base #x230
   :method-count-assert 189
@@ -601,7 +601,7 @@
     (none)
     )
   :exit (behavior ()
-    (sound-stop (the-as sound-id (-> self roll-sound)))
+    (sound-stop (-> self roll-sound))
     (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
@@ -610,7 +610,7 @@
     )
   :trans (behavior ()
     (let ((a0-0 (static-sound-spec "robo-roll")))
-      (sound-play-by-spec a0-0 (the-as sound-id (-> self roll-sound)) (-> self root-override2 trans))
+      (sound-play-by-spec a0-0 (-> self roll-sound) (-> self root-override2 trans))
       )
     (cond
       ((logtest? (-> self flags) 64)
@@ -1239,7 +1239,7 @@
   )
 
 (defmethod deactivate roboguard-level ((obj roboguard-level))
-  (sound-stop (the-as sound-id (-> obj roll-sound)))
+  (sound-stop (-> obj roll-sound))
   ((the-as (function nav-enemy none) (find-parent-method roboguard-level 10)) obj)
   (none)
   )
@@ -1349,7 +1349,7 @@
     (set! (-> v1-18 nav callback-info) (-> v1-18 enemy-info-override callback-info))
     )
   0
-  (set! (-> obj roll-sound) (the-as uint (new-sound-id)))
+  (set! (-> obj roll-sound) (new-sound-id))
   (set! (-> obj flags) (the-as uint 0))
   0
   (none)
