@@ -25,6 +25,10 @@
 
 (format 0 "pckernel version: ~D.~D~%" PC_KERNEL_VER_MAJOR PC_KERNEL_VER_MINOR)
 
+(defun get-pckernel-version ()
+  "return the current pckernel version"
+  PC_KERNEL_VERSION)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; global variables
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -51,28 +55,31 @@
 ;;;; updates
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod set-display-mode! pc-settings ((obj pc-settings) (mode symbol))
+(defmethod set-display-mode! pc-settings ((obj pc-settings) (mode symbol) (call-handlers symbol))
   "sets the game's display mode"
   ;; no-op if the display mode hasn't actually changed
   (when (!= mode (-> obj display-mode))
     ;; change the display mode.
     (set! (-> obj display-mode) mode)
-    ;; set fullscreen to what we want
-    (pc-set-display-mode (-> obj display-mode))
-    ;; if windowed mode, set the size properly
-    (when (= (-> obj display-mode) 'windowed)
-      ;; TODO - this means the user can never have a window smaller than MIN_WIDTH/HEIGHT
-      (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height)))))
+
+    (when call-handlers
+      ;; set fullscreen to what we want
+      (pc-set-display-mode (-> obj display-mode))
+      ;; if windowed mode, set the size properly
+      (when (= (-> obj display-mode) 'windowed)
+        ;; TODO - this means the user can never have a window smaller than MIN_WIDTH/HEIGHT
+        (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height))))))
   0)
 
-(defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int))
+(defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int) (call-handlers symbol))
   "sets the size of the display window"
   (format 0 "Setting ~A size to ~D x ~D~%" (-> obj display-mode) width height)
   (cond
     ((= 'windowed (-> obj display-mode))
       (set! (-> obj win-width) width)
       (set! (-> obj win-height) height)
-      (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height)))
+      (if call-handlers
+          (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height))))
       )
     (else
       (set! (-> obj width) width)
@@ -99,23 +106,22 @@
   (set! (-> obj aspect-ratio-reciprocal) (/ ASPECT_4X3 aspect))
   (none))
 
-(defmethod set-frame-rate! pc-settings ((obj pc-settings) (rate int))
+(defmethod set-frame-rate! pc-settings ((obj pc-settings) (rate int) (call-handlers symbol))
   "set the target framerate."
-  (pc-set-frame-rate rate)
+  (if call-handlers
+      (pc-set-frame-rate rate))
   (if (and (!= 'fullscreen (-> obj display-mode))
            (!= (pc-get-active-display-refresh-rate) rate))
       (set! (-> obj vsync?) #f))
+  (set! (-> obj target-fps) rate)
   (case rate
     ((50)
-      (set! (-> obj target-fps) rate)
       (set-game-setting! obj 'video-mode 'pal)
       )
     ((60)
-      (set! (-> obj target-fps) rate)
       (set-game-setting! obj 'video-mode 'ntsc)
       )
     (else
-      (set! (-> obj target-fps) rate)
       (set-game-setting! obj 'video-mode 'custom)
       )
     )
@@ -145,7 +151,6 @@
 (defmethod update-from-os pc-settings ((obj pc-settings))
   "Update settings from the C kernel to GOAL."
 
-  (set! (-> obj os) (pc-get-os))
   (pc-get-window-size (&-> obj real-width) (&-> obj real-height))
   (pc-get-window-scale (&-> obj dpi-x) (&-> obj dpi-y))
 
@@ -199,11 +204,12 @@
      )
     )
 
-  (pc-set-vsync (-> obj vsync?))
+  (pc-set-vsync (and (-> obj vsync?)
+                     (or (= 'fullscreen (-> obj display-mode))
+                         (>= (pc-get-active-display-refresh-rate) (-> obj target-fps)))))
+
   (when (!= 'fullscreen (-> obj display-mode))
-      (if (< (pc-get-active-display-refresh-rate) (-> obj target-fps))
-          (pc-set-vsync #f))
-      (pc-set-frame-rate (-> obj target-fps)))
+    (pc-set-frame-rate (-> obj target-fps)))
 
   ;; do game resolution
   (if (= (-> obj display-mode) 'windowed)
@@ -217,10 +223,9 @@
             (true! valid?))
         )
 
-      (if (not valid?) (set! (-> obj gfx-msaa) 2))
+      (if (not valid?) (set! (-> obj gfx-msaa) PC_DEFAULT_MSAA))
       (pc-set-msaa (-> obj gfx-msaa))
       )
-
   ;; -- end TODO
 
   (pc-discord-rpc-set (if (-> obj discord-rpc?) 1 0))
@@ -243,6 +248,20 @@
     (pc-sound-set-fade-hack fade-hack)
     )
 
+  (when (led-enabled? obj)
+    (update-led obj)
+    ;(format *stdcon* "led: ~,,2f ~,,2f ~,,2f (~,,2f%)~%" (-> obj controller-led-color r) (-> obj controller-led-color g) (-> obj controller-led-color b) (* 100.0 (-> obj controller-led-color a)))
+    ;; use alpha as the brightness modifier
+    (vector-float*! (-> obj controller-led-color) (-> obj controller-led-color) (-> obj controller-led-color a))
+    ;; now multiply by the brightness setting
+    (vector-float*! (-> obj controller-led-color) (-> obj controller-led-color) (-> obj controller-led-brightness))
+    ;; now use it as the controller led color
+    (pc-set-controller-led! 0
+                            (the int (lerp-scale 0.0 255.0 (-> obj controller-led-color r) 0.0 1.0))
+                            (the int (lerp-scale 0.0 255.0 (-> obj controller-led-color g) 0.0 1.0))
+                            (the int (lerp-scale 0.0 255.0 (-> obj controller-led-color b) 0.0 1.0)))
+    )
+
   (none))
 
 ;; where we store the input progress for the cheat codes. make sure there's enough space for all cheats.
@@ -253,10 +272,7 @@
   `(begin
     (cpad-clear! 0 r1)
     (logxor! ,cheats-var (pc-cheats ,cheat))
-    (if (-> *pc-settings* speedrunner-mode?)
-      (sound-play "cursor-options")
-      (cheats-sound-play (logtest? ,cheats-var (pc-cheats ,cheat)))
-      )
+    (cheats-sound-play (logtest? ,cheats-var (pc-cheats ,cheat)))
     )
   )
 
@@ -306,34 +322,20 @@
   "run cheats."
   0)
 
-
-(defmethod add-to-music-log pc-settings ((obj pc-settings) (music symbol) (flava int))
-  "add music and flava information to the music log.
-   if music already exists, adds flava. if flava already exists, nothing happens."
-
-  ;; go through our music log
-  (dotimes (i PC_MUSIC_LOG_LENGTH)
-    (cond
-      ;; an empty log entry! place the currently playing music there, and fill flava.
-      ((not (-> obj secrets music i name))
-       (set! (-> obj secrets music i name) music)
-       (set! (-> obj secrets music i flava-mask) (ash 1 flava))
-       (return 0)
-       )
-      ;; an existing log entry for the current music. fill flava.
-      ((= music (-> obj secrets music i name))
-       (logior! (-> obj secrets music i flava-mask) (ash 1 flava))
-       (return 0)
-       )
-      ;; something else. maybe the wrong entry, in which case nothing to do.
-      )
-    )
-
-  0)
-
 (defmethod update-music-log pc-settings ((obj pc-settings))
   "update music log settings."
   0)
+
+(defmethod update-led pc-settings ((obj pc-settings))
+  "set the controller led color by modifying the controller-led-color vector"
+  ;; random colors for fun lol
+  (set-vector! (-> obj controller-led-color) (rand-vu) (rand-vu) (rand-vu) 1.0)
+  ;(set-vector! (-> obj controller-led-color) 0.0 0.0 1.0 1.0)
+  #t)
+
+(defmethod led-enabled? pc-settings ((obj pc-settings))
+  "should the controller led be set?"
+  #f)
 
 
 
@@ -388,30 +390,6 @@
 
 )
 
-
-(defun find-music-log ((music symbol))
-  "return #t if the given music is logged into the *pc-settings*, #f otherwise."
-  (dotimes (i PC_MUSIC_LOG_LENGTH)
-    (if (= music (-> *pc-settings* secrets music i name))
-        (return #t)))
-  #f)
-
-(defun find-flava-log ((music symbol) (flava-idx int))
-  "return #t if the given music's flava is logged into the *pc-settings*, #f otherwise."
-  (dotimes (i PC_MUSIC_LOG_LENGTH)
-    (if (= music (-> *pc-settings* secrets music i name))
-        (return (logtest? (-> *pc-settings* secrets music i flava-mask) (ash 1 flava-idx)))))
-  #f)
-
-(defun-debug print-music-log ((out object))
-  "prints the *pc-settings* music log."
-
-  (dotimes (i PC_MUSIC_LOG_LENGTH)
-    (if (-> *pc-settings* secrets music i name)
-        (format out "music log ~D: ~A (f #x~x)~%" i (-> *pc-settings* secrets music i name) (-> *pc-settings* secrets music i flava-mask)))
-    )
-
-  0)
 
 (defmethod set-ignore-controller-in-bg! pc-settings ((obj pc-settings) (val symbol))
   "sets whether or not to ignore controller inputs if the window is in the background"
@@ -650,7 +628,7 @@
   "handle the text parsing input for the 'settings' group"
 
   (case-str *pc-temp-string*
-    (("fps") (set-frame-rate! obj (file-stream-read-int file)))
+    (("fps") (set-frame-rate! obj (file-stream-read-int file) #t))
     (("window-size")
       (set! (-> obj win-width) (file-stream-read-int file))
       (set! (-> obj win-height) (file-stream-read-int file))
@@ -673,7 +651,11 @@
           (set-aspect! obj (-> obj aspect-custom-x) (-> obj aspect-custom-y))
           )
       )
-    (("display-mode") (set-display-mode! obj (file-stream-read-symbol file)))
+    (("display-mode")
+      ;; force a display mode update
+      (set! (-> obj display-mode) #f)
+      (set-display-mode! obj (file-stream-read-symbol file) #t)
+      )
     (("monitor") (set-monitor! obj (file-stream-read-int file)))
     (("letterbox") (set! (-> obj letterbox?) (file-stream-read-symbol file)))
     (("vsync") (set! (-> obj vsync?) (file-stream-read-symbol file)))
@@ -697,6 +679,7 @@
     (("ignore-controller-win-unfocused?") (set-ignore-controller-in-bg! obj (file-stream-read-symbol file)))
     (("controller-hp-led?") (set! (-> obj controller-hp-led?) (file-stream-read-symbol file)))
     (("controller-eco-led?") (set! (-> obj controller-eco-led?) (file-stream-read-symbol file)))
+    (("controller-heat-led?") (set! (-> obj controller-heat-led?) (file-stream-read-symbol file)))
     (("stick-deadzone") (set! (-> obj stick-deadzone) (file-stream-read-float file)))
     (("keyboard-enabled?") (set-enable-keyboard! obj (file-stream-read-symbol file)))
     (("mouse-enabled?") (set! (-> obj mouse-enabled?) (file-stream-read-symbol file)))
@@ -726,45 +709,13 @@
     (("third-camera-v-inverted?") (set! (-> obj third-camera-v-inverted?) (file-stream-read-symbol file)))
     (("music-fadein?") (set! (-> obj music-fadein?) (file-stream-read-symbol file)))
     (("music-fadeout?") (set! (-> obj music-fadeout?) (file-stream-read-symbol file)))
-    (("scenes-seen")
-      (dotimes (i PC_SPOOL_LOG_LENGTH)
-        (set! (-> obj scenes-seen i) (file-stream-read-int file))
-        )
-      )
-    (("secrets")
-      (dosettings (file)
-        (case-str *pc-temp-string*
-          (("hard-rats?") (set! (-> obj secrets hard-rats?) (file-stream-read-symbol file)))
-          (("hero-mode?") (set! (-> obj secrets hero-mode?) (file-stream-read-symbol file)))
-          (("hud-map?") (set! (-> obj secrets hud-map?) (file-stream-read-symbol file)))
-          (("hud-counters?") (set! (-> obj secrets hud-counters?) (file-stream-read-symbol file)))
-          (("hud-watch?") (set! (-> obj secrets hud-watch?) (file-stream-read-symbol file)))
-          (("watch-12hr?") (set! (-> obj secrets watch-12hr?) (file-stream-read-symbol file)))
-          (("art") (set! (-> obj secrets art) (the-as pc-jak1-concept-art (file-stream-read-int file))))
-          (("hard-fish-hiscore") (set! (-> obj secrets hard-fish-hiscore) (file-stream-read-int file)))
-          (("hard-rats-hiscore") (set! (-> obj secrets hard-rats-hiscore) (file-stream-read-int file)))
-          (("hard-rats-hiwave") (set! (-> obj secrets hard-rats-hiwave) (file-stream-read-int file)))
-          (("cheats")
-            (set! (-> obj cheats-known) (the pc-cheats (file-stream-read-int file)))
-            (set! (-> obj cheats) (logand (-> obj cheats-known) (file-stream-read-int file)))
-            )
-          (("music")
-            (dotimes (i PC_MUSIC_LOG_LENGTH)
-              (when (!= #x29 (file-stream-get-next-char-ret file))
-                  (with-settings-scope (file)
-                    (set! (-> obj secrets music i name) (file-stream-read-symbol file))
-                    (set! (-> obj secrets music i flava-mask) (file-stream-read-int file))
-                    )
-                )
-              )
-            )
-          )
-        )
-      )
+    (("controller-led-brightness") (set! (-> obj controller-led-brightness) (file-stream-read-float file)))
+    (("controller-led-min-brightness") (set! (-> obj controller-led-min-brightness) (file-stream-read-float file)))
+    (("controller-led-max-brightness") (set! (-> obj controller-led-max-brightness) (file-stream-read-float file)))
     (("panic")
       (when (file-stream-read-symbol file)
-        (reset obj)
-        (set-display-mode! obj #f)
+        (reset obj #t)
+        (set-display-mode! obj #f #t)
         (return #f)
         )
       )
@@ -785,18 +736,18 @@
   (format file "  (monitor ~D)~%" (-> obj monitor))
   (format file "  (letterbox ~A)~%" (-> obj letterbox?))
   (format file "  (vsync ~A)~%" (-> obj vsync?))
-  (format file "  (font-scale ~f)~%" (-> obj font-scale))
+  ;(format file "  (font-scale ~f)~%" (-> obj font-scale))
 
-  (format file "  (audio-latency-ms ~D)~%" (-> obj audio-latency-ms))
-  (format file "  (audio-pan-override ~f)~%" (-> obj audio-pan-override))
-  (format file "  (audio-volume-override ~f)~%" (-> obj audio-volume-override))
-  (format file "  (audio-channel-nb ~D)~%" (-> obj audio-channel-nb))
+  ;(format file "  (audio-latency-ms ~D)~%" (-> obj audio-latency-ms))
+  ;(format file "  (audio-pan-override ~f)~%" (-> obj audio-pan-override))
+  ;(format file "  (audio-volume-override ~f)~%" (-> obj audio-volume-override))
+  ;(format file "  (audio-channel-nb ~D)~%" (-> obj audio-channel-nb))
 
-  (format file "  (gfx-renderer ~D)~%" (-> obj gfx-renderer))
-  (format file "  (gfx-resolution ~f)~%" (-> obj gfx-resolution))
-  (format file "  (gfx-anisotropy ~f)~%" (-> obj gfx-anisotropy))
-  (format file "  (shrub-dist-mod ~f)~%" (-> obj shrub-dist-mod))
-  (format file "  (lod-dist-mod ~f)~%" (-> obj lod-dist-mod))
+  ;(format file "  (gfx-renderer ~D)~%" (-> obj gfx-renderer))
+  ;(format file "  (gfx-resolution ~f)~%" (-> obj gfx-resolution))
+  ;(format file "  (gfx-anisotropy ~f)~%" (-> obj gfx-anisotropy))
+  ;(format file "  (shrub-dist-mod ~f)~%" (-> obj shrub-dist-mod))
+  ;(format file "  (lod-dist-mod ~f)~%" (-> obj lod-dist-mod))
   (format file "  (lod-force-tfrag ~D)~%" (-> obj lod-force-tfrag))
   (format file "  (lod-force-tie ~D)~%" (-> obj lod-force-tie))
   (format file "  (lod-force-ocean ~D)~%" (-> obj lod-force-ocean))
@@ -805,6 +756,10 @@
   (format file "  (ignore-controller-win-unfocused? ~A)~%" (-> obj ignore-controller-win-unfocused?))
   (format file "  (controller-hp-led? ~A)~%" (-> obj controller-hp-led?))
   (format file "  (controller-eco-led? ~A)~%" (-> obj controller-eco-led?))
+  (format file "  (controller-heat-led? ~A)~%" (-> obj controller-heat-led?))
+  (format file "  (controller-led-brightness ~f)~%" (-> obj controller-led-brightness))
+  (format file "  (controller-led-min-brightness ~f)~%" (-> obj controller-led-min-brightness))
+  (format file "  (controller-led-max-brightness ~f)~%" (-> obj controller-led-max-brightness))
   (format file "  (stick-deadzone ~f)~%" (-> obj stick-deadzone))
   (format file "  (keyboard-enabled? ~A)~%" (-> obj keyboard-enabled?))
   (format file "  (mouse-enabled? ~A)~%" (-> obj mouse-enabled?))
@@ -834,41 +789,6 @@
   (format file "  (hinttitles? ~A)~%" (-> obj hinttitles?))
   (format file "  (game-language ~D)~%" (get-game-language obj))
   (format file "  (subtitle-speaker ~A)~%" (-> obj subtitle-speaker?))
-
-  #|
-  (format file "  (scenes-seen")
-  (dotimes (i PC_SPOOL_LOG_LENGTH)
-    (if (zero? (mod i 16))
-      (format file "~%   ")
-      )
-    (format file " ~D" (-> obj scenes-seen i))
-    )
-  (format file "~%    )~%")
-  |#
-
-  (format file "  (secrets~%")
-  #|
-  (format file "    (art #x~X)~%" (-> obj secrets art))
-  (format file "    (hard-rats? ~A)~%" (-> obj secrets hard-rats?))
-  (format file "    (hero-mode? ~A)~%" (-> obj secrets hero-mode?))
-  (format file "    (hud-map? ~A)~%" (-> obj secrets hud-map?))
-  (format file "    (hud-counters? ~A)~%" (-> obj secrets hud-counters?))
-  (format file "    (hard-fish-hiscore ~D)~%" (-> obj secrets hard-fish-hiscore))
-  (format file "    (hard-rats-hiscore ~D)~%" (-> obj secrets hard-rats-hiscore))
-  (format file "    (hard-rats-hiwave ~D)~%" (-> obj secrets hard-rats-hiwave))
-  |#
-  (format file "    (cheats #x~x #x~x)~%" (-> obj cheats-known) (-> obj cheats))
-
-  (format file "    (music~%")
-  (dotimes (i PC_MUSIC_LOG_LENGTH)
-    (if (-> obj secrets music i name)
-  (format file "      (~A #x~X)~%" (-> obj secrets music i name) (-> obj secrets music i flava-mask))
-  )
-    )
-
-  (format file "      )~%")
-
-  (format file "    )~%")
   0)
 
 (defmethod write-to-file pc-settings ((obj pc-settings) (filename string))
@@ -902,7 +822,7 @@
       (format 0 "[PC] PC Settings found at '~S'...loading!~%" *pc-temp-string-1*)
       (unless (read-from-file obj *pc-temp-string-1*)
         (format 0 "[PC] PC Settings found at '~S' but could not be loaded, using defaults!~%" *pc-temp-string-1*)
-        (reset obj)))
+        (reset obj #t)))
     (format 0 "[PC] PC Settings not found at '~S'...initializing with defaults!~%" *pc-temp-string-1*))
   0)
 
@@ -910,7 +830,7 @@
   "make a new pc-settings"
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     ;; load defaults not covered by the file
-    (set-defaults! obj)
+    (reset obj #f)
     ;; if saved settings are corrupted or not found, the object will be fully reset to use all defaults
     (load-settings obj)
     ;; any post-operations that need to be done after loading

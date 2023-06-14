@@ -1428,7 +1428,12 @@ goos::Object decompile_structure(const TypeSpec& type,
           // do nothing, the default is zero?
           field_defs_out.emplace_back(field.name(), pretty_print::to_symbol("0"));
         } else if (word.kind() == LinkedWord::SYM_PTR) {
-          if (word.symbol_name() == "#f" || word.symbol_name() == "#t") {
+          if (word.symbol_name() == "#f") {
+            field_defs_out.emplace_back(
+                field.name(), pretty_print::to_symbol(fmt::format("{}", word.symbol_name())));
+          } else if (!ts.tc(field.type(), TypeSpec("symbol"))) {
+            continue;
+          } else if (word.symbol_name() == "#t") {
             field_defs_out.emplace_back(
                 field.name(), pretty_print::to_symbol(fmt::format("{}", word.symbol_name())));
           } else {
