@@ -375,7 +375,7 @@
           )
       (sound-play-by-name
         (static-sound-name "mech-thrust")
-        (the-as sound-id (-> arg0 mech thrust-sound-id))
+        (-> arg0 mech thrust-sound-id)
         (the int (* 1024.0 (lerp-scale 0.3 1.0 (-> arg0 mech thruster-flame-length) 0.0 4096.0)))
         (the int (* 1524.0 f30-0))
         0
@@ -827,16 +827,13 @@
                    )
           (set! (-> self control last-trans-any-surf quad) (-> self control trans quad))
           (target-timed-invulnerable (seconds 0.1) self 1)
-          (cond
-            ((focus-test? self carry)
-             enter-state
-             (let ((a0-19 (-> *TARGET-bank* mech-carry-jump-height-min))
-                   (a1-8 (-> *TARGET-bank* mech-carry-jump-height-max))
-                   )
-               (go target-mech-carry-jump a0-19 a1-8)
-               )
-             )
-            (else
+          (if (focus-test? self carry)
+              (go
+                target-mech-carry-jump
+                (-> *TARGET-bank* mech-carry-jump-height-min)
+                (-> *TARGET-bank* mech-carry-jump-height-max)
+                #f
+                )
               (go
                 target-mech-jump
                 (-> *TARGET-bank* mech-jump-height-min)
@@ -844,7 +841,6 @@
                 (the-as surface #f)
                 )
               )
-            )
           )
         #f
         )
@@ -1115,10 +1111,10 @@
   (when (zero? (-> self mech))
     (set! (-> self mech) (new 'process 'mech-info))
     (set! (-> self mech hud 0) (the-as handle #f))
-    (set! (-> self mech engine-sound-id) (the-as uint (new-sound-id)))
-    (set! (-> self mech thrust-sound-id) (the-as uint (new-sound-id)))
-    (set! (-> self mech drag-sound-id) (the-as uint (new-sound-id)))
-    (set! (-> self mech whine-sound-id) (the-as uint (new-sound-id)))
+    (set! (-> self mech engine-sound-id) (new-sound-id))
+    (set! (-> self mech thrust-sound-id) (new-sound-id))
+    (set! (-> self mech drag-sound-id) (new-sound-id))
+    (set! (-> self mech whine-sound-id) (new-sound-id))
     )
   (set! (-> self board latch?) #f)
   (set! (-> self mech stick-lock) #f)
@@ -1367,10 +1363,10 @@
     (target-collide-set! 'normal 0.0)
     (set! (-> self control reaction) target-collision-reaction)
     (set! (-> self control pat-ignore-mask) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1))
-    (sound-stop (the-as sound-id (-> self mech engine-sound-id)))
-    (sound-stop (the-as sound-id (-> self mech thrust-sound-id)))
-    (sound-stop (the-as sound-id (-> self mech drag-sound-id)))
-    (sound-stop (the-as sound-id (-> self mech whine-sound-id)))
+    (sound-stop (-> self mech engine-sound-id))
+    (sound-stop (-> self mech thrust-sound-id))
+    (sound-stop (-> self mech drag-sound-id))
+    (sound-stop (-> self mech whine-sound-id))
     (send-event (handle->process (-> self mech hud 0)) 'hide-and-die)
     (set! (-> self draw shadow) (-> self shadow-backup))
     (set! (-> self control cspace-offset quad) (the-as uint128 0))
@@ -1383,7 +1379,7 @@
 ;; definition for function target-mech-effect
 ;; WARN: Return type mismatch int vs none.
 (defbehavior target-mech-effect target ()
-  (sound-play "mech-pulse" :id (the-as sound-id (-> self mech engine-sound-id)))
+  (sound-play "mech-pulse" :id (-> self mech engine-sound-id))
   (set! (-> self game distance) (/ (-> self mech shield-value) (-> self mech shield-max)))
   0
   (none)

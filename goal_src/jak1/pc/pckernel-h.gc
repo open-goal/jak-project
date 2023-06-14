@@ -46,6 +46,8 @@
 (defconstant PC_KERNEL_VER_REVISION (-> PC_KERNEL_VERSION revision))
 (defconstant PC_KERNEL_VER_BUILD (-> PC_KERNEL_VERSION build))
 
+(defun-extern get-pckernel-version pckernel-version)
+
 
 (defconstant PS2_VOICE_AMOUNT 48)
 (defconstant PC_VOICE_AMOUNT 256)
@@ -57,6 +59,7 @@
 (defconstant PC_BASE_HEIGHT 480)
 (defconstant PC_MIN_WIDTH 320)
 (defconstant PC_MIN_HEIGHT 240)
+(defconstant PC_DEFAULT_MSAA 2)
 
 
 ;; how many entries the music log has. the game only has 21 tracks but let's have more space for no reason.
@@ -81,13 +84,6 @@
   )
 
 
-
-;; concept arts
-(defenum pc-jak1-concept-art
-  :bitfield #t
-  :type uint64
-  (test)
-  )
 
 ;; cheats
 (defconstant PC_CHEAT_MAX 18) ;; number of cheats
@@ -125,35 +121,10 @@
   :pack-me
   )
 
-;; secrets and goodies
-(deftype pc-game-secrets (structure)
-  ((art pc-jak1-concept-art) ;; concept art unlocked
-   (music pc-music-log-entry PC_MUSIC_LOG_LENGTH :inline)
-   (hard-fish-hiscore int32)
-   (hard-rats? symbol) ;; enable this crap
-   (hard-rats-hiscore int32)
-   (hard-rats-hiwave int32)
-   (hero-mode? symbol) ;; unsure how this should work
-   (hud-map? symbol) ;; enable map in HUD/progress?
-   (hud-counters? symbol) ;; enable level orb counter/global buzzer counter?
-   (hud-watch? symbol) ;; a watch that tells the time of day!
-   (watch-12hr? symbol) ;; 12-hour clock toggle
-   )
-  :pack-me
-  )
-
 ;; bingo integration. placeholder for now.
 (deftype pc-bingo-info (structure)
   ()
   :pack-me
-  )
-
-
-;; a 64-byte C-string. not sure if we need this.
-(deftype pc-cstring-64 (structure)
-  ((chars uint8 64)
-   (last uint8 :offset 63)
-   )
   )
 
 
@@ -198,8 +169,13 @@
 
    ;; device settings
    (ignore-controller-win-unfocused? symbol)
-   (controller-hp-led? symbol)
-   (controller-eco-led? symbol)
+   (controller-hp-led?    symbol)
+   (controller-eco-led?   symbol)
+   (controller-heat-led?  symbol)
+   (controller-led-brightness     float)
+   (controller-led-min-brightness float)
+   (controller-led-max-brightness float)
+   (controller-led-color          rgbaf :inline)
    (stick-deadzone float) ;; analog stick deadzone. 0-1
    (keyboard-enabled? symbol)
    (mouse-enabled? symbol)
@@ -252,10 +228,6 @@
 
    (bingo pc-bingo-info :inline) ;; bingo integration. does nothing for now.
 
-   (secrets pc-game-secrets :inline) ;; hidden goodies and additional secrets!
-
-   (scenes-seen uint8 PC_SPOOL_LOG_LENGTH) ;; cutscenes that have been seen, by spool-anim (maybe use 8-char name or bits instead?)
-
    (discord-rpc? symbol) ;; enable discord rich presence integration
    (speedrunner-mode? symbol) ;; enable speedrunner mode
 
@@ -269,32 +241,28 @@
 
   (:methods
     (new (symbol type) _type_)
-    (set-defaults! (_type_) none)
-    (set-defaults-input! (_type_) none)
-    (set-defaults-controller! (_type_) none)
-    (set-defaults-mouse! (_type_) none)
     (update (_type_) none)
     (update-from-os (_type_) none)
     (update-to-os (_type_) none)
     (update-discord-rpc (_type_) none)
     (update-speedrun (_type_) none)
     (update-video-hacks (_type_) object)
-    (reset (_type_) none)
-    (reset-audio (_type_) none)
-    (reset-input (_type_ symbol) none)
-    (reset-gfx (_type_) none)
-    (reset-ps2 (_type_) none)
-    (reset-misc (_type_) none)
-    (reset-original-camera (_type_) none)
-    (reset-extra (_type_) none)
+    (reset (_type_ symbol) int)
+    (reset-audio (_type_ symbol) int)
+    (reset-input (_type_ symbol symbol) int)
+    (reset-gfx (_type_ symbol) int)
+    (reset-ps2 (_type_ symbol) int)
+    (reset-misc (_type_ symbol) int)
+    (reset-camera (_type_ symbol) int)
+    (reset-extra (_type_ symbol) int)
     (print-debug-misc (_type_) object)
     (draw (_type_ dma-buffer) object)
     (draw-memory (_type_ dma-buffer) symbol)
-    (set-display-mode! (_type_ symbol) int)
-    (set-size! (_type_ int int) none)
+    (set-display-mode! (_type_ symbol symbol) int)
+    (set-size! (_type_ int int symbol) none)
     (set-aspect! (_type_ int int) none)
     (set-aspect-ratio! (_type_ float) none)
-    (set-frame-rate! (_type_ int) int)
+    (set-frame-rate! (_type_ int symbol) int)
     (set-monitor! (_type_ int) none)
     (set-game-setting! (_type_ symbol symbol) object)
     (get-game-setting (_type_ symbol) symbol)
@@ -306,6 +274,8 @@
     (write-to-file (_type_ string) symbol)
     (handle-input-settings (_type_ file-stream) object)
     (handle-output-settings (_type_ file-stream) object)
+    (led-enabled? (_type_) symbol)
+    (update-led (_type_) symbol)
     (update-cheats (_type_) int)
     (update-music-log (_type_) int)
     (add-to-music-log (_type_ symbol int) int)
@@ -317,7 +287,7 @@
     )
   )
 
-(defconstant PC_TEMP_STRING_LEN 512)
+(defconstant PC_TEMP_STRING_LEN 1024)
 (define *pc-temp-string* (new 'global 'string PC_TEMP_STRING_LEN (the string #f)))
 
 (define *pc-temp-string-1* (new 'global 'string 2048 (the string #f)))
@@ -339,83 +309,20 @@
 ;;;; resets
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod set-defaults-input! pc-settings ((obj pc-settings))
-  "Set default general input settings"
-  (set! (-> obj keyboard-enabled?) #t)
-  (set! (-> obj mouse-enabled?) #f)
-  (set! (-> obj auto-hide-cursor?) #t)
-  (none))
 
-(defmethod set-defaults-controller! pc-settings ((obj pc-settings))
-  "Set default controller settings"
-  (set! (-> obj ignore-controller-win-unfocused?) #f)
-  (set! (-> obj controller-hp-led?) #f)
-  (set! (-> obj controller-eco-led?) #f)
-  (set! (-> obj stick-deadzone) 0.3)
-  (none))
-
-(defmethod set-defaults-mouse! pc-settings ((obj pc-settings))
-  "Set default mouse settings"
-  (set! (-> obj mouse-camera?) #f)
-  (set! (-> obj mouse-xsens) -15.0)
-  (set! (-> obj mouse-ysens) 10.0)
-  (set! (-> obj mouse-movement?) #f)
-  (none))
-
-(defmethod set-defaults! pc-settings ((obj pc-settings))
-  "Set default settings for the object that aren't handled by the file reading,
-   this is intended to be called upon object creation.
-
-   This is to avoid propagating events to the runtime informing it needs to make changes on startup
-   when there really is no changes to be made.  ie. changing the window size multiple times when ultimately
-   the true value is within the file that we are about to read.
-
-   TODO - it would probably be a lot cleaner to have one struct for the file, and another for settings that
-   are manipulated at runtime so there is a clear separation of responsibilities"
-  ;; top level settings
-  (set! (-> obj user) #f)
-  (set! (-> obj debug?) #f)
-  (set! (-> obj movie?) #f)
-  (set! (-> obj font-scale) 1.0)
-  (set! (-> obj aspect-custom-x) 4)
-  (set! (-> obj aspect-custom-y) 3)
-  (set! (-> obj discord-rpc?) #t)
-  (set! (-> obj speedrunner-mode?) #f)
-  ;; graphics
-  (set! (-> obj target-fps) 60)
-  (set! (-> obj aspect-ratio-auto?) #t)
-  (set! (-> obj win-width) PC_BASE_WIDTH)
-  (set! (-> obj win-height) PC_BASE_HEIGHT)
-  ;; audio
-  ;; input
-  (set-defaults-input! obj)
-  (set-defaults-controller! obj)
-  (set-defaults-mouse! obj)
-  ;; ps2
-  ;; misc
-  ;; extra
-  (dotimes (i PC_SPOOL_LOG_LENGTH) (set! (-> obj scenes-seen i) 0))
-  (set! (-> obj secrets art) (pc-jak1-concept-art))
-  (set! (-> obj secrets hard-fish-hiscore) 0)
-  (set! (-> obj secrets hard-rats-hiscore) 0)
-  (set! (-> obj secrets hard-rats-hiwave) 0)
-  (set! (-> obj secrets hard-rats?) #f)
-  (set! (-> obj secrets hero-mode?) #f)
-  (set! (-> obj secrets hud-map?) #t)
-  (set! (-> obj secrets hud-counters?) #t)
-  (set! (-> obj secrets hud-watch?) #f)
-  (set! (-> obj secrets watch-12hr?) #f)
-  (none)
-)
-
-
-(defmethod reset pc-settings ((obj pc-settings))
-  "Reset back to default settings"
+(defmethod reset pc-settings ((obj pc-settings) (call-handlers symbol))
+  "Reset everything back to default settings
+   
+   If call-handlers = #t then events will be sent to the runtime kernel to update OS settings
+   such as window size, etc.
+   If you just want to set the settings and handle the fields yourself later, set call-handlers to #f
+   such as if you're setting the initial values right before reading the settings file that changes them."
 
   (format 0 "pc settings reset~%")
 
-  (set! (-> obj version) PC_KERNEL_VERSION)
+  (set! (-> obj version) (get-pckernel-version))
 
+  (set! (-> obj os) (pc-get-os))
   (set! (-> obj user) #f)
   (set! (-> obj debug?) #f)
   (set! (-> obj movie?) #f)
@@ -425,40 +332,39 @@
   (set! (-> obj discord-rpc?) #t)
   (set! (-> obj speedrunner-mode?) #f)
 
-  (reset-gfx obj)
-  (reset-audio obj)
-  (reset-input obj 'all)
-  (reset-ps2 obj)
-  (reset-misc obj)
-  (reset-extra obj)
+  (reset-gfx obj call-handlers)
+  (reset-audio obj call-handlers)
+  (reset-input obj 'all call-handlers)
+  (reset-ps2 obj call-handlers)
+  (reset-misc obj call-handlers)
+  (reset-extra obj call-handlers)
 
-  (none))
+  0)
 
 
-(defmethod reset-gfx pc-settings ((obj pc-settings))
+(defmethod reset-gfx pc-settings ((obj pc-settings) (call-handlers symbol))
   "Set the default graphics settings"
 
-  (set-frame-rate! obj 60)
+  ;; temporarily "set" to windowed so we can change window size
+  ;; we set our actual target display mode later.
+  (set! (-> obj display-mode) 'windowed)
+  (set-size! obj PC_BASE_WIDTH PC_BASE_HEIGHT #f)
+
   (set-aspect! obj 4 3)
-  (set-display-mode! obj 'windowed)
-  (set-size! obj PC_BASE_WIDTH PC_BASE_HEIGHT)
+  (set-frame-rate! obj 60 call-handlers)
 
   (set! (-> obj use-vis?) #f)
   (set! (-> obj aspect-ratio-auto?) #t)
   (set! (-> obj vsync?) #t)
   (set! (-> obj letterbox?) #t)
 
-  ;; TODO - why do we change the windowed mode twice
-  ;; - apparently done to simplify changing the resolution, consider simplifying this so
-  ;; the code is more obvious / easier to understand at first glance
-  ;; (also reduces flickering of changing between modes)
+  ;; get screen size and set to borderless at screen res
   (pc-get-active-display-size (&-> obj width) (&-> obj height))
-  (set-display-mode! obj 'borderless)
-  (set! (-> obj gfx-msaa) 2) ;; 2x msaa
+  (set-display-mode! obj 'borderless call-handlers)
+  (set! (-> obj gfx-msaa) PC_DEFAULT_MSAA) ;; default msaa
+  0)
 
-  (none))
-
-(defmethod reset-audio pc-settings ((obj pc-settings))
+(defmethod reset-audio pc-settings ((obj pc-settings) (call-handlers symbol))
   "Set the default audio settings"
 
   (set! (-> obj audio-latency-ms) 80)
@@ -468,17 +374,37 @@
 
   (set! (-> obj music-fadeout?) #t)
   (set! (-> obj music-fadein?) #t)
+  0)
 
-  (none))
-
-(defmethod reset-input pc-settings ((obj pc-settings) (device symbol))
+(defmethod reset-input pc-settings ((obj pc-settings) (device symbol) (call-handlers symbol))
   "Set the default input settings"
-  (set! (-> obj controller-hp-led?) #f)
-  (set! (-> obj controller-eco-led?) #f)
-  (set! (-> obj stick-deadzone) 0.3)
-  (none))
 
-(defmethod reset-ps2 pc-settings ((obj pc-settings))
+  (when (or (= device 'all) (= device 'controller))
+    (set! (-> obj ignore-controller-win-unfocused?) #f)
+    (set! (-> obj controller-hp-led?) #t)
+    (set! (-> obj controller-eco-led?) #t)
+    (set! (-> obj controller-heat-led?) #t)
+    (set! (-> obj stick-deadzone) 0.3)
+    (set! (-> obj controller-led-brightness) 1.0)
+    (set! (-> obj controller-led-min-brightness) 0.25)
+    (set! (-> obj controller-led-max-brightness) 1.0)
+    )
+  
+  (when (or (= device 'all) (= device 'input))
+    (set! (-> obj keyboard-enabled?) #t)
+    (set! (-> obj mouse-enabled?) #f)
+    (set! (-> obj auto-hide-cursor?) #t)
+    )
+
+  (when (or (= device 'all) (= device 'mouse))
+    (set! (-> obj mouse-camera?) #f)
+    (set! (-> obj mouse-xsens) -15.0)
+    (set! (-> obj mouse-ysens) 10.0)
+    (set! (-> obj mouse-movement?) #f)
+    )
+  0)
+
+(defmethod reset-ps2 pc-settings ((obj pc-settings) (call-handlers symbol))
   "Set the default ps2 settings"
 
   (set! (-> obj ps2-read-speed?) #f)
@@ -495,51 +421,32 @@
   (set! (-> obj lod-force-tie) 0)
   (set! (-> obj lod-force-ocean) 0)
   (set! (-> obj lod-force-actor) 0)
-  (none))
+  0)
 
-(defmethod reset-misc pc-settings ((obj pc-settings))
+(defmethod reset-misc pc-settings ((obj pc-settings) (call-handlers symbol))
   "Set the default misc settings"
 
   (set! (-> obj force-actors?) #f)
   (set! (-> obj hinttitles?) #t)
   (set! (-> obj subtitle-speaker?) 'auto)
-  (reset-original-camera obj)
-  (none))
+  (reset-camera obj call-handlers)
+  0)
 
-(defmethod reset-original-camera pc-settings ((obj pc-settings))
+(defmethod reset-camera pc-settings ((obj pc-settings) (call-handlers symbol))
   "Set the original game's camera controls"
 
   (set! (-> obj first-camera-h-inverted?) #f) ;; first-person horizontal is NOT inverted in original game
   (set! (-> obj first-camera-v-inverted?) #t) ;; first-person vertical IS inverted in original game
   (set! (-> obj third-camera-h-inverted?) #t) ;; third person horizontal IS inverted in original game
   (set! (-> obj third-camera-v-inverted?) #t) ;; third-person vertical IS inverted in original game
-  (none))
+  0)
 
-(defmethod reset-extra pc-settings ((obj pc-settings))
+(defmethod reset-extra pc-settings ((obj pc-settings) (call-handlers symbol))
   "Set the default goodies settings"
-
-  (dotimes (i PC_SPOOL_LOG_LENGTH)
-    (set! (-> obj scenes-seen i) 0)
-    )
-  (dotimes (i PC_MUSIC_LOG_LENGTH)
-    (set! (-> obj secrets music i name) #f)
-    (set! (-> obj secrets music i flava-mask) 0)
-    )
-
-  (set! (-> obj secrets art) (pc-jak1-concept-art))
-  (set! (-> obj secrets hard-fish-hiscore) 0)
-  (set! (-> obj secrets hard-rats-hiscore) 0)
-  (set! (-> obj secrets hard-rats-hiwave) 0)
-  (set! (-> obj secrets hard-rats?) #f)
-  (set! (-> obj secrets hero-mode?) #f)
-  (set! (-> obj secrets hud-map?) #t)
-  (set! (-> obj secrets hud-counters?) #t)
-  (set! (-> obj secrets hud-watch?) #f)
-  (set! (-> obj secrets watch-12hr?) #f)
 
   (set! (-> obj cheats) (pc-cheats))
   (set! (-> obj cheats-known) (pc-cheats))
-  (none))
+  0)
 
 (defmacro with-pc (&rest body)
   "encapsulates the code around PC-specific checks"
@@ -611,7 +518,15 @@
                 ,(if (< i (- (length buttons) 1))
                     `(1+! ,cheat-var)
 
-                    `(begin ,@body (set! ,cheat-var 0))
+                    `(begin
+                      (cond
+                        ((-> *pc-settings* speedrunner-mode?)
+                          (sound-play "cursor-options"))
+                        (else
+                          ,@body)
+                        )
+                      (set! ,cheat-var 0)
+                      )
                     )
 
                 (set! ,cheat-var 0)
