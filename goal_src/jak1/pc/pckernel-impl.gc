@@ -46,6 +46,30 @@
   (custom 999) ;; temp
   )
 
+;; concept arts
+(defenum pc-jak1-concept-art
+  :bitfield #t
+  :type uint64
+  (test)
+  )
+
+;; secrets and goodies
+(deftype pc-game-secrets (structure)
+  ((art pc-jak1-concept-art) ;; concept art unlocked
+   (music pc-music-log-entry PC_MUSIC_LOG_LENGTH :inline)
+   (hard-fish-hiscore int32)
+   (hard-rats? symbol) ;; enable this crap
+   (hard-rats-hiscore int32)
+   (hard-rats-hiwave int32)
+   (hero-mode? symbol) ;; unsure how this should work
+   (hud-map? symbol) ;; enable map in HUD/progress?
+   (hud-counters? symbol) ;; enable level orb counter/global buzzer counter?
+   (hud-watch? symbol) ;; a watch that tells the time of day!
+   (watch-12hr? symbol) ;; 12-hour clock toggle
+   )
+  :pack-me
+  )
+
 ;; The Jak 1 version of the pc-settings object.
 (deftype pc-settings-jak1 (pc-settings)
   (
@@ -55,6 +79,10 @@
    (subtitle-language pc-language) ;; language for subtitles
    (money-starburst? symbol) ;; add a starburst to the money
    (extra-hud? symbol) ;; extra hud elements.
+
+   (secrets pc-game-secrets :inline) ;; hidden goodies and additional secrets!
+
+   (scenes-seen uint8 PC_SPOOL_LOG_LENGTH) ;; cutscenes that have been seen, by spool-anim (maybe use 8-char name or bits instead?)
 	 )
   )
 
@@ -96,10 +124,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defmethod reset-misc pc-settings-jak1 ((obj pc-settings-jak1))
+(defmethod reset-misc pc-settings-jak1 ((obj pc-settings-jak1) (call-handlers symbol))
   "Set the default misc settings"
 
-  ((method-of-type pc-settings reset-misc) obj)
+  ((method-of-type pc-settings reset-misc) obj call-handlers)
   (set! (-> obj text-language) (the pc-language (scf-get-language)))
   (set! (-> obj subtitle-language) (the pc-language (scf-get-language)))
   (set! (-> obj skip-movies?) #t)
@@ -117,7 +145,32 @@
       ))
   (set! (-> obj money-starburst?) #f)
   (set! (-> obj extra-hud?) #f)
-  (none))
+  0)
+
+(defmethod reset-extra pc-settings-jak1 ((obj pc-settings-jak1) (call-handlers symbol))
+  "Set the default goodies settings"
+
+  ((method-of-type pc-settings reset-extra) obj call-handlers)
+
+  (dotimes (i PC_SPOOL_LOG_LENGTH)
+    (set! (-> obj scenes-seen i) 0)
+    )
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (set! (-> obj secrets music i name) #f)
+    (set! (-> obj secrets music i flava-mask) 0)
+    )
+
+  (set! (-> obj secrets art) (pc-jak1-concept-art))
+  (set! (-> obj secrets hard-fish-hiscore) 0)
+  (set! (-> obj secrets hard-rats-hiscore) 0)
+  (set! (-> obj secrets hard-rats-hiwave) 0)
+  (set! (-> obj secrets hard-rats?) #f)
+  (set! (-> obj secrets hero-mode?) #f)
+  (set! (-> obj secrets hud-map?) #t)
+  (set! (-> obj secrets hud-counters?) #t)
+  (set! (-> obj secrets hud-watch?) #f)
+  (set! (-> obj secrets watch-12hr?) #f)
+  0)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; other
@@ -126,28 +179,3 @@
 
 (defun get-video-params () *video-parms*)
 
-(defun set-reactive-controller-led! ((current-hp float) (eco-level float) (eco-kind int))
-  ;; Apply LED color based on HP if enabled and if eco is not active
-  (when (and (= eco-level 0.0) (-> *pc-settings* controller-hp-led?))
-    (case current-hp
-      ((0.0)
-        (pc-set-controller-led! 0 255 0 0))
-      ((1.0)
-        (pc-set-controller-led! 0 255 127 0))
-      ((2.0)
-        (pc-set-controller-led! 0 255 255 0))
-      ((3.0)
-        (pc-set-controller-led! 0 0 255 0))))
-  ;; Otherwise apply LED color based on eco if enabled
-  (when (and (!= eco-level 0.0) (-> *pc-settings* controller-eco-led?))
-    (case eco-kind
-      ((2)
-        (pc-set-controller-led! 0 255 0 0))
-      ((3)
-        (pc-set-controller-led! 0 0 0 255))
-      ((1)
-        (pc-set-controller-led! 0 255 255 0))
-      ((4)
-        (pc-set-controller-led! 0 0 255 0))))
-  (none)
-)

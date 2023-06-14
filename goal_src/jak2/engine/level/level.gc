@@ -790,26 +790,7 @@ into 7 sections, which might explain the weird sizes in the center.
              ;; couldn't find it, die.
              (format 0 "ERROR: level ~A could not find free ~S bank in the level-group heap~%"
                (-> obj name)
-               (cond
-                 ((= mem-mode (load-buffer-mode large))
-                  "large"
-                  )
-                 ((= mem-mode (load-buffer-mode borrow))
-                  "borrow"
-                  )
-                 ((= mem-mode (load-buffer-mode small-center))
-                  "small-center"
-                  )
-                 ((= mem-mode (load-buffer-mode medium))
-                  "medium"
-                  )
-                 ((= mem-mode (load-buffer-mode small-edge))
-                  "small-edge"
-                  )
-                 (else
-                   "*unknown*"
-                   )
-                 )
+               (enum->string load-buffer-mode mem-mode)
                )
              (break!)
              0
@@ -1093,15 +1074,10 @@ into 7 sections, which might explain the weird sizes in the center.
        (dotimes (s4-0 10)
          (let ((a0-8 (-> obj info texture-anim s4-0)))
            (when a0-8
-             (format 0 "SKIP: texture-anim-array in login-begin~%")
-             (format #t "SKIP: texture-anim-array in login-begin~%")
-
-               #|(set! (-> obj texture-anim-array s4-0)
-                     (the-as
-                       texture-anim-array
-                       ((method-of-object (the-as texture-anim-array (-> a0-8 value)) texture-anim-array-method-9))
-                       )
-                     )|#
+             (set! (-> obj info texture-anim s4-0) #f)
+             #|(set! (-> obj texture-anim-array s4-0)
+                   (texture-anim-array-method-9 (the-as texture-anim-array (-> a0-8 value)))
+                   )|#
                )
            )
          )
@@ -1500,7 +1476,7 @@ into 7 sections, which might explain the weird sizes in the center.
                )
              )
            )
-         (if (and (!= (-> obj bsp unk-data 7) 0) *traffic-manager*)
+         (if (and (!= (-> obj bsp city-level-info) 0) *traffic-manager*)
              (send-event *traffic-manager* 'level-loaded obj)
              )
          (when (-> obj info activate-func)
@@ -1529,7 +1505,7 @@ into 7 sections, which might explain the weird sizes in the center.
      (format 0 "----------- kill ~A (status ~A)~%" obj (-> obj status))
 
      ;; send event to traffic manager.
-     (if (and (!= (-> obj bsp unk-data 7) 0) *traffic-manager*)
+     (if (and (!= (-> obj bsp city-level-info) 0) *traffic-manager*)
          (send-event *traffic-manager* 'level-killed obj)
          )
 
@@ -1660,10 +1636,7 @@ into 7 sections, which might explain the weird sizes in the center.
           (let ((a0-37 (-> obj info texture-anim s5-3)))
             (if a0-37
                 (set! (-> obj texture-anim-array s5-3)
-                      (the-as
-                        texture-anim-array
-                        ((method-of-object (the-as texture-anim-array (-> a0-37 value)) texture-anim-array-method-10))
-                        )
+                      (texture-anim-array-method-10 (the-as texture-anim-array (-> a0-37 value)))
                       )
                 )
             )
