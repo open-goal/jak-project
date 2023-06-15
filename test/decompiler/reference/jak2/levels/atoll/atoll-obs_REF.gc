@@ -10,7 +10,7 @@
    (sound-time   time-frame 2       :offset-assert 240)
    (sync         sync-eased :inline :offset-assert 256)
    (piston-id    int32              :offset-assert 300)
-   (looping-id   uint32             :offset-assert 304)
+   (looping-id   sound-id           :offset-assert 304)
    )
   :heap-base #xc0
   :method-count-assert 31
@@ -131,8 +131,8 @@
             )
       )
     (when (and (logtest? (actor-option user18) (-> self fact options)) (< (-> self sound-time 0) (current-time)))
-      (sound-stop (the-as sound-id (-> self looping-id)))
-      (sound-play "piston-loop" :id (the-as sound-id (-> self looping-id)) :position (-> self sound-trans))
+      (sound-stop (-> self looping-id))
+      (sound-play "piston-loop" :id (-> self looping-id) :position (-> self sound-trans))
       (+! (-> self sound-time 0) (the int (* 0.5 (the float (-> self sync period)))))
       )
     (rider-post)
@@ -142,7 +142,7 @@
 
 ;; definition for method 10 of type piston
 (defmethod deactivate piston ((obj piston))
-  (sound-stop (the-as sound-id (-> obj looping-id)))
+  (sound-stop (-> obj looping-id))
   ((method-of-type process-focusable deactivate) obj)
   (none)
   )
@@ -226,10 +226,10 @@ This commonly includes things such as:
   (set! (-> obj root-override trans y) (+ -40960.0 (-> obj root-override trans y)))
   (cond
     ((logtest? (actor-option user18) (-> obj fact options))
-     (set! (-> obj looping-id) (the-as uint (new-sound-id)))
+     (set! (-> obj looping-id) (new-sound-id))
      )
     (else
-      (set! (-> obj looping-id) (the-as uint 0))
+      (set! (-> obj looping-id) (new 'static 'sound-id))
       0
       )
     )

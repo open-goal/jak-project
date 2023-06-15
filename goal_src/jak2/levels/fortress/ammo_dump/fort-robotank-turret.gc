@@ -35,7 +35,7 @@
    (gun-spread          float                         :offset-assert 580)
    (gun-index           int32                         :offset-assert 584)
    (flags               uint16                        :offset-assert 588)
-   (turn-sound-id       uint32                        :offset-assert 592)
+   (turn-sound-id       sound-id                      :offset-assert 592)
    )
   :heap-base #x1e0
   :method-count-assert 35
@@ -974,14 +974,10 @@
     )
   (cond
     ((logtest? (-> self flags) 64)
-     (sound-play
-       "robotank-turret"
-       :id (the-as sound-id (-> self turn-sound-id))
-       :position (-> self root-override trans)
-       )
+     (sound-play "robotank-turret" :id (-> self turn-sound-id) :position (-> self root-override trans))
      (when (< (fabs (-> self rotate-rate)) 728.1778)
        (set! (-> self flags) (logand -65 (-> self flags)))
-       (sound-stop (the-as sound-id (-> self turn-sound-id)))
+       (sound-stop (-> self turn-sound-id))
        (sound-play "robo-turret-end")
        )
      )
@@ -1291,7 +1287,7 @@
 
 (defmethod deactivate fort-robotank-turret ((obj fort-robotank-turret))
   (set! (-> obj flags) (logand -65 (-> obj flags)))
-  (sound-stop (the-as sound-id (-> obj turn-sound-id)))
+  (sound-stop (-> obj turn-sound-id))
   (let ((a0-4 (handle->process (-> obj screen))))
     (if a0-4
         (deactivate a0-4)
@@ -1417,7 +1413,7 @@
     )
   (ja-no-eval :group! (-> self draw art-group data 3) :num! zero)
   (transform-post)
-  (set! (-> self turn-sound-id) (the-as uint (new-sound-id)))
+  (set! (-> self turn-sound-id) (new-sound-id))
   (go-virtual idle)
   (none)
   )

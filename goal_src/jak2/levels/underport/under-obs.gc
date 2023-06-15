@@ -285,7 +285,7 @@
 
 (deftype bubbler (process-drawable)
   ((rod-of-god-scale   float       :offset-assert 200)
-   (ambient-id         uint32      :offset-assert 204)
+   (ambient-id         sound-id    :offset-assert 204)
    (last-recharge-time time-frame  :offset-assert 208)
    )
   :heap-base #x60
@@ -337,7 +337,7 @@
     (set! (-> *part-id-table* 2198 init-specs 7 initial-valuef) 96.0)
     (set! (-> *part-id-table* 2198 init-specs 8 initial-valuef) 255.0)
     (spawn (-> self part) (-> self root trans))
-    (sound-play "bubbler" :id (the-as sound-id (-> self ambient-id)) :position (-> self root trans))
+    (sound-play "bubbler" :id (-> self ambient-id) :position (-> self root trans))
     (let ((a0-4 *target*))
       (when a0-4
         (let ((a0-5 (get-trans a0-4 0)))
@@ -361,7 +361,7 @@
   )
 
 (defmethod deactivate bubbler ((obj bubbler))
-  (sound-stop (the-as sound-id (-> obj ambient-id)))
+  (sound-stop (-> obj ambient-id))
   ((method-of-type process-drawable deactivate) obj)
   (none)
   )
@@ -378,7 +378,7 @@ This commonly includes things such as:
   (process-drawable-from-entity! obj arg0)
   (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 500) obj))
   (set! (-> obj rod-of-god-scale) 1.0)
-  (set! (-> obj ambient-id) (the-as uint (sound-play "bubbler" :position (-> obj root trans))))
+  (set! (-> obj ambient-id) (sound-play "bubbler" :position (-> obj root trans)))
   (go (method-of-object obj idle))
   (none)
   )
