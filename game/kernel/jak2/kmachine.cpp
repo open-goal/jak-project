@@ -571,14 +571,13 @@ void update_discord_rpc(u32 discord_info) {
         strcpy(state, "Watching a cutscene");
         // temporarily move these counters to the large image tooltip during a cutscene
         strcat(large_image_text,
-               fmt::format(" | {:.0f}% | Orbs: {} | Gems: {} | Deaths: {}", percent_completed,
-                           std::to_string(orbs), std::to_string(gems), std::to_string(deaths))
+               fmt::format(" | {:.0f}% | Orbs: {} | Gems: {} | {}", percent_completed,
+                           std::to_string(orbs), std::to_string(gems), get_time_of_day(time))
                    .c_str());
       } else {
-        strcpy(state,
-               fmt::format("{:.0f}% | Orbs: {} | Gems: {} | Deaths: {}", percent_completed,
-                           std::to_string(orbs), std::to_string(gems), std::to_string(deaths))
-                   .c_str());
+        strcpy(state, fmt::format("{:.0f}% | Orbs: {} | Gems: {} | {}", percent_completed,
+                                  std::to_string(orbs), std::to_string(gems), get_time_of_day(time))
+                          .c_str());
       }
       rpc.largeImageText = large_image_text;
       rpc.state = state;
@@ -607,15 +606,8 @@ void update_discord_rpc(u32 discord_info) {
         strcpy(small_image_key, "focus-status-gun");
         strcpy(small_image_text, "Using a Gun");
       } else {
-        // otherwise, just show time of day if outdoors
-        if (!indoors(indoor_levels, level)) {
-          strcpy(small_image_key, time_of_day_str(time));
-          strcpy(small_image_text, "Time of day: ");
-          strcat(small_image_text, get_time_of_day(time).c_str());
-        } else {
-          strcpy(small_image_key, "");
-          strcpy(small_image_text, "");
-        }
+        strcpy(small_image_key, "");
+        strcpy(small_image_text, "");
       }
       rpc.smallImageKey = small_image_key;
       rpc.smallImageText = small_image_text;
