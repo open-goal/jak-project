@@ -10,7 +10,7 @@
    (actor-group-count  int32                  :offset-assert 260)
    (texture-anim-index uint32                 :offset-assert 264)
    (my-id              int32                  :offset-assert 268)
-   (sound-id           uint32                 :offset-assert 272)
+   (sound-id           sound-id               :offset-assert 272)
    (target-speed       float                  :offset-assert 276)
    )
   :heap-base #xa0
@@ -77,7 +77,7 @@ This commonly includes things such as:
       (go process-drawable-art-error "bad path")
       )
   (init! obj)
-  (set! (-> obj sound-id) (the-as uint (new-sound-id)))
+  (set! (-> obj sound-id) (new-sound-id))
   (set! (-> obj target-speed) (-> obj speed))
   (conveyor-method-21 obj)
   (set! sv-16 (new 'static 'res-tag))
@@ -100,7 +100,7 @@ This commonly includes things such as:
 
 ;; definition for method 10 of type cas-conveyor
 (defmethod deactivate cas-conveyor ((obj cas-conveyor))
-  (sound-stop (the-as sound-id (-> obj sound-id)))
+  (sound-stop (-> obj sound-id))
   ((the-as (function conveyor none) (find-parent-method cas-conveyor 10)) obj)
   (none)
   )
@@ -116,7 +116,7 @@ This commonly includes things such as:
     (let ((f0-2 (* 0.000032552085 (+ -30720.0 (fabs (-> self speed))))))
       (sound-play-by-name
         (static-sound-name "castle-conveyor")
-        (the-as sound-id (-> self sound-id))
+        (-> self sound-id)
         1024
         (the int (* 1524.0 f0-2))
         0
@@ -923,7 +923,7 @@ This commonly includes things such as:
 
 ;; definition of type cas-elevator
 (deftype cas-elevator (elevator)
-  ((sound-id uint32  :offset-assert 368)
+  ((sound-id sound-id  :offset-assert 368)
    )
   :heap-base #x100
   :method-count-assert 50
@@ -1036,7 +1036,7 @@ This commonly includes things such as:
           (t9-0)
           )
       )
-    (sound-play "cas-elevate" :id (the-as sound-id (-> self sound-id)) :position (-> self root-override trans))
+    (sound-play "cas-elevate" :id (-> self sound-id) :position (-> self root-override trans))
     (none)
     )
   :post (behavior ()
@@ -1049,7 +1049,7 @@ This commonly includes things such as:
     (when *sound-player-enable*
       (let ((gp-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
         (set! (-> gp-0 command) (sound-command set-param))
-        (set! (-> gp-0 id) (the-as sound-id (-> self sound-id)))
+        (set! (-> gp-0 id) (-> self sound-id))
         (let ((a1-0 (-> self root-override trans)))
           (let ((s5-0 self))
             (when (= a1-0 #t)
@@ -1078,7 +1078,7 @@ This commonly includes things such as:
           (t9-0)
           )
       )
-    (sound-stop (the-as sound-id (-> self sound-id)))
+    (sound-stop (-> self sound-id))
     (sound-play "cas-elevate-end")
     (none)
     )
@@ -1097,7 +1097,7 @@ This commonly includes things such as:
 
 ;; definition for method 10 of type cas-elevator
 (defmethod deactivate cas-elevator ((obj cas-elevator))
-  (sound-stop (the-as sound-id (-> obj sound-id)))
+  (sound-stop (-> obj sound-id))
   ((the-as (function elevator none) (find-parent-method cas-elevator 10)) obj)
   (none)
   )
@@ -1106,7 +1106,7 @@ This commonly includes things such as:
 (defmethod init-plat! cas-elevator ((obj cas-elevator))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
-  (set! (-> obj sound-id) (the-as uint (new-sound-id)))
+  (set! (-> obj sound-id) (new-sound-id))
   (cas-elevator-method-49 obj)
   (none)
   )
@@ -1144,13 +1144,13 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition of type cas-rot-bridge
 (deftype cas-rot-bridge (process-drawable)
-  ((index      uint32  :offset-assert 200)
-   (anim-index uint32  :offset-assert 204)
-   (test-index uint32  :offset-assert 208)
-   (pos        float   :offset-assert 212)
-   (pos-old    float   :offset-assert 216)
-   (sound-id   uint32  :offset-assert 220)
-   (sound-flag symbol  :offset-assert 224)
+  ((index      uint32    :offset-assert 200)
+   (anim-index uint32    :offset-assert 204)
+   (test-index uint32    :offset-assert 208)
+   (pos        float     :offset-assert 212)
+   (pos-old    float     :offset-assert 216)
+   (sound-id   sound-id  :offset-assert 220)
+   (sound-flag symbol    :offset-assert 224)
    )
   :heap-base #x70
   :method-count-assert 21
@@ -1422,7 +1422,7 @@ For example for an elevator pre-compute the distance between the first and last 
              ((< f0-9 1.0)
               (sound-play
                 "track-plat-loop"
-                :id (the-as sound-id (-> self sound-id))
+                :id (-> self sound-id)
                 :position (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 5))
                 )
               (set! (-> self sound-flag) #t)
@@ -1432,7 +1432,7 @@ For example for an elevator pre-compute the distance between the first and last 
                 "track-plat-stop"
                 :position (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 5))
                 )
-              (sound-stop (the-as sound-id (-> self sound-id)))
+              (sound-stop (-> self sound-id))
               (set! (-> self sound-flag) #f)
               )
              )
@@ -1442,7 +1442,7 @@ For example for an elevator pre-compute the distance between the first and last 
               ((< 0.0 f0-9)
                (sound-play
                  "track-plat-loop"
-                 :id (the-as sound-id (-> self sound-id))
+                 :id (-> self sound-id)
                  :position (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 5))
                  )
                (set! (-> self sound-flag) #t)
@@ -1452,7 +1452,7 @@ For example for an elevator pre-compute the distance between the first and last 
                  "track-plat-stop"
                  :position (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 5))
                  )
-               (sound-stop (the-as sound-id (-> self sound-id)))
+               (sound-stop (-> self sound-id))
                (set! (-> self sound-flag) #f)
                )
               )
@@ -1553,7 +1553,7 @@ This commonly includes things such as:
       )
     )
   (set! (-> obj draw light-index) (the-as uint 1))
-  (set! (-> obj sound-id) (the-as uint (new-sound-id)))
+  (set! (-> obj sound-id) (new-sound-id))
   (set! (-> obj sound-flag) #f)
   (transform-post)
   (go (method-of-object obj idle))
@@ -1570,7 +1570,7 @@ This commonly includes things such as:
    (pos-old            float                  :offset-assert 220)
    (y-start            float                  :offset-assert 224)
    (y-delta            float                  :offset-assert 228)
-   (sound-id           uint32                 :offset-assert 232)
+   (sound-id           sound-id               :offset-assert 232)
    (sound-flag         symbol                 :offset-assert 236)
    )
   :heap-base #x70
@@ -1694,12 +1694,12 @@ This commonly includes things such as:
               ((< 0.0 f28-0)
                (cond
                  ((< f30-0 1.0)
-                  (sound-play "cas-valve-loop" :id (the-as sound-id (-> self sound-id)) :position (-> self root trans))
+                  (sound-play "cas-valve-loop" :id (-> self sound-id) :position (-> self root trans))
                   (set! (-> self sound-flag) #t)
                   )
                  ((-> self sound-flag)
                   (sound-play "cas-valve-stop")
-                  (sound-stop (the-as sound-id (-> self sound-id)))
+                  (sound-stop (-> self sound-id))
                   (set! (-> self sound-flag) #f)
                   )
                  )
@@ -1707,12 +1707,12 @@ This commonly includes things such as:
               (else
                 (cond
                   ((< 0.0 f30-0)
-                   (sound-play "cas-valve-loop" :id (the-as sound-id (-> self sound-id)) :position (-> self root trans))
+                   (sound-play "cas-valve-loop" :id (-> self sound-id) :position (-> self root trans))
                    (set! (-> self sound-flag) #t)
                    )
                   ((-> self sound-flag)
                    (sound-play "cas-valve-stop")
-                   (sound-stop (the-as sound-id (-> self sound-id)))
+                   (sound-stop (-> self sound-id))
                    (set! (-> self sound-flag) #f)
                    )
                   )
@@ -1818,7 +1818,7 @@ This commonly includes things such as:
       (set! (-> obj y-delta) -12288.0)
       (set! (-> obj y-delta) 12288.0)
       )
-  (set! (-> obj sound-id) (the-as uint (new-sound-id)))
+  (set! (-> obj sound-id) (new-sound-id))
   (set! (-> obj sound-flag) #f)
   (go (method-of-object obj idle))
   (none)
@@ -2129,7 +2129,7 @@ This commonly includes things such as:
   ((sync      sync-eased :inline :offset-assert 200)
    (rot       float              :offset-assert 244)
    (attack-id uint32             :offset-assert 248)
-   (sound-id  uint32             :offset-assert 252)
+   (sound-id  sound-id           :offset-assert 252)
    )
   :heap-base #x80
   :method-count-assert 21
@@ -2229,7 +2229,7 @@ This commonly includes things such as:
     (quaternion-vector-angle! (-> self root quat) *y-vector* (-> self rot))
     (sound-play
       "cas-arm-blade"
-      :id (the-as sound-id (-> self sound-id))
+      :id (-> self sound-id)
       :position (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 4))
       )
     (none)
@@ -2319,7 +2319,7 @@ This commonly includes things such as:
     (set! (-> a0-26 param0) cas-rot-blade-callback)
     (set! (-> a0-26 param1) obj)
     )
-  (set! (-> obj sound-id) (the-as uint (new-sound-id)))
+  (set! (-> obj sound-id) (new-sound-id))
   (set! (-> obj draw shadow-ctrl) *cas-rot-blade-shadow-control*)
   (go (method-of-object obj idle))
   (none)
@@ -2327,7 +2327,7 @@ This commonly includes things such as:
 
 ;; definition for method 10 of type cas-rot-blade
 (defmethod deactivate cas-rot-blade ((obj cas-rot-blade))
-  (sound-stop (the-as sound-id (-> obj sound-id)))
+  (sound-stop (-> obj sound-id))
   ((the-as (function process-drawable none) (find-parent-method cas-rot-blade 10)) obj)
   (none)
   )
