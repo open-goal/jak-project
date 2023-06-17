@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "common/common_types.h"
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/goal_constants.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
@@ -1718,6 +1719,7 @@ int InitHeapAndSymbol() {
   // load kernel!
 
   if (MasterUseKernel) {
+    auto p = scoped_prof("load-kernel-dgo");
     *EnableMethodSet = *EnableMethodSet + 1;
     load_and_link_dgo_from_c("kernel", kglobalheap,
                              LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
@@ -1747,7 +1749,10 @@ int InitHeapAndSymbol() {
   InitListener();
 
   // Do final initialization, including loading and initializing the engine.
-  InitMachineScheme();
+  {
+    auto p = scoped_prof("init-machine-scheme");
+    InitMachineScheme();
+  }
   kmemclose();
   return 0;
 }

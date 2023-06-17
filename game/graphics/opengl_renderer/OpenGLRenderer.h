@@ -9,6 +9,7 @@
 #include "game/graphics/opengl_renderer/CollideMeshRenderer.h"
 #include "game/graphics/opengl_renderer/Profiler.h"
 #include "game/graphics/opengl_renderer/Shader.h"
+#include "game/graphics/opengl_renderer/foreground/Generic2.h"
 #include "game/graphics/opengl_renderer/foreground/Merc2.h"
 #include "game/graphics/opengl_renderer/opengl_utils.h"
 #include "game/tools/filter_menu/filter_menu.h"
@@ -133,7 +134,6 @@ class OpenGLRenderer {
                          int read_buffer);
   template <typename T, typename U, class... Args>
   T* init_bucket_renderer(const std::string& name, BucketCategory cat, U id, Args&&... args) {
-    auto p = scoped_prof(name.c_str());
     auto renderer = std::make_unique<T>(name, (int)id, std::forward<Args>(args)...);
     T* ret = renderer.get();
     m_bucket_renderers.at((int)id) = std::move(renderer);
@@ -149,6 +149,7 @@ class OpenGLRenderer {
   FiltersMenu m_filters_menu;
 
   std::shared_ptr<Merc2> m_merc2;
+  std::shared_ptr<Generic2> m_generic2;
   std::vector<std::unique_ptr<BucketRenderer>> m_bucket_renderers;
   std::vector<BucketCategory> m_bucket_categories;
 

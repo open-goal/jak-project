@@ -5,8 +5,9 @@ Merc2BucketRenderer::Merc2BucketRenderer(const std::string& name,
                                          std::shared_ptr<Merc2> merc)
     : BucketRenderer(name, my_id), m_renderer(merc) {}
 
-
-void Merc2BucketRenderer::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
+void Merc2BucketRenderer::render(DmaFollower& dma,
+                                 SharedRenderState* render_state,
+                                 ScopedProfilerNode& prof) {
   // skip if disabled
   if (!m_enabled) {
     while (dma.current_tag_offset() != render_state->next_bucket) {
