@@ -11,7 +11,7 @@ class Generic2 {
            u32 num_buckets = 800);
   ~Generic2();
 
-  enum class Mode { NORMAL, LIGHTNING };
+  enum class Mode { NORMAL, LIGHTNING, WARP };
 
   void render_in_mode(DmaFollower& dma,
                       SharedRenderState* render_state,
@@ -33,7 +33,7 @@ class Generic2 {
   static_assert(sizeof(Vertex) == 32);
 
  private:
-  void determine_draw_modes(bool enable_at);
+  void determine_draw_modes(bool enable_at, bool default_fog);
   void build_index_buffer();
   void link_adgifs_back_to_frags();
   void draws_to_buckets();
@@ -42,7 +42,7 @@ class Generic2 {
   void process_dma_jak1(DmaFollower& dma, u32 next_bucket);
   void process_dma_lightning(DmaFollower& dma, u32 next_bucket);
   void process_dma_jak2(DmaFollower& dma, u32 next_bucket);
-  void setup_draws(bool enable_at);
+  void setup_draws(bool enable_at, bool default_fog);
   void do_draws(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void do_draws_for_alpha(SharedRenderState* render_state,
                           ScopedProfilerNode& prof,
