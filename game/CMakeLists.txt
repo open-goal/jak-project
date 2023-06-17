@@ -7,6 +7,8 @@ set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> <INCLUDES> -f ${CMA
 set_source_files_properties(kernel/asm_funcs.asm PROPERTIES COMPILE_FLAGS "-g")
 set(RUNTIME_SOURCE
         external/discord.cpp
+        external/discord_jak1.cpp
+        external/discord_jak2.cpp
         graphics/display.cpp
         graphics/gfx.cpp
         graphics/jak2_texture_remap.cpp

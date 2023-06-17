@@ -53,15 +53,55 @@ struct MouseInfo {
   //  (speedy float :offset 108)
 };
 
+enum class FocusStatus : u32 {
+  Disable = 0,
+  Dead = 1,
+  Ignore = 2,
+  Inactive = 3,
+  Dangerous = 4,
+  InAir = 5,
+  Hit = 6,
+  Grabbed = 7,
+  InHead = 8,
+  TouchWater = 9,
+  OnWater = 10,
+  UnderWater = 11,
+  EdgeGrab = 12,
+  Pole = 13,
+  PilotRiding = 14,
+  Flut = 15,
+  Tube = 16,
+  Ice = 17,
+  Board = 18,
+  Gun = 19,
+  Pilot = 20,
+  Mech = 21,
+  Dark = 22,
+  Rail = 23,
+  Halfpipe = 24,
+  Carry = 25,
+  Super = 26,
+  Shooting = 27,
+  Indax = 28,
+  Arrestable = 29,
+  Teleporting = 30,
+  FS31 = 31,
+  Max = 32
+};
+
+#define FOCUS_TEST(status, foc) (status.test(static_cast<size_t>(foc)))
+
 struct DiscordInfo {
-  u32 orb_count;            // (pointer float)
-  u32 gem_count;            // (pointer float)
-  u32 death_count;          // (pointer int32)
+  float orb_count;          // float
+  float gem_count;          // float
+  u32 death_count;          // int32
   u32 status;               // string
   u32 level;                // string
   u32 cutscene;             // symbol - bool
-  u32 time_of_day;          // (pointer float
+  float time_of_day;        // float
   float percent_completed;  // float
+  u32 focus_status;         // uint32
+  u32 task;                 // string
 };
 // To speedup finding the auto-splitter block in GOAL memory
 // all this has is a marker for LiveSplit to find, and then the pointer

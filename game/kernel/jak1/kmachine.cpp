@@ -15,7 +15,7 @@
 #include "common/util/FileUtil.h"
 #include "common/util/string_util.h"
 
-#include "game/external/discord.h"
+#include "game/external/discord_jak1.h"
 #include "game/graphics/display.h"
 #include "game/graphics/gfx.h"
 #include "game/graphics/sceGraphicsInterface.h"
@@ -440,9 +440,10 @@ void update_discord_rpc(u32 discord_info) {
       auto flutflut = Ptr<Symbol>(info->flutflut)->value;
       char* status = Ptr<String>(info->status).c()->data();
       char* level = Ptr<String>(info->level).c()->data();
-      const char* full_level_name = jak1_get_full_level_name(Ptr<String>(info->level).c()->data());
+      const char* full_level_name =
+          get_full_level_name(level_names, level_name_remap, Ptr<String>(info->level).c()->data());
       memset(&rpc, 0, sizeof(rpc));
-      if (!indoors(level)) {
+      if (!indoors(indoor_levels, level)) {
         char level_with_tod[128];
         strcpy(level_with_tod, level);
         strcat(level_with_tod, "-");
@@ -475,22 +476,16 @@ void update_discord_rpc(u32 discord_info) {
         strcpy(state, "Intro");
       } else if (cutscene != offset_of_s7()) {
         strcpy(state, "Watching a cutscene");
+        strcpy(large_image_text, fmt::format("Cells: {} | Orbs: {} | Flies: {} | Deaths: {}",
+                                             std::to_string(cells), std::to_string(orbs),
+                                             std::to_string(scout_flies), std::to_string(deaths))
+                                     .c_str());
       } else {
-        strcpy(state, "Cells: ");
-        strcat(state, std::to_string(cells).c_str());
-        strcat(state, " | Orbs: ");
-        strcat(state, std::to_string(orbs).c_str());
-        strcat(state, " | Flies: ");
-        strcat(state, std::to_string(scout_flies).c_str());
+        strcpy(state, fmt::format("Cells: {} | Orbs: {} | Flies: {}", std::to_string(cells),
+                                  std::to_string(orbs), std::to_string(scout_flies))
+                          .c_str());
 
-        strcat(large_image_text, " | Cells: ");
-        strcat(large_image_text, std::to_string(cells).c_str());
-        strcat(large_image_text, " | Orbs: ");
-        strcat(large_image_text, std::to_string(orbs).c_str());
-        strcat(large_image_text, " | Flies: ");
-        strcat(large_image_text, std::to_string(scout_flies).c_str());
-        strcat(large_image_text, " | Deaths: ");
-        strcat(large_image_text, std::to_string(deaths).c_str());
+        strcat(large_image_text, fmt::format(" | Deaths: {}", std::to_string(deaths)).c_str());
       }
       rpc.largeImageText = large_image_text;
       rpc.state = state;
@@ -501,7 +496,7 @@ void update_discord_rpc(u32 discord_info) {
         strcpy(small_image_key, "flutflut");
         strcpy(small_image_text, "Riding on Flut Flut");
       } else {
-        if (!indoors(level)) {
+        if (!indoors(indoor_levels, level)) {
           strcpy(small_image_key, time_of_day_str(time));
           strcpy(small_image_text, "Time of day: ");
           strcat(small_image_text, get_time_of_day(time).c_str());
