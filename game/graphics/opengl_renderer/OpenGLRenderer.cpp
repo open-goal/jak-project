@@ -8,7 +8,6 @@
 #include "game/graphics/opengl_renderer/DepthCue.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
-#include "game/graphics/opengl_renderer/LightningRenderer.h"
 #include "game/graphics/opengl_renderer/ProgressRenderer.h"
 #include "game/graphics/opengl_renderer/ShadowRenderer.h"
 #include "game/graphics/opengl_renderer/SkyRenderer.h"
@@ -19,7 +18,8 @@
 #include "game/graphics/opengl_renderer/background/TFragment.h"
 #include "game/graphics/opengl_renderer/background/Tie3.h"
 #include "game/graphics/opengl_renderer/foreground/Generic2.h"
-#include "game/graphics/opengl_renderer/foreground/Merc2.h"
+#include "game/graphics/opengl_renderer/foreground/Generic2BucketRenderer.h"
+#include "game/graphics/opengl_renderer/foreground/Merc2BucketRenderer.h"
 #include "game/graphics/opengl_renderer/foreground/Shadow2.h"
 #include "game/graphics/opengl_renderer/ocean/OceanMidAndFar.h"
 #include "game/graphics/opengl_renderer/ocean/OceanNear.h"
@@ -78,7 +78,11 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
 
   lg::debug("OpenGL context information: {}", (const char*)glGetString(GL_VERSION));
 
+  m_merc2 = std::make_shared<Merc2>(m_render_state.shaders);
+  m_generic2 = std::make_shared<Generic2>(m_render_state.shaders);
+
   // initialize all renderers
+  auto p = scoped_prof("init-bucket-renderers");
   switch (m_version) {
     case GameVersion::Jak1:
       init_bucket_renderers_jak1();
@@ -121,12 +125,13 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
         fmt::format("etie-l{}-tfrag", i), BucketCategory::TIE,
         GET_BUCKET_ID_FOR_LIST(BucketId::ETIE_L0_TFRAG, BucketId::ETIE_L1_TFRAG, i), tie,
         tfrag3::TieCategory::NORMAL_ENVMAP);
-    init_bucket_renderer<Merc2>(
+    init_bucket_renderer<Merc2BucketRenderer>(
         fmt::format("merc-l{}-tfrag", i), BucketCategory::MERC,
-        GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_TFRAG, BucketId::MERC_L1_TFRAG, i));
-    init_bucket_renderer<Generic2>(
+        GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_TFRAG, BucketId::MERC_L1_TFRAG, i), m_merc2);
+    init_bucket_renderer<Generic2BucketRenderer>(
         fmt::format("gmerc-l{}-tfrag", i), BucketCategory::MERC,
-        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_TFRAG, BucketId::GMERC_L1_TFRAG, i));
+        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_TFRAG, BucketId::GMERC_L1_TFRAG, i), m_generic2,
+        Generic2::Mode::NORMAL);
 
     init_bucket_renderer<TextureUploadHandler>(
         fmt::format("tex-l{}-shrub", i), BucketCategory::TEX,
@@ -134,12 +139,13 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
     init_bucket_renderer<Shrub>(
         fmt::format("shrub-l{}-shrub", i), BucketCategory::SHRUB,
         GET_BUCKET_ID_FOR_LIST(BucketId::SHRUB_L0_SHRUB, BucketId::SHRUB_L1_SHRUB, i));
-    init_bucket_renderer<Merc2>(
+    init_bucket_renderer<Merc2BucketRenderer>(
         fmt::format("merc-l{}-shrub", i), BucketCategory::MERC,
-        GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_SHRUB, BucketId::MERC_L1_SHRUB, i));
-    init_bucket_renderer<Generic2>(
+        GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_SHRUB, BucketId::MERC_L1_SHRUB, i), m_merc2);
+    init_bucket_renderer<Generic2BucketRenderer>(
         fmt::format("gmerc-l{}-shrub", i), BucketCategory::MERC,
-        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_SHRUB, BucketId::GMERC_L1_SHRUB, i));
+        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_SHRUB, BucketId::GMERC_L1_SHRUB, i), m_generic2,
+        Generic2::Mode::NORMAL);
 
     init_bucket_renderer<TextureUploadHandler>(
         fmt::format("tex-l{}-alpha", i), BucketCategory::TEX,
@@ -156,42 +162,46 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
         fmt::format("etie-t-l{}-alpha", i), BucketCategory::TIE,
         GET_BUCKET_ID_FOR_LIST(BucketId::ETIE_T_L0_ALPHA, BucketId::ETIE_T_L1_ALPHA, i), tie,
         tfrag3::TieCategory::TRANS_ENVMAP);
-    init_bucket_renderer<Merc2>(
+    init_bucket_renderer<Merc2BucketRenderer>(
         fmt::format("merc-l{}-alpha", i), BucketCategory::MERC,
-        GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_ALPHA, BucketId::MERC_L1_ALPHA, i));
-    init_bucket_renderer<Generic2>(
+        GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_ALPHA, BucketId::MERC_L1_ALPHA, i), m_merc2);
+    init_bucket_renderer<Generic2BucketRenderer>(
         fmt::format("gmerc-l{}-alpha", i), BucketCategory::GENERIC,
-        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_ALPHA, BucketId::GMERC_L1_ALPHA, i));
+        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_ALPHA, BucketId::GMERC_L1_ALPHA, i), m_generic2,
+        Generic2::Mode::NORMAL);
 
     init_bucket_renderer<TextureUploadHandler>(
         fmt::format("tex-l{}-pris", i), BucketCategory::TEX,
         GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_PRIS, BucketId::TEX_L1_PRIS, i));
-    init_bucket_renderer<Merc2>(
+    init_bucket_renderer<Merc2BucketRenderer>(
         fmt::format("merc-l{}-pris", i), BucketCategory::MERC,
-        GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_PRIS, BucketId::MERC_L1_PRIS, i));
-    init_bucket_renderer<Generic2>(
+        GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_PRIS, BucketId::MERC_L1_PRIS, i), m_merc2);
+    init_bucket_renderer<Generic2BucketRenderer>(
         fmt::format("gmerc-l{}-pris", i), BucketCategory::GENERIC,
-        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_PRIS, BucketId::GMERC_L1_PRIS, i));
+        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_PRIS, BucketId::GMERC_L1_PRIS, i), m_generic2,
+        Generic2::Mode::NORMAL);
 
     init_bucket_renderer<TextureUploadHandler>(
         fmt::format("tex-l{}-pris2", i), BucketCategory::TEX,
         GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_PRIS2, BucketId::TEX_L1_PRIS2, i));
-    init_bucket_renderer<Merc2>(
+    init_bucket_renderer<Merc2BucketRenderer>(
         fmt::format("merc-l{}-pris2", i), BucketCategory::MERC,
-        GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_PRIS2, BucketId::MERC_L1_PRIS2, i));
-    init_bucket_renderer<Generic2>(
+        GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_PRIS2, BucketId::MERC_L1_PRIS2, i), m_merc2);
+    init_bucket_renderer<Generic2BucketRenderer>(
         fmt::format("gmerc-l{}-pris2", i), BucketCategory::GENERIC,
-        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_PRIS2, BucketId::GMERC_L1_PRIS2, i));
+        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_PRIS2, BucketId::GMERC_L1_PRIS2, i), m_generic2,
+        Generic2::Mode::NORMAL);
 
     init_bucket_renderer<TextureUploadHandler>(
         fmt::format("tex-l{}-water", i), BucketCategory::TEX,
         GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_WATER, BucketId::TEX_L1_WATER, i));
-    init_bucket_renderer<Merc2>(
+    init_bucket_renderer<Merc2BucketRenderer>(
         fmt::format("merc-l{}-water", i), BucketCategory::MERC,
-        GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_WATER, BucketId::MERC_L1_WATER, i));
-    init_bucket_renderer<Generic2>(
+        GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_WATER, BucketId::MERC_L1_WATER, i), m_merc2);
+    init_bucket_renderer<Generic2BucketRenderer>(
         fmt::format("gmerc-l{}-water", i), BucketCategory::GENERIC,
-        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_WATER, BucketId::GMERC_L1_WATER, i));
+        GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_WATER, BucketId::GMERC_L1_WATER, i), m_generic2,
+        Generic2::Mode::NORMAL);
     init_bucket_renderer<TFragment>(
         fmt::format("tfrag-w-l{}-alpha", i), BucketCategory::TFRAG,
         GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_W_L0_WATER, BucketId::TFRAG_W_L1_WATER, i),
@@ -209,21 +219,26 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   // 180
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-tfrag", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_TFRAG);
-  init_bucket_renderer<Merc2>("merc-lcom-tfrag", BucketCategory::MERC, BucketId::MERC_LCOM_TFRAG);
+  init_bucket_renderer<Merc2BucketRenderer>("merc-lcom-tfrag", BucketCategory::MERC,
+                                            BucketId::MERC_LCOM_TFRAG, m_merc2);
   // 190
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-shrub", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_SHRUB);
-  init_bucket_renderer<Merc2>("merc-lcom-shrub", BucketCategory::MERC, BucketId::MERC_LCOM_SHRUB);
-  init_bucket_renderer<Generic2>("gmerc-lcom-tfrag", BucketCategory::GENERIC,
-                                 BucketId::GMERC_LCOM_TFRAG);
+  init_bucket_renderer<Merc2BucketRenderer>("merc-lcom-shrub", BucketCategory::MERC,
+                                            BucketId::MERC_LCOM_SHRUB, m_merc2);
+  init_bucket_renderer<Generic2BucketRenderer>("gmerc-lcom-tfrag", BucketCategory::GENERIC,
+                                               BucketId::GMERC_LCOM_TFRAG, m_generic2,
+                                               Generic2::Mode::NORMAL);
   init_bucket_renderer<Shadow2>("shadow", BucketCategory::OTHER, BucketId::SHADOW);
   // 220
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-pris", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_PRIS);
-  init_bucket_renderer<Merc2>("merc-lcom-pris", BucketCategory::MERC, BucketId::MERC_LCOM_PRIS);
+  init_bucket_renderer<Merc2BucketRenderer>("merc-lcom-pris", BucketCategory::MERC,
+                                            BucketId::MERC_LCOM_PRIS, m_merc2);
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-water", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_WATER);
-  init_bucket_renderer<Merc2>("merc-lcom-water", BucketCategory::MERC, BucketId::MERC_LCOM_WATER);
+  init_bucket_renderer<Merc2BucketRenderer>("merc-lcom-water", BucketCategory::MERC,
+                                            BucketId::MERC_LCOM_WATER, m_merc2);
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-sky-post", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_SKY_POST);
   // 310
@@ -232,10 +247,11 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                              BucketId::TEX_ALL_SPRITE);
   init_bucket_renderer<Sprite3>("particles", BucketCategory::SPRITE, BucketId::PARTICLES);
   init_bucket_renderer<Shadow2>("shadow2", BucketCategory::OTHER, BucketId::SHADOW2);
-  init_bucket_renderer<LightningRenderer>("effects", BucketCategory::OTHER, BucketId::EFFECTS);
+  init_bucket_renderer<Generic2BucketRenderer>("effects", BucketCategory::OTHER, BucketId::EFFECTS,
+                                               m_generic2, Generic2::Mode::LIGHTNING);
   init_bucket_renderer<TextureUploadHandler>("tex-all-warp", BucketCategory::TEX,
                                              BucketId::TEX_ALL_WARP);
-  init_bucket_renderer<Warp>("warp", BucketCategory::GENERIC, BucketId::GMERC_WARP);
+  init_bucket_renderer<Warp>("warp", BucketCategory::GENERIC, BucketId::GMERC_WARP, m_generic2);
   init_bucket_renderer<DirectRenderer>("debug-no-zbuf1", BucketCategory::OTHER,
                                        BucketId::DEBUG_NO_ZBUF1, 0x8000);
   init_bucket_renderer<TextureUploadHandler>("tex-all-map", BucketCategory::TEX,
@@ -256,20 +272,23 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   m_render_state.eye_renderer = eye_renderer.get();
   m_jak2_eye_renderer = std::move(eye_renderer);
 
-  // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
-  for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
-    if (!m_bucket_renderers[i]) {
-      init_bucket_renderer<EmptyBucketRenderer>(fmt::format("bucket-{}", i), BucketCategory::OTHER,
-                                                i);
-    }
+  {
+    auto p = scoped_prof("render-inits");
+    // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
+    for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
+      if (!m_bucket_renderers[i]) {
+        init_bucket_renderer<EmptyBucketRenderer>(fmt::format("bucket-{}", i),
+                                                  BucketCategory::OTHER, i);
+      }
 
-    m_bucket_renderers[i]->init_shaders(m_render_state.shaders);
-    m_bucket_renderers[i]->init_textures(*m_render_state.texture_pool, GameVersion::Jak2);
+      m_bucket_renderers[i]->init_shaders(m_render_state.shaders);
+      m_bucket_renderers[i]->init_textures(*m_render_state.texture_pool, GameVersion::Jak2);
+    }
+    m_jak2_eye_renderer->init_shaders(m_render_state.shaders);
+    m_jak2_eye_renderer->init_textures(*m_render_state.texture_pool, GameVersion::Jak2);
   }
 
-  m_jak2_eye_renderer->init_shaders(m_render_state.shaders);
-  m_jak2_eye_renderer->init_textures(*m_render_state.texture_pool, GameVersion::Jak2);
-
+  auto p = scoped_prof("load-common");
   m_render_state.loader->load_common(*m_render_state.texture_pool, "GAME");
 }
 /*!
@@ -314,11 +333,12 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
   init_bucket_renderer<Tie3WithEnvmapJak1>("l0-tfrag-tie", BucketCategory::TIE,
                                            BucketId::TIE_LEVEL0, 0);
   // 10 : MERC_TFRAG_TEX_LEVEL0
-  init_bucket_renderer<Merc2>("l0-tfrag-merc", BucketCategory::MERC,
-                              BucketId::MERC_TFRAG_TEX_LEVEL0);
+  init_bucket_renderer<Merc2BucketRenderer>("l0-tfrag-merc", BucketCategory::MERC,
+                                            BucketId::MERC_TFRAG_TEX_LEVEL0, m_merc2);
   // 11 : GMERC_TFRAG_TEX_LEVEL0
-  init_bucket_renderer<Generic2>("l0-tfrag-generic", BucketCategory::GENERIC,
-                                 BucketId::GENERIC_TFRAG_TEX_LEVEL0, 1500000, 10000, 10000, 800);
+  init_bucket_renderer<Generic2BucketRenderer>("l0-tfrag-generic", BucketCategory::GENERIC,
+                                               BucketId::GENERIC_TFRAG_TEX_LEVEL0, m_generic2,
+                                               Generic2::Mode::NORMAL);
 
   //-----------------------
   // LEVEL 1 tfrag texture
@@ -335,11 +355,12 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
   init_bucket_renderer<Tie3WithEnvmapJak1>("l1-tfrag-tie", BucketCategory::TIE,
                                            BucketId::TIE_LEVEL1, 1);
   // 17 : MERC_TFRAG_TEX_LEVEL1
-  init_bucket_renderer<Merc2>("l1-tfrag-merc", BucketCategory::MERC,
-                              BucketId::MERC_TFRAG_TEX_LEVEL1);
+  init_bucket_renderer<Merc2BucketRenderer>("l1-tfrag-merc", BucketCategory::MERC,
+                                            BucketId::MERC_TFRAG_TEX_LEVEL1, m_merc2);
   // 18 : GMERC_TFRAG_TEX_LEVEL1
-  init_bucket_renderer<Generic2>("l1-tfrag-generic", BucketCategory::GENERIC,
-                                 BucketId::GENERIC_TFRAG_TEX_LEVEL1, 1500000, 10000, 10000, 800);
+  init_bucket_renderer<Generic2BucketRenderer>("l1-tfrag-generic", BucketCategory::GENERIC,
+                                               BucketId::GENERIC_TFRAG_TEX_LEVEL1, m_generic2,
+                                               Generic2::Mode::NORMAL);
 
   //-----------------------
   // LEVEL 0 shrub texture
@@ -353,8 +374,9 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
   // 22 : SHRUB_BILLBOARD_LEVEL0
   // 23 : SHRUB_TRANS_LEVEL0
   // 24 : SHRUB_GENERIC_LEVEL0
-  init_bucket_renderer<Generic2>("l0-shrub-generic", BucketCategory::GENERIC,
-                                 BucketId::SHRUB_GENERIC_LEVEL0);
+  init_bucket_renderer<Generic2BucketRenderer>("l0-shrub-generic", BucketCategory::GENERIC,
+                                               BucketId::SHRUB_GENERIC_LEVEL0, m_generic2,
+                                               Generic2::Mode::NORMAL);
 
   //-----------------------
   // LEVEL 1 shrub texture
@@ -368,8 +390,9 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
   // 28 : SHRUB_BILLBOARD_LEVEL1
   // 29 : SHRUB_TRANS_LEVEL1
   // 30 : SHRUB_GENERIC_LEVEL1
-  init_bucket_renderer<Generic2>("l1-shrub-generic", BucketCategory::GENERIC,
-                                 BucketId::SHRUB_GENERIC_LEVEL1);
+  init_bucket_renderer<Generic2BucketRenderer>("l1-shrub-generic", BucketCategory::GENERIC,
+                                               BucketId::SHRUB_GENERIC_LEVEL1, m_generic2,
+                                               Generic2::Mode::NORMAL);
 
   //-----------------------
   // LEVEL 0 alpha texture
@@ -405,11 +428,12 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
                                   BucketId::TFRAG_ICE_LEVEL1, ice_tfrags, false, 1);
   // 44
 
-  init_bucket_renderer<Merc2>("common-alpha-merc", BucketCategory::MERC,
-                              BucketId::MERC_AFTER_ALPHA);
+  init_bucket_renderer<Merc2BucketRenderer>("common-alpha-merc", BucketCategory::MERC,
+                                            BucketId::MERC_AFTER_ALPHA, m_merc2);
 
-  init_bucket_renderer<Generic2>("common-alpha-generic", BucketCategory::GENERIC,
-                                 BucketId::GENERIC_ALPHA);                                  // 46
+  init_bucket_renderer<Generic2BucketRenderer>("common-alpha-generic", BucketCategory::GENERIC,
+                                               BucketId::GENERIC_ALPHA, m_generic2,
+                                               Generic2::Mode::NORMAL);                     // 46
   init_bucket_renderer<ShadowRenderer>("shadow", BucketCategory::OTHER, BucketId::SHADOW);  // 47
 
   //-----------------------
@@ -417,50 +441,55 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
   //-----------------------
   init_bucket_renderer<TextureUploadHandler>("l0-pris-tex", BucketCategory::TEX,
                                              BucketId::PRIS_TEX_LEVEL0);  // 48
-  init_bucket_renderer<Merc2>("l0-pris-merc", BucketCategory::MERC,
-                              BucketId::MERC_PRIS_LEVEL0);  // 49
-  init_bucket_renderer<Generic2>("l0-pris-generic", BucketCategory::GENERIC,
-                                 BucketId::GENERIC_PRIS_LEVEL0);  // 50
+  init_bucket_renderer<Merc2BucketRenderer>("l0-pris-merc", BucketCategory::MERC,
+                                            BucketId::MERC_PRIS_LEVEL0, m_merc2);  // 49
+  init_bucket_renderer<Generic2BucketRenderer>("l0-pris-generic", BucketCategory::GENERIC,
+                                               BucketId::GENERIC_PRIS_LEVEL0, m_generic2,
+                                               Generic2::Mode::NORMAL);  // 50
 
   //-----------------------
   // LEVEL 1 pris texture
   //-----------------------
   init_bucket_renderer<TextureUploadHandler>("l1-pris-tex", BucketCategory::TEX,
                                              BucketId::PRIS_TEX_LEVEL1);  // 51
-  init_bucket_renderer<Merc2>("l1-pris-merc", BucketCategory::MERC,
-                              BucketId::MERC_PRIS_LEVEL1);  // 52
-  init_bucket_renderer<Generic2>("l1-pris-generic", BucketCategory::GENERIC,
-                                 BucketId::GENERIC_PRIS_LEVEL1);  // 53
+  init_bucket_renderer<Merc2BucketRenderer>("l1-pris-merc", BucketCategory::MERC,
+                                            BucketId::MERC_PRIS_LEVEL1, m_merc2);  // 52
+  init_bucket_renderer<Generic2BucketRenderer>("l1-pris-generic", BucketCategory::GENERIC,
+                                               BucketId::GENERIC_PRIS_LEVEL1, m_generic2,
+                                               Generic2::Mode::NORMAL);  // 53
 
   // other renderers may output to the eye renderer
   m_render_state.eye_renderer = init_bucket_renderer<EyeRenderer>(
       "common-pris-eyes", BucketCategory::OTHER, BucketId::MERC_EYES_AFTER_PRIS);  // 54
 
   // hack: set to merc2 for debugging
-  init_bucket_renderer<Merc2>("common-pris-merc", BucketCategory::MERC,
-                              BucketId::MERC_AFTER_PRIS);  // 55
-  init_bucket_renderer<Generic2>("common-pris-generic", BucketCategory::GENERIC,
-                                 BucketId::GENERIC_PRIS);  // 56
+  init_bucket_renderer<Merc2BucketRenderer>("common-pris-merc", BucketCategory::MERC,
+                                            BucketId::MERC_AFTER_PRIS, m_merc2);  // 55
+  init_bucket_renderer<Generic2BucketRenderer>("common-pris-generic", BucketCategory::GENERIC,
+                                               BucketId::GENERIC_PRIS, m_generic2,
+                                               Generic2::Mode::NORMAL);  // 56
 
   //-----------------------
   // LEVEL 0 water texture
   //-----------------------
   init_bucket_renderer<TextureUploadHandler>("l0-water-tex", BucketCategory::TEX,
                                              BucketId::WATER_TEX_LEVEL0);  // 57
-  init_bucket_renderer<Merc2>("l0-water-merc", BucketCategory::MERC,
-                              BucketId::MERC_WATER_LEVEL0);  // 58
-  init_bucket_renderer<Generic2>("l0-water-generic", BucketCategory::GENERIC,
-                                 BucketId::GENERIC_WATER_LEVEL0);  // 59
+  init_bucket_renderer<Merc2BucketRenderer>("l0-water-merc", BucketCategory::MERC,
+                                            BucketId::MERC_WATER_LEVEL0, m_merc2);  // 58
+  init_bucket_renderer<Generic2BucketRenderer>("l0-water-generic", BucketCategory::GENERIC,
+                                               BucketId::GENERIC_WATER_LEVEL0, m_generic2,
+                                               Generic2::Mode::NORMAL);  // 59
 
   //-----------------------
   // LEVEL 1 water texture
   //-----------------------
   init_bucket_renderer<TextureUploadHandler>("l1-water-tex", BucketCategory::TEX,
                                              BucketId::WATER_TEX_LEVEL1);  // 60
-  init_bucket_renderer<Merc2>("l1-water-merc", BucketCategory::MERC,
-                              BucketId::MERC_WATER_LEVEL1);  // 61
-  init_bucket_renderer<Generic2>("l1-water-generic", BucketCategory::GENERIC,
-                                 BucketId::GENERIC_WATER_LEVEL1);  // 62
+  init_bucket_renderer<Merc2BucketRenderer>("l1-water-merc", BucketCategory::MERC,
+                                            BucketId::MERC_WATER_LEVEL1, m_merc2);  // 61
+  init_bucket_renderer<Generic2BucketRenderer>("l1-water-generic", BucketCategory::GENERIC,
+                                               BucketId::GENERIC_WATER_LEVEL1, m_generic2,
+                                               Generic2::Mode::NORMAL);  // 62
 
   init_bucket_renderer<OceanNear>("ocean-near", BucketCategory::OCEAN, BucketId::OCEAN_NEAR);  // 63
 

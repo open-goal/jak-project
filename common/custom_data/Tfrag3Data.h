@@ -18,7 +18,7 @@ namespace tfrag3 {
 // - if changing any large things (vertices, vis, bvh, colors, textures) update get_memory_usage
 // - if adding a new category to the memory usage, update extract_level to print it.
 
-constexpr int TFRAG3_VERSION = 36;
+constexpr int TFRAG3_VERSION = 37;
 
 enum MemoryUsageCategory {
   TEXTURE,
@@ -115,6 +115,7 @@ struct PackedTieVertices {
     s32 matrix_idx;
     u32 start_vert;
     u32 end_vert;
+    bool has_normals = false;
   };
 
   std::vector<u16> color_indices;

@@ -48,7 +48,7 @@
 
 std::mutex g_merc_data_mutex;
 
-Merc2::Merc2(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
+Merc2::Merc2(ShaderLibrary& shaders) {
   // Set up main vertex array. This will point to the data stored in the .FR3 level file, and will
   // be uploaded to the GPU by the Loader.
   glGenVertexArrays(1, &m_vao);
@@ -93,6 +93,10 @@ Merc2::Merc2(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   for (auto& x : m_effect_debug_mask) {
     x = true;
   }
+
+  init_shader_common(shaders[ShaderId::MERC2], &m_merc_uniforms, true);
+  init_shader_common(shaders[ShaderId::EMERC], &m_emerc_uniforms, false);
+  m_emerc_uniforms.fade = glGetUniformLocation(shaders[ShaderId::EMERC].id(), "fade");
 }
 
 Merc2::~Merc2() {
@@ -161,7 +165,8 @@ void Merc2::model_mod_blerc_draws(int num_effects,
                                   const tfrag3::MercModel* model,
                                   const LevelData* lev,
                                   ModBuffers* mod_opengl_buffers,
-                                  const float* blerc_weights) {
+                                  const float* blerc_weights,
+                                  MercDebugStats* stats) {
   // loop over effects.
   for (int ei = 0; ei < num_effects; ei++) {
     const auto& effect = model->effects[ei];
@@ -192,8 +197,8 @@ void Merc2::model_mod_blerc_draws(int num_effects,
     blerc_avx(i_data, i_data_end, f_data, blerc_weights, m_mod_vtx_temp.data(), blerc_multiplier);
 
     // and upload to GPU
-    m_stats.num_uploads++;
-    m_stats.num_upload_bytes += effect.mod.vertices.size() * sizeof(tfrag3::MercVertex);
+    stats->num_uploads++;
+    stats->num_upload_bytes += effect.mod.vertices.size() * sizeof(tfrag3::MercVertex);
     {
       glBindBuffer(GL_ARRAY_BUFFER, opengl_buffers.vertex);
       glBufferData(GL_ARRAY_BUFFER, effect.mod.vertices.size() * sizeof(tfrag3::MercVertex),
@@ -212,7 +217,8 @@ void Merc2::model_mod_draws(int num_effects,
                             const LevelData* lev,
                             const u8* input_data,
                             const DmaTransfer& setup,
-                            ModBuffers* mod_opengl_buffers) {
+                            ModBuffers* mod_opengl_buffers,
+                            MercDebugStats* stats) {
   auto p = scoped_prof("update-verts");
 
   // loop over effects. Mod vertices are done per effect (possibly a bad idea?)
@@ -368,8 +374,8 @@ void Merc2::model_mod_draws(int num_effects,
     }
 
     // and upload to GPU
-    m_stats.num_uploads++;
-    m_stats.num_upload_bytes += effect.mod.vertices.size() * sizeof(tfrag3::MercVertex);
+    stats->num_uploads++;
+    stats->num_upload_bytes += effect.mod.vertices.size() * sizeof(tfrag3::MercVertex);
     {
       auto pp = scoped_prof("update-verts-upload");
       glBindBuffer(GL_ARRAY_BUFFER, opengl_buffers.vertex);
@@ -384,7 +390,8 @@ void Merc2::model_mod_draws(int num_effects,
  */
 void Merc2::handle_pc_model(const DmaTransfer& setup,
                             SharedRenderState* render_state,
-                            ScopedProfilerNode& proff) {
+                            ScopedProfilerNode& proff,
+                            MercDebugStats* stats) {
   auto p = scoped_prof("init-pc");
 
   // the format of the data is:
@@ -409,7 +416,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   auto model_ref = render_state->loader->get_merc_model(name);
   if (!model_ref) {
     // it can fail, if the game is faster than the loader. In this case, we just don't draw.
-    m_stats.num_missing_models++;
+    stats->num_missing_models++;
     return;
   }
 
@@ -420,7 +427,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   // each model uses only 1 light.
   if (m_next_free_light >= MAX_LIGHTS) {
     fmt::print("MERC2 out of lights, consider increasing MAX_LIGHTS\n");
-    flush_draw_buckets(render_state, proff);
+    flush_draw_buckets(render_state, proff, stats);
   }
 
   // models use many bones. First check if we need to flush:
@@ -428,7 +435,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   if (m_next_free_bone_vector + m_opengl_buffer_alignment + bone_count * 8 >
       MAX_SHADER_BONE_VECTORS) {
     fmt::print("MERC2 out of bones, consider increasing MAX_SHADER_BONE_VECTORS\n");
-    flush_draw_buckets(render_state, proff);
+    flush_draw_buckets(render_state, proff, stats);
   }
 
   // also sanity check that we have enough to draw the model
@@ -453,7 +460,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
     if (m_next_free_level_bucket >= m_level_draw_buckets.size()) {
       // out of room, flush
       // fmt::print("MERC2 out of levels, consider increasing MAX_LEVELS\n");
-      flush_draw_buckets(render_state, proff);
+      flush_draw_buckets(render_state, proff, stats);
     }
     // alloc a new one
     lev_bucket = &m_level_draw_buckets[m_next_free_level_bucket++];
@@ -465,7 +472,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   if (lev_bucket->next_free_draw + model->max_draws >= lev_bucket->draws.size()) {
     // out of room, flush
     fmt::print("MERC2 out of draws, consider increasing MAX_DRAWS_PER_LEVEL\n");
-    flush_draw_buckets(render_state, proff);
+    flush_draw_buckets(render_state, proff, stats);
     if (model->max_draws >= lev_bucket->draws.size()) {
       ASSERT_NOT_REACHED_MSG("MERC2 draw buffer not big enough");
     }
@@ -475,7 +482,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   if (lev_bucket->next_free_envmap_draw + model->max_draws >= lev_bucket->envmap_draws.size()) {
     // out of room, flush
     fmt::print("MERC2 out of envmap draws, consider increasing MAX_ENVMAP_DRAWS_PER_LEVEL\n");
-    flush_draw_buckets(render_state, proff);
+    flush_draw_buckets(render_state, proff, stats);
     if (model->max_draws >= lev_bucket->envmap_draws.size()) {
       ASSERT_NOT_REACHED_MSG("MERC2 envmap draw buffer not big enough");
     }
@@ -550,31 +557,31 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   // will hold opengl buffers for the updated vertices
   ModBuffers mod_opengl_buffers[kMaxEffect];
   if (model_uses_pc_blerc) {
-    model_mod_blerc_draws(num_effects, model, lev, mod_opengl_buffers, blerc_weights);
+    model_mod_blerc_draws(num_effects, model, lev, mod_opengl_buffers, blerc_weights, stats);
   } else if (model_uses_mod) {  // only if we've enabled, this path is slow.
-    model_mod_draws(num_effects, model, lev, input_data, setup, mod_opengl_buffers);
+    model_mod_draws(num_effects, model, lev, input_data, setup, mod_opengl_buffers, stats);
   }
 
   // stats
-  m_stats.num_models++;
+  stats->num_models++;
   for (const auto& effect : model_ref->model->effects) {
     bool envmap = effect.has_envmap;
-    m_stats.num_effects++;
-    m_stats.num_predicted_draws += effect.all_draws.size();
+    stats->num_effects++;
+    stats->num_predicted_draws += effect.all_draws.size();
     if (envmap) {
-      m_stats.num_envmap_effects++;
-      m_stats.num_predicted_draws += effect.all_draws.size();
+      stats->num_envmap_effects++;
+      stats->num_predicted_draws += effect.all_draws.size();
     }
     for (const auto& draw : effect.all_draws) {
-      m_stats.num_predicted_tris += draw.num_triangles;
+      stats->num_predicted_tris += draw.num_triangles;
       if (envmap) {
-        m_stats.num_predicted_tris += draw.num_triangles;
+        stats->num_predicted_tris += draw.num_triangles;
       }
     }
   }
 
-  if (m_debug_mode) {
-    auto& d = m_debug.model_list.emplace_back();
+  if (stats->collect_debug_model_list) {
+    auto& d = stats->model_list.emplace_back();
     d.name = model->name;
     d.level = model_ref->level->level->level_name;
     for (auto& e : model->effects) {
@@ -594,6 +601,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
 
   // allocate lights
   u32 lights = alloc_lights(current_lights);
+  stats->num_lights++;
 
   // loop over effects, creating draws for each
   for (size_t ei = 0; ei < model->effects.size(); ei++) {
@@ -657,31 +665,31 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   }
 }
 
-void Merc2::draw_debug_window() {
-  ImGui::Text("Models   : %d", m_stats.num_models);
-  ImGui::Text("Effects  : %d", m_stats.num_effects);
-  ImGui::Text("Draws (p): %d", m_stats.num_predicted_draws);
-  ImGui::Text("Tris  (p): %d", m_stats.num_predicted_tris);
-  ImGui::Text("Bones    : %d", m_stats.num_bones_uploaded);
-  ImGui::Text("Lights   : %d", m_stats.num_lights);
-  ImGui::Text("Dflush   : %d", m_stats.num_draw_flush);
+void Merc2::draw_debug_window(MercDebugStats* stats) {
+  ImGui::Text("Models   : %d", stats->num_models);
+  ImGui::Text("Effects  : %d", stats->num_effects);
+  ImGui::Text("Draws (p): %d", stats->num_predicted_draws);
+  ImGui::Text("Tris  (p): %d", stats->num_predicted_tris);
+  ImGui::Text("Bones    : %d", stats->num_bones_uploaded);
+  ImGui::Text("Lights   : %d", stats->num_lights);
+  ImGui::Text("Dflush   : %d", stats->num_draw_flush);
 
-  ImGui::Text("EEffects : %d", m_stats.num_envmap_effects);
-  ImGui::Text("ETris    : %d", m_stats.num_envmap_tris);
+  ImGui::Text("EEffects : %d", stats->num_envmap_effects);
+  ImGui::Text("ETris    : %d", stats->num_envmap_tris);
 
-  ImGui::Text("Uploads  : %d", m_stats.num_uploads);
-  ImGui::Text("Upload kB: %d", m_stats.num_upload_bytes / 1024);
+  ImGui::Text("Uploads  : %d", stats->num_uploads);
+  ImGui::Text("Upload kB: %d", stats->num_upload_bytes / 1024);
 
-  ImGui::Checkbox("Debug", &m_debug_mode);
+  ImGui::Checkbox("Debug", &stats->collect_debug_model_list);
 
   ImGui::SliderFloat("blerc-nightmare", &blerc_multiplier, -3, 3);
 
-  if (m_debug_mode) {
+  if (stats->collect_debug_model_list) {
     for (int i = 0; i < kMaxEffect; i++) {
       ImGui::Checkbox(fmt::format("e{:02d}", i).c_str(), &m_effect_debug_mask[i]);
     }
 
-    for (const auto& model : m_debug.model_list) {
+    for (const auto& model : stats->model_list) {
       if (ImGui::TreeNode(model.name.c_str())) {
         ImGui::Text("Level: %s\n", model.level.c_str());
         for (const auto& e : model.effects) {
@@ -694,12 +702,6 @@ void Merc2::draw_debug_window() {
       }
     }
   }
-}
-
-void Merc2::init_shaders(ShaderLibrary& shaders) {
-  init_shader_common(shaders[ShaderId::MERC2], &m_merc_uniforms, true);
-  init_shader_common(shaders[ShaderId::EMERC], &m_emerc_uniforms, false);
-  m_emerc_uniforms.fade = glGetUniformLocation(shaders[ShaderId::EMERC].id(), "fade");
 }
 
 void Merc2::init_shader_common(Shader& shader, Uniforms* uniforms, bool include_lights) {
@@ -749,37 +751,32 @@ void Merc2::switch_to_emerc(SharedRenderState* render_state) {
 /*!
  * Main merc2 rendering.
  */
-void Merc2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  m_stats = {};
-  if (m_debug_mode) {
-    m_debug = {};
+void Merc2::render(DmaFollower& dma,
+                   SharedRenderState* render_state,
+                   ScopedProfilerNode& prof,
+                   MercDebugStats* stats) {
+  *stats = {};
+  if (stats->collect_debug_model_list) {
+    stats->model_list.clear();
   }
 
-  // skip if disabled
-  if (!m_enabled) {
-    while (dma.current_tag_offset() != render_state->next_bucket) {
-      dma.read_and_advance();
-    }
-    return;
-  }
   switch_to_merc2(render_state);
 
   {
     auto pp = scoped_prof("handle-all-dma");
     // iterate through the dma chain, filling buckets
-    handle_all_dma(dma, render_state, prof);
+    handle_all_dma(dma, render_state, prof, stats);
   }
 
   {
     auto pp = scoped_prof("flush-buckets");
     // flush buckets to draws
-    flush_draw_buckets(render_state, prof);
+    flush_draw_buckets(render_state, prof, stats);
   }
 }
 
 u32 Merc2::alloc_lights(const VuLights& lights) {
   ASSERT(m_next_free_light < MAX_LIGHTS);
-  m_stats.num_lights++;
   u32 light_idx = m_next_free_light;
   m_lights_buffer[m_next_free_light++] = lights;
   static_assert(sizeof(VuLights) == 7 * 16);
@@ -797,7 +794,8 @@ std::string Merc2::ShaderMercMat::to_string() const {
  */
 void Merc2::handle_all_dma(DmaFollower& dma,
                            SharedRenderState* render_state,
-                           ScopedProfilerNode& prof) {
+                           ScopedProfilerNode& prof,
+                           MercDebugStats* stats) {
   // process the first tag. this is just jumping to the merc-specific dma.
   auto data0 = dma.read_and_advance();
   ASSERT(data0.vif1() == 0 || data0.vifcode1().kind == VifCode::Kind::NOP);
@@ -822,7 +820,7 @@ void Merc2::handle_all_dma(DmaFollower& dma,
 
   // handle each merc transfer
   while (dma.current_tag_offset() != render_state->next_bucket) {
-    handle_merc_chain(dma, render_state, prof);
+    handle_merc_chain(dma, render_state, prof, stats);
   }
   ASSERT(dma.current_tag_offset() == render_state->next_bucket);
 }
@@ -930,7 +928,8 @@ bool tag_is_nothing_next(const DmaFollower& dma) {
 
 void Merc2::handle_merc_chain(DmaFollower& dma,
                               SharedRenderState* render_state,
-                              ScopedProfilerNode& prof) {
+                              ScopedProfilerNode& prof,
+                              MercDebugStats* stats) {
   while (tag_is_nothing_next(dma)) {
     auto nothing = dma.read_and_advance();
     ASSERT(nothing.size_bytes == 0);
@@ -950,7 +949,7 @@ void Merc2::handle_merc_chain(DmaFollower& dma,
 
   while (init.vifcode1().kind == VifCode::Kind::PC_PORT) {
     // flush_pending_model(render_state, prof);
-    handle_pc_model(init, render_state, prof);
+    handle_pc_model(init, render_state, prof, stats);
     for (int i = 0; i < skip_count; i++) {
       auto link = dma.read_and_advance();
       ASSERT(link.vifcode0().kind == VifCode::Kind::NOP);
@@ -1157,8 +1156,10 @@ void Merc2::setup_merc_vao() {
   );
 }
 
-void Merc2::flush_draw_buckets(SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  m_stats.num_draw_flush++;
+void Merc2::flush_draw_buckets(SharedRenderState* render_state,
+                               ScopedProfilerNode& prof,
+                               MercDebugStats* stats) {
+  stats->num_draw_flush++;
   for (u32 li = 0; li < m_next_free_level_bucket; li++) {
     const auto& lev_bucket = m_level_draw_buckets[li];
     const auto* lev = lev_bucket.level;
@@ -1166,7 +1167,7 @@ void Merc2::flush_draw_buckets(SharedRenderState* render_state, ScopedProfilerNo
     glBindBuffer(GL_ARRAY_BUFFER, lev->merc_vertices);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lev->merc_indices);
     setup_merc_vao();
-    m_stats.num_bones_uploaded += m_next_free_bone_vector;
+    stats->num_bones_uploaded += m_next_free_bone_vector;
 
     glBindBuffer(GL_UNIFORM_BUFFER, m_bones_buffer);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, m_next_free_bone_vector * sizeof(math::Vector4f),
