@@ -363,10 +363,12 @@ void render_game_frame(int game_width,
     options.draw_subtitle2_editor_window = g_gfx_data->debug_gui.should_draw_subtitle2_editor();
     options.draw_filters_window = g_gfx_data->debug_gui.should_draw_filters_menu();
     options.save_screenshot = false;
+    options.quick_screenshot = false;
     options.gpu_sync = g_gfx_data->debug_gui.should_gl_finish();
 
     if (take_screenshot) {
       options.save_screenshot = true;
+      options.quick_screenshot = true;
       options.screenshot_path = file_util::make_screenshot_filepath(g_game_version);
     }
     if (g_gfx_data->debug_gui.get_screenshot_flag()) {

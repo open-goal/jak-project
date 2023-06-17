@@ -42,6 +42,7 @@ struct RenderOptions {
   int draw_region_width = 0;
 
   bool save_screenshot = false;
+  bool quick_screenshot = false;
   std::string screenshot_path;
 
   float pmode_alp_register = 0.f;
@@ -131,7 +132,8 @@ class OpenGLRenderer {
                          int x,
                          int y,
                          GLuint fbo,
-                         int read_buffer);
+                         int read_buffer,
+                         bool quick_screenshot);
   template <typename T, typename U, class... Args>
   T* init_bucket_renderer(const std::string& name, BucketCategory cat, U id, Args&&... args) {
     auto renderer = std::make_unique<T>(name, (int)id, std::forward<Args>(args)...);
