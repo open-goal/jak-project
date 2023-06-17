@@ -161,6 +161,7 @@ void Loader::draw_debug_window() {
 void Loader::loader_thread() {
   try {
     while (!m_want_shutdown) {
+      prof().root_event();
       std::unique_lock<std::mutex> lk(m_loader_mutex);
 
       // this will keep us asleep until we've got a level to load.
@@ -176,39 +177,57 @@ void Loader::loader_thread() {
       // std::this_thread::sleep_for(std::chrono::milliseconds(1500));
 
       // load the fr3 file
+      prof().begin_event("read-file");
       Timer disk_timer;
       auto data =
           file_util::read_binary_file(m_base_path / fmt::format("{}.fr3", uppercase_string(lev)));
       double disk_load_time = disk_timer.getSeconds();
+      prof().end_event();
 
       // the FR3 files are compressed
+      prof().begin_event("decompress-file");
       Timer decomp_timer;
       auto decomp_data = compression::decompress_zstd(data.data(), data.size());
       double decomp_time = decomp_timer.getSeconds();
+      prof().end_event();
 
       // Read back into the tfrag3::Level structure
+      prof().begin_event("deserialize");
       Timer import_timer;
       auto result = std::make_unique<tfrag3::Level>();
       Serializer ser(decomp_data.data(), decomp_data.size());
       result->serialize(ser);
       double import_time = import_timer.getSeconds();
+      prof().end_event();
 
       // and finally "unpack", which creates the vertex data we'll upload to the GPU
+
       Timer unpack_timer;
-      for (auto& tie_tree : result->tie_trees) {
-        for (auto& tree : tie_tree) {
-          tree.unpack();
-        }
-      }
-      for (auto& t_tree : result->tfrag_trees) {
-        for (auto& tree : t_tree) {
-          tree.unpack();
+      {
+        auto p = scoped_prof("tie-unpack");
+        for (auto& tie_tree : result->tie_trees) {
+          for (auto& tree : tie_tree) {
+            tree.unpack();
+          }
         }
       }
 
-      for (auto& shrub_tree : result->shrub_trees) {
-        shrub_tree.unpack();
+      {
+        auto p = scoped_prof("tfrag-unpack");
+        for (auto& t_tree : result->tfrag_trees) {
+          for (auto& tree : t_tree) {
+            tree.unpack();
+          }
+        }
       }
+
+      {
+        auto p = scoped_prof("shrub-unpack");
+        for (auto& shrub_tree : result->shrub_trees) {
+          shrub_tree.unpack();
+        }
+      }
+
       fmt::print(
           "------------> Load from file: {:.3f}s, import {:.3f}s, decomp {:.3f}s unpack {:.3f}s\n",
           disk_load_time, import_time, decomp_time, unpack_timer.getSeconds());

@@ -4,20 +4,18 @@
 
 #include "third-party/imgui/imgui.h"
 
-Generic2::Generic2(const std::string& name,
-                   int my_id,
+Generic2::Generic2(ShaderLibrary& shaders,
                    u32 num_verts,
                    u32 num_frags,
                    u32 num_adgif,
-                   u32 num_buckets)
-    : BucketRenderer(name, my_id) {
+                   u32 num_buckets) {
   m_verts.resize(num_verts);
   m_fragments.resize(num_frags);
   m_adgifs.resize(num_adgif);
   m_buckets.resize(num_buckets);
   m_indices.resize(num_verts * 3);
 
-  opengl_setup();
+  opengl_setup(shaders);
 }
 
 Generic2::~Generic2() {
@@ -52,28 +50,10 @@ void Generic2::draw_debug_window() {
  * generic renderer. This renderer is expected to follow the chain until it reaches "next_bucket"
  * and then return.
  */
-void Generic2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  render_in_mode(dma, render_state, prof, Mode::NORMAL);
-}
-
 void Generic2::render_in_mode(DmaFollower& dma,
                               SharedRenderState* render_state,
                               ScopedProfilerNode& prof,
                               Mode mode) {
-  // completely clear out state. These will get populated by the rendering functions, then displayed
-  // by draw_debug_window() if the user opens that window
-  m_debug.clear();
-  m_stats = Stats();
-
-  // if the user has asked to disable the renderer, just advance the dma follower to the next
-  // bucket and return immediately.
-  if (!m_enabled) {
-    while (dma.current_tag_offset() != render_state->next_bucket) {
-      dma.read_and_advance();
-    }
-    return;
-  }
-
   // Generic2 has 3 passes.
   {
     // our first pass is to go over the DMA chain from the game and extract the data into buffers
