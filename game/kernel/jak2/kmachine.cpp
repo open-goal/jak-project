@@ -1,5 +1,6 @@
 #include "kmachine.h"
 
+#include <bitset>
 #include <cstring>
 #include <stdexcept>
 #include <string>
@@ -7,9 +8,10 @@
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
+#include "common/util/FontUtils.h"
 #include "common/util/string_util.h"
 
-#include "game/external/discord.h"
+#include "game/external/discord_jak2.h"
 #include "game/graphics/display.h"
 #include "game/graphics/jak2_texture_remap.h"
 #include "game/kernel/common/Symbol4.h"
@@ -517,28 +519,47 @@ void update_discord_rpc(u32 discord_info) {
     auto info = discord_info ? Ptr<DiscordInfo>(discord_info).c() : NULL;
     if (info) {
       // Get the data from GOAL
-      int orbs = (int)*Ptr<float>(info->orb_count).c();
-      int gems = (int)*Ptr<float>(info->gem_count).c();
-      char* status = Ptr<String>(info->status).c()->data();
+      int orbs = (int)info->orb_count;
+      int gems = (int)info->gem_count;
+      u32 deaths = info->death_count;
+      // convert encodings
+      std::string status = get_font_bank(GameTextVersion::JAK2)
+                               ->convert_game_to_utf8(Ptr<String>(info->status).c()->data());
+
+      // get rid of special encodings like <COLOR_WHITE>
+      std::regex r("<.*?>");
+      while (std::regex_search(status, r)) {
+        status = std::regex_replace(status, r, "");
+      }
+
       char* level = Ptr<String>(info->level).c()->data();
       auto cutscene = Ptr<Symbol4<u32>>(info->cutscene)->value();
-      float time = *Ptr<float>(info->time_of_day).c();
+      float time = info->time_of_day;
       float percent_completed = info->percent_completed;
+      std::bitset<32> focus_status;
+      focus_status = info->focus_status;
+      char* task = Ptr<String>(info->task).c()->data();
 
       // Construct the DiscordRPC Object
-      // TODO - take nice screenshots with the various time of days once the graphics is in a final
-      // state
       const char* full_level_name =
-          "unknown";  // jak1_get_full_level_name(Ptr<String>(info->level).c()->data());
+          get_full_level_name(level_names, level_name_remap, Ptr<String>(info->level).c()->data());
       memset(&rpc, 0, sizeof(rpc));
-      if (!indoors(level)) {
-        char level_with_tod[128];
-        strcpy(level_with_tod, level);
-        strcat(level_with_tod, "-");
-        strcat(level_with_tod, time_of_day_str(time));
-        strcpy(large_image_key, level_with_tod);
+      // if we have an active task, set the mission specific image for it
+      // also small hack to prevent oracle image from showing up while inside levels
+      // like hideout, onintent, etc.
+      if (strcmp(task, "unknown") != 0 && strcmp(task, "city-oracle") != 0) {
+        strcpy(large_image_key, task);
       } else {
-        strcpy(large_image_key, level);
+        // if we are in an outdoors level, use the picture for the corresponding time of day
+        if (!indoors(indoor_levels, level)) {
+          char level_with_tod[128];
+          strcpy(level_with_tod, level);
+          strcat(level_with_tod, "-");
+          strcat(level_with_tod, time_of_day_str(time));
+          strcpy(large_image_key, level_with_tod);
+        } else {
+          strcpy(large_image_key, level);
+        }
       }
       strcpy(large_image_text, full_level_name);
       if (!strcmp(full_level_name, "unknown")) {
@@ -548,20 +569,42 @@ void update_discord_rpc(u32 discord_info) {
       rpc.largeImageKey = large_image_key;
       if (cutscene != offset_of_s7()) {
         strcpy(state, "Watching a cutscene");
+        // temporarily move these counters to the large image tooltip during a cutscene
+        strcat(large_image_text,
+               fmt::format(" | {:.0f}% | Orbs: {} | Gems: {} | {}", percent_completed,
+                           std::to_string(orbs), std::to_string(gems), get_time_of_day(time))
+                   .c_str());
       } else {
-        strcpy(state, fmt::format("{:.0f}% | Orbs: {} | Gems: {}", percent_completed,
-                                  std::to_string(orbs), std::to_string(gems))
+        strcpy(state, fmt::format("{:.0f}% | Orbs: {} | Gems: {} | {}", percent_completed,
+                                  std::to_string(orbs), std::to_string(gems), get_time_of_day(time))
                           .c_str());
-        strcpy(large_image_text, fmt::format(" | {:.0f}% | Orbs: {} | Gems: {}", percent_completed,
-                                             std::to_string(orbs), std::to_string(gems))
-                                     .c_str());
       }
       rpc.largeImageText = large_image_text;
       rpc.state = state;
-      if (!indoors(level)) {
-        strcpy(small_image_key, time_of_day_str(time));
-        strcpy(small_image_text, "Time of day: ");
-        strcat(small_image_text, get_time_of_day(time).c_str());
+      // check for any special conditions to display for the small image
+      if (FOCUS_TEST(focus_status, FocusStatus::Board)) {
+        strcpy(small_image_key, "focus-status-board");
+        strcpy(small_image_text, "On the JET-Board");
+      } else if (FOCUS_TEST(focus_status, FocusStatus::Mech)) {
+        strcpy(small_image_key, "focus-status-mech");
+        strcpy(small_image_text, "In the Titan Suit");
+      } else if (FOCUS_TEST(focus_status, FocusStatus::Pilot)) {
+        strcpy(small_image_key, "focus-status-pilot");
+        strcpy(small_image_text, "Driving a Zoomer");
+      } else if (FOCUS_TEST(focus_status, FocusStatus::Indax)) {
+        strcpy(small_image_key, "focus-status-indax");
+        strcpy(small_image_text, "Playing as Daxter");
+      } else if (FOCUS_TEST(focus_status, FocusStatus::Dark)) {
+        strcpy(small_image_key, "focus-status-dark");
+        strcpy(small_image_text, "Dark Jak");
+      } else if (FOCUS_TEST(focus_status, FocusStatus::Disable) &&
+                 FOCUS_TEST(focus_status, FocusStatus::Grabbed)) {
+        // being in a turret sets disable and grabbed flags
+        strcpy(small_image_key, "focus-status-turret");
+        strcpy(small_image_text, "In a Gunpod");
+      } else if (FOCUS_TEST(focus_status, FocusStatus::Gun)) {
+        strcpy(small_image_key, "focus-status-gun");
+        strcpy(small_image_text, "Using a Gun");
       } else {
         strcpy(small_image_key, "");
         strcpy(small_image_text, "");
@@ -569,7 +612,7 @@ void update_discord_rpc(u32 discord_info) {
       rpc.smallImageKey = small_image_key;
       rpc.smallImageText = small_image_text;
       rpc.startTimestamp = gStartTime;
-      rpc.details = status;
+      rpc.details = status.c_str();
       rpc.partySize = 0;
       rpc.partyMax = 0;
       Discord_UpdatePresence(&rpc);
