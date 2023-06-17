@@ -522,7 +522,7 @@ This commonly includes things such as:
   (none)
   )
 
-;; WARN: Return type mismatch time-frame vs sound-id.
+;; WARN: Return type mismatch time-frame vs none.
 (defmethod play-impact-sound! dig-spikey-sphere ((obj dig-spikey-sphere))
   "Plays impact sound"
   (let* ((a0-1 (-> obj root-override))
@@ -608,16 +608,13 @@ This commonly includes things such as:
           )
         )
       )
-    (the-as sound-id (when (and (logtest? s5-0 (collide-status impact-surface))
-                                (>= (- (current-time) (-> obj played-bounce-time)) (seconds 0.3))
-                                )
-                       (let ((v0-7 (current-time)))
-                         (set! (-> obj played-bounce-time) v0-7)
-                         v0-7
-                         )
-                       )
-            )
+    (if (and (logtest? s5-0 (collide-status impact-surface))
+             (>= (- (current-time) (-> obj played-bounce-time)) (seconds 0.3))
+             )
+        (set! (-> obj played-bounce-time) (current-time))
+        )
     )
+  (none)
   )
 
 (defmethod init-proj-settings! dig-spikey-sphere ((obj dig-spikey-sphere))
@@ -809,7 +806,7 @@ This commonly includes things such as:
    (trapeze-grabbed  basic                 :offset-assert 360)
    (pedal-anim-frame float                 :offset-assert 364)
    (pedal-anim-speed float                 :offset-assert 368)
-   (pedal-sound-id   uint32                :offset-assert 372)
+   (pedal-sound-id   sound-id              :offset-assert 372)
    )
   :heap-base #x100
   :method-count-assert 21
@@ -1046,7 +1043,7 @@ This commonly includes things such as:
   (set! (-> obj pedal-anim-frame) 0.0)
   (set! (-> obj pedal-anim-speed) 0.5)
   (set-vector! (-> obj pov-cam-offset) 0.0 -20480.0 0.0 1.0)
-  (set! (-> obj pedal-sound-id) (the-as uint (new-sound-id)))
+  (set! (-> obj pedal-sound-id) (new-sound-id))
   (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
   (let ((a1-23 (new 'stack-no-clear 'sync-info-params)))
     (let ((v1-39 0))
@@ -1083,7 +1080,7 @@ This commonly includes things such as:
   )
 
 (defmethod deactivate dig-balloon-lurker ((obj dig-balloon-lurker))
-  (sound-stop (the-as sound-id (-> obj pedal-sound-id)))
+  (sound-stop (-> obj pedal-sound-id))
   ((method-of-type process-drawable deactivate) obj)
   (none)
   )
@@ -1118,7 +1115,7 @@ This commonly includes things such as:
               )
           (sound-play-by-name
             (static-sound-name "balon-lurk-loop")
-            (the-as sound-id (-> self pedal-sound-id))
+            (-> self pedal-sound-id)
             (the int (* 1024.0 f1-5))
             (the int (* 1524.0 f0-7))
             0
@@ -1202,8 +1199,8 @@ This commonly includes things such as:
   )
 
 (deftype dig-wheel-step (process-drawable)
-  ((anim-speed     float   :offset-assert 200)
-   (wheel-sound-id uint32  :offset-assert 204)
+  ((anim-speed     float     :offset-assert 200)
+   (wheel-sound-id sound-id  :offset-assert 204)
    )
   :heap-base #x50
   :method-count-assert 21
@@ -1223,7 +1220,7 @@ This commonly includes things such as:
 (defstate idle (dig-wheel-step)
   :virtual #t
   :trans (behavior ()
-    (sound-play "wheel-plat-loop" :id (the-as sound-id (-> self wheel-sound-id)))
+    (sound-play "wheel-plat-loop" :id (-> self wheel-sound-id))
     (rider-trans)
     (none)
     )
@@ -1245,7 +1242,7 @@ This commonly includes things such as:
   )
 
 (defmethod deactivate dig-wheel-step ((obj dig-wheel-step))
-  (sound-stop (the-as sound-id (-> obj wheel-sound-id)))
+  (sound-stop (-> obj wheel-sound-id))
   ((method-of-type process-drawable deactivate) obj)
   (none)
   )
@@ -1303,7 +1300,7 @@ This commonly includes things such as:
     (the-as skeleton-group (art-group-get-by-name *level* "skel-dig-wheel-step" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj wheel-sound-id) (the-as uint (new-sound-id)))
+  (set! (-> obj wheel-sound-id) (new-sound-id))
   (set! (-> obj draw light-index) (the-as uint 5))
   (logclear! (-> obj mask) (process-mask actor-pause))
   (let* ((a0-30 (-> obj entity))
@@ -1328,7 +1325,7 @@ This commonly includes things such as:
   ((anchor-point      vector     :inline :offset-assert 384)
    (last-ridden-time  time-frame         :offset-assert 400)
    (surface-height    float              :offset-assert 408)
-   (bubbling-sound-id uint32             :offset-assert 412)
+   (bubbling-sound-id sound-id           :offset-assert 412)
    )
   :heap-base #x120
   :method-count-assert 57
@@ -1385,20 +1382,20 @@ This commonly includes things such as:
      (when (nonzero? (-> obj bubbling-sound-id))
        (let ((v1-5 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
          (set! (-> v1-5 command) (sound-command set-param))
-         (set! (-> v1-5 id) (the-as sound-id (-> obj bubbling-sound-id)))
+         (set! (-> v1-5 id) (-> obj bubbling-sound-id))
          (set! (-> v1-5 params volume) -4)
          (set! (-> v1-5 auto-time) 120)
          (set! (-> v1-5 auto-from) 2)
          (set! (-> v1-5 params mask) (the-as uint 17))
          (-> v1-5 id)
          )
-       (set! (-> obj bubbling-sound-id) (the-as uint 0))
+       (set! (-> obj bubbling-sound-id) (new 'static 'sound-id))
        0
        )
      )
     (else
       (if (zero? (-> obj bubbling-sound-id))
-          (set! (-> obj bubbling-sound-id) (the-as uint (sound-play "lava-plat-tip")))
+          (set! (-> obj bubbling-sound-id) (sound-play "lava-plat-tip"))
           )
       )
     )
@@ -1503,7 +1500,7 @@ This commonly includes things such as:
       )
     )
   (set! (-> obj surface-height) (+ 6144.0 (-> obj root-override-2 trans y)))
-  (set! (-> obj bubbling-sound-id) (the-as uint 0))
+  (set! (-> obj bubbling-sound-id) (new 'static 'sound-id))
   0
   (none)
   )

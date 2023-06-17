@@ -1,6 +1,7 @@
 #include "extract_merc.h"
 
 #include "common/log/log.h"
+#include "common/util/BitUtils.h"
 #include "common/util/FileUtil.h"
 #include "common/util/colors.h"
 #include "common/util/string_util.h"
@@ -104,6 +105,40 @@ struct MercUnpackedVtx {
 };
 
 /*!
+ * A single vertex in a single blend shape target.
+ * This is used to store both the base position and offsets.
+ * These integers are for the EE-format merc int data, before VIF/VU processing.
+ */
+struct BlercVtxIntTarget {
+  math::Vector<s8, 3> pos;
+  math::Vector<s8, 3> nrm;
+  u8 idx = 0;  // if this is a non-base vertex (an offset), the target index
+
+  /*!
+   * Are all components zero? (if so, this vertex is not effected by this target).
+   */
+  bool all_zero_data() const {
+    return pos == math::Vector<s8, 3>::zero() && nrm == math::Vector<s8, 3>::zero();
+  }
+};
+
+/*!
+ * A single vertex and all of its blend targets.
+ */
+struct BlercVtxInt {
+  // the base position. If blend shapes are off, or weights all 0, then this position is used.
+  BlercVtxIntTarget base;
+  // the offsets for each target. Stored sparsely so targets that don't move the vertex
+  // from the base position aren't stored.
+  std::vector<BlercVtxIntTarget> targets;
+  // the index of this vertex in the "lump4" EE-format merc data. before samecopy/crosscopy
+  // processing
+  u32 lump4_addr = 0;
+  // the floating point offset specified in the fp_header that will be applied during rendering.
+  math::Vector3f pos_offset;
+};
+
+/*!
  * An entire merc-effect, split into draws.
  * Note that copied or multiply-placed vertices will be de-deduplicated, but not identical vertices
  * that actually appear in the input to merc.
@@ -119,6 +154,12 @@ struct ConvertedMercEffect {
   DrawMode envmap_mode;
   u32 envmap_texture;
   std::optional<s8> eye_slot;
+  float pos_scale = 0;
+
+  // note: these vertices are _not_ in the same order as vertices.
+  // these are in the order they appeared in EE-memory. Some vertices may not use blerc.
+  // the only way to map these to other vertices is to use lump4_addrs
+  std::vector<BlercVtxInt> blerc_vertices_i;
 };
 
 /*!
@@ -767,6 +808,8 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   ConvertedMercEffect result;
   result.ctrl_idx = ctrl_idx;
   result.effect_idx = effect_idx;
+  result.pos_scale = ctrl_header.xyz_scale;
+
   if (ctrl_header.eye_ctrl) {
     result.eye_slot = ctrl_header.eye_ctrl->eye_slot;
   }
@@ -1012,6 +1055,82 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     memory_buffer_toggle ^= 1;
   }
 
+  // process blend fragments. this loop combines all fragments in this effect, and unpacks the int
+  // data.
+  // each blend fragment corresponds to a normal fragment.
+  // the vertices also match up, but the blend fragment may be smaller, allowing them to skip
+  // vertices at the end of fragments.
+  // (also, there can be fewer blend frags, and the remaining frags just don't have blerc)
+  int base_blend_out = 0;
+  for (size_t i = 0; i < input_effect.blend_frag_count; i++) {
+    // these three structures are all associated:
+    auto& bc = input_effect.blend_ctrl.at(i);
+    auto& bd = input_effect.blend_data.at(i);
+    auto& f = input_effect.frag_geo.at(i).fp_header;
+
+    // index in blend int data.
+    int bdi = 0;
+
+    size_t original_size = result.blerc_vertices_i.size();
+    result.blerc_vertices_i.resize(original_size + bc.blend_vtx_count);
+    auto* out_vertices = &result.blerc_vertices_i[original_size];
+
+    // the base position of this vertex.
+    for (int vi = 0; vi < bc.blend_vtx_count; vi++) {
+      auto& out_vertex = out_vertices[vi];
+      out_vertex.lump4_addr = base_blend_out + vi;
+      out_vertex.pos_offset = math::Vector3f(f.x_add, f.y_add, f.z_add);
+      auto& vc = out_vertex.base;
+      vc.nrm.x() = bd.u8_data.at(bdi++);
+      vc.pos.x() = bd.u8_data.at(bdi++);
+
+      vc.nrm.y() = bd.u8_data.at(bdi++);
+      vc.pos.y() = bd.u8_data.at(bdi++);
+
+      vc.nrm.z() = bd.u8_data.at(bdi++);
+      vc.pos.z() = bd.u8_data.at(bdi++);
+    }
+    // align16 for DMA (transferred per group)
+    bdi = align16(bdi);
+
+    // next, add targets by
+    for (size_t ti = 0; ti < bc.bt_index.size(); ti++) {
+      if (bc.bt_index[ti] == 0) {
+        // this fragment isn't used by this target, skip it.
+        // (they also don't store the offsets for this)
+        continue;
+      }
+
+      for (int vi = 0; vi < bc.blend_vtx_count; vi++) {
+        BlercVtxIntTarget vc;
+        vc.idx = ti;
+
+        vc.nrm.x() = bd.u8_data.at(bdi++);
+        vc.pos.x() = bd.u8_data.at(bdi++);
+
+        vc.nrm.y() = bd.u8_data.at(bdi++);
+        vc.pos.y() = bd.u8_data.at(bdi++);
+
+        vc.nrm.z() = bd.u8_data.at(bdi++);
+        vc.pos.z() = bd.u8_data.at(bdi++);
+
+        // some vertices within a fragment may not use all the targets of that fragment.
+        // detect this and skip adding the 0 offsets, so the downstream stuff can skip adding
+        // this to the file.
+        if (!vc.all_zero_data()) {
+          out_vertices[vi].targets.push_back(vc);
+        }
+      }
+      // for DMA
+      bdi = align16(bdi);
+    }
+    // we should have processed all the u8 data
+    ASSERT((size_t)align16(bdi) == bd.u8_data.size());
+
+    // skip over vertices that don't have blend.
+    base_blend_out += result.verts_per_frag.at(i);
+  }
+
   if (dump) {
     auto file_path = file_util::get_file_path(
         {"debug_out/merc", fmt::format("{}_{}.ply", debug_name, effect_idx)});
@@ -1063,6 +1182,149 @@ struct VertexSourceInfo {
   int flump4;
 };
 
+// ND used VIF to do int->float conversion.
+// This is a little tricky because you can only do an int + int, then interpret that as a float.
+// This resulting conversion is linear (for some range of input):
+// out = in * scale + offset
+
+// where scale and offset are the values returned below (assuming in is small)
+
+float magic_float_scale(u32 base_val) {
+  float a, b;
+  memcpy(&a, &base_val, 4);
+  base_val++;
+  memcpy(&b, &base_val, 4);
+  return b - a;
+}
+
+float magic_float_offset(u32 base_val) {
+  float a;
+  memcpy(&a, &base_val, 4);
+  return a;
+}
+
+/*!
+ * The offset (or base position) of a vertex target (or base position), stored as a float.
+ */
+struct BlercVtxFloatTarget {
+  math::Vector3f pos;
+  math::Vector3f nrm;
+  u8 idx;  // if an offset, the index of the target we belong to.
+};
+
+/*!
+ * A single vertex (floating point), and all the offsets for all the targets it uses.
+ * These floats are exactly the floats used by the merc2 renderer (pre-bones), so they can
+ * be uploaded into mod buffers directly.
+ */
+struct BlercVtxFloat {
+  BlercVtxFloatTarget base;
+  std::vector<BlercVtxFloatTarget> targets;
+  s32 dest = -1;  // the index of this vertex in the mod buffer (PC vertex ordering)
+};
+
+/*!
+ * Convert a vertex offset (or base position) from int format (EE lump) to floating point.
+ */
+BlercVtxFloatTarget blerc_vertex_convert(const BlercVtxIntTarget& in,
+                                         const math::Vector<float, 3>& pos_offset,
+                                         float pos_scale,
+                                         bool is_base) {
+  BlercVtxFloatTarget result;
+  result.idx = in.idx;
+
+  // scale factors to apply. these integers match the row value for VIF.
+  float pos_total_scale = magic_float_scale(0x4b010000) * pos_scale;
+  float nrm_total_scale = magic_float_scale(0x47800000);
+
+  if (is_base) {
+    // the EE assembly was:
+    // pextlb t6, r0, t6 to get u16's from the packed u8's, so these should be treated as unsigned.
+    result.nrm = in.nrm.cast<u8>().cast<float>() * nrm_total_scale;
+    result.pos = in.pos.cast<u8>().cast<float>() * pos_total_scale;
+
+    // also include the floating point offset from...
+    math::Vector3f post_pos_off;
+    post_pos_off.fill(magic_float_offset(0x4b010000));  // the vif integer add
+    post_pos_off += pos_offset;                         // the offset in the fp header
+    post_pos_off *= pos_scale;                          // and scale this by xyz-scale.
+
+    math::Vector3f nrm_off;
+    nrm_off.fill(magic_float_offset(0x47800000) - 65537.f);  // 65537.f is part of MERC
+
+    result.pos += post_pos_off;
+    result.nrm += nrm_off;
+  } else {
+    // in the target case, the s8's were sign extended, so cast from s8 -> float directly.
+    // all the offset are applied after the sum, so we don't need to include them here
+    // (we include them once in the base).
+    // pextlb t5, t5, r0
+    // psrah t5, t5, 8
+    result.pos = in.pos.cast<float>() * pos_total_scale;
+    result.nrm = in.nrm.cast<float>() * nrm_total_scale;
+  }
+  return result;
+}
+
+/*!
+ * Convert a vertex and its targets from int format to floating point. The floating point format
+ * here matches the PC merc float format exactly.
+ */
+BlercVtxFloat blerc_vertex_convert(const BlercVtxInt& in, float pos_scale) {
+  BlercVtxFloat result;
+  result.base = blerc_vertex_convert(in.base, in.pos_offset, pos_scale, true);
+  for (auto& t : in.targets) {
+    result.targets.push_back(blerc_vertex_convert(t, in.pos_offset, pos_scale, false));
+  }
+  return result;
+}
+
+/*!
+ * Convert floating point data for a single blerc vertex target to the format used by PC blerc code.
+ * This includes padding to match the GPU vertex format and keep the vectors 16-byte aligned.
+ */
+tfrag3::BlercFloatData to_float_data(const math::Vector3f& pos,
+                                     const math::Vector3f& nrm,
+                                     float scale) {
+  tfrag3::BlercFloatData result;
+  result.v[0] = pos.x() * scale;
+  result.v[1] = pos.y() * scale;
+  result.v[2] = pos.z() * scale;
+  result.v[3] = 0;
+  result.v[4] = nrm.x() * scale;
+  result.v[5] = nrm.y() * scale;
+  result.v[6] = nrm.z() * scale;
+  result.v[7] = 0;
+  return result;
+}
+
+/*!
+ * Pack floating point vertices to the format for PC blerc.
+ * Currently this is designed with an outer loop over vertices. It's probably not the best thing,
+ * but it still beats the unoptimized version by a few times.
+ */
+tfrag3::Blerc blerc_pack(const std::vector<BlercVtxFloat>& verts) {
+  tfrag3::Blerc blerc;
+  for (auto& v : verts) {
+    // this check is weird, but it discards blerc vertices that don't map to any PC mod vertex.
+    // why does this happen? I'm not sure. It only happens on 3 vertices in metalkor, crocadog, and
+    // kor. It could be that merc has some extra vertices that are unpacked twice.
+    if (v.dest >= 0) {
+      // base is multiplied by 8192, then left shifted by 13, so it cancels
+      blerc.float_data.push_back(to_float_data(v.base.pos, v.base.nrm, 1.f));
+      for (auto& t : v.targets) {
+        // target is multiplied by "weight", then left shifted by 13. So full weight is
+        // 8192:
+        blerc.int_data.push_back(t.idx);
+        blerc.float_data.push_back(to_float_data(t.pos, t.nrm, 1.f / 8192.f));
+      }
+      blerc.int_data.push_back(tfrag3::Blerc::kTargetIdxTerminator);
+      blerc.int_data.push_back(v.dest);
+    }
+  }
+  return blerc;
+}
+
 void create_modifiable_vertex_data(
     const std::vector<bool>& vtx_mod_flag,
     const std::vector<VertexSourceInfo>& vtx_srcs,
@@ -1081,9 +1343,7 @@ void create_modifiable_vertex_data(
   // In this modifiable draw path, there will be a list of "fixed draws", which draw vertices that
   // cannot be modified. This set is known at build-time.
   // The "mod draws" will draw the modifiable vertices. These use the normal index buffer, but
-  // index into a per-effect modifiable vertex buffer.
-
-  //  std::vector<tfrag3::MercDraw> fixed_draws, mod_draws;
+  // index into a per-effect modifiable vertex buffer, not the giant per-FR3 merc vertex buffer.
 
   // some stats
   int num_tris = 0;  // all triangles
@@ -1100,6 +1360,9 @@ void create_modifiable_vertex_data(
 
       std::vector<std::vector<u32>> inds_per_mod_draw;
 
+      // loop over draw calls within this effect, and determine if it's fixed, modifiable, or needs
+      // to be split up. For mod draws, this just figures which vertices go which the draw, using
+      // the indices in the original vertex buffer.
       for (const auto& draw : effect.all_draws) {
         num_tris += draw.num_triangles;
 
@@ -1123,18 +1386,23 @@ void create_modifiable_vertex_data(
           // nothing found at all, bad
           ASSERT_NOT_REACHED();
         } else if (found_fixed && !found_mod) {
-          // only fixed. can just copy the fixed draw
+          // only fixed. can just copy the fixed draw. This can reuse the index buffer data
+          // we already added for this effect.
           effect.mod.fix_draw.push_back(draw);
         } else if (found_mod && !found_fixed) {
-          // only mod
+          // only mod. Add the entire draw
           effect.mod.mod_draw.push_back(draw);
+          // remember the indices _in the main buffer_ for these vertices.
           auto& inds_out = inds_per_mod_draw.emplace_back();
           for (u32 i = 0; i < draw.index_count; i++) {
             inds_out.push_back(out.indices.at(draw.first_index + i));
           }
           mod_tris += draw.num_triangles;
         } else {
-          // it's a mix...
+          // it's a mix and needs to be split per strip. Strips containing any mod vertices
+          // go in the mod category.
+
+          // build strips as lists of vertex indices.
           std::vector<std::vector<u32>> strips;
           strips.emplace_back();
           for (u32 i = 0; i < draw.index_count; i++) {
@@ -1148,9 +1416,11 @@ void create_modifiable_vertex_data(
             }
           }
 
+          // create the two draws
           tfrag3::MercDraw mod = draw;
           tfrag3::MercDraw fix = draw;
           std::vector<u32> mod_ind, fix_ind;
+          // iterate over strips and add them to the right one
           for (auto& strip : strips) {
             bool strip_has_mod = false;
             for (auto ind : strip) {
@@ -1185,27 +1455,49 @@ void create_modifiable_vertex_data(
         effect.mod.fix_draw.clear();
       } else {
         effect.has_mod_draw = true;
-        // need to set up the vertex buffer for the modifiable draws
-        // map of original vertex indices to mod buffer index
+        // In this second pass, we need to build the actual vertex buffer and index buffer for
+        // the mod draws.
+
+        // the renderer has some optimizations it can decide to use the default value, instead
+        // of reading from the game for some subset of the mod vertices.
+
+        // map of original vertices to slot in the mod vtx buffer.
         std::unordered_map<u32, u32> vtx_to_mod_vtx;
+        // loop over mod draws
         for (size_t mdi = 0; mdi < effect.mod.mod_draw.size(); mdi++) {
           auto& draw = effect.mod.mod_draw[mdi];
+          // indices into the normal vertex buffer for this draw
           auto& orig_inds = inds_per_mod_draw.at(mdi);
+
+          // we'll be adding indices to the end of the main index buffer.
+          // these never change, so we want them in the big buffer loaded with the fr3.
           u32 new_first_index = out.indices.size();
+
+          // loop over indices into the normal vertex buffer
           for (auto vidx : orig_inds) {
             if (vidx == UINT32_MAX) {
               out.indices.push_back(UINT32_MAX);
               continue;  // strip restart
             }
+
+            // see if we've already got a copy of this vertex in the mod buffer
             const auto& existing = vtx_to_mod_vtx.find(vidx);
             if (existing == vtx_to_mod_vtx.end()) {
-              // add vertex to mod buffer
+              // nope, add vertex to mod buffer
               auto idx = effect.mod.vertices.size();
+              // remember we did this one already
               vtx_to_mod_vtx[vidx] = idx;
+              // add the vertex
               effect.mod.vertices.push_back(out.vertices.at(vidx));
+              // look up where this one came from in the EE memory layout
               auto src = vtx_srcs.at(vidx - first_out_vertex);
               ASSERT(src.combined_lump4 < UINT16_MAX);
+              // add the EE layout index of this vertex to the data, so the runtime
+              // knows how to map from EE data to the mod vertex buffer
               effect.mod.vertex_lump4_addr.push_back(src.combined_lump4);
+
+              // also flag that this fragment has modifiable vertices: we want to know
+              // which ones are safe to skip.
               u32 frag_idx = src.frag;
               if (frag_idx >= effect.mod.fragment_mask.size()) {
                 effect.mod.fragment_mask.resize(frag_idx + 1);
@@ -1213,14 +1505,56 @@ void create_modifiable_vertex_data(
               effect.mod.fragment_mask[frag_idx] = true;
               out.indices.push_back(idx);
             } else {
+              // already added this vertex, just reuse it.
               out.indices.push_back(existing->second);
             }
           }
           draw.first_index = new_first_index;
         }
 
-        // splice out masked fragments, the renderer won't index them
-        const auto& frag_counts = all_effects.at(mi - first_out_model).at(ei).verts_per_frag;
+        const auto& og_effect = all_effects.at(mi - first_out_model).at(ei);
+
+        // blerc! The blerc vertex indexing is totally different, so track which blerc vertex
+        // goes with the lump4 (ee layout addr).
+        std::vector<s32> which_blerc_is_at_this_lump4;
+        std::vector<BlercVtxFloat> blerc_floats;
+
+        // convert blerc from int to float, and fill out the lump4 map.
+        for (size_t i = 0; i < og_effect.blerc_vertices_i.size(); i++) {
+          auto& bvi = og_effect.blerc_vertices_i[i];
+          if (bvi.lump4_addr >= which_blerc_is_at_this_lump4.size()) {
+            which_blerc_is_at_this_lump4.resize(bvi.lump4_addr + 1, -1);
+          }
+          which_blerc_is_at_this_lump4[bvi.lump4_addr] = i;
+          blerc_floats.push_back(blerc_vertex_convert(bvi, og_effect.pos_scale));
+        }
+
+        // the second part of blerc mapping - tell each vertex where it goes in the
+        // mod vertex buffer. This way we don't really care about the order of blerc vertices,
+        // and we don't have to consider lump4 at all in the renderer.
+
+        // loop over all mod vertices
+        for (u32 vi = 0; vi < effect.mod.vertices.size(); vi++) {
+          // figure out its lump4.
+          u16 la = effect.mod.vertex_lump4_addr[vi];
+          ASSERT(la < UINT16_MAX);
+          // check if there's a blerc modifier for this vertex
+          if (la < which_blerc_is_at_this_lump4.size()) {
+            s32 bi = which_blerc_is_at_this_lump4.at(la);
+            if (bi >= 0) {
+              // there is! remember this dest.
+              blerc_floats[bi].dest = vi;
+            }
+          }
+        }
+        effect.mod.blerc = blerc_pack(blerc_floats);
+
+        // this next section is a bit of a hack: the renderer loops over fragments,
+        // we know ahead of time that some fragments have no modifiable vertices.
+        // we'd like the renderer to just skip over this fragment, and not worry about
+        // how many vertices it has. So we effectively splice out the disabled fragments indices.
+        // this means that the "combined lump4" counter will skip over these fragments.
+        const auto& frag_counts = og_effect.verts_per_frag;
         std::unordered_map<u32, u32> old_to_new;
         u32 old_idx = 0;
         u32 new_idx = 0;

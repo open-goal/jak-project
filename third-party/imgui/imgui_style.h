@@ -2,4 +2,5 @@
 
 namespace ImGui {
 void applyAlternateStyle();
+void applyClassicStyle();
 }

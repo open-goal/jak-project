@@ -16,12 +16,10 @@ bool Generic2::check_for_end_of_generic_data(DmaFollower& dma, u32 next_bucket) 
     if (dma.current_tag().kind == DmaTag::Kind::CALL) {
       for (int i = 0; i < 4; i++) {
         dma.read_and_advance();
-        m_stats.dma_tags++;
       }
       ASSERT(dma.current_tag_offset() == next_bucket);
       return true;
     }
-    m_stats.dma_tags++;
     dma.read_and_advance();
   }
   return false;

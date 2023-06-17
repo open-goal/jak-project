@@ -170,10 +170,36 @@ struct MercFragment {
 };
 
 struct MercBlendCtrl {
-  u8 blend_vtx_count;
-  u8 nonzero_index_count;
+  u8 blend_vtx_count;  // total number of vertices
+
+  // if a fragment is not influenced by a target, the offsets would be zero, and these offset
+  // aren't stored. The format works like this:
+  // if bt_index[tgt_idx] == 0:
+  //   the target doesn't influence this vertex
+  // else:
+  //   the bt_index[tgt_idx] group of offsets is for tgt_idx.
+
+  // All the nonzero entries of bt_index are increasing.
+
+  // For example:
+  // 0, 0, 1, 0, 2, 3
+  // indicates that this blend fragment is used in targets 2, 4, and 5.
+  // group 1 is the offsets for target 2, group 2 for 4, and group 3 for 5.
+
+  // the group 0 offsets are actually the vertex base position, and should be treated as
+  // unsigned. All other offsets are signed offsets.
+
+  u8 nonzero_index_count;  // number of nonzeros in the bt_index table
+
+  // which groups correspond to which targets (see comment above)
+  // the length of this array is always the number of blend targets for the effect.
   std::vector<u8> bt_index;
   TypedRef from_ref(TypedRef tr, const DecompilerTypeSystem& dts, int blend_target_count);
+};
+
+struct MercBlendData {
+  std::vector<u8> u8_data;
+  Ref from_ref(Ref ref, int num_bytes);
 };
 
 struct MercExtraInfo {
@@ -190,8 +216,9 @@ struct MercEffect {
   // (frag-ctrl        merc-fragment-control  :offset-assert 4)
   std::vector<MercFragmentControl> frag_ctrl;
   // (blend-data       merc-blend-data        :offset-assert 8) ??
-  std::vector<MercBlendCtrl> blend_ctrl;
+  std::vector<MercBlendData> blend_data;
   // (blend-ctrl       merc-blend-ctrl        :offset-assert 12) ??
+  std::vector<MercBlendCtrl> blend_ctrl;
   // (dummy0           uint8                  :offset-assert 16) ??
   u8 effect_bits;
   u16 frag_count;
@@ -216,7 +243,6 @@ struct MercCtrl {
   std::vector<MercEffect> effects;
 
   void from_ref(TypedRef tr, const DecompilerTypeSystem& dts, GameVersion version);
-  void debug_print_blerc();
   std::string print();
 };
 }  // namespace decompiler

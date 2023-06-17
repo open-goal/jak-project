@@ -1,6 +1,7 @@
 #include "MercData.h"
 
 #include "common/dma/gs.h"
+#include "common/util/BitUtils.h"
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
@@ -385,12 +386,24 @@ void MercEffect::from_ref(TypedRef tr,
     f = frag_geo.emplace_back().from_ref(f, dts, frag_ctrl.at(i), main_control);
   }
 
-  // do blend ctrls
+  // do blend ctrls/data
   if (blend_frag_count) {
+    // each fragment has a blend-ctrl and a blend-data.
+
     TypedRef bc(deref_label(get_field_ref(tr, "blend-ctrl", dts)),
                 dts.ts.lookup_type("merc-blend-ctrl"));
+    Ref bd(deref_label(get_field_ref(tr, "blend-data", dts)));
+
     for (u32 i = 0; i < blend_frag_count; i++) {
       bc = blend_ctrl.emplace_back().from_ref(bc, dts, main_control.blend_target_count);
+      const auto& ctrl = blend_ctrl.back();
+      // the order of the data is [target][vtx]
+      // Each target is 16 bytes aligned because it gets dma'd to the scratchpad separately.
+      // Each vertex uses 6 bytes (1 byte for each of x,y,z,nx,ny,nz.
+      int stride = align16(6 * ctrl.blend_vtx_count);
+      // add an additional target for the "base" position.
+      int data_size = stride * (1 + ctrl.nonzero_index_count);
+      bd = blend_data.emplace_back().from_ref(bd, data_size);
     }
   }
 
@@ -439,43 +452,6 @@ void MercCtrl::from_ref(TypedRef tr, const DecompilerTypeSystem& dts, GameVersio
     effects.emplace_back().from_ref(eff_ref, dts, header);
     eff_ref.ref.byte_offset += 32;  //
   }
-
-  // debug_print_blerc();
-}
-
-void MercCtrl::debug_print_blerc() {
-  int total_verts = 0;
-  int blerc_verts = 0;
-  int total_frags = 0;
-  int blerc_frags = 0;
-  int total_effects = effects.size();
-  int blerc_effects = 0;
-
-  for (auto& effect : effects) {
-    bool effect_has_blerc = false;
-    for (size_t frag_idx = 0; frag_idx < effect.frag_count; frag_idx++) {
-      total_frags++;
-      auto& fc = effect.frag_ctrl.at(frag_idx);
-      total_verts += fc.lump_four_count;
-
-      if (frag_idx < effect.blend_ctrl.size()) {
-        auto& bfc = effect.blend_ctrl.at(frag_idx);
-        if (bfc.blend_vtx_count) {
-          effect_has_blerc = true;
-          blerc_frags++;
-          blerc_verts += fc.lump_four_count;
-        }
-      }
-    }
-
-    if (effect_has_blerc) {
-      blerc_effects++;
-    }
-  }
-  if (blerc_effects) {
-    fmt::print("BLERC: {}, {}/{} e, {}/{} f, {}/{} v\n", name, blerc_effects, total_effects,
-               blerc_frags, total_frags, blerc_verts, total_verts);
-  }
 }
 
 TypedRef MercBlendCtrl::from_ref(TypedRef tr,
@@ -489,6 +465,14 @@ TypedRef MercBlendCtrl::from_ref(TypedRef tr,
     tr.ref.byte_offset += 1;
   }
   return tr;
+}
+
+Ref MercBlendData::from_ref(Ref ref, int num_bytes) {
+  for (int i = 0; i < num_bytes; i++) {
+    u8_data.push_back(deref_u8(ref, 0));
+    ref.byte_offset += 1;
+  }
+  return ref;
 }
 
 std::string MercCtrl::print() {
