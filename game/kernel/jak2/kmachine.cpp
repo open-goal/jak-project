@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
@@ -400,7 +401,10 @@ int InitMachine() {
   InitRPC();
   reset_output();
   clear_print();
+
+  prof().begin_event("init-heap-and-symbol");
   auto status = InitHeapAndSymbol();
+  prof().end_event();
   if (status >= 0) {
     printf("InitListenerConnect\n");
     InitListenerConnect();
@@ -774,9 +778,13 @@ void InitMachineScheme() {
   intern_from_c("*kernel-boot-art-group*")->value() = make_string_from_c(DebugBootArtGroup);
   if (DiskBoot) {
     *EnableMethodSet = *EnableMethodSet + 1;
-    load_and_link_dgo_from_c("game", kglobalheap,
-                             LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
-                             0x400000, true);
+    {
+      auto p = scoped_prof("load-game-dgo");
+      load_and_link_dgo_from_c("game", kglobalheap,
+                               LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
+                               0x400000, true);
+    }
+
     *EnableMethodSet = *EnableMethodSet + -1;
     using namespace jak2_symbols;
     kernel_packages->value() =
@@ -789,6 +797,7 @@ void InitMachineScheme() {
         new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE - 1).cast<u32>()),
                  make_string_from_c("common"), kernel_packages->value());
     printf("calling play-boot!\n");
+    auto p = scoped_prof("play-boot-func");
     call_goal_function_by_name("play-boot");  // new function for jak2!
   }
 }

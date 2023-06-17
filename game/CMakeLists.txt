@@ -30,9 +30,10 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/foreground/Generic2_DMA.cpp
         graphics/opengl_renderer/foreground/Generic2_OpenGL.cpp
         graphics/opengl_renderer/foreground/Generic2.cpp
+        graphics/opengl_renderer/foreground/Generic2BucketRenderer.cpp
         graphics/opengl_renderer/foreground/Merc2.cpp
+        graphics/opengl_renderer/foreground/Merc2BucketRenderer.cpp
         graphics/opengl_renderer/foreground/Shadow2.cpp
-        graphics/opengl_renderer/LightningRenderer.cpp
         graphics/opengl_renderer/loader/Loader.cpp
         graphics/opengl_renderer/loader/LoaderStages.cpp
         graphics/opengl_renderer/ocean/CommonOceanRenderer.cpp

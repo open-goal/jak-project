@@ -142,6 +142,7 @@ void deci2_runner(SystemThreadInterface& iface) {
  * SystemThread Function for the EE (PS2 Main CPU)
  */
 void ee_runner(SystemThreadInterface& iface) {
+  prof().root_event();
   // Allocate Main RAM. Must have execute enabled.
   if (EE_MEM_LOW_MAP) {
     g_ee_main_mem =

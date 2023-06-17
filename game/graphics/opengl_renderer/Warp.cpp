@@ -1,11 +1,10 @@
 #include "Warp.h"
 
-Warp::Warp(const std::string& name, int id) : BucketRenderer(name, id), m_generic(name, id) {}
-
-Warp::~Warp() {}
+Warp::Warp(const std::string& name, int id, std::shared_ptr<Generic2> generic)
+    : BucketRenderer(name, id), m_generic(generic) {}
 
 void Warp::draw_debug_window() {
-  m_generic.draw_debug_window();
+  m_generic->draw_debug_window();
 }
 
 void Warp::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
@@ -13,11 +12,7 @@ void Warp::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
                        render_state->render_fb_x, render_state->render_fb_y,
                        render_state->render_fb);
   render_state->texture_pool->move_existing_to_vram(m_warp_src_tex, m_tbp);
-  m_generic.render_in_mode(dma, render_state, prof, Generic2::Mode::NORMAL);
-}
-
-void Warp::init_shaders(ShaderLibrary& shaders) {
-  m_generic.init_shaders(shaders);
+  m_generic->render_in_mode(dma, render_state, prof, Generic2::Mode::NORMAL);
 }
 
 void Warp::init_textures(TexturePool& tex_pool, GameVersion version) {
@@ -30,6 +25,4 @@ void Warp::init_textures(TexturePool& tex_pool, GameVersion version) {
   in.debug_name = "PC-WARP";
   in.id = tex_pool.allocate_pc_port_texture(version);
   m_warp_src_tex = tex_pool.give_texture_and_load_to_vram(in, m_tbp);
-
-  m_generic.init_textures(tex_pool, version);
 }
