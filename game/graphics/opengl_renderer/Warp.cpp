@@ -12,7 +12,7 @@ void Warp::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
                        render_state->render_fb_x, render_state->render_fb_y,
                        render_state->render_fb);
   render_state->texture_pool->move_existing_to_vram(m_warp_src_tex, m_tbp);
-  m_generic->render_in_mode(dma, render_state, prof, Generic2::Mode::NORMAL);
+  m_generic->render_in_mode(dma, render_state, prof, Generic2::Mode::WARP);
 }
 
 void Warp::init_textures(TexturePool& tex_pool, GameVersion version) {
