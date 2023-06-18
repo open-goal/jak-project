@@ -29,7 +29,8 @@ bool ends_with(const std::string& s, const std::string& suffix) {
 // " \n\n  hello world" => "  hello world"
 std::string ltrim_newlines(const std::string& s) {
   size_t start = s.find_first_not_of(WHITESPACE);
-  // Seek backwards until we hit the beginning of the string, or a newline -- this is the actual substr point we want to use
+  // Seek backwards until we hit the beginning of the string, or a newline -- this is the actual
+  // substr point we want to use
   for (int i = start - 1; i >= 0; i--) {
     const auto& c = s.at(i);
     if (c == '\n') {

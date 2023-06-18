@@ -34,6 +34,7 @@ extern const std::shared_ptr<IndentationRule> default_indentation_rule;
 class FormatterTreeNode {
  public:
   struct Metadata {
+    std::string node_type;
     bool is_top_level = false;
     bool is_comment = false;
     bool is_inline = false;

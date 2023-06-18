@@ -10,7 +10,7 @@ namespace formatter_rules {
 // The formatter will try to collapse as much space as possible in the top-level, this means
 // separating forms by a single empty blank line
 //
-// The exception is comments, top level comments will retain their following blank lines from the
+// The exception are comments, top level comments will retain their following blank lines from the
 // original source
 // - this could be none, in the case where a comment is directly next to a form (like this one!)
 //   - you don't want them to be separated!
@@ -27,12 +27,44 @@ void separate_by_newline(std::string& curr_text,
 }
 
 // TODO - nothing here yet, in the future:
-// - if/when the formatter is concerned with line length, there are implications here
 // - align consecutive comment lines
+// - if/when the formatter is concerned with line length, there are implications here
 //
 // Reference - https://github.com/kkinnear/zprint/blob/main/doc/options/comments.md
 namespace comments {}
 
+// Paired elements in a list will be kept in-line rather than the default new-line indentation
+// For example:
+// (:msg "hello world" :delay 100 :fn (lambda () (+ 1 1)))
+// Would typically become:
+// (:msg
+//  "hello world"
+//  :delay
+//  100
+//  :fn
+//    (lambda ()
+//      (+ 1 1)))
+// But with constant pairs:
+// (:msg "hello world"
+//  :delay 100
+//  :fn
+//    (lambda ()
+//      (+ 1 1)))
+//
+// Reference - https://github.com/kkinnear/zprint/blob/main/doc/options/constantpairs.md
+namespace constant_pairs {
+// Determines if the given element is the second element in a constant pair, if it is then we would
+// usually want to elide the new-line in whatever code that applies it
+//
+// This is true if:
+// - the element is in a list
+// - the element is preceeded by a keyword
+// - the element is a:
+//   - keyword, symbol, string, number, or boolean
+bool is_element_second_in_constant_pair(const FormatterTreeNode& containing_node,
+                                        const FormatterTreeNode& node,
+                                        const int index);
+}  // namespace constant_pairs
 }  // namespace formatter_rules
 
 // Indentation rules are heavily inspired by the descriptions here

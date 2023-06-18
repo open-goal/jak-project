@@ -17,7 +17,7 @@ std::string get_source_code(const std::string& source, const TSNode& node) {
 }
 
 int num_blank_lines_following_node(const std::string& source, const TSNode& node) {
-  int num_lines = -1; // The first new-line encountered is not a blank line
+  int num_lines = -1;  // The first new-line encountered is not a blank line
   uint32_t cursor = ts_node_end_byte(node);
   // TODO - this breaks on lines with whitespace as well, should probably seek past that!
   while (cursor < source.length() && source.at(cursor) == '\n') {
@@ -46,9 +46,10 @@ bool node_preceeded_by_only_whitespace(const std::string& source, const TSNode& 
 
 FormatterTreeNode::FormatterTreeNode(const std::string& source, const TSNode& node)
     : token(get_source_code(source, node)) {
-  // TODO - would it be useful to store the original tree-sitter node type here as well?
+  metadata.node_type = ts_node_type(node);
   metadata.is_comment = str_util::starts_with(str_util::ltrim(token.value()), ";");
   // Do some formatting on block-comments text
+  // TODO - this should go into a formatting rule
   if (str_util::starts_with(str_util::ltrim(token.value()), "#|")) {
     metadata.is_comment = true;
     // Normalize block comments, remove any trailing or leading whitespace
@@ -69,7 +70,10 @@ FormatterTreeNode::FormatterTreeNode(const std::string& source, const TSNode& no
     // Remove the first line content and any leading whitespace
     comment_contents = str_util::ltrim_newlines(token.value().substr(chars_seeked));
     // Remove trailing whitespace
-    comment_contents = comment_contents.substr(0, comment_contents.size() - 2);  // remove |#
+    comment_contents = str_util::rtrim(comment_contents);
+    // remove |#
+    comment_contents.pop_back();
+    comment_contents.pop_back();
     comment_contents = str_util::rtrim(comment_contents);
     new_token += fmt::format("\n{}\n|#", comment_contents);
     token = new_token;
@@ -145,7 +149,6 @@ void FormatterTree::construct_formatter_tree_recursive(const std::string& source
     if (contents == "(" || contents == ")") {
       continue;
     }
-    const std::string child_node_type = ts_node_type(curr_node);
     if (curr_node_type == "list_lit") {
       // Check to see if the first line of the form has more than 1 element
       if (i == 1) {
