@@ -48,6 +48,10 @@ bool blocksound_handler::tick() {
 void blocksound_handler::pause() {
   m_paused = true;
 
+  for (auto& c : m_children) {
+    c->pause();
+  }
+
   for (auto& p : m_voices) {
     auto voice = p.lock();
     if (voice == nullptr) {
@@ -61,6 +65,10 @@ void blocksound_handler::pause() {
 void blocksound_handler::unpause() {
   m_paused = false;
 
+  for (auto& c : m_children) {
+    c->unpause();
+  }
+
   for (auto& p : m_voices) {
     auto voice = p.lock();
     if (voice == nullptr) {
@@ -73,6 +81,10 @@ void blocksound_handler::unpause() {
 
 void blocksound_handler::stop() {
   m_done = true;
+
+  for (auto& c : m_children) {
+    c->stop();
+  }
 
   for (auto& p : m_voices) {
     auto voice = p.lock();

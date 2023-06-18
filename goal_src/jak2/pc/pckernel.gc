@@ -8,6 +8,7 @@
 
  |#
 
+(define-extern get-active-mission-description (function discord-info string))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; methods
@@ -62,19 +63,29 @@
 (defmethod update-discord-rpc pc-settings-jak2 ((obj pc-settings-jak2))
   "update discord rpc module"
   (let ((info (new 'stack 'discord-info)))
-    (set! (-> info orb-count) (&-> *game-info* skill-total))
-    (set! (-> info gem-count) (&-> *game-info* gem-total))
-    (set! (-> info death-count) (&-> *game-info* total-deaths))
-    (set! (-> info status) "Playing Jak II™")
+    (set! (-> info orb-count) (-> *game-info* skill-total))
+    (set! (-> info gem-count) (-> *game-info* gem-total))
+    (set! (-> info death-count) (-> *game-info* total-deaths))
+    (set! (-> info task) "unknown")
+    (set! (-> info status) (get-active-mission-description info))
     ;; grab the name of the level we're in
-    (if (and *level* (level-get-target-inside *level*))
-      (set! (-> info level) (symbol->string (-> (level-get-target-inside *level*) name)))
-      (set! (-> info level) "unknown"))
-    (set! (-> info cutscene?) #f) ;; TODO - cutscenes don't work yet
-    (set! (-> info time-of-day) (&-> *time-of-day-context* time))
+    (cond
+      ((or (aif (level-get *level* 'title) (= (-> it status) 'active))
+           (and *progress-process*
+                (= 'title (-> *progress-process* 0 state-stack 0))))
+        ;; in title screen.
+        (set! (-> info level) (symbol->string 'title))
+        (set! (-> info status) "In title screen"))
+      (else
+        (set! (-> info level) (aif (-> *load-state* vis-nick) (symbol->string it) "unknown")))
+      )
+    (set! (-> info cutscene?) (-> *pc-settings* movie?))
+    (set! (-> info time-of-day) (-> *time-of-day-context* time))
     (set! (-> info percent-complete) (calculate-percentage *game-info*))
+    (set! (-> info focus-status) (if *target* (-> *target* focus-status) 0))
     ;; TODO - wrapping in `with-profiler` causes an error, fix it
-    (pc-discord-rpc-update info))
+    (pc-discord-rpc-update info)
+    )
   (none))
 
 (defmethod update-speedrun pc-settings-jak2 ((obj pc-settings-jak2))

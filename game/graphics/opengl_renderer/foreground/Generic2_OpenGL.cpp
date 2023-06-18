@@ -2,7 +2,7 @@
 
 #include "Generic2.h"
 
-void Generic2::opengl_setup() {
+void Generic2::opengl_setup(ShaderLibrary& shaders) {
   // create OpenGL objects
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenBuffers(1, &m_ogl.index_buffer);
@@ -56,15 +56,7 @@ void Generic2::opengl_setup() {
 
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
-}
 
-void Generic2::opengl_cleanup() {
-  glDeleteBuffers(1, &m_ogl.vertex_buffer);
-  glDeleteBuffers(1, &m_ogl.index_buffer);
-  glDeleteVertexArrays(1, &m_ogl.vao);
-}
-
-void Generic2::init_shaders(ShaderLibrary& shaders) {
   const auto& shader = shaders[ShaderId::GENERIC];
   auto id = shader.id();
 
@@ -81,6 +73,12 @@ void Generic2::init_shaders(ShaderLibrary& shaders) {
   m_ogl.hvdf_offset = glGetUniformLocation(id, "hvdf_offset");
   m_ogl.gfx_hack_no_tex = glGetUniformLocation(id, "gfx_hack_no_tex");
   m_ogl.warp_sample_mode = glGetUniformLocation(id, "warp_sample_mode");
+}
+
+void Generic2::opengl_cleanup() {
+  glDeleteBuffers(1, &m_ogl.vertex_buffer);
+  glDeleteBuffers(1, &m_ogl.index_buffer);
+  glDeleteVertexArrays(1, &m_ogl.vao);
 }
 
 void Generic2::opengl_bind_and_setup_proj(SharedRenderState* render_state) {
@@ -224,8 +222,7 @@ void Generic2::setup_opengl_tex(u16 unit,
   }
 
   if (!tex) {
-    lg::warn("Failed to find texture at {}, using random (generic2: {})", tbp_to_lookup,
-             name_and_id());
+    lg::warn("Failed to find texture at {}, using random (generic2)", tbp_to_lookup);
     tex = render_state->texture_pool->get_placeholder_texture();
   }
 

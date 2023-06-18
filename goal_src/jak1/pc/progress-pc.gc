@@ -183,7 +183,7 @@
   (new 'static 'game-option :option-type (game-option-type normal-inverted) :name (text-id camera-controls-third-horz) :scale #t)
   (new 'static 'game-option :option-type (game-option-type normal-inverted) :name (text-id camera-controls-third-vert) :scale #t)
   (new 'static 'game-option :option-type (game-option-type confirmation) :name (text-id restore-defaults) :scale #t
-    :on-confirm (lambda () (reset-original-camera *pc-settings*) (none)))
+    :on-confirm (lambda () (reset-camera *pc-settings* #t) (none)))
   (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)))
 
 (define *controller-options* (new 'static 'boxed-array :type game-option
@@ -200,9 +200,11 @@
     :option-disabled-func (lambda () (not (pc-current-controller-has-led?))))
   (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id input-opts-controller-led-reflect-eco) :scale #t
     :option-disabled-func (lambda () (not (pc-current-controller-has-led?))))
+  (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id input-opts-controller-led-reflect-heat) :scale #t
+    :option-disabled-func (lambda () (not (pc-current-controller-has-led?))))
   (new 'static 'game-option :option-type (game-option-type confirmation) :name (text-id restore-defaults) :scale #t
     :on-confirm (lambda ()
-                 (set-defaults-controller! *pc-settings*)
+                 (reset-input *pc-settings* 'controller #t)
                  (set-ignore-controller-in-bg! *pc-settings* (-> *pc-settings* ignore-controller-win-unfocused?))
                  (none)))
   (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)))
@@ -234,7 +236,7 @@
                   (none))))
   (new 'static 'game-option :option-type (game-option-type confirmation) :name (text-id restore-defaults) :scale #t
     :on-confirm (lambda ()
-                 (set-defaults-mouse! *pc-settings*)
+                 (reset-input *pc-settings* 'mouse #t)
                  (update-mouse-controls! *pc-settings*)
                  (none)))
   (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)))
@@ -274,7 +276,7 @@
   (new 'static 'game-option :option-type (game-option-type menu) :name (text-id input-opts-reassign-binds) :scale #t :param3 (game-option-menu reassign-binds-options))
   (new 'static 'game-option :option-type (game-option-type confirmation) :name (text-id restore-defaults) :scale #t
     :on-confirm (lambda ()
-                 (set-defaults-input! *pc-settings*)
+                 (reset-input *pc-settings* 'input #t)
                  (set-enable-keyboard! *pc-settings* (-> *pc-settings* keyboard-enabled?))
                  (update-mouse-controls! *pc-settings*)
                  (none)))
@@ -289,17 +291,12 @@
     )
   )
 
-;; TODO - this menu isn't used anywhere right now, should probably be removed
-(define *accessibility-options* (new 'static 'boxed-array :type game-option
-  (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id money-starburst) :scale #t)
-  (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)))
-
 (define *gfx-ps2-options* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type lod-bg) :name (text-id lod-bg) :scale #t)
     (new 'static 'game-option :option-type (game-option-type lod-fg) :name (text-id lod-fg) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id ps2-parts) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id force-envmap) :scale #t)
-    ;(new 'static 'game-option :option-type (game-option-type on-off) :name (text-id force-actors) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id force-actors) :scale #t)
     (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)
     )
   )
@@ -923,12 +920,11 @@
   (set! (-> *options-remap* (progress-screen mouse-options))              *mouse-options*)
   (set! (-> *options-remap* (progress-screen reassign-binds-options))     *reassign-binds-options*)
   (set! (-> *options-remap* (progress-screen select-controller))          *temp-options*)
-  (set! (-> *options-remap* (progress-screen controller-binds))          *temp-options*)
-  (set! (-> *options-remap* (progress-screen keyboard-binds))          *temp-options*)
-  (set! (-> *options-remap* (progress-screen mouse-binds))          *temp-options*)
+  (set! (-> *options-remap* (progress-screen controller-binds))           *temp-options*)
+  (set! (-> *options-remap* (progress-screen keyboard-binds))             *temp-options*)
+  (set! (-> *options-remap* (progress-screen mouse-binds))                *temp-options*)
 
   (set! (-> *options-remap* (progress-screen misc-options))               *misc-options*)
-  (set! (-> *options-remap* (progress-screen accessibility-options))      *accessibility-options*)
   (set! (-> *options-remap* (progress-screen gfx-ps2-options))            *gfx-ps2-options*)
   (set! (-> *options-remap* (progress-screen resolution))                 *temp-options*)
   (set! (-> *options-remap* (progress-screen aspect-ratio))               *aspect-ratio-options*)
@@ -1001,6 +997,7 @@
   (set! (-> *controller-options* 3 value-to-modify) (&-> *pc-settings* ignore-controller-win-unfocused?))
   (set! (-> *controller-options* 4 value-to-modify) (&-> *pc-settings* controller-hp-led?))
   (set! (-> *controller-options* 5 value-to-modify) (&-> *pc-settings* controller-eco-led?))
+  (set! (-> *controller-options* 6 value-to-modify) (&-> *pc-settings* controller-heat-led?))
 
   (set! (-> *mouse-options* 0 value-to-modify) (&-> *pc-settings* mouse-camera?))
   (set! (-> *mouse-options* 1 value-to-modify) (&-> *pc-settings* mouse-xsens))
@@ -1011,13 +1008,11 @@
   (set! (-> *input-options* 3 value-to-modify) (&-> *pc-settings* mouse-enabled?))
   (set! (-> *input-options* 5 value-to-modify) (&-> *pc-settings* auto-hide-cursor?))
 
-  (set! (-> *accessibility-options* 0 value-to-modify) (&-> *pc-settings* money-starburst?))
-
   (set! (-> *gfx-ps2-options* 0 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *gfx-ps2-options* 1 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *gfx-ps2-options* 2 value-to-modify) (&-> *pc-settings* ps2-parts?))
   (set! (-> *gfx-ps2-options* 3 value-to-modify) (&-> *pc-settings* force-envmap?))
-  ;(set! (-> *gfx-ps2-options* 3 value-to-modify) (&-> *pc-settings* force-actors?))
+  (set! (-> *gfx-ps2-options* 4 value-to-modify) (&-> *pc-settings* force-actors?))
 
   (set! (-> *sound-options-pc* 0 value-to-modify) (&-> *setting-control* default sfx-volume))
   (set! (-> *sound-options-pc* 1 value-to-modify) (&-> *setting-control* default music-volume))
@@ -1613,7 +1608,7 @@
                ;; resolution button. change resolution!
                (let ((newx (the int (-> options (-> obj option-index) param1)))
                      (newy (the int (-> options (-> obj option-index) param2))))
-                   (set-size! *pc-settings* newx newy))
+                   (set-size! *pc-settings* newx newy #t))
                (cpad-clear! 0 x)
                (cpad-clear! 0 circle)
                (sound-play "cursor-options")
@@ -1833,9 +1828,9 @@
                (((game-option-type display-mode))
                 ;; same thing.
                 (case (-> *progress-carousell* int-backup)
-                  ((0) (set-display-mode! *pc-settings* 'windowed))
-                  ((1) (set-display-mode! *pc-settings* 'fullscreen))
-                  ((2) (set-display-mode! *pc-settings* 'borderless))
+                  ((0) (set-display-mode! *pc-settings* 'windowed #t))
+                  ((1) (set-display-mode! *pc-settings* 'fullscreen #t))
+                  ((2) (set-display-mode! *pc-settings* 'borderless #t))
                   )
                 )
                (((game-option-type msaa))
@@ -1882,9 +1877,9 @@
                 )
                (((game-option-type frame-rate))
                 (case (-> *progress-carousell* int-backup)
-                  ((0) (set-frame-rate! *pc-settings* 60))
-                  ((1) (set-frame-rate! *pc-settings* 100))
-                  ((2) (set-frame-rate! *pc-settings* 150))
+                  ((0) (set-frame-rate! *pc-settings* 60 #t))
+                  ((1) (set-frame-rate! *pc-settings* 100 #t))
+                  ((2) (set-frame-rate! *pc-settings* 150 #t))
                   )
                 (set-video-mode (-> *setting-control* default video-mode))
                 )
@@ -2762,7 +2757,6 @@
           (progress-screen settings-title)
           (progress-screen title)
           (progress-screen sound-settings)
-          (progress-screen accessibility-options)
           (progress-screen game-ps2-options)
           (progress-screen resolution)
           (progress-screen aspect-ratio)

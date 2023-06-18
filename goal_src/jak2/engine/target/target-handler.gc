@@ -274,13 +274,8 @@
       (set! (-> self control send-attack-dest) (process->handle arg0))
       (set! (-> self control send-attack-time) (current-time))
       (send-event self 'hit arg1 arg0 arg2)
-      ;; TODO - manual fix?
-      (set! arg0 (the process (and (and (logtest? (focus-status dark) (-> self focus-status))
-                           (nonzero? (-> self darkjak))
-                           (logtest? (-> self darkjak stage) 2)
-                           )
-                      arg0
-                      ) )
+      (set! arg0
+            (the process (and (and (focus-test? self dark) (nonzero? (-> self darkjak)) (logtest? (-> self darkjak stage) 2)) arg0))
             )
       (when (the-as object arg0)
         (when (and s4-0 (not s3-1) (-> self control danger-mode) (not (logtest? (-> s4-0 mask) (process-mask dark-effect))))
@@ -1233,9 +1228,7 @@
                      )
                    )
                   ((= v1-45 'indax)
-                   enter-state
-                   (process->handle (the-as process (-> arg3 param 1)))
-                   (go target-indax-start)
+                   (go target-indax-start (process->handle (the-as process (-> arg3 param 1))))
                    )
                   ((= v1-45 'gun)
                    (if (logtest? (-> self game features) (game-feature gun))
