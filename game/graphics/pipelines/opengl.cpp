@@ -353,6 +353,7 @@ void render_game_frame(int game_width,
         [=] { return g_gfx_data->has_data_to_render || g_gfx_data->force_vsync; });
     if (g_gfx_data->force_vsync) {
       got_chain = g_gfx_data->has_data_to_render;
+      g_gfx_data->force_vsync = false;
     } else {
       g_gfx_data->got_data_once = got_chain;
     }

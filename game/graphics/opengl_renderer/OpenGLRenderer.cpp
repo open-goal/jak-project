@@ -920,6 +920,7 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   }
 
   if (m_fbo_state.render_fbo->is_window) {
+    ASSERT_MSG(false, "window fbo");
     m_render_state.render_fb_x = m_render_state.draw_offset_x;
     m_render_state.render_fb_y = m_render_state.draw_offset_y;
     m_render_state.render_fb_w = m_render_state.draw_region_w;
