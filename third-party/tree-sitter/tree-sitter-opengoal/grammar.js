@@ -87,12 +87,7 @@ const KEYWORD_HEAD =
 const KEYWORD_BODY =
   choice(/[:']/, KEYWORD_HEAD);
 
-const KEYWORD_NO_SIGIL =
-  token(seq(KEYWORD_HEAD,
-    repeat(KEYWORD_BODY)));
-
-const KEYWORD_MARK =
-  token(":");
+const KEYWORD = token(seq(":", KEYWORD_HEAD, repeat(KEYWORD_BODY)))
 
 const ANY_CHAR =
   /.|\n/;
@@ -183,15 +178,7 @@ module.exports = grammar({
     num_lit: $ =>
       NUMBER,
 
-    kwd_lit: $ =>
-      choice($._kwd_unqualified),
-
-    _kwd_unqualified: $ =>
-      prec(1, seq(field('marker', $._kwd_marker),
-        field('name', alias(KEYWORD_NO_SIGIL, $.kwd_name)))),
-
-    _kwd_marker: $ =>
-      choice(KEYWORD_MARK),
+    kwd_lit: $ => KEYWORD,
 
     // https://opengoal.dev/docs/reference/lib/#format
     // TODO - a lot of this might be irrelevant or not comprehensive in terms of OpenGOAL's
