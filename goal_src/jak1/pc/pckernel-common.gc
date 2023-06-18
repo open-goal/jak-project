@@ -213,7 +213,7 @@
 
   ;; do game resolution
   (if (= (-> obj display-mode) 'windowed)
-      (pc-set-game-resolution (-> obj framebuffer-width) (-> obj framebuffer-height))
+      (pc-set-game-resolution (-> obj framebuffer-scissor-width) (-> obj framebuffer-scissor-height))
       (pc-set-game-resolution (-> obj width) (-> obj height)))
 
   ;; set msaa sample rate. if invalid, just reset to 2.
@@ -377,16 +377,15 @@
   "debug draw some things on-screen"
 
   (when (-> obj debug?)
+    (format *stdcon* "fullscreen resolution: ~D x ~D~%" (-> obj width) (-> obj height))
+    (format *stdcon* "window size: ~D x ~D @ ~,,1f x ~,,1f~%" (-> obj window-width) (-> obj window-height) (-> obj dpi-x) (-> obj dpi-y))
+    (format *stdcon* "fb size: ~D x ~D (scissor: ~D x ~D)~%" (-> obj framebuffer-width) (-> obj framebuffer-height) (-> obj framebuffer-scissor-width) (-> obj framebuffer-scissor-height))
+    (format *stdcon* "aspect: ~,,3f/~,,3f auto? ~A vis? ~A lbox? ~A~%" (-> obj aspect-ratio) (/ (the float (-> obj framebuffer-width)) (the float (-> obj framebuffer-height))) (-> obj aspect-ratio-auto?) (-> obj use-vis?) (-> obj letterbox?))
+    (format *stdcon* "display-mode: ~A vsync? ~A~%" (-> obj display-mode) (-> obj vsync?))
     (clear *pc-temp-string*)
-    (format *pc-temp-string* "game resolution: ~D x ~D~%" (-> obj width) (-> obj height))
-    (format *pc-temp-string* "window size: ~D x ~D (~,,1f x ~,,1f)~%" (-> obj framebuffer-width) (-> obj framebuffer-height) (-> obj dpi-x) (-> obj dpi-y))
-    (format *pc-temp-string* "target aspect: ~,,3f/~,,3f A: ~A/~A L: ~A~%" (-> obj aspect-ratio) (/ (the float (-> obj framebuffer-width)) (the float (-> obj framebuffer-height))) (-> obj aspect-ratio-auto?) (-> obj use-vis?) (-> obj letterbox?))
-    (format *pc-temp-string* "display-type: ~A ~A~%" (-> obj display-mode) (-> obj vsync?))
-
-    (draw-string-xy *pc-temp-string* buf 0 (- 224 (* 8 4)) (font-color default) (font-flags shadow kerning))
     )
   (when *display-actor-bank*
-    (draw-string-xy (string-format "Actor Bank: ~,,1m/~,,1m (~D)" (-> *ACTOR-bank* pause-dist) (-> *ACTOR-bank* birth-dist) (-> *ACTOR-bank* birth-max)) buf 512 (- 224 8) (font-color default) (font-flags shadow kerning right))
+    (draw-string-xy (string-format "Actor Bank: ~,,1m/~,,1m (~D)" (-> *ACTOR-bank* pause-dist) (-> *ACTOR-bank* birth-dist) (-> *ACTOR-bank* birth-max)) buf 512 0 (font-color default) (font-flags shadow kerning right))
     )
   )
 

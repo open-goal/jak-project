@@ -376,6 +376,7 @@ void render_game_frame(int game_width,
     options.draw_filters_window = g_gfx_data->debug_gui.should_draw_filters_menu();
     options.save_screenshot = false;
     options.quick_screenshot = false;
+    options.internal_res_screenshot = false;
     options.gpu_sync = g_gfx_data->debug_gui.should_gl_finish();
 
     if (take_screenshot) {

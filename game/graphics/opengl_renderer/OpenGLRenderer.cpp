@@ -701,6 +701,36 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
 
   m_last_pmode_alp = settings.pmode_alp_register;
 
+  if (settings.save_screenshot) {
+    auto prof = m_profiler.root()->make_scoped_child("screenshot");
+    int read_buffer;
+    int x, y, w, h;
+
+    if (settings.internal_res_screenshot) {
+      Fbo* screenshot_src;
+      // can't screenshot from a multisampled buffer directly -
+      if (m_fbo_state.resources.resolve_buffer.valid) {
+        screenshot_src = &m_fbo_state.resources.resolve_buffer;
+        read_buffer = GL_COLOR_ATTACHMENT0;
+      } else {
+        screenshot_src = m_fbo_state.render_fbo;
+        read_buffer = GL_FRONT;
+      }
+      w = screenshot_src->width;
+      h = screenshot_src->height;
+      x = 0;
+      y = 0;
+    } else {
+      read_buffer = GL_FRONT;
+      w = settings.draw_region_width;
+      h = settings.draw_region_height;
+      x = m_render_state.draw_offset_x;
+      y = m_render_state.draw_offset_y;
+    }
+    finish_screenshot(settings.screenshot_path, w, h, x, y, 0, read_buffer,
+                      settings.quick_screenshot);
+  }
+
   if (settings.draw_render_debug_window) {
     auto prof = m_profiler.root()->make_scoped_child("render-window");
     draw_renderer_selection_window();
@@ -750,22 +780,6 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
 
   if (settings.draw_filters_window) {
     m_filters_menu.draw_window();
-  }
-
-  if (settings.save_screenshot) {
-    Fbo* screenshot_src;
-    int read_buffer;
-
-    // can't screenshot from a multisampled buffer directly -
-    if (m_fbo_state.resources.resolve_buffer.valid) {
-      screenshot_src = &m_fbo_state.resources.resolve_buffer;
-      read_buffer = GL_COLOR_ATTACHMENT0;
-    } else {
-      screenshot_src = m_fbo_state.render_fbo;
-      read_buffer = GL_FRONT;
-    }
-    finish_screenshot(settings.screenshot_path, screenshot_src->width, screenshot_src->height, 0, 0,
-                      screenshot_src->fbo_id, read_buffer, settings.quick_screenshot);
   }
   if (settings.gpu_sync) {
     glFinish();
@@ -838,35 +852,26 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
     m_fbo_state.resources.render_buffer.clear();
     m_fbo_state.resources.resolve_buffer.clear();
 
-    // first, see if we can just render straight to the display framebuffer.
-    // note: we always force a separate fbo on a screenshot so that it won't capture overlays.
-    //       as an added bonus it also doesn't break the sprite distort buffer...
-    if (!settings.save_screenshot &&
-        window_fb.matches(settings.game_res_w, settings.game_res_h, settings.msaa_samples)) {
-      // it matches - no need for extra framebuffers.
-      lg::info("FBO Setup: rendering directly to window framebuffer");
-      m_fbo_state.render_fbo = &m_fbo_state.resources.window;
+    // NOTE: we will ALWAYS render the game to a separate framebuffer instead of directly to the
+    // window framebuffer.
+
+    // create a fbo to render to, with the desired settings
+    m_fbo_state.resources.render_buffer =
+        make_fbo(settings.game_res_w, settings.game_res_h, settings.msaa_samples, true);
+    m_fbo_state.render_fbo = &m_fbo_state.resources.render_buffer;
+
+    bool msaa_matches = window_fb.multisample_count == settings.msaa_samples;
+
+    if (!msaa_matches) {
+      lg::info("FBO Setup: using second temporary buffer: res: {}x{} {}x{}", window_fb.width,
+               window_fb.height, settings.game_res_w, settings.game_res_h);
+
+      // we'll need a temporary fbo to do the msaa resolve step
+      // non-multisampled, and doesn't need z/stencil
+      m_fbo_state.resources.resolve_buffer =
+          make_fbo(settings.game_res_w, settings.game_res_h, 1, false);
     } else {
-      lg::info("FBO Setup: window didn't match: {} {}", window_fb.width, window_fb.height);
-
-      // create a fbo to render to, with the desired settings
-      m_fbo_state.resources.render_buffer =
-          make_fbo(settings.game_res_w, settings.game_res_h, settings.msaa_samples, true);
-      m_fbo_state.render_fbo = &m_fbo_state.resources.render_buffer;
-
-      bool msaa_matches = window_fb.multisample_count == settings.msaa_samples;
-
-      if (!msaa_matches) {
-        lg::info("FBO Setup: using second temporary buffer: res: {}x{} {}x{}", window_fb.width,
-                 window_fb.height, settings.game_res_w, settings.game_res_h);
-
-        // we'll need a temporary fbo to do the msaa resolve step
-        // non-multisampled, and doesn't need z/stencil
-        m_fbo_state.resources.resolve_buffer =
-            make_fbo(settings.game_res_w, settings.game_res_h, 1, false);
-      } else {
-        lg::info("FBO Setup: not using second temporary buffer");
-      }
+      lg::info("FBO Setup: not using second temporary buffer");
     }
   }
 

@@ -476,16 +476,16 @@ void GlowRenderer::blit_depth(SharedRenderState* render_state) {
   glBindFramebuffer(GL_READ_FRAMEBUFFER, render_state->render_fb);
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_ogl.probe_fbo);
 
-  glBlitFramebuffer(render_state->render_fb_x,                              // srcX0
-                    render_state->render_fb_y,                              // srcY0
-                    render_state->render_fb_x + render_state->render_fb_w,  // srcX1
-                    render_state->render_fb_y + render_state->render_fb_h,  // srcY1
-                    0,                                                      // dstX0
-                    0,                                                      // dstY0
-                    m_ogl.probe_fbo_w,                                      // dstX1
-                    m_ogl.probe_fbo_h,                                      // dstY1
-                    GL_DEPTH_BUFFER_BIT,                                    // mask
-                    GL_NEAREST                                              // filter
+  glBlitFramebuffer(0,                          // srcX0
+                    0,                          // srcY0
+                    render_state->render_fb_w,  // srcX1
+                    render_state->render_fb_h,  // srcY1
+                    0,                          // dstX0
+                    0,                          // dstY0
+                    m_ogl.probe_fbo_w,          // dstX1
+                    m_ogl.probe_fbo_h,          // dstY1
+                    GL_DEPTH_BUFFER_BIT,        // mask
+                    GL_NEAREST                  // filter
   );
 }
 

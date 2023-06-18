@@ -197,16 +197,16 @@ void FramebufferCopier::copy_now(int render_fb_w,
   glBindFramebuffer(GL_READ_FRAMEBUFFER, render_fb);
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo);
 
-  glBlitFramebuffer(render_fb_x,                // srcX0
-                    render_fb_y,                // srcY0
-                    render_fb_x + render_fb_w,  // srcX1
-                    render_fb_y + render_fb_h,  // srcY1
-                    0,                          // dstX0
-                    0,                          // dstY0
-                    m_fbo_width,                // dstX1
-                    m_fbo_height,               // dstY1
-                    GL_COLOR_BUFFER_BIT,        // mask
-                    GL_NEAREST                  // filter
+  glBlitFramebuffer(0,                    // srcX0
+                    0,                    // srcY0
+                    render_fb_w,          // srcX1
+                    render_fb_h,          // srcY1
+                    0,                    // dstX0
+                    0,                    // dstY0
+                    m_fbo_width,          // dstX1
+                    m_fbo_height,         // dstY1
+                    GL_COLOR_BUFFER_BIT,  // mask
+                    GL_NEAREST            // filter
   );
 
   glBindFramebuffer(GL_FRAMEBUFFER, render_fb);
