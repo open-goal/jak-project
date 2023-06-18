@@ -15,14 +15,6 @@ extern "C" {
 extern const TSLanguage* tree_sitter_opengoal();
 }
 
-// TODO - incoporate some rules from zprint
-// https://github.com/kkinnear/zprint/blob/main/doc/types/classic.md
-// as well as maybe adjust the default rules to incorporate line length
-// https://github.com/kkinnear/zprint/blob/main/doc/options/indent.md
-// TODO - block comments seem to have an issue being parsed properly, also it basically needs the
-// code for flexibly wrapping a block of code in configurable symbols (parens, block comment braces,
-// etc)
-
 std::string apply_formatting(const FormatterTreeNode& curr_node,
                              std::string output,
                              int tree_depth = 0) {
@@ -38,7 +30,6 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
     curr_form += curr_node.token.value();
     return curr_form;
   }
-  // TODO - this might have some issues for non-list top level elements (ie. comments)
   if (!curr_node.metadata.is_top_level) {
     curr_form += "(";
   }
