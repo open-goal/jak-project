@@ -488,6 +488,10 @@ void pc_set_display_mode(u32 symptr) {
     Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
         WindowDisplayMode::Fullscreen);
   }
+  // force a "vsync" to update the display mode immediately
+  if (Gfx::GetCurrentRenderer()) {
+    Gfx::GetCurrentRenderer()->force_vsync();
+  }
 }
 
 u64 pc_get_display_count() {
