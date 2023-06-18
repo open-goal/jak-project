@@ -32,6 +32,10 @@
 #include "game/kernel/common/kmachine.h"
 #include "game/runtime.h"
 
+#ifdef _WIN32
+#include <Windows.h>
+#endif
+
 namespace {
 std::string g_current_render;
 }
@@ -761,7 +765,7 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
       read_buffer = GL_FRONT;
     }
     finish_screenshot(settings.screenshot_path, screenshot_src->width, screenshot_src->height, 0, 0,
-                      screenshot_src->fbo_id, read_buffer);
+                      screenshot_src->fbo_id, read_buffer, settings.quick_screenshot);
   }
   if (settings.gpu_sync) {
     glFinish();
@@ -1053,6 +1057,105 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma,
   }
 }
 
+#ifdef _WIN32
+void win_print_last_error(const std::string& msg) {
+  LPSTR lpMsgBuf;
+
+  FormatMessage(
+      FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS,
+      NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&lpMsgBuf, 0, NULL);
+
+  lg::error("[OpenGLRenderer] {} Win Err: {}", msg, lpMsgBuf);
+}
+
+HGLOBAL hClipboardData;
+void copy_texture_to_clipboard(int width, int height, const std::vector<u32>& texture_data) {
+  std::vector<u32> data(texture_data);
+
+  // BGR -> RGB
+  for (auto& px : data) {
+    u8 r = px >> 0;
+    u8 g = px >> 8;
+    u8 b = px >> 16;
+    u8 a = px >> 24;
+    px = (a << 24) | (r << 16) | (g << 8) | (b << 0);
+  }
+
+  // Calculate the total size of the image data
+  size_t image_size = data.size() * sizeof(u32);
+
+  // BMP/DIB file header
+  BITMAPINFOHEADER header;
+  header.biSize = sizeof(header);
+  header.biWidth = width;
+  header.biHeight = height;
+  header.biPlanes = 1;
+  header.biBitCount = 32;
+  header.biCompression = BI_RGB;
+  header.biSizeImage = 0;
+  header.biXPelsPerMeter = 0;
+  header.biYPelsPerMeter = 0;
+  header.biClrUsed = 0;
+  header.biClrImportant = 0;
+
+  // Open the clipboard
+  if (!OpenClipboard(NULL)) {
+    win_print_last_error("Failed to open the clipboard.");
+    return;
+  }
+
+  // Empty the clipboard
+  if (!EmptyClipboard()) {
+    win_print_last_error("Failed to empty the clipboard.");
+    CloseClipboard();
+    return;
+  }
+
+  // Create a global memory object to hold the image data
+  hClipboardData = GlobalAlloc(GMEM_MOVEABLE, sizeof(header) + image_size);
+  if (hClipboardData == NULL) {
+    win_print_last_error("Failed to allocate memory for clipboard data.");
+    CloseClipboard();
+    return;
+  }
+
+  // Get a pointer to the global memory object
+  void* pData = GlobalLock(hClipboardData);
+  if (pData == NULL) {
+    win_print_last_error("Failed to lock clipboard memory.");
+    CloseClipboard();
+    GlobalFree(hClipboardData);
+    return;
+  }
+
+  // Copy the image data into the global memory object
+  memcpy(pData, &header, sizeof(header));
+  memcpy((char*)pData + sizeof(header), data.data(), image_size);
+
+  // Unlock the global memory object
+  if (!GlobalUnlock(hClipboardData) && GetLastError() != NO_ERROR) {
+    win_print_last_error("Failed to unlock memory.");
+    CloseClipboard();
+    GlobalFree(hClipboardData);
+    return;
+  }
+
+  // Set the image data to clipboard
+  if (!SetClipboardData(CF_DIB, hClipboardData)) {
+    win_print_last_error("Failed to set clipboard data.");
+    CloseClipboard();
+    GlobalFree(hClipboardData);
+    return;
+  }
+
+  // Close the clipboard
+  CloseClipboard();
+  GlobalFree(hClipboardData);
+
+  lg::info("Image data copied to clipboard successfully!");
+}
+#endif
+
 /*!
  * Take a screenshot!
  */
@@ -1062,7 +1165,8 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
                                        int x,
                                        int y,
                                        GLuint fbo,
-                                       int read_buffer) {
+                                       int read_buffer,
+                                       bool quick_screenshot) {
   std::vector<u32> buffer(width * height);
   glPixelStorei(GL_PACK_ALIGNMENT, 1);
   GLint oldbuf;
@@ -1070,6 +1174,19 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
   glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
   glReadBuffer(read_buffer);
   glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
+
+  // set alpha. For some reason, image viewers do weird stuff with alpha.
+  for (auto& px : buffer) {
+    px |= 0xff000000;
+  }
+
+#ifdef _WIN32
+  if (quick_screenshot) {
+    // copy to clipboard (windows only)
+    copy_texture_to_clipboard(width, height, buffer);
+  }
+#endif
+
   // flip upside down in place
   for (int h = 0; h < height / 2; h++) {
     for (int w = 0; w < width; w++) {
@@ -1077,10 +1194,6 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
     }
   }
 
-  // set alpha. For some reason, image viewers do weird stuff with alpha.
-  for (auto& px : buffer) {
-    px |= 0xff000000;
-  }
   file_util::write_rgba_png(output_name, buffer.data(), width, height);
   glBindFramebuffer(GL_READ_FRAMEBUFFER, oldbuf);
 }
