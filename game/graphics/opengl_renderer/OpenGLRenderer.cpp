@@ -1068,7 +1068,6 @@ void win_print_last_error(const std::string& msg) {
   lg::error("[OpenGLRenderer] {} Win Err: {}", msg, lpMsgBuf);
 }
 
-HGLOBAL hClipboardData;
 void copy_texture_to_clipboard(int width, int height, const std::vector<u32>& texture_data) {
   std::vector<u32> data(texture_data);
 
@@ -1112,7 +1111,7 @@ void copy_texture_to_clipboard(int width, int height, const std::vector<u32>& te
   }
 
   // Create a global memory object to hold the image data
-  hClipboardData = GlobalAlloc(GMEM_MOVEABLE, sizeof(header) + image_size);
+  HGLOBAL hClipboardData = GlobalAlloc(GMEM_MOVEABLE, sizeof(header) + image_size);
   if (hClipboardData == NULL) {
     win_print_last_error("Failed to allocate memory for clipboard data.");
     CloseClipboard();
