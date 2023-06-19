@@ -704,7 +704,7 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   if (settings.save_screenshot) {
     auto prof = m_profiler.root()->make_scoped_child("screenshot");
     int read_buffer;
-    int x, y, w, h;
+    int x, y, w, h, fbo_id;
 
     if (settings.internal_res_screenshot) {
       Fbo* screenshot_src;
@@ -720,14 +720,16 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
       h = screenshot_src->height;
       x = 0;
       y = 0;
+      fbo_id = screenshot_src->fbo_id;
     } else {
       read_buffer = GL_FRONT;
       w = settings.draw_region_width;
       h = settings.draw_region_height;
       x = m_render_state.draw_offset_x;
       y = m_render_state.draw_offset_y;
+      fbo_id = 0;  // window
     }
-    finish_screenshot(settings.screenshot_path, w, h, x, y, 0, read_buffer,
+    finish_screenshot(settings.screenshot_path, w, h, x, y, fbo_id, read_buffer,
                       settings.quick_screenshot);
   }
 
@@ -1194,44 +1196,41 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
 void OpenGLRenderer::do_pcrtc_effects(float alp,
                                       SharedRenderState* render_state,
                                       ScopedProfilerNode& prof) {
-  if (m_fbo_state.render_fbo->is_window) {
-    // nothing to do!
-  } else {
-    Fbo* window_blit_src = nullptr;
-    if (m_fbo_state.resources.resolve_buffer.valid) {
-      glBindFramebuffer(GL_READ_FRAMEBUFFER, m_fbo_state.render_fbo->fbo_id);
-      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo_state.resources.resolve_buffer.fbo_id);
-      glBlitFramebuffer(0,                                            // srcX0
-                        0,                                            // srcY0
-                        m_fbo_state.render_fbo->width,                // srcX1
-                        m_fbo_state.render_fbo->height,               // srcY1
-                        0,                                            // dstX0
-                        0,                                            // dstY0
-                        m_fbo_state.resources.resolve_buffer.width,   // dstX1
-                        m_fbo_state.resources.resolve_buffer.height,  // dstY1
-                        GL_COLOR_BUFFER_BIT,                          // mask
-                        GL_LINEAR                                     // filter
-      );
-      window_blit_src = &m_fbo_state.resources.resolve_buffer;
-    } else {
-      window_blit_src = &m_fbo_state.resources.render_buffer;
-    }
-
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, window_blit_src->fbo_id);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    glBlitFramebuffer(0,                                                          // srcX0
-                      0,                                                          // srcY0
-                      window_blit_src->width,                                     // srcX1
-                      window_blit_src->height,                                    // srcY1
-                      render_state->draw_offset_x,                                // dstX0
-                      render_state->draw_offset_y,                                // dstY0
-                      render_state->draw_offset_x + render_state->draw_region_w,  // dstX1
-                      render_state->draw_offset_y + render_state->draw_region_h,  // dstY1
-                      GL_COLOR_BUFFER_BIT,                                        // mask
-                      GL_LINEAR                                                   // filter
+  Fbo* window_blit_src = nullptr;
+  if (m_fbo_state.resources.resolve_buffer.valid) {
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, m_fbo_state.render_fbo->fbo_id);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo_state.resources.resolve_buffer.fbo_id);
+    glBlitFramebuffer(0,                                            // srcX0
+                      0,                                            // srcY0
+                      m_fbo_state.render_fbo->width,                // srcX1
+                      m_fbo_state.render_fbo->height,               // srcY1
+                      0,                                            // dstX0
+                      0,                                            // dstY0
+                      m_fbo_state.resources.resolve_buffer.width,   // dstX1
+                      m_fbo_state.resources.resolve_buffer.height,  // dstY1
+                      GL_COLOR_BUFFER_BIT,                          // mask
+                      GL_LINEAR                                     // filter
     );
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    window_blit_src = &m_fbo_state.resources.resolve_buffer;
+  } else {
+    window_blit_src = &m_fbo_state.resources.render_buffer;
   }
+
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, window_blit_src->fbo_id);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+  glBlitFramebuffer(0,                                                          // srcX0
+                    0,                                                          // srcY0
+                    window_blit_src->width,                                     // srcX1
+                    window_blit_src->height,                                    // srcY1
+                    render_state->draw_offset_x,                                // dstX0
+                    render_state->draw_offset_y,                                // dstY0
+                    render_state->draw_offset_x + render_state->draw_region_w,  // dstX1
+                    render_state->draw_offset_y + render_state->draw_region_h,  // dstY1
+                    GL_COLOR_BUFFER_BIT,                                        // mask
+                    GL_LINEAR                                                   // filter
+  );
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
   if (alp < 1) {
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
