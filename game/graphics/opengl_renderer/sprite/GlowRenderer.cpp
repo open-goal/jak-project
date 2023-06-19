@@ -188,8 +188,7 @@ GlowRenderer::GlowRenderer() {
                GL_UNSIGNED_BYTE, nullptr);
   glGenRenderbuffers(1, &m_ogl.probe_fbo_zbuf_rb);
   glBindRenderbuffer(GL_RENDERBUFFER, m_ogl.probe_fbo_zbuf_rb);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, m_ogl.probe_fbo_w,
-                        m_ogl.probe_fbo_h);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, m_ogl.probe_fbo_w, m_ogl.probe_fbo_h);
   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
                             m_ogl.probe_fbo_zbuf_rb);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
