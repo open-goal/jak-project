@@ -35,7 +35,7 @@ GameController::GameController(int sdl_device_id,
   auto name = SDL_GameControllerName(m_device_handle);
   if (!name) {
     sdl_util::log_error(fmt::format("Could not get device name with id: {}", sdl_device_id));
-    m_device_name = "";
+    return;
   } else {
     m_device_name = name;
   }
@@ -52,7 +52,7 @@ void GameController::process_event(const SDL_Event& event,
                                    const CommandBindingGroups& commands,
                                    std::shared_ptr<PadData> data,
                                    std::optional<InputBindAssignmentMeta>& bind_assignment,
-                                   bool /*ignore_inputs*/) {
+                                   bool ignore_inputs) {
   if (event.type == SDL_CONTROLLERAXISMOTION && event.caxis.which == m_sdl_instance_id) {
     // https://wiki.libsdl.org/SDL2/SDL_GameControllerAxis
     if ((int)event.caxis.axis <= SDL_CONTROLLER_AXIS_INVALID ||
@@ -150,8 +150,10 @@ void GameController::set_led(const u8 red, const u8 green, const u8 blue) {
   if (!m_has_led) {
     return;
   }
-  auto ok = SDL_GameControllerSetLED(m_device_handle, red, green, blue);
-  if (ok != 0) {
-    m_has_led = false;
+  if (m_device_handle) {
+    auto ok = SDL_GameControllerSetLED(m_device_handle, red, green, blue);
+    if (ok != 0) {
+      m_has_led = false;
+    }
   }
 }

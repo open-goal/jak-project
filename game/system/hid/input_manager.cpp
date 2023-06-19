@@ -61,6 +61,10 @@ void InputManager::refresh_device_list() {
         continue;
       }
       auto controller = std::make_shared<GameController>(i, m_settings);
+      if (!controller->is_loaded()) {
+        lg::error("Unable to successfully connect to GameController with id {}, skipping", i);
+        continue;
+      }
       m_available_controllers.push_back(controller);
       // By default, controller port mapping is on a first-come-first-served basis
       //
