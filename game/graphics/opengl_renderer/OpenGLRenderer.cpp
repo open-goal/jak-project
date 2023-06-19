@@ -722,7 +722,7 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
       y = 0;
       fbo_id = screenshot_src->fbo_id;
     } else {
-      read_buffer = GL_FRONT;
+      read_buffer = GL_BACK;
       w = settings.draw_region_width;
       h = settings.draw_region_height;
       x = m_render_state.draw_offset_x;
@@ -1164,8 +1164,9 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
                                        bool quick_screenshot) {
   std::vector<u32> buffer(width * height);
   glPixelStorei(GL_PACK_ALIGNMENT, 1);
-  GLint oldbuf;
+  GLint oldbuf, oldreadbuf;
   glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &oldbuf);
+  glGetIntegerv(GL_READ_BUFFER, &oldreadbuf);
   glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
   glReadBuffer(read_buffer);
   glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
@@ -1190,6 +1191,7 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
   }
 
   file_util::write_rgba_png(output_name, buffer.data(), width, height);
+  glReadBuffer(oldreadbuf);
   glBindFramebuffer(GL_READ_FRAMEBUFFER, oldbuf);
 }
 
