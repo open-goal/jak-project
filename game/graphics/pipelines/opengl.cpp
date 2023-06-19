@@ -52,11 +52,9 @@ struct GraphicsData {
   // dma chain transfer
   std::mutex dma_mutex;
   std::condition_variable dma_cv;
-  bool got_data_once = false;
   u64 frame_idx = 0;
   u64 frame_idx_of_input_data = 0;
   bool has_data_to_render = false;
-  bool force_vsync = false;
   FixedChunkDmaCopier dma_copier;
 
   // texture pool
@@ -342,21 +340,9 @@ void render_game_frame(int game_width,
   {
     auto p = scoped_prof("wait-for-dma");
     std::unique_lock<std::mutex> lock(g_gfx_data->dma_mutex);
-    // note: there's a timeout here, so imgui can still be responsive even if we never render
-    // anything. the timeout is extended to the equivalent of 0.5 frames per second (2 seconds per
-    // frame) once we get a game frame. this is the avoid obnoxious flickering if the game slows
-    // down too much but is still working. if that long timeout occurs, we fall back to the fast one
-    // since the game might have froze (or is unusably slow).
-    got_chain = g_gfx_data->dma_cv.wait_for(
-        lock,
-        g_gfx_data->got_data_once ? std::chrono::seconds(2) : std::chrono::microseconds(16667),
-        [=] { return g_gfx_data->has_data_to_render || g_gfx_data->force_vsync; });
-    if (g_gfx_data->force_vsync) {
-      got_chain = g_gfx_data->has_data_to_render;
-      g_gfx_data->force_vsync = false;
-    } else {
-      g_gfx_data->got_data_once = got_chain;
-    }
+    // there's a timeout here, so imgui can still be responsive even if we don't render anything
+    got_chain = g_gfx_data->dma_cv.wait_for(lock, std::chrono::milliseconds(40),
+                                            [=] { return g_gfx_data->has_data_to_render; });
   }
   // render that chain.
   if (got_chain) {
@@ -682,11 +668,6 @@ void gl_set_pmode_alp(float val) {
   g_gfx_data->pmode_alp = val;
 }
 
-void gl_force_vsync() {
-  g_gfx_data->force_vsync = true;
-  g_gfx_data->dma_cv.notify_all();
-}
-
 const GfxRendererModule gRendererOpenGL = {
     gl_init,                // init
     gl_make_display,        // make_display
@@ -698,7 +679,6 @@ const GfxRendererModule gRendererOpenGL = {
     gl_texture_relocate,    // texture_relocate
     gl_set_levels,          // set_levels
     gl_set_pmode_alp,       // set_pmode_alp
-    gl_force_vsync,         // force_vsync
     GfxPipeline::OpenGL,    // pipeline
     "OpenGL 4.3"            // name
 };
