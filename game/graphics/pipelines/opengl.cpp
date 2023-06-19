@@ -437,19 +437,16 @@ void GLDisplay::process_sdl_events() {
     if (evt.type == SDL_QUIT) {
       m_should_quit = true;
     }
-
     {
       auto p = scoped_prof("sdl-display-manager");
       m_display_manager->process_sdl_event(evt);
     }
-
     if (!m_should_quit) {
       {
         auto p = scoped_prof("imgui-sdl-process");
         ImGui_ImplSDL2_ProcessEvent(&evt);
       }
     }
-
     ImGuiIO& io = ImGui::GetIO();
     {
       auto p = scoped_prof("sdl-input-monitor");
@@ -467,6 +464,12 @@ void GLDisplay::process_sdl_events() {
 void GLDisplay::render() {
   // Process SDL Events
   process_sdl_events();
+  // Also process any display related events received from the EE (the game)
+  // this is done here so they run from the perspective of the graphics thread
+  {
+    auto p = scoped_prof("display-manager-ee-events");
+    m_display_manager->process_ee_events();
+  }
 
   // imgui start of frame
   {
