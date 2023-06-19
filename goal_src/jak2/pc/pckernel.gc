@@ -52,13 +52,9 @@
   )
 
 
-(defmethod update pc-settings-jak2 ((obj pc-settings-jak2))
-  "handle the text parsing input for the 'settings' group"
-
-  ((method-of-type pc-settings update) obj)
-
-  (set! (-> obj movie?) (and (!= #f *scene-player*) (movie?)))
-  (none))
+(defun real-movie? ()
+  "are we in an actual cutscene and should letterbox the view?"
+  (and (!= #f *scene-player*) (nonzero? movie?) (movie?)))
 
 (defmethod update-discord-rpc pc-settings-jak2 ((obj pc-settings-jak2))
   "update discord rpc module"
@@ -79,7 +75,7 @@
       (else
         (set! (-> info level) (aif (-> *load-state* vis-nick) (symbol->string it) "unknown")))
       )
-    (set! (-> info cutscene?) (-> *pc-settings* movie?))
+    (set! (-> info cutscene?) (real-movie?))
     (set! (-> info time-of-day) (-> *time-of-day-context* time))
     (set! (-> info percent-complete) (calculate-percentage *game-info*))
     (set! (-> info focus-status) (if *target* (-> *target* focus-status) 0))
@@ -91,7 +87,7 @@
 (defmethod update-speedrun pc-settings-jak2 ((obj pc-settings-jak2))
   "update speedrun module"
   (when (-> *pc-settings* speedrunner-mode?)
-   (speedrun-mode-update))
+    (speedrun-mode-update))
   (none))
 
 (defmethod update-video-hacks pc-settings-jak2 ((obj pc-settings-jak2))
@@ -161,9 +157,9 @@
                                      (bucket-id debug-no-zbuf1))
           (draw-string-xy *pc-settings-built-sha*
                           buf
-                          0 10
+                          512 14
                           (font-color flat-yellow)
-                          (font-flags shadow kerning))))
+                          (font-flags right shadow kerning))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; process pools

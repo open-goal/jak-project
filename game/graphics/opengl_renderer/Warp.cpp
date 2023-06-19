@@ -8,8 +8,7 @@ void Warp::draw_debug_window() {
 }
 
 void Warp::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  m_fb_copier.copy_now(render_state->render_fb_w, render_state->render_fb_h,
-                       render_state->render_fb_x, render_state->render_fb_y,
+  m_fb_copier.copy_now(render_state->render_fb_w, render_state->render_fb_h, 0, 0,
                        render_state->render_fb);
   render_state->texture_pool->move_existing_to_vram(m_warp_src_tex, m_tbp);
   m_generic->render_in_mode(dma, render_state, prof, Generic2::Mode::WARP);

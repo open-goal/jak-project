@@ -701,6 +701,38 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
 
   m_last_pmode_alp = settings.pmode_alp_register;
 
+  if (settings.save_screenshot) {
+    auto prof = m_profiler.root()->make_scoped_child("screenshot");
+    int read_buffer;
+    int x, y, w, h, fbo_id;
+
+    if (settings.internal_res_screenshot) {
+      Fbo* screenshot_src;
+      // can't screenshot from a multisampled buffer directly -
+      if (m_fbo_state.resources.resolve_buffer.valid) {
+        screenshot_src = &m_fbo_state.resources.resolve_buffer;
+        read_buffer = GL_COLOR_ATTACHMENT0;
+      } else {
+        screenshot_src = m_fbo_state.render_fbo;
+        read_buffer = GL_FRONT;
+      }
+      w = screenshot_src->width;
+      h = screenshot_src->height;
+      x = 0;
+      y = 0;
+      fbo_id = screenshot_src->fbo_id;
+    } else {
+      read_buffer = GL_FRONT;
+      w = settings.draw_region_width;
+      h = settings.draw_region_height;
+      x = m_render_state.draw_offset_x;
+      y = m_render_state.draw_offset_y;
+      fbo_id = 0;  // window
+    }
+    finish_screenshot(settings.screenshot_path, w, h, x, y, fbo_id, read_buffer,
+                      settings.quick_screenshot);
+  }
+
   if (settings.draw_render_debug_window) {
     auto prof = m_profiler.root()->make_scoped_child("render-window");
     draw_renderer_selection_window();
@@ -750,22 +782,6 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
 
   if (settings.draw_filters_window) {
     m_filters_menu.draw_window();
-  }
-
-  if (settings.save_screenshot) {
-    Fbo* screenshot_src;
-    int read_buffer;
-
-    // can't screenshot from a multisampled buffer directly -
-    if (m_fbo_state.resources.resolve_buffer.valid) {
-      screenshot_src = &m_fbo_state.resources.resolve_buffer;
-      read_buffer = GL_COLOR_ATTACHMENT0;
-    } else {
-      screenshot_src = m_fbo_state.render_fbo;
-      read_buffer = GL_FRONT;
-    }
-    finish_screenshot(settings.screenshot_path, screenshot_src->width, screenshot_src->height, 0, 0,
-                      screenshot_src->fbo_id, read_buffer, settings.quick_screenshot);
   }
   if (settings.gpu_sync) {
     glFinish();
@@ -838,35 +854,24 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
     m_fbo_state.resources.render_buffer.clear();
     m_fbo_state.resources.resolve_buffer.clear();
 
-    // first, see if we can just render straight to the display framebuffer.
-    // note: we always force a separate fbo on a screenshot so that it won't capture overlays.
-    //       as an added bonus it also doesn't break the sprite distort buffer...
-    if (!settings.save_screenshot &&
-        window_fb.matches(settings.game_res_w, settings.game_res_h, settings.msaa_samples)) {
-      // it matches - no need for extra framebuffers.
-      lg::info("FBO Setup: rendering directly to window framebuffer");
-      m_fbo_state.render_fbo = &m_fbo_state.resources.window;
+    // NOTE: we will ALWAYS render the game to a separate framebuffer instead of directly to the
+    // window framebuffer.
+
+    // create a fbo to render to, with the desired settings
+    m_fbo_state.resources.render_buffer =
+        make_fbo(settings.game_res_w, settings.game_res_h, settings.msaa_samples, true);
+    m_fbo_state.render_fbo = &m_fbo_state.resources.render_buffer;
+
+    if (settings.msaa_samples != 1) {
+      lg::info("FBO Setup: using second temporary buffer: res: {}x{} {}x{}", window_fb.width,
+               window_fb.height, settings.game_res_w, settings.game_res_h);
+
+      // we'll need a temporary fbo to do the msaa resolve step
+      // non-multisampled, and doesn't need z/stencil
+      m_fbo_state.resources.resolve_buffer =
+          make_fbo(settings.game_res_w, settings.game_res_h, 1, false);
     } else {
-      lg::info("FBO Setup: window didn't match: {} {}", window_fb.width, window_fb.height);
-
-      // create a fbo to render to, with the desired settings
-      m_fbo_state.resources.render_buffer =
-          make_fbo(settings.game_res_w, settings.game_res_h, settings.msaa_samples, true);
-      m_fbo_state.render_fbo = &m_fbo_state.resources.render_buffer;
-
-      bool msaa_matches = window_fb.multisample_count == settings.msaa_samples;
-
-      if (!msaa_matches) {
-        lg::info("FBO Setup: using second temporary buffer: res: {}x{} {}x{}", window_fb.width,
-                 window_fb.height, settings.game_res_w, settings.game_res_h);
-
-        // we'll need a temporary fbo to do the msaa resolve step
-        // non-multisampled, and doesn't need z/stencil
-        m_fbo_state.resources.resolve_buffer =
-            make_fbo(settings.game_res_w, settings.game_res_h, 1, false);
-      } else {
-        lg::info("FBO Setup: not using second temporary buffer");
-      }
+      lg::info("FBO Setup: not using second temporary buffer");
     }
   }
 
@@ -874,15 +879,15 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
              fmt::format("Bad viewport size from game_res: {}x{}\n", settings.game_res_w,
                          settings.game_res_h));
 
-  if (!m_fbo_state.render_fbo->is_window) {
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, m_fbo_state.resources.window.width, m_fbo_state.resources.window.height);
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    glClearDepth(0.0);
-    glDepthMask(GL_TRUE);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-    glDisable(GL_BLEND);
-  }
+  ASSERT_MSG(!m_fbo_state.render_fbo->is_window, "window fbo");
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glViewport(0, 0, m_fbo_state.resources.window.width, m_fbo_state.resources.window.height);
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClearDepth(0.0);
+  glDepthMask(GL_TRUE);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+  glDisable(GL_BLEND);
 
   glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_state.render_fbo->fbo_id);
   glClearColor(0.0, 0.0, 0.0, 0.0);
@@ -914,20 +919,11 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
     m_render_state.draw_region_h = 240;
   }
 
-  if (m_fbo_state.render_fbo->is_window) {
-    m_render_state.render_fb_x = m_render_state.draw_offset_x;
-    m_render_state.render_fb_y = m_render_state.draw_offset_y;
-    m_render_state.render_fb_w = m_render_state.draw_region_w;
-    m_render_state.render_fb_h = m_render_state.draw_region_h;
-    glViewport(m_render_state.draw_offset_x, m_render_state.draw_offset_y,
-               m_render_state.draw_region_w, m_render_state.draw_region_h);
-  } else {
-    m_render_state.render_fb_x = 0;
-    m_render_state.render_fb_y = 0;
-    m_render_state.render_fb_w = settings.game_res_w;
-    m_render_state.render_fb_h = settings.game_res_h;
-    glViewport(0, 0, settings.game_res_w, settings.game_res_h);
-  }
+  m_render_state.render_fb_x = 0;
+  m_render_state.render_fb_y = 0;
+  m_render_state.render_fb_w = settings.game_res_w;
+  m_render_state.render_fb_h = settings.game_res_h;
+  glViewport(0, 0, settings.game_res_w, settings.game_res_h);
 }
 
 void OpenGLRenderer::dispatch_buckets_jak1(DmaFollower dma,
@@ -1068,7 +1064,6 @@ void win_print_last_error(const std::string& msg) {
   lg::error("[OpenGLRenderer] {} Win Err: {}", msg, lpMsgBuf);
 }
 
-HGLOBAL hClipboardData;
 void copy_texture_to_clipboard(int width, int height, const std::vector<u32>& texture_data) {
   std::vector<u32> data(texture_data);
 
@@ -1112,7 +1107,7 @@ void copy_texture_to_clipboard(int width, int height, const std::vector<u32>& te
   }
 
   // Create a global memory object to hold the image data
-  hClipboardData = GlobalAlloc(GMEM_MOVEABLE, sizeof(header) + image_size);
+  HGLOBAL hClipboardData = GlobalAlloc(GMEM_MOVEABLE, sizeof(header) + image_size);
   if (hClipboardData == NULL) {
     win_print_last_error("Failed to allocate memory for clipboard data.");
     CloseClipboard();
@@ -1201,44 +1196,41 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
 void OpenGLRenderer::do_pcrtc_effects(float alp,
                                       SharedRenderState* render_state,
                                       ScopedProfilerNode& prof) {
-  if (m_fbo_state.render_fbo->is_window) {
-    // nothing to do!
-  } else {
-    Fbo* window_blit_src = nullptr;
-    if (m_fbo_state.resources.resolve_buffer.valid) {
-      glBindFramebuffer(GL_READ_FRAMEBUFFER, m_fbo_state.render_fbo->fbo_id);
-      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo_state.resources.resolve_buffer.fbo_id);
-      glBlitFramebuffer(0,                                            // srcX0
-                        0,                                            // srcY0
-                        m_fbo_state.render_fbo->width,                // srcX1
-                        m_fbo_state.render_fbo->height,               // srcY1
-                        0,                                            // dstX0
-                        0,                                            // dstY0
-                        m_fbo_state.resources.resolve_buffer.width,   // dstX1
-                        m_fbo_state.resources.resolve_buffer.height,  // dstY1
-                        GL_COLOR_BUFFER_BIT,                          // mask
-                        GL_LINEAR                                     // filter
-      );
-      window_blit_src = &m_fbo_state.resources.resolve_buffer;
-    } else {
-      window_blit_src = &m_fbo_state.resources.render_buffer;
-    }
-
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, window_blit_src->fbo_id);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    glBlitFramebuffer(0,                                                          // srcX0
-                      0,                                                          // srcY0
-                      window_blit_src->width,                                     // srcX1
-                      window_blit_src->height,                                    // srcY1
-                      render_state->draw_offset_x,                                // dstX0
-                      render_state->draw_offset_y,                                // dstY0
-                      render_state->draw_offset_x + render_state->draw_region_w,  // dstX1
-                      render_state->draw_offset_y + render_state->draw_region_h,  // dstY1
-                      GL_COLOR_BUFFER_BIT,                                        // mask
-                      GL_LINEAR                                                   // filter
+  Fbo* window_blit_src = nullptr;
+  if (m_fbo_state.resources.resolve_buffer.valid) {
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, m_fbo_state.render_fbo->fbo_id);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo_state.resources.resolve_buffer.fbo_id);
+    glBlitFramebuffer(0,                                            // srcX0
+                      0,                                            // srcY0
+                      m_fbo_state.render_fbo->width,                // srcX1
+                      m_fbo_state.render_fbo->height,               // srcY1
+                      0,                                            // dstX0
+                      0,                                            // dstY0
+                      m_fbo_state.resources.resolve_buffer.width,   // dstX1
+                      m_fbo_state.resources.resolve_buffer.height,  // dstY1
+                      GL_COLOR_BUFFER_BIT,                          // mask
+                      GL_LINEAR                                     // filter
     );
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    window_blit_src = &m_fbo_state.resources.resolve_buffer;
+  } else {
+    window_blit_src = &m_fbo_state.resources.render_buffer;
   }
+
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, window_blit_src->fbo_id);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+  glBlitFramebuffer(0,                                                          // srcX0
+                    0,                                                          // srcY0
+                    window_blit_src->width,                                     // srcX1
+                    window_blit_src->height,                                    // srcY1
+                    render_state->draw_offset_x,                                // dstX0
+                    render_state->draw_offset_y,                                // dstY0
+                    render_state->draw_offset_x + render_state->draw_region_w,  // dstX1
+                    render_state->draw_offset_y + render_state->draw_region_h,  // dstY1
+                    GL_COLOR_BUFFER_BIT,                                        // mask
+                    GL_LINEAR                                                   // filter
+  );
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
   if (alp < 1) {
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);

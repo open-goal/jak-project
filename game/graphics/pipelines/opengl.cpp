@@ -340,9 +340,8 @@ void render_game_frame(int game_width,
   {
     auto p = scoped_prof("wait-for-dma");
     std::unique_lock<std::mutex> lock(g_gfx_data->dma_mutex);
-    // note: there's a timeout here. If the engine is messed up and not sending us frames,
-    // we still want to run the glfw loop.
-    got_chain = g_gfx_data->dma_cv.wait_for(lock, std::chrono::milliseconds(50),
+    // there's a timeout here, so imgui can still be responsive even if we don't render anything
+    got_chain = g_gfx_data->dma_cv.wait_for(lock, std::chrono::milliseconds(40),
                                             [=] { return g_gfx_data->has_data_to_render; });
   }
   // render that chain.
@@ -364,6 +363,7 @@ void render_game_frame(int game_width,
     options.draw_filters_window = g_gfx_data->debug_gui.should_draw_filters_menu();
     options.save_screenshot = false;
     options.quick_screenshot = false;
+    options.internal_res_screenshot = false;
     options.gpu_sync = g_gfx_data->debug_gui.should_gl_finish();
 
     if (take_screenshot) {
