@@ -29,6 +29,8 @@
 
 using namespace iop;
 
+BS::thread_pool thpool(4);
+
 /*!
  * Map from iso file name to file path in the src folder.
  */

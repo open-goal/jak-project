@@ -41,6 +41,7 @@ constexpr int SET_DIALOG_VOLUME = 0x406;    // Command to set the volume of vag 
 struct LoadStackEntry {
   FileRecord* fr;
   uint32_t location;  // sectors.
+  FILE* fp;
 };
 
 /*!
