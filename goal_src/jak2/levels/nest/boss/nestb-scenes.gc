@@ -1751,12 +1751,38 @@ This commonly includes things such as:
       (set-time-for-random-weather! *mood-control* 0.0 0.0)
       )
   (set! *nav-network* (the-as nav-network 0))
+  (#when PC_PORT
+    ;; for nest revisit
+    (kill-by-name "blocking-plane-nestb" *active-pool*)
+    )
   0
   (none)
   )
 
 (defun nestb-activate ((arg0 level))
   (nav-network-method-10 *nav-network* arg0 *nestb-adjacency*)
+  (#when PC_PORT
+    ;; for nest revisit
+    (when (task-node-closed? (game-task-node nest-boss-resolution))
+      (script-eval '(begin
+                      (kill "metalkor-1")
+                      (kill "rift-ring-ingame-1")
+                      (kill "crate-942")
+                      (kill "crate-943")
+                      (kill "crate-944")
+                      (kill "crate-945")
+                      (kill "crate-946")
+                      (kill "crate-947")
+                      (kill "crate-948")
+                      (kill "crate-949")
+                      ))
+      (let ((wall-pts (new 'stack-no-clear 'inline-array 'vector 2)))
+        (set-vector! (-> wall-pts 0) (meters 172.4628) (meters 32) (meters -380.7990) 1.0)
+        (set-vector! (-> wall-pts 1) (meters 151.7022) (meters 32) (meters -417.1884) 1.0)
+        (process-spawn blocking-plane wall-pts (meters 60) :name "blocking-plane-nestb")
+        )
+      )
+    )
   0
   (none)
   )
