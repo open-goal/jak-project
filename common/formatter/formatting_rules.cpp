@@ -1,5 +1,7 @@
 #include "formatting_rules.h"
 
+#include <set>
+
 #include "common/util/string_util.h"
 
 void formatter_rules::blank_lines::separate_by_newline(std::string& curr_text,
@@ -23,6 +25,29 @@ void formatter_rules::blank_lines::separate_by_newline(std::string& curr_text,
   curr_text += "\n";
 }
 
+// TODO - probably need to include quoted literals as well, though the grammar currently does not
+// differentiate between a quoted symbol and a quoted form
+const std::set<std::string> constant_pair_types = {"kwd_lit",  "num_lit",  "str_lit", "char_lit",
+                                                   "null_lit", "bool_lit", "sym_lit"};
+
+bool formatter_rules::constant_pairs::is_element_second_in_constant_pair(
+    const FormatterTreeNode& containing_node,
+    const FormatterTreeNode& node,
+    const int index) {
+  if (containing_node.refs.empty() || index == 0) {
+    return false;
+  }
+  // Ensure that a keyword came before hand
+  if (containing_node.refs.at(index - 1).metadata.node_type != "kwd_lit") {
+    return false;
+  }
+  // Check the type of the element
+  if (constant_pair_types.find(node.metadata.node_type) != constant_pair_types.end()) {
+    return true;
+  }
+  return false;
+}
+
 void IndentationRule::append_newline(std::string& curr_text,
                                      const FormatterTreeNode& node,
                                      const FormatterTreeNode& containing_node,
@@ -34,6 +59,11 @@ void IndentationRule::append_newline(std::string& curr_text,
       (node.metadata.is_comment && node.metadata.is_inline)) {
     return;
   }
+  // Check if it's a constant pair
+  if (formatter_rules::constant_pairs::is_element_second_in_constant_pair(containing_node, node,
+                                                                          index)) {
+    return;
+  }
   curr_text = str_util::rtrim(curr_text) + "\n";
 }
 
@@ -43,6 +73,12 @@ void IndentationRule::indent_token(std::string& curr_text,
                                    const int depth,
                                    const int index) {
   if (node.metadata.is_top_level) {
+    return;
+  }
+  // If the element is the second element in a constant pair, that means we did not append a
+  // new-line before hand so we require no indentation (it's inline with the previous element)
+  if (formatter_rules::constant_pairs::is_element_second_in_constant_pair(containing_node, node,
+                                                                          index)) {
     return;
   }
   if (containing_node.metadata.multiple_elements_first_line) {
@@ -87,6 +123,11 @@ void InnerIndentationRule::append_newline(std::string& curr_text,
   if (index < 1 || (m_depth != depth || m_index && m_index.value() != index)) {
     return;
   }
+  // Check if it's a constant pair
+  if (formatter_rules::constant_pairs::is_element_second_in_constant_pair(containing_node, node,
+                                                                          index)) {
+    return;
+  }
   if (!node.metadata.was_on_first_line_of_form) {
     curr_text = str_util::rtrim(curr_text) + "\n";
   }
@@ -98,6 +139,12 @@ void InnerIndentationRule::indent_token(std::string& curr_text,
                                         const int depth,
                                         const int index) {
   if (index < 1 || (m_depth != depth || m_index && m_index.value() != index)) {
+    return;
+  }
+  // If the element is the second element in a constant pair, that means we did not append a
+  // new-line before hand so we require no indentation (it's inline with the previous element)
+  if (formatter_rules::constant_pairs::is_element_second_in_constant_pair(containing_node, node,
+                                                                          index)) {
     return;
   }
   // We only new-line elements if they were not originally on the first line
