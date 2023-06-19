@@ -2198,13 +2198,11 @@ FormElement* rewrite_multi_let(LetElement* in,
   return in;
 }
 
-FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
+FormElement* rewrite_dma_buffer_add_gs_set(LetElement* let0,
+                                           LetElement* let1,
+                                           LetElement* let2,
                                            const Env& env,
                                            FormPool& pool) {
-  auto let0 = in.at(0);
-  auto let1 = in.at(1);
-  auto let2 = in.at(2);
-
   // there are three lets and they all have the same format for the entries
   if (let0->entries().size() != 2 || let1->entries().size() != 2 || let2->entries().size() != 2 ||
       let0->body()->size() != 4 || let1->body()->size() != 3) {
@@ -2215,11 +2213,16 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
   //        (a0-2 (-> v1-0 base))
   //        )
   auto buf = let0->entries().at(0).src;
-  if (auto temp = buf->to_form(env); temp != let1->entries().at(0).src->to_form(env) ||
-                                     temp != let2->entries().at(0).src->to_form(env)) {
-    lg::error("rewrite_dma_buffer_add_gs_set: dma buffer mismatch");
-    return nullptr;
+  {
+    auto temp = buf->to_form(env);
+    bool let1_matches = temp == let1->entries().at(0).src->to_form(env);
+    bool let2_matches = temp == let2->entries().at(0).src->to_form(env);
+    if (!let1_matches || !let2_matches) {
+      lg::error("rewrite_dma_buffer_add_gs_set: dma buffer mismatch");
+      return nullptr;
+    }
   }
+
   auto mr_buf_base0 = match(dma_buf_base_matcher, let0->entries().at(1).src);
   auto mr_buf_base1 = match(dma_buf_base_matcher, let1->entries().at(1).src);
   auto mr_buf_base2 = match(dma_buf_base_matcher, let2->entries().at(1).src);
@@ -2583,6 +2586,7 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
         {"dthe", "gs-dthe"},
         {"colclamp", "gs-color-clamp"},
         {"xyzf3", "gs-xyzf"},
+        {"xyz2", "gs-xyz"},
         {"xyz3", "gs-xyz"},
         {"bitbltbuf", "gs-bitbltbuf"},
         {"trxpos", "gs-trxpos"},
@@ -2647,16 +2651,16 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
       args);
 }
 
-FormElement* rewrite_let_sequence(const std::vector<LetElement*>& in,
-                                  const Env& env,
-                                  FormPool& pool,
-                                  LetRewriteStats& stats) {
-  if (in.size() == 3) {
-    auto as_dma_buffer_add_gs_set = rewrite_dma_buffer_add_gs_set(in, env, pool);
-    if (as_dma_buffer_add_gs_set) {
-      stats.dma_buffer_add_gs_set++;
-      return as_dma_buffer_add_gs_set;
-    }
+FormElement* rewrite_let_sequence_3(LetElement* let0,
+                                    LetElement* let1,
+                                    LetElement* let2,
+                                    const Env& env,
+                                    FormPool& pool,
+                                    LetRewriteStats& stats) {
+  auto as_dma_buffer_add_gs_set = rewrite_dma_buffer_add_gs_set(let0, let1, let2, env, pool);
+  if (as_dma_buffer_add_gs_set) {
+    stats.dma_buffer_add_gs_set++;
+    return as_dma_buffer_add_gs_set;
   }
 
   return nullptr;
@@ -3014,6 +3018,40 @@ LetStats insert_lets(const Function& func,
   // Part 10: rewrite let sequences
   top_level_form->apply_form([&](Form* f) {
     auto& form_elts = f->elts();
+
+    std::vector<LetElement*> as_lets;
+    for (auto* elt : form_elts) {
+      as_lets.push_back(dynamic_cast<LetElement*>(elt));
+    }
+
+    std::vector<FormElement*> rewritten;
+
+    size_t in_idx = 0;
+    while (in_idx < form_elts.size()) {
+      // try rewriting as let3:
+      if (in_idx + 3 <= form_elts.size()) {
+        auto let0 = as_lets[in_idx];
+        auto let1 = as_lets[in_idx + 1];
+        auto let2 = as_lets[in_idx + 2];
+        if (let0 && let1 && let2) {
+          auto rw = rewrite_let_sequence_3(let0, let1, let2, env, pool, let_rewrite_stats);
+          if (rw) {
+            rw->parent_form = f;
+            rewritten.push_back(rw);
+            in_idx += 3;
+            continue;
+          }
+        }
+      }
+
+      // nope:
+      rewritten.push_back(form_elts[in_idx]);
+      in_idx++;
+    }
+
+    form_elts = std::move(rewritten);
+
+    /*
     for (size_t i = 0; i < form_elts.size(); ++i) {
       if (i + 2 < form_elts.size() && dynamic_cast<LetElement*>(form_elts[i]) &&
           dynamic_cast<LetElement*>(form_elts[i + 1]) &&
@@ -3030,6 +3068,7 @@ LetStats insert_lets(const Function& func,
         }
       }
     }
+     */
   });
 
   return stats;
