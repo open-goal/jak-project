@@ -1,8 +1,11 @@
 #pragma once
 
+#include <mutex>
 #include <optional>
+#include <queue>
 #include <string>
 #include <unordered_map>
+#include <variant>
 
 #include "game/settings/settings.h"
 
@@ -21,6 +24,7 @@ enum class Orientation { Landscape, LandscapeFlipped, Portrait, PortraitFlipped,
 
 /// https://wiki.libsdl.org/SDL2/SDL_DisplayMode
 struct DisplayMode {
+  std::string display_name;
   /// https://wiki.libsdl.org/SDL2/SDL_PixelFormatEnum
   uint32_t sdl_pixel_format;
   int screen_width;
@@ -41,12 +45,28 @@ struct Resolution {
 /// Stores related info for other parts of the application to use
 /// Manages display related operations and querying
 class DisplayManager {
+ private:
+  enum class EEDisplayEventType {
+    SET_WINDOW_SIZE,
+    SET_WINDOW_DISPLAY_MODE,
+    SET_FULLSCREEN_DISPLAY_ID
+  };
+
+  struct EEDisplayEvent {
+    EEDisplayEventType type;
+    std::variant<bool, int, WindowDisplayMode> param1;
+    std::variant<bool, int, WindowDisplayMode> param2;
+  };
+
  public:
   DisplayManager(SDL_Window* window);
   ~DisplayManager();
 
   /// Propagate and handle the SDL event, ignoring it if it's not relevant
   void process_sdl_event(const SDL_Event& event);
+  /// Any event coming from the EE thread that interacts directly with SDL should be enqueued as an
+  /// event so it can be ran from the proper thread context (the graphics thread)
+  void process_ee_events();
 
   // Accessors
   bool is_window_active() { return m_window != nullptr; }
@@ -61,19 +81,20 @@ class DisplayManager {
   int get_screen_width();
   int get_screen_height();
   WindowDisplayMode get_window_display_mode() { return m_window_display_mode; }
-  Resolution get_resolution(int id);
   int get_num_resolutions() { return m_available_resolutions.size(); }
+  Resolution get_resolution(int id);
 
   // Mutators
-  void set_window_resizable(bool resizable);
-  void set_window_size(int width, int height);
-  void initialize_window_position_from_settings();
-  void set_window_display_mode(WindowDisplayMode mode);
-  void set_fullscreen_display_id(int display_id);
+  void enqueue_set_window_size(int width, int height);
+  void enqueue_set_window_display_mode(WindowDisplayMode mode);
+  void enqueue_set_fullscreen_display_id(int display_id);
 
  private:
   SDL_Window* m_window;
   game_settings::DisplaySettings m_display_settings;
+
+  std::mutex event_queue_mtx;
+  std::queue<EEDisplayEvent> ee_event_queue;
 
   WindowDisplayMode m_window_display_mode = WindowDisplayMode::Windowed;
   int m_active_display_id;
@@ -97,7 +118,12 @@ class DisplayManager {
   std::unordered_map<int, DisplayMode> m_current_display_modes;
   std::vector<Resolution> m_available_resolutions;
 
+  void initialize_window_position_from_settings();
   void update_curr_display_info();
   void update_video_modes();
   void update_resolutions();
+
+  void set_window_size(int width, int height);
+  void set_window_display_mode(WindowDisplayMode mode);
+  void set_fullscreen_display_id(int display_id);
 };
