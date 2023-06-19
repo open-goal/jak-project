@@ -860,9 +860,7 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
         make_fbo(settings.game_res_w, settings.game_res_h, settings.msaa_samples, true);
     m_fbo_state.render_fbo = &m_fbo_state.resources.render_buffer;
 
-    bool msaa_matches = window_fb.multisample_count == settings.msaa_samples;
-
-    if (!msaa_matches) {
+    if (settings.msaa_samples != 1) {
       lg::info("FBO Setup: using second temporary buffer: res: {}x{} {}x{}", window_fb.width,
                window_fb.height, settings.game_res_w, settings.game_res_h);
 
@@ -879,15 +877,15 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
              fmt::format("Bad viewport size from game_res: {}x{}\n", settings.game_res_w,
                          settings.game_res_h));
 
-  if (!m_fbo_state.render_fbo->is_window) {
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, m_fbo_state.resources.window.width, m_fbo_state.resources.window.height);
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    glClearDepth(0.0);
-    glDepthMask(GL_TRUE);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-    glDisable(GL_BLEND);
-  }
+  ASSERT_MSG(!m_fbo_state.render_fbo->is_window, "window fbo");
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glViewport(0, 0, m_fbo_state.resources.window.width, m_fbo_state.resources.window.height);
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClearDepth(0.0);
+  glDepthMask(GL_TRUE);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+  glDisable(GL_BLEND);
 
   glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_state.render_fbo->fbo_id);
   glClearColor(0.0, 0.0, 0.0, 0.0);
@@ -919,21 +917,11 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
     m_render_state.draw_region_h = 240;
   }
 
-  if (m_fbo_state.render_fbo->is_window) {
-    ASSERT_MSG(false, "window fbo");
-    m_render_state.render_fb_x = m_render_state.draw_offset_x;
-    m_render_state.render_fb_y = m_render_state.draw_offset_y;
-    m_render_state.render_fb_w = m_render_state.draw_region_w;
-    m_render_state.render_fb_h = m_render_state.draw_region_h;
-    glViewport(m_render_state.draw_offset_x, m_render_state.draw_offset_y,
-               m_render_state.draw_region_w, m_render_state.draw_region_h);
-  } else {
-    m_render_state.render_fb_x = 0;
-    m_render_state.render_fb_y = 0;
-    m_render_state.render_fb_w = settings.game_res_w;
-    m_render_state.render_fb_h = settings.game_res_h;
-    glViewport(0, 0, settings.game_res_w, settings.game_res_h);
-  }
+  m_render_state.render_fb_x = 0;
+  m_render_state.render_fb_y = 0;
+  m_render_state.render_fb_w = settings.game_res_w;
+  m_render_state.render_fb_h = settings.game_res_h;
+  glViewport(0, 0, settings.game_res_w, settings.game_res_h);
 }
 
 void OpenGLRenderer::dispatch_buckets_jak1(DmaFollower dma,
