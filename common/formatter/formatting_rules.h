@@ -89,7 +89,7 @@ bool is_element_second_in_constant_pair(const FormatterTreeNode& containing_node
 namespace indent {
 const static int line_width_target = 120;
 
-void append_newline(std::string& curr_text,
+bool append_newline(std::string& curr_text,
                     const FormatterTreeNode& node,
                     const FormatterTreeNode& containing_node,
                     const int depth,

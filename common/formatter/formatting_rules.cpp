@@ -86,22 +86,91 @@ bool is_element_second_in_constant_pair(const FormatterTreeNode& containing_node
 }  // namespace constant_pairs
 
 namespace indent {
-void append_newline(std::string& curr_text,
+
+int cursor_pos(const std::string& curr_text) {
+  if (curr_text.empty()) {
+    return 0;
+  }
+  // Get the last line of the text (which is also the line we are on!)
+  int pos = 0;
+  for (int i = curr_text.size() - 1; i >= 0; i--) {
+    const auto& c = curr_text.at(i);
+    if (c == '\n') {
+      break;
+    }
+    pos++;
+  }
+  return pos;
+}
+
+int compute_form_width_after_index(const FormatterTreeNode& node,
+                                   const int index,
+                                   const int depth = 0) {
+  if (node.refs.empty()) {
+    if (node.token) {
+      return node.token->size();
+    } else {
+      return 0;
+    }
+  }
+  int form_width = 0;
+  for (int i = 0; i < node.refs.size(); i++) {
+    const auto& ref = node.refs.at(i);
+    if (depth == 0 && i < index) {
+      continue;
+    }
+    if (ref.token) {
+      form_width += ref.token->size() + 1;
+    } else {
+      form_width += compute_form_width_after_index(ref, index, depth + 1) + 1;
+    }
+  }
+  return form_width;
+}
+
+bool form_exceed_line_width(const std::string& curr_text,
+                            const FormatterTreeNode& containing_node,
+                            const int index) {
+  // Compute length from the current cursor position on the line as this check is done for every
+  // element of the form and not in advance
+  //
+  // This is for a good reason, intermediate nodes may override this styling and force to be
+  // formatted inline
+  //
+  // We early out as soon as we exceed the width
+  int curr_line_pos = cursor_pos(curr_text);
+  if (curr_line_pos >= line_width_target) {
+    return true;
+  }
+  int remaining_width_required = compute_form_width_after_index(containing_node, index);
+  if (curr_line_pos + remaining_width_required >= line_width_target) {
+    return true;
+  }
+  return false;
+}
+
+bool append_newline(std::string& curr_text,
                     const FormatterTreeNode& node,
                     const FormatterTreeNode& containing_node,
                     const int depth,
                     const int index) {
-  if (index <= 0 && !containing_node.metadata.multiple_elements_first_line ||
-      index <= 1 && containing_node.metadata.multiple_elements_first_line ||
-      containing_node.metadata.is_top_level ||
+  if (index <= 0 || containing_node.metadata.is_top_level ||
       (node.metadata.is_comment && node.metadata.is_inline)) {
-    return;
+    return false;
   }
   // Check if it's a constant pair
   if (constant_pairs::is_element_second_in_constant_pair(containing_node, node, index)) {
-    return;
+    return false;
+  }
+  // Explore the node's contents early, if we put every element on the same line without exceeding
+  // our line length, no new-line needed!
+  if (!node.metadata.is_comment &&
+      (index > 0 && !containing_node.refs.at(index - 1).metadata.is_comment) &&
+      !form_exceed_line_width(curr_text, containing_node, index)) {
+    return false;
   }
   curr_text = str_util::rtrim(curr_text) + "\n";
+  return true;
 }
 
 void flow_line(std::string& curr_text,
@@ -117,19 +186,19 @@ void flow_line(std::string& curr_text,
   if (constant_pairs::is_element_second_in_constant_pair(containing_node, node, index)) {
     return;
   }
-  if (containing_node.metadata.multiple_elements_first_line) {
-    if (index > 1) {
-      // Only apply indentation if we are about to print a normal text token
-      // TODO - unsafe
-      if (node.token.has_value()) {
-        curr_text += str_util::repeat(containing_node.refs.at(0).token.value().length() + 2, " ");
-      }
-    }
-  } else {
-    if (index > 0) {
-      curr_text += str_util::repeat(depth, " ");
-    }
+  if (index > 0) {
+    curr_text += str_util::repeat(depth, "  ");
   }
+  // if (containing_node.metadata.multiple_elements_first_line) {
+  //   if (index > 1) {
+  //     // Only apply indentation if we are about to print a normal text token
+  //     // TODO - unsafe
+  //     if (node.token.has_value()) {
+  //       curr_text += str_util::repeat(containing_node.refs.at(0).token.value().length() + 2, "
+  //       ");
+  //     }
+  //   }
+  // }
 }
 
 void hang_lines(std::string& text,

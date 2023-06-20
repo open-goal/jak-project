@@ -34,13 +34,15 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
   for (int i = 0; i < curr_node.refs.size(); i++) {
     const auto& ref = curr_node.refs.at(i);
     // Append a newline if needed
-    formatter_rules::indent::append_newline(curr_form, ref, curr_node, tree_depth, i);
+    bool new_line_appended = formatter_rules::indent::append_newline(curr_form, ref, curr_node, tree_depth, i);
     // Either print the element's token, or recursively format it as well
     if (ref.token) {
       // TODO depth hard-coded to 1, i think this can be removed, since
       // forms are always done bottom-top recursively, they always act
       // independently as if it was the shallowest depth
-      formatter_rules::indent::flow_line(curr_form, ref, curr_node, 1, i);
+      if (new_line_appended) {
+        formatter_rules::indent::flow_line(curr_form, ref, curr_node, 1, i);
+      }
       if (ref.metadata.node_type == "block_comment") {
         curr_form += formatter_rules::comments::format_block_comment(ref.token.value());
       } else {
@@ -51,10 +53,10 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
       }
     } else {
       auto formatted_form = apply_formatting(ref, "", tree_depth + 1);
-      if (!curr_node.metadata.is_top_level) {
+      if (!curr_node.metadata.is_top_level && new_line_appended) {
         formatter_rules::indent::hang_lines(formatted_form, ref, curr_node);
       }
-      curr_form += formatted_form;
+      curr_form += formatted_form + " ";
     }
     // Handle blank lines at the top level, skip if it's the final element
     formatter_rules::blank_lines::separate_by_newline(curr_form, curr_node, ref, i);
