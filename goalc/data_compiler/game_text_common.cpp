@@ -22,6 +22,7 @@
 #include "common/goos/Reader.h"
 #include "common/util/FileUtil.h"
 #include "common/util/FontUtils.h"
+#include "common/util/json_util.h"
 
 #include "third-party/fmt/core.h"
 
@@ -142,31 +143,131 @@ void compile_subtitle(GameSubtitleDB& db, const std::string& output_prefix) {
         data.data(), data.size());
   }
 }
+
+/*!
+ * Write game subtitle2 data to a file. Uses the V2 object format which is identical between GOAL
+ * and OpenGOAL.
+ */
+void compile_subtitle2(GameSubtitle2DB& db, const std::string& output_prefix) {
+  auto& speaker_names = get_speaker_names(db.version());
+  for (const auto& [lang, bank] : db.banks()) {
+    auto font = get_font_bank(bank->text_version);
+    DataObjectGenerator gen;
+    gen.add_type_tag("subtitle2-text-info");                   // type
+    gen.add_word((bank->scenes.size() & 0xffff) | (1 << 16));  // length (lo) + version (hi)
+    // note: we add 1 because "none" isn't included
+    gen.add_word((lang & 0xffff) | ((speaker_names.size() + 1) << 16));  // lang + speaker-length
+    int speaker_array_link = gen.add_word(0);  // speaker array (dummy for now)
+
+    auto speaker_index_by_name = [&speaker_names](const std::string& name) {
+      for (int i = 0; i < (int)speaker_names.size(); ++i) {
+        if (speaker_names.at(i) == name) {
+          return i + 1;
+        }
+      }
+      return 0;
+    };
+
+    // fifo queue for scene data arrays
+    std::queue<int> array_link_sources;
+    // now add all the scenes inline
+    for (auto& [name, scene] : bank->scenes) {
+      gen.add_ref_to_string_in_pool(name);  // scene name
+      gen.add_word(scene.lines.size());     // line amount
+      array_link_sources.push(gen.words());
+      gen.add_word(0);  // line array (linked later)
+    }
+    // now add all the line arrays and link them to their scene
+    for (auto& [name, scene] : bank->scenes) {
+      // link inline-array with reference from earlier
+      gen.link_word_to_word(array_link_sources.front(), gen.words());
+      array_link_sources.pop();
+
+      for (auto& line : scene.lines) {
+        gen.add_word_float(line.start);  // start frame
+        gen.add_word_float(line.end);    // end frame
+        if (!line.merge) {
+          gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(line.text));  // line text
+        } else {
+          gen.add_symbol_link("#f");
+        }
+        u16 speaker = speaker_index_by_name(line.speaker);
+        u16 flags = 0;
+        flags |= line.offscreen << 0;
+        flags |= line.merge << 1;
+        gen.add_word(speaker | (flags << 16));  // speaker (lo) + flags (hi)
+      }
+    }
+    // now write the array of strings for the speakers
+    gen.link_word_to_word(speaker_array_link, gen.words());
+    // we write #f for invalid entries, including the "none" at the start
+    gen.add_symbol_link("#f");
+    for (auto& speaker_name : speaker_names) {
+      if (bank->speakers.count(speaker_name) == 0) {
+        // no speaker for this
+        gen.add_symbol_link("#f");
+      } else {
+        gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(bank->speakers.at(speaker_name)));
+      }
+    }
+
+    auto data = gen.generate_v2();
+
+    file_util::create_dir_if_needed(file_util::get_file_path({"out", output_prefix, "iso"}));
+    file_util::write_binary_file(
+        file_util::get_file_path(
+            {"out", output_prefix, "iso", fmt::format("{}{}.TXT", lang, uppercase("subti2"))}),
+        data.data(), data.size());
+  }
+}
 }  // namespace
 
 /*!
  * Read a game text description file and generate GOAL objects.
  */
-void compile_game_text(const std::vector<std::string>& filenames,
+void compile_game_text(const std::vector<GameTextDefinitionFile>& files,
                        GameTextDB& db,
                        const std::string& output_prefix) {
   goos::Reader reader;
-  for (auto& filename : filenames) {
-    lg::print("[Build Game Text] {}\n", filename.c_str());
-    auto code = reader.read_from_file({filename});
-    parse_text(code, db);
+  for (auto& file : files) {
+    if (file.format == GameTextDefinitionFile::Format::GOAL) {
+      lg::print("[Build Game Text] GOAL {}\n", file.file_path);
+      auto code = reader.read_from_file({file.file_path});
+      parse_text(code, db, file);
+    } else if (file.format == GameTextDefinitionFile::Format::JSON) {
+      lg::print("[Build Game Text] JSON {}\n", file.file_path);
+      auto file_path = file_util::get_jak_project_dir() / file.file_path;
+      auto json = parse_commented_json(file_util::read_text_file(file_path), file.file_path);
+      parse_text_json(json, db, file);
+    }
   }
   compile_text(db, output_prefix);
 }
 
-void compile_game_subtitle(const std::vector<std::string>& filenames,
+void compile_game_subtitle(const std::vector<GameSubtitleDefinitionFile>& files,
                            GameSubtitleDB& db,
                            const std::string& output_prefix) {
   goos::Reader reader;
-  for (auto& filename : filenames) {
-    lg::print("[Build Game Subtitle] {}\n", filename.c_str());
-    auto code = reader.read_from_file({filename});
-    parse_subtitle(code, db, filename);
+  for (auto& file : files) {
+    if (file.format == GameSubtitleDefinitionFile::Format::GOAL) {
+      lg::print("[Build Game Subtitle] GOAL {}\n", file.lines_path);
+      auto code = reader.read_from_file({file.lines_path});
+      parse_subtitle(code, db, file.lines_path);
+    } else if (file.format == GameSubtitleDefinitionFile::Format::JSON) {
+      lg::print("[Build Game Subtitle] JSON {}:{}\n", file.lines_path, file.meta_path);
+      parse_subtitle_json(db, file);
+    }
   }
   compile_subtitle(db, output_prefix);
+}
+
+void compile_game_subtitle2(const std::vector<GameSubtitle2DefinitionFile>& files,
+                            GameSubtitle2DB& db,
+                            const std::string& output_prefix) {
+  goos::Reader reader;
+  for (auto& file : files) {
+    lg::print("[Build Game Subtitle] JSON {}\n", file.file_path);
+    parse_subtitle2_json(db, file);
+  }
+  compile_subtitle2(db, output_prefix);
 }

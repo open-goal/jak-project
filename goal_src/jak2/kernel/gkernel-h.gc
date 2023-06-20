@@ -11,7 +11,7 @@
 (defconstant *kernel-minor-version* 0)
 
 (defconstant DPROCESS_STACK_SIZE (#if PC_PORT #x8000 #x3800))
-(defconstant PROCESS_STACK_SIZE (#if PC_PORT #x6000 #x1c00))
+(defconstant PROCESS_STACK_SIZE (#if PC_PORT #x4000 #x1c00))
 
 ;; the size of the shared heap used by dynamically sized processes
 (#if PC_BIG_MEMORY
@@ -675,12 +675,12 @@
 
 (defmacro process-mask-set! (mask &rest enum-value)
   "Set the given bits in the process mask"
-  `(set! ,mask (logior ,mask (process-mask ,@enum-value)))
+  `(logior! ,mask (process-mask ,@enum-value))
   )
 
 (defmacro process-mask-clear! (mask &rest enum-value)
   "Clear the given bits in the process mask."
-  `(set! ,mask (logand ,mask (lognot (process-mask ,@enum-value))))
+  `(logclear! ,mask (process-mask ,@enum-value))
   )
 
 (defmacro suspend ()
@@ -730,6 +730,23 @@
   `(method-set! ,method-type ,method-id (__pc-get-mips2c ,name))
   )
 
+(defmacro kheap-alloc (heap size)
+  "allocate space for a kheap"
+  `(let ((heap ,heap) (size ,size))
+    (set! (-> heap base) (malloc 'global size))
+    (set! (-> heap current) (-> heap base))
+    (set! (-> heap top-base) (&+ (-> heap base) size))
+    (set! (-> heap top) (-> heap top-base))
+    )
+  )
+
+(defmacro kheap-reset (heap)
+  "reset the kheap, so you can use its memory again"
+  `(let ((heap ,heap))
+    (set! (-> heap current) (-> heap base))
+    )
+  )
+
 (defmacro scratchpad-object (type &key (offset 0))
   "Access an object on the scratchpad."
   `(the-as ,type (&+ *fake-scratchpad-data* ,offset))
@@ -738,4 +755,8 @@
 (defmacro scratchpad-ptr (type &key (offset 0))
   "Create a pointer to an object on the scratchpad."
   `(the-as (pointer ,type) (&+ *fake-scratchpad-data* ,offset))
+  )
+
+(defmacro current-time ()
+  `(-> PP clock frame-counter)
   )

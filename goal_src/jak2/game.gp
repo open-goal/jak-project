@@ -90,14 +90,13 @@
   )
 (hash-table-set! *file-entry-map* "dir-tpages.go" #f)
 
-(cgo-file "engine.gd" '("$OUT/obj/gcommon.o" "$OUT/obj/gstate.o" "$OUT/obj/gstring.o" "$OUT/obj/gkernel.o"))
 (cgo-file "game.gd" '("$OUT/obj/gcommon.o" "$OUT/obj/gstate.o" "$OUT/obj/gstring.o" "$OUT/obj/gkernel.o"))
 
 ;; note: some of these dependencies are slightly wrong because cgo-file doesn't really handle
 ;; the case of a .o appearing in multiple dgos. But, if we depend on the last item in both lists, it
 ;; works out.
 
-(define common-dep '("$OUT/obj/cty-guard-turret-button.o" "$OUT/obj/default-menu.o"))
+(define common-dep '("$OUT/obj/cty-guard-turret-button.o" "$OUT/obj/default-menu-pc.o"))
 (cgo-file "cwi.gd" common-dep)
 (cgo-file "lmeetbrt.gd" common-dep)
 (cgo-file "cta.gd" common-dep)
@@ -298,7 +297,7 @@
 ;; MUSIC
 ;;;;;;;;;;;;;;;;;;;;;
 
-(copy-vag-files "ENG")
+(copy-vag-files "ENG" "FRE" "GER" "ITA" "JAP" "KOR" "SPA")
 
 (copy-sbk-files
   "ASHTAN1" "ASHTAN2" "ATOLL1" "ATOLL2" "ATOLL3" "ATOLL4"
@@ -342,6 +341,11 @@
          "$OUT/iso/7COMMON.TXT")
   )
 
+(defstep :in "game/assets/jak2/game_subtitle.gp"
+  :tool 'subtitle2
+  :out '("$OUT/iso/0SUBTI2.TXT")
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ISO Group
 ;;;;;;;;;;;;;;;;;;;;;
@@ -349,6 +353,14 @@
 
 (group-list "iso"
  `("$OUT/iso/0COMMON.TXT"
+   "$OUT/iso/1COMMON.TXT"
+   "$OUT/iso/2COMMON.TXT"
+   "$OUT/iso/3COMMON.TXT"
+   "$OUT/iso/4COMMON.TXT"
+   "$OUT/iso/5COMMON.TXT"
+   "$OUT/iso/6COMMON.TXT"
+   "$OUT/iso/7COMMON.TXT"
+   "$OUT/iso/0SUBTI2.TXT"
    "$OUT/iso/TWEAKVAL.MUS"
    "$OUT/iso/VAGDIR.AYB"
    ,@(reverse *all-vis*)
@@ -360,7 +372,16 @@
  )
 
 (group-list "text"
- `("$OUT/iso/0COMMON.TXT")
+ `("$OUT/iso/0COMMON.TXT"
+   "$OUT/iso/1COMMON.TXT"
+   "$OUT/iso/2COMMON.TXT"
+   "$OUT/iso/3COMMON.TXT"
+   "$OUT/iso/4COMMON.TXT"
+   "$OUT/iso/5COMMON.TXT"
+   "$OUT/iso/6COMMON.TXT"
+   "$OUT/iso/7COMMON.TXT"
+   "$OUT/iso/0SUBTI2.TXT"
+   )
  )
 
 ;; used for the type consistency test.
@@ -369,6 +390,11 @@
   )
 
 (group "engine"
+       "$OUT/iso/0COMMON.TXT"
+       "$OUT/iso/0SUBTI2.TXT"
        "$OUT/iso/KERNEL.CGO"
        "$OUT/iso/GAME.CGO"
+       "$OUT/iso/VAGDIR.AYB"
+       "$OUT/iso/VAGWAD.ENG"
        )
+

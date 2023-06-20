@@ -111,7 +111,7 @@ void log_print(const char* message) {
 // how many extra log files for a single program should be kept?
 constexpr int LOG_ROTATE_MAX = 5;
 
-void set_file(const std::string& filename, const bool should_rotate) {
+void set_file(const std::string& filename, const bool should_rotate, const bool append) {
   ASSERT(!gLogger.fp);
   file_util::create_dir_if_needed_for_file(filename);
 
@@ -133,7 +133,11 @@ void set_file(const std::string& filename, const bool should_rotate) {
     }
   }
 
-  gLogger.fp = file_util::open_file(filename.c_str(), "w");
+  if (append) {
+    gLogger.fp = file_util::open_file(filename.c_str(), "a");
+  } else {
+    gLogger.fp = file_util::open_file(filename.c_str(), "w");
+  }
   ASSERT(gLogger.fp);
 }
 

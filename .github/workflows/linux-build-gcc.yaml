@@ -14,7 +14,7 @@ jobs:
   build:
     name: GCC
     runs-on: ubuntu-20.04
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     env: # overrides: https://github.com/mbitsnbites/buildcache/blob/master/doc/configuration.md
       BUILDCACHE_MAX_CACHE_SIZE: 1000000000 # 1gb
@@ -46,22 +46,19 @@ jobs:
           CXX: g++
         run: |
           cmake -B build --preset=${{ inputs.cmakePreset }} \
-            -DCODE_COVERAGE=ON \
+            -DCODE_COVERAGE=OFF \
             -DCMAKE_C_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache
 
       - name: Build Project
         run: cmake --build build --parallel $((`nproc`)) -- -w dupbuild=warn
 
-      - name: Run Tests - With Coverage
-        working-directory: ./build
-        env:
-          GTEST_OUTPUT: "xml:opengoal-test-report.xml"
-        run: ninja goalc-test_coverage -w dupbuild=warn
+      - name: Run Tests
+        run: ./test.sh
 
-      - name: Submit Coverage Report to Codacy
-        uses: codacy/codacy-coverage-reporter-action@v1
-        continue-on-error: true
-        with:
-          project-token: ${{ secrets.CODACY_PROJECT_KEY }}
-          coverage-reports: ./build/goalc-test_coverage.info
+      # - name: Submit Coverage Report to Codacy
+      #   uses: codacy/codacy-coverage-reporter-action@v1
+      #   continue-on-error: true
+      #   with:
+      #     project-token: ${{ secrets.CODACY_PROJECT_KEY }}
+      #     coverage-reports: ./build/goalc-test_coverage.info

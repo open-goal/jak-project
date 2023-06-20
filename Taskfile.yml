@@ -31,6 +31,10 @@ tasks:
     desc: "NTSC-J region version"
     cmds:
       - 'python ./scripts/tasks/update-env.py --decomp_config ntscjp'
+  set-decomp-ntscko:
+    desc: "NTSC-K region version"
+    cmds:
+      - 'python ./scripts/tasks/update-env.py --decomp_config ntscko'
   # GENERAL
   extract:
     desc: "Extracts the game's assets from './iso_data' with the set decompiler config"
@@ -71,6 +75,7 @@ tasks:
   format:
     desc: "Format code"
     cmds:
+      - cmd: python ./scripts/cpp/format-includes.py
       - cmd: python ./third-party/run-clang-format/run-clang-format.py -r common decompiler game goalc test tools lsp -i
       # npm install -g prettier
       - cmd: npx prettier --write ./decompiler/config/jak1/**/*.jsonc
@@ -124,6 +129,12 @@ tasks:
     desc: Just an example to show it running
     cmds:
       - "{{.TYPESEARCH_BIN_RELEASE_DIR}}/type_searcher --output-path ./search-results.json --game {{.GAME}} --fields '[{\"type\":\"int16\",\"offset\":2},{\"type\":\"int16\",\"offset\":4}]'"
+  update-treesitter:
+    desc: Updates locally built tree-sitter rules
+    cmds:
+      - cd ../tree-sitter-opengoal && yarn gen
+      - python ./scripts/tasks/cp.py --src "../tree-sitter-opengoal/src/*" --dest "./third-party/tree-sitter/tree-sitter-opengoal"
+      - python ./scripts/tasks/cp.py --src "../tree-sitter-opengoal/grammar.js" --dest "./third-party/tree-sitter/tree-sitter-opengoal"
   # TESTS
   offline-tests: # ran by jenkins
     cmds:

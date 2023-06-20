@@ -101,15 +101,18 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
   auto obj_env = env->file_env();
   auto args = get_va(form, rest);
   if (args.unnamed.empty() || !args.unnamed.front().is_list() ||
-      !args.only_contains_named({"name", "inline-only", "segment", "behavior"})) {
+      !args.only_contains_named({"name", "segment", "behavior", "immediate"})) {
     throw_compiler_error(form, "Invalid lambda form");
   }
+
+  bool immediate =
+      args.has_named("immediate") && symbol_string(args.get_named("immediate")) != "#f";
 
   // allocate this lambda from the object file environment. This makes it safe for this to hold
   // on to references to this as an inlineable function even if the enclosing function fails.
   // for example, the top-level may (define some-func (lambda...)) and even if top-level fails,
   // we keep around a reference to some-func to be possibly inlined.
-  auto place = obj_env->alloc_val<LambdaVal>(get_none()->type());
+  auto place = obj_env->alloc_val<LambdaVal>(get_none()->type(), immediate);
   auto& lambda = place->lambda;
   auto lambda_ts = m_ts.make_typespec("function");
 
@@ -141,9 +144,6 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
   lambda.body = get_lambda_body(rest);  // first is the argument list, rest is body
   place->func = nullptr;
 
-  bool inline_only =
-      args.has_named("inline-only") && symbol_string(args.get_named("inline-only")) != "#f";
-
   // pick default segment to store function in.
   int segment = fe->segment_for_static_data();
 
@@ -159,7 +159,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     }
   }
 
-  if (!inline_only) {
+  if (!immediate) {
     // compile a function! First create a unique name...
     std::string function_name = lambda.debug_name;
     if (function_name.empty()) {
@@ -330,7 +330,7 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
       // it's inlinable.  However, we do not always inline an inlinable function by default
       if (kv->second.inline_by_default) {  // inline when possible, so we should inline
         auto_inline = true;
-        auto* lv = env->function_env()->alloc_val<LambdaVal>(kv->second.type);
+        auto* lv = env->function_env()->alloc_val<LambdaVal>(kv->second.type, false);
         lv->lambda = kv->second.lambda;
         head = lv;
       }
@@ -387,9 +387,15 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
       auto head_as_inlined_lambda = dynamic_cast<InlinedLambdaVal*>(head);
       if (head_as_inlined_lambda) {
         // yes, remember the lambda that contains and flag that we're inlining.
-        head_as_lambda = env->function_env()->alloc_val<LambdaVal>(head_as_inlined_lambda->lv.type);
+        head_as_lambda =
+            env->function_env()->alloc_val<LambdaVal>(head_as_inlined_lambda->lv.type, false);
         head_as_lambda->lambda = head_as_inlined_lambda->lv.lambda;
         got_inlined_lambda = true;
+      }
+    } else {
+      // we got a lambda: but we don't want to use immediates by default:
+      if (!auto_inline && !head_as_lambda->is_immediate) {
+        head_as_lambda = nullptr;
       }
     }
   }

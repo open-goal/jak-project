@@ -439,7 +439,7 @@ This commonly includes things such as:
 and translate the platform via the `smush`
 @see [[smush-control]]"
   (activate! (-> obj smush) -1.0 60 150 1.0 1.0 (-> self clock))
-  (set! (-> obj bounce-time) (-> self clock frame-counter))
+  (set! (-> obj bounce-time) (current-time))
   (set! (-> obj bouncing) #t)
   (logclear! (-> obj mask) (process-mask sleep))
   (logclear! (-> obj mask) (process-mask sleep-code))
@@ -510,7 +510,7 @@ and translate the platform via the `smush`
     )
   :post (behavior ()
     (when (and (nonzero? (-> self root-override root-prim prim-core collide-as))
-               (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.25))
+               (>= (- (current-time) (-> self state-time)) (seconds 0.25))
                )
       (let ((v1-9 (-> self root-override root-prim)))
         (set! (-> v1-9 prim-core collide-as) (collide-spec))
@@ -724,14 +724,14 @@ This commonly includes things such as:
 
 (set-subtask-hook!
   *game-info*
-  13
-  3
+  (game-task-node ruins-tower-exit)
+  TASK_MANAGER_CODE_HOOK
   (lambda :behavior task-manager
     ()
     (set! (-> self data-int32 0) 0)
-    (set! (-> self beep-time) (+ (-> self clock frame-counter) (seconds -30)))
+    (set! (-> self beep-time) (+ (current-time) (seconds -30)))
     (until #f
-      (when (>= (- (-> self clock frame-counter) (-> self beep-time)) (seconds 40))
+      (when (>= (- (current-time) (-> self beep-time)) (seconds 40))
         (let ((v1-8 (mod (-> self data-int32 0) (if (= (-> self node-info task) (game-task ruins-tower))
                                                     4
                                                     2
@@ -754,7 +754,7 @@ This commonly includes things such as:
              )
             )
           )
-        (set! (-> self beep-time) (-> self clock frame-counter))
+        (set! (-> self beep-time) (current-time))
         (+! (-> self data-int32 0) 1)
         )
       (b!
@@ -781,12 +781,15 @@ This commonly includes things such as:
     )
   )
 
-(copy-hooks! (-> *game-info* sub-task-list 99) (-> *game-info* sub-task-list 13))
+(copy-hooks!
+  (-> *game-info* sub-task-list (game-task-node ruins-enemy-exit))
+  (-> *game-info* sub-task-list (game-task-node ruins-tower-exit))
+  )
 
 (set-subtask-hook!
   *game-info*
-  194
-  3
+  (game-task-node ruins-mech-break-wall-1)
+  TASK_MANAGER_CODE_HOOK
   (lambda :behavior task-manager
     ()
     (let ((s4-0 (entity-by-type mech))
@@ -804,12 +807,12 @@ This commonly includes things such as:
         )
       (b! #t cfg-17 :delay (nop!))
       (label cfg-8)
-      (when (and (>= (- (-> self clock frame-counter) (-> self time-limit)) (seconds 10))
+      (when (and (>= (- (current-time) (-> self time-limit)) (seconds 10))
                  gp-0
                  (< (vector-vector-xz-distance (target-pos 0) (-> gp-0 extra trans)) 40960.0)
                  )
         (talker-spawn-func (-> *talker-speech* 452) *entity-pool* (target-pos 0) (the-as region #f))
-        (set! (-> self time-limit) (-> self clock frame-counter))
+        (set! (-> self time-limit) (current-time))
         )
       (suspend)
       (label cfg-17)
@@ -828,22 +831,22 @@ This commonly includes things such as:
       (until (not (or (not *target*) (not (logtest? (focus-status mech) (-> *target* focus-status)))))
         (b! #t cfg-47 :delay (nop!))
         (label cfg-38)
-        (when (and (>= (- (-> self clock frame-counter) (-> self time-limit)) (seconds 10))
+        (when (and (>= (- (current-time) (-> self time-limit)) (seconds 10))
                    gp-0
                    (< (vector-vector-xz-distance (target-pos 0) (-> gp-0 extra trans)) 40960.0)
                    )
           (talker-spawn-func (-> *talker-speech* 452) *entity-pool* (target-pos 0) (the-as region #f))
-          (set! (-> self time-limit) (-> self clock frame-counter))
+          (set! (-> self time-limit) (current-time))
           )
         (suspend)
         (label cfg-47)
         (b! (or (not *target*) (not (logtest? (focus-status mech) (-> *target* focus-status)))) cfg-38 :delay (nop!))
         (talker-spawn-func (-> *talker-speech* 457) *entity-pool* (target-pos 0) (the-as region #f))
-        (set! (-> self time-limit) (-> self clock frame-counter))
+        (set! (-> self time-limit) (current-time))
         (b! #t cfg-66 :delay (nop!))
         (label cfg-52)
         )
-      (when (>= (- (-> self clock frame-counter) (-> self time-limit)) (seconds 10))
+      (when (>= (- (current-time) (-> self time-limit)) (seconds 10))
         (b!
           (not (and gp-0 (< (vector-vector-xz-distance (target-pos 0) (-> gp-0 extra trans)) 61440.0)))
           cfg-63
@@ -854,7 +857,7 @@ This commonly includes things such as:
         (label cfg-63)
         (talker-spawn-func (-> *talker-speech* 454) *entity-pool* (target-pos 0) (the-as region #f))
         (label cfg-64)
-        (set! (-> self time-limit) (-> self clock frame-counter))
+        (set! (-> self time-limit) (current-time))
         )
       (suspend)
       (label cfg-66)
@@ -873,8 +876,8 @@ This commonly includes things such as:
 
 (set-subtask-hook!
   *game-info*
-  195
-  3
+  (game-task-node ruins-mech-move-block-1)
+  TASK_MANAGER_CODE_HOOK
   (lambda :behavior task-manager
     ()
     (local-vars (v1-3 object) (v1-14 symbol) (v1-18 symbol) (v1-25 object) (v1-31 symbol) (v1-32 symbol))
@@ -882,7 +885,7 @@ This commonly includes things such as:
       (label cfg-1)
       (b! #t cfg-14 :delay (nop!))
       (label cfg-2)
-      (let ((a0-2 (>= (- (-> self clock frame-counter) (-> self time-limit)) (seconds 10))))
+      (let ((a0-2 (>= (- (current-time) (-> self time-limit)) (seconds 10))))
         (b! (not a0-2) cfg-11 :likely-delay (set! v1-3 a0-2))
         )
       (b! (not gp-0) cfg-11 :likely-delay (set! v1-3 gp-0))
@@ -899,7 +902,7 @@ This commonly includes things such as:
       (label cfg-11)
       (when v1-3
         (talker-spawn-func (-> *talker-speech* 452) *entity-pool* (target-pos 0) (the-as region #f))
-        (set! (-> self time-limit) (-> self clock frame-counter))
+        (set! (-> self time-limit) (current-time))
         )
       (suspend)
       (label cfg-14)
@@ -912,7 +915,7 @@ This commonly includes things such as:
         (set! v1-18 (not (logtest? (focus-status mech) (-> *target* focus-status))))
         (label cfg-22)
         (b! v1-18 cfg-1 :delay (nop!))
-        (when (>= (- (-> self clock frame-counter) (-> self time-limit)) (seconds 10))
+        (when (>= (- (current-time) (-> self time-limit)) (seconds 10))
           (b! (not gp-0) cfg-38 :likely-delay (set! v1-25 gp-0))
           (let ((v1-27 (-> gp-0 extra process)))
             (b! (not v1-27) cfg-28 :delay (nop!))
@@ -937,7 +940,7 @@ This commonly includes things such as:
           (label cfg-38)
           (when v1-25
             (talker-spawn-func (-> *talker-speech* 458) *entity-pool* (target-pos 0) (the-as region #f))
-            (set! (-> self time-limit) (-> self clock frame-counter))
+            (set! (-> self time-limit) (current-time))
             )
           )
         (suspend)
@@ -949,8 +952,8 @@ This commonly includes things such as:
 
 (set-subtask-hook!
   *game-info*
-  196
-  3
+  (game-task-node ruins-mech-throw-block-1)
+  TASK_MANAGER_CODE_HOOK
   (lambda :behavior task-manager
     ()
     (local-vars (v1-6 object) (v1-58 symbol))
@@ -971,7 +974,7 @@ This commonly includes things such as:
         (b! #t cfg-20 :delay (nop!))
         (label cfg-8)
         (set! v1-6
-              (and (>= (- (-> self clock frame-counter) (-> self time-limit)) (seconds 10))
+              (and (>= (- (current-time) (-> self time-limit)) (seconds 10))
                    (and gp-0 (begin
                                (let ((v1-8 (-> gp-0 extra process)))
                                  (b! (not v1-8) cfg-14 :delay (nop!))
@@ -991,7 +994,7 @@ This commonly includes things such as:
         (label cfg-17)
         (b! (not v1-6) cfg-19 :delay (empty-form))
         (talker-spawn-func (-> *talker-speech* 452) *entity-pool* (target-pos 0) (the-as region #f))
-        (set! (-> self time-limit) (-> self clock frame-counter))
+        (set! (-> self time-limit) (current-time))
         (label cfg-19)
         (suspend)
         (label cfg-20)
@@ -999,7 +1002,7 @@ This commonly includes things such as:
         (b! #t cfg-53 :delay (nop!))
         (label cfg-25)
         )
-      (when (>= (- (-> self clock frame-counter) (-> self time-limit)) (seconds 10))
+      (when (>= (- (current-time) (-> self time-limit)) (seconds 10))
         (b! (not (and *target* (focus-test? *target* carry))) cfg-43 :delay (empty-form))
         (when (< (vector-vector-xz-distance
                    (target-pos 0)
@@ -1027,7 +1030,7 @@ This commonly includes things such as:
               )
             )
           (talker-spawn-func (-> *talker-speech* 459) *entity-pool* (target-pos 0) (the-as region #f))
-          (set! (-> self time-limit) (-> self clock frame-counter))
+          (set! (-> self time-limit) (current-time))
           )
         (b! #t cfg-52 :delay (nop!))
         (label cfg-43)
@@ -1043,7 +1046,7 @@ This commonly includes things such as:
                           )
                    )
           (talker-spawn-func (-> *talker-speech* 458) *entity-pool* (target-pos 0) (the-as region #f))
-          (set! (-> self time-limit) (-> self clock frame-counter))
+          (set! (-> self time-limit) (current-time))
           )
         )
       (label cfg-52)

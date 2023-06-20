@@ -18,6 +18,8 @@ namespace tfrag3 {
 // - if changing any large things (vertices, vis, bvh, colors, textures) update get_memory_usage
 // - if adding a new category to the memory usage, update extract_level to print it.
 
+constexpr int TFRAG3_VERSION = 37;
+
 enum MemoryUsageCategory {
   TEXTURE,
 
@@ -55,6 +57,7 @@ enum MemoryUsageCategory {
   MERC_MOD_VERT,
   MERC_MOD_IND,
   MERC_MOD_TABLE,
+  BLERC,
 
   COLLISION,
 
@@ -73,22 +76,21 @@ struct MemoryUsageTracker {
   void add(MemoryUsageCategory category, u32 size_bytes) { data[category] += size_bytes; }
 };
 
-constexpr int TFRAG3_VERSION = 34;
-
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
   // the vertex position
   float x = 0, y = 0, z = 0;
+  // envmap tint color, not used in == or hash.
+  u8 r = 0, g = 0, b = 0, a = 0;
   // texture coordinates
   float s = 0, t = 0;
 
-  u8 r = 0, g = 0, b = 0, a = 0;  // envmap tint color, not used in == or hash.
+  // not used in == or hash!!
+  // note that this is a 10-bit 3-element field packed into 32-bits.
+  u32 nor = 0;
 
   // color table index
   u16 color_index = 0;
-
-  // not used in == or hash!!
-  s16 nx = 0, ny = 0, nz = 0;
 
   struct hash {
     std::size_t operator()(const PreloadedVertex& x) const;
@@ -113,6 +115,7 @@ struct PackedTieVertices {
     s32 matrix_idx;
     u32 start_vert;
     u32 end_vert;
+    bool has_normals = false;
   };
 
   std::vector<u16> color_indices;
@@ -436,7 +439,7 @@ struct CollisionMesh {
 // MERC
 
 struct MercVertex {
-  float pos[3];
+  alignas(32) float pos[3];
   float pad0;
 
   float normal[3];
@@ -463,12 +466,38 @@ struct MercDraw {
   void serialize(Serializer& ser);
 };
 
+struct BlercFloatData {
+  // [x, y, z, pad, nx, ny, nz, pad]
+  // note that this should match the layout of the merc vertex above
+  alignas(32) float v[8];
+};
+
+/*!
+ * Data to modify vertices based on blend shapes.
+ */
+struct Blerc {
+  std::vector<BlercFloatData> float_data;
+  std::vector<u32> int_data;
+  static constexpr u32 kTargetIdxTerminator = UINT32_MAX;
+  void serialize(Serializer& ser);
+
+  // int data, per vertex:
+  // [tgt0_idx, tgt1_idx, ..., terminator, dest]
+  // float data, per vertex:
+  // [base, tgt0, tgt1, ...]
+
+  // final vertex position is:
+  // base + sum(tgtn * weights[tgtn_idx])
+};
+
 struct MercModifiableDrawGroup {
   std::vector<MercVertex> vertices;
   std::vector<u16> vertex_lump4_addr;
   std::vector<MercDraw> fix_draw, mod_draw;
   std::vector<u8> fragment_mask;
+  Blerc blerc;
   u32 expect_vidx_end = 0;
+
   void serialize(Serializer& ser);
   void memory_usage(MemoryUsageTracker* tracker) const;
 };

@@ -47,11 +47,11 @@ std::vector<std::string> valid_game_version_names() {
 }
 
 std::string build_revision() {
-  if (BUILT_TAG != "") {
-    return BUILT_TAG;
+  if (std::string(BUILT_TAG) != "") {
+    return std::string(BUILT_TAG);
   }
-  if (BUILT_SHA != "") {
-    return BUILT_SHA;
+  if (std::string(BUILT_SHA) != "") {
+    return std::string(BUILT_SHA);
   }
   return "Unknown Revision";
 }

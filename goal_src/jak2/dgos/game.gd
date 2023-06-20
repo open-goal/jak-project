@@ -234,6 +234,10 @@
   "game-task.o"
   "game-save.o"
   "settings.o"
+  "autosplit-h.o" ;; added
+  "autosplit.o" ;; added
+  "speedruns-h.o" ;; added
+  "speedruns.o" ;; added
   "mood-tables.o"
   "mood-tables2.o"
   "mood.o"
@@ -330,6 +334,8 @@
   "video.o"
   "pckernel-common.o" ;; added
   "pckernel.o" ;; added
+  "subtitle2-h.o" ;; added
+  "subtitle2.o" ;; added
   "main.o"
   "collide-cache.o"
   "collide-debug.o"
@@ -376,6 +382,7 @@
   "sampler.o"
   "default-menu.o"
   "anim-tester-x.o" ;; added
+  "vag-player.o" ;; added
   "default-menu-pc.o" ;; added
   "dir-tpages.go"
   "tpage-11.go"

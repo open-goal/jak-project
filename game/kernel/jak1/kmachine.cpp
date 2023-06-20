@@ -13,8 +13,10 @@
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
+#include "common/util/string_util.h"
 
-#include "game/discord.h"
+#include "game/external/discord_jak1.h"
+#include "game/graphics/display.h"
 #include "game/graphics/gfx.h"
 #include "game/graphics/sceGraphicsInterface.h"
 #include "game/kernel/common/fileio.h"
@@ -384,28 +386,6 @@ int ShutdownMachine() {
   return 0;
 }
 
-// todo, these could probably be moved to common
-
-/*!
- * Called from the game thread at each frame to tell the PC rendering code which levels to start
- * loading. The loader internally handles locking.
- */
-void pc_set_levels(u32 l0, u32 l1) {
-  std::string l0s = Ptr<String>(l0).c()->data();
-  std::string l1s = Ptr<String>(l1).c()->data();
-
-  std::vector<std::string> levels;
-  if (l0s != "none" && l0s != "#f") {
-    levels.push_back(l0s);
-  }
-
-  if (l1s != "none" && l1s != "#f") {
-    levels.push_back(l1s);
-  }
-
-  Gfx::set_levels(levels);
-}
-
 /*!
  * Open a file-stream.  Name is a GOAL string. Mode is a GOAL symbol.  Use 'read for readonly
  * and anything else for write only.
@@ -438,19 +418,6 @@ void PutDisplayEnv(u32 ptr) {
   }
 }
 
-/*!
- * Return the current OS as a symbol. Actually returns what it was compiled for!
- */
-u64 get_os() {
-#ifdef _WIN32
-  return intern_from_c("windows").offset;
-#elif __linux__
-  return intern_from_c("linux").offset;
-#else
-  return s7.offset;
-#endif
-}
-
 void update_discord_rpc(u32 discord_info) {
   if (gDiscordRpcEnabled) {
     DiscordRichPresence rpc;
@@ -473,9 +440,10 @@ void update_discord_rpc(u32 discord_info) {
       auto flutflut = Ptr<Symbol>(info->flutflut)->value;
       char* status = Ptr<String>(info->status).c()->data();
       char* level = Ptr<String>(info->level).c()->data();
-      const char* full_level_name = jak1_get_full_level_name(Ptr<String>(info->level).c()->data());
+      const char* full_level_name =
+          get_full_level_name(level_names, level_name_remap, Ptr<String>(info->level).c()->data());
       memset(&rpc, 0, sizeof(rpc));
-      if (!indoors(level)) {
+      if (!indoors(indoor_levels, level)) {
         char level_with_tod[128];
         strcpy(level_with_tod, level);
         strcat(level_with_tod, "-");
@@ -508,22 +476,16 @@ void update_discord_rpc(u32 discord_info) {
         strcpy(state, "Intro");
       } else if (cutscene != offset_of_s7()) {
         strcpy(state, "Watching a cutscene");
+        strcpy(large_image_text, fmt::format("Cells: {} | Orbs: {} | Flies: {} | Deaths: {}",
+                                             std::to_string(cells), std::to_string(orbs),
+                                             std::to_string(scout_flies), std::to_string(deaths))
+                                     .c_str());
       } else {
-        strcpy(state, "Cells: ");
-        strcat(state, std::to_string(cells).c_str());
-        strcat(state, " | Orbs: ");
-        strcat(state, std::to_string(orbs).c_str());
-        strcat(state, " | Flies: ");
-        strcat(state, std::to_string(scout_flies).c_str());
+        strcpy(state, fmt::format("Cells: {} | Orbs: {} | Flies: {}", std::to_string(cells),
+                                  std::to_string(orbs), std::to_string(scout_flies))
+                          .c_str());
 
-        strcat(large_image_text, " | Cells: ");
-        strcat(large_image_text, std::to_string(cells).c_str());
-        strcat(large_image_text, " | Orbs: ");
-        strcat(large_image_text, std::to_string(orbs).c_str());
-        strcat(large_image_text, " | Flies: ");
-        strcat(large_image_text, std::to_string(scout_flies).c_str());
-        strcat(large_image_text, " | Deaths: ");
-        strcat(large_image_text, std::to_string(deaths).c_str());
+        strcat(large_image_text, fmt::format(" | Deaths: {}", std::to_string(deaths)).c_str());
       }
       rpc.largeImageText = large_image_text;
       rpc.state = state;
@@ -534,7 +496,7 @@ void update_discord_rpc(u32 discord_info) {
         strcpy(small_image_key, "flutflut");
         strcpy(small_image_text, "Riding on Flut Flut");
       } else {
-        if (!indoors(level)) {
+        if (!indoors(indoor_levels, level)) {
           strcpy(small_image_key, time_of_day_str(time));
           strcpy(small_image_text, "Time of day: ");
           strcat(small_image_text, get_time_of_day(time).c_str());
@@ -556,97 +518,47 @@ void update_discord_rpc(u32 discord_info) {
   }
 }
 
-u32 get_fullscreen() {
-  switch (Gfx::get_fullscreen()) {
-    default:
-    case GfxDisplayMode::Windowed:
-      return intern_from_c("windowed").offset;
-    case GfxDisplayMode::Borderless:
-      return intern_from_c("borderless").offset;
-    case GfxDisplayMode::Fullscreen:
-      return intern_from_c("fullscreen").offset;
+void pc_set_levels(u32 l0, u32 l1) {
+  if (!Gfx::GetCurrentRenderer()) {
+    return;
   }
-}
+  std::string l0s = Ptr<String>(l0).c()->data();
+  std::string l1s = Ptr<String>(l1).c()->data();
 
-void set_fullscreen(u32 symptr, s64 screen) {
-  if (symptr == intern_from_c("windowed").offset || symptr == s7.offset) {
-    Gfx::set_fullscreen(GfxDisplayMode::Windowed, screen);
-  } else if (symptr == intern_from_c("borderless").offset) {
-    Gfx::set_fullscreen(GfxDisplayMode::Borderless, screen);
-  } else if (symptr == intern_from_c("fullscreen").offset) {
-    Gfx::set_fullscreen(GfxDisplayMode::Fullscreen, screen);
+  std::vector<std::string> levels;
+  if (l0s != "none" && l0s != "#f") {
+    levels.push_back(l0s);
   }
+
+  if (l1s != "none" && l1s != "#f") {
+    levels.push_back(l1s);
+  }
+
+  Gfx::GetCurrentRenderer()->set_levels(levels);
 }
 
 void InitMachine_PCPort() {
   // PC Port added functions
+  init_common_pc_port_functions(
+      make_function_symbol_from_c,
+      [](const char* name) {
+        const auto result = intern_from_c(name);
+        InternFromCInfo info{};
+        info.offset = result.offset;
+        return info;
+      },
+      make_string_from_c);
 
-  make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
-  make_function_symbol_from_c("__mem-move", (void*)c_memmove);
-  make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
-  make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
-  make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
-  make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
+  // Game specific functions
+  // Called from the game thread at each frame to tell the PC rendering code which levels to start
+  // loading. The loader internally handles locking.
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
 
-  // pad stuff
-  make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
-  make_function_symbol_from_c("pc-pad-input-map-save!", (void*)Gfx::input_mode_save);
-  make_function_symbol_from_c("pc-pad-input-mode-set", (void*)Gfx::input_mode_set);
-  make_function_symbol_from_c("pc-pad-input-pad-set", (void*)Pad::input_mode_pad_set);
-  make_function_symbol_from_c("pc-pad-input-mode-get", (void*)Pad::input_mode_get);
-  make_function_symbol_from_c("pc-pad-input-key-get", (void*)Pad::input_mode_get_key);
-  make_function_symbol_from_c("pc-pad-input-index-get", (void*)Pad::input_mode_get_index);
-
-  // os stuff
-  make_function_symbol_from_c("pc-get-os", (void*)get_os);
-  make_function_symbol_from_c("pc-get-window-size", (void*)get_window_size);
-  make_function_symbol_from_c("pc-get-window-scale", (void*)get_window_scale);
-  make_function_symbol_from_c("pc-get-fullscreen", (void*)get_fullscreen);
-  make_function_symbol_from_c("pc-get-screen-size", (void*)get_screen_size);
-  make_function_symbol_from_c("pc-get-screen-rate", (void*)get_screen_rate);
-  make_function_symbol_from_c("pc-get-screen-vmode-count", (void*)get_screen_vmode_count);
-  make_function_symbol_from_c("pc-get-monitor-count", (void*)get_monitor_count);
-  make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
-  make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
-  make_function_symbol_from_c("pc-set-frame-rate", (void*)set_frame_rate);
-  make_function_symbol_from_c("pc-set-vsync", (void*)set_vsync);
-  make_function_symbol_from_c("pc-set-window-lock", (void*)set_window_lock);
-  make_function_symbol_from_c("pc-set-game-resolution", (void*)set_game_resolution);
-  make_function_symbol_from_c("pc-set-msaa", (void*)set_msaa);
-  make_function_symbol_from_c("pc-get-unix-timestamp", (void*)get_unix_timestamp);
-
-  // graphics things
-  make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
-  make_function_symbol_from_c("pc-renderer-tree-set-lod", (void*)Gfx::SetLod);
-  make_function_symbol_from_c("pc-set-collision-mode", (void*)Gfx::CollisionRendererSetMode);
-  make_function_symbol_from_c("pc-set-collision-mask", (void*)set_collision_mask);
-  make_function_symbol_from_c("pc-get-collision-mask", (void*)get_collision_mask);
-  make_function_symbol_from_c("pc-set-collision-wireframe", (void*)set_collision_wireframe);
-  make_function_symbol_from_c("pc-set-collision", (void*)set_collision);
-  make_function_symbol_from_c("pc-set-gfx-hack", (void*)set_gfx_hack);
-
-  // file related functions
-  make_function_symbol_from_c("pc-filepath-exists?", (void*)filepath_exists);
-  make_function_symbol_from_c("pc-mkdir-file-path", (void*)mkdir_path);
-
-  // discord rich presence
-  make_function_symbol_from_c("pc-discord-rpc-set", (void*)set_discord_rpc);
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
 
-  // profiler
-  make_function_symbol_from_c("pc-prof", (void*)prof_event);
-
-  // debugging tools
-  make_function_symbol_from_c("pc-filter-debug-string?", (void*)pc_filter_debug_string);
-
-  // init ps2 VM
-  if (VM::use) {
-    make_function_symbol_from_c("vm-ptr", (void*)VM::get_vm_ptr);
-    VM::vm_init();
-  }
-
   // setup string constants
+  // TODO - these may be able to be moved into `init_common_pc_port_functions` but it's trickier
+  // since they are accessing the Ptr's value
   auto user_dir_path = file_util::get_user_config_dir();
   intern_from_c("*pc-user-dir-base-path*")->value =
       make_string_from_c(user_dir_path.string().c_str());

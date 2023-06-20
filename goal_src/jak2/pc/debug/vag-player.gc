@@ -1,0 +1,484 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+
+  vag player process for debugging vag streams and for easier subtitling.
+
+ |#
+
+(declare-file (debug))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; types and enums
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+;;;----------------------------------
+;;  process type
+;;;----------------------------------
+
+
+;; the vag-player process. it lives on the PC actor pool
+(deftype vag-player (process)
+  (
+   (vag-index  int32)
+   (id         sound-id)
+   (speed      float)
+   (old-speed  float)
+
+   ;; temp settings
+   (master-mode          symbol)
+   (display-art-control  symbol)
+   (debug-menu-hidden    symbol)
+   (gui-kick-str         symbol)
+   )
+
+  (:methods
+    (vag-stop (_type_) int)
+    (vag-play (_type_) sound-id)
+    (vag-playing? (_type_) symbol)
+    (vag-set-speed (_type_ float) sound-id)
+    )
+  (:states
+    (vag-player-playing int)
+    )
+  )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;  vag list
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; an array of 64-bit values which can be turned into a string
+;; each representing the name of a vag stream. convert using alloc-vag-list
+(define *vagdir-names-list* (alloc-vagdir-names 'debug))
+
+(defun strcmp ((a string) (b string))
+  "C-style strcmp. Unlike GOAL's string comparison functions, these actually work:
+   (strcmp 'ab' 'a') and (strcmp 'a' 'ab') give the opposite result."
+  (let ((a-ptr (-> a data))
+        (b-ptr (-> b data)))
+    (while (and (nonzero? (-> a-ptr))
+                (= (-> a-ptr) (-> b-ptr)))
+      (&+! a-ptr 1)
+      (&+! b-ptr 1)
+      )
+    (- (the int (-> a-ptr)) (the int (-> b-ptr)))
+    )
+  )
+
+(defun string-quicksort-partition ((arr (array string)) (lo int) (hi int))
+  (let ((pivot (-> arr hi))
+        (i (- lo 1))
+        (j lo)
+        )
+    (while (< j hi)
+      (when (< (strcmp (-> arr j) pivot) 0)
+        (+! i 1)
+        (swap! (-> arr i) (-> arr j))
+        )
+      (+! j 1)
+      )
+    (+! i 1)
+    (swap! (-> arr i) (-> arr hi))
+    i
+    )
+  )
+
+(defun-recursive string-quicksort-run (array string) ((arr (array string)) (lo int) (hi int))
+  (when (or (>= lo hi) (< lo 0))
+    (return arr)
+    )
+  (let ((p (string-quicksort-partition arr lo hi)))
+    (string-quicksort-run arr lo (- p 1))
+    (string-quicksort-run arr (+ p 1) hi)
+    )
+  arr
+  )
+
+(defun string-quicksort ((arr (array string)))
+  "Sort an array of strings alphabetically using quicksort.
+   This is about 100x faster than the normal GOAL sort."
+  (string-quicksort-run arr 0 (- (-> arr length) 1))
+  )
+
+
+(defun alloc-vag-list ()
+  "allocates and returns a boxed array with all of the vag names as strings, sorted"
+  (let ((list (new 'debug 'boxed-array string (the int (-> *vagdir-names-list* -1)))))
+
+    ;; for each vag...
+    (dotimes (i (-> list allocated-length))
+      ;; write the vag name (64 bits) into the string directly and add a null character
+      (set! (-> (the (pointer uint64) (-> *temp-string* data))) (-> *vagdir-names-list* i))
+      (set! (-> *temp-string* data 8) 0)
+      (countdown (ii 8)
+        (if (!= #x20 (-> *temp-string* data ii))
+            (set! ii 0)
+            (set! (-> *temp-string* data ii) 0))
+        )
+
+      ;; copy into a new string
+      (set! (-> list i) (new 'debug 'string 0 *temp-string*)))
+
+    ;; return the allocated, filled and sorted array
+    (string-quicksort list))
+  )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;  globals
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; the process pointer.
+(define *vag-player* (the (pointer vag-player) #f))
+
+;; list of vag names (as a string)
+(define *vag-list* (alloc-vag-list))
+;; the highest recorded position for each vag
+(define *vag-max-pos-list* (the (pointer int32) (malloc 'debug (* 4 (-> *vag-list* allocated-length)))))
+
+
+(defun get-vag-index-from-name ((name string))
+  "return the index of the vag with that name in the *vag-list* or -1 if not found"
+
+  ;; uppercase the string so we have a consistent name format
+  (string-upcase name *vag-temp-string*)
+  (dotimes (i (-> *vag-list* allocated-length))
+    (string-upcase (-> *vag-list* i) *vag-temp-string-2*)
+    (when (string= *vag-temp-string* *vag-temp-string-2*)
+        (return i))
+    )
+  -1)
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;  states
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod deactivate vag-player ((obj vag-player))
+  (set! *vag-player* (the (pointer vag-player) #f))
+  ((method-of-type process deactivate) obj)
+  (none)
+  )
+
+(defstate vag-player-idle (vag-player)
+
+  :event (behavior ((from process) (argc int) (msg symbol) (block event-message-block))
+    (case msg
+      (('play)
+        (let ((vag-idx (get-vag-index-from-name (the-as string (-> block param 0)))))
+          (when (!= vag-idx -1)
+              (go vag-player-playing vag-idx)
+              (return #t)))
+        #f)
+      (('play-index)
+        (go vag-player-playing (the-as int (-> block param 0))))
+      )
+    )
+
+  :code (behavior ()
+    (sleep-code)
+    (none))
+
+  )
+
+
+(defstate vag-player-playing (vag-player)
+
+  :event (behavior ((from process) (argc int) (msg symbol) (block event-message-block))
+    (case msg
+      (('play)
+        (let ((vag-idx (get-vag-index-from-name (the-as string (-> block param 0)))))
+          (when (!= vag-idx -1)
+              (set! (-> self vag-index) vag-idx)
+              (vag-play self)
+              (return #t)))
+        #f)
+      (('play-index)
+        (set! (-> self vag-index) (the-as int (-> block param 0)))
+        (vag-play self)
+        #t)
+      )
+    )
+
+  :enter (behavior ((index int))
+    (set! (-> self master-mode) *master-mode*)
+    (set! (-> self debug-menu-hidden) (-> *debug-menu-context* is-hidden))
+    (set! (-> self display-art-control) *display-art-control*)
+    (set! (-> self gui-kick-str) *gui-kick-str*)
+
+    (set-master-mode 'menu) ;; put us in menu mode first
+    (true! *display-art-control*) ;; force this on
+    (true! (-> *debug-menu-context* is-hidden)) ;; hide debug menu
+    (true! *gui-kick-str*) ;; force gui control to play streams
+    (sound-group-continue (sound-group dialog dialog2)) ;; unpause dialog
+    (set-setting! 'music-volume 'abs 0.0 0) ;; mute music
+    (set-setting! 'sfx-volume 'abs 0.0 0) ;; mute sfx
+    (set-setting! 'ambient-volume 'abs 0.0 0) ;; mute ambient
+    (set-setting! 'dialog-volume 'abs 1.0 0) ;; max dialog
+    (apply-settings *setting-control*) ;; apply settings now
+
+    (set! (-> self speed) 0.0)
+    (set! (-> self old-speed) 0.0)
+    )
+
+  :exit (behavior ()
+    (vag-stop self)
+
+    (remove-setting! 'music-volume)
+    (remove-setting! 'sfx-volume)
+    (remove-setting! 'ambient-volume)
+    (remove-setting! 'dialog-volume)
+    (apply-settings *setting-control*)
+    (sound-group-pause (sound-group dialog dialog2))
+    (set! *display-art-control* (-> self display-art-control))
+    (set! (-> *debug-menu-context* is-hidden) (-> self debug-menu-hidden))
+    (set! *gui-kick-str* (-> self gui-kick-str))
+    (if (!= (-> self master-mode) 'menu)
+        (set-master-mode (-> self master-mode)))
+    (none))
+
+  :code (behavior ((index int))
+    (set! (-> self vag-index) index)
+
+    (let ((exit? #f))
+      (vag-play self)
+      (while (= (gui-status pending) (get-status *gui-control* (-> self id)))
+        (suspend))
+
+      (until (or exit? (!= *master-mode* 'menu))
+        (format *stdcon* "Vag Player -- Press Triangle To Exit~%")
+        (cond
+          ((zero? (-> self id))
+            (format *stdcon* "No vag queued~%"))
+          ((not (vag-playing? self))
+            (format *stdcon* "Vag not playing~%"))
+          (else
+            (format *stdcon* "Vag playing: ~3L~D~0L~%" (the int (/ (the float (current-str-pos (-> self id))) (/ 1024.0 30)))))
+          )
+        (format *stdcon* "Vag: ~S <- ~S(max:~3L~D~0L) -> ~S~%" (if (> (-> self vag-index) 0) (-> *vag-list* (1- (-> self vag-index))))
+                                                                (-> *vag-list* (-> self vag-index)) (-> *vag-max-pos-list* (-> self vag-index))
+                                                                (if (< (1+ (-> self vag-index)) (-> *vag-list* allocated-length)) (-> *vag-list* (1+ (-> self vag-index)))))
+        (format *stdcon* "X to Pause and Play~%R1 and L1 for Speed, Circle Resets~%Left and Right for Prev / Next~%Square for Subtitles (~A)~%" (-> *setting-control* user-default subtitle))
+        (format *stdcon* "Speed: ~f~%" (-> self speed))
+        (cond
+          ((cpad-pressed? 0 triangle)
+            (cpad-clear! 0 triangle)
+            (true! exit?))
+          ((cpad-pressed? 0 x)
+            (cpad-clear! 0 x)
+            (cond
+              ((not (vag-playing? self))
+                (vag-play self))
+              ((= (-> self speed) -1000.0)
+                (set! (-> self speed) 0.0)
+                (sound-continue (-> self id))
+                (when *sound-player-enable*
+                  (let ((cmd (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+                    (set! (-> cmd command) (sound-command set-param))
+                    (set! (-> cmd id) (-> self id))
+                    (set! (-> cmd params pitch-mod) 0)
+                    (set! (-> cmd params mask) (the-as uint 2))
+                    (-> cmd id)
+                    )
+                  )
+                )
+              (else
+                (set! (-> self speed) -1000.0)
+                (sound-pause (-> self id))
+                )
+              )
+            )
+          ((and (cpad-pressed? 0 left) (> (-> self vag-index) 0))
+            (cpad-clear! 0 left)
+            (1-! (-> self vag-index))
+            (vag-play self))
+          ((and (cpad-pressed? 0 right) (< (1+ (-> self vag-index)) (-> *vag-list* allocated-length)))
+            (cpad-clear! 0 right)
+            (1+! (-> self vag-index))
+            (vag-play self))
+          ((and (cpad-hold? 0 r1 l1) (!= (-> self speed) -1000.0))
+            (seek! (-> self speed) (if (cpad-hold? 0 l1) -4.0 4.0) (* 0.5 (-> self clock seconds-per-frame)))
+            )
+          ((cpad-pressed? 0 circle)
+            (cpad-clear! 0 circle)
+            (set! (-> self speed) 0.0))
+          ((cpad-pressed? 0 square)
+            (cpad-clear! 0 square)
+            (not! (-> *setting-control* user-default subtitle)))
+          )
+        (when (vag-playing? self)
+          (max! (-> *vag-max-pos-list* (-> self vag-index)) (the int (/ (the float (current-str-pos (-> self id))) (/ 1024.0 30))))
+          (when (and (!= (-> self speed) (-> self old-speed)) (!= (-> self speed) -1000.0))
+              (vag-set-speed self (-> self speed))
+              (set! (-> self old-speed) (-> self speed))))
+        (suspend))
+      )
+
+    (go vag-player-idle)
+    (none))
+  )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; methods
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod vag-play vag-player ((self vag-player))
+  "play the current vag stream"
+  (set! (-> self speed) 0.0)
+  (set! (-> self old-speed) 0.0)
+  (vag-stop self)
+  (set! (-> self id) (add-process *gui-control* self (gui-channel alert) (gui-action play) (-> *vag-list* (-> self vag-index)) -10.0 0)))
+
+(defmethod vag-stop vag-player ((self vag-player))
+  "stop the current vag stream"
+  (set-action! *gui-control* (gui-action stop) (-> self id) (gui-channel none) (gui-action none) (the-as string #f) (the-as (function gui-connection symbol) #f) (the-as process #f)))
+
+(defmethod vag-playing? vag-player ((self vag-player))
+  "is the current vag stream playing?"
+  (let ((status (get-status *gui-control* (-> self id)))) (or (= status (gui-status ready)) (= status (gui-status active)))))
+
+(defmethod vag-set-speed vag-player ((self vag-player) (speed float))
+  "set the speed of the current vag stream"
+  (when *sound-player-enable*
+    (let ((cmd (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+      (set! (-> cmd command) (sound-command set-param))
+      (set! (-> cmd id) (-> self id))
+      (set! (-> cmd params pitch-mod) (the int (* 1524.0 speed)))
+      (set! (-> cmd params mask) (the-as uint 2))
+      (-> cmd id)
+      )
+    ))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; helper functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(defbehavior vag-player-init-by-other vag-player ()
+  "external initializer for vag-player process"
+  (set! (-> self id) (new 'static 'sound-id))
+  (go vag-player-idle)
+  )
+
+
+(defun vag-player-stop ()
+  "kill the subtitle2 process"
+
+  (kill-by-type vag-player *pc-pool*))
+
+(defun vag-player-start ()
+  "start the subtitle2 process"
+
+  (when *vag-player*
+    (vag-player-stop)
+    )
+
+  (set! *vag-player* (process-spawn vag-player :from *pc-dead-pool* :to *pc-pool*))
+  )
+
+
+(defun vag-player-play-from-index ((index int))
+  "play a vag from its index in the vag list"
+  (if (not *vag-player*)
+      (vag-player-start))
+
+  (send-event (ppointer->process *vag-player*) 'play-index index))
+
+(defun vag-player-play-from-name ((name string))
+  "play a vag from its name"
+  (if (not *vag-player*)
+      (vag-player-start))
+
+  (send-event (ppointer->process *vag-player*) 'play name))
+
+(defun vag-list-to-file ((file-name string))
+  (if *vag-list*
+    (let ((file (new 'stack 'file-stream file-name 'write)))
+      (dotimes (i (-> *vag-list* allocated-length))
+        (format file "~S~%" (-> *vag-list* i))
+        )
+      (file-stream-close file)
+      )
+      #f
+    )
+  )
+
+;; start the vag-player process when this file loads.
+(vag-player-start)
+
+
+(defun scene-find-and-play ((name string))
+  "go through the scene player list to find and play the requested scene"
+
+  (vag-player-stop)
+  (cond
+    ;; hardcoded cases for the continue points
+    ((string= "intro-city-square" name)
+      (process-spawn scene-player :init scene-player-init name #t "ctyindb-intro-start"))
+    ((string= "intro-prison" name)
+      (process-spawn scene-player :init scene-player-init name #t "prison-intro-start"))
+    ((string= "outro-nest" name)
+      (set! (-> palout memory-mode) (load-buffer-mode borrow))
+      (set! (-> hiphog memory-mode) (load-buffer-mode small-center))
+      (process-spawn scene-player :init scene-player-init name #t "nestb-outro"))
+    ((string= "outro-palace" name)
+      (set! (-> palout memory-mode) (load-buffer-mode borrow))
+      (set! (-> hiphog memory-mode) (load-buffer-mode small-center))
+      (process-spawn scene-player :init scene-player-init name #t "throne-outro"))
+    ((string= "outro-hiphog" name)
+      (set! (-> hiphog memory-mode) (load-buffer-mode small-center))
+      (process-spawn scene-player :init scene-player-init name #t "hiphog-outro"))
+    ((string= "outro-port" name)
+      (set! (-> hiphog memory-mode) (load-buffer-mode small-center))
+      (process-spawn scene-player :init scene-player-init name #t "ctyport-outro"))
+    (else
+      (let* ((find-scene-in-act
+                (lambda ((scene-list (array hud-scene-info)) (name string))
+                  ;; for each scene in list
+                  (doarray (scene-info scene-list)
+                    ;; scene name matches - return that immediately
+                    (if (and (string? (-> scene-info info)) (string= (the string (-> scene-info info)) name))
+                        (return scene-info))
+                    ;; scene name didn't match, see if there is a scene playlist
+                    ;; if there is, then find our scene there
+                    (when (pair? (-> scene-info info))
+                      (let ((iter (the pair (-> scene-info info))))
+                        (while (not (null? iter))
+                          (if (and (string? (car iter)) (string= (the string (car iter)) name))
+                              (return scene-info))
+                          (set! iter (cdr iter))
+                          )
+                        )
+                      )
+                    )
+                  (the hud-scene-info #f))))
+        (awhen (or (find-scene-in-act *hud-select-scene-act1* name)
+                   (find-scene-in-act *hud-select-scene-act2* name)
+                   (find-scene-in-act *hud-select-scene-act3* name))
+          (process-spawn scene-player :init scene-player-init name #t (-> (the hud-scene-info it) continue))
+          )
+        )
+      ))
+  0)
+

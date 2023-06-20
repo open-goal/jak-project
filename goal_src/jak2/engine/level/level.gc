@@ -27,6 +27,7 @@ into 7 sections, which might explain the weird sizes in the center.
 (defglobalconstant NUM_LEVEL_PAGES 146)
 (defglobalconstant LEVEL_PAGE_SIZE_KB 126) ;; original value
 (defglobalconstant LEVEL_PAGE_SIZE (* LEVEL_PAGE_SIZE_KB 1024)) ;; original value
+
 (defglobalconstant LEVEL_HEAP_SIZE (* NUM_LEVEL_PAGES LEVEL_PAGE_SIZE))
 ;(defglobalconstant DEBUG_LEVEL_HEAP_MULT 1.5) ;; level heap in debug mode is 1.5x larger
 (defglobalconstant DEBUG_LEVEL_HEAP_MULT 1.1) ;; we're gonna use debug mode-style heaps but we don't actually need them at 1.5x size right now
@@ -373,7 +374,7 @@ into 7 sections, which might explain the weird sizes in the center.
     ;; set up the level info
     (set! (-> s5-1 info) s2-0)
     (set! (-> s5-1 name) arg0)
-    (set! (-> s5-1 load-name) (the-as string s1-0))
+    (set! (-> s5-1 load-name) s1-0)
     )
 
   ;; other setup from level-info
@@ -789,26 +790,7 @@ into 7 sections, which might explain the weird sizes in the center.
              ;; couldn't find it, die.
              (format 0 "ERROR: level ~A could not find free ~S bank in the level-group heap~%"
                (-> obj name)
-               (cond
-                 ((= mem-mode (load-buffer-mode large))
-                  "large"
-                  )
-                 ((= mem-mode (load-buffer-mode borrow))
-                  "borrow"
-                  )
-                 ((= mem-mode (load-buffer-mode small-center))
-                  "small-center"
-                  )
-                 ((= mem-mode (load-buffer-mode medium))
-                  "medium"
-                  )
-                 ((= mem-mode (load-buffer-mode small-edge))
-                  "small-edge"
-                  )
-                 (else
-                   "*unknown*"
-                   )
-                 )
+               (enum->string load-buffer-mode mem-mode)
                )
              (break!)
              0
@@ -955,7 +937,7 @@ into 7 sections, which might explain the weird sizes in the center.
               (cond
                 ;; are we using debug sized large level?
                 ((= (&- (-> *level* heap top) (the-as uint (-> *level* heap base))) DEBUG_LEVEL_HEAP_SIZE)
-                 ;; if so, everything is 1.5x bigger!
+                 ;; if so, everything is bigger!
                  (let ((v1-44 (-> obj heap)))
                    (set! (-> v1-44 base) (&+ (-> *level* heap base) (* DEBUG_LEVEL_PAGE_SIZE offset-in-level-heap)))
                    (set! (-> v1-44 current) (-> v1-44 base))
@@ -1092,15 +1074,10 @@ into 7 sections, which might explain the weird sizes in the center.
        (dotimes (s4-0 10)
          (let ((a0-8 (-> obj info texture-anim s4-0)))
            (when a0-8
-             (format 0 "SKIP: texture-anim-array in login-begin~%")
-             (format #t "SKIP: texture-anim-array in login-begin~%")
-
-               #|(set! (-> obj texture-anim-array s4-0)
-                     (the-as
-                       texture-anim-array
-                       ((method-of-object (the-as texture-anim-array (-> a0-8 value)) texture-anim-array-method-9))
-                       )
-                     )|#
+             (set! (-> obj info texture-anim s4-0) #f)
+             #|(set! (-> obj texture-anim-array s4-0)
+                   (texture-anim-array-method-9 (the-as texture-anim-array (-> a0-8 value)))
+                   )|#
                )
            )
          )
@@ -1364,11 +1341,11 @@ into 7 sections, which might explain the weird sizes in the center.
   ;; final!
 
   ;; name
-  (set! (-> lev nickname) (the-as string (-> lev bsp nickname)))
+  (set! (-> lev nickname) (-> lev bsp nickname))
 
   ;; added: tombc has the wrong nickname in the bsp file...
   (if (and (= (-> lev bsp name) 'tombc) (= (-> lev bsp nickname) 'toa))
-      (set! (-> lev nickname) (the-as string 'toc))
+      (set! (-> lev nickname) 'toc)
       )
 
   ;; subdivide distances
@@ -1499,7 +1476,7 @@ into 7 sections, which might explain the weird sizes in the center.
                )
              )
            )
-         (if (and (!= (-> obj bsp unk-data 7) 0) *traffic-manager*)
+         (if (and (!= (-> obj bsp city-level-info) 0) *traffic-manager*)
              (send-event *traffic-manager* 'level-loaded obj)
              )
          (when (-> obj info activate-func)
@@ -1528,7 +1505,7 @@ into 7 sections, which might explain the weird sizes in the center.
      (format 0 "----------- kill ~A (status ~A)~%" obj (-> obj status))
 
      ;; send event to traffic manager.
-     (if (and (!= (-> obj bsp unk-data 7) 0) *traffic-manager*)
+     (if (and (!= (-> obj bsp city-level-info) 0) *traffic-manager*)
          (send-event *traffic-manager* 'level-killed obj)
          )
 
@@ -1659,10 +1636,7 @@ into 7 sections, which might explain the weird sizes in the center.
           (let ((a0-37 (-> obj info texture-anim s5-3)))
             (if a0-37
                 (set! (-> obj texture-anim-array s5-3)
-                      (the-as
-                        texture-anim-array
-                        ((method-of-object (the-as texture-anim-array (-> a0-37 value)) texture-anim-array-method-10))
-                        )
+                      (texture-anim-array-method-10 (the-as texture-anim-array (-> a0-37 value)))
                       )
                 )
             )
@@ -1760,9 +1734,6 @@ into 7 sections, which might explain the weird sizes in the center.
 
 (defmethod is-object-visible? level ((obj level) (arg0 int))
   "Is drawable arg0 visible? Note that this will return #f if the visibility data is not loaded."
-
-  ;; note : pc port added option to show every actor regardless
-  (with-pc (if (-> *pc-settings* force-actors?) (return #t)))
 
   ;; check the vis bits!
   (let* (;; lwu v1, 388(a0)
@@ -1894,7 +1865,7 @@ into 7 sections, which might explain the weird sizes in the center.
         (load-package "common" global)
         )
     (let ((s5-1 (if (and arg0 (not *debug-segment*))
-                    LEVEL_HEAP_SIZE
+                    (#if PC_PORT DEBUG_LEVEL_HEAP_SIZE LEVEL_HEAP_SIZE)
                     DEBUG_LEVEL_HEAP_SIZE
                     )
                 )
@@ -2750,9 +2721,9 @@ into 7 sections, which might explain the weird sizes in the center.
                      (set! (-> *setting-control* user-default sound-reverb) (-> s4-1 info sound-reverb))
                      #t
                      )
-                   (or (-> *level* border?) (logtest? (-> *game-info* current-continue flags) (continue-flags cf2)))
+                   (or (-> *level* border?) (logtest? (-> *game-info* current-continue flags) (continue-flags change-continue)))
                    (or (!= (-> s4-1 name) (-> *game-info* current-continue level))
-                       (logtest? (-> *game-info* current-continue flags) (continue-flags cf2))
+                       (logtest? (-> *game-info* current-continue flags) (continue-flags change-continue))
                        )
                    (not (null? (-> s4-1 info continues)))
                    (-> *setting-control* user-current allow-continue)
@@ -2768,7 +2739,7 @@ into 7 sections, which might explain the weird sizes in the center.
                                   )
                                (string= (-> *game-info* current-continue name) (-> (the-as continue-point s1-0) name))
                                )
-                           (not (logtest? (-> (the-as continue-point s1-0) flags) (continue-flags cf2 cf3)))
+                           (not (logtest? (-> (the-as continue-point s1-0) flags) (continue-flags change-continue no-auto)))
                            )
                   (set! s3-0 (the-as continue-point s1-0))
                   (if (string= (-> *game-info* current-continue name) (-> (the-as continue-point s1-0) name))
@@ -2781,7 +2752,7 @@ into 7 sections, which might explain the weird sizes in the center.
               )
             (label cfg-59)
             (if (and (the-as continue-point s3-0)
-                     (not (logtest? (-> (the-as continue-point s3-0) flags) (continue-flags cf2 cf3)))
+                     (not (logtest? (-> (the-as continue-point s3-0) flags) (continue-flags change-continue no-auto)))
                      )
                 (set-continue! *game-info* (the-as basic s3-0) #f)
                 )
@@ -2837,7 +2808,7 @@ into 7 sections, which might explain the weird sizes in the center.
                      (set! (-> s2-1 from-bsp) (-> s4-3 bsp))
                      )
                     (else
-                      (let ((v1-114 (level-get obj (the-as symbol (-> s2-1 from-level)))))
+                      (let ((v1-114 (level-get obj (-> s2-1 from-level))))
                         (set! (-> s2-1 from-bsp) (if v1-114
                                                      (-> v1-114 bsp)
                                                      )
@@ -2957,7 +2928,7 @@ into 7 sections, which might explain the weird sizes in the center.
           (s4-5 *stdcon*)
           (s3-2 "~0Kload ~16S ~5S ~5DK  ~5,,2fs  ~5,,2fs~1K ~5,,0f k/s~%")
           (s2-2 (-> obj load-level))
-          (v1-180 (lookup-level-info (the-as symbol (-> obj load-level))))
+          (v1-180 (lookup-level-info (-> obj load-level)))
           )
       (s5-6
         s4-5
@@ -2977,9 +2948,10 @@ into 7 sections, which might explain the weird sizes in the center.
         )
       )
     )
-  (let ((v1-186 (- #x2000000 (the-as int (-> global current)))))
-    (if (and (not *debug-segment*) (< v1-186 #x10000))
-        (format *stdcon* "~3Lglobal heap fatally low at ~DK free~%~0L" (sar v1-186 10))
+  ;; pc port note : this was hardcoded to the top of EE memory (#x2000000)
+  (let ((v1-186 (&- (-> global top-base) (-> global current))))
+    (if (and (not *debug-segment*) (< v1-186 (* 64 1024)))
+        (format *stdcon* "~3Lglobal heap fatally low at ~DK free~%~0L" (/ v1-186 (* 1024 1024)))
         )
     )
 

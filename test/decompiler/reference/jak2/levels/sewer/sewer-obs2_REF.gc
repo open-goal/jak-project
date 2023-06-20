@@ -117,7 +117,7 @@
                (logtest? (elevator-flags airlock-opened) (-> self params flags))
                )
       (configure-collision self #t)
-      (set-setting! 'jump #f 0 0)
+      (set-setting! 'jump #f 0.0 0)
       )
     (none)
     )
@@ -1046,8 +1046,8 @@ This commonly includes things such as:
         )
       )
     (cleanup-for-death self)
-    (let ((frame-counter (-> self clock frame-counter)))
-      (until (>= (- (-> self clock frame-counter) frame-counter) (seconds 2))
+    (let ((frame-counter (current-time)))
+      (until (>= (- (current-time) frame-counter) (seconds 2))
         (suspend)
         )
       )
@@ -1175,7 +1175,7 @@ This commonly includes things such as:
            (t9-2 sin-rad)
            (f1-0 -3.1415925)
            (f2-0 6.283185)
-           (f3-1 (the float (+ (-> self clock frame-counter) (the-as time-frame (-> self time-skew)))))
+           (f3-1 (the float (+ (current-time) (the-as time-frame (-> self time-skew)))))
            (f28-0 (t9-2 (+ f1-0 (* f2-0 (/ (- f3-1 (* (the float (the int (/ f3-1 period))) period)) period)))))
            )
       (when (< ocean-base-height (-> self center y))
@@ -1647,7 +1647,7 @@ This commonly includes things such as:
 (deftype sew-scare-grunt (grunt)
   ((anim             spool-anim        :offset-assert 692)
    (manipy           (pointer manipy)  :offset-assert 696)
-   (spooled-sound-id uint32            :offset-assert 700)
+   (spooled-sound-id sound-id          :offset-assert 700)
    (grill-actor      entity-actor      :offset-assert 704)
    )
   :heap-base #x250
@@ -1805,7 +1805,7 @@ This commonly includes things such as:
     enemy-event-handler
     )
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (logior! (-> self draw status) (draw-control-status no-draw))
     (none)
     )
@@ -1889,10 +1889,7 @@ This commonly includes things such as:
         )
       )
     (set! (-> self spooled-sound-id)
-          (the-as
-            uint
-            (lookup-gui-connection-id *gui-control* (-> self anim name) (gui-channel art-load) (gui-action none))
-            )
+          (lookup-gui-connection-id *gui-control* (-> self anim name) (gui-channel art-load) (gui-action none))
           )
     (none)
     )
@@ -1948,7 +1945,7 @@ This commonly includes things such as:
       (when *sound-player-enable*
         (let ((set-sound-param (the-as sound-rpc-set-param (get-sound-buffer-entry))))
           (set! (-> set-sound-param command) (sound-command set-param))
-          (set! (-> set-sound-param id) (the-as sound-id (-> self spooled-sound-id)))
+          (set! (-> set-sound-param id) (-> self spooled-sound-id))
           (set! (-> set-sound-param params volume) (the int (* 1024.0 scale)))
           (let ((position (-> self root-override2 trans)))
             (let ((_self self))
@@ -2088,3 +2085,7 @@ This commonly includes things such as:
   (set! (-> obj root-override2 trans y) (+ -3276.8 (-> obj root-override2 trans y)))
   (none)
   )
+
+
+
+

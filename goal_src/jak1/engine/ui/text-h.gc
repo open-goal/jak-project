@@ -755,6 +755,9 @@
   (danish                       #x1115)
   (norwegian                    #x1116)
   (hungarian                    #x1117)
+  (dutch                        #x1118)
+  (catalan                      #x1119)
+  (icelandic                    #x111a)
   (scene-0                      #x1200)
   (scene-255                    #x12ff)
   (hint-0                       #x1300)
@@ -796,7 +799,31 @@
   (speedrun-hub2-100             #x1522)
   (speedrun-hub3-100             #x1523)
   (speedrun-all-cutscenes        #x1524)
-
+  ;; input options
+  (input-options #x1600)
+  (input-opts-select-controller #x1601)
+  (input-opts-analog-deadzone #x1602)
+  (input-opts-ignore-controller-win-focus #x1603)
+  (input-opts-controller-led-reflect-hp #x1604)
+  (input-opts-controller-led-reflect-eco #x1605)
+  (input-opts-mouse-enable-camera #x1606)
+  (input-opts-mouse-horizontal-sens #x1607)
+  (input-opts-mouse-vertical-sens #x1608)
+  (input-opts-mouse-enable-movement #x1609)
+  (input-opts-binds-controller #x160a)
+  (input-opts-binds-keyboard #x160b)
+  (input-opts-binds-mouse #x160c)
+  (input-opts-controller-opts #x160d)
+  (input-opts-enable-kb #x160e)
+  (input-opts-enable-mouse #x160f)
+  (input-opts-mouse-opts #x1610)
+  (input-opts-reassign-binds #x1611)
+  (input-opts-generic-controller #x1612)
+  (input-opts-auto-hide-cursor #x1613)
+  (input-opts-binds-unset #x1614)
+  (input-opts-binds-unknown #x1615)
+  (progress-no-other-resolution-options #x1616)
+  (input-opts-controller-led-reflect-heat #x1617)
 ;; GAME-TEXT-ID ENUM ENDS
   )
 
@@ -837,6 +864,19 @@
 ;; will store the COMMON text when it is loaded.
 (define *common-text* (the-as game-text-info #f))
 
+;; NOTE - PC PORT difference
+;; Partial translations are a thing that we should support. Parts of translating the game are intentionally made
+;; difficult for normal translators due to not wanting to make all the strings public (or in the case of subtitles,
+;; we straight up didn't have them yet)
+;;
+;; So to remedy this, we always load the english text as a fallback so that if there is only a partial translation
+;; the UX won't be horrible with everything displaying as UNKNOWN.
+;;
+;; One of the reasons we didn't do this is because it makes it obvious which strings are remaining,
+;; but there are better ways to keep track or check if strings are missing.
+(#when PC_PORT
+  (kheap-alloc (define *fallback-text-heap* (new 'global 'kheap)) (* 48 1024)) ;; 48K heap, should be plenty
+  (define *fallback-text* (the-as game-text-info #f)))
 
 (defun-extern print-game-text string font-context symbol int int float)
 

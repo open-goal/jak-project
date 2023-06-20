@@ -2489,6 +2489,14 @@ void handle_draw_for_strip(tfrag3::TieTree& tree,
   grp.matrix_idx = matrix_idx;
   grp.start_vert = packed_vert_indices.at(frag_idx).at(strip_idx).first;
   grp.end_vert = packed_vert_indices.at(frag_idx).at(strip_idx).second;
+  grp.has_normals = false;
+  for (auto i = grp.start_vert; i < grp.end_vert; i++) {
+    auto& v = tree.packed_vertices.vertices.at(i);
+    if (v.nx || v.ny || v.nz) {
+      grp.has_normals = true;
+      break;
+    }
+  }
 
   tree.packed_vertices.matrix_groups.push_back(grp);
   tfrag3::StripDraw::VertexRun run;
@@ -2697,6 +2705,25 @@ void merge_groups(std::vector<tfrag3::StripDraw::VisGroup>& grps) {
   std::swap(result, grps);
 }
 
+void merge_groups(std::vector<tfrag3::PackedTieVertices::MatrixGroup>& grps) {
+  std::vector<tfrag3::PackedTieVertices::MatrixGroup> result;
+  result.push_back(grps.at(0));
+
+  for (size_t i = 1; i < grps.size(); i++) {
+    auto& this_group = grps[i];
+    auto& maybe_merge = result.back();
+    if (this_group.start_vert == maybe_merge.end_vert &&
+        this_group.matrix_idx == maybe_merge.matrix_idx &&
+        this_group.has_normals == maybe_merge.has_normals) {
+      maybe_merge.end_vert = this_group.end_vert;
+    } else {
+      result.push_back(this_group);
+    }
+  }
+
+  std::swap(result, grps);
+}
+
 void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
                  const std::string& debug_name,
                  const std::vector<level_tools::TextureRemap>& tex_map,
@@ -2797,6 +2824,8 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
 
       merge_groups(draw.instance_groups);
     }
+
+    merge_groups(this_tree.packed_vertices.matrix_groups);
 
     this_tree.colors = full_palette.colors;
     out.tie_trees[geo].push_back(std::move(this_tree));

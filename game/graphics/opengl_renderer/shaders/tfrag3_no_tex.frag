@@ -10,5 +10,5 @@ uniform float alpha_min;
 uniform float alpha_max;
 
 void main() {
-    color = fragment_color;
+  color = fragment_color;
 }

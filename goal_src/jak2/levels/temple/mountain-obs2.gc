@@ -224,7 +224,7 @@ For example for an elevator pre-compute the distance between the first and last 
                          (vector-normalize! (-> self axe-flip) 1.0)
                          (vector-rotate90-around-y! (-> self axe-flip) (-> self axe-flip))
                          (set! (-> self angle-flip-vel) -10.0)
-                         (set! (-> self state-time) (-> self clock frame-counter))
+                         (set! (-> self state-time) (current-time))
                          )
                        )
                      )
@@ -274,11 +274,11 @@ For example for an elevator pre-compute the distance between the first and last 
       )
     (set! (-> self dest-angle) 180.0)
     (set! (-> self on-shake) #f)
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :trans (behavior ()
-    (when (>= (- (-> self clock frame-counter) (-> self state-time)) (the int (-> self time-flip)))
+    (when (>= (- (current-time) (-> self state-time)) (the int (-> self time-flip)))
       (set! (-> self state-flip) (the-as uint 0))
       0
       )
@@ -302,7 +302,7 @@ For example for an elevator pre-compute the distance between the first and last 
     (+! (-> self angle-flip-vel) (* -6.0 (-> self clock seconds-per-frame) (-> self angle-flip-vel)))
     (+! (-> self angle-flip) (-> self angle-flip-vel))
     (quaternion-vector-angle! (-> self root-override quat) (-> self axe-flip) (* 182.04445 (-> self angle-flip)))
-    (when (and (>= (- (-> self clock frame-counter) (-> self state-time)) (the int (+ -300.0 (-> self time-flip))))
+    (when (and (>= (- (current-time) (-> self state-time)) (the int (+ -300.0 (-> self time-flip))))
                (= 1 (-> self state-flip))
                )
       (when (not (-> self on-shake))
@@ -349,8 +349,8 @@ For example for an elevator pre-compute the distance between the first and last 
 
 (set-subtask-hook!
   *game-info*
-  155
-  3
+  (game-task-node canyon-insert-items-door)
+  TASK_MANAGER_CODE_HOOK
   (lambda :behavior task-manager
     ()
     (let ((arrow-params (new 'stack-no-clear 'task-arrow-params)))

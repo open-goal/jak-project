@@ -522,9 +522,7 @@
     (let ((s3-0 (-> obj rec s4-0)))
       (when (-> s3-0 name)
         (dotimes (s2-0 2)
-          (when (and (file-status (-> obj buffer s2-0) (-> s3-0 name) (the-as int (-> s3-0 parts)))
-                     (not (-> obj buffer s2-0 frame-lock))
-                     )
+          (when (and (file-status (-> obj buffer s2-0) (-> s3-0 name) (-> s3-0 parts)) (not (-> obj buffer s2-0 frame-lock)))
             (set! (-> obj buffer s2-0 frame-lock) #t)
             (set! (-> s3-0 anim-name) (-> obj buffer s2-0))
             (set! (-> obj buffer s2-0 pending-load-file-owner) (-> s3-0 owner))
@@ -547,13 +545,7 @@
         (dotimes (s2-1 2)
           (when (not (-> obj buffer s2-1 frame-lock))
             (set! (-> obj buffer s2-1 frame-lock) #t)
-            (set-pending-file
-              (-> obj buffer s2-1)
-              (-> s3-1 name)
-              (the-as int (-> s3-1 parts))
-              (-> s3-1 owner)
-              (-> s3-1 priority)
-              )
+            (set-pending-file (-> obj buffer s2-1) (-> s3-1 name) (-> s3-1 parts) (-> s3-1 owner) (-> s3-1 priority))
             (set! (-> s3-1 anim-name) (-> obj buffer s2-1))
             (goto cfg-46)
             )
@@ -783,43 +775,6 @@
     )
   )
 
-;; to allow streaming animations to play without overload VAG streaming, set STREAM_PLAY_HACK.
-;; in the ja-play-spooled-anim function below, we use the get-current-str-pos/get-str-id-is-playing?
-;; instead of the usual current-str-pos/str-id-is-playing? functions. The #cond below remaps those
-;; to point to hacked versions if STREAM_PLAY_HACK is true, otherwise it just maps to the original
-;; version.
-
-(defglobalconstant STREAM_PLAY_HACK #t)
-(#cond
-  (STREAM_PLAY_HACK
-    (define *hack-pos-buffer-id* (new 'static 'array int 4)) ;; 4 channels?
-    (define *hack-pos-buffer-pos* (new 'static 'array float 4)) ;; 4 channels?
-    (define *hack-pos-next-idx* 0) ;; new channel, if none is found.
-    (define *hack-pos-speed* 8.5)
-    (defun get-current-str-pos ((obj sound-id))
-      (dotimes (i 4)
-        (when (= (-> *hack-pos-buffer-id* i) obj)
-          (return (the int (+! (-> *hack-pos-buffer-pos* i) *hack-pos-speed*)))
-          )
-        )
-      (set! (-> *hack-pos-buffer-id* *hack-pos-next-idx*) (the-as int obj))
-      (set! (-> *hack-pos-buffer-pos* *hack-pos-next-idx*) 0.0)
-      (+! *hack-pos-next-idx* 1)
-      (if (= *hack-pos-next-idx* 4)
-          (set! *hack-pos-next-idx* 0)
-          )
-      (the int *hack-pos-speed*)
-      )
-    (defun get-str-id-is-playing? ((obj int))
-      #t
-      )
-    )
-  (#t
-    (define get-current-str-pos current-str-pos)
-    (define get-str-id-is-playing? str-id-is-playing?)
-    )
-  )
-
 
 (defbehavior ja-play-spooled-anim process-drawable ((arg0 spool-anim) (arg1 art-joint-anim) (arg2 art-joint-anim) (arg3 (function process-drawable symbol)))
   (local-vars (v0-59 int) (sv-176 int))
@@ -900,10 +855,10 @@
             )
         )
       )
-    (set-setting! 'spooling (process->ppointer self) 0 0)
-    (set-setting! 'spool-anim (-> gp-0 anim) 0 0)
+    (set-setting! 'spooling (process->ppointer self) 0.0 0)
+    (set-setting! 'spool-anim (-> gp-0 anim) 0.0 0)
     (apply-settings *setting-control*)
-    (set! (-> gp-0 old-time) (-> self clock frame-counter))
+    (set! (-> gp-0 old-time) (current-time))
     (while (< (-> gp-0 part) (-> gp-0 anim parts))
       (when (> (-> gp-0 part) 0)
         (while (let ((v1-99 (file-status *art-control* (-> gp-0 anim name) (-> gp-0 part))))
@@ -1048,14 +1003,14 @@
             (let* ((f30-0 (* 0.05859375 (-> s5-8 speed)))
                    (f28-0 (+ (-> gp-0 part-audio-start) (/ (the float (+ (-> s5-8 frames num-frames) -1)) f30-0)))
                    )
-              (set! sv-176 (get-current-str-pos (-> gp-0 sid))) ;; modified
-              (set! (-> gp-0 good-time) (-> self clock frame-counter))
+              (set! sv-176 (current-str-pos (-> gp-0 sid)))
+              (set! (-> gp-0 good-time) (current-time))
               (until (>= (the float v0-59) f28-0)
                 (if (= (-> self skel root-channel 0) (-> self skel channel))
                     (logior! (-> self skel status) (joint-control-status valid-spooled-frame))
                     )
                 (if (or ((-> gp-0 break-func) self)
-                        (and (<= sv-176 0) (>= (- (-> self clock frame-counter) (-> gp-0 good-time)) (seconds 4)))
+                        (and (<= sv-176 0) (>= (- (current-time) (-> gp-0 good-time)) (seconds 4)))
                         (and (< 300 (-> gp-0 good-count)) (<= sv-176 0))
                         )
                     (goto cfg-130)
@@ -1086,18 +1041,18 @@
                 (execute-commands-up-to *load-state* (ja-aframe-num 0))
                 (cond
                   ((and (< (-> gp-0 old-pos) sv-176) (< -1 sv-176))
-                   (+! (-> gp-0 good-count) (- (-> self clock frame-counter) (-> self clock old-frame-counter)))
-                   (set! (-> gp-0 good-time) (-> self clock frame-counter))
+                   (+! (-> gp-0 good-count) (- (current-time) (-> self clock old-frame-counter)))
+                   (set! (-> gp-0 good-time) (current-time))
                    )
                   (else
                     0
                     )
                   )
                 (set! (-> gp-0 old-pos) sv-176)
-                (set! (-> gp-0 old-time) (-> self clock frame-counter))
+                (set! (-> gp-0 old-time) (current-time))
                 (suspend)
-                (let* ((f26-0 (* (- (the float (get-current-str-pos (-> gp-0 sid))) (-> gp-0 part-audio-start)) f30-0))
-                       (f0-16 (if (get-str-id-is-playing? (the-as int (-> gp-0 sid)))
+                (let* ((f26-0 (* (- (the float (current-str-pos (-> gp-0 sid))) (-> gp-0 part-audio-start)) f30-0))
+                       (f0-16 (if (str-id-is-playing? (the-as int (-> gp-0 sid)))
                                   (fmax 0.0 (fmin f26-0 (the float (+ (-> (ja-group) frames num-frames) -1))))
                                   (fmax 0.0 (fmin (ja-frame-num 0) (the float (+ (-> (ja-group) frames num-frames) -1))))
                                   )
@@ -1105,7 +1060,7 @@
                        )
                   (ja-no-eval :num! (seek!) :frame-num f0-16)
                   )
-                (set! v0-59 (get-current-str-pos (-> gp-0 sid)))
+                (set! v0-59 (current-str-pos (-> gp-0 sid)))
                 (set! sv-176 v0-59)
                 )
               (set! (-> gp-0 part-audio-start) f28-0)
@@ -1185,228 +1140,13 @@
 
 
 (defmethod print gui-connection ((obj gui-connection))
-  (let* ((t9-0 format)
-         (a0-1 #t)
-         (a1-0 "#<gc ~12S ~2D ~6D ~6,,0f ~7S ~8S ")
-         (a2-0 (-> obj name))
-         (a3-0 (-> obj anim-part))
-         (t0-0 (-> obj id))
-         (t1-0 (-> obj priority))
-         (v1-0 (-> obj channel))
-         (t2-1 (cond
-                 ((= v1-0 (gui-channel hud-lower-left))
-                  "hud-lower-left"
-                  )
-                 ((= v1-0 (gui-channel citizen))
-                  "citizen"
-                  )
-                 ((= v1-0 (gui-channel ashelin))
-                  "ashelin"
-                  )
-                 ((= v1-0 (gui-channel hud-lower-left-1))
-                  "hud-lower-left-1"
-                  )
-                 ((= v1-0 (gui-channel message))
-                  "message"
-                  )
-                 ((= v1-0 (gui-channel hud-middle-left))
-                  "hud-middle-left"
-                  )
-                 ((= v1-0 (gui-channel hud-upper-center-2))
-                  "hud-upper-center-2"
-                  )
-                 ((= v1-0 (gui-channel hud-middle-right))
-                  "hud-middle-right"
-                  )
-                 ((= v1-0 (gui-channel subtitle))
-                  "subtitle"
-                  )
-                 ((= v1-0 (gui-channel notice))
-                  "notice"
-                  )
-                 ((= v1-0 (gui-channel voicebox))
-                  "voicebox"
-                  )
-                 ((= v1-0 (gui-channel art-load-next))
-                  "art-load-next"
-                  )
-                 ((= v1-0 (gui-channel mog))
-                  "mog"
-                  )
-                 ((= v1-0 (gui-channel sig))
-                  "sig"
-                  )
-                 ((= v1-0 (gui-channel hud-center-left))
-                  "hud-center-left"
-                  )
-                 ((= v1-0 (gui-channel hud-upper-right))
-                  "hud-upper-right"
-                  )
-                 ((= v1-0 (gui-channel hud-center-right))
-                  "hud-center-right"
-                  )
-                 ((= v1-0 (gui-channel alert))
-                  "alert"
-                  )
-                 ((= v1-0 (gui-channel jinx))
-                  "jinx"
-                  )
-                 ((= v1-0 (gui-channel hud-upper-left))
-                  "hud-upper-left"
-                  )
-                 ((= v1-0 (gui-channel query))
-                  "query"
-                  )
-                 ((= v1-0 (gui-channel grim))
-                  "grim"
-                  )
-                 ((= v1-0 (gui-channel kor))
-                  "kor"
-                  )
-                 ((= v1-0 (gui-channel hud-lower-right))
-                  "hud-lower-right"
-                  )
-                 ((= v1-0 (gui-channel screen))
-                  "screen"
-                  )
-                 ((= v1-0 (gui-channel guard))
-                  "guard"
-                  )
-                 ((= v1-0 (gui-channel supertitle))
-                  "supertitle"
-                  )
-                 ((= v1-0 (gui-channel hal))
-                  "hal"
-                  )
-                 ((= v1-0 (gui-channel hud-upper-center))
-                  "hud-upper-center"
-                  )
-                 ((= v1-0 (gui-channel blackout))
-                  "blackout"
-                  )
-                 ((= v1-0 (gui-channel bbush))
-                  "bbush"
-                  )
-                 ((= v1-0 (gui-channel hud))
-                  "hud"
-                  )
-                 ((= v1-0 (gui-channel voice))
-                  "voice"
-                  )
-                 ((= v1-0 (gui-channel max))
-                  "max"
-                  )
-                 ((= v1-0 (gui-channel none))
-                  "none"
-                  )
-                 ((= v1-0 (gui-channel notice-low))
-                  "notice-low"
-                  )
-                 ((= v1-0 (gui-channel art-load))
-                  "art-load"
-                  )
-                 ((= v1-0 (gui-channel kid))
-                  "kid"
-                  )
-                 ((= v1-0 (gui-channel jak))
-                  "jak"
-                  )
-                 ((= v1-0 (gui-channel daxter))
-                  "daxter"
-                  )
-                 ((= v1-0 (gui-channel krew))
-                  "krew"
-                  )
-                 ((= v1-0 (gui-channel hud-lower-left-2))
-                  "hud-lower-left-2"
-                  )
-                 ((= v1-0 (gui-channel background))
-                  "background"
-                  )
-                 ((= v1-0 (gui-channel crocadog))
-                  "crocadog"
-                  )
-                 ((= v1-0 (gui-channel movie))
-                  "movie"
-                  )
-                 (else
-                   "*unknown*"
-                   )
-                 )
-               )
-         (v1-1 (-> obj action))
-         )
-    (t9-0 a0-1 a1-0 a2-0 a3-0 t0-0 t1-0 t2-1 (cond
-                                               ((= v1-1 (gui-action queue))
-                                                "queue"
-                                                )
-                                               ((= v1-1 (gui-action stop))
-                                                "stop"
-                                                )
-                                               ((= v1-1 (gui-action play))
-                                                "play"
-                                                )
-                                               ((= v1-1 (gui-action hide))
-                                                "hide"
-                                                )
-                                               ((= v1-1 (gui-action fade))
-                                                "fade"
-                                                )
-                                               ((= v1-1 (gui-action none))
-                                                "none"
-                                                )
-                                               ((= v1-1 (gui-action abort))
-                                                "abort"
-                                                )
-                                               ((= v1-1 (gui-action stopping))
-                                                "stopping"
-                                                )
-                                               ((= v1-1 (gui-action hidden))
-                                                "hidden"
-                                                )
-                                               ((= v1-1 (gui-action playing))
-                                                "playing"
-                                                )
-                                               (else
-                                                 "*unknown*"
-                                                 )
-                                               )
-          )
-    )
-  (let ((s5-0 format)
-        (s4-0 #t)
-        (s3-0 " ~6S <@ #x~A>")
-        (v1-3 (get-status *gui-control* (-> obj id)))
-        )
-    (s5-0
-      s4-0
-      s3-0
-      (cond
-        ((= v1-3 (gui-status ready))
-         "ready"
-         )
-        ((= v1-3 (gui-status active))
-         "active"
-         )
-        ((= v1-3 (gui-status stop))
-         "stop"
-         )
-        ((= v1-3 (gui-status unknown))
-         "unknown"
-         )
-        ((= v1-3 (gui-status hide))
-         "hide"
-         )
-        ((= v1-3 (gui-status pending))
-         "pending"
-         )
-        (else
-          "*unknown*"
-          )
-        )
-      obj
-      )
-    )
+  (format #t "#<gc ~12S ~2D ~6D ~6,,0f ~7S ~8S " (-> obj name)
+                                                 (-> obj anim-part)
+                                                 (-> obj id)
+                                                 (-> obj priority)
+                                                 (enum->string gui-channel (-> obj channel))
+                                                 (enum->string gui-action (-> obj action)))
+  (format #t " ~6S <@ #x~A>" (enum->string gui-status (get-status *gui-control* (-> obj id))) obj)
   obj
   )
 
@@ -1449,6 +1189,7 @@
   (the-as gui-connection #f)
   )
 
+;; WARN: Return type mismatch int vs sound-id.
 (defmethod lookup-gui-connection-id gui-control ((obj gui-control) (arg0 string) (arg1 gui-channel) (arg2 gui-action))
   (let ((s2-0 (the-as gui-connection (-> obj engine alive-list next0))))
     (-> obj engine)
@@ -1458,7 +1199,7 @@
                  (or (= arg2 (gui-action none)) (= arg2 (-> s2-0 action)))
                  (or (not arg0) (string= arg0 (-> s2-0 name)))
                  )
-            (return (the-as int (-> s2-0 id)))
+            (return (-> s2-0 id))
             )
         (set! s2-0 (the-as gui-connection s1-0))
         (-> obj engine)
@@ -1473,11 +1214,11 @@
                (or (= arg2 (gui-action none)) (= arg2 (-> s1-1 action)))
                (or (not arg0) (string= arg0 (-> s1-1 name)))
                )
-          (return (the-as int (-> s1-1 id)))
+          (return (-> s1-1 id))
           )
       )
     )
-  0
+  (the-as sound-id 0)
   )
 
 (defmethod set-falloff! gui-control ((obj gui-control) (arg0 sound-id) (arg1 symbol) (arg2 int) (arg3 int) (arg4 int))
@@ -1831,7 +1572,8 @@
              )
             (else
               (set! (-> s1-0 action) sv-16)
-              (if (and (= sv-16 'play) (handle-command-list obj (-> s1-0 channel) s1-0))
+              ;; pc port note : fixed naughty dog bug here. was 'play instead of (gui-action play)
+              (if (and (= sv-16 (gui-action play)) (handle-command-list obj (-> s1-0 channel) s1-0))
                   (channel-id-set! obj s1-0 (-> s1-0 id))
                   )
               )
@@ -1972,7 +1714,7 @@
                )
       (when (< (-> sv-24 priority) arg5)
         (set! (-> sv-24 time-stamp) (-> obj update-time))
-        (return (the-as sound-id (-> sv-24 id)))
+        (return (-> sv-24 id))
         )
       (set! sv-16 sv-24)
       (goto cfg-44)
@@ -2123,6 +1865,10 @@
   0
   )
 
+;; pc port note : added for debugging
+(#when PC_PORT
+(define *gui-kick-str* #f))
+
 (defmethod gui-control-method-22 gui-control ((obj gui-control) (arg0 gui-connection) (arg1 process) (arg2 symbol))
   (local-vars (v1-66 symbol) (v1-143 symbol))
   (with-pp
@@ -2169,7 +1915,8 @@
         (b! (!= v1-43 (gui-status ready)) cfg-36 :delay (empty-form))
         (case (shr (the-as int (-> arg0 channel)) 4)
           ((1 2)
-           (if (not (paused?))
+           (if (#if PC_PORT (or *gui-kick-str* (not (paused?)))
+                            (not (paused?)))
                (str-play-async (-> arg0 name) (-> arg0 id))
                )
            )
@@ -2555,6 +2302,9 @@
           )
     (set! (-> gp-0 cmd 69) '((65 . wait) (71 . wait) (67 . wait) (66 . wait)))
     (set! (-> gp-0 cmd 70) '((65 . wait) (90 . hide) (91 . hide) (81 . hide) (80 . hide)))
+    ;; added this one
+    (set! (-> gp-0 cmd (gui-channel subtitle-pc)) '(((the binteger (gui-channel blackout)) . wait)
+                                                    ))
     (set! (-> gp-0 cmd 80) '((64 . wait) (65 . wait) (80 . wait) (70 . wait)))
     (set! (-> gp-0 cmd 81) '((64 . wait) (65 . wait) (81 . wait) (70 . wait)))
     (set! (-> gp-0 cmd 82) '((64 . wait) (65 . wait) (67 . wait) (71 . wait) (69 . wait) (82 . wait)))

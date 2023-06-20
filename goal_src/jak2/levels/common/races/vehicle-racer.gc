@@ -83,17 +83,11 @@
            (set! (-> s3-0 search-sphere r) 61440.0)
            (race-mesh-method-13 (-> obj mesh) (the-as race-mesh-slice-query (&-> s3-0 slice-id)))
            (when (!= (-> s3-0 slice-id) -1)
-             (let* ((v1-12 (the-as object (+ (the-as uint (-> obj mesh slices)) (* (-> s3-0 slice-id) 4))))
-                    (f0-1
-                      (-> (the-as (pointer float) (+ (* (-> (the-as (pointer int16) v1-12)) 4) (the-as int (-> s4-0 edge-infos)))))
+             (let* ((v1-12 (-> obj mesh slices (-> s3-0 slice-id)))
+                    (f0-1 (-> (the-as (pointer float) (+ (* (-> v1-12 start-edge) 4) (the-as int (-> s4-0 edge-infos))))))
+                    (f1-0
+                      (-> (the-as race-path-edge-info (+ (* (-> v1-12 end-edge) 4) (the-as int (-> s4-0 edge-infos)))) sample-t)
                       )
-                    (f1-0 (-> (the-as
-                                race-path-edge-info
-                                (+ (* (-> (the-as race-mesh-slice v1-12) end-edge) 4) (the-as int (-> s4-0 edge-infos)))
-                                )
-                              sample-t
-                              )
-                          )
                     )
                (when (and (>= f0-1 0.0) (>= f1-0 0.0))
                  (let ((f0-2 (race-path-method-12 s4-0 arg1 f0-1 f1-0)))
@@ -269,20 +263,18 @@
   )
 
 (defmethod vehicle-method-66 vehicle-racer ((obj vehicle-racer))
-  (with-pp
-    (when (and (not (logtest? (rigid-body-object-flag turbo-boost) (-> obj flags))) (> (-> obj turbo-pickup-count) 0))
-      (+! (-> obj turbo-pickup-count) -1)
-      (set! (-> obj turbo-boost-time) (-> pp clock frame-counter))
-      (set! (-> obj turbo-boost-factor) 1.0)
-      (set! (-> obj turbo-boost-duration) (the-as uint 150))
-      (set! (-> obj flags) (logior (rigid-body-object-flag turbo-boost) (-> obj flags)))
-      (if (logtest? (-> obj flags) (rigid-body-object-flag player-driving))
-          (sound-play "turbo-boost")
-          )
-      )
-    0
-    (none)
+  (when (and (not (logtest? (rigid-body-object-flag turbo-boost) (-> obj flags))) (> (-> obj turbo-pickup-count) 0))
+    (+! (-> obj turbo-pickup-count) -1)
+    (set! (-> obj turbo-boost-time) (current-time))
+    (set! (-> obj turbo-boost-factor) 1.0)
+    (set! (-> obj turbo-boost-duration) (the-as uint 150))
+    (set! (-> obj flags) (logior (rigid-body-object-flag turbo-boost) (-> obj flags)))
+    (if (logtest? (-> obj flags) (rigid-body-object-flag player-driving))
+        (sound-play "turbo-boost")
+        )
     )
+  0
+  (none)
   )
 
 (defmethod vehicle-method-136 vehicle-racer ((obj vehicle-racer) (arg0 traffic-object-spawn-params))
@@ -433,7 +425,7 @@
                            )
                         )
                    (select-path-randomly-from-mask obj (-> v1-37 shortcuts))
-                   (set! (-> obj shortcut-time) (-> self clock frame-counter))
+                   (set! (-> obj shortcut-time) (current-time))
                    (set! (-> obj shortcut-speed-factor) 1.0)
                    )
                   (else
@@ -868,23 +860,21 @@
   )
 
 (defmethod vehicle-racer-method-152 vehicle-racer ((obj vehicle-racer))
-  (with-pp
-    (let ((s5-0 (new 'stack-no-clear 'matrix3)))
-      (set! (-> s5-0 vector 0 quad) (-> obj rbody state position quad))
-      (set! (-> obj camera-dist2) (vector-vector-distance-squared (the-as vector (-> s5-0 vector)) (camera-pos)))
-      (set! (-> obj player-dist2) (vector-vector-distance-squared (the-as vector (-> s5-0 vector)) (target-pos 0)))
-      )
-    (if (>= (- (-> pp clock frame-counter) (-> obj shortcut-time)) (seconds 5))
-        (set! (-> obj shortcut-speed-factor) 0.0)
-        )
-    (vehicle-racer-method-154 obj)
-    (if (logtest? (-> obj rbody state flags) (rigid-body-flag enable-physics))
-        (physics-post obj)
-        (vehicle-racer-method-151 obj)
-        )
-    0
-    (none)
+  (let ((s5-0 (new 'stack-no-clear 'matrix3)))
+    (set! (-> s5-0 vector 0 quad) (-> obj rbody state position quad))
+    (set! (-> obj camera-dist2) (vector-vector-distance-squared (the-as vector (-> s5-0 vector)) (camera-pos)))
+    (set! (-> obj player-dist2) (vector-vector-distance-squared (the-as vector (-> s5-0 vector)) (target-pos 0)))
     )
+  (if (>= (- (current-time) (-> obj shortcut-time)) (seconds 5))
+      (set! (-> obj shortcut-speed-factor) 0.0)
+      )
+  (vehicle-racer-method-154 obj)
+  (if (logtest? (-> obj rbody state flags) (rigid-body-flag enable-physics))
+      (physics-post obj)
+      (vehicle-racer-method-151 obj)
+      )
+  0
+  (none)
   )
 
 (defmethod vehicle-racer-method-155 vehicle-racer ((obj vehicle-racer))
@@ -930,7 +920,7 @@
     vehicle-event-handler
     )
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (set! (-> self flags) (logior (rigid-body-object-flag ignition) (-> self flags)))
     (set! (-> self controls throttle) 0.0)
     (set! (-> self controls brake) 0.0)
@@ -994,7 +984,7 @@
     vehicle-event-handler
     )
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (set! (-> self damage-factor) (-> self info-override damage-factor))
     (vehicle-method-143 self)
     (set! (-> self flags) (logior (rigid-body-object-flag ignition) (-> self flags)))
@@ -1023,7 +1013,7 @@
     vehicle-event-handler
     )
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (set! (-> self flags) (logior (rigid-body-object-flag riding ignition) (-> self flags)))
     (set! (-> self controls throttle) 0.0)
     (set! (-> self controls brake) 0.0)
@@ -1067,7 +1057,7 @@
     vehicle-event-handler
     )
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (set! (-> self flags) (the-as
                             rigid-body-object-flag
                             (logior (rigid-body-object-flag persistent riding nav-spheres) (-> self flags))

@@ -61,13 +61,11 @@
         (set! (-> self string-max target z) (-> self settings string-max-length))
         (set! (-> self string-push-z) (fmax (-> self string-min value z) (-> *CAMERA-bank* default-string-push-z)))
         (cond
-          ((>= (- (-> self clock frame-counter) (get-notice-time (the-as process-focusable gp-0)))
-               (-> *CAMERA-bank* attack-timeout)
-               )
+          ((>= (- (current-time) (get-notice-time (the-as process-focusable gp-0))) (-> *CAMERA-bank* attack-timeout))
            (set! (-> self being-attacked) #f)
            )
           (else
-            (set! (-> self attack-start) (-> self clock frame-counter))
+            (set! (-> self attack-start) (current-time))
             (set! (-> self being-attacked) #t)
             (when (or (!= (-> last-try-to-look-at-data horz) 0.0) (!= (-> last-try-to-look-at-data vert) 0.0))
               (set! (-> self string-max target y) (fmax (-> self string-max target y) (-> last-try-to-look-at-data vert)))
@@ -117,14 +115,12 @@
         (gp-0
           (logior! (-> self master-options) (cam-master-options-u32 HAVE_TARGET))
           (cond
-            ((>= (- (-> self clock frame-counter) (get-notice-time (the-as target gp-0)))
-                 (-> *CAMERA-bank* attack-timeout)
-                 )
+            ((>= (- (current-time) (get-notice-time (the-as target gp-0))) (-> *CAMERA-bank* attack-timeout))
              (set! (-> self being-attacked) #f)
              )
             (else
               (if (not (-> self being-attacked))
-                  (set! (-> self attack-start) (-> self clock frame-counter))
+                  (set! (-> self attack-start) (current-time))
                   )
               (set! (-> self being-attacked) #t)
               (when (or (!= (-> last-try-to-look-at-data horz) 0.0) (!= (-> last-try-to-look-at-data vert) 0.0))
@@ -927,7 +923,7 @@
                )
              )
             ((= v1-0 'part-water-drip)
-             (set! (-> self water-drip-time) (-> self clock frame-counter))
+             (set! (-> self water-drip-time) (current-time))
              (set! (-> self water-drip-mult) (the-as float (-> event param 0)))
              (set! (-> self water-drip-speed) (the-as float (-> event param 1)))
              )

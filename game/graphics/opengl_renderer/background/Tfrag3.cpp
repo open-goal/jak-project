@@ -111,7 +111,7 @@ void Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kind
         );
 
         glVertexAttribIPointer(2,                                // location 2 in the shader
-                               1,                                // 1 values per vert
+                               2,                                // 1 values per vert
                                GL_UNSIGNED_SHORT,                // u16
                                sizeof(tfrag3::PreloadedVertex),  // stride
                                (void*)offsetof(tfrag3::PreloadedVertex, color_index)  // offset (0)

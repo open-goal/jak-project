@@ -12,7 +12,6 @@
 #include "decompiler/IR2/Form.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/analysis/final_output.h"
-#include "decompiler/util/sparticle_decompile.h"
 
 #include "third-party/fmt/core.h"
 
@@ -981,16 +980,6 @@ goos::Object decompile_structure(const TypeSpec& type,
   // some structures we want to decompile to fancy macros instead of a raw static definiton
   // temp hack!!
   if (use_fancy_macros && file) {
-    if (file->version == GameVersion::Jak1) {
-      if (type == TypeSpec("sp-field-init-spec")) {
-        ASSERT(file->version == GameVersion::Jak1);  // need to update enums
-        return decompile_sparticle_field_init(type, label, labels, words, ts, file, version);
-      }
-      if (type == TypeSpec("sparticle-group-item")) {
-        ASSERT(file->version == GameVersion::Jak1);  // need to update enums
-        return decompile_sparticle_group_item(type, label, labels, words, ts, file);
-      }
-    }
     if (type == TypeSpec("sound-spec")) {
       return decompile_sound_spec(type, label, labels, words, ts, file, version);
     }
@@ -1439,7 +1428,12 @@ goos::Object decompile_structure(const TypeSpec& type,
           // do nothing, the default is zero?
           field_defs_out.emplace_back(field.name(), pretty_print::to_symbol("0"));
         } else if (word.kind() == LinkedWord::SYM_PTR) {
-          if (word.symbol_name() == "#f" || word.symbol_name() == "#t") {
+          if (word.symbol_name() == "#f") {
+            field_defs_out.emplace_back(
+                field.name(), pretty_print::to_symbol(fmt::format("{}", word.symbol_name())));
+          } else if (!ts.tc(field.type(), TypeSpec("symbol"))) {
+            continue;
+          } else if (word.symbol_name() == "#t") {
             field_defs_out.emplace_back(
                 field.name(), pretty_print::to_symbol(fmt::format("{}", word.symbol_name())));
           } else {

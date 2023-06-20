@@ -115,20 +115,8 @@ void CollideMeshRenderer::render(SharedRenderState* render_state, ScopedProfiler
     settings.planes[i] = render_state->camera_planes[i];
   }
   auto shader = render_state->shaders[ShaderId::COLLISION].id();
-  // Get a free binding point
-  GLuint bind_loc = 0;
-  GLint bind_max;
-  glGetIntegerv(GL_MAX_UNIFORM_BUFFER_BINDINGS, &bind_max);
-  for (int i = 0; i < bind_max; i++) {
-    GLint params;
-    glGetIntegeri_v(GL_UNIFORM_BUFFER_BINDING, i, &params);
-    if (params == 0) {
-      bind_loc = i;
-      break;
-    }
-  }
-  glUniformBlockBinding(shader, glGetUniformBlockIndex(shader, "PatColors"), bind_loc);
-  glBindBufferBase(GL_UNIFORM_BUFFER, bind_loc, m_ubo);
+  glUniformBlockBinding(shader, glGetUniformBlockIndex(shader, "PatColors"), 0);
+  glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_ubo);
   glUniformMatrix4fv(glGetUniformLocation(shader, "camera"), 1, GL_FALSE,
                      settings.math_camera.data());
   glUniform4f(glGetUniformLocation(shader, "hvdf_offset"), settings.hvdf_offset[0],

@@ -210,7 +210,9 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-flipped-state drill-flip-step ((obj drill-flip-step))
   "Set the state of the platform based on the completion of the drill-mech task."
-  (if (and (= (-> obj entity extra perm task) 61) (task-node-closed? (game-task-node drill-mech-smash-consoles)))
+  (if (and (= (-> obj entity extra perm task) (game-task drill-mech))
+           (task-node-closed? (game-task-node drill-mech-smash-consoles))
+           )
       (process-entity-status! obj (entity-perm-status bit-12) #t)
       )
   (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status bit-12)))
@@ -968,8 +970,8 @@ This commonly includes things such as:
           )
         )
       )
-    (let ((gp-2 (-> self clock frame-counter)))
-      (until (>= (- (-> self clock frame-counter) gp-2) (seconds 0.5))
+    (let ((gp-2 (current-time)))
+      (until (>= (- (current-time) gp-2) (seconds 0.5))
         (suspend)
         )
       )
@@ -1012,7 +1014,7 @@ This commonly includes things such as:
   (init-collision! obj)
   (process-drawable-from-entity! obj arg0)
   (skel-init! obj)
-  (set! (-> obj entity extra perm task) (the-as uint 26))
+  (set! (-> obj entity extra perm task) (game-task drill-eggs))
   (set! (-> obj notify-actor) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
   (set! sv-16 (new 'static 'res-tag))
   (let ((v1-6 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-16))))
@@ -1615,9 +1617,9 @@ This commonly includes things such as:
       )
     (if (-> self ridden?)
         (set! (-> self ridden?) #f)
-        (set! (-> self not-ridden-timer) (-> self clock frame-counter))
+        (set! (-> self not-ridden-timer) (current-time))
         )
-    (if (>= (- (-> self clock frame-counter) (-> self not-ridden-timer)) (seconds 0.4))
+    (if (>= (- (current-time) (-> self not-ridden-timer)) (seconds 0.4))
         (go-virtual swing-down)
         )
     (none)
@@ -1641,7 +1643,7 @@ This commonly includes things such as:
           (t9-0)
           )
       )
-    (if (>= (- (-> self clock frame-counter) (-> self not-ridden-timer)) (seconds 2))
+    (if (>= (- (current-time) (-> self not-ridden-timer)) (seconds 2))
         (send-event self 'trigger)
         )
     (none)
@@ -1657,12 +1659,10 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-flipped-state drill-drop-plat ((obj drill-drop-plat))
   "Set the state of the platform."
-  (with-pp
-    (set! (-> obj not-ridden-timer) (-> pp clock frame-counter))
-    (go (method-of-object obj up))
-    0
-    (none)
-    )
+  (set! (-> obj not-ridden-timer) (current-time))
+  (go (method-of-object obj up))
+  0
+  (none)
   )
 
 ;; definition for method 31 of type drill-drop-plat

@@ -18,6 +18,7 @@ Shader::Shader(const std::string& shader_name, GameVersion version) : m_name(sha
 
   vert_src = std::regex_replace(vert_src, std::regex("HEIGHT_SCALE"), height_scale);
   vert_src = std::regex_replace(vert_src, std::regex("SCISSOR_HEIGHT"), scissor_height);
+  frag_src = std::regex_replace(frag_src, std::regex("SCISSOR_HEIGHT"), scissor_height);
   vert_src = std::regex_replace(vert_src, std::regex("SCISSOR_ADJUST"), "(" + scissor_adjust + ")");
 
   m_vert_shader = glCreateShader(GL_VERTEX_SHADER);
@@ -77,6 +78,7 @@ ShaderLibrary::ShaderLibrary(GameVersion version) {
   at(ShaderId::SOLID_COLOR) = {"solid_color", version};
   at(ShaderId::DIRECT_BASIC) = {"direct_basic", version};
   at(ShaderId::DIRECT_BASIC_TEXTURED) = {"direct_basic_textured", version};
+  at(ShaderId::DIRECT_BASIC_TEXTURED_MULTI_UNIT) = {"direct_basic_textured_multi_unit", version};
   at(ShaderId::DEBUG_RED) = {"debug_red", version};
   at(ShaderId::SPRITE) = {"sprite_3d", version};
   at(ShaderId::SKY) = {"sky", version};
@@ -106,6 +108,7 @@ ShaderLibrary::ShaderLibrary(GameVersion version) {
   at(ShaderId::GLOW_DRAW) = {"glow_draw", version};
   at(ShaderId::ETIE_BASE) = {"etie_base", version};
   at(ShaderId::ETIE) = {"etie", version};
+  at(ShaderId::SHADOW2) = {"shadow2", version};
 
   for (auto& shader : m_shaders) {
     ASSERT_MSG(shader.okay(), "error compiling shader");
