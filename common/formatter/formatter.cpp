@@ -24,9 +24,6 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
   std::string curr_form = "";
   // Print the token
   if (curr_node.token) {
-    // TODO - perhaps unneeded
-    curr_node.get_formatting_rule(tree_depth, -1)
-        ->indent_token(curr_form, curr_node, curr_node, tree_depth, -1);
     curr_form += curr_node.token.value();
     return curr_form;
   }
@@ -37,24 +34,25 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
   for (int i = 0; i < curr_node.refs.size(); i++) {
     const auto& ref = curr_node.refs.at(i);
     // Append a newline if needed
-    curr_node.get_formatting_rule(tree_depth, i)
-        ->append_newline(curr_form, ref, curr_node, tree_depth, i);
+    formatter_rules::indent::append_newline(curr_form, ref, curr_node, tree_depth, i);
     // Either print the element's token, or recursively format it as well
     if (ref.token) {
-      curr_node.get_formatting_rule(tree_depth, i)
-          ->indent_token(curr_form, ref, curr_node, 1,
-                         i);  // TODO depth hard-coded to 1, i think this can be removed, since
-                              // forms are always done bottom-top recursively, they always act
-                              // independently as if it was the shallowest depth
-      curr_form += ref.token.value();
+      // TODO depth hard-coded to 1, i think this can be removed, since
+      // forms are always done bottom-top recursively, they always act
+      // independently as if it was the shallowest depth
+      formatter_rules::indent::flow_line(curr_form, ref, curr_node, 1, i);
+      if (ref.metadata.node_type == "block_comment") {
+        curr_form += formatter_rules::comments::format_block_comment(ref.token.value());
+      } else {
+        curr_form += ref.token.value();
+      }
       if (!curr_node.metadata.is_top_level) {
         curr_form += " ";
       }
     } else {
       auto formatted_form = apply_formatting(ref, "", tree_depth + 1);
       if (!curr_node.metadata.is_top_level) {
-        curr_node.get_formatting_rule(tree_depth, i)
-            ->align_form_lines(formatted_form, ref, curr_node);
+        formatter_rules::indent::hang_lines(formatted_form, ref, curr_node);
       }
       curr_form += formatted_form;
     }

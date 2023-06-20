@@ -4,10 +4,14 @@
 
 #include "common/util/string_util.h"
 
-void formatter_rules::blank_lines::separate_by_newline(std::string& curr_text,
-                                                       const FormatterTreeNode& containing_node,
-                                                       const FormatterTreeNode& node,
-                                                       const int index) {
+#include "third-party/fmt/core.h"
+
+namespace formatter_rules {
+namespace blank_lines {
+void separate_by_newline(std::string& curr_text,
+                         const FormatterTreeNode& containing_node,
+                         const FormatterTreeNode& node,
+                         const int index) {
   // We only are concerned with top level forms or elements
   // Skip the last element, no trailing new-lines (let the editors handle this!)
   // Also peek ahead to see if there was a comment on this line, if so don't separate things!
@@ -24,16 +28,48 @@ void formatter_rules::blank_lines::separate_by_newline(std::string& curr_text,
   // Otherwise, add only 1 blank line
   curr_text += "\n";
 }
+}  // namespace blank_lines
 
+namespace comments {
+std::string format_block_comment(const std::string& comment) {
+  // Normalize block comments, remove any trailing or leading whitespace
+  // Only allow annotations on the first line, like #|@file
+  // Don't mess with internal indentation as the user might intend it to be a certain way.
+  std::string new_comment = "";
+  std::string comment_contents = "";
+  bool seek_until_whitespace = str_util::starts_with(comment, "#|@");
+  int chars_seeked = 0;
+  for (const auto& c : comment) {
+    if (c == '\n' || (seek_until_whitespace && (c == ' ' || c == '\t')) ||
+        (!seek_until_whitespace && (c != '#' && c != '|'))) {
+      break;
+    }
+    chars_seeked++;
+    new_comment += c;
+  }
+  // Remove the first line content and any leading whitespace
+  comment_contents = str_util::ltrim_newlines(comment.substr(chars_seeked));
+  // Remove trailing whitespace
+  comment_contents = str_util::rtrim(comment_contents);
+  // remove |#
+  // TODO - check suffix
+  comment_contents.pop_back();
+  comment_contents.pop_back();
+  comment_contents = str_util::rtrim(comment_contents);
+  new_comment += fmt::format("\n{}\n|#", comment_contents);
+  return new_comment;
+}
+}  // namespace comments
+
+namespace constant_pairs {
 // TODO - probably need to include quoted literals as well, though the grammar currently does not
 // differentiate between a quoted symbol and a quoted form
 const std::set<std::string> constant_pair_types = {"kwd_lit",  "num_lit",  "str_lit", "char_lit",
                                                    "null_lit", "bool_lit", "sym_lit"};
 
-bool formatter_rules::constant_pairs::is_element_second_in_constant_pair(
-    const FormatterTreeNode& containing_node,
-    const FormatterTreeNode& node,
-    const int index) {
+bool is_element_second_in_constant_pair(const FormatterTreeNode& containing_node,
+                                        const FormatterTreeNode& node,
+                                        const int index) {
   if (containing_node.refs.empty() || index == 0) {
     return false;
   }
@@ -47,12 +83,14 @@ bool formatter_rules::constant_pairs::is_element_second_in_constant_pair(
   }
   return false;
 }
+}  // namespace constant_pairs
 
-void IndentationRule::append_newline(std::string& curr_text,
-                                     const FormatterTreeNode& node,
-                                     const FormatterTreeNode& containing_node,
-                                     const int depth,
-                                     const int index) {
+namespace indent {
+void append_newline(std::string& curr_text,
+                    const FormatterTreeNode& node,
+                    const FormatterTreeNode& containing_node,
+                    const int depth,
+                    const int index) {
   if (index <= 0 && !containing_node.metadata.multiple_elements_first_line ||
       index <= 1 && containing_node.metadata.multiple_elements_first_line ||
       containing_node.metadata.is_top_level ||
@@ -60,25 +98,23 @@ void IndentationRule::append_newline(std::string& curr_text,
     return;
   }
   // Check if it's a constant pair
-  if (formatter_rules::constant_pairs::is_element_second_in_constant_pair(containing_node, node,
-                                                                          index)) {
+  if (constant_pairs::is_element_second_in_constant_pair(containing_node, node, index)) {
     return;
   }
   curr_text = str_util::rtrim(curr_text) + "\n";
 }
 
-void IndentationRule::indent_token(std::string& curr_text,
-                                   const FormatterTreeNode& node,
-                                   const FormatterTreeNode& containing_node,
-                                   const int depth,
-                                   const int index) {
+void flow_line(std::string& curr_text,
+               const FormatterTreeNode& node,
+               const FormatterTreeNode& containing_node,
+               const int depth,
+               const int index) {
   if (node.metadata.is_top_level) {
     return;
   }
   // If the element is the second element in a constant pair, that means we did not append a
   // new-line before hand so we require no indentation (it's inline with the previous element)
-  if (formatter_rules::constant_pairs::is_element_second_in_constant_pair(containing_node, node,
-                                                                          index)) {
+  if (constant_pairs::is_element_second_in_constant_pair(containing_node, node, index)) {
     return;
   }
   if (containing_node.metadata.multiple_elements_first_line) {
@@ -96,9 +132,9 @@ void IndentationRule::indent_token(std::string& curr_text,
   }
 }
 
-void IndentationRule::align_form_lines(std::string& text,
-                                       const FormatterTreeNode& node,
-                                       const FormatterTreeNode& containing_node) {
+void hang_lines(std::string& text,
+                const FormatterTreeNode& node,
+                const FormatterTreeNode& containing_node) {
   const auto lines = str_util::split(text);
   // TODO - unsafe (breaks on a list of lists)
   int alignment_width = 1;
@@ -114,61 +150,6 @@ void IndentationRule::align_form_lines(std::string& text,
   }
   text = aligned_form;
 }
+}  // namespace indent
 
-void InnerIndentationRule::append_newline(std::string& curr_text,
-                                          const FormatterTreeNode& node,
-                                          const FormatterTreeNode& containing_node,
-                                          const int depth,
-                                          const int index) {
-  if (index < 1 || (m_depth != depth || m_index && m_index.value() != index)) {
-    return;
-  }
-  // Check if it's a constant pair
-  if (formatter_rules::constant_pairs::is_element_second_in_constant_pair(containing_node, node,
-                                                                          index)) {
-    return;
-  }
-  if (!node.metadata.was_on_first_line_of_form) {
-    curr_text = str_util::rtrim(curr_text) + "\n";
-  }
-}
-
-void InnerIndentationRule::indent_token(std::string& curr_text,
-                                        const FormatterTreeNode& node,
-                                        const FormatterTreeNode& containing_node,
-                                        const int depth,
-                                        const int index) {
-  if (index < 1 || (m_depth != depth || m_index && m_index.value() != index)) {
-    return;
-  }
-  // If the element is the second element in a constant pair, that means we did not append a
-  // new-line before hand so we require no indentation (it's inline with the previous element)
-  if (formatter_rules::constant_pairs::is_element_second_in_constant_pair(containing_node, node,
-                                                                          index)) {
-    return;
-  }
-  // We only new-line elements if they were not originally on the first line
-  if (!node.metadata.was_on_first_line_of_form) {
-    curr_text += str_util::repeat(depth * 2, " ");
-  }
-}
-
-void InnerIndentationRule::align_form_lines(std::string& text,
-                                            const FormatterTreeNode& node,
-                                            const FormatterTreeNode& containing_node) {
-  if (node.metadata.was_on_first_line_of_form) {
-    return;
-  }
-  const auto lines = str_util::split(text);
-  // TODO - unsafe (breaks on a list of lists)
-  int alignment_width = 2;
-  std::string aligned_form = "";
-  for (int i = 0; i < lines.size(); i++) {
-    aligned_form += str_util::repeat(alignment_width, " ") + lines.at(i);
-    if (i != lines.size() - 1) {
-      aligned_form += "\n";
-    }
-  }
-  text = aligned_form;
-  return;
-}
+}  // namespace formatter_rules
