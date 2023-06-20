@@ -706,11 +706,11 @@
       )
   (cond
     ((= (-> obj type) entity-actor)
-     (set! (-> obj extra perm task) (the-as uint (-> obj task)))
+     (set! (-> obj extra perm task) (-> obj task))
      (set! (-> obj extra vis-id) (-> obj vis-id))
      )
     (else
-      (set! (-> obj extra perm task) (the-as uint 0))
+      (set! (-> obj extra perm task) (game-task none))
       (set! (-> obj extra vis-id) 0)
       0
       )
@@ -1105,7 +1105,7 @@
        (bucket-id debug-no-zbuf1)
        (res-lump-struct sv-16 'name string)
        (-> (the-as process-drawable arg0) root trans)
-       (if (logtest? (-> sv-16 extra perm status) (entity-perm-status bit-0 bit-1))
+       (if (logtest? (-> sv-16 extra perm status) (entity-perm-status bit-0 error))
            (font-color red)
            (font-color white)
            )
@@ -1250,7 +1250,7 @@
                         (set! sv-32 (the-as int (bucket-id debug-no-zbuf1)))
                         (let ((a2-4 (res-lump-struct s2-0 'name structure))
                               (a3-2 sv-20)
-                              (t0-1 (if (logtest? (-> s2-0 extra perm status) (entity-perm-status bit-0 bit-1))
+                              (t0-1 (if (logtest? (-> s2-0 extra perm status) (entity-perm-status bit-0 error))
                                         1
                                         5
                                         )
@@ -1621,7 +1621,7 @@
 ;; WARN: Return type mismatch symbol vs none.
 (defun entity-deactivate-handler ((arg0 process) (arg1 entity-actor))
   (when (= arg0 (-> arg1 extra process))
-    (logclear! (-> arg1 extra perm status) (entity-perm-status bit-1 no-kill))
+    (logclear! (-> arg1 extra perm status) (entity-perm-status error no-kill))
     (set! (-> arg1 extra process) #f)
     )
   (none)
@@ -1928,7 +1928,7 @@
     ((= arg0 'game)
      (logclear! (-> obj status) arg1)
      )
-    ((task-complete? *game-info* (the-as game-task (-> obj task)))
+    ((task-complete? *game-info* (-> obj task))
      (logclear! (-> obj status) (logior (if (logtest? (-> obj status) (entity-perm-status bit-4))
                                             524
                                             0
@@ -2319,7 +2319,7 @@
 
 (defun entity-task-complete-off ((arg0 entity))
   (let ((v1-0 (-> arg0 extra)))
-    (if (!= (-> v1-0 perm task) 1)
+    (if (!= (-> v1-0 perm task) (game-task complete))
         (logclear! (-> *game-info* task-perm-list data (-> v1-0 perm task) status) (entity-perm-status complete))
         )
     )
