@@ -178,7 +178,7 @@ bool DecompilerTypeSystem::lookup_flags(const std::string& type, u64* dest) cons
     *dest = ((u64)0xe << 32) + (0 << 16) + 0x24;
     return true;
   }
-    if (type == "process") {
+  if (type == "process") {
     *dest = ((u64)0xe << 32) + (0 << 16) + 0x80;
     return true;
   }
