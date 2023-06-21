@@ -15,7 +15,6 @@ cp $BIN_SOURCE/extractor.exe $DEST
 mkdir -p $DEST/data
 mkdir -p $DEST/data/launcher/
 mkdir -p $DEST/data/decompiler/
-mkdir -p $DEST/data/assets
 mkdir -p $DEST/data/game
 mkdir -p $DEST/data/log
 mkdir -p $DEST/data/game/graphics/opengl_renderer/

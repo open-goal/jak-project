@@ -1,5 +1,12 @@
-set(SDL_STATIC OFF CACHE BOOL "" FORCE)
-set(SDL_SHARED ON CACHE BOOL "" FORCE)
+if(STATICALLY_LINK)
+    message(STATUS "Statically Linking SDL")
+    set(SDL_STATIC ON CACHE BOOL "" FORCE)
+    set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+else()
+    message(STATUS "Dynamically Linking SDL")
+    set(SDL_STATIC OFF CACHE BOOL "" FORCE)
+    set(SDL_SHARED ON CACHE BOOL "" FORCE)
+endif()
 
 # why this is disabled, i have no idea but this MUST be on for a windows+clang(llvm) shared compile to work
 set(SDL_LIBC ON CACHE BOOL "" FORCE)
