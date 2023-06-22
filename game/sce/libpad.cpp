@@ -95,7 +95,7 @@ int scePadSetActDirect(int port, int /*slot*/, const u8* data) {
   // for small motor
   // also, the "slow" motor corresponds to the "large" motor on the PS2
   if (Display::GetMainDisplay()) {
-    if (Display::GetMainDisplay()->get_input_manager()->controller_has_rumble(port)) {
+    if (!Display::GetMainDisplay()->get_input_manager()->controller_has_rumble(port)) {
       return 0;
     }
     Display::GetMainDisplay()->get_input_manager()->enqueue_update_rumble(port, data[1], data[0]);

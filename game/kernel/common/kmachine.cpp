@@ -677,6 +677,13 @@ u64 pc_current_controller_has_led() {
   return bool_to_symbol(false);
 }
 
+u64 pc_current_controller_has_rumble() {
+  if (Display::GetMainDisplay()) {
+    return bool_to_symbol(Display::GetMainDisplay()->get_input_manager()->controller_has_rumble(0));
+  }
+  return bool_to_symbol(false);
+}
+
 void pc_set_controller_led(const int port, const u8 red, const u8 green, const u8 blue) {
   if (Display::GetMainDisplay()) {
     Display::GetMainDisplay()->get_input_manager()->enqueue_set_controller_led(port, red, green,
@@ -875,6 +882,8 @@ void init_common_pc_port_functions(
   make_func_symbol_func("pc-ignore-background-controller-events!",
                         (void*)pc_ignore_background_controller_events);
   make_func_symbol_func("pc-current-controller-has-led?", (void*)pc_current_controller_has_led);
+  make_func_symbol_func("pc-current-controller-has-rumble?",
+                        (void*)pc_current_controller_has_rumble);
   make_func_symbol_func("pc-set-controller-led!", (void*)pc_set_controller_led);
   make_func_symbol_func("pc-waiting-for-bind?", (void*)pc_waiting_for_bind);
   make_func_symbol_func("pc-set-waiting-for-bind!", (void*)pc_set_waiting_for_bind);

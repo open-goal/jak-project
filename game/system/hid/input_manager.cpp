@@ -53,6 +53,8 @@ void InputManager::refresh_device_list() {
   m_available_controllers.clear();
   m_controller_port_mapping.clear();
   // Enumerate devices
+  // TODO - if this was done on a separate thread, there would be no hitch in the game thread
+  // but of course, that presents other synchronization challenges.
   const auto num_joysticks = SDL_NumJoysticks();
   if (num_joysticks > 0) {
     for (int i = 0; i < num_joysticks; i++) {
