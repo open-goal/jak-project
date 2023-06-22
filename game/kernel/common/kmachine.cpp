@@ -648,7 +648,7 @@ void pc_set_keyboard_enabled(u32 sym_val) {
 
 void pc_set_mouse_options(u32 enabled, u32 control_camera, u32 control_movement) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_input_manager()->update_mouse_options(
+    Display::GetMainDisplay()->get_input_manager()->enqueue_update_mouse_options(
         symbol_to_bool(enabled), symbol_to_bool(control_camera), symbol_to_bool(control_movement));
   }
 }
@@ -665,7 +665,7 @@ void pc_set_mouse_camera_sens(u32 xsens, u32 ysens) {
 
 void pc_ignore_background_controller_events(u32 sym_val) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_input_manager()->ignore_background_controller_events(
+    Display::GetMainDisplay()->get_input_manager()->enqueue_ignore_background_controller_events(
         symbol_to_bool(sym_val));
   }
 }
@@ -679,7 +679,8 @@ u64 pc_current_controller_has_led() {
 
 void pc_set_controller_led(const int port, const u8 red, const u8 green, const u8 blue) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_input_manager()->set_controller_led(port, red, green, blue);
+    Display::GetMainDisplay()->get_input_manager()->enqueue_set_controller_led(port, red, green,
+                                                                               blue);
   }
 }
 
@@ -715,7 +716,8 @@ void pc_reset_bindings_to_defaults(const int port, const InputDeviceType device_
 
 void pc_set_auto_hide_cursor(u32 val) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_input_manager()->set_auto_hide_mouse(symbol_to_bool(val));
+    Display::GetMainDisplay()->get_input_manager()->enqueue_set_auto_hide_mouse(
+        symbol_to_bool(val));
   }
 }
 

@@ -23,6 +23,15 @@ SDL_bool sdl_bool(const bool val) {
 bool from_sdl_bool(const SDL_bool val) {
   return val == SDL_TRUE ? true : false;
 }
+bool is_SDL_GUID_zero(SDL_GUID guid) {
+  for (int i = 0; i < 16; i++) {
+    if (guid.data[i] != 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
 std::vector<std::string> get_modifier_strings(InputModifiers modifiers) {
   std::vector<std::string> result = {};
   if (modifiers.need_ctrl) {
@@ -91,6 +100,7 @@ std::string get_controller_axis_name(const int sdl_axis_id) {
   }
   return result;
 }
+
 bool is_modifier_key(const SDL_Keycode key_code) {
   return key_code == SDLK_LSHIFT || key_code == SDLK_RSHIFT || key_code == SDLK_LALT ||
          key_code == SDLK_RALT || key_code == SDLK_LCTRL || key_code == SDLK_RCTRL ||
