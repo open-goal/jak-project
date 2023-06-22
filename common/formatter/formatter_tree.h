@@ -31,9 +31,6 @@ class FormatterTreeNode {
     bool is_comment = false;
     bool is_inline = false;
     int num_blank_lines_following = 0;
-    // TODO - these can go away now that i am ditching inner/block indent
-    bool multiple_elements_first_line = false;
-    bool was_on_first_line_of_form = false;
   };
   std::vector<FormatterTreeNode> refs;
   Metadata metadata;

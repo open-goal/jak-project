@@ -107,16 +107,7 @@ void FormatterTree::construct_formatter_tree_recursive(const std::string& source
       continue;
     }
     if (curr_node_type == "list_lit") {
-      // Check to see if the first line of the form has more than 1 element
-      if (i == 1) {
-        list_node.metadata.multiple_elements_first_line =
-            !node_followed_by_only_whitespace(source, child_node);
-      }
       construct_formatter_tree_recursive(source, child_node, list_node);
-      // Check if the node that was recursively added to the list was on the same line
-      auto& new_node = list_node.refs.at(list_node.refs.size() - 1);
-      new_node.metadata.was_on_first_line_of_form =
-          nodes_on_same_line(source, curr_node, child_node);
     } else {
       construct_formatter_tree_recursive(source, child_node, tree_node);
     }

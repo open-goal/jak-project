@@ -7,6 +7,11 @@
 #include "third-party/fmt/core.h"
 
 namespace formatter_rules {
+
+// TODO - probably need to include quoted literals as well, though the grammar currently does not
+// differentiate between a quoted symbol and a quoted form
+const std::set<std::string> constant_types = {"kwd_lit",  "num_lit",  "str_lit",
+                                              "char_lit", "null_lit", "bool_lit"};
 namespace blank_lines {
 void separate_by_newline(std::string& curr_text,
                          const FormatterTreeNode& containing_node,
@@ -62,10 +67,6 @@ std::string format_block_comment(const std::string& comment) {
 }  // namespace comments
 
 namespace constant_pairs {
-// TODO - probably need to include quoted literals as well, though the grammar currently does not
-// differentiate between a quoted symbol and a quoted form
-const std::set<std::string> constant_pair_types = {"kwd_lit",  "num_lit",  "str_lit", "char_lit",
-                                                   "null_lit", "bool_lit", "sym_lit"};
 
 bool is_element_second_in_constant_pair(const FormatterTreeNode& containing_node,
                                         const FormatterTreeNode& node,
@@ -76,13 +77,43 @@ bool is_element_second_in_constant_pair(const FormatterTreeNode& containing_node
   // Ensure that a keyword came before hand
   if (containing_node.refs.at(index - 1).metadata.node_type != "kwd_lit") {
     return false;
+  } else if (node.metadata.node_type == "kwd_lit") {
+    // NOTE - there is ambiugity here which cannot be totally solved (i think?)
+    // if the element itself is also a keyword, assume this is two adjacent keywords and they should
+    // not be paired
+    return false;
   }
   // Check the type of the element
-  if (constant_pair_types.find(node.metadata.node_type) != constant_pair_types.end()) {
+  if (constant_types.find(node.metadata.node_type) != constant_types.end()) {
     return true;
   }
   return false;
 }
+
+bool form_should_be_constant_paired(const FormatterTreeNode& node) {
+  // Criteria for a list to be constant paired:
+  // - needs to start with a non-symbol
+  // - needs atleast the minimum amount of pairs, so 2 pairs can still be inlined
+  if (node.refs.empty()) {
+    return false;
+  }
+  int num_pairs = 0;
+  for (int i = 0; i < node.refs.size() - 1; i++) {
+    const auto& ref = node.refs.at(i);
+    const auto& next_ref = node.refs.at(i + 1);
+    if (ref.token && next_ref.token) {
+      // If the first element a keyword and the following item is a constant, it's a pair
+      // move forward one extra index
+      if (ref.metadata.node_type == "kwd_lit" &&
+          constant_types.find(next_ref.metadata.node_type) != constant_types.end()) {
+        num_pairs++;
+        i++;
+      }
+    }
+  }
+  return num_pairs >= min_pair_amount;
+}
+
 }  // namespace constant_pairs
 
 namespace indent {
@@ -149,28 +180,51 @@ bool form_exceed_line_width(const std::string& curr_text,
   return false;
 }
 
-bool append_newline(std::string& curr_text,
+bool form_contains_comment(const FormatterTreeNode& node) {
+  if (node.metadata.is_comment) {
+    return true;
+  }
+  for (const auto& ref : node.refs) {
+    if (ref.metadata.is_comment) {
+      return true;
+    } else if (!node.refs.empty()) {
+      if (form_contains_comment(ref)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool form_can_be_inlined(std::string& curr_text, const FormatterTreeNode& node) {
+  // Two main checks:
+  // - first, is the form too long to fit on a line TODO - increase accuracy here
+  if (form_exceed_line_width(curr_text, node, 0)) {
+    return false;
+  }
+  // - second, are there any comments? (inlined or not, doesn't matter)
+  if (form_contains_comment(node)) {
+    return false;
+  }
+  return true;
+}
+
+void append_newline(std::string& curr_text,
                     const FormatterTreeNode& node,
                     const FormatterTreeNode& containing_node,
                     const int depth,
-                    const int index) {
+                    const int index,
+                    const bool constant_pair_form) {
   if (index <= 0 || containing_node.metadata.is_top_level ||
       (node.metadata.is_comment && node.metadata.is_inline)) {
-    return false;
+    return;
   }
   // Check if it's a constant pair
-  if (constant_pairs::is_element_second_in_constant_pair(containing_node, node, index)) {
-    return false;
-  }
-  // Explore the node's contents early, if we put every element on the same line without exceeding
-  // our line length, no new-line needed!
-  if (!node.metadata.is_comment &&
-      (index > 0 && !containing_node.refs.at(index - 1).metadata.is_comment) &&
-      !form_exceed_line_width(curr_text, containing_node, index)) {
-    return false;
+  if (constant_pair_form &&
+      constant_pairs::is_element_second_in_constant_pair(containing_node, node, index)) {
+    return;
   }
   curr_text = str_util::rtrim(curr_text) + "\n";
-  return true;
 }
 
 void flow_line(std::string& curr_text,
@@ -178,7 +232,7 @@ void flow_line(std::string& curr_text,
                const FormatterTreeNode& containing_node,
                const int depth,
                const int index) {
-  if (node.metadata.is_top_level) {
+  if (node.metadata.is_top_level || (node.metadata.is_inline && node.metadata.is_comment)) {
     return;
   }
   // If the element is the second element in a constant pair, that means we did not append a
@@ -187,29 +241,32 @@ void flow_line(std::string& curr_text,
     return;
   }
   if (index > 0) {
-    curr_text += str_util::repeat(depth, "  ");
+    // If the first element in the list is a constant, we only indent with 1 space instead
+    if (constant_types.find(containing_node.refs.at(0).metadata.node_type) !=
+        constant_types.end()) {
+      curr_text += str_util::repeat(depth, " ");
+    } else {
+      curr_text += str_util::repeat(depth, "  ");
+    }
   }
-  // if (containing_node.metadata.multiple_elements_first_line) {
-  //   if (index > 1) {
-  //     // Only apply indentation if we are about to print a normal text token
-  //     // TODO - unsafe
-  //     if (node.token.has_value()) {
-  //       curr_text += str_util::repeat(containing_node.refs.at(0).token.value().length() + 2, "
-  //       ");
-  //     }
-  //   }
-  // }
 }
 
 void hang_lines(std::string& text,
                 const FormatterTreeNode& node,
-                const FormatterTreeNode& containing_node) {
+                const FormatterTreeNode& containing_node,
+                const bool constant_pair_form) {
   const auto lines = str_util::split(text);
   // TODO - unsafe (breaks on a list of lists)
-  int alignment_width = 1;
-  if (containing_node.metadata.multiple_elements_first_line) {
-    alignment_width = containing_node.refs.at(0).token.value().length() + 2;
+  int alignment_width = 2;
+  if (constant_pair_form &&
+      constant_types.find(containing_node.refs.at(0).metadata.node_type) != constant_types.end()) {
+    alignment_width = 3;
   }
+  // TODO - implement hanging
+  // always hang unless flowing is "better" (this is the hard part)
+  /*else if (containing_node.metadata.multiple_elements_first_line) {
+    alignment_width = containing_node.refs.at(0).token.value().length() + 2;
+  }*/
   std::string aligned_form = "";
   for (int i = 0; i < lines.size(); i++) {
     aligned_form += str_util::repeat(alignment_width, " ") + lines.at(i);

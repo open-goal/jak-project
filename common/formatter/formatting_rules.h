@@ -53,6 +53,8 @@ std::string format_block_comment(const std::string& comment);
 //
 // Reference - https://github.com/kkinnear/zprint/blob/main/doc/options/constantpairs.md
 namespace constant_pairs {
+const static int min_pair_amount = 4;
+
 // Determines if the given element is the second element in a constant pair, if it is then we would
 // usually want to elide the new-line in whatever code that applies it
 //
@@ -64,6 +66,7 @@ namespace constant_pairs {
 bool is_element_second_in_constant_pair(const FormatterTreeNode& containing_node,
                                         const FormatterTreeNode& node,
                                         const int index);
+bool form_should_be_constant_paired(const FormatterTreeNode& node);
 }  // namespace constant_pairs
 
 // There are two main types of indentations "flow"s and "hang"s
@@ -89,11 +92,14 @@ bool is_element_second_in_constant_pair(const FormatterTreeNode& containing_node
 namespace indent {
 const static int line_width_target = 120;
 
-bool append_newline(std::string& curr_text,
+bool form_can_be_inlined(std::string& curr_text, const FormatterTreeNode& node);
+
+void append_newline(std::string& curr_text,
                     const FormatterTreeNode& node,
                     const FormatterTreeNode& containing_node,
                     const int depth,
-                    const int index);
+                    const int index,
+                    const bool constant_pair_form);
 void flow_line(std::string& curr_text,
                const FormatterTreeNode& node,
                const FormatterTreeNode& containing_node,
@@ -101,7 +107,8 @@ void flow_line(std::string& curr_text,
                const int index);
 void hang_lines(std::string& text,
                 const FormatterTreeNode& node,
-                const FormatterTreeNode& containing_node);
+                const FormatterTreeNode& containing_node,
+                const bool constant_pair_form);
 
 }  // namespace indent
 }  // namespace formatter_rules
