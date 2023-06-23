@@ -24,6 +24,23 @@ bool ends_with(const std::string& s, const std::string& suffix) {
          0 == s.compare(s.size() - suffix.size(), suffix.size(), suffix);
 }
 
+// Left-trims any leading whitespace up to and including the final leading newline
+// For example:
+// " \n\n  hello world" => "  hello world"
+std::string ltrim_newlines(const std::string& s) {
+  size_t start = s.find_first_not_of(WHITESPACE);
+  // Seek backwards until we hit the beginning of the string, or a newline -- this is the actual
+  // substr point we want to use
+  for (int i = start - 1; i >= 0; i--) {
+    const auto& c = s.at(i);
+    if (c == '\n') {
+      break;
+    }
+    start--;
+  }
+  return (start == std::string::npos) ? "" : s.substr(start);
+}
+
 std::string ltrim(const std::string& s) {
   size_t start = s.find_first_not_of(WHITESPACE);
   return (start == std::string::npos) ? "" : s.substr(start);

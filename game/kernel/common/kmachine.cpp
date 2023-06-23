@@ -479,13 +479,13 @@ void pc_set_display_mode(u32 symptr) {
     return;
   }
   if (symptr == g_pc_port_funcs.intern_from_c("windowed").offset || symptr == s7.offset) {
-    Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
+    Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_display_mode(
         WindowDisplayMode::Windowed);
   } else if (symptr == g_pc_port_funcs.intern_from_c("borderless").offset) {
-    Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
+    Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_display_mode(
         WindowDisplayMode::Borderless);
   } else if (symptr == g_pc_port_funcs.intern_from_c("fullscreen").offset) {
-    Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
+    Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_display_mode(
         WindowDisplayMode::Fullscreen);
   }
 }
@@ -560,13 +560,13 @@ void pc_get_window_scale(u32 x_ptr, u32 y_ptr) {
 
 void pc_get_fullscreen_display(u64 display_id) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_display_manager()->set_fullscreen_display_id(display_id);
+    Display::GetMainDisplay()->get_display_manager()->enqueue_set_fullscreen_display_id(display_id);
   }
 }
 
 void pc_set_window_size(u64 width, u64 height) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_display_manager()->set_window_size(width, height);
+    Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_size(width, height);
   }
 }
 

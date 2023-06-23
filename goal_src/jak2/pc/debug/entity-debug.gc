@@ -43,12 +43,12 @@
     )
 
   ;; start writing text
-  (let* ((begin-y (- LINE_HEIGHT (* (-> inspect-info scroll-y) LINE_HEIGHT))) (cur-y begin-y) (y-adv 16))
+  (let* ((begin-y (- (* 2 LINE_HEIGHT) (* (-> inspect-info scroll-y) LINE_HEIGHT))) (cur-y begin-y) (y-adv LINE_HEIGHT))
   (with-dma-buffer-add-bucket ((debug-buf (-> (current-frame) debug-buf))
                                (bucket-id debug-no-zbuf1))
       ;; basic info, actor id, etc
       (draw-string-xy
-          (string-format "~3L~A~0L ~A~%tags: ~D size: ~D aid: #x~x~%R1/L1 scroll L3 toggle display-actor-info~%--------------------" (-> e type) name (length e) (asize-of e) (-> e aid))
+          (string-format "~3L~A~0L ~A~%tags: ~D size: ~D aid: #x~x level: ~S~%R1/L1 to scroll~%--------------------" (-> e type) name (length e) (asize-of e) (-> e aid) (aif (-> e extra) (-> it level name)))
           debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
       (+! cur-y (* LINE_HEIGHT 4))
       (cond
@@ -59,10 +59,25 @@
                 (string-format "etype: ~A~%vis: ~D task: ~S" (-> actor etype) (-> actor vis-id) (game-task->string (-> actor task)))
                 debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
             (+! cur-y (* LINE_HEIGHT 2))
-            (format (clear *debug-temp-string*) "(~S)" (begin (bit-enum->string task-mask (-> actor kill-mask) (clear *temp-string*)) *temp-string*))
-            (draw-string-xy (string-format "kill-mask: ~S" *debug-temp-string*)
-                debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
-            (+! cur-y (* LINE_HEIGHT 1))
+
+            (when (and (nonzero? (-> actor extra)) (-> actor extra))
+              (draw-string-xy (string-format "perm: #x~X task: ~S" (-> actor extra perm user-uint64) (game-task->string (-> actor extra perm task)))
+                  debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
+              (+! cur-y (* LINE_HEIGHT 1))
+              (when (nonzero? (-> actor extra perm status))
+                (format (clear *debug-temp-string*) "(~S)" (begin (bit-enum->string entity-perm-status (-> actor extra perm status) (clear *temp-string*)) *temp-string*))
+                (draw-string-xy (string-format "perm-status: ~S" *debug-temp-string*)
+                    debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
+                (+! cur-y (* LINE_HEIGHT 1))
+                )
+              )
+
+            (when (nonzero? (-> actor kill-mask))
+              (format (clear *debug-temp-string*) "(~S)" (begin (bit-enum->string task-mask (-> actor kill-mask) (clear *temp-string*)) *temp-string*))
+              (draw-string-xy (string-format "kill-mask: ~S" *debug-temp-string*)
+                  debug-buf 352 cur-y (font-color default) (font-flags shadow kerning middle))
+              (+! cur-y (* LINE_HEIGHT 1))
+              )
             )
           )
         )

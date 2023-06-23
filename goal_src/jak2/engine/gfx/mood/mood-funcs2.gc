@@ -2618,7 +2618,12 @@
       (set! (-> arg0 times 1 w) 1.0)
       (update-mood-caustics arg0 2 (-> gp-1 rot) 10922.667 0.75 0.25)
       (update-mood-caustics arg0 3 (-> gp-1 rot) 0.0 0.75 0.25)
-      (update-mood-pulse arg0 4 0 0.875 0.125 (* 196608.0 (-> self clock seconds-per-frame)) 0.0)
+      ;; note : updated for pc port for nest revisit
+      (#if PC_PORT
+          (if (process-by-name "blocking-plane-nestb" *active-pool*)
+              (set! (-> arg0 times 4 w) 0.0)
+              (update-mood-pulse arg0 4 0 0.875 0.125 (* 196608.0 (-> self clock seconds-per-frame)) 0.0))
+          (update-mood-pulse arg0 4 0 0.875 0.125 (* 196608.0 (-> self clock seconds-per-frame)) 0.0))
       (set! (-> arg0 times 5 w) (+ (-> gp-1 purple) (-> gp-1 purple-noise)))
       (when (not (paused?))
         (seek! (-> gp-1 purple) 0.0 (* 4.0 (-> self clock seconds-per-frame)))
