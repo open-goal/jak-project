@@ -53,6 +53,8 @@ void InputManager::refresh_device_list() {
   m_available_controllers.clear();
   m_controller_port_mapping.clear();
   // Enumerate devices
+  // TODO - if this was done on a separate thread, there would be no hitch in the game thread
+  // but of course, that presents other synchronization challenges.
   const auto num_joysticks = SDL_NumJoysticks();
   if (num_joysticks > 0) {
     for (int i = 0; i < num_joysticks; i++) {
@@ -61,6 +63,10 @@ void InputManager::refresh_device_list() {
         continue;
       }
       auto controller = std::make_shared<GameController>(i, m_settings);
+      if (!controller->is_loaded()) {
+        lg::error("Unable to successfully connect to GameController with id {}, skipping", i);
+        continue;
+      }
       m_available_controllers.push_back(controller);
       // By default, controller port mapping is on a first-come-first-served basis
       //
@@ -101,6 +107,11 @@ void InputManager::refresh_device_list() {
   } else {
     lg::info("Found {} controllers", m_available_controllers.size());
   }
+}
+
+void InputManager::enqueue_ignore_background_controller_events(const bool ignore) {
+  const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
+  ee_event_queue.push({EEInputEventType::IGNORE_BACKGROUND_CONTROLLER_EVENTS, ignore});
 }
 
 void InputManager::ignore_background_controller_events(const bool ignore) {
@@ -169,19 +180,33 @@ void InputManager::process_sdl_event(const SDL_Event& event,
   }
 }
 
-std::optional<std::shared_ptr<PadData>> InputManager::get_current_data(const int port) const {
-  if (m_data.find(port) == m_data.end()) {
-    return {};
+void InputManager::process_ee_events() {
+  const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
+  // Fully process any events from the EE
+  while (!ee_event_queue.empty()) {
+    const auto& evt = ee_event_queue.front();
+    switch (evt.type) {
+      case EEInputEventType::IGNORE_BACKGROUND_CONTROLLER_EVENTS:
+        ignore_background_controller_events(std::get<bool>(evt.param1));
+        break;
+      case EEInputEventType::UPDATE_RUMBLE:
+        update_rumble(std::get<int>(evt.param1), std::get<u8>(evt.param2),
+                      std::get<u8>(evt.param3));
+        break;
+      case EEInputEventType::SET_CONTROLLER_LED:
+        set_controller_led(std::get<int>(evt.param1), std::get<u8>(evt.param2),
+                           std::get<u8>(evt.param3), std::get<u8>(evt.param4));
+        break;
+      case EEInputEventType::UPDATE_MOUSE_OPTIONS:
+        update_mouse_options(std::get<bool>(evt.param1), std::get<bool>(evt.param2),
+                             std::get<bool>(evt.param3));
+        break;
+      case EEInputEventType::SET_AUTO_HIDE_MOUSE:
+        set_auto_hide_mouse(std::get<bool>(evt.param1));
+        break;
+    }
+    ee_event_queue.pop();
   }
-  return m_data.at(port);
-}
-
-int InputManager::update_rumble(int port, u8 low_intensity, u8 high_intensity) {
-  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
-    return 0;
-  }
-  return m_available_controllers.at(m_controller_port_mapping.at(port))
-      ->update_rumble(low_intensity, high_intensity);
 }
 
 void InputManager::register_command(const CommandBinding::Source source,
@@ -208,6 +233,13 @@ void InputManager::register_command(const CommandBinding::Source source,
       m_command_binds.mouse_binds[bind.host_key].push_back(bind);
       break;
   }
+}
+
+std::optional<std::shared_ptr<PadData>> InputManager::get_current_data(const int port) const {
+  if (m_data.find(port) == m_data.end()) {
+    return {};
+  }
+  return m_data.at(port);
 }
 
 std::string InputManager::get_controller_name(const int controller_id) {
@@ -271,7 +303,7 @@ void InputManager::set_controller_for_port(const int controller_id, const int po
 }
 
 bool InputManager::controller_has_led(const int port) {
-  if (m_controller_port_mapping.find(0) == m_controller_port_mapping.end()) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
     return false;
   }
   const auto id = m_controller_port_mapping.at(port);
@@ -281,8 +313,27 @@ bool InputManager::controller_has_led(const int port) {
   return m_available_controllers.at(id)->has_led();
 }
 
+bool InputManager::controller_has_rumble(const int port) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return false;
+  }
+  const auto id = m_controller_port_mapping.at(port);
+  if (id >= (int)m_available_controllers.size()) {
+    return false;
+  }
+  return m_available_controllers.at(id)->has_rumble();
+}
+
+void InputManager::enqueue_set_controller_led(const int port,
+                                              const u8 red,
+                                              const u8 green,
+                                              const u8 blue) {
+  const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
+  ee_event_queue.push({EEInputEventType::SET_CONTROLLER_LED, port, red, green, blue});
+}
+
 void InputManager::set_controller_led(const int port, const u8 red, const u8 green, const u8 blue) {
-  if (m_controller_port_mapping.find(0) == m_controller_port_mapping.end()) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
     return;
   }
   const auto id = m_controller_port_mapping.at(port);
@@ -292,12 +343,35 @@ void InputManager::set_controller_led(const int port, const u8 red, const u8 gre
   m_available_controllers.at(id)->set_led(red, green, blue);
 }
 
+void InputManager::enqueue_update_rumble(const int port,
+                                         const u8 low_intensity,
+                                         const u8 high_intensity) {
+  const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
+  ee_event_queue.push({EEInputEventType::UPDATE_RUMBLE, port, low_intensity, high_intensity});
+}
+
+int InputManager::update_rumble(int port, u8 low_intensity, u8 high_intensity) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return 0;
+  }
+  return m_available_controllers.at(m_controller_port_mapping.at(port))
+      ->update_rumble(low_intensity, high_intensity);
+}
+
 void InputManager::enable_keyboard(const bool enabled) {
   m_keyboard_enabled = enabled;
   if (!m_keyboard_enabled) {
     // Reset inputs as this device won't be able to be read from again!
     clear_inputs();
   }
+}
+
+void InputManager::enqueue_update_mouse_options(const bool enabled,
+                                                const bool control_camera,
+                                                const bool control_movement) {
+  const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
+  ee_event_queue.push(
+      {EEInputEventType::UPDATE_MOUSE_OPTIONS, enabled, control_camera, control_movement});
 }
 
 void InputManager::update_mouse_options(const bool enabled,
@@ -358,6 +432,11 @@ void InputManager::reset_input_bindings_to_defaults(const int port,
       m_settings->mouse_binds.set_bindings(DEFAULT_MOUSE_BINDS);
       break;
   }
+}
+
+void InputManager::enqueue_set_auto_hide_mouse(const bool auto_hide_mouse) {
+  const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
+  ee_event_queue.push({EEInputEventType::SET_AUTO_HIDE_MOUSE, auto_hide_mouse});
 }
 
 void InputManager::set_auto_hide_mouse(const bool auto_hide_mouse) {

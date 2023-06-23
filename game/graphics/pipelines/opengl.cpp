@@ -470,6 +470,10 @@ void GLDisplay::render() {
     auto p = scoped_prof("display-manager-ee-events");
     m_display_manager->process_ee_events();
   }
+  {
+    auto p = scoped_prof("input-manager-ee-events");
+    m_input_manager->process_ee_events();
+  }
 
   // imgui start of frame
   {
