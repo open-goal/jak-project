@@ -7,7 +7,13 @@
 
 #include "common/formatter/formatting_rules.h"
 
-namespace formatter {
-extern const std::unordered_map<std::string, std::vector<std::shared_ptr<IndentationRule>>>
-    opengoal_indentation_rules;
-}
+namespace formatter_rules {
+namespace config {
+struct FormConfiguration {
+  bool force_hang = false;
+  int start_hang_at_index = 0;
+};
+
+extern std::unordered_map<std::string, FormConfiguration> opengoal_form_config;
+}  // namespace config
+}  // namespace formatter_rules

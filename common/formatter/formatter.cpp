@@ -24,9 +24,6 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
   std::string curr_form = "";
   // Print the token
   if (curr_node.token) {
-    // TODO - perhaps unneeded
-    curr_node.get_formatting_rule(tree_depth, -1)
-        ->indent_token(curr_form, curr_node, curr_node, tree_depth, -1);
     curr_form += curr_node.token.value();
     return curr_form;
   }
@@ -34,29 +31,51 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
     curr_form += "(";
   }
   // Iterate the form
+
+  bool inline_form = false;
+  // Also check if the form should be constant-paired
+  const bool constant_pair_form =
+      formatter_rules::constant_pairs::form_should_be_constant_paired(curr_node);
+  if (!constant_pair_form) {
+    // Determine if the form should be inlined or hung/flowed
+    // TODO - this isn't entirely accurate, needs current cursor positioning (which is tricky
+    // because recursion!)
+    inline_form = formatter_rules::indent::form_can_be_inlined(curr_form, curr_node);
+  }
   for (int i = 0; i < curr_node.refs.size(); i++) {
     const auto& ref = curr_node.refs.at(i);
     // Append a newline if needed
-    curr_node.get_formatting_rule(tree_depth, i)
-        ->append_newline(curr_form, ref, curr_node, tree_depth, i);
+    if (!inline_form) {
+      formatter_rules::indent::append_newline(curr_form, ref, curr_node, tree_depth, i,
+                                              constant_pair_form);
+    }
     // Either print the element's token, or recursively format it as well
     if (ref.token) {
-      curr_node.get_formatting_rule(tree_depth, i)
-          ->indent_token(curr_form, ref, curr_node, 1,
-                         i);  // TODO depth hard-coded to 1, i think this can be removed, since
-                              // forms are always done bottom-top recursively, they always act
-                              // independently as if it was the shallowest depth
-      curr_form += ref.token.value();
+      // TODO depth hard-coded to 1, i think this can be removed, since
+      // forms are always done bottom-top recursively, they always act
+      // independently as if it was the shallowest depth
+      if (!inline_form) {
+        formatter_rules::indent::flow_line(curr_form, ref, curr_node, 1, i);
+      }
+      if (ref.metadata.node_type == "comment" && ref.metadata.is_inline) {
+        curr_form += " " + ref.token.value();
+      } else if (ref.metadata.node_type == "block_comment") {
+        curr_form += formatter_rules::comments::format_block_comment(ref.token.value());
+      } else {
+        curr_form += ref.token.value();
+      }
       if (!curr_node.metadata.is_top_level) {
         curr_form += " ";
       }
     } else {
       auto formatted_form = apply_formatting(ref, "", tree_depth + 1);
-      if (!curr_node.metadata.is_top_level) {
-        curr_node.get_formatting_rule(tree_depth, i)
-            ->align_form_lines(formatted_form, ref, curr_node);
+      if (!curr_node.metadata.is_top_level && !inline_form) {
+        formatter_rules::indent::hang_lines(formatted_form, ref, curr_node, constant_pair_form);
       }
       curr_form += formatted_form;
+      if (!curr_node.metadata.is_top_level) {
+        curr_form += " ";
+      }
     }
     // Handle blank lines at the top level, skip if it's the final element
     formatter_rules::blank_lines::separate_by_newline(curr_form, curr_node, ref, i);
