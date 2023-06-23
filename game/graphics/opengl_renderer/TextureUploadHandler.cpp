@@ -22,6 +22,11 @@ void TextureUploadHandler::render(DmaFollower& dma,
   while (dma.current_tag_offset() != render_state->next_bucket) {
     auto dma_tag = dma.current_tag();
 
+    auto vif0 = dma.current_tag_vifcode0();
+    if (vif0.kind == VifCode::Kind::PC_PORT && vif0.immediate == 12) {
+      dma.read_and_advance();
+      render_state->texture_animator->handle_texture_anim_data(dma);
+    }
     // does it look like data to do eye rendering?
     if (dma_tag.qwc == (128 / 16)) {
       // note: these uploads may have texture that we need for eye rendering.

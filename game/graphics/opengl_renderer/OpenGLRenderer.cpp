@@ -92,6 +92,7 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
       init_bucket_renderers_jak1();
       break;
     case GameVersion::Jak2:
+      m_render_state.texture_animator = std::make_shared<TextureAnimator>();
       init_bucket_renderers_jak2();
       break;
     default:
