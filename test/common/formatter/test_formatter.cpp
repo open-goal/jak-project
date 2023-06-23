@@ -36,9 +36,12 @@ struct TestDefinition {
 };
 
 std::vector<TestDefinition> get_test_definitions(const fs::path& file_path) {
+  std::vector<TestDefinition> tests;
   // Read in the file, and run the test
   const auto contents = str_util::split(file_util::read_text_file(file_path));
-  std::vector<TestDefinition> tests;
+  if (contents.empty() || (contents.size() == 1 && contents.at(0).empty())) {
+    return tests;
+  }
   TestDefinition curr_test;
   size_t i = 0;
   while (i < contents.size()) {
