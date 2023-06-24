@@ -191,33 +191,63 @@ std::optional<u64> get_set_reg_to_u64_load(AtomicOp* op,
                                            const LinkedObjectFile& file) {
   auto lvo = dynamic_cast<LoadVarOp*>(op);
   if (!lvo) {
-    return false;
+    return std::nullopt;
   }
 
   // destination should be a register
   auto dest = lvo->get_set_destination();
   if (dst != dest.reg()) {
-    return false;
+    return std::nullopt;
   }
 
   if (lvo->src().kind() != SimpleExpression::Kind::IDENTITY) {
-    return false;
+    return std::nullopt;
   }
 
   if (lvo->size() != 8) {
-    return false;
+    return std::nullopt;
   }
 
   const auto& s = lvo->src().get_arg(0);
   if (!s.is_label()) {
-    return false;
+    return std::nullopt;
   }
   auto lab = file.labels.at(s.label());
 
   auto& low = file.words_by_seg.at(lab.target_segment).at(lab.offset / 4);
   auto& hi = file.words_by_seg.at(lab.target_segment).at((lab.offset / 4) + 1);
   if (low.kind() != LinkedWord::PLAIN_DATA || hi.kind() != LinkedWord::PLAIN_DATA) {
-    return false;
+    return std::nullopt;
+  }
+  return ((u64)low.data) | (((u64)hi.data) << 32);
+}
+
+std::optional<u64> get_set_reg_to_lui(AtomicOp* op, Register dst, const LinkedObjectFile& file) {
+  auto lvo = dynamic_cast<SetVarOp*>(op);
+  if (!lvo) {
+    return std::nullopt;
+  }
+
+  // destination should be a register
+  auto dest = lvo->get_set_destination();
+  if (dst != dest.reg()) {
+    return std::nullopt;
+  }
+
+  if (lvo->src().kind() != SimpleExpression::Kind::IDENTITY) {
+    return std::nullopt;
+  }
+
+  const auto& s = lvo->src().get_arg(0);
+  if (!s.is_label()) {
+    return std::nullopt;
+  }
+  auto lab = file.labels.at(s.label());
+
+  auto& low = file.words_by_seg.at(lab.target_segment).at(lab.offset / 4);
+  auto& hi = file.words_by_seg.at(lab.target_segment).at((lab.offset / 4) + 1);
+  if (low.kind() != LinkedWord::PLAIN_DATA || hi.kind() != LinkedWord::PLAIN_DATA) {
+    return std::nullopt;
   }
   return ((u64)low.data) | (((u64)hi.data) << 32);
 }
@@ -1821,13 +1851,25 @@ void inspect_top_level_for_metadata(Function& top_level,
     const auto& aop_4 = top_level.ir2.atomic_ops->ops.at(i + 4);
     auto flags = get_set_reg_to_u64_load(aop_4.get(), Register(Reg::GPR, Reg::A2), file);
     if (!flags) {
-      continue;
+      // far label load
+      // lui v1, L1352           ;; [ 24] (set! v1-10 L1352)
+      // ori v1, v1, L1352
+      // addu v1, fp, v1
+      // ld a2, 0(v1)            ;; [ 25] (set! a2-0 (l.d v1-10))
+      flags = get_set_reg_to_lui(aop_4.get(), Register(Reg::GPR, Reg::V1), file);
+      if (!flags) {
+        continue;
+      }
     }
 
     // jalr ra, t9               ;; [ 25] (call! a0-0 a1-0 a2-0)
     const auto& aop_5 = top_level.ir2.atomic_ops->ops.at(i + 5);
     if (!dynamic_cast<CallOp*>(aop_5.get())) {
-      continue;
+      // far labels
+      const auto& aop_6 = top_level.ir2.atomic_ops->ops.at(i + 6);
+      if (!dynamic_cast<CallOp*>(aop_6.get())) {
+        continue;
+      }
     }
 
     if (objectFile.type_info.count(*type_name) == 0) {
