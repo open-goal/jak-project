@@ -779,9 +779,12 @@ void InitMachineScheme() {
     *EnableMethodSet = *EnableMethodSet + 1;
     {
       auto p = scoped_prof("load-game-dgo");
-      load_and_link_dgo_from_c("game", kglobalheap,
-                               LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
-                               0x400000, true);
+      //      load_and_link_dgo_from_c("game", kglobalheap,
+      //                               LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE |
+      //                               LINK_FLAG_PRINT_LOGIN, 0x400000, true);
+      load_and_link_dgo_from_c_fast(
+          "game", kglobalheap, LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
+          0x400000);
     }
 
     *EnableMethodSet = *EnableMethodSet + -1;

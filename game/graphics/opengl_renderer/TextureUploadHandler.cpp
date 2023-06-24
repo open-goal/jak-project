@@ -8,8 +8,10 @@
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 
-TextureUploadHandler::TextureUploadHandler(const std::string& name, int my_id)
-    : BucketRenderer(name, my_id) {}
+TextureUploadHandler::TextureUploadHandler(const std::string& name,
+                                           int my_id,
+                                           std::shared_ptr<TextureAnimator> texture_animator)
+    : BucketRenderer(name, my_id), m_texture_animator(texture_animator) {}
 
 void TextureUploadHandler::render(DmaFollower& dma,
                                   SharedRenderState* render_state,
@@ -25,7 +27,7 @@ void TextureUploadHandler::render(DmaFollower& dma,
     auto vif0 = dma.current_tag_vifcode0();
     if (vif0.kind == VifCode::Kind::PC_PORT && vif0.immediate == 12) {
       dma.read_and_advance();
-      render_state->texture_animator->handle_texture_anim_data(dma);
+      m_texture_animator->handle_texture_anim_data(dma, (const u8*)render_state->ee_main_memory);
     }
     // does it look like data to do eye rendering?
     if (dma_tag.qwc == (128 / 16)) {

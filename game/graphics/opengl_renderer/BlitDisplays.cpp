@@ -2,8 +2,7 @@
 
 #include "common/log/log.h"
 
-#include "game/graphics/opengl_renderer/OpenGLRenderer.h"
-#include "game/graphics/pipelines/opengl.h"
+#include "game/graphics/opengl_renderer/Fbo.h"
 
 BlitDisplays::BlitDisplays(const std::string& name, int my_id) : BucketRenderer(name, my_id) {}
 
