@@ -179,8 +179,6 @@ FramebufferCopier::~FramebufferCopier() {
 
 void FramebufferCopier::copy_now(int render_fb_w,
                                  int render_fb_h,
-                                 int render_fb_x,
-                                 int render_fb_y,
                                  GLuint render_fb) {
   if (m_fbo_width != render_fb_w || m_fbo_height != render_fb_h) {
     m_fbo_width = render_fb_w;

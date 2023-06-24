@@ -1182,6 +1182,8 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
     // copy to clipboard (windows only)
     copy_texture_to_clipboard(width, height, buffer);
   }
+#else
+  (void)quick_screenshot;
 #endif
 
   // flip upside down in place
