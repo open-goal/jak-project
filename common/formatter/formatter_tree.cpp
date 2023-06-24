@@ -6,10 +6,6 @@
 
 #include "third-party/fmt/core.h"
 
-namespace formatter {
-const std::shared_ptr<IndentationRule> default_rule = std::make_shared<IndentationRule>();
-}
-
 std::string get_source_code(const std::string& source, const TSNode& node) {
   uint32_t start = ts_node_start_byte(node);
   uint32_t end = ts_node_end_byte(node);
@@ -47,51 +43,12 @@ bool node_preceeded_by_only_whitespace(const std::string& source, const TSNode& 
 FormatterTreeNode::FormatterTreeNode(const std::string& source, const TSNode& node)
     : token(get_source_code(source, node)) {
   metadata.node_type = ts_node_type(node);
-  metadata.is_comment = str_util::starts_with(str_util::ltrim(token.value()), ";");
-  // Do some formatting on block-comments text
-  // TODO - this should go into a formatting rule
-  if (str_util::starts_with(str_util::ltrim(token.value()), "#|")) {
-    metadata.is_comment = true;
-    // Normalize block comments, remove any trailing or leading whitespace
-    // Only allow annotations on the first line, like #|@file
-    // Don't mess with internal indentation as the user might intend it to be a certain way.
-    std::string new_token = "";
-    std::string comment_contents = "";
-    bool seek_until_whitespace = str_util::starts_with(token.value(), "#|@");
-    int chars_seeked = 0;
-    for (const auto& c : token.value()) {
-      if (c == '\n' || (seek_until_whitespace && (c == ' ' || c == '\t')) ||
-          (!seek_until_whitespace && (c != '#' && c != '|'))) {
-        break;
-      }
-      chars_seeked++;
-      new_token += c;
-    }
-    // Remove the first line content and any leading whitespace
-    comment_contents = str_util::ltrim_newlines(token.value().substr(chars_seeked));
-    // Remove trailing whitespace
-    comment_contents = str_util::rtrim(comment_contents);
-    // remove |#
-    comment_contents.pop_back();
-    comment_contents.pop_back();
-    comment_contents = str_util::rtrim(comment_contents);
-    new_token += fmt::format("\n{}\n|#", comment_contents);
-    token = new_token;
-  }
-
+  metadata.is_comment = str_util::starts_with(str_util::ltrim(token.value()), ";") ||
+                        str_util::starts_with(str_util::ltrim(token.value()), "#|");
   // Set any metadata based on the value of the token
   metadata.num_blank_lines_following = num_blank_lines_following_node(source, node);
   metadata.is_inline = !node_preceeded_by_only_whitespace(source, node);
 };
-
-std::shared_ptr<IndentationRule> FormatterTreeNode::get_formatting_rule(const int depth,
-                                                                        const int index) const {
-  // TODO - really lazy for now
-  if (!rules.empty()) {
-    return rules.at(0);
-  }
-  return formatter::default_rule;
-}
 
 // Check if the original source only has whitespace up to a new-line after it's token
 bool node_followed_by_only_whitespace(const std::string& source, const TSNode& node) {
@@ -150,21 +107,7 @@ void FormatterTree::construct_formatter_tree_recursive(const std::string& source
       continue;
     }
     if (curr_node_type == "list_lit") {
-      // Check to see if the first line of the form has more than 1 element
-      if (i == 1) {
-        list_node.metadata.multiple_elements_first_line =
-            !node_followed_by_only_whitespace(source, child_node);
-        // Peek at the first element of the list to determine formatting rules
-        if (formatter::opengoal_indentation_rules.find(contents) !=
-            formatter::opengoal_indentation_rules.end()) {
-          list_node.rules = formatter::opengoal_indentation_rules.at(contents);
-        }
-      }
       construct_formatter_tree_recursive(source, child_node, list_node);
-      // Check if the node that was recursively added to the list was on the same line
-      auto& new_node = list_node.refs.at(list_node.refs.size() - 1);
-      new_node.metadata.was_on_first_line_of_form =
-          nodes_on_same_line(source, curr_node, child_node);
     } else {
       construct_formatter_tree_recursive(source, child_node, tree_node);
     }

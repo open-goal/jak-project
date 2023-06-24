@@ -173,7 +173,7 @@ void DisplayManager::set_window_size(int width, int height) {
 
 void DisplayManager::enqueue_set_window_display_mode(WindowDisplayMode mode) {
   const std::lock_guard<std::mutex> lock(event_queue_mtx);
-  ee_event_queue.push({EEDisplayEventType::SET_WINDOW_DISPLAY_MODE, mode});
+  ee_event_queue.push({EEDisplayEventType::SET_WINDOW_DISPLAY_MODE, mode, {}});
 }
 
 void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
@@ -235,7 +235,7 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
 
 void DisplayManager::enqueue_set_fullscreen_display_id(int display_id) {
   const std::lock_guard<std::mutex> lock(event_queue_mtx);
-  ee_event_queue.push({EEDisplayEventType::SET_FULLSCREEN_DISPLAY_ID, display_id});
+  ee_event_queue.push({EEDisplayEventType::SET_FULLSCREEN_DISPLAY_ID, display_id, {}});
 }
 
 void DisplayManager::set_fullscreen_display_id(int display_id) {
