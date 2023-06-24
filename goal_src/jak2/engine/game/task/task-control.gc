@@ -2263,11 +2263,12 @@
       )
     (#when PC_PORT
       ;; wait for spawned talker to go away or skill to spawn
-      (until (or (not (process-by-name "talker" *entity-pool*)) (process-by-name "skill" *entity-pool*))
+      (while (and (aif (the talker (process-by-name "talker" *entity-pool*)) (-> it message on-close)) (not (process-by-name "skill" *entity-pool*)))
+        (format 0 "task-manager waiting on talker~%")
         (suspend))
       ;; wait for spawned skill to go away
-      (until (not (process-by-name "skill" *entity-pool*))
-        (format 0 "waiting for skill ~A~%" (process-by-name "skill" *entity-pool*))
+      (while (process-by-name "skill" *entity-pool*)
+        (format 0 "task-manager waiting on skill~%")
         (suspend))
       ;; now we close
       ;; NOTE : the skill is picked up by *target* sending a touch event, which happens after this check.
