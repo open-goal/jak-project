@@ -92,6 +92,7 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
       init_bucket_renderers_jak1();
       break;
     case GameVersion::Jak2:
+      m_render_state.texture_animator = std::make_shared<TextureAnimator>();
       init_bucket_renderers_jak2();
       break;
     default:
@@ -1181,6 +1182,8 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
     // copy to clipboard (windows only)
     copy_texture_to_clipboard(width, height, buffer);
   }
+#else
+  (void)quick_screenshot;
 #endif
 
   // flip upside down in place

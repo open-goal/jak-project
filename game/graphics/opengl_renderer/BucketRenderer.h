@@ -7,6 +7,7 @@
 
 #include "game/graphics/opengl_renderer/Profiler.h"
 #include "game/graphics/opengl_renderer/Shader.h"
+#include "game/graphics/opengl_renderer/TextureAnimator.h"
 #include "game/graphics/opengl_renderer/buckets.h"
 #include "game/graphics/opengl_renderer/loader/Loader.h"
 #include "game/graphics/texture/TexturePool.h"
@@ -31,6 +32,7 @@ struct SharedRenderState {
   ShaderLibrary shaders;
   std::shared_ptr<TexturePool> texture_pool;
   std::shared_ptr<Loader> loader;
+  std::shared_ptr<TextureAnimator> texture_animator;
 
   u32 buckets_base = 0;  // address of buckets array.
   u32 next_bucket = 0;   // address of next bucket that we haven't started rendering in buckets
