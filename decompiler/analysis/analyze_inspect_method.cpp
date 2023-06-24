@@ -397,7 +397,7 @@ FieldPrint get_field_print(const std::string& str) {
       return handle_custom_prints(field_print, str);
     }
     char end2 = next();
-    if (end1 != '%') {
+    if (end2 != '%') {
       return handle_custom_prints(field_print, str);
     }
     ASSERT(idx == (int)str.size());
@@ -409,7 +409,7 @@ FieldPrint get_field_print(const std::string& str) {
       return handle_custom_prints(field_print, str);
     }
     char end2 = next();
-    if (end1 != '%') {
+    if (end2 != '%') {
       return handle_custom_prints(field_print, str);
     }
     ASSERT(idx == (int)str.size());
