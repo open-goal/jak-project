@@ -4,7 +4,7 @@
 
 #include "common/common_types.h"
 
-#include "SQLiteCpp/SQLiteCpp.h"
+#include "third-party/sqlite3/sqlite3.h"
 
 namespace jak2 {
 void InitParms(int argc, const char* const* argv);
