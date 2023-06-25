@@ -166,10 +166,38 @@
     )
   )
 
+(defenum texture-anim-pc
+  (start-anim-array 12)
+  (finish-anim-array 13)
+  (erase-and-init 14)
+  (upload-clut-16-16 15)
+  (upload-generic-vram 16)
+  (set-shader 17)
+  (draw 18)
+  )
+
+(deftype texture-anim-pc-upload (structure)
+  ((data pointer)
+   (width uint32)
+   (height uint32)
+   (dest uint32)
+   )
+  )
+
+(defmacro pc-texture-anim-flag (kind buf &key (qwc 0))
+  `(dma-buffer-add-cnt-vif2
+     ,buf
+     ,qwc
+     (new 'static 'vif-tag :cmd (vif-cmd pc-port) :imm (texture-anim-pc ,kind))
+     (new 'static 'vif-tag)
+     )
+  )
+
 (defun texture-anim-layer-add-shader ((arg0 dma-buffer) (arg1 texture-anim-layer) (arg2 int))
   "Add DMA to set the GS to use the given shader. This can be used to read from the texture."
   (let ((s5-0 (-> arg1 tex)))
-    (if s5-0
+    (when s5-0
+        (pc-texture-anim-flag set-shader arg0)
         (dma-buffer-add-gs-set arg0
                                (tex0-1 (new 'static 'gs-tex0
                                          :cld #x1
@@ -215,6 +243,8 @@
    Always draws a tristrip with two triangles.
    "
   (local-vars (v1-27 float) (sv-224 matrix) (sv-228 matrix) (sv-232 matrix) (sv-236 matrix))
+  (pc-texture-anim-flag draw dma-buf) ;; added
+
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -505,29 +535,6 @@
 
 (define-extern *sky-texture-anim-array* (texture-anim-array texture-anim))
 
-(defenum texture-anim-pc
-  (start-anim-array 12)
-  (finish-anim-array 13)
-  (erase-and-init 14)
-  (upload-clut-16-16 15)
-  )
-
-(deftype texture-anim-pc-upload (structure)
-  ((data pointer)
-   (width uint32)
-   (height uint32)
-   (dest uint32)
-   )
-  )
-
-(defmacro pc-texture-anim-flag (kind buf &key (qwc 0))
-  `(dma-buffer-add-cnt-vif2
-     ,buf
-     ,qwc
-     (new 'static 'vif-tag :cmd (vif-cmd pc-port) :imm (texture-anim-pc ,kind))
-     (new 'static 'vif-tag)
-     )
-  )
 
 (defun update-texture-anim ((bucket bucket-id) (anim-array texture-anim-array))
   "Generate all DMA to update all textures in the given list for the given bucket."
@@ -581,6 +588,7 @@
                   )
                 )
               (when (and (nonzero? tex-width) (nonzero? tex-height))
+                (format 0 " clearing~%")
                 ;; configure for drawing to this texture.
                 (pc-texture-anim-flag erase-and-init dma-buf)
                 (dma-buffer-add-gs-set-flusha dma-buf
@@ -636,6 +644,7 @@
               (set! layer-idx 0)
               (while (< layer-idx (the-as int (-> anim num-layers)))
                 (let ((layer (-> anim data layer-idx)))
+                  (format 0 " running layer ~D~%" layer-idx)
                   ;; generate DMA for this layer's effect
                   ((-> layer func) dma-buf fbp-for-tex tex-width tex-height layer (-> anim frame-time))
                   )

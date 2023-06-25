@@ -19,12 +19,26 @@ class FramebufferTexturePair {
 
   FramebufferTexturePair(const FramebufferTexturePair&) = delete;
   FramebufferTexturePair& operator=(const FramebufferTexturePair&) = delete;
+  FramebufferTexturePair(FramebufferTexturePair&& other) {
+    if (this == &other) {
+      return;
+    }
+    ASSERT(!m_moved_from && !other.m_moved_from);
+    other.m_moved_from = true;
+    m_w = other.m_w;
+    m_h = other.m_h;
+    m_texture = other.m_texture;
+    m_framebuffers = std::move(other.m_framebuffers);
+  }
+  int width() const { return m_w; }
+  int height() const { return m_h; }
 
  private:
   friend class FramebufferTexturePairContext;
   std::vector<GLuint> m_framebuffers;
   GLuint m_texture;
   int m_w, m_h;
+  bool m_moved_from = false;
 };
 
 class FramebufferTexturePairContext {
