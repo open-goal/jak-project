@@ -212,9 +212,10 @@
 (defun subtitle-bump-up? ()
   "should subtitles be moved up?"
   ;; have a query or message up?
-  (or (nonzero? (lookup-gui-connection-id *gui-control* (the string #f) (gui-channel query) (gui-action playing)))
-      (nonzero? (lookup-gui-connection-id *gui-control* (the string #f) (gui-channel message) (gui-action playing)))
-      (nonzero? (lookup-gui-connection-id *gui-control* (the string #f) (gui-channel notice-low) (gui-action playing)))
+  (or (= (gui-status active) (get-status *gui-control* (lookup-gui-connection-id *gui-control* (the string #f) (gui-channel query) (gui-action none))))
+      (= (gui-status active) (get-status *gui-control* (lookup-gui-connection-id *gui-control* (the string #f) (gui-channel message) (gui-action none))))
+      (= (gui-status active) (get-status *gui-control* (lookup-gui-connection-id *gui-control* (the string #f) (gui-channel notice-low) (gui-action none))))
+      (= (gui-status active) (get-status *gui-control* (lookup-gui-connection-id *gui-control* "hud-race-final-stats" (gui-channel hud-middle-right) (gui-action none))))
       )
   )
 
@@ -269,6 +270,14 @@
       (set! (-> obj queue slot id) (-> gui id))
       (set! (-> obj queue slot gui) gui))
   gui)
+
+
+(defmethod set-params! subtitle2-line-queue-element ((obj subtitle2-line-queue-element) (line subtitle2-line) (y float))
+  "set the parameters for this line queue element"
+
+  (set! (-> obj line) line)
+  (set! (-> obj y) y)
+  0)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -371,19 +380,18 @@
   "do the subtitle drawing"
   
   ;; check the gui queue for lines to add to the line queue
-  (let ((line-queue-old (if (zero? (-> self line-queue-idx)) (-> self lines-0) (-> self lines-1)))
-        (line-queue     (if (zero? (-> self line-queue-idx)) (-> self lines-1) (-> self lines-0)))
+  (let ((line-queue-old (if (zero? (-> self line-queue-idx)) (-> self lines 0) (-> self lines 1)))
+        (line-queue     (if (zero? (-> self line-queue-idx)) (-> self lines 1) (-> self lines 0)))
 
-        (find-line (lambda ((queue (inline-array subtitle2-line-queue-element)) (line subtitle2-line))
+        (find-line (lambda ((queue subtitle2-line-queue) (line subtitle2-line))
                        (dotimes (i PC_SUBTITLE_MAX_LINES)
-                         (if (= line (-> queue i line))
+                         (if (= line (-> queue elts i line))
                              (return i)))
                        -1)))
   (logxor! (-> self line-queue-idx) 1)
   ;; clear the queue we're writing to first
   (dotimes (i PC_SUBTITLE_MAX_LINES)
-    (set! (-> line-queue i line) #f)
-    (set! (-> line-queue i y) PC_SUBTITLE_Y_RECALC)
+    (set-params! (-> line-queue elts i) (the subtitle2-line #f) PC_SUBTITLE_Y_RECALC)
     )
 
   ;; we won't be able to render any subtitles with no text loaded.
@@ -421,14 +429,13 @@
                   (let ((index-in-old (find-line line-queue-old it)))
                     (when (!= -1 index-in-old)
                         ;; this line exists in the previous frame, put it in the new queue at the same spot
-                        (set! (-> line-queue index-in-old line) it)
-                        (set! (-> line-queue index-in-old y) (-> line-queue-old index-in-old y)))))
+                        (set-params! (-> line-queue elts index-in-old) it (-> line-queue-old elts index-in-old y)))))
                 ((1)
                   (when (= -1 (find-line line-queue it))
                     ;; line not in the queue. find empty spot.
                     (let ((index-empty (find-line line-queue (the subtitle2-line #f))))
                         (if (!= -1 index-empty)
-                            (set! (-> line-queue index-empty line) it)))
+                            (set-params! (-> line-queue elts index-empty) it PC_SUBTITLE_Y_RECALC)))
                     ))
                 )
               )
@@ -447,7 +454,7 @@
         )
 
   (dotimes (i PC_SUBTITLE_QUEUE_MAX_LINES)
-    (when (and (-> line-queue i line) (subtitle-format self (-> line-queue i line)))
+    (when (and (-> line-queue elts i line) (subtitle-format self (-> line-queue elts i line)))
 
       (set! this-height (print-game-text *temp-string* (-> self font) #t 44 (bucket-id debug-no-zbuf2)))
 
@@ -458,9 +465,9 @@
         )
 
       ;; set the current y, it shall not be lower than the previous line!
-      (if (= (-> line-queue i y) PC_SUBTITLE_Y_RECALC)
-          (set! (-> line-queue i y) (- start-y cur-y))
-          (set! cur-y (min cur-y (- start-y (-> line-queue i y)))))
+      (if (= (-> line-queue elts i y) PC_SUBTITLE_Y_RECALC)
+          (set! (-> line-queue elts i y) (- start-y cur-y))
+          (set! cur-y (min cur-y (- start-y (-> line-queue elts i y)))))
       (set! (-> self font origin y) cur-y)
 
       ;; check if we should actually draw subtitles and do it
@@ -472,7 +479,7 @@
             (true! subtitles-drawn?)
             (protect (*display-text-box*)
             (set! *display-text-box* (or *display-text-box* PC_SUBTITLE_DEBUG))
-            (set-speaker-color (-> line-queue i line speaker))
+            (set-speaker-color (-> line-queue elts i line speaker))
             (print-game-text *temp-string* (-> self font) #f 44 (bucket-id debug-no-zbuf2))))
         )
 
@@ -505,9 +512,9 @@
                                                                    (-> self queue i gui))))
 
   (format *stdcon* "l: ~%")
-  (let ((line-queue (if (zero? (-> self line-queue-idx)) (-> self lines-0) (-> self lines-1))))
+  (let ((line-queue (if (zero? (-> self line-queue-idx)) (-> self lines 0) (-> self lines 1))))
       (dotimes (i PC_SUBTITLE_MAX_LINES)
-        (format *stdcon* "~D: ~D ~S~%" i (the int (-> line-queue i y)) (aif (-> line-queue i line) (-> it text)))))
+        (format *stdcon* "~D: ~D ~S~%" i (the int (-> line-queue elts i y)) (aif (-> line-queue elts i line) (-> it text)))))
 
   0)
 
@@ -823,10 +830,10 @@
                             0 0 0.0 (font-color default) (font-flags shadow kerning left middle large)))
   (clear-queue self)
   (dotimes (i PC_SUBTITLE_MAX_LINES)
-    (set! (-> self lines-0 i line) #f)
-    (set! (-> self lines-0 i y) PC_SUBTITLE_Y_RECALC)
-    (set! (-> self lines-1 i line) #f)
-    (set! (-> self lines-1 i y) PC_SUBTITLE_Y_RECALC)
+    (set! (-> self lines 0 elts i line) #f)
+    (set! (-> self lines 0 elts i y) PC_SUBTITLE_Y_RECALC)
+    (set! (-> self lines 1 elts i line) #f)
+    (set! (-> self lines 1 elts i y) PC_SUBTITLE_Y_RECALC)
     )
 
   (set! (-> self have-message?) #f)

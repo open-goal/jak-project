@@ -1422,6 +1422,7 @@ class LetElement : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   Form* body() { return m_body; }
+  const Form* body() const { return m_body; }
   void set_body(Form* new_body);
   bool allow_in_if() const override { return false; }
 
@@ -1430,6 +1431,7 @@ class LetElement : public FormElement {
     Form* src = nullptr;
   };
   std::vector<Entry>& entries() { return m_entries; }
+  const std::vector<Entry>& entries() const { return m_entries; }
   void add_entry(const Entry& e);
   bool is_star() const { return m_star; }
 
