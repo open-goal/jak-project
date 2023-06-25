@@ -551,6 +551,7 @@ static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     // other
     {"A~Y~-21H~-5Vº~Z", "Å"},
     {"N~Y~-6Hº~Z~+10H", "Nº"},
+    {"O~Y~-16H~-1V/~Z", "Ø"},
 
     // tildes
     {"N~Y~-22H~-4V<TIL>~Z", "Ñ"},
