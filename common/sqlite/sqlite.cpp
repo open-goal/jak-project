@@ -1,6 +1,6 @@
 #include "sqlite.h"
 
-#include <common/log/log.h>
+#include "common/log/log.h"
 
 bool sqlite::SQLiteDatabase::open_db(const std::string& path) {
   if (is_open()) {
@@ -36,14 +36,15 @@ sqlite::GenericResponse sqlite::SQLiteDatabase::run_query(const std::string& sql
   const auto rc = sqlite3_exec(
       m_db.value().get(), sql.data(),
       [](void* data, int argc, char** argv, char** azColName) {
+        GenericResponse* resp = static_cast<GenericResponse*>(data);
+        std::vector<std::string> row = {};
         for (int i = 0; i < argc; i++) {
-          printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+          row.push_back(argv[i] ? argv[i] : "NULL");
         }
-        printf("\n");
-
+        resp->rows.push_back(row);
         return 0;
       },
-      0, &errMsg);
+      &resp, &errMsg);
 
   if (rc != SQLITE_OK) {
     fprintf(stderr, "SQL error: %s\n", errMsg);
