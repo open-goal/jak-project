@@ -32,6 +32,12 @@ JAK1_ALLOWED_CODES = [
     "<TIL>",
     "<PAD_X>", "<PAD_TRIANGLE>", "<PAD_CIRCLE>", "<PAD_SQUARE>"
 ]
+
+JAK1_AUTO_REPLACEMENTS = {
+    "ª": "º",
+    "\n": "",
+    "’": "'",
+}
 # fmt: on
 
 invalid_characters_found = False
@@ -56,6 +62,8 @@ def fix_character(char):
     upper_case = char.upper()
     if char_allowed(upper_case):
         return upper_case
+    if char in JAK1_AUTO_REPLACEMENTS:
+        return JAK1_AUTO_REPLACEMENTS[char]
     return char
 
 
@@ -82,7 +90,7 @@ def lint_jak1_characters(text):
                     if new_char != character:
                         text = replace_character(text, pos, new_char)
                         char_fixed = True
-                elif not char_fixed:
+                if not char_fixed:
                     print(
                         "Character '{}' not allowed - Found in {}".format(
                             character, text
@@ -102,7 +110,7 @@ def lint_jak1_characters(text):
 text_files = glob.glob("./game/assets/jak1/text/*.json")
 
 for text_file in text_files:
-    print("Checking {}...".format(text_file))
+    print("Checking {}".format(text_file))
     with open(text_file, encoding="utf-8") as f:
         file_data = json.load(f)
     for id, text in file_data.items():
