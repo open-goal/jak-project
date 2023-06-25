@@ -1,5 +1,6 @@
 #include "TextureUploadHandler.h"
 
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
@@ -27,7 +28,9 @@ void TextureUploadHandler::render(DmaFollower& dma,
     auto vif0 = dma.current_tag_vifcode0();
     if (vif0.kind == VifCode::Kind::PC_PORT && vif0.immediate == 12) {
       dma.read_and_advance();
-      m_texture_animator->handle_texture_anim_data(dma, (const u8*)render_state->ee_main_memory);
+      auto p = scoped_prof("texture-animator");
+      m_texture_animator->handle_texture_anim_data(dma, (const u8*)render_state->ee_main_memory,
+                                                   render_state->texture_pool.get());
     }
     // does it look like data to do eye rendering?
     if (dma_tag.qwc == (128 / 16)) {
@@ -65,6 +68,7 @@ void TextureUploadHandler::render(DmaFollower& dma,
 
 void TextureUploadHandler::flush_uploads(std::vector<TextureUpload>& uploads,
                                          SharedRenderState* render_state) {
+  auto p = scoped_prof("flush-uploads");
   if (m_fake_uploads) {
     uploads.clear();
   } else {

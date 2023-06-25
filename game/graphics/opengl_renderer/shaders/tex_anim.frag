@@ -4,16 +4,22 @@ out vec4 color;
 
 uniform vec4 rgba;
 uniform int enable_tex;
+uniform ivec4 channel_scramble;
 
 in vec2 uv;
 
 layout (binding = 0) uniform sampler2D tex;
 
 void main() {
+
   if (enable_tex == 1) {
     vec4 tex_color = texture(tex, uv);
-    color = rgba * tex_color;
+    vec4 unscambled_tex = vec4(tex_color[channel_scramble[0]],
+    tex_color[channel_scramble[1]],
+    tex_color[channel_scramble[2]],
+    tex_color[channel_scramble[3]]);
+    color = (rgba / 128.) * unscambled_tex;
   } else {
-    color = rgba;
+    color = (rgba / 128.);
   }
 }

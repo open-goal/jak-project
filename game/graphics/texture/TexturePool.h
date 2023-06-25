@@ -307,6 +307,7 @@ class TexturePool {
   GpuTexture* give_texture(const TextureInput& in);
   GpuTexture* give_texture_and_load_to_vram(const TextureInput& in, u32 vram_slot);
   void unload_texture(PcTextureId tex_id, u64 gpu_id);
+  void update_gl_texture_by_tbp(u32 tbp, u32 new_w, u32 new_h, GLuint new_gl_texture);
 
   /*!
    * Look up an OpenGL texture by vram address. Return std::nullopt if the game hasn't loaded

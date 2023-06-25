@@ -1,6 +1,10 @@
 #include "TextureAnimator.h"
 
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/util/FileUtil.h"
+#include "common/util/Timer.h"
+
+#include "game/graphics/texture/TexturePool.h"
 
 TextureAnimator::TextureAnimator(ShaderLibrary& shaders) {
   glGenVertexArrays(1, &m_vao);
@@ -28,6 +32,7 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders) {
   m_uniforms.enable_tex = glGetUniformLocation(shader.id(), "enable_tex");
   m_uniforms.positions = glGetUniformLocation(shader.id(), "positions");
   m_uniforms.uvs = glGetUniformLocation(shader.id(), "uvs");
+  m_uniforms.channel_scramble = glGetUniformLocation(shader.id(), "channel_scramble");
 
   {
     glGenTextures(1, &m_dummy_texture);
@@ -36,6 +41,9 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                  data.data());
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    m_gl_textures.resize(32);
+    glGenTextures(m_gl_textures.size(), m_gl_textures.data());
   }
 }
 
@@ -51,17 +59,8 @@ enum PcTextureAnimCodes {
   GENERIC_UPLOAD = 16,
   SET_SHADER = 17,
   DRAW = 18,
+  MOVE_RG_TO_BA = 19,
 };
-
-/*
-(deftype texture-anim-pc-upload (structure)
-  ((data pointer)
-   (width uint32)
-   (height uint32)
-   (dest uint32)
-   )
-  )
- */
 
 struct TextureAnimPcUpload {
   u32 data;
@@ -69,6 +68,101 @@ struct TextureAnimPcUpload {
   u32 height;
   u32 dest;
 };
+
+struct TextureAnimPcTransform {
+  u32 src_tbp;
+  u32 dst_tbp;
+  u32 pad0;
+  u32 pad1;
+};
+
+void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
+                                               const u8* ee_mem,
+                                               TexturePool* texture_pool) {
+  printf("animator\n");
+  m_current_shader = {};
+  glBindVertexArray(m_vao);
+  glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
+  glUseProgram(m_shader_id);
+  glDepthMask(GL_FALSE);
+  m_next_gl_texture = 0; // reset temp texture allocator.
+
+
+  bool done = false;
+  while (!done) {
+    auto tf = dma.read_and_advance();
+    auto vif0 = tf.vifcode0();
+    if (vif0.kind == VifCode::Kind::PC_PORT) {
+      switch (vif0.immediate) {
+        case UPLOAD_CLUT_16_16: {
+          auto p = scoped_prof("clut-16-16");
+          handle_upload_clut_16_16(tf, ee_mem);
+        } break;
+        case ERASE_DEST_TEXTURE: {
+          auto p = scoped_prof("erase");
+          handle_erase_dest(dma);
+        } break;
+        case GENERIC_UPLOAD: {
+          auto p = scoped_prof("generic-upload");
+          handle_generic_upload(tf, ee_mem);
+        } break;
+        case SET_SHADER: {
+          auto p = scoped_prof("set-shader");
+          handle_set_shader(dma);
+        } break;
+        case DRAW: {
+          auto p = scoped_prof("draw");
+          handle_draw(dma);
+        } break;
+        case FINISH_ARRAY:
+          done = true;
+          break;
+        case MOVE_RG_TO_BA: {
+          auto p = scoped_prof("rg-to-ba");
+          handle_rg_to_ba(tf);
+        } break;
+        default:
+          fmt::print("bad imm: {}\n", vif0.immediate);
+          ASSERT_NOT_REACHED();
+      }
+    } else {
+      // printf("[tex anim] unhandled\n");
+      // ASSERT_NOT_REACHED();
+    }
+  }
+
+  // TODO: do something with the result textures.
+
+  for (auto& [tbp, entry] : m_dest_textures) {
+    if (entry.needs_pool_creation) {
+      TextureInput in;
+      in.gpu_texture = entry.tex.value().texture();
+      in.w = entry.tex_width;
+      in.h = entry.tex_height;
+      in.debug_page_name = "PC-ANIM";
+      in.debug_name = std::to_string(tbp);
+      in.id = texture_pool->allocate_pc_port_texture(GameVersion::Jak2);
+      entry.pool_gpu_tex = texture_pool->give_texture_and_load_to_vram(in, tbp);
+      entry.needs_pool_creation = false;
+      // printf("creat texture %d\n", tbp);
+    } else if (entry.needs_pool_update) {
+      // TODO: this funciton is definitely wrong.
+      texture_pool->update_gl_texture_by_tbp(tbp, entry.tex_width, entry.tex_height,
+                                             entry.tex.value().texture());
+      texture_pool->move_existing_to_vram(entry.pool_gpu_tex, tbp);
+      entry.needs_pool_update = false;
+      // printf("update texture %d\n", tbp);
+    } else {
+      texture_pool->move_existing_to_vram(entry.pool_gpu_tex, tbp);
+      // printf("no change %d\n", tbp);
+    }
+  }
+
+
+  glDepthMask(GL_TRUE);
+  glEnable(GL_DEPTH_TEST);
+  glColorMask(true, true, true, true);
+}
 
 void debug_save_opengl_texture(const std::string& out, GLuint texture) {
   glBindTexture(GL_TEXTURE_2D, texture);
@@ -81,13 +175,65 @@ void debug_save_opengl_texture(const std::string& out, GLuint texture) {
   file_util::write_rgba_png(out, data.data(), w, h);
 }
 
+void TextureAnimator::handle_rg_to_ba(const DmaTransfer& tf) {
+  // printf("[tex anim] rg -> ba\n");
+  ASSERT(tf.size_bytes == sizeof(TextureAnimPcTransform));
+  auto* data = (const TextureAnimPcTransform*)(tf.data);
+  // printf("  src: %d, dest: %d\n", data->src_tbp, data->dst_tbp);
+  const auto& src = m_dest_textures.find(data->src_tbp);
+  const auto& dst = m_dest_textures.find(data->dst_tbp);
+  if (src != m_dest_textures.end() && dst != m_dest_textures.end()) {
+    {
+      FramebufferTexturePairContext ctxt(dst->second.tex.value());
+      float positions[3 * 4] = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0};
+      float uvs[2 * 4] = {0, 0, 1, 0, 1, 1, 0, 1};
+      glUniform3fv(m_uniforms.positions, 4, positions);
+      glUniform2fv(m_uniforms.uvs, 4, uvs);
+      glUniform1i(m_uniforms.enable_tex, 1);
+      glUniform4f(m_uniforms.rgba, 256, 256, 256, 128);  // TODO - seems wrong.
+      glUniform4i(m_uniforms.channel_scramble, 0, 1, 0, 1);
+      glBindTexture(GL_TEXTURE_2D, src->second.tex.value().texture());
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+      glDisable(GL_BLEND);
+      glDisable(GL_DEPTH_TEST);
+      glColorMask(true, true, true, true);
+      glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    }
+
+  } else {
+    ASSERT_NOT_REACHED();
+  }
+
+  //  const auto& vram_src = m_vram_entries.find(data->src_tbp);
+  //  if (vram_src != m_vram_entries.end()) {
+  //    ASSERT(vram_src->second.kind == VramEntry::Kind::GENERIC_PSM32);
+  //    // no idea if this is right, but lets try.
+  //    int w = vram_src->second.width;
+  //    int h = vram_src->second.height;
+  //    u8* tdata = vram_src->second.data_psm32.data();
+  //
+  //    // file_util::write_rgba_png("./before_transform.png", tdata, w, h);
+  //
+  //    for (int i = 0; i < w * h; i++) {
+  //      tdata[i * 4 + 2] = tdata[i * 4];
+  //      tdata[i * 4 + 3] = tdata[i * 4 + 1];
+  //    }
+  //
+  //    // file_util::write_rgba_png("./after_transform.png", tdata, w, h);
+  //
+  //  } else {
+  //    ASSERT_NOT_REACHED();
+  //  }
+}
+
 void TextureAnimator::handle_upload_clut_16_16(const DmaTransfer& tf, const u8* ee_mem) {
-  printf("[tex anim] upload clut 16 16\n");
+  // printf("[tex anim] upload clut 16 16\n");
   ASSERT(tf.size_bytes == sizeof(TextureAnimPcUpload));
   auto* upload = (const TextureAnimPcUpload*)(tf.data);
   ASSERT(upload->width == 16);
   ASSERT(upload->height == 16);
-  printf("  dest is 0x%x\n", upload->dest);
+  // printf("  dest is 0x%x\n", upload->dest);
   auto& vram = m_vram_entries[upload->dest];
   vram.kind = VramEntry::Kind::CLUT16_16;
   vram.data_psm32.resize(16 * 16 * 4);
@@ -97,11 +243,11 @@ void TextureAnimator::handle_upload_clut_16_16(const DmaTransfer& tf, const u8* 
 }
 
 void TextureAnimator::handle_generic_upload(const DmaTransfer& tf, const u8* ee_mem) {
-  printf("[tex anim] upload generic @ 0x%lx\n", tf.data - ee_mem);
+  // printf("[tex anim] upload generic @ 0x%lx\n", tf.data - ee_mem);
   ASSERT(tf.size_bytes == sizeof(TextureAnimPcUpload));
   auto* upload = (const TextureAnimPcUpload*)(tf.data);
-  printf(" size %d x %d\n", upload->width, upload->height);
-  printf(" dest is 0x%x\n", upload->dest);
+  // printf(" size %d x %d\n", upload->width, upload->height);
+  // printf(" dest is 0x%x\n", upload->dest);
   auto& vram = m_vram_entries[upload->dest];
   vram.kind = VramEntry::Kind::GENERIC_PSM32;
   vram.data_psm32.resize(upload->width * upload->height * 4);
@@ -111,9 +257,9 @@ void TextureAnimator::handle_generic_upload(const DmaTransfer& tf, const u8* ee_
 }
 
 void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
-  printf("[tex anim] erase destination texture\n");
-  auto& out = m_result_textures.emplace_back();
-  // DestinationTextureEntry out;
+  // printf("[tex anim] erase destination texture\n");
+  // auto& out = m_new_dest_textures.emplace_back();
+  DestinationTextureEntry* entry = nullptr;
 
   // first transfer will be a bunch of ad (modifies the shader)
   {
@@ -129,26 +275,26 @@ void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
     // 0 (scissor-1 (new 'static 'gs-scissor :scax1 (+ tex-width -1) :scay1 (+ tex-height -1)))
     ASSERT(ad_data[0 * 2 + 1] == (int)GsRegisterAddress::SCISSOR_1);
     GsScissor scissor(ad_data[0]);
-    out.tex_width = scissor.x1() + 1;
-    out.tex_height = scissor.y1() + 1;
-    printf(" size: %d x %d\n", out.tex_width, out.tex_height);
+    int tex_width = scissor.x1() + 1;
+    int tex_height = scissor.y1() + 1;
+    // printf(" size: %d x %d\n", tex_width, tex_height);
 
     // 1 (xyoffset-1 (new 'static 'gs-xy-offset :ofx #x8000 :ofy #x8000))
     // 2 (frame-1 (new 'static 'gs-frame :fbw (/ (+ tex-width 63) 64) :fbp fbp-for-tex))
     ASSERT(ad_data[2 * 2 + 1] == (int)GsRegisterAddress::FRAME_1);
     GsFrame frame(ad_data[2 * 2]);
-    out.dest_texture_address = 32 * frame.fbp();
-    printf(" dest: 0x%x\n", out.dest_texture_address);
+    int dest_texture_address = 32 * frame.fbp();
+    // printf(" dest: 0x%x\n", dest_texture_address);
 
     // 3 (test-1 (-> anim test))
     ASSERT(ad_data[2 * 3 + 1] == (int)GsRegisterAddress::TEST_1);
     m_current_shader.test = GsTest(ad_data[3 * 2]);
-    fmt::print(" test: {}", m_current_shader.test.print());
+    // fmt::print(" test: {}", m_current_shader.test.print());
 
     // 4 (alpha-1 (-> anim alpha))
     ASSERT(ad_data[2 * 4 + 1] == (int)GsRegisterAddress::ALPHA_1);
     m_current_shader.alpha = GsAlpha(ad_data[4 * 2]);
-    fmt::print(" alpha: {}\n", m_current_shader.alpha.print());
+    // fmt::print(" alpha: {}\n", m_current_shader.alpha.print());
 
     // 5 (clamp-1 (-> anim clamp))
     ASSERT(ad_data[2 * 5 + 1] == (int)GsRegisterAddress::CLAMP_1);
@@ -157,11 +303,44 @@ void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
     m_current_shader.clamp_v = creg & 0b100;
     u64 mask = ~0b101;
     ASSERT((creg & mask) == 0);
-    fmt::print(" clamp: {} {}\n", m_current_shader.clamp_u, m_current_shader.clamp_v);
+    // fmt::print(" clamp: {} {}\n", m_current_shader.clamp_u, m_current_shader.clamp_v);
 
     // 6 (texa (new 'static 'gs-texa :ta0 #x80 :ta1 #x80))
     // 7 (zbuf-1 (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24) :zmsk #x1))
     // 8 (texflush 0)
+
+    // see if we already have an OpenGL texture:
+    const auto& existing_dest = m_dest_textures.find(dest_texture_address);
+    bool existing_opengl = existing_dest != m_dest_textures.end();
+    bool can_reuse = true;
+    if (existing_opengl) {
+      if (existing_dest->second.tex_height != tex_height ||
+          existing_dest->second.tex_width != tex_width) {
+        // printf(" can't reuse, size mismatch\n");
+        can_reuse = false;
+      }
+    } else {
+      // printf(" can't reuse, first time using this address\n");
+      can_reuse = false;
+    }
+
+    if (can_reuse) {
+      entry = &existing_dest->second;
+    } else {
+      if (existing_opengl) {
+        existing_dest->second.tex.reset();
+        entry = &existing_dest->second;
+        entry->needs_pool_update = true;
+      } else {
+        entry = &m_dest_textures[dest_texture_address];
+        entry->needs_pool_creation = true;
+      }
+      entry->tex.emplace(tex_width, tex_height, GL_UNSIGNED_INT_8_8_8_8_REV);
+    }
+
+    entry->tex_width = tex_width;
+    entry->tex_height = tex_height;
+    entry->dest_texture_address = dest_texture_address;
   }
 
   // next transfer is the erase. This is done with alpha blending off
@@ -170,35 +349,36 @@ void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
     ASSERT(clear_transfer.size_bytes == 16 * 4);
     math::Vector<u32, 4> rgba_u32;
     memcpy(rgba_u32.data(), clear_transfer.data + 16, 16);
-    out.rgba_clear = rgba_u32.cast<u8>();
-    fmt::print(" clear: {}\n", out.rgba_clear.to_string_hex_byte());
+    entry->rgba_clear = rgba_u32.cast<u8>();
+    // fmt::print(" clear: {}\n", entry->rgba_clear.to_string_hex_byte());
   }
 
   // create the opengl output texture.
-  out.tex.emplace(out.tex_width, out.tex_height, GL_UNSIGNED_INT_8_8_8_8_REV);
 
   // do the clear:
   {
-    FramebufferTexturePairContext ctxt(out.tex.value());
+    FramebufferTexturePairContext ctxt(entry->tex.value());
     float positions[3 * 4] = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0};
     glUniform3fv(m_uniforms.positions, 4, positions);
     glUniform1i(m_uniforms.enable_tex, 0);
-    glUniform4f(m_uniforms.rgba, out.rgba_clear[0], out.rgba_clear[1], out.rgba_clear[2],
-                out.rgba_clear[3]);
+    glUniform4f(m_uniforms.rgba, entry->rgba_clear[0], entry->rgba_clear[1], entry->rgba_clear[2],
+                entry->rgba_clear[3]);
+    glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
     glBindTexture(GL_TEXTURE_2D, m_dummy_texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glDisable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
+    glColorMask(true, true, true, true);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
   }
 
   // set as active
-  m_current_dest_index = m_result_textures.size() - 1;
+  m_current_dest_tbp = entry->dest_texture_address;
 }
 
 void TextureAnimator::handle_set_shader(DmaFollower& dma) {
-  printf("[tex anim] set shader\n");
+  // printf("[tex anim] set shader\n");
   auto ad_transfer = dma.read_and_advance();
   const int num_regs = (ad_transfer.size_bytes - 16) / 16;
   ASSERT(ad_transfer.vifcode0().kind == VifCode::Kind::NOP ||
@@ -215,82 +395,58 @@ void TextureAnimator::handle_set_shader(DmaFollower& dma) {
         m_current_shader.tex0 = GsTex0(data);
         m_current_shader.source_texture_set = true;
 
-        fmt::print(" tex0: {}", m_current_shader.tex0.print());
+        // fmt::print(" tex0: {}", m_current_shader.tex0.print());
         break;
       case GsRegisterAddress::TEX1_1:
         m_current_shader.tex1 = GsTex1(data);
-        fmt::print(" tex1: {}", m_current_shader.tex1.print());
+        // fmt::print(" tex1: {}", m_current_shader.tex1.print());
         break;
       case GsRegisterAddress::TEST_1:
         m_current_shader.test = GsTest(data);
-        fmt::print(" test: {}", m_current_shader.test.print());
+        // fmt::print(" test: {}", m_current_shader.test.print());
         break;
       case GsRegisterAddress::ALPHA_1:
         m_current_shader.alpha = GsAlpha(data);
-        fmt::print(" alpha: {}\n", m_current_shader.alpha.print());
+        // fmt::print(" alpha: {}\n", m_current_shader.alpha.print());
         break;
       case GsRegisterAddress::CLAMP_1:
         m_current_shader.clamp_u = data & 0b001;
         m_current_shader.clamp_v = data & 0b100;
         ASSERT((data & (~(u64(0b101)))) == 0);
-        fmt::print(" clamp: {} {}\n", m_current_shader.clamp_u, m_current_shader.clamp_v);
+        // fmt::print(" clamp: {} {}\n", m_current_shader.clamp_u, m_current_shader.clamp_v);
         break;
       default:
-        fmt::print("unknown reg {}\n", addr);
+        // fmt::print("unknown reg {}\n", addr);
         ASSERT_NOT_REACHED();
     }
   }
 }
 
-void TextureAnimator::handle_texture_anim_data(DmaFollower& dma, const u8* ee_mem) {
-  printf("animator\n");
-  m_result_textures.clear();
-  m_current_shader = {};
-  glBindVertexArray(m_vao);
-  glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
-  glUseProgram(m_shader_id);
-  glDepthMask(GL_FALSE);
+void TextureAnimator::handle_draw(DmaFollower& dma) {
+  // NOTE: assuming ABE set from the template here. If this function is used for other templates,
+  // we'll need to actually check.
+  // printf("[tex anim] Draw\n");
+  DrawData draw_data;
+  auto draw_xfer = dma.read_and_advance();
+  ASSERT(draw_xfer.size_bytes == sizeof(DrawData));
+  memcpy(&draw_data, draw_xfer.data, sizeof(DrawData));
 
-  bool done = false;
-  while (true) {
-    auto tf = dma.read_and_advance();
-    auto vif0 = tf.vifcode0();
-    if (vif0.kind == VifCode::Kind::PC_PORT) {
-      switch (vif0.immediate) {
-        case UPLOAD_CLUT_16_16:
-          handle_upload_clut_16_16(tf, ee_mem);
-          break;
-        case ERASE_DEST_TEXTURE:
-          handle_erase_dest(dma);
-          break;
-        case GENERIC_UPLOAD:
-          handle_generic_upload(tf, ee_mem);
-          break;
-        case SET_SHADER:
-          handle_set_shader(dma);
-          break;
-        case DRAW:
-          handle_draw(dma);
-          break;
-        case FINISH_ARRAY:
-          done = true;
-          break;
-        default:
-          fmt::print("bad imm: {}\n", vif0.immediate);
-          ASSERT_NOT_REACHED();
-      }
-    } else {
-      printf("[tex anim] unhandled\n");
-      ASSERT_NOT_REACHED();
+  if (m_current_shader.source_texture_set) {
+    auto& dest_te = m_dest_textures.at(m_current_dest_tbp);
+    FramebufferTexturePairContext ctxt(*dest_te.tex);
+    GLuint gpu_texture = make_or_get_gpu_texture_for_current_shader();
+    set_up_opengl_for_shader(m_current_shader, gpu_texture, true);  // ABE forced on here.
+    set_uniforms_from_draw_data(draw_data, dest_te.tex_width, dest_te.tex_height);
+    {
+      ASSERT(dest_te.tex);
+      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     }
+    // debug_save_opengl_texture("opengl_draw_result.png", dest_te.tex->texture());
+    // debug_save_opengl_texture("opengl_test.png", gpu_texture);
+    // ASSERT_NOT_REACHED();
+  } else {
+    ASSERT_NOT_REACHED();
   }
-
-  // TODO: do something with the result textures.
-  glDeleteTextures(m_temp_textures.size(), m_temp_textures.data());
-  glDepthMask(GL_TRUE);
-  glEnable(GL_DEPTH_TEST);
-  glColorMask(true, true, true, true);
-  m_temp_textures.clear();
 }
 
 void TextureAnimator::load_clut_to_converter() {
@@ -312,13 +468,11 @@ void TextureAnimator::load_clut_to_converter() {
 }
 
 GLuint TextureAnimator::make_temp_gpu_texture(const u32* data, u32 width, u32 height) {
-  GLuint gl_tex;
-  glGenTextures(1, &gl_tex);
+  GLuint gl_tex = alloc_gl_texture();
   glBindTexture(GL_TEXTURE_2D, gl_tex);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                data);
   glBindTexture(GL_TEXTURE_2D, 0);
-  m_temp_textures.push_back(gl_tex);
   return gl_tex;
 }
 
@@ -326,13 +480,13 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader() {
   const auto& lookup = m_vram_entries.find(m_current_shader.tex0.tbp0());
   if (lookup == m_vram_entries.end()) {
     // try dest textures
-    for (auto& tex : m_result_textures) {
-      if ((u32)tex.dest_texture_address == m_current_shader.tex0.tbp0()) {
-        ASSERT(tex.tex);
-        printf("USING TEXTUING: %d\n", tex.tex->texture());
-        return tex.tex->texture();
-      }
+    const auto& dest_lookup = m_dest_textures.find(m_current_shader.tex0.tbp0());
+    if (dest_lookup != m_dest_textures.end()) {
+      ASSERT(dest_lookup->second.tex);
+      return dest_lookup->second.tex->texture();
     }
+
+    // TODO: could try ones from the previous frame?
 
     printf("referenced an unknown texture in %d\n", m_current_shader.tex0.tbp0());
     ASSERT_NOT_REACHED();
@@ -348,16 +502,12 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader() {
       switch (m_current_shader.tex0.psm()) {
         // reading as a different format, needs scrambler.
         case GsTex0::PSM::PSMT8: {
-          fmt::print(
-              " uploaded data in psm32 and uses it in psm8. Upload size {} x {}, use size "
-              "{} x {}\n",
-              vram_entry->width, vram_entry->height, 1 << m_current_shader.tex0.tw(),
-              1 << m_current_shader.tex0.th());
           int w = 1 << m_current_shader.tex0.tw();
           int h = 1 << m_current_shader.tex0.th();
           ASSERT(w == vram_entry->width * 2);
           ASSERT(h == vram_entry->height * 2);
 
+          Timer timer;
           m_converter.upload_width(vram_entry->data_psm32.data(), m_current_shader.tex0.tbp0(),
                                    vram_entry->width, vram_entry->height);
 
@@ -372,6 +522,7 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader() {
             //              file_util::write_rgba_png("out.png", rgba_data.data(), 1 <<
             //              m_current_shader.tex0.tw(),
             //                                        1 << m_current_shader.tex0.th());
+            // printf("processing %d x %d took %.3f ms\n", w, h, timer.getMs());
             return make_temp_gpu_texture(rgba_data.data(), w, h);
           }
 
@@ -494,6 +645,7 @@ void TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
   } else {
     glDisable(GL_BLEND);
   }
+  glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
 }
 
 namespace {
@@ -514,7 +666,7 @@ void convert_gs_uv_to_vec2(float* out, const math::Vector<float, 4>& in) {
 }  // namespace
 
 void TextureAnimator::set_uniforms_from_draw_data(const DrawData& dd, int dest_w, int dest_h) {
-  set_uniform(m_uniforms.rgba, dd.color.cast<float>() / 128.f);  // TODO or 256??
+  set_uniform(m_uniforms.rgba, dd.color.cast<float>());
 
   float pos[3 * 4 + 1];
   convert_gs_position_to_vec3(pos, dd.pos0, dest_w, dest_h);
@@ -522,9 +674,10 @@ void TextureAnimator::set_uniforms_from_draw_data(const DrawData& dd, int dest_w
   convert_gs_position_to_vec3(pos + 6, dd.pos2, dest_w, dest_h);
   convert_gs_position_to_vec3(pos + 9, dd.pos3, dest_w, dest_h);
   glUniform3fv(m_uniforms.positions, 4, pos);
-  for (int i = 0; i < 4; i++) {
-    fmt::print("fan vp {}: {:.3f} {:.3f} {:.3f}\n", i, pos[i * 3], pos[1 + i * 3], pos[2 + i * 3]);
-  }
+  //  for (int i = 0; i < 4; i++) {
+  //    fmt::print("fan vp {}: {:.3f} {:.3f} {:.3f}\n", i, pos[i * 3], pos[1 + i * 3], pos[2 + i *
+  //    3]);
+  //  }
 
   float uv[2 * 4];
   convert_gs_uv_to_vec2(uv, dd.st0);
@@ -532,34 +685,7 @@ void TextureAnimator::set_uniforms_from_draw_data(const DrawData& dd, int dest_w
   convert_gs_uv_to_vec2(uv + 4, dd.st2);
   convert_gs_uv_to_vec2(uv + 6, dd.st3);
   glUniform2fv(m_uniforms.uvs, 4, uv);
-  for (int i = 0; i < 4; i++) {
-    fmt::print("fan vt {}: {:.3f} {:.3f} \n", i, uv[i * 2], uv[1 + i * 2]);
-  }
-}
-
-void TextureAnimator::handle_draw(DmaFollower& dma) {
-  // NOTE: assuming ABE set from the template here. If this function is used for other templates,
-  // we'll need to actually check.
-  printf("[tex anim] Draw\n");
-  DrawData draw_data;
-  auto draw_xfer = dma.read_and_advance();
-  ASSERT(draw_xfer.size_bytes == sizeof(DrawData));
-  memcpy(&draw_data, draw_xfer.data, sizeof(DrawData));
-
-  if (m_current_shader.source_texture_set) {
-    auto& dest_te = m_result_textures.at(m_current_dest_index);
-    FramebufferTexturePairContext ctxt(*dest_te.tex);
-    GLuint gpu_texture = make_or_get_gpu_texture_for_current_shader();
-    set_up_opengl_for_shader(m_current_shader, gpu_texture, true);  // ABE forced on here.
-    set_uniforms_from_draw_data(draw_data, dest_te.tex_width, dest_te.tex_height);
-    {
-      ASSERT(dest_te.tex);
-      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    }
-    // debug_save_opengl_texture("opengl_draw_result.png", dest_te.tex->texture());
-    // debug_save_opengl_texture("opengl_test.png", gpu_texture);
-    // ASSERT_NOT_REACHED();
-  } else {
-    ASSERT_NOT_REACHED();
-  }
+  //  for (int i = 0; i < 4; i++) {
+  //    fmt::print("fan vt {}: {:.3f} {:.3f} \n", i, uv[i * 2], uv[1 + i * 2]);
+  //  }
 }

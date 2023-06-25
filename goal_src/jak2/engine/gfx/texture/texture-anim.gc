@@ -174,6 +174,7 @@
   (upload-generic-vram 16)
   (set-shader 17)
   (draw 18)
+  (move-rg-to-ba 19)
   )
 
 (deftype texture-anim-pc-upload (structure)
@@ -181,6 +182,14 @@
    (width uint32)
    (height uint32)
    (dest uint32)
+   )
+  )
+
+(deftype texture-anim-pc-texture-transform (structure)
+  ((src-tbp uint32)
+   (dest-tbp uint32)
+   (pad0 uint32)
+   (pad1 uint32)
    )
   )
 
@@ -388,6 +397,19 @@
 
 (defun move-rg-to-ba-texture-anim-layer-func ((dma-buf dma-buffer) (fbp-to-draw uint) (width int) (height int) (layer texture-anim-layer) (time float))
   "Some cursed texture drawing."
+
+  ;; HACK added:
+  (pc-texture-anim-flag move-rg-to-ba dma-buf :qwc 1)
+  (let ((transform (the texture-anim-pc-texture-transform (-> dma-buf base))))
+    (set! (-> transform src-tbp) (-> layer tex dest 0))
+    (set! (-> transform dest-tbp) (* 32 fbp-to-draw))
+    (set! (-> transform pad0) 0)
+    (set! (-> transform pad1) 0)
+    )
+  (&+! (-> dma-buf base) 16)
+  (return 0)
+  ;; end added
+
   (-> layer tex)
   (let ((tw (log2 (* width 2)))
         (th (log2 height))
@@ -568,7 +590,7 @@
         (let* ((anim (-> anim-array array-data anim-idx))
                (dest-tex (-> anim tex))
                )
-          (format 0 "texture anim dest tex: ~A~%" dest-tex)
+          ; (format 0 "texture anim dest tex: ~A~%" dest-tex)
           (when dest-tex
             0
             (let ((tex-width (-> dest-tex w)))
@@ -588,7 +610,7 @@
                   )
                 )
               (when (and (nonzero? tex-width) (nonzero? tex-height))
-                (format 0 " clearing~%")
+                ; (format 0 " clearing~%")
                 ;; configure for drawing to this texture.
                 (pc-texture-anim-flag erase-and-init dma-buf)
                 (dma-buffer-add-gs-set-flusha dma-buf
@@ -644,7 +666,7 @@
               (set! layer-idx 0)
               (while (< layer-idx (the-as int (-> anim num-layers)))
                 (let ((layer (-> anim data layer-idx)))
-                  (format 0 " running layer ~D~%" layer-idx)
+                  ; (format 0 " running layer ~D~%" layer-idx)
                   ;; generate DMA for this layer's effect
                   ((-> layer func) dma-buf fbp-for-tex tex-width tex-height layer (-> anim frame-time))
                   )
@@ -1100,7 +1122,17 @@
   "Upload the clut for the clouds."
   (when (-> arg1 tex)
     (make-cloud-clut (the-as (pointer uint32) (-> arg1 tex pad 0)) (-> arg1 extra y) (-> arg1 extra z))
-    (upload-vram-data arg0 (the-as int (-> arg1 tex clutdest)) (the-as pointer (-> arg1 tex pad 0)) 16 16)
+
+    ;(upload-vram-data arg0 (the-as int (-> arg1 tex clutdest)) (the-as pointer (-> arg1 tex pad 0)) 16 16)
+    (pc-texture-anim-flag upload-clut-16-16 arg0 :qwc 1)
+    (let ((upload-record (the texture-anim-pc-upload (-> arg0 base))))
+      (set! (-> upload-record data) (the-as pointer (-> arg1 tex pad 0))) ;; the clut16x16 object
+      (set! (-> upload-record width) 16)
+      (set! (-> upload-record height) 16)
+      (set! (-> upload-record dest) (-> arg1 tex clutdest))
+      )
+    (&+! (-> arg0 base) 16)
+
     (set! (-> *texture-pool* ids (shr (-> arg1 tex clutdest) 6)) (the-as uint 0))
     0
     )

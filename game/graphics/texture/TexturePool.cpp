@@ -110,6 +110,17 @@ void TexturePool::move_existing_to_vram(GpuTexture* tex, u32 slot_addr) {
   }
 }
 
+void TexturePool::update_gl_texture_by_tbp(u32 tbp, u32 new_w, u32 new_h, GLuint new_gl_texture) {
+  // TODO: broken.
+  auto& slot = m_textures[tbp];
+  ASSERT(slot.source);
+  ASSERT(slot.source->gpu_textures.size() == 1);
+  slot.source->gpu_textures[0].gl = new_gl_texture;
+  slot.gpu_texture = new_gl_texture;
+  slot.source->w = new_w;
+  slot.source->h = new_h;
+}
+
 void TexturePool::refresh_links(GpuTexture& texture) {
   u64 tex_to_use =
       texture.is_placeholder ? m_placeholder_texture_id : texture.gpu_textures.front().gl;
