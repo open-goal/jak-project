@@ -155,6 +155,7 @@ int sql_query_sync(Ptr<String> string_in) {
     kdebugheap->top.offset -= 0x4000;  // not sure what it's used for...
 
     // TODO - query the database!
+    const auto& result = run_sql_query(query_str);
     auto sym = find_symbol_from_c("sql-result");
     if (sym.offset) {
       Ptr<Type> type = Ptr<Type>(sym->value());

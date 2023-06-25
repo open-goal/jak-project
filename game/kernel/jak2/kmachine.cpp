@@ -802,25 +802,28 @@ void InitMachineScheme() {
   }
 }
 
-std::optional<SQLite::Database> sql_db = std::nullopt;
+sqlite::SQLiteDatabase sql_db;
 
 void initialize_sql_db() {
   // If the DB has already been initialized, no-op
-  if (sql_db) {
+  if (sql_db.is_open()) {
     return;
   }
   // In the original environment, they relied on a database already being setup with the correct
   // schema We are using an embedded SQLite database, which isn't already setup, so we have to do
   // that here!
 
-  // TODO - eventually tie this to .sql files instead of hard-coding the strings here, usually a
-  // nicer editing experience
-
   fs::path db_path = file_util::get_user_misc_dir(g_game_version) / "jak2-editor.db";
   file_util::create_dir_if_needed_for_file(db_path);
 
-  try {
-    sql_db = SQLite::Database(db_path.string(), SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
+  // Attempt to open the database
+  const auto opened = sql_db.open_db(db_path.string());
+
+  // TODO - seed the database
+  // TODO - eventually tie this to .sql files instead of hard-coding the strings here, usually a
+  // nicer editing experience
+
+  /*try {
     SQLite::Transaction tx(sql_db.value());
     sql_db->exec(
         "CREATE TABLE IF NOT EXISTS 'level_info' ( 'level_info_id' INTEGER, 'name' TEXT, "
@@ -885,7 +888,15 @@ void initialize_sql_db() {
     tx.commit();
   } catch (std::exception& e) {
     lg::error("[SQL] Error creating SQLite DB - {}", e.what());
+  }*/
+}
+
+sqlite::GenericResponse run_sql_query(const std::string& query) {
+  if (!sql_db.is_open()) {
+    // TODO - error
+    return sqlite::GenericResponse();
   }
+  return sql_db.run_query(query);
 }
 
 }  // namespace jak2

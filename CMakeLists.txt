@@ -175,8 +175,8 @@ add_subdirectory(third-party/replxx EXCLUDE_FROM_ALL)
 # SQLite - Jak 2/3's built in editor
 add_definitions(-DHAVE_USLEEP=1)
 add_definitions(-DSQLITE_THREADSAFE=1)
-add_definitions(-DSQLITE_ENABLE_JSON1=1)
-add_definitions(-DSQLITE_ENABLE_RTREE=1)
+add_definitions(-DSQLITE_ENABLE_JSON1)
+add_definitions(-DSQLITE_ENABLE_RTREE)
 add_subdirectory(third-party/sqlite3)
 
 # build tree-sitter parser
