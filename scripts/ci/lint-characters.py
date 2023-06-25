@@ -9,6 +9,8 @@ parser.add_argument("--fix", action="store_true")
 parser.set_defaults(fix=False)
 args = parser.parse_args()
 
+# TODO - trim strings
+
 # fmt: off
 JAK1_ALLOWED_CHARACTERS = [
     "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
@@ -113,6 +115,7 @@ for text_file in text_files:
         # save the modified file back out
         with open(text_file, "w", encoding="utf-8") as f:
             json.dump(file_data, f, indent=2, ensure_ascii=False)
+            f.write("\n")
 
 subtitle_files = glob.glob("./game/assets/jak1/subtitle/*lines*.json")
 
@@ -146,6 +149,7 @@ for subtitle_file in subtitle_files:
         # save the modified file back out
         with open(subtitle_file, "w", encoding="utf-8") as f:
             json.dump(file_data, f, indent=2, ensure_ascii=False)
+            f.write("\n")
 
 if invalid_characters_found:
     print("Invalid characters were found, see above")
