@@ -64,11 +64,7 @@ class FramebufferCopier {
   ~FramebufferCopier();
   FramebufferCopier(const FramebufferCopier&) = delete;
   FramebufferCopier& operator=(const FramebufferCopier&) = delete;
-  void copy_now(int render_fb_w,
-                int render_fb_h,
-                int render_fb_x,
-                int render_fb_y,
-                GLuint render_fb);
+  void copy_now(int render_fb_w, int render_fb_h, GLuint render_fb);
   u64 texture() const { return m_fbo_texture; }
 
  private:

@@ -1,14 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: texture-anim.gc
-;; name in dgo: texture-anim
-;; dgos: ENGINE, GAME
-
-;; DECOMP BEGINS
-
-;; The "texture animation" system modifies a texture according to a series of layers.
-
+;; definition for symbol *texture-anim-work*, type texture-anim-work
 (define *texture-anim-work*
   (new 'static 'texture-anim-work
     :erase-tmpl (new 'static 'dma-gif-packet
@@ -109,8 +102,10 @@
     )
   )
 
+;; definition for function texture-anim-layer-interp
+;; WARN: Return type mismatch float vs none.
 (defun texture-anim-layer-interp ((arg0 texture-anim-layer) (arg1 float))
-  "Interpolate between start and end, and store the results in layer's interpolated-vectors array."
+  (local-vars (v0-0 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -162,12 +157,14 @@
     (.svf (&-> arg0 interpolated-st-scale-offset quad) vf4)
     (.svf (&-> arg0 interpolated-qs quad) vf5)
     (.svf (&-> arg0 interpolated-rot quad) vf6)
+    (.mov v0-0 vf6)
     (none)
     )
   )
 
+;; definition for function texture-anim-layer-add-shader
+;; WARN: Return type mismatch pointer vs none.
 (defun texture-anim-layer-add-shader ((arg0 dma-buffer) (arg1 texture-anim-layer) (arg2 int))
-  "Add DMA to set the GS to use the given shader. This can be used to read from the texture."
   (let ((s5-0 (-> arg1 tex)))
     (if s5-0
         (dma-buffer-add-gs-set arg0
@@ -193,8 +190,9 @@
   (none)
   )
 
+;; definition for function texture-anim-layer-add-clut-shader
+;; WARN: Return type mismatch pointer vs none.
 (defun texture-anim-layer-add-clut-shader ((arg0 dma-buffer) (arg1 texture-anim-layer) (arg2 int))
-  "Add DMA to set the GS to use the clut as a ct32 texture. This is used to abuse the GS to blend cluts by pretending they are ct32's."
   (let ((a1-1 (-> arg1 tex)))
     (if a1-1
         (dma-buffer-add-gs-set arg0
@@ -209,11 +207,10 @@
   (none)
   )
 
+;; definition for function texture-anim-layer-draw
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch pointer vs none.
 (defun texture-anim-layer-draw ((dma-buf dma-buffer) (width int) (height int) (layer texture-anim-layer))
-  "Add DMA to do a rectangular draw.
-   Uses the interpolated quantities for sizes/rotations/positions.
-   Always draws a tristrip with two triangles.
-   "
   (local-vars (v1-27 float) (sv-224 matrix) (sv-228 matrix) (sv-232 matrix) (sv-236 matrix))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -330,9 +327,8 @@
     )
   )
 
+;; definition for function default-texture-anim-layer-func
 (defun default-texture-anim-layer-func ((dma-buf dma-buffer) (arg1 uint) (width int) (height int) (layer texture-anim-layer) (time float))
-  "Apply texture animation layer. This interpolates the layer given the time, sets up the GS to _read_ from the given texture, then
-   does the draw."
   (when (and (>= time (-> layer start-time)) (>= (-> layer end-time) time))
     (texture-anim-layer-interp layer time)
     (when (!= (-> layer interpolated-color w) 0.0)
@@ -343,9 +339,8 @@
   0
   )
 
+;; definition for function blend-clut-texture-anim-layer-func
 (defun blend-clut-texture-anim-layer-func ((dma-buf dma-buffer) (arg1 uint) (width int) (height int) (layer texture-anim-layer) (time float))
-  "Apply texture animation layer to the clut. This interpolates the layer, sets up the GS to _read_ from the given texture's
-   clut as a 16x16 psm32, then does the draw."
   (when (and (>= time (-> layer start-time)) (>= (-> layer end-time) time))
     (texture-anim-layer-interp layer time)
     (when (!= (-> layer interpolated-color w) 0.0)
@@ -356,8 +351,8 @@
   0
   )
 
+;; definition for function move-rg-to-ba-texture-anim-layer-func
 (defun move-rg-to-ba-texture-anim-layer-func ((dma-buf dma-buffer) (fbp-to-draw uint) (width int) (height int) (layer texture-anim-layer) (time float))
-  "Some cursed texture drawing."
   (-> layer tex)
   (let ((tw (log2 (* width 2)))
         (th (log2 height))
@@ -404,14 +399,6 @@
                            (xyz2 (new 'static 'gs-xyz :y (* height 16) :x (+ (* v1-8 256) 256)))
                            )
     )
-
-  ;; manually done from the stuff below.
-  (dma-buffer-add-gs-set-flusha dma-buf
-                                (xyoffset-1 (new 'static 'gs-xy-offset :ofx #x7000 :ofy #x7300))
-                                (frame-1 (new 'static 'gs-frame :fbw (/ (+ width 63) 64) :fbp fbp-to-draw))
-                                )
-  #|
-  ;; not sure why this doesn't become a macro
   (let* ((v1-11 dma-buf)
          (a0-15 (the-as dma-packet (-> v1-11 base)))
          )
@@ -436,24 +423,21 @@
     (set! (-> (the-as (pointer gs-reg64) v1-13) 3) (gs-reg64 frame-1))
     (set! (-> dma-buf base) (&+ v1-13 32))
     )
-    |#
   0
   )
 
+;; definition for function fill-rgb-texture-anim-layer-func
+;; INFO: Used lq/sq
 (defun fill-rgb-texture-anim-layer-func ((dma-buf dma-buffer) (fbp-to-draw uint) (width int) (height int) (layer texture-anim-layer) (time float))
-  "Layer function to just draw RGB. This uses a full size sprite and ignores the offset/rotations."
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          )
     (let ((s5-0 (/ (+ width 63) 64)))
-      ;; set frame to mask alpha
       (dma-buffer-add-gs-set-flusha dma-buf
                                     (frame-1 (new 'static 'gs-frame :fbmsk #xff000000 :fbw s5-0 :fbp fbp-to-draw))
                                     (texflush 0)
                                     )
-      ;; make sure interp is up to date
       (texture-anim-layer-interp layer time)
-      ;; sprite coordinates.
       (let ((v1-4 (-> dma-buf base))
             (a3-1 2048)
             (a2-5 2048)
@@ -471,63 +455,46 @@
         (set-vector! (the-as vector4w (&+ v1-4 64)) (* a0-8 16) (* a1-15 16) 0 0)
         )
       (&+! (-> dma-buf base) 80)
-      ;; reset frame.
-      (dma-buffer-add-gs-set-flusha dma-buf
-                                    (frame-1 (new 'static 'gs-frame :fbw s5-0 :fbp fbp-to-draw))
-                                    (texflush 0)
-                                    )
-      ; (let* ((v1-8 dma-buf)
-      ;        (a0-11 (the-as dma-packet (-> v1-8 base)))
-      ;        )
-      ;   (set! (-> a0-11 dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id cnt)))
-      ;   (set! (-> a0-11 vif0) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
-      ;   (set! (-> a0-11 vif1) (new 'static 'vif-tag :imm #x3 :cmd (vif-cmd direct) :msk #x1))
-      ;   (set! (-> v1-8 base) (the-as pointer (&+ a0-11 16)))
-      ;   )
-      ; (let* ((v1-9 dma-buf)
-      ;        (a0-13 (the-as gs-gif-tag (-> v1-9 base)))
-      ;        )
-      ;   (set! (-> a0-13 tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x2))
-      ;   (set! (-> a0-13 regs) GIF_REGS_ALL_AD)
-      ;   (set! (-> v1-9 base) (the-as pointer (&+ a0-13 16)))
-      ;   )
-      ; (let ((v1-10 (-> dma-buf base)))
-      ;   (set! (-> (the-as (pointer gs-frame) v1-10) 0) (new 'static 'gs-frame :fbw s5-0 :fbp fbp-to-draw))
-      ;   (set! (-> (the-as (pointer gs-reg64) v1-10) 1) (gs-reg64 frame-1))
-      ;   (set! (-> (the-as (pointer uint64) v1-10) 2) (the-as uint 0))
-      ;   (set! (-> (the-as (pointer gs-reg64) v1-10) 3) (gs-reg64 texflush))
-      ;   (set! (-> dma-buf base) (&+ v1-10 32))
-      ;   )
+      (let* ((v1-8 dma-buf)
+             (a0-11 (the-as dma-packet (-> v1-8 base)))
+             )
+        (set! (-> a0-11 dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id cnt)))
+        (set! (-> a0-11 vif0) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+        (set! (-> a0-11 vif1) (new 'static 'vif-tag :imm #x3 :cmd (vif-cmd direct) :msk #x1))
+        (set! (-> v1-8 base) (the-as pointer (&+ a0-11 16)))
+        )
+      (let* ((v1-9 dma-buf)
+             (a0-13 (the-as gs-gif-tag (-> v1-9 base)))
+             )
+        (set! (-> a0-13 tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x2))
+        (set! (-> a0-13 regs) GIF_REGS_ALL_AD)
+        (set! (-> v1-9 base) (the-as pointer (&+ a0-13 16)))
+        )
+      (let ((v1-10 (-> dma-buf base)))
+        (set! (-> (the-as (pointer gs-frame) v1-10) 0) (new 'static 'gs-frame :fbw s5-0 :fbp fbp-to-draw))
+        (set! (-> (the-as (pointer gs-reg64) v1-10) 1) (gs-reg64 frame-1))
+        (set! (-> (the-as (pointer uint64) v1-10) 2) (the-as uint 0))
+        (set! (-> (the-as (pointer gs-reg64) v1-10) 3) (gs-reg64 texflush))
+        (set! (-> dma-buf base) (&+ v1-10 32))
+        )
       )
     0
     )
   )
 
+;; definition for function update-texture-anim
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function update-texture-anim has a return type of none, but the expression builder found a return statement.
 (defun update-texture-anim ((bucket bucket-id) (anim-array texture-anim-array))
-  "Generate all DMA to update all textures in the given list for the given bucket."
-
-  ;;
-  ;; (return #f)
-  ;;
   (local-vars (tex-height int) (fbp-for-tex uint) (layer-idx int))
   (with-pp
     (if (-> *blit-displays-work* menu-mode)
         (return #f)
         )
-
-
-
     (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
                                  bucket
                                  )
-      ;; added: flag for the PC port to indicate start of texture anim data:
-      (dma-buffer-add-cnt-vif2
-        dma-buf
-        0
-        (new 'static 'vif-tag :cmd (vif-cmd pc-port) :imm 12)
-        (new 'static 'vif-tag :cmd (vif-cmd pc-port))
-        )
-      ;; loop over animated textures. Each will produce a single texture.
       (dotimes (anim-idx (-> anim-array length))
         (let* ((anim (-> anim-array array-data anim-idx))
                (dest-tex (-> anim tex))
@@ -538,12 +505,10 @@
               (set! tex-height (-> dest-tex h))
               (cond
                 ((or (= (-> dest-tex psm) (gs-psm ct32)) (= (-> dest-tex psm) (gs-psm mt8h)))
-                 ;; animating the actual texture data.
                  (set! fbp-for-tex (shr (-> dest-tex dest 0) 5))
                  fbp-for-tex
                  )
                 (else
-                  ;; animating the clut.
                   (set! fbp-for-tex (shr (-> dest-tex clutdest) 5))
                   (set! tex-width 16)
                   (set! tex-height 16)
@@ -551,11 +516,9 @@
                   )
                 )
               (when (and (nonzero? tex-width) (nonzero? tex-height))
-                ;; configure for drawing to this texture.
                 (dma-buffer-add-gs-set-flusha dma-buf
                                               (scissor-1 (new 'static 'gs-scissor :scax1 (+ tex-width -1) :scay1 (+ tex-height -1)))
                                               (xyoffset-1 (new 'static 'gs-xy-offset :ofx #x8000 :ofy #x8000))
-                                              ;; setting fbp here is what makes it draw to the texture, not frambeuffer.
                                               (frame-1 (new 'static 'gs-frame :fbw (/ (+ tex-width 63) 64) :fbp fbp-for-tex))
                                               (test-1 (-> anim test))
                                               (alpha-1 (-> anim alpha))
@@ -564,7 +527,6 @@
                                               (zbuf-1 (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24) :zmsk #x1))
                                               (texflush 0)
                                               )
-                ;; erase whatever was here previously
                 (let ((a1-32 (-> dma-buf base))
                       (a3-0 2048)
                       (a2-7 2048)
@@ -585,11 +547,6 @@
                   )
                 (&+! (-> dma-buf base) 80)
                 )
-
-              ;; this animated texture may overlap with other textures from other pages.
-              ;; we're writing over this from outside of the usual texture page upload system.
-              ;; so we should manually clear the id arrays for our pages, to make sure the texture
-              ;; system re-uploads textures if needed.
               (let ((v1-32 (/ (the-as int fbp-for-tex) 2))
                     (a0-19 (* (/ (+ tex-width 63) 64) (/ (+ tex-height 63) 64)))
                     )
@@ -600,23 +557,17 @@
                   (set! (-> *texture-pool* ids (+ v1-32 a1-43)) (the-as uint 0))
                   )
                 )
-
-              ;; loop over layers
               (set! layer-idx 0)
               (while (< layer-idx (the-as int (-> anim num-layers)))
                 (let ((layer (-> anim data layer-idx)))
-                  ;; generate DMA for this layer's effect
                   ((-> layer func) dma-buf fbp-for-tex tex-width tex-height layer (-> anim frame-time))
                   )
                 (set! layer-idx (+ layer-idx 1))
                 )
               )
-            ;; some sort of final function (TODO args here)
             (if (-> anim func)
                 ((-> anim func) dma-buf anim)
                 )
-
-            ;; advance animation.
             (when (not (paused?))
               (let ((f0-2 (+ (-> anim frame-time) (* (-> anim frame-delta) (-> pp clock seconds-per-frame))))
                     (f1-2 (-> anim frame-mod))
@@ -630,25 +581,15 @@
             )
           )
         )
-
-      ;; reset GS registers - we messed with frame/scissor.
       (reset-display-gs-state *display* dma-buf)
-
-      ;; added: flag for the PC port to indicate end of texture anim data:
-      (dma-buffer-add-cnt-vif2
-        dma-buf
-        0
-        (new 'static 'vif-tag :cmd (vif-cmd pc-port) :imm 13)
-        (new 'static 'vif-tag :cmd (vif-cmd pc-port))
-        )
       )
     0
     (none)
     )
   )
 
+;; definition for function no-alpha-texture-anim-layer-func
 (defun no-alpha-texture-anim-layer-func ((dma-buf dma-buffer) (fbp-to-draw uint) (width int) (height int) (layer texture-anim-layer) (time float))
-  "Like others, but the tcc value is 0"
   (when (and (>= time (-> layer start-time)) (>= (-> layer end-time) time))
     (texture-anim-layer-interp layer time)
     (when (!= (-> layer interpolated-color w) 0.0)
@@ -659,27 +600,20 @@
   0
   )
 
+;; definition for function copy-alpha-texture-anim-layer-func
+;; INFO: Used lq/sq
 (defun copy-alpha-texture-anim-layer-func ((dma-buf dma-buffer) (fbp-to-draw uint) (width int) (height int) (layer texture-anim-layer) (time float))
-  "Copy only alpha from the layer source texture. Does a draw, possibly blending if that's how the layer is configured.
-   Draw is always axis aligned, full size."
   (when (and (>= time (-> layer start-time)) (>= (-> layer end-time) time))
-
-    ;; compute layer values for this frame
     (texture-anim-layer-interp layer time)
-
     (let ((s4-0 (/ (+ width 63) 64)))
-      ;; set up fbmask for alpha only
       (dma-buffer-add-gs-set dma-buf (frame-1 (new 'static 'gs-frame :fbmsk #xffffff :fbw s4-0 :fbp fbp-to-draw)))
-      ;; set up shader to sample from the layer's texture
       (texture-anim-layer-add-shader dma-buf layer 1)
-
       (let ((v1-7 (-> dma-buf base))
             (a2-6 #x8000)
             (a3-1 #x8000)
             (a0-10 (* (+ width 2048) 16))
             (a1-14 (* (+ height 2048) 16))
             )
-        ;; generate drawing.
         (set! (-> (the-as (pointer uint128) v1-7)) (-> *texture-anim-work* draw-tmpl dma-vif quad))
         (set! (-> (the-as (pointer uint128) v1-7) 1) (-> *texture-anim-work* draw-tmpl quad 1))
         (set-vector! (the-as vector4w (&+ v1-7 32)) 128 128 128 (the int (* 128.0 (-> layer interpolated-color w))))
@@ -693,38 +627,34 @@
         (set-vector! (the-as vector4w (&+ v1-7 160)) a0-10 a1-14 #xffffff 0)
         )
       (&+! (-> dma-buf base) 176)
-
-      ;; reset frame.
-      (dma-buffer-add-gs-set dma-buf
-                             (frame-1 (new 'static 'gs-frame :fbw s4-0 :fbp fbp-to-draw))
-                             )
-      ; (let* ((v1-11 dma-buf)
-      ;        (a0-12 (the-as dma-packet (-> v1-11 base)))
-      ;        )
-      ;   (set! (-> a0-12 dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-      ;   (set! (-> a0-12 vif0) (new 'static 'vif-tag))
-      ;   (set! (-> a0-12 vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-      ;   (set! (-> v1-11 base) (the-as pointer (&+ a0-12 16)))
-      ;   )
-      ; (let* ((v1-12 dma-buf)
-      ;        (a0-14 (the-as object (-> v1-12 base)))
-      ;        )
-      ;   (set! (-> (the-as gs-gif-tag a0-14) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-      ;   (set! (-> (the-as gs-gif-tag a0-14) regs) GIF_REGS_ALL_AD)
-      ;   (set! (-> v1-12 base) (&+ (the-as pointer a0-14) 16))
-      ;   )
-      ; (let ((v1-13 (-> dma-buf base)))
-      ;   (set! (-> (the-as (pointer gs-frame) v1-13) 0) (new 'static 'gs-frame :fbw s4-0 :fbp fbp-to-draw))
-      ;   (set! (-> (the-as (pointer gs-reg64) v1-13) 1) (gs-reg64 frame-1))
-      ;   (set! (-> dma-buf base) (&+ v1-13 16))
-      ;   )
+      (let* ((v1-11 dma-buf)
+             (a0-12 (the-as dma-packet (-> v1-11 base)))
+             )
+        (set! (-> a0-12 dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+        (set! (-> a0-12 vif0) (new 'static 'vif-tag))
+        (set! (-> a0-12 vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
+        (set! (-> v1-11 base) (the-as pointer (&+ a0-12 16)))
+        )
+      (let* ((v1-12 dma-buf)
+             (a0-14 (the-as object (-> v1-12 base)))
+             )
+        (set! (-> (the-as gs-gif-tag a0-14) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
+        (set! (-> (the-as gs-gif-tag a0-14) regs) GIF_REGS_ALL_AD)
+        (set! (-> v1-12 base) (&+ (the-as pointer a0-14) 16))
+        )
+      (let ((v1-13 (-> dma-buf base)))
+        (set! (-> (the-as (pointer gs-frame) v1-13) 0) (new 'static 'gs-frame :fbw s4-0 :fbp fbp-to-draw))
+        (set! (-> (the-as (pointer gs-reg64) v1-13) 1) (gs-reg64 frame-1))
+        (set! (-> dma-buf base) (&+ v1-13 16))
+        )
       )
     )
   0
   )
 
+;; definition for function copy-clut-alpha-texture-anim-layer-func
+;; INFO: Used lq/sq
 (defun copy-clut-alpha-texture-anim-layer-func ((dma-buf dma-buffer) (fbp-to-draw uint) (width int) (height int) (layer texture-anim-layer) (time float))
-  "Copy only alpha from the layer source clut."
   (when (and (>= time (-> layer start-time)) (>= (-> layer end-time) time))
     (texture-anim-layer-interp layer time)
     (let ((s4-0 1))
@@ -749,43 +679,40 @@
         (set-vector! (the-as vector4w (&+ a1-13 160)) v1-6 a0-9 #xffffff 0)
         )
       (&+! (-> dma-buf base) 176)
-      (dma-buffer-add-gs-set dma-buf
-                             (frame-1 (new 'static 'gs-frame :fbw s4-0 :fbp fbp-to-draw))
-                             )
-      ; (let* ((v1-10 dma-buf)
-      ;        (a0-10 (the-as dma-packet (-> v1-10 base)))
-      ;        )
-      ;   (set! (-> a0-10 dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-      ;   (set! (-> a0-10 vif0) (new 'static 'vif-tag))
-      ;   (set! (-> a0-10 vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-      ;   (set! (-> v1-10 base) (the-as pointer (the-as dma-packet (&+ a0-10 16))))
-      ;   )
-      ; (let* ((v1-11 dma-buf)
-      ;        (a0-12 (the-as object (-> v1-11 base)))
-      ;        )
-      ;   (set! (-> (the-as gs-gif-tag a0-12) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-      ;   (set! (-> (the-as gs-gif-tag a0-12) regs) GIF_REGS_ALL_AD)
-      ;   (set! (-> v1-11 base) (&+ (the-as pointer a0-12) 16))
-      ;   )
-      ; (let ((v1-12 (-> dma-buf base)))
-      ;   (set! (-> (the-as (pointer gs-frame) v1-12) 0) (new 'static 'gs-frame :fbw s4-0 :fbp fbp-to-draw))
-      ;   (set! (-> (the-as (pointer gs-reg64) v1-12) 1) (gs-reg64 frame-1))
-      ;   (set! (-> dma-buf base) (&+ v1-12 16))
-      ;   )
+      (let* ((v1-10 dma-buf)
+             (a0-10 (the-as dma-packet (-> v1-10 base)))
+             )
+        (set! (-> a0-10 dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+        (set! (-> a0-10 vif0) (new 'static 'vif-tag))
+        (set! (-> a0-10 vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
+        (set! (-> v1-10 base) (the-as pointer (the-as dma-packet (&+ a0-10 16))))
+        )
+      (let* ((v1-11 dma-buf)
+             (a0-12 (the-as object (-> v1-11 base)))
+             )
+        (set! (-> (the-as gs-gif-tag a0-12) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
+        (set! (-> (the-as gs-gif-tag a0-12) regs) GIF_REGS_ALL_AD)
+        (set! (-> v1-11 base) (&+ (the-as pointer a0-12) 16))
+        )
+      (let ((v1-12 (-> dma-buf base)))
+        (set! (-> (the-as (pointer gs-frame) v1-12) 0) (new 'static 'gs-frame :fbw s4-0 :fbp fbp-to-draw))
+        (set! (-> (the-as (pointer gs-reg64) v1-12) 1) (gs-reg64 frame-1))
+        (set! (-> dma-buf base) (&+ v1-12 16))
+        )
       )
     )
   0
   )
 
+;; definition for function set-alpha-texture-anim-layer-func
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch pointer vs int.
 (defun set-alpha-texture-anim-layer-func ((dma-buf dma-buffer) (fbp-to-draw uint) (width int) (height int) (layer texture-anim-layer) (time float))
-  "Set alpha to 128 for the texture."
   (let ((v1-1 (/ (+ width 63) 64)))
-    ;; make sure alpha test is off, and set frame to allow only alpha writes
     (dma-buffer-add-gs-set dma-buf
                            (test-1 (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always)))
                            (frame-1 (new 'static 'gs-frame :fbmsk #xffffff :fbw v1-1 :fbp fbp-to-draw))
                            )
-    ;; draw the sprite.
     (let ((t0-4 (-> dma-buf base))
           (t2-12 2048)
           (t1-7 2048)
@@ -794,43 +721,41 @@
           )
       (set! (-> (the-as (pointer uint128) t0-4)) (-> *texture-anim-work* erase-tmpl dma-vif quad))
       (set! (-> (the-as (pointer uint128) t0-4) 1) (-> *texture-anim-work* erase-tmpl quad 1))
-      (set-vector! (the-as vector4w (&+ t0-4 32)) 0 0 0 128) ;; rgba
+      (set-vector! (the-as vector4w (&+ t0-4 32)) 0 0 0 128)
       (set-vector! (the-as vector4w (&+ t0-4 48)) (* t2-12 16) (* t1-7 16) #xffffff 0)
       (set-vector! (the-as vector4w (&+ t0-4 64)) (* a2-1 16) (* a3-1 16) #xffffff 0)
       )
     (&+! (-> dma-buf base) 80)
-    (dma-buffer-add-gs-set dma-buf
-                           (frame-1 (new 'static 'gs-frame :fbw v1-1 :fbp fbp-to-draw))
-                           )
-    0
-    ; (let* ((a2-7 dma-buf)
-    ;        (a3-2 (the-as object (-> a2-7 base)))
-    ;        )
-    ;   (set! (-> (the-as dma-packet a3-2) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-    ;   (set! (-> (the-as dma-packet a3-2) vif0) (new 'static 'vif-tag))
-    ;   (set! (-> (the-as dma-packet a3-2) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-    ;   (set! (-> a2-7 base) (&+ (the-as pointer a3-2) 16))
-    ;   )
-    ; (let* ((a2-8 dma-buf)
-    ;        (a3-4 (the-as object (-> a2-8 base)))
-    ;        )
-    ;   (set! (-> (the-as gs-gif-tag a3-4) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-    ;   (set! (-> (the-as gs-gif-tag a3-4) regs) GIF_REGS_ALL_AD)
-    ;   (set! (-> a2-8 base) (&+ (the-as pointer a3-4) 16))
-    ;   )
-    ; (let ((a2-9 (-> dma-buf base)))
-    ;   (set! (-> (the-as (pointer gs-frame) a2-9) 0) (new 'static 'gs-frame :fbw v1-1 :fbp fbp-to-draw))
-    ;   (set! (-> (the-as (pointer gs-reg64) a2-9) 1) (gs-reg64 frame-1))
-    ;   (let ((v0-0 (&+ a2-9 16)))
-    ;     (set! (-> dma-buf base) v0-0)
-    ;     (the-as int v0-0)
-    ;     )
-    ;   )
+    (let* ((a2-7 dma-buf)
+           (a3-2 (the-as object (-> a2-7 base)))
+           )
+      (set! (-> (the-as dma-packet a3-2) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+      (set! (-> (the-as dma-packet a3-2) vif0) (new 'static 'vif-tag))
+      (set! (-> (the-as dma-packet a3-2) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> a2-7 base) (&+ (the-as pointer a3-2) 16))
+      )
+    (let* ((a2-8 dma-buf)
+           (a3-4 (the-as object (-> a2-8 base)))
+           )
+      (set! (-> (the-as gs-gif-tag a3-4) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
+      (set! (-> (the-as gs-gif-tag a3-4) regs) GIF_REGS_ALL_AD)
+      (set! (-> a2-8 base) (&+ (the-as pointer a3-4) 16))
+      )
+    (let ((a2-9 (-> dma-buf base)))
+      (set! (-> (the-as (pointer gs-frame) a2-9) 0) (new 'static 'gs-frame :fbw v1-1 :fbp fbp-to-draw))
+      (set! (-> (the-as (pointer gs-reg64) a2-9) 1) (gs-reg64 frame-1))
+      (let ((v0-0 (&+ a2-9 16)))
+        (set! (-> dma-buf base) v0-0)
+        (the-as int v0-0)
+        )
+      )
     )
   )
 
+;; definition for function set-clut-alpha-texture-anim-layer-func
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch pointer vs int.
 (defun set-clut-alpha-texture-anim-layer-func ((dma-buf dma-buffer) (fbp-to-draw uint) (width int) (height int) (layer texture-anim-layer) (time float))
-  "Set clut alpha to 128."
   (let ((v1-0 1))
     (dma-buffer-add-gs-set dma-buf
                            (test-1 (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always)))
@@ -849,41 +774,39 @@
       (set-vector! (the-as vector4w (&+ t0-13 64)) (* a3-7 16) (* a2-4 16) #xffffff 0)
       )
     (&+! (-> dma-buf base) 80)
-    (dma-buffer-add-gs-set dma-buf
-                           (frame-1 (new 'static 'gs-frame :fbw v1-0 :fbp fbp-to-draw))
-                           )
-    0
-    ; (let* ((a2-9 dma-buf)
-    ;        (a3-9 (the-as object (-> a2-9 base)))
-    ;        )
-    ;   (set! (-> (the-as dma-packet a3-9) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-    ;   (set! (-> (the-as dma-packet a3-9) vif0) (new 'static 'vif-tag))
-    ;   (set! (-> (the-as dma-packet a3-9) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-    ;   (set! (-> a2-9 base) (&+ (the-as pointer a3-9) 16))
-    ;   )
-    ; (let* ((a2-10 dma-buf)
-    ;        (a3-11 (the-as object (-> a2-10 base)))
-    ;        )
-    ;   (set! (-> (the-as gs-gif-tag a3-11) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-    ;   (set! (-> (the-as gs-gif-tag a3-11) regs) GIF_REGS_ALL_AD)
-    ;   (set! (-> a2-10 base) (&+ (the-as pointer a3-11) 16))
-    ;   )
-    ; (let ((a2-11 (-> dma-buf base)))
-    ;   (set! (-> (the-as (pointer gs-frame) a2-11) 0) (new 'static 'gs-frame :fbw v1-0 :fbp fbp-to-draw))
-    ;   (set! (-> (the-as (pointer gs-reg64) a2-11) 1) (gs-reg64 frame-1))
-    ;   (let ((v0-0 (&+ a2-11 16)))
-    ;     (set! (-> dma-buf base) v0-0)
-    ;     (the-as int v0-0)
-    ;     )
-    ;   )
+    (let* ((a2-9 dma-buf)
+           (a3-9 (the-as object (-> a2-9 base)))
+           )
+      (set! (-> (the-as dma-packet a3-9) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+      (set! (-> (the-as dma-packet a3-9) vif0) (new 'static 'vif-tag))
+      (set! (-> (the-as dma-packet a3-9) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> a2-9 base) (&+ (the-as pointer a3-9) 16))
+      )
+    (let* ((a2-10 dma-buf)
+           (a3-11 (the-as object (-> a2-10 base)))
+           )
+      (set! (-> (the-as gs-gif-tag a3-11) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
+      (set! (-> (the-as gs-gif-tag a3-11) regs) GIF_REGS_ALL_AD)
+      (set! (-> a2-10 base) (&+ (the-as pointer a3-11) 16))
+      )
+    (let ((a2-11 (-> dma-buf base)))
+      (set! (-> (the-as (pointer gs-frame) a2-11) 0) (new 'static 'gs-frame :fbw v1-0 :fbp fbp-to-draw))
+      (set! (-> (the-as (pointer gs-reg64) a2-11) 1) (gs-reg64 frame-1))
+      (let ((v0-0 (&+ a2-11 16)))
+        (set! (-> dma-buf base) v0-0)
+        (the-as int v0-0)
+        )
+      )
     )
   )
 
+;; definition for function dest-texture-init
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defun dest-texture-init ((tex-anim texture-anim))
-  "Set up the texture object to hold the destination (result) texture."
   (let ((dest-tex (new 'loading-level 'texture)))
     (let ((size (the int (-> tex-anim extra x))))
-      (let ((dest (the int (-> tex-anim extra y)))) ;; dest vram addr is stashed here.
+      (let ((dest (the int (-> tex-anim extra y))))
         (set! (-> tex-anim tex) dest-tex)
         (set! (-> dest-tex w) size)
         (set! (-> dest-tex h) size)
@@ -902,9 +825,10 @@
   (none)
   )
 
+;; definition for function src-texture-init
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defun src-texture-init ((layer texture-anim-layer))
-  "Allocate a texture object to hold a source texture. This is only used for source textures that are generated at runtime,
-   like random noise. Layers may include a reference to an existing texture instead. Always psm32."
   (let ((tex (new 'loading-level 'texture)))
     (let ((size (the int (-> layer extra x))))
       (let ((addr (the int (-> layer extra y))))
@@ -926,9 +850,10 @@
   (none)
   )
 
-
+;; definition for function src-texture-init-mt8
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defun src-texture-init-mt8 ((layer texture-anim-layer))
-  "Like src-texture-init, but sets up a mt8 (pallete) texture."
   (let ((tex (new 'loading-level 'texture)))
     (let ((width (the int (-> layer extra x))))
       (let ((height (the int (-> layer extra y)))
@@ -955,8 +880,10 @@
   (none)
   )
 
+;; definition for function make-noise-texture
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch uint vs none.
 (defun make-noise-texture ((arg0 pointer) (arg1 int) (arg2 int) (arg3 int))
-  "Generate 'random' noise texture."
   (local-vars (t4-5 uint128) (t5-3 uint128))
   (let ((v1-0 (/ arg1 16))
         (a3-1 (/ arg3 16))
@@ -1019,8 +946,9 @@
   (none)
   )
 
+;; definition for function make-cloud-clut
+;; WARN: Return type mismatch symbol vs none.
 (defun make-cloud-clut ((arg0 (pointer uint32)) (arg1 float) (arg2 float))
-  "Generate clut for the cloud texture."
   (local-vars (v1-10 int))
   0
   (let* ((s5-0 (the int (* 255.0 arg1)))
@@ -1056,8 +984,9 @@
   (none)
   )
 
+;; definition for function texture-anim-cloud-clut-upload
+;; WARN: Return type mismatch int vs none.
 (defun texture-anim-cloud-clut-upload ((arg0 dma-buffer) (arg1 texture-anim))
-  "Upload the clut for the clouds."
   (when (-> arg1 tex)
     (make-cloud-clut (the-as (pointer uint32) (-> arg1 tex pad 0)) (-> arg1 extra y) (-> arg1 extra z))
     (upload-vram-data arg0 (the-as int (-> arg1 tex clutdest)) (the-as pointer (-> arg1 tex pad 0)) 16 16)
@@ -1067,6 +996,8 @@
   (none)
   )
 
+;; definition for function texture-anim-cloud-clut-init
+;; WARN: Return type mismatch int vs none.
 (defun texture-anim-cloud-clut-init ((arg0 texture-anim))
   (let ((s5-0 (new 'loading-level 'texture))
         (s4-0 (the int (-> arg0 extra x)))
@@ -1082,7 +1013,6 @@
 
 ;; definition for function make-slime-clut
 ;; WARN: Return type mismatch symbol vs none.
-(define-extern *slime-clut* clut16x16)
 (defun make-slime-clut ((arg0 (pointer uint32)))
   (dotimes (v1-0 256)
     (let ((a1-2 (-> *clut-translate* v1-0))
@@ -1140,6 +1070,8 @@
   (none)
   )
 
+;; definition for function make-alpha-ramp-clut
+;; WARN: Return type mismatch symbol vs none.
 (defun make-alpha-ramp-clut ((arg0 (pointer uint32)))
   (dotimes (v1-0 256)
     (let ((a1-2 (-> *clut-translate* v1-0)))
@@ -1152,6 +1084,9 @@
   (none)
   )
 
+;; definition for function noise-texture-init
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defun noise-texture-init ((arg0 texture-anim-layer))
   (let ((gp-0 (the int (-> arg0 extra x)))
         (s4-0 (the-as structure #f))
@@ -1200,6 +1135,8 @@
   (none)
   )
 
+;; definition for function texture-anim-alpha-ramp-clut-upload
+;; WARN: Return type mismatch int vs none.
 (defun texture-anim-alpha-ramp-clut-upload ((arg0 dma-buffer) (arg1 texture-anim))
   (when (-> arg1 tex)
     (upload-vram-data arg0 (the-as int (-> arg1 tex clutdest)) (the-as pointer (-> arg1 tex pad 0)) 16 16)
@@ -1209,6 +1146,8 @@
   (none)
   )
 
+;; definition for function texture-anim-alpha-ramp-clut-init
+;; WARN: Return type mismatch int vs none.
 (defun texture-anim-alpha-ramp-clut-init ((arg0 texture-anim))
   (let ((s5-0 (new 'loading-level 'texture))
         (s4-0 (the int (-> arg0 extra x)))
@@ -1223,6 +1162,9 @@
   (none)
   )
 
+;; definition for function texture-anim-overide-size-init
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defun texture-anim-overide-size-init ((arg0 texture-anim))
   (when (-> arg0 tex-name)
     (let ((v1-2 (lookup-level-texture-by-name
@@ -1251,6 +1193,9 @@
   (none)
   )
 
+;; definition for function texture-anim-change-mt8h-init
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defun texture-anim-change-mt8h-init ((arg0 texture-anim))
   (when (-> arg0 tex-name)
     (let ((v1-2 (lookup-level-texture-by-name
@@ -1285,6 +1230,7 @@
   (none)
   )
 
+;; definition for method 9 of type texture-anim-array
 (defmethod init! texture-anim-array ((obj texture-anim-array))
   (dotimes (s5-0 (-> obj length))
     (init-textures! (-> obj array-data s5-0))
@@ -1300,31 +1246,14 @@
   obj
   )
 
-(defmacro assert-symbol-is-function (sym)
-  `(begin
-     (let ((sym-val (-> (the symbol ,sym) value)))
-       (when (zero? sym-val)
-         (format 0 "symbol ~A is 0~%" ,sym)
-         (break!)
-         )
-       (when (and sym-val (!= function (rtype-of sym-val)))
-         (format 0 "symbol ~A is not a function~%" ,sym)
-         (break!)
-         )
-       )
-     )
-  )
-
 ;; definition for method 9 of type texture-anim
 ;; INFO: Used lq/sq
 (defmethod init-textures! texture-anim ((obj texture-anim))
   (local-vars (a3-3 uint128) (sv-16 texture-page))
-  (when (logtest? (the-as int (-> obj func)) 1)
-      (assert-symbol-is-function (-> obj func)) ;; added
+  (if (logtest? (the-as int (-> obj func)) 1)
       (set! (-> obj func) (the-as (function dma-buffer texture-anim int) (-> (the-as symbol (-> obj func)) value)))
       )
   (when (logtest? (the-as int (-> obj init-func)) 1)
-    (assert-symbol-is-function (-> obj init-func)) ;; added
     (set! (-> obj init-func) (the-as (function texture-anim int) (-> (the-as symbol (-> obj init-func)) value)))
     (if (-> obj init-func)
         ((-> obj init-func) obj)
@@ -1407,8 +1336,7 @@
 
 ;; definition for method 9 of type texture-anim-layer
 (defmethod initialize-texture! texture-anim-layer ((obj texture-anim-layer))
-  (when (logtest? (the-as int (-> obj func)) 1)
-    (assert-symbol-is-function (-> obj func)) ;; added
+  (if (logtest? (the-as int (-> obj func)) 1)
       (set! (-> obj func) (the-as
                             (function dma-buffer uint int int texture-anim-layer float int)
                             (-> (the-as symbol (-> obj func)) value)
@@ -1416,7 +1344,6 @@
             )
       )
   (when (logtest? (the-as int (-> obj init-func)) 1)
-    (assert-symbol-is-function (-> obj init-func)) ;; added
     (set! (-> obj init-func)
           (the-as (function texture-anim-layer int) (-> (the-as symbol (-> obj init-func)) value))
           )
@@ -1437,3 +1364,7 @@
   (set! (-> obj tex) #f)
   obj
   )
+
+
+
+
