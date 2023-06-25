@@ -687,12 +687,15 @@ L3:
 int get_start_idx(Function& function,
                   LinkedObjectFile& file,
                   TypeInspectorResult* result,
-                  const std::string& /*parent_type*/,
+                  const std::string& parent_type,
                   const std::string& type_name,
                   Env& env) {
   if (function.basic_blocks.size() != 5) {
     lg::print("[iim] inspect {} had {} basic blocks, expected 5\n", function.name(),
               function.basic_blocks.size());
+    if (parent_type == "basic") {
+      result->is_basic = true;
+    }
     return -1;
   }
 
