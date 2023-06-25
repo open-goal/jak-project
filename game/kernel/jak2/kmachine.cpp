@@ -443,12 +443,22 @@ u32 MouseGetData(u32 _mouse) {
   mouse->valid = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
   mouse->cursor = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
   mouse->status = 1;
+  // Contrary to the name, this is a 16bitfield
+  // where:
+  // 0 = left button
+  // 1 = right button
+  // 2 = middle button
   mouse->button0 = 0;
 
   s32 xpos = 0;
   s32 ypos = 0;
   if (Display::GetMainDisplay()) {
     std::tie(xpos, ypos) = Display::GetMainDisplay()->get_input_manager()->get_mouse_pos();
+    const auto mouse_button_status =
+        Display::GetMainDisplay()->get_input_manager()->get_mouse_button_status();
+    mouse->button0 |= (mouse_button_status.left ? 1 : 0);
+    mouse->button0 |= (mouse_button_status.right ? 2 : 0);
+    mouse->button0 |= (mouse_button_status.middle ? 4 : 0);
   }
 
   // NOTE - ignoring speed and setting position directly

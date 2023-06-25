@@ -7,7 +7,6 @@ bool sqlite::SQLiteDatabase::open_db(const std::string& path) {
     return true;
   }
   sqlite3* db;
-  char* zErrMsg = 0;
 
   // NOTE - this opens with SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE
   const auto status_code = sqlite3_open(path.data(), &db);
