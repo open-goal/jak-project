@@ -525,7 +525,6 @@ void update_discord_rpc(u32 discord_info) {
       // Get the data from GOAL
       int orbs = (int)info->orb_count;
       int gems = (int)info->gem_count;
-      u32 deaths = info->death_count;
       // convert encodings
       std::string status = get_font_bank(GameTextVersion::JAK2)
                                ->convert_game_to_utf8(Ptr<String>(info->status).c()->data());

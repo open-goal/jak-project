@@ -58,6 +58,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/sprite/Sprite3_Distort.cpp
         graphics/opengl_renderer/sprite/Sprite3_Glow.cpp
         graphics/opengl_renderer/sprite/Sprite3.cpp
+        graphics/opengl_renderer/TextureAnimator.cpp
         graphics/opengl_renderer/TextureUploadHandler.cpp
         graphics/opengl_renderer/VisDataHandler.cpp
         graphics/opengl_renderer/Warp.cpp
