@@ -68,7 +68,7 @@
       ;; if windowed mode, set the size properly
       (when (= (-> obj display-mode) 'windowed)
         ;; TODO - this means the user can never have a window smaller than MIN_WIDTH/HEIGHT
-        (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height))))))
+        (pc-set-window-size (max PC_MIN_WIDTH (-> obj window-width)) (max PC_MIN_HEIGHT (-> obj window-height))))))
   0)
 
 (defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int) (call-handlers symbol))
@@ -76,10 +76,10 @@
   (format 0 "Setting ~A size to ~D x ~D~%" (-> obj display-mode) width height)
   (cond
     ((= 'windowed (-> obj display-mode))
-      (set! (-> obj win-width) width)
-      (set! (-> obj win-height) height)
+      (set! (-> obj window-width) width)
+      (set! (-> obj window-height) height)
       (if call-handlers
-          (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height))))
+          (pc-set-window-size (max PC_MIN_WIDTH (-> obj window-width)) (max PC_MIN_HEIGHT (-> obj window-height))))
       )
     (else
       (set! (-> obj width) width)
@@ -151,7 +151,7 @@
 (defmethod update-from-os pc-settings ((obj pc-settings))
   "Update settings from the C kernel to GOAL."
 
-  (pc-get-window-size (&-> obj real-width) (&-> obj real-height))
+  (pc-get-window-size (&-> obj framebuffer-width) (&-> obj framebuffer-height))
   (pc-get-window-scale (&-> obj dpi-x) (&-> obj dpi-y))
 
   (when (-> obj use-vis?)
@@ -161,29 +161,29 @@
         )
     )
 
-  (unless (or (zero? (-> obj real-width)) (zero? (-> obj real-height)))
-  (let ((win-aspect (/ (the float (-> obj real-width)) (the float (-> obj real-height)))))
+  (unless (or (zero? (-> obj framebuffer-width)) (zero? (-> obj framebuffer-height)))
+  (let ((win-aspect (/ (the float (-> obj framebuffer-width)) (the float (-> obj framebuffer-height)))))
     (cond
       ((and (not (-> obj use-vis?)) (-> obj aspect-ratio-auto?))
        ;; the window determines the resolution
        (set-aspect-ratio! obj win-aspect)
-       (set! (-> obj lbox-width) (-> obj real-width))
-       (set! (-> obj lbox-height) (-> obj real-height))
+       (set! (-> obj framebuffer-scissor-width) (-> obj framebuffer-width))
+       (set! (-> obj framebuffer-scissor-height) (-> obj framebuffer-height))
        )
       ((> win-aspect (-> obj aspect-ratio))
        ;; too wide
-       (set! (-> obj lbox-width) (the int (* (the float (-> obj real-height)) (-> obj aspect-ratio))))
-       (set! (-> obj lbox-height) (-> obj real-height))
+       (set! (-> obj framebuffer-scissor-width) (the int (* (the float (-> obj framebuffer-height)) (-> obj aspect-ratio))))
+       (set! (-> obj framebuffer-scissor-height) (-> obj framebuffer-height))
        )
       ((< win-aspect (-> obj aspect-ratio))
        ;; too tall
-       (set! (-> obj lbox-width) (-> obj real-width))
-       (set! (-> obj lbox-height) (the int (/ (the float (-> obj real-width)) (-> obj aspect-ratio))))
+       (set! (-> obj framebuffer-scissor-width) (-> obj framebuffer-width))
+       (set! (-> obj framebuffer-scissor-height) (the int (/ (the float (-> obj framebuffer-width)) (-> obj aspect-ratio))))
        )
       (else
        ;; just right
-       (set! (-> obj lbox-width) (-> obj real-width))
-       (set! (-> obj lbox-height) (-> obj real-height))
+       (set! (-> obj framebuffer-scissor-width) (-> obj framebuffer-width))
+       (set! (-> obj framebuffer-scissor-height) (-> obj framebuffer-height))
        )
       )
     ))
@@ -197,10 +197,10 @@
   ;; TODO - move the below out of this function that runs every frame
   (cond
     ((-> obj letterbox?)
-     (pc-set-letterbox (-> obj lbox-width) (-> obj lbox-height))
+     (pc-set-letterbox (-> obj framebuffer-scissor-width) (-> obj framebuffer-scissor-height))
      )
     (else
-     (pc-set-letterbox (-> obj real-width) (-> obj real-height))
+     (pc-set-letterbox (-> obj framebuffer-width) (-> obj framebuffer-height))
      )
     )
 
@@ -213,7 +213,7 @@
 
   ;; do game resolution
   (if (= (-> obj display-mode) 'windowed)
-      (pc-set-game-resolution (-> obj real-width) (-> obj real-height))
+      (pc-set-game-resolution (-> obj framebuffer-scissor-width) (-> obj framebuffer-scissor-height))
       (pc-set-game-resolution (-> obj width) (-> obj height)))
 
   ;; set msaa sample rate. if invalid, just reset to 2.
@@ -281,14 +281,16 @@
     (+ (* (shr (logand bcd #xf0) 4) 10) (logand bcd #x0f))
   )
 
+(defun real-movie? ()
+  "are we in an actual cutscene and should letterbox the view?"
+  (and (nonzero? movie?) (movie?)))
+
 (defmethod update pc-settings ((obj pc-settings))
   "Update settings to/from PC kernel. Call this at the start of every frame.
    This will update things like the aspect-ratio, which will be used for graphics code later."
 
   (update-from-os obj)
   (update-to-os obj)
-
-  (set! (-> obj movie?) (movie?))
 
   (update-discord-rpc obj)
 
@@ -350,8 +352,8 @@
   (cond
     ((= (-> obj display-mode) 'windowed)
       (if (-> obj letterbox?)
-          (-> obj lbox-width)
-          (-> obj real-width)))
+          (-> obj framebuffer-scissor-width)
+          (-> obj framebuffer-width)))
     (else
       (-> obj width))
     )
@@ -362,8 +364,8 @@
   (cond
     ((= (-> obj display-mode) 'windowed)
       (if (-> obj letterbox?)
-          (-> obj lbox-height)
-          (-> obj real-height)))
+          (-> obj framebuffer-scissor-height)
+          (-> obj framebuffer-height)))
     (else
       (-> obj height))
     )
@@ -375,16 +377,15 @@
   "debug draw some things on-screen"
 
   (when (-> obj debug?)
+    (format *stdcon* "fullscreen resolution: ~D x ~D~%" (-> obj width) (-> obj height))
+    (format *stdcon* "window size: ~D x ~D @ ~,,1f x ~,,1f~%" (-> obj window-width) (-> obj window-height) (-> obj dpi-x) (-> obj dpi-y))
+    (format *stdcon* "fb size: ~D x ~D (scissor: ~D x ~D)~%" (-> obj framebuffer-width) (-> obj framebuffer-height) (-> obj framebuffer-scissor-width) (-> obj framebuffer-scissor-height))
+    (format *stdcon* "aspect: ~,,3f/~,,3f auto? ~A vis? ~A lbox? ~A~%" (-> obj aspect-ratio) (/ (the float (-> obj framebuffer-width)) (the float (-> obj framebuffer-height))) (-> obj aspect-ratio-auto?) (-> obj use-vis?) (-> obj letterbox?))
+    (format *stdcon* "display-mode: ~A vsync? ~A~%" (-> obj display-mode) (-> obj vsync?))
     (clear *pc-temp-string*)
-    (format *pc-temp-string* "game resolution: ~D x ~D~%" (-> obj width) (-> obj height))
-    (format *pc-temp-string* "window size: ~D x ~D (~,,1f x ~,,1f)~%" (-> obj real-width) (-> obj real-height) (-> obj dpi-x) (-> obj dpi-y))
-    (format *pc-temp-string* "target aspect: ~,,3f/~,,3f A: ~A/~A L: ~A~%" (-> obj aspect-ratio) (/ (the float (-> obj real-width)) (the float (-> obj real-height))) (-> obj aspect-ratio-auto?) (-> obj use-vis?) (-> obj letterbox?))
-    (format *pc-temp-string* "display-type: ~A ~A~%" (-> obj display-mode) (-> obj vsync?))
-
-    (draw-string-xy *pc-temp-string* buf 0 (- 224 (* 8 4)) (font-color default) (font-flags shadow kerning))
     )
   (when *display-actor-bank*
-    (draw-string-xy (string-format "Actor Bank: ~,,1m/~,,1m (~D)" (-> *ACTOR-bank* pause-dist) (-> *ACTOR-bank* birth-dist) (-> *ACTOR-bank* birth-max)) buf 512 (- 224 8) (font-color default) (font-flags shadow kerning right))
+    (draw-string-xy (string-format "Actor Bank: ~,,1m/~,,1m (~D)" (-> *ACTOR-bank* pause-dist) (-> *ACTOR-bank* birth-dist) (-> *ACTOR-bank* birth-max)) buf 512 0 (font-color default) (font-flags shadow kerning right))
     )
   )
 
@@ -619,7 +620,7 @@
 
   ;; restore the windowed mode resolution properly
   (when (= (-> obj display-mode) 'windowed)
-    (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height))))
+    (pc-set-window-size (max PC_MIN_WIDTH (-> obj window-width)) (max PC_MIN_HEIGHT (-> obj window-height))))
 
   #t
   )
@@ -630,8 +631,8 @@
   (case-str *pc-temp-string*
     (("fps") (set-frame-rate! obj (file-stream-read-int file) #t))
     (("window-size")
-      (set! (-> obj win-width) (file-stream-read-int file))
-      (set! (-> obj win-height) (file-stream-read-int file))
+      (set! (-> obj window-width) (file-stream-read-int file))
+      (set! (-> obj window-height) (file-stream-read-int file))
       )
     (("game-size")
       (set! (-> obj width) (file-stream-read-int file))
@@ -731,7 +732,7 @@
                                                 (-> obj aspect-custom-x) (-> obj aspect-custom-y)
                                                 (-> obj aspect-ratio-auto?))
   (format file "  (display-mode ~A)~%" (-> obj display-mode))
-  (format file "  (window-size ~D ~D)~%" (-> obj win-width) (-> obj win-height))
+  (format file "  (window-size ~D ~D)~%" (-> obj window-width) (-> obj window-height))
   (format file "  (game-size ~D ~D)~%" (-> obj width) (-> obj height))
   (format file "  (monitor ~D)~%" (-> obj monitor))
   (format file "  (letterbox ~A)~%" (-> obj letterbox?))

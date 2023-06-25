@@ -479,13 +479,13 @@ void pc_set_display_mode(u32 symptr) {
     return;
   }
   if (symptr == g_pc_port_funcs.intern_from_c("windowed").offset || symptr == s7.offset) {
-    Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
+    Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_display_mode(
         WindowDisplayMode::Windowed);
   } else if (symptr == g_pc_port_funcs.intern_from_c("borderless").offset) {
-    Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
+    Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_display_mode(
         WindowDisplayMode::Borderless);
   } else if (symptr == g_pc_port_funcs.intern_from_c("fullscreen").offset) {
-    Display::GetMainDisplay()->get_display_manager()->set_window_display_mode(
+    Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_display_mode(
         WindowDisplayMode::Fullscreen);
   }
 }
@@ -560,13 +560,13 @@ void pc_get_window_scale(u32 x_ptr, u32 y_ptr) {
 
 void pc_get_fullscreen_display(u64 display_id) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_display_manager()->set_fullscreen_display_id(display_id);
+    Display::GetMainDisplay()->get_display_manager()->enqueue_set_fullscreen_display_id(display_id);
   }
 }
 
 void pc_set_window_size(u64 width, u64 height) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_display_manager()->set_window_size(width, height);
+    Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_size(width, height);
   }
 }
 
@@ -648,7 +648,7 @@ void pc_set_keyboard_enabled(u32 sym_val) {
 
 void pc_set_mouse_options(u32 enabled, u32 control_camera, u32 control_movement) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_input_manager()->update_mouse_options(
+    Display::GetMainDisplay()->get_input_manager()->enqueue_update_mouse_options(
         symbol_to_bool(enabled), symbol_to_bool(control_camera), symbol_to_bool(control_movement));
   }
 }
@@ -665,7 +665,7 @@ void pc_set_mouse_camera_sens(u32 xsens, u32 ysens) {
 
 void pc_ignore_background_controller_events(u32 sym_val) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_input_manager()->ignore_background_controller_events(
+    Display::GetMainDisplay()->get_input_manager()->enqueue_ignore_background_controller_events(
         symbol_to_bool(sym_val));
   }
 }
@@ -677,9 +677,17 @@ u64 pc_current_controller_has_led() {
   return bool_to_symbol(false);
 }
 
+u64 pc_current_controller_has_rumble() {
+  if (Display::GetMainDisplay()) {
+    return bool_to_symbol(Display::GetMainDisplay()->get_input_manager()->controller_has_rumble(0));
+  }
+  return bool_to_symbol(false);
+}
+
 void pc_set_controller_led(const int port, const u8 red, const u8 green, const u8 blue) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_input_manager()->set_controller_led(port, red, green, blue);
+    Display::GetMainDisplay()->get_input_manager()->enqueue_set_controller_led(port, red, green,
+                                                                               blue);
   }
 }
 
@@ -715,7 +723,8 @@ void pc_reset_bindings_to_defaults(const int port, const InputDeviceType device_
 
 void pc_set_auto_hide_cursor(u32 val) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_input_manager()->set_auto_hide_mouse(symbol_to_bool(val));
+    Display::GetMainDisplay()->get_input_manager()->enqueue_set_auto_hide_mouse(
+        symbol_to_bool(val));
   }
 }
 
@@ -873,6 +882,8 @@ void init_common_pc_port_functions(
   make_func_symbol_func("pc-ignore-background-controller-events!",
                         (void*)pc_ignore_background_controller_events);
   make_func_symbol_func("pc-current-controller-has-led?", (void*)pc_current_controller_has_led);
+  make_func_symbol_func("pc-current-controller-has-rumble?",
+                        (void*)pc_current_controller_has_rumble);
   make_func_symbol_func("pc-set-controller-led!", (void*)pc_set_controller_led);
   make_func_symbol_func("pc-waiting-for-bind?", (void*)pc_waiting_for_bind);
   make_func_symbol_func("pc-set-waiting-for-bind!", (void*)pc_set_waiting_for_bind);

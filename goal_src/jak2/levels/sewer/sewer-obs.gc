@@ -1177,3 +1177,83 @@ This commonly includes things such as:
   0
   (none)
   )
+
+(#when PC_PORT
+;; added to fix missing skill
+
+;; serves as a template
+(define *skill-sewesc-from-sewer* (new 'static 'entity-perm
+                                        :task (game-task complete)
+                                        :status (entity-perm-status)
+                                        :aid #x8917))
+
+(defun get-skill-sewesc-from-sewer-perm ()
+  "returns the entity perm for the skill-sewesc-from-sewer process."
+  (let ((game-perms (-> *game-info* perm-list))
+        (skill-perm (actor-perm *game-info* (-> *skill-sewesc-from-sewer* aid))))
+    (cond
+      (skill-perm
+        skill-perm)
+      ((< (-> game-perms length) (-> game-perms allocated-length))
+        (set! (-> game-perms data (-> game-perms length) quad) (-> *skill-sewesc-from-sewer* quad))
+        (+! (-> game-perms length) 1)
+        (-> game-perms data (1- (-> game-perms length))))
+      )
+    )
+  )
+
+(defun sewesc-deactivate ()
+  "deactivate func for sewesc.
+   added."
+  
+  (kill-by-name "skill-sewesc-from-sewer-tracker" *active-pool*)
+  (kill-by-name "skill-sewesc-from-sewer" *active-pool*)
+
+  (let ((perm-to-use (get-skill-sewesc-from-sewer-perm)))
+    (logclear! (-> perm-to-use status) (entity-perm-status error))
+    )
+
+  0)
+
+(defun sewesc-activate ()
+  "activate func for sewesc.
+   added."
+  
+  (process-spawn-function process :name "skill-sewesc-from-sewer-tracker"
+      (lambda :behavior process ()
+        (suspend)
+        (suspend)
+        (loop
+
+          (let ((perm-to-use (get-skill-sewesc-from-sewer-perm)))
+
+            (cond
+              ((logtest? (-> perm-to-use status) (entity-perm-status dead))
+                ;; skill is already collected
+                )
+              ((process-by-name "skill-sewesc-from-sewer" *active-pool*)
+                ;; skill is alive
+                (logior! (-> perm-to-use status) (entity-perm-status error)))
+              ((logtest? (-> perm-to-use status) (entity-perm-status error))
+                ;; skill spawned and is now collected
+                (logior! (-> perm-to-use status) (entity-perm-status dead)))
+              (else
+                ;; skill is not alive and not collected
+                (let ((fact (new 'stack 'fact-info self (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))))
+                    (logior! (-> fact options) (actor-option fade-out))
+                    (set! (-> fact fade-time) 0)
+                    (awhen (birth-pickup-at-point (new 'static 'vector :x 5341306.5 :y -358441.1562 :z 2525436.5000 :w 1.0)
+                                                  (pickup-type skill) 1.0 #f self fact)
+                        (format 0 "sewesc -> skill birthed~%")
+                        (set! (-> it 0 name) "skill-sewesc-from-sewer")
+                        (logior! (-> perm-to-use status) (entity-perm-status error)) ;; mark as been spawned once
+                        )
+                    )
+                )
+              )
+            )
+
+          (suspend))
+        ))
+  )
+)

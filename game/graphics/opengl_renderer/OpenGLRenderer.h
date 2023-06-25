@@ -43,6 +43,7 @@ struct RenderOptions {
 
   bool save_screenshot = false;
   bool quick_screenshot = false;
+  bool internal_res_screenshot = false;
   std::string screenshot_path;
 
   float pmode_alp_register = 0.f;
