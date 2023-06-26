@@ -30,10 +30,30 @@ void MouseDevice::process_event(const SDL_Event& event,
   } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
     // Mouse Button Events
     // https://wiki.libsdl.org/SDL2/SDL_MouseButtonEvent
+    const auto button_event = event.button;
+    // Always update the internal button tracker, this is for GOAL reasons.
+    switch (button_event.button) {
+      case SDL_BUTTON_LEFT:
+        m_button_status.left = event.type == SDL_MOUSEBUTTONDOWN;
+        break;
+      case SDL_BUTTON_RIGHT:
+        m_button_status.right = event.type == SDL_MOUSEBUTTONDOWN;
+        break;
+      case SDL_BUTTON_MIDDLE:
+        m_button_status.middle = event.type == SDL_MOUSEBUTTONDOWN;
+        break;
+      case SDL_BUTTON_X1:
+        m_button_status.mouse4 = event.type == SDL_MOUSEBUTTONDOWN;
+        break;
+      case SDL_BUTTON_X2:
+        m_button_status.mouse5 = event.type == SDL_MOUSEBUTTONDOWN;
+        break;
+    }
+
     if (ignore_inputs) {
       return;
     }
-    const auto button_event = event.button;
+
     auto& binds = m_settings->mouse_binds;
 
     // Binding re-assignment
