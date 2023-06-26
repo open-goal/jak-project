@@ -175,15 +175,16 @@ add_subdirectory(third-party/replxx EXCLUDE_FROM_ALL)
 # SQLite - Jak 2/3's built in editor
 add_definitions(-DHAVE_USLEEP=1)
 add_definitions(-DSQLITE_THREADSAFE=1)
+add_definitions(-DSQLITE_ENABLE_JSON1)
 add_definitions(-DSQLITE_ENABLE_RTREE)
-include_directories(third-party/SQLiteCpp/include)
-add_subdirectory(third-party/SQLiteCpp)
-string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+add_subdirectory(third-party/sqlite3)
 
 # build tree-sitter parser
 include_directories(third-party/tree-sitter/tree-sitter/lib/include)
 include_directories(third-party/tree-sitter/tree-sitter-opengoal/include)
 add_subdirectory(third-party/tree-sitter EXCLUDE_FROM_ALL)
+
+string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # build common library
 add_subdirectory(common)
