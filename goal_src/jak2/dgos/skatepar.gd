@@ -8,5 +8,5 @@
   "tpage-243.go"
   "tpage-354.go"
   "tpage-3279.go"
-  "skatepark-bt.go"
+  "skatepark-vis.go"
  ))
