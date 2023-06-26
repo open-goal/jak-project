@@ -32,7 +32,7 @@ def move_to_root_folder(root_path, cur_path):
         os.rmdir(cur_path)
 
 def gen_json_for_dgo(folder_name, files):
-    dgo_name = folder_name + ".DGO"
+    dgo_name = os.path.basename(Path(folder_name)) + ".DGO"
     dgo = {
         "file_name": dgo_name,
         "internal_name": dgo_name,
