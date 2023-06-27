@@ -479,6 +479,9 @@ Ptr<Function> make_function_from_c(void* func, bool arg3_is_pp = false) {
   return make_function_from_c_linux(func, arg3_is_pp);
 #elif _WIN32
   return make_function_from_c_win32(func, arg3_is_pp);
+#elif __APPLE__
+  // FIXME - reusing linux for now
+  return make_function_from_c_linux(func, arg3_is_pp);
 #endif
 }
 
@@ -487,6 +490,9 @@ Ptr<Function> make_stack_arg_function_from_c(void* func) {
   return make_stack_arg_function_from_c_linux(func);
 #elif _WIN32
   return make_stack_arg_function_from_c_win32(func);
+#elif __APPLE__
+  // FIXME - reusing linux for now
+  return make_stack_arg_function_from_c_linux(func);
 #endif
 }
 
@@ -1721,12 +1727,10 @@ s32 InitHeapAndSymbol() {
     // check the kernel version!
     auto kernel_version = intern_from_c("*kernel-version*")->value;
     if (!kernel_version || ((kernel_version >> 0x13) != KERNEL_VERSION_MAJOR)) {
-      MsgErr("\n");
-      MsgErr(
-          "dkernel: compiled C kernel version is %d.%d but the goal kernel is %d.%d\n\tfrom the "
-          "goal> prompt (:mch) then mkee your kernel in linux.\n",
-          KERNEL_VERSION_MAJOR, KERNEL_VERSION_MINOR, kernel_version >> 0x13,
-          (kernel_version >> 3) & 0xffff);
+      lg::error("Kernel version mismatch! Compiled C kernel version is {}.{} but the goal kernel "
+                "is {}.{}",
+                KERNEL_VERSION_MAJOR, KERNEL_VERSION_MINOR, kernel_version >> 0x13,
+                (kernel_version >> 3) & 0xffff);
       return -1;
     } else {
       lg::info("Got correct kernel version {}.{}, loaded in {:.2} ms", kernel_version >> 0x13,

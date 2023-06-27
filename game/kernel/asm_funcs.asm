@@ -436,6 +436,90 @@ _call_goal_on_stack_asm_linux:
   pop r13
   ret
 
+;; The _call_goal_asm function is used to call a GOAL function from C.
+;; It calls on the parent stack, which is a bad idea if your stack is not already a GOAL stack.
+;; It supports up to 3 arguments and a return value.
+;; This should be called with the arguments:
+;; - first goal arg
+;; - second goal arg
+;; - third goal arg
+;; - address of function to call
+;; - address of the symbol table
+;; - GOAL memory space offset
+
+global _call_goal_asm_macos_x64
+
+;; FIXME - copied from linux, but not really tested
+_call_goal_asm_macos_x64:
+  ;; RDI - first arg
+  ;; RSI - second arg
+  ;; RDX - third arg
+  ;; RCX - function pointer
+  ;; R8  - st (goes in r14 and r13)
+  ;; R9  - off (goes in r15)
+
+  ;; x86 saved registers we need to modify for GOAL should be saved
+  push r13
+  push r14
+  push r15
+
+  ;; set GOAL process
+  mov r13, r8
+  ;; symbol table
+  mov r14, r8
+  ;; offset
+  mov r15, r9
+  ;; call GOAL by function pointer
+  call rcx
+
+  ;; retore x86 registers.
+  pop r15
+  pop r14
+  pop r13
+  ret
+
+;; Call into GOAL, using the GOAL stack.
+global _call_goal_on_stack_asm_macos_x64
+
+;; FIXME - copied from linux, but not really tested
+_call_goal_on_stack_asm_macos_x64:
+  ;; RDI - stack pointer
+  ;; RSI - unused
+  ;; RDX - unused
+  ;; RCX - function pointer
+  ;; R8  - st (goes in r14 and r13)
+  ;; R9  - off (goes in r15)
+
+  ;; x86 saved registers we need to modify for GOAL should be saved
+  push r13
+  push r14
+  push r15
+
+  ;; stash current stack pointer in rsi
+  mov rsi, rsp
+  ;; switch to new stack
+  mov rsp, rdi
+  ;; back up old stack pointer
+  push rsi
+
+  ;; set GOAL function pointer
+  mov r13, r8
+  ;; symbol table
+  mov r14, r8
+  ;; offset
+  mov r15, r9
+  ;; call GOAL by function pointer
+  call rcx
+
+  ;; get old stack pointer
+  pop rsi
+  mov rsp, rsi
+
+  ;; retore x86 registers.
+  pop r15
+  pop r14
+  pop r13
+  ret
 
 ;; The _call_goal_asm function is used to call a GOAL function from C.
 ;; It supports up to 3 arguments and a return value.
