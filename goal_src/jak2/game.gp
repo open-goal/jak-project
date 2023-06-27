@@ -248,6 +248,26 @@
 (cgo-file "lracebb.gd" common-dep)
 (cgo-file "ltentob.gd" common-dep)
 
+;; test levels from the ps3 version
+(when USE_PS3_LEVELS
+  (cgo-file "skatepar.gd" common-dep)
+  (cgo-file "4aaron.gd" common-dep)
+  (cgo-file "4pal01.gd" common-dep)
+  (cgo-file "bsbs.gd" common-dep)
+  (cgo-file "chartest.gd" common-dep)
+  (cgo-file "ctyfence.gd" common-dep)
+  (cgo-file "dptest.gd" common-dep)
+  (cgo-file "eitest.gd" common-dep)
+  (cgo-file "island1.gd" common-dep)
+  (cgo-file "miketest.gd" common-dep)
+  (cgo-file "stadocc.gd" common-dep)
+  (cgo-file "tatetest.gd" common-dep)
+  (cgo-file "teststdc.gd" common-dep)
+  (cgo-file "teststdd.gd" common-dep)
+  (cgo-file "tobytest.gd" common-dep)
+  (cgo-file "wasall.gd" common-dep)
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ANIMATIONS
 ;;;;;;;;;;;;;;;;;;;;;
