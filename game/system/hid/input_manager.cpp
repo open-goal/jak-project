@@ -111,7 +111,7 @@ void InputManager::refresh_device_list() {
 
 void InputManager::enqueue_ignore_background_controller_events(const bool ignore) {
   const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
-  ee_event_queue.push({EEInputEventType::IGNORE_BACKGROUND_CONTROLLER_EVENTS, ignore});
+  ee_event_queue.push({EEInputEventType::IGNORE_BACKGROUND_CONTROLLER_EVENTS, ignore, {}, {}, {}});
 }
 
 void InputManager::ignore_background_controller_events(const bool ignore) {
@@ -347,7 +347,7 @@ void InputManager::enqueue_update_rumble(const int port,
                                          const u8 low_intensity,
                                          const u8 high_intensity) {
   const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
-  ee_event_queue.push({EEInputEventType::UPDATE_RUMBLE, port, low_intensity, high_intensity});
+  ee_event_queue.push({EEInputEventType::UPDATE_RUMBLE, port, low_intensity, high_intensity, {}});
 }
 
 int InputManager::update_rumble(int port, u8 low_intensity, u8 high_intensity) {
@@ -371,7 +371,7 @@ void InputManager::enqueue_update_mouse_options(const bool enabled,
                                                 const bool control_movement) {
   const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
   ee_event_queue.push(
-      {EEInputEventType::UPDATE_MOUSE_OPTIONS, enabled, control_camera, control_movement});
+      {EEInputEventType::UPDATE_MOUSE_OPTIONS, enabled, control_camera, control_movement, {}});
 }
 
 void InputManager::update_mouse_options(const bool enabled,
@@ -436,7 +436,7 @@ void InputManager::reset_input_bindings_to_defaults(const int port,
 
 void InputManager::enqueue_set_auto_hide_mouse(const bool auto_hide_mouse) {
   const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
-  ee_event_queue.push({EEInputEventType::SET_AUTO_HIDE_MOUSE, auto_hide_mouse});
+  ee_event_queue.push({EEInputEventType::SET_AUTO_HIDE_MOUSE, auto_hide_mouse, {}, {}, {}});
 }
 
 void InputManager::set_auto_hide_mouse(const bool auto_hide_mouse) {

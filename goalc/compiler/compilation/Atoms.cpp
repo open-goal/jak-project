@@ -129,6 +129,7 @@ const std::unordered_map<
         {".ppach", {"", &Compiler::compile_asm_ppach}},
         {".ppacb", {"", &Compiler::compile_asm_ppacb}},
         {".psubw", {"", &Compiler::compile_asm_psubw}},
+        {".paddb", {"", &Compiler::compile_asm_paddb}},
 
         // BLOCK FORMS
         {"top-level", {"", &Compiler::compile_top_level}},
