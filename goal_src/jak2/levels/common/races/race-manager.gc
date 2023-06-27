@@ -1489,8 +1489,6 @@
               (add-process *gui-control* *target* (gui-channel background) (gui-action play) "miss001" -99.0 0)
               )
         )
-    (#when PC_PORT
-      (set-setting! 'allow-progress #f 0.0 0))
     (send-event (ppointer->process (-> self parent)) 'race-win)
     (send-event (handle->process (-> self race-state hud-timer)) 'force-hide)
     (send-event (handle->process (-> self race-state hud-lap-counter)) 'force-hide)
@@ -1501,11 +1499,6 @@
       (send-event (ppointer->process (-> self parent)) 'complete)
       (sleep-code)
       )
-    ;; pc port note : added skill check to prevent softlocking
-    (#when PC_PORT
-      (while (process-by-name "skill" *entity-pool*)
-        (suspend))
-      (remove-setting! 'allow-progress))
     (until #f
       (cond
         ((logtest? (-> self race-state info flags) 8)
