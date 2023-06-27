@@ -276,7 +276,11 @@ u64 make_debug_string_from_c(const char* c_str) {
 }
 
 extern "C" {
+#ifdef __APPLE__
+void _arg_call_linux() asm ("_arg_call_linux");
+#else
 void _arg_call_linux();
+#endif
 }
 
 /*!
@@ -390,8 +394,13 @@ Ptr<Function> make_function_from_c_win32(void* func, bool arg3_is_pp) {
 }
 
 extern "C" {
+#ifdef __APPLE__
+void _stack_call_linux() asm ("_stack_call_linux");
+void _stack_call_win32() asm ("_stack_call_win32");
+#else
 void _stack_call_linux();
 void _stack_call_win32();
+#endif
 }
 
 Ptr<Function> make_stack_arg_function_from_c_linux(void* func) {
