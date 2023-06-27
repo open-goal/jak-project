@@ -2,6 +2,8 @@
 
 #include <set>
 
+#include "rule_config.h"
+
 #include "common/util/string_util.h"
 
 #include "third-party/fmt/core.h"
@@ -196,7 +198,7 @@ bool form_contains_comment(const FormatterTreeNode& node) {
   return false;
 }
 
-bool form_can_be_inlined(std::string& curr_text, const FormatterTreeNode& node) {
+bool form_can_be_inlined(const std::string& curr_text, const FormatterTreeNode& node) {
   // Two main checks:
   // - first, is the form too long to fit on a line TODO - increase accuracy here
   if (form_exceed_line_width(curr_text, node, 0)) {
@@ -209,14 +211,30 @@ bool form_can_be_inlined(std::string& curr_text, const FormatterTreeNode& node) 
   return true;
 }
 
+bool should_form_flow(const FormatterTreeNode& list_node) {
+  // TODO - honestly should just have an is_list metadata
+  if (list_node.refs.empty() || !list_node.refs.at(0).token) {
+    return false;
+  }
+  const auto& form_head = list_node.refs.at(0).token;
+  // See if we have any configuration for this form
+  if (form_head &&
+      config::opengoal_form_config.find(form_head.value()) != config::opengoal_form_config.end()) {
+    const auto& form_config = config::opengoal_form_config.at(form_head.value());
+    return form_config.force_flow;
+  }
+  return false;
+}
+
 void append_newline(std::string& curr_text,
                     const FormatterTreeNode& node,
                     const FormatterTreeNode& containing_node,
                     const int depth,
                     const int index,
-                    const bool constant_pair_form) {
+                    const bool constant_pair_form,
+                    const bool flowing) {
   if (index <= 0 || containing_node.metadata.is_top_level ||
-      (node.metadata.is_comment && node.metadata.is_inline)) {
+      (node.metadata.is_comment && node.metadata.is_inline) || (!flowing && index <= 1)) {
     return;
   }
   // Check if it's a constant pair
@@ -227,12 +245,14 @@ void append_newline(std::string& curr_text,
   curr_text = str_util::rtrim(curr_text) + "\n";
 }
 
-void flow_line(std::string& curr_text,
-               const FormatterTreeNode& node,
-               const FormatterTreeNode& containing_node,
-               const int depth,
-               const int index) {
-  if (node.metadata.is_top_level || (node.metadata.is_inline && node.metadata.is_comment)) {
+void indent_line(std::string& curr_text,
+                 const FormatterTreeNode& node,
+                 const FormatterTreeNode& containing_node,
+                 const int depth,
+                 const int index,
+                 const bool flowing) {
+  if (node.metadata.is_top_level ||
+      (node.metadata.is_inline && node.metadata.is_comment)) {
     return;
   }
   // If the element is the second element in a constant pair, that means we did not append a
@@ -240,7 +260,7 @@ void flow_line(std::string& curr_text,
   if (constant_pairs::is_element_second_in_constant_pair(containing_node, node, index)) {
     return;
   }
-  if (index > 0) {
+  if (flowing && index > 0) {
     // If the first element in the list is a constant, we only indent with 1 space instead
     if (constant_types.find(containing_node.refs.at(0).metadata.node_type) !=
         constant_types.end()) {
@@ -248,25 +268,25 @@ void flow_line(std::string& curr_text,
     } else {
       curr_text += str_util::repeat(depth, "  ");
     }
+  } else if (!flowing && index > 1) {
+    curr_text += str_util::repeat(containing_node.refs.at(0).token.value().length() + 2, " ");
   }
 }
 
-void hang_lines(std::string& text,
-                const FormatterTreeNode& node,
-                const FormatterTreeNode& containing_node,
-                const bool constant_pair_form) {
+void align_lines(std::string& text,
+                 const FormatterTreeNode& node,
+                 const FormatterTreeNode& containing_node,
+                 const bool constant_pair_form,
+                 const bool flowing) {
   const auto lines = str_util::split(text);
   // TODO - unsafe (breaks on a list of lists)
   int alignment_width = 2;
   if (constant_pair_form &&
       constant_types.find(containing_node.refs.at(0).metadata.node_type) != constant_types.end()) {
     alignment_width = 3;
-  }
-  // TODO - implement hanging
-  // always hang unless flowing is "better" (this is the hard part)
-  /*else if (containing_node.metadata.multiple_elements_first_line) {
+  } else if (!flowing) {
     alignment_width = containing_node.refs.at(0).token.value().length() + 2;
-  }*/
+  }
   std::string aligned_form = "";
   for (int i = 0; i < lines.size(); i++) {
     aligned_form += str_util::repeat(alignment_width, " ") + lines.at(i);

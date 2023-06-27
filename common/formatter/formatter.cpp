@@ -18,6 +18,7 @@ extern const TSLanguage* tree_sitter_opengoal();
 std::string apply_formatting(const FormatterTreeNode& curr_node,
                              std::string output,
                              int tree_depth = 0) {
+  using namespace formatter_rules;
   if (!curr_node.token && curr_node.refs.empty()) {
     return output;
   }
@@ -34,20 +35,21 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
 
   bool inline_form = false;
   // Also check if the form should be constant-paired
-  const bool constant_pair_form =
-      formatter_rules::constant_pairs::form_should_be_constant_paired(curr_node);
+  const bool constant_pair_form = constant_pairs::form_should_be_constant_paired(curr_node);
   if (!constant_pair_form) {
     // Determine if the form should be inlined or hung/flowed
     // TODO - this isn't entirely accurate, needs current cursor positioning (which is tricky
     // because recursion!)
-    inline_form = formatter_rules::indent::form_can_be_inlined(curr_form, curr_node);
+    inline_form = indent::form_can_be_inlined(curr_form, curr_node);
   }
+  const bool flowing = indent::should_form_flow(curr_node);
+  // TODO - might want to make some kind of per-form config struct, simplify the passing around of
+  // info below
   for (int i = 0; i < curr_node.refs.size(); i++) {
     const auto& ref = curr_node.refs.at(i);
     // Append a newline if needed
     if (!inline_form) {
-      formatter_rules::indent::append_newline(curr_form, ref, curr_node, tree_depth, i,
-                                              constant_pair_form);
+      indent::append_newline(curr_form, ref, curr_node, tree_depth, i, constant_pair_form, flowing);
     }
     // Either print the element's token, or recursively format it as well
     if (ref.token) {
@@ -55,12 +57,12 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
       // forms are always done bottom-top recursively, they always act
       // independently as if it was the shallowest depth
       if (!inline_form) {
-        formatter_rules::indent::flow_line(curr_form, ref, curr_node, 1, i);
+        indent::indent_line(curr_form, ref, curr_node, 1, i, flowing);
       }
       if (ref.metadata.node_type == "comment" && ref.metadata.is_inline) {
         curr_form += " " + ref.token.value();
       } else if (ref.metadata.node_type == "block_comment") {
-        curr_form += formatter_rules::comments::format_block_comment(ref.token.value());
+        curr_form += comments::format_block_comment(ref.token.value());
       } else {
         curr_form += ref.token.value();
       }
@@ -70,7 +72,7 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
     } else {
       auto formatted_form = apply_formatting(ref, "", tree_depth + 1);
       if (!curr_node.metadata.is_top_level && !inline_form) {
-        formatter_rules::indent::hang_lines(formatted_form, ref, curr_node, constant_pair_form);
+        indent::align_lines(formatted_form, ref, curr_node, constant_pair_form, flowing);
       }
       curr_form += formatted_form;
       if (!curr_node.metadata.is_top_level) {
@@ -78,7 +80,7 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
       }
     }
     // Handle blank lines at the top level, skip if it's the final element
-    formatter_rules::blank_lines::separate_by_newline(curr_form, curr_node, ref, i);
+    blank_lines::separate_by_newline(curr_form, curr_node, ref, i);
   }
   if (!curr_node.metadata.is_top_level) {
     curr_form = str_util::rtrim(curr_form) + ")";
