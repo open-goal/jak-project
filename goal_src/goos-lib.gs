@@ -503,3 +503,5 @@
 (define *jak1-full-game* (if (user? dass) #t #f))
 (define *jak1-territory* GAME_TERRITORY_SCEA)
 
+;; whether to enable ps3 test levels for jak 2
+(define USE_PS3_LEVELS #f)
