@@ -1519,6 +1519,7 @@
     )
   )
 
+;; this is unnecessary. the task manager can close the task.
 (set-subtask-hook!
   *game-info*
   (game-task-node city-burning-bush-ring-1-resolution)
@@ -2683,6 +2684,13 @@ This commonly includes things such as:
   TASK_MANAGER_CODE_HOOK
   (lambda :behavior task-manager () (set! (-> self state-time) (current-time)) (none))
   )
+
+;; PC PORT NOTE : added complete hook for collection bbush tasks where we wait for the hud to die first
+(set-subtask-hook! *game-info* (game-task-node city-burning-bush-collection-1-resolution)
+  TASK_MANAGER_COMPLETE_HOOK
+  (lambda :behavior task-manager ()
+    (while (handle->process (-> self hud-counter))
+      (suspend))))
 
 (copy-hooks!
   (-> *game-info* sub-task-list (game-task-node city-burning-bush-collection-2-resolution))
