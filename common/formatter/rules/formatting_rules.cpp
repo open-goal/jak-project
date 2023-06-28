@@ -198,14 +198,13 @@ bool form_contains_comment(const FormatterTreeNode& node) {
   return false;
 }
 
-bool form_can_be_inlined(const std::string& curr_text, const FormatterTreeNode& node) {
-  // Two main checks:
-  // - first, is the form too long to fit on a line TODO - increase accuracy here
-  if (form_exceed_line_width(curr_text, node, 0)) {
+bool form_can_be_inlined(const std::string& curr_text, const FormatterTreeNode& list_node) {
+  // is the form too long to fit on a line TODO - increase accuracy here
+  if (form_exceed_line_width(curr_text, list_node, 0)) {
     return false;
   }
-  // - second, are there any comments? (inlined or not, doesn't matter)
-  if (form_contains_comment(node)) {
+  // are there any comments? (inlined or not, doesn't matter)
+  if (form_contains_comment(list_node)) {
     return false;
   }
   return true;
@@ -216,6 +215,10 @@ bool should_form_flow(const FormatterTreeNode& list_node) {
   if (list_node.refs.empty() || !list_node.refs.at(0).token) {
     return false;
   }
+  // if the first element is a comment, force a flow
+  if (list_node.refs.size() > 1 && list_node.refs.at(1).metadata.is_comment) {
+    return true;
+  }
   const auto& form_head = list_node.refs.at(0).token;
   // See if we have any configuration for this form
   if (form_head &&
@@ -224,6 +227,23 @@ bool should_form_flow(const FormatterTreeNode& list_node) {
     return form_config.force_flow;
   }
   return false;
+}
+
+std::optional<bool> inline_form_element(const FormatterTreeNode& list_node, const int index) {
+  // TODO - honestly should just have an is_list metadata
+  if (list_node.refs.empty() || !list_node.refs.at(0).token) {
+    return std::nullopt;
+  }
+  const auto& form_head = list_node.refs.at(0).token;
+  // See if we have any configuration for this form
+  if (form_head &&
+      config::opengoal_form_config.find(form_head.value()) != config::opengoal_form_config.end()) {
+    const auto& form_config = config::opengoal_form_config.at(form_head.value());
+    if (form_config.inline_until_index != -1) {
+      return index < form_config.inline_until_index;
+    }
+  }
+  return std::nullopt;
 }
 
 void append_newline(std::string& curr_text,
@@ -251,8 +271,7 @@ void indent_line(std::string& curr_text,
                  const int depth,
                  const int index,
                  const bool flowing) {
-  if (node.metadata.is_top_level ||
-      (node.metadata.is_inline && node.metadata.is_comment)) {
+  if (node.metadata.is_top_level || (node.metadata.is_inline && node.metadata.is_comment)) {
     return;
   }
   // If the element is the second element in a constant pair, that means we did not append a
@@ -260,15 +279,13 @@ void indent_line(std::string& curr_text,
   if (constant_pairs::is_element_second_in_constant_pair(containing_node, node, index)) {
     return;
   }
-  if (flowing && index > 0) {
-    // If the first element in the list is a constant, we only indent with 1 space instead
-    if (constant_types.find(containing_node.refs.at(0).metadata.node_type) !=
-        constant_types.end()) {
-      curr_text += str_util::repeat(depth, " ");
-    } else {
-      curr_text += str_util::repeat(depth, "  ");
-    }
-  } else if (!flowing && index > 1) {
+  // If the first element in the list is a constant, we only indent with 1 space instead
+  if (index > 0 &&
+      constant_types.find(containing_node.refs.at(0).metadata.node_type) != constant_types.end()) {
+    curr_text += str_util::repeat(depth, " ");
+  } else if (index > 0 && flowing) {
+    curr_text += str_util::repeat(depth, "  ");
+  } else if (index > 1 && !flowing) {
     curr_text += str_util::repeat(containing_node.refs.at(0).token.value().length() + 2, " ");
   }
 }

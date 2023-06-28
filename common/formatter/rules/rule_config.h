@@ -14,6 +14,7 @@ struct FormFormattingConfig {
   bool force_flow = false;
   int start_hang_at_index = 0;
   int start_flow_at_index = 0;
+  int inline_until_index = -1;
 };
 
 extern std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config;

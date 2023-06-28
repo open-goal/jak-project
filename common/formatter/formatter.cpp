@@ -2,6 +2,7 @@
 
 #include "formatter_tree.h"
 
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/string_util.h"
 
@@ -47,8 +48,13 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
   // info below
   for (int i = 0; i < curr_node.refs.size(); i++) {
     const auto& ref = curr_node.refs.at(i);
+    // Figure out if the element should be inlined or not
+    bool inline_element = inline_form;
+    if (indent::inline_form_element(curr_node, i)) {
+      inline_element = indent::inline_form_element(curr_node, i).value();
+    }
     // Append a newline if needed
-    if (!inline_form) {
+    if (!inline_element) {
       indent::append_newline(curr_form, ref, curr_node, tree_depth, i, constant_pair_form, flowing);
     }
     // Either print the element's token, or recursively format it as well
@@ -56,7 +62,7 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
       // TODO depth hard-coded to 1, i think this can be removed, since
       // forms are always done bottom-top recursively, they always act
       // independently as if it was the shallowest depth
-      if (!inline_form) {
+      if (!inline_element) {
         indent::indent_line(curr_form, ref, curr_node, 1, i, flowing);
       }
       if (ref.metadata.node_type == "comment" && ref.metadata.is_inline) {
@@ -71,7 +77,7 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
       }
     } else {
       auto formatted_form = apply_formatting(ref, "", tree_depth + 1);
-      if (!curr_node.metadata.is_top_level && !inline_form) {
+      if (!curr_node.metadata.is_top_level && !inline_element) {
         indent::align_lines(formatted_form, ref, curr_node, constant_pair_form, flowing);
       }
       curr_form += formatted_form;
@@ -106,8 +112,13 @@ std::optional<std::string> formatter::format_code(const std::string& source) {
     return std::nullopt;
   }
 
-  const auto formatting_tree = FormatterTree(source, root_node);
-  std::string formatted_code = apply_formatting(formatting_tree.root, "");
+  try {
+    const auto formatting_tree = FormatterTree(source, root_node);
+    std::string formatted_code = apply_formatting(formatting_tree.root, "");
+    return formatted_code;
+  } catch (std::exception& e) {
+    lg::error("Unable to format code - {}", e.what());
+  }
 
-  return formatted_code;
+  return std::nullopt;
 }
