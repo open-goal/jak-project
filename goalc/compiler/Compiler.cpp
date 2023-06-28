@@ -202,8 +202,8 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
 
       lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
       auto code_str = pretty_print::to_string(code, 120);
-      if (code_str.size() > 120 * 35) {
-        code_str = code_str.substr(0, 120 * 35) + "...";
+      if (code_str.size() > 120 * 30) {
+        code_str = code_str.substr(0, 120 * 30) + "...";
       }
       lg::print("{}\n", code_str);
 
@@ -229,8 +229,8 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
 
     lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
     auto code_str = pretty_print::to_string(code, 120);
-    if (code_str.size() > 120 * 35) {
-      code_str = code_str.substr(0, 120 * 35) + "...";
+    if (code_str.size() > 120 * 30) {
+      code_str = code_str.substr(0, 120 * 30) + "...";
     }
     lg::print("{}\n", code_str);
 
