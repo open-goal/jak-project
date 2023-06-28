@@ -265,7 +265,7 @@ u64 make_string_from_c(const char* c_str) {
 
 extern "C" {
 #ifdef __APPLE__
-void _arg_call_systemv() asm ("_arg_call_systemv");
+void _arg_call_systemv() asm("_arg_call_systemv");
 #else
 void _arg_call_systemv();
 #endif
@@ -383,8 +383,8 @@ Ptr<Function> make_function_from_c_win32(void* func, bool arg3_is_pp) {
 
 extern "C" {
 #ifdef __APPLE__
-void _stack_call_systemv() asm ("_stack_call_systemv");
-void _stack_call_win32() asm ("_stack_call_win32");
+void _stack_call_systemv() asm("_stack_call_systemv");
+void _stack_call_win32() asm("_stack_call_win32");
 #else
 void _stack_call_systemv();
 void _stack_call_win32();
@@ -1725,10 +1725,11 @@ s32 InitHeapAndSymbol() {
     // check the kernel version!
     auto kernel_version = intern_from_c("*kernel-version*")->value;
     if (!kernel_version || ((kernel_version >> 0x13) != KERNEL_VERSION_MAJOR)) {
-      lg::error("Kernel version mismatch! Compiled C kernel version is {}.{} but the goal kernel "
-                "is {}.{}",
-                KERNEL_VERSION_MAJOR, KERNEL_VERSION_MINOR, kernel_version >> 0x13,
-                (kernel_version >> 3) & 0xffff);
+      lg::error(
+          "Kernel version mismatch! Compiled C kernel version is {}.{} but"
+          "the goal kernel is {}.{}",
+          KERNEL_VERSION_MAJOR, KERNEL_VERSION_MINOR, kernel_version >> 0x13,
+          (kernel_version >> 3) & 0xffff);
       return -1;
     } else {
       lg::info("Got correct kernel version {}.{}, loaded in {:.2} ms", kernel_version >> 0x13,
