@@ -152,7 +152,7 @@ class GameSubtitleSceneInfo {
     bool operator<(const SubtitleLine& other) const { return (frame < other.frame); }
   };
 
-  GameSubtitleSceneInfo(SubtitleSceneKind kind) : m_kind(kind) {}
+  GameSubtitleSceneInfo(SubtitleSceneKind kind) : m_kind(kind), m_id(0), m_sorting_group_idx(-1) {}
 
   const std::string& name() const { return m_name; }
   const std::vector<SubtitleLine>& lines() const { return m_lines; }
