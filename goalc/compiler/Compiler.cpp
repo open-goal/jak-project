@@ -201,7 +201,11 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
       }
 
       lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
-      lg::print("{}\n", pretty_print::to_string(code, 120));
+      auto code_str = pretty_print::to_string(code, 120);
+      if (code_str.size() > 120 * 35) {
+        code_str = code_str.substr(0, 120 * 35) + "...";
+      }
+      lg::print("{}\n", code_str);
 
       if (term) {
         ce.print_err_stack = false;
@@ -224,7 +228,11 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
     }
 
     lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
-    lg::print("{}\n", pretty_print::to_string(code, 120));
+    auto code_str = pretty_print::to_string(code, 120);
+    if (code_str.size() > 120 * 35) {
+      code_str = code_str.substr(0, 120 * 35) + "...";
+    }
+    lg::print("{}\n", code_str);
 
     CompilerException ce("Compiler Exception");
     if (term) {
