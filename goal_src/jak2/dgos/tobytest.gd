@@ -1,0 +1,11 @@
+("TOBYTEST.DGO"
+  (
+    "tobytest-vis.go"
+    "tpage-667.go"
+    "tpage-665.go"
+    "tpage-664.go"
+    "cas-conveyor-switch-ag.go"
+    "cas-robot-door-ag.go"
+    "cas-chain-plat-ag.go"
+    "cas-electric-fence-ag.go"
+  ))

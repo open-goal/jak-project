@@ -54,6 +54,9 @@ class InputManager {
 
   std::optional<std::shared_ptr<PadData>> get_current_data(const int port) const;
   std::pair<int, int> get_mouse_pos() const { return m_mouse.get_mouse_pos(); }
+  MouseDevice::MouseButtonStatus get_mouse_button_status() const {
+    return m_mouse.get_mouse_button_status();
+  }
 
   // These functions can be called from the EE and interact with SDL directly
   // These should be enqueued in the event that for example, you try to set

@@ -191,13 +191,14 @@
 (defmethod get-scene-by-name subtitle-text-info ((obj subtitle-text-info) (kind pc-subtitle-channel) (name string))
   "get a subtitle scene info with the corresponding name. #f = none found"
 
-  ;; invalid kind so return invalid scene.
-  (if (or (not name) (= kind (pc-subtitle-channel invalid)))
+  ;; invalid name so return invalid scene.
+  (if (not name)
       (return (the subtitle-text #f)))
 
   (dotimes (i (-> obj length))
     ;; name and kind matches, return that!
-    (when (and (= kind (-> obj data i kind)) (string= (-> obj data i name) name))
+    (when (and (or (= kind (pc-subtitle-channel invalid)) (= kind (-> obj data i kind)))
+               (string= (-> obj data i name) name))
       (return (-> obj data i))
       )
     )
@@ -207,13 +208,10 @@
 (defmethod get-scene-by-text-id subtitle-text-info ((obj subtitle-text-info) (kind pc-subtitle-channel) (id text-id))
   "get a subtitle scene info with the corresponding name. #f = none found"
 
-  ;; invalid kind so return invalid scene.
-  (if (= kind (pc-subtitle-channel invalid))
-      (return (the subtitle-text #f)))
-
   (dotimes (i (-> obj length))
     ;; name and kind matches, return that!
-    (when (and (= kind (-> obj data i kind)) (= (-> obj data i id) id))
+    (when (and (or (= kind (pc-subtitle-channel invalid)) (= kind (-> obj data i kind)))
+               (= (-> obj data i id) id))
       (return (-> obj data i))
       )
     )

@@ -1204,16 +1204,23 @@
           )
         )
       (game-info-method-28 *game-info* (the-as game-score s5-0) arg0)
-      (let ((gp-1 (new 'static 'fact-info)))
-        (set! (-> gp-1 options) (actor-option))
-        (logior! (-> gp-1 options) (actor-option suck-in))
-        (birth-pickup-at-point
-          (camera-pos)
-          (pickup-type skill)
-          (* (the float s2-2) (-> *FACT-bank* super-skill-inc))
-          #t
-          *entity-pool*
-          gp-1
+      ;; pc port note : just give the skill directly
+      (#cond
+        (PC_PORT
+          (send-event *target* 'get-pickup (pickup-type skill) (* (the float s2-2) (-> *FACT-bank* super-skill-inc))))
+        (#t
+          (let ((gp-1 (new 'static 'fact-info)))
+            (set! (-> gp-1 options) (actor-option))
+            (logior! (-> gp-1 options) (actor-option suck-in))
+            (birth-pickup-at-point
+              (camera-pos)
+              (pickup-type skill)
+              (* (the float s2-2) (-> *FACT-bank* super-skill-inc))
+              #t
+              *entity-pool*
+              gp-1
+              )
+            )
           )
         )
       )
@@ -1499,6 +1506,9 @@
       (send-event (ppointer->process (-> self parent)) 'complete)
       (sleep-code)
       )
+    (#when PC_PORT
+      ;; auto-save when a race is won
+      (auto-save-user))
     (until #f
       (cond
         ((logtest? (-> self race-state info flags) 8)
