@@ -18,7 +18,8 @@ extern const TSLanguage* tree_sitter_opengoal();
 
 std::string apply_formatting(const FormatterTreeNode& curr_node,
                              std::string output,
-                             int tree_depth = 0) {
+                             int tree_depth = 0,
+                             const FormatterTreeNode& containing_node = FormatterTreeNode()) {
   using namespace formatter_rules;
   if (!curr_node.token && curr_node.refs.empty()) {
     return output;
@@ -41,7 +42,7 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
     // Determine if the form should be inlined or hung/flowed
     // TODO - this isn't entirely accurate, needs current cursor positioning (which is tricky
     // because recursion!)
-    inline_form = indent::form_can_be_inlined(curr_form, curr_node);
+    inline_form = indent::form_can_be_inlined(curr_form, curr_node, containing_node);
   }
   const bool flowing = indent::should_form_flow(curr_node);
   // TODO - might want to make some kind of per-form config struct, simplify the passing around of
@@ -76,7 +77,7 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
         curr_form += " ";
       }
     } else {
-      auto formatted_form = apply_formatting(ref, "", tree_depth + 1);
+      auto formatted_form = apply_formatting(ref, "", tree_depth + 1, curr_node);
       if (!curr_node.metadata.is_top_level && !inline_element) {
         indent::align_lines(formatted_form, ref, curr_node, constant_pair_form, flowing);
       }

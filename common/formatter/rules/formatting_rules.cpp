@@ -198,7 +198,34 @@ bool form_contains_comment(const FormatterTreeNode& node) {
   return false;
 }
 
-bool form_can_be_inlined(const std::string& curr_text, const FormatterTreeNode& list_node) {
+bool form_can_be_inlined(const std::string& curr_text,
+                         const FormatterTreeNode& list_node,
+                         const FormatterTreeNode& containing_form) {
+  // Check if there is any form configuration for this
+  // TODO - honestly should just have an is_list metadata
+  if (!list_node.refs.empty() && list_node.refs.at(0).token) {
+    const auto& form_head = list_node.refs.at(0).token;
+    if (form_head && config::opengoal_form_config.find(form_head.value()) !=
+                         config::opengoal_form_config.end()) {
+      const auto& form_config = config::opengoal_form_config.at(form_head.value());
+      if (form_config.has_bindings) {
+        return !form_exceed_line_width(curr_text, list_node, 0) && let::can_be_inlined(list_node);
+      }
+    }
+  }
+  // Alternatively, we may be checking the binding list within a form
+  // this may be inlinable
+  if (!containing_form.refs.empty() && containing_form.refs.at(0).token) {
+    const auto& form_head = containing_form.refs.at(0).token;
+    if (form_head && config::opengoal_form_config.find(form_head.value()) !=
+                         config::opengoal_form_config.end()) {
+      const auto& form_config = config::opengoal_form_config.at(form_head.value());
+      if (form_config.has_bindings && !let::can_be_inlined(containing_form)) {
+        return false;
+      }
+    }
+  }
+
   // is the form too long to fit on a line TODO - increase accuracy here
   if (form_exceed_line_width(curr_text, list_node, 0)) {
     return false;
@@ -302,7 +329,14 @@ void align_lines(std::string& text,
       constant_types.find(containing_node.refs.at(0).metadata.node_type) != constant_types.end()) {
     alignment_width = 3;
   } else if (!flowing) {
-    alignment_width = containing_node.refs.at(0).token.value().length() + 2;
+    // If the form has a token (it's a normal list)
+    if (containing_node.refs.at(0).token) {
+      alignment_width = containing_node.refs.at(0).token.value().length() + 2;
+    } else {
+      // otherwise, it's a list of lists, no alignment should be needed (i think) TODO
+      return;
+    }
+    
   }
   std::string aligned_form = "";
   for (int i = 0; i < lines.size(); i++) {
@@ -314,5 +348,18 @@ void align_lines(std::string& text,
   text = aligned_form;
 }
 }  // namespace indent
+namespace let {
+
+bool can_be_inlined(const FormatterTreeNode& form) {
+  // Check a variety of things specific to `let` style forms (ones with bindings)
+  // - does the binding list have more than one binding?
+  const auto& bindings = form.refs.at(1);  // TODO - assuming
+  if (bindings.refs.size() > 1) {
+    return false;
+  }
+  return true;
+}
+
+}  // namespace let
 
 }  // namespace formatter_rules

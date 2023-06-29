@@ -14,7 +14,16 @@ FormFormattingConfig new_flow_rule(int start_index) {
   return cfg;
 }
 
-std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config = {
-    {"defun", new_flow_rule(3)}};
+FormFormattingConfig new_binding_rule() {
+  FormFormattingConfig cfg;
+  cfg.has_bindings = true;
+  cfg.force_flow = true;
+  cfg.inline_until_index = 2;
+  return cfg;
+}
+
+const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config = {
+    {"defun", new_flow_rule(3)},
+    {"let", new_binding_rule()}};
 }  // namespace config
 }  // namespace formatter_rules

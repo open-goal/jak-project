@@ -93,7 +93,7 @@ bool form_should_be_constant_paired(const FormatterTreeNode& node);
 namespace indent {
 const static int line_width_target = 120;
 
-bool form_can_be_inlined(const std::string& curr_text, const FormatterTreeNode& node);
+bool form_can_be_inlined(const std::string& curr_text, const FormatterTreeNode& node, const FormatterTreeNode& node2);
 
 // TODO - right now this is very primitive in that it only checks against our hard-coded config
 // eventually make this explore both routes and determine which is best
@@ -121,4 +121,23 @@ void align_lines(std::string& text,
                  const bool flowing);
 
 }  // namespace indent
+
+// Let forms fall into two main categories
+// - Ones that can be entirely inlined
+// - Ones that cannot
+//
+// Single line let forms:
+// - If there is a single binding, let it continue to be one line
+// - otherwise, flow it just as a multi-line let would be done
+//
+// For multi-line let forms, the difficulty is how to format the binding:
+// - align the bindings to within the binding list (single indent space)
+// - always format the binding value on the same line as the binding, no new lines
+// - forms inside the let binding are flowed
+//
+// Reference - https://github.com/kkinnear/zprint/blob/main/doc/options/let.md
+namespace let {
+// TODO - like above, factor in current cursor position
+bool can_be_inlined(const FormatterTreeNode& form);
+}  // namespace let
 }  // namespace formatter_rules
