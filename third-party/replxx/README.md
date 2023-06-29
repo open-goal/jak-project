@@ -1,8 +1,8 @@
 # Read Evaluate Print Loop ++
 
-![demo](https://drive.google.com/uc?export=download&id=0B53g2Y3z7rWNT2dCRGVVNldaRnc)
+![demo](https://codestation.org/download/replxx.gif)
 
-[![Build Status](https://travis-ci.org/AmokHuginnsson/replxx.svg?branch=master)](https://travis-ci.org/AmokHuginnsson/replxx)
+![Build Status](https://github.com/AmokHuginnsson/replxx/actions/workflows/ci.yml/badge.svg)
 
 A small, portable GNU readline replacement for Linux, Windows and
 MacOS which is capable of handling UTF-8 characters. Unlike GNU
@@ -29,13 +29,6 @@ programs.
 * Only uses a subset of VT100 escapes (ANSI.SYS compatible)
 * UTF8 aware
 * support for Linux, MacOS and Windows
-
-It deviates from Salvatore's original goal to have a minimal readline
-replacement for the sake of supporting UTF8 and Windows. It deviates
-from 10gen Inc.'s goal to create a C++ interface to linenoise. This
-library uses C++ internally, but to the user it provides a pure C
-interface that is compatible with the original linenoise API.
-C interface.
 
 ## Requirements
 
@@ -109,11 +102,4 @@ cmake -G "Visual Studio 12 2013 Win64" -DCMAKE_BUILD_TYPE=Release ..
  * Windows
 
 Please test it everywhere you can and report back!
-
-## Let's push this forward!
-
-Patches should be provided in the respect of linenoise sensibility for
-small and easy to understand code that and the license
-restrictions. Extensions must be submitted under a BSD license-style.
-A contributor license is required for contributions.
 
