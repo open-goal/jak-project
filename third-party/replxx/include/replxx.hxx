@@ -35,6 +35,7 @@
 #include <vector>
 #include <string>
 #include <functional>
+#include <iosfwd>
 
 /*
  * For use in Windows DLLs:
@@ -59,6 +60,11 @@ enum { ERROR_BB1CA97EC761FC37101737BA0AA2E7C5 = ERROR };
 #undef ERROR
 enum { ERROR = ERROR_BB1CA97EC761FC37101737BA0AA2E7C5 };
 #endif
+#ifdef ABORT
+enum { ABORT_8D12A2CA7E5A64036D7251A3EDA51A38 = ABORT };
+#undef ABORT
+enum { ABORT = ABORT_8D12A2CA7E5A64036D7251A3EDA51A38 };
+#endif
 #ifdef DELETE
 enum { DELETE_32F68A60CEF40FAEDBC6AF20298C1A1E = DELETE };
 #undef DELETE
@@ -69,7 +75,7 @@ namespace replxx {
 
 class REPLXX_IMPEXP Replxx {
 public:
-	enum class Color {
+	enum class Color : int {
 		BLACK         = 0,
 		RED           = 1,
 		GREEN         = 2,
@@ -86,9 +92,7 @@ public:
 		BRIGHTMAGENTA = 13,
 		BRIGHTCYAN    = 14,
 		WHITE         = 15,
-		NORMAL        = LIGHTGRAY,
-		DEFAULT       = -1,
-		ERROR         = -2
+		DEFAULT       = 1u << 16u
 	};
 	struct KEY {
 		static char32_t const BASE         = 0x0010ffff + 1;
@@ -145,17 +149,21 @@ public:
 		static char32_t const BACKSPACE    = 'H' | BASE_CONTROL;
 		static char32_t const TAB          = 'I' | BASE_CONTROL;
 		static char32_t const ENTER        = 'M' | BASE_CONTROL;
+		static char32_t const ABORT        = 'C' | BASE_CONTROL | BASE_META;
 	};
 	/*! \brief List of built-in actions that act upon user input.
 	 */
 	enum class ACTION {
 		INSERT_CHARACTER,
+		NEW_LINE,
 		DELETE_CHARACTER_UNDER_CURSOR,
 		DELETE_CHARACTER_LEFT_OF_CURSOR,
 		KILL_TO_END_OF_LINE,
 		KILL_TO_BEGINING_OF_LINE,
 		KILL_TO_END_OF_WORD,
 		KILL_TO_BEGINING_OF_WORD,
+		KILL_TO_END_OF_SUBWORD,
+		KILL_TO_BEGINING_OF_SUBWORD,
 		KILL_TO_WHITESPACE_ON_LEFT,
 		YANK,
 		YANK_CYCLE,
@@ -164,19 +172,29 @@ public:
 		MOVE_CURSOR_TO_END_OF_LINE,
 		MOVE_CURSOR_ONE_WORD_LEFT,
 		MOVE_CURSOR_ONE_WORD_RIGHT,
+		MOVE_CURSOR_ONE_SUBWORD_LEFT,
+		MOVE_CURSOR_ONE_SUBWORD_RIGHT,
 		MOVE_CURSOR_LEFT,
 		MOVE_CURSOR_RIGHT,
+		LINE_NEXT,
+		LINE_PREVIOUS,
 		HISTORY_NEXT,
 		HISTORY_PREVIOUS,
 		HISTORY_FIRST,
 		HISTORY_LAST,
+		HISTORY_RESTORE,
+		HISTORY_RESTORE_CURRENT,
 		HISTORY_INCREMENTAL_SEARCH,
+		HISTORY_SEEDED_INCREMENTAL_SEARCH,
 		HISTORY_COMMON_PREFIX_SEARCH,
 		HINT_NEXT,
 		HINT_PREVIOUS,
 		CAPITALIZE_WORD,
 		LOWERCASE_WORD,
 		UPPERCASE_WORD,
+		CAPITALIZE_SUBWORD,
+		LOWERCASE_SUBWORD,
+		UPPERCASE_SUBWORD,
 		TRANSPOSE_CHARACTERS,
 		TOGGLE_OVERWRITE_MODE,
 #ifndef _WIN32
@@ -308,7 +326,7 @@ public:
 	 * displayed user input.
 	 *
 	 * Size of \e colors buffer is equal to number of code points in user \e input
-	 * which will be different from simple `input.lenght()`!
+	 * which will be different from simple `input.length()`!
 	 *
 	 * \param input - an UTF-8 encoded input entered by the user so far.
 	 * \param colors - output buffer for color information.
@@ -426,6 +444,12 @@ public:
 	 */
 	void set_state( State const& state );
 
+	/*! \brief Enable/disable case insensitive history search and completion.
+	 *
+	 * \param val - if set to non-zero then history search and completion will be case insensitive.
+	 */
+	void set_ignore_case( bool val );
+
 	/*! \brief Print formatted string to standard output.
 	 *
 	 * This function ensures proper handling of ANSI escape sequences
@@ -444,6 +468,14 @@ public:
 	 * \param length - The length of the array.
 	 */
 	void write( char const* str, int length );
+
+	/*! \brief Asynchronously change the prompt while replxx_input() call is in efect.
+	 *
+	 * Can be used to change the prompt from callbacks or other threads.
+	 *
+	 * \param prompt - The prompt string to change to.
+	 */
+	void set_prompt( std::string prompt );
 
 	/*! \brief Schedule an emulated key press event.
 	 *
@@ -472,8 +504,8 @@ public:
 	 *
 	 * Action names are the same as names of Replxx::ACTION enumerations
 	 * but in lower case, e.g.: an action for recalling previous history line
-	 * is \e Replxx::ACTION::HISTORY_PREVIOUS so action name to be used in this
-	 * interface for the same effect is "history_previous".
+	 * is \e Replxx::ACTION::LINE_PREVIOUS so action name to be used in this
+	 * interface for the same effect is "line_previous".
 	 *
 	 * \param code - handle this key-press event with following handler.
 	 * \param actionName - name of internal action to be invoked on key press.
@@ -510,12 +542,22 @@ public:
 	 */
 	bool history_save( std::string const& filename );
 
+	/*!
+	 * \copydoc history_save
+	 */
+	void history_save( std::ostream& out );
+
 	/*! \brief Load REPL's history from given file.
 	 *
 	 * \param filename - a path to the file which contains REPL's history that should be loaded.
 	 * \return True iff history file was successfully opened.
 	 */
 	bool history_load( std::string const& filename );
+
+	/*!
+	 * \copydoc history_load
+	 */
+	void history_load( std::istream& in );
 
 	/*! \brief Clear REPL's in-memory history.
 	 */
@@ -588,6 +630,12 @@ public:
 	 */
 	void set_no_color( bool val );
 
+	/*! \brief Enable/disable (prompt width) indent for multiline entry.
+	 *
+	 * \param val - if set to true then multiline indent will be enabled.
+	 */
+	void set_indent_multiline( bool val );
+
 	/*! \brief Set maximum number of entries in history list.
 	 */
 	void set_max_history_size( int len );
@@ -600,6 +648,61 @@ private:
 	Replxx( Replxx const& ) = delete;
 	Replxx& operator = ( Replxx const& ) = delete;
 };
+
+/*! \brief Color definition related helper function.
+ *
+ * To be used to leverage 256 color terminal capabilities.
+ */
+namespace color {
+
+/*! \brief Combine two color definitions to get encompassing color definition.
+ *
+ * To be used only for combining foreground and background colors.
+ *
+ * \param color1 - first input color.
+ * \param color2 - second input color.
+ * \return A new color definition that represent combined input colors.
+ */
+Replxx::Color operator | ( Replxx::Color color1, Replxx::Color color2 );
+
+/*! \brief Transform foreground color definition into a background color definition.
+ *
+ * \param color - an input foreground color definition.
+ * \return A background color definition that is a transformed input \e color.
+ */
+Replxx::Color bg( Replxx::Color color );
+
+/*! \brief Add `bold` attribute to color definition.
+ *
+ * \param color - an input color definition.
+ * \return A new color definition with bold attribute set.
+ */
+Replxx::Color bold( Replxx::Color color );
+
+/*! \brief Add `underline` attribute to color definition.
+ *
+ * \param color - an input color definition.
+ * \return A new color definition with underline attribute set.
+ */
+Replxx::Color underline( Replxx::Color color );
+
+/*! \brief Create a new grayscale color of given brightness level.
+ *
+ * \param level - a brightness level for new color, must be between 0 (darkest) and 23 (brightest).
+ * \return A new grayscale color of a given brightest \e level.
+ */
+Replxx::Color grayscale( int level );
+
+/*! \brief Create a new color in 6×6×6 RGB color space from base component levels.
+ *
+ * \param red - a red (of RGB) component level, must be 0 and 5.
+ * \param green - a green (of RGB) component level, must be 0 and 5.
+ * \param blue - a blue (of RGB) component level, must be 0 and 5.
+ * \return A new color in 6×6×6 RGB color space.
+ */
+Replxx::Color rgb666( int red, int green, int blue );
+
+}
 
 }
 

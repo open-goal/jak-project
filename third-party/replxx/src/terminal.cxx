@@ -95,6 +95,7 @@ Terminal::Terminal( void )
 	, _empty()
 #else
 	: _origTermios()
+	, _rawModeTermios()
 	, _interrupt()
 #endif
 	, _rawMode( false )
@@ -126,11 +127,13 @@ void Terminal::write32( char32_t const* text32, int len32 ) {
 
 void Terminal::write8( char const* data_, int size_ ) {
 #ifdef _WIN32
-	if ( ! _rawMode ) {
+	bool temporarilyEnabled( false );
+	if ( _consoleOut == INVALID_HANDLE_VALUE ) {
 		enable_out();
+		temporarilyEnabled = true;
 	}
 	int nWritten( win_write( _consoleOut, _autoEscape, data_, size_ ) );
-	if ( ! _rawMode ) {
+	if ( temporarilyEnabled ) {
 		disable_out();
 	}
 #else
@@ -179,8 +182,8 @@ inline int notty( void ) {
 
 void Terminal::enable_out( void ) {
 #ifdef _WIN32
-	_consoleOut = GetStdHandle( STD_OUTPUT_HANDLE );
 	SetConsoleOutputCP( 65001 );
+	_consoleOut = GetStdHandle( STD_OUTPUT_HANDLE );
 	GetConsoleMode( _consoleOut, &_origOutMode );
 	_autoEscape = SetConsoleMode( _consoleOut, _origOutMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING ) != 0;
 #endif
@@ -206,70 +209,88 @@ void Terminal::disable_bracketed_paste( void ) {
 }
 
 int Terminal::enable_raw_mode( void ) {
-	if ( ! _rawMode ) {
-#ifdef _WIN32
-		_consoleIn = GetStdHandle( STD_INPUT_HANDLE );
-		SetConsoleCP( 65001 );
-		GetConsoleMode( _consoleIn, &_origInMode );
-		SetConsoleMode(
-			_consoleIn,
-			_origInMode & ~( ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT )
-		);
-		enable_out();
-#else
-		struct termios raw;
-
-		if ( ! tty::in ) {
-			return ( notty() );
-		}
-		if ( tcgetattr( 0, &_origTermios ) == -1 ) {
-			return ( notty() );
-		}
-
-		raw = _origTermios; /* modify the original mode */
-		/* input modes: no break, no CR to NL, no parity check, no strip char,
-		 * no start/stop output control. */
-		raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-		/* output modes - disable post processing */
-		// this is wrong, we don't want raw output, it turns newlines into straight
-		// linefeeds
-		// raw.c_oflag &= ~(OPOST);
-		/* control modes - set 8 bit chars */
-		raw.c_cflag |= (CS8);
-		/* local modes - echoing off, canonical off, no extended functions,
-		 * no signal chars (^Z,^C) */
-		raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-		/* control chars - set return condition: min number of bytes and timer.
-		 * We want read to return every single byte, without timeout. */
-		raw.c_cc[VMIN] = 1;
-		raw.c_cc[VTIME] = 0; /* 1 byte, no timer */
-
-		/* put terminal in raw mode after flushing */
-		if ( tcsetattr(0, TCSADRAIN, &raw) < 0 ) {
-			return ( notty() );
-		}
-		_terminal_ = this;
-#endif
-		_rawMode = true;
+	if ( _rawMode ) {
+		return ( 0 );
 	}
+#ifdef _WIN32
+	_consoleIn = GetStdHandle( STD_INPUT_HANDLE );
+	GetConsoleMode( _consoleIn, &_origInMode );
+#else
+
+	if ( ! tty::in ) {
+		return ( notty() );
+	}
+	if ( tcgetattr( 0, &_origTermios ) == -1 ) {
+		return ( notty() );
+	}
+
+	_rawModeTermios = _origTermios; /* modify the original mode */
+	/* input modes: no break, no CR to NL, no parity check, no strip char,
+	 * no start/stop output control. */
+	_rawModeTermios.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+	/* output modes - disable post processing */
+	// this is wrong, we don't want _rawModeTermios output, it turns newlines into straight
+	// linefeeds
+	// _rawModeTermios.c_oflag &= ~(OPOST);
+	/* control modes - set 8 bit chars */
+	_rawModeTermios.c_cflag |= (CS8);
+	/* local modes - echoing off, canonical off, no extended functions,
+	 * no signal chars (^Z,^C) */
+	_rawModeTermios.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+	/* control chars - set return condition: min number of bytes and timer.
+	 * We want read to return every single byte, without timeout. */
+	_rawModeTermios.c_cc[VMIN] = 1;
+	_rawModeTermios.c_cc[VTIME] = 0; /* 1 byte, no timer */
+
+#endif
+
+	_rawMode = true;
+	if ( reset_raw_mode() < 0 ) {
+		_rawMode = false;
+		return ( notty() );
+	}
+
+#ifndef _WIN32
+	_terminal_ = this;
+#endif
 	return ( 0 );
 }
 
-void Terminal::disable_raw_mode(void) {
-	if ( _rawMode ) {
-#ifdef _WIN32
-		disable_out();
-		SetConsoleMode( _consoleIn, _origInMode );
-		SetConsoleCP( _inputCodePage );
-		_consoleIn = INVALID_HANDLE_VALUE;
-#else
-		_terminal_ = nullptr;
-		if ( tcsetattr( 0, TCSADRAIN, &_origTermios ) == -1 ) {
-			return;
-		}
-#endif
-		_rawMode = false;
+int Terminal::reset_raw_mode( void ) {
+	if ( ! _rawMode ) {
+		return ( -1 );
 	}
+#ifdef _WIN32
+	SetConsoleMode(
+		_consoleIn,
+		( _origInMode & ~( ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT ) ) | ENABLE_QUICK_EDIT_MODE 
+	);
+	SetConsoleCP( 65001 );
+	enable_out();
+	return ( 0 );
+#else
+	/* put terminal in raw mode after flushing */
+	return ( tcsetattr( 0, TCSADRAIN, &_rawModeTermios ) );
+#endif
+}
+
+void Terminal::disable_raw_mode(void) {
+	if ( ! _rawMode ) {
+		return;
+	}
+#ifdef _WIN32
+	disable_out();
+	SetConsoleMode( _consoleIn, _origInMode );
+	SetConsoleCP( _inputCodePage );
+	_consoleIn = INVALID_HANDLE_VALUE;
+#else
+	_terminal_ = nullptr;
+	if ( tcsetattr( 0, TCSADRAIN, &_origTermios ) == -1 ) {
+		return;
+	}
+#endif
+	_rawMode = false;
+	return;
 }
 
 #ifndef _WIN32
@@ -390,7 +411,10 @@ char32_t Terminal::read_char( void ) {
 		}
 		int key( rec.Event.KeyEvent.uChar.UnicodeChar );
 		if ( key == 0 ) {
-			switch (rec.Event.KeyEvent.wVirtualKeyCode) {
+			if ( rec.Event.KeyEvent.dwControlKeyState & SHIFT_PRESSED ) {
+				modifierKeys |= Replxx::KEY::BASE_SHIFT;
+			}
+			switch ( rec.Event.KeyEvent.wVirtualKeyCode ) {
 				case VK_LEFT:
 					return modifierKeys | Replxx::KEY::LEFT;
 				case VK_RIGHT:
@@ -443,6 +467,9 @@ char32_t Terminal::read_char( void ) {
 			highSurrogate = key - 0xD800;
 			continue;
 		} else {
+			if ( ( key == 13 ) && ( rec.Event.KeyEvent.dwControlKeyState & SHIFT_PRESSED ) ) {
+				key = 10;
+			}
 			// we got a real character, return it
 			if ( ( key >= 0xDC00 ) && ( key <= 0xDFFF ) ) {
 				key -= 0xDC00;
@@ -535,7 +562,7 @@ char32_t Terminal::read_char( void ) {
 
 Terminal::EVENT_TYPE Terminal::wait_for_input( int long timeout_ ) {
 #ifdef _WIN32
-	std::array<HANDLE,2> handles = { _consoleIn, _interrupt };
+	std::array<HANDLE, 2> handles = { _consoleIn, _interrupt };
 	while ( true ) {
 		DWORD event( WaitForMultipleObjects( static_cast<DWORD>( handles.size() ), handles.data(), false, timeout_ > 0 ? timeout_ : INFINITE ) );
 		switch ( event ) {
@@ -552,22 +579,34 @@ Terminal::EVENT_TYPE Terminal::wait_for_input( int long timeout_ ) {
 					// read the event to unsignal the handle
 					ReadConsoleInputW( _consoleIn, &rec, 1, &count );
 					continue;
-				} else if (rec.EventType == KEY_EVENT) {
-					int key(rec.Event.KeyEvent.uChar.UnicodeChar);
-					if (key == 0) {
-						switch (rec.Event.KeyEvent.wVirtualKeyCode) {
-						case VK_LEFT:
-						case VK_RIGHT:
-						case VK_UP:
-						case VK_DOWN:
-						case VK_DELETE:
-						case VK_HOME:
-						case VK_END:
-						case VK_PRIOR:
-						case VK_NEXT:
+				} else if ( rec.EventType == KEY_EVENT ) {
+					int key( rec.Event.KeyEvent.uChar.UnicodeChar );
+					if ( key == 0 ) {
+						switch ( rec.Event.KeyEvent.wVirtualKeyCode ) {
+							case VK_LEFT:
+							case VK_RIGHT:
+							case VK_UP:
+							case VK_DOWN:
+							case VK_DELETE:
+							case VK_HOME:
+							case VK_END:
+							case VK_PRIOR:
+							case VK_NEXT:
+							case VK_F1:
+							case VK_F2:
+							case VK_F3:
+							case VK_F4:
+							case VK_F5:
+							case VK_F6:
+							case VK_F7:
+							case VK_F8:
+							case VK_F9:
+							case VK_F10:
+							case VK_F11:
+							case VK_F12:
 							break;
-						default:
-							ReadConsoleInputW(_consoleIn, &rec, 1, &count);
+							default:
+								ReadConsoleInputW( _consoleIn, &rec, 1, &count );
 							continue; // in raw mode, ReadConsoleInput shows shift, ctrl - ignore them
 						}
 					}
@@ -665,7 +704,7 @@ void Terminal::clear_screen( CLEAR_SCREEN clearScreen_ ) {
 		_empty.resize( toWrite - 1, ' ' );
 		WriteConsoleA( consoleOut, _empty.data(), toWrite - 1, &nWritten, nullptr );
 	} else {
-		COORD scrollTarget = { 0, -inf.dwSize.Y };
+		COORD scrollTarget = { 0, static_cast<SHORT>( -inf.dwSize.Y ) };
 		CHAR_INFO fill{ TEXT( ' ' ), inf.wAttributes };
 		SMALL_RECT scrollRect = { 0, 0, inf.dwSize.X, inf.dwSize.Y };
 		ScrollConsoleScreenBuffer( consoleOut, &scrollRect, nullptr, scrollTarget, &fill );
