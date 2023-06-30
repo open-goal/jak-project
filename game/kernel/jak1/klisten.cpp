@@ -59,7 +59,7 @@ void ProcessListenerMessage(Ptr<char> msg) {
       // just flush any pending stuff.
       ClearPending();
       break;
-    case LTT_MSG_INSEPCT:
+    case LTT_MSG_INSPECT:
       inspect_object(atoi(msg.c()));
       ClearPending();
       break;

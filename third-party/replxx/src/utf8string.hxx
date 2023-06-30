@@ -68,7 +68,13 @@ public:
 	}
 
 	bool operator != ( Utf8String const& other_ ) {
-		return ( ( other_._len != _len ) || ( memcmp( other_._data.get(), _data.get(), _len ) != 0 ) );
+		return (
+			( other_._len != _len )
+			|| (
+				(  _len != 0 )
+				&& ( memcmp( other_._data.get(), _data.get(), _len ) != 0 )
+			)
+		);
 	}
 
 private:
