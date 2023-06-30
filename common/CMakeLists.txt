@@ -70,6 +70,7 @@ add_library(common
         util/dgo_util.cpp
         util/DgoReader.cpp
         util/DgoWriter.cpp
+        util/dialogs.cpp
         util/diff.cpp
         util/FileUtil.cpp
         util/FontUtils.cpp
@@ -85,7 +86,7 @@ add_library(common
         util/unicode_util.cpp
         versions/versions.cpp)
 
-target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter sqlite3)
+target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter sqlite3 libtinyfiledialogs)
 
 if(WIN32)
     target_link_libraries(common wsock32 ws2_32 windowsapp)
