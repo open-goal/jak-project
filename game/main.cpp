@@ -15,6 +15,7 @@
 #include "common/util/os.h"
 #include "common/util/unicode_util.h"
 #include "common/versions/versions.h"
+#include "common/util/dialogs.h"
 
 #include "game/common/game_common_types.h"
 
@@ -132,6 +133,7 @@ int main(int argc, char** argv) {
   // If the CPU doesn't have AVX, GOAL code won't work and we exit.
   if (!get_cpu_info().has_avx) {
     lg::info("Your CPU does not support AVX, which is required for OpenGOAL.");
+    dialogs::create_error_message_dialog("Unmet Requirements", "Your CPU does not support AVX, which is required for OpenGOAL.");
     return -1;
   }
 
