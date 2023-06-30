@@ -36,8 +36,8 @@
 #include "third-party/imgui/imgui_impl_sdl.h"
 #include "third-party/imgui/imgui_style.h"
 #define STBI_WINDOWS_UTF8
+#include "common/util/dialogs.h"
 #include "common/util/string_util.h"
-#include <common/util/dialogs.h>
 
 #include "third-party/stb_image/stb_image.h"
 
@@ -221,7 +221,7 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
     sdl_util::log_error("gl_make_display failed - Could not create display window");
     dialogs::create_error_message_dialog(
         "Critical Error Encountered",
-        "Unable to create OpenGL window.\nOpenGL requires OpenGL 4.3 support, ensure your GPU "
+        "Unable to create OpenGL window.\nOpenGOAL requires OpenGL 4.3 support, ensure your GPU "
         "supports this and you have installed up-to-date drivers.");
     return NULL;
   }
@@ -234,7 +234,7 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
     sdl_util::log_error("gl_make_display failed - Could not create OpenGL Context");
     dialogs::create_error_message_dialog(
         "Critical Error Encountered",
-        "Unable to create OpenGL context.\nOpenGL requires OpenGL 4.3 support, ensure your GPU "
+        "Unable to create OpenGL context.\nOpenGOAL requires OpenGL 4.3 support, ensure your GPU "
         "supports this and you have installed up-to-date drivers.");
     return NULL;
   }
@@ -245,7 +245,7 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
       sdl_util::log_error("gl_make_display failed - Could not associated context with window");
       dialogs::create_error_message_dialog(
           "Critical Error Encountered",
-          "Unable to create OpenGL window with context.\nOpenGL requires OpenGL 4.3 support, "
+          "Unable to create OpenGL window with context.\nOpenGOAL requires OpenGL 4.3 support, "
           "ensure your GPU "
           "supports this and you have installed up-to-date drivers.");
       return NULL;
@@ -260,7 +260,8 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
         lg::error("GL init fail");
         dialogs::create_error_message_dialog(
             "Critical Error Encountered",
-            "Unable to initialize OpenGL API.\nOpenGL requires OpenGL 4.3 support, ensure your GPU "
+            "Unable to initialize OpenGL API.\nOpenGOAL requires OpenGL 4.3 support, ensure your "
+            "GPU "
             "supports this and you have installed up-to-date drivers.");
         return NULL;
       }
