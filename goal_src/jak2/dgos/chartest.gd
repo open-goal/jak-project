@@ -1,0 +1,10 @@
+("CHARTEST.DGO"
+  (
+    "chartest-vis.go"
+    "tpage-1846.go"
+    "tpage-496.go"
+    "tpage-498.go"
+    "jak-highres-ag.go"
+    "mech-ag.go"
+    "daxter-highres-ag.go"
+  ))

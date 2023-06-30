@@ -162,8 +162,16 @@ bool Replxx::history_save( std::string const& filename ) {
 	return ( _impl->history_save( filename ) );
 }
 
+void Replxx::history_save( std::ostream& out ) {
+	_impl->history_save( out );
+}
+
 bool Replxx::history_load( std::string const& filename ) {
 	return ( _impl->history_load( filename ) );
+}
+
+void Replxx::history_load( std::istream& in ) {
+	_impl->history_load( in );
 }
 
 void Replxx::history_clear( void ) {
@@ -222,6 +230,10 @@ void Replxx::set_no_color( bool val ) {
 	_impl->set_no_color( val );
 }
 
+void Replxx::set_indent_multiline( bool val ) {
+	_impl->set_indent_multiline( val );
+}
+
 void Replxx::set_max_history_size( int len ) {
 	_impl->set_max_history_size( len );
 }
@@ -254,6 +266,10 @@ void Replxx::set_state( Replxx::State const& state_ ) {
 	_impl->set_state( state_ );
 }
 
+void Replxx::set_ignore_case( bool val ) {
+	_impl->set_ignore_case( val );
+}
+
 int Replxx::install_window_change_handler( void ) {
 	return ( _impl->install_window_change_handler() );
 }
@@ -280,6 +296,45 @@ void Replxx::print( char const* format_, ... ) {
 
 void Replxx::write( char const* str, int length ) {
 	return ( _impl->print( str, length ) );
+}
+
+void Replxx::set_prompt( std::string prompt ) {
+	return ( _impl->set_prompt( std::move( prompt ) ) );
+}
+
+namespace color {
+
+Replxx::Color operator | ( Replxx::Color color1_, Replxx::Color color2_ ) {
+	return static_cast<Replxx::Color>( static_cast<int unsigned>( color1_ ) | static_cast<int unsigned>( color2_ ) );
+}
+
+Replxx::Color bg( Replxx::Color color_ ) {
+	return static_cast<Replxx::Color>( ( ( static_cast<int unsigned>( color_ ) & 0xFFu ) << 8 ) | color::BACKGROUND_COLOR_SET );
+}
+
+Replxx::Color bold( Replxx::Color color_ ) {
+	return static_cast<Replxx::Color>( static_cast<int unsigned>( color_ ) | color::BOLD );
+}
+
+Replxx::Color underline( Replxx::Color color_ ) {
+	return static_cast<Replxx::Color>( static_cast<int unsigned>( color_ ) | color::UNDERLINE );
+}
+
+Replxx::Color grayscale( int level_ ) {
+	assert( ( level_ >= 0 ) && ( level_ < 24 ) );
+	return static_cast<Replxx::Color>( abs( level_ ) % 24 + static_cast<int unsigned>( color::GRAYSCALE ) );
+}
+
+Replxx::Color rgb666( int red_, int green_, int blue_ ) {
+	assert( ( red_ >= 0 ) && ( red_ < 6 ) && ( green_ >= 0 ) && ( green_ < 6 ) && ( blue_ >= 0 ) && ( blue_ < 6 ) );
+	return static_cast<Replxx::Color>(
+		( abs( red_ ) % 6 ) * 36
+		+ ( abs( green_ ) % 6 ) * 6
+		+ ( abs( blue_ ) % 6 )
+		+ static_cast<int unsigned>( color::RGB666 )
+	);
+}
+
 }
 
 }
@@ -339,6 +394,11 @@ void replxx_set_state( ::Replxx* replxx_, ReplxxState* state ) {
 	replxx->set_state( replxx::Replxx::State( state->text, state->cursorPosition ) );
 }
 
+void replxx_set_ignore_case( ::Replxx* replxx_, int val ) {
+	replxx::Replxx::ReplxxImpl* replxx( reinterpret_cast<replxx::Replxx::ReplxxImpl*>( replxx_ ) );
+	replxx->set_ignore_case( val );
+}
+
 /**
  * replxx_set_preload_buffer provides text to be inserted into the command buffer
  *
@@ -393,6 +453,11 @@ int replxx_write( ::Replxx* replxx_, char const* str, int length ) {
 		return ( -1 );
 	}
 	return static_cast<int>( length );
+}
+
+void replxx_set_prompt( ::Replxx* replxx_, const char* prompt ) {
+	replxx::Replxx::ReplxxImpl* replxx( reinterpret_cast<replxx::Replxx::ReplxxImpl*>( replxx_ ) );
+	replxx->set_prompt( prompt );
 }
 
 struct replxx_completions {
@@ -478,7 +543,7 @@ void replxx_add_completion( replxx_completions* lc, const char* str ) {
 	lc->data.emplace_back( str );
 }
 
-void replxx_add_completion( replxx_completions* lc, const char* str, ReplxxColor color ) {
+void replxx_add_color_completion( replxx_completions* lc, const char* str, ReplxxColor color ) {
 	lc->data.emplace_back( str, static_cast<replxx::Replxx::Color>( color ) );
 }
 
@@ -525,6 +590,11 @@ void replxx_set_complete_on_empty( ::Replxx* replxx_, int val ) {
 void replxx_set_no_color( ::Replxx* replxx_, int val ) {
 	replxx::Replxx::ReplxxImpl* replxx( reinterpret_cast<replxx::Replxx::ReplxxImpl*>( replxx_ ) );
 	replxx->set_no_color( val ? true : false );
+}
+
+void replxx_set_indent_multiline( ::Replxx* replxx_, int val ) {
+	replxx::Replxx::ReplxxImpl* replxx( reinterpret_cast<replxx::Replxx::ReplxxImpl*>( replxx_ ) );
+	replxx->set_indent_multiline( val ? true : false );
 }
 
 void replxx_set_beep_on_ambiguous_completion( ::Replxx* replxx_, int val ) {
@@ -644,5 +714,30 @@ void replxx_debug_dump_print_codes(void) {
 int replxx_install_window_change_handler( ::Replxx* replxx_ ) {
 	replxx::Replxx::ReplxxImpl* replxx( reinterpret_cast<replxx::Replxx::ReplxxImpl*>( replxx_ ) );
 	return ( replxx->install_window_change_handler() );
+}
+
+using namespace replxx::color;
+ReplxxColor replxx_color_combine( ReplxxColor color1_, ReplxxColor color2_ ) {
+	return static_cast<ReplxxColor>( static_cast<replxx::Replxx::Color>( color1_ ) | static_cast<replxx::Replxx::Color>( color2_ ) );
+}
+
+ReplxxColor replxx_color_bg( ReplxxColor color_ ) {
+	return static_cast<ReplxxColor>( color::bg( static_cast<replxx::Replxx::Color>( color_ ) ) );
+}
+
+ReplxxColor replxx_color_bold( ReplxxColor color_ ) {
+	return static_cast<ReplxxColor>( color::bold( static_cast<replxx::Replxx::Color>( color_ ) ) );
+}
+
+ReplxxColor replxx_color_underline( ReplxxColor color_ ) {
+	return static_cast<ReplxxColor>( color::underline( static_cast<replxx::Replxx::Color>( color_ ) ) );
+}
+
+ReplxxColor replxx_color_grayscale( int level_ ) {
+	return static_cast<ReplxxColor>( color::grayscale( level_ ) );
+}
+
+ReplxxColor replxx_color_rgb666( int r_, int g_, int b_ ) {
+	return static_cast<ReplxxColor>( color::rgb666( r_, g_, b_ ) );
 }
 
