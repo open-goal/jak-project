@@ -73,7 +73,7 @@ void ProcessListenerMessage(Ptr<char> msg) {
       // just flush any pending stuff.
       ClearPending();
       break;
-    case LTT_MSG_INSEPCT:
+    case LTT_MSG_INSPECT:
       inspect_object(atoi(msg.c()));
       ClearPending();
       break;
@@ -154,16 +154,32 @@ int sql_query_sync(Ptr<String> string_in) {
 
     kdebugheap->top.offset -= 0x4000;  // not sure what it's used for...
 
-    // TODO - query the database!
+    const auto& result = run_sql_query(query_str);
+    // TODO - check for errors
+
     auto sym = find_symbol_from_c("sql-result");
     if (sym.offset) {
       Ptr<Type> type = Ptr<Type>(sym->value());
       auto new_result_ptr = call_method_of_type_arg2(intern_from_c("debug").offset, type,
                                                      GOAL_NEW_METHOD, type.offset, 1);
 
+      // TODO - can their sql-result type not return multiple rows and the data is just the columns?
+      // or do they make assumptions and iterate the data like a 2d flattened array
       SQLResult* new_result = Ptr<SQLResult>(new_result_ptr).c();
-      new_result->len = 1;
-      new_result->data[0] = Ptr<String>(make_debug_string_from_c("test"));
+
+      int num_values = 0;
+      for (const auto& row : result.rows) {
+        num_values += row.size();
+        for (const auto& val : row) {
+          new_result->data[0] = Ptr<String>(make_debug_string_from_c(val.data()));
+        }
+      }
+      new_result->len = num_values;
+
+      // TODO - possible values here (when to set them?)
+      // 'error = the default, fairly obvious
+      // 'select = the result of a select
+      new_result->error = intern_from_c("select").offset;
 
       kdebugheap->top.offset += 0x4000;
 

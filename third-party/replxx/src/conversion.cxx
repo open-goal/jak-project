@@ -20,11 +20,6 @@ void to_lower( std::string& s_ ) {
 	transform( s_.begin(), s_.end(), s_.begin(), static_cast<int(*)(int)>( &tolower ) );
 }
 
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
-#endif
-
 bool is_8bit_encoding( void ) {
 	bool is8BitEncoding( false );
 	string origLC( setlocale( LC_CTYPE, nullptr ) );
@@ -41,10 +36,6 @@ bool is_8bit_encoding( void ) {
 	}
 	return ( is8BitEncoding );
 }
-
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
 
 bool is8BitEncoding( is_8bit_encoding() );
 
