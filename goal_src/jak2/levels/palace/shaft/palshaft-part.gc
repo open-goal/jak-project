@@ -754,35 +754,25 @@
   (none)
   )
 
+; Added in PC port
 (defun palshaft-activate ()
-    ; Insert (let) here
-    (when (task-closed? "city-win-resolution");#t;(string= (-> obj name) "com-elevator-2") ; maybe check if the game is done, and don't touch the elevator otherwise?
-      ;(set! (-> (res-lump-data (entity-by-name "com-elevator-3") 'task (pointer int32))) 75) ; originally 64, btw not working -_-
-      (set! (-> (entity-by-name "com-elevator-3") extra task) 75)
-      (set! (car (res-lump-struct (entity-by-name "com-elevator-3") 'on-notice pair)) 'task-open?) ; (task-closed? "palace-sneak-in-resolution")
-      ;(set! (cdr (res-lump-struct (entity-by-name "com-elevator-3") 'on-notice pair)) '.) ; (task-closed? "palace-sneak-in-resolution")
-      ;(set! (cdr (res-lump-struct (entity-by-name "com-elevator-3") 'on-notice pair)) '("city-win-resolution")) ; (task-closed? "palace-sneak-in-resolution")
-      ;(set! (-> (the-as enemy (entity-by-name "com-elevator-3")) on-notice) #t)
-      ;(set! (car (res-lump-struct (entity-by-name "com-elevator-3") 'kill-mask task-mask)) 0) ; (done task1 task0 )
-      ;(set! (cdr (res-lump-struct (entity-by-name "com-elevator-3") 'kill-mask pair)) 0) ; (done task1 task0 )
-      ;(set! (-> (res-lump-struct (entity-by-name "com-elevator-3") 'kill-mask (pointer task-mask))) (task-mask)) ; (done task1 task0 )
-      (set! (-> (entity-by-name "com-elevator-3") extra kill-mask) (task-mask))
-      ;(set! (-> (the-as elevator (entity-by-name "com-elevator-3")) on-deactivate) '(none))
-      ;(set! (cdr (res-lump-struct (entity-by-name "com-elevator-3") 'on-deactivate pair)) '((send-event self 'use-camera #f) #|(when (task-closed? "palace-sneak-in-door") (send-event self 'go-dormant))|#))
-      (set! (cdr (res-lump-struct (entity-by-name "com-elevator-3") 'on-deactivate pair)) '((send-event self 'use-camera #f) #|(when (task-closed? "palace-sneak-in-door") (send-event self 'go-dormant))|#))
+  (when (task-closed? "city-win-resolution")
+    (set! (-> (entity-by-name "com-elevator-3") extra task) 75)
+    (set! (car (res-lump-struct (entity-by-name "com-elevator-3") 'on-notice pair)) 'task-open?)
 
-      (set! (car (res-lump-struct (entity-by-name "com-airlock-inner-36") 'on-notice pair)) 'when) ; unless
-      ;(set! (cdr (res-lump-struct (entity-by-name "com-airlock-inner-36") 'on-notice pair)) '((task-closed? "palace-sneak-in-meeting") '(palent))) ; ((task-closed? "palace-sneak-in-meeting") '(palent))
+    (set! (-> (entity-by-name "com-elevator-3") extra kill-mask) (task-mask))
+    (set! (cdr (res-lump-struct (entity-by-name "com-elevator-3") 'on-deactivate pair)) '((send-event self 'use-camera #f) #|(when (task-closed? "palace-sneak-in-door") (send-event self 'go-dormant))|#))
 
-      ;(set! (-> (region-lookup-by-id 527) on-exit) (the-as pair '(begin (want-load 'ctypal 'ctywide 'palshaft) (if (task-closed? "palace-sneak-in-introduction") (want-sound 'ctywide1 'ctywide2 'palent1) (want-sound 'ctywide1 'palcab1 'palcab2)))))
-;(-> (region-lookup-by-id 527) on-exit)
-;51843970        #x3171382              0.0000        (begin (want-load 'ctypal 'ctywide 'palshaft) (if (task-closed? "palace-sneak-in-introduction") (want-sound 'ctywide1 'ctywide2 'palent1) (want-sound 'ctywide1 'palcab1 'palcab2)))
+    (set! (car (res-lump-struct (entity-by-name "com-airlock-inner-36") 'on-notice pair)) 'when)
 
-      ;(set! (-> (region-lookup-by-id 528) on-enter) (the-as pair '(cond ((task-closed? "palace-sneak-in-introduction") (want-load 'palshaft 'palent 'throne) (want-sound 'ctywide1 'palent1 'palent2)) (else (want-load 'palshaft 'palcab 'palroof) (want-sound 'ctywide1 'palcab1 'palcab2)))))
-;(-> (region-lookup-by-id 528) on-enter)
-;51844282        #x31714ba              0.0000        (cond ((task-closed? "palace-sneak-in-introduction") (want-load 'palshaft 'palent 'throne) (want-sound 'ctywide1 'palent1 'palent2)) (else (want-load 'palshaft 'palcab 'palroof) (want-sound 'ctywide1 'palcab1 'palcab2)))
+    (set! (cdr (res-lump-struct (entity-by-name "com-airlock-inner-37") 'on-inside pair)) #f)
 
-      )  
+    (set! (-> (region-lookup-by-id 528) on-enter) (the-as pair '(cond ((task-closed? "palace-sneak-in-introduction") (want-load 'palshaft 'palent 'palout) (want-sound 'ctywide1 'palent1 'palent2)) (else (want-load 'palshaft 'palcab 'palroof) (want-sound 'ctywide1 'palcab1 'palcab2)))))
+
+    (set! (cdr (res-lump-struct (entity-by-name "com-elevator-2") 'on-activate pair)) '((send-event self 'player-ridden?) (begin (if (send-event self 'status? 1 0) (send-event self 'use-camera "camera-191") (send-event self 'use-camera "camera-192")) (send-event "com-elevator-3" 'jump-to 0) (send-event "com-elevator-3" 'go-dormant))))
+
+    (set! (cdr (res-lump-struct (entity-by-name "com-airlock-inner-26") 'on-cross pair)) '((send-event "com-elevator-2" 'jump-to 'top) (send-event "com-elevator-3" 'trigger 'bottom)))
+    )  
   0
   (none)
   )
