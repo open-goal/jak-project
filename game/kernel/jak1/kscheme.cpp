@@ -264,19 +264,23 @@ u64 make_string_from_c(const char* c_str) {
 }
 
 extern "C" {
-void _arg_call_linux();
+#ifdef __APPLE__
+void _arg_call_systemv() asm("_arg_call_systemv");
+#else
+void _arg_call_systemv();
+#endif
 }
 
 /*!
  * This creates an OpenGOAL function from a C++ function. Only 6 arguments can be accepted.
  * But calling this function is fast. It used to be really fast but wrong.
  */
-Ptr<Function> make_function_from_c_linux(void* func, bool arg3_is_pp) {
+Ptr<Function> make_function_from_c_systemv(void* func, bool arg3_is_pp) {
   auto mem = Ptr<u8>(alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP,
                                        *(s7 + FIX_SYM_FUNCTION_TYPE), 0x40, UNKNOWN_PP));
   auto f = (uint64_t)func;
   auto target_function = (u8*)&f;
-  auto trampoline_function_addr = _arg_call_linux;
+  auto trampoline_function_addr = _arg_call_systemv;
   auto trampoline = (u8*)&trampoline_function_addr;
 
   // movabs rax, target_function
@@ -378,17 +382,22 @@ Ptr<Function> make_function_from_c_win32(void* func, bool arg3_is_pp) {
 }
 
 extern "C" {
-void _stack_call_linux();
+#ifdef __APPLE__
+void _stack_call_systemv() asm("_stack_call_systemv");
+void _stack_call_win32() asm("_stack_call_win32");
+#else
+void _stack_call_systemv();
 void _stack_call_win32();
+#endif
 }
 
-Ptr<Function> make_stack_arg_function_from_c_linux(void* func) {
+Ptr<Function> make_stack_arg_function_from_c_systemv(void* func) {
   // allocate a function object on the global heap
   auto mem = Ptr<u8>(alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP,
                                        *(s7 + FIX_SYM_FUNCTION_TYPE), 0x40, UNKNOWN_PP));
   auto f = (uint64_t)func;
   auto target_function = (u8*)&f;
-  auto trampoline_function_addr = _stack_call_linux;
+  auto trampoline_function_addr = _stack_call_systemv;
   auto trampoline = (u8*)&trampoline_function_addr;
 
   // movabs rax, target_function
@@ -467,7 +476,9 @@ Ptr<Function> make_stack_arg_function_from_c_win32(void* func) {
  */
 Ptr<Function> make_function_from_c(void* func, bool arg3_is_pp = false) {
 #ifdef __linux__
-  return make_function_from_c_linux(func, arg3_is_pp);
+  return make_function_from_c_systemv(func, arg3_is_pp);
+#elif __APPLE__
+  return make_function_from_c_systemv(func, arg3_is_pp);
 #elif _WIN32
   return make_function_from_c_win32(func, arg3_is_pp);
 #endif
@@ -475,7 +486,9 @@ Ptr<Function> make_function_from_c(void* func, bool arg3_is_pp = false) {
 
 Ptr<Function> make_stack_arg_function_from_c(void* func) {
 #ifdef __linux__
-  return make_stack_arg_function_from_c_linux(func);
+  return make_stack_arg_function_from_c_systemv(func);
+#elif __APPLE__
+  return make_stack_arg_function_from_c_systemv(func);
 #elif _WIN32
   return make_stack_arg_function_from_c_win32(func);
 #endif
@@ -1712,10 +1725,9 @@ s32 InitHeapAndSymbol() {
     // check the kernel version!
     auto kernel_version = intern_from_c("*kernel-version*")->value;
     if (!kernel_version || ((kernel_version >> 0x13) != KERNEL_VERSION_MAJOR)) {
-      MsgErr("\n");
-      MsgErr(
-          "dkernel: compiled C kernel version is %d.%d but the goal kernel is %d.%d\n\tfrom the "
-          "goal> prompt (:mch) then mkee your kernel in linux.\n",
+      lg::error(
+          "Kernel version mismatch! Compiled C kernel version is {}.{} but"
+          "the goal kernel is {}.{}",
           KERNEL_VERSION_MAJOR, KERNEL_VERSION_MINOR, kernel_version >> 0x13,
           (kernel_version >> 3) & 0xffff);
       return -1;
