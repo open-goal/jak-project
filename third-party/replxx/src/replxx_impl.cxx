@@ -3,6 +3,7 @@
 #include <cerrno>
 #include <iostream>
 #include <chrono>
+#include <cassert>
 
 #ifdef _WIN32
 
@@ -35,6 +36,7 @@
 #include "replxx.hxx"
 
 using namespace std;
+using namespace replxx::color;
 
 namespace replxx {
 
@@ -42,45 +44,58 @@ namespace {
 
 namespace action_names {
 
-char const INSERT_CHARACTER[]                = "insert_character";
-char const MOVE_CURSOR_TO_BEGINING_OF_LINE[] = "move_cursor_to_begining_of_line";
-char const MOVE_CURSOR_TO_END_OF_LINE[]      = "move_cursor_to_end_of_line";
-char const MOVE_CURSOR_LEFT[]                = "move_cursor_left";
-char const MOVE_CURSOR_RIGHT[]               = "move_cursor_right";
-char const MOVE_CURSOR_ONE_WORD_LEFT[]       = "move_cursor_one_word_left";
-char const MOVE_CURSOR_ONE_WORD_RIGHT[]      = "move_cursor_one_word_right";
-char const KILL_TO_WHITESPACE_ON_LEFT[]      = "kill_to_whitespace_on_left";
-char const KILL_TO_END_OF_WORD[]             = "kill_to_end_of_word";
-char const KILL_TO_BEGINING_OF_WORD[]        = "kill_to_begining_of_word";
-char const KILL_TO_BEGINING_OF_LINE[]        = "kill_to_begining_of_line";
-char const KILL_TO_END_OF_LINE[]             = "kill_to_end_of_line";
-char const YANK[]                            = "yank";
-char const YANK_CYCLE[]                      = "yank_cycle";
-char const YANK_LAST_ARG[]                   = "yank_last_arg";
-char const CAPITALIZE_WORD[]                 = "capitalize_word";
-char const LOWERCASE_WORD[]                  = "lowercase_word";
-char const UPPERCASE_WORD[]                  = "uppercase_word";
-char const TRANSPOSE_CHARACTERS[]            = "transpose_characters";
-char const ABORT_LINE[]                      = "abort_line";
-char const SEND_EOF[]                        = "send_eof";
-char const TOGGLE_OVERWRITE_MODE[]           = "toggle_overwrite_mode";
-char const DELETE_CHARACTER_UNDER_CURSOR[]   = "delete_character_under_cursor";
-char const DELETE_CHARACTER_LEFT_OF_CURSOR[] = "delete_character_left_of_cursor";
-char const COMMIT_LINE[]                     = "commit_line";
-char const CLEAR_SCREEN[]                    = "clear_screen";
-char const COMPLETE_NEXT[]                   = "complete_next";
-char const COMPLETE_PREVIOUS[]               = "complete_previous";
-char const HISTORY_NEXT[]                    = "history_next";
-char const HISTORY_PREVIOUS[]                = "history_previous";
-char const HISTORY_LAST[]                    = "history_last";
-char const HISTORY_FIRST[]                   = "history_first";
-char const HINT_PREVIOUS[]                   = "hint_previous";
-char const HINT_NEXT[]                       = "hint_next";
-char const VERBATIM_INSERT[]                 = "verbatim_insert";
-char const SUSPEND[]                         = "suspend";
-char const COMPLETE_LINE[]                   = "complete_line";
-char const HISTORY_INCREMENTAL_SEARCH[]      = "history_incremental_search";
-char const HISTORY_COMMON_PREFIX_SEARCH[]    = "history_common_prefix_search";
+char const INSERT_CHARACTER[]                  = "insert_character";
+char const NEW_LINE[]                          = "new_line";
+char const MOVE_CURSOR_TO_BEGINING_OF_LINE[]   = "move_cursor_to_begining_of_line";
+char const MOVE_CURSOR_TO_END_OF_LINE[]        = "move_cursor_to_end_of_line";
+char const MOVE_CURSOR_LEFT[]                  = "move_cursor_left";
+char const MOVE_CURSOR_RIGHT[]                 = "move_cursor_right";
+char const MOVE_CURSOR_ONE_WORD_LEFT[]         = "move_cursor_one_word_left";
+char const MOVE_CURSOR_ONE_WORD_RIGHT[]        = "move_cursor_one_word_right";
+char const MOVE_CURSOR_ONE_SUBWORD_LEFT[]      = "move_cursor_one_subword_left";
+char const MOVE_CURSOR_ONE_SUBWORD_RIGHT[]     = "move_cursor_one_subword_right";
+char const KILL_TO_WHITESPACE_ON_LEFT[]        = "kill_to_whitespace_on_left";
+char const KILL_TO_END_OF_WORD[]               = "kill_to_end_of_word";
+char const KILL_TO_END_OF_SUBWORD[]            = "kill_to_end_of_subword";
+char const KILL_TO_BEGINING_OF_WORD[]          = "kill_to_begining_of_word";
+char const KILL_TO_BEGINING_OF_SUBWORD[]       = "kill_to_begining_of_subword";
+char const KILL_TO_BEGINING_OF_LINE[]          = "kill_to_begining_of_line";
+char const KILL_TO_END_OF_LINE[]               = "kill_to_end_of_line";
+char const YANK[]                              = "yank";
+char const YANK_CYCLE[]                        = "yank_cycle";
+char const YANK_LAST_ARG[]                     = "yank_last_arg";
+char const CAPITALIZE_WORD[]                   = "capitalize_word";
+char const LOWERCASE_WORD[]                    = "lowercase_word";
+char const UPPERCASE_WORD[]                    = "uppercase_word";
+char const CAPITALIZE_SUBWORD[]                = "capitalize_subword";
+char const LOWERCASE_SUBWORD[]                 = "lowercase_subword";
+char const UPPERCASE_SUBWORD[]                 = "uppercase_subword";
+char const TRANSPOSE_CHARACTERS[]              = "transpose_characters";
+char const ABORT_LINE[]                        = "abort_line";
+char const SEND_EOF[]                          = "send_eof";
+char const TOGGLE_OVERWRITE_MODE[]             = "toggle_overwrite_mode";
+char const DELETE_CHARACTER_UNDER_CURSOR[]     = "delete_character_under_cursor";
+char const DELETE_CHARACTER_LEFT_OF_CURSOR[]   = "delete_character_left_of_cursor";
+char const COMMIT_LINE[]                       = "commit_line";
+char const CLEAR_SCREEN[]                      = "clear_screen";
+char const COMPLETE_NEXT[]                     = "complete_next";
+char const COMPLETE_PREVIOUS[]                 = "complete_previous";
+char const HISTORY_NEXT[]                      = "history_next";
+char const HISTORY_PREVIOUS[]                  = "history_previous";
+char const LINE_NEXT[]                         = "line_next";
+char const LINE_PREVIOUS[]                     = "line_previous";
+char const HISTORY_LAST[]                      = "history_last";
+char const HISTORY_FIRST[]                     = "history_first";
+char const HISTORY_RESTORE[]                   = "history_restore";
+char const HISTORY_RESTORE_CURRENT[]           = "history_restore_current";
+char const HINT_PREVIOUS[]                     = "hint_previous";
+char const HINT_NEXT[]                         = "hint_next";
+char const VERBATIM_INSERT[]                   = "verbatim_insert";
+char const SUSPEND[]                           = "suspend";
+char const COMPLETE_LINE[]                     = "complete_line";
+char const HISTORY_INCREMENTAL_SEARCH[]        = "history_incremental_search";
+char const HISTORY_SEEDED_INCREMENTAL_SEARCH[] = "history_seeded_incremental_search";
+char const HISTORY_COMMON_PREFIX_SEARCH[]      = "history_common_prefix_search";
 }
 
 static int const REPLXX_MAX_HINT_ROWS( 4 );
@@ -88,7 +103,11 @@ static int const REPLXX_MAX_HINT_ROWS( 4 );
  * All whitespaces and all non-alphanumerical characters from ASCII range
  * with an exception of an underscore ('_').
  */
-char const defaultBreakChars[] = " \t\v\f\a\b\r\n`~!@#$%^&*()-=+[{]}\\|;:'\",<.>/?";
+char const defaultWordBreakChars[] = " \t\v\f\a\b\r\n`~!@#$%^&*()-=+[{]}\\|;:'\",<.>/?";
+/*
+ * All whitespaces and all non-alphanumerical characters from ASCII range
+ */
+char const defaultSubwordBreakChars[] = " \t\v\f\a\b\r\n`~!@#$%^&*()-=+[{]}\\|;:'\",<.>/?_";
 static const char* unsupported_term[] = {"dumb", "cons25", "emacs", NULL};
 
 static bool isUnsupportedTerm(void) {
@@ -111,16 +130,29 @@ inline int long long now_us( void ) {
 	return ( std::chrono::duration_cast<std::chrono::microseconds>( std::chrono::high_resolution_clock::now().time_since_epoch() ).count() );
 }
 
+class IOModeGuard {
+	Terminal& _terminal;
+public:
+	IOModeGuard( Terminal& terminal_ )
+		: _terminal( terminal_ ) {
+	}
+	~IOModeGuard( void ) {
+		try {
+			_terminal.reset_raw_mode();
+		} catch ( ... ) {
+		}
+	}
+};
+
 }
 
 Replxx::ReplxxImpl::ReplxxImpl( FILE*, FILE*, FILE* )
 	: _utf8Buffer()
 	, _data()
-	, _charWidths()
+	, _pos( 0 )
 	, _display()
 	, _displayInputLength( 0 )
 	, _hint()
-	, _pos( 0 )
 	, _prefix( 0 )
 	, _hintSelection( -1 )
 	, _history()
@@ -130,7 +162,8 @@ Replxx::ReplxxImpl::ReplxxImpl( FILE*, FILE*, FILE* )
 	, _lastYankSize( 0 )
 	, _maxHintRows( REPLXX_MAX_HINT_ROWS )
 	, _hintDelay( 0 )
-	, _breakChars( defaultBreakChars )
+	, _wordBreakChars( defaultWordBreakChars )
+	, _subwordBreakChars( defaultSubwordBreakChars )
 	, _completionCountCutoff( 100 )
 	, _overwrite( false )
 	, _doubleTabCompletion( false )
@@ -139,6 +172,7 @@ Replxx::ReplxxImpl::ReplxxImpl( FILE*, FILE*, FILE* )
 	, _immediateCompletion( true )
 	, _bracketedPaste( false )
 	, _noColor( false )
+	, _indentMultiline( true )
 	, _namedActions()
 	, _keyPressHandlers()
 	, _terminal()
@@ -149,6 +183,8 @@ Replxx::ReplxxImpl::ReplxxImpl( FILE*, FILE*, FILE* )
 	, _hintCallback( nullptr )
 	, _keyPresses()
 	, _messages()
+	, _asyncPrompt()
+	, _updatePrompt( false )
 	, _completions()
 	, _completionContextLength( 0 )
 	, _completionSelection( -1 )
@@ -160,51 +196,68 @@ Replxx::ReplxxImpl::ReplxxImpl( FILE*, FILE*, FILE* )
 	, _hintsCache()
 	, _hintContextLenght( -1 )
 	, _hintSeed()
+	, _hasNewlines( false )
+	, _oldPos( 0 )
+	, _moveCursor( false )
+	, _ignoreCase( false )
 	, _mutex() {
 	using namespace std::placeholders;
-	_namedActions[action_names::INSERT_CHARACTER]                = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::INSERT_CHARACTER,                _1 );
-	_namedActions[action_names::MOVE_CURSOR_TO_BEGINING_OF_LINE] = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::MOVE_CURSOR_TO_BEGINING_OF_LINE, _1 );
-	_namedActions[action_names::MOVE_CURSOR_TO_END_OF_LINE]      = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::MOVE_CURSOR_TO_END_OF_LINE,      _1 );
-	_namedActions[action_names::MOVE_CURSOR_LEFT]                = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::MOVE_CURSOR_LEFT,                _1 );
-	_namedActions[action_names::MOVE_CURSOR_RIGHT]               = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::MOVE_CURSOR_RIGHT,               _1 );
-	_namedActions[action_names::MOVE_CURSOR_ONE_WORD_LEFT]       = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::MOVE_CURSOR_ONE_WORD_LEFT,       _1 );
-	_namedActions[action_names::MOVE_CURSOR_ONE_WORD_RIGHT]      = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::MOVE_CURSOR_ONE_WORD_RIGHT,      _1 );
-	_namedActions[action_names::KILL_TO_WHITESPACE_ON_LEFT]      = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::KILL_TO_WHITESPACE_ON_LEFT,      _1 );
-	_namedActions[action_names::KILL_TO_END_OF_WORD]             = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::KILL_TO_END_OF_WORD,             _1 );
-	_namedActions[action_names::KILL_TO_BEGINING_OF_WORD]        = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::KILL_TO_BEGINING_OF_WORD,        _1 );
-	_namedActions[action_names::KILL_TO_BEGINING_OF_LINE]        = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::KILL_TO_BEGINING_OF_LINE,        _1 );
-	_namedActions[action_names::KILL_TO_END_OF_LINE]             = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::KILL_TO_END_OF_LINE,             _1 );
-	_namedActions[action_names::YANK]                            = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::YANK,                            _1 );
-	_namedActions[action_names::YANK_CYCLE]                      = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::YANK_CYCLE,                      _1 );
-	_namedActions[action_names::YANK_LAST_ARG]                   = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::YANK_LAST_ARG,                   _1 );
-	_namedActions[action_names::CAPITALIZE_WORD]                 = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::CAPITALIZE_WORD,                 _1 );
-	_namedActions[action_names::LOWERCASE_WORD]                  = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::LOWERCASE_WORD,                  _1 );
-	_namedActions[action_names::UPPERCASE_WORD]                  = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::UPPERCASE_WORD,                  _1 );
-	_namedActions[action_names::TRANSPOSE_CHARACTERS]            = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::TRANSPOSE_CHARACTERS,            _1 );
-	_namedActions[action_names::ABORT_LINE]                      = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::ABORT_LINE,                      _1 );
-	_namedActions[action_names::SEND_EOF]                        = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::SEND_EOF,                        _1 );
-	_namedActions[action_names::TOGGLE_OVERWRITE_MODE]           = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::TOGGLE_OVERWRITE_MODE,           _1 );
-	_namedActions[action_names::DELETE_CHARACTER_UNDER_CURSOR]   = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::DELETE_CHARACTER_UNDER_CURSOR,   _1 );
-	_namedActions[action_names::DELETE_CHARACTER_LEFT_OF_CURSOR] = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::DELETE_CHARACTER_LEFT_OF_CURSOR, _1 );
-	_namedActions[action_names::COMMIT_LINE]                     = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::COMMIT_LINE,                     _1 );
-	_namedActions[action_names::CLEAR_SCREEN]                    = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::CLEAR_SCREEN,                    _1 );
-	_namedActions[action_names::COMPLETE_NEXT]                   = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::COMPLETE_NEXT,                   _1 );
-	_namedActions[action_names::COMPLETE_PREVIOUS]               = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::COMPLETE_PREVIOUS,               _1 );
-	_namedActions[action_names::HISTORY_NEXT]                    = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HISTORY_NEXT,                    _1 );
-	_namedActions[action_names::HISTORY_PREVIOUS]                = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HISTORY_PREVIOUS,                _1 );
-	_namedActions[action_names::HISTORY_LAST]                    = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HISTORY_LAST,                    _1 );
-	_namedActions[action_names::HISTORY_FIRST]                   = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HISTORY_FIRST,                   _1 );
-	_namedActions[action_names::HINT_PREVIOUS]                   = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HINT_PREVIOUS,                   _1 );
-	_namedActions[action_names::HINT_NEXT]                       = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HINT_NEXT,                       _1 );
+	_namedActions[action_names::INSERT_CHARACTER]                  = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::INSERT_CHARACTER,                  _1 );
+	_namedActions[action_names::NEW_LINE]                          = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::NEW_LINE,                          _1 );
+	_namedActions[action_names::MOVE_CURSOR_TO_BEGINING_OF_LINE]   = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::MOVE_CURSOR_TO_BEGINING_OF_LINE,   _1 );
+	_namedActions[action_names::MOVE_CURSOR_TO_END_OF_LINE]        = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::MOVE_CURSOR_TO_END_OF_LINE,        _1 );
+	_namedActions[action_names::MOVE_CURSOR_LEFT]                  = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::MOVE_CURSOR_LEFT,                  _1 );
+	_namedActions[action_names::MOVE_CURSOR_RIGHT]                 = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::MOVE_CURSOR_RIGHT,                 _1 );
+	_namedActions[action_names::MOVE_CURSOR_ONE_WORD_LEFT]         = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::MOVE_CURSOR_ONE_WORD_LEFT,         _1 );
+	_namedActions[action_names::MOVE_CURSOR_ONE_WORD_RIGHT]        = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::MOVE_CURSOR_ONE_WORD_RIGHT,        _1 );
+	_namedActions[action_names::MOVE_CURSOR_ONE_SUBWORD_LEFT]      = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::MOVE_CURSOR_ONE_SUBWORD_LEFT,      _1 );
+	_namedActions[action_names::MOVE_CURSOR_ONE_SUBWORD_RIGHT]     = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::MOVE_CURSOR_ONE_SUBWORD_RIGHT,     _1 );
+	_namedActions[action_names::KILL_TO_WHITESPACE_ON_LEFT]        = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::KILL_TO_WHITESPACE_ON_LEFT,        _1 );
+	_namedActions[action_names::KILL_TO_END_OF_WORD]               = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::KILL_TO_END_OF_WORD,               _1 );
+	_namedActions[action_names::KILL_TO_BEGINING_OF_WORD]          = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::KILL_TO_BEGINING_OF_WORD,          _1 );
+	_namedActions[action_names::KILL_TO_END_OF_SUBWORD]            = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::KILL_TO_END_OF_SUBWORD,            _1 );
+	_namedActions[action_names::KILL_TO_BEGINING_OF_SUBWORD]       = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::KILL_TO_BEGINING_OF_SUBWORD,       _1 );
+	_namedActions[action_names::KILL_TO_BEGINING_OF_LINE]          = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::KILL_TO_BEGINING_OF_LINE,          _1 );
+	_namedActions[action_names::KILL_TO_END_OF_LINE]               = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::KILL_TO_END_OF_LINE,               _1 );
+	_namedActions[action_names::YANK]                              = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::YANK,                              _1 );
+	_namedActions[action_names::YANK_CYCLE]                        = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::YANK_CYCLE,                        _1 );
+	_namedActions[action_names::YANK_LAST_ARG]                     = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::YANK_LAST_ARG,                     _1 );
+	_namedActions[action_names::CAPITALIZE_WORD]                   = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::CAPITALIZE_WORD,                   _1 );
+	_namedActions[action_names::LOWERCASE_WORD]                    = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::LOWERCASE_WORD,                    _1 );
+	_namedActions[action_names::UPPERCASE_WORD]                    = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::UPPERCASE_WORD,                    _1 );
+	_namedActions[action_names::CAPITALIZE_SUBWORD]                = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::CAPITALIZE_SUBWORD,                _1 );
+	_namedActions[action_names::LOWERCASE_SUBWORD]                 = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::LOWERCASE_SUBWORD,                 _1 );
+	_namedActions[action_names::UPPERCASE_SUBWORD]                 = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::UPPERCASE_SUBWORD,                 _1 );
+	_namedActions[action_names::TRANSPOSE_CHARACTERS]              = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::TRANSPOSE_CHARACTERS,              _1 );
+	_namedActions[action_names::ABORT_LINE]                        = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::ABORT_LINE,                        _1 );
+	_namedActions[action_names::SEND_EOF]                          = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::SEND_EOF,                          _1 );
+	_namedActions[action_names::TOGGLE_OVERWRITE_MODE]             = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::TOGGLE_OVERWRITE_MODE,             _1 );
+	_namedActions[action_names::DELETE_CHARACTER_UNDER_CURSOR]     = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::DELETE_CHARACTER_UNDER_CURSOR,     _1 );
+	_namedActions[action_names::DELETE_CHARACTER_LEFT_OF_CURSOR]   = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::DELETE_CHARACTER_LEFT_OF_CURSOR,   _1 );
+	_namedActions[action_names::COMMIT_LINE]                       = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::COMMIT_LINE,                       _1 );
+	_namedActions[action_names::CLEAR_SCREEN]                      = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::CLEAR_SCREEN,                      _1 );
+	_namedActions[action_names::COMPLETE_NEXT]                     = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::COMPLETE_NEXT,                     _1 );
+	_namedActions[action_names::COMPLETE_PREVIOUS]                 = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::COMPLETE_PREVIOUS,                 _1 );
+	_namedActions[action_names::LINE_NEXT]                         = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::LINE_NEXT,                         _1 );
+	_namedActions[action_names::LINE_PREVIOUS]                     = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::LINE_PREVIOUS,                     _1 );
+	_namedActions[action_names::HISTORY_NEXT]                      = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HISTORY_NEXT,                      _1 );
+	_namedActions[action_names::HISTORY_PREVIOUS]                  = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HISTORY_PREVIOUS,                  _1 );
+	_namedActions[action_names::HISTORY_LAST]                      = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HISTORY_LAST,                      _1 );
+	_namedActions[action_names::HISTORY_FIRST]                     = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HISTORY_FIRST,                     _1 );
+	_namedActions[action_names::HISTORY_RESTORE]                   = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HISTORY_RESTORE,                   _1 );
+	_namedActions[action_names::HISTORY_RESTORE_CURRENT]           = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HISTORY_RESTORE_CURRENT,           _1 );
+	_namedActions[action_names::HINT_PREVIOUS]                     = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HINT_PREVIOUS,                     _1 );
+	_namedActions[action_names::HINT_NEXT]                         = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HINT_NEXT,                         _1 );
 #ifndef _WIN32
-	_namedActions[action_names::VERBATIM_INSERT]                 = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::VERBATIM_INSERT,                 _1 );
-	_namedActions[action_names::SUSPEND]                         = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::SUSPEND,                         _1 );
+	_namedActions[action_names::VERBATIM_INSERT]                   = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::VERBATIM_INSERT,                   _1 );
+	_namedActions[action_names::SUSPEND]                           = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::SUSPEND,                           _1 );
 #else
 	_namedActions[action_names::VERBATIM_INSERT] = _namedActions[action_names::SUSPEND] = Replxx::key_press_handler_t();
 #endif
-	_namedActions[action_names::COMPLETE_LINE]                   = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::COMPLETE_LINE,                   _1 );
-	_namedActions[action_names::HISTORY_INCREMENTAL_SEARCH]      = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HISTORY_INCREMENTAL_SEARCH,      _1 );
-	_namedActions[action_names::HISTORY_COMMON_PREFIX_SEARCH]    = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HISTORY_COMMON_PREFIX_SEARCH,    _1 );
+	_namedActions[action_names::COMPLETE_LINE]                     = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::COMPLETE_LINE,                     _1 );
+	_namedActions[action_names::HISTORY_INCREMENTAL_SEARCH]        = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HISTORY_INCREMENTAL_SEARCH,        _1 );
+	_namedActions[action_names::HISTORY_SEEDED_INCREMENTAL_SEARCH] = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HISTORY_SEEDED_INCREMENTAL_SEARCH, _1 );
+	_namedActions[action_names::HISTORY_COMMON_PREFIX_SEARCH]      = std::bind( &ReplxxImpl::invoke, this, Replxx::ACTION::HISTORY_COMMON_PREFIX_SEARCH,      _1 );
 
 	bind_key( Replxx::KEY::control( 'A' ),                 _namedActions.at( action_names::MOVE_CURSOR_TO_BEGINING_OF_LINE ) );
 	bind_key( Replxx::KEY::HOME + 0,                       _namedActions.at( action_names::MOVE_CURSOR_TO_BEGINING_OF_LINE ) );
@@ -215,17 +268,18 @@ Replxx::ReplxxImpl::ReplxxImpl( FILE*, FILE*, FILE* )
 	bind_key( Replxx::KEY::control( 'F' ),                 _namedActions.at( action_names::MOVE_CURSOR_RIGHT ) );
 	bind_key( Replxx::KEY::RIGHT + 0,                      _namedActions.at( action_names::MOVE_CURSOR_RIGHT ) );
 	bind_key( Replxx::KEY::meta( 'b' ),                    _namedActions.at( action_names::MOVE_CURSOR_ONE_WORD_LEFT ) );
-	bind_key( Replxx::KEY::meta( 'B' ),                    _namedActions.at( action_names::MOVE_CURSOR_ONE_WORD_LEFT ) );
+	bind_key( Replxx::KEY::meta( 'B' ),                    _namedActions.at( action_names::MOVE_CURSOR_ONE_SUBWORD_LEFT ) );
 	bind_key( Replxx::KEY::control( Replxx::KEY::LEFT ),   _namedActions.at( action_names::MOVE_CURSOR_ONE_WORD_LEFT ) );
 	bind_key( Replxx::KEY::meta( Replxx::KEY::LEFT ),      _namedActions.at( action_names::MOVE_CURSOR_ONE_WORD_LEFT ) ); // Emacs allows Meta, readline don't
 	bind_key( Replxx::KEY::meta( 'f' ),                    _namedActions.at( action_names::MOVE_CURSOR_ONE_WORD_RIGHT ) );
-	bind_key( Replxx::KEY::meta( 'F' ),                    _namedActions.at( action_names::MOVE_CURSOR_ONE_WORD_RIGHT ) );
+	bind_key( Replxx::KEY::meta( 'F' ),                    _namedActions.at( action_names::MOVE_CURSOR_ONE_SUBWORD_RIGHT ) );
 	bind_key( Replxx::KEY::control( Replxx::KEY::RIGHT ),  _namedActions.at( action_names::MOVE_CURSOR_ONE_WORD_RIGHT ) );
 	bind_key( Replxx::KEY::meta( Replxx::KEY::RIGHT ),     _namedActions.at( action_names::MOVE_CURSOR_ONE_WORD_RIGHT ) ); // Emacs allows Meta, readline don't
 	bind_key( Replxx::KEY::meta( Replxx::KEY::BACKSPACE ), _namedActions.at( action_names::KILL_TO_WHITESPACE_ON_LEFT ) );
 	bind_key( Replxx::KEY::meta( 'd' ),                    _namedActions.at( action_names::KILL_TO_END_OF_WORD ) );
-	bind_key( Replxx::KEY::meta( 'D' ),                    _namedActions.at( action_names::KILL_TO_END_OF_WORD ) );
+	bind_key( Replxx::KEY::meta( 'D' ),                    _namedActions.at( action_names::KILL_TO_END_OF_SUBWORD ) );
 	bind_key( Replxx::KEY::control( 'W' ),                 _namedActions.at( action_names::KILL_TO_BEGINING_OF_WORD ) );
+	bind_key( Replxx::KEY::meta( 'W' ),                    _namedActions.at( action_names::KILL_TO_BEGINING_OF_SUBWORD ) );
 	bind_key( Replxx::KEY::control( 'U' ),                 _namedActions.at( action_names::KILL_TO_BEGINING_OF_LINE ) );
 	bind_key( Replxx::KEY::control( 'K' ),                 _namedActions.at( action_names::KILL_TO_END_OF_LINE ) );
 	bind_key( Replxx::KEY::control( 'Y' ),                 _namedActions.at( action_names::YANK ) );
@@ -233,29 +287,35 @@ Replxx::ReplxxImpl::ReplxxImpl( FILE*, FILE*, FILE* )
 	bind_key( Replxx::KEY::meta( 'Y' ),                    _namedActions.at( action_names::YANK_CYCLE ) );
 	bind_key( Replxx::KEY::meta( '.' ),                    _namedActions.at( action_names::YANK_LAST_ARG ) );
 	bind_key( Replxx::KEY::meta( 'c' ),                    _namedActions.at( action_names::CAPITALIZE_WORD ) );
-	bind_key( Replxx::KEY::meta( 'C' ),                    _namedActions.at( action_names::CAPITALIZE_WORD ) );
+	bind_key( Replxx::KEY::meta( 'C' ),                    _namedActions.at( action_names::CAPITALIZE_SUBWORD ) );
 	bind_key( Replxx::KEY::meta( 'l' ),                    _namedActions.at( action_names::LOWERCASE_WORD ) );
-	bind_key( Replxx::KEY::meta( 'L' ),                    _namedActions.at( action_names::LOWERCASE_WORD ) );
+	bind_key( Replxx::KEY::meta( 'L' ),                    _namedActions.at( action_names::LOWERCASE_SUBWORD ) );
 	bind_key( Replxx::KEY::meta( 'u' ),                    _namedActions.at( action_names::UPPERCASE_WORD ) );
-	bind_key( Replxx::KEY::meta( 'U' ),                    _namedActions.at( action_names::UPPERCASE_WORD ) );
+	bind_key( Replxx::KEY::meta( 'U' ),                    _namedActions.at( action_names::UPPERCASE_SUBWORD ) );
 	bind_key( Replxx::KEY::control( 'T' ),                 _namedActions.at( action_names::TRANSPOSE_CHARACTERS ) );
 	bind_key( Replxx::KEY::control( 'C' ),                 _namedActions.at( action_names::ABORT_LINE ) );
+	bind_key( Replxx::KEY::ABORT,                          _namedActions.at( action_names::ABORT_LINE ) );
 	bind_key( Replxx::KEY::control( 'D' ),                 _namedActions.at( action_names::SEND_EOF ) );
 	bind_key( Replxx::KEY::INSERT + 0,                     _namedActions.at( action_names::TOGGLE_OVERWRITE_MODE ) );
 	bind_key( 127,                                         _namedActions.at( action_names::DELETE_CHARACTER_UNDER_CURSOR ) );
 	bind_key( Replxx::KEY::DELETE + 0,                     _namedActions.at( action_names::DELETE_CHARACTER_UNDER_CURSOR ) );
 	bind_key( Replxx::KEY::BACKSPACE + 0,                  _namedActions.at( action_names::DELETE_CHARACTER_LEFT_OF_CURSOR ) );
-	bind_key( Replxx::KEY::control( 'J' ),                 _namedActions.at( action_names::COMMIT_LINE ) );
+	bind_key( Replxx::KEY::control( 'J' ),                 _namedActions.at( action_names::NEW_LINE ) );
+	bind_key( Replxx::KEY::meta( '\r' ),                   _namedActions.at( action_names::NEW_LINE ) );
 	bind_key( Replxx::KEY::ENTER + 0,                      _namedActions.at( action_names::COMMIT_LINE ) );
 	bind_key( Replxx::KEY::control( 'L' ),                 _namedActions.at( action_names::CLEAR_SCREEN ) );
 	bind_key( Replxx::KEY::control( 'N' ),                 _namedActions.at( action_names::COMPLETE_NEXT ) );
 	bind_key( Replxx::KEY::control( 'P' ),                 _namedActions.at( action_names::COMPLETE_PREVIOUS ) );
-	bind_key( Replxx::KEY::DOWN + 0,                       _namedActions.at( action_names::HISTORY_NEXT ) );
-	bind_key( Replxx::KEY::UP + 0,                         _namedActions.at( action_names::HISTORY_PREVIOUS ) );
+	bind_key( Replxx::KEY::DOWN + 0,                       _namedActions.at( action_names::LINE_NEXT ) );
+	bind_key( Replxx::KEY::UP + 0,                         _namedActions.at( action_names::LINE_PREVIOUS ) );
+	bind_key( Replxx::KEY::meta( Replxx::KEY::DOWN ),      _namedActions.at( action_names::HISTORY_NEXT ) );
+	bind_key( Replxx::KEY::meta( Replxx::KEY::UP ),        _namedActions.at( action_names::HISTORY_PREVIOUS ) );
 	bind_key( Replxx::KEY::meta( '<' ),                    _namedActions.at( action_names::HISTORY_FIRST ) );
 	bind_key( Replxx::KEY::PAGE_UP + 0,                    _namedActions.at( action_names::HISTORY_FIRST ) );
 	bind_key( Replxx::KEY::meta( '>' ),                    _namedActions.at( action_names::HISTORY_LAST ) );
 	bind_key( Replxx::KEY::PAGE_DOWN + 0,                  _namedActions.at( action_names::HISTORY_LAST ) );
+	bind_key( Replxx::KEY::control( 'G' ),                 _namedActions.at( action_names::HISTORY_RESTORE_CURRENT ) );
+	bind_key( Replxx::KEY::meta( 'g' ),                    _namedActions.at( action_names::HISTORY_RESTORE ) );
 	bind_key( Replxx::KEY::control( Replxx::KEY::UP ),     _namedActions.at( action_names::HINT_PREVIOUS ) );
 	bind_key( Replxx::KEY::control( Replxx::KEY::DOWN ),   _namedActions.at( action_names::HINT_NEXT ) );
 #ifndef _WIN32
@@ -265,6 +325,7 @@ Replxx::ReplxxImpl::ReplxxImpl( FILE*, FILE*, FILE* )
 	bind_key( Replxx::KEY::TAB + 0,                        _namedActions.at( action_names::COMPLETE_LINE ) );
 	bind_key( Replxx::KEY::control( 'R' ),                 _namedActions.at( action_names::HISTORY_INCREMENTAL_SEARCH ) );
 	bind_key( Replxx::KEY::control( 'S' ),                 _namedActions.at( action_names::HISTORY_INCREMENTAL_SEARCH ) );
+	bind_key( Replxx::KEY::meta( 'r' ),                    _namedActions.at( action_names::HISTORY_SEEDED_INCREMENTAL_SEARCH ) );
 	bind_key( Replxx::KEY::meta( 'p' ),                    _namedActions.at( action_names::HISTORY_COMMON_PREFIX_SEARCH ) );
 	bind_key( Replxx::KEY::meta( 'P' ),                    _namedActions.at( action_names::HISTORY_COMMON_PREFIX_SEARCH ) );
 	bind_key( Replxx::KEY::meta( 'n' ),                    _namedActions.at( action_names::HISTORY_COMMON_PREFIX_SEARCH ) );
@@ -278,50 +339,63 @@ Replxx::ReplxxImpl::~ReplxxImpl( void ) {
 
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::invoke( Replxx::ACTION action_, char32_t code ) {
 	switch ( action_ ) {
-		case ( Replxx::ACTION::INSERT_CHARACTER ):                return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::insert_character, code ) );
-		case ( Replxx::ACTION::DELETE_CHARACTER_UNDER_CURSOR ):   return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::delete_character, code ) );
-		case ( Replxx::ACTION::DELETE_CHARACTER_LEFT_OF_CURSOR ): return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::backspace_character, code ) );
-		case ( Replxx::ACTION::KILL_TO_END_OF_LINE ):             return ( action( WANT_REFRESH | SET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::kill_to_end_of_line, code ) );
-		case ( Replxx::ACTION::KILL_TO_BEGINING_OF_LINE ):        return ( action( SET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::kill_to_begining_of_line, code ) );
-		case ( Replxx::ACTION::KILL_TO_END_OF_WORD ):             return ( action( SET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::kill_word_to_right, code ) );
-		case ( Replxx::ACTION::KILL_TO_BEGINING_OF_WORD ):        return ( action( SET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::kill_word_to_left, code ) );
-		case ( Replxx::ACTION::KILL_TO_WHITESPACE_ON_LEFT ):      return ( action( SET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::kill_to_whitespace_to_left, code ) );
-		case ( Replxx::ACTION::YANK ):                            return ( action( HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::yank, code ) );
-		case ( Replxx::ACTION::YANK_CYCLE ):                      return ( action( HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::yank_cycle, code ) );
-		case ( Replxx::ACTION::YANK_LAST_ARG ):                   return ( action( HISTORY_RECALL_MOST_RECENT | DONT_RESET_HIST_YANK_INDEX, &Replxx::ReplxxImpl::yank_last_arg, code ) );
-		case ( Replxx::ACTION::MOVE_CURSOR_TO_BEGINING_OF_LINE ): return ( action( WANT_REFRESH, &Replxx::ReplxxImpl::go_to_begining_of_line, code ) );
-		case ( Replxx::ACTION::MOVE_CURSOR_TO_END_OF_LINE ):      return ( action( WANT_REFRESH, &Replxx::ReplxxImpl::go_to_end_of_line, code ) );
-		case ( Replxx::ACTION::MOVE_CURSOR_ONE_WORD_LEFT ):       return ( action( RESET_KILL_ACTION, &Replxx::ReplxxImpl::move_one_word_left, code ) );
-		case ( Replxx::ACTION::MOVE_CURSOR_ONE_WORD_RIGHT ):      return ( action( RESET_KILL_ACTION, &Replxx::ReplxxImpl::move_one_word_right, code ) );
-		case ( Replxx::ACTION::MOVE_CURSOR_LEFT ):                return ( action( RESET_KILL_ACTION, &Replxx::ReplxxImpl::move_one_char_left, code ) );
-		case ( Replxx::ACTION::MOVE_CURSOR_RIGHT ):               return ( action( RESET_KILL_ACTION, &Replxx::ReplxxImpl::move_one_char_right, code ) );
-		case ( Replxx::ACTION::HISTORY_NEXT ):                    return ( action( RESET_KILL_ACTION, &Replxx::ReplxxImpl::history_next, code ) );
-		case ( Replxx::ACTION::HISTORY_PREVIOUS ):                return ( action( RESET_KILL_ACTION, &Replxx::ReplxxImpl::history_previous, code ) );
-		case ( Replxx::ACTION::HISTORY_FIRST ):                   return ( action( RESET_KILL_ACTION, &Replxx::ReplxxImpl::history_first, code ) );
-		case ( Replxx::ACTION::HISTORY_LAST ):                    return ( action( RESET_KILL_ACTION, &Replxx::ReplxxImpl::history_last, code ) );
-		case ( Replxx::ACTION::HISTORY_INCREMENTAL_SEARCH ):      return ( action( NOOP, &Replxx::ReplxxImpl::incremental_history_search, code ) );
-		case ( Replxx::ACTION::HISTORY_COMMON_PREFIX_SEARCH ):    return ( action( RESET_KILL_ACTION | DONT_RESET_PREFIX, &Replxx::ReplxxImpl::common_prefix_search, code ) );
-		case ( Replxx::ACTION::HINT_NEXT ):                       return ( action( NOOP, &Replxx::ReplxxImpl::hint_next, code ) );
-		case ( Replxx::ACTION::HINT_PREVIOUS ):                   return ( action( NOOP, &Replxx::ReplxxImpl::hint_previous, code ) );
-		case ( Replxx::ACTION::CAPITALIZE_WORD ):                 return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::capitalize_word, code ) );
-		case ( Replxx::ACTION::LOWERCASE_WORD ):                  return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::lowercase_word, code ) );
-		case ( Replxx::ACTION::UPPERCASE_WORD ):                  return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::uppercase_word, code ) );
-		case ( Replxx::ACTION::TRANSPOSE_CHARACTERS ):            return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::transpose_characters, code ) );
-		case ( Replxx::ACTION::TOGGLE_OVERWRITE_MODE ):           return ( action( NOOP, &Replxx::ReplxxImpl::toggle_overwrite_mode, code ) );
+		case ( Replxx::ACTION::INSERT_CHARACTER ):                  return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::insert_character, code ) );
+		case ( Replxx::ACTION::NEW_LINE ):                          return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::new_line, code ) );
+		case ( Replxx::ACTION::DELETE_CHARACTER_UNDER_CURSOR ):     return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::delete_character, code ) );
+		case ( Replxx::ACTION::DELETE_CHARACTER_LEFT_OF_CURSOR ):   return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::backspace_character, code ) );
+		case ( Replxx::ACTION::KILL_TO_END_OF_LINE ):               return ( action( WANT_REFRESH | SET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::kill_to_end_of_line, code ) );
+		case ( Replxx::ACTION::KILL_TO_BEGINING_OF_LINE ):          return ( action( SET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::kill_to_begining_of_line, code ) );
+		case ( Replxx::ACTION::KILL_TO_END_OF_WORD ):               return ( action( SET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::kill_word_to_right<false>, code ) );
+		case ( Replxx::ACTION::KILL_TO_BEGINING_OF_WORD ):          return ( action( SET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::kill_word_to_left<false>, code ) );
+		case ( Replxx::ACTION::KILL_TO_END_OF_SUBWORD ):            return ( action( SET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::kill_word_to_right<true>, code ) );
+		case ( Replxx::ACTION::KILL_TO_BEGINING_OF_SUBWORD ):       return ( action( SET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::kill_word_to_left<true>, code ) );
+		case ( Replxx::ACTION::KILL_TO_WHITESPACE_ON_LEFT ):        return ( action( SET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::kill_to_whitespace_to_left, code ) );
+		case ( Replxx::ACTION::YANK ):                              return ( action( HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::yank, code ) );
+		case ( Replxx::ACTION::YANK_CYCLE ):                        return ( action( HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::yank_cycle, code ) );
+		case ( Replxx::ACTION::YANK_LAST_ARG ):                     return ( action( HISTORY_RECALL_MOST_RECENT | DONT_RESET_HIST_YANK_INDEX, &Replxx::ReplxxImpl::yank_last_arg, code ) );
+		case ( Replxx::ACTION::MOVE_CURSOR_TO_BEGINING_OF_LINE ):   return ( action( MOVE_CURSOR | RESET_KILL_ACTION, &Replxx::ReplxxImpl::go_to_begining_of_line, code ) );
+		case ( Replxx::ACTION::MOVE_CURSOR_TO_END_OF_LINE ):        return ( action( MOVE_CURSOR | RESET_KILL_ACTION, &Replxx::ReplxxImpl::go_to_end_of_line, code ) );
+		case ( Replxx::ACTION::MOVE_CURSOR_ONE_WORD_LEFT ):         return ( action( MOVE_CURSOR | RESET_KILL_ACTION, &Replxx::ReplxxImpl::move_one_word_left<false>, code ) );
+		case ( Replxx::ACTION::MOVE_CURSOR_ONE_WORD_RIGHT ):        return ( action( MOVE_CURSOR | RESET_KILL_ACTION, &Replxx::ReplxxImpl::move_one_word_right<false>, code ) );
+		case ( Replxx::ACTION::MOVE_CURSOR_ONE_SUBWORD_LEFT ):      return ( action( MOVE_CURSOR | RESET_KILL_ACTION, &Replxx::ReplxxImpl::move_one_word_left<true>, code ) );
+		case ( Replxx::ACTION::MOVE_CURSOR_ONE_SUBWORD_RIGHT ):     return ( action( MOVE_CURSOR | RESET_KILL_ACTION, &Replxx::ReplxxImpl::move_one_word_right<true>, code ) );
+		case ( Replxx::ACTION::MOVE_CURSOR_LEFT ):                  return ( action( MOVE_CURSOR | RESET_KILL_ACTION, &Replxx::ReplxxImpl::move_one_char_left, code ) );
+		case ( Replxx::ACTION::MOVE_CURSOR_RIGHT ):                 return ( action( MOVE_CURSOR | RESET_KILL_ACTION, &Replxx::ReplxxImpl::move_one_char_right, code ) );
+		case ( Replxx::ACTION::LINE_NEXT ):                         return ( action( MOVE_CURSOR | RESET_KILL_ACTION, &Replxx::ReplxxImpl::line_next, code ) );
+		case ( Replxx::ACTION::LINE_PREVIOUS ):                     return ( action( MOVE_CURSOR | RESET_KILL_ACTION, &Replxx::ReplxxImpl::line_previous, code ) );
+		case ( Replxx::ACTION::HISTORY_NEXT ):                      return ( action( MOVE_CURSOR | RESET_KILL_ACTION, &Replxx::ReplxxImpl::history_next, code ) );
+		case ( Replxx::ACTION::HISTORY_PREVIOUS ):                  return ( action( MOVE_CURSOR | RESET_KILL_ACTION, &Replxx::ReplxxImpl::history_previous, code ) );
+		case ( Replxx::ACTION::HISTORY_FIRST ):                     return ( action( MOVE_CURSOR | RESET_KILL_ACTION, &Replxx::ReplxxImpl::history_first, code ) );
+		case ( Replxx::ACTION::HISTORY_LAST ):                      return ( action( MOVE_CURSOR | RESET_KILL_ACTION, &Replxx::ReplxxImpl::history_last, code ) );
+		case ( Replxx::ACTION::HISTORY_RESTORE_CURRENT ):           return ( action( MOVE_CURSOR | RESET_KILL_ACTION, &Replxx::ReplxxImpl::history_restore_current, code ) );
+		case ( Replxx::ACTION::HISTORY_RESTORE ):                   return ( action( MOVE_CURSOR | RESET_KILL_ACTION, &Replxx::ReplxxImpl::history_restore, code ) );
+		case ( Replxx::ACTION::HISTORY_INCREMENTAL_SEARCH ):        return ( action( NOOP, &Replxx::ReplxxImpl::incremental_history_search, code ) );
+		case ( Replxx::ACTION::HISTORY_SEEDED_INCREMENTAL_SEARCH ): return ( action( NOOP, &Replxx::ReplxxImpl::incremental_history_search, code ) );
+		case ( Replxx::ACTION::HISTORY_COMMON_PREFIX_SEARCH ):      return ( action( RESET_KILL_ACTION | DONT_RESET_PREFIX, &Replxx::ReplxxImpl::common_prefix_search, code ) );
+		case ( Replxx::ACTION::HINT_NEXT ):                         return ( action( NOOP, &Replxx::ReplxxImpl::hint_next, code ) );
+		case ( Replxx::ACTION::HINT_PREVIOUS ):                     return ( action( NOOP, &Replxx::ReplxxImpl::hint_previous, code ) );
+		case ( Replxx::ACTION::CAPITALIZE_WORD ):                   return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::capitalize_word<false>, code ) );
+		case ( Replxx::ACTION::LOWERCASE_WORD ):                    return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::lowercase_word<false>, code ) );
+		case ( Replxx::ACTION::UPPERCASE_WORD ):                    return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::uppercase_word<false>, code ) );
+		case ( Replxx::ACTION::CAPITALIZE_SUBWORD ):                return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::capitalize_word<true>, code ) );
+		case ( Replxx::ACTION::LOWERCASE_SUBWORD ):                 return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::lowercase_word<true>, code ) );
+		case ( Replxx::ACTION::UPPERCASE_SUBWORD ):                 return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::uppercase_word<true>, code ) );
+		case ( Replxx::ACTION::TRANSPOSE_CHARACTERS ):              return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::transpose_characters, code ) );
+		case ( Replxx::ACTION::TOGGLE_OVERWRITE_MODE ):             return ( action( NOOP, &Replxx::ReplxxImpl::toggle_overwrite_mode, code ) );
 #ifndef _WIN32
-		case ( Replxx::ACTION::VERBATIM_INSERT ):                 return ( action( WANT_REFRESH | RESET_KILL_ACTION, &Replxx::ReplxxImpl::verbatim_insert, code ) );
-		case ( Replxx::ACTION::SUSPEND ):                         return ( action( WANT_REFRESH, &Replxx::ReplxxImpl::suspend, code ) );
+		case ( Replxx::ACTION::VERBATIM_INSERT ):                   return ( action( WANT_REFRESH | RESET_KILL_ACTION, &Replxx::ReplxxImpl::verbatim_insert, code ) );
+		case ( Replxx::ACTION::SUSPEND ):                           return ( action( WANT_REFRESH, &Replxx::ReplxxImpl::suspend, code ) );
 #endif
-		case ( Replxx::ACTION::CLEAR_SCREEN ):                    return ( action( NOOP, &Replxx::ReplxxImpl::clear_screen, code ) );
+		case ( Replxx::ACTION::CLEAR_SCREEN ):                      return ( action( NOOP, &Replxx::ReplxxImpl::clear_screen, code ) );
 		case ( Replxx::ACTION::CLEAR_SELF ): clear_self_to_end_of_screen(); return ( Replxx::ACTION_RESULT::CONTINUE );
-		case ( Replxx::ACTION::REPAINT ):    repaint();           return ( Replxx::ACTION_RESULT::CONTINUE );
-		case ( Replxx::ACTION::COMPLETE_LINE ):                   return ( action( HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::complete_line, code ) );
-		case ( Replxx::ACTION::COMPLETE_NEXT ):                   return ( action( RESET_KILL_ACTION | DONT_RESET_COMPLETIONS | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::complete_next, code ) );
-		case ( Replxx::ACTION::COMPLETE_PREVIOUS ):               return ( action( RESET_KILL_ACTION | DONT_RESET_COMPLETIONS | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::complete_previous, code ) );
-		case ( Replxx::ACTION::COMMIT_LINE ):                     return ( action( RESET_KILL_ACTION, &Replxx::ReplxxImpl::commit_line, code ) );
-		case ( Replxx::ACTION::ABORT_LINE ):                      return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::abort_line, code ) );
-		case ( Replxx::ACTION::SEND_EOF ):                        return ( action( HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::send_eof, code ) );
-		case ( Replxx::ACTION::BRACKETED_PASTE ):                 return ( action( WANT_REFRESH | RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::bracketed_paste, code ) );
+		case ( Replxx::ACTION::REPAINT ):    repaint();             return ( Replxx::ACTION_RESULT::CONTINUE );
+		case ( Replxx::ACTION::COMPLETE_LINE ):                     return ( action( HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::complete_line, code ) );
+		case ( Replxx::ACTION::COMPLETE_NEXT ):                     return ( action( RESET_KILL_ACTION | DONT_RESET_COMPLETIONS | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::complete_next, code ) );
+		case ( Replxx::ACTION::COMPLETE_PREVIOUS ):                 return ( action( RESET_KILL_ACTION | DONT_RESET_COMPLETIONS | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::complete_previous, code ) );
+		case ( Replxx::ACTION::COMMIT_LINE ):                       return ( action( RESET_KILL_ACTION, &Replxx::ReplxxImpl::commit_line, code ) );
+		case ( Replxx::ACTION::ABORT_LINE ):                        return ( action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::abort_line, code ) );
+		case ( Replxx::ACTION::SEND_EOF ):                          return ( action( HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::send_eof, code ) );
+		case ( Replxx::ACTION::BRACKETED_PASTE ):                   return ( action( WANT_REFRESH | RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::bracketed_paste, code ) );
 	}
 	return ( Replxx::ACTION_RESULT::BAIL );
 }
@@ -351,6 +425,10 @@ void Replxx::ReplxxImpl::set_state( Replxx::State const& state_ ) {
 		_pos = min( state_.cursor_position(), _data.length() );
 	}
 	_modifiedState = true;
+}
+
+void Replxx::ReplxxImpl::set_ignore_case( bool val ) {
+	_ignoreCase = val;
 }
 
 char32_t Replxx::ReplxxImpl::read_char( HINT_ACTION hintAction_ ) {
@@ -386,13 +464,24 @@ char32_t Replxx::ReplxxImpl::read_char( HINT_ACTION hintAction_ ) {
 			refresh_line( HINT_ACTION::REPAINT );
 			continue;
 		}
+
 		std::lock_guard<std::mutex> l( _mutex );
+		_terminal.set_cursor_visible( false );
 		clear_self_to_end_of_screen();
+
+		if ( _updatePrompt ) {
+			// Update the prompt after the screen has been cleared and before it is redrawn
+			_updatePrompt = false;
+			std::string const updated = std::move( _asyncPrompt );
+			_prompt.set_text( UnicodeString( updated ) );
+		}
+
 		while ( ! _messages.empty() ) {
 			string const& message( _messages.front() );
 			_terminal.write8( message.data(), static_cast<int>( message.length() ) );
 			_messages.pop_front();
 		}
+		_lastRefreshTime = 0;
 		repaint();
 	}
 	/* try scheduled key presses */ {
@@ -427,7 +516,10 @@ void Replxx::ReplxxImpl::call_modify_callback( void ) {
 	std::string origLine( _utf8Buffer.get() );
 	int pos( _pos );
 	std::string line( origLine );
-	_modifyCallback( line, pos );
+	/* IOModeGuard scope */ {
+		IOModeGuard ioModeGuard( _terminal );
+		_modifyCallback( line, pos );
+	}
 	if ( ( pos != _pos ) || ( line != origLine ) ) {
 		_data.assign( line.c_str() );
 		_pos = min( pos, _data.length() );
@@ -538,24 +630,29 @@ char const* Replxx::ReplxxImpl::input( std::string const& prompt ) {
 		if ( ! tty::in ) { // input not from a terminal, we should work with piped input, i.e. redirected stdin
 			return ( read_from_stdin() );
 		}
-		if (!_errorMessage.empty()) {
-			printf("%s", _errorMessage.c_str());
-			fflush(stdout);
+		if ( ! _errorMessage.empty() ) {
+			printf( "%s", _errorMessage.c_str() );
+			fflush( stdout );
 			_errorMessage.clear();
 		}
 		if ( isUnsupportedTerm() ) {
-			cout << prompt << flush;
-			fflush(stdout);
+			fprintf( stdout, "%s", prompt.c_str() );
+			fflush( stdout );
 			return ( read_from_stdin() );
 		}
-		if (_terminal.enable_raw_mode() == -1) {
+		std::unique_lock<std::mutex> l( _mutex );
+		if ( _terminal.enable_raw_mode() == -1 ) {
 			return nullptr;
 		}
+
+		_asyncPrompt.clear();
+		_updatePrompt = false;
 		_prompt.set_text( UnicodeString( prompt ) );
 		_currentThread = std::this_thread::get_id();
+		l.unlock();
 		clear();
-		if (!_preloadedBuffer.empty()) {
-			preload_puffer(_preloadedBuffer.c_str());
+		if ( !_preloadedBuffer.empty() ) {
+			preload_puffer( _preloadedBuffer.c_str() );
 			_preloadedBuffer.clear();
 		}
 		if ( get_input_line() == -1 ) {
@@ -570,6 +667,14 @@ char const* Replxx::ReplxxImpl::input( std::string const& prompt ) {
 }
 
 char const* Replxx::ReplxxImpl::finalize_input( char const* retVal_ ) {
+	std::unique_lock<std::mutex> l( _mutex );
+	while ( ! _messages.empty() ) {
+		string const& message( _messages.front() );
+		l.unlock();
+		_terminal.write8( message.data(), static_cast<int>( message.length() ) );
+		l.lock();
+		_messages.pop_front();
+	}
 	_currentThread = std::thread::id();
 	_terminal.disable_raw_mode();
 	return ( retVal_ );
@@ -600,20 +705,35 @@ void Replxx::ReplxxImpl::disable_bracketed_paste( void ) {
 }
 
 void Replxx::ReplxxImpl::print( char const* str_, int size_ ) {
+	std::unique_lock<std::mutex> l( _mutex );
 	if ( ( _currentThread == std::thread::id() ) || ( _currentThread == std::this_thread::get_id() ) ) {
+#ifndef _WIN32
+		l.unlock();
+#endif
 		_terminal.write8( str_, size_ );
 	} else {
-		std::lock_guard<std::mutex> l( _mutex );
 		_messages.emplace_back( str_, size_ );
 		_terminal.notify_event( Terminal::EVENT_TYPE::MESSAGE );
 	}
 	return;
 }
 
+void Replxx::ReplxxImpl::set_prompt( std::string prompt ) {
+	std::unique_lock<std::mutex> l( _mutex );
+	if ( _currentThread == std::this_thread::get_id() ) {
+		_prompt.set_text( UnicodeString( prompt ) );
+		l.unlock();
+		clear_self_to_end_of_screen();
+		repaint();
+	} else if ( _currentThread != std::thread::id() ) {
+		_asyncPrompt = std::move( prompt );
+		_updatePrompt = true;
+		_terminal.notify_event( Terminal::EVENT_TYPE::MESSAGE );
+	}
+}
+
 void Replxx::ReplxxImpl::preload_puffer(const char* preloadText) {
 	_data.assign( preloadText );
-	_charWidths.resize( _data.length() );
-	recompute_character_widths( _data.get(), _charWidths.data(), _data.length() );
 	_prefix = _pos = _data.length();
 }
 
@@ -625,15 +745,28 @@ void Replxx::ReplxxImpl::set_color( Replxx::Color color_ ) {
 	}
 }
 
+void Replxx::ReplxxImpl::indent( void ) {
+	if ( ! _indentMultiline ) {
+		return;
+	}
+	for ( int i( 0 ); i < _prompt.indentation(); ++ i ) {
+		_display.push_back( ' ' );
+	}
+}
+
 void Replxx::ReplxxImpl::render( char32_t ch ) {
 	if ( ch == Replxx::KEY::ESCAPE ) {
 		_display.push_back( '^' );
 		_display.push_back( '[' );
-	} else if ( is_control_code( ch ) ) {
+	} else if ( is_control_code( ch ) && ( ch != '\n' ) ) {
 		_display.push_back( '^' );
 		_display.push_back( control_to_human( ch ) );
 	} else {
 		_display.push_back( ch );
+	}
+	if ( ch == '\n' ) {
+		_hasNewlines = true;
+		indent();
 	}
 	return;
 }
@@ -647,6 +780,7 @@ void Replxx::ReplxxImpl::render( HINT_ACTION hintAction_ ) {
 	if ( hintAction_ == HINT_ACTION::SKIP ) {
 		return;
 	}
+	_hasNewlines = false;
 	_display.clear();
 	if ( _noColor ) {
 		for ( char32_t ch : _data ) {
@@ -659,11 +793,13 @@ void Replxx::ReplxxImpl::render( HINT_ACTION hintAction_ ) {
 	Replxx::colors_t colors( _data.length(), Replxx::Color::DEFAULT );
 	_utf8Buffer.assign( _data );
 	if ( !! _highlighterCallback ) {
+		IOModeGuard ioModeGuard( _terminal );
 		_highlighterCallback( _utf8Buffer.get(), colors );
 	}
 	paren_info_t pi( matching_paren() );
+	Replxx::Color ERROR( Replxx::Color::RED | color::bg( Replxx::Color::BRIGHTRED ) );
 	if ( pi.index != -1 ) {
-		colors[pi.index] = pi.error ? Replxx::Color::ERROR : Replxx::Color::BRIGHTRED;
+		colors[pi.index] = pi.error ? ERROR : Replxx::Color::BRIGHTRED;
 	}
 	Replxx::Color c( Replxx::Color::DEFAULT );
 	for ( int i( 0 ); i < _data.length(); ++ i ) {
@@ -679,25 +815,24 @@ void Replxx::ReplxxImpl::render( HINT_ACTION hintAction_ ) {
 	return;
 }
 
-int Replxx::ReplxxImpl::handle_hints( HINT_ACTION hintAction_ ) {
+void Replxx::ReplxxImpl::handle_hints( HINT_ACTION hintAction_ ) {
 	if ( _noColor ) {
-		return ( 0 );
+		return;
 	}
 	if ( ! _hintCallback ) {
-		return ( 0 );
+		return;
 	}
 	if ( ( _hintDelay > 0 ) && ( hintAction_ != HINT_ACTION::REPAINT ) ) {
 		_hintSelection = -1;
-		return ( 0 );
+		return;
 	}
 	if ( ( hintAction_ == HINT_ACTION::SKIP ) || ( hintAction_ == HINT_ACTION::TRIM ) ) {
-		return ( 0 );
+		return;
 	}
 	if ( _pos != _data.length() ) {
-		return ( 0 );
+		return;
 	}
 	_hint = UnicodeString();
-	int len( 0 );
 	if ( hintAction_ == HINT_ACTION::REGENERATE ) {
 		_hintSelection = -1;
 	}
@@ -706,12 +841,13 @@ int Replxx::ReplxxImpl::handle_hints( HINT_ACTION hintAction_ ) {
 		_hintSeed.assign( _utf8Buffer );
 		_hintContextLenght = context_length();
 		_hintColor = Replxx::Color::GRAY;
+		IOModeGuard ioModeGuard( _terminal );
 		_hintsCache = call_hinter( _utf8Buffer.get(), _hintContextLenght, _hintColor );
 	}
 	int hintCount( static_cast<int>( _hintsCache.size() ) );
 	if ( hintCount == 1 ) {
 		_hint = _hintsCache.front();
-		len = _hint.length() - _hintContextLenght;
+		int len( _hint.length() - _hintContextLenght );
 		if ( len > 0 ) {
 			set_color( _hintColor );
 			for ( int i( 0 ); i < len; ++ i ) {
@@ -720,7 +856,8 @@ int Replxx::ReplxxImpl::handle_hints( HINT_ACTION hintAction_ ) {
 			set_color( Replxx::Color::DEFAULT );
 		}
 	} else if ( ( _maxHintRows > 0 ) && ( hintCount > 0 ) ) {
-		int startCol( _prompt._indentation + _pos );
+		int posInLine( pos_in_line() );
+		int startCol( ( _indentMultiline || ( posInLine == _pos ) ? _prompt.indentation() : 0 ) + posInLine );
 		int maxCol( _prompt.screen_columns() );
 #ifdef _WIN32
 		-- maxCol;
@@ -732,7 +869,7 @@ int Replxx::ReplxxImpl::handle_hints( HINT_ACTION hintAction_ ) {
 		}
 		if ( _hintSelection != -1 ) {
 			_hint = _hintsCache[_hintSelection];
-			len = min<int>( _hint.length(), maxCol - startCol );
+			int len( min<int>( _hint.length(), maxCol - ( startCol - _hintContextLenght ) ) );
 			if ( _hintContextLenght < len ) {
 				set_color( _hintColor );
 				for ( int i( _hintContextLenght ); i < len; ++ i ) {
@@ -752,25 +889,26 @@ int Replxx::ReplxxImpl::handle_hints( HINT_ACTION hintAction_ ) {
 				_display.push_back( ' ' );
 			}
 			set_color( _hintColor );
-			for ( int i( _pos - _hintContextLenght ); ( i < _pos ) && ( col < maxCol ); ++ i, ++ col ) {
-				_display.push_back( _data[i] );
-			}
 			int hintNo( hintRow + _hintSelection + 1 );
 			if ( hintNo == hintCount ) {
+				for ( int i( _pos - _hintContextLenght ); ( i < _pos ) && ( col < maxCol ); ++ i, ++ col ) {
+					_display.push_back( _data[i] );
+				}
 				continue;
 			} else if ( hintNo > hintCount ) {
 				-- hintNo;
 			}
 			UnicodeString const& h( _hintsCache[hintNo % hintCount] );
-			for ( int i( _hintContextLenght ); ( i < h.length() ) && ( col < maxCol ); ++ i, ++ col ) {
+			for ( int i( 0 ); ( i < h.length() ) && ( col < maxCol ); ++ i, ++ col ) {
 				_display.push_back( h[i] );
 			}
 			set_color( Replxx::Color::DEFAULT );
 		}
 	}
-	return ( len );
+	return;
 }
 
+// check for a matching brace/bracket/paren, remember its position if found
 Replxx::ReplxxImpl::paren_info_t Replxx::ReplxxImpl::matching_paren( void ) {
 	if (_pos >= _data.length()) {
 		return ( paren_info_t{ -1, false } );
@@ -778,7 +916,7 @@ Replxx::ReplxxImpl::paren_info_t Replxx::ReplxxImpl::matching_paren( void ) {
 	/* this scans for a brace matching _data[_pos] to highlight */
 	unsigned char part1, part2;
 	int scanDirection = 0;
-	if ( strchr("}])", _data[_pos]) ) {
+	if ( strchr( "}])", _data[_pos] ) ) {
 		scanDirection = -1; /* backwards */
 		if (_data[_pos] == '}') {
 			part1 = '}'; part2 = '{';
@@ -787,7 +925,7 @@ Replxx::ReplxxImpl::paren_info_t Replxx::ReplxxImpl::matching_paren( void ) {
 		} else {
 			part1 = ')'; part2 = '(';
 		}
-	} else if ( strchr("{[(", _data[_pos]) ) {
+	} else if ( strchr( "{[(", _data[_pos] ) ) {
 		scanDirection = 1; /* forwards */
 		if (_data[_pos] == '{') {
 			//part1 = '{'; part2 = '}';
@@ -831,6 +969,11 @@ Replxx::ReplxxImpl::paren_info_t Replxx::ReplxxImpl::matching_paren( void ) {
 	return ( paren_info_t{ highlightIdx, indicateError } );
 }
 
+int Replxx::ReplxxImpl::virtual_render( char32_t const* buffer_, int len_, int& xPos_, int& yPos_, Prompt const* prompt_ ) {
+	Prompt const& prompt( prompt_ ? *prompt_ : _prompt );
+	return ( replxx::virtual_render( buffer_, len_, xPos_, yPos_, prompt.screen_columns(), _indentMultiline ? prompt.indentation() : 0 ) );
+}
+
 /**
  * Refresh the user's input line: the prompt is already onscreen and is not
  * redrawn here screen position
@@ -844,40 +987,40 @@ void Replxx::ReplxxImpl::refresh_line( HINT_ACTION hintAction_ ) {
 		return;
 	}
 	_refreshSkipped = false;
-	// check for a matching brace/bracket/paren, remember its position if found
 	render( hintAction_ );
-	int hintLen( handle_hints( hintAction_ ) );
-	// calculate the position of the end of the input line
-	int xEndOfInput( 0 ), yEndOfInput( 0 );
-	calculate_screen_position(
-		_prompt._indentation, 0, _prompt.screen_columns(),
-		calculate_displayed_length( _data.get(), _data.length() ) + hintLen,
-		xEndOfInput, yEndOfInput
-	);
-	yEndOfInput += static_cast<int>( count( _display.begin(), _display.end(), '\n' ) );
-
+	handle_hints( hintAction_ );
 	// calculate the desired position of the cursor
-	int xCursorPos( 0 ), yCursorPos( 0 );
-	calculate_screen_position(
-		_prompt._indentation, 0, _prompt.screen_columns(),
-		calculate_displayed_length( _data.get(), _pos ),
-		xCursorPos, yCursorPos
-	);
+	int xCursorPos( _prompt.indentation() );
+	int yCursorPos( 0 );
+	virtual_render( _data.get(), _pos, xCursorPos, yCursorPos );
+
+	// calculate the position of the end of the input line
+	int xEndOfInput( _prompt.indentation() );
+	int yEndOfInput( 0 );
+	// _data part of _display already contains the indent,
+	// also newlines belonging to hints part of display shall be ignored
+	// with respect to extra indent for multiline inputs
+	// in other words _display should not be re-indented
+	replxx::virtual_render( _display.data(), static_cast<int>( _display.size() ), xEndOfInput, yEndOfInput, _prompt.screen_columns(), 0 );
 
 	// position at the end of the prompt, clear to end of previous input
 	_terminal.set_cursor_visible( false );
 	_terminal.jump_cursor(
-		_prompt._indentation, // 0-based on Win32
+		_prompt.indentation(), // 0-based on Win32
 		-( _prompt._cursorRowOffset - _prompt._extraLines )
 	);
-	_prompt._previousInputLen = _data.length();
 	// display the input line
-	_terminal.write32( _display.data(), _displayInputLength );
-	_terminal.clear_screen( Terminal::CLEAR_SCREEN::TO_END );
-	_terminal.write32( _display.data() + _displayInputLength, static_cast<int>( _display.size() ) - _displayInputLength );
+	if ( _hasNewlines ) {
+		_terminal.clear_screen( Terminal::CLEAR_SCREEN::TO_END );
+		_terminal.write32( _display.data(), static_cast<int>( _display.size() ) );
+	} else {
+		_terminal.write32( _display.data(), _displayInputLength );
+		_terminal.clear_screen( Terminal::CLEAR_SCREEN::TO_END );
+		_terminal.write32( _display.data() + _displayInputLength, static_cast<int>( _display.size() ) - _displayInputLength );
+	}
 #ifndef _WIN32
 	// we have to generate our own newline on line wrap
-	if ( ( xEndOfInput == 0 ) && ( yEndOfInput > 0 ) ) {
+	if ( ( xEndOfInput == 0 ) && ( yEndOfInput > 0 ) && ! _data.is_empty() && ( _data.back() != '\n' ) ) {
 		_terminal.write8( "\n", 1 );
 	}
 #endif
@@ -886,12 +1029,26 @@ void Replxx::ReplxxImpl::refresh_line( HINT_ACTION hintAction_ ) {
 	_terminal.set_cursor_visible( true );
 	_prompt._cursorRowOffset = _prompt._extraLines + yCursorPos; // remember row for next pass
 	_lastRefreshTime = now_us();
+	_oldPos = _pos;
+	_moveCursor = false;
+}
+
+void Replxx::ReplxxImpl::move_cursor( void ) {
+	// calculate the desired position of the cursor
+	int xCursorPos( _prompt.indentation() );
+	int yCursorPos( 0 );
+	virtual_render( _data.get(), _pos, xCursorPos, yCursorPos );
+	// position the cursor
+	_terminal.jump_cursor( xCursorPos, -( _prompt._cursorRowOffset - _prompt._extraLines - yCursorPos ) );
+	_prompt._cursorRowOffset = _prompt._extraLines + yCursorPos;
+	_oldPos = _pos;
+	_moveCursor = false;
 }
 
 int Replxx::ReplxxImpl::context_length() {
 	int prefixLength = _pos;
 	while ( prefixLength > 0 ) {
-		if ( is_word_break_character( _data[prefixLength - 1] ) ) {
+		if ( is_word_break_character<false>( _data[prefixLength - 1] ) ) {
 			break;
 		}
 		-- prefixLength;
@@ -915,7 +1072,8 @@ void Replxx::ReplxxImpl::clear_self_to_end_of_screen( Prompt const* prompt_ ) {
 }
 
 namespace {
-int longest_common_prefix( Replxx::ReplxxImpl::completions_t const& completions ) {
+
+int longest_common_prefix( Replxx::ReplxxImpl::completions_t const& completions, bool ignoreCase ) {
 	int completionsCount( static_cast<int>( completions.size() ) );
 	if ( completionsCount < 1 ) {
 		return ( 0 );
@@ -933,19 +1091,19 @@ int longest_common_prefix( Replxx::ReplxxImpl::completions_t const& completions 
 				return ( longestCommonPrefix );
 			}
 			char32_t cc( candidate[longestCommonPrefix] );
-			if ( cc != sc ) {
-				return ( longestCommonPrefix );
+			if ( ignoreCase ) {
+				if ( !case_insensitive_equal( cc, sc ) ) {
+					return longestCommonPrefix;
+				}
+			} else if ( cc != sc ) {
+				return longestCommonPrefix;
 			}
 		}
 		++ longestCommonPrefix;
 	}
 }
-}
 
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
-#endif
+}
 
 /**
  * Handle command completion, using a completionCallback() routine to provide
@@ -968,7 +1126,10 @@ char32_t Replxx::ReplxxImpl::do_complete_line( bool showCompletions_ ) {
 	// get a list of completions
 	_completionSelection = -1;
 	_completionContextLength = context_length();
-	_completions = call_completer( _utf8Buffer.get(), _completionContextLength );
+	/* IOModeGuard scope */ {
+		IOModeGuard ioModeGuard( _terminal );
+		_completions = call_completer( _utf8Buffer.get(), _completionContextLength );
+	}
 
 	// if no completions, we are done
 	if ( _completions.empty() ) {
@@ -980,14 +1141,15 @@ char32_t Replxx::ReplxxImpl::do_complete_line( bool showCompletions_ ) {
 	int longestCommonPrefix = 0;
 	int completionsCount( static_cast<int>( _completions.size() ) );
 	int selectedCompletion( 0 );
-	if ( _hintSelection != -1 ) {
+	if ( ( completionsCount > 1 ) && ( _hintSelection != -1 ) ) {
 		selectedCompletion = _hintSelection;
 		completionsCount = 1;
 	}
 	if ( completionsCount == 1 ) {
 		longestCommonPrefix = static_cast<int>( _completions[selectedCompletion].text().length() );
 	} else {
-		longestCommonPrefix = longest_common_prefix( _completions );
+		bool ignoreCase( _ignoreCase && std::none_of( _data.end() - _completionContextLength, _data.end(), []( char32_t x ) { return iswupper( static_cast<wint_t>( x ) ); } ) );
+		longestCommonPrefix = longest_common_prefix( _completions, ignoreCase );
 	}
 	if ( _beepOnAmbiguousCompletion && ( completionsCount != 1 ) ) { // beep if ambiguous
 		beep();
@@ -995,11 +1157,24 @@ char32_t Replxx::ReplxxImpl::do_complete_line( bool showCompletions_ ) {
 
 	// if we can extend the item, extend it and return to main loop
 	if ( ( longestCommonPrefix > _completionContextLength ) || ( completionsCount == 1 ) ) {
+		UnicodeString const* cand( &_completions[selectedCompletion].text() );
+		if ( _ignoreCase && ( _hintSelection == -1 ) ) {
+			for ( int i( 0 ); i < completionsCount; ++ i ) {
+				if ( _completions[i].text() < *cand ) {
+					cand = &_completions[i].text();
+				}
+			}
+		}
 		_pos -= _completionContextLength;
 		_data.erase( _pos, _completionContextLength );
-		_data.insert( _pos, _completions[selectedCompletion].text(), 0, longestCommonPrefix );
-		_pos = _pos + longestCommonPrefix;
+		_data.insert( _pos, *cand, 0, longestCommonPrefix );
 		_completionContextLength = longestCommonPrefix;
+		if ( _ignoreCase && ( completionsCount > 1 ) ) {
+			for ( int i( 0 ); i < longestCommonPrefix; ++ i ) {
+				_data[_pos + i] = static_cast<char32_t>( towlower( static_cast<wint_t>( _data[_pos + i] ) ) );
+			}
+		}
+		_pos += _completionContextLength;
 		refresh_line();
 		return 0;
 	}
@@ -1135,7 +1310,7 @@ char32_t Replxx::ReplxxImpl::do_complete_line( bool showCompletions_ ) {
 						if (!_noColor) {
 							_terminal.write32(col.get(), col.length());
 						}
-						_terminal.write32(&_data[_pos - _completionContextLength], longestCommonPrefix);
+						_terminal.write32(c.text().get(), longestCommonPrefix);
 						if (!_noColor) {
 							_terminal.write32(res.get(), res.length());
 						}
@@ -1170,10 +1345,6 @@ char32_t Replxx::ReplxxImpl::do_complete_line( bool showCompletions_ ) {
 	refresh_line();
 	return 0;
 }
-
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
 
 int Replxx::ReplxxImpl::get_input_line( void ) {
 	// The latest history entry is always our current buffer
@@ -1223,6 +1394,8 @@ int Replxx::ReplxxImpl::get_input_line( void ) {
 			next = it->second( c );
 			if ( _modifiedState ) {
 				refresh_line();
+			} else if ( _moveCursor ) {
+				move_cursor();
 			}
 		} else {
 			next = action( RESET_KILL_ACTION | HISTORY_RECALL_MOST_RECENT, &Replxx::ReplxxImpl::insert_character, c );
@@ -1257,6 +1430,15 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::action( action_trait_t actionTrait_, k
 	if ( actionTrait_ & WANT_REFRESH ) {
 		_modifiedState = true;
 	}
+	if ( actionTrait_ & MOVE_CURSOR ) {
+		_modifiedState = ( _pos != _oldPos ) && (
+			( _pos == _data.length() )
+			|| ( _oldPos == _data.length() )
+			|| ( ( _pos < _data.length() ) && strchr( "{}[]()", _data[_pos] ) )
+			|| ( ( _oldPos < _data.length() ) && strchr( "{}[]()", _data[_oldPos] ) )
+		);
+		_moveCursor = _pos != _oldPos;
+	}
 	return ( res );
 }
 
@@ -1265,7 +1447,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::insert_character( char32_t c ) {
 	 * beep on unknown Ctrl and/or Meta keys
 	 * don't insert control characters
 	 */
-	if ( ( c >= static_cast<int>( Replxx::KEY::BASE ) ) || is_control_code( c ) ) {
+	if ( ( c >= static_cast<int>( Replxx::KEY::BASE ) ) || ( is_control_code( c ) && ( c != '\n' ) ) ) {
 		beep();
 		return ( Replxx::ACTION_RESULT::CONTINUE );
 	}
@@ -1274,6 +1456,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::insert_character( char32_t c ) {
 	} else {
 		_data[_pos] = c;
 	}
+	_oldPos = _pos;
 	++ _pos;
 	call_modify_callback();
 	int long long now( now_us() );
@@ -1283,18 +1466,17 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::insert_character( char32_t c ) {
 		_refreshSkipped = true;
 		return ( Replxx::ACTION_RESULT::CONTINUE );
 	}
-	int inputLen = calculate_displayed_length( _data.get(), _data.length() );
+	int xCursorPos( _prompt.indentation() );
+	int yCursorPos( 0 );
+	virtual_render( _data.get(), _data.length(), xCursorPos, yCursorPos );
 	if (
 		( _pos == _data.length() )
 		&& ! _modifiedState
 		&& ( _noColor || ! ( !! _highlighterCallback || !! _hintCallback ) )
-		&& ( _prompt._indentation + inputLen < _prompt.screen_columns() )
+		&& ( yCursorPos == 0 )
 	) {
 		/* Avoid a full assign of the line in the
 		 * trivial case. */
-		if (inputLen > _prompt._previousInputLen) {
-			_prompt._previousInputLen = inputLen;
-		}
 		render( c );
 		_displayInputLength = static_cast<int>( _display.size() );
 		_terminal.write32( reinterpret_cast<char32_t*>( &c ), 1 );
@@ -1305,14 +1487,31 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::insert_character( char32_t c ) {
 	return ( Replxx::ACTION_RESULT::CONTINUE );
 }
 
+// ctrl-J/linefeed/newline
+Replxx::ACTION_RESULT Replxx::ReplxxImpl::new_line( char32_t ) {
+	return ( insert_character( '\n' ) );
+}
+
 // ctrl-A, HOME: move cursor to start of line
-Replxx::ACTION_RESULT Replxx::ReplxxImpl::go_to_begining_of_line( char32_t ) {
-	_pos = 0;
+Replxx::ACTION_RESULT Replxx::ReplxxImpl::go_to_begining_of_line( char32_t char_ ) {
+	if ( _hasNewlines ) {
+		bool onNewline( ( _pos > 0 ) && ( _pos < _data.length() ) && ( _data[_pos] == '\n' ) );
+		int startPos( onNewline ? _pos - 1 : _pos );
+		int newPos( prev_newline_position( startPos ) + 1 );
+		_pos = ( newPos == _pos ) && ( char_ == Replxx::KEY::control( 'A' ) ) ? 0 : newPos;
+	} else {
+		_pos = 0;
+	}
 	return ( Replxx::ACTION_RESULT::CONTINUE );
 }
 
-Replxx::ACTION_RESULT Replxx::ReplxxImpl::go_to_end_of_line( char32_t ) {
-	_pos = _data.length();
+Replxx::ACTION_RESULT Replxx::ReplxxImpl::go_to_end_of_line( char32_t char_ ) {
+	if ( _hasNewlines ) {
+		int newPos( next_newline_position( _pos ) );
+		_pos = ( newPos < 0 ) || ( ( newPos == _pos ) && ( char_ == Replxx::KEY::control( 'E' ) ) ) ? _data.length() : newPos;
+	} else {
+		_pos = _data.length();
+	}
 	return ( Replxx::ACTION_RESULT::CONTINUE );
 }
 
@@ -1320,7 +1519,6 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::go_to_end_of_line( char32_t ) {
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::move_one_char_left( char32_t ) {
 	if (_pos > 0) {
 		--_pos;
-		refresh_line();
 	}
 	return ( Replxx::ACTION_RESULT::CONTINUE );
 }
@@ -1329,47 +1527,47 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::move_one_char_left( char32_t ) {
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::move_one_char_right( char32_t ) {
 	if ( _pos < _data.length() ) {
 		++_pos;
-		refresh_line();
 	}
 	return ( Replxx::ACTION_RESULT::CONTINUE );
 }
 
 // meta-B, move cursor left by one word
+template <bool subword>
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::move_one_word_left( char32_t ) {
 	if (_pos > 0) {
-		while (_pos > 0 && is_word_break_character( _data[_pos - 1] ) ) {
+		while (_pos > 0 && is_word_break_character<subword>( _data[_pos - 1] ) ) {
 			--_pos;
 		}
-		while (_pos > 0 && !is_word_break_character( _data[_pos - 1] ) ) {
+		while (_pos > 0 && !is_word_break_character<subword>( _data[_pos - 1] ) ) {
 			--_pos;
 		}
-		refresh_line();
 	}
 	return ( Replxx::ACTION_RESULT::CONTINUE );
 }
 
-// meta-F, move cursor right by one word
+// meta-f, move cursor right by one word
+template <bool subword>
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::move_one_word_right( char32_t ) {
 	if ( _pos < _data.length() ) {
-		while ( _pos < _data.length() && is_word_break_character( _data[_pos] ) ) {
+		while ( _pos < _data.length() && is_word_break_character<subword>( _data[_pos] ) ) {
 			++_pos;
 		}
-		while ( _pos < _data.length() && !is_word_break_character( _data[_pos] ) ) {
+		while ( _pos < _data.length() && !is_word_break_character<subword>( _data[_pos] ) ) {
 			++_pos;
 		}
-		refresh_line();
 	}
 	return ( Replxx::ACTION_RESULT::CONTINUE );
 }
 
 // meta-Backspace, kill word to left of cursor
+template <bool subword>
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::kill_word_to_left( char32_t ) {
 	if ( _pos > 0 ) {
 		int startingPos = _pos;
-		while ( _pos > 0 && is_word_break_character( _data[_pos - 1] ) ) {
+		while ( _pos > 0 && is_word_break_character<subword>( _data[_pos - 1] ) ) {
 			-- _pos;
 		}
-		while ( _pos > 0 && !is_word_break_character( _data[_pos - 1] ) ) {
+		while ( _pos > 0 && !is_word_break_character<subword>( _data[_pos - 1] ) ) {
 			-- _pos;
 		}
 		_killRing.kill( _data.get() + _pos, startingPos - _pos, false);
@@ -1380,13 +1578,14 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::kill_word_to_left( char32_t ) {
 }
 
 // meta-D, kill word to right of cursor
+template <bool subword>
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::kill_word_to_right( char32_t ) {
 	if ( _pos < _data.length() ) {
 		int endingPos = _pos;
-		while ( endingPos < _data.length() && is_word_break_character( _data[endingPos] ) ) {
+		while ( endingPos < _data.length() && is_word_break_character<subword>( _data[endingPos] ) ) {
 			++ endingPos;
 		}
-		while ( endingPos < _data.length() && !is_word_break_character( _data[endingPos] ) ) {
+		while ( endingPos < _data.length() && !is_word_break_character<subword>( _data[endingPos] ) ) {
 			++ endingPos;
 		}
 		_killRing.kill( _data.get() + _pos, endingPos - _pos, true );
@@ -1415,19 +1614,37 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::kill_to_whitespace_to_left( char32_t )
 
 // ctrl-K, kill from cursor to end of line
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::kill_to_end_of_line( char32_t ) {
-	_killRing.kill( _data.get() + _pos, _data.length() - _pos, true );
-	_data.erase( _pos, _data.length() - _pos );
+	int to( _data.length() );
+	if ( _hasNewlines ) {
+		to = next_newline_position( _pos );
+		if ( ( to < 0 ) || ( to == _pos ) ) {
+			to = _data.length();
+		}
+	}
+
+	_killRing.kill( _data.get() + _pos, to - _pos, true );
+	_data.erase( _pos, to - _pos );
 	return ( Replxx::ACTION_RESULT::CONTINUE );
 }
 
 // ctrl-U, kill all characters to the left of the cursor
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::kill_to_begining_of_line( char32_t ) {
-	if (_pos > 0) {
-		_killRing.kill( _data.get(), _pos, false );
-		_data.erase( 0, _pos );
-		_pos = 0;
-		refresh_line();
+	if (_pos <= 0) {
+		return ( Replxx::ACTION_RESULT::CONTINUE );
 	}
+	int newPos( 0 );
+	if ( _hasNewlines ) {
+		bool onNewline( ( _pos > 0 ) && ( _pos < _data.length() ) && ( _data[_pos] == '\n' ) );
+		int startPos( onNewline ? _pos - 1 : _pos );
+		newPos = prev_newline_position( startPos ) + 1;
+		if ( newPos == _pos ) {
+			newPos = 0;
+		}
+	}
+	_killRing.kill( _data.get() + newPos, _pos - newPos, false );
+	_data.erase( newPos, _pos - newPos );
+	_pos = newPos;
+	refresh_line();
 	return ( Replxx::ACTION_RESULT::CONTINUE );
 }
 
@@ -1493,20 +1710,21 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::yank_last_arg( char32_t ) {
 }
 
 // meta-C, give word initial Cap
+template <bool subword>
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::capitalize_word( char32_t ) {
 	if (_pos < _data.length()) {
-		while ( _pos < _data.length() && is_word_break_character( _data[_pos] ) ) {
+		while ( _pos < _data.length() && is_word_break_character<subword>( _data[_pos] ) ) {
 			++_pos;
 		}
-		if (_pos < _data.length() && !is_word_break_character( _data[_pos] ) ) {
-			if ( _data[_pos] >= 'a' && _data[_pos] <= 'z' ) {
-				_data[_pos] += 'A' - 'a';
+		if (_pos < _data.length() && !is_word_break_character<subword>( _data[_pos] ) ) {
+			if ( iswlower( static_cast<wint_t>( _data[_pos] ) ) ) {
+				_data[_pos] = static_cast<char32_t>( towupper( static_cast<wint_t>( _data[_pos] ) ) );
 			}
 			++_pos;
 		}
-		while (_pos < _data.length() && !is_word_break_character( _data[_pos] ) ) {
-			if ( _data[_pos] >= 'A' && _data[_pos] <= 'Z' ) {
-				_data[_pos] += 'a' - 'A';
+		while (_pos < _data.length() && !is_word_break_character<subword>( _data[_pos] ) ) {
+			if ( iswupper( static_cast<wint_t>( _data[_pos] ) ) ) {
+				_data[_pos] = static_cast<char32_t>( towlower( static_cast<wint_t>( _data[_pos] ) ) );
 			}
 			++_pos;
 		}
@@ -1516,14 +1734,15 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::capitalize_word( char32_t ) {
 }
 
 // meta-L, lowercase word
+template <bool subword>
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::lowercase_word( char32_t ) {
 	if (_pos < _data.length()) {
-		while ( _pos < _data.length() && is_word_break_character( _data[_pos] ) ) {
+		while ( _pos < _data.length() && is_word_break_character<subword>( _data[_pos] ) ) {
 			++ _pos;
 		}
-		while (_pos < _data.length() && !is_word_break_character( _data[_pos] ) ) {
-			if ( _data[_pos] >= 'A' && _data[_pos] <= 'Z' ) {
-				_data[_pos] += 'a' - 'A';
+		while (_pos < _data.length() && !is_word_break_character<subword>( _data[_pos] ) ) {
+			if ( iswupper( static_cast<wint_t>( _data[_pos] ) ) ) {
+				_data[_pos] = static_cast<char32_t>( towlower( static_cast<wint_t>( _data[_pos] ) ) );
 			}
 			++ _pos;
 		}
@@ -1533,14 +1752,15 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::lowercase_word( char32_t ) {
 }
 
 // meta-U, uppercase word
+template <bool subword>
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::uppercase_word( char32_t ) {
 	if (_pos < _data.length()) {
-		while ( _pos < _data.length() && is_word_break_character( _data[_pos] ) ) {
+		while ( _pos < _data.length() && is_word_break_character<subword>( _data[_pos] ) ) {
 			++ _pos;
 		}
-		while ( _pos < _data.length() && !is_word_break_character( _data[_pos] ) ) {
-			if ( _data[_pos] >= 'a' && _data[_pos] <= 'z') {
-				_data[_pos] += 'A' - 'a';
+		while ( _pos < _data.length() && !is_word_break_character<subword>( _data[_pos] ) ) {
+			if ( iswlower( static_cast<wint_t>( _data[_pos] ) ) ) {
+				_data[_pos] = static_cast<char32_t>( towupper( static_cast<wint_t>( _data[_pos] ) ) );
 			}
 			++ _pos;
 		}
@@ -1565,7 +1785,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::transpose_characters( char32_t ) {
 }
 
 // ctrl-C, abort this line
-Replxx::ACTION_RESULT Replxx::ReplxxImpl::abort_line( char32_t ) {
+Replxx::ACTION_RESULT Replxx::ReplxxImpl::abort_line( char32_t keyCode_ ) {
 	errno = EAGAIN;
 	_history.drop_last();
 	// we need one last refresh with the cursor at the end of the line
@@ -1573,7 +1793,9 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::abort_line( char32_t ) {
 	_pos = _data.length(); // pass _data.length() as _pos for EOL
 	_lastRefreshTime = 0;
 	refresh_line( _refreshSkipped ? HINT_ACTION::REGENERATE : HINT_ACTION::TRIM );
-	_terminal.write8( "^C\r\n", 4 );
+	if ( keyCode_ == Replxx::KEY::control( 'C' ) ) {
+		_terminal.write8( "^C\r\n", 4 );
+	}
 	return ( Replxx::ACTION_RESULT::BAIL );
 }
 
@@ -1606,8 +1828,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::backspace_character( char32_t ) {
 	return ( Replxx::ACTION_RESULT::CONTINUE );
 }
 
-// ctrl-J/linefeed/newline, accept line
-// ctrl-M/return/enter
+// ctrl-M/return/enter, accept line
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::commit_line( char32_t ) {
 	// we need one last refresh with the cursor at the end of the line
 	// so we don't display the next prompt over the previous input line
@@ -1619,26 +1840,116 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::commit_line( char32_t ) {
 	return ( Replxx::ACTION_RESULT::RETURN );
 }
 
+int Replxx::ReplxxImpl::prev_newline_position( int pos_ ) const {
+	assert( ( pos_ >= 0 ) && ( pos_ <= _data.length() ) );
+	if ( pos_ == _data.length() ) {
+		-- pos_;
+	}
+	while ( pos_ >= 0 ) {
+		if ( _data[pos_] == '\n' ) {
+			break;
+		}
+		-- pos_;
+	}
+	return ( pos_ );
+}
+
+int Replxx::ReplxxImpl::next_newline_position( int pos_ ) const {
+	assert( ( pos_ >= 0 ) && ( pos_ <= _data.length() ) );
+	int len( _data.length() );
+	while ( pos_ < len ) {
+		if ( _data[pos_] == '\n' ) {
+			break;
+		}
+		++ pos_;
+	}
+	return ( pos_ < len ? pos_ : -1 );
+}
+
+int Replxx::ReplxxImpl::pos_in_line( void ) const {
+	if ( ! _hasNewlines ) {
+		return ( _pos );
+	}
+	int lineStart( prev_newline_position( _pos ) + 1 );
+	return ( _pos - lineStart );
+}
+
+// Up, recall previous line in history
+Replxx::ACTION_RESULT Replxx::ReplxxImpl::line_previous( char32_t ) {
+	assert( ( _pos >= 0 ) && ( _pos <= _data.length() ) );
+	do {
+		if ( ! _hasNewlines ) {
+			break;
+		}
+		int prevNewlinePosition( prev_newline_position( _pos ) );
+		if ( prevNewlinePosition == _pos ) {
+			prevNewlinePosition = prev_newline_position( _pos - 1 );
+		}
+		if ( prevNewlinePosition < 0 ) {
+			break;
+		}
+		int posInLine( _pos - prevNewlinePosition - 1 );
+		int prevLineStart( prevNewlinePosition > 0 ? prev_newline_position( prevNewlinePosition - 1 ) + 1 : 0 );
+		int prevLineLength( max( prevNewlinePosition - prevLineStart, 0 ) );
+		int shift( ! _indentMultiline && ( prevLineStart == 0 ) ? _prompt.indentation() : 0 );
+		posInLine = max( min( posInLine, prevLineLength + shift ) - shift, 0 );
+		_pos = prevLineStart + posInLine;
+		assert( ( _pos >= 0 ) && ( _pos <= _data.length() ) );
+		return ( Replxx::ACTION_RESULT::CONTINUE );
+	} while ( false );
+	return ( history_move( true ) );
+}
+
 // Down, recall next line in history
+Replxx::ACTION_RESULT Replxx::ReplxxImpl::line_next( char32_t ) {
+	assert( ( _pos >= 0 ) && ( _pos <= _data.length() ) );
+	do {
+		if ( ! _hasNewlines ) {
+			break;
+		}
+		int nextNewlinePosition( next_newline_position( _pos ) );
+		if ( nextNewlinePosition < 0 ) {
+			break;
+		}
+		int nextLineStart( nextNewlinePosition + 1 );
+		int nextLineEnd( next_newline_position( nextLineStart ) );
+		if ( nextLineEnd < 0 ) {
+			nextLineEnd = _data.length();
+		}
+		int nextLineLength( nextLineEnd - nextLineStart );
+		int prevNewlinePosition( prev_newline_position( _pos ) );
+		if ( prevNewlinePosition == _pos ) {
+			prevNewlinePosition = _pos > 0 ? prev_newline_position( _pos - 1 ) : -1;
+		}
+		int lineStartPosition( prevNewlinePosition + 1 );
+		int posInLine( _pos - lineStartPosition );
+		int shift( ! _indentMultiline && ( lineStartPosition == 0 ) ? _prompt.indentation() : 0 );
+		posInLine = max( min( posInLine + shift, nextLineLength ), 0 );
+		_pos = nextLineStart + posInLine;
+		assert( ( _pos >= 0 ) && ( _pos <= _data.length() ) );
+		return ( Replxx::ACTION_RESULT::CONTINUE );
+	} while ( false );
+	return ( history_move( false ) );
+}
+
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::history_next( char32_t ) {
 	return ( history_move( false ) );
 }
 
-// Up, recall previous line in history
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::history_previous( char32_t ) {
 	return ( history_move( true ) );
 }
 
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::history_move( bool previous_ ) {
 	// if not already recalling, add the current line to the history list so
-	// we don't
-	// have to special case it
+	// we don't have to special case it
 	if ( _history.is_last() ) {
 		_history.update_last( _data );
 	}
 	if ( _history.is_empty() ) {
 		return ( Replxx::ACTION_RESULT::CONTINUE );
 	}
+	_history.set_current_scratch( _data );
 	if ( ! _history.move( previous_ ) ) {
 		return ( Replxx::ACTION_RESULT::CONTINUE );
 	}
@@ -1651,13 +1962,57 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::history_move( bool previous_ ) {
 // meta-<, beginning of history
 // Page Up, beginning of history
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::history_first( char32_t ) {
+	do {
+		if ( ! _hasNewlines ) {
+			break;
+		}
+		if ( _pos == 0 ) {
+			break;
+		}
+		_pos = 0;
+		return ( Replxx::ACTION_RESULT::CONTINUE );
+	} while ( false );
 	return ( history_jump( true ) );
 }
 
 // meta->, end of history
 // Page Down, end of history
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::history_last( char32_t ) {
+	do {
+		if ( ! _hasNewlines ) {
+			break;
+		}
+		if ( _pos == _data.length() ) {
+			break;
+		}
+		_pos = _data.length();
+		return ( Replxx::ACTION_RESULT::CONTINUE );
+	} while ( false );
 	return ( history_jump( false ) );
+}
+
+// CTRL-g, restore current history entry
+Replxx::ACTION_RESULT Replxx::ReplxxImpl::history_restore_current( char32_t ) {
+	// if not already recalling, there is nothing to restore.
+	if ( ! _history.is_last() ) {
+		_history.reset_current_scratch();
+		_data.assign( _history.current() );
+		_pos = _data.length();
+		refresh_line();
+	}
+	return ( Replxx::ACTION_RESULT::CONTINUE );
+}
+
+// meta-g restore all history entries
+Replxx::ACTION_RESULT Replxx::ReplxxImpl::history_restore( char32_t ) {
+	_history.reset_scratches();
+	// if not already recalling, there is nothing to restore.
+	if ( ! _history.is_last() ) {
+		_data.assign( _history.current() );
+		_pos = _data.length();
+		refresh_line();
+	}
+	return ( Replxx::ACTION_RESULT::CONTINUE );
 }
 
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::history_jump( bool back_ ) {
@@ -1668,6 +2023,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::history_jump( bool back_ ) {
 		_history.update_last( _data );
 	}
 	if ( ! _history.is_empty() ) {
+		_history.set_current_scratch( _data );
 		_history.jump( back_ );
 		_data.assign( _history.current() );
 		_pos = _data.length();
@@ -1714,9 +2070,10 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::verbatim_insert( char32_t ) {
 
 // ctrl-Z, job control
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::suspend( char32_t ) {
-	_terminal.disable_raw_mode(); // Returning to Linux (whatever) shell, leave raw mode
-	raise(SIGSTOP);   // Break out in mid-line
-	_terminal.enable_raw_mode();  // Back from Linux shell, re-enter raw mode
+	/* IOModeGuard scope */ {
+		IOModeGuard ioModeGuard( _terminal );
+		raise( SIGSTOP );   // Break out in mid-line
+	}
 	// Redraw prompt
 	_prompt.write();
 	return ( Replxx::ACTION_RESULT::CONTINUE );
@@ -1783,10 +2140,9 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::complete_previous( char32_t ) {
 // Alt-N, forward history search for prefix
 // Alt-N, forward history search for prefix
 Replxx::ACTION_RESULT Replxx::ReplxxImpl::common_prefix_search( char32_t startChar ) {
-	int prefixSize( calculate_displayed_length( _data.get(), _prefix ) );
 	if (
 		_history.common_prefix_search(
-			_data, prefixSize, ( startChar == ( Replxx::KEY::meta( 'p' ) ) ) || ( startChar == ( Replxx::KEY::meta( 'P' ) ) )
+			_data, _prefix, ( startChar == ( Replxx::KEY::meta( 'p' ) ) ) || ( startChar == ( Replxx::KEY::meta( 'P' ) ) ), _ignoreCase
 		)
 	) {
 		_data.assign( _history.current() );
@@ -1814,13 +2170,15 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::incremental_history_search( char32_t s
 	_history.save_pos();
 	int historyLinePosition( _pos );
 	clear_self_to_end_of_screen();
+	bool seeded( startChar == Replxx::KEY::meta( 'r' ) );
+	DynamicPrompt dp( _terminal, ( startChar == Replxx::KEY::control( 'R' ) ) || seeded ? -1 : 1 );
+	if ( seeded ) {
+		dp._searchText.assign( _data );
+		dp.updateSearchPrompt();
+	}
 
-	DynamicPrompt dp( _terminal, (startChar == Replxx::KEY::control('R')) ? -1 : 1 );
-
-	dp._previousLen = _prompt._previousLen;
-	dp._previousInputLen = _prompt._previousInputLen;
 	// draw user's text with our prompt
-	dynamicRefresh(dp, _data.get(), _data.length(), historyLinePosition);
+	dynamic_refresh( _prompt, dp, _data.get(), _data.length(), historyLinePosition );
 
 	// loop until we get an exit character
 	char32_t c( 0 );
@@ -1829,9 +2187,12 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::incremental_history_search( char32_t s
 	bool searchAgain = false;
 	UnicodeString activeHistoryLine;
 	while ( keepLooping ) {
-		c = read_char();
+		if ( ! seeded ) {
+			c = read_char();
+		}
 
-		switch (c) {
+		switch ( c ) {
+			case 0: break;
 			// these characters keep the selected text but do not execute it
 			case Replxx::KEY::control('A'): // ctrl-A, move cursor to start of line
 			case Replxx::KEY::HOME:
@@ -1886,15 +2247,15 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::incremental_history_search( char32_t s
 			} break;
 
 			// these characters stay in search mode and assign the display
-			case Replxx::KEY::control('S'):
-			case Replxx::KEY::control('R'): {
-				if ( dp._searchText.length() == 0 ) { // if no current search text, recall previous text
-					if ( _previousSearchText.length() > 0 ) {
-						dp._searchText = _previousSearchText;
-					}
+			case Replxx::KEY::control( 'S' ):
+			case Replxx::KEY::control( 'R' ):
+			case Replxx::KEY::meta( 'r' ): {
+				if ( ( dp._searchText.length() == 0 ) && ( _previousSearchText.length() > 0 ) ) {
+					// if no current search text, recall previous text
+					dp._searchText = _previousSearchText;
 				}
 				if (
-					( ( dp._direction == 1 ) && ( c == Replxx::KEY::control( 'R' ) ) )
+					( ( dp._direction == 1 ) && ( ( c == Replxx::KEY::control( 'R' ) ) || ( c == Replxx::KEY::meta( 'r' ) ) ) )
 					|| ( ( dp._direction == -1 ) && ( c == Replxx::KEY::control( 'S' ) ) )
 				) {
 					dp._direction = 0 - dp._direction; // reverse direction
@@ -1907,10 +2268,14 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::incremental_history_search( char32_t s
 // job control is its own thing
 #ifndef _WIN32
 			case Replxx::KEY::control('Z'): { // ctrl-Z, job control
-				_terminal.disable_raw_mode();   // Returning to Linux (whatever) shell, leave raw mode
-				raise( SIGSTOP );               // Break out in mid-line
-				_terminal.enable_raw_mode();    // Back from Linux shell, re-enter raw mode
-				dynamicRefresh( dp, activeHistoryLine.get(), activeHistoryLine.length(), historyLinePosition );
+				/* IOModeGuard scope */ {
+					IOModeGuard ioModeGuard( _terminal );
+					// Returning to Linux (whatever) shell, leave raw mode
+					// Break out in mid-line
+					// Back from Linux shell, re-enter raw mode
+					raise( SIGSTOP );
+				}
+				dynamic_refresh( dp, dp, activeHistoryLine.get(), activeHistoryLine.length(), historyLinePosition );
 				continue;
 			} break;
 #endif
@@ -1952,6 +2317,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::incremental_history_search( char32_t s
 				lineSearchPos += dp._direction;
 			}
 			searchAgain = false;
+			bool ignoreCase( _ignoreCase && std::none_of( dp._searchText.begin(), dp._searchText.end(), []( char32_t x ) { return iswupper( static_cast<wint_t>( x ) ); } ) );
 			while ( true ) {
 				while (
 					dp._direction < 0
@@ -1961,10 +2327,17 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::incremental_history_search( char32_t s
 					if (
 						( lineSearchPos >= 0 )
 						&& ( ( lineSearchPos + dp._searchText.length() ) <= activeHistoryLine.length() )
-						&& std::equal( dp._searchText.begin(), dp._searchText.end(), activeHistoryLine.begin() + lineSearchPos )
+						&& std::equal(
+							dp._searchText.begin(), dp._searchText.end(), activeHistoryLine.begin() + lineSearchPos,
+							ignoreCase ? case_insensitive_equal : case_sensitive_equal
+						)
 					) {
-						found = true;
-						break;
+						if ( ! seeded ) {
+							found = true;
+							break;
+						} else {
+							seeded = false;
+						}
 					}
 					lineSearchPos += dp._direction;
 				}
@@ -1975,6 +2348,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::incremental_history_search( char32_t s
 					activeHistoryLine.assign( _history.current() );
 					lineSearchPos = ( dp._direction > 0 ) ? 0 : ( activeHistoryLine.length() - dp._searchText.length() );
 				} else {
+					historyLinePosition = _pos;
 					beep();
 					break;
 				}
@@ -1987,33 +2361,25 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::incremental_history_search( char32_t s
 			historyLinePosition = _pos;
 		}
 		activeHistoryLine.assign( _history.current() );
-		dynamicRefresh( dp, activeHistoryLine.get(), activeHistoryLine.length(), historyLinePosition ); // draw user's text with our prompt
+		dynamic_refresh( dp, dp, activeHistoryLine.get(), activeHistoryLine.length(), historyLinePosition ); // draw user's text with our prompt
+		seeded = false;
 	} // while
 
 	// leaving history search, restore previous prompt, maybe make searched line
 	// current
 	Prompt pb( _terminal );
-	pb._characterCount = _prompt._indentation;
-	pb._byteCount = _prompt._byteCount;
-	UnicodeString tempUnicode( &_prompt._text[_prompt._lastLinePosition], pb._byteCount - _prompt._lastLinePosition );
-	pb._text = tempUnicode;
-	pb._extraLines = 0;
-	pb._indentation = _prompt._indentation;
-	pb._lastLinePosition = 0;
-	pb._previousInputLen = activeHistoryLine.length();
-	pb._cursorRowOffset = dp._cursorRowOffset;
+	UnicodeString tempUnicode( &_prompt._text[_prompt._lastLinePosition], _prompt._text.length() - _prompt._lastLinePosition );
+	pb.set_text( tempUnicode );
 	pb.update_screen_columns();
-	pb._previousLen = dp._characterCount;
 	if ( useSearchedLine && ( activeHistoryLine.length() > 0 ) ) {
 		_history.commit_index();
 		_data.assign( activeHistoryLine );
 		_pos = historyLinePosition;
+		_modifiedState = true;
 	} else if ( ! useSearchedLine ) {
 		_history.restore_pos();
 	}
-	dynamicRefresh(pb, _data.get(), _data.length(), _pos); // redraw the original prompt with current input
-	_prompt._previousInputLen = _data.length();
-	_prompt._cursorRowOffset = _prompt._extraLines + pb._cursorRowOffset;
+	dynamic_refresh(pb, _prompt, _data.get(), _data.length(), _pos); // redraw the original prompt with current input
 	_previousSearchText = dp._searchText; // save search text for possible reuse on ctrl-R ctrl-R
 	emulate_key_press( c ); // pass a character or -1 back to main loop
 	return ( Replxx::ACTION_RESULT::CONTINUE );
@@ -2038,6 +2404,8 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::bracketed_paste( char32_t ) {
 		}
 		if ( ( c == '\r' ) || ( c == KEY::control( 'M' ) ) ) {
 			c = '\n';
+		} else if ( c == KEY::control( 'I' ) ) {
+			c = '\t';
 		}
 		buf.push_back( c );
 	}
@@ -2046,10 +2414,11 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::bracketed_paste( char32_t ) {
 	return ( Replxx::ACTION_RESULT::CONTINUE );
 }
 
+template <bool subword>
 bool Replxx::ReplxxImpl::is_word_break_character( char32_t char_ ) const {
 	bool wbc( false );
 	if ( char_ < 128 ) {
-		wbc = strchr( _breakChars.c_str(), static_cast<char>( char_ ) ) != nullptr;
+		wbc = strchr( subword ? _subwordBreakChars.c_str() : _wordBreakChars.c_str(), static_cast<char>( char_ ) ) != nullptr;
 	}
 	return ( wbc );
 }
@@ -2062,12 +2431,20 @@ bool Replxx::ReplxxImpl::history_save( std::string const& filename ) {
 	return ( _history.save( filename, false ) );
 }
 
+void Replxx::ReplxxImpl::history_save( std::ostream& out ) {
+	_history.save( out );
+}
+
 bool Replxx::ReplxxImpl::history_sync( std::string const& filename ) {
 	return ( _history.save( filename, true ) );
 }
 
 bool Replxx::ReplxxImpl::history_load( std::string const& filename ) {
 	return ( _history.load( filename ) );
+}
+
+void Replxx::ReplxxImpl::history_load( std::istream& in ) {
+	_history.load( in );
 }
 
 void Replxx::ReplxxImpl::history_clear( void ) {
@@ -2115,7 +2492,11 @@ void Replxx::ReplxxImpl::set_hint_delay( int hintDelay_ ) {
 }
 
 void Replxx::ReplxxImpl::set_word_break_characters( char const* wordBreakers ) {
-	_breakChars = wordBreakers;
+	_wordBreakChars = wordBreakers;
+}
+
+void Replxx::ReplxxImpl::set_subword_break_characters( char const* subwordBreakers ) {
+	_subwordBreakChars = subwordBreakers;
 }
 
 void Replxx::ReplxxImpl::set_double_tab_completion( bool val ) {
@@ -2142,6 +2523,10 @@ void Replxx::ReplxxImpl::set_no_color( bool val ) {
 	_noColor = val;
 }
 
+void Replxx::ReplxxImpl::set_indent_multiline( bool val ) {
+	_indentMultiline = val;
+}
+
 /**
  * Display the dynamic incremental search prompt and the current user input
  * line.
@@ -2151,44 +2536,32 @@ void Replxx::ReplxxImpl::set_no_color( bool val ) {
  * @param len   count of characters in the buffer
  * @param pos   current cursor position within the buffer (0 <= pos <= len)
  */
-void Replxx::ReplxxImpl::dynamicRefresh(Prompt& pi, char32_t* buf32, int len, int pos) {
-	clear_self_to_end_of_screen( &pi );
+void Replxx::ReplxxImpl::dynamic_refresh(Prompt& oldPrompt, Prompt& newPrompt, char32_t* buf32, int len, int pos) {
+	clear_self_to_end_of_screen( &oldPrompt );
 	// calculate the position of the end of the prompt
-	int xEndOfPrompt, yEndOfPrompt;
-	calculate_screen_position(
-		0, 0, pi.screen_columns(), pi._characterCount,
-		xEndOfPrompt, yEndOfPrompt
-	);
-	pi._indentation = xEndOfPrompt;
-
-	// calculate the position of the end of the input line
-	int xEndOfInput, yEndOfInput;
-	calculate_screen_position(
-		xEndOfPrompt, yEndOfPrompt, pi.screen_columns(),
-		calculate_displayed_length(buf32, len), xEndOfInput,
-		yEndOfInput
-	);
+	int xEndOfPrompt( 0 );
+	int yEndOfPrompt( 0 );
+	replxx::virtual_render( newPrompt._text.get(), newPrompt._text.length(), xEndOfPrompt, yEndOfPrompt, newPrompt.screen_columns(), 0 );
 
 	// calculate the desired position of the cursor
-	int xCursorPos, yCursorPos;
-	calculate_screen_position(
-		xEndOfPrompt, yEndOfPrompt, pi.screen_columns(),
-		calculate_displayed_length(buf32, pos), xCursorPos,
-		yCursorPos
-	);
+	int xCursorPos( xEndOfPrompt );
+	int yCursorPos( yEndOfPrompt );
+	virtual_render( buf32, pos, xCursorPos, yCursorPos, &newPrompt );
 
-	pi._previousLen = pi._indentation;
-	pi._previousInputLen = len;
+	// calculate the position of the end of the input line
+	int xEndOfInput( xCursorPos );
+	int yEndOfInput( yCursorPos );
+	virtual_render( buf32 + pos, len - pos, xEndOfInput, yEndOfInput, &newPrompt );
 
 	// display the prompt
-	pi.write();
+	newPrompt.write();
 
 	// display the input line
 	_terminal.write32( buf32, len );
 
 #ifndef _WIN32
 	// we have to generate our own newline on line wrap
-	if (xEndOfInput == 0 && yEndOfInput > 0) {
+	if ( ( xEndOfInput == 0 ) && ( yEndOfInput > 0 ) && ( len > 0 ) && ( buf32[len - 1] != '\n' ) ) {
 		_terminal.write8( "\n", 1 );
 	}
 #endif
@@ -2197,7 +2570,7 @@ void Replxx::ReplxxImpl::dynamicRefresh(Prompt& pi, char32_t* buf32, int len, in
 		xCursorPos, // 0-based on Win32
 		-( yEndOfInput - yCursorPos )
 	);
-	pi._cursorRowOffset = pi._extraLines + yCursorPos; // remember row for next pass
+	newPrompt._cursorRowOffset = newPrompt._extraLines + yCursorPos; // remember row for next pass
 }
 
 }

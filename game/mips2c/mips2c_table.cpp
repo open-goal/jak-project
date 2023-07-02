@@ -10,7 +10,11 @@
 #include "game/runtime.h"
 
 extern "C" {
-void _mips2c_call_linux();
+#ifdef __linux__
+void _mips2c_call_systemv();
+#elif defined __APPLE__ && defined __x86_64__
+void _mips2c_call_systemv() asm("_mips2c_call_systemv");
+#endif
 void _mips2c_call_windows();
 }
 
@@ -478,7 +482,9 @@ void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 s
 
     // call the other function
 #ifdef __linux__
-    addr = (u64)_mips2c_call_linux;
+    addr = (u64)_mips2c_call_systemv;
+#elif defined __APPLE__ && defined __x86_64__
+    addr = (u64)_mips2c_call_systemv;
 #elif _WIN32
     addr = (u64)_mips2c_call_windows;
 #endif

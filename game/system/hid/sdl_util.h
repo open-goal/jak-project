@@ -9,6 +9,7 @@
 
 namespace sdl_util {
 void log_error(const std::string& msg = "");
+std::string log_and_return_error(const std::string& msg = "");
 bool is_any_event_type(uint32_t event_type, const std::vector<uint32_t>& allowed_types);
 SDL_bool sdl_bool(const bool val);
 bool from_sdl_bool(const SDL_bool val);

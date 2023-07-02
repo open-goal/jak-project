@@ -26,6 +26,9 @@
   - [Windows](#windows)
     - [Required Software](#required-software)
     - [Using Visual Studio](#using-visual-studio)
+  - [MacOS](#macos)
+    - [Intel Based](#intel-based)
+    - [Apple Silicon](#apple-silicon)
   - [Building and Running the Game](#building-and-running-the-game)
     - [Extract Assets](#extract-assets)
     - [Build the Game](#build-the-game)
@@ -233,6 +236,29 @@ Then build the entire project as `Windows Release (clang)`. You can also press C
 
 ![](./docs/img/windows/release-build.png)
 ![](./docs/img/windows/build-all.png)
+
+### MacOS
+
+> NOTE: At this time you still cannot run the game on macOS due to OpenGL version limitations.  But you can build the project and use most of the tooling.
+
+Ensure that you have Xcode command line tools installed (this installs things like Apple Clang).  If you don't, you can run the following command:
+
+```bash
+xcode-select –install
+```
+
+#### Intel Based
+
+```bash
+brew install go-task/tap/go-task
+brew install cmake nasm ninja go-task
+cmake -B build --preset=Release-macos-clang
+cmake --build build --parallel $((`sysctl -n hw.logicalcpu`))
+```
+
+#### Apple Silicon
+
+**Not Supported at This Time**
 
 ### Building and Running the Game
 

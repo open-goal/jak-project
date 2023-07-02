@@ -1,0 +1,9 @@
+("TESTSTDD.DGO"
+  (
+    "teststdd-vis.go"
+    "tpage-3386.go"
+    "tpage-3387.go"
+    "tpage-3385.go"
+    "stdmb-race-hatch-ag.go"
+    "stad-d-force-field-ag.go"
+  ))

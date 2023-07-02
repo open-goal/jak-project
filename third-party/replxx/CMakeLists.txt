@@ -50,7 +50,7 @@ set(REPLXX_CONTACT "amok@codestation.org")
 set(is-clang $<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>)
 set(is-msvc $<CXX_COMPILER_ID:MSVC>)
 set(is-gnu $<CXX_COMPILER_ID:GNU>)
-set(compiler-id-clang-or-gnu $<AND:$<OR:${is-clang},${is-gnu}>,$<NOT:${is-msvc}>>)
+set(compiler-id-clang-or-gnu $<OR:${is-clang},${is-gnu}>)
 
 set(coverage-config $<AND:$<CONFIG:Coverage>,$<OR:${is-gnu},${is-clang}>>)
 
@@ -97,6 +97,7 @@ if (NOT CMAKE_VERSION VERSION_LESS 3.13)
 	target_link_options(
 		replxx
 		PRIVATE
+			$<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:GNU>>:-g -ggdb -g3 -ggdb3>
 			$<${coverage-config}:--coverage>
 			$<${is-msvc}:/ignore:4099>
 	)
@@ -182,6 +183,8 @@ if (REPLXX_BUILD_EXAMPLES)
 	)
 	target_compile_definitions(replxx-example-cxx-api PRIVATE REPLXX_STATIC $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS=1>)
 	target_compile_definitions(replxx-example-c-api PRIVATE REPLXX_STATIC $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS=1>)
+	target_link_options(replxx-example-cxx-api PRIVATE $<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:GNU>>:-g -ggdb -g3 -ggdb3>)
+	target_link_options(replxx-example-c-api PRIVATE $<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:GNU>>:-g -ggdb -g3 -ggdb3>)
 	target_link_libraries(replxx-example-cxx-api PRIVATE replxx::replxx)
 	target_link_libraries(
 		replxx-example-c-api
