@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common/serialization/subtitles/subtitles.h"
+
 struct SubtitleCutsceneLineMetadataV1 : SubtitleCutsceneLineMetadata {
   bool clear;
 };

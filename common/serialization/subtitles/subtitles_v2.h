@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common/serialization/subtitles/subtitles.h"
+
 struct SubtitleCutsceneLineMetadataV2 : SubtitleCutsceneLineMetadata {
   int frame_end;
   bool merge;
