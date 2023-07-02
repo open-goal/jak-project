@@ -48,7 +48,7 @@
       ((< 0.001 f30-0)
        (sound-play-by-name
          (static-sound-name "widow-drill")
-         (the-as sound-id (-> self drill-sound))
+         (-> self drill-sound)
          (the int (* 1024.0 f30-0))
          (the int (* 1524.0 (* 0.5 (+ -1.0 f30-0))))
          0
@@ -58,7 +58,7 @@
        (set! (-> self drill-sound-playing) #t)
        )
       ((-> self drill-sound-playing)
-       (sound-stop (the-as sound-id (-> self drill-sound)))
+       (sound-stop (-> self drill-sound))
        (set! (-> self drill-sound-playing) #f)
        )
       )
@@ -73,13 +73,13 @@
       ((< 0.001 f30-1)
        (sound-play
          "widow-dril-swtn"
-         :id (the-as sound-id (-> self drill-sweeten-sound))
+         :id (-> self drill-sweeten-sound)
          :position (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 11))
          )
        (set! (-> self drill-sweeten-sound-playing) #t)
        )
       ((-> self drill-sweeten-sound-playing)
-       (sound-stop (the-as sound-id (-> self drill-sweeten-sound)))
+       (sound-stop (-> self drill-sweeten-sound))
        (set! (-> self drill-sweeten-sound-playing) #f)
        )
       )
@@ -88,7 +88,7 @@
     ((-> self flying)
      (sound-play-by-name
        (static-sound-name "widow-hover")
-       (the-as sound-id (-> self hover-sound))
+       (-> self hover-sound)
        (the int (* 1024.0 (lerp-scale 0.5 1.0 (-> self osc value y) -20480.0 -4096.0)))
        0
        0
@@ -98,7 +98,7 @@
      (set! (-> self hover-sound-playing) #t)
      )
     ((-> self hover-sound-playing)
-     (sound-stop (the-as sound-id (-> self hover-sound)))
+     (sound-stop (-> self hover-sound))
      (set! (-> self hover-sound-playing) #f)
      )
     )
@@ -127,7 +127,7 @@
       )
     )
   (when (and (nonzero? (-> self extract-stone-time))
-             (< (- (-> self clock frame-counter) (-> self extract-stone-time)) (seconds 2))
+             (< (- (current-time) (-> self extract-stone-time)) (seconds 2))
              (nonzero? (-> self extract-stone-part))
              )
     (let ((gp-6 (new 'stack-no-clear 'vector)))
@@ -136,7 +136,7 @@
       )
     )
   (when (and (nonzero? (-> self insert-stone-time))
-             (< (- (-> self clock frame-counter) (-> self insert-stone-time)) (seconds 2))
+             (< (- (current-time) (-> self insert-stone-time)) (seconds 2))
              (nonzero? (-> self insert-stone-part))
              )
     (let ((s5-5 (handle->process (-> self pod))))
@@ -319,14 +319,14 @@
   )
 
 (defbehavior spydroid-setup widow ()
-  (set! (-> self state-time) (+ (-> self clock frame-counter) (seconds -0.247)))
+  (set! (-> self state-time) (+ (current-time) (seconds -0.247)))
   (set! (-> self next-launch) -1)
   (set! (-> self next-jumper) -1)
   (none)
   )
 
 (defbehavior widow-bomb-setup widow ()
-  (set! (-> self state-time) (+ (-> self clock frame-counter) (seconds -0.247)))
+  (set! (-> self state-time) (+ (current-time) (seconds -0.247)))
   (set! (-> self next-launch) -1)
   (none)
   )
@@ -342,7 +342,7 @@
      0
      )
     ((>= (-> self next-launch) 0)
-     (when (and (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.25))
+     (when (and (>= (- (current-time) (-> self state-time)) (seconds 0.25))
                 (let ((v1-24 (ja-group)))
                   (not (and v1-24 (= v1-24 (-> self draw art-group data 18))))
                   )
@@ -424,7 +424,7 @@
                    :to *entity-pool*
                    )
                  )
-             (set! (-> self state-time) (-> self clock frame-counter))
+             (set! (-> self state-time) (current-time))
              (let* ((s5-3 (-> self state-time))
                     (f30-1 75.0)
                     (v1-89 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
@@ -497,7 +497,7 @@
      0
      )
     ((>= (-> self next-launch) 0)
-     (when (and (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.25))
+     (when (and (>= (- (current-time) (-> self state-time)) (seconds 0.25))
                 (let ((v1-8 (ja-group)))
                   (not (and v1-8 (= v1-8 (-> self draw art-group data 18))))
                   )
@@ -569,7 +569,7 @@
                    :to *entity-pool*
                    )
                  )
-             (set! (-> self state-time) (-> self clock frame-counter))
+             (set! (-> self state-time) (current-time))
              (let* ((s3-3 (-> self state-time))
                     (f30-1 75.0)
                     (v1-68 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
@@ -684,9 +684,9 @@
   (dotimes (gp-0 2)
     (cond
       ((handle->process (-> self ammos gp-0))
-       (set! (-> self ammo-timers gp-0) (-> self clock frame-counter))
+       (set! (-> self ammo-timers gp-0) (current-time))
        )
-      ((>= (- (-> self clock frame-counter) (-> self ammo-timers gp-0)) (seconds 20))
+      ((>= (- (current-time) (-> self ammo-timers gp-0)) (seconds 20))
        (let ((s4-0 (new 'static 'fact-info))
              (s5-0 (new 'stack-no-clear 'vector))
              )
@@ -717,7 +717,7 @@
        (let ((v1-32 (handle->process (-> self ammos gp-0))))
          (when v1-32
            (logclear! (-> (the-as collectable v1-32) flags) (collectable-flag fadeout))
-           (set! (-> self ammo-timers gp-0) (-> self clock frame-counter))
+           (set! (-> self ammo-timers gp-0) (current-time))
            )
          )
        )
@@ -899,15 +899,12 @@
 (defbehavior widow-kaboom-check widow ((arg0 symbol))
   (if (and arg0
            (>= (-> self bomb-hits) 4)
-           (or (not *target*) (zero? (logand (-> *target* focus-status) (focus-status dead))))
+           (or (not *target*) (not (logtest? (-> *target* focus-status) (focus-status dead))))
            )
       (go-virtual kaboom)
       )
   (if (>= (-> self bomb-hits) 3)
-      (eval!
-        (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f))
-        '(want-anim "tomb-boss-res")
-        )
+      (script-eval '(want-anim "tomb-boss-res"))
       )
   (none)
   )
@@ -918,7 +915,7 @@
     (ja-channel-set! 0)
     (ja-post)
     (when (-> self hover-sound-playing)
-      (sound-stop (the-as sound-id (-> self hover-sound)))
+      (sound-stop (-> self hover-sound))
       (set! (-> self hover-sound-playing) #f)
       )
     (send-event (handle->process (-> self hud)) 'hide-and-die)
@@ -934,9 +931,9 @@
 
 (defstate kaboom (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
-    (set-setting! 'music #f 0 0)
+    (set-setting! 'music #f 0.0 0)
     (dotimes (gp-0 8)
       (let ((a0-2 (handle->process (-> self bomb gp-0))))
         (if a0-2
@@ -995,7 +992,7 @@
 
 (defstate hover-low-stage-3 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (set! (-> self osc target y) -122880.0)
     (set! (-> self attack-from-high-deg) (not (-> self attack-from-high-deg)))
@@ -1019,14 +1016,14 @@
 
 (defstate hover-shooting-stage-3 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (widow-shoot-gun-talker)
     (ja-channel-push! 1 (seconds 0.02))
     (ja :group! (-> self draw art-group data 15) :num! min)
     (set! (-> self which-gun) 0)
     (set! (-> self flying) #t)
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :exit (behavior ()
@@ -1070,7 +1067,7 @@
           )
         )
       (set! v1-5 (and (< (fabs (- (-> self osc value z) (-> self osc target z))) 1024.0)
-                      (and (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.007)) v1-5)
+                      (and (>= (- (current-time) (-> self state-time)) (seconds 0.007)) v1-5)
                       )
             )
       (if v1-5
@@ -1119,7 +1116,7 @@
 
 (defstate hover-launch-bombs-stage-3 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (widow-launch-bombs-talker)
     (set! (-> self osc target x) 135168.0)
@@ -1145,7 +1142,7 @@
       ((or (< (widow-bomb-slots-full) 2) (not (-> self launched-a-bomb)))
        (widow-bomb-launch (-> self flying) #f #t)
        )
-      ((>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 2.25))
+      ((>= (- (current-time) (-> self state-time)) (seconds 2.25))
        (go-virtual hover-shooting-stage-3)
        )
       (else
@@ -1171,7 +1168,7 @@
 
 (defstate hover-big-blast-stage-3 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (set! (-> self state-time) 0)
     (let* ((f0-1 (* 0.08488264 (-> self osc value z)))
@@ -1185,7 +1182,7 @@
          (widow-stone-charge-up-talker)
          (set! (-> self stop-catwalk-sound) #t)
          (set! (-> self catwalk-sound)
-               (the-as uint (add-process *gui-control* self (gui-channel jak) (gui-action queue) "cwlkfall" -99.0 0))
+               (add-process *gui-control* self (gui-channel jak) (gui-action queue) "cwlkfall" -99.0 0)
                )
          )
         (else
@@ -1224,14 +1221,14 @@
         )
       )
     (when (-> self shake-sound-playing)
-      (sound-stop (the-as sound-id (-> self shake-sound)))
+      (sound-stop (-> self shake-sound))
       (set! (-> self shake-sound-playing) #f)
       )
     (if (-> self stop-catwalk-sound)
         (set-action!
           *gui-control*
           (gui-action stop)
-          (the-as sound-id (-> self catwalk-sound))
+          (-> self catwalk-sound)
           (gui-channel none)
           (gui-action none)
           (the-as string #f)
@@ -1258,23 +1255,23 @@
              )
          )
         ((zero? (-> self state-time))
-         (set! (-> self state-time) (-> self clock frame-counter))
+         (set! (-> self state-time) (current-time))
          (sound-play "widow-charge")
          )
-        ((>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 3))
+        ((>= (- (current-time) (-> self state-time)) (seconds 3))
          (widow-after-stone-shot-talker)
          (set! (-> self stop-catwalk-sound) #f)
          (set-action!
            *gui-control*
            (gui-action play)
-           (the-as sound-id (-> self catwalk-sound))
+           (-> self catwalk-sound)
            (gui-channel none)
            (gui-action none)
            (the-as string #f)
            (the-as (function gui-connection symbol) #f)
            (the-as process #f)
            )
-         (set-falloff! *gui-control* (the-as sound-id (-> self catwalk-sound)) #t -1 200 2)
+         (set-falloff! *gui-control* (-> self catwalk-sound) #t -1 200 2)
          (activate! *camera-smush-control* 1228.8 75 270 1.0 0.5 (-> self clock))
          (send-event (handle->process (-> self catwalk (-> self targetted-catwalk))) 'green-hit)
          (go-virtual hover-launch-bombs-stage-3)
@@ -1288,15 +1285,15 @@
         (when sv-256
           (let ((gp-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> sv-256 node-list data 4))))
             (cond
-              ((>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 2))
+              ((>= (- (current-time) (-> self state-time)) (seconds 2))
                (when (-> self shake-sound-playing)
-                 (sound-stop (the-as sound-id (-> self shake-sound)))
+                 (sound-stop (-> self shake-sound))
                  (set! (-> self shake-sound-playing) #f)
                  )
                )
               (else
                 (spawn (-> self green-charge-part) gp-1)
-                (sound-play "widow-shake" :id (the-as sound-id (-> self shake-sound)) :position gp-1)
+                (sound-play "widow-shake" :id (-> self shake-sound) :position gp-1)
                 (set! (-> self shake-sound-playing) #t)
                 )
               )
@@ -1316,7 +1313,7 @@
               (vector-reset! (-> s0-0 trans))
               (set-vector! s4-0 (-> s1-0 z) 0.0 (- (-> s1-0 x)) 1.0)
               (vector-normalize! s4-0 409.6)
-              (when (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 2))
+              (when (>= (- (current-time) (-> self state-time)) (seconds 2))
                 (set! sv-272 (the-as symbol #f))
                 (set! sv-288 0)
                 (while (< sv-288 5)
@@ -1391,11 +1388,11 @@
 
 (defstate hover-rise-stage-3 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (set! (-> self osc target x) 135168.0)
     (set! (-> self flying) #t)
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (set! (-> self osc damping) 0.9)
     (set! (-> self old-bomb-hits) (-> self bomb-hits))
     (none)
@@ -1406,7 +1403,7 @@
     (let ((gp-0 (widow-calc-target-position (new 'stack-no-clear 'vector))))
       (set! (-> self osc target y) (-> gp-0 y))
       (when (< (+ -10240.0 (-> self osc target y)) (-> self osc value y))
-        (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.007))
+        (if (>= (- (current-time) (-> self state-time)) (seconds 0.007))
             (go-virtual hover-big-blast-stage-3)
             )
         )
@@ -1426,11 +1423,11 @@
   )
 
 (defstate hover-seek-under-stage-3 (widow)
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (set! (-> self osc target x) 135168.0)
     (set! (-> self flying) #t)
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :trans (behavior ()
@@ -1442,7 +1439,7 @@
           )
       )
     (if (and (< (fabs (- (-> self osc value z) (-> self osc target z))) 8192.0)
-             (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.007))
+             (>= (- (current-time) (-> self state-time)) (seconds 0.007))
              )
         (go-virtual hover-rise-stage-3)
         )
@@ -1458,10 +1455,10 @@
 
 (defstate hover-jump-down-stage-3 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (widow-leave-perch-talker)
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (ja-channel-push! 1 (seconds 1.5))
     (ja :group! (-> self draw art-group data 5) :num! min)
     (let ((gp-1 (widow-calc-target-position (new 'stack-no-clear 'vector))))
@@ -1488,10 +1485,10 @@
     (ja :num! (loop!))
     (compute-trans-at-time
       (-> self traj)
-      (the float (min 450 (- (-> self clock frame-counter) (-> self state-time))))
+      (the float (min 450 (- (current-time) (-> self state-time))))
       (-> self root trans)
       )
-    (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1.5))
+    (if (>= (- (current-time) (-> self state-time)) (seconds 1.5))
         (go hover-seek-under-stage-3)
         )
     (quaternion-axis-angle! (-> self root quat) 0.0 1.0 0.0 (+ 32768.0 (-> self theta value)))
@@ -1504,7 +1501,7 @@
 
 (defstate big-reaction-stage-2 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (talker-spawn-func (-> *talker-speech* 302) *entity-pool* (target-pos 0) (the-as region #f))
     (dotimes (gp-1 8)
@@ -1519,7 +1516,7 @@
     (set! (-> self flying) #f)
     (ja-channel-push! 1 (seconds 0.02))
     (ja :group! (-> self draw art-group data 4) :num! min)
-    (set! (-> self extract-stone-time) (-> self clock frame-counter))
+    (set! (-> self extract-stone-time) (current-time))
     (none)
     )
   :exit (behavior ()
@@ -1541,7 +1538,7 @@
       (send-event (ppointer->process (-> self baron)) 'frame f30-0)
       (send-event (handle->process (-> self heart)) 'frame f30-0)
       (if (and (zero? (-> self insert-stone-time)) (>= f30-0 827.0))
-          (set! (-> self insert-stone-time) (-> self clock frame-counter))
+          (set! (-> self insert-stone-time) (current-time))
           )
       )
     (if (ja-done? 0)
@@ -1556,7 +1553,7 @@
 
 (defstate watch-bombs-stage-2 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (set! (-> self flying) #f)
     (none)
@@ -1591,7 +1588,7 @@
 
 (defstate launch-bombs-stage-2 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (widow-launch-bombs-talker)
     (widow-bomb-setup)
@@ -1621,9 +1618,9 @@
 
 (defstate back-to-perch-stage-2 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (ja-channel-push! 1 (seconds 1))
     (ja :group! (-> self draw art-group data 6) :num! min)
     (let ((a2-1 (new 'stack-no-clear 'vector))
@@ -1646,7 +1643,7 @@
   :trans (behavior ()
     (compute-trans-at-time
       (-> self traj)
-      (the float (min 300 (- (-> self clock frame-counter) (-> self state-time))))
+      (the float (min 300 (- (current-time) (-> self state-time))))
       (-> self root trans)
       )
     (quaternion-axis-angle! (-> self root quat) 0.0 1.0 0.0 (+ 32768.0 (-> self theta value)))
@@ -1654,7 +1651,7 @@
       (cond
         ((and v1-9 (= v1-9 (-> self draw art-group data 6)))
          (ja :num! (seek!))
-         (when (and (ja-done? 0) (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1)))
+         (when (and (ja-done? 0) (>= (- (current-time) (-> self state-time)) (seconds 1)))
            (ja-channel-push! 1 (seconds 0.02))
            (ja :group! (-> self draw art-group data 7) :num! min)
            (set! (-> self flying) #f)
@@ -1694,7 +1691,7 @@
 
 (defstate hover-low-stage-2 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (set! (-> self osc target y) -122880.0)
     (let* ((v1-2 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
@@ -1705,7 +1702,7 @@
           )
       )
     (set! (-> self flying) #t)
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :trans (behavior ()
@@ -1718,7 +1715,7 @@
         ((zero? (widow-bomb-slots-full))
          (go-virtual back-to-perch-stage-2)
          )
-        ((>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.007))
+        ((>= (- (current-time) (-> self state-time)) (seconds 0.007))
          (go-virtual hover-seek-under-stage-2)
          )
         )
@@ -1747,14 +1744,14 @@
 
 (defstate hover-shooting-stage-2 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (widow-shoot-gun-talker)
     (ja-channel-push! 1 (seconds 0.02))
     (ja :group! (-> self draw art-group data 15) :num! min)
     (set! (-> self which-gun) 0)
     (set! (-> self flying) #t)
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (+! (-> self current-shoot-stage) 1)
     (none)
     )
@@ -1792,7 +1789,7 @@
           )
         )
       (set! v1-5 (and (< (fabs (- (-> self osc value z) (-> self osc target z))) 1024.0)
-                      (and (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.007)) v1-5)
+                      (and (>= (- (current-time) (-> self state-time)) (seconds 0.007)) v1-5)
                       )
             )
       (if v1-5
@@ -1842,11 +1839,11 @@
 
 (defstate hover-rise-stage-2 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (set! (-> self osc target x) 135168.0)
     (set! (-> self flying) #t)
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :trans (behavior ()
@@ -1856,7 +1853,7 @@
     (let ((gp-0 (widow-calc-target-position (new 'stack-no-clear 'vector))))
       (set! (-> self osc target y) (-> gp-0 y))
       (when (and (< (+ -10240.0 (-> self osc target y)) (-> self osc value y))
-                 (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.007))
+                 (>= (- (current-time) (-> self state-time)) (seconds 0.007))
                  )
         (let* ((v1-13 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
                (v1-14 (the-as number (logior #x3f800000 v1-13)))
@@ -1885,11 +1882,11 @@
 
 (defstate hover-seek-under-stage-2 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (set! (-> self osc target x) 135168.0)
     (set! (-> self flying) #t)
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (none)
     )
   :trans (behavior ()
@@ -1904,7 +1901,7 @@
           )
       )
     (if (and (< (fabs (- (-> self osc value z) (-> self osc target z))) 8192.0)
-             (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 0.007))
+             (>= (- (current-time) (-> self state-time)) (seconds 0.007))
              )
         (go-virtual hover-rise-stage-2)
         )
@@ -1921,10 +1918,10 @@
 
 (defstate hover-jump-down-stage-2 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (widow-leave-perch-talker)
-    (set! (-> self state-time) (-> self clock frame-counter))
+    (set! (-> self state-time) (current-time))
     (set! (-> self drill-speed target) 0.0)
     (ja-channel-push! 1 (seconds 1.5))
     (ja :group! (-> self draw art-group data 5) :num! min)
@@ -1949,10 +1946,10 @@
     (widow-flying-anim)
     (compute-trans-at-time
       (-> self traj)
-      (the float (min 450 (- (-> self clock frame-counter) (-> self state-time))))
+      (the float (min 450 (- (current-time) (-> self state-time))))
       (-> self root trans)
       )
-    (if (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 1.5))
+    (if (>= (- (current-time) (-> self state-time)) (seconds 1.5))
         (go-virtual hover-seek-under-stage-2)
         )
     (quaternion-axis-angle! (-> self root quat) 0.0 1.0 0.0 (+ 32768.0 (-> self theta value)))
@@ -1966,7 +1963,7 @@
 
 (defstate launch-droids-stage-2 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (widow-launch-droids-talker)
     (spydroid-setup)
@@ -1996,7 +1993,7 @@
 
 (defstate big-reaction-stage-1 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (dotimes (gp-0 8)
       (let ((a0-1 (handle->process (-> self bomb gp-0))))
@@ -2042,7 +2039,7 @@
 
 (defstate watch-bombs-stage-1 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (set! (-> self flying) #f)
     (none)
@@ -2074,7 +2071,7 @@
 
 (defstate launch-bombs-stage-1 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (if (and (< (-> self kicked-bombs) 2) (>= (-> self launch-stages-completed) 1))
         (talker-spawn-func (-> *talker-speech* 303) *entity-pool* (target-pos 0) (the-as region #f))
@@ -2105,7 +2102,7 @@
 
 (defstate watch-droids-stage-1 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (set! (-> self flying) #f)
     (none)
@@ -2135,7 +2132,7 @@
 
 (defstate launch-droids-stage-1 (widow)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior widow) widow-handler)
+  :event widow-handler
   :enter (behavior ()
     (widow-launch-droids-talker)
     (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
@@ -2211,10 +2208,7 @@
                     )
               )
              ((< f0-0 409600.0)
-              (eval!
-                (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f))
-                '(want-anim "tomb-boss-intro")
-                )
+              (script-eval '(want-anim "tomb-boss-intro"))
               )
              )
            )
@@ -2224,7 +2218,7 @@
            (task-node-closed? (game-task-node tomb-boss-introduction))
            )
        (set! (-> self heart) (ppointer->handle (process-spawn heart-mar (-> self root trans) :to self)))
-       (set-setting! 'music 'danger7 0 0)
+       (set-setting! 'music 'danger7 0.0 0)
        (go-virtual launch-droids-stage-1)
        )
       )

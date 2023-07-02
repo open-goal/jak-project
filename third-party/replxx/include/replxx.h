@@ -81,9 +81,7 @@ typedef enum {
 	REPLXX_COLOR_BRIGHTMAGENTA = 13,
 	REPLXX_COLOR_BRIGHTCYAN    = 14,
 	REPLXX_COLOR_WHITE         = 15,
-	REPLXX_COLOR_NORMAL        = REPLXX_COLOR_LIGHTGRAY,
-	REPLXX_COLOR_DEFAULT       = -1,
-	REPLXX_COLOR_ERROR         = -2
+	REPLXX_COLOR_DEFAULT       = 1u << 16u
 } ReplxxColor;
 
 enum { REPLXX_KEY_BASE         = 0x0010ffff + 1 };
@@ -136,17 +134,21 @@ enum { REPLXX_KEY_PASTE_FINISH = REPLXX_KEY_PASTE_START + 1 };
 enum { REPLXX_KEY_BACKSPACE    = REPLXX_KEY_CONTROL( 'H' ) };
 enum { REPLXX_KEY_TAB          = REPLXX_KEY_CONTROL( 'I' ) };
 enum { REPLXX_KEY_ENTER        = REPLXX_KEY_CONTROL( 'M' ) };
+enum { REPLXX_KEY_ABORT        = REPLXX_KEY_META( REPLXX_KEY_CONTROL( 'M' ) ) };
 
 /*! \brief List of built-in actions that act upon user input.
  */
 typedef enum {
 	REPLXX_ACTION_INSERT_CHARACTER,
+	REPLXX_ACTION_NEW_LINE,
 	REPLXX_ACTION_DELETE_CHARACTER_UNDER_CURSOR,
 	REPLXX_ACTION_DELETE_CHARACTER_LEFT_OF_CURSOR,
 	REPLXX_ACTION_KILL_TO_END_OF_LINE,
 	REPLXX_ACTION_KILL_TO_BEGINING_OF_LINE,
 	REPLXX_ACTION_KILL_TO_END_OF_WORD,
 	REPLXX_ACTION_KILL_TO_BEGINING_OF_WORD,
+	REPLXX_ACTION_KILL_TO_END_OF_SUBWORD,
+	REPLXX_ACTION_KILL_TO_BEGINING_OF_SUBWORD,
 	REPLXX_ACTION_KILL_TO_WHITESPACE_ON_LEFT,
 	REPLXX_ACTION_YANK,
 	REPLXX_ACTION_YANK_CYCLE,
@@ -155,19 +157,29 @@ typedef enum {
 	REPLXX_ACTION_MOVE_CURSOR_TO_END_OF_LINE,
 	REPLXX_ACTION_MOVE_CURSOR_ONE_WORD_LEFT,
 	REPLXX_ACTION_MOVE_CURSOR_ONE_WORD_RIGHT,
+	REPLXX_ACTION_MOVE_CURSOR_ONE_SUBWORD_LEFT,
+	REPLXX_ACTION_MOVE_CURSOR_ONE_SUBWORD_RIGHT,
 	REPLXX_ACTION_MOVE_CURSOR_LEFT,
 	REPLXX_ACTION_MOVE_CURSOR_RIGHT,
-	REPLXX_ACTION_HISTORY_NEXT,
-	REPLXX_ACTION_HISTORY_PREVIOUS,
+	REPLXX_ACTION_LINE_NEXT,
+	REPLXX_ACTION_LINE_PREVIOUS,
+	REPLXX_ACTION_HISTORY_MOVE_NEXT,
+	REPLXX_ACTION_HISTORY_MOVE_PREVIOUS,
 	REPLXX_ACTION_HISTORY_FIRST,
 	REPLXX_ACTION_HISTORY_LAST,
+	REPLXX_ACTION_HISTORY_RESTORE,
+	REPLXX_ACTION_HISTORY_RESTORE_CURRENT,
 	REPLXX_ACTION_HISTORY_INCREMENTAL_SEARCH,
+	REPLXX_ACTION_HISTORY_SEEDED_INCREMENTAL_SEARCH,
 	REPLXX_ACTION_HISTORY_COMMON_PREFIX_SEARCH,
 	REPLXX_ACTION_HINT_NEXT,
 	REPLXX_ACTION_HINT_PREVIOUS,
 	REPLXX_ACTION_CAPITALIZE_WORD,
 	REPLXX_ACTION_LOWERCASE_WORD,
 	REPLXX_ACTION_UPPERCASE_WORD,
+	REPLXX_ACTION_CAPITALIZE_SUBWORD,
+	REPLXX_ACTION_LOWERCASE_SUBWORD,
+	REPLXX_ACTION_UPPERCASE_SUBWORD,
 	REPLXX_ACTION_TRANSPOSE_CHARACTERS,
 	REPLXX_ACTION_TOGGLE_OVERWRITE_MODE,
 #ifndef _WIN32
@@ -381,6 +393,12 @@ REPLXX_IMPEXP void replxx_get_state( Replxx*, ReplxxState* state );
  */
 REPLXX_IMPEXP void replxx_set_state( Replxx*, ReplxxState* state );
 
+/*! \brief Enable/disable case insensitive history search and completion.
+ *
+ * \param val - if set to non-zero then history search and completion will be case insensitive.
+ */
+REPLXX_IMPEXP void replxx_set_ignore_case( Replxx*, int val );
+
 /*! \brief Print formatted string to standard output.
  *
  * This function ensures proper handling of ANSI escape sequences
@@ -399,6 +417,14 @@ REPLXX_IMPEXP int replxx_print( Replxx*, char const* fmt, ... );
  * \param length - The length of the array.
  */
 REPLXX_IMPEXP int replxx_write( Replxx*, char const* str, int length );
+
+/*! \brief Asynchronously change the prompt while replxx_input() call is in efect.
+ *
+ * Can be used to change the prompt from callbacks or other threads.
+ *
+ * \param prompt - The prompt string to change to.
+ */
+REPLXX_IMPEXP void replxx_set_prompt( Replxx*, const char* prompt );
 
 /*! \brief Schedule an emulated key press event.
  *
@@ -428,8 +454,8 @@ REPLXX_IMPEXP void replxx_bind_key( Replxx*, int code, key_press_handler_t handl
  *
  * Action names are the same as unique part of names of ReplxxAction enumerations
  * but in lower case, e.g.: an action for recalling previous history line
- * is \e REPLXX_ACTION_HISTORY_PREVIOUS so action name to be used in this
- * interface for the same effect is "history_previous".
+ * is \e REPLXX_ACTION_LINE_PREVIOUS so action name to be used in this
+ * interface for the same effect is "line_previous".
  *
  * \param code - handle this key-press event with following handler.
  * \param actionName - name of internal action to be invoked on key press.
@@ -505,6 +531,12 @@ REPLXX_IMPEXP void replxx_set_unique_history( Replxx*, int val );
  */
 REPLXX_IMPEXP void replxx_set_no_color( Replxx*, int val );
 
+/*! \brief Enable/disable (prompt width) indent for multiline entry.
+ *
+ * \param val - if set to non-zero then multiline indent will be enabled.
+ */
+REPLXX_IMPEXP void replxx_set_indent_multiline( Replxx*, int val );
+
 /*! \brief Set maximum number of entries in history list.
  */
 REPLXX_IMPEXP void replxx_set_max_history_size( Replxx*, int len );
@@ -558,6 +590,53 @@ void replxx_debug_dump_print_codes(void);
 REPLXX_IMPEXP int replxx_install_window_change_handler( Replxx* );
 REPLXX_IMPEXP void replxx_enable_bracketed_paste( Replxx* );
 REPLXX_IMPEXP void replxx_disable_bracketed_paste( Replxx* );
+
+/*! \brief Combine two color definitions to get encompassing color definition.
+ *
+ * To be used only for combining foreground and background colors.
+ *
+ * \param color1 - first input color.
+ * \param color2 - second input color.
+ * \return A new color definition that represent combined input colors.
+ */
+ReplxxColor replxx_color_combine( ReplxxColor color1, ReplxxColor color2 );
+
+/*! \brief Transform foreground color definition into a background color definition.
+ *
+ * \param color - an input foreground color definition.
+ * \return A background color definition that is a transformed input \e color.
+ */
+ReplxxColor replxx_color_bg( ReplxxColor color );
+
+/*! \brief Add `bold` attribute to color definition.
+ *
+ * \param color - an input color definition.
+ * \return A new color definition with bold attribute set.
+ */
+ReplxxColor replxx_color_bold( ReplxxColor color );
+
+/*! \brief Add `underline` attribute to color definition.
+ *
+ * \param color - an input color definition.
+ * \return A new color definition with underline attribute set.
+ */
+ReplxxColor replxx_color_underline( ReplxxColor color );
+
+/*! \brief Create a new grayscale color of given brightness level.
+ *
+ * \param level - a brightness level for new color, must be between 0 (darkest) and 23 (brightest).
+ * \return A new grayscale color of a given brightest \e level.
+ */
+ReplxxColor replxx_color_grayscale( int level );
+
+/*! \brief Create a new color in 6×6×6 RGB color space from base component levels.
+ *
+ * \param red - a red (of RGB) component level, must be 0 and 5.
+ * \param green - a green (of RGB) component level, must be 0 and 5.
+ * \param blue - a blue (of RGB) component level, must be 0 and 5.
+ * \return A new color in 6×6×6 RGB color space.
+ */
+ReplxxColor replxx_color_rgb666( int red, int green, int blue );
 
 #ifdef __cplusplus
 }

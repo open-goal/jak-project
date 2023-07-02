@@ -1,15 +1,18 @@
 #include "kmachine.h"
 
+#include <bitset>
 #include <cstring>
 #include <stdexcept>
 #include <string>
 
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
+#include "common/util/FontUtils.h"
 #include "common/util/string_util.h"
 
-#include "game/external/discord.h"
+#include "game/external/discord_jak2.h"
 #include "game/graphics/display.h"
 #include "game/graphics/jak2_texture_remap.h"
 #include "game/kernel/common/Symbol4.h"
@@ -398,7 +401,10 @@ int InitMachine() {
   InitRPC();
   reset_output();
   clear_print();
+
+  prof().begin_event("init-heap-and-symbol");
   auto status = InitHeapAndSymbol();
+  prof().end_event();
   if (status >= 0) {
     printf("InitListenerConnect\n");
     InitListenerConnect();
@@ -437,12 +443,22 @@ u32 MouseGetData(u32 _mouse) {
   mouse->valid = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
   mouse->cursor = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
   mouse->status = 1;
+  // Contrary to the name, this is a 16bitfield
+  // where:
+  // 0 = left button
+  // 1 = right button
+  // 2 = middle button
   mouse->button0 = 0;
 
   s32 xpos = 0;
   s32 ypos = 0;
   if (Display::GetMainDisplay()) {
     std::tie(xpos, ypos) = Display::GetMainDisplay()->get_input_manager()->get_mouse_pos();
+    const auto mouse_button_status =
+        Display::GetMainDisplay()->get_input_manager()->get_mouse_button_status();
+    mouse->button0 |= (mouse_button_status.left ? 1 : 0);
+    mouse->button0 |= (mouse_button_status.right ? 2 : 0);
+    mouse->button0 |= (mouse_button_status.middle ? 4 : 0);
   }
 
   // NOTE - ignoring speed and setting position directly
@@ -517,28 +533,46 @@ void update_discord_rpc(u32 discord_info) {
     auto info = discord_info ? Ptr<DiscordInfo>(discord_info).c() : NULL;
     if (info) {
       // Get the data from GOAL
-      int orbs = (int)*Ptr<float>(info->orb_count).c();
-      int gems = (int)*Ptr<float>(info->gem_count).c();
-      char* status = Ptr<String>(info->status).c()->data();
+      int orbs = (int)info->orb_count;
+      int gems = (int)info->gem_count;
+      // convert encodings
+      std::string status = get_font_bank(GameTextVersion::JAK2)
+                               ->convert_game_to_utf8(Ptr<String>(info->status).c()->data());
+
+      // get rid of special encodings like <COLOR_WHITE>
+      std::regex r("<.*?>");
+      while (std::regex_search(status, r)) {
+        status = std::regex_replace(status, r, "");
+      }
+
       char* level = Ptr<String>(info->level).c()->data();
       auto cutscene = Ptr<Symbol4<u32>>(info->cutscene)->value();
-      float time = *Ptr<float>(info->time_of_day).c();
+      float time = info->time_of_day;
       float percent_completed = info->percent_completed;
+      std::bitset<32> focus_status;
+      focus_status = info->focus_status;
+      char* task = Ptr<String>(info->task).c()->data();
 
       // Construct the DiscordRPC Object
-      // TODO - take nice screenshots with the various time of days once the graphics is in a final
-      // state
       const char* full_level_name =
-          "unknown";  // jak1_get_full_level_name(Ptr<String>(info->level).c()->data());
+          get_full_level_name(level_names, level_name_remap, Ptr<String>(info->level).c()->data());
       memset(&rpc, 0, sizeof(rpc));
-      if (!indoors(level)) {
-        char level_with_tod[128];
-        strcpy(level_with_tod, level);
-        strcat(level_with_tod, "-");
-        strcat(level_with_tod, time_of_day_str(time));
-        strcpy(large_image_key, level_with_tod);
+      // if we have an active task, set the mission specific image for it
+      // also small hack to prevent oracle image from showing up while inside levels
+      // like hideout, onintent, etc.
+      if (strcmp(task, "unknown") != 0 && strcmp(task, "city-oracle") != 0) {
+        strcpy(large_image_key, task);
       } else {
-        strcpy(large_image_key, level);
+        // if we are in an outdoors level, use the picture for the corresponding time of day
+        if (!indoors(indoor_levels, level)) {
+          char level_with_tod[128];
+          strcpy(level_with_tod, level);
+          strcat(level_with_tod, "-");
+          strcat(level_with_tod, time_of_day_str(time));
+          strcpy(large_image_key, level_with_tod);
+        } else {
+          strcpy(large_image_key, level);
+        }
       }
       strcpy(large_image_text, full_level_name);
       if (!strcmp(full_level_name, "unknown")) {
@@ -548,20 +582,42 @@ void update_discord_rpc(u32 discord_info) {
       rpc.largeImageKey = large_image_key;
       if (cutscene != offset_of_s7()) {
         strcpy(state, "Watching a cutscene");
+        // temporarily move these counters to the large image tooltip during a cutscene
+        strcat(large_image_text,
+               fmt::format(" | {:.0f}% | Orbs: {} | Gems: {} | {}", percent_completed,
+                           std::to_string(orbs), std::to_string(gems), get_time_of_day(time))
+                   .c_str());
       } else {
-        strcpy(state, fmt::format("{:.0f}% | Orbs: {} | Gems: {}", percent_completed,
-                                  std::to_string(orbs), std::to_string(gems))
+        strcpy(state, fmt::format("{:.0f}% | Orbs: {} | Gems: {} | {}", percent_completed,
+                                  std::to_string(orbs), std::to_string(gems), get_time_of_day(time))
                           .c_str());
-        strcpy(large_image_text, fmt::format(" | {:.0f}% | Orbs: {} | Gems: {}", percent_completed,
-                                             std::to_string(orbs), std::to_string(gems))
-                                     .c_str());
       }
       rpc.largeImageText = large_image_text;
       rpc.state = state;
-      if (!indoors(level)) {
-        strcpy(small_image_key, time_of_day_str(time));
-        strcpy(small_image_text, "Time of day: ");
-        strcat(small_image_text, get_time_of_day(time).c_str());
+      // check for any special conditions to display for the small image
+      if (FOCUS_TEST(focus_status, FocusStatus::Board)) {
+        strcpy(small_image_key, "focus-status-board");
+        strcpy(small_image_text, "On the JET-Board");
+      } else if (FOCUS_TEST(focus_status, FocusStatus::Mech)) {
+        strcpy(small_image_key, "focus-status-mech");
+        strcpy(small_image_text, "In the Titan Suit");
+      } else if (FOCUS_TEST(focus_status, FocusStatus::Pilot)) {
+        strcpy(small_image_key, "focus-status-pilot");
+        strcpy(small_image_text, "Driving a Zoomer");
+      } else if (FOCUS_TEST(focus_status, FocusStatus::Indax)) {
+        strcpy(small_image_key, "focus-status-indax");
+        strcpy(small_image_text, "Playing as Daxter");
+      } else if (FOCUS_TEST(focus_status, FocusStatus::Dark)) {
+        strcpy(small_image_key, "focus-status-dark");
+        strcpy(small_image_text, "Dark Jak");
+      } else if (FOCUS_TEST(focus_status, FocusStatus::Disable) &&
+                 FOCUS_TEST(focus_status, FocusStatus::Grabbed)) {
+        // being in a turret sets disable and grabbed flags
+        strcpy(small_image_key, "focus-status-turret");
+        strcpy(small_image_text, "In a Gunpod");
+      } else if (FOCUS_TEST(focus_status, FocusStatus::Gun)) {
+        strcpy(small_image_key, "focus-status-gun");
+        strcpy(small_image_text, "Using a Gun");
       } else {
         strcpy(small_image_key, "");
         strcpy(small_image_text, "");
@@ -569,7 +625,7 @@ void update_discord_rpc(u32 discord_info) {
       rpc.smallImageKey = small_image_key;
       rpc.smallImageText = small_image_text;
       rpc.startTimestamp = gStartTime;
-      rpc.details = status;
+      rpc.details = status.c_str();
       rpc.partySize = 0;
       rpc.partyMax = 0;
       Discord_UpdatePresence(&rpc);
@@ -731,9 +787,13 @@ void InitMachineScheme() {
   intern_from_c("*kernel-boot-art-group*")->value() = make_string_from_c(DebugBootArtGroup);
   if (DiskBoot) {
     *EnableMethodSet = *EnableMethodSet + 1;
-    load_and_link_dgo_from_c("game", kglobalheap,
-                             LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
-                             0x400000, true);
+    {
+      auto p = scoped_prof("load-game-dgo");
+      load_and_link_dgo_from_c("game", kglobalheap,
+                               LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
+                               0x400000, true);
+    }
+
     *EnableMethodSet = *EnableMethodSet + -1;
     using namespace jak2_symbols;
     kernel_packages->value() =
@@ -746,94 +806,45 @@ void InitMachineScheme() {
         new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE - 1).cast<u32>()),
                  make_string_from_c("common"), kernel_packages->value());
     printf("calling play-boot!\n");
+    auto p = scoped_prof("play-boot-func");
     call_goal_function_by_name("play-boot");  // new function for jak2!
   }
 }
 
-std::optional<SQLite::Database> sql_db = std::nullopt;
+sqlite::SQLiteDatabase sql_db;
 
 void initialize_sql_db() {
   // If the DB has already been initialized, no-op
-  if (sql_db) {
+  if (sql_db.is_open()) {
     return;
   }
   // In the original environment, they relied on a database already being setup with the correct
   // schema We are using an embedded SQLite database, which isn't already setup, so we have to do
   // that here!
 
-  // TODO - eventually tie this to .sql files instead of hard-coding the strings here, usually a
-  // nicer editing experience
-
   fs::path db_path = file_util::get_user_misc_dir(g_game_version) / "jak2-editor.db";
   file_util::create_dir_if_needed_for_file(db_path);
 
-  try {
-    sql_db = SQLite::Database(db_path.string(), SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
-    SQLite::Transaction tx(sql_db.value());
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'level_info' ( 'level_info_id' INTEGER, 'name' TEXT, "
-        "'translate_x' REAL, 'translate_y' REAL, 'translate_z' REAL, 'last_update' TEXT, "
-        "'sample_point_update' TEXT, PRIMARY KEY('level_info_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'light' ( 'light_id' INTEGER, 'name' TEXT, 'level_name' TEXT, "
-        "'pos_x' REAL, 'pos_y' REAL, 'pos_z' REAL, 'r' REAL, 'dir_x' REAL, 'dir_y' REAL, 'dir_z' "
-        "REAL, 'color0_r' REAL, 'color0_g' REAL, 'color0_b' REAL, 'color0_a' REAL, 'decay_start' "
-        "REAL, 'ambient_point_ratio' REAL, 'brightness' REAL, PRIMARY KEY('light_id' "
-        "AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'nav_edge' ( 'nav_edge_id' INTEGER NOT NULL, 'nav_graph_id' "
-        "INTEGER NOT NULL, 'nav_node_id_1' INTEGER, 'nav_node_id_2' INTEGER, 'directionality' "
-        "TEXT, 'speed_limit' NUMERIC, 'density' NUMERIC, 'traffic_edge_flag' NUMERIC, "
-        "'nav_clock_mask' NUMERIC, 'nav_clock_type' TEXT, 'width' NUMERIC, 'minimap_edge_flag' "
-        "NUMERIC, FOREIGN KEY('nav_node_id_2') REFERENCES 'nav_node'('nav_node_id'), FOREIGN "
-        "KEY('nav_graph_id') REFERENCES 'nav_graph'('nav_graph_id'), FOREIGN KEY('nav_node_id_1') "
-        "REFERENCES 'nav_node'('nav_node_id'), PRIMARY KEY('nav_edge_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'nav_graph' ( 'nav_graph_id' INTEGER, 'name' TEXT, PRIMARY "
-        "KEY('nav_graph_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'nav_mesh' ( 'nav_mesh_id' INTEGER, PRIMARY KEY('nav_mesh_id' "
-        "AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'nav_node' ( 'nav_node_id' INTEGER NOT NULL, 'nav_graph_id' "
-        "INTEGER NOT NULL, 'nav_mesh_id' INTEGER NOT NULL, 'x' REAL, 'y' REAL, 'z' REAL, "
-        "'level_name' TEXT, 'angle' REAL, 'radius' REAL, 'nav_node_flag' NUMERIC, FOREIGN "
-        "KEY('nav_mesh_id') REFERENCES 'nav_mesh'('nav_mesh_id'), FOREIGN KEY('nav_graph_id') "
-        "REFERENCES 'nav_graph'('nav_graph_id'), PRIMARY KEY('nav_node_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'nav_visible_nodes' ( 'nav_node_id' INTEGER NOT NULL, "
-        "'nav_graph_id' INTEGER NOT NULL, 'nav_edge_id' INTEGER NOT NULL, FOREIGN "
-        "KEY('nav_edge_id') REFERENCES 'nav_mesh'('nav_mesh_id'), FOREIGN KEY('nav_graph_id') "
-        "REFERENCES 'nav_graph'('nav_graph_id'), PRIMARY KEY('nav_node_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'race_path' ( 'race_path_id' INTEGER, 'race' TEXT, 'path' "
-        "INTEGER, PRIMARY KEY('race_path_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'region' ( 'region_id' INTEGER NOT NULL, 'level_name' TEXT, "
-        "'flags' NUMERIC, 'tree' TEXT, 'on_enter' TEXT, 'on_exit' TEXT, 'on_inside' TEXT, PRIMARY "
-        "KEY('region_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'region_face' ( 'region_face_id' INTEGER NOT NULL, 'region_id' "
-        "INTEGER NOT NULL, 'idx' INTEGER, 'kind' TEXT, 'radius' REAL, FOREIGN KEY('region_id') "
-        "REFERENCES 'region'('region_id'), PRIMARY KEY('region_face_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'region_point' ( 'region_point_id' INTEGER, 'region_face_id' "
-        "INTEGER NOT NULL, 'idx' INTEGER, 'x' REAL, 'y' REAL, 'z' REAL, FOREIGN "
-        "KEY('region_face_id') REFERENCES 'region_face'('region_face_id'), PRIMARY "
-        "KEY('region_point_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'region_sphere' ( 'region_sphere_id' INTEGER, 'region_id' "
-        "INTEGER, 'x' REAL, 'y' REAL, 'z' REAL, 'r' REAL, FOREIGN KEY('region_id') REFERENCES "
-        "'region'('region_id'), PRIMARY KEY('region_sphere_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'sample_point' ( 'sample_point_id' INTEGER, 'level_info_id' "
-        "INTEGER NOT NULL, 'source' TEXT, 'x' REAL, 'y' REAL, 'z' REAL, FOREIGN "
-        "KEY('level_info_id') REFERENCES 'level_info'('level_info_id'), PRIMARY "
-        "KEY('sample_point_id' AUTOINCREMENT) );");
-    tx.commit();
-  } catch (std::exception& e) {
-    lg::error("[SQL] Error creating SQLite DB - {}", e.what());
+  // Attempt to open the database
+  const auto opened = sql_db.open_db(db_path.string());
+
+  fs::path schema_file =
+      file_util::get_jak_project_dir() / "goal_src" / "jak2" / "tools" / "editable-schema.sql";
+  if (!file_util::file_exists(schema_file.string())) {
+    lg::error("Unable to locate SQL Schema file at {}", schema_file.string());
+    return;
   }
+
+  const auto success = sql_db.run_query(file_util::read_text_file(schema_file));
+  // TODO - error check
+}
+
+sqlite::GenericResponse run_sql_query(const std::string& query) {
+  if (!sql_db.is_open()) {
+    // TODO - error
+    return sqlite::GenericResponse();
+  }
+  return sql_db.run_query(query);
 }
 
 }  // namespace jak2

@@ -282,10 +282,6 @@ bool GameTextFontBank::valid_char_range(const char in) const {
 std::string GameTextFontBank::convert_game_to_utf8(const char* in) const {
   std::string temp;
   std::string result;
-  std::string test = in;
-  if (test.find("America") != std::string::npos) {
-    printf("");
-  }
   while (*in) {
     auto remap = find_encode_to_utf8(in);
     if (remap != nullptr) {
@@ -555,6 +551,7 @@ static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     // other
     {"A~Y~-21H~-5Vº~Z", "Å"},
     {"N~Y~-6Hº~Z~+10H", "Nº"},
+    {"O~Y~-16H~-1V/~Z", "Ø"},
 
     // tildes
     {"N~Y~-22H~-4V<TIL>~Z", "Ñ"},

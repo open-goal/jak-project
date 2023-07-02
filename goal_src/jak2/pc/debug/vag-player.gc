@@ -63,33 +63,53 @@
 ;; each representing the name of a vag stream. convert using alloc-vag-list
 (define *vagdir-names-list* (alloc-vagdir-names 'debug))
 
-
-(defun sort-string-array ((arr (array string)) (compare-func (function string string object)))
-  "Sort an array, using compare-func to compare elements.
-  The comparison function can return either an integer or a true/false.
-  For integers, use a positive number to represent first > second
-  Ex: (sort lst -) will sort in ascending order
-  For booleans, you must explicitly use #t and not a truthy value.
-  Ex: (sort my-list (lambda ((x int) (y int)) (< x y))) will sort ascending.
-  NOTE: if you use an integer, don't accidentally return #t"
-  (let ((sorted -1))
-    (while (nonzero? sorted)
-      (set! sorted 0)
-      (dotimes (i (1- (-> arr allocated-length)))
-          (let* ((cur (-> arr i))
-                 (next (-> arr (1+ i)))
-                 (result (compare-func cur next))
-                 )
-            (when (and (or (not result) (> (the-as int result) 0)) (!= result #t))
-              (+! sorted 1)
-              (set! (-> arr i) next)
-              (set! (-> arr (1+ i)) cur)
-              )
-            )
-        )
+(defun strcmp ((a string) (b string))
+  "C-style strcmp. Unlike GOAL's string comparison functions, these actually work:
+   (strcmp 'ab' 'a') and (strcmp 'a' 'ab') give the opposite result."
+  (let ((a-ptr (-> a data))
+        (b-ptr (-> b data)))
+    (while (and (nonzero? (-> a-ptr))
+                (= (-> a-ptr) (-> b-ptr)))
+      (&+! a-ptr 1)
+      (&+! b-ptr 1)
       )
+    (- (the int (-> a-ptr)) (the int (-> b-ptr)))
+    )
+  )
+
+(defun string-quicksort-partition ((arr (array string)) (lo int) (hi int))
+  (let ((pivot (-> arr hi))
+        (i (- lo 1))
+        (j lo)
+        )
+    (while (< j hi)
+      (when (< (strcmp (-> arr j) pivot) 0)
+        (+! i 1)
+        (swap! (-> arr i) (-> arr j))
+        )
+      (+! j 1)
+      )
+    (+! i 1)
+    (swap! (-> arr i) (-> arr hi))
+    i
+    )
+  )
+
+(defun-recursive string-quicksort-run (array string) ((arr (array string)) (lo int) (hi int))
+  (when (or (>= lo hi) (< lo 0))
+    (return arr)
+    )
+  (let ((p (string-quicksort-partition arr lo hi)))
+    (string-quicksort-run arr lo (- p 1))
+    (string-quicksort-run arr (+ p 1) hi)
     )
   arr
+  )
+
+(defun string-quicksort ((arr (array string)))
+  "Sort an array of strings alphabetically using quicksort.
+   This is about 100x faster than the normal GOAL sort."
+  (string-quicksort-run arr 0 (- (-> arr length) 1))
   )
 
 
@@ -112,7 +132,7 @@
       (set! (-> list i) (new 'debug 'string 0 *temp-string*)))
 
     ;; return the allocated, filled and sorted array
-    (sort-string-array list string<=?))
+    (string-quicksort list))
   )
 
 
@@ -179,7 +199,7 @@
 
 
 (defstate vag-player-playing (vag-player)
-  
+
   :event (behavior ((from process) (argc int) (msg symbol) (block event-message-block))
     (case msg
       (('play)
@@ -195,13 +215,13 @@
         #t)
       )
     )
-  
+
   :enter (behavior ((index int))
     (set! (-> self master-mode) *master-mode*)
     (set! (-> self debug-menu-hidden) (-> *debug-menu-context* is-hidden))
     (set! (-> self display-art-control) *display-art-control*)
     (set! (-> self gui-kick-str) *gui-kick-str*)
-    
+
     (set-master-mode 'menu) ;; put us in menu mode first
     (true! *display-art-control*) ;; force this on
     (true! (-> *debug-menu-context* is-hidden)) ;; hide debug menu
@@ -309,7 +329,7 @@
               (set! (-> self old-speed) (-> self speed))))
         (suspend))
       )
-    
+
     (go vag-player-idle)
     (none))
   )
@@ -358,6 +378,7 @@
 (defbehavior vag-player-init-by-other vag-player ()
   "external initializer for vag-player process"
   (set! (-> self id) (new 'static 'sound-id))
+  (process-mask-clear! (-> self mask) menu pause)
   (go vag-player-idle)
   )
 
@@ -382,14 +403,14 @@
   "play a vag from its index in the vag list"
   (if (not *vag-player*)
       (vag-player-start))
-  
+
   (send-event (ppointer->process *vag-player*) 'play-index index))
 
 (defun vag-player-play-from-name ((name string))
   "play a vag from its name"
   (if (not *vag-player*)
       (vag-player-start))
-  
+
   (send-event (ppointer->process *vag-player*) 'play name))
 
 (defun vag-list-to-file ((file-name string))

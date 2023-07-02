@@ -673,6 +673,21 @@ TEST(EmitterAVX, VPOR) {
             "C5E1EBDBC4C161EBDDC591EBDBC4C111EBDDC561EBEBC44161EBEDC511EBEBC44111EBED");
 }
 
+TEST(EmitterAVX, VPADDB) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::parallel_add_byte(XMM0 + 3, XMM0 + 3, XMM0 + 3));
+  tester.emit(IGen::parallel_add_byte(XMM0 + 3, XMM0 + 3, XMM0 + 13));
+  tester.emit(IGen::parallel_add_byte(XMM0 + 3, XMM0 + 13, XMM0 + 3));
+  tester.emit(IGen::parallel_add_byte(XMM0 + 3, XMM0 + 13, XMM0 + 13));
+  tester.emit(IGen::parallel_add_byte(XMM0 + 13, XMM0 + 3, XMM0 + 3));
+  tester.emit(IGen::parallel_add_byte(XMM0 + 13, XMM0 + 3, XMM0 + 13));
+  tester.emit(IGen::parallel_add_byte(XMM0 + 13, XMM0 + 13, XMM0 + 3));
+  tester.emit(IGen::parallel_add_byte(XMM0 + 13, XMM0 + 13, XMM0 + 13));
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "C5E1FCDBC4C161FCDDC591FCDBC4C111FCDDC561FCEBC44161FCEDC511FCEBC44111FCED");
+}
+
 TEST(EmitterAVX, VPXOR) {
   CodeTester tester;
   tester.init_code_buffer(1024);

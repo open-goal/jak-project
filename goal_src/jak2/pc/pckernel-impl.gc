@@ -49,8 +49,10 @@
 ;; The Jak 2 version of the pc-settings object.
 (deftype pc-settings-jak2 (pc-settings)
   (
-   (fast-airlock? symbol)
+   (fast-airlock?  symbol)
    (fast-elevator? symbol)
+   (fast-progress? symbol)
+   
    (text-language pc-language) ;; language for game text
 
    ;; debug
@@ -60,6 +62,7 @@
   (:methods
     (eligible-for-fast-elevator? (_type_ process) symbol)
     (get-airlock-speed (_type_) float)
+    (get-airlock-close-speed (_type_) float)
     )
   )
 
@@ -68,39 +71,35 @@
 
 ;; jak 2 discord rpc structure
 (deftype discord-info (structure)
-  ((orb-count (pointer float))
-   (gem-count (pointer float))
-   (death-count (pointer int32))
+  ((orb-count float)
+   (gem-count float)
+   (death-count int32)
    (status string)
    (level string)
    (cutscene? symbol)
-   (time-of-day (pointer float))
+   (time-of-day float)
    (percent-complete float)
+   (focus-status uint32)
+   (task string) ;; currenly active game-task used for mission specific images
    )
   )
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; resets
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defmethod reset-ps2 pc-settings-jak2 ((obj pc-settings-jak2))
-  "Set the default ps2 settings"
-
-  ((method-of-type pc-settings reset-ps2) obj)
-  (set! (-> obj ps2-parts?) #t)
-  (none))
-
-(defmethod reset-misc pc-settings-jak2 ((obj pc-settings-jak2))
+(defmethod reset-misc pc-settings-jak2 ((obj pc-settings-jak2) (call-handlers symbol))
   "Set the default misc settings"
 
-  ((method-of-type pc-settings reset-misc) obj)
+  ((method-of-type pc-settings reset-misc) obj call-handlers)
   (set! (-> obj jetboard-trick-text?) #t)
 
   (set! (-> obj fast-airlock?) #t)
   (set! (-> obj fast-elevator?) #t)
-  (none))
+  (set! (-> obj fast-progress?) #f)
+  0)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; other
@@ -108,6 +107,11 @@
 
 
 (defun get-video-params () *video-params*)
+
+
+(define *progress-speed* 1.5)
+(define *airlock-speed* 1.75)
+(define *airlock-close-speed* 1.75)
 
 
 

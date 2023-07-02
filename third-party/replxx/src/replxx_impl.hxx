@@ -39,6 +39,7 @@
 #include <thread>
 #include <mutex>
 #include <chrono>
+#include <iosfwd>
 
 #include "replxx.hxx"
 #include "history.hxx"
@@ -74,10 +75,10 @@ public:
 		}
 	};
 	typedef std::vector<Completion> completions_t;
+	typedef std::vector<UnicodeString> data_t;
 	typedef std::vector<UnicodeString> hints_t;
 	typedef std::unique_ptr<char[]> utf8_buffer_t;
 	typedef std::unique_ptr<char32_t[]> input_buffer_t;
-	typedef std::vector<char> char_widths_t;
 	typedef std::vector<char32_t> display_t;
 	typedef std::deque<char32_t> key_presses_t;
 	typedef std::deque<std::string> messages_t;
@@ -92,22 +93,22 @@ public:
 	typedef std::unordered_map<int, Replxx::key_press_handler_t> key_press_handlers_t;
 private:
 	typedef int long long unsigned action_trait_t;
-	static action_trait_t const NOOP                       =  0;
-	static action_trait_t const WANT_REFRESH               =  1;
-	static action_trait_t const RESET_KILL_ACTION          =  2;
-	static action_trait_t const SET_KILL_ACTION            =  4;
-	static action_trait_t const DONT_RESET_PREFIX          =  8;
-	static action_trait_t const DONT_RESET_COMPLETIONS     = 16;
-	static action_trait_t const HISTORY_RECALL_MOST_RECENT = 32;
-	static action_trait_t const DONT_RESET_HIST_YANK_INDEX = 64;
+	static action_trait_t const NOOP                       =   0;
+	static action_trait_t const WANT_REFRESH               =   1;
+	static action_trait_t const MOVE_CURSOR                =   2;
+	static action_trait_t const RESET_KILL_ACTION          =   4;
+	static action_trait_t const SET_KILL_ACTION            =   8;
+	static action_trait_t const DONT_RESET_PREFIX          =  16;
+	static action_trait_t const DONT_RESET_COMPLETIONS     =  32;
+	static action_trait_t const HISTORY_RECALL_MOST_RECENT =  64;
+	static action_trait_t const DONT_RESET_HIST_YANK_INDEX = 128;
 private:
 	mutable Utf8String     _utf8Buffer;
 	UnicodeString  _data;
-	char_widths_t  _charWidths; // character widths from mk_wcwidth()
+	int _pos;    // character position in buffer ( 0 <= _pos <= _data[_line].length() )
 	display_t      _display;
 	int _displayInputLength;
 	UnicodeString  _hint;
-	int _pos;    // character position in buffer ( 0 <= _pos <= _len )
 	int _prefix; // prefix length used in common prefix search
 	int _hintSelection; // Currently selected hint.
 	History _history;
@@ -117,7 +118,8 @@ private:
 	int _lastYankSize;
 	int _maxHintRows;
 	int _hintDelay;
-	std::string _breakChars;
+	std::string _wordBreakChars;
+	std::string _subwordBreakChars;
 	int _completionCountCutoff;
 	bool _overwrite;
 	bool _doubleTabCompletion;
@@ -126,6 +128,7 @@ private:
 	bool _immediateCompletion;
 	bool _bracketedPaste;
 	bool _noColor;
+	bool _indentMultiline;
 	named_actions_t _namedActions;
 	key_press_handlers_t _keyPressHandlers;
 	Terminal _terminal;
@@ -137,6 +140,8 @@ private:
 	Replxx::hint_callback_t _hintCallback;
 	key_presses_t _keyPresses;
 	messages_t _messages;
+	std::string _asyncPrompt;
+	bool _updatePrompt;
 	completions_t _completions;
 	int _completionContextLength;
 	int _completionSelection;
@@ -148,6 +153,10 @@ private:
 	hints_t _hintsCache;
 	int _hintContextLenght;
 	Utf8String _hintSeed;
+	bool _hasNewlines;
+	int _oldPos;
+	bool _moveCursor;
+	bool _ignoreCase;
 	mutable std::mutex _mutex;
 public:
 	ReplxxImpl( FILE*, FILE*, FILE* );
@@ -160,12 +169,15 @@ public:
 	void history_add( std::string const& line );
 	bool history_sync( std::string const& filename );
 	bool history_save( std::string const& filename );
+	void history_save( std::ostream& out );
 	bool history_load( std::string const& filename );
+	void history_load( std::istream& in );
 	void history_clear( void );
 	Replxx::HistoryScan::impl_t history_scan( void ) const;
 	int history_size( void ) const;
 	void set_preload_buffer(std::string const& preloadText);
 	void set_word_break_characters( char const* wordBreakers );
+	void set_subword_break_characters( char const* subwordBreakers );
 	void set_max_hint_rows( int count );
 	void set_hint_delay( int milliseconds );
 	void set_double_tab_completion( bool val );
@@ -174,12 +186,14 @@ public:
 	void set_immediate_completion( bool val );
 	void set_unique_history( bool );
 	void set_no_color( bool val );
+	void set_indent_multiline( bool val );
 	void set_max_history_size( int len );
 	void set_completion_count_cutoff( int len );
 	int install_window_change_handler( void );
 	void enable_bracketed_paste( void );
 	void disable_bracketed_paste( void );
 	void print( char const*, int );
+	void set_prompt( std::string prompt );
 	Replxx::ACTION_RESULT clear_screen( char32_t );
 	void emulate_key_press( char32_t );
 	Replxx::ACTION_RESULT invoke( Replxx::ACTION, char32_t );
@@ -187,6 +201,7 @@ public:
 	void bind_key_internal( char32_t, char const* );
 	Replxx::State get_state( void ) const;
 	void set_state( Replxx::State const& );
+	void set_ignore_case( bool val );
 private:
 	ReplxxImpl( ReplxxImpl const& ) = delete;
 	ReplxxImpl& operator = ( ReplxxImpl const& ) = delete;
@@ -195,13 +210,18 @@ private:
 	int get_input_line( void );
 	Replxx::ACTION_RESULT action( action_trait_t, key_press_handler_raw_t const&, char32_t );
 	Replxx::ACTION_RESULT insert_character( char32_t );
+	Replxx::ACTION_RESULT new_line( char32_t );
 	Replxx::ACTION_RESULT go_to_begining_of_line( char32_t );
 	Replxx::ACTION_RESULT go_to_end_of_line( char32_t );
 	Replxx::ACTION_RESULT move_one_char_left( char32_t );
 	Replxx::ACTION_RESULT move_one_char_right( char32_t );
+	template <bool subword>
 	Replxx::ACTION_RESULT move_one_word_left( char32_t );
+	template <bool subword>
 	Replxx::ACTION_RESULT move_one_word_right( char32_t );
+	template <bool subword>
 	Replxx::ACTION_RESULT kill_word_to_left( char32_t );
+	template <bool subword>
 	Replxx::ACTION_RESULT kill_word_to_right( char32_t );
 	Replxx::ACTION_RESULT kill_to_whitespace_to_left( char32_t );
 	Replxx::ACTION_RESULT kill_to_begining_of_line( char32_t );
@@ -209,8 +229,11 @@ private:
 	Replxx::ACTION_RESULT yank( char32_t );
 	Replxx::ACTION_RESULT yank_cycle( char32_t );
 	Replxx::ACTION_RESULT yank_last_arg( char32_t );
+	template <bool subword>
 	Replxx::ACTION_RESULT capitalize_word( char32_t );
+	template <bool subword>
 	Replxx::ACTION_RESULT lowercase_word( char32_t );
+	template <bool subword>
 	Replxx::ACTION_RESULT uppercase_word( char32_t );
 	Replxx::ACTION_RESULT transpose_characters( char32_t );
 	Replxx::ACTION_RESULT abort_line( char32_t );
@@ -218,11 +241,15 @@ private:
 	Replxx::ACTION_RESULT delete_character( char32_t );
 	Replxx::ACTION_RESULT backspace_character( char32_t );
 	Replxx::ACTION_RESULT commit_line( char32_t );
+	Replxx::ACTION_RESULT line_next( char32_t );
+	Replxx::ACTION_RESULT line_previous( char32_t );
 	Replxx::ACTION_RESULT history_next( char32_t );
 	Replxx::ACTION_RESULT history_previous( char32_t );
 	Replxx::ACTION_RESULT history_move( bool );
 	Replxx::ACTION_RESULT history_first( char32_t );
 	Replxx::ACTION_RESULT history_last( char32_t );
+	Replxx::ACTION_RESULT history_restore( char32_t );
+	Replxx::ACTION_RESULT history_restore_current( char32_t );
 	Replxx::ACTION_RESULT history_jump( bool );
 	Replxx::ACTION_RESULT hint_next( char32_t );
 	Replxx::ACTION_RESULT hint_previous( char32_t );
@@ -246,15 +273,22 @@ private:
 	completions_t call_completer( std::string const& input, int& ) const;
 	hints_t call_hinter( std::string const& input, int&, Replxx::Color& color ) const;
 	void refresh_line( HINT_ACTION = HINT_ACTION::REGENERATE );
+	void move_cursor( void );
+	void indent( void );
+	int virtual_render( char32_t const*, int, int&, int&, Prompt const* = nullptr );
 	void render( char32_t );
 	void render( HINT_ACTION );
-	int handle_hints( HINT_ACTION );
+	void handle_hints( HINT_ACTION );
 	void set_color( Replxx::Color );
 	int context_length( void );
+	int prev_newline_position( int ) const;
+	int next_newline_position( int ) const;
+	int pos_in_line( void ) const;
 	void clear( void );
 	void repaint( void );
+	template <bool subword>
 	bool is_word_break_character( char32_t ) const;
-	void dynamicRefresh(Prompt& pi, char32_t* buf32, int len, int pos);
+	void dynamic_refresh(Prompt& oldPrompt, Prompt& newPrompt, char32_t* buf32, int len, int pos);
 	char const* finalize_input( char const* );
 	void clear_self_to_end_of_screen( Prompt const* = nullptr );
 	typedef struct {

@@ -8,6 +8,7 @@
 
  |#
 
+(define-extern get-active-mission-description (function discord-info string))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; methods
@@ -51,36 +52,42 @@
   )
 
 
-(defmethod update pc-settings-jak2 ((obj pc-settings-jak2))
-  "handle the text parsing input for the 'settings' group"
-
-  ((method-of-type pc-settings update) obj)
-
-  (set! (-> obj movie?) (and (!= #f *scene-player*) (movie?)))
-  (none))
+(defun real-movie? ()
+  "are we in an actual cutscene and should letterbox the view?"
+  (and (!= #f *scene-player*) (nonzero? movie?) (movie?)))
 
 (defmethod update-discord-rpc pc-settings-jak2 ((obj pc-settings-jak2))
   "update discord rpc module"
   (let ((info (new 'stack 'discord-info)))
-    (set! (-> info orb-count) (&-> *game-info* skill-total))
-    (set! (-> info gem-count) (&-> *game-info* gem-total))
-    (set! (-> info death-count) (&-> *game-info* total-deaths))
-    (set! (-> info status) "Playing Jak II™")
+    (set! (-> info orb-count) (-> *game-info* skill-total))
+    (set! (-> info gem-count) (-> *game-info* gem-total))
+    (set! (-> info death-count) (-> *game-info* total-deaths))
+    (set! (-> info task) "unknown")
+    (set! (-> info status) (get-active-mission-description info))
     ;; grab the name of the level we're in
-    (if (and *level* (level-get-target-inside *level*))
-      (set! (-> info level) (symbol->string (-> (level-get-target-inside *level*) name)))
-      (set! (-> info level) "unknown"))
-    (set! (-> info cutscene?) #f) ;; TODO - cutscenes don't work yet
-    (set! (-> info time-of-day) (&-> *time-of-day-context* time))
+    (cond
+      ((or (aif (level-get *level* 'title) (= (-> it status) 'active))
+           (and *progress-process*
+                (= 'title (-> *progress-process* 0 state-stack 0))))
+        ;; in title screen.
+        (set! (-> info level) (symbol->string 'title))
+        (set! (-> info status) "In title screen"))
+      (else
+        (set! (-> info level) (aif (-> *load-state* vis-nick) (symbol->string it) "unknown")))
+      )
+    (set! (-> info cutscene?) (real-movie?))
+    (set! (-> info time-of-day) (-> *time-of-day-context* time))
     (set! (-> info percent-complete) (calculate-percentage *game-info*))
+    (set! (-> info focus-status) (if *target* (-> *target* focus-status) 0))
     ;; TODO - wrapping in `with-profiler` causes an error, fix it
-    (pc-discord-rpc-update info))
+    (pc-discord-rpc-update info)
+    )
   (none))
 
 (defmethod update-speedrun pc-settings-jak2 ((obj pc-settings-jak2))
   "update speedrun module"
   (when (-> *pc-settings* speedrunner-mode?)
-   (speedrun-mode-update))
+    (speedrun-mode-update))
   (none))
 
 (defmethod update-video-hacks pc-settings-jak2 ((obj pc-settings-jak2))
@@ -94,16 +101,20 @@
 (defmethod eligible-for-fast-elevator? pc-settings-jak2 ((obj pc-settings-jak2) (proc process))
   "is this a valid process for a fast elevator?"
   (and (-> obj fast-elevator?) (not (or (string= (-> proc name) "drill-lift-1")
-                                        (string= (-> proc name )"drill-lift-2"))))
+                                        (string= (-> proc name) "drill-lift-2"))))
   )
 
-(define *airlock-speed* 1.5)
 (defmethod get-airlock-speed pc-settings-jak2 ((obj pc-settings-jak2))
   "return the current speed modifier for airlocks"
   (if (-> obj fast-airlock?)
       *airlock-speed*
-      1.0)
-  )
+      1.0))
+
+(defmethod get-airlock-close-speed pc-settings-jak2 ((obj pc-settings-jak2))
+  "return the current closing speed modifier for airlocks"
+  (if (-> obj fast-airlock?)
+      *airlock-close-speed*
+      1.0))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -119,6 +130,7 @@
     (("jetboard-trick-text?") (set! (-> obj jetboard-trick-text?) (file-stream-read-symbol file)))
     (("fast-airlock?") (set! (-> obj fast-airlock?) (file-stream-read-symbol file)))
     (("fast-elevator?") (set! (-> obj fast-elevator?) (file-stream-read-symbol file)))
+    (("fast-progress?") (set! (-> obj fast-progress?) (file-stream-read-symbol file)))
     (("text-language") (set! (-> obj text-language) (the-as pc-language (file-stream-read-int file))))
     )
   0)
@@ -130,6 +142,7 @@
   (format file "  (jetboard-trick-text? ~A)~%" (-> obj jetboard-trick-text?))
   (format file "  (fast-airlock? ~A)~%" (-> obj fast-airlock?))
   (format file "  (fast-elevator? ~A)~%" (-> obj fast-elevator?))
+  (format file "  (fast-progress? ~A)~%" (-> obj fast-progress?))
   (format file "  (text-language ~D)~%" (-> obj text-language))
   0)
 
@@ -150,9 +163,9 @@
                                      (bucket-id debug-no-zbuf1))
           (draw-string-xy *pc-settings-built-sha*
                           buf
-                          0 10
+                          512 14
                           (font-color flat-yellow)
-                          (font-flags shadow kerning))))
+                          (font-flags right shadow kerning))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; process pools

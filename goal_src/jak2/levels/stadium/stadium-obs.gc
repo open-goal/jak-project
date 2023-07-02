@@ -344,91 +344,79 @@ This commonly includes things such as:
                                     )
         )
 
-;; WARN: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 109]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 114]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 119]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 142]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 59]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 67]
 (defbehavior defend-stadium-rift-rider-handler rift-rider ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-    (the-as
-      object
-      (cond
-        ((= v1-0 'get-position)
-         (let ((s5-1 (new 'stack-no-clear 'vector)))
-           (set! (-> s5-1 quad) (-> self root-override-2 trans quad))
-           (let ((s4-0 (-> self root-override-2 quat)))
-             (case (-> arg3 param 0)
-               (('left)
-                (vector+float*! s5-1 s5-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) s4-0) 24576.0)
-                (vector+float*!
-                  (the-as vector (-> arg3 param 1))
-                  s5-1
-                  (vector-x-quaternion! (new 'stack-no-clear 'vector) s4-0)
-                  12288.0
-                  )
-                )
-               (('right)
-                (vector+float*!
-                  (the-as vector (-> arg3 param 1))
-                  s5-1
-                  (vector-x-quaternion! (new 'stack-no-clear 'vector) s4-0)
-                  -12288.0
-                  )
-                )
-               )
-             )
+  (case arg2
+    (('get-position)
+     (let ((s5-1 (new 'stack-no-clear 'vector)))
+       (set! (-> s5-1 quad) (-> self root-override-2 trans quad))
+       (let ((s4-0 (-> self root-override-2 quat)))
+         (case (-> arg3 param 0)
+           (('left)
+            (vector+float*! s5-1 s5-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) s4-0) 24576.0)
+            (vector+float*!
+              (the-as vector (-> arg3 param 1))
+              s5-1
+              (vector-x-quaternion! (new 'stack-no-clear 'vector) s4-0)
+              12288.0
+              )
+            )
+           (('right)
+            (vector+float*!
+              (the-as vector (-> arg3 param 1))
+              s5-1
+              (vector-x-quaternion! (new 'stack-no-clear 'vector) s4-0)
+              -12288.0
+              )
+            )
            )
-         (set! (-> (the-as vector (-> arg3 param 1)) y)
-               (-> (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (-> self path-pos) 'interp) y)
-               )
-         (-> arg3 param 1)
          )
-        ((= v1-0 'die)
-         (go-virtual defend-stadium-die)
-         )
-        ((= v1-0 'touch)
-         (let* ((gp-1 (-> arg3 param 0))
-                (s3-7 arg0)
-                (s4-1 (if (type? s3-7 process-focusable)
-                          s3-7
-                          )
+       )
+     (set! (-> (the-as vector (-> arg3 param 1)) y)
+           (-> (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (-> self path-pos) 'interp) y)
+           )
+     (-> arg3 param 1)
+     )
+    (('die)
+     (go-virtual defend-stadium-die)
+     )
+    (('touch)
+     (let* ((gp-1 (-> arg3 param 0))
+            (s3-7 arg0)
+            (s4-1 (if (type? s3-7 process-focusable)
+                      s3-7
                       )
-                )
-           (if (and gp-1
-                    s4-1
-                    ((method-of-type touching-shapes-entry prims-touching-action?)
-                     (the-as touching-shapes-entry gp-1)
-                     (-> self root-override-2)
-                     (collide-action no-standon)
-                     (collide-action)
+                  )
+            )
+       (if (and gp-1
+                s4-1
+                ((method-of-type touching-shapes-entry prims-touching-action?)
+                 (the-as touching-shapes-entry gp-1)
+                 (-> self root-override-2)
+                 (collide-action no-standon)
+                 (collide-action)
+                 )
+                (not (logtest? (-> self root-override-2 penetrated-by)
+                               (-> (the-as collide-shape (-> (the-as process-drawable s4-1) root)) penetrate-using)
+                               )
                      )
-                    (not (logtest? (-> self root-override-2 penetrated-by)
-                                   (-> (the-as collide-shape (-> (the-as process-drawable s4-1) root)) penetrate-using)
-                                   )
-                         )
-                    )
-               (send-shoves (-> self root-override-2) arg0 (the-as touching-shapes-entry gp-1) 0.7 6144.0 16384.0)
-               )
+                )
+           (send-shoves (-> self root-override-2) arg0 (the-as touching-shapes-entry gp-1) 0.7 6144.0 16384.0)
            )
-         )
-        ((= v1-0 'trans)
-         (-> self root-override-2 trans)
-         )
-        ((= v1-0 'quat)
-         (-> self root-override-2 quat)
-         )
-        ((= v1-0 'hold)
-         (set! (-> self escort-force (-> arg3 param 0) y)
-               (seek (-> self escort-force (-> arg3 param 0) y) 1.0 (* 2.0 (-> self clock seconds-per-frame)))
-               )
-         )
-        (else
-          (rigid-body-object-event-handler arg0 arg1 arg2 arg3)
-          )
-        )
+       )
+     )
+    (('trans)
+     (-> self root-override-2 trans)
+     )
+    (('quat)
+     (-> self root-override-2 quat)
+     )
+    (('hold)
+     (set! (-> self escort-force (-> arg3 param 0) y)
+           (seek (-> self escort-force (-> arg3 param 0) y) 1.0 (* 2.0 (-> self clock seconds-per-frame)))
+           )
+     )
+    (else
+      (rigid-body-object-event-handler arg0 arg1 arg2 arg3)
       )
     )
   )

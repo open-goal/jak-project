@@ -1,14 +1,10 @@
 #include "rule_config.h"
 
-namespace formatter {
-
-// TODO - these are eventually going to need a refactor too, my depth is based on the true
-// tree-depth, in reality we want it to be relative to the forms defined here because imagine
-// multiple `let`s in the same form, their depths will be different but you want them relatively
-// formatted the same
+namespace formatter_rules {
+namespace config {
 
 // TODO - populate these more
 
-const std::unordered_map<std::string, std::vector<std::shared_ptr<IndentationRule>>>
-    opengoal_indentation_rules = {{"defun", {std::make_shared<InnerIndentationRule>(1)}}};
-}  // namespace formatter
+std::unordered_map<std::string, FormConfiguration> opengoal_form_config = {};
+}  // namespace config
+}  // namespace formatter_rules

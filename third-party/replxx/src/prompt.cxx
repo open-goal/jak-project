@@ -25,14 +25,13 @@ namespace replxx {
 Prompt::Prompt( Terminal& terminal_ )
 	: _extraLines( 0 )
 	, _lastLinePosition( 0 )
-	, _previousInputLen( 0 )
-	, _previousLen( 0 )
+	, _cursorRowOffset( 0 )
 	, _screenColumns( 0 )
 	, _terminal( terminal_ ) {
 }
 
 void Prompt::write() {
-	_terminal.write32( _text.get(), _byteCount );
+	_terminal.write32( _text.get(), _text.length() );
 }
 
 void Prompt::update_screen_columns( void ) {
@@ -40,77 +39,30 @@ void Prompt::update_screen_columns( void ) {
 }
 
 void Prompt::set_text( UnicodeString const& text_ ) {
+	_text = text_;
+	update_state();
+}
+
+void Prompt::update_state() {
+	_cursorRowOffset -= _extraLines;
 	_extraLines = 0;
 	_lastLinePosition = 0;
-	_previousInputLen = 0;
-	_previousLen = 0;
 	_screenColumns = 0;
 	update_screen_columns();
 	// strip control characters from the prompt -- we do allow newline
-	_text = text_;
-	UnicodeString::const_iterator in( text_.begin() );
-	UnicodeString::iterator out( _text.begin() );
+	UnicodeString::const_iterator in( _text.begin() );
 
-	int len = 0;
 	int x = 0;
+	int renderedSize( 0 );
+	_characterCount = virtual_render( _text.get(), _text.length(), x, _extraLines, _screenColumns, 0, _text.get(), &renderedSize );
+	_lastLinePosition = _characterCount - x;
+	_text.erase( renderedSize, _text.length() - renderedSize );
 
-	bool const strip = !tty::out;
+	_cursorRowOffset += _extraLines;
+}
 
-	while (in != text_.end()) {
-		char32_t c = *in;
-		if ('\n' == c || !is_control_code(c)) {
-			*out = c;
-			++out;
-			++in;
-			++len;
-			if ('\n' == c || ++x >= _screenColumns) {
-				x = 0;
-				++_extraLines;
-				_lastLinePosition = len;
-			}
-		} else if (c == '\x1b') {
-			if ( strip ) {
-				// jump over control chars
-				++in;
-				if (*in == '[') {
-					++in;
-					while ( ( in != text_.end() ) && ( ( *in == ';' ) || ( ( ( *in >= '0' ) && ( *in <= '9' ) ) ) ) ) {
-						++in;
-					}
-					if (*in == 'm') {
-						++in;
-					}
-				}
-			} else {
-				// copy control chars
-				*out = *in;
-				++out;
-				++in;
-				if (*in == '[') {
-					*out = *in;
-					++out;
-					++in;
-					while ( ( in != text_.end() ) && ( ( *in == ';' ) || ( ( ( *in >= '0' ) && ( *in <= '9' ) ) ) ) ) {
-						*out = *in;
-						++out;
-						++in;
-					}
-					if (*in == 'm') {
-						*out = *in;
-						++out;
-						++in;
-					}
-				}
-			}
-		} else {
-			++in;
-		}
-	}
-	_characterCount = len;
-	_byteCount = static_cast<int>(out - _text.begin());
-
-	_indentation = len - _lastLinePosition;
-	_cursorRowOffset = _extraLines;
+int Prompt::indentation() const {
+	return _characterCount - _lastLinePosition;
 }
 
 // Used with DynamicPrompt (history search)
@@ -123,31 +75,15 @@ DynamicPrompt::DynamicPrompt( Terminal& terminal_, int initialDirection )
 	: Prompt( terminal_ )
 	, _searchText()
 	, _direction( initialDirection ) {
-	update_screen_columns();
-	_cursorRowOffset = 0;
-	const UnicodeString* basePrompt =
-			(_direction > 0) ? &forwardSearchBasePrompt : &reverseSearchBasePrompt;
-	size_t promptStartLength = basePrompt->length();
-	_characterCount = static_cast<int>(promptStartLength + endSearchBasePrompt.length());
-	_byteCount = _characterCount;
-	_lastLinePosition = _characterCount; // TODO fix this, we are asssuming
-	                                        // that the history prompt won't wrap (!)
-	_previousLen = _characterCount;
-	_text.assign( *basePrompt ).append( endSearchBasePrompt );
-	calculate_screen_position(
-		0, 0, screen_columns(), _characterCount,
-		_indentation, _extraLines
-	);
+	updateSearchPrompt();
 }
 
 void DynamicPrompt::updateSearchPrompt(void) {
+	update_screen_columns();
 	const UnicodeString* basePrompt =
 			(_direction > 0) ? &forwardSearchBasePrompt : &reverseSearchBasePrompt;
-	size_t promptStartLength = basePrompt->length();
-	_characterCount = static_cast<int>(promptStartLength + _searchText.length() +
-																 endSearchBasePrompt.length());
-	_byteCount = _characterCount;
 	_text.assign( *basePrompt ).append( _searchText ).append( endSearchBasePrompt );
+	update_state();
 }
 
 }
