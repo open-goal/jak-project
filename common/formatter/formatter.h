@@ -4,6 +4,7 @@
 #include <string>
 
 #include "common/formatter/rules/formatting_rules.h"
+#include "common/formatter/rules/rule_config.h"
 
 #include "tree_sitter/api.h"
 

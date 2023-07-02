@@ -16,9 +16,11 @@ FormFormattingConfig new_flow_rule(int start_index) {
 
 FormFormattingConfig new_binding_rule() {
   FormFormattingConfig cfg;
-  cfg.has_bindings = true;
+  cfg.bindings_at_index = 1;
+  cfg.bindings_force_newlines = true;
   cfg.force_flow = true;
-  cfg.inline_until_index = 2;
+  cfg.skip_newlines_until_index = 2;
+  cfg.force_newline_at_indices = {2};
   return cfg;
 }
 

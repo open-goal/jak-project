@@ -201,31 +201,6 @@ bool form_contains_comment(const FormatterTreeNode& node) {
 bool form_can_be_inlined(const std::string& curr_text,
                          const FormatterTreeNode& list_node,
                          const FormatterTreeNode& containing_form) {
-  // Check if there is any form configuration for this
-  // TODO - honestly should just have an is_list metadata
-  if (!list_node.refs.empty() && list_node.refs.at(0).token) {
-    const auto& form_head = list_node.refs.at(0).token;
-    if (form_head && config::opengoal_form_config.find(form_head.value()) !=
-                         config::opengoal_form_config.end()) {
-      const auto& form_config = config::opengoal_form_config.at(form_head.value());
-      if (form_config.has_bindings) {
-        return !form_exceed_line_width(curr_text, list_node, 0) && let::can_be_inlined(list_node);
-      }
-    }
-  }
-  // Alternatively, we may be checking the binding list within a form
-  // this may be inlinable
-  if (!containing_form.refs.empty() && containing_form.refs.at(0).token) {
-    const auto& form_head = containing_form.refs.at(0).token;
-    if (form_head && config::opengoal_form_config.find(form_head.value()) !=
-                         config::opengoal_form_config.end()) {
-      const auto& form_config = config::opengoal_form_config.at(form_head.value());
-      if (form_config.has_bindings && !let::can_be_inlined(containing_form)) {
-        return false;
-      }
-    }
-  }
-
   // is the form too long to fit on a line TODO - increase accuracy here
   if (form_exceed_line_width(curr_text, list_node, 0)) {
     return false;
@@ -237,22 +212,36 @@ bool form_can_be_inlined(const std::string& curr_text,
   return true;
 }
 
-bool should_form_flow(const FormatterTreeNode& list_node) {
+bool should_form_flow(const FormatterTreeNode& list_node,
+                      const FormatterTreeNode& containing_form) {
+  // TODO - make a function to make grabbing this metadata easier...
   // TODO - honestly should just have an is_list metadata
-  if (list_node.refs.empty() || !list_node.refs.at(0).token) {
-    return false;
+  if (!list_node.refs.empty() && !list_node.refs.at(0).token) {
+    // if the first element is a comment, force a flow
+    if (list_node.refs.size() > 1 && list_node.refs.at(1).metadata.is_comment) {
+      return true;
+    }
+    const auto& form_head = list_node.refs.at(0).token;
+    // See if we have any configuration for this form
+    if (form_head && config::opengoal_form_config.find(form_head.value()) !=
+                         config::opengoal_form_config.end()) {
+      const auto& form_config = config::opengoal_form_config.at(form_head.value());
+      return form_config.force_flow;
+    }
   }
-  // if the first element is a comment, force a flow
-  if (list_node.refs.size() > 1 && list_node.refs.at(1).metadata.is_comment) {
-    return true;
+
+  // TODO - cleanup, might be inside a let
+  if (!containing_form.refs.empty() && containing_form.refs.at(0).token) {
+    const auto& form_head = containing_form.refs.at(0).token;
+    if (form_head && config::opengoal_form_config.find(form_head.value()) !=
+                         config::opengoal_form_config.end()) {
+      const auto& form_config = config::opengoal_form_config.at(form_head.value());
+      if (form_config.force_flow) {
+        return true;
+      }
+    }
   }
-  const auto& form_head = list_node.refs.at(0).token;
-  // See if we have any configuration for this form
-  if (form_head &&
-      config::opengoal_form_config.find(form_head.value()) != config::opengoal_form_config.end()) {
-    const auto& form_config = config::opengoal_form_config.at(form_head.value());
-    return form_config.force_flow;
-  }
+
   return false;
 }
 
@@ -323,7 +312,7 @@ void align_lines(std::string& text,
                  const bool constant_pair_form,
                  const bool flowing) {
   const auto lines = str_util::split(text);
-  // TODO - unsafe (breaks on a list of lists)
+  int start_index = 1;
   int alignment_width = 2;
   if (constant_pair_form &&
       constant_types.find(containing_node.refs.at(0).metadata.node_type) != constant_types.end()) {
@@ -332,20 +321,30 @@ void align_lines(std::string& text,
     // If the form has a token (it's a normal list)
     if (containing_node.refs.at(0).token) {
       alignment_width = containing_node.refs.at(0).token.value().length() + 2;
+      if (!node.token) {
+        alignment_width++;
+      }
     } else {
-      // otherwise, it's a list of lists, no alignment should be needed (i think) TODO
-      return;
+      // otherwise, it's a list of lists
+      alignment_width = 1;
     }
-    
+  } else if (!node.token) {
+    // If it's a list of lists
+    alignment_width = 1;
   }
   std::string aligned_form = "";
   for (int i = 0; i < lines.size(); i++) {
-    aligned_form += str_util::repeat(alignment_width, " ") + lines.at(i);
+    if (i >= start_index) {
+      aligned_form += str_util::repeat(alignment_width, " ");
+    }
+    aligned_form += lines.at(i);
     if (i != lines.size() - 1) {
       aligned_form += "\n";
     }
   }
-  text = aligned_form;
+  if (!aligned_form.empty()) {
+    text = aligned_form;
+  }
 }
 }  // namespace indent
 namespace let {

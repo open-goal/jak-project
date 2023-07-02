@@ -44,7 +44,7 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
     // because recursion!)
     inline_form = indent::form_can_be_inlined(curr_form, curr_node, containing_node);
   }
-  const bool flowing = indent::should_form_flow(curr_node);
+  const bool flowing = indent::should_form_flow(curr_node, containing_node);
   // TODO - might want to make some kind of per-form config struct, simplify the passing around of
   // info below
   for (int i = 0; i < curr_node.refs.size(); i++) {
@@ -55,15 +55,31 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
       inline_element = indent::inline_form_element(curr_node, i).value();
     }
     // Append a newline if needed
-    if (!inline_element) {
+    // TODO - cleanup / move
+    bool is_binding_list = false;
+    bool force_newline = false;
+    if (!curr_node.refs.empty() && curr_node.refs.at(0).token) {
+      const auto& form_head = curr_node.refs.at(0).token;
+      if (form_head && config::opengoal_form_config.find(form_head.value()) !=
+                           config::opengoal_form_config.end()) {
+        const auto& form_config = config::opengoal_form_config.at(form_head.value());
+        force_newline = std::find(form_config.force_newline_at_indices.begin(),
+                                  form_config.force_newline_at_indices.end(),
+                                  i) != form_config.force_newline_at_indices.end();
+        is_binding_list = form_config.bindings_at_index == i;
+      }
+    }
+
+    if (!inline_element || is_binding_list || force_newline) {
       indent::append_newline(curr_form, ref, curr_node, tree_depth, i, constant_pair_form, flowing);
     }
+    // TODO - indent the line (or don't)
     // Either print the element's token, or recursively format it as well
     if (ref.token) {
       // TODO depth hard-coded to 1, i think this can be removed, since
       // forms are always done bottom-top recursively, they always act
       // independently as if it was the shallowest depth
-      if (!inline_element) {
+      if (!inline_element|| force_newline) {
         indent::indent_line(curr_form, ref, curr_node, 1, i, flowing);
       }
       if (ref.metadata.node_type == "comment" && ref.metadata.is_inline) {
@@ -78,7 +94,8 @@ std::string apply_formatting(const FormatterTreeNode& curr_node,
       }
     } else {
       auto formatted_form = apply_formatting(ref, "", tree_depth + 1, curr_node);
-      if (!curr_node.metadata.is_top_level && !inline_element) {
+      // TODO - align inner lines only
+      if (!curr_node.metadata.is_top_level) {
         indent::align_lines(formatted_form, ref, curr_node, constant_pair_form, flowing);
       }
       curr_form += formatted_form;
