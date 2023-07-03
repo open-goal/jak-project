@@ -104,8 +104,8 @@ void add_field(StructureType* structure,
   double score = 0;
   bool skip_in_decomp = false;
   std::optional<TypeSpec> decomp_as_ts = std::nullopt;
-  Field overlay_field;
-  bool overlay = false;
+  Field override_field;
+  bool override = false;
 
   if (!rest->is_empty_list()) {
     if (car(rest).is_int()) {
@@ -128,9 +128,15 @@ void add_field(StructureType* structure,
       } else if (opt_name == ":offset") {
         offset_override = get_int(car(rest));
         rest = cdr(rest);
+      } else if (opt_name == ":override") {
+        override = true;
+        if (!structure->lookup_field(name, &override_field)) {
+          throw std::runtime_error(
+              fmt::format("Field {} not found to override", name));
+        }
       } else if (opt_name == ":overlay-at") {
-        overlay = true;
         auto field_name = symbol_string(car(rest));
+        Field overlay_field;
         if (!structure->lookup_field(field_name, &overlay_field)) {
           throw std::runtime_error(
               fmt::format("Field {} not found to overlay for {}", field_name, name));
@@ -157,20 +163,20 @@ void add_field(StructureType* structure,
     }
   }
 
-  if (overlay && name == overlay_field.name()) {
+  if (override && name == override_field.name()) {
     // override field, e.g. (root collide-shape :overlay-at root)
     // does not add new field, merely rewrites inherited one
-    if (!ts->tc(overlay_field.type(), type)) {
+    if (!ts->tc(override_field.type(), type)) {
       throw std::runtime_error(
           fmt::format("Wanted to override field {}, but type {} isn't child of {}",
-                      overlay_field.name(), type.print(), overlay_field.type().print()));
+                      override_field.name(), type.print(), override_field.type().print()));
     }
-    if (overlay_field.is_inline() != is_inline || overlay_field.is_dynamic() != is_dynamic ||
-        (array_size != -1 && overlay_field.array_size() != array_size)) {
-      throw std::runtime_error(fmt::format(
-          "Wanted to override field {}, but some parameters were different", overlay_field.name()));
+    if (override_field.is_inline() != is_inline || override_field.is_dynamic() != is_dynamic ||
+        (array_size != -1 && override_field.array_size() != array_size)) {
+      throw std::runtime_error(fmt::format("Wanted to override field {}, but some parameters were different",
+                      override_field.name()));
     }
-    structure->override_field_type(overlay_field.name(), type);
+    structure->override_field_type(override_field.name(), type);
   } else {
     // new unique field
     int actual_offset =
@@ -763,7 +769,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype,
                       parent_type_name));
     }
     new_type->inherit(pto);
-    ts->forward_declare_type_as(name, "basic");
+    ts->forward_declare_type_as(name, pto->get_name());
     auto sr =
         parse_structure_def(new_type.get(), ts, field_list_obj, options_obj, constants_to_use);
     result.flags = sr.flags;
@@ -793,7 +799,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype,
     auto pto = dynamic_cast<StructureType*>(ts->lookup_type(parent_type));
     ASSERT(pto);
     new_type->inherit(pto);
-    ts->forward_declare_type_as(name, "structure");
+    ts->forward_declare_type_as(name, pto->get_name());
     auto sr =
         parse_structure_def(new_type.get(), ts, field_list_obj, options_obj, constants_to_use);
     result.flags = sr.flags;

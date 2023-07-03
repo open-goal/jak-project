@@ -2010,7 +2010,6 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
 
   const std::string inline_string = ":inline";
   const std::string dynamic_string = ":dynamic";
-  const std::string user_offset_string = ":offset xxx";
   bool has_offset_assert = false;
 
   for (size_t i = st->first_unique_field_idx(); i < st->fields().size(); i++) {
@@ -2052,36 +2051,41 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
     result += field.type().print();
     result.append(1 + (longest_type_name - int(field.type().print().size())), ' ');
 
-    std::string mods;
-    if (field.is_array() && !field.is_dynamic()) {
-      mods += std::to_string(field.array_size());
-      mods += " ";
-    }
-
-    if (field.is_inline()) {
-      mods += inline_string;
-      mods += " ";
-    }
-
-    if (field.is_dynamic()) {
-      mods += dynamic_string;
-      mods += " ";
-    }
-
-    result.append(mods);
-    result.append(longest_mods - int(mods.size() - 1), ' ');
-
-    if (!field.user_placed()) {
-      result.append(":offset-assert ");
+    if (field.m_override_type) {
+      result.append(longest_mods, ' ');
+      result.append(fmt::format(":overlay-at {}", field.name()));
     } else {
-      if (has_offset_assert) {
-        result.append(":offset        ");
-      } else {
-        result.append(":offset ");
+      std::string mods;
+      if (field.is_array() && !field.is_dynamic()) {
+        mods += std::to_string(field.array_size());
+        mods += " ";
       }
-    }
 
-    result.append(fmt::format("{:3d}", field.offset()));
+      if (field.is_inline()) {
+        mods += inline_string;
+        mods += " ";
+      }
+
+      if (field.is_dynamic()) {
+        mods += dynamic_string;
+        mods += " ";
+      }
+
+      result.append(mods);
+      result.append(longest_mods - int(mods.size() - 1), ' ');
+
+      if (!field.user_placed()) {
+        result.append(":offset-assert ");
+      } else {
+        if (has_offset_assert) {
+          result.append(":offset        ");
+        } else {
+          result.append(":offset ");
+        }
+      }
+
+      result.append(fmt::format("{:3d}", field.offset()));
+    }
     result.append(")\n   ");
   }
 

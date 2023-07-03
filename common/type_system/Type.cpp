@@ -917,6 +917,7 @@ void StructureType::override_field_type(const std::string& field_name, const Typ
   for (auto& x : m_fields) {
     if (x.name() == field_name) {
       x.type() = new_type;
+      x.set_override_type(new_type);
     }
   }
 }

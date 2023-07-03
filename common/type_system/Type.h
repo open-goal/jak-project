@@ -222,6 +222,7 @@ class Field {
   void set_dynamic();
   void set_array(int size);
   void set_inline();
+  void set_override_type(const TypeSpec& new_type) { m_override_type = new_type; }
   void mark_as_user_placed() { m_placed_by_user = true; }
   std::string print() const;
   const TypeSpec& type() const { return m_type; }
@@ -260,6 +261,7 @@ class Field {
 
   std::string m_name;
   TypeSpec m_type;
+  std::optional<TypeSpec> m_override_type = std::nullopt;
   int m_offset = -1;
   bool m_inline =
       false;  // does not make sense if m_type is value, and not an array and not dynamic
