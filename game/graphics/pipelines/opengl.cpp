@@ -319,7 +319,7 @@ GLDisplay::GLDisplay(SDL_Window* window, SDL_GLContext gl_context, bool is_main)
 
   // Register commands
   m_input_manager->register_command(CommandBinding::Source::KEYBOARD,
-                                    CommandBinding(SDLK_LALT, [&]() {
+                                    CommandBinding(SDLK_F12, [&]() {
                                       if (!Gfx::g_debug_settings.ignore_hide_imgui) {
                                         set_imgui_visible(!is_imgui_visible());
                                       }
