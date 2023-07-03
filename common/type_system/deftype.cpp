@@ -103,6 +103,7 @@ void add_field(StructureType* structure,
   int offset_assert = -1;
   double score = 0;
   bool skip_in_decomp = false;
+  std::optional<TypeSpec> decomp_as_ts = std::nullopt;
 
   if (!rest->is_empty_list()) {
     if (car(rest).is_int()) {
@@ -137,6 +138,9 @@ void add_field(StructureType* structure,
       } else if (opt_name == ":score") {
         score = get_float(car(rest));
         rest = cdr(rest);
+      } else if (opt_name == ":decomp-as") {
+        decomp_as_ts = TypeSpec(symbol_string(car(rest)));
+        rest = cdr(rest);
       } else if (opt_name == ":offset-assert") {
         offset_assert = get_int(car(rest));
         if (offset_assert == -1) {
@@ -151,8 +155,9 @@ void add_field(StructureType* structure,
     }
   }
 
-  int actual_offset = ts->add_field_to_type(structure, name, type, is_inline, is_dynamic,
-                                            array_size, offset_override, skip_in_decomp, score);
+  int actual_offset =
+      ts->add_field_to_type(structure, name, type, is_inline, is_dynamic, array_size,
+                            offset_override, skip_in_decomp, score, decomp_as_ts);
   if (offset_assert != -1 && actual_offset != offset_assert) {
     throw std::runtime_error("Field " + name + " was placed at " + std::to_string(actual_offset) +
                              " but offset-assert was set to " + std::to_string(offset_assert));
