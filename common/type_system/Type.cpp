@@ -913,6 +913,14 @@ bool StructureType::lookup_field(const std::string& name, Field* out) {
   return false;
 }
 
+void StructureType::override_field_type(const std::string& field_name, const TypeSpec& new_type) {
+  for (auto& x : m_fields) {
+    if (x.name() == field_name) {
+      x.type() = new_type;
+    }
+  }
+}
+
 /////////////////
 // BasicType
 /////////////////
@@ -1035,7 +1043,9 @@ BitFieldType::BitFieldType(std::string parent, std::string name, int size, bool 
 bool BitFieldType::lookup_field(const std::string& name, BitField* out) const {
   for (auto& field : m_fields) {
     if (field.name() == name) {
-      *out = field;
+      if (out) {
+        *out = field;
+      }
       return true;
     }
   }

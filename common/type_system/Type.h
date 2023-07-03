@@ -306,6 +306,7 @@ class StructureType : public ReferenceType {
   void set_allow_misalign(bool misalign) { m_allow_misalign = misalign; }
   void set_gen_inspect(bool gen_inspect) { m_generate_inspect = gen_inspect; }
   int size() const { return m_size_in_mem; }
+  void override_field_type(const std::string& field_name, const TypeSpec& new_type);
 
  protected:
   friend class TypeSystem;

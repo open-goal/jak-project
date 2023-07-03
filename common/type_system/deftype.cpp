@@ -104,6 +104,8 @@ void add_field(StructureType* structure,
   double score = 0;
   bool skip_in_decomp = false;
   std::optional<TypeSpec> decomp_as_ts = std::nullopt;
+  Field overlay_field;
+  bool overlay = false;
 
   if (!rest->is_empty_list()) {
     if (car(rest).is_int()) {
@@ -127,8 +129,8 @@ void add_field(StructureType* structure,
         offset_override = get_int(car(rest));
         rest = cdr(rest);
       } else if (opt_name == ":overlay-at") {
+        overlay = true;
         auto field_name = symbol_string(car(rest));
-        Field overlay_field;
         if (!structure->lookup_field(field_name, &overlay_field)) {
           throw std::runtime_error(
               fmt::format("Field {} not found to overlay for {}", field_name, name));
@@ -155,12 +157,29 @@ void add_field(StructureType* structure,
     }
   }
 
-  int actual_offset =
-      ts->add_field_to_type(structure, name, type, is_inline, is_dynamic, array_size,
-                            offset_override, skip_in_decomp, score, decomp_as_ts);
-  if (offset_assert != -1 && actual_offset != offset_assert) {
-    throw std::runtime_error("Field " + name + " was placed at " + std::to_string(actual_offset) +
-                             " but offset-assert was set to " + std::to_string(offset_assert));
+  if (overlay && name == overlay_field.name()) {
+    // override field, e.g. (root collide-shape :overlay-at root)
+    // does not add new field, merely rewrites inherited one
+    if (!ts->tc(overlay_field.type(), type)) {
+      throw std::runtime_error(
+          fmt::format("Wanted to override field {}, but type {} isn't child of {}",
+                      overlay_field.name(), type.print(), overlay_field.type().print()));
+    }
+    if (overlay_field.is_inline() != is_inline || overlay_field.is_dynamic() != is_dynamic ||
+        (array_size != -1 && overlay_field.array_size() != array_size)) {
+      throw std::runtime_error(fmt::format(
+          "Wanted to override field {}, but some parameters were different", overlay_field.name()));
+    }
+    structure->override_field_type(overlay_field.name(), type);
+  } else {
+    // new unique field
+    int actual_offset =
+        ts->add_field_to_type(structure, name, type, is_inline, is_dynamic, array_size,
+                              offset_override, skip_in_decomp, score, decomp_as_ts);
+    if (offset_assert != -1 && actual_offset != offset_assert) {
+      throw std::runtime_error("Field " + name + " was placed at " + std::to_string(actual_offset) +
+                               " but offset-assert was set to " + std::to_string(offset_assert));
+    }
   }
 }
 
