@@ -38,6 +38,13 @@
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 
+#ifdef __APPLE__
+#include <crt_externs.h>
+#include <limits.h>
+
+#include <mach-o/dyld.h>
+#endif
+
 namespace file_util {
 fs::path get_user_home_dir() {
 #ifdef _WIN32
@@ -64,6 +71,9 @@ fs::path get_user_config_dir() {
   } else {
     config_base_path = fs::path(config_base_dir);
   }
+#elif __APPLE__
+  auto config_base_dir = get_env("HOME");
+  config_base_path = fs::path(config_base_dir) / "Library" / "Application Support";
 #endif
   return config_base_path / "OpenGOAL";
 }
@@ -101,13 +111,21 @@ std::string get_current_executable_path() {
     return file_path.substr(4);
   }
   return file_path;
-#else
-  // do Linux stuff
+#elif __linux
   char buffer[FILENAME_MAX + 1];
   auto len = readlink("/proc/self/exe", buffer,
                       FILENAME_MAX);  // /proc/self acts like a "virtual folder" containing
   // information about the current process
   buffer[len] = '\0';
+  return std::string(buffer);
+#elif __APPLE__
+  char buffer[PATH_MAX];
+  uint32_t bufsize = sizeof(buffer);
+  if (_NSGetExecutablePath(buffer, &bufsize) != 0) {
+    lg::warn("Could not get executable path, trying with _NSGetArgv()[0] instead.");
+    auto argv = *_NSGetArgv();
+    return std::string(argv[0]);
+  }
   return std::string(buffer);
 #endif
 }

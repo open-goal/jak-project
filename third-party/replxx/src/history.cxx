@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <memory>
 #include <fstream>
+#include <ostream>
+#include <istream>
 #include <cstring>
 
 #ifndef _WIN32
@@ -22,6 +24,7 @@ namespace {
 void delete_ReplxxHistoryScanImpl( Replxx::HistoryScanImpl* impl_ ) {
 	delete impl_;
 }
+static int const ETB = 0x17;
 }
 
 static int const REPLXX_DEFAULT_HISTORY_MAX_LEN( 1000 );
@@ -130,7 +133,12 @@ bool History::save( std::string const& filename, bool sync_ ) {
 		_entries = entries;
 		reset_iters();
 	}
-	do_load( filename );
+	/* scope for ifstream object auto-close */ {
+		ifstream histFile( filename );
+		if ( histFile ) {
+			do_load( histFile );
+		}
+	}
 	sort();
 	remove_duplicates();
 	trim_to_max_size();
@@ -142,19 +150,27 @@ bool History::save( std::string const& filename, bool sync_ ) {
 	umask( old_umask );
 	chmod( filename.c_str(), S_IRUSR | S_IWUSR );
 #endif
-	Utf8String utf8;
-	for ( Entry const& h : _entries ) {
-		if ( ! h.text().is_empty() ) {
-			utf8.assign( h.text() );
-			histFile << "### " << h.timestamp() << "\n" << utf8.get() << endl;
-		}
-	}
+	save( histFile );
 	if ( ! sync_ ) {
 		_entries = std::move( entries );
 		_locations = std::move( locations );
 	}
 	reset_iters();
 	return ( true );
+}
+
+void History::save( std::ostream& histFile ) {
+	Utf8String utf8;
+	UnicodeString us;
+	for ( Entry& h : _entries ) {
+		h.reset_scratch();
+		if ( ! h.text().is_empty() ) {
+			us.assign( h.text() );
+			std::replace( us.begin(), us.end(), char32_t( '\n' ), char32_t( ETB ) );
+			utf8.assign( us );
+			histFile << "### " << h.timestamp() << "\n" << utf8.get() << endl;
+		}
+	}
 }
 
 namespace {
@@ -179,13 +195,10 @@ bool is_timestamp( std::string const& s ) {
 
 }
 
-bool History::do_load( std::string const& filename ) {
-	ifstream histFile( filename );
-	if ( ! histFile ) {
-		return ( false );
-	}
+void History::do_load( std::istream& histFile ) {
 	string line;
 	string when( "0000-00-00 00:00:00.000" );
+	UnicodeString us;
 	while ( getline( histFile, line ).good() ) {
 		string::size_type eol( line.find_first_of( "\r\n" ) );
 		if ( eol != string::npos ) {
@@ -196,21 +209,31 @@ bool History::do_load( std::string const& filename ) {
 			continue;
 		}
 		if ( ! line.empty() ) {
-			_entries.emplace_back( when, UnicodeString( line ) );
+			us.assign( line );
+			std::replace( us.begin(), us.end(), char32_t( ETB ), char32_t( '\n' ) );
+			_entries.emplace_back( when, us );
 		}
 	}
-	return ( true );
 }
 
 bool History::load( std::string const& filename ) {
+	ifstream histFile( filename );
+	if ( ! histFile ) {
+		clear();
+		return false;
+	}
+	load(histFile);
+	return true;
+}
+
+void History::load( std::istream& histFile ) {
 	clear();
-	bool success( do_load( filename ) );
+	do_load( histFile );
 	sort();
 	remove_duplicates();
 	trim_to_max_size();
 	_previous = _current = last();
 	_yankPos = _entries.end();
-	return ( success );
 }
 
 void History::sort( void ) {
@@ -281,11 +304,12 @@ void History::restore_pos( void ) {
 	_current = _previous;
 }
 
-bool History::common_prefix_search( UnicodeString const& prefix_, int prefixSize_, bool back_ ) {
+bool History::common_prefix_search( UnicodeString const& prefix_, int prefixSize_, bool back_, bool ignoreCase ) {
 	int step( back_ ? -1 : 1 );
-	entries_t::const_iterator it( moved( _current, step, true ) );
+	entries_t::iterator it( moved( _current, step, true ) );
+	bool lowerCaseContext( std::none_of( prefix_.begin(), prefix_.end(), []( char32_t x ) { return iswupper( static_cast<wint_t>( x ) ); } ) );
 	while ( it != _current ) {
-		if ( it->text().starts_with( prefix_.begin(), prefix_.begin() + prefixSize_ ) ) {
+		if ( it->text().starts_with( prefix_.begin(), prefix_.begin() + prefixSize_, ignoreCase && lowerCaseContext ? case_insensitive_equal : case_sensitive_equal ) ) {
 			_current = it;
 			commit_index();
 			return ( true );
@@ -295,7 +319,7 @@ bool History::common_prefix_search( UnicodeString const& prefix_, int prefixSize
 	return ( false );
 }
 
-bool History::move( entries_t::const_iterator& it_, int by_, bool wrapped_ ) const {
+bool History::move( entries_t::iterator& it_, int by_, bool wrapped_ ) {
 	if ( by_ > 0 ) {
 		for ( int i( 0 ); i < by_; ++ i ) {
 			++ it_;
@@ -321,12 +345,12 @@ bool History::move( entries_t::const_iterator& it_, int by_, bool wrapped_ ) con
 	return ( true );
 }
 
-History::entries_t::const_iterator History::moved( entries_t::const_iterator it_, int by_, bool wrapped_ ) const {
+History::entries_t::iterator History::moved( entries_t::iterator it_, int by_, bool wrapped_ ) {
 	move( it_, by_, wrapped_ );
 	return ( it_ );
 }
 
-void History::erase( entries_t::const_iterator it_ ) {
+void History::erase( entries_t::iterator it_ ) {
 	bool invalidated( it_ == _current );
 	_locations.erase( it_->text() );
 	it_ = _entries.erase( it_ );
@@ -364,6 +388,7 @@ void History::remove_duplicates( void ) {
 	_locations.clear();
 	typedef std::pair<locations_t::iterator, bool> locations_insertion_result_t;
 	for ( entries_t::iterator it( _entries.begin() ), end( _entries.end() ); it != end; ++ it ) {
+		it->reset_scratch();
 		locations_insertion_result_t locationsInsertionResult( _locations.insert( make_pair( it->text(), it ) ) );
 		if ( ! locationsInsertionResult.second ) {
 			_entries.erase( locationsInsertionResult.first->second );
@@ -382,14 +407,15 @@ void History::update_last( UnicodeString const& line_ ) {
 }
 
 void History::drop_last( void ) {
+	reset_current_scratch();
 	erase( last() );
 }
 
-bool History::is_last( void ) const {
+bool History::is_last( void ) {
 	return ( _current == last() );
 }
 
-History::entries_t::const_iterator History::last( void ) const {
+History::entries_t::iterator History::last( void ) {
 	return ( moved( _entries.end(), -1 ) );
 }
 

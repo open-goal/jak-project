@@ -523,7 +523,7 @@ void parse_subtitle_json(GameSubtitleDB& db, const GameSubtitleDefinitionFile& f
   }
   // Now hints
   for (const auto& [hint_name, hint_info] : meta_file.hints) {
-    GameSubtitleSceneInfo scene(SubtitleSceneKind::Hint);
+    GameSubtitleSceneInfo scene(SubtitleSceneKind::HintNamed);
     scene.set_name(hint_name);
     /*scene.m_sorting_group = db.m_subtitle_groups->find_group(hint_name);
     scene.m_sorting_group_idx = db.m_subtitle_groups->find_group_index(scene.m_sorting_group);*/

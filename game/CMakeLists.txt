@@ -11,6 +11,7 @@ set(RUNTIME_SOURCE
         external/discord_jak2.cpp
         graphics/display.cpp
         graphics/gfx.cpp
+        graphics/gfx_test.cpp
         graphics/jak2_texture_remap.cpp
         graphics/opengl_renderer/background/background_common.cpp
         graphics/opengl_renderer/background/Shrub.cpp

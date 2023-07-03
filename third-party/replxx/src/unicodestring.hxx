@@ -3,10 +3,20 @@
 
 #include <vector>
 #include <cstring>
+#include <cwctype>
+#include <cassert>
 
 #include "conversion.hxx"
 
 namespace replxx {
+
+inline bool case_sensitive_equal( char32_t l, char32_t r ) {
+	return l == r;
+}
+
+inline bool case_insensitive_equal( char32_t l, char32_t r ) {
+	return towlower( static_cast<wint_t>( l ) ) == towlower( static_cast<wint_t>( r ) );
+}
 
 class UnicodeString {
 public:
@@ -23,6 +33,15 @@ public:
 	explicit UnicodeString( std::string const& src )
 		: _data() {
 		assign( src );
+	}
+
+	explicit UnicodeString( UnicodeString const& other, int offset, int len = -1 )
+		: _data() {
+		_data.insert(
+			_data.end(),
+			other._data.begin() + offset,
+			len > 0 ? other._data.begin() + offset + len : other._data.end()
+		);
 	}
 
 	explicit UnicodeString( char const* src )
@@ -87,6 +106,10 @@ public:
 		return ( _data != other_._data );
 	}
 
+	bool operator < ( UnicodeString const& other_ ) const {
+		return std::lexicographical_compare(begin(), end(), other_.begin(), other_.end());
+	}
+
 	UnicodeString& append( UnicodeString const& other ) {
 		_data.insert( _data.end(), other._data.begin(), other._data.end() );
 		return *this;
@@ -137,11 +160,13 @@ public:
 		_data.clear();
 	}
 
-	const char32_t& operator[]( size_t pos ) const {
+	const char32_t& operator[]( int pos ) const {
+		assert( ( pos >= 0 ) && ( pos < static_cast<int>( _data.size() ) ) );
 		return _data[pos];
 	}
 
-	char32_t& operator[]( size_t pos ) {
+	char32_t& operator[]( int pos ) {
+		assert( ( pos >= 0 ) && ( pos < static_cast<int>( _data.size() ) ) );
 		return _data[pos];
 	}
 
@@ -149,6 +174,14 @@ public:
 		return (
 			( std::distance( first_, last_ ) <= length() )
 			&& ( std::equal( first_, last_, _data.begin() ) )
+		);
+	}
+
+	template <class BinaryPredicate>
+	bool starts_with( data_buffer_t::const_iterator first_, data_buffer_t::const_iterator last_, BinaryPredicate&& pred ) const {
+		return (
+			( std::distance( first_, last_ ) <= length() )
+			&& ( std::equal( first_, last_, _data.begin(), std::forward<BinaryPredicate>( pred ) ) )
 		);
 	}
 
@@ -182,6 +215,10 @@ public:
 
 	iterator end( void ) {
 		return ( _data.end() );
+	}
+
+	char32_t back( void ) const {
+		return ( _data.back() );
 	}
 };
 
