@@ -2012,6 +2012,16 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
   const std::string dynamic_string = ":dynamic";
   bool has_offset_assert = false;
 
+  // calculate longest strings needed, for basic linting
+
+  // override fields
+  for (auto i : st->override_fields()) {
+    const auto& field = st->fields().at(i);
+    longest_field_name = std::max(longest_field_name, int(field.name().size()));
+    longest_type_name = std::max(longest_type_name, int(field.type().print().size()));
+  }
+
+  // normal fields
   for (size_t i = st->first_unique_field_idx(); i < st->fields().size(); i++) {
     const auto& field = st->fields().at(i);
     longest_field_name = std::max(longest_field_name, int(field.name().size()));
@@ -2043,6 +2053,21 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
     longest_mods = std::max(longest_mods, mods);
   }
 
+  // now actually write out the fields
+
+  // override fields first
+  for (auto i : st->override_fields()) {
+    const auto& field = st->fields().at(i);
+    result += "(";
+    result += field.name();
+    result.append(1 + (longest_field_name - int(field.name().size())), ' ');
+    result += field.type().print();
+    result.append(1 + (longest_type_name - int(field.type().print().size())), ' ');
+    result.append(1 + longest_mods, ' ');
+    result.append(":override)\n   ");
+  }
+
+  // now normal fields
   for (size_t i = st->first_unique_field_idx(); i < st->fields().size(); i++) {
     const auto& field = st->fields().at(i);
     result += "(";
@@ -2051,41 +2076,36 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
     result += field.type().print();
     result.append(1 + (longest_type_name - int(field.type().print().size())), ' ');
 
-    if (field.m_override_type) {
-      result.append(longest_mods, ' ');
-      result.append(fmt::format(":overlay-at {}", field.name()));
-    } else {
-      std::string mods;
-      if (field.is_array() && !field.is_dynamic()) {
-        mods += std::to_string(field.array_size());
-        mods += " ";
-      }
-
-      if (field.is_inline()) {
-        mods += inline_string;
-        mods += " ";
-      }
-
-      if (field.is_dynamic()) {
-        mods += dynamic_string;
-        mods += " ";
-      }
-
-      result.append(mods);
-      result.append(longest_mods - int(mods.size() - 1), ' ');
-
-      if (!field.user_placed()) {
-        result.append(":offset-assert ");
-      } else {
-        if (has_offset_assert) {
-          result.append(":offset        ");
-        } else {
-          result.append(":offset ");
-        }
-      }
-
-      result.append(fmt::format("{:3d}", field.offset()));
+    std::string mods;
+    if (field.is_array() && !field.is_dynamic()) {
+      mods += std::to_string(field.array_size());
+      mods += " ";
     }
+
+    if (field.is_inline()) {
+      mods += inline_string;
+      mods += " ";
+    }
+
+    if (field.is_dynamic()) {
+      mods += dynamic_string;
+      mods += " ";
+    }
+
+    result.append(mods);
+    result.append(longest_mods - int(mods.size() - 1), ' ');
+
+    if (!field.user_placed()) {
+      result.append(":offset-assert ");
+    } else {
+      if (has_offset_assert) {
+        result.append(":offset        ");
+      } else {
+        result.append(":offset ");
+      }
+    }
+
+    result.append(fmt::format("{:3d}", field.offset()));
     result.append(")\n   ");
   }
 

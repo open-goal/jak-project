@@ -914,11 +914,13 @@ bool StructureType::lookup_field(const std::string& name, Field* out) {
 }
 
 void StructureType::override_field_type(const std::string& field_name, const TypeSpec& new_type) {
+  int i = 0;
   for (auto& x : m_fields) {
     if (x.name() == field_name) {
-      x.type() = new_type;
       x.set_override_type(new_type);
+      m_overriden_fields.push_back(i);
     }
+    ++i;
   }
 }
 

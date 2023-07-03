@@ -222,7 +222,10 @@ class Field {
   void set_dynamic();
   void set_array(int size);
   void set_inline();
-  void set_override_type(const TypeSpec& new_type) { m_override_type = new_type; }
+  void set_override_type(const TypeSpec& new_type) {
+    m_type = new_type;
+    m_override_type = true;
+  }
   void mark_as_user_placed() { m_placed_by_user = true; }
   std::string print() const;
   const TypeSpec& type() const { return m_type; }
@@ -261,7 +264,7 @@ class Field {
 
   std::string m_name;
   TypeSpec m_type;
-  std::optional<TypeSpec> m_override_type = std::nullopt;
+  bool m_override_type = false;
   int m_offset = -1;
   bool m_inline =
       false;  // does not make sense if m_type is value, and not an array and not dynamic
@@ -288,6 +291,7 @@ class StructureType : public ReferenceType {
   std::string print() const override;
   void inherit(StructureType* parent);
   const std::vector<Field>& fields() const { return m_fields; }
+  const std::vector<int>& override_fields() const { return m_overriden_fields; }
   bool operator==(const Type& other) const override;
   std::string diff_impl(const Type& other) const override;
   std::string diff_structure_common(const StructureType& other) const;
@@ -324,6 +328,7 @@ class StructureType : public ReferenceType {
   size_t first_unique_field_idx() const { return m_idx_of_first_unique_field; }
 
   std::vector<Field> m_fields;
+  std::vector<int> m_overriden_fields;
   bool m_dynamic = false;
   int m_size_in_mem = 0;
   bool m_pack = false;
