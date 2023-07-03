@@ -215,16 +215,17 @@ bool SubtitleTool::needs_run(const ToolInput& task, const PathMap& path_map) {
 }
 
 bool SubtitleTool::run(const ToolInput& task, const PathMap& path_map) {
-  GameSubtitleDBV1 db;
+  GameSubtitleDB db;
+  db.m_subtitle_version = GameSubtitleDB::SubtitleFormat::V1;
   std::vector<GameSubtitleDefinitionFile> files;
   run_subtitle_project_files(name(), task.input.at(0), path_map, files);
   compile_game_subtitles(files, db, path_map.output_prefix);
   return true;
 }
 
-Subtitle2Tool::Subtitle2Tool() : Tool("subtitle_v2") {}
+SubtitleV2Tool::SubtitleV2Tool() : Tool("subtitle_v2") {}
 
-bool Subtitle2Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
+bool SubtitleV2Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
   if (task.input.size() != 1) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
@@ -234,11 +235,12 @@ bool Subtitle2Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
   return Tool::needs_run({task.input, deps, task.output, task.arg}, path_map);
 }
 
-bool Subtitle2Tool::run(const ToolInput& task, const PathMap& path_map) {
-  GameSubtitleDBV2 db;
+bool SubtitleV2Tool::run(const ToolInput& task, const PathMap& path_map) {
+  GameSubtitleDB db;
+  db.m_subtitle_version = GameSubtitleDB::SubtitleFormat::V2;
   std::vector<GameSubtitleDefinitionFile> files;
   run_subtitle_project_files(name(), task.input.at(0), path_map, files);
-  compile_game_subtitles_v2(files, db, path_map.output_prefix);
+  compile_game_subtitles(files, db, path_map.output_prefix);
   return true;
 }
 

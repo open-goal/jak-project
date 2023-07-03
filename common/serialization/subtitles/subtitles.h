@@ -24,26 +24,6 @@ struct GameSubtitleDefinitionFile {
   std::optional<std::string> meta_base_path = std::nullopt;
 };
 
-/*!
- * The subtitle bank contains subtitles for all scenes in a language.
- */
-template <typename T>
-class GameSubtitleBank {
- public:
-  GameSubtitleBank(const int lang_id) : m_lang_id(lang_id) {}
-
-  int m_lang_id;
-  GameVersion m_game_version;
-  GameTextVersion m_text_version;
-  std::string m_file_path;
-  std::map<std::string, T> m_scenes;
-
-  bool scene_exists(const std::string& name) const { return m_scenes.find(name) != m_scenes.end(); }
-  T& scene_by_name(const std::string& name) { return m_scenes.at(name); }
-
-  virtual void add_scenes_from_file(const GameSubtitleDefinitionFile& file_info) = 0;
-};
-
 void open_subtitle_project(const std::string& project_kind,
                            const std::string& file_path,
                            std::vector<GameSubtitleDefinitionFile>& inputs);

@@ -99,14 +99,12 @@ Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Objec
         throw_compiler_error(form, "Invalid object {} in asm-text-file files list.", o.print());
       }
     });
+    GameSubtitleDB db;
     if (kind == "subtitle") {
-      GameSubtitleDBV1 db;
-      compile_game_subtitles(inputs, db, m_make.compiler_output_prefix());
     } else {
-      GameSubtitleDBV2 db;
-      compile_game_subtitles_v2(inputs, db, m_make.compiler_output_prefix());
+      db.m_subtitle_version = GameSubtitleDB::SubtitleFormat::V2;
     }
-
+    compile_game_subtitles(inputs, db, m_make.compiler_output_prefix());
   } else if (kind == "text") {
     std::vector<GameTextDefinitionFile> inputs;
     // open all project files specified (usually one).

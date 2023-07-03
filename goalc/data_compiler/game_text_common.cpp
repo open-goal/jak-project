@@ -24,6 +24,8 @@
 #include "common/util/FontUtils.h"
 #include "common/util/json_util.h"
 
+#include <game/runtime.h>
+
 #include "third-party/fmt/core.h"
 
 namespace {
@@ -95,7 +97,7 @@ void compile_text(GameTextDB& db, const std::string& output_prefix) {
  * Write game subtitle data to a file. Uses the V2 object format which is identical between GOAL and
  * OpenGOAL.
  */
-void compile_subtitles(GameSubtitleDBV1& db, const std::string& output_prefix) {
+void compile_subtitles_v1(GameSubtitleDB& db, const std::string& output_prefix) {
   for (const auto& [lang, bank] : db.m_banks) {
     auto font = get_font_bank(bank->m_text_version);
     DataObjectGenerator gen;
@@ -108,19 +110,14 @@ void compile_subtitles(GameSubtitleDBV1& db, const std::string& output_prefix) {
     std::queue<int> array_link_sources;
     // now add all the scene infos
     for (auto& [name, scene] : bank->m_scenes) {
-      gen.add_word((u16)scene.m_kind |
+      gen.add_word((u16)(scene.is_cutscene ? 0 : 2) |
                    (scene.m_lines.size() << 16));  // kind (lower 16 bits), length (upper 16 bits)
 
       array_link_sources.push(gen.words());
       gen.add_word(0);  // keyframes (linked later)
 
-      if (scene.m_kind == GameSubtitleSceneInfoV1::SceneKind::Movie ||
-          scene.m_kind == GameSubtitleSceneInfoV1::SceneKind::HintNamed) {
-        gen.add_ref_to_string_in_pool(name);  // name
-      } else if (scene.m_kind == GameSubtitleSceneInfoV1::SceneKind::Hint) {
-        gen.add_word(0);  // nothing
-      }
-      gen.add_word(scene.m_id);
+      gen.add_ref_to_string_in_pool(name);
+      gen.add_word(scene.m_hint_id);
     }
     // now add all the scene *data!* (keyframes)
     for (auto& [name, scene] : bank->m_scenes) {
@@ -154,7 +151,7 @@ void compile_subtitles(GameSubtitleDBV1& db, const std::string& output_prefix) {
  * Write game subtitle2 data to a file. Uses the V2 object format which is identical between GOAL
  * and OpenGOAL.
  */
-void compile_subtitles_v2(GameSubtitleDBV2& db, const std::string& output_prefix) {
+void compile_subtitles_v2(GameSubtitleDB& db, const std::string& output_prefix) {
   for (const auto& [lang, bank] : db.m_banks) {
     auto font = get_font_bank(bank->m_text_version);
     DataObjectGenerator gen;
@@ -243,23 +240,20 @@ void compile_game_text(const std::vector<GameTextDefinitionFile>& files,
 }
 
 void compile_game_subtitles(const std::vector<GameSubtitleDefinitionFile>& files,
-                            GameSubtitleDBV1& db,
+                            GameSubtitleDB& db,
                             const std::string& output_prefix) {
   goos::Reader reader;
-  for (auto& file : files) {
-    lg::print("[Build Game Subtitle] {}:{}\n", file.lines_path, file.meta_path);
-    db.init_banks_from_file(file);
+  if (db.m_subtitle_version == GameSubtitleDB::SubtitleFormat::V1) {
+    for (auto& file : files) {
+      lg::print("[Build Game Subtitle V1] {}:{}\n", file.lines_path, file.meta_path);
+      db.init_banks_from_file(file);
+    }
+    compile_subtitles_v1(db, output_prefix);
+  } else {
+    for (auto& file : files) {
+      lg::print("[Build Game Subtitle V2] {}:{}\n", file.lines_path, file.meta_path);
+      db.init_banks_from_file(file);
+    }
+    compile_subtitles_v2(db, output_prefix);
   }
-  compile_subtitles(db, output_prefix);
-}
-
-void compile_game_subtitles_v2(const std::vector<GameSubtitleDefinitionFile>& files,
-                               GameSubtitleDBV2& db,
-                               const std::string& output_prefix) {
-  goos::Reader reader;
-  for (auto& file : files) {
-    lg::print("[Build Game Subtitle V2] {}:{}\n", file.lines_path, file.meta_path);
-    db.init_banks_from_file(file);
-  }
-  compile_subtitles_v2(db, output_prefix);
 }

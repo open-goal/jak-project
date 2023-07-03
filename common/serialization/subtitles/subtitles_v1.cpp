@@ -2,13 +2,15 @@
 
 #include <common/util/FileUtil.h>
 
+#include "subtitles_v2.h"
+
 #include "third-party/fmt/core.h"
 
 void to_json(json& j, const SubtitleCutsceneLineMetadataV1& obj) {
-  j = json{{"frame_start", obj.frame_start},
-           {"offscreen", obj.offscreen},
-           {"speaker", obj.speaker},
-           {"clear", obj.clear}};
+  json_serialize(frame_start);
+  json_serialize(offscreen);
+  json_serialize(speaker);
+  json_serialize(clear);
 }
 void from_json(const json& j, SubtitleCutsceneLineMetadataV1& obj) {
   json_deserialize_if_exists(frame_start);
@@ -18,7 +20,9 @@ void from_json(const json& j, SubtitleCutsceneLineMetadataV1& obj) {
 }
 
 void to_json(json& j, const SubtitleHintLineMetadataV1& obj) {
-  j = json{{"frame_start", obj.frame_start}, {"speaker", obj.speaker}, {"clear", obj.clear}};
+  json_serialize(frame_start);
+  json_serialize(speaker);
+  json_serialize(clear);
 }
 void from_json(const json& j, SubtitleHintLineMetadataV1& obj) {
   json_deserialize_if_exists(frame_start);
@@ -26,7 +30,8 @@ void from_json(const json& j, SubtitleHintLineMetadataV1& obj) {
   json_deserialize_if_exists(clear);
 }
 void to_json(json& j, const SubtitleHintMetadataV1& obj) {
-  j = json{{"id", obj.id}, {"lines", obj.lines}};
+  json_serialize(id);
+  json_serialize(lines);
 }
 void from_json(const json& j, SubtitleHintMetadataV1& obj) {
   json_deserialize_if_exists(id);
@@ -34,7 +39,8 @@ void from_json(const json& j, SubtitleHintMetadataV1& obj) {
 }
 
 void to_json(json& j, const SubtitleMetadataFileV1& obj) {
-  j = json{{"cutscenes", obj.cutscenes}, {"hints", obj.hints}};
+  json_serialize(cutscenes);
+  json_serialize(hints);
 }
 
 void from_json(const json& j, SubtitleMetadataFileV1& obj) {
@@ -42,7 +48,9 @@ void from_json(const json& j, SubtitleMetadataFileV1& obj) {
   json_deserialize_if_exists(hints);
 }
 void to_json(json& j, const SubtitleFileV1& obj) {
-  j = json{{"speakers", obj.speakers}, {"cutscenes", obj.cutscenes}, {"hints", obj.hints}};
+  json_serialize(speakers);
+  json_serialize(cutscenes);
+  json_serialize(hints);
 }
 void from_json(const json& j, SubtitleFileV1& obj) {
   json_deserialize_if_exists(speakers);
@@ -50,26 +58,13 @@ void from_json(const json& j, SubtitleFileV1& obj) {
   json_deserialize_if_exists(hints);
 }
 
-void GameSubtitleDBV1::init_banks_from_file(const GameSubtitleDefinitionFile& file_info) {
-  // TODO - some validation
-  // Init Settings
-  std::shared_ptr<GameSubtitleBankV1> bank;
-  if (!bank_exists(file_info.language_id)) {
-    // database has no lang yet
-    bank = add_bank(std::make_shared<GameSubtitleBankV1>(file_info.language_id));
-  } else {
-    bank = bank_by_id(file_info.language_id);
-  }
-  bank->m_text_version = get_text_version_from_name(file_info.text_version);
-  bank->m_file_path = file_info.lines_path;
-  const auto font = get_font_bank(file_info.text_version);
-  bank->add_scenes_from_file(file_info);
-}
-
-void GameSubtitleBankV1::add_scenes_from_file(const GameSubtitleDefinitionFile& file_info) {
+// This converts the v1 format into the v2 format which all of the projects code is updated to use,
+// including the editor
+std::pair<SubtitleMetadataFile, SubtitleFile> read_json_files_v1(
+    const GameSubtitleDefinitionFile& file_info) {
   // Parse the file
-  SubtitleMetadataFileV1 meta_file;
-  SubtitleFileV1 lines_file;
+  SubtitleMetadataFileV1 v1_meta_file;
+  SubtitleFileV1 v1_lines_file;
   try {
     // If we have a base file defined, load that and merge it
     if (file_info.meta_base_path) {
@@ -82,10 +77,10 @@ void GameSubtitleBankV1::add_scenes_from_file(const GameSubtitleDefinitionFile& 
           "subtitle_meta_path");
       base_data.at("cutscenes").update(data.at("cutscenes"));
       base_data.at("hints").update(data.at("hints"));
-      meta_file = base_data;
+      v1_meta_file = base_data;
 
     } else {
-      meta_file = parse_commented_json(
+      v1_meta_file = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.meta_path),
           "subtitle_meta_path");
     }
@@ -102,9 +97,9 @@ void GameSubtitleBankV1::add_scenes_from_file(const GameSubtitleDefinitionFile& 
       base_data.at("hints").update(data.at("hints"));
       base_data.at("speakers").update(data.at("speakers"));
       auto test = base_data.dump();
-      lines_file = base_data;
+      v1_lines_file = base_data;
     } else {
-      lines_file = parse_commented_json(
+      v1_lines_file = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.lines_path),
           "subtitle_line_path");
     }
@@ -113,28 +108,34 @@ void GameSubtitleBankV1::add_scenes_from_file(const GameSubtitleDefinitionFile& 
               e.what());
     throw;
   }
-  // Iterate through the metadata file as blank lines are now omitted from the lines file now
-  // Cutscenes First
-  for (const auto& [cutscene_name, cutscene_lines] : meta_file.cutscenes) {
-    GameSubtitleSceneInfoV1 scene(GameSubtitleSceneInfoV1::SceneKind::Movie);
-    scene.m_name = cutscene_name;
+  // Convert the old format into the new
+  SubtitleMetadataFile meta_file;
+  SubtitleFile lines_file;
+  for (const auto& [cutscene_name, cutscene_lines] : v1_meta_file.cutscenes) {
+    GameSubtitleSceneInfo new_scene;
+    new_scene.m_name = cutscene_name;
     // Iterate the lines, grab the actual text from the lines file if it's not a clear screen entry
     int line_idx = 0;
     int lines_added = 0;
     for (const auto& line_meta : cutscene_lines) {
+      SubtitleLineMetadata new_meta;
+      new_meta.frame_start = line_meta.frame_start;
+      new_meta.offscreen = line_meta.offscreen;
+      new_meta.speaker = line_meta.speaker;
       if (line_meta.clear) {
-        scene.m_lines.push_back({"", line_meta});
+        new_scene.m_lines.push_back({"", new_meta});
         lines_added++;
       } else {
-        if (lines_file.speakers.find(line_meta.speaker) == lines_file.speakers.end() ||
-            lines_file.cutscenes.find(cutscene_name) == lines_file.cutscenes.end() ||
-            int(lines_file.cutscenes.at(cutscene_name).size()) < line_idx) {
+        if (v1_lines_file.speakers.find(line_meta.speaker) == v1_lines_file.speakers.end() ||
+            v1_lines_file.cutscenes.find(cutscene_name) == v1_lines_file.cutscenes.end() ||
+            int(v1_lines_file.cutscenes.at(cutscene_name).size()) < line_idx) {
           lg::warn(
               "{} Couldn't find {} in line file, or line list is too small, or speaker could not "
               "be resolved {}!",
               file_info.language_id, cutscene_name, line_meta.speaker);
         } else {
-          scene.m_lines.push_back({lines_file.cutscenes.at(cutscene_name).at(line_idx), line_meta});
+          new_scene.m_lines.push_back(
+              {v1_lines_file.cutscenes.at(cutscene_name).at(line_idx), new_meta});
           lines_added++;
         }
         line_idx++;
@@ -147,45 +148,36 @@ void GameSubtitleBankV1::add_scenes_from_file(const GameSubtitleDefinitionFile& 
                       "only added {} lines",
                       cutscene_name, cutscene_lines.size(), lines_added));
     }
-    m_scenes.emplace(cutscene_name, scene);
+    meta_file.cutscenes.emplace(cutscene_name, new_scene);
   }
   // Now hints
-  for (const auto& [hint_name, hint_info] : meta_file.hints) {
-    // TODO - check why this change was needed
-    GameSubtitleSceneInfoV1 scene(GameSubtitleSceneInfoV1::SceneKind::HintNamed);
-    if (hint_info.id == "0") {
-      scene.m_kind = GameSubtitleSceneInfoV1::SceneKind::HintNamed;
-    } else {
-      scene.m_id = std::stoi(hint_info.id, nullptr, 16);
+  for (const auto& [hint_name, hint_info] : v1_meta_file.hints) {
+    GameSubtitleSceneInfo new_scene;
+    new_scene.m_name = hint_name;
+    if (hint_info.id != "0") {
+      new_scene.m_hint_id = std::stoi(hint_info.id, nullptr, 16);
     }
-    scene.m_name = hint_name;
     // Iterate the lines, grab the actual text from the lines file if it's not a clear screen entry
     int line_idx = 0;
     int lines_added = 0;
     for (const auto& line_meta : hint_info.lines) {
+      SubtitleLineMetadata new_meta;
+      new_meta.frame_start = line_meta.frame_start;
+      new_meta.offscreen = true;
+      new_meta.speaker = line_meta.speaker;
       if (line_meta.clear) {
-        SubtitleCutsceneLineMetadataV1 meta;
-        meta.clear = true;
-        scene.m_lines.push_back({"", meta});
+        new_scene.m_lines.push_back({"", new_meta});
         lines_added++;
       } else {
-        if (lines_file.speakers.find(line_meta.speaker) == lines_file.speakers.end() ||
-            lines_file.hints.find(hint_name) == lines_file.hints.end() ||
-            int(lines_file.hints.at(hint_name).size()) < line_idx) {
+        if (v1_lines_file.speakers.find(line_meta.speaker) == v1_lines_file.speakers.end() ||
+            v1_lines_file.hints.find(hint_name) == v1_lines_file.hints.end() ||
+            int(v1_lines_file.hints.at(hint_name).size()) < line_idx) {
           lg::warn(
               "{} Couldn't find {} in line file, or line list is too small, or speaker could not "
               "be resolved {}!",
               file_info.language_id, hint_name, line_meta.speaker);
         } else {
-          // NOTE - the convert_utf8_to_game function is really really slow (about 80-90% of the
-          // time loading the subtitle files)
-          // TODO - improve that as a follow up sometime in the future
-          SubtitleCutsceneLineMetadataV1 meta;
-          meta.clear = false;
-          meta.frame_start = line_meta.frame_start;
-          meta.offscreen = true;
-          meta.speaker = line_meta.speaker;
-          scene.m_lines.push_back({lines_file.hints.at(hint_name).at(line_idx), meta});
+          new_scene.m_lines.push_back({v1_lines_file.hints.at(hint_name).at(line_idx), new_meta});
           lines_added++;
         }
         line_idx++;
@@ -198,15 +190,16 @@ void GameSubtitleBankV1::add_scenes_from_file(const GameSubtitleDefinitionFile& 
                       "only added {} lines",
                       hint_name, hint_info.lines.size(), lines_added));
     }
-    m_scenes.emplace(hint_name, scene);
+    meta_file.other.emplace(hint_name, new_scene);
   }
+  return {meta_file, lines_file};
 }
 
-SubtitleMetadataFileV1 dump_bank_as_meta_json(std::shared_ptr<GameSubtitleBankV1> bank) {
+SubtitleMetadataFileV1 dump_bank_meta_v1(std::shared_ptr<GameSubtitleBank> bank) {
   auto meta_file = SubtitleMetadataFileV1();
   auto font = get_font_bank(bank->m_text_version);
   for (const auto& [scene_name, scene_info] : bank->m_scenes) {
-    if (scene_info.m_kind == GameSubtitleSceneInfoV1::SceneKind::Movie) {
+    if (scene_info.is_cutscene) {
       std::vector<SubtitleCutsceneLineMetadataV1> lines;
       for (const auto& line : scene_info.m_lines) {
         auto line_meta = SubtitleCutsceneLineMetadataV1();
@@ -214,17 +207,15 @@ SubtitleMetadataFileV1 dump_bank_as_meta_json(std::shared_ptr<GameSubtitleBankV1
         if (line.text.empty()) {
           line_meta.clear = true;
         } else {
-          auto line_speaker = font->convert_game_to_utf8(line.metadata.speaker.c_str());
           line_meta.offscreen = line.metadata.offscreen;
-          line_meta.speaker = line_speaker;
+          line_meta.speaker = line.metadata.speaker;
         }
         lines.push_back(line_meta);
       }
       meta_file.cutscenes[scene_name] = lines;
-    } else if (scene_info.m_kind == GameSubtitleSceneInfoV1::SceneKind::Hint ||
-               scene_info.m_kind == GameSubtitleSceneInfoV1::SceneKind::HintNamed) {
+    } else {
       SubtitleHintMetadataV1 hint;
-      hint.id = fmt::format("{:x}", scene_info.m_id);
+      hint.id = fmt::format("{:x}", scene_info.m_hint_id);
       std::vector<SubtitleHintLineMetadataV1> lines;
       for (const auto& line : scene_info.m_lines) {
         auto line_meta = SubtitleHintLineMetadataV1();
@@ -232,8 +223,7 @@ SubtitleMetadataFileV1 dump_bank_as_meta_json(std::shared_ptr<GameSubtitleBankV1
         if (line.text.empty()) {
           line_meta.clear = true;
         } else {
-          auto line_speaker = font->convert_game_to_utf8(line.metadata.speaker.c_str());
-          line_meta.speaker = line_speaker;
+          line_meta.speaker = line.metadata.speaker;
         }
         lines.push_back(line_meta);
       }
@@ -244,7 +234,7 @@ SubtitleMetadataFileV1 dump_bank_as_meta_json(std::shared_ptr<GameSubtitleBankV1
   return meta_file;
 }
 
-SubtitleFileV1 dump_bank_as_json(std::shared_ptr<GameSubtitleBankV1> bank) {
+SubtitleFileV1 dump_bank_lines_v1(std::shared_ptr<GameSubtitleBank> bank) {
   SubtitleFileV1 file;
   auto font = get_font_bank(bank->m_text_version);
   // Figure out speakers
@@ -253,85 +243,35 @@ SubtitleFileV1 dump_bank_as_json(std::shared_ptr<GameSubtitleBankV1> bank) {
       if (line.text.empty()) {
         continue;
       }
-      auto line_speaker = font->convert_game_to_utf8(line.metadata.speaker.c_str());
-      file.speakers[line_speaker] = line_speaker;
+      // TODO - correct?
+      file.speakers[line.metadata.speaker] = line.metadata.speaker;
     }
   }
   // Hints
   for (const auto& [scene_name, scene_info] : bank->m_scenes) {
-    if (scene_info.m_kind == GameSubtitleSceneInfoV1::SceneKind::Hint ||
-        scene_info.m_kind == GameSubtitleSceneInfoV1::SceneKind::HintNamed) {
+    if (!scene_info.is_cutscene) {
       file.hints[scene_name] = {};
       for (const auto& scene_line : scene_info.m_lines) {
         if (scene_line.text.empty()) {
           continue;
         }
-        auto line_utf8 = font->convert_game_to_utf8(scene_line.text.c_str());
-        file.hints[scene_name].push_back(line_utf8);
+        file.hints[scene_name].push_back(scene_line.text);
       }
     }
   }
 
   // Cutscenes
   for (const auto& [scene_name, scene_info] : bank->m_scenes) {
-    if (scene_info.m_kind == GameSubtitleSceneInfoV1::SceneKind::Movie) {
+    if (scene_info.is_cutscene) {
       file.cutscenes[scene_name] = {};
       for (const auto& scene_line : scene_info.m_lines) {
         if (scene_line.text.empty()) {
           continue;
         }
-        auto line_utf8 = font->convert_game_to_utf8(scene_line.text.c_str());
-        file.cutscenes[scene_name].push_back(line_utf8);
+        file.cutscenes[scene_name].push_back(scene_line.text);
       }
     }
   }
 
   return file;
-}
-
-bool GameSubtitleDBV1::write_subtitle_db_to_files(const GameVersion game_version) {
-  try {
-    for (const auto& [language_id, bank] : m_banks) {
-      auto meta_file = dump_bank_as_meta_json(bank);
-      std::string dump_path =
-          (file_util::get_jak_project_dir() / "game" / "assets" /
-           version_to_game_name(game_version) / "subtitle" /
-           fmt::format("subtitle_meta_{}.json", lookup_locale_code(game_version, language_id)))
-              .string();
-      json data = meta_file;
-      file_util::write_text_file(dump_path, data.dump(2));
-      // Now dump the actual subtitles
-      auto subtitle_file = dump_bank_as_json(bank);
-      dump_path =
-          (file_util::get_jak_project_dir() / "game" / "assets" /
-           version_to_game_name(game_version) / "subtitle" /
-           fmt::format("subtitle_lines_{}.json", lookup_locale_code(game_version, language_id)))
-              .string();
-      data = subtitle_file;
-      file_util::write_text_file(dump_path, data.dump(2));
-    }
-  } catch (std::exception& ex) {
-    lg::error(ex.what());
-    return false;
-  }
-  return true;
-}
-
-GameSubtitleDBV1 load_subtitle_project_v1(GameVersion game_version) {
-  // Load the subtitle files
-  GameSubtitleDBV1 db;
-  try {
-    std::vector<GameSubtitleDefinitionFile> files;
-    std::string subtitle_project = (file_util::get_jak_project_dir() / "game" / "assets" /
-                                    version_to_game_name(game_version) / "game_subtitle.gp")
-                                       .string();
-    open_subtitle_project("subtitle", subtitle_project, files);
-    for (auto& file : files) {
-      db.init_banks_from_file(file);
-    }
-  } catch (std::runtime_error& e) {
-    lg::error("error loading subtitle project: {}", e.what());
-  }
-
-  return db;
 }

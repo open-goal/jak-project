@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/serialization/subtitles/subtitles.h"
+#include "common/serialization/subtitles/subtitles_v2.h"
 
 struct SubtitleCutsceneLineMetadataV1 {
   int frame_start;
@@ -41,64 +42,9 @@ struct SubtitleFileV1 {
 void to_json(json& j, const SubtitleFileV1& obj);
 void from_json(const json& j, SubtitleFileV1& obj);
 
-struct SubtitleLineV1 {
-  std::string text;
-  SubtitleCutsceneLineMetadataV1 metadata;
-
-  bool operator<(const SubtitleLineV1& other) const {
-    return (metadata.frame_start < other.metadata.frame_start);
-  }
-};
-
-struct GameSubtitleSceneInfoV1 {
-  enum class SceneKind { Invalid = -1, Movie = 0, Hint = 1, HintNamed = 2 };
-
-  GameSubtitleSceneInfoV1(SceneKind kind) : m_kind(kind) {}
-
-  int m_id;
-  SceneKind m_kind;
-  std::vector<SubtitleLineV1> m_lines;
-  std::string m_name;
-
-  void add_line(int frame, std::string text, std::string speaker, bool offscreen) {
-    m_lines.push_back({text, {frame, offscreen, speaker, false}});
-    std::sort(m_lines.begin(), m_lines.end());
-  }
-};
-
-class GameSubtitleBankV1 : public GameSubtitleBank<GameSubtitleSceneInfoV1> {
- public:
-  using GameSubtitleBank<GameSubtitleSceneInfoV1>::GameSubtitleBank;
-
-  void add_scenes_from_file(const GameSubtitleDefinitionFile& file_info) override;
-};
-
-/*!
- * The subtitles database contains a subtitles bank for each language.
- * Each subtitles bank contains a series of subtitle scene infos.
- */
-// TODO - it would be nice to get rid of this, but that would break all current translations.
-// Consider doing so once everything for jak 1 has been 100% translated.
-class GameSubtitleDBV1 {
- public:
-  std::map<int, std::shared_ptr<GameSubtitleBankV1>> m_banks;
-  GameVersion m_game_version;
-
-  bool bank_exists(int id) const { return m_banks.find(id) != m_banks.end(); }
-  std::shared_ptr<GameSubtitleBankV1> add_bank(std::shared_ptr<GameSubtitleBankV1> bank) {
-    ASSERT(!bank_exists(bank->m_lang_id));
-    m_banks[bank->m_lang_id] = bank;
-    return bank;
-  }
-  std::shared_ptr<GameSubtitleBankV1> bank_by_id(int id) {
-    if (!bank_exists(id)) {
-      return nullptr;
-    }
-    return m_banks.at(id);
-  }
-
-  void init_banks_from_file(const GameSubtitleDefinitionFile& file_info);
-  bool write_subtitle_db_to_files(const GameVersion game_version);
-};
-
-GameSubtitleDBV1 load_subtitle_project_v1(GameVersion game_version);
+// These functions essentially convert to and from the V1/V2 formats to either load from disk, or
+// persist to disk
+std::pair<SubtitleMetadataFile, SubtitleFile> read_json_files_v1(
+    const GameSubtitleDefinitionFile& file_info);
+SubtitleMetadataFileV1 dump_bank_meta_v1(std::shared_ptr<GameSubtitleBank> bank);
+SubtitleFileV1 dump_bank_lines_v1(std::shared_ptr<GameSubtitleBank> bank);
