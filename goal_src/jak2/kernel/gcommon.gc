@@ -45,9 +45,9 @@
 ;; pointers larger than this are invalid by valid?
 (defconstant END_OF_MEMORY #x8000000)
 
-(defun identity ((arg0 object))
+(defun identity ((x object))
   "Return the input. Works for any 64-bit value."
-  arg0
+  x
   )
 
 (defun 1/ ((arg0 float))
@@ -78,14 +78,14 @@
   (/ arg0 arg1)
   )
 
-(defun mod ((arg0 int) (arg1 int))
+(defun mod ((a int) (b int))
   "Integer mod (signed, 32-bit)"
-  (mod arg0 arg1)
+  (mod a b)
   )
 
-(defun rem ((arg0 int) (arg1 int))
+(defun rem ((a int) (b int))
   "Integer mod (signed, 32-bit). Even though it's called rem, it behaves the same as mod."
-  (mod arg0 arg1)
+  (mod a b)
   )
 
 
@@ -124,14 +124,14 @@
   (if (> a b) a b)
   )
 
-(defun logior ((arg0 int) (arg1 int))
+(defun logior ((a int) (b int))
   "Logical or (64-bit)"
-  (logior arg0 arg1)
+  (logior a b)
   )
 
-(defun logand ((arg0 int) (arg1 int))
+(defun logand ((a int) (b int))
   "Logical and (64-bit)"
-  (logand arg0 arg1)
+  (logand a b)
   )
 
 (defun lognor ((a int) (b int))
@@ -143,14 +143,14 @@
   (lognot (logior a b))
   )
 
-(defun logxor ((arg0 int) (arg1 int))
+(defun logxor ((a int) (b int))
   "Logical exclusive or (64-bit)"
-  (logxor arg0 arg1)
+  (logxor a b)
   )
 
-(defun lognot ((arg0 int))
+(defun lognot ((a int))
   "Logical not (64-bit)"
-  (lognot arg0)
+  (lognot a)
   )
 
 (defun false-func ()
@@ -323,14 +323,14 @@
   v0-0
   )
 
-(defun ref ((arg0 object) (arg1 int))
+(defun ref ((lst object) (index int))
   "Get the n-th item in a linked list. No range checking."
-  (dotimes (v1-0 arg1)
+  (dotimes (v1-0 index)
     (nop!)
     (nop!)
-    (set! arg0 (cdr arg0))
+    (set! lst (cdr lst))
     )
-  (car arg0)
+  (car lst)
   )
 
 (defmethod length pair ((obj pair))
@@ -358,9 +358,9 @@
   (the-as int (-> pair size))
   )
 
-(defun last ((arg0 object))
+(defun last ((lst object))
   "Get the last object in a list."
-  (let ((v0-0 arg0))
+  (let ((v0-0 lst))
     (while (not (null? (cdr v0-0)))
       (nop!)
       (nop!)
@@ -370,10 +370,10 @@
     )
   )
 
-(defun member ((arg0 object) (arg1 object))
+(defun member ((obj object) (lst object))
   "Is obj in the list lst? Returns pair with obj as its car, or #f if not found."
-  (let ((v1-0 arg1))
-    (while (not (or (null? v1-0) (= (car v1-0) arg0)))
+  (let ((v1-0 lst))
+    (while (not (or (null? v1-0) (= (car v1-0) obj)))
       (set! v1-0 (cdr v1-0))
       )
     (if (not (null? v1-0))
@@ -385,21 +385,21 @@
 ;; need to forward declare this, we haven't loaded the string library yet.
 (define-extern name= (function object object symbol))
 
-(defun nmember ((arg0 basic) (arg1 object))
+(defun nmember ((arg0 basic) (lst object))
   "Is obj in the list lst? Check with the name= function."
-  (while (not (or (null? arg1) (name= (car arg1) arg0)))
-    (set! arg1 (cdr arg1))
+  (while (not (or (null? lst) (name= (car lst) obj)))
+    (set! lst (cdr lst))
     )
-  (if (not (null? arg1))
-      arg1
+  (if (not (null? lst))
+      lst
       )
   )
 
-(defun assoc ((arg0 object) (arg1 object))
+(defun assoc ((item object) (alist object))
   "Is item in the association list alist?
    Returns the key-value pair."
-  (let ((v1-0 arg1))
-    (while (not (or (null? v1-0) (= (car (car v1-0)) arg0)))
+  (let ((v1-0 alist))
+    (while (not (or (null? v1-0) (= (car (car v1-0)) item)))
       (set! v1-0 (cdr v1-0))
       )
     (if (not (null? v1-0))
@@ -408,12 +408,12 @@
     )
   )
 
-(defun assoce ((arg0 object) (arg1 object))
+(defun assoce ((item object) (alist object))
   "Is there an entry with key item in the association list alist?
    Returns the key-value pair.
    Treats a key of 'else like an else case"
-  (let ((v1-0 arg1))
-    (while (not (or (null? v1-0) (= (car (car v1-0)) arg0) (= (car (car v1-0)) 'else)))
+  (let ((v1-0 alist))
+    (while (not (or (null? v1-0) (= (car (car v1-0)) item) (= (car (car v1-0)) 'else)))
       (set! v1-0 (cdr v1-0))
       )
     (if (not (null? v1-0))
