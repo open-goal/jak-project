@@ -4,7 +4,7 @@
 #include <string_view>
 
 #include "common/repl/nrepl/ReplClient.h"
-#include "common/serialization/subtitles/subtitles_ser.h"
+#include <common/serialization/subtitles/subtitles_v1.h>
 
 #include "third-party/imgui/imgui.h"
 
@@ -33,21 +33,16 @@ class SubtitleEditor {
   void draw_edit_options();
   void draw_repl_options();
 
-  bool any_cutscenes_in_group(const std::string& group_name);
-  bool any_hints_in_group(const std::string& group_name);
-
-  void draw_all_cutscene_groups();
   void draw_all_scenes(std::string group_name, bool base_cutscenes = false);
-  void draw_subtitle_options(GameSubtitleSceneInfo& scene, bool current_scene = false);
+  void draw_subtitle_options(GameSubtitleSceneInfoV1& scene, bool current_scene = false);
   void draw_new_cutscene_line_form();
-  void draw_all_hint_groups();
   void draw_all_hints(std::string group_name, bool base_cutscenes);
 
   bool db_loaded = false;
 
-  GameSubtitleDB m_subtitle_db;
+  GameSubtitleDBV1 m_subtitle_db;
   std::map<std::string, SubtitleEditorDB::Entry> m_db = {};
-  GameSubtitleSceneInfo* m_current_scene = nullptr;
+  GameSubtitleSceneInfoV1* m_current_scene = nullptr;
   std::string m_filter;
   std::string m_filter_hints;
 
@@ -60,7 +55,6 @@ class SubtitleEditor {
   bool m_add_new_scene_as_current = false;
 
   std::string m_new_scene_name = "";
-  std::string m_new_scene_group = "";
   std::string m_new_scene_id = "0";
 
   std::string m_new_scene_group_name = "";
@@ -71,7 +65,6 @@ class SubtitleEditor {
 
   int m_base_language = 0;
   int m_current_language = 0;
-  // bool m_base_show_lines = false;
   bool m_base_show_missing_cutscenes = true;
 
   ImVec4 m_normal_text_color = ImVec4(1.0f, 0.0f, 1.0f, 1.0f);

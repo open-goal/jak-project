@@ -51,7 +51,6 @@ add_library(common
         repl/nrepl/ReplClient.cpp
         repl/nrepl/ReplServer.cpp
         repl/util.cpp
-        serialization/subtitles/subtitles_deser.cpp
         sqlite/sqlite.cpp
         type_system/defenum.cpp
         type_system/deftype.cpp
@@ -81,7 +80,7 @@ add_library(common
         util/term_util.cpp
         util/Timer.cpp
         util/unicode_util.cpp
-        versions/versions.cpp serialization/text/text_ser.cpp "serialization/subtitles/subtitles_v1.cpp" "serialization/subtitles/subtitles_v2.cpp")
+        versions/versions.cpp serialization/subtitles/subtitles.cpp serialization/text/text_ser.cpp "serialization/subtitles/subtitles_v1.cpp" "serialization/subtitles/subtitles_v2.cpp")
 
 target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter sqlite3 libtinyfiledialogs)
 

@@ -12,21 +12,12 @@
 #include <algorithm>
 #include <stdexcept>
 
+#include "string_util.h"
+
 #include "common/util/Assert.h"
 
 #include "third-party/fmt/core.h"
 #include "third-party/fmt/format.h"
-
-namespace {
-
-/*!
- * Is this a valid character for a hex number?
- */
-bool hex_char(char c) {
-  return !((c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F'));
-}
-
-}  // namespace
 
 const std::unordered_map<std::string, GameTextVersion> sTextVerEnumMap = {
     {"jak1-v1", GameTextVersion::JAK1_V1},
@@ -230,7 +221,7 @@ std::string GameTextFontBank::convert_utf8_to_game(std::string str, bool escape)
           }
           auto first = str.at(i + 2);
           auto second = str.at(i + 3);
-          if (!hex_char(first) || !hex_char(second)) {
+          if (!str_util::hex_char(first) || !str_util::hex_char(second)) {
             throw std::runtime_error("invalid character escape hex number");
           }
           char hex_num[3] = {first, second, '\0'};

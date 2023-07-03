@@ -3,9 +3,9 @@
 #include <regex>
 #include <string_view>
 
-#include "common/serialization/subtitles/subtitles_deser.h"
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
+#include <common/serialization/text/text_ser.h>
 
 #include "game/runtime.h"
 
@@ -124,7 +124,7 @@ void SubtitleEditor::draw_window() {
 
   if (!db_loaded) {
     if (ImGui::Button("Load Subtitles")) {
-      m_subtitle_db = load_subtitle_project(g_game_version);
+      m_subtitle_db = load_subtitle_project_v1(g_game_version);
       db_loaded = true;
     }
     ImGui::End();
@@ -133,7 +133,7 @@ void SubtitleEditor::draw_window() {
 
   if (ImGui::Button("Save Changes")) {
     m_files_saved_successfully =
-        std::make_optional(write_subtitle_db_to_files(m_subtitle_db, g_game_version));
+        std::make_optional(m_subtitle_db.write_subtitle_db_to_files(g_game_version));
     repl_rebuild_text();
   }
   if (m_files_saved_successfully.has_value()) {
@@ -173,34 +173,17 @@ void SubtitleEditor::draw_window() {
 
   if (ImGui::TreeNode("All Cutscenes")) {
     ImGui::InputText("New Scene Name", &m_new_scene_name);
-    if (ImGui::BeginCombo("Sorting Group", m_new_scene_group.c_str())) {
-      for (size_t i = 0; i < m_subtitle_db.m_subtitle_groups->m_group_order.size(); ++i) {
-        if (ImGui::Selectable(m_subtitle_db.m_subtitle_groups->m_group_order[i].c_str())) {
-          m_new_scene_group = m_subtitle_db.m_subtitle_groups->m_group_order[i];
-        }
-      }
-      ImGui::EndCombo();
-    }
     ImGui::InputText("Filter", &m_filter, ImGuiInputTextFlags_::ImGuiInputTextFlags_AutoSelectAll);
     if (is_scene_in_current_lang(m_new_scene_name)) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
       ImGui::Text("Scene already exists with that name, no!");
       ImGui::PopStyleColor();
     }
-    if (m_new_scene_group.empty()) {
-      ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
-      ImGui::Text("You must provide a group to sort the scene into!");
-      ImGui::PopStyleColor();
-    }
-    if (!is_scene_in_current_lang(m_new_scene_name) && !m_new_scene_name.empty() &&
-        !m_new_scene_group.empty()) {
+    if (!is_scene_in_current_lang(m_new_scene_name) && !m_new_scene_name.empty()) {
       if (ImGui::Button("Add Scene")) {
-        GameSubtitleSceneInfo newScene(SubtitleSceneKind::Movie);
-        newScene.m_name = m_new_scene_name;
-        newScene.m_id = 0;  // id's are only used for non-named hints
-        newScene.m_sorting_group = m_new_scene_group;
-        m_subtitle_db.m_banks.at(m_current_language)->add_scene(newScene);
-        m_subtitle_db.m_subtitle_groups->add_scene(newScene.m_sorting_group, newScene.m_name);
+        GameSubtitleSceneInfoV1 new_scene(GameSubtitleSceneInfoV1::SceneKind::Movie);
+        new_scene.m_id = 0;  // id's are only used for unnamed hints
+        m_subtitle_db.m_banks.at(m_current_language)->m_scenes.emplace(m_new_scene_name, new_scene);
         if (m_add_new_scene_as_current) {
           auto& scenes = m_subtitle_db.m_banks.at(m_current_language)->m_scenes;
           auto& scene_info = scenes.at(m_new_scene_name);
@@ -213,21 +196,12 @@ void SubtitleEditor::draw_window() {
       ImGui::NewLine();
     }
 
-    draw_all_cutscene_groups();
     ImGui::TreePop();
   }
 
   if (ImGui::TreeNode("All Hints")) {
     ImGui::InputText("New Scene Name", &m_new_scene_name);
     ImGui::InputText("New Scene ID (hex)", &m_new_scene_id);
-    if (ImGui::BeginCombo("Sorting Group", m_new_scene_group.c_str())) {
-      for (size_t i = 0; i < m_subtitle_db.m_subtitle_groups->m_group_order.size(); ++i) {
-        if (ImGui::Selectable(m_subtitle_db.m_subtitle_groups->m_group_order[i].c_str())) {
-          m_new_scene_group = m_subtitle_db.m_subtitle_groups->m_group_order[i];
-        }
-      }
-      ImGui::EndCombo();
-    }
     ImGui::InputText("Filter", &m_filter_hints,
                      ImGuiInputTextFlags_::ImGuiInputTextFlags_AutoSelectAll);
     if (is_scene_in_current_lang(m_new_scene_name)) {
@@ -235,33 +209,22 @@ void SubtitleEditor::draw_window() {
       ImGui::Text("Scene already exists with that name, no!");
       ImGui::PopStyleColor();
     }
-    if (m_new_scene_group.empty()) {
-      ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
-      ImGui::Text("You must provide a group to sort the scene into!");
-      ImGui::PopStyleColor();
-    }
-    if (!is_scene_in_current_lang(m_new_scene_name) && !m_new_scene_name.empty() &&
-        !m_new_scene_group.empty()) {
+    if (!is_scene_in_current_lang(m_new_scene_name) && !m_new_scene_name.empty()) {
       if (ImGui::Button("Add Scene")) {
-        GameSubtitleSceneInfo newScene(SubtitleSceneKind::Hint);
-        newScene.m_name = m_new_scene_name;
+        GameSubtitleSceneInfoV1 new_scene(GameSubtitleSceneInfoV1::SceneKind::Hint);
         if (m_new_scene_id == "0") {
-          newScene.m_kind = SubtitleSceneKind::Hint;
-          newScene.m_id = strtoul(m_new_scene_id.c_str(), nullptr, 16);
+          new_scene.m_kind = GameSubtitleSceneInfoV1::SceneKind::Hint;
         } else {
-          newScene.m_kind = SubtitleSceneKind::HintNamed;
-          newScene.m_id = strtoul(m_new_scene_id.c_str(), nullptr, 16);
+          new_scene.m_kind = GameSubtitleSceneInfoV1::SceneKind::HintNamed;
         }
+        new_scene.m_id = strtoul(m_new_scene_id.c_str(), nullptr, 16);
         // currently hints have no way in the editor to add a line, so give us one for free
-        newScene.add_line(0, "", "", false);
-        newScene.m_sorting_group = m_new_scene_group;
-        m_subtitle_db.m_banks.at(m_current_language)->add_scene(newScene);
-        m_subtitle_db.m_subtitle_groups->add_scene(newScene.m_sorting_group, newScene.m_name);
+        new_scene.m_lines.push_back({"", {0, "", "", false}});
+        m_subtitle_db.m_banks.at(m_current_language)->m_scenes.emplace(m_new_scene_name, new_scene);
         m_new_scene_name = "";
       }
     }
 
-    draw_all_hint_groups();
     ImGui::TreePop();
   }
 
@@ -269,9 +232,9 @@ void SubtitleEditor::draw_window() {
 }
 
 void SubtitleEditor::update_subtitle_editor_db() {
-  std::string db_path = (file_util::get_jak_project_dir() / "game" / "assets" / "jak1" /
-                         "subtitle" / "subtitle-editor-db.json")
-                            .string();
+  std::string db_path =
+      (file_util::get_jak_project_dir() / "game" / "assets" / "jak1" / "subtitle-editor-db.json")
+          .string();
   auto config_str = file_util::read_text_file(db_path);
   auto db_data = parse_commented_json(config_str, db_path);
 
@@ -346,20 +309,6 @@ void SubtitleEditor::draw_edit_options() {
       ImGui::EndCombo();
     }
     ImGui::Checkbox("Show missing cutscenes from base", &m_base_show_missing_cutscenes);
-    ImGui::InputText("New Subtitle Group Name", &m_new_scene_group_name);
-    if (!m_new_scene_group_name.empty()) {
-      if (m_new_scene_group_name == "_groups" ||
-          std::find(m_subtitle_db.m_subtitle_groups->m_group_order.begin(),
-                    m_subtitle_db.m_subtitle_groups->m_group_order.end(), m_new_scene_group_name) !=
-              m_subtitle_db.m_subtitle_groups->m_group_order.end()) {
-        ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
-        ImGui::Text("Invalid group name, has to be unique and not '_groups'");
-        ImGui::PopStyleColor();
-      } else if (ImGui::Button("Add New Group")) {
-        m_subtitle_db.m_subtitle_groups->m_group_order.push_back(m_new_scene_group_name);
-        m_new_scene_group_name = "";
-      }
-    }
     if (ImGui::Button("Update Editor DB")) {
       update_subtitle_editor_db();
     }
@@ -397,83 +346,15 @@ void SubtitleEditor::draw_repl_options() {
   }
 }
 
-bool SubtitleEditor::any_cutscenes_in_group(const std::string& group_name) {
-  auto& scenes = m_subtitle_db.m_banks.at(m_current_language)->m_scenes;
-  auto scenes_in_group = m_subtitle_db.m_subtitle_groups->m_groups[group_name];
-  for (auto& scene_name : scenes_in_group) {
-    if (scenes.count(scene_name) != 0) {
-      auto& scene_info = scenes.at(scene_name);
-      if (scene_info.m_kind == SubtitleSceneKind::Movie) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-void SubtitleEditor::draw_all_cutscene_groups() {
-  for (auto& group_name : m_subtitle_db.m_subtitle_groups->m_group_order) {
-    if (!m_filter.empty() && m_filter != m_filter_placeholder) {
-      ImGui::SetNextItemOpen(true);
-    }
-    if (m_subtitle_db.m_subtitle_groups->m_groups.count(group_name) == 0 ||
-        !any_cutscenes_in_group(group_name)) {
-      continue;
-    }
-    if (ImGui::TreeNode(group_name.c_str())) {
-      draw_all_scenes(group_name, false);
-      draw_all_scenes(group_name, true);
-      ImGui::TreePop();
-    }
-  }
-}
-
-bool SubtitleEditor::any_hints_in_group(const std::string& group_name) {
-  auto& scenes = m_subtitle_db.m_banks.at(m_current_language)->m_scenes;
-  auto scenes_in_group = m_subtitle_db.m_subtitle_groups->m_groups[group_name];
-  for (auto& scene_name : scenes_in_group) {
-    if (scenes.count(scene_name) != 0) {
-      auto& scene_info = scenes.at(scene_name);
-      if (scene_info.m_kind != SubtitleSceneKind::Movie) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-void SubtitleEditor::draw_all_hint_groups() {
-  for (auto& group_name : m_subtitle_db.m_subtitle_groups->m_group_order) {
-    if (!m_filter_hints.empty() && m_filter_hints != m_filter_placeholder) {
-      ImGui::SetNextItemOpen(true);
-    }
-    if (m_subtitle_db.m_subtitle_groups->m_groups.count(group_name) == 0 ||
-        !any_hints_in_group(group_name)) {
-      continue;
-    }
-    if (ImGui::TreeNode(group_name.c_str())) {
-      draw_all_hints(group_name, false);
-      draw_all_hints(group_name, true);
-      ImGui::TreePop();
-    }
-  }
-}
-
 void SubtitleEditor::draw_all_scenes(std::string group_name, bool base_cutscenes) {
-  auto& scenes =
-      m_subtitle_db.m_banks.at(base_cutscenes ? m_base_language : m_current_language)->m_scenes;
-  auto scenes_in_group = m_subtitle_db.m_subtitle_groups->m_groups[group_name];
-  for (auto& scene_name : scenes_in_group) {
-    if (scenes.count(scene_name) == 0) {
-      continue;
-    }
-    auto& scene_info = scenes.at(scene_name);
+  for (auto& [scene_name, scene_info] :
+       m_subtitle_db.m_banks.at(base_cutscenes ? m_base_language : m_current_language)->m_scenes) {
     // Don't duplicate entries
     if (base_cutscenes && is_scene_in_current_lang(scene_name)) {
       continue;
     }
-    bool is_current_scene = m_current_scene && m_current_scene->m_name == scene_info.m_name;
-    if (scene_info.m_kind != SubtitleSceneKind::Movie) {
+    bool is_current_scene = m_current_scene && m_current_scene->m_name == scene_name;
+    if (scene_info.m_kind != GameSubtitleSceneInfoV1::SceneKind::Movie) {
       continue;
     }
     if ((!m_filter.empty() && m_filter != m_filter_placeholder) &&
@@ -502,7 +383,7 @@ void SubtitleEditor::draw_all_scenes(std::string group_name, bool base_cutscenes
       }
       if (base_cutscenes) {
         if (ImGui::Button("Copy from Base Language")) {
-          m_subtitle_db.m_banks.at(m_current_language)->add_scene(scene_info);
+          m_subtitle_db.m_banks.at(m_current_language)->m_scenes.emplace(scene_name, scene_info);
         }
       }
       draw_subtitle_options(scene_info);
@@ -514,20 +395,14 @@ void SubtitleEditor::draw_all_scenes(std::string group_name, bool base_cutscenes
 }
 
 void SubtitleEditor::draw_all_hints(std::string group_name, bool base_cutscenes) {
-  auto& scenes =
-      m_subtitle_db.m_banks.at(base_cutscenes ? m_base_language : m_current_language)->m_scenes;
-  auto scenes_in_group = m_subtitle_db.m_subtitle_groups->m_groups[group_name];
-  for (auto& scene_name : scenes_in_group) {
-    if (scenes.count(scene_name) == 0) {
-      continue;
-    }
-    auto& scene_info = scenes.at(scene_name);
+  for (auto& [scene_name, scene_info] :
+       m_subtitle_db.m_banks.at(base_cutscenes ? m_base_language : m_current_language)->m_scenes) {
     // Don't duplicate entries
     if (base_cutscenes && is_scene_in_current_lang(scene_name)) {
       continue;
     }
-    if (scene_info.m_kind != SubtitleSceneKind::Hint &&
-        scene_info.m_kind != SubtitleSceneKind::HintNamed) {
+    if (scene_info.m_kind != GameSubtitleSceneInfoV1::SceneKind::Hint &&
+        scene_info.m_kind != GameSubtitleSceneInfoV1::SceneKind::HintNamed) {
       continue;
     }
     if ((!m_filter_hints.empty() && m_filter_hints != m_filter_placeholder) &&
@@ -547,7 +422,7 @@ void SubtitleEditor::draw_all_hints(std::string group_name, bool base_cutscenes)
       }
       if (base_cutscenes) {
         if (ImGui::Button("Copy from Base Language")) {
-          m_subtitle_db.m_banks.at(m_current_language)->add_scene(scene_info);
+          m_subtitle_db.m_banks.at(m_current_language)->m_scenes.emplace(scene_name, scene_info);
         }
       }
       draw_subtitle_options(scene_info);
@@ -558,14 +433,14 @@ void SubtitleEditor::draw_all_hints(std::string group_name, bool base_cutscenes)
   }
 }
 
-void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool current_scene) {
+void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfoV1& scene, bool current_scene) {
   if (!m_repl.is_connected()) {
     ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
     ImGui::Text("REPL not connected, can't play!");
     ImGui::PopStyleColor();
   } else {
     // Cutscenes
-    if (scene.m_kind == SubtitleSceneKind::Movie && m_db.count(scene.m_name) > 0) {
+    if (scene.m_kind == GameSubtitleSceneInfoV1::SceneKind::Movie && m_db.count(scene.m_name) > 0) {
       if (ImGui::Button("Play Scene")) {
         update_subtitle_editor_db();
         repl_execute_cutscene_code(m_db[scene.m_name]);
@@ -577,8 +452,8 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
       ImGui::NewLine();
     }
     // Hints
-    else if (scene.m_kind == SubtitleSceneKind::Hint ||
-             scene.m_kind == SubtitleSceneKind::HintNamed) {
+    else if (scene.m_kind == GameSubtitleSceneInfoV1::SceneKind::Hint ||
+             scene.m_kind == GameSubtitleSceneInfoV1::SceneKind::HintNamed) {
       if (ImGui::Button("Play Hint")) {
         repl_play_hint(scene.m_name);
       }
@@ -590,61 +465,43 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
       ImGui::NewLine();
     }
   }
-  if (ImGui::BeginCombo("Sorting Group", scene.m_sorting_group.c_str())) {
-    for (size_t i = 0; i < m_subtitle_db.m_subtitle_groups->m_group_order.size(); ++i) {
-      const bool isSelected = (scene.m_sorting_group_idx == (int)i);
-      if (ImGui::Selectable(m_subtitle_db.m_subtitle_groups->m_group_order[i].c_str(),
-                            isSelected)) {
-        // Remove from current group
-        m_subtitle_db.m_subtitle_groups->remove_scene(scene.m_sorting_group, scene.m_name);
-        // Add to new group
-        scene.m_sorting_group_idx = i;
-        scene.m_sorting_group = m_subtitle_db.m_subtitle_groups->m_group_order.at(i);
-        m_subtitle_db.m_subtitle_groups->add_scene(scene.m_sorting_group, scene.m_name);
-      }
-      if (isSelected) {
-        ImGui::SetItemDefaultFocus();
-      }
-    }
-    ImGui::EndCombo();
-  }
   if (current_scene) {
     draw_new_cutscene_line_form();
   }
   auto font = get_font_bank(m_subtitle_db.m_banks[m_current_language]->m_text_version);
   int i = 0;
-  for (auto subtitleLine = scene.m_lines.begin(); subtitleLine != scene.m_lines.end();) {
-    auto linetext = font->convert_game_to_utf8(subtitleLine->line.c_str());
-    auto line_speaker = font->convert_game_to_utf8(subtitleLine->speaker.c_str());
+  for (auto subtitle_line = scene.m_lines.begin(); subtitle_line != scene.m_lines.end();) {
+    auto linetext = font->convert_game_to_utf8(subtitle_line->text.c_str());
+    auto line_speaker = font->convert_game_to_utf8(subtitle_line->metadata.speaker.c_str());
     std::string summary;
     if (linetext.empty()) {
-      summary = fmt::format("[{}] Clear Screen", subtitleLine->frame);
+      summary = fmt::format("[{}] Clear Screen", subtitle_line->metadata.frame_start);
     } else if (linetext.length() >= 30) {
-      summary = fmt::format("[{}] {} - '{}...'", subtitleLine->frame, line_speaker,
+      summary = fmt::format("[{}] {} - '{}...'", subtitle_line->metadata.frame_start, line_speaker,
                             linetext.substr(0, 30));
     } else {
-      summary =
-          fmt::format("[{}] {} - '{}'", subtitleLine->frame, line_speaker, linetext.substr(0, 30));
+      summary = fmt::format("[{}] {} - '{}'", subtitle_line->metadata.frame_start, line_speaker,
+                            linetext.substr(0, 30));
     }
     if (linetext.empty()) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
-    } else if (subtitleLine->offscreen) {
+    } else if (subtitle_line->metadata.offscreen) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_offscreen_text_color);
     }
     if (ImGui::TreeNode(fmt::format("{}", i).c_str(), "%s", summary.c_str())) {
-      if (linetext.empty() || subtitleLine->offscreen) {
+      if (linetext.empty() || subtitle_line->metadata.offscreen) {
         ImGui::PopStyleColor();
       }
-      ImGui::InputInt("Starting Frame", &subtitleLine->frame,
+      ImGui::InputInt("Starting Frame", &subtitle_line->metadata.frame_start,
                       ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
       // TODO - speaker dropdown instead
       ImGui::InputText("Speaker", &line_speaker);
       ImGui::InputText("Text", &linetext);
-      ImGui::Checkbox("Offscreen?", &subtitleLine->offscreen);
+      ImGui::Checkbox("Offscreen?", &subtitle_line->metadata.offscreen);
       if (scene.m_lines.size() > 1) {  // prevent creating an empty scene
         ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
         if (ImGui::Button("Remove")) {
-          subtitleLine = scene.m_lines.erase(subtitleLine);
+          subtitle_line = scene.m_lines.erase(subtitle_line);
           ImGui::PopStyleColor();
           ImGui::TreePop();
           continue;
@@ -652,15 +509,13 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
         ImGui::PopStyleColor();
       }
       ImGui::TreePop();
-    } else if (linetext.empty() || subtitleLine->offscreen) {
+    } else if (linetext.empty() || subtitle_line->metadata.offscreen) {
       ImGui::PopStyleColor();
     }
-    auto newtext = font->convert_utf8_to_game(linetext, true);
-    auto newspkr = font->convert_utf8_to_game(line_speaker, true);
-    subtitleLine->line = newtext;
-    subtitleLine->speaker = newspkr;
+    subtitle_line->text = font->convert_utf8_to_game(linetext, true);
+    subtitle_line->metadata.speaker = font->convert_utf8_to_game(line_speaker, true);
     i++;
-    subtitleLine++;
+    subtitle_line++;
   }
 }
 
