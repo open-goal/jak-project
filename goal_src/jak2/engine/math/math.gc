@@ -47,9 +47,9 @@
   (= (the float (the int arg0)) arg0)
   )
 
-(defun fractional-part ((arg0 float))
+(defun fractional-part ((x float))
   "Get the fractional part of a float."
-  (- arg0 (the float (the int arg0)))
+  (- x (the float (the int x)))
   )
 
 (defun sawtooth-wave ((arg0 float))
@@ -553,7 +553,7 @@
     )
   )
 
-(defun lerp ((arg0 float) (maximum float) (amount float))
+(defun lerp ((minimum float) (maximum float) (amount float))
   "Linearly interpolate between minimum and maximum."
   (+ minimum (* amount (- maximum minimum)))
   )
@@ -586,22 +586,22 @@
     )
   )
 
-(defun lerp-clamp ((arg0 float) (arg1 float) (arg2 float))
+(defun lerp-clamp ((minimum float) (maximum float) (amount float))
   "Linearly interpolate between arg0 and arg1. arg2 is clamped to [0, 1]"
   (cond
-    ((>= 0.0 arg2)
-     arg0
+    ((>= 0.0 amount)
+     minimum
      )
-    ((>= arg2 1.0)
-     arg1
+    ((>= amount 1.0)
+     maximum
      )
     (else
-      (+ (* (- 1.0 arg2) arg0) (* arg2 arg1))
+      (+ (* (- 1.0 amount) minimum) (* amount maximum))
       )
     )
   )
 
-(defun seekl ((arg0 int) (target int) (diff int))
+(defun seekl ((x int) (target int) (diff int))
   "Move x toward target, by at most diff."
   (let* ((v1-0 (- target x)) (a3-0 (abs v1-0)))
     (cond
@@ -685,9 +685,9 @@
   (- (the-as float *_vu-reg-R_*) 1.0)
   )
 
-(defun rand-vu-float-range ((arg0 float) (arg1 float))
+(defun rand-vu-float-range ((minimum float) (maximum float))
   "Get a random float in between arg0 and arg1"
-  (+ arg0 (* (rand-vu) (- arg1 arg0)))
+  (+ minimum (* (rand-vu) (- maximum minimum)))
   )
 
 (defun rand-vu-percent? ((arg0 float))
@@ -695,13 +695,13 @@
   (>= arg0 (rand-vu))
   )
 
-(defun rand-vu-int-range ((arg0 int) (arg1 int))
+(defun rand-vu-int-range ((first int) (second int))
   "Get an integer in the given range (inclusive)"
-  (if (< arg0 arg1)
-      (set! arg1 (+ arg1 1))
-      (set! arg0 (+ arg0 1))
+  (if (< first second)
+      (set! second (+ second 1))
+      (set! first (+ first 1))
       )
-  (let ((f0-4 (rand-vu-float-range (the float arg0) (the float arg1))))
+  (let ((f0-4 (rand-vu-float-range (the float first) (the float second))))
     (if (< f0-4 0.0)
         (set! f0-4 (+ -1.0 f0-4))
         )
@@ -709,9 +709,9 @@
     )
   )
 
-(defun rand-vu-int-count ((arg0 int))
+(defun rand-vu-int-count ((maximum int))
   "Get an integer in the range [0, max)."
-  (the int (* (rand-vu) (the float arg0)))
+  (the int (* (rand-vu) (the float maximum)))
   )
 
 (defun rand-vu-int-count-excluding ((arg0 int) (arg1 int))

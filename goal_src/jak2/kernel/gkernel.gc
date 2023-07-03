@@ -52,20 +52,20 @@
 
 (define *kernel-packages* '())
 
-(defun load-package ((arg0 string) (arg1 kheap))
+(defun load-package ((package string) (allocation kheap))
   "Load a package by name to the given heap."
-  (when (not (nmember arg0 *kernel-packages*))
-    (kmemopen global arg0)
-    (dgo-load arg0 arg1 (link-flag output-load-msg output-load-true-msg execute-login print-login) #x200000)
-    (set! *kernel-packages* (cons arg0 *kernel-packages*))
+  (when (not (nmember package *kernel-packages*))
+    (kmemopen global package)
+    (dgo-load package allocation (link-flag output-load-msg output-load-true-msg execute-login print-login) #x200000)
+    (set! *kernel-packages* (cons package *kernel-packages*))
     (kmemclose)
     *kernel-packages*
     )
   )
 
-(defun unload-package ((arg0 string))
+(defun unload-package ((package string))
   "Mark a package as unloaded."
-  (let ((v1-0 (nmember arg0 *kernel-packages*)))
+  (let ((v1-0 (nmember package *kernel-packages*)))
     (if v1-0
         (set! *kernel-packages* (delete! (car v1-0) *kernel-packages*))
         )

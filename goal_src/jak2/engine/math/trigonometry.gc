@@ -984,17 +984,17 @@ normally.
   (lerp minimum maximum (sin (* 16384.0 amount)))
   )
 
-(defun sinerp-clamp ((arg0 float) (arg1 float) (arg2 float))
+(defun sinerp-clamp ((minimum float) (maximum float) (amount float))
   "Like sinerp, but clamp to min,max"
   (cond
-    ((>= 0.0 arg2)
-     arg0
+    ((>= 0.0 amount)
+     minimum
      )
-    ((>= arg2 1.0)
-     arg1
+    ((>= amount 1.0)
+     maximum
      )
     (else
-      (sinerp arg0 arg1 arg2)
+      (sinerp minimum maximum amount)
       )
     )
   )
@@ -1004,17 +1004,17 @@ normally.
   (lerp minimum maximum (- 1.0 (cos (* 16384.0 amount))))
   )
 
-(defun coserp-clamp ((arg0 float) (arg1 float) (arg2 float))
+(defun coserp-clamp ((minimum float) (maximum float) (amount float))
   "Weird 90 degree lerp with cosine, clamped to min,max"
   (cond
-    ((>= 0.0 arg2)
-     arg0
+    ((>= 0.0 amount)
+     minimum
      )
-    ((>= arg2 1.0)
-     arg1
+    ((>= amount 1.0)
+     maximum
      )
     (else
-      (coserp arg0 arg1 arg2)
+      (coserp minimum maximum amount)
       )
     )
   )
@@ -1024,38 +1024,38 @@ normally.
   (lerp minimum maximum (* 0.5 (- 1.0 (cos (* 32768.0 amount)))))
   )
 
-(defun coserp180-clamp ((arg0 float) (arg1 float) (arg2 float))
+(defun coserp180-clamp ((minimum float) (maximum float) (amount float))
   "Classic coserp with saturation"
   (cond
-    ((>= 0.0 arg2)
-     arg0
+    ((>= 0.0 amount)
+     minimum
      )
-    ((>= arg2 1.0)
-     arg1
+    ((>= amount 1.0)
+     maximum
      )
     (else
-      (coserp180 arg0 arg1 arg2)
+      (coserp180 minimum maximum amount)
       )
     )
   )
 
-(defun ease-in-out ((arg0 int) (arg1 int))
+(defun ease-in-out ((total int) (progress int))
   "Weird coserp like mapping from 0 to 1 as progress goes from 0 to total"
   (local-vars (v1-0 int))
   (cond
-    ((>= arg1 arg0)
+    ((>= progress total)
      1.0
      )
-    ((<= arg1 0)
+    ((<= progress 0)
      0.0
      )
-    ((begin (set! v1-0 (/ arg0 2)) (< v1-0 arg1))
-     (let ((a0-1 (- arg1 arg0)))
+    ((begin (set! v1-0 (/ total 2)) (< v1-0 progress))
+     (let ((a0-1 (- progress total)))
        (+ 0.5 (* 0.5 (sin (- 16384.0 (/ (* 16384.0 (the float a0-1)) (the float v1-0))))))
        )
      )
     (else
-      (- 0.5 (* 0.5 (cos (/ (* 16384.0 (the float arg1)) (the float v1-0)))))
+      (- 0.5 (* 0.5 (cos (/ (* 16384.0 (the float progress)) (the float v1-0)))))
       )
     )
   )
