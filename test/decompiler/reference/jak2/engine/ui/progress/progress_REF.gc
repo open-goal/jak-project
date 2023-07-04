@@ -271,10 +271,10 @@
   (set! (-> self joint-idx) arg0)
   (set! (-> self init-angle) arg1)
   (set! (-> self graphic-index) arg2)
-  (set! (-> self root trans quad) (-> (the-as progress (-> self parent 0)) root trans quad))
-  (quaternion-copy! (-> self root quat) (-> (the-as progress (-> self parent 0)) root quat))
+  (set! (-> self root trans quad) (-> self parent 0 root trans quad))
+  (quaternion-copy! (-> self root quat) (-> self parent 0 root quat))
   (quaternion-normalize! (-> self root quat))
-  (set! (-> self root scale quad) (-> (the-as progress (-> self parent 0)) root scale quad))
+  (set! (-> self root scale quad) (-> self parent 0 root scale quad))
   (let ((gp-1 (quaternion-vector-angle! (new 'stack-no-clear 'quaternion) *z-vector* (-> self init-angle))))
     (quaternion-normalize! gp-1)
     (quaternion*! (-> self root quat) (-> self root quat) gp-1)
@@ -291,39 +291,36 @@
     ((and (= *cheat-mode* #f) (= *kernel-boot-message* 'kiosk))
      (setup-masks
        (-> self draw)
-       (the-as int (-> *hud-ring-kiosk-graphic-remap*
-                       (mod
-                         (+ (-> self graphic-index) (-> (the-as progress (-> self parent 0)) graphic-index))
-                         (-> *hud-ring-kiosk-graphic-remap* length)
-                         )
-                       )
-               )
+       (the-as
+         int
+         (-> *hud-ring-kiosk-graphic-remap*
+             (mod (+ (-> self graphic-index) (-> self parent 0 graphic-index)) (-> *hud-ring-kiosk-graphic-remap* length))
+             )
+         )
        0
        )
      )
     ((and (= *cheat-mode* #f) (demo?))
      (setup-masks
        (-> self draw)
-       (the-as int (-> *hud-ring-demo-graphic-remap*
-                       (mod
-                         (+ (-> self graphic-index) (-> (the-as progress (-> self parent 0)) graphic-index))
-                         (-> *hud-ring-kiosk-graphic-remap* length)
-                         )
-                       )
-               )
+       (the-as
+         int
+         (-> *hud-ring-demo-graphic-remap*
+             (mod (+ (-> self graphic-index) (-> self parent 0 graphic-index)) (-> *hud-ring-kiosk-graphic-remap* length))
+             )
+         )
        0
        )
      )
     (else
       (setup-masks
         (-> self draw)
-        (the-as int (-> *hud-ring-graphic-remap*
-                        (mod
-                          (+ (-> self graphic-index) (-> (the-as progress (-> self parent 0)) graphic-index))
-                          (-> *hud-ring-graphic-remap* length)
-                          )
-                        )
-                )
+        (the-as
+          int
+          (-> *hud-ring-graphic-remap*
+              (mod (+ (-> self graphic-index) (-> self parent 0 graphic-index)) (-> *hud-ring-graphic-remap* length))
+              )
+          )
         0
         )
       )
@@ -4014,3 +4011,7 @@
     )
   0
   )
+
+
+
+
