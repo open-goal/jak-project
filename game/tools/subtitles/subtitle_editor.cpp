@@ -38,6 +38,7 @@ void SubtitleEditor::draw_window() {
   }
 
   if (ImGui::Button("Save Changes")) {
+    // TODO - should only write out the files we are modifying
     m_files_saved_successfully =
         std::make_optional(m_subtitle_db.write_subtitle_db_to_files(g_game_version));
     m_repl.rebuild_text();
@@ -57,6 +58,7 @@ void SubtitleEditor::draw_window() {
 
   draw_edit_options();
   draw_repl_options();
+  draw_speaker_options();
 
   if (!m_current_scene) {
     ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
@@ -164,6 +166,19 @@ void SubtitleEditor::draw_repl_options() {
           ImGui::PopStyleColor();
         }
       }
+    }
+    ImGui::TreePop();
+  }
+}
+
+void SubtitleEditor::draw_speaker_options() {
+  if (ImGui::TreeNode("Speakers")) {
+    const auto& bank = m_subtitle_db.m_banks[m_current_language];
+    for (auto& [speaker_id, speaker_localized] : bank->m_speakers) {
+      // Insertion or deletion not needed here as it has to be wired up in .gc and C++ code
+      // nothing would get persisted and there has to be a translation for all speakers (even if
+      // it's no translation at all)
+      ImGui::InputText(speaker_id.c_str(), &speaker_localized);
     }
     ImGui::TreePop();
   }

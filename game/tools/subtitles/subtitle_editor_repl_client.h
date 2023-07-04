@@ -22,4 +22,5 @@ class SubtitleEditorReplClient {
   void execute_jak1_cutscene_code(const Jak1SubtitleEditorDB::Entry& entry);
   void rebuild_text();
   void play_hint(const std::string& hint_name);
+  void play_vag(const std::string& scene_name, bool is_cutscene)
 };

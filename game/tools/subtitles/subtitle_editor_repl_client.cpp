@@ -96,8 +96,23 @@ void SubtitleEditorReplClient::execute_jak1_cutscene_code(
 }
 
 void SubtitleEditorReplClient::rebuild_text() {
-  m_repl.eval("(make-text)");
-  // increment the language id of the in-memory text file so that it won't match the current
-  // language and the game will want to reload it asap
-  m_repl.eval("(1+! (-> *subtitle-text* lang))");
+  if (m_game_version == GameVersion::Jak1) {
+    m_repl.eval("(make-text)");
+    // increment the language id of the in-memory text file so that it won't match the current
+    // language and the game will want to reload it asap
+    m_repl.eval("(1+! (-> *subtitle-text* lang))");
+  } else {
+    // reload subtitles immediately
+    m_repl.eval("(reload-subtitles)");
+  }
+}
+
+void SubtitleEditorReplClient::play_vag(const std::string& scene_name, bool is_cutscene) {
+  if (m_game_version != GameVersion::Jak1) {
+    if (is_cutscene) {
+      m_repl.eval(fmt::format("(scene-find-and-play \"{}\")", scene_name));
+    } else {
+      m_repl.eval(fmt::format("(vag-player-play-from-name \"{}\")", scene_name));
+    }
+  }
 }

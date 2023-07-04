@@ -18,6 +18,8 @@ class SubtitleEditor {
   void draw_edit_options();
   void draw_repl_options();
 
+  void draw_speaker_options();
+
   void draw_scene_section_header(const bool non_cutscenes);
   void draw_all_cutscenes(bool base_cutscenes = false);
   void draw_all_non_cutscenes(bool base_cutscenes);
