@@ -177,7 +177,7 @@
                           ((not (logtest? (-> arg1 waypoint-bits) 1))
                            ;; (set! s3-0 (and s4-0 (and s5-0 s3-0)))
                            (when (and s4-0 (and s5-0 s3-0))
-                             (let* ((v1-15 (-> *game-info* sub-task-list 4))
+                             (let* ((v1-15 (-> *game-info* sub-task-list (game-task-node city-help-kid-introduction)))
                                     (v1-18 (handle->process (if (-> v1-15 info)
                                                                 (-> v1-15 info manager)
                                                                 (the-as handle #f)
@@ -271,7 +271,7 @@
                     (lambda ((arg0 object) (arg1 hal-help-kid))
                       (when *target*
                         (let* ((s5-0 (target-pos 0))
-                               (s4-0 (-> arg1 root-override2 trans))
+                               (s4-0 (-> arg1 root trans))
                                (f30-0 (vector-vector-xz-distance s5-0 s4-0))
                                (f28-0 (- (-> s5-0 z) (-> s4-0 z)))
                                (v1-4 (get-current-task-event (-> arg1 task)))
@@ -329,7 +329,7 @@
         :skip-to -1
         :on-set (lambda ((arg0 hal-help-kid))
           (with-pp
-            (set-setting! 'sound-mode #f 0 1)
+            (set-setting! 'sound-mode #f 0.0 1)
             (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
               (set! (-> a1-1 from) (process->ppointer pp))
               (set! (-> a1-1 num-params) 2)
@@ -389,7 +389,7 @@
                       (function halt-wait-spot hal symbol)
                       (lambda ((arg0 object) (arg1 hal-help-kid))
                         (cond
-                          ((and (logtest? (-> arg1 bot-task-bits) 1) (zero? (logand (-> arg1 bot-flags) (bot-flags bf09))))
+                          ((and (logtest? (-> arg1 bot-task-bits) 1) (not (logtest? (-> arg1 bot-flags) (bot-flags bf09))))
                            (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
                            (go-to-waypoint! arg1 7 #f)
                            (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
@@ -399,7 +399,7 @@
                            (let ((v1-16 *target*))
                              (when v1-16
                                (cond
-                                 ((logtest? (focus-status dark) (-> v1-16 focus-status))
+                                 ((focus-test? v1-16 dark)
                                   (if (and (not (logtest? (-> arg1 bot-task-bits) 4)) (send-event *target* 'end-mode))
                                       (logior! (-> arg1 bot-task-bits) 4)
                                       )
@@ -448,9 +448,7 @@
                     )
                 )
               )
-            (when (and (not (logtest? (-> arg0 waypoint-bits) 2))
-                       (>= (- (-> pp clock frame-counter) (-> arg0 waypoint-time0)) (seconds 3))
-                       )
+            (when (and (not (logtest? (-> arg0 waypoint-bits) 2)) (>= (- (current-time) (-> arg0 waypoint-time0)) (seconds 3)))
               (logior! (-> arg0 waypoint-bits) 2)
               (let ((s5-0 (new 'stack-no-clear 'transport-params)))
                 (set-vector! (-> s5-0 spawn-pos) 2689966.0 65208.32 -481075.2 1.0)
@@ -466,7 +464,7 @@
               )
             (hal-help-kid-method-227 arg0)
             (when (and (not (logtest? (-> arg0 waypoint-bits) 1))
-                       (>= (- (-> pp clock frame-counter) (-> arg0 waypoint-time0)) (seconds 0.2))
+                       (>= (- (current-time) (-> arg0 waypoint-time0)) (seconds 0.2))
                        )
               (logior! (-> arg0 waypoint-bits) 1)
               (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
@@ -626,18 +624,16 @@
                   (the-as
                     (function halt-wait-spot hal symbol)
                     (lambda ((arg0 object) (arg1 hal-help-kid))
-                      (with-pp
-                        (if (and *target* (zero? (logand (-> arg1 bot-task-bits) 8)))
-                            (set! (-> arg1 waypoint-time0) (-> pp clock frame-counter))
-                            )
-                        (let ((v1-7 (get-current-task-event (-> arg1 task))))
-                          (when (and (= (-> v1-7 action) (game-task-action say)) (scene-play arg1 (the-as string (-> v1-7 scene)) #f))
-                            (bot-method-196 arg1)
-                            (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
-                            (go-to-waypoint! arg1 9 #f)
-                            (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
-                            #t
-                            )
+                      (if (and *target* (not (logtest? (-> arg1 bot-task-bits) 8)))
+                          (set! (-> arg1 waypoint-time0) (current-time))
+                          )
+                      (let ((v1-7 (get-current-task-event (-> arg1 task))))
+                        (when (and (= (-> v1-7 action) (game-task-action say)) (scene-play arg1 (the-as string (-> v1-7 scene)) #f))
+                          (bot-method-196 arg1)
+                          (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                          (go-to-waypoint! arg1 9 #f)
+                          (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                          #t
                           )
                         )
                       )

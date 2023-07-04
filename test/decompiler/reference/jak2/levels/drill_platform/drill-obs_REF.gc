@@ -143,17 +143,13 @@ and translate the platform via the `smush`
   (cond
     ((-> self bouncing)
      (new 'stack-no-clear 'quaternion)
-     (quaternion-rotate-local-x!
-       (-> self root-override quat)
-       (-> self init-quat)
-       (* 182.04445 (update! (-> self smush)))
-       )
+     (quaternion-rotate-local-x! (-> self root quat) (-> self init-quat) (* 182.04445 (update! (-> self smush))))
      (if (not (!= (-> self smush amp) 0.0))
          (set! (-> self bouncing) #f)
          )
      )
     (else
-      (move-to-point! (-> self root-override) (-> self basetrans))
+      (move-to-point! (-> self root) (-> self basetrans))
       )
     )
   (none)
@@ -172,7 +168,7 @@ and translate the platform via the `smush`
     )
   :enter (behavior ()
     (ja :group! (-> self draw art-group data 2) :num! min)
-    (logior! (-> self root-override root-prim prim-core action) (collide-action rideable))
+    (logior! (-> self root root-prim prim-core action) (collide-action rideable))
     (none)
     )
   :trans drill-plat-falling-trans
@@ -185,7 +181,7 @@ and translate the platform via the `smush`
   :virtual #t
   :trans (behavior ()
     (if (>= (- (current-time) (-> self state-time)) (seconds 0.4))
-        (logclear! (-> self root-override root-prim prim-core action) (collide-action rideable))
+        (logclear! (-> self root root-prim prim-core action) (collide-action rideable))
         )
     (drill-plat-falling-trans)
     (none)
@@ -230,7 +226,7 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root-override) s4-0)
+    (set! (-> obj root) (the-as collide-shape-moving s4-0))
     )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
@@ -239,8 +235,8 @@ This commonly includes things such as:
     (the-as pair 0)
     )
   (stop-bouncing! obj)
-  (quaternion-copy! (-> obj init-quat) (-> obj root-override quat))
-  (update-transforms (-> obj root-override))
+  (quaternion-copy! (-> obj init-quat) (-> obj root quat))
+  (update-transforms (-> obj root))
   (ja-channel-push! 1 0)
   (go (method-of-object obj idle))
   (none)
@@ -349,7 +345,7 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-15 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-15 prim-core collide-with))
       )
-    (set! (-> obj root-override) s5-0)
+    (set! (-> obj root) (the-as collide-shape-moving s5-0))
     )
   0
   (none)
@@ -385,17 +381,17 @@ This commonly includes things such as:
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
-      (sound-play "drill-elevator" :id (-> self sound-id) :position (-> self root-override trans))
+      (sound-play "drill-elevator" :id (-> self sound-id) :position (-> self root trans))
       (suspend)
       (ja :num! (seek!))
       )
     (logior! (-> self elevator-status) (elevator-status waiting-to-ascend))
     (until (= (-> self path-pos) 1.0)
-      (sound-play "drill-elevator" :id (-> self sound-id) :position (-> self root-override trans))
+      (sound-play "drill-elevator" :id (-> self sound-id) :position (-> self root trans))
       (suspend)
       )
     (sound-stop (-> self sound-id))
-    (sound-play "d-elev-fence-dn" :position (-> self root-override trans))
+    (sound-play "d-elev-fence-dn" :position (-> self root trans))
     (ja-no-eval :group! (-> self draw art-group data 4)
                 :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
                 :frame-num 0.0
@@ -414,7 +410,7 @@ This commonly includes things such as:
           ((the-as (function none) t9-0))
           )
       )
-    (set-extent! (-> self shaft 0) (-> self root-override trans))
+    (set-extent! (-> self shaft 0) (-> self root trans))
     (none)
     )
   )
@@ -541,11 +537,11 @@ This commonly includes things such as:
 @see [[path-control]] and [[elevator]]"
   (let ((s4-0 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg1 'interp))
         (a0-3 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg2 'interp))
-        (v1-3 (-> obj root-override trans))
+        (v1-3 (-> obj root trans))
         )
     (when (and (< (-> a0-3 y) (-> s4-0 y)) (< (-> arg0 y) (+ -8192.0 (-> v1-3 y))))
       (let ((s4-2 (vector-! (new 'stack-no-clear 'vector) arg0 v1-3)))
-        (vector-inv-orient-by-quat! s4-2 s4-2 (-> obj root-override quat))
+        (vector-inv-orient-by-quat! s4-2 s4-2 (-> obj root quat))
         (and (< (fabs (-> s4-2 x)) 20480.0) (< (fabs (-> s4-2 z)) 20480.0))
         )
       )
@@ -658,7 +654,7 @@ For example for an elevator pre-compute the distance between the first and last 
         )
       )
     (until (= (-> self path-pos) 1.0)
-      (sound-play "mech-lift" :id (-> self sound-id) :position (-> self root-override trans))
+      (sound-play "mech-lift" :id (-> self sound-id) :position (-> self root trans))
       (suspend)
       )
     (sound-stop (-> self sound-id))
@@ -680,9 +676,9 @@ For example for an elevator pre-compute the distance between the first and last 
            )
       (when (and a0-2 (focus-test? a0-2 mech) (not (logtest? (-> a0-2 focus-status) (focus-status dead ignore))))
         (let* ((v1-5 (get-trans a0-2 0))
-               (s5-2 (vector-! (new 'stack-no-clear 'vector) v1-5 (-> obj root-override trans)))
+               (s5-2 (vector-! (new 'stack-no-clear 'vector) v1-5 (-> obj root trans)))
                )
-          (vector-inv-orient-by-quat! s5-2 s5-2 (-> obj root-override quat))
+          (vector-inv-orient-by-quat! s5-2 s5-2 (-> obj root quat))
           (and (< (fabs (-> s5-2 x)) 16384.0) (< (fabs (-> s5-2 z)) 16384.0))
           )
         )
@@ -754,7 +750,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition of type fire-floor
 (deftype fire-floor (process-drawable)
-  ((root-override      collide-shape-moving             :offset        128)
+  ((root               collide-shape-moving             :override)
    (part-off           sparticle-launch-control         :offset-assert 200)
    (size               float                    2       :offset-assert 204)
    (attack-id          uint32                           :offset-assert 212)
@@ -836,10 +832,8 @@ For example for an elevator pre-compute the distance between the first and last 
                                 (>= (-> s4-1 y) -2048.0)
                                 (>= 2048.0 (-> s4-1 y))
                                 )
-                       (let ((s4-2 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root-override quat))))
-                         (let* ((v1-23
-                                  (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> (the-as process-focusable gp-0) root-override quat))
-                                  )
+                       (let ((s4-2 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
+                         (let* ((v1-23 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> (the-as process-focusable gp-0) root quat)))
                                 (f0-8 (vector-dot s4-2 v1-23))
                                 )
                            (if (< 0.0 f0-8)
@@ -888,7 +882,7 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> a1-0 options) (overlaps-others-options oo0))
       (set! (-> a1-0 collide-with-filter) (the-as collide-spec -1))
       (set! (-> a1-0 tlist) *touching-list*)
-      (find-overlapping-shapes (-> self root-override) a1-0)
+      (find-overlapping-shapes (-> self root) a1-0)
       )
     (none)
     )
@@ -1027,7 +1021,7 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root-override) (the-as collide-shape-moving s4-0))
+    (set! (-> obj root) (the-as collide-shape-moving s4-0))
     )
   (process-drawable-from-entity! obj arg0)
   (set-part obj)
@@ -1078,7 +1072,7 @@ This commonly includes things such as:
     (matrix-inverse-of-rot-trans! (-> obj world-to-local) (-> obj local-to-world))
     (set! (-> obj deadly-width) (vector-vector-distance (-> s4-1 vector 1) (the-as vector (-> s4-1 vector))))
     (set! (-> obj deadly-length) (vector-vector-distance (-> s4-1 vector 2) (the-as vector (-> s4-1 vector))))
-    (let ((v1-39 (-> obj root-override root-prim)))
+    (let ((v1-39 (-> obj root root-prim)))
       (vector-reset! (-> v1-39 local-sphere))
       (let* ((f0-14 (* 0.5 (-> obj deadly-width)))
              (f0-16 (* f0-14 f0-14))
@@ -1102,7 +1096,7 @@ This commonly includes things such as:
     )
   (set! (-> obj sound-id) (new-sound-id))
   (set! (-> obj sound-playing) #f)
-  (update-transforms (-> obj root-override))
+  (update-transforms (-> obj root))
   (go (method-of-object obj idle))
   (none)
   )
@@ -1297,7 +1291,7 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-13 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-13 prim-core collide-with))
       )
-    (set! (-> obj root-override) s5-0)
+    (set! (-> obj root) s5-0)
     )
   0
   (none)
@@ -1357,8 +1351,8 @@ This commonly includes things such as:
     (let ((gp-1 (new 'stack-no-clear 'vector))
           (s5-1 (new 'stack-no-clear 'vector))
           )
-      (vector-z-quaternion! gp-1 (-> self root-override quat))
-      (vector-! s5-1 (target-pos 0) (-> self root-override trans))
+      (vector-z-quaternion! gp-1 (-> self root quat))
+      (vector-! s5-1 (target-pos 0) (-> self root trans))
       (if (< (vector-dot s5-1 gp-1) 0.0)
           (set! (-> self down-frame) 2.0)
           )
@@ -1805,12 +1799,12 @@ This commonly includes things such as:
   (game-task-node drill-ship-resolution)
   TASK_MANAGER_INIT_HOOK
   (lambda ()
-    (speech-control-method-10
+    (speech-table-set!
       *speech-control*
-      6
+      (speech-type speech-type-6)
       (new 'static 'speech-type-info
-        :min-delay #x4b0
-        :max-delay #x960
+        :min-delay (seconds 4)
+        :max-delay (seconds 8)
         :list (new 'static 'boxed-array :type string
           "kg001"
           "kg006"
@@ -1851,13 +1845,13 @@ This commonly includes things such as:
           )
         )
       )
-    (speech-control-method-10
+    (speech-table-set!
       *speech-control*
-      9
+      (speech-type speech-type-9)
       (new 'static 'speech-type-info
         :priority 1
-        :min-delay #x12c
-        :max-delay #x258
+        :min-delay (seconds 1)
+        :max-delay (seconds 2)
         :list (new 'static 'boxed-array :type string
           "kg133"
           "kg142"
@@ -1882,22 +1876,22 @@ This commonly includes things such as:
       )
     (the-as
       object
-      (speech-control-method-10
-        *speech-control*
-        10
-        (new 'static 'speech-type-info :priority #xa :max-delay #x12c :list (new 'static 'boxed-array :type string
-                                                                              "kg166"
-                                                                              "kg167"
-                                                                              "kg168"
-                                                                              "kg169"
-                                                                              "kg171"
-                                                                              "kg172"
-                                                                              "kg173"
-                                                                              "kg174"
-                                                                              "kg175"
-                                                                              )
-                                       )
-        )
+      (speech-table-set! *speech-control* (speech-type speech-type-10) (new 'static 'speech-type-info
+                                                                         :priority 10
+                                                                         :max-delay (seconds 1)
+                                                                         :list (new 'static 'boxed-array :type string
+                                                                           "kg166"
+                                                                           "kg167"
+                                                                           "kg168"
+                                                                           "kg169"
+                                                                           "kg171"
+                                                                           "kg172"
+                                                                           "kg173"
+                                                                           "kg174"
+                                                                           "kg175"
+                                                                           )
+                                                                         )
+                         )
       )
     )
   )

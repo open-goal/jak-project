@@ -179,7 +179,7 @@
     :walk-travel-speed (meters 4)
     :walk-acceleration (meters 1)
     :walk-turning-acceleration (meters 3)
-    :maximum-rotation-rate (degrees 360.0)
+    :maximum-rotation-rate (degrees 360)
     :notice-nav-radius (meters 1)
     :frustration-distance (meters 8)
     :frustration-time (seconds 4)
@@ -194,7 +194,7 @@
 
 (defmethod run-logic? sniper ((obj sniper))
   (let ((f0-0 573440.0))
-    (>= (* f0-0 f0-0) (vector-vector-distance-squared (-> obj root-override2 trans) (camera-pos)))
+    (>= (* f0-0 f0-0) (vector-vector-distance-squared (-> obj root trans) (camera-pos)))
     )
   )
 
@@ -205,12 +205,11 @@
         (set! (-> obj focus handle) (the-as handle #f))
         )
     )
-  (set! (-> obj focus aware) (if (>= (vector-vector-distance (-> obj root-override2 trans) (camera-pos))
-                                     (-> obj fact-info-override idle-distance)
-                                     )
-                                 (enemy-aware enemy-aware-0)
-                                 (enemy-aware enemy-aware-1)
-                                 )
+  (set! (-> obj focus aware)
+        (if (>= (vector-vector-distance (-> obj root trans) (camera-pos)) (-> obj fact idle-distance))
+            (enemy-aware enemy-aware-0)
+            (enemy-aware enemy-aware-1)
+            )
         )
   (none)
   )
@@ -225,7 +224,7 @@
           )
       (countdown (s3-0 s4-0)
         (get-point-in-path! (-> obj path) gp-0 (the float s2-0) 'interp)
-        (if (< 409.6 (vector-vector-xz-distance gp-0 (-> obj root-override2 trans)))
+        (if (< 409.6 (vector-vector-xz-distance gp-0 (-> obj root trans)))
             (goto cfg-9)
             )
         (set! s2-0 (mod (+ s2-0 1) s4-0))
@@ -258,13 +257,10 @@
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (until #f
-        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override walk-anim))
+        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info walk-anim))
                     :num! (seek!
                       (the float
-                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override walk-anim)))
-                                  frames
-                                  num-frames
-                                  )
+                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info walk-anim))) frames num-frames)
                               -1
                               )
                            )
@@ -313,12 +309,12 @@
   (let ((t9-0 (method-of-type spyder init-enemy-collision!)))
     (t9-0 obj)
     )
-  (let ((v1-2 (-> obj root-override2 root-prim)))
+  (let ((v1-2 (-> obj root root-prim)))
     (set! (-> v1-2 prim-core collide-as) (collide-spec))
     (set! (-> v1-2 prim-core collide-with) (collide-spec))
     )
-  (set! (-> obj root-override2 backup-collide-as) (collide-spec))
-  (set! (-> obj root-override2 backup-collide-with) (collide-spec))
+  (set! (-> obj root backup-collide-as) (collide-spec))
+  (set! (-> obj root backup-collide-with) (collide-spec))
   0
   0
   (none)

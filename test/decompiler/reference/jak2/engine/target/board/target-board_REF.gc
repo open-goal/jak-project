@@ -2848,13 +2848,11 @@
   "Add specified trick and point amount to trick list."
   (send-event (handle->process (-> obj process 0 notify)) 'notify 'trick-point arg0)
   (when (and (< (-> obj trick-count) 16)
-             (and (< 0.0 arg1)
-                  (nonzero? (-> (the-as fact-info-target (-> obj process 0 fact-override)) trick-point-duration))
-                  )
+             (and (< 0.0 arg1) (nonzero? (-> (the-as fact-info-target (-> obj process 0 fact)) trick-point-duration)))
              )
     (let ((s4-0 0))
       (when (>= (- (-> *display* game-clock frame-counter)
-                   (-> (the-as fact-info-target (-> obj process 0 fact-override)) trick-point-pickup-time)
+                   (-> (the-as fact-info-target (-> obj process 0 fact)) trick-point-pickup-time)
                    )
                 (seconds 30)
                 )
@@ -2968,43 +2966,25 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod flush-trick-list board-info ((obj board-info))
   "Flush trick list and give out points."
-  (with-pp
-    (let ((f30-0 0.0))
-      (dotimes (v1-0 (-> obj trick-count))
-        (+! f30-0 (-> obj trick-points-array v1-0))
-        )
-      (when (< 0.0 f30-0)
-        (send-event
-          (handle->process (-> obj process 0 notify))
-          'notify
-          'trick-flush
-          f30-0
-          (-> obj trick-list)
-          (-> obj trick-count)
-          )
-        (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-1 from) (process->ppointer pp))
-          (set! (-> a1-1 num-params) 2)
-          (set! (-> a1-1 message) 'get-pickup)
-          (set! (-> a1-1 param 0) (the-as uint 19))
-          (set! (-> a1-1 param 1) (the-as uint f30-0))
-          (let ((t9-1 send-event-function)
-                (v1-22 (-> obj process))
-                )
-            (t9-1
-              (if v1-22
-                  (-> v1-22 0 self-override)
-                  )
-              a1-1
-              )
-            )
-          )
-        (sound-play "trick-score")
-        )
+  (let ((f30-0 0.0))
+    (dotimes (v1-0 (-> obj trick-count))
+      (+! f30-0 (-> obj trick-points-array v1-0))
       )
-    (set! (-> obj trick-count) 0)
-    0
-    0
-    (none)
+    (when (< 0.0 f30-0)
+      (send-event
+        (handle->process (-> obj process 0 notify))
+        'notify
+        'trick-flush
+        f30-0
+        (-> obj trick-list)
+        (-> obj trick-count)
+        )
+      (send-event (ppointer->process (-> obj process)) 'get-pickup 19 f30-0)
+      (sound-play "trick-score")
+      )
     )
+  (set! (-> obj trick-count) 0)
+  0
+  0
+  (none)
   )

@@ -8,12 +8,12 @@
 ;; DECOMP BEGINS
 
 (deftype tomb-boss-debris (process-drawable)
-  ((root-override collide-shape-moving         :offset        128)
-   (y-velocity    float                        :offset-assert 200)
-   (floor         float                        :offset-assert 204)
-   (sound-floor   float                        :offset-assert 208)
-   (rot           quaternion           :inline :offset-assert 224)
-   (look          int32                        :offset-assert 240)
+  ((root        collide-shape-moving         :override)
+   (y-velocity  float                        :offset-assert 200)
+   (floor       float                        :offset-assert 204)
+   (sound-floor float                        :offset-assert 208)
+   (rot         quaternion           :inline :offset-assert 224)
+   (look        int32                        :offset-assert 240)
    )
   :heap-base #x80
   :method-count-assert 22
@@ -74,7 +74,7 @@
 (defstate die (tomb-boss-debris)
   :virtual #t
   :enter (behavior ()
-    (let ((v1-1 (-> self root-override root-prim)))
+    (let ((v1-1 (-> self root root-prim)))
       (set! (-> v1-1 prim-core collide-as) (collide-spec))
       (set! (-> v1-1 prim-core collide-with) (collide-spec))
       )
@@ -118,7 +118,7 @@
                       (t2-0 #f)
                       (t3-0 *launch-matrix*)
                       )
-                  (set! (-> t3-0 trans quad) (-> self root-override trans quad))
+                  (set! (-> t3-0 trans quad) (-> self root trans quad))
                   ((the-as (function object object object object object object object object none) t9-2)
                    a0-8
                    a1-7
@@ -156,7 +156,7 @@
                       (t2-1 #f)
                       (t3-1 *launch-matrix*)
                       )
-                  (set! (-> t3-1 trans quad) (-> self root-override trans quad))
+                  (set! (-> t3-1 trans quad) (-> self root trans quad))
                   ((the-as (function object object object object object object object object none) t9-6)
                    a0-16
                    a1-13
@@ -194,7 +194,7 @@
                        (t2-2 #f)
                        (t3-2 *launch-matrix*)
                        )
-                   (set! (-> t3-2 trans quad) (-> self root-override trans quad))
+                   (set! (-> t3-2 trans quad) (-> self root trans quad))
                    ((the-as (function object object object object object object object object none) t9-10)
                     a0-21
                     a1-17
@@ -223,22 +223,22 @@
     )
   :trans (behavior ()
     (local-vars (sv-16 float))
-    (+! (-> self root-override trans y) (* (-> self y-velocity) (-> self clock time-adjust-ratio)))
+    (+! (-> self root trans y) (* (-> self y-velocity) (-> self clock time-adjust-ratio)))
     (set! (-> self y-velocity)
           (fmax -3686.4 (- (-> self y-velocity) (* 204.8 (-> self clock time-adjust-ratio))))
           )
-    (if (< (-> self root-override trans y) (-> self floor))
+    (if (< (-> self root trans y) (-> self floor))
         (deactivate self)
         )
     (when (and (logtest? (-> self draw status) (draw-control-status on-screen))
-               (< (-> self root-override trans y) (+ (-> (camera-pos) y) (-> self sound-floor)))
+               (< (-> self root trans y) (+ (-> (camera-pos) y) (-> self sound-floor)))
                )
       (sound-play "wid-debris-fall")
       (set! (-> self sound-floor) -4096000.0)
       )
-    (quaternion-normalize! (quaternion*! (-> self root-override quat) (-> self rot) (-> self root-override quat)))
-    (let ((f30-1 (lerp-scale 1.0 0.0 (-> self root-override trans y) -368640.0 -442368.0)))
-      (when (< -442368.0 (-> self root-override trans y))
+    (quaternion-normalize! (quaternion*! (-> self root quat) (-> self rot) (-> self root quat)))
+    (let ((f30-1 (lerp-scale 1.0 0.0 (-> self root trans y) -368640.0 -442368.0)))
+      (when (< -442368.0 (-> self root trans y))
         (let ((f28-0 (-> *part-id-table* 3266 init-specs 6 initial-valuef))
               (f26-0 (-> *part-id-table* 3266 init-specs 6 random-rangef))
               (f24-0 (-> *part-id-table* 3266 init-specs 7 initial-valuef))
@@ -264,7 +264,7 @@
           (set! (-> *part-id-table* 3266 init-specs 8 random-rangef)
                 (* (-> *part-id-table* 3266 init-specs 8 random-rangef) f30-1)
                 )
-          (spawn (-> self part) (-> self root-override trans))
+          (spawn (-> self part) (-> self root trans))
           (set! (-> *part-id-table* 3266 init-specs 6 initial-valuef) f28-0)
           (set! (-> *part-id-table* 3266 init-specs 6 random-rangef) f26-0)
           (set! (-> *part-id-table* 3266 init-specs 7 initial-valuef) f24-0)
@@ -285,7 +285,7 @@
       (set! (-> a1-0 options) (overlaps-others-options oo0))
       (set! (-> a1-0 collide-with-filter) (the-as collide-spec -1))
       (set! (-> a1-0 tlist) *touching-list*)
-      (find-overlapping-shapes (-> self root-override) a1-0)
+      (find-overlapping-shapes (-> self root) a1-0)
       )
     (none)
     )
@@ -331,9 +331,9 @@
       (set! (-> s4-0 backup-collide-with) (-> v1-10 prim-core collide-with))
       )
     (set! (-> s4-0 event-self) 'touched)
-    (set! (-> self root-override) s4-0)
+    (set! (-> self root) s4-0)
     )
-  (set! (-> self root-override trans quad) (-> arg0 quad))
+  (set! (-> self root trans quad) (-> arg0 quad))
   (let ((v1-15 arg1))
     (cond
       ((zero? v1-15)
@@ -351,7 +351,7 @@
          )
        )
       ((= v1-15 2)
-       (set! (-> self root-override root-prim local-sphere w) 5120.0)
+       (set! (-> self root root-prim local-sphere w) 5120.0)
        (initialize-skeleton
          self
          (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-boss-debris-c" (the-as (pointer uint32) #f)))
@@ -359,7 +359,7 @@
          )
        )
       ((= v1-15 3)
-       (set! (-> self root-override root-prim local-sphere w) 3276.8)
+       (set! (-> self root root-prim local-sphere w) 3276.8)
        (initialize-skeleton
          self
          (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-boss-debris-d" (the-as (pointer uint32) #f)))
@@ -367,7 +367,7 @@
          )
        )
       ((= v1-15 4)
-       (set! (-> self root-override root-prim local-sphere w) 3276.8)
+       (set! (-> self root root-prim local-sphere w) 3276.8)
        (initialize-skeleton
          self
          (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-boss-debris-e" (the-as (pointer uint32) #f)))
@@ -375,7 +375,7 @@
          )
        )
       ((= v1-15 5)
-       (set! (-> self root-override root-prim local-sphere w) 4096.0)
+       (set! (-> self root root-prim local-sphere w) 4096.0)
        (initialize-skeleton
          self
          (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-boss-debris-f" (the-as (pointer uint32) #f)))
@@ -383,7 +383,7 @@
          )
        )
       ((= v1-15 6)
-       (set! (-> self root-override root-prim local-sphere w) 1638.4)
+       (set! (-> self root root-prim local-sphere w) 1638.4)
        (initialize-skeleton
          self
          (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-boss-debris-g" (the-as (pointer uint32) #f)))
@@ -391,7 +391,7 @@
          )
        )
       ((= v1-15 7)
-       (set! (-> self root-override root-prim local-sphere w) 1638.4)
+       (set! (-> self root root-prim local-sphere w) 1638.4)
        (initialize-skeleton
          self
          (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-boss-debris-h" (the-as (pointer uint32) #f)))
@@ -399,7 +399,7 @@
          )
        )
       (else
-        (set! (-> self root-override root-prim local-sphere w) 1638.4)
+        (set! (-> self root root-prim local-sphere w) 1638.4)
         (initialize-skeleton
           self
           (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-boss-debris-i" (the-as (pointer uint32) #f)))
@@ -410,7 +410,7 @@
     )
   (set! (-> self look) arg1)
   (set! (-> self y-velocity) -409.6)
-  (set! (-> self floor) (+ -655360.0 (-> self root-override trans y)))
+  (set! (-> self floor) (+ -655360.0 (-> self root trans y)))
   (logclear! (-> self mask) (process-mask actor-pause))
   (let ((f30-0 (rand-vu-float-range 0.0 65536.0))
         (f28-0 (rand-vu-float-range 546.13336 1638.4))

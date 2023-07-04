@@ -196,7 +196,7 @@
     :walk-travel-speed (meters 4)
     :walk-acceleration (meters 1)
     :walk-turning-acceleration (meters 3)
-    :maximum-rotation-rate (degrees 360.0)
+    :maximum-rotation-rate (degrees 360)
     :notice-nav-radius (meters 1.5)
     :frustration-distance (meters 8)
     :frustration-time (seconds 4)
@@ -284,16 +284,14 @@
                        (!= fodder-proc obj)
                        (>= (- (current-time) (-> fodder-proc look-at-other-time)) (seconds 0.25))
                        )
-              (let* ((dir-to-other-fodder
-                       (vector-! (new 'stack-no-clear 'vector) (-> fodder-proc root-override2 trans) (-> obj root-override2 trans))
-                       )
+              (let* ((dir-to-other-fodder (vector-! (new 'stack-no-clear 'vector) (-> fodder-proc root trans) (-> obj root trans)))
                      (dir-length (vector-length dir-to-other-fodder))
                      )
                 (when (< dir-length 8192.0)
                   (vector-float*! dir-to-other-fodder dir-to-other-fodder (/ 1.0 dir-length))
                   (let ((f30-0 (vector-dot
                                  dir-to-other-fodder
-                                 (-> (quaternion->matrix (new 'stack-no-clear 'matrix) (-> obj root-override2 quat)) vector 2)
+                                 (-> (quaternion->matrix (new 'stack-no-clear 'matrix) (-> obj root quat)) vector 2)
                                  )
                                )
                         )
@@ -384,7 +382,7 @@
           ((the-as (function none) func))
           )
       )
-    (update-transforms (-> self root-override2))
+    (update-transforms (-> self root))
     (none)
     )
   )
@@ -403,13 +401,10 @@
   :code (behavior ()
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (until #f
-        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override walk-anim))
+        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info walk-anim))
                     :num! (seek!
                       (the float
-                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override walk-anim)))
-                                  frames
-                                  num-frames
-                                  )
+                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info walk-anim))) frames num-frames)
                               -1
                               )
                            )
@@ -459,18 +454,15 @@
                 (set! (-> __self enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> __self enemy-flags))))
                 )
             (set! (-> __self enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> __self enemy-flags))))
-            (set! (-> __self nav callback-info) (-> __self enemy-info-override callback-info))
+            (set! (-> __self nav callback-info) (-> __self enemy-info callback-info))
             )
           0
           (ja-no-eval :num! (loop!))
           (ja-channel-push! 1 (seconds 0.25))
-          (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override walk-anim))
+          (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info walk-anim))
                       :num! (seek!
                         (the float
-                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override walk-anim)))
-                                    frames
-                                    num-frames
-                                    )
+                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info walk-anim))) frames num-frames)
                                 -1
                                 )
                              )
@@ -514,13 +506,10 @@
              (v1-19 (the-as number (logior #x3f800000 v1-18)))
              (s4-0 (< f28-0 (+ -1.0 (the-as float v1-19))))
              )
-        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override notice-anim))
+        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info notice-anim))
                     :num! (seek!
                       (the float
-                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override notice-anim)))
-                                  frames
-                                  num-frames
-                                  )
+                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info notice-anim))) frames num-frames)
                               -1
                               )
                            )
@@ -529,9 +518,7 @@
                     :frame-num 0.0
                     )
         (until (ja-done? 0)
-          (if (< (vector-length (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root-override2 trans)))
-                 12288.0
-                 )
+          (if (< (vector-length (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans))) 12288.0)
               (goto cfg-22)
               )
           (set! s5-0 (- (the-as time-frame s5-0) (- (current-time) (-> self clock old-frame-counter))))
@@ -539,7 +526,7 @@
             (set! s5-0 (rand-vu-int-range 75 150))
             (set! s4-0 (not s4-0))
             (let ((s3-2 (new 'stack-no-clear 'matrix)))
-              (quaternion->matrix s3-2 (-> self root-override2 quat))
+              (quaternion->matrix s3-2 (-> self root quat))
               (let* ((f28-1 0.5)
                      (f26-0 8.0)
                      (v1-56 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
@@ -554,7 +541,7 @@
               (vector-normalize! gp-0 16384.0)
               (vector+float*! gp-0 gp-0 (-> s3-2 vector 1) (rand-vu-float-range 5079.04 7168.0))
               )
-            (vector+! gp-0 gp-0 (-> self root-override2 trans))
+            (vector+! gp-0 gp-0 (-> self root trans))
             )
           (if (nonzero? (-> self neck))
               (target-set! (-> self neck) gp-0)
@@ -598,7 +585,7 @@
   (let ((s5-0 (-> obj skel root-channel 0)))
     (joint-control-channel-group-eval!
       s5-0
-      (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override hostile-anim)))
+      (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info hostile-anim)))
       num-func-identity
       )
     (set! (-> s5-0 frame-num) 0.0)
@@ -636,11 +623,11 @@
     )
   :exit (behavior ()
     (let ((v1-0 (-> self nav)))
-      (set! (-> v1-0 target-speed) (-> self enemy-info-override run-travel-speed))
+      (set! (-> v1-0 target-speed) (-> self enemy-info run-travel-speed))
       )
     0
     (let ((v1-2 (-> self nav)))
-      (set! (-> v1-2 turning-acceleration) (-> self enemy-info-override run-turning-acceleration))
+      (set! (-> v1-2 turning-acceleration) (-> self enemy-info run-turning-acceleration))
       )
     0
     (fodder-method-181 self #f)
@@ -660,7 +647,7 @@
     (let ((a0-2 (handle->process (-> self focus handle))))
       (when a0-2
         (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable a0-2) 0) quad))
-        (let ((f30-0 (vector-vector-xz-distance-squared (-> self focus-pos) (-> self root-override2 trans))))
+        (let ((f30-0 (vector-vector-xz-distance-squared (-> self focus-pos) (-> self root trans))))
           (let ((f0-0 24576.0))
             (when (and (< f30-0 (* f0-0 f0-0)) (zero? (-> self slow-timer)))
               (let ((v1-20 (-> self nav)))
@@ -673,7 +660,7 @@
               0
               (set! (-> self slow-timer) (current-time))
               (ja-channel-push! 1 (seconds 0.08))
-              (ja :group! (-> self draw art-group data (-> self enemy-info-override idle-anim)))
+              (ja :group! (-> self draw art-group data (-> self enemy-info idle-anim)))
               (ja :num-func num-func-identity :frame-num 0.0)
               (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
                   (logior! (-> self focus-status) (focus-status dangerous))
@@ -698,7 +685,7 @@
             (let ((v1-55 (-> self attack-type)))
               (cond
                 ((zero? v1-55)
-                 (ja :group! (-> self draw art-group data (-> self enemy-info-override hostile-anim)))
+                 (ja :group! (-> self draw art-group data (-> self enemy-info hostile-anim)))
                  )
                 ((= v1-55 1)
                  (ja :group! fodder-jump-chomp-ja)
@@ -726,15 +713,12 @@
             )
           (when (nonzero? (-> self fast-timer))
             (let ((s5-0
-                    (vector-normalize!
-                      (vector-! (new 'stack-no-clear 'vector) (-> self focus-pos) (-> self root-override2 trans))
-                      1.0
-                      )
+                    (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> self focus-pos) (-> self root trans)) 1.0)
                     )
                   (gp-1 (new 'stack-no-clear 'vector))
                   )
               (set! (-> gp-1 quad)
-                    (-> (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root-override2 quat)) vector 2 quad)
+                    (-> (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root quat)) vector 2 quad)
                     )
               (let* ((f0-11 (acos (vector-dot s5-0 gp-1)))
                      (v1-81 (-> self attack-type))
@@ -756,15 +740,15 @@
                    (set! (-> self slow-timer) 0)
                    (set! (-> self fast-timer) 0)
                    (let ((v1-83 (-> self nav)))
-                     (set! (-> v1-83 target-speed) (-> self enemy-info-override run-travel-speed))
+                     (set! (-> v1-83 target-speed) (-> self enemy-info run-travel-speed))
                      )
                    0
                    (let ((v1-85 (-> self nav)))
-                     (set! (-> v1-85 turning-acceleration) (-> self enemy-info-override run-turning-acceleration))
+                     (set! (-> v1-85 turning-acceleration) (-> self enemy-info run-turning-acceleration))
                      )
                    0
                    (let ((v1-89 (ja-group)))
-                     (if (not (and v1-89 (= v1-89 (-> self draw art-group data (-> self enemy-info-override hostile-anim)))))
+                     (if (not (and v1-89 (= v1-89 (-> self draw art-group data (-> self enemy-info hostile-anim)))))
                          (fodder-method-182 self)
                          )
                      )
@@ -772,21 +756,21 @@
                    )
                   ((< f0-11 3640.889)
                    (let ((v1-99 (-> self nav)))
-                     (set! (-> v1-99 target-speed) (* 2.5 (-> self enemy-info-override run-travel-speed)))
+                     (set! (-> v1-99 target-speed) (* 2.5 (-> self enemy-info run-travel-speed)))
                      )
                    0
                    (let ((v1-101 (-> self nav)))
-                     (set! (-> v1-101 turning-acceleration) (* 2.5 (-> self enemy-info-override run-turning-acceleration)))
+                     (set! (-> v1-101 turning-acceleration) (* 2.5 (-> self enemy-info run-turning-acceleration)))
                      )
                    0
                    )
                   (else
                     (let ((v1-103 (-> self nav)))
-                      (set! (-> v1-103 target-speed) (-> self enemy-info-override run-travel-speed))
+                      (set! (-> v1-103 target-speed) (-> self enemy-info run-travel-speed))
                       )
                     0
                     (let ((v1-105 (-> self nav)))
-                      (set! (-> v1-105 turning-acceleration) (-> self enemy-info-override run-turning-acceleration))
+                      (set! (-> v1-105 turning-acceleration) (-> self enemy-info run-turning-acceleration))
                       )
                     0
                     )
@@ -823,7 +807,7 @@
         (suspend)
         (ja :num! (loop! f30-0))
         (let ((v1-9 (ja-group)))
-          (if (and v1-9 (= v1-9 (-> self draw art-group data (-> self enemy-info-override hostile-anim))))
+          (if (and v1-9 (= v1-9 (-> self draw art-group data (-> self enemy-info hostile-anim))))
               (ja :chan 1 :num! (chan 0))
               )
           )
@@ -842,7 +826,7 @@
           (t9-0)
           )
       )
-    (sound-play "fodder-bite" :position (-> self root-override2 trans))
+    (sound-play "fodder-bite" :position (-> self root trans))
     (none)
     )
   )
@@ -851,7 +835,7 @@
   :virtual #t
   :code (behavior ()
     (let ((v1-2 (ja-group)))
-      (when (and v1-2 (= v1-2 (-> self draw art-group data (-> self enemy-info-override walk-anim))))
+      (when (and v1-2 (= v1-2 (-> self draw art-group data (-> self enemy-info walk-anim))))
         (ja-no-eval :num! (seek!))
         (while (not (ja-done? 0))
           (suspend)
@@ -865,7 +849,7 @@
             (set! (-> v1-15 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-15 enemy-flags))))
             )
         (set! (-> v1-15 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-15 enemy-flags))))
-        (set! (-> v1-15 nav callback-info) (-> v1-15 enemy-info-override callback-info))
+        (set! (-> v1-15 nav callback-info) (-> v1-15 enemy-info callback-info))
         )
       0
       (let ((v1-18 self))
@@ -877,14 +861,14 @@
         )
       0
       (let ((v1-22 (-> self nav)))
-        (set! (-> v1-22 acceleration) (-> self enemy-info-override run-acceleration))
+        (set! (-> v1-22 acceleration) (-> self enemy-info run-acceleration))
         )
       0
       (let ((v1-24 (-> self nav)))
-        (set! (-> v1-24 turning-acceleration) (-> self enemy-info-override run-turning-acceleration))
+        (set! (-> v1-24 turning-acceleration) (-> self enemy-info run-turning-acceleration))
         )
       0
-      (let ((gp-0 (-> self draw art-group data (-> self enemy-info-override walk-anim))))
+      (let ((gp-0 (-> self draw art-group data (-> self enemy-info walk-anim))))
         (let ((v1-32 (ja-group)))
           (if (not (and v1-32 (= v1-32 gp-0)))
               (ja-channel-push! 1 (seconds 0.1))
@@ -906,7 +890,7 @@
             )
           )
         )
-      (when (< 20480.0 (vector-vector-xz-distance (-> self focus-pos) (-> self root-override2 trans)))
+      (when (< 20480.0 (vector-vector-xz-distance (-> self focus-pos) (-> self root trans)))
         (let ((v1-59 self))
           (set! (-> v1-59 enemy-flags) (the-as enemy-flag (logclear (-> v1-59 enemy-flags) (enemy-flag enemy-flag36))))
           (set! (-> v1-59 nav callback-info) *nav-enemy-null-callback-info*)
@@ -916,20 +900,17 @@
           (set! (-> v1-62 enemy-flags) (the-as enemy-flag (logclear (-> v1-62 enemy-flags) (enemy-flag enemy-flag37))))
           )
         0
-        (vector-reset! (-> self root-override2 transv))
+        (vector-reset! (-> self root transv))
         (let ((v1-68 (ja-group)))
-          (if (not (and v1-68 (= v1-68 (-> self draw art-group data (-> self enemy-info-override victory-anim)))))
+          (if (not (and v1-68 (= v1-68 (-> self draw art-group data (-> self enemy-info victory-anim)))))
               (ja-channel-push! 1 (seconds 0.1))
               )
           )
         (let ((f30-2 (get-rand-float-range self 0.9 1.1)))
-          (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override victory-anim))
+          (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info victory-anim))
                       :num! (seek!
                         (the float
-                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override victory-anim)))
-                                    frames
-                                    num-frames
-                                    )
+                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info victory-anim))) frames num-frames)
                                 -1
                                 )
                              )
@@ -998,7 +979,7 @@
      #f
      )
     (else
-      (let ((v1-5 (-> obj draw art-group data (-> obj enemy-info-override knocked-land-anim)))
+      (let ((v1-5 (-> obj draw art-group data (-> obj enemy-info knocked-land-anim)))
             (a0-3 (-> obj skel root-channel 0))
             )
         (set! (-> a0-3 frame-group) (the-as art-joint-anim v1-5))
@@ -1013,7 +994,7 @@
   )
 
 (defmethod fodder-method-181 fodder ((obj fodder) (arg0 symbol))
-  (let ((v1-3 (-> (the-as collide-shape-prim-group (-> obj root-override2 root-prim)) child 1)))
+  (let ((v1-3 (-> (the-as collide-shape-prim-group (-> obj root root-prim)) child 1)))
     (cond
       (arg0
         (set! (-> v1-3 prim-core collide-as) (collide-spec enemy))
@@ -1092,7 +1073,7 @@
       (set! (-> s5-0 backup-collide-with) (-> v1-18 prim-core collide-with))
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
-    (set! (-> obj root-override2) s5-0)
+    (set! (-> obj root) s5-0)
     )
   0
   (none)
@@ -1154,7 +1135,7 @@
     (set! (-> v1-18 speed-scale) 1.0)
     )
   0
-  (set-gravity-length (-> obj root-override2 dynam) 573440.0)
+  (set-gravity-length (-> obj root dynam) 573440.0)
   (fodder-method-181 obj #f)
   0
   (none)

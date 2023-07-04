@@ -289,7 +289,7 @@
     :walk-travel-speed (meters 2)
     :walk-acceleration (meters 3)
     :walk-turning-acceleration (meters 3)
-    :maximum-rotation-rate (degrees 360.0)
+    :maximum-rotation-rate (degrees 360)
     :notice-nav-radius (meters 1)
     :frustration-distance (meters 8)
     :frustration-time (seconds 4)
@@ -307,9 +307,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs none.
 (defmethod metalmonk-method-179 metalmonk ((obj metalmonk) (arg0 vector))
-  (set! (-> arg0 quad)
-        (-> (quaternion->matrix (new 'stack-no-clear 'matrix) (-> obj root-override2 quat)) vector 2 quad)
-        )
+  (set! (-> arg0 quad) (-> (quaternion->matrix (new 'stack-no-clear 'matrix) (-> obj root quat)) vector 2 quad))
   (none)
   )
 
@@ -471,7 +469,7 @@
                             )
                        )
                   (zero? (get-rand-int obj 3))
-                  (let ((f0-0 (vector-vector-distance-squared (-> obj root-override2 trans) (target-pos 0)))
+                  (let ((f0-0 (vector-vector-distance-squared (-> obj root trans) (target-pos 0)))
                         (f1-0 32768.0)
                         )
                     (>= f0-0 (* f1-0 f1-0))
@@ -512,7 +510,7 @@
          (s3-1 (new 'stack-no-clear 'vector))
          )
     (let ((s1-0 (new 'stack-no-clear 'vector)))
-      (vector-! s3-1 (get-trans (the-as process-focusable a0-2) 0) (-> obj root-override2 trans))
+      (vector-! s3-1 (get-trans (the-as process-focusable a0-2) 0) (-> obj root trans))
       (set! (-> s3-1 y) 0.0)
       (vector-normalize! s3-1 1.0)
       (set-vector! s1-0 0.0 1.0 0.0 1.0)
@@ -531,8 +529,8 @@
           )
         )
       )
-    (vector-normalize! s3-1 (* 1.5 (-> obj enemy-info-override attack-shove-back)))
-    (set! (-> s3-1 y) (-> obj enemy-info-override attack-shove-up))
+    (vector-normalize! s3-1 (* 1.5 (-> obj enemy-info attack-shove-back)))
+    (set! (-> s3-1 y) (-> obj enemy-info attack-shove-up))
     (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-10 from) (process->ppointer self))
       (set! (-> a1-10 num-params) 2)
@@ -542,7 +540,7 @@
         (set! (-> v1-17 id) arg2)
         (set! (-> v1-17 angle) 'front)
         (set! (-> v1-17 vector quad) (-> s3-1 quad))
-        (set! (-> v1-17 mode) (-> obj enemy-info-override attack-mode))
+        (set! (-> v1-17 mode) (-> obj enemy-info attack-mode))
         (set! (-> a1-10 param 1) (the-as uint v1-17))
         )
       (when (send-event-function arg0 a1-10)
@@ -556,9 +554,7 @@
 ;; definition for method 84 of type metalmonk
 (defmethod enemy-method-84 metalmonk ((obj metalmonk) (arg0 enemy-jump-info))
   (let* ((f0-0 (vector-vector-xz-distance (-> arg0 start-pos) (-> arg0 dest-pos)))
-         (f1-1
-           (fmax (-> obj enemy-info-override jump-height-min) (* (-> obj enemy-info-override jump-height-factor) f0-0))
-           )
+         (f1-1 (fmax (-> obj enemy-info jump-height-min) (* (-> obj enemy-info jump-height-factor) f0-0)))
          (f0-3 (fmax (-> arg0 start-pos y) (-> arg0 dest-pos y)))
          (f0-4 (- (fmax (+ (fmin (-> arg0 start-pos y) (-> arg0 dest-pos y)) f1-1) (+ 10240.0 f0-3)) f0-3))
          )
@@ -574,7 +570,7 @@
 
 ;; definition for method 87 of type metalmonk
 (defmethod enemy-method-87 metalmonk ((obj metalmonk) (arg0 enemy-jump-info))
-  (let ((s5-0 (-> obj draw art-group data (-> obj enemy-info-override run-anim)))
+  (let ((s5-0 (-> obj draw art-group data (-> obj enemy-info run-anim)))
         (v1-6 (if (> (-> obj skel active-channels) 0)
                   (-> obj skel root-channel 0 frame-group)
                   )
@@ -625,11 +621,11 @@
           )
       )
     (let ((v1-4 (-> self nav)))
-      (set! (-> v1-4 max-rotation-rate) (* 2.0 (-> self enemy-info-override maximum-rotation-rate)))
+      (set! (-> v1-4 max-rotation-rate) (* 2.0 (-> self enemy-info maximum-rotation-rate)))
       )
     0
     (let ((v1-6 (-> self nav)))
-      (set! (-> v1-6 turning-acceleration) (* 2.0 (-> self enemy-info-override run-turning-acceleration)))
+      (set! (-> v1-6 turning-acceleration) (* 2.0 (-> self enemy-info run-turning-acceleration)))
       )
     0
     (none)
@@ -641,11 +637,11 @@
           )
       )
     (let ((v1-4 (-> self nav)))
-      (set! (-> v1-4 max-rotation-rate) (-> self enemy-info-override maximum-rotation-rate))
+      (set! (-> v1-4 max-rotation-rate) (-> self enemy-info maximum-rotation-rate))
       )
     0
     (let ((v1-6 (-> self nav)))
-      (set! (-> v1-6 turning-acceleration) (-> self enemy-info-override run-turning-acceleration))
+      (set! (-> v1-6 turning-acceleration) (-> self enemy-info run-turning-acceleration))
       )
     0
     (none)
@@ -664,7 +660,7 @@
         (let ((a1-4 (-> self nav state)))
           (set! (-> gp-0 quad) (-> a1-4 travel quad))
           )
-        (seek-toward-heading-vec! (-> self root-override2) gp-0 131072.0 (seconds 0.01))
+        (seek-toward-heading-vec! (-> self root) gp-0 131072.0 (seconds 0.01))
         (suspend)
         (ja :num! (seek! max f30-0))
         )
@@ -686,16 +682,12 @@
     (let ((gp-0 (handle->process (-> self focus handle))))
       (if (and (>= (- (current-time) (-> self state-time)) (-> self reaction-time))
                (and gp-0
-                    (or (and (< (vector-vector-xz-distance (get-trans (the-as process-focusable gp-0) 0) (-> self root-override2 trans))
-                                20480.0
-                                )
+                    (or (and (< (vector-vector-xz-distance (get-trans (the-as process-focusable gp-0) 0) (-> self root trans)) 20480.0)
                              (let ((v1-19 (ja-group)))
                                (and (and v1-19 (= v1-19 metalmonk-charge0-ja)) (< (ja-frame-num 0) 3.0))
                                )
                              )
-                        (and (< (vector-vector-xz-distance (get-trans (the-as process-focusable gp-0) 0) (-> self root-override2 trans))
-                                16384.0
-                                )
+                        (and (< (vector-vector-xz-distance (get-trans (the-as process-focusable gp-0) 0) (-> self root trans)) 16384.0)
                              (let ((v1-29 (ja-group)))
                                (and v1-29 (= v1-29 metalmonk-charge1-ja))
                                )
@@ -795,7 +787,7 @@
                 (set! (-> v1-102 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-102 enemy-flags))))
                 )
             (set! (-> v1-102 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-102 enemy-flags))))
-            (set! (-> v1-102 nav callback-info) (-> v1-102 enemy-info-override callback-info))
+            (set! (-> v1-102 nav callback-info) (-> v1-102 enemy-info callback-info))
             )
           0
           )
@@ -815,14 +807,14 @@
     (metalmonk-method-180 self #t)
     (nav-enemy-method-169 self 6144.0 #f)
     (let ((v1-6 (-> self nav)))
-      (set! (-> v1-6 target-speed) (+ 8192.0 (-> self enemy-info-override run-travel-speed)))
+      (set! (-> v1-6 target-speed) (+ 8192.0 (-> self enemy-info run-travel-speed)))
       )
     0
     (let ((v1-8 (-> self nav)))
-      (set! (-> v1-8 turning-acceleration) (* 4.0 (-> self enemy-info-override run-turning-acceleration)))
+      (set! (-> v1-8 turning-acceleration) (* 4.0 (-> self enemy-info run-turning-acceleration)))
       )
     0
-    (set! (-> self root-override2 penetrate-using) (penetrate generic-attack lunge))
+    (set! (-> self root penetrate-using) (penetrate generic-attack lunge))
     (enemy-method-49 self)
     (logior! (-> self focus-status) (focus-status dangerous))
     (let* ((v1-15 *game-info*)
@@ -838,7 +830,7 @@
     (metalmonk-method-180 self #f)
     (nav-enemy-method-168 self)
     (let ((v1-6 (-> self nav)))
-      (set! (-> v1-6 target-speed) (-> self enemy-info-override run-travel-speed))
+      (set! (-> v1-6 target-speed) (-> self enemy-info run-travel-speed))
       )
     0
     (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
@@ -902,17 +894,14 @@
           )
       )
     (let ((a0-1 (handle->process (-> self focus handle))))
-      (if (and a0-1 (and (>= (- (current-time) (-> self state-time)) (seconds 0.05))
-                         (let ((f0-0 (vector-vector-xz-distance-squared
-                                       (get-trans (the-as process-focusable a0-1) 0)
-                                       (-> self root-override2 trans)
-                                       )
-                                     )
-                               (f1-0 14336.0)
-                               )
-                           (< f0-0 (* f1-0 f1-0))
-                           )
-                         )
+      (if (and a0-1
+               (and (>= (- (current-time) (-> self state-time)) (seconds 0.05))
+                    (let ((f0-0 (vector-vector-xz-distance-squared (get-trans (the-as process-focusable a0-1) 0) (-> self root trans)))
+                          (f1-0 14336.0)
+                          )
+                      (< f0-0 (* f1-0 f1-0))
+                      )
+                    )
                )
           (react-to-focus self)
           )
@@ -963,7 +952,7 @@
     (let ((v1-2 (ja-group)))
       (when (and v1-2 (or (= v1-2 metalmonk-charge0-ja) (= v1-2 metalmonk-charge1-ja)))
         (let ((v1-6 (-> self nav)))
-          (set! (-> v1-6 target-speed) (-> self enemy-info-override run-travel-speed))
+          (set! (-> v1-6 target-speed) (-> self enemy-info run-travel-speed))
           )
         0
         (ja-no-eval :num! (seek!))
@@ -1000,7 +989,7 @@
       (format 0 "ERROR: ~A has no intro path, skipping ambush~%" (-> self name))
       (go-virtual notice)
       )
-    (get-point-at-percent-along-path! (-> self intro-path) (-> self root-override2 trans) 0.0 'interp)
+    (get-point-at-percent-along-path! (-> self intro-path) (-> self root trans) 0.0 'interp)
     (none)
     )
   :code (behavior ()
@@ -1071,16 +1060,14 @@
        )
      )
     (else
-      (let ((s4-1 (if (< (vector-dot
-                           (the-as vector (metalmonk-method-179 obj (new 'stack-no-clear 'vector)))
-                           (-> obj root-override2 transv)
-                           )
-                         0.0
-                         )
-                      (-> obj draw art-group data (-> *metalmonk-global-info* knocked-anim (get-rand-int obj 2)))
-                      (-> obj draw art-group data 20)
-                      )
+      (let ((s4-1
+              (if (< (vector-dot (the-as vector (metalmonk-method-179 obj (new 'stack-no-clear 'vector))) (-> obj root transv))
+                     0.0
+                     )
+                  (-> obj draw art-group data (-> *metalmonk-global-info* knocked-anim (get-rand-int obj 2)))
+                  (-> obj draw art-group data 20)
                   )
+              )
             )
         (ja-channel-push! 1 (seconds 0.17))
         (let ((a0-38 (-> obj skel root-channel 0)))
@@ -1155,7 +1142,7 @@
 ;; definition for method 180 of type metalmonk
 ;; WARN: Return type mismatch int vs none.
 (defmethod metalmonk-method-180 metalmonk ((obj metalmonk) (arg0 symbol))
-  (let ((v1-1 (-> obj root-override2 root-prim)))
+  (let ((v1-1 (-> obj root root-prim)))
     (dotimes (a0-1 1)
       (let ((a2-1 (-> (the-as collide-shape-prim-group v1-1) child a0-1)))
         (if arg0
@@ -1274,7 +1261,7 @@
       (set! (-> s5-0 backup-collide-with) (-> v1-31 prim-core collide-with))
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
-    (set! (-> obj root-override2) s5-0)
+    (set! (-> obj root) s5-0)
     )
   0
   (none)
@@ -1322,7 +1309,7 @@
     )
   0
   (logior! (-> obj nav flags) (nav-control-flag momentum-ignore-heading))
-  (set-gravity-length (-> obj root-override2 dynam) 573440.0)
+  (set-gravity-length (-> obj root dynam) 573440.0)
   (set! (-> obj intro-path) (new 'process 'path-control obj 'intro 0.0 (-> obj entity) #f))
   (metalmonk-method-180 obj #f)
   (set! (-> obj high-time) 0)

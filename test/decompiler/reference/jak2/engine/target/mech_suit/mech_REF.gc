@@ -8,7 +8,7 @@
 
 ;; definition of type mech
 (deftype mech (process-drawable)
-  ((root-override     collide-shape-moving         :offset        128)
+  ((root              collide-shape-moving         :override)
    (extra-trans       vector               :inline :offset-assert 208)
    (condition         int32                        :offset-assert 224)
    (shadow-backup     basic                        :offset-assert 228)
@@ -54,7 +54,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod mech-method-24 mech ((obj mech))
   (if (nonzero? (-> obj part))
-      (spawn (-> obj part) (-> obj root-override trans))
+      (spawn (-> obj part) (-> obj root trans))
       )
   (update! (-> obj sound))
   0
@@ -92,18 +92,11 @@
          )
         (('touch)
          (send-event proc 'target-mech-get-off 90)
-         (send-shoves
-           (-> self root-override)
-           proc
-           (the-as touching-shapes-entry (-> event param 0))
-           0.7
-           6144.0
-           16384.0
-           )
+         (send-shoves (-> self root) proc (the-as touching-shapes-entry (-> event param 0)) 0.7 6144.0 16384.0)
          (the-as structure #f)
          )
         (('trans)
-         (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
+         (vector+! (the-as vector (-> event param 0)) (-> self root trans) (-> self extra-trans))
          )
         (('shadow)
          (cond
@@ -123,8 +116,8 @@
       )
     )
   :exit (behavior ()
-    (set! (-> self root-override root-prim prim-core action) (collide-action))
-    (set! (-> self root-override penetrated-by) (the-as penetrate -1))
+    (set! (-> self root root-prim prim-core action) (collide-action))
+    (set! (-> self root penetrated-by) (the-as penetrate -1))
     (none)
     )
   :code (behavior ()
@@ -139,12 +132,12 @@
   :event (-> (method-of-type mech wait-for-start) event)
   :enter (behavior ()
     (set! (-> self nav-sphere-handle) (the-as uint #f))
-    (let ((s5-0 (find-nearest-nav-mesh (-> self root-override trans) 8192.0)))
+    (let ((s5-0 (find-nearest-nav-mesh (-> self root trans) 8192.0)))
       (when s5-0
         (let ((gp-0 (new 'stack-no-clear 'vector)))
-          (vector-z-quaternion! gp-0 (-> self root-override quat))
+          (vector-z-quaternion! gp-0 (-> self root quat))
           (vector-normalize! gp-0 5120.0)
-          (vector+! gp-0 gp-0 (-> self root-override trans))
+          (vector+! gp-0 gp-0 (-> self root trans))
           (set! (-> self nav-sphere-handle)
                 (the-as uint (ppointer->handle (process-spawn simple-nav-sphere #x46266666 gp-0 s5-0 -1 :to self)))
                 )
@@ -162,8 +155,8 @@
     (change-parent self *entity-pool*)
     (ja-channel-set! 1)
     (ja :group! mech-mech-idle-ja)
-    (set! (-> self root-override root-prim prim-core action) (collide-action solid can-ride no-standon))
-    (set! (-> self root-override penetrated-by) (penetrate))
+    (set! (-> self root root-prim prim-core action) (collide-action solid can-ride no-standon))
+    (set! (-> self root penetrated-by) (penetrate))
     0.0
     (let ((f30-0 20480.0))
       (until #f
@@ -171,7 +164,7 @@
                    (>= (- (current-time) (-> self probe-time)) (seconds 1))
                    )
           (move-to-ground
-            (-> self root-override)
+            (-> self root)
             8192.0
             40960.0
             #t
@@ -179,10 +172,9 @@
             )
           (set! (-> self probe-time) (current-time))
           )
-        (when (and (and *target*
-                        (and (>= f30-0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-                             (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
-                             )
+        (when (and (and *target* (and (>= f30-0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
+                                      (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
+                                      )
                         )
                    (not (focus-test? *target* in-head pole board mech dark))
                    (can-display-query? self (the-as string #f) -99.0)
@@ -219,7 +211,7 @@
               (-> *target* neck)
               (vector+!
                 (new 'stack-no-clear 'vector)
-                (the-as vector (-> self root-override root-prim prim-core))
+                (the-as vector (-> self root root-prim prim-core))
                 (new 'static 'vector :y 2048.0 :w 1.0)
                 )
               'nothing-special
@@ -244,12 +236,12 @@
       (('draw)
        (ja-channel-set! 1)
        (ja :group! mech-mech-idle-ja)
-       (set! (-> self root-override root-prim prim-core action) (collide-action solid can-ride no-standon))
-       (set! (-> self root-override penetrated-by) (penetrate))
+       (set! (-> self root root-prim prim-core action) (collide-action solid can-ride no-standon))
+       (set! (-> self root penetrated-by) (penetrate))
        (transform-post)
        )
       (('trans)
-       (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
+       (vector+! (the-as vector (-> event param 0)) (-> self root trans) (-> self extra-trans))
        )
       (('touch 'attack 'bonk)
        #f
@@ -282,10 +274,9 @@
     (ja-channel-set! 0)
     (ja-post)
     (while (zero? (ja-group-size))
-      (if (or (not *target*)
-              (or (< 24576.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-                  (focus-test? *target* teleporting)
-                  )
+      (if (or (not *target*) (or (< 24576.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
+                                 (focus-test? *target* teleporting)
+                                 )
               )
           (go arg0)
           )
@@ -311,28 +302,26 @@
 (defstate wait-for-return (mech)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('trans)
-         (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
-         )
-        (('shadow)
-         (cond
-           ((-> event param 0)
-            (let ((v0-1 (the-as structure (-> self shadow-backup))))
-              (set! (-> self draw shadow) (the-as shadow-geo v0-1))
-              v0-1
-              )
+    (the-as object (case event-type
+                     (('trans)
+                      (vector+! (the-as vector (-> event param 0)) (-> self root trans) (-> self extra-trans))
+                      )
+                     (('shadow)
+                      (cond
+                        ((-> event param 0)
+                         (let ((v0-1 (the-as structure (-> self shadow-backup))))
+                           (set! (-> self draw shadow) (the-as shadow-geo v0-1))
+                           v0-1
+                           )
+                         )
+                        (else
+                          (set! (-> self draw shadow) #f)
+                          (the-as structure #f)
+                          )
+                        )
+                      )
+                     )
             )
-           (else
-             (set! (-> self draw shadow) #f)
-             (the-as structure #f)
-             )
-           )
-         )
-        )
-      )
     )
   :code (behavior ()
     (ja-channel-set! 0)
@@ -366,17 +355,17 @@
       (set! (-> s2-0 backup-collide-as) (-> v1-9 prim-core collide-as))
       (set! (-> s2-0 backup-collide-with) (-> v1-9 prim-core collide-with))
       )
-    (set! (-> self root-override) s2-0)
+    (set! (-> self root) s2-0)
     )
   (set! (-> self rider) (the-as uint arg2))
   (when arg0
     (process-entity-set! self arg0)
     (process-drawable-from-entity! self arg0)
-    (set-yaw-angle-clear-roll-pitch! (-> self root-override) (res-lump-float arg0 'rotoffset))
+    (set-yaw-angle-clear-roll-pitch! (-> self root) (res-lump-float arg0 'rotoffset))
     )
   (when arg1
-    (set! (-> self root-override trans quad) (-> arg1 vector 0 quad))
-    (quaternion-copy! (-> self root-override quat) (the-as quaternion (-> arg1 vector 1)))
+    (set! (-> self root trans quad) (-> arg1 vector 0 quad))
+    (quaternion-copy! (-> self root quat) (the-as quaternion (-> arg1 vector 1)))
     )
   (initialize-skeleton
     self
@@ -387,7 +376,7 @@
   (set! (-> self draw shadow-ctrl) *mech-shadow-control*)
   (let ((v1-27 (-> self node-list data)))
     (set! (-> v1-27 0 param0) (the-as (function cspace transformq none) cspace<-transformq+trans!))
-    (set! (-> v1-27 0 param1) (the-as basic (-> self root-override trans)))
+    (set! (-> v1-27 0 param1) (the-as basic (-> self root trans)))
     (set! (-> v1-27 0 param2) (the-as basic (-> self extra-trans)))
     )
   (set! (-> self condition) (res-lump-value arg0 'index int :time -1000000000.0))
@@ -398,7 +387,7 @@
   (set! (-> self nav-sphere-handle) (the-as uint #f))
   (if (-> self entity)
       (move-to-ground
-        (-> self root-override)
+        (-> self root)
         8192.0
         40960.0
         #t
@@ -406,7 +395,7 @@
         )
       )
   (set! (-> self sound)
-        (new 'process 'ambient-sound (static-sound-spec "zoom-teleport" :fo-max 30) (-> self root-override trans))
+        (new 'process 'ambient-sound (static-sound-spec "zoom-teleport" :fo-max 30) (-> self root trans))
         )
   (set! (-> self draw light-index) (the-as uint 30))
   (if (handle->process arg2)
@@ -546,11 +535,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defbehavior mech-target-init mech ((arg0 vector) (arg1 quaternion) (arg2 entity-actor))
   (process-entity-set! self arg2)
-  (set! (-> self root-override) (the-as collide-shape-moving (new 'process 'trsqv)))
-  (set! (-> self root-override trans quad) (-> arg0 quad))
-  (quaternion-copy! (-> self root-override quat) arg1)
-  (set! (-> self root-override scale x) 0.0)
-  (set! (-> self root-override scale y) 0.0)
+  (set! (-> self root) (the-as collide-shape-moving (new 'process 'trsqv)))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (quaternion-copy! (-> self root quat) arg1)
+  (set! (-> self root scale x) 0.0)
+  (set! (-> self root scale y) 0.0)
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mech-target" (the-as (pointer uint32) #f)))
