@@ -55,6 +55,7 @@ add_library(common
         serialization/subtitles/subtitles_ser.cpp
         serialization/subtitles2/subtitles2_deser.cpp
         serialization/subtitles2/subtitles2_ser.cpp
+        sqlite/sqlite.cpp
         type_system/defenum.cpp
         type_system/deftype.cpp
         type_system/state.cpp
@@ -69,6 +70,7 @@ add_library(common
         util/dgo_util.cpp
         util/DgoReader.cpp
         util/DgoWriter.cpp
+        util/dialogs.cpp
         util/diff.cpp
         util/FileUtil.cpp
         util/FontUtils.cpp
@@ -82,10 +84,9 @@ add_library(common
         util/term_util.cpp
         util/Timer.cpp
         util/unicode_util.cpp
-        versions/versions.cpp
-)
+        versions/versions.cpp)
 
-target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter)
+target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter sqlite3 libtinyfiledialogs)
 
 if(WIN32)
     target_link_libraries(common wsock32 ws2_32 windowsapp)

@@ -76,7 +76,7 @@ Replace the `defun` with:
 You can use the same idea for methods with `method-set!`.  The method name will be the decompiler name.
 
 ## Running Mips2C code
-When Mips2C code is linked (for the first time), a small dynamically generated function object is created. This is a very short stub that jumps to a common implementation in `mips2c_call_linux`, that actually sets up the call.
+When Mips2C code is linked (for the first time), a small dynamically generated function object is created. This is a very short stub that jumps to a common implementation in `mips2c_call_systemv`, that actually sets up the call.
 
 The setup code saves the appropriate registers for the OS, allocates an `ExecutionContext` on the stack, initializes the argument registers, allocates a "fake stack array" on the stack with the requested size, and calls the C++ function.
 
