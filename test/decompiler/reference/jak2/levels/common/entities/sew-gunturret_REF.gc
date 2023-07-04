@@ -617,7 +617,7 @@
         (s5-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data (-> obj params track-joint))))
         )
     (let ((s3-0 (new 'stack-no-clear 'vector)))
-      (vector-! s4-0 (-> obj aim-pos) (-> obj root-override2 trans))
+      (vector-! s4-0 (-> obj aim-pos) (-> obj root trans))
       (vector-flatten! s4-0 s4-0 (-> obj init-mat vector 1))
       (vector-normalize! s4-0 1.0)
       (set! (-> obj desired-twist) (asin (vector-dot (the-as vector (-> obj init-mat)) s4-0)))
@@ -660,7 +660,7 @@
     (+! (-> obj gun-twist) (fmax -364.0889 (fmin 364.0889 (* 0.3 (- (-> obj desired-twist) (-> obj gun-twist))))))
     (matrix-rotate-y! matrix (-> obj gun-twist))
     (matrix*! matrix matrix (-> obj init-mat))
-    (matrix->quaternion (-> obj root-override2 quat) matrix)
+    (matrix->quaternion (-> obj root quat) matrix)
     )
   (+! (-> obj gun-tilt) (fmax -364.0889 (fmin 364.0889 (* 0.3 (- (-> obj desired-tilt) (-> obj gun-tilt))))))
   (quaternion-axis-angle! (-> obj gun-tilt-jm quat) 1.0 0.0 0.0 (-> obj gun-tilt))
@@ -714,7 +714,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-aim-at-default! sew-gunturret ((obj sew-gunturret))
   "Aims the turret at it's default direction.  Sets `aim-pos` accordingly"
-  (vector+float*! (-> obj aim-pos) (-> obj root-override2 trans) (-> obj init-mat vector 2) 163840.0)
+  (vector+float*! (-> obj aim-pos) (-> obj root trans) (-> obj init-mat vector 2) 163840.0)
   0
   (none)
   )
@@ -794,7 +794,7 @@
           (go-stare self)
           )
       )
-    (set! (-> self root-override2 penetrated-by) (get-penetrate-info self))
+    (set! (-> self root penetrated-by) (get-penetrate-info self))
     (none)
     )
   :code (behavior ()
@@ -930,7 +930,7 @@
   :virtual #t
   :enter (behavior ()
     (dispose! self)
-    (let ((root-prim (-> self root-override2 root-prim)))
+    (let ((root-prim (-> self root root-prim)))
       (set! (-> root-prim prim-core collide-as) (collide-spec))
       (set! (-> root-prim prim-core collide-with) (collide-spec))
       )
@@ -956,7 +956,7 @@
     (cleanup-for-death self)
     (ja-channel-set! 0)
     (let ((vec (new 'stack-no-clear 'vector)))
-      (set! (-> vec quad) (-> self root-override2 trans quad))
+      (set! (-> vec quad) (-> self root trans quad))
       (set! (-> vec y) (+ 10240.0 (-> vec y)))
       (let ((frame-counter (current-time)))
         (until (>= (- (current-time) frame-counter) (seconds 2))
@@ -1038,7 +1038,7 @@
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root-override2) cshape)
+    (set! (-> obj root) cshape)
     )
   0
   (none)
@@ -1057,7 +1057,7 @@
      )
     (else
       (let ((dist (vector-dot
-                    (vector-! (new 'stack-no-clear 'vector) (get-trans proc 3) (-> obj root-override2 trans))
+                    (vector-! (new 'stack-no-clear 'vector) (get-trans proc 3) (-> obj root trans))
                     (-> obj init-mat vector 2)
                     )
                   )
@@ -1155,7 +1155,7 @@
   (set! (-> obj flash-state) #f)
   (set! (-> obj can-shoot) #t)
   (set! (-> obj last-hit-time) 0)
-  (quaternion->matrix (-> obj init-mat) (-> obj root-override2 quat))
+  (quaternion->matrix (-> obj init-mat) (-> obj root quat))
   (set! (-> obj activate-distance) (res-lump-float (-> obj entity) 'distance))
   0
   (none)

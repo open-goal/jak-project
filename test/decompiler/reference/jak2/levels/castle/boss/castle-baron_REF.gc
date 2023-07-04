@@ -131,7 +131,7 @@ This commonly includes things such as:
           ((the-as (function none) t9-0))
           )
       )
-    (sound-play "cas-elevate" :id (-> self sound-id) :position (-> self root-override trans))
+    (sound-play "cas-elevate" :id (-> self sound-id) :position (-> self root trans))
     (none)
     )
   )
@@ -168,11 +168,11 @@ For example for an elevator pre-compute the distance between the first and last 
 @see [[path-control]] and [[elevator]]"
   (let ((s4-0 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg1 'interp))
         (a0-3 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg2 'interp))
-        (v1-3 (-> obj root-override trans))
+        (v1-3 (-> obj root trans))
         )
     (when (and (< (-> a0-3 y) (-> s4-0 y)) (< (-> arg0 y) (+ -8192.0 (-> v1-3 y))))
       (let ((s4-2 (vector-! (new 'stack-no-clear 'vector) arg0 v1-3)))
-        (vector-inv-orient-by-quat! s4-2 s4-2 (-> obj root-override quat))
+        (vector-inv-orient-by-quat! s4-2 s4-2 (-> obj root quat))
         (and (< (fabs (-> s4-2 x)) 24576.0) (< 0.0 (-> s4-2 z)) (< (-> s4-2 z) 49152.0))
         )
       )
@@ -190,9 +190,9 @@ For example for an elevator pre-compute the distance between the first and last 
          )
     (when a0-2
       (let* ((v1-1 (get-trans a0-2 0))
-             (gp-2 (vector-! (new 'stack-no-clear 'vector) v1-1 (-> obj root-override trans)))
+             (gp-2 (vector-! (new 'stack-no-clear 'vector) v1-1 (-> obj root trans)))
              )
-        (vector-inv-orient-by-quat! gp-2 gp-2 (-> obj root-override quat))
+        (vector-inv-orient-by-quat! gp-2 gp-2 (-> obj root quat))
         (and (< (fabs (-> gp-2 x)) 40960.0) (< (fabs (-> gp-2 z)) 40960.0))
         )
       )
@@ -231,7 +231,7 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> s5-0 backup-collide-as) (-> v1-17 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-17 prim-core collide-with))
       )
-    (set! (-> obj root-override) s5-0)
+    (set! (-> obj root) s5-0)
     )
   (none)
   )
@@ -807,7 +807,7 @@ For example for an elevator pre-compute the distance between the first and last 
     :walk-travel-speed (meters 4)
     :walk-acceleration (meters 16)
     :walk-turning-acceleration (meters 20)
-    :maximum-rotation-rate (degrees 360.0)
+    :maximum-rotation-rate (degrees 360)
     :notice-nav-radius (meters 2)
     :frustration-distance (meters 8)
     :frustration-time (seconds 4)
@@ -893,7 +893,7 @@ For example for an elevator pre-compute the distance between the first and last 
         )
       )
     )
-  (if (< (-> obj root-override2 trans y) 1228800.0)
+  (if (< (-> obj root trans y) 1228800.0)
       (deactivate obj)
       )
   0
@@ -936,23 +936,20 @@ For example for an elevator pre-compute the distance between the first and last 
              (ja-channel-push! 1 (seconds 0.1))
              (let ((a0-15 (-> obj skel root-channel 0)))
                (set! (-> a0-15 frame-group)
-                     (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override die-anim)))
+                     (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info die-anim)))
                      )
                (set! (-> a0-15 param 0) 0.0)
                (set! (-> a0-15 param 1) (* 2.0 (-> pp clock time-adjust-ratio)))
                (set! (-> a0-15 frame-num)
                      (the float
-                          (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override die-anim)))
-                                 frames
-                                 num-frames
-                                 )
+                          (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info die-anim))) frames num-frames)
                              -1
                              )
                           )
                      )
                (joint-control-channel-group!
                  a0-15
-                 (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override die-anim)))
+                 (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info die-anim)))
                  num-func-seek!
                  )
                )
@@ -997,14 +994,14 @@ For example for an elevator pre-compute the distance between the first and last 
     (none)
     )
   :trans (behavior ()
-    (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root-override2 trans)))
-          (s5-0 (quaternion->matrix (new-stack-matrix0) (-> self root-override2 quat)))
+    (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans)))
+          (s5-0 (quaternion->matrix (new-stack-matrix0) (-> self root quat)))
           )
       (vector-normalize! gp-1 1.0)
       (let* ((a2-1 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 vector 1) 1.0))
              (a0-8 (vector-normalize! (vector-flatten! (new 'stack-no-clear 'vector) gp-1 a2-1) 1.0))
              )
-        (quaternion-axis-angle! (-> self root-override2 quat) 0.0 1.0 0.0 (vector-y-angle a0-8))
+        (quaternion-axis-angle! (-> self root quat) 0.0 1.0 0.0 (vector-y-angle a0-8))
         )
       )
     (none)
@@ -1023,12 +1020,9 @@ For example for an elevator pre-compute the distance between the first and last 
     )
   :post (behavior ()
     (set! (-> self enemy-flags) (logior (enemy-flag directed) (-> self enemy-flags)))
-    (let ((gp-0 (-> self root-override2)))
+    (let ((gp-0 (-> self root)))
       (let ((a1-0 (new-stack-vector0)))
-        (vector-v++!
-          (-> gp-0 transv)
-          (compute-acc-due-to-gravity gp-0 a1-0 (-> self enemy-info-override slip-factor))
-          )
+        (vector-v++! (-> gp-0 transv) (compute-acc-due-to-gravity gp-0 a1-0 (-> self enemy-info slip-factor)))
         )
       (let ((a2-1 (new 'stack-no-clear 'collide-query)))
         (set! (-> a2-1 collide-with) (-> gp-0 root-prim prim-core collide-with))
@@ -1066,24 +1060,19 @@ For example for an elevator pre-compute the distance between the first and last 
     (cond
       ((<= (-> obj hit-points) 0)
        (let ((a0-2 (-> obj skel root-channel 0)))
-         (set! (-> a0-2 frame-group)
-               (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override die-anim)))
-               )
+         (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info die-anim))))
          (set! (-> a0-2 param 0) 0.0)
          (set! (-> a0-2 param 1) (* 2.0 (-> pp clock time-adjust-ratio)))
          (set! (-> a0-2 frame-num)
                (the float
-                    (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override die-anim)))
-                           frames
-                           num-frames
-                           )
+                    (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info die-anim))) frames num-frames)
                        -1
                        )
                     )
                )
          (joint-control-channel-group!
            a0-2
-           (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override die-anim)))
+           (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info die-anim)))
            num-func-seek!
            )
          )
@@ -1091,14 +1080,11 @@ For example for an elevator pre-compute the distance between the first and last 
       (else
         (let ((a0-3 (-> obj skel root-channel 0)))
           (set! (-> a0-3 frame-group)
-                (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override knocked-anim)))
+                (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-anim)))
                 )
           (set! (-> a0-3 param 0)
                 (the float
-                     (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override knocked-anim)))
-                            frames
-                            num-frames
-                            )
+                     (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-anim))) frames num-frames)
                         -1
                         )
                      )
@@ -1107,7 +1093,7 @@ For example for an elevator pre-compute the distance between the first and last 
           (set! (-> a0-3 frame-num) 0.0)
           (joint-control-channel-group!
             a0-3
-            (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override knocked-anim)))
+            (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-anim)))
             num-func-seek!
             )
           )
@@ -1123,11 +1109,11 @@ For example for an elevator pre-compute the distance between the first and last 
     (ja-channel-push! 1 (seconds 0.1))
     (let ((a0-2 (-> obj skel root-channel 0)))
       (set! (-> a0-2 frame-group)
-            (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override knocked-land-anim)))
+            (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-land-anim)))
             )
       (set! (-> a0-2 param 0)
             (the float
-                 (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override knocked-land-anim)))
+                 (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-land-anim)))
                         frames
                         num-frames
                         )
@@ -1139,7 +1125,7 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> a0-2 frame-num) 0.0)
       (joint-control-channel-group!
         a0-2
-        (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override knocked-land-anim)))
+        (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-land-anim)))
         num-func-seek!
         )
       )
@@ -1172,7 +1158,7 @@ For example for an elevator pre-compute the distance between the first and last 
        s5-0
        )
       ((= v1-0 4)
-       (vector-reset! (-> obj root-override2 transv))
+       (vector-reset! (-> obj root transv))
        #t
        )
       (else
@@ -1214,7 +1200,7 @@ For example for an elevator pre-compute the distance between the first and last 
     (if (< 65536.0 (-> obj wiggle-angle))
         (set! (-> obj wiggle-angle) (+ -65536.0 (-> obj wiggle-angle)))
         )
-    (let* ((v1-5 (-> obj root-override2 trans))
+    (let* ((v1-5 (-> obj root trans))
            (a1-2 (vector-! (new 'stack-no-clear 'vector) v1-5 arg0))
            (s3-0 (vector-rotate-around-y! (new 'stack-no-clear 'vector) a1-2 16384.0))
            (s4-0 (new 'stack-no-clear 'vector))
@@ -1257,9 +1243,9 @@ For example for an elevator pre-compute the distance between the first and last 
           )
       )
     (let ((v1-6 (ja-group)))
-      (when (not (and v1-6 (= v1-6 (-> self draw art-group data (-> self enemy-info-override hostile-anim)))))
+      (when (not (and v1-6 (= v1-6 (-> self draw art-group data (-> self enemy-info hostile-anim)))))
         (ja-channel-push! 1 (seconds 0.1))
-        (ja :group! (-> self draw art-group data (-> self enemy-info-override hostile-anim)) :num! min)
+        (ja :group! (-> self draw art-group data (-> self enemy-info hostile-anim)) :num! min)
         )
       )
     (none)
@@ -1299,24 +1285,24 @@ For example for an elevator pre-compute the distance between the first and last 
         (sound-stop (-> self id))
         )
     (when (< 25 (rand-vu-int-range 0 50))
-      (let ((gp-1 (-> self root-override2))
+      (let ((gp-1 (-> self root))
             (a1-1 (new 'stack-no-clear 'collide-query))
             )
-        (when (find-ground gp-1 a1-1 (-> self enemy-info-override recover-gnd-collide-with) 8192.0 81920.0 1024.0)
-          (let ((f0-1 (- (-> self root-override2 trans y) (-> gp-1 gspot-pos y))))
+        (when (find-ground gp-1 a1-1 (-> self enemy-info recover-gnd-collide-with) 8192.0 81920.0 1024.0)
+          (let ((f0-1 (- (-> self root trans y) (-> gp-1 gspot-pos y))))
             (when (and (>= f0-1 -1228.8) (>= 26624.0 f0-1))
               (cond
                 ((>= (rand-vu-int-range 0 100) (/ (* 40 (you-suck-stage *game-info* #f)) 4))
-                 (set! (-> self fact-info-override pickup-type) (pickup-type ammo-random))
-                 (set! (-> self fact-info-override pickup-amount) 1.0)
+                 (set! (-> self fact pickup-type) (pickup-type ammo-random))
+                 (set! (-> self fact pickup-amount) 1.0)
                  )
                 (else
-                  (set! (-> self fact-info-override pickup-type) (pickup-type health))
-                  (set! (-> self fact-info-override pickup-amount) 2.0)
+                  (set! (-> self fact pickup-type) (pickup-type health))
+                  (set! (-> self fact pickup-amount) 2.0)
                   )
                 )
-              (set! (-> self fact-info-override fade-time) (seconds 10))
-              (let ((v1-25 (drop-pickup (-> self fact-info-override) #t *entity-pool* (-> self fact-info-override) 0)))
+              (set! (-> self fact fade-time) (seconds 10))
+              (let ((v1-25 (drop-pickup (-> self fact) #t *entity-pool* (-> self fact) 0)))
                 (when v1-25
                   (set! (-> (the-as collectable (-> v1-25 0)) draw light-index) (the-as uint 0))
                   0
@@ -1405,7 +1391,7 @@ For example for an elevator pre-compute the distance between the first and last 
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
     (set! (-> s5-0 pat-ignore-mask) (new 'static 'pat-surface :noentity #x1 :probe #x1 :noendlessfall #x1))
-    (set! (-> obj root-override2) s5-0)
+    (set! (-> obj root) s5-0)
     )
   0
   (none)
@@ -1498,9 +1484,9 @@ For example for an elevator pre-compute the distance between the first and last 
     (set! (-> v1-22 speed-scale) 1.0)
     )
   0
-  (set-gravity-length (-> obj root-override2 dynam) 573440.0)
+  (set-gravity-length (-> obj root dynam) 573440.0)
   (logior! (-> obj nav flags) (nav-control-flag momentum-ignore-heading))
-  (set-vector! (-> obj root-override2 scale) 0.8 0.8 0.8 1.0)
+  (set-vector! (-> obj root scale) 0.8 0.8 0.8 1.0)
   (set! (-> obj draw light-index) (the-as uint 1))
   (set-vector! (-> obj draw color-emissive) 0.0 1.0 0.0 0.0)
   (set! (-> obj wiggle-angle) 0.0)
@@ -2084,11 +2070,11 @@ For example for an elevator pre-compute the distance between the first and last 
     (set! (-> v1-9 speed-scale) 1.0)
     )
   0
-  (set-gravity-length (-> obj root-override2 dynam) 573440.0)
+  (set-gravity-length (-> obj root dynam) 573440.0)
   (logior! (-> obj nav flags) (nav-control-flag momentum-ignore-heading))
-  (set-vector! (-> obj root-override2 trans) -1302528.0 -1449984.0 -6836224.0 1.0)
+  (set-vector! (-> obj root trans) -1302528.0 -1449984.0 -6836224.0 1.0)
   (let ((v1-20 (-> obj nav state))
-        (a0-17 (-> obj root-override2 trans))
+        (a0-17 (-> obj root trans))
         )
     (logclear! (-> v1-20 flags) (nav-state-flag directional-mode))
     (logior! (-> v1-20 flags) (nav-state-flag target-poly-dirty))
@@ -2144,7 +2130,7 @@ For example for an elevator pre-compute the distance between the first and last 
     )
   :enter (behavior ()
     (logior! (-> self focus-status) (focus-status disable))
-    (let ((v1-3 (-> self root-override2 root-prim)))
+    (let ((v1-3 (-> self root root-prim)))
       (set! (-> v1-3 prim-core collide-as) (collide-spec))
       (set! (-> v1-3 prim-core collide-with) (collide-spec))
       )
@@ -2167,9 +2153,9 @@ For example for an elevator pre-compute the distance between the first and last 
   :exit (behavior ()
     (logclear! (-> self draw status) (draw-control-status no-draw))
     (logclear! (-> self focus-status) (focus-status disable))
-    (let ((v1-5 (-> self root-override2 root-prim)))
-      (set! (-> v1-5 prim-core collide-as) (-> self root-override2 backup-collide-as))
-      (set! (-> v1-5 prim-core collide-with) (-> self root-override2 backup-collide-with))
+    (let ((v1-5 (-> self root root-prim)))
+      (set! (-> v1-5 prim-core collide-as) (-> self root backup-collide-as))
+      (set! (-> v1-5 prim-core collide-with) (-> self root backup-collide-with))
       )
     (none)
     )
@@ -2248,14 +2234,11 @@ For example for an elevator pre-compute the distance between the first and last 
       (else
         (let ((a0-3 (-> obj skel root-channel 0)))
           (set! (-> a0-3 frame-group)
-                (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override knocked-anim)))
+                (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-anim)))
                 )
           (set! (-> a0-3 param 0)
                 (the float
-                     (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override knocked-anim)))
-                            frames
-                            num-frames
-                            )
+                     (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-anim))) frames num-frames)
                         -1
                         )
                      )
@@ -2264,7 +2247,7 @@ For example for an elevator pre-compute the distance between the first and last 
           (set! (-> a0-3 frame-num) 0.0)
           (joint-control-channel-group!
             a0-3
-            (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override knocked-anim)))
+            (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-anim)))
             num-func-seek!
             )
           )
@@ -2284,11 +2267,11 @@ For example for an elevator pre-compute the distance between the first and last 
       (ja-channel-push! 1 (seconds 0.1))
       (let ((a0-2 (-> obj skel root-channel 0)))
         (set! (-> a0-2 frame-group)
-              (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override knocked-land-anim)))
+              (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-land-anim)))
               )
         (set! (-> a0-2 param 0)
               (the float
-                   (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override knocked-land-anim)))
+                   (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-land-anim)))
                           frames
                           num-frames
                           )
@@ -2300,7 +2283,7 @@ For example for an elevator pre-compute the distance between the first and last 
         (set! (-> a0-2 frame-num) 0.0)
         (joint-control-channel-group!
           a0-2
-          (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info-override knocked-land-anim)))
+          (the-as art-joint-anim (-> obj draw art-group data (-> obj enemy-info knocked-land-anim)))
           num-func-seek!
           )
         )
@@ -2351,7 +2334,7 @@ For example for an elevator pre-compute the distance between the first and last 
     )
   :post (behavior ()
     (set! (-> self enemy-flags) (logior (enemy-flag directed) (-> self enemy-flags)))
-    (let ((gp-0 (-> self root-override2)))
+    (let ((gp-0 (-> self root)))
       (cond
         ((and (>= 1449984.0 (-> gp-0 trans y)) (< (-> gp-0 transv y) 0.0))
          (set! (-> gp-0 transv y) 0.0)
@@ -2360,10 +2343,7 @@ For example for an elevator pre-compute the distance between the first and last 
          )
         (else
           (let ((a1-0 (new-stack-vector0)))
-            (vector-v++!
-              (-> gp-0 transv)
-              (compute-acc-due-to-gravity gp-0 a1-0 (-> self enemy-info-override slip-factor))
-              )
+            (vector-v++! (-> gp-0 transv) (compute-acc-due-to-gravity gp-0 a1-0 (-> self enemy-info slip-factor)))
             )
           )
         )
@@ -2440,7 +2420,7 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> s5-0 backup-collide-with) (-> v1-17 prim-core collide-with))
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
-    (set! (-> obj root-override2) s5-0)
+    (set! (-> obj root) s5-0)
     )
   0
   (none)
@@ -2468,7 +2448,7 @@ For example for an elevator pre-compute the distance between the first and last 
             (set! (-> v1-8 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-8 enemy-flags))))
             )
         (set! (-> v1-8 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-8 enemy-flags))))
-        (set! (-> v1-8 nav callback-info) (-> v1-8 enemy-info-override callback-info))
+        (set! (-> v1-8 nav callback-info) (-> v1-8 enemy-info callback-info))
         )
       0
       (let ((v1-11 self))
@@ -2511,7 +2491,7 @@ For example for an elevator pre-compute the distance between the first and last 
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
-    (ja :group! (-> self draw art-group data (-> self enemy-info-override idle-anim)) :num! min)
+    (ja :group! (-> self draw art-group data (-> self enemy-info idle-anim)) :num! min)
     (let ((f30-0 (get-rand-float-range self 0.3 0.5)))
       (until #f
         (suspend)
@@ -2527,8 +2507,8 @@ For example for an elevator pre-compute the distance between the first and last 
           ((the-as (function none) t9-0))
           )
       )
-    (if (< 0.0 (-> self root-override2 trans y))
-        (seek! (-> self root-override2 trans y) 1470464.0 (* 204.8 (-> self clock time-adjust-ratio)))
+    (if (< 0.0 (-> self root trans y))
+        (seek! (-> self root trans y) 1470464.0 (* 204.8 (-> self clock time-adjust-ratio)))
         )
     (nav-enemy-method-176 self)
     (none)
@@ -2568,8 +2548,8 @@ For example for an elevator pre-compute the distance between the first and last 
   (with-pp
     (cond
       ((not (logtest? (-> obj nav flags) (nav-control-flag update-heading-from-facing)))
-       (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> obj root-override2 trans)))
-             (s3-0 (quaternion->matrix (new-stack-matrix0) (-> obj root-override2 quat)))
+       (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> obj root trans)))
+             (s3-0 (quaternion->matrix (new-stack-matrix0) (-> obj root quat)))
              )
          (vector-normalize! s5-1 1.0)
          (let* ((s4-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s3-0 vector 1) 1.0))
@@ -2599,7 +2579,7 @@ For example for an elevator pre-compute the distance between the first and last 
                      )
                )
            (let ((f0-3 (seek f30-0 f0-0 (* f2-0 (-> pp clock time-adjust-ratio)))))
-             (quaternion-axis-angle! (-> obj root-override2 quat) 0.0 1.0 0.0 f0-3)
+             (quaternion-axis-angle! (-> obj root quat) 0.0 1.0 0.0 f0-3)
              )
            )
          )
@@ -2671,7 +2651,7 @@ For example for an elevator pre-compute the distance between the first and last 
           (set! (-> v1-58 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-58 enemy-flags))))
           )
       (set! (-> v1-58 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-58 enemy-flags))))
-      (set! (-> v1-58 nav callback-info) (-> v1-58 enemy-info-override callback-info))
+      (set! (-> v1-58 nav callback-info) (-> v1-58 enemy-info callback-info))
       )
     0
     (nav-enemy-method-166 self)
@@ -2686,13 +2666,13 @@ For example for an elevator pre-compute the distance between the first and last 
           )
       (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable gp-1) 0) quad))
       )
-    (let ((f30-0 (-> self enemy-info-override circle-dist-lo))
-          (f28-0 (-> self enemy-info-override circle-dist-hi))
+    (let ((f30-0 (-> self enemy-info circle-dist-lo))
+          (f28-0 (-> self enemy-info circle-dist-hi))
           )
       (if (zero? (get-rand-int self 4))
           (set! (-> self desired-angle) (get-rand-float-range self f30-0 f28-0))
           (set! (-> self desired-angle)
-                (fmax (fmin (vector-vector-xz-distance (-> self focus-pos) (-> self root-override2 trans)) f28-0) f30-0)
+                (fmax (fmin (vector-vector-xz-distance (-> self focus-pos) (-> self root trans)) f28-0) f30-0)
                 )
           )
       )
@@ -2727,9 +2707,7 @@ For example for an elevator pre-compute the distance between the first and last 
         )
     (when (= (-> self next-shooting-frame) 200)
       (cond
-        ((< (vector-length (vector-! (new 'stack-no-clear 'vector) (-> self focus-pos) (-> self root-override2 trans)))
-            122880.0
-            )
+        ((< (vector-length (vector-! (new 'stack-no-clear 'vector) (-> self focus-pos) (-> self root trans))) 122880.0)
          (set! (-> self next-shooting-frame) 0)
          (ja :chan 1 :num-func num-func-identity :frame-num 0.0)
          (let ((v1-24 (-> self enemy-flags)))
@@ -2772,8 +2750,8 @@ For example for an elevator pre-compute the distance between the first and last 
     )
   :code (behavior ()
     (ja-channel-push! 2 (seconds 0.1))
-    (ja :group! (-> self draw art-group data (-> self enemy-info-override idle-anim)) :num! min)
-    (ja :chan 1 :group! (-> self draw art-group data (-> self enemy-info-override hostile-anim)) :num! min)
+    (ja :group! (-> self draw art-group data (-> self enemy-info idle-anim)) :num! min)
+    (ja :chan 1 :group! (-> self draw art-group data (-> self enemy-info hostile-anim)) :num! min)
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (until #f
         (ja :num! (loop! f30-0))
@@ -2804,7 +2782,7 @@ For example for an elevator pre-compute the distance between the first and last 
                   (set! f30-0 (- f30-0))
                   )
               (set! (-> s5-0 quad) (-> self focus-pos quad))
-              (vector-! gp-0 (-> self root-override2 trans) s5-0)
+              (vector-! gp-0 (-> self root trans) s5-0)
               (set! (-> gp-0 y) 0.0)
               (vector-normalize! gp-0 (-> self desired-angle))
               (vector+! s5-0 s5-0 gp-0)
@@ -2814,9 +2792,9 @@ For example for an elevator pre-compute the distance between the first and last 
             (vector+! s5-0 s5-0 gp-0)
             )
           (let ((gp-1 (new 'stack-no-clear 'vector)))
-            (set! (-> gp-1 quad) (-> self root-override2 trans quad))
+            (set! (-> gp-1 quad) (-> self root trans quad))
             (cloest-point-on-mesh (-> self nav) gp-1 s5-0 (the-as nav-poly #f))
-            (if (< (vector-vector-xz-distance gp-1 (-> self root-override2 trans)) 409.6)
+            (if (< (vector-vector-xz-distance gp-1 (-> self root trans)) 409.6)
                 (set! (-> self enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag41) (-> self enemy-flags))))
                 (set! (-> self enemy-flags) (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag enemy-flag41))))
                 )
@@ -2854,7 +2832,7 @@ For example for an elevator pre-compute the distance between the first and last 
         (logior! (-> self skel status) (joint-control-status sync-math))
         )
     (nav-enemy-travel-post)
-    (seek! (-> self root-override2 trans y) 1449984.0 (* 204.8 (-> self clock time-adjust-ratio)))
+    (seek! (-> self root trans y) 1449984.0 (* 204.8 (-> self clock time-adjust-ratio)))
     (when (= (the int (ja-frame-num 1)) (-> self next-shooting-frame))
       (logclear! (-> self skel status) (joint-control-status sync-math))
       (cond
@@ -2956,7 +2934,7 @@ For example for an elevator pre-compute the distance between the first and last 
           (set! (-> v1-8 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-8 enemy-flags))))
           )
       (set! (-> v1-8 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-8 enemy-flags))))
-      (set! (-> v1-8 nav callback-info) (-> v1-8 enemy-info-override callback-info))
+      (set! (-> v1-8 nav callback-info) (-> v1-8 enemy-info callback-info))
       )
     0
     (let ((v1-11 self))
@@ -2980,9 +2958,9 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> v1-18 target-post quad) (-> a0-22 quad))
       )
     0
-    (let ((v1-22 (-> self root-override2 root-prim)))
-      (set! (-> v1-22 prim-core collide-as) (-> self root-override2 backup-collide-as))
-      (set! (-> v1-22 prim-core collide-with) (-> self root-override2 backup-collide-with))
+    (let ((v1-22 (-> self root root-prim)))
+      (set! (-> v1-22 prim-core collide-as) (-> self root backup-collide-as))
+      (set! (-> v1-22 prim-core collide-with) (-> self root backup-collide-with))
       )
     (iterate-process-tree
       *entity-pool*
@@ -2990,9 +2968,7 @@ For example for an elevator pre-compute the distance between the first and last 
         (function object object)
         (lambda ((arg0 collectable))
           (if (and (or (type? arg0 ammo-collectable) (type? arg0 health))
-                   (and (nonzero? (-> arg0 root-override2))
-                        (>= 819200.0 (vector-vector-distance (-> arg0 root-override2 trans) (target-pos 0)))
-                        )
+                   (and (nonzero? (-> arg0 root)) (>= 819200.0 (vector-vector-distance (-> arg0 root trans) (target-pos 0))))
                    )
               (deactivate arg0)
               )
@@ -3018,10 +2994,8 @@ For example for an elevator pre-compute the distance between the first and last 
     )
   :trans (behavior ()
     (let ((f30-0 (vector-vector-xz-distance (target-pos 0) (-> *krew-boss-die-positions* (-> self next-path-point)))))
-      (when (and (< f30-0 (vector-vector-xz-distance
-                            (-> self root-override2 trans)
-                            (-> *krew-boss-die-positions* (-> self next-path-point))
-                            )
+      (when (and (< f30-0
+                    (vector-vector-xz-distance (-> self root trans) (-> *krew-boss-die-positions* (-> self next-path-point)))
                     )
                  (< f30-0 40960.0)
                  )
@@ -3039,10 +3013,8 @@ For example for an elevator pre-compute the distance between the first and last 
     (none)
     )
   :code (behavior ()
-    (while (< 81920.0 (vector-vector-xz-distance
-                        (-> self root-override2 trans)
-                        (-> *krew-boss-die-positions* (-> self next-path-point))
-                        )
+    (while (< 81920.0
+              (vector-vector-xz-distance (-> self root trans) (-> *krew-boss-die-positions* (-> self next-path-point)))
               )
       (ja :num! (loop! (-> self clock time-adjust-ratio)))
       (suspend)

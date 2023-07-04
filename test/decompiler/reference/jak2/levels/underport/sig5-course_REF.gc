@@ -118,10 +118,10 @@
 
 ;; definition for method 86 of type sig-under
 (defmethod enemy-method-86 sig-under ((obj sig-under))
-  (let ((gp-0 (-> obj root-override2)))
+  (let ((gp-0 (-> obj root)))
     (when (< (-> gp-0 transv y) 0.0)
       (let ((a1-0 (new 'stack-no-clear 'collide-query)))
-        (find-ground (-> obj root-override2) a1-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+        (find-ground (-> obj root) a1-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
         )
       (>= (-> gp-0 gspot-pos y) (-> gp-0 trans y))
       )
@@ -224,10 +224,9 @@
 ;; WARN: disable def twice: 39. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod sig-under-method-262 sig-under ((obj sig-under) (arg0 symbol))
   (when (or (logtest? (-> obj bot-task-bits) 2)
-            (and arg0
-                 (let ((f0-0 81920.0))
-                   (>= (* f0-0 f0-0) (vector-vector-xz-distance-squared (target-pos 0) (-> obj root-override2 trans)))
-                   )
+            (and arg0 (let ((f0-0 81920.0))
+                        (>= (* f0-0 f0-0) (vector-vector-xz-distance-squared (target-pos 0) (-> obj root trans)))
+                        )
                  )
             )
     (cond
@@ -260,7 +259,7 @@
          (vf3 :class vf)
          )
     (let ((gp-0 (new 'stack-no-clear 'sphere)))
-      (set! (-> gp-0 quad) (-> obj root-override2 trans quad))
+      (set! (-> gp-0 quad) (-> obj root trans quad))
       (set! (-> gp-0 r) 327680.0)
       (set! *actor-list-length* 0)
       (if #t
@@ -367,9 +366,7 @@
 ;; definition for method 261 of type sig-under
 ;; INFO: Used lq/sq
 (defmethod sig-under-method-261 sig-under ((obj sig-under) (arg0 vector) (arg1 vector) (arg2 symbol))
-  (set! (-> arg0 w)
-        (- (+ (* (-> arg0 x) (-> obj root-override2 trans x)) (* (-> arg0 z) (-> obj root-override2 trans z))))
-        )
+  (set! (-> arg0 w) (- (+ (* (-> arg0 x) (-> obj root trans x)) (* (-> arg0 z) (-> obj root trans z)))))
   (let ((v1-2 (new 'stack-no-clear 'vector)))
     (set! (-> v1-2 quad) (-> arg1 quad))
     (set! (-> v1-2 y) 0.0)
@@ -382,7 +379,7 @@
         (set! f2-1 (+ 2048.0 f2-1))
         )
       (if (and (>= f0-6 -2048.0) (>= f1-3 f0-6))
-          (>= (* f2-1 f2-1) (vector-vector-xz-distance-squared arg1 (-> obj root-override2 trans)))
+          (>= (* f2-1 f2-1) (vector-vector-xz-distance-squared arg1 (-> obj root trans)))
           )
       )
     )
@@ -393,12 +390,12 @@
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior sig-under) enemy-event-handler)
   :enter (behavior ()
-    (move-to-point! (-> self root-override2) (the-as vector (-> self sig5-course spots 0)))
-    (quaternion-identity! (-> self root-override2 quat))
+    (move-to-point! (-> self root) (the-as vector (-> self sig5-course spots 0)))
+    (quaternion-identity! (-> self root quat))
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (vector-! gp-0 (the-as vector (-> self sig5-course spots 1)) (-> self root-override2 trans))
+      (vector-! gp-0 (the-as vector (-> self sig5-course spots 1)) (-> self root trans))
       (vector-normalize! gp-0 1.0)
-      (set-heading-vec! (-> self root-override2) gp-0)
+      (set-heading-vec! (-> self root) gp-0)
       )
     (logclear! (-> self enemy-flags) (enemy-flag enable-on-active checking-water))
     (let ((v1-11 self))
@@ -410,17 +407,15 @@
     (set! (-> self skel top-anim interp) 0.0)
     (set! (-> self focus-mode) 1)
     (set! (-> self bot-flags) (logior (bot-flags bf11 bf18) (-> self bot-flags)))
-    (set! (-> self root-override2 penetrated-by)
-          (logior (penetrate jak-yellow-shot jak-red-shot jak-blue-shot jak-dark-shot)
-                  (-> self root-override2 penetrated-by)
-                  )
+    (set! (-> self root penetrated-by)
+          (logior (penetrate jak-yellow-shot jak-red-shot jak-blue-shot jak-dark-shot) (-> self root penetrated-by))
           )
     (look-at-target! self (enemy-flag lock-focus))
     (none)
     )
   :exit (behavior ()
     (logclear! (-> self bot-flags) (bot-flags bf18))
-    (set! (-> self root-override2 penetrated-by) (get-penetrate-info self))
+    (set! (-> self root penetrated-by) (get-penetrate-info self))
     (none)
     )
   :trans (behavior ()
@@ -462,12 +457,7 @@
               )
           (ja-no-eval :group! gp-1 :num! (seek! f30-3) :frame-num 0.0)
           (until (ja-done? 0)
-            (seek-toward-heading-vec!
-              (-> self root-override2)
-              (-> self focus-info bullseye-xz-dir)
-              32768.0
-              (seconds 0.05)
-              )
+            (seek-toward-heading-vec! (-> self root) (-> self focus-info bullseye-xz-dir) 32768.0 (seconds 0.05))
             (suspend)
             (ja :num! (seek! f30-3))
             )
@@ -577,11 +567,11 @@
     :waypoints (new 'static 'boxed-array :type bot-waypoint
       (new 'static 'bot-waypoint
         :waypoint-id 1
-        :skip-to #x16
+        :skip-to 22
         :on-set (lambda ((arg0 sig-under))
           (let ((a0-1 80))
             (set! (-> arg0 hit-points) a0-1)
-            (set! (-> arg0 enemy-info-override default-hit-points) a0-1)
+            (set! (-> arg0 enemy-info default-hit-points) a0-1)
             )
           (clear-speech-flags! arg0)
           (logclear! (-> arg0 focus-status) (focus-status disable))
@@ -674,7 +664,7 @@
           (set! (-> arg0 notice-enemy-dist) 122880.0)
           (clear-poi-and-focus! arg0)
           (set! (-> arg0 focus-mode) 0)
-          (set! (-> arg0 root-override2 penetrated-by) (get-penetrate-info arg0))
+          (set! (-> arg0 root penetrated-by) (get-penetrate-info arg0))
           (let ((v1-12 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
             (set! (-> v1-12 bytes 5) 1)
             (set! (-> v1-12 bytes 6) 3)
@@ -994,8 +984,8 @@
         :on-set (lambda ((arg0 sig-under))
           (logior! (-> arg0 enemy-flags) (enemy-flag enable-on-active checking-water))
           (reset-warn-time! arg0)
-          (move-to-point! (-> arg0 root-override2) (the-as vector (-> arg0 sig5-course spots 10)))
-          (set-vector! (-> arg0 root-override2 quat) 0.0 0.5874 0.0 0.8092)
+          (move-to-point! (-> arg0 root) (the-as vector (-> arg0 sig5-course spots 10)))
+          (set-vector! (-> arg0 root quat) 0.0 0.5874 0.0 0.8092)
           (play-speech arg0 8)
           (play-speech arg0 9)
           (let ((v1-15 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
@@ -1129,7 +1119,7 @@
         :skip-to -1
         :on-set (lambda ((arg0 sig-under))
           (let ((v1-2 (-> arg0 sig5-course spots 14)))
-            (set! (-> v1-2 center quad) (-> arg0 root-override2 trans quad))
+            (set! (-> v1-2 center quad) (-> arg0 root trans quad))
             (set! (-> v1-2 center w) 8192.0)
             )
           (let ((v1-5 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
@@ -1190,7 +1180,7 @@
         )
       (new 'static 'bot-waypoint
         :waypoint-id 18
-        :nav-mesh-index #x6
+        :nav-mesh-index 6
         :skip-to -1
         :on-set (lambda ((arg0 sig-under))
           (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
@@ -1402,7 +1392,7 @@
                          (logior! (-> arg1 waypoint-bits) 1)
                          (process-release? arg1)
                          (sig-under-method-260 arg1)
-                         (move-to-point! (-> arg1 root-override2) (the-as vector (-> arg1 sig5-course spots 20)))
+                         (move-to-point! (-> arg1 root) (the-as vector (-> arg1 sig5-course spots 20)))
                          #f
                          )
                         ((not (logtest? (-> arg1 waypoint-bits) 2))
@@ -1548,7 +1538,7 @@
           (set! (-> arg0 notice-enemy-dist) 122880.0)
           (clear-poi-and-focus! arg0)
           (set! (-> arg0 focus-mode) 0)
-          (set! (-> arg0 root-override2 penetrated-by) (get-penetrate-info arg0))
+          (set! (-> arg0 root penetrated-by) (get-penetrate-info arg0))
           (logior! (-> arg0 waypoint-bits) 1)
           (send-event arg0 'move-trans (-> arg0 sig5-course spots 21))
           (send-event *target* 'continue (get-continue-by-name *game-info* "sig5-skip-to-cent2"))
@@ -1591,7 +1581,7 @@
         )
       (new 'static 'bot-waypoint
         :waypoint-id 24
-        :nav-mesh-index #x7
+        :nav-mesh-index 7
         :skip-to -1
         :on-set (lambda ((arg0 sig-under))
           (set! (-> arg0 next-chase-play-time) (+ (current-time) (get-rand-int-range arg0 600 1200)))
@@ -1614,7 +1604,7 @@
                       (when (and (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 4))
                                  (sig-method-257 arg1)
                                  (let ((f0-0 61440.0))
-                                   (>= (* f0-0 f0-0) (vector-vector-xz-distance-squared (target-pos 0) (-> arg1 root-override2 trans)))
+                                   (>= (* f0-0 f0-0) (vector-vector-xz-distance-squared (target-pos 0) (-> arg1 root trans)))
                                    )
                                  )
                         (set! (-> arg1 enemy-flags) (the-as enemy-flag (logclear (-> arg1 enemy-flags) (enemy-flag vulnerable))))
@@ -1654,7 +1644,7 @@
         )
       (new 'static 'bot-waypoint
         :waypoint-id 25
-        :nav-mesh-index #x8
+        :nav-mesh-index 8
         :skip-to -1
         :on-set (lambda ((arg0 sig-under))
           (clear-poi-and-focus! arg0)
@@ -1714,11 +1704,8 @@
                           (when (>= 10012.445
                                     (fabs
                                       (deg-
-                                        (atan
-                                          (- (-> v1-78 center x) (-> arg1 root-override2 trans x))
-                                          (- (-> v1-78 center z) (-> arg1 root-override2 trans z))
-                                          )
-                                        (quaternion-y-angle (-> arg1 root-override2 quat))
+                                        (atan (- (-> v1-78 center x) (-> arg1 root trans x)) (- (-> v1-78 center z) (-> arg1 root trans z)))
+                                        (quaternion-y-angle (-> arg1 root quat))
                                         )
                                       )
                                     )
@@ -1762,7 +1749,7 @@
         )
       (new 'static 'bot-waypoint
         :waypoint-id 26
-        :nav-mesh-index #x9
+        :nav-mesh-index 9
         :skip-to -1
         :on-set (lambda ((arg0 sig-under))
           (add-process *gui-control* arg0 (gui-channel art-load) (gui-action queue) "under-get-sig-out-res" -99.0 0)
@@ -1819,7 +1806,7 @@
           (stop-speech arg0 (the-as uint 0) #f)
           (logclear! (-> arg0 enemy-flags) (enemy-flag enable-on-active checking-water))
           (let ((v1-8 (-> arg0 sig5-course spots 35)))
-            (set! (-> v1-8 center quad) (-> arg0 root-override2 trans quad))
+            (set! (-> v1-8 center quad) (-> arg0 root trans quad))
             (set! (-> v1-8 center w) 16384.0)
             )
           (let ((v1-11 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
@@ -1904,7 +1891,7 @@
       (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt078")
       )
     :speech-tunings (new 'static 'inline-array bot-speech-tuning 1
-      (new 'static 'bot-speech-tuning :fo-min 30 :fo-max #x78 :fo-curve #xb :trans? #t)
+      (new 'static 'bot-speech-tuning :fo-min 30 :fo-max #x78 :fo-curve 11 :trans? #t)
       )
     :spots (new 'static 'inline-array bot-spot 36
       (new 'static 'bot-spot :center (new 'static 'vector :x -308019.2 :y -266199.03 :z 7887175.5 :w 8192.0))

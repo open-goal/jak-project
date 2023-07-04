@@ -5,6 +5,20 @@
 ;; name in dgo: race-mesh
 ;; dgos: STD, STC, LERLCHAL, STB, LPRTRACE
 
+
+(defenum race-mesh-flags
+  :bitfield #t
+  :type uint8
+  (racemeshflag-0)
+  (racemeshflag-1)
+  (racemeshflag-2)
+  (racemeshflag-3)
+  (racemeshflag-4)
+  (racemeshflag-5)
+  (racemeshflag-6)
+  (racemeshflag-7)
+  )
+
 ;; DECOMP BEGINS
 
 (deftype race-mesh-hash-search (structure)
@@ -107,10 +121,10 @@
    (start-edge       int16    :offset          0)
    (end-edge         int16    :offset          2)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
-  :pack-me
   )
 
 
@@ -142,7 +156,7 @@
 (deftype race-mesh (basic)
   ((version          uint8                            :offset-assert   4)
    (path-group-count uint8                            :offset-assert   5)
-   (flags            uint8                            :offset-assert   6)
+   (flags            race-mesh-flags                  :offset-assert   6)
    (pad              uint8                          1 :offset-assert   7)
    (slice-count      int16                            :offset-assert   8)
    (edge-count       int16                            :offset-assert  10)
@@ -425,9 +439,9 @@
         (slice-cnt (+ (-> obj slice-count) -1))
         )
     (while (>= slice-cnt idx)
-      (let* ((v1-2 (the-as object (+ (the-as uint (-> obj slices)) (* idx 4))))
-             (s3-0 (-> obj edges (-> (the-as (pointer int16) v1-2))))
-             (s2-0 (-> obj edges (-> (the-as race-mesh-slice v1-2) end-edge)))
+      (let* ((v1-2 (-> obj slices idx))
+             (s3-0 (-> obj edges (-> v1-2 start-edge)))
+             (s2-0 (-> obj edges (-> v1-2 end-edge)))
              )
         (add-debug-line #t (bucket-id debug-no-zbuf1) (-> s3-0 left) (-> s2-0 left) *color-white* #f (the-as rgba -1))
         (add-debug-line
@@ -475,9 +489,9 @@
 
 (defmethod race-mesh-method-19 race-mesh ((obj race-mesh) (arg0 int) (arg1 race-mesh-slice-query))
   (set! (-> arg1 slice-id) -1)
-  (let* ((v1-2 (the-as object (+ (the-as uint (-> obj slices)) (* arg0 4))))
-         (a1-3 (-> obj edges (-> (the-as (pointer int16) v1-2))))
-         (v1-5 (-> obj edges (-> (the-as race-mesh-slice v1-2) end-edge)))
+  (let* ((v1-2 (-> obj slices arg0))
+         (a1-3 (-> obj edges (-> v1-2 start-edge)))
+         (v1-5 (-> obj edges (-> v1-2 end-edge)))
          )
     (set! (-> arg1 slice-corners 0 quad) (-> a1-3 left quad))
     (set! (-> arg1 slice-corners 1 quad) (-> a1-3 right quad))
@@ -582,9 +596,9 @@
 (defmethod race-mesh-method-15 race-mesh ((obj race-mesh) (id int) (slice-query race-mesh-slice-query))
   (local-vars (v1-8 symbol))
   (set! (-> slice-query slice-id) id)
-  (let* ((v1-1 (the-as object (+ (the-as uint (-> obj slices)) (* id 4))))
-         (a1-3 (-> obj edges (-> (the-as (pointer int16) v1-1))))
-         (v1-4 (-> obj edges (-> (the-as race-mesh-slice v1-1) end-edge)))
+  (let* ((v1-1 (-> obj slices id))
+         (a1-3 (-> obj edges (-> v1-1 start-edge)))
+         (v1-4 (-> obj edges (-> v1-1 end-edge)))
          )
     (set! (-> slice-query slice-corners 0 quad) (-> a1-3 left quad))
     (set! (-> slice-query slice-corners 1 quad) (-> a1-3 right quad))
@@ -802,7 +816,7 @@
                  )
                )
          (f0-0 (+ f30-0 f1-0))
-         (v1-1 (the-as race-mesh-slice (+ (the-as uint (-> obj slices)) (* (-> arg0 slice-id) 4))))
+         (v1-1 (-> obj slices (-> arg0 slice-id)))
          (f2-0 (-> obj edges (-> v1-1 start-edge) left w))
          (f3-0 (-> obj edges (-> v1-1 end-edge) left w))
          )

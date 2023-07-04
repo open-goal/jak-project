@@ -39,9 +39,9 @@
 @TODO Not extremely well understood yet"
   (let ((a1-0 (new 'stack-no-clear 'overlaps-others-params)))
     (set! (-> a1-0 options) (overlaps-others-options))
-    (set! (-> a1-0 collide-with-filter) (-> obj enemy-info-override overlaps-others-collide-with-filter))
+    (set! (-> a1-0 collide-with-filter) (-> obj enemy-info overlaps-others-collide-with-filter))
     (set! (-> a1-0 tlist) *touching-list*)
-    (find-overlapping-shapes (-> obj root-override2) a1-0)
+    (find-overlapping-shapes (-> obj root) a1-0)
     )
   (when (and (not (focus-test? obj disable dead ignore inactive))
              (< (-> obj next-update-target) (current-time))
@@ -86,14 +86,14 @@
                          )
                     ((method-of-type touching-shapes-entry prims-touching-action?)
                      (the-as touching-shapes-entry s3-0)
-                     (-> obj root-override2)
+                     (-> obj root)
                      (collide-action deadly)
                      (collide-action)
                      )
                     )
                (let ((a3-2 (if ((method-of-type touching-shapes-entry prims-touching-action?)
                                 (the-as touching-shapes-entry s3-0)
-                                (-> obj root-override2)
+                                (-> obj root)
                                 (collide-action persistent-attack)
                                 (collide-action)
                                 )
@@ -132,7 +132,7 @@
            #t
            )
           (else
-            (let ((v1-4 (-> obj root-override2 root-prim)))
+            (let ((v1-4 (-> obj root root-prim)))
               (set! (-> v1-4 prim-core collide-as) (collide-spec))
               (set! (-> v1-4 prim-core collide-with) (collide-spec))
               )
@@ -163,9 +163,9 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod traffic-danger-init! citizen-enemy ((obj citizen-enemy))
   (let ((a1-0 (new 'stack-no-clear 'traffic-danger-info)))
-    (set! (-> a1-0 sphere quad) (-> obj root-override2 trans quad))
+    (set! (-> a1-0 sphere quad) (-> obj root trans quad))
     (set! (-> a1-0 sphere r) 40960.0)
-    (set! (-> a1-0 velocity quad) (-> obj root-override2 transv quad))
+    (set! (-> a1-0 velocity quad) (-> obj root transv quad))
     (set! (-> a1-0 notify-radius) 122880.0)
     (set! (-> a1-0 danger-level) 1.0)
     (set! (-> a1-0 decay-rate) 0.0)
@@ -183,7 +183,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod citizen-enemy-method-202 citizen-enemy ((obj citizen-enemy))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s5-0 quad) (-> obj root-override2 trans quad))
+    (set! (-> s5-0 quad) (-> obj root trans quad))
     (set! (-> s5-0 w) 122880.0)
     (let ((s4-0 (the-as process-drawable #f)))
       (let ((f30-0 122880.0))
@@ -212,7 +212,7 @@
                              s1-1
                              (not (logtest? (-> (the-as process-focusable s1-1) focus-status) (focus-status disable dead ignore grabbed)))
                              )
-                    (let ((f0-1 (vector-vector-xz-distance (-> obj root-override2 trans) (-> s1-1 root trans))))
+                    (let ((f0-1 (vector-vector-xz-distance (-> obj root trans) (-> s1-1 root trans))))
                       (when (or (not s4-0) (< f0-1 f30-0))
                         (set! s4-0 s1-1)
                         (set! f30-0 f0-1)
@@ -245,13 +245,10 @@
     (ja-channel-push! 1 (seconds 0.075))
     (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
       (until #f
-        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override walk-anim))
+        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info walk-anim))
                     :num! (seek!
                       (the float
-                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override walk-anim)))
-                                  frames
-                                  num-frames
-                                  )
+                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info walk-anim))) frames num-frames)
                               -1
                               )
                            )
@@ -303,13 +300,13 @@
     (set! (-> v1-12 sphere-mask) (the-as uint #x800e8))
     )
   0
-  (set! (-> obj anim-shuffle) (-> obj enemy-info-override walk-anim))
-  (set! (-> obj anim-walk) (-> obj enemy-info-override walk-anim))
-  (set! (-> obj speed-walk) (-> obj enemy-info-override walk-travel-speed))
-  (set! (-> obj dist-walk-anim) (-> obj enemy-info-override walk-travel-speed))
-  (set! (-> obj anim-run) (-> obj enemy-info-override run-anim))
-  (set! (-> obj dist-run-anim) (-> obj enemy-info-override run-travel-speed))
-  (set! (-> obj speed-run) (-> obj enemy-info-override walk-travel-speed))
+  (set! (-> obj anim-shuffle) (-> obj enemy-info walk-anim))
+  (set! (-> obj anim-walk) (-> obj enemy-info walk-anim))
+  (set! (-> obj speed-walk) (-> obj enemy-info walk-travel-speed))
+  (set! (-> obj dist-walk-anim) (-> obj enemy-info walk-travel-speed))
+  (set! (-> obj anim-run) (-> obj enemy-info run-anim))
+  (set! (-> obj dist-run-anim) (-> obj enemy-info run-travel-speed))
+  (set! (-> obj speed-run) (-> obj enemy-info walk-travel-speed))
   (set! (-> obj fated-time) 0)
   (logior! (-> obj enemy-flags) (enemy-flag enable-on-active checking-water))
   (logior! (-> obj focus-status) (focus-status dangerous))

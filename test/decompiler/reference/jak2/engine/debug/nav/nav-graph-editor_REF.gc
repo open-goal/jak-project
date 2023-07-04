@@ -59,7 +59,7 @@
 
 ;; definition of type nav-graph-editor
 (deftype nav-graph-editor (process)
-  ((self-override       nav-graph-editor                :offset         32)
+  ((self                nav-graph-editor                :override)
    (nav-graph           mysql-nav-graph                 :offset-assert 128)
    (mode                symbol                          :offset-assert 132)
    (command-id          int32                           :offset-assert 136)
@@ -2208,63 +2208,40 @@
 
 ;; definition for function get-nav-graph-editor
 (defun get-nav-graph-editor ()
-  (let ((v1-0 *nav-graph-editor*))
-    (if v1-0
-        (-> v1-0 0 self-override)
-        )
-    )
+  (ppointer->process *nav-graph-editor*)
   )
 
 ;; definition for function exit-nav-graph-editor
 (defun exit-nav-graph-editor ()
-  (when *nav-graph-editor*
-    (let ((v1-1 *nav-graph-editor*))
-      (deactivate (if v1-1
-                      (-> v1-1 0 self-override)
-                      )
-                  )
+  (if *nav-graph-editor*
+      (deactivate (ppointer->process *nav-graph-editor*))
       )
-    )
   (none)
   )
 
 ;; definition for function set-minimap-edge-flag
 ;; WARN: Return type mismatch mysql-save-flag vs uint.
 (defun set-minimap-edge-flag ((arg0 nav-minimap-edge-flag))
-  (let ((v1-0 *nav-graph-editor*))
-    (the-as uint (when (if v1-0
-                           (-> v1-0 0 self-override)
-                           )
-                   (let* ((a1-1 *nav-graph-editor*)
-                          (v1-2 (if a1-1
-                                    (-> a1-1 0 self-override)
-                                    )
-                                )
-                          )
-                     (when (>= (-> v1-2 edge-visibility) 0)
-                       (let ((v1-6 (-> v1-2 nav-graph edge-array data (-> v1-2 edge-visibility))))
-                         (set! (-> v1-6 minimap_edge_flag) arg0)
-                         (let ((v0-0 (logior (-> v1-6 mysql-save-flag) (mysql-save-flag update))))
-                           (set! (-> v1-6 mysql-save-flag) v0-0)
-                           v0-0
-                           )
+  (the-as uint (when (ppointer->process *nav-graph-editor*)
+                 (let ((v1-2 (ppointer->process *nav-graph-editor*)))
+                   (when (>= (-> v1-2 edge-visibility) 0)
+                     (let ((v1-6 (-> v1-2 nav-graph edge-array data (-> v1-2 edge-visibility))))
+                       (set! (-> v1-6 minimap_edge_flag) arg0)
+                       (let ((v0-0 (logior (-> v1-6 mysql-save-flag) (mysql-save-flag update))))
+                         (set! (-> v1-6 mysql-save-flag) v0-0)
+                         v0-0
                          )
                        )
                      )
                    )
-            )
-    )
+                 )
+          )
   )
 
 ;; definition for function set-vehicle-edit-mode
 ;; WARN: Return type mismatch int vs none.
 (defun set-vehicle-edit-mode ((arg0 symbol))
-  (let* ((a1-0 *nav-graph-editor*)
-         (v1-0 (if a1-0
-                   (-> a1-0 0 self-override)
-                   )
-               )
-         )
+  (let ((v1-0 (ppointer->process *nav-graph-editor*)))
     (when v1-0
       (set! (-> v1-0 vehicle-edit-mode) arg0)
       (set! (-> v1-0 default-node nav_node_flag) (if arg0
@@ -2279,50 +2256,32 @@
 
 ;; definition for function translate-nav-graph
 (defun translate-nav-graph ((arg0 float) (arg1 float) (arg2 float))
-  (let ((v1-0 *nav-graph-editor*))
-    (when (if v1-0
-              (-> v1-0 0 self-override)
-              )
-      (let* ((a3-1 *nav-graph-editor*)
-             (v1-2 (if a3-1
-                       (-> a3-1 0 self-override)
-                       )
-                   )
-             )
-        (dotimes (a3-2 (-> v1-2 nav-graph node-array length))
-          (let ((t0-3 (-> v1-2 nav-graph node-array data a3-2)))
-            (+! (-> t0-3 position x) arg0)
-            (+! (-> t0-3 position y) arg1)
-            (+! (-> t0-3 position z) arg2)
-            (logior! (-> t0-3 mysql-save-flag) (mysql-save-flag update))
-            )
+  (when (ppointer->process *nav-graph-editor*)
+    (let ((v1-2 (ppointer->process *nav-graph-editor*)))
+      (dotimes (a3-2 (-> v1-2 nav-graph node-array length))
+        (let ((t0-3 (-> v1-2 nav-graph node-array data a3-2)))
+          (+! (-> t0-3 position x) arg0)
+          (+! (-> t0-3 position y) arg1)
+          (+! (-> t0-3 position z) arg2)
+          (logior! (-> t0-3 mysql-save-flag) (mysql-save-flag update))
           )
         )
-      #f
       )
+    #f
     )
   )
 
 ;; definition for function update-nav-meshes
 (defun update-nav-meshes ()
-  (let ((v1-0 *nav-graph-editor*))
-    (when (if v1-0
-              (-> v1-0 0 self-override)
-              )
-      (let* ((v1-2 *nav-graph-editor*)
-             (gp-0 (if v1-2
-                       (-> v1-2 0 self-override)
-                       )
-                   )
-             )
-        (dotimes (s5-0 (-> gp-0 nav-graph node-array length))
-          (if (not (logtest? (-> gp-0 nav-graph node-array data s5-0 mysql-save-flag) (mysql-save-flag delete)))
-              (nav-graph-editor-method-54 gp-0 s5-0)
-              )
-          )
+  (when (ppointer->process *nav-graph-editor*)
+    (let ((gp-0 (ppointer->process *nav-graph-editor*)))
+      (dotimes (s5-0 (-> gp-0 nav-graph node-array length))
+        (if (not (logtest? (-> gp-0 nav-graph node-array data s5-0 mysql-save-flag) (mysql-save-flag delete)))
+            (nav-graph-editor-method-54 gp-0 s5-0)
+            )
         )
-      #f
       )
+    #f
     )
   )
 
@@ -2345,14 +2304,7 @@
          (vf6 :class vf)
          )
     (init-vf0-vector)
-    (let* ((v1-0 *nav-graph-editor*)
-           (s5-0 (-> (if v1-0
-                         (-> v1-0 0 self-override)
-                         )
-                     nav-graph
-                     )
-                 )
-           )
+    (let ((s5-0 (-> (ppointer->process *nav-graph-editor*) nav-graph)))
       (dotimes (s4-0 (-> s5-0 node-array length))
         (let ((s3-0 (-> s5-0 node-array data s4-0))
               (s2-0 (new-stack-vector0))
@@ -2432,14 +2384,7 @@
 ;; definition for function update-height
 ;; INFO: Used lq/sq
 (defun update-height ((arg0 string))
-  (let* ((v1-0 *nav-graph-editor*)
-         (v1-2 (-> (if v1-0
-                       (-> v1-0 0 self-override)
-                       )
-                   nav-graph
-                   )
-               )
-         )
+  (let ((v1-2 (-> (ppointer->process *nav-graph-editor*) nav-graph)))
     (dotimes (a1-1 (-> v1-2 node-array length))
       (let ((a2-3 (-> v1-2 node-array data a1-1)))
         (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
@@ -2459,14 +2404,7 @@
 ;; INFO: Used lq/sq
 (defun update-width ((arg0 string))
   (local-vars (sv-16 (array entity-nav-mesh)) (sv-32 int) (sv-48 uint) (sv-64 entity-nav-mesh))
-  (let* ((v1-0 *nav-graph-editor*)
-         (s5-0 (-> (if v1-0
-                       (-> v1-0 0 self-override)
-                       )
-                   nav-graph
-                   )
-               )
-         )
+  (let ((s5-0 (-> (ppointer->process *nav-graph-editor*) nav-graph)))
     (dotimes (s4-0 (-> s5-0 edge-array length))
       (let ((s3-0 (-> s5-0 edge-array data s4-0)))
         (when (not (logtest? (-> s3-0 mysql-save-flag) (mysql-save-flag delete)))

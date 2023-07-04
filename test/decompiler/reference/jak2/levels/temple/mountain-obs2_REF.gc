@@ -3,7 +3,7 @@
 
 ;; definition of type mtn-iris-door
 (deftype mtn-iris-door (process-drawable)
-  ((root-override collide-shape  :offset 128)
+  ((root collide-shape  :override)
    )
   :heap-base #x50
   :method-count-assert 22
@@ -45,9 +45,9 @@
     (none)
     )
   :code (behavior ()
-    (let ((root-prim (-> self root-override root-prim)))
-      (set! (-> root-prim prim-core collide-as) (-> self root-override backup-collide-as))
-      (set! (-> root-prim prim-core collide-with) (-> self root-override backup-collide-with))
+    (let ((root-prim (-> self root root-prim)))
+      (set! (-> root-prim prim-core collide-as) (-> self root backup-collide-as))
+      (set! (-> root-prim prim-core collide-with) (-> self root backup-collide-with))
       )
     (ja :num-func num-func-identity :frame-num 0.0)
     (ja-post)
@@ -66,7 +66,7 @@
     (none)
     )
   :code (behavior ()
-    (let ((root-prim (-> self root-override root-prim)))
+    (let ((root-prim (-> self root root-prim)))
       (set! (-> root-prim prim-core collide-as) (collide-spec))
       (set! (-> root-prim prim-core collide-with) (collide-spec))
       )
@@ -102,7 +102,7 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root-override) cshape)
+    (set! (-> obj root) cshape)
     )
   (process-drawable-from-entity! obj entity)
   (initialize-skeleton
@@ -190,7 +190,7 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root-override) cshape)
+    (set! (-> obj root) (the-as collide-shape-moving cshape))
     )
   0
   (none)
@@ -222,7 +222,7 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> obj hint-count) 5.0)
       )
   (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "shoot-plat-lp" :fo-max 70) (-> obj root-override trans))
+        (new 'process 'ambient-sound (static-sound-spec "shoot-plat-lp" :fo-max 70) (-> obj root trans))
         )
   0
   (none)
@@ -263,7 +263,7 @@ For example for an elevator pre-compute the distance between the first and last 
                            (set! (-> self state-flip) (the-as uint 1))
                            )
                          (set! (-> self hint-count) -1.0)
-                         (vector-! (-> self axe-flip) (-> cshape trans) (-> self root-override trans))
+                         (vector-! (-> self axe-flip) (-> cshape trans) (-> self root trans))
                          (set! (-> self axe-flip y) 0.0)
                          (vector-normalize! (-> self axe-flip) 1.0)
                          (vector-rotate90-around-y! (-> self axe-flip) (-> self axe-flip))
@@ -298,7 +298,7 @@ For example for an elevator pre-compute the distance between the first and last 
             )
            ((and *target*
                  (-> self disable-track-under)
-                 (< (-> *target* control trans y) (+ -20480.0 (-> self root-override trans y)))
+                 (< (-> *target* control trans y) (+ -20480.0 (-> self root trans y)))
                  )
             #f
             )
@@ -345,7 +345,7 @@ For example for an elevator pre-compute the distance between the first and last 
         )
     (+! (-> self angle-flip-vel) (* -6.0 (-> self clock seconds-per-frame) (-> self angle-flip-vel)))
     (+! (-> self angle-flip) (-> self angle-flip-vel))
-    (quaternion-vector-angle! (-> self root-override quat) (-> self axe-flip) (* 182.04445 (-> self angle-flip)))
+    (quaternion-vector-angle! (-> self root quat) (-> self axe-flip) (* 182.04445 (-> self angle-flip)))
     (when (and (>= (- (current-time) (-> self state-time)) (the int (+ -300.0 (-> self time-flip))))
                (= 1 (-> self state-flip))
                )
@@ -365,15 +365,10 @@ For example for an elevator pre-compute the distance between the first and last 
           )
         (vector-normalize! s5-2 1.0)
         (quaternion-vector-angle! gp-2 s5-2 1820.4445)
-        (quaternion-pseudo-seek
-          (-> self root-override quat)
-          (-> self root-override quat)
-          gp-2
-          (-> self clock seconds-per-frame)
-          )
+        (quaternion-pseudo-seek (-> self root quat) (-> self root quat) gp-2 (-> self clock seconds-per-frame))
         )
       )
-    (quaternion-normalize! (-> self root-override quat))
+    (quaternion-normalize! (-> self root quat))
     (let ((func (-> (method-of-type plat plat-path-active) trans)))
       (if func
           (func)

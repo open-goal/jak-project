@@ -69,7 +69,7 @@
                                            )
                      )
                 )
-           (-> (the-as collide-shape-prim-group (-> obj root-override2 root-prim))
+           (-> (the-as collide-shape-prim-group (-> obj root root-prim))
                child
                (-> obj hover params nav-collide-prim-index)
                prim-core
@@ -108,7 +108,7 @@
               )
         )
       )
-    (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) (-> self focus-pos) (-> self root-override2 trans))))
+    (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) (-> self focus-pos) (-> self root trans))))
       (vector-normalize! s4-1 1.0)
       (set! (-> self rotation-vec y)
             (deg-seek (-> self rotation-vec y) (vector-y-angle s4-1) (* 14563.556 (-> self clock seconds-per-frame)))
@@ -189,13 +189,13 @@
             (cond
               (a0-7
                 (let* ((s5-1 (get-trans (the-as process-focusable a0-7) 3))
-                       (a0-9 (vector-! (new 'stack-no-clear 'vector) (-> self root-override2 trans) s5-1))
+                       (a0-9 (vector-! (new 'stack-no-clear 'vector) (-> self root trans) s5-1))
                        )
                   (vector+! gp-0 s5-1 (vector-rotate-y! (new 'stack-no-clear 'vector) (-> self offset) (vector-y-angle a0-9)))
                   )
                 )
               (else
-                (set! (-> gp-0 quad) (-> self root-override2 trans quad))
+                (set! (-> gp-0 quad) (-> self root trans quad))
                 )
               )
             )
@@ -259,7 +259,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod hover-enemy-method-144 hover-enemy ((obj hover-enemy))
-  (set! (-> obj main-joint-pos quad) (-> obj root-override2 trans quad))
+  (set! (-> obj main-joint-pos quad) (-> obj root trans quad))
   (set! (-> obj main-joint-vel quad) (the-as uint128 0))
   (set! (-> obj main-joint-acc quad) (the-as uint128 0))
   (set! (-> obj thrust 0) 0.0)
@@ -336,7 +336,7 @@
            (gp-0 (-> obj draw shadow-ctrl settings shadow-dir))
            (f30-0 122880.0)
            )
-       (set! (-> s4-0 start-pos quad) (-> obj root-override2 trans quad))
+       (set! (-> s4-0 start-pos quad) (-> obj root trans quad))
        (vector-normalize-copy! (-> s4-0 move-dist) gp-0 f30-0)
        (let ((v1-10 s4-0))
          (set! (-> v1-10 radius) 2048.0)
@@ -354,7 +354,7 @@
               )
             0
             (-> s4-0 best-other-tri intersect)
-            (let ((a1-3 (-> obj root-override2 trans)))
+            (let ((a1-3 (-> obj root trans)))
               (-> a1-3 y)
               (let ((f0-2 (* f0-1 f30-0)))
                 (shadow-control-method-14
@@ -476,7 +476,7 @@
         )
     (set! (-> self scale-timer) (the-as uint (current-time)))
     (cond
-      ((not (logtest? (-> self fact-info-override enemy-options) (enemy-option user0)))
+      ((not (logtest? (-> self fact enemy-options) (enemy-option user0)))
        (logclear! (-> self enemy-flags) (enemy-flag enable-on-active))
        (hover-enemy-method-141 self 0.0)
        )
@@ -491,12 +491,12 @@
                  )
            (gp-1 (new 'stack-no-clear 'vector))
            (s2-0 (new 'stack-no-clear 'vector))
-           (s4-0 (-> self root-override2))
+           (s4-0 (-> self root))
            (s5-0 (get-point-at-percent-along-path! (-> self path) (new 'stack-no-clear 'vector) 0.0 'interp))
            )
       (let ((s0-0 (get-point-at-percent-along-path! (-> self path) (new 'stack-no-clear 'vector) 1.0 'interp))
             (s3-1
-              (-> (the-as collide-shape-prim-group (-> self root-override2 root-prim))
+              (-> (the-as collide-shape-prim-group (-> self root root-prim))
                   child
                   (-> (hover-enemy-method-152 self) nav-collide-prim-index)
                   local-sphere
@@ -512,7 +512,7 @@
         (set-vector! (-> self rotation-vec) (- (vector-x-angle s2-0)) (vector-y-angle s2-0) 0.0 0.0)
         (hover-enemy-method-146 self)
         (set! (-> s4-0 trans quad) (-> s5-0 quad))
-        (if (logtest? (-> self fact-info-override enemy-options) (enemy-option user0))
+        (if (logtest? (-> self fact enemy-options) (enemy-option user0))
             (vector-!
               (-> s4-0 trans)
               (-> s4-0 trans)
@@ -550,7 +550,7 @@
   :trans (behavior ()
     (when (hover-nav-control-method-23 (-> self hover))
       (hover-enemy-method-153 self)
-      (if (not (logtest? (-> self fact-info-override enemy-options) (enemy-option user0)))
+      (if (not (logtest? (-> self fact enemy-options) (enemy-option user0)))
           (hover-enemy-method-141 self 1.0)
           )
       (go-virtual hostile)
@@ -560,7 +560,7 @@
   :code hover-enemy-fly-code
   :post (behavior ()
     (local-vars (v1-19 enemy-flag))
-    (when (not (logtest? (-> self fact-info-override enemy-options) (enemy-option user0)))
+    (when (not (logtest? (-> self fact enemy-options) (enemy-option user0)))
       (let ((f0-1 (the float (- (current-time) (the-as int (-> self scale-timer)))))
             (f1-0 1200.0)
             )
@@ -597,11 +597,11 @@
       )
     (let ((gp-0 (new 'stack-no-clear 'vector))
           (a0-0 *target*)
-          (s5-0 (-> self root-override2 trans))
+          (s5-0 (-> self root trans))
           )
       (if a0-0
           (vector-normalize! (vector-! gp-0 (get-trans a0-0 3) s5-0) 1.0)
-          (vector-z-quaternion! gp-0 (-> self root-override2 quat))
+          (vector-z-quaternion! gp-0 (-> self root quat))
           )
       (hover-nav-control-method-10 (-> self hover) s5-0 gp-0 (the-as vector #t))
       )
@@ -639,7 +639,7 @@
           )
       )
     (set! (-> self hit-surface?) #f)
-    (set! (-> self knocked-start-level) (-> self root-override2 trans y))
+    (set! (-> self knocked-start-level) (-> self root trans y))
     (none)
     )
   :exit (behavior ()
@@ -652,7 +652,7 @@
     (none)
     )
   :trans (behavior ()
-    (let ((gp-0 (-> self root-override2)))
+    (let ((gp-0 (-> self root)))
       (when (logtest? (-> gp-0 status) (collide-status on-surface))
         (when (not (-> self hit-surface?))
           (set! (-> self hit-surface?) #t)
@@ -672,7 +672,7 @@
     (if (and (nonzero? (-> self hit-points))
              (zero? (-> self fated-time))
              (>= (- (current-time) (-> self state-time)) (seconds 0.5))
-             (< (-> self root-override2 trans y) (- (-> self knocked-start-level) (-> self knocked-fall-dist)))
+             (< (-> self root trans y) (- (-> self knocked-start-level) (-> self knocked-fall-dist)))
              )
         (go-virtual knocked-recover)
         )
@@ -756,12 +756,12 @@
     (logclear! (-> self mask) (process-mask actor-pause))
     (logclear! (-> self focus-status) (focus-status dangerous))
     (logclear! (-> self enemy-flags) (enemy-flag check-water-backup))
-    (set! (-> self root-override2 penetrate-using) (penetrate lunge vehicle knocked))
+    (set! (-> self root penetrate-using) (penetrate lunge vehicle knocked))
     (let ((gp-0 (-> self flying-death-transv)))
       (let ((a1-0 (handle->process (-> self incoming attacker-handle))))
         (if a1-0
-            (vector-! gp-0 (-> (the-as process-focusable a1-0) root-override trans) (-> self root-override2 trans))
-            (vector-! gp-0 (-> self incoming attacker-pos) (-> self root-override2 trans))
+            (vector-! gp-0 (-> (the-as process-focusable a1-0) root trans) (-> self root trans))
+            (vector-! gp-0 (-> self incoming attacker-pos) (-> self root trans))
             )
         )
       (set! (-> gp-0 y) 0.0)
@@ -774,7 +774,7 @@
         (vector-float*! gp-0 gp-0 (lerp 98304.0 172032.0 f30-0))
         (set! (-> gp-0 y) (lerp 8192.0 98304.0 f30-0))
         )
-      (let ((v1-29 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root-override2 quat))))
+      (let ((v1-29 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
         (cond
           ((< 0.0 (vector-dot gp-0 v1-29))
            (set! (-> self flying-death-anim) (-> self hover-info fly-left-anim))
@@ -797,7 +797,7 @@
       (-> self flying-death-spin-axis)
       (* 182.04445 (rand-vu-float-range -120.0 120.0))
       )
-    (set-gravity-length (-> self root-override2 dynam) 163840.0)
+    (set-gravity-length (-> self root dynam) 163840.0)
     (set! (-> self hover speed) 0.2)
     (set! (-> self flying-death-spin) 0.0)
     (enemy-method-103 self)
@@ -805,7 +805,7 @@
     (none)
     )
   :trans (behavior ()
-    (if (or (logtest? (-> self root-override2 status)
+    (if (or (logtest? (-> self root status)
                       (collide-status touch-surface touch-wall touch-ceiling touch-actor impact-surface touch-background)
                       )
             (>= (- (current-time) (-> self state-time)) (seconds 4))
@@ -841,7 +841,7 @@
       (-> self flying-death-spin-dest)
       (* 196608.0 (-> self clock seconds-per-frame))
       )
-    (let ((gp-0 (-> self root-override2)))
+    (let ((gp-0 (-> self root)))
       (let ((a2-2
               (quaternion-vector-angle!
                 (new 'stack-no-clear 'quaternion)
@@ -884,7 +884,7 @@
   :virtual #t
   :enter (behavior ()
     (dispose! self)
-    (let ((v1-3 (-> self root-override2 root-prim)))
+    (let ((v1-3 (-> self root root-prim)))
       (set! (-> v1-3 prim-core collide-as) (collide-spec))
       (set! (-> v1-3 prim-core collide-with) (collide-spec))
       )
@@ -918,7 +918,7 @@
 (defmethod hover-enemy-method-146 hover-enemy ((obj hover-enemy))
   (let ((gp-0 (new 'stack-no-clear 'matrix)))
     (matrix-rotate-zxy! gp-0 (-> obj rotation-vec))
-    (matrix->quaternion (-> obj root-override2 quat) gp-0)
+    (matrix->quaternion (-> obj root quat) gp-0)
     )
   (none)
   )
@@ -926,7 +926,7 @@
 ;; definition for method 147 of type hover-enemy
 ;; WARN: Return type mismatch float vs none.
 (defmethod hover-enemy-method-147 hover-enemy ((obj hover-enemy))
-  (let ((s5-0 (-> obj root-override2 quat))
+  (let ((s5-0 (-> obj root quat))
         (gp-0 (-> obj rotation-vec))
         )
     (set! (-> gp-0 z) (quaternion-z-angle s5-0))
@@ -940,7 +940,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod hover-enemy-method-140 hover-enemy ((obj hover-enemy) (arg0 symbol))
   (let ((v1-0 0)
-        (a0-2 (-> obj root-override2 root-prim))
+        (a0-2 (-> obj root root-prim))
         )
     (if arg0
         (set! v1-0 1)
@@ -957,7 +957,7 @@
 ;; WARN: Return type mismatch vector vs none.
 (defmethod hover-enemy-method-141 hover-enemy ((obj hover-enemy) (arg0 float))
   (let ((f0-1 (* (-> obj scale) arg0)))
-    (set-vector! (-> obj root-override2 scale) (* 1.2 f0-1) (* 0.9 f0-1) f0-1 1.0)
+    (set-vector! (-> obj root scale) (* 1.2 f0-1) (* 0.9 f0-1) f0-1 1.0)
     )
   (none)
   )
@@ -1004,7 +1004,7 @@
   (set! (-> obj formation-entity) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
   (logior! (-> obj skel status) (joint-control-status sync-math))
   (let ((t0-0 (hover-enemy-method-152 obj)))
-    (set! (-> obj hover) (new 'process 'hover-nav-control obj (-> obj root-override2) t0-0))
+    (set! (-> obj hover) (new 'process 'hover-nav-control obj (-> obj root) t0-0))
     )
   (let ((s5-0 (-> obj offset))
         (t9-6 (method-of-type res-lump get-property-struct))

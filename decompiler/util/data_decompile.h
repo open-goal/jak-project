@@ -66,7 +66,8 @@ goos::Object decompile_boxed_array(const TypeSpec& type,
                                    GameVersion version);
 goos::Object decompile_value(const TypeSpec& type,
                              const std::vector<u8>& bytes,
-                             const TypeSystem& ts);
+                             const TypeSystem& ts,
+                             const std::optional<TypeSpec> decomp_as_type = std::nullopt);
 goos::Object decompile_value_array(const TypeSpec& elt_type,
                                    const Type* elt_type_info,
                                    int length,

@@ -64,7 +64,7 @@
         (vector-rotate-y! s1-0 s1-0 16384.0)
         (vector+float*! s1-0 s5-1 s1-0 -8806.4)
         (set! (-> s2-0 start-pos quad) (-> s1-0 quad))
-        (vector-float*! (-> s2-0 move-dist) (-> obj root-override dynam gravity-normal) -81920.0)
+        (vector-float*! (-> s2-0 move-dist) (-> obj root dynam gravity-normal) -81920.0)
         (let ((v1-11 s2-0))
           (set! (-> v1-11 radius) 1228.8)
           (set! (-> v1-11 collide-with) (collide-spec backgnd obstacle hit-by-player-list hit-by-others-list))
@@ -83,7 +83,7 @@
       )
     (let ((s4-1 (get-field-spec-by-id s4-0 (sp-field-id spt-rotate-y))))
       (if s4-1
-          (set! (-> s4-1 initial-valuef) (y-angle (-> obj root-override)))
+          (set! (-> s4-1 initial-valuef) (y-angle (-> obj root)))
           )
       )
     (let ((t9-7 sp-launch-particles-var)
@@ -96,7 +96,7 @@
       )
     (let ((s4-2 (get-field-spec-by-id (-> *part-id-table* 195) (sp-field-id spt-rotate-y))))
       (if s4-2
-          (set! (-> s4-2 initial-valuef) (y-angle (-> obj root-override)))
+          (set! (-> s4-2 initial-valuef) (y-angle (-> obj root)))
           )
       )
     (let ((t9-10 sp-launch-particles-var)
@@ -120,7 +120,7 @@
          (vf6 :class vf)
          )
     (init-vf0-vector)
-    (let ((s3-1 (vector-! (new 'stack-no-clear 'vector) (-> obj root-override trans) (-> obj init-pos))))
+    (let ((s3-1 (vector-! (new 'stack-no-clear 'vector) (-> obj root trans) (-> obj init-pos))))
       (draw-beam (-> *part-id-table* 191) (-> obj init-pos) s3-1 #t #t)
       (draw-beam (-> *part-id-table* 194) (-> obj init-pos) (-> obj starting-dir) #f #t)
       (let ((s5-0 (-> *part-id-table* 206))
@@ -178,7 +178,7 @@
               (t2-0 #f)
               (t3-0 *launch-matrix*)
               )
-          (set! (-> t3-0 trans quad) (-> obj root-override trans quad))
+          (set! (-> t3-0 trans quad) (-> obj root trans quad))
           ((the-as (function object object object object object object object object none) t9-13)
            a0-19
            a1-15
@@ -223,7 +223,7 @@
 
 (defmethod made-impact? gun-blue-shot ((obj gun-blue-shot))
   "TODO - queries the collision cache, return true/false"
-  (let ((v1-0 (-> obj root-override))
+  (let ((v1-0 (-> obj root))
         (t1-0 (new 'stack-no-clear 'collide-query))
         )
     (let ((a1-0 t1-0))
@@ -240,7 +240,7 @@
 
 (defun gun-blue-shot-move ((arg0 gun-blue-shot))
   (projectile-move-fill-line-sphere arg0)
-  (if (logtest? (-> arg0 root-override status) (collide-status touch-surface))
+  (if (logtest? (-> arg0 root status) (collide-status touch-surface))
       (go (method-of-object arg0 impact))
       )
   0
@@ -301,9 +301,9 @@
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 1))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> obj root) s5-0)
     )
-  (set! (-> obj root-override pat-ignore-mask)
+  (set! (-> obj root pat-ignore-mask)
         (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
         )
   0
@@ -314,13 +314,9 @@
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (with-pp
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 (seconds 0.1))
-    (set! (-> obj init-pos quad) (-> obj root-override trans quad))
+    (set! (-> obj init-pos quad) (-> obj root trans quad))
     (set! (-> obj init-dir quad) (-> obj starting-dir quad))
-    (vector-normalize-copy!
-      (-> obj root-override transv)
-      (-> obj init-dir)
-      (* 327680.0 (-> pp clock frames-per-second))
-      )
+    (vector-normalize-copy! (-> obj root transv) (-> obj init-dir) (* 327680.0 (-> pp clock frames-per-second)))
     (set! (-> obj attack-mode) 'eco-blue)
     (set! (-> obj max-speed) (* 327680.0 (-> pp clock frames-per-second)))
     (set! (-> obj timeout) 1)
