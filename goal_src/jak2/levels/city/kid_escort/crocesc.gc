@@ -167,7 +167,7 @@
     :walk-travel-speed (meters 2.2)
     :walk-acceleration (meters 8)
     :walk-turning-acceleration (meters 6)
-    :maximum-rotation-rate (degrees 360.0)
+    :maximum-rotation-rate (degrees 360)
     :notice-nav-radius (meters 0.65)
     :frustration-distance (meters 8)
     :frustration-time (seconds 4)
@@ -247,15 +247,15 @@
         )
     (let ((s4-0 (new 'stack-no-clear 'vector)))
       (compute-seat-position (the-as vehicle s3-0) s4-0 (-> obj vehicle-seat-index))
-      (vector-! s4-0 s4-0 (-> (the-as vehicle s3-0) root-override-2 trans))
+      (vector-! s4-0 s4-0 (-> (the-as vehicle s3-0) root trans))
       (set! (-> s4-0 y) 0.0)
       (vector-normalize! s4-0 (+ 12288.0 (vector-length s4-0)))
-      (vector+! s4-0 s4-0 (-> (the-as vehicle s3-0) root-override-2 trans))
+      (vector+! s4-0 s4-0 (-> (the-as vehicle s3-0) root trans))
       (let ((s3-1 (new 'stack-no-clear 'collide-query)))
         (when (enemy-above-ground? obj s3-1 s4-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
           (set! (-> s4-0 y) (-> s3-1 best-other-tri intersect y))
           (let ((s3-2 (new 'stack-no-clear 'vector)))
-            (do-navigation-to-destination (-> obj nav state) (-> obj root-override2 trans))
+            (do-navigation-to-destination (-> obj nav state) (-> obj root trans))
             (when (cloest-point-on-mesh (-> obj nav) s3-2 s4-0 (the-as nav-poly #f))
               (let ((f0-4 2048.0))
                 (when (>= (* f0-4 f0-4) (vector-vector-xz-distance-squared s3-2 s4-0))
@@ -278,80 +278,76 @@
   )
 
 (defmethod enemy-method-97 crocadog-escort ((obj crocadog-escort))
-  (with-pp
-    (let* ((s4-0 (handle->process (-> obj attacker-handle)))
-           (s5-0 (if (type? s4-0 process-focusable)
-                     s4-0
-                     )
+  (let* ((s4-0 (handle->process (-> obj attacker-handle)))
+         (s5-0 (if (type? s4-0 process-focusable)
+                   s4-0
+                   )
+               )
+         )
+    (when s5-0
+      (when (>= (- (current-time) (-> obj attacker-time)) (seconds 3))
+        (set! s5-0 (the-as process #f))
+        (set! (-> obj attacker-handle) (the-as handle #f))
+        )
+      )
+    (handle->process (-> obj kid-handle))
+    (cond
+      (s5-0
+        (empty)
+        )
+      ((begin
+         (let ((s4-1 (handle->process (-> obj poi-handle))))
+           (set! s5-0 (if (type? s4-1 process-focusable)
+                          s4-1
+                          )
                  )
            )
-      (when s5-0
-        (when (>= (- (-> pp clock frame-counter) (-> obj attacker-time)) (seconds 3))
-          (set! s5-0 (the-as process #f))
-          (set! (-> obj attacker-handle) (the-as handle #f))
-          )
-        )
-      (handle->process (-> obj kid-handle))
-      (cond
-        (s5-0
-          (empty)
-          )
-        ((begin
-           (let ((s4-1 (handle->process (-> obj poi-handle))))
-             (set! s5-0 (if (type? s4-1 process-focusable)
-                            s4-1
-                            )
-                   )
-             )
-           s5-0
-           )
-         (empty)
+         s5-0
          )
-        (else
-          (set! s5-0 (select-focus! obj))
-          (cond
-            (s5-0
-              (empty)
+       (empty)
+       )
+      (else
+        (set! s5-0 (select-focus! obj))
+        (cond
+          (s5-0
+            (empty)
+            )
+          (else
+            (let ((s4-2 (handle->process (-> obj kid-handle))))
+              (set! s5-0 (if (type? s4-2 process-focusable)
+                             s4-2
+                             )
+                    )
               )
-            (else
-              (let ((s4-2 (handle->process (-> obj kid-handle))))
-                (set! s5-0 (if (type? s4-2 process-focusable)
-                               s4-2
-                               )
-                      )
-                )
-              *target*
-              (let ((f30-0 -1.0)
-                    (f28-0 (vector-vector-distance (target-pos 0) (-> obj root-override2 trans)))
-                    )
-                (if s5-0
-                    (set! f30-0
-                          (vector-vector-distance (get-trans (the-as process-focusable s5-0) 0) (-> obj root-override2 trans))
-                          )
-                    )
-                (if (and s5-0 (>= (* 2.0 f28-0) f30-0))
-                    (empty)
-                    (set! s5-0 *target*)
-                    )
-                )
+            *target*
+            (let ((f30-0 -1.0)
+                  (f28-0 (vector-vector-distance (target-pos 0) (-> obj root trans)))
+                  )
+              (if s5-0
+                  (set! f30-0 (vector-vector-distance (get-trans (the-as process-focusable s5-0) 0) (-> obj root trans)))
+                  )
+              (if (and s5-0 (>= (* 2.0 f28-0) f30-0))
+                  (empty)
+                  (set! s5-0 *target*)
+                  )
               )
             )
           )
         )
-      (cond
-        (s5-0
-          (try-update-focus (-> obj focus) (the-as process-focusable s5-0) obj)
-          (if (and (logtest? (-> obj bot-flags) (bot-flags attacked)) (!= (-> s5-0 type) target))
-              (logclear! (-> obj bot-flags) (bot-flags attacked))
-              )
-          )
-        (else
-          (clear-focused (-> obj focus))
-          (logclear! (-> obj bot-flags) (bot-flags attacked))
-          )
-        )
-      s5-0
       )
+    (cond
+      (s5-0
+        (try-update-focus (-> obj focus) (the-as process-focusable s5-0) obj)
+        (if (and (logtest? (-> obj bot-flags) (bot-flags attacked)) (!= (-> s5-0 type) target))
+            (logclear! (-> obj bot-flags) (bot-flags attacked))
+            )
+        )
+      (else
+        (clear-focused (-> obj focus))
+        (logclear! (-> obj bot-flags) (bot-flags attacked))
+        )
+      )
+    s5-0
     )
   )
 
@@ -429,7 +425,7 @@ This commonly includes things such as:
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
     (set! (-> s5-0 event-priority) (the-as uint 1))
-    (set! (-> obj root-override2) s5-0)
+    (set! (-> obj root) s5-0)
     )
   0
   (none)
@@ -446,7 +442,7 @@ This commonly includes things such as:
   (set! (-> obj notice-enemy-dist) 24576.0)
   (set! (-> obj travel-anim-interp) 0.0)
   (set! (-> obj focus-info max-los-dist) 0.0)
-  (set-vector! (-> obj root-override2 scale) 1.2 1.2 1.2 1.0)
+  (set-vector! (-> obj root scale) 1.2 1.2 1.2 1.0)
   (set! (-> obj spot-color) (the-as uint #x5000ff00))
   (set! (-> obj kid-handle) (the-as handle #f))
   (set! (-> obj vehicle-handle) (the-as handle #f))
@@ -491,7 +487,7 @@ This commonly includes things such as:
 (defmethod check-vehicle-exit crocadog-escort ((obj crocadog-escort))
   (local-vars (v1-22 enemy-flag))
   (with-pp
-    (when (logtest? (focus-status pilot) (-> obj focus-status))
+    (when (focus-test? obj pilot)
       (let ((v1-4 (handle->process (-> obj vehicle-handle))))
         (when (or (not v1-4) (logtest? (-> (the-as vehicle v1-4) flags) (rigid-body-object-flag dead)))
           (set! (-> obj bot-flags) (logior (bot-flags bf17) (-> obj bot-flags)))
@@ -499,8 +495,8 @@ This commonly includes things such as:
           (logclear! (-> obj focus-status) (focus-status pilot-riding pilot))
           (set! (-> obj vehicle-seat-index) -1)
           (set! (-> obj vehicle-handle) (the-as handle #f))
-          (logior! (-> obj root-override2 nav-flags) (nav-flags has-root-sphere))
-          (let* ((s5-0 (-> obj root-override2 quat))
+          (logior! (-> obj root nav-flags) (nav-flags has-root-sphere))
+          (let* ((s5-0 (-> obj root quat))
                  (f30-0 (quaternion-y-angle s5-0))
                  )
             (quaternion-identity! s5-0)
@@ -513,7 +509,7 @@ This commonly includes things such as:
                 )
             )
           (set! (-> obj enemy-flags) v1-22)
-          (let ((f30-2 (+ 16384.0 (quaternion-y-angle (-> obj root-override2 quat))))
+          (let ((f30-2 (+ 16384.0 (quaternion-y-angle (-> obj root quat))))
                 (s5-1 (new 'stack-no-clear 'vector))
                 )
             (set-vector! s5-1 (sin f30-2) 0.0 (cos f30-2) 1.0)
@@ -606,7 +602,7 @@ This commonly includes things such as:
              (set! (-> v1-12 frame-interp 0) f28-0)
              )
            (let* ((f28-1 (current-cycle-distance (-> obj skel)))
-                  (f0-5 (quaternion-y-angle (-> obj root-override2 quat)))
+                  (f0-5 (quaternion-y-angle (-> obj root quat)))
                   (f1-2 (deg- f0-5 (-> obj travel-prev-ry)))
                   (f0-8 (fmin 28672.0 (* 0.15707962 (-> pp clock frames-per-second) (fabs f1-2))))
                   (f0-11 (/ (* 7.0 (fmax f30-0 f0-8)) (* 15.0 f28-1)))
@@ -655,7 +651,7 @@ This commonly includes things such as:
 
 (defmethod enemy-method-78 crocadog-escort ((obj crocadog-escort) (arg0 (pointer float)))
   (ja-channel-push! 1 (seconds 0.1))
-  (let ((a1-2 (-> obj draw art-group data (-> obj enemy-info-override knocked-land-anim)))
+  (let ((a1-2 (-> obj draw art-group data (-> obj enemy-info knocked-land-anim)))
         (a0-4 (-> obj skel root-channel 0))
         )
     (set! (-> a0-4 frame-group) (the-as art-joint-anim a1-2))

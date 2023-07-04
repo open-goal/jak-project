@@ -643,7 +643,7 @@
               )
 
 (deftype drill-barons-ship (process-drawable)
-  ((root-override      collide-shape-moving         :offset        128)
+  ((root               collide-shape-moving         :override)
    (init-quat          quaternion           :inline :offset-assert 208)
    (next-to-shoot-idx  int32                        :offset-assert 224)
    (current-y-position float                        :offset-assert 228)
@@ -696,7 +696,7 @@
 
 
 (deftype drill-barons-ship-turret (process-drawable)
-  ((root-override      collide-shape-moving     :offset        128)
+  ((root               collide-shape-moving     :override)
    (info               barons-ship-turret-info  :offset-assert 200)
    (shot-timer         time-frame               :offset-assert 208)
    (shot-counter       int32                    :offset-assert 216)
@@ -874,7 +874,7 @@
          (set! (-> s5-0 backup-collide-as) (-> v1-6 prim-core collide-as))
          (set! (-> s5-0 backup-collide-with) (-> v1-6 prim-core collide-with))
          )
-       (set! (-> self root-override) (the-as collide-shape-moving s5-0))
+       (set! (-> self root) (the-as collide-shape-moving s5-0))
        )
      )
     (else
@@ -892,27 +892,22 @@
           (set! (-> s5-1 backup-collide-as) (-> v1-13 prim-core collide-as))
           (set! (-> s5-1 backup-collide-with) (-> v1-13 prim-core collide-with))
           )
-        (set! (-> self root-override) (the-as collide-shape-moving s5-1))
+        (set! (-> self root) (the-as collide-shape-moving s5-1))
         )
       )
     )
-  (let ((v1-16 (-> self root-override root-prim)))
-    (set! (-> self root-override backup-collide-as) (-> v1-16 prim-core collide-as))
-    (set! (-> self root-override backup-collide-with) (-> v1-16 prim-core collide-with))
+  (let ((v1-16 (-> self root root-prim)))
+    (set! (-> self root backup-collide-as) (-> v1-16 prim-core collide-as))
+    (set! (-> self root backup-collide-with) (-> v1-16 prim-core collide-with))
     )
-  (let ((v1-19 (-> self root-override root-prim)))
+  (let ((v1-19 (-> self root root-prim)))
     (set! (-> v1-19 prim-core collide-as) (collide-spec))
     (set! (-> v1-19 prim-core collide-with) (collide-spec))
     )
   0
-  (set! (-> self root-override trans quad)
-        (-> (the-as drill-barons-ship (-> self parent 0)) root-override trans quad)
-        )
-  (quaternion-copy!
-    (-> self root-override quat)
-    (-> (the-as drill-barons-ship (-> self parent 0)) root-override quat)
-    )
-  (vector-identity! (-> self root-override scale))
+  (set! (-> self root trans quad) (-> (the-as drill-barons-ship (-> self parent 0)) root trans quad))
+  (quaternion-copy! (-> self root quat) (-> (the-as drill-barons-ship (-> self parent 0)) root quat))
+  (vector-identity! (-> self root scale))
   (logclear! (-> self mask) (process-mask actor-pause))
   (set! (-> self info) (the-as barons-ship-turret-info arg0))
   (set! (-> self info alive) #t)
@@ -1038,7 +1033,7 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-11 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-11 prim-core collide-with))
       )
-    (set! (-> obj root-override) (the-as collide-shape-moving s4-0))
+    (set! (-> obj root) (the-as collide-shape-moving s4-0))
     )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
@@ -1048,11 +1043,11 @@ This commonly includes things such as:
     )
   (logclear! (-> obj mask) (process-mask actor-pause))
   (logior! (-> obj skel status) (joint-control-status sync-math))
-  (quaternion-vector-angle! (-> obj root-override quat) *y-vector* -16384.0)
-  (set-vector! (-> obj root-override trans) 737280.0 -1024000.0 -1433600.0 1.0)
+  (quaternion-vector-angle! (-> obj root quat) *y-vector* -16384.0)
+  (set-vector! (-> obj root trans) 737280.0 -1024000.0 -1433600.0 1.0)
   (set! (-> obj next-to-shoot-idx) 0)
-  (quaternion-copy! (-> obj init-quat) (-> obj root-override quat))
-  (set! (-> obj current-y-position) (-> obj root-override trans y))
+  (quaternion-copy! (-> obj init-quat) (-> obj root quat))
+  (set! (-> obj current-y-position) (-> obj root trans y))
   (set! (-> obj from-y) (-> obj current-y-position))
   (set! (-> obj inc-y) 1228.8)
   (set! (-> obj ease-y) 40960.0)
@@ -1255,7 +1250,7 @@ This commonly includes things such as:
             (* 0.05 (-> self clock time-adjust-ratio) (-> self inc-y))
             )
           )
-    (set! (-> self root-override trans y)
+    (set! (-> self root trans y)
           (+ (-> self current-y-position) (* 4096.0 (* 2.0 (sin (+ 16384.0 (* 45.511112 (the float (current-time))))))))
           )
     (drill-barons-ship-method-22 self)
@@ -1376,7 +1371,7 @@ This commonly includes things such as:
             )
         )
       )
-    (set! (-> self root-override trans y)
+    (set! (-> self root trans y)
           (+ (-> self current-y-position) (* 4096.0 (* 2.0 (sin (+ 16384.0 (* 45.511112 (the float (current-time))))))))
           )
     (drill-barons-ship-method-22 self)
@@ -1389,7 +1384,7 @@ This commonly includes things such as:
 (defmethod drill-barons-ship-method-22 drill-barons-ship ((obj drill-barons-ship))
   (with-pp
     (quaternion-rotate-local-x!
-      (-> obj root-override quat)
+      (-> obj root quat)
       (-> obj init-quat)
       (* 182.04445 (sin (* 36.40889 (the float (current-time)))))
       )
@@ -1414,9 +1409,9 @@ This commonly includes things such as:
                 )
               )
         )
-      (quaternion-rotate-local-z! (-> obj root-override quat) (-> obj root-override quat) f30-2)
+      (quaternion-rotate-local-z! (-> obj root quat) (-> obj root quat) f30-2)
       )
-    (set! (-> obj root-override trans z)
+    (set! (-> obj root trans z)
           (+ (* 4096.0 (* 30.0 (cos (* 45.511112 (the float (current-time)))))) (if (= (-> obj pass) 1)
                                                                                     -1433600.0
                                                                                     -1433600.0
@@ -1424,7 +1419,7 @@ This commonly includes things such as:
              )
           )
     (if *target*
-        (set! (-> obj root-override trans x)
+        (set! (-> obj root trans x)
               (+ (-> *target* control trans x) (* 4096.0 (+ (if (= (-> obj pass) 1)
                                                                 15.0
                                                                 -35.0
@@ -1442,19 +1437,15 @@ This commonly includes things such as:
 
 (defmethod drill-barons-ship-turret-method-24 drill-barons-ship-turret ((obj drill-barons-ship-turret))
   (vector<-cspace!
-    (-> obj root-override trans)
+    (-> obj root trans)
     (-> (the-as drill-barons-ship (-> obj parent 0)) node-list data (-> obj info joint-idx))
     )
   (let ((a2-1 (quaternion-axis-angle! (new 'stack-no-clear 'quaternion) 0.0 1.0 0.0 (-> obj info init-y-angle))))
-    (quaternion*!
-      (-> obj root-override quat)
-      (-> (the-as drill-barons-ship (-> obj parent 0)) root-override quat)
-      a2-1
-      )
+    (quaternion*! (-> obj root quat) (-> (the-as drill-barons-ship (-> obj parent 0)) root quat) a2-1)
     )
   (when (-> obj jmod)
-    (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> obj root-override trans)))
-          (s3-0 (quaternion->matrix (new-stack-matrix0) (-> obj root-override quat)))
+    (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> obj root trans)))
+          (s3-0 (quaternion->matrix (new-stack-matrix0) (-> obj root quat)))
           )
       (vector-normalize! s5-1 1.0)
       (let* ((s4-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s3-0 vector 1) 1.0))
@@ -1497,7 +1488,7 @@ This commonly includes things such as:
 (defstate dead (drill-barons-ship-turret)
   :virtual #t
   :enter (behavior ()
-    (let ((v1-1 (-> self root-override root-prim)))
+    (let ((v1-1 (-> self root root-prim)))
       (set! (-> v1-1 prim-core collide-as) (collide-spec))
       (set! (-> v1-1 prim-core collide-with) (collide-spec))
       )
@@ -1507,15 +1498,11 @@ This commonly includes things such as:
     )
   :trans (behavior ()
     (vector<-cspace!
-      (-> self root-override trans)
+      (-> self root trans)
       (-> (the-as drill-barons-ship (-> self parent 0)) node-list data (-> self info joint-idx))
       )
     (let ((a2-1 (quaternion-axis-angle! (new 'stack-no-clear 'quaternion) 0.0 1.0 0.0 (-> self info init-y-angle))))
-      (quaternion*!
-        (-> self root-override quat)
-        (-> (the-as drill-barons-ship (-> self parent 0)) root-override quat)
-        a2-1
-        )
+      (quaternion*! (-> self root quat) (-> (the-as drill-barons-ship (-> self parent 0)) root quat) a2-1)
       )
     (if (and (-> (the-as drill-barons-ship (-> self parent 0)) next-state)
              (= (-> (the-as drill-barons-ship (-> self parent 0)) next-state name) 'hidden)
@@ -1564,7 +1551,7 @@ This commonly includes things such as:
                    (t2-0 #f)
                    (t3-0 *launch-matrix*)
                    )
-               (set! (-> t3-0 trans quad) (-> self root-override trans quad))
+               (set! (-> t3-0 trans quad) (-> self root trans quad))
                ((the-as (function object object object object object object object object none) t9-2)
                 a0-2
                 a1-2
@@ -1615,7 +1602,7 @@ This commonly includes things such as:
                   (t2-2 #f)
                   (t3-2 *launch-matrix*)
                   )
-              (set! (-> t3-2 trans quad) (-> self root-override trans quad))
+              (set! (-> t3-2 trans quad) (-> self root trans quad))
               ((the-as (function object object object object object object object object none) t9-8)
                a0-8
                a1-8
@@ -1636,7 +1623,7 @@ This commonly includes things such as:
     )
   :trans (behavior ()
     (vector<-cspace!
-      (-> self root-override trans)
+      (-> self root trans)
       (-> (the-as drill-barons-ship (-> self parent 0)) node-list data (-> self info joint-idx))
       )
     (if (not (and (-> (the-as drill-barons-ship (-> self parent 0)) next-state)
@@ -1707,7 +1694,7 @@ This commonly includes things such as:
              (set! (-> self info alive) #f)
              (set! (-> self info next-to-shoot) #f)
              (let ((gp-1 (new 'stack-no-clear 'vector)))
-               (set! (-> gp-1 quad) (-> self root-override trans quad))
+               (set! (-> gp-1 quad) (-> self root trans quad))
                (set! (-> gp-1 z) (+ 81920.0 (-> gp-1 z)))
                (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
                  (when s5-1
@@ -1778,9 +1765,9 @@ This commonly includes things such as:
                                       )
           )
     (set! (-> self error-y-angle-dest) (- (-> self error-y-angle)))
-    (let ((v1-5 (-> self root-override root-prim)))
-      (set! (-> v1-5 prim-core collide-as) (-> self root-override backup-collide-as))
-      (set! (-> v1-5 prim-core collide-with) (-> self root-override backup-collide-with))
+    (let ((v1-5 (-> self root root-prim)))
+      (set! (-> v1-5 prim-core collide-as) (-> self root backup-collide-as))
+      (set! (-> v1-5 prim-core collide-with) (-> self root backup-collide-with))
       )
     (cond
       ((= (-> self info mesh) 1)
@@ -1832,7 +1819,7 @@ This commonly includes things such as:
     (if (zero? (-> self info mesh))
         (sound-stop (-> self soundid))
         )
-    (let ((v1-5 (-> self root-override root-prim)))
+    (let ((v1-5 (-> self root root-prim)))
       (set! (-> v1-5 prim-core collide-as) (collide-spec))
       (set! (-> v1-5 prim-core collide-with) (collide-spec))
       )
@@ -1945,7 +1932,7 @@ This commonly includes things such as:
              )
            )
           (else
-            (let ((v1-45 (quaternion->matrix (new-stack-matrix0) (-> self root-override quat)))
+            (let ((v1-45 (quaternion->matrix (new-stack-matrix0) (-> self root quat)))
                   (s5-0 (new 'stack-no-clear 'vector))
                   )
               (set! (-> s5-0 quad) (-> v1-45 vector 2 quad))

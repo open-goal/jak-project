@@ -28,13 +28,13 @@
     :anim-cover-head-start 28
     :anim-cover-head-loop 29
     :anim-cover-head-end 30
-    :speech-ambient #xf
-    :speech-alert #x10
-    :speech-cower #x11
-    :speech-touched-by-player #x12
-    :speech-shot-by-player #x13
-    :speech-avoiding-player-vehicle #x14
-    :speech-hit-by-player-vehicle #x15
+    :speech-ambient 15
+    :speech-alert 16
+    :speech-cower 17
+    :speech-touched-by-player 18
+    :speech-shot-by-player 19
+    :speech-avoiding-player-vehicle 20
+    :speech-hit-by-player-vehicle 21
     )
   )
 
@@ -207,7 +207,7 @@
     :walk-travel-speed (meters 3)
     :walk-acceleration (meters 1)
     :walk-turning-acceleration (meters 8)
-    :maximum-rotation-rate (degrees 720.0)
+    :maximum-rotation-rate (degrees 720)
     :frustration-distance (meters 8)
     :frustration-time (seconds 4)
     :blocked-time (seconds 0.3)
@@ -224,18 +224,15 @@
   )
 
 (defmethod enemy-method-51 citizen-fat ((obj citizen-fat))
-  (let ((f30-0 (quaternion-y-angle (-> obj root-override2 quat))))
+  (let ((f30-0 (quaternion-y-angle (-> obj root quat))))
     (case (-> obj incoming knocked-type)
       (((knocked-type knocked-type-4) (knocked-type knocked-type-6))
        (let ((a0-5 (handle->process (-> obj focus handle))))
          (when a0-5
            (get-trans (the-as process-focusable a0-5) 0)
            (let ((s5-0 (new 'stack-no-clear 'vector)))
-             (set! (-> s5-0 quad) (-> obj root-override2 transv quad))
-             (if (< (vector-dot
-                      (-> obj root-override2 transv)
-                      (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root-override2 quat))
-                      )
+             (set! (-> s5-0 quad) (-> obj root transv quad))
+             (if (< (vector-dot (-> obj root transv) (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root quat)))
                     0.0
                     )
                  (vector-negate-in-place! s5-0)
@@ -247,14 +244,14 @@
        )
       (else
         (let ((s5-1 (new 'stack-no-clear 'vector)))
-          (set! (-> s5-1 quad) (-> obj root-override2 transv quad))
-          (if (< (vector-dot s5-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root-override2 quat))) 0.0)
+          (set! (-> s5-1 quad) (-> obj root transv quad))
+          (if (< (vector-dot s5-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root quat))) 0.0)
               (vector-negate-in-place! s5-1)
               )
           (let* ((f28-0 (atan (-> s5-1 x) (-> s5-1 z)))
                  (f1-2 (deg- f30-0 f28-0))
                  (f2-0 (fabs f1-2))
-                 (f0-8 (-> obj enemy-info-override knocked-seek-ry-clamp))
+                 (f0-8 (-> obj enemy-info knocked-seek-ry-clamp))
                  )
             (when (and (< f0-8 f2-0) (< f2-0 (- 32768.0 f0-8)))
               (set! f30-0 (+ (cond
@@ -448,7 +445,7 @@
           (t9-0)
           )
       )
-    (let ((v1-5 (the-as collide-shape-prim-group (-> self root-override2 root-prim))))
+    (let ((v1-5 (the-as collide-shape-prim-group (-> self root root-prim))))
       (logior! (-> v1-5 child 0 prim-core action) (collide-action no-standon))
       (logclear! (-> v1-5 child 1 prim-core action) (collide-action no-standon))
       (set! (-> v1-5 child 1 prim-core collide-as) (collide-spec))
@@ -467,7 +464,7 @@
           (t9-0)
           )
       )
-    (let ((v1-5 (-> self root-override2 root-prim)))
+    (let ((v1-5 (-> self root root-prim)))
       (logclear! (-> (the-as collide-shape-prim-group v1-5) child 0 prim-core action) (collide-action no-standon))
       (logior! (-> (the-as collide-shape-prim-group v1-5) child 1 prim-core action) (collide-action no-standon))
       (set! (-> (the-as collide-shape-prim-group v1-5) child 1 prim-core collide-as) (collide-spec civilian))
@@ -487,7 +484,7 @@
           (t9-0)
           )
       )
-    (let ((v1-5 (-> self root-override2 root-prim)))
+    (let ((v1-5 (-> self root root-prim)))
       (logclear! (-> (the-as collide-shape-prim-group v1-5) child 0 prim-core action) (collide-action no-standon))
       (logior! (-> (the-as collide-shape-prim-group v1-5) child 1 prim-core action) (collide-action no-standon))
       (set! (-> (the-as collide-shape-prim-group v1-5) child 1 prim-core collide-as) (collide-spec civilian))
@@ -613,7 +610,7 @@
       (set! (-> s5-0 backup-collide-with) (-> v1-17 prim-core collide-with))
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
-    (set! (-> obj root-override2) s5-0)
+    (set! (-> obj root) s5-0)
     )
   0
   (none)
@@ -691,7 +688,7 @@
   (let ((f30-0 (get-rand-float-range obj 1.0 1.25))
         (f0-15 (get-rand-float-range obj 1.0 1.25))
         )
-    (set-vector! (-> obj root-override2 scale) f0-15 f30-0 f0-15 1.0)
+    (set-vector! (-> obj root scale) f0-15 f30-0 f0-15 1.0)
     )
   (let ((f0-17 (get-rand-float-range obj 0.9 1.0)))
     (set-vector! (-> obj draw color-mult) f0-17 f0-17 f0-17 1.0)

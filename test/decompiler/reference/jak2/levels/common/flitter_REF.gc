@@ -573,7 +573,7 @@
     :walk-travel-speed (meters 4)
     :walk-acceleration (meters 1)
     :walk-turning-acceleration (meters 5)
-    :maximum-rotation-rate (degrees 720.0)
+    :maximum-rotation-rate (degrees 720)
     :notice-nav-radius (meters 5)
     :frustration-distance (meters 12)
     :frustration-time (seconds 4)
@@ -594,7 +594,7 @@
          (camera-pos)
          (let* ((s3-0 (get-trans arg0 0))
                 (s5-1 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s4-0 vector 2) 1.0))
-                (v1-7 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> obj root-override2 trans) s3-0) 1.0))
+                (v1-7 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> obj root trans) s3-0) 1.0))
                 )
            (< 0.0 (vector-dot s5-1 v1-7))
            )
@@ -689,12 +689,12 @@
       (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
       (let ((gp-0 (-> self on-notice)))
         (if gp-0
-            (script-eval (the-as pair gp-0) :vector (-> self root-override2 trans))
+            (script-eval (the-as pair gp-0) :vector (-> self root trans))
             )
         )
       )
-    (set! (-> self base-height) (-> self root-override2 trans y))
-    (let ((v1-13 (-> self root-override2 root-prim)))
+    (set! (-> self base-height) (-> self root trans y))
+    (let ((v1-13 (-> self root root-prim)))
       (set! (-> v1-13 prim-core collide-as) (collide-spec))
       (set! (-> v1-13 prim-core collide-with) (collide-spec))
       )
@@ -723,7 +723,7 @@
               (t2-0 #f)
               (t3-0 *launch-matrix*)
               )
-          (set! (-> t3-0 trans quad) (-> self root-override2 trans quad))
+          (set! (-> t3-0 trans quad) (-> self root trans quad))
           ((the-as (function object object object object object object object object none) t9-2)
            a0-2
            a1-2
@@ -743,11 +743,11 @@
         (suspend)
         )
       )
-    (set! (-> self root-override2 trans y) (+ -8192.0 (-> self root-override2 trans y)))
+    (set! (-> self root trans y) (+ -8192.0 (-> self root trans y)))
     (enemy-method-129 self)
     (let ((a0-5 (handle->process (-> self focus handle))))
       (when a0-5
-        (let* ((gp-2 (-> self root-override2))
+        (let* ((gp-2 (-> self root))
                (s3-0
                  (vector-normalize!
                    (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable a0-5) 0) (-> gp-2 trans))
@@ -781,7 +781,7 @@
           (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-0 enemy-flags))))
           )
       (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-0 enemy-flags))))
-      (set! (-> v1-0 nav callback-info) (-> v1-0 enemy-info-override callback-info))
+      (set! (-> v1-0 nav callback-info) (-> v1-0 enemy-info callback-info))
       )
     0
     (let ((v1-3 self))
@@ -790,7 +790,7 @@
     0
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self state-time) (current-time))
-    (let ((gp-0 (-> self root-override2)))
+    (let ((gp-0 (-> self root)))
       (vector-reset! (-> gp-0 transv))
       (set! (-> gp-0 transv y) (* 4096.0 (get-rand-float-range self 34.0 38.0)))
       )
@@ -802,7 +802,7 @@
                 :num! (seek! (the float (+ (-> (the-as art-joint-anim flitter-ambush-jump-ja) frames num-frames) -1)))
                 )
     (until #f
-      (when (< (-> self base-height) (-> self root-override2 trans y))
+      (when (< (-> self base-height) (-> self root trans y))
         (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
           (when gp-0
             (let ((t9-3 (method-of-type part-tracker activate)))
@@ -823,7 +823,7 @@
                   (t2-0 #f)
                   (t3-0 *launch-matrix*)
                   )
-              (set! (-> t3-0 trans quad) (-> self root-override2 trans quad))
+              (set! (-> t3-0 trans quad) (-> self root trans quad))
               ((the-as (function object object object object object object object object none) t9-4)
                a0-4
                a1-4
@@ -845,10 +845,10 @@
       )
     #f
     (until #f
-      (when (< (+ 204.8 (-> self base-height)) (-> self root-override2 trans y))
-        (let ((v1-40 (-> self root-override2 root-prim)))
-          (set! (-> v1-40 prim-core collide-as) (-> self root-override2 backup-collide-as))
-          (set! (-> v1-40 prim-core collide-with) (-> self root-override2 backup-collide-with))
+      (when (< (+ 204.8 (-> self base-height)) (-> self root trans y))
+        (let ((v1-40 (-> self root root-prim)))
+          (set! (-> v1-40 prim-core collide-as) (-> self root backup-collide-as))
+          (set! (-> v1-40 prim-core collide-with) (-> self root backup-collide-with))
           )
         (goto cfg-11)
         )
@@ -859,10 +859,8 @@
     #f
     (until #f
       (label cfg-11)
-      (if (or (and (>= 0.0 (-> self root-override2 transv y))
-                   (>= (+ 1638.4 (-> self base-height)) (-> self root-override2 trans y))
-                   )
-              (logtest? (-> self root-override2 status) (collide-status on-ground))
+      (if (or (and (>= 0.0 (-> self root transv y)) (>= (+ 1638.4 (-> self base-height)) (-> self root trans y)))
+              (logtest? (-> self root status) (collide-status on-ground))
               )
           (goto cfg-26)
           )
@@ -882,7 +880,7 @@
       (ja :num! (seek!))
       )
     (until #f
-      (if (logtest? (-> self root-override2 status) (collide-status on-ground))
+      (if (logtest? (-> self root status) (collide-status on-ground))
           (goto cfg-33)
           )
       (suspend)
@@ -912,7 +910,7 @@
          )
     (when s3-0
       (let* ((s5-1 (get-trans s3-0 0))
-             (s4-1 (vector-! (new 'stack-no-clear 'vector) s5-1 (-> obj root-override2 trans)))
+             (s4-1 (vector-! (new 'stack-no-clear 'vector) s5-1 (-> obj root trans)))
              (f30-0 (vector-length s4-1))
              )
         (cond
@@ -922,12 +920,12 @@
           ((and (< f30-0 32768.0) (not (flitter-method-182 obj s3-0)))
            (go (method-of-object obj circling))
            )
-          ((< f30-0 (-> obj enemy-info-override notice-nav-radius))
+          ((< f30-0 (-> obj enemy-info notice-nav-radius))
            (set! (-> obj target-pos quad) (-> s5-1 quad))
            (let ((s3-1 (new 'stack-no-clear 'vector)))
              (set! (-> s3-1 quad) (-> s4-1 quad))
              (let ((s5-2 (new 'stack-no-clear 'vector)))
-               (set! (-> s5-2 quad) (-> obj root-override2 transv quad))
+               (set! (-> s5-2 quad) (-> obj root transv quad))
                (vector-normalize! s5-2 f30-0)
                (if (>= (vector-dot s3-1 s5-2) 0.98)
                    (go (method-of-object obj attack))
@@ -939,7 +937,7 @@
            (set! (-> obj target-pos quad) (-> s5-1 quad))
            )
           ((or (>= (- (current-time) (the-as int (-> obj last-change-dir))) (-> obj change-dir-time))
-               (< (vector-vector-distance-squared (-> obj root-override2 trans) (-> obj target-pos)) 0.1)
+               (< (vector-vector-distance-squared (-> obj root trans) (-> obj target-pos)) 0.1)
                )
            (set! (-> obj last-change-dir) (the-as uint (current-time)))
            (set! (-> obj change-dir-time) (rand-vu-int-range (seconds 0.5) (seconds 0.7)))
@@ -978,7 +976,7 @@
   (when (>= (- (current-time) (the-as int (-> obj amb-sound-timer)))
             (the int (* 300.0 (rand-vu-float-range 1.5 3.0)))
             )
-    (sound-play "flitter-amb" :position (-> obj root-override2 trans))
+    (sound-play "flitter-amb" :position (-> obj root trans))
     (set! (-> obj amb-sound-timer) (the-as uint (current-time)))
     )
   (none)
@@ -991,19 +989,19 @@
   (stop-looking-at-target! self)
   (set! (-> self skel root-channel 0 frame-group) arg0)
   (let ((s4-1 (enemy-method-50 self (new 'stack-no-clear 'vector)))
-        (s3-0 (-> self root-override2))
+        (s3-0 (-> self root))
         )
     (when (if (type? s3-0 collide-shape-moving)
               s3-0
               )
-      (set! (-> self root-override2 transv y) 33775.48)
+      (set! (-> self root transv y) 33775.48)
       (ja :num-func num-func-identity :frame-num 0.0)
       (set! (-> self state-time) (current-time))
-      (logclear! (-> self root-override2 status) (collide-status on-surface on-ground touch-surface))
+      (logclear! (-> self root status) (collide-status on-surface on-ground touch-surface))
       (until v1-29
         (let ((f0-2 102400.0))
-          (set! (-> self root-override2 transv x) (* (-> s4-1 x) f0-2))
-          (set! (-> self root-override2 transv z) (* (-> s4-1 z) f0-2))
+          (set! (-> self root transv x) (* (-> s4-1 x) f0-2))
+          (set! (-> self root transv z) (* (-> s4-1 z) f0-2))
           )
         (suspend)
         (ja :num! (seek! max arg1))
@@ -1056,17 +1054,14 @@
           0
           )
         (let ((v1-29 (ja-group)))
-          (if (not (and v1-29 (= v1-29 (-> self draw art-group data (-> self enemy-info-override idle-anim)))))
+          (if (not (and v1-29 (= v1-29 (-> self draw art-group data (-> self enemy-info idle-anim)))))
               (ja-channel-push! 1 (seconds 0.2))
               )
           )
-        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override idle-anim))
+        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
                     :num! (seek!
                       (the float
-                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override idle-anim)))
-                                  frames
-                                  num-frames
-                                  )
+                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
                               -1
                               )
                            )
@@ -1156,13 +1151,10 @@
     (nav-enemy-method-166 self)
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override run-anim))
+      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info run-anim))
                   :num! (seek!
                     (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override run-anim)))
-                                frames
-                                num-frames
-                                )
+                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info run-anim))) frames num-frames)
                             -1
                             )
                          )
@@ -1232,7 +1224,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (flitter-fall-and-play-death-anim
-      (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override die-anim)))
+      (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info die-anim)))
       1.0
       (seconds 2)
       )
@@ -1244,7 +1236,7 @@
 
 ;; definition for method 183 of type flitter
 (defmethod flitter-method-183 flitter ((obj flitter))
-  (lerp-scale 0.0 1.0 (- (-> obj attack-pos y) (-> obj root-override2 trans y)) 13926.4 25600.0)
+  (lerp-scale 0.0 1.0 (- (-> obj attack-pos y) (-> obj root trans y)) 13926.4 25600.0)
   )
 
 ;; failed to figure out what this is:
@@ -1258,7 +1250,7 @@
           (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-2 enemy-flags))))
           )
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-2 enemy-flags))))
-      (set! (-> v1-2 nav callback-info) (-> v1-2 enemy-info-override callback-info))
+      (set! (-> v1-2 nav callback-info) (-> v1-2 enemy-info callback-info))
       )
     0
     (sound-play "flitter-attack")
@@ -1435,7 +1427,7 @@
       (set! (-> s5-0 backup-collide-with) (-> v1-18 prim-core collide-with))
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
-    (set! (-> obj root-override2) s5-0)
+    (set! (-> obj root) s5-0)
     )
   0
   (none)
@@ -1477,7 +1469,7 @@
     318
     (new 'static 'vector :x -942.08 :y -860.16 :z 1269.76 :w 163840.0)
     )
-  (set-gravity-length (-> obj root-override2 dynam) 491520.0)
+  (set-gravity-length (-> obj root dynam) 491520.0)
   (let* ((s4-1 "pebble1-ruins")
          (v1-15 (-> obj level name))
          (s5-2

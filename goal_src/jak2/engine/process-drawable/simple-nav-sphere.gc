@@ -8,9 +8,9 @@
 ;; DECOMP BEGINS
 
 (deftype simple-nav-sphere (process-drawable)
-  ((root-override collide-shape  :offset        128)
-   (first-time?   symbol         :offset-assert 200)
-   (track-joint   int32          :offset-assert 204)
+  ((root        collide-shape  :override)
+   (first-time? symbol         :offset-assert 200)
+   (track-joint int32          :offset-assert 204)
    )
   :heap-base #x50
   :method-count-assert 22
@@ -30,12 +30,12 @@
      (go empty-state)
      )
     (('move-trans)
-     (move-to-point! (-> self root-override) (the-as vector (-> event param 0)))
+     (move-to-point! (-> self root) (the-as vector (-> event param 0)))
      #t
      )
     (('set-radius)
      (let ((radius (the-as float (-> event param 0)))
-           (collide-shape (-> self root-override))
+           (collide-shape (-> self root))
            )
        (set! (-> collide-shape nav-radius) radius)
        (set! (-> collide-shape root-prim local-sphere w) radius)
@@ -73,8 +73,8 @@
         (add-debug-sphere
           #t
           (bucket-id debug2)
-          (-> self root-override trans)
-          (-> self root-override nav-radius)
+          (-> self root trans)
+          (-> self root nav-radius)
           (new 'static 'rgba :r #x80 :g #x40 :a #x80)
           )
         )
@@ -94,7 +94,7 @@
           (gp-0 (new 'stack-no-clear 'vector))
           )
       (vector<-cspace! gp-0 (-> (the-as process-drawable v1-0) node-list data (-> self track-joint)))
-      (move-to-point! (-> self root-override) gp-0)
+      (move-to-point! (-> self root) gp-0)
       )
     (none)
     )
@@ -130,7 +130,7 @@
       )
     0
     (update-transforms s5-0)
-    (set! (-> self root-override) s5-0)
+    (set! (-> self root) s5-0)
     )
   (logclear! (-> self mask) (process-mask actor-pause enemy))
   (set! (-> self event-hook)
