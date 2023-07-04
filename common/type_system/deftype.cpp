@@ -131,8 +131,7 @@ void add_field(StructureType* structure,
       } else if (opt_name == ":override") {
         override = true;
         if (!structure->lookup_field(name, &override_field)) {
-          throw std::runtime_error(
-              fmt::format("Field {} not found to override", name));
+          throw std::runtime_error(fmt::format("Field {} not found to override", name));
         }
       } else if (opt_name == ":overlay-at") {
         auto field_name = symbol_string(car(rest));
@@ -173,7 +172,8 @@ void add_field(StructureType* structure,
     }
     if (override_field.is_inline() != is_inline || override_field.is_dynamic() != is_dynamic ||
         (array_size != -1 && override_field.array_size() != array_size)) {
-      throw std::runtime_error(fmt::format("Wanted to override field {}, but some parameters were different",
+      throw std::runtime_error(
+          fmt::format("Wanted to override field {}, but some parameters were different",
                       override_field.name()));
     }
     structure->override_field_type(override_field.name(), type);
