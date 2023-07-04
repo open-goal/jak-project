@@ -217,10 +217,9 @@ set(RUNTIME_SOURCE
         system/vm/dmac.cpp
         system/vm/vm.cpp
         tools/filter_menu/filter_menu.cpp
-        tools/subtitles/subtitle_editor.cpp
-        tools/subtitles2/subtitle2_editor.cpp
-        tools/subtitles/subtitle_editor_db.cpp
-        tools/subtitles/subtitle_editor_repl_client.cpp
+        tools/subtitle_editor/subtitle_editor.cpp
+        tools/subtitle_editor/subtitle_editor_db.cpp
+        tools/subtitle_editor/subtitle_editor_repl_client.cpp
         )
 
 add_subdirectory(sound)

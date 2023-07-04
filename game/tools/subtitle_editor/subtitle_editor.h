@@ -5,7 +5,7 @@
 #include "subtitle_editor_db.h"
 #include "subtitle_editor_repl_client.h"
 
-#include <common/serialization/subtitles/subtitles_v2.h>
+#include "common/serialization/subtitles/subtitles_v2.h"
 
 #include "third-party/imgui/imgui.h"
 
@@ -15,16 +15,24 @@ class SubtitleEditor {
   void draw_window();
 
  private:
+  bool is_v1_format();
+
   void draw_edit_options();
   void draw_repl_options();
 
   void draw_speaker_options();
 
   void draw_scene_section_header(const bool non_cutscenes);
+  void draw_scene_node(const bool base_cutscenes,
+                       const std::string& scene_name,
+                       GameSubtitleSceneInfo& scene_info,
+                       std::unordered_set<std::string>& scenes_to_delete);
   void draw_all_cutscenes(bool base_cutscenes = false);
-  void draw_all_non_cutscenes(bool base_cutscenes);
-  void draw_new_cutscene_line_form();
+  void draw_all_non_cutscenes(bool base_cutscenes = false);
+  std::string subtitle_line_summary(const SubtitleLine& line,
+                                    const SubtitleLineMetadata& line_meta);
   void draw_subtitle_options(GameSubtitleSceneInfo& scene, bool current_scene = false);
+  void draw_new_scene_line_form();
 
   bool db_loaded = false;
   GameSubtitleDB m_subtitle_db;
@@ -50,10 +58,12 @@ class SubtitleEditor {
   ImVec4 m_warning_color = ImVec4(0.619f, 0.443f, 0.0f, 1.0f);
   int m_offscreen_text_color = IM_COL32(240, 242, 102, 255);
 
-  int m_current_scene_frame = 0;
-  std::string m_current_scene_text = "";
+  // State
+  int m_current_scene_frames[2] = {0, 0};
   std::string m_current_scene_speaker = "";
+  std::string m_current_scene_text = "";
   bool m_current_scene_offscreen = false;
+  bool m_current_scene_merge = false;
 
   std::string m_new_scene_name = "";
   std::string m_new_scene_id = "0";
