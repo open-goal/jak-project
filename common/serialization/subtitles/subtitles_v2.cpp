@@ -22,11 +22,11 @@ void from_json(const json& j, SubtitleLineMetadata& obj) {
   json_deserialize_if_exists(merge);
 }
 
-void to_json(json& j, const SubtitleCutsceneMetadata& obj) {
+void to_json(json& j, const SubtitleSceneMetadata& obj) {
   json_serialize(lines);
 }
 
-void from_json(const json& j, SubtitleCutsceneMetadata& obj) {
+void from_json(const json& j, SubtitleSceneMetadata& obj) {
   json_deserialize_if_exists(lines);
 }
 
@@ -165,15 +165,22 @@ void GameSubtitleDB::init_banks_from_file(const GameSubtitleDefinitionFile& file
 
 GameSubtitleSceneInfo GameSubtitleBank::new_scene_from_meta(
     const std::string& scene_name,
-    const SubtitleCutsceneMetadata& scene_meta,
+    const SubtitleSceneMetadata& scene_meta,
     const std::unordered_map<std::string, std::vector<std::string>>& relevant_lines) {
   GameSubtitleSceneInfo new_scene;
+  new_scene.m_hint_id = scene_meta.m_hint_id;
   int line_idx = 0;
   int lines_added = 0;
   for (const auto& line_meta : scene_meta.lines) {
-    if (m_speakers.find(line_meta.speaker) == m_speakers.end() ||
-        relevant_lines.find(scene_name) == relevant_lines.end() ||
-        int(relevant_lines.at(scene_name).size()) < line_idx) {
+    // Caveat from v1, v2 doesn't have a clear-screen concept
+    if (relevant_lines.find(scene_name) != relevant_lines.end() &&
+        relevant_lines.at(scene_name).size() > line_idx &&
+        relevant_lines.at(scene_name).at(line_idx).empty()) {
+      new_scene.m_lines.push_back({relevant_lines.at(scene_name).at(line_idx), line_meta});
+      lines_added++;
+    } else if (m_speakers.find(line_meta.speaker) == m_speakers.end() ||
+               relevant_lines.find(scene_name) == relevant_lines.end() ||
+               relevant_lines.at(scene_name).size() < line_idx) {
       lg::warn(
           "{} Couldn't find {} in line file, or line list is too small, or speaker could not "
           "be resolved {}!",
@@ -238,7 +245,7 @@ bool GameSubtitleBank::is_valid_speaker_id(const std::string& speaker_id) {
 SubtitleMetadataFile dump_bank_meta_v2(std::shared_ptr<GameSubtitleBank> bank) {
   auto meta_file = SubtitleMetadataFile();
   for (const auto& [scene_name, scene_info] : bank->m_scenes) {
-    SubtitleCutsceneMetadata scene_meta;
+    SubtitleSceneMetadata scene_meta;
     for (const auto& line : scene_info.m_lines) {
       scene_meta.lines.push_back(line.metadata);
     }
@@ -315,6 +322,7 @@ GameSubtitleDB load_subtitle_project(const GameSubtitleDB::SubtitleFormat format
                                      const GameVersion game_version) {
   // Load the subtitle files
   GameSubtitleDB db;
+  db.m_game_version = game_version;
   db.m_subtitle_version = format_version;
   try {
     std::vector<GameSubtitleDefinitionFile> files;

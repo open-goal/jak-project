@@ -111,9 +111,10 @@ std::pair<SubtitleMetadataFile, SubtitleFile> read_json_files_v1(
   // Convert the old format into the new
   SubtitleMetadataFile meta_file;
   SubtitleFile lines_file;
+  lines_file.speakers = v1_lines_file.speakers;
   for (const auto& [cutscene_name, cutscene_lines] : v1_meta_file.cutscenes) {
-    GameSubtitleSceneInfo new_scene;
-    new_scene.m_name = cutscene_name;
+    std::vector<std::string> scene_lines;
+    SubtitleSceneMetadata new_scene_meta;
     // Iterate the lines, grab the actual text from the lines file if it's not a clear screen entry
     int line_idx = 0;
     int lines_added = 0;
@@ -122,8 +123,9 @@ std::pair<SubtitleMetadataFile, SubtitleFile> read_json_files_v1(
       new_meta.frame_start = line_meta.frame_start;
       new_meta.offscreen = line_meta.offscreen;
       new_meta.speaker = line_meta.speaker;
+      new_scene_meta.lines.push_back(new_meta);
       if (line_meta.clear) {
-        new_scene.m_lines.push_back({"", new_meta});
+        scene_lines.push_back("");
         lines_added++;
       } else {
         if (v1_lines_file.speakers.find(line_meta.speaker) == v1_lines_file.speakers.end() ||
@@ -134,8 +136,7 @@ std::pair<SubtitleMetadataFile, SubtitleFile> read_json_files_v1(
               "be resolved {}!",
               file_info.language_id, cutscene_name, line_meta.speaker);
         } else {
-          new_scene.m_lines.push_back(
-              {v1_lines_file.cutscenes.at(cutscene_name).at(line_idx), new_meta});
+          scene_lines.push_back(v1_lines_file.cutscenes.at(cutscene_name).at(line_idx));
           lines_added++;
         }
         line_idx++;
@@ -148,14 +149,15 @@ std::pair<SubtitleMetadataFile, SubtitleFile> read_json_files_v1(
                       "only added {} lines",
                       cutscene_name, cutscene_lines.size(), lines_added));
     }
-    meta_file.cutscenes.emplace(cutscene_name, new_scene);
+    meta_file.cutscenes.emplace(cutscene_name, new_scene_meta);
+    lines_file.cutscenes.emplace(cutscene_name, scene_lines);
   }
   // Now hints
   for (const auto& [hint_name, hint_info] : v1_meta_file.hints) {
-    GameSubtitleSceneInfo new_scene;
-    new_scene.m_name = hint_name;
+    std::vector<std::string> scene_lines;
+    SubtitleSceneMetadata new_scene_meta;
     if (hint_info.id != "0") {
-      new_scene.m_hint_id = std::stoi(hint_info.id, nullptr, 16);
+      new_scene_meta.m_hint_id = std::stoi(hint_info.id, nullptr, 16);
     }
     // Iterate the lines, grab the actual text from the lines file if it's not a clear screen entry
     int line_idx = 0;
@@ -165,8 +167,9 @@ std::pair<SubtitleMetadataFile, SubtitleFile> read_json_files_v1(
       new_meta.frame_start = line_meta.frame_start;
       new_meta.offscreen = true;
       new_meta.speaker = line_meta.speaker;
+      new_scene_meta.lines.push_back(new_meta);
       if (line_meta.clear) {
-        new_scene.m_lines.push_back({"", new_meta});
+        scene_lines.push_back("");
         lines_added++;
       } else {
         if (v1_lines_file.speakers.find(line_meta.speaker) == v1_lines_file.speakers.end() ||
@@ -177,7 +180,7 @@ std::pair<SubtitleMetadataFile, SubtitleFile> read_json_files_v1(
               "be resolved {}!",
               file_info.language_id, hint_name, line_meta.speaker);
         } else {
-          new_scene.m_lines.push_back({v1_lines_file.hints.at(hint_name).at(line_idx), new_meta});
+          scene_lines.push_back(v1_lines_file.hints.at(hint_name).at(line_idx));
           lines_added++;
         }
         line_idx++;
@@ -190,7 +193,8 @@ std::pair<SubtitleMetadataFile, SubtitleFile> read_json_files_v1(
                       "only added {} lines",
                       hint_name, hint_info.lines.size(), lines_added));
     }
-    meta_file.other.emplace(hint_name, new_scene);
+    meta_file.other.emplace(hint_name, new_scene_meta);
+    lines_file.other.emplace(hint_name, scene_lines);
   }
   return {meta_file, lines_file};
 }

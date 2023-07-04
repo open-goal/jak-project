@@ -219,6 +219,8 @@ set(RUNTIME_SOURCE
         tools/filter_menu/filter_menu.cpp
         tools/subtitles/subtitle_editor.cpp
         tools/subtitles2/subtitle2_editor.cpp
+        tools/subtitles/subtitle_editor_db.cpp
+        tools/subtitles/subtitle_editor_repl_client.cpp
         )
 
 add_subdirectory(sound)

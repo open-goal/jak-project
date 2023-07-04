@@ -12,15 +12,16 @@ struct SubtitleLineMetadata {
 void to_json(json& j, const SubtitleLineMetadata& obj);
 void from_json(const json& j, SubtitleLineMetadata& obj);
 
-struct SubtitleCutsceneMetadata {
+struct SubtitleSceneMetadata {
   std::vector<SubtitleLineMetadata> lines;
+  int m_hint_id = 0;  // used only for jak1, intentionally ignored in serialization/deserialization
 };
-void to_json(json& j, const SubtitleCutsceneMetadata& obj);
-void from_json(const json& j, SubtitleCutsceneMetadata& obj);
+void to_json(json& j, const SubtitleSceneMetadata& obj);
+void from_json(const json& j, SubtitleSceneMetadata& obj);
 
 struct SubtitleMetadataFile {
-  std::unordered_map<std::string, SubtitleCutsceneMetadata> cutscenes;
-  std::unordered_map<std::string, SubtitleCutsceneMetadata> other;
+  std::unordered_map<std::string, SubtitleSceneMetadata> cutscenes;
+  std::unordered_map<std::string, SubtitleSceneMetadata> other;
 };
 void to_json(json& j, const SubtitleMetadataFile& obj);
 void from_json(const json& j, SubtitleMetadataFile& obj);
@@ -46,13 +47,17 @@ struct GameSubtitleSceneInfo {
   std::string m_name;
   std::vector<SubtitleLine> m_lines;
   bool is_cutscene;
-  int m_hint_id;
+  int m_hint_id;  // used only for jak1
 
-  // TODO
-  /*void add_line(int frame, std::string text, std::string speaker, bool offscreen) {
-    m_lines.push_back({text, {frame, offscreen, speaker, false}});
+  void add_line(const std::string& text,
+                const int frame_start,
+                const int frame_end,
+                const bool offscreen,
+                const std::string& speaker,
+                const bool merge) {
+    m_lines.push_back({text, {frame_start, frame_end, offscreen, speaker, merge}});
     std::sort(m_lines.begin(), m_lines.end());
-  }*/
+  }
 };
 
 /*!
@@ -71,7 +76,7 @@ class GameSubtitleBank {
   bool scene_exists(const std::string& name) const { return m_scenes.find(name) != m_scenes.end(); }
   GameSubtitleSceneInfo new_scene_from_meta(
       const std::string& scene_name,
-      const SubtitleCutsceneMetadata& scene_meta,
+      const SubtitleSceneMetadata& scene_meta,
       const std::unordered_map<std::string, std::vector<std::string>>& relevant_lines);
   GameSubtitleSceneInfo& scene_by_name(const std::string& name) { return m_scenes.at(name); }
   void add_scenes_from_files(const SubtitleMetadataFile& meta_file, const SubtitleFile& lines_file);
