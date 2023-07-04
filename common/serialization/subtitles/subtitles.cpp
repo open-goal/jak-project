@@ -86,3 +86,20 @@ std::string lookup_locale_code(const GameVersion game_version, const int languag
   }
   return locale_lookup.at(game_version).at(language_id);
 }
+
+const std::unordered_map<GameVersion, std::vector<int>> language_ids_with_audio = {
+    {GameVersion::Jak1, {0, 1, 2, 3, 4, 5, 6}},
+    {GameVersion::Jak2, {0, 1, 2, 3, 4, 5, 6, 7}}};
+
+bool dump_language_with_duplicates_from_base(const GameVersion game_version,
+                                             const int language_id) {
+  if (language_ids_with_audio.find(game_version) == language_ids_with_audio.end()) {
+    return true;
+  }
+  if (std::find(language_ids_with_audio.at(game_version).begin(),
+                language_ids_with_audio.at(game_version).end(),
+                language_id) == language_ids_with_audio.at(game_version).end()) {
+    return true;
+  }
+  return false;
+}

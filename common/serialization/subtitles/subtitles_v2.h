@@ -8,6 +8,15 @@ struct SubtitleLineMetadata {
   bool offscreen;
   std::string speaker;
   bool merge;
+
+  bool operator==(const SubtitleLineMetadata& other) const {
+    if (frame_start != other.frame_start || frame_end != other.frame_end ||
+        offscreen != other.offscreen || speaker != other.speaker || merge != other.merge) {
+      return false;
+    }
+    return true;
+  }
+  bool operator!=(const SubtitleLineMetadata& other) const { return !(*this == other); }
 };
 void to_json(json& j, const SubtitleLineMetadata& obj);
 void from_json(const json& j, SubtitleLineMetadata& obj);
@@ -41,6 +50,13 @@ struct SubtitleLine {
   bool operator<(const SubtitleLine& other) const {
     return (metadata.frame_start < other.metadata.frame_start);
   }
+  bool operator==(const SubtitleLine& other) const {
+    if (text != other.text || metadata != other.metadata) {
+      return false;
+    }
+    return true;
+  }
+  bool operator!=(const SubtitleLine& other) const { return !(*this == other); }
 };
 
 struct GameSubtitleSceneInfo {
@@ -58,6 +74,20 @@ struct GameSubtitleSceneInfo {
     m_lines.push_back({text, {frame_start, frame_end, offscreen, speaker, merge}});
     std::sort(m_lines.begin(), m_lines.end());
   }
+  bool operator==(const GameSubtitleSceneInfo& other) const {
+    if (m_name != other.m_name || m_lines.size() != other.m_lines.size() ||
+        is_cutscene != other.is_cutscene || m_hint_id != other.m_hint_id) {
+      return false;
+    }
+    // Check each line
+    for (int i = 0; i < m_lines.size(); i++) {
+      if (m_lines.at(i) != other.m_lines.at(i)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  bool operator!=(const GameSubtitleSceneInfo& other) const { return !(*this == other); }
 };
 
 /*!
@@ -72,6 +102,7 @@ class GameSubtitleBank {
   GameTextVersion m_text_version;
   std::string m_file_path;
 
+  std::map<std::string, GameSubtitleSceneInfo> m_base_scenes;
   std::map<std::string, GameSubtitleSceneInfo> m_scenes;
   bool scene_exists(const std::string& name) const { return m_scenes.find(name) != m_scenes.end(); }
   GameSubtitleSceneInfo new_scene_from_meta(
@@ -79,7 +110,10 @@ class GameSubtitleBank {
       const SubtitleSceneMetadata& scene_meta,
       const std::unordered_map<std::string, std::vector<std::string>>& relevant_lines);
   GameSubtitleSceneInfo& scene_by_name(const std::string& name) { return m_scenes.at(name); }
-  void add_scenes_from_files(const SubtitleMetadataFile& meta_file, const SubtitleFile& lines_file);
+  void add_scenes_from_files(const SubtitleMetadataFile& meta_file,
+                             const SubtitleFile& lines_file,
+                             const SubtitleMetadataFile& base_meta_file,
+                             const SubtitleFile& base_lines_file);
 
   std::unordered_map<std::string, std::string> m_speakers;
   u16 speaker_enum_value_from_name(const std::string& speaker_id);

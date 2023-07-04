@@ -90,10 +90,12 @@ const std::unordered_map<std::string, int> jak2_speaker_name_to_enum_val = {
     {"oracle", 33},
     {"precursor", 34}};
 
-std::pair<SubtitleMetadataFile, SubtitleFile> read_json_files_v2(
-    const GameSubtitleDefinitionFile& file_info) {
+std::tuple<SubtitleMetadataFile, SubtitleFile, SubtitleMetadataFile, SubtitleFile>
+read_json_files_v2(const GameSubtitleDefinitionFile& file_info) {
   SubtitleMetadataFile meta_file;
   SubtitleFile lines_file;
+  SubtitleMetadataFile meta_base_file;
+  SubtitleFile lines_base_file;
   try {
     // If we have a base file defined, load that and merge it
     if (file_info.meta_base_path) {
@@ -101,6 +103,7 @@ std::pair<SubtitleMetadataFile, SubtitleFile> read_json_files_v2(
           parse_commented_json(file_util::read_text_file(file_util::get_jak_project_dir() /
                                                          file_info.meta_base_path.value()),
                                "subtitle_meta_base_path");
+      meta_base_file = base_data;
       auto data = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.meta_path),
           "subtitle_meta_path");
@@ -118,7 +121,7 @@ std::pair<SubtitleMetadataFile, SubtitleFile> read_json_files_v2(
           parse_commented_json(file_util::read_text_file(file_util::get_jak_project_dir() /
                                                          file_info.lines_base_path.value()),
                                "subtitle_line_base_path");
-
+      lines_base_file = base_data;
       auto data = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.lines_path),
           "subtitle_line_path");
@@ -137,7 +140,7 @@ std::pair<SubtitleMetadataFile, SubtitleFile> read_json_files_v2(
               e.what());
     throw;
   }
-  return {meta_file, lines_file};
+  return {meta_file, lines_file, meta_base_file, lines_base_file};
 }
 
 void GameSubtitleDB::init_banks_from_file(const GameSubtitleDefinitionFile& file_info) {
@@ -155,11 +158,13 @@ void GameSubtitleDB::init_banks_from_file(const GameSubtitleDefinitionFile& file
   bank->m_game_version = m_game_version;
   // Parse the file
   if (m_subtitle_version == SubtitleFormat::V1) {
-    const auto [meta_file, lines_file] = read_json_files_v1(file_info);
-    bank->add_scenes_from_files(meta_file, lines_file);
+    const auto [meta_file, lines_file, meta_base_file, lines_base_file] =
+        read_json_files_v1(file_info);
+    bank->add_scenes_from_files(meta_file, lines_file, meta_base_file, lines_base_file);
   } else {
-    const auto [meta_file, lines_file] = read_json_files_v2(file_info);
-    bank->add_scenes_from_files(meta_file, lines_file);
+    const auto [meta_file, lines_file, meta_base_file, lines_base_file] =
+        read_json_files_v2(file_info);
+    bank->add_scenes_from_files(meta_file, lines_file, meta_base_file, lines_base_file);
   }
 }
 
@@ -168,6 +173,7 @@ GameSubtitleSceneInfo GameSubtitleBank::new_scene_from_meta(
     const SubtitleSceneMetadata& scene_meta,
     const std::unordered_map<std::string, std::vector<std::string>>& relevant_lines) {
   GameSubtitleSceneInfo new_scene;
+  new_scene.m_name = scene_name;
   new_scene.m_hint_id = scene_meta.m_hint_id;
   int line_idx = 0;
   int lines_added = 0;
@@ -202,17 +208,33 @@ GameSubtitleSceneInfo GameSubtitleBank::new_scene_from_meta(
 }
 
 void GameSubtitleBank::add_scenes_from_files(const SubtitleMetadataFile& meta_file,
-                                             const SubtitleFile& lines_file) {
+                                             const SubtitleFile& lines_file,
+                                             const SubtitleMetadataFile& base_meta_file,
+                                             const SubtitleFile& base_lines_file) {
   // Set speaker map
   m_speakers = lines_file.speakers;
   // Iterate through the metadata file as blank lines are now omitted from the lines file now
   for (const auto& [scene_name, scene_meta] : meta_file.cutscenes) {
-    m_scenes.emplace(scene_name, new_scene_from_meta(scene_name, scene_meta, lines_file.cutscenes));
+    auto new_scene = new_scene_from_meta(scene_name, scene_meta, lines_file.cutscenes);
+    new_scene.is_cutscene = true;
+    m_scenes.emplace(scene_name, new_scene);
   }
   for (const auto& [scene_name, scene_meta] : meta_file.other) {
     auto new_scene = new_scene_from_meta(scene_name, scene_meta, lines_file.other);
     new_scene.is_cutscene = false;
     m_scenes.emplace(scene_name, new_scene);
+  }
+  // Also save the base file info, this is used so that when we dump out changes
+  // we can avoid copying out duplicate information (that which is the same as the base, think en-US
+  // vs en-GB)
+  for (const auto& [scene_name, scene_meta] : base_meta_file.cutscenes) {
+    m_base_scenes.emplace(scene_name,
+                          new_scene_from_meta(scene_name, scene_meta, base_lines_file.cutscenes));
+  }
+  for (const auto& [scene_name, scene_meta] : base_meta_file.other) {
+    auto new_scene = new_scene_from_meta(scene_name, scene_meta, base_lines_file.other);
+    new_scene.is_cutscene = false;
+    m_base_scenes.emplace(scene_name, new_scene);
   }
 }
 
@@ -260,15 +282,7 @@ SubtitleMetadataFile dump_bank_meta_v2(std::shared_ptr<GameSubtitleBank> bank) {
 
 SubtitleFile dump_bank_lines_v2(std::shared_ptr<GameSubtitleBank> bank) {
   SubtitleFile file;
-  for (const auto& [scene_name, scene_info] : bank->m_scenes) {
-    for (const auto& line : scene_info.m_lines) {
-      if (line.text.empty()) {
-        continue;
-      }
-      // TODO - correct?
-      file.speakers[line.metadata.speaker] = line.metadata.speaker;
-    }
-  }
+  file.speakers = bank->m_speakers;
   for (const auto& [scene_name, scene_info] : bank->m_scenes) {
     for (const auto& scene_line : scene_info.m_lines) {
       if (scene_info.is_cutscene) {

@@ -44,7 +44,9 @@ void from_json(const json& j, SubtitleFileV1& obj);
 
 // These functions essentially convert to and from the V1/V2 formats to either load from disk, or
 // persist to disk
-std::pair<SubtitleMetadataFile, SubtitleFile> read_json_files_v1(
-    const GameSubtitleDefinitionFile& file_info);
+//
+// Returns the full file pair, then the base pair
+std::tuple<SubtitleMetadataFile, SubtitleFile, SubtitleMetadataFile, SubtitleFile>
+read_json_files_v1(const GameSubtitleDefinitionFile& file_info);
 SubtitleMetadataFileV1 dump_bank_meta_v1(std::shared_ptr<GameSubtitleBank> bank);
 SubtitleFileV1 dump_bank_lines_v1(std::shared_ptr<GameSubtitleBank> bank);

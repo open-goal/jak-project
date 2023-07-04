@@ -58,56 +58,10 @@ void from_json(const json& j, SubtitleFileV1& obj) {
   json_deserialize_if_exists(hints);
 }
 
-// This converts the v1 format into the v2 format which all of the projects code is updated to use,
-// including the editor
-std::pair<SubtitleMetadataFile, SubtitleFile> read_json_files_v1(
-    const GameSubtitleDefinitionFile& file_info) {
-  // Parse the file
-  SubtitleMetadataFileV1 v1_meta_file;
-  SubtitleFileV1 v1_lines_file;
-  try {
-    // If we have a base file defined, load that and merge it
-    if (file_info.meta_base_path) {
-      auto base_data =
-          parse_commented_json(file_util::read_text_file(file_util::get_jak_project_dir() /
-                                                         file_info.meta_base_path.value()),
-                               "subtitle_meta_base_path");
-      auto data = parse_commented_json(
-          file_util::read_text_file(file_util::get_jak_project_dir() / file_info.meta_path),
-          "subtitle_meta_path");
-      base_data.at("cutscenes").update(data.at("cutscenes"));
-      base_data.at("hints").update(data.at("hints"));
-      v1_meta_file = base_data;
-
-    } else {
-      v1_meta_file = parse_commented_json(
-          file_util::read_text_file(file_util::get_jak_project_dir() / file_info.meta_path),
-          "subtitle_meta_path");
-    }
-    if (file_info.lines_base_path) {
-      auto base_data =
-          parse_commented_json(file_util::read_text_file(file_util::get_jak_project_dir() /
-                                                         file_info.lines_base_path.value()),
-                               "subtitle_line_base_path");
-
-      auto data = parse_commented_json(
-          file_util::read_text_file(file_util::get_jak_project_dir() / file_info.lines_path),
-          "subtitle_line_path");
-      base_data.at("cutscenes").update(data.at("cutscenes"));
-      base_data.at("hints").update(data.at("hints"));
-      base_data.at("speakers").update(data.at("speakers"));
-      auto test = base_data.dump();
-      v1_lines_file = base_data;
-    } else {
-      v1_lines_file = parse_commented_json(
-          file_util::read_text_file(file_util::get_jak_project_dir() / file_info.lines_path),
-          "subtitle_line_path");
-    }
-  } catch (std::exception& e) {
-    lg::error("Unable to parse subtitle json entry, couldn't successfully load files - {}",
-              e.what());
-    throw;
-  }
+std::pair<SubtitleMetadataFile, SubtitleFile> convert_v1_to_v2(
+    const GameSubtitleDefinitionFile& file_info,
+    const SubtitleMetadataFileV1& v1_meta_file,
+    const SubtitleFileV1& v1_lines_file) {
   // Convert the old format into the new
   SubtitleMetadataFile meta_file;
   SubtitleFile lines_file;
@@ -199,6 +153,64 @@ std::pair<SubtitleMetadataFile, SubtitleFile> read_json_files_v1(
   return {meta_file, lines_file};
 }
 
+std::tuple<SubtitleMetadataFile, SubtitleFile, SubtitleMetadataFile, SubtitleFile>
+read_json_files_v1(const GameSubtitleDefinitionFile& file_info) {
+  // Parse the files
+  SubtitleMetadataFileV1 v1_meta_file;
+  SubtitleFileV1 v1_lines_file;
+  SubtitleMetadataFileV1 v1_meta_base_file;
+  SubtitleFileV1 v1_lines_base_file;
+  try {
+    // If we have a base file defined, load that and merge it
+    if (file_info.meta_base_path) {
+      auto base_data =
+          parse_commented_json(file_util::read_text_file(file_util::get_jak_project_dir() /
+                                                         file_info.meta_base_path.value()),
+                               "subtitle_meta_base_path");
+      v1_meta_base_file = base_data;
+      auto data = parse_commented_json(
+          file_util::read_text_file(file_util::get_jak_project_dir() / file_info.meta_path),
+          "subtitle_meta_path");
+      base_data.at("cutscenes").update(data.at("cutscenes"));
+      base_data.at("hints").update(data.at("hints"));
+      v1_meta_file = base_data;
+
+    } else {
+      v1_meta_file = parse_commented_json(
+          file_util::read_text_file(file_util::get_jak_project_dir() / file_info.meta_path),
+          "subtitle_meta_path");
+    }
+    if (file_info.lines_base_path) {
+      auto base_data =
+          parse_commented_json(file_util::read_text_file(file_util::get_jak_project_dir() /
+                                                         file_info.lines_base_path.value()),
+                               "subtitle_line_base_path");
+      v1_lines_base_file = base_data;
+      auto data = parse_commented_json(
+          file_util::read_text_file(file_util::get_jak_project_dir() / file_info.lines_path),
+          "subtitle_line_path");
+      base_data.at("cutscenes").update(data.at("cutscenes"));
+      base_data.at("hints").update(data.at("hints"));
+      base_data.at("speakers").update(data.at("speakers"));
+      auto test = base_data.dump();
+      v1_lines_file = base_data;
+    } else {
+      v1_lines_file = parse_commented_json(
+          file_util::read_text_file(file_util::get_jak_project_dir() / file_info.lines_path),
+          "subtitle_line_path");
+    }
+  } catch (std::exception& e) {
+    lg::error("Unable to parse subtitle json entry, couldn't successfully load files - {}",
+              e.what());
+    throw;
+  }
+  const auto [v2_meta_file, v2_lines_file] =
+      convert_v1_to_v2(file_info, v1_meta_file, v1_lines_file);
+  const auto [v2_meta_base_file, v2_lines_base_file] =
+      convert_v1_to_v2(file_info, v1_meta_base_file, v1_lines_base_file);
+  return {v2_meta_file, v2_lines_file, v2_meta_base_file, v2_lines_base_file};
+}
+
 SubtitleMetadataFileV1 dump_bank_meta_v1(std::shared_ptr<GameSubtitleBank> bank) {
   auto meta_file = SubtitleMetadataFileV1();
   auto font = get_font_bank(bank->m_text_version);
@@ -239,33 +251,17 @@ SubtitleMetadataFileV1 dump_bank_meta_v1(std::shared_ptr<GameSubtitleBank> bank)
 }
 
 SubtitleFileV1 dump_bank_lines_v1(std::shared_ptr<GameSubtitleBank> bank) {
+  const auto dump_with_duplicates =
+      dump_language_with_duplicates_from_base(bank->m_game_version, bank->m_lang_id);
   SubtitleFileV1 file;
-  auto font = get_font_bank(bank->m_text_version);
-  // Figure out speakers
+  file.speakers = bank->m_speakers;
   for (const auto& [scene_name, scene_info] : bank->m_scenes) {
-    for (const auto& line : scene_info.m_lines) {
-      if (line.text.empty()) {
-        continue;
-      }
-      // TODO - correct?
-      file.speakers[line.metadata.speaker] = line.metadata.speaker;
+    // Avoid dumping duplicates if needed
+    if (!dump_with_duplicates &&
+        bank->m_base_scenes.find(scene_name) != bank->m_base_scenes.end() &&
+        scene_info == bank->m_base_scenes.at(scene_name)) {
+      continue;
     }
-  }
-  // Hints
-  for (const auto& [scene_name, scene_info] : bank->m_scenes) {
-    if (!scene_info.is_cutscene) {
-      file.hints[scene_name] = {};
-      for (const auto& scene_line : scene_info.m_lines) {
-        if (scene_line.text.empty()) {
-          continue;
-        }
-        file.hints[scene_name].push_back(scene_line.text);
-      }
-    }
-  }
-
-  // Cutscenes
-  for (const auto& [scene_name, scene_info] : bank->m_scenes) {
     if (scene_info.is_cutscene) {
       file.cutscenes[scene_name] = {};
       for (const auto& scene_line : scene_info.m_lines) {
@@ -273,6 +269,14 @@ SubtitleFileV1 dump_bank_lines_v1(std::shared_ptr<GameSubtitleBank> bank) {
           continue;
         }
         file.cutscenes[scene_name].push_back(scene_line.text);
+      }
+    } else {
+      file.hints[scene_name] = {};
+      for (const auto& scene_line : scene_info.m_lines) {
+        if (scene_line.text.empty()) {
+          continue;
+        }
+        file.hints[scene_name].push_back(scene_line.text);
       }
     }
   }
