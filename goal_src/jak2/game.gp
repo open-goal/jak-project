@@ -217,6 +217,7 @@
 (cgo-file "palboss.gd" common-dep)
 (cgo-file "pae.gd" common-dep)
 (cgo-file "palout.gd" common-dep)
+(cgo-file "lbrnermk.gd" common-dep)
 ;; strip
 (cgo-file "str.gd" common-dep)
 ;; castle
@@ -251,7 +252,6 @@
 ;; demo
 (cgo-file "demo.gd" common-dep)
 ;; scene borrow packages
-(cgo-file "lbrnermk.gd" common-dep)
 (cgo-file "lerltess.gd" common-dep)
 (cgo-file "lsamergd.gd" common-dep)
 (cgo-file "lysamsam.gd" common-dep)
