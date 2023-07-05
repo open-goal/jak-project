@@ -1,6 +1,6 @@
 ;; "project file" for subtitles make tool.
 
-(subtitle
+(subtitle-v2
   (file-json
     :language-id 0
     :text-version "jak2"

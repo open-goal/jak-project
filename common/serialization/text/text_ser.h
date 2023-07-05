@@ -79,6 +79,9 @@ class GameTextDB {
   std::unordered_map<std::string, std::map<int, std::shared_ptr<GameTextBank>>> m_banks;
 };
 
+void parse_text_goal(const goos::Object& data,
+                     GameTextDB& db,
+                     const GameTextDefinitionFile& /*file_info*/);
 void parse_text_json(const nlohmann::json& json,
                      GameTextDB& db,
                      const GameTextDefinitionFile& file_info);

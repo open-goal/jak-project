@@ -231,10 +231,16 @@ void compile_game_text(const std::vector<GameTextDefinitionFile>& files,
                        const std::string& output_prefix) {
   goos::Reader reader;
   for (auto& file : files) {
-    lg::print("[Build Game Text] {}\n", file.file_path);
-    auto file_path = file_util::get_jak_project_dir() / file.file_path;
-    auto json = parse_commented_json(file_util::read_text_file(file_path), file.file_path);
-    parse_text_json(json, db, file);
+    if (file.format == GameTextDefinitionFile::Format::GOAL) {
+      lg::print("[Build Game Text] GOAL {}\n", file.file_path);
+      auto code = reader.read_from_file({file.file_path});
+      parse_text_goal(code, db, file);
+    } else if (file.format == GameTextDefinitionFile::Format::JSON) {
+      lg::print("[Build Game Text] JSON {}\n", file.file_path);
+      auto file_path = file_util::get_jak_project_dir() / file.file_path;
+      auto json = parse_commented_json(file_util::read_text_file(file_path), file.file_path);
+      parse_text_json(json, db, file);
+    }
   }
   compile_text(db, output_prefix);
 }

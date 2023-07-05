@@ -41,7 +41,7 @@ std::string get_string(const goos::Object& x) {
  * Each entry should be (id "line for 1st language" "line for 2nd language" ...)
  * This adds the text line to each of the specified languages.
  */
-void parse_text(const goos::Object& data,
+void parse_text_goal(const goos::Object& data,
                 GameTextDB& db,
                 const GameTextDefinitionFile& /*file_info*/) {
   const GameTextFontBank* font = nullptr;

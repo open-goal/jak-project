@@ -223,7 +223,7 @@ bool SubtitleTool::run(const ToolInput& task, const PathMap& path_map) {
   return true;
 }
 
-SubtitleV2Tool::SubtitleV2Tool() : Tool("subtitle_v2") {}
+SubtitleV2Tool::SubtitleV2Tool() : Tool("subtitle-v2") {}
 
 bool SubtitleV2Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
   if (task.input.size() != 1) {
