@@ -103,7 +103,6 @@ GameSubtitlePackage read_json_files_v2(const GameSubtitleDefinitionFile& file_in
       auto data = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.meta_path),
           "subtitle_meta_path");
-      package.lang_meta = data;
       base_data.at("cutscenes").update(data.at("cutscenes"));
       base_data.at("other").update(data.at("other"));
       package.combined_meta = base_data;
@@ -112,7 +111,6 @@ GameSubtitlePackage read_json_files_v2(const GameSubtitleDefinitionFile& file_in
       package.combined_meta = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.meta_path),
           "subtitle_meta_path");
-      package.lang_meta = package.combined_meta;
     }
     if (file_info.lines_base_path) {
       auto base_data =
@@ -123,12 +121,10 @@ GameSubtitlePackage read_json_files_v2(const GameSubtitleDefinitionFile& file_in
       auto data = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.lines_path),
           "subtitle_line_path");
-      package.lang_lines = data;
       base_data.at("cutscenes").update(data.at("cutscenes"));
       base_data.at("other").update(data.at("other"));
       base_data.at("speakers").update(data.at("speakers"));
       auto test = base_data.dump();
-      package.combined_lines = base_data;
     } else {
       package.combined_lines = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.lines_path),
@@ -154,15 +150,17 @@ void GameSubtitleDB::init_banks_from_file(const GameSubtitleDefinitionFile& file
   }
   bank->m_text_version = get_text_version_from_name(file_info.text_version);
   bank->m_file_path = file_info.lines_path;
-  const auto font = get_font_bank(file_info.text_version);
   bank->m_game_version = m_game_version;
-  // Parse the file
-  if (m_subtitle_version == SubtitleFormat::V1) {
-    const auto package = read_json_files_v1(file_info);
-    bank->add_scenes_from_files(package);
-  } else {
-    const auto package = read_json_files_v2(file_info);
-    bank->add_scenes_from_files(package);
+  try {
+    if (m_subtitle_version == SubtitleFormat::V1) {
+      const auto package = read_json_files_v1(file_info);
+      bank->add_scenes_from_files(package);
+    } else {
+      const auto package = read_json_files_v2(file_info);
+      bank->add_scenes_from_files(package);
+    }
+  } catch (std::exception& e) {
+    throw;
   }
 }
 
@@ -230,16 +228,6 @@ void GameSubtitleBank::add_scenes_from_files(const GameSubtitlePackage& package)
     auto new_scene = new_scene_from_meta(scene_name, scene_meta, package.base_lines.other);
     new_scene.is_cutscene = false;
     m_base_scenes.emplace(scene_name, new_scene);
-  }
-  for (const auto& [scene_name, scene_meta] : package.lang_meta.cutscenes) {
-    auto new_scene = new_scene_from_meta(scene_name, scene_meta, package.lang_lines.cutscenes);
-    new_scene.is_cutscene = true;
-    m_lang_scenes.emplace(scene_name, new_scene);
-  }
-  for (const auto& [scene_name, scene_meta] : package.lang_meta.other) {
-    auto new_scene = new_scene_from_meta(scene_name, scene_meta, package.lang_lines.other);
-    new_scene.is_cutscene = false;
-    m_lang_scenes.emplace(scene_name, new_scene);
   }
 }
 
@@ -353,8 +341,9 @@ GameSubtitleDB load_subtitle_project(const GameSubtitleDB::SubtitleFormat format
       db.init_banks_from_file(file);
     }
   } catch (std::runtime_error& e) {
-    // TODO - some sort of indication that loading failed!
+    // TODO - these run in gk, all exceptions must go...not reliable
     lg::error("error loading subtitle project: {}", e.what());
+    db.m_load_error = e.what();
   }
   return db;
 }

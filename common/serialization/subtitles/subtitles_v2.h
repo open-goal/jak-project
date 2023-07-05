@@ -54,16 +54,13 @@ struct SubtitleLine {
 
 // Returns the individual components of each subtitle "package":
 // - the base file
-// - the language specific file
 // - the combination of the two
-// This allows for maximum context when dumping the files back out and you want
+// This allows for more context when dumping the files back out and you want
 // to skip duplicate info
 struct GameSubtitlePackage {
   SubtitleMetadataFile base_meta;
-  SubtitleMetadataFile lang_meta;
   SubtitleMetadataFile combined_meta;
   SubtitleFile base_lines;
-  SubtitleFile lang_lines;
   SubtitleFile combined_lines;
 };
 
@@ -144,6 +141,7 @@ class GameSubtitleBank {
 class GameSubtitleDB {
  public:
   enum class SubtitleFormat { V1, V2 };
+  std::optional<std::string> m_load_error = {};
   std::map<int, std::shared_ptr<GameSubtitleBank>> m_banks;
   GameVersion m_game_version;
   SubtitleFormat m_subtitle_version = SubtitleFormat::V2;

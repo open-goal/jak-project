@@ -34,7 +34,8 @@ class SubtitleEditor {
   void draw_subtitle_options(GameSubtitleSceneInfo& scene, bool current_scene = false);
   void draw_new_scene_line_form();
 
-  bool db_loaded = false;
+  bool m_db_loaded = false;
+  bool m_db_failed_to_load = false;
   GameSubtitleDB m_subtitle_db;
   SubtitleEditorReplClient m_repl;
 

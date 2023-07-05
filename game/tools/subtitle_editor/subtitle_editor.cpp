@@ -31,14 +31,35 @@ void SubtitleEditor::draw_window() {
   ImGui::Begin("Subtitle Editor");
   // Lazily load the first time the window is displayed, NOT when the game is launched
   // why? because it takes like 1-2 seconds!
-  if (!db_loaded) {
+  if (!m_db_loaded && !m_db_failed_to_load) {
     auto subtitle_version = GameSubtitleDB::SubtitleFormat::V2;
     if (g_game_version == GameVersion::Jak1) {
       subtitle_version = GameSubtitleDB::SubtitleFormat::V1;
       m_jak1_editor_db.update();
     }
     m_subtitle_db = load_subtitle_project(subtitle_version, g_game_version);
-    db_loaded = true;
+    if (m_subtitle_db.m_load_error) {
+      m_db_failed_to_load = true;
+    } else {
+      m_db_loaded = true;
+    }
+  } else if (m_db_failed_to_load) {
+    ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
+    ImGui::Text(fmt::format("Error Loading - {}!", m_subtitle_db.m_load_error.value()).c_str());
+    ImGui::PopStyleColor();
+    if (ImGui::Button("Try Again")) {
+      auto subtitle_version = GameSubtitleDB::SubtitleFormat::V2;
+      if (g_game_version == GameVersion::Jak1) {
+        subtitle_version = GameSubtitleDB::SubtitleFormat::V1;
+        m_jak1_editor_db.update();
+      }
+      m_subtitle_db = load_subtitle_project(subtitle_version, g_game_version);
+      if (m_subtitle_db.m_load_error) {
+        m_db_failed_to_load = true;
+      } else {
+        m_db_loaded = true;
+      }
+    }
   }
 
   if (ImGui::Button("Save Changes")) {

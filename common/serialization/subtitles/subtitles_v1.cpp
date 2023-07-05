@@ -158,10 +158,8 @@ std::pair<SubtitleMetadataFile, SubtitleFile> convert_v1_to_v2(
 GameSubtitlePackage read_json_files_v1(const GameSubtitleDefinitionFile& file_info) {
   // Parse the files
   SubtitleMetadataFileV1 v1_meta_base_file;
-  SubtitleMetadataFileV1 v1_meta_lang_file;
   SubtitleMetadataFileV1 v1_meta_combined_file;
   SubtitleFileV1 v1_lines_base_file;
-  SubtitleFileV1 v1_lines_lang_file;
   SubtitleFileV1 v1_lines_combined_file;
   try {
     // If we have a base file defined, load that and merge it
@@ -174,7 +172,6 @@ GameSubtitlePackage read_json_files_v1(const GameSubtitleDefinitionFile& file_in
       auto data = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.meta_path),
           "subtitle_meta_path");
-      v1_meta_lang_file = data;
       base_data.at("cutscenes").update(data.at("cutscenes"));
       base_data.at("hints").update(data.at("hints"));
       v1_meta_combined_file = base_data;
@@ -183,7 +180,6 @@ GameSubtitlePackage read_json_files_v1(const GameSubtitleDefinitionFile& file_in
       v1_meta_combined_file = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.meta_path),
           "subtitle_meta_path");
-      v1_meta_lang_file = v1_meta_combined_file;
     }
     if (file_info.lines_base_path) {
       auto base_data =
@@ -194,7 +190,6 @@ GameSubtitlePackage read_json_files_v1(const GameSubtitleDefinitionFile& file_in
       auto data = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.lines_path),
           "subtitle_line_path");
-      v1_lines_lang_file = data;
       base_data.at("cutscenes").update(data.at("cutscenes"));
       base_data.at("hints").update(data.at("hints"));
       base_data.at("speakers").update(data.at("speakers"));
@@ -204,13 +199,10 @@ GameSubtitlePackage read_json_files_v1(const GameSubtitleDefinitionFile& file_in
       v1_lines_combined_file = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.lines_path),
           "subtitle_line_path");
-      v1_lines_lang_file = v1_lines_combined_file;
     }
     GameSubtitlePackage package;
     std::tie(package.base_meta, package.base_lines) =
         convert_v1_to_v2(file_info, v1_meta_base_file, v1_lines_base_file);
-    std::tie(package.lang_meta, package.lang_lines) =
-        convert_v1_to_v2(file_info, v1_meta_lang_file, v1_lines_lang_file);
     std::tie(package.combined_meta, package.combined_lines) =
         convert_v1_to_v2(file_info, v1_meta_combined_file, v1_lines_combined_file);
     return package;
