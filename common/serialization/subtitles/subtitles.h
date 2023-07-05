@@ -1,18 +1,9 @@
 #pragma once
 
-#include <algorithm>
-#include <map>
-#include <memory>
 #include <optional>
 #include <string>
-#include <unordered_set>
-#include <utility>
+#include <vector>
 
-#include "common/goos/Object.h"
-#include "common/log/log.h"
-#include "common/util/Assert.h"
-#include "common/util/FontUtils.h"
-#include "common/util/json_util.h"
 #include "common/versions/versions.h"
 
 struct GameSubtitleDefinitionFile {

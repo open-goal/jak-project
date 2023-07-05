@@ -1,5 +1,6 @@
 #include "subtitles_v2.h"
 
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 
 #include "subtitles_v1.h"
@@ -106,7 +107,6 @@ GameSubtitlePackage read_json_files_v2(const GameSubtitleDefinitionFile& file_in
       base_data.at("cutscenes").update(data.at("cutscenes"));
       base_data.at("other").update(data.at("other"));
       package.combined_meta = base_data;
-
     } else {
       package.combined_meta = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.meta_path),
@@ -124,12 +124,11 @@ GameSubtitlePackage read_json_files_v2(const GameSubtitleDefinitionFile& file_in
       base_data.at("cutscenes").update(data.at("cutscenes"));
       base_data.at("other").update(data.at("other"));
       base_data.at("speakers").update(data.at("speakers"));
-      auto test = base_data.dump();
+      package.combined_lines = base_data;
     } else {
       package.combined_lines = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.lines_path),
           "subtitle_line_path");
-      package.combined_lines = package.combined_lines;
     }
   } catch (std::exception& e) {
     lg::error("Unable to parse subtitle json entry, couldn't successfully load files - {}",
@@ -191,7 +190,7 @@ GameSubtitleSceneInfo GameSubtitleBank::new_scene_from_meta(
       lines_added++;
     } else if (m_speakers.find(line_meta.speaker) == m_speakers.end() ||
                relevant_lines.find(scene_name) == relevant_lines.end() ||
-               relevant_lines.at(scene_name).size() < line_idx) {
+               line_idx >= relevant_lines.at(scene_name).size()) {
       lg::warn(
           "{} Couldn't find {} in line file, or line list is too small, or speaker could not "
           "be resolved {}!",

@@ -71,10 +71,7 @@ class SubtitleEditor {
   std::string m_new_scene_name = "";
   std::string m_new_scene_id = "0";
 
-  std::string m_new_scene_group_name = "";
-
   std::string m_filter_placeholder = "Filter List...";
-
   std::optional<bool> m_files_saved_successfully = {};
 
   bool is_scene_in_current_lang(const std::string& scene_name);

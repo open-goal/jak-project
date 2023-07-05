@@ -247,7 +247,7 @@ void InputBindingGroups::assign_button_bind(u32 sdl_idx,
   // unmapped
   const auto current_binds = lookup_button_binds((PadData::ButtonIndex)bind_meta.pad_idx);
   if (buttons.find(sdl_idx) != buttons.end()) {
-    const auto& existing_binds = buttons.at(sdl_idx);
+    const auto existing_binds = buttons.at(sdl_idx);
     if (analog_button) {
       button_axii[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
     } else {

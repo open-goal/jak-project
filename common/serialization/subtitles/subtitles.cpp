@@ -7,22 +7,6 @@
 
 #include "third-party/fmt/core.h"
 
-template <typename T>
-void init_banks_from_file(const GameSubtitleDefinitionFile& file_info) {
-  // TODO - some validation
-  // Init Settings
-  std::shared_ptr<T> new_bank;
-  if (!db.bank_exists(file_info.language_id)) {
-    // database has no lang yet
-    new_bank = db.add_bank(std::make_shared<T>(file_info.language_id));
-  } else {
-    new_bank = db.bank_by_id(file_info.language_id);
-  }
-  new_bank->m_text_version = file_info.text_version;
-  new_bank->m_file_path = file_info.lines_path;
-  const auto font = get_font_bank(file_info.text_version);
-}
-
 void open_subtitle_project(const std::string& project_kind,
                            const std::string& file_path,
                            std::vector<GameSubtitleDefinitionFile>& subtitle_files) {

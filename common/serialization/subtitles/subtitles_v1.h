@@ -2,6 +2,7 @@
 
 #include "common/serialization/subtitles/subtitles.h"
 #include "common/serialization/subtitles/subtitles_v2.h"
+#include "common/util/json_util.h"
 
 struct SubtitleCutsceneLineMetadataV1 {
   int frame_start;

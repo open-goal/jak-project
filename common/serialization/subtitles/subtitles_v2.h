@@ -1,6 +1,9 @@
 #pragma once
 
 #include "common/serialization/subtitles/subtitles.h"
+#include "common/util/Assert.h"
+#include "common/util/FontUtils.h"
+#include "common/util/json_util.h"
 
 struct SubtitleLineMetadata {
   int frame_start;

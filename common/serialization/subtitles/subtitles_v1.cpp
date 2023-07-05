@@ -1,5 +1,6 @@
 #include "subtitles_v1.h"
 
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 
 #include "subtitles_v2.h"
@@ -130,7 +131,7 @@ std::pair<SubtitleMetadataFile, SubtitleFile> convert_v1_to_v2(
       } else {
         if (v1_lines_file.speakers.find(line_meta.speaker) == v1_lines_file.speakers.end() ||
             v1_lines_file.hints.find(hint_name) == v1_lines_file.hints.end() ||
-            int(v1_lines_file.hints.at(hint_name).size()) < line_idx) {
+            line_idx >= v1_lines_file.hints.at(hint_name).size()) {
           lg::warn(
               "{} Couldn't find {} in line file, or line list is too small, or speaker could not "
               "be resolved {}!",
@@ -143,7 +144,7 @@ std::pair<SubtitleMetadataFile, SubtitleFile> convert_v1_to_v2(
       }
     }
     // Verify we added the amount of lines we expected to
-    if (lines_added != int(hint_info.lines.size())) {
+    if (lines_added != hint_info.lines.size()) {
       throw std::runtime_error(
           fmt::format("Hint: '{}' has a mismatch in metadata lines vs text lines. Expected {} "
                       "only added {} lines",
@@ -193,7 +194,6 @@ GameSubtitlePackage read_json_files_v1(const GameSubtitleDefinitionFile& file_in
       base_data.at("cutscenes").update(data.at("cutscenes"));
       base_data.at("hints").update(data.at("hints"));
       base_data.at("speakers").update(data.at("speakers"));
-      auto test = base_data.dump();
       v1_lines_combined_file = base_data;
     } else {
       v1_lines_combined_file = parse_commented_json(
