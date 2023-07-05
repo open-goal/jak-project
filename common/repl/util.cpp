@@ -57,13 +57,25 @@ void Wrapper::add_to_history(const std::string& line) {
 }
 
 void Wrapper::save_history() {
-  fs::path path = file_util::get_user_config_dir() / ".opengoal.repl.history";
+  fs::path path;
+  if (repl_config.per_game_history) {
+    path = file_util::get_user_config_dir() / game_version_names[repl_config.game_version] /
+           ".opengoal.repl.history";
+  } else {
+    path = file_util::get_user_config_dir() / ".opengoal.repl.history";
+  }
   file_util::create_dir_if_needed_for_file(path.string());
   repl.history_save(path.string());
 }
 
 void Wrapper::load_history() {
-  fs::path path = file_util::get_user_config_dir() / ".opengoal.repl.history";
+  fs::path path;
+  if (repl_config.per_game_history) {
+    path = file_util::get_user_config_dir() / game_version_names[repl_config.game_version] /
+           ".opengoal.repl.history";
+  } else {
+    path = file_util::get_user_config_dir() / ".opengoal.repl.history";
+  }
   if (fs::exists(path)) {
     repl.history_load(path.string());
   } else {

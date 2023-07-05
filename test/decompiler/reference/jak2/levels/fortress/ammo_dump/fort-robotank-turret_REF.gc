@@ -769,9 +769,9 @@
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 1))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> obj root) s5-0)
     )
-  (set! (-> obj root-override pat-ignore-mask)
+  (set! (-> obj root pat-ignore-mask)
         (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
         )
   0
@@ -783,14 +783,14 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-proj-settings! fort-robotank-shot ((obj fort-robotank-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  (set! (-> obj tail-pos quad) (-> obj root-override trans quad))
+  (set! (-> obj tail-pos quad) (-> obj root trans quad))
   (set! (-> obj attack-mode) 'fort-robotank-shot)
   (set! (-> obj max-speed) 819200.0)
   (set! (-> obj move) guard-shot-move)
   (set! (-> obj update-velocity) projectile-update-velocity-space-wars)
   (set! (-> obj timeout) (seconds 0.5))
   (logior! (-> obj options) (projectile-options account-for-target-velocity))
-  (set-gravity-length (-> obj root-override dynam) 573440.0)
+  (set-gravity-length (-> obj root dynam) 573440.0)
   0
   (none)
   )
@@ -1125,7 +1125,7 @@
 ;; WARN: Return type mismatch collide-prim-core vs vector.
 (defmethod get-trans fort-robotank-turret ((obj fort-robotank-turret) (arg0 int))
   "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
-  (the-as vector (-> obj root-override root-prim prim-core))
+  (the-as vector (-> obj root root-prim prim-core))
   )
 
 ;; definition for function turret-post
@@ -1145,7 +1145,7 @@
            (los-control-method-9 (-> self los) gp-0 (the-as vector #f) 1638.4)
            )
        (if *target*
-           (look-at! (-> *target* neck) (the-as vector (-> self root-override root-prim prim-core)) 'attacking self)
+           (look-at! (-> *target* neck) (the-as vector (-> self root root-prim prim-core)) 'attacking self)
            )
        (set! (-> self aim-pos 0 quad) (-> self aim-pos-2 quad))
        (set! (-> self aim-pos-2 quad) (-> (get-trans gp-0 0) quad))
@@ -1233,7 +1233,7 @@
        )
       (else
         (send-event (handle->process (-> self reticle)) 'off)
-        (send-event (handle->process (-> self reticle)) 'update-trans-only (-> self root-override trans))
+        (send-event (handle->process (-> self reticle)) 'update-trans-only (-> self root trans))
         )
       )
     )
@@ -1257,7 +1257,7 @@
     )
   (cond
     ((logtest? (-> self flags) 64)
-     (sound-play "robotank-turret" :id (-> self turn-sound-id) :position (-> self root-override trans))
+     (sound-play "robotank-turret" :id (-> self turn-sound-id) :position (-> self root trans))
      (when (< (fabs (-> self rotate-rate)) 728.1778)
        (set! (-> self flags) (logand -65 (-> self flags)))
        (sound-stop (-> self turn-sound-id))
@@ -1275,8 +1275,8 @@
     (-> self rotate-quat)
     (* (-> self rotate-rate) (-> self clock seconds-per-frame))
     )
-  (quaternion*! (-> self root-override quat) (-> self rotate-quat) (-> self tank-quat-vibe-only))
-  (quaternion-normalize! (-> self root-override quat))
+  (quaternion*! (-> self root quat) (-> self rotate-quat) (-> self tank-quat-vibe-only))
+  (quaternion-normalize! (-> self root quat))
   (transform-post)
   (none)
   )
@@ -1334,7 +1334,7 @@
      v0-0
      )
     (('pov-cam-on)
-     (let ((v1-22 (-> (the-as collide-shape-prim-group (-> self root-override root-prim)) child 3)))
+     (let ((v1-22 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 3)))
        (set! (-> v1-22 prim-core collide-as) (collide-spec obstacle pusher))
        (set! (-> v1-22 prim-core collide-with) (collide-spec jak player-list))
        )
@@ -1342,7 +1342,7 @@
      (send-event (handle->process (-> self screen)) 'trigger)
      )
     (('pov-cam-off)
-     (let ((v1-33 (-> (the-as collide-shape-prim-group (-> self root-override root-prim)) child 3)))
+     (let ((v1-33 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 3)))
        (set! (-> v1-33 prim-core collide-as) (collide-spec))
        (set! (-> v1-33 prim-core collide-with) (collide-spec))
        )
@@ -1362,7 +1362,7 @@
      (new 'stack-no-clear 'vector)
      (let ((s5-0 (new 'stack-no-clear 'quaternion)))
        (let ((s4-0 (the-as object (-> arg3 param 2))))
-         (vector<-cspace+vector! (-> self root-override trans) (the-as cspace s4-0) (-> self offset))
+         (vector<-cspace+vector! (-> self root trans) (the-as cspace s4-0) (-> self offset))
          (matrix->quaternion s5-0 (-> (the-as cspace s4-0) bone transform))
          )
        (quaternion-copy! (-> self tank-quat) s5-0)
@@ -1378,8 +1378,8 @@
 ;; definition for method 34 of type fort-robotank-turret
 ;; INFO: Used lq/sq
 (defmethod fort-robotank-turret-method-34 fort-robotank-turret ((obj fort-robotank-turret) (arg0 vector) (arg1 float))
-  (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj root-override trans)))
-        (s3-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root-override quat)))
+  (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj root trans)))
+        (s3-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root quat)))
         (s5-0 (new 'stack-no-clear 'vector))
         )
     (set! (-> s5-0 quad) (-> s4-1 quad))
@@ -1512,9 +1512,7 @@
                 )
               (set! (-> self gun-index) (- 1 (-> self gun-index)))
               (suspend)
-              (if (< (vector-length
-                       (vector-! (new 'stack-no-clear 'vector) (-> self firing-sight-pos) (-> self root-override trans))
-                       )
+              (if (< (vector-length (vector-! (new 'stack-no-clear 'vector) (-> self firing-sight-pos) (-> self root trans)))
                      73728.0
                      )
                   (goto cfg-26)
@@ -1647,10 +1645,10 @@
       (set! (-> s2-0 backup-collide-as) (-> v1-23 prim-core collide-as))
       (set! (-> s2-0 backup-collide-with) (-> v1-23 prim-core collide-with))
       )
-    (set! (-> self root-override) s2-0)
+    (set! (-> self root) s2-0)
     )
-  (set! (-> self root-override trans quad) (-> arg0 quad))
-  (quaternion-copy! (-> self root-override quat) arg1)
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (quaternion-copy! (-> self root quat) arg1)
   (set! (-> self offset quad) (-> arg2 quad))
   (initialize-skeleton
     self
@@ -1672,9 +1670,9 @@
   (quaternion-copy! (-> self rotate-quat) arg1)
   (set! (-> self rotate-rate) 0.0)
   (set! (-> self rotate-mult) arg3)
-  (set! (-> self aim-pos 0 quad) (-> self root-override trans quad))
-  (set! (-> self aim-pos-2 quad) (-> self root-override trans quad))
-  (set! (-> self aim-pos-1 quad) (-> self root-override trans quad))
+  (set! (-> self aim-pos 0 quad) (-> self root trans quad))
+  (set! (-> self aim-pos-2 quad) (-> self root trans quad))
+  (set! (-> self aim-pos-1 quad) (-> self root trans quad))
   (set! (-> self gun-timer) (current-time))
   (set! (-> self flags) (the-as uint 0))
   (set! (-> self fov-mult) 1.0)
@@ -1685,7 +1683,7 @@
   (set! (-> self gun-joint-r 1) 6)
   (set! (-> self gun-index) 0)
   (let ((gp-1 (new 'stack-no-clear 'vector)))
-    (set! (-> gp-1 quad) (-> self root-override trans quad))
+    (set! (-> gp-1 quad) (-> self root trans quad))
     (set! (-> gp-1 z) (+ 40960.0 (-> gp-1 z)))
     (set! (-> gp-1 y) (+ 32768.0 (-> gp-1 y)))
     (set! (-> self reticle) (ppointer->handle (process-spawn fort-robotank-reticle gp-1 :to self)))
@@ -1697,9 +1695,9 @@
     (set! (-> s4-2 y) 32768.0)
     (set! (-> s4-2 z) 12288.0)
     (set! (-> s4-2 w) 0.0)
-    (let ((s5-2 (-> self root-override quat)))
+    (let ((s5-2 (-> self root quat)))
       (vector-orient-by-quat! s4-2 s4-2 s5-2)
-      (vector+! gp-2 (-> self root-override trans) s4-2)
+      (vector+! gp-2 (-> self root trans) s4-2)
       (set! (-> self screen)
             (ppointer->handle (process-spawn fort-roboscreen gp-2 s5-2 (-> self entity) :to *display-pool*))
             )

@@ -937,7 +937,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod base-turret-method-36 base-turret ((obj base-turret))
   (if (nonzero? (-> obj part))
-      (spawn (-> obj part) (-> obj root-override trans))
+      (spawn (-> obj part) (-> obj root trans))
       )
   0
   (none)
@@ -956,7 +956,7 @@
     (matrix->quaternion gp-0 s3-0)
     (quaternion-smooth-seek! (-> obj target-quat) (-> obj target-quat) gp-0 0.33)
     (let ((f0-2 (update! (-> obj smush-control))))
-      (quaternion-rotate-local-x! (-> obj root-override quat) gp-0 (* -910.2222 f0-2))
+      (quaternion-rotate-local-x! (-> obj root quat) gp-0 (* -910.2222 f0-2))
       )
     )
   0
@@ -979,7 +979,7 @@
        (set! (-> obj sound-playing 0) #f)
        )
       ((< (* 1.2 f26-0) f30-0)
-       (sound-play "drill-turret-lp" :id (-> obj sound-id 0) :position (-> obj root-override trans))
+       (sound-play "drill-turret-lp" :id (-> obj sound-id 0) :position (-> obj root trans))
        (set! (-> obj sound-playing 0) #t)
        )
       )
@@ -989,12 +989,12 @@
        (set! (-> obj sound-playing 1) #f)
        )
       ((< (* 1.2 f24-0) f28-0)
-       (sound-play "drill-turret-l2" :id (-> obj sound-id 1) :position (-> obj root-override trans))
+       (sound-play "drill-turret-l2" :id (-> obj sound-id 1) :position (-> obj root trans))
        (set! (-> obj sound-playing 1) #t)
        )
       )
     (if (and (or s5-0 s4-0) (< f30-0 f26-0) (< f28-0 f24-0))
-        (sound-play "drill-tur-stop" :position (-> obj root-override trans))
+        (sound-play "drill-tur-stop" :position (-> obj root trans))
         )
     )
   (case (-> obj path-mode)
@@ -1006,7 +1006,7 @@
        (the int (* 1524.0 (lerp-scale -0.3 0.3 (-> obj path-speed-mult) 0.0 4.0)))
        0
        (sound-group sfx)
-       (-> obj root-override trans)
+       (-> obj root trans)
        )
      (set! (-> obj sound-playing 2) #t)
      )
@@ -1028,7 +1028,7 @@
   (case arg2
     (('trans)
      (set! v0-0 (-> arg3 param 0))
-     (set! (-> (the-as vector v0-0) quad) (-> obj root-override trans quad))
+     (set! (-> (the-as vector v0-0) quad) (-> obj root trans quad))
      v0-0
      )
     (('quat)
@@ -1065,7 +1065,7 @@
 (defmethod get-trans base-turret ((obj base-turret) (arg0 int))
   "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
   (if (= arg0 1)
-      (-> obj root-override trans)
+      (-> obj root trans)
       ((method-of-type process-focusable get-trans) obj arg0)
       )
   )
@@ -1099,14 +1099,7 @@
        )
       (('touch)
        (send-event proc 'target-turret-get-off 90)
-       (send-shoves
-         (-> self root-override)
-         proc
-         (the-as touching-shapes-entry (-> event param 0))
-         0.7
-         6144.0
-         16384.0
-         )
+       (send-shoves (-> self root) proc (the-as touching-shapes-entry (-> event param 0)) 0.7 6144.0 16384.0)
        #f
        )
       (('exit)
@@ -1130,7 +1123,7 @@
     (let ((f30-0 20480.0))
       (until #f
         (when (and (and *target*
-                        (and (>= f30-0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+                        (and (>= f30-0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
                              (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
                              )
                         )
@@ -1138,7 +1131,7 @@
                         (can-display-query? self (the-as string #f) -99.0)
                         (not (focus-test? *target* in-head board mech dark))
                         (let ((f28-0 24576.0)
-                              (s4-0 (-> self root-override))
+                              (s4-0 (-> self root))
                               (s5-0 (target-pos 0))
                               )
                           (and (< f28-0
@@ -1188,7 +1181,7 @@
               (-> *target* neck)
               (vector+!
                 (new 'stack-no-clear 'vector)
-                (the-as vector (-> self root-override root-prim prim-core))
+                (the-as vector (-> self root root-prim prim-core))
                 (new 'static 'vector :y 2048.0 :w 1.0)
                 )
               'nothing-special
@@ -1206,12 +1199,12 @@
     (cond
       ((-> self enable-controls)
        (quaternion-slerp!
-         (-> self root-override quat)
-         (-> self root-override quat)
+         (-> self root quat)
+         (-> self root quat)
          (-> self init-quat)
          (* 3.0 (-> self clock seconds-per-frame))
          )
-       (quaternion-copy! (-> self target-quat) (-> self root-override quat))
+       (quaternion-copy! (-> self target-quat) (-> self root quat))
        )
       (else
         (let ((s4-0 (new 'stack-no-clear 'matrix))
@@ -1224,7 +1217,7 @@
           (matrix->quaternion gp-0 s4-0)
           (quaternion-smooth-seek! (-> self target-quat) (-> self target-quat) gp-0 0.33)
           (let ((f0-4 (update! (-> self smush-control))))
-            (quaternion-rotate-local-x! (-> self root-override quat) gp-0 (* -910.2222 f0-4))
+            (quaternion-rotate-local-x! (-> self root quat) gp-0 (* -910.2222 f0-4))
             )
           )
         )
@@ -1378,7 +1371,7 @@
     (set! (-> self focus-status) (focus-status))
     (set! (-> self red-filter-timer) 0)
     (set! (-> self ride-height) 0.0)
-    (set! (-> self roty) (y-angle (-> self root-override)))
+    (set! (-> self roty) (y-angle (-> self root)))
     (set! (-> self rotyv) 0.0)
     (set! (-> self rotx) 0.0)
     (set! (-> self rotxv) 0.0)
@@ -1387,7 +1380,7 @@
           (base-turret-method-34 self a1-1)
           )
       )
-    (let ((v1-14 (-> (the-as collide-shape-prim-group (-> self root-override root-prim)) child 1)))
+    (let ((v1-14 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 1)))
       (set! (-> v1-14 prim-core action) (collide-action solid))
       (set! (-> v1-14 prim-core collide-as) (collide-spec obstacle))
       )
@@ -1395,7 +1388,7 @@
     )
   :exit (behavior ()
     (set-filter-color! 1.0 1.0 1.0)
-    (let ((v1-3 (-> (the-as collide-shape-prim-group (-> self root-override root-prim)) child 1)))
+    (let ((v1-3 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 1)))
       (set! (-> v1-3 prim-core action) (collide-action))
       (set! (-> v1-3 prim-core collide-as) (collide-spec))
       )
@@ -1425,8 +1418,8 @@
             ((2 3 4)
              (let ((s5-0 (new 'stack-no-clear 'vector)))
                (get-point-at-percent-along-path! (-> self path) s5-0 (-> self path-u) 'interp)
-               (set! (-> self root-override trans quad) (-> s5-0 quad))
-               (set! (-> self root-override trans y) (+ (-> s5-0 y) (-> self ride-height)))
+               (set! (-> self root trans quad) (-> s5-0 quad))
+               (set! (-> self root trans y) (+ (-> s5-0 y) (-> self ride-height)))
                )
              (seek! (-> self ride-height) 2048.0 (* 2048.0 (-> self clock seconds-per-frame)))
              (set! (-> self path-u-prev) (-> self path-u))
@@ -1440,7 +1433,7 @@
                )
              (base-turret-method-38 self)
              (when (= (-> self path-u) 1.0)
-               (get-point-at-percent-along-path! (-> self path) (-> self root-override trans) 1.0 'interp)
+               (get-point-at-percent-along-path! (-> self path) (-> self root trans) 1.0 'interp)
                (let ((a1-9 (displacement-between-points-at-percent-normalized! (-> self path) (new 'stack-no-clear 'vector) 1.0)))
                  (forward-up-nopitch->quaternion (-> self init-quat) a1-9 *y-vector*)
                  )
@@ -1470,7 +1463,7 @@
             )
           )
         )
-      (set! (-> self path-old-pos quad) (-> self root-override trans quad))
+      (set! (-> self path-old-pos quad) (-> self root trans quad))
       (base-turret-method-36 self)
       (suspend)
       )
@@ -1600,7 +1593,7 @@
     )
   :trans (behavior ()
     (when (< 0.99 (vector-dot
-                    (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root-override quat))
+                    (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))
                     (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self init-quat))
                     )
              )
@@ -1627,7 +1620,7 @@
             (-> *target* neck)
             (vector+!
               (new 'stack-no-clear 'vector)
-              (the-as vector (-> self root-override root-prim prim-core))
+              (the-as vector (-> self root root-prim prim-core))
               (new 'static 'vector :y 2048.0 :w 1.0)
               )
             'nothing-special
@@ -1643,8 +1636,8 @@
     (when (= (-> self path-mode) 5)
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (get-point-at-percent-along-path! (-> self path) gp-0 1.0 'interp)
-        (set! (-> self root-override trans quad) (-> gp-0 quad))
-        (set! (-> self root-override trans y) (+ (-> gp-0 y) (-> self ride-height)))
+        (set! (-> self root trans quad) (-> gp-0 quad))
+        (set! (-> self root trans y) (+ (-> gp-0 y) (-> self ride-height)))
         )
       (seek! (-> self ride-height) 0.0 (* 2048.0 (-> self clock seconds-per-frame)))
       )
@@ -1728,14 +1721,7 @@
        )
       (('touch)
        (send-event proc 'target-turret-get-off 90)
-       (send-shoves
-         (-> self root-override)
-         proc
-         (the-as touching-shapes-entry (-> event param 0))
-         0.7
-         6144.0
-         16384.0
-         )
+       (send-shoves (-> self root) proc (the-as touching-shapes-entry (-> event param 0)) 0.7 6144.0 16384.0)
        #f
        )
       (('exit)
@@ -1786,13 +1772,13 @@
         )
       (send-event-function (handle->process (-> self rider)) a1-1)
       )
-    (let ((v1-17 (-> self root-override root-prim)))
+    (let ((v1-17 (-> self root root-prim)))
       (set! (-> v1-17 prim-core collide-as) (collide-spec))
       (set! (-> v1-17 prim-core collide-with) (collide-spec))
       )
     0
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (sound-play "turret-die" :position (-> self root-override trans))
+    (sound-play "turret-die" :position (-> self root trans))
     (let ((gp-2 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
       (process-spawn
         joint-exploder
@@ -1804,7 +1790,7 @@
         )
       )
     (let ((gp-3 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-3 quad) (-> self root-override trans quad))
+      (set! (-> gp-3 quad) (-> self root trans quad))
       (set! (-> gp-3 y) (+ 8192.0 (-> gp-3 y)))
       (let ((s5-2 (get-process *default-dead-pool* part-tracker #x4000)))
         (when s5-2
@@ -1855,7 +1841,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod base-turret-method-47 base-turret ((obj base-turret))
   (with-pp
-    (let ((a0-1 (-> obj root-override trans))
+    (let ((a0-1 (-> obj root trans))
           (f30-0 0.0)
           (s4-0 (the-as process-drawable #f))
           )
@@ -1886,7 +1872,7 @@
                            (!= s2-1 *target*)
                            (base-turret-method-46 obj s2-1)
                            )
-                  (let ((f0-1 (vector-vector-xz-distance (-> obj root-override trans) (-> s2-1 root trans))))
+                  (let ((f0-1 (vector-vector-xz-distance (-> obj root trans) (-> s2-1 root trans))))
                     (when (or (not s4-0) (< f0-1 f30-0))
                       (set! s4-0 s2-1)
                       (set! f30-0 f0-1)
@@ -1907,12 +1893,12 @@
             (set! (-> s5-1 w) 1.0)
             (let ((s1-1 (new 'stack-no-clear 'vector))
                   (s3-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 12)))
-                  (s2-2 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root-override quat)))
+                  (s2-2 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root quat)))
                   )
               (vector-matrix*! s5-1 s5-1 (-> (the-as process-focusable s4-0) node-list data 0 bone transform))
               (vector-line-distance-point! s5-1 s3-1 (vector+float*! (new 'stack-no-clear 'vector) s3-1 s2-2 4096.0) s1-1)
               (let* ((a1-10 (vector-! (new 'stack-no-clear 'vector) s5-1 s1-1))
-                     (s4-1 (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) a1-10 (-> obj root-override quat)))
+                     (s4-1 (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) a1-10 (-> obj root quat)))
                      (f30-1 (vector-vector-angle-safe s2-2 (vector-! (new 'stack-no-clear 'vector) s5-1 s3-1)))
                      )
                 (let ((f0-10 (- (atan (-> s4-1 x) (-> s4-1 y)))))
@@ -1935,7 +1921,7 @@
               )
             (seek!
               (-> obj arrow-red)
-              (lerp-scale 1.0 0.0 (vector-vector-distance s5-1 (-> obj root-override trans)) 122880.0 245760.0)
+              (lerp-scale 1.0 0.0 (vector-vector-distance s5-1 (-> obj root trans)) 122880.0 245760.0)
               (-> pp clock seconds-per-frame)
               )
             )
@@ -1954,7 +1940,7 @@
 ;; definition for method 43 of type base-turret
 ;; WARN: Return type mismatch int vs none.
 (defmethod base-turret-method-43 base-turret ((obj base-turret))
-  (set! (-> obj roty) (y-angle (-> obj root-override)))
+  (set! (-> obj roty) (y-angle (-> obj root)))
   (set! (-> obj rotyv) 0.0)
   (set! (-> obj rotyvv) 0.0)
   (set! (-> obj rotx) 0.0)
@@ -1999,15 +1985,15 @@
       (set! (-> s3-0 backup-collide-as) (-> v1-19 prim-core collide-as))
       (set! (-> s3-0 backup-collide-with) (-> v1-19 prim-core collide-with))
       )
-    (set! (-> obj root-override) s3-0)
+    (set! (-> obj root) s3-0)
     )
   (when arg0
     (process-drawable-from-entity! obj arg0)
-    (set-yaw-angle-clear-roll-pitch! (-> obj root-override) (res-lump-float arg0 'rotoffset))
+    (set-yaw-angle-clear-roll-pitch! (-> obj root) (res-lump-float arg0 'rotoffset))
     )
   (when arg1
-    (set! (-> obj root-override trans quad) (-> arg1 vector 0 quad))
-    (quaternion-copy! (-> obj root-override quat) (the-as quaternion (-> arg1 vector 1)))
+    (set! (-> obj root trans quad) (-> arg1 vector 0 quad))
+    (quaternion-copy! (-> obj root quat) (the-as quaternion (-> arg1 vector 1)))
     )
   (initialize-skeleton
     obj
@@ -2021,13 +2007,7 @@
         (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
         )
   (if (-> obj entity)
-      (move-to-ground
-        (the-as collide-shape-moving (-> obj root-override))
-        40960.0
-        40960.0
-        #t
-        (collide-spec backgnd)
-        )
+      (move-to-ground (the-as collide-shape-moving (-> obj root)) 40960.0 40960.0 #t (collide-spec backgnd))
       )
   (set-zero! (-> obj smush-control))
   (set! (-> obj hud) (the-as handle #f))
@@ -2073,12 +2053,12 @@
     (logior! (-> s5-1 flags) (path-control-flag display draw-line draw-point draw-text))
     )
   (when (not (logtest? (-> obj path flags) (path-control-flag not-found)))
-    (get-point-at-percent-along-path! (-> obj path) (-> obj root-override trans) 0.0 'interp)
-    (set! (-> obj path-old-pos quad) (-> obj root-override trans quad))
+    (get-point-at-percent-along-path! (-> obj path) (-> obj root trans) 0.0 'interp)
+    (set! (-> obj path-old-pos quad) (-> obj root trans quad))
     )
   (set! (-> obj path-speed-mult) 1.0)
   (quaternion-copy! (-> obj target-quat) *unity-quaternion*)
-  (quaternion-copy! (-> obj init-quat) (-> obj root-override quat))
+  (quaternion-copy! (-> obj init-quat) (-> obj root quat))
   (set! (-> obj gun-index) 0)
   (set! (-> obj shot-timeout) (seconds 0.667))
   (set! (-> obj gun-recoil-jmod 0) (new 'process 'joint-mod-add-local obj 5 #t #f #f))
@@ -2109,7 +2089,7 @@
 (defmethod base-turret-method-41 base-turret ((obj base-turret) (arg0 vector))
   (local-vars (sv-592 int))
   (let* ((s3-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj init-quat)))
-         (s1-0 (-> obj root-override trans))
+         (s1-0 (-> obj root trans))
          (s5-0 (new 'stack-no-clear 'vector))
          (s2-0 (new 'stack 'collide-query))
          (s0-0 8)
@@ -2129,7 +2109,7 @@
         (set! (-> v1-9 collide-with) (collide-spec backgnd))
         (set! (-> v1-9 ignore-process0) obj)
         (set! (-> v1-9 ignore-process1) #f)
-        (set! (-> v1-9 ignore-pat) (-> obj root-override pat-ignore-mask))
+        (set! (-> v1-9 ignore-pat) (-> obj root pat-ignore-mask))
         (set! (-> v1-9 action-mask) (collide-action solid))
         )
       (when (>= (fill-and-probe-using-line-sphere *collide-cache* s2-0) 0.0)
@@ -2214,7 +2194,7 @@
       (let ((s3-0 (new 'static 'array int32 4 5 11 7 9))
             (s4-0 (* (-> obj gun-index) 2))
             (s2-0 (+ (* (-> obj gun-index) 2) 1))
-            (s5-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root-override quat)))
+            (s5-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root quat)))
             )
         (set-recoil (the-as joint-mod (-> obj gun-recoil-jmod s4-0)) -819.2 arg1)
         (set-recoil (the-as joint-mod (-> obj gun-recoil-jmod s2-0)) 819.2 arg1)
@@ -2558,14 +2538,12 @@ This commonly includes things such as:
       )
     (let ((v1-2 (handle->process (-> self turret handle))))
       (if v1-2
-          (quaternion<-rotate-y-vector
-            (-> self control dir-targ)
-            (vector-!
-              (new 'stack-no-clear 'vector)
-              (-> (the-as process-focusable v1-2) root-override trans)
-              (-> self control trans)
-              )
-            )
+          (quaternion<-rotate-y-vector (-> self control dir-targ) (vector-!
+                                                                    (new 'stack-no-clear 'vector)
+                                                                    (-> (the-as process-focusable v1-2) root trans)
+                                                                    (-> self control trans)
+                                                                    )
+                                       )
           )
       )
     (set! (-> self control unknown-handle02) (-> self turret handle))
@@ -2639,7 +2617,7 @@ This commonly includes things such as:
           (new 'static 'vector :z -10649.6 :w 1.0)
           (-> (the-as process-focusable s5-0) node-list data 0 bone transform)
           )
-        (set! (-> self control unknown-vector40 quad) (-> (the-as process-focusable s5-0) root-override quat quad))
+        (set! (-> self control unknown-vector40 quad) (-> (the-as process-focusable s5-0) root quat quad))
         )
       )
     (set! (-> self alt-cam-pos quad) (-> self control camera-pos quad))
@@ -2657,7 +2635,7 @@ This commonly includes things such as:
                         )
                  )
             (if a0-39
-                (set! (-> self alt-cam-pos quad) (-> (the-as process-focusable a0-39) root-override trans quad))
+                (set! (-> self alt-cam-pos quad) (-> (the-as process-focusable a0-39) root trans quad))
                 )
             )
           (vector-lerp!

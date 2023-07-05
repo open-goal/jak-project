@@ -107,18 +107,17 @@
   )
 
 (defmacro ppointer->process (ppointer)
-  ;; convert a (pointer process) to a process.
+  "convert a (pointer process) to a process."
   ;; this uses the self field, which seems to always just get set to the object.
-  ;; perhaps when deleting a process you could have it set self to #f?
-  ;; I don't see this happen anywhere though, so it's not clear.
+  ;; confirmed in Jak 1 that using self here is useless, not sure...
   `(let ((the-pp ,ppointer))
-     (the process-tree (if the-pp (-> the-pp 0 self)))
+     (if the-pp (-> the-pp 0 self))
      )
   )
 
 (defmacro process->ppointer (proc)
   "safely get a (pointer process) from a process, returning #f if invalid."
-  `(let ((the-proc (the-as process ,proc)))
+  `(let ((the-proc ,proc))
      (if the-proc (-> the-proc ppointer))
      )
   )
@@ -130,7 +129,8 @@
   )
 
 (defmacro process->handle (proc)
-  `(ppointer->handle (process->ppointer ,proc))
+  "convert a process to a handle. if proc is #f, returns a #f handle."
+  `(ppointer->handle (process->ppointer (the-as process ,proc)))
   )
 
 
