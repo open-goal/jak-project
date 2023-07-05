@@ -14,7 +14,7 @@
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_stdlib.h"
 
-SubtitleEditor::SubtitleEditor() : m_repl(8181) {
+SubtitleEditor::SubtitleEditor() {
   m_filter_cutscenes = m_filter_placeholder;
   m_filter_non_cutscenes = m_filter_placeholder;
 }
@@ -219,8 +219,7 @@ void SubtitleEditor::draw_scene_section_header(const bool non_cutscenes) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
       ImGui::Text("Scene already exists with that name, no!");
       ImGui::PopStyleColor();
-    }
-    if (!is_scene_in_current_lang(m_new_scene_name) && !m_new_scene_name.empty()) {
+    } else if (!m_new_scene_name.empty()) {
       if (ImGui::Button("Add Scene")) {
         GameSubtitleSceneInfo new_scene;
         new_scene.is_cutscene = !non_cutscenes;
@@ -234,6 +233,7 @@ void SubtitleEditor::draw_scene_section_header(const bool non_cutscenes) {
       }
       ImGui::NewLine();
     }
+    ImGui::TreePop();
   }
 }
 
@@ -332,12 +332,18 @@ void SubtitleEditor::draw_all_non_cutscenes(bool base_cutscenes) {
 std::string SubtitleEditor::subtitle_line_summary(const SubtitleLine& line,
                                                   const SubtitleLineMetadata& line_meta) {
   // Truncate the text if it's too long, it's supposed to just be a summary at a glance
-  std::string truncated_text = "";
+  std::string line_text = "";
   if (!line.text.empty()) {
     if (m_truncate_summaries && line.text.size() > 30) {
-      truncated_text = line.text.substr(0, 30) + "...";
+      line_text = line.text.substr(0, 30) + "...";
     } else {
-      truncated_text = line.text;
+      line_text = line.text;
+    }
+  } else {
+    if (is_v1_format()) {
+      line_text = "Clear Screen";
+    } else if (line_meta.merge) {
+      line_text = "<Merge>";
     }
   }
   // Append important info about the frame / speaker to the front
@@ -345,14 +351,17 @@ std::string SubtitleEditor::subtitle_line_summary(const SubtitleLine& line,
   // V1
   if (is_v1_format()) {
     if (line.text.empty()) {
-      info_header += "] Clear Screen ";
-      return info_header;
+      return fmt::format("{}] {}", info_header, line_text);
     }
-    return info_header + fmt::format("] {} - '{}'", line_meta.speaker, truncated_text);
+    return fmt::format("{}] {} - '{}'", info_header, line_meta.speaker, line_text);
   }
   // V2
-  return info_header +
-         fmt::format("-{}] {} - '{}'", line_meta.frame_end, line_meta.speaker, truncated_text);
+  if (line_meta.merge) {
+    return fmt::format("{}-{}] {} - {}", info_header, line_meta.frame_end, line_meta.speaker,
+                       line_text);
+  }
+  return fmt::format("{}-{}] {} - '{}'", info_header, line_meta.frame_end, line_meta.speaker,
+                     line_text);
 }
 
 void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool current_scene) {

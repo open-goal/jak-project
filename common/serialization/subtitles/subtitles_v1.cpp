@@ -213,9 +213,9 @@ GameSubtitlePackage read_json_files_v1(const GameSubtitleDefinitionFile& file_in
   }
 }
 
-SubtitleMetadataFileV1 dump_bank_meta_v1(std::shared_ptr<GameSubtitleBank> bank) {
+SubtitleMetadataFileV1 dump_bank_meta_v1(const GameVersion game_version,
+                                         std::shared_ptr<GameSubtitleBank> bank) {
   auto meta_file = SubtitleMetadataFileV1();
-  auto font = get_font_bank(bank->m_text_version);
   for (const auto& [scene_name, scene_info] : bank->m_scenes) {
     // Avoid dumping duplicates
     if (bank->m_base_scenes.find(scene_name) != bank->m_base_scenes.end() &&
@@ -257,9 +257,10 @@ SubtitleMetadataFileV1 dump_bank_meta_v1(std::shared_ptr<GameSubtitleBank> bank)
   return meta_file;
 }
 
-SubtitleFileV1 dump_bank_lines_v1(std::shared_ptr<GameSubtitleBank> bank) {
+SubtitleFileV1 dump_bank_lines_v1(const GameVersion game_version,
+                                  std::shared_ptr<GameSubtitleBank> bank) {
   const auto dump_with_duplicates =
-      dump_language_with_duplicates_from_base(bank->m_game_version, bank->m_lang_id);
+      dump_language_with_duplicates_from_base(game_version, bank->m_lang_id);
   SubtitleFileV1 file;
   file.speakers = bank->m_speakers;
   for (const auto& [scene_name, scene_info] : bank->m_scenes) {

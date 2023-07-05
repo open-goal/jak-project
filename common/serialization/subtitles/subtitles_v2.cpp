@@ -150,7 +150,6 @@ void GameSubtitleDB::init_banks_from_file(const GameSubtitleDefinitionFile& file
   }
   bank->m_text_version = get_text_version_from_name(file_info.text_version);
   bank->m_file_path = file_info.lines_path;
-  bank->m_game_version = m_game_version;
   try {
     if (m_subtitle_version == SubtitleFormat::V1) {
       const auto package = read_json_files_v1(file_info);
@@ -158,6 +157,7 @@ void GameSubtitleDB::init_banks_from_file(const GameSubtitleDefinitionFile& file
     } else {
       const auto package = read_json_files_v2(file_info);
       bank->add_scenes_from_files(package);
+      bank->m_speakers.emplace("none", "none");
     }
   } catch (std::exception& e) {
     throw;
@@ -174,11 +174,18 @@ GameSubtitleSceneInfo GameSubtitleBank::new_scene_from_meta(
   int line_idx = 0;
   int lines_added = 0;
   for (const auto& line_meta : scene_meta.lines) {
-    // Caveat from v1, v2 doesn't have a clear-screen concept
-    if (relevant_lines.find(scene_name) != relevant_lines.end() &&
-        relevant_lines.at(scene_name).size() > line_idx &&
-        relevant_lines.at(scene_name).at(line_idx).empty()) {
-      new_scene.m_lines.push_back({relevant_lines.at(scene_name).at(line_idx), line_meta});
+    // In V1, there was a concept of a "clear" line, you don't have to specify these in the "lines"
+    // file as they are just blank lines.
+    //
+    // In V2, there are no longer "clear" lines, but there are lines that are "merged" which
+    // essentially inherit the text from the base game (since Jak 2+ actually has subtitles!)
+    //
+    // In either case, we acknowledge that there is a line, but there is no text to retrieve at that
+    // index.
+    if (line_meta.merge || (relevant_lines.find(scene_name) != relevant_lines.end() &&
+                            relevant_lines.at(scene_name).size() > line_idx &&
+                            relevant_lines.at(scene_name).at(line_idx).empty())) {
+      new_scene.m_lines.push_back({"", line_meta});
       lines_added++;
     } else if (m_speakers.find(line_meta.speaker) == m_speakers.end() ||
                relevant_lines.find(scene_name) == relevant_lines.end() ||
@@ -204,7 +211,6 @@ GameSubtitleSceneInfo GameSubtitleBank::new_scene_from_meta(
 }
 
 void GameSubtitleBank::add_scenes_from_files(const GameSubtitlePackage& package) {
-  // TODO - cleanup this duplication
   // Set speaker map
   m_speakers = package.combined_lines.speakers;
   // Iterate through the metadata file as blank lines are now omitted from the lines file now
@@ -232,11 +238,6 @@ void GameSubtitleBank::add_scenes_from_files(const GameSubtitlePackage& package)
 }
 
 u16 GameSubtitleBank::speaker_enum_value_from_name(const std::string& speaker_id) {
-  if (m_game_version != GameVersion::Jak2) {
-    throw std::runtime_error(
-        "Speaker lookup is not yet implemented for anything other than jak 2 for the v2 subtitle "
-        "format!");
-  }
   if (jak2_speaker_name_to_enum_val.find(speaker_id) == jak2_speaker_name_to_enum_val.end()) {
     throw std::runtime_error(fmt::format(
         "'{}' speaker could not be found in the enum value mapping, update it!", speaker_id));
@@ -245,11 +246,6 @@ u16 GameSubtitleBank::speaker_enum_value_from_name(const std::string& speaker_id
 }
 
 bool GameSubtitleBank::is_valid_speaker_id(const std::string& speaker_id) {
-  if (m_game_version != GameVersion::Jak2) {
-    throw std::runtime_error(
-        "Speaker lookup is not yet implemented for anything other than jak 2 for the v2 subtitle "
-        "format!");
-  }
   if (jak2_speaker_name_to_enum_val.find(speaker_id) == jak2_speaker_name_to_enum_val.end()) {
     throw std::runtime_error(fmt::format(
         "'{}' speaker_id is not valid or is not yet wired up end-to-end, update it!", speaker_id));
@@ -276,8 +272,15 @@ SubtitleMetadataFile dump_bank_meta_v2(std::shared_ptr<GameSubtitleBank> bank) {
 SubtitleFile dump_bank_lines_v2(std::shared_ptr<GameSubtitleBank> bank) {
   SubtitleFile file;
   file.speakers = bank->m_speakers;
+  if (file.speakers.find("none") != file.speakers.end()) {
+    file.speakers.erase("none");
+  }
   for (const auto& [scene_name, scene_info] : bank->m_scenes) {
     for (const auto& scene_line : scene_info.m_lines) {
+      // Skip merged lines
+      if (scene_line.metadata.merge) {
+        continue;
+      }
       if (scene_info.is_cutscene) {
         file.cutscenes[scene_name].push_back(scene_line.text);
       } else {
@@ -293,7 +296,7 @@ bool GameSubtitleDB::write_subtitle_db_to_files(const GameVersion game_version) 
     for (const auto& [language_id, bank] : m_banks) {
       json meta_file;
       if (m_subtitle_version == SubtitleFormat::V1) {
-        meta_file = dump_bank_meta_v1(bank);
+        meta_file = dump_bank_meta_v1(game_version, bank);
 
       } else {
         meta_file = dump_bank_meta_v2(bank);
@@ -307,7 +310,7 @@ bool GameSubtitleDB::write_subtitle_db_to_files(const GameVersion game_version) 
       // Now dump the actual subtitle lines
       json lines_file;
       if (m_subtitle_version == SubtitleFormat::V1) {
-        lines_file = dump_bank_lines_v1(bank);
+        lines_file = dump_bank_lines_v1(game_version, bank);
       } else {
         lines_file = dump_bank_lines_v2(bank);
       }
@@ -329,14 +332,13 @@ GameSubtitleDB load_subtitle_project(const GameSubtitleDB::SubtitleFormat format
                                      const GameVersion game_version) {
   // Load the subtitle files
   GameSubtitleDB db;
-  db.m_game_version = game_version;
   db.m_subtitle_version = format_version;
   try {
     std::vector<GameSubtitleDefinitionFile> files;
     std::string subtitle_project = (file_util::get_jak_project_dir() / "game" / "assets" /
                                     version_to_game_name(game_version) / "game_subtitle.gp")
                                        .string();
-    open_subtitle_project("subtitle", subtitle_project, files);
+    open_subtitle_project("subtitle-v2", subtitle_project, files);
     for (auto& file : files) {
       db.init_banks_from_file(file);
     }

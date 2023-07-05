@@ -114,7 +114,6 @@ class GameSubtitleBank {
   GameSubtitleBank(const int lang_id) : m_lang_id(lang_id) {}
 
   int m_lang_id;
-  GameVersion m_game_version;
   GameTextVersion m_text_version;
   std::string m_file_path;
 
@@ -143,7 +142,6 @@ class GameSubtitleDB {
   enum class SubtitleFormat { V1, V2 };
   std::optional<std::string> m_load_error = {};
   std::map<int, std::shared_ptr<GameSubtitleBank>> m_banks;
-  GameVersion m_game_version;
   SubtitleFormat m_subtitle_version = SubtitleFormat::V2;
 
   bool bank_exists(int id) const { return m_banks.find(id) != m_banks.end(); }

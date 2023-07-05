@@ -179,13 +179,13 @@ void compile_subtitles_v2(GameSubtitleDB& db, const std::string& output_prefix) 
       for (auto& line : scene.m_lines) {
         gen.add_word_float(static_cast<float>(line.metadata.frame_start));  // start frame
         gen.add_word_float(static_cast<float>(line.metadata.frame_end));    // end frame
-        if (!line.metadata.merge) {
+        if (line.metadata.merge) {
+          gen.add_symbol_link("#f");
+        } else {
           // NOTE - the convert_utf8_to_game function is really really slow (about 80-90% of the
           // time loading the text files)
           // TODO - improve that as a follow up sometime in the future
           gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(line.text));  // line text
-        } else {
-          gen.add_symbol_link("#f");
         }
         u16 speaker = bank->speaker_enum_value_from_name(line.metadata.speaker);
         u16 flags = 0;

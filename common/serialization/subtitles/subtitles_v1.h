@@ -47,5 +47,7 @@ void from_json(const json& j, SubtitleFileV1& obj);
 //
 // Returns the full file pair, then the base pair
 GameSubtitlePackage read_json_files_v1(const GameSubtitleDefinitionFile& file_info);
-SubtitleMetadataFileV1 dump_bank_meta_v1(std::shared_ptr<GameSubtitleBank> bank);
-SubtitleFileV1 dump_bank_lines_v1(std::shared_ptr<GameSubtitleBank> bank);
+SubtitleMetadataFileV1 dump_bank_meta_v1(const GameVersion game_version,
+                                         std::shared_ptr<GameSubtitleBank> bank);
+SubtitleFileV1 dump_bank_lines_v1(const GameVersion game_version,
+                                  std::shared_ptr<GameSubtitleBank> bank);
