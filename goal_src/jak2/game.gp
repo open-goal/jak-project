@@ -251,6 +251,8 @@
 (cgo-file "portwall.gd" common-dep)
 ;; demo
 (cgo-file "demo.gd" common-dep)
+;; test
+(cgo-file "halfpipe.gd" common-dep)
 ;; scene borrow packages
 (cgo-file "lerltess.gd" common-dep)
 (cgo-file "lsamergd.gd" common-dep)
@@ -268,8 +270,6 @@
 (cgo-file "lguard.gd" common-dep)
 (cgo-file "lerbrngd.gd" common-dep)
 (cgo-file "lyskdcd.gd" common-dep)
-;; test
-(cgo-file "halfpipe.gd" common-dep)
 
 ;; test levels from the ps3 version
 (when USE_PS3_LEVELS
