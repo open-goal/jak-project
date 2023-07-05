@@ -344,7 +344,8 @@ bool GameSubtitleDB::write_subtitle_db_to_files(const GameVersion game_version) 
 }
 
 GameSubtitleDB load_subtitle_project(const GameSubtitleDB::SubtitleFormat format_version,
-                                     const GameVersion game_version) {
+                                     const GameVersion game_version,
+                                     const bool ignore_base_files) {
   // Load the subtitle files
   GameSubtitleDB db;
   db.m_subtitle_version = format_version;
@@ -353,7 +354,7 @@ GameSubtitleDB load_subtitle_project(const GameSubtitleDB::SubtitleFormat format
     std::string subtitle_project = (file_util::get_jak_project_dir() / "game" / "assets" /
                                     version_to_game_name(game_version) / "game_subtitle.gp")
                                        .string();
-    open_subtitle_project("subtitle-v2", subtitle_project, files);
+    open_subtitle_project("subtitle-v2", subtitle_project, files, ignore_base_files);
     for (auto& file : files) {
       db.init_banks_from_file(file);
     }

@@ -24,7 +24,8 @@ bool SubtitleEditor::is_v1_format() {
 }
 
 bool SubtitleEditor::is_scene_in_current_lang(const std::string& scene_name) {
-  return m_subtitle_db.m_banks.at(m_current_language)->m_scenes.count(scene_name) > 0;
+  return m_subtitle_db.m_banks.at(m_current_language)->m_scenes.find(scene_name) !=
+         m_subtitle_db.m_banks.at(m_current_language)->m_scenes.end();
 }
 
 void SubtitleEditor::draw_window() {
@@ -36,7 +37,7 @@ void SubtitleEditor::draw_window() {
       subtitle_version = GameSubtitleDB::SubtitleFormat::V1;
       m_jak1_editor_db.update();
     }
-    m_subtitle_db = load_subtitle_project(subtitle_version, g_game_version);
+    m_subtitle_db = load_subtitle_project(subtitle_version, g_game_version, true);
     if (m_subtitle_db.m_load_error) {
       m_db_failed_to_load = true;
     } else {
@@ -52,7 +53,7 @@ void SubtitleEditor::draw_window() {
         subtitle_version = GameSubtitleDB::SubtitleFormat::V1;
         m_jak1_editor_db.update();
       }
-      m_subtitle_db = load_subtitle_project(subtitle_version, g_game_version);
+      m_subtitle_db = load_subtitle_project(subtitle_version, g_game_version, true);
       if (m_subtitle_db.m_load_error) {
         m_db_failed_to_load = true;
       } else {

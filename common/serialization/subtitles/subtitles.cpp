@@ -9,7 +9,8 @@
 
 void open_subtitle_project(const std::string& project_kind,
                            const std::string& file_path,
-                           std::vector<GameSubtitleDefinitionFile>& subtitle_files) {
+                           std::vector<GameSubtitleDefinitionFile>& subtitle_files,
+                           const bool ignore_base_files) {
   goos::Reader reader;
   auto& proj = reader.read_from_file({file_path}).as_pair()->cdr.as_pair()->car;
   if (!proj.is_pair() || !proj.as_pair()->car.is_symbol() ||
@@ -36,9 +37,9 @@ void open_subtitle_project(const std::string& project_kind,
             new_file.lines_path = args->car.as_string()->data;
           } else if (kwarg == ":meta") {
             new_file.meta_path = args->car.as_string()->data;
-          } else if (kwarg == ":lines-base") {
+          } else if (!ignore_base_files && kwarg == ":lines-base") {
             new_file.lines_base_path = args->car.as_string()->data;
-          } else if (kwarg == ":meta-base") {
+          } else if (!ignore_base_files && kwarg == ":meta-base") {
             new_file.meta_base_path = args->car.as_string()->data;
           }
           if (args->cdr.is_empty_list()) {

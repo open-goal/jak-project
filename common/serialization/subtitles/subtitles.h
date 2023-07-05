@@ -17,7 +17,8 @@ struct GameSubtitleDefinitionFile {
 
 void open_subtitle_project(const std::string& project_kind,
                            const std::string& file_path,
-                           std::vector<GameSubtitleDefinitionFile>& inputs);
+                           std::vector<GameSubtitleDefinitionFile>& inputs,
+                           const bool ignore_base_files = false);
 std::string lookup_locale_code(const GameVersion game_version, const int language_id);
 // Languages that have audio tracks are not translated via Crowdin, therefore they must have
 // a copy of the scenes from their base english counterpart no matter what (so it can be

@@ -165,4 +165,5 @@ class GameSubtitleDB {
 };
 
 GameSubtitleDB load_subtitle_project(const GameSubtitleDB::SubtitleFormat format_version,
-                                     GameVersion game_version);
+                                     GameVersion game_version,
+                                     const bool ignore_base_files = false);
