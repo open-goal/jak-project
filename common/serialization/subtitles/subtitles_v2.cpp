@@ -52,8 +52,8 @@ void from_json(const json& j, SubtitleFile& obj) {
   json_deserialize_if_exists(other);
 }
 
-// matches enum in `subtitle2.gc` with "none" (first) and "max" (last) removed
-const std::unordered_map<std::string, int> jak2_speaker_name_to_enum_val = {
+// matches enum in `subtitle2.gc` with "none" (first) and "max" (last and removed)
+const std::unordered_map<std::string, u16> jak2_speaker_name_to_enum_val = {
     {"none", 0},
     {"computer", 1},
     {"jak", 2},
@@ -153,11 +153,13 @@ void GameSubtitleDB::init_banks_from_file(const GameSubtitleDefinitionFile& file
   try {
     if (m_subtitle_version == SubtitleFormat::V1) {
       const auto package = read_json_files_v1(file_info);
+      bank->m_speakers = package.combined_lines.speakers;
       bank->add_scenes_from_files(package);
     } else {
       const auto package = read_json_files_v2(file_info);
-      bank->add_scenes_from_files(package);
+      bank->m_speakers = package.combined_lines.speakers;
       bank->m_speakers.emplace("none", "none");
+      bank->add_scenes_from_files(package);
     }
   } catch (std::exception& e) {
     throw;
@@ -211,8 +213,6 @@ GameSubtitleSceneInfo GameSubtitleBank::new_scene_from_meta(
 }
 
 void GameSubtitleBank::add_scenes_from_files(const GameSubtitlePackage& package) {
-  // Set speaker map
-  m_speakers = package.combined_lines.speakers;
   // Iterate through the metadata file as blank lines are now omitted from the lines file now
   for (const auto& [scene_name, scene_meta] : package.combined_meta.cutscenes) {
     auto new_scene = new_scene_from_meta(scene_name, scene_meta, package.combined_lines.cutscenes);
@@ -237,20 +237,36 @@ void GameSubtitleBank::add_scenes_from_files(const GameSubtitlePackage& package)
   }
 }
 
-u16 GameSubtitleBank::speaker_enum_value_from_name(const std::string& speaker_id) {
-  if (jak2_speaker_name_to_enum_val.find(speaker_id) == jak2_speaker_name_to_enum_val.end()) {
-    throw std::runtime_error(fmt::format(
-        "'{}' speaker could not be found in the enum value mapping, update it!", speaker_id));
+// TODO - for jak 3+, this needs some game version context info (could infer from text version)
+std::vector<std::string> GameSubtitleBank::speaker_names_ordered_by_enum_value() {
+  // Create a temporary vector of pairs (key, value)
+  std::vector<std::pair<std::string, u16>> temp_vec(jak2_speaker_name_to_enum_val.begin(),
+                                                    jak2_speaker_name_to_enum_val.end());
+  // Sort the temporary vector based on the enum value in ascending order
+  std::sort(temp_vec.begin(), temp_vec.end(),
+            [](const auto& a, const auto& b) { return a.second < b.second; });
+  // Extract the sorted keys into a new vector
+  std::vector<std::string> sorted_names;
+  sorted_names.reserve(temp_vec.size());
+  for (const auto& pair : temp_vec) {
+    if (pair.second == 0) {
+      // we write #f for invalid entries, including the "none" at the start
+      sorted_names.push_back("#f");
+    } else {
+      sorted_names.push_back(m_speakers.at(pair.first));
+    }
   }
-  return u16(jak2_speaker_name_to_enum_val.at(speaker_id));
+  return sorted_names;
 }
 
-bool GameSubtitleBank::is_valid_speaker_id(const std::string& speaker_id) {
+u16 GameSubtitleBank::speaker_enum_value_from_name(const std::string& speaker_id) {
   if (jak2_speaker_name_to_enum_val.find(speaker_id) == jak2_speaker_name_to_enum_val.end()) {
-    throw std::runtime_error(fmt::format(
-        "'{}' speaker_id is not valid or is not yet wired up end-to-end, update it!", speaker_id));
+    throw std::runtime_error(
+        fmt::format("'{}' speaker could not be found in the enum value mapping, update it or fix "
+                    "the invalid speaker!",
+                    speaker_id));
   }
-  return true;
+  return u16(jak2_speaker_name_to_enum_val.at(speaker_id));
 }
 
 SubtitleMetadataFile dump_bank_meta_v2(std::shared_ptr<GameSubtitleBank> bank) {

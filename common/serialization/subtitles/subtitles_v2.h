@@ -129,8 +129,8 @@ class GameSubtitleBank {
   void add_scenes_from_files(const GameSubtitlePackage& package);
 
   std::unordered_map<std::string, std::string> m_speakers;
+  std::vector<std::string> speaker_names_ordered_by_enum_value();
   u16 speaker_enum_value_from_name(const std::string& speaker_id);
-  bool is_valid_speaker_id(const std::string& speaker_id);
 };
 
 /*!

@@ -42,8 +42,8 @@ std::string get_string(const goos::Object& x) {
  * This adds the text line to each of the specified languages.
  */
 void parse_text_goal(const goos::Object& data,
-                GameTextDB& db,
-                const GameTextDefinitionFile& /*file_info*/) {
+                     GameTextDB& db,
+                     const GameTextDefinitionFile& /*file_info*/) {
   const GameTextFontBank* font = nullptr;
   std::vector<std::shared_ptr<GameTextBank>> banks;
   std::string possible_group_name;

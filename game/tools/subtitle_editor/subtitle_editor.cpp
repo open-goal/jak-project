@@ -330,7 +330,8 @@ void SubtitleEditor::draw_all_non_cutscenes(bool base_cutscenes) {
 }
 
 std::string SubtitleEditor::subtitle_line_summary(const SubtitleLine& line,
-                                                  const SubtitleLineMetadata& line_meta) {
+                                                  const SubtitleLineMetadata& line_meta,
+                                                  const std::shared_ptr<GameSubtitleBank> bank) {
   // Truncate the text if it's too long, it's supposed to just be a summary at a glance
   std::string line_text = "";
   if (!line.text.empty()) {
@@ -353,14 +354,18 @@ std::string SubtitleEditor::subtitle_line_summary(const SubtitleLine& line,
     if (line.text.empty()) {
       return fmt::format("{}] {}", info_header, line_text);
     }
-    return fmt::format("{}] {} - '{}'", info_header, line_meta.speaker, line_text);
+    return fmt::format("{}] {} - '{}'", info_header,
+                       m_subtitle_db.m_banks[m_current_language]->m_speakers.at(line_meta.speaker),
+                       line_text);
   }
   // V2
   if (line_meta.merge) {
-    return fmt::format("{}-{}] {} - {}", info_header, line_meta.frame_end, line_meta.speaker,
+    return fmt::format("{}-{}] {} - {}", info_header, line_meta.frame_end,
+                       m_subtitle_db.m_banks[m_current_language]->m_speakers.at(line_meta.speaker),
                        line_text);
   }
-  return fmt::format("{}-{}] {} - '{}'", info_header, line_meta.frame_end, line_meta.speaker,
+  return fmt::format("{}-{}] {} - '{}'", info_header, line_meta.frame_end,
+                     m_subtitle_db.m_banks[m_current_language]->m_speakers.at(line_meta.speaker),
                      line_text);
 }
 
@@ -406,7 +411,8 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
     auto& line_speaker = subtitle_line->metadata.speaker;
     auto& line_meta = subtitle_line->metadata;
     int frames[2] = {line_meta.frame_start, line_meta.frame_end};
-    std::string summary = subtitle_line_summary(*subtitle_line, line_meta);
+    std::string summary =
+        subtitle_line_summary(*subtitle_line, line_meta, m_subtitle_db.m_banks[m_current_language]);
     if (line_text.empty()) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
     } else if (subtitle_line->metadata.offscreen) {
@@ -449,7 +455,12 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
         ImGui::Checkbox("Offscreen?", &subtitle_line->metadata.offscreen);
         if (!is_v1_format()) {
           ImGui::SameLine();
-          ImGui::Checkbox("Merge Text?", &subtitle_line->metadata.merge);
+          if (ImGui::Checkbox("Merge Text?", &subtitle_line->metadata.merge)) {
+            // Clear text if they've checked it
+            if (subtitle_line->metadata.merge) {
+              subtitle_line->text = "";
+            }
+          }
         }
       }
 
@@ -499,11 +510,17 @@ void SubtitleEditor::draw_new_scene_line_form() {
     }
     ImGui::EndCombo();
   }
-  ImGui::InputText("Text", &m_current_scene_text);
+  ImGui::InputText("Text", &m_current_scene_text,
+                   m_current_scene_merge ? ImGuiInputTextFlags_ReadOnly : 0);
   ImGui::Checkbox("Offscreen", &m_current_scene_offscreen);
   if (!is_v1_format()) {
     ImGui::SameLine();
-    ImGui::Checkbox("Merge Text?", &m_current_scene_merge);
+    if (ImGui::Checkbox("Merge Text?", &m_current_scene_merge)) {
+      // Clear text if they've checked it
+      if (m_current_scene_merge) {
+        m_current_scene_text = "";
+      }
+    }
   }
   bool rendered_text_entry_btn = false;
   // Validation:
@@ -513,7 +530,7 @@ void SubtitleEditor::draw_new_scene_line_form() {
   // - pick a speaker
   if (m_current_scene_frames[0] < 0 ||
       (!is_v1_format() && m_current_scene_frames[1] < m_current_scene_frames[0]) ||
-      m_current_scene_text.empty() || m_current_scene_speaker.empty()) {
+      (m_current_scene_text.empty() && !m_current_scene_merge) || m_current_scene_speaker.empty()) {
     ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
     ImGui::Text("Can't add a new text entry with the current fields!");
     ImGui::PopStyleColor();

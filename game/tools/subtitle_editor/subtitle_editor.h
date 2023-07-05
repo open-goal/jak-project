@@ -30,7 +30,8 @@ class SubtitleEditor {
   void draw_all_cutscenes(bool base_cutscenes = false);
   void draw_all_non_cutscenes(bool base_cutscenes = false);
   std::string subtitle_line_summary(const SubtitleLine& line,
-                                    const SubtitleLineMetadata& line_meta);
+                                    const SubtitleLineMetadata& line_meta,
+                                    const std::shared_ptr<GameSubtitleBank> bank);
   void draw_subtitle_options(GameSubtitleSceneInfo& scene, bool current_scene = false);
   void draw_new_scene_line_form();
 

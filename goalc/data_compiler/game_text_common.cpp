@@ -126,10 +126,7 @@ void compile_subtitles_v1(GameSubtitleDB& db, const std::string& output_prefix) 
       array_link_sources.pop();
 
       for (auto& subtitle : scene.m_lines) {
-        gen.add_word(subtitle.metadata.frame_start);  // frame
-        // NOTE - the convert_utf8_to_game function is really really slow (about 80-90% of the
-        // time loading the text files)
-        // TODO - improve that as a follow up sometime in the future
+        gen.add_word(subtitle.metadata.frame_start);                               // frame
         gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(subtitle.text));  // line
         gen.add_ref_to_string_in_pool(
             font->convert_utf8_to_game(subtitle.metadata.speaker));  // speaker
@@ -182,9 +179,6 @@ void compile_subtitles_v2(GameSubtitleDB& db, const std::string& output_prefix) 
         if (line.metadata.merge) {
           gen.add_symbol_link("#f");
         } else {
-          // NOTE - the convert_utf8_to_game function is really really slow (about 80-90% of the
-          // time loading the text files)
-          // TODO - improve that as a follow up sometime in the future
           gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(line.text));  // line text
         }
         u16 speaker = bank->speaker_enum_value_from_name(line.metadata.speaker);
@@ -195,21 +189,13 @@ void compile_subtitles_v2(GameSubtitleDB& db, const std::string& output_prefix) 
       }
     }
     // now write the array of strings for the speakers
+    // key word array -- it has to be in the right order.
     gen.link_word_to_word(speaker_array_link, gen.words());
-    // we write #f for invalid entries, including the "none" at the start
-    gen.add_symbol_link("#f");
-    for (auto& [speaker_id, speaker_localized] : bank->m_speakers) {
-      // TODO - this verification should just be done in the linter, but it doesn't help to also
-      // make sure that someone doesn't add an invalid speaker name
-      if (bank->is_valid_speaker_id(speaker_id)) {
-        // no speaker for this
-        gen.add_symbol_link("#f");
-      } else {
-        // NOTE - the convert_utf8_to_game function is really really slow (about 80-90% of the
-        // time loading the text files)
-        // TODO - improve that as a follow up sometime in the future
-        gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(speaker_localized));
-      }
+    const auto localized_speakers = bank->speaker_names_ordered_by_enum_value();
+    for (auto& speaker_localized : localized_speakers) {
+      // No need to check for invalid speakers here, they are checked at the scene line level above
+      // and throw an error
+      gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(speaker_localized));
     }
 
     auto data = gen.generate_v2();

@@ -201,6 +201,9 @@ std::string GameTextFontBank::encode_utf8_to_game(std::string& str) const {
  * Turn a normal readable string into a string readable in the in-game font encoding and converts
  * \cXX escape sequences
  */
+// NOTE - the convert_utf8_to_game function is really really slow (about 80-90% of the
+// time loading the text files)
+// TODO - improve that as a follow up sometime in the future
 std::string GameTextFontBank::convert_utf8_to_game(std::string str, bool escape) const {
   std::string newstr;
 
