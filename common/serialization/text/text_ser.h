@@ -16,6 +16,8 @@
 #include "common/versions/versions.h"
 
 struct GameTextDefinitionFile {
+  enum class Format { GOAL, JSON };
+  Format format;
   std::string file_path = "";
   int language_id = -1;
   std::string text_version = "jak1-v2";
