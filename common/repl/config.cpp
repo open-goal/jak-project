@@ -11,6 +11,7 @@ void to_json(json& j, const Config& obj) {
       {"numConnectToTargetAttempts", obj.target_connect_attempts},
       {"asmFileSearchDirs", obj.asm_file_search_dirs},
       {"keybinds", obj.keybinds},
+      {"perGameHistory", obj.per_game_history},
   };
 }
 
@@ -50,6 +51,9 @@ void from_json(const json& j, Config& obj) {
       }
       obj.keybinds = keybinds;
     }
+  }
+  if (j.contains("perGameHistory")) {
+    j.at("perGameHistory").get_to(obj.per_game_history);
   }
   // if there is game specific configuration, override any values we just set
   if (j.contains(version_to_game_name(obj.game_version))) {
