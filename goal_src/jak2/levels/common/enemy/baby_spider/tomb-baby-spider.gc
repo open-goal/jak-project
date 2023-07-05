@@ -152,7 +152,7 @@
     :walk-travel-speed (meters 4)
     :walk-acceleration (meters 1)
     :walk-turning-acceleration (meters 8)
-    :maximum-rotation-rate (degrees 180.0)
+    :maximum-rotation-rate (degrees 180)
     :notice-nav-radius (meters 2)
     :frustration-distance (meters 6)
     :frustration-time (seconds 4)
@@ -171,13 +171,10 @@
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (until #f
-        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override walk-anim))
+        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info walk-anim))
                     :num! (seek!
                       (the float
-                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override walk-anim)))
-                                  frames
-                                  num-frames
-                                  )
+                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info walk-anim))) frames num-frames)
                               -1
                               )
                            )
@@ -198,13 +195,10 @@
             )
           0
           (nav-enemy-method-167 self)
-          (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override idle-anim))
+          (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
                       :num! (seek!
                         (the float
-                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override idle-anim)))
-                                    frames
-                                    num-frames
-                                    )
+                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
                                 -1
                                 )
                              )
@@ -218,13 +212,10 @@
             (ja :num! (seek! max f30-0))
             )
           (until (not (enemy-method-123 self 0.2))
-            (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override idle-anim))
+            (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
                         :num! (seek!
                           (the float
-                               (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override idle-anim)))
-                                      frames
-                                      num-frames
-                                      )
+                               (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
                                   -1
                                   )
                                )
@@ -242,19 +233,16 @@
                 (set! (-> v1-101 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-101 enemy-flags))))
                 )
             (set! (-> v1-101 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-101 enemy-flags))))
-            (set! (-> v1-101 nav callback-info) (-> v1-101 enemy-info-override callback-info))
+            (set! (-> v1-101 nav callback-info) (-> v1-101 enemy-info callback-info))
             )
           0
           (nav-enemy-method-165 self)
           (ja-no-eval :num! (loop!))
           (ja-channel-push! 1 (seconds 0.05))
-          (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override walk-anim))
+          (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info walk-anim))
                       :num! (seek!
                         (the float
-                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override walk-anim)))
-                                    frames
-                                    num-frames
-                                    )
+                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info walk-anim))) frames num-frames)
                                 -1
                                 )
                              )
@@ -301,12 +289,7 @@
                     :frame-num 0.0
                     )
         (until (ja-done? 0)
-          (seek-to-point-toward-point!
-            (-> self root-override2)
-            gp-0
-            (* 1.8 (-> self nav max-rotation-rate))
-            (seconds 0.02)
-            )
+          (seek-to-point-toward-point! (-> self root) gp-0 (* 1.8 (-> self nav max-rotation-rate)) (seconds 0.02))
           (suspend)
           (ja :num! (seek! max f30-0))
           )
@@ -338,10 +321,10 @@
     (nav-enemy-method-166 self)
     (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
     (logior! (-> self focus-status) (focus-status dangerous))
-    (let ((v1-9 (-> (the-as collide-shape-prim-group (-> self root-override2 root-prim)) child 1)))
+    (let ((v1-9 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 1)))
       (set! (-> v1-9 local-sphere w) 4915.2)
       )
-    (set! (-> self root-override2 penetrate-using) (penetrate generic-attack lunge))
+    (set! (-> self root penetrate-using) (penetrate generic-attack lunge))
     (enemy-method-49 self)
     (let* ((v1-14 *game-info*)
            (v0-2 (+ (-> v1-14 attack-id) 1))
@@ -352,7 +335,7 @@
     (none)
     )
   :exit (behavior ()
-    (let ((v1-3 (-> (the-as collide-shape-prim-group (-> self root-override2 root-prim)) child 1)))
+    (let ((v1-3 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 1)))
       (set! (-> v1-3 local-sphere w) 819.2)
       )
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
@@ -372,11 +355,11 @@
     )
   :code (behavior ()
     (let ((v1-0 (-> self nav)))
-      (set! (-> v1-0 target-speed) (* 2.8 (-> self enemy-info-override run-travel-speed)))
+      (set! (-> v1-0 target-speed) (* 2.8 (-> self enemy-info run-travel-speed)))
       )
     0
     (let ((v1-2 (-> self nav)))
-      (set! (-> v1-2 acceleration) (* 2.4 (-> self enemy-info-override run-acceleration)))
+      (set! (-> v1-2 acceleration) (* 2.4 (-> self enemy-info run-acceleration)))
       )
     0
     (ja-channel-push! 1 (seconds 0.1))
@@ -441,8 +424,8 @@
             (v1-30 (new 'stack-no-clear 'vector))
             )
         (set! (-> v1-30 quad) (-> a2-3 target-post quad))
-        (let* ((s5-0 (t9-4 (vector-! a0-7 v1-30 (-> self root-override2 trans)) 1.0))
-               (f30-0 (deg-diff (quaternion-y-angle (-> self root-override2 quat)) (vector-y-angle s5-0)))
+        (let* ((s5-0 (t9-4 (vector-! a0-7 v1-30 (-> self root trans)) 1.0))
+               (f30-0 (deg-diff (quaternion-y-angle (-> self root quat)) (vector-y-angle s5-0)))
                )
           (ja-no-eval :num! (loop!))
           (cond
@@ -472,7 +455,7 @@
           (s5-1 (the int (* 300.0 (rand-vu-float-range 0.6 1.2))))
           (f30-2 1.0)
           )
-      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override idle-anim))
+      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
                   :num! (loop! f30-2)
                   :frame-num 0.0
                   )
@@ -503,9 +486,7 @@
     (let ((a0-1 (get-enemy-target self)))
       (when a0-1
         (let ((a0-2 (get-trans a0-1 0)))
-          (if (and (< (vector-vector-distance a0-2 (-> self root-override2 trans)) 20480.0)
-                   (enemy-method-96 self 1274.3112 #t)
-                   )
+          (if (and (< (vector-vector-distance a0-2 (-> self root trans)) 20480.0) (enemy-method-96 self 1274.3112 #t))
               (go-virtual attack)
               )
           )
@@ -516,7 +497,7 @@
   )
 
 (defmethod enemy-method-77 tomb-baby-spider ((obj tomb-baby-spider) (arg0 (pointer float)))
-  (let* ((a2-0 (the-as collide-shape-prim-group (-> obj root-override2 root-prim)))
+  (let* ((a2-0 (the-as collide-shape-prim-group (-> obj root root-prim)))
          (v1-2 (-> a2-0 child 3))
          )
     (dotimes (a3-0 3)
@@ -627,7 +608,7 @@
                )
              )
            )
-         (vector-reset! (-> obj root-override2 transv))
+         (vector-reset! (-> obj root transv))
          #t
          )
        )
@@ -640,7 +621,7 @@
          (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-seek!)
          )
        (when s4-1
-         (let ((v1-50 (-> obj root-override2 root-prim)))
+         (let ((v1-50 (-> obj root root-prim)))
            (set! (-> (the-as collide-shape-prim-group v1-50) child 0 local-sphere w) 1638.4)
            (set! (-> (the-as collide-shape-prim-group v1-50) child 1 local-sphere w) 1638.4)
            (set! (-> (the-as collide-shape-prim-group v1-50) child 2 local-sphere w) 3276.8)
@@ -681,10 +662,10 @@
       (set! (-> a1-5 param 0) (the-as uint arg1))
       (let ((v1-9 (new 'static 'attack-info :mask (attack-info-mask mode shove-back shove-up id damage knock))))
         (set! (-> v1-9 id) arg2)
-        (set! (-> v1-9 shove-back) (* f0-0 (-> obj enemy-info-override attack-shove-back)))
-        (set! (-> v1-9 shove-up) (* f0-0 (-> obj enemy-info-override attack-shove-up)))
-        (set! (-> v1-9 mode) (-> obj enemy-info-override attack-mode))
-        (set! (-> v1-9 damage) (the float (-> obj enemy-info-override attack-damage)))
+        (set! (-> v1-9 shove-back) (* f0-0 (-> obj enemy-info attack-shove-back)))
+        (set! (-> v1-9 shove-up) (* f0-0 (-> obj enemy-info attack-shove-up)))
+        (set! (-> v1-9 mode) (-> obj enemy-info attack-mode))
+        (set! (-> v1-9 damage) (the float (-> obj enemy-info attack-damage)))
         (set! (-> v1-9 knock) (the-as uint 8))
         (set! (-> a1-5 param 1) (the-as uint v1-9))
         )
@@ -764,7 +745,7 @@
       (set! (-> s5-0 backup-collide-with) (-> v1-23 prim-core collide-with))
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
-    (set! (-> obj root-override2) s5-0)
+    (set! (-> obj root) s5-0)
     )
   0
   (none)

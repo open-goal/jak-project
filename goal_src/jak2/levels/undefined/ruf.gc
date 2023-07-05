@@ -44,7 +44,7 @@
                                             (or (= v1-25 'alert-idle) (= v1-25 'waiting-idle) (= v1-25 'scared-idle))
                                             )
                       )
-                 (zero? (logand (-> obj focus-status) (focus-status grabbed)))
+                 (not (logtest? (-> obj focus-status) (focus-status grabbed)))
                  )
             (go (method-of-object obj bomb-recoil))
             )
@@ -65,9 +65,9 @@
   "Were we attacked by the player?"
   (the-as
     symbol
-    (and (and arg0 (zero? (logand (-> arg0 focus-status) (focus-status disable dead ignore grabbed))))
+    (and (and arg0 (not (logtest? (-> arg0 focus-status) (focus-status disable dead ignore grabbed))))
          (or (and (logtest? (process-mask enemy) (-> arg0 mask))
-                  (>= 40960.0 (vector-vector-xz-distance (-> obj root-override2 trans) (get-trans arg0 3)))
+                  (>= 40960.0 (vector-vector-xz-distance (-> obj root trans) (get-trans arg0 3)))
                   )
              (and (logtest? (-> arg0 mask) (process-mask target)) (logtest? (-> obj bot-flags) (bot-flags attacked)))
              )
@@ -76,9 +76,9 @@
   )
 
 (defmethod ruffian-method-245 ruffian ((obj ruffian))
-  (-> obj root-override2)
+  (-> obj root)
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (vector-! s5-0 (target-pos 0) (-> obj root-override2 trans))
+    (vector-! s5-0 (target-pos 0) (-> obj root trans))
     (let* ((f0-1 (vector-dot (-> obj follow-dir) s5-0))
            (f0-2 (- (- (-> obj follow-offset)) f0-1))
            )
@@ -99,101 +99,99 @@
   )
 
 (defmethod enemy-method-97 ruffian ((obj ruffian))
-  (with-pp
-    (let* ((s5-0 (handle->process (-> obj attacker-handle)))
-           (v1-3 (if (type? s5-0 process-focusable)
-                     s5-0
-                     )
-                 )
+  (let* ((s5-0 (handle->process (-> obj attacker-handle)))
+         (v1-3 (if (type? s5-0 process-focusable)
+                   s5-0
+                   )
+               )
+         )
+    (when v1-3
+      (cond
+        ((= (-> v1-3 type) target)
+         (when (or (not (logtest? (-> obj bot-flags) (bot-flags attacked)))
+                   (>= (- (current-time) (-> obj attacker-time)) (seconds 1.5))
+                   )
+           (if (logtest? (-> obj bot-flags) (bot-flags attacked))
+               (reset-attacker! obj)
+               )
+           (set! v1-3 (the-as process #f))
+           (set! (-> obj attacker-handle) (the-as handle #f))
            )
-      (when v1-3
-        (cond
-          ((= (-> v1-3 type) target)
-           (when (or (not (logtest? (-> obj bot-flags) (bot-flags attacked)))
-                     (>= (- (-> pp clock frame-counter) (-> obj attacker-time)) (seconds 1.5))
-                     )
-             (if (logtest? (-> obj bot-flags) (bot-flags attacked))
-                 (reset-attacker! obj)
-                 )
-             (set! v1-3 (the-as process #f))
-             (set! (-> obj attacker-handle) (the-as handle #f))
-             )
-           )
-          (else
-            (when (>= (- (-> pp clock frame-counter) (-> obj attacker-time)) (seconds 6))
-              (set! v1-3 (the-as process #f))
-              (set! (-> obj attacker-handle) (the-as handle #f))
-              )
+         )
+        (else
+          (when (>= (- (current-time) (-> obj attacker-time)) (seconds 6))
+            (set! v1-3 (the-as process #f))
+            (set! (-> obj attacker-handle) (the-as handle #f))
             )
           )
         )
-      (let ((a0-21 (-> obj focus-mode))
-            (s5-1 (the-as process #f))
-            )
-        (cond
-          ((zero? a0-21)
-           (cond
-             (v1-3
-               (set! s5-1 v1-3)
-               )
-             ((begin (set! s5-1 (select-focus! obj)) s5-1)
-              (empty)
-              )
-             (else
-               (let ((s4-0 (handle->process (-> obj poi-handle))))
-                 (set! s5-1 (if (type? s4-0 process-focusable)
-                                s4-0
-                                )
-                       )
-                 )
-               (if s5-1
-                   (empty)
-                   (set! s5-1 *target*)
-                   )
-               )
-             )
-           )
-          ((= a0-21 1)
-           (cond
-             (v1-3
-               (set! s5-1 v1-3)
-               )
-             (else
-               (let ((s4-1 (handle->process (-> obj poi-handle))))
-                 (set! s5-1 (if (type? s4-1 process-focusable)
-                                s4-1
-                                )
-                       )
-                 )
-               (cond
-                 (s5-1
-                   (empty)
-                   )
-                 ((begin (set! s5-1 (select-focus! obj)) s5-1)
-                  (empty)
-                  )
-                 (else
-                   (set! s5-1 *target*)
-                   )
-                 )
-               )
-             )
-           )
+      )
+    (let ((a0-21 (-> obj focus-mode))
+          (s5-1 (the-as process #f))
           )
-        (cond
-          (s5-1
-            (try-update-focus (-> obj focus) (the-as process-focusable s5-1) obj)
-            (if (and (logtest? (-> obj bot-flags) (bot-flags attacked)) (!= (-> s5-1 type) target))
-                (logclear! (-> obj bot-flags) (bot-flags attacked))
+      (cond
+        ((zero? a0-21)
+         (cond
+           (v1-3
+             (set! s5-1 v1-3)
+             )
+           ((begin (set! s5-1 (select-focus! obj)) s5-1)
+            (empty)
+            )
+           (else
+             (let ((s4-0 (handle->process (-> obj poi-handle))))
+               (set! s5-1 (if (type? s4-0 process-focusable)
+                              s4-0
+                              )
+                     )
+               )
+             (if s5-1
+                 (empty)
+                 (set! s5-1 *target*)
+                 )
+             )
+           )
+         )
+        ((= a0-21 1)
+         (cond
+           (v1-3
+             (set! s5-1 v1-3)
+             )
+           (else
+             (let ((s4-1 (handle->process (-> obj poi-handle))))
+               (set! s5-1 (if (type? s4-1 process-focusable)
+                              s4-1
+                              )
+                     )
+               )
+             (cond
+               (s5-1
+                 (empty)
+                 )
+               ((begin (set! s5-1 (select-focus! obj)) s5-1)
+                (empty)
                 )
-            )
-          (else
-            (clear-focused (-> obj focus))
-            (logclear! (-> obj bot-flags) (bot-flags attacked))
-            )
-          )
-        s5-1
+               (else
+                 (set! s5-1 *target*)
+                 )
+               )
+             )
+           )
+         )
         )
+      (cond
+        (s5-1
+          (try-update-focus (-> obj focus) (the-as process-focusable s5-1) obj)
+          (if (and (logtest? (-> obj bot-flags) (bot-flags attacked)) (!= (-> s5-1 type) target))
+              (logclear! (-> obj bot-flags) (bot-flags attacked))
+              )
+          )
+        (else
+          (clear-focused (-> obj focus))
+          (logclear! (-> obj bot-flags) (bot-flags attacked))
+          )
+        )
+      s5-1
       )
     )
   )
@@ -280,19 +278,17 @@
   )
 
 (defmethod ruffian-method-237 ruffian ((obj ruffian))
-  (with-pp
-    (or (and (logtest? (-> obj bot-flags) (bot-flags attacked)) (= (-> obj focus-info fproc type) target))
-        (and (>= 40960.0 (-> obj focus-info bullseye-xz-dist))
-             (= (-> obj focus-info los) 1)
-             (>= (-> pp clock frame-counter) (-> obj next-fire-time))
-             )
-        )
-    )
+  (or (and (logtest? (-> obj bot-flags) (bot-flags attacked)) (= (-> obj focus-info fproc type) target))
+      (and (>= 40960.0 (-> obj focus-info bullseye-xz-dist))
+           (= (-> obj focus-info los) 1)
+           (>= (current-time) (-> obj next-fire-time))
+           )
+      )
   )
 
 (defmethod ruffian-method-243 ruffian ((obj ruffian))
   (let ((v1-0 (-> obj bot-flags)))
-    (and (logtest? (bot-flags bf20) v1-0) (zero? (logand (bot-flags bf21) v1-0)))
+    (and (logtest? (bot-flags bf20) v1-0) (not (logtest? (bot-flags bf21) v1-0)))
     )
   )
 

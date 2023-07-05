@@ -168,10 +168,10 @@
   )
 
 (deftype hud-ring-cell (process-drawable)
-  ((parent-override (pointer progress)  :offset         16)
-   (joint-idx       int32               :offset-assert 200)
-   (init-angle      degrees             :offset-assert 204)
-   (graphic-index   int32               :offset-assert 208)
+  ((parent        (pointer progress)  :override)
+   (joint-idx     int32               :offset-assert 200)
+   (init-angle    degrees             :offset-assert 204)
+   (graphic-index int32               :offset-assert 208)
    )
   :heap-base #x60
   :method-count-assert 21
@@ -194,10 +194,10 @@
   (set! (-> self joint-idx) arg0)
   (set! (-> self init-angle) arg1)
   (set! (-> self graphic-index) arg2)
-  (set! (-> self root trans quad) (-> (the-as progress (-> self parent-override 0)) root trans quad))
-  (quaternion-copy! (-> self root quat) (-> (the-as progress (-> self parent-override 0)) root quat))
+  (set! (-> self root trans quad) (-> self parent 0 root trans quad))
+  (quaternion-copy! (-> self root quat) (-> self parent 0 root quat))
   (quaternion-normalize! (-> self root quat))
-  (set! (-> self root scale quad) (-> (the-as progress (-> self parent-override 0)) root scale quad))
+  (set! (-> self root scale quad) (-> self parent 0 root scale quad))
   (let ((gp-1 (quaternion-vector-angle! (new 'stack-no-clear 'quaternion) *z-vector* (-> self init-angle))))
     (quaternion-normalize! gp-1)
     (quaternion*! (-> self root quat) (-> self root quat) gp-1)
@@ -217,10 +217,7 @@
        (the-as
          int
          (-> *hud-ring-kiosk-graphic-remap*
-             (mod
-               (+ (-> self graphic-index) (-> (the-as progress (-> self parent-override 0)) graphic-index))
-               (-> *hud-ring-kiosk-graphic-remap* length)
-               )
+             (mod (+ (-> self graphic-index) (-> self parent 0 graphic-index)) (-> *hud-ring-kiosk-graphic-remap* length))
              )
          )
        0
@@ -232,10 +229,7 @@
        (the-as
          int
          (-> *hud-ring-demo-graphic-remap*
-             (mod
-               (+ (-> self graphic-index) (-> (the-as progress (-> self parent-override 0)) graphic-index))
-               (-> *hud-ring-kiosk-graphic-remap* length)
-               )
+             (mod (+ (-> self graphic-index) (-> self parent 0 graphic-index)) (-> *hud-ring-kiosk-graphic-remap* length))
              )
          )
        0
@@ -247,10 +241,7 @@
         (the-as
           int
           (-> *hud-ring-graphic-remap*
-              (mod
-                (+ (-> self graphic-index) (-> (the-as progress (-> self parent-override 0)) graphic-index))
-                (-> *hud-ring-graphic-remap* length)
-                )
+              (mod (+ (-> self graphic-index) (-> self parent 0 graphic-index)) (-> *hud-ring-graphic-remap* length))
               )
           )
         0
@@ -273,53 +264,47 @@
   :post (behavior ()
     (vector<-cspace!
       (-> self root trans)
-      (-> (the-as progress (-> self parent-override 0)) node-list data (-> self joint-idx))
+      (-> (the-as progress (-> self parent 0)) node-list data (-> self joint-idx))
       )
-    (when (-> (the-as progress (-> self parent-override 0)) main-menu)
+    (when (-> (the-as progress (-> self parent 0)) main-menu)
       (setup-masks (-> self draw) 0 2046)
       (cond
         ((and (= *cheat-mode* #f) (= *kernel-boot-message* 'kiosk))
          (setup-masks
            (-> self draw)
-           (the-as
-             int
-             (-> *hud-ring-kiosk-graphic-remap*
-                 (mod
-                   (+ (-> self graphic-index) (-> (the-as progress (-> self parent-override 0)) graphic-index))
-                   (-> *hud-ring-kiosk-graphic-remap* length)
+           (the-as int (-> *hud-ring-kiosk-graphic-remap*
+                           (mod
+                             (+ (-> self graphic-index) (-> (the-as progress (-> self parent 0)) graphic-index))
+                             (-> *hud-ring-kiosk-graphic-remap* length)
+                             )
+                           )
                    )
-                 )
-             )
            0
            )
          )
         ((and (= *cheat-mode* #f) (demo?))
          (setup-masks
            (-> self draw)
-           (the-as
-             int
-             (-> *hud-ring-demo-graphic-remap*
-                 (mod
-                   (+ (-> self graphic-index) (-> (the-as progress (-> self parent-override 0)) graphic-index))
-                   (-> *hud-ring-kiosk-graphic-remap* length)
+           (the-as int (-> *hud-ring-demo-graphic-remap*
+                           (mod
+                             (+ (-> self graphic-index) (-> (the-as progress (-> self parent 0)) graphic-index))
+                             (-> *hud-ring-kiosk-graphic-remap* length)
+                             )
+                           )
                    )
-                 )
-             )
            0
            )
          )
         (else
           (setup-masks
             (-> self draw)
-            (the-as
-              int
-              (-> *hud-ring-graphic-remap*
-                  (mod
-                    (+ (-> self graphic-index) (-> (the-as progress (-> self parent-override 0)) graphic-index))
-                    (-> *hud-ring-graphic-remap* length)
+            (the-as int (-> *hud-ring-graphic-remap*
+                            (mod
+                              (+ (-> self graphic-index) (-> (the-as progress (-> self parent 0)) graphic-index))
+                              (-> *hud-ring-graphic-remap* length)
+                              )
+                            )
                     )
-                  )
-              )
             0
             )
           )
@@ -327,8 +312,8 @@
       )
     (when (= (-> self init-angle) 0.0)
       (cond
-        ((= (-> (the-as progress (-> self parent-override 0)) ring-angle)
-            (-> (the-as progress (-> self parent-override 0)) ring-want-angle)
+        ((= (-> (the-as progress (-> self parent 0)) ring-angle)
+            (-> (the-as progress (-> self parent 0)) ring-want-angle)
             )
          (set! (-> self draw color-mult x) 1.2)
          (set! (-> self draw color-mult y) 1.2)
@@ -345,11 +330,11 @@
            (a0-8 (new 'stack-no-clear 'quaternion))
            (a1-26 *z-vector*)
            (f0-8 (-> self init-angle))
-           (f1-2 (-> (the-as progress (-> self parent-override 0)) ring-angle))
+           (f1-2 (-> (the-as progress (-> self parent 0)) ring-angle))
            (gp-0 (t9-6 a0-8 a1-26 (+ f0-8 (- f1-2 (* (the float (the int (/ f1-2 6553.6))) 6553.6)))))
            )
       (quaternion-normalize! gp-0)
-      (quaternion-copy! (-> self root quat) (-> (the-as progress (-> self parent-override 0)) root quat))
+      (quaternion-copy! (-> self root quat) (-> (the-as progress (-> self parent 0)) root quat))
       (quaternion-normalize! (-> self root quat))
       (quaternion*! (-> self root quat) (-> self root quat) gp-0)
       )

@@ -90,8 +90,8 @@
     (let* ((f0-0 1.0)
            (f1-0 (-> arg0 impulse))
            (f2-0 61440.0)
-           (f30-0 (fmin f0-0 (* f1-0 (/ 1.0 f2-0) (-> obj info-override info inv-mass))))
-           (f28-0 (* (-> obj info-override info mass) (-> obj info-override toughness-factor)))
+           (f30-0 (fmin f0-0 (* f1-0 (/ 1.0 f2-0) (-> obj info info inv-mass))))
+           (f28-0 (* (-> obj info info mass) (-> obj info toughness-factor)))
            )
       (set! (-> obj crash-impulse) (-> arg0 impulse))
       (cond
@@ -131,7 +131,7 @@
             )
           (if (< 0.1 f30-0)
               (sound-play-by-name
-                (-> obj info-override glance-sound)
+                (-> obj info glance-sound)
                 (new-sound-id)
                 (the int (* 1024.0 f30-0))
                 0
@@ -144,7 +144,7 @@
         )
       (when (< (* 102400.0 f28-0) (-> arg0 impulse))
         (sound-play-by-name
-          (-> obj info-override impact-sound)
+          (-> obj info impact-sound)
           (new-sound-id)
           (the int (* 1024.0 f30-0))
           0
@@ -191,21 +191,21 @@
 (defmethod vehicle-method-104 vehicle ((obj vehicle))
   (with-pp
     (when (= (-> obj controller traffic sync-mask-8) (ash 1 (logand (-> obj traffic-priority-id) 7)))
-      (let ((a1-0 (-> obj root-override-2 trans)))
+      (let ((a1-0 (-> obj root trans)))
         (set! (-> obj flight-level) (get-height-at-point *traffic-height-map* a1-0))
         )
       )
     (set! (-> obj target-acceleration y)
-          (- (* 8.0 (- (-> obj flight-level) (-> obj root-override-2 trans y))) (-> obj root-override-2 transv y))
+          (- (* 8.0 (- (-> obj flight-level) (-> obj root trans y))) (-> obj root transv y))
           )
-    (vector-v++! (-> obj root-override-2 transv) (-> obj target-acceleration))
-    (vector-v++! (-> obj root-override-2 trans) (-> obj root-override-2 transv))
-    (let* ((v1-14 (-> obj root-override-2 transv))
+    (vector-v++! (-> obj root transv) (-> obj target-acceleration))
+    (vector-v++! (-> obj root trans) (-> obj root transv))
+    (let* ((v1-14 (-> obj root transv))
            (f30-0 (sqrtf (+ (* (-> v1-14 x) (-> v1-14 x)) (* (-> v1-14 z) (-> v1-14 z)))))
            (s5-0 (new 'stack-no-clear 'vehicle-control-point))
            )
       (when (< 40.96 f30-0)
-        (vector-float*! (-> s5-0 normal) (-> obj root-override-2 transv) (/ 1.0 f30-0))
+        (vector-float*! (-> s5-0 normal) (-> obj root transv) (/ 1.0 f30-0))
         (quaternion-set!
           (the-as quaternion (-> s5-0 local-pos))
           0.0
@@ -220,8 +220,8 @@
           (* -0.08886719 (-> obj controls steering) (fmin 81920.0 f30-0))
           )
         (quaternion-smooth-seek!
-          (-> obj root-override-2 quat)
-          (-> obj root-override-2 quat)
+          (-> obj root quat)
+          (-> obj root quat)
           (the-as quaternion (-> s5-0 local-pos))
           (* 0.00014686584 (-> pp clock seconds-per-frame) f30-0)
           )
@@ -393,7 +393,7 @@
        (set! (-> s5-0 z) (fmin 1.0 (* 0.023529412 (the float (-> *cpad-list* cpads 0 abutton 7)))))
        (vehicle-method-95 obj (the-as vector (&-> s5-0 x)))
        )
-     (if (or (cpad-hold? 0 l1) (and (logtest? (-> obj info-override flags) 512) (cpad-hold? 0 r1)))
+     (if (or (cpad-hold? 0 l1) (and (logtest? (-> obj info flags) 512) (cpad-hold? 0 r1)))
          (start-jump obj)
          )
      (if (cpad-pressed? 0 circle)
@@ -409,11 +409,10 @@
   (with-pp
     (when (and *target* (logtest? (rigid-body-object-flag ignition) (-> obj flags)))
       (when (and (logtest? (-> obj flags) (rigid-body-object-flag player-driving))
-                 (zero? (-> obj root-override-2 num-riders))
-                 (or (not *target*)
-                     (or (< 32768.0 (vector-vector-distance (-> obj root-override-2 trans) (-> *target* control trans)))
-                         (focus-test? *target* teleporting)
-                         )
+                 (zero? (-> obj root num-riders))
+                 (or (not *target*) (or (< 32768.0 (vector-vector-distance (-> obj root trans) (-> *target* control trans)))
+                                        (focus-test? *target* teleporting)
+                                        )
                      )
                  )
         (set! (-> obj controls throttle) 0.0)
@@ -488,24 +487,22 @@
        (let* ((f1-13
                 (fmax
                   0.0
-                  (fmin
-                    1.0
-                    (/ (* (vector-length (-> obj rbody state lin-velocity)) (-> obj info-override engine-intake-factor))
-                       (-> obj info-override max-xz-speed)
-                       )
-                    )
+                  (fmin 1.0 (/ (* (vector-length (-> obj rbody state lin-velocity)) (-> obj info engine-intake-factor))
+                               (-> obj info max-xz-speed)
+                               )
+                        )
                   )
                 )
               (f1-16 (fmin (-> obj controls throttle) (* 0.83333 (+ 0.5 f1-13))))
               )
          0
          (if (logtest? (rigid-body-object-flag turbo-boost) (-> obj flags))
-             (set! f1-16 (+ 1.0 (* (-> obj turbo-boost-factor) (-> obj info-override turbo-boost-factor))))
+             (set! f1-16 (+ 1.0 (* (-> obj turbo-boost-factor) (-> obj info turbo-boost-factor))))
              )
          (if (< (-> obj engine-thrust) f1-16)
              (+! (-> obj engine-thrust)
                  (* (- f1-16 (-> obj engine-thrust))
-                    (fmin 1.0 (* (-> obj info-override engine-response-rate) (-> pp clock seconds-per-frame)))
+                    (fmin 1.0 (* (-> obj info engine-response-rate) (-> pp clock seconds-per-frame)))
                     )
                  )
              (seek! (-> obj engine-thrust) f1-16 (-> pp clock seconds-per-frame))
@@ -605,12 +602,12 @@
           ((logtest? (-> obj flags) (rigid-body-object-flag in-air))
            (when (or (< 55296.0 (-> obj rbody state lin-velocity y)) (>= (- (current-time) (-> obj air-time)) (seconds 0.75)))
              (set-setting! 'extra-follow-height 'abs (meters -4) 0)
-             (send-event *camera* 'set-max-angle-offset (-> obj info-override camera-air-max-angle-offset))
+             (send-event *camera* 'set-max-angle-offset (-> obj info camera-air-max-angle-offset))
              )
            )
           (else
             (remove-setting! 'extra-follow-height)
-            (send-event *camera* 'set-max-angle-offset (-> obj info-override camera-normal-max-angle-offset))
+            (send-event *camera* 'set-max-angle-offset (-> obj info camera-normal-max-angle-offset))
             )
           )
         (let ((f0-5 (vector-dot (-> obj rbody state lin-velocity) (-> obj rbody state matrix vector 2))))
@@ -618,10 +615,10 @@
             ((= (-> obj crash-level) 2)
              (vehicle-method-90 obj)
              )
-            ((< f0-5 (-> obj info-override camera-max-lookaround-speed))
+            ((< f0-5 (-> obj info camera-max-lookaround-speed))
              (vehicle-method-90 obj)
              )
-            ((< (+ 4096.0 (-> obj info-override camera-max-lookaround-speed)) f0-5)
+            ((< (+ 4096.0 (-> obj info camera-max-lookaround-speed)) f0-5)
              (vehicle-method-89 obj)
              )
             )
@@ -629,11 +626,12 @@
         (when (not (logtest? (rigid-body-object-flag flight-level-transition) (-> obj flags)))
           (let* ((f0-6 1.0)
                  (v1-57 (-> obj rbody state lin-velocity))
-                 (f0-7 (fmin f0-6 (/ (sqrtf (+ (* (-> v1-57 x) (-> v1-57 x)) (* (-> v1-57 z) (-> v1-57 z))))
-                                     (-> obj info-override max-xz-speed)
-                                     )
-                             )
-                       )
+                 (f0-7
+                   (fmin
+                     f0-6
+                     (/ (sqrtf (+ (* (-> v1-57 x) (-> v1-57 x)) (* (-> v1-57 z) (-> v1-57 z)))) (-> obj info max-xz-speed))
+                     )
+                   )
                  )
             (seek! (-> obj cam-speed-interp) f0-7 (* 0.1 (-> pp clock seconds-per-frame)))
             )
@@ -643,13 +641,12 @@
                       (fmax 0.0 (fmin 1.0 (analog-input (the-as int (-> *cpad-list* cpads 1 righty)) 128.0 48.0 110.0 -1.0)))
                       )
                 )
-            (let ((f0-15 (lerp-scale (-> obj info-override camera-min-fov) (-> obj info-override camera-max-fov) f30-0 0.0 1.0))
-                  )
+            (let ((f0-15 (lerp-scale (-> obj info camera-min-fov) (-> obj info camera-max-fov) f30-0 0.0 1.0)))
               (set-setting! 'fov 'abs f0-15 0)
               )
             (let ((f30-2 (lerp-scale 1.0 0.6 f30-0 0.0 1.0)))
-              (set-setting! 'string-min-length 'abs (* f30-2 (-> obj info-override camera-string-min-length)) 0)
-              (set-setting! 'string-max-length 'abs (* f30-2 (-> obj info-override camera-string-max-length)) 0)
+              (set-setting! 'string-min-length 'abs (* f30-2 (-> obj info camera-string-min-length)) 0)
+              (set-setting! 'string-max-length 'abs (* f30-2 (-> obj info camera-string-max-length)) 0)
               )
             )
           )
@@ -659,7 +656,7 @@
             )
           (cond
             ((logtest? (rigid-body-object-flag camera-rapid-track-mode) (-> obj flags))
-             (.lvf vf1 (&-> (-> obj root-override-2 transv) quad))
+             (.lvf vf1 (&-> (-> obj root transv) quad))
              (.add.w.vf vf2 vf0 vf0 :mask #b1)
              (.mul.vf vf1 vf1 vf1)
              (.mul.x.vf acc vf2 vf1 :mask #b1)
@@ -678,7 +675,7 @@
               (let* ((f0-21 143360.0)
                      (f0-23 (* f0-21 f0-21))
                      )
-                (.lvf vf1 (&-> (-> obj root-override-2 transv) quad))
+                (.lvf vf1 (&-> (-> obj root transv) quad))
                 (.add.w.vf vf2 vf0 vf0 :mask #b1)
                 (.mul.vf vf1 vf1 vf1)
                 (.mul.x.vf acc vf2 vf1 :mask #b1)
@@ -706,7 +703,7 @@
                  (set-setting! 'vertical-follow-matches-camera #f 0.0 0)
                  )
                 (else
-                  (if (< (fabs (-> obj root-override-2 transv y)) 8192.0)
+                  (if (< (fabs (-> obj root transv y)) 8192.0)
                       (remove-setting! 'vertical-follow-matches-camera)
                       )
                   )
@@ -726,7 +723,7 @@
   (with-pp
     (let ((s5-0 (-> obj draw shadow-ctrl)))
       (when (!= *vehicle-shadow-control-disabled* s5-0)
-        (let ((f30-0 (vector-vector-xz-distance (camera-pos) (-> obj root-override-2 trans))))
+        (let ((f30-0 (vector-vector-xz-distance (camera-pos) (-> obj root trans))))
           (cond
             ((< 245760.0 f30-0)
              (logior! (-> s5-0 settings flags) (shadow-flags disable-draw))
@@ -734,7 +731,7 @@
              (set! (-> obj draw bounds w) (-> obj bound-radius))
              )
             (else
-              (let ((s4-1 (-> obj root-override-2)))
+              (let ((s4-1 (-> obj root)))
                 (when (or (logtest? (-> s5-0 settings flags) (shadow-flags disable-draw))
                           (= (-> obj controller traffic sync-mask-8) (ash 1 (logand (-> obj traffic-priority-id) 7)))
                           )
@@ -747,8 +744,8 @@
                        (set! (-> s4-1 gspot-normal quad) (-> s3-0 best-other-tri normal quad))
                        (set! (-> s4-1 ground-pat) (-> s3-0 best-other-tri pat))
                        (when (logtest? (-> s5-0 settings flags) (shadow-flags disable-draw))
-                         (set! (-> s5-0 settings top-plane w) (- (-> s5-0 settings center y) (-> obj root-override-2 gspot-pos y)))
-                         (set! (-> s5-0 settings bot-plane w) (- (-> s5-0 settings center y) (-> obj root-override-2 gspot-pos y)))
+                         (set! (-> s5-0 settings top-plane w) (- (-> s5-0 settings center y) (-> obj root gspot-pos y)))
+                         (set! (-> s5-0 settings bot-plane w) (- (-> s5-0 settings center y) (-> obj root gspot-pos y)))
                          )
                        (let ((v1-29 s5-0))
                          (logclear! (-> v1-29 settings flags) (shadow-flags disable-draw))
@@ -766,7 +763,7 @@
                   )
                 )
               (set! (-> obj draw bounds w) (lerp-scale
-                                             (- (-> s5-0 settings center y) (-> obj root-override-2 gspot-pos y))
+                                             (- (-> s5-0 settings center y) (-> obj root gspot-pos y))
                                              (-> obj bound-radius)
                                              f30-0
                                              81920.0
@@ -777,8 +774,8 @@
                   (set! (-> obj draw bounds w) (-> obj bound-radius))
                   )
               (let* ((f0-13 (lerp-scale 0.0 1.0 f30-0 245760.0 40960.0))
-                     (f30-1 (* 4096.0 (+ 5.0 (* 5.0 (- 1.0 (-> obj root-override-2 gspot-normal y))))))
-                     (f28-0 (- (-> s5-0 settings center y) (-> obj root-override-2 gspot-pos y)))
+                     (f30-1 (* 4096.0 (+ 5.0 (* 5.0 (- 1.0 (-> obj root gspot-normal y))))))
+                     (f28-0 (- (-> s5-0 settings center y) (-> obj root gspot-pos y)))
                      (f0-16 (fmax 0.01 (+ (* -2.0 f0-13 f0-13 f0-13) (* 3.0 f0-13 f0-13))))
                      )
                 (set! (-> s5-0 settings shadow-dir w) (+ 20480.0 (* 409600.0 f0-16) f28-0))
@@ -810,7 +807,7 @@
         (set! (-> s5-0 start-pos quad) (-> obj rbody state position quad))
         (vector-float*! (-> s5-0 move-dist) (-> obj rbody state lin-velocity) (-> pp clock seconds-per-frame))
         (let ((v1-4 s5-0))
-          (set! (-> v1-4 radius) (+ 4096.0 (-> obj root-override-2 root-prim local-sphere w)))
+          (set! (-> v1-4 radius) (+ 4096.0 (-> obj root root-prim local-sphere w)))
           (set! (-> v1-4 collide-with) (collide-spec
                                          backgnd
                                          crate
@@ -838,7 +835,7 @@
             (logclear! (-> s5-0 collide-with) (collide-spec jak player-list))
             )
         (let ((s4-0 (new 'stack-no-clear 'water-info)))
-          (water-info-init! (-> obj root-override-2) s4-0 (collide-action solid semi-solid))
+          (water-info-init! (-> obj root) s4-0 (collide-action solid semi-solid))
           (if (and (logtest? (-> s4-0 flags) (water-flags active)) (logtest? (water-flags over-water) (-> s4-0 flags)))
               (set! f30-0 (-> s4-0 base-height))
               )
@@ -869,14 +866,14 @@
 (defmethod rigid-body-object-method-52 vehicle ((obj vehicle))
   (with-pp
     (let ((v1-0 (new 'stack-no-clear 'vehicle-control-point)))
-      (set! (-> v1-0 local-pos quad) (-> obj root-override-2 transv quad))
+      (set! (-> v1-0 local-pos quad) (-> obj root transv quad))
       (vector-! (-> v1-0 normal) (-> obj rbody state lin-velocity) (-> v1-0 local-pos))
       (vector-float*! (-> obj lin-acceleration) (-> v1-0 normal) (-> pp clock frames-per-second))
       )
-    (set! (-> obj root-override-2 transv quad) (-> obj rbody state lin-velocity quad))
-    (quaternion-copy! (-> obj root-override-2 quat) (-> obj rbody state rotation))
+    (set! (-> obj root transv quad) (-> obj rbody state lin-velocity quad))
+    (quaternion-copy! (-> obj root quat) (-> obj rbody state rotation))
     (let ((v1-6 (-> obj rbody))
-          (a1-7 (-> obj root-override-2 trans))
+          (a1-7 (-> obj root trans))
           )
       (rigid-body-method-23 (-> v1-6 state) a1-7)
       )
@@ -892,7 +889,7 @@
       (set! (-> v1-11 quad 2) a2-1)
       (set! (-> v1-11 trans quad) a3-1)
       )
-    (set! (-> obj node-list data 0 bone transform trans quad) (-> obj root-override-2 trans quad))
+    (set! (-> obj node-list data 0 bone transform trans quad) (-> obj root trans quad))
     (vehicle-method-119 obj)
     (let ((f0-1 (-> obj player-dist2))
           (f1-0 245760.0)
@@ -914,7 +911,7 @@
         )
       )
     (vehicle-method-120 obj)
-    (let ((s5-0 (-> obj root-override-2)))
+    (let ((s5-0 (-> obj root)))
       (update-transforms s5-0)
       (when (and (logtest? (-> obj flags) (rigid-body-object-flag player-touching))
                  (not (logtest? (-> obj flags) (rigid-body-object-flag player-driving)))
@@ -974,7 +971,7 @@
       (logclear! (-> obj flags) (rigid-body-object-flag player-touching player-edge-grabbing player-standing-on))
       )
   (when (logtest? (-> obj flags) (rigid-body-object-flag player-touching))
-    (detect-riders! (-> obj root-override-2))
+    (detect-riders! (-> obj root))
     0
     )
   (if (logtest? (-> obj flags) (rigid-body-object-flag player-touching player-driving))
@@ -1009,8 +1006,8 @@
   (.sync.p)
   (label cfg-2)
   0
-  (set! (-> obj camera-dist2) (vector-vector-distance-squared (-> obj root-override-2 trans) (camera-pos)))
-  (set! (-> obj player-dist2) (vector-vector-distance-squared (-> obj root-override-2 trans) (target-pos 0)))
+  (set! (-> obj camera-dist2) (vector-vector-distance-squared (-> obj root trans) (camera-pos)))
+  (set! (-> obj player-dist2) (vector-vector-distance-squared (-> obj root trans) (target-pos 0)))
   (cond
     ((logtest? (-> obj rbody state flags) (rigid-body-flag enable-physics))
      (if (not (vehicle-method-105 obj))
@@ -1080,8 +1077,8 @@
 
 (defmethod vehicle-method-123 vehicle ((obj vehicle))
   (local-vars (v1-4 symbol) (a0-21 int) (a0-23 int))
-  (set! (-> obj camera-dist2) (vector-vector-distance-squared (-> obj root-override-2 trans) (camera-pos)))
-  (set! (-> obj player-dist2) (vector-vector-distance-squared (-> obj root-override-2 trans) (target-pos 0)))
+  (set! (-> obj camera-dist2) (vector-vector-distance-squared (-> obj root trans) (camera-pos)))
+  (set! (-> obj player-dist2) (vector-vector-distance-squared (-> obj root trans) (target-pos 0)))
   (b!
     (not (logtest? (rigid-body-object-flag traffic-managed) (-> obj flags)))
     cfg-3
@@ -1201,12 +1198,12 @@
     (.sync.p)
     (label cfg-2)
     0
-    (set! (-> obj camera-dist2) (vector-vector-distance-squared (-> obj root-override-2 trans) (camera-pos)))
-    (set! (-> obj player-dist2) (vector-vector-distance-squared (-> obj root-override-2 trans) (target-pos 0)))
+    (set! (-> obj camera-dist2) (vector-vector-distance-squared (-> obj root trans) (camera-pos)))
+    (set! (-> obj player-dist2) (vector-vector-distance-squared (-> obj root trans) (target-pos 0)))
     (vehicle-controller-method-18
       (-> obj controller)
       (-> obj target-acceleration)
-      (-> obj root-override-2 transv)
+      (-> obj root transv)
       obj
       (/ 1.0 (-> pp clock seconds-per-frame))
       )
@@ -1260,7 +1257,7 @@
               (f1-8 245760.0)
               )
           (when (< f0-9 (* f1-8 f1-8))
-            (let ((f0-10 (vector-length (-> obj root-override-2 transv))))
+            (let ((f0-10 (vector-length (-> obj root transv))))
               (seek! (-> obj engine-power-factor) (* 0.000016276043 f0-10) (* 6.0 (-> pp clock seconds-per-frame)))
               )
             (do-engine-sounds obj)
@@ -1268,7 +1265,7 @@
           )
         (when (logtest? (-> obj draw status) (draw-control-status on-screen))
           (when #t
-            (set! (-> obj node-list data 0 bone transform trans quad) (-> obj root-override-2 trans quad))
+            (set! (-> obj node-list data 0 bone transform trans quad) (-> obj root trans quad))
             (draw-thrusters obj)
             )
           )
@@ -1303,8 +1300,8 @@
         (label cfg-21)
         0
         (vehicle-method-120 obj)
-        (update-transforms (-> obj root-override-2))
-        (set! (-> obj node-list data 0 bone transform trans quad) (-> obj root-override-2 trans quad))
+        (update-transforms (-> obj root))
+        (set! (-> obj node-list data 0 bone transform trans quad) (-> obj root trans quad))
         (vehicle-method-119 obj)
         (let ((v1-85 (-> *perf-stats* data 20)))
           (b! (zero? (-> v1-85 ctrl)) cfg-23 :delay (nop!))
@@ -1348,7 +1345,7 @@
 (defmethod alloc-and-init-rigid-body-control vehicle ((obj vehicle) (arg0 rigid-body-vehicle-constants))
   (if (logtest? (-> arg0 flags) 8)
       (iterate-prims
-        (-> obj root-override-2)
+        (-> obj root)
         (lambda ((arg0 collide-shape-prim))
           (case (-> arg0 prim-core prim-type)
             (((prim-type sphere))
@@ -1396,23 +1393,22 @@
           )
         )
       (iterate-prims
-        (-> obj root-override-2)
+        (-> obj root)
         (lambda ((arg0 collide-shape-prim))
-          (set! (-> arg0 prim-core collide-with)
-                (collide-spec
-                  backgnd
-                  jak
-                  crate
-                  civilian
-                  enemy
-                  obstacle
-                  vehicle-sphere
-                  hit-by-player-list
-                  hit-by-others-list
-                  player-list
-                  collectable
-                  pusher
-                  )
+          (set! (-> arg0 prim-core collide-with) (collide-spec
+                                                   backgnd
+                                                   jak
+                                                   crate
+                                                   civilian
+                                                   enemy
+                                                   obstacle
+                                                   vehicle-sphere
+                                                   hit-by-player-list
+                                                   hit-by-others-list
+                                                   player-list
+                                                   collectable
+                                                   pusher
+                                                   )
                 )
           (set! (-> arg0 prim-core collide-as) (collide-spec vehicle-sphere vehicle-mesh))
           (none)
@@ -1426,25 +1422,23 @@
             )
       (set! (-> obj draw shadow-ctrl) *vehicle-shadow-control-disabled*)
       )
-  (logior! (-> obj root-override-2 root-prim prim-core action) (collide-action pull-rider-can-collide))
-  (set! (-> obj root-override-2 pat-ignore-mask)
-        (new 'static 'pat-surface :noentity #x1 :nopilot #x1 :probe #x1)
-        )
-  (set! (-> obj root-override-2 event-self) 'touched)
+  (logior! (-> obj root root-prim prim-core action) (collide-action pull-rider-can-collide))
+  (set! (-> obj root pat-ignore-mask) (new 'static 'pat-surface :noentity #x1 :nopilot #x1 :probe #x1))
+  (set! (-> obj root event-self) 'touched)
   (let ((t9-3 (method-of-type rigid-body-object alloc-and-init-rigid-body-control)))
     (t9-3 obj arg0)
     )
   (logior! (-> obj rbody state flags) (rigid-body-flag enable-collision))
-  (set! (-> obj root-override-2 max-iteration-count) (the-as uint 8))
+  (set! (-> obj root max-iteration-count) (the-as uint 8))
   (set! (-> obj max-time-step) 0.033333335)
   (set! (-> obj mask) (logior (process-mask vehicle) (-> obj mask)))
   (logclear! (-> obj mask) (process-mask actor-pause movie))
   (logclear! (-> obj skel status) (joint-control-status sync-math))
   (process-entity-status! obj (entity-perm-status no-kill) #t)
   (set! (-> obj nav) #f)
-  (let ((v1-32 (-> obj root-override-2 root-prim)))
-    (set! (-> obj root-override-2 backup-collide-as) (-> v1-32 prim-core collide-as))
-    (set! (-> obj root-override-2 backup-collide-with) (-> v1-32 prim-core collide-with))
+  (let ((v1-32 (-> obj root root-prim)))
+    (set! (-> obj root backup-collide-as) (-> v1-32 prim-core collide-as))
+    (set! (-> obj root backup-collide-with) (-> v1-32 prim-core collide-with))
     )
   (rigid-body-object-method-40 obj)
   (vehicle-controller-method-9 (-> obj controller))
@@ -1471,7 +1465,7 @@
       (set! (-> obj draw light-index) (the-as uint 10))
       )
   (rigid-body-queue-method-11
-    (if (logtest? (-> obj info-override flags) 1024)
+    (if (logtest? (-> obj info flags) 1024)
         *race-rigid-body-queue*
         *traffic-rigid-body-queue*
         )
@@ -1530,14 +1524,14 @@
                          (and (logtest? (-> arg1 mask) (attack-info-mask mode)) (= (-> arg1 mode) 'eco-dark))
                          )
                      (set! (-> s5-0 vector 2 y) (* 0.1 (-> s5-0 vector 2 y)))
-                     (set! f0-2 (* 409600.0 (-> obj info-override info mass)))
-                     (/ 0.4 (-> obj info-override damage-factor))
+                     (set! f0-2 (* 409600.0 (-> obj info info mass)))
+                     (/ 0.4 (-> obj info damage-factor))
                      )
                     ((or (logtest? (penetrate dark-punch dark-bomb) arg3)
                          (and (logtest? (penetrate dark-skin) arg3) (logtest? arg3 (penetrate punch spin)))
                          )
-                     (set! f0-2 (* 204800.0 (-> obj info-override info mass)))
-                     (/ 0.2 (-> obj info-override damage-factor))
+                     (set! f0-2 (* 204800.0 (-> obj info info mass)))
+                     (/ 0.2 (-> obj info damage-factor))
                      )
                     ((logtest? (penetrate enemy-yellow-shot) arg3)
                      (set! f0-2 49152.0)
@@ -1658,16 +1652,16 @@
                )
              )
             (else
-              (set! (-> s5-0 velocity quad) (-> obj root-override-2 transv quad))
+              (set! (-> s5-0 velocity quad) (-> obj root transv quad))
               )
             )
-          (let ((v1-18 (-> arg0 root-override)))
+          (let ((v1-18 (-> arg0 root)))
             (set! (-> s2-0 quad) (-> v1-18 transv quad))
             (vector-! (-> s5-0 velocity) (-> v1-18 transv) (-> s5-0 velocity))
             )
           (let ((f0-1 (vector-dot (-> s5-0 velocity) (-> s5-0 normal))))
             (b! (>= f0-1 0.0) cfg-32 :delay #f)
-            (set! (-> s5-0 impulse) (/ f0-1 (+ f30-0 (-> obj info-override info inv-mass))))
+            (set! (-> s5-0 impulse) (/ f0-1 (+ f30-0 (-> obj info info inv-mass))))
             )
           (vector+float*! s2-0 s2-0 (-> s5-0 normal) (* -3.1 f30-0 (-> s5-0 impulse)))
           (set! (-> s2-0 y) (fmax (* 49152.0 f30-0) (-> s2-0 y)))
@@ -1803,9 +1797,9 @@
          (set! (-> obj controller traffic) (the-as traffic-engine (-> arg3 param 1)))
          (set! (-> obj flags) (logior (rigid-body-object-flag traffic-managed) (-> obj flags)))
          (let ((s5-1 (the-as traffic-object-spawn-params (-> arg3 param 0))))
-           (set! (-> obj root-override-2 trans quad) (-> s5-1 position quad))
-           (quaternion-copy! (-> obj root-override-2 quat) (-> s5-1 rotation))
-           (set! (-> obj root-override-2 transv quad) (-> s5-1 velocity quad))
+           (set! (-> obj root trans quad) (-> s5-1 position quad))
+           (quaternion-copy! (-> obj root quat) (-> s5-1 rotation))
+           (set! (-> obj root transv quad) (-> s5-1 velocity quad))
            (vehicle-method-130 obj s5-1)
            )
          )
@@ -1820,7 +1814,7 @@
                           )
                       )
              (set! (-> obj incoming-attack-id) (-> s3-1 id))
-             (when (and (logtest? (-> obj info-override flags) 4) (logtest? (rigid-body-object-flag ai-driving) (-> obj flags)))
+             (when (and (logtest? (-> obj info flags) 4) (logtest? (rigid-body-object-flag ai-driving) (-> obj flags)))
                (let ((a1-8 (find-offending-process-focusable arg0 s3-1)))
                  (if (and a1-8 (logtest? (-> a1-8 mask) (process-mask target)))
                      (vehicle-method-134 obj a1-8)
@@ -1895,8 +1889,8 @@
   (stack-size-set! (-> self main-thread) 16)
   (set! (-> self mask) (logior (process-mask vehicle) (-> self mask)))
   (allocate-and-init-cshape self)
-  (set! (-> self root-override-2 trans quad) (-> arg0 position quad))
-  (quaternion-copy! (-> self root-override-2 quat) (-> arg0 rotation))
+  (set! (-> self root trans quad) (-> arg0 position quad))
+  (quaternion-copy! (-> self root quat) (-> arg0 rotation))
   (if (not (logtest? (-> arg0 flags) (traffic-spawn-flags trsflags-00)))
       (lwide-entity-hack)
       )

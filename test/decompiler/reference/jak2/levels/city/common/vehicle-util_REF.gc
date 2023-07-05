@@ -221,14 +221,14 @@ This commonly includes things such as:
     (t9-0 obj)
     )
   (cond
-    ((logtest? (-> obj info-override flags) 2048)
+    ((logtest? (-> obj info flags) 2048)
      (set! (-> obj rbody state force-callback) (method-of-object obj vehicle-method-125))
      )
-    ((logtest? (-> obj info-override flags) 4096)
+    ((logtest? (-> obj info flags) 4096)
      (set! (-> obj rbody state force-callback) (method-of-object obj vehicle-method-126))
      )
     )
-  (rigid-body-vehicle-constants-method-9 (-> obj info-override))
+  (rigid-body-vehicle-constants-method-9 (-> obj info))
   (none)
   )
 
@@ -242,7 +242,7 @@ This commonly includes things such as:
           )
       (when (< f0-0 (* f1-0 f1-0))
         (let ((s5-0 (new 'stack-no-clear 'mystery-vehicle-type)))
-          (set! (-> s5-0 floats 4) (+ 8192.0 (-> obj root-override-2 root-prim local-sphere w)))
+          (set! (-> s5-0 floats 4) (+ 8192.0 (-> obj root root-prim local-sphere w)))
           (if (logtest? (rigid-body-object-flag ai-driving) (-> obj flags))
               (set! (-> s5-0 floats 4) (* 1.5 (-> s5-0 floats 4)))
               )
@@ -353,8 +353,8 @@ This commonly includes things such as:
                     (matrix-4x4-inverse! (-> s5-0 matrices 2) (-> s5-0 matrices 1))
                     (vector-matrix*! (the-as vector (-> s5-0 matrices)) (-> s5-0 matrices 0 vector 1) (-> s5-0 matrices 2))
                     (set! (-> s5-0 floats 0) 81920.0)
-                    (dotimes (s2-1 (-> obj info-override grab-rail-count))
-                      (let ((s1-0 (-> obj info-override grab-rail-array s2-1)))
+                    (dotimes (s2-1 (-> obj info grab-rail-count))
+                      (let ((s1-0 (-> obj info grab-rail-array s2-1)))
                         (vector-! (-> s5-0 matrices 0 trans) (the-as vector (-> s5-0 matrices)) (the-as vector (-> s1-0 local-pos)))
                         (when #t
                           (let ((f30-0 (vector-segment-distance-point!
@@ -497,7 +497,7 @@ This commonly includes things such as:
 ;; definition for method 65 of type vehicle
 ;; WARN: Return type mismatch int vs none.
 (defmethod start-jump vehicle ((obj vehicle))
-  (when (logtest? (-> obj info-override flags) 16)
+  (when (logtest? (-> obj info flags) 16)
     (when (not (logtest? (rigid-body-object-flag jump-sound) (-> obj flags)))
       (set! (-> obj flags) (logior (rigid-body-object-flag jump-sound) (-> obj flags)))
       (sound-play "bike-hop")
@@ -517,7 +517,7 @@ This commonly includes things such as:
 
 ;; definition for method 67 of type vehicle
 (defmethod get-seat-count vehicle ((obj vehicle))
-  (-> obj info-override seat-count)
+  (-> obj info seat-count)
   )
 
 ;; definition for method 68 of type vehicle
@@ -525,7 +525,7 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs none.
 (defmethod compute-seat-position vehicle ((obj vehicle) (arg0 vector) (arg1 int))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
-    (set! (-> v1-0 quad) (-> obj info-override seat-array arg1 position quad))
+    (set! (-> v1-0 quad) (-> obj info seat-array arg1 position quad))
     (set! (-> v1-0 w) 1.0)
     (vector-matrix*! arg0 v1-0 (-> obj node-list data 0 bone transform))
     )
@@ -536,7 +536,7 @@ This commonly includes things such as:
 ;; definition for method 69 of type vehicle
 (defmethod get-rider-in-seat vehicle ((obj vehicle) (arg0 int))
   (let ((v0-0 (the-as process #f)))
-    (if (< arg0 (-> obj info-override seat-count))
+    (if (< arg0 (-> obj info seat-count))
         (set! v0-0 (handle->process (-> obj rider-array arg0)))
         )
     v0-0
@@ -546,8 +546,8 @@ This commonly includes things such as:
 ;; definition for method 70 of type vehicle
 (defmethod vehicle-method-70 vehicle ((obj vehicle))
   (let ((gp-0 (the-as process #f)))
-    (countdown (s4-0 (-> obj info-override seat-count))
-      (when (logtest? (-> obj info-override seat-array s4-0 flags) 1)
+    (countdown (s4-0 (-> obj info seat-count))
+      (when (logtest? (-> obj info seat-array s4-0 flags) 1)
         (let ((v1-7 (get-rider-in-seat obj s4-0)))
           (if v1-7
               (set! gp-0 v1-7)
@@ -565,8 +565,8 @@ This commonly includes things such as:
     (let ((f30-0 (the-as float #x7f800000))
           (s1-0 (new 'stack-no-clear 'vector))
           )
-      (countdown (s0-0 (-> obj info-override seat-count))
-        (when (logtest? arg1 (-> obj info-override seat-array s0-0 flags))
+      (countdown (s0-0 (-> obj info seat-count))
+        (when (logtest? arg1 (-> obj info seat-array s0-0 flags))
           (let ((v1-7 arg2))
             (when (cond
                     ((zero? v1-7)
@@ -601,7 +601,7 @@ This commonly includes things such as:
 ;; definition for method 74 of type vehicle
 ;; WARN: Return type mismatch int vs none.
 (defmethod remove-rider vehicle ((obj vehicle) (arg0 process))
-  (let ((v1-1 (-> obj info-override seat-count)))
+  (let ((v1-1 (-> obj info seat-count)))
     (dotimes (a2-0 v1-1)
       (if (= arg0 (handle->process (-> obj rider-array a2-0)))
           (set! (-> obj rider-array a2-0) (the-as handle #f))
@@ -615,7 +615,7 @@ This commonly includes things such as:
 ;; definition for method 71 of type vehicle
 ;; WARN: Return type mismatch int vs none.
 (defmethod put-rider-in-seat vehicle ((obj vehicle) (arg0 int) (arg1 process-focusable))
-  (if (< arg0 (-> obj info-override seat-count))
+  (if (< arg0 (-> obj info seat-count))
       (set! (-> obj rider-array arg0) (process->handle arg1))
       )
   0
@@ -626,7 +626,7 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-117 vehicle ((obj vehicle) (arg0 vector) (arg1 int) (arg2 int))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
-    (vector+! v1-0 (-> obj info-override seat-array arg1 position) (-> obj info-override rider-hand-offset arg2))
+    (vector+! v1-0 (-> obj info seat-array arg1 position) (-> obj info rider-hand-offset arg2))
     (vector-matrix*! arg0 v1-0 (-> obj node-list data 0 bone transform))
     )
   0
@@ -635,7 +635,7 @@ This commonly includes things such as:
 
 ;; definition for method 72 of type vehicle
 (defmethod vehicle-method-72 vehicle ((obj vehicle))
-  (-> obj info-override rider-stance)
+  (-> obj info rider-stance)
   )
 
 ;; definition for method 75 of type vehicle
@@ -678,7 +678,7 @@ This commonly includes things such as:
             (s3-0 0)
             )
         (while (nonzero? s4-1)
-          (when (and (logtest? s4-1 1) (< s3-0 (-> obj info-override section-count)))
+          (when (and (logtest? s4-1 1) (< s3-0 (-> obj info section-count)))
             (let ((v1-14 (-> obj section-array s3-0)))
               (+! (-> v1-14 damage) (* 4.0 (-> obj damage-factor) arg0))
               )
@@ -698,7 +698,7 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-118 vehicle ((obj vehicle) (arg0 int))
   (let* ((v1-2 (-> obj section-array arg0))
-         (s4-0 (-> obj info-override section-array arg0))
+         (s4-0 (-> obj info section-array arg0))
          (s5-1
            (max
              0
@@ -771,24 +771,24 @@ This commonly includes things such as:
   (rigid-body-object-method-39 obj)
   (vehicle-method-103 obj)
   (set! (-> obj hit-points) 1.0)
-  (set! (-> obj damage-factor) (-> obj info-override damage-factor))
+  (set! (-> obj damage-factor) (-> obj info damage-factor))
   (set! (-> obj crash-level) 0)
   (set! (-> obj power-fluctuation-factor) 0.02)
   (set! (-> obj power-level) 1.0)
   (set! (-> obj flight-level-index) 0)
-  (let ((a1-0 (-> obj root-override-2 trans)))
+  (let ((a1-0 (-> obj root trans)))
     (set! (-> obj flight-level) (get-height-at-point *traffic-height-map* a1-0))
     )
   (set! (-> obj lights-factor) 0.0)
-  (let ((a0-8 (-> obj info-override color-option-select)))
-    (set! (-> obj draw color-mult quad) (-> obj info-override color-option-array a0-8 quad))
+  (let ((a0-8 (-> obj info color-option-select)))
+    (set! (-> obj draw color-mult quad) (-> obj info color-option-array a0-8 quad))
     )
-  (+! (-> obj info-override color-option-select) 1)
-  (when (>= (-> obj info-override color-option-select) (-> obj info-override color-option-count))
-    (set! (-> obj info-override color-option-select) 0)
+  (+! (-> obj info color-option-select) 1)
+  (when (>= (-> obj info color-option-select) (-> obj info color-option-count))
+    (set! (-> obj info color-option-select) 0)
     0
     )
-  (dotimes (s5-0 (-> obj info-override section-count))
+  (dotimes (s5-0 (-> obj info section-count))
     (let ((v1-34 (-> obj section-array s5-0)))
       (set! (-> v1-34 damage) 0.0)
       )
@@ -908,8 +908,8 @@ This commonly includes things such as:
       (set-vector! (-> s4-1 vector 2) 0.0 1.0 0.0 1.0)
       (mem-copy! (the-as pointer (-> s4-1 vector 4)) (the-as pointer s5-1) 64)
       (dotimes (s3-0 2)
-        (vector-matrix*! (the-as vector (-> s4-1 vector)) (-> obj info-override exhaust-local-pos s3-0) s5-1)
-        (vector-rotate*! (-> s4-1 vector 1) (-> obj info-override exhaust-local-dir s3-0) s5-1)
+        (vector-matrix*! (the-as vector (-> s4-1 vector)) (-> obj info exhaust-local-pos s3-0) s5-1)
+        (vector-rotate*! (-> s4-1 vector 1) (-> obj info exhaust-local-dir s3-0) s5-1)
         (vector-cross! (-> s4-1 vector 3) (-> s4-1 vector 1) (-> s4-1 vector 2))
         (vector-normalize! (-> s4-1 vector 3) 1.0)
         (vector-cross! (-> s4-1 vector 6) (-> s4-1 vector 3) (-> s4-1 vector 1))
@@ -948,7 +948,7 @@ This commonly includes things such as:
 ;; definition for method 141 of type vehicle
 ;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-141 vehicle ((obj vehicle))
-  (let ((a0-2 (find-nearest-nav-mesh (-> obj root-override-2 trans) (the-as float #x7f800000))))
+  (let ((a0-2 (find-nearest-nav-mesh (-> obj root trans) (the-as float #x7f800000))))
     (when a0-2
       (add-process-drawable-to-navmesh a0-2 obj #t)
       (logclear! (-> obj nav flags) (nav-control-flag output-sphere-hash))
@@ -986,9 +986,9 @@ This commonly includes things such as:
       (v1-2
         (cond
           (s5-0
-            (do-navigation-to-destination (-> s5-0 state) (-> obj root-override-2 trans))
+            (do-navigation-to-destination (-> s5-0 state) (-> obj root trans))
             (when (not (logtest? (-> s5-0 state flags) (nav-state-flag in-mesh)))
-              (let ((a0-6 (find-nearest-nav-mesh (-> obj root-override-2 trans) (the-as float #x7f800000))))
+              (let ((a0-6 (find-nearest-nav-mesh (-> obj root trans) (the-as float #x7f800000))))
                 (when (and a0-6 (!= a0-6 (-> s5-0 state mesh)))
                   (change-to a0-6 obj)
                   (logclear! (-> obj nav flags) (nav-control-flag output-sphere-hash))
@@ -1018,10 +1018,10 @@ This commonly includes things such as:
   (when (not (logtest? (rigid-body-object-flag camera) (-> obj flags)))
     (set! (-> obj flags) (logior (rigid-body-object-flag camera) (-> obj flags)))
     (set! (-> obj cam-speed-interp) 0.0)
-    (set-setting! 'string-min-height 'abs (-> obj info-override camera-string-min-height) 0)
-    (set-setting! 'string-max-height 'abs (-> obj info-override camera-string-max-height) 0)
-    (set-setting! 'head-offset 'abs (-> obj info-override camera-head-offset) 0)
-    (set-setting! 'foot-offset 'abs (-> obj info-override camera-foot-offset) 0)
+    (set-setting! 'string-min-height 'abs (-> obj info camera-string-min-height) 0)
+    (set-setting! 'string-max-height 'abs (-> obj info camera-string-max-height) 0)
+    (set-setting! 'head-offset 'abs (-> obj info camera-head-offset) 0)
+    (set-setting! 'foot-offset 'abs (-> obj info camera-foot-offset) 0)
     (set-setting! 'target-height 'abs (meters 0) 0)
     (vehicle-method-92 obj)
     (vehicle-method-89 obj)
@@ -1128,9 +1128,9 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-40 vehicle ((obj vehicle))
   (logior! (-> obj flags) (rigid-body-object-flag enable-collision))
-  (let ((v1-3 (-> obj root-override-2 root-prim)))
-    (set! (-> v1-3 prim-core collide-as) (-> obj root-override-2 backup-collide-as))
-    (set! (-> v1-3 prim-core collide-with) (-> obj root-override-2 backup-collide-with))
+  (let ((v1-3 (-> obj root root-prim)))
+    (set! (-> v1-3 prim-core collide-as) (-> obj root backup-collide-as))
+    (set! (-> v1-3 prim-core collide-with) (-> obj root backup-collide-with))
     )
   0
   (none)
@@ -1140,7 +1140,7 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-41 vehicle ((obj vehicle))
   (logclear! (-> obj flags) (rigid-body-object-flag enable-collision))
-  (let ((v1-3 (-> obj root-override-2 root-prim)))
+  (let ((v1-3 (-> obj root root-prim)))
     (set! (-> v1-3 prim-core collide-as) (collide-spec))
     (set! (-> v1-3 prim-core collide-with) (collide-spec))
     )
@@ -1176,12 +1176,8 @@ This commonly includes things such as:
 (defmethod rigid-body-object-method-38 vehicle ((obj vehicle))
   (when (not (logtest? (-> obj rbody state flags) (rigid-body-flag enable-physics)))
     (logior! (-> obj rbody state flags) (rigid-body-flag enable-physics))
-    (rigid-body-method-26 (-> obj rbody state) (-> obj root-override-2 trans) (-> obj root-override-2 quat))
-    (vector-float*!
-      (-> obj rbody state lin-momentum)
-      (-> obj root-override-2 transv)
-      (-> obj info-override info mass)
-      )
+    (rigid-body-method-26 (-> obj rbody state) (-> obj root trans) (-> obj root quat))
+    (vector-float*! (-> obj rbody state lin-momentum) (-> obj root transv) (-> obj info info mass))
     (vector-reset! (-> obj rbody state ang-momentum))
     (vector-reset! (-> obj lin-acceleration))
     )
@@ -1224,7 +1220,7 @@ This commonly includes things such as:
 ;; definition for method 80 of type vehicle
 ;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-80 vehicle ((obj vehicle))
-  (when (and (logtest? (-> obj info-override flags) 64) (< (-> obj flight-level-index) 1))
+  (when (and (logtest? (-> obj info flags) 64) (< (-> obj flight-level-index) 1))
     1
     (cond
       ((< (+ 8192.0 (-> obj rbody state position y)) (-> obj flight-level))
@@ -1243,7 +1239,7 @@ This commonly includes things such as:
 ;; definition for method 81 of type vehicle
 ;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-81 vehicle ((obj vehicle))
-  (when (and (logtest? (-> obj info-override flags) 64) (> (-> obj flight-level-index) 0))
+  (when (and (logtest? (-> obj info flags) 64) (> (-> obj flight-level-index) 0))
     (sound-play "bike-down")
     (vehicle-method-78 obj 0)
     )
@@ -1344,14 +1340,14 @@ This commonly includes things such as:
        (logclear! (-> obj draw status) (draw-control-status no-draw))
        (logior! (-> obj skel status) (joint-control-status sync-math))
        (ja-post)
-       (update-transforms (-> obj root-override-2))
+       (update-transforms (-> obj root))
        (logclear! (-> obj skel status) (joint-control-status sync-math))
        (go (method-of-object obj idle))
        )
       ((= v1-0 2)
        (let ((a1-1 (-> arg0 nav-branch)))
          (if a1-1
-             (vehicle-controller-method-13 (-> obj controller) a1-1 (-> obj root-override-2 trans))
+             (vehicle-controller-method-13 (-> obj controller) a1-1 (-> obj root trans))
              )
          )
        (vehicle-method-128 obj)
@@ -1398,7 +1394,7 @@ This commonly includes things such as:
       (set! s5-0 (-> s5-0 0 brother))
       )
     )
-  (dotimes (s5-1 (-> obj info-override seat-count))
+  (dotimes (s5-1 (-> obj info seat-count))
     (put-rider-in-seat obj s5-1 (the-as process-focusable #f))
     )
   (vehicle-method-142 obj)
@@ -1412,7 +1408,7 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-128 vehicle ((obj vehicle))
   (vehicle-method-82 obj)
-  (set! (-> obj root-override-2 trans y) (-> obj flight-level))
+  (set! (-> obj root trans y) (-> obj flight-level))
   (set! (-> obj flags) (logior (rigid-body-object-flag ignition ai-driving) (-> obj flags)))
   (let ((gp-1 (-> obj child)))
     (while gp-1
@@ -1546,8 +1542,8 @@ This commonly includes things such as:
 (defmethod vehicle-method-107 vehicle ((obj vehicle))
   (logclear! (-> obj controller flags) (vehicle-controller-flag ignore-others direct-mode))
   (let ((s5-0 (new 'stack-no-clear 'vehicle-control-point)))
-    (set! (-> s5-0 local-pos quad) (-> obj root-override-2 trans quad))
-    (set! (-> s5-0 normal quad) (-> obj root-override-2 transv quad))
+    (set! (-> s5-0 local-pos quad) (-> obj root trans quad))
+    (set! (-> s5-0 normal quad) (-> obj root transv quad))
     (set! (-> s5-0 local-pos w) 40960.0)
     (let ((s4-0 0))
       (label cfg-1)
@@ -1558,7 +1554,7 @@ This commonly includes things such as:
           (goto cfg-1)
           )
         (if v1-7
-            (vehicle-controller-method-13 (-> obj controller) (-> v1-7 branch) (-> obj root-override-2 trans))
+            (vehicle-controller-method-13 (-> obj controller) (-> v1-7 branch) (-> obj root trans))
             (vehicle-method-113 obj)
             )
         )
@@ -1572,17 +1568,13 @@ This commonly includes things such as:
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-119 vehicle ((obj vehicle))
-  (dotimes (s5-0 (-> obj info-override seat-count))
+  (dotimes (s5-0 (-> obj info seat-count))
     (let ((s4-0 (handle->process (-> obj rider-array s5-0))))
       (when (and s4-0 (focus-test? (the-as vehicle-rider s4-0) pilot-riding))
-        (compute-seat-position obj (-> (the-as vehicle-rider s4-0) root-override trans) s5-0)
-        (set! (-> (the-as vehicle-rider s4-0) root-override transv quad) (-> obj root-override-2 transv quad))
-        (let ((f0-1 (the float (-> obj info-override seat-array s5-0 angle))))
-          (quaternion-rotate-local-y!
-            (-> (the-as vehicle-rider s4-0) root-override quat)
-            (-> obj root-override-2 quat)
-            f0-1
-            )
+        (compute-seat-position obj (-> (the-as vehicle-rider s4-0) root trans) s5-0)
+        (set! (-> (the-as vehicle-rider s4-0) root transv quad) (-> obj root transv quad))
+        (let ((f0-1 (the float (-> obj info seat-array s5-0 angle))))
+          (quaternion-rotate-local-y! (-> (the-as vehicle-rider s4-0) root quat) (-> obj root quat) f0-1)
           )
         )
       )

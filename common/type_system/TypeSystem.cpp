@@ -951,7 +951,8 @@ int TypeSystem::add_field_to_type(StructureType* type,
                                   int array_size,
                                   int offset_override,
                                   bool skip_in_static_decomp,
-                                  double score) {
+                                  double score,
+                                  const std::optional<TypeSpec> decomp_as_ts) {
   if (type->lookup_field(field_name, nullptr)) {
     throw_typesystem_error("Type {} already has a field named {}\n", type->get_name(), field_name);
   }
@@ -993,6 +994,9 @@ int TypeSystem::add_field_to_type(StructureType* type,
     field.set_skip_in_static_decomp();
   }
   field.set_field_score(score);
+  if (decomp_as_ts) {
+    field.set_decomp_as_ts(*decomp_as_ts);
+  }
 
   int after_field = offset + get_size_in_type(field);
   if (type->get_size_in_memory() < after_field) {
@@ -2006,9 +2010,18 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
 
   const std::string inline_string = ":inline";
   const std::string dynamic_string = ":dynamic";
-  const std::string user_offset_string = ":offset xxx";
   bool has_offset_assert = false;
 
+  // calculate longest strings needed, for basic linting
+
+  // override fields
+  for (auto i : st->override_fields()) {
+    const auto& field = st->fields().at(i);
+    longest_field_name = std::max(longest_field_name, int(field.name().size()));
+    longest_type_name = std::max(longest_type_name, int(field.type().print().size()));
+  }
+
+  // normal fields
   for (size_t i = st->first_unique_field_idx(); i < st->fields().size(); i++) {
     const auto& field = st->fields().at(i);
     longest_field_name = std::max(longest_field_name, int(field.name().size()));
@@ -2040,6 +2053,21 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
     longest_mods = std::max(longest_mods, mods);
   }
 
+  // now actually write out the fields
+
+  // override fields first
+  for (auto i : st->override_fields()) {
+    const auto& field = st->fields().at(i);
+    result += "(";
+    result += field.name();
+    result.append(1 + (longest_field_name - int(field.name().size())), ' ');
+    result += field.type().print();
+    result.append(1 + (longest_type_name - int(field.type().print().size())), ' ');
+    result.append(1 + longest_mods, ' ');
+    result.append(":override)\n   ");
+  }
+
+  // now normal fields
   for (size_t i = st->first_unique_field_idx(); i < st->fields().size(); i++) {
     const auto& field = st->fields().at(i);
     result += "(";
