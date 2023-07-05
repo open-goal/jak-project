@@ -135,7 +135,6 @@
 (cgo-file "lpower.gd" common-dep)
 (cgo-file "lshuttle.gd" common-dep)
 (cgo-file "lkiddoge.gd" common-dep)
-(cgo-file "lwhack.gd" common-dep)
 (cgo-file "lbombbot.gd" common-dep)
 (cgo-file "lerlchal.gd" common-dep)
 (cgo-file "lprotect.gd" common-dep)
@@ -149,6 +148,7 @@
 (cgo-file "ltentob.gd" common-dep)
 (cgo-file "lkeirift.gd" common-dep)
 (cgo-file "lgarcsta.gd" common-dep)
+(cgo-file "lwhack.gd" common-dep)
 ;; title
 (cgo-file "title.gd" common-dep)
 ;; intro
