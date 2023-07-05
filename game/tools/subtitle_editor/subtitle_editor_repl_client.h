@@ -10,7 +10,6 @@ class SubtitleEditorReplClient {
  public:
   SubtitleEditorReplClient(const int port);
   ReplClient m_repl;
-  GameVersion m_game_version;
 
   void connect() { m_repl.connect(); }
   bool is_connected() { return m_repl.is_connected(); }

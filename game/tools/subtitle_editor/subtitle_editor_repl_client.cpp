@@ -2,6 +2,8 @@
 
 #include <regex>
 
+#include "game/runtime.h"
+
 #include "third-party/fmt/core.h"
 
 void SubtitleEditorReplClient::set_continue_point(const std::string& continue_point) {
@@ -96,7 +98,7 @@ void SubtitleEditorReplClient::execute_jak1_cutscene_code(
 }
 
 void SubtitleEditorReplClient::rebuild_text() {
-  if (m_game_version == GameVersion::Jak1) {
+  if (g_game_version == GameVersion::Jak1) {
     m_repl.eval("(make-text)");
     // increment the language id of the in-memory text file so that it won't match the current
     // language and the game will want to reload it asap
@@ -108,7 +110,7 @@ void SubtitleEditorReplClient::rebuild_text() {
 }
 
 void SubtitleEditorReplClient::play_vag(const std::string& scene_name, bool is_cutscene) {
-  if (m_game_version != GameVersion::Jak1) {
+  if (g_game_version != GameVersion::Jak1) {
     if (is_cutscene) {
       m_repl.eval(fmt::format("(scene-find-and-play \"{}\")", scene_name));
     } else {

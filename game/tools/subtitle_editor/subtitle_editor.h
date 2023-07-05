@@ -46,9 +46,10 @@ class SubtitleEditor {
   int m_base_language = 0;
   int m_current_language = 0;
   bool m_base_show_missing_cutscenes = true;
+  bool m_truncate_summaries = false;
   std::string m_filter_cutscenes;
   std::string m_filter_non_cutscenes;
-  std::shared_ptr<GameSubtitleSceneInfo> m_current_scene = nullptr;
+  GameSubtitleSceneInfo* m_current_scene = nullptr;
 
   // GUI Styling
   ImVec4 m_normal_text_color = ImVec4(1.0f, 0.0f, 1.0f, 1.0f);

@@ -29,8 +29,7 @@ bool SubtitleEditor::is_scene_in_current_lang(const std::string& scene_name) {
 
 void SubtitleEditor::draw_window() {
   ImGui::Begin("Subtitle Editor");
-  // Lazily load the first time the window is displayed, NOT when the game is launched
-  // why? because it takes like 1-2 seconds!
+  // Lazily load the first time the window is displayed
   if (!m_db_loaded && !m_db_failed_to_load) {
     auto subtitle_version = GameSubtitleDB::SubtitleFormat::V2;
     if (g_game_version == GameVersion::Jak1) {
@@ -63,7 +62,6 @@ void SubtitleEditor::draw_window() {
   }
 
   if (ImGui::Button("Save Changes")) {
-    // TODO - should only write out the files we are modifying
     m_files_saved_successfully =
         std::make_optional(m_subtitle_db.write_subtitle_db_to_files(g_game_version));
     m_repl.rebuild_text();
@@ -160,6 +158,7 @@ void SubtitleEditor::draw_edit_options() {
       ImGui::EndCombo();
     }
     ImGui::Checkbox("Show missing cutscenes from base", &m_base_show_missing_cutscenes);
+    ImGui::Checkbox("Truncate line summaries", &m_truncate_summaries);
     if (g_game_version == GameVersion::Jak1) {
       if (ImGui::Button("Update Editor DB")) {
         m_jak1_editor_db.update();
@@ -174,10 +173,11 @@ void SubtitleEditor::draw_repl_options() {
     ImGui::TextWrapped(
         "This tool requires a REPL connected to the game, with the game built. Run the following "
         "to do so:");
-    ImGui::Text(" - `task repl`");
-    ImGui::Text(" - `(lt)`");
-    ImGui::Text(" - `(mi)`");
-    ImGui::Text(" - Click Connect Below!");
+    ImGui::PushStyleColor(ImGuiCol_Text, m_selected_text_color);
+    ImGui::Text(" task repl");
+    ImGui::Text(" (lt)");
+    ImGui::Text(" (mi)");
+    ImGui::PopStyleColor();
     if (m_repl.is_connected()) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_success_text_color);
       ImGui::Text("REPL Connected, should be good to go!");
@@ -264,7 +264,7 @@ void SubtitleEditor::draw_scene_node(const bool base_cutscenes,
     }
     if (!base_cutscenes && !is_current_scene) {
       if (ImGui::Button("Select as Current Cutscene")) {
-        m_current_scene = std::make_shared<GameSubtitleSceneInfo>(scene_info);
+        m_current_scene = &scene_info;
       }
     }
     if (base_cutscenes) {
@@ -334,7 +334,7 @@ std::string SubtitleEditor::subtitle_line_summary(const SubtitleLine& line,
   // Truncate the text if it's too long, it's supposed to just be a summary at a glance
   std::string truncated_text = "";
   if (!line.text.empty()) {
-    if (line.text.size() > 30) {
+    if (m_truncate_summaries && line.text.size() > 30) {
       truncated_text = line.text.substr(0, 30) + "...";
     } else {
       truncated_text = line.text;
@@ -361,8 +361,21 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
     ImGui::Text("REPL not connected, can't play!");
     ImGui::PopStyleColor();
   } else {
+    bool play = false;
+    bool save_and_reload_text = false;
     if (ImGui::Button("Play")) {
-      // TODO - trigger a save (or maybe a second button)
+      play = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Save and Play")) {
+      play = true;
+      save_and_reload_text = true;
+    }
+    if (play) {
+      if (save_and_reload_text) {
+        m_subtitle_db.write_subtitle_db_to_files(g_game_version);
+        m_repl.rebuild_text();
+      }
       if (g_game_version == GameVersion::Jak1) {
         m_jak1_editor_db.update();
         if (scene.is_cutscene) {
@@ -458,9 +471,13 @@ void SubtitleEditor::draw_new_scene_line_form() {
     ImGui::InputInt2("Start and End Frame", m_current_scene_frames,
                      ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
   }
-  if (ImGui::BeginCombo("Speaker", m_subtitle_db.m_banks[m_current_language]
-                                       ->m_speakers.at(m_current_scene_speaker)
-                                       .c_str())) {
+  std::string current_speaker = "";
+  if (m_subtitle_db.m_banks[m_current_language]->m_speakers.find(m_current_scene_speaker) !=
+      m_subtitle_db.m_banks[m_current_language]->m_speakers.end()) {
+    current_speaker =
+        m_subtitle_db.m_banks[m_current_language]->m_speakers.at(m_current_scene_speaker);
+  }
+  if (ImGui::BeginCombo("Speaker", current_speaker.c_str())) {
     for (const auto& [speaker_id, localized_name] :
          m_subtitle_db.m_banks[m_current_language]->m_speakers) {
       const bool is_selected = speaker_id == m_current_scene_speaker;
@@ -514,6 +531,4 @@ void SubtitleEditor::draw_new_scene_line_form() {
       }
     }
   }
-
-  ImGui::NewLine();
 }
