@@ -4658,8 +4658,8 @@ FormElement* try_make_nonzero_logtest(Form* in, FormPool& pool) {
    `(nonzero? (logand ,a ,b))
    )
  */
-  auto logand_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::LOGAND),
-                                    {Matcher::any(0), Matcher::any(1)});
+  auto static const logand_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::LOGAND),
+                                                 {Matcher::any(0), Matcher::any(1)});
   auto mr_logand = match(logand_matcher, in);
   if (mr_logand.matched) {
     return pool.alloc_element<GenericElement>(
@@ -4744,13 +4744,25 @@ FormElement* try_make_logtest_cpad_macro(Form* in, FormPool& pool) {
   `(logtest? (cpad-hold ,pad-idx) (pad-buttons ,@buttons))
   )
  */
-  auto cpad_matcher = Matcher::op(
+  auto static const cpad_matcher = Matcher::op(
       GenericOpMatcher::fixed(FixedOperatorKind::LOGTEST),
       {Matcher::deref(Matcher::symbol("*cpad-list*"), false,
                       {DerefTokenMatcher::string("cpads"), DerefTokenMatcher::any_expr_or_int(0),
                        DerefTokenMatcher::any_string(2), DerefTokenMatcher::integer(0)}),
        Matcher::op_with_rest(GenericOpMatcher::func(Matcher::constant_token("pad-buttons")), {})});
+  auto static const cpad_matcher_inv = Matcher::op(
+      GenericOpMatcher::fixed(FixedOperatorKind::LOGTEST),
+      {Matcher::op_with_rest(GenericOpMatcher::func(Matcher::constant_token("pad-buttons")), {}),
+       Matcher::deref(Matcher::symbol("*cpad-list*"), false,
+                      {DerefTokenMatcher::string("cpads"), DerefTokenMatcher::any_expr_or_int(0),
+                       DerefTokenMatcher::any_string(2), DerefTokenMatcher::integer(0)})});
+
+  bool inv_match = false;
   auto mr = match(cpad_matcher, in);
+  if (!mr.matched) {
+    mr = match(cpad_matcher_inv, in);
+    inv_match = true;
+  }
   if (mr.matched) {
     enum { ABS, REL, NIL } t = NIL;
     if (mr.maps.strings.at(2) == "button0-abs") {
@@ -4761,8 +4773,8 @@ FormElement* try_make_logtest_cpad_macro(Form* in, FormPool& pool) {
 
     if (t != NIL) {
       auto logtest_elt = dynamic_cast<GenericElement*>(in->at(0));
-      if (logtest_elt != nullptr) {
-        auto buttons_form = logtest_elt->elts().at(1);
+      if (logtest_elt) {
+        auto buttons_form = logtest_elt->elts().at(inv_match ? 0 : 1);
         std::vector<Form*> v;
         v.push_back(mr.int_or_form_to_form(pool, 0));
         GenericElement* butts =
@@ -4916,7 +4928,14 @@ FormElement* ConditionElement::make_equal_check_generic(const Env& env,
       return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::EQ),
                                                 forms_with_cast);
     } else {
-      {
+      nice_constant =
+          try_make_constant_for_compare(source_forms.at(0), source_types.at(1), pool, env);
+      if (nice_constant) {
+        auto forms_with_cast = source_forms;
+        forms_with_cast.at(0) = nice_constant;
+        return pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(FixedOperatorKind::EQ), forms_with_cast);
+      } else {
         // (= (ja-group)
         //    (-> self draw art-group data 7)
         //    )
