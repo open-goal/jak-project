@@ -6,7 +6,8 @@ KeyboardDevice::KeyboardDevice(std::shared_ptr<game_settings::InputSettings> set
   m_settings = settings;
 }
 
-// TODO - if you assign the key for confirm, it will immediately press it again (its because polling isn't bind-aware)
+// TODO - if you assign the key for confirm, it will immediately press it again (its because polling
+// isn't bind-aware)
 // TODO - fix modifiers as individual binds
 
 // I don't trust SDL's key repeat stuff, do it myself to avoid bug reports...(or cause more)
@@ -59,11 +60,11 @@ void KeyboardDevice::poll_state(std::shared_ptr<PadData> data) {
       if (keyboard_state[SDL_GetScancodeFromKey(sdl_keycode)] &&
           bind.modifiers.has_necessary_modifiers(keyboard_modifier_state) &&
           !is_action_already_active(sdl_keycode)) {
-        data->analog_data.at(bind.pad_data_index) = bind.minimum_in_range ? -127 : 127;
+        data->analog_data.at(bind.pad_data_index) += bind.minimum_in_range ? -127 : 127;
         data->update_analog_sim_tracker(false);
         m_active_actions.push_back(
             {sdl_keycode, bind, [](std::shared_ptr<PadData> data, InputBinding bind) {
-               data->analog_data.at(bind.pad_data_index) = bind.minimum_in_range ? 127 : -127;
+               data->analog_data.at(bind.pad_data_index) += bind.minimum_in_range ? 127 : -127;
                data->update_analog_sim_tracker(true);
              }});
       }

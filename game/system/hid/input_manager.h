@@ -46,7 +46,9 @@ class InputManager {
   ~InputManager();
 
   // Propagate and handle the SDL event, ignored it if it's not relevant
-  void process_sdl_event(const SDL_Event& event, const bool ignore_mouse, const bool ignore_kb);
+  void process_sdl_event(const SDL_Event& event);
+  void poll_keyboard_data();
+  void poll_mouse_data();
   /// Any event coming from the EE thread that interacts directly with SDL should be enqueued as an
   /// event so it can be ran from the proper thread context (the graphics thread)
   void process_ee_events();
@@ -118,8 +120,6 @@ class InputManager {
   int m_keyboard_and_mouse_port = 0;
   /// Collection of arbitrary commands to run on user actions
   CommandBindingGroups m_command_binds;
-
-  bool m_ignored_device_last_frame = false;
 
   bool m_keyboard_enabled = true;
   bool m_mouse_enabled = false;
