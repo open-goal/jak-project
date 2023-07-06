@@ -6,10 +6,6 @@ KeyboardDevice::KeyboardDevice(std::shared_ptr<game_settings::InputSettings> set
   m_settings = settings;
 }
 
-// TODO - if you assign the key for confirm, it will immediately press it again (its because polling
-// isn't bind-aware)
-// TODO - fix modifiers as individual binds
-
 // I don't trust SDL's key repeat stuff, do it myself to avoid bug reports...(or cause more)
 bool KeyboardDevice::is_action_already_active(const u32 sdl_keycode) {
   for (const auto& action : m_active_actions) {
@@ -133,15 +129,14 @@ void KeyboardDevice::process_event(const SDL_Event& event,
               return;
             }
           }
+        }
+        // otherwise, set the bind
+        if (bind_assignment->for_analog) {
+          binds.assign_analog_bind(key_event.keysym.sym, bind_assignment.value(),
+                                   InputModifiers(key_event.keysym.mod));
         } else {
-          // otherwise, set the bind
-          if (bind_assignment->for_analog) {
-            binds.assign_analog_bind(key_event.keysym.sym, bind_assignment.value(),
-                                     InputModifiers(key_event.keysym.mod));
-          } else {
-            binds.assign_button_bind(key_event.keysym.sym, bind_assignment.value(), false,
-                                     InputModifiers(key_event.keysym.mod));
-          }
+          binds.assign_button_bind(key_event.keysym.sym, bind_assignment.value(), false,
+                                   InputModifiers(key_event.keysym.mod));
         }
       }
       return;

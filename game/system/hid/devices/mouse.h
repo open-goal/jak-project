@@ -6,7 +6,8 @@
 struct ActiveMouseAction {
   u32 sdl_mouse_button;
   InputBinding binding;
-  bool player_movement = false; // A special one for the mouse, no related binding, hard-coded behaviour!
+  bool player_movement =
+      false;  // A special one for the mouse, no related binding, hard-coded behaviour!
   std::function<void(std::shared_ptr<PadData>, InputBinding bind)> revert_action;
 };
 
@@ -40,9 +41,7 @@ class MouseDevice : public InputDevice {
   std::pair<int, int> get_mouse_pos() const { return {m_xcoord, m_ycoord}; }
   MouseButtonStatus get_mouse_button_status() const { return m_button_status; }
   void set_camera_sens(const float xsens, const float ysens);
-  bool is_camera_being_controlled() {
-    return m_control_camera;
-  }
+  bool is_camera_being_controlled() { return m_control_camera; }
 
  private:
   std::vector<ActiveMouseAction> m_active_actions = {};
