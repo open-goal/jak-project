@@ -316,6 +316,7 @@ GLDisplay::GLDisplay(SDL_Window* window, SDL_GLContext gl_context, bool is_main)
       m_display_manager(std::make_shared<DisplayManager>(window)),
       m_input_manager(std::make_shared<InputManager>()) {
   m_main = is_main;
+  m_display_manager->set_input_manager(m_input_manager);
   // Register commands
   m_input_manager->register_command(CommandBinding::Source::KEYBOARD,
                                     CommandBinding(SDLK_F12, [&]() {

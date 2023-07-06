@@ -98,6 +98,8 @@ class InputManager {
   void stop_waiting_for_bind() { m_waiting_for_bind = std::nullopt; }
   void set_camera_sens(const float xsens, const float ysens);
   void reset_input_bindings_to_defaults(const int port, const InputDeviceType device_type);
+  bool auto_hiding_cursor() { return m_auto_hide_mouse || m_mouse.is_camera_being_controlled(); }
+  void hide_cursor(const bool hide_cursor);
 
  private:
   std::mutex m_event_queue_mtx;
@@ -139,7 +141,6 @@ class InputManager {
   std::optional<InputBindAssignmentMeta> m_waiting_for_bind = std::nullopt;
 
   void refresh_device_list();
-  void hide_cursor(const bool hide_cursor);
   void clear_inputs();
 
   void ignore_background_controller_events(const bool ignore);

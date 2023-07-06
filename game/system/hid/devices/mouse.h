@@ -40,6 +40,9 @@ class MouseDevice : public InputDevice {
   std::pair<int, int> get_mouse_pos() const { return {m_xcoord, m_ycoord}; }
   MouseButtonStatus get_mouse_button_status() const { return m_button_status; }
   void set_camera_sens(const float xsens, const float ysens);
+  bool is_camera_being_controlled() {
+    return m_control_camera;
+  }
 
  private:
   std::vector<ActiveMouseAction> m_active_actions = {};

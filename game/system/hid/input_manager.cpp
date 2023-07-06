@@ -124,6 +124,8 @@ void InputManager::hide_cursor(const bool hide_cursor) {
   if (hide_cursor == m_mouse_currently_hidden) {
     return;
   }
+  // NOTE - seems like an SDL bug, but the cursor will be visible / locked to the center of the screen if you use
+  // the 'start menu' to exit the window / return to it (atleast in windowed mode)
   auto ok = SDL_ShowCursor(hide_cursor ? SDL_DISABLE : SDL_ENABLE);
   if (ok < 0) {
     sdl_util::log_error("Unable to show/hide mouse cursor");
@@ -167,7 +169,7 @@ void InputManager::process_sdl_event(const SDL_Event& event) {
 
   // Adjust mouse cursor visibility
   if (m_auto_hide_mouse) {
-    if (event.type == SDL_MOUSEMOTION) {
+    if (event.type == SDL_MOUSEMOTION && !m_mouse.is_camera_being_controlled()) {
       hide_cursor(false);
     } else if (event.type == SDL_KEYDOWN || event.type == SDL_CONTROLLERBUTTONDOWN) {
       hide_cursor(true);
