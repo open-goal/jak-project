@@ -4659,7 +4659,7 @@ FormElement* try_make_nonzero_logtest(Form* in, FormPool& pool) {
    )
  */
   auto static const logand_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::LOGAND),
-                                    {Matcher::any(0), Matcher::any(1)});
+                                                 {Matcher::any(0), Matcher::any(1)});
   auto mr_logand = match(logand_matcher, in);
   if (mr_logand.matched) {
     return pool.alloc_element<GenericElement>(
