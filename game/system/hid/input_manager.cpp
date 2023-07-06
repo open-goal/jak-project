@@ -180,10 +180,26 @@ void InputManager::poll_keyboard_data() {
   }
 }
 
+void InputManager::clear_keyboard_actions() {
+  if (m_keyboard_enabled) {
+    if (m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
+      m_keyboard.clear_actions(m_data.at(m_keyboard_and_mouse_port));
+    }
+  }
+}
+
 void InputManager::poll_mouse_data() {
   if (m_mouse_enabled && !m_waiting_for_bind) {
     if (m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
       m_mouse.poll_state(m_data.at(m_keyboard_and_mouse_port));
+    }
+  }
+}
+
+void InputManager::clear_mouse_actions() {
+  if (m_mouse_enabled && !m_waiting_for_bind) {
+    if (m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
+      m_mouse.clear_actions(m_data.at(m_keyboard_and_mouse_port));
     }
   }
 }

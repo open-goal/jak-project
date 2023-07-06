@@ -48,7 +48,9 @@ class InputManager {
   // Propagate and handle the SDL event, ignored it if it's not relevant
   void process_sdl_event(const SDL_Event& event);
   void poll_keyboard_data();
+  void clear_keyboard_actions();
   void poll_mouse_data();
+  void clear_mouse_actions();
   /// Any event coming from the EE thread that interacts directly with SDL should be enqueued as an
   /// event so it can be ran from the proper thread context (the graphics thread)
   void process_ee_events();

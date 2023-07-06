@@ -25,6 +25,7 @@ class MouseDevice : public InputDevice {
   ~MouseDevice() {}
 
   void poll_state(std::shared_ptr<PadData> data);
+  void clear_actions(std::shared_ptr<PadData> data);
   void process_event(const SDL_Event& event,
                      const CommandBindingGroups& commands,
                      std::shared_ptr<PadData> data,

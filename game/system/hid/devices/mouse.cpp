@@ -93,6 +93,13 @@ void MouseDevice::poll_state(std::shared_ptr<PadData> data) {
   }
 }
 
+void MouseDevice::clear_actions(std::shared_ptr<PadData> data) {
+  for (auto it = m_active_actions.begin(); it != m_active_actions.end();) {
+    it->revert_action(data, it->binding);
+    it = m_active_actions.erase(it);
+  }
+}
+
 void MouseDevice::process_event(const SDL_Event& event,
                                 const CommandBindingGroups& commands,
                                 std::shared_ptr<PadData> data,
