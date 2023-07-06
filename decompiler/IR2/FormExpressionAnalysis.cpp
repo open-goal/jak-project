@@ -2670,16 +2670,16 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
   typedef struct {
     FixedOperatorKind kind;
     FixedOperatorKind inplace_kind;
-    int inplace_arg;
+    std::vector<int> inplace_arg;
   } InplaceOpInfo;
 
   const static InplaceOpInfo in_place_ops[] = {
-      {FixedOperatorKind::ADDITION, FixedOperatorKind::ADDITION_IN_PLACE, 0},
-      {FixedOperatorKind::ADDITION_PTR, FixedOperatorKind::ADDITION_PTR_IN_PLACE, 0},
-      {FixedOperatorKind::LOGAND, FixedOperatorKind::LOGAND_IN_PLACE, 0},
-      {FixedOperatorKind::LOGIOR, FixedOperatorKind::LOGIOR_IN_PLACE, 0},
-      {FixedOperatorKind::LOGCLEAR, FixedOperatorKind::LOGCLEAR_IN_PLACE, 0},
-      {FixedOperatorKind::LOGXOR, FixedOperatorKind::LOGXOR_IN_PLACE, 0}};
+      {FixedOperatorKind::ADDITION, FixedOperatorKind::ADDITION_IN_PLACE, {0, 1}},
+      {FixedOperatorKind::ADDITION_PTR, FixedOperatorKind::ADDITION_PTR_IN_PLACE, {0, 1}},
+      {FixedOperatorKind::LOGAND, FixedOperatorKind::LOGAND_IN_PLACE, {0, 1}},
+      {FixedOperatorKind::LOGIOR, FixedOperatorKind::LOGIOR_IN_PLACE, {0, 1}},
+      {FixedOperatorKind::LOGCLEAR, FixedOperatorKind::LOGCLEAR_IN_PLACE, {0, 1}},
+      {FixedOperatorKind::LOGXOR, FixedOperatorKind::LOGXOR_IN_PLACE, {0, 1}}};
 
   typedef struct {
     std::string orig_name;
@@ -2724,12 +2724,18 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
       for (const auto& op_info : in_place_ops) {
         if (src_as_generic->op().is_fixed(op_info.kind)) {
           auto dst_form = m_dst->to_form(env);
-          auto add_form_0 = src_as_generic->elts().at(op_info.inplace_arg)->to_form(env);
 
-          if (dst_form == add_form_0) {
-            src_as_generic->op() = GenericOperator::make_fixed(op_info.inplace_kind);
-            stack.push_form_element(src_as_generic, true);
-            return;
+          for (int inplace_arg : op_info.inplace_arg) {
+            auto add_form_0 = src_as_generic->elts().at(inplace_arg)->to_form(env);
+
+            if (dst_form == add_form_0) {
+              if (inplace_arg != 0) {
+                std::swap(src_as_generic->elts().at(0), src_as_generic->elts().at(1));
+              }
+              src_as_generic->op() = GenericOperator::make_fixed(op_info.inplace_kind);
+              stack.push_form_element(src_as_generic, true);
+              return;
+            }
           }
         }
       }
