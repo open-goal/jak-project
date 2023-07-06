@@ -51,6 +51,8 @@ class InputManager {
   void clear_keyboard_actions();
   void poll_mouse_data();
   void clear_mouse_actions();
+  // Any cleanup that should happen after polling has completed for this frame
+  void finish_polling();
   /// Any event coming from the EE thread that interacts directly with SDL should be enqueued as an
   /// event so it can be ran from the proper thread context (the graphics thread)
   void process_ee_events();
@@ -125,6 +127,7 @@ class InputManager {
 
   bool m_keyboard_enabled = true;
   bool m_mouse_enabled = false;
+  int m_skip_polling_for_n_frames = 0;
   bool m_auto_hide_mouse = true;
   bool m_mouse_currently_hidden = false;
   bool m_ignore_background_controller_events = false;

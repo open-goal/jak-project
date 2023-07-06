@@ -157,9 +157,12 @@ void InputManager::process_sdl_event(const SDL_Event& event) {
   }
 
   // Clear the binding assignment if we got one
-  // TODO - heres the fix for the double confirm bug!
   if (m_waiting_for_bind && m_waiting_for_bind->assigned) {
     stop_waiting_for_bind();
+    // NOTE - this is a total hack, but it's to prevent immediately re-assigning the "confirmation"
+    // bind if you use a source that is polled
+    // TODO: There's a correct way to do this....figure it out eventually
+    m_skip_polling_for_n_frames = 60;
   }
 
   // Adjust mouse cursor visibility
@@ -173,7 +176,7 @@ void InputManager::process_sdl_event(const SDL_Event& event) {
 }
 
 void InputManager::poll_keyboard_data() {
-  if (m_keyboard_enabled && !m_waiting_for_bind) {
+  if (m_keyboard_enabled && m_skip_polling_for_n_frames <= 0 && !m_waiting_for_bind) {
     if (m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
       m_keyboard.poll_state(m_data.at(m_keyboard_and_mouse_port));
     }
@@ -189,7 +192,7 @@ void InputManager::clear_keyboard_actions() {
 }
 
 void InputManager::poll_mouse_data() {
-  if (m_mouse_enabled && !m_waiting_for_bind) {
+  if (m_mouse_enabled && m_skip_polling_for_n_frames <= 0 && !m_waiting_for_bind) {
     if (m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
       m_mouse.poll_state(m_data.at(m_keyboard_and_mouse_port));
     }
@@ -201,6 +204,13 @@ void InputManager::clear_mouse_actions() {
     if (m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
       m_mouse.clear_actions(m_data.at(m_keyboard_and_mouse_port));
     }
+  }
+}
+
+void InputManager::finish_polling() {
+  m_skip_polling_for_n_frames--;
+  if (m_skip_polling_for_n_frames < 0) {
+    m_skip_polling_for_n_frames = 0;
   }
 }
 

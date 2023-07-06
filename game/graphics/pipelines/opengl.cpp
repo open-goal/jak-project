@@ -316,7 +316,6 @@ GLDisplay::GLDisplay(SDL_Window* window, SDL_GLContext gl_context, bool is_main)
       m_display_manager(std::make_shared<DisplayManager>(window)),
       m_input_manager(std::make_shared<InputManager>()) {
   m_main = is_main;
-
   // Register commands
   m_input_manager->register_command(CommandBinding::Source::KEYBOARD,
                                     CommandBinding(SDLK_F12, [&]() {
@@ -468,9 +467,6 @@ void GLDisplay::process_sdl_events() {
     }
     {
       auto p = scoped_prof("sdl-input-monitor-process-event");
-      // Ignore relevant inputs from the window if ImGUI is capturing them
-      // On the first frame, this will clear any current inputs in an attempt to reduce unexpected
-      // behaviour
       m_input_manager->process_sdl_event(evt);
     }
   }
@@ -498,6 +494,7 @@ void GLDisplay::render() {
     } else {
       m_input_manager->poll_mouse_data();
     }
+    m_input_manager->finish_polling();
   }
   // Now process SDL Events
   process_sdl_events();
