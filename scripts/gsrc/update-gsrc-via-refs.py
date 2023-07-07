@@ -55,7 +55,7 @@ subprocess.run(
         "--version",
         args.version,
         "--config-override",
-        '{{"allowed_objects": {}}}'.format(all_names),
+        '{{"levels_extract": false, "process_art_groups": false, "decompile_code": true, "allowed_objects": {}}}'.format(all_names),
     ]
 )
 
