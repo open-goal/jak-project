@@ -39,14 +39,13 @@ class SubtitleEditor {
   bool m_db_failed_to_load = false;
   GameSubtitleDB m_subtitle_db;
   SubtitleEditorReplClient m_repl;
+  GameSubtitleDB::SubtitleFormat m_subtitle_version;
 
   // Jak 1 Specifics
   Jak1SubtitleEditorDB m_jak1_editor_db;
 
   // GUI Controls
-  int m_base_language = 0;
   int m_current_language = 0;
-  bool m_base_show_missing_cutscenes = true;
   bool m_truncate_summaries = false;
   std::string m_filter_cutscenes;
   std::string m_filter_non_cutscenes;

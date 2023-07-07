@@ -65,12 +65,14 @@ struct GameSubtitlePackage {
   SubtitleMetadataFile combined_meta;
   SubtitleFile base_lines;
   SubtitleFile combined_lines;
+  std::unordered_set<std::string> scenes_defined_in_lang;
 };
 
 struct GameSubtitleSceneInfo {
   std::string m_name;
   std::vector<SubtitleLine> m_lines;
   bool is_cutscene;
+  bool only_defined_in_base = false;
   int m_hint_id;  // used only for jak1
 
   void add_line(const std::string& text,
@@ -119,6 +121,7 @@ class GameSubtitleBank {
   int m_lang_id;
   GameTextVersion m_text_version;
   std::string m_file_path;
+  std::optional<std::string> m_file_base_path;
 
   std::map<std::string, GameSubtitleSceneInfo> m_base_scenes;
   std::map<std::string, GameSubtitleSceneInfo> m_lang_scenes;
@@ -165,5 +168,4 @@ class GameSubtitleDB {
 };
 
 GameSubtitleDB load_subtitle_project(const GameSubtitleDB::SubtitleFormat format_version,
-                                     GameVersion game_version,
-                                     const bool ignore_base_files = false);
+                                     GameVersion game_version);

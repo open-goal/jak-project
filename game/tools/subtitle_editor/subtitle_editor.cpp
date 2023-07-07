@@ -17,6 +17,11 @@
 SubtitleEditor::SubtitleEditor() {
   m_filter_cutscenes = m_filter_placeholder;
   m_filter_non_cutscenes = m_filter_placeholder;
+  if (g_game_version == GameVersion::Jak1) {
+    m_subtitle_version = GameSubtitleDB::SubtitleFormat::V1;
+  } else {
+    m_subtitle_version = GameSubtitleDB::SubtitleFormat::V2;
+  }
 }
 
 bool SubtitleEditor::is_v1_format() {
@@ -32,12 +37,10 @@ void SubtitleEditor::draw_window() {
   ImGui::Begin("Subtitle Editor");
   // Lazily load the first time the window is displayed
   if (!m_db_loaded && !m_db_failed_to_load) {
-    auto subtitle_version = GameSubtitleDB::SubtitleFormat::V2;
     if (g_game_version == GameVersion::Jak1) {
-      subtitle_version = GameSubtitleDB::SubtitleFormat::V1;
       m_jak1_editor_db.update();
     }
-    m_subtitle_db = load_subtitle_project(subtitle_version, g_game_version, true);
+    m_subtitle_db = load_subtitle_project(m_subtitle_version, g_game_version);
     if (m_subtitle_db.m_load_error) {
       m_db_failed_to_load = true;
     } else {
@@ -48,12 +51,10 @@ void SubtitleEditor::draw_window() {
     ImGui::Text(fmt::format("Error Loading - {}!", m_subtitle_db.m_load_error.value()).c_str());
     ImGui::PopStyleColor();
     if (ImGui::Button("Try Again")) {
-      auto subtitle_version = GameSubtitleDB::SubtitleFormat::V2;
       if (g_game_version == GameVersion::Jak1) {
-        subtitle_version = GameSubtitleDB::SubtitleFormat::V1;
         m_jak1_editor_db.update();
       }
-      m_subtitle_db = load_subtitle_project(subtitle_version, g_game_version, true);
+      m_subtitle_db = load_subtitle_project(m_subtitle_version, g_game_version);
       if (m_subtitle_db.m_load_error) {
         m_db_failed_to_load = true;
       } else {
@@ -66,6 +67,7 @@ void SubtitleEditor::draw_window() {
     m_files_saved_successfully =
         std::make_optional(m_subtitle_db.write_subtitle_db_to_files(g_game_version));
     m_repl.rebuild_text();
+    m_subtitle_db = load_subtitle_project(m_subtitle_version, g_game_version);
   }
   if (m_files_saved_successfully.has_value()) {
     ImGui::SameLine();
@@ -78,6 +80,9 @@ void SubtitleEditor::draw_window() {
       ImGui::Text("Error!");
       ImGui::PopStyleColor();
     }
+  }
+  if (ImGui::Button("Reload Project")) {
+    m_subtitle_db = load_subtitle_project(m_subtitle_version, g_game_version);
   }
 
   draw_edit_options();
@@ -107,8 +112,8 @@ void SubtitleEditor::draw_window() {
     draw_scene_section_header(false);
     ImGui::InputText("Filter", &m_filter_cutscenes,
                      ImGuiInputTextFlags_::ImGuiInputTextFlags_AutoSelectAll);
-    draw_all_cutscenes(false);
     draw_all_cutscenes(true);
+    draw_all_cutscenes(false);
     ImGui::TreePop();
   }
 
@@ -116,8 +121,8 @@ void SubtitleEditor::draw_window() {
     draw_scene_section_header(true);
     ImGui::InputText("Filter", &m_filter_non_cutscenes,
                      ImGuiInputTextFlags_::ImGuiInputTextFlags_AutoSelectAll);
-    draw_all_non_cutscenes(false);
     draw_all_non_cutscenes(true);
+    draw_all_non_cutscenes(false);
     ImGui::TreePop();
   }
   ImGui::End();
@@ -142,23 +147,14 @@ void SubtitleEditor::draw_edit_options() {
       }
       ImGui::EndCombo();
     }
-    if (ImGui::BeginCombo("Base Language ID",
-                          fmt::format("[{}] {}", m_subtitle_db.m_banks[m_base_language]->m_lang_id,
-                                      m_subtitle_db.m_banks[m_base_language]->m_file_path)
-                              .c_str())) {
-      for (const auto& [key, value] : m_subtitle_db.m_banks) {
-        const bool isSelected = m_base_language == key;
-        if (ImGui::Selectable(fmt::format("[{}] {}", value->m_lang_id, value->m_file_path).c_str(),
-                              isSelected)) {
-          m_base_language = key;
-        }
-        if (isSelected) {
-          ImGui::SetItemDefaultFocus();
-        }
+    if (m_subtitle_db.m_banks.find(m_current_language) != m_subtitle_db.m_banks.end()) {
+      if (m_subtitle_db.m_banks.at(m_current_language)->m_file_base_path) {
+        ImGui::Text("Language Base - %s",
+                    m_subtitle_db.m_banks.at(m_current_language)->m_file_base_path.value().c_str());
+      } else {
+        ImGui::Text("This language has no base language!");
       }
-      ImGui::EndCombo();
     }
-    ImGui::Checkbox("Show missing cutscenes from base", &m_base_show_missing_cutscenes);
     ImGui::Checkbox("Truncate line summaries", &m_truncate_summaries);
     if (g_game_version == GameVersion::Jak1) {
       if (ImGui::Button("Update Editor DB")) {
@@ -256,21 +252,14 @@ void SubtitleEditor::draw_scene_node(const bool base_cutscenes,
     pop_color = true;
   }
 
-  if (ImGui::TreeNode(
-          fmt::format("{}-{}", scene_name, base_cutscenes ? m_base_language : m_current_language)
-              .c_str(),
-          "%s", scene_name.c_str())) {
+  if (ImGui::TreeNode(fmt::format("{}-{}", scene_name, base_cutscenes).c_str(), "%s",
+                      scene_name.c_str())) {
     if (pop_color) {
       ImGui::PopStyleColor();
     }
     if (!base_cutscenes && !is_current_scene) {
       if (ImGui::Button("Select as Current Cutscene")) {
         m_current_scene = &scene_info;
-      }
-    }
-    if (base_cutscenes) {
-      if (ImGui::Button("Copy from Base Language")) {
-        m_subtitle_db.m_banks.at(m_current_language)->m_scenes.emplace(scene_name, scene_info);
       }
     }
     draw_subtitle_options(scene_info);
@@ -290,9 +279,8 @@ void SubtitleEditor::draw_scene_node(const bool base_cutscenes,
 
 void SubtitleEditor::draw_all_cutscenes(bool base_cutscenes) {
   std::unordered_set<std::string> scenes_to_delete;
-  for (auto& [scene_name, scene_info] :
-       m_subtitle_db.m_banks.at(base_cutscenes ? m_base_language : m_current_language)->m_scenes) {
-    if (!scene_info.is_cutscene || (base_cutscenes && is_scene_in_current_lang(scene_name))) {
+  for (auto& [scene_name, scene_info] : m_subtitle_db.m_banks.at(m_current_language)->m_scenes) {
+    if (!scene_info.is_cutscene || (base_cutscenes && !scene_info.only_defined_in_base)) {
       continue;
     }
     if ((!m_filter_cutscenes.empty() && m_filter_cutscenes != m_filter_placeholder) &&
@@ -311,9 +299,8 @@ void SubtitleEditor::draw_all_cutscenes(bool base_cutscenes) {
 
 void SubtitleEditor::draw_all_non_cutscenes(bool base_cutscenes) {
   std::unordered_set<std::string> scenes_to_delete;
-  for (auto& [scene_name, scene_info] :
-       m_subtitle_db.m_banks.at(base_cutscenes ? m_base_language : m_current_language)->m_scenes) {
-    if (scene_info.is_cutscene || (base_cutscenes && is_scene_in_current_lang(scene_name))) {
+  for (auto& [scene_name, scene_info] : m_subtitle_db.m_banks.at(m_current_language)->m_scenes) {
+    if (scene_info.is_cutscene || (base_cutscenes && !scene_info.only_defined_in_base)) {
       continue;
     }
     if ((!m_filter_non_cutscenes.empty() && m_filter_non_cutscenes != m_filter_placeholder) &&

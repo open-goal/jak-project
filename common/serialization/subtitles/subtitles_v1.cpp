@@ -122,6 +122,7 @@ std::pair<SubtitleMetadataFile, SubtitleFile> convert_v1_to_v2(
     for (const auto& line_meta : hint_info.lines) {
       SubtitleLineMetadata new_meta;
       new_meta.frame_start = line_meta.frame_start;
+      new_meta.frame_end = 0;  // unused by v1
       new_meta.offscreen = true;
       new_meta.speaker = line_meta.speaker;
       new_scene_meta.lines.push_back(new_meta);
@@ -161,6 +162,7 @@ GameSubtitlePackage read_json_files_v1(const GameSubtitleDefinitionFile& file_in
   SubtitleMetadataFileV1 v1_meta_base_file;
   SubtitleMetadataFileV1 v1_meta_combined_file;
   SubtitleFileV1 v1_lines_base_file;
+  SubtitleFileV1 v1_lines_lang_file;
   SubtitleFileV1 v1_lines_combined_file;
   try {
     // If we have a base file defined, load that and merge it
@@ -176,7 +178,6 @@ GameSubtitlePackage read_json_files_v1(const GameSubtitleDefinitionFile& file_in
       base_data.at("cutscenes").update(data.at("cutscenes"));
       base_data.at("hints").update(data.at("hints"));
       v1_meta_combined_file = base_data;
-
     } else {
       v1_meta_combined_file = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.meta_path),
@@ -199,12 +200,19 @@ GameSubtitlePackage read_json_files_v1(const GameSubtitleDefinitionFile& file_in
       v1_lines_combined_file = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.lines_path),
           "subtitle_line_path");
+      v1_lines_lang_file = v1_lines_combined_file;
     }
     GameSubtitlePackage package;
     std::tie(package.base_meta, package.base_lines) =
         convert_v1_to_v2(file_info, v1_meta_base_file, v1_lines_base_file);
     std::tie(package.combined_meta, package.combined_lines) =
         convert_v1_to_v2(file_info, v1_meta_combined_file, v1_lines_combined_file);
+    for (const auto& [scene_name, scene_info] : v1_lines_lang_file.cutscenes) {
+      package.scenes_defined_in_lang.insert(scene_name);
+    }
+    for (const auto& [scene_name, scene_info] : v1_lines_lang_file.hints) {
+      package.scenes_defined_in_lang.insert(scene_name);
+    }
     return package;
   } catch (std::exception& e) {
     lg::error("Unable to parse subtitle json entry, couldn't successfully load files - {}",
@@ -264,6 +272,9 @@ SubtitleFileV1 dump_bank_lines_v1(const GameVersion game_version,
   SubtitleFileV1 file;
   file.speakers = bank->m_speakers;
   for (const auto& [scene_name, scene_info] : bank->m_scenes) {
+    if (scene_name == "assistant-village3-reminder" && bank->m_lang_id == 2) {
+      int x = 0;
+    }
     // Avoid dumping duplicates if needed
     if (!dump_with_duplicates &&
         bank->m_base_scenes.find(scene_name) != bank->m_base_scenes.end() &&
