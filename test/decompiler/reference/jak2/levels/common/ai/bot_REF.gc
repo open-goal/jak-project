@@ -847,7 +847,7 @@
                     )
                 (cond
                   (v1-43
-                    (set! (-> obj bot-flags) (logior (bot-flags bf16) (-> obj bot-flags)))
+                    (logior! (-> obj bot-flags) (bot-flags bf16))
                     (when (and (>= (the-as int s5-1) 0) (!= s5-1 (-> obj nav-mesh-index)))
                       (change-to (nav-mesh-from-res-tag (-> obj entity) 'nav-mesh-actor (the-as int s5-1)) obj)
                       (set! (-> obj nav-mesh-index) (the-as int s5-1))
@@ -1516,8 +1516,8 @@ If the player is too far, play a warning speech."
   (process-entity-status! obj (entity-perm-status bit-4) #t)
   (set! (-> obj ai-ctrl) (new 'process 'ai-task-control *bot-task-pool*))
   (logclear! (-> obj mask) (process-mask enemy))
-  (set! (-> obj mask) (logior (process-mask bot) (-> obj mask)))
-  (set! (-> obj enemy-flags) (logior (enemy-flag use-notice-distance multi-focus) (-> obj enemy-flags)))
+  (logior! (-> obj mask) (process-mask bot))
+  (logior! (-> obj enemy-flags) (enemy-flag use-notice-distance multi-focus))
   (logclear! (-> obj mask) (process-mask collectable))
   (logclear! (-> obj enemy-flags) (enemy-flag look-at-move-dest))
   (logior! (-> obj focus-status) (focus-status disable))
@@ -1601,7 +1601,7 @@ If the player is too far, play a warning speech."
     (when (and arg0 focus-proc (zero? (-> focus los)))
       (let ((cquery (new 'stack-no-clear 'collide-query)))
         (set! (-> cquery start-pos quad) (-> obj root trans quad))
-        (set! (-> cquery start-pos y) (+ 8192.0 (-> cquery start-pos y)))
+        (+! (-> cquery start-pos y) 8192.0)
         (vector-! (-> cquery move-dist) (-> focus bullseye) (-> cquery start-pos))
         (let ((f0-19 (fmax 1.0 (+ -1638.4 (vector-length (-> cquery move-dist))))))
           (cond
@@ -1760,7 +1760,7 @@ If the player is too far, play a warning speech."
           (s5-0 (new 'stack-no-clear 'vector))
           )
       (set! (-> v1-0 quad) (-> obj root trans quad))
-      (set! (-> v1-0 y) (+ 9216.0 (-> v1-0 y)))
+      (+! (-> v1-0 y) 9216.0)
       (vector-! s1-0 arg0 v1-0)
       (vector-normalize! s1-0 1.0)
       (vector-z-quaternion! s2-0 (-> obj root quat))
