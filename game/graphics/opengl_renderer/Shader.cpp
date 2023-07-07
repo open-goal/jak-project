@@ -73,14 +73,14 @@ Shader::Shader(const std::string& shader_name, GameVersion version) : m_name(sha
     std::string uniformName = "tex_T" + std::to_string(i);
     GLint texLoc = glGetUniformLocation(m_program, uniformName.c_str());
     if (texLoc != -1) {
-      lg::debug("Shader {} has texture uniform {} at location {}", shader_name, uniformName, texLoc);
+      lg::debug("Shader {}: setting up texture uniform {}", shader_name, uniformName);
     }
     glUniform1i(texLoc, i);
   }
   // assuming that the bones uniform block is always using binding point 1
   GLint bonesLoc = glGetUniformBlockIndex(m_program, "ub_bones");
   if (bonesLoc != -1) {
-    lg::debug("Shader {} has bones uniform block at location {}", shader_name, bonesLoc);
+    lg::debug("Shader {}: setting up bones uniform block", shader_name);
     glUniformBlockBinding(m_program, bonesLoc, 1);
   }
 
