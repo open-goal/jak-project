@@ -192,6 +192,7 @@ GameSubtitlePackage read_json_files_v1(const GameSubtitleDefinitionFile& file_in
       auto data = parse_commented_json(
           file_util::read_text_file(file_util::get_jak_project_dir() / file_info.lines_path),
           "subtitle_line_path");
+      v1_lines_lang_file = data;
       base_data.at("cutscenes").update(data.at("cutscenes"));
       base_data.at("hints").update(data.at("hints"));
       base_data.at("speakers").update(data.at("speakers"));
@@ -272,9 +273,6 @@ SubtitleFileV1 dump_bank_lines_v1(const GameVersion game_version,
   SubtitleFileV1 file;
   file.speakers = bank->m_speakers;
   for (const auto& [scene_name, scene_info] : bank->m_scenes) {
-    if (scene_name == "assistant-village3-reminder" && bank->m_lang_id == 2) {
-      int x = 0;
-    }
     // Avoid dumping duplicates if needed
     if (!dump_with_duplicates &&
         bank->m_base_scenes.find(scene_name) != bank->m_base_scenes.end() &&

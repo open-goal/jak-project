@@ -67,7 +67,11 @@ void SubtitleEditor::draw_window() {
     m_files_saved_successfully =
         std::make_optional(m_subtitle_db.write_subtitle_db_to_files(g_game_version));
     m_repl.rebuild_text();
-    m_subtitle_db = load_subtitle_project(m_subtitle_version, g_game_version);
+    // TODO - reloading the project would be a good idea because then cutscens that have since been
+    // modified would appear as such but that creates race conditions when the GUI is parsing at the
+    // same time it seems so, disabled for now Same Below
+
+    // m_subtitle_db = load_subtitle_project(m_subtitle_version, g_game_version);
   }
   if (m_files_saved_successfully.has_value()) {
     ImGui::SameLine();
@@ -81,9 +85,9 @@ void SubtitleEditor::draw_window() {
       ImGui::PopStyleColor();
     }
   }
-  if (ImGui::Button("Reload Project")) {
+  /*if (ImGui::Button("Reload Project")) {
     m_subtitle_db = load_subtitle_project(m_subtitle_version, g_game_version);
-  }
+  }*/
 
   draw_edit_options();
   draw_repl_options();
@@ -112,7 +116,9 @@ void SubtitleEditor::draw_window() {
     draw_scene_section_header(false);
     ImGui::InputText("Filter", &m_filter_cutscenes,
                      ImGuiInputTextFlags_::ImGuiInputTextFlags_AutoSelectAll);
-    draw_all_cutscenes(true);
+    if (m_subtitle_db.m_banks[m_current_language]->m_file_base_path) {
+      draw_all_cutscenes(true);
+    }
     draw_all_cutscenes(false);
     ImGui::TreePop();
   }
@@ -121,7 +127,9 @@ void SubtitleEditor::draw_window() {
     draw_scene_section_header(true);
     ImGui::InputText("Filter", &m_filter_non_cutscenes,
                      ImGuiInputTextFlags_::ImGuiInputTextFlags_AutoSelectAll);
-    draw_all_non_cutscenes(true);
+    if (m_subtitle_db.m_banks[m_current_language]->m_file_base_path) {
+      draw_all_non_cutscenes(true);
+    }
     draw_all_non_cutscenes(false);
     ImGui::TreePop();
   }
@@ -257,7 +265,7 @@ void SubtitleEditor::draw_scene_node(const bool base_cutscenes,
     if (pop_color) {
       ImGui::PopStyleColor();
     }
-    if (!base_cutscenes && !is_current_scene) {
+    if (!is_current_scene) {
       if (ImGui::Button("Select as Current Cutscene")) {
         m_current_scene = &scene_info;
       }
@@ -381,7 +389,11 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
       if (g_game_version == GameVersion::Jak1) {
         m_jak1_editor_db.update();
         if (scene.is_cutscene) {
-          m_repl.execute_jak1_cutscene_code(m_jak1_editor_db.m_db.at(scene.m_name));
+          if (m_jak1_editor_db.m_db.find(scene.m_name) == m_jak1_editor_db.m_db.end()) {
+            lg::error("{} not defined in Jak 1's subtitle editor database!", scene.m_name);
+          } else {
+            m_repl.execute_jak1_cutscene_code(m_jak1_editor_db.m_db.at(scene.m_name));
+          }
         } else {
           m_repl.play_hint(scene.m_name);
         }

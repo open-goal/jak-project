@@ -286,9 +286,17 @@ u16 GameSubtitleBank::speaker_enum_value_from_name(const std::string& speaker_id
   return u16(jak2_speaker_name_to_enum_val.at(speaker_id));
 }
 
-SubtitleMetadataFile dump_bank_meta_v2(std::shared_ptr<GameSubtitleBank> bank) {
+SubtitleMetadataFile dump_bank_meta_v2(const GameVersion game_version,
+                                       std::shared_ptr<GameSubtitleBank> bank) {
+  const auto dump_with_duplicates =
+      dump_language_with_duplicates_from_base(game_version, bank->m_lang_id);
   auto meta_file = SubtitleMetadataFile();
   for (const auto& [scene_name, scene_info] : bank->m_scenes) {
+    // Avoid dumping duplicates
+    if (bank->m_base_scenes.find(scene_name) != bank->m_base_scenes.end() &&
+        scene_info.same_metadata_as_other(bank->m_base_scenes.at(scene_name))) {
+      continue;
+    }
     SubtitleSceneMetadata scene_meta;
     for (const auto& line : scene_info.m_lines) {
       scene_meta.lines.push_back(line.metadata);
@@ -302,13 +310,22 @@ SubtitleMetadataFile dump_bank_meta_v2(std::shared_ptr<GameSubtitleBank> bank) {
   return meta_file;
 }
 
-SubtitleFile dump_bank_lines_v2(std::shared_ptr<GameSubtitleBank> bank) {
+SubtitleFile dump_bank_lines_v2(const GameVersion game_version,
+                                std::shared_ptr<GameSubtitleBank> bank) {
+  const auto dump_with_duplicates =
+      dump_language_with_duplicates_from_base(game_version, bank->m_lang_id);
   SubtitleFile file;
   file.speakers = bank->m_speakers;
   if (file.speakers.find("none") != file.speakers.end()) {
     file.speakers.erase("none");
   }
   for (const auto& [scene_name, scene_info] : bank->m_scenes) {
+    // Avoid dumping duplicates if needed
+    if (!dump_with_duplicates &&
+        bank->m_base_scenes.find(scene_name) != bank->m_base_scenes.end() &&
+        scene_info.same_lines_as_other(bank->m_base_scenes.at(scene_name))) {
+      continue;
+    }
     for (const auto& scene_line : scene_info.m_lines) {
       // Skip merged lines
       if (scene_line.metadata.merge) {
@@ -332,7 +349,7 @@ bool GameSubtitleDB::write_subtitle_db_to_files(const GameVersion game_version) 
         meta_file = dump_bank_meta_v1(game_version, bank);
 
       } else {
-        meta_file = dump_bank_meta_v2(bank);
+        meta_file = dump_bank_meta_v2(game_version, bank);
       }
       std::string dump_path =
           (file_util::get_jak_project_dir() / "game" / "assets" /
@@ -345,7 +362,7 @@ bool GameSubtitleDB::write_subtitle_db_to_files(const GameVersion game_version) 
       if (m_subtitle_version == SubtitleFormat::V1) {
         lines_file = dump_bank_lines_v1(game_version, bank);
       } else {
-        lines_file = dump_bank_lines_v2(bank);
+        lines_file = dump_bank_lines_v2(game_version, bank);
       }
       dump_path =
           (file_util::get_jak_project_dir() / "game" / "assets" /
