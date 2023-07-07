@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 out vec4 color;
 in vec4 vtx_color;

@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 layout (location = 0) in vec3 position_in;
 layout (location = 1) in vec3 tex_coord_in;
@@ -12,7 +12,7 @@ uniform float fog_constant;
 uniform float fog_min;
 uniform float fog_max;
 uniform vec4 envmap_tod_tint;
-layout (binding = 10) uniform sampler1D tex_T1; // note, sampled in the vertex shader on purpose.
+uniform sampler1D tex_T10; // note, sampled in the vertex shader on purpose.
 uniform int decal;
 
 out vec4 fragment_color;

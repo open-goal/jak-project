@@ -1,11 +1,11 @@
-#version 430 core
+#version 410 core
 
 layout (location = 0) in vec3 xyz;
 layout (location = 1) in vec2 st;
 
 uniform vec4 u_color;
 
-out flat vec4 fragment_color;
+flat out vec4 fragment_color;
 out vec2 tex_coord;
 
 void main() {

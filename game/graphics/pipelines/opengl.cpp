@@ -129,6 +129,9 @@ static int gl_init(GfxGlobalSettings& settings) {
     }
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+#ifdef __APPLE__
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+#endif
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
@@ -304,7 +307,11 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   {
     auto p = scoped_prof("startup::sdl::init_imgui");
     // setup imgui
+#ifdef __APPLE__
+    init_imgui(window, gl_context, "#version 410");
+#else
     init_imgui(window, gl_context, "#version 430");
+#endif
   }
 
   return std::static_pointer_cast<GfxDisplay>(display);
