@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 // merc vertex definition
 layout (location = 0) in vec3 position_in;
@@ -35,7 +35,7 @@ struct MercMatrixData {
   vec4 pad;
 };
 
-layout (std140, binding = 1) uniform ub_bones {
+layout (std140) uniform ub_bones {
   MercMatrixData bones[128];
 };
 

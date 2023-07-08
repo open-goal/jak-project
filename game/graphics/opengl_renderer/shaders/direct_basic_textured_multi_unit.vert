@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 layout (location = 0) in vec4 position_in;
 layout (location = 1) in vec4 rgba_in;
@@ -13,8 +13,8 @@ out vec4 gs_scissor;
 // putting all texture info stuff here so it's easier to copy-paste
 layout (location = 3) in uvec4 tex_info_in;
 layout (location = 4) in uint use_uv_in;
-out flat uvec4 tex_info;
-out flat uint use_uv;
+flat out uvec4 tex_info;
+flat out uint use_uv;
 uniform int offscreen_mode;
 
 void main() {

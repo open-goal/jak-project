@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 layout (location = 0) in vec2 position_in;
 layout (location = 1) in vec2 tex_coord_in;

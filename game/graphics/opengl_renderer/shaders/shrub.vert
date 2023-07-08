@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 layout (location = 0) in vec3 position_in;
 layout (location = 1) in vec3 tex_coord_in;
@@ -11,7 +11,7 @@ uniform float fog_constant;
 uniform float fog_min;
 uniform float fog_max;
 uniform int decal;
-layout (binding = 10) uniform sampler1D tex_T1; // note, sampled in the vertex shader on purpose.
+uniform sampler1D tex_T10; // note, sampled in the vertex shader on purpose.
 
 out vec4 fragment_color;
 out vec3 tex_coord;
@@ -66,7 +66,7 @@ void main() {
   // start with the vertex color (only rgb, VIF filled in the 255.)
   fragment_color =  vec4(rgba_base, 1);
   // get the time of day multiplier
-  vec4 tod_color = texelFetch(tex_T1, time_of_day_index, 0);
+  vec4 tod_color = texelFetch(tex_T10, time_of_day_index, 0);
   // combine
   fragment_color *= tod_color * 4;
   fragment_color.a *= 2;
