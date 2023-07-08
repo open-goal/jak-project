@@ -74,8 +74,8 @@ Shader::Shader(const std::string& shader_name, GameVersion version) : m_name(sha
     GLint texLoc = glGetUniformLocation(m_program, uniformName.c_str());
     if (texLoc != -1) {
       lg::debug("Shader {}: setting up texture uniform {}", shader_name, uniformName);
+      glUniform1i(texLoc, i);
     }
-    glUniform1i(texLoc, i);
   }
   // assuming that the bones uniform block is always using binding point 1
   GLint bonesLoc = glGetUniformBlockIndex(m_program, "ub_bones");
