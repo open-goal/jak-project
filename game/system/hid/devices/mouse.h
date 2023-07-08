@@ -14,11 +14,11 @@ struct ActiveMouseAction {
 class MouseDevice : public InputDevice {
  public:
   struct MouseButtonStatus {
-    bool left;
-    bool right;
-    bool middle;
-    bool mouse4;
-    bool mouse5;
+    bool left = false;
+    bool right = false;
+    bool middle = false;
+    bool mouse4 = false;
+    bool mouse5 = false;
   };
 
   MouseDevice(){};
