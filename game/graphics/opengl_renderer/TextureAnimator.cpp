@@ -85,8 +85,7 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
   glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
   glUseProgram(m_shader_id);
   glDepthMask(GL_FALSE);
-  m_next_gl_texture = 0; // reset temp texture allocator.
-
+  m_next_gl_texture = 0;  // reset temp texture allocator.
 
   bool done = false;
   while (!done) {
@@ -147,8 +146,10 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
       // printf("creat texture %d\n", tbp);
     } else if (entry.needs_pool_update) {
       // TODO: this funciton is definitely wrong.
-      texture_pool->update_gl_texture_by_tbp(tbp, entry.tex_width, entry.tex_height,
-                                             entry.tex.value().texture());
+      texture_pool->update_gl_texture(entry.pool_gpu_tex, entry.tex_width, entry.tex_height,
+                                      entry.tex.value().texture());
+      //      texture_pool->update_gl_texture_by_tbp(tbp, entry.tex_width, entry.tex_height,
+      //                                             entry.tex.value().texture());
       texture_pool->move_existing_to_vram(entry.pool_gpu_tex, tbp);
       entry.needs_pool_update = false;
       // printf("update texture %d\n", tbp);
@@ -157,7 +158,6 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
       // printf("no change %d\n", tbp);
     }
   }
-
 
   glDepthMask(GL_TRUE);
   glEnable(GL_DEPTH_TEST);
