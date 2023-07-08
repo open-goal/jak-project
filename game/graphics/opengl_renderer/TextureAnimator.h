@@ -116,13 +116,11 @@ class TextureAnimator {
 
   std::set<u32> m_erased_on_this_frame;
 
-  std::vector<GLuint> m_gl_textures;
-  u32 m_next_gl_texture = 0;
-
-  GLuint alloc_gl_texture() {
-    ASSERT(m_next_gl_texture < m_gl_textures.size());
-    return m_gl_textures[m_next_gl_texture++];
-  }
+  struct TempTexture {
+    GLuint tex;
+    u32 w, h;
+  };
+  std::vector<TempTexture> m_in_use_temp_textures;
 
   ShaderContext m_current_shader;
   TextureConverter m_converter;

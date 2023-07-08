@@ -28,6 +28,9 @@ OpenGLTexturePool::OpenGLTexturePool() {
   };
   // list of sizes to preallocate.
   for (const auto& a : std::vector<Alloc>{{.w = 16, .h = 16, .n = 5},  //
+                                          {.w = 32, .h = 32, .n = 5},
+                                          {.w = 64, .h = 64, .n = 5},
+                                          {.w = 128, .h = 128, .n = 5},
                                           {.w = 256, .h = 1, .n = 2}}) {
     auto& l = textures[(a.w << 32) | a.h];
     l.resize(a.n);
@@ -108,11 +111,7 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders) {
                data.data());
   glBindTexture(GL_TEXTURE_2D, 0);
 
-  // create 32 temporary textures. Creating/allocating textures seems to trigger some terrible
-  // behavior that blocks for 5-10 ms!.
-  m_gl_textures.resize(32);
-  glGenTextures(m_gl_textures.size(), m_gl_textures.data());
-
+  // generate CLUT table.
   for (int i = 0; i < 256; i++) {
     u32 clut_chunk = i / 16;
     u32 off_in_chunk = i % 16;
@@ -133,7 +132,6 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders) {
 TextureAnimator::~TextureAnimator() {
   glDeleteVertexArrays(1, &m_vao);
   glDeleteBuffers(1, &m_vertex_buffer);
-  glDeleteTextures(m_gl_textures.size(), m_gl_textures.data());
   glDeleteTextures(1, &m_dummy_texture);
 }
 
@@ -182,7 +180,10 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
   glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
   glUseProgram(m_shader_id);
   glDepthMask(GL_FALSE);
-  m_next_gl_texture = 0;  // reset temp texture allocator.
+  for (auto& t : m_in_use_temp_textures) {
+    m_opengl_texture_pool.free(t.tex, t.w, t.h);
+  }
+  m_in_use_temp_textures.clear();  // reset temp texture allocator.
   m_erased_on_this_frame.clear();
 
   // loop over DMA, and do the appropriate texture operations.
@@ -779,7 +780,8 @@ void TextureAnimator::load_clut_to_converter() {
 
 // TODO: use the size pool.
 GLuint TextureAnimator::make_temp_gpu_texture(const u32* data, u32 width, u32 height) {
-  GLuint gl_tex = alloc_gl_texture();
+  GLuint gl_tex = m_opengl_texture_pool.allocate(width, height);
+  m_in_use_temp_textures.push_back(TempTexture{.tex = gl_tex, .w = width, .h = height});
   glBindTexture(GL_TEXTURE_2D, gl_tex);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                data);
