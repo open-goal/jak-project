@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 out vec4 color;
 in vec2 tex_coord;

@@ -10,6 +10,7 @@ Shader::Shader(const std::string& shader_name, GameVersion version) : m_name(sha
   const std::string height_scale = version == GameVersion::Jak1 ? "1.0" : "0.5";
   const std::string scissor_height = version == GameVersion::Jak1 ? "448.0" : "416.0";
   const std::string scissor_adjust = "512.0 / " + scissor_height;
+
   // read the shader source
   auto vert_src =
       file_util::read_text_file(file_util::get_file_path({shader_folder, shader_name + ".vert"}));
@@ -62,6 +63,21 @@ Shader::Shader(const std::string& shader_name, GameVersion version) : m_name(sha
     lg::error("Failed to link shader {}:\n{}", shader_name.c_str(), err);
     m_is_okay = false;
     return;
+  }
+
+  // uniform samplers must be named matching the texture unit
+  glUseProgram(m_program);
+  for (int i = 1; i < 30; ++i) {
+    std::string uniformName = "tex_T" + std::to_string(i);
+    GLint texLoc = glGetUniformLocation(m_program, uniformName.c_str());
+    if (texLoc != -1) {
+      glUniform1i(texLoc, i);
+    }
+  }
+  // assuming that the bones uniform block is always using binding point 1
+  GLint bonesLoc = glGetUniformBlockIndex(m_program, "ub_bones");
+  if (bonesLoc != -1) {
+    glUniformBlockBinding(m_program, bonesLoc, 1);
   }
 
   glDeleteShader(m_vert_shader);

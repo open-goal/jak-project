@@ -74,11 +74,14 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
       m_version(version) {
   // setup OpenGL errors
   glEnable(GL_DEBUG_OUTPUT);
+  // requires OpenGL 4.3
+#ifndef __APPLE__
   glDebugMessageCallback(opengl_error_callback, nullptr);
   // disable specific errors
   const GLuint gl_error_ignores_api_other[1] = {0x20071};
   glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER, GL_DONT_CARE, 1,
                         &gl_error_ignores_api_other[0], GL_FALSE);
+#endif
 
   lg::debug("OpenGL context information: {}", (const char*)glGetString(GL_VERSION));
 
