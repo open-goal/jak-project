@@ -24,12 +24,22 @@ jobs:
       cachePrefix: "static"
     secrets: inherit
 
+  # macOS
+  build_macos_clang:
+    name: "🍎 macOS - Intel"
+    uses: ./.github/workflows/macos-build-clang.yaml
+    with:
+      cmakePreset: "Release-macos-clang-static"
+      cachePrefix: "static"
+    secrets: inherit
+
   # Upload the Artifacts
   upload_artifacts:
     if: github.repository == 'open-goal/jak-project'
     needs:
       - build_windows_clang
       - build_linux_clang
+      - build_macos_clang
     name: "Upload Artifacts"
     runs-on: ubuntu-latest
     steps:
@@ -49,7 +59,7 @@ jobs:
       - name: Prepare Linux Release Assets
         run: |
           mkdir -p ./ci-artifacts/linux
-          ./.github/scripts/releases/extract_build_linux.sh ./ci-artifacts/linux ./ci-artifacts/opengoal-linux-static ./
+          ./.github/scripts/releases/extract_build_unix.sh ./ci-artifacts/linux ./ci-artifacts/opengoal-linux-static ./
           pushd ci-artifacts/linux
           TAG_VAL=$(echo ${{ github.REF }} | awk -F'refs/tags/' '{print $2}')
           tar czf ../final/opengoal-linux-${TAG_VAL}.tar.gz .
@@ -65,6 +75,18 @@ jobs:
           TAG_VAL=$(echo ${{ github.REF }} | awk -F'refs/tags/' '{print $2}')
           7z a -tzip ./ci-artifacts/final/opengoal-windows-${TAG_VAL}.zip ./ci-artifacts/windows/*
           cp ./ci-artifacts/opengoal-windows-static/lsp.exe ./ci-artifacts/final/opengoal-lsp-windows-${TAG_VAL}.exe
+
+      - name: Prepare macOS Build Assets
+        run: |
+          mkdir -p ./ci-artifacts/macos
+          ./.github/scripts/releases/extract_build_unix.sh ./ci-artifacts/macos ./ci-artifacts/opengoal-macos-static ./
+          pushd ci-artifacts/macos
+          TAG_VAL=$(echo ${{ github.REF }} | awk -F'refs/tags/' '{print $2}')
+          tar czf ../final/opengoal-macos-intel-${TAG_VAL}.tar.gz .
+          popd
+          strip ./ci-artifacts/opengoal-macos-static/lsp/lsp
+          chmod +x ./ci-artifacts/opengoal-macos-static/lsp/lsp
+          cp ./ci-artifacts/opengoal-macos-static/lsp/lsp ./ci-artifacts/final/opengoal-lsp-macos-intel${TAG_VAL}.bin
 
       - name: Upload Assets
         env:
