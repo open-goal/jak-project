@@ -14,6 +14,7 @@
 
 #include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/texture/TextureConverter.h"
+#include "game/graphics/texture/TextureID.h"
 
 // verify all texture lookups.
 // will make texture lookups slower and likely caused dropped frames when loading
@@ -71,18 +72,6 @@ constexpr int SKY_TEXTURE_VRAM_ADDRS[2] = {8064, 8096};
  * The loader will inform us when things are added/removed.
  * The game will inform us when it uploads to VRAM
  */
-
-struct PcTextureId {
-  u16 page = -1;
-  u16 tex = -1;
-
-  PcTextureId(u16 p, u16 t) : page(p), tex(t) {}
-  PcTextureId() = default;
-
-  static PcTextureId from_combo_id(u32 val) { return PcTextureId(val >> 16, val & 0xffff); }
-
-  bool operator==(const PcTextureId& other) const { return page == other.page && tex == other.tex; }
-};
 
 template <typename T>
 class TextureMap {

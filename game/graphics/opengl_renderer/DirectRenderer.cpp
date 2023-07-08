@@ -268,7 +268,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
     if (n_batch > 300 && n_batch < 700 && (n_batch % 2) == 0) {
       n_batch = n_batch / 2;
     } else {
-      printf("not splitting batch %d\n", n_batch);
+      // printf("not splitting batch %d\n", n_batch);
     }
     int offset = 0;
     while (offset < m_prim_buffer.vert_count) {
@@ -518,7 +518,8 @@ void DirectRenderer::update_gl_test() {
                                 m_test_state.alpha_test == GsTest::AlphaTest::NEVER &&
                                 m_test_state.afail == GsTest::AlphaFail::FB_ONLY;
 
-  if (m_test_state.afail == GsTest::AlphaFail::FB_ONLY) {
+  if (m_test_state.afail == GsTest::AlphaFail::FB_ONLY ||
+      m_test_state.afail == GsTest::AlphaFail::RGB_ONLY) {
     m_test_state_needs_double_draw = true;
   } else {
     m_test_state_needs_double_draw = false;

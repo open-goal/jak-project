@@ -17,6 +17,13 @@ class FramebufferTexturePair {
 
   GLuint texture() const { return m_texture; }
 
+  void update_texture_size(int w, int h) {
+    m_w = w;
+    m_h = h;
+  }
+
+  void update_texture_unsafe(GLuint texture) { m_texture = texture; }
+
   FramebufferTexturePair(const FramebufferTexturePair&) = delete;
   FramebufferTexturePair& operator=(const FramebufferTexturePair&) = delete;
   FramebufferTexturePair(FramebufferTexturePair&& other) {

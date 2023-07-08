@@ -6,26 +6,87 @@
 
 #include "game/graphics/texture/TexturePool.h"
 
-#define dprintf(...) printf(__VA_ARGS__)
-#define dfmt(...) fmt::print(__VA_ARGS__)
+//#define dprintf(...) printf(__VA_ARGS__)
+//#define dfmt(...) fmt::print(__VA_ARGS__)
+#define dprintf(...)
+#define dfmt(...)
+
+// So there's a lot of stupid-looking OpenGL stuff going on here.
+// The motivation for this is to avoid an issue where some operations take about 5-10ms.
+// As far as I can tell, this slow operation is actually the driver forcing this thread to sync
+// with some internal stuff. It seems to be triggered on:
+// - deleting a texture that's in use
+// - glTexImage2D to modify a texture with a different sized texture.
+
+/*!
+ * A simple list of preallocated textures by size. If a texture needs to be resized, it's faster
+ * to swap to a different OpenGL texture from this pool than glTexImage2D with a different size.
+ */
+OpenGLTexturePool::OpenGLTexturePool() {
+  struct Alloc {
+    u64 w, h, n;
+  };
+  // list of sizes to preallocate.
+  for (const auto& a : std::vector<Alloc>{{.w = 16, .h = 16, .n = 5},  //
+                                          {.w = 256, .h = 1, .n = 2}}) {
+    auto& l = textures[(a.w << 32) | a.h];
+    l.resize(a.n);
+    glGenTextures(a.n, l.data());
+    for (auto t : l) {
+      glBindTexture(GL_TEXTURE_2D, t);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, a.w, a.h, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
+                   nullptr);
+    }
+  }
+}
+
+OpenGLTexturePool::~OpenGLTexturePool() {
+  for (auto& [_, l] : textures) {
+    glDeleteTextures(l.size(), l.data());
+  }
+}
+
+GLuint OpenGLTexturePool::allocate(u64 w, u64 h) {
+  const auto& it = textures.find((w << 32) | h);
+  if (it == textures.end()) {
+    lg::die("OpenGLTexturePool needs entries for {} x {}", w, h);
+  }
+
+  if (it->second.empty()) {
+    lg::die("OpenGLTexturePool needs more entries for {} x {}", w, h);
+  }
+
+  auto ret = it->second.back();
+  it->second.pop_back();
+  return ret;
+}
+
+void OpenGLTexturePool::free(GLuint texture, u64 w, u64 h) {
+  textures[(w << 32) | h].push_back(texture);
+}
 
 TextureAnimator::TextureAnimator(ShaderLibrary& shaders) {
   glGenVertexArrays(1, &m_vao);
   glGenBuffers(1, &m_vertex_buffer);
   glBindVertexArray(m_vao);
+
+  // The TextureAnimator does a lot of "draws" which are just a single quad, so we create a 4-vertex
+  // buffer. It turns out that just storing the vertex index in the vertex, then indexing into a
+  // uniform buffer is faster to update. (though this may be driver specific?)
   std::array<Vertex, 4> vertices = {Vertex{0, 0, 0, 0}, Vertex{1, 0, 0, 0}, Vertex{2, 0, 0, 0},
                                     Vertex{3, 0, 0, 0}};
   glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
+  // static draw - we don't update this buffer.
   glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * 4, vertices.data(), GL_STATIC_DRAW);
 
+  // single integer index parameter
   glEnableVertexAttribArray(0);
   glVertexAttribIPointer(0,               // location 0 in the shader
                          1,               // 1 per vertex
-                         GL_INT,          // floats
+                         GL_INT,          //
                          sizeof(Vertex),  //
                          nullptr          //
   );
-
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
 
@@ -37,24 +98,46 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders) {
   m_uniforms.uvs = glGetUniformLocation(shader.id(), "uvs");
   m_uniforms.channel_scramble = glGetUniformLocation(shader.id(), "channel_scramble");
 
-  {
-    glGenTextures(1, &m_dummy_texture);
-    glBindTexture(GL_TEXTURE_2D, m_dummy_texture);
-    std::vector<u8> data(16 * 16 * 4);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
-                 data.data());
-    glBindTexture(GL_TEXTURE_2D, 0);
+  // create a single "dummy texture" with all 0 data.
+  // this is faster and easier than switching shaders to one without texturing, and is used
+  // only rarely
+  glGenTextures(1, &m_dummy_texture);
+  glBindTexture(GL_TEXTURE_2D, m_dummy_texture);
+  std::vector<u8> data(16 * 16 * 4);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
+               data.data());
+  glBindTexture(GL_TEXTURE_2D, 0);
 
-    m_gl_textures.resize(32);
-    glGenTextures(m_gl_textures.size(), m_gl_textures.data());
+  // create 32 temporary textures. Creating/allocating textures seems to trigger some terrible
+  // behavior that blocks for 5-10 ms!.
+  m_gl_textures.resize(32);
+  glGenTextures(m_gl_textures.size(), m_gl_textures.data());
+
+  for (int i = 0; i < 256; i++) {
+    u32 clut_chunk = i / 16;
+    u32 off_in_chunk = i % 16;
+    u8 clx = 0, cly = 0;
+    if (clut_chunk & 1) {
+      clx = 8;
+    }
+    cly = (clut_chunk >> 1) * 2;
+    if (off_in_chunk >= 8) {
+      off_in_chunk -= 8;
+      cly++;
+    }
+    clx += off_in_chunk;
+    m_index_to_clut_addr[i] = clx + cly * 16;
   }
 }
 
 TextureAnimator::~TextureAnimator() {
   glDeleteVertexArrays(1, &m_vao);
   glDeleteBuffers(1, &m_vertex_buffer);
+  glDeleteTextures(m_gl_textures.size(), m_gl_textures.data());
+  glDeleteTextures(1, &m_dummy_texture);
 }
 
+// IDs sent from GOAL telling us what texture operation to perform.
 enum PcTextureAnimCodes {
   FINISH_ARRAY = 13,
   ERASE_DEST_TEXTURE = 14,
@@ -65,16 +148,21 @@ enum PcTextureAnimCodes {
   MOVE_RG_TO_BA = 19,
 };
 
+// metadata for an upload from GOAL memory
 struct TextureAnimPcUpload {
-  u32 data;
+  u32 data;  // goal pointer
   u16 width;
   u16 height;
-  u32 dest;
+  u32 dest;  // tbp address
+  // PS2 texture format of the _upload_ that was used.
+  // note that the data can be any format. They upload stuff in the wrong format sometimes, as
+  // an optimization (ps2 is fastest at psmct32)
   u8 format;
   u8 pad[3];
 };
 static_assert(sizeof(TextureAnimPcUpload) == 16);
 
+// metadata for an operation that operates on a source/destination texture.
 struct TextureAnimPcTransform {
   u32 src_tbp;
   u32 dst_tbp;
@@ -82,6 +170,9 @@ struct TextureAnimPcTransform {
   u32 pad1;
 };
 
+/*!
+ * Main function to run texture animations from DMA. Updates textures in the pool.
+ */
 void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
                                                const u8* ee_mem,
                                                TexturePool* texture_pool) {
@@ -92,7 +183,12 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
   glUseProgram(m_shader_id);
   glDepthMask(GL_FALSE);
   m_next_gl_texture = 0;  // reset temp texture allocator.
+  m_erased_on_this_frame.clear();
 
+  // loop over DMA, and do the appropriate texture operations.
+  // this will fill out m_textures, which is keyed on TBP.
+  // as much as possible, we keep around buffers/textures.
+  // this will also record which tbp's have been "erased", for the next step.
   bool done = false;
   while (!done) {
     auto tf = dma.read_and_advance();
@@ -137,27 +233,61 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
     }
   }
 
-  // TODO: do something with the result textures.
+  // The steps above will populate m_textures with some combination of GPU/CPU textures.
+  // we need to make sure that all final textures end up on the GPU. For now, we detect this by
+  // seeing if the "erase" operation ran on an tbp, indicating that it was cleared, which is
+  // always done to all textures by the GOAL code.
+  for (auto tbp : m_erased_on_this_frame) {
+    auto p = scoped_prof("handle-one-erased");
+    force_to_gpu(tbp);
+  }
 
-  for (auto& [tbp, entry] : m_dest_textures) {
-    if (entry.needs_pool_creation) {
-      TextureInput in;
-      in.gpu_texture = entry.tex.value().texture();
-      in.w = entry.tex_width;
-      in.h = entry.tex_height;
-      in.debug_page_name = "PC-ANIM";
-      in.debug_name = std::to_string(tbp);
-      in.id = texture_pool->allocate_pc_port_texture(GameVersion::Jak2);
-      entry.pool_gpu_tex = texture_pool->give_texture_and_load_to_vram(in, tbp);
-      entry.needs_pool_creation = false;
-      dprintf("create texture %d\n", tbp);
-    } else if (entry.needs_pool_update) {
-      texture_pool->update_gl_texture(entry.pool_gpu_tex, entry.tex_width, entry.tex_height,
-                                      entry.tex.value().texture());
-      texture_pool->move_existing_to_vram(entry.pool_gpu_tex, tbp);
-      entry.needs_pool_update = false;
-      dprintf("update texture %d\n", tbp);
+  // Loop over textures and put them in the pool if needed
+  for (auto& [tbp, entry] : m_textures) {
+    if (entry.kind != VramEntry::Kind::GPU) {
+      // not on the GPU, we can't put it in the texture pool.
+      // if it was skipped by the above step, this is just some temporary texture we don't need
+      // (hopefully)
+      // (TODO: could flag these somehow?)
+      continue;
+    }
+    dprintf("end processing on %d\n", tbp);
+
+    // in the ideal case, the texture processing code will just modify the OpenGL texture in-place.
+    // however, if the size changes, or we need to add a new texture, we have additional work to
+    // do.
+
+    if (entry.needs_pool_update) {
+      if (entry.pool_gpu_tex) {
+        // we have a GPU texture in the pool, but we need to change the actual texture.
+        auto p = scoped_prof("pool-update");
+        ASSERT(entry.pool_gpu_tex);
+        // change OpenGL texture in the pool
+        texture_pool->update_gl_texture(entry.pool_gpu_tex, entry.tex_width, entry.tex_height,
+                                        entry.tex.value().texture());
+        // set as the active texture in this vram slot (other textures can be loaded for
+        // different part of the frame that we need to replace). This is a fast operation.
+        texture_pool->move_existing_to_vram(entry.pool_gpu_tex, tbp);
+        entry.needs_pool_update = false;
+        dprintf("update texture %d\n", tbp);
+      } else {
+        // this is the first time we use a texture in this slot, so we need to create it.
+        // should happen only once per TBP.
+        auto p = scoped_prof("pool-create");
+        TextureInput in;
+        in.gpu_texture = entry.tex.value().texture();
+        in.w = entry.tex_width;
+        in.h = entry.tex_height;
+        in.debug_page_name = "PC-ANIM";
+        in.debug_name = std::to_string(tbp);
+        in.id = get_id_for_tbp(texture_pool, tbp);
+        entry.pool_gpu_tex = texture_pool->give_texture_and_load_to_vram(in, tbp);
+        entry.needs_pool_update = false;
+        dprintf("create texture %d\n", tbp);
+      }
     } else {
+      // ideal case: OpenGL texture modified in place, just have to simulate "upload".
+      auto p = scoped_prof("pool-move");
       texture_pool->move_existing_to_vram(entry.pool_gpu_tex, tbp);
       dprintf("no change %d\n", tbp);
     }
@@ -166,6 +296,73 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
   glDepthMask(GL_TRUE);
   glEnable(GL_DEPTH_TEST);
   glColorMask(true, true, true, true);
+}
+
+/*!
+ * Make sure that this texture is a GPU texture. If not, convert it.
+ * GPU textures don't support CLUT, so this should be done at the last possible point in time, as
+ * CLUT effects can no longer be applied to the texture after this happens.
+ */
+void TextureAnimator::force_to_gpu(int tbp) {
+  auto& entry = m_textures.at(tbp);
+  switch (entry.kind) {
+    default:
+      printf("unhandled non-gpu conversion: %d (tbp = %d)\n", (int)entry.kind, tbp);
+      ASSERT_NOT_REACHED();
+    case VramEntry::Kind::CLUT16_16_IN_PSM32:
+      // HACK: never convert known CLUT textures to GPU.
+      // The main loop will incorrectly flag CLUT textures as final ones because we can't tell
+      // the difference. So hopefully this is just an optimization. But we'll have to revisit if
+      // they use texture data as both texture/clut.
+      dprintf("suspicious clut...\n");
+      break;
+    case VramEntry::Kind::GPU:
+      break;  // already on the gpu.
+    case VramEntry::Kind::GENERIC_PSMT8: {
+      // we have data that was uploaded in PSMT8 format. Assume that it will also be read in this
+      // format. Convert to normal format.
+      int tw = entry.tex_width;
+      int th = entry.tex_height;
+      std::vector<u32> rgba_data(tw * th);
+
+      {
+        auto p = scoped_prof("convert");
+        // the CLUT is usually uploaded in PSM32 format, as a 16x16.
+        const u32* clut = get_clut_16_16_psm32(entry.cbp);
+        for (int r = 0; r < th; r++) {
+          for (int c = 0; c < tw; c++) {
+            rgba_data[c + r * tw] = clut[m_index_to_clut_addr[entry.data[c + r * tw]]];
+          }
+        }
+      }
+
+      // do OpenGL tricks to make sure this entry is set up to hold a texture with the size.
+      // will also set flags for updating the pool
+      setup_vram_entry_for_gpu_texture(tw, th, tbp);
+      // load the texture.
+      glBindTexture(GL_TEXTURE_2D, entry.tex.value().texture());
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tw, th, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
+                   rgba_data.data());
+      glBindTexture(GL_TEXTURE_2D, 0);
+      entry.kind = VramEntry::Kind::GPU;
+    } break;
+  }
+}
+
+/*!
+ * Get a pool texture ID for this texture. For now, there's just a unique ID per TBP.
+ * The only purpose is to avoid putting all the textures with the same ID, which is a slow-path
+ * in the pool (which is optimized for only a few textures with the same ID at most).
+ */
+PcTextureId TextureAnimator::get_id_for_tbp(TexturePool* pool, u32 tbp) {
+  const auto& it = m_ids_by_vram.find(tbp);
+  if (it == m_ids_by_vram.end()) {
+    auto ret = pool->allocate_pc_port_texture(GameVersion::Jak2);
+    m_ids_by_vram[tbp] = ret;
+    return ret;
+  } else {
+    return it->second;
+  }
 }
 
 void debug_save_opengl_texture(const std::string& out, GLuint texture) {
@@ -179,31 +376,36 @@ void debug_save_opengl_texture(const std::string& out, GLuint texture) {
   file_util::write_rgba_png(out, data.data(), w, h);
 }
 
+/*!
+ * Copy rg channels to ba from src to dst.
+ * The PS2 implementation is confusing, and this is just a guess at how it works.
+ */
 void TextureAnimator::handle_rg_to_ba(const DmaTransfer& tf) {
   dprintf("[tex anim] rg -> ba\n");
   ASSERT(tf.size_bytes == sizeof(TextureAnimPcTransform));
   auto* data = (const TextureAnimPcTransform*)(tf.data);
   dprintf("  src: %d, dest: %d\n", data->src_tbp, data->dst_tbp);
-  const auto& src = m_dest_textures.find(data->src_tbp);
-  const auto& dst = m_dest_textures.find(data->dst_tbp);
-  if (src != m_dest_textures.end() && dst != m_dest_textures.end()) {
-    {
-      FramebufferTexturePairContext ctxt(dst->second.tex.value());
-      float positions[3 * 4] = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0};
-      float uvs[2 * 4] = {0, 0, 1, 0, 1, 1, 0, 1};
-      glUniform3fv(m_uniforms.positions, 4, positions);
-      glUniform2fv(m_uniforms.uvs, 4, uvs);
-      glUniform1i(m_uniforms.enable_tex, 1);
-      glUniform4f(m_uniforms.rgba, 256, 256, 256, 128);  // TODO - seems wrong.
-      glUniform4i(m_uniforms.channel_scramble, 0, 1, 0, 1);
-      glBindTexture(GL_TEXTURE_2D, src->second.tex.value().texture());
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-      glDisable(GL_BLEND);
-      glDisable(GL_DEPTH_TEST);
-      glColorMask(true, true, true, true);
-      glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    }
+  const auto& src = m_textures.find(data->src_tbp);
+  const auto& dst = m_textures.find(data->dst_tbp);
+  if (src != m_textures.end() && dst != m_textures.end()) {
+    ASSERT(src->second.kind == VramEntry::Kind::GPU);
+    ASSERT(dst->second.kind == VramEntry::Kind::GPU);
+    ASSERT(src->second.tex.value().texture() != dst->second.tex.value().texture());
+    FramebufferTexturePairContext ctxt(dst->second.tex.value());
+    float positions[3 * 4] = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0};
+    float uvs[2 * 4] = {0, 0, 1, 0, 1, 1, 0, 1};
+    glUniform3fv(m_uniforms.positions, 4, positions);
+    glUniform2fv(m_uniforms.uvs, 4, uvs);
+    glUniform1i(m_uniforms.enable_tex, 1);
+    glUniform4f(m_uniforms.rgba, 256, 256, 256, 128);  // TODO - seems wrong.
+    glUniform4i(m_uniforms.channel_scramble, 0, 1, 0, 1);
+    glBindTexture(GL_TEXTURE_2D, src->second.tex.value().texture());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glDisable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
+    glColorMask(true, true, true, true);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
   } else {
     ASSERT_NOT_REACHED();
@@ -231,6 +433,11 @@ void TextureAnimator::handle_rg_to_ba(const DmaTransfer& tf) {
   //  }
 }
 
+/*!
+ * Create an entry for a 16x16 clut texture upload. Leaves it on the CPU.
+ * They upload cluts as PSM32, so there's no funny addressing stuff, other than
+ * the CLUT indexing scramble stuff.
+ */
 void TextureAnimator::handle_upload_clut_16_16(const DmaTransfer& tf, const u8* ee_mem) {
   dprintf("[tex anim] upload clut 16 16\n");
   ASSERT(tf.size_bytes == sizeof(TextureAnimPcUpload));
@@ -238,36 +445,47 @@ void TextureAnimator::handle_upload_clut_16_16(const DmaTransfer& tf, const u8* 
   ASSERT(upload->width == 16);
   ASSERT(upload->height == 16);
   dprintf("  dest is 0x%x\n", upload->dest);
-  auto& vram = m_vram_entries[upload->dest];
+  auto& vram = m_textures[upload->dest];
+  vram.reset();
   vram.kind = VramEntry::Kind::CLUT16_16_IN_PSM32;
   vram.data.resize(16 * 16 * 4);
-  vram.width = upload->width;
-  vram.height = upload->height;
+  vram.tex_width = upload->width;
+  vram.tex_height = upload->height;
   memcpy(vram.data.data(), ee_mem + upload->data, vram.data.size());
+  if (m_tex_looking_for_clut) {
+    m_tex_looking_for_clut->cbp = upload->dest;
+    m_tex_looking_for_clut = nullptr;
+  }
 }
 
+/*!
+ * Create an entry for any texture upload. Leaves it on the CPU, as we may do fancy scramble stuff.
+ */
 void TextureAnimator::handle_generic_upload(const DmaTransfer& tf, const u8* ee_mem) {
   dprintf("[tex anim] upload generic @ 0x%lx\n", tf.data - ee_mem);
   ASSERT(tf.size_bytes == sizeof(TextureAnimPcUpload));
   auto* upload = (const TextureAnimPcUpload*)(tf.data);
   dprintf(" size %d x %d\n", upload->width, upload->height);
   dprintf(" dest is 0x%x\n", upload->dest);
-  auto& vram = m_vram_entries[upload->dest];
+  auto& vram = m_textures[upload->dest];
+  vram.reset();
 
   switch (upload->format) {
     case (int)GsTex0::PSM::PSMCT32:
       vram.kind = VramEntry::Kind::GENERIC_PSM32;
       vram.data.resize(upload->width * upload->height * 4);
-      vram.width = upload->width;
-      vram.height = upload->height;
+      vram.tex_width = upload->width;
+      vram.tex_height = upload->height;
       memcpy(vram.data.data(), ee_mem + upload->data, vram.data.size());
+      m_tex_looking_for_clut = nullptr;
       break;
     case (int)GsTex0::PSM::PSMT8:
       vram.kind = VramEntry::Kind::GENERIC_PSMT8;
       vram.data.resize(upload->width * upload->height);
-      vram.width = upload->width;
-      vram.height = upload->height;
+      vram.tex_width = upload->width;
+      vram.tex_height = upload->height;
       memcpy(vram.data.data(), ee_mem + upload->data, vram.data.size());
+      m_tex_looking_for_clut = &vram;
       break;
     default:
       fmt::print("Unhandled format: {}\n", upload->format);
@@ -275,10 +493,16 @@ void TextureAnimator::handle_generic_upload(const DmaTransfer& tf, const u8* ee_
   }
 }
 
+/*!
+ * Handle the initialization of an animated texture. This fills the entire texture with a solid
+ * color. We set up a GPU texture here - drawing operations are done on the GPU, so we'd never
+ * need this solid color on the CPU. Also sets a bunch of GS state for the shaders.
+ * These may be modified by animation functions, but most of the time they aren't.
+ */
 void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
-  printf("[tex anim] erase destination texture\n");
+  dprintf("[tex anim] erase destination texture\n");
   // auto& out = m_new_dest_textures.emplace_back();
-  DestinationTextureEntry* entry = nullptr;
+  VramEntry* entry = nullptr;
 
   // first transfer will be a bunch of ad (modifies the shader)
   {
@@ -288,9 +512,9 @@ void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
     ASSERT(ad_transfer.vifcode1().kind == VifCode::Kind::DIRECT);
     const u64* ad_data = (const u64*)(ad_transfer.data + 16);
 
-    for (int i = 0; i < 9; i++) {
-      dprintf(" ad: 0x%lx 0x%lx\n", ad_data[i * 2], ad_data[i * 2 + 1]);
-    }
+    // for (int i = 0; i < 9; i++) {
+    // dprintf(" ad: 0x%lx 0x%lx\n", ad_data[i * 2], ad_data[i * 2 + 1]);
+    // }
     // 0 (scissor-1 (new 'static 'gs-scissor :scax1 (+ tex-width -1) :scay1 (+ tex-height -1)))
     ASSERT(ad_data[0 * 2 + 1] == (int)GsRegisterAddress::SCISSOR_1);
     GsScissor scissor(ad_data[0]);
@@ -328,49 +552,16 @@ void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
     // 7 (zbuf-1 (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24) :zmsk #x1))
     // 8 (texflush 0)
 
-    // see if we already have an OpenGL texture:
-    const auto& existing_dest = m_dest_textures.find(dest_texture_address);
-    bool existing_opengl = existing_dest != m_dest_textures.end();
-    bool can_reuse = true;
-    if (existing_opengl) {
-      if (existing_dest->second.tex_height != tex_height ||
-          existing_dest->second.tex_width != tex_width) {
-        dprintf(" can't reuse, size mismatch\n");
-        can_reuse = false;
-      }
-    } else {
-      dprintf(" can't reuse, first time using this address\n");
-      can_reuse = false;
-    }
-
-    if (can_reuse) {
-      entry = &existing_dest->second;
-    } else {
-      if (existing_opengl) {
-        existing_dest->second.tex.reset();
-        entry = &existing_dest->second;
-        entry->needs_pool_update = true;
-      } else {
-        entry = &m_dest_textures[dest_texture_address];
-        entry->needs_pool_creation = true;
-      }
-      entry->tex.emplace(tex_width, tex_height, GL_UNSIGNED_INT_8_8_8_8_REV);
-    }
-
-    entry->tex_width = tex_width;
-    entry->tex_height = tex_height;
-    entry->dest_texture_address = dest_texture_address;
+    // get the entry set up for being a GPU texture.
+    entry = setup_vram_entry_for_gpu_texture(tex_width, tex_height, dest_texture_address);
   }
 
   // next transfer is the erase. This is done with alpha blending off
-  {
-    auto clear_transfer = dma.read_and_advance();
-    ASSERT(clear_transfer.size_bytes == 16 * 4);
-    math::Vector<u32, 4> rgba_u32;
-    memcpy(rgba_u32.data(), clear_transfer.data + 16, 16);
-    entry->rgba_clear = rgba_u32.cast<u8>();
-    dfmt(" clear: {}\n", entry->rgba_clear.to_string_hex_byte());
-  }
+  auto clear_transfer = dma.read_and_advance();
+  ASSERT(clear_transfer.size_bytes == 16 * 4);
+  math::Vector<u32, 4> rgba_u32;
+  memcpy(rgba_u32.data(), clear_transfer.data + 16, 16);
+  dfmt(" clear: {}\n", rgba_u32.to_string_hex_byte());
 
   // create the opengl output texture.
 
@@ -380,8 +571,7 @@ void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
     float positions[3 * 4] = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0};
     glUniform3fv(m_uniforms.positions, 4, positions);
     glUniform1i(m_uniforms.enable_tex, 0);
-    glUniform4f(m_uniforms.rgba, entry->rgba_clear[0], entry->rgba_clear[1], entry->rgba_clear[2],
-                entry->rgba_clear[3]);
+    glUniform4f(m_uniforms.rgba, rgba_u32[0], rgba_u32[1], rgba_u32[2], rgba_u32[3]);
     glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
     glBindTexture(GL_TEXTURE_2D, m_dummy_texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -389,13 +579,81 @@ void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
     glDisable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
     glColorMask(true, true, true, true);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    {
+      auto p = scoped_prof("erase-draw");
+      glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    }
   }
 
   // set as active
   m_current_dest_tbp = entry->dest_texture_address;
+  m_erased_on_this_frame.insert(entry->dest_texture_address);
 }
 
+/*!
+ * Set up this texture as a GPU texture. This does a few things:
+ * - sets the Kind to GPU
+ * - makes sure the texture resource points to a valid OpenGL texture of the right size, without
+ *   triggering the resize/delete sync issue mentioned above.
+ * - sets flags to indicate if this GPU texture needs to be updated in the pool.
+ */
+VramEntry* TextureAnimator::setup_vram_entry_for_gpu_texture(int w, int h, int tbp) {
+  auto pp = scoped_prof("setup-vram-entry");
+  const auto& existing_dest = m_textures.find(tbp);
+
+  // see if we have an existing OpenGL texture at all
+  bool existing_opengl = existing_dest != m_textures.end() && existing_dest->second.tex.has_value();
+
+  // see if we can reuse it (same size)
+  bool can_reuse = true;
+  if (existing_opengl) {
+    if (existing_dest->second.tex->height() != h || existing_dest->second.tex->width() != w) {
+      dprintf(" can't reuse, size mismatch\n");
+      can_reuse = false;
+    }
+  } else {
+    dprintf(" can't reuse, first time using this address\n");
+    can_reuse = false;
+  }
+
+  VramEntry* entry = nullptr;
+  if (can_reuse) {
+    // texture is the right size, just use it again.
+    entry = &existing_dest->second;
+  } else {
+    if (existing_opengl) {
+      // we have a texture, but it's the wrong type. Remember that we need to update the pool
+      entry = &existing_dest->second;
+      entry->needs_pool_update = true;
+    } else {
+      // create the entry. Also need to update the pool
+      entry = &m_textures[tbp];
+      entry->reset();
+      entry->needs_pool_update = true;
+    }
+
+    // if we already have a texture, try to swap it with an OpenGL texture of the right size.
+    if (entry->tex.has_value()) {
+      // gross
+      m_opengl_texture_pool.free(entry->tex->texture(), entry->tex->width(), entry->tex->height());
+      entry->tex->update_texture_size(w, h);
+      entry->tex->update_texture_unsafe(m_opengl_texture_pool.allocate(w, h));
+    } else {
+      printf("emplace case\n");
+      entry->tex.emplace(w, h, GL_UNSIGNED_INT_8_8_8_8_REV);
+    }
+  }
+
+  entry->kind = VramEntry::Kind::GPU;
+  entry->tex_width = w;
+  entry->tex_height = h;
+  entry->dest_texture_address = tbp;
+  return entry;
+}
+
+/*!
+ * ADGIF shader update
+ */
 void TextureAnimator::handle_set_shader(DmaFollower& dma) {
   dprintf("[tex anim] set shader\n");
   auto ad_transfer = dma.read_and_advance();
@@ -440,6 +698,9 @@ void TextureAnimator::handle_set_shader(DmaFollower& dma) {
   }
 }
 
+/*!
+ * Do a draw to a destination texture.
+ */
 void TextureAnimator::handle_draw(DmaFollower& dma) {
   // NOTE: assuming ABE set from the template here. If this function is used for other templates,
   // we'll need to actually check.
@@ -450,27 +711,41 @@ void TextureAnimator::handle_draw(DmaFollower& dma) {
   memcpy(&draw_data, draw_xfer.data, sizeof(DrawData));
 
   if (m_current_shader.source_texture_set) {
-    auto& dest_te = m_dest_textures.at(m_current_dest_tbp);
+    // find the destination we draw to. It should have been erased previously, making it a GPU
+    // texture
+    auto& dest_te = m_textures.at(m_current_dest_tbp);
+    ASSERT(dest_te.kind == VramEntry::Kind::GPU);
+
+    // set up context to draw to this one
     FramebufferTexturePairContext ctxt(*dest_te.tex);
+
+    // get the source texture
     GLuint gpu_texture = make_or_get_gpu_texture_for_current_shader();
+
+    // use ADGIF shader data to set OpenGL state
     set_up_opengl_for_shader(m_current_shader, gpu_texture, true);  // ABE forced on here.
+
+    // set up uniform buffers for the coordinates for this draw.
     set_uniforms_from_draw_data(draw_data, dest_te.tex_width, dest_te.tex_height);
-    {
-      ASSERT(dest_te.tex);
-      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    }
+
+    ASSERT(dest_te.tex);
+    // draw!
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     // debug_save_opengl_texture("opengl_draw_result.png", dest_te.tex->texture());
     // debug_save_opengl_texture("opengl_test.png", gpu_texture);
-    // ASSERT_NOT_REACHED();
   } else {
     ASSERT_NOT_REACHED();
   }
 }
 
-const u32* TextureAnimator::get_current_clut_16_16_psm32() {
-  const auto& clut_lookup = m_vram_entries.find(m_current_shader.tex0.cbp());
-  if (clut_lookup == m_vram_entries.end()) {
-    printf("set shader referenced an unknown clut texture in %d\n", m_current_shader.tex0.cbp());
+/*!
+ * Get a 16x16 CLUT texture, stored in psm32 (in-memory format, not vram). Fatal if it doesn't
+ * exist.
+ */
+const u32* TextureAnimator::get_clut_16_16_psm32(int cbp) {
+  const auto& clut_lookup = m_textures.find(cbp);
+  if (clut_lookup == m_textures.end()) {
+    printf("get_clut_16_16_psm32 referenced an unknown clut texture in %d\n", cbp);
     ASSERT_NOT_REACHED();
   }
 
@@ -481,9 +756,12 @@ const u32* TextureAnimator::get_current_clut_16_16_psm32() {
   return (const u32*)clut_lookup->second.data.data();
 }
 
+/*!
+ * Using the current shader settings, load the CLUT table to the texture coverter "VRAM".
+ */
 void TextureAnimator::load_clut_to_converter() {
-  const auto& clut_lookup = m_vram_entries.find(m_current_shader.tex0.cbp());
-  if (clut_lookup == m_vram_entries.end()) {
+  const auto& clut_lookup = m_textures.find(m_current_shader.tex0.cbp());
+  if (clut_lookup == m_textures.end()) {
     printf("set shader referenced an unknown clut texture in %d\n", m_current_shader.tex0.cbp());
     ASSERT_NOT_REACHED();
   }
@@ -499,6 +777,7 @@ void TextureAnimator::load_clut_to_converter() {
   }
 }
 
+// TODO: use the size pool.
 GLuint TextureAnimator::make_temp_gpu_texture(const u32* data, u32 width, u32 height) {
   GLuint gl_tex = alloc_gl_texture();
   glBindTexture(GL_TEXTURE_2D, gl_tex);
@@ -508,18 +787,12 @@ GLuint TextureAnimator::make_temp_gpu_texture(const u32* data, u32 width, u32 he
   return gl_tex;
 }
 
+/*!
+ * Read the current shader settings, and get/create/setup a GPU texture for the source texture.
+ */
 GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader() {
-  const auto& lookup = m_vram_entries.find(m_current_shader.tex0.tbp0());
-  if (lookup == m_vram_entries.end()) {
-    // try dest textures
-    const auto& dest_lookup = m_dest_textures.find(m_current_shader.tex0.tbp0());
-    if (dest_lookup != m_dest_textures.end()) {
-      ASSERT(dest_lookup->second.tex);
-      return dest_lookup->second.tex->texture();
-    }
-
-    // TODO: could try ones from the previous frame?
-
+  const auto& lookup = m_textures.find(m_current_shader.tex0.tbp0());
+  if (lookup == m_textures.end()) {
     printf("referenced an unknown texture in %d\n", m_current_shader.tex0.tbp0());
     ASSERT_NOT_REACHED();
   }
@@ -528,6 +801,9 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader() {
 
   // see what format the source is
   switch (vram_entry->kind) {
+    case VramEntry::Kind::GPU:
+      // already on the GPU, just return it.
+      return lookup->second.tex->texture();
     // data on the CPU, in PSM32
     case VramEntry::Kind::GENERIC_PSM32:
       // see how we're reading it:
@@ -536,12 +812,12 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader() {
         case GsTex0::PSM::PSMT8: {
           int w = 1 << m_current_shader.tex0.tw();
           int h = 1 << m_current_shader.tex0.th();
-          ASSERT(w == vram_entry->width * 2);
-          ASSERT(h == vram_entry->height * 2);
+          ASSERT(w == vram_entry->tex_width * 2);
+          ASSERT(h == vram_entry->tex_height * 2);
 
           Timer timer;
           m_converter.upload_width(vram_entry->data.data(), m_current_shader.tex0.tbp0(),
-                                   vram_entry->width, vram_entry->height);
+                                   vram_entry->tex_width, vram_entry->tex_height);
 
           // also needs clut lookup
           load_clut_to_converter();
@@ -567,14 +843,16 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader() {
       break;
     case VramEntry::Kind::CLUT16_16_IN_PSM32:
       ASSERT_NOT_REACHED();
+
+      /*
     case VramEntry::Kind::GENERIC_PSMT8: {
       fmt::print("drawing: {}\n", (int)m_current_shader.tex0.psm());
       ASSERT(m_current_shader.tex0.psm() == GsTex0::PSM::PSMT8);
       ASSERT(m_current_shader.tex0.cpsm() == 0);  // psm32.
       int tw = 1 << m_current_shader.tex0.tw();
       int th = 1 << m_current_shader.tex0.th();
-      ASSERT(tw == vram_entry->width);
-      ASSERT(th == vram_entry->height);
+      ASSERT(tw == vram_entry->tex_width);
+      ASSERT(th == vram_entry->tex_height);
       std::vector<u32> rgba_data(tw * th);
       const u32* clut = get_current_clut_16_16_psm32();
       for (int r = 0; r < th; r++) {
@@ -584,8 +862,9 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader() {
       }
       return make_temp_gpu_texture(rgba_data.data(), tw, th);
     }
+       */
 
-    break;
+      break;
     default:
       ASSERT_NOT_REACHED();
   }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <set>
 #include <unordered_map>
 #include <vector>
 
@@ -12,23 +13,34 @@
 #include "game/graphics/opengl_renderer/opengl_utils.h"
 #include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/texture/TextureConverter.h"
+#include "game/graphics/texture/TextureID.h"
+
+struct GpuTexture;
 
 struct VramEntry {
-  enum class Kind { CLUT16_16_IN_PSM32, GENERIC_PSM32, GENERIC_PSMT8 } kind;
-  int width, height;
+  enum class Kind { CLUT16_16_IN_PSM32, GENERIC_PSM32, GENERIC_PSMT8, GPU, INVALID } kind;
   std::vector<u8> data;
-};
-struct GpuTexture;
-struct DestinationTextureEntry {
-  int tex_width;
-  int tex_height;
-  int dest_texture_address;
+
+  int tex_width = 0;
+  int tex_height = 0;
+  int dest_texture_address = 0;
+  int cbp = 0;
   std::optional<FramebufferTexturePair> tex;
-  math::Vector<u8, 4> rgba_clear;
+  // math::Vector<u8, 4> rgba_clear;
 
   bool needs_pool_update = false;
-  bool needs_pool_creation = false;
   GpuTexture* pool_gpu_tex = nullptr;
+
+  void reset() {
+    data.clear();
+    kind = Kind::INVALID;
+    tex_height = 0;
+    tex_width = 0;
+    cbp = 0;
+    // tex.reset();
+    needs_pool_update = false;
+    // pool_gpu_tex = nullptr;
+  }
 };
 
 struct ShaderContext {
@@ -37,8 +49,15 @@ struct ShaderContext {
   GsTest test;
   bool clamp_u, clamp_v;
   GsAlpha alpha;
-
   bool source_texture_set = false;
+};
+
+struct OpenGLTexturePool {
+  OpenGLTexturePool();
+  ~OpenGLTexturePool();
+  GLuint allocate(u64 w, u64 h);
+  void free(GLuint texture, u64 w, u64 h);
+  std::unordered_map<u64, std::vector<GLuint>> textures;
 };
 
 class TexturePool;
@@ -56,17 +75,19 @@ class TextureAnimator {
   void handle_set_shader(DmaFollower& dma);
   void handle_draw(DmaFollower& dma);
   void handle_rg_to_ba(const DmaTransfer& tf);
+  VramEntry* setup_vram_entry_for_gpu_texture(int w, int h, int tbp);
 
   void set_up_opengl_for_shader(const ShaderContext& shader,
                                 std::optional<GLuint> texture,
                                 bool prim_abe);
 
   void load_clut_to_converter();
-  const u32* get_current_clut_16_16_psm32();
+  const u32* get_clut_16_16_psm32(int cbp);
 
   GLuint make_temp_gpu_texture(const u32* data, u32 width, u32 height);
 
   GLuint make_or_get_gpu_texture_for_current_shader();
+  void force_to_gpu(int tbp);
 
   struct DrawData {
     u8 tmpl1[16];
@@ -87,8 +108,13 @@ class TextureAnimator {
 
   void set_uniforms_from_draw_data(const DrawData& dd, int dest_w, int dest_h);
 
-  std::unordered_map<u32, VramEntry> m_vram_entries;
-  std::map<u32, DestinationTextureEntry> m_dest_textures;
+  PcTextureId get_id_for_tbp(TexturePool* pool, u32 tbp);
+
+  VramEntry* m_tex_looking_for_clut = nullptr;
+  std::unordered_map<u32, VramEntry> m_textures;
+  std::unordered_map<u32, PcTextureId> m_ids_by_vram;
+
+  std::set<u32> m_erased_on_this_frame;
 
   std::vector<GLuint> m_gl_textures;
   u32 m_next_gl_texture = 0;
@@ -121,4 +147,7 @@ class TextureAnimator {
 
   GLuint m_shader_id;
   GLuint m_dummy_texture;
+
+  u8 m_index_to_clut_addr[256];
+  OpenGLTexturePool m_opengl_texture_pool;
 };
