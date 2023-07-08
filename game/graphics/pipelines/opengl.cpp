@@ -541,6 +541,9 @@ void GLDisplay::render() {
       game_res_w = 640;
       game_res_h = 480;
     }
+    // set the size of the visible/playable portion of the game in the window
+    get_display_manager()->set_game_size(Gfx::g_global_settings.lbox_w,
+                                         Gfx::g_global_settings.lbox_h);
     render_game_frame(
         game_res_w, game_res_h, fbuf_w, fbuf_h, Gfx::g_global_settings.lbox_w,
         Gfx::g_global_settings.lbox_h, Gfx::g_global_settings.msaa_samples,
